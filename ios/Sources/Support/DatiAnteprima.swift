@@ -3,6 +3,34 @@ import Foundation
 /// Dati finti per le anteprime di Xcode (`#Preview`): niente rete, niente server.
 extension FinteServer {
     static let esempio = FinteServer(risposte: [
+        "/api/mercato": """
+        {"squadra": "La mia squadra", "svincolati": 118, "crediti_residui": 12,
+         "proposte": [{"esce": {"id": 7, "nome": "Mario Rossi", "ruolo": "D", "squadra": "roma"},
+                       "entra": {"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio"}, "guadagno": 3.2, "rimborso": 4}]}
+        """,
+        "/api/classifica": """
+        {"giornata": 11, "giocatori": [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio", "avversario": "genoa", "in_casa": true,
+                                         "p_voto": 0.88, "punti_attesi": 6.2},
+                                        {"id": 12, "nome": "Paolo Verdi", "ruolo": "A", "squadra": "como", "p_voto": 0.4, "punti_attesi": 3.1, "assente": false}]}
+        """,
+        "/api/calendario": """
+        {"giornate": [11, 12], "squadre": [{"squadra": "inter", "media": 2.1, "partite": [
+            {"giornata": 11, "avversario": "roma", "in_casa": true, "difficolta": 2},
+            {"giornata": 12, "avversario": "milan", "in_casa": false, "difficolta": 4}]}]}
+        """,
+        "/api/osservati": """
+        {"giornata": 11, "giocatori": [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio", "p_voto": 0.88, "punti_attesi": 6.2},
+                                        {"id": 13, "nome": "Gino Neri", "ruolo": "C", "squadra": "parma", "proprietario": "Altra squadra", "assente": true}]}
+        """,
+        "/api/giocatori": """
+        [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio"}]
+        """,
+        "/api/giocatore/": """
+        {"calciatore": {"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio", "quotazione": 12, "fvm": 18},
+         "stagione": {"presenze": 9, "media_voto": 6.3, "fantamedia": 6.8, "gol": 1, "assist": 2, "ammonizioni": 1, "espulsioni": 0},
+         "previsione": {"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "avversario": "genoa", "in_casa": true, "p_voto": 0.88, "punti_attesi": 6.2,
+                        "gol_attesi": 0.1, "assist_attesi": 0.15}}
+        """,
         "/api/formazione/testo": "Giornata 11 - 3-4-3 (64,5 punti attesi)",
         "/api/formazione": """
         {"squadra": "La mia squadra", "giornata": 11, "modulo": "3-4-3", "punteggio_atteso": 64.5, "con_probabili": true,
