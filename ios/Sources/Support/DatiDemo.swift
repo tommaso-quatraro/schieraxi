@@ -550,13 +550,13 @@ private enum DatiDemo {
             let migliori = tutti.filter { $0.ruolo == ruolo && !$0.assente }.sorted { $0.punti > $1.punti }.prefix(12)
             var voci: [[String: Any]] = []
             for p in migliori {
-                voci.append(["id": p.id, "nome": p.nome, "squadra": p.squadra,
+                voci.append(["id": p.id, "nome": p.nome, "squadra": p.squadra, "quotazione": quotazione(p),
                              "prezzo": max(1.0, (p.punti * p.punti * quota * 1.6).rounded()),
                              "punti_stagione": (p.punti * 9.0).rounded()])
             }
             ruoli.append(["ruolo": ruolo, "quota": quota, "crediti": crediti, "giocatori": voci])
         }
-        return json(["crediti": 500, "squadre": 8, "ruoli": ruoli])
+        return json(["crediti": 500, "squadre": 8, "panchina": 60, "ruoli": ruoli])
     }
 
     static func novita() -> String {

@@ -63,8 +63,8 @@ struct FilaTessere<Contenuto: View>: View {
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: 8) { contenuto }
-            // con il testo molto grande le tessere vanno una sotto l'altra
-            VStack(spacing: 10) { contenuto }
+            // se non ci stanno in fila (colonna stretta, testo grande): a griglia, quante ne entrano per riga
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 8, alignment: .top)], spacing: 12) { contenuto }
         }
     }
 }
