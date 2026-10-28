@@ -60,6 +60,7 @@ final class Navigazione: ObservableObject {
 struct RadiceView: View {
     @Environment(\.horizontalSizeClass) private var classe
     @EnvironmentObject private var nav: Navigazione
+    @EnvironmentObject private var modello: AppModel
 
     var body: some View {
         Group {
@@ -102,7 +103,7 @@ struct RadiceView: View {
     @ViewBuilder
     private func vista(_ s: Sezione) -> some View {
         switch s {
-        case .oggi: OggiView()
+        case .oggi: OggiView(vm: modello.oggi)
         case .formazione: FormazioneView()
         case .mercato: MercatoView()
         case .scambi: ScambiView()

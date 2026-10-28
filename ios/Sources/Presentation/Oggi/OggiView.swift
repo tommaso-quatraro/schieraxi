@@ -1,9 +1,8 @@
 import SwiftUI
 
+/// Schermata Oggi: solo presentazione. Dati e logica sono in `OggiViewModel`.
 struct OggiView: View {
-    // Oggi gestisce da solo il comando «Aggiorna» (Cmd+R): deve anche riprogrammare i promemoria.
-    @StateObject private var caricatore = Caricatore<Oggi>("/api/oggi", ascolta: false)
-    @AppStorage("permessoChiesto") private var permessoChiesto = false
+    @ObservedObject var vm: OggiViewModel
 
     var body: some View {
         NavigationStack {
@@ -11,14 +10,15 @@ struct OggiView: View {
                 Sfondo()
                 ScrollView {
                     Colonne(spazio: 14) {
-                        if let oggi = caricatore.dato {
+                        if let oggi = vm.oggi {
                             testata(oggi)
                             formazione(oggi)
-                            daControllare(oggi)
+                            daControllare
+                            indisponibili
                             migliori(oggi)
                             partite(oggi)
-                        } else if let errore = caricatore.errore {
-                            ErroreVista(messaggio: errore) { Task { await carica() } }
+                        } else if let errore = vm.errore {
+                            ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
                             ProgressView("Carico la giornata…").padding(40)
                         }
@@ -26,32 +26,12 @@ struct OggiView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
                 }
-                .refreshable {
-                    await carica()
-                    UINotificationFeedbackGenerator().notificationOccurred(caricatore.errore == nil ? .success : .error)
-                }
-                .avvisoDatiSalvati(caricatore.datiSalvati)
+                .refreshable { await vm.carica() }
+                .avvisoDatiSalvati(vm.datiSalvati)
             }
             .navigationTitle("Oggi")
-            .task { await carica() }
-            .onReceive(NotificationCenter.default.publisher(for: .aggiornaTutto)) { _ in
-                Task { await carica() }
-            }
+            .task { await vm.carica() }
         }
-    }
-
-    /// Ricarica la giornata e, se i dati sono freschi, riprogramma i promemoria.
-    private func carica() async {
-        await caricatore.ricarica()
-        // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
-        guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
-        if !permessoChiesto {
-            permessoChiesto = true
-            _ = await Notifiche.chiediPermesso()
-            await Aggiornamento.riprogrammaScadenza()
-        }
-        // Promemoria, widget e memoria dell'ultima formazione (per accorgersi dei cambiamenti in background).
-        await Aggiornamento.elabora(oggi, avvisaSeCambia: false)
     }
 
     private func testata(_ oggi: Oggi) -> some View {
@@ -97,7 +77,7 @@ struct OggiView: View {
                     Text(f.modulo ?? "—").font(.system(.title, design: .rounded).weight(.bold))
                     Spacer()
                     VStack(alignment: .trailing) {
-                        Text((f.punteggioAtteso ?? 0).formatted(.number.precision(.fractionLength(1)))).font(.title2.bold()).monospacedDigit()
+                        Text(Formato.punti(f.punteggioAtteso)).font(.title2.bold()).monospacedDigit()
                         Text("punti attesi").font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -112,20 +92,21 @@ struct OggiView: View {
     }
 
     @ViewBuilder
-    private func daControllare(_ oggi: Oggi) -> some View {
-        let tutti = oggi.avvisi ?? []
-        let miei = tutti.filter { $0.inFormazione == true }
-        let altri = tutti.filter { $0.inFormazione != true }
-        if !miei.isEmpty {
+    private var daControllare: some View {
+        if !vm.daControllare.isEmpty {
             Carta("Da controllare") {
-                ForEach(miei, id: \.ident) { riga($0) }
+                ForEach(vm.daControllare, id: \.ident) { riga($0) }
             }
         }
-        if !altri.isEmpty {
+    }
+
+    @ViewBuilder
+    private var indisponibili: some View {
+        if !vm.indisponibili.isEmpty {
             Carta {
-                DisclosureGroup("Indisponibili in rosa (\(altri.count))") {
+                DisclosureGroup("Indisponibili in rosa (\(vm.indisponibili.count))") {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(altri, id: \.ident) { riga($0) }
+                        ForEach(vm.indisponibili, id: \.ident) { riga($0) }
                     }
                     .padding(.top, 6)
                 }
@@ -169,4 +150,8 @@ struct OggiView: View {
             }
         }
     }
+}
+
+#Preview("Oggi") {
+    OggiView(vm: OggiViewModel(server: FinteServer.esempio))
 }

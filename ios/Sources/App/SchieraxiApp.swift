@@ -6,6 +6,7 @@ import CoreSpotlight
 struct SchieraxiApp: App {
     @StateObject private var nav = Navigazione()
     @StateObject private var statoFormazione = StatoFormazione()
+    @StateObject private var modello = AppModel()
     @Environment(\.scenePhase) private var fase
 
     var body: some Scene {
@@ -14,6 +15,7 @@ struct SchieraxiApp: App {
             RadiceView()
                 .environmentObject(nav)
                 .environmentObject(statoFormazione)
+                .environmentObject(modello)
                 .onContinueUserActivity(CSSearchableItemActionType) { attivita in
                     // Aperta da Spotlight su un giocatore osservato: si va alla sua scheda.
                     if let id = Spotlight.idGiocatore(da: attivita) { nav.vai(a: .giocatore(id)) }
