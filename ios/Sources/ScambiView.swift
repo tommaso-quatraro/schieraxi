@@ -177,8 +177,15 @@ struct AnalizzaScambioView: View {
         .task(id: altra) {
             ricevoIds = []
             esito = nil
-            guard !altra.isEmpty else { loro = nil; return }
-            loro = try? await Api.get("/api/rosa?squadra=\(Api.codifica(altra))")
+            loro = nil   // la rosa della squadra precedente non deve restare a video
+            guard !altra.isEmpty else { return }
+            do {
+                loro = try await Api.get("/api/rosa?squadra=\(Api.codifica(altra))")
+                errore = nil
+            } catch {
+                if Task.isCancelled { return }
+                errore = error.localizedDescription
+            }
         }
     }
 
@@ -191,7 +198,7 @@ struct AnalizzaScambioView: View {
                 HStack(spacing: 10) {
                     Image(systemName: scelti.wrappedValue.contains(id) ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(scelti.wrappedValue.contains(id) ? Color.verde : .secondary)
-                    BadgeRuolo(ruolo: g.ruolo)
+                    BadgeRuolo(ruolo: g.ruolo ?? "?")
                     Text(g.nome)
                     Spacer()
                     Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)

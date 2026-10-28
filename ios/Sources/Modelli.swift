@@ -122,7 +122,7 @@ struct SquadraLega: Decodable, Identifiable {
 struct GiocatoreRosa: Decodable, Identifiable {
     let id: Int?
     let nome: String
-    let ruolo: String
+    let ruolo: String?
     let squadra: String?
     let costo: Double?
     let quotazione: Double?
@@ -169,14 +169,16 @@ struct Avviso: Decodable, Identifiable {
     let tipo: String?
     let nota: String?
     let inFormazione: Bool?
+    /// Lo stesso giocatore può avere più avvisi (dubbio e diffidato): l'id da solo non basta per le liste.
+    var ident: String { "\(id)-\(tipo ?? "")" }
 }
 
 struct Partita: Decodable, Identifiable {
-    let data: String
+    let data: String?
     let casa: String
     let trasferta: String
     let giocata: Bool?
-    var id: String { data + casa + trasferta }
+    var id: String { (data ?? "") + casa + trasferta }
 }
 
 struct Oggi: Decodable {

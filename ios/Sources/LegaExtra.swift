@@ -4,11 +4,15 @@ import UniformTypeIdentifiers
 /// Squadre della lega e loro rose.
 struct SquadreView: View {
     @StateObject private var caricatore = Caricatore<[SquadraLega]>("/api/squadre")
+    @State private var errore: String?
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
+                if let errore {
+                    Text(errore).font(.footnote).foregroundStyle(.orange)
+                }
                 if let s = caricatore.dato {
                     ForEach(s) { sq in
                         NavigationLink { RosaView(nome: sq.nome) } label: {
@@ -36,8 +40,14 @@ struct SquadreView: View {
     }
 
     private func imposta(_ nome: String) async {
-        let _: JSONValue? = try? await Api.posta("PUT", "/api/mia-squadra", NomeSquadra(nome: nome), snake: false)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        do {
+            _ = try await Api.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: nome))
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            errore = nil
+        } catch {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            errore = error.localizedDescription
+        }
         await caricatore.ricarica()
     }
 }
@@ -58,15 +68,14 @@ struct RosaView: View {
                 if let r = caricatore.dato {
                     ForEach(["P", "D", "C", "A"], id: \.self) { ruolo in
                         Section(ruolo) {
-                            ForEach(r.giocatori.filter { $0.ruolo == ruolo }, id: \.ident) { g in
-                                HStack(spacing: 10) {
-                                    BadgeRuolo(ruolo: g.ruolo)
-                                    Text(g.nome)
-                                    Spacer()
-                                    Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
-                                    if let c = g.costo { Text("\(Int(c))").monospacedDigit().foregroundStyle(.secondary) }
-                                }
-                            }
+                            ForEach(r.giocatori.filter { $0.ruolo == ruolo }, id: \.ident) { g in rigaRosa(g) }
+                        }
+                    }
+                    // Giocatori che il server non ha saputo collegare a un ruolo (non presenti nel listone).
+                    let sconosciuti = r.giocatori.filter { !["P", "D", "C", "A"].contains($0.ruolo ?? "") }
+                    if !sconosciuti.isEmpty {
+                        Section("Non riconosciuti") {
+                            ForEach(sconosciuti, id: \.ident) { g in rigaRosa(g) }
                         }
                     }
                 } else if let e = caricatore.errore {
@@ -80,6 +89,17 @@ struct RosaView: View {
         .navigationTitle(nome)
         .navigationBarTitleDisplayMode(.inline)
         .task { await caricatore.ricarica() }
+    }
+
+    private func rigaRosa(_ g: GiocatoreRosa) -> some View {
+        HStack(spacing: 10) {
+            BadgeRuolo(ruolo: g.ruolo ?? "?")
+            Text(g.nome)
+            Spacer()
+            Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
+            if let c = g.costo { Text("\(Int(c))").monospacedDigit().foregroundStyle(.secondary) }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

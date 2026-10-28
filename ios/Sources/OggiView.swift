@@ -90,14 +90,14 @@ struct OggiView: View {
         let altri = tutti.filter { $0.inFormazione != true }
         if !miei.isEmpty {
             Carta("Da controllare") {
-                ForEach(miei) { riga($0) }
+                ForEach(miei, id: \.ident) { riga($0) }
             }
         }
         if !altri.isEmpty {
             Carta {
                 DisclosureGroup("Indisponibili in rosa (\(altri.count))") {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(altri) { riga($0) }
+                        ForEach(altri, id: \.ident) { riga($0) }
                     }
                     .padding(.top, 6)
                 }
