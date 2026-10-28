@@ -59,7 +59,7 @@ targets:
     platform: iOS
     sources:
       - path: WidgetSources
-      - path: Sources/Modelli.swift
+      - path: Sources/Domain/Modelli.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.widget
