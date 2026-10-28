@@ -48,6 +48,7 @@ struct OggiView: View {
         if !permessoChiesto {
             permessoChiesto = true
             _ = await Notifiche.chiediPermesso()
+            await Aggiornamento.riprogrammaScadenza()
         }
         // Promemoria, widget e memoria dell'ultima formazione (per accorgersi dei cambiamenti in background).
         await Aggiornamento.elabora(oggi, avvisaSeCambia: false)

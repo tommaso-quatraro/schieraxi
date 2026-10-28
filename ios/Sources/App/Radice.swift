@@ -43,6 +43,17 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
 final class Navigazione: ObservableObject {
     @Published var sezione: Sezione = .oggi
     @Published var giocatoreDaAprire: Int?
+
+    /// Apre una sezione o la scheda di un giocatore (da Spotlight o da un indirizzo schieraxi://).
+    func vai(a destinazione: Destinazione) {
+        switch destinazione {
+        case .sezione(let s):
+            sezione = s
+        case .giocatore(let id):
+            sezione = .mercato
+            giocatoreDaAprire = id
+        }
+    }
 }
 
 /// Radice dell'app: schede in basso con larghezza stretta, barra laterale con larghezza ampia.
@@ -59,6 +70,7 @@ struct RadiceView: View {
             }
         }
         .tint(Color.verde)
+        .task { await Aggiornamento.riprogrammaScadenza() }   // a ogni apertura
     }
 
     private var schede: some View {

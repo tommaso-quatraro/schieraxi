@@ -22,6 +22,26 @@ enum Notifiche {
         try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: nil))
     }
 
+    /// Due promemoria locali prima che scada il certificato: 24 ore e 6 ore prima. Si richiamano a ogni apertura e a ogni
+    /// aggiornamento in background: con lo stesso identificativo sostituiscono quelli vecchi (dopo un rinnovo la data cambia).
+    static func programmaScadenza(_ scadenza: Date) async {
+        let centro = UNUserNotificationCenter.current()
+        let stato = await stato()
+        guard stato == .authorized || stato == .provisional else { return }
+        centro.removePendingNotificationRequests(withIdentifiers: ["fanta-cert-24", "fanta-cert-6"])
+        for (id, ore) in [("fanta-cert-24", 24), ("fanta-cert-6", 6)] {
+            let quando = scadenza.addingTimeInterval(-Double(ore) * 3600)
+            guard quando > Date() else { continue }
+            let contenuto = UNMutableNotificationContent()
+            contenuto.title = "L'app sta per scadere"
+            contenuto.body = "Il certificato scade tra circa \(ore) ore. Rinnova l'app con SideStore."
+            contenuto.sound = .default
+            let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: quando)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
+            try? await centro.add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
+        }
+    }
+
     static func programma(giornata: Int, inizio: Date, modulo: String?) async {
         let centro = UNUserNotificationCenter.current()
         let stato = await stato()

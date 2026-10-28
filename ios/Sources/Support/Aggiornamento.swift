@@ -15,9 +15,15 @@ enum Aggiornamento {
         try? BGTaskScheduler.shared.submit(richiesta)
     }
 
+    /// Riprogramma i promemoria sulla scadenza del certificato (se il profilo si legge).
+    static func riprogrammaScadenza() async {
+        if let scadenza = Certificato.scadenza() { await Notifiche.programmaScadenza(scadenza) }
+    }
+
     /// Il lavoro vero: scarica /api/oggi, lo salva nella cache e confronta con l'ultima volta.
     static func esegui() async {
         programma()   // prima di tutto: riprogramma il prossimo risveglio
+        await riprogrammaScadenza()
         guard let dati = try? await Api.grezzo("/api/oggi"),
               let oggi: Oggi = try? Api.decodifica(dati) else { return }
         Cache.salva(dati, "/api/oggi")

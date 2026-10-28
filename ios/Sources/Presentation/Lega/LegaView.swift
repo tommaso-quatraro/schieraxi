@@ -49,6 +49,7 @@ struct LegaView: View {
                     Button("Attiva i promemoria sul telefono") {
                         Task {
                             _ = await Notifiche.chiediPermesso()
+                            await Aggiornamento.riprogrammaScadenza()
                             await aggiornaPermesso()
                         }
                     }
@@ -56,6 +57,9 @@ struct LegaView: View {
                     Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri la schermata Oggi e, ogni tanto, da soli: iOS sveglia l'app in background, riscarica la giornata e ti avvisa se la formazione consigliata cambia. Quando succede lo decide iOS (di solito poche volte al giorno).")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                CertificatoSezione()
+                RinnovoSideStoreSezione()
+                NotificheNtfySezione()
                 Section("App") {
                     riga("Versione", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
                 }

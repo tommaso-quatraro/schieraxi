@@ -46,6 +46,11 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
+        # schema schieraxi:// (per aprire l'app da una notifica ntfy con l'intestazione Click)
+        CFBundleURLTypes:
+          - CFBundleURLName: <vecchio identificativo>
+            CFBundleURLSchemes:
+              - schieraxi
         # aggiornamento in background (BGAppRefreshTask): identificativo permesso e modalità "fetch"
         UIBackgroundModes:
           - fetch
