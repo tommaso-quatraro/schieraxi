@@ -6,9 +6,11 @@ import SwiftUI
 final class AppModel: ObservableObject {
     let server: any ServerClient
     let oggi: OggiViewModel
+    let formazione: FormazioneViewModel
 
     init(server: any ServerClient = ServerCorrente.condiviso) {
         self.server = server
         self.oggi = OggiViewModel(server: server)
+        self.formazione = FormazioneViewModel(server: server)
     }
 }

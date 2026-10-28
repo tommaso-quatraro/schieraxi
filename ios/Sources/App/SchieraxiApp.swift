@@ -5,7 +5,6 @@ import CoreSpotlight
 @main
 struct SchieraxiApp: App {
     @StateObject private var nav = Navigazione()
-    @StateObject private var statoFormazione = StatoFormazione()
     @StateObject private var modello = AppModel()
     @Environment(\.scenePhase) private var fase
 
@@ -14,7 +13,6 @@ struct SchieraxiApp: App {
             // Colori chiari o scuri come il sistema: lo sfondo e il verde si adattano da soli.
             RadiceView()
                 .environmentObject(nav)
-                .environmentObject(statoFormazione)
                 .environmentObject(modello)
                 .onContinueUserActivity(CSSearchableItemActionType) { attivita in
                     // Aperta da Spotlight su un giocatore osservato: si va alla sua scheda.

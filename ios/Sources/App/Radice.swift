@@ -104,7 +104,7 @@ struct RadiceView: View {
     private func vista(_ s: Sezione) -> some View {
         switch s {
         case .oggi: OggiView(vm: modello.oggi)
-        case .formazione: FormazioneView()
+        case .formazione: FormazioneView(vm: modello.formazione)
         case .mercato: MercatoView()
         case .scambi: ScambiView()
         case .lega: LegaView()

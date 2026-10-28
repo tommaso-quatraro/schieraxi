@@ -3,6 +3,20 @@ import Foundation
 /// Dati finti per le anteprime di Xcode (`#Preview`): niente rete, niente server.
 extension FinteServer {
     static let esempio = FinteServer(risposte: [
+        "/api/formazione/testo": "Giornata 11 - 3-4-3 (64,5 punti attesi)",
+        "/api/formazione": """
+        {"squadra": "La mia squadra", "giornata": 11, "modulo": "3-4-3", "punteggio_atteso": 64.5, "con_probabili": true,
+         "titolari": [{"id": 1, "nome": "Giocatore 044", "ruolo": "A", "squadra": "inter", "avversario": "roma", "in_casa": true, "p_voto": 0.92, "punti_attesi": 7.4},
+                      {"id": 2, "nome": "Giocatore 033", "ruolo": "C", "squadra": "inter", "avversario": "roma", "in_casa": true, "p_voto": 0.95, "punti_attesi": 6.8},
+                      {"id": 3, "nome": "Giocatore 002", "ruolo": "D", "squadra": "inter", "avversario": "roma", "in_casa": true, "p_voto": 0.97, "punti_attesi": 6.1}],
+         "panchina": [{"id": 4, "nome": "Giocatore 096", "ruolo": "P", "squadra": "inter", "p_voto": 0.99, "punti_attesi": 6.0}],
+         "livelli": [{"rischio": 0, "nome": "Equilibrata", "modulo": "3-4-3", "punteggio_atteso": 64.5,
+                      "moduli": [{"modulo": "3-4-3", "punteggio_atteso": 64.5, "titolari": [1, 2, 3], "panchina": [4]}]}],
+         "schede": {"1": {"id": 1, "nome": "Giocatore 044", "ruolo": "A", "squadra": "inter", "p_voto": 0.92, "punti_attesi": 7.4},
+                    "2": {"id": 2, "nome": "Giocatore 033", "ruolo": "C", "squadra": "inter", "p_voto": 0.95, "punti_attesi": 6.8},
+                    "3": {"id": 3, "nome": "Giocatore 002", "ruolo": "D", "squadra": "inter", "p_voto": 0.97, "punti_attesi": 6.1},
+                    "4": {"id": 4, "nome": "Giocatore 096", "ruolo": "P", "squadra": "inter", "p_voto": 0.99, "punti_attesi": 6.0}}}
+        """,
         "/api/oggi": """
         {"giornata": 11, "inizio": "2026-11-08 18:30", "iniziata": false, "con_probabili": true,
          "formazione": {"modulo": "3-4-3", "punteggio_atteso": 64.5, "squadra": "La mia squadra"},
