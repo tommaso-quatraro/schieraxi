@@ -1,0 +1,68 @@
+import SwiftUI
+
+struct LegaView: View {
+    @StateObject private var caricatore = Caricatore<Stato>("/api/stato")
+    @AppStorage("indirizzo") private var indirizzo = ""
+    @State private var permesso: String = "…"
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Server") {
+                    TextField(Config.indirizzoPredefinito, text: $indirizzo)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    Button("Prova la connessione") { Task { await caricatore.ricarica() } }
+                    if caricatore.inCorso {
+                        ProgressView()
+                    } else if let s = caricatore.dato {
+                        riga("Squadra", s.miaSquadra ?? "—")
+                        riga("Stagione", s.stagione ?? "—")
+                        riga("Versione del server", s.versione ?? "—")
+                        riga("Dati aggiornati", Quando.leggibile((s.ultimoAggiornamento ?? "").replacingOccurrences(of: "T", with: " ")))
+                    } else if let e = caricatore.errore {
+                        Text(e).foregroundStyle(.orange)
+                    }
+                }
+                Section("Promemoria") {
+                    riga("Notifiche", permesso)
+                    Button("Attiva i promemoria sul telefono") {
+                        Task {
+                            _ = await Notifiche.chiediPermesso()
+                            await aggiornaPermesso()
+                        }
+                    }
+                    Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri la schermata Oggi.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("App") {
+                    riga("Versione", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Sfondo())
+            .navigationTitle("Lega")
+            .task {
+                await caricatore.ricarica()
+                await aggiornaPermesso()
+            }
+        }
+    }
+
+    private func riga(_ titolo: String, _ valore: String) -> some View {
+        HStack {
+            Text(titolo)
+            Spacer()
+            Text(valore).foregroundStyle(.secondary)
+        }
+    }
+
+    private func aggiornaPermesso() async {
+        switch await Notifiche.stato() {
+        case .authorized, .provisional, .ephemeral: permesso = "attive"
+        case .denied: permesso = "negate (Impostazioni di iOS)"
+        default: permesso = "da attivare"
+        }
+    }
+}

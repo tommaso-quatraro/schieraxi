@@ -43,5 +43,3 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         FantaHost: $(FANTA_HOST)
         FantaPort: $(FANTA_PORT)
-        WKAppBoundDomains:
-          - $(FANTA_HOST)

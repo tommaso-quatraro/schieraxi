@@ -1,10 +1,19 @@
 # SchieraXI per iOS
 
-Wrapper nativo minimo (SwiftUI + WKWebView) della web app SchieraXI: stessa app, ma con una sua icona e senza barre di Safari.
-Il codice dell'app sta nell'altro repository (`schieraxi`); qui c'è solo la finestra nativa.
+App **nativa** (SwiftUI) per iPhone e iPad. Parla con il server di SchieraXI sul server (API JSON, rete privata acceso) e usa le funzioni di iOS.
+Il server e la logica (modello, formazioni, scambi) stanno nell'altro repository (`schieraxi`): qui c'è solo l'app.
 
-- **Indirizzo dell'app:** non è nel codice. Variabili del repository `FANTA_HOST` e `FANTA_PORT` (GitHub > Settings > Secrets and variables > Actions > Variables).
-- **Compilazione:** GitHub Actions su un Mac (`macos-15`), senza firma, produce `Schieraxi.ipa` (artifact e release `build-N`). Nessun Mac in casa.
-- **Installazione:** SideStore sull'iPhone firma l'IPA con l'Apple ID gratuito e lo rinnova ogni 7 giorni.
-- **Limiti noti:** le notifiche web della PWA non passano dentro il wrapper (restano quelle della PWA installata dalla Home); serve rete privata attivo come per la PWA.
-- **Mai in git:** firme, certificati, profili, password, Apple ID.
+## Cosa c'è
+- **Oggi, Formazione, Lega:** nativi (SwiftUI, materiali di vetro di iOS, pull-to-refresh, feedback aptico, condivisione della formazione con ShareLink).
+- **Promemoria locali** (UserNotifications): un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Non servono push né account a pagamento.
+- **Mercato, Scambi:** da portare in nativo (per ora rimandano alla web app).
+
+## Come si compila (nessun Mac)
+- GitHub Actions su un Mac (`macos-15`), senza firma: produce `Schieraxi.ipa` (artifact e release `build-N`). Gratis anche nel repository privato.
+- Indirizzo del server: variabili del repository `FANTA_HOST` e `FANTA_PORT`; si può cambiare anche dalla schermata Lega.
+- **Installazione:** SideStore sull'iPhone firma l'IPA con l'Apple ID gratuito e lo rinnova da solo (ogni 7 giorni, in background, con LocalDevVPN attiva).
+
+## Limiti noti (Apple ID gratuito)
+- Niente notifiche push (APNs): per gli avvisi del server resta la web app installata dalla Home; l'app nativa usa promemoria locali.
+- Certificato di 7 giorni, massimo 3 app: serve il rinnovo di SideStore.
+- Mai in git: firme, certificati, profili, password, Apple ID.
