@@ -246,7 +246,7 @@ struct CreditiView: View {
                                 Text(sq.nome)
                                 Spacer()
                                 TextField("—", text: Binding(get: { valori[sq.nome] ?? "" }, set: { valori[sq.nome] = $0 }))
-                                    .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 80)
+                                    .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(minWidth: 80, minHeight: 44)
                             }
                         }
                     }

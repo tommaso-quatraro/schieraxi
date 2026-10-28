@@ -187,7 +187,7 @@ struct CalendarioView: View {
                         Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(.secondary)
                         ForEach(c.squadre) { s in
                             HStack(spacing: 6) {
-                                Text(s.squadra.prefix(3).uppercased()).font(.caption.bold()).frame(width: 36, alignment: .leading)
+                                Text(s.squadra.prefix(3).uppercased()).font(.caption.bold()).frame(minWidth: 36, alignment: .leading)
                                 ForEach(s.partite) { p in
                                     Text(String(p.avversario.prefix(3)).uppercased())
                                         .font(.caption2.bold())

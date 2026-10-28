@@ -107,7 +107,7 @@ struct DettaglioScambio: View {
                             Text("Giornata \(n)").foregroundStyle(.secondary)
                             Spacer()
                             Text(formato(a[i])).monospacedDigit().foregroundStyle(a[i] >= 0 ? Color.verde : .orange)
-                            Text(formato(b[i])).monospacedDigit().foregroundStyle(.secondary).frame(width: 60, alignment: .trailing)
+                            Text(formato(b[i])).monospacedDigit().foregroundStyle(.secondary).frame(minWidth: 60, alignment: .trailing)
                         }
                     }
                     Text("A destra: il guadagno dell'altra squadra.").font(.caption).foregroundStyle(.secondary)
