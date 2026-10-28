@@ -65,6 +65,8 @@ targets:
     sources:
       - path: WidgetSources
       - path: Sources/Domain/Modelli.swift
+      - path: Sources/Domain/Quando.swift
+      - path: Sources/Domain/Formato.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.widget

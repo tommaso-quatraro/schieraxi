@@ -70,7 +70,7 @@ struct VistaWidget: View {
     }
 
     private func puntiTesto(_ r: RiassuntoOggi) -> String {
-        (r.punti ?? 0).formatted(.number.precision(.fractionLength(1)))
+        Formato.punti(r.punti)
     }
 
     /// Conto alla rovescia: ore, minuti e secondi se manca meno di un giorno, altrimenti giorni e ore.
@@ -125,7 +125,7 @@ struct VistaWidget: View {
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                Text(r.inizio.map { "alla prima partita, \(Quando.leggibile(Self.testoData($0)))" } ?? "")
+                Text(r.inizio.map { "alla prima partita, \(Quando.leggibile($0))" } ?? "")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 if voce.datiSalvati {
@@ -146,15 +146,6 @@ struct VistaWidget: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Il widget riceve una Date; `Quando.leggibile` lavora su testi del server: si riconverte nello stesso formato.
-    private static func testoData(_ d: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone(identifier: "Europe/Rome")
-        f.dateFormat = "yyyy-MM-dd HH:mm"
-        return f.string(from: d)
     }
 
     // MARK: Schermata di blocco

@@ -10,16 +10,16 @@ enum Cache {
     private static let dopoPulizia = 100
 
     private static var cartella: URL {
-        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("api", isDirectory: true)
+        let base = (FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory).appendingPathComponent("api", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         return base
     }
 
     /// Nome file stabile ricavato dall'indirizzo completo del server + percorso
     /// (hash FNV-1a a 64 bit: lo stesso testo dà sempre lo stesso nome; cambiando server la cache non si mescola).
-    private static func nomeFile(_ percorso: String) -> String {
+    private static func nomeFile(_ percorso: String, _ indirizzo: String) -> String {
         var h: UInt64 = 0xcbf29ce484222325
-        for byte in (Api.base + percorso).utf8 {
+        for byte in (indirizzo + percorso).utf8 {
             h ^= UInt64(byte)
             h = h &* 0x100000001b3
         }
@@ -27,8 +27,8 @@ enum Cache {
     }
 
     /// Salva senza aspettare (in coda su un thread di servizio).
-    static func salva(_ dati: Data, _ percorso: String) {
-        let url = cartella.appendingPathComponent(nomeFile(percorso))
+    static func salva(_ dati: Data, _ percorso: String, indirizzo: String) {
+        let url = cartella.appendingPathComponent(nomeFile(percorso, indirizzo))
         let cartellaDaPulire = cartella
         Task.detached(priority: .utility) {
             try? dati.write(to: url, options: .atomic)
@@ -37,8 +37,8 @@ enum Cache {
     }
 
     /// I dati salvati e il momento in cui sono stati scaricati.
-    static func leggi(_ percorso: String) async -> (dati: Data, data: Date)? {
-        let url = cartella.appendingPathComponent(nomeFile(percorso))
+    static func leggi(_ percorso: String, indirizzo: String) async -> (dati: Data, data: Date)? {
+        let url = cartella.appendingPathComponent(nomeFile(percorso, indirizzo))
         return await Task.detached(priority: .userInitiated) { () -> (dati: Data, data: Date)? in
             guard let dati = try? Data(contentsOf: url) else { return nil }
             let attributi = try? FileManager.default.attributesOfItem(atPath: url.path)

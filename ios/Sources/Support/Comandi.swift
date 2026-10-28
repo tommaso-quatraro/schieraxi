@@ -45,7 +45,7 @@ struct FormazioneComando: AppIntent {
         guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else {
             throw ErroreComando.senzaFormazione
         }
-        let punti = (f.punteggioAtteso ?? 0).formatted(.number.precision(.fractionLength(1)))
+        let punti = Formato.punti(f.punteggioAtteso)
         var frase = "Per la giornata \(oggi.giornata) ti consiglio il \(modulo), con \(punti) punti attesi."
         if oggi.conProbabili == false { frase += " Le probabili formazioni non sono ancora uscite." }
         if risultato.salvato { frase += " Attenzione: sono dati salvati, il server non risponde." }

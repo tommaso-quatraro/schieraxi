@@ -24,9 +24,7 @@ enum Aggiornamento {
     static func esegui() async {
         programma()   // prima di tutto: riprogramma il prossimo risveglio
         await riprogrammaScadenza()
-        guard let dati = try? await Api.grezzo("/api/oggi"),
-              let oggi: Oggi = try? Api.decodifica(dati) else { return }
-        Cache.salva(dati, "/api/oggi")
+        guard let oggi = try? await OggiRepository(server: ServerCorrente.condiviso).aggiornato() else { return }
         await elabora(oggi, avvisaSeCambia: true)
     }
 
@@ -45,7 +43,7 @@ enum Aggiornamento {
         let probabiliPrima = memoria.object(forKey: "bg.probabili") as? Bool
 
         if avvisaSeCambia, giornataPrima == oggi.giornata {
-            let punti = (f.punteggioAtteso ?? 0).formatted(.number.precision(.fractionLength(1)))
+            let punti = Formato.punti(f.punteggioAtteso)
             if let moduloPrima, moduloPrima != modulo {
                 await Notifiche.avviso(id: "fanta-cambio", titolo: "La formazione consigliata è cambiata",
                                        corpo: "Giornata \(oggi.giornata): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima)).")
@@ -61,13 +59,6 @@ enum Aggiornamento {
 
     /// La giornata di oggi per Siri e Comandi: dal server, o dalla cache se non risponde.
     static func leggiOggi() async -> (oggi: Oggi, salvato: Bool)? {
-        if let dati = try? await Api.grezzo("/api/oggi"), let oggi: Oggi = try? Api.decodifica(dati) {
-            Cache.salva(dati, "/api/oggi")
-            return (oggi, false)
-        }
-        if let salvato = await Cache.leggi("/api/oggi"), let oggi: Oggi = try? Api.decodifica(salvato.dati) {
-            return (oggi, true)
-        }
-        return nil
+        await OggiRepository(server: ServerCorrente.condiviso).ultimo()
     }
 }
