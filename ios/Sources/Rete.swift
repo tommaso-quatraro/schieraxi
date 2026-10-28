@@ -61,6 +61,25 @@ enum Api {
         }
     }
 
+    /// PUT/DELETE/POST senza risposta da leggere (osservati, ecc.).
+    static func invia(_ metodo: String, _ percorso: String) async throws {
+        var r = try richiesta(percorso)
+        r.httpMethod = metodo
+        do {
+            let (_, risposta) = try await URLSession.shared.data(for: r)
+            if let h = risposta as? HTTPURLResponse, !(200..<300).contains(h.statusCode) { throw ErroreApi.risposta(h.statusCode) }
+        } catch let e as ErroreApi {
+            throw e
+        } catch {
+            throw ErroreApi.rete(error.localizedDescription)
+        }
+    }
+
+    /// Testo da inserire in un indirizzo (nomi con spazi e simboli).
+    static func codifica(_ testo: String) -> String {
+        testo.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?#"))) ?? testo
+    }
+
     static func testo(_ percorso: String) async throws -> String {
         String(decoding: try await scarica(percorso), as: UTF8.self)
     }
@@ -72,9 +91,14 @@ final class Caricatore<T: Decodable>: ObservableObject {
     @Published var dato: T?
     @Published var errore: String?
     @Published var inCorso = false
-    let percorso: String
+    var percorso: String
 
     init(_ percorso: String) { self.percorso = percorso }
+
+    func ricarica(_ nuovoPercorso: String) async {
+        percorso = nuovoPercorso
+        await ricarica()
+    }
 
     func ricarica() async {
         inCorso = true

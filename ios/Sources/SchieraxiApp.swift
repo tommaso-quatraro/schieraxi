@@ -8,8 +8,8 @@ struct SchieraxiApp: App {
             TabView {
                 OggiView().tabItem { Label("Oggi", systemImage: "calendar") }
                 FormazioneView().tabItem { Label("Formazione", systemImage: "sportscourt") }
-                AltroView(titolo: "Mercato", icona: "bag").tabItem { Label("Mercato", systemImage: "bag") }
-                AltroView(titolo: "Scambi", icona: "arrow.left.arrow.right").tabItem { Label("Scambi", systemImage: "arrow.left.arrow.right") }
+                MercatoView().tabItem { Label("Mercato", systemImage: "bag") }
+                ScambiView().tabItem { Label("Scambi", systemImage: "arrow.left.arrow.right") }
                 LegaView().tabItem { Label("Lega", systemImage: "person.3") }
             }
             .tint(Color.verde)

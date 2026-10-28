@@ -28,6 +28,131 @@ struct Giocatore: Decodable, Identifiable {
     let diffidato: Bool?
     let titolarita: String?
     let dataPartita: String?
+    let proprietario: String?
+    let assente: Bool?
+}
+
+struct GiocatoreBreve: Decodable, Identifiable, Hashable {
+    let id: Int
+    let nome: String
+    let ruolo: String
+    let squadra: String?
+    let quotazione: Double?
+}
+
+struct PropostaMercato: Decodable, Identifiable {
+    let esce: GiocatoreBreve
+    let entra: GiocatoreBreve
+    let guadagno: Double
+    let breve: Double?
+    let rimborso: Double?
+    let creditiDopo: Double?
+    let fattibile: Bool?
+    var id: String { "\(esce.id)-\(entra.id)" }
+}
+
+struct Mercato: Decodable {
+    let squadra: String?
+    let proposte: [PropostaMercato]
+    let svincolati: Int?
+    let creditiResidui: Double?
+}
+
+struct ElencoGiocatori: Decodable {
+    let giornata: Int?
+    let giocatori: [Giocatore]
+}
+
+struct PartitaCalendario: Decodable, Identifiable {
+    let giornata: Int
+    let avversario: String
+    let inCasa: Bool?
+    let difficolta: Double?
+    let data: String?
+    var id: Int { giornata }
+}
+
+struct SquadraCalendario: Decodable, Identifiable {
+    let squadra: String
+    let media: Double?
+    let partite: [PartitaCalendario]
+    var id: String { squadra }
+}
+
+struct Calendario: Decodable {
+    let giornate: [Int]
+    let squadre: [SquadraCalendario]
+}
+
+struct AnagraficaGiocatore: Decodable {
+    let id: Int
+    let nome: String
+    let ruolo: String
+    let squadra: String?
+    let quotazione: Double?
+    let quotazioneIniziale: Double?
+    let fvm: Double?
+}
+
+struct StagioneGiocatore: Decodable {
+    let presenze: Double?
+    let conVoto: Double?
+    let mediaVoto: Double?
+    let fantamedia: Double?
+    let gol: Double?
+    let assist: Double?
+    let ammonizioni: Double?
+    let espulsioni: Double?
+}
+
+struct SchedaGiocatore: Decodable {
+    let calciatore: AnagraficaGiocatore
+    let stagione: StagioneGiocatore?
+    let previsione: Giocatore?
+    let proprietario: String?
+}
+
+struct SquadraLega: Decodable, Identifiable {
+    let nome: String
+    let mia: Bool?
+    let giocatori: Int?
+    var id: String { nome }
+}
+
+struct GiocatoreRosa: Decodable, Identifiable {
+    let id: Int?
+    let nome: String
+    let ruolo: String
+    let squadra: String?
+    let costo: Double?
+    let quotazione: Double?
+    var ident: String { "\(id ?? -1)-\(nome)" }
+}
+
+struct Rosa: Decodable {
+    let nome: String
+    let mia: Bool?
+    let giocatori: [GiocatoreRosa]
+}
+
+struct PropostaScambio: Decodable, Identifiable {
+    let mia: String?
+    let altra: String
+    let `do`: [GiocatoreBreve]
+    let ricevo: [GiocatoreBreve]
+    let guadagnoMio: Double
+    let guadagnoLoro: Double
+    let perGiornataMio: [Double]?
+    let perGiornataLoro: [Double]?
+    let breveMio: Double?
+    let breveLoro: Double?
+    let giornate: [Int]?
+    var id: String { altra + "|" + `do`.map { String($0.id) }.joined(separator: ",") + "|" + ricevo.map { String($0.id) }.joined(separator: ",") }
+}
+
+struct ProposteScambi: Decodable {
+    let giornate: [Int]?
+    let proposte: [PropostaScambio]
 }
 
 struct FormazioneBreve: Decodable {
