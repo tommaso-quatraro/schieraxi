@@ -118,7 +118,7 @@ struct ImmagineFormazione: View {
             Text("Il numero nel cerchio è il fantavoto atteso").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color(red: 0.24, green: 0.86, blue: 0.59))
         }
         .padding(.horizontal, 14).padding(.top, 18).padding(.bottom, 12)
-        .frame(width: 360, height: 450)
+        .frame(width: 360, height: 490)
         .background(LinearGradient(colors: [Color(red: 0.05, green: 0.14, blue: 0.09), Color(red: 0.03, green: 0.06, blue: 0.04)], startPoint: .top, endPoint: .bottom))
         .environment(\.colorScheme, .dark)
     }

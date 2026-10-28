@@ -32,10 +32,14 @@ struct FormazioneView: View {
                             riepilogo(f, v)
                             barraManuale(f)
                             Carta("Campo") { CampoFormazione(titolari: v.titolari) }
-                            ForEach(ruoli, id: \.self) { r in
-                                let gruppo = v.titolari.filter { $0.ruolo == r }
-                                if !gruppo.isEmpty {
-                                    Carta(nomiRuolo[r]) {
+                            // Un'unica scheda con i quattro reparti in ordine (Portiere, Difensori, Centrocampisti, Attaccanti):
+                            // sull'iPad le colonne si leggono così dall'alto in basso senza saltare da una parte all'altra.
+                            Carta("Titolari") {
+                                ForEach(ruoli, id: \.self) { r in
+                                    let gruppo = v.titolari.filter { $0.ruolo == r }
+                                    if !gruppo.isEmpty {
+                                        Text("\(nomiRuolo[r] ?? r) (\(gruppo.count))").font(.subheadline.bold()).foregroundStyle(.secondary)
+                                            .padding(.top, 4).accessibilityAddTraits(.isHeader)
                                         ForEach(gruppo) { g in rigaTitolare(g, f, v) }
                                     }
                                 }

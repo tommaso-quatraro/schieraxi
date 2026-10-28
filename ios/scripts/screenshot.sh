@@ -139,6 +139,10 @@ spegni_simulatore "$UDID_IPHONE"
 IFS=$'\t' read -r UDID_IPAD NOME_IPAD IOS_IPAD <<< "$(scegli ipad)"
 echo "iPad: $NOME_IPAD ($IOS_IPAD) $UDID_IPAD"
 avvia_simulatore "$UDID_IPAD"
+# lancio di prova: il primo avvio sul simulatore dell'iPad è lento e la prima foto restava sul caricamento
+xcrun simctl launch "$UDID_IPAD" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
+sleep 10
+xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
 
 giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
 giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PER_IPAD[@]}"

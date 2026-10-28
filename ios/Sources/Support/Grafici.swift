@@ -35,6 +35,13 @@ struct GraficoVoti: View {
         return basso...alto
     }
 
+    /// Dalla prima all'ultima giornata (con una sola giornata si allarga un po', altrimenti il grafico non ha larghezza).
+    private var dominioGiornate: ClosedRange<Int> {
+        let g = voti.map(\.giornata)
+        let primo = g.min() ?? 1, ultimo = g.max() ?? 1
+        return primo == ultimo ? (primo - 1)...(ultimo + 1) : primo...ultimo
+    }
+
     /// Frase per VoiceOver e per l'elenco dei numeri.
     static func descrizione(_ voti: [VotoGiornata]) -> [String] {
         voti.sorted { $0.giornata < $1.giornata }.map { v in
@@ -62,6 +69,7 @@ struct GraficoVoti: View {
             }
             .chartForegroundStyleScale(["Fantavoto": Color.verde, "Voto": Color.blue])
             .chartYScale(domain: dominio)
+            .chartXScale(domain: dominioGiornate)
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .frame(height: 180)
             .accessibilityElement(children: .ignore)
@@ -131,6 +139,7 @@ struct GraficoAffidabilita: View {
             }
             .chartForegroundStyleScale(["Modello": Color.verde, "Da fantamedia": Color.orange, Self.massimo: Color.gray])
             .chartYScale(domain: .automatic(includesZero: false))
+            .chartXScale(domain: (righe.map(\.giornata).min() ?? 1)...max((righe.map(\.giornata).max() ?? 1), (righe.map(\.giornata).min() ?? 1) + 1))
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .frame(height: 190)
             .accessibilityElement(children: .ignore)

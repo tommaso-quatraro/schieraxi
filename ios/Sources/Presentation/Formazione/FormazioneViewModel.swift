@@ -184,7 +184,7 @@ final class FormazioneViewModel: ViewModelBase {
         let disegno = ImmagineFormazione(giornata: f.giornata, squadra: f.squadra ?? "", modulo: v.modulo, punti: v.punti,
                                          titolari: v.titolari, panchina: v.panchina)
         let renderer = ImageRenderer(content: disegno)
-        renderer.scale = 3   // 360 x 450 punti → 1080 x 1350 pixel
+        renderer.scale = 3   // 360 x 490 punti → 1080 x 1470 pixel
         if let immagine = renderer.uiImage {
             anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: "Formazione giornata \(f.giornata)")
         } else {

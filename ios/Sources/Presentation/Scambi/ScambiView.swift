@@ -245,16 +245,6 @@ struct DettaglioScambio: View {
                     Divider()
                     Text("Giornata per giornata (prossime \(g.count))").font(.subheadline.bold())
                     GraficoScambio(giornate: g, mio: a, loro: b, nomeLoro: "Loro")
-                    ForEach(Array(g.enumerated()), id: \.offset) { i, n in
-                        HStack {
-                            Text("Giornata \(n)").foregroundStyle(.secondary)
-                            Spacer()
-                            Text(Formato.conSegno(a[i], cifre: 2)).monospacedDigit().foregroundStyle(a[i] >= 0 ? Color.verde : .orange)
-                            Text(Formato.conSegno(b[i], cifre: 2)).monospacedDigit().foregroundStyle(.secondary).frame(minWidth: 60, alignment: .trailing)
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
-                    Text("A destra: il guadagno dell'altra squadra.").font(.caption).foregroundStyle(.secondary)
                 }
             }
             impatto
