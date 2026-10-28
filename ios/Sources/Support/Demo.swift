@@ -49,8 +49,14 @@ extension Demo {
         applicata = true
 
         if argomento("DEMO_ORIENTAMENTO") == "orizzontale" {
-            let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-            scena?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscape))
+            // Più tentativi: sull'iPad la scena può non essere ancora pronta al primo.
+            Task {
+                for attesa in [0.0, 0.8, 1.6] as [Double] {
+                    try? await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000))
+                    let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+                    scena?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight)) { _ in }
+                }
+            }
         }
 
         guard let nome = argomento("DEMO_SCHERMATA") else { return }

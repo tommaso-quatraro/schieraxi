@@ -94,7 +94,7 @@ struct EditorJSON: View {
     }
 
     private func nome(_ chiave: String) -> String {
-        chiave.replacingOccurrences(of: "_", with: " ").capitalized
+        chiave.replacingOccurrences(of: "_", with: " ").primaMaiuscola
     }
 }
 
@@ -109,7 +109,8 @@ struct CampoNumero: View {
     private func formato(_ v: JSONValue) -> String {
         switch v {
         case .intero(let n): return String(n)
-        case .decimale(let d): return d == d.rounded() && abs(d) < 1e15 ? String(Int(d)) : String(d)
+        // virgola decimale, come nel resto dell'app (scrivendo «3,5» o «3.5» il valore è lo stesso)
+        case .decimale(let d): return d == d.rounded() && abs(d) < 1e15 ? String(Int(d)) : String(d).replacingOccurrences(of: ".", with: ",")
         default: return ""
         }
     }

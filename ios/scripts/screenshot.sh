@@ -12,15 +12,17 @@ USCITA="${2:-screenshot}"
 ID_APP="<vecchio identificativo>"
 ERRORI=0
 ARGOMENTI_EXTRA=()
+RADDRIZZA=0
 mkdir -p "$USCITA"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
 TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-cerca giocatore
        scambi scambi-fondo scambi-dettaglio scambi-analizza
-       lega lega-fondo lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita)
+       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita)
 PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
-PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo mercato-consigliati mercato-calendario scambi scambi-dettaglio lega lega-regole giocatore)
+PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale mercato-consigliati mercato-calendario mercato-osservati
+                  scambi scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato giocatore)
 PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale mercato-consigliati mercato-classifica mercato-calendario
           mercato-osservati giocatore scambi scambi-dettaglio scambi-analizza lega lega-squadre lega-regole)
 
@@ -49,10 +51,20 @@ scatta() {
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
     ERRORI=$((ERRORI + 1))
   fi
-  if ! xcrun simctl io "$udid" screenshot "$USCITA/${etichetta}_${nome}.png" >/dev/null 2>&1; then
+  local file="$USCITA/${etichetta}_${nome}.png"
+  if ! xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1; then
     echo "ERRORE: scatto non riuscito ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
+    return
   fi
+  # Il simulatore fotografa sempre lo schermo "in verticale": con l'app in orizzontale la foto esce girata di 90 gradi.
+  if [ "$RADDRIZZA" = "1" ]; then
+    sips -r 270 "$file" >/dev/null 2>&1
+  fi
+  local w h
+  w=$(sips -g pixelWidth "$file" 2>/dev/null | awk '/pixelWidth/ {print $2}')
+  h=$(sips -g pixelHeight "$file" 2>/dev/null | awk '/pixelHeight/ {print $2}')
+  echo "  $etichetta / $nome: ${w}x${h}"
 }
 
 # giro <udid> <etichetta> <chiaro|scuro> <dimensione del testo> <schermate...>
@@ -94,7 +106,9 @@ giro "$UDID_IPHONE" iphone_chiaro chiaro large "${TUTTE[@]}"
 giro "$UDID_IPHONE" iphone_scuro_testogrande scuro accessibility-large "${PER_TESTO_GRANDE[@]}"
 giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione lega
 ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
+RADDRIZZA=1
 giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione mercato-consigliati
+RADDRIZZA=0
 ARGOMENTI_EXTRA=()
 
 # Prova dello schema schieraxi:// con "simctl openurl" (come un tocco su una notifica di ntfy). Su alcuni sistemi iOS chiede

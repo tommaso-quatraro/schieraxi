@@ -96,12 +96,7 @@ struct LegaView: View {
     }
 
     private func riga(_ titolo: String, _ valore: String) -> some View {
-        HStack {
-            Text(titolo)
-            Spacer()
-            Text(valore).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
-        }
-        .accessibilityElement(children: .combine)
+        RigaValore(titolo: titolo, valore: valore)
     }
 }
 

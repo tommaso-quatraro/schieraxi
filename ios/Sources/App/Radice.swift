@@ -88,8 +88,13 @@ struct RadiceView: View {
         NavigationSplitView {
             List(selection: Binding<Sezione?>(get: { nav.sezione }, set: { if let s = $0 { nav.sezione = s } })) {
                 ForEach(Sezione.allCases) { s in
-                    Label(s.titolo, systemImage: s.icona)
-                        .tag(s)
+                    // icona in una colonna di larghezza fissa: «person.3» è più larga delle altre e spostava il testo
+                    Label {
+                        Text(s.titolo)
+                    } icon: {
+                        Image(systemName: s.icona).frame(width: 32)
+                    }
+                    .tag(s)
                         .frame(minHeight: 44)
                         .hoverEffect(.highlight)
                 }

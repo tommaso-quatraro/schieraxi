@@ -31,6 +31,12 @@ Il server e la logica (modello, formazioni, scambi) stanno nell'altro repository
 - Indirizzo del server: variabili del repository `FANTA_HOST` e `FANTA_PORT`; modificabile da Lega (solo `https://`).
 - **Installazione:** SideStore sull'iPhone firma l'IPA con l'Apple ID gratuito e lo rinnova (ogni 7 giorni, con LocalDevVPN attiva).
 
+## Vedere l'app senza telefono (modalità demo e foto nel simulatore)
+- **Modalità demo:** se l'app parte con l'argomento di lancio `-DEMO` usa `FinteServer.demo` (`Sources/Support/DatiDemo.swift`): una lega finta ma verosimile (formazione con titolari e panchina, avvisi, mercato, scambi, regole, stato dei dati), senza rete, senza permessi e senza lavori in background. Nel comportamento normale non cambia niente.
+  Altri argomenti, solo in demo: `-DEMO_SCHERMATA <nome>` (apre una schermata o una sotto-pagina, vedi `Sources/Support/Demo.swift`), `-DEMO_FONDO 1` (parte scorsa in fondo), `-DEMO_ORIENTAMENTO orizzontale`.
+- **Workflow `screenshot.yml`** (a mano da Actions, e a ogni push su `main` che cambia `Sources/`): compila per il simulatore, avvia un iPhone e un iPad, lancia l'app con `-DEMO` e fotografa ogni schermata (chiaro e scuro, testo normale e grande, verticale e orizzontale). Le foto sono nell'artifact `screenshot-app` (14 giorni); non crea release.
+  Scaricarle: `gh run download <id> --name screenshot-app --dir .screenshot` (la cartella `.screenshot/` è ignorata da git).
+
 ## Da provare sul telefono (la compilazione verde non prova il comportamento)
 1. Tutte le schermate come prima (Oggi, Formazione con modifica a mano, Mercato, Scambi, Lega): l'architettura è cambiata sotto, il comportamento no.
 2. Cambia sezione e torna: Formazione deve tenere la modifica a mano; Mercato la sezione scelta.

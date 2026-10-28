@@ -119,6 +119,47 @@ struct Carta<Contenuto: View>: View {
     }
 }
 
+extension String {
+    /// Solo la prima lettera maiuscola («listone e quotazioni» → «Listone e quotazioni»); `capitalized` le metterebbe a ogni parola.
+    var primaMaiuscola: String {
+        guard let prima = first else { return self }
+        return prima.uppercased() + dropFirst()
+    }
+}
+
+/// Riga «titolo a sinistra, valore a destra» di elenchi e impostazioni. Se con il testo grande non ci stanno
+/// sulla stessa riga, il valore va sotto il titolo (invece di spezzare le parole a metà).
+struct RigaValore: View {
+    let titolo: String
+    let valore: String
+    var cifreFisse = false
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                Text(titolo).fixedSize()
+                Spacer(minLength: 8)
+                testoValore.fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titolo)
+                testoValore
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var testoValore: some View {
+        if cifreFisse {
+            Text(valore).foregroundStyle(.secondary).monospacedDigit()
+        } else {
+            Text(valore).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+        }
+    }
+}
+
 /// Nome esteso del ruolo, per VoiceOver.
 func nomeRuolo(_ ruolo: String) -> String {
     switch ruolo {
