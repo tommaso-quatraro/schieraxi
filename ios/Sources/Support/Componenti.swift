@@ -1,12 +1,14 @@
 import SwiftUI
 
 extension Color {
-    /// Verde dell'app: chiaro sul fondo scuro, più scuro sul fondo chiaro (per restare leggibile).
-    static let verde = Color(uiColor: UIColor { tratti in
-        tratti.userInterfaceStyle == .dark
-            ? UIColor(red: 0.19, green: 0.82, blue: 0.50, alpha: 1)
-            : UIColor(red: 0.04, green: 0.50, blue: 0.27, alpha: 1)
-    })
+    /// Colore principale dell'app: di solito il verde, ma si cambia in Lega > Aspetto (`Accento`). Chiaro sul fondo scuro,
+    /// più scuro sul fondo chiaro (per restare leggibile). Si legge a ogni uso: cambiando scelta l'app si ridisegna (vedi `RadiceView`).
+    static var verde: Color {
+        Color(uiColor: UIColor { tratti in
+            let accento = Accento.corrente
+            return tratti.userInterfaceStyle == .dark ? accento.scuro : accento.chiaro
+        })
+    }
     static let ruoloP = Color(red: 0.95, green: 0.68, blue: 0.20)
     static let ruoloD = Color(red: 0.25, green: 0.78, blue: 0.45)
     static let ruoloC = Color(red: 0.30, green: 0.60, blue: 0.95)
@@ -29,7 +31,7 @@ struct Sfondo: View {
 
 /// Dispone le schede in 1, 2 o 3 colonne secondo la larghezza disponibile:
 /// una sull'iPhone in verticale, due o tre sull'iPad e sui telefoni in orizzontale.
-/// Ogni scheda va nella colonna più bassa, così le colonne restano equilibrate.
+/// Le schede restano nell'ordine in cui sono scritte (si leggono prima la colonna di sinistra, poi quella di destra) e le colonne sono equilibrate in altezza.
 struct Colonne: Layout {
     var spazio: CGFloat = 14
     var larghezzaMinima: CGFloat = 340
@@ -52,10 +54,18 @@ struct Colonne: Layout {
         var altezze = Array(repeating: CGFloat(0), count: n)
         var d = Disposizione()
         d.larghezzaColonna = l
-        for sub in subviews {
-            let misura = sub.sizeThatFits(ProposedViewSize(width: l, height: nil))
-            var colonna = 0
-            for i in altezze.indices where altezze[i] < altezze[colonna] { colonna = i }
+        // Le schede restano in ORDINE DI LETTURA: la prima colonna prende le prime schede dall'alto in basso, la seconda quelle dopo.
+        // (Mettere ogni scheda nella colonna più bassa le sparpagliava: sull'iPad Portiere e Centrocampisti a sinistra,
+        // Difensori e Attaccanti a destra.) Il punto di taglio è il centro della scheda rispetto all'altezza totale divisa per le colonne.
+        let misure = subviews.map { $0.sizeThatFits(ProposedViewSize(width: l, height: nil)) }
+        let totale = misure.reduce(CGFloat(0)) { $0 + max(0, $1.height) + ($1.height > 0 ? spazio : 0) }
+        let bersaglio = max(1, totale / CGFloat(n))
+        var percorsa: CGFloat = 0
+        for indice in subviews.indices {
+            let misura = misure[indice]
+            let centro = percorsa + max(0, misura.height) / 2
+            let colonna = n == 1 ? 0 : max(0, min(n - 1, Int(centro / bersaglio)))
+            percorsa += max(0, misura.height) + (misura.height > 0 ? spazio : 0)
             let vuota = misura.height <= 0
             let y = (altezze[colonna] > 0 && !vuota) ? altezze[colonna] + spazio : altezze[colonna]
             let x = CGFloat(colonna) * (l + spazio) + max(0, (l - misura.width) / 2)   // centrata nella colonna
@@ -99,6 +109,8 @@ extension View {
 struct Carta<Contenuto: View>: View {
     let titolo: String?
     let contenuto: Contenuto
+    /// Lega > Aspetto > Densità: «compatta» stringe i margini delle schede (le aree di tocco restano da 44 pt).
+    @AppStorage("densita") private var densita = "comoda"
 
     init(_ titolo: String? = nil, @ViewBuilder contenuto: () -> Contenuto) {
         self.titolo = titolo
@@ -106,14 +118,14 @@ struct Carta<Contenuto: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: densita == "compatta" ? 6 : 10) {
             if let titolo {
-                Text(titolo).font(.title3.bold())
+                Text(titolo).font(.title3.bold()).accessibilityAddTraits(.isHeader)
             }
             contenuto
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(densita == "compatta" ? 11 : 16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.primary.opacity(0.12), lineWidth: 1))
     }
@@ -173,8 +185,11 @@ func nomeRuolo(_ ruolo: String) -> String {
 
 struct BadgeRuolo: View {
     let ruolo: String
+    var piccolo = false
     // Cresce con la dimensione del testo scelta nelle Impostazioni di iOS (Dynamic Type).
-    @ScaledMetric(relativeTo: .caption) private var lato: CGFloat = 26
+    @ScaledMetric(relativeTo: .caption) private var latoNormale: CGFloat = 26
+    @ScaledMetric(relativeTo: .caption) private var latoPiccolo: CGFloat = 20
+    private var lato: CGFloat { piccolo ? latoPiccolo : latoNormale }
 
     private var colore: Color {
         switch ruolo {
@@ -188,104 +203,11 @@ struct BadgeRuolo: View {
 
     var body: some View {
         Text(ruolo)
-            .font(.caption.bold())
+            .font((piccolo ? Font.caption2 : Font.caption).bold())
             .foregroundStyle(.white)
             .frame(width: lato, height: lato)
-            .background(colore.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(colore.gradient, in: RoundedRectangle(cornerRadius: piccolo ? 6 : 8, style: .continuous))
             .accessibilityLabel(nomeRuolo(ruolo))
-    }
-}
-
-struct RigaGiocatore: View {
-    let g: Giocatore
-
-    private var sottotitolo: String {
-        let mia = g.squadra?.uppercased() ?? ""
-        let altra = g.avversario?.uppercased() ?? ""
-        if altra.isEmpty { return mia }
-        return "\(mia) \(g.inCasa == true ? "vs" : "@") \(altra)"
-    }
-
-    private var puntiTesto: String { (g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1))) }
-    private var giocaPercento: Int { Formato.percento(g.pVoto) }
-
-    /// Frase letta da VoiceOver per tutta la riga.
-    private var descrizioneVoce: String {
-        var parti = [g.nome, nomeRuolo(g.ruolo)]
-        if !sottotitolo.isEmpty { parti.append(sottotitolo.replacingOccurrences(of: "@", with: "in trasferta contro")) }
-        if g.assente == true {
-            parti.append("assente")
-        } else {
-            parti.append("punti attesi \(puntiTesto)")
-            parti.append("gioca al \(giocaPercento) per cento")
-        }
-        if g.dubbio == true { parti.append("in dubbio") }
-        if g.diffidato == true { parti.append("diffidato") }
-        return parti.joined(separator: ", ")
-    }
-
-    @Environment(\.dynamicTypeSize) private var tagliaTesto
-
-    private var nome: some View {
-        HStack(spacing: 6) {
-            // Il nome può andare su due righe: con il testo grande veniva tagliato («Mateo…»).
-            Text(g.nome).font(.headline).lineLimit(2)
-            if g.dubbio == true {
-                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange).font(.subheadline)
-                    .accessibilityLabel("In dubbio")
-            }
-            if g.diffidato == true {
-                Image(systemName: "rectangle.portrait.fill").foregroundStyle(.yellow).font(.caption)
-                    .accessibilityLabel("Diffidato")
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var previsione: some View {
-        if g.assente == true {
-            // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
-            Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(.red)
-        } else if tagliaTesto.isAccessibilitySize {
-            // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
-            HStack(spacing: 8) {
-                Text(puntiTesto).font(.headline).monospacedDigit()
-                Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(.secondary)
-            }
-        } else {
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(puntiTesto).font(.headline).monospacedDigit()
-                Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    var body: some View {
-        Group {
-            if tagliaTesto.isAccessibilitySize {
-                HStack(alignment: .top, spacing: 12) {
-                    BadgeRuolo(ruolo: g.ruolo)
-                    VStack(alignment: .leading, spacing: 2) {
-                        nome
-                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
-                        previsione
-                    }
-                    Spacer(minLength: 0)
-                }
-            } else {
-                HStack(spacing: 12) {
-                    BadgeRuolo(ruolo: g.ruolo)
-                    VStack(alignment: .leading, spacing: 2) {
-                        nome
-                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    previsione
-                }
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(descrizioneVoce)
     }
 }
 

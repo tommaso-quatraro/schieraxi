@@ -8,6 +8,17 @@ struct FormazioneView: View {
     private let ruoli = ["P", "D", "C", "A"]
     private let nomiRuolo = ["P": "Portiere", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
 
+    /// Cosa fa ogni stile, a parole (come nella web app).
+    static func descrizioneStile(_ rischio: Int) -> String {
+        switch rischio {
+        case ...(-2): return "Punta su chi gioca quasi di sicuro: meno rischio di una brutta giornata, anche se i punti attesi scendono un po'."
+        case -1: return "Preferisce i titolari più sicuri, accettando di perdere qualche decimo di punto atteso."
+        case 0: return "Il sistema sceglie la formazione con più punti attesi e, a parità, quella con i titolari più sicuri."
+        case 1: return "Qualche scommessa su chi, se gioca, può fare molti punti: più possibilità di una giornata eccezionale."
+        default: return "Scommette di più su chi può fare il colpo: la giornata eccezionale è più probabile, ma anche quella brutta."
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -15,19 +26,27 @@ struct FormazioneView: View {
                 ScrollView {
                     Colonne(spazio: 14) {
                         if let f = vm.formazione {
+                            bannerSquadra
                             if vm.manuale == nil { sceltaStile(f) }
                             let v = vm.vista(f)
-                            riepilogo(f, modulo: v.modulo, punti: v.punti)
+                            riepilogo(f, v)
                             barraManuale(f)
+                            Carta("Campo") { CampoFormazione(titolari: v.titolari) }
                             ForEach(ruoli, id: \.self) { r in
                                 let gruppo = v.titolari.filter { $0.ruolo == r }
                                 if !gruppo.isEmpty {
                                     Carta(nomiRuolo[r]) {
-                                        ForEach(gruppo) { g in rigaTitolare(g) }
+                                        ForEach(gruppo) { g in rigaTitolare(g, f, v) }
                                     }
                                 }
                             }
-                            Carta("Panchina") { ForEach(v.panchina) { RigaGiocatore(g: $0) } }
+                            Carta("Panchina") {
+                                Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(.secondary)
+                                ForEach(v.panchina) { RigaGiocatore(g: $0, apribile: true) }
+                            }
+                            fuori(f, v)
+                            Text("Il numero sul campo è il fantavoto atteso se gioca, con le regole della tua lega. L'anello arancio indica chi non è titolare sicuro. L'anello attorno alla foto è l'indice: 100 = il migliore del suo ruolo questa giornata.")
+                                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
@@ -44,12 +63,19 @@ struct FormazioneView: View {
             .navigationTitle("Formazione")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if let testo = vm.testoDaCondividere {
-                        ShareLink(item: testo) { Image(systemName: "square.and.arrow.up") }
-                            .accessibilityLabel("Condividi la formazione")
+                    if let f = vm.formazione {
+                        Menu {
+                            ShareLink(item: vm.testo(f)) { Label("Condividi come testo", systemImage: "text.alignleft") }
+                            Button { vm.preparaImmagine(f) } label: { Label("Condividi come immagine", systemImage: "photo") }
+                            Button { vm.copiaTesto(f) } label: { Label("Copia il testo", systemImage: "doc.on.doc") }
+                        } label: {
+                            Image(systemName: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44)
+                        }
+                        .accessibilityLabel("Condividi la formazione")
                     }
                 }
             }
+            .ricercaGlobale()
             .sheet(item: $daSostituire) { g in
                 if let f = vm.formazione {
                     SostituzioneSheet(uscente: g, formazione: f, titolari: vm.manuale ?? []) { nuovo in
@@ -58,13 +84,35 @@ struct FormazioneView: View {
                     }
                 }
             }
+            .sheet(item: $vm.confrontoAperto) { inizio in
+                ConfrontoSheet(inizio: inizio, contesto: vm.contestoConfronto, server: vm.server)
+            }
+            .sheet(item: $vm.anteprimaImmagine) { immagine in
+                AnteprimaImmagineSheet(elemento: immagine)
+            }
             .task { await vm.carica() }
         }
     }
 
-    /// In modifica a mano ogni titolare è un bottone che apre la scelta del sostituto.
+    // MARK: un'altra squadra
+
     @ViewBuilder
-    private func rigaTitolare(_ g: Giocatore) -> some View {
+    private var bannerSquadra: some View {
+        if let nome = vm.squadraVista {
+            Carta {
+                Label("Stai guardando la formazione di \(nome)", systemImage: "eye").font(.subheadline)
+                Button { vm.tornaAllaMia() } label: { Text("Torna alla tua").frame(minHeight: 44) }
+                    .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    // MARK: righe
+
+    /// In modifica a mano ogni titolare è un bottone che apre la scelta del sostituto; altrimenti un tocco apre la scheda,
+    /// «⇄» confronta con un altro della rosa e sotto i titolari incerti ci sono le alternative vicine (ballottaggio).
+    @ViewBuilder
+    private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> some View {
         if vm.manuale != nil {
             Button { daSostituire = g } label: {
                 HStack { RigaGiocatore(g: g); Image(systemName: "arrow.left.arrow.right").foregroundStyle(Color.verde).accessibilityHidden(true) }
@@ -73,9 +121,72 @@ struct FormazioneView: View {
             .buttonStyle(.plain)
             .accessibilityHint("Apre la scelta del giocatore che prende il suo posto")
         } else {
-            RigaGiocatore(g: g)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    RigaGiocatore(g: g, apribile: true)
+                    Button { vm.confrontoAperto = .scelta(g.id) } label: {
+                        Image(systemName: "arrow.left.arrow.right").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.verde)
+                    .accessibilityLabel("Confronta \(g.nome) con un altro della rosa")
+                }
+                ballottaggio(g, f, v)
+            }
         }
     }
+
+    @ViewBuilder
+    private func ballottaggio(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> some View {
+        let alternative = vm.ballottaggio(per: g, f, v)
+        if !alternative.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Ballottaggio · alternative vicine").font(.caption).foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
+                    VStack(alignment: .leading, spacing: 6) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
+                }
+            }
+            .padding(.leading, 58)
+        }
+    }
+
+    private func chipAlternativa(_ a: Ballottaggio.Alternativa, rispetto g: Giocatore) -> some View {
+        Button { vm.confrontoAperto = .coppia(g.id, a.giocatore.id) } label: {
+            HStack(spacing: 5) {
+                Text(a.giocatore.nomeCorto).font(.caption.weight(.semibold))
+                Text(Formato.conSegno(a.differenza)).font(.caption.bold()).monospacedDigit()
+                    .foregroundStyle(a.quasiPari ? Color.secondary : (a.differenza > 0 ? Color.verde : Color.orange))
+                if a.quasiPari { Text("quasi pari").font(.caption2).foregroundStyle(.secondary) }
+            }
+            .padding(.horizontal, 10)
+            .frame(minHeight: 44)
+            .background(Color.primary.opacity(0.08), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Confronta \(g.nome) con \(a.giocatore.nome), \(Formato.conSegno(a.differenza)) punti attesi\(a.quasiPari ? ", quasi pari" : "")")
+    }
+
+    @ViewBuilder
+    private func fuori(_ f: Formazione, _ v: VistaFormazione) -> some View {
+        let altri = vm.fuori(f, v)
+        if !altri.isEmpty || !(f.senzaDati ?? []).isEmpty {
+            Carta {
+                DisclosureGroup("Fuori dalla formazione (\(altri.count))") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(altri) { RigaGiocatore(g: $0, apribile: true) }
+                        if let senza = f.senzaDati, !senza.isEmpty {
+                            Text("Senza dati per questa giornata: " + senza.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.top, 6)
+                }
+                .tint(.secondary)
+            }
+        }
+    }
+
+    // MARK: modifica a mano
 
     @ViewBuilder
     private func barraManuale(_ f: Formazione) -> some View {
@@ -83,10 +194,14 @@ struct FormazioneView: View {
             if vm.manuale == nil {
                 Button { vm.iniziaModificaManuale(f) } label: { Label("Modifica a mano", systemImage: "hand.tap").frame(minHeight: 44) }
             } else {
-                Text("Tocca un titolare per sostituirlo con un altro della rosa: i punti attesi si ricalcolano.").font(.footnote).foregroundStyle(.secondary)
-                if let d = vm.valutazione?.differenza {
-                    Text("Rispetto alla consigliata con lo stesso modulo: " + Formato.conSegno(d))
-                        .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
+                Text("Hai modificato la formazione a mano: tocca un titolare per sostituirlo con un altro della rosa, i punti attesi si ricalcolano.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                if let r = vm.valutazione {
+                    if let d = r.differenza {
+                        Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))). "
+                             + "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale)).")
+                            .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
+                    }
                 }
                 // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
                 ViewThatFits(in: .horizontal) {
@@ -106,11 +221,15 @@ struct FormazioneView: View {
         }
     }
 
+    @ViewBuilder
     private var salva: some View {
-        Button { Task { await vm.valuta(salva: true) } } label: {
-            Label("Salva come mia scelta", systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
+        // La scelta salvata vale solo per la propria squadra.
+        if vm.squadraVista == nil {
+            Button { Task { await vm.valuta(salva: true) } } label: {
+                Label("Salva come mia scelta", systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
+            }
+            .keyboardShortcut("s", modifiers: .command)
         }
-        .keyboardShortcut("s", modifiers: .command)
     }
 
     private func torna(_ f: Formazione) -> some View {
@@ -126,17 +245,18 @@ struct FormazioneView: View {
             let livello = livelli.first(where: { $0.rischio == vm.rischio }) ?? livelli[0]
             Carta("Stile") {
                 Picker("Stile", selection: $vm.rischio) {
-                    ForEach(livelli) { Text($0.nome).tag($0.rischio) }
+                    ForEach(livelli) { Text($0.nome + ($0.rischio == 0 ? " ★" : "")).tag($0.rischio) }
                 }
                 .pickerStyle(.menu)
                 .onChange(of: vm.rischio) { _ in vm.cambiaStile() }
+                Text(Self.descrizioneStile(livello.rischio) + " ★ = scelta consigliata.").font(.footnote).foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(livello.moduli) { m in
                             let attivo = vm.moduloAttivo(livello) == m.modulo
                             Button { vm.scegliModulo(m.modulo) } label: {
                                 VStack(spacing: 2) {
-                                    Text(m.modulo).font(.subheadline.bold())
+                                    Text(m.modulo + (m.modulo == livello.modulo ? " ★" : "")).font(.subheadline.bold())
                                     Text(Formato.punti(m.punteggioAtteso)).font(.caption2).monospacedDigit()
                                 }
                                 .padding(.horizontal, 12).padding(.vertical, 6)
@@ -145,7 +265,7 @@ struct FormazioneView: View {
                                 .overlay(Capsule().strokeBorder(attivo ? Color.verde : .clear, lineWidth: 1))
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi")
+                            .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi\(m.modulo == livello.modulo ? ", consigliato" : "")")
                             .accessibilityAddTraits(attivo ? .isSelected : [])
                         }
                     }
@@ -154,19 +274,29 @@ struct FormazioneView: View {
         }
     }
 
-    private func riepilogo(_ f: Formazione, modulo: String, punti: Double) -> some View {
+    private func riepilogo(_ f: Formazione, _ v: VistaFormazione) -> some View {
         Carta("Giornata \(f.giornata)") {
             HStack(alignment: .firstTextBaseline) {
-                Text(modulo).font(.system(.title, design: .rounded).weight(.bold))
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        if let nome = f.squadra { StemmaSquadra(nome: nome, dimensione: 34, nascondiSeMancante: true) }
+                        Text(v.modulo).font(.system(.title, design: .rounded).weight(.bold))
+                    }
+                    Text(vm.manuale != nil ? "la tua scelta" : (v.modulo == f.modulo && vm.rischio == 0 ? "modulo consigliato" : "modulo scelto"))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Spacer()
                 VStack(alignment: .trailing) {
-                    Text(Formato.punti(punti)).font(.title2.bold()).monospacedDigit()
+                    Text(Formato.punti(v.punti)).font(.title2.bold()).monospacedDigit()
                     Text("punti attesi").font(.caption).foregroundStyle(.secondary)
+                    if let d = vm.oscillazione(f) {
+                        Text("oscilla di ±\(Formato.intero(d))").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
             }
             .accessibilityElement(children: .combine)
             if f.conProbabili == false {
-                Label("Probabili formazioni non ancora uscite", systemImage: "clock").font(.footnote).foregroundStyle(.secondary)
+                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(.secondary)
             }
         }
     }
@@ -201,6 +331,34 @@ struct SostituzioneSheet: View {
             .navigationTitle("Sostituisci")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Annulla") { chiudi() } } }
+        }
+    }
+}
+
+/// L'immagine della formazione, con il pulsante per condividerla (menu Condividi di iOS).
+struct AnteprimaImmagineSheet: View {
+    let elemento: ImmagineCondivisa
+    @Environment(\.dismiss) private var chiudi
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    Image(uiImage: elemento.immagine).resizable().scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .frame(maxWidth: 480)
+                        .accessibilityLabel("Immagine della formazione")
+                    ShareLink(item: Image(uiImage: elemento.immagine), preview: SharePreview(elemento.titolo, image: Image(uiImage: elemento.immagine))) {
+                        Label("Condividi l'immagine", systemImage: "square.and.arrow.up").frame(minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity)
+            }
+            .navigationTitle("Formazione")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } } }
         }
     }
 }

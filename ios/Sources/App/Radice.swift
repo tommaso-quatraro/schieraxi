@@ -41,8 +41,26 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
 /// Stato condiviso della navigazione: sezione aperta e, se serve, un giocatore da aprire (da Spotlight).
 @MainActor
 final class Navigazione: ObservableObject {
-    @Published var sezione: Sezione = .oggi
+    /// La sezione aperta; si ricorda l'ultima per «All'apertura mostra: l'ultima sezione» (Lega > Aspetto).
+    @Published var sezione: Sezione = .oggi {
+        didSet { if !Demo.attivo { UserDefaults.standard.set(sezione.rawValue, forKey: "ultimaSezione") } }
+    }
     @Published var giocatoreDaAprire: Int?
+    /// La scheda di un giocatore aperta sopra la schermata corrente (tocco su una riga di Oggi, Formazione, Lega...).
+    @Published var scheda: IdGiocatore?
+
+    init() {
+        if !Demo.attivo { sezione = Self.sezioneDiAvvio() }
+    }
+
+    /// Dove si apre l'app: la sezione scelta in Lega > Aspetto, oppure (predefinito) l'ultima in cui si era.
+    static func sezioneDiAvvio(_ memoria: UserDefaults = .standard) -> Sezione {
+        let scelta = memoria.string(forKey: "sezioneAvvio") ?? "ultima"
+        let nome = scelta == "ultima" ? memoria.string(forKey: "ultimaSezione") : scelta
+        return nome.flatMap { Sezione(rawValue: $0) } ?? .oggi
+    }
+
+    func apriScheda(_ id: Int) { scheda = IdGiocatore(id: id) }
 
     /// Apre una sezione o la scheda di un giocatore (da Spotlight o da un indirizzo schieraxi://).
     func vai(a destinazione: Destinazione) {
@@ -61,6 +79,9 @@ struct RadiceView: View {
     @Environment(\.horizontalSizeClass) private var classe
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var modello: AppModel
+    /// Lega > Aspetto: colore principale e animazioni. Cambiando il colore l'albero delle viste si ricostruisce (`.id`), i dati restano.
+    @AppStorage("accento") private var accento = "verde"
+    @AppStorage("animazioniRidotte") private var animazioniRidotte = false
     /// Barra laterale visibile o no (di solito decide iOS; solo la demo può nasconderla per le fotografie).
     @State private var colonne: NavigationSplitViewVisibility = Demo.attivo && Demo.argomento("DEMO_BARRA") == "nascosta" ? .detailOnly : .automatic
 
@@ -73,7 +94,28 @@ struct RadiceView: View {
             }
         }
         .tint(Color.verde)
+        .id(accento)
+        .transaction { if animazioniRidotte { $0.animation = nil } }
+        .environment(\.server, modello.server)
+        .environment(\.apriGiocatore) { nav.apriScheda($0) }
+        .environment(\.vaiASezione) { nav.sezione = $0 }
+        .environment(\.apriNovita) {
+            modello.lega.percorso = [.novita]
+            nav.sezione = .lega
+        }
+        .environment(\.vediFormazioneDi) { nome in
+            modello.formazione.vediSquadra(nome)
+            nav.sezione = .formazione
+        }
+        .sheet(item: $nav.scheda) { g in
+            GiocatoreSheet(id: g.id, server: modello.server, contesto: modello.formazione.contestoConfronto)
+                .tint(Color.verde)
+        }
         .task { await Aggiornamento.riprogrammaScadenza() }   // a ogni apertura
+        .task { await Immagini.condivise.caricaElenchi() }    // chi ha la foto, stemmi e maglie delle squadre
+        .onReceive(NotificationCenter.default.publisher(for: .aggiornaTutto)) { _ in
+            Task { await Immagini.condivise.caricaElenchi() }
+        }
     }
 
     private var schede: some View {

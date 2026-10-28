@@ -76,6 +76,11 @@ extension ServerClient {
         try Decodifica.decodifica(try await grezzo(percorso), snake: snake)
     }
 
+    /// Un file del server (foto, stemma): i byte così come arrivano.
+    func binario(_ percorso: String) async throws -> Data {
+        try await grezzo(percorso)
+    }
+
     func testo(_ percorso: String) async throws -> String {
         String(decoding: try await grezzo(percorso), as: UTF8.self)
     }
@@ -210,9 +215,12 @@ extension EnvironmentValues {
 /// Server finto per le anteprime (`#Preview`) e i test: risponde con JSON preparati, scelti per prefisso dell'indirizzo.
 struct FinteServer: ServerClient {
     var risposte: [String: String]
+    /// Risposte non di testo (immagini): se restituisce dei byte per quell'indirizzo, vincono sulle risposte di testo.
+    var binari: (@Sendable (String) -> Data?)? = nil
     var indirizzo: String { "https://finto.invalid" }
 
     func richiesta(_ metodo: String, _ percorso: String, corpo: Data?) async throws -> Data {
+        if metodo == "GET", let dati = binari?(percorso) { return dati }
         // Si sceglie la risposta con il prefisso più lungo che corrisponde.
         let chiavi = risposte.keys.filter { percorso.hasPrefix($0) }.sorted { $0.count > $1.count }
         guard let chiave = chiavi.first, let testo = risposte[chiave] else {

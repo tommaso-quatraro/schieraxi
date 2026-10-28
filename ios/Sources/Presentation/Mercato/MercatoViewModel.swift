@@ -103,33 +103,3 @@ final class MercatoViewModel: ViewModelBase {
         }
     }
 }
-
-/// Logica della scheda di un giocatore.
-@MainActor
-final class SchedaGiocatoreViewModel: ViewModelBase {
-    let id: Int
-    let caricatore: Caricatore<SchedaGiocatore>
-    private let server: any ServerClient
-    @Published var messaggio: String?
-
-    init(id: Int, server: any ServerClient) {
-        self.id = id
-        self.server = server
-        caricatore = Caricatore<SchedaGiocatore>("/api/giocatore/\(id)", server: server)
-        super.init()
-        osserva(caricatore)
-    }
-
-    func carica() async { await caricatore.ricarica() }
-
-    func aggiungiAgliOsservati() async {
-        do {
-            try await server.invia("PUT", "/api/osservati/\(id)")
-            messaggio = "Aggiunto agli osservati."
-            Haptics.esito(riuscito: true)
-        } catch {
-            messaggio = error.localizedDescription
-            Haptics.esito(riuscito: false)
-        }
-    }
-}

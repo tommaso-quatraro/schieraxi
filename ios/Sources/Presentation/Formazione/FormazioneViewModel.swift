@@ -8,12 +8,19 @@ struct VistaFormazione {
     let punti: Double
 }
 
-/// Logica della schermata Formazione: stile e modulo, modifica a mano, salvataggio della scelta.
+/// Un'immagine pronta da condividere (la formazione disegnata), con un identificativo per `.sheet(item:)`.
+struct ImmagineCondivisa: Identifiable {
+    let id = UUID()
+    let immagine: UIImage
+    let titolo: String
+}
+
+/// Logica della schermata Formazione: stile e modulo, modifica a mano, salvataggio della scelta, formazione di un'altra squadra.
 /// Vive nell'`AppModel`, quindi cambiando sezione (barra laterale dell'iPad) la modifica a mano non si perde.
 @MainActor
 final class FormazioneViewModel: ViewModelBase {
     let caricatore: Caricatore<Formazione>
-    private let server: any ServerClient
+    let server: any ServerClient
 
     @Published var rischio = 0
     @Published var moduloScelto: String?
@@ -21,8 +28,12 @@ final class FormazioneViewModel: ViewModelBase {
     @Published var manuale: [Int]?
     @Published var valutazione: ValutazioneManuale?
     @Published var messaggio: String?
-    /// Testo pronto da condividere (ShareLink).
-    @Published var testoDaCondividere: String?
+    /// Nome di un'altra squadra della lega, se se ne sta guardando la formazione consigliata (nil = la mia).
+    @Published var squadraVista: String?
+    /// Confronto aperto dalla formazione (ballottaggio o «⇄» su un titolare).
+    @Published var confrontoAperto: ConfrontoSheet.Inizio?
+    /// L'immagine della formazione, pronta da condividere.
+    @Published var anteprimaImmagine: ImmagineCondivisa?
 
     /// Giornata a cui si riferisce la modifica a mano: se cambia, si riparte da zero.
     private var giornata: Int?
@@ -42,26 +53,27 @@ final class FormazioneViewModel: ViewModelBase {
 
     // MARK: caricamento
 
+    /// L'indirizzo della formazione che si sta guardando.
+    var percorso: String {
+        if let s = squadraVista { return "/api/formazione?squadra=\(IndirizzoServer.codifica(s))" }
+        return "/api/formazione"
+    }
+
     func carica() async {
-        await caricatore.ricarica()
-        await caricaTesto()
+        await caricatore.ricarica(percorso)
         if let f = caricatore.dato { await caricaScelta(f) }
     }
 
-    private func caricaTesto() async {
-        testoDaCondividere = try? await server.testo("/api/formazione/testo")
-    }
-
-    /// Se avevi salvato una scelta a mano per questa giornata, riparte da lì.
+    /// Se avevi salvato una scelta a mano per questa giornata, riparte da lì (solo per la propria squadra).
     private func caricaScelta(_ f: Formazione) async {
         // Un'altra giornata: la modifica a mano della vecchia non vale più.
         if giornata != f.giornata {
             azzeraManuale()
             giornata = f.giornata
         }
-        guard manuale == nil else { return }   // c'è già una modifica in corso: non si sovrascrive
+        guard squadraVista == nil, manuale == nil else { return }   // c'è già una modifica in corso: non si sovrascrive
         let salvata: SceltaSalvata? = try? await server.get("/api/scelta?giornata=\(f.giornata)")
-        if let salvata, manuale == nil, salvata.titolari.count == 11 {
+        if let salvata, manuale == nil, squadraVista == nil, salvata.titolari.count == 11 {
             manuale = salvata.titolari
             await valuta(salva: false)
         }
@@ -72,6 +84,25 @@ final class FormazioneViewModel: ViewModelBase {
         valutazione = nil
         messaggio = nil
         contatore += 1
+    }
+
+    // MARK: formazione di un'altra squadra
+
+    /// Mostra la formazione consigliata per un'altra squadra della lega (dalla sua rosa: «Formazione consigliata per loro»).
+    func vediSquadra(_ nome: String) {
+        squadraVista = nome
+        rischio = 0
+        moduloScelto = nil
+        azzeraManuale()
+        Task { await carica() }
+    }
+
+    func tornaAllaMia() {
+        squadraVista = nil
+        rischio = 0
+        moduloScelto = nil
+        azzeraManuale()
+        Task { await carica() }
     }
 
     // MARK: cosa mostrare
@@ -95,8 +126,33 @@ final class FormazioneViewModel: ViewModelBase {
                                modulo: opzione.modulo, punti: opzione.punteggioAtteso)
     }
 
+    /// Quanto oscilla il punteggio (±): quello del modulo scelto, o della valutazione a mano.
+    func oscillazione(_ f: Formazione) -> Double? {
+        if manuale != nil { return valutazione?.dev }
+        guard let livelli = f.livelli, let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first else { return f.dev }
+        return livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) })?.dev ?? f.dev
+    }
+
+    /// Chi è fuori dalla formazione mostrata, dal più forte (punti attesi).
+    func fuori(_ f: Formazione, _ v: VistaFormazione) -> [Giocatore] {
+        let scelti = Set((v.titolari + v.panchina).map(\.id))
+        return (f.schede ?? [:]).values.filter { !scelti.contains($0.id) }.sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
+    }
+
+    /// I due della rosa che più si avvicinano a un titolare non sicuro (ballottaggio). Non in modifica a mano.
+    func ballottaggio(per g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> [Ballottaggio.Alternativa] {
+        guard manuale == nil else { return [] }
+        return Ballottaggio.alternative(per: g, rosa: Array((f.schede ?? [:]).values), titolari: v.titolari)
+    }
+
     /// Il modulo attivo per lo stile corrente (serve per evidenziare il chip giusto).
     func moduloAttivo(_ livello: LivelloRischio) -> String { moduloScelto ?? livello.modulo }
+
+    /// In che formazione si sta guardando: il confronto spiega la scelta dentro quella formazione.
+    var contestoConfronto: ContestoConfronto? {
+        guard let f = formazione else { return nil }
+        return ContestoConfronto(livello: rischio, modulo: vista(f).modulo, squadra: squadraVista)
+    }
 
     func cambiaStile() {
         moduloScelto = nil
@@ -106,6 +162,34 @@ final class FormazioneViewModel: ViewModelBase {
     func scegliModulo(_ modulo: String) {
         moduloScelto = modulo
         Haptics.selezione()
+    }
+
+    // MARK: testo e immagine
+
+    /// La formazione mostrata, scritta a parole (da copiare o condividere).
+    func testo(_ f: Formazione) -> String {
+        let v = vista(f)
+        return TestoFormazione.crea(giornata: f.giornata, modulo: v.modulo, titolari: v.titolari, panchina: v.panchina)
+    }
+
+    func copiaTesto(_ f: Formazione) {
+        UIPasteboard.general.string = testo(f)
+        messaggio = "Formazione copiata: incollala dove vuoi."
+        Haptics.esito(riuscito: true)
+    }
+
+    /// Disegna la formazione come immagine (campo con i titolari e la panchina) e apre l'anteprima con il pulsante Condividi.
+    func preparaImmagine(_ f: Formazione) {
+        let v = vista(f)
+        let disegno = ImmagineFormazione(giornata: f.giornata, squadra: f.squadra ?? "", modulo: v.modulo, punti: v.punti,
+                                         titolari: v.titolari, panchina: v.panchina)
+        let renderer = ImageRenderer(content: disegno)
+        renderer.scale = 3   // 360 x 450 punti → 1080 x 1350 pixel
+        if let immagine = renderer.uiImage {
+            anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: "Formazione giornata \(f.giornata)")
+        } else {
+            messaggio = "Non riesco a creare l'immagine."
+        }
     }
 
     // MARK: modifica a mano
@@ -123,18 +207,20 @@ final class FormazioneViewModel: ViewModelBase {
         Task { await valuta(salva: false) }
     }
 
-    /// Chiede al server i punti della formazione scelta a mano (e, se `salva`, la salva).
+    /// Chiede al server i punti della formazione scelta a mano (e, se `salva`, la salva: solo per la propria squadra).
     /// Se nel frattempo la scelta è cambiata, la risposta (arrivata in ritardo) viene ignorata.
     func valuta(salva: Bool) async {
         guard let m = manuale else { return }
         contatore += 1
         let numero = contatore
+        let salvaDavvero = salva && squadraVista == nil
         do {
-            let v: ValutazioneManuale = try await server.posta("POST", "/api/formazione/valuta", RichiestaValutazione(titolari: m, salva: salva))
+            let richiesta = RichiestaValutazione(titolari: m, salva: salvaDavvero, squadra: squadraVista, giornata: formazione?.giornata)
+            let v: ValutazioneManuale = try await server.posta("POST", "/api/formazione/valuta", richiesta)
             guard numero == contatore, manuale == m else { return }
             valutazione = v
             messaggio = nil
-            if salva {
+            if salvaDavvero {
                 messaggio = "Salvata come la tua scelta per questa giornata."
                 Haptics.esito(riuscito: true)
             }
@@ -147,6 +233,8 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     func tornaAllaConsigliata(_ f: Formazione) async {
+        // La scelta salvata esiste solo per la propria squadra.
+        guard squadraVista == nil else { azzeraManuale(); return }
         do {
             try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)")
             azzeraManuale()
