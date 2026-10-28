@@ -1,146 +1,5 @@
 import SwiftUI
 
-// MARK: - Regole della lega (editor generico)
-
-struct RegoleEditorView: View {
-    @StateObject private var vm: RegoleEditorViewModel
-
-    init(server: any ServerClient) {
-        _vm = StateObject(wrappedValue: RegoleEditorViewModel(server: server))
-    }
-
-    var body: some View {
-        ZStack {
-            Sfondo()
-            List {
-                if vm.caricato {
-                    if case .oggetto = vm.valore {
-                        EditorJSON(valore: $vm.valore, titolo: "Regole")
-                    }
-                    Section {
-                        Button {
-                            Task { await vm.salva() }
-                        } label: {
-                            if vm.inCorso { ProgressView() } else { Label("Salva le regole", systemImage: "checkmark.circle").frame(minHeight: 44) }
-                        }
-                        .disabled(vm.inCorso)
-                        if let esito = vm.esito { Text(esito).font(.footnote) }
-                    }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ProgressView().frame(maxWidth: .infinity)
-                }
-            }
-            .scrollContentBackground(.hidden)
-        }
-        .navigationTitle("Regole")
-        .task { await vm.carica() }
-    }
-}
-
-/// Mostra e modifica un JSON a gruppi: numeri, interruttori e testi; le liste restano in sola lettura.
-struct EditorJSON: View {
-    @Binding var valore: JSONValue
-    let titolo: String
-
-    var body: some View {
-        if case .oggetto(let d) = valore {
-            ForEach(d.keys.sorted(), id: \.self) { chiave in
-                voce(chiave, d[chiave] ?? .nullo)
-            }
-        }
-    }
-
-    private func figlio(_ chiave: String) -> Binding<JSONValue> {
-        Binding(
-            get: {
-                if case .oggetto(let d) = valore { return d[chiave] ?? .nullo }
-                return .nullo
-            },
-            set: { nuovo in
-                if case .oggetto(var d) = valore {
-                    d[chiave] = nuovo
-                    valore = .oggetto(d)
-                }
-            })
-    }
-
-    @ViewBuilder
-    private func voce(_ chiave: String, _ v: JSONValue) -> some View {
-        switch v {
-        case .oggetto:
-            Section(nome(chiave)) { EditorJSON(valore: figlio(chiave), titolo: chiave) }
-        case .booleano:
-            Toggle(nome(chiave), isOn: Binding(
-                get: { if case .booleano(let b) = figlio(chiave).wrappedValue { return b }; return false },
-                set: { figlio(chiave).wrappedValue = .booleano($0) })).tint(Color.verde)
-        case .intero, .decimale, .nullo:
-            // Numeri (anche con la virgola) e valori non impostati (null): si scrive un numero, o si lascia vuoto.
-            CampoNumero(titolo: nome(chiave), valore: figlio(chiave))
-        case .testo:
-            HStack {
-                Text(nome(chiave))
-                Spacer()
-                TextField("", text: Binding(
-                    get: { if case .testo(let t) = figlio(chiave).wrappedValue { return t }; return "" },
-                    set: { figlio(chiave).wrappedValue = .testo($0) }))
-                    .multilineTextAlignment(.trailing)
-                    .frame(minHeight: 44)
-            }
-        case .lista:
-            HStack { Text(nome(chiave)); Spacer(); Text(v.descrizione).foregroundStyle(.secondary).lineLimit(1) }
-        }
-    }
-
-    private func nome(_ chiave: String) -> String {
-        chiave.replacingOccurrences(of: "_", with: " ").primaMaiuscola
-    }
-}
-
-/// Campo di testo per un numero del JSON: «1.5» e «1,5» valgono uguale; intero se il testo è intero, decimale altrimenti;
-/// vuoto = null (non impostato). Un testo che non è un numero lascia il valore com'era.
-struct CampoNumero: View {
-    let titolo: String
-    @Binding var valore: JSONValue
-    @State private var testo = ""
-
-    /// Come si scrive il valore attuale (3.0 diventa «3»: così non cambia tipo senza che l'utente tocchi nulla).
-    private func formato(_ v: JSONValue) -> String {
-        switch v {
-        case .intero(let n): return String(n)
-        // virgola decimale, come nel resto dell'app (scrivendo «3,5» o «3.5» il valore è lo stesso)
-        case .decimale(let d): return d == d.rounded() && abs(d) < 1e15 ? String(Int(d)) : String(d).replacingOccurrences(of: ".", with: ",")
-        default: return ""
-        }
-    }
-
-    private func aggiorna(_ nuovo: String) {
-        if nuovo == formato(valore) { return }
-        let t = nuovo.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
-        if t.isEmpty {
-            valore = .nullo
-        } else if let n = Int(t) {
-            valore = .intero(n)
-        } else if let d = Double(t), d.isFinite {
-            valore = .decimale(d)
-        }
-    }
-
-    var body: some View {
-        HStack {
-            Text(titolo)
-            Spacer()
-            TextField("non impostato", text: $testo)
-                .keyboardType(.numbersAndPunctuation)
-                .multilineTextAlignment(.trailing)
-                .frame(minWidth: 90, maxWidth: 140, minHeight: 44)
-                .onChange(of: testo) { aggiorna($0) }
-        }
-        .onAppear { testo = formato(valore) }
-    }
-}
-
 // MARK: - Avvisi del server
 
 struct AvvisiServerView: View {
@@ -162,7 +21,25 @@ struct AvvisiServerView: View {
                         interruttore("Riepilogo a giornata finita", \.riepilogo)
                     }
                     Section {
-                        Text("Dispositivi con avvisi web attivi: \(s.dispositivi ?? 0). Gli avvisi del server arrivano dalla web app installata dalla Home (l'app nativa gratuita non può riceverli).")
+                        Toggle(isOn: Binding(
+                            get: { vm.impostazioni?.app_nativa ?? false },
+                            set: { nuovo in
+                                vm.impostazioni?.app_nativa = nuovo
+                                Task { await vm.salva() }
+                            })) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Avvisi anche per l'app nativa")
+                                Text("Arrivano con l'app ntfy e il tocco apre questa app. Se hai attivato anche le notifiche della web app potresti riceverli doppi.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .tint(Color.verde)
+                        .frame(minHeight: 44)
+                    } footer: {
+                        Text("Per far aprire l'app dal tocco su una notifica serve l'intestazione Click: la trovi in Lega, «Come aprire l'app da una notifica ntfy».")
+                    }
+                    Section {
+                        Text("Dispositivi con avvisi web attivi: \(s.dispositivi ?? 0). Canale degli avvisi: \(s.canale == true ? "attivo" : "non configurato"). Con l'Apple ID gratuito l'app nativa non può ricevere notifiche push: gli avvisi del server arrivano con ntfy o dalla web app installata dalla Home.")
                             .font(.footnote).foregroundStyle(.secondary)
                         Button("Manda un avviso di prova") { Task { await vm.provaAvviso() } }.frame(minHeight: 44)
                         if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }

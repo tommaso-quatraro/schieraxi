@@ -23,6 +23,7 @@ struct MercatoView: View {
                 }
             }
             .navigationTitle("Mercato")
+            .ricercaGlobale()
             .onAppear { apriRichiesto() }
             .onChange(of: nav.giocatoreDaAprire) { _ in apriRichiesto() }
             .sheet(item: $vm.schedaAperta) { g in
@@ -38,19 +39,23 @@ struct MercatoView: View {
         case .classifica: ClassificaView(vm: vm)
         case .calendario: CalendarioView(vm: vm)
         case .osservati: OsservatiView(vm: vm)
+        case .asta: AstaContenuto(vm: vm.asta)
         case .cerca: CercaView(vm: vm)
         }
     }
 }
 
-/// Scelta della sezione del Mercato. Con il testo normale sono cinque pulsanti affiancati; se non ci stanno (testo grande)
-/// diventa una fila di pulsanti che scorre di lato. Un selettore a segmenti qui tagliava «Calendario» e non cresce col testo.
+/// Scelta della sezione del Mercato. Sei pulsanti affiancati se ci stanno; altrimenti (schermo stretto o testo grande) una fila
+/// di pulsanti che scorre di lato. Un selettore a segmenti qui tagliava i nomi e non cresce col testo.
 struct SelettoreSezioni: View {
     @Binding var selezione: SezioneMercato
-    @Environment(\.dynamicTypeSize) private var tagliaTesto
 
     var body: some View {
-        if tagliaTesto >= .xxxLarge {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                ForEach(SezioneMercato.allCases) { s in pulsante(s, .footnote, 8) }
+            }
+            .padding(.horizontal, 12)
             ScrollViewReader { lettore in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -61,11 +66,6 @@ struct SelettoreSezioni: View {
                 .onAppear { lettore.scrollTo(selezione, anchor: .center) }
                 .onChange(of: selezione) { nuova in withAnimation { lettore.scrollTo(nuova, anchor: .center) } }
             }
-        } else {
-            HStack(spacing: 4) {
-                ForEach(SezioneMercato.allCases) { s in pulsante(s, .footnote, 2).frame(maxWidth: .infinity) }
-            }
-            .padding(.horizontal, 12)
         }
     }
 
@@ -78,10 +78,8 @@ struct SelettoreSezioni: View {
             Text(s.rawValue)
                 .font(carattere.weight(.semibold))
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
                 .padding(.horizontal, margine)
                 .frame(minHeight: 44)
-                .frame(maxWidth: .infinity)
                 .background(attiva ? Color.verde.opacity(0.35) : Color.primary.opacity(0.08), in: Capsule())
                 .overlay(Capsule().strokeBorder(attiva ? Color.verde : .clear, lineWidth: 1))
         }
@@ -101,8 +99,14 @@ struct ConsigliatiView: View {
                 if let m = vm.consigliati.dato {
                     Carta {
                         Text("Svincolati che migliorano la squadra").font(.headline)
-                        Text("\(m.svincolati ?? 0) svincolati analizzati. Il guadagno è in punti attesi sulle prossime giornate.")
+                        Text("Ogni proposta è un cambio: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. \(m.svincolati ?? 0) svincolati analizzati; il guadagno è in punti attesi (prossime giornate una per una, più il resto della stagione).")
                             .font(.footnote).foregroundStyle(.secondary)
+                        if let c = m.creditiResidui {
+                            Text("Crediti residui: \(Formato.intero(c)). Lo svincolo ti restituisce il \(Formato.percento(m.rimborsoIpotizzato ?? 0.5))% del prezzo pagato.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        } else {
+                            Text("Inserisci i tuoi crediti in Lega > Crediti per vedere se i cambi sono fattibili.").font(.footnote).foregroundStyle(.secondary)
+                        }
                     }
                     ForEach(m.proposte) { p in
                         Button { vm.apri(p.entra.id) } label: { carta(p) }
@@ -139,7 +143,13 @@ struct ConsigliatiView: View {
                     Text("punti attesi").font(.caption2).foregroundStyle(.secondary)
                 }
             }
-            if let r = p.rimborso, r > 0 {
+            if let b = p.breve {
+                Text("\(Formato.conSegno(b)) nelle prossime \(p.giornate?.count ?? 0) giornate").font(.caption).foregroundStyle(.secondary)
+            }
+            if let dopo = p.creditiDopo {
+                Text("Rimborso \(Formato.intero(p.rimborso)) − costo \(Formato.intero(p.entra.quotazione)) · crediti dopo il cambio \(Formato.intero(dopo))\(p.fattibile == false ? " (non bastano)" : "")")
+                    .font(.caption).foregroundStyle(p.fattibile == false ? Color.orange : .secondary)
+            } else if let r = p.rimborso, r > 0 {
                 Text("Rimborso svincolo: \(Formato.intero(r)) crediti").font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -167,9 +177,16 @@ struct ClassificaView: View {
                     } else {
                         Carta {
                             ForEach(d.giocatori) { g in
-                                Button { vm.apri(g.id) } label: { RigaGiocatore(g: g).frame(minHeight: 44) }
-                                    .buttonStyle(.plain)
-                                    .accessibilityHint("Apre la scheda del giocatore")
+                                Button { vm.apri(g.id) } label: {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        RigaGiocatore(g: g)
+                                        Text("quot. \(g.quotazione.map { String(Formato.intero($0)) } ?? "–") · \(g.proprietario ?? "svincolato")")
+                                            .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : .secondary).padding(.leading, 58)
+                                    }
+                                    .frame(minHeight: 44)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Apre la scheda del giocatore")
                             }
                         }
                     }

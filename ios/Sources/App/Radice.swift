@@ -82,6 +82,7 @@ struct RadiceView: View {
     /// Lega > Aspetto: colore principale e animazioni. Cambiando il colore l'albero delle viste si ricostruisce (`.id`), i dati restano.
     @AppStorage("accento") private var accento = "verde"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
+    @AppStorage("tema") private var tema = "auto"   // auto, chiaro, scuro
     /// Barra laterale visibile o no (di solito decide iOS; solo la demo può nasconderla per le fotografie).
     @State private var colonne: NavigationSplitViewVisibility = Demo.attivo && Demo.argomento("DEMO_BARRA") == "nascosta" ? .detailOnly : .automatic
 
@@ -95,6 +96,7 @@ struct RadiceView: View {
         }
         .tint(Color.verde)
         .id(accento)
+        .preferredColorScheme(tema == "chiaro" ? ColorScheme.light : tema == "scuro" ? ColorScheme.dark : nil)
         .transaction { if animazioniRidotte { $0.animation = nil } }
         .environment(\.server, modello.server)
         .environment(\.apriGiocatore) { nav.apriScheda($0) }

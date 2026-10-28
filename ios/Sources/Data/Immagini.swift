@@ -127,15 +127,20 @@ final class Immagini: ObservableObject {
 }
 
 extension UIImage {
-    /// Ridimensiona (lato massimo `lato`) e codifica in JPEG: lo stemma o la maglia scelti dalla libreria possono pesare molti MB,
-    /// il server ne accetta al massimo 4.
-    func jpegPerServer(latoMassimo lato: CGFloat = 800, qualita: CGFloat = 0.85) -> Data? {
+    /// Ridimensiona (lato massimo `lato`) e codifica per il server: PNG se l'immagine ha la trasparenza (uno stemma), altrimenti JPEG.
+    /// Una foto dalla libreria può pesare molti MB, il server ne accetta al massimo 4.
+    func datiPerServer(latoMassimo lato: CGFloat = 800, qualita: CGFloat = 0.85) -> Data? {
         let massimo = max(size.width, size.height)
+        guard massimo > 0 else { return nil }
         let fattore = massimo > lato ? lato / massimo : 1
         let nuova = CGSize(width: size.width * fattore, height: size.height * fattore)
+        let alfa = cgImage?.alphaInfo
+        let trasparente = alfa == .first || alfa == .last || alfa == .premultipliedFirst || alfa == .premultipliedLast
         let formato = UIGraphicsImageRendererFormat.default()
         formato.scale = 1
+        formato.opaque = !trasparente
         let ridotta = UIGraphicsImageRenderer(size: nuova, format: formato).image { _ in draw(in: CGRect(origin: .zero, size: nuova)) }
+        if trasparente, let png = ridotta.pngData(), png.count <= 3_500_000 { return png }
         return ridotta.jpegData(compressionQuality: qualita)
     }
 }

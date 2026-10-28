@@ -1,6 +1,7 @@
 import SwiftUI
+import PhotosUI
 
-/// Squadre della lega e loro rose.
+/// Squadre della lega e loro rose; da qui si indica quale è la propria.
 struct SquadreView: View {
     @StateObject private var vm: SquadreViewModel
     private let server: any ServerClient
@@ -18,20 +19,34 @@ struct SquadreView: View {
                     Text(errore).font(.footnote).foregroundStyle(.orange)
                 }
                 if let s = vm.caricatore.dato {
-                    ForEach(s) { sq in
-                        NavigationLink { RosaView(nome: sq.nome, server: server) } label: {
-                            HStack {
-                                Text(sq.nome).font(.headline)
-                                if sq.mia == true { Text("tua").font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2).background(Color.verde.opacity(0.3), in: Capsule()) }
-                                Spacer()
-                                Text("\(sq.giocatori ?? 0)").foregroundStyle(.secondary)
+                    Section("La tua squadra") {
+                        Picker("Squadra", selection: Binding(get: { vm.mia }, set: { nuova in Task { await vm.impostaMia(nuova) } })) {
+                            ForEach(s) { Text($0.nome).tag($0.nome) }
+                        }
+                        .frame(minHeight: 44)
+                    }
+                    Section("Le squadre") {
+                        ForEach(s) { sq in
+                            NavigationLink(value: PaginaLega.rosa(sq.nome)) {
+                                HStack(spacing: 12) {
+                                    StemmaSquadra(nome: sq.nome, dimensione: 44)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack {
+                                            Text(sq.nome).font(.headline)
+                                            if sq.mia == true { Text("tua").font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2).background(Color.verde.opacity(0.3), in: Capsule()) }
+                                        }
+                                        Text("\(sq.giocatori ?? 0) giocatori" + (sq.creditiResidui.map { " · \(Formato.intero($0)) crediti" } ?? ""))
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                                .frame(minHeight: 44)
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
+                            .swipeActions {
+                                Button("È la mia") { Task { await vm.impostaMia(sq.nome) } }.tint(Color.verde)
+                            }
+                            .accessibilityAction(named: "È la mia squadra") { Task { await vm.impostaMia(sq.nome) } }
                         }
-                        .swipeActions {
-                            Button("È la mia") { Task { await vm.impostaMia(sq.nome) } }.tint(Color.verde)
-                        }
-                        .accessibilityAction(named: "È la mia squadra") { Task { await vm.impostaMia(sq.nome) } }
                     }
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
@@ -42,38 +57,139 @@ struct SquadreView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Squadre")
+        .ricercaGlobale()
         .task { await vm.carica() }
+    }
+}
+
+/// Logica della rosa di una squadra: i giocatori e il caricamento di stemma e maglia.
+@MainActor
+final class RosaViewModel: ViewModelBase {
+    let nome: String
+    let caricatore: Caricatore<Rosa>
+    @Published var messaggio: String?
+    @Published var inCorso = false
+
+    init(nome: String, server: any ServerClient) {
+        self.nome = nome
+        caricatore = Caricatore<Rosa>("/api/rosa?squadra=\(IndirizzoServer.codifica(nome))", server: server)
+        super.init()
+        osserva(caricatore)
+    }
+
+    func carica() async { await caricatore.ricarica() }
+
+    /// Manda al server lo stemma («stemma») o la maglia («maglia») scelti dalla libreria foto.
+    func inviaImmagine(_ dati: Data, tipo: String) async {
+        inCorso = true
+        defer { inCorso = false }
+        do {
+            try await Immagini.condivise.invia(dati, squadra: nome, tipo: tipo)
+            messaggio = tipo == "stemma" ? "Stemma aggiornato." : "Maglia aggiornata."
+            Haptics.esito(riuscito: true)
+        } catch {
+            messaggio = error.localizedDescription
+            Haptics.esito(riuscito: false)
+        }
+    }
+}
+
+/// Una riga della rosa: avatar con l'indice, nome, costo e quotazione, titolarità e previsione.
+struct RigaRosa: View {
+    let g: GiocatoreRosa
+    @Environment(\.apriGiocatore) private var apri
+
+    private var sottotitolo: String {
+        var parti: [String] = []
+        let s = ColoriSquadra.sigla(g.squadraSlug ?? g.previsione?.squadra ?? g.squadra)
+        if !s.isEmpty { parti.append(s) }
+        if let c = g.costo { parti.append("costo \(Formato.intero(c))") }
+        if let q = g.quotazione { parti.append("quotazione \(Formato.intero(q))") }
+        if let a = g.previsione?.avversario { parti.append("vs \(ColoriSquadra.sigla(a))") }
+        return parti.joined(separator: " · ")
+    }
+
+    /// La frase letta da VoiceOver per tutta la riga.
+    private var voce: String {
+        var testo = "\(g.nome), \(nomeRuolo(g.ruolo ?? "")), \(sottotitolo)"
+        if let p = g.previsione { testo += ", fantavoto atteso " + Formato.punti(p.fvAtteso) } else { testo += ", non gioca" }
+        return testo
+    }
+
+    var body: some View {
+        let p = g.previsione
+        Button { if let id = g.id { apri(id) } } label: {
+            HStack(spacing: 12) {
+                AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? p?.squadra, indice: p?.indice, dimensione: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        BadgeRuolo(ruolo: g.ruolo ?? "?", piccolo: true)
+                        Text(g.nome).font(.headline).lineLimit(2)
+                    }
+                    Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                    if let etichette = p?.etichette, !etichette.isEmpty {
+                        Text(etichette.map(\.testo).joined(separator: " · ")).font(.caption).foregroundStyle(etichette.contains { $0.gravita == .grave } ? Color.red : .secondary)
+                    }
+                }
+                Spacer(minLength: 8)
+                if let p {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(Formato.punti(p.fvAtteso)).font(.headline).monospacedDigit()
+                        Text("gioca \(Formato.percento(p.pVoto))%").font(.caption2).foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text(g.id == nil ? "?" : "non gioca").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(voce)
+        }
+        .buttonStyle(.plain)
+        .disabled(g.id == nil)
     }
 }
 
 struct RosaView: View {
     let nome: String
-    @StateObject private var caricatore: Caricatore<Rosa>
+    @StateObject private var vm: RosaViewModel
+    @Environment(\.vediFormazioneDi) private var vediFormazione
+    @ObservedObject private var immagini = Immagini.condivise
+    @State private var sceltaStemma: PhotosPickerItem?
+    @State private var sceltaMaglia: PhotosPickerItem?
 
     init(nome: String, server: any ServerClient) {
         self.nome = nome
-        _caricatore = StateObject(wrappedValue: Caricatore<Rosa>("/api/rosa?squadra=\(IndirizzoServer.codifica(nome))", server: server))
+        _vm = StateObject(wrappedValue: RosaViewModel(nome: nome, server: server))
     }
+
+    private let reparti = [("P", "Portieri"), ("D", "Difensori"), ("C", "Centrocampisti"), ("A", "Attaccanti")]
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
-                if let r = caricatore.dato {
-                    ForEach(["P", "D", "C", "A"], id: \.self) { ruolo in
-                        Section(ruolo) {
-                            ForEach(r.giocatori.filter { $0.ruolo == ruolo }, id: \.ident) { g in rigaRosa(g) }
+                if let r = vm.caricatore.dato {
+                    intestazione(r)
+                    ForEach(reparti, id: \.0) { reparto in
+                        let giocatori = r.giocatori.filter { $0.ruolo == reparto.0 }
+                        Section("\(reparto.1) (\(giocatori.count))") {
+                            ForEach(giocatori, id: \.ident) { RigaRosa(g: $0) }
                         }
                     }
                     // Giocatori che il server non ha saputo collegare a un ruolo (non presenti nel listone).
                     let sconosciuti = r.giocatori.filter { !["P", "D", "C", "A"].contains($0.ruolo ?? "") }
                     if !sconosciuti.isEmpty {
-                        Section("Non riconosciuti") {
-                            ForEach(sconosciuti, id: \.ident) { g in rigaRosa(g) }
+                        Section("Non riconosciuti (da controllare)") {
+                            ForEach(sconosciuti, id: \.ident) { RigaRosa(g: $0) }
                         }
                     }
-                } else if let e = caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
+                    if let agg = r.aggiornato {
+                        Text("Rose aggiornate il \(String(agg.prefix(10)))").font(.caption).foregroundStyle(.secondary)
+                    }
+                } else if let e = vm.caricatore.errore {
+                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
                 }
@@ -82,70 +198,62 @@ struct RosaView: View {
         }
         .navigationTitle(nome)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await caricatore.ricarica() }
-    }
-
-    private func rigaRosa(_ g: GiocatoreRosa) -> some View {
-        HStack(spacing: 10) {
-            BadgeRuolo(ruolo: g.ruolo ?? "?")
-            Text(g.nome)
-            Spacer()
-            Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
-            if let c = g.costo { Text("\(Formato.intero(c))").monospacedDigit().foregroundStyle(.secondary) }
+        .ricercaGlobale()
+        .task { await vm.carica() }
+        .onChange(of: sceltaStemma) { nuovo in
+            guard let nuovo else { return }
+            Task { await carica(nuovo, tipo: "stemma"); sceltaStemma = nil }
         }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// Asta: quanti crediti dedicare a ogni reparto e prezzi consigliati.
-struct AstaView: View {
-    @StateObject private var caricatore: Caricatore<PianoAsta>
-
-    init(server: any ServerClient) {
-        _caricatore = StateObject(wrappedValue: Caricatore<PianoAsta>("/api/asta", server: server))
+        .onChange(of: sceltaMaglia) { nuovo in
+            guard let nuovo else { return }
+            Task { await carica(nuovo, tipo: "maglia"); sceltaMaglia = nil }
+        }
     }
 
-    var body: some View {
-        ZStack {
-            Sfondo()
-            ScrollView {
-                Colonne(spazio: 14) {
-                    if let a = caricatore.dato {
-                        Carta {
-                            Text("Budget di \(Formato.intero(a.crediti)) crediti").font(.headline)
-                            Text("Stime del modello: quanto dedicare a ogni reparto e i prezzi consigliati per i migliori.").font(.footnote).foregroundStyle(.secondary)
-                        }
-                        ForEach(a.ruoli) { r in
-                            Carta("\(r.ruolo): \(Formato.intero(r.crediti)) crediti (\(Formato.percento(r.quota))%)") {
-                                ForEach(r.giocatori.prefix(12)) { g in
-                                    HStack {
-                                        Text(g.nome)
-                                        Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
-                                        Spacer()
-                                        Text("\(Formato.intero(g.prezzo))").font(.headline).monospacedDigit()
-                                    }
-                                    .accessibilityElement(children: .combine)
-                                }
-                            }
-                        }
-                    } else if let e = caricatore.errore {
-                        ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
-                    } else {
-                        ProgressView().padding(40)
-                    }
-                }
-                .padding(16)
+    /// Il giocatore scelto dalla libreria foto, ridotto e mandato al server.
+    private func carica(_ voce: PhotosPickerItem, tipo: String) async {
+        guard let dati = try? await voce.loadTransferable(type: Data.self), let immagine = UIImage(data: dati),
+              let pronti = immagine.datiPerServer() else {
+            vm.messaggio = "Non riesco a leggere l'immagine."
+            return
+        }
+        await vm.inviaImmagine(pronti, tipo: tipo)
+    }
+
+    @ViewBuilder
+    private func intestazione(_ r: Rosa) -> some View {
+        Section {
+            HStack(spacing: 16) {
+                slot("stemma", "Stemma", $sceltaStemma)
+                slot("maglia", "Maglia", $sceltaMaglia)
             }
-            .refreshable { await caricatore.ricarica() }
-            .avvisoDatiSalvati(caricatore.datiSalvati)
+            .frame(maxWidth: .infinity)
+            if let c = r.creditiResidui { Text("Crediti residui: \(Formato.intero(c))") }
+            if r.mia != true {
+                Button { vediFormazione(nome) } label: { Label("Formazione consigliata per loro", systemImage: "sportscourt").frame(minHeight: 44) }
+            }
+            if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(.secondary) }
+            ForEach(r.avvisi ?? [], id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(.orange) }
         }
-        .navigationTitle("Asta")
-        .task { await caricatore.ricarica() }
+    }
+
+    private func slot(_ tipo: String, _ titolo: String, _ scelta: Binding<PhotosPickerItem?>) -> some View {
+        VStack(spacing: 6) {
+            StemmaSquadra(nome: nome, tipo: tipo, dimensione: 72)
+            PhotosPicker(selection: scelta, matching: .images) {
+                Label(immagini.haImmagine(nome, tipo: tipo) ? "Cambia \(titolo.lowercased())" : "Carica \(titolo.lowercased())", systemImage: "photo")
+                    .font(.footnote.weight(.semibold))
+                    .frame(minHeight: 44)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
 struct NovitaView: View {
     @StateObject private var caricatore: Caricatore<[VoceNovita]>
+    /// L'ultima versione guardata: Oggi smette di mostrare il banner «Novità nell'app».
+    @AppStorage("novitaVista") private var novitaVista = ""
 
     init(server: any ServerClient) {
         _caricatore = StateObject(wrappedValue: Caricatore<[VoceNovita]>("/api/novita", server: server))
@@ -159,6 +267,7 @@ struct NovitaView: View {
                     if let n = caricatore.dato {
                         ForEach(n) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
+                                if let data = v.data { Text(data).font(.caption).foregroundStyle(.secondary) }
                                 ForEach(v.voci, id: \.self) { voce in
                                     // il puntino sta a parte: le righe lunghe vanno a capo allineate al testo
                                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -181,27 +290,38 @@ struct NovitaView: View {
             .refreshable { await caricatore.ricarica() }
         }
         .navigationTitle("Novità")
-        .task { await caricatore.ricarica() }
+        .task {
+            await caricatore.ricarica()
+            if let ultima = caricatore.dato?.first?.versione { novitaVista = ultima }
+        }
     }
 }
 
 struct StatoDatiView: View {
     @StateObject private var caricatore: Caricatore<StatoDati>
+    @StateObject private var affidabilita: Caricatore<Affidabilita>
+    @ObservedObject var aggiornamento: AggiornaDatiViewModel
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, aggiornamento: AggiornaDatiViewModel) {
         _caricatore = StateObject(wrappedValue: Caricatore<StatoDati>("/api/stato-dati", server: server))
+        _affidabilita = StateObject(wrappedValue: Caricatore<Affidabilita>("/api/affidabilita", server: server))
+        self.aggiornamento = aggiornamento
     }
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
+                Section {
+                    AggiornaDatiSezione(vm: aggiornamento)
+                }
                 if let s = caricatore.dato {
                     Section("Dati") {
                         riga("Stagione", s.stagione ?? "—")
                         riga("Calciatori", "\(s.calciatori ?? 0)")
                         riga("Partite giocate", "\(s.partite?.giocate ?? 0) / \(s.partite?.totali ?? 0)")
                         riga("Voti", "\(s.voti ?? 0)")
+                        riga("Foto dei giocatori", "\(s.foto ?? 0)")
                         riga("Coppe europee fino al", s.coppeFino ?? "—")
                     }
                     Section("Ultimi aggiornamenti") {
@@ -214,17 +334,64 @@ struct StatoDatiView: View {
                             .accessibilityElement(children: .combine)
                         }
                     }
+                    if let probabili = s.probabili, !probabili.isEmpty {
+                        Section("Probabili formazioni raccolte") {
+                            ForEach(probabili) { p in
+                                riga("Giornata \(p.giornata)", "\(p.giocatori ?? 0) giocatori")
+                            }
+                        }
+                    }
+                    if let c = s.calibrazione, let gruppi = c.gruppi {
+                        Section {
+                            ForEach(gruppi) { g in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(g.gruppo)
+                                    Text((g.n ?? 0) > 0
+                                         ? "\(g.n ?? 0) giocatori · hanno giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
+                                         : "ancora nessun dato")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        } header: { Text("Quanto ci azzecca il modello") } footer: {
+                            Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.")
+                        }
+                    }
                 } else if let e = caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
                 }
+                Section("Quanto è affidabile il modello") {
+                    affidabilitaContenuto
+                }
             }
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Stato dei dati")
-        .refreshable { await caricatore.ricarica() }
-        .task { await caricatore.ricarica() }
+        .refreshable { await caricatore.ricarica(); await affidabilita.ricarica() }
+        .task { await caricatore.ricarica(); await affidabilita.ricarica() }
+    }
+
+    @ViewBuilder
+    private var affidabilitaContenuto: some View {
+        if let a = affidabilita.dato, let s = a.sintesi, (s.giornate ?? 0) > 0 {
+            Text("Prova sulle ultime \(s.giornate ?? 0) giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la scelta più semplice: chi ha la media più alta.")
+                .font(.footnote).foregroundStyle(.secondary)
+            FilaTessere {
+                TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (modello)")
+                TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore (da fantamedia)")
+                TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: "punti formazione (modello)")
+            }
+            Text("Punti medi per giornata: modello \(s.puntiModello.map { Formato.decimali($0) } ?? "–"), da fantamedia \(s.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), massimo possibile \(s.puntiPerfetta.map { Formato.decimali($0) } ?? "–"). Errore più basso e punti più alti sono meglio. Nelle giornate passate mancano le probabili formazioni, quindi dal vivo il modello va un po' meglio.")
+                .font(.footnote).foregroundStyle(.secondary)
+            let righe = (a.righe ?? []).filter { $0.puntiModello != nil }
+            if righe.count >= 2 { GraficoAffidabilita(righe: righe) }
+        } else if affidabilita.errore != nil, affidabilita.dato == nil {
+            Text("Non riesco a leggere la prova del modello.").font(.footnote).foregroundStyle(.orange)
+        } else {
+            Text("La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.").font(.footnote).foregroundStyle(.secondary)
+        }
     }
 
     private func riga(_ t: String, _ v: String) -> some View {
@@ -232,7 +399,7 @@ struct StatoDatiView: View {
     }
 }
 
-/// Importazione delle rose da un file Excel di Leghe (scelto con il selettore di file di iOS).
+/// Importazione delle rose da un file Excel di Leghe (scelto con il selettore di file di iOS) o dal testo incollato.
 struct ImportaExcelView: View {
     @StateObject private var vm: ImportaExcelViewModel
     @State private var scegli = false
@@ -246,7 +413,7 @@ struct ImportaExcelView: View {
             Sfondo()
             List {
                 Section {
-                    Text("Esporta le rose in Excel da Leghe (come fai di solito), poi scegli qui il file: l'app ti dice cosa è cambiato (scambi, svincolati presi, crediti).")
+                    Text("Esporta le rose in Excel da Leghe (come fai di solito), poi scegli qui il file: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti).")
                         .font(.footnote).foregroundStyle(.secondary)
                     Button {
                         scegli = true
@@ -255,19 +422,38 @@ struct ImportaExcelView: View {
                     }
                     .disabled(vm.inCorso)
                     .frame(minHeight: 44)
+                    Toggle("Togli le squadre che non sono nel file", isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: 44)
                 }
+                Section {
+                    Text("Se non hai il file Excel: copia la pagina delle rose di Leghe e incollala qui. Le squadre che non sono nel testo restano com'erano.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    TextEditor(text: $vm.testoRose).frame(minHeight: 110).accessibilityLabel("Testo delle rose")
+                    Button { Task { await vm.importaTesto() } } label: { Text("Importa il testo").frame(maxWidth: .infinity, minHeight: 44) }
+                        .disabled(vm.inCorso)
+                } header: { Text("Incolla il testo delle rose") }
                 if let errore = vm.errore { Section { Text(errore).foregroundStyle(.orange) } }
                 if let e = vm.esito {
-                    Section("Esito") {
-                        if let r = e.riepilogo, !r.isEmpty { Text(r) }
-                        Text("Squadre importate: \(e.totaleSquadre ?? e.squadreImportate?.count ?? 0)")
-                        ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(.orange) }
+                    Section("Cosa è cambiato") {
+                        if let d = e.differenze { DifferenzeView(differenze: d) }
+                        else if let r = e.riepilogo, !r.isEmpty { Text(r) }
+                        if let squadre = e.squadreImportate, !squadre.isEmpty {
+                            Text("Importate: \(squadre.joined(separator: ", ")) (\(e.totaleSquadre ?? squadre.count) squadre in tutto).")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
                     }
+                    Section {
+                        if (e.avvisi ?? []).isEmpty {
+                            Label("Rose controllate: tutto in ordine.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(.secondary)
+                        } else {
+                            ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(.orange) }
+                        }
+                    } header: { Text("Da controllare") }
                 }
             }
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Aggiorna le rose")
+        .ricercaGlobale()
         .fileImporter(isPresented: $scegli, allowedContentTypes: vm.tipiAmmessi, allowsMultipleSelection: false) { risultato in
             Task { await vm.importa(risultato) }
         }

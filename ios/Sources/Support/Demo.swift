@@ -20,6 +20,9 @@ enum Demo {
 
     static var schermata: String? { attivo ? argomento("DEMO_SCHERMATA") : nil }
 
+    /// Solo per la fotografia «ricerca»: la lente si apre da sola la prima volta (e il testo da cercare arriva da `-DEMO_CERCA`).
+    static var ricercaMostrata = false
+
     /// Il server di partenza dell'app: quello finto in demo, quello vero altrimenti.
     static func serverPredefinito() -> any ServerClient {
         if attivo { return FinteServer.demo }
@@ -74,6 +77,21 @@ extension Demo {
                 if let f = modello.formazione.formazione { modello.formazione.iniziaModificaManuale(f) }
             }
 
+        case "formazione-confronto", "confronto", "confronto-fondo":
+            nav.sezione = .formazione
+            Task {
+                await modello.formazione.carica()
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                modello.formazione.confrontoAperto = .coppia(120, 123)
+            }
+        case "formazione-immagine":
+            nav.sezione = .formazione
+            Task {
+                await modello.formazione.carica()
+                try? await Task.sleep(nanoseconds: 1_500_000_000)   // il tempo di caricare le foto
+                if let f = modello.formazione.formazione { modello.formazione.preparaImmagine(f) }
+            }
+
         case "mercato", "mercato-consigliati":
             nav.sezione = .mercato
             modello.mercato.sezione = .consigliati
@@ -86,6 +104,13 @@ extension Demo {
         case "mercato-osservati":
             nav.sezione = .mercato
             modello.mercato.sezione = .osservati
+        case "mercato-asta":
+            nav.sezione = .mercato
+            modello.mercato.sezione = .asta
+        case "mercato-asta-riparazione":
+            nav.sezione = .mercato
+            modello.mercato.sezione = .asta
+            modello.mercato.asta.modo = .riparazione
         case "mercato-cerca":
             nav.sezione = .mercato
             modello.mercato.sezione = .cerca
@@ -102,6 +127,13 @@ extension Demo {
                 try? await Task.sleep(nanoseconds: 800_000_000)
                 modello.scambi.selezionata = modello.scambi.proposte.dato?.proposte.first(where: { $0.`do`.count > 1 })
                     ?? modello.scambi.proposte.dato?.proposte.first
+            }
+        case "scambi-offerta":
+            nav.sezione = .scambi
+            modello.scambi.testoOfferta = "Ciao! Ti do Vlahovic e tu mi dai Lukaku, ci stai?"
+            Task {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                await modello.scambi.valutaOfferta()
             }
         case "scambi-analizza":
             nav.sezione = .scambi
@@ -127,6 +159,16 @@ extension Demo {
             apriLega(nav, modello, [.novita])
         case "lega-importa":
             apriLega(nav, modello, [.importa])
+        case "lega-movimenti":
+            apriLega(nav, modello, [.movimenti])
+        case "lega-stagione":
+            apriLega(nav, modello, [.stagione])
+        case "lega-aspetto":
+            apriLega(nav, modello, [.aspetto])
+        case "lega-icona":
+            apriLega(nav, modello, [.icona])
+        case "ricerca":
+            nav.sezione = .oggi
         default:
             break
         }

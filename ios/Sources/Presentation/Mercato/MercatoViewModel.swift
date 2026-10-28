@@ -2,9 +2,10 @@ import SwiftUI
 
 enum SezioneMercato: String, CaseIterable, Identifiable {
     case consigliati = "Consigliati"
+    case osservati = "Osservati"
+    case asta = "Asta"
     case classifica = "Classifica"
     case calendario = "Calendario"
-    case osservati = "Osservati"
     case cerca = "Cerca"
     var id: String { rawValue }
 }
@@ -19,6 +20,8 @@ final class MercatoViewModel: ViewModelBase {
     let classifica: Caricatore<ElencoGiocatori>
     let calendario: Caricatore<Calendario>
     let osservati: Caricatore<ElencoGiocatori>
+    /// Asta di agosto e riparazione di febbraio.
+    let asta: AstaViewModel
 
     @Published var sezione: SezioneMercato = .consigliati
     /// Giocatore di cui si mostra la scheda (sheet).
@@ -39,11 +42,13 @@ final class MercatoViewModel: ViewModelBase {
         classifica = Caricatore<ElencoGiocatori>("/api/classifica?limite=60&liberi=true", server: server)
         calendario = Caricatore<Calendario>("/api/calendario", server: server)
         osservati = Caricatore<ElencoGiocatori>("/api/osservati", server: server)
+        asta = AstaViewModel(server: server)
         super.init()
         osserva(consigliati)
         osserva(classifica)
         osserva(calendario)
         osserva(osservati)
+        osserva(asta)
     }
 
     func apri(_ id: Int) { schedaAperta = IdGiocatore(id: id) }

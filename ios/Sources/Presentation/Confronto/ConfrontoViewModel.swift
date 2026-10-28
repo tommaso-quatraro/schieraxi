@@ -81,6 +81,7 @@ final class RicercaViewModel: ViewModelBase {
     init(server: any ServerClient) {
         self.server = server
         super.init()
+        if Demo.attivo, let t = Demo.argomento("DEMO_CERCA") { testo = t }   // solo per le fotografie del simulatore
     }
 
     /// Cerca dopo una breve pausa: se si continua a scrivere, la vista annulla questa ricerca (`.task(id:)`) e ne parte una nuova.

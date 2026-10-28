@@ -80,6 +80,7 @@ struct GiocatoreCorpo: View {
                 }
                 .padding(16)
             }
+            .demoInFondo()
             .refreshable { await vm.carica() }
         }
         .navigationTitle(vm.caricatore.dato?.calciatore.nome ?? "Giocatore")

@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 /// Le pagine che si aprono dalla schermata Lega.
 enum PaginaLega: Hashable {
     case importa, squadre, rosa(String), asta, regole, crediti, avvisi, stato, novita
+    case movimenti, stagione, aspetto, icona
 }
 
 /// Logica della schermata Lega: stato del server, permesso per le notifiche, aggiornamento in background.
@@ -11,6 +12,10 @@ enum PaginaLega: Hashable {
 final class LegaViewModel: ViewModelBase {
     let server: any ServerClient
     let info: Caricatore<InfoServer>
+    /// Le rose sono della stagione in corso o di una passata? (se passata, compare il passaggio di stagione)
+    let stagione: Caricatore<StatoStagione>
+    /// L'aggiornamento dei dati del server (tasto «Aggiorna i dati»), con il suo stato.
+    let aggiornamento: AggiornaDatiViewModel
     @Published var permesso = "…"
     /// Pagine aperte nella pila di navigazione (nell'AppModel: cambiando sezione si resta dove si era).
     @Published var percorso: [PaginaLega] = []
@@ -18,14 +23,22 @@ final class LegaViewModel: ViewModelBase {
     init(server: any ServerClient) {
         self.server = server
         info = Caricatore<InfoServer>("/api/stato", server: server)
+        stagione = Caricatore<StatoStagione>("/api/stagione", ascolta: false, server: server)
+        aggiornamento = AggiornaDatiViewModel(server: server)
         super.init()
         osserva(info)
+        osserva(stagione)
+        osserva(aggiornamento)
     }
 
     func carica() async {
         await info.ricarica()
+        await stagione.ricarica()
         await aggiornaPermesso()
     }
+
+    /// true quando le rose sono ancora della stagione finita.
+    var nuovaStagione: Bool { stagione.dato?.nuova == true }
 
     func attivaPromemoria() async {
         _ = await Notifiche.chiediPermesso()
@@ -68,6 +81,9 @@ final class SquadreViewModel: ViewModelBase {
 
     func carica() async { await caricatore.ricarica() }
 
+    /// Il nome della mia squadra.
+    var mia: String { caricatore.dato?.first { $0.mia == true }?.nome ?? "" }
+
     func impostaMia(_ nome: String) async {
         do {
             _ = try await server.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: nome))
@@ -78,44 +94,6 @@ final class SquadreViewModel: ViewModelBase {
             Haptics.esito(riuscito: false)
         }
         await caricatore.ricarica()
-    }
-}
-
-/// Editor delle regole della lega (JSON generico, rimandato al server con le stesse chiavi).
-@MainActor
-final class RegoleEditorViewModel: ViewModelBase {
-    private let server: any ServerClient
-    let caricatore: Caricatore<JSONValue>
-    @Published var valore: JSONValue = .nullo
-    @Published var caricato = false
-    @Published var esito: String?
-    @Published var inCorso = false
-
-    init(server: any ServerClient) {
-        self.server = server
-        // Dati che si modificano: niente cache (non si deve ripartire da una copia vecchia).
-        caricatore = Caricatore<JSONValue>("/api/regole", snake: false, cache: false, server: server)
-        super.init()
-        osserva(caricatore)
-    }
-
-    func carica() async {
-        await caricatore.ricarica()
-        if let d = caricatore.dato { valore = d; caricato = true }
-    }
-
-    func salva() async {
-        inCorso = true
-        defer { inCorso = false }
-        do {
-            let nuove: JSONValue = try await server.posta("PUT", "/api/regole", valore, snake: false)
-            valore = nuove
-            esito = "Regole salvate."
-            Haptics.esito(riuscito: true)
-        } catch {
-            esito = error.localizedDescription
-            Haptics.esito(riuscito: false)
-        }
     }
 }
 
@@ -188,62 +166,6 @@ final class CreditiViewModel: ViewModelBase {
             Haptics.esito(riuscito: true)
         } catch {
             messaggio = error.localizedDescription
-            Haptics.esito(riuscito: false)
-        }
-    }
-}
-
-/// Importazione delle rose da un Excel di Leghe.
-@MainActor
-final class ImportaExcelViewModel: ViewModelBase {
-    private let server: any ServerClient
-    /// Dimensione massima accettata: un Excel delle rose è di poche decine di KB.
-    private static let massimoByte = 5 * 1024 * 1024
-
-    @Published var inCorso = false
-    @Published var esito: EsitoImportazione?
-    @Published var errore: String?
-
-    init(server: any ServerClient) {
-        self.server = server
-        super.init()
-    }
-
-    /// Solo fogli di calcolo (.xlsx e simili).
-    var tipiAmmessi: [UTType] {
-        var tipi: [UTType] = [.spreadsheet]
-        if let xlsx = UTType(filenameExtension: "xlsx") { tipi.append(xlsx) }
-        return tipi
-    }
-
-    func importa(_ risultato: Result<[URL], Error>) async {
-        guard case .success(let urls) = risultato, let url = urls.first else {
-            if case .failure(let e) = risultato { errore = e.localizedDescription }
-            return
-        }
-        inCorso = true
-        defer { inCorso = false }
-        let accesso = url.startAccessingSecurityScopedResource()
-        defer { if accesso { url.stopAccessingSecurityScopedResource() } }
-        guard ["xlsx", "xls", "xlsm"].contains(url.pathExtension.lowercased()) else {
-            esito = nil
-            errore = "Il file deve essere un Excel (.xlsx)."
-            return
-        }
-        let grandezza = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        guard grandezza <= Self.massimoByte else {
-            esito = nil
-            errore = "Il file è troppo grande (massimo 5 MB): non sembra un Excel delle rose."
-            return
-        }
-        do {
-            let dati = try Data(contentsOf: url)
-            esito = try await server.caricaFile("/api/rose/file", nome: url.lastPathComponent, dati: dati)
-            errore = nil
-            Haptics.esito(riuscito: true)
-        } catch {
-            esito = nil
-            errore = error.localizedDescription
             Haptics.esito(riuscito: false)
         }
     }

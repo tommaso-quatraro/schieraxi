@@ -296,6 +296,13 @@ struct RicercaGlobale: ViewModifier {
                 }
             }
             .sheet(isPresented: $aperta) { RicercaGlobaleSheet(server: server) }
+            .onAppear {
+                // Solo per le fotografie del simulatore (argomento -DEMO_SCHERMATA ricerca).
+                if Demo.attivo, Demo.schermata == "ricerca", !Demo.ricercaMostrata {
+                    Demo.ricercaMostrata = true
+                    aperta = true
+                }
+            }
     }
 }
 

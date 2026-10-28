@@ -30,6 +30,7 @@ struct Giocatore: Decodable, Identifiable {
     let dataPartita: String?
     let proprietario: String?
     let assente: Bool?
+    let quotazione: Double?
     // Dettagli della previsione (scheda del giocatore, confronto, ballottaggi): tutti opzionali.
     let votoAtteso: Double?
     let rigoriAttesi: Double?
