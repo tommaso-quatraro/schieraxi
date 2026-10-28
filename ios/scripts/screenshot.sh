@@ -22,6 +22,9 @@ TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita
        lega-importa lega-movimenti lega-stagione lega-aspetto lega-icona)
+# giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
+PER_CHIARO=(oggi formazione formazione-confronto formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
+            scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato lega-aspetto lega-icona lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
 PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-calendario
                   mercato-osservati mercato-asta scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
@@ -110,7 +113,7 @@ echo "iPhone: $NOME_IPHONE ($IOS_IPHONE) $UDID_IPHONE"
 avvia_simulatore "$UDID_IPHONE"
 
 giro "$UDID_IPHONE" iphone_scuro scuro large "${TUTTE[@]}"
-giro "$UDID_IPHONE" iphone_chiaro chiaro large "${TUTTE[@]}"
+giro "$UDID_IPHONE" iphone_chiaro chiaro large "${PER_CHIARO[@]}"
 giro "$UDID_IPHONE" iphone_scuro_testogrande scuro accessibility-large "${PER_TESTO_GRANDE[@]}"
 giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione giocatore lega
 ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
@@ -145,7 +148,7 @@ sleep 10
 xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
 
 giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
-giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PER_IPAD[@]}"
+giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta lega-aspetto
 giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
 # Senza barra laterale: la colonna dei contenuti è larga come in orizzontale (2 colonne di schede).
 ARGOMENTI_EXTRA=(-DEMO_BARRA nascosta)
