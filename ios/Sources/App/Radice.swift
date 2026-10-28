@@ -107,7 +107,7 @@ struct RadiceView: View {
         case .formazione: FormazioneView(vm: modello.formazione)
         case .mercato: MercatoView(vm: modello.mercato)
         case .scambi: ScambiView(vm: modello.scambi)
-        case .lega: LegaView()
+        case .lega: LegaView(vm: modello.lega)
         }
     }
 }

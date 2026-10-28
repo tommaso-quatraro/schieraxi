@@ -3,6 +3,9 @@ import Foundation
 /// Dati finti per le anteprime di Xcode (`#Preview`): niente rete, niente server.
 extension FinteServer {
     static let esempio = FinteServer(risposte: [
+        "/api/stato": """
+        {"stagione": "2026-27", "prossima_giornata": 11, "ultimo_aggiornamento": "2026-10-28T07:00:00", "mia_squadra": "La mia squadra", "versione": "1.9"}
+        """,
         "/api/squadre": """
         [{"nome": "La mia squadra", "mia": true, "giocatori": 25}, {"nome": "Altra squadra", "mia": false, "giocatori": 25}]
         """,

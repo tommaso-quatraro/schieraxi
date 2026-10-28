@@ -3,31 +3,31 @@ import SwiftUI
 // MARK: - Regole della lega (editor generico)
 
 struct RegoleEditorView: View {
-    @StateObject private var caricatore = Caricatore<JSONValue>("/api/regole", snake: false, cache: false)
-    @State private var valore: JSONValue = .nullo
-    @State private var caricato = false
-    @State private var esito: String?
-    @State private var inCorso = false
+    @StateObject private var vm: RegoleEditorViewModel
+
+    init(server: any ServerClient) {
+        _vm = StateObject(wrappedValue: RegoleEditorViewModel(server: server))
+    }
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
-                if caricato {
-                    if case .oggetto = valore {
-                        EditorJSON(valore: $valore, titolo: "Regole")
+                if vm.caricato {
+                    if case .oggetto = vm.valore {
+                        EditorJSON(valore: $vm.valore, titolo: "Regole")
                     }
                     Section {
                         Button {
-                            Task { await salva() }
+                            Task { await vm.salva() }
                         } label: {
-                            if inCorso { ProgressView() } else { Label("Salva le regole", systemImage: "checkmark.circle") }
+                            if vm.inCorso { ProgressView() } else { Label("Salva le regole", systemImage: "checkmark.circle").frame(minHeight: 44) }
                         }
-                        .disabled(inCorso)
-                        if let esito { Text(esito).font(.footnote) }
+                        .disabled(vm.inCorso)
+                        if let esito = vm.esito { Text(esito).font(.footnote) }
                     }
-                } else if let e = caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await carica() } }
+                } else if let e = vm.caricatore.errore {
+                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
                 }
@@ -35,26 +35,7 @@ struct RegoleEditorView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Regole")
-        .task { await carica() }
-    }
-
-    private func carica() async {
-        await caricatore.ricarica()
-        if let d = caricatore.dato { valore = d; caricato = true }
-    }
-
-    private func salva() async {
-        inCorso = true
-        defer { inCorso = false }
-        do {
-            let nuove: JSONValue = try await Api.posta("PUT", "/api/regole", valore, snake: false)
-            valore = nuove
-            esito = "Regole salvate."
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-        } catch {
-            esito = error.localizedDescription
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-        }
+        .task { await vm.carica() }
     }
 }
 
@@ -105,6 +86,7 @@ struct EditorJSON: View {
                     get: { if case .testo(let t) = figlio(chiave).wrappedValue { return t }; return "" },
                     set: { figlio(chiave).wrappedValue = .testo($0) }))
                     .multilineTextAlignment(.trailing)
+                    .frame(minHeight: 44)
             }
         case .lista:
             HStack { Text(nome(chiave)); Spacer(); Text(v.descrizione).foregroundStyle(.secondary).lineLimit(1) }
@@ -161,15 +143,17 @@ struct CampoNumero: View {
 // MARK: - Avvisi del server
 
 struct AvvisiServerView: View {
-    @StateObject private var caricatore = Caricatore<StatoAvvisi>("/api/avvisi", snake: false, cache: false)
-    @State private var impostazioni: ImpostazioniAvvisi?
-    @State private var messaggio: String?
+    @StateObject private var vm: AvvisiServerViewModel
+
+    init(server: any ServerClient) {
+        _vm = StateObject(wrappedValue: AvvisiServerViewModel(server: server))
+    }
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
-                if let s = caricatore.dato {
+                if let s = vm.caricatore.dato {
                     Section("Quali avvisi") {
                         interruttore("Cambi di formazione e probabili", \.cambi)
                         interruttore("Promemoria un'ora prima", \.promemoria_60)
@@ -179,11 +163,11 @@ struct AvvisiServerView: View {
                     Section {
                         Text("Dispositivi con avvisi web attivi: \(s.dispositivi ?? 0). Gli avvisi del server arrivano dalla web app installata dalla Home (l'app nativa gratuita non può riceverli).")
                             .font(.footnote).foregroundStyle(.secondary)
-                        Button("Manda un avviso di prova") { Task { await prova() } }
-                        if let messaggio { Text(messaggio).font(.footnote) }
+                        Button("Manda un avviso di prova") { Task { await vm.provaAvviso() } }.frame(minHeight: 44)
+                        if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
                     }
-                } else if let e = caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await carica() } }
+                } else if let e = vm.caricatore.errore {
+                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
                 }
@@ -191,73 +175,51 @@ struct AvvisiServerView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Avvisi del server")
-        .task { await carica() }
+        .task { await vm.carica() }
     }
 
     private func interruttore(_ titolo: String, _ chiave: WritableKeyPath<ImpostazioniAvvisi, Bool>) -> some View {
         Toggle(titolo, isOn: Binding(
-            get: { impostazioni?[keyPath: chiave] ?? false },
+            get: { vm.impostazioni?[keyPath: chiave] ?? false },
             set: { nuovo in
-                impostazioni?[keyPath: chiave] = nuovo
-                Task { await salva() }
+                vm.impostazioni?[keyPath: chiave] = nuovo
+                Task { await vm.salva() }
             })).tint(Color.verde)
-    }
-
-    private func carica() async {
-        await caricatore.ricarica()
-        impostazioni = caricatore.dato?.impostazioni
-    }
-
-    private func salva() async {
-        guard let i = impostazioni else { return }
-        do {
-            let _: StatoAvvisi = try await Api.posta("PUT", "/api/avvisi", i, snake: false)
-            messaggio = nil
-        } catch {
-            messaggio = error.localizedDescription
-        }
-    }
-
-    private func prova() async {
-        do {
-            try await Api.invia("POST", "/api/avvisi/prova")
-            messaggio = "Avviso di prova inviato."
-        } catch {
-            messaggio = error.localizedDescription
-        }
     }
 }
 
 // MARK: - Crediti e mia squadra
 
 struct CreditiView: View {
-    @StateObject private var caricatore = Caricatore<[SquadraCrediti]>("/api/squadre", cache: false)
-    @State private var valori: [String: String] = [:]
-    @State private var messaggio: String?
+    @StateObject private var vm: CreditiViewModel
+
+    init(server: any ServerClient) {
+        _vm = StateObject(wrappedValue: CreditiViewModel(server: server))
+    }
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
-                if let s = caricatore.dato {
+                if let s = vm.caricatore.dato {
                     Section("Crediti residui di ogni squadra") {
                         ForEach(s) { sq in
                             HStack {
                                 Text(sq.nome)
                                 Spacer()
-                                TextField("—", text: Binding(get: { valori[sq.nome] ?? "" }, set: { valori[sq.nome] = $0 }))
+                                TextField("—", text: Binding(get: { vm.valori[sq.nome] ?? "" }, set: { vm.valori[sq.nome] = $0 }))
                                     .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(minWidth: 80, minHeight: 44)
                             }
                         }
                     }
                     Section {
-                        Button("Salva i crediti") { Task { await salva() } }
-                        if let messaggio { Text(messaggio).font(.footnote) }
+                        Button("Salva i crediti") { Task { await vm.salva() } }.frame(minHeight: 44)
+                        if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
                         Text("Servono per i consigli del mercato (rimborso e crediti dopo il cambio). Restano anche se importi di nuovo l'Excel.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
-                } else if let e = caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await carica() } }
+                } else if let e = vm.caricatore.errore {
+                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
                 }
@@ -265,23 +227,6 @@ struct CreditiView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Crediti")
-        .task { await carica() }
-    }
-
-    private func carica() async {
-        await caricatore.ricarica()
-        for s in caricatore.dato ?? [] { valori[s.nome] = s.creditiResidui.map { String(Int($0)) } ?? "" }
-    }
-
-    private func salva() async {
-        var crediti: [String: Int] = [:]
-        for (nome, testo) in valori { if let n = Int(testo.trimmingCharacters(in: .whitespaces)) { crediti[nome] = n } }
-        do {
-            let _: JSONValue = try await Api.posta("PUT", "/api/crediti", CreditiSquadre(crediti: crediti), snake: false)
-            messaggio = "Crediti salvati."
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-        } catch {
-            messaggio = error.localizedDescription
-        }
+        .task { await vm.carica() }
     }
 }

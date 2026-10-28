@@ -1,34 +1,41 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Squadre della lega e loro rose.
 struct SquadreView: View {
-    @StateObject private var caricatore = Caricatore<[SquadraLega]>("/api/squadre")
-    @State private var errore: String?
+    @StateObject private var vm: SquadreViewModel
+    private let server: any ServerClient
+
+    init(server: any ServerClient) {
+        self.server = server
+        _vm = StateObject(wrappedValue: SquadreViewModel(server: server))
+    }
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
-                if let errore {
+                if let errore = vm.errore {
                     Text(errore).font(.footnote).foregroundStyle(.orange)
                 }
-                if let s = caricatore.dato {
+                if let s = vm.caricatore.dato {
                     ForEach(s) { sq in
-                        NavigationLink { RosaView(nome: sq.nome) } label: {
+                        NavigationLink { RosaView(nome: sq.nome, server: server) } label: {
                             HStack {
                                 Text(sq.nome).font(.headline)
                                 if sq.mia == true { Text("tua").font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2).background(Color.verde.opacity(0.3), in: Capsule()) }
                                 Spacer()
                                 Text("\(sq.giocatori ?? 0)").foregroundStyle(.secondary)
                             }
+                            .frame(minHeight: 44)
+                            .accessibilityElement(children: .combine)
                         }
                         .swipeActions {
-                            Button("È la mia") { Task { await imposta(sq.nome) } }.tint(Color.verde)
+                            Button("È la mia") { Task { await vm.impostaMia(sq.nome) } }.tint(Color.verde)
                         }
+                        .accessibilityAction(named: "È la mia squadra") { Task { await vm.impostaMia(sq.nome) } }
                     }
-                } else if let e = caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
+                } else if let e = vm.caricatore.errore {
+                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
                     ProgressView().frame(maxWidth: .infinity)
                 }
@@ -36,19 +43,7 @@ struct SquadreView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Squadre")
-        .task { await caricatore.ricarica() }
-    }
-
-    private func imposta(_ nome: String) async {
-        do {
-            _ = try await Api.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: nome))
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            errore = nil
-        } catch {
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            errore = error.localizedDescription
-        }
-        await caricatore.ricarica()
+        .task { await vm.carica() }
     }
 }
 
@@ -56,9 +51,9 @@ struct RosaView: View {
     let nome: String
     @StateObject private var caricatore: Caricatore<Rosa>
 
-    init(nome: String) {
+    init(nome: String, server: any ServerClient) {
         self.nome = nome
-        _caricatore = StateObject(wrappedValue: Caricatore<Rosa>("/api/rosa?squadra=\(Api.codifica(nome))"))
+        _caricatore = StateObject(wrappedValue: Caricatore<Rosa>("/api/rosa?squadra=\(IndirizzoServer.codifica(nome))", server: server))
     }
 
     var body: some View {
@@ -97,7 +92,7 @@ struct RosaView: View {
             Text(g.nome)
             Spacer()
             Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
-            if let c = g.costo { Text("\(Int(c))").monospacedDigit().foregroundStyle(.secondary) }
+            if let c = g.costo { Text("\(Formato.intero(c))").monospacedDigit().foregroundStyle(.secondary) }
         }
         .accessibilityElement(children: .combine)
     }
@@ -105,27 +100,32 @@ struct RosaView: View {
 
 /// Asta: quanti crediti dedicare a ogni reparto e prezzi consigliati.
 struct AstaView: View {
-    @StateObject private var caricatore = Caricatore<PianoAsta>("/api/asta")
+    @StateObject private var caricatore: Caricatore<PianoAsta>
+
+    init(server: any ServerClient) {
+        _caricatore = StateObject(wrappedValue: Caricatore<PianoAsta>("/api/asta", server: server))
+    }
 
     var body: some View {
         ZStack {
             Sfondo()
             ScrollView {
-                VStack(spacing: 14) {
+                Colonne(spazio: 14) {
                     if let a = caricatore.dato {
                         Carta {
-                            Text("Budget di \(Int(a.crediti ?? 0)) crediti").font(.headline)
+                            Text("Budget di \(Formato.intero(a.crediti)) crediti").font(.headline)
                             Text("Stime del modello: quanto dedicare a ogni reparto e i prezzi consigliati per i migliori.").font(.footnote).foregroundStyle(.secondary)
                         }
                         ForEach(a.ruoli) { r in
-                            Carta("\(r.ruolo): \(Int(r.crediti ?? 0)) crediti (\(Int(((r.quota ?? 0) * 100).rounded()))%)") {
+                            Carta("\(r.ruolo): \(Formato.intero(r.crediti)) crediti (\(Formato.percento(r.quota))%)") {
                                 ForEach(r.giocatori.prefix(12)) { g in
                                     HStack {
                                         Text(g.nome)
                                         Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
                                         Spacer()
-                                        Text("\(Int(g.prezzo ?? 0))").font(.headline).monospacedDigit()
+                                        Text("\(Formato.intero(g.prezzo))").font(.headline).monospacedDigit()
                                     }
+                                    .accessibilityElement(children: .combine)
                                 }
                             }
                         }
@@ -137,6 +137,8 @@ struct AstaView: View {
                 }
                 .padding(16)
             }
+            .refreshable { await caricatore.ricarica() }
+            .avvisoDatiSalvati(caricatore.datiSalvati)
         }
         .navigationTitle("Asta")
         .task { await caricatore.ricarica() }
@@ -144,13 +146,17 @@ struct AstaView: View {
 }
 
 struct NovitaView: View {
-    @StateObject private var caricatore = Caricatore<[VoceNovita]>("/api/novita")
+    @StateObject private var caricatore: Caricatore<[VoceNovita]>
+
+    init(server: any ServerClient) {
+        _caricatore = StateObject(wrappedValue: Caricatore<[VoceNovita]>("/api/novita", server: server))
+    }
 
     var body: some View {
         ZStack {
             Sfondo()
             ScrollView {
-                VStack(spacing: 14) {
+                Colonne(spazio: 14) {
                     if let n = caricatore.dato {
                         ForEach(n) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
@@ -165,6 +171,7 @@ struct NovitaView: View {
                 }
                 .padding(16)
             }
+            .refreshable { await caricatore.ricarica() }
         }
         .navigationTitle("Novità")
         .task { await caricatore.ricarica() }
@@ -172,7 +179,11 @@ struct NovitaView: View {
 }
 
 struct StatoDatiView: View {
-    @StateObject private var caricatore = Caricatore<StatoDati>("/api/stato-dati")
+    @StateObject private var caricatore: Caricatore<StatoDati>
+
+    init(server: any ServerClient) {
+        _caricatore = StateObject(wrappedValue: Caricatore<StatoDati>("/api/stato-dati", server: server))
+    }
 
     var body: some View {
         ZStack {
@@ -193,6 +204,7 @@ struct StatoDatiView: View {
                                 Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(.secondary)
                                 ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
                             }
+                            .accessibilityElement(children: .combine)
                         }
                     }
                 } else if let e = caricatore.errore {
@@ -210,24 +222,17 @@ struct StatoDatiView: View {
 
     private func riga(_ t: String, _ v: String) -> some View {
         HStack { Text(t); Spacer(); Text(v).foregroundStyle(.secondary).monospacedDigit() }
+            .accessibilityElement(children: .combine)
     }
 }
 
 /// Importazione delle rose da un file Excel di Leghe (scelto con il selettore di file di iOS).
 struct ImportaExcelView: View {
-    /// Dimensione massima accettata: un Excel delle rose è di poche decine di KB.
-    private static let massimoByte = 5 * 1024 * 1024
-
+    @StateObject private var vm: ImportaExcelViewModel
     @State private var scegli = false
-    @State private var inCorso = false
-    @State private var esito: EsitoImportazione?
-    @State private var errore: String?
 
-    /// Solo fogli di calcolo (.xlsx e simili).
-    private var tipiAmmessi: [UTType] {
-        var tipi: [UTType] = [.spreadsheet]
-        if let xlsx = UTType(filenameExtension: "xlsx") { tipi.append(xlsx) }
-        return tipi
+    init(server: any ServerClient) {
+        _vm = StateObject(wrappedValue: ImportaExcelViewModel(server: server))
     }
 
     var body: some View {
@@ -240,13 +245,13 @@ struct ImportaExcelView: View {
                     Button {
                         scegli = true
                     } label: {
-                        if inCorso { ProgressView() } else { Label("Scegli il file Excel", systemImage: "doc.badge.plus") }
+                        if vm.inCorso { ProgressView() } else { Label("Scegli il file Excel", systemImage: "doc.badge.plus") }
                     }
-                    .disabled(inCorso)
+                    .disabled(vm.inCorso)
                     .frame(minHeight: 44)
                 }
-                if let errore { Section { Text(errore).foregroundStyle(.orange) } }
-                if let e = esito {
+                if let errore = vm.errore { Section { Text(errore).foregroundStyle(.orange) } }
+                if let e = vm.esito {
                     Section("Esito") {
                         if let r = e.riepilogo, !r.isEmpty { Text(r) }
                         Text("Squadre importate: \(e.totaleSquadre ?? e.squadreImportate?.count ?? 0)")
@@ -257,41 +262,8 @@ struct ImportaExcelView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Aggiorna le rose")
-        .fileImporter(isPresented: $scegli, allowedContentTypes: tipiAmmessi, allowsMultipleSelection: false) { risultato in
-            Task { await importa(risultato) }
-        }
-    }
-
-    private func importa(_ risultato: Result<[URL], Error>) async {
-        guard case .success(let urls) = risultato, let url = urls.first else {
-            if case .failure(let e) = risultato { errore = e.localizedDescription }
-            return
-        }
-        inCorso = true
-        defer { inCorso = false }
-        let accesso = url.startAccessingSecurityScopedResource()
-        defer { if accesso { url.stopAccessingSecurityScopedResource() } }
-        let estensione = url.pathExtension.lowercased()
-        guard ["xlsx", "xls", "xlsm"].contains(estensione) else {
-            esito = nil
-            errore = "Il file deve essere un Excel (.xlsx)."
-            return
-        }
-        let grandezza = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        guard grandezza <= Self.massimoByte else {
-            esito = nil
-            errore = "Il file è troppo grande (massimo 5 MB): non sembra un Excel delle rose."
-            return
-        }
-        do {
-            let dati = try Data(contentsOf: url)
-            esito = try await Api.caricaFile("/api/rose/file", nome: url.lastPathComponent, dati: dati)
-            errore = nil
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-        } catch {
-            esito = nil
-            errore = error.localizedDescription
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        .fileImporter(isPresented: $scegli, allowedContentTypes: vm.tipiAmmessi, allowsMultipleSelection: false) { risultato in
+            Task { await vm.importa(risultato) }
         }
     }
 }

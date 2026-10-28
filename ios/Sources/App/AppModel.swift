@@ -9,6 +9,7 @@ final class AppModel: ObservableObject {
     let formazione: FormazioneViewModel
     let mercato: MercatoViewModel
     let scambi: ScambiViewModel
+    let lega: LegaViewModel
 
     init(server: any ServerClient = ServerCorrente.condiviso) {
         self.server = server
@@ -16,5 +17,6 @@ final class AppModel: ObservableObject {
         self.formazione = FormazioneViewModel(server: server)
         self.mercato = MercatoViewModel(server: server)
         self.scambi = ScambiViewModel(server: server)
+        self.lega = LegaViewModel(server: server)
     }
 }
