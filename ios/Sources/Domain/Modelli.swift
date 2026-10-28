@@ -2,7 +2,7 @@ import Foundation
 
 // Le risposte del server (JSON con nomi_in_snake_case, convertiti da Api.get). Quasi tutto è opzionale: un campo mancante non deve rompere la schermata.
 
-struct Stato: Decodable {
+struct InfoServer: Decodable {
     let stagione: String?
     let prossimaGiornata: Int?
     let ultimoAggiornamento: String?

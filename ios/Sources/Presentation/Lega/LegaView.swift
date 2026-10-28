@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LegaView: View {
-    @StateObject private var caricatore = Caricatore<Stato>("/api/stato")
+    @StateObject private var caricatore = Caricatore<InfoServer>("/api/stato")
     @AppStorage("indirizzo") private var indirizzo = ""
     @State private var permesso: String = "…"
 
