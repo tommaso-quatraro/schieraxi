@@ -6,7 +6,11 @@ Il server e la logica (modello, formazioni, scambi) stanno nell'altro repository
 ## Cosa c'è
 - **Oggi, Formazione, Lega:** nativi (SwiftUI, materiali di vetro di iOS, pull-to-refresh, feedback aptico, condivisione della formazione con ShareLink).
 - **Promemoria locali** (UserNotifications): un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Non servono push né account a pagamento.
-- **Mercato, Scambi:** da portare in nativo (per ora rimandano alla web app).
+- **Mercato:** consigliati, classifica, calendario a colori, osservati (scorri per togliere), ricerca e scheda giocatore.
+- **Scambi:** proposte per squadra (anche 2 contro 2) con il dettaglio giornata per giornata, e analisi di uno scambio scegliendo i giocatori dalle due rose.
+- **Formazione:** stile da molto sicura a molto rischiosa e scelta del modulo.
+- **Lega:** importazione delle rose da Excel (selettore file di iOS), squadre e rose, asta, regole (in lettura), stato dei dati, novità.
+- **Ancora da portare in nativo:** modifica a mano della formazione e salvataggio della scelta, regole modificabili, crediti, impostazioni degli avvisi del server, stemmi e maglie.
 
 ## Come si compila (nessun Mac)
 - GitHub Actions su un Mac (`macos-15`), senza firma: produce `Schieraxi.ipa` (artifact e release `build-N`). Gratis anche nel repository privato.
