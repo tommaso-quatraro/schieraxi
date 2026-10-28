@@ -20,7 +20,7 @@ struct ScambiView: View {
             ZStack {
                 Sfondo()
                 ScrollView {
-                    VStack(spacing: 12) {
+                    Colonne(spazio: 12) {
                         Carta {
                             Picker("Con", selection: $con) {
                                 Text("Tutte le squadre").tag("Tutte")
@@ -36,7 +36,7 @@ struct ScambiView: View {
                                 Text("Nessuno scambio conviene a tutti e due, per ora.").foregroundStyle(.secondary).padding()
                             }
                             ForEach(d.proposte) { p in
-                                Button { selezionata = p } label: { carta(p) }.buttonStyle(.plain)
+                                Button { selezionata = p } label: { carta(p) }.buttonStyle(.plain).puntatore()
                             }
                         } else if let e = proposte.errore {
                             ErroreVista(messaggio: e) { Task { await proposte.ricarica(percorso) } }

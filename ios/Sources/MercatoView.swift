@@ -55,7 +55,7 @@ struct ConsigliatiView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            Colonne(spazio: 12) {
                 if let m = caricatore.dato {
                     Carta {
                         Text("Svincolati che migliorano la squadra").font(.headline)
@@ -63,7 +63,7 @@ struct ConsigliatiView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     ForEach(m.proposte) { p in
-                        Button { apri(p.entra.id) } label: { carta(p) }.buttonStyle(.plain)
+                        Button { apri(p.entra.id) } label: { carta(p) }.buttonStyle(.plain).puntatore()
                     }
                     if m.proposte.isEmpty { Text("Nessun cambio conviene adesso.").foregroundStyle(.secondary).padding() }
                 } else if let e = caricatore.errore {

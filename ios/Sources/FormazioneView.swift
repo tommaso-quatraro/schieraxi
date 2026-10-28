@@ -20,7 +20,7 @@ struct FormazioneView: View {
             ZStack {
                 Sfondo()
                 ScrollView {
-                    VStack(spacing: 14) {
+                    Colonne(spazio: 14) {
                         if let f = caricatore.dato {
                             if manuale == nil { sceltaStile(f) }
                             let (titolari, panchina, modulo, punti) = vista(f)
@@ -158,7 +158,7 @@ struct FormazioneView: View {
                         .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
                 }
                 HStack {
-                    Button { Task { await valuta(salva: true) } } label: { Label("Salva come mia scelta", systemImage: "tray.and.arrow.down") }
+                    Button { Task { await valuta(salva: true) } } label: { Label("Salva come mia scelta", systemImage: "tray.and.arrow.down") }.keyboardShortcut("s", modifiers: .command)
                     Spacer()
                     Button(role: .destructive) { Task { await tornaAllaConsigliata(f) } } label: { Text("Torna alla consigliata") }
                 }

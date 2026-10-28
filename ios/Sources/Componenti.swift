@@ -18,6 +18,74 @@ struct Sfondo: View {
     }
 }
 
+/// Dispone le schede in 1, 2 o 3 colonne secondo la larghezza disponibile:
+/// una sull'iPhone in verticale, due o tre sull'iPad e sui telefoni in orizzontale.
+/// Ogni scheda va nella colonna più bassa, così le colonne restano equilibrate.
+struct Colonne: Layout {
+    var spazio: CGFloat = 14
+    var larghezzaMinima: CGFloat = 340
+    var massimo: Int = 3
+
+    private struct Disposizione {
+        var posizioni: [CGPoint] = []
+        var dimensioni: [CGSize] = []
+        var larghezzaColonna: CGFloat = 0
+        var altezza: CGFloat = 0
+    }
+
+    private func disponi(_ larghezza: CGFloat, _ subviews: Subviews) -> Disposizione {
+        var n = 1
+        if subviews.count > 1 {
+            n = Int((larghezza + spazio) / (larghezzaMinima + spazio))
+            n = max(1, min(massimo, min(n, subviews.count)))
+        }
+        let l = (larghezza - spazio * CGFloat(n - 1)) / CGFloat(n)
+        var altezze = Array(repeating: CGFloat(0), count: n)
+        var d = Disposizione()
+        d.larghezzaColonna = l
+        for sub in subviews {
+            let misura = sub.sizeThatFits(ProposedViewSize(width: l, height: nil))
+            var colonna = 0
+            for i in altezze.indices where altezze[i] < altezze[colonna] { colonna = i }
+            let vuota = misura.height <= 0
+            let y = (altezze[colonna] > 0 && !vuota) ? altezze[colonna] + spazio : altezze[colonna]
+            let x = CGFloat(colonna) * (l + spazio) + max(0, (l - misura.width) / 2)   // centrata nella colonna
+            d.posizioni.append(CGPoint(x: x, y: y))
+            d.dimensioni.append(misura)
+            altezze[colonna] = y + misura.height
+        }
+        d.altezza = altezze.max() ?? 0
+        return d
+    }
+
+    private func larghezzaUsabile(_ proposta: ProposedViewSize) -> CGFloat {
+        let w = proposta.width ?? 400
+        return w.isFinite ? w : 400
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let w = larghezzaUsabile(proposal)
+        return CGSize(width: w, height: disponi(w, subviews).altezza)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let d = disponi(bounds.width, subviews)
+        for (i, sub) in subviews.enumerated() {
+            let p = d.posizioni[i]
+            sub.place(at: CGPoint(x: bounds.minX + p.x, y: bounds.minY + p.y), anchor: .topLeading,
+                      proposal: ProposedViewSize(width: d.larghezzaColonna, height: nil))
+        }
+    }
+}
+
+extension View {
+    /// Effetto del puntatore (iPad con mouse o trackpad) sulle schede che si possono toccare.
+    func puntatore() -> some View {
+        contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .hoverEffect(.lift)
+    }
+}
+
 /// Scheda di vetro (materiale di iOS) con un titolo.
 struct Carta<Contenuto: View>: View {
     let titolo: String?

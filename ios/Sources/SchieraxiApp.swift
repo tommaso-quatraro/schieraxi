@@ -3,17 +3,26 @@ import SwiftUI
 /// SchieraXI nativa per iPhone/iPad: SwiftUI puro, parla con il server sul server (rete privata acceso) e usa le funzioni di iOS.
 @main
 struct SchieraxiApp: App {
+    @StateObject private var nav = Navigazione()
+
     var body: some Scene {
         WindowGroup {
-            TabView {
-                OggiView().tabItem { Label("Oggi", systemImage: "calendar") }
-                FormazioneView().tabItem { Label("Formazione", systemImage: "sportscourt") }
-                MercatoView().tabItem { Label("Mercato", systemImage: "bag") }
-                ScambiView().tabItem { Label("Scambi", systemImage: "arrow.left.arrow.right") }
-                LegaView().tabItem { Label("Lega", systemImage: "person.3") }
+            RadiceView()
+                .environmentObject(nav)
+                .preferredColorScheme(.dark)
+        }
+        .commands {
+            // Scorciatoie da tastiera (iPad con tastiera: tieni premuto Cmd per vederle).
+            CommandMenu("Vai a") {
+                ForEach(Sezione.allCases) { s in
+                    Button(s.titolo) { nav.sezione = s }
+                        .keyboardShortcut(s.scorciatoia, modifiers: .command)
+                }
             }
-            .tint(Color.verde)
-            .preferredColorScheme(.dark)
+            CommandMenu("Dati") {
+                Button("Aggiorna") { NotificationCenter.default.post(name: .aggiornaTutto, object: nil) }
+                    .keyboardShortcut("r", modifiers: .command)
+            }
         }
     }
 }

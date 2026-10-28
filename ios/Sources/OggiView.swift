@@ -9,7 +9,7 @@ struct OggiView: View {
             ZStack {
                 Sfondo()
                 ScrollView {
-                    VStack(spacing: 14) {
+                    Colonne(spazio: 14) {
                         if let oggi = caricatore.dato {
                             testata(oggi)
                             formazione(oggi)
