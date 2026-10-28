@@ -77,6 +77,7 @@ struct ConsigliatiView: View {
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
+        .demoInFondo()
         .refreshable { await vm.consigliati.ricarica() }
         .avvisoDatiSalvati(vm.consigliati.datiSalvati)
         .task { await vm.consigliati.ricarica() }
@@ -135,6 +136,7 @@ struct ClassificaView: View {
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
+        .demoInFondo()
         .refreshable { await vm.caricaClassifica() }
         .avvisoDatiSalvati(vm.classifica.datiSalvati)
         .task(id: vm.percorsoClassifica) { await vm.caricaClassifica() }

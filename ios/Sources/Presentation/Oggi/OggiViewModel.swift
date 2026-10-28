@@ -26,7 +26,7 @@ final class OggiViewModel: ViewModelBase {
     func carica() async {
         await caricatore.ricarica()
         // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
-        guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
+        guard !Demo.attivo, let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
         let memoria = UserDefaults.standard
         if !memoria.bool(forKey: "permessoChiesto") {
             memoria.set(true, forKey: "permessoChiesto")

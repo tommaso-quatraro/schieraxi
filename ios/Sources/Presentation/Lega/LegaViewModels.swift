@@ -1,12 +1,19 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Le pagine che si aprono dalla schermata Lega.
+enum PaginaLega: Hashable {
+    case importa, squadre, rosa(String), asta, regole, crediti, avvisi, stato, novita
+}
+
 /// Logica della schermata Lega: stato del server, permesso per le notifiche, aggiornamento in background.
 @MainActor
 final class LegaViewModel: ViewModelBase {
     let server: any ServerClient
     let info: Caricatore<InfoServer>
     @Published var permesso = "…"
+    /// Pagine aperte nella pila di navigazione (nell'AppModel: cambiando sezione si resta dove si era).
+    @Published var percorso: [PaginaLega] = []
 
     init(server: any ServerClient) {
         self.server = server
@@ -27,6 +34,7 @@ final class LegaViewModel: ViewModelBase {
     }
 
     func aggiornaPermesso() async {
+        if Demo.attivo { permesso = "attive"; return }
         switch await Notifiche.stato() {
         case .authorized, .provisional, .ephemeral: permesso = "attive"
         case .denied: permesso = "negate (Impostazioni di iOS)"

@@ -5,7 +5,7 @@ struct ScambiView: View {
     @ObservedObject var vm: ScambiViewModel
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $vm.percorso) {
             ZStack {
                 Sfondo()
                 ScrollView {
@@ -16,7 +16,7 @@ struct ScambiView: View {
                                 ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
                             }
                             Toggle("Cerca anche 2 contro 2 (più lento)", isOn: $vm.due).tint(Color.verde)
-                            NavigationLink { AnalizzaScambioView(server: vm.server) } label: {
+                            NavigationLink(value: PaginaScambi.analizza) {
                                 Label("Analizza uno scambio a mano", systemImage: "slider.horizontal.3").frame(minHeight: 44)
                             }
                         }
@@ -37,12 +37,14 @@ struct ScambiView: View {
                     }
                     .padding(.horizontal, 16).padding(.bottom, 24)
                 }
+                .demoInFondo()
                 .refreshable { await vm.caricaProposte() }
                 .avvisoDatiSalvati(vm.proposte.datiSalvati)
             }
             .navigationTitle("Scambi")
+            .navigationDestination(for: PaginaScambi.self) { _ in AnalizzaScambioView(server: vm.server) }
             .task { await vm.caricaSquadre() }
-            .task(id: vm.percorso) { await vm.caricaProposte() }
+            .task(id: vm.indirizzoProposte) { await vm.caricaProposte() }
             .sheet(item: $vm.selezionata) { p in
                 NavigationStack {
                     ZStack { Sfondo(); ScrollView { DettaglioScambio(p: p).padding(16) } }

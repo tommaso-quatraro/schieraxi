@@ -1,0 +1,133 @@
+#!/bin/bash
+# Fotografa l'app nel simulatore di un Mac (lanciato da .github/workflows/screenshot.yml).
+# L'app parte in modalità demo (argomento -DEMO: dati finti, nessuna rete) e con -DEMO_SCHERMATA <nome> si apre da sola
+# sulla schermata da fotografare: dal simulatore da riga di comando non si può toccare lo schermo.
+#
+# Uso: scripts/screenshot.sh <Schieraxi.app per il simulatore> <cartella dei PNG>
+#
+# Nota: niente "set -e": se uno scatto fallisce si va avanti e si segnala alla fine.
+
+APP="${1:?manca il percorso di Schieraxi.app}"
+USCITA="${2:-screenshot}"
+ID_APP="<vecchio identificativo>"
+ERRORI=0
+ARGOMENTI_EXTRA=()
+mkdir -p "$USCITA"
+
+# Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
+TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale
+       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-cerca giocatore
+       scambi scambi-fondo scambi-dettaglio scambi-analizza
+       lega lega-fondo lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita)
+PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
+PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo mercato-consigliati mercato-calendario scambi scambi-dettaglio lega lega-regole giocatore)
+PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale mercato-consigliati mercato-classifica mercato-calendario
+          mercato-osservati giocatore scambi scambi-dettaglio scambi-analizza lega lega-squadre lega-regole)
+
+scegli() {
+  python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"
+}
+
+scatta() {
+  local udid="$1" etichetta="$2" nome="$3"
+  local schermata="$nome" fondo=()
+  case "$nome" in
+    *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
+  esac
+  xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
+  sleep 1
+  if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO -DEMO_SCHERMATA "$schermata" \
+        ${fondo[@]+"${fondo[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} \
+        -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
+    echo "ERRORE: l'app non parte ($etichetta / $nome)"
+    ERRORI=$((ERRORI + 1))
+    return
+  fi
+  sleep 3
+  # l'app deve essere ancora in esecuzione (altrimenti è andata in crash)
+  if ! xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "UIKitApplication:$ID_APP"; then
+    echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
+    ERRORI=$((ERRORI + 1))
+  fi
+  if ! xcrun simctl io "$udid" screenshot "$USCITA/${etichetta}_${nome}.png" >/dev/null 2>&1; then
+    echo "ERRORE: scatto non riuscito ($etichetta / $nome)"
+    ERRORI=$((ERRORI + 1))
+  fi
+}
+
+# giro <udid> <etichetta> <chiaro|scuro> <dimensione del testo> <schermate...>
+giro() {
+  local udid="$1" etichetta="$2" aspetto="$3" dimensione="$4"
+  shift 4
+  local ui="dark"
+  [ "$aspetto" = "chiaro" ] && ui="light"
+  echo "=== $etichetta ($ui, testo $dimensione) ==="
+  xcrun simctl ui "$udid" appearance "$ui"
+  xcrun simctl ui "$udid" content_size "$dimensione"
+  local s
+  for s in "$@"; do
+    scatta "$udid" "$etichetta" "$s"
+  done
+}
+
+avvia_simulatore() {
+  local udid="$1"
+  xcrun simctl boot "$udid" 2>/dev/null
+  xcrun simctl bootstatus "$udid" -b >/dev/null
+  xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 \
+    --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
+  xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
+  xcrun simctl install "$udid" "$APP"
+}
+
+spegni_simulatore() {
+  xcrun simctl shutdown "$1" >/dev/null 2>&1
+}
+
+# ---------------------------------------------------------------- iPhone
+IFS=$'\t' read -r UDID_IPHONE NOME_IPHONE IOS_IPHONE <<< "$(scegli iphone)"
+echo "iPhone: $NOME_IPHONE ($IOS_IPHONE) $UDID_IPHONE"
+avvia_simulatore "$UDID_IPHONE"
+
+giro "$UDID_IPHONE" iphone_scuro scuro large "${TUTTE[@]}"
+giro "$UDID_IPHONE" iphone_chiaro chiaro large "${TUTTE[@]}"
+giro "$UDID_IPHONE" iphone_scuro_testogrande scuro accessibility-large "${PER_TESTO_GRANDE[@]}"
+giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione lega
+ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
+giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione mercato-consigliati
+ARGOMENTI_EXTRA=()
+
+# Prova dello schema schieraxi:// con "simctl openurl" (come un tocco su una notifica di ntfy). Su alcuni sistemi iOS chiede
+# conferma "Aprire in SchieraXI?": la foto lo mostra. Per questo le altre schermate si aprono con un argomento di lancio.
+xcrun simctl ui "$UDID_IPHONE" appearance dark
+xcrun simctl ui "$UDID_IPHONE" content_size large
+xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
+xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
+sleep 3
+xcrun simctl openurl "$UDID_IPHONE" "schieraxi://formazione"
+sleep 3
+xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/prova-url_openurl-formazione.png" >/dev/null 2>&1
+xcrun simctl openurl "$UDID_IPHONE" "schieraxi://giocatore/203"
+sleep 3
+xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/prova-url_openurl-giocatore.png" >/dev/null 2>&1
+
+spegni_simulatore "$UDID_IPHONE"
+
+# ---------------------------------------------------------------- iPad
+IFS=$'\t' read -r UDID_IPAD NOME_IPAD IOS_IPAD <<< "$(scegli ipad)"
+echo "iPad: $NOME_IPAD ($IOS_IPAD) $UDID_IPAD"
+avvia_simulatore "$UDID_IPAD"
+
+giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
+giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PER_IPAD[@]}"
+giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
+ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
+giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${PRINCIPALI[@]}" formazione-manuale mercato-calendario lega-squadre
+giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione mercato-classifica lega
+ARGOMENTI_EXTRA=()
+
+spegni_simulatore "$UDID_IPAD"
+
+echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI"
+# Le foto mancanti non fanno fallire il lavoro: si guardano nell'artifact. Fallisce solo se non c'è nessuna foto.
+[ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]

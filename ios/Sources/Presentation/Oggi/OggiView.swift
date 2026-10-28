@@ -26,6 +26,7 @@ struct OggiView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
                 }
+                .demoInFondo()
                 .refreshable { await vm.carica() }
                 .avvisoDatiSalvati(vm.datiSalvati)
             }

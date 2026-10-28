@@ -26,6 +26,10 @@ struct SchieraxiApp: App {
                     // Uscendo dall'app si chiede a iOS il prossimo aggiornamento in background.
                     if nuova == .background { Aggiornamento.programma() }
                 }
+                .onAppear {
+                    // Solo con l'argomento di lancio -DEMO (fotografie nel simulatore): apre la schermata chiesta.
+                    Demo.applica(nav: nav, modello: modello)
+                }
         }
         // Aggiornamento in background (iOS lo avvia quando vuole): riscarica la giornata e riprogramma i promemoria.
         .backgroundTask(.appRefresh(Aggiornamento.identificativo)) {

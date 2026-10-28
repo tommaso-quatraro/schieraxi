@@ -8,7 +8,8 @@ enum Notifiche {
     }
 
     static func chiediPermesso() async -> Bool {
-        (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        if Demo.attivo { return false }   // demo: nessuna richiesta di permessi
+        return (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
     /// Notifica locale subito (usata dall'aggiornamento in background quando la formazione consigliata cambia).

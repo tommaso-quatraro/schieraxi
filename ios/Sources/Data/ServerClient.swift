@@ -8,7 +8,11 @@ enum Config {
     static func testo(_ chiave: String) -> String {
         (Bundle.main.object(forInfoDictionaryKey: chiave) as? String) ?? ""
     }
-    static var indirizzoPredefinito: String { "https://\(testo("FantaHost")):\(testo("FantaPort"))" }
+    static var indirizzoPredefinito: String {
+        // In modalità demo (fotografie nel simulatore) l'indirizzo vero non deve comparire.
+        if Demo.attivo { return "https://server-demo.invalid:443" }
+        return "https://\(testo("FantaHost")):\(testo("FantaPort"))"
+    }
 }
 
 enum IndirizzoServer {
@@ -188,11 +192,11 @@ struct ServerHTTP: ServerClient {
 /// Il server che usano le parti dell'app fuori da SwiftUI (aggiornamento in background, Siri e Comandi, schermate secondarie di Lega).
 /// Le schermate principali ricevono invece il client nel loro ViewModel; per le anteprime si sostituisce con `FinteServer`.
 enum ServerCorrente {
-    static var condiviso: any ServerClient = ServerHTTP()
+    static var condiviso: any ServerClient = Demo.serverPredefinito()   // con l'argomento di lancio -DEMO: dati finti, senza rete
 }
 
 private struct ServerChiave: EnvironmentKey {
-    static let defaultValue: any ServerClient = ServerHTTP()
+    static let defaultValue: any ServerClient = Demo.serverPredefinito()
 }
 
 extension EnvironmentValues {
@@ -211,7 +215,11 @@ struct FinteServer: ServerClient {
     func richiesta(_ metodo: String, _ percorso: String, corpo: Data?) async throws -> Data {
         // Si sceglie la risposta con il prefisso più lungo che corrisponde.
         let chiavi = risposte.keys.filter { percorso.hasPrefix($0) }.sorted { $0.count > $1.count }
-        guard let chiave = chiavi.first, let testo = risposte[chiave] else { throw ErroreApi.server("anteprima: nessun dato per \(percorso)") }
+        guard let chiave = chiavi.first, let testo = risposte[chiave] else {
+            // Salvataggi e modifiche (PUT, POST, DELETE) senza una risposta preparata vanno a buon fine con una risposta vuota.
+            if metodo != "GET" { return Data("{}".utf8) }
+            throw ErroreApi.server("anteprima: nessun dato per \(percorso)")
+        }
         return Data(testo.utf8)
     }
 

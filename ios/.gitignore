@@ -19,3 +19,6 @@ xcuserdata/
 *.xcarchive
 *.certSigningRequest
 ExportOptions.plist
+# foto scaricate dal workflow screenshot.yml
+.screenshot/
+screenshot/

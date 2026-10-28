@@ -1,0 +1,537 @@
+import Foundation
+
+// Dati finti ma verosimili per la modalità demo (argomento di lancio `-DEMO`, vedi Demo.swift): una lega da 8 squadre,
+// la mia rosa da 25, giornata 11 con partite, avvisi, mercato, scambi, regole, stato dei dati. Le date sono relative a "adesso":
+// la prima partita è sempre tra qualche ora, così il conto alla rovescia di Oggi si vede anche se lo scatto è fatto un altro giorno.
+
+extension FinteServer {
+    /// Server della modalità demo (costruito una volta sola all'avvio).
+    static let demo: FinteServer = FinteServer(risposte: DatiDemo.risposte(adesso: Date()))
+}
+
+private struct Calciatore {
+    let id: Int
+    let nome: String
+    let ruolo: String
+    let squadra: String
+    var costo: Int = 0
+    var quotazione: Int = 0
+    var pVoto: Double = 0.85
+    var punti: Double = 5.5
+    var dubbio: Bool = false
+    var diffidato: Bool = false
+    var assente: Bool = false
+}
+
+/// Un calciatore con tutti i valori scritti a mano.
+private func cal(_ id: Int, _ nome: String, _ ruolo: String, _ squadra: String, costo: Int, pVoto: Double, punti: Double,
+                 dubbio: Bool = false, diffidato: Bool = false, assente: Bool = false) -> Calciatore {
+    Calciatore(id: id, nome: nome, ruolo: ruolo, squadra: squadra, costo: costo, quotazione: 0, pVoto: pVoto, punti: punti,
+               dubbio: dubbio, diffidato: diffidato, assente: assente)
+}
+
+/// Un calciatore di contorno: previsione ricavata dall'id, così non serve scriverla.
+private func alt(_ id: Int, _ nome: String, _ ruolo: String, _ squadra: String) -> Calciatore {
+    let punti = 4.6 + Double((id * 7) % 23) / 10.0
+    let pVoto = 0.70 + Double((id * 3) % 27) / 100.0
+    return Calciatore(id: id, nome: nome, ruolo: ruolo, squadra: squadra, costo: 4 + (id * 7) % 26, quotazione: 0, pVoto: pVoto, punti: punti)
+}
+
+private enum DatiDemo {
+    static let nomeMia = "SchieraXI FC"
+    static let altreSquadre = ["Real Madrink", "Atletico Divano", "Dinamo Pizza", "AC Pigra", "Inter Nos", "Borgo Rossi United",
+                               "Gli Amici del Bar Sport Centrale"]
+    static let giornata = 11
+    static let giornate = [11, 12, 13, 14, 15]
+
+    // MARK: - Calciatori
+
+    /// La mia rosa (25): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti.
+    static let miaRosa: [Calciatore] = [
+        cal(101, "Giocatore 096", "P", "inter", costo: 12, pVoto: 0.98, punti: 6.1),
+        cal(102, "Mike Giocatore 051", "P", "milan", costo: 22, pVoto: 0.97, punti: 5.8),
+        cal(103, "Giocatore 056", "P", "atalanta", costo: 14, pVoto: 0.96, punti: 5.6),
+        cal(104, "Giocatore 002", "D", "inter", costo: 28, pVoto: 0.96, punti: 6.4, diffidato: true),
+        cal(105, "Federico Giocatore 019", "D", "inter", costo: 31, pVoto: 0.90, punti: 6.9),
+        cal(106, "Gleison Bremer", "D", "juventus", costo: 20, pVoto: 0.93, punti: 6.0),
+        cal(107, "Giocatore 002 Buongiorno", "D", "napoli", costo: 19, pVoto: 0.92, punti: 5.9),
+        cal(108, "Giovanni Di Lorenzo", "D", "napoli", costo: 17, pVoto: 0.94, punti: 6.2),
+        cal(109, "Giocatore 081", "D", "fiorentina", costo: 9, pVoto: 0.0, punti: 0.0, assente: true),
+        cal(110, "Andrea Cambiaso", "D", "juventus", costo: 15, pVoto: 0.85, punti: 5.7),
+        cal(111, "Evan Ndicka", "D", "roma", costo: 8, pVoto: 0.78, punti: 5.2),
+        cal(112, "Giocatore 068 Barella", "C", "inter", costo: 34, pVoto: 0.95, punti: 7.0),
+        cal(113, "Giocatore 033 Çalhanoğlu", "C", "inter", costo: 36, pVoto: 0.93, punti: 7.2),
+        cal(114, "Teun Koopmeiners", "C", "juventus", costo: 21, pVoto: 0.88, punti: 6.3),
+        cal(115, "Christian Pulisic", "C", "milan", costo: 38, pVoto: 0.91, punti: 6.8),
+        cal(116, "Stanislav Lobotka", "C", "napoli", costo: 10, pVoto: 0.90, punti: 5.6),
+        cal(117, "Tijjani Reijnders", "C", "milan", costo: 24, pVoto: 0.89, punti: 6.2),
+        cal(118, "Giocatore 068", "C", "fiorentina", costo: 6, pVoto: 0.0, punti: 0.0, assente: true),
+        cal(119, "Manu Koné", "C", "roma", costo: 13, pVoto: 0.84, punti: 5.5),
+        cal(120, "Giocatore 045", "A", "inter", costo: 80, pVoto: 0.92, punti: 7.9, dubbio: true),
+        cal(121, "Marcus Thuram", "A", "inter", costo: 52, pVoto: 0.90, punti: 7.1),
+        cal(122, "Ademola Lookman", "A", "atalanta", costo: 41, pVoto: 0.87, punti: 7.0),
+        cal(123, "Rafael Leão", "A", "milan", costo: 45, pVoto: 0.88, punti: 6.9),
+        cal(124, "Giocatore 021", "A", "juventus", costo: 33, pVoto: 0.70, punti: 5.4, dubbio: true),
+        cal(125, "Moise Kean", "A", "fiorentina", costo: 18, pVoto: 0.82, punti: 5.8),
+    ]
+
+    /// Svincolati (non sono in nessuna squadra della lega).
+    static let liberi: [Calciatore] = [
+        cal(201, "Andrea Pinamonti", "A", "sassuolo", costo: 0, pVoto: 0.86, punti: 6.4),
+        cal(202, "Matteo Giocatore 077", "C", "napoli", costo: 0, pVoto: 0.81, punti: 6.0),
+        cal(203, "Mateo Retegui", "A", "genoa", costo: 0, pVoto: 0.90, punti: 6.9),
+        cal(204, "Giocatore 069", "A", "lecce", costo: 0, pVoto: 0.88, punti: 6.2),
+        cal(205, "Giocatore 060", "C", "lazio", costo: 0, pVoto: 0.89, punti: 6.1),
+        cal(206, "Alex Meret", "P", "napoli", costo: 0, pVoto: 0.96, punti: 5.7),
+        cal(207, "Marco Brescianini", "C", "atalanta", costo: 0, pVoto: 0.83, punti: 5.6),
+        cal(208, "Federico Gatti", "D", "juventus", costo: 0, pVoto: 0.84, punti: 5.5),
+        cal(209, "Pietro Comuzzo", "D", "fiorentina", costo: 0, pVoto: 0.88, punti: 5.4),
+        cal(210, "Giocatore 068 Rovella", "C", "lazio", costo: 0, pVoto: 0.90, punti: 5.8),
+        cal(211, "Emil Audero", "P", "cremonese", costo: 0, pVoto: 0.95, punti: 5.1),
+        cal(212, "Lorenzo Lucca", "A", "udinese", costo: 0, pVoto: 0.79, punti: 5.9),
+        cal(213, "Matteo Gabbia", "D", "milan", costo: 0, pVoto: 0.75, punti: 5.0, dubbio: true),
+        cal(214, "Alexis Saelemaekers", "C", "milan", costo: 0, pVoto: 0.82, punti: 5.7),
+        cal(215, "Gianluca Mancini", "D", "roma", costo: 0, pVoto: 0.86, punti: 5.5),
+    ]
+
+    /// Calciatori delle altre squadre della lega.
+    static let altri: [Calciatore] = [
+        alt(301, "Wladimiro Falcone", "P", "lecce"), alt(302, "Marco Silvestri", "P", "udinese"),
+        alt(303, "Michele Di Gregorio", "P", "juventus"), alt(304, "Elia Caprile", "P", "cagliari"),
+        alt(305, "Nahuel Molina", "D", "atalanta"), alt(306, "Matteo Darmian", "D", "inter"),
+        alt(307, "Giocatore 050", "D", "lazio"), alt(308, "Davide Calabria", "D", "bologna"),
+        alt(309, "Sam Beukema", "D", "bologna"), alt(310, "Mario Gila", "D", "lazio"),
+        alt(311, "Pasquale Mazzocchi", "D", "napoli"), alt(312, "Leonardo Spinazzola", "D", "napoli"),
+        alt(313, "Marten de Roon", "C", "atalanta"), alt(314, "Ederson", "C", "atalanta"),
+        alt(315, "Weston Giocatore 061", "C", "juventus"), alt(316, "Manuel Locatelli", "C", "juventus"),
+        alt(317, "Matteo Guendouzi", "C", "lazio"), alt(318, "Danilo Cataldi", "C", "lazio"),
+        alt(319, "Lewis Ferguson", "C", "bologna"), alt(320, "Remo Freuler", "C", "bologna"),
+        alt(321, "Giocatore 086", "C", "napoli"), alt(322, "Kevin Giocatore 014", "C", "napoli"),
+        alt(323, "Matías Soulé", "C", "roma"), alt(324, "Lorenzo Pellegrini", "C", "roma"),
+        alt(325, "Giocatore 039", "A", "juventus"), alt(326, "Jonathan David", "A", "juventus"),
+        alt(327, "Romelu Lukaku", "A", "napoli"), alt(328, "Paulo Dybala", "A", "roma"),
+        alt(329, "Artem Dovbyk", "A", "roma"), alt(330, "Santiago Giocatore 012", "A", "bologna"),
+        alt(331, "Nico Paz", "A", "como"), alt(332, "Pedro", "A", "lazio"),
+        alt(333, "Gianluca Scamacca", "A", "atalanta"), alt(334, "Albert Guðmundsson", "A", "fiorentina"),
+        alt(335, "Rasmus Højlund", "A", "napoli"), alt(336, "Lorenzo Verdi", "A", "roma"),
+    ]
+
+    static var tutti: [Calciatore] { miaRosa + liberi + altri }
+
+    static func calciatore(_ id: Int) -> Calciatore {
+        tutti.first { $0.id == id } ?? miaRosa[0]
+    }
+
+    /// Rosa di un'altra squadra (indice 0...6): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti, ruotando la scelta.
+    static func rosaAltra(_ k: Int) -> [Calciatore] {
+        func prendi(_ ruolo: String, _ n: Int) -> [Calciatore] {
+            let lista = altri.filter { $0.ruolo == ruolo }
+            return (0..<n).map { lista[($0 + k * 2) % lista.count] }
+        }
+        return prendi("P", 3) + prendi("D", 8) + prendi("C", 8) + prendi("A", 6)
+    }
+
+    static func proprietario(_ id: Int) -> String? {
+        if miaRosa.contains(where: { $0.id == id }) { return nomeMia }
+        if id >= 300 { return altreSquadre[id % altreSquadre.count] }
+        return nil
+    }
+
+    // MARK: - Partite
+
+    static let incontri: [(casa: String, trasferta: String)] = [
+        ("inter", "roma"), ("milan", "juventus"), ("napoli", "atalanta"), ("lazio", "fiorentina"), ("bologna", "torino"),
+        ("genoa", "como"), ("udinese", "parma"), ("cagliari", "verona"), ("lecce", "sassuolo"), ("pisa", "cremonese"),
+    ]
+
+    /// Dal più forte al più debole (serve per la difficoltà del calendario).
+    static let forza = ["inter", "napoli", "milan", "juventus", "atalanta", "roma", "bologna", "lazio", "fiorentina", "como",
+                        "torino", "udinese", "genoa", "parma", "cagliari", "verona", "lecce", "sassuolo", "pisa", "cremonese"]
+
+    static func avversario(di squadra: String) -> (nome: String, inCasa: Bool)? {
+        for i in incontri {
+            if i.casa == squadra { return (i.trasferta, true) }
+            if i.trasferta == squadra { return (i.casa, false) }
+        }
+        return nil
+    }
+
+    // MARK: - Date
+
+    static func formatta(_ data: Date, _ formato: String) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = formato
+        return f.string(from: data)
+    }
+
+    // MARK: - JSON
+
+    static func json(_ oggetto: Any) -> String {
+        let dati = (try? JSONSerialization.data(withJSONObject: oggetto, options: [.sortedKeys])) ?? Data("{}".utf8)
+        return String(decoding: dati, as: UTF8.self)
+    }
+
+    /// Un giocatore come lo manda il server per formazioni, classifiche e avvisi.
+    static func giocatore(_ p: Calciatore, conAvversario: Bool = true, conProprietario: Bool = false) -> [String: Any] {
+        var d: [String: Any] = [
+            "id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra,
+            "p_voto": p.assente ? 0.0 : p.pVoto,
+            "punti_attesi": p.assente ? 0.0 : p.punti,
+            "gol_attesi": golAttesi(p),
+            "assist_attesi": assistAttesi(p),
+        ]
+        if conAvversario, let a = avversario(di: p.squadra) {
+            d["avversario"] = a.nome
+            d["in_casa"] = a.inCasa
+        }
+        if p.dubbio { d["dubbio"] = true }
+        if p.diffidato { d["diffidato"] = true }
+        if p.assente { d["assente"] = true }
+        if conProprietario, let o = proprietario(p.id) { d["proprietario"] = o }
+        return d
+    }
+
+    static func golAttesi(_ p: Calciatore) -> Double {
+        if p.assente { return 0 }
+        switch p.ruolo {
+        case "A": return p.punti / 15.0
+        case "C": return p.punti / 35.0
+        case "D": return p.punti / 80.0
+        default: return 0
+        }
+    }
+
+    static func assistAttesi(_ p: Calciatore) -> Double {
+        if p.assente || p.ruolo == "P" { return 0 }
+        return p.punti / 45.0
+    }
+
+    static func quotazione(_ p: Calciatore) -> Int {
+        p.quotazione > 0 ? p.quotazione : 3 + Int(p.punti * 2.0) + (p.id % 5)
+    }
+
+    /// Giocatore breve (scambi e mercato).
+    static func breve(_ id: Int) -> [String: Any] {
+        let p = calciatore(id)
+        return ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "quotazione": quotazione(p)]
+    }
+
+    static func rigaRosa(_ p: Calciatore) -> [String: Any] {
+        ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "costo": p.costo > 0 ? p.costo : 4 + p.id % 20,
+         "quotazione": quotazione(p)]
+    }
+
+    static func schedaGiocatore(_ p: Calciatore) -> [String: Any] {
+        let presenze: Int = 7 + p.id % 4
+        let media: Double = 5.7 + p.punti / 12.0
+        let q: Int = quotazione(p)
+        var gol: Int = p.id % 2
+        if p.ruolo == "A" { gol = 3 + p.id % 4 }
+        if p.ruolo == "C" { gol = 1 + p.id % 3 }
+        let assist: Int = p.ruolo == "P" ? 0 : p.id % 4
+        let espulsioni: Int = p.id % 11 == 0 ? 1 : 0
+
+        var anagrafica: [String: Any] = ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra]
+        anagrafica["quotazione"] = q
+        anagrafica["quotazione_iniziale"] = q - 1
+        anagrafica["fvm"] = q * 3 / 2
+
+        var stagione: [String: Any] = ["presenze": presenze, "con_voto": presenze - 1]
+        stagione["media_voto"] = media
+        stagione["fantamedia"] = media + p.punti / 25.0
+        stagione["gol"] = gol
+        stagione["assist"] = assist
+        stagione["ammonizioni"] = p.id % 3
+        stagione["espulsioni"] = espulsioni
+
+        var d: [String: Any] = [:]
+        d["calciatore"] = anagrafica
+        d["stagione"] = stagione
+        d["previsione"] = giocatore(p)
+        if let o = proprietario(p.id) { d["proprietario"] = o }
+        return d
+    }
+
+    // MARK: - Formazione
+
+    struct Modulo {
+        let nome: String
+        let titolari: [Int]
+    }
+
+    static let moduli: [Modulo] = [
+        Modulo(nome: "3-4-3", titolari: [101, 104, 106, 107, 112, 113, 114, 115, 120, 121, 122]),
+        Modulo(nome: "4-3-3", titolari: [101, 104, 105, 106, 107, 112, 113, 115, 120, 121, 122]),
+        Modulo(nome: "3-5-2", titolari: [101, 104, 106, 107, 112, 113, 114, 115, 116, 120, 121]),
+    ]
+
+    /// La panchina (7): un portiere e i sei migliori disponibili tra gli altri.
+    static func panchina(per titolari: [Int]) -> [Int] {
+        let fuori = miaRosa.filter { !titolari.contains($0.id) && !$0.assente }
+        var scelti: [Calciatore] = []
+        if let portiere = fuori.first(where: { $0.ruolo == "P" }) { scelti.append(portiere) }
+        let resto: [Calciatore] = fuori.filter { $0.ruolo != "P" }.sorted { $0.punti > $1.punti }
+        scelti.append(contentsOf: resto.prefix(6))
+        return scelti.map { $0.id }
+    }
+
+    static func punteggio(_ ids: [Int]) -> Double {
+        ids.reduce(0.0) { $0 + calciatore($1).punti }
+    }
+
+    static func formazione() -> String {
+        let base = moduli[0]
+        let ids = base.titolari
+        let bench = panchina(per: ids)
+        let titolari = ids.map { giocatore(calciatore($0)) }
+        let panchinaJSON = bench.map { giocatore(calciatore($0)) }
+        let nomiLivelli = ["Prudente", "Equilibrata", "Audace"]
+        var livelli: [[String: Any]] = []
+        for (r, nome) in nomiLivelli.enumerated() {
+            let extra = Double(r) * 1.4
+            var elenco: [[String: Any]] = []
+            for m in moduli {
+                elenco.append(["modulo": m.nome, "punteggio_atteso": punteggio(m.titolari) + extra,
+                               "titolari": m.titolari, "panchina": panchina(per: m.titolari)])
+            }
+            livelli.append(["rischio": r, "nome": nome, "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco])
+        }
+        var schede: [String: Any] = [:]
+        for p in miaRosa { schede[String(p.id)] = giocatore(p) }
+        return json([
+            "squadra": nomeMia, "giornata": giornata, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
+            "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede,
+        ])
+    }
+
+    static func valutazione() -> String {
+        let ids = moduli[0].titolari
+        let punti = punteggio(ids)
+        return json(["modulo": "3-4-3", "punteggio_atteso": punti - 1.2, "dev": 3.1, "panchina": panchina(per: ids),
+                     "differenza": -1.2, "consigliata": punti])
+    }
+
+    // MARK: - Oggi
+
+    static func oggi(adesso: Date) -> String {
+        let inizio = adesso.addingTimeInterval(7 * 3600)
+        let ids = moduli[0].titolari
+        // minuti di distanza dalla prima partita
+        let scarti: [Double] = [0, 135, 1260, 1395, 1530, 1650, 2700, 2835, 2835, 2970]
+        var partite: [[String: Any]] = []
+        for (i, m) in incontri.enumerated() {
+            partite.append(["data": formatta(inizio.addingTimeInterval(scarti[i] * 60), "yyyy-MM-dd HH:mm"),
+                            "casa": m.casa, "trasferta": m.trasferta, "giocata": false])
+        }
+        let avvisi: [[String: Any]] = [
+            ["id": 120, "nome": "Giocatore 045", "ruolo": "A", "squadra": "inter", "tipo": "dubbio",
+             "nota": "Affaticamento muscolare, si decide all'ultimo", "in_formazione": true],
+            ["id": 104, "nome": "Giocatore 002", "ruolo": "D", "squadra": "inter", "tipo": "diffidato",
+             "nota": "Un'ammonizione alla squalifica", "in_formazione": true],
+            ["id": 109, "nome": "Giocatore 081", "ruolo": "D", "squadra": "fiorentina", "tipo": "squalificato",
+             "nota": "Una giornata", "in_formazione": false],
+            ["id": 118, "nome": "Giocatore 068", "ruolo": "C", "squadra": "fiorentina", "tipo": "infortunato",
+             "nota": "Lesione al polpaccio, rientro a dicembre", "in_formazione": false],
+            ["id": 124, "nome": "Giocatore 021", "ruolo": "A", "squadra": "juventus", "tipo": "dubbio",
+             "nota": "Botta alla caviglia", "in_formazione": false],
+        ]
+        let migliori = ids.map { calciatore($0) }.sorted { $0.punti > $1.punti }.prefix(5).map { giocatore($0) }
+        return json([
+            "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"), "iniziata": false, "con_probabili": false,
+            "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia],
+            "avvisi": avvisi, "migliori": migliori, "partite": partite,
+        ])
+    }
+
+    // MARK: - Mercato
+
+    static func mercato() -> String {
+        let cambi: [(Int, Int, Double, Double?)] = [
+            (124, 203, 3.4, 11), (119, 205, 1.9, 6), (118, 210, 2.2, 3), (109, 215, 2.6, 4), (110, 209, 1.2, 5), (103, 206, 0.8, nil),
+        ]
+        var proposte: [[String: Any]] = []
+        for (esce, entra, guadagno, rimborso) in cambi {
+            var d: [String: Any] = ["esce": breve(esce), "entra": breve(entra), "guadagno": guadagno,
+                                    "breve": guadagno * 0.4, "fattibile": true, "crediti_dopo": 12.0 + (rimborso ?? 0)]
+            if let rimborso { d["rimborso"] = rimborso }
+            proposte.append(d)
+        }
+        return json(["squadra": nomeMia, "svincolati": 118, "crediti_residui": 12, "proposte": proposte])
+    }
+
+    static func classifica() -> String {
+        let ordinati = liberi.sorted { $0.punti > $1.punti }
+        return json(["giornata": giornata, "giocatori": ordinati.map { giocatore($0) }])
+    }
+
+    static func osservati() -> String {
+        var elenco: [[String: Any]] = []
+        for id in [203, 205, 321, 328, 214] {
+            var p = calciatore(id)
+            if id == 328 { p.assente = true }
+            elenco.append(giocatore(p, conProprietario: true))
+        }
+        return json(["giornata": giornata, "giocatori": elenco])
+    }
+
+    static func calendario() -> String {
+        var squadre: [[String: Any]] = []
+        for (i, nome) in forza.enumerated() {
+            var partite: [[String: Any]] = []
+            var somma = 0.0
+            for (k, g) in giornate.enumerated() {
+                var j = (i * 7 + g * 3 + 5) % forza.count
+                if j == i { j = (j + 1) % forza.count }
+                let difficolta = 1.0 + Double(forza.count - 1 - j) / 4.75
+                somma += difficolta
+                partite.append(["giornata": g, "avversario": forza[j], "in_casa": (i + k) % 2 == 0, "difficolta": difficolta.rounded()])
+            }
+            squadre.append(["squadra": nome, "media": somma / Double(giornate.count), "partite": partite])
+        }
+        squadre.sort { (($0["media"] as? Double) ?? 0) < (($1["media"] as? Double) ?? 0) }
+        return json(["giornate": giornate, "squadre": Array(squadre.prefix(12))])
+    }
+
+    // MARK: - Scambi
+
+    static func proposta(altra: String, dai: [Int], ricevi: [Int], mio: Double, loro: Double) -> [String: Any] {
+        let n = Double(giornate.count)
+        let mioPer = giornate.enumerated().map { (mio / n) + (Double($0.offset % 2) - 0.5) * 0.2 }
+        let loroPer = giornate.enumerated().map { (loro / n) + (Double($0.offset % 3) - 1.0) * 0.1 }
+        return ["mia": nomeMia, "altra": altra, "do": dai.map { breve($0) }, "ricevo": ricevi.map { breve($0) },
+                "guadagno_mio": mio, "guadagno_loro": loro, "per_giornata_mio": mioPer, "per_giornata_loro": loroPer,
+                "breve_mio": mio * 0.5, "breve_loro": loro * 0.5, "giornate": giornate]
+    }
+
+    static func scambi() -> String {
+        let proposte: [[String: Any]] = [
+            proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1),
+            proposta(altra: "Gli Amici del Bar Sport Centrale", dai: [110, 119], ricevi: [321, 308], mio: 3.1, loro: 0.6),
+            proposta(altra: "Dinamo Pizza", dai: [116], ricevi: [322], mio: 1.8, loro: 0.9),
+            proposta(altra: "Atletico Divano", dai: [125], ricevi: [336], mio: 1.2, loro: 1.0),
+            proposta(altra: "Borgo Rossi United", dai: [111], ricevi: [312], mio: 0.7, loro: 0.4),
+        ]
+        return json(["giornate": giornate, "proposte": proposte])
+    }
+
+    static func analisi() -> String {
+        json(proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1))
+    }
+
+    // MARK: - Lega
+
+    static func squadre() -> String {
+        let crediti = [12, 41, 7, 25, 0, 63, 18, 30]
+        var elenco: [[String: Any]] = [["nome": nomeMia, "mia": true, "giocatori": 25, "crediti_residui": crediti[0]]]
+        for (i, nome) in altreSquadre.enumerated() {
+            elenco.append(["nome": nome, "mia": false, "giocatori": 25, "crediti_residui": crediti[i + 1]])
+        }
+        return json(elenco)
+    }
+
+    static func rosa(_ nome: String, _ giocatori: [Calciatore], mia: Bool) -> String {
+        json(["nome": nome, "mia": mia, "giocatori": giocatori.map { rigaRosa($0) }])
+    }
+
+    static func stato(adesso: Date) -> String {
+        json(["stagione": "2026-27", "prossima_giornata": giornata, "mia_squadra": nomeMia, "versione": "1.9",
+              "ultimo_aggiornamento": formatta(adesso.addingTimeInterval(-2 * 3600), "yyyy-MM-dd'T'HH:mm:ss")])
+    }
+
+    static func statoDati(adesso: Date) -> String {
+        func quando(_ ore: Double) -> String { formatta(adesso.addingTimeInterval(-ore * 3600), "yyyy-MM-dd'T'HH:mm:ss") }
+        return json([
+            "stagione": "2026-27", "calciatori": 612, "voti": 2431, "coppe_fino": "2026-12-10",
+            "partite": ["totali": 380, "giocate": 100],
+            "aggiornamenti": [
+                ["cosa": "listone e quotazioni", "quando": quando(30), "errori": [String]()],
+                ["cosa": "probabili formazioni", "quando": quando(2), "errori": ["Una fonte non ha risposto: usata la copia delle 08:10"]],
+                ["cosa": "voti e statistiche", "quando": quando(52), "errori": [String]()],
+                ["cosa": "calendario e coppe europee", "quando": quando(100), "errori": [String]()],
+            ],
+        ])
+    }
+
+    static func regole() -> String {
+        json([
+            "lega": ["nome": "Lega degli amici", "squadre": 8, "crediti_iniziali": 500, "rosa_massima": 25, "scambi_aperti": true],
+            "formazione": ["titolari": 11, "panchina": 7, "cambi": 5, "moduli_ammessi": ["3-4-3", "4-3-3", "3-5-2", "4-4-2", "4-5-1"]],
+            "bonus": ["gol_attaccante": 3, "gol_centrocampista": 3.5, "gol_difensore": 4, "gol_portiere": 5,
+                      "assist": 1, "rigore_parato": 3, "porta_inviolata": 1],
+            "malus": ["ammonizione": -0.5, "espulsione": -1, "autogol": -2, "gol_subito": -1, "rigore_sbagliato": -3],
+            "modificatore_difesa": ["attivo": true, "minimo_difensori": 4, "soglia_voto": 6.0, "note": "solo con 4 difensori"],
+            "opzioni": ["usa_fantavoto": true, "bonus_panchina": false, "nome_gestore": "Mario"],
+        ])
+    }
+
+    static func asta() -> String {
+        let quote: [(String, Double, Double)] = [("P", 0.08, 40), ("D", 0.17, 85), ("C", 0.30, 150), ("A", 0.45, 225)]
+        var ruoli: [[String: Any]] = []
+        for (ruolo, quota, crediti) in quote {
+            let migliori = tutti.filter { $0.ruolo == ruolo && !$0.assente }.sorted { $0.punti > $1.punti }.prefix(12)
+            var voci: [[String: Any]] = []
+            for p in migliori {
+                voci.append(["id": p.id, "nome": p.nome, "squadra": p.squadra,
+                             "prezzo": max(1.0, (p.punti * p.punti * quota * 1.6).rounded()),
+                             "punti_stagione": (p.punti * 9.0).rounded()])
+            }
+            ruoli.append(["ruolo": ruolo, "quota": quota, "crediti": crediti, "giocatori": voci])
+        }
+        return json(["crediti": 500, "squadre": 8, "ruoli": ruoli])
+    }
+
+    static func novita() -> String {
+        json([
+            ["versione": "1.9", "data": "2026-10-20", "titolo": "Scambi più veloci",
+             "voci": ["Gli scambi 2 contro 2 si calcolano in metà tempo.", "Il calendario mostra la difficoltà per cinque giornate.",
+                      "Corretto il conteggio dei crediti dopo uno svincolo."]],
+            ["versione": "1.8", "data": "2026-10-05", "titolo": "Copia di sicurezza e icona",
+             "voci": ["Il backup serale comprende anche le chiavi degli avvisi.", "Nuova icona dell'app."]],
+            ["versione": "1.7", "data": "2026-09-21", "titolo": "Probabili formazioni",
+             "voci": ["Le probabili formazioni arrivano da due fonti.", "Avviso quando un titolare diventa dubbio."]],
+        ])
+    }
+
+    static func avvisi() -> String {
+        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true],
+              "canale": true, "dispositivi": 2])
+    }
+
+    // MARK: - Tutte le risposte
+
+    static func risposte(adesso: Date) -> [String: String] {
+        let centrocampisti: [Calciatore] = Array(altri.filter { $0.ruolo == "C" }.prefix(3))
+        let trovati: [Calciatore] = liberi + centrocampisti
+        var r: [String: String] = [
+            "/api/stato": stato(adesso: adesso),
+            "/api/stato-dati": statoDati(adesso: adesso),
+            "/api/squadre": squadre(),
+            "/api/rosa": rosa(nomeMia, miaRosa, mia: true),
+            "/api/scambi/proposte": scambi(),
+            "/api/scambi/analizza": analisi(),
+            "/api/mercato": mercato(),
+            "/api/classifica": classifica(),
+            "/api/calendario": calendario(),
+            "/api/osservati": osservati(),
+            "/api/giocatori": json(trovati.map { breve($0.id) }),
+            "/api/formazione/testo": "Giornata \(giornata) - 3-4-3 (\(Formato.punti(punteggio(moduli[0].titolari))) punti attesi)",
+            "/api/formazione/valuta": valutazione(),
+            "/api/formazione": formazione(),
+            "/api/oggi": oggi(adesso: adesso),
+            "/api/regole": regole(),
+            "/api/avvisi": avvisi(),
+            "/api/asta": asta(),
+            "/api/novita": novita(),
+        ]
+        r["/api/rosa?squadra=" + IndirizzoServer.codifica(nomeMia)] = rosa(nomeMia, miaRosa, mia: true)
+        for (k, nome) in altreSquadre.enumerated() {
+            r["/api/rosa?squadra=" + IndirizzoServer.codifica(nome)] = rosa(nome, rosaAltra(k), mia: false)
+        }
+        // ogni scheda ha il suo indirizzo (id a tre cifre: nessun indirizzo è l'inizio di un altro)
+        for p in tutti { r["/api/giocatore/\(p.id)"] = json(schedaGiocatore(p)) }
+        r["/api/giocatore/"] = json(schedaGiocatore(calciatore(203)))
+        return r
+    }
+}
