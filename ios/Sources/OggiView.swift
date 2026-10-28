@@ -29,6 +29,7 @@ struct OggiView: View {
                     await caricatore.ricarica()
                     UINotificationFeedbackGenerator().notificationOccurred(caricatore.errore == nil ? .success : .error)
                 }
+                .avvisoDatiSalvati(caricatore.datiSalvati)
             }
             .navigationTitle("Oggi")
             .task { await carica() }
@@ -37,7 +38,8 @@ struct OggiView: View {
 
     private func carica() async {
         await caricatore.ricarica()
-        guard let oggi = caricatore.dato else { return }
+        // Con dati salvati (server irraggiungibile) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
+        guard let oggi = caricatore.dato, caricatore.datiSalvati == nil else { return }
         if !permessoChiesto {
             permessoChiesto = true
             _ = await Notifiche.chiediPermesso()

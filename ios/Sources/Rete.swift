@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Indirizzo del server: predefinito dalla compilazione (Info.plist), modificabile dalla schermata Lega.
 enum Config {
@@ -90,6 +91,15 @@ enum Api {
 
     static func get<T: Decodable>(_ percorso: String, snake: Bool = true) async throws -> T {
         let dati = try await scarica(percorso)
+        return try decodifica(dati, snake: snake)
+    }
+
+    /// La risposta grezza (JSON) di un indirizzo, per poterla anche salvare nella cache.
+    static func grezzo(_ percorso: String) async throws -> Data {
+        try await scarica(percorso)
+    }
+
+    static func decodifica<T: Decodable>(_ dati: Data, snake: Bool = true) throws -> T {
         let d = JSONDecoder()
         if snake { d.keyDecodingStrategy = .convertFromSnakeCase }
         do {
@@ -150,19 +160,40 @@ enum Api {
     }
 }
 
+extension Notification.Name {
+    /// Il comando «Aggiorna» (Cmd+R) chiede a tutte le schermate di ricaricare.
+    static let aggiornaTutto = Notification.Name("<vecchio identificativo>.aggiornaTutto")
+}
+
 /// Carica un dato dal server e tiene lo stato (in caricamento, errore) per le schermate.
+/// Mostra subito l'ultima risposta salvata (cache) mentre ricarica; se il server non risponde resta quella,
+/// e `datiSalvati` dice di quando è.
 @MainActor
 final class Caricatore<T: Decodable>: ObservableObject {
     @Published var dato: T?
     @Published var errore: String?
     @Published var inCorso = false
+    /// Valorizzato solo quando i dati mostrati vengono dalla cache perché il server non ha risposto: è la data in cui erano stati scaricati.
+    @Published var datiSalvati: Date?
     var percorso: String
     let snake: Bool
+    private let usaCache: Bool
+    private var percorsoDelDato: String?
+    private var scaricatoIl: Date?
+    private var ascolto: AnyCancellable?
 
     /// `snake: false` per i dati che vanno rimandati al server con le stesse chiavi (regole, impostazioni degli avvisi).
-    init(_ percorso: String, snake: Bool = true) {
+    /// `cache: false` per i dati che si modificano e si rimandano (non si deve ripartire da una copia vecchia).
+    init(_ percorso: String, snake: Bool = true, cache: Bool = true) {
         self.percorso = percorso
         self.snake = snake
+        self.usaCache = cache
+        ascolto = NotificationCenter.default.publisher(for: .aggiornaTutto)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Task { await self.ricarica() }
+            }
     }
 
     func ricarica(_ nuovoPercorso: String) async {
@@ -173,10 +204,32 @@ final class Caricatore<T: Decodable>: ObservableObject {
     func ricarica() async {
         inCorso = true
         defer { inCorso = false }
+        let richiesto = percorso
+        // Subito l'ultima copia salvata (solo se non c'è già qualcosa di questo stesso indirizzo).
+        if usaCache, dato == nil || percorsoDelDato != richiesto,
+           let salvato = Cache.leggi(richiesto), let vecchio: T = try? Api.decodifica(salvato.dati, snake: snake) {
+            dato = vecchio
+            percorsoDelDato = richiesto
+            scaricatoIl = salvato.data
+            datiSalvati = salvato.data
+        }
         do {
-            dato = try await Api.get(percorso, snake: snake)
+            let dati = try await Api.grezzo(richiesto)
+            let nuovo: T = try Api.decodifica(dati, snake: snake)
+            guard richiesto == percorso else { return }   // nel frattempo la schermata ha chiesto un altro indirizzo
+            dato = nuovo
+            percorsoDelDato = richiesto
+            scaricatoIl = Date()
+            datiSalvati = nil
             errore = nil
+            if usaCache { Cache.salva(dati, richiesto) }
         } catch {
+            guard richiesto == percorso else { return }
+            if percorsoDelDato != richiesto {
+                dato = nil   // niente dati di un altro indirizzo: meglio l'errore
+            } else if dato != nil {
+                datiSalvati = scaricatoIl   // il server non risponde: restano gli ultimi dati, con la loro data
+            }
             errore = error.localizedDescription
         }
     }

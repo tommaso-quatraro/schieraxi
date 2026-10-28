@@ -17,6 +17,10 @@ struct LegaView: View {
                     if caricatore.inCorso {
                         ProgressView()
                     } else if let s = caricatore.dato {
+                        if let salvati = caricatore.datiSalvati {
+                            Label("Server non raggiungibile. Dati salvati del \(salvati.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
+                                .font(.footnote).foregroundStyle(.orange)
+                        }
                         riga("Squadra", s.miaSquadra ?? "—")
                         riga("Stagione", s.stagione ?? "—")
                         riga("Versione del server", s.versione ?? "—")

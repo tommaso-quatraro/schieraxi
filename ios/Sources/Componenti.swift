@@ -97,6 +97,33 @@ struct RigaGiocatore: View {
     }
 }
 
+/// Striscia in alto che avvisa quando si vedono dati salvati perché il server non risponde.
+struct AvvisoSalvati: ViewModifier {
+    let data: Date?
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .top, spacing: 0) {
+            if let data {
+                Label("Server non raggiungibile. Dati salvati del \(data.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.bar)
+                    .accessibilityElement(children: .combine)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Mostra «dati salvati» se `data` non è nil (vedi `Caricatore.datiSalvati`).
+    func avvisoDatiSalvati(_ data: Date?) -> some View {
+        modifier(AvvisoSalvati(data: data))
+    }
+}
+
 struct ErroreVista: View {
     let messaggio: String
     let riprova: () -> Void

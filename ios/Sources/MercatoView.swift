@@ -75,6 +75,7 @@ struct ConsigliatiView: View {
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
         .refreshable { await caricatore.ricarica() }
+        .avvisoDatiSalvati(caricatore.datiSalvati)
         .task { await caricatore.ricarica() }
     }
 
@@ -135,6 +136,7 @@ struct ClassificaView: View {
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
         .refreshable { await caricatore.ricarica(percorso) }
+        .avvisoDatiSalvati(caricatore.datiSalvati)
         .task(id: percorso) { await caricatore.ricarica(percorso) }
     }
 }
@@ -182,6 +184,7 @@ struct CalendarioView: View {
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
         .refreshable { await caricatore.ricarica() }
+        .avvisoDatiSalvati(caricatore.datiSalvati)
         .task { await caricatore.ricarica() }
     }
 }
@@ -219,6 +222,7 @@ struct OsservatiView: View {
         }
         .scrollContentBackground(.hidden)
         .refreshable { await caricatore.ricarica() }
+        .avvisoDatiSalvati(caricatore.datiSalvati)
         .task { await caricatore.ricarica() }
     }
 

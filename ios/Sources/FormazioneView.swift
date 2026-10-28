@@ -57,6 +57,7 @@ struct FormazioneView: View {
                     await caricaTesto()
                     UINotificationFeedbackGenerator().notificationOccurred(caricatore.errore == nil ? .success : .error)
                 }
+                .avvisoDatiSalvati(caricatore.datiSalvati)
             }
             .navigationTitle("Formazione")
             .toolbar {

@@ -47,6 +47,7 @@ struct ScambiView: View {
                     .padding(.horizontal, 16).padding(.bottom, 24)
                 }
                 .refreshable { await proposte.ricarica(percorso) }
+                .avvisoDatiSalvati(proposte.datiSalvati)
             }
             .navigationTitle("Scambi")
             .task { await squadre.ricarica() }

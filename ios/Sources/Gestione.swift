@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Regole della lega (editor generico)
 
 struct RegoleEditorView: View {
-    @StateObject private var caricatore = Caricatore<JSONValue>("/api/regole", snake: false)
+    @StateObject private var caricatore = Caricatore<JSONValue>("/api/regole", snake: false, cache: false)
     @State private var valore: JSONValue = .nullo
     @State private var caricato = false
     @State private var esito: String?
@@ -134,7 +134,7 @@ struct EditorJSON: View {
 // MARK: - Avvisi del server
 
 struct AvvisiServerView: View {
-    @StateObject private var caricatore = Caricatore<StatoAvvisi>("/api/avvisi", snake: false)
+    @StateObject private var caricatore = Caricatore<StatoAvvisi>("/api/avvisi", snake: false, cache: false)
     @State private var impostazioni: ImpostazioniAvvisi?
     @State private var messaggio: String?
 
@@ -204,7 +204,7 @@ struct AvvisiServerView: View {
 // MARK: - Crediti e mia squadra
 
 struct CreditiView: View {
-    @StateObject private var caricatore = Caricatore<[SquadraCrediti]>("/api/squadre")
+    @StateObject private var caricatore = Caricatore<[SquadraCrediti]>("/api/squadre", cache: false)
     @State private var valori: [String: String] = [:]
     @State private var messaggio: String?
 
