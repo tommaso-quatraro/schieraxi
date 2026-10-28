@@ -58,16 +58,27 @@ final class Immagini: ObservableObject {
 
     // MARK: elenchi
 
-    /// Chi ha la foto e quali squadre hanno stemma e maglia. Se il server non risponde restano gli elenchi di prima.
+    /// Chi ha la foto e quali squadre hanno stemma e maglia. Se il server non risponde si usano gli ultimi elenchi salvati su disco
+    /// (così le foto già scaricate si vedono anche con rete privata spento).
     func caricaElenchi() async {
-        if let foto: FotoDisponibili = try? await attivo.get("/api/foto-disponibili") {
+        if let foto: FotoDisponibili = await leggiElenco("/api/foto-disponibili") {
             fotoDisponibili = Set(foto.ids)
         }
-        if let elenco: [SquadraLega] = try? await attivo.get("/api/squadre") {
+        if let elenco: [SquadraLega] = await leggiElenco("/api/squadre") {
             var nuove: [String: ImmaginiSquadra] = [:]
             for s in elenco { nuove[s.nome] = s.immagini ?? ImmaginiSquadra(stemma: false, maglia: false) }
             squadre = nuove
         }
+    }
+
+    private func leggiElenco<T: Decodable>(_ percorso: String) async -> T? {
+        let indirizzo = attivo.indirizzo
+        if let dati = try? await attivo.grezzo(percorso), let valore: T = try? Decodifica.decodifica(dati) {
+            Cache.salva(dati, percorso, indirizzo: indirizzo)
+            return valore
+        }
+        if let copia = await Cache.leggi(percorso, indirizzo: indirizzo) { return try? Decodifica.decodifica(copia.dati) }
+        return nil
     }
 
     // MARK: caricamento

@@ -13,8 +13,11 @@ final class OggiViewModel: ViewModelBase {
     let caricatore: Caricatore<Oggi>
     /// Versione dell'app del server: serve al banner «Novità nell'app».
     let info: Caricatore<InfoServer>
+    /// false nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
+    private let conPromemoria: Bool
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, conPromemoria: Bool = true) {
+        self.conPromemoria = conPromemoria
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
         info = Caricatore<InfoServer>("/api/stato", ascolta: false, server: server)
@@ -61,7 +64,7 @@ final class OggiViewModel: ViewModelBase {
         await caricatore.ricarica()
         await info.ricarica()
         // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
-        guard !Demo.attivo, let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
+        guard conPromemoria, !Demo.attivo, let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return }
         let memoria = UserDefaults.standard
         if !memoria.bool(forKey: "permessoChiesto") {
             memoria.set(true, forKey: "permessoChiesto")

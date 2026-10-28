@@ -136,7 +136,7 @@ enum RegoleLogica {
             if l.allSatisfy({ $0.elenco?.count == 2 }) && !l.isEmpty {
                 return l.compactMap { c -> String? in
                     guard let e = c.elenco, let m = e[0].numero, let b = e[1].numero else { return nil }
-                    return "\(Formato.decimali(m, cifre: 2))→+\(Formato.intero(b))"
+                    return "\(Formato.decimali(m, cifre: 2))→+\(Formato.decimali(b, cifre: 0))"
                 }.joined(separator: " · ")
             }
             return l.map { descrivi($0) }.joined(separator: ", ")
