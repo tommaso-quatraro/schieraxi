@@ -47,13 +47,10 @@ struct MercatoView: View {
 /// diventa una fila di pulsanti che scorre di lato. Un selettore a segmenti qui tagliava «Calendario» e non cresce col testo.
 struct SelettoreSezioni: View {
     @Binding var selezione: SezioneMercato
+    @Environment(\.dynamicTypeSize) private var tagliaTesto
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 4) {
-                ForEach(SezioneMercato.allCases) { s in pulsante(s, .footnote, 6).frame(maxWidth: .infinity) }
-            }
-            .padding(.horizontal, 16)
+        if tagliaTesto >= .xxxLarge {
             ScrollViewReader { lettore in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -64,6 +61,11 @@ struct SelettoreSezioni: View {
                 .onAppear { lettore.scrollTo(selezione, anchor: .center) }
                 .onChange(of: selezione) { nuova in withAnimation { lettore.scrollTo(nuova, anchor: .center) } }
             }
+        } else {
+            HStack(spacing: 4) {
+                ForEach(SezioneMercato.allCases) { s in pulsante(s, .footnote, 2).frame(maxWidth: .infinity) }
+            }
+            .padding(.horizontal, 12)
         }
     }
 
@@ -76,7 +78,7 @@ struct SelettoreSezioni: View {
             Text(s.rawValue)
                 .font(carattere.weight(.semibold))
                 .lineLimit(1)
-                .fixedSize()
+                .minimumScaleFactor(0.7)
                 .padding(.horizontal, margine)
                 .frame(minHeight: 44)
                 .frame(maxWidth: .infinity)
