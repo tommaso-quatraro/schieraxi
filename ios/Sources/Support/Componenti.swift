@@ -45,7 +45,7 @@ struct Colonne: Layout {
     private func disponi(_ larghezza: CGFloat, _ subviews: Subviews) -> Disposizione {
         var n = 1
         if subviews.count > 1 {
-            n = Int((larghezza + spazio) / (larghezzaMinima + spazio))
+            n = Int(max(0, larghezza + spazio) / (larghezzaMinima + spazio))
             n = max(1, min(massimo, min(n, subviews.count)))
         }
         let l = (larghezza - spazio * CGFloat(n - 1)) / CGFloat(n)
@@ -166,7 +166,7 @@ struct RigaGiocatore: View {
     }
 
     private var puntiTesto: String { (g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1))) }
-    private var giocaPercento: Int { Int(((g.pVoto ?? 0) * 100).rounded()) }
+    private var giocaPercento: Int { Formato.percento(g.pVoto) }
 
     /// Frase letta da VoiceOver per tutta la riga.
     private var descrizioneVoce: String {
