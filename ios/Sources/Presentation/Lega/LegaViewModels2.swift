@@ -1,0 +1,206 @@
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// Importazione delle rose da un Excel di Leghe, o dal testo copiato dalla pagina delle rose.
+@MainActor
+final class ImportaExcelViewModel: ViewModelBase {
+    private let server: any ServerClient
+    /// Dimensione massima accettata: un Excel delle rose è di poche decine di KB.
+    private static let massimoByte = 5 * 1024 * 1024
+
+    @Published var inCorso = false
+    @Published var esito: EsitoImportazione?
+    @Published var errore: String?
+    /// «Togli le squadre che non sono nel file»: di norma le squadre assenti restano com'erano.
+    @Published var sostituisciTutto = false
+    @Published var testoRose = ""
+
+    init(server: any ServerClient) {
+        self.server = server
+        super.init()
+    }
+
+    /// Solo fogli di calcolo (.xlsx e simili).
+    var tipiAmmessi: [UTType] {
+        var tipi: [UTType] = [.spreadsheet]
+        if let xlsx = UTType(filenameExtension: "xlsx") { tipi.append(xlsx) }
+        return tipi
+    }
+
+    /// L'indirizzo dell'importazione da file, con la scelta «togli le squadre che non sono nel file».
+    var percorsoFile: String { "/api/rose/file?sostituisci_tutto=\(sostituisciTutto ? "true" : "false")" }
+
+    func importa(_ risultato: Result<[URL], Error>) async {
+        guard case .success(let urls) = risultato, let url = urls.first else {
+            if case .failure(let e) = risultato { errore = e.localizedDescription }
+            return
+        }
+        inCorso = true
+        defer { inCorso = false }
+        let accesso = url.startAccessingSecurityScopedResource()
+        defer { if accesso { url.stopAccessingSecurityScopedResource() } }
+        guard ["xlsx", "xls", "xlsm", "csv", "txt"].contains(url.pathExtension.lowercased()) else {
+            esito = nil
+            errore = "Il file deve essere un Excel (.xlsx)."
+            return
+        }
+        let grandezza = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard grandezza <= Self.massimoByte else {
+            esito = nil
+            errore = "Il file è troppo grande (massimo 5 MB): non sembra un Excel delle rose."
+            return
+        }
+        do {
+            let dati = try Data(contentsOf: url)
+            esito = try await server.caricaFile(percorsoFile, nome: url.lastPathComponent, dati: dati)
+            errore = nil
+            Haptics.esito(riuscito: true)
+            NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+        } catch {
+            esito = nil
+            errore = error.localizedDescription
+            Haptics.esito(riuscito: false)
+        }
+    }
+
+    /// Importa il testo incollato (se non si ha il file Excel).
+    func importaTesto() async {
+        let testo = testoRose.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !testo.isEmpty else {
+            errore = "Incolla prima il testo delle rose."
+            return
+        }
+        inCorso = true
+        defer { inCorso = false }
+        do {
+            esito = try await server.posta("POST", "/api/rose/testo", RichiestaRoseTesto(testo: testo, sostituisci_tutto: sostituisciTutto))
+            errore = nil
+            Haptics.esito(riuscito: true)
+            NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+        } catch {
+            esito = nil
+            errore = error.localizedDescription
+            Haptics.esito(riuscito: false)
+        }
+    }
+}
+
+/// Il corpo dell'importazione da testo: chiavi identiche a quelle del server.
+struct RichiestaRoseTesto: Encodable {
+    let testo: String
+    let sostituisci_tutto: Bool
+}
+
+/// Il tasto «Aggiorna i dati»: avvia l'aggiornamento sul server e ne segue l'avanzamento finché finisce.
+@MainActor
+final class AggiornaDatiViewModel: ViewModelBase {
+    private let server: any ServerClient
+    @Published private(set) var inCorso = false
+    @Published private(set) var messaggio: String?
+    @Published private(set) var errori: [String] = []
+    /// Pausa tra una domanda e l'altra al server (i test la azzerano).
+    var pausa: UInt64 = 2_000_000_000
+    /// Dopo quante domande si smette di aspettare.
+    var tentativiMassimi = 150
+
+    init(server: any ServerClient) {
+        self.server = server
+        super.init()
+    }
+
+    func avvia() async {
+        guard !inCorso else { return }
+        inCorso = true
+        errori = []
+        messaggio = "Aggiornamento avviato: ci vuole circa un minuto."
+        defer { inCorso = false }
+        do {
+            let dati = try await server.richiesta("POST", "/api/aggiorna", corpo: nil)
+            let avvio: AvvioAggiornamento = try Decodifica.decodifica(dati)
+            if avvio.avviato == false {
+                messaggio = avvio.messaggio ?? "Aggiornamento già in corso."
+                return
+            }
+        } catch {
+            messaggio = error.localizedDescription
+            Haptics.esito(riuscito: false)
+            return
+        }
+        var senzaRisposta = 0
+        for _ in 0..<tentativiMassimi {
+            if pausa > 0 { try? await Task.sleep(nanoseconds: pausa) }
+            if Task.isCancelled { return }
+            do {
+                let stato: StatoAggiornamento = try await server.get("/api/aggiorna")
+                senzaRisposta = 0
+                if stato.inCorso != true {
+                    errori = stato.errori ?? []
+                    messaggio = errori.isEmpty ? "Dati aggiornati." : "Aggiornato, ma con problemi: " + errori.joined(separator: "; ")
+                    Haptics.esito(riuscito: errori.isEmpty)
+                    NotificationCenter.default.post(name: .aggiornaTutto, object: nil)   // tutte le schermate si ricaricano
+                    return
+                }
+            } catch {
+                senzaRisposta += 1
+                if senzaRisposta >= 5 {
+                    messaggio = "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco."
+                    return
+                }
+            }
+        }
+        messaggio = "L'aggiornamento sta durando più del solito: controlla tra poco."
+    }
+}
+
+/// Il passaggio di stagione: archivia rose, regole, scelte e osservati della stagione finita e riparte da rose vuote.
+@MainActor
+final class StagioneViewModel: ViewModelBase {
+    private let server: any ServerClient
+    let stato: Caricatore<StatoStagione>
+    @Published var inCorso = false
+    @Published var archiviata = false
+    @Published var errore: String?
+
+    init(server: any ServerClient) {
+        self.server = server
+        stato = Caricatore<StatoStagione>("/api/stagione", cache: false, server: server)
+        super.init()
+        osserva(stato)
+    }
+
+    func carica() async { await stato.ricarica() }
+
+    /// Si può archiviare solo se le rose sono di una stagione finita.
+    var puoArchiviare: Bool { stato.dato?.nuova == true && !archiviata && !inCorso }
+
+    /// Da chiamare solo dopo la conferma esplicita dell'utente.
+    func archiviaERiparti() async {
+        guard puoArchiviare else { return }
+        inCorso = true
+        defer { inCorso = false }
+        do {
+            try await server.invia("POST", "/api/nuova-stagione")
+            archiviata = true
+            errore = nil
+            Haptics.esito(riuscito: true)
+            NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+        } catch {
+            errore = error.localizedDescription
+            Haptics.esito(riuscito: false)
+        }
+    }
+}
+
+/// Lo storico dei cambiamenti alle rose visti nelle importazioni.
+@MainActor
+final class MovimentiViewModel: ViewModelBase {
+    let caricatore: Caricatore<[Differenze]>
+
+    init(server: any ServerClient) {
+        caricatore = Caricatore<[Differenze]>("/api/movimenti?limite=30", server: server)
+        super.init()
+        osserva(caricatore)
+    }
+
+    func carica() async { await caricatore.ricarica() }
+}

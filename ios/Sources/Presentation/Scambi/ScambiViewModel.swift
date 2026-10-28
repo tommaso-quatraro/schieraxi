@@ -17,6 +17,16 @@ final class ScambiViewModel: ViewModelBase {
     @Published var con = "Tutte"
     @Published var due = false
     @Published var selezionata: PropostaScambio?
+    /// «Ho ricevuto un'offerta»: il messaggio incollato e cosa ne ha capito il server.
+    @Published var testoOfferta = ""
+    @Published var esitoOfferta: OffertaRiconosciuta?
+    @Published var erroreOfferta: String?
+    @Published var offertaInCorso = false
+    /// Gli scambi analizzati a mano, ricordati su questo telefono.
+    @Published var archivio: [VoceArchivioScambi] = []
+    @Published var messaggio: String?
+    /// Il giudizio da mostrare nel dettaglio dello scambio aperto (solo per le offerte ricevute).
+    @Published var giudizioSelezionata: String?
 
     init(server: any ServerClient) {
         self.server = server
@@ -38,6 +48,44 @@ final class ScambiViewModel: ViewModelBase {
 
     func caricaSquadre() async { await squadre.ricarica() }
     func caricaProposte() async { await proposte.ricarica(indirizzoProposte) }
+
+    /// Le squadre che accettano più volentieri (se ce ne sono almeno due con scambi proposti).
+    var propense: [ScambiLogica.SquadraPropensa] { ScambiLogica.squadrePropense(proposte.dato?.proposte ?? []) }
+
+    func caricaArchivio() { archivio = ArchivioScambi.leggi() }
+
+    func svuotaArchivio() {
+        ArchivioScambi.svuota()
+        archivio = []
+    }
+
+    /// Copia negli appunti la bozza del messaggio per l'altro allenatore.
+    func copiaBozza(_ p: PropostaScambio) {
+        UIPasteboard.general.string = ScambiLogica.bozza(p)
+        messaggio = "Bozza copiata: incollala nel gruppo o in privato."
+        Haptics.esito(riuscito: true)
+    }
+
+    /// Manda il messaggio incollato al server: trova i giocatori e, se può, analizza lo scambio.
+    func valutaOfferta() async {
+        let testo = testoOfferta.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !testo.isEmpty else {
+            erroreOfferta = "Incolla prima il messaggio."
+            return
+        }
+        offertaInCorso = true
+        defer { offertaInCorso = false }
+        do {
+            esitoOfferta = try await server.posta("POST", "/api/scambi/da-testo", RichiestaOfferta(testo: testo, con: nil))
+            erroreOfferta = nil
+            Haptics.esito(riuscito: true)
+        } catch {
+            if Task.isCancelled || error is CancellationError { return }
+            esitoOfferta = nil
+            erroreOfferta = error.localizedDescription
+            Haptics.esito(riuscito: false)
+        }
+    }
 }
 
 /// Logica dell'analisi di uno scambio scelto a mano: due rose, i giocatori scelti, l'esito.
@@ -105,7 +153,9 @@ final class AnalizzaScambioViewModel: ViewModelBase {
         let a = doIds.sorted().map(String.init).joined(separator: ",")
         let b = ricevoIds.sorted().map(String.init).joined(separator: ",")
         do {
-            esito = try await server.get("/api/scambi/analizza?con=\(IndirizzoServer.codifica(altra))&do=\(a)&ricevo=\(b)")
+            let analisi: PropostaScambio = try await server.get("/api/scambi/analizza?con=\(IndirizzoServer.codifica(altra))&do=\(a)&ricevo=\(b)")
+            esito = analisi
+            ArchivioScambi.registra(analisi)   // come la web app: gli scambi analizzati restano nell'archivio
             errore = nil
         } catch {
             if Task.isCancelled || error is CancellationError { return }

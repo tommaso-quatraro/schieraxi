@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Schermata Lega: server, strumenti di gestione della lega, promemoria, certificato. Logica in `LegaViewModel`.
+/// Schermata Lega: server, strumenti di gestione della lega, aspetto, promemoria, certificato. Logica in `LegaViewModel`.
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
     @AppStorage("indirizzo") private var indirizzo = ""
@@ -8,8 +8,10 @@ struct LegaView: View {
     var body: some View {
         NavigationStack(path: $vm.percorso) {
             List {
+                if vm.nuovaStagione { bannerStagione }
                 sezioneServer
                 sezioneLega
+                sezioneApp
                 sezionePromemoria
                 CertificatoSezione()
                 RinnovoSideStoreSezione()
@@ -22,6 +24,7 @@ struct LegaView: View {
             .background(Sfondo())
             .demoInFondo()
             .navigationTitle("Lega")
+            .ricercaGlobale()
             .navigationDestination(for: PaginaLega.self) { pagina in destinazione(pagina) }
             .refreshable { await vm.carica() }
             .task { await vm.carica() }
@@ -38,8 +41,27 @@ struct LegaView: View {
         case .regole: RegoleEditorView(server: vm.server)
         case .crediti: CreditiView(server: vm.server)
         case .avvisi: AvvisiServerView(server: vm.server)
-        case .stato: StatoDatiView(server: vm.server)
+        case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .novita: NovitaView(server: vm.server)
+        case .movimenti: MovimentiView(server: vm.server)
+        case .stagione: StagioneView(server: vm.server)
+        case .aspetto: AspettoView()
+        case .icona: IconaAppView()
+        }
+    }
+
+    // MARK: sezioni
+
+    private var bannerStagione: some View {
+        Section {
+            NavigationLink(value: PaginaLega.stagione) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Nuova stagione \(vm.stagione.dato?.corrente ?? "")", systemImage: "calendar.badge.exclamationmark").font(.headline)
+                    Text("Le rose sono ancora quelle del \(vm.stagione.dato?.rose ?? ""): archivia e riparti.").font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 
@@ -69,19 +91,29 @@ struct LegaView: View {
             } else if let e = vm.info.errore {
                 Text(e).foregroundStyle(.orange)
             }
+            AggiornaDatiSezione(vm: vm.aggiornamento)
         }
     }
 
     private var sezioneLega: some View {
         Section("Lega") {
-            NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose da Excel", systemImage: "doc.badge.plus") }
-            NavigationLink(value: PaginaLega.squadre) { Label("Squadre e rose", systemImage: "person.3") }
-            NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer") }
-            NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle") }
-            NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "eurosign.circle") }
-            NavigationLink(value: PaginaLega.avvisi) { Label("Avvisi del server", systemImage: "bell.badge") }
-            NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive") }
-            NavigationLink(value: PaginaLega.novita) { Label("Novità del server", systemImage: "sparkles") }
+            NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose", systemImage: "doc.badge.plus").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.squadre) { Label("Squadre e rose", systemImage: "person.3").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "eurosign.circle").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").frame(minHeight: 44) }
+        }
+    }
+
+    private var sezioneApp: some View {
+        Section("App e dati") {
+            NavigationLink(value: PaginaLega.aspetto) { Label("Aspetto", systemImage: "paintpalette").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.icona) { Label("Icona dell'app", systemImage: "app.badge").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.avvisi) { Label("Avvisi del server", systemImage: "bell.badge").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").frame(minHeight: 44) }
         }
     }
 

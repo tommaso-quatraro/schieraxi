@@ -16,15 +16,22 @@ RADDRIZZA=0
 mkdir -p "$USCITA"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale
-       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-cerca giocatore
-       scambi scambi-fondo scambi-dettaglio scambi-analizza
-       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita)
+TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-immagine
+       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
+       mercato-cerca giocatore giocatore-fondo ricerca
+       scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
+       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita
+       lega-importa lega-movimenti lega-stagione lega-aspetto lega-icona)
+# giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
+PER_CHIARO=(oggi formazione formazione-confronto formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
+            scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato lega-aspetto lega-icona lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
-PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale mercato-consigliati mercato-calendario mercato-osservati
-                  scambi scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato giocatore)
-PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale mercato-consigliati mercato-classifica mercato-calendario
-          mercato-osservati giocatore scambi scambi-dettaglio scambi-analizza lega lega-squadre lega-regole)
+PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-calendario
+                  mercato-osservati mercato-asta scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
+                  lega-aspetto giocatore giocatore-fondo)
+PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-classifica
+          mercato-calendario mercato-osservati mercato-asta giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
+          lega lega-squadre lega-rosa lega-regole lega-aspetto lega-icona)
 
 scegli() {
   python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"
@@ -32,14 +39,18 @@ scegli() {
 
 scatta() {
   local udid="$1" etichetta="$2" nome="$3"
-  local schermata="$nome" fondo=()
+  local schermata="$nome" fondo=() cerca=()
   case "$nome" in
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
+  esac
+  # la ricerca globale si apre da sola con un testo già scritto
+  case "$nome" in
+    ricerca) cerca=(-DEMO_CERCA ma) ;;
   esac
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO -DEMO_SCHERMATA "$schermata" \
-        ${fondo[@]+"${fondo[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} \
+        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} \
         -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
@@ -102,9 +113,9 @@ echo "iPhone: $NOME_IPHONE ($IOS_IPHONE) $UDID_IPHONE"
 avvia_simulatore "$UDID_IPHONE"
 
 giro "$UDID_IPHONE" iphone_scuro scuro large "${TUTTE[@]}"
-giro "$UDID_IPHONE" iphone_chiaro chiaro large "${TUTTE[@]}"
+giro "$UDID_IPHONE" iphone_chiaro chiaro large "${PER_CHIARO[@]}"
 giro "$UDID_IPHONE" iphone_scuro_testogrande scuro accessibility-large "${PER_TESTO_GRANDE[@]}"
-giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione lega
+giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione giocatore lega
 ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
 RADDRIZZA=1
 giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione mercato-consigliati
@@ -131,9 +142,13 @@ spegni_simulatore "$UDID_IPHONE"
 IFS=$'\t' read -r UDID_IPAD NOME_IPAD IOS_IPAD <<< "$(scegli ipad)"
 echo "iPad: $NOME_IPAD ($IOS_IPAD) $UDID_IPAD"
 avvia_simulatore "$UDID_IPAD"
+# lancio di prova: il primo avvio sul simulatore dell'iPad è lento e la prima foto restava sul caricamento
+xcrun simctl launch "$UDID_IPAD" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
+sleep 10
+xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
 
 giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
-giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PER_IPAD[@]}"
+giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta lega-aspetto
 giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
 # Senza barra laterale: la colonna dei contenuti è larga come in orizzontale (2 colonne di schede).
 ARGOMENTI_EXTRA=(-DEMO_BARRA nascosta)

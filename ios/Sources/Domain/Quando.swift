@@ -20,6 +20,28 @@ enum Quando {
         return f
     }()
 
+    private static let soloGiorno: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = italia
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = "EEEE d MMMM"
+        return f
+    }()
+
+    private static let soloOra: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = italia
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
+    /// «sabato 31 ottobre», per i titoli dei giorni delle partite.
+    static func giorno(_ data: Date) -> String { soloGiorno.string(from: data) }
+
+    /// «18:30».
+    static func ora(_ data: Date) -> String { soloOra.string(from: data) }
+
     static func data(_ testo: String?) -> Date? {
         guard let testo else { return nil }
         return lettura.date(from: String(testo.prefix(16)))

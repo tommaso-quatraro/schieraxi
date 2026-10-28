@@ -27,6 +27,8 @@ targets:
         PRODUCT_NAME: Schieraxi
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # icone alternative scelte in Lega > Icona dell'app (AppIcon-<colore> nell'asset catalog; il verde e' AppIcon)
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-blu AppIcon-viola AppIcon-arancio AppIcon-rosso AppIcon-grafite"
     info:
       path: Config/Info.plist
       properties:
@@ -84,3 +86,52 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         FantaHost: $(FANTA_HOST)
         FantaPort: $(FANTA_PORT)
+  SchieraxiTests:
+    # test automatici (XCTest) di Domain, Data e ViewModel: girano nel simulatore (workflow test.yml). Non entrano nell'IPA.
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/SchieraxiTests
+      - path: Tests/Fixtures
+        buildPhase: resources
+    dependencies:
+      - target: Schieraxi
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+  SchieraxiUITests:
+    # test di fumo dell'interfaccia (XCUITest) con l'app in modalità -DEMO
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/SchieraxiUITests
+    dependencies:
+      - target: Schieraxi
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+schemes:
+  Schieraxi:
+    # i test si costruiscono ed eseguono solo con "test": archive e build normali (ipa.yml, screenshot.yml) non li toccano
+    build:
+      targets:
+        Schieraxi: all
+        SchieraxiTests: [test]
+        SchieraxiUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - SchieraxiTests
+        - SchieraxiUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

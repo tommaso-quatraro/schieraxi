@@ -54,6 +54,9 @@ struct ImpostazioniAvvisi: Codable {
     var promemoria_60: Bool
     var promemoria_15: Bool
     var riepilogo: Bool
+    /// Avvisi anche con ntfy, il cui tocco apre l'app nativa. Opzionale: un server più vecchio non lo manda
+    /// (e se è nil non viene rimandato, quindi non si azzera niente).
+    var app_nativa: Bool?
 }
 
 struct StatoAvvisi: Decodable {
@@ -75,11 +78,17 @@ struct ValutazioneManuale: Decodable {
     let panchina: [Int]
     let differenza: Double?
     let consigliata: Double?
+    let consigliataStessoModulo: Double?
+    let bruttaGiornata: Double?
+    let giornataEccezionale: Double?
 }
 
 struct RichiestaValutazione: Encodable {
     let titolari: [Int]
     let salva: Bool
+    /// Se si guarda la formazione di un'altra squadra (altrimenti la propria).
+    var squadra: String? = nil
+    var giornata: Int? = nil
 }
 
 struct CreditiSquadre: Encodable {
