@@ -19,6 +19,8 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+    dependencies:
+      - target: SchieraxiWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>
@@ -49,5 +51,29 @@ targets:
           - fetch
         BGTaskSchedulerPermittedIdentifiers:
           - <vecchio identificativo>.aggiorna
+        FantaHost: $(FANTA_HOST)
+        FantaPort: $(FANTA_PORT)
+  SchieraxiWidget:
+    # estensione widget (WidgetKit): conto alla rovescia, modulo e punti attesi. Consuma un App ID in più con l'Apple ID gratuito.
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WidgetSources
+      - path: Sources/Modelli.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.widget
+        PRODUCT_NAME: SchieraxiWidget
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: Config/WidgetInfo.plist
+      properties:
+        CFBundleDisplayName: SchieraXI
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
         FantaHost: $(FANTA_HOST)
         FantaPort: $(FANTA_PORT)

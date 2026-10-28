@@ -2,7 +2,7 @@ build/
 Payload/
 *.ipa
 *.xcodeproj/
-Config/Info.plist
+Config/*.plist
 DerivedData/
 .DS_Store
 # firme e segreti: mai in git
@@ -13,3 +13,9 @@ DerivedData/
 *.mobileprovision
 .env
 .env.*
+*.key
+*.pfx
+xcuserdata/
+*.xcarchive
+*.certSigningRequest
+ExportOptions.plist
