@@ -1,0 +1,15 @@
+build/
+Payload/
+*.ipa
+*.xcodeproj/
+Config/Info.plist
+DerivedData/
+.DS_Store
+# firme e segreti: mai in git
+*.p12
+*.p8
+*.pem
+*.cer
+*.mobileprovision
+.env
+.env.*
