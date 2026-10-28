@@ -61,6 +61,8 @@ struct RadiceView: View {
     @Environment(\.horizontalSizeClass) private var classe
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var modello: AppModel
+    /// Barra laterale visibile o no (di solito decide iOS; solo la demo può nasconderla per le fotografie).
+    @State private var colonne: NavigationSplitViewVisibility = Demo.attivo && Demo.argomento("DEMO_BARRA") == "nascosta" ? .detailOnly : .automatic
 
     var body: some View {
         Group {
@@ -85,11 +87,16 @@ struct RadiceView: View {
     }
 
     private var barraLaterale: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $colonne) {
             List(selection: Binding<Sezione?>(get: { nav.sezione }, set: { if let s = $0 { nav.sezione = s } })) {
                 ForEach(Sezione.allCases) { s in
-                    Label(s.titolo, systemImage: s.icona)
-                        .tag(s)
+                    // icona in una colonna di larghezza fissa: «person.3» è più larga delle altre e spostava il testo
+                    Label {
+                        Text(s.titolo)
+                    } icon: {
+                        Image(systemName: s.icona).resizable().scaledToFit().frame(width: 28, height: 22)
+                    }
+                    .tag(s)
                         .frame(minHeight: 44)
                         .hoverEffect(.highlight)
                 }

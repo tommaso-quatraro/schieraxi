@@ -44,7 +44,7 @@ struct GiocatoreSheet: View {
                 BadgeRuolo(ruolo: s.calciatore.ruolo)
                 VStack(alignment: .leading) {
                     Text(s.calciatore.nome).font(.title2.bold())
-                    Text(s.calciatore.squadra ?? "").foregroundStyle(.secondary)
+                    Text((s.calciatore.squadra ?? "").capitalized).foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(alignment: .trailing) {

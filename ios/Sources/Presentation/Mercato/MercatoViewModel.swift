@@ -63,7 +63,7 @@ final class MercatoViewModel: ViewModelBase {
     func caricaOsservati() async {
         await osservati.ricarica()
         // Gli osservati compaiono anche nella ricerca di iOS (Spotlight), ma solo se i dati sono freschi.
-        if let d = osservati.dato, osservati.datiSalvati == nil, !osservati.dallaCache {
+        if !Demo.attivo, let d = osservati.dato, osservati.datiSalvati == nil, !osservati.dallaCache {
             Spotlight.indicizza(d.giocatori)
         }
     }

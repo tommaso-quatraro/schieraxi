@@ -5,7 +5,7 @@ struct ScambiView: View {
     @ObservedObject var vm: ScambiViewModel
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $vm.percorso) {
             ZStack {
                 Sfondo()
                 ScrollView {
@@ -16,7 +16,7 @@ struct ScambiView: View {
                                 ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
                             }
                             Toggle("Cerca anche 2 contro 2 (più lento)", isOn: $vm.due).tint(Color.verde)
-                            NavigationLink { AnalizzaScambioView(server: vm.server) } label: {
+                            NavigationLink(value: PaginaScambi.analizza) {
                                 Label("Analizza uno scambio a mano", systemImage: "slider.horizontal.3").frame(minHeight: 44)
                             }
                         }
@@ -37,17 +37,22 @@ struct ScambiView: View {
                     }
                     .padding(.horizontal, 16).padding(.bottom, 24)
                 }
+                .demoInFondo()
                 .refreshable { await vm.caricaProposte() }
                 .avvisoDatiSalvati(vm.proposte.datiSalvati)
             }
             .navigationTitle("Scambi")
+            .navigationDestination(for: PaginaScambi.self) { _ in AnalizzaScambioView(server: vm.server) }
             .task { await vm.caricaSquadre() }
-            .task(id: vm.percorso) { await vm.caricaProposte() }
+            .task(id: vm.indirizzoProposte) { await vm.caricaProposte() }
             .sheet(item: $vm.selezionata) { p in
                 NavigationStack {
                     ZStack { Sfondo(); ScrollView { DettaglioScambio(p: p).padding(16) } }
-                        .navigationTitle("Scambio con \(p.altra)")
+                        .navigationTitle("Scambio")   // la squadra è già nella scheda «Punti attesi» (un titolo lungo veniva tagliato)
                         .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { vm.selezionata = nil } }
+                        }
                 }
             }
         }
@@ -109,7 +114,7 @@ struct DettaglioScambio: View {
     }
 
     private func elenco(_ g: GiocatoreBreve) -> some View {
-        HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome); Spacer(); Text(g.squadra ?? "").foregroundStyle(.secondary) }
+        HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome); Spacer(); Text((g.squadra ?? "").capitalized).foregroundStyle(.secondary) }
             .accessibilityElement(children: .combine)
     }
 
@@ -177,9 +182,8 @@ struct AnalizzaScambioView: View {
                     BadgeRuolo(ruolo: g.ruolo ?? "?")
                     Text(g.nome)
                     Spacer()
-                    Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
+                    Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
                 }
-                .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
             .accessibilityElement(children: .combine)

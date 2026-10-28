@@ -18,11 +18,7 @@ struct MercatoView: View {
             ZStack {
                 Sfondo()
                 VStack(spacing: 8) {
-                    Picker("Sezione", selection: $vm.sezione) {
-                        ForEach(SezioneMercato.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 16)
+                    SelettoreSezioni(selezione: $vm.sezione)
                     contenuto
                 }
             }
@@ -44,6 +40,53 @@ struct MercatoView: View {
         case .osservati: OsservatiView(vm: vm)
         case .cerca: CercaView(vm: vm)
         }
+    }
+}
+
+/// Scelta della sezione del Mercato. Con il testo normale sono cinque pulsanti affiancati; se non ci stanno (testo grande)
+/// diventa una fila di pulsanti che scorre di lato. Un selettore a segmenti qui tagliava «Calendario» e non cresce col testo.
+struct SelettoreSezioni: View {
+    @Binding var selezione: SezioneMercato
+    @Environment(\.dynamicTypeSize) private var tagliaTesto
+
+    var body: some View {
+        if tagliaTesto >= .xxxLarge {
+            ScrollViewReader { lettore in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(SezioneMercato.allCases) { s in pulsante(s, .subheadline, 14).id(s) }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .onAppear { lettore.scrollTo(selezione, anchor: .center) }
+                .onChange(of: selezione) { nuova in withAnimation { lettore.scrollTo(nuova, anchor: .center) } }
+            }
+        } else {
+            HStack(spacing: 4) {
+                ForEach(SezioneMercato.allCases) { s in pulsante(s, .footnote, 2).frame(maxWidth: .infinity) }
+            }
+            .padding(.horizontal, 12)
+        }
+    }
+
+    private func pulsante(_ s: SezioneMercato, _ carattere: Font, _ margine: CGFloat) -> some View {
+        let attiva = s == selezione
+        return Button {
+            selezione = s
+            Haptics.selezione()
+        } label: {
+            Text(s.rawValue)
+                .font(carattere.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.horizontal, margine)
+                .frame(minHeight: 44)
+                .frame(maxWidth: .infinity)
+                .background(attiva ? Color.verde.opacity(0.35) : Color.primary.opacity(0.08), in: Capsule())
+                .overlay(Capsule().strokeBorder(attiva ? Color.verde : .clear, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(attiva ? .isSelected : [])
     }
 }
 
@@ -77,6 +120,7 @@ struct ConsigliatiView: View {
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
+        .demoInFondo()
         .refreshable { await vm.consigliati.ricarica() }
         .avvisoDatiSalvati(vm.consigliati.datiSalvati)
         .task { await vm.consigliati.ricarica() }
@@ -135,6 +179,7 @@ struct ClassificaView: View {
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
         }
+        .demoInFondo()
         .refreshable { await vm.caricaClassifica() }
         .avvisoDatiSalvati(vm.classifica.datiSalvati)
         .task(id: vm.percorsoClassifica) { await vm.caricaClassifica() }
@@ -162,20 +207,36 @@ struct CalendarioView: View {
                 if let c = vm.calendario.dato {
                     Carta("Difficoltà delle prossime partite") {
                         Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(.secondary)
-                        ForEach(c.squadre) { s in
+                        // La griglia è una tabella di sigle di tre lettere: con il testo molto grande smette di crescere
+                        // (altrimenti le sigle andavano a capo lettera per lettera).
+                        VStack(spacing: 6) {
                             HStack(spacing: 6) {
-                                Text(s.squadra.prefix(3).uppercased()).font(.caption.bold()).frame(minWidth: 36, alignment: .leading)
-                                ForEach(s.partite) { p in
-                                    Text(String(p.avversario.prefix(3)).uppercased())
-                                        .font(.caption2.bold())
-                                        .frame(maxWidth: .infinity, minHeight: 28)
-                                        .background(colore(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                                        .foregroundStyle(.black.opacity(0.8))
-                                        // La difficoltà non è solo un colore: VoiceOver la dice a parole.
-                                        .accessibilityLabel("Giornata \(p.giornata) contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                                Color.clear.frame(width: 44, height: 1)
+                                ForEach(c.giornate, id: \.self) { g in
+                                    Text("G\(g)").font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+                                }
+                            }
+                            .accessibilityHidden(true)
+                            ForEach(c.squadre) { s in
+                                HStack(spacing: 6) {
+                                    Text(s.squadra.prefix(3).uppercased())
+                                        .font(.caption.bold()).lineLimit(1)
+                                        .frame(width: 44, alignment: .leading)
+                                    ForEach(s.partite) { p in
+                                        Text(String(p.avversario.prefix(3)).uppercased())
+                                            .font(.caption2.bold())
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.6)
+                                            .frame(maxWidth: .infinity, minHeight: 28)
+                                            .background(colore(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                                            .foregroundStyle(.black.opacity(0.8))
+                                            // La difficoltà non è solo un colore: VoiceOver la dice a parole.
+                                            .accessibilityLabel("Giornata \(p.giornata) contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                                    }
                                 }
                             }
                         }
+                        .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     }
                 } else if let e = vm.calendario.errore {
                     ErroreVista(messaggio: e) { Task { await vm.calendario.ricarica() } }
@@ -210,7 +271,6 @@ struct OsservatiView: View {
                             if let p = g.proprietario { Text("Di: \(p)").font(.caption).foregroundStyle(.secondary) }
                             else { Text("Svincolato").font(.caption).foregroundStyle(Color.verde) }
                         }
-                        .frame(minHeight: 44)
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Apre la scheda del giocatore")
@@ -251,9 +311,8 @@ struct CercaView: View {
                         BadgeRuolo(ruolo: g.ruolo)
                         Text(g.nome).font(.headline)
                         Spacer()
-                        Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
+                        Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
                     }
-                    .frame(minHeight: 44)
                     .accessibilityElement(children: .combine)
                 }
                 .buttonStyle(.plain)

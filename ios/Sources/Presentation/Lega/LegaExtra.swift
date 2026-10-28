@@ -26,7 +26,6 @@ struct SquadreView: View {
                                 Spacer()
                                 Text("\(sq.giocatori ?? 0)").foregroundStyle(.secondary)
                             }
-                            .frame(minHeight: 44)
                             .accessibilityElement(children: .combine)
                         }
                         .swipeActions {
@@ -91,7 +90,7 @@ struct RosaView: View {
             BadgeRuolo(ruolo: g.ruolo ?? "?")
             Text(g.nome)
             Spacer()
-            Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
+            Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
             if let c = g.costo { Text("\(Formato.intero(c))").monospacedDigit().foregroundStyle(.secondary) }
         }
         .accessibilityElement(children: .combine)
@@ -121,7 +120,7 @@ struct AstaView: View {
                                 ForEach(r.giocatori.prefix(12)) { g in
                                     HStack {
                                         Text(g.nome)
-                                        Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
+                                        Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
                                         Spacer()
                                         Text("\(Formato.intero(g.prezzo))").font(.headline).monospacedDigit()
                                     }
@@ -160,7 +159,15 @@ struct NovitaView: View {
                     if let n = caricatore.dato {
                         ForEach(n) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
-                                ForEach(v.voci, id: \.self) { Text("• " + $0).font(.subheadline) }
+                                ForEach(v.voci, id: \.self) { voce in
+                                    // il puntino sta a parte: le righe lunghe vanno a capo allineate al testo
+                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                        Text("•")
+                                        Text(voce)
+                                    }
+                                    .font(.subheadline)
+                                    .accessibilityElement(children: .combine)
+                                }
                             }
                         }
                     } else if let e = caricatore.errore {
@@ -200,7 +207,7 @@ struct StatoDatiView: View {
                     Section("Ultimi aggiornamenti") {
                         ForEach(s.aggiornamenti ?? []) { a in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(a.cosa.capitalized)
+                                Text(a.cosa.primaMaiuscola)
                                 Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(.secondary)
                                 ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
                             }
@@ -221,8 +228,7 @@ struct StatoDatiView: View {
     }
 
     private func riga(_ t: String, _ v: String) -> some View {
-        HStack { Text(t); Spacer(); Text(v).foregroundStyle(.secondary).monospacedDigit() }
-            .accessibilityElement(children: .combine)
+        RigaValore(titolo: t, valore: v, cifreFisse: true)
     }
 }
 

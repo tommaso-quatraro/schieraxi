@@ -6,7 +6,7 @@ struct LegaView: View {
     @AppStorage("indirizzo") private var indirizzo = ""
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $vm.percorso) {
             List {
                 sezioneServer
                 sezioneLega
@@ -20,9 +20,26 @@ struct LegaView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Sfondo())
+            .demoInFondo()
             .navigationTitle("Lega")
+            .navigationDestination(for: PaginaLega.self) { pagina in destinazione(pagina) }
             .refreshable { await vm.carica() }
             .task { await vm.carica() }
+        }
+    }
+
+    @ViewBuilder
+    private func destinazione(_ pagina: PaginaLega) -> some View {
+        switch pagina {
+        case .importa: ImportaExcelView(server: vm.server)
+        case .squadre: SquadreView(server: vm.server)
+        case .rosa(let nome): RosaView(nome: nome, server: vm.server)
+        case .asta: AstaView(server: vm.server)
+        case .regole: RegoleEditorView(server: vm.server)
+        case .crediti: CreditiView(server: vm.server)
+        case .avvisi: AvvisiServerView(server: vm.server)
+        case .stato: StatoDatiView(server: vm.server)
+        case .novita: NovitaView(server: vm.server)
         }
     }
 
@@ -57,14 +74,14 @@ struct LegaView: View {
 
     private var sezioneLega: some View {
         Section("Lega") {
-            NavigationLink { ImportaExcelView(server: vm.server) } label: { Label("Aggiorna le rose da Excel", systemImage: "doc.badge.plus") }
-            NavigationLink { SquadreView(server: vm.server) } label: { Label("Squadre e rose", systemImage: "person.3") }
-            NavigationLink { AstaView(server: vm.server) } label: { Label("Asta e riparazione", systemImage: "hammer") }
-            NavigationLink { RegoleEditorView(server: vm.server) } label: { Label("Regole", systemImage: "list.bullet.rectangle") }
-            NavigationLink { CreditiView(server: vm.server) } label: { Label("Crediti delle squadre", systemImage: "eurosign.circle") }
-            NavigationLink { AvvisiServerView(server: vm.server) } label: { Label("Avvisi del server", systemImage: "bell.badge") }
-            NavigationLink { StatoDatiView(server: vm.server) } label: { Label("Stato dei dati", systemImage: "externaldrive") }
-            NavigationLink { NovitaView(server: vm.server) } label: { Label("Novità del server", systemImage: "sparkles") }
+            NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose da Excel", systemImage: "doc.badge.plus") }
+            NavigationLink(value: PaginaLega.squadre) { Label("Squadre e rose", systemImage: "person.3") }
+            NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer") }
+            NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle") }
+            NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "eurosign.circle") }
+            NavigationLink(value: PaginaLega.avvisi) { Label("Avvisi del server", systemImage: "bell.badge") }
+            NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive") }
+            NavigationLink(value: PaginaLega.novita) { Label("Novità del server", systemImage: "sparkles") }
         }
     }
 
@@ -79,12 +96,7 @@ struct LegaView: View {
     }
 
     private func riga(_ titolo: String, _ valore: String) -> some View {
-        HStack {
-            Text(titolo)
-            Spacer()
-            Text(valore).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
-        }
-        .accessibilityElement(children: .combine)
+        RigaValore(titolo: titolo, valore: valore)
     }
 }
 

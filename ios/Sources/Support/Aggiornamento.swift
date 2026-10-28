@@ -10,6 +10,7 @@ enum Aggiornamento {
 
     /// Chiede a iOS di svegliare l'app fra non meno di due ore.
     static func programma() {
+        if Demo.attivo { return }   // demo: nessun lavoro in background
         let richiesta = BGAppRefreshTaskRequest(identifier: identificativo)
         richiesta.earliestBeginDate = Date(timeIntervalSinceNow: 2 * 3600)
         try? BGTaskScheduler.shared.submit(richiesta)
@@ -17,11 +18,13 @@ enum Aggiornamento {
 
     /// Riprogramma i promemoria sulla scadenza del certificato (se il profilo si legge).
     static func riprogrammaScadenza() async {
+        if Demo.attivo { return }
         if let scadenza = Certificato.scadenza() { await Notifiche.programmaScadenza(scadenza) }
     }
 
     /// Il lavoro vero: scarica /api/oggi, lo salva nella cache e confronta con l'ultima volta.
     static func esegui() async {
+        if Demo.attivo { return }
         programma()   // prima di tutto: riprogramma il prossimo risveglio
         await riprogrammaScadenza()
         guard let oggi = try? await OggiRepository(server: ServerCorrente.condiviso).aggiornato() else { return }
@@ -30,6 +33,7 @@ enum Aggiornamento {
 
     /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata.
     static func elabora(_ oggi: Oggi, avvisaSeCambia: Bool) async {
+        if Demo.attivo { return }   // demo: niente promemoria, widget o notifiche
         if let inizio = Quando.data(oggi.inizio) {
             await Notifiche.programma(giornata: oggi.giornata, inizio: inizio, modulo: oggi.formazione?.modulo)
         }

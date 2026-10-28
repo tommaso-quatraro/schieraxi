@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// Le pagine che si aprono dalla schermata Scambi.
+enum PaginaScambi: Hashable {
+    case analizza
+}
+
 /// Logica della schermata Scambi: proposte del modello, filtro per squadra e per scambi 2 contro 2.
 @MainActor
 final class ScambiViewModel: ViewModelBase {
@@ -7,6 +12,8 @@ final class ScambiViewModel: ViewModelBase {
     let squadre: Caricatore<[SquadraLega]>
     let proposte: Caricatore<ProposteScambi>
 
+    /// Pagine aperte nella pila di navigazione.
+    @Published var percorso: [PaginaScambi] = []
     @Published var con = "Tutte"
     @Published var due = false
     @Published var selezionata: PropostaScambio?
@@ -23,14 +30,14 @@ final class ScambiViewModel: ViewModelBase {
     /// Le altre squadre della lega (non la mia).
     var altre: [SquadraLega] { (squadre.dato ?? []).filter { $0.mia != true } }
 
-    var percorso: String {
+    var indirizzoProposte: String {
         var p = "/api/scambi/proposte?due=\(due ? "true" : "false")"
         if con != "Tutte" { p += "&con=\(IndirizzoServer.codifica(con))" }
         return p
     }
 
     func caricaSquadre() async { await squadre.ricarica() }
-    func caricaProposte() async { await proposte.ricarica(percorso) }
+    func caricaProposte() async { await proposte.ricarica(indirizzoProposte) }
 }
 
 /// Logica dell'analisi di uno scambio scelto a mano: due rose, i giocatori scelti, l'esito.
@@ -64,6 +71,11 @@ final class AnalizzaScambioViewModel: ViewModelBase {
     func carica() async {
         await squadre.ricarica()
         await miaRosa.ricarica()
+        // Solo per le fotografie della demo: parte già con uno scambio scelto.
+        if Demo.schermata == "scambi-analizza", altra.isEmpty {
+            if let id = miaRosa.dato?.giocatori.first(where: { $0.ruolo == "A" })?.id { doIds = [id] }
+            altra = altre.first?.nome ?? ""
+        }
     }
 
     /// Quando si sceglie un'altra squadra: si azzerano le scelte e si carica la sua rosa.
@@ -77,6 +89,10 @@ final class AnalizzaScambioViewModel: ViewModelBase {
             if Task.isCancelled { return }
             loro = rosa
             errore = nil
+            if Demo.schermata == "scambi-analizza", !doIds.isEmpty, let id = rosa.giocatori.first(where: { $0.ruolo == "A" })?.id {
+                ricevoIds = [id]
+                await analizza()
+            }
         } catch {
             if Task.isCancelled || error is CancellationError { return }
             errore = error.localizedDescription

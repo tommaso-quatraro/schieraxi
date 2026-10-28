@@ -119,6 +119,47 @@ struct Carta<Contenuto: View>: View {
     }
 }
 
+extension String {
+    /// Solo la prima lettera maiuscola («listone e quotazioni» → «Listone e quotazioni»); `capitalized` le metterebbe a ogni parola.
+    var primaMaiuscola: String {
+        guard let prima = first else { return self }
+        return prima.uppercased() + dropFirst()
+    }
+}
+
+/// Riga «titolo a sinistra, valore a destra» di elenchi e impostazioni. Se con il testo grande non ci stanno
+/// sulla stessa riga, il valore va sotto il titolo (invece di spezzare le parole a metà).
+struct RigaValore: View {
+    let titolo: String
+    let valore: String
+    var cifreFisse = false
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                Text(titolo).fixedSize()
+                Spacer(minLength: 8)
+                testoValore.fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titolo)
+                testoValore.multilineTextAlignment(.leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var testoValore: some View {
+        if cifreFisse {
+            Text(valore).foregroundStyle(.secondary).monospacedDigit()
+        } else {
+            Text(valore).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+        }
+    }
+}
+
 /// Nome esteso del ruolo, per VoiceOver.
 func nomeRuolo(_ ruolo: String) -> String {
     switch ruolo {
@@ -183,31 +224,63 @@ struct RigaGiocatore: View {
         return parti.joined(separator: ", ")
     }
 
-    var body: some View {
-        HStack(spacing: 12) {
-            BadgeRuolo(ruolo: g.ruolo)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(g.nome).font(.headline).lineLimit(1)
-                    if g.dubbio == true {
-                        Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange).font(.subheadline)
-                            .accessibilityLabel("In dubbio")
-                    }
-                    if g.diffidato == true {
-                        Image(systemName: "rectangle.portrait.fill").foregroundStyle(.yellow).font(.caption)
-                            .accessibilityLabel("Diffidato")
-                    }
-                }
-                Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+    @Environment(\.dynamicTypeSize) private var tagliaTesto
+
+    private var nome: some View {
+        HStack(spacing: 6) {
+            // Il nome può andare su due righe: con il testo grande veniva tagliato («Mateo…»).
+            Text(g.nome).font(.headline).lineLimit(2)
+            if g.dubbio == true {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange).font(.subheadline)
+                    .accessibilityLabel("In dubbio")
             }
-            Spacer()
-            if g.assente == true {
-                // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
-                Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(.red)
+            if g.diffidato == true {
+                Image(systemName: "rectangle.portrait.fill").foregroundStyle(.yellow).font(.caption)
+                    .accessibilityLabel("Diffidato")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var previsione: some View {
+        if g.assente == true {
+            // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
+            Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(.red)
+        } else if tagliaTesto.isAccessibilitySize {
+            // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
+            HStack(spacing: 8) {
+                Text(puntiTesto).font(.headline).monospacedDigit()
+                Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(.secondary)
+            }
+        } else {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(puntiTesto).font(.headline).monospacedDigit()
+                Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    var body: some View {
+        Group {
+            if tagliaTesto.isAccessibilitySize {
+                HStack(alignment: .top, spacing: 12) {
+                    BadgeRuolo(ruolo: g.ruolo)
+                    VStack(alignment: .leading, spacing: 2) {
+                        nome
+                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                        previsione
+                    }
+                    Spacer(minLength: 0)
+                }
             } else {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(puntiTesto).font(.headline).monospacedDigit()
-                    Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    BadgeRuolo(ruolo: g.ruolo)
+                    VStack(alignment: .leading, spacing: 2) {
+                        nome
+                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    previsione
                 }
             }
         }

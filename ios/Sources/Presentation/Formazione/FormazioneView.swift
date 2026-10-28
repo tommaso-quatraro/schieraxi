@@ -37,6 +37,7 @@ struct FormazioneView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
                 }
+                .demoInFondo()
                 .refreshable { await vm.carica() }
                 .avvisoDatiSalvati(vm.datiSalvati)
             }
@@ -87,15 +88,34 @@ struct FormazioneView: View {
                     Text("Rispetto alla consigliata con lo stesso modulo: " + Formato.conSegno(d))
                         .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
                 }
-                HStack {
-                    Button { Task { await vm.valuta(salva: true) } } label: { Label("Salva come mia scelta", systemImage: "tray.and.arrow.down").frame(minHeight: 44) }
-                        .keyboardShortcut("s", modifiers: .command)
-                    Spacer()
-                    Button(role: .destructive) { Task { await vm.tornaAllaConsigliata(f) } } label: { Text("Torna alla consigliata").frame(minHeight: 44) }
+                // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        salva
+                        Spacer()
+                        torna(f)
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        salva
+                        torna(f)
+                    }
                 }
                 .font(.subheadline)
             }
             if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(.secondary) }
+        }
+    }
+
+    private var salva: some View {
+        Button { Task { await vm.valuta(salva: true) } } label: {
+            Label("Salva come mia scelta", systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
+        }
+        .keyboardShortcut("s", modifiers: .command)
+    }
+
+    private func torna(_ f: Formazione) -> some View {
+        Button(role: .destructive) { Task { await vm.tornaAllaConsigliata(f) } } label: {
+            Text("Torna alla consigliata").fixedSize().frame(minHeight: 44)
         }
     }
 
