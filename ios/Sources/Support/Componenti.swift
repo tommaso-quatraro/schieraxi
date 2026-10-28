@@ -224,31 +224,63 @@ struct RigaGiocatore: View {
         return parti.joined(separator: ", ")
     }
 
-    var body: some View {
-        HStack(spacing: 12) {
-            BadgeRuolo(ruolo: g.ruolo)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(g.nome).font(.headline).lineLimit(1)
-                    if g.dubbio == true {
-                        Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange).font(.subheadline)
-                            .accessibilityLabel("In dubbio")
-                    }
-                    if g.diffidato == true {
-                        Image(systemName: "rectangle.portrait.fill").foregroundStyle(.yellow).font(.caption)
-                            .accessibilityLabel("Diffidato")
-                    }
-                }
-                Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+    @Environment(\.dynamicTypeSize) private var tagliaTesto
+
+    private var nome: some View {
+        HStack(spacing: 6) {
+            // Il nome può andare su due righe: con il testo grande veniva tagliato («Mateo…»).
+            Text(g.nome).font(.headline).lineLimit(2)
+            if g.dubbio == true {
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange).font(.subheadline)
+                    .accessibilityLabel("In dubbio")
             }
-            Spacer()
-            if g.assente == true {
-                // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
-                Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(.red)
+            if g.diffidato == true {
+                Image(systemName: "rectangle.portrait.fill").foregroundStyle(.yellow).font(.caption)
+                    .accessibilityLabel("Diffidato")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var previsione: some View {
+        if g.assente == true {
+            // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
+            Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(.red)
+        } else if tagliaTesto.isAccessibilitySize {
+            // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
+            HStack(spacing: 8) {
+                Text(puntiTesto).font(.headline).monospacedDigit()
+                Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(.secondary)
+            }
+        } else {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(puntiTesto).font(.headline).monospacedDigit()
+                Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    var body: some View {
+        Group {
+            if tagliaTesto.isAccessibilitySize {
+                HStack(alignment: .top, spacing: 12) {
+                    BadgeRuolo(ruolo: g.ruolo)
+                    VStack(alignment: .leading, spacing: 2) {
+                        nome
+                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                        previsione
+                    }
+                    Spacer(minLength: 0)
+                }
             } else {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(puntiTesto).font(.headline).monospacedDigit()
-                    Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    BadgeRuolo(ruolo: g.ruolo)
+                    VStack(alignment: .leading, spacing: 2) {
+                        nome
+                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    previsione
                 }
             }
         }
