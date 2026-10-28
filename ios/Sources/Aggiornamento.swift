@@ -29,15 +29,17 @@ enum Aggiornamento {
         if let inizio = Quando.data(oggi.inizio) {
             await Notifiche.programma(giornata: oggi.giornata, inizio: inizio, modulo: oggi.formazione?.modulo)
         }
+        WidgetCenter.shared.reloadAllTimelines()
+        // Senza una formazione vera (modulo mancante o «–», punti assenti) non si confronta né si ricorda niente.
+        guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else { return }
         let memoria = UserDefaults.standard
-        let modulo = oggi.formazione?.modulo ?? ""
         let probabili = oggi.conProbabili ?? false
         let giornataPrima = memoria.object(forKey: "bg.giornata") as? Int
         let moduloPrima = memoria.string(forKey: "bg.modulo")
         let probabiliPrima = memoria.object(forKey: "bg.probabili") as? Bool
 
-        if avvisaSeCambia, giornataPrima == oggi.giornata, !modulo.isEmpty {
-            let punti = (oggi.formazione?.punteggioAtteso ?? 0).formatted(.number.precision(.fractionLength(1)))
+        if avvisaSeCambia, giornataPrima == oggi.giornata {
+            let punti = (f.punteggioAtteso ?? 0).formatted(.number.precision(.fractionLength(1)))
             if let moduloPrima, moduloPrima != modulo {
                 await Notifiche.avviso(id: "fanta-cambio", titolo: "La formazione consigliata è cambiata",
                                        corpo: "Giornata \(oggi.giornata): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima)).")
@@ -49,7 +51,6 @@ enum Aggiornamento {
         memoria.set(oggi.giornata, forKey: "bg.giornata")
         memoria.set(modulo, forKey: "bg.modulo")
         memoria.set(probabili, forKey: "bg.probabili")
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     /// La giornata di oggi per Siri e Comandi: dal server, o dalla cache se non risponde.
@@ -58,7 +59,7 @@ enum Aggiornamento {
             Cache.salva(dati, "/api/oggi")
             return (oggi, false)
         }
-        if let salvato = Cache.leggi("/api/oggi"), let oggi: Oggi = try? Api.decodifica(salvato.dati) {
+        if let salvato = await Cache.leggi("/api/oggi"), let oggi: Oggi = try? Api.decodifica(salvato.dati) {
             return (oggi, true)
         }
         return nil

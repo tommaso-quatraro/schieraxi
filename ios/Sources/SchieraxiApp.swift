@@ -1,16 +1,26 @@
 import SwiftUI
+import CoreSpotlight
 
 /// SchieraXI nativa per iPhone/iPad: SwiftUI puro, parla con il server sul server (rete privata acceso) e usa le funzioni di iOS.
 @main
 struct SchieraxiApp: App {
     @StateObject private var nav = Navigazione()
+    @StateObject private var statoFormazione = StatoFormazione()
     @Environment(\.scenePhase) private var fase
 
     var body: some Scene {
         WindowGroup {
+            // Colori chiari o scuri come il sistema: lo sfondo e il verde si adattano da soli.
             RadiceView()
                 .environmentObject(nav)
-                .preferredColorScheme(.dark)
+                .environmentObject(statoFormazione)
+                .onContinueUserActivity(CSSearchableItemActionType) { attivita in
+                    // Aperta da Spotlight su un giocatore osservato: si va alla sua scheda.
+                    if let id = Spotlight.idGiocatore(da: attivita) {
+                        nav.sezione = .mercato
+                        nav.giocatoreDaAprire = id
+                    }
+                }
                 .onChange(of: fase) { nuova in
                     // Uscendo dall'app si chiede a iOS il prossimo aggiornamento in background.
                     if nuova == .background { Aggiornamento.programma() }

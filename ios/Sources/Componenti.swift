@@ -1,18 +1,27 @@
 import SwiftUI
 
 extension Color {
-    static let verde = Color(red: 0.19, green: 0.82, blue: 0.50)
+    /// Verde dell'app: chiaro sul fondo scuro, più scuro sul fondo chiaro (per restare leggibile).
+    static let verde = Color(uiColor: UIColor { tratti in
+        tratti.userInterfaceStyle == .dark
+            ? UIColor(red: 0.19, green: 0.82, blue: 0.50, alpha: 1)
+            : UIColor(red: 0.04, green: 0.50, blue: 0.27, alpha: 1)
+    })
     static let ruoloP = Color(red: 0.95, green: 0.68, blue: 0.20)
     static let ruoloD = Color(red: 0.25, green: 0.78, blue: 0.45)
     static let ruoloC = Color(red: 0.30, green: 0.60, blue: 0.95)
     static let ruoloA = Color(red: 0.92, green: 0.35, blue: 0.35)
 }
 
-/// Sfondo scuro verde-blu, lo stesso spirito della web app.
+/// Sfondo verde-blu come la web app: scuro in modalità scura, chiaro in modalità chiara (segue il sistema).
 struct Sfondo: View {
+    @Environment(\.colorScheme) private var schema
+
     var body: some View {
         LinearGradient(
-            colors: [Color(red: 0.03, green: 0.10, blue: 0.08), Color(red: 0.05, green: 0.16, blue: 0.12), Color(red: 0.04, green: 0.09, blue: 0.14)],
+            colors: schema == .dark
+                ? [Color(red: 0.03, green: 0.10, blue: 0.08), Color(red: 0.05, green: 0.16, blue: 0.12), Color(red: 0.04, green: 0.09, blue: 0.14)]
+                : [Color(red: 0.93, green: 0.98, blue: 0.95), Color(red: 0.89, green: 0.96, blue: 0.93), Color(red: 0.91, green: 0.95, blue: 0.98)],
             startPoint: .top, endPoint: .bottom)
             .ignoresSafeArea()
     }
@@ -106,19 +115,33 @@ struct Carta<Contenuto: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.primary.opacity(0.12), lineWidth: 1))
+    }
+}
+
+/// Nome esteso del ruolo, per VoiceOver.
+func nomeRuolo(_ ruolo: String) -> String {
+    switch ruolo {
+    case "P": return "portiere"
+    case "D": return "difensore"
+    case "C": return "centrocampista"
+    case "A": return "attaccante"
+    default: return "ruolo sconosciuto"
     }
 }
 
 struct BadgeRuolo: View {
     let ruolo: String
+    // Cresce con la dimensione del testo scelta nelle Impostazioni di iOS (Dynamic Type).
+    @ScaledMetric(relativeTo: .caption) private var lato: CGFloat = 26
 
     private var colore: Color {
         switch ruolo {
         case "P": return .ruoloP
         case "D": return .ruoloD
         case "C": return .ruoloC
-        default: return .ruoloA
+        case "A": return .ruoloA
+        default: return .gray
         }
     }
 
@@ -126,8 +149,9 @@ struct BadgeRuolo: View {
         Text(ruolo)
             .font(.caption.bold())
             .foregroundStyle(.white)
-            .frame(width: 26, height: 26)
+            .frame(width: lato, height: lato)
             .background(colore.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .accessibilityLabel(nomeRuolo(ruolo))
     }
 }
 
@@ -141,6 +165,24 @@ struct RigaGiocatore: View {
         return "\(mia) \(g.inCasa == true ? "vs" : "@") \(altra)"
     }
 
+    private var puntiTesto: String { (g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1))) }
+    private var giocaPercento: Int { Int(((g.pVoto ?? 0) * 100).rounded()) }
+
+    /// Frase letta da VoiceOver per tutta la riga.
+    private var descrizioneVoce: String {
+        var parti = [g.nome, nomeRuolo(g.ruolo)]
+        if !sottotitolo.isEmpty { parti.append(sottotitolo.replacingOccurrences(of: "@", with: "in trasferta contro")) }
+        if g.assente == true {
+            parti.append("assente")
+        } else {
+            parti.append("punti attesi \(puntiTesto)")
+            parti.append("gioca al \(giocaPercento) per cento")
+        }
+        if g.dubbio == true { parti.append("in dubbio") }
+        if g.diffidato == true { parti.append("diffidato") }
+        return parti.joined(separator: ", ")
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             BadgeRuolo(ruolo: g.ruolo)
@@ -149,19 +191,28 @@ struct RigaGiocatore: View {
                     Text(g.nome).font(.headline).lineLimit(1)
                     if g.dubbio == true {
                         Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange).font(.subheadline)
+                            .accessibilityLabel("In dubbio")
                     }
                     if g.diffidato == true {
                         Image(systemName: "rectangle.portrait.fill").foregroundStyle(.yellow).font(.caption)
+                            .accessibilityLabel("Diffidato")
                     }
                 }
                 Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text((g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1)))).font(.headline).monospacedDigit()
-                Text("gioca \(Int(((g.pVoto ?? 0) * 100).rounded()))%").font(.caption2).foregroundStyle(.secondary)
+            if g.assente == true {
+                // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
+                Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(.red)
+            } else {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(puntiTesto).font(.headline).monospacedDigit()
+                    Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
+                }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(descrizioneVoce)
     }
 }
 
@@ -198,35 +249,34 @@ struct ErroreVista: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "wifi.exclamationmark").font(.largeTitle).foregroundStyle(.orange)
+            Image(systemName: "wifi.exclamationmark").font(.largeTitle).foregroundStyle(.orange).accessibilityHidden(true)
             Text(messaggio).multilineTextAlignment(.center).foregroundStyle(.secondary)
-            Button("Riprova", action: riprova).buttonStyle(.borderedProminent)
+            Button("Riprova", action: riprova)
+                .buttonStyle(.borderedProminent)
+                .frame(minHeight: 44)
+                .accessibilityHint("Riprova a contattare il server")
         }
         .padding(24)
         .frame(maxWidth: .infinity)
     }
 }
 
-/// Sezioni non ancora native: dicono come arrivarci intanto.
-struct AltroView: View {
+/// Stato vuoto (come ContentUnavailableView di iOS 17, ma disponibile anche su iOS 16).
+struct VistaVuota: View {
     let titolo: String
     let icona: String
+    var descrizione: String? = nil
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Sfondo()
-                VStack(spacing: 14) {
-                    Image(systemName: icona).font(.system(size: 54)).foregroundStyle(Color.verde)
-                    Text("In arrivo nella versione nativa").font(.title3.bold())
-                    Text("Per ora questa sezione si usa dalla web app.").foregroundStyle(.secondary)
-                    if let url = URL(string: Api.base) {
-                        Link("Apri la web app", destination: url).buttonStyle(.borderedProminent)
-                    }
-                }
-                .padding(24)
+        VStack(spacing: 8) {
+            Image(systemName: icona).font(.largeTitle).foregroundStyle(.secondary).accessibilityHidden(true)
+            Text(titolo).font(.headline)
+            if let descrizione {
+                Text(descrizione).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
-            .navigationTitle(titolo)
         }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .accessibilityElement(children: .combine)
     }
 }

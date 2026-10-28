@@ -13,6 +13,11 @@ struct LegaView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
+                        .frame(minHeight: 44)
+                    if !indirizzo.trimmingCharacters(in: .whitespaces).isEmpty && !Api.indirizzoValido(indirizzo) {
+                        Label("Indirizzo non valido: deve iniziare con https://. Finché non lo correggi l'app usa quello predefinito.", systemImage: "exclamationmark.triangle")
+                            .font(.footnote).foregroundStyle(.orange)
+                    }
                     Button("Prova la connessione") { Task { await caricatore.ricarica() } }
                     if caricatore.inCorso {
                         ProgressView()

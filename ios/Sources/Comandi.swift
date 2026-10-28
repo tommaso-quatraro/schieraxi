@@ -7,9 +7,11 @@ import SwiftUI
 enum ErroreComando: Error, CustomLocalizedStringResourceConvertible {
     case senzaServer
     case senzaPartite
+    case senzaFormazione
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
+        case .senzaFormazione: return "La formazione non è ancora disponibile."
         case .senzaServer: return "Non riesco a raggiungere il server. Controlla che rete privata sia attivo."
         case .senzaPartite: return "Non trovo la prossima partita della giornata."
         }
@@ -40,8 +42,8 @@ struct FormazioneComando: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         guard let risultato = await Aggiornamento.leggiOggi() else { throw ErroreComando.senzaServer }
         let oggi = risultato.oggi
-        guard let f = oggi.formazione, let modulo = f.modulo else {
-            throw ErroreComando.senzaServer
+        guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else {
+            throw ErroreComando.senzaFormazione
         }
         let punti = (f.punteggioAtteso ?? 0).formatted(.number.precision(.fractionLength(1)))
         var frase = "Per la giornata \(oggi.giornata) ti consiglio il \(modulo), con \(punti) punti attesi."

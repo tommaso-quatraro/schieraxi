@@ -275,12 +275,6 @@ struct EsitoImportazione: Decodable {
     let riepilogo: String?
 }
 
-struct RegoleLega: Decodable {
-    let nomeLega: String?
-    let creditiIniziali: Double?
-    let rimborsoSvincolo: Double?
-}
-
 /// Date del server: "2026-10-27 18:30", ora italiana.
 enum Quando {
     private static let italia = Locale(identifier: "it_IT")
@@ -309,5 +303,13 @@ enum Quando {
     static func leggibile(_ testo: String?) -> String {
         guard let d = data(testo) else { return testo ?? "" }
         return scrittura.string(from: d)
+    }
+}
+
+extension FormazioneBreve {
+    /// false quando il server non ha ancora una formazione (modulo mancante o «–», punti assenti).
+    var disponibile: Bool {
+        guard let m = modulo?.trimmingCharacters(in: .whitespaces), !m.isEmpty, !["-", "–", "—"].contains(m) else { return false }
+        return punteggioAtteso != nil
     }
 }

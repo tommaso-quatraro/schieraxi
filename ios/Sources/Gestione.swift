@@ -94,24 +94,9 @@ struct EditorJSON: View {
             Toggle(nome(chiave), isOn: Binding(
                 get: { if case .booleano(let b) = figlio(chiave).wrappedValue { return b }; return false },
                 set: { figlio(chiave).wrappedValue = .booleano($0) })).tint(Color.verde)
-        case .intero:
-            HStack {
-                Text(nome(chiave))
-                Spacer()
-                TextField("", value: Binding(
-                    get: { if case .intero(let n) = figlio(chiave).wrappedValue { return n }; return 0 },
-                    set: { figlio(chiave).wrappedValue = .intero($0) }), format: .number)
-                    .keyboardType(.numbersAndPunctuation).multilineTextAlignment(.trailing).frame(width: 90)
-            }
-        case .decimale:
-            HStack {
-                Text(nome(chiave))
-                Spacer()
-                TextField("", value: Binding(
-                    get: { if case .decimale(let n) = figlio(chiave).wrappedValue { return n }; return 0 },
-                    set: { figlio(chiave).wrappedValue = .decimale($0) }), format: .number)
-                    .keyboardType(.numbersAndPunctuation).multilineTextAlignment(.trailing).frame(width: 90)
-            }
+        case .intero, .decimale, .nullo:
+            // Numeri (anche con la virgola) e valori non impostati (null): si scrive un numero, o si lascia vuoto.
+            CampoNumero(titolo: nome(chiave), valore: figlio(chiave))
         case .testo:
             HStack {
                 Text(nome(chiave))
@@ -121,13 +106,55 @@ struct EditorJSON: View {
                     set: { figlio(chiave).wrappedValue = .testo($0) }))
                     .multilineTextAlignment(.trailing)
             }
-        case .lista, .nullo:
+        case .lista:
             HStack { Text(nome(chiave)); Spacer(); Text(v.descrizione).foregroundStyle(.secondary).lineLimit(1) }
         }
     }
 
     private func nome(_ chiave: String) -> String {
         chiave.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+}
+
+/// Campo di testo per un numero del JSON: «1.5» e «1,5» valgono uguale; intero se il testo è intero, decimale altrimenti;
+/// vuoto = null (non impostato). Un testo che non è un numero lascia il valore com'era.
+struct CampoNumero: View {
+    let titolo: String
+    @Binding var valore: JSONValue
+    @State private var testo = ""
+
+    /// Come si scrive il valore attuale (3.0 diventa «3»: così non cambia tipo senza che l'utente tocchi nulla).
+    private func formato(_ v: JSONValue) -> String {
+        switch v {
+        case .intero(let n): return String(n)
+        case .decimale(let d): return d == d.rounded() && abs(d) < 1e15 ? String(Int(d)) : String(d)
+        default: return ""
+        }
+    }
+
+    private func aggiorna(_ nuovo: String) {
+        if nuovo == formato(valore) { return }
+        let t = nuovo.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        if t.isEmpty {
+            valore = .nullo
+        } else if let n = Int(t) {
+            valore = .intero(n)
+        } else if let d = Double(t), d.isFinite {
+            valore = .decimale(d)
+        }
+    }
+
+    var body: some View {
+        HStack {
+            Text(titolo)
+            Spacer()
+            TextField("non impostato", text: $testo)
+                .keyboardType(.numbersAndPunctuation)
+                .multilineTextAlignment(.trailing)
+                .frame(minWidth: 90, maxWidth: 140, minHeight: 44)
+                .onChange(of: testo) { aggiorna($0) }
+        }
+        .onAppear { testo = formato(valore) }
     }
 }
 

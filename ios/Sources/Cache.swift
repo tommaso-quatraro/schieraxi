@@ -3,37 +3,62 @@ import Foundation
 /// Copia su disco dell'ultima risposta riuscita di ogni indirizzo (cartella Caches dell'app).
 /// Serve a mostrare subito i dati all'apertura e quando il server non risponde (rete privata spento, server irraggiungibile).
 /// iOS può svuotare questa cartella quando serve spazio: non è un problema, i dati si riscaricano.
+/// Lettura e scrittura avvengono fuori dal thread principale, così le schermate non si bloccano.
 enum Cache {
+    /// Oltre questo numero di file si cancellano i più vecchi (le ricerche e le schede dei giocatori ne creano molti).
+    private static let massimoFile = 150
+    private static let dopoPulizia = 100
+
     private static var cartella: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("api", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         return base
     }
 
-    /// Nome file stabile ricavato dall'indirizzo (hash FNV-1a a 64 bit: lo stesso testo dà sempre lo stesso nome).
+    /// Nome file stabile ricavato dall'indirizzo completo del server + percorso
+    /// (hash FNV-1a a 64 bit: lo stesso testo dà sempre lo stesso nome; cambiando server la cache non si mescola).
     private static func nomeFile(_ percorso: String) -> String {
         var h: UInt64 = 0xcbf29ce484222325
-        for byte in percorso.utf8 {
+        for byte in (Api.base + percorso).utf8 {
             h ^= UInt64(byte)
             h = h &* 0x100000001b3
         }
         return String(h, radix: 16) + ".json"
     }
 
-    private static func url(_ percorso: String) -> URL {
-        cartella.appendingPathComponent(nomeFile(percorso))
-    }
-
+    /// Salva senza aspettare (in coda su un thread di servizio).
     static func salva(_ dati: Data, _ percorso: String) {
-        try? dati.write(to: url(percorso), options: .atomic)
+        let url = cartella.appendingPathComponent(nomeFile(percorso))
+        let cartellaDaPulire = cartella
+        Task.detached(priority: .utility) {
+            try? dati.write(to: url, options: .atomic)
+            pulisci(cartellaDaPulire)
+        }
     }
 
     /// I dati salvati e il momento in cui sono stati scaricati.
-    static func leggi(_ percorso: String) -> (dati: Data, data: Date)? {
-        let u = url(percorso)
-        guard let dati = try? Data(contentsOf: u) else { return nil }
-        let attributi = try? FileManager.default.attributesOfItem(atPath: u.path)
-        let data = attributi?[.modificationDate] as? Date
-        return (dati, data ?? Date())
+    static func leggi(_ percorso: String) async -> (dati: Data, data: Date)? {
+        let url = cartella.appendingPathComponent(nomeFile(percorso))
+        return await Task.detached(priority: .userInitiated) { () -> (dati: Data, data: Date)? in
+            guard let dati = try? Data(contentsOf: url) else { return nil }
+            let attributi = try? FileManager.default.attributesOfItem(atPath: url.path)
+            let data = attributi?[.modificationDate] as? Date
+            return (dati, data ?? Date())
+        }.value
+    }
+
+    /// Tiene la cartella sotto il limite cancellando i file meno recenti.
+    private static func pulisci(_ cartella: URL) {
+        let chiavi: [URLResourceKey] = [.contentModificationDateKey]
+        guard let file = try? FileManager.default.contentsOfDirectory(at: cartella, includingPropertiesForKeys: chiavi),
+              file.count > massimoFile else { return }
+        let ordinati = file.sorted {
+            let a = (try? $0.resourceValues(forKeys: Set(chiavi)).contentModificationDate) ?? .distantPast
+            let b = (try? $1.resourceValues(forKeys: Set(chiavi)).contentModificationDate) ?? .distantPast
+            return a > b
+        }
+        for url in ordinati.dropFirst(dopoPulizia) {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 }

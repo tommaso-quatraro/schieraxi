@@ -33,7 +33,7 @@ struct ScambiView: View {
                         }
                         if let d = proposte.dato {
                             if d.proposte.isEmpty {
-                                Text("Nessuno scambio conviene a tutti e due, per ora.").foregroundStyle(.secondary).padding()
+                                VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Nessuno scambio conviene a tutti e due.")
                             }
                             ForEach(d.proposte) { p in
                                 Button { selezionata = p } label: { carta(p) }.buttonStyle(.plain).puntatore()

@@ -12,6 +12,15 @@ enum SezioneMercato: String, CaseIterable, Identifiable {
 struct MercatoView: View {
     @State private var sezione: SezioneMercato = .consigliati
     @State private var selezionato: Int?
+    @EnvironmentObject private var nav: Navigazione
+
+    /// Se l'app è stata aperta da Spotlight su un giocatore, ne mostra la scheda.
+    private func apriRichiesto() {
+        if let id = nav.giocatoreDaAprire {
+            selezionato = id
+            nav.giocatoreDaAprire = nil
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -27,6 +36,8 @@ struct MercatoView: View {
                 }
             }
             .navigationTitle("Mercato")
+            .onAppear { apriRichiesto() }
+            .onChange(of: nav.giocatoreDaAprire) { _ in apriRichiesto() }
             .sheet(item: Binding(get: { selezionato.map { IdGiocatore(id: $0) } }, set: { selezionato = $0?.id })) { g in
                 GiocatoreSheet(id: g.id)
             }
@@ -65,7 +76,9 @@ struct ConsigliatiView: View {
                     ForEach(m.proposte) { p in
                         Button { apri(p.entra.id) } label: { carta(p) }.buttonStyle(.plain).puntatore()
                     }
-                    if m.proposte.isEmpty { Text("Nessun cambio conviene adesso.").foregroundStyle(.secondary).padding() }
+                    if m.proposte.isEmpty {
+                        VistaVuota(titolo: "Nessun cambio conviene adesso", icona: "checkmark.circle", descrizione: "La rosa è già la scelta migliore tra gli svincolati.")
+                    }
                 } else if let e = caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
                 } else {
@@ -156,6 +169,16 @@ struct CalendarioView: View {
         }
     }
 
+    private func nomeDifficolta(_ d: Double?) -> String {
+        switch Int(d ?? 3) {
+        case ...1: return "molto facile"
+        case 2: return "facile"
+        case 3: return "difficoltà media"
+        case 4: return "difficile"
+        default: return "molto difficile"
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
@@ -171,6 +194,8 @@ struct CalendarioView: View {
                                         .frame(maxWidth: .infinity, minHeight: 28)
                                         .background(colore(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                                         .foregroundStyle(.black.opacity(0.8))
+                                        // La difficoltà non è solo un colore: VoiceOver la dice a parole.
+                                        .accessibilityLabel("Giornata \(p.giornata) contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(nomeDifficolta(p.difficolta))")
                                 }
                             }
                         }
@@ -194,12 +219,14 @@ struct CalendarioView: View {
 struct OsservatiView: View {
     let apri: (Int) -> Void
     @StateObject private var caricatore = Caricatore<ElencoGiocatori>("/api/osservati")
+    @State private var messaggio: String?
 
     var body: some View {
         List {
+            if let messaggio { Text(messaggio).font(.footnote).foregroundStyle(.orange) }
             if let d = caricatore.dato {
                 if d.giocatori.isEmpty {
-                    Text("Nessun giocatore osservato. Apri la scheda di un giocatore e tocca «Osserva».").foregroundStyle(.secondary)
+                    VistaVuota(titolo: "Nessun giocatore osservato", icona: "star", descrizione: "Apri la scheda di un giocatore e tocca «Osserva».")
                 }
                 ForEach(d.giocatori) { g in
                     Button { apri(g.id) } label: {
@@ -208,8 +235,11 @@ struct OsservatiView: View {
                             if let p = g.proprietario { Text("Di: \(p)").font(.caption).foregroundStyle(.secondary) }
                             else { Text("Svincolato").font(.caption).foregroundStyle(Color.verde) }
                         }
+                        .frame(minHeight: 44)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityHint("Apre la scheda del giocatore. Azioni disponibili: togli dagli osservati")
+                    .accessibilityAction(named: "Togli dagli osservati") { Task { await togli(g.id) } }
                     .swipeActions {
                         Button("Togli", role: .destructive) { Task { await togli(g.id) } }
                     }
@@ -223,12 +253,27 @@ struct OsservatiView: View {
         .scrollContentBackground(.hidden)
         .refreshable { await caricatore.ricarica() }
         .avvisoDatiSalvati(caricatore.datiSalvati)
-        .task { await caricatore.ricarica() }
+        .task { await carica() }
+    }
+
+    private func carica() async {
+        await caricatore.ricarica()
+        // Gli osservati compaiono anche nella ricerca di iOS (Spotlight).
+        if let d = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache {
+            Spotlight.indicizza(d.giocatori)
+        }
     }
 
     private func togli(_ id: Int) async {
-        try? await Api.invia("DELETE", "/api/osservati/\(id)")
-        await caricatore.ricarica()
+        do {
+            try await Api.invia("DELETE", "/api/osservati/\(id)")
+            messaggio = nil
+            UISelectionFeedbackGenerator().selectionChanged()
+        } catch {
+            messaggio = error.localizedDescription
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        }
+        await carica()
     }
 }
 
@@ -256,20 +301,24 @@ struct CercaView: View {
                         Spacer()
                         Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
                     }
+                    .frame(minHeight: 44)
+                    .accessibilityElement(children: .combine)
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint("Apre la scheda del giocatore")
             }
         }
         .scrollContentBackground(.hidden)
         .searchable(text: $testo, placement: .navigationBarDrawer(displayMode: .always), prompt: "Nome del giocatore")
         .task(id: testo) {
-            guard testo.count >= 2 else { risultati = []; return }
+            guard testo.count >= 2 else { risultati = []; errore = nil; return }
             try? await Task.sleep(nanoseconds: 300_000_000)
             if Task.isCancelled { return }
             do {
                 risultati = try await Api.get("/api/giocatori?limite=25&q=\(Api.codifica(testo))")
                 errore = nil
             } catch {
+                if Task.isCancelled || error is CancellationError { return }   // si è continuato a scrivere: vale la ricerca nuova
                 errore = error.localizedDescription
             }
         }

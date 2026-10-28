@@ -213,43 +213,22 @@ struct StatoDatiView: View {
     }
 }
 
-struct RegoleView: View {
-    @StateObject private var caricatore = Caricatore<RegoleLega>("/api/regole")
-
-    var body: some View {
-        ZStack {
-            Sfondo()
-            List {
-                if let r = caricatore.dato {
-                    Section("Lega") {
-                        riga("Nome", r.nomeLega ?? "—")
-                        riga("Crediti iniziali", "\(Int(r.creditiIniziali ?? 0))")
-                        riga("Rimborso dello svincolo", "\(Int(((r.rimborsoSvincolo ?? 0) * 100).rounded()))%")
-                    }
-                    Section { Text("Le regole si modificano dalla web app (Lega → Regole); qui si leggono.").font(.footnote).foregroundStyle(.secondary) }
-                } else if let e = caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
-                } else {
-                    ProgressView().frame(maxWidth: .infinity)
-                }
-            }
-            .scrollContentBackground(.hidden)
-        }
-        .navigationTitle("Regole")
-        .task { await caricatore.ricarica() }
-    }
-
-    private func riga(_ t: String, _ v: String) -> some View {
-        HStack { Text(t); Spacer(); Text(v).foregroundStyle(.secondary) }
-    }
-}
-
 /// Importazione delle rose da un file Excel di Leghe (scelto con il selettore di file di iOS).
 struct ImportaExcelView: View {
+    /// Dimensione massima accettata: un Excel delle rose è di poche decine di KB.
+    private static let massimoByte = 5 * 1024 * 1024
+
     @State private var scegli = false
     @State private var inCorso = false
     @State private var esito: EsitoImportazione?
     @State private var errore: String?
+
+    /// Solo fogli di calcolo (.xlsx e simili).
+    private var tipiAmmessi: [UTType] {
+        var tipi: [UTType] = [.spreadsheet]
+        if let xlsx = UTType(filenameExtension: "xlsx") { tipi.append(xlsx) }
+        return tipi
+    }
 
     var body: some View {
         ZStack {
@@ -264,6 +243,7 @@ struct ImportaExcelView: View {
                         if inCorso { ProgressView() } else { Label("Scegli il file Excel", systemImage: "doc.badge.plus") }
                     }
                     .disabled(inCorso)
+                    .frame(minHeight: 44)
                 }
                 if let errore { Section { Text(errore).foregroundStyle(.orange) } }
                 if let e = esito {
@@ -277,7 +257,7 @@ struct ImportaExcelView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Aggiorna le rose")
-        .fileImporter(isPresented: $scegli, allowedContentTypes: [.data], allowsMultipleSelection: false) { risultato in
+        .fileImporter(isPresented: $scegli, allowedContentTypes: tipiAmmessi, allowsMultipleSelection: false) { risultato in
             Task { await importa(risultato) }
         }
     }
@@ -291,6 +271,18 @@ struct ImportaExcelView: View {
         defer { inCorso = false }
         let accesso = url.startAccessingSecurityScopedResource()
         defer { if accesso { url.stopAccessingSecurityScopedResource() } }
+        let estensione = url.pathExtension.lowercased()
+        guard ["xlsx", "xls", "xlsm"].contains(estensione) else {
+            esito = nil
+            errore = "Il file deve essere un Excel (.xlsx)."
+            return
+        }
+        let grandezza = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard grandezza <= Self.massimoByte else {
+            esito = nil
+            errore = "Il file è troppo grande (massimo 5 MB): non sembra un Excel delle rose."
+            return
+        }
         do {
             let dati = try Data(contentsOf: url)
             esito = try await Api.caricaFile("/api/rose/file", nome: url.lastPathComponent, dati: dati)
@@ -299,6 +291,7 @@ struct ImportaExcelView: View {
         } catch {
             esito = nil
             errore = error.localizedDescription
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
     }
 }
