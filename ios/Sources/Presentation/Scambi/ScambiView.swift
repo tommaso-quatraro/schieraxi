@@ -1,19 +1,8 @@
 import SwiftUI
 
+/// Schermata Scambi: solo presentazione. Dati e logica sono in `ScambiViewModel`.
 struct ScambiView: View {
-    @StateObject private var squadre = Caricatore<[SquadraLega]>("/api/squadre")
-    @StateObject private var proposte = Caricatore<ProposteScambi>("/api/scambi/proposte")
-    @State private var con = "Tutte"
-    @State private var due = false
-    @State private var selezionata: PropostaScambio?
-
-    private var altre: [SquadraLega] { (squadre.dato ?? []).filter { $0.mia != true } }
-
-    private var percorso: String {
-        var p = "/api/scambi/proposte?due=\(due ? "true" : "false")"
-        if con != "Tutte" { p += "&con=\(Api.codifica(con))" }
-        return p
-    }
+    @ObservedObject var vm: ScambiViewModel
 
     var body: some View {
         NavigationStack {
@@ -22,37 +11,39 @@ struct ScambiView: View {
                 ScrollView {
                     Colonne(spazio: 12) {
                         Carta {
-                            Picker("Con", selection: $con) {
+                            Picker("Con", selection: $vm.con) {
                                 Text("Tutte le squadre").tag("Tutte")
-                                ForEach(altre) { Text($0.nome).tag($0.nome) }
+                                ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
                             }
-                            Toggle("Cerca anche 2 contro 2 (più lento)", isOn: $due).tint(Color.verde)
-                            NavigationLink { AnalizzaScambioView() } label: {
-                                Label("Analizza uno scambio a mano", systemImage: "slider.horizontal.3")
+                            Toggle("Cerca anche 2 contro 2 (più lento)", isOn: $vm.due).tint(Color.verde)
+                            NavigationLink { AnalizzaScambioView(server: vm.server) } label: {
+                                Label("Analizza uno scambio a mano", systemImage: "slider.horizontal.3").frame(minHeight: 44)
                             }
                         }
-                        if let d = proposte.dato {
+                        if let d = vm.proposte.dato {
                             if d.proposte.isEmpty {
                                 VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Nessuno scambio conviene a tutti e due.")
                             }
                             ForEach(d.proposte) { p in
-                                Button { selezionata = p } label: { carta(p) }.buttonStyle(.plain).puntatore()
+                                Button { vm.selezionata = p } label: { carta(p) }
+                                    .buttonStyle(.plain).puntatore()
+                                    .accessibilityHint("Mostra il dettaglio dello scambio")
                             }
-                        } else if let e = proposte.errore {
-                            ErroreVista(messaggio: e) { Task { await proposte.ricarica(percorso) } }
+                        } else if let e = vm.proposte.errore {
+                            ErroreVista(messaggio: e) { Task { await vm.caricaProposte() } }
                         } else {
                             ProgressView("Cerco gli scambi…").padding(40)
                         }
                     }
                     .padding(.horizontal, 16).padding(.bottom, 24)
                 }
-                .refreshable { await proposte.ricarica(percorso) }
-                .avvisoDatiSalvati(proposte.datiSalvati)
+                .refreshable { await vm.caricaProposte() }
+                .avvisoDatiSalvati(vm.proposte.datiSalvati)
             }
             .navigationTitle("Scambi")
-            .task { await squadre.ricarica() }
-            .task(id: percorso) { await proposte.ricarica(percorso) }
-            .sheet(item: $selezionata) { p in
+            .task { await vm.caricaSquadre() }
+            .task(id: vm.percorso) { await vm.caricaProposte() }
+            .sheet(item: $vm.selezionata) { p in
                 NavigationStack {
                     ZStack { Sfondo(); ScrollView { DettaglioScambio(p: p).padding(16) } }
                         .navigationTitle("Scambio con \(p.altra)")
@@ -68,7 +59,7 @@ struct ScambiView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(p.`do`) { g in HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome).font(.subheadline) } }
-                    Image(systemName: "arrow.down").font(.caption).foregroundStyle(.secondary)
+                    Image(systemName: "arrow.down").font(.caption).foregroundStyle(.secondary).accessibilityLabel("in cambio di")
                     ForEach(p.ricevo) { g in HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome).font(.headline) } }
                 }
                 Spacer()
@@ -83,9 +74,9 @@ struct ScambiView: View {
     private func guadagno(_ chi: String, _ v: Double) -> some View {
         HStack(spacing: 4) {
             Text(chi).font(.caption2).foregroundStyle(.secondary)
-            Text((v >= 0 ? "+" : "") + v.formatted(.number.precision(.fractionLength(1))))
-                .font(.headline).monospacedDigit().foregroundStyle(v >= 0 ? Color.verde : .orange)
+            Text(Formato.conSegno(v)).font(.headline).monospacedDigit().foregroundStyle(v >= 0 ? Color.verde : .orange)
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -95,8 +86,8 @@ struct DettaglioScambio: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Carta("Dai") { ForEach(p.`do`) { g in HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome); Spacer(); Text(g.squadra ?? "").foregroundStyle(.secondary) } } }
-            Carta("Ricevi") { ForEach(p.ricevo) { g in HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome); Spacer(); Text(g.squadra ?? "").foregroundStyle(.secondary) } } }
+            Carta("Dai") { ForEach(p.`do`) { g in elenco(g) } }
+            Carta("Ricevi") { ForEach(p.ricevo) { g in elenco(g) } }
             Carta("Punti attesi") {
                 riga("Tu", p.guadagnoMio)
                 riga("\(p.altra)", p.guadagnoLoro)
@@ -106,9 +97,10 @@ struct DettaglioScambio: View {
                         HStack {
                             Text("Giornata \(n)").foregroundStyle(.secondary)
                             Spacer()
-                            Text(formato(a[i])).monospacedDigit().foregroundStyle(a[i] >= 0 ? Color.verde : .orange)
-                            Text(formato(b[i])).monospacedDigit().foregroundStyle(.secondary).frame(minWidth: 60, alignment: .trailing)
+                            Text(Formato.conSegno(a[i], cifre: 2)).monospacedDigit().foregroundStyle(a[i] >= 0 ? Color.verde : .orange)
+                            Text(Formato.conSegno(b[i], cifre: 2)).monospacedDigit().foregroundStyle(.secondary).frame(minWidth: 60, alignment: .trailing)
                         }
+                        .accessibilityElement(children: .combine)
                     }
                     Text("A destra: il guadagno dell'altra squadra.").font(.caption).foregroundStyle(.secondary)
                 }
@@ -116,53 +108,51 @@ struct DettaglioScambio: View {
         }
     }
 
-    private func formato(_ v: Double) -> String { (v >= 0 ? "+" : "") + v.formatted(.number.precision(.fractionLength(2))) }
+    private func elenco(_ g: GiocatoreBreve) -> some View {
+        HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome); Spacer(); Text(g.squadra ?? "").foregroundStyle(.secondary) }
+            .accessibilityElement(children: .combine)
+    }
 
     private func riga(_ chi: String, _ v: Double) -> some View {
-        HStack { Text(chi); Spacer(); Text(formato(v)).font(.headline).monospacedDigit().foregroundStyle(v >= 0 ? Color.verde : .orange) }
+        HStack { Text(chi); Spacer(); Text(Formato.conSegno(v)).font(.headline).monospacedDigit().foregroundStyle(v >= 0 ? Color.verde : .orange) }
+            .accessibilityElement(children: .combine)
     }
 }
 
 /// Scegli chi dai e chi ricevi dalle due rose e l'app dice se conviene.
 struct AnalizzaScambioView: View {
-    @StateObject private var squadre = Caricatore<[SquadraLega]>("/api/squadre")
-    @StateObject private var miaRosa = Caricatore<Rosa>("/api/rosa")
-    @State private var altra = ""
-    @State private var loro: Rosa?
-    @State private var doIds: Set<Int> = []
-    @State private var ricevoIds: Set<Int> = []
-    @State private var esito: PropostaScambio?
-    @State private var errore: String?
-    @State private var inCorso = false
+    @StateObject private var vm: AnalizzaScambioViewModel
 
-    private var altre: [SquadraLega] { (squadre.dato ?? []).filter { $0.mia != true } }
+    init(server: any ServerClient) {
+        _vm = StateObject(wrappedValue: AnalizzaScambioViewModel(server: server))
+    }
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
                 Section("Con") {
-                    Picker("Squadra", selection: $altra) {
+                    Picker("Squadra", selection: $vm.altra) {
                         Text("Scegli…").tag("")
-                        ForEach(altre) { Text($0.nome).tag($0.nome) }
+                        ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
                     }
                 }
-                if let mia = miaRosa.dato {
-                    Section("Tu dai") { elenco(mia.giocatori, scelti: $doIds) }
+                if let mia = vm.miaRosa.dato {
+                    Section("Tu dai") { elenco(mia.giocatori, scelti: $vm.doIds) }
                 }
-                if let loro {
-                    Section("Tu ricevi") { elenco(loro.giocatori, scelti: $ricevoIds) }
+                if let loro = vm.loro {
+                    Section("Tu ricevi") { elenco(loro.giocatori, scelti: $vm.ricevoIds) }
                 }
                 Section {
                     Button {
-                        Task { await analizza() }
+                        Task { await vm.analizza() }
                     } label: {
-                        if inCorso { ProgressView() } else { Text("Analizza") }
+                        if vm.inCorso { ProgressView() } else { Text("Analizza").frame(minHeight: 44) }
                     }
-                    .disabled(altra.isEmpty || doIds.isEmpty || ricevoIds.isEmpty || inCorso)
-                    if let errore { Text(errore).foregroundStyle(.orange) }
+                    .disabled(!vm.puoAnalizzare)
+                    if let errore = vm.errore { Text(errore).foregroundStyle(.orange) }
                 }
-                if let esito {
+                if let esito = vm.esito {
                     Section("Esito") { DettaglioScambio(p: esito).listRowBackground(Color.clear) }
                 }
             }
@@ -170,55 +160,34 @@ struct AnalizzaScambioView: View {
         }
         .navigationTitle("Analizza")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await squadre.ricarica()
-            await miaRosa.ricarica()
-        }
-        .task(id: altra) {
-            ricevoIds = []
-            esito = nil
-            loro = nil   // la rosa della squadra precedente non deve restare a video
-            guard !altra.isEmpty else { return }
-            do {
-                loro = try await Api.get("/api/rosa?squadra=\(Api.codifica(altra))")
-                errore = nil
-            } catch {
-                if Task.isCancelled { return }
-                errore = error.localizedDescription
-            }
-        }
+        .task { await vm.carica() }
+        .task(id: vm.altra) { await vm.caricaRosaAltra() }
     }
 
     private func elenco(_ giocatori: [GiocatoreRosa], scelti: Binding<Set<Int>>) -> some View {
         ForEach(giocatori.filter { $0.id != nil }, id: \.ident) { g in
             let id = g.id ?? -1
+            let scelto = scelti.wrappedValue.contains(id)
             Button {
-                if scelti.wrappedValue.contains(id) { scelti.wrappedValue.remove(id) } else { scelti.wrappedValue.insert(id) }
+                if scelto { scelti.wrappedValue.remove(id) } else { scelti.wrappedValue.insert(id) }
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: scelti.wrappedValue.contains(id) ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(scelti.wrappedValue.contains(id) ? Color.verde : .secondary)
+                    Image(systemName: scelto ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(scelto ? Color.verde : .secondary)
                     BadgeRuolo(ruolo: g.ruolo ?? "?")
                     Text(g.nome)
                     Spacer()
                     Text(g.squadra ?? "").font(.caption).foregroundStyle(.secondary)
                 }
+                .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(scelto ? .isSelected : [])
         }
     }
+}
 
-    private func analizza() async {
-        inCorso = true
-        defer { inCorso = false }
-        let a = doIds.sorted().map(String.init).joined(separator: ",")
-        let b = ricevoIds.sorted().map(String.init).joined(separator: ",")
-        do {
-            esito = try await Api.get("/api/scambi/analizza?con=\(Api.codifica(altra))&do=\(a)&ricevo=\(b)")
-            errore = nil
-        } catch {
-            esito = nil
-            errore = error.localizedDescription
-        }
-    }
+#Preview("Scambi") {
+    ScambiView(vm: ScambiViewModel(server: FinteServer.esempio))
 }

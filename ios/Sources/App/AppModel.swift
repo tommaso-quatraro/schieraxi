@@ -8,11 +8,13 @@ final class AppModel: ObservableObject {
     let oggi: OggiViewModel
     let formazione: FormazioneViewModel
     let mercato: MercatoViewModel
+    let scambi: ScambiViewModel
 
     init(server: any ServerClient = ServerCorrente.condiviso) {
         self.server = server
         self.oggi = OggiViewModel(server: server)
         self.formazione = FormazioneViewModel(server: server)
         self.mercato = MercatoViewModel(server: server)
+        self.scambi = ScambiViewModel(server: server)
     }
 }

@@ -3,6 +3,21 @@ import Foundation
 /// Dati finti per le anteprime di Xcode (`#Preview`): niente rete, niente server.
 extension FinteServer {
     static let esempio = FinteServer(risposte: [
+        "/api/squadre": """
+        [{"nome": "La mia squadra", "mia": true, "giocatori": 25}, {"nome": "Altra squadra", "mia": false, "giocatori": 25}]
+        """,
+        "/api/rosa": """
+        {"nome": "La mia squadra", "mia": true,
+         "giocatori": [{"id": 1, "nome": "Giocatore 044", "ruolo": "A", "squadra": "inter", "costo": 80},
+                       {"id": 2, "nome": "Giocatore senza ruolo", "ruolo": null, "squadra": "ignota", "costo": 1}]}
+        """,
+        "/api/scambi/proposte": """
+        {"giornate": [11, 12],
+         "proposte": [{"mia": "La mia squadra", "altra": "Altra squadra",
+                       "do": [{"id": 7, "nome": "Mario Rossi", "ruolo": "D", "squadra": "roma"}],
+                       "ricevo": [{"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "squadra": "lazio"}],
+                       "guadagno_mio": 2.4, "guadagno_loro": 1.1, "per_giornata_mio": [1.2, 1.2], "per_giornata_loro": [0.5, 0.6], "giornate": [11, 12]}]}
+        """,
         "/api/mercato": """
         {"squadra": "La mia squadra", "svincolati": 118, "crediti_residui": 12,
          "proposte": [{"esce": {"id": 7, "nome": "Mario Rossi", "ruolo": "D", "squadra": "roma"},

@@ -106,7 +106,7 @@ struct RadiceView: View {
         case .oggi: OggiView(vm: modello.oggi)
         case .formazione: FormazioneView(vm: modello.formazione)
         case .mercato: MercatoView(vm: modello.mercato)
-        case .scambi: ScambiView()
+        case .scambi: ScambiView(vm: modello.scambi)
         case .lega: LegaView()
         }
     }
