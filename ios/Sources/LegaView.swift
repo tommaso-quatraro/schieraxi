@@ -29,7 +29,9 @@ struct LegaView: View {
                     NavigationLink { ImportaExcelView() } label: { Label("Aggiorna le rose da Excel", systemImage: "doc.badge.plus") }
                     NavigationLink { SquadreView() } label: { Label("Squadre e rose", systemImage: "person.3") }
                     NavigationLink { AstaView() } label: { Label("Asta e riparazione", systemImage: "hammer") }
-                    NavigationLink { RegoleView() } label: { Label("Regole", systemImage: "list.bullet.rectangle") }
+                    NavigationLink { RegoleEditorView() } label: { Label("Regole", systemImage: "list.bullet.rectangle") }
+                    NavigationLink { CreditiView() } label: { Label("Crediti delle squadre", systemImage: "eurosign.circle") }
+                    NavigationLink { AvvisiServerView() } label: { Label("Avvisi del server", systemImage: "bell.badge") }
                     NavigationLink { StatoDatiView() } label: { Label("Stato dei dati", systemImage: "externaldrive") }
                     NavigationLink { NovitaView() } label: { Label("Novità del server", systemImage: "sparkles") }
                 }

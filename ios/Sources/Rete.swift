@@ -13,9 +13,11 @@ enum ErroreApi: LocalizedError {
     case risposta(Int)
     case dati(String)
     case rete(String)
+    case server(String)
 
     var errorDescription: String? {
         switch self {
+        case .server(let messaggio): return "Il server dice: \(messaggio)"
         case .indirizzoNonValido: return "L'indirizzo del server non è valido."
         case .risposta(let codice): return "Il server ha risposto con un errore (\(codice))."
         case .dati(let dettaglio): return "Risposta inattesa dal server. \(dettaglio)"
@@ -50,10 +52,46 @@ enum Api {
         }
     }
 
-    static func get<T: Decodable>(_ percorso: String) async throws -> T {
+    /// Il messaggio d'errore del server ({"detail": "..."}), se c'è.
+    private static func messaggioServer(_ dati: Data, _ codice: Int) -> String {
+        if let o = try? JSONSerialization.jsonObject(with: dati) as? [String: Any], let m = o["detail"] as? String { return m }
+        return "errore \(codice)"
+    }
+
+    /// Invia un corpo JSON (POST/PUT) e restituisce la risposta grezza.
+    static func corpoJSON<B: Encodable>(_ metodo: String, _ percorso: String, _ corpo: B) async throws -> Data {
+        var r = try richiesta(percorso)
+        r.httpMethod = metodo
+        r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        r.httpBody = try JSONEncoder().encode(corpo)
+        do {
+            let (dati, risposta) = try await URLSession.shared.data(for: r)
+            if let h = risposta as? HTTPURLResponse, !(200..<300).contains(h.statusCode) {
+                throw ErroreApi.server(messaggioServer(dati, h.statusCode))
+            }
+            return dati
+        } catch let e as ErroreApi {
+            throw e
+        } catch {
+            throw ErroreApi.rete(error.localizedDescription)
+        }
+    }
+
+    static func posta<T: Decodable, B: Encodable>(_ metodo: String = "POST", _ percorso: String, _ corpo: B, snake: Bool = true) async throws -> T {
+        let dati = try await corpoJSON(metodo, percorso, corpo)
+        let d = JSONDecoder()
+        if snake { d.keyDecodingStrategy = .convertFromSnakeCase }
+        do {
+            return try d.decode(T.self, from: dati)
+        } catch {
+            throw ErroreApi.dati(String(describing: error).prefix(160).description)
+        }
+    }
+
+    static func get<T: Decodable>(_ percorso: String, snake: Bool = true) async throws -> T {
         let dati = try await scarica(percorso)
         let d = JSONDecoder()
-        d.keyDecodingStrategy = .convertFromSnakeCase
+        if snake { d.keyDecodingStrategy = .convertFromSnakeCase }
         do {
             return try d.decode(T.self, from: dati)
         } catch {
@@ -119,8 +157,13 @@ final class Caricatore<T: Decodable>: ObservableObject {
     @Published var errore: String?
     @Published var inCorso = false
     var percorso: String
+    let snake: Bool
 
-    init(_ percorso: String) { self.percorso = percorso }
+    /// `snake: false` per i dati che vanno rimandati al server con le stesse chiavi (regole, impostazioni degli avvisi).
+    init(_ percorso: String, snake: Bool = true) {
+        self.percorso = percorso
+        self.snake = snake
+    }
 
     func ricarica(_ nuovoPercorso: String) async {
         percorso = nuovoPercorso
@@ -131,7 +174,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
         inCorso = true
         defer { inCorso = false }
         do {
-            dato = try await Api.get(percorso)
+            dato = try await Api.get(percorso, snake: snake)
             errore = nil
         } catch {
             errore = error.localizedDescription

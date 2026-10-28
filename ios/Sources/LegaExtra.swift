@@ -19,6 +19,9 @@ struct SquadreView: View {
                                 Text("\(sq.giocatori ?? 0)").foregroundStyle(.secondary)
                             }
                         }
+                        .swipeActions {
+                            Button("È la mia") { Task { await imposta(sq.nome) } }.tint(Color.verde)
+                        }
                     }
                 } else if let e = caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
@@ -30,6 +33,12 @@ struct SquadreView: View {
         }
         .navigationTitle("Squadre")
         .task { await caricatore.ricarica() }
+    }
+
+    private func imposta(_ nome: String) async {
+        let _: JSONValue? = try? await Api.posta("PUT", "/api/mia-squadra", NomeSquadra(nome: nome), snake: false)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        await caricatore.ricarica()
     }
 }
 
