@@ -48,7 +48,7 @@ struct ScambiView: View {
             .sheet(item: $vm.selezionata) { p in
                 NavigationStack {
                     ZStack { Sfondo(); ScrollView { DettaglioScambio(p: p).padding(16) } }
-                        .navigationTitle("Scambio con \(p.altra)")
+                        .navigationTitle("Scambio")   // la squadra è già nella scheda «Punti attesi» (un titolo lungo veniva tagliato)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { vm.selezionata = nil } }

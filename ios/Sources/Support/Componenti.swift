@@ -143,7 +143,7 @@ struct RigaValore: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(titolo)
-                testoValore
+                testoValore.multilineTextAlignment(.leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

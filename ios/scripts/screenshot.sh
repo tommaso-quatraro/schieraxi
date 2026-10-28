@@ -141,7 +141,7 @@ giro "$UDID_IPAD" ipad_scuro_senzabarra scuro large oggi formazione formazione-m
 giro "$UDID_IPAD" ipad_chiaro_senzabarra chiaro large oggi formazione mercato-consigliati scambi
 ARGOMENTI_EXTRA=()
 
-# Orizzontale: su iPad l'app non può forzare la rotazione (multitasking), quindi si prova a ruotare il simulatore con la tastiera
+# Orizzontale: su iPad l'app non può forzare la rotazione (multitasking), quindi si ruota il simulatore con la tastiera
 # (Cmd+freccia sinistra nella finestra di Simulator). Può non funzionare sul Mac di GitHub: in quel caso le foto restano verticali.
 echo "=== rotazione dell'iPad con la tastiera ==="
 open -a Simulator --args -CurrentDeviceUDID "$UDID_IPAD" >/dev/null 2>&1
@@ -150,8 +150,10 @@ osascript -e 'tell application "Simulator" to activate' 2>&1
 sleep 2
 osascript -e 'tell application "System Events" to key code 123 using command down' 2>&1
 sleep 3
+RADDRIZZA=1   # col simulatore ruotato la foto esce girata di 90 gradi (come sull'iPhone)
 giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${PRINCIPALI[@]}" formazione-manuale mercato-calendario lega-squadre
 giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione mercato-classifica lega
+RADDRIZZA=0
 
 spegni_simulatore "$UDID_IPAD"
 

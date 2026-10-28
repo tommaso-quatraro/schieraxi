@@ -94,7 +94,7 @@ struct RadiceView: View {
                     Label {
                         Text(s.titolo)
                     } icon: {
-                        Image(systemName: s.icona).frame(width: 32)
+                        Image(systemName: s.icona).resizable().scaledToFit().frame(width: 28, height: 22)
                     }
                     .tag(s)
                         .frame(minHeight: 44)
