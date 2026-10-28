@@ -47,7 +47,8 @@ struct LegaView: View {
                             await aggiornaPermesso()
                         }
                     }
-                    Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri la schermata Oggi.")
+                    riga("Aggiornamento in background", sfondo)
+                    Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri la schermata Oggi e, ogni tanto, da soli: iOS sveglia l'app in background, riscarica la giornata e ti avvisa se la formazione consigliata cambia. Quando succede lo decide iOS (di solito poche volte al giorno).")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("App") {
@@ -61,6 +62,15 @@ struct LegaView: View {
                 await caricatore.ricarica()
                 await aggiornaPermesso()
             }
+        }
+    }
+
+    /// Se iOS permette all'app di aggiornarsi in background (Impostazioni > Generali > Aggiornamento app in background).
+    private var sfondo: String {
+        switch UIApplication.shared.backgroundRefreshStatus {
+        case .available: return "attivo"
+        case .denied: return "disattivato"
+        default: return "limitato"
         }
     }
 

@@ -11,6 +11,17 @@ enum Notifiche {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
+    /// Notifica locale subito (usata dall'aggiornamento in background quando la formazione consigliata cambia).
+    static func avviso(id: String, titolo: String, corpo: String) async {
+        let stato = await stato()
+        guard stato == .authorized || stato == .provisional else { return }
+        let contenuto = UNMutableNotificationContent()
+        contenuto.title = titolo
+        contenuto.body = corpo
+        contenuto.sound = .default
+        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: nil))
+    }
+
     static func programma(giornata: Int, inizio: Date, modulo: String?) async {
         let centro = UNUserNotificationCenter.current()
         let stato = await stato()

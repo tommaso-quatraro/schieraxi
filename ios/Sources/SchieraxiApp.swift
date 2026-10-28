@@ -4,12 +4,21 @@ import SwiftUI
 @main
 struct SchieraxiApp: App {
     @StateObject private var nav = Navigazione()
+    @Environment(\.scenePhase) private var fase
 
     var body: some Scene {
         WindowGroup {
             RadiceView()
                 .environmentObject(nav)
                 .preferredColorScheme(.dark)
+                .onChange(of: fase) { nuova in
+                    // Uscendo dall'app si chiede a iOS il prossimo aggiornamento in background.
+                    if nuova == .background { Aggiornamento.programma() }
+                }
+        }
+        // Aggiornamento in background (iOS lo avvia quando vuole): riscarica la giornata e riprogramma i promemoria.
+        .backgroundTask(.appRefresh(Aggiornamento.identificativo)) {
+            await Aggiornamento.esegui()
         }
         .commands {
             // Scorciatoie da tastiera (iPad con tastiera: tieni premuto Cmd per vederle).

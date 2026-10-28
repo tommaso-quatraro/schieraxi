@@ -41,5 +41,10 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
+        # aggiornamento in background (BGAppRefreshTask): identificativo permesso e modalità "fetch"
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - <vecchio identificativo>.aggiorna
         FantaHost: $(FANTA_HOST)
         FantaPort: $(FANTA_PORT)
