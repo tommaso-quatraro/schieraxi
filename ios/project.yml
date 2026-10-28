@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     iOS: "16.0"
   createIntermediateGroups: true
+  developmentLanguage: it
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -28,6 +29,8 @@ targets:
       path: Config/Info.plist
       properties:
         CFBundleDisplayName: SchieraXI
+        CFBundleLocalizations:
+          - it
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
