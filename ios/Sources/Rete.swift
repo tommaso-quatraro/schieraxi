@@ -75,6 +75,33 @@ enum Api {
         }
     }
 
+    /// Carica un file (campo "file") e legge la risposta JSON: importazione delle rose da Excel.
+    static func caricaFile<T: Decodable>(_ percorso: String, nome: String, dati: Data) async throws -> T {
+        var r = try richiesta(percorso)
+        r.httpMethod = "POST"
+        r.timeoutInterval = 120
+        let confine = "Fanta-\(UUID().uuidString)"
+        r.setValue("multipart/form-data; boundary=\(confine)", forHTTPHeaderField: "Content-Type")
+        var corpo = Data()
+        corpo.append(Data("--\(confine)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(nome)\"\r\nContent-Type: application/octet-stream\r\n\r\n".utf8))
+        corpo.append(dati)
+        corpo.append(Data("\r\n--\(confine)--\r\n".utf8))
+        do {
+            let (risposta, resp) = try await URLSession.shared.upload(for: r, from: corpo)
+            if let h = resp as? HTTPURLResponse, !(200..<300).contains(h.statusCode) {
+                let dettaglio = String(decoding: risposta, as: UTF8.self)
+                throw ErroreApi.dati("Errore \(h.statusCode): \(dettaglio.prefix(200))")
+            }
+            let d = JSONDecoder()
+            d.keyDecodingStrategy = .convertFromSnakeCase
+            return try d.decode(T.self, from: risposta)
+        } catch let e as ErroreApi {
+            throw e
+        } catch {
+            throw ErroreApi.rete(error.localizedDescription)
+        }
+    }
+
     /// Testo da inserire in un indirizzo (nomi con spazi e simboli).
     static func codifica(_ testo: String) -> String {
         testo.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?#"))) ?? testo

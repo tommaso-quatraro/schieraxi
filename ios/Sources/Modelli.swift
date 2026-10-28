@@ -190,6 +190,23 @@ struct Oggi: Decodable {
     let partite: [Partita]?
 }
 
+struct OpzioneModulo: Decodable, Identifiable {
+    let modulo: String
+    let punteggioAtteso: Double
+    let titolari: [Int]
+    let panchina: [Int]
+    var id: String { modulo }
+}
+
+struct LivelloRischio: Decodable, Identifiable {
+    let rischio: Int
+    let nome: String
+    let modulo: String
+    let punteggioAtteso: Double
+    let moduli: [OpzioneModulo]
+    var id: Int { rischio }
+}
+
 struct Formazione: Decodable {
     let squadra: String?
     let giornata: Int
@@ -198,6 +215,68 @@ struct Formazione: Decodable {
     let titolari: [Giocatore]
     let panchina: [Giocatore]
     let conProbabili: Bool?
+    let livelli: [LivelloRischio]?
+    let schede: [String: Giocatore]?
+}
+
+struct RuoloAsta: Decodable, Identifiable {
+    struct Voce: Decodable, Identifiable {
+        let id: Int
+        let nome: String
+        let squadra: String?
+        let prezzo: Double?
+        let puntiStagione: Double?
+    }
+    let ruolo: String
+    let quota: Double?
+    let crediti: Double?
+    let giocatori: [Voce]
+    var id: String { ruolo }
+}
+
+struct PianoAsta: Decodable {
+    let crediti: Double?
+    let squadre: Int?
+    let ruoli: [RuoloAsta]
+}
+
+struct VoceNovita: Decodable, Identifiable {
+    let versione: String
+    let data: String?
+    let titolo: String
+    let voci: [String]
+    var id: String { versione }
+}
+
+struct AggiornamentoDati: Decodable, Identifiable {
+    let cosa: String
+    let quando: String?
+    let errori: [String]?
+    var id: String { cosa + (quando ?? "") }
+}
+
+struct StatoDati: Decodable {
+    struct Partite: Decodable { let totali: Int?; let giocate: Int? }
+    let stagione: String?
+    let aggiornamenti: [AggiornamentoDati]?
+    let calciatori: Int?
+    let partite: Partite?
+    let voti: Int?
+    let coppeFino: String?
+}
+
+struct EsitoImportazione: Decodable {
+    let squadreImportate: [String]?
+    let totaleSquadre: Int?
+    let avvisi: [String]?
+    let miaSquadra: String?
+    let riepilogo: String?
+}
+
+struct RegoleLega: Decodable {
+    let nomeLega: String?
+    let creditiIniziali: Double?
+    let rimborsoSvincolo: Double?
 }
 
 /// Date del server: "2026-10-27 18:30", ora italiana.
