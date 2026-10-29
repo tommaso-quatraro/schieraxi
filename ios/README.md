@@ -72,4 +72,4 @@ L'app nativa fa **tutto quello che fa la web app** (tranne le notifiche push, ve
 - Non portato dalla web app perché non serve o non si può: le notifiche web (push), la scheda «Comandi di Apple» che copia un indirizzo (nell'app ci sono già Siri e Comandi con App Intents), la dimensione del testo a scelta (si usa quella di iOS), il salvataggio sul server dell'icona (l'icona nativa è una scelta del telefono: `/api/icona` serve alla web app).
 - Certificato di 7 giorni, massimo 3 app. Il widget consuma un App ID in più: se SideStore protesta, togli il target `SchieraxiWidget` da `project.yml` e la riga `dependencies`.
 - Se SideStore rinnova l'app senza che l'app venga aperta, un promemoria di scadenza già programmato può arrivare lo stesso: si corregge alla prima apertura.
-- Mai in git: firme, certificati, profili, password, Apple ID. Le fixture dei test contengono i nomi di una lega reale (repository privato).
+- Mai in git: firme, certificati, profili, password, Apple ID. Le fixture dei test contengono i nomi di una lega reale; il repository è pubblico di proposito (Actions su macOS gratuite e aggiornamenti per SideStore), decisione del 29/10/2026.
