@@ -27,6 +27,7 @@ enum Aggiornamento {
         if Demo.attivo { return }
         programma()   // prima di tutto: riprogramma il prossimo risveglio
         await riprogrammaScadenza()
+        await NuovaVersione.controllaEAvvisa()
         guard let oggi = try? await OggiRepository(server: ServerCorrente.condiviso).aggiornato() else { return }
         await elabora(oggi, avvisaSeCambia: true)
     }

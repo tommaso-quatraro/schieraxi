@@ -13,6 +13,7 @@ struct LegaView: View {
                 sezioneLega
                 sezioneApp
                 sezionePromemoria
+                NuovaVersioneSezione()
                 CertificatoSezione()
                 RinnovoSideStoreSezione()
                 NotificheNtfySezione()

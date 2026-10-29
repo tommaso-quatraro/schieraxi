@@ -1,5 +1,24 @@
 import SwiftUI
 
+/// Avvisa in Lega se su GitHub c'è una build più nuova di quella installata, con i passi per aggiornare da SideStore.
+struct NuovaVersioneSezione: View {
+    @State private var esito: NuovaVersione.Esito?
+
+    var body: some View {
+        Group {
+            if let esito {
+                Section("Aggiornamento dell'app") {
+                    Label("È disponibile la \(esito.nome) (hai la build \(NuovaVersione.buildInstallata))", systemImage: "arrow.down.circle")
+                        .foregroundStyle(Color.verde)
+                    Text("Apri SideStore, tocca Sorgenti, poi SchieraXI e «Aggiorna». Se non vedi il sorgente: in Sorgenti aggiungi https://github.com/tommaso-quatraro/schieraxi-ios/releases/latest/download/sorgente.json")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .task { esito = await NuovaVersione.controllaEAvvisa() }
+    }
+}
+
 /// Scadenza del certificato dell'app, con il colore giusto (arancio sotto 2 giorni, rosso se scaduto).
 struct CertificatoSezione: View {
     @State private var scadenza: Date?
