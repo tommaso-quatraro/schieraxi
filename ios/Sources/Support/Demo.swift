@@ -179,3 +179,28 @@ extension Demo {
         modello.lega.percorso = pagine
     }
 }
+
+/// Solo per le fotografie (`-DEMO_SCHERMATA marchio`): il marchio di SchieraXI fermo, in quattro momenti del movimento,
+/// il segnaposto di caricamento e uno stato vuoto, sul fondo chiaro o scuro del sistema.
+struct ProvaMarchio: View {
+    var body: some View {
+        ZStack {
+            Sfondo()
+            ScrollView {
+                VStack(spacing: 18) {
+                    Scheletro(schede: 1, righe: 2, testo: "Scelgo gli undici…")
+                    Carta("Il marchio, quattro momenti") {
+                        HStack(spacing: 8) {
+                            ForEach([0.0, 0.3, 0.5, 0.8], id: \.self) { f in
+                                Marchio(lato: 76, muove: true, fermoAllaFase: f)
+                            }
+                        }
+                        MarchioConNome(lato: 60)
+                    }
+                    Carta { VistaVuota(titolo: "Nessun giocatore osservato", icona: "star", descrizione: "Apri la scheda di un giocatore e tocca «Osserva».") }
+                }
+                .padding(Tema.margine)
+            }
+        }
+    }
+}

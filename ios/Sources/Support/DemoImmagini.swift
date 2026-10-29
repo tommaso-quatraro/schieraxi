@@ -6,8 +6,8 @@ enum DemoImmagini {
     /// I giocatori della demo che hanno la «foto» (gli altri mostrano la maglietta della squadra).
     static let idConFoto: Set<Int> = [101, 104, 112, 113, 120, 121, 123, 203]
     /// Le squadre della demo con stemma e con maglia.
-    static let conStemma: Set<String> = ["SchieraXI FC", "Real Madrink", "Atletico Divano", "Dinamo Pizza", "Gli Amici del Bar Sport Centrale"]
-    static let conMaglia: Set<String> = ["SchieraXI FC", "Real Madrink"]
+    static let conStemma: Set<String> = ["Schiera FC", "Real Madrink", "Atletico Divano", "Dinamo Pizza", "Gli Amici del Bar Sport Centrale"]
+    static let conMaglia: Set<String> = ["Schiera FC", "Real Madrink"]
 
     /// I byte dell'immagine per un indirizzo del server (`/api/foto/101`, `/api/squadre/immagine?...`), o nil se non ce n'è.
     static func dati(per percorso: String) -> Data? {

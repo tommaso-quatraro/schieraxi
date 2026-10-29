@@ -49,7 +49,7 @@ enum NuovaVersione {
         if UserDefaults.standard.integer(forKey: chiaveAvvisata) < esito.build {
             await Notifiche.avviso(
                 id: "nuova-versione",
-                titolo: "SchieraXI: c'è una versione nuova",
+                titolo: "SchieraXI · C'è una versione nuova",
                 corpo: "Apri SideStore, tocca Sorgenti e poi «Aggiorna» su SchieraXI (\(esito.nome)).")
             UserDefaults.standard.set(esito.build, forKey: chiaveAvvisata)
         }

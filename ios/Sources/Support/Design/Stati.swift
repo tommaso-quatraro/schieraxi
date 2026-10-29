@@ -44,13 +44,24 @@ struct BloccoScheletro: View {
 }
 
 /// Una scheda finta con un titolo e qualche riga (avatar, due testi, un numero).
+/// Con `testo` la scheda comincia con il marchio di SchieraXI in movimento (4-3-3 → 3-5-2) e una frase da spogliatoio.
 struct CartaScheletro: View {
     var righe = 3
     var nascosta = false
+    var testo: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            BloccoScheletro(larghezza: 150, altezza: 18)
+            if let testo {
+                VStack(spacing: 8) {
+                    Marchio(lato: 58, muove: true)
+                    Text(testo).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 4)
+            } else {
+                BloccoScheletro(larghezza: 150, altezza: 18)
+            }
             ForEach(0..<righe, id: \.self) { _ in
                 HStack(spacing: 12) {
                     Circle().fill(Color.primary.opacity(0.10)).frame(width: 44, height: 44)
@@ -68,19 +79,21 @@ struct CartaScheletro: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: Tema.raggioScheda, style: .continuous))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Caricamento in corso")
+        .accessibilityLabel(testo ?? "Caricamento in corso")
         .accessibilityHidden(nascosta)
     }
 }
 
 /// Più schede finte una sotto l'altra: il segnaposto di una schermata che sta caricando.
+/// La prima porta il marchio animato e la frase `testo` («Scelgo gli undici…»).
 struct Scheletro: View {
     var schede = 3
     var righe = 3
+    var testo = "Un attimo, mister…"
 
     var body: some View {
         ForEach(0..<schede, id: \.self) { i in
-            CartaScheletro(righe: righe, nascosta: i > 0)
+            CartaScheletro(righe: righe, nascosta: i > 0, testo: i == 0 ? testo : nil)
                 .transition(.opacity)
         }
     }
@@ -120,10 +133,10 @@ struct ErroreVista: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("Non riesco a caricare", systemImage: "wifi.exclamationmark")
+            Label("Qualcosa non va", systemImage: "wifi.exclamationmark")
                 .symbolEffect(.pulse, options: .repeat(3))
         } description: {
-            Text(messaggio)
+            Text(messaggio + "\nControlla che rete privata sia acceso e riprova.")
         } actions: {
             Button {
                 tentativi += 1
@@ -148,7 +161,11 @@ struct VistaVuota: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label(titolo, systemImage: icona)
+            VStack(spacing: 10) {
+                Marchio(lato: 52).accessibilityHidden(true)
+                Text(titolo).font(.title2.bold()).multilineTextAlignment(.center)
+            }
+            .accessibilityElement(children: .combine)
         } description: {
             if let descrizione { Text(descrizione) }
         }

@@ -37,8 +37,8 @@ PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazi
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
 SCATTI="${SCATTI:-completo}"
 if [ "$SCATTI" = "veloce" ]; then
-  TUTTE=(oggi oggi-fondo formazione formazione-fondo mercato-consigliati mercato-classifica giocatore giocatore-fondo scambi lega lega-aspetto)
-  PER_CHIARO=(oggi formazione mercato-consigliati giocatore scambi lega)
+  TUTTE=(marchio oggi oggi-fondo formazione formazione-fondo mercato-consigliati mercato-classifica giocatore giocatore-fondo scambi lega lega-aspetto)
+  PER_CHIARO=(marchio oggi formazione mercato-consigliati giocatore scambi lega)
   PER_TESTO_GRANDE=(oggi formazione giocatore)
   PRINCIPALI=(oggi formazione giocatore scambi lega)
   PER_IPAD=(oggi formazione formazione-fondo mercato-consigliati giocatore scambi lega)
@@ -146,6 +146,21 @@ if [ "$SCATTI" != "veloce" ]; then
   ARGOMENTI_EXTRA=()
 fi
 
+# La schermata di avvio (tentativo: si fotografa subito dopo il lancio, può essere già passata) e la Home di iOS
+# (serve a vedere nome e icona dell'app). Va fatta PRIMA della prova dello schema, che lascia a video una conferma di iOS.
+xcrun simctl ui "$UDID_IPHONE" appearance dark
+xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
+sleep 2
+xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO >/dev/null 2>&1
+xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/avvio_iphone.png" >/dev/null 2>&1
+sleep 4
+for aspetto in dark light; do
+  xcrun simctl ui "$UDID_IPHONE" appearance "$aspetto"
+  xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
+  sleep 3
+  xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/home_iphone_$aspetto.png" >/dev/null 2>&1
+done
+
 # Prova dello schema schieraxi:// con "simctl openurl" (come un tocco su una notifica di ntfy). Su alcuni sistemi iOS chiede
 # conferma "Aprire in SchieraXI?": la foto lo mostra. Per questo le altre schermate si aprono con un argomento di lancio.
 xcrun simctl ui "$UDID_IPHONE" appearance dark
@@ -196,6 +211,11 @@ else
   giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione mercato-classifica lega
 fi
 RADDRIZZA=0
+
+xcrun simctl ui "$UDID_IPAD" appearance dark
+xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
+sleep 3
+xcrun simctl io "$UDID_IPAD" screenshot "$USCITA/home_ipad_dark.png" >/dev/null 2>&1
 
 spegni_simulatore "$UDID_IPAD"
 

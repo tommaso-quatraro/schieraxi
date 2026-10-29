@@ -121,12 +121,12 @@ struct ConsigliatiView: View {
                             .accessibilityHint("Apre la scheda del giocatore")
                     }
                     if m.proposte.isEmpty {
-                        VistaVuota(titolo: "Nessun cambio conviene adesso", icona: "checkmark.circle", descrizione: "La rosa è già la scelta migliore tra gli svincolati.")
+                        VistaVuota(titolo: "Nessun cambio conviene adesso", icona: "checkmark.circle", descrizione: "Mister, la rosa è già la migliore tra gli svincolati.")
                     }
                 } else if let e = vm.consigliati.errore {
                     ErroreVista(messaggio: e) { Task { await vm.consigliati.ricarica() } }
                 } else {
-                    Scheletro(schede: 3, righe: 2)
+                    Scheletro(schede: 3, righe: 2, testo: "Cerco gli svincolati…")
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
@@ -203,7 +203,7 @@ struct ClassificaView: View {
                         }
                     }
                 } else {
-                    Scheletro(schede: 1, righe: 6)
+                    Scheletro(schede: 1, righe: 6, testo: "Preparo la classifica…")
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
@@ -271,7 +271,7 @@ struct CalendarioView: View {
                 } else if let e = vm.calendario.errore {
                     ErroreVista(messaggio: e) { Task { await vm.calendario.ricarica() } }
                 } else {
-                    Scheletro(schede: 1, righe: 5)
+                    Scheletro(schede: 1, righe: 5, testo: "Guardo il calendario…")
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)

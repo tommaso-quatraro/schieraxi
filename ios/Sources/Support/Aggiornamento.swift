@@ -50,10 +50,10 @@ enum Aggiornamento {
         if avvisaSeCambia, giornataPrima == oggi.giornata {
             let punti = Formato.punti(f.punteggioAtteso)
             if let moduloPrima, moduloPrima != modulo {
-                await Notifiche.avviso(id: "fanta-cambio", titolo: "La formazione consigliata è cambiata",
-                                       corpo: "Giornata \(oggi.giornata): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima)).")
+                await Notifiche.avviso(id: "fanta-cambio", titolo: "SchieraXI · Cambio di modulo",
+                                       corpo: "Mister, giornata \(oggi.giornata): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima)).")
             } else if probabiliPrima == false, probabili {
-                await Notifiche.avviso(id: "fanta-probabili", titolo: "Sono uscite le probabili formazioni",
+                await Notifiche.avviso(id: "fanta-probabili", titolo: "SchieraXI · Escono le probabili",
                                        corpo: "Giornata \(oggi.giornata): modulo consigliato \(modulo), \(punti) punti attesi.")
             }
         }

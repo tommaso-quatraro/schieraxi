@@ -34,8 +34,8 @@ enum Notifiche {
             let quando = scadenza.addingTimeInterval(-Double(ore) * 3600)
             guard quando > Date() else { continue }
             let contenuto = UNMutableNotificationContent()
-            contenuto.title = "L'app sta per scadere"
-            contenuto.body = "Il certificato scade tra circa \(ore) ore. Rinnova l'app con SideStore."
+            contenuto.title = "SchieraXI · L'app sta per scadere"
+            contenuto.body = "Il certificato scade tra circa \(ore) ore. Rinnovala con SideStore."
             contenuto.sound = .default
             let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: quando)
             let trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
@@ -52,8 +52,8 @@ enum Notifiche {
             let quando = inizio.addingTimeInterval(-Double(minuti) * 60)
             guard quando > Date() else { continue }
             let contenuto = UNMutableNotificationContent()
-            contenuto.title = minuti == 60 ? "Formazione: manca un'ora" : "Formazione: mancano 15 minuti"
-            contenuto.body = "Giornata \(giornata)" + (modulo.map { ", modulo consigliato \($0)" } ?? "") + ". Apri l'app per controllare."
+            contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
+            contenuto.body = "Giornata \(giornata)" + (modulo.map { ", modulo consigliato \($0)" } ?? "") + ". Mister, dai un'occhiata alla formazione."
             contenuto.sound = .default
             let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: quando)
             let trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)

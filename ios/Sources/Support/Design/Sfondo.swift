@@ -26,7 +26,7 @@ struct Sfondo: View {
     private var colori: [Color] {
         let principale: Color = Color.verde
         let freddo: Color = principale.mix(with: .blue, by: 0.45)
-        let caldo: Color = principale.mix(with: .yellow, by: 0.25)
+        let caldo: Color = principale.mix(with: Color.capitano, by: 0.3)
         let riga1: [Color] = [principale, freddo, principale]
         let riga2: [Color] = [caldo, principale, freddo]
         let riga3: [Color] = [.clear, .clear, .clear]

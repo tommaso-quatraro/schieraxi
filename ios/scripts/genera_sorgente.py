@@ -17,7 +17,7 @@ sorgente = {
     "subtitle": "SchieraXI per iPhone e iPad",
     "description": "Le versioni di SchieraXI compilate da GitHub.",
     "iconURL": f"https://raw.githubusercontent.com/{repo}/main/Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
-    "tintColor": "30D17F",
+    "tintColor": "3DDC97",
     "apps": [
         {
             "name": "SchieraXI",
@@ -26,13 +26,13 @@ sorgente = {
             "subtitle": "Formazioni e scambi per il fantacalcio",
             "localizedDescription": "App nativa per scegliere la formazione e analizzare gli scambi, con widget, Siri e Comandi.",
             "iconURL": f"https://raw.githubusercontent.com/{repo}/main/Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
-            "tintColor": "30D17F",
+            "tintColor": "3DDC97",
             "version": f"1.0.{build}",
             "versionDate": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "versionDescription": f"Build {build}",
             "downloadURL": f"{base}/releases/download/build-{build}/Schieraxi.ipa",
             "size": os.path.getsize(ipa),
-            "minOSVersion": "16.0",
+            "minOSVersion": "18.0",
         }
     ],
     "news": [],

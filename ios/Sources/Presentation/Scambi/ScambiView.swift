@@ -15,7 +15,7 @@ struct ScambiView: View {
                         if let d = vm.proposte.dato {
                             squadrePropense.ingresso(2)
                             if d.proposte.isEmpty {
-                                VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Nessuno scambio conviene a tutti e due.")
+                                VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Per ora non c'è niente che convenga a tutti e due.")
                             }
                             ForEach(Array(d.proposte.enumerated()), id: \.element.id) { i, p in
                                 Button { vm.giudizioSelezionata = nil; vm.selezionata = p } label: { carta(p) }
@@ -27,7 +27,7 @@ struct ScambiView: View {
                         } else if let e = vm.proposte.errore {
                             ErroreVista(messaggio: e) { Task { await vm.caricaProposte() } }
                         } else {
-                            Scheletro(schede: 3, righe: 2)
+                            Scheletro(schede: 3, righe: 2, testo: "Guardo gli scambi…")
                         }
                         archivio
                     }

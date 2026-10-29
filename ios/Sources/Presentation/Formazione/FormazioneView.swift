@@ -60,7 +60,7 @@ struct FormazioneView: View {
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
-                            Scheletro(schede: 3, righe: 3)
+                            Scheletro(schede: 3, righe: 3, testo: "Scelgo gli undici…")
                         }
                     }
                     .padding(.horizontal, Tema.margine)

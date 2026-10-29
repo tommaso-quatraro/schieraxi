@@ -13,6 +13,12 @@ enum Tema {
     /// Altezza minima di tutto ciò che si tocca (linee guida Apple: 44 pt).
     static let areaTocco: CGFloat = 44
 
+    /// Colori del marchio (punti chiari su fondo scuro, quasi neri su fondo chiaro; capitano lime).
+    static let puntiScuro = Color(red: 0.918, green: 0.965, blue: 0.933)
+    static let puntiChiaro = Color(red: 0.06, green: 0.12, blue: 0.09)
+    static let capitanoScuro = Color(red: 0.831, green: 0.953, blue: 0.290)
+    static let capitanoChiaro = Color(red: 0.525, green: 0.659, blue: 0)
+
     /// Animazione «normale» dell'app: morbida, senza rimbalzo.
     static let morbida: Animation = .smooth(duration: 0.4)
     /// Per i cambi di selezione e gli elementi che compaiono: una molla leggera.
@@ -26,6 +32,12 @@ extension Color {
     static let sfondoScheda = Color(uiColor: .secondarySystemGroupedBackground)
     /// Fondo di campi e pulsanti incassati dentro una scheda.
     static let sfondoIncavo = Color(uiColor: .tertiarySystemFill)
+
+    /// Il lime del capitano (palette di SchieraXI): lime acceso sul fondo scuro, oliva sul fondo chiaro. Per marchio, pillole
+    /// selezionate e dettagli: mai per testo piccolo (sul chiaro il contrasto con il bianco è basso).
+    static let capitano = Color(uiColor: UIColor { tratti in
+        tratti.userInterfaceStyle == .dark ? UIColor(red: 0.831, green: 0.953, blue: 0.290, alpha: 1) : UIColor(red: 0.525, green: 0.659, blue: 0, alpha: 1)
+    })
 
     /// Esiti: bene, attenzione, male. Sempre accompagnati da testo o simbolo, mai solo il colore.
     static let esitoBuono = Color.green
@@ -122,15 +134,16 @@ extension Color {
 }
 
 extension View {
-    /// Una «pillola» di una fila di scelte (moduli, sezioni): quella attiva ha il colore principale, che scivola da una all'altra.
+    /// Una «pillola» di una fila di scelte (moduli, sezioni): quella attiva è lime (il colore del capitano), con testo scuro, e
+    /// scivola da una all'altra.
     func pillola(attiva: Bool, spazio: Namespace.ID) -> some View {
         self
-            .foregroundStyle(attiva ? Color.testoSuAccento : Color.primary)
+            .foregroundStyle(attiva ? Color.black.opacity(0.85) : Color.primary)
             .background {
                 ZStack {
                     Capsule().fill(Color.sfondoIncavo)
                     if attiva {
-                        Capsule().fill(Color.verde).matchedGeometryEffect(id: "pillolaAttiva", in: spazio)
+                        Capsule().fill(Color.capitano).matchedGeometryEffect(id: "pillolaAttiva", in: spazio)
                     }
                 }
             }

@@ -51,7 +51,7 @@ struct CertificatoSezione: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            Text("Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria: «Rinnova l'app con SideStore».")
+            Text("Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria: «Rinnovala con SideStore».")
                 .font(.footnote).foregroundStyle(.secondary)
         }
         .task {

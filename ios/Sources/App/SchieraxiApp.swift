@@ -15,7 +15,9 @@ struct SchieraxiApp: App {
     var body: some Scene {
         WindowGroup {
             // Colori chiari o scuri come il sistema: lo sfondo e il verde si adattano da soli.
-            RadiceView()
+            Group {
+                if Demo.schermata == "marchio" { ProvaMarchio() } else { RadiceView() }
+            }
                 .environmentObject(nav)
                 .environmentObject(modello)
                 .onContinueUserActivity(CSSearchableItemActionType) { attivita in

@@ -30,7 +30,7 @@ struct OggiView: View {
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
-                            Scheletro(schede: 3, righe: 2)
+                            Scheletro(schede: 3, righe: 2, testo: "Preparo la giornata…")
                         }
                     }
                     .padding(.horizontal, Tema.margine)
@@ -175,7 +175,7 @@ struct OggiView: View {
     private var daControllare: some View {
         if !vm.daControllare.isEmpty {
             Carta("Da controllare", simbolo: "exclamationmark.triangle") {
-                Text("Giocatori in formazione con qualche dubbio: riguarda le probabili prima della partita.").font(.caption).foregroundStyle(.secondary)
+                Text("Mister, c'è qualche dubbio in formazione. Riguarda le probabili prima del fischio.").font(.caption).foregroundStyle(.secondary)
                 ForEach(Array(vm.daControllare.enumerated()), id: \.element.ident) { i, a in
                     RigaConFilo(prima: i == 0) { riga(a) }
                 }

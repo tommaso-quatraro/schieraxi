@@ -38,7 +38,7 @@ private func alt(_ id: Int, _ nome: String, _ ruolo: String, _ squadra: String) 
 }
 
 private enum DatiDemo {
-    static let nomeMia = "SchieraXI FC"
+    static let nomeMia = "Schiera FC"
     static let altreSquadre = ["Real Madrink", "Atletico Divano", "Dinamo Pizza", "AC Pigra", "Inter Nos", "Borgo Rossi United",
                                "Gli Amici del Bar Sport Centrale"]
     static let giornata = 11
@@ -490,7 +490,7 @@ private enum DatiDemo {
 
     static func rosa(_ nome: String, _ giocatori: [Calciatore], mia: Bool) -> String {
         json(["nome": nome, "mia": mia, "crediti_residui": mia ? 12 : 30, "aggiornato": "2026-10-26T19:19:33",
-              "giocatori": giocatori.map { rigaRosa($0) }, "avvisi": mia ? ["SchieraXI FC: Giocatore 081 e Giocatore 068 sono indisponibili"] : [String]()])
+              "giocatori": giocatori.map { rigaRosa($0) }, "avvisi": mia ? ["Schiera FC: Giocatore 081 e Giocatore 068 sono indisponibili"] : [String]()])
     }
 
     static func stato(adesso: Date) -> String {
@@ -616,8 +616,8 @@ private enum DatiDemo {
              "crediti": [["squadra": "AC Pigra", "prima": 30, "dopo": 22]],
              "testo": "Scambio Real Madrink / Dinamo Pizza: Giocatore 039 ⇄ Giocatore 086"] as [String: Any],
             ["quando": "2026-10-19T08:02:10",
-             "scambi": [[String: Any]](), "svincolati_presi": [["squadra": "SchieraXI FC", "giocatori": [g(113, "Giocatore 033 Çalhanoğlu", "C", "inter")]]],
-             "tagliati": [[String: Any]](), "crediti": [[String: Any]](), "testo": "SchieraXI FC prende dagli svincolati: Giocatore 033 Çalhanoğlu"] as [String: Any],
+             "scambi": [[String: Any]](), "svincolati_presi": [["squadra": "Schiera FC", "giocatori": [g(113, "Giocatore 033 Çalhanoğlu", "C", "inter")]]],
+             "tagliati": [[String: Any]](), "crediti": [[String: Any]](), "testo": "Schiera FC prende dagli svincolati: Giocatore 033 Çalhanoğlu"] as [String: Any],
         ] as [[String: Any]])
     }
 

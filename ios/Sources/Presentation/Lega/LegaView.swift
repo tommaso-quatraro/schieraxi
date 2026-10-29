@@ -8,6 +8,7 @@ struct LegaView: View {
     var body: some View {
         NavigationStack(path: $vm.percorso) {
             List {
+                testata
                 if vm.nuovaStagione { bannerStagione }
                 sezioneServer
                 sezioneLega
@@ -52,6 +53,18 @@ struct LegaView: View {
     }
 
     // MARK: sezioni
+
+    /// Il marchio di SchieraXI in cima a Lega, con il nome e una frase da spogliatoio.
+    private var testata: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MarchioConNome(lato: 52)
+            Text("Gli undici giusti, giornata dopo giornata.")
+                .font(.subheadline).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
 
     private var bannerStagione: some View {
         Section {

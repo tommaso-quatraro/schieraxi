@@ -11,7 +11,7 @@ enum Accento: String, CaseIterable, Identifiable {
     /// Sul fondo scuro: più chiaro.
     var scuro: UIColor {
         switch self {
-        case .verde: return UIColor(red: 0.19, green: 0.82, blue: 0.50, alpha: 1)
+        case .verde: return Self.da(0x3ddc97)   // verde di stato di SchieraXI (scuro)
         case .blu: return Self.da(0x5aa9ff)
         case .viola: return Self.da(0xb78bff)
         case .arancio: return Self.da(0xffab52)
@@ -23,7 +23,7 @@ enum Accento: String, CaseIterable, Identifiable {
     /// Sul fondo chiaro: più scuro, per restare leggibile.
     var chiaro: UIColor {
         switch self {
-        case .verde: return UIColor(red: 0.04, green: 0.50, blue: 0.27, alpha: 1)
+        case .verde: return Self.da(0x0a7d4c)   // verde di stato di SchieraXI (chiaro, contrasto 5:1 sul bianco)
         case .blu: return Self.da(0x1d6fd6)
         case .viola: return Self.da(0x7a45d6)
         case .arancio: return Self.da(0xb45f04)

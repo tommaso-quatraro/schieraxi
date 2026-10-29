@@ -75,7 +75,7 @@ struct GiocatoreCorpo: View {
                     } else if let e = vm.caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
-                        Scheletro(schede: 3, righe: 2)
+                        Scheletro(schede: 3, righe: 2, testo: "Apro la scheda…")
                     }
                 }
                 .padding(16)

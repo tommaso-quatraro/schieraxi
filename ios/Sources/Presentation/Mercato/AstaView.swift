@@ -105,7 +105,7 @@ struct AstaContenuto: View {
         } else if let e = vm.estiva.errore {
             ErroreVista(messaggio: e) { Task { await vm.carica() } }
         } else {
-            Scheletro(schede: 2, righe: 3)
+            Scheletro(schede: 2, righe: 3, testo: "Preparo il piano…")
         }
     }
 
@@ -156,7 +156,7 @@ struct AstaContenuto: View {
         } else if let e = vm.riparazione.errore {
             ErroreVista(messaggio: e) { Task { await vm.carica() } }
         } else {
-            Scheletro(schede: 2, righe: 3)
+            Scheletro(schede: 2, righe: 3, testo: "Preparo il piano…")
         }
     }
 

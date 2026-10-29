@@ -38,7 +38,11 @@ targets:
           - it
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        UILaunchScreen: {}
+        # schermata di avvio senza storyboard: verde campo con il marchio fermo (4-3-3 e capitano)
+        UILaunchScreen:
+          UIColorName: FondoLancio
+          UIImageName: MarchioLancio
+          UIImageRespectsSafeAreaInsets: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

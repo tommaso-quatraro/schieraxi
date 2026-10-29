@@ -22,7 +22,7 @@ struct ConfrontoView: View {
                     } else if let e = vm.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
-                        Scheletro(schede: 2, righe: 2)
+                        Scheletro(schede: 2, righe: 2, testo: "Metto a confronto i due…")
                     }
                 }
                 .padding(16)
