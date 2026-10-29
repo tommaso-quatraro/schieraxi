@@ -240,7 +240,7 @@ struct RegoleEditorView: View {
             } else if let e = vm.caricatore.errore {
                 ErroreVista(messaggio: e) { Task { await vm.carica() } }
             } else {
-                ProgressView().frame(maxWidth: .infinity)
+                ScheletroRighe(righe: 6)
             }
         }
         .navigationTitle("Regole")

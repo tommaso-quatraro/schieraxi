@@ -47,7 +47,7 @@ struct AvvisiServerView: View {
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
-                    ProgressView().frame(maxWidth: .infinity)
+                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -99,7 +99,7 @@ struct CreditiView: View {
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
-                    ProgressView().frame(maxWidth: .infinity)
+                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
             }
             .scrollContentBackground(.hidden)

@@ -6,10 +6,25 @@ struct PedinaCampo: View {
     var diametro: CGFloat = 44
     /// true nell'immagine da condividere: colori fissi (sempre su sfondo scuro).
     var perImmagine = false
+    /// Nel campo a video un tocco apre la scheda del giocatore (nell'immagine da condividere no).
+    var apribile = false
+    @Environment(\.apriGiocatore) private var apri
+    @Environment(\.spazioZoom) private var zoom
 
     private var incerto: Bool { g.titolarita != nil && g.titolarita != "titolare" }
 
     var body: some View {
+        if apribile {
+            Button { apri(g.id) } label: { pedina.contentShape(Rectangle()) }
+                .buttonStyle(StilePressione())
+                .origineZoom(g.id, zoom)
+                .accessibilityHint("Apre la scheda del giocatore")
+        } else {
+            pedina
+        }
+    }
+
+    private var pedina: some View {
         VStack(spacing: 3) {
             AvatarGiocatore(id: g.id, squadra: g.squadra, indice: nil, dimensione: diametro)
                 .overlay(Circle().strokeBorder(incerto ? Color.orange : Color.white.opacity(0.0), lineWidth: 3))
@@ -19,6 +34,8 @@ struct PedinaCampo: View {
                         .foregroundStyle(.black)
                         .padding(.horizontal, 4)
                         .background(Color.ruolo(g.ruolo), in: Capsule())
+                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                        .numerico(g.fvAtteso ?? 0)
                         .offset(x: 6, y: -4)
                 }
             Text(g.nomeCorto)
@@ -56,28 +73,47 @@ struct CampoFormazione: View {
     var diametro: CGFloat = 44
     var perImmagine = false
 
+    /// Nel campo a video le pedine entrano una dopo l'altra e un tocco apre la scheda; nell'immagine da condividere no.
+    var apribile = false
+
     var body: some View {
         VStack(spacing: 10) {
             ForEach(["P", "D", "C", "A"], id: \.self) { ruolo in
                 HStack(alignment: .top, spacing: 2) {
                     ForEach(titolari.filter { $0.ruolo == ruolo }) { g in
-                        PedinaCampo(g: g, diametro: diametro, perImmagine: perImmagine)
+                        pedina(g)
                     }
                 }
             }
         }
+        .animation(Tema.molla, value: titolari.map(\.id))
         .padding(.vertical, 14).padding(.horizontal, 6)
         .frame(maxWidth: .infinity)
         .background(erba)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Campo con i titolari")
     }
 
-    /// Prato verde con le righe del campo (area, cerchio di centrocampo, metà campo).
+    @ViewBuilder
+    private func pedina(_ g: Giocatore) -> some View {
+        if perImmagine {
+            PedinaCampo(g: g, diametro: diametro, perImmagine: true)
+        } else {
+            PedinaCampo(g: g, diametro: diametro, perImmagine: false, apribile: apribile)
+                .transition(.scale(scale: 0.6).combined(with: .opacity))
+        }
+    }
+
+    /// Prato verde a fasce, con le righe del campo (area, cerchio di centrocampo, metà campo).
     private var erba: some View {
         ZStack {
             LinearGradient(colors: [Color(red: 0.12, green: 0.45, blue: 0.27), Color(red: 0.08, green: 0.34, blue: 0.20)], startPoint: .top, endPoint: .bottom)
+            VStack(spacing: 0) {
+                ForEach(0..<10, id: \.self) { i in
+                    Rectangle().fill(i % 2 == 0 ? Color.white.opacity(0.05) : Color.clear)
+                }
+            }
             GeometryReader { g in
                 let w = g.size.width, h = g.size.height
                 Path { p in

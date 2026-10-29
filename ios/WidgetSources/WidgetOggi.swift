@@ -19,17 +19,20 @@ struct WidgetOggi: Widget {
 }
 
 extension View {
-    /// Sfondo del widget: da iOS 17 si usa containerBackground, prima un normale sfondo (e margini a mano).
+    /// Sfondo del widget: sulla Home un gradiente verde profondo con testo bianco (lo stesso del riquadro di «Oggi» nell'app),
+    /// sulla schermata di blocco niente sfondo (lo mette iOS).
     @ViewBuilder
     func sfondoWidget(accessorio: Bool) -> some View {
-        if #available(iOS 17.0, *) {
-            self.containerBackground(for: .widget) {
-                if accessorio { Color.clear } else { Color(UIColor.secondarySystemBackground) }
-            }
-        } else if accessorio {
-            self
+        if accessorio {
+            self.containerBackground(for: .widget) { Color.clear }
         } else {
-            self.padding().background(Color(UIColor.secondarySystemBackground))
+            self
+                .foregroundStyle(.white)
+                .containerBackground(for: .widget) {
+                    LinearGradient(
+                        colors: [Color(red: 0.05, green: 0.42, blue: 0.30), Color(red: 0.02, green: 0.22, blue: 0.26)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing)
+                }
         }
     }
 }
@@ -60,6 +63,8 @@ struct VistaWidget: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
+        // Un tocco sul widget apre l'app sulla formazione.
+        .widgetURL(URL(string: "schieraxi://formazione"))
     }
 
     // MARK: pezzi comuni
@@ -101,18 +106,18 @@ struct VistaWidget: View {
 
     private func piccolo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Giornata \(r.giornata)").font(.caption).foregroundStyle(.secondary)
+            Label("Giornata \(r.giornata)", systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
             conto(r)
-                .font(.system(.title2, design: .rounded).weight(.bold))
+                .font(.system(.title, design: .rounded).weight(.bold))
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
             Spacer(minLength: 0)
             HStack(alignment: .firstTextBaseline) {
                 Text(r.modulo ?? "—").font(.headline)
                 Spacer()
-                Text(puntiTesto(r)).font(.subheadline.bold()).monospacedDigit()
+                Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
-            Text(voce.datiSalvati ? "dati salvati" : "punti attesi").font(.caption2).foregroundStyle(.secondary)
+            Text(voce.datiSalvati ? "dati salvati" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -120,22 +125,22 @@ struct VistaWidget: View {
     private func medio(_ r: RiassuntoOggi) -> some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Giornata \(r.giornata)").font(.caption).foregroundStyle(.secondary)
+                Label("Giornata \(r.giornata)", systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
                 conto(r)
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                 Text(r.inizio.map { "alla prima partita, \(Quando.leggibile($0))" } ?? "")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
                 if voce.datiSalvati {
                     Label("dati salvati", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
                 }
             }
             VStack(alignment: .trailing, spacing: 4) {
-                Text("Formazione").font(.caption).foregroundStyle(.secondary)
+                Label("Formazione", systemImage: "sportscourt").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
                 Text(r.modulo ?? "—").font(.system(.title, design: .rounded).weight(.bold))
-                Text("\(puntiTesto(r)) punti attesi").font(.caption).monospacedDigit()
+                Text("\(puntiTesto(r)) punti attesi").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
                 Spacer(minLength: 0)
                 if r.daControllare > 0 {
                     Label("\(r.daControllare) da controllare", systemImage: "exclamationmark.circle.fill")

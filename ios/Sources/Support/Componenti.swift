@@ -15,20 +15,6 @@ extension Color {
     static let ruoloA = Color(red: 0.92, green: 0.35, blue: 0.35)
 }
 
-/// Sfondo verde-blu come la web app: scuro in modalità scura, chiaro in modalità chiara (segue il sistema).
-struct Sfondo: View {
-    @Environment(\.colorScheme) private var schema
-
-    var body: some View {
-        LinearGradient(
-            colors: schema == .dark
-                ? [Color(red: 0.03, green: 0.10, blue: 0.08), Color(red: 0.05, green: 0.16, blue: 0.12), Color(red: 0.04, green: 0.09, blue: 0.14)]
-                : [Color(red: 0.93, green: 0.98, blue: 0.95), Color(red: 0.89, green: 0.96, blue: 0.93), Color(red: 0.91, green: 0.95, blue: 0.98)],
-            startPoint: .top, endPoint: .bottom)
-            .ignoresSafeArea()
-    }
-}
-
 /// Dispone le schede in 1, 2 o 3 colonne secondo la larghezza disponibile:
 /// una sull'iPhone in verticale, due o tre sull'iPad e sui telefoni in orizzontale.
 /// Le schede restano nell'ordine in cui sono scritte (si leggono prima la colonna di sinistra, poi quella di destra) e le colonne sono equilibrate in altezza.
@@ -102,32 +88,6 @@ extension View {
     func puntatore() -> some View {
         contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .hoverEffect(.lift)
-    }
-}
-
-/// Scheda di vetro (materiale di iOS) con un titolo.
-struct Carta<Contenuto: View>: View {
-    let titolo: String?
-    let contenuto: Contenuto
-    /// Lega > Aspetto > Densità: «compatta» stringe i margini delle schede (le aree di tocco restano da 44 pt).
-    @AppStorage("densita") private var densita = "comoda"
-
-    init(_ titolo: String? = nil, @ViewBuilder contenuto: () -> Contenuto) {
-        self.titolo = titolo
-        self.contenuto = contenuto()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: densita == "compatta" ? 6 : 10) {
-            if let titolo {
-                Text(titolo).font(.title3.bold()).accessibilityAddTraits(.isHeader)
-            }
-            contenuto
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(densita == "compatta" ? 11 : 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.primary.opacity(0.12), lineWidth: 1))
     }
 }
 
@@ -216,18 +176,23 @@ struct AvvisoSalvati: ViewModifier {
     let data: Date?
 
     func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .top, spacing: 0) {
-            if let data {
-                Label("Server non raggiungibile. Dati salvati del \(data.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(.bar)
-                    .accessibilityElement(children: .combine)
+        content
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if let data {
+                    Label("Server non raggiungibile. Dati salvati del \(data.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .vetro(in: Capsule(), tinta: Color.orange.opacity(0.35))
+                        .padding(.horizontal, Tema.margine)
+                        .padding(.bottom, 6)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityElement(children: .combine)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
-        }
+            .animation(Tema.molla, value: data != nil)
     }
 }
 
@@ -235,43 +200,5 @@ extension View {
     /// Mostra «dati salvati» se `data` non è nil (vedi `Caricatore.datiSalvati`).
     func avvisoDatiSalvati(_ data: Date?) -> some View {
         modifier(AvvisoSalvati(data: data))
-    }
-}
-
-struct ErroreVista: View {
-    let messaggio: String
-    let riprova: () -> Void
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "wifi.exclamationmark").font(.largeTitle).foregroundStyle(.orange).accessibilityHidden(true)
-            Text(messaggio).multilineTextAlignment(.center).foregroundStyle(.secondary)
-            Button("Riprova", action: riprova)
-                .buttonStyle(.borderedProminent)
-                .frame(minHeight: 44)
-                .accessibilityHint("Riprova a contattare il server")
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity)
-    }
-}
-
-/// Stato vuoto (come ContentUnavailableView di iOS 17, ma disponibile anche su iOS 16).
-struct VistaVuota: View {
-    let titolo: String
-    let icona: String
-    var descrizione: String? = nil
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icona).font(.largeTitle).foregroundStyle(.secondary).accessibilityHidden(true)
-            Text(titolo).font(.headline)
-            if let descrizione {
-                Text(descrizione).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(24)
-        .accessibilityElement(children: .combine)
     }
 }

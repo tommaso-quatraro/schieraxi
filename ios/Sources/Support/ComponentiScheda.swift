@@ -50,6 +50,9 @@ struct TesseraDato: View {
             Text(etichetta).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(etichetta): \(valore)")
     }
@@ -73,16 +76,21 @@ struct FilaTessere<Contenuto: View>: View {
 struct BarraPercentuale: View {
     let valore: Double
     var colore: Color = .verde
+    @State private var mostrato: Double = 0
+
+    private func limitato(_ v: Double) -> Double { min(1, max(0, v)) }
 
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.primary.opacity(0.12))
-                Capsule().fill(colore).frame(width: g.size.width * CGFloat(min(1, max(0, valore))))
+                Capsule().fill(Color.primary.opacity(0.10))
+                Capsule().fill(colore.gradient).frame(width: g.size.width * CGFloat(mostrato))
             }
         }
-        .frame(height: 6)
+        .frame(height: 8)
         .accessibilityHidden(true)
+        .onAppear { withAnimation(.smooth(duration: 0.9)) { mostrato = limitato(valore) } }
+        .onChange(of: valore) { _, nuovo in withAnimation(Tema.morbida) { mostrato = limitato(nuovo) } }
     }
 }
 

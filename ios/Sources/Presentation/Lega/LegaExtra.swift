@@ -51,7 +51,7 @@ struct SquadreView: View {
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
-                    ProgressView().frame(maxWidth: .infinity)
+                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -191,7 +191,7 @@ struct RosaView: View {
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
-                    ProgressView().frame(maxWidth: .infinity)
+                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -200,11 +200,11 @@ struct RosaView: View {
         .navigationBarTitleDisplayMode(.inline)
         .ricercaGlobale()
         .task { await vm.carica() }
-        .onChange(of: sceltaStemma) { nuovo in
+        .onChange(of: sceltaStemma) { _, nuovo in
             guard let nuovo else { return }
             Task { await carica(nuovo, tipo: "stemma"); sceltaStemma = nil }
         }
-        .onChange(of: sceltaMaglia) { nuovo in
+        .onChange(of: sceltaMaglia) { _, nuovo in
             guard let nuovo else { return }
             Task { await carica(nuovo, tipo: "maglia"); sceltaMaglia = nil }
         }
@@ -282,7 +282,7 @@ struct NovitaView: View {
                     } else if let e = caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
                     } else {
-                        ProgressView().padding(40)
+                        Scheletro(schede: 2, righe: 3)
                     }
                 }
                 .padding(16)
@@ -360,7 +360,7 @@ struct StatoDatiView: View {
                 } else if let e = caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
                 } else {
-                    ProgressView().frame(maxWidth: .infinity)
+                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
                 Section("Quanto è affidabile il modello") {
                     affidabilitaContenuto

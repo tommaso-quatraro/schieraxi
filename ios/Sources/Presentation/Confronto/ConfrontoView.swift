@@ -14,20 +14,22 @@ struct ConfrontoView: View {
             ScrollView {
                 Colonne(spazio: 14) {
                     if let c = vm.confronto, c.giocatori.count == 2 {
-                        duello(c)
-                        verdetto(c)
-                        cause(c)
-                        numeri(c)
-                        motivi(c)
+                        duello(c).ingresso(0)
+                        verdetto(c).ingresso(1)
+                        cause(c).ingresso(2)
+                        numeri(c).ingresso(3)
+                        motivi(c).ingresso(4)
                     } else if let e = vm.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
-                        ProgressView("Confronto…").padding(40)
+                        Scheletro(schede: 2, righe: 2)
                     }
                 }
                 .padding(16)
+                .animation(Tema.morbida, value: vm.confronto != nil)
             }
             .refreshable { await vm.carica() }
+            .bordiMorbidi()
         }
         .navigationTitle("Chi schierare?")
         .navigationBarTitleDisplayMode(.inline)
@@ -64,7 +66,7 @@ struct ConfrontoView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(10)
-        .background(scelto ? Color.verde.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(scelto ? Color.verde.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo + 2, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(g.nome), \(nomeRuolo(g.ruolo)), indice \(Formato.intero(g.indice)), punti attesi \(Formato.punti(g.puntiAttesi))\(scelto ? ", consigliato" : "")")
     }
@@ -169,11 +171,13 @@ struct ConfrontoView: View {
 struct BarraDivergente: View {
     let effetto: Double
     let massimo: Double
+    /// La barra cresce dal centro quando compare.
+    @State private var crescita: CGFloat = 0
 
     var body: some View {
         GeometryReader { g in
             let meta = g.size.width / 2
-            let larghezza = meta * CGFloat(min(1, abs(effetto) / max(massimo, 0.001)))
+            let larghezza = meta * CGFloat(min(1, abs(effetto) / max(massimo, 0.001))) * crescita
             let verso = Confronto.verso(effetto)
             ZStack {
                 Capsule().fill(Color.primary.opacity(0.1))
@@ -187,6 +191,7 @@ struct BarraDivergente: View {
         }
         .frame(height: 10)
         .accessibilityHidden(true)
+        .onAppear { withAnimation(.smooth(duration: 0.8)) { crescita = 1 } }
     }
 }
 
@@ -221,7 +226,7 @@ struct SceltaDallaRosaView: View {
                 } else if let e = vm.formazione.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
                 } else {
-                    ProgressView().frame(maxWidth: .infinity)
+                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -250,9 +255,15 @@ struct RicercaGiocatoreView: View {
             List {
                 if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(.orange) }
                 if vm.testo.trimmingCharacters(in: .whitespaces).count < 2 {
-                    Text("Scrivi almeno due lettere del nome.").foregroundStyle(.secondary)
+                    VStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(.secondary).accessibilityHidden(true)
+                        Text("Scrivi almeno due lettere del nome.").foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                    .listRowBackground(Color.clear)
                 } else if vm.risultati.isEmpty && vm.errore == nil && !vm.cercando {
-                    Text("Nessun giocatore trovato.").foregroundStyle(.secondary)
+                    ContentUnavailableView.search(text: vm.testo).listRowBackground(Color.clear)
                 }
                 ForEach(vm.risultati) { g in
                     if let alScegliere {

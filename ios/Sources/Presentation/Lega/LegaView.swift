@@ -77,7 +77,11 @@ struct LegaView: View {
                 Label("Indirizzo non valido: deve iniziare con https://. Finché non lo correggi l'app usa quello predefinito.", systemImage: "exclamationmark.triangle")
                     .font(.footnote).foregroundStyle(.orange)
             }
-            Button("Prova la connessione") { Task { await vm.info.ricarica() } }.frame(minHeight: 44)
+            Button { Task { await vm.info.ricarica() } } label: {
+                Label("Prova la connessione", systemImage: "antenna.radiowaves.left.and.right")
+                    .symbolEffect(.variableColor.iterative, isActive: vm.info.inCorso)
+            }
+            .frame(minHeight: 44)
             if vm.info.inCorso {
                 ProgressView()
             } else if let s = vm.info.dato {
@@ -98,23 +102,23 @@ struct LegaView: View {
 
     private var sezioneLega: some View {
         Section("Lega") {
-            NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose", systemImage: "doc.badge.plus").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.squadre) { Label("Squadre e rose", systemImage: "person.3").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "eurosign.circle").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose", systemImage: "doc.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.squadre) { Label("Squadre e rose", systemImage: "person.3").labelStyle(.voce(.green)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer").labelStyle(.voce(.brown)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "eurosign.circle").labelStyle(.voce(.mint)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
         }
     }
 
     private var sezioneApp: some View {
         Section("App e dati") {
-            NavigationLink(value: PaginaLega.aspetto) { Label("Aspetto", systemImage: "paintpalette").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.icona) { Label("Icona dell'app", systemImage: "app.badge").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.avvisi) { Label("Avvisi del server", systemImage: "bell.badge").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive").frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.aspetto) { Label("Aspetto", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.icona) { Label("Icona dell'app", systemImage: "app.badge").labelStyle(.voce(.purple)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.avvisi) { Label("Avvisi del server", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
         }
     }
 

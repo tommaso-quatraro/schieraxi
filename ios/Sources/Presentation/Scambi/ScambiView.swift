@@ -9,31 +9,35 @@ struct ScambiView: View {
             ZStack {
                 Sfondo()
                 ScrollView {
-                    Colonne(spazio: 12) {
-                        filtro
-                        offerta
+                    Colonne(spazio: Tema.spazioSchede) {
+                        filtro.ingresso(0)
+                        offerta.ingresso(1)
                         if let d = vm.proposte.dato {
-                            squadrePropense
+                            squadrePropense.ingresso(2)
                             if d.proposte.isEmpty {
                                 VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Nessuno scambio conviene a tutti e due.")
                             }
-                            ForEach(d.proposte) { p in
+                            ForEach(Array(d.proposte.enumerated()), id: \.element.id) { i, p in
                                 Button { vm.giudizioSelezionata = nil; vm.selezionata = p } label: { carta(p) }
-                                    .buttonStyle(.plain).puntatore()
+                                    .buttonStyle(StilePressione()).puntatore()
+                                    .entraScorrendo()
+                                    .ingresso(i + 3)
                                     .accessibilityHint("Mostra il dettaglio dello scambio")
                             }
                         } else if let e = vm.proposte.errore {
                             ErroreVista(messaggio: e) { Task { await vm.caricaProposte() } }
                         } else {
-                            ProgressView("Cerco gli scambi…").padding(40)
+                            Scheletro(schede: 3, righe: 2)
                         }
                         archivio
                     }
                     .padding(.horizontal, 16).padding(.bottom, 24)
+                    .animation(Tema.morbida, value: vm.proposte.dato != nil)
                 }
                 .demoInFondo()
                 .refreshable { await vm.caricaProposte() }
                 .avvisoDatiSalvati(vm.proposte.datiSalvati)
+                .bordiMorbidi()
             }
             .navigationTitle("Scambi")
             .ricercaGlobale()
@@ -50,6 +54,8 @@ struct ScambiView: View {
                             ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { vm.selezionata = nil } }
                         }
                 }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
     }
@@ -71,14 +77,14 @@ struct ScambiView: View {
     }
 
     private var offerta: some View {
-        Carta("Ho ricevuto un'offerta") {
+        Carta("Ho ricevuto un'offerta", simbolo: "envelope.open") {
             Text("Incolla il messaggio (basta che ci siano i cognomi): trovo chi dai e chi ricevi e ti dico se conviene.")
                 .font(.footnote).foregroundStyle(.secondary)
             TextEditor(text: $vm.testoOfferta)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 96)
                 .padding(8)
-                .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     if vm.testoOfferta.isEmpty {
                         Text("Es. Ti do Rowe e Giocatore 077, mi dai Giocatore 014?").foregroundStyle(.secondary).padding(.horizontal, 13).padding(.vertical, 16)
@@ -90,8 +96,9 @@ struct ScambiView: View {
                 if vm.offertaInCorso { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
                 else { Text("Valuta l'offerta").frame(maxWidth: .infinity, minHeight: 44) }
             }
-            .buttonStyle(.borderedProminent)
+            .pulsanteVetro(prominente: true)
             .disabled(vm.offertaInCorso)
+            .sensoryFeedback(trigger: vm.esitoOfferta?.analisi?.id) { _, nuovo in nuovo != nil ? .success : nil }
             if let e = vm.erroreOfferta { Text(e).font(.footnote).foregroundStyle(.orange) }
             if let o = vm.esitoOfferta { esitoOfferta(o) }
         }
@@ -134,7 +141,7 @@ struct ScambiView: View {
     private var squadrePropense: some View {
         let elenco = vm.propense
         if !elenco.isEmpty {
-            Carta("Chi accetta più volentieri") {
+            Carta("Chi accetta più volentieri", simbolo: "person.2.fill") {
                 Text("Le squadre che guadagnano di più dagli scambi qui sotto, e il reparto che ne beneficia di più.").font(.footnote).foregroundStyle(.secondary)
                 ForEach(elenco) { x in
                     HStack(alignment: .firstTextBaseline) {
@@ -179,8 +186,8 @@ struct ScambiView: View {
                     guadagno("loro", p.guadagnoLoro)
                 }
             }
-            Button { vm.copiaBozza(p) } label: { Label("Copia la bozza del messaggio", systemImage: "doc.on.doc").font(.subheadline).frame(minHeight: 44) }
-                .buttonStyle(.bordered)
+            Button { vm.copiaBozza(p) } label: { Label("Copia la bozza del messaggio", systemImage: "doc.on.doc").font(.subheadline).frame(maxWidth: .infinity, minHeight: 44) }
+                .pulsanteVetro()
         }
     }
 

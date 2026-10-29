@@ -78,15 +78,18 @@ struct AvatarGiocatore: View {
     var dimensione: CGFloat = 46
     var conNumero = true
     @ObservedObject private var immagini = Immagini.condivise
+    /// L'anello si riempie da zero quando l'avatar compare.
+    @State private var anello: Double = 0
 
     private var spessore: CGFloat { max(2.5, dimensione / 16) }
+    private var frazione: Double { min(1, max(0, (indice ?? 0) / 100)) }
 
     var body: some View {
         ZStack {
             if let indice {
                 Circle().stroke(Color.primary.opacity(0.12), lineWidth: spessore)
                 Circle()
-                    .trim(from: 0, to: CGFloat(min(1, max(0, indice / 100))))
+                    .trim(from: 0, to: CGFloat(anello))
                     .stroke(Color.indice(indice), style: StrokeStyle(lineWidth: spessore, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             }
@@ -108,6 +111,8 @@ struct AvatarGiocatore: View {
         .task(id: id) {
             if let id { await immagini.caricaFoto(id) }
         }
+        .onAppear { withAnimation(.smooth(duration: 0.9)) { anello = frazione } }
+        .onChange(of: indice) { _, _ in withAnimation(Tema.morbida) { anello = frazione } }
         .accessibilityHidden(true)
     }
 
@@ -118,9 +123,10 @@ struct AvatarGiocatore: View {
             Circle().fill(Color(esadecimale: colori.0).opacity(0.22))
             MagliaView(squadra: squadra).padding(dimensione * 0.14)
             if let id, let foto = immagini.memoriaFoto(id) {
-                Image(uiImage: foto).resizable().scaledToFill()
+                Image(uiImage: foto).resizable().scaledToFill().transition(.opacity)
             }
         }
+        .animation(.easeOut(duration: 0.3), value: immagini.versione)
         .clipShape(Circle())
     }
 }

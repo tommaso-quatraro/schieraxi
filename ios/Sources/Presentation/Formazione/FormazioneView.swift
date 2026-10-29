@@ -1,9 +1,11 @@
 import SwiftUI
+import TipKit
 
 /// Schermata Formazione: solo presentazione. Dati e logica sono in `FormazioneViewModel`.
 struct FormazioneView: View {
     @ObservedObject var vm: FormazioneViewModel
     @State private var daSostituire: Giocatore?
+    @Namespace private var moduloNS
 
     private let ruoli = ["P", "D", "C", "A"]
     private let nomiRuolo = ["P": "Portiere", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
@@ -24,45 +26,51 @@ struct FormazioneView: View {
             ZStack {
                 Sfondo()
                 ScrollView {
-                    Colonne(spazio: 14) {
+                    Colonne(spazio: Tema.spazioSchede) {
                         if let f = vm.formazione {
                             bannerSquadra
-                            if vm.manuale == nil { sceltaStile(f) }
+                            if vm.manuale == nil { sceltaStile(f).ingresso(0) }
                             let v = vm.vista(f)
-                            riepilogo(f, v)
-                            barraManuale(f)
-                            Carta("Campo") { CampoFormazione(titolari: v.titolari) }
+                            riepilogo(f, v).ingresso(1)
+                            barraManuale(f).ingresso(2)
+                            if !Demo.attivo { TipView(Suggerimenti.campo).tipBackground(Color.sfondoScheda) }
+                            Carta("Campo", simbolo: "sportscourt") { CampoFormazione(titolari: v.titolari, apribile: true) }.ingresso(3)
                             // Un'unica scheda con i quattro reparti in ordine (Portiere, Difensori, Centrocampisti, Attaccanti):
                             // sull'iPad le colonne si leggono così dall'alto in basso senza saltare da una parte all'altra.
-                            Carta("Titolari") {
+                            Carta("Titolari", simbolo: "person.3.fill") {
                                 ForEach(ruoli, id: \.self) { r in
                                     let gruppo = v.titolari.filter { $0.ruolo == r }
                                     if !gruppo.isEmpty {
-                                        Text("\(nomiRuolo[r] ?? r) (\(gruppo.count))").font(.subheadline.bold()).foregroundStyle(.secondary)
-                                            .padding(.top, 4).accessibilityAddTraits(.isHeader)
+                                        Text("\(nomiRuolo[r] ?? r) (\(gruppo.count))").titoletto().padding(.top, 4)
                                         ForEach(gruppo) { g in rigaTitolare(g, f, v) }
                                     }
                                 }
                             }
-                            Carta("Panchina") {
+                            .ingresso(4)
+                            Carta("Panchina", simbolo: "chair.lounge.fill") {
                                 Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(.secondary)
-                                ForEach(v.panchina) { RigaGiocatore(g: $0, apribile: true) }
+                                ForEach(Array(v.panchina.enumerated()), id: \.element.id) { i, g in
+                                    RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true) }
+                                }
                             }
+                            .ingresso(5)
                             fuori(f, v)
                             Text("Il numero sul campo è il fantavoto atteso se gioca, con le regole della tua lega. L'anello arancio indica chi non è titolare sicuro. L'anello attorno alla foto è l'indice: 100 = il migliore del suo ruolo questa giornata.")
                                 .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
-                            ProgressView("Calcolo la formazione…").padding(40)
+                            Scheletro(schede: 3, righe: 3)
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Tema.margine)
                     .padding(.bottom, 24)
+                    .animation(Tema.morbida, value: vm.formazione != nil)
                 }
                 .demoInFondo()
                 .refreshable { await vm.carica() }
                 .avvisoDatiSalvati(vm.datiSalvati)
+                .bordiMorbidi()
             }
             .navigationTitle("Formazione")
             .toolbar {
@@ -75,6 +83,7 @@ struct FormazioneView: View {
                         } label: {
                             Image(systemName: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44)
                         }
+                        .sensoryFeedback(trigger: vm.anteprimaImmagine?.id) { _, nuovo in nuovo != nil ? .success : nil }
                         .accessibilityLabel("Condividi la formazione")
                     }
                 }
@@ -106,7 +115,7 @@ struct FormazioneView: View {
             Carta {
                 Label("Stai guardando la formazione di \(nome)", systemImage: "eye").font(.subheadline)
                 Button { vm.tornaAllaMia() } label: { Text("Torna alla tua").frame(minHeight: 44) }
-                    .buttonStyle(.bordered)
+                    .pulsanteVetro()
             }
         }
     }
@@ -122,7 +131,7 @@ struct FormazioneView: View {
                 HStack { RigaGiocatore(g: g); Image(systemName: "arrow.left.arrow.right").foregroundStyle(Color.verde).accessibilityHidden(true) }
                     .frame(minHeight: 44)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(StilePressione())
             .accessibilityHint("Apre la scelta del giocatore che prende il suo posto")
         } else {
             VStack(alignment: .leading, spacing: 4) {
@@ -165,9 +174,9 @@ struct FormazioneView: View {
             }
             .padding(.horizontal, 10)
             .frame(minHeight: 44)
-            .background(Color.primary.opacity(0.08), in: Capsule())
+            .background(Color.sfondoIncavo, in: Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(StilePressione())
         .accessibilityLabel("Confronta \(g.nome) con \(a.giocatore.nome), \(Formato.conSegno(a.differenza)) punti attesi\(a.quasiPari ? ", quasi pari" : "")")
     }
 
@@ -196,7 +205,11 @@ struct FormazioneView: View {
     private func barraManuale(_ f: Formazione) -> some View {
         Carta {
             if vm.manuale == nil {
-                Button { vm.iniziaModificaManuale(f) } label: { Label("Modifica a mano", systemImage: "hand.tap").frame(minHeight: 44) }
+                Button { vm.iniziaModificaManuale(f) } label: {
+                    Label("Modifica a mano", systemImage: "hand.tap")
+                        .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                }
+                .pulsanteVetro()
             } else {
                 Text("Hai modificato la formazione a mano: tocca un titolare per sostituirlo con un altro della rosa, i punti attesi si ricalcolano.")
                     .font(.footnote).foregroundStyle(.secondary)
@@ -247,28 +260,28 @@ struct FormazioneView: View {
     private func sceltaStile(_ f: Formazione) -> some View {
         if let livelli = f.livelli, !livelli.isEmpty {
             let livello = livelli.first(where: { $0.rischio == vm.rischio }) ?? livelli[0]
-            Carta("Stile") {
+            Carta("Stile", simbolo: "dial.medium") {
                 Picker("Stile", selection: $vm.rischio) {
                     ForEach(livelli) { Text($0.nome + ($0.rischio == 0 ? " ★" : "")).tag($0.rischio) }
                 }
                 .pickerStyle(.menu)
-                .onChange(of: vm.rischio) { _ in vm.cambiaStile() }
+                .onChange(of: vm.rischio) { _, _ in vm.cambiaStile() }
+                .sensoryFeedback(.selection, trigger: vm.rischio)
                 Text(Self.descrizioneStile(livello.rischio) + " ★ = scelta consigliata.").font(.footnote).foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(livello.moduli) { m in
                             let attivo = vm.moduloAttivo(livello) == m.modulo
-                            Button { vm.scegliModulo(m.modulo) } label: {
+                            Button { withAnimation(Tema.molla) { vm.scegliModulo(m.modulo) } } label: {
                                 VStack(spacing: 2) {
                                     Text(m.modulo + (m.modulo == livello.modulo ? " ★" : "")).font(.subheadline.bold())
                                     Text(Formato.punti(m.punteggioAtteso)).font(.caption2).monospacedDigit()
                                 }
-                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .padding(.horizontal, 14).padding(.vertical, 6)
                                 .frame(minHeight: 44)
-                                .background(attivo ? Color.verde.opacity(0.35) : Color.primary.opacity(0.08), in: Capsule())
-                                .overlay(Capsule().strokeBorder(attivo ? Color.verde : .clear, lineWidth: 1))
+                                .pillola(attiva: attivo, spazio: moduloNS)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(StilePressione())
                             .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi\(m.modulo == livello.modulo ? ", consigliato" : "")")
                             .accessibilityAddTraits(attivo ? .isSelected : [])
                         }
@@ -279,7 +292,7 @@ struct FormazioneView: View {
     }
 
     private func riepilogo(_ f: Formazione, _ v: VistaFormazione) -> some View {
-        Carta("Giornata \(f.giornata)") {
+        Carta("Giornata \(f.giornata)", simbolo: "calendar") {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
@@ -291,7 +304,7 @@ struct FormazioneView: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing) {
-                    Text(Formato.punti(v.punti)).font(.title2.bold()).monospacedDigit()
+                    Text(Formato.punti(v.punti)).font(.title.bold()).monospacedDigit().numerico(v.punti)
                     Text("punti attesi").font(.caption).foregroundStyle(.secondary)
                     if let d = vm.oscillazione(f) {
                         Text("oscilla di ±\(Formato.intero(d))").font(.caption2).foregroundStyle(.secondary)

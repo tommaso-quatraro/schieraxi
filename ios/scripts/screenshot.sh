@@ -33,6 +33,17 @@ PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazi
           mercato-calendario mercato-osservati mercato-asta giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
           lega lega-squadre lega-rosa lega-regole lega-aspetto lega-icona)
 
+# SCATTI=veloce (predefinito dei push su main): solo le schermate principali, per controllare in pochi minuti.
+# SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
+SCATTI="${SCATTI:-completo}"
+if [ "$SCATTI" = "veloce" ]; then
+  TUTTE=(oggi oggi-fondo formazione formazione-fondo mercato-consigliati mercato-classifica giocatore giocatore-fondo scambi lega lega-aspetto)
+  PER_CHIARO=(oggi formazione mercato-consigliati giocatore scambi lega)
+  PER_TESTO_GRANDE=(oggi formazione giocatore)
+  PRINCIPALI=(oggi formazione giocatore scambi lega)
+  PER_IPAD=(oggi formazione formazione-fondo mercato-consigliati giocatore scambi lega)
+fi
+
 scegli() {
   python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"
 }
@@ -67,6 +78,13 @@ scatta() {
     echo "ERRORE: scatto non riuscito ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
     return
+  fi
+  # Se la foto è quasi vuota (nera) l'app non aveva ancora finito di disegnarsi: si riprova dopo qualche secondo.
+  local peso
+  peso=$(stat -f%z "$file" 2>/dev/null || echo 999999)
+  if [ "$peso" -lt 150000 ]; then
+    sleep 5
+    xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
   fi
   # Il simulatore fotografa sempre lo schermo "in verticale": con l'app in orizzontale la foto esce girata di 90 gradi.
   if [ "$RADDRIZZA" = "1" ]; then
@@ -111,16 +129,22 @@ spegni_simulatore() {
 IFS=$'\t' read -r UDID_IPHONE NOME_IPHONE IOS_IPHONE <<< "$(scegli iphone)"
 echo "iPhone: $NOME_IPHONE ($IOS_IPHONE) $UDID_IPHONE"
 avvia_simulatore "$UDID_IPHONE"
+# lancio di prova: il primo avvio è lento e la prima foto restava nera
+xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
+sleep 10
+xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
 
 giro "$UDID_IPHONE" iphone_scuro scuro large "${TUTTE[@]}"
 giro "$UDID_IPHONE" iphone_chiaro chiaro large "${PER_CHIARO[@]}"
 giro "$UDID_IPHONE" iphone_scuro_testogrande scuro accessibility-large "${PER_TESTO_GRANDE[@]}"
-giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione giocatore lega
-ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
-RADDRIZZA=1
-giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione mercato-consigliati
-RADDRIZZA=0
-ARGOMENTI_EXTRA=()
+if [ "$SCATTI" != "veloce" ]; then
+  giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione giocatore lega
+  ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
+  RADDRIZZA=1
+  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione mercato-consigliati
+  RADDRIZZA=0
+  ARGOMENTI_EXTRA=()
+fi
 
 # Prova dello schema schieraxi:// con "simctl openurl" (come un tocco su una notifica di ntfy). Su alcuni sistemi iOS chiede
 # conferma "Aprire in SchieraXI?": la foto lo mostra. Per questo le altre schermate si aprono con un argomento di lancio.
@@ -148,13 +172,12 @@ sleep 10
 xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
 
 giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
-giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta lega-aspetto
-giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
-# Senza barra laterale: la colonna dei contenuti è larga come in orizzontale (2 colonne di schede).
-ARGOMENTI_EXTRA=(-DEMO_BARRA nascosta)
-giro "$UDID_IPAD" ipad_scuro_senzabarra scuro large oggi formazione formazione-manuale mercato-consigliati mercato-classifica mercato-calendario scambi lega
-giro "$UDID_IPAD" ipad_chiaro_senzabarra chiaro large oggi formazione mercato-consigliati scambi
-ARGOMENTI_EXTRA=()
+if [ "$SCATTI" = "veloce" ]; then
+  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}"
+else
+  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta lega-aspetto
+  giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
+fi
 
 # Orizzontale: su iPad l'app non può forzare la rotazione (multitasking), quindi si ruota il simulatore con la tastiera
 # (Cmd+freccia sinistra nella finestra di Simulator). Può non funzionare sul Mac di GitHub: in quel caso le foto restano verticali.
@@ -166,8 +189,12 @@ sleep 2
 osascript -e 'tell application "System Events" to key code 123 using command down' 2>&1
 sleep 3
 RADDRIZZA=1   # col simulatore ruotato la foto esce girata di 90 gradi (come sull'iPhone)
-giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${PRINCIPALI[@]}" formazione-manuale mercato-calendario lega-squadre
-giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione mercato-classifica lega
+if [ "$SCATTI" = "veloce" ]; then
+  giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large oggi formazione lega
+else
+  giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${PRINCIPALI[@]}" formazione-manuale mercato-calendario lega-squadre
+  giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione mercato-classifica lega
+fi
 RADDRIZZA=0
 
 spegni_simulatore "$UDID_IPAD"

@@ -1,7 +1,7 @@
 import SwiftUI
 import Charts
 
-// Grafici con Swift Charts (iOS 16). Ogni grafico ha un'alternativa testuale per VoiceOver (etichetta e valore) e, dove serve,
+// Grafici con Swift Charts. Ogni grafico ha un'alternativa testuale per VoiceOver (etichetta e valore) e, dove serve,
 // un elenco dei numeri che si apre con «Mostra i numeri».
 
 /// Un punto di un grafico a linee o a barre con più serie.
@@ -18,6 +18,22 @@ struct PuntoGrafico: Identifiable, Equatable {
 /// Voto e fantavoto giornata per giornata; la linea tratteggiata è il 6.
 struct GraficoVoti: View {
     let voti: [VotoGiornata]
+    /// Il grafico «si disegna» quando compare: le linee salgono dal basso ai valori veri.
+    @State private var disegnato = false
+    /// La giornata toccata (o trascinata) con il dito: compare una linea con i numeri di quella giornata.
+    @State private var scelta: Int?
+    @Environment(\.accessibilityReduceMotion) private var ridotto
+
+    private var votoScelto: VotoGiornata? {
+        guard let scelta else { return nil }
+        return voti.first { $0.giornata == scelta }
+    }
+
+    private func testoScelta(_ v: VotoGiornata) -> String {
+        let voto = v.voto.map { "voto \(Formato.decimali($0))" } ?? "senza voto"
+        let fv = v.fv.map { "fantavoto \(Formato.decimali($0))" } ?? "senza fantavoto"
+        return "G\(v.giornata) · \(voto) · \(fv)"
+    }
 
     private var punti: [PuntoGrafico] {
         voti.sorted { $0.giornata < $1.giornata }.flatMap { v -> [PuntoGrafico] in
@@ -58,24 +74,41 @@ struct GraficoVoti: View {
                 RuleMark(y: .value("Sufficienza", 6))
                     .foregroundStyle(Color.secondary.opacity(0.6))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                if let v = votoScelto {
+                    RuleMark(x: .value("Giornata scelta", v.giornata))
+                        .foregroundStyle(Color.secondary.opacity(0.5))
+                        .lineStyle(StrokeStyle(lineWidth: 1))
+                        .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            Text(testoScelta(v))
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .vetro(in: Capsule())
+                        }
+                }
                 ForEach(punti) { p in
-                    LineMark(x: .value("Giornata", p.ordine), y: .value("Punti", p.valore), series: .value("Serie", p.serie))
+                    LineMark(x: .value("Giornata", p.ordine), y: .value("Punti", disegnato || ridotto ? p.valore : dominio.lowerBound), series: .value("Serie", p.serie))
                         .foregroundStyle(by: .value("Serie", p.serie))
+                        .lineStyle(StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
                         .interpolationMethod(.monotone)
-                    PointMark(x: .value("Giornata", p.ordine), y: .value("Punti", p.valore))
+                    PointMark(x: .value("Giornata", p.ordine), y: .value("Punti", disegnato || ridotto ? p.valore : dominio.lowerBound))
                         .foregroundStyle(by: .value("Serie", p.serie))
-                        .symbolSize(28)
+                        .symbolSize(p.ordine == scelta ? 90 : 34)
                 }
             }
             .chartForegroundStyleScale(["Fantavoto": Color.verde, "Voto": Color.blue])
             .chartYScale(domain: dominio)
             .chartXScale(domain: dominioGiornate)
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
-            .frame(height: 180)
+            .chartXSelection(value: $scelta)
+            .sensoryFeedback(.selection, trigger: scelta)
+            .animation(.smooth(duration: 1.0), value: disegnato)
+            .animation(Tema.morbida, value: scelta)
+            .onAppear { disegnato = true }
+            .frame(height: 200)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Grafico del voto e del fantavoto giornata per giornata. La linea tratteggiata è il sei.")
             .accessibilityValue(Self.descrizione(voti).joined(separator: ". "))
-            Text("La linea tratteggiata è il 6.").font(.caption).foregroundStyle(.secondary)
+            Text("La linea tratteggiata è il 6. Tocca il grafico per i numeri di una giornata.").font(.caption).foregroundStyle(.secondary)
             ElencoNumeri(righe: Self.descrizione(voti))
         }
     }

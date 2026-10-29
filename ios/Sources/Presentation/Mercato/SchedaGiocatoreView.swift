@@ -65,23 +65,25 @@ struct GiocatoreCorpo: View {
             ScrollView {
                 Colonne(spazio: 14) {
                     if let s = vm.caricatore.dato {
-                        intestazione(s)
-                        if let p = s.previsione { previsione(p, ruolo: s.calciatore.ruolo) } else { senzaPrevisione }
-                        prossime
-                        forma(s)
+                        intestazione(s).ingresso(0)
+                        if let p = s.previsione { previsione(p, ruolo: s.calciatore.ruolo).ingresso(1) } else { senzaPrevisione }
+                        prossime.ingresso(2)
+                        forma(s).ingresso(3)
                         rendimento(s)
                         statistiche(s)
                         azioni(s)
                     } else if let e = vm.caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
-                        ProgressView().padding(40)
+                        Scheletro(schede: 3, righe: 2)
                     }
                 }
                 .padding(16)
+                .animation(Tema.morbida, value: vm.caricatore.dato != nil)
             }
             .demoInFondo()
             .refreshable { await vm.carica() }
+            .bordiMorbidi()
         }
         .navigationTitle(vm.caricatore.dato?.calciatore.nome ?? "Giocatore")
         .navigationBarTitleDisplayMode(.inline)
@@ -93,11 +95,13 @@ struct GiocatoreCorpo: View {
     private func intestazione(_ s: SchedaGiocatore) -> some View {
         let c = s.calciatore
         let p = s.previsione
-        return Carta {
-            HStack(spacing: 14) {
-                AvatarGiocatore(id: c.id, squadra: c.squadraSlug ?? p?.squadra, indice: p?.indice, dimensione: 76)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(c.nome).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+        let squadra = c.squadraSlug ?? p?.squadra
+        let tinta = Color(esadecimale: ColoriSquadra.esadecimali(squadra).0)
+        return VStack(spacing: 14) {
+            HStack(spacing: 16) {
+                AvatarGiocatore(id: c.id, squadra: squadra, indice: p?.indice, dimensione: 96)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)
                     HStack(spacing: 6) {
                         BadgeRuolo(ruolo: c.ruolo, piccolo: true)
                         Text("\(nomeRuolo(c.ruolo).primaMaiuscola) · \((c.squadra ?? "").capitalized)").font(.subheadline).foregroundStyle(.secondary)
@@ -107,18 +111,29 @@ struct GiocatoreCorpo: View {
                 Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
-            HStack(spacing: 6) {
-                etichetta(s.proprietario ?? "Svincolato", colore: s.proprietario == nil ? .orange : Color.verde)
-                if let p { ForEach(Array(p.etichette.prefix(3).enumerated()), id: \.offset) { _, e in etichetta(e.testo, colore: e.gravita.colore) } }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) { etichette(s, p) }
+                VStack(alignment: .leading, spacing: 6) { etichette(s, p) }
             }
-            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(LinearGradient(colors: [tinta.opacity(0.42), tinta.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
         }
     }
 
-    private func etichetta(_ testo: String, colore: Color) -> some View {
-        Text(testo).font(.caption.weight(.semibold)).foregroundStyle(colore)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(colore.opacity(0.15), in: Capsule())
+    @ViewBuilder
+    private func etichette(_ s: SchedaGiocatore, _ p: Giocatore?) -> some View {
+        Capsula(testo: s.proprietario ?? "Svincolato", colore: s.proprietario == nil ? .orange : Color.verde)
+        if let p {
+            ForEach(Array(p.etichette.prefix(3).enumerated()), id: \.offset) { _, e in
+                Capsula(testo: e.testo, colore: e.gravita.colore)
+            }
+        }
     }
 
     private var senzaPrevisione: some View {
@@ -136,16 +151,16 @@ struct GiocatoreCorpo: View {
     }
 
     private func previsione(_ p: Giocatore, ruolo: String) -> some View {
-        Carta("Prossima partita") {
+        Carta("Prossima partita", simbolo: "soccerball") {
             Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(Formato.punti(p.fvAtteso)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
+                    NumeroCheSale(valore: p.fvAtteso ?? 0).font(.system(size: 44, weight: .bold, design: .rounded))
                     Text("fantavoto atteso").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 0) {
-                    Text("\(Formato.percento(p.pVoto))%").font(.title2.bold()).monospacedDigit()
+                    NumeroCheSale(valore: Double(Formato.percento(p.pVoto)), formato: { "\(Formato.intero($0))%" }).font(.title2.bold())
                     Text("gioca").font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -177,7 +192,7 @@ struct GiocatoreCorpo: View {
     @ViewBuilder
     private var prossime: some View {
         if !vm.prossime.isEmpty {
-            Carta("Prossime partite") {
+            Carta("Prossime partite", simbolo: "calendar") {
                 ProssimePartite(partite: vm.prossime)
                 Text("Verde: partita facile. Rosso: partita dura.").font(.caption).foregroundStyle(.secondary)
             }
@@ -188,11 +203,13 @@ struct GiocatoreCorpo: View {
 
     @ViewBuilder
     private func forma(_ s: SchedaGiocatore) -> some View {
-        Carta("Forma") {
+        Carta("Forma", simbolo: "chart.line.uptrend.xyaxis") {
             if let forma = Forma.calcola(s.voti ?? []) {
                 HStack {
                     HStack(spacing: 6) {
-                        ForEach(forma.ultime) { v in pallino(v) }
+                        ForEach(Array(forma.ultime.enumerated()), id: \.element.id) { i, v in
+                            pallino(v).ingresso(i + 2)
+                        }
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 0) {
@@ -223,7 +240,7 @@ struct GiocatoreCorpo: View {
     @ViewBuilder
     private func rendimento(_ s: SchedaGiocatore) -> some View {
         if let r = s.rendimento, let sovra = r.sovraRendimento {
-            Carta("Rende sopra o sotto le occasioni?") {
+            Carta("Rende sopra o sotto le occasioni?", simbolo: "scope") {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(Formato.conSegno(sovra, cifre: 2)).font(.title.bold()).monospacedDigit()
                         .foregroundStyle(sovra > 0.3 ? Color.verde : sovra < -0.3 ? Color.red : .primary)
@@ -288,19 +305,21 @@ struct GiocatoreCorpo: View {
         Carta {
             Button { Task { await vm.alternaOsservato() } } label: {
                 Label(vm.osservato == true ? "Osservato" : "Osserva", systemImage: vm.osservato == true ? "star.fill" : "star")
+                    .contentTransition(.symbolEffect(.replace))
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.borderedProminent)
+            .pulsanteVetro(prominente: true)
+            .sensoryFeedback(.success, trigger: vm.osservato)
             .accessibilityHint(vm.osservato == true ? "Toglie il giocatore dagli osservati" : "Aggiunge il giocatore agli osservati")
             Button { percorso.append(.sceltaAltro(s.calciatore.id)) } label: {
                 Label("Confronta con un altro", systemImage: "arrow.left.arrow.right").frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.bordered)
+            .pulsanteVetro()
             if vm.inFormazione {
                 Button { percorso.append(.sceltaDallaRosa(s.calciatore.id)) } label: {
                     Label("Confronta con la mia rosa", systemImage: "person.2").frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.bordered)
+                .pulsanteVetro()
             }
             if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(.secondary) }
         }

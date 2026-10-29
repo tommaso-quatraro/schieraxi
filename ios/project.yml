@@ -2,7 +2,8 @@ name: Schieraxi
 options:
   bundleIdPrefix: it.tommaso
   deploymentTarget:
-    iOS: "16.0"
+    # 18: Tab, zoom, MeshGradient, sidebarAdaptable. Le funzioni di iOS 26 (Liquid Glass) sono protette da #available con un ripiego.
+    iOS: "18.0"
   createIntermediateGroups: true
   developmentLanguage: it
 settings:

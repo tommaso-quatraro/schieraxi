@@ -63,6 +63,7 @@ struct RigaGiocatore: View {
     var apribile = false
     @Environment(\.apriGiocatore) private var apri
     @Environment(\.dynamicTypeSize) private var tagliaTesto
+    @Environment(\.spazioZoom) private var zoom
     @ScaledMetric(relativeTo: .body) private var lato: CGFloat = 46
 
     private var sottotitolo: String {
@@ -119,12 +120,12 @@ struct RigaGiocatore: View {
         } else if tagliaTesto.isAccessibilitySize {
             // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
             HStack(spacing: 8) {
-                Text(puntiTesto).font(.headline).monospacedDigit()
+                Text(puntiTesto).font(.headline).monospacedDigit().numerico(g.puntiAttesi ?? 0)
                 Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(.secondary)
             }
         } else {
             VStack(alignment: .trailing, spacing: 2) {
-                Text(puntiTesto).font(.headline).monospacedDigit()
+                Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(g.puntiAttesi ?? 0)
                 Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
             }
         }
@@ -167,7 +168,12 @@ struct RigaGiocatore: View {
     var body: some View {
         if apribile {
             Button { apri(g.id) } label: { contenuto.frame(minHeight: 44).contentShape(Rectangle()) }
-                .buttonStyle(.plain)
+                .buttonStyle(StilePressione())
+                .origineZoom(g.id, zoom)
+                .contextMenu {
+                    Button { apri(g.id) } label: { Label("Apri la scheda", systemImage: "person.text.rectangle") }
+                    Button { UIPasteboard.general.string = g.nome } label: { Label("Copia il nome", systemImage: "doc.on.doc") }
+                }
                 .accessibilityHint("Apre la scheda del giocatore")
         } else {
             contenuto

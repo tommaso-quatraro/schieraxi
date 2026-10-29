@@ -4,6 +4,7 @@ import SwiftUI
 struct MercatoView: View {
     @ObservedObject var vm: MercatoViewModel
     @EnvironmentObject private var nav: Navigazione
+    @Environment(\.spazioZoom) private var zoom
 
     /// Se l'app è stata aperta da Spotlight o da un indirizzo schieraxi://giocatore/<id>, mostra la scheda.
     private func apriRichiesto() {
@@ -25,9 +26,11 @@ struct MercatoView: View {
             .navigationTitle("Mercato")
             .ricercaGlobale()
             .onAppear { apriRichiesto() }
-            .onChange(of: nav.giocatoreDaAprire) { _ in apriRichiesto() }
+            .onChange(of: nav.giocatoreDaAprire) { _, _ in apriRichiesto() }
             .sheet(item: $vm.schedaAperta) { g in
                 GiocatoreSheet(id: g.id, server: vm.server)
+                    .arrivoZoom(g.id, zoom)
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -49,6 +52,7 @@ struct MercatoView: View {
 /// di pulsanti che scorre di lato. Un selettore a segmenti qui tagliava i nomi e non cresce col testo.
 struct SelettoreSezioni: View {
     @Binding var selezione: SezioneMercato
+    @Namespace private var pillole
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -64,7 +68,7 @@ struct SelettoreSezioni: View {
                     .padding(.horizontal, 16)
                 }
                 .onAppear { lettore.scrollTo(selezione, anchor: .center) }
-                .onChange(of: selezione) { nuova in withAnimation { lettore.scrollTo(nuova, anchor: .center) } }
+                .onChange(of: selezione) { _, nuova in withAnimation { lettore.scrollTo(nuova, anchor: .center) } }
             }
         }
     }
@@ -72,18 +76,17 @@ struct SelettoreSezioni: View {
     private func pulsante(_ s: SezioneMercato, _ carattere: Font, _ margine: CGFloat) -> some View {
         let attiva = s == selezione
         return Button {
-            selezione = s
-            Haptics.selezione()
+            withAnimation(Tema.molla) { selezione = s }
         } label: {
             Text(s.rawValue)
                 .font(carattere.weight(.semibold))
                 .lineLimit(1)
                 .padding(.horizontal, margine)
                 .frame(minHeight: 44)
-                .background(attiva ? Color.verde.opacity(0.35) : Color.primary.opacity(0.08), in: Capsule())
-                .overlay(Capsule().strokeBorder(attiva ? Color.verde : .clear, lineWidth: 1))
+                .pillola(attiva: attiva, spazio: pillole)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(StilePressione())
+        .sensoryFeedback(.selection, trigger: selezione)
         .accessibilityAddTraits(attiva ? .isSelected : [])
     }
 }
@@ -92,12 +95,13 @@ struct SelettoreSezioni: View {
 
 struct ConsigliatiView: View {
     @ObservedObject var vm: MercatoViewModel
+    @Environment(\.spazioZoom) private var zoom
 
     var body: some View {
         ScrollView {
             Colonne(spazio: 12) {
                 if let m = vm.consigliati.dato {
-                    Carta {
+                    Carta(simbolo: "arrow.triangle.swap") {
                         Text("Svincolati che migliorano la squadra").font(.headline)
                         Text("Ogni proposta è un cambio: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. \(m.svincolati ?? 0) svincolati analizzati; il guadagno è in punti attesi (prossime giornate una per una, più il resto della stagione).")
                             .font(.footnote).foregroundStyle(.secondary)
@@ -108,9 +112,12 @@ struct ConsigliatiView: View {
                             Text("Inserisci i tuoi crediti in Lega > Crediti per vedere se i cambi sono fattibili.").font(.footnote).foregroundStyle(.secondary)
                         }
                     }
-                    ForEach(m.proposte) { p in
+                    ForEach(Array(m.proposte.enumerated()), id: \.element.id) { i, p in
                         Button { vm.apri(p.entra.id) } label: { carta(p) }
-                            .buttonStyle(.plain).puntatore()
+                            .buttonStyle(StilePressione()).puntatore()
+                            .origineZoom(p.entra.id, zoom)
+                            .entraScorrendo()
+                            .ingresso(i + 1)
                             .accessibilityHint("Apre la scheda del giocatore")
                     }
                     if m.proposte.isEmpty {
@@ -119,10 +126,11 @@ struct ConsigliatiView: View {
                 } else if let e = vm.consigliati.errore {
                     ErroreVista(messaggio: e) { Task { await vm.consigliati.ricarica() } }
                 } else {
-                    ProgressView("Cerco gli svincolati migliori…").padding(40)
+                    Scheletro(schede: 3, righe: 2)
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
+            .animation(Tema.morbida, value: vm.consigliati.dato != nil)
         }
         .demoInFondo()
         .refreshable { await vm.consigliati.ricarica() }
@@ -160,6 +168,7 @@ struct ConsigliatiView: View {
 
 struct ClassificaView: View {
     @ObservedObject var vm: MercatoViewModel
+    @Environment(\.spazioZoom) private var zoom
 
     var body: some View {
         ScrollView {
@@ -176,25 +185,29 @@ struct ClassificaView: View {
                         VistaVuota(titolo: "Nessun giocatore", icona: "person.slash", descrizione: "Prova a cambiare ruolo o a togliere il filtro sugli svincolati.")
                     } else {
                         Carta {
-                            ForEach(d.giocatori) { g in
-                                Button { vm.apri(g.id) } label: {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        RigaGiocatore(g: g)
-                                        Text("quot. \(g.quotazione.map { String(Formato.intero($0)) } ?? "–") · \(g.proprietario ?? "svincolato")")
-                                            .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : .secondary).padding(.leading, 58)
+                            ForEach(Array(d.giocatori.enumerated()), id: \.element.id) { i, g in
+                                RigaConFilo(prima: i == 0) {
+                                    Button { vm.apri(g.id) } label: {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            RigaGiocatore(g: g)
+                                            Text("quot. \(g.quotazione.map { String(Formato.intero($0)) } ?? "–") · \(g.proprietario ?? "svincolato")")
+                                                .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : .secondary).padding(.leading, 58)
+                                        }
+                                        .frame(minHeight: 44)
                                     }
-                                    .frame(minHeight: 44)
+                                    .buttonStyle(StilePressione())
+                                    .origineZoom(g.id, zoom)
+                                    .accessibilityHint("Apre la scheda del giocatore")
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityHint("Apre la scheda del giocatore")
                             }
                         }
                     }
                 } else {
-                    ProgressView().padding(40)
+                    Scheletro(schede: 1, righe: 6)
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
+            .animation(Tema.morbida, value: vm.classifica.dato != nil)
         }
         .demoInFondo()
         .refreshable { await vm.caricaClassifica() }
@@ -222,7 +235,7 @@ struct CalendarioView: View {
         ScrollView {
             VStack(spacing: 12) {
                 if let c = vm.calendario.dato {
-                    Carta("Difficoltà delle prossime partite") {
+                    Carta("Difficoltà delle prossime partite", simbolo: "calendar") {
                         Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(.secondary)
                         // La griglia è una tabella di sigle di tre lettere: con il testo molto grande smette di crescere
                         // (altrimenti le sigle andavano a capo lettera per lettera).
@@ -258,10 +271,11 @@ struct CalendarioView: View {
                 } else if let e = vm.calendario.errore {
                     ErroreVista(messaggio: e) { Task { await vm.calendario.ricarica() } }
                 } else {
-                    ProgressView().padding(40)
+                    Scheletro(schede: 1, righe: 5)
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
+            .animation(Tema.morbida, value: vm.calendario.dato != nil)
         }
         .refreshable { await vm.calendario.ricarica() }
         .avvisoDatiSalvati(vm.calendario.datiSalvati)
@@ -293,13 +307,17 @@ struct OsservatiView: View {
                     .accessibilityHint("Apre la scheda del giocatore")
                     .accessibilityAction(named: "Togli dagli osservati") { Task { await vm.togliOsservato(g.id) } }
                     .swipeActions {
-                        Button("Togli", role: .destructive) { Task { await vm.togliOsservato(g.id) } }
+                        Button(role: .destructive) { Task { await vm.togliOsservato(g.id) } } label: { Label("Togli", systemImage: "star.slash") }
+                    }
+                    .contextMenu {
+                        Button { vm.apri(g.id) } label: { Label("Apri la scheda", systemImage: "person.text.rectangle") }
+                        Button(role: .destructive) { Task { await vm.togliOsservato(g.id) } } label: { Label("Togli dagli osservati", systemImage: "star.slash") }
                     }
                 }
             } else if let e = vm.osservati.errore {
                 ErroreVista(messaggio: e) { Task { await vm.caricaOsservati() } }
             } else {
-                ProgressView().frame(maxWidth: .infinity).padding(40)
+                ScheletroRighe(righe: 4).listRowBackground(Color.clear)
             }
         }
         .scrollContentBackground(.hidden)
@@ -318,9 +336,10 @@ struct CercaView: View {
         List {
             if let errore = vm.erroreRicerca { Text(errore).foregroundStyle(.orange) }
             if vm.testoRicerca.count < 2 {
-                Text("Scrivi almeno due lettere del nome.").foregroundStyle(.secondary)
+                VistaVuota(titolo: "Cerca un giocatore", icona: "magnifyingglass", descrizione: "Scrivi almeno due lettere del nome.")
+                    .listRowBackground(Color.clear)
             } else if vm.risultati.isEmpty && vm.erroreRicerca == nil {
-                Text("Nessun giocatore trovato.").foregroundStyle(.secondary)
+                ContentUnavailableView.search(text: vm.testoRicerca).listRowBackground(Color.clear)
             }
             ForEach(vm.risultati) { g in
                 Button { vm.apri(g.id) } label: {
