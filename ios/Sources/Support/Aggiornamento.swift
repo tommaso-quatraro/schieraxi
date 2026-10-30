@@ -33,6 +33,16 @@ enum Aggiornamento {
         await elabora(oggi, avvisaSeCambia: true)
     }
 
+    /// Riempie in anticipo la copia di `/api/widget` (con If-None-Match), così i widget mostrano subito dati freschi.
+    static func precaricaWidget() async {
+        let base = IndirizzoServer.attuale
+        if Demo.attivo || base.isEmpty { return }
+        let copia = MemoriaWidget.leggi()
+        if case .dati(_, let grezzo, let etag) = await ScaricoWidget.scarica(base: base, token: Accesso.archivio.leggi(server: base), etag: copia?.etag) {
+            MemoriaWidget.salva(CopiaWidget(dati: grezzo, etag: etag, scaricatoIl: Date()))
+        }
+    }
+
     /// Rilegge le ore tranquille dal server (se risponde) per i promemoria locali.
     static func aggiornaOreTranquille() async {
         if Demo.attivo { return }
@@ -49,6 +59,7 @@ enum Aggiornamento {
         }
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
         Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))
+        await precaricaWidget()
         WidgetCenter.shared.reloadAllTimelines()
         // Senza una formazione vera (modulo mancante o «–», punti assenti) non si confronta né si ricorda niente.
         guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else { return }

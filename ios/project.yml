@@ -93,6 +93,11 @@ targets:
       - path: Sources/Domain/Quando.swift
       - path: Sources/Domain/Formato.swift
       - path: Sources/Support/Condiviso.swift
+      - path: Sources/Support/WidgetRiassunto.swift
+      - path: Sources/Domain/ColoriSquadra.swift
+      - path: Sources/Domain/GeneratoreVolto.swift
+      - path: Sources/Support/AvatarVolto.swift
+      - path: Sources/Support/Design/PercorsoSVG.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.widget

@@ -9,7 +9,11 @@ import UIKit
 struct PacchettoWidget: WidgetBundle {
     var body: some Widget {
         WidgetOggi()
+        WidgetFormazione()
         WidgetDubbi()
+        WidgetRosa()
+        WidgetCrediti()
+        WidgetStato()
     }
 }
 

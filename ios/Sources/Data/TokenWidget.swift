@@ -64,6 +64,7 @@ enum TokenWidget {
     /// Via il token dal telefono (Keychain e file condiviso), senza chiamare il server (sessione già finita o server cambiato).
     static func pulisciLocale(indirizzo: String, memoria: UserDefaults = .standard) {
         archivio.cancella(server: indirizzo)
+        MemoriaWidget.dimentica()
         memoria.removeObject(forKey: chiaveScadenza + "|" + indirizzo)
         Condiviso.aggiorna {
             if $0.tokenPerIndirizzo == indirizzo {
