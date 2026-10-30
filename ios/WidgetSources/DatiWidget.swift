@@ -136,7 +136,13 @@ struct Fornitore: AppIntentTimelineProvider {
         let primo = await voce(configuration)
         let adesso = primo.date
         var voci = [primo]
-        var prossimo = adesso.addingTimeInterval(30 * 60)
+        // Più spesso quando la partita è vicina (probabili, dubbi e formazioni cambiano), meno quando mancano giorni.
+        var minuti = 30.0
+        if let inizio = primo.riassunto?.inizio {
+            let manca = inizio.timeIntervalSince(adesso)
+            if manca > 0 && manca < 3 * 3600 { minuti = 10 } else if manca > 0 && manca < 24 * 3600 { minuti = 20 } else if manca < 0 && manca > -3 * 3600 { minuti = 15 }
+        }
+        var prossimo = adesso.addingTimeInterval(minuti * 60)
         if primo.indirizzoMancante { prossimo = adesso.addingTimeInterval(60 * 60) }
         if let inizio = primo.riassunto?.inizio, inizio > adesso {
             var dopo = primo

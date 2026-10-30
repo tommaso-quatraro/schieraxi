@@ -12,6 +12,23 @@ import Foundation
 // l'app; il widget lo legge. Se il gruppo non è disponibile tutto funziona come prima (indirizzo nelle impostazioni del widget,
 // nessun token: il widget chiede l'accesso).
 
+/// Un giocatore della formazione da controllare (dubbio, infortunio, squalifica), per il widget «Da controllare».
+struct DubbioRiassunto: Codable, Equatable, Identifiable {
+    var id: Int
+    var nome: String
+    var ruolo: String?
+    var tipo: String?
+    /// Probabilità di giocare (0-1), per i dubbi.
+    var pVoto: Double?
+
+    /// «Dubbio 55%», «Infortunato»...: una riga breve.
+    var descrizione: String {
+        let base = (tipo ?? "da controllare").prefix(1).uppercased() + (tipo ?? "da controllare").dropFirst()
+        guard let p = pVoto else { return base }
+        return "\(base) \(Int((p * 100).rounded()))%"
+    }
+}
+
 /// Quello che serve al widget, in forma compatta e salvabile.
 struct RiassuntoOggi: Codable, Equatable {
     var giornata: Int
@@ -21,11 +38,14 @@ struct RiassuntoOggi: Codable, Equatable {
     var daControllare: Int
     var probabili: Bool?
     var scaricatoIl: Date
+    /// Chi della formazione ha un dubbio (al massimo 6). Opzionale: un riassunto salvato da una versione vecchia non li ha.
+    var dubbi: [DubbioRiassunto]?
 
     static let esempio = RiassuntoOggi(giornata: 9, inizio: Date().addingTimeInterval(3 * 3600 + 25 * 60), modulo: "3-4-3", punti: 64.5,
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
 
-    init(giornata: Int, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date) {
+    init(giornata: Int, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date,
+         dubbi: [DubbioRiassunto]? = nil) {
         self.giornata = giornata
         self.inizio = inizio
         self.modulo = modulo
@@ -33,17 +53,20 @@ struct RiassuntoOggi: Codable, Equatable {
         self.daControllare = daControllare
         self.probabili = probabili
         self.scaricatoIl = scaricatoIl
+        self.dubbi = dubbi
     }
 
     /// Dalla risposta di «oggi» (la stessa per l'app e per il widget).
     init(oggi: Oggi, scaricatoIl: Date = Date()) {
+        let daControllare = (oggi.avvisi ?? []).filter { $0.inFormazione == true }
         self.init(giornata: oggi.giornata,
                   inizio: Quando.data(oggi.inizio),
                   modulo: oggi.formazione?.modulo,
                   punti: oggi.formazione?.punteggioAtteso,
-                  daControllare: (oggi.avvisi ?? []).filter { $0.inFormazione == true }.count,
+                  daControllare: daControllare.count,
                   probabili: oggi.conProbabili,
-                  scaricatoIl: scaricatoIl)
+                  scaricatoIl: scaricatoIl,
+                  dubbi: daControllare.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) })
     }
 }
 

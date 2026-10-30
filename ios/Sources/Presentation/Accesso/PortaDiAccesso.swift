@@ -42,7 +42,11 @@ struct PortaDiAccesso: View {
             WidgetCenter.shared.reloadAllTimelines()
         }
         .onChange(of: fase) { _, nuova in
-            if nuova == .active { Task { await sessione.verifica() } }
+            if nuova == .active {
+                Task { await sessione.verifica() }
+                // all'apertura il widget riparte con dati nuovi (senza aspettare il suo turno)
+                if !Demo.attivo { WidgetCenter.shared.reloadAllTimelines() }
+            }
         }
     }
 }

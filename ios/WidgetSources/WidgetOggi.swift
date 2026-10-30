@@ -4,7 +4,15 @@ import UIKit
 
 /// Widget «Prossima giornata»: conto alla rovescia alla prima partita, modulo e punti attesi.
 /// Famiglie: piccolo e medio (Schermata Home), cerchio, rettangolo e riga (Schermata di blocco).
+/// I widget di SchieraXI: «Prossima giornata» e «Da controllare».
 @main
+struct PacchettoWidget: WidgetBundle {
+    var body: some Widget {
+        WidgetOggi()
+        WidgetDubbi()
+    }
+}
+
 struct WidgetOggi: Widget {
     let kind = "SchieraxiOggi"
 
@@ -128,6 +136,8 @@ struct VistaWidget: View {
 
     private func medio(_ r: RiassuntoOggi) -> some View {
         HStack(alignment: .top, spacing: 16) {
+            // a sinistra (conto alla rovescia) si apre Oggi, a destra (formazione) la Formazione
+            Link(destination: URL(string: "schieraxi://oggi") ?? URL(fileURLWithPath: "/")) {
             VStack(alignment: .leading, spacing: 4) {
                 Label("Giornata \(r.giornata)", systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
                 conto(r)
@@ -141,6 +151,8 @@ struct VistaWidget: View {
                     Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
                 }
             }
+            }
+            Link(destination: URL(string: "schieraxi://formazione") ?? URL(fileURLWithPath: "/")) {
             VStack(alignment: .trailing, spacing: 4) {
                 Label("Formazione", systemImage: "sportscourt").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
                 Text(r.modulo ?? "—").font(.system(.title, design: .rounded).weight(.bold))
@@ -152,6 +164,7 @@ struct VistaWidget: View {
                 } else if r.probabili == false {
                     Label("probabili non uscite", systemImage: "clock").font(.caption2).foregroundStyle(.secondary)
                 }
+            }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
