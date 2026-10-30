@@ -29,10 +29,12 @@ final class MercatoViewModel: ViewModelBase {
     // classifica
     @Published var ruolo = "Tutti"
     @Published var soloLiberi = true
-    // ricerca
-    @Published var testoRicerca = ""
-    @Published var risultati: [GiocatoreBreve] = []
-    @Published var erroreRicerca: String?
+    /// La ricerca ha il suo ViewModel (non si osserva da qui): scrivendo si ridisegnano solo i risultati, non tutto Mercato.
+    let ricerca: RicercaMercatoViewModel
+    var testoRicerca: String {
+        get { ricerca.testo }
+        set { ricerca.testo = newValue }
+    }
     // osservati
     @Published var messaggioOsservati: String?
 
@@ -43,6 +45,7 @@ final class MercatoViewModel: ViewModelBase {
         calendario = Caricatore<Calendario>("/api/calendario", server: server)
         osservati = Caricatore<ElencoGiocatori>("/api/osservati", server: server)
         asta = AstaViewModel(server: server)
+        ricerca = RicercaMercatoViewModel(server: server)
         super.init()
         osserva(consigliati)
         osserva(classifica)
@@ -83,28 +86,5 @@ final class MercatoViewModel: ViewModelBase {
             Haptics.esito(riuscito: false)
         }
         await caricaOsservati()
-    }
-
-    // MARK: ricerca
-
-    /// Cerca dopo una breve pausa (se si continua a scrivere, la ricerca vecchia viene annullata dalla vista con `.task(id:)`).
-    func cerca() async {
-        let testo = testoRicerca
-        guard testo.count >= 2 else {
-            risultati = []
-            erroreRicerca = nil
-            return
-        }
-        try? await Task.sleep(nanoseconds: 300_000_000)
-        if Task.isCancelled { return }
-        do {
-            let trovati: [GiocatoreBreve] = try await server.get("/api/giocatori?limite=25&q=\(IndirizzoServer.codifica(testo))")
-            if Task.isCancelled { return }
-            risultati = trovati
-            erroreRicerca = nil
-        } catch {
-            if Task.isCancelled || error is CancellationError { return }   // si è continuato a scrivere: vale la ricerca nuova
-            erroreRicerca = error.localizedDescription
-        }
     }
 }

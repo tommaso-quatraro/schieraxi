@@ -43,7 +43,7 @@ struct MercatoView: View {
         case .calendario: CalendarioView(vm: vm)
         case .osservati: OsservatiView(vm: vm)
         case .asta: AstaContenuto(vm: vm.asta)
-        case .cerca: CercaView(vm: vm)
+        case .cerca: CercaView(ricerca: vm.ricerca, apri: { vm.apri($0) })
         }
     }
 }
@@ -330,34 +330,44 @@ struct OsservatiView: View {
 // MARK: - Cerca
 
 struct CercaView: View {
-    @ObservedObject var vm: MercatoViewModel
+    @ObservedObject var ricerca: RicercaMercatoViewModel
+    let apri: (Int) -> Void
 
     var body: some View {
         List {
-            if let errore = vm.erroreRicerca { Text(errore).foregroundStyle(.orange) }
-            if vm.testoRicerca.count < 2 {
+            if let errore = ricerca.errore { Text(errore).foregroundStyle(.orange) }
+            if !ricerca.abbastanzaLungo {
                 VistaVuota(titolo: "Cerca un giocatore", icona: "magnifyingglass", descrizione: "Scrivi almeno due lettere del nome.")
                     .listRowBackground(Color.clear)
-            } else if vm.risultati.isEmpty && vm.erroreRicerca == nil {
-                ContentUnavailableView.search(text: vm.testoRicerca).listRowBackground(Color.clear)
+            } else if ricerca.nessunRisultato {
+                ContentUnavailableView.search(text: ricerca.testo).listRowBackground(Color.clear)
             }
-            ForEach(vm.risultati) { g in
-                Button { vm.apri(g.id) } label: {
+            ForEach(ricerca.visibili) { g in
+                Button { apri(g.id) } label: {
                     HStack(spacing: 12) {
                         BadgeRuolo(ruolo: g.ruolo)
                         Text(g.nome).font(.headline)
                         Spacer()
                         Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
                     }
+                    .frame(minHeight: Tema.areaTocco)
                     .accessibilityElement(children: .combine)
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Apre la scheda del giocatore")
             }
+            if ricerca.ciSonoAltri {
+                Button {
+                    ricerca.mostraAltri()
+                } label: {
+                    Text("Mostra altri (\(ricerca.trovati.count - ricerca.visibili.count))").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                }
+                .accessibilityHint("Mostra altri risultati della ricerca")
+            }
         }
         .scrollContentBackground(.hidden)
-        .searchable(text: $vm.testoRicerca, placement: .navigationBarDrawer(displayMode: .always), prompt: "Nome del giocatore")
-        .task(id: vm.testoRicerca) { await vm.cerca() }
+        .searchable(text: $ricerca.testo, placement: .navigationBarDrawer(displayMode: .always), prompt: "Nome del giocatore")
+        .task(id: ricerca.testo) { await ricerca.cerca() }
     }
 }
 
