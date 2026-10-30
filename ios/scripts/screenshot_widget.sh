@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fotografa i widget nel simulatore (lanciato da .github/workflows/screenshot-widget.yml).
+# Fotografa i widget nel simulatore (lanciato da .github/workflows/screenshot.yml).
 # L'app di anteprima (target AnteprimaWidget) mostra i widget con dati finti: -GALLERIA <widget>[-blocco], -DATI pieni|parziali|vuoto.
 # Uso: scripts/screenshot_widget.sh <AnteprimaWidget.app per il simulatore> <cartella dei PNG>
 APP="${1:?manca il percorso di AnteprimaWidget.app}"

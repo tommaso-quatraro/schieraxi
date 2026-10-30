@@ -48,15 +48,33 @@ L'app nativa fa **tutto quello che fa la web app** (tranne le notifiche push, ve
 - Il progetto Xcode non è in git: lo genera XcodeGen da `project.yml` (target `Schieraxi`, `SchieraxiWidget`, `SchieraxiTests`, `SchieraxiUITests`).
 
 ## Test automatici
-- **Workflow `test.yml`**: a ogni push e a ogni pull request, su `macos-26`: `xcodegen generate` e `xcodebuild test -scheme Schieraxi` su un simulatore scelto da `scripts/scegli_simulatore.py`. Se qualcosa fallisce restano come artifact il `.xcresult` e il log (7 giorni). Convive con `ipa.yml`: la scheda `Schieraxi` costruisce i test solo con l'azione "test".
+- **Workflow `test.yml`**: su ogni pull request e su ogni push a `main` (vedi «CI: cosa gira quando»), su `macos-26`: `xcodegen generate` e `xcodebuild test -scheme Schieraxi` su un simulatore scelto da `scripts/scegli_simulatore.py`. Se qualcosa fallisce restano come artifact il `.xcresult` e il log (7 giorni). Convive con `ipa.yml`: la scheda `Schieraxi` costruisce i test solo con l'azione "test".
 - **`SchieraxiTests`** (XCTest, `Tests/SchieraxiTests`): `Quando`, `Formato`, `JSONValue` (round trip che mantiene gli interi), decodifica di **risposte vere del server** (`Tests/Fixtures/*.json`, copiate da una lega reale con il server locale: oggi, formazione, mercato, classifica, scambi, rosa, regole, stato dati, scheda giocatore, confronto, affidabilità, ...), `Stato<T>` e `Caricatore` con un server finto che fallisce e riesce, cache su disco, `ServerHTTP` con una rete finta (intestazione `X-Fanta`, messaggi d'errore, multipart), ViewModel (Oggi, Formazione con modifica a mano e **risposte fuori ordine**, Scambi, Mercato, Asta, Ricerca, Scheda giocatore, Lega: aggiornamento dati, stagione, regole, importazione, crediti, avvisi, movimenti), foto e stemmi, collegamenti `schieraxi://`, scadenza del certificato, logica di forma, etichette, ballottaggi, scambi e regole.
 - **`SchieraxiUITests`** (XCUITest, `Tests/SchieraxiUITests`): con `-DEMO` l'app si apre, le cinque sezioni si raggiungono, le schermate mostrano il testo atteso (Oggi, Formazione e modifica a mano, Mercato, Scambi, Lega e Aspetto, apertura e chiusura della scheda di un giocatore, ricerca).
 - Le fixture si rifanno avviando il server locale (`.venv\Scripts\python.exe -m fanta server`) e scaricando gli indirizzi con l'intestazione `X-Fanta: 1`.
 
+## CI: cosa gira quando
+
+I Mac di GitHub sono pochi e si dividono tra tutti i job: per questo si prenotano solo quando servono. Ogni workflow ha una sola
+esecuzione per ramo o PR (un nuovo push annulla quella in corso).
+
+| Workflow | Quando parte | Cosa fa |
+|---|---|---|
+| `Test` (`test.yml`) | su ogni pull request e su ogni push a `main` (non sui rami di lavoro: la PR li copre) | compila i test e li esegue su un simulatore; compilazione e test sono due passi separati, con cache di DerivedData |
+| `Compila IPA` (`ipa.yml`) | push a `main` solo se cambiano `Sources/`, `WidgetSources/`, `Config/`, `project.yml` o gli script dell'IPA; a mano per le prove | crea `Schieraxi.ipa` e la release `build-N`. Su `main` ne resta in coda solo una (l'ultima) e la build in corso non si annulla mai |
+| `Screenshot` (`screenshot.yml`) | a mano, o su una PR con l'etichetta `screenshot`, o su una PR che cambia `Sources/Presentation`, `Sources/Support`, `Sources/App`, `WidgetSources` o `AnteprimaWidget` | fotografa l'app (iPhone e iPad) e i widget in un solo job Mac. Un job Linux, gratis, decide prima se serve il Mac |
+
+Non parte più nulla a ogni unione su `main`: prima partivano in automatico gli screenshot (due volte) e la build a ogni unione.
+
+**Come chiedere gli screenshot:**
+- su una PR: `gh pr edit <numero> --add-label screenshot` (la foto parte una volta per ogni nuovo push, finché l'etichetta c'è);
+- a mano, da Actions (Screenshot > Run workflow) oppure: `gh workflow run screenshot.yml --ref <ramo> -f scatti=completo` (`veloce` o `completo`).
+Le foto si scaricano con `gh run download <id> --name screenshot-app --dir .screenshot` (o `screenshot-widget`).
+
 ## Vedere l'app senza telefono (modalità demo e foto nel simulatore)
 - **Modalità demo:** se l'app parte con l'argomento di lancio `-DEMO` usa `FinteServer.demo` (`Sources/Support/DatiDemo.swift` e `DemoImmagini.swift`): una lega finta ma verosimile (formazione con titolari incerti e panchina, foto e stemmi disegnati al volo, avvisi, mercato, scambi, regole nella forma vera, stato dei dati, movimenti, prova del modello), senza rete, senza permessi e senza lavori in background. Nel comportamento normale non cambia niente.
   Altri argomenti, solo in demo: `-DEMO_SCHERMATA <nome>` (apre una schermata o una sotto-pagina, vedi `Sources/Support/Demo.swift`), `-DEMO_FONDO 1` (parte scorsa in fondo), `-DEMO_ORIENTAMENTO orizzontale`, `-DEMO_CERCA <testo>` (testo della ricerca).
-- **Workflow `screenshot.yml`** (a mano da Actions, e a ogni push su `main` che cambia `Sources/`): compila per il simulatore, avvia un iPhone e un iPad, lancia l'app con `-DEMO` e fotografa le schermate. Modalità `veloce` (predefinita: solo le principali, pochi minuti) o `completo` (tutte, chiaro e scuro, testo normale e grande, verticale e orizzontale; quasi un'ora): `gh workflow run screenshot.yml --ref <ramo> -f scatti=completo`. Le foto sono nell'artifact `screenshot-app` (14 giorni); non crea release.
+- **Workflow `screenshot.yml`** (a mano o con l'etichetta `screenshot` sulla PR, vedi «CI: cosa gira quando»): compila per il simulatore, avvia un iPhone e un iPad, lancia l'app con `-DEMO` e fotografa le schermate. Modalità `veloce` (predefinita: solo le principali, pochi minuti) o `completo` (tutte, chiaro e scuro, testo normale e grande, verticale e orizzontale; quasi un'ora): `gh workflow run screenshot.yml --ref <ramo> -f scatti=completo`. Le foto sono nell'artifact `screenshot-app` (14 giorni); non crea release.
   Scaricarle: `gh run download <id> --name screenshot-app --dir .screenshot` (la cartella `.screenshot/` è ignorata da git).
 
 ## Da provare sul telefono (la compilazione verde non prova il comportamento)
