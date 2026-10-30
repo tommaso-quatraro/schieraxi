@@ -233,8 +233,8 @@ enum Condiviso {
 }
 
 /// Il codice di collegamento del widget: indirizzo e (se c'è una sessione) token in un testo breve da copiare dall'app e incollare
-/// nelle impostazioni del widget. È il ripiego quando l'App Group non c'è. Il token è quello della sessione: chi ha il codice può
-/// leggere i dati dell'account (punto debole, finché il server non emette un token apposta per il widget).
+/// nelle impostazioni del widget. È il ripiego quando l'App Group non c'è. Il token è quello del WIDGET (`fw_`, solo lettura di
+/// /api/oggi e /api/widget, 90 giorni, revocabile): mai quello della sessione.
 enum CodiceWidget {
     static let prefisso = "schieraxi1."
 

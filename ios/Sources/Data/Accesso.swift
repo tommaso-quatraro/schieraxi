@@ -87,34 +87,6 @@ struct KeychainToken: ArchivioToken {
     }
 }
 
-/// Un archivio che, oltre a tenere il token dov'è sempre, ne rimette una copia nel file condiviso con il widget
-/// (`Condiviso`, contenitore dell'App Group). Se il gruppo non c'è non cambia niente.
-struct ArchivioSpecchiato: ArchivioToken {
-    let base: any ArchivioToken
-
-    func leggi(server: String) -> String? { base.leggi(server: server) }
-
-    @discardableResult func salva(_ token: String, server: String) -> Bool {
-        let esito = base.salva(token, server: server)
-        Condiviso.aggiorna {
-            $0.token = token
-            $0.tokenPerIndirizzo = server
-        }
-        return esito
-    }
-
-    func cancella(server: String) {
-        base.cancella(server: server)
-        Condiviso.aggiorna {
-            if $0.tokenPerIndirizzo == server {
-                $0.token = nil
-                $0.tokenPerIndirizzo = nil
-                $0.riassunto = nil
-            }
-        }
-    }
-}
-
 enum Accesso {
     /// Un token ricevuto dal server è accettabile solo se è un testo breve di caratteri semplici: un server ostile potrebbe mandare
     /// qualsiasi cosa (enorme, con a capo, con caratteri di controllo) che finirebbe in un'intestazione HTTP o nel Keychain.
@@ -130,13 +102,13 @@ enum Accesso {
     }
 
     /// L'archivio dei token in uso: il Keychain, o la memoria in modalità demo (le fotografie non toccano il Keychain).
-    nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.attivo ? MemoriaToken() : ArchivioSpecchiato(base: KeychainToken())
+    nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.attivo ? MemoriaToken() : KeychainToken()
 
-    /// Rimette nel file condiviso l'indirizzo e il token di adesso (all'apertura e quando l'indirizzo cambia):
-    /// chi aveva già una sessione prima dell'aggiornamento la ritrova nel widget senza rifare l'accesso.
+    /// Rimette nel file condiviso l'indirizzo e il TOKEN DEL WIDGET (`fw_`, a scopo limitato: solo lettura di oggi e widget) di adesso.
+    /// Il token della sessione non va mai nel file condiviso.
     static func sincronizzaConIlWidget() {
         if Demo.attivo { return }
         let indirizzo = IndirizzoServer.attuale
-        Condiviso.sincronizza(indirizzo: indirizzo, token: indirizzo.isEmpty ? nil : archivio.leggi(server: indirizzo))
+        Condiviso.sincronizza(indirizzo: indirizzo, token: indirizzo.isEmpty ? nil : TokenWidget.leggi(server: indirizzo))
     }
 }

@@ -238,7 +238,12 @@ final class SessioneAccount: ObservableObject {
         do {
             let r: RispostaAccount = try await server.get("/api/account/me")
             if r.multiutente == true {
-                if let u = r.utente { imposta(.connesso(u)) } else { imposta(.daAccedere) }
+                if let u = r.utente {
+                    imposta(.connesso(u))
+                    // il widget ha il suo token a scopo limitato (mai quello della sessione)
+                    let s = server
+                    Task { await TokenWidget.assicura(server: s) }
+                } else { imposta(.daAccedere) }
             } else {
                 archivio.cancella(server: server.indirizzo)
                 imposta(.nonRichiesto)
@@ -258,6 +263,7 @@ final class SessioneAccount: ObservableObject {
         let attuale = server.indirizzo
         if let vecchio = memoria.string(forKey: Self.chiaveIndirizzo), vecchio != attuale {
             archivio.cancella(server: vecchio)
+            TokenWidget.pulisciLocale(indirizzo: vecchio)
             pulisci()
             memoria.removeObject(forKey: Self.chiaveUtente)
             memoria.removeObject(forKey: Self.chiaveMultiutente)
@@ -301,6 +307,7 @@ final class SessioneAccount: ObservableObject {
     /// Chiude l'accesso SOLO sul telefono: butta il token, svuota i dati locali, mostra la schermata di accesso.
     private func chiudiLocale() {
         archivio.cancella(server: server.indirizzo)
+        TokenWidget.pulisciLocale(indirizzo: server.indirizzo)
         pulisci()
         multiutente = true
         memoria.set(true, forKey: Self.chiaveMultiutente)
@@ -343,6 +350,8 @@ final class SessioneAccount: ObservableObject {
         if let dati = try? JSONEncoder().encode(utente) { memoria.set(dati, forKey: Self.chiaveUtente) }
         stato = .connesso(utente)
         generazione += 1
+        let s = server
+        Task { await TokenWidget.assicura(server: s) }
     }
 
     func accedi(nomeUtente: String, password: String) async throws {
@@ -380,6 +389,7 @@ final class SessioneAccount: ObservableObject {
         // Uscire non si rifiuta mai, nemmeno se c'è un'altra richiesta in corso: la richiesta al server è facoltativa.
         inCorso = true
         defer { inCorso = false }
+        await TokenWidget.revoca(server: server)   // serve ancora la sessione: prima di chiuderla
         _ = try? await server.corpoJSON("POST", "/api/account/esci", [String: String]())
         chiudiLocale()
     }
@@ -388,6 +398,7 @@ final class SessioneAccount: ObservableObject {
     func esciDaTutti() async throws {
         try inizia()
         defer { inCorso = false }
+        await TokenWidget.revoca(server: server)
         _ = try await server.corpoJSON("POST", "/api/account/esci-da-tutti", [String: String]())
         chiudiLocale()
     }
