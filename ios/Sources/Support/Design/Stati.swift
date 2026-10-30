@@ -2,15 +2,18 @@ import SwiftUI
 
 // Caricamento, errore, stato vuoto: uguali in tutte le schermate.
 // Al posto del cerchio che gira ci sono scheletri con un lampo di luce che scorre (come nelle app Apple e nei siti moderni);
-// con «Ridurre movimento» restano fermi. Per VoiceOver c'è una sola frase: «Caricamento in corso».
+// con «Ridurre movimento» lo scheletro respira piano (opacità) e il marchio pulsa senza spostarsi. Per VoiceOver c'è una sola frase: «Caricamento in corso».
 
 /// Un lampo di luce che scorre sulla vista (solo sulle parti piene: lo scheletro).
 struct Lampo: ViewModifier {
     @State private var fase: CGFloat = 0
+    @State private var respiro = false
     @Environment(\.accessibilityReduceMotion) private var ridotto
 
     func body(content: Content) -> some View {
         content
+            // Con «Ridurre movimento» il lampo non scorre: lo scheletro respira piano (solo opacità).
+            .opacity(ridotto && respiro ? 0.55 : 1)
             .overlay {
                 if !ridotto {
                     GeometryReader { g in
@@ -24,7 +27,10 @@ struct Lampo: ViewModifier {
                 }
             }
             .onAppear {
-                guard !ridotto else { return }
+                if ridotto {
+                    withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) { respiro = true }
+                    return
+                }
                 withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) { fase = 1 }
             }
     }
@@ -105,6 +111,7 @@ struct ScheletroRighe: View {
 
     var body: some View {
         VStack(spacing: 18) {
+            Marchio(lato: 44, muove: true).accessibilityHidden(true)
             ForEach(0..<righe, id: \.self) { _ in
                 HStack(spacing: 12) {
                     Circle().fill(Color.primary.opacity(0.10)).frame(width: 44, height: 44)

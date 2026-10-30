@@ -101,7 +101,7 @@ struct CampoFormazione: View {
             PedinaCampo(g: g, diametro: diametro, perImmagine: true)
         } else {
             PedinaCampo(g: g, diametro: diametro, perImmagine: false, apribile: apribile)
-                .transition(.scale(scale: 0.6).combined(with: .opacity))
+                .transizione(.scale(scale: 0.6).combined(with: .opacity))
         }
     }
 

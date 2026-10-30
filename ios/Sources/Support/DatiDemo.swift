@@ -572,8 +572,38 @@ private enum DatiDemo {
     }
 
     static func avvisi() -> String {
-        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "app_nativa": true],
+        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "app_nativa": true,
+                              "silenzio": true, "silenzio_da": 23, "silenzio_a": 7],
               "canale": true, "dispositivi": 2])
+    }
+
+    /// Diario delle giornate: due giornate finite, una con la formazione schierata e una senza.
+    static func diario() -> String {
+        func titolari(_ nomi: [String]) -> [[String: Any]] {
+            nomi.enumerated().map { ["id": 9000 + $0.offset, "nome": $0.element, "ruolo": $0.offset == 0 ? "P" : "C"] }
+        }
+        let base = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Dumfries"]
+        let altra = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Giocatore 071"]
+        return json([
+            "giornate": [
+                ["stagione": "2026-27", "giornata": 9,
+                 "consigliata": ["modulo": "3-4-3", "atteso": 68.5, "reale": 71.0, "titolari": titolari(base)],
+                 "schierata": ["modulo": "3-5-2", "atteso": 66.0, "reale": 63.5, "titolari": titolari(altra)]],
+                ["stagione": "2026-27", "giornata": 8,
+                 "consigliata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 64.0, "titolari": titolari(base)],
+                 "schierata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 66.5, "titolari": titolari(base)]],
+                ["stagione": "2026-27", "giornata": 7,
+                 "consigliata": ["modulo": "4-3-3", "atteso": 65.0, "reale": 60.5, "titolari": titolari(base)]],
+            ],
+            "sintesi": ["giornate": 2, "punti_schierata": 65.0, "punti_consigliata": 67.5, "attesi_schierata": 66.5,
+                        "meglio_tua": 1, "meglio_consigliata": 1],
+        ])
+    }
+
+    /// Un backup piccolo ma valido, per provare «Scarica il backup» in demo.
+    static func backup() -> String {
+        json(["formato": "schieraxi-backup", "versione": 1, "creato": "2026-10-30T09:00:00",
+              "file": ["dati/osservati.json": [9001, 9002]]])
     }
 
     // MARK: - Confronto, prova del modello, movimenti, stagione, asta di febbraio
@@ -694,6 +724,8 @@ private enum DatiDemo {
             "/api/oggi": oggi(adesso: adesso),
             "/api/regole": regole(),
             "/api/avvisi": avvisi(),
+            "/api/diario": diario(),
+            "/api/backup": backup(),
             "/api/asta": asta(),
             "/api/novita": novita(),
             "/api/foto-disponibili": json(["ids": Array(DemoImmagini.idConFoto).sorted()]),

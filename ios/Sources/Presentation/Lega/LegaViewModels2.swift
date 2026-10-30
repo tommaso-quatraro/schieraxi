@@ -85,6 +85,7 @@ final class ImportaExcelViewModel: ViewModelBase {
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
             esito = nil
+            if (error as? ErroreApi)?.eConflitto == true { _ = try? await server.grezzo("/api/squadre") }   // rilegge la versione nuova (e il suo ETag)
             errore = error.localizedDescription
             Haptics.esito(riuscito: false)
         }

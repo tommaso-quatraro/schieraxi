@@ -83,6 +83,10 @@ final class SchedaGiocatoreViewModel: ViewModelBase {
             messaggio = eraOsservato ? "Non lo osservi più." : "Lo osservi: lo trovi in Mercato > Osservati."
             Haptics.esito(riuscito: true)
         } catch {
+            if (error as? ErroreApi)?.eConflitto == true {
+                await osservati.ricarica()   // un altro dispositivo ha cambiato gli osservati: si rilegge lo stato vero
+                osservato = osservati.dato?.giocatori.contains { $0.id == id }
+            }
             messaggio = error.localizedDescription
             Haptics.esito(riuscito: false)
         }

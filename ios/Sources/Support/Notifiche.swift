@@ -13,14 +13,31 @@ enum Notifiche {
     }
 
     /// Notifica locale subito (usata dall'aggiornamento in background quando la formazione consigliata cambia).
-    static func avviso(id: String, titolo: String, corpo: String) async {
+    /// Nelle ore tranquille non suona: arriva alla fine del silenzio.
+    static func avviso(id: String, titolo: String, corpo: String, ore: OreTranquille = ArchivioOreTranquille.leggi(), adesso: Date = Date()) async {
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
         let contenuto = UNMutableNotificationContent()
         contenuto.title = titolo
         contenuto.body = corpo
         contenuto.sound = .default
-        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: nil))
+        var trigger: UNNotificationTrigger?
+        if let fine = ore.fine(da: adesso) {
+            let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fine)
+            trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
+        }
+        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
+    }
+
+    /// I promemoria che cadono nelle ore tranquille si saltano (come fa il server): sono utili solo a quell'ora.
+    static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, adesso: Date = Date()) -> [(id: String, minuti: Int, quando: Date)] {
+        var elenco: [(id: String, minuti: Int, quando: Date)] = []
+        for (id, minuti) in [("fanta-60", 60), ("fanta-15", 15)] {
+            let quando = inizio.addingTimeInterval(-Double(minuti) * 60)
+            guard quando > adesso, !ore.inSilenzio(quando) else { continue }
+            elenco.append((id: id, minuti: minuti, quando: quando))
+        }
+        return elenco
     }
 
     /// Due promemoria locali prima che scada il certificato: 24 ore e 6 ore prima. Si richiamano a ogni apertura e a ogni
@@ -48,9 +65,7 @@ enum Notifiche {
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
         centro.removePendingNotificationRequests(withIdentifiers: ["fanta-60", "fanta-15"])
-        for (id, minuti) in [("fanta-60", 60), ("fanta-15", 15)] {
-            let quando = inizio.addingTimeInterval(-Double(minuti) * 60)
-            guard quando > Date() else { continue }
+        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi()) {
             let contenuto = UNMutableNotificationContent()
             contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
             contenuto.body = "Giornata \(giornata)" + (modulo.map { ", modulo consigliato \($0)" } ?? "") + ". Mister, dai un'occhiata alla formazione."

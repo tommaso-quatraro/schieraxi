@@ -58,6 +58,11 @@ enum ErroreApi: LocalizedError {
     case accessoRichiesto(String)
     /// 429 (o altro limite): troppi tentativi o troppe richieste; con l'attesa in secondi se il server la indica (`Retry-After`).
     case troppiTentativi(String, riprovaTra: Int?)
+    /// 412: i dati sono stati cambiati da un altro dispositivo dopo l'ultima lettura (If-Match non corrisponde).
+    case conflitto
+
+    /// Il server ha detto 412: i dati sono cambiati da un altro dispositivo (la schermata deve ricaricare).
+    var eConflitto: Bool { if case .conflitto = self { return true } else { return false } }
 
     var errorDescription: String? {
         switch self {
@@ -66,6 +71,7 @@ enum ErroreApi: LocalizedError {
         case .troppiTentativi(let messaggio, let attesa):
             guard let attesa, attesa > 0 else { return messaggio }
             return "\(messaggio) Riprova tra \(attesa < 90 ? "\(attesa) secondi" : "\((attesa + 59) / 60) minuti")."
+        case .conflitto: return "È cambiato da un altro dispositivo: ho ricaricato i dati. Controlla e rifai la modifica."
         case .indirizzoNonValido: return "L'indirizzo del server non è valido."
         case .risposta(let codice): return "Il server ha risposto con un errore (\(codice))."
         case .dati(let dettaglio): return "Risposta inattesa dal server. \(dettaglio)"
@@ -203,6 +209,8 @@ struct ServerHTTP: ServerClient {
                 }
             }
             throw ErroreApi.accessoRichiesto(messaggio)
+        case 412:
+            throw ErroreApi.conflitto
         case 429:
             throw ErroreApi.troppiTentativi(messaggio, riprovaTra: Self.secondi(h))
         default:
@@ -232,8 +240,17 @@ struct ServerHTTP: ServerClient {
                 r.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 r.httpBody = corpo
             }
+            // Risorse personali con ETag: chi scrive rimanda l'ETag che ha letto; se nel frattempo è cambiato il server risponde 412.
+            let risorsa = VersioniRisorse.risorsa(per: percorso)
+            if let risorsa, metodo != "GET", metodo != "HEAD",
+               let visto = VersioniRisorse.condivise.leggi(server: indirizzo, risorsa: risorsa) {
+                r.setValue(visto, forHTTPHeaderField: "If-Match")
+            }
             do {
                 let (dati, risposta) = try await sessione.data(for: r)
+                if let risorsa, let h = risposta as? HTTPURLResponse, let nuovo = h.value(forHTTPHeaderField: "ETag") {
+                    VersioniRisorse.condivise.imposta(nuovo, server: indirizzo, risorsa: risorsa)
+                }
                 // 202: il server sta calcolando (formazione, scambi con gli account accesi). Si riprova da soli: la schermata
                 // intanto mostra il marchio che si muove.
                 if let h = risposta as? HTTPURLResponse, h.statusCode == 202, !Self.eDiAccesso(percorso) {

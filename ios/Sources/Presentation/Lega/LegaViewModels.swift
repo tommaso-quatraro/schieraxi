@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// Le pagine che si aprono dalla schermata Lega.
 enum PaginaLega: Hashable {
     case importa, squadre, rosa(String), asta, regole, crediti, avvisi, stato, novita
-    case movimenti, stagione, aspetto, icona
+    case movimenti, stagione, aspetto, icona, diario, backup
 }
 
 /// Logica della schermata Lega: stato del server, permesso per le notifiche, aggiornamento in background.
@@ -115,14 +115,23 @@ final class AvvisiServerViewModel: ViewModelBase {
     func carica() async {
         await caricatore.ricarica()
         impostazioni = caricatore.dato?.impostazioni
+        ricordaOreTranquille()
+    }
+
+    /// Le ore tranquille servono anche ai promemoria locali: si ricordano sul telefono.
+    private func ricordaOreTranquille() {
+        if let i = impostazioni, !Demo.attivo { ArchivioOreTranquille.salva(i.oreTranquille) }
     }
 
     func salva() async {
         guard let i = impostazioni else { return }
         do {
             let _: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", i, snake: false)
+            ricordaOreTranquille()
             messaggio = nil
         } catch {
+            let conflitto = (error as? ErroreApi)?.eConflitto == true
+            if conflitto { await carica() }   // cambiato da un altro dispositivo: si rilegge e si mostra il valore nuovo
             messaggio = error.localizedDescription
         }
     }
@@ -165,6 +174,8 @@ final class CreditiViewModel: ViewModelBase {
             messaggio = "Crediti salvati."
             Haptics.esito(riuscito: true)
         } catch {
+            let conflitto = (error as? ErroreApi)?.eConflitto == true
+            if conflitto { await carica() }   // cambiato da un altro dispositivo: si rilegge e si mostrano i valori nuovi
             messaggio = error.localizedDescription
             Haptics.esito(riuscito: false)
         }

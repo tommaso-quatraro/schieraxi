@@ -21,6 +21,7 @@ struct AvvisiServerView: View {
                         interruttore("Promemoria 15 minuti prima", \.promemoria_15)
                         interruttore("Riepilogo a giornata finita", \.riepilogo)
                     }
+                    sezioneOreTranquille
                     if sessione.multiutente {
                         Section {
                             Text("Con gli account gli avvisi arrivano come notifiche della web app (installala dalla Home con Safari). Gli avvisi con ntfy e la prova restano all'amministratore del server.")
@@ -62,6 +63,50 @@ struct AvvisiServerView: View {
         }
         .navigationTitle("Avvisi del server")
         .task { await vm.carica() }
+    }
+
+    /// Ore tranquille: niente avvisi in quella fascia (anche i promemoria di questo telefono la rispettano).
+    private var sezioneOreTranquille: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { vm.impostazioni?.silenzio ?? false },
+                set: { nuovo in
+                    vm.impostazioni?.silenzio = nuovo
+                    if nuovo, vm.impostazioni?.silenzio_da == nil { vm.impostazioni?.silenzio_da = OreTranquille.predefinite.da }
+                    if nuovo, vm.impostazioni?.silenzio_a == nil { vm.impostazioni?.silenzio_a = OreTranquille.predefinite.a }
+                    Task { await vm.salva() }
+                })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ore tranquille")
+                    Text("Niente avvisi di notte: i promemoria che cadono in quelle ore non partono.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .tint(Color.verde)
+            .frame(minHeight: 44)
+            if vm.impostazioni?.silenzio == true {
+                selettoreOra("Dalle", \.silenzio_da, predefinita: OreTranquille.predefinite.da)
+                selettoreOra("Alle", \.silenzio_a, predefinita: OreTranquille.predefinite.a)
+            }
+        } header: {
+            Text("Ore tranquille")
+        } footer: {
+            if let ore = vm.impostazioni?.oreTranquille, ore.attive {
+                Text(ore.da == ore.a ? "Con la stessa ora di inizio e di fine non c'è nessun silenzio." : "Silenzio \(ore.descrizione) (ora italiana).")
+            }
+        }
+    }
+
+    private func selettoreOra(_ titolo: String, _ chiave: WritableKeyPath<ImpostazioniAvvisi, Int?>, predefinita: Int) -> some View {
+        Picker(titolo, selection: Binding(
+            get: { vm.impostazioni?[keyPath: chiave] ?? predefinita },
+            set: { nuovo in
+                vm.impostazioni?[keyPath: chiave] = nuovo
+                Task { await vm.salva() }
+            })) {
+            ForEach(0..<24, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) }
+        }
+        .frame(minHeight: 44)
     }
 
     private func interruttore(_ titolo: String, _ chiave: WritableKeyPath<ImpostazioniAvvisi, Bool>) -> some View {

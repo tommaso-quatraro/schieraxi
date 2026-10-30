@@ -271,7 +271,7 @@ struct AspettoView: View {
                     .overlay {
                         if accento == a.rawValue {
                             Image(systemName: "checkmark").font(.headline.bold()).foregroundStyle(.black.opacity(0.75))
-                                .transition(.scale.combined(with: .opacity))
+                                .transizione(.scale.combined(with: .opacity))
                         }
                     }
                     .scaleEffect(accento == a.rawValue ? 1.1 : 1)

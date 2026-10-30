@@ -189,7 +189,7 @@ struct AvvisoSalvati: ViewModifier {
                         .padding(.bottom, 6)
                         .frame(maxWidth: .infinity)
                         .accessibilityElement(children: .combine)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .transizione(.move(edge: .top).combined(with: .opacity))
                 }
             }
             .animation(Tema.molla, value: data != nil)

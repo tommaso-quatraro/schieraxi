@@ -57,6 +57,15 @@ struct ImpostazioniAvvisi: Codable {
     /// Avvisi anche con ntfy, il cui tocco apre l'app nativa. Opzionale: un server più vecchio non lo manda
     /// (e se è nil non viene rimandato, quindi non si azzera niente).
     var app_nativa: Bool?
+    /// Ore tranquille (opzionali: un server più vecchio non le manda e allora non si rimandano).
+    var silenzio: Bool?
+    var silenzio_da: Int?
+    var silenzio_a: Int?
+
+    var oreTranquille: OreTranquille {
+        let p = OreTranquille.predefinite
+        return OreTranquille(attive: silenzio ?? false, da: silenzio_da ?? p.da, a: silenzio_a ?? p.a)
+    }
 }
 
 struct StatoAvvisi: Decodable {

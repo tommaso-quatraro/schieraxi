@@ -5,7 +5,8 @@ import SwiftUI
 /// non si ruota, non si aggiungono punti. Regole complete in `MARCHIO.md` del repository dell'app web.
 ///
 /// Con `muove` i punti passano dal 4-3-3 al 3-5-2 e tornano (2,6 secondi, un punto dopo l'altro) e il capitano pulsa:
-/// è il movimento dei caricamenti. Con «Ridurre movimento» di iOS il marchio sta fermo.
+/// è il movimento dei caricamenti. Con «Ridurre movimento» di iOS i punti non si spostano: restano al loro posto e il marchio
+/// resta vivo con un'onda di opacità (dissolvenza leggera, un punto dopo l'altro), senza spostamenti.
 struct Marchio: View {
     /// Lato del quadrato in cui è disegnato.
     var lato: CGFloat = 54
@@ -38,6 +39,12 @@ struct Marchio: View {
         }
     }
 
+    /// Opacità dell'onda per «Ridurre movimento»: tra `minimo` e 1, un ciclo ogni 2,6 secondi, con un ritardo per ogni punto.
+    static func opacitaOnda(_ t: Double, ritardo: Double, minimo: Double = 0.45) -> Double {
+        let p = fase(t, ritardo: ritardo)
+        return minimo + (1 - minimo) * (1 + cos(2 * .pi * p)) / 2
+    }
+
     /// Fase (0...1) del ciclo al tempo `t`, con il ritardo di un punto.
     static func fase(_ t: Double, ritardo: Double = 0) -> Double {
         let x = (t - ritardo) / durata
@@ -48,9 +55,11 @@ struct Marchio: View {
     private var coloreCapitano: Color { schema == .dark ? Tema.capitanoScuro : Tema.capitanoChiaro }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !muove || ridotto || fermoAllaFase != nil)) { contesto in
+        TimelineView(.animation(minimumInterval: ridotto ? 1.0 / 15.0 : 1.0 / 30.0, paused: !muove || fermoAllaFase != nil)) { contesto in
             let attivo = fermoAllaFase != nil || (muove && !ridotto)
-            let t: Double = fermoAllaFase.map { $0 * Self.durata } ?? (attivo ? contesto.date.timeIntervalSinceReferenceDate : 0)
+            // Con «Ridurre movimento»: nessuno spostamento, solo un'onda di opacità.
+            let onda = muove && ridotto && fermoAllaFase == nil
+            let t: Double = fermoAllaFase.map { $0 * Self.durata } ?? ((attivo || onda) ? contesto.date.timeIntervalSinceReferenceDate : 0)
             Canvas { disegno, dimensione in
                 let k = Double(min(dimensione.width, dimensione.height)) / 120
                 for (i, p) in Self.punti.enumerated() {
@@ -58,11 +67,13 @@ struct Marchio: View {
                     let cx = (p.x + p.dx * f) * k
                     let cy = (p.y + p.dy * f) * k
                     let r = Self.raggioPunto * k
-                    disegno.fill(Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: 2 * r, height: 2 * r)), with: .color(colorePunti))
+                    let opacita = onda ? Self.opacitaOnda(t, ritardo: Double(i) * 0.12) : 1
+                    disegno.fill(Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: 2 * r, height: 2 * r)), with: .color(colorePunti.opacity(opacita)))
                 }
                 let pulsa = attivo ? 1 + 0.18 * (1 - cos(2 * .pi * Self.fase(t))) / 2 : 1
                 let rc = Self.raggioCapitano * k * pulsa
-                disegno.fill(Path(ellipseIn: CGRect(x: 60 * k - rc, y: 50 * k - rc, width: 2 * rc, height: 2 * rc)), with: .color(coloreCapitano))
+                let opacitaCapitano = onda ? Self.opacitaOnda(t, ritardo: 0, minimo: 0.7) : 1
+                disegno.fill(Path(ellipseIn: CGRect(x: 60 * k - rc, y: 50 * k - rc, width: 2 * rc, height: 2 * rc)), with: .color(coloreCapitano.opacity(opacitaCapitano)))
             }
         }
         .frame(width: lato, height: lato)
@@ -71,13 +82,13 @@ struct Marchio: View {
     }
 }
 
-/// Il marchio con il nome accanto, come nelle intestazioni dell'app web: «schieraxi» in minuscolo, carattere arrotondato.
+/// Il marchio con il nome accanto, il nome è sempre «SchieraXI» con la U maiuscola, in carattere arrotondato.
 struct MarchioConNome: View {
     var lato: CGFloat = 44
     var body: some View {
         HStack(spacing: 10) {
             Marchio(lato: lato)
-            Text("schieraxi")
+            Text("SchieraXI")
                 .font(.system(size: lato * 0.72, weight: .semibold, design: .rounded))
                 .accessibilityHidden(true)
         }

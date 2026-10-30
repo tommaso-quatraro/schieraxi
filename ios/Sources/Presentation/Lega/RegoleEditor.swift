@@ -170,6 +170,8 @@ final class RegoleEditorViewModel: ViewModelBase {
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
+            let conflitto = (error as? ErroreApi)?.eConflitto == true
+            if conflitto { await carica() }   // un altro dispositivo ha cambiato le regole: si rilegge la versione nuova
             esito = error.localizedDescription
             esitoRiuscito = false
             Haptics.esito(riuscito: false)

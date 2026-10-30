@@ -190,6 +190,10 @@ extension Demo {
             apriLega(nav, modello, [.crediti])
         case "lega-avvisi":
             apriLega(nav, modello, [.avvisi])
+        case "lega-diario":
+            apriLega(nav, modello, [.diario])
+        case "lega-backup":
+            apriLega(nav, modello, [.backup])
         case "lega-novita":
             apriLega(nav, modello, [.novita])
         case "lega-importa":

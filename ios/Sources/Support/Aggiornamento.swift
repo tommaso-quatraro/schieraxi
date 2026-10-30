@@ -28,8 +28,17 @@ enum Aggiornamento {
         programma()   // prima di tutto: riprogramma il prossimo risveglio
         await riprogrammaScadenza()
         await NuovaVersione.controllaEAvvisa()
+        await aggiornaOreTranquille()
         guard let oggi = try? await OggiRepository(server: ServerCorrente.condiviso).aggiornato() else { return }
         await elabora(oggi, avvisaSeCambia: true)
+    }
+
+    /// Rilegge le ore tranquille dal server (se risponde) per i promemoria locali.
+    static func aggiornaOreTranquille() async {
+        if Demo.attivo { return }
+        if let stato: StatoAvvisi = try? await ServerCorrente.condiviso.get("/api/avvisi", snake: false) {
+            ArchivioOreTranquille.salva(stato.impostazioni.oreTranquille)
+        }
     }
 
     /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata.

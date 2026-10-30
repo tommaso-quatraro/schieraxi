@@ -19,10 +19,14 @@ enum Tema {
     static let capitanoScuro = Color(red: 0.831, green: 0.953, blue: 0.290)
     static let capitanoChiaro = Color(red: 0.525, green: 0.659, blue: 0)
 
+    /// Con «Ridurre movimento»: niente spostamenti né rimbalzi, solo dissolvenze brevi (le schermate non restano mai immobili).
+    @MainActor static var movimentoRidotto: Bool { UIAccessibility.isReduceMotionEnabled }
+    /// La dissolvenza breve che sostituisce ogni animazione di movimento.
+    static let quieta: Animation = .easeInOut(duration: 0.3)
     /// Animazione «normale» dell'app: morbida, senza rimbalzo.
-    static let morbida: Animation = .smooth(duration: 0.4)
+    @MainActor static var morbida: Animation { movimentoRidotto ? quieta : .smooth(duration: 0.4) }
     /// Per i cambi di selezione e gli elementi che compaiono: una molla leggera.
-    static let molla: Animation = .spring(duration: 0.45, bounce: 0.22)
+    @MainActor static var molla: Animation { movimentoRidotto ? quieta : .spring(duration: 0.45, bounce: 0.22) }
 }
 
 extension Color {
@@ -54,8 +58,9 @@ extension View {
     }
 
     /// Un numero che cambia: le cifre scorrono invece di saltare.
+    @MainActor
     func numerico(_ valore: Double) -> some View {
-        contentTransition(.numericText(value: valore))
+        contentTransition(Tema.movimentoRidotto ? .opacity : .numericText(value: valore))
             .animation(Tema.morbida, value: valore)
     }
 }
@@ -69,21 +74,22 @@ struct NumeroCheSale: View {
     @Environment(\.accessibilityReduceMotion) private var ridotto
 
     var body: some View {
-        Text(formato(ridotto ? valore : mostrato))
+        // Con «Ridurre movimento» le cifre non scorrono: il numero cambia con una dissolvenza.
+        Text(formato(mostrato))
             .monospacedDigit()
-            .contentTransition(.numericText(value: mostrato))
+            .contentTransition(ridotto ? .opacity : .numericText(value: mostrato))
             .accessibilityLabel(formato(valore))
             .onAppear {
-                withAnimation(.smooth(duration: 0.9)) { mostrato = valore }
+                withAnimation(ridotto ? Tema.quieta : .smooth(duration: 0.9)) { mostrato = valore }
             }
             .onChange(of: valore) { _, nuovo in
-                withAnimation(Tema.morbida) { mostrato = nuovo }
+                withAnimation(ridotto ? Tema.quieta : .smooth(duration: 0.4)) { mostrato = nuovo }
             }
     }
 }
 
 /// Ingresso scaglionato: l'elemento compare con una leggera salita e dissolvenza, un poco dopo il precedente.
-/// Con «Ridurre movimento» compare subito.
+/// Con «Ridurre movimento» compare solo con una dissolvenza, senza salire.
 struct Ingresso: ViewModifier {
     let ordine: Int
     @State private var visibile = false
@@ -91,11 +97,12 @@ struct Ingresso: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .opacity(visibile || ridotto ? 1 : 0)
+            .opacity(visibile ? 1 : 0)
             .offset(y: visibile || ridotto ? 0 : 16)
             .onAppear {
                 guard !visibile else { return }
-                withAnimation(.smooth(duration: 0.5).delay(Double(min(max(ordine, 0), 8)) * 0.06)) { visibile = true }
+                let ritardo = Double(min(max(ordine, 0), 8)) * (ridotto ? 0.03 : 0.06)
+                withAnimation((ridotto ? Tema.quieta : .smooth(duration: 0.5)).delay(ritardo)) { visibile = true }
             }
     }
 }
@@ -112,6 +119,20 @@ extension View {
                 .scaleEffect(1 - abs(fase.value) * 0.04)
         }
     }
+}
+
+/// Una transizione di movimento (scala, scivolata) che con «Ridurre movimento» diventa una semplice dissolvenza.
+struct TransizioneQuieta: ViewModifier {
+    let normale: AnyTransition
+    @Environment(\.accessibilityReduceMotion) private var ridotto
+
+    func body(content: Content) -> some View {
+        content.transition(ridotto ? .opacity : normale)
+    }
+}
+
+extension View {
+    func transizione(_ normale: AnyTransition) -> some View { modifier(TransizioneQuieta(normale: normale)) }
 }
 
 /// Stile dei pulsanti-riga: nessuna decorazione, ma al tocco la riga si rimpicciolisce appena (come le righe di sistema).

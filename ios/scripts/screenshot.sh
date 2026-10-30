@@ -20,7 +20,7 @@ TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
-       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita
+       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-diario lega-backup lega-novita
        lega-importa lega-importa-csv lega-movimenti lega-stagione lega-aspetto lega-icona
        accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
@@ -32,7 +32,7 @@ PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale
                   lega-aspetto giocatore giocatore-fondo)
 PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-classifica
           mercato-calendario mercato-osservati mercato-asta giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
-          lega lega-squadre lega-rosa lega-regole lega-aspetto lega-icona)
+          lega lega-squadre lega-rosa lega-regole lega-avvisi lega-diario lega-backup lega-aspetto lega-icona)
 
 # SCATTI=veloce (predefinito dei push su main): solo le schermate principali, per controllare in pochi minuti.
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
