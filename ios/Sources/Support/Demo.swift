@@ -182,6 +182,13 @@ extension Demo {
             apriLega(nav, modello, [.novita])
         case "lega-importa":
             apriLega(nav, modello, [.importa])
+        case "lega-importa-csv":
+            // Un CSV vero (separatore «;», accenti) scritto in una cartella temporanea e importato come se arrivasse da un'altra app.
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("rose-schieraxi.csv")
+            let csv = "Squadra;Ruolo;Giocatore;Costo\nGli Amici del Bar Sport Centrale;P;Giocatore 089;12\nGli Amici del Bar Sport Centrale;D;Giocatore 004;18\nGli Amici del Bar Sport Centrale;A;Giocatore 045;85\n"
+            try? Data(csv.utf8).write(to: url)
+            apriLega(nav, modello, [.importa])
+            nav.fileDaImportare = url
         case "lega-movimenti":
             apriLega(nav, modello, [.movimenti])
         case "lega-stagione":

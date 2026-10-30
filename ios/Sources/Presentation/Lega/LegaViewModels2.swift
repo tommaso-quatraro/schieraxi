@@ -1,12 +1,10 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Importazione delle rose da un Excel di Leghe, o dal testo copiato dalla pagina delle rose.
+/// Importazione delle rose da un Excel di Leghe, da un CSV o da un file di testo, o dal testo copiato dalla pagina delle rose.
 @MainActor
 final class ImportaExcelViewModel: ViewModelBase {
     private let server: any ServerClient
-    /// Dimensione massima accettata: un Excel delle rose è di poche decine di KB.
-    private static let massimoByte = 5 * 1024 * 1024
 
     @Published var inCorso = false
     @Published var esito: EsitoImportazione?
@@ -20,12 +18,8 @@ final class ImportaExcelViewModel: ViewModelBase {
         super.init()
     }
 
-    /// Solo fogli di calcolo (.xlsx e simili).
-    var tipiAmmessi: [UTType] {
-        var tipi: [UTType] = [.spreadsheet]
-        if let xlsx = UTType(filenameExtension: "xlsx") { tipi.append(xlsx) }
-        return tipi
-    }
+    /// Excel, CSV, TSV, testo (e qualsiasi altro file: se iOS non riconosce il tipo, si controlla il file dopo la scelta).
+    var tipiAmmessi: [UTType] { FileRose.tipiAmmessi }
 
     /// L'indirizzo dell'importazione da file, con la scelta «togli le squadre che non sono nel file».
     var percorsoFile: String { "/api/rose/file?sostituisci_tutto=\(sostituisciTutto ? "true" : "false")" }
@@ -35,24 +29,28 @@ final class ImportaExcelViewModel: ViewModelBase {
             if case .failure(let e) = risultato { errore = e.localizedDescription }
             return
         }
+        if inCorso { return }   // un secondo file mentre il primo è in viaggio: si ignora
         inCorso = true
         defer { inCorso = false }
-        let accesso = url.startAccessingSecurityScopedResource()
-        defer { if accesso { url.stopAccessingSecurityScopedResource() } }
-        guard ["xlsx", "xls", "xlsm", "csv", "txt"].contains(url.pathExtension.lowercased()) else {
-            esito = nil
-            errore = "Il file deve essere un Excel (.xlsx)."
-            return
-        }
-        let grandezza = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        guard grandezza <= Self.massimoByte else {
-            esito = nil
-            errore = "Il file è troppo grande (massimo 5 MB): non sembra un Excel delle rose."
-            return
-        }
         do {
-            let dati = try Data(contentsOf: url)
-            esito = try await server.caricaFile(percorsoFile, nome: url.lastPathComponent, dati: dati)
+            let dati: Data
+            do {
+                dati = try await LetturaFile.leggi(url)
+            } catch let e as FileRose.Errore {
+                throw e
+            } catch {
+                throw ErroreFile.nonLeggibile
+            }
+            // Estensione e contenuto: se il selettore ha lasciato passare un file che non va, si dice cosa non va e non si invia niente.
+            switch FileRose.prepara(nome: url.lastPathComponent, dati: dati) {
+            case .failure(let e):
+                esito = nil
+                errore = e.localizedDescription
+                Haptics.esito(riuscito: false)
+                return
+            case .success(let preparato):
+                esito = try await server.caricaFile(percorsoFile, nome: preparato.nome, dati: dati, tipo: preparato.tipo)
+            }
             errore = nil
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
@@ -60,6 +58,14 @@ final class ImportaExcelViewModel: ViewModelBase {
             esito = nil
             errore = error.localizedDescription
             Haptics.esito(riuscito: false)
+        }
+    }
+
+    /// Il file non si è potuto leggere (permessi, iCloud non raggiungibile...).
+    enum ErroreFile: LocalizedError {
+        case nonLeggibile
+        var errorDescription: String? {
+            "Non riesco a leggere il file. Salvalo su questo iPhone (Files > Sul mio iPhone) e scegli quella copia."
         }
     }
 

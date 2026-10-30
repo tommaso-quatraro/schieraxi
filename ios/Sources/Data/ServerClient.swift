@@ -70,8 +70,8 @@ protocol ServerClient: Sendable {
     var indirizzo: String { get }
     /// Una richiesta HTTP; con `corpo` lo invia come JSON. Lancia `ErroreApi` se il server risponde con un errore.
     func richiesta(_ metodo: String, _ percorso: String, corpo: Data?) async throws -> Data
-    /// Carica un file (campo «file») in multipart e restituisce la risposta.
-    func carica(_ percorso: String, nome: String, dati: Data) async throws -> Data
+    /// Carica un file (campo «file») in multipart, con il suo tipo (Content-Type), e restituisce la risposta.
+    func carica(_ percorso: String, nome: String, dati: Data, tipo: String) async throws -> Data
 }
 
 extension ServerClient {
@@ -107,8 +107,13 @@ extension ServerClient {
         try Decodifica.decodifica(try await corpoJSON(metodo, percorso, corpo), snake: snake)
     }
 
-    func caricaFile<T: Decodable>(_ percorso: String, nome: String, dati: Data) async throws -> T {
-        try Decodifica.decodifica(try await carica(percorso, nome: nome, dati: dati))
+    /// Un file senza un tipo preciso (immagini): `application/octet-stream`.
+    func carica(_ percorso: String, nome: String, dati: Data) async throws -> Data {
+        try await carica(percorso, nome: nome, dati: dati, tipo: "application/octet-stream")
+    }
+
+    func caricaFile<T: Decodable>(_ percorso: String, nome: String, dati: Data, tipo: String = "application/octet-stream") async throws -> T {
+        try Decodifica.decodifica(try await carica(percorso, nome: nome, dati: dati, tipo: tipo))
     }
 }
 
@@ -227,7 +232,7 @@ struct ServerHTTP: ServerClient {
         }
     }
 
-    func carica(_ percorso: String, nome: String, dati: Data) async throws -> Data {
+    func carica(_ percorso: String, nome: String, dati: Data, tipo: String) async throws -> Data {
         var r = try costruisci(percorso)
         r.httpMethod = "POST"
         r.timeoutInterval = 120
@@ -235,8 +240,10 @@ struct ServerHTTP: ServerClient {
         r.setValue("multipart/form-data; boundary=\(confine)", forHTTPHeaderField: "Content-Type")
         // Nel nome del file niente virgolette né a capo: romperebbero l'intestazione del multipart.
         let nomePulito = String(nome.filter { $0 != "\"" && !$0.isNewline && $0 != "\\" })
+        // Anche il tipo finisce in un'intestazione: niente a capo (altrimenti si potrebbero iniettare altre intestazioni).
+        let tipoPulito = String(tipo.filter { !$0.isNewline && $0 != "\r" })
         var corpo = Data()
-        corpo.append(Data("--\(confine)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(nomePulito)\"\r\nContent-Type: application/octet-stream\r\n\r\n".utf8))
+        corpo.append(Data("--\(confine)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(nomePulito)\"\r\nContent-Type: \(tipoPulito)\r\n\r\n".utf8))
         corpo.append(dati)
         corpo.append(Data("\r\n--\(confine)--\r\n".utf8))
         do {
@@ -291,7 +298,7 @@ struct FinteServer: ServerClient {
         return Data(testo.utf8)
     }
 
-    func carica(_ percorso: String, nome: String, dati: Data) async throws -> Data {
+    func carica(_ percorso: String, nome: String, dati: Data, tipo: String) async throws -> Data {
         try await richiesta("POST", percorso, corpo: nil)
     }
 }

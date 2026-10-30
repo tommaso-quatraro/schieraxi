@@ -402,6 +402,7 @@ struct StatoDatiView: View {
 /// Importazione delle rose da un file Excel di Leghe (scelto con il selettore di file di iOS) o dal testo incollato.
 struct ImportaExcelView: View {
     @StateObject private var vm: ImportaExcelViewModel
+    @EnvironmentObject private var nav: Navigazione
     @State private var scegli = false
 
     init(server: any ServerClient) {
@@ -413,12 +414,12 @@ struct ImportaExcelView: View {
             Sfondo()
             List {
                 Section {
-                    Text("Esporta le rose in Excel da Leghe (come fai di solito), poi scegli qui il file: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti).")
+                    Text("Esporta le rose da Leghe (Excel, CSV o testo), poi scegli qui il file: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti). Puoi anche aprire il file con SchieraXI da Files, Mail o dal menu Condividi.")
                         .font(.footnote).foregroundStyle(.secondary)
                     Button {
                         scegli = true
                     } label: {
-                        if vm.inCorso { ProgressView() } else { Label("Scegli il file Excel", systemImage: "doc.badge.plus") }
+                        if vm.inCorso { ProgressView() } else { Label("Scegli il file (Excel, CSV, testo)", systemImage: "doc.badge.plus") }
                     }
                     .disabled(vm.inCorso)
                     .frame(minHeight: 44)
@@ -456,6 +457,12 @@ struct ImportaExcelView: View {
         .ricercaGlobale()
         .fileImporter(isPresented: $scegli, allowedContentTypes: vm.tipiAmmessi, allowsMultipleSelection: false) { risultato in
             Task { await vm.importa(risultato) }
+        }
+        // Un file arrivato da un'altra app («Apri con SchieraXI»): si importa qui, con gli stessi controlli del selettore.
+        .task(id: nav.fileDaImportare) {
+            guard let url = nav.fileDaImportare else { return }
+            nav.fileDaImportare = nil
+            await vm.importa(.success([url]))
         }
     }
 }

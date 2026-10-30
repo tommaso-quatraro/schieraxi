@@ -47,6 +47,8 @@ final class Navigazione: ObservableObject {
         didSet { if !Demo.attivo { UserDefaults.standard.set(sezione.rawValue, forKey: "ultimaSezione") } }
     }
     @Published var giocatoreDaAprire: Int?
+    /// Un file delle rose arrivato da un'altra app («Apri con SchieraXI», Condividi): Lega > Aggiorna le rose lo importa.
+    @Published var fileDaImportare: URL?
     /// La scheda di un giocatore aperta sopra la schermata corrente (tocco su una riga di Oggi, Formazione, Lega...).
     @Published var scheda: IdGiocatore?
 
@@ -59,6 +61,12 @@ final class Navigazione: ObservableObject {
         let scelta = memoria.string(forKey: "sezioneAvvio") ?? "ultima"
         let nome = scelta == "ultima" ? memoria.string(forKey: "ultimaSezione") : scelta
         return nome.flatMap { Sezione(rawValue: $0) } ?? .oggi
+    }
+
+    /// Un file arrivato da fuori: si accetta solo se l'estensione è di quelle delle rose (il controllo vero è all'importazione).
+    func apriFile(_ url: URL) {
+        guard url.isFileURL else { return }
+        fileDaImportare = url
     }
 
     func apriScheda(_ id: Int) {
@@ -130,11 +138,20 @@ struct RadiceView: View {
                 .presentationDragIndicator(.visible)
                 .tint(Color.verde)
         }
+        .onChange(of: nav.fileDaImportare) { _, nuovo in
+            if nuovo != nil { vaiAllImportazione() }
+        }
+        .onAppear { if nav.fileDaImportare != nil { vaiAllImportazione() } }
         .task { await Aggiornamento.riprogrammaScadenza() }   // a ogni apertura
         .task { await Immagini.condivise.caricaElenchi() }    // chi ha la foto, stemmi e maglie delle squadre
         .onReceive(NotificationCenter.default.publisher(for: .aggiornaTutto)) { _ in
             Task { await Immagini.condivise.caricaElenchi() }
         }
+    }
+
+    private func vaiAllImportazione() {
+        modello.lega.percorso = [.importa]
+        nav.sezione = .lega
     }
 
     @ViewBuilder
