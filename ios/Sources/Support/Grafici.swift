@@ -170,7 +170,7 @@ struct GraficoAffidabilita: View {
                     .foregroundStyle(by: .value("Serie", p.serie))
                     .symbolSize(p.serie == Self.massimo ? 0 : 24)
             }
-            .chartForegroundStyleScale(["Modello": Color.verde, "Da fantamedia": Color.orange, Self.massimo: Color.gray])
+            .chartForegroundStyleScale(["Modello": Color.verde, "Da fantamedia": Color.attenzione, Self.massimo: Color.gray])
             .chartYScale(domain: .automatic(includesZero: false))
             .chartXScale(domain: (righe.map(\.giornata).min() ?? 1)...max((righe.map(\.giornata).max() ?? 1), (righe.map(\.giornata).min() ?? 1) + 1))
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }

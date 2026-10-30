@@ -43,10 +43,26 @@ extension Color {
         tratti.userInterfaceStyle == .dark ? UIColor(red: 0.831, green: 0.953, blue: 0.290, alpha: 1) : UIColor(red: 0.525, green: 0.659, blue: 0, alpha: 1)
     })
 
-    /// Esiti: bene, attenzione, male. Sempre accompagnati da testo o simbolo, mai solo il colore.
-    static let esitoBuono = Color.green
-    static let esitoAttenzione = Color.orange
-    static let esitoMalus = Color.red
+    /// Colori semantici (docs/DESIGN.md, uguali su web e iOS): chiaro sul fondo scuro, scuro sul fondo chiaro, contrasto 4,5:1.
+    /// Sempre accompagnati da testo o simbolo, mai solo il colore.
+    private static func dinamico(scuro: UInt32, chiaro: UInt32) -> Color {
+        func colore(_ n: UInt32) -> UIColor {
+            UIColor(red: CGFloat((n >> 16) & 0xff) / 255, green: CGFloat((n >> 8) & 0xff) / 255, blue: CGFloat(n & 0xff) / 255, alpha: 1)
+        }
+        return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? colore(scuro) : colore(chiaro) })
+    }
+    /// Negativo (malus, rischio).
+    static let malus = dinamico(scuro: 0xFF6B5E, chiaro: 0xB3261E)
+    /// Attenzione (dubbio, diffidato, non bastano i crediti).
+    static let attenzione = dinamico(scuro: 0xFFB04A, chiaro: 0x9C5400)
+    /// Informazione.
+    static let informazione = dinamico(scuro: 0x62A9FF, chiaro: 0x1A5BB5)
+    /// Testo secondario sul fondo con sfumatura (più leggibile del grigio di sistema).
+    static let testo2 = dinamico(scuro: 0xB3C6BA, chiaro: 0x587064)
+    /// Positivo: il colore principale dell'app (verde, o l'accento scelto in Aspetto).
+    static var esitoBuono: Color { Color.verde }
+    static var esitoAttenzione: Color { Color.attenzione }
+    static var esitoMalus: Color { Color.malus }
 }
 
 extension View {

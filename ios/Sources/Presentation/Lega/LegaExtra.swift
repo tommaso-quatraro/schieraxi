@@ -16,7 +16,7 @@ struct SquadreView: View {
             Sfondo()
             List {
                 if let errore = vm.errore {
-                    Text(errore).font(.footnote).foregroundStyle(.orange)
+                    Text(errore).font(.footnote).foregroundStyle(Color.attenzione)
                 }
                 if let s = vm.caricatore.dato {
                     Section("La tua squadra") {
@@ -128,7 +128,7 @@ struct RigaRosa: View {
                     }
                     Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
                     if let etichette = p?.etichette, !etichette.isEmpty {
-                        Text(etichette.map(\.testo).joined(separator: " · ")).font(.caption).foregroundStyle(etichette.contains { $0.gravita == .grave } ? Color.red : .secondary)
+                        Text(etichette.map(\.testo).joined(separator: " · ")).font(.caption).foregroundStyle(etichette.contains { $0.gravita == .grave } ? Color.malus : .secondary)
                     }
                 }
                 Spacer(minLength: 8)
@@ -233,7 +233,7 @@ struct RosaView: View {
                 Button { vediFormazione(nome) } label: { Label("Formazione consigliata per loro", systemImage: "sportscourt").frame(minHeight: 44) }
             }
             if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(.secondary) }
-            ForEach(r.avvisi ?? [], id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(.orange) }
+            ForEach(r.avvisi ?? [], id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(Color.attenzione) }
         }
     }
 
@@ -329,7 +329,7 @@ struct StatoDatiView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(a.cosa.primaMaiuscola)
                                 Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(.secondary)
-                                ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
+                                ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
                             }
                             .accessibilityElement(children: .combine)
                         }
@@ -388,7 +388,7 @@ struct StatoDatiView: View {
             let righe = (a.righe ?? []).filter { $0.puntiModello != nil }
             if righe.count >= 2 { GraficoAffidabilita(righe: righe) }
         } else if affidabilita.errore != nil, affidabilita.dato == nil {
-            Text("Non riesco a leggere la prova del modello.").font(.footnote).foregroundStyle(.orange)
+            Text("Non riesco a leggere la prova del modello.").font(.footnote).foregroundStyle(Color.attenzione)
         } else {
             Text("La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.").font(.footnote).foregroundStyle(.secondary)
         }
@@ -432,7 +432,7 @@ struct ImportaExcelView: View {
                     Button { Task { await vm.importaTesto() } } label: { Text("Importa il testo").frame(maxWidth: .infinity, minHeight: 44) }
                         .disabled(vm.inCorso)
                 } header: { Text("Incolla il testo delle rose") }
-                if let errore = vm.errore { Section { Text(errore).foregroundStyle(.orange) } }
+                if let errore = vm.errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
                 if let e = vm.esito {
                     Section("Cosa è cambiato") {
                         if let d = e.differenze { DifferenzeView(differenze: d) }
@@ -446,7 +446,7 @@ struct ImportaExcelView: View {
                         if (e.avvisi ?? []).isEmpty {
                             Label("Rose controllate: tutto in ordine.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(.secondary)
                         } else {
-                            ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(.orange) }
+                            ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(Color.attenzione) }
                         }
                     } header: { Text("Da controllare") }
                 }

@@ -227,7 +227,7 @@ struct BackupView: View {
                 if let m = vm.messaggio {
                     Section {
                         Label(m, systemImage: vm.riuscito ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                            .foregroundStyle(vm.riuscito ? Color.verde : Color.orange)
+                            .foregroundStyle(vm.riuscito ? Color.verde : Color.attenzione)
                             .font(.footnote)
                     }
                 }

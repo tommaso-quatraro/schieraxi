@@ -93,7 +93,7 @@ struct SchermataAccesso: View {
                 }
                 if let errore {
                     Label(errore, systemImage: "exclamationmark.triangle.fill")
-                        .font(.subheadline).foregroundStyle(.orange)
+                        .font(.subheadline).foregroundStyle(Color.attenzione)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .combine)
                         .transition(.opacity)
@@ -212,7 +212,7 @@ struct SchermataAccesso: View {
                 .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
                 .accessibilityLabel(titolo)
             if let problema {
-                Text(problema).font(.caption).foregroundStyle(.orange)
+                Text(problema).font(.caption).foregroundStyle(Color.attenzione)
                     .accessibilityLabel("\(titolo): \(problema)")
             }
         }
@@ -234,7 +234,7 @@ struct SchermataAccesso: View {
                 .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
                 .accessibilityLabel(titolo)
             if let problemaPassword {
-                Text(problemaPassword).font(.caption).foregroundStyle(.orange)
+                Text(problemaPassword).font(.caption).foregroundStyle(Color.attenzione)
                     .accessibilityLabel("\(titolo): \(problemaPassword)")
             }
         }

@@ -37,7 +37,7 @@ struct AccountSezione: View {
                     Label("Elimina l'account", systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
                 }
                 if let messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
-                if let errore { Text(errore).font(.footnote).foregroundStyle(.orange) }
+                if let errore { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
             }
             .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
                 Button("Esci", role: .destructive) { Task { await sessione.esci() } }
@@ -118,12 +118,12 @@ struct FoglioCambiaPassword: View {
                 Text("Password nuova")
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    if let problema { Text(problema).foregroundStyle(.orange) }
-                    if !ripeti.isEmpty && nuova != ripeti { Text("Le due password non coincidono.").foregroundStyle(.orange) }
+                    if let problema { Text(problema).foregroundStyle(Color.attenzione) }
+                    if !ripeti.isEmpty && nuova != ripeti { Text("Le due password non coincidono.").foregroundStyle(Color.attenzione) }
                     Text("Almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
                 }
             }
-            if let errore { Section { Text(errore).foregroundStyle(.orange) } }
+            if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 Button { Task { await invia() } } label: {
                     Text(sessione.inCorso ? "Un attimo…" : "Cambia la password").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
@@ -174,7 +174,7 @@ struct FoglioNuovoCodice: View {
                     } footer: {
                         Text("Il codice di prima smette di funzionare. Il nuovo compare una volta sola.")
                     }
-                    if let errore { Section { Text(errore).foregroundStyle(.orange) } }
+                    if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
                     Section {
                         Button { Task { await crea() } } label: {
                             Text(sessione.inCorso ? "Un attimo…" : "Crea un nuovo codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
@@ -225,7 +225,7 @@ struct FoglioElimina: View {
                 Toggle("Ho capito: cancella tutto", isOn: $capito)
                     .frame(minHeight: Tema.areaTocco)
             }
-            if let errore { Section { Text(errore).foregroundStyle(.orange) } }
+            if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 Button(role: .destructive) { Task { await elimina() } } label: {
                     Text(sessione.inCorso ? "Un attimo…" : "Elimina l'account").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)

@@ -169,7 +169,7 @@ struct FormazioneView: View {
             HStack(spacing: 5) {
                 Text(a.giocatore.nomeCorto).font(.caption.weight(.semibold))
                 Text(Formato.conSegno(a.differenza)).font(.caption.bold()).monospacedDigit()
-                    .foregroundStyle(a.quasiPari ? Color.secondary : (a.differenza > 0 ? Color.verde : Color.orange))
+                    .foregroundStyle(a.quasiPari ? Color.secondary : (a.differenza > 0 ? Color.verde : Color.attenzione))
                 if a.quasiPari { Text("quasi pari").font(.caption2).foregroundStyle(.secondary) }
             }
             .padding(.horizontal, 10)

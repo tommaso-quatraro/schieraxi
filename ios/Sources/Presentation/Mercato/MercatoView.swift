@@ -195,7 +195,7 @@ struct ConsigliatiView: View {
                 .fixedSize()
             }
             if let riga = dettaglioRiga(p) {
-                Text(riga).font(.caption).foregroundStyle(p.fattibile == false ? Color.orange : .secondary).lineLimit(2)
+                Text(riga).font(.caption).foregroundStyle(p.fattibile == false ? Color.attenzione : .secondary).lineLimit(2)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
@@ -351,7 +351,7 @@ struct OsservatiView: View {
 
     var body: some View {
         List {
-            if let messaggio = vm.messaggioOsservati { Text(messaggio).font(.footnote).foregroundStyle(.orange) }
+            if let messaggio = vm.messaggioOsservati { Text(messaggio).font(.footnote).foregroundStyle(Color.attenzione) }
             if let d = vm.osservati.dato {
                 if d.giocatori.isEmpty {
                     VistaVuota(titolo: "Nessun giocatore osservato", icona: "star", descrizione: "Apri la scheda di un giocatore e tocca «Osserva».")
@@ -396,7 +396,7 @@ struct CercaView: View {
 
     var body: some View {
         List {
-            if let errore = ricerca.errore { Text(errore).foregroundStyle(.orange) }
+            if let errore = ricerca.errore { Text(errore).foregroundStyle(Color.attenzione) }
             if !ricerca.abbastanzaLungo {
                 VistaVuota(titolo: "Cerca un giocatore", icona: "magnifyingglass", descrizione: "Scrivi almeno due lettere del nome.")
                     .listRowBackground(Color.clear)

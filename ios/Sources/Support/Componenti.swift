@@ -184,7 +184,7 @@ struct AvvisoSalvati: ViewModifier {
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .vetro(in: Capsule(), tinta: Color.orange.opacity(0.35))
+                        .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.35))
                         .padding(.horizontal, Tema.margine)
                         .padding(.bottom, 6)
                         .frame(maxWidth: .infinity)

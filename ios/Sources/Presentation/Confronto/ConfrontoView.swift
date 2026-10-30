@@ -253,7 +253,7 @@ struct RicercaGiocatoreView: View {
         ZStack {
             Sfondo()
             List {
-                if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(.orange) }
+                if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
                 if vm.testo.trimmingCharacters(in: .whitespaces).count < 2 {
                     VStack(spacing: 10) {
                         Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(.secondary).accessibilityHidden(true)

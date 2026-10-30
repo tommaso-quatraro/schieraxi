@@ -34,7 +34,7 @@ struct ProvaServerView: View {
                 .accessibilityLabel("Indirizzo del server")
             if !bozza.trimmingCharacters(in: .whitespaces).isEmpty && ProvaConnessione.pulisci(bozza) == nil {
                 Label("L'indirizzo deve iniziare con https://", systemImage: "exclamationmark.triangle")
-                    .font(.footnote).foregroundStyle(.orange)
+                    .font(.footnote).foregroundStyle(Color.attenzione)
             }
             Button {
                 Task { await provaESalva() }
@@ -78,7 +78,7 @@ struct ProvaServerView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: e.icona)
                 .font(.title2)
-                .foregroundStyle(e.raggiunto ? Color.verde : Color.orange)
+                .foregroundStyle(e.raggiunto ? Color.verde : Color.attenzione)
                 .symbolEffect(.bounce, value: versioneEsito)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {

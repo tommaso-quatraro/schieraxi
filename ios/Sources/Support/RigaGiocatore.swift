@@ -116,7 +116,7 @@ struct RigaGiocatore: View {
     private var previsione: some View {
         if g.assente == true {
             // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
-            Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(.red)
+            Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(Color.malus)
         } else if tagliaTesto.isAccessibilitySize {
             // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
             HStack(spacing: 8) {

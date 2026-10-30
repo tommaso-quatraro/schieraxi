@@ -215,7 +215,7 @@ struct GiocatoreCorpo: View {
                     VStack(alignment: .trailing, spacing: 0) {
                         Text("Andamento").font(.caption2).foregroundStyle(.secondary)
                         Text("\(forma.andamento.freccia) \(forma.andamento.rawValue)").font(.subheadline.bold())
-                            .foregroundStyle(forma.andamento == .crescita ? Color.verde : forma.andamento == .calo ? Color.red : .primary)
+                            .foregroundStyle(forma.andamento == .crescita ? Color.verde : forma.andamento == .calo ? Color.malus : .primary)
                     }
                     .accessibilityElement(children: .combine)
                 }
@@ -243,7 +243,7 @@ struct GiocatoreCorpo: View {
             Carta("Rende sopra o sotto le occasioni?", simbolo: "scope") {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(Formato.conSegno(sovra, cifre: 2)).font(.title.bold()).monospacedDigit()
-                        .foregroundStyle(sovra > 0.3 ? Color.verde : sovra < -0.3 ? Color.red : .primary)
+                        .foregroundStyle(sovra > 0.3 ? Color.verde : sovra < -0.3 ? Color.malus : .primary)
                     Text("punti a partita").font(.caption).foregroundStyle(.secondary)
                 }
                 .accessibilityElement(children: .combine)

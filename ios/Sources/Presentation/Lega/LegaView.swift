@@ -90,14 +90,14 @@ struct LegaView: View {
             } else if let s = vm.info.dato {
                 if let salvati = vm.info.datiSalvati {
                     Label("Server non raggiungibile. Dati salvati del \(salvati.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
-                        .font(.footnote).foregroundStyle(.orange)
+                        .font(.footnote).foregroundStyle(Color.attenzione)
                 }
                 riga("Squadra", s.miaSquadra ?? "—")
                 riga("Stagione", s.stagione ?? "—")
                 riga("Versione del server", s.versione ?? "—")
                 riga("Dati aggiornati", Quando.leggibile((s.ultimoAggiornamento ?? "").replacingOccurrences(of: "T", with: " ")))
             } else if let e = vm.info.errore {
-                Text(e).foregroundStyle(.orange)
+                Text(e).foregroundStyle(Color.attenzione)
             }
             if sessione.puoAmministrare { AggiornaDatiSezione(vm: vm.aggiornamento) }
         }

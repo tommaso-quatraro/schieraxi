@@ -14,7 +14,7 @@ struct AggiornaDatiSezione: View {
         .sensoryFeedback(trigger: vm.inCorso) { vecchio, nuovo in vecchio && !nuovo ? .success : nil }
         .accessibilityHint("Il server riscarica calendario, voti, probabili formazioni e quotazioni")
         if let m = vm.messaggio {
-            Text(m).font(.footnote).foregroundStyle(vm.errori.isEmpty ? Color.secondary : Color.orange)
+            Text(m).font(.footnote).foregroundStyle(vm.errori.isEmpty ? Color.secondary : Color.attenzione)
         }
     }
 }
@@ -138,7 +138,7 @@ struct StagioneView: View {
                                 else { Label("Archivia e riparti", systemImage: "archivebox").frame(maxWidth: .infinity, minHeight: 44) }
                             }
                             .disabled(vm.inCorso)
-                            if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(.orange) }
+                            if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
                         }
                     } else {
                         Section {

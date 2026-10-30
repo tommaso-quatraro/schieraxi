@@ -269,7 +269,7 @@ struct RegoleEditorView: View {
                 else { Text("Riconosci le regole").frame(maxWidth: .infinity, minHeight: 44) }
             }
             .disabled(vm.riconoscimentoInCorso)
-            if let e = vm.erroreRiconoscimento { Text(e).font(.footnote).foregroundStyle(.orange) }
+            if let e = vm.erroreRiconoscimento { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
             if let r = vm.riconoscimento { riconosciute(r) }
         } header: { Text("Importa da Leghe") }
     }
@@ -435,7 +435,7 @@ struct RegoleEditorView: View {
             .disabled(vm.inCorso || !vm.modificato)
             Button { Task { await vm.annulla() } } label: { Text("Annulla le modifiche").frame(maxWidth: .infinity, minHeight: 44) }
                 .disabled(!vm.modificato)
-            if let esito = vm.esito { Text(esito).font(.footnote).foregroundStyle(vm.esitoRiuscito ? Color.secondary : Color.orange) }
+            if let esito = vm.esito { Text(esito).font(.footnote).foregroundStyle(vm.esitoRiuscito ? Color.secondary : Color.attenzione) }
         }
     }
 }
