@@ -111,7 +111,7 @@ struct RadiceView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .barraSchedeCheSiRiduce()
-        .accessorioGiornata(modello.oggi, inOggi: nav.sezione == .oggi) { nav.sezione = .formazione }
+        // Il conto alla rovescia sta nell'intestazione di Oggi (e nel widget): sotto la barra delle schede faceva due barre sovrapposte.
         .tint(Color.verde)
         .id(accento)
         .preferredColorScheme(tema == "chiaro" ? ColorScheme.light : tema == "scuro" ? ColorScheme.dark : nil)

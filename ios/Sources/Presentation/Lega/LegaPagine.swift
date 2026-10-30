@@ -204,7 +204,7 @@ struct StagioneView: View {
 struct AspettoView: View {
     @AppStorage("accento") private var accento = "verde"
     @AppStorage("tema") private var tema = "auto"
-    @AppStorage("densita") private var densita = "comoda"
+    @AppStorage("densita") private var densita = "compatta"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
     @AppStorage("sezioneAvvio") private var sezioneAvvio = "ultima"
 

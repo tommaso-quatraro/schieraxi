@@ -81,6 +81,8 @@ struct SelettoreSezioni: View {
             Text(s.rawValue)
                 .font(carattere.weight(.semibold))
                 .lineLimit(1)
+                // larghezza vera del testo: senza, ViewThatFits crede che ci stia tutto e le etichette si sovrappongono
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, margine)
                 .frame(minHeight: 44)
                 .pillola(attiva: attiva, spazio: pillole)
@@ -96,22 +98,13 @@ struct SelettoreSezioni: View {
 struct ConsigliatiView: View {
     @ObservedObject var vm: MercatoViewModel
     @Environment(\.spazioZoom) private var zoom
+    @State private var dettagli = false
 
     var body: some View {
         ScrollView {
             Colonne(spazio: 12) {
                 if let m = vm.consigliati.dato {
-                    Carta(simbolo: "arrow.triangle.swap") {
-                        Text("Svincolati che migliorano la squadra").font(.headline)
-                        Text("Ogni proposta è un cambio: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. \(m.svincolati ?? 0) svincolati analizzati; il guadagno è in punti attesi (prossime giornate una per una, più il resto della stagione).")
-                            .font(.footnote).foregroundStyle(.secondary)
-                        if let c = m.creditiResidui {
-                            Text("Crediti residui: \(Formato.intero(c)). Lo svincolo ti restituisce il \(Formato.percento(m.rimborsoIpotizzato ?? 0.5))% del prezzo pagato.")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        } else {
-                            Text("Inserisci i tuoi crediti in Lega > Crediti per vedere se i cambi sono fattibili.").font(.footnote).foregroundStyle(.secondary)
-                        }
-                    }
+                    introduzione(m)
                     ForEach(Array(m.proposte.enumerated()), id: \.element.id) { i, p in
                         Button { vm.apri(p.entra.id) } label: { carta(p) }
                             .buttonStyle(StilePressione()).puntatore()
@@ -138,29 +131,97 @@ struct ConsigliatiView: View {
         .task { await vm.consigliati.ricarica() }
     }
 
-    private func carta(_ p: PropostaMercato) -> some View {
-        Carta {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack { BadgeRuolo(ruolo: p.esce.ruolo); Text(p.esce.nome).font(.subheadline); Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary) }
-                    HStack { BadgeRuolo(ruolo: p.entra.ruolo); Text(p.entra.nome).font(.headline) }
+    /// Una riga di riepilogo; i dettagli (come si calcola, rimborso) stanno dietro la «i».
+    private func introduzione(_ m: Mercato) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text("Svincolati che migliorano la squadra").font(.headline).lineLimit(2)
+                Spacer(minLength: 4)
+                Button {
+                    withAnimation(Tema.morbida) { dettagli.toggle() }
+                } label: {
+                    Image(systemName: dettagli ? "xmark.circle.fill" : "info.circle")
+                        .font(.title3).foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
                 }
-                Spacer()
-                VStack(alignment: .trailing) {
-                    Text(Formato.conSegno(p.guadagno)).font(.title3.bold()).foregroundStyle(Color.verde).monospacedDigit()
-                    Text("punti attesi").font(.caption2).foregroundStyle(.secondary)
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(dettagli ? "Nascondi i dettagli" : "Come funziona")
             }
-            if let b = p.breve {
-                Text("\(Formato.conSegno(b)) nelle prossime \(p.giornate?.count ?? 0) giornate").font(.caption).foregroundStyle(.secondary)
-            }
-            if let dopo = p.creditiDopo {
-                Text("Rimborso \(Formato.intero(p.rimborso)) − costo \(Formato.intero(p.entra.quotazione)) · crediti dopo il cambio \(Formato.intero(dopo))\(p.fattibile == false ? " (non bastano)" : "")")
-                    .font(.caption).foregroundStyle(p.fattibile == false ? Color.orange : .secondary)
-            } else if let r = p.rimborso, r > 0 {
-                Text("Rimborso svincolo: \(Formato.intero(r)) crediti").font(.caption).foregroundStyle(.secondary)
+            Text(riassunto(m)).font(.footnote).foregroundStyle(.secondary)
+            if dettagli {
+                Text(spiegazione(m)).font(.caption).foregroundStyle(.secondary).transition(.opacity)
             }
         }
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: Tema.raggioScheda, style: .continuous))
+    }
+
+    private func spiegazione(_ m: Mercato) -> String {
+        let base = "Ogni proposta è un cambio: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Il guadagno è in punti attesi: le prossime giornate una per una, più il resto della stagione."
+        if m.creditiResidui == nil { return base + " Inserisci i tuoi crediti in Lega > Crediti per vedere se i cambi sono fattibili." }
+        return base + " Lo svincolo ti restituisce il \(Formato.percento(m.rimborsoIpotizzato ?? 0.5))% del prezzo pagato."
+    }
+
+    private func riassunto(_ m: Mercato) -> String {
+        var parti = ["\(m.svincolati ?? 0) svincolati analizzati"]
+        if let c = m.creditiResidui { parti.append("crediti \(Formato.intero(c))") }
+        return parti.joined(separator: " · ")
+    }
+
+    /// Cambio compatto: l'entrante in primo piano (avatar, nome), l'uscente in piccolo, il guadagno come dato principale a destra,
+    /// rimborso e crediti in una riga discreta.
+    private func carta(_ p: PropostaMercato) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 10) {
+                AvatarGiocatore(id: p.entra.id, squadra: p.entra.squadra, dimensione: 44, conNumero: false, nome: p.entra.nome, ruolo: p.entra.ruolo)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        BadgeRuolo(ruolo: p.entra.ruolo, piccolo: true)
+                        Text(p.entra.nome).font(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.uturn.backward").font(.caption2)
+                        AvatarGiocatore(id: p.esce.id, squadra: p.esce.squadra, dimensione: 18, conNumero: false, nome: p.esce.nome, ruolo: p.esce.ruolo)
+                        Text(p.esce.nome).font(.caption).lineLimit(1)
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 6)
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(Formato.conSegno(p.guadagno)).font(.title2.bold()).foregroundStyle(Color.verde).monospacedDigit()
+                    Text("punti attesi").font(.caption2).foregroundStyle(.secondary)
+                }
+                .fixedSize()
+            }
+            if let riga = dettaglioRiga(p) {
+                Text(riga).font(.caption).foregroundStyle(p.fattibile == false ? Color.orange : .secondary).lineLimit(2)
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: Tema.raggioScheda, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(vocePropostaMercato(p))
+    }
+
+    /// «+0,6 nelle prossime 5 · rimborso 8, costo 12, crediti dopo 30»: tutto il secondario in una riga.
+    private func dettaglioRiga(_ p: PropostaMercato) -> String? {
+        var parti: [String] = []
+        if let b = p.breve { parti.append("\(Formato.conSegno(b)) nelle prossime \(p.giornate?.count ?? 0)") }
+        if let dopo = p.creditiDopo {
+            let nonBastano = p.fattibile == false ? " (non bastano)" : ""
+            parti.append("rimborso \(Formato.intero(p.rimborso)), costo \(Formato.intero(p.entra.quotazione)), crediti dopo \(Formato.intero(dopo))" + nonBastano)
+        } else if let r = p.rimborso, r > 0 {
+            parti.append("rimborso \(Formato.intero(r))")
+        }
+        return parti.isEmpty ? nil : parti.joined(separator: " · ")
+    }
+
+    private func vocePropostaMercato(_ p: PropostaMercato) -> String {
+        var testo = "Entra \(p.entra.nome), esce \(p.esce.nome), \(Formato.conSegno(p.guadagno)) punti attesi"
+        if let riga = dettaglioRiga(p) { testo += ". " + riga }
+        return testo
     }
 }
 
