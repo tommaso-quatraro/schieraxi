@@ -154,4 +154,89 @@ enum Condiviso {
     static func salvaRiassunto(_ r: RiassuntoOggi) {
         aggiorna { $0.riassunto = r }
     }
+
+    // MARK: diagnostica
+
+    /// Com'è messa la condivisione su questo dispositivo: serve a capire perché il widget non vede i dati dell'app.
+    struct Diagnostica: Equatable {
+        /// I gruppi scritti da SideStore in Info.plist (`ALTAppGroups`), come sono.
+        var scrittiDaSideStore: [String]
+        /// I gruppi provati, in ordine.
+        var provati: [String]
+        /// Il primo gruppo di cui iOS ha dato la cartella (nil = il gruppo non c'è per questo programma).
+        var gruppoFunzionante: String?
+        var filePresente: Bool
+        var ultimaScrittura: Date?
+        var haIndirizzo: Bool
+        var haToken: Bool
+        var haRiassunto: Bool
+
+        /// Una riga breve per il widget: «G:no F:no A:no T:no».
+        var breve: String {
+            func s(_ b: Bool) -> String { b ? "sì" : "no" }
+            return "gruppo \(s(gruppoFunzionante != nil)) · file \(s(filePresente)) · indirizzo \(s(haIndirizzo)) · token \(s(haToken))"
+        }
+
+        /// Il dettaglio per Lega.
+        var lungo: String {
+            func s(_ b: Bool) -> String { b ? "sì" : "no" }
+            var righe = [
+                "Gruppo di SideStore (ALTAppGroups): " + (scrittiDaSideStore.isEmpty ? "nessuno" : scrittiDaSideStore.joined(separator: ", ")),
+                "Gruppi provati: " + provati.joined(separator: ", "),
+                "Cartella condivisa: " + (gruppoFunzionante.map { "sì (\($0))" } ?? "NO (iOS non dà il gruppo a questo programma)"),
+                "File presente: \(s(filePresente))",
+            ]
+            if let ultimaScrittura { righe.append("Ultima scrittura dell'app: " + ultimaScrittura.formatted(date: .abbreviated, time: .standard)) }
+            righe.append("Indirizzo: \(s(haIndirizzo)) · token: \(s(haToken)) · riassunto: \(s(haRiassunto))")
+            return righe.joined(separator: "\n")
+        }
+    }
+
+    static func diagnostica(info: [String: Any]? = Bundle.main.infoDictionary) -> Diagnostica {
+        let provati = identificativi(info: info)
+        var funzionante: String?
+        if cartellaDiProva == nil {
+            funzionante = provati.first { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) != nil }
+        } else {
+            funzionante = provati.first
+        }
+        let url = cartella()?.appendingPathComponent(nomeFile)
+        let presente = url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
+        let dati = leggi()
+        return Diagnostica(scrittiDaSideStore: (info?["ALTAppGroups"] as? [String]) ?? [], provati: provati, gruppoFunzionante: funzionante,
+                           filePresente: presente, ultimaScrittura: dati.aggiornato, haIndirizzo: dati.indirizzo != nil,
+                           haToken: dati.token != nil, haRiassunto: dati.riassunto != nil)
+    }
+}
+
+/// Il codice di collegamento del widget: indirizzo e (se c'è una sessione) token in un testo breve da copiare dall'app e incollare
+/// nelle impostazioni del widget. È il ripiego quando l'App Group non c'è. Il token è quello della sessione: chi ha il codice può
+/// leggere i dati dell'account (punto debole, finché il server non emette un token apposta per il widget).
+enum CodiceWidget {
+    static let prefisso = "schieraxi1."
+
+    struct Contenuto: Codable, Equatable {
+        var i: String
+        var t: String?
+    }
+
+    static func crea(indirizzo: String, token: String?) -> String {
+        let c = Contenuto(i: indirizzo, t: (token?.isEmpty ?? true) ? nil : token)
+        let dati = (try? JSONEncoder().encode(c)) ?? Data()
+        let b64 = dati.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        return prefisso + b64
+    }
+
+    /// Legge un codice (o, per comodità, un semplice indirizzo https). `nil` se non si capisce.
+    static func leggi(_ testo: String) -> Contenuto? {
+        let t = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard t.count <= 2000 else { return nil }
+        if t.hasPrefix(prefisso) {
+            var b64 = String(t.dropFirst(prefisso.count)).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+            while b64.count % 4 != 0 { b64.append("=") }
+            guard let dati = Data(base64Encoded: b64), let c = try? JSONDecoder().decode(Contenuto.self, from: dati), !c.i.isEmpty else { return nil }
+            return c
+        }
+        return t.lowercased().hasPrefix("http") ? Contenuto(i: t, t: nil) : nil
+    }
 }

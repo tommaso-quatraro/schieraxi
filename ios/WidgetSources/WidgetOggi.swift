@@ -97,8 +97,11 @@ struct VistaWidget: View {
             Image(systemName: voce.indirizzoMancante ? "server.rack" : voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
             Text(voce.indirizzoMancante ? "Manca il server" : voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
             if !accessorio {
-                Text(voce.indirizzoMancante ? "Tieni premuto > Modifica widget e scrivi l'indirizzo" : voce.accessoRichiesto ? "Apri SchieraXI per accedere" : "Apri SchieraXI con rete privata acceso")
+                Text(voce.indirizzoMancante ? "Lega > Widget > Copia il codice, poi Modifica widget" : voce.accessoRichiesto ? "Lega > Widget > Copia il codice, poi Modifica widget" : "Apri SchieraXI con rete privata acceso")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                if let d = voce.diagnostica {
+                    Text(d).font(.system(size: 8)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2)
+                }
             }
         }
     }
@@ -118,7 +121,7 @@ struct VistaWidget: View {
                 Spacer()
                 Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
-            Text(voce.datiSalvati ? "dati salvati" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
+            Text(voce.datiSalvati ? "dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -135,7 +138,7 @@ struct VistaWidget: View {
                     .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
                 if voce.datiSalvati {
-                    Label("dati salvati", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
+                    Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
                 }
             }
             VStack(alignment: .trailing, spacing: 4) {

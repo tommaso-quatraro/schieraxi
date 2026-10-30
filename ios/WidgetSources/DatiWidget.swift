@@ -18,6 +18,8 @@ struct Voce: TimelineEntry {
     var accessoRichiesto = false
     /// true se nelle impostazioni del widget manca l'indirizzo del server (o non è valido).
     var indirizzoMancante = false
+    /// Una riga di diagnostica sulla condivisione con l'app (si vede solo quando non ci sono dati).
+    var diagnostica: String?
 }
 
 /// Le impostazioni del widget: l'indirizzo del server (solo https, o localhost per le prove).
@@ -27,6 +29,9 @@ struct ConfigurazioneWidget: WidgetConfigurationIntent {
 
     @Parameter(title: "Indirizzo del server (solo se manca)", default: "")
     var indirizzo: String
+
+    @Parameter(title: "Codice di collegamento", default: "")
+    var codice: String
 }
 
 enum ScaricaOggi {
@@ -59,12 +64,16 @@ enum ScaricaOggi {
     }
 
     /// Dove e con quale token scaricare: prima i dati dell'app (App Group), poi l'indirizzo scritto nelle impostazioni del widget.
-    static func destinazione(configurazione: String) -> (indirizzo: String, token: String?)? {
+    /// Ordine: dati dell'app (App Group) > codice di collegamento incollato nel widget > solo indirizzo scritto nel widget.
+    static func destinazione(indirizzo scritto: String, codice: String) -> (indirizzo: String, token: String?)? {
         let condiviso = Condiviso.leggi()
         if let base = condiviso.indirizzo, let url = indirizzoOggi(base) {
             return (url, condiviso.token(per: base))
         }
-        guard let url = indirizzoOggi(configurazione) else { return nil }
+        if let c = CodiceWidget.leggi(codice), let url = indirizzoOggi(c.i) {
+            return (url, c.t)
+        }
+        guard let url = indirizzoOggi(scritto) else { return nil }
         return (url, nil)
     }
 
@@ -77,7 +86,8 @@ enum ScaricaOggi {
             if let dati = try? JSONEncoder().encode(nuovo) { UserDefaults.standard.set(dati, forKey: chiave) }
             return (nuovo, false, false)
         case .accessoRichiesto:
-            UserDefaults.standard.removeObject(forKey: chiave)
+            // Mai «Serve l'accesso» a vuoto: se c'è un ultimo riassunto (dell'app o del widget) si mostra, con la sua ora.
+            if let ultimo = ultimoSalvato() { return (ultimo, true, false) }
             return (nil, false, true)
         case .errore:
             return (ultimoSalvato(), true, false)
@@ -130,7 +140,7 @@ struct Fornitore: AppIntentTimelineProvider {
         if primo.indirizzoMancante { prossimo = adesso.addingTimeInterval(60 * 60) }
         if let inizio = primo.riassunto?.inizio, inizio > adesso {
             var dopo = primo
-            dopo = Voce(date: inizio, riassunto: primo.riassunto, datiSalvati: primo.datiSalvati, accessoRichiesto: primo.accessoRichiesto)
+            dopo = Voce(date: inizio, riassunto: primo.riassunto, datiSalvati: primo.datiSalvati, accessoRichiesto: primo.accessoRichiesto, diagnostica: primo.diagnostica)
             voci.append(dopo)
             if inizio < prossimo { prossimo = inizio.addingTimeInterval(60) }
         }
@@ -138,12 +148,13 @@ struct Fornitore: AppIntentTimelineProvider {
     }
 
     private func voce(_ configurazione: ConfigurazioneWidget) async -> Voce {
-        guard let dove = ScaricaOggi.destinazione(configurazione: configurazione.indirizzo) else {
+        let diagnostica = Condiviso.diagnostica().breve
+        guard let dove = ScaricaOggi.destinazione(indirizzo: configurazione.indirizzo, codice: configurazione.codice) else {
             // Nessun indirizzo: se l'app ha già un riassunto lo si mostra, altrimenti si dice cosa fare.
-            if let r = Condiviso.leggi().riassunto { return Voce(date: Date(), riassunto: r, datiSalvati: true) }
-            return Voce(date: Date(), riassunto: nil, datiSalvati: false, indirizzoMancante: true)
+            if let r = Condiviso.leggi().riassunto { return Voce(date: Date(), riassunto: r, datiSalvati: true, diagnostica: diagnostica) }
+            return Voce(date: Date(), riassunto: nil, datiSalvati: false, indirizzoMancante: true, diagnostica: diagnostica)
         }
         let r = await ScaricaOggi.leggi(indirizzo: dove.indirizzo, token: dove.token)
-        return Voce(date: Date(), riassunto: r.riassunto, datiSalvati: r.salvato, accessoRichiesto: r.accessoRichiesto)
+        return Voce(date: Date(), riassunto: r.riassunto, datiSalvati: r.salvato, accessoRichiesto: r.accessoRichiesto, diagnostica: diagnostica)
     }
 }
