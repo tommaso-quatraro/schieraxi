@@ -84,7 +84,7 @@ struct LegaView: View {
 
     private var sezioneServer: some View {
         Section("Server") {
-            ProvaServerView(dopoProva: { await vm.info.ricarica() })
+            ProvaServerView(utente: sessione.utente?.nomeUtente, dopoProva: { await vm.info.ricarica() })
             if vm.info.inCorso {
                 ProgressView()
             } else if let s = vm.info.dato {

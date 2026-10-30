@@ -15,6 +15,8 @@ struct ProvaServerView: View {
         if Demo.attivo { return .raggiunto(versione: nil, squadra: nil) }   // demo: nessuna rete
         return await ProvaConnessione.prova(indirizzo)
     }
+    /// Chi è già dentro (nome utente): se la prova trova una sessione valida dice «Connesso come …».
+    var utente: String? = nil
     /// Dopo una prova riuscita (e il salvataggio): per ricaricare lo stato del server o chiedere chi siamo.
     var dopoProva: () async -> Void = {}
 
@@ -94,7 +96,10 @@ struct ProvaServerView: View {
         if inCorso { return }
         inCorso = true
         esito = nil
-        let risultato = await prova(daProvare)
+        var risultato = await prova(daProvare)
+        // Il server risponde e c'è una sessione aperta: si dice chi è connesso (non «accedi»).
+        if case .raggiunto = risultato, let utente, !utente.isEmpty { risultato = .connesso(utente: utente) }
+        if case .chiedeAccesso = risultato, utente != nil { risultato = .sessioneScaduta }
         inCorso = false
         esito = risultato
         versioneEsito += 1

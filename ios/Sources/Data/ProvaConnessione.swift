@@ -4,6 +4,10 @@ import Foundation
 /// (con gli account accesi il server risponde 401 anche a /api/stato).
 enum EsitoConnessione: Equatable {
     case raggiunto(versione: String?, squadra: String?)
+    /// Raggiunto e con una sessione valida: «Connesso come <nome>».
+    case connesso(utente: String)
+    /// Raggiunto, ma la sessione salvata non vale più (scaduta o chiusa altrove): serve accedere di nuovo.
+    case sessioneScaduta
     case chiedeAccesso
     case rifiutato(Int)
     case nonSchieraxi
@@ -16,7 +20,7 @@ enum EsitoConnessione: Equatable {
     /// Il server giusto c'è: si può salvare l'indirizzo.
     var raggiunto: Bool {
         switch self {
-        case .raggiunto, .chiedeAccesso: return true
+        case .raggiunto, .connesso, .chiedeAccesso, .sessioneScaduta: return true
         default: return false
         }
     }
@@ -24,6 +28,8 @@ enum EsitoConnessione: Equatable {
     var titolo: String {
         switch self {
         case .raggiunto: return "Server raggiunto"
+        case .connesso(let utente): return "Connesso come \(utente)"
+        case .sessioneScaduta: return "Server raggiunto: la sessione è scaduta"
         case .chiedeAccesso: return "Server raggiunto: chiede l'accesso"
         case .rifiutato(let codice): return "Il server ha rifiutato la richiesta (\(codice))"
         case .nonSchieraxi: return "Non sembra un server di SchieraXI"
@@ -40,6 +46,10 @@ enum EsitoConnessione: Equatable {
         case .raggiunto(let versione, let squadra):
             let parti = [versione.map { "versione \($0)" }, squadra.map { "squadra \($0)" }].compactMap { $0 }
             return parti.isEmpty ? "Tutto a posto." : "SchieraXI, " + parti.joined(separator: ", ") + "."
+        case .connesso:
+            return "Il server risponde e la tua sessione è valida."
+        case .sessioneScaduta:
+            return "È il server giusto, ma la sessione non vale più: esci e accedi di nuovo."
         case .chiedeAccesso:
             return "È il server giusto e vuole nome utente e password: accedi dalla schermata di accesso."
         case .rifiutato:
@@ -61,7 +71,8 @@ enum EsitoConnessione: Equatable {
 
     var icona: String {
         switch self {
-        case .raggiunto: return "checkmark.circle.fill"
+        case .raggiunto, .connesso: return "checkmark.circle.fill"
+        case .sessioneScaduta: return "person.crop.circle.badge.exclamationmark"
         case .chiedeAccesso: return "lock.circle.fill"
         case .rifiutato: return "hand.raised.circle.fill"
         case .nonSchieraxi: return "questionmark.circle.fill"
@@ -125,16 +136,23 @@ enum ProvaConnessione {
         return URLSession(configuration: c)
     }
 
-    static func prova(_ indirizzo: String, sessione: URLSession? = nil) async -> EsitoConnessione {
+    /// Con `token` (la sessione salvata per QUESTO indirizzo) la prova dice se la sessione vale ancora.
+    /// Il token si manda solo all'indirizzo per cui è stato salvato (l'archivio è per indirizzo): mai a uno nuovo.
+    static func prova(_ indirizzo: String, sessione: URLSession? = nil, archivio: (any ArchivioToken)? = Accesso.archivio) async -> EsitoConnessione {
         guard let base = pulisci(indirizzo), let url = URL(string: base + "/api/stato") else { return .indirizzoNonValido }
         var r = URLRequest(url: url, timeoutInterval: 8)
         r.setValue("1", forHTTPHeaderField: "X-Fanta")
         r.setValue("application/json", forHTTPHeaderField: "Accept")
+        let token = archivio?.leggi(server: base)
+        if let token, !token.isEmpty { r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         do {
             let (dati, risposta) = try await (sessione ?? sessionePredefinita()).data(for: r)
             guard let h = risposta as? HTTPURLResponse else { return .nonSchieraxi }
             // Un corpo enorme non è lo stato del nostro server: non lo si legge per intero.
-            return interpreta(codice: h.statusCode, corpo: dati.count > 1_000_000 ? Data() : dati)
+            let esito = interpreta(codice: h.statusCode, corpo: dati.count > 1_000_000 ? Data() : dati)
+            // Con un token mandato, un 401 vuol dire «sessione scaduta», non «serve il primo accesso».
+            if token != nil, case .chiedeAccesso = esito { return .sessioneScaduta }
+            return esito
         } catch {
             return interpreta(errore: error)
         }
