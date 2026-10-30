@@ -4,7 +4,6 @@ import SwiftUI
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
     @EnvironmentObject private var sessione: SessioneAccount
-    @AppStorage("indirizzo") private var indirizzo = ""
 
     var body: some View {
         NavigationStack(path: $vm.percorso) {
@@ -85,20 +84,7 @@ struct LegaView: View {
 
     private var sezioneServer: some View {
         Section("Server") {
-            TextField(Config.indirizzoPredefinito, text: $indirizzo)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .frame(minHeight: 44)
-            if !indirizzo.trimmingCharacters(in: .whitespaces).isEmpty && !IndirizzoServer.valido(indirizzo) {
-                Label("Indirizzo non valido: deve iniziare con https://. Finché non lo correggi l'app usa quello predefinito.", systemImage: "exclamationmark.triangle")
-                    .font(.footnote).foregroundStyle(.orange)
-            }
-            Button { Task { await vm.info.ricarica() } } label: {
-                Label("Prova la connessione", systemImage: "antenna.radiowaves.left.and.right")
-                    .symbolEffect(.variableColor.iterative, isActive: vm.info.inCorso)
-            }
-            .frame(minHeight: 44)
+            ProvaServerView(dopoProva: { await vm.info.ricarica() })
             if vm.info.inCorso {
                 ProgressView()
             } else if let s = vm.info.dato {

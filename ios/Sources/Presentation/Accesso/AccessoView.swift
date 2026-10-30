@@ -12,7 +12,6 @@ struct SchermataAccesso: View {
 
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.scenePhase) private var fase
-    @AppStorage("indirizzo") private var indirizzo = ""
     /// Un solo invio alla volta, anche con due tocchi ravvicinati (prima che la sessione faccia in tempo a dire «in corso»).
     @State private var inInvio = false
     /// Dopo un «troppi tentativi» (429): fino a quando aspettare. Il pulsante si riaccende da solo a zero.
@@ -319,24 +318,10 @@ struct SchermataAccesso: View {
     private var server: some View {
         DisclosureGroup(isExpanded: $controlloServer) {
             VStack(alignment: .leading, spacing: 10) {
-                TextField(Config.indirizzoPredefinito, text: $indirizzo)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .padding(12)
-                    .frame(minHeight: Tema.areaTocco)
-                    .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
-                if !indirizzo.trimmingCharacters(in: .whitespaces).isEmpty && !IndirizzoServer.valido(indirizzo) {
-                    Label("L'indirizzo deve iniziare con https://", systemImage: "exclamationmark.triangle")
-                        .font(.caption).foregroundStyle(.orange)
-                }
-                Button("Controlla il server") {
-                    Task {
-                        errore = nil
-                        await sessione.cambiaServer()
-                    }
-                }
-                .frame(minHeight: Tema.areaTocco)
+                ProvaServerView(dopoProva: {
+                    errore = nil
+                    await sessione.cambiaServer()
+                })
             }
             .padding(.top, 8)
         } label: {
