@@ -86,6 +86,8 @@ struct AvatarGiocatore: View {
     @State private var anello: Double = 0
     @State private var comparso = false
     @Environment(\.accessibilityReduceMotion) private var ridotto
+    /// I tratti di tutti i giocatori (versione 2): quando arrivano i volti si ridisegnano.
+    @ObservedObject private var tratti = DepositoTratti.condiviso
 
     private var spessore: CGFloat { max(2.5, dimensione / 16) }
     private var frazione: Double { min(1, max(0, (indice ?? 0) / 100)) }
@@ -99,7 +101,7 @@ struct AvatarGiocatore: View {
                     .stroke(Color.indice(indice), style: StrokeStyle(lineWidth: spessore, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             }
-            AvatarVolto(id: id ?? 0, squadra: squadra, portiere: ruolo?.uppercased() == "P")
+            AvatarVolto(id: id ?? 0, squadra: squadra, portiere: ruolo?.uppercased() == "P", tratti: id.flatMap { tratti.tratti(per: $0) })
                 .padding(indice == nil ? 0 : spessore + 1.5)
                 // ingresso breve con molla (scala da .86 a 1); con «Ridurre movimento» solo dissolvenza
                 .scaleEffect(comparso || ridotto ? 1 : 0.86)
@@ -118,6 +120,7 @@ struct AvatarGiocatore: View {
                     .offset(x: dimensione * 0.1, y: dimensione * 0.1)
             }
         }
+        .task { await DepositoTratti.condiviso.caricaSeServe() }
         .onAppear {
             withAnimation(.smooth(duration: 0.9)) { anello = frazione }
             withAnimation(ridotto ? .easeInOut(duration: 0.3) : .spring(duration: 0.4, bounce: 0.15)) { comparso = true }

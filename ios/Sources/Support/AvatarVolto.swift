@@ -73,8 +73,8 @@ enum DisegnoVolto {
     }
 
     /// Tutti gli elementi del volto, dal fondo. Lo sfondo (cerchio con sfumatura) è a parte: vedi `sfondo(c1:c2:)`.
-    static func elementi(id: Int, portiere: Bool, c1: RGB8, c2: RGB8) -> [ElementoVolto] {
-        let v = GeneratoreVolto.estrai(id: id)
+    static func elementi(id: Int, portiere: Bool, c1: RGB8, c2: RGB8, tratti: TrattiVolto? = nil) -> [ElementoVolto] {
+        let v = GeneratoreVolto.estrai(id: id, tratti: tratti)
         let pelleRGB = RGB8(GeneratoreVolto.pelli[v.pelle])
         let pelle = colore(pelleRGB), ombra = colore(pelleRGB.scuri(0.14))
         let capRGB = RGB8(GeneratoreVolto.capelli[v.colore])
@@ -178,10 +178,12 @@ struct AvatarVolto: View {
     let id: Int
     var squadra: String?
     var portiere = false
+    /// Tratti grossolani del giocatore (versione 2); senza, il volto viene tutto dal codice.
+    var tratti: TrattiVolto? = nil
 
     var body: some View {
         let (c1, c2) = DisegnoVolto.coloriSquadra(squadra)
-        let elementi = Self.elementiInMemoria(id: id, portiere: portiere, squadra: squadra, c1: c1, c2: c2)
+        let elementi = Self.elementiInMemoria(id: id, portiere: portiere, squadra: squadra, tratti: tratti, c1: c1, c2: c2)
         let (g1, g2) = DisegnoVolto.sfondo(c1: c1, c2: c2)
         Canvas { ctx, dimensione in
             let k = Double(min(dimensione.width, dimensione.height)) / 100
@@ -215,10 +217,10 @@ struct AvatarVolto: View {
         init(_ e: [ElementoVolto]) { elementi = e }
     }
 
-    private static func elementiInMemoria(id: Int, portiere: Bool, squadra: String?, c1: RGB8, c2: RGB8) -> [ElementoVolto] {
-        let chiave = "\(id)|\(portiere ? "P" : "-")|\((squadra ?? "").lowercased())" as NSString
+    private static func elementiInMemoria(id: Int, portiere: Bool, squadra: String?, tratti: TrattiVolto?, c1: RGB8, c2: RGB8) -> [ElementoVolto] {
+        let chiave = "\(id)|\(portiere ? "P" : "-")|\((squadra ?? "").lowercased())|\(tratti?.chiave ?? "")" as NSString
         if let trovato = memoria.object(forKey: chiave) { return trovato.elementi }
-        let nuovi = DisegnoVolto.elementi(id: id, portiere: portiere, c1: c1, c2: c2)
+        let nuovi = DisegnoVolto.elementi(id: id, portiere: portiere, c1: c1, c2: c2, tratti: tratti)
         memoria.setObject(ContenitoreElementi(nuovi), forKey: chiave)
         return nuovi
     }

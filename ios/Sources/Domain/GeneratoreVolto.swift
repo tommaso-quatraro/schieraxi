@@ -12,6 +12,32 @@ struct IndiciVolto: Equatable, Sendable {
     var elenco: [Int] { [pelle, forma, acconciatura, colore, barba, sopracciglia, occhi, bocca, accessorio, orecchie] }
 }
 
+/// I tratti grossolani di un giocatore (versione 2 degli avatar): tutti facoltativi, un valore non valido vale come mancante.
+struct TrattiVolto: Codable, Equatable, Sendable {
+    var p: Int?
+    var c: Int?
+    var a: String?
+    var b: Int?
+
+    init(p: Int? = nil, c: Int? = nil, a: String? = nil, b: Int? = nil) {
+        self.p = p; self.c = c; self.a = a; self.b = b
+    }
+
+    private enum Chiavi: String, CodingKey { case p, c, a, b }
+
+    /// Tollerante: un campo del tipo sbagliato (o enorme) si ignora, non rovina gli altri.
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        p = (try? k.decodeIfPresent(Int.self, forKey: .p)) ?? nil
+        c = (try? k.decodeIfPresent(Int.self, forKey: .c)) ?? nil
+        a = (try? k.decodeIfPresent(String.self, forKey: .a)) ?? nil
+        b = (try? k.decodeIfPresent(Int.self, forKey: .b)) ?? nil
+    }
+
+    /// Una chiave stabile per la memoria dei disegni.
+    var chiave: String { "\(p ?? -1).\(c ?? -1).\(a ?? "-").\(b ?? -1)" }
+}
+
 /// Un colore a tre canali interi, con l'aritmetica della specifica (stessi arrotondamenti ovunque).
 struct RGB8: Equatable, Sendable {
     let r: Int, g: Int, b: Int
@@ -111,8 +137,44 @@ enum GeneratoreVolto {
         return pesi.count - 1
     }
 
-    /// Gli indici di ogni parte per un codice calciatore, con le due regole di coerenza.
-    static func estrai(id: Int) -> IndiciVolto { coerenza(estraiGrezzo(id: id)) }
+    /// Gli indici di ogni parte per un codice calciatore, con le due regole di coerenza (versione 1, senza tratti).
+    static func estrai(id: Int) -> IndiciVolto { estrai(id: id, tratti: nil) }
+
+    /// Famiglie di acconciature della versione 2: R rasati o calvi, C corti, L lunghi, I ricci.
+    static let famiglie: [String: [Int]] = ["R": [0, 9], "C": [1, 6, 7, 10, 11], "L": [4, 5, 8], "I": [2, 3]]
+
+    /// Versione 2 (docs/AVATAR.md, sezione 8): dopo le dieci estrazioni se ne fanno SEMPRE due in più (u11, u12), anche senza tratti.
+    /// I tratti grossolani (carnagione, colore e famiglia di capelli, barba) spostano solo alcune parti; un tratto mancante o non
+    /// valido si ignora. Senza tratti il risultato è identico alla versione 1.
+    static func estrai(id: Int, tratti: TrattiVolto?) -> IndiciVolto {
+        var g = Mulberry32(seme: seme(id: id))
+        var v = dieciEstrazioni(&g)
+        let u11 = g.prossimo()
+        let u12 = g.prossimo()
+        if let t = tratti {
+            if let p = t.p, (0..<pesiPelle.count).contains(p) { v.pelle = p }
+            if let c = t.c, (0..<pesiColore.count).contains(c) { v.colore = c }
+            if let a = t.a, let membri = famiglie[a], !membri.contains(v.acconciatura) {
+                let pesi = membri.map { pesiAcconciatura[$0] }
+                let n = Int((u11 * Double(pesi.reduce(0, +))).rounded(.down))
+                var somma = 0
+                var scelto = membri[membri.count - 1]
+                for (i, p) in pesi.enumerated() {
+                    somma += p
+                    if n < somma { scelto = membri[i]; break }
+                }
+                v.acconciatura = scelto
+            }
+            if let b = t.b {
+                if b == 0 { v.barba = 0 }
+                else if b == 1, v.barba <= 1 {
+                    let n = Int((u12 * 40).rounded(.down))
+                    v.barba = n < 16 ? 2 : (n < 30 ? 3 : 4)
+                }
+            }
+        }
+        return coerenza(v)
+    }
 
     /// Le due regole di coerenza (cambiano solo l'accessorio).
     static func coerenza(_ grezzo: IndiciVolto) -> IndiciVolto {
@@ -125,6 +187,10 @@ enum GeneratoreVolto {
     /// Le dieci estrazioni, nell'ordine fisso della specifica, prima delle regole di coerenza.
     static func estraiGrezzo(id: Int) -> IndiciVolto {
         var g = Mulberry32(seme: seme(id: id))
+        return dieciEstrazioni(&g)
+    }
+
+    private static func dieciEstrazioni(_ g: inout Mulberry32) -> IndiciVolto {
         var v = IndiciVolto()
         v.pelle = scegli(&g, pesiPelle)
         v.forma = scegli(&g, pesiForma)
