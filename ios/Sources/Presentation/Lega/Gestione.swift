@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Avvisi del server
 
 struct AvvisiServerView: View {
+    @EnvironmentObject private var sessione: SessioneAccount
     @StateObject private var vm: AvvisiServerViewModel
 
     init(server: any ServerClient) {
@@ -20,6 +21,12 @@ struct AvvisiServerView: View {
                         interruttore("Promemoria 15 minuti prima", \.promemoria_15)
                         interruttore("Riepilogo a giornata finita", \.riepilogo)
                     }
+                    if sessione.multiutente {
+                        Section {
+                            Text("Con gli account gli avvisi arrivano come notifiche della web app (installala dalla Home con Safari). Gli avvisi con ntfy e la prova restano all'amministratore del server.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    } else {
                     Section {
                         Toggle(isOn: Binding(
                             get: { vm.impostazioni?.app_nativa ?? false },
@@ -36,13 +43,14 @@ struct AvvisiServerView: View {
                         .tint(Color.verde)
                         .frame(minHeight: 44)
                     } footer: {
-                        Text("Per far aprire l'app dal tocco su una notifica serve l'intestazione Click: la trovi in Lega, «Come aprire l'app da una notifica ntfy».")
+                        Text("Il server aggiunge da solo il tocco che apre l'app: non devi impostare niente.")
                     }
                     Section {
                         Text("Dispositivi con avvisi web attivi: \(s.dispositivi ?? 0). Canale degli avvisi: \(s.canale == true ? "attivo" : "non configurato"). Con l'Apple ID gratuito l'app nativa non può ricevere notifiche push: gli avvisi del server arrivano con ntfy o dalla web app installata dalla Home.")
                             .font(.footnote).foregroundStyle(.secondary)
                         Button("Manda un avviso di prova") { Task { await vm.provaAvviso() } }.frame(minHeight: 44)
                         if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
+                    }
                     }
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }

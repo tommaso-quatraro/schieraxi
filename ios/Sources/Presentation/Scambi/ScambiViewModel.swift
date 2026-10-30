@@ -41,7 +41,8 @@ final class ScambiViewModel: ViewModelBase {
     var altre: [SquadraLega] { (squadre.dato ?? []).filter { $0.mia != true } }
 
     var indirizzoProposte: String {
-        var p = "/api/scambi/proposte?due=\(due ? "true" : "false")"
+        // Il 2 contro 2 si chiede solo con una squadra scelta (senza, il server risponde 400).
+        var p = "/api/scambi/proposte?due=\(due && con != "Tutte" ? "true" : "false")"
         if con != "Tutte" { p += "&con=\(IndirizzoServer.codifica(con))" }
         return p
     }

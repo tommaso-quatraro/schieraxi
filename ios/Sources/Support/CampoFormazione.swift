@@ -26,7 +26,7 @@ struct PedinaCampo: View {
 
     private var pedina: some View {
         VStack(spacing: 3) {
-            AvatarGiocatore(id: g.id, squadra: g.squadra, indice: nil, dimensione: diametro)
+            AvatarGiocatore(id: g.id, squadra: g.squadra, indice: nil, dimensione: diametro, nome: g.nome)
                 .overlay(Circle().strokeBorder(incerto ? Color.orange : Color.white.opacity(0.0), lineWidth: 3))
                 .overlay(alignment: .topTrailing) {
                     Text(Formato.punti(g.fvAtteso))

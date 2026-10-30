@@ -11,7 +11,12 @@ struct SchermataAccesso: View {
     private enum Campo: Hashable { case nome, password, invito, codice }
 
     @EnvironmentObject private var sessione: SessioneAccount
+    @Environment(\.scenePhase) private var fase
     @AppStorage("indirizzo") private var indirizzo = ""
+    /// Un solo invio alla volta, anche con due tocchi ravvicinati (prima che la sessione faccia in tempo a dire «in corso»).
+    @State private var inInvio = false
+    /// Dopo un «troppi tentativi» (429): fino a quando aspettare. Il pulsante si riaccende da solo a zero.
+    @State private var attesaFinoA: Date?
     @State private var scheda: Scheda
     @State private var nome = ""
     @State private var password = ""
@@ -31,7 +36,13 @@ struct SchermataAccesso: View {
 
     // MARK: validazione
 
-    private var problemaNome: String? { nome.isEmpty ? nil : RegoleAccount.problemaNome(nome) }
+    private var problemaNome: String? {
+        if nome.isEmpty { return nil }
+        if scheda != .accedi, let spazi = RegoleAccount.problemaSpaziNome(nome) { return spazi }
+        return RegoleAccount.problemaNome(nome)
+    }
+
+    private var nomeOk: Bool { !nome.isEmpty && problemaNome == nil }
     private var problemaPassword: String? {
         guard scheda != .accedi, !password.isEmpty else { return nil }
         return RegoleAccount.problemaPassword(password, nome: nome)
@@ -42,10 +53,10 @@ struct SchermataAccesso: View {
         case .accedi:
             return !RegoleAccount.pulisciNome(nome).isEmpty && !password.isEmpty
         case .registrati:
-            return RegoleAccount.problemaNome(nome) == nil && RegoleAccount.problemaPassword(password, nome: nome) == nil
+            return nomeOk && RegoleAccount.problemaPassword(password, nome: nome) == nil
                 && !invito.trimmingCharacters(in: .whitespaces).isEmpty
         case .recupera:
-            return RegoleAccount.problemaNome(nome) == nil && !codice.trimmingCharacters(in: .whitespaces).isEmpty
+            return nomeOk && !codice.trimmingCharacters(in: .whitespaces).isEmpty
                 && RegoleAccount.problemaPassword(password, nome: nome) == nil
         }
     }
@@ -98,6 +109,19 @@ struct SchermataAccesso: View {
         .scrollDismissesKeyboard(.interactively)
         .background(Sfondo())
         .animation(Tema.morbida, value: errore)
+        .schermoProtetto()
+        // Con l'app in secondo piano (o al ritorno) password e codici scritti si cancellano: non restano in memoria dei campi.
+        .onChange(of: fase) { _, nuova in
+            if nuova == .background { password = ""; codice = "" }
+        }
+        // Solo per le fotografie (-DEMO_ACCESSO rete | limite | non-valido): prova da sola ad accedere per mostrare l'errore.
+        .task {
+            guard Demo.accessoAutomatico else { return }
+            nome = "mister.rossi"
+            password = "Tre-Quarti-Dieci"
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            await invia()
+        }
         .sheet(item: Binding(get: { codiceNuovo.map(CodiceDaSalvare.init) }, set: { if $0 == nil { codiceNuovo = nil } })) { c in
             NavigationStack {
                 CodiceRecuperoView(codice: c.codice, titolo: "Salva il nuovo codice", testoPulsante: "Torna all'accesso") {
@@ -132,6 +156,7 @@ struct SchermataAccesso: View {
                     withAnimation(Tema.molla) { scheda = s }
                     errore = nil
                     messaggio = nil
+                    password = ""   // passando da una scheda all'altra la password scritta non resta
                 } label: {
                     Text(s.rawValue)
                         .font(.subheadline.weight(.semibold))
@@ -219,20 +244,32 @@ struct SchermataAccesso: View {
     // MARK: azione
 
     private var pulsante: some View {
-        Button {
-            Task { await invia() }
-        } label: {
-            Text(sessione.inCorso ? "Un attimo…" : titoloPulsante)
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+        TimelineView(.periodic(from: Date(), by: 1)) { contesto in
+            let resto = attesaFinoA.map { AttesaRiprova.secondiRimasti(fino: $0, adesso: contesto.date) } ?? 0
+            Button {
+                Task { await invia() }
+            } label: {
+                Text(resto > 0 ? "Riprova tra \(resto) s" : (inInvio || sessione.inCorso ? "Un attimo…" : titoloPulsante))
+                    .font(.headline)
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+            }
+            .pulsanteVetro(prominente: true)
+            .disabled(!pronto || inInvio || sessione.inCorso || resto > 0)
+            .sensoryFeedback(trigger: errore) { _, nuovo in nuovo != nil ? .error : nil }
+            .onChange(of: resto) { _, nuovo in
+                // a zero il conto alla rovescia si ferma e il messaggio di attesa sparisce
+                if nuovo == 0, attesaFinoA != nil { attesaFinoA = nil; errore = nil }
+            }
         }
-        .pulsanteVetro(prominente: true)
-        .disabled(!pronto || sessione.inCorso)
-        .sensoryFeedback(trigger: errore) { _, nuovo in nuovo != nil ? .error : nil }
     }
 
     private func invia() async {
-        guard pronto, !sessione.inCorso else { return }
+        guard pronto, !inInvio, !sessione.inCorso else { return }
+        if let fine = attesaFinoA, AttesaRiprova.secondiRimasti(fino: fine) > 0 { return }
+        inInvio = true
+        defer { inInvio = false }
+        let schedaInvio = scheda
         errore = nil
         messaggio = nil
         focus = nil
@@ -253,6 +290,11 @@ struct SchermataAccesso: View {
                 }
             }
         } catch {
+            // Se nel frattempo si è cambiata scheda, l'errore non c'entra più con quello che si vede.
+            guard schedaInvio == scheda else { return }
+            if case ErroreApi.troppiTentativi(_, let attesa) = error, let attesa, attesa > 0 {
+                attesaFinoA = Date().addingTimeInterval(TimeInterval(min(attesa, 3600)))
+            }
             errore = Self.testoErrore(error)
         }
     }
@@ -261,8 +303,11 @@ struct SchermataAccesso: View {
     static func testoErrore(_ errore: Error) -> String {
         if let e = errore as? ErroreApi {
             switch e {
-            case .rete, .timeout: return "Il server non risponde. Controlla che rete privata sia acceso e riprova."
+            case .rete: return "Non riesco a raggiungere il server. Controlla che rete privata sia acceso e riprova."
+            case .timeout: return "Il server ci mette troppo a rispondere. Riprova tra poco."
             case .server(let m): return m
+            case .indirizzoNonValido: return "L'indirizzo del server non è valido: deve cominciare con https://"
+            case .risposta(let codice): return "Il server ha un problema (errore \(codice)). Riprova tra poco."
             default: return e.errorDescription ?? "Qualcosa non va. Riprova."
             }
         }

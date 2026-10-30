@@ -19,8 +19,19 @@ enum IndirizzoServer {
     /// Solo indirizzi https:// sono accettati (il traffico passa da rete privata ma il server parla in HTTPS).
     static func valido(_ testo: String) -> Bool {
         let t = testo.trimmingCharacters(in: .whitespaces)
-        guard t.lowercased().hasPrefix("https://"), let url = URL(string: t), url.host != nil else { return false }
-        return true
+        guard let url = URL(string: t), let host = url.host?.lowercased(), !host.isEmpty else { return false }
+        // niente «utente:password@» dentro l'indirizzo
+        if url.user != nil || url.password != nil { return false }
+        switch url.scheme?.lowercased() {
+        case "https": return true
+        case "http": return eLocale(host)   // il testo in chiaro solo verso questo stesso computer (prove), mai verso la rete
+        default: return false
+        }
+    }
+
+    /// localhost, 127.0.0.1, ::1: il traffico non esce dal computer.
+    static func eLocale(_ host: String) -> Bool {
+        ["localhost", "127.0.0.1", "::1", "[::1]"].contains(host.lowercased())
     }
 
     /// Indirizzo in uso: quello scritto nella schermata Lega (se valido, senza «/» finali), altrimenti quello della compilazione.
@@ -140,13 +151,17 @@ struct ServerHTTP: ServerClient {
 
     var indirizzo: String { IndirizzoServer.attuale }
 
-    private func costruisci(_ percorso: String) throws -> URLRequest {
-        guard let url = URL(string: indirizzo + percorso) else { throw ErroreApi.indirizzoNonValido }
-        // Gli scambi (soprattutto 2 contro 2) fanno molti calcoli sul server: più tempo.
-        var r = URLRequest(url: url, timeoutInterval: percorso.hasPrefix("/api/scambi") ? 90 : 25)
+    private func costruisci(_ percorso: String, token: String?) throws -> URLRequest {
+        let base = indirizzo
+        // Il token e le password non viaggiano mai in chiaro: solo https (o questo stesso computer, per le prove).
+        guard IndirizzoServer.valido(base), let url = URL(string: base + percorso) else { throw ErroreApi.indirizzoNonValido }
+        // Gli scambi (soprattutto 2 contro 2) fanno molti calcoli sul server: più tempo. Accesso e account: 20 secondi,
+        // poi un messaggio chiaro e si può riprovare.
+        let attesa: TimeInterval = percorso.hasPrefix("/api/scambi") ? 90 : (percorso.hasPrefix("/api/account/") ? 20 : 25)
+        var r = URLRequest(url: url, timeoutInterval: attesa)
         r.setValue("1", forHTTPHeaderField: "X-Fanta")
         // Account: l'app nativa manda il token come «Bearer» (niente cookie). Il token non si scrive mai nei log.
-        if let token = archivioToken.leggi(server: indirizzo), !token.isEmpty {
+        if let token, !token.isEmpty {
             r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return r
@@ -173,21 +188,26 @@ struct ServerHTTP: ServerClient {
     /// Se il server ha risposto con un errore, lo lancia con il suo messaggio (es. «Indica la tua squadra nella sezione Lega»).
     /// 401 e 429 hanno errori a parte (accesso richiesto, troppi tentativi con l'attesa); un 401 fuori dalle schermate di accesso
     /// avvisa l'app (notifica `.accessoRichiesto`): la sessione è finita e si torna alla schermata di accesso.
-    private func controlla(_ risposta: URLResponse, _ dati: Data, percorso: String) throws {
+    private func controlla(_ risposta: URLResponse, _ dati: Data, percorso: String, token: String?) throws {
         guard let h = risposta as? HTTPURLResponse, !(200..<300).contains(h.statusCode) else { return }
         let messaggio = messaggioServer(dati, h.statusCode)
         switch h.statusCode {
         case 401:
             if !Self.eDiAccesso(percorso) {
-                let indirizzoPerso = indirizzo
+                // Si dice quale token ha fallito (solo un'impronta): se nel frattempo si è fatto un nuovo accesso, un 401 in ritardo
+                // di una richiesta vecchia non deve buttare fuori la sessione nuova.
+                var info: [String: Any] = ["server": indirizzo, "percorso": percorso]
+                if let token { info["impronta"] = token.hashValue }
                 DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .accessoRichiesto, object: nil, userInfo: ["server": indirizzoPerso])
+                    NotificationCenter.default.post(name: .accessoRichiesto, object: nil, userInfo: info)
                 }
             }
             throw ErroreApi.accessoRichiesto(messaggio)
         case 429:
             throw ErroreApi.troppiTentativi(messaggio, riprovaTra: Self.secondi(h))
         default:
+            // Una pagina HTML o un testo qualsiasi al posto del JSON di errore (proxy, server sbagliato): niente messaggio del server.
+            if messaggio == "errore \(h.statusCode)" { throw ErroreApi.risposta(h.statusCode) }
             throw ErroreApi.server(messaggio)
         }
     }
@@ -205,7 +225,8 @@ struct ServerHTTP: ServerClient {
     func richiesta(_ metodo: String, _ percorso: String, corpo: Data?) async throws -> Data {
         var tentativiDiCalcolo = 0
         while true {
-            var r = try costruisci(percorso)
+            let token = archivioToken.leggi(server: indirizzo)
+            var r = try costruisci(percorso, token: token)
             r.httpMethod = metodo
             if let corpo {
                 r.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -224,7 +245,7 @@ struct ServerHTTP: ServerClient {
                     try await Task.sleep(nanoseconds: UInt64(max(0, attesa) * 1_000_000_000))
                     continue
                 }
-                try controlla(risposta, dati, percorso: percorso)
+                try controlla(risposta, dati, percorso: percorso, token: token)
                 return dati
             } catch {
                 throw traduci(error)
@@ -233,7 +254,8 @@ struct ServerHTTP: ServerClient {
     }
 
     func carica(_ percorso: String, nome: String, dati: Data, tipo: String) async throws -> Data {
-        var r = try costruisci(percorso)
+        let token = archivioToken.leggi(server: indirizzo)
+        var r = try costruisci(percorso, token: token)
         r.httpMethod = "POST"
         r.timeoutInterval = 120
         let confine = "Fanta-\(UUID().uuidString)"
@@ -248,7 +270,7 @@ struct ServerHTTP: ServerClient {
         corpo.append(Data("\r\n--\(confine)--\r\n".utf8))
         do {
             let (risposta, resp) = try await sessione.upload(for: r, from: corpo)
-            try controlla(resp, risposta, percorso: percorso)
+            try controlla(resp, risposta, percorso: percorso, token: token)
             return risposta
         } catch {
             throw traduci(error)
@@ -281,11 +303,14 @@ struct FinteServer: ServerClient {
     var binari: (@Sendable (String) -> Data?)? = nil
     /// Indirizzi (per prefisso) a cui il server finto risponde con un errore del server, col messaggio dato (per le demo).
     var errori: [String: String] = [:]
+    /// Come `errori`, ma con un errore preciso (rete, limite di tentativi...): per le demo degli stati d'errore.
+    var fallimenti: [String: ErroreApi] = [:]
     /// L'indirizzo che dichiara (la cache su disco è per indirizzo: una demo con dati diversi ne usa uno suo).
     var indirizzoFinto = "https://finto.invalid"
     var indirizzo: String { indirizzoFinto }
 
     func richiesta(_ metodo: String, _ percorso: String, corpo: Data?) async throws -> Data {
+        if let chiave = fallimenti.keys.first(where: { percorso.hasPrefix($0) }), let errore = fallimenti[chiave] { throw errore }
         if let chiave = errori.keys.first(where: { percorso.hasPrefix($0) }), let messaggio = errori[chiave] { throw ErroreApi.server(messaggio) }
         if metodo == "GET", let dati = binari?(percorso) { return dati }
         // Si sceglie la risposta con il prefisso più lungo che corrisponde.

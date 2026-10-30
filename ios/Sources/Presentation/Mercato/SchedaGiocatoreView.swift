@@ -99,7 +99,7 @@ struct GiocatoreCorpo: View {
         let tinta = Color(esadecimale: ColoriSquadra.esadecimali(squadra).0)
         return VStack(spacing: 14) {
             HStack(spacing: 16) {
-                AvatarGiocatore(id: c.id, squadra: squadra, indice: p?.indice, dimensione: 96)
+                AvatarGiocatore(id: c.id, squadra: squadra, indice: p?.indice, dimensione: 96, nome: c.nome)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)
                     HStack(spacing: 6) {

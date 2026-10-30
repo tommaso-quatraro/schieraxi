@@ -73,9 +73,19 @@ final class FormazioneViewModel: ViewModelBase {
         }
         guard squadraVista == nil, manuale == nil else { return }   // c'è già una modifica in corso: non si sovrascrive
         let salvata: SceltaSalvata? = try? await server.get("/api/scelta?giornata=\(f.giornata)")
-        if let salvata, manuale == nil, squadraVista == nil, salvata.titolari.count == 11 {
-            manuale = salvata.titolari
-            await valuta(salva: false)
+        guard let salvata, manuale == nil, squadraVista == nil else { return }
+        // Una scelta che non vale più (rosa cambiata: non sono 11 giocatori della rosa) si cancella, come fa la web app.
+        let rosa = f.schede ?? [:]
+        let valida = salvata.titolari.count == 11 && salvata.titolari.allSatisfy { rosa[String($0)] != nil }
+        guard valida else {
+            try? await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)")
+            return
+        }
+        manuale = salvata.titolari
+        await valuta(salva: false)
+        if let m = messaggio, m.contains("Servono 11") {
+            try? await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)")
+            azzeraManuale()
         }
     }
 

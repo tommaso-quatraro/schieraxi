@@ -120,7 +120,7 @@ struct RigaRosa: View {
         let p = g.previsione
         Button { if let id = g.id { apri(id) } } label: {
             HStack(spacing: 12) {
-                AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? p?.squadra, indice: p?.indice, dimensione: 44)
+                AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? p?.squadra, indice: p?.indice, dimensione: 44, nome: g.nome)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         BadgeRuolo(ruolo: g.ruolo ?? "?", piccolo: true)

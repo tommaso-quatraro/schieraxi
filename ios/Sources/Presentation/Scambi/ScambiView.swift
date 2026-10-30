@@ -43,7 +43,9 @@ struct ScambiView: View {
             .ricercaGlobale()
             .navigationDestination(for: PaginaScambi.self) { _ in AnalizzaScambioView(server: vm.server) }
             .task { await vm.caricaSquadre() }
-            .task(id: vm.indirizzoProposte) { await vm.caricaProposte() }
+            // Niente ricerca automatica: con gli account ogni ricerca conta tra quelle del giorno. Si cerca con il pulsante.
+            // In modalità demo (fotografie) sì, per vedere le proposte.
+            .task { if Demo.attivo, vm.proposte.dato == nil { await vm.caricaProposte() } }
             .onAppear { vm.caricaArchivio() }
             .sheet(item: $vm.selezionata) { p in
                 NavigationStack {
@@ -69,6 +71,17 @@ struct ScambiView: View {
                 ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
             }
             Toggle("Cerca anche 2 contro 2 (più lento)", isOn: $vm.due).tint(Color.verde)
+                .disabled(vm.con == "Tutte")
+                .onChange(of: vm.con) { _, nuova in if nuova == "Tutte" { vm.due = false } }
+            if vm.con == "Tutte" {
+                Text("Per il 2 contro 2 scegli una squadra.").font(.caption).foregroundStyle(.secondary)
+            }
+            Button { Task { await vm.caricaProposte() } } label: {
+                Label(vm.proposte.inCorso ? "Cerco…" : "Cerca scambi", systemImage: "magnifyingglass")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .pulsanteVetro(prominente: true)
+            .disabled(vm.proposte.inCorso)
             NavigationLink(value: PaginaScambi.analizza) {
                 Label("Analizza uno scambio a mano", systemImage: "slider.horizontal.3").frame(minHeight: 44)
             }

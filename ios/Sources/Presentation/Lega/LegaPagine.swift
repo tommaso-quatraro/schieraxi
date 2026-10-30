@@ -206,6 +206,7 @@ struct AspettoView: View {
     @AppStorage("tema") private var tema = "auto"
     @AppStorage("densita") private var densita = "comoda"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
+    @AppStorage("fotoGiocatori") private var fotoGiocatori = true
     @AppStorage("sezioneAvvio") private var sezioneAvvio = "ultima"
 
     var body: some View {
@@ -237,6 +238,11 @@ struct AspettoView: View {
                     .pickerStyle(.segmented)
                     Text("Compatta stringe i margini delle schede: ci sta più roba sullo schermo. Le aree di tocco restano grandi.")
                         .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section {
+                    Toggle("Foto dei giocatori", isOn: $fotoGiocatori).tint(Color.verde).frame(minHeight: 44)
+                } footer: {
+                    Text("Accese: il volto ritagliato di chi ce l'ha, sullo stesso cerchio con i colori della squadra; chi non ha la foto ha la stessa sagoma con le iniziali. Spente: tutti con la sagoma, e l'app non scarica foto.")
                 }
                 Section {
                     Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)

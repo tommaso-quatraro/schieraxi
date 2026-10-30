@@ -37,13 +37,9 @@ enum DemoImmagini {
         return UIGraphicsImageRenderer(size: rect.size, format: formato).pngData { contesto in cosa(contesto.cgContext, rect) }
     }
 
-    /// Mezzo busto stilizzato su fondo colorato.
+    /// Mezzo busto stilizzato SENZA sfondo (PNG trasparente), come i ritagli che manda il server: volto e spalle, sempre la stessa inquadratura.
     static func foto(_ id: Int) -> Data? {
-        disegna(lato: 240, trasparente: false) { c, r in
-            tinta("sfondo\(id)", luminosita: 0.35).setFill()
-            c.fill(r)
-            UIColor.white.withAlphaComponent(0.12).setFill()
-            c.fillEllipse(in: CGRect(x: -40, y: -60, width: 220, height: 220))
+        disegna(lato: 240, trasparente: true) { c, r in
             // spalle e maglia
             tinta("maglia\(id)").setFill()
             c.fillEllipse(in: CGRect(x: 20, y: 150, width: 200, height: 160))

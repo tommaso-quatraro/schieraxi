@@ -132,6 +132,7 @@ struct FoglioCambiaPassword: View {
             }
         }
         .navigationTitle("Cambia password")
+        .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
     }
@@ -184,6 +185,7 @@ struct FoglioNuovoCodice: View {
             }
         }
         .navigationTitle("Codice di recupero")
+        .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { if codice == nil { Button("Annulla") { chiudi() } } }
@@ -232,6 +234,7 @@ struct FoglioElimina: View {
             }
         }
         .navigationTitle("Elimina l'account")
+        .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
     }

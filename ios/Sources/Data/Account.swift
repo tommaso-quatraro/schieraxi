@@ -55,8 +55,15 @@ enum RegoleAccount {
         return nil
     }
 
+    /// Spazi (o a capo) prima o dopo il testo: di solito un errore di copia e incolla. Il nome utente si sistema da solo al login,
+    /// ma quando si crea l'account si chiede di toglierli, così si sa con certezza cosa si è scelto.
+    static func problemaSpaziNome(_ testo: String) -> String? {
+        testo != testo.trimmingCharacters(in: .whitespacesAndNewlines) ? "Togli gli spazi prima e dopo il nome utente." : nil
+    }
+
     static func problemaPassword(_ testo: String, nome: String = "") -> String? {
         if testo.isEmpty { return "Scrivi la password." }
+        if testo != testo.trimmingCharacters(in: .whitespacesAndNewlines) { return "La password non può cominciare o finire con uno spazio." }
         if testo.count < passwordMinima { return "Servono almeno \(passwordMinima) caratteri (ora sono \(testo.count))." }
         if testo.count > passwordMassima { return "Massimo \(passwordMassima) caratteri." }
         if testo.allSatisfy(\.isNumber) { return "Solo numeri è troppo facile: aggiungi delle lettere." }
@@ -98,6 +105,13 @@ private struct CorpoSoloPassword: Encodable {
     let password: String
 }
 
+/// Il conto alla rovescia dopo un «troppi tentativi» (429): quanti secondi mancano, e si ferma a zero.
+enum AttesaRiprova {
+    static func secondiRimasti(fino: Date, adesso: Date = Date()) -> Int {
+        max(0, Int(fino.timeIntervalSince(adesso).rounded(.up)))
+    }
+}
+
 /// Cosa si cancella dal telefono quando si esce da un account (o la sessione finisce): copie su disco delle risposte e delle immagini,
 /// immagini in memoria, ricordi dell'aggiornamento in background, giocatori osservati in Spotlight, promemoria in attesa.
 /// Così chi entra dopo non vede niente di chi c'era prima.
@@ -108,9 +122,12 @@ enum DatiLocali {
         Immagini.condivise.azzera()
         let memoria = UserDefaults.standard
         for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto"] { memoria.removeObject(forKey: chiave) }
+        ArchivioScambi.svuota(memoria)
         if !Demo.attivo {
             CSSearchableIndex.default().deleteAllSearchableItems { _ in }
-            UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+            let centro = UNUserNotificationCenter.current()
+            centro.removeAllPendingNotificationRequests()
+            centro.removeAllDeliveredNotifications()
         }
     }
 }
@@ -126,6 +143,23 @@ final class SessioneAccount: ObservableObject {
     /// Cambia a ogni accesso e a ogni uscita: l'app ricostruisce le schermate (e i loro dati) da zero.
     @Published private(set) var generazione = 0
     @Published private(set) var inCorso = false
+    /// Un avviso da far vedere in Lega: per esempio il Keychain che non ha salvato l'accesso.
+    @Published private(set) var avviso: String?
+
+    /// Errori dell'app (non del server) durante accesso e account.
+    enum Errore: LocalizedError, Equatable {
+        case occupato
+        case serverNonValido
+        case rispostaNonValida
+
+        var errorDescription: String? {
+            switch self {
+            case .occupato: return "Un attimo: sto ancora lavorando alla richiesta di prima."
+            case .serverNonValido: return "Questo non sembra un server di SchieraXI. Controlla l'indirizzo del server."
+            case .rispostaNonValida: return "Il server ha mandato una risposta strana: per sicurezza non entro. Controlla l'indirizzo del server."
+            }
+        }
+    }
 
     private let server: any ServerClient
     private let archivio: any ArchivioToken
@@ -135,6 +169,8 @@ final class SessioneAccount: ObservableObject {
 
     private static let chiaveMultiutente = "account.multiutente"
     private static let chiaveUtente = "account.utente"
+    /// L'indirizzo del server a cui si riferisce l'ultimo accesso (non è un segreto): se cambia, il token vecchio si butta.
+    private static let chiaveIndirizzo = "account.indirizzo"
 
     init(server: any ServerClient = ServerCorrente.condiviso,
          archivio: any ArchivioToken = Accesso.archivio,
@@ -147,9 +183,11 @@ final class SessioneAccount: ObservableObject {
         let iniziale = Self.statoIniziale(server: server.indirizzo, archivio: archivio, memoria: memoria)
         stato = iniziale
         multiutente = iniziale != .nonRichiesto
+        if memoria.string(forKey: Self.chiaveIndirizzo) == nil { memoria.set(server.indirizzo, forKey: Self.chiaveIndirizzo) }
         osservatore = NotificationCenter.default.addObserver(forName: .accessoRichiesto, object: nil, queue: .main) { [weak self] n in
             let indirizzo = n.userInfo?["server"] as? String
-            MainActor.assumeIsolated { self?.sessioneFinita(daServer: indirizzo) }
+            let impronta = n.userInfo?["impronta"] as? Int
+            MainActor.assumeIsolated { self?.sessioneFinita(daServer: indirizzo, impronta: impronta) }
         }
         // Solo per le fotografie (-DEMO_ACCESSO <scenario>): lo stato si decide a mano, senza server.
         if let scenario = Demo.accesso {
@@ -186,6 +224,10 @@ final class SessioneAccount: ObservableObject {
         return nil
     }
 
+    /// Le funzioni dell'amministratore (aggiornare i dati del server, lo stato dei dati): sempre senza account, solo per
+    /// l'amministratore con gli account (agli altri il server risponde 403).
+    var puoAmministrare: Bool { !multiutente || (utente?.amministratore ?? false) }
+
     // MARK: stato
 
     /// Chiede al server chi sono (`GET /api/account/me`) e allinea lo stato. Se il server non risponde si resta dov'eravamo.
@@ -201,7 +243,7 @@ final class SessioneAccount: ObservableObject {
             }
         } catch ErroreApi.accessoRichiesto {
             // Gli account ci sono e la sessione no (scaduta, chiusa da un altro dispositivo, o mai fatta).
-            sessioneFinita(daServer: server.indirizzo)
+            sessioneFinita(daServer: server.indirizzo, impronta: nil)
         } catch {
             // Server spento o rete privata non attivo: l'app resta com'è (con i dati salvati).
         }
@@ -210,6 +252,17 @@ final class SessioneAccount: ObservableObject {
     /// Il server è cambiato (Lega > Server): si riparte dallo stato di quel server.
     func cambiaServer() async {
         if Demo.accesso != nil { return }
+        // Un altro server: il token del vecchio non deve MAI essere mandato al nuovo. Si butta, con i dati locali del vecchio.
+        let attuale = server.indirizzo
+        if let vecchio = memoria.string(forKey: Self.chiaveIndirizzo), vecchio != attuale {
+            archivio.cancella(server: vecchio)
+            pulisci()
+            memoria.removeObject(forKey: Self.chiaveUtente)
+            memoria.removeObject(forKey: Self.chiaveMultiutente)
+            memoria.set(attuale, forKey: Self.chiaveIndirizzo)
+            codiceDaMostrare = nil
+            avviso = nil
+        }
         let nuovo = Self.statoIniziale(server: server.indirizzo, archivio: archivio, memoria: memoria)
         if nuovo != stato { generazione += 1 }
         stato = nuovo
@@ -235,9 +288,11 @@ final class SessioneAccount: ObservableObject {
     }
 
     /// Un 401 fuori dall'accesso: il token non vale più. Si butta, si svuotano i dati del telefono e si torna all'accesso.
-    private func sessioneFinita(daServer indirizzo: String?) {
+    private func sessioneFinita(daServer indirizzo: String?, impronta: Int?) {
         if let indirizzo, indirizzo != server.indirizzo { return }   // un'altra richiesta, di un server che non è più in uso
         if stato == .daAccedere { return }
+        // Un 401 di una richiesta fatta con un token che non è più quello di adesso (nel frattempo c'è stato un nuovo accesso): si ignora.
+        if let impronta, archivio.leggi(server: server.indirizzo)?.hashValue != impronta { return }
         chiudiLocale()
     }
 
@@ -249,19 +304,38 @@ final class SessioneAccount: ObservableObject {
         memoria.set(true, forKey: Self.chiaveMultiutente)
         memoria.removeObject(forKey: Self.chiaveUtente)
         codiceDaMostrare = nil
+        avviso = nil
         stato = .daAccedere
         generazione += 1
     }
 
     // MARK: azioni
 
-    /// Salva il token ricevuto e passa a «connesso». I dati locali di una sessione precedente si cancellano.
-    private func conferma(_ r: RispostaAccount) throws {
-        guard let token = r.token, !token.isEmpty, let utente = r.utente else {
-            throw ErroreApi.dati("La risposta del server non contiene l'accesso.")
+    /// Una sola richiesta di account alla volta (doppio tocco, due schermate): la seconda si rifiuta con un messaggio.
+    private func inizia() throws {
+        if inCorso { throw Errore.occupato }
+        inCorso = true
+    }
+
+    /// Una risposta che non si può leggere (HTML al posto del JSON, forma strana) non è un errore del server: probabilmente l'indirizzo è sbagliato.
+    private func conTraduzione<T>(_ lavoro: () async throws -> T) async throws -> T {
+        do {
+            return try await lavoro()
+        } catch ErroreApi.dati {
+            throw Errore.serverNonValido
         }
+    }
+
+    /// Salva il token ricevuto e passa a «connesso». I dati locali di una sessione precedente si cancellano.
+    /// Un server ostile potrebbe mandare qualsiasi cosa: token, nome e codice si controllano prima di usarli.
+    private func conferma(_ r: RispostaAccount) throws {
+        guard let token = r.token, let utente = r.utente else { throw Errore.serverNonValido }
+        guard Accesso.tokenValido(token), utente.nomeUtente.count <= 100, utente.ruolo.count <= 40 else { throw Errore.rispostaNonValida }
+        if let codice = r.codiceRecupero, !Accesso.codiceRecuperoValido(codice) { throw Errore.rispostaNonValida }
         pulisci()
-        archivio.salva(token, server: server.indirizzo)
+        let alSicuro = archivio.salva(token, server: server.indirizzo)
+        avviso = alSicuro ? nil : "Non riesco a salvare l'accesso in modo sicuro su questo telefono: funziona finché l'app è aperta, poi dovrai accedere di nuovo."
+        memoria.set(server.indirizzo, forKey: Self.chiaveIndirizzo)
         multiutente = true
         memoria.set(true, forKey: Self.chiaveMultiutente)
         if let dati = try? JSONEncoder().encode(utente) { memoria.set(dati, forKey: Self.chiaveUtente) }
@@ -270,35 +344,38 @@ final class SessioneAccount: ObservableObject {
     }
 
     func accedi(nomeUtente: String, password: String) async throws {
-        inCorso = true
+        try inizia()
         defer { inCorso = false }
-        let r: RispostaAccount = try await server.posta("POST", "/api/account/accedi", CorpoAccesso(nomeUtente: RegoleAccount.pulisciNome(nomeUtente), password: password))
+        let corpo = CorpoAccesso(nomeUtente: RegoleAccount.pulisciNome(nomeUtente), password: password)
+        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/accedi", corpo) }
         try conferma(r)
     }
 
     /// Crea l'account con un invito. Il codice di recupero arriva una volta sola: finisce in `codiceDaMostrare`.
     func registra(nomeUtente: String, password: String, invito: String) async throws {
-        inCorso = true
+        try inizia()
         defer { inCorso = false }
         let corpo = CorpoRegistrazione(nomeUtente: RegoleAccount.pulisciNome(nomeUtente), password: password,
                                        invito: invito.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
-        let r: RispostaAccount = try await server.posta("POST", "/api/account/registra", corpo)
+        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/registra", corpo) }
         try conferma(r)
         codiceDaMostrare = r.codiceRecupero
     }
 
     /// Nuova password con il codice di recupero. Restituisce il NUOVO codice di recupero (il vecchio non vale più), da far salvare.
     func recupera(nomeUtente: String, codice: String, nuovaPassword: String) async throws -> String? {
-        inCorso = true
+        try inizia()
         defer { inCorso = false }
         let corpo = CorpoRecupero(nomeUtente: RegoleAccount.pulisciNome(nomeUtente),
                                   codice: codice.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(), nuova: nuovaPassword)
-        let r: RispostaAccount = try await server.posta("POST", "/api/account/recupero", corpo)
+        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/recupero", corpo) }
+        if let nuovo = r.codiceRecupero, !Accesso.codiceRecuperoValido(nuovo) { throw Errore.rispostaNonValida }
         return r.codiceRecupero
     }
 
     /// Esce da questo telefono (il server chiude la sessione, se risponde) e svuota i dati locali.
     func esci() async {
+        // Uscire non si rifiuta mai, nemmeno se c'è un'altra richiesta in corso: la richiesta al server è facoltativa.
         inCorso = true
         defer { inCorso = false }
         _ = try? await server.corpoJSON("POST", "/api/account/esci", [String: String]())
@@ -307,30 +384,30 @@ final class SessioneAccount: ObservableObject {
 
     /// Chiude le sessioni di tutti i dispositivi (compreso questo).
     func esciDaTutti() async throws {
-        inCorso = true
+        try inizia()
         defer { inCorso = false }
         _ = try await server.corpoJSON("POST", "/api/account/esci-da-tutti", [String: String]())
         chiudiLocale()
     }
 
     func cambiaPassword(attuale: String, nuova: String) async throws {
-        inCorso = true
+        try inizia()
         defer { inCorso = false }
         _ = try await server.corpoJSON("POST", "/api/account/cambia-password", CorpoCambioPassword(attuale: attuale, nuova: nuova))
     }
 
     /// Un nuovo codice di recupero al posto del vecchio (serve la password).
     func nuovoCodiceRecupero(password: String) async throws -> String {
-        inCorso = true
+        try inizia()
         defer { inCorso = false }
-        let r: RispostaAccount = try await server.posta("POST", "/api/account/codice-recupero", CorpoSoloPassword(password: password))
-        guard let codice = r.codiceRecupero, !codice.isEmpty else { throw ErroreApi.dati("Il server non ha mandato il codice.") }
+        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/codice-recupero", CorpoSoloPassword(password: password)) }
+        guard let codice = r.codiceRecupero, Accesso.codiceRecuperoValido(codice) else { throw Errore.rispostaNonValida }
         return codice
     }
 
     /// Cancella l'account e tutti i suoi dati sul server (non si può annullare), poi svuota il telefono.
     func elimina(password: String) async throws {
-        inCorso = true
+        try inizia()
         defer { inCorso = false }
         _ = try await server.corpoJSON("POST", "/api/account/elimina", CorpoSoloPassword(password: password))
         chiudiLocale()

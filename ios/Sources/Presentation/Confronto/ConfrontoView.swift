@@ -56,7 +56,7 @@ struct ConfrontoView: View {
 
     private func colonna(_ g: Giocatore, scelto: Bool) -> some View {
         VStack(spacing: 6) {
-            AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64)
+            AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome)
             Text(g.nome).font(.headline).multilineTextAlignment(.center).lineLimit(2)
             Text("\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")")
                 .font(.caption).foregroundStyle(.secondary)

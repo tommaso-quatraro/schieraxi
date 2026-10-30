@@ -9,6 +9,8 @@ struct CodiceRecuperoView: View {
     let alConfermare: () -> Void
     @State private var salvato = false
     @State private var copiato = false
+    /// Durante una registrazione dello schermo (o AirPlay) il codice non si mostra.
+    @StateObject private var schermo = StatoRegistrazioneSchermo()
 
     var body: some View {
         ScrollView {
@@ -24,14 +26,21 @@ struct CodiceRecuperoView: View {
                     .multilineTextAlignment(.center)
 
                 Carta {
-                    Text(codice)
-                        .font(.system(.title, design: .monospaced).weight(.bold))
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .textSelection(.enabled)
-                        .accessibilityLabel("Codice di recupero: \(codice.map(String.init).joined(separator: " "))")
+                    if schermo.registrato {
+                        Label("Codice nascosto: lo schermo è in registrazione.", systemImage: "eye.slash")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text(codice)
+                            .font(.system(.title, design: .monospaced).weight(.bold))
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .textSelection(.enabled)
+                            .privacySensitive()
+                            .accessibilityLabel("Codice di recupero: \(codice.map(String.init).joined(separator: " "))")
+                    }
                 }
 
                 HStack(spacing: 12) {
@@ -72,5 +81,6 @@ struct CodiceRecuperoView: View {
         }
         .background(Sfondo())
         .navigationBarTitleDisplayMode(.inline)
+        .schermoProtetto()
     }
 }

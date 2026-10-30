@@ -31,7 +31,7 @@ struct ConfiguraLegaVista: View {
             }
             .accessibilityElement(children: .combine)
         } description: {
-            Text("Mister, qui non ci sono ancora le rose. Importa il file della tua lega: poi SchieraXI sa chi schierare. Regole e nome della squadra si sistemano dalla web app, nel browser.")
+            Text("Mister, qui non ci sono ancora le rose. Importa il file della tua lega (Excel, CSV o testo): poi scegli la tua squadra in Lega > Squadre e rose e controlla le regole in Lega > Regole.")
         } actions: {
             Button {
                 apriImportazione()

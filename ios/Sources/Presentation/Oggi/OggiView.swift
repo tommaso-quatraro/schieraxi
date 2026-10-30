@@ -219,6 +219,13 @@ struct OggiView: View {
         }
     }
 
+    /// «Dubbio (55%)» come nella web app: per i dubbi, la probabilità di giocare.
+    private func etichettaTipo(_ a: Avviso) -> String {
+        let nome = nomeTipo(a.tipo)
+        if a.tipo == "dubbio", let p = a.pVoto { return "\(nome) (\(Formato.percento(p))%)" }
+        return nome
+    }
+
     private func nomeTipo(_ tipo: String?) -> String {
         switch tipo {
         case "infortunato": return "Infortunato"
@@ -239,15 +246,15 @@ struct OggiView: View {
                         Text(a.nome).font(.headline)
                         Text(ColoriSquadra.sigla(a.squadra)).font(.caption).foregroundStyle(.secondary)
                     }
-                    Text([nomeTipo(a.tipo), a.nota].compactMap { $0 }.joined(separator: ": ")).font(.caption).foregroundStyle(.secondary)
+                    Text([etichettaTipo(a), a.nota].compactMap { $0 }.joined(separator: ": ")).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
-                Capsula(testo: nomeTipo(a.tipo), colore: colore(a.tipo)).accessibilityHidden(true)
+                Capsula(testo: etichettaTipo(a), colore: colore(a.tipo)).accessibilityHidden(true)
             }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(a.nome), \(nomeRuolo(a.ruolo ?? "")), \(nomeTipo(a.tipo))\(a.nota.map { ": " + $0 } ?? "")")
+            .accessibilityLabel("\(a.nome), \(nomeRuolo(a.ruolo ?? "")), \(etichettaTipo(a))\(a.nota.map { ": " + $0 } ?? "")")
         }
         .buttonStyle(.plain)
         .accessibilityHint("Apre la scheda del giocatore")

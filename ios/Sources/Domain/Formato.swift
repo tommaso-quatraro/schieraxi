@@ -26,10 +26,11 @@ enum Formato {
 }
 
 extension Formato {
-    /// Un numero del server come intero, senza rischi: `Int(Double)` va in crash con valori non finiti o enormi.
+    /// Un numero del server come intero ARROTONDATO come la web app (`Math.round`: 155,9 → 156, 4,5 → 5, -2,5 → -2), senza rischi:
+    /// `Int(Double)` va in crash con valori non finiti o enormi.
     static func intero(_ valore: Double?) -> Int {
         guard let valore, valore.isFinite, abs(valore) < 1e15 else { return 0 }
-        return Int(valore)
+        return Int((valore + 0.5).rounded(.down))
     }
 
     /// Difficoltà di una partita (1 facile ... 5 difficile) a parole, anche per VoiceOver.

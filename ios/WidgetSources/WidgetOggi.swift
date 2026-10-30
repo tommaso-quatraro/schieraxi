@@ -94,10 +94,11 @@ struct VistaWidget: View {
 
     private var senzaDati: some View {
         VStack(spacing: 4) {
-            Image(systemName: "wifi.exclamationmark")
-            Text("Nessun dato").font(.caption.bold())
+            Image(systemName: voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
+            Text(voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
             if !accessorio {
-                Text("Apri SchieraXI con rete privata acceso").font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text(voce.accessoRichiesto ? "Apri SchieraXI per accedere" : "Apri SchieraXI con rete privata acceso")
+                    .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
         }
     }
@@ -176,6 +177,6 @@ struct VistaWidget: View {
     }
 
     private func riga(_ r: RiassuntoOggi) -> some View {
-        Label("Fanta \(r.modulo ?? "—"), \(puntiTesto(r)) punti", systemImage: "sportscourt")
+        Label("SchieraXI \(r.modulo ?? "—"), \(puntiTesto(r)) punti", systemImage: "sportscourt")
     }
 }

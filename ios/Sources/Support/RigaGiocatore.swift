@@ -132,7 +132,7 @@ struct RigaGiocatore: View {
     }
 
     private var avatar: some View {
-        AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.assente == true ? nil : g.indice, dimensione: min(lato, 64))
+        AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.assente == true ? nil : g.indice, dimensione: min(lato, 64), nome: g.nome)
     }
 
     private var contenuto: some View {

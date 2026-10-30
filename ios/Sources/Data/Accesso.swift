@@ -12,7 +12,9 @@ extension Notification.Name {
 /// Dove si tiene il token. Due implementazioni: il Keychain vero e una in memoria (demo e test).
 protocol ArchivioToken: Sendable {
     func leggi(server: String) -> String?
-    func salva(_ token: String, server: String)
+    /// true se il token è stato messo al sicuro nel Keychain; false se iOS l'ha rifiutato (Keychain pieno, non permesso...):
+    /// in quel caso il token vive solo in memoria, fino alla chiusura dell'app (e chi chiama lo dice all'utente).
+    @discardableResult func salva(_ token: String, server: String) -> Bool
     func cancella(server: String)
 }
 
@@ -26,9 +28,10 @@ final class MemoriaToken: ArchivioToken, @unchecked Sendable {
         return valori[server]
     }
 
-    func salva(_ token: String, server: String) {
+    @discardableResult func salva(_ token: String, server: String) -> Bool {
         blocco.lock(); defer { blocco.unlock() }
         valori[server] = token
+        return true
     }
 
     func cancella(server: String) {
@@ -63,7 +66,7 @@ struct KeychainToken: ArchivioToken {
         return Self.riserva.leggi(server: servizio + "|" + server)
     }
 
-    func salva(_ token: String, server: String) {
+    @discardableResult func salva(_ token: String, server: String) -> Bool {
         SecItemDelete(base(server) as CFDictionary)
         var nuovo = base(server)
         nuovo[kSecValueData as String] = Data(token.utf8)
@@ -71,9 +74,11 @@ struct KeychainToken: ArchivioToken {
         let esito = SecItemAdd(nuovo as CFDictionary, nil)
         if esito == errSecSuccess {
             Self.riserva.cancella(server: servizio + "|" + server)
-        } else {
-            Self.riserva.salva(token, server: servizio + "|" + server)
+            return true
         }
+        // Keychain rifiutato: il token resta solo in memoria (mai su disco in chiaro, mai in UserDefaults).
+        Self.riserva.salva(token, server: servizio + "|" + server)
+        return false
     }
 
     func cancella(server: String) {
@@ -83,6 +88,19 @@ struct KeychainToken: ArchivioToken {
 }
 
 enum Accesso {
+    /// Un token ricevuto dal server è accettabile solo se è un testo breve di caratteri semplici: un server ostile potrebbe mandare
+    /// qualsiasi cosa (enorme, con a capo, con caratteri di controllo) che finirebbe in un'intestazione HTTP o nel Keychain.
+    static func tokenValido(_ testo: String) -> Bool {
+        guard !testo.isEmpty, testo.utf8.count <= 512 else { return false }
+        return testo.utf8.allSatisfy { $0 > 0x20 && $0 < 0x7F }
+    }
+
+    /// Un codice di recupero accettabile: breve, lettere, cifre e trattini.
+    static func codiceRecuperoValido(_ testo: String) -> Bool {
+        guard !testo.isEmpty, testo.utf8.count <= 100 else { return false }
+        return testo.utf8.allSatisfy { ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x41 && $0 <= 0x5A) || ($0 >= 0x61 && $0 <= 0x7A) || $0 == 0x2D }
+    }
+
     /// L'archivio dei token in uso: il Keychain, o la memoria in modalità demo (le fotografie non toccano il Keychain).
     nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.attivo ? MemoriaToken() : KeychainToken()
 }

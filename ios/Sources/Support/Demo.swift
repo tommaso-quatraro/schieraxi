@@ -27,6 +27,9 @@ enum Demo {
     /// `codice` (il codice di recupero appena creato), `account` (Lega con «Il tuo account»), `rose` (lega senza rose: configurazione).
     static var accesso: String? { attivo ? argomento("DEMO_ACCESSO") : nil }
 
+    /// Gli scenari che provano da soli ad accedere, per fotografare gli errori: `rete` (rete assente), `limite` (429), `non-valido` (il server non è SchieraXI).
+    static var accessoAutomatico: Bool { ["rete", "limite", "non-valido"].contains(accesso ?? "") }
+
     /// La scheda della schermata di accesso da mostrare per lo scenario.
     static var schedaAccesso: SchermataAccesso.Scheda {
         switch accesso {
@@ -46,7 +49,16 @@ enum Demo {
                 senzaRose.errori = ["/api/oggi": "Nessuna rosa importata", "/api/formazione": "Nessuna rosa importata", "/api/stato": "Nessuna rosa importata"]
                 return senzaRose
             }
-            return FinteServer.demo
+            // Errori dell'accesso, per le fotografie: rete assente, troppi tentativi, un server che risponde HTML invece del JSON.
+            var errore = FinteServer.demo
+            switch accesso {
+            case "rete": errore.fallimenti = ["/api/account/accedi": .rete("senza rete")]
+            case "limite": errore.fallimenti = ["/api/account/accedi": .troppiTentativi("Troppi tentativi sbagliati: aspetta prima di riprovare.", riprovaTra: 45)]
+            case "non-valido": errore.risposte["/api/account/accedi"] = "<html><body><h1>Benvenuto</h1><p>Pagina di prova</p></body></html>"
+            default: return FinteServer.demo
+            }
+            errore.indirizzoFinto = "https://finto-accesso-errore.invalid"
+            return errore
         }
         return ServerHTTP()
     }

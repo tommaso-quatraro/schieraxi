@@ -3,6 +3,7 @@ import SwiftUI
 /// Schermata Lega: server, strumenti di gestione della lega, aspetto, promemoria, certificato. Logica in `LegaViewModel`.
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
+    @EnvironmentObject private var sessione: SessioneAccount
     @AppStorage("indirizzo") private var indirizzo = ""
 
     var body: some View {
@@ -110,7 +111,7 @@ struct LegaView: View {
             } else if let e = vm.info.errore {
                 Text(e).foregroundStyle(.orange)
             }
-            AggiornaDatiSezione(vm: vm.aggiornamento)
+            if sessione.puoAmministrare { AggiornaDatiSezione(vm: vm.aggiornamento) }
         }
     }
 
@@ -131,7 +132,9 @@ struct LegaView: View {
             NavigationLink(value: PaginaLega.aspetto) { Label("Aspetto", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.icona) { Label("Icona dell'app", systemImage: "app.badge").labelStyle(.voce(.purple)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.avvisi) { Label("Avvisi del server", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
+            if sessione.puoAmministrare {
+                NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
+            }
             NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
         }
     }

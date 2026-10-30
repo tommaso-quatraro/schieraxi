@@ -224,6 +224,8 @@ struct Avviso: Decodable, Identifiable {
     let tipo: String?
     let nota: String?
     let inFormazione: Bool?
+    /// Probabilità di giocare (0-1), per i dubbi: «Dubbio (55%)» come nella web app.
+    var pVoto: Double? = nil
     /// Lo stesso giocatore può avere più avvisi (dubbio e diffidato): l'id da solo non basta per le liste.
     var ident: String { "\(id)-\(tipo ?? "")" }
 }

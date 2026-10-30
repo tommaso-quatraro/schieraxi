@@ -85,8 +85,8 @@ struct RinnovoSideStoreSezione: View {
 /// Come far aprire l'app nativa dal tocco su una notifica dell'app ntfy.
 struct NotificheNtfySezione: View {
     var body: some View {
-        Section("Come aprire l'app da una notifica ntfy") {
-            Text("Aggiungi questa intestazione quando mandi la notifica: toccandola si apre l'app sulla schermata scelta.")
+        Section("Notifiche ntfy che mandi tu") {
+            Text("Gli avvisi del server aprono già l'app (con «Avvisi anche per l'app nativa»). Solo se mandi tu una notifica con ntfy, per esempio da Comandi, aggiungi questa intestazione: toccandola si apre l'app sulla schermata scelta.")
                 .font(.footnote).foregroundStyle(.secondary)
             Text(Collegamenti.esempioNtfy)
                 .font(.system(.footnote, design: .monospaced))
