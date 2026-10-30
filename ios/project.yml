@@ -19,6 +19,13 @@ targets:
       - path: Sources
     dependencies:
       - target: SchieraxiWidget
+    # App Group con l'Apple ID gratuito (SideStore/AltStore): dichiarato qui, incorporato nell'IPA con ldid (vedi ipa.yml);
+    # SideStore lo registra e scrive il nome vero in Info.plist (ALTAppGroups). Vedi Sources/Support/Condiviso.swift.
+    entitlements:
+      path: Config/Schieraxi.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.<vecchio identificativo>
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>
@@ -75,11 +82,17 @@ targets:
     # estensione widget (WidgetKit): conto alla rovescia, modulo e punti attesi. Consuma un App ID in più con l'Apple ID gratuito.
     type: app-extension
     platform: iOS
+    entitlements:
+      path: Config/SchieraxiWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.<vecchio identificativo>
     sources:
       - path: WidgetSources
       - path: Sources/Domain/Modelli.swift
       - path: Sources/Domain/Quando.swift
       - path: Sources/Domain/Formato.swift
+      - path: Sources/Support/Condiviso.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.widget

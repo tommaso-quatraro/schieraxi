@@ -2,25 +2,11 @@ import Foundation
 import WidgetKit
 import AppIntents
 
-// Dati del widget. Il widget è un programma a parte: non può leggere la cache dell'app (niente App Group con l'Apple ID gratuito),
-// quindi scarica da solo /api/oggi e tiene una sua copia dell'ultimo riassunto. L'indirizzo del server NON è dentro l'app (repository e IPA
-// pubblici) e il widget non può leggere quello salvato dall'app: lo si scrive una volta nelle impostazioni del widget
-// (tenere premuto sul widget > Modifica widget > Indirizzo del server).
-// Il modello `Oggi` e `Quando` sono condivisi con l'app (Sources/Modelli.swift).
-
-/// Quello che serve al widget, in forma compatta e salvabile.
-struct RiassuntoOggi: Codable {
-    var giornata: Int
-    var inizio: Date?
-    var modulo: String?
-    var punti: Double?
-    var daControllare: Int
-    var probabili: Bool?
-    var scaricatoIl: Date
-
-    static let esempio = RiassuntoOggi(giornata: 9, inizio: Date().addingTimeInterval(3 * 3600 + 25 * 60), modulo: "3-4-3", punti: 64.5,
-                                       daControllare: 2, probabili: true, scaricatoIl: Date())
-}
+// Dati del widget. Il widget è un programma a parte. L'indirizzo del server e il token della sessione glieli dà l'app tramite un
+// App Group (`Condiviso`, file nel contenitore condiviso): se il gruppo funziona il widget non chiede niente. Se non funziona
+// (installazione senza App Group) resta il ripiego di una volta: l'indirizzo si scrive nelle impostazioni del widget
+// (tenere premuto > Modifica widget) e, con gli account, il widget chiede l'accesso (non ha il token).
+// Il modello `Oggi`, `Quando` e `RiassuntoOggi` sono condivisi con l'app.
 
 /// Un istante della timeline del widget.
 struct Voce: TimelineEntry {
@@ -28,8 +14,7 @@ struct Voce: TimelineEntry {
     let riassunto: RiassuntoOggi?
     /// true se il server non ha risposto e si mostra l'ultimo riassunto salvato.
     let datiSalvati: Bool
-    /// true se il server ha gli account e chiede l'accesso: il widget non può avere il token (niente gruppo condiviso con l'app)
-    /// e non mostra niente di un altro utente.
+    /// true se il server ha gli account e chiede l'accesso (nessun token condiviso, o scaduto): non mostra niente di un altro utente.
     var accessoRichiesto = false
     /// true se nelle impostazioni del widget manca l'indirizzo del server (o non è valido).
     var indirizzoMancante = false
@@ -38,9 +23,9 @@ struct Voce: TimelineEntry {
 /// Le impostazioni del widget: l'indirizzo del server (solo https, o localhost per le prove).
 struct ConfigurazioneWidget: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Server di SchieraXI"
-    static var description = IntentDescription("L'indirizzo del tuo server, lo stesso che hai scritto nell'app.")
+    static var description = IntentDescription("Di solito non serve: l'app dice al widget dove sta il server. Scrivi l'indirizzo qui solo se il widget dice che manca.")
 
-    @Parameter(title: "Indirizzo del server", default: "")
+    @Parameter(title: "Indirizzo del server (solo se manca)", default: "")
     var indirizzo: String
 }
 
@@ -61,16 +46,33 @@ enum ScaricaOggi {
         return t + "/api/oggi"
     }
 
+    /// L'ultimo riassunto: quello salvato dal widget o quello che l'app ha messo nel file condiviso, il più recente.
     private static func ultimoSalvato() -> RiassuntoOggi? {
-        guard let dati = UserDefaults.standard.data(forKey: chiave) else { return nil }
-        return try? JSONDecoder().decode(RiassuntoOggi.self, from: dati)
+        let suo = UserDefaults.standard.data(forKey: chiave).flatMap { try? JSONDecoder().decode(RiassuntoOggi.self, from: $0) }
+        let dellApp = Condiviso.leggi().riassunto
+        switch (suo, dellApp) {
+        case let (a?, b?): return a.scaricatoIl >= b.scaricatoIl ? a : b
+        case let (a?, nil): return a
+        case let (nil, b?): return b
+        default: return nil
+        }
+    }
+
+    /// Dove e con quale token scaricare: prima i dati dell'app (App Group), poi l'indirizzo scritto nelle impostazioni del widget.
+    static func destinazione(configurazione: String) -> (indirizzo: String, token: String?)? {
+        let condiviso = Condiviso.leggi()
+        if let base = condiviso.indirizzo, let url = indirizzoOggi(base) {
+            return (url, condiviso.token(per: base))
+        }
+        guard let url = indirizzoOggi(configurazione) else { return nil }
+        return (url, nil)
     }
 
     /// Scarica la giornata; se non riesce restituisce l'ultimo riassunto salvato (con `salvato` true).
     /// Se il server risponde 401 (account attivi: serve l'accesso) il riassunto salvato si cancella e non si mostra:
     /// potrebbe essere di un altro utente.
-    static func leggi(indirizzo: String) async -> (riassunto: RiassuntoOggi?, salvato: Bool, accessoRichiesto: Bool) {
-        switch await scarica(indirizzo: indirizzo) {
+    static func leggi(indirizzo: String, token: String?) async -> (riassunto: RiassuntoOggi?, salvato: Bool, accessoRichiesto: Bool) {
+        switch await scarica(indirizzo: indirizzo, token: token) {
         case .dati(let nuovo):
             if let dati = try? JSONEncoder().encode(nuovo) { UserDefaults.standard.set(dati, forKey: chiave) }
             return (nuovo, false, false)
@@ -88,10 +90,12 @@ enum ScaricaOggi {
         case errore
     }
 
-    private static func scarica(indirizzo: String) async -> Scarico {
+    private static func scarica(indirizzo: String, token: String?) async -> Scarico {
         guard let url = URL(string: indirizzo) else { return .errore }
         var richiesta = URLRequest(url: url, timeoutInterval: 15)
         richiesta.setValue("1", forHTTPHeaderField: "X-Fanta")
+        // La sessione dell'app (se il gruppo condiviso funziona): il token va solo all'indirizzo per cui è stato salvato.
+        if let token { richiesta.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         do {
             let (dati, risposta) = try await URLSession.shared.data(for: richiesta)
             guard let h = risposta as? HTTPURLResponse else { return .errore }
@@ -100,14 +104,7 @@ enum ScaricaOggi {
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             let oggi = try decoder.decode(Oggi.self, from: dati)
-            return .dati(RiassuntoOggi(
-                giornata: oggi.giornata,
-                inizio: Quando.data(oggi.inizio),
-                modulo: oggi.formazione?.modulo,
-                punti: oggi.formazione?.punteggioAtteso,
-                daControllare: (oggi.avvisi ?? []).filter { $0.inFormazione == true }.count,
-                probabili: oggi.conProbabili,
-                scaricatoIl: Date()))
+            return .dati(RiassuntoOggi(oggi: oggi))
         } catch {
             return .errore
         }
@@ -141,10 +138,12 @@ struct Fornitore: AppIntentTimelineProvider {
     }
 
     private func voce(_ configurazione: ConfigurazioneWidget) async -> Voce {
-        guard let indirizzo = ScaricaOggi.indirizzoOggi(configurazione.indirizzo) else {
+        guard let dove = ScaricaOggi.destinazione(configurazione: configurazione.indirizzo) else {
+            // Nessun indirizzo: se l'app ha già un riassunto lo si mostra, altrimenti si dice cosa fare.
+            if let r = Condiviso.leggi().riassunto { return Voce(date: Date(), riassunto: r, datiSalvati: true) }
             return Voce(date: Date(), riassunto: nil, datiSalvati: false, indirizzoMancante: true)
         }
-        let r = await ScaricaOggi.leggi(indirizzo: indirizzo)
+        let r = await ScaricaOggi.leggi(indirizzo: dove.indirizzo, token: dove.token)
         return Voce(date: Date(), riassunto: r.riassunto, datiSalvati: r.salvato, accessoRichiesto: r.accessoRichiesto)
     }
 }

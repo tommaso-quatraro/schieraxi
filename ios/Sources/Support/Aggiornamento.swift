@@ -47,6 +47,8 @@ enum Aggiornamento {
         if let inizio = Quando.data(oggi.inizio) {
             await Notifiche.programma(giornata: oggi.giornata, inizio: inizio, modulo: oggi.formazione?.modulo)
         }
+        // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
+        Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))
         WidgetCenter.shared.reloadAllTimelines()
         // Senza una formazione vera (modulo mancante o «–», punti assenti) non si confronta né si ricorda niente.
         guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else { return }

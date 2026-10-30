@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 /// La porta dell'app: decide cosa mostrare secondo lo stato dell'accesso.
 /// - server senza account (come sempre): l'app, subito;
@@ -37,6 +38,8 @@ struct PortaDiAccesso: View {
             try? await Task.sleep(nanoseconds: 700_000_000)
             if Task.isCancelled { return }
             await sessione.cambiaServer()
+            Accesso.sincronizzaConIlWidget()
+            WidgetCenter.shared.reloadAllTimelines()
         }
         .onChange(of: fase) { _, nuova in
             if nuova == .active { Task { await sessione.verifica() } }

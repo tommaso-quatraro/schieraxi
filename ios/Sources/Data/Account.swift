@@ -121,6 +121,7 @@ enum DatiLocali {
         Cache.svuotaTutto()
         Immagini.condivise.azzera()
         VersioniRisorse.condivise.azzera()
+        Condiviso.dimentica()
         let memoria = UserDefaults.standard
         for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto"] { memoria.removeObject(forKey: chiave) }
         ArchivioScambi.svuota(memoria)
