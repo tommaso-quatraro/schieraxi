@@ -6,14 +6,49 @@ import UniformTypeIdentifiers
 @MainActor
 final class DiarioViewModel: ViewModelBase {
     let caricatore: Caricatore<DiarioRisposta>
+    private let server: any ServerClient
 
     init(server: any ServerClient) {
+        self.server = server
         caricatore = Caricatore<DiarioRisposta>("/api/diario", server: server)
         super.init()
         osserva(caricatore)
     }
 
     func carica() async { await caricatore.ricarica() }
+
+    /// La giornata che si sta salvando (un solo salvataggio alla volta) e l'esito dell'ultimo.
+    @Published var inSalvataggio: Int?
+    @Published var messaggio: String?
+    @Published var messaggioRiuscito = false
+
+    /// «Ho schierato la consigliata»: il server salva come tua scelta la formazione che il modello avrebbe consigliato per quella
+    /// giornata già finita e rifà solo quella voce del diario (non conta nei limiti di ricerca).
+    func haSchieratoLaConsigliata(giornata: Int) async {
+        guard inSalvataggio == nil else { return }
+        inSalvataggio = giornata
+        defer { inSalvataggio = nil }
+        do {
+            _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "consigliata"))
+            messaggio = "Salvato: per la giornata \(giornata) hai schierato la consigliata."
+            messaggioRiuscito = true
+            Haptics.esito(riuscito: true)
+            await caricatore.ricarica()
+        } catch {
+            messaggio = error.localizedDescription
+            messaggioRiuscito = false
+            if (error as? ErroreApi)?.eConflitto == true { await caricatore.ricarica() }
+            Haptics.esito(riuscito: false)
+        }
+    }
+}
+
+/// Il corpo di `POST /api/diario/schierata`.
+struct CorpoSchierata: Encodable {
+    let giornata: Int
+    /// «consigliata» o «manuale» (con `titolari`).
+    let tipo: String
+    var titolari: [Int]? = nil
 }
 
 /// Per ogni giornata finita: i punti fatti dalla formazione schierata e da quella che il modello avrebbe consigliato.
@@ -38,6 +73,12 @@ struct DiarioView: View {
                         VistaVuota(titolo: "Diario ancora vuoto", icona: "book.closed",
                                    descrizione: "Si riempie dopo la prima giornata finita (serve la tua squadra indicata in Lega).")
                             .listRowBackground(Color.clear)
+                    }
+                    if let m = vm.messaggio {
+                        Section {
+                            Label(m, systemImage: vm.messaggioRiuscito ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .font(.footnote).foregroundStyle(vm.messaggioRiuscito ? Color.verde : Color.attenzione)
+                        }
                     }
                     ForEach(d.giornate ?? []) { voce in giornata(voce) }
                 } else if let e = vm.caricatore.errore {
@@ -68,6 +109,19 @@ struct DiarioView: View {
                 riga("La tua (\(s.modulo ?? "–"))", s)
             } else {
                 Text("Non avevi salvato la tua formazione per questa giornata.").font(.footnote).foregroundStyle(.secondary)
+                if let g = v.giornata {
+                    Button {
+                        Task { await vm.haSchieratoLaConsigliata(giornata: g) }
+                    } label: {
+                        HStack {
+                            if vm.inSalvataggio == g { ProgressView() }
+                            Label("Ho schierato la consigliata", systemImage: "checkmark.circle").font(.subheadline.weight(.semibold))
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .disabled(vm.inSalvataggio != nil)
+                    .accessibilityHint("Salva come tua scelta la formazione che il modello avrebbe consigliato per la giornata \(g)")
+                }
             }
             if let c = v.consigliata { riga("Del modello (\(c.modulo ?? "–"))", c) }
             if let frase = v.differenze { Text(frase).font(.footnote).foregroundStyle(.secondary) }
