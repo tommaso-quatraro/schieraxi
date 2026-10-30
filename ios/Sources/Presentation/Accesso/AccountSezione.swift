@@ -19,7 +19,10 @@ struct AccountSezione: View {
     var body: some View {
         if sessione.multiutente, let utente = sessione.utente {
             Section("Il tuo account") {
-                RigaValore(titolo: "Nome utente", valore: utente.nomeUtente)
+                RigaValore(titolo: "Nome", valore: utente.nome)
+                if utente.nome != utente.nomeUtente {
+                    RigaValore(titolo: "Per accedere", valore: utente.nomeUtente)
+                }
                 RigaValore(titolo: "Ruolo", valore: utente.ruoloLeggibile)
                 Button { chiediEsci = true } label: {
                     Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)

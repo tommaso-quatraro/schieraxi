@@ -35,7 +35,7 @@ struct SquadreView: View {
                                             Text(sq.nome).font(.headline)
                                             if sq.mia == true { Text("tua").font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2).background(Color.verde.opacity(0.3), in: Capsule()) }
                                         }
-                                        Text("\(sq.giocatori ?? 0) giocatori" + (sq.creditiResidui.map { " · \(Formato.intero($0)) crediti" } ?? ""))
+                                        Text(Formato.giocatori(sq.giocatori ?? 0) + (sq.creditiResidui.map { " · \(Formato.crediti(Formato.intero($0)))" } ?? ""))
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
                                 }

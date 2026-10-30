@@ -9,6 +9,15 @@ enum Formato {
         valore.formatted(.number.precision(.fractionLength(cifre)).locale(locale))
     }
 
+    /// «1 credito», «12 crediti»: il plurale giusto per ogni numero (anche 0 e i negativi: «0 crediti», «-1 credito» no, «-1 crediti»).
+    static func plurale(_ n: Int, _ singolare: String, _ plurale: String) -> String {
+        "\(n) \(abs(n) == 1 ? singolare : plurale)"
+    }
+
+    static func crediti(_ n: Int) -> String { plurale(n, "credito", "crediti") }
+    static func giornate(_ n: Int) -> String { plurale(n, "giornata", "giornate") }
+    static func giocatori(_ n: Int) -> String { plurale(n, "giocatore", "giocatori") }
+
     /// Punti attesi: una cifra decimale; un valore mancante vale zero.
     static func punti(_ valore: Double?) -> String {
         decimali(valore ?? 0, cifre: 1)

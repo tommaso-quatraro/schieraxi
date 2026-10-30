@@ -70,7 +70,7 @@ struct RinnovoSideStoreSezione: View {
                 Text("1. Nell'app Comandi crea un comando con l'azione di SideStore «Refresh All Apps».")
                 Text("2. Vai su Automazione, tocca +, scegli «Ora del giorno», alle 3:00, ogni giorno.")
                 Text("3. Come azione scegli quel comando, poi «Esegui subito» e spegni «Notifica quando viene eseguito».")
-                Text("4. LocalDevVPN deve essere attiva durante il rinnovo. iOS permette una sola VPN alla volta: rete privata e LocalDevVPN non possono essere attive insieme. Lascia LocalDevVPN attiva la sera per il rinnovo notturno e spegnila al mattino se ti serve rete privata.")
+                Text("4. LocalDevVPN deve essere attiva durante il rinnovo: puoi lasciarla sempre accesa. Il server ha un indirizzo pubblico (https) e non serve altro per usare SchieraXI.")
             }
             .font(.footnote)
             .foregroundStyle(.secondary)

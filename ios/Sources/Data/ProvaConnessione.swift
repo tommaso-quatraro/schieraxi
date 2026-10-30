@@ -53,15 +53,15 @@ enum EsitoConnessione: Equatable {
         case .chiedeAccesso:
             return "È il server giusto e vuole nome utente e password: accedi dalla schermata di accesso."
         case .rifiutato:
-            return "Qualcosa lungo la strada (firewall o proxy) blocca l'app. Controlla rete privata e l'indirizzo."
+            return "Qualcosa lungo la strada (firewall o proxy) blocca l'app. Controlla la connessione e l'indirizzo."
         case .nonSchieraxi:
             return "L'indirizzo risponde, ma non è il server di SchieraXI. Controlla l'indirizzo e la porta."
         case .nonRaggiungibile:
-            return "Controlla che rete privata (o la VPN) sia acceso e che l'indirizzo sia scritto giusto."
+            return "Controlla la connessione e che l'indirizzo sia scritto giusto. Se il server è raggiungibile solo da una VPN, deve essere accesa."
         case .certificato:
             return "Il collegamento sicuro non è riuscito: il certificato non è valido o l'indirizzo non è https. Controlla l'indirizzo."
         case .timeout:
-            return "Il server ci mette troppo. Controlla rete privata e riprova tra poco."
+            return "Il server ci mette troppo. Controlla la connessione e riprova tra poco."
         case .erroreServer:
             return "Il server è raggiungibile ma ha un problema. Riprova tra poco."
         case .indirizzoNonValido:

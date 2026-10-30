@@ -182,7 +182,7 @@ struct AstaContenuto: View {
             }
             .frame(minHeight: 44).contentShape(Rectangle())
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(g.nome), \(ColoriSquadra.sigla(g.squadra)), prezzo consigliato \(Formato.intero(g.prezzo)) crediti, \(Formato.intero(g.puntiStagione)) punti attesi")
+            .accessibilityLabel("\(g.nome), \(ColoriSquadra.sigla(g.squadra)), prezzo consigliato \(Formato.crediti(Formato.intero(g.prezzo))), \(Formato.intero(g.puntiStagione)) punti attesi")
         }
         .buttonStyle(.plain)
         .accessibilityHint("Apre la scheda del giocatore")

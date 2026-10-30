@@ -11,6 +11,14 @@ struct Utente: Codable, Equatable {
     let nomeUtente: String
     let ruolo: String
     let creato: String?
+    /// Il nome come l'ha scritto l'utente («TuttoBene»): il server (1.77+) lo manda accanto al nome utente in minuscolo.
+    var nomeVisualizzato: String? = nil
+
+    /// Il nome da mostrare: quello visualizzato se c'è, altrimenti il nome utente.
+    var nome: String {
+        if let v = nomeVisualizzato?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty { return v }
+        return nomeUtente
+    }
 
     var amministratore: Bool { ruolo == "amministratore" }
     var ruoloLeggibile: String { amministratore ? "Amministratore" : "Utente" }

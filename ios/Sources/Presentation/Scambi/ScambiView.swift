@@ -330,7 +330,7 @@ struct DettaglioScambio: View {
     private var crediti: some View {
         if let c = p.conguaglio, let n = c.crediti, n != 0 {
             Carta("Conguaglio in crediti") {
-                Text(n > 0 ? "Ricevi \(n) crediti da \(p.altra)." : "Paghi \(-n) crediti a \(p.altra).").font(.subheadline)
+                Text(n > 0 ? "Ricevi \(Formato.crediti(n)) da \(p.altra)." : "Paghi \(Formato.crediti(-n)) a \(p.altra).").font(.subheadline)
                 if let d = c.dopo?.mio, let r = c.residui?.mio {
                     Text("I tuoi crediti: \(Formato.intero(r)) → \(Formato.intero(d))").font(.footnote).foregroundStyle(.secondary)
                 }

@@ -24,7 +24,7 @@ struct PrimoAvvioView: View {
                         ProvaServerView()
                     }
                 }
-                Text("Serve la VPN (rete privata) accesa, se il server è raggiungibile solo da lì.")
+                Text("Se il tuo server è raggiungibile solo da una VPN, tienila accesa.")
                     .font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
