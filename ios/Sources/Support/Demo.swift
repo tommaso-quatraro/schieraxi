@@ -23,9 +23,31 @@ enum Demo {
     /// Solo per la fotografia «ricerca»: la lente si apre da sola la prima volta (e il testo da cercare arriva da `-DEMO_CERCA`).
     static var ricercaMostrata = false
 
+    /// `-DEMO_ACCESSO <scenario>`: la demo con gli account accesi. Scenari: `accedi`, `registra`, `recupero` (schermata di accesso),
+    /// `codice` (il codice di recupero appena creato), `account` (Lega con «Il tuo account»), `rose` (lega senza rose: configurazione).
+    static var accesso: String? { attivo ? argomento("DEMO_ACCESSO") : nil }
+
+    /// La scheda della schermata di accesso da mostrare per lo scenario.
+    static var schedaAccesso: SchermataAccesso.Scheda {
+        switch accesso {
+        case "registra": return .registrati
+        case "recupero": return .recupera
+        default: return .accedi
+        }
+    }
+
     /// Il server di partenza dell'app: quello finto in demo, quello vero altrimenti.
     static func serverPredefinito() -> any ServerClient {
-        if attivo { return FinteServer.demo }
+        if attivo {
+            if accesso == "rose" {
+                // La lega non ha rose: il server risponde 409 «Nessuna rosa importata» a tutto quello che le richiede.
+                var senzaRose = FinteServer.demo
+                senzaRose.indirizzoFinto = "https://finto-senza-rose.invalid"   // niente copie salvate della lega di prova
+                senzaRose.errori = ["/api/oggi": "Nessuna rosa importata", "/api/formazione": "Nessuna rosa importata", "/api/stato": "Nessuna rosa importata"]
+                return senzaRose
+            }
+            return FinteServer.demo
+        }
         return ServerHTTP()
     }
 }
@@ -62,6 +84,7 @@ extension Demo {
             }
         }
 
+        if accesso == "account" { nav.sezione = .lega }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
         switch nome {
         case "oggi":

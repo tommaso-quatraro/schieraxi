@@ -132,11 +132,19 @@ struct ErroreVista: View {
     @State private var tentativi = 0
 
     var body: some View {
+        if messaggio.dicePerNessunaRosa {
+            ConfiguraLegaVista()
+        } else {
+            errore
+        }
+    }
+
+    private var errore: some View {
         ContentUnavailableView {
             Label("Qualcosa non va", systemImage: "wifi.exclamationmark")
                 .symbolEffect(.pulse, options: .repeat(3))
         } description: {
-            Text(messaggio + "\nControlla che rete privata sia acceso e riprova.")
+            Text(messaggio + (messaggio.contains("rete privata") || messaggio.hasPrefix("Il server dice") ? "" : "\nControlla che rete privata sia acceso e riprova."))
         } actions: {
             Button {
                 tentativi += 1

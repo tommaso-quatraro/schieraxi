@@ -27,6 +27,15 @@ enum Cache {
         return String(h, radix: 16) + ".json"
     }
 
+    /// Cancella TUTTE le copie su disco (risposte e immagini): all'uscita da un account, perché chi entra dopo non veda i dati di chi c'era prima.
+    static func svuotaTutto() {
+        for nome in ["api", "img"] {
+            let url = cartella(nome)
+            let file = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
+            for f in file { try? FileManager.default.removeItem(at: f) }
+        }
+    }
+
     /// Salva senza aspettare (in coda su un thread di servizio).
     static func salva(_ dati: Data, _ percorso: String, indirizzo: String, cartella nome: String = "api") {
         let cartellaDiLavoro = cartella(nome)

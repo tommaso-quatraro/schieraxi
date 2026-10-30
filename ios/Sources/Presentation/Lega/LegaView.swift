@@ -9,6 +9,7 @@ struct LegaView: View {
         NavigationStack(path: $vm.percorso) {
             List {
                 testata
+                AccountSezione()
                 if vm.nuovaStagione { bannerStagione }
                 sezioneServer
                 sezioneLega

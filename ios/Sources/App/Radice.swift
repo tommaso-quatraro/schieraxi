@@ -112,6 +112,10 @@ struct RadiceView: View {
         .environment(\.spazioZoom, zoom)
         .environment(\.apriGiocatore) { nav.apriScheda($0) }
         .environment(\.vaiASezione) { nav.sezione = $0 }
+        .environment(\.apriImportazione) {
+            modello.lega.percorso = [.importa]
+            nav.sezione = .lega
+        }
         .environment(\.apriNovita) {
             modello.lega.percorso = [.novita]
             nav.sezione = .lega

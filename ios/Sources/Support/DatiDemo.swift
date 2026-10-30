@@ -671,6 +671,12 @@ private enum DatiDemo {
         let centrocampisti: [Calciatore] = Array(altri.filter { $0.ruolo == "C" }.prefix(3))
         let trovati: [Calciatore] = liberi + centrocampisti
         var r: [String: String] = [
+            // account (con il server di sempre non servono: «me» dice che non c'è nessun accesso)
+            "/api/account/me": "{\"multiutente\": false, \"utente\": {\"id\": 0, \"nome_utente\": \"locale\", \"ruolo\": \"amministratore\", \"creato\": \"\"}}",
+            "/api/account/accedi": "{\"multiutente\": true, \"utente\": {\"id\": 7, \"nome_utente\": \"mister.rossi\", \"ruolo\": \"utente\", \"creato\": \"2026-10-29\"}, \"token\": \"token-demo\"}",
+            "/api/account/registra": "{\"multiutente\": true, \"utente\": {\"id\": 7, \"nome_utente\": \"mister.rossi\", \"ruolo\": \"utente\", \"creato\": \"2026-10-29\"}, \"token\": \"token-demo\", \"codice_recupero\": \"K7M2P-XQ4NH-W8RTV\"}",
+            "/api/account/codice-recupero": "{\"codice_recupero\": \"H3N8D-R5WQA-C9XEJ\"}",
+            "/api/account/recupero": "{\"ok\": true, \"codice_recupero\": \"H3N8D-R5WQA-C9XEJ\"}",
             "/api/stato": stato(adesso: adesso),
             "/api/stato-dati": statoDati(adesso: adesso),
             "/api/squadre": squadre(),

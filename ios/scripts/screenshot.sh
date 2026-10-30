@@ -21,7 +21,8 @@ TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-novita
-       lega-importa lega-movimenti lega-stagione lega-aspetto lega-icona)
+       lega-importa lega-movimenti lega-stagione lega-aspetto lega-icona
+       accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
 PER_CHIARO=(oggi formazione formazione-confronto formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
             scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato lega-aspetto lega-icona lega-rosa giocatore giocatore-fondo ricerca)
@@ -37,11 +38,11 @@ PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazi
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
 SCATTI="${SCATTI:-completo}"
 if [ "$SCATTI" = "veloce" ]; then
-  TUTTE=(marchio oggi oggi-fondo formazione formazione-fondo mercato-consigliati mercato-classifica giocatore giocatore-fondo scambi lega lega-aspetto)
-  PER_CHIARO=(marchio oggi formazione mercato-consigliati giocatore scambi lega)
+  TUTTE=(accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose marchio oggi oggi-fondo formazione formazione-fondo mercato-consigliati mercato-classifica giocatore giocatore-fondo scambi lega lega-aspetto)
+  PER_CHIARO=(accesso-accedi accesso-registra accesso-codice marchio oggi formazione mercato-consigliati giocatore scambi lega)
   PER_TESTO_GRANDE=(oggi formazione giocatore)
   PRINCIPALI=(oggi formazione giocatore scambi lega)
-  PER_IPAD=(oggi formazione formazione-fondo mercato-consigliati giocatore scambi lega)
+  PER_IPAD=(accesso-accedi accesso-codice accesso-account oggi formazione formazione-fondo mercato-consigliati giocatore scambi lega)
 fi
 
 scegli() {
@@ -50,9 +51,14 @@ scegli() {
 
 scatta() {
   local udid="$1" etichetta="$2" nome="$3"
-  local schermata="$nome" fondo=() cerca=()
+  local schermata="$nome" fondo=() cerca=() cosa=()
   case "$nome" in
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
+  esac
+  # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...)
+  case "$nome" in
+    accesso-*) cosa=(-DEMO_ACCESSO "${nome#accesso-}") ;;
+    *) cosa=(-DEMO_SCHERMATA "$schermata") ;;
   esac
   # la ricerca globale si apre da sola con un testo già scritto
   case "$nome" in
@@ -60,7 +66,7 @@ scatta() {
   esac
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
-  if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO -DEMO_SCHERMATA "$schermata" \
+  if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
         ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} \
         -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"

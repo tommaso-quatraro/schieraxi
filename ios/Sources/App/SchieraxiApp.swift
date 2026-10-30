@@ -5,7 +5,7 @@ import CoreSpotlight
 @main
 struct SchieraxiApp: App {
     @StateObject private var nav = Navigazione()
-    @StateObject private var modello = AppModel()
+    @StateObject private var sessione = SessioneAccount()
     @Environment(\.scenePhase) private var fase
 
     init() {
@@ -15,11 +15,9 @@ struct SchieraxiApp: App {
     var body: some Scene {
         WindowGroup {
             // Colori chiari o scuri come il sistema: lo sfondo e il verde si adattano da soli.
-            Group {
-                if Demo.schermata == "marchio" { ProvaMarchio() } else { RadiceView() }
-            }
+            PortaDiAccesso()
                 .environmentObject(nav)
-                .environmentObject(modello)
+                .environmentObject(sessione)
                 .onContinueUserActivity(CSSearchableItemActionType) { attivita in
                     // Aperta da Spotlight su un giocatore osservato: si va alla sua scheda.
                     if let id = Spotlight.idGiocatore(da: attivita) { nav.vai(a: .giocatore(id)) }
@@ -31,10 +29,6 @@ struct SchieraxiApp: App {
                 .onChange(of: fase) { _, nuova in
                     // Uscendo dall'app si chiede a iOS il prossimo aggiornamento in background.
                     if nuova == .background { Aggiornamento.programma() }
-                }
-                .onAppear {
-                    // Solo con l'argomento di lancio -DEMO (fotografie nel simulatore): apre la schermata chiesta.
-                    Demo.applica(nav: nav, modello: modello)
                 }
         }
         // Aggiornamento in background (iOS lo avvia quando vuole): riscarica la giornata e riprogramma i promemoria.
