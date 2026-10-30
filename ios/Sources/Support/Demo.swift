@@ -132,23 +132,19 @@ extension Demo {
             modello.mercato.sezione = .consigliati
         case "mercato-classifica":
             nav.sezione = .mercato
-            modello.mercato.sezione = .classifica
+            modello.mercato.sezione = .giocatori
         case "mercato-calendario":
             nav.sezione = .mercato
             modello.mercato.sezione = .calendario
         case "mercato-osservati":
             nav.sezione = .mercato
             modello.mercato.sezione = .osservati
-        case "mercato-asta":
-            nav.sezione = .mercato
-            modello.mercato.sezione = .asta
-        case "mercato-asta-riparazione":
-            nav.sezione = .mercato
-            modello.mercato.sezione = .asta
-            modello.mercato.asta.modo = .riparazione
+        case "mercato-asta", "mercato-asta-riparazione":
+            // l'asta sta in Lega (due volte l'anno): Lega > Asta e riparazione
+            apriLega(nav, modello, [.asta])
         case "mercato-cerca":
             nav.sezione = .mercato
-            modello.mercato.sezione = .cerca
+            modello.mercato.sezione = .giocatori
             modello.mercato.testoRicerca = "ma"
         case "giocatore":
             nav.vai(a: .giocatore(203))

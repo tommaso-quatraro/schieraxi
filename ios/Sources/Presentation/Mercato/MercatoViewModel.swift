@@ -2,11 +2,10 @@ import SwiftUI
 
 enum SezioneMercato: String, CaseIterable, Identifiable {
     case consigliati = "Consigliati"
+    /// Classifica e ricerca in un solo elenco (ex «Classifica» e «Cerca»).
+    case giocatori = "Giocatori"
     case osservati = "Osservati"
-    case asta = "Asta"
-    case classifica = "Classifica"
     case calendario = "Calendario"
-    case cerca = "Cerca"
     var id: String { rawValue }
 }
 

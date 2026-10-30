@@ -39,11 +39,9 @@ struct MercatoView: View {
     private var contenuto: some View {
         switch vm.sezione {
         case .consigliati: ConsigliatiView(vm: vm)
-        case .classifica: ClassificaView(vm: vm)
+        case .giocatori: GiocatoriView(vm: vm, ricerca: vm.ricerca)
         case .calendario: CalendarioView(vm: vm)
         case .osservati: OsservatiView(vm: vm)
-        case .asta: AstaContenuto(vm: vm.asta)
-        case .cerca: CercaView(ricerca: vm.ricerca, apri: { vm.apri($0) })
         }
     }
 }
@@ -388,7 +386,26 @@ struct OsservatiView: View {
     }
 }
 
-// MARK: - Cerca
+// MARK: - Giocatori (classifica e ricerca in un elenco)
+
+/// Un solo elenco di giocatori: con il campo di ricerca vuoto è la classifica (con i filtri di ruolo e svincolati), scrivendo almeno
+/// due lettere diventano i risultati della ricerca. Ex schede «Classifica» e «Cerca».
+struct GiocatoriView: View {
+    @ObservedObject var vm: MercatoViewModel
+    @ObservedObject var ricerca: RicercaMercatoViewModel
+
+    var body: some View {
+        Group {
+            if ricerca.abbastanzaLungo {
+                CercaView(ricerca: ricerca, apri: { vm.apri($0) })
+            } else {
+                ClassificaView(vm: vm)
+            }
+        }
+        .searchable(text: $ricerca.testo, placement: .navigationBarDrawer(displayMode: .always), prompt: "Cerca un giocatore")
+        .task(id: ricerca.testo) { await ricerca.cerca() }
+    }
+}
 
 struct CercaView: View {
     @ObservedObject var ricerca: RicercaMercatoViewModel
@@ -427,8 +444,6 @@ struct CercaView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .searchable(text: $ricerca.testo, placement: .navigationBarDrawer(displayMode: .always), prompt: "Nome del giocatore")
-        .task(id: ricerca.testo) { await ricerca.cerca() }
     }
 }
 
