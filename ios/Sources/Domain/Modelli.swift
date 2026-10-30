@@ -197,7 +197,67 @@ struct PropostaScambio: Decodable, Identifiable {
     let percentualeMio: Double?
     let quotazioneDo: Double?
     let quotazioneRicevo: Double?
+    // Analisi completa (`completo=true`, scambi N contro M con conguaglio): tutti opzionali, un server più vecchio non li manda.
+    let completo: Bool?
+    /// Le rose dopo lo scambio sono valide per tutte e due le squadre e i crediti bastano.
+    let valido: Bool?
+    let problemi: [String]?
+    let rose: RoseDopoScambio?
+    let valoreRosa: LatiScambio<VariazioneRosa>?
+    let panchina: LatiScambio<VariazioneRosa>?
+    let conguaglio: ConguaglioScambio?
+    /// Punti attesi in stagione, con il valore dei crediti scambiati (se si è indicato un conguaglio).
+    let nettoMio: Double?
+    let nettoLoro: Double?
+    let giudizio: GiudizioScambio?
     var id: String { altra + "|" + `do`.map { String($0.id) }.joined(separator: ",") + "|" + ricevo.map { String($0.id) }.joined(separator: ",") }
+}
+
+/// Un valore per me e uno per l'altra squadra.
+struct LatiScambio<T: Decodable>: Decodable {
+    let mio: T?
+    let loro: T?
+}
+
+struct VariazioneRosa: Decodable {
+    let prima: Double?
+    let dopo: Double?
+    let variazione: Double?
+    let percentuale: Double?
+}
+
+struct RoseDopoScambio: Decodable {
+    let mio: RosaDopoScambio?
+    let loro: RosaDopoScambio?
+}
+
+struct RosaDopoScambio: Decodable {
+    let squadra: String?
+    let valida: Bool?
+    let problemi: [String]?
+    let modulo: String?
+}
+
+/// I crediti scambiati: positivo = li ricevi tu (e la squadra «loro» li paga).
+struct ConguaglioScambio: Decodable {
+    let crediti: Int?
+    let valido: Bool?
+    let problema: String?
+    let residui: LatiScambio<Double>?
+    let dopo: LatiScambio<Double>?
+    /// «nessuno», «loro» o «tu».
+    let chiPaga: String?
+    let tassoMio: Double?
+    let tassoLoro: Double?
+    let valoreMio: Double?
+    let valoreLoro: Double?
+}
+
+struct GiudizioScambio: Decodable {
+    let chi: String?
+    let testo: String?
+    let soglia: Double?
+    let spiegazione: [String]?
 }
 
 struct RepartiScambio: Decodable {

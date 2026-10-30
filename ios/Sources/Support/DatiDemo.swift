@@ -471,7 +471,24 @@ private enum DatiDemo {
     }
 
     static func analisi() -> String {
-        json(proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1))
+        var p = proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1)
+        // l'analisi completa (scambi N contro M con conguaglio): rose valide, crediti, valore e giudizio
+        p["completo"] = true
+        p["valido"] = true
+        p["problemi"] = [String]()
+        p["rose"] = ["mio": ["squadra": nomeMia, "valida": true, "problemi": [String](), "modulo": "3-4-3"],
+                     "loro": ["squadra": "Real Madrink", "valida": true, "problemi": [String](), "modulo": "4-3-3"]]
+        p["valore_rosa"] = ["mio": ["prima": 64.5, "dopo": 66.9, "variazione": 2.4, "percentuale": 3.7],
+                            "loro": ["prima": 61.0, "dopo": 62.1, "variazione": 1.1, "percentuale": 1.8]]
+        p["panchina"] = ["mio": ["prima": 8.0, "dopo": 8.3, "variazione": 0.3], "loro": ["prima": 7.5, "dopo": 7.4, "variazione": -0.1]]
+        p["conguaglio"] = ["crediti": 5, "valido": true, "residui": ["mio": 12, "loro": 30], "dopo": ["mio": 17, "loro": 25],
+                           "chi_paga": "loro", "tasso_mio": 0.12, "tasso_loro": 0.1, "valore_mio": 0.6, "valore_loro": -0.5]
+        p["netto_mio"] = 3.0
+        p["netto_loro"] = 0.6
+        p["giudizio"] = ["chi": "entrambi", "testo": "Conviene a tutti e due: proponilo.", "soglia": 0.5,
+                         "spiegazione": ["Per te la formazione migliore passa da 64,5 a 66,9 punti attesi.",
+                                         "Con 5 crediti ricevuti il netto per te è +3,0."]]
+        return json(p)
     }
 
     // MARK: - Lega

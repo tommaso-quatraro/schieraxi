@@ -70,11 +70,20 @@ struct ScambiView: View {
                 Text("Tutte le squadre").tag("Tutte")
                 ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
             }
-            Toggle("Cerca anche 2 contro 2 (più lento)", isOn: $vm.due).tint(Color.verde)
-                .disabled(vm.con == "Tutte")
-                .onChange(of: vm.con) { _, nuova in if nuova == "Tutte" { vm.due = false } }
+            Picker("Dimensione", selection: $vm.fino) {
+                Text("1 contro 1").tag(1)
+                Text("fino a 2").tag(2)
+                Text("fino a 3").tag(3)
+                Text("fino a 4").tag(4)
+            }
+            .pickerStyle(.segmented)
+            .disabled(vm.con == "Tutte")
+            .onChange(of: vm.con) { _, nuova in if nuova == "Tutte" { vm.fino = 1 } }
+            .accessibilityLabel("Quanti giocatori per lato")
             if vm.con == "Tutte" {
-                Text("Per il 2 contro 2 scegli una squadra.").font(.caption).foregroundStyle(.secondary)
+                Text("Per gli scambi più grandi (2, 3 o 4 per lato) scegli una squadra. Più giocatori = ricerca più lenta.").font(.caption).foregroundStyle(.secondary)
+            } else if vm.fino >= 2 {
+                Text("Più giocatori per lato = ricerca più lenta (può volerci qualche secondo).").font(.caption).foregroundStyle(.secondary)
             }
             Button { Task { await vm.caricaProposte() } } label: {
                 Label(vm.proposte.inCorso ? "Cerco…" : "Cerca scambi", systemImage: "magnifyingglass")
@@ -268,8 +277,83 @@ struct DettaglioScambio: View {
                 }
             }
             impatto
+            validita
+            crediti
             if let giudizio {
-                Carta { Label(giudizio, systemImage: "scalemass").font(.headline) }
+                Carta {
+                    Label(giudizio, systemImage: "scalemass").font(.headline)
+                    if let righe = p.giudizio?.spiegazione, !righe.isEmpty {
+                        ForEach(righe, id: \.self) { Text($0).font(.footnote).foregroundStyle(.secondary) }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Le rose dopo lo scambio: se una non è valida (troppi giocatori di un ruolo, pochi per un modulo) si dice quale e perché.
+    @ViewBuilder
+    private var validita: some View {
+        if p.completo == true {
+            Carta("Rose dopo lo scambio") {
+                if p.valido == false {
+                    Label("Scambio non valido", systemImage: "xmark.octagon.fill").font(.headline).foregroundStyle(.orange)
+                } else {
+                    Label("Le rose restano valide", systemImage: "checkmark.seal.fill").font(.subheadline).foregroundStyle(Color.verde)
+                }
+                ForEach(p.problemi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(.orange) }
+                if let v = p.valoreRosa?.mio, let variazione = v.variazione {
+                    HStack {
+                        Text("Tua formazione migliore")
+                        Spacer()
+                        Text("\(Formato.punti(v.prima)) → \(Formato.punti(v.dopo)) (\(Formato.conSegno(variazione)))").monospacedDigit().font(.subheadline)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if let v = p.panchina?.mio, let variazione = v.variazione, abs(variazione) >= 0.05 {
+                    HStack {
+                        Text("Tua panchina").font(.footnote)
+                        Spacer()
+                        Text(Formato.conSegno(variazione)).font(.footnote).monospacedDigit()
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityElement(children: .combine)
+                }
+                if let modulo = p.rose?.mio?.modulo {
+                    Text("Modulo dopo lo scambio: \(modulo)").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    /// Il conguaglio di crediti: chi paga, quanto restano, quanto valgono in punti attesi.
+    @ViewBuilder
+    private var crediti: some View {
+        if let c = p.conguaglio, let n = c.crediti, n != 0 {
+            Carta("Conguaglio in crediti") {
+                Text(n > 0 ? "Ricevi \(n) crediti da \(p.altra)." : "Paghi \(-n) crediti a \(p.altra).").font(.subheadline)
+                if let d = c.dopo?.mio, let r = c.residui?.mio {
+                    Text("I tuoi crediti: \(Formato.intero(r)) → \(Formato.intero(d))").font(.footnote).foregroundStyle(.secondary)
+                }
+                if let m = c.valoreMio {
+                    HStack {
+                        Text("Valore dei crediti per te")
+                        Spacer()
+                        Text(Formato.conSegno(m)).monospacedDigit().foregroundStyle(m >= 0 ? Color.verde : .orange)
+                    }
+                    .font(.subheadline)
+                    .accessibilityElement(children: .combine)
+                }
+                if let netto = p.nettoMio {
+                    HStack {
+                        Text("Netto per te (con i crediti)").bold()
+                        Spacer()
+                        Text(Formato.conSegno(netto)).bold().monospacedDigit().foregroundStyle(netto >= 0 ? Color.verde : .orange)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if let problema = c.problema, c.valido == false {
+                    Text(problema).font(.footnote).foregroundStyle(.orange)
+                }
             }
         }
     }
@@ -340,16 +424,37 @@ struct AnalizzaScambioView: View {
                     Section("Tu ricevi") { elenco(loro.giocatori, scelti: $vm.ricevoIds) }
                 }
                 Section {
+                    HStack {
+                        Text("Conguaglio in crediti")
+                        Spacer()
+                        TextField("0", text: $vm.conguaglio)
+                            .keyboardType(.numbersAndPunctuation)
+                            .multilineTextAlignment(.trailing)
+                            .frame(minWidth: 70, maxWidth: 110, minHeight: 44)
+                            .accessibilityLabel("Conguaglio in crediti")
+                    }
+                    if !vm.conguaglioValido {
+                        Label("Scrivi un numero intero di crediti.", systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(.orange)
+                    }
+                } header: {
+                    Text("Conguaglio")
+                } footer: {
+                    Text("Positivo: li ricevi tu (li paga \(vm.altra.isEmpty ? "l'altra squadra" : vm.altra)). Negativo: li paghi tu. Lascia vuoto se non ci sono crediti nello scambio.")
+                }
+                Section {
+                    Text("Dai \(vm.doIds.count) · ricevi \(vm.ricevoIds.count) (da 1 a \(AnalizzaScambioViewModel.massimoPerLato) per lato)")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    if let t = vm.troppi { Label(t, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(.orange) }
                     Button {
                         Task { await vm.analizza() }
                     } label: {
-                        if vm.inCorso { ProgressView() } else { Text("Analizza").frame(minHeight: 44) }
+                        if vm.inCorso { ProgressView() } else { Text("Analizza").frame(maxWidth: .infinity, minHeight: 44) }
                     }
                     .disabled(!vm.puoAnalizzare)
                     if let errore = vm.errore { Text(errore).foregroundStyle(.orange) }
                 }
                 if let esito = vm.esito {
-                    Section("Esito") { DettaglioScambio(p: esito, giudizio: ScambiLogica.giudizioAnalisi(esito)).listRowBackground(Color.clear) }
+                    Section("Esito") { DettaglioScambio(p: esito, giudizio: esito.giudizio?.testo ?? ScambiLogica.giudizioAnalisi(esito)).listRowBackground(Color.clear) }
                 }
             }
             .scrollContentBackground(.hidden)
