@@ -37,7 +37,9 @@ final class ScambiViewModel: ViewModelBase {
     init(server: any ServerClient) {
         self.server = server
         squadre = Caricatore<[SquadraLega]>("/api/squadre", server: server)
-        proposte = Caricatore<ProposteScambi>("/api/scambi/proposte", server: server)
+        // `ascolta: false`: le proposte si cercano SOLO su richiesta dell'utente (il server conta ogni ricerca): non si rilanciano da sole
+        // al comando «Aggiorna», dopo un'importazione delle rose o cambiando scheda.
+        proposte = Caricatore<ProposteScambi>("/api/scambi/proposte", ascolta: false, server: server)
         super.init()
         osserva(squadre)
         osserva(proposte)
@@ -56,7 +58,16 @@ final class ScambiViewModel: ViewModelBase {
     }
 
     func caricaSquadre() async { await squadre.ricarica() }
-    func caricaProposte() async { await proposte.ricarica(indirizzoProposte) }
+    /// Per quanto tempo si ricordano le proposte degli stessi parametri (senza chiedere di nuovo al server).
+    static let validitaProposte: TimeInterval = 15 * 60
+
+    /// Cerca gli scambi. Una ricerca alla volta; con gli stessi parametri di poco fa si mostrano quelli già trovati
+    /// (`forza: true` solo dal «tira per aggiornare»).
+    func caricaProposte(forza: Bool = false) async {
+        if proposte.inCorso { return }
+        if !forza, proposte.haDatiRecenti(per: indirizzoProposte, entro: Self.validitaProposte) { return }
+        await proposte.ricarica(indirizzoProposte)
+    }
 
     /// Le squadre che accettano più volentieri (se ce ne sono almeno due con scambi proposti).
     var propense: [ScambiLogica.SquadraPropensa] { ScambiLogica.squadrePropense(proposte.dato?.proposte ?? []) }

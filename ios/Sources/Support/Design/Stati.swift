@@ -146,22 +146,31 @@ struct ErroreVista: View {
         }
     }
 
+    /// Un limite di richieste (429): il messaggio dice già quando riprovare e un pulsante «Riprova» sarebbe inutile.
+    private var eLimite: Bool {
+        messaggio.localizedCaseInsensitiveContains("Riprova tra") || messaggio.localizedCaseInsensitiveContains("Riprova domani")
+            || messaggio.localizedCaseInsensitiveContains("troppi tentativi") || messaggio.localizedCaseInsensitiveContains("già fatto")
+    }
+
     private var errore: some View {
         ContentUnavailableView {
-            Label("Qualcosa non va", systemImage: "wifi.exclamationmark")
+            Label(eLimite ? "Limite raggiunto" : "Qualcosa non va", systemImage: eLimite ? "hourglass" : "wifi.exclamationmark")
                 .symbolEffect(.pulse, options: .repeat(3))
         } description: {
-            Text(messaggio + (messaggio.contains("rete privata") || messaggio.hasPrefix("Il server dice") ? "" : "\nControlla che rete privata sia acceso e riprova."))
+            // Il testo è quello dell'errore, una volta sola (i messaggi di rete dicono già di controllare la connessione).
+            Text(messaggio)
         } actions: {
-            Button {
-                tentativi += 1
-                riprova()
-            } label: {
-                Label("Riprova", systemImage: "arrow.clockwise").frame(minHeight: Tema.areaTocco)
+            if !eLimite {
+                Button {
+                    tentativi += 1
+                    riprova()
+                } label: {
+                    Label("Riprova", systemImage: "arrow.clockwise").frame(minHeight: Tema.areaTocco)
+                }
+                .pulsanteVetro(prominente: true)
+                .sensoryFeedback(.impact(weight: .light), trigger: tentativi)
+                .accessibilityHint("Riprova a contattare il server")
             }
-            .pulsanteVetro(prominente: true)
-            .sensoryFeedback(.impact(weight: .light), trigger: tentativi)
-            .accessibilityHint("Riprova a contattare il server")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)

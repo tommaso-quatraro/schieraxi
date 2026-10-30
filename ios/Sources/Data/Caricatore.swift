@@ -80,6 +80,12 @@ final class Caricatore<T: Decodable>: ObservableObject {
             }
     }
 
+    /// Ci sono già dati di QUESTO indirizzo scaricati da poco? (per non rifare una ricerca che il server conta, con gli stessi parametri)
+    func haDatiRecenti(per indirizzo: String, entro secondi: TimeInterval, adesso: Date = Date()) -> Bool {
+        guard percorsoDelDato == indirizzo, stato.dato != nil, !dallaCache, let quando = scaricatoIl else { return false }
+        return adesso.timeIntervalSince(quando) < secondi
+    }
+
     func ricarica(_ nuovoPercorso: String) async {
         percorso = nuovoPercorso
         await ricarica()

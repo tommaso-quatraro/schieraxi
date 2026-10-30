@@ -35,7 +35,7 @@ struct ScambiView: View {
                     .animation(Tema.morbida, value: vm.proposte.dato != nil)
                 }
                 .demoInFondo()
-                .refreshable { await vm.caricaProposte() }
+                .refreshable { await vm.caricaProposte(forza: true) }
                 .avvisoDatiSalvati(vm.proposte.datiSalvati)
                 .bordiMorbidi()
             }

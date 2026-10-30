@@ -72,16 +72,37 @@ enum ErroreApi: LocalizedError {
         case .accessoRichiesto(let messaggio): return messaggio
         case .troppiTentativi(let messaggio, let attesa):
             guard let attesa, attesa > 0 else { return messaggio }
-            return "\(messaggio) Riprova tra \(attesa < 90 ? "\(attesa) secondi" : "\((attesa + 59) / 60) minuti")."
+            // Il messaggio del server può già dire «Riprova domani»: si toglie, resta il tempo vero, una volta sola.
+            return "\(Self.senzaInvitoARiprovare(messaggio)) Riprova tra \(Self.tempoLeggibile(attesa))."
         case .conflitto: return "È cambiato da un altro dispositivo: ho ricaricato i dati. Controlla e rifai la modifica."
         case .indirizzoNonValido:
             return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo in Lega > Server." : "L'indirizzo del server non è valido."
         case .risposta(let codice): return "Il server ha risposto con un errore (\(codice))."
         case .dati(let dettaglio): return "Risposta inattesa dal server. \(dettaglio)"
-        case .timeout: return "Il server ci mette troppo a rispondere. Riprova tra poco."
-        case .rete: return "Non riesco a raggiungere il server. Controlla che rete privata sia attivo."
+        case .timeout: return "Il server ci mette troppo a rispondere. Controlla la connessione e riprova tra poco."
+        case .rete: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia raggiungibile."
         }
     }
+
+    /// Un'attesa in parole: «30 secondi», «10 minuti», «6 h 55 min», «2 giorni».
+    static func tempoLeggibile(_ secondi: Int) -> String {
+        if secondi < 90 { return "\(secondi) secondi" }
+        let minuti = (secondi + 59) / 60
+        if minuti < 90 { return "\(minuti) minuti" }
+        let ore = minuti / 60
+        if ore >= 48 { return "\(ore / 24) giorni" }
+        let resto = minuti % 60
+        return resto == 0 ? "\(ore) h" : "\(ore) h \(resto) min"
+    }
+
+    /// Il messaggio senza le frasi che cominciano con «Riprova» (le sostituisce il tempo che manca).
+    static func senzaInvitoARiprovare(_ messaggio: String) -> String {
+        let pulito = messaggio.replacingOccurrences(of: #"\s*Riprova[^.!]*[.!]?"#, with: "", options: [.regularExpression, .caseInsensitive])
+        return pulito.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Un limite raggiunto (429): riprovare subito non serve a niente.
+    var eLimite: Bool { if case .troppiTentativi = self { return true } else { return false } }
 }
 
 /// Trasporto verso il server. Due soli metodi: tutto il resto (JSON, errori, testo) è nelle estensioni qui sotto.
