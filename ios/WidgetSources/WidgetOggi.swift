@@ -9,7 +9,7 @@ struct WidgetOggi: Widget {
     let kind = "SchieraxiOggi"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Fornitore()) { voce in
+        AppIntentConfiguration(kind: kind, intent: ConfigurazioneWidget.self, provider: Fornitore()) { voce in
             VistaWidget(voce: voce)
         }
         .configurationDisplayName("Prossima giornata")
@@ -94,10 +94,10 @@ struct VistaWidget: View {
 
     private var senzaDati: some View {
         VStack(spacing: 4) {
-            Image(systemName: voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
-            Text(voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
+            Image(systemName: voce.indirizzoMancante ? "server.rack" : voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
+            Text(voce.indirizzoMancante ? "Manca il server" : voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
             if !accessorio {
-                Text(voce.accessoRichiesto ? "Apri SchieraXI per accedere" : "Apri SchieraXI con rete privata acceso")
+                Text(voce.indirizzoMancante ? "Tieni premuto > Modifica widget e scrivi l'indirizzo" : voce.accessoRichiesto ? "Apri SchieraXI per accedere" : "Apri SchieraXI con rete privata acceso")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
         }

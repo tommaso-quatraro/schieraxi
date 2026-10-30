@@ -22,7 +22,7 @@ TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-diario lega-backup lega-novita
        lega-importa lega-importa-csv lega-movimenti lega-stagione lega-aspetto lega-icona
-       accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
+       primo-avvio accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
 PER_CHIARO=(oggi formazione formazione-confronto formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
             scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato lega-aspetto lega-icona lega-rosa giocatore giocatore-fondo ricerca)

@@ -11,9 +11,6 @@ settings:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    # indirizzo dell'app: arriva dalle variabili di GitHub Actions (FANTA_HOST, FANTA_PORT), non sta nel codice
-    FANTA_HOST: "example.invalid"
-    FANTA_PORT: "443"
 targets:
   Schieraxi:
     type: application
@@ -74,8 +71,6 @@ targets:
               - public.tab-separated-values-text
               - public.plain-text
         LSSupportsOpeningDocumentsInPlace: false
-        FantaHost: $(FANTA_HOST)
-        FantaPort: $(FANTA_PORT)
   SchieraxiWidget:
     # estensione widget (WidgetKit): conto alla rovescia, modulo e punti attesi. Consuma un App ID in più con l'Apple ID gratuito.
     type: app-extension
@@ -100,8 +95,6 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
-        FantaHost: $(FANTA_HOST)
-        FantaPort: $(FANTA_PORT)
   SchieraxiTests:
     # test automatici (XCTest) di Domain, Data e ViewModel: girano nel simulatore (workflow test.yml). Non entrano nell'IPA.
     type: bundle.unit-test

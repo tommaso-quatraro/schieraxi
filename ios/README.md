@@ -43,7 +43,7 @@ L'app nativa fa **tutto quello che fa la web app** (tranne le notifiche push, ve
 
 ## Come si compila (nessun Mac)
 - GitHub Actions su un Mac (**`macos-26`**, Xcode 26), senza firma: produce `Schieraxi.ipa` con il widget in `PlugIns` (artifact e release `build-N`). Il workflow controlla anche che le icone alternative siano dichiarate nell'`Info.plist` e che i target di test **non** finiscano nell'IPA. **Versione minima di iOS: 18** (serve a `Tab`, zoom, `MeshGradient`, `sidebarAdaptable`). Per tornare a `macos-15`: lancio manuale del workflow con `runner = macos-15` (non crea la release) o modifica di `runs-on` in `.github/workflows/ipa.yml`.
-- Indirizzo del server: variabili del repository `FANTA_HOST` e `FANTA_PORT`; modificabile da Lega (solo `https://`).
+- Indirizzo del server: non e' dentro l'app. Al primo avvio l'app lo chiede (con «Prova la connessione») e lo ricorda; si cambia da Lega > Server (solo `https://`). Dopo l'aggiornamento che ha tolto l'indirizzo dall'IPA chi lo aveva salvato lo mantiene; chi usava quello incorporato lo scrive una volta. Widget: tieni premuto > Modifica widget > Indirizzo del server.
 - **Installazione:** SideStore sull'iPhone firma l'IPA con l'Apple ID gratuito e lo rinnova (ogni 7 giorni, con LocalDevVPN attiva).
 - Il progetto Xcode non è in git: lo genera XcodeGen da `project.yml` (target `Schieraxi`, `SchieraxiWidget`, `SchieraxiTests`, `SchieraxiUITests`).
 

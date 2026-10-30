@@ -22,7 +22,7 @@ struct ProvaServerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextField(Config.indirizzoPredefinito, text: $bozza)
+            TextField(Config.esempioIndirizzo, text: $bozza)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)

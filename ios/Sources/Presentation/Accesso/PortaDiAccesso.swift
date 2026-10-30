@@ -14,6 +14,11 @@ struct PortaDiAccesso: View {
         Group {
             if Demo.schermata == "marchio" {
                 ProvaMarchio()
+            } else if Demo.schermata == "primo-avvio" {
+                PrimoAvvioView()
+            } else if IndirizzoServer.manca {
+                // l'indirizzo del server non sta nell'app: prima di tutto si chiede e si prova
+                PrimoAvvioView()
             } else if let codice = sessione.codiceDaMostrare, sessione.utente != nil {
                 NavigationStack {
                     CodiceRecuperoView(codice: codice) { sessione.codiceDaMostrare = nil }
@@ -25,6 +30,7 @@ struct PortaDiAccesso: View {
             }
         }
         .animation(Tema.morbida, value: sessione.stato == .daAccedere)
+        .animation(Tema.morbida, value: indirizzo.isEmpty)
         .tint(Color.verde)   // anche accesso e codice di recupero con il colore dell app (prima restavano blu)
         // All'apertura, e poco dopo che si è cambiato l'indirizzo del server, si chiede chi siamo.
         .task(id: indirizzo) {

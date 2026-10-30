@@ -3,16 +3,15 @@ import SwiftUI
 // Livello Data: tutto ciò che parla con il server sta qui. Le schermate (ViewModel) conoscono solo il protocollo `ServerClient`,
 // così si possono usare dati finti nelle anteprime e nei test.
 
-/// Indirizzo del server: predefinito dalla compilazione (Info.plist), modificabile dalla schermata Lega.
+/// L'indirizzo del server NON è dentro l'app (il repository e l'IPA sono pubblici): lo scrive l'utente al primo avvio
+/// (o in Lega > Server) e resta sul telefono, in `UserDefaults` («indirizzo»).
 enum Config {
-    static func testo(_ chiave: String) -> String {
-        (Bundle.main.object(forInfoDictionaryKey: chiave) as? String) ?? ""
-    }
+    /// Nessun indirizzo predefinito: vuoto. Solo in modalità demo (fotografie nel simulatore) c'è un indirizzo finto.
     static var indirizzoPredefinito: String {
-        // In modalità demo (fotografie nel simulatore) l'indirizzo vero non deve comparire.
-        if Demo.attivo { return "https://server-demo.invalid:443" }
-        return "https://\(testo("FantaHost")):\(testo("FantaPort"))"
+        Demo.attivo ? "https://server-demo.invalid:443" : ""
     }
+    /// Esempio mostrato nei campi di testo (non è un indirizzo vero e non viene mai usato).
+    static let esempioIndirizzo = "https://nome-del-server.example"
 }
 
 enum IndirizzoServer {
@@ -34,7 +33,10 @@ enum IndirizzoServer {
         ["localhost", "127.0.0.1", "::1", "[::1]"].contains(host.lowercased())
     }
 
-    /// Indirizzo in uso: quello scritto nella schermata Lega (se valido, senza «/» finali), altrimenti quello della compilazione.
+    /// Manca l'indirizzo: al primo avvio (o dopo aver tolto l'app) si chiede prima di tutto il resto.
+    static var manca: Bool { attuale.isEmpty }
+
+    /// Indirizzo in uso: quello scritto dall'utente (se valido, senza «/» finali), altrimenti vuoto (solo in demo uno finto).
     static var attuale: String {
         var salvato = (UserDefaults.standard.string(forKey: "indirizzo") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         while salvato.hasSuffix("/") { salvato.removeLast() }
@@ -72,7 +74,8 @@ enum ErroreApi: LocalizedError {
             guard let attesa, attesa > 0 else { return messaggio }
             return "\(messaggio) Riprova tra \(attesa < 90 ? "\(attesa) secondi" : "\((attesa + 59) / 60) minuti")."
         case .conflitto: return "È cambiato da un altro dispositivo: ho ricaricato i dati. Controlla e rifai la modifica."
-        case .indirizzoNonValido: return "L'indirizzo del server non è valido."
+        case .indirizzoNonValido:
+            return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo in Lega > Server." : "L'indirizzo del server non è valido."
         case .risposta(let codice): return "Il server ha risposto con un errore (\(codice))."
         case .dati(let dettaglio): return "Risposta inattesa dal server. \(dettaglio)"
         case .timeout: return "Il server ci mette troppo a rispondere. Riprova tra poco."
