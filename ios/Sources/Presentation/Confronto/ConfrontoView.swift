@@ -296,14 +296,20 @@ struct RicercaGiocatoreView: View {
 /// La lente accanto al titolo di ogni schermata: cerca un giocatore da qualsiasi sezione.
 struct RicercaGlobale: ViewModifier {
     @Environment(\.server) private var server
+    @Environment(\.apriImpostazioni) private var apriImpostazioni
     @State private var aperta = false
 
     func body(content: Content) -> some View {
         content
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button { aperta = true } label: { Image(systemName: "magnifyingglass").frame(minWidth: 44, minHeight: 44) }
                         .accessibilityLabel("Cerca un giocatore")
+                    // le Impostazioni stanno accanto alla lente in ogni testata (non nei fogli, dove la funzione non c'è)
+                    if let apriImpostazioni {
+                        Button { apriImpostazioni() } label: { Image(systemName: "gearshape").frame(minWidth: 44, minHeight: 44) }
+                            .accessibilityLabel("Impostazioni")
+                    }
                 }
             }
             .sheet(isPresented: $aperta) { RicercaGlobaleSheet(server: server) }

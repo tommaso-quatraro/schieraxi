@@ -96,7 +96,11 @@ extension Demo {
             }
         }
 
-        if accesso == "account" { nav.sezione = .lega }
+        if accesso == "account" {
+            // l'account sta nelle Impostazioni (ingranaggio): in demo si apre subito il foglio
+            nav.sezione = .lega
+            nav.impostazioniAperte = true
+        }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
         switch nome {
         case "oggi":

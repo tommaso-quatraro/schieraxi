@@ -1,28 +1,17 @@
 import SwiftUI
 
-/// Schermata Lega: server, strumenti di gestione della lega, aspetto, promemoria, certificato. Logica in `LegaViewModel`.
+/// Schermata Lega: solo la lega (rose, regole, storico, diario, asta, crediti). Il resto sta nelle Impostazioni. Logica in `LegaViewModel`.
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
     @EnvironmentObject private var sessione: SessioneAccount
+    @Environment(\.apriImpostazioni) private var apriImpostazioni
 
     var body: some View {
         NavigationStack(path: $vm.percorso) {
             List {
-                testata
-                AccountSezione()
                 if vm.nuovaStagione { bannerStagione }
-                sezioneServer
                 sezioneLega
-                sezioneApp
-                sezionePromemoria
-                SezioneWidget()
-                NuovaVersioneSezione()
-                CertificatoSezione()
-                RinnovoSideStoreSezione()
-                NotificheNtfySezione()
-                Section("App") {
-                    riga("Versione", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
-                }
+                sezioneImpostazioni
             }
             .scrollContentBackground(.hidden)
             .background(Sfondo())
@@ -58,18 +47,6 @@ struct LegaView: View {
 
     // MARK: sezioni
 
-    /// Il marchio di SchieraXI in cima a Lega, con il nome e una frase da spogliatoio.
-    private var testata: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            MarchioConNome(lato: 52)
-            Text("Gli undici giusti, giornata dopo giornata.")
-                .font(.subheadline).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-    }
-
     private var bannerStagione: some View {
         Section {
             NavigationLink(value: PaginaLega.stagione) {
@@ -80,27 +57,6 @@ struct LegaView: View {
                 .frame(minHeight: 44)
                 .accessibilityElement(children: .combine)
             }
-        }
-    }
-
-    private var sezioneServer: some View {
-        Section("Server") {
-            ProvaServerView(utente: sessione.utente?.nome, dopoProva: { await vm.info.ricarica() })
-            if vm.info.inCorso {
-                ProgressView()
-            } else if let s = vm.info.dato {
-                if let salvati = vm.info.datiSalvati {
-                    Label("Server non raggiungibile. Dati salvati del \(salvati.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
-                        .font(.footnote).foregroundStyle(Color.attenzione)
-                }
-                riga("Squadra", s.miaSquadra ?? "—")
-                riga("Stagione", s.stagione ?? "—")
-                riga("Versione del server", s.versione ?? "—")
-                riga("Dati aggiornati", Quando.leggibile((s.ultimoAggiornamento ?? "").replacingOccurrences(of: "T", with: " ")))
-            } else if let e = vm.info.errore {
-                Text(e).foregroundStyle(Color.attenzione)
-            }
-            if sessione.puoAmministrare { AggiornaDatiSezione(vm: vm.aggiornamento) }
         }
     }
 
@@ -117,31 +73,18 @@ struct LegaView: View {
         }
     }
 
-    private var sezioneApp: some View {
-        Section("App e dati") {
-            NavigationLink(value: PaginaLega.aspetto) { Label("Aspetto", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.icona) { Label("Icona dell'app", systemImage: "app.badge").labelStyle(.voce(.purple)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.backup) { Label("Backup dei dati", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.avvisi) { Label("Avvisi del server", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44) }
-            if sessione.puoAmministrare {
-                NavigationLink(value: PaginaLega.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
+    /// Un solo rimando alle Impostazioni (account, collegamento, aspetto, avvisi, widget, copia di sicurezza, informazioni).
+    @ViewBuilder
+    private var sezioneImpostazioni: some View {
+        if let apri = apriImpostazioni {
+            Section {
+                Button { apri() } label: {
+                    Label("Impostazioni dell'app e dell'account", systemImage: "gearshape").labelStyle(.voce(.gray)).frame(minHeight: 44)
+                }
+            } footer: {
+                Text("Account, collegamento al server, aspetto, avvisi, widget e copia di sicurezza stanno nelle Impostazioni (l'ingranaggio in alto).")
             }
-            NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
         }
-    }
-
-    private var sezionePromemoria: some View {
-        Section("Promemoria") {
-            riga("Notifiche", vm.permesso)
-            Button("Attiva i promemoria sul telefono") { Task { await vm.attivaPromemoria() } }.frame(minHeight: 44)
-            riga("Aggiornamento in background", vm.aggiornamentoInBackground)
-            Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri la schermata Oggi e, ogni tanto, da soli: iOS sveglia l'app in background, riscarica la giornata e ti avvisa se la formazione consigliata cambia. Quando succede lo decide iOS (di solito poche volte al giorno).")
-                .font(.footnote).foregroundStyle(.secondary)
-        }
-    }
-
-    private func riga(_ titolo: String, _ valore: String) -> some View {
-        RigaValore(titolo: titolo, valore: valore)
     }
 }
 

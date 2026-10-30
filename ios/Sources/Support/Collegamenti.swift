@@ -4,6 +4,8 @@ import Foundation
 enum Destinazione: Equatable {
     case sezione(Sezione)
     case giocatore(Int)
+    /// Il foglio delle Impostazioni (`schieraxi://impostazioni`).
+    case impostazioni
 }
 
 /// Indirizzi accettati dall'app (schema `schieraxi://`), per aprirla dal tocco su una notifica di ntfy (intestazione `Click`):
@@ -16,6 +18,7 @@ enum Collegamenti {
 
     static func interpreta(_ url: URL) -> Destinazione? {
         guard url.scheme?.lowercased() == schema, let host = url.host?.lowercased() else { return nil }
+        if host == "impostazioni" { return .impostazioni }
         if host == "giocatore" {
             // pathComponents di "schieraxi://giocatore/12" è ["/", "12"]
             guard let testo = url.pathComponents.dropFirst().first, let id = Int(testo), id > 0 else { return nil }

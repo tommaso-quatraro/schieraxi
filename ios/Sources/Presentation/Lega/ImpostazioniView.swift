@@ -1,0 +1,135 @@
+import SwiftUI
+
+/// Le pagine che si aprono dalle Impostazioni.
+enum PaginaImpostazioni: Hashable {
+    case aspetto, icona, avvisi, backup, stato, novita
+}
+
+private struct ApriImpostazioniChiave: EnvironmentKey {
+    static let defaultValue: (() -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    /// Apre le Impostazioni (l'ingranaggio accanto alla lente in ogni testata). `nil` dove non ci sono (anteprime, fogli).
+    var apriImpostazioni: (() -> Void)? {
+        get { self[ApriImpostazioniChiave.self] }
+        set { self[ApriImpostazioniChiave.self] = newValue }
+    }
+}
+
+/// Impostazioni: tutto quello che riguarda l'app e l'account, in gruppi. Lega resta solo la lega (rose, regole, storico).
+/// Si apre come foglio dall'ingranaggio in testata, accanto alla lente.
+struct ImpostazioniView: View {
+    @ObservedObject var vm: LegaViewModel
+    @EnvironmentObject private var sessione: SessioneAccount
+    @Environment(\.dismiss) private var chiudi
+    @State private var percorso: [PaginaImpostazioni] = []
+
+    var body: some View {
+        NavigationStack(path: $percorso) {
+            List {
+                AccountSezione()
+                sezioneCollegamento
+                sezioneAspetto
+                sezioneAvvisi
+                SezioneWidget()
+                sezioneDati
+                NuovaVersioneSezione()
+                CertificatoSezione()
+                RinnovoSideStoreSezione()
+                sezioneInformazioni
+                sezioneAvanzate
+                NotificheNtfySezione()
+            }
+            .scrollContentBackground(.hidden)
+            .background(Sfondo())
+            .navigationTitle("Impostazioni")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } }
+            }
+            .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0) }
+            .task { await vm.carica() }
+        }
+        .tint(Color.verde)
+    }
+
+    @ViewBuilder
+    private func destinazione(_ pagina: PaginaImpostazioni) -> some View {
+        switch pagina {
+        case .aspetto: AspettoView()
+        case .icona: IconaAppView()
+        case .avvisi: AvvisiServerView(server: vm.server)
+        case .backup: BackupView(server: vm.server)
+        case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
+        case .novita: NovitaView(server: vm.server)
+        }
+    }
+
+    // MARK: gruppi
+
+    private var sezioneCollegamento: some View {
+        Section("Collegamento") {
+            ProvaServerView(utente: sessione.utente?.nome, dopoProva: { await vm.info.ricarica() })
+            if vm.info.inCorso {
+                ProgressView()
+            } else if let s = vm.info.dato {
+                if let salvati = vm.info.datiSalvati {
+                    Label("Server non raggiungibile. Dati salvati del \(salvati.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
+                        .font(.footnote).foregroundStyle(Color.attenzione)
+                }
+                RigaValore(titolo: "Squadra", valore: s.miaSquadra ?? "—")
+                RigaValore(titolo: "Stagione", valore: s.stagione ?? "—")
+                RigaValore(titolo: "Dati aggiornati", valore: Quando.leggibile((s.ultimoAggiornamento ?? "").replacingOccurrences(of: "T", with: " ")))
+            } else if let e = vm.info.errore {
+                Text(e).foregroundStyle(Color.attenzione)
+            }
+        }
+    }
+
+    private var sezioneAspetto: some View {
+        Section("Aspetto") {
+            NavigationLink(value: PaginaImpostazioni.aspetto) { Label("Tema, colore e densità", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaImpostazioni.icona) { Label("Icona dell'app", systemImage: "app.badge").labelStyle(.voce(.purple)).frame(minHeight: 44) }
+        }
+    }
+
+    private var sezioneAvvisi: some View {
+        Section("Avvisi e promemoria") {
+            NavigationLink(value: PaginaImpostazioni.avvisi) { Label("Quali avvisi e ore tranquille", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44) }
+            RigaValore(titolo: "Notifiche", valore: vm.permesso)
+            Button("Attiva i promemoria sul telefono") { Task { await vm.attivaPromemoria() } }.frame(minHeight: 44)
+            RigaValore(titolo: "Aggiornamento in background", valore: vm.aggiornamentoInBackground)
+            Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri la schermata Oggi e, ogni tanto, da soli: iOS sveglia l'app in background, riscarica la giornata e ti avvisa se la formazione consigliata cambia. Quando succede lo decide iOS (di solito poche volte al giorno).")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    private var sezioneDati: some View {
+        Section("Dati e backup") {
+            NavigationLink(value: PaginaImpostazioni.backup) { Label("Copia di sicurezza", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
+        }
+    }
+
+    private var sezioneInformazioni: some View {
+        Section("Informazioni") {
+            NavigationLink(value: PaginaImpostazioni.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
+            RigaValore(titolo: "Versione dell'app", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+            if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
+        }
+    }
+
+    @ViewBuilder
+    private var sezioneAvanzate: some View {
+        if sessione.puoAmministrare {
+            Section("Avanzate") {
+                NavigationLink(value: PaginaImpostazioni.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
+                AggiornaDatiSezione(vm: vm.aggiornamento)
+            }
+        }
+    }
+}
+
+#Preview("Impostazioni") {
+    ImpostazioniView(vm: LegaViewModel(server: FinteServer.esempio))
+}

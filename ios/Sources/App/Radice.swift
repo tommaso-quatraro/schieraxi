@@ -51,6 +51,8 @@ final class Navigazione: ObservableObject {
     @Published var fileDaImportare: URL?
     /// La scheda di un giocatore aperta sopra la schermata corrente (tocco su una riga di Oggi, Formazione, Lega...).
     @Published var scheda: IdGiocatore?
+    /// Il foglio delle Impostazioni (l'ingranaggio in testata, o `schieraxi://impostazioni`).
+    @Published var impostazioniAperte = false
 
     init() {
         if !Demo.attivo { sezione = Self.sezioneDiAvvio() }
@@ -82,6 +84,8 @@ final class Navigazione: ObservableObject {
         case .giocatore(let id):
             sezione = .mercato
             giocatoreDaAprire = id
+        case .impostazioni:
+            impostazioniAperte = true
         }
     }
 }
@@ -120,6 +124,7 @@ struct RadiceView: View {
         .environment(\.spazioZoom, zoom)
         .environment(\.apriGiocatore) { nav.apriScheda($0) }
         .environment(\.vaiASezione) { nav.sezione = $0 }
+        .environment(\.apriImpostazioni) { nav.impostazioniAperte = true }
         .environment(\.apriImportazione) {
             modello.lega.percorso = [.importa]
             nav.sezione = .lega
@@ -131,6 +136,10 @@ struct RadiceView: View {
         .environment(\.vediFormazioneDi) { nome in
             modello.formazione.vediSquadra(nome)
             nav.sezione = .formazione
+        }
+        .sheet(isPresented: $nav.impostazioniAperte) {
+            ImpostazioniView(vm: modello.lega)
+                .tint(Color.verde)
         }
         .sheet(item: $nav.scheda) { g in
             GiocatoreSheet(id: g.id, server: modello.server, contesto: modello.formazione.contestoConfronto)
