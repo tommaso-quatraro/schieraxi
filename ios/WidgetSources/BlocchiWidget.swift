@@ -12,9 +12,17 @@ enum Vai {
 
 /// Il fondo dei widget SchieraXI (verde profondo): usato dai widget e dalla galleria di anteprima.
 struct FondoSchieraxi: View {
+    @Environment(\.widgetRenderingMode) private var modoSistema
+    @Environment(\.renderForzato) private var modoForzato
+
     var body: some View {
-        LinearGradient(colors: [Color(red: 0.05, green: 0.42, blue: 0.30), Color(red: 0.02, green: 0.22, blue: 0.26)],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
+        // Con i widget «tinted» (accentato) o vibranti il fondo lo mette il sistema: il verde sparisce, restano testo e forme.
+        if (modoForzato ?? modoSistema) == .fullColor {
+            LinearGradient(colors: [Color(red: 0.05, green: 0.42, blue: 0.30), Color(red: 0.02, green: 0.22, blue: 0.26)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else {
+            Color.clear
+        }
     }
 }
 
@@ -125,19 +133,25 @@ struct GraficoPunti: View {
 struct RigaGiocatoreWidget: View {
     let g: GiocatoreWidget
     var lato: CGFloat = 26
+    /// false dentro un altro Link (un Link dentro un Link non funziona): la riga e' solo testo.
+    var conLink = true
+
+    private var riga: some View {
+        HStack(spacing: 8) {
+            AvatarMini(g: g, lato: lato)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(g.nome).font(.footnote.weight(.semibold)).lineLimit(1)
+                Text(g.descrizioneStato.isEmpty ? g.partitaBreve : g.descrizioneStato)
+                    .font(.caption2).foregroundStyle(g.descrizioneStato.isEmpty ? TintaWidget.testo2 : TintaWidget.attenzione).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: lato)
+    }
 
     var body: some View {
-        Link(destination: Vai.giocatore(g.id)) {
-            HStack(spacing: 8) {
-                AvatarMini(g: g, lato: lato)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(g.nome).font(.footnote.weight(.semibold)).lineLimit(1)
-                    Text(g.descrizioneStato.isEmpty ? g.partitaBreve : g.descrizioneStato)
-                        .font(.caption2).foregroundStyle(g.descrizioneStato.isEmpty ? TintaWidget.testo2 : TintaWidget.attenzione).lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .frame(minHeight: lato)
+        Group {
+            if conLink { Link(destination: Vai.giocatore(g.id)) { riga } } else { riga }
         }
         .accessibilityElement(children: .combine)
     }

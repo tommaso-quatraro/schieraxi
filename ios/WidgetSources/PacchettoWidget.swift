@@ -11,6 +11,7 @@ struct PacchettoWidget: WidgetBundle {
         WidgetLive()
         WidgetDubbi()
         WidgetRosa()
+        WidgetOsservato()
         WidgetPunti()
         WidgetScambio()
         WidgetCrediti()

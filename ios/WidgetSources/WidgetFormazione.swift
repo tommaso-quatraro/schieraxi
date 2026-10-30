@@ -145,10 +145,12 @@ struct VistaFormazione: View {
 
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         VStack(spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(f.modulo ?? "—").font(.system(size: 34, weight: .bold, design: .rounded))
-                Text("\(punti(f)) punti attesi").font(.subheadline).monospacedDigit().foregroundStyle(TintaWidget.testo2)
-                if let t = f.intervallo?.testo { Text(t).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+            HStack(alignment: .center) {
+                Text(f.modulo ?? "—").font(.system(size: 34, weight: .bold, design: .rounded)).lineLimit(1).fixedSize()
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(punti(f)) punti attesi").font(.subheadline).monospacedDigit().foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                    if let t = f.intervallo?.testo { Text(t).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                }
                 Spacer()
                 if let g = w.giornata { Text("Giornata \(g)").font(.caption).foregroundStyle(TintaWidget.testo2) }
             }

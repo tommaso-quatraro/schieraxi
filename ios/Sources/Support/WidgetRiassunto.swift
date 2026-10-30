@@ -433,3 +433,15 @@ struct IntervalloWidget: Codable, Equatable {
         return "\(t) (\(volte) volte su 10)" + (indicativo == true ? ", indicativo" : "")
     }
 }
+
+extension RiassuntoWidget {
+    /// Il giocatore scelto (tra osservati, mia rosa, titolari); senza scelta o se non c'e' piu', il primo osservato.
+    func osservato(_ scelto: Int?) -> GiocatoreWidget? {
+        if let scelto {
+            let trovato = (osservati ?? []).first { $0.id == scelto } ?? (rosa ?? []).first { $0.id == scelto }
+                ?? (formazione?.titolari ?? []).first { $0.id == scelto }
+            if let trovato { return trovato }
+        }
+        return osservati?.first
+    }
+}

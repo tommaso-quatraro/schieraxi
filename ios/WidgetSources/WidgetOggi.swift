@@ -121,10 +121,19 @@ struct VistaWidget: View {
                 Spacer()
                 Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
-            Text(voce.datiSalvati ? "dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
+            if voce.datiSalvati || (r.daControllare == 0 && r.probabili != false) {
+                Text(voce.datiSalvati ? "dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
+            }
+            if r.daControllare > 0 {
+                Label("\(r.daControllare) da controllare", systemImage: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
+            } else if r.probabili == false {
+                Label("probabili non uscite", systemImage: "clock").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    private var conDubbi: Bool { !(voce.completo?.daControllare.isEmpty ?? true) }
 
     private func medio(_ r: RiassuntoOggi) -> some View {
         HStack(alignment: .top, spacing: 16) {
@@ -145,12 +154,27 @@ struct VistaWidget: View {
             }
             }
             Link(destination: URL(string: "schieraxi://formazione") ?? URL(fileURLWithPath: "/")) {
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: conDubbi ? .leading : .trailing, spacing: conDubbi ? 2 : 4) {
                 Label("Formazione", systemImage: "sportscourt").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
-                Text(r.modulo ?? "—").font(.system(.title, design: .rounded).weight(.bold))
-                Text("\(puntiTesto(r)) punti attesi").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
+                if conDubbi {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(r.modulo ?? "—").font(.system(.title2, design: .rounded).weight(.bold))
+                        Text("\(puntiTesto(r)) punti").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
+                    }
+                } else {
+                    Text(r.modulo ?? "—").font(.system(.title, design: .rounded).weight(.bold))
+                    Text("\(puntiTesto(r)) punti attesi").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.9))
+                }
                 Spacer(minLength: 0)
-                if r.daControllare > 0 {
+                if let w = voce.completo, !w.daControllare.isEmpty {
+                    // i miei titolari con un dubbio, un infortunio o una squalifica (dati di /api/widget)
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(w.daControllare.prefix(2)) { g in RigaGiocatoreWidget(g: g, lato: 28, conLink: false) }
+                        if w.daControllare.count > 2 {
+                            Text("e altri \(w.daControllare.count - 2)").font(.caption2).foregroundStyle(TintaWidget.testo2)
+                        }
+                    }
+                } else if r.daControllare > 0 {
                     Label("\(r.daControllare) da controllare", systemImage: "exclamationmark.circle.fill")
                         .font(.caption).foregroundStyle(.orange)
                 } else if r.probabili == false {

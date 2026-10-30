@@ -15,7 +15,7 @@ struct WidgetCruscotto: Widget {
         }
         .configurationDisplayName("Cruscotto")
         .description("Scadenza, formazione, dubbi, scambio e svincolo, punti attesi e fatti, crediti: ogni blocco apre la sua schermata.")
-        .supportedFamilies([.systemLarge, .systemExtraLarge])
+        .supportedFamilies([.systemLarge, .systemExtraLarge, .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
 
@@ -28,16 +28,56 @@ struct VistaCruscotto: View {
     private var modo: WidgetRenderingMode { modoForzato ?? modoSistema }
     let voce: Voce
 
+    private var accessorio: Bool {
+        switch famiglia {
+        case .accessoryCircular, .accessoryRectangular, .accessoryInline: return true
+        default: return false
+        }
+    }
+
     var body: some View {
         Group {
             if let w = voce.completo, let f = w.formazione, let tit = f.titolari, !tit.isEmpty {
-                if famiglia == .systemExtraLarge { largo(w, f, tit) } else { alto(w, f, tit) }
+                if accessorio { schermataDiBlocco(w, f) } else if famiglia == .systemExtraLarge { largo(w, f, tit) } else { alto(w, f, tit) }
             } else {
-                SenzaDatiWidget(voce: voce)
+                SenzaDatiWidget(voce: voce, compatto: accessorio)
             }
         }
-        .sfondoWidget(accessorio: false)
+        .sfondoWidget(accessorio: accessorio)
         .widgetURL(Vai.url("oggi"))
+    }
+
+    // MARK: schermata di blocco
+
+    @ViewBuilder
+    private func schermataDiBlocco(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
+        let dubbi = w.daControllare.count
+        let intervallo: String = f.intervallo?.testo.map { " · " + $0 } ?? ""
+        switch famiglia {
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 0) {
+                    Text(w.giornata.map { "G\($0)" } ?? "G").font(.system(size: 10))
+                    Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(dubbi > 0 ? "\(dubbi) dubbi" : "ok").font(.system(size: 9))
+                }
+            }
+        case .accessoryInline:
+            Label("\(f.modulo ?? "—") · \(dubbi > 0 ? "\(dubbi) da controllare" : "titolari a posto")", systemImage: "sportscourt")
+        default:
+            VStack(alignment: .leading, spacing: 1) {
+                ContoWidget(inizio: w.inizio, adesso: voce.date).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                Text("\(f.modulo ?? "—") · \(Formato.punti(f.puntiAttesi)) punti\(intervallo)")
+                    .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                if let p = w.partiteInGioco.first {
+                    Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)").font(.caption2).lineLimit(1)
+                } else {
+                    Text(dubbi > 0 ? "\(dubbi) da controllare" : "Titolari a posto").font(.caption2).lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: blocchi

@@ -49,7 +49,9 @@ enum DatiGalleria {
          "squadra": "Schiera FC", "crediti_residui": 12,
          "formazione": {"modulo": "3-4-3", "punti_attesi": 73.7, "intervallo": {"basso": 62.2, "alto": 84.6, "confidenza": 0.8, "indicativo": false}, "titolari": [\#(tit)], "panchina": [201, 202, 203, 204, 205, 206, 207]},
          "avvisi": [\#(avvisi)], "rosa": [\#(rosa)],
-         "squalificati": [], "diffidati": [110], "rigoristi": [109], "osservati": [],
+         "squalificati": [], "diffidati": [110], "rigoristi": [109],
+         "osservati": [{"id": 30, "nome": "Giocatore 060", "ruolo": "A", "voto_atteso": 6.4, "punti_attesi": 6.9, "avversario": "juventus", "in_casa": true, "data_partita": "\#(data(95))", "stato": "disponibile", "percentuale": 92},
+                       {"id": 31, "nome": "Giocatore 040", "ruolo": "A", "voto_atteso": 6.6, "punti_attesi": 7.3, "avversario": "milan", "in_casa": true, "data_partita": "\#(data(1500))", "stato": "dubbio", "percentuale": 60}],
          "dati": {"ultimo_aggiornamento": "2026-10-30T14:32:00"},
          "live": {"aggiornato_il": "\#(data(0)):04", "fonte": "espn", "in_corso": 2, "partite": [
            {"casa": "inter", "trasferta": "roma", "data": "\#(data(-63))", "stato": "secondo_tempo", "minuto": "63'", "gol_casa": 2, "gol_trasferta": 0,
@@ -88,11 +90,12 @@ enum DatiGalleria {
         switch widget {
         case "oggi": return [.systemSmall, .systemMedium] + blocco
         case "formazione": return [.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge] + blocco
-        case "cruscotto": return [.systemLarge, .systemExtraLarge]
+        case "cruscotto": return [.systemLarge, .systemExtraLarge] + blocco
         case "dubbi": return [.systemMedium, .systemLarge, .accessoryRectangular]
         case "rosa": return [.systemMedium, .systemLarge, .systemExtraLarge, .accessoryRectangular, .accessoryInline]
         case "punti": return [.systemSmall, .systemMedium, .systemLarge] + blocco
         case "live": return [.systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline]
+        case "osservato": return [.systemSmall, .systemMedium] + blocco
         case "scambio": return [.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline]
         case "crediti": return [.systemSmall, .systemMedium] + blocco
         case "stato": return [.systemSmall] + blocco
@@ -109,6 +112,7 @@ enum DatiGalleria {
         case "rosa": VistaRosa(voce: voce)
         case "punti": VistaPunti(voce: voce)
         case "scambio": VistaScambio(voce: voce)
+        case "osservato": VistaOsservato(voce: voce, scelto: 31)
         case "live": VistaLive(voce: voce)
         case "crediti": VistaCrediti(voce: voce)
         case "stato": VistaStato(voce: voce)
