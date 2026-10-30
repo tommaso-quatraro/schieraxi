@@ -36,6 +36,32 @@ enum Quando {
         return f
     }()
 
+    private static func formato(_ f: String, locale: Locale) -> DateFormatter {
+        let d = DateFormatter()
+        d.locale = locale
+        d.timeZone = TimeZone(identifier: "Europe/Rome")
+        d.dateFormat = f
+        return d
+    }
+
+    private static let versioneConOra = formato("yyyy-MM-dd'T'HH:mm:ss", locale: Locale(identifier: "en_US_POSIX"))
+    private static let versioneSoloData = formato("yyyy-MM-dd", locale: Locale(identifier: "en_US_POSIX"))
+    private static let versioneConOraScritta = formato("d MMM yyyy, HH:mm:ss", locale: italia)
+    private static let versioneSoloDataScritta = formato("d MMM yyyy", locale: italia)
+
+    /// La data di una versione (novità): «2026-10-30T14:05:09» (ora italiana) diventa «30 ott 2026, 14:05:09»; «2026-10-30» solo
+    /// «30 ott 2026». Accetta anche uno spazio al posto della «T». Un testo che non si capisce resta com'è.
+    static func dataVersione(_ testo: String?) -> String {
+        guard let testo else { return "" }
+        let t = testo.trimmingCharacters(in: .whitespaces)
+        if t.count >= 19 {
+            let ora = String(t.prefix(19)).replacingOccurrences(of: " ", with: "T")
+            if let d = versioneConOra.date(from: ora) { return versioneConOraScritta.string(from: d) }
+        }
+        if t.count == 10, let d = versioneSoloData.date(from: t) { return versioneSoloDataScritta.string(from: d) }
+        return t
+    }
+
     /// «sabato 31 ottobre», per i titoli dei giorni delle partite.
     static func giorno(_ data: Date) -> String { soloGiorno.string(from: data) }
 

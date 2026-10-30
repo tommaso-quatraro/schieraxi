@@ -267,7 +267,7 @@ struct NovitaView: View {
                     if let n = caricatore.dato {
                         ForEach(n) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
-                                if let data = v.data { Text(data).font(.caption).foregroundStyle(.secondary) }
+                                if let data = v.data { Text(Quando.dataVersione(data)).font(.caption).foregroundStyle(.secondary).monospacedDigit() }
                                 ForEach(v.voci, id: \.self) { voce in
                                     // il puntino sta a parte: le righe lunghe vanno a capo allineate al testo
                                     HStack(alignment: .firstTextBaseline, spacing: 6) {
