@@ -239,18 +239,20 @@ struct AspettoView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section {
-                } footer: {
-                    Text("I giocatori hanno un volto illustrato inventato, generato dal loro codice: sempre lo stesso, su ogni dispositivo. Niente foto vere.")
-                }
-                Section {
                     Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)
-                } footer: { Text("Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»).") }
-                Section("All'apertura mostra") {
-                    Picker("All'apertura mostra", selection: $sezioneAvvio) {
+                } header: { Text("Movimento") } footer: { Text("Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»).") }
+                Section {
+                    // il titolo della riga basta: la sezione non lo ripete
+                    Picker("Sezione iniziale", selection: $sezioneAvvio) {
                         Text("L'ultima sezione").tag("ultima")
                         ForEach(Sezione.allCases) { Text($0.titolo).tag($0.rawValue) }
                     }
                     .frame(minHeight: 44)
+                } header: { Text("Apertura") }
+                Section {
+                    Label("Volti illustrati", systemImage: "face.smiling").font(.subheadline)
+                } header: { Text("Giocatori") } footer: {
+                    Text("I giocatori hanno un volto illustrato inventato, generato dal loro codice: sempre lo stesso, su ogni dispositivo. Niente foto vere.")
                 }
             }
             .scrollContentBackground(.hidden)

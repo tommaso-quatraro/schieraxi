@@ -321,17 +321,19 @@ struct StatoDatiView: View {
                         riga("Calciatori", "\(s.calciatori ?? 0)")
                         riga("Partite giocate", "\(s.partite?.giocate ?? 0) / \(s.partite?.totali ?? 0)")
                         riga("Voti", "\(s.voti ?? 0)")
-                        riga("Foto dei giocatori", "\(s.foto ?? 0)")
                         riga("Coppe europee fino al", s.coppeFino ?? "—")
                     }
-                    Section("Ultimi aggiornamenti") {
-                        ForEach(s.aggiornamenti ?? []) { a in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(a.cosa.primaMaiuscola)
-                                Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(.secondary)
-                                ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
+                    Section("Avanzate") {
+                        // i nomi grezzi dei dati («quote-odds», «dati-extra») si leggono meglio tradotti; la lista sta ripiegata
+                        DisclosureGroup("Ultimi aggiornamenti dei dati") {
+                            ForEach(s.aggiornamenti ?? []) { a in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(NomiDati.leggibile(a.cosa))
+                                    Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(.secondary)
+                                    ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
+                                }
+                                .accessibilityElement(children: .combine)
                             }
-                            .accessibilityElement(children: .combine)
                         }
                     }
                     if let probabili = s.probabili, !probabili.isEmpty {
