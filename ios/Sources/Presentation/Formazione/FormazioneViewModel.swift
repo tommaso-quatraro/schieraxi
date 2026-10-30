@@ -164,6 +164,12 @@ final class FormazioneViewModel: ViewModelBase {
         return ContestoConfronto(livello: rischio, modulo: vista(f).modulo, squadra: squadraVista)
     }
 
+    /// Sceglie uno stile: il modulo scelto a mano si azzera e modulo e punti tornano quelli proposti dallo stile.
+    func scegliStile(_ stile: Int) {
+        rischio = stile
+        cambiaStile()
+    }
+
     func cambiaStile() {
         moduloScelto = nil
         Haptics.selezione()

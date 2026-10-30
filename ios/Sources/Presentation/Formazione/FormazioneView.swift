@@ -6,8 +6,10 @@ struct FormazioneView: View {
     @ObservedObject var vm: FormazioneViewModel
     @State private var daSostituire: Giocatore?
     @Namespace private var moduloNS
+    @Namespace private var stileNS
 
-    private let ruoli = ["P", "D", "C", "A"]
+    /// Dall'alto in basso come sul campo: attacco in alto, portiere in basso.
+    private let ruoli = ["A", "C", "D", "P"]
     private let nomiRuolo = ["P": "Portiere", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
 
     /// Cosa fa ogni stile, a parole (come nella web app).
@@ -29,10 +31,8 @@ struct FormazioneView: View {
                     Colonne(spazio: Tema.spazioSchede) {
                         if let f = vm.formazione {
                             bannerSquadra
-                            if vm.manuale == nil { sceltaStile(f).ingresso(0) }
                             let v = vm.vista(f)
-                            riepilogo(f, v).ingresso(1)
-                            barraManuale(f).ingresso(2)
+                            cardStile(f, v).ingresso(0)
                             if !Demo.attivo { TipView(Suggerimenti.campo).tipBackground(Color.sfondoScheda) }
                             Carta("Campo", simbolo: "sportscourt") { CampoFormazione(titolari: v.titolari, apribile: true) }.ingresso(3)
                             // Un'unica scheda con i quattro reparti in ordine (Portiere, Difensori, Centrocampisti, Attaccanti):
@@ -55,7 +55,7 @@ struct FormazioneView: View {
                             }
                             .ingresso(5)
                             fuori(f, v)
-                            Text("Il numero sul campo è il fantavoto atteso se gioca, con le regole della tua lega. L'anello arancio indica chi non è titolare sicuro. L'anello attorno alla foto è l'indice: 100 = il migliore del suo ruolo questa giornata.")
+                            Text("Il numero è il fantavoto atteso se gioca. I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Anello arancio: non titolare sicuro. Anello attorno alla foto: indice (100 = il migliore del ruolo).")
                                 .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
@@ -199,42 +199,120 @@ struct FormazioneView: View {
         }
     }
 
-    // MARK: modifica a mano
+    // MARK: stile, modulo e punti (una sola card)
 
-    @ViewBuilder
-    private func barraManuale(_ f: Formazione) -> some View {
+    /// Giornata, punti, stile con la sua descrizione, modulo proposto e «Modifica a mano» in una card compatta:
+    /// il campo parte subito sotto.
+    private func cardStile(_ f: Formazione, _ v: VistaFormazione) -> some View {
         Carta {
+            intestazione(f, v)
+            if f.conProbabili == false {
+                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(.secondary)
+            }
             if vm.manuale == nil {
-                Button { vm.iniziaModificaManuale(f) } label: {
-                    Label("Modifica a mano", systemImage: "hand.tap")
-                        .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-                }
-                .pulsanteVetro()
+                if let livelli = f.livelli, !livelli.isEmpty { sceltaStile(f, livelli) }
             } else {
-                Text("Hai modificato la formazione a mano: tocca un titolare per sostituirlo con un altro della rosa, i punti attesi si ricalcolano.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                if let r = vm.valutazione {
-                    if let d = r.differenza {
-                        Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))). "
-                             + "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale)).")
-                            .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
-                    }
-                }
-                // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
-                ViewThatFits(in: .horizontal) {
-                    HStack {
-                        salva
-                        Spacer()
-                        torna(f)
-                    }
-                    VStack(alignment: .leading, spacing: 0) {
-                        salva
-                        torna(f)
-                    }
-                }
-                .font(.subheadline)
+                testoManuale
             }
             if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(.secondary) }
+        }
+    }
+
+    private func intestazione(_ f: Formazione, _ v: VistaFormazione) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    if let nome = f.squadra { StemmaSquadra(nome: nome, dimensione: 28, nascondiSeMancante: true) }
+                    Text(v.modulo).font(.system(.title2, design: .rounded).weight(.bold))
+                }
+                Text("Giornata \(f.giornata) · " + (vm.manuale != nil ? "la tua scelta" : (v.modulo == f.modulo && vm.rischio == (f.stileConsigliato ?? 0) ? "modulo consigliato" : "modulo scelto")))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(Formato.punti(v.punti)).font(.title2.bold()).monospacedDigit().numerico(v.punti)
+                Text("punti attesi" + (vm.oscillazione(f).map { " · ±\(Formato.intero($0))" } ?? "")).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Gli stili come scelte in fila, la loro descrizione, il modulo proposto e i moduli.
+    @ViewBuilder
+    private func sceltaStile(_ f: Formazione, _ livelli: [LivelloRischio]) -> some View {
+        let livello = livelli.first(where: { $0.rischio == vm.rischio }) ?? livelli[0]
+        let consigliato = f.stileConsigliato ?? 0
+        FilaScorrevole {
+            ForEach(livelli) { l in
+                let attivo = l.rischio == livello.rischio
+                Button { withAnimation(Tema.molla) { vm.scegliStile(l.rischio) } } label: {
+                    Text(l.nome + (l.rischio == consigliato ? " ★" : ""))
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .pillola(attiva: attivo, spazio: stileNS)
+                }
+                .buttonStyle(StilePressione())
+                .accessibilityLabel("Stile \(l.nome)\(l.rischio == consigliato ? ", consigliato" : "")")
+                .accessibilityAddTraits(attivo ? .isSelected : [])
+            }
+        }
+        (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))))
+            .font(.footnote).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        HStack {
+            Text("Modulo proposto: \(livello.modulo)").font(.footnote.weight(.semibold))
+            Spacer()
+            modificaAMano(f)
+        }
+        FilaScorrevole {
+            ForEach(livello.moduli) { m in
+                let attivo = vm.moduloAttivo(livello) == m.modulo
+                Button { withAnimation(Tema.molla) { vm.scegliModulo(m.modulo) } } label: {
+                    VStack(spacing: 0) {
+                        Text(m.modulo + (m.modulo == livello.modulo ? " ★" : "")).font(.subheadline.bold())
+                        Text(Formato.punti(m.punteggioAtteso)).font(.caption2).monospacedDigit()
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .pillola(attiva: attivo, spazio: moduloNS)
+                }
+                .buttonStyle(StilePressione())
+                .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi\(m.modulo == livello.modulo ? ", proposto dallo stile" : "")")
+                .accessibilityAddTraits(attivo ? .isSelected : [])
+            }
+        }
+    }
+
+    /// Pulsante piccolo (l'area di tocco resta da 44 pt).
+    private func modificaAMano(_ f: Formazione) -> some View {
+        Button { vm.iniziaModificaManuale(f) } label: {
+            Label("Modifica a mano", systemImage: "hand.tap").font(.footnote.weight(.semibold))
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Color.sfondoIncavo, in: Capsule())
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(StilePressione())
+        .foregroundStyle(Color.verde)
+    }
+
+    @ViewBuilder
+    private var testoManuale: some View {
+        Text("Hai modificato la formazione a mano: tocca un titolare per sostituirlo con un altro della rosa, i punti attesi si ricalcolano.")
+            .font(.footnote).foregroundStyle(.secondary)
+        if let r = vm.valutazione, let d = r.differenza {
+            Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))). "
+                 + "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale)).")
+                .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
+        }
+        // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
+        if let f = vm.formazione {
+            ViewThatFits(in: .horizontal) {
+                HStack { salva; Spacer(); torna(f) }
+                VStack(alignment: .leading, spacing: 0) { salva; torna(f) }
+            }
+            .font(.subheadline)
         }
     }
 
@@ -255,68 +333,6 @@ struct FormazioneView: View {
         }
     }
 
-    /// Stile (da molto sicura a molto rischiosa) e modulo.
-    @ViewBuilder
-    private func sceltaStile(_ f: Formazione) -> some View {
-        if let livelli = f.livelli, !livelli.isEmpty {
-            let livello = livelli.first(where: { $0.rischio == vm.rischio }) ?? livelli[0]
-            Carta("Stile", simbolo: "dial.medium") {
-                Picker("Stile", selection: $vm.rischio) {
-                    ForEach(livelli) { Text($0.nome + ($0.rischio == 0 ? " ★" : "")).tag($0.rischio) }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: vm.rischio) { _, _ in vm.cambiaStile() }
-                .sensoryFeedback(.selection, trigger: vm.rischio)
-                Text(Self.descrizioneStile(livello.rischio) + " ★ = scelta consigliata.").font(.footnote).foregroundStyle(.secondary)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(livello.moduli) { m in
-                            let attivo = vm.moduloAttivo(livello) == m.modulo
-                            Button { withAnimation(Tema.molla) { vm.scegliModulo(m.modulo) } } label: {
-                                VStack(spacing: 2) {
-                                    Text(m.modulo + (m.modulo == livello.modulo ? " ★" : "")).font(.subheadline.bold())
-                                    Text(Formato.punti(m.punteggioAtteso)).font(.caption2).monospacedDigit()
-                                }
-                                .padding(.horizontal, 14).padding(.vertical, 6)
-                                .frame(minHeight: 44)
-                                .pillola(attiva: attivo, spazio: moduloNS)
-                            }
-                            .buttonStyle(StilePressione())
-                            .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi\(m.modulo == livello.modulo ? ", consigliato" : "")")
-                            .accessibilityAddTraits(attivo ? .isSelected : [])
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func riepilogo(_ f: Formazione, _ v: VistaFormazione) -> some View {
-        Carta("Giornata \(f.giornata)", simbolo: "calendar") {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        if let nome = f.squadra { StemmaSquadra(nome: nome, dimensione: 34, nascondiSeMancante: true) }
-                        Text(v.modulo).font(.system(.title, design: .rounded).weight(.bold))
-                    }
-                    Text(vm.manuale != nil ? "la tua scelta" : (v.modulo == f.modulo && vm.rischio == 0 ? "modulo consigliato" : "modulo scelto"))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                VStack(alignment: .trailing) {
-                    Text(Formato.punti(v.punti)).font(.title.bold()).monospacedDigit().numerico(v.punti)
-                    Text("punti attesi").font(.caption).foregroundStyle(.secondary)
-                    if let d = vm.oscillazione(f) {
-                        Text("oscilla di ±\(Formato.intero(d))").font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .accessibilityElement(children: .combine)
-            if f.conProbabili == false {
-                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(.secondary)
-            }
-        }
-    }
 }
 
 /// Scelta del sostituto: giocatori della stessa categoria che non sono già titolari.

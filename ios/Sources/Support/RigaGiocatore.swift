@@ -73,7 +73,8 @@ struct RigaGiocatore: View {
         return "\(mia) \(g.inCasa == true ? "vs" : "@") \(altra)"
     }
 
-    private var puntiTesto: String { (g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1))) }
+    /// Il fantavoto atteso se gioca (lo stesso numero del campo, della scheda e del widget).
+    private var puntiTesto: String { (g.fvAtteso ?? g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1))) }
     private var giocaPercento: Int { Formato.percento(g.pVoto) }
 
     /// Frase letta da VoiceOver per tutta la riga.
@@ -83,7 +84,7 @@ struct RigaGiocatore: View {
         if g.assente == true {
             parti.append("assente")
         } else {
-            parti.append("punti attesi \(puntiTesto)")
+            parti.append("fantavoto atteso \(puntiTesto)")
             parti.append("gioca al \(giocaPercento) per cento")
             if let i = g.indice { parti.append("indice \(Formato.intero(i)) su 100") }
         }
@@ -120,12 +121,12 @@ struct RigaGiocatore: View {
         } else if tagliaTesto.isAccessibilitySize {
             // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
             HStack(spacing: 8) {
-                Text(puntiTesto).font(.headline).monospacedDigit().numerico(g.puntiAttesi ?? 0)
+                Text(puntiTesto).font(.headline).monospacedDigit().numerico(g.fvAtteso ?? g.puntiAttesi ?? 0)
                 Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(.secondary)
             }
         } else {
             VStack(alignment: .trailing, spacing: 2) {
-                Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(g.puntiAttesi ?? 0)
+                Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(g.fvAtteso ?? g.puntiAttesi ?? 0)
                 Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
             }
         }

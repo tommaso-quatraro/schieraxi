@@ -67,7 +67,7 @@ extension Color {
     }
 }
 
-/// Il campo da calcio con gli undici titolari in fila per reparto: portiere in alto, attaccanti in basso.
+/// Il campo da calcio con gli undici titolari in fila per reparto: attaccanti in alto, portiere in basso.
 struct CampoFormazione: View {
     let titolari: [Giocatore]
     var diametro: CGFloat = 44
@@ -78,7 +78,7 @@ struct CampoFormazione: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            ForEach(["P", "D", "C", "A"], id: \.self) { ruolo in
+            ForEach(["A", "C", "D", "P"], id: \.self) { ruolo in
                 HStack(alignment: .top, spacing: 2) {
                     ForEach(titolari.filter { $0.ruolo == ruolo }) { g in
                         pedina(g)
