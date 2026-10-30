@@ -190,7 +190,15 @@ struct Fornitore: AppIntentTimelineProvider {
             let manca = inizio.timeIntervalSince(adesso)
             if manca > 0 && manca < 3 * 3600 { minuti = 10 } else if manca > 0 && manca < 24 * 3600 { minuti = 20 } else if manca < 0 && manca > -3 * 3600 { minuti = 15 }
         }
+        // Partite in gioco (o che stanno per iniziare): ogni 2 minuti. iOS decide poi quando ricaricare davvero (budget giornaliero): se
+        // rimanda, il widget mostra l'ultimo punteggio con l'ora dell'aggiornamento.
+        var prossimoCalcio: Date?
+        if let w = primo.widget {
+            if w.finestraLive(adesso: adesso) { minuti = 2 }
+            prossimoCalcio = w.prossimaPartita(dopo: adesso)?.quando?.addingTimeInterval(-10 * 60)
+        }
         var prossimo = adesso.addingTimeInterval(minuti * 60)
+        if let c = prossimoCalcio, c > adesso, c < prossimo { prossimo = c }
         if primo.indirizzoMancante { prossimo = adesso.addingTimeInterval(60 * 60) }
         if let inizio = primo.riassunto?.inizio, inizio > adesso {
             var dopo = primo

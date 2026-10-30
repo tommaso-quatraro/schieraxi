@@ -63,6 +63,7 @@ struct FormazioneWidget: Codable, Equatable {
     var puntiAttesi: Double?
     var titolari: [GiocatoreWidget]?
     var panchina: [Int]?
+    var intervallo: IntervalloWidget?
 }
 
 struct PuntiGiornata: Codable, Equatable, Identifiable {
@@ -77,6 +78,37 @@ struct SvincolatoWidget: Codable, Equatable {
     var entra: GiocatoreWidget?
     var guadagno: Double?
     var fattibile: Bool?
+}
+
+/// Un pezzo facoltativo del riassunto: se ha una forma inattesa diventa nil invece di far fallire tutto il resto.
+struct Facoltativo<T: Decodable>: Decodable {
+    let valore: T?
+    init(from decoder: Decoder) throws { valore = try? T(from: decoder) }
+}
+
+/// Un giocatore dentro uno scambio proposto (tutti i campi sono facoltativi).
+struct GiocatoreScambio: Decodable, Equatable {
+    var id: Int?
+    var nome: String?
+    var ruolo: String?
+    var squadra: String?
+    var quotazione: Double?
+
+    var cognome: String { (nome ?? "").split(separator: " ").last.map(String.init) ?? (nome ?? "—") }
+    /// Il giocatore nella forma usata dai volti.
+    var comeGiocatore: GiocatoreWidget { GiocatoreWidget(id: id ?? 0, nome: nome ?? "—", ruolo: ruolo) }
+}
+
+/// Il miglior scambio con un'altra squadra (solo se il server lo aveva già calcolato). Il guadagno è in punti attesi.
+struct ScambioWidget: Decodable, Equatable {
+    var mia: String?
+    var altra: String?
+    var `do`: [GiocatoreScambio]?
+    var ricevo: [GiocatoreScambio]?
+    var guadagnoMio: Double?
+    var guadagnoLoro: Double?
+    var percentualeMio: Double?
+    var valido: Bool?
 }
 
 struct DatiAggiornamentoWidget: Codable, Equatable {
@@ -101,10 +133,23 @@ struct RiassuntoWidget: Decodable {
     var diario: [PuntiGiornata]?
     var osservati: [GiocatoreWidget]?
     var dati: DatiAggiornamentoWidget?
-    /// Il miglior scambio e il miglior svincolo: solo se il server li aveva già in cache.
-    var scambio: PropostaScambio?
-    var svincolato: SvincolatoWidget?
+    /// Il miglior scambio e il miglior svincolo: solo se il server li aveva già in cache (se hanno una forma strana si ignorano).
+    private var scambioLetto: Facoltativo<ScambioWidget>?
+    private var svincolatoLetto: Facoltativo<SvincolatoWidget>?
+    private var liveLetto: Facoltativo<LiveWidget>?
     var mancano: [String]?
+
+    var scambio: ScambioWidget? { scambioLetto?.valore }
+    var svincolato: SvincolatoWidget? { svincolatoLetto?.valore }
+    var live: LiveWidget? { liveLetto?.valore }
+
+    enum CodingKeys: String, CodingKey {
+        case giornata, primaPartita, scadenza, oreMancanti, iniziata, conProbabili, squadra, creditiResidui, formazione, avvisi, rosa
+        case squalificati, diffidati, rigoristi, diario, osservati, dati, mancano
+        case scambioLetto = "scambio"
+        case svincolatoLetto = "svincolato"
+        case liveLetto = "live"
+    }
 
     /// Quando comincia la giornata (la scadenza della formazione).
     var inizio: Date? { Quando.data(scadenza) }
@@ -217,5 +262,174 @@ enum MemoriaWidget {
     static func dimentica() {
         if let url = percorso() { try? FileManager.default.removeItem(at: url) }
         UserDefaults.standard.removeObject(forKey: chiave)
+    }
+}
+
+// MARK: Testi e calcoli dei widget (qui perche' si provano con i test; i disegni stanno in WidgetSources)
+
+extension PuntiGiornata {
+    /// Punti fatti meno punti attesi; nil se manca uno dei due.
+    var scarto: Double? {
+        guard let attesi, let fatti else { return nil }
+        return fatti - attesi
+    }
+
+    /// Una frase per VoiceOver: «Giornata 10: 63,5 punti fatti, 66,0 attesi».
+    var descrizione: String {
+        var t = "Giornata \(giornata): "
+        t += fatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non noti"
+        if let attesi { t += ", \(Formato.punti(attesi)) attesi" }
+        return t
+    }
+}
+
+extension ScambioWidget {
+    /// «Giovanni Rossi, Mario Bianchi» -> «Rossi, Bianchi»
+    static func cognomi(_ elenco: [GiocatoreScambio]?) -> String {
+        let nomi = (elenco ?? []).map(\.cognome)
+        return nomi.isEmpty ? "—" : nomi.joined(separator: ", ")
+    }
+
+    var daiTesto: String { Self.cognomi(`do`) }
+    var ricevoTesto: String { Self.cognomi(ricevo) }
+
+    /// Una frase per VoiceOver.
+    var frase: String {
+        var t = "Scambio con \(altra ?? "un'altra squadra"): dai \(daiTesto), ricevi \(ricevoTesto)."
+        if let g = guadagnoMio { t += " Per te \(Formato.conSegno(g)) punti attesi." }
+        if let g = guadagnoLoro { t += " Per loro \(Formato.conSegno(g))." }
+        return t
+    }
+}
+
+extension RiassuntoWidget {
+    /// Le giornate del diario che hanno i punti fatti, dalla più recente.
+    var giornateGiocate: [PuntiGiornata] {
+        (diario ?? []).filter { $0.fatti != nil }.sorted { $0.giornata > $1.giornata }
+    }
+}
+
+// MARK: Partite in diretta (campo `live` di /api/widget, copia piccola di GET /api/live). Tutto facoltativo: un client deve ignorare
+// stati e tipi nuovi e trattare «stato sconosciuto con un punteggio» come partita in corso.
+
+struct EventoLive: Decodable, Equatable {
+    var tipo: String?
+    var minuto: String?
+    var squadra: String?
+    var chi: String?
+}
+
+struct PartitaLive: Decodable, Equatable, Identifiable {
+    var casa: String?
+    var trasferta: String?
+    var data: String?
+    var stato: String?
+    var minuto: String?
+    var golCasa: Int?
+    var golTrasferta: Int?
+    var eventi: [EventoLive]?
+
+    var id: String { "\(casa ?? "?")-\(trasferta ?? "?")" }
+    var quando: Date? { Quando.data(data) }
+
+    /// In gioco ora (compresi intervallo e sospesa); uno stato nuovo con un punteggio conta come in corso.
+    var inGioco: Bool {
+        switch stato ?? "" {
+        case "primo_tempo", "secondo_tempo", "intervallo", "in_corso", "sospesa": return true
+        case "da_giocare", "finita", "rinviata", "": return false
+        default: return golCasa != nil && golTrasferta != nil
+        }
+    }
+
+    var finita: Bool { stato == "finita" }
+
+    /// «2–1», o «–» se non ci sono dati.
+    var punteggio: String {
+        guard let c = golCasa, let t = golTrasferta else { return "–" }
+        return "\(c)–\(t)"
+    }
+
+    /// Cosa scrivere accanto al punteggio: «34'», «Intervallo», «Finita», «18:30».
+    var etichetta: String {
+        switch stato ?? "" {
+        case "intervallo": return "Intervallo"
+        case "finita": return "Finita"
+        case "rinviata": return "Rinviata"
+        case "sospesa": return "Sospesa"
+        case "da_giocare", "": return quando.map { Quando.ora($0) } ?? "—"
+        default: return minuto ?? "In corso"
+        }
+    }
+
+    /// Frase per VoiceOver: «Inter 1, Roma 0, 34 minuti».
+    var frase: String {
+        let a = ColoriSquadra.sigla(casa), b = ColoriSquadra.sigla(trasferta)
+        guard golCasa != nil else { return "\(a) contro \(b), \(etichetta)" }
+        return "\(a) \(golCasa ?? 0), \(b) \(golTrasferta ?? 0), \(etichetta)"
+    }
+}
+
+struct LiveWidget: Decodable, Equatable {
+    var aggiornatoIl: String?
+    var fonte: String?
+    var inCorso: Int?
+    var partite: [PartitaLive]?
+}
+
+extension RiassuntoWidget {
+    /// Le partite da mostrare: prima quelle in gioco, poi quelle da giocare per orario, poi le finite.
+    var partiteLive: [PartitaLive] {
+        let tutte = live?.partite ?? []
+        func rango(_ p: PartitaLive) -> Int { p.inGioco ? 0 : (p.finita ? 2 : 1) }
+        return tutte.sorted { (rango($0), $0.quando ?? .distantFuture) < (rango($1), $1.quando ?? .distantFuture) }
+    }
+
+    var partiteInGioco: [PartitaLive] { partiteLive.filter(\.inGioco) }
+
+    /// La prossima partita da giocare (dopo adesso o iniziata da poco senza dati).
+    func prossimaPartita(dopo adesso: Date = Date()) -> PartitaLive? {
+        partiteLive.filter { !$0.inGioco && !$0.finita && $0.stato != "rinviata" && ($0.quando ?? .distantPast) > adesso.addingTimeInterval(-15 * 60) }
+            .min { ($0.quando ?? .distantFuture) < ($1.quando ?? .distantFuture) }
+    }
+
+    /// I miei titolari che giocano in questa partita: la mia rosa dice contro chi e se in casa.
+    func mieiTitolari(in p: PartitaLive) -> [GiocatoreWidget] {
+        let titolari = Set((formazione?.titolari ?? []).map(\.id))
+        return (rosa ?? []).filter { g in
+            guard titolari.contains(g.id) || g.titolare == true, let avv = g.avversario else { return false }
+            return g.inCasa == true ? (p.trasferta == avv) : (p.casa == avv)
+        }
+    }
+
+    /// true se ha senso aggiornare spesso: c'è una partita in gioco o sta per iniziare (da 10 minuti prima).
+    func finestraLive(adesso: Date = Date()) -> Bool {
+        if !partiteInGioco.isEmpty { return true }
+        return partiteLive.contains { p in
+            guard !p.finita, p.stato != "rinviata", let q = p.quando else { return false }
+            return q.timeIntervalSince(adesso) < 10 * 60 && adesso.timeIntervalSince(q) < 130 * 60
+        }
+    }
+}
+
+// MARK: Intervallo dei punti attesi (campo `intervallo` di /api/widget: «tra X e Y», 8 volte su 10)
+
+struct IntervalloWidget: Codable, Equatable {
+    var basso: Double?
+    var alto: Double?
+    var confidenza: Double?
+    /// true se il modello e' ancora poco provato: l'intervallo e' solo una stima.
+    var indicativo: Bool?
+
+    /// «tra 62 e 84», o nil se mancano i due estremi.
+    var testo: String? {
+        guard let basso, let alto, basso.isFinite, alto.isFinite else { return nil }
+        return "tra \(Formato.intero(basso)) e \(Formato.intero(alto))"
+    }
+
+    /// «tra 62 e 84 (8 volte su 10)», con «indicativo» se serve.
+    var testoLungo: String? {
+        guard let t = testo else { return nil }
+        let volte = Formato.intero((confidenza ?? 0.8) * 10)
+        return "\(t) (\(volte) volte su 10)" + (indicativo == true ? ", indicativo" : "")
     }
 }

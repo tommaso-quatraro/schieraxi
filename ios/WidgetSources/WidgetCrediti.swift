@@ -17,7 +17,9 @@ struct WidgetCrediti: Widget {
 }
 
 struct VistaCrediti: View {
-    @Environment(\.widgetFamily) private var famiglia
+    @Environment(\.widgetFamily) private var famigliaSistema
+    @Environment(\.famigliaForzata) private var famigliaForzata
+    private var famiglia: WidgetFamily { famigliaForzata ?? famigliaSistema }
     let voce: Voce
 
     private var accessorio: Bool {

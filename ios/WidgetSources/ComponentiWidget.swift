@@ -74,3 +74,19 @@ extension Voce {
     /// Il riassunto completo, o nil se il server non lo ha ancora (si ricade sui widget «vecchi»).
     var completo: RiassuntoWidget? { widget }
 }
+
+// Solo per l'app di anteprima (galleria per gli screenshot): `widgetFamily` e `widgetRenderingMode` di WidgetKit si possono solo leggere,
+// quindi la galleria passa la misura voluta con queste due chiavi. Dentro un widget vero restano vuote e vale il valore del sistema.
+private struct ChiaveFamigliaForzata: EnvironmentKey { static let defaultValue: WidgetFamily? = nil }
+private struct ChiaveRenderForzato: EnvironmentKey { static let defaultValue: WidgetRenderingMode? = nil }
+
+extension EnvironmentValues {
+    var famigliaForzata: WidgetFamily? {
+        get { self[ChiaveFamigliaForzata.self] }
+        set { self[ChiaveFamigliaForzata.self] = newValue }
+    }
+    var renderForzato: WidgetRenderingMode? {
+        get { self[ChiaveRenderForzato.self] }
+        set { self[ChiaveRenderForzato.self] = newValue }
+    }
+}

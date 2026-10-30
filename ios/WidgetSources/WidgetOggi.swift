@@ -4,18 +4,6 @@ import UIKit
 
 /// Widget «Prossima giornata»: conto alla rovescia alla prima partita, modulo e punti attesi.
 /// Famiglie: piccolo e medio (Schermata Home), cerchio, rettangolo e riga (Schermata di blocco).
-/// I widget di SchieraXI: «Prossima giornata» e «Da controllare».
-@main
-struct PacchettoWidget: WidgetBundle {
-    var body: some Widget {
-        WidgetOggi()
-        WidgetFormazione()
-        WidgetDubbi()
-        WidgetRosa()
-        WidgetCrediti()
-        WidgetStato()
-    }
-}
 
 struct WidgetOggi: Widget {
     let kind = "SchieraxiOggi"
@@ -41,16 +29,16 @@ extension View {
             self
                 .foregroundStyle(.white)
                 .containerBackground(for: .widget) {
-                    LinearGradient(
-                        colors: [Color(red: 0.05, green: 0.42, blue: 0.30), Color(red: 0.02, green: 0.22, blue: 0.26)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing)
+                    FondoSchieraxi()
                 }
         }
     }
 }
 
 struct VistaWidget: View {
-    @Environment(\.widgetFamily) private var famiglia
+    @Environment(\.widgetFamily) private var famigliaSistema
+    @Environment(\.famigliaForzata) private var famigliaForzata
+    private var famiglia: WidgetFamily { famigliaForzata ?? famigliaSistema }
     let voce: Voce
 
     private var accessorio: Bool {

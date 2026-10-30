@@ -113,6 +113,32 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  AnteprimaWidget:
+    # app SOLO per la CI (screenshot.yml): mostra i widget nelle loro misure con dati finti, per fotografarli sul simulatore di iPhone e iPad.
+    # Non e' una dipendenza di SchieraXI, quindi non entra nell'IPA. Compila gli stessi file dell'estensione (tranne il pacchetto @main).
+    type: application
+    platform: iOS
+    sources:
+      - path: AnteprimaWidget
+      - path: WidgetSources
+        excludes:
+          - PacchettoWidget.swift
+      - path: Sources/Domain/Modelli.swift
+      - path: Sources/Domain/Quando.swift
+      - path: Sources/Domain/Formato.swift
+      - path: Sources/Support/Condiviso.swift
+      - path: Sources/Support/WidgetRiassunto.swift
+      - path: Sources/Domain/ColoriSquadra.swift
+      - path: Sources/Domain/GeneratoreVolto.swift
+      - path: Sources/Support/AvatarVolto.swift
+      - path: Sources/Support/Design/PercorsoSVG.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: <vecchio identificativo>.anteprima
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Anteprima widget
+        TARGETED_DEVICE_FAMILY: "1,2"
   SchieraxiTests:
     # test automatici (XCTest) di Domain, Data e ViewModel: girano nel simulatore (workflow test.yml). Non entrano nell'IPA.
     type: bundle.unit-test
@@ -142,6 +168,12 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
 schemes:
+  AnteprimaWidget:
+    build:
+      targets:
+        AnteprimaWidget: all
+    run:
+      config: Debug
   Schieraxi:
     # i test si costruiscono ed eseguono solo con "test": archive e build normali (ipa.yml, screenshot.yml) non li toccano
     build:
