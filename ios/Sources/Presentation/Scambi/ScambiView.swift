@@ -8,41 +8,22 @@ struct ScambiView: View {
         NavigationStack(path: $vm.percorso) {
             ZStack {
                 Sfondo()
-                ScrollView {
-                    Colonne(spazio: Tema.spazioSchede) {
-                        filtro.ingresso(0)
-                        offerta.ingresso(1)
-                        if let d = vm.proposte.dato {
-                            squadrePropense.ingresso(2)
-                            if d.proposte.isEmpty {
-                                VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Per ora non c'è niente che convenga a tutti e due.")
-                            }
-                            ForEach(Array(d.proposte.enumerated()), id: \.element.id) { i, p in
-                                Button { vm.giudizioSelezionata = nil; vm.selezionata = p } label: { carta(p) }
-                                    .buttonStyle(StilePressione()).puntatore()
-                                    .entraScorrendo()
-                                    .ingresso(i + 3)
-                                    .accessibilityHint("Mostra il dettaglio dello scambio")
-                            }
-                        } else if let e = vm.proposte.errore {
-                            ErroreVista(messaggio: e) { Task { await vm.caricaProposte() } }
-                        } else {
-                            Scheletro(schede: 3, righe: 2, testo: "Guardo gli scambi…")
-                        }
-                        archivio
+                VStack(spacing: 8) {
+                    selettoreModo
+                    switch vm.modo {
+                    case .trova: trova
+                    case .costruisci: AnalizzaScambioView(server: vm.server, incorporata: true)
+                    case .valuta: scorrevole { offerta.ingresso(0) }
                     }
-                    .padding(.horizontal, 16).padding(.bottom, 24)
-                    .animation(Tema.morbida, value: vm.proposte.dato != nil)
                 }
-                .demoInFondo()
-                .refreshable { await vm.caricaProposte(forza: true) }
-                .avvisoDatiSalvati(vm.proposte.datiSalvati)
-                .bordiMorbidi()
             }
             .navigationTitle("Scambi")
             .ricercaGlobale()
-            .navigationDestination(for: PaginaScambi.self) { _ in AnalizzaScambioView(server: vm.server) }
+            .navigationDestination(for: PaginaScambi.self) { _ in
+                AnalizzaScambioView(server: vm.server).navigationTitle("Analizza").navigationBarTitleDisplayMode(.inline).ricercaGlobale()
+            }
             .task { await vm.caricaSquadre() }
+            .task { await vm.caricaLimite() }
             // Niente ricerca automatica: con gli account ogni ricerca conta tra quelle del giorno. Si cerca con il pulsante.
             // In modalità demo (fotografie) sì, per vedere le proposte.
             .task { if Demo.attivo, vm.proposte.dato == nil { await vm.caricaProposte() } }
@@ -62,14 +43,76 @@ struct ScambiView: View {
         }
     }
 
+    // MARK: i tre modi
+
+    /// Un solo posto per gli scambi: trovare quelli giusti, costruirne uno, valutare un'offerta ricevuta.
+    private var selettoreModo: some View {
+        Picker("Cosa vuoi fare", selection: $vm.modo.animation(Tema.morbida)) {
+            ForEach(ModoScambi.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .sensoryFeedback(.selection, trigger: vm.modo)
+        .accessibilityLabel("Cosa vuoi fare")
+    }
+
+    private func scorrevole<C: View>(@ViewBuilder _ contenuto: () -> C) -> some View {
+        ScrollView {
+            Colonne(spazio: Tema.spazioSchede) { contenuto() }
+                .padding(.horizontal, 16).padding(.bottom, 24)
+        }
+        .demoInFondo()
+        .bordiMorbidi()
+    }
+
+    /// «Trova per me»: le proposte del modello.
+    private var trova: some View {
+        ScrollView {
+            Colonne(spazio: Tema.spazioSchede) {
+                filtro.ingresso(0)
+                if let d = vm.proposte.dato {
+                    squadrePropense.ingresso(2)
+                    if d.proposte.isEmpty {
+                        VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Per ora non c'è niente che convenga a tutti e due.")
+                    }
+                    ForEach(Array(d.proposte.enumerated()), id: \.element.id) { i, p in
+                        Button { vm.giudizioSelezionata = nil; vm.selezionata = p } label: { carta(p) }
+                            .buttonStyle(StilePressione()).puntatore()
+                            .entraScorrendo()
+                            .ingresso(i + 3)
+                            .accessibilityHint("Mostra il dettaglio dello scambio")
+                    }
+                } else if let e = vm.proposte.errore {
+                    ErroreVista(messaggio: e) { Task { await vm.caricaProposte(forza: true) } }
+                } else {
+                    Scheletro(schede: 3, righe: 2, testo: "Guardo gli scambi…")
+                }
+                archivio
+            }
+            .padding(.horizontal, 16).padding(.bottom, 24)
+            .animation(Tema.morbida, value: vm.proposte.dato != nil)
+        }
+        .demoInFondo()
+        .refreshable { await vm.caricaProposte(forza: true) }
+        .avvisoDatiSalvati(vm.proposte.datiSalvati)
+        .bordiMorbidi()
+    }
+
     // MARK: filtro e offerta ricevuta
 
     private var filtro: some View {
         Carta {
-            Picker("Con", selection: $vm.con) {
-                Text("Tutte le squadre").tag("Tutte")
-                ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
+            HStack {
+                Label("Con chi", systemImage: "person.2").font(.subheadline)
+                Spacer(minLength: 8)
+                Picker("Con chi", selection: $vm.con) {
+                    Text("Tutte le squadre").tag("Tutte")
+                    ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
+                }
+                .labelsHidden()
+                .tint(Color.verde)
             }
+            .frame(minHeight: 44)
             Picker("Dimensione", selection: $vm.fino) {
                 Text("1 contro 1").tag(1)
                 Text("fino a 2").tag(2)
@@ -91,8 +134,8 @@ struct ScambiView: View {
             }
             .pulsanteVetro(prominente: true)
             .disabled(vm.proposte.inCorso)
-            NavigationLink(value: PaginaScambi.analizza) {
-                Label("Analizza uno scambio a mano", systemImage: "slider.horizontal.3").frame(minHeight: 44)
+            if let l = vm.limite?.testo {
+                Label(l, systemImage: "gauge.with.dots.needle.33percent").font(.footnote).foregroundStyle(.secondary)
             }
             if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(Color.verde) }
         }
@@ -134,7 +177,7 @@ struct ScambiView: View {
             riga("Ricevi", o.ricevo)
         }
         if let ambigui = o.ambigui, !ambigui.isEmpty {
-            Label("Più giocatori con lo stesso cognome: \(ambigui.joined(separator: "; ")). Usa «Analizza uno scambio a mano» per sceglierli.", systemImage: "exclamationmark.triangle")
+            Label("Più giocatori con lo stesso cognome: \(ambigui.joined(separator: "; ")). Usa «Costruisci» per sceglierli.", systemImage: "exclamationmark.triangle")
                 .font(.footnote).foregroundStyle(Color.attenzione)
         }
         if let analisi = o.analisi {
@@ -144,7 +187,7 @@ struct ScambiView: View {
                 vm.selezionata = analisi
             } label: { Label("Vedi il dettaglio", systemImage: "chart.bar").frame(minHeight: 44) }
         } else {
-            Label("Non ho trovato giocatori di tutte e due le squadre nel messaggio: controlla i cognomi, oppure usa «Analizza uno scambio a mano».", systemImage: "questionmark.circle")
+            Label("Non ho trovato giocatori di tutte e due le squadre nel messaggio: controlla i cognomi, oppure usa «Costruisci».", systemImage: "questionmark.circle")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
@@ -402,9 +445,12 @@ struct DettaglioScambio: View {
 /// Scegli chi dai e chi ricevi dalle due rose e l'app dice se conviene.
 struct AnalizzaScambioView: View {
     @StateObject private var vm: AnalizzaScambioViewModel
+    /// Dentro la schermata Scambi (modo «Costruisci»): niente fondo proprio.
+    var incorporata = false
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, incorporata: Bool = false) {
         _vm = StateObject(wrappedValue: AnalizzaScambioViewModel(server: server))
+        self.incorporata = incorporata
     }
 
     var body: some View {
@@ -459,9 +505,6 @@ struct AnalizzaScambioView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Analizza")
-        .navigationBarTitleDisplayMode(.inline)
-        .ricercaGlobale()
         .task { await vm.carica() }
         .task(id: vm.altra) { await vm.caricaRosaAltra() }
     }

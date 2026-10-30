@@ -5,6 +5,14 @@ enum PaginaScambi: Hashable {
     case analizza
 }
 
+/// I tre modi di lavorare con gli scambi, in un solo posto.
+enum ModoScambi: String, CaseIterable, Identifiable {
+    case trova = "Trova per me"
+    case costruisci = "Costruisci"
+    case valuta = "Valuta un'offerta"
+    var id: String { rawValue }
+}
+
 /// Logica della schermata Scambi: proposte del modello, filtro per squadra e per scambi 2 contro 2.
 @MainActor
 final class ScambiViewModel: ViewModelBase {
@@ -14,6 +22,9 @@ final class ScambiViewModel: ViewModelBase {
 
     /// Pagine aperte nella pila di navigazione.
     @Published var percorso: [PaginaScambi] = []
+    @Published var modo: ModoScambi = .trova
+    /// Quante ricerche restano oggi (dal server, se lo dice).
+    @Published var limite: LimiteRicerche?
     @Published var con = "Tutte"
     /// Quanti giocatori al massimo per lato nelle proposte: 1 (solo 1 contro 1), 2, 3 o 4 (serve una squadra scelta).
     @Published var fino = 1
@@ -58,6 +69,11 @@ final class ScambiViewModel: ViewModelBase {
     }
 
     func caricaSquadre() async { await squadre.ricarica() }
+
+    /// Il contatore delle ricerche (`GET /api/scambi/limite`): non conta come ricerca. Un server che non ce l'ha: nessun contatore.
+    func caricaLimite() async {
+        if let l: LimiteRicerche = try? await server.get("/api/scambi/limite") { limite = l }
+    }
     /// Per quanto tempo si ricordano le proposte degli stessi parametri (senza chiedere di nuovo al server).
     static let validitaProposte: TimeInterval = 15 * 60
 
@@ -67,6 +83,8 @@ final class ScambiViewModel: ViewModelBase {
         if proposte.inCorso { return }
         if !forza, proposte.haDatiRecenti(per: indirizzoProposte, entro: Self.validitaProposte) { return }
         await proposte.ricarica(indirizzoProposte)
+        // la risposta porta il contatore aggiornato (`ricerche`); in mancanza lo si chiede
+        if let r = proposte.dato?.ricerche { limite = r } else { await caricaLimite() }
     }
 
     /// Le squadre che accettano più volentieri (se ce ne sono almeno due con scambi proposti).
