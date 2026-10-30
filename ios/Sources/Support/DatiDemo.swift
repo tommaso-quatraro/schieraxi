@@ -396,6 +396,18 @@ private enum DatiDemo {
             "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"), "iniziata": false, "con_probabili": false,
             "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
+            "da_fare": [
+                ["id": "dubbio-120", "tipo": "dubbio", "testo": "Giocatore 045 è in dubbio: guarda le alternative", "priorita": 1,
+                 "azione": "Sostituisci", "destinazione": ["scheda": "formazione", "sezione": "formazione", "link": "schieraxi://formazione"]],
+                ["id": "svincolato-203", "tipo": "svincolato", "testo": "Uno svincolato migliora la squadra di 3,4 punti", "priorita": 2,
+                 "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]],
+                ["id": "rose", "tipo": "rose", "testo": "Le rose sono vecchie dopo la giornata: aggiornale", "priorita": 2,
+                 "azione": "Aggiorna", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]],
+                ["id": "diario", "tipo": "diario", "testo": "Segna la formazione che hai schierato nella giornata 10", "priorita": 3,
+                 "azione": "Apri", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]],
+                ["id": "backup", "tipo": "backup", "testo": "Fai una copia di sicurezza dei tuoi dati", "priorita": 3,
+                 "azione": "Apri", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]],
+            ],
         ])
     }
 

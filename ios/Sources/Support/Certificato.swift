@@ -26,6 +26,12 @@ enum Certificato {
         return plist["ExpirationDate"] as? Date
     }
 
+    /// Giorni interi che mancano alla scadenza (negativi se è già scaduto), o `nil` se la scadenza non si legge.
+    static func giorniMancanti(scadenza: Date? = Certificato.scadenza(), adesso: Date = Date()) -> Int? {
+        guard let scadenza else { return nil }
+        return Int((scadenza.timeIntervalSince(adesso) / 86400).rounded(.down))
+    }
+
     /// Testo e gravità da mostrare: arancio sotto i 2 giorni, rosso se scaduto.
     static func info(scadenza: Date?, adesso: Date = Date()) -> Info {
         guard let scadenza else { return Info(testo: "scadenza non leggibile", livello: .ignoto) }

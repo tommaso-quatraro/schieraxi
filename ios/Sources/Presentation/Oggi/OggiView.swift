@@ -10,6 +10,7 @@ struct OggiView: View {
     /// L'ultima versione delle novità che l'utente ha guardato (la scrive la pagina Novità).
     @AppStorage("novitaVista") private var novitaVista = ""
     @State private var novitaAnimata = false
+    @State private var tutteLeCose = false
 
     var body: some View {
         NavigationStack {
@@ -19,6 +20,7 @@ struct OggiView: View {
                     Colonne(spazio: Tema.spazioSchede) {
                         if let oggi = vm.oggi {
                             testata(oggi).ingresso(0)
+                            daFare(oggi).ingresso(1)
                             novita.ingresso(1)
                             formazione(oggi).ingresso(2)
                             daControllare.ingresso(3)
@@ -168,6 +170,72 @@ struct OggiView: View {
             } else {
                 Text("Formazione non disponibile.").foregroundStyle(.secondary)
             }
+        }
+    }
+
+    /// «Da fare»: le cose che aspettano te, una per riga con il suo pulsante (4 righe, poi «Altre N cose»). Solo se ce n'è almeno una.
+    @ViewBuilder
+    private func daFare(_ oggi: Oggi) -> some View {
+        let cose = oggi.cosePerOrdine
+        if !cose.isEmpty {
+            let visibili = tutteLeCose ? cose : Array(cose.prefix(4))
+            Carta("Da fare", simbolo: "checklist") {
+                ForEach(Array(visibili.enumerated()), id: \.element.id) { i, c in
+                    RigaConFilo(prima: i == 0) { rigaDaFare(c) }
+                }
+                if cose.count > 4 {
+                    Button {
+                        withAnimation(Tema.morbida) { tutteLeCose.toggle() }
+                    } label: {
+                        Text(tutteLeCose ? "Meno cose" : "Altre \(cose.count - 4) \(cose.count - 4 == 1 ? "cosa" : "cose")")
+                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.verde)
+                }
+            }
+        }
+    }
+
+    private func rigaDaFare(_ c: DaFareVoce) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: Self.iconaDaFare(c.tipo))
+                .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : .secondary)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 6)
+            if let d = c.destinazione?.destinazione {
+                Button(c.azione ?? "Apri") { vaiA(d) }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.bordered)
+                    .tint(Color.verde)
+                    .frame(minHeight: 44)
+            }
+        }
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Apre la destinazione di una cosa da fare.
+    private func vaiA(_ d: Destinazione) {
+        if case .sezione(let s) = d { vaiASezione(s) }
+        else if case .giocatore(let id) = d { apri(id) }
+    }
+
+    static func iconaDaFare(_ tipo: String?) -> String {
+        switch tipo {
+        case "dubbio": return "exclamationmark.triangle"
+        case "formazione": return "sportscourt"
+        case "svincolato": return "arrow.triangle.swap"
+        case "scambio": return "arrow.left.arrow.right"
+        case "rose": return "doc.badge.plus"
+        case "certificato": return "clock.badge.exclamationmark"
+        case "diario": return "book"
+        case "backup": return "externaldrive"
+        case "server": return "server.rack"
+        case "primo_avvio": return "sparkles"
+        default: return "checkmark.circle"
         }
     }
 

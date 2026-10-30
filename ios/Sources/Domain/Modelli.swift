@@ -307,6 +307,49 @@ struct Oggi: Decodable {
     let avvisi: [Avviso]?
     let migliori: [Giocatore]?
     let partite: [Partita]?
+    /// Le cose da fare (max 8, dal server): un pulsante per riga con il suo collegamento. Facoltativo (server vecchio).
+    let daFare: [DaFareVoce]?
+}
+
+/// Una cosa da fare in Oggi: «Giocatore 044 è in dubbio: sostituiscilo», «Aggiorna le rose», «Rinnova l'app»...
+struct DaFareVoce: Decodable, Identifiable, Equatable {
+    let id: String
+    /// dubbio, formazione, svincolato, scambio, rose, certificato, diario, backup, server, primo_avvio
+    let tipo: String?
+    let testo: String
+    /// 1 = urgente ... 3 = quando puoi.
+    let priorita: Int?
+    /// Cosa dice il pulsante («Sostituisci», «Vedi»...).
+    let azione: String?
+    let destinazione: DestinazioneDaFare?
+
+    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        // l'id può essere un testo o un numero: si legge in tutti e due i modi
+        if let t = try? k.decode(String.self, forKey: .id) { id = t }
+        else if let n = try? k.decode(Int.self, forKey: .id) { id = String(n) }
+        else { id = UUID().uuidString }
+        tipo = try? k.decodeIfPresent(String.self, forKey: .tipo)
+        testo = (try? k.decode(String.self, forKey: .testo)) ?? ""
+        priorita = try? k.decodeIfPresent(Int.self, forKey: .priorita)
+        azione = try? k.decodeIfPresent(String.self, forKey: .azione)
+        destinazione = try? k.decodeIfPresent(DestinazioneDaFare.self, forKey: .destinazione)
+    }
+
+    init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil) {
+        self.id = id; self.tipo = tipo; self.testo = testo; self.priorita = priorita; self.azione = azione; self.destinazione = destinazione
+    }
+}
+
+struct DestinazioneDaFare: Decodable, Equatable {
+    let scheda: String?
+    let sezione: String?
+    /// `schieraxi://...`
+    let link: String?
+
+    init(scheda: String? = nil, sezione: String? = nil, link: String? = nil) { self.scheda = scheda; self.sezione = sezione; self.link = link }
 }
 
 struct OpzioneModulo: Decodable, Identifiable {

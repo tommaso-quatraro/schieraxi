@@ -3,7 +3,15 @@ import Foundation
 /// La giornata di oggi, dal server o (se non risponde) dall'ultima copia salvata.
 /// Lo usano l'aggiornamento in background, Siri e Comandi: posti dove non c'è una schermata con il suo ViewModel.
 struct OggiRepository {
-    static let percorso = "/api/oggi"
+    static let base = "/api/oggi"
+
+    /// Con i giorni che mancano alla scadenza del certificato di SideStore (negativi se scaduto), se si leggono: il server li usa per
+    /// la voce «Rinnova l'app» del «Da fare». Senza profilo leggibile (simulatore, test) è l'indirizzo di sempre.
+    static var percorso: String { percorso(giorniCertificato: Certificato.giorniMancanti()) }
+
+    static func percorso(giorniCertificato: Int?) -> String {
+        giorniCertificato.map { "\(base)?certificato_giorni=\($0)" } ?? base
+    }
     let server: any ServerClient
 
     /// Scarica la giornata e la salva nella cache.
