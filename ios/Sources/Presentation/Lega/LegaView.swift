@@ -33,7 +33,7 @@ struct LegaView: View {
         case .asta: AstaView(server: vm.server)
         case .regole: RegoleEditorView(server: vm.server)
         case .crediti: CreditiView(server: vm.server)
-        case .avvisi: AvvisiServerView(server: vm.server)
+        case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .novita: NovitaView(server: vm.server)
         case .movimenti: MovimentiView(server: vm.server)

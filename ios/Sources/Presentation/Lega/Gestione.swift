@@ -5,15 +5,27 @@ import SwiftUI
 struct AvvisiServerView: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @StateObject private var vm: AvvisiServerViewModel
+    /// Lo stato dei promemoria di questo telefono (permesso, aggiornamento in background): una sola pagina per tutti gli avvisi.
+    @ObservedObject private var lega: LegaViewModel
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, lega: LegaViewModel) {
         _vm = StateObject(wrappedValue: AvvisiServerViewModel(server: server))
+        self.lega = lega
     }
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
+                Section {
+                    RigaValore(titolo: "Notifiche", valore: lega.permesso)
+                    Button("Attiva i promemoria sul telefono") { Task { await lega.attivaPromemoria() } }.frame(minHeight: 44)
+                    RigaValore(titolo: "Aggiornamento in background", valore: lega.aggiornamentoInBackground)
+                } header: {
+                    Text("Promemoria sul telefono")
+                } footer: {
+                    Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri Oggi e, ogni tanto, da soli: iOS riscarica la giornata e ti avvisa se la formazione consigliata cambia (quando succede lo decide iOS, di solito poche volte al giorno).")
+                }
                 if let s = vm.caricatore.dato {
                     Section("Quali avvisi") {
                         interruttore("Cambi di formazione e probabili", \.cambi)
@@ -43,6 +55,8 @@ struct AvvisiServerView: View {
                         }
                         .tint(Color.verde)
                         .frame(minHeight: 44)
+                    } header: {
+                        Text("Avanzate")
                     } footer: {
                         Text("Il server aggiunge da solo il tocco che apre l'app: non devi impostare niente.")
                     }
@@ -61,8 +75,9 @@ struct AvvisiServerView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Avvisi del server")
+        .navigationTitle("Avvisi e promemoria")
         .task { await vm.carica() }
+        .task { await lega.aggiornaPermesso() }
     }
 
     /// Ore tranquille: niente avvisi in quella fascia (anche i promemoria di questo telefono la rispettano).

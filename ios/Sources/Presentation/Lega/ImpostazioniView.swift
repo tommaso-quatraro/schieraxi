@@ -59,7 +59,7 @@ struct ImpostazioniView: View {
         switch pagina {
         case .aspetto: AspettoView()
         case .icona: IconaAppView()
-        case .avvisi: AvvisiServerView(server: vm.server)
+        case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
         case .backup: BackupView(server: vm.server)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .novita: NovitaView(server: vm.server)
@@ -96,12 +96,10 @@ struct ImpostazioniView: View {
 
     private var sezioneAvvisi: some View {
         Section("Avvisi e promemoria") {
-            NavigationLink(value: PaginaImpostazioni.avvisi) { Label("Quali avvisi e ore tranquille", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaImpostazioni.avvisi) {
+                Label("Avvisi, promemoria e ore tranquille", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44)
+            }
             RigaValore(titolo: "Notifiche", valore: vm.permesso)
-            Button("Attiva i promemoria sul telefono") { Task { await vm.attivaPromemoria() } }.frame(minHeight: 44)
-            RigaValore(titolo: "Aggiornamento in background", valore: vm.aggiornamentoInBackground)
-            Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri la schermata Oggi e, ogni tanto, da soli: iOS sveglia l'app in background, riscarica la giornata e ti avvisa se la formazione consigliata cambia. Quando succede lo decide iOS (di solito poche volte al giorno).")
-                .font(.footnote).foregroundStyle(.secondary)
         }
     }
 
