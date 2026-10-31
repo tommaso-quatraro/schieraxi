@@ -22,3 +22,6 @@ ExportOptions.plist
 # foto scaricate dal workflow screenshot.yml
 .screenshot/
 screenshot/
+
+# screenshot di lavoro (demo, temporanei): non si pubblicano
+.screenshot-nuovi/
