@@ -27,6 +27,13 @@ struct AvvisiServerView: View {
                     Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri Oggi e, ogni tanto, da soli: iOS riscarica la giornata e ti avvisa se la formazione consigliata cambia (quando succede lo decide iOS, di solito poche volte al giorno).")
                 }
                 if let s = vm.caricatore.dato {
+                    if vm.oreTranquilleSpente {
+                        Section {
+                            Text("Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).")
+                                .font(.footnote.weight(.semibold))
+                                .accessibilityAddTraits(.isStaticText)
+                        }
+                    }
                     Section("Quali avvisi") {
                         interruttore("Cambi di formazione e probabili", \.cambi)
                         interruttore("Promemoria un'ora prima", \.promemoria_60)

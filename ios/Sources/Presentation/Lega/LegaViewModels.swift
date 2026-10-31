@@ -104,6 +104,8 @@ final class AvvisiServerViewModel: ViewModelBase {
     let caricatore: Caricatore<StatoAvvisi>
     @Published var impostazioni: ImpostazioniAvvisi?
     @Published var messaggio: String?
+    /// Il server ha spento le ore tranquille (inizio = fine): si dice una volta, finché non si salva di nuovo.
+    @Published var oreTranquilleSpente = false
 
     init(server: any ServerClient) {
         self.server = server
@@ -115,6 +117,7 @@ final class AvvisiServerViewModel: ViewModelBase {
     func carica() async {
         await caricatore.ricarica()
         impostazioni = caricatore.dato?.impostazioni
+        oreTranquilleSpente = caricatore.dato?.oreTranquilleSpente ?? false
         ricordaOreTranquille()
     }
 
@@ -128,6 +131,7 @@ final class AvvisiServerViewModel: ViewModelBase {
         do {
             let _: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", i, snake: false)
             ricordaOreTranquille()
+            oreTranquilleSpente = false
             messaggio = nil
         } catch {
             let conflitto = (error as? ErroreApi)?.eConflitto == true

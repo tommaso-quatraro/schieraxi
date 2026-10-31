@@ -696,8 +696,8 @@ private enum DatiDemo {
 
     static func avvisi() -> String {
         json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "app_nativa": true,
-                              "silenzio": true, "silenzio_da": 23, "silenzio_a": 7],
-              "canale": true, "dispositivi": 2])
+                              "silenzio": false, "silenzio_da": 23, "silenzio_a": 23],
+              "canale": true, "dispositivi": 2, "ore_tranquille_spente": true])
     }
 
     /// Diario delle giornate: due giornate finite, una con la formazione schierata e una senza.

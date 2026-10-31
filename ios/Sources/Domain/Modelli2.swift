@@ -72,6 +72,22 @@ struct StatoAvvisi: Decodable {
     let impostazioni: ImpostazioniAvvisi
     let canale: Bool?
     let dispositivi: Int?
+    /// Facoltativo: il server lo manda (a `true`) solo se le ore tranquille salvate avevano inizio = fine e le ha spente.
+    /// Mancante, nullo o di tipo strano vale «niente da dire».
+    let oreTranquilleSpente: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case impostazioni, canale, dispositivi
+        case oreTranquilleSpente = "ore_tranquille_spente"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        impostazioni = try c.decode(ImpostazioniAvvisi.self, forKey: .impostazioni)
+        canale = try? c.decodeIfPresent(Bool.self, forKey: .canale)
+        dispositivi = try? c.decodeIfPresent(Int.self, forKey: .dispositivi)
+        oreTranquilleSpente = (try? c.decodeIfPresent(Bool.self, forKey: .oreTranquilleSpente)) ?? false
+    }
 }
 
 struct SceltaSalvata: Decodable {
