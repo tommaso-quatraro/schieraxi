@@ -63,26 +63,26 @@ struct OggiView: View {
 
     /// Il riquadro in alto: sfondo vivo, giornata, conto alla rovescia grande e maglia della squadra.
     private func testata(_ oggi: Oggi) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center) {
-                Label("Giornata \(oggi.giornata)", systemImage: "calendar")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 12).padding(.vertical, 7)
-                    .vetro(in: Capsule())
-                Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Giornata \(oggi.giornata)", systemImage: "calendar")
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .vetro(in: Capsule())
+            // Conto alla rovescia e maglia sulla stessa riga: il riquadro è più basso e il resto di Oggi sale.
+            HStack(alignment: .center, spacing: 8) {
+                contoAllaRovescia(oggi)
                 if let squadra = oggi.formazione?.squadra {
-                    StemmaSquadra(nome: squadra, tipo: "maglia", dimensione: 64, nascondiSeMancante: true)
-                        .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                    StemmaSquadra(nome: squadra, tipo: "maglia", dimensione: 56, nascondiSeMancante: true)
+                        .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
                 }
             }
-            contoAllaRovescia(oggi)
             if oggi.conProbabili == false {
                 Label("Mancano le probabili formazioni di questa giornata: i consigli usano le presenze recenti.", systemImage: "clock")
                     .font(.footnote)
                     .foregroundStyle(.white.opacity(0.85))
             }
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { MagiaColori() }
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
@@ -99,7 +99,7 @@ struct OggiView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     if inizio > contesto.date {
                         TestoConto(inizio: inizio, adesso: contesto.date)
-                            .font(.system(size: 52, weight: .bold, design: .rounded))
+                            .font(.system(size: 46, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
