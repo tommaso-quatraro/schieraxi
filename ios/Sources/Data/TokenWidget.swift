@@ -1,7 +1,7 @@
 import Foundation
 
 /// Il token del widget (`fw_...`): un token a scopo limitato, emesso dal server (`POST /api/account/token-widget`), valido 90 giorni,
-/// uno per utente, che permette SOLO di leggere `/api/oggi` e `/api/widget`. È l'unica cosa che l'app dà al widget (nel file condiviso
+/// uno per utente, che permette SOLO di leggere `/api/oggi`, `/api/widget` e la diretta (live). È l'unica cosa che l'app dà al widget (nel file condiviso
 /// dell'App Group e nel codice di collegamento): il token della SESSIONE non esce mai dal Keychain dell'app.
 enum TokenWidget {
     static let servizio = "<vecchio identificativo>.widget"

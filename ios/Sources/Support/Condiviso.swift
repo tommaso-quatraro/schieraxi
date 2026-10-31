@@ -7,7 +7,7 @@ import Foundation
 // squadra), scrivendolo in Info.plist alla chiave `ALTAppGroups`. Perciò l'identificativo si legge a runtime da lì
 // (poi il nome base, per il simulatore e per un'installazione normale).
 //
-// Nel contenitore c'è UN file (`condiviso.json`): l'indirizzo del server, il token della sessione (protetto dalla protezione dei dati
+// Nel contenitore c'è UN file (`condiviso.json`): l'indirizzo del server, il token del WIDGET (`fw_`, mai quello della sessione; protetto dalla protezione dei dati
 // di iOS e dal sandbox, mai in UserDefaults) e l'ultimo riassunto di «Oggi», così il widget mostra subito qualcosa. Lo scrive solo
 // l'app; il widget lo legge. Se il gruppo non è disponibile tutto funziona come prima (indirizzo nelle impostazioni del widget,
 // nessun token: il widget chiede l'accesso).
@@ -73,7 +73,7 @@ struct RiassuntoOggi: Codable, Equatable {
 /// Il contenuto del file condiviso.
 struct DatiCondivisi: Codable, Equatable {
     var indirizzo: String?
-    /// Il token della sessione e il server a cui appartiene (non si manda mai a un altro indirizzo).
+    /// Il token del widget (`fw_`) e il server a cui appartiene (non si manda mai a un altro indirizzo).
     var token: String?
     var tokenPerIndirizzo: String?
     var riassunto: RiassuntoOggi?
