@@ -323,6 +323,8 @@ struct Oggi: Decodable {
     let partite: [Partita]?
     /// Le cose da fare (max 8, dal server): un pulsante per riga con il suo collegamento. Facoltativo (server vecchio).
     let daFare: [DaFareVoce]?
+    /// true se la lega non ha ancora le rose: Oggi mostra il benvenuto con «Importa le rose». Facoltativo (server vecchio).
+    let senzaRose: Bool?
 }
 
 /// Una cosa da fare in Oggi: «Giocatore 044 è in dubbio: sostituiscilo», «Aggiorna le rose», «Rinnova l'app»...

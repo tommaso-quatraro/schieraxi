@@ -53,6 +53,8 @@ final class Navigazione: ObservableObject {
     @Published var scheda: IdGiocatore?
     /// Il foglio delle Impostazioni (l'ingranaggio in testata, o `schieraxi://impostazioni`).
     @Published var impostazioniAperte = false
+    /// La configurazione guidata («Primo avvio»): parte da sola senza rose, si riapre da Impostazioni > Informazioni.
+    @Published var guidaAperta = false
 
     init() {
         if !Demo.attivo { sezione = Self.sezioneDiAvvio() }

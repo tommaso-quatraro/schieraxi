@@ -63,5 +63,38 @@ struct ContenitoreApp: View {
                 // Solo con l'argomento di lancio -DEMO (fotografie nel simulatore): apre la schermata chiesta.
                 Demo.applica(nav: nav, modello: modello)
             }
+            .sheet(isPresented: $nav.guidaAperta) {
+                ConfigurazioneGuidataView(server: modello.server, vai: apriDaGuida)
+                    .tint(Color.verde)
+            }
+            .task { await avviaGuidaSeServe() }
+    }
+
+    /// Una sola volta all'apertura: se la lega non ha le rose e la guida non è mai stata iniziata, parte da sola.
+    private func avviaGuidaSeServe() async {
+        guard !Demo.attivo else { return }
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        if Task.isCancelled { return }
+        if await ConfigurazioneGuidataViewModel.devePartire(server: modello.server) { nav.guidaAperta = true }
+    }
+
+    /// Un passo della guida porta in un'altra schermata (la guida si è già chiusa).
+    private func apriDaGuida(_ azione: AzioneGuida) {
+        switch azione {
+        case .importaRose:
+            modello.lega.percorso = [.importa]
+            nav.sezione = .lega
+        case .squadre(let nome):
+            var pagine: [PaginaLega] = [.squadre]
+            if let nome { pagine.append(.rosa(nome)) }
+            modello.lega.percorso = pagine
+            nav.sezione = .lega
+        case .impostazioni:
+            // il foglio della guida si sta chiudendo: si aspetta un attimo prima di aprire quello delle Impostazioni
+            Task {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                nav.impostazioniAperte = true
+            }
+        }
     }
 }

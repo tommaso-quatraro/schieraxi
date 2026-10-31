@@ -105,6 +105,9 @@ extension Demo {
         switch nome {
         case "oggi":
             nav.sezione = .oggi
+        case "guida":
+            // la configurazione guidata (si riapre dalle Impostazioni): in demo mostra i passi non ancora fatti
+            nav.guidaAperta = true
 
         case "formazione":
             nav.sezione = .formazione

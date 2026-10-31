@@ -22,6 +22,7 @@ extension EnvironmentValues {
 struct ImpostazioniView: View {
     @ObservedObject var vm: LegaViewModel
     @EnvironmentObject private var sessione: SessioneAccount
+    @EnvironmentObject private var nav: Navigazione
     @Environment(\.dismiss) private var chiudi
     @State private var percorso: [PaginaImpostazioni] = []
 
@@ -112,6 +113,17 @@ struct ImpostazioniView: View {
     private var sezioneInformazioni: some View {
         Section("Informazioni") {
             NavigationLink(value: PaginaImpostazioni.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
+            Button {
+                // si chiude il foglio e, appena è sparito, si apre la guida
+                chiudi()
+                Task {
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    nav.guidaAperta = true
+                }
+            } label: {
+                Label("Configurazione guidata", systemImage: "list.bullet.clipboard").labelStyle(.voce(.teal)).frame(minHeight: 44)
+            }
+            .accessibilityHint("Rose, squadra, stemma, widget e avvisi, un passo alla volta")
             RigaValore(titolo: "Versione dell'app", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
             if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
         }
@@ -130,4 +142,5 @@ struct ImpostazioniView: View {
 
 #Preview("Impostazioni") {
     ImpostazioniView(vm: LegaViewModel(server: FinteServer.esempio))
+        .environmentObject(Navigazione())
 }

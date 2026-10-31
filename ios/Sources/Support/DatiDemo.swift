@@ -523,7 +523,7 @@ private enum DatiDemo {
     }
 
     static func stato(adesso: Date) -> String {
-        json(["stagione": "2026-27", "prossima_giornata": giornata, "mia_squadra": nomeMia, "versione": "1.9",
+        json(["stagione": "2026-27", "prossima_giornata": giornata, "mia_squadra": nomeMia, "rose_importate": true, "versione": "1.9",
               "ultimo_aggiornamento": formatta(adesso.addingTimeInterval(-2 * 3600), "yyyy-MM-dd'T'HH:mm:ss")])
     }
 
@@ -750,6 +750,7 @@ private enum DatiDemo {
             "/api/formazione/testo": "Giornata \(giornata) - 3-4-3 (\(Formato.punti(punteggio(moduli[0].titolari))) punti attesi)",
             "/api/formazione/valuta": valutazione(),
             "/api/formazione": formazione(),
+            "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),
             "/api/oggi": oggi(adesso: adesso),
             "/api/regole": regole(),
             "/api/avvisi": avvisi(),
