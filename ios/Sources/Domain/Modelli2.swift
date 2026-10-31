@@ -54,6 +54,8 @@ struct ImpostazioniAvvisi: Codable {
     var promemoria_60: Bool
     var promemoria_15: Bool
     var riepilogo: Bool
+    /// «Reparto della rosa scoperto» (opzionale: un server più vecchio non lo manda e allora non si rimanda; di base è acceso).
+    var copertura: Bool?
     /// Avvisi anche con ntfy, il cui tocco apre l'app nativa. Opzionale: un server più vecchio non lo manda
     /// (e se è nil non viene rimandato, quindi non si azzera niente).
     var app_nativa: Bool?

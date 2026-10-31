@@ -702,7 +702,7 @@ private enum DatiDemo {
     }
 
     static func avvisi() -> String {
-        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "app_nativa": true,
+        json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "copertura": true, "app_nativa": true,
                               "silenzio": false, "silenzio_da": 23, "silenzio_a": 23],
               "canale": true, "dispositivi": 2, "ore_tranquille_spente": true])
     }

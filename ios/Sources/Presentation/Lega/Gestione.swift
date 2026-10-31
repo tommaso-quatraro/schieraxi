@@ -39,6 +39,20 @@ struct AvvisiServerView: View {
                         interruttore("Promemoria un'ora prima", \.promemoria_60)
                         interruttore("Promemoria 15 minuti prima", \.promemoria_15)
                         interruttore("Riepilogo a giornata finita", \.riepilogo)
+                        Toggle(isOn: Binding(
+                            get: { vm.impostazioni?.copertura ?? true },
+                            set: { nuovo in
+                                vm.impostazioni?.copertura = nuovo
+                                Task { await vm.salva() }
+                            })) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Reparto della rosa scoperto")
+                                Text("Ti avvisa se in un reparto hai pochi giocatori disponibili (infortunati, squalificati, diffidati).")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .tint(Color.verde)
+                        .frame(minHeight: 44)
                     }
                     sezioneOreTranquille
                     if sessione.multiutente {

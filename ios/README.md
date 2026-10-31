@@ -107,7 +107,7 @@ Le foto si scaricano con `gh run download <id> --name screenshot-app --dir .scre
 5. **Regole**: incolla il regolamento di Leghe, controlla i valori riconosciuti, "Applica ai campi", poi "Salva le regole" (modifica un valore, salva, riapri). Sono dati veri sul server: controlla che quelli che non tocchi restino uguali.
 6. **Passaggio di stagione**: la pagina Lega > Nuova stagione dice che non c'è niente da fare finché le rose sono della stagione in corso; non premere "Archivia e riparti" se non serve davvero.
 7. **Formazione**: confronta due giocatori (⇄ o i ballottaggi), modifica a mano, "Condividi come immagine" e mandala; formazione "per loro" da Lega > Squadre e rose > squadra.
-8. **Avvisi**: Lega > Avvisi del server, interruttore «Avvisi anche per l'app nativa» (il server lo salva e ntfy manda il tocco che apre l'app: serve l'intestazione `Click`).
+8. **Avvisi**: Lega > Avvisi del server, interruttore «Reparto della rosa scoperto» (acceso di base; spegnilo, esci e riapri: deve restare spento) e interruttore «Avvisi anche per l'app nativa» (il server lo salva e ntfy manda il tocco che apre l'app: serve l'intestazione `Click`).
 9. **Aspetto**: cambia il colore, la densità e la sezione di avvio; chiudi e riapri l'app (deve partire dalla sezione scelta).
 10. VoiceOver sulla scheda di un giocatore: il grafico dei voti si legge come frase; "Mostra i numeri" apre l'elenco.
 11d. **Configurazione guidata**: Impostazioni > Informazioni > Configurazione guidata (deve saltare i passi gia' fatti, ricordare «Salta» e «Piu' tardi», mostrare il riepilogo; il passo Avvisi chiede il permesso delle notifiche; il passo Widget apre le Impostazioni). Con una lega senza rose (account nuovo) deve partire da sola una volta sola.
