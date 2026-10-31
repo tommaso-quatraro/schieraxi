@@ -153,6 +153,12 @@ struct ErroreVista: View {
             || messaggio.localizedCaseInsensitiveContains("troppi tentativi") || messaggio.localizedCaseInsensitiveContains("già fatto")
     }
 
+    /// La frase che VoiceOver legge da sola quando compare l'errore (la vista nuova non muove il fuoco).
+    static func annuncio(_ messaggio: String) -> String {
+        let testo = messaggio.trimmingCharacters(in: .whitespacesAndNewlines)
+        return testo.isEmpty ? "Qualcosa non va" : "Qualcosa non va. \(testo)"
+    }
+
     private var errore: some View {
         ContentUnavailableView {
             Label(eLimite ? "Limite raggiunto" : "Qualcosa non va", systemImage: eLimite ? "hourglass" : "wifi.exclamationmark")
@@ -175,6 +181,8 @@ struct ErroreVista: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
+        .onAppear { AccessibilityNotification.Announcement(Self.annuncio(messaggio)).post() }
+        .onChange(of: messaggio) { _, nuovo in AccessibilityNotification.Announcement(Self.annuncio(nuovo)).post() }
     }
 }
 
