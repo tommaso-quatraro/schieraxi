@@ -70,7 +70,24 @@ struct PuntiGiornata: Codable, Equatable, Identifiable {
     var giornata: Int
     var attesi: Double?
     var fatti: Double?
+    /// La fascia prevista per quella giornata (facoltativa: un server vecchio non la manda).
+    var intervallo: IntervalloWidget?
     var id: Int { giornata }
+
+    private enum Chiavi: String, CodingKey { case giornata, attesi, fatti, intervallo }
+
+    init(giornata: Int, attesi: Double? = nil, fatti: Double? = nil, intervallo: IntervalloWidget? = nil) {
+        self.giornata = giornata; self.attesi = attesi; self.fatti = fatti; self.intervallo = intervallo
+    }
+
+    /// Tollerante: una fascia con la forma sbagliata si ignora, la giornata resta.
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        giornata = try k.decode(Int.self, forKey: .giornata)
+        attesi = (try? k.decodeIfPresent(Double.self, forKey: .attesi)) ?? nil
+        fatti = (try? k.decodeIfPresent(Double.self, forKey: .fatti)) ?? nil
+        intervallo = (try? k.decodeIfPresent(IntervalloWidget.self, forKey: .intervallo)) ?? nil
+    }
 }
 
 struct SvincolatoWidget: Codable, Equatable {
@@ -274,11 +291,32 @@ extension PuntiGiornata {
         return fatti - attesi
     }
 
-    /// Una frase per VoiceOver: «Giornata 10: 63,5 punti fatti, 66,0 attesi».
+    /// Dove sono caduti i punti fatti rispetto alla fascia prevista; nil se manca la fascia o i punti.
+    enum PostoNellaFascia: Equatable { case sotto, dentro, sopra }
+
+    var postoNellaFascia: PostoNellaFascia? {
+        guard let fatti, fatti.isFinite, let basso = intervallo?.basso, let alto = intervallo?.alto,
+              basso.isFinite, alto.isFinite, basso <= alto else { return nil }
+        if fatti < basso { return .sotto }
+        return fatti > alto ? .sopra : .dentro
+    }
+
+    /// «dentro la fascia», «sopra la fascia», «sotto la fascia»; nil senza fascia.
+    var fasciaTesto: String? {
+        switch postoNellaFascia {
+        case .dentro: return "dentro la fascia"
+        case .sopra: return "sopra la fascia"
+        case .sotto: return "sotto la fascia"
+        case nil: return nil
+        }
+    }
+
+    /// Una frase per VoiceOver: «Giornata 10: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 62 e 85».
     var descrizione: String {
         var t = "Giornata \(giornata): "
         t += fatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non noti"
         if let attesi { t += ", \(Formato.punti(attesi)) attesi" }
+        if let f = fasciaTesto, let fascia = intervallo?.testo { t += ", \(f) prevista, \(fascia)" }
         return t
     }
 }
@@ -303,6 +341,12 @@ extension ScambioWidget {
 }
 
 extension RiassuntoWidget {
+    /// Quante delle giornate date sono cadute dentro la fascia prevista, e su quante la fascia c'era.
+    static func quanteDentro(_ giornate: [PuntiGiornata]) -> (dentro: Int, su: Int) {
+        let con = giornate.compactMap(\.postoNellaFascia)
+        return (con.filter { $0 == .dentro }.count, con.count)
+    }
+
     /// Le giornate del diario che hanno i punti fatti, dalla più recente.
     var giornateGiocate: [PuntiGiornata] {
         (diario ?? []).filter { $0.fatti != nil }.sorted { $0.giornata > $1.giornata }

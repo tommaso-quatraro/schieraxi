@@ -110,12 +110,13 @@ struct VistaFormazione: View {
         VStack(alignment: .leading, spacing: 2) {
             IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", destra: w.giornata.map { "G\($0)" })
             Spacer(minLength: 0)
-            Text(f.modulo ?? "—").font(.system(size: 38, weight: .bold, design: .rounded)).minimumScaleFactor(0.6).lineLimit(1)
+            Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
             Text(punti(f)).font(.title3.bold()).monospacedDigit()
-            Text("punti attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
+            Text(f.intervallo?.testo.map { "attesi · \($0)" } ?? "punti attesi")
+                .font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1).minimumScaleFactor(0.8)
             if !w.daControllare.isEmpty {
                 Label("\(w.daControllare.count) da controllare", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption2).foregroundStyle(TintaWidget.attenzione)
+                    .font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1).minimumScaleFactor(0.8)
             } else {
                 PiedeDati(voce: voce)
             }
@@ -128,7 +129,7 @@ struct VistaFormazione: View {
             VStack(alignment: .leading, spacing: 2) {
                 IntestazioneWidget(titolo: "Formazione", icona: "sportscourt")
                 Spacer(minLength: 0)
-                Text(f.modulo ?? "—").font(.system(size: 36, weight: .bold, design: .rounded)).minimumScaleFactor(0.6).lineLimit(1)
+                Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
                 Text(punti(f)).font(.title3.bold()).monospacedDigit()
                 Text("punti attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
                 if let t = f.intervallo?.testo { Text(t).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
@@ -146,7 +147,7 @@ struct VistaFormazione: View {
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         VStack(spacing: 8) {
             HStack(alignment: .center) {
-                Text(f.modulo ?? "—").font(.system(size: 34, weight: .bold, design: .rounded)).lineLimit(1).fixedSize()
+                Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
                 VStack(alignment: .leading, spacing: 0) {
                     Text("\(punti(f)) punti attesi").font(.subheadline).monospacedDigit().foregroundStyle(TintaWidget.testo2).lineLimit(1)
                     if let t = f.intervallo?.testo { Text(t).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
@@ -212,7 +213,8 @@ struct VistaFormazione: View {
     private func rettangolare(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Formazione \(f.modulo ?? "—")").font(.headline)
-            Text("\(punti(f)) punti attesi").font(.caption).monospacedDigit()
+            Text(f.intervallo?.testo.map { "\(punti(f)) attesi · \($0)" } ?? "\(punti(f)) punti attesi")
+                .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             if !w.daControllare.isEmpty {
                 Text("\(w.daControllare.count) da controllare").font(.caption2)
             } else if let g = w.giornata {

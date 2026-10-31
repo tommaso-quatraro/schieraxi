@@ -97,11 +97,12 @@ struct VistaPunti: View {
         VStack(alignment: .leading, spacing: 2) {
             intestazione(g)
             Spacer(minLength: 0)
-            Text(Formato.punti(g.fatti)).font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
+            Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
                 .lineLimit(1).minimumScaleFactor(0.6)
                 .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
             Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
-            Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit()
+            Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+            if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
             GraficoPunti(giornate: w.giornateGiocate, altezza: 18, conEtichette: false, massimo: 5).padding(.top, 2)
             PiedeDati(voce: voce)
         }
@@ -113,11 +114,12 @@ struct VistaPunti: View {
             VStack(alignment: .leading, spacing: 2) {
                 intestazione(g)
                 Spacer(minLength: 0)
-                Text(Formato.punti(g.fatti)).font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
+                Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
                 Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
-                Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit()
+                Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
                 PiedeDati(voce: voce)
             }
             .frame(maxWidth: 140, alignment: .leading)
@@ -144,7 +146,8 @@ struct VistaPunti: View {
         let media = scarti.isEmpty ? nil : scarti.reduce(0, +) / Double(scarti.count)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(Formato.punti(g.fatti)).font(.system(size: 44, weight: .bold, design: .rounded)).monospacedDigit()
+                Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
                 Text("fatti alla giornata \(g.giornata), attesi \(Formato.punti(g.attesi))").font(.subheadline).foregroundStyle(TintaWidget.testo2)
                     .lineLimit(2)
@@ -156,6 +159,7 @@ struct VistaPunti: View {
                 ForEach(giornate) { x in
                     HStack {
                         Text("Giornata \(x.giornata)").font(.footnote)
+                        if let f = x.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
                         Spacer()
                         Text("\(Formato.punti(x.fatti)) su \(Formato.punti(x.attesi))").font(.footnote).monospacedDigit()
                         Text(scartoTesto(x)).font(.footnote.weight(.semibold)).monospacedDigit().frame(width: 52, alignment: .trailing)
@@ -163,6 +167,10 @@ struct VistaPunti: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(GraficoPunti.descrizione(x))
                 }
+            }
+            if case let (dentro, su) = RiassuntoWidget.quanteDentro(giornate), su > 0 {
+                Text("Dentro la fascia prevista in \(dentro) giornate su \(su).")
+                    .font(.caption).foregroundStyle(TintaWidget.testo2)
             }
             if let media {
                 Text("In media \(Formato.conSegno(media)) punti sul previsto nelle ultime \(scarti.count) giornate.")
