@@ -211,3 +211,76 @@ final class MovimentiViewModel: ViewModelBase {
 
     func carica() async { await caricatore.ricarica() }
 }
+
+/// «Giocatori da sistemare»: i nomi delle rose che l'importazione non ha riconosciuto. Si cerca quello giusto nel listone e si abbina a mano.
+@MainActor
+final class DubbiRoseViewModel: ViewModelBase {
+    private let server: any ServerClient
+
+    @Published private(set) var dubbi: [GiocatoreDaSistemare] = []
+    @Published private(set) var caricato = false
+    @Published private(set) var trovati: [GiocatoreBreve] = []
+    @Published private(set) var cercando = false
+    @Published private(set) var errore: String?
+    @Published private(set) var sistemati = 0
+    @Published var scelto: GiocatoreDaSistemare?
+    /// Pausa prima di interrogare il server mentre si scrive (i test la azzerano).
+    var pausa: UInt64 = 300_000_000
+
+    init(server: any ServerClient) {
+        self.server = server
+        super.init()
+    }
+
+    func carica() async {
+        do {
+            let squadre: [SquadraLega] = try await server.get("/api/squadre")
+            var rose: [Rosa] = []
+            for s in squadre {
+                rose.append(try await server.get("/api/rosa?squadra=\(IndirizzoServer.codifica(s.nome))"))
+            }
+            dubbi = DubbiRose.trova(in: rose)
+            errore = nil
+        } catch {
+            if error is CancellationError { return }
+            errore = error.localizedDescription
+        }
+        caricato = true
+    }
+
+    func cerca(_ testo: String) async {
+        let scritto = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard scritto.count >= 2 else { trovati = []; cercando = false; return }
+        if pausa > 0 { try? await Task.sleep(nanoseconds: pausa) }
+        if Task.isCancelled { return }
+        cercando = true
+        defer { cercando = false }
+        do {
+            let r: [GiocatoreBreve] = try await server.get("/api/giocatori?limite=6&q=\(IndirizzoServer.codifica(scritto))")
+            if Task.isCancelled { return }
+            trovati = r
+            errore = nil
+        } catch {
+            if Task.isCancelled || error is CancellationError { return }
+            errore = error.localizedDescription
+        }
+    }
+
+    /// Abbina il nome della rosa al giocatore scelto nel listone.
+    func abbina(_ dubbio: GiocatoreDaSistemare, a giocatore: GiocatoreBreve) async {
+        do {
+            _ = try await server.corpoJSON("POST", "/api/rose/correggi", RichiestaCorreggiGiocatore(squadra: dubbio.squadra, nome: dubbio.nome, id: giocatore.id))
+            dubbi.removeAll { $0 == dubbio }
+            sistemati += 1
+            scelto = nil
+            trovati = []
+            errore = nil
+            Haptics.esito(riuscito: true)
+            NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+        } catch {
+            if (error as? ErroreApi)?.eConflitto == true { _ = try? await server.grezzo("/api/squadre") }
+            errore = error.localizedDescription
+            Haptics.esito(riuscito: false)
+        }
+    }
+}

@@ -462,11 +462,13 @@ struct StatoDatiView: View {
 /// Importazione delle rose da un file Excel di Leghe (scelto con il selettore di file di iOS) o dal testo incollato.
 struct ImportaExcelView: View {
     @StateObject private var vm: ImportaExcelViewModel
+    @StateObject private var dubbi: DubbiRoseViewModel
     @EnvironmentObject private var nav: Navigazione
     @State private var scegli = false
 
     init(server: any ServerClient) {
         _vm = StateObject(wrappedValue: ImportaExcelViewModel(server: server))
+        _dubbi = StateObject(wrappedValue: DubbiRoseViewModel(server: server))
     }
 
     var body: some View {
@@ -510,10 +512,38 @@ struct ImportaExcelView: View {
                         }
                     } header: { Text("Da controllare") }
                 }
+                if !dubbi.dubbi.isEmpty {
+                    Section {
+                        Text("Non li ho trovati nel listone (magari ceduti o con un altro nome). Tocca un nome e cerca quello giusto; se non c'è, lascia stare.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        ForEach(dubbi.dubbi) { d in
+                            Button { dubbi.scelto = d } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(d.nome).foregroundStyle(.primary)
+                                        Text(d.squadra).font(.footnote).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+                                }
+                                .frame(minHeight: 44)
+                            }
+                            .accessibilityLabel("\(d.nome), \(d.squadra), non riconosciuto")
+                            .accessibilityHint("Cerca il giocatore giusto")
+                        }
+                    } header: { Text("Giocatori da sistemare (\(dubbi.dubbi.count))") }
+                } else if dubbi.sistemati > 0 {
+                    Section { Label("Tutti i giocatori sono riconosciuti.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(.secondary) }
+                }
             }
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Aggiorna le rose")
+        .task { await dubbi.carica() }
+        .onChange(of: vm.inCorso) { _, ora in if !ora { Task { await dubbi.carica() } } }
+        .sheet(item: $dubbi.scelto) { d in
+            NavigationStack { CercaGiocatoreGiustoView(vm: dubbi, dubbio: d) }
+        }
         .ricercaGlobale()
         .fileImporter(isPresented: $scegli, allowedContentTypes: vm.tipiAmmessi, allowsMultipleSelection: false) { risultato in
             Task { await vm.importa(risultato) }
@@ -524,5 +554,41 @@ struct ImportaExcelView: View {
             nav.fileDaImportare = nil
             await vm.importa(.success([url]))
         }
+    }
+}
+
+/// Cerca nel listone il giocatore giusto per un nome delle rose che non è stato riconosciuto.
+struct CercaGiocatoreGiustoView: View {
+    @ObservedObject var vm: DubbiRoseViewModel
+    let dubbio: GiocatoreDaSistemare
+    @Environment(\.dismiss) private var chiudi
+    @State private var testo = ""
+
+    var body: some View {
+        List {
+            Section {
+                TextField("Cerca il giocatore giusto", text: $testo)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .frame(minHeight: 44)
+                    .accessibilityLabel("Cerca il giocatore giusto per \(dubbio.nome)")
+            } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.nome)».") }
+            if let errore = vm.errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
+            Section {
+                if vm.cercando { ProgressView() }
+                ForEach(vm.trovati) { g in
+                    Button { Task { await vm.abbina(dubbio, a: g) } } label: {
+                        Text("\(g.nome) · \(g.ruolo) · \(g.squadra ?? "–")").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }
+                }
+                if !vm.cercando, vm.trovati.isEmpty, testo.trimmingCharacters(in: .whitespaces).count >= 2 {
+                    Text("Nessun risultato").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("Giocatore giusto")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
+        .task(id: testo) { await vm.cerca(testo) }
     }
 }
