@@ -78,11 +78,11 @@ struct Marchio: View {
         }
         .frame(width: lato, height: lato)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("SchieraXI")
+        .accessibilityLabel("Schiera SchieraXI")
     }
 }
 
-/// Il marchio con il nome accanto, il nome è sempre «SchieraXI» con la U maiuscola, in carattere arrotondato.
+/// Il marchio con il nome accanto, il nome è sempre «SchieraXI» con XI maiuscolo, in carattere arrotondato.
 struct MarchioConNome: View {
     var lato: CGFloat = 44
     var body: some View {
@@ -93,6 +93,6 @@ struct MarchioConNome: View {
                 .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("SchieraXI")
+        .accessibilityLabel("Schiera SchieraXI")
     }
 }

@@ -68,7 +68,7 @@ struct ScelteTueTesto: Equatable {
     private static func riga(_ g: SceltaGiornata) -> RigaScelta {
         let esito: Esito = g.esito == "tua" ? .tua : g.esito == "consigliata" ? .consigliata : .pari
         var frase = "Hai messo \(elenco(g.haiScelto)) al posto di \(elenco(g.consigliava))."
-        if (g.haiScelto ?? []).isEmpty || (g.consigliava ?? []).isEmpty { frase = "undici diversi da quelli consigliati." }
+        if (g.haiScelto ?? []).isEmpty || (g.consigliava ?? []).isEmpty { frase = "Hai scelto undici diversi da quelli consigliati." }
         let t = Formato.punti(g.puntiTua), c = Formato.punti(g.puntiConsigliata)
         let verdetto = esito == .tua ? "Meglio tu" : esito == .consigliata ? "Meglio il consiglio" : "Pari"
         return RigaScelta(id: g.id, titolo: "Giornata \(g.giornata ?? 0)", frase: frase,

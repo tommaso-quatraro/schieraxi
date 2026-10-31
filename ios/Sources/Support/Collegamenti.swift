@@ -14,12 +14,15 @@ enum Destinazione: Equatable {
 /// `schieraxi://oggi`, `formazione`, `squadra`, `altro` (e i vecchi `mercato`, `scambi`, `lega`) e `schieraxi://giocatore/<id>`.
 enum Collegamenti {
     static let schema = "schieraxi"
+    /// Schema di prima della rinomina: i link degli avvisi già inviati e quelli del server non ancora aggiornato lo usano.
+    /// Compatibilità temporanea (eccezione scritta nel piano di rinomina): DA TOGLIERE dopo 30 giorni, anche da `project.yml`.
+    static let schemiVecchi: Set<String> = ["schieraxi"]
 
     /// Esempio da mostrare all'utente.
     static let esempioNtfy = "Click: schieraxi://formazione"
 
     static func interpreta(_ url: URL) -> Destinazione? {
-        guard url.scheme?.lowercased() == schema, let host = url.host?.lowercased() else { return nil }
+        guard let schemaUrl = url.scheme?.lowercased(), schemaUrl == schema || schemiVecchi.contains(schemaUrl), let host = url.host?.lowercased() else { return nil }
         if host == "impostazioni" { return .impostazioni }
         if host == "giocatore" {
             // pathComponents di "schieraxi://giocatore/12" è ["/", "12"]

@@ -65,6 +65,8 @@ targets:
           - CFBundleURLName: <vecchio identificativo>
             CFBundleURLSchemes:
               - schieraxi
+              # compatibilità temporanea (30 giorni): link degli avvisi con lo schema di prima
+              - schieraxi
         # aggiornamento in background (BGAppRefreshTask): identificativo permesso e modalità "fetch"
         UIBackgroundModes:
           - fetch
@@ -130,7 +132,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
   AnteprimaWidget:
     # app SOLO per la CI (screenshot.yml): mostra i widget nelle loro misure con dati finti, per fotografarli sul simulatore di iPhone e iPad.
-    # Non e' una dipendenza di SchieraXI, quindi non entra nell'IPA. Compila gli stessi file dell'estensione (tranne il pacchetto @main).
+    # Non e' una dipendenza di Schieraxi, quindi non entra nell'IPA. Compila gli stessi file dell'estensione (tranne il pacchetto @main).
     type: application
     platform: iOS
     sources:
