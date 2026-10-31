@@ -37,7 +37,7 @@ struct CampoMini: View {
                             VStack(spacing: 1) {
                                 AvatarMini(g: g, lato: lato)
                                 if conNomi {
-                                    Text(g.cognome).font(.system(size: 9, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                                    Text(g.cognome).fontWidget(9, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
                                 }
                             }
                             .frame(maxWidth: .infinity)
@@ -172,7 +172,7 @@ struct VistaFormazione: View {
         HStack(alignment: .top, spacing: 20) {
             VStack(spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(f.modulo ?? "—").font(.system(size: 40, weight: .bold, design: .rounded))
+                    Text(f.modulo ?? "—").fontWidget(40, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
                     Text("\(punti(f)) punti attesi").font(.headline).monospacedDigit().foregroundStyle(TintaWidget.testo2)
                     if let t = f.intervallo?.testo { Text(t).font(.subheadline).foregroundStyle(TintaWidget.testo2) }
                     Spacer()

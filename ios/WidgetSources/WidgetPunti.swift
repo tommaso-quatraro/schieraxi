@@ -71,9 +71,9 @@ struct VistaPunti: View {
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
-                    Text("G\(g.giornata)").font(.system(size: 10))
+                    Text("G\(g.giornata)").fontWidget(10)
                     Text(scartoTesto(g)).font(.headline.bold()).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
-                    Text("sul previsto").font(.system(size: 8))
+                    Text("sul previsto").fontWidget(8)
                 }
             }
         case .accessoryRectangular:
@@ -135,7 +135,7 @@ struct VistaPunti: View {
             Label("attesi", systemImage: "square.fill").foregroundStyle(.white.opacity(0.45))
             Label("fatti", systemImage: "square.fill").foregroundStyle(TintaWidget.accento(modo))
         }
-        .font(.system(size: 9))
+        .fontWidget(9)
         .labelStyle(.titleAndIcon)
         .accessibilityHidden(true)
     }
