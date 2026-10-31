@@ -170,6 +170,7 @@ struct RosaView: View {
     let nome: String
     @StateObject private var vm: RosaViewModel
     @Environment(\.vediFormazioneDi) private var vediFormazione
+    @Environment(\.funzioni) private var funzioni
     @ObservedObject private var immagini = Immagini.condivise
     @State private var sceltaStemma: PhotosPickerItem?
     @State private var sceltaMaglia: PhotosPickerItem?
@@ -284,12 +285,17 @@ struct RosaView: View {
                 Label("Da un file", systemImage: "folder").frame(minHeight: 44)
             }
             .disabled(vm.inCorso)
-            Button { indirizzoScritto = ""; chiediIndirizzo = true } label: {
-                Label("Da un indirizzo web", systemImage: "link").frame(minHeight: 44)
+            // Lo scarica il server: il server la blocca per tutti se l'amministratore la spegne, anche con «Mostra tutte» (qui uguale).
+            if funzioni.accesoDavvero(Funzione.immaginiWeb) {
+                Button { indirizzoScritto = ""; chiediIndirizzo = true } label: {
+                    Label("Da un indirizzo web", systemImage: "link").frame(minHeight: 44)
+                }
+                .disabled(vm.inCorso)
+                Text("Dall'app o dal sito di Leghe tieni premuto sullo stemma o sulla divisa e scegli «Salva immagine» (oppure copia l'indirizzo dell'immagine), poi incollalo qui. Se l'indirizzo non è pubblico, salva l'immagine e caricala dalla libreria foto.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            } else {
+                Text("Per stemma e divisa scegli una foto dalla libreria o un file.").font(.footnote).foregroundStyle(.secondary)
             }
-            .disabled(vm.inCorso)
-            Text("Dall'app o dal sito di Leghe tieni premuto sullo stemma o sulla divisa e scegli «Salva immagine» (oppure copia l'indirizzo dell'immagine), poi incollalo qui. Se l'indirizzo non è pubblico, salva l'immagine e caricala dalla libreria foto.")
-                .font(.footnote).foregroundStyle(.secondary)
             if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(.secondary) }
             ForEach(r.avvisi ?? [], id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(Color.attenzione) }
         }

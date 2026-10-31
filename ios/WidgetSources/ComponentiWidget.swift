@@ -62,7 +62,7 @@ struct SenzaDatiWidget: View {
             Image(systemName: voce.indirizzoMancante ? "server.rack" : voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
             Text(voce.indirizzoMancante ? "Manca il server" : voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
             if !compatto {
-                Text("Lega > Widget > Copia il codice, poi Modifica widget")
+                Text("Impostazioni > Widget > Copia il codice, poi Modifica widget")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 if let d = voce.diagnostica { Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
             }

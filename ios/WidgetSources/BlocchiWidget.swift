@@ -210,7 +210,7 @@ struct SvincoloCompatto: View {
                 }
             } else {
                 Text("Non ancora calcolato").font(.footnote.weight(.semibold))
-                Text("Apri Mercato").font(.caption2).foregroundStyle(TintaWidget.testo2)
+                Text("Apri Squadra > Cambi consigliati").font(.caption2).foregroundStyle(TintaWidget.testo2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

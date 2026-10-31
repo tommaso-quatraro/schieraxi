@@ -103,7 +103,7 @@ struct DiarioView: View {
                     }
                     if (d.giornate ?? []).isEmpty {
                         VistaVuota(titolo: "Diario ancora vuoto", icona: "book.closed",
-                                   descrizione: "Si riempie dopo la prima giornata finita (serve la tua squadra indicata in Lega).")
+                                   descrizione: "Si riempie dopo la prima giornata finita (serve la tua squadra indicata in Squadra).")
                             .listRowBackground(Color.clear)
                     }
                     if let m = vm.messaggio {

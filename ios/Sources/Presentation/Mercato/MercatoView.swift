@@ -7,6 +7,7 @@ import SwiftUI
 struct ConsigliatiView: View {
     @ObservedObject var vm: MercatoViewModel
     @Environment(\.spazioZoom) private var zoom
+    @Environment(\.funzioni) private var funzioni
     @State private var dettagli = false
 
     var body: some View {
@@ -68,7 +69,12 @@ struct ConsigliatiView: View {
 
     private func spiegazione(_ m: Mercato) -> String {
         let base = "Ogni proposta è un cambio: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Il guadagno è in punti attesi: le prossime giornate una per una, più il resto della stagione."
-        if m.creditiResidui == nil { return base + " Inserisci i tuoi crediti in Lega > Crediti per vedere se i cambi sono fattibili." }
+        if m.creditiResidui == nil {
+            let dove = funzioni.acceso(Funzione.squadreAltrui)
+                ? "Inserisci i tuoi crediti in Altro > Crediti delle squadre"
+                : "Aggiorna le rose in Squadra: i crediti arrivano con il file"
+            return base + " \(dove) per vedere se i cambi sono fattibili."
+        }
         return base + " Lo svincolo ti restituisce il \(Formato.percento(m.rimborsoIpotizzato ?? 0.5))% del prezzo pagato."
     }
 

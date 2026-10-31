@@ -29,7 +29,7 @@ L'app nativa fa **tutto quello che fa la web app** (tranne le notifiche push, ve
 - **Cache offline:** l'ultima risposta di ogni schermata sta in `Caches/api` (massimo 150 file, separata per server). Se il server non risponde: "Server non raggiungibile. Dati salvati del ...".
 - **Aggiornamento in background** (`BGAppRefreshTask`) e **promemoria locali** prima della prima partita; notifica locale se cambia la formazione consigliata.
 - **Siri e Comandi** (App Intents): "Qual è la mia formazione su SchieraXI", "Quanto manca alla partita su SchieraXI".
-- **Widget** (target `SchieraxiWidget`): Home (piccolo, medio) e schermata di blocco (cerchio, rettangolo, riga).
+- **Widget** (target `SchieraxiWidget`): Home (piccolo, medio) e schermata di blocco (cerchio, rettangolo, riga). Nel pacchetto ce ne sono tre: Prossima giornata, Formazione, Da controllare. Gli altri (Cruscotto, Live, Chi gioca, Osservato, Punti, Scambio, Crediti, Stato) restano in `WidgetSources` ma fuori da `PacchettoWidget`: il widget non conosce le funzioni accese, quindi non puo' nascondere da solo quelli di una funzione spenta.
 - **Spotlight** sui giocatori osservati.
 - **Collegamenti `schieraxi://`** (per aprire l'app da una notifica di ntfy con l'intestazione `Click`):
   `schieraxi://oggi`, `formazione`, `mercato`, `scambi`, `lega`, `schieraxi://giocatore/<id>`.

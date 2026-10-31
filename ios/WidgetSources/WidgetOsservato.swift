@@ -127,7 +127,7 @@ struct VistaOsservato: View {
             } else {
                 TitoloBlocco(testo: "Osservato", icona: "eye")
                 Text("Nessun giocatore").font(.headline)
-                Text("Aggiungi osservati in Mercato, poi scegli qui.").font(.caption).foregroundStyle(accessorio ? Color.secondary : TintaWidget.testo2)
+                Text("Aggiungi un giocatore ai Seguiti (Squadra), poi scegli qui.").font(.caption).foregroundStyle(accessorio ? Color.secondary : TintaWidget.testo2)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)

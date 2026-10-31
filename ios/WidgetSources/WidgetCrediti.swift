@@ -124,7 +124,7 @@ struct VistaCrediti: View {
         } else {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Svincolo consigliato").font(.caption.weight(.semibold)).foregroundStyle(TintaWidget.testo2)
-                Text("Apri Mercato per calcolarlo").font(.subheadline)
+                Text("Apri Squadra > Cambi consigliati").font(.subheadline)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

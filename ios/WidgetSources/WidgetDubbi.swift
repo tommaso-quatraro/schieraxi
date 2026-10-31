@@ -121,7 +121,7 @@ struct VistaDubbi: View {
             Image(systemName: voce.indirizzoMancante ? "server.rack" : "wifi.exclamationmark")
             Text(voce.indirizzoMancante ? "Manca il server" : "Nessun dato").font(.caption.bold())
             if !accessorio {
-                Text("Lega > Widget > Copia il codice, poi Modifica widget")
+                Text("Impostazioni > Widget > Copia il codice, poi Modifica widget")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
             }
         }

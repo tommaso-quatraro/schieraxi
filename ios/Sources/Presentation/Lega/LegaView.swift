@@ -150,12 +150,15 @@ struct LegaView: View {
             }
             if funzioni.acceso(Funzione.elencoGiocatori) {
                 NavigationLink(value: PaginaLega.elenco) { Label("Elenco dei giocatori", systemImage: "list.number").labelStyle(.voce(.teal)).frame(minHeight: 44) }
+            }
+            if funzioni.vedeCalendario {
                 NavigationLink(value: PaginaLega.calendario) { Label("Calendario", systemImage: "calendar.badge.clock").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
             }
         }
     }
 
-    /// Altro: Scambi, il diario, l'asta, le regole, i movimenti, i crediti, la nuova stagione, la copia di sicurezza, le novità.
+    /// Altro: Scambi, il diario, l'asta, le regole, la copia di sicurezza, le novità. I movimenti e i crediti delle squadre solo con «Squadre della lega»;
+    /// la nuova stagione solo quando le rose sono di un anno passato (o con «Mostra tutte»).
     private var sezioneAltro: some View {
         Section {
             NavigationLink(value: PaginaLega.scambi) { Label("Scambi", systemImage: "arrow.left.arrow.right").labelStyle(.voce(.purple)).frame(minHeight: 44) }
@@ -166,11 +169,13 @@ struct LegaView: View {
                 NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer").labelStyle(.voce(.brown)).frame(minHeight: 44) }
             }
             NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
             if funzioni.acceso(Funzione.squadreAltrui) {
+                NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
                 NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "c.circle").labelStyle(.voce(.mint)).frame(minHeight: 44) }
             }
-            NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
+            if vm.nuovaStagione || funzioni.mostraTutte {
+                NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
+            }
             if funzioni.acceso(Funzione.backup) {
                 NavigationLink(value: PaginaLega.backup) { Label("Copia di sicurezza", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
             }

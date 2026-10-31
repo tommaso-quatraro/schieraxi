@@ -97,7 +97,7 @@ struct VistaWidget: View {
             Image(systemName: voce.indirizzoMancante ? "server.rack" : voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
             Text(voce.indirizzoMancante ? "Manca il server" : voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
             if !accessorio {
-                Text(voce.indirizzoMancante ? "Lega > Widget > Copia il codice, poi Modifica widget" : voce.accessoRichiesto ? "Lega > Widget > Copia il codice, poi Modifica widget" : "Apri SchieraXI con rete privata acceso")
+                Text(voce.indirizzoMancante ? "Impostazioni > Widget > Copia il codice, poi Modifica widget" : voce.accessoRichiesto ? "Impostazioni > Widget > Copia il codice, poi Modifica widget" : "Apri SchieraXI per aggiornare i dati")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 if let d = voce.diagnostica {
                     Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2)

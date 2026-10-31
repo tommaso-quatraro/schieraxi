@@ -10,6 +10,7 @@ struct OggiView: View {
     @Environment(\.funzioni) private var funzioni
     @Environment(\.apriImpostazioni) private var apriImpostazioni
     @EnvironmentObject private var nav: Navigazione
+    @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.apriRosaDi) private var apriRosaDi
     @ObservedObject private var immagini = Immagini.condivise
     /// L'ultima versione delle novità che l'utente ha guardato (la scrive la pagina Novità).
@@ -238,7 +239,7 @@ struct OggiView: View {
     /// «Da fare»: le cose che aspettano te, una per riga con il suo pulsante (4 righe, poi «Altre N cose»). Solo se ce n'è almeno una.
     @ViewBuilder
     private func daFare(_ oggi: Oggi) -> some View {
-        let cose = oggi.cosePerOrdine
+        let cose = oggi.cose(funzioni: funzioni, tecniche: sessione.puoAmministrare)
         if !cose.isEmpty {
             let visibili = tutteLeCose ? cose : Array(cose.prefix(4))
             Carta("Da fare", simbolo: "checklist") {
@@ -413,4 +414,5 @@ struct OggiView: View {
 #Preview("Oggi") {
     OggiView(vm: OggiViewModel(server: FinteServer.esempio))
         .environmentObject(Navigazione())
+        .environmentObject(SessioneAccount(server: FinteServer.esempio))
 }
