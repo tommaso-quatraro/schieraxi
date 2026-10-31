@@ -27,7 +27,7 @@ extension View {
             self.containerBackground(for: .widget) { Color.clear }
         } else {
             self
-                .foregroundStyle(.white)
+                .modifier(TestoSuSfondoSchieraxi())
                 .containerBackground(for: .widget) {
                     FondoSchieraxi()
                 }
@@ -210,5 +210,21 @@ struct VistaWidget: View {
 
     private func riga(_ r: RiassuntoOggi) -> some View {
         Label("SchieraXI \(r.modulo ?? "—"), \(puntiTesto(r)) punti", systemImage: "sportscourt")
+    }
+}
+
+/// Colore del testo sul fondo SchieraXI. A colori pieni (Home, StandBy) e' bianco, come prima; nella modalita' colorata
+/// (tinted/accented) e nello StandBy notturno non si forza il bianco: ci pensa il sistema, che tinge i numeri segnati con `widgetAccentable`.
+private struct TestoSuSfondoSchieraxi: ViewModifier {
+    @Environment(\.widgetRenderingMode) private var modoSistema
+    @Environment(\.renderForzato) private var modoForzato
+    @Environment(\.showsWidgetContainerBackground) private var conSfondo
+
+    func body(content: Content) -> some View {
+        if (modoForzato ?? modoSistema) == .fullColor && conSfondo {
+            content.foregroundStyle(.white)
+        } else {
+            content.foregroundStyle(.primary)
+        }
     }
 }
