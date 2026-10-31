@@ -361,6 +361,8 @@ struct OsservatiView: View {
                             if let p = g.proprietario { Text("Di: \(p)").font(.caption).foregroundStyle(.secondary) }
                             else { Text("Svincolato").font(.caption).foregroundStyle(Color.verde) }
                         }
+                        .frame(minHeight: Tema.areaTocco)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Apre la scheda del giocatore")

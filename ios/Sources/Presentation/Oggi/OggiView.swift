@@ -110,6 +110,8 @@ struct OggiView: View {
                         Button { apri(squadra) } label: {
                             Label("Aggiungi la tua divisa", systemImage: "tshirt").font(.footnote.weight(.semibold))
                                 .padding(.horizontal, 10).padding(.vertical, 6).vetro(in: Capsule())
+                                .frame(minHeight: Tema.areaTocco)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityHint("Apre la tua squadra per caricare la divisa")
