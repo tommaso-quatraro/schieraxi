@@ -317,6 +317,11 @@ struct Partita: Decodable, Identifiable {
 struct Oggi: Decodable {
     let giornata: Int
     let inizio: String?
+    /// Quando si chiude l'invio della formazione (prima partita meno i minuti della lega). Facoltativo (server vecchio).
+    let scadenza: String?
+    let minutiScadenza: Int?
+    /// Il numero della giornata nella lega (può essere diverso da quello di Serie A). Facoltativo; `null` prima che la lega parta.
+    let giornataLega: Int?
     let iniziata: Bool?
     let conProbabili: Bool?
     let formazione: FormazioneBreve?

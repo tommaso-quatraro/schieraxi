@@ -98,7 +98,7 @@ struct VistaCruscotto: View {
 
     private func sottoscadenza(_ w: RiassuntoWidget) -> String {
         guard let inizio = w.inizio else { return "scadenza non nota" }
-        let quando = inizio > voce.date ? "alla prima partita, \(Quando.leggibile(inizio))" : "la giornata e' iniziata"
+        let quando = inizio > voce.date ? "alla scadenza, \(Quando.leggibile(inizio))" : "formazione chiusa"
         return w.conProbabili == false ? "probabili non uscite · \(quando)" : quando
     }
 

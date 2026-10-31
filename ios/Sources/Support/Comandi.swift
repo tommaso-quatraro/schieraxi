@@ -58,16 +58,16 @@ struct FormazioneComando: AppIntent {
 
 struct QuantoMancaComando: AppIntent {
     static var title: LocalizedStringResource = "Quanto manca alla partita"
-    static var description = IntentDescription("Dice quanto manca alla prima partita della giornata.")
+    static var description = IntentDescription("Dice quanto manca alla scadenza della formazione.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         guard let risultato = await Aggiornamento.leggiOggi() else { throw ErroreComando.senzaServer }
         let oggi = risultato.oggi
-        guard let inizio = Quando.data(oggi.inizio) else { throw ErroreComando.senzaPartite }
+        guard let inizio = Quando.data(oggi.chiusura) else { throw ErroreComando.senzaPartite }
         if inizio <= Date() {
             return .result(
-                dialog: "La giornata \(oggi.giornata) è già iniziata.",
-                view: RiquadroComando(titolo: "Giornata \(oggi.giornata)", grande: "In corso", dettaglio: "iniziata \(Quando.leggibile(oggi.inizio))")
+                dialog: "La formazione della giornata \(oggi.giornataMostrata) è già chiusa.",
+                view: RiquadroComando(titolo: "Giornata \(oggi.giornataMostrata)", grande: "In corso", dettaglio: "formazione chiusa \(Quando.leggibile(oggi.chiusura))")
             )
         }
         var calendario = Calendar(identifier: .gregorian)
@@ -79,8 +79,8 @@ struct QuantoMancaComando: AppIntent {
         formato.maximumUnitCount = 2
         let manca = formato.string(from: Date(), to: inizio) ?? "poco"
         return .result(
-            dialog: "Alla prima partita della giornata \(oggi.giornata) mancano \(manca).",
-            view: RiquadroComando(titolo: "Giornata \(oggi.giornata)", grande: manca, dettaglio: "alla prima partita, \(Quando.leggibile(oggi.inizio))")
+            dialog: "Alla scadenza della formazione della giornata \(oggi.giornataMostrata) mancano \(manca).",
+            view: RiquadroComando(titolo: "Giornata \(oggi.giornataMostrata)", grande: manca, dettaglio: "alla scadenza, \(Quando.leggibile(oggi.chiusura))")
         )
     }
 }

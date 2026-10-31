@@ -60,7 +60,7 @@ struct RiassuntoOggi: Codable, Equatable {
     init(oggi: Oggi, scaricatoIl: Date = Date()) {
         let daControllare = (oggi.avvisi ?? []).filter { $0.inFormazione == true }
         self.init(giornata: oggi.giornata,
-                  inizio: Quando.data(oggi.inizio),
+                  inizio: Quando.data(oggi.chiusura),
                   modulo: oggi.formazione?.modulo,
                   punti: oggi.formazione?.punteggioAtteso,
                   daControllare: daControllare.count,

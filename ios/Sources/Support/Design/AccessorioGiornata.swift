@@ -56,10 +56,10 @@ struct AccessorioGiornata: View {
 
     @ViewBuilder
     private var contenuto: some View {
-        if let oggi = vm.oggi, let inizio = Quando.data(oggi.inizio) {
+        if let oggi = vm.oggi, let inizio = Quando.data(oggi.chiusura) {
             TimelineView(.periodic(from: Date(), by: 1)) { contesto in
                 HStack(spacing: 6) {
-                    Text("Giornata \(oggi.giornata)").font(.subheadline.weight(.semibold))
+                    Text("Giornata \(oggi.giornataMostrata)").font(.subheadline.weight(.semibold))
                     if inizio > contesto.date {
                         TestoConto(inizio: inizio, adesso: contesto.date)
                             .font(.subheadline).foregroundStyle(.secondary)

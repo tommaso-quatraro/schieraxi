@@ -54,8 +54,8 @@ enum Aggiornamento {
     /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata.
     static func elabora(_ oggi: Oggi, avvisaSeCambia: Bool) async {
         if Demo.attivo { return }   // demo: niente promemoria, widget o notifiche
-        if let inizio = Quando.data(oggi.inizio) {
-            await Notifiche.programma(giornata: oggi.giornata, inizio: inizio, modulo: oggi.formazione?.modulo)
+        if let inizio = Quando.data(oggi.chiusura) {
+            await Notifiche.programma(giornata: oggi.giornataMostrata, inizio: inizio, modulo: oggi.formazione?.modulo)
         }
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
         Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))

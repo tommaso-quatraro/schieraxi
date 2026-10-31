@@ -236,6 +236,7 @@ struct RegoleEditorView: View {
                     moduli
                     panchina
                     rosa
+                    tempiLega
                     salvataggio
                 }
                 .scrollContentBackground(.hidden)
@@ -421,6 +422,18 @@ struct RegoleEditorView: View {
             }
             RigaStepper(titolo: "Crediti iniziali", valore: vm.numero("crediti_iniziali"), passo: 10, minimo: 0, massimo: 5000, cifre: 0)
         }
+    }
+
+    /// Scadenza della formazione e prima giornata della lega. Se il server non manda i valori valgono 0 minuti e giornata 1.
+    private var tempiLega: some View {
+        Section {
+            RigaStepper(titolo: "Scadenza (minuti prima)", valore: vm.numero("scadenza_minuti"), passo: 5, minimo: 0,
+                        massimo: TempiLega.minutiMassimi, cifre: 0)
+            Text(TempiLega.spiegaScadenza(vm.numero("scadenza_minuti").wrappedValue)).font(.footnote).foregroundStyle(.secondary)
+            RigaStepper(titolo: "Prima giornata della lega", valore: vm.numero("prima_giornata_lega", 1), passo: 1, minimo: 1,
+                        massimo: TempiLega.primaGiornataMassima, cifre: 0)
+            Text(TempiLega.spiegaPartenza(vm.numero("prima_giornata_lega", 1).wrappedValue)).font(.footnote).foregroundStyle(.secondary)
+        } header: { Text("Tempi della lega") }
     }
 
     private var salvataggio: some View {

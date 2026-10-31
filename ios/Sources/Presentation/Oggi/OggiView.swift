@@ -96,7 +96,7 @@ struct OggiView: View {
     /// Il riquadro in alto: sfondo vivo, giornata, conto alla rovescia grande e maglia della squadra.
     private func testata(_ oggi: Oggi) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Giornata \(oggi.giornata)", systemImage: "calendar")
+            Label(oggi.etichettaGiornata, systemImage: "calendar")
                 .font(.subheadline.weight(.semibold))
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .vetro(in: Capsule())
@@ -132,12 +132,12 @@ struct OggiView: View {
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Giornata \(oggi.giornata)")
+        .accessibilityLabel(oggi.etichettaGiornata)
     }
 
     @ViewBuilder
     private func contoAllaRovescia(_ oggi: Oggi) -> some View {
-        if let inizio = Quando.data(oggi.inizio) {
+        if let inizio = Quando.data(oggi.chiusura) {
             // Ogni secondo ricontrolla: a zero il conto alla rovescia lascia il posto a «In corso».
             TimelineView(.periodic(from: Date(), by: 1)) { contesto in
                 VStack(alignment: .leading, spacing: 4) {
@@ -147,13 +147,13 @@ struct OggiView: View {
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
-                        Text("alla prima partita, \(Quando.leggibile(oggi.inizio))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        Text("alla scadenza della formazione, \(Quando.leggibile(oggi.chiusura))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     } else {
                         Label("In corso", systemImage: "dot.radiowaves.left.and.right")
                             .symbolEffect(.variableColor.iterative, options: .repeating)
                             .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
-                        Text("iniziata \(Quando.leggibile(oggi.inizio))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        Text("formazione chiusa \(Quando.leggibile(oggi.chiusura))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -104,6 +104,7 @@ targets:
       - path: Resources/Widget
       - path: Sources/Domain/Modelli.swift
       - path: Sources/Domain/Quando.swift
+      - path: Sources/Domain/TempiLega.swift
       - path: Sources/Domain/Formato.swift
       - path: Sources/Support/Condiviso.swift
       - path: Sources/Support/WidgetRiassunto.swift
@@ -138,6 +139,7 @@ targets:
           - PacchettoWidget.swift
       - path: Sources/Domain/Modelli.swift
       - path: Sources/Domain/Quando.swift
+      - path: Sources/Domain/TempiLega.swift
       - path: Sources/Domain/Formato.swift
       - path: Sources/Support/Condiviso.swift
       - path: Sources/Support/WidgetRiassunto.swift

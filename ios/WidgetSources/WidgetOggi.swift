@@ -13,7 +13,7 @@ struct WidgetOggi: Widget {
             VistaWidget(voce: voce)
         }
         .configurationDisplayName("Prossima giornata")
-        .description("Conto alla rovescia alla prima partita, modulo consigliato e punti attesi.")
+        .description("Conto alla rovescia alla scadenza della formazione, modulo consigliato e punti attesi.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
@@ -145,7 +145,7 @@ struct VistaWidget: View {
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                Text(r.inizio.map { "alla prima partita, \(Quando.leggibile($0))" } ?? "")
+                Text(r.inizio.map { "alla scadenza, \(Quando.leggibile($0))" } ?? "")
                     .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
                 if voce.datiSalvati {

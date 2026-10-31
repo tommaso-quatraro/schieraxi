@@ -407,7 +407,9 @@ private enum DatiDemo {
         }
         return json([
             "miei_titolari": mieiTitolari,
-            "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"), "iniziata": false, "con_probabili": true,
+            "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"),
+            "scadenza": formatta(inizio.addingTimeInterval(-30 * 60), "yyyy-MM-dd HH:mm"), "minuti_scadenza": 30, "giornata_lega": giornata - 3,
+            "iniziata": false, "con_probabili": true,
             "probabili": ["aggiornate_il": "2026-11-08 09:05", "minuti_fa": 480, "eta": "8 ore fa", "testo": "Probabili aggiornate alle 09:05",
                           "vecchie": true, "avviso": "Le probabili hanno 8 ore: ricontrolla prima del fischio."],
             "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia,
@@ -648,6 +650,7 @@ private enum DatiDemo {
                       "rigore_sbagliato": -3.0, "autogol": -2.0, "gol_subito_portiere": -1.0, "portiere_imbattuto": 1.0,
                       "ammonizione": -0.5, "espulsione": -1.0, "mvp": 0.0],
             "rosa": ["P": 3, "D": 8, "C": 8, "A": 6], "crediti_iniziali": 500, "rimborso_svincolo": 0.5,
+            "scadenza_minuti": 30, "prima_giornata_lega": 4,
             "moduli": ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"],
             "panchina": ["numero": 11, "tipo": "per_ruolo", "max_sostituzioni": 5, "cambio_modulo": false,
                          "posti": ["P": 2, "D": 3, "C": 3, "A": 3]],
