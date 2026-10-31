@@ -325,6 +325,8 @@ struct Oggi: Decodable {
     let daFare: [DaFareVoce]?
     /// true se la lega non ha ancora le rose: Oggi mostra il benvenuto con «Importa le rose». Facoltativo (server vecchio).
     let senzaRose: Bool?
+    /// I miei titolari consigliati per squadra: servono a evidenziare le partite in cui giocano. Facoltativo (server vecchio).
+    let mieiTitolari: MieiTitolari?
 }
 
 /// Una cosa da fare in Oggi: «Giocatore 044 è in dubbio: sostituiscilo», «Aggiorna le rose», «Rinnova l'app»...
@@ -597,4 +599,60 @@ struct Rendimento: Decodable, Equatable {
     let sovraRendimento: Double?
     let golMenoXg: Double?
     let assistMenoXa: Double?
+}
+
+// MARK: - Tipi usati da Oggi (stanno qui perché Modelli.swift è compilato anche dal widget)
+
+/// Un elemento di un elenco letto senza far fallire tutto: se è sbagliato o ha il tipo diverso, `valore` resta nil
+/// e gli altri elementi si leggono lo stesso (un campo nuovo o strano del server non deve rompere una schermata).
+struct Tollerante<T: Decodable>: Decodable {
+    let valore: T?
+    init(from decoder: Decoder) throws {
+        valore = try? T(from: decoder)
+    }
+}
+
+/// Un mio titolare consigliato (campo `miei_titolari` di Oggi): serve a evidenziare le partite in cui gioca.
+struct MioTitolare: Decodable, Identifiable, Equatable {
+    let id: Int
+    let nome: String
+    let ruolo: String?
+    /// La squadra (la chiave sotto cui sta nel campo del server): non arriva dal JSON del titolare, la mette `MieiTitolari`.
+    var squadra: String? = nil
+
+    private enum CodingKeys: String, CodingKey { case id, nome, ruolo }
+}
+
+/// I miei titolari per squadra. Tollerante: un elemento sbagliato si salta, un campo mancante non rompe Oggi.
+struct MieiTitolari: Decodable, Equatable {
+    /// Chiave = squadra normalizzata (minuscole, senza trattini né trattini bassi).
+    private(set) var perSquadra: [String: [MioTitolare]] = [:]
+
+    init(perSquadra: [String: [MioTitolare]] = [:]) {
+        var nuovo: [String: [MioTitolare]] = [:]
+        for (squadra, elenco) in perSquadra { nuovo[Self.chiave(squadra)] = elenco }
+        self.perSquadra = nuovo
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        guard let grezzo = try? c.decode([String: Tollerante<[Tollerante<MioTitolare>]>].self) else { return }
+        for (squadra, elenco) in grezzo {
+            perSquadra[Self.chiave(squadra)] = (elenco.valore ?? []).compactMap(\.valore).map { t in
+                var t = t
+                t.squadra = squadra
+                return t
+            }
+        }
+    }
+
+    /// Il decodificatore converte «hellas_verona» in «hellasVerona»: si confronta senza maiuscole e separatori.
+    static func chiave(_ squadra: String) -> String {
+        squadra.lowercased().filter { $0 != "_" && $0 != "-" && $0 != " " }
+    }
+
+    func titolari(di squadra: String) -> [MioTitolare] { perSquadra[Self.chiave(squadra)] ?? [] }
+
+    /// I titolari delle due squadre della partita, quelli di casa prima.
+    func titolari(casa: String, trasferta: String) -> [MioTitolare] { titolari(di: casa) + titolari(di: trasferta) }
 }

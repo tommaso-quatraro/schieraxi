@@ -15,6 +15,7 @@ struct OggiView: View {
     @AppStorage("novitaVista") private var novitaVista = ""
     @State private var novitaAnimata = false
     @State private var tutteLeCose = false
+    @Environment(\.scenePhase) private var fase
 
     var body: some View {
         NavigationStack {
@@ -45,13 +46,22 @@ struct OggiView: View {
                     .animation(Tema.morbida, value: vm.oggi != nil)
                 }
                 .demoInFondo()
-                .refreshable { await vm.carica() }
+                .refreshable {
+                    await vm.carica()
+                    await vm.live.ricarica()
+                }
                 .avvisoDatiSalvati(vm.datiSalvati)
                 .bordiMorbidi()
             }
             .navigationTitle("Oggi")
             .ricercaGlobale()
             .task { await vm.carica() }
+            // Risultati in diretta: solo con la schermata visibile e l'app in primo piano (il lavoro si annulla da solo quando
+            // la schermata sparisce) e riparte quando arriva la giornata o cambia.
+            .task(id: "\(fase == .active)-\(vm.oggi?.giornata ?? 0)") {
+                guard fase == .active else { return }
+                await vm.seguiLive()
+            }
         }
     }
 
@@ -373,27 +383,7 @@ struct OggiView: View {
         }
     }
 
-    @ViewBuilder
-    private var partite: some View {
-        let giorni = vm.partitePerGiorno
-        if !giorni.isEmpty {
-            Carta("Partite del turno", simbolo: "soccerball") {
-                ForEach(giorni) { giorno in
-                    Text(giorno.titolo).titoletto().padding(.top, 4)
-                    ForEach(giorno.partite) { p in
-                        HStack(spacing: 10) {
-                            Text(Quando.data(p.data).map { Quando.ora($0) } ?? "–").font(.caption).monospacedDigit().foregroundStyle(.secondary)
-                                .frame(minWidth: 44, alignment: .leading)
-                            Text("\(p.casa.capitalized) – \(p.trasferta.capitalized)").font(.subheadline.weight(.semibold))
-                                .foregroundStyle(p.giocata == true ? Color.secondary : Color.primary)
-                            Spacer()
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-            }
-        }
-    }
+    private var partite: some View { PartiteDelTurnoView(vm: vm) }
 }
 
 #Preview("Oggi") {

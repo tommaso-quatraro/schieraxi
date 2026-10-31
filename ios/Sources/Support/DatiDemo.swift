@@ -392,7 +392,13 @@ private enum DatiDemo {
              "nota": "Botta alla caviglia", "in_formazione": false],
         ]
         let migliori = ids.map { calciatore($0) }.sorted { $0.punti > $1.punti }.prefix(5).map { giocatore($0) }
+        var mieiTitolari: [String: [[String: Any]]] = [:]
+        for id in ids {
+            let c = calciatore(id)
+            mieiTitolari[c.squadra, default: []].append(["id": c.id, "nome": c.nome, "ruolo": c.ruolo])
+        }
         return json([
+            "miei_titolari": mieiTitolari,
             "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"), "iniziata": false, "con_probabili": false,
             "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
@@ -453,6 +459,39 @@ private enum DatiDemo {
                 "attuali": ["voci": ["app.errore_modello": ["valore": 1.6, "aggiornato": "2026-10-28T00:38:07"]]],
             ],
         ])
+    }
+
+    // MARK: - Risultati in diretta
+
+    /// Alcune partite in corso, una finita e il resto da giocare: la scheda «Partite del turno» di Oggi si vede viva.
+    static func live(adesso: Date) -> String {
+        func ev(_ tipo: String, _ minuto: String, _ squadra: String, _ chi: String) -> [String: Any] {
+            ["tipo": tipo, "minuto": minuto, "squadra": squadra, "chi": chi]
+        }
+        var partite: [[String: Any]] = []
+        for (i, m) in incontri.enumerated() {
+            var p: [String: Any] = ["casa": m.casa, "trasferta": m.trasferta, "stato": "da_giocare",
+                                    "data": formatta(adesso.addingTimeInterval(Double(i + 1) * 3600), "yyyy-MM-dd HH:mm")]
+            switch i {
+            case 0:
+                p["stato"] = "secondo_tempo"; p["minuto"] = "63'"; p["gol_casa"] = 2; p["gol_trasferta"] = 1
+                p["eventi"] = [ev("gol", "12'", "casa", "Thuram"), ev("gol", "38'", "trasferta", "Dybala"), ev("giallo", "44'", "casa", "Giocatore 004"),
+                               ev("rigore", "55'", "casa", "Calhanoglu")]
+            case 1:
+                p["stato"] = "intervallo"; p["gol_casa"] = 0; p["gol_trasferta"] = 0
+                p["eventi"] = [ev("giallo", "30'", "trasferta", "Locatelli")]
+            case 2:
+                p["stato"] = "finita"; p["gol_casa"] = 3; p["gol_trasferta"] = 1
+                p["eventi"] = [ev("gol", "9'", "casa", "Lukaku"), ev("autogol", "40'", "casa", "Djimsiti"), ev("rosso", "71'", "trasferta", "De Roon"),
+                               ev("gol", "88'", "casa", "McTominay")]
+            case 3:
+                p["stato"] = "primo_tempo"; p["minuto"] = "27'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
+                p["eventi"] = [ev("gol", "11'", "casa", "Castellanos"), ev("gol", "25'", "trasferta", "Gudmundsson")]
+            default: break
+            }
+            partite.append(p)
+        }
+        return json(["aggiornato_il": formatta(adesso, "yyyy-MM-dd HH:mm:ss"), "fonte": "espn", "in_corso": 3, "partite": partite])
     }
 
     // MARK: - Mercato
@@ -797,6 +836,7 @@ private enum DatiDemo {
             "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),
             "/api/sotto-il-cofano": sottoIlCofano(),
             "/api/oggi": oggi(adesso: adesso),
+            "/api/live": live(adesso: adesso),
             "/api/regole": regole(),
             "/api/avvisi": avvisi(),
             "/api/diario": diario(),

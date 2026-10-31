@@ -13,6 +13,8 @@ final class OggiViewModel: ViewModelBase {
     let caricatore: Caricatore<Oggi>
     /// Versione dell'app del server: serve al banner «Novità nell'app».
     let info: Caricatore<InfoServer>
+    /// Risultati in diretta (GET /api/live). Senza copia su disco: un punteggio vecchio non deve sembrare di adesso.
+    let live: Caricatore<LiveWidget>
     /// false nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
     private let conPromemoria: Bool
 
@@ -21,10 +23,15 @@ final class OggiViewModel: ViewModelBase {
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
         info = Caricatore<InfoServer>("/api/stato", ascolta: false, server: server)
+        live = Caricatore<LiveWidget>("/api/live", cache: false, ascolta: false, server: server)
         super.init()
+        osserva(live)
         osserva(caricatore)
         osserva(info)
-        alComandoAggiorna { [weak self] in await self?.carica() }
+        alComandoAggiorna { [weak self] in
+            await self?.carica()
+            await self?.live.ricarica()
+        }
     }
 
     var oggi: Oggi? { caricatore.dato }
@@ -39,7 +46,26 @@ final class OggiViewModel: ViewModelBase {
     var diffidati: [Avviso] { (oggi?.avvisi ?? []).filter { $0.inFormazione != true && $0.tipo == "diffidato" } }
 
     /// Le partite del turno divise per giorno, in ordine di data.
-    var partitePerGiorno: [PartiteDelGiorno] { Self.raggruppa(oggi?.partite ?? []) }
+    var partitePerGiorno: [PartiteDelGiorno] { Self.raggruppa(DirettaLogica.conRecuperi(oggi?.partite ?? [], live: risultatiLive)) }
+
+    /// I risultati in diretta, solo se l'ultima lettura è riuscita: con la rete assente si tornano a vedere i dati del turno.
+    var risultatiLive: LiveWidget? { live.errore == nil ? live.dato : nil }
+
+    func dalVivo(_ p: Partita) -> PartitaLive? { DirettaLogica.dalVivo(risultatiLive, per: p) }
+
+    /// I miei titolari che giocano in questa partita.
+    func mieiTitolari(_ p: Partita) -> [MioTitolare] { oggi?.mieiTitolari?.titolari(casa: p.casa, trasferta: p.trasferta) ?? [] }
+
+    /// Segue le partite: chiede ai risultati in diretta ogni tanto, solo finché la schermata è visibile (la vista annulla il lavoro
+    /// quando sparisce o l'app va in secondo piano) e ci sono partite in corso o in arrivo.
+    func seguiLive() async {
+        while !Task.isCancelled {
+            await live.ricarica()
+            guard !Task.isCancelled,
+                  let attesa = DirettaLogica.attesa(live: risultatiLive, turno: oggi?.partite ?? [], adesso: Date()) else { return }
+            do { try await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000)) } catch { return }
+        }
+    }
 
     static func raggruppa(_ partite: [Partita]) -> [PartiteDelGiorno] {
         var perGiorno: [String: [Partita]] = [:]
