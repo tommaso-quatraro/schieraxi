@@ -654,7 +654,7 @@ private enum DatiDemo {
                       "rigore_sbagliato": -3.0, "autogol": -2.0, "gol_subito_portiere": -1.0, "portiere_imbattuto": 1.0,
                       "ammonizione": -0.5, "espulsione": -1.0, "mvp": 0.0],
             "rosa": ["P": 3, "D": 8, "C": 8, "A": 6], "crediti_iniziali": 500, "rimborso_svincolo": 0.5,
-            "scadenza_minuti": 30, "prima_giornata_lega": 4,
+            "scadenza_minuti": 30, "prima_giornata_lega": 4, "aggiornamenti_vicino_scadenza": true,
             "moduli": ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"],
             "panchina": ["numero": 11, "tipo": "per_ruolo", "max_sostituzioni": 5, "cambio_modulo": false,
                          "posti": ["P": 2, "D": 3, "C": 3, "A": 3]],

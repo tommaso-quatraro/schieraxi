@@ -51,8 +51,8 @@ final class RegoleEditorViewModel: ViewModelBase {
                 set: { self.valore.imposta(percorso, JSONValue.numero($0)); self.modificato = true })
     }
 
-    func booleano(_ percorso: String) -> Binding<Bool> {
-        Binding(get: { self.valore.valore(percorso)?.booleano ?? false },
+    func booleano(_ percorso: String, predefinito: Bool = false) -> Binding<Bool> {
+        Binding(get: { self.valore.valore(percorso)?.booleano ?? predefinito },
                 set: { self.valore.imposta(percorso, .booleano($0)); self.modificato = true })
     }
 
@@ -433,6 +433,15 @@ struct RegoleEditorView: View {
             RigaStepper(titolo: "Prima giornata della lega", valore: vm.numero("prima_giornata_lega", 1), passo: 1, minimo: 1,
                         massimo: TempiLega.primaGiornataMassima, cifre: 0)
             Text(TempiLega.spiegaPartenza(vm.numero("prima_giornata_lega", 1).wrappedValue)).font(.footnote).foregroundStyle(.secondary)
+            Toggle(isOn: vm.booleano("aggiornamenti_vicino_scadenza", predefinito: true)) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Aggiornamenti più fitti vicino alla scadenza")
+                    Text("Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza, con avviso se cambia qualcosa.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .tint(Color.verde)
+            .frame(minHeight: 44)
         } header: { Text("Tempi della lega") }
     }
 
