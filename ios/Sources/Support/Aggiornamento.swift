@@ -37,6 +37,8 @@ enum Aggiornamento {
     static func precaricaWidget() async {
         let base = IndirizzoServer.attuale
         if Demo.attivo || base.isEmpty { return }
+        // Nei test unitari l'app che li ospita non deve scaricare niente dal server predefinito (scriverebbe la copia mentre un test la controlla).
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
         let copia = MemoriaWidget.leggi()
         if case .dati(_, let grezzo, let etag) = await ScaricoWidget.scarica(base: base, token: Accesso.archivio.leggi(server: base), etag: copia?.etag) {
             MemoriaWidget.salva(CopiaWidget(dati: grezzo, etag: etag, scaricatoIl: Date()))

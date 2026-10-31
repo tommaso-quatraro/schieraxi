@@ -33,8 +33,11 @@ struct RispostaAccount: Decodable {
     /// Email dell'account e indirizzo ancora da verificare (il server li manda con gli account accesi; facoltativi e letti con tolleranza).
     var email: String?
     var emailInAttesa: String?
+    /// Registrazione con email: l'account non c'è ancora, serve il codice arrivato per posta e questo segreto dell'iscrizione.
+    var verificaEmail: Bool?
+    var iscrizione: String?
 
-    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa }
+    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, verificaEmail, iscrizione }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -44,6 +47,8 @@ struct RispostaAccount: Decodable {
         codiceRecupero = try c.decodeIfPresent(String.self, forKey: .codiceRecupero)
         email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? nil
         emailInAttesa = (try? c.decodeIfPresent(String.self, forKey: .emailInAttesa)) ?? nil
+        verificaEmail = (try? c.decodeIfPresent(Bool.self, forKey: .verificaEmail)) ?? nil
+        iscrizione = (try? c.decodeIfPresent(String.self, forKey: .iscrizione)) ?? nil
     }
 }
 
@@ -126,9 +131,17 @@ private struct CorpoAccesso: Encodable {
 private struct CorpoRegistrazione: Encodable {
     let nomeUtente: String
     let password: String
-    let invito: String
+    let invito: String?
+    let email: String?
     let nativo = true
-    enum CodingKeys: String, CodingKey { case nomeUtente = "nome_utente", password, invito, nativo }
+    enum CodingKeys: String, CodingKey { case nomeUtente = "nome_utente", password, invito, email, nativo }
+}
+
+private struct CorpoConfermaIscrizione: Encodable {
+    let email: String
+    let codice: String
+    let iscrizione: String
+    let nativo = true
 }
 
 private struct CorpoRecupero: Encodable {
@@ -424,13 +437,34 @@ final class SessioneAccount: ObservableObject {
         try conferma(r)
     }
 
-    /// Crea l'account con un invito. Il codice di recupero arriva una volta sola: finisce in `codiceDaMostrare`.
-    func registra(nomeUtente: String, password: String, invito: String) async throws {
+    /// Crea l'account. Con l'invito (e senza email) l'account nasce subito e il codice di recupero finisce in `codiceDaMostrare`.
+    /// Con l'email (server con registrazione «email» o «aperta») nasce solo dopo il codice arrivato per posta: in quel caso
+    /// restituisce l'iscrizione in attesa da confermare con `confermaIscrizione`.
+    @discardableResult
+    func registra(nomeUtente: String, password: String, invito: String = "", email: String? = nil) async throws -> IscrizioneInAttesa? {
         try inizia()
         defer { inCorso = false }
+        let invitoPulito = invito.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let emailPulita = email?.trimmingCharacters(in: .whitespacesAndNewlines)
         let corpo = CorpoRegistrazione(nomeUtente: RegoleAccount.pulisciNome(nomeUtente), password: password,
-                                       invito: invito.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
+                                       invito: invitoPulito.isEmpty ? nil : invitoPulito,
+                                       email: (emailPulita?.isEmpty ?? true) ? nil : emailPulita)
         let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/registra", corpo) }
+        if r.verificaEmail == true {
+            guard let iscrizione = r.iscrizione, let indirizzo = corpo.email, !iscrizione.isEmpty else { throw Errore.rispostaNonValida }
+            return IscrizioneInAttesa(email: indirizzo, iscrizione: iscrizione)
+        }
+        try conferma(r)
+        codiceDaMostrare = r.codiceRecupero
+        return nil
+    }
+
+    /// Seconda metà della registrazione con email: il codice arrivato per posta apre l'account.
+    func confermaIscrizione(_ attesa: IscrizioneInAttesa, codice: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        let corpo = CorpoConfermaIscrizione(email: attesa.email, codice: codice.trimmingCharacters(in: .whitespacesAndNewlines), iscrizione: attesa.iscrizione)
+        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/registra/conferma", corpo) }
         try conferma(r)
         codiceDaMostrare = r.codiceRecupero
     }

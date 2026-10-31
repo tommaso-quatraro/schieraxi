@@ -8,7 +8,7 @@ struct SchermataAccesso: View {
         var id: String { rawValue }
     }
 
-    private enum Campo: Hashable { case nome, password, invito, codice }
+    private enum Campo: Hashable { case nome, password, invito, codice, email, codiceEmail }
 
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.scenePhase) private var fase
@@ -25,7 +25,13 @@ struct SchermataAccesso: View {
     @State private var messaggio: String?
     /// Il nuovo codice di recupero dopo aver rimesso la password: va salvato prima di proseguire.
     @State private var codiceNuovo: String?
-    @State private var controlloServer = false
+    @State private var avanzate = false
+    @State private var email = ""
+    @State private var codiceEmail = ""
+    /// Registrazione con email a metà: manca il codice arrivato per posta.
+    @State private var inAttesa: IscrizioneInAttesa?
+    @AppStorage(ModalitaRegistrazione.chiave) private var modoTesto = ModalitaRegistrazione.invito.rawValue
+    private var modo: ModalitaRegistrazione { ModalitaRegistrazione(rawValue: modoTesto) ?? .invito }
     @FocusState private var focus: Campo?
     @Namespace private var pillole
 
@@ -52,8 +58,10 @@ struct SchermataAccesso: View {
         case .accedi:
             return !RegoleAccount.pulisciNome(nome).isEmpty && !password.isEmpty
         case .registrati:
+            if inAttesa != nil { return !codiceEmail.trimmingCharacters(in: .whitespaces).isEmpty }
             return nomeOk && RegoleAccount.problemaPassword(password, nome: nome) == nil
-                && !invito.trimmingCharacters(in: .whitespaces).isEmpty
+                && (!modo.chiedeEmail || RegoleAccount.problemaEmail(email) == nil)
+                && (!modo.invitoObbligatorio || !invito.trimmingCharacters(in: .whitespaces).isEmpty)
         case .recupera:
             return nomeOk && !codice.trimmingCharacters(in: .whitespaces).isEmpty
                 && RegoleAccount.problemaPassword(password, nome: nome) == nil
@@ -63,7 +71,13 @@ struct SchermataAccesso: View {
     private var frase: String {
         switch scheda {
         case .accedi: return "Bentornato, mister. Entra e guarda la formazione."
-        case .registrati: return "Serve un invito per entrare in squadra."
+        case .registrati:
+            if inAttesa != nil { return "Ti abbiamo scritto: inserisci il codice che trovi nella posta." }
+            switch modo {
+            case .invito: return "Serve un invito per entrare in squadra."
+            case .email: return "Serve un invito e la tua email per entrare in squadra."
+            case .aperta: return "Crea il tuo account: ti basta un indirizzo email."
+            }
         case .recupera: return "Capita. Con il codice di recupero ti rimetti in campo."
         }
     }
@@ -71,7 +85,7 @@ struct SchermataAccesso: View {
     private var titoloPulsante: String {
         switch scheda {
         case .accedi: return "Entra"
-        case .registrati: return "Crea l'account"
+        case .registrati: return inAttesa != nil ? "Conferma il codice" : (modo.chiedeEmail ? "Continua" : "Crea l'account")
         case .recupera: return "Cambia la password"
         }
     }
@@ -99,7 +113,7 @@ struct SchermataAccesso: View {
                         .transition(.opacity)
                 }
                 pulsante
-                server
+                linkSecondario
             }
             .frame(maxWidth: 520)
             .padding(Tema.margine)
@@ -109,6 +123,7 @@ struct SchermataAccesso: View {
         .background(Sfondo())
         .animation(Tema.morbida, value: errore)
         .schermoProtetto()
+        .sheet(isPresented: $avanzate) { areaAvanzata }
         // Con l'app in secondo piano (o al ritorno) password e codici scritti si cancellano: non restano in memoria dei campi.
         .onChange(of: fase) { _, nuova in
             if nuova == .background { password = ""; codice = "" }
@@ -138,6 +153,8 @@ struct SchermataAccesso: View {
     private var testata: some View {
         VStack(spacing: 10) {
             Marchio(lato: 96, muove: sessione.inCorso)
+                .onLongPressGesture(minimumDuration: 1.2) { avanzate = true }
+                .accessibilityAction(named: "Impostazioni avanzate del server") { avanzate = true }
             Text("SchieraXI")
                 .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 .accessibilityHidden(true)
@@ -150,7 +167,7 @@ struct SchermataAccesso: View {
 
     private var selettore: some View {
         HStack(spacing: 6) {
-            ForEach(Scheda.allCases) { s in
+            ForEach([Scheda.accedi, .registrati]) { s in
                 Button {
                     withAnimation(Tema.molla) { scheda = s }
                     errore = nil
@@ -174,6 +191,13 @@ struct SchermataAccesso: View {
     @ViewBuilder
     private var campi: some View {
         VStack(alignment: .leading, spacing: 14) {
+            if scheda == .registrati, let attesa = inAttesa {
+                Text("Codice inviato a \(attesa.email).").font(.subheadline).foregroundStyle(.secondary)
+                campoTesto("Codice ricevuto per posta", text: $codiceEmail, campo: .codiceEmail, problema: nil)
+                    .keyboardType(.numberPad)
+                    .submitLabel(.go)
+                    .onSubmit { Task { await invia() } }
+            } else {
             campoTesto("Nome utente", text: $nome, campo: .nome, problema: scheda == .accedi ? nil : problemaNome)
                 .textContentType(.username)
                 .textInputAutocapitalization(.never)
@@ -188,16 +212,29 @@ struct SchermataAccesso: View {
             }
             campoPassword(scheda == .recupera ? "Nuova password" : "Password")
             if scheda == .registrati {
-                campoTesto("Codice d'invito", text: $invito, campo: .invito, problema: nil)
-                    .textInputAutocapitalization(.characters)
-                    .submitLabel(.go)
-                    .onSubmit { Task { await invia() } }
-                Text("L'invito te lo dà chi gestisce il server.")
-                    .font(.caption).foregroundStyle(.secondary)
+                if modo.chiedeEmail {
+                    campoTesto("Indirizzo email", text: $email, campo: .email, problema: email.isEmpty ? nil : RegoleAccount.problemaEmail(email))
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .submitLabel(.next)
+                        .onSubmit { focus = modo.chiedeInvito ? .invito : nil }
+                }
+                if modo.chiedeInvito {
+                    campoTesto(modo.invitoObbligatorio ? "Codice d'invito" : "Codice d'invito (facoltativo)", text: $invito, campo: .invito, problema: nil)
+                        .textInputAutocapitalization(.characters)
+                        .submitLabel(.go)
+                        .onSubmit { Task { await invia() } }
+                    if modo.invitoObbligatorio {
+                        Text("L'invito te lo dà chi ti ha parlato di SchieraXI.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
             if scheda != .accedi {
                 Text("Password di almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
             }
         }
     }
@@ -227,7 +264,7 @@ struct SchermataAccesso: View {
                 .focused($focus, equals: .password)
                 .submitLabel(scheda == .registrati ? .next : .go)
                 .onSubmit {
-                    if scheda == .registrati { focus = .invito } else { Task { await invia() } }
+                    if scheda == .registrati { focus = modo.chiedeEmail ? .email : .invito } else { Task { await invia() } }
                 }
                 .padding(12)
                 .frame(minHeight: Tema.areaTocco)
@@ -277,7 +314,13 @@ struct SchermataAccesso: View {
             case .accedi:
                 try await sessione.accedi(nomeUtente: nome, password: password)
             case .registrati:
-                try await sessione.registra(nomeUtente: nome, password: password, invito: invito)
+                if let attesa = inAttesa {
+                    try await sessione.confermaIscrizione(attesa, codice: codiceEmail)
+                } else if let nuova = try await sessione.registra(nomeUtente: nome, password: password, invito: invito, email: modo.chiedeEmail ? email : nil) {
+                    inAttesa = nuova
+                    codiceEmail = ""
+                    password = ""
+                }
             case .recupera:
                 let nuovo = try await sessione.recupera(nomeUtente: nome, codice: codice, nuovaPassword: password)
                 if let nuovo, !nuovo.isEmpty {
@@ -313,22 +356,63 @@ struct SchermataAccesso: View {
         return errore.localizedDescription
     }
 
-    // MARK: server
+    // MARK: link e area avanzata
 
-    private var server: some View {
-        DisclosureGroup(isExpanded: $controlloServer) {
-            VStack(alignment: .leading, spacing: 10) {
-                ProvaServerView(dopoProva: {
-                    errore = nil
-                    await sessione.cambiaServer()
-                })
+    /// Sotto il pulsante: «Password dimenticata?» (e il ritorno all'accesso). Niente di tecnico in vista.
+    @ViewBuilder
+    private var linkSecondario: some View {
+        switch scheda {
+        case .accedi:
+            Button("Password dimenticata?") { vai(.recupera) }.frame(minHeight: Tema.areaTocco)
+        case .recupera:
+            Button("Torna all'accesso") { vai(.accedi) }.frame(minHeight: Tema.areaTocco)
+        case .registrati:
+            if inAttesa != nil {
+                Button("Ricomincia") { inAttesa = nil; codiceEmail = ""; errore = nil }.frame(minHeight: Tema.areaTocco)
             }
-            .padding(.top, 8)
-        } label: {
-            Label("Server", systemImage: "server.rack").foregroundStyle(.secondary)
         }
-        .tint(.secondary)
-        .padding(.top, 4)
+    }
+
+    private func vai(_ s: Scheda) {
+        withAnimation(Tema.molla) { scheda = s }
+        errore = nil
+        messaggio = nil
+        password = ""
+    }
+
+    /// Server e prova con dati di esempio: nascosti, si aprono con un tocco lungo sul marchio (o dall'azione di VoiceOver).
+    private var areaAvanzata: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Solo per chi ha un server proprio. Di norma non serve toccare niente.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Carta {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Indirizzo del server", systemImage: "server.rack").font(.headline)
+                            ProvaServerView(dopoProva: {
+                                errore = nil
+                                await sessione.cambiaServer()
+                            })
+                        }
+                    }
+                    Button {
+                        avanzate = false
+                        ProvaEsempio.avvia()
+                    } label: {
+                        Label("Prova con dati di esempio", systemImage: "play.circle").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityHint("Apre l'app con una lega inventata, senza account e senza rete")
+                }
+                .padding(Tema.margine)
+            }
+            .background(Sfondo())
+            .navigationTitle("Avanzate")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fine") { avanzate = false } } }
+        }
+        .tint(Color.verde)
     }
 }
 

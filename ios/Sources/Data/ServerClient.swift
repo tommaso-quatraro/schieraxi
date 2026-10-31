@@ -2,13 +2,13 @@ import SwiftUI
 
 // Livello Data: tutto ciò che parla con il server sta qui. Le schermate (ViewModel) conoscono solo il protocollo `ServerClient`,
 // così si possono usare dati finti nelle anteprime e nei test.
-
-/// L'indirizzo del server NON è dentro l'app (il repository e l'IPA sono pubblici): lo scrive l'utente al primo avvio
-/// (o in Lega > Server) e resta sul telefono, in `UserDefaults` («indirizzo»).
+/// Il server pubblico dell'app è il predefinito (un dominio pubblico, non un indirizzo privato). Chi ne ha uno proprio lo scrive
+/// in Impostazioni > Server (o nell'area avanzata dell'accesso) e resta sul telefono, in `UserDefaults` («indirizzo»).
 enum Config {
-    /// Nessun indirizzo predefinito: vuoto. Solo in modalità demo (fotografie nel simulatore) c'è un indirizzo finto.
+    /// Il server pubblico dell'app (un dominio pubblico, non un indirizzo privato). Chi ne ha uno proprio lo cambia in Impostazioni > Server;
+    /// chi ha già un indirizzo salvato lo tiene. In modalità demo (fotografie nel simulatore) c'è un indirizzo finto.
     static var indirizzoPredefinito: String {
-        Demo.attivo ? "https://server-demo.invalid:443" : ""
+        Demo.attivo ? "https://server-demo.invalid:443" : "https://app.schieraxi.it"
     }
     /// Esempio mostrato nei campi di testo (non è un indirizzo vero e non viene mai usato).
     static let esempioIndirizzo = "https://nome-del-server.example"
@@ -233,6 +233,7 @@ struct ServerHTTP: ServerClient {
         let messaggio = messaggioServer(dati, h.statusCode)
         switch h.statusCode {
         case 401:
+            UserDefaults.standard.set(ModalitaRegistrazione.leggi(corpo: dati).rawValue, forKey: ModalitaRegistrazione.chiave)
             if !Self.eDiAccesso(percorso) {
                 // Si dice quale token ha fallito (solo un'impronta): se nel frattempo si è fatto un nuovo accesso, un 401 in ritardo
                 // di una richiesta vecchia non deve buttare fuori la sessione nuova.
