@@ -103,7 +103,7 @@ extension Demo {
 
         if accesso == "account" {
             // l'account sta nelle Impostazioni (ingranaggio): in demo si apre subito il foglio
-            nav.sezione = .lega
+            nav.sezione = .altro
             nav.impostazioniAperte = true
         }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
@@ -146,31 +146,28 @@ extension Demo {
             }
 
         case "mercato", "mercato-consigliati":
-            nav.sezione = .mercato
-            modello.mercato.sezione = .consigliati
+            apriLega(nav, modello, [.cambi])
+        case "squadra":
+            nav.sezione = .squadra
         case "mercato-classifica":
-            nav.sezione = .mercato
-            modello.mercato.sezione = .giocatori
+            apriLega(nav, modello, [.elenco])
         case "mercato-calendario":
-            nav.sezione = .mercato
-            modello.mercato.sezione = .calendario
+            apriLega(nav, modello, [.calendario])
         case "mercato-osservati":
-            nav.sezione = .mercato
-            modello.mercato.sezione = .osservati
+            apriLega(nav, modello, [.seguiti])
         case "mercato-asta", "mercato-asta-riparazione":
             // l'asta sta in Lega (due volte l'anno): Lega > Asta e riparazione
             apriLega(nav, modello, [.asta])
         case "mercato-cerca":
-            nav.sezione = .mercato
-            modello.mercato.sezione = .giocatori
+            apriLega(nav, modello, [.elenco])
             modello.mercato.testoRicerca = "ma"
         case "giocatore":
             nav.vai(a: .giocatore(203))
 
         case "scambi":
-            nav.sezione = .scambi
+            apriLega(nav, modello, [.scambi])
         case "scambi-dettaglio":
-            nav.sezione = .scambi
+            apriLega(nav, modello, [.scambi])
             Task {
                 await modello.scambi.caricaProposte()
                 try? await Task.sleep(nanoseconds: 800_000_000)
@@ -178,18 +175,20 @@ extension Demo {
                     ?? modello.scambi.proposte.dato?.proposte.first
             }
         case "scambi-offerta":
-            nav.sezione = .scambi
+            apriLega(nav, modello, [.scambi])
+            modello.scambi.modo = .valuta
             modello.scambi.testoOfferta = "Ciao! Ti do Vlahovic e tu mi dai Lukaku, ci stai?"
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await modello.scambi.valutaOfferta()
             }
         case "scambi-analizza":
-            nav.sezione = .scambi
-            modello.scambi.percorso = [.analizza]
+            // «Costruisci» è la schermata di analisi (dentro la pagina Scambi di Altro)
+            apriLega(nav, modello, [.scambi])
+            modello.scambi.modo = .costruisci
 
         case "lega":
-            nav.sezione = .lega
+            nav.sezione = .altro
         case "lega-squadre":
             apriLega(nav, modello, [.squadre])
         case "lega-rosa":
@@ -235,8 +234,7 @@ extension Demo {
     }
 
     private static func apriLega(_ nav: Navigazione, _ modello: AppModel, _ pagine: [PaginaLega]) {
-        nav.sezione = .lega
-        modello.lega.percorso = pagine
+        nav.sezione = modello.lega.apri(pagine)
     }
 }
 

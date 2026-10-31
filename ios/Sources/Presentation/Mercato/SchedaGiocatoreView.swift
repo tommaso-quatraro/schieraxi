@@ -52,6 +52,7 @@ struct GiocatoreCorpo: View {
     @StateObject private var vm: SchedaGiocatoreViewModel
     @Binding var percorso: [PassoScheda]
     @Environment(\.dynamicTypeSize) private var tagliaTesto
+    @Environment(\.funzioni) private var funzioni
 
     init(id: Int, server: any ServerClient, percorso: Binding<[PassoScheda]>) {
         self.id = id
@@ -303,19 +304,23 @@ struct GiocatoreCorpo: View {
 
     private func azioni(_ s: SchedaGiocatore) -> some View {
         Carta {
-            Button { Task { await vm.alternaOsservato() } } label: {
-                Label(vm.osservato == true ? "Osservato" : "Osserva", systemImage: vm.osservato == true ? "star.fill" : "star")
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(maxWidth: .infinity, minHeight: 44)
+            if funzioni.acceso(Funzione.seguiti) {
+                Button { Task { await vm.alternaOsservato() } } label: {
+                    Label(vm.osservato == true ? "Osservato" : "Osserva", systemImage: vm.osservato == true ? "star.fill" : "star")
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .pulsanteVetro(prominente: true)
+                .sensoryFeedback(.success, trigger: vm.osservato)
+                .accessibilityHint(vm.osservato == true ? "Toglie il giocatore dagli osservati" : "Aggiunge il giocatore agli osservati")
             }
-            .pulsanteVetro(prominente: true)
-            .sensoryFeedback(.success, trigger: vm.osservato)
-            .accessibilityHint(vm.osservato == true ? "Toglie il giocatore dagli osservati" : "Aggiunge il giocatore agli osservati")
-            Button { percorso.append(.sceltaAltro(s.calciatore.id)) } label: {
-                Label("Confronta con un altro", systemImage: "arrow.left.arrow.right").frame(maxWidth: .infinity, minHeight: 44)
+            if funzioni.acceso(Funzione.confronto) && funzioni.acceso(Funzione.elencoGiocatori) {
+                Button { percorso.append(.sceltaAltro(s.calciatore.id)) } label: {
+                    Label("Confronta con un altro", systemImage: "arrow.left.arrow.right").frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .pulsanteVetro()
             }
-            .pulsanteVetro()
-            if vm.inFormazione {
+            if vm.inFormazione && funzioni.acceso(Funzione.confronto) {
                 Button { percorso.append(.sceltaDallaRosa(s.calciatore.id)) } label: {
                     Label("Confronta con la mia rosa", systemImage: "person.2").frame(maxWidth: .infinity, minHeight: 44)
                 }

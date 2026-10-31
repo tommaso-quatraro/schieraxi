@@ -4,14 +4,38 @@ import SwiftUI
 struct ScambiView: View {
     @ScaledMetric(relativeTo: .caption) private var larghezzaEtichetta: CGFloat = 54
     @ObservedObject var vm: ScambiViewModel
+    /// Dentro la scheda Altro la pagina sta già in una pila di navigazione: niente pila propria.
+    var incorporata = false
+    @Environment(\.funzioni) private var funzioni
+
+    /// «Valuta un'offerta» c'è sempre; «Trova per me» e «Costruisci» dipendono dalle funzioni accese.
+    private var modi: [ModoScambi] {
+        ModoScambi.allCases.filter { modo in
+            switch modo {
+            case .trova: return funzioni.acceso(Funzione.scambiTrova)
+            case .costruisci: return funzioni.acceso(Funzione.scambiCostruisci)
+            case .valuta: return true
+            }
+        }
+    }
+
+    /// Il modo mostrato: quello scelto se è ancora disponibile, altrimenti «Valuta un'offerta».
+    private var modoAttivo: ModoScambi { modi.contains(vm.modo) ? vm.modo : .valuta }
 
     var body: some View {
-        NavigationStack(path: $vm.percorso) {
+        if incorporata {
+            pagina
+        } else {
+            NavigationStack(path: $vm.percorso) { pagina }
+        }
+    }
+
+    private var pagina: some View {
             ZStack {
                 Sfondo()
                 VStack(spacing: 8) {
-                    selettoreModo
-                    switch vm.modo {
+                    if modi.count > 1 { selettoreModo }
+                    switch modoAttivo {
                     case .trova: trova
                     case .costruisci: AnalizzaScambioView(server: vm.server, incorporata: true)
                     case .valuta: scorrevole { offerta.ingresso(0) }
@@ -24,7 +48,7 @@ struct ScambiView: View {
                 AnalizzaScambioView(server: vm.server).navigationTitle("Analizza").navigationBarTitleDisplayMode(.inline).ricercaGlobale()
             }
             .task { await vm.caricaSquadre() }
-            .task { await vm.caricaLimite() }
+            .task { if funzioni.acceso(Funzione.scambiTrova) { await vm.caricaLimite() } }
             // Niente ricerca automatica: con gli account ogni ricerca conta tra quelle del giorno. Si cerca con il pulsante.
             // In modalità demo (fotografie) sì, per vedere le proposte.
             .task { if Demo.attivo, vm.proposte.dato == nil { await vm.caricaProposte() } }
@@ -41,15 +65,14 @@ struct ScambiView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
-        }
     }
 
     // MARK: i tre modi
 
     /// Un solo posto per gli scambi: trovare quelli giusti, costruirne uno, valutare un'offerta ricevuta.
     private var selettoreModo: some View {
-        Picker("Cosa vuoi fare", selection: $vm.modo.animation(Tema.morbida)) {
-            ForEach(ModoScambi.allCases) { Text($0.rawValue).tag($0) }
+        Picker("Cosa vuoi fare", selection: Binding(get: { modoAttivo }, set: { vm.modo = $0 }).animation(Tema.morbida)) {
+            ForEach(modi) { Text($0.rawValue).tag($0) }
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 16)

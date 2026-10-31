@@ -62,6 +62,8 @@ enum ErroreApi: LocalizedError {
     case troppiTentativi(String, riprovaTra: Int?)
     /// 412: i dati sono stati cambiati da un altro dispositivo dopo l'ultima lettura (If-Match non corrisponde).
     case conflitto
+    /// 404 con il campo `funzione`: la funzione è spenta per questo utente. Non è un guasto: niente «Riprova».
+    case funzioneSpenta(funzione: String, messaggio: String)
 
     /// Il server ha detto 412: i dati sono cambiati da un altro dispositivo (la schermata deve ricaricare).
     var eConflitto: Bool { if case .conflitto = self { return true } else { return false } }
@@ -75,8 +77,9 @@ enum ErroreApi: LocalizedError {
             // Il messaggio del server può già dire «Riprova domani»: si toglie, resta il tempo vero, una volta sola.
             return "\(Self.senzaInvitoARiprovare(messaggio)) Riprova tra \(Self.tempoLeggibile(attesa))."
         case .conflitto: return "È cambiato da un altro dispositivo: ho ricaricato i dati. Controlla e rifai la modifica."
+        case .funzioneSpenta(_, let messaggio): return messaggio
         case .indirizzoNonValido:
-            return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo in Lega > Server." : "L'indirizzo del server non è valido."
+            return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo nelle Impostazioni." : "L'indirizzo del server non è valido."
         case .risposta(let codice): return "Il server ha risposto con un errore (\(codice))."
         case .dati(let dettaglio): return "Risposta inattesa dal server. \(dettaglio)"
         case .timeout: return "Il server ci mette troppo a rispondere. Controlla la connessione e riprova tra poco."
@@ -215,6 +218,13 @@ struct ServerHTTP: ServerClient {
         return "errore \(codice)"
     }
 
+    /// Il campo `funzione` di un 404 ({"detail": "...", "funzione": "live"}), se c'è e non è vuoto.
+    static func funzioneSpenta(_ dati: Data) -> String? {
+        guard let o = try? JSONSerialization.jsonObject(with: dati) as? [String: Any],
+              let f = o["funzione"] as? String, !f.isEmpty else { return nil }
+        return f
+    }
+
     /// Se il server ha risposto con un errore, lo lancia con il suo messaggio (es. «Indica la tua squadra nella sezione Lega»).
     /// 401 e 429 hanno errori a parte (accesso richiesto, troppi tentativi con l'attesa); un 401 fuori dalle schermate di accesso
     /// avvisa l'app (notifica `.accessoRichiesto`): la sessione è finita e si torna alla schermata di accesso.
@@ -235,6 +245,17 @@ struct ServerHTTP: ServerClient {
             throw ErroreApi.accessoRichiesto(messaggio)
         case 412:
             throw ErroreApi.conflitto
+        case 404:
+            // Funzione spenta: il server lo dice con il campo «funzione». Si avvisa l'app (la nasconde) e si spiega, senza «Riprova».
+            if let funzione = Self.funzioneSpenta(dati) {
+                let testo = messaggio.dicePerFunzioneSpenta ? messaggio : "Questa funzione \(String.fraseFunzioneSpenta)."
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .funzioneSpenta, object: nil, userInfo: ["funzione": funzione])
+                }
+                throw ErroreApi.funzioneSpenta(funzione: funzione, messaggio: testo)
+            }
+            if messaggio == "errore \(h.statusCode)" { throw ErroreApi.risposta(h.statusCode) }
+            throw ErroreApi.server(messaggio)
         case 429:
             throw ErroreApi.troppiTentativi(messaggio, riprovaTra: Self.secondi(h))
         default:

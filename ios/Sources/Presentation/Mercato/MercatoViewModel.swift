@@ -1,13 +1,5 @@
 import SwiftUI
 
-enum SezioneMercato: String, CaseIterable, Identifiable {
-    case consigliati = "Consigliati"
-    /// Classifica e ricerca in un solo elenco (ex «Classifica» e «Cerca»).
-    case giocatori = "Giocatori"
-    case osservati = "Osservati"
-    case calendario = "Calendario"
-    var id: String { rawValue }
-}
 
 struct IdGiocatore: Identifiable { let id: Int }
 
@@ -22,7 +14,6 @@ final class MercatoViewModel: ViewModelBase {
     /// Asta di agosto e riparazione di febbraio.
     let asta: AstaViewModel
 
-    @Published var sezione: SezioneMercato = .consigliati
     /// Giocatore di cui si mostra la scheda (sheet).
     @Published var schedaAperta: IdGiocatore?
     // classifica

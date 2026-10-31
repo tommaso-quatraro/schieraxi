@@ -5,6 +5,7 @@ import PhotosUI
 struct SquadreView: View {
     @StateObject private var vm: SquadreViewModel
     private let server: any ServerClient
+    @Environment(\.funzioni) private var funzioni
 
     init(server: any ServerClient) {
         self.server = server
@@ -25,8 +26,8 @@ struct SquadreView: View {
                         }
                         .frame(minHeight: 44)
                     }
-                    Section("Le squadre") {
-                        ForEach(s) { sq in
+                    Section(funzioni.acceso(Funzione.squadreAltrui) ? "Le squadre" : "La mia squadra e rosa") {
+                        ForEach(s.filter { funzioni.acceso(Funzione.squadreAltrui) || $0.mia == true }) { sq in
                             NavigationLink(value: PaginaLega.rosa(sq.nome)) {
                                 HStack(spacing: 12) {
                                     StemmaSquadra(nome: sq.nome, dimensione: 44)

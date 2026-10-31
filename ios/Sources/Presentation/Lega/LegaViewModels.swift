@@ -5,6 +5,16 @@ import UniformTypeIdentifiers
 enum PaginaLega: Hashable {
     case importa, squadre, rosa(String), asta, regole, crediti, avvisi, stato, novita
     case movimenti, stagione, aspetto, icona, diario, backup
+    /// Dalla dieta delle funzioni: le pagine che prima erano in Mercato e in Scambi stanno in Squadra e in Altro.
+    case cambi, seguiti, elenco, calendario, scambi
+
+    /// In quale scheda sta la pagina: Squadra (la mia squadra, cambi, seguiti, elenco, calendario, rose) oppure Altro (tutto il resto).
+    var sezione: Sezione {
+        switch self {
+        case .importa, .squadre, .rosa, .cambi, .seguiti, .elenco, .calendario: return .squadra
+        default: return .altro
+        }
+    }
 }
 
 /// Logica della schermata Lega: stato del server, permesso per le notifiche, aggiornamento in background.
@@ -18,7 +28,18 @@ final class LegaViewModel: ViewModelBase {
     let aggiornamento: AggiornaDatiViewModel
     @Published var permesso = "…"
     /// Pagine aperte nella pila di navigazione (nell'AppModel: cambiando sezione si resta dove si era).
+    /// Le pagine aperte nella scheda Altro.
     @Published var percorso: [PaginaLega] = []
+    /// Le pagine aperte nella scheda Squadra.
+    @Published var percorsoSquadra: [PaginaLega] = []
+
+    /// Apre una pagina (e quelle che ci stanno sopra) nella scheda a cui appartiene e dice quale scheda mostrare.
+    @discardableResult
+    func apri(_ pagine: [PaginaLega]) -> Sezione {
+        let dove = pagine.first?.sezione ?? .altro
+        if dove == .squadra { percorsoSquadra = pagine } else { percorso = pagine }
+        return dove
+    }
 
     init(server: any ServerClient) {
         self.server = server

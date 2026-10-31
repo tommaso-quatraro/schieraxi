@@ -339,9 +339,9 @@ enum DestinazioneCofano: Equatable {
         switch schermata ?? "" {
         case "oggi": return .sezione(.oggi)
         case "formazione": return .sezione(.formazione)
-        case "scambi": return .sezione(.scambi)
-        case "mercato": return .sezione(.mercato)
-        case "lega": return .sezione(.lega)
+        case "scambi": return .lega(.scambi)
+        case "mercato", "squadra": return .sezione(.squadra)
+        case "lega", "altro": return .sezione(.altro)
         case "regole": return .lega(.regole)
         case "crediti": return .lega(.crediti)
         case "stato-dati": return .lega(.stato)

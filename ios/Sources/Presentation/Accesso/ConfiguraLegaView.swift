@@ -31,7 +31,7 @@ struct ConfiguraLegaVista: View {
             }
             .accessibilityElement(children: .combine)
         } description: {
-            Text("Mister, qui non ci sono ancora le rose. Importa il file della tua lega (Excel, CSV o testo): poi scegli la tua squadra in Lega > Squadre e rose e controlla le regole in Lega > Regole.")
+            Text("Mister, qui non ci sono ancora le rose. Importa il file della tua lega (Excel, CSV o testo): poi scegli la tua squadra in Squadra > Squadre e rose e controlla le regole in Altro > Regole.")
         } actions: {
             Button {
                 apriImportazione()

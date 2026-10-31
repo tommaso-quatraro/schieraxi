@@ -6,7 +6,7 @@ extension DestinazioneDaFare {
     /// Dove porta: prima il collegamento `schieraxi://`, poi la sezione scritta a parole; altrimenti da nessuna parte.
     var destinazione: Destinazione? {
         if let link, let url = URL(string: link), let d = Collegamenti.interpreta(url) { return d }
-        if let sezione, let s = Sezione(rawValue: sezione.lowercased()) { return .sezione(s) }
+        if let sezione, let s = Sezione.da(nome: sezione) { return .sezione(s) }
         return nil
     }
 }

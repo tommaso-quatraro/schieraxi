@@ -7,6 +7,7 @@ struct FormazioneView: View {
     @State private var daSostituire: Giocatore?
     @Namespace private var moduloNS
     @Namespace private var stileNS
+    @Environment(\.funzioni) private var funzioni
 
     /// Dall'alto in basso come sul campo: attacco in alto, portiere in basso.
     private let ruoli = ["A", "C", "D", "P"]
@@ -242,8 +243,10 @@ struct FormazioneView: View {
     private func sceltaStile(_ f: Formazione, _ livelli: [LivelloRischio]) -> some View {
         let livello = livelli.first(where: { $0.rischio == vm.rischio }) ?? livelli[0]
         let consigliato = f.stileConsigliato ?? 0
+        // «Stili a 3 livelli» spenta (di norma): più sicura, equilibrata, più rischiosa (e lo stile in uso, se è un altro). Accesa: tutti e 5.
+        let visibili = funzioni.acceso(Funzione.stiliRidotti) ? livelli : livelli.filter { $0.rischio == livello.rischio || abs($0.rischio) < 2 }
         FilaScorrevole {
-            ForEach(livelli) { l in
+            ForEach(visibili) { l in
                 let attivo = l.rischio == livello.rischio
                 Button { withAnimation(Tema.molla) { vm.scegliStile(l.rischio) } } label: {
                     Text(l.nome + (l.rischio == consigliato ? " ★" : ""))

@@ -1,95 +1,6 @@
 import SwiftUI
 
-/// Schermata Mercato: scelta della sezione e scheda del giocatore. Dati e logica sono in `MercatoViewModel`.
-struct MercatoView: View {
-    @ObservedObject var vm: MercatoViewModel
-    @EnvironmentObject private var nav: Navigazione
-    @Environment(\.spazioZoom) private var zoom
-
-    /// Se l'app è stata aperta da Spotlight o da un indirizzo schieraxi://giocatore/<id>, mostra la scheda.
-    private func apriRichiesto() {
-        if let id = nav.giocatoreDaAprire {
-            vm.apri(id)
-            nav.giocatoreDaAprire = nil
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Sfondo()
-                VStack(spacing: 8) {
-                    SelettoreSezioni(selezione: $vm.sezione)
-                    contenuto
-                }
-            }
-            .navigationTitle("Mercato")
-            .ricercaGlobale()
-            .onAppear { apriRichiesto() }
-            .onChange(of: nav.giocatoreDaAprire) { _, _ in apriRichiesto() }
-            .sheet(item: $vm.schedaAperta) { g in
-                GiocatoreSheet(id: g.id, server: vm.server)
-                    .arrivoZoom(g.id, zoom)
-                    .presentationDragIndicator(.visible)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var contenuto: some View {
-        switch vm.sezione {
-        case .consigliati: ConsigliatiView(vm: vm)
-        case .giocatori: GiocatoriView(vm: vm, ricerca: vm.ricerca)
-        case .calendario: CalendarioView(vm: vm)
-        case .osservati: OsservatiView(vm: vm)
-        }
-    }
-}
-
-/// Scelta della sezione del Mercato. Sei pulsanti affiancati se ci stanno; altrimenti (schermo stretto o testo grande) una fila
-/// di pulsanti che scorre di lato. Un selettore a segmenti qui tagliava i nomi e non cresce col testo.
-struct SelettoreSezioni: View {
-    @Binding var selezione: SezioneMercato
-    @Namespace private var pillole
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) {
-                ForEach(SezioneMercato.allCases) { s in pulsante(s, .footnote, 8) }
-            }
-            .padding(.horizontal, 12)
-            ScrollViewReader { lettore in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(SezioneMercato.allCases) { s in pulsante(s, .subheadline, 14).id(s) }
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .onAppear { lettore.scrollTo(selezione, anchor: .center) }
-                .onChange(of: selezione) { _, nuova in withAnimation { lettore.scrollTo(nuova, anchor: .center) } }
-            }
-        }
-    }
-
-    private func pulsante(_ s: SezioneMercato, _ carattere: Font, _ margine: CGFloat) -> some View {
-        let attiva = s == selezione
-        return Button {
-            withAnimation(Tema.molla) { selezione = s }
-        } label: {
-            Text(s.rawValue)
-                .font(carattere.weight(.semibold))
-                .lineLimit(1)
-                // larghezza vera del testo: senza, ViewThatFits crede che ci stia tutto e le etichette si sovrappongono
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, margine)
-                .frame(minHeight: 44)
-                .pillola(attiva: attiva, spazio: pillole)
-        }
-        .buttonStyle(StilePressione())
-        .sensoryFeedback(.selection, trigger: selezione)
-        .accessibilityAddTraits(attiva ? .isSelected : [])
-    }
-}
+// Le pagine di Squadra che prima stavano in Mercato (la scelta e il contenitore sono in LegaView).
 
 // MARK: - Consigliati
 
@@ -455,7 +366,3 @@ struct CercaView: View {
     }
 }
 
-#Preview("Mercato") {
-    MercatoView(vm: MercatoViewModel(server: FinteServer.esempio))
-        .environmentObject(Navigazione())
-}

@@ -184,7 +184,7 @@ struct StagioneView: View {
             NavigationLink(value: PaginaLega.stato) {
                 passo("4", "Aggiorna i dati", "Calendario, listone e quotazioni nuovi.")
             }
-            passo("5", "Prima dell'asta guarda Mercato > Asta", "Budget e prezzi consigliati.")
+            passo("5", "Prima dell'asta guarda Altro > Asta e riparazione", "Budget e prezzi consigliati.")
         }
     }
 
@@ -210,6 +210,7 @@ struct AspettoView: View {
     @AppStorage("densita") private var densita = "compatta"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
     @AppStorage("sezioneAvvio") private var sezioneAvvio = "ultima"
+    @Environment(\.funzioni) private var funzioni
 
     var body: some View {
         ZStack {
@@ -226,6 +227,7 @@ struct AspettoView: View {
                     Text("Automatico segue il chiaro e lo scuro di iPhone. La dimensione del testo si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo: l'app la segue.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                if funzioni.acceso(Funzione.aspettoAvanzato) {
                 Section("Colore principale") {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 12) { colori }
@@ -241,9 +243,11 @@ struct AspettoView: View {
                     Text("Compatta stringe i margini delle schede: ci sta più roba sullo schermo. Le aree di tocco restano grandi.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                }
                 Section {
                     Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)
                 } header: { Text("Movimento") } footer: { Text("Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»).") }
+                if funzioni.acceso(Funzione.aspettoAvanzato) {
                 Section {
                     // il titolo della riga basta: la sezione non lo ripete
                     Picker("Sezione iniziale", selection: $sezioneAvvio) {
@@ -252,6 +256,7 @@ struct AspettoView: View {
                     }
                     .frame(minHeight: 44)
                 } header: { Text("Apertura") }
+                }
                 Section {
                     Label("Volti illustrati", systemImage: "face.smiling").font(.subheadline)
                 } header: { Text("Giocatori") } footer: {

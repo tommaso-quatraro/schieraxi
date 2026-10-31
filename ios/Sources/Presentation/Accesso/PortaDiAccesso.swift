@@ -84,13 +84,11 @@ struct ContenitoreApp: View {
     private func apriDaGuida(_ azione: AzioneGuida) {
         switch azione {
         case .importaRose:
-            modello.lega.percorso = [.importa]
-            nav.sezione = .lega
+            nav.sezione = modello.lega.apri([.importa])
         case .squadre(let nome):
             var pagine: [PaginaLega] = [.squadre]
             if let nome { pagine.append(.rosa(nome)) }
-            modello.lega.percorso = pagine
-            nav.sezione = .lega
+            nav.sezione = modello.lega.apri(pagine)
         case .impostazioni:
             // il foglio della guida si sta chiudendo: si aspetta un attimo prima di aprire quello delle Impostazioni
             Task {

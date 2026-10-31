@@ -33,6 +33,7 @@ extension EnvironmentValues {
 /// Si apre come foglio dall'ingranaggio in testata, accanto alla lente.
 struct ImpostazioniView: View {
     @ObservedObject var vm: LegaViewModel
+    @ObservedObject var funzioni: ArchivioFunzioni
     @EnvironmentObject private var sessione: SessioneAccount
     @EnvironmentObject private var nav: Navigazione
     @Environment(\.dismiss) private var chiudi
@@ -96,8 +97,7 @@ struct ImpostazioniView: View {
             nav.sezione = sezione
             chiudi()
         case .lega(let pagina):
-            vm.percorso = [pagina]
-            nav.sezione = .lega
+            nav.sezione = vm.apri([pagina])
             chiudi()
         }
     }
@@ -126,7 +126,9 @@ struct ImpostazioniView: View {
     private var sezioneAspetto: some View {
         Section("Aspetto") {
             NavigationLink(value: PaginaImpostazioni.aspetto) { Label("Tema, colore e densità", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaImpostazioni.icona) { Label("Icona dell'app", systemImage: "app.badge").labelStyle(.voce(.purple)).frame(minHeight: 44) }
+            if funzioni.stato.acceso(Funzione.aspettoAvanzato) {
+                NavigationLink(value: PaginaImpostazioni.icona) { Label("Icona dell'app", systemImage: "app.badge").labelStyle(.voce(.purple)).frame(minHeight: 44) }
+            }
         }
     }
 
@@ -139,15 +141,20 @@ struct ImpostazioniView: View {
         }
     }
 
+    @ViewBuilder
     private var sezioneDati: some View {
-        Section("Dati e backup") {
-            NavigationLink(value: PaginaImpostazioni.backup) { Label("Copia di sicurezza", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
+        if funzioni.stato.acceso(Funzione.backup) {
+            Section("Dati e backup") {
+                NavigationLink(value: PaginaImpostazioni.backup) { Label("Copia di sicurezza", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
+            }
         }
     }
 
     private var sezioneInformazioni: some View {
         Section("Informazioni") {
-            NavigationLink(value: PaginaImpostazioni.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
+            if funzioni.stato.acceso(Funzione.novita) {
+                NavigationLink(value: PaginaImpostazioni.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
+            }
             Button {
                 // si chiude il foglio e, appena è sparito, si apre la guida
                 chiudi()
@@ -166,18 +173,29 @@ struct ImpostazioniView: View {
         }
     }
 
-    @ViewBuilder
+    /// Avanzate: «Mostra tutte le funzioni» per tutti; lo stato dei dati e l'aggiornamento solo per l'amministratore.
     private var sezioneAvanzate: some View {
-        if sessione.puoAmministrare {
-            Section("Avanzate") {
+        Section {
+            Toggle(isOn: Binding(get: { funzioni.stato.mostraTutte }, set: { v in Task { await funzioni.impostaMostraTutte(v) } })) {
+                Text("Mostra tutte le funzioni")
+            }
+            .tint(Color.verde)
+            .frame(minHeight: 44)
+            .disabled(funzioni.inSalvataggio)
+            if let e = funzioni.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
+            if sessione.puoAmministrare {
                 NavigationLink(value: PaginaImpostazioni.stato) { Label("Stato dei dati", systemImage: "externaldrive").labelStyle(.voce(.gray)).frame(minHeight: 44) }
                 AggiornaDatiSezione(vm: vm.aggiornamento)
             }
+        } header: {
+            Text("Avanzate")
+        } footer: {
+            Text("Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche tutto il resto (risultati in diretta, asta, confronto, seguiti, diario e altro). Vale solo per te.")
         }
     }
 }
 
 #Preview("Impostazioni") {
-    ImpostazioniView(vm: LegaViewModel(server: FinteServer.esempio))
+    ImpostazioniView(vm: LegaViewModel(server: FinteServer.esempio), funzioni: ArchivioFunzioni(server: FinteServer.esempio))
         .environmentObject(Navigazione())
 }

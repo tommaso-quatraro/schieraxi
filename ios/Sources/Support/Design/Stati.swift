@@ -138,13 +138,40 @@ struct ErroreVista: View {
     let riprova: () -> Void
     @State private var tentativi = 0
     @Environment(\.accessibilityReduceMotion) private var ridotto
+    @Environment(\.apriImpostazioni) private var apriImpostazioni
+    @Environment(\.vaiASezione) private var vaiASezione
 
     var body: some View {
         if messaggio.dicePerNessunaRosa {
             ConfiguraLegaVista()
+        } else if messaggio.dicePerFunzioneSpenta {
+            funzioneSpenta
         } else {
             errore
         }
+    }
+
+    /// Una funzione spenta (404 con il campo «funzione»): non è un guasto, quindi niente «Riprova». Si spiega e si indica dove riaccenderla.
+    private var funzioneSpenta: some View {
+        ContentUnavailableView {
+            Label("Non disponibile", systemImage: "eye.slash")
+        } description: {
+            Text(messaggio)
+        } actions: {
+            if let apri = apriImpostazioni {
+                Button { apri() } label: {
+                    Label("Impostazioni", systemImage: "gearshape").frame(minHeight: Tema.areaTocco)
+                }
+                .pulsanteVetro(prominente: true)
+                .accessibilityHint("Apre le Impostazioni, dove si accende Mostra tutte le funzioni")
+            }
+            Button { vaiASezione(.oggi) } label: {
+                Label("Torna a Oggi", systemImage: "calendar").frame(minHeight: Tema.areaTocco)
+            }
+            .pulsanteVetro()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
     }
 
     /// Un limite di richieste (429): il messaggio dice già quando riprovare e un pulsante «Riprova» sarebbe inutile.

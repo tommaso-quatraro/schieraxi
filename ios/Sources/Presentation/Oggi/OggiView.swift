@@ -7,6 +7,7 @@ struct OggiView: View {
     @Environment(\.apriGiocatore) private var apri
     @Environment(\.vaiASezione) private var vaiASezione
     @Environment(\.apriNovita) private var apriNovita
+    @Environment(\.funzioni) private var funzioni
     @Environment(\.apriImpostazioni) private var apriImpostazioni
     @EnvironmentObject private var nav: Navigazione
     @Environment(\.apriRosaDi) private var apriRosaDi
@@ -37,7 +38,7 @@ struct OggiView: View {
                             migliori(oggi).ingresso(4)
                             indisponibili.ingresso(5)
                             diffidati.ingresso(6)
-                            partite.ingresso(7)
+                            if funzioni.acceso(Funzione.live) { partite.ingresso(7) }
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
@@ -51,7 +52,7 @@ struct OggiView: View {
                 .demoInFondo()
                 .refreshable {
                     await vm.carica()
-                    await vm.live.ricarica()
+                    if funzioni.acceso(Funzione.live) { await vm.live.ricarica() }
                 }
                 .avvisoDatiSalvati(vm.datiSalvati)
                 .bordiMorbidi()
@@ -61,8 +62,8 @@ struct OggiView: View {
             .task { await vm.carica() }
             // Risultati in diretta: solo con la schermata visibile e l'app in primo piano (il lavoro si annulla da solo quando
             // la schermata sparisce) e riparte quando arriva la giornata o cambia.
-            .task(id: "\(fase == .active)-\(vm.oggi?.giornata ?? 0)") {
-                guard fase == .active else { return }
+            .task(id: "\(fase == .active)-\(vm.oggi?.giornata ?? 0)-\(funzioni.acceso(Funzione.live))") {
+                guard fase == .active, funzioni.acceso(Funzione.live) else { return }   // «Risultati in diretta» spenta: non si chiede nulla al server
                 await vm.seguiLive()
             }
         }
@@ -170,7 +171,7 @@ struct OggiView: View {
 
     @ViewBuilder
     private var novita: some View {
-        if let versione = vm.novitaDaVedere(ultimaVista: novitaVista) {
+        if funzioni.acceso(Funzione.novita), let versione = vm.novitaDaVedere(ultimaVista: novitaVista) {
             Button { apriNovita() } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "sparkles")
@@ -280,7 +281,9 @@ struct OggiView: View {
 
     /// Apre la destinazione di una cosa da fare.
     private func vaiA(_ d: Destinazione, tipo: String? = nil) {
-        if case .sezione(let s) = d { vaiASezione(s) }
+        if tipo == "rose", case .sezione = d { nav.vai(a: .pagina(.importa)) }   // «rose vecchie»: l'importazione sta in Squadra
+        else if case .sezione(let s) = d { vaiASezione(s) }
+        else if case .pagina = d { nav.vai(a: d) }
         else if case .giocatore(let id) = d { apri(id) }
         else if case .impostazioni = d {
             // «Riprendi» la configurazione guidata riapre la guida; le altre voci aprono le Impostazioni
