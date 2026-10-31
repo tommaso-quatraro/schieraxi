@@ -49,6 +49,8 @@ final class Navigazione: ObservableObject {
     @Published var giocatoreDaAprire: Int?
     /// Un file delle rose arrivato da un'altra app («Apri con SchieraXI», Condividi): Lega > Aggiorna le rose lo importa.
     @Published var fileDaImportare: URL?
+    /// Un'immagine arrivata da un'altra app («Apri con SchieraXI»): si chiede se è lo stemma o la divisa e di quale squadra.
+    @Published var immagineRicevuta: ImmagineRicevuta?
     /// La scheda di un giocatore aperta sopra la schermata corrente (tocco su una riga di Oggi, Formazione, Lega...).
     @Published var scheda: IdGiocatore?
     /// Il foglio delle Impostazioni (l'ingranaggio in testata, o `schieraxi://impostazioni`).
@@ -70,7 +72,16 @@ final class Navigazione: ObservableObject {
     /// Un file arrivato da fuori: si accetta solo se l'estensione è di quelle delle rose (il controllo vero è all'importazione).
     func apriFile(_ url: URL) {
         guard url.isFileURL else { return }
-        fileDaImportare = url
+        if Self.eImmagine(url) {
+            immagineRicevuta = ImmagineRicevuta(url: url)
+        } else {
+            fileDaImportare = url
+        }
+    }
+
+    /// Le immagini che si accettano per stemma e divisa (il controllo vero sul contenuto è al caricamento).
+    static func eImmagine(_ url: URL) -> Bool {
+        ["png", "jpg", "jpeg", "heic", "heif", "webp"].contains(url.pathExtension.lowercased())
     }
 
     func apriScheda(_ id: Int) {
@@ -139,6 +150,10 @@ struct RadiceView: View {
         .environment(\.apriGiocatore) { nav.apriScheda($0) }
         .environment(\.vaiASezione) { nav.sezione = $0 }
         .environment(\.apriImpostazioni) { nav.impostazioniAperte = true }
+        .environment(\.apriRosaDi) { nome in
+            modello.lega.percorso = [.squadre, .rosa(nome)]
+            nav.sezione = .lega
+        }
         .environment(\.apriImportazione) {
             modello.lega.percorso = [.importa]
             nav.sezione = .lega
@@ -156,6 +171,10 @@ struct RadiceView: View {
                 .tint(Color.verde)
                 // Su iPad un foglio ampio: Sotto il cofano ha l'indice a sinistra solo se c'è spazio.
                 .presentationSizing(.page)
+        }
+        .sheet(item: $nav.immagineRicevuta) { r in
+            ImmagineRicevutaView(ricevuta: r, server: modello.server)
+                .tint(Color.verde)
         }
         .sheet(item: $nav.scheda) { g in
             GiocatoreSheet(id: g.id, server: modello.server, contesto: modello.formazione.contestoConfronto)

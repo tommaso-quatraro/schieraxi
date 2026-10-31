@@ -9,6 +9,8 @@ struct OggiView: View {
     @Environment(\.apriNovita) private var apriNovita
     @Environment(\.apriImpostazioni) private var apriImpostazioni
     @EnvironmentObject private var nav: Navigazione
+    @Environment(\.apriRosaDi) private var apriRosaDi
+    @ObservedObject private var immagini = Immagini.condivise
     /// L'ultima versione delle novità che l'utente ha guardato (la scrive la pagina Novità).
     @AppStorage("novitaVista") private var novitaVista = ""
     @State private var novitaAnimata = false
@@ -90,8 +92,18 @@ struct OggiView: View {
             HStack(alignment: .center, spacing: 8) {
                 contoAllaRovescia(oggi)
                 if let squadra = oggi.formazione?.squadra {
-                    StemmaSquadra(nome: squadra, tipo: "maglia", dimensione: 56, nascondiSeMancante: true)
-                        .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+                    if immagini.haImmagine(squadra, tipo: "maglia") {
+                        StemmaSquadra(nome: squadra, tipo: "maglia", dimensione: 56, nascondiSeMancante: true)
+                            .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+                    } else if let apri = apriRosaDi {
+                        // la divisa è LA TUA: se non c'è non si mostra quella di un'altra squadra, si invita ad aggiungerla
+                        Button { apri(squadra) } label: {
+                            Label("Aggiungi la tua divisa", systemImage: "tshirt").font(.footnote.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 6).vetro(in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Apre la tua squadra per caricare la divisa")
+                    }
                 }
             }
             if oggi.conProbabili == false {

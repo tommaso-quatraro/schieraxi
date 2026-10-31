@@ -77,6 +77,15 @@ targets:
               - public.comma-separated-values-text
               - public.tab-separated-values-text
               - public.plain-text
+          # «Apri con SchieraXI» per le immagini (stemma e divisa dalla libreria, da Files o dal menu Condividi)
+          - CFBundleTypeName: Immagine di una squadra
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.png
+              - public.jpeg
+              - public.heic
+              - org.webmproject.webp
         LSSupportsOpeningDocumentsInPlace: false
   SchieraxiWidget:
     # estensione widget (WidgetKit): conto alla rovescia, modulo e punti attesi. Consuma un App ID in più con l'Apple ID gratuito.

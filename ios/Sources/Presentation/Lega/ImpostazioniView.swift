@@ -5,6 +5,18 @@ enum PaginaImpostazioni: Hashable {
     case aspetto, icona, avvisi, backup, stato, novita, cofano
 }
 
+private struct ApriRosaDiChiave: EnvironmentKey {
+    static let defaultValue: ((String) -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    /// Apre Lega > Squadre > la rosa di una squadra (da Oggi: «Aggiungi la tua divisa»). `nil` dove non c'è.
+    var apriRosaDi: ((String) -> Void)? {
+        get { self[ApriRosaDiChiave.self] }
+        set { self[ApriRosaDiChiave.self] = newValue }
+    }
+}
+
 private struct ApriImpostazioniChiave: EnvironmentKey {
     static let defaultValue: (() -> Void)? = nil
 }

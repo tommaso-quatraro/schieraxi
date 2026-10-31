@@ -128,6 +128,20 @@ final class Immagini: ObservableObject {
         versione += 1
     }
 
+    /// Lo stemma o la maglia da un indirizzo web (https): lo scarica il server (`POST /api/squadre/immagine/da-url`), non il telefono.
+    func inviaDaIndirizzo(_ indirizzo: String, squadra: String, tipo: String) async throws {
+        guard let url = IndirizzoImmagine.pulito(indirizzo) else { throw ErroreImmagine.indirizzoNonValido }
+        _ = try await attivo.corpoJSON("POST", "/api/squadre/immagine/da-url", CorpoImmagineDaUrl(squadra: squadra, tipo: tipo, url: url))
+        edizione += 1
+        await caricaElenchi()
+        versione += 1
+    }
+
+    enum ErroreImmagine: LocalizedError {
+        case indirizzoNonValido
+        var errorDescription: String? { "L'indirizzo deve cominciare con https:// e portare a un'immagine." }
+    }
+
     /// Per i test: svuota memoria e ricordi.
     func azzera() {
         memoria.removeAllObjects()
