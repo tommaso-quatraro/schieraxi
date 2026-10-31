@@ -368,6 +368,24 @@ struct EventoLive: Decodable, Equatable {
     var minuto: String?
     var squadra: String?
     var chi: String?
+    /// Chi ha fatto l'assist (solo per i gol, se il server lo sa).
+    var assist: String?
+
+    enum CodingKeys: String, CodingKey { case tipo, minuto, squadra, chi, assist }
+
+    init(tipo: String? = nil, minuto: String? = nil, squadra: String? = nil, chi: String? = nil, assist: String? = nil) {
+        self.tipo = tipo; self.minuto = minuto; self.squadra = squadra; self.chi = chi; self.assist = assist
+    }
+
+    /// Tollerante: un campo del tipo sbagliato (per esempio l'assist come oggetto) non rovina l'evento né la partita.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        tipo = try? c.decodeIfPresent(String.self, forKey: .tipo)
+        minuto = (try? c.decodeIfPresent(String.self, forKey: .minuto)) ?? (try? c.decodeIfPresent(Int.self, forKey: .minuto)).map { "\($0)'" }
+        squadra = try? c.decodeIfPresent(String.self, forKey: .squadra)
+        chi = try? c.decodeIfPresent(String.self, forKey: .chi)
+        assist = try? c.decodeIfPresent(String.self, forKey: .assist)
+    }
 }
 
 struct PartitaLive: Decodable, Equatable, Identifiable {

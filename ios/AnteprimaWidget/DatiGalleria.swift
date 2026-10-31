@@ -55,8 +55,8 @@ enum DatiGalleria {
          "dati": {"ultimo_aggiornamento": "2026-10-30T14:32:00"},
          "live": {"aggiornato_il": "\#(data(0)):04", "fonte": "espn", "in_corso": 2, "partite": [
            {"casa": "inter", "trasferta": "roma", "data": "\#(data(-63))", "stato": "secondo_tempo", "minuto": "63'", "gol_casa": 2, "gol_trasferta": 0,
-            "eventi": [{"tipo": "gol", "minuto": "10'", "squadra": "casa", "chi": "M. Thuram"}, {"tipo": "gol", "minuto": "41'", "squadra": "casa", "chi": "L. Giocatore 057"},
-                       {"tipo": "giallo", "minuto": "55'", "squadra": "trasferta", "chi": "Cristante"}]},
+            "eventi": [{"tipo": "gol", "minuto": "10'", "squadra": "casa", "chi": "M. Thuram", "assist": "Barella"}, {"tipo": "gol", "minuto": "41'", "squadra": "casa", "chi": "L. Giocatore 057"},
+                       {"tipo": "giallo", "minuto": "55'", "squadra": "trasferta", "chi": "Cristante"}, {"tipo": "rigore", "minuto": "58'", "squadra": "trasferta", "chi": "Dybala"}]},
            {"casa": "napoli", "trasferta": "milan", "data": "\#(data(-21))", "stato": "primo_tempo", "minuto": "21'", "gol_casa": 0, "gol_trasferta": 1,
             "eventi": [{"tipo": "gol", "minuto": "14'", "squadra": "trasferta", "chi": "R. Giocatore 046"}]},
            {"casa": "lazio", "trasferta": "juventus", "data": "\#(data(95))", "stato": "da_giocare", "minuto": null, "gol_casa": null, "gol_trasferta": null, "eventi": []}]}

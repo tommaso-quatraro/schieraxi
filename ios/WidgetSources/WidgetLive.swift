@@ -21,22 +21,13 @@ struct WidgetLive: Widget {
 struct RigaPartitaLive: View {
     let p: PartitaLive
     let miei: [GiocatoreWidget]
-    var conEventi = 0
+    var conEventi = false
     var lato: CGFloat = 20
     /// Tutto su una riga (avatar dopo la sigla) per il Cruscotto, dove lo spazio e' poco.
     var compatto = false
     @Environment(\.widgetRenderingMode) private var modoSistema
     @Environment(\.renderForzato) private var modoForzato
     private var modo: WidgetRenderingMode { modoForzato ?? modoSistema }
-
-    private func simbolo(_ e: EventoLive) -> (String, Color) {
-        switch e.tipo ?? "" {
-        case "rosso": return ("rectangle.portrait.fill", TintaWidget.malus)
-        case "giallo": return ("rectangle.portrait.fill", .yellow)
-        case "autogol": return ("soccerball.inverse", TintaWidget.attenzione)
-        default: return ("soccerball", .white)
-        }
-    }
 
     var body: some View {
         Link(destination: Vai.url("oggi")) {
@@ -60,10 +51,9 @@ struct RigaPartitaLive: View {
                             .font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
                     }
                 }
-                ForEach(Array((p.eventi ?? []).filter { $0.tipo != "giallo" }.suffix(conEventi).enumerated()), id: \.offset) { _, e in
-                    let s = simbolo(e)
-                    Label("\(e.minuto ?? "") \(e.chi ?? "")", systemImage: s.0)
-                        .font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                if conEventi {
+                    ColonneEventi(eventi: EventiPartita.visibili(p.eventi), nomeCasa: ColoriSquadra.sigla(p.casa), nomeTrasferta: ColoriSquadra.sigla(p.trasferta),
+                                  font: .caption2, colore: TintaWidget.testo2, coloreRosso: TintaWidget.malus, coloreAutogol: TintaWidget.attenzione, righeMax: 1)
                 }
             }
         }
@@ -124,15 +114,15 @@ struct VistaLive: View {
     @ViewBuilder
     private func contenuto(_ w: RiassuntoWidget) -> some View {
         switch famiglia {
-        case .systemLarge: elenco(w, massimo: 5, eventi: 2)
+        case .systemLarge: elenco(w, massimo: 5, eventi: true)
         case .accessoryRectangular:
             if let p = scelte(w, massimo: 1).first {
                 let miei = w.mieiTitolari(in: p)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)").font(.headline).lineLimit(1).minimumScaleFactor(0.7)
                     Text(miei.isEmpty ? titolo(w) : "Tuoi: " + miei.prefix(3).map(\.cognome).joined(separator: ", ")).font(.caption).lineLimit(1)
-                    if let e = p.eventi?.last(where: { $0.tipo != "giallo" }) {
-                        Text("\(e.minuto ?? "") \(e.chi ?? "")").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    if let e = EventiPartita.visibili(p.eventi).last {
+                        Text(e.testoCompatto).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -141,15 +131,28 @@ struct VistaLive: View {
             if let p = scelte(w, massimo: 1).first {
                 Label("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)", systemImage: "soccerball")
             }
-        default: elenco(w, massimo: 3, eventi: 0)
+        default: elenco(w, massimo: 3, eventi: false)
         }
     }
 
-    private func elenco(_ w: RiassuntoWidget, massimo: Int, eventi: Int) -> some View {
+    /// Con gli eventi in colonna ogni partita occupa piu' righe: se non entrano tutte se ne mostrano meno (almeno una), mai eventi tagliati.
+    private func entranti(_ w: RiassuntoWidget, massimo: Int, conEventi: Bool) -> [PartitaLive] {
+        let tutte = scelte(w, massimo: massimo)
+        guard conEventi else { return tutte }
+        var usate = 0, scelta: [PartitaLive] = []
+        for p in tutte {
+            let costo = 2 + (w.mieiTitolari(in: p).isEmpty ? 0 : 1) + EventiPartita.righe(p.eventi)
+            if !scelta.isEmpty && usate + costo > 19 { break }
+            usate += costo; scelta.append(p)
+        }
+        return scelta
+    }
+
+    private func elenco(_ w: RiassuntoWidget, massimo: Int, eventi: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             IntestazioneWidget(titolo: titolo(w), icona: "soccerball", destra: Quando.data(w.live?.aggiornatoIl).map { "agg. \(Quando.ora($0))" })
-            ForEach(scelte(w, massimo: massimo)) { p in
-                RigaPartitaLive(p: p, miei: w.mieiTitolari(in: p), conEventi: eventi, lato: eventi > 0 ? 24 : 18)
+            ForEach(entranti(w, massimo: massimo, conEventi: eventi)) { p in
+                RigaPartitaLive(p: p, miei: w.mieiTitolari(in: p), conEventi: eventi, lato: eventi ? 24 : 18)
             }
             Spacer(minLength: 0)
             PiedeDati(voce: voce)

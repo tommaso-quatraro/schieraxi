@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// La scheda «Partite del turno» di Oggi: orari, e quando c'è una partita in corso il punteggio con il minuto (badge LIVE),
-/// marcatori e cartellini. Le partite in cui giocano miei titolari hanno lo sfondo lime e i loro avatarini.
+/// marcatori (con assist), rigori e cartellini rossi, tutti, in due colonne. Le partite in cui giocano miei titolari hanno lo sfondo lime e i loro avatarini.
 struct PartiteDelTurnoView: View {
     @ObservedObject var vm: OggiViewModel
 
@@ -45,8 +45,7 @@ struct RigaPartitaView: View {
     private var haPunteggio: Bool { live?.golCasa != nil && live?.golTrasferta != nil }
     private var inGioco: Bool { live?.inGioco ?? false }
     private var finita: Bool { live?.finita ?? (partita.giocata == true) }
-    private var eventi: [EventoLive] { (haPunteggio ? live?.eventi : nil) ?? [] }
-    private static let eventiVisibili = 6
+    private var eventi: [EventoLive] { haPunteggio ? EventiPartita.visibili(live?.eventi) : [] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -149,30 +148,8 @@ struct RigaPartitaView: View {
     }
 
     private var elencoEventi: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            ForEach(Array(eventi.prefix(Self.eventiVisibili).enumerated()), id: \.offset) { _, e in
-                HStack(spacing: 4) {
-                    if e.squadra == "trasferta" { Spacer(minLength: 0) }
-                    simbolo(e)
-                    Text("\(e.minuto ?? "") \(e.chi ?? "")\(e.tipo == "autogol" ? " (autogol)" : (e.tipo == "rigore" ? " (rigore)" : ""))")
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                    if e.squadra != "trasferta" { Spacer(minLength: 0) }
-                }
-            }
-            if eventi.count > Self.eventiVisibili {
-                Text("e altri \(eventi.count - Self.eventiVisibili)").font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-        .padding(.leading, 62)
-    }
-
-    @ViewBuilder
-    private func simbolo(_ e: EventoLive) -> some View {
-        switch e.tipo ?? "" {
-        case "giallo": Image(systemName: "rectangle.portrait.fill").foregroundStyle(Color.yellow).font(.caption2)
-        case "rosso": Image(systemName: "rectangle.portrait.fill").foregroundStyle(Color.red).font(.caption2)
-        case "autogol": Image(systemName: "soccerball").foregroundStyle(Color.malus).font(.caption2)
-        default: Image(systemName: "soccerball").foregroundStyle(.secondary).font(.caption2)
-        }
+        ColonneEventi(eventi: eventi, nomeCasa: partita.casa, nomeTrasferta: partita.trasferta, font: .caption,
+                      coloreRosso: Color.malus, coloreAutogol: Color.attenzione)
+            .padding(.top, 1)
     }
 }

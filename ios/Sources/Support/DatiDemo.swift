@@ -478,8 +478,10 @@ private enum DatiDemo {
 
     /// Alcune partite in corso, una finita e il resto da giocare: la scheda «Partite del turno» di Oggi si vede viva.
     static func live(adesso: Date) -> String {
-        func ev(_ tipo: String, _ minuto: String, _ squadra: String, _ chi: String) -> [String: Any] {
-            ["tipo": tipo, "minuto": minuto, "squadra": squadra, "chi": chi]
+        func ev(_ tipo: String, _ minuto: String, _ squadra: String, _ chi: String, _ assist: String? = nil) -> [String: Any] {
+            var e: [String: Any] = ["tipo": tipo, "minuto": minuto, "squadra": squadra, "chi": chi]
+            if let assist { e["assist"] = assist }
+            return e
         }
         var partite: [[String: Any]] = []
         for (i, m) in incontri.enumerated() {
@@ -488,15 +490,17 @@ private enum DatiDemo {
             switch i {
             case 0:
                 p["stato"] = "secondo_tempo"; p["minuto"] = "63'"; p["gol_casa"] = 2; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "12'", "casa", "Thuram"), ev("gol", "38'", "trasferta", "Dybala"), ev("giallo", "44'", "casa", "Giocatore 004"),
-                               ev("rigore", "55'", "casa", "Calhanoglu")]
+                p["eventi"] = [ev("gol", "12'", "casa", "Thuram", "Barella"), ev("gol", "38'", "trasferta", "Dybala"), ev("giallo", "44'", "casa", "Giocatore 004"),
+                               ev("rigore", "55'", "casa", "Calhanoglu"), ev("rigore_sbagliato", "58'", "trasferta", "Dybala"),
+                               ev("rosso", "61'", "trasferta", "Cristante")]
             case 1:
                 p["stato"] = "intervallo"; p["gol_casa"] = 0; p["gol_trasferta"] = 0
                 p["eventi"] = [ev("giallo", "30'", "trasferta", "Locatelli")]
             case 2:
                 p["stato"] = "finita"; p["gol_casa"] = 3; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "9'", "casa", "Lukaku"), ev("autogol", "40'", "casa", "Djimsiti"), ev("rosso", "71'", "trasferta", "De Roon"),
-                               ev("gol", "88'", "casa", "McTominay")]
+                p["eventi"] = [ev("gol", "9'", "casa", "Lukaku", "Giocatore 077"), ev("autogol", "40'", "casa", "Djimsiti"), ev("giallo", "52'", "casa", "Giocatore 083"),
+                               ev("rosso", "71'", "trasferta", "De Roon"), ev("gol", "80'", "trasferta", "Retegui", "Pasalic"),
+                               ev("gol", "88'", "casa", "McTominay", "Anguissa"), ev("doppio_giallo", "90'+2'", "casa", "Lobotka")]
             case 3:
                 p["stato"] = "primo_tempo"; p["minuto"] = "27'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
                 p["eventi"] = [ev("gol", "11'", "casa", "Castellanos"), ev("gol", "25'", "trasferta", "Gudmundsson")]

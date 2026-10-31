@@ -72,11 +72,12 @@ enum DirettaLogica {
         let chi = e.chi ?? ""
         let quando = minutoParlato(e.minuto).map { " al minuto \($0)" } ?? ""
         switch e.tipo ?? "" {
-        case "gol": return "Gol di \(chi)\(quando)"
+        case "gol": return "Gol di \(chi)\(quando)" + (e.assistPulito.map { ", assist di \($0)" } ?? "")
         case "rigore": return "Gol su rigore di \(chi)\(quando)"
         case "autogol": return "Autogol di \(chi)\(quando)"
-        case "giallo": return "Ammonito \(chi)\(quando)"
         case "rosso": return "Espulso \(chi)\(quando)"
+        case _ where e.tipoVisibile == .rosso: return "Espulso per doppia ammonizione \(chi)\(quando)"
+        case _ where e.tipoVisibile == .rigoreFallito: return "Rigore non segnato di \(chi)\(quando)"
         default: return "\(chi)\(quando)".trimmingCharacters(in: .whitespaces)
         }
     }
@@ -100,7 +101,7 @@ enum DirettaLogica {
         } else {
             testo = "\(a) contro \(b)" + (ora.map { ", alle \($0)" } ?? "")
         }
-        for e in live?.eventi ?? [] { testo += ". " + descrizione(e) }
+        for e in EventiPartita.visibili(live?.eventi) { testo += ". " + descrizione(e) }
         if !titolari.isEmpty {
             testo += ". Giocano \(titolari.count == 1 ? "il tuo titolare" : "i tuoi titolari") "
                 + titolari.map(\.nome).joined(separator: ", ")
