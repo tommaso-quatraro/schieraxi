@@ -381,9 +381,9 @@ struct StatoDatiView: View {
                         riga("Coppe europee fino al", s.coppeFino ?? "—")
                     }
                     Section("Avanzate") {
-                        // i nomi grezzi dei dati («quote-odds», «dati-extra») si leggono meglio tradotti; la lista sta ripiegata
+                        // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata
                         DisclosureGroup("Ultimi aggiornamenti dei dati") {
-                            ForEach(s.aggiornamenti ?? []) { a in
+                            ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(NomiDati.leggibile(a.cosa))
                                     Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(.secondary)
