@@ -137,6 +137,7 @@ struct ErroreVista: View {
     let messaggio: String
     let riprova: () -> Void
     @State private var tentativi = 0
+    @Environment(\.accessibilityReduceMotion) private var ridotto
 
     var body: some View {
         if messaggio.dicePerNessunaRosa {
@@ -155,7 +156,7 @@ struct ErroreVista: View {
     private var errore: some View {
         ContentUnavailableView {
             Label(eLimite ? "Limite raggiunto" : "Qualcosa non va", systemImage: eLimite ? "hourglass" : "wifi.exclamationmark")
-                .symbolEffect(.pulse, options: .repeat(3))
+                .symbolEffect(.pulse, options: .repeat(3), isActive: !ridotto)
         } description: {
             // Il testo è quello dell'errore, una volta sola (i messaggi di rete dicono già di controllare la connessione).
             Text(messaggio)

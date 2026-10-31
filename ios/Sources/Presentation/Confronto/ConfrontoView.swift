@@ -173,6 +173,7 @@ struct BarraDivergente: View {
     let massimo: Double
     /// La barra cresce dal centro quando compare.
     @State private var crescita: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var ridotto
 
     var body: some View {
         GeometryReader { g in
@@ -191,7 +192,10 @@ struct BarraDivergente: View {
         }
         .frame(height: 10)
         .accessibilityHidden(true)
-        .onAppear { withAnimation(.smooth(duration: 0.8)) { crescita = 1 } }
+        .onAppear {
+            // Con «Riduci movimento» la barra compare già piena, senza crescere.
+            if ridotto { crescita = 1 } else { withAnimation(.smooth(duration: 0.8)) { crescita = 1 } }
+        }
     }
 }
 

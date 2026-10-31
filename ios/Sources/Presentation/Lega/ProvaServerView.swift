@@ -10,6 +10,7 @@ struct ProvaServerView: View {
     @State private var inCorso = false
     @State private var esito: EsitoConnessione?
     @State private var versioneEsito = 0
+    @Environment(\.accessibilityReduceMotion) private var ridotto
     /// Chi prova: nei test e nelle anteprime si sostituisce con una prova finta.
     var prova: (String) async -> EsitoConnessione = { indirizzo in
         if Demo.attivo { return .raggiunto(versione: nil, squadra: nil) }   // demo: nessuna rete
@@ -42,7 +43,7 @@ struct ProvaServerView: View {
                 Task { await provaESalva() }
             } label: {
                 Label("Prova la connessione", systemImage: "antenna.radiowaves.left.and.right")
-                    .symbolEffect(.variableColor.iterative, isActive: inCorso)
+                    .symbolEffect(.variableColor.iterative, isActive: inCorso && !ridotto)
                     .frame(minHeight: Tema.areaTocco)
             }
             .disabled(inCorso)
@@ -81,7 +82,7 @@ struct ProvaServerView: View {
             Image(systemName: e.icona)
                 .font(.title2)
                 .foregroundStyle(e.raggiunto ? Color.verde : Color.attenzione)
-                .symbolEffect(.bounce, value: versioneEsito)
+                .symbolEffect(.bounce, value: ridotto ? 0 : versioneEsito)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(e.titolo).font(.subheadline.weight(.semibold))

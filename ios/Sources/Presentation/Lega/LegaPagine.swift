@@ -3,11 +3,12 @@ import SwiftUI
 /// Il tasto «Aggiorna i dati» con il suo stato: da mettere dentro una `Section` di una `List`.
 struct AggiornaDatiSezione: View {
     @ObservedObject var vm: AggiornaDatiViewModel
+    @Environment(\.accessibilityReduceMotion) private var ridotto
 
     var body: some View {
         Button { Task { await vm.avvia() } } label: {
             Label(vm.inCorso ? "Aggiornamento in corso…" : "Aggiorna i dati", systemImage: "arrow.triangle.2.circlepath")
-                .symbolEffect(.variableColor.iterative, isActive: vm.inCorso)
+                .symbolEffect(.variableColor.iterative, isActive: vm.inCorso && !ridotto)
                 .frame(minHeight: 44)
         }
         .disabled(vm.inCorso)
