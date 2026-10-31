@@ -90,6 +90,7 @@ struct ValutazioneManuale: Decodable {
     let consigliataStessoModulo: Double?
     let bruttaGiornata: Double?
     let giornataEccezionale: Double?
+    let intervallo: IntervalloPunti?
 }
 
 struct RichiestaValutazione: Encodable {

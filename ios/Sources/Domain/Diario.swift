@@ -30,6 +30,8 @@ struct FormazioneDiario: Decodable {
     let modulo: String?
     let atteso: Double?
     let reale: Double?
+    let dev: Double?
+    let intervallo: IntervalloPunti?
     let titolari: [TitolareDiario]?
 }
 

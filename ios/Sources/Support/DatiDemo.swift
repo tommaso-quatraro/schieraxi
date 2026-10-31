@@ -335,6 +335,11 @@ private enum DatiDemo {
         ids.reduce(0.0) { $0 + calciatore($1).punti }
     }
 
+    /// La fascia dei punti attesi, come la manda il server: da circa -8 a +8,5 attorno ai punti attesi, 8 volte su 10.
+    static func fascia(_ attesi: Double, indicativo: Bool = true) -> [String: Any] {
+        ["basso": attesi - 8, "alto": attesi + 8.5, "confidenza": 0.8, "indicativo": indicativo]
+    }
+
     static func formazione() -> String {
         let base = moduli[0]
         let ids = base.titolari
@@ -348,22 +353,25 @@ private enum DatiDemo {
             var elenco: [[String: Any]] = []
             for m in moduli {
                 elenco.append(["modulo": m.nome, "punteggio_atteso": punteggio(m.titolari) + extra,
-                               "titolari": m.titolari, "panchina": panchina(per: m.titolari)])
+                               "titolari": m.titolari, "panchina": panchina(per: m.titolari),
+                               "dev": 4.2, "intervallo": fascia(punteggio(m.titolari) + extra)])
             }
-            livelli.append(["rischio": r, "nome": nome, "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco])
+            livelli.append(["rischio": r, "nome": nome, "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco,
+                            "intervallo": fascia(punteggio(ids) + extra)])
         }
         var schede: [String: Any] = [:]
         for p in miaRosa { schede[String(p.id)] = giocatore(p) }
         return json([
             "squadra": nomeMia, "giornata": giornata, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
             "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede,
+            "dev": 4.2, "intervallo": fascia(punteggio(ids)),
         ])
     }
 
     static func valutazione() -> String {
         let ids = moduli[0].titolari
         let punti = punteggio(ids)
-        return json(["modulo": "3-4-3", "punteggio_atteso": punti - 1.2, "dev": 3.1, "panchina": panchina(per: ids),
+        return json(["modulo": "3-4-3", "punteggio_atteso": punti - 1.2, "dev": 3.1, "intervallo": fascia(punti - 1.2), "panchina": panchina(per: ids),
                      "differenza": -1.2, "consigliata": punti])
     }
 
@@ -400,7 +408,8 @@ private enum DatiDemo {
         return json([
             "miei_titolari": mieiTitolari,
             "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"), "iniziata": false, "con_probabili": false,
-            "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia],
+            "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia,
+                           "dev": 4.2, "intervallo": fascia(punteggio(ids))],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
             "da_fare": [
                 ["id": "dubbio-120", "tipo": "dubbio", "testo": "Giocatore 045 è in dubbio: guarda le alternative", "priorita": 1,
@@ -699,13 +708,13 @@ private enum DatiDemo {
         return json([
             "giornate": [
                 ["stagione": "2026-27", "giornata": 9,
-                 "consigliata": ["modulo": "3-4-3", "atteso": 68.5, "reale": 71.0, "titolari": titolari(base)],
-                 "schierata": ["modulo": "3-5-2", "atteso": 66.0, "reale": 63.5, "titolari": titolari(altra)]],
+                 "consigliata": ["modulo": "3-4-3", "atteso": 68.5, "reale": 71.0, "intervallo": fascia(68.5), "titolari": titolari(base)],
+                 "schierata": ["modulo": "3-5-2", "atteso": 66.0, "reale": 63.5, "intervallo": fascia(66.0), "titolari": titolari(altra)]],
                 ["stagione": "2026-27", "giornata": 8,
-                 "consigliata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 64.0, "titolari": titolari(base)],
-                 "schierata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 66.5, "titolari": titolari(base)]],
+                 "consigliata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 64.0, "intervallo": fascia(67.0), "titolari": titolari(base)],
+                 "schierata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 66.5, "intervallo": fascia(67.0), "titolari": titolari(base)]],
                 ["stagione": "2026-27", "giornata": 7,
-                 "consigliata": ["modulo": "4-3-3", "atteso": 65.0, "reale": 60.5, "titolari": titolari(base)]],
+                 "consigliata": ["modulo": "4-3-3", "atteso": 65.0, "reale": 60.5, "intervallo": fascia(65.0), "titolari": titolari(base)]],
             ],
             "sintesi": ["giornate": 2, "punti_schierata": 65.0, "punti_consigliata": 67.5, "attesi_schierata": 66.5,
                         "meglio_tua": 1, "meglio_consigliata": 1],

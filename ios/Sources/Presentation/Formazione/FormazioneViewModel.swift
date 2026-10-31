@@ -136,11 +136,15 @@ final class FormazioneViewModel: ViewModelBase {
                                modulo: opzione.modulo, punti: opzione.punteggioAtteso)
     }
 
-    /// Quanto oscilla il punteggio (±): quello del modulo scelto, o della valutazione a mano.
-    func oscillazione(_ f: Formazione) -> Double? {
-        if manuale != nil { return valutazione?.dev }
-        guard let livelli = f.livelli, let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first else { return f.dev }
-        return livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) })?.dev ?? f.dev
+    /// La fascia dei punti del modulo scelto (o della valutazione a mano): «tra 62 e 84 · 8 volte su 10»,
+    /// o «oscilla di ±3» se il server non manda la fascia.
+    func fascia(_ f: Formazione) -> String? {
+        if manuale != nil { return IntervalloPunti.frase(valutazione?.intervallo, dev: valutazione?.dev) }
+        guard let livelli = f.livelli, let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first else {
+            return IntervalloPunti.frase(f.intervallo, dev: f.dev)
+        }
+        let modulo = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) })
+        return IntervalloPunti.frase(modulo?.intervallo ?? (modulo?.dev == nil ? (livello.intervallo ?? f.intervallo) : nil), dev: modulo?.dev ?? f.dev)
     }
 
     /// Chi è fuori dalla formazione mostrata, dal più forte (punti attesi).

@@ -202,6 +202,9 @@ struct OggiView: View {
                     VStack(alignment: .trailing, spacing: 0) {
                         NumeroCheSale(valore: f.punteggioAtteso ?? 0).font(.title2.bold())
                         Text("punti attesi").font(.caption).foregroundStyle(.secondary)
+                        if let fascia = IntervalloPunti.frase(f.intervallo, dev: f.dev) {
+                            Text(fascia).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                        }
                     }
                 }
                 .accessibilityElement(children: .combine)

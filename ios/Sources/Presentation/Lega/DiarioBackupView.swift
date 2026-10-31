@@ -170,17 +170,23 @@ struct DiarioView: View {
     }
 
     private func riga(_ titolo: String, _ f: FormazioneDiario) -> some View {
+        let fascia = IntervalloPunti.frase(f.intervallo, dev: f.dev)
+        return rigaConFascia(titolo, f, fascia)
+    }
+
+    private func rigaConFascia(_ titolo: String, _ f: FormazioneDiario, _ fascia: String?) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(titolo)
             Spacer()
             VStack(alignment: .trailing, spacing: 0) {
                 Text(Formato.punti(f.reale)).font(.headline).monospacedDigit()
                 Text("attesi \(Formato.punti(f.atteso))").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                if let fascia { Text(fascia).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.trailing) }
             }
         }
         .frame(minHeight: 44)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(titolo): \(Formato.punti(f.reale)) punti, attesi \(Formato.punti(f.atteso))")
+        .accessibilityLabel("\(titolo): \(Formato.punti(f.reale)) punti, attesi \(Formato.punti(f.atteso))" + (fascia.map { ", \($0)" } ?? ""))
     }
 }
 

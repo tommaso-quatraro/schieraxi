@@ -231,7 +231,7 @@ struct FormazioneView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 0) {
                 Text(Formato.punti(v.punti)).font(.title2.bold()).monospacedDigit().numerico(v.punti)
-                Text("punti attesi" + (vm.oscillazione(f).map { " · ±\(Formato.intero($0))" } ?? "")).font(.caption).foregroundStyle(.secondary)
+                Text("punti attesi" + (vm.fascia(f).map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
             }
         }
         .accessibilityElement(children: .combine)
@@ -303,7 +303,8 @@ struct FormazioneView: View {
             .font(.footnote).foregroundStyle(.secondary)
         if let r = vm.valutazione, let d = r.differenza {
             Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))). "
-                 + "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale)).")
+                 + (IntervalloPunti.frase(r.intervallo, dev: nil).map { "Punti attesi \($0)." }
+                    ?? "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))."))
                 .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
         }
         // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
