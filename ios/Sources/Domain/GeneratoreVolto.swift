@@ -1,6 +1,6 @@
 import Foundation
 
-// Avatar illustrati di SchieraXI, versione 1. Specifica: docs/AVATAR.md del repository dell'app web (implementazione di riferimento
+// Avatar illustrati di SchieraXI, versione 3. Specifica: docs/AVATAR.md del repository dell'app web (implementazione di riferimento
 // `fanta/web/avatar.js`). Stesso codice calciatore = stesso volto su web, iOS e Android: qui si riproducono gli STESSI indici
 // (numeri casuali mulberry32 e pesi) e gli stessi colori derivati. Il disegno è in `AvatarVolto.swift`.
 
@@ -8,34 +8,39 @@ import Foundation
 struct IndiciVolto: Equatable, Sendable {
     var pelle = 0, forma = 0, acconciatura = 0, colore = 0, barba = 0
     var sopracciglia = 0, occhi = 0, bocca = 0, accessorio = 0, orecchie = 0
+    // Versione 3: nove estrazioni in coda, tutte dal seme (mai dal giocatore).
+    var espressione = 0, ritocco = 0, guance = 0, rughe = 0, naso = 0, sfondo = 0, maglia = 0, colletto = 0, spalle = 0
 
+    /// Le dieci parti della versione 1 (come i vettori `VETTORE` e `VETTORE2`).
     var elenco: [Int] { [pelle, forma, acconciatura, colore, barba, sopracciglia, occhi, bocca, accessorio, orecchie] }
+    /// Le nove parti della versione 3 (come i vettori `VETTORE3`).
+    var elenco3: [Int] { [espressione, ritocco, guance, rughe, naso, sfondo, maglia, colletto, spalle] }
 }
 
-/// I tratti grossolani di un giocatore (versione 2 degli avatar): tutti facoltativi, un valore non valido vale come mancante.
+/// I tratti grossolani di un giocatore (versione 2 degli avatar): colore dei capelli, famiglia di acconciatura, barba sì/no.
+/// Tutti facoltativi, un valore non valido vale come mancante. La carnagione NON esiste: un eventuale campo `p` del server si ignora
+/// (la pelle viene sempre e solo dal seme).
 struct TrattiVolto: Codable, Equatable, Sendable {
-    var p: Int?
     var c: Int?
     var a: String?
     var b: Int?
 
-    init(p: Int? = nil, c: Int? = nil, a: String? = nil, b: Int? = nil) {
-        self.p = p; self.c = c; self.a = a; self.b = b
+    init(c: Int? = nil, a: String? = nil, b: Int? = nil) {
+        self.c = c; self.a = a; self.b = b
     }
 
-    private enum Chiavi: String, CodingKey { case p, c, a, b }
+    private enum Chiavi: String, CodingKey { case c, a, b }
 
     /// Tollerante: un campo del tipo sbagliato (o enorme) si ignora, non rovina gli altri.
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
-        p = (try? k.decodeIfPresent(Int.self, forKey: .p)) ?? nil
         c = (try? k.decodeIfPresent(Int.self, forKey: .c)) ?? nil
         a = (try? k.decodeIfPresent(String.self, forKey: .a)) ?? nil
         b = (try? k.decodeIfPresent(Int.self, forKey: .b)) ?? nil
     }
 
     /// Una chiave stabile per la memoria dei disegni.
-    var chiave: String { "\(p ?? -1).\(c ?? -1).\(a ?? "-").\(b ?? -1)" }
+    var chiave: String { "\(c ?? -1).\(a ?? "-").\(b ?? -1)" }
 }
 
 /// Un colore a tre canali interi, con l'aritmetica della specifica (stessi arrotondamenti ovunque).
@@ -81,7 +86,7 @@ struct RGB8: Equatable, Sendable {
 }
 
 enum GeneratoreVolto {
-    static let versione = 1
+    static let versione = 3
     private static let sale: UInt32 = 0xA5C1D1CE
 
     /// Pesi (interi, somma 100) di ogni parte, nell'ordine di estrazione.
@@ -95,6 +100,18 @@ enum GeneratoreVolto {
     static let pesiBocca = [30, 35, 20, 15]
     static let pesiAccessorio = [78, 8, 8, 6]
     static let pesiOrecchie = [70, 30]
+    /// Versione 3, nell'ordine di estrazione: espressione, ritocco capelli, guance, rughe, naso, sfondo, maglia, colletto, spalle.
+    static let pesiEspressione = [52, 20, 12, 8, 8]
+    static let pesiRitocco = [50, 28, 22]
+    static let pesiGuance = [62, 38]
+    static let pesiRughe = [84, 16]
+    static let pesiNaso = [50, 28, 22]
+    static let pesiSfondo = [28, 24, 18, 16, 14]
+    static let pesiMaglia = [40, 22, 20, 18]
+    static let pesiColletto = [55, 25, 20]
+    static let pesiSpalle = [60, 40]
+    /// Acconciature su cui non si disegnano i ritocchi: rasata, calvo, cresta bassa.
+    static let senzaRitocchi = [0, 9, 7]
 
     static let pelli = ["#f6d5bd", "#efc2a0", "#e0a97e", "#c98e5f", "#a56a43", "#7a4a2d", "#5a3722"]
     static let capelli = ["#17171b", "#3a2618", "#6a4328", "#a9793a", "#d9b45a", "#a8441f", "#9aa0a6", "#e8dcc0"]
@@ -143,16 +160,16 @@ enum GeneratoreVolto {
     /// Famiglie di acconciature della versione 2: R rasati o calvi, C corti, L lunghi, I ricci.
     static let famiglie: [String: [Int]] = ["R": [0, 9], "C": [1, 6, 7, 10, 11], "L": [4, 5, 8], "I": [2, 3]]
 
-    /// Versione 2 (docs/AVATAR.md, sezione 8): dopo le dieci estrazioni se ne fanno SEMPRE due in più (u11, u12), anche senza tratti.
-    /// I tratti grossolani (carnagione, colore e famiglia di capelli, barba) spostano solo alcune parti; un tratto mancante o non
+    /// Versione 2 (docs/AVATAR.md, sezione 8): dopo le dieci estrazioni se ne fanno SEMPRE due in più (u11, u12), anche senza tratti,
+    /// poi (versione 3) altre nove. I tratti grossolani (colore e famiglia di capelli, barba) spostano solo alcune parti; un tratto mancante o non
     /// valido si ignora. Senza tratti il risultato è identico alla versione 1.
     static func estrai(id: Int, tratti: TrattiVolto?) -> IndiciVolto {
         var g = Mulberry32(seme: seme(id: id))
         var v = dieciEstrazioni(&g)
         let u11 = g.prossimo()
         let u12 = g.prossimo()
+        noveEstrazioni(&g, &v)
         if let t = tratti {
-            if let p = t.p, (0..<pesiPelle.count).contains(p) { v.pelle = p }
             if let c = t.c, (0..<pesiColore.count).contains(c) { v.colore = c }
             if let a = t.a, let membri = famiglie[a], !membri.contains(v.acconciatura) {
                 let pesi = membri.map { pesiAcconciatura[$0] }
@@ -182,6 +199,19 @@ enum GeneratoreVolto {
         if v.accessorio == 2, acconciatureCheCoprono.contains(v.acconciatura) { v.accessorio = 0 }   // R1
         if v.accessorio == 1, v.acconciatura == cresta { v.accessorio = 0 }                           // R2
         return v
+    }
+
+    /// Versione 3: le nove estrazioni dopo `u11` e `u12`, sempre tutte, che i tratti non toccano.
+    private static func noveEstrazioni(_ g: inout Mulberry32, _ v: inout IndiciVolto) {
+        v.espressione = scegli(&g, pesiEspressione)
+        v.ritocco = scegli(&g, pesiRitocco)
+        v.guance = scegli(&g, pesiGuance)
+        v.rughe = scegli(&g, pesiRughe)
+        v.naso = scegli(&g, pesiNaso)
+        v.sfondo = scegli(&g, pesiSfondo)
+        v.maglia = scegli(&g, pesiMaglia)
+        v.colletto = scegli(&g, pesiColletto)
+        v.spalle = scegli(&g, pesiSpalle)
     }
 
     /// Le dieci estrazioni, nell'ordine fisso della specifica, prima delle regole di coerenza.
