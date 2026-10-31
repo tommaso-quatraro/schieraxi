@@ -6,22 +6,72 @@ struct LegaView: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.apriImpostazioni) private var apriImpostazioni
 
+    @Environment(\.horizontalSizeClass) private var classe
+
     var body: some View {
+        if classe == .regular { colonne } else { pila }
+    }
+
+    /// iPhone e finestre strette: una pila, come prima.
+    private var pila: some View {
         NavigationStack(path: $vm.percorso) {
-            List {
-                if vm.nuovaStagione { bannerStagione }
-                sezioneLega
-                sezioneImpostazioni
-            }
-            .scrollContentBackground(.hidden)
-            .background(Sfondo())
-            .demoInFondo()
-            .navigationTitle("Lega")
-            .ricercaGlobale()
-            .navigationDestination(for: PaginaLega.self) { pagina in destinazione(pagina) }
-            .refreshable { await vm.carica() }
-            .task { await vm.carica() }
+            elenco
+                .navigationDestination(for: PaginaLega.self) { pagina in destinazione(pagina) }
         }
+    }
+
+    /// iPad e finestre larghe: l'elenco a sinistra, la pagina scelta a destra (le pagine che ne aprono altre restano nella colonna di destra).
+    /// Il percorso resta quello di `vm.percorso`: la prima pagina è la scelta nell'elenco, le altre stanno sopra nella colonna di destra.
+    private var colonne: some View {
+        NavigationSplitView {
+            elenco
+        } detail: {
+            NavigationStack(path: percorsoSopra) {
+                Group {
+                    if let prima = vm.percorso.first {
+                        destinazione(prima)
+                    } else {
+                        ContentUnavailableView("Scegli una voce", systemImage: "list.bullet.rectangle",
+                                               description: Text("Le rose, le regole e lo storico della tua lega si aprono qui."))
+                    }
+                }
+                .navigationDestination(for: PaginaLega.self) { pagina in destinazione(pagina) }
+            }
+            // Cambiando voce nell'elenco la colonna di destra riparte pulita.
+            .id(vm.percorso.first)
+        }
+    }
+
+    private var voceScelta: Binding<PaginaLega?> {
+        Binding(
+            get: { vm.percorso.first },
+            set: { nuova in vm.percorso = nuova.map { [$0] } ?? [] }
+        )
+    }
+
+    private var percorsoSopra: Binding<[PaginaLega]> {
+        Binding(
+            get: { Array(vm.percorso.dropFirst()) },
+            set: { resto in
+                guard let prima = vm.percorso.first else { return }
+                vm.percorso = [prima] + resto
+            }
+        )
+    }
+
+    private var elenco: some View {
+        List(selection: classe == .regular ? voceScelta : nil) {
+            if vm.nuovaStagione { bannerStagione }
+            sezioneLega
+            sezioneImpostazioni
+        }
+        .scrollContentBackground(.hidden)
+        .background(Sfondo())
+        .demoInFondo()
+        .navigationTitle("Lega")
+        .ricercaGlobale()
+        .refreshable { await vm.carica() }
+        .task { await vm.carica() }
     }
 
     @ViewBuilder

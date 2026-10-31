@@ -266,6 +266,9 @@ struct ClassificaView: View {
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
+            // Su iPad la tabella non si allarga a tutto lo schermo: colonna centrale leggibile.
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
             .animation(Tema.morbida, value: vm.classifica.dato != nil)
         }
         .demoInFondo()
@@ -334,6 +337,9 @@ struct CalendarioView: View {
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
+            // Su iPad la tabella non si allarga a tutto lo schermo: colonna centrale leggibile.
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
             .animation(Tema.morbida, value: vm.calendario.dato != nil)
         }
         .refreshable { await vm.calendario.ricarica() }
