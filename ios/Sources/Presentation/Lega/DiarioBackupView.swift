@@ -90,7 +90,7 @@ struct DiarioView: View {
             List {
                 if let d = vm.caricatore.dato {
                     Section {
-                        Text("Per ogni giornata finita: i punti fatti (\"attesi\" = quelli previsti prima) dalla formazione che hai schierato e da quella che il modello avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi.")
+                        Text("Per ogni giornata finita: i punti fatti (\"attesi\" = quelli previsti prima) dalla formazione che hai schierato e da quella che il modello avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if let s = d.sintesi, (s.giornate ?? 0) > 0 { sintesi(s) }
@@ -143,23 +143,28 @@ struct DiarioView: View {
 
     private func giornata(_ v: VoceDiario) -> some View {
         Section {
-            if let s = v.schierata {
-                riga("La tua (\(s.modulo ?? "–"))", s)
-            } else {
+            if v.schierata == nil {
                 Text("Non avevi salvato la tua formazione per questa giornata.").font(.footnote).foregroundStyle(.secondary)
-                if let g = v.giornata {
-                    Button {
-                        Task { await vm.haSchieratoLaConsigliata(giornata: g) }
-                    } label: {
-                        HStack {
-                            if vm.inSalvataggio == g { ProgressView() }
-                            Label("Ho schierato la consigliata", systemImage: "checkmark.circle").font(.subheadline.weight(.semibold))
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            if let c = v.confronto {
+                ConfrontoDiarioView(confronto: c)
+                    .padding(.vertical, 4)
+            }
+            if let s = v.schierata {
+                riga(s.tipo == "consigliata" ? "La tua, la consigliata (\(s.modulo ?? "–"))" : "La tua (\(s.modulo ?? "–"))", s)
+            } else if let g = v.giornata {
+                Button {
+                    Task { await vm.haSchieratoLaConsigliata(giornata: g) }
+                } label: {
+                    HStack {
+                        if vm.inSalvataggio == g { ProgressView() }
+                        Label("Ho schierato questa", systemImage: "checkmark.circle").font(.body.weight(.semibold))
                     }
-                    .disabled(vm.inSalvataggio != nil)
-                    .accessibilityHint("Salva come tua scelta la formazione che il modello avrebbe consigliato per la giornata \(g)")
+                    .frame(maxWidth: .infinity, minHeight: 44)
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(vm.inSalvataggio != nil)
+                .accessibilityHint("Salva come tua scelta la formazione consigliata per la giornata \(g)")
             }
             if let g = v.giornata {
                 Button { daCorreggere = v } label: {
@@ -169,8 +174,9 @@ struct DiarioView: View {
                 .disabled(vm.inSalvataggio != nil)
                 .accessibilityHint("Scegli a mano i tuoi undici della giornata \(g)")
             }
-            if let c = v.consigliata { riga("Del modello (\(c.modulo ?? "–"))", c) }
-            if let frase = v.differenze { Text(frase).font(.footnote).foregroundStyle(.secondary) }
+            if let c = v.consigliata {
+                riga(v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(c.modulo ?? "–"))" : "Del modello (\(c.modulo ?? "–"))", c)
+            }
         } header: {
             Text("Giornata \(v.giornata ?? 0)" + (v.stagione.map { " · \($0)" } ?? ""))
         }

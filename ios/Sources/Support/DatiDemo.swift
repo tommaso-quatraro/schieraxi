@@ -702,19 +702,32 @@ private enum DatiDemo {
 
     /// Diario delle giornate: due giornate finite, una con la formazione schierata e una senza.
     static func diario() -> String {
+        // Gli id seguono il nome (non la posizione), così due formazioni con un nome diverso risultano davvero diverse.
+        let anagrafe = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Dumfries", "Giocatore 071", "Mkhitaryan", "Zielinski"]
+        let ruoliDi = ["Giocatore 089": "P", "Giocatore 004": "D", "Giocatore 019": "D", "Dumfries": "D", "Giocatore 044": "A", "Thuram": "A", "Giocatore 046": "A", "Pulisic": "A", "Giocatore 071": "A"]
         func titolari(_ nomi: [String]) -> [[String: Any]] {
-            nomi.enumerated().map { ["id": 9000 + $0.offset, "nome": $0.element, "ruolo": $0.offset == 0 ? "P" : "C"] }
+            nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruoliDi[$0] ?? "C"] }
         }
         let base = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Dumfries"]
         let altra = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Giocatore 071"]
+        let altra2 = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Mkhitaryan", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Zielinski", "Giocatore 071"]
+        func istantanea(_ g: Int, _ modulo: String, _ nomi: [String], atteso: Double, ora: String) -> [String: Any] {
+            ["giornata": g, "modulo": modulo, "titolari": titolari(nomi), "panchina": titolari(["Mkhitaryan", "Zielinski", "Giocatore 071"]),
+             "atteso": atteso, "stile": "Equilibrato", "calcolata": ora]
+        }
         return json([
             "giornate": [
+                ["stagione": "2026-27", "giornata": 10,
+                 "consigliata": ["modulo": "3-4-3", "atteso": 69.0, "reale": 72.5, "intervallo": fascia(69.0), "titolari": titolari(base)],
+                 "istantanea": istantanea(10, "3-4-3", base, atteso: 69.0, ora: "2026-10-31T10:05:00")],
                 ["stagione": "2026-27", "giornata": 9,
                  "consigliata": ["modulo": "3-4-3", "atteso": 68.5, "reale": 71.0, "intervallo": fascia(68.5), "titolari": titolari(base)],
+                 "istantanea": istantanea(9, "3-4-3", base, atteso: 68.5, ora: "2026-10-24T09:40:00"),
                  "schierata": ["modulo": "3-5-2", "atteso": 66.0, "reale": 63.5, "intervallo": fascia(66.0), "titolari": titolari(altra)]],
                 ["stagione": "2026-27", "giornata": 8,
                  "consigliata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 64.0, "intervallo": fascia(67.0), "titolari": titolari(base)],
-                 "schierata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 66.5, "intervallo": fascia(67.0), "titolari": titolari(base)]],
+                 "istantanea": istantanea(8, "3-4-3", base, atteso: 67.0, ora: "2026-10-17T11:20:00"),
+                 "schierata": ["modulo": "3-4-3", "atteso": 66.0, "reale": 59.5, "intervallo": fascia(66.0), "titolari": titolari(altra2)]],
                 ["stagione": "2026-27", "giornata": 7,
                  "consigliata": ["modulo": "4-3-3", "atteso": 65.0, "reale": 60.5, "intervallo": fascia(65.0), "titolari": titolari(base)]],
             ],

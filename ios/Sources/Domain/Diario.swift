@@ -12,20 +12,41 @@ struct DiarioRisposta: Decodable {
 struct VoceDiario: Decodable, Identifiable {
     let stagione: String?
     let giornata: Int?
+    /// La ricostruzione di oggi con i dati di allora (porta i punti fatti).
     let consigliata: FormazioneDiario?
     let schierata: FormazioneDiario?
+    /// Facoltativo: la formazione che SchieraXI consigliava davvero prima della giornata. `null` o assente = non registrata.
+    let istantanea: IstantaneaDiario?
 
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
 
-    /// Una frase sulle differenze tra la formazione schierata e quella del modello.
-    var differenze: String? {
-        guard let tue = schierata?.titolari, let loro = consigliata?.titolari else { return nil }
-        let idTue = Set(tue.compactMap(\.id)), idLoro = Set(loro.compactMap(\.id))
-        let fuori = tue.filter { $0.id.map { !idLoro.contains($0) } ?? false }.compactMap(\.nome)
-        let dentro = loro.filter { $0.id.map { !idTue.contains($0) } ?? false }.compactMap(\.nome)
-        if fuori.isEmpty { return "Stessi 11 del modello." }
-        return "Il modello avrebbe messo \(dentro.joined(separator: ", ")) al posto di \(fuori.joined(separator: ", "))."
+    private enum Chiavi: String, CodingKey { case stagione, giornata, consigliata, schierata, istantanea }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Chiavi.self)
+        stagione = try? c.decodeIfPresent(String.self, forKey: .stagione)
+        giornata = try? c.decodeIfPresent(Int.self, forKey: .giornata)
+        consigliata = try? c.decodeIfPresent(FormazioneDiario.self, forKey: .consigliata)
+        schierata = try? c.decodeIfPresent(FormazioneDiario.self, forKey: .schierata)
+        // Un'istantanea in un formato che non conosco vale come «non registrata»: il resto del Diario si legge lo stesso.
+        istantanea = try? c.decodeIfPresent(IstantaneaDiario.self, forKey: .istantanea)
     }
+
+    /// Il confronto «Cosa consigliava SchieraXI» contro «Cosa hai schierato»; `nil` se non c'è nessuna formazione consigliata da mostrare.
+    var confronto: ConfrontoDiario? { ConfrontoDiario(self) }
+}
+
+/// La formazione consigliata salvata dal server per una giornata (`istantanea` di `GET /api/diario`).
+struct IstantaneaDiario: Decodable {
+    let giornata: Int?
+    let modulo: String?
+    let titolari: [TitolareDiario]?
+    let panchina: [TitolareDiario]?
+    let atteso: Double?
+    /// Può mancare o essere `null`.
+    let stile: String?
+    /// Ora italiana ISO senza fuso, per esempio `2026-10-31T10:05:00`.
+    let calcolata: String?
 }
 
 struct FormazioneDiario: Decodable {
@@ -35,6 +56,8 @@ struct FormazioneDiario: Decodable {
     let dev: Double?
     let intervallo: IntervalloPunti?
     let titolari: [TitolareDiario]?
+    /// «consigliata» se hai segnato con un tocco di aver schierato la consigliata.
+    let tipo: String?
 }
 
 struct TitolareDiario: Decodable {
