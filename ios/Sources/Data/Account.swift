@@ -30,6 +30,21 @@ struct RispostaAccount: Decodable {
     var utente: Utente?
     var token: String?
     var codiceRecupero: String?
+    /// Email dell'account e indirizzo ancora da verificare (il server li manda con gli account accesi; facoltativi e letti con tolleranza).
+    var email: String?
+    var emailInAttesa: String?
+
+    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        multiutente = try c.decodeIfPresent(Bool.self, forKey: .multiutente)
+        utente = try c.decodeIfPresent(Utente.self, forKey: .utente)
+        token = try c.decodeIfPresent(String.self, forKey: .token)
+        codiceRecupero = try c.decodeIfPresent(String.self, forKey: .codiceRecupero)
+        email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? nil
+        emailInAttesa = (try? c.decodeIfPresent(String.self, forKey: .emailInAttesa)) ?? nil
+    }
 }
 
 /// Dove siamo rispetto all'accesso.
@@ -50,6 +65,25 @@ enum RegoleAccount {
     /// Il nome utente come lo vuole il server: minuscolo, senza spazi ai lati.
     static func pulisciNome(_ testo: String) -> String {
         testo.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    /// Cambiare le maiuscole del nome: il nome per accedere resta lo stesso (cambiano solo maiuscole e minuscole).
+    /// nil se va bene, altrimenti cosa non va.
+    static func problemaMaiuscole(_ nuovo: String, nomeUtente: String) -> String? {
+        let pulito = nuovo.trimmingCharacters(in: .whitespacesAndNewlines)
+        if pulito.isEmpty { return "Scrivi il nome." }
+        if pulito.lowercased() != nomeUtente.lowercased() { return "Si possono cambiare solo le maiuscole: le lettere devono restare le stesse." }
+        return nil
+    }
+
+    /// Controllo leggero di un indirizzo email (l'ultima parola è del server).
+    static func problemaEmail(_ testo: String) -> String? {
+        let t = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return "Scrivi l'indirizzo email." }
+        let parti = t.split(separator: "@", omittingEmptySubsequences: false)
+        guard parti.count == 2, !parti[0].isEmpty, parti[1].contains("."), !parti[1].hasPrefix("."), !parti[1].hasSuffix("."),
+              !t.contains(" "), t.count <= 254 else { return "Questo non sembra un indirizzo email." }
+        return nil
     }
 
     /// nil se va bene, altrimenti cosa non va (frase breve, da spogliatoio).
@@ -113,6 +147,20 @@ private struct CorpoSoloPassword: Encodable {
     let password: String
 }
 
+private struct CorpoNomeUtente: Encodable {
+    let nomeUtente: String
+    enum CodingKeys: String, CodingKey { case nomeUtente = "nome_utente" }
+}
+
+private struct CorpoEmail: Encodable {
+    let email: String
+    let password: String
+}
+
+private struct CorpoCodiceEmail: Encodable {
+    let codice: String
+}
+
 /// Il conto alla rovescia dopo un «troppi tentativi» (429): quanti secondi mancano, e si ferma a zero.
 enum AttesaRiprova {
     static func secondiRimasti(fino: Date, adesso: Date = Date()) -> Int {
@@ -156,6 +204,9 @@ final class SessioneAccount: ObservableObject {
     @Published private(set) var inCorso = false
     /// Un avviso da far vedere in Lega: per esempio il Keychain che non ha salvato l'accesso.
     @Published private(set) var avviso: String?
+    /// Email dell'account (verificata) e indirizzo in attesa di verifica: dal server, solo con gli account accesi.
+    @Published private(set) var email: String?
+    @Published private(set) var emailInAttesa: String?
 
     /// Errori dell'app (non del server) durante accesso e account.
     enum Errore: LocalizedError, Equatable {
@@ -248,6 +299,8 @@ final class SessioneAccount: ObservableObject {
             let r: RispostaAccount = try await server.get("/api/account/me")
             if r.multiutente == true {
                 if let u = r.utente {
+                    email = r.email
+                    emailInAttesa = r.emailInAttesa
                     imposta(.connesso(u))
                     // il widget ha il suo token a scopo limitato (mai quello della sessione)
                     let s = server
@@ -425,6 +478,41 @@ final class SessioneAccount: ObservableObject {
         let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/codice-recupero", CorpoSoloPassword(password: password)) }
         guard let codice = r.codiceRecupero, Accesso.codiceRecuperoValido(codice) else { throw Errore.rispostaNonValida }
         return codice
+    }
+
+    /// Cambia le maiuscole del nome (il nome per accedere non cambia).
+    func cambiaMaiuscole(_ nuovo: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        let r: RispostaAccount = try await conTraduzione {
+            try await server.posta("PUT", "/api/account/nome", CorpoNomeUtente(nomeUtente: nuovo.trimmingCharacters(in: .whitespacesAndNewlines)))
+        }
+        guard let u = r.utente, u.nomeUtente.count <= 100 else { throw Errore.serverNonValido }
+        imposta(.connesso(u))
+    }
+
+    /// Chiede al server di verificare un indirizzo email: arriva un codice a quell'indirizzo. La risposta è sempre la stessa.
+    func aggiungiEmail(_ email: String, password: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        let pulita = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        _ = try await server.corpoJSON("POST", "/api/account/email", CorpoEmail(email: pulita, password: password))
+        emailInAttesa = pulita
+    }
+
+    func confermaEmail(codice: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        _ = try await server.corpoJSON("POST", "/api/account/email/conferma", CorpoCodiceEmail(codice: codice.trimmingCharacters(in: .whitespacesAndNewlines)))
+        await verifica()
+    }
+
+    func togliEmail(password: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        _ = try await server.corpoJSON("POST", "/api/account/email/togli", CorpoSoloPassword(password: password))
+        email = nil
+        emailInAttesa = nil
     }
 
     /// Cancella l'account e tutti i suoi dati sul server (non si può annullare), poi svuota il telefono.

@@ -6,7 +6,7 @@ struct AccountSezione: View {
     @EnvironmentObject private var sessione: SessioneAccount
 
     private enum Foglio: String, Identifiable {
-        case password, codice, elimina
+        case password, codice, elimina, nome, email
         var id: String { rawValue }
     }
 
@@ -24,6 +24,13 @@ struct AccountSezione: View {
                     RigaValore(titolo: "Per accedere", valore: utente.nomeUtente)
                 }
                 RigaValore(titolo: "Ruolo", valore: utente.ruoloLeggibile)
+                RigaValore(titolo: "Email", valore: sessione.email ?? (sessione.emailInAttesa.map { "\($0) (da verificare)" } ?? "Nessuna"))
+                Button { foglio = .nome } label: {
+                    Label("Cambia le maiuscole del nome", systemImage: "textformat").labelStyle(.voce(.indigo)).frame(minHeight: Tema.areaTocco)
+                }
+                Button { foglio = .email } label: {
+                    Label(sessione.email == nil ? "Aggiungi un'email" : "Gestisci l'email", systemImage: "envelope").labelStyle(.voce(.teal)).frame(minHeight: Tema.areaTocco)
+                }
                 Button { chiediEsci = true } label: {
                     Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
                 }
@@ -65,6 +72,10 @@ struct AccountSezione: View {
                         FoglioNuovoCodice()
                     case .elimina:
                         FoglioElimina()
+                    case .nome:
+                        FoglioMaiuscole(nomeUtente: utente.nomeUtente, attuale: utente.nome) { messaggio = "Nome cambiato." ; errore = nil }
+                    case .email:
+                        FoglioEmail { messaggio = $0 ; errore = nil }
                     }
                 }
                 .presentationDragIndicator(.visible)
@@ -245,6 +256,165 @@ struct FoglioElimina: View {
     private func elimina() async {
         do {
             try await sessione.elimina(password: password)
+        } catch {
+            errore = SchermataAccesso.testoErrore(error)
+        }
+    }
+}
+
+/// Cambia le maiuscole del nome («thebest» diventa «TheBest»): le lettere restano le stesse, il nome per accedere non cambia.
+struct FoglioMaiuscole: View {
+    let nomeUtente: String
+    let attuale: String
+    let fatto: () -> Void
+    @EnvironmentObject private var sessione: SessioneAccount
+    @Environment(\.dismiss) private var chiudi
+    @State private var nome = ""
+    @State private var errore: String?
+
+    private var problema: String? { RegoleAccount.problemaMaiuscole(nome, nomeUtente: nomeUtente) }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Nome", text: $nome)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.go)
+                    .onSubmit { Task { await invia() } }
+                    .frame(minHeight: Tema.areaTocco)
+            } header: {
+                Text("Come vuoi vedere il tuo nome")
+            } footer: {
+                if let problema, !nome.isEmpty { Text(problema).foregroundStyle(Color.attenzione) }
+                else { Text("Cambiano solo le maiuscole. Per accedere si usa sempre «\(nomeUtente)».") }
+            }
+            if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
+            Section {
+                Button { Task { await invia() } } label: {
+                    Text(sessione.inCorso ? "Un attimo…" : "Salva il nome").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                }
+                .disabled(problema != nil || sessione.inCorso)
+            }
+        }
+        .navigationTitle("Maiuscole del nome")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
+        .onAppear { if nome.isEmpty { nome = attuale } }
+    }
+
+    private func invia() async {
+        guard problema == nil else { return }
+        do {
+            try await sessione.cambiaMaiuscole(nome)
+            fatto()
+            chiudi()
+        } catch {
+            errore = SchermataAccesso.testoErrore(error)
+        }
+    }
+}
+
+/// Email dell'account (facoltativa): serve per recuperare la password. Si aggiunge con la password, si verifica con un codice
+/// ricevuto per email, si toglie con la password.
+struct FoglioEmail: View {
+    let fatto: (String) -> Void
+    @EnvironmentObject private var sessione: SessioneAccount
+    @Environment(\.dismiss) private var chiudi
+    @State private var indirizzo = ""
+    @State private var password = ""
+    @State private var codice = ""
+    @State private var errore: String?
+    @State private var codiceInviato = false
+
+    var body: some View {
+        Form {
+            if let email = sessione.email {
+                Section {
+                    RigaValore(titolo: "Email verificata", valore: email)
+                } footer: {
+                    Text("Serve per recuperare la password se la dimentichi.")
+                }
+                Section("Togli l'email") {
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .frame(minHeight: Tema.areaTocco)
+                    Button(role: .destructive) { Task { await togli() } } label: {
+                        Text(sessione.inCorso ? "Un attimo…" : "Togli l'email").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    }
+                    .disabled(password.isEmpty || sessione.inCorso)
+                }
+            } else {
+                if codiceInviato || sessione.emailInAttesa != nil {
+                    Section {
+                        TextField("Codice ricevuto", text: $codice)
+                            .keyboardType(.numberPad)
+                            .textContentType(.oneTimeCode)
+                            .frame(minHeight: Tema.areaTocco)
+                        Button { Task { await conferma() } } label: {
+                            Text(sessione.inCorso ? "Un attimo…" : "Conferma il codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                        }
+                        .disabled(codice.trimmingCharacters(in: .whitespaces).isEmpty || sessione.inCorso)
+                    } header: {
+                        Text("Verifica")
+                    } footer: {
+                        Text("Ti ho mandato un codice all'indirizzo scelto (controlla anche la posta indesiderata). Se non arriva, riprova qui sotto.")
+                    }
+                }
+                Section {
+                    TextField("Indirizzo email", text: $indirizzo)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .frame(minHeight: Tema.areaTocco)
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .frame(minHeight: Tema.areaTocco)
+                    Button { Task { await aggiungi() } } label: {
+                        Text(sessione.inCorso ? "Un attimo…" : "Manda il codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    }
+                    .disabled(RegoleAccount.problemaEmail(indirizzo) != nil || password.isEmpty || sessione.inCorso)
+                } header: {
+                    Text("Aggiungi un'email")
+                } footer: {
+                    Text("Facoltativa: ti permette di recuperare la password anche senza il codice di recupero.")
+                }
+            }
+            if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
+        }
+        .navigationTitle("Email dell'account")
+        .schermoProtetto()
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { chiudi() } } }
+    }
+
+    private func aggiungi() async {
+        do {
+            try await sessione.aggiungiEmail(indirizzo, password: password)
+            password = ""
+            errore = nil
+            codiceInviato = true
+        } catch {
+            errore = SchermataAccesso.testoErrore(error)
+        }
+    }
+
+    private func conferma() async {
+        do {
+            try await sessione.confermaEmail(codice: codice)
+            fatto("Email verificata.")
+            chiudi()
+        } catch {
+            errore = SchermataAccesso.testoErrore(error)
+        }
+    }
+
+    private func togli() async {
+        do {
+            try await sessione.togliEmail(password: password)
+            fatto("Email tolta.")
+            chiudi()
         } catch {
             errore = SchermataAccesso.testoErrore(error)
         }
