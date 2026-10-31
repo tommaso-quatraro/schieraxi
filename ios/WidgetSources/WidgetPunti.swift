@@ -103,7 +103,7 @@ struct VistaPunti: View {
             Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
             Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
             if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
-            GraficoPunti(giornate: w.giornateGiocate, altezza: 18, conEtichette: false, massimo: 5).padding(.top, 2)
+            GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false, massimo: 5).padding(.top, 2).padding(.bottom, 4)
             PiedeDati(voce: voce)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -144,7 +144,7 @@ struct VistaPunti: View {
         let giornate = Array(w.giornateGiocate.prefix(5))
         let scarti = giornate.compactMap(GraficoPunti.scarto)
         let media = scarti.isEmpty ? nil : scarti.reduce(0, +) / Double(scarti.count)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.6)
@@ -153,7 +153,7 @@ struct VistaPunti: View {
                     .lineLimit(2)
                 Spacer(minLength: 0)
             }
-            GraficoPunti(giornate: giornate, altezza: 110)
+            GraficoPunti(giornate: giornate, altezza: 80)
             legenda
             VStack(spacing: 3) {
                 ForEach(giornate) { x in
