@@ -329,6 +329,33 @@ struct Oggi: Decodable {
     let senzaRose: Bool?
     /// I miei titolari consigliati per squadra: servono a evidenziare le partite in cui giocano. Facoltativo (server vecchio).
     let mieiTitolari: MieiTitolari?
+    /// Quanto sono fresche le probabili (facoltativo: server vecchio o probabili assenti). Letto in modo tollerante.
+    let probabili: Tollerante<ProbabiliFresche>?
+}
+
+/// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.
+struct ProbabiliFresche: Decodable, Equatable {
+    let aggiornateIl: String?
+    let minutiFa: Int?
+    let eta: String?
+    let testo: String?
+    let vecchie: Bool?
+    let avviso: String?
+
+    /// La riga discreta: «Probabili aggiornate alle 13:05 · 2 ore fa». Nil se il server non ha mandato il testo.
+    var riga: String? {
+        let t = testo?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let e = eta?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if t.isEmpty { return nil }
+        return e.isEmpty ? t : "\(t) · \(e)"
+    }
+
+    /// L'avviso in evidenza: solo se le probabili sono vecchie e c'è la frase.
+    var avvisoVisibile: String? {
+        guard vecchie == true else { return nil }
+        let a = avviso?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return a.isEmpty ? nil : a
+    }
 }
 
 /// Una cosa da fare in Oggi: «Giocatore 044 è in dubbio: sostituiscilo», «Aggiorna le rose», «Rinnova l'app»...

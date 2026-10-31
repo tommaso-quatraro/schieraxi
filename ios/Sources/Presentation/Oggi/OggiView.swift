@@ -214,6 +214,18 @@ struct OggiView: View {
                 .accessibilityElement(children: .combine)
                 Button { vaiASezione(.formazione) } label: { Label("Apri la formazione", systemImage: "sportscourt").frame(maxWidth: .infinity, minHeight: Tema.areaTocco) }
                     .pulsanteVetro(prominente: true)
+                if let p = oggi.probabili?.valore {
+                    if let avviso = p.avvisoVisibile {
+                        Label(avviso, systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let riga = p.riga {
+                        Text(riga).font(.footnote).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityLabel(riga)
+                    }
+                }
             } else {
                 Text("Formazione non disponibile.").foregroundStyle(.secondary)
             }

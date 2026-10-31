@@ -407,7 +407,9 @@ private enum DatiDemo {
         }
         return json([
             "miei_titolari": mieiTitolari,
-            "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"), "iniziata": false, "con_probabili": false,
+            "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"), "iniziata": false, "con_probabili": true,
+            "probabili": ["aggiornate_il": "2026-11-08 09:05", "minuti_fa": 480, "eta": "8 ore fa", "testo": "Probabili aggiornate alle 09:05",
+                          "vecchie": true, "avviso": "Le probabili hanno 8 ore: ricontrolla prima del fischio."],
             "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia,
                            "dev": 4.2, "intervallo": fascia(punteggio(ids))],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
