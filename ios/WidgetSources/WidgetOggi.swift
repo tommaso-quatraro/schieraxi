@@ -100,7 +100,7 @@ struct VistaWidget: View {
                 Text(voce.indirizzoMancante ? "Lega > Widget > Copia il codice, poi Modifica widget" : voce.accessoRichiesto ? "Lega > Widget > Copia il codice, poi Modifica widget" : "Apri SchieraXI con rete privata acceso")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 if let d = voce.diagnostica {
-                    Text(d).font(.system(size: 8)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2)
+                    Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2)
                 }
             }
         }

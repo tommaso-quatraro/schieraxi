@@ -149,9 +149,9 @@ struct VistaOsservato: View {
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
-                    Text(String(g.cognome.prefix(5))).font(.system(size: 9))
+                    Text(String(g.cognome.prefix(5))).fontWidget(9)
                     Text(punti(g)).font(.headline.bold()).monospacedDigit().minimumScaleFactor(0.6)
-                    Text("attesi").font(.system(size: 8))
+                    Text("attesi").fontWidget(8)
                 }
             }
         case .accessoryRectangular:
@@ -177,7 +177,7 @@ struct VistaOsservato: View {
                 }
             }
             Spacer(minLength: 0)
-            Text(punti(g)).font(.system(size: 36, weight: .bold, design: .rounded)).monospacedDigit()
+            Text(punti(g)).monospacedDigit().fontWidget(36, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                 .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
             Text("punti attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
             Text(g.partitaBreve).font(.caption).lineLimit(1)
@@ -198,7 +198,7 @@ struct VistaOsservato: View {
             VStack(alignment: .leading, spacing: 3) {
                 TitoloBlocco(testo: "Osservato", icona: "eye")
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(punti(g)).font(.system(size: 38, weight: .bold, design: .rounded)).monospacedDigit()
+                    Text(punti(g)).monospacedDigit().fontWidget(38, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                         .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
                     Text("punti attesi").font(.caption).foregroundStyle(TintaWidget.testo2)
                 }

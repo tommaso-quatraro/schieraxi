@@ -101,7 +101,7 @@ struct VistaRosa: View {
                 HStack(spacing: 4) {
                     Text(g.nome).font(.subheadline.weight(.semibold)).lineLimit(1)
                     if g.rigorista == true { Image(systemName: "target").font(.caption2).foregroundStyle(TintaWidget.lime) }
-                    if g.titolare == false { Text("panchina").font(.system(size: 9)).foregroundStyle(TintaWidget.testo2) }
+                    if g.titolare == false { Text("panchina").fontWidget(9).foregroundStyle(TintaWidget.testo2) }
                 }
                 let stato = g.descrizioneStato
                 Text(stato.isEmpty || stato == "Disponibile" ? g.partitaBreve : "\(g.partitaBreve) · \(stato)")

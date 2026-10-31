@@ -58,9 +58,9 @@ struct VistaCruscotto: View {
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
-                    Text(w.giornata.map { "G\($0)" } ?? "G").font(.system(size: 10))
+                    Text(w.giornata.map { "G\($0)" } ?? "G").fontWidget(10)
                     Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
-                    Text(dubbi > 0 ? "\(dubbi) dubbi" : "ok").font(.system(size: 9))
+                    Text(dubbi > 0 ? "\(dubbi) dubbi" : "ok").fontWidget(9)
                 }
             }
         case .accessoryInline:
@@ -88,7 +88,7 @@ struct VistaCruscotto: View {
             VStack(alignment: .leading, spacing: 0) {
                 TitoloBlocco(testo: w.giornata.map { "Giornata \($0)" } ?? "Giornata", icona: "calendar")
                 ContoWidget(inizio: w.inizio, adesso: voce.date)
-                    .font(.system(size: grande, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.5)
+                    .fontWidget(grande, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(sottoscadenza(w)).font(.caption2).foregroundStyle(w.conProbabili == false ? TintaWidget.attenzione : TintaWidget.testo2).lineLimit(1)
             }
@@ -107,7 +107,7 @@ struct VistaCruscotto: View {
         Link(destination: Vai.url("formazione")) {
             VStack(alignment: allineato, spacing: 0) {
                 TitoloBlocco(testo: "Formazione", icona: "sportscourt")
-                Text(f.modulo ?? "—").font(.system(size: 30, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.6)
+                Text(f.modulo ?? "—").fontWidget(30, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
                 HStack(spacing: 3) {
                     Text(Formato.punti(f.puntiAttesi)).font(.footnote.weight(.bold)).monospacedDigit()
                         .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
@@ -195,7 +195,7 @@ struct VistaCruscotto: View {
             VStack(alignment: .trailing, spacing: 0) {
                 TitoloBlocco(testo: "Crediti", icona: "eurosign.circle")
                 Text(w.creditiResidui.map { String(Formato.intero($0)) } ?? "—")
-                    .font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                    .monospacedDigit().fontWidget(30, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
                 Text("residui").font(.caption2).foregroundStyle(TintaWidget.testo2)
             }

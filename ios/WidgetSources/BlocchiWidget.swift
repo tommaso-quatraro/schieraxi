@@ -109,8 +109,8 @@ struct GraficoPunti: View {
                     .frame(height: altezza, alignment: .bottom)
                     if conEtichette {
                         Text(Self.scarto(g).map { Formato.conSegno($0) } ?? "—")
-                            .font(.system(size: 10, weight: .semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
-                        Text("G\(g.giornata)").font(.system(size: 9)).foregroundStyle(TintaWidget.testo2)
+                            .monospacedDigit().fontWidget(10, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
+                        Text("G\(g.giornata)").fontWidget(9).foregroundStyle(TintaWidget.testo2)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -175,7 +175,7 @@ struct ScambioCompatto: View {
                 }
                 Text("Dai \(s.daiTesto)").font(.caption2).lineLimit(1)
                 Text("Ricevi \(s.ricevoTesto)").font(.caption2).lineLimit(1)
-                if let a = s.altra { Text("con \(a)").font(.system(size: 9)).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                if let a = s.altra { Text("con \(a)").fontWidget(9).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
             } else {
                 Text("Non ancora calcolato").font(.footnote.weight(.semibold))
                 Text("Apri Scambi").font(.caption2).foregroundStyle(TintaWidget.testo2)
@@ -206,7 +206,7 @@ struct SvincoloCompatto: View {
                 if let esce = s.esce { Text("al posto di \(esce.cognome)").font(.caption2).lineLimit(1) }
                 if s.fattibile == false {
                     Label("crediti insufficienti", systemImage: "exclamationmark.triangle.fill")
-                        .font(.system(size: 9)).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
+                        .fontWidget(9).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
                 }
             } else {
                 Text("Non ancora calcolato").font(.footnote.weight(.semibold))

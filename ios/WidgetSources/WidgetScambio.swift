@@ -74,7 +74,7 @@ struct VistaScambio: View {
     }
 
     private func guadagno(_ valore: Double?, corpo: CGFloat) -> some View {
-        Text(Formato.conSegno(valore ?? 0)).font(.system(size: corpo, weight: .bold, design: .rounded)).monospacedDigit()
+        Text(Formato.conSegno(valore ?? 0)).monospacedDigit().fontWidget(corpo, weight: .bold, design: .rounded)
             .lineLimit(1).minimumScaleFactor(0.6)
             .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
     }
@@ -152,7 +152,7 @@ struct VistaScambio: View {
                     Text("punti attesi per te").font(.caption).foregroundStyle(TintaWidget.testo2)
                 }
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(Formato.conSegno(s.guadagnoLoro ?? 0)).font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
+                    Text(Formato.conSegno(s.guadagnoLoro ?? 0)).monospacedDigit().fontWidget(40, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                         .lineLimit(1).minimumScaleFactor(0.6)
                     Text("per loro").font(.caption).foregroundStyle(TintaWidget.testo2)
                 }

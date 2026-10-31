@@ -52,7 +52,7 @@ struct VistaCrediti: View {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
                     Text(intero(crediti)).font(.headline.bold()).minimumScaleFactor(0.6)
-                    Text("crediti").font(.system(size: 9))
+                    Text("crediti").fontWidget(9)
                 }
             }
         case .accessoryRectangular:
@@ -75,7 +75,7 @@ struct VistaCrediti: View {
         VStack(alignment: .leading, spacing: 2) {
             IntestazioneWidget(titolo: "Crediti", icona: "eurosign.circle")
             Spacer(minLength: 0)
-            Text(intero(crediti)).font(.system(size: 44, weight: .bold, design: .rounded)).minimumScaleFactor(0.5).lineLimit(1).monospacedDigit()
+            Text(intero(crediti)).fontWidget(44, weight: .bold, design: .rounded).minimumScaleFactor(0.5).lineLimit(1).monospacedDigit()
             Text("crediti residui").font(.caption2).foregroundStyle(TintaWidget.testo2)
             if let g = w.svincolato?.guadagno {
                 Label("svincolo \(Formato.conSegno(g))", systemImage: "arrow.triangle.swap").font(.caption2).foregroundStyle(TintaWidget.lime)
@@ -89,7 +89,7 @@ struct VistaCrediti: View {
             VStack(alignment: .leading, spacing: 2) {
                 IntestazioneWidget(titolo: "Crediti", icona: "eurosign.circle")
                 Spacer(minLength: 0)
-                Text(intero(crediti)).font(.system(size: 44, weight: .bold, design: .rounded)).minimumScaleFactor(0.5).lineLimit(1).monospacedDigit()
+                Text(intero(crediti)).fontWidget(44, weight: .bold, design: .rounded).minimumScaleFactor(0.5).lineLimit(1).monospacedDigit()
                 Text("crediti residui").font(.caption2).foregroundStyle(TintaWidget.testo2)
                 PiedeDati(voce: voce)
             }

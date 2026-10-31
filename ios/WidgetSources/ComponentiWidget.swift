@@ -64,7 +64,7 @@ struct SenzaDatiWidget: View {
             if !compatto {
                 Text("Lega > Widget > Copia il codice, poi Modifica widget")
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                if let d = voce.diagnostica { Text(d).font(.system(size: 8)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
+                if let d = voce.diagnostica { Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
             }
         }
     }
@@ -88,5 +88,30 @@ extension EnvironmentValues {
     var renderForzato: WidgetRenderingMode? {
         get { self[ChiaveRenderForzato.self] }
         set { self[ChiaveRenderForzato.self] = newValue }
+    }
+}
+
+/// Carattere a misura che segue il testo grande del sistema (Dynamic Type): alla misura normale resta quella di prima.
+private struct FontWidgetScalabile: ViewModifier {
+    @ScaledMetric private var misura: CGFloat
+    let peso: Font.Weight
+    let design: Font.Design
+
+    init(_ base: CGFloat, peso: Font.Weight, design: Font.Design) {
+        let stile: Font.TextStyle = base <= 9 ? .caption2 : (base <= 12 ? .caption : (base >= 28 ? .largeTitle : .title3))
+        _misura = ScaledMetric(wrappedValue: base, relativeTo: stile)
+        self.peso = peso
+        self.design = design
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: misura, weight: peso, design: design))
+    }
+}
+
+extension View {
+    /// Al posto di `.font(.system(size:))`: la misura cresce col testo grande di sistema.
+    func fontWidget(_ misura: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
+        modifier(FontWidgetScalabile(misura, peso: weight, design: design))
     }
 }

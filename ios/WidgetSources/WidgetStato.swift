@@ -72,7 +72,7 @@ struct VistaStato: View {
             VStack(alignment: .leading, spacing: 3) {
                 IntestazioneWidget(titolo: "Dati", icona: "externaldrive")
                 Spacer(minLength: 0)
-                Text(oraDati).font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit().minimumScaleFactor(0.6)
+                Text(oraDati).monospacedDigit().fontWidget(40, weight: .bold, design: .rounded).minimumScaleFactor(0.6)
                 Text(aggiornato.map { $0.formatted(.relative(presentation: .named)) } ?? "aggiornamento sconosciuto")
                     .font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1)
                 Label(probabili, systemImage: voce.completo?.conProbabili == true ? "checkmark.circle.fill" : "clock")
