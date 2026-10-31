@@ -16,15 +16,26 @@ extension Oggi {
     }
 
     /// «Giornata 7 di lega (Serie A 10)» se i numeri sono diversi, altrimenti «Giornata 10».
-    var etichettaGiornata: String {
-        if let g = giornataLega, g > 0 {
-            return g == giornata ? "Giornata \(g)" : "Giornata \(g) di lega (Serie A \(giornata))"
-        }
-        return "Giornata \(giornata)"
-    }
+    var etichettaGiornata: String { TempiLega.etichetta(serieA: giornata, lega: giornataLega) }
+}
+
+extension Formazione {
+    var etichettaGiornata: String { TempiLega.etichetta(serieA: giornata, lega: giornataLega) }
 }
 
 enum TempiLega {
+    /// «Giornata 7 di lega (Serie A 10)» se il numero di lega c'è ed è diverso, altrimenti «Giornata 10». Lega mancante o non valida: Serie A.
+    static func etichetta(serieA: Int, lega: Int?) -> String {
+        guard let l = lega, l > 0 else { return "Giornata \(serieA)" }
+        return l == serieA ? "Giornata \(l)" : "Giornata \(l) di lega (Serie A \(serieA))"
+    }
+
+    /// La sigla corta per gli spazi stretti: «G7» (il numero di lega se c'è, altrimenti quello di Serie A).
+    static func sigla(serieA: Int, lega: Int?) -> String {
+        if let l = lega, l > 0 { return "G\(l)" }
+        return "G\(serieA)"
+    }
+
     static let minutiMassimi = 720.0
     static let primaGiornataMassima = 38.0
 

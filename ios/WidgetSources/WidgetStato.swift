@@ -65,7 +65,7 @@ struct VistaStato: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Dati delle \(oraDati)").font(.headline)
                 Text(probabili).font(.caption)
-                if let g = voce.completo?.giornata ?? voce.riassunto?.giornata { Text("Giornata \(g)").font(.caption2).foregroundStyle(.secondary) }
+                if let g = voce.completo?.etichettaGiornata ?? voce.riassunto?.etichettaGiornata { Text(g).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         default:

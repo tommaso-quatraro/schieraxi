@@ -3,8 +3,8 @@ import Foundation
 /// La formazione scritta a parole, da copiare o mandare nel gruppo (Leghe non permette di incollarla: si inserisce a mano).
 enum TestoFormazione {
     /// «Giornata 9 · 4-3-3», una riga per reparto («P: Giocatore 094»), poi «Panchina: 1) Giocatore 007, 2) ...».
-    static func crea(giornata: Int, modulo: String, titolari: [Giocatore], panchina: [Giocatore]) -> String {
-        var righe = ["Giornata \(giornata) · \(modulo)"]
+    static func crea(giornata: Int, giornataLega: Int? = nil, modulo: String, titolari: [Giocatore], panchina: [Giocatore]) -> String {
+        var righe = ["\(TempiLega.etichetta(serieA: giornata, lega: giornataLega)) · \(modulo)"]
         for ruolo in ["P", "D", "C", "A"] {
             righe.append("\(ruolo): " + titolari.filter { $0.ruolo == ruolo }.map(\.nome).joined(separator: ", "))
         }

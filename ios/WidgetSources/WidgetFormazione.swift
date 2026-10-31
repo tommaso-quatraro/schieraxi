@@ -96,7 +96,7 @@ struct VistaFormazione: View {
 
     private func contenutoMinimo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", destra: "G\(r.giornata)")
+            IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", destra: r.siglaGiornata)
             Spacer(minLength: 0)
             Text(r.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold))
             Text("\(Formato.punti(r.punti)) punti attesi").font(.caption).foregroundStyle(TintaWidget.testo2)
@@ -108,7 +108,7 @@ struct VistaFormazione: View {
 
     private func piccolo(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", destra: w.giornata.map { "G\($0)" })
+            IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", destra: w.siglaGiornata)
             Spacer(minLength: 0)
             Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
             Text(punti(f)).font(.title3.bold()).monospacedDigit()
@@ -153,7 +153,7 @@ struct VistaFormazione: View {
                     if let t = f.intervallo?.testo { Text(t).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
                 }
                 Spacer()
-                if let g = w.giornata { Text("Giornata \(g)").font(.caption).foregroundStyle(TintaWidget.testo2) }
+                if let g = w.etichettaGiornata { Text(g).lineLimit(1).minimumScaleFactor(0.7).font(.caption).foregroundStyle(TintaWidget.testo2) }
             }
             CampoMini(titolari: tit, lato: 40, conNomi: true)
             HStack {
@@ -217,8 +217,8 @@ struct VistaFormazione: View {
                 .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             if !w.daControllare.isEmpty {
                 Text("\(w.daControllare.count) da controllare").font(.caption2)
-            } else if let g = w.giornata {
-                Text("Giornata \(g)").font(.caption2).foregroundStyle(.secondary)
+            } else if let g = w.etichettaGiornata {
+                Text(g).lineLimit(1).minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -40,12 +40,17 @@ struct RiassuntoOggi: Codable, Equatable {
     var scaricatoIl: Date
     /// Chi della formazione ha un dubbio (al massimo 6). Opzionale: un riassunto salvato da una versione vecchia non li ha.
     var dubbi: [DubbioRiassunto]?
+    /// Il numero nella lega (opzionale: un riassunto salvato da una versione vecchia non ce l'ha).
+    var giornataLega: Int?
+
+    var etichettaGiornata: String { TempiLega.etichetta(serieA: giornata, lega: giornataLega) }
+    var siglaGiornata: String { TempiLega.sigla(serieA: giornata, lega: giornataLega) }
 
     static let esempio = RiassuntoOggi(giornata: 9, inizio: Date().addingTimeInterval(3 * 3600 + 25 * 60), modulo: "3-4-3", punti: 64.5,
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
 
     init(giornata: Int, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date,
-         dubbi: [DubbioRiassunto]? = nil) {
+         dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil) {
         self.giornata = giornata
         self.inizio = inizio
         self.modulo = modulo
@@ -54,6 +59,7 @@ struct RiassuntoOggi: Codable, Equatable {
         self.probabili = probabili
         self.scaricatoIl = scaricatoIl
         self.dubbi = dubbi
+        self.giornataLega = giornataLega
     }
 
     /// Dalla risposta di «oggi» (la stessa per l'app e per il widget).
@@ -66,7 +72,8 @@ struct RiassuntoOggi: Codable, Equatable {
                   daControllare: daControllare.count,
                   probabili: oggi.conProbabili,
                   scaricatoIl: scaricatoIl,
-                  dubbi: daControllare.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) })
+                  dubbi: daControllare.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) },
+                  giornataLega: oggi.giornataLega)
     }
 }
 

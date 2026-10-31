@@ -362,7 +362,7 @@ private enum DatiDemo {
         var schede: [String: Any] = [:]
         for p in miaRosa { schede[String(p.id)] = giocatore(p) }
         return json([
-            "squadra": nomeMia, "giornata": giornata, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
+            "squadra": nomeMia, "giornata": giornata, "giornata_lega": giornata - 3, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
             "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede,
             "dev": 4.2, "intervallo": fascia(punteggio(ids)),
         ])

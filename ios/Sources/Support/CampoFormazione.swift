@@ -133,6 +133,7 @@ struct CampoFormazione: View {
 /// L'immagine da condividere (si disegna con `ImageRenderer`): titolo, campo con i titolari, panchina. Sempre su fondo scuro, 360 x 450 punti.
 struct ImmagineFormazione: View {
     let giornata: Int
+    var giornataLega: Int? = nil
     let squadra: String
     let modulo: String
     let punti: Double
@@ -142,7 +143,7 @@ struct ImmagineFormazione: View {
     var body: some View {
         VStack(spacing: 10) {
             VStack(spacing: 2) {
-                Text("Giornata \(giornata) · \(modulo)").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                Text("\(TempiLega.etichetta(serieA: giornata, lega: giornataLega)) · \(modulo)").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(.white)
                 Text("\(squadra) · \(Formato.punti(punti)) punti attesi").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.7))
             }
             CampoFormazione(titolari: titolari, diametro: 42, perImmagine: true)

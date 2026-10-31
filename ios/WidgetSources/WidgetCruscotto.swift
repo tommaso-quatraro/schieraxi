@@ -58,7 +58,7 @@ struct VistaCruscotto: View {
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
-                    Text(w.giornata.map { "G\($0)" } ?? "G").fontWidget(10)
+                    Text(w.siglaGiornata ?? "G").fontWidget(10)
                     Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
                     Text(dubbi > 0 ? "\(dubbi) dubbi" : "ok").fontWidget(9)
                 }
@@ -86,7 +86,7 @@ struct VistaCruscotto: View {
     private func scadenza(_ w: RiassuntoWidget, grande: CGFloat) -> some View {
         Link(destination: Vai.url("oggi")) {
             VStack(alignment: .leading, spacing: 0) {
-                TitoloBlocco(testo: w.giornata.map { "Giornata \($0)" } ?? "Giornata", icona: "calendar")
+                TitoloBlocco(testo: w.etichettaGiornata ?? "Giornata", icona: "calendar")
                 ContoWidget(inizio: w.inizio, adesso: voce.date)
                     .fontWidget(grande, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                     .frame(maxWidth: .infinity, alignment: .leading)

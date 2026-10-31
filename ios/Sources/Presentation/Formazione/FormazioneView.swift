@@ -225,7 +225,7 @@ struct FormazioneView: View {
                     if let nome = f.squadra { StemmaSquadra(nome: nome, dimensione: 28, nascondiSeMancante: true) }
                     Text(v.modulo).font(.system(.title2, design: .rounded).weight(.bold))
                 }
-                Text("Giornata \(f.giornata) · " + (vm.manuale != nil ? "la tua scelta" : (v.modulo == f.modulo && vm.rischio == (f.stileConsigliato ?? 0) ? "modulo consigliato" : "modulo scelto")))
+                Text(f.etichettaGiornata + " · " + (vm.manuale != nil ? "la tua scelta" : (v.modulo == f.modulo && vm.rischio == (f.stileConsigliato ?? 0) ? "modulo consigliato" : "modulo scelto")))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()

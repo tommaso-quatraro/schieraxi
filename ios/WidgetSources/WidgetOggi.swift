@@ -110,7 +110,7 @@ struct VistaWidget: View {
 
     private func piccolo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Giornata \(r.giornata)", systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
+            Label(r.etichettaGiornata, systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
             conto(r)
                 .font(.system(.title, design: .rounded).weight(.bold))
                 .minimumScaleFactor(0.5)
@@ -140,7 +140,7 @@ struct VistaWidget: View {
             // a sinistra (conto alla rovescia) si apre Oggi, a destra (formazione) la Formazione
             Link(destination: URL(string: "schieraxi://oggi") ?? URL(fileURLWithPath: "/")) {
             VStack(alignment: .leading, spacing: 4) {
-                Label("Giornata \(r.giornata)", systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
+                Label(r.etichettaGiornata, systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
                 conto(r)
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
@@ -192,7 +192,7 @@ struct VistaWidget: View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: 0) {
-                Text("G\(r.giornata)").font(.caption2)
+                Text(r.siglaGiornata).font(.caption2)
                 Text(r.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
                 Text(puntiTesto(r)).font(.caption2).monospacedDigit()
             }
@@ -201,7 +201,7 @@ struct VistaWidget: View {
 
     private func rettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Giornata \(r.giornata)").font(.caption2).foregroundStyle(.secondary)
+            Text(r.etichettaGiornata).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
             conto(r).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
             Text("\(r.modulo ?? "—") · \(puntiTesto(r)) punti attesi").font(.caption2)
         }

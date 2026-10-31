@@ -54,7 +54,7 @@ struct VistaDubbi: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(r.daControllare > 0 ? Color.orange : .white.opacity(0.85))
                 Spacer()
-                Text("Giornata \(r.giornata)").font(.caption2).foregroundStyle(.white.opacity(0.7))
+                Text(r.etichettaGiornata).font(.caption2).foregroundStyle(.white.opacity(0.7))
             }
             if r.daControllare == 0 {
                 Spacer(minLength: 0)
@@ -110,7 +110,7 @@ struct VistaDubbi: View {
                     Text("\(d.nome) · \(d.descrizione)").font(.caption2).lineLimit(1)
                 }
             } else {
-                Text("Giornata \(r.giornata)").font(.caption2).foregroundStyle(.secondary)
+                Text(r.etichettaGiornata).font(.caption2).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -45,7 +45,7 @@ enum DatiGalleria {
         let avvisi = titolari.filter { $0.4 < 0.9 }.map { giocatore($0).dropLast() + #", "tipo": "dubbio", "in_formazione": true}"# }.joined(separator: ",")
         let rosa = titolari.map { giocatore($0, conPartita: true) }.joined(separator: ",")
         var t = #"""
-        {"giornata": 11, "prima_partita": "\#(data(320))", "scadenza": "\#(data(320))", "ore_mancanti": 5.3, "iniziata": false, "con_probabili": true,
+        {"giornata": 11, "giornata_lega": 8, "prima_partita": "\#(data(320))", "scadenza": "\#(data(320))", "ore_mancanti": 5.3, "iniziata": false, "con_probabili": true,
          "squadra": "Schiera FC", "crediti_residui": 12,
          "formazione": {"modulo": "3-4-3", "punti_attesi": 73.7, "intervallo": {"basso": 62.2, "alto": 84.6, "confidenza": 0.8, "indicativo": false}, "titolari": [\#(tit)], "panchina": [201, 202, 203, 204, 205, 206, 207]},
          "avvisi": [\#(avvisi)], "rosa": [\#(rosa)],

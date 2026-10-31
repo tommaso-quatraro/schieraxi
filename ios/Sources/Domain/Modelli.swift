@@ -431,6 +431,8 @@ struct LivelloRischio: Decodable, Identifiable {
 struct Formazione: Decodable {
     let squadra: String?
     let giornata: Int
+    /// Il numero della giornata nella lega (facoltativo: server vecchio, o lega non ancora partita).
+    let giornataLega: Int?
     let modulo: String
     let punteggioAtteso: Double
     let titolari: [Giocatore]

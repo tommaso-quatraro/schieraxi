@@ -189,7 +189,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// La formazione mostrata, scritta a parole (da copiare o condividere).
     func testo(_ f: Formazione) -> String {
         let v = vista(f)
-        return TestoFormazione.crea(giornata: f.giornata, modulo: v.modulo, titolari: v.titolari, panchina: v.panchina)
+        return TestoFormazione.crea(giornata: f.giornata, giornataLega: f.giornataLega, modulo: v.modulo, titolari: v.titolari, panchina: v.panchina)
     }
 
     func copiaTesto(_ f: Formazione) {
@@ -201,12 +201,12 @@ final class FormazioneViewModel: ViewModelBase {
     /// Disegna la formazione come immagine (campo con i titolari e la panchina) e apre l'anteprima con il pulsante Condividi.
     func preparaImmagine(_ f: Formazione) {
         let v = vista(f)
-        let disegno = ImmagineFormazione(giornata: f.giornata, squadra: f.squadra ?? "", modulo: v.modulo, punti: v.punti,
+        let disegno = ImmagineFormazione(giornata: f.giornata, giornataLega: f.giornataLega, squadra: f.squadra ?? "", modulo: v.modulo, punti: v.punti,
                                          titolari: v.titolari, panchina: v.panchina)
         let renderer = ImageRenderer(content: disegno)
         renderer.scale = 3   // 360 x 490 punti → 1080 x 1470 pixel
         if let immagine = renderer.uiImage {
-            anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: "Formazione giornata \(f.giornata)")
+            anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: f.etichettaGiornata.replacingOccurrences(of: "Giornata", with: "Formazione giornata"))
         } else {
             messaggio = "Non riesco a creare l'immagine."
         }

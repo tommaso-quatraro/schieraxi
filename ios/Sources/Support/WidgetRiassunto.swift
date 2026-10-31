@@ -134,6 +134,8 @@ struct DatiAggiornamentoWidget: Codable, Equatable {
 
 struct RiassuntoWidget: Decodable {
     var giornata: Int?
+    /// Il numero nella lega (facoltativo: server vecchio, o lega non ancora partita).
+    var giornataLega: Int?
     var primaPartita: String?
     var scadenza: String?
     var oreMancanti: Double?
@@ -161,12 +163,16 @@ struct RiassuntoWidget: Decodable {
     var live: LiveWidget? { liveLetto?.valore }
 
     enum CodingKeys: String, CodingKey {
-        case giornata, primaPartita, scadenza, oreMancanti, iniziata, conProbabili, squadra, creditiResidui, formazione, avvisi, rosa
+        case giornata, giornataLega, primaPartita, scadenza, oreMancanti, iniziata, conProbabili, squadra, creditiResidui, formazione, avvisi, rosa
         case squalificati, diffidati, rigoristi, diario, osservati, dati, mancano
         case scambioLetto = "scambio"
         case svincolatoLetto = "svincolato"
         case liveLetto = "live"
     }
+
+    /// «Giornata 7 di lega (Serie A 10)», «Giornata 10» o nil se la giornata non si conosce.
+    var etichettaGiornata: String? { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } }
+    var siglaGiornata: String? { giornata.map { TempiLega.sigla(serieA: $0, lega: giornataLega) } }
 
     /// Quando comincia la giornata (la scadenza della formazione).
     var inizio: Date? { Quando.data(scadenza) }
@@ -187,7 +193,8 @@ struct RiassuntoWidget: Decodable {
         let dubbi = daControllare
         return RiassuntoOggi(giornata: giornata, inizio: inizio, modulo: formazione?.modulo, punti: formazione?.puntiAttesi,
                              daControllare: dubbi.count, probabili: conProbabili, scaricatoIl: scaricatoIl,
-                             dubbi: dubbi.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) })
+                             dubbi: dubbi.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) },
+                             giornataLega: giornataLega)
     }
 
     static func leggi(_ dati: Data) -> RiassuntoWidget? {
