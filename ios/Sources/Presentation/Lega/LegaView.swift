@@ -61,14 +61,14 @@ struct LegaView: View {
     }
 
     private var sezioneLega: some View {
-        Section("Lega") {
+        Section {
             NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose", systemImage: "doc.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.squadre) { Label("Squadre e rose", systemImage: "person.3").labelStyle(.voce(.green)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.diario) { Label("Diario delle giornate", systemImage: "book").labelStyle(.voce(.teal)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer").labelStyle(.voce(.brown)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "eurosign.circle").labelStyle(.voce(.mint)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "c.circle").labelStyle(.voce(.mint)).frame(minHeight: 44) }
             NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
         }
     }
