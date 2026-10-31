@@ -22,6 +22,28 @@ final class DiarioViewModel: ViewModelBase {
     @Published var messaggio: String?
     @Published var messaggioRiuscito = false
 
+    /// «Ho schierato un'altra formazione»: undici titolari scelti a mano tra i giocatori della tua rosa (il server controlla modulo e rosa).
+    /// Restituisce vero se è stata salvata.
+    func haSchieratoAMano(giornata: Int, titolari: [Int]) async -> Bool {
+        guard inSalvataggio == nil else { return false }
+        inSalvataggio = giornata
+        defer { inSalvataggio = nil }
+        do {
+            _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "manuale", titolari: titolari))
+            messaggio = "Salvato: la formazione che hai schierato nella giornata \(giornata)."
+            messaggioRiuscito = true
+            Haptics.esito(riuscito: true)
+            await caricatore.ricarica()
+            return true
+        } catch {
+            messaggio = error.localizedDescription
+            messaggioRiuscito = false
+            if (error as? ErroreApi)?.eConflitto == true { await caricatore.ricarica() }
+            Haptics.esito(riuscito: false)
+            return false
+        }
+    }
+
     /// «Ho schierato la consigliata»: il server salva come tua scelta la formazione che il modello avrebbe consigliato per quella
     /// giornata già finita e rifà solo quella voce del diario (non conta nei limiti di ricerca).
     func haSchieratoLaConsigliata(giornata: Int) async {
@@ -54,9 +76,12 @@ struct CorpoSchierata: Encodable {
 /// Per ogni giornata finita: i punti fatti dalla formazione schierata e da quella che il modello avrebbe consigliato.
 struct DiarioView: View {
     @StateObject private var vm: DiarioViewModel
+    @State private var daCorreggere: VoceDiario?
+    private let server: any ServerClient
 
     init(server: any ServerClient) {
         _vm = StateObject(wrappedValue: DiarioViewModel(server: server))
+        self.server = server
     }
 
     var body: some View {
@@ -90,6 +115,12 @@ struct DiarioView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Diario")
+        .sheet(item: $daCorreggere) { v in
+            FormazioneManualeDiarioView(voce: v, server: server) { titolari in
+                guard let g = v.giornata else { return false }
+                return await vm.haSchieratoAMano(giornata: g, titolari: titolari)
+            }
+        }
         .ricercaGlobale()
         .refreshable { await vm.carica() }
         .task { await vm.carica() }
@@ -122,6 +153,14 @@ struct DiarioView: View {
                     .disabled(vm.inSalvataggio != nil)
                     .accessibilityHint("Salva come tua scelta la formazione che il modello avrebbe consigliato per la giornata \(g)")
                 }
+            }
+            if let g = v.giornata {
+                Button { daCorreggere = v } label: {
+                    Label(v.schierata == nil ? "Ho schierato un'altra formazione" : "Correggi a mano", systemImage: "pencil")
+                        .font(.subheadline).frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .disabled(vm.inSalvataggio != nil)
+                .accessibilityHint("Scegli a mano i tuoi undici della giornata \(g)")
             }
             if let c = v.consigliata { riga("Del modello (\(c.modulo ?? "–"))", c) }
             if let frase = v.differenze { Text(frase).font(.footnote).foregroundStyle(.secondary) }
