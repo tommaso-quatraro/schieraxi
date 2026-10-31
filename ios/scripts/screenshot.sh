@@ -12,6 +12,7 @@ USCITA="${2:-screenshot}"
 ID_APP="<vecchio identificativo>"
 ERRORI=0
 ARGOMENTI_EXTRA=()
+STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
 RADDRIZZA=0
 mkdir -p "$USCITA"
 
@@ -67,7 +68,7 @@ scatta() {
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
-        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} \
+        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"}         ${STILE_ARG[@]+"${STILE_ARG[@]}"} \
         -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
@@ -107,9 +108,19 @@ giro() {
   local udid="$1" etichetta="$2" aspetto="$3" dimensione="$4"
   shift 4
   local ui="dark"
-  [ "$aspetto" = "chiaro" ] && ui="light"
+  STILE_ARG=(-AppleInterfaceStyle Dark)
+  if [ "$aspetto" = "chiaro" ]; then ui="light"; STILE_ARG=(-AppleInterfaceStyle Light); fi
   echo "=== $etichetta ($ui, testo $dimensione) ==="
-  xcrun simctl ui "$udid" appearance "$ui"
+  # Il cambio di aspetto del simulatore è asincrono e subito dopo l'avvio a volte non vale: capitava che le foto «scuro»
+  # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi).
+  local t letto
+  for t in 1 2 3 4 5; do
+    xcrun simctl ui "$udid" appearance "$ui"
+    sleep 2
+    letto=$(xcrun simctl ui "$udid" appearance 2>/dev/null | tr -d '[:space:]')
+    [ "$letto" = "$ui" ] && break
+    echo "  aspetto letto «$letto», voluto «$ui»: riprovo ($t)"
+  done
   xcrun simctl ui "$udid" content_size "$dimensione"
   local s
   for s in "$@"; do
@@ -167,6 +178,7 @@ for aspetto in dark light; do
   xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/home_iphone_$aspetto.png" >/dev/null 2>&1
 done
 
+STILE_ARG=()
 # Prova dello schema schieraxi:// con "simctl openurl" (come un tocco su una notifica di ntfy). Su alcuni sistemi iOS chiede
 # conferma "Aprire in SchieraXI?": la foto lo mostra. Per questo le altre schermate si aprono con un argomento di lancio.
 xcrun simctl ui "$UDID_IPHONE" appearance dark
