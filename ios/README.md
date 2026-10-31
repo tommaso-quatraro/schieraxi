@@ -51,6 +51,14 @@ L'app nativa fa **tutto quello che fa la web app** (tranne le notifiche push, ve
 - **Installazione:** SideStore sull'iPhone firma l'IPA con l'Apple ID gratuito e lo rinnova (ogni 7 giorni, con LocalDevVPN attiva).
 - Il progetto Xcode non è in git: lo genera XcodeGen da `project.yml` (target `Schieraxi`, `SchieraxiWidget`, `SchieraxiTests`, `SchieraxiUITests`).
 
+## Licenza
+Il codice è sotto licenza **GNU Affero General Public License v3.0** (AGPL-3.0): testo completo in `LICENSE`.
+
+## Marchi, fonti e uso personale
+- SchieraXI è un progetto personale e **non è affiliato né approvato** da Fantacalcio, Leghe Fantacalcio, Lega Serie A, club, calciatori o altri titolari di marchi: i nomi servono solo a dire di che cosa si parla.
+- I dati (calendari, voti, probabili formazioni, quotazioni, stemmi, maglie e foto) restano dei rispettivi titolari e arrivano dal server di chi usa l'app; questo repository non li contiene. Le fixture dei test e i dati di prova sono inventati.
+- L'app è pensata per uso personale e non commerciale. Interfaccia: solo SF Symbols e font di sistema di Apple (senza copiarne i file); le icone e il marchio SchieraXI sono opera del progetto.
+
 ## Test automatici
 - **Workflow `test.yml`**: su ogni pull request e su ogni push a `main` (vedi «CI: cosa gira quando»), su `macos-26`: `xcodegen generate` e `xcodebuild test -scheme Schieraxi` su un simulatore scelto da `scripts/scegli_simulatore.py`. Se qualcosa fallisce restano come artifact il `.xcresult` e il log (7 giorni). Convive con `ipa.yml`: la scheda `Schieraxi` costruisce i test solo con l'azione "test".
 - **`SchieraxiTests`** (XCTest, `Tests/SchieraxiTests`): `Quando`, `Formato`, `JSONValue` (round trip che mantiene gli interi), decodifica di **risposte del server con dati inventati** (`Tests/Fixtures/*.json`: stessa struttura delle risposte vere, ma squadre e giocatori fittizi: oggi, formazione, mercato, classifica, scambi, rosa, regole, stato dati, scheda giocatore, confronto, affidabilità, ...), `Stato<T>` e `Caricatore` con un server finto che fallisce e riesce, cache su disco, `ServerHTTP` con una rete finta (intestazione `X-Fanta`, messaggi d'errore, multipart), ViewModel (Oggi, Formazione con modifica a mano e **risposte fuori ordine**, Scambi, Mercato, Asta, Ricerca, Scheda giocatore, Lega: aggiornamento dati, stagione, regole, importazione, crediti, avvisi, movimenti), foto e stemmi, collegamenti `schieraxi://`, scadenza del certificato, logica di forma, etichette, ballottaggi, scambi e regole.
