@@ -108,6 +108,9 @@ extension Demo {
         case "guida":
             // la configurazione guidata (si riapre dalle Impostazioni): in demo mostra i passi non ancora fatti
             nav.guidaAperta = true
+        case "impostazioni-cofano":
+            // le Impostazioni si aprono sulla pagina «Sotto il cofano» (la apre ImpostazioniView da sola)
+            nav.impostazioniAperte = true
 
         case "formazione":
             nav.sezione = .formazione

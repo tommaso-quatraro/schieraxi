@@ -411,6 +411,50 @@ private enum DatiDemo {
         ])
     }
 
+    // MARK: - Sotto il cofano
+
+    /// Un estratto verosimile della pagina «Sotto il cofano» (i testi veri li manda il server).
+    static func sottoIlCofano() -> String {
+        let sezioni: [[String: Any]] = [
+            ["id": "fantavoto-atteso", "titolo": "Il fantavoto atteso", "livello": "base",
+             "paragrafi": ["Per ogni giocatore SchieraXI stima quanto farà in una partita: voto, gol, assist e cartellini, con le regole della tua lega.",
+                           "È sempre lo stesso numero, in ogni schermata e nel widget."],
+             "esempio": ["titolo": "Un attaccante in casa", "testo": "Voto 6,2 più 0,45 gol attesi per 3 punti e 0,15 assist per 1 punto: fantavoto atteso 7,7.", "origine": "di calcolo"],
+             "numeri": ["backtest.errore_modello", "app.errore_modello"],
+             "rimandi": [["schermata": "formazione", "etichetta": "Formazione"], ["schermata": "giocatore", "etichetta": "Scheda del giocatore"]]],
+            ["id": "formazione", "titolo": "Come scelgo gli undici", "livello": "base",
+             "paragrafi": ["Provo i moduli possibili e tengo quello con più punti attesi, simulando anche chi non gioca e chi lo sostituisce dalla panchina."],
+             "esempio": ["titolo": "Giornata 9", "testo": "Il 3-4-3 vale 64,2 punti attesi, il 4-3-3 ne vale 62,8.", "origine": "vero"],
+             "rimandi": [["schermata": "diario", "etichetta": "Diario"], ["schermata": "stato-dati", "etichetta": "Stato dei dati"], ["schermata": "schermata-nuova", "etichetta": "Una schermata che l'app non conosce"]]],
+            ["id": "formula-punti", "titolo": "La formula dei punti attesi", "livello": "nerd",
+             "paragrafi": ["Somma dei contributi di ogni evento, pesati con la probabilità che accada."],
+             "formula": "punti = p_voto * (voto + bonus_gol * gol_attesi + bonus_assist * assist_attesi - malus * p_cartellino)\nfascia 80% = da atteso - 1,18 * scarto a atteso + 1,25 * scarto",
+             "numeri": ["backtest.copertura_fascia"]],
+        ]
+        let glossario: [[String: Any]] = [
+            ["termine": "Fantavoto", "spiegazione": "Il voto in pagella più i bonus e i malus della tua lega."],
+            ["termine": "Backtest", "spiegazione": "La prova del modello sulle giornate passate, usando solo i dati che c'erano prima di ogni partita."],
+            ["termine": "Indice", "spiegazione": "Un numero da 0 a 100 che riassume quanto conviene schierare un giocatore."],
+            ["termine": "Modulo", "spiegazione": "La disposizione in campo: difensori, centrocampisti e attaccanti."],
+            ["termine": "Fascia", "spiegazione": "L'intervallo in cui cadono i punti 8 volte su 10."],
+            ["termine": "Titolare", "spiegazione": "Chi parte dall'inizio nella formazione consigliata."],
+            ["termine": "Rigorista", "spiegazione": "Il giocatore che tira i rigori della sua squadra."],
+        ]
+        return json([
+            "formato": 1, "titolo": "Sotto il cofano", "sottotitolo": "Come ragiona SchieraXI, senza trucchi.", "aggiornato": "2026-10-30",
+            "livelli": ["base": "Le spiegazioni semplici.", "nerd": "Solo i dettagli tecnici, per chi vuole i conti."],
+            "introduzione": ["Qui trovi cosa fa il modello e quanto ci si può fidare: i numeri sono misurati, non promessi."],
+            "sezioni": sezioni, "glossario": glossario,
+            "misure": [
+                "riferimento": ["data": "2026-10-30", "come": "Prova sulle giornate giocate", "nota": "",
+                                "voci": ["backtest.errore_modello": ["valore": 1.46, "etichetta": "Errore medio sulle ultime 41 giornate", "unita": "punti"],
+                                         "app.errore_modello": ["valore": 1.5, "etichetta": "Errore medio sulle ultime 8 giornate", "unita": "punti"],
+                                         "backtest.copertura_fascia": ["valore": 80, "etichetta": "Punti veri dentro la fascia", "unita": "%"]]],
+                "attuali": ["voci": ["app.errore_modello": ["valore": 1.6, "aggiornato": "2026-10-28T00:38:07"]]],
+            ],
+        ])
+    }
+
     // MARK: - Mercato
 
     static func mercato() -> String {
@@ -751,6 +795,7 @@ private enum DatiDemo {
             "/api/formazione/valuta": valutazione(),
             "/api/formazione": formazione(),
             "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),
+            "/api/sotto-il-cofano": sottoIlCofano(),
             "/api/oggi": oggi(adesso: adesso),
             "/api/regole": regole(),
             "/api/avvisi": avvisi(),

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Le pagine che si aprono dalle Impostazioni.
 enum PaginaImpostazioni: Hashable {
-    case aspetto, icona, avvisi, backup, stato, novita
+    case aspetto, icona, avvisi, backup, stato, novita, cofano
 }
 
 private struct ApriImpostazioniChiave: EnvironmentKey {
@@ -51,6 +51,10 @@ struct ImpostazioniView: View {
             }
             .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0) }
             .task { await vm.carica() }
+            .onAppear {
+                // Solo per le fotografie del simulatore (-DEMO_SCHERMATA impostazioni-cofano).
+                if Demo.schermata == "impostazioni-cofano", percorso.isEmpty { percorso = [.cofano] }
+            }
         }
         .tint(Color.verde)
     }
@@ -64,6 +68,22 @@ struct ImpostazioniView: View {
         case .backup: BackupView(server: vm.server)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .novita: NovitaView(server: vm.server)
+        case .cofano: SottoIlCofanoView(server: vm.server, vai: apriDaCofano)
+        }
+    }
+
+    /// Un rimando di «Sotto il cofano»: un'altra pagina delle Impostazioni, oppure si chiude il foglio e si va alla schermata.
+    private func apriDaCofano(_ destinazione: DestinazioneCofano) {
+        switch destinazione {
+        case .impostazioni(let pagina):
+            percorso.append(pagina)
+        case .sezione(let sezione):
+            nav.sezione = sezione
+            chiudi()
+        case .lega(let pagina):
+            vm.percorso = [pagina]
+            nav.sezione = .lega
+            chiudi()
         }
     }
 
@@ -124,6 +144,7 @@ struct ImpostazioniView: View {
                 Label("Configurazione guidata", systemImage: "list.bullet.clipboard").labelStyle(.voce(.teal)).frame(minHeight: 44)
             }
             .accessibilityHint("Rose, squadra, stemma, widget e avvisi, un passo alla volta")
+            NavigationLink(value: PaginaImpostazioni.cofano) { Label("Sotto il cofano", systemImage: "gearshape.2").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
             RigaValore(titolo: "Versione dell'app", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
             if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
         }

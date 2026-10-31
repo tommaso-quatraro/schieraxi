@@ -154,6 +154,8 @@ struct RadiceView: View {
         .sheet(isPresented: $nav.impostazioniAperte) {
             ImpostazioniView(vm: modello.lega)
                 .tint(Color.verde)
+                // Su iPad un foglio ampio: Sotto il cofano ha l'indice a sinistra solo se c'è spazio.
+                .presentationSizing(.page)
         }
         .sheet(item: $nav.scheda) { g in
             GiocatoreSheet(id: g.id, server: modello.server, contesto: modello.formazione.contestoConfronto)
