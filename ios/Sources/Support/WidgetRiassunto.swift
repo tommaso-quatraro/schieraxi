@@ -64,6 +64,20 @@ struct FormazioneWidget: Codable, Equatable {
     var titolari: [GiocatoreWidget]?
     var panchina: [Int]?
     var intervallo: IntervalloWidget?
+    /// true se il server manda la formazione salvata dall'utente (non la consigliata). Facoltativo e tollerante.
+    var tuaScelta: Bool?
+
+    private enum CodingKeys: String, CodingKey { case modulo, puntiAttesi, titolari, panchina, intervallo, tuaScelta }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        modulo = try? c.decodeIfPresent(String.self, forKey: .modulo)
+        puntiAttesi = try? c.decodeIfPresent(Double.self, forKey: .puntiAttesi)
+        titolari = try? c.decodeIfPresent([GiocatoreWidget].self, forKey: .titolari)
+        panchina = try? c.decodeIfPresent([Int].self, forKey: .panchina)
+        intervallo = try? c.decodeIfPresent(IntervalloWidget.self, forKey: .intervallo)
+        tuaScelta = try? c.decodeIfPresent(Bool.self, forKey: .tuaScelta)
+    }
 }
 
 struct PuntiGiornata: Codable, Equatable, Identifiable {

@@ -198,7 +198,7 @@ struct OggiView: View {
     // MARK: formazione e avvisi
 
     private func formazione(_ oggi: Oggi) -> some View {
-        Carta("La tua formazione", simbolo: "sportscourt") {
+        Carta(oggi.formazione?.titoloScheda ?? "La formazione consigliata", simbolo: "sportscourt") {
             if let f = oggi.formazione, f.disponibile {
                 HStack(alignment: .firstTextBaseline) {
                     Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold))
@@ -212,6 +212,7 @@ struct OggiView: View {
                     }
                 }
                 .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(f.tuaScelta ? "La tua scelta" : "Consigliata"): modulo \(f.modulo ?? "non disponibile"), \(Formato.punti(f.punteggioAtteso)) punti attesi")
                 Button { vaiASezione(.formazione) } label: { Label("Apri la formazione", systemImage: "sportscourt").frame(maxWidth: .infinity, minHeight: Tema.areaTocco) }
                     .pulsanteVetro(prominente: true)
                 if let p = oggi.probabili?.valore {

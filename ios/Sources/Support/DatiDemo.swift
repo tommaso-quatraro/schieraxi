@@ -413,7 +413,7 @@ private enum DatiDemo {
             "probabili": ["aggiornate_il": "2026-11-08 09:05", "minuti_fa": 480, "eta": "8 ore fa", "testo": "Probabili aggiornate alle 09:05",
                           "vecchie": true, "avviso": "Le probabili hanno 8 ore: ricontrolla prima del fischio."],
             "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia,
-                           "dev": 4.2, "intervallo": fascia(punteggio(ids))],
+                           "dev": 4.2, "intervallo": fascia(punteggio(ids)), "tua_scelta": true],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
             "da_fare": [
                 ["id": "dubbio-120", "tipo": "dubbio", "testo": "Giocatore 045 è in dubbio: guarda le alternative", "priorita": 1,
