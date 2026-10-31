@@ -1,6 +1,6 @@
 import Foundation
 
-/// I tratti grossolani di tutti i giocatori (versione 2 degli avatar, `GET /api/avatar`): si scaricano una volta per apertura
+/// I tratti grossolani di tutti i giocatori (versioni 2 e 3 degli avatar, `GET /api/avatar`): si scaricano una volta per apertura
 /// dell'app e si tengono su disco (Caches), così i volti si disegnano subito. Senza tratti il volto viene tutto dal codice.
 @MainActor
 final class DepositoTratti: ObservableObject {
@@ -51,7 +51,7 @@ final class DepositoTratti: ObservableObject {
         init(from decoder: Decoder) throws { valore = try? TrattiVolto(from: decoder) }
     }
 
-    /// Legge la risposta di `/api/avatar`: `{"versione": 2, "tratti": {"<id>": {...}}}`. `nil` se non è nel formato.
+    /// Legge la risposta di `/api/avatar`: `{"versione": 2 o 3, "tratti": {"<id>": {...}}}`. `nil` se non è nel formato.
     static func leggi(_ dati: Data) -> [Int: TrattiVolto]? {
         guard !dati.isEmpty, dati.count <= massimoByte, let r = try? JSONDecoder().decode(Risposta.self, from: dati), let voci = r.tratti else { return nil }
         var mappa: [Int: TrattiVolto] = [:]

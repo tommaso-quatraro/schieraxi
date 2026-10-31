@@ -17,30 +17,35 @@ struct IndiciVolto: Equatable, Sendable {
     var elenco3: [Int] { [espressione, ritocco, guance, rughe, naso, sfondo, maglia, colletto, spalle] }
 }
 
-/// I tratti grossolani di un giocatore (versione 2 degli avatar): colore dei capelli, famiglia di acconciatura, barba sì/no.
-/// Tutti facoltativi, un valore non valido vale come mancante. La carnagione NON esiste: un eventuale campo `p` del server si ignora
-/// (la pelle viene sempre e solo dal seme).
+/// I tratti grossolani di un giocatore (versioni 2 e 3 degli avatar): carnagione, colore dei capelli, famiglia di acconciatura,
+/// barba sì/no, barba folta. Tutti facoltativi, un valore non valido vale come mancante.
 struct TrattiVolto: Codable, Equatable, Sendable {
+    /// Carnagione 0-6 (indice di `GeneratoreVolto.pelli`); senza, la pelle è sempre la neutra, mai dal seme.
+    var p: Int?
     var c: Int?
     var a: String?
     var b: Int?
+    /// Barba folta 0 o 1 (versione 3): conta solo con `b` = 1.
+    var f: Int?
 
-    init(c: Int? = nil, a: String? = nil, b: Int? = nil) {
-        self.c = c; self.a = a; self.b = b
+    init(p: Int? = nil, c: Int? = nil, a: String? = nil, b: Int? = nil, f: Int? = nil) {
+        self.p = p; self.c = c; self.a = a; self.b = b; self.f = f
     }
 
-    private enum Chiavi: String, CodingKey { case c, a, b }
+    private enum Chiavi: String, CodingKey { case p, c, a, b, f }
 
     /// Tollerante: un campo del tipo sbagliato (o enorme) si ignora, non rovina gli altri.
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
+        p = (try? k.decodeIfPresent(Int.self, forKey: .p)) ?? nil
         c = (try? k.decodeIfPresent(Int.self, forKey: .c)) ?? nil
         a = (try? k.decodeIfPresent(String.self, forKey: .a)) ?? nil
         b = (try? k.decodeIfPresent(Int.self, forKey: .b)) ?? nil
+        f = (try? k.decodeIfPresent(Int.self, forKey: .f)) ?? nil
     }
 
     /// Una chiave stabile per la memoria dei disegni.
-    var chiave: String { "\(c ?? -1).\(a ?? "-").\(b ?? -1)" }
+    var chiave: String { "\(p ?? -1).\(c ?? -1).\(a ?? "-").\(b ?? -1).\(f ?? -1)" }
 }
 
 /// Un colore a tre canali interi, con l'aritmetica della specifica (stessi arrotondamenti ovunque).
@@ -88,6 +93,8 @@ struct RGB8: Equatable, Sendable {
 enum GeneratoreVolto {
     static let versione = 3
     private static let sale: UInt32 = 0xA5C1D1CE
+    /// La carnagione di chi non ha tratti: sempre la stessa (`#e0a97e`), mai dal seme.
+    static let pelleNeutra = 2
 
     /// Pesi (interi, somma 100) di ogni parte, nell'ordine di estrazione.
     static let pesiPelle = [20, 26, 24, 12, 8, 6, 4]
@@ -160,9 +167,9 @@ enum GeneratoreVolto {
     /// Famiglie di acconciature della versione 2: R rasati o calvi, C corti, L lunghi, I ricci.
     static let famiglie: [String: [Int]] = ["R": [0, 9], "C": [1, 6, 7, 10, 11], "L": [4, 5, 8], "I": [2, 3]]
 
-    /// Versione 2 (docs/AVATAR.md, sezione 8): dopo le dieci estrazioni se ne fanno SEMPRE due in più (u11, u12), anche senza tratti,
-    /// poi (versione 3) altre nove. I tratti grossolani (colore e famiglia di capelli, barba) spostano solo alcune parti; un tratto mancante o non
-    /// valido si ignora. Senza tratti il risultato è identico alla versione 1.
+    /// Tratti (docs/AVATAR.md, sezione 8): dopo le dieci estrazioni se ne fanno SEMPRE due in più (u11, u12), anche senza tratti,
+    /// poi (sezione 9) altre nove. I tratti grossolani (carnagione, colore e famiglia di capelli, barba, barba folta) spostano solo alcune
+    /// parti; un tratto mancante o non valido si ignora. La pelle estratta dal seme si scarta sempre: senza `p` vale la neutra (indice 2).
     static func estrai(id: Int, tratti: TrattiVolto?) -> IndiciVolto {
         var g = Mulberry32(seme: seme(id: id))
         var v = dieciEstrazioni(&g)
@@ -170,6 +177,7 @@ enum GeneratoreVolto {
         let u12 = g.prossimo()
         noveEstrazioni(&g, &v)
         if let t = tratti {
+            if let p = t.p, (0..<pelli.count).contains(p) { v.pelle = p }
             if let c = t.c, (0..<pesiColore.count).contains(c) { v.colore = c }
             if let a = t.a, let membri = famiglie[a], !membri.contains(v.acconciatura) {
                 let pesi = membri.map { pesiAcconciatura[$0] }
@@ -184,9 +192,18 @@ enum GeneratoreVolto {
             }
             if let b = t.b {
                 if b == 0 { v.barba = 0 }
-                else if b == 1, v.barba <= 1 {
-                    let n = Int((u12 * 40).rounded(.down))
-                    v.barba = n < 16 ? 2 : (n < 30 ? 3 : 4)
+                else if b == 1 {
+                    if v.barba <= 1 {
+                        let n = Int((u12 * 40).rounded(.down))
+                        v.barba = n < 16 ? 2 : (n < 30 ? 3 : 4)
+                    }
+                    if t.f == 1 {
+                        v.barba = 3
+                    } else if t.f == 0, v.barba == 3 {
+                        // barba non folta: una «piena» diventa corta o baffi (pesi 16 e 10)
+                        let n = Int((u12 * 26).rounded(.down))
+                        v.barba = n < 16 ? 2 : 4
+                    }
                 }
             }
         }
@@ -222,7 +239,8 @@ enum GeneratoreVolto {
 
     private static func dieciEstrazioni(_ g: inout Mulberry32) -> IndiciVolto {
         var v = IndiciVolto()
-        v.pelle = scegli(&g, pesiPelle)
+        _ = scegli(&g, pesiPelle)   // si estrae sempre (l'ordine delle altre non cambia) ma si scarta
+        v.pelle = pelleNeutra
         v.forma = scegli(&g, pesiForma)
         v.acconciatura = scegli(&g, pesiAcconciatura)
         v.colore = scegli(&g, pesiColore)
