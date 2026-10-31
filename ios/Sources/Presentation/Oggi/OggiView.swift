@@ -13,6 +13,8 @@ struct OggiView: View {
     @ObservedObject private var immagini = Immagini.condivise
     /// L'ultima versione delle novità che l'utente ha guardato (la scrive la pagina Novità).
     @AppStorage("novitaVista") private var novitaVista = ""
+    @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 46
+    @ScaledMetric(relativeTo: .body) private var latoIcona: CGFloat = 24
     @State private var novitaAnimata = false
     @State private var tutteLeCose = false
     @Environment(\.scenePhase) private var fase
@@ -141,7 +143,7 @@ struct OggiView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     if inizio > contesto.date {
                         TestoConto(inizio: inizio, adesso: contesto.date)
-                            .font(.system(size: 46, weight: .bold, design: .rounded))
+                            .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
@@ -149,7 +151,7 @@ struct OggiView: View {
                     } else {
                         Label("In corso", systemImage: "dot.radiowaves.left.and.right")
                             .symbolEffect(.variableColor.iterative, options: .repeating)
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                         Text("iniziata \(Quando.leggibile(oggi.inizio))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     }
@@ -159,7 +161,7 @@ struct OggiView: View {
             }
         } else {
             Text(oggi.iniziata == true ? "In corso" : "—")
-                .font(.system(size: 40, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded)).foregroundStyle(.white)
         }
     }
 
@@ -246,7 +248,7 @@ struct OggiView: View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: Self.iconaDaFare(c.tipo))
                 .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : .secondary)
-                .frame(width: 24)
+                .frame(width: latoIcona)
                 .accessibilityHidden(true)
             Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 6)

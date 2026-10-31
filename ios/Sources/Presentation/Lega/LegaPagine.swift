@@ -23,13 +23,14 @@ struct AggiornaDatiSezione: View {
 
 /// Scambi, svincolati presi, giocatori lasciati liberi e crediti cambiati tra due importazioni delle rose.
 struct DifferenzeView: View {
+    @ScaledMetric(relativeTo: .subheadline) private var latoIcona: CGFloat = 22
     let differenze: Differenze
 
     private func nomi(_ giocatori: [GiocatoreMovimento]) -> String { giocatori.map(\.nome).joined(separator: ", ") }
 
     private func voce(_ icona: String, _ colore: Color, _ testo: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icona).foregroundStyle(colore).frame(width: 22).accessibilityHidden(true)
+            Image(systemName: icona).foregroundStyle(colore).frame(width: latoIcona).accessibilityHidden(true)
             Text(testo).font(.subheadline)
             Spacer(minLength: 0)
         }
@@ -110,6 +111,7 @@ struct MovimentiView: View {
 
 /// Quando le rose sono di una stagione finita: archivia e riparti da rose vuote, poi i passi per la stagione nuova.
 struct StagioneView: View {
+    @ScaledMetric(relativeTo: .headline) private var latoNumero: CGFloat = 28
     @StateObject private var vm: StagioneViewModel
     @State private var conferma = false
 
@@ -187,7 +189,7 @@ struct StagioneView: View {
 
     private func passo(_ numero: String, _ titolo: String, _ dettaglio: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Text(numero).font(.headline).frame(width: 28, height: 28).background(Color.verde.opacity(0.25), in: Circle()).accessibilityHidden(true)
+            Text(numero).font(.headline).frame(width: latoNumero, height: latoNumero).background(Color.verde.opacity(0.25), in: Circle()).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(titolo).font(.subheadline.bold())
                 Text(dettaglio).font(.caption).foregroundStyle(.secondary)

@@ -176,12 +176,12 @@ struct ConsigliatiView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         BadgeRuolo(ruolo: p.entra.ruolo, piccolo: true)
-                        Text(p.entra.nome).font(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(p.entra.nome).font(.headline).lineLimit(2).minimumScaleFactor(0.8)
                     }
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.uturn.backward").font(.caption2)
                         AvatarGiocatore(id: p.esce.id, squadra: p.esce.squadra, dimensione: 18, conNumero: false, nome: p.esce.nome, ruolo: p.esce.ruolo)
-                        Text(p.esce.nome).font(.caption).lineLimit(1)
+                        Text(p.esce.nome).font(.caption).lineLimit(2)
                     }
                     .foregroundStyle(.secondary)
                 }

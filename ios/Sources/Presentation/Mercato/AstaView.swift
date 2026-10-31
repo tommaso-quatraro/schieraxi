@@ -194,7 +194,7 @@ struct AstaContenuto: View {
                 ForEach(ruoli, id: \.self) { r in
                     let attivo = vm.ruolo == r
                     Button { vm.ruolo = r; Haptics.selezione() } label: {
-                        Text(nomiReparti[r] ?? r).font(.footnote.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.6)
+                        Text(nomiReparti[r] ?? r).font(.footnote.weight(.semibold)).lineLimit(2).minimumScaleFactor(0.7)
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .background(attivo ? Color.verde.opacity(0.35) : Color.primary.opacity(0.08), in: Capsule())
                             .overlay(Capsule().strokeBorder(attivo ? Color.verde : .clear, lineWidth: 1))

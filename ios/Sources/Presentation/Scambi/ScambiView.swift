@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Schermata Scambi: solo presentazione. Dati e logica sono in `ScambiViewModel`.
 struct ScambiView: View {
+    @ScaledMetric(relativeTo: .caption) private var larghezzaEtichetta: CGFloat = 54
     @ObservedObject var vm: ScambiViewModel
 
     var body: some View {
@@ -194,7 +195,7 @@ struct ScambiView: View {
 
     private func riga(_ titolo: String, _ nomi: [String]) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(titolo).font(.caption.bold()).foregroundStyle(.secondary).frame(width: 54, alignment: .leading)
+            Text(titolo).font(.caption.bold()).foregroundStyle(.secondary).frame(width: larghezzaEtichetta, alignment: .leading)
             Text(nomi.isEmpty ? "–" : nomi.joined(separator: ", ")).font(.subheadline)
         }
         .accessibilityElement(children: .combine)

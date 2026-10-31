@@ -155,7 +155,7 @@ struct RigaPartitaView: View {
                     if e.squadra == "trasferta" { Spacer(minLength: 0) }
                     simbolo(e)
                     Text("\(e.minuto ?? "") \(e.chi ?? "")\(e.tipo == "autogol" ? " (autogol)" : (e.tipo == "rigore" ? " (rigore)" : ""))")
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     if e.squadra != "trasferta" { Spacer(minLength: 0) }
                 }
             }
