@@ -720,6 +720,18 @@ private enum DatiDemo {
             ],
             "sintesi": ["giornate": 2, "punti_schierata": 65.0, "punti_consigliata": 67.5, "attesi_schierata": 66.5,
                         "meglio_tua": 1, "meglio_consigliata": 1],
+            "scelte_tue": ["giornate": 9, "meglio_tua": 5, "meglio_consigliata": 3, "pari": 1, "punti_differenza": 4.5,
+                           "percentuale_tua": 56, "pochi_dati": false,
+                           "per_giornata": [
+                               ["stagione": "2026-27", "giornata": 9, "hai_scelto": ["Giocatore 071"], "consigliava": ["Dumfries"],
+                                "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"],
+                               ["stagione": "2026-27", "giornata": 6, "hai_scelto": ["Giocatore 046", "Pulisic"], "consigliava": ["Thuram", "Dumfries"],
+                                "punti_tua": 70.0, "punti_consigliata": 64.5, "differenza": 5.5, "esito": "tua"],
+                               ["stagione": "2026-27", "giornata": 4, "hai_scelto": ["Giocatore 071"], "consigliava": ["Koopmeiners"],
+                                "punti_tua": 66.0, "punti_consigliata": 66.0, "differenza": 0.0, "esito": "pari"],
+                               ["stagione": "2026-27", "giornata": 3, "hai_scelto": ["Giocatore 019"], "consigliava": ["Giocatore 004"],
+                                "punti_tua": 68.5, "punti_consigliata": 65.0, "differenza": 3.5, "esito": "tua"],
+                           ]],
         ])
     }
 

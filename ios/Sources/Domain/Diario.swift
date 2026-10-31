@@ -5,6 +5,8 @@ import Foundation
 struct DiarioRisposta: Decodable {
     let giornate: [VoceDiario]?
     let sintesi: SintesiDiario?
+    /// Facoltativo: i server più vecchi non lo mandano.
+    let scelteTue: ScelteTue?
 }
 
 struct VoceDiario: Decodable, Identifiable {

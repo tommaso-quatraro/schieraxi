@@ -94,6 +94,13 @@ struct DiarioView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if let s = d.sintesi, (s.giornate ?? 0) > 0 { sintesi(s) }
+                    if let t = ScelteTueTesto(d.scelteTue) {
+                        Section {
+                            SchedaScelteTueView(testo: t)
+                                .listRowInsets(EdgeInsets(top: 6, leading: Tema.margine, bottom: 6, trailing: Tema.margine))
+                                .listRowBackground(Color.clear)
+                        }
+                    }
                     if (d.giornate ?? []).isEmpty {
                         VistaVuota(titolo: "Diario ancora vuoto", icona: "book.closed",
                                    descrizione: "Si riempie dopo la prima giornata finita (serve la tua squadra indicata in Lega).")
