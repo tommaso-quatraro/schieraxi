@@ -27,6 +27,7 @@ struct PrimoAvvioView: View {
                 Text("Se il tuo server è raggiungibile solo da una VPN, tienila accesa.")
                     .font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                provaConDati
             }
             .frame(maxWidth: 520)
             .padding(Tema.margine)
@@ -34,6 +35,28 @@ struct PrimoAvvioView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Sfondo())
+    }
+}
+
+extension PrimoAvvioView {
+    /// Chi non ha ancora un server può guardare l'app con una lega inventata: niente account, niente rete, niente da scrivere.
+    fileprivate var provaConDati: some View {
+        VStack(spacing: 8) {
+            Divider().padding(.vertical, 4)
+            Text("Non hai ancora un server?")
+                .font(.subheadline).foregroundStyle(.secondary)
+            Button {
+                ProvaEsempio.avvia()
+            } label: {
+                Label("Prova con dati di esempio", systemImage: "play.circle")
+                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityHint("Apre l'app con una lega inventata, senza account e senza rete")
+            Text("Una lega inventata, senza account e senza rete. Esci quando vuoi da Impostazioni.")
+                .font(.footnote).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
     }
 }
 

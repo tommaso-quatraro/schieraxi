@@ -102,7 +102,7 @@ enum Accesso {
     }
 
     /// L'archivio dei token in uso: il Keychain, o la memoria in modalità demo (le fotografie non toccano il Keychain).
-    nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.attivo ? MemoriaToken() : KeychainToken()
+    nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.daLancio ? MemoriaToken() : KeychainToken()
 
     /// Rimette nel file condiviso l'indirizzo e il TOKEN DEL WIDGET (`fw_`, a scopo limitato: solo lettura di oggi e widget) di adesso.
     /// Il token della sessione non va mai nel file condiviso.

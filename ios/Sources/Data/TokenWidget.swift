@@ -6,7 +6,7 @@ import Foundation
 enum TokenWidget {
     static let servizio = "<vecchio identificativo>.widget"
     private static let chiaveScadenza = "tokenWidgetScade"
-    nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.attivo ? MemoriaToken() : KeychainToken(servizio: servizio)
+    nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.daLancio ? MemoriaToken() : KeychainToken(servizio: servizio)
 
     /// Un token del widget accettabile: comincia per `fw_`, breve e di caratteri semplici (un server ostile potrebbe mandare altro).
     static func valido(_ testo: String) -> Bool {

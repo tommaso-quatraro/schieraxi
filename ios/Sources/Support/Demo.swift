@@ -9,7 +9,11 @@ import SwiftUI
 /// - `-DEMO_FONDO 1`: le schermate lunghe partono scorse in fondo (iOS 17 o più).
 /// - `-DEMO_ORIENTAMENTO orizzontale`: chiede l'orientamento orizzontale.
 enum Demo {
-    static let attivo: Bool = ProcessInfo.processInfo.arguments.contains("-DEMO")
+    static let daLancio: Bool = ProcessInfo.processInfo.arguments.contains("-DEMO")
+
+    /// Vero con l'argomento di lancio `-DEMO` (fotografie) o con la «Prova con dati di esempio» accesa dall'utente (`ProvaEsempio`):
+    /// in entrambi i casi dati finti, nessuna rete, nessun permesso, nessun lavoro in background.
+    static var attivo: Bool { daLancio || ProvaEsempio.attiva }
 
     /// Il valore che segue `-NOME` negli argomenti di lancio.
     static func argomento(_ nome: String) -> String? {
@@ -42,6 +46,7 @@ enum Demo {
     /// Il server di partenza dell'app: quello finto in demo, quello vero altrimenti.
     static func serverPredefinito() -> any ServerClient {
         if attivo {
+            if !daLancio { return FinteServer.demo }   // la prova con dati di esempio
             if accesso == "rose" {
                 // La lega non ha rose: il server risponde 409 «Nessuna rosa importata» a tutto quello che le richiede.
                 var senzaRose = FinteServer.demo
@@ -108,6 +113,9 @@ extension Demo {
         case "guida":
             // la configurazione guidata (si riapre dalle Impostazioni): in demo mostra i passi non ancora fatti
             nav.guidaAperta = true
+        case "impostazioni", "impostazioni-crediti":
+            // le Impostazioni (la pagina «Licenze e crediti» si apre da sola con impostazioni-crediti)
+            nav.impostazioniAperte = true
         case "impostazioni-cofano":
             // le Impostazioni si aprono sulla pagina «Sotto il cofano» (la apre ImpostazioniView da sola)
             nav.impostazioniAperte = true

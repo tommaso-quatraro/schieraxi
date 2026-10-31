@@ -243,7 +243,7 @@ final class SessioneAccount: ObservableObject {
 
     /// Chiede al server chi sono (`GET /api/account/me`) e allinea lo stato. Se il server non risponde si resta dov'eravamo.
     func verifica() async {
-        if Demo.accesso != nil { return }   // fotografie: lo stato è quello dello scenario
+        if Demo.accesso != nil || ProvaEsempio.attiva { return }   // fotografie e prova con dati di esempio: nessun server vero da interrogare
         do {
             let r: RispostaAccount = try await server.get("/api/account/me")
             if r.multiutente == true {
@@ -267,7 +267,7 @@ final class SessioneAccount: ObservableObject {
 
     /// Il server è cambiato (Lega > Server): si riparte dallo stato di quel server.
     func cambiaServer() async {
-        if Demo.accesso != nil { return }
+        if Demo.accesso != nil || ProvaEsempio.attiva { return }
         // Un altro server: il token del vecchio non deve MAI essere mandato al nuovo. Si butta, con i dati locali del vecchio.
         let attuale = server.indirizzo
         if let vecchio = memoria.string(forKey: Self.chiaveIndirizzo), vecchio != attuale {

@@ -5,7 +5,8 @@ import CoreSpotlight
 @main
 struct SchieraxiApp: App {
     @StateObject private var nav = Navigazione()
-    @StateObject private var sessione = SessioneAccount()
+    // Con la «Prova con dati di esempio» l'app riparte con il server finto, ma l'accesso resta legato al server vero (per quando si esce dalla prova).
+    @StateObject private var sessione = SessioneAccount(server: Demo.daLancio ? ServerCorrente.condiviso : ServerHTTP())
     @Environment(\.scenePhase) private var fase
 
     init() {

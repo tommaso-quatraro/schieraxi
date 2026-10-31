@@ -10,6 +10,8 @@ struct PortaDiAccesso: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.scenePhase) private var fase
     @AppStorage("indirizzo") private var indirizzo = ""
+    /// La prova con dati di esempio (`ProvaEsempio`): accesa o spenta, la porta si ridisegna.
+    @AppStorage(ProvaEsempio.chiave) private var prova = false
 
     var body: some View {
         Group {
@@ -17,7 +19,7 @@ struct PortaDiAccesso: View {
                 ProvaMarchio()
             } else if Demo.schermata == "primo-avvio" {
                 PrimoAvvioView()
-            } else if IndirizzoServer.manca {
+            } else if IndirizzoServer.manca && !prova {
                 // l'indirizzo del server non sta nell'app: prima di tutto si chiede e si prova
                 PrimoAvvioView()
             } else if let codice = sessione.codiceDaMostrare, sessione.utente != nil {
@@ -43,7 +45,7 @@ struct PortaDiAccesso: View {
         }
         .onChange(of: fase) { _, nuova in
             if nuova == .active {
-                Task { await sessione.verifica() }
+                Task { await sessione.verifica() }   // in prova non fa niente (nessun server vero)
                 // all'apertura il widget riparte con dati nuovi (senza aspettare il suo turno)
                 if !Demo.attivo { WidgetCenter.shared.reloadAllTimelines() }
             }

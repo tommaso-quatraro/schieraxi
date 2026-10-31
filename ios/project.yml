@@ -17,6 +17,9 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+      - path: Resources
+        excludes:
+          - Widget
     dependencies:
       - target: SchieraxiWidget
     # App Group con l'Apple ID gratuito (SideStore/AltStore): dichiarato qui, incorporato nell'IPA con ldid (vedi ipa.yml);
@@ -98,6 +101,7 @@ targets:
           - group.<vecchio identificativo>
     sources:
       - path: WidgetSources
+      - path: Resources/Widget
       - path: Sources/Domain/Modelli.swift
       - path: Sources/Domain/Quando.swift
       - path: Sources/Domain/Formato.swift
