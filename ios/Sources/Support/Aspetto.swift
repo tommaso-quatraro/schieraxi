@@ -24,10 +24,10 @@ enum Accento: String, CaseIterable, Identifiable {
     var chiaro: UIColor {
         switch self {
         case .verde: return Self.da(0x0a7d4c)   // verde di stato di SchieraXI (chiaro, contrasto 5:1 sul bianco)
-        case .blu: return Self.da(0x1d6fd6)
+        case .blu: return Self.da(0x1a63c0)     // contrasto 5,2:1 sul grigio dei fondi raggruppati
         case .viola: return Self.da(0x7a45d6)
-        case .arancio: return Self.da(0xb45f04)
-        case .rosso: return Self.da(0xd63a4a)
+        case .arancio: return Self.da(0xa25503) // contrasto 4,9:1 sul grigio dei fondi raggruppati
+        case .rosso: return Self.da(0xc03442)    // contrasto 4,9:1 sul grigio dei fondi raggruppati
         case .argento: return Self.da(0x4a5a6a)
         }
     }
