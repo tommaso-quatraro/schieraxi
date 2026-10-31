@@ -139,7 +139,7 @@ struct SchermataAccesso: View {
         VStack(spacing: 10) {
             Marchio(lato: 96, muove: sessione.inCorso)
             Text("SchieraXI")
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 .accessibilityHidden(true)
             Text(frase)
                 .font(.subheadline).foregroundStyle(.secondary)
