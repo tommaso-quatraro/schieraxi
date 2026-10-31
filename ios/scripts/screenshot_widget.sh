@@ -37,7 +37,7 @@ giro() {   # giro <udid> <etichetta> <dark|light> <larghezza> <widget[:dati]...>
   shift 4
   echo "=== $etichetta ($aspetto) ==="
   xcrun simctl ui "$udid" appearance "$aspetto"
-  xcrun simctl ui "$udid" content_size large
+  xcrun simctl ui "$udid" content_size "${DIMENSIONE:-large}"
   local s
   for s in "$@"; do
     scatta "$udid" "$etichetta" "${s%%:*}" "$( [[ "$s" == *:* ]] && echo "${s##*:}" || echo pieni )" "$larghezza"
@@ -63,6 +63,9 @@ echo "iPhone: $NOME_IPHONE ($IOS_IPHONE)"
 avvia "$UDID_IPHONE"
 giro "$UDID_IPHONE" iphone_scuro dark 600 "${TUTTI[@]}" cruscotto:parziali cruscotto:vuoto punti:parziali scambio:parziali
 giro "$UDID_IPHONE" iphone_chiaro light 600 cruscotto formazione punti scambio oggi osservato
+# Stato vuoto (nessun dato dal server) e testo molto grande (impostazione di accessibilita'): niente deve tagliarsi o sovrapporsi.
+giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto punti:vuoto formazione-blocco:vuoto punti-blocco:vuoto oggi:vuoto
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione punti oggi crediti dubbi formazione-blocco punti-blocco
 giro "$UDID_IPHONE" iphone_accentato dark 600 cruscotto:pieni+accentato formazione:pieni+accentato oggi:pieni+accentato osservato:pieni+accentato cruscotto-blocco:pieni+vivido
 xcrun simctl shutdown "$UDID_IPHONE" >/dev/null 2>&1
 
@@ -71,6 +74,7 @@ echo "iPad: $NOME_IPAD ($IOS_IPAD)"
 avvia "$UDID_IPAD"
 giro "$UDID_IPAD" ipad_scuro_verticale dark 800 cruscotto formazione punti scambio oggi rosa crediti stato-blocco cruscotto:parziali
 giro "$UDID_IPAD" ipad_chiaro_verticale light 800 cruscotto formazione
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione punti
 
 # Orizzontale: si ruota il simulatore con la tastiera (puo' non funzionare sul Mac di GitHub: in quel caso le foto restano verticali).
 open -a Simulator --args -CurrentDeviceUDID "$UDID_IPAD" >/dev/null 2>&1
