@@ -50,7 +50,7 @@ enum NuovaVersione {
             await Notifiche.avviso(
                 id: "nuova-versione",
                 titolo: "SchieraXI · C'è una versione nuova",
-                corpo: "Apri SideStore, tocca Sorgenti e poi «Aggiorna» su SchieraXI (\(esito.nome)).")
+                corpo: "Aggiorna SchieraXI dall'app con cui l'hai installata (\(esito.nome)).")
             UserDefaults.standard.set(esito.build, forKey: chiaveAvvisata)
         }
         return esito

@@ -34,8 +34,8 @@ L'app nativa fa **tutto quello che fa la web app** (tranne le notifiche push, ve
 - **Collegamenti `schieraxi://`** (per aprire l'app da una notifica di ntfy con l'intestazione `Click`):
   `schieraxi://oggi`, `formazione`, `mercato`, `scambi`, `lega`, `schieraxi://giocatore/<id>`.
   Esempio: `Click: schieraxi://formazione` (c'è anche in Lega, "Come aprire l'app da una notifica ntfy").
-- **Scadenza del certificato:** in Lega "Scade tra N giorni" (arancio sotto 2 giorni, rosso se scaduto), letta da `embedded.mobileprovision`; se non si legge: "scadenza non leggibile". Promemoria locali 24 e 6 ore prima ("Rinnova l'app con SideStore"), riprogrammati a ogni apertura e a ogni aggiornamento in background.
-- **Rinnovo automatico SideStore:** in Lega una scheda con i passi (Comandi > Automazione > 3:00 > "Refresh All Apps", LocalDevVPN attiva, una sola VPN alla volta).
+- **Scadenza del certificato:** in Impostazioni > Avanzate (solo amministratore) "Scade tra N giorni" (arancio sotto 2 giorni, rosso se scaduto), letta da `embedded.mobileprovision`; se non si legge: "scadenza non leggibile". Promemoria locali 24 e 6 ore prima ("Rinnova l'app con SideStore"), riprogrammati a ogni apertura e a ogni aggiornamento in background.
+- **Rinnovo automatico SideStore:** in Impostazioni > Avanzate (solo amministratore) una scheda con i passi (Comandi > Automazione > 3:00 > "Refresh All Apps", LocalDevVPN attiva, una sola VPN alla volta).
 - **Accessibilità:** segue chiaro/scuro, Dynamic Type, VoiceOver (ogni riga ha una frase completa; i grafici hanno etichetta, valore e l'elenco dei numeri), aree di tocco da 44 pt, colori sempre accompagnati da testo.
 
 ## Architettura (cartelle in `Sources/`)

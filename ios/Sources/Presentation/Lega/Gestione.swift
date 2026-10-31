@@ -24,7 +24,7 @@ struct AvvisiServerView: View {
                 } header: {
                     Text("Promemoria sul telefono")
                 } footer: {
-                    Text("Un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Si programmano quando apri Oggi e, ogni tanto, da soli: iOS riscarica la giornata e ti avvisa se la formazione consigliata cambia (quando succede lo decide iOS, di solito poche volte al giorno).")
+                    Text("Ti avvisiamo un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.")
                 }
                 if let s = vm.caricatore.dato {
                     if vm.oreTranquilleSpente {
@@ -57,7 +57,7 @@ struct AvvisiServerView: View {
                     sezioneOreTranquille
                     if sessione.multiutente {
                         Section {
-                            Text("Con gli account gli avvisi arrivano come notifiche della web app (installala dalla Home con Safari). Gli avvisi con ntfy e la prova restano all'amministratore del server.")
+                            Text("Per ricevere anche gli avvisi su cambi di formazione e riepilogo, apri SchieraXI con Safari e aggiungilo alla schermata Home: gli avvisi arrivano da lì.")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
                     } else {
@@ -77,7 +77,7 @@ struct AvvisiServerView: View {
                         .tint(Color.verde)
                         .frame(minHeight: 44)
                     } header: {
-                        Text("Avanzate")
+                        Text("Avanzate (per chi gestisce il server)")
                     } footer: {
                         Text("Il server aggiunge da solo il tocco che apre l'app: non devi impostare niente.")
                     }

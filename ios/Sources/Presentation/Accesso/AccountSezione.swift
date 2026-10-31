@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// «Il tuo account» in Lega: nome, ruolo, esci, esci da tutti, cambia password, nuovo codice di recupero, elimina l'account.
+/// «Il tuo account» nelle Impostazioni: nome, email, esci, cambia password, codice per recuperare l'accesso, elimina l'account.
 /// Si vede solo se il server ha gli account (multiutente); con il server di sempre non compare.
 struct AccountSezione: View {
     @EnvironmentObject private var sessione: SessioneAccount
@@ -23,7 +23,6 @@ struct AccountSezione: View {
                 if utente.nome != utente.nomeUtente {
                     RigaValore(titolo: "Per accedere", valore: utente.nomeUtente)
                 }
-                RigaValore(titolo: "Ruolo", valore: utente.ruoloLeggibile)
                 RigaValore(titolo: "Email", valore: sessione.email ?? (sessione.emailInAttesa.map { "\($0) (da verificare)" } ?? "Nessuna"))
                 Button { foglio = .nome } label: {
                     Label("Cambia le maiuscole del nome", systemImage: "textformat").labelStyle(.voce(.indigo)).frame(minHeight: Tema.areaTocco)
@@ -35,13 +34,13 @@ struct AccountSezione: View {
                     Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
                 }
                 Button { chiediEsciDaTutti = true } label: {
-                    Label("Esci da tutti i dispositivi", systemImage: "iphone.slash").labelStyle(.voce(.orange)).frame(minHeight: Tema.areaTocco)
+                    Label("Esci da tutti i miei telefoni", systemImage: "iphone.slash").labelStyle(.voce(.orange)).frame(minHeight: Tema.areaTocco)
                 }
                 Button { foglio = .password } label: {
                     Label("Cambia password", systemImage: "key").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
                 }
                 Button { foglio = .codice } label: {
-                    Label("Nuovo codice di recupero", systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
+                    Label("Nuovo codice per recuperare l'accesso", systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
                 }
                 Button(role: .destructive) { foglio = .elimina } label: {
                     Label("Elimina l'account", systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
@@ -54,14 +53,14 @@ struct AccountSezione: View {
             } message: {
                 Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
             }
-            .confirmationDialog("Esci da tutti i dispositivi?", isPresented: $chiediEsciDaTutti, titleVisibility: .visible) {
+            .confirmationDialog("Esci da tutti i telefoni?", isPresented: $chiediEsciDaTutti, titleVisibility: .visible) {
                 Button("Esci da tutti", role: .destructive) {
                     Task {
                         do { try await sessione.esciDaTutti() } catch { errore = SchermataAccesso.testoErrore(error) }
                     }
                 }
             } message: {
-                Text("Tutti i telefoni e i browser dovranno rifare l'accesso, anche questo.")
+                Text("Su ogni telefono e computer dovrai entrare di nuovo con nome e password, anche su questo.")
             }
             .sheet(item: $foglio) { f in
                 NavigationStack {
@@ -186,7 +185,7 @@ struct FoglioNuovoCodice: View {
                     } header: {
                         Text("Conferma con la password")
                     } footer: {
-                        Text("Il codice di prima smette di funzionare. Il nuovo compare una volta sola.")
+                        Text("Il codice di prima non vale più. Quello nuovo lo vedi una volta sola: scrivilo e tienilo al sicuro.")
                     }
                     if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
                     Section {
@@ -229,7 +228,7 @@ struct FoglioElimina: View {
     var body: some View {
         Form {
             Section {
-                Text("Cancella l'account e TUTTI i suoi dati sul server: rose, regole, scelte, immagini, avvisi. Non si può annullare. Se vuoi portarti via i dati, fai prima il backup dalla web app.")
+                Text("Cancella il tuo account e TUTTI i tuoi dati: rose, regole, scelte, immagini, avvisi. Non si può annullare. Se vuoi tenere una copia, falla prima da Impostazioni > Copia di sicurezza.")
                     .font(.subheadline)
             }
             Section("Conferma con la password") {

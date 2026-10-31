@@ -113,7 +113,7 @@ extension Demo {
         case "guida":
             // la configurazione guidata (si riapre dalle Impostazioni): in demo mostra i passi non ancora fatti
             nav.guidaAperta = true
-        case "impostazioni", "impostazioni-crediti":
+        case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate":
             // le Impostazioni (la pagina «Licenze e crediti» si apre da sola con impostazioni-crediti)
             nav.impostazioniAperte = true
         case "impostazioni-cofano":

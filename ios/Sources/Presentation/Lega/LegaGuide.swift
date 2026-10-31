@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// Avvisa in Lega se su GitHub c'è una build più nuova di quella installata, con i passi per aggiornare da SideStore.
+/// Avvisa nelle Impostazioni se c'è una versione più nuova di quella installata. Chi amministra vede anche i passi di SideStore.
 struct NuovaVersioneSezione: View {
+    @EnvironmentObject private var sessione: SessioneAccount
     @State private var esito: NuovaVersione.Esito?
 
     var body: some View {
         Group {
             if let esito {
                 Section("Aggiornamento dell'app") {
-                    Label("È disponibile la \(esito.nome) (hai la build \(NuovaVersione.buildInstallata))", systemImage: "arrow.down.circle")
+                    Label(sessione.puoAmministrare ? "È disponibile la \(esito.nome) (hai la build \(NuovaVersione.buildInstallata))" : "C'è una versione più nuova di SchieraXI", systemImage: "arrow.down.circle")
                         .foregroundStyle(Color.verde)
-                    Text("Apri SideStore, tocca Sorgenti, poi SchieraXI e «Aggiorna». Se non vedi il sorgente: in Sorgenti aggiungi https://github.com/tommaso-quatraro/schieraxi-ios/releases/latest/download/sorgente.json")
+                    Text(sessione.puoAmministrare ? "Apri SideStore, tocca Sorgenti, poi SchieraXI e «Aggiorna». Se non vedi il sorgente: in Sorgenti aggiungi https://github.com/tommaso-quatraro/schieraxi-ios/releases/latest/download/sorgente.json" : "Aggiornala dall'app con cui l'hai installata: i tuoi dati restano dove sono.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
