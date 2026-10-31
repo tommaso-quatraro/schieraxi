@@ -100,8 +100,16 @@ struct RadiceView: View {
     @AppStorage("accento") private var accento = "verde"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
     @AppStorage("tema") private var tema = "auto"   // auto, chiaro, scuro
+    /// Pallino sulla scheda Lega quando ci sono novità dell'app da guardare (come sulla web app).
+    @AppStorage("novitaVista") private var novitaVista = ""
+    @State private var novitaDaVedere = false
     /// Punto di partenza e arrivo della transizione a zoom tra una riga di giocatore e la sua scheda.
     @Namespace private var zoom
+
+    private func aggiornaBadge() {
+        let nuovo = modello.oggi.novitaDaVedere(ultimaVista: novitaVista) != nil
+        if nuovo != novitaDaVedere { novitaDaVedere = nuovo }
+    }
 
     var body: some View {
         TabView(selection: $nav.sezione) {
@@ -111,9 +119,13 @@ struct RadiceView: View {
                 } label: {
                     Label(s.titolo, systemImage: s.icona)
                 }
+                .badge(s == .lega && novitaDaVedere ? 1 : 0)
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        .onAppear { aggiornaBadge() }
+        .onChange(of: novitaVista) { _, _ in aggiornaBadge() }
+        .onReceive(modello.oggi.objectWillChange) { _ in DispatchQueue.main.async { aggiornaBadge() } }
         .barraSchedeCheSiRiduce()
         // Il conto alla rovescia sta nell'intestazione di Oggi (e nel widget): sotto la barra delle schede faceva due barre sovrapposte.
         .tint(Color.verde)

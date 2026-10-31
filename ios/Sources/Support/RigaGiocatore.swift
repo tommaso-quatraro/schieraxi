@@ -106,7 +106,7 @@ struct RigaGiocatore: View {
         if !lista.isEmpty {
             // Un'unica riga di testo colorato (a capo se serve): più compatta di tante capsule.
             lista.enumerated().reduce(Text("")) { acc, voce in
-                acc + Text(voce.offset == 0 ? "" : " · ") + Text(voce.element.testo).foregroundColor(voce.element.gravita.colore)
+                acc + Text(voce.offset == 0 ? "" : " · ") + Text(voce.element.testo).foregroundStyle(voce.element.gravita.colore)
             }
             .font(.caption)
             .fixedSize(horizontal: false, vertical: true)
