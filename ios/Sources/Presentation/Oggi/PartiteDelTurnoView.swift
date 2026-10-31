@@ -81,6 +81,10 @@ struct RigaPartitaView: View {
             lampo = true
             // Il lampo si spegne piano; con «Ridurre movimento» è più tenue e più lento, senza altro movimento.
             withAnimation(.easeOut(duration: ridotto ? 1.6 : 1.1)) { lampo = false }
+            // Chi usa VoiceOver non vede il lampo: il gol si annuncia a voce.
+            if let frase = DirettaLogica.annuncioGol(casa: partita.casa, trasferta: partita.trasferta, prima: prima, dopo: dopo) {
+                AccessibilityNotification.Announcement(frase).post()
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(DirettaLogica.frase(casa: partita.casa, trasferta: partita.trasferta, live: live, ora: ora, titolari: titolari))
