@@ -25,3 +25,6 @@ screenshot/
 
 # screenshot di lavoro (demo, temporanei): non si pubblicano
 .screenshot-nuovi/
+
+# screenshot di lavoro del widget (con nomi di giocatori veri): non si pubblicano
+.sw/
