@@ -48,72 +48,72 @@ private enum DatiDemo {
 
     /// La mia rosa (25): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti.
     static let miaRosa: [Calciatore] = [
-        cal(101, "Giocatore 096", "P", "inter", costo: 12, pVoto: 0.98, punti: 6.1),
-        cal(102, "Mike Giocatore 051", "P", "milan", costo: 22, pVoto: 0.97, punti: 5.8),
-        cal(103, "Giocatore 056", "P", "atalanta", costo: 14, pVoto: 0.96, punti: 5.6),
-        cal(104, "Giocatore 002", "D", "inter", costo: 28, pVoto: 0.96, punti: 6.4, diffidato: true),
-        cal(105, "Federico Giocatore 019", "D", "inter", costo: 31, pVoto: 0.90, punti: 6.9),
-        cal(106, "Gleison Bremer", "D", "juventus", costo: 20, pVoto: 0.93, punti: 6.0),
-        cal(107, "Giocatore 002 Buongiorno", "D", "napoli", costo: 19, pVoto: 0.92, punti: 5.9),
-        cal(108, "Giovanni Di Lorenzo", "D", "napoli", costo: 17, pVoto: 0.94, punti: 6.2),
-        cal(109, "Giocatore 081", "D", "fiorentina", costo: 9, pVoto: 0.0, punti: 0.0, assente: true),
-        cal(110, "Andrea Cambiaso", "D", "juventus", costo: 15, pVoto: 0.85, punti: 5.7),
-        cal(111, "Evan Ndicka", "D", "roma", costo: 8, pVoto: 0.78, punti: 5.2),
-        cal(112, "Giocatore 068 Barella", "C", "inter", costo: 34, pVoto: 0.95, punti: 7.0),
-        cal(113, "Giocatore 033 Çalhanoğlu", "C", "inter", costo: 36, pVoto: 0.93, punti: 7.2),
-        cal(114, "Teun Koopmeiners", "C", "juventus", costo: 21, pVoto: 0.88, punti: 6.3),
-        cal(115, "Christian Pulisic", "C", "milan", costo: 38, pVoto: 0.91, punti: 6.8),
-        cal(116, "Stanislav Lobotka", "C", "napoli", costo: 10, pVoto: 0.90, punti: 5.6),
-        cal(117, "Tijjani Reijnders", "C", "milan", costo: 24, pVoto: 0.89, punti: 6.2),
-        cal(118, "Giocatore 068", "C", "fiorentina", costo: 6, pVoto: 0.0, punti: 0.0, assente: true),
-        cal(119, "Manu Koné", "C", "roma", costo: 13, pVoto: 0.84, punti: 5.5),
-        cal(120, "Giocatore 045", "A", "inter", costo: 80, pVoto: 0.92, punti: 7.9, dubbio: true),
-        cal(121, "Marcus Thuram", "A", "inter", costo: 52, pVoto: 0.90, punti: 7.1),
-        cal(122, "Ademola Lookman", "A", "atalanta", costo: 41, pVoto: 0.87, punti: 7.0),
-        cal(123, "Rafael Leão", "A", "milan", costo: 45, pVoto: 0.88, punti: 6.9),
-        cal(124, "Giocatore 021", "A", "juventus", costo: 33, pVoto: 0.70, punti: 5.4, dubbio: true),
-        cal(125, "Moise Kean", "A", "fiorentina", costo: 18, pVoto: 0.82, punti: 5.8),
+        cal(101, "Ivo Sorvani", "P", "inter", costo: 12, pVoto: 0.98, punti: 6.1),
+        cal(102, "Milo Magrenti", "P", "milan", costo: 22, pVoto: 0.97, punti: 5.8),
+        cal(103, "Marcello Carsetti", "P", "atalanta", costo: 14, pVoto: 0.96, punti: 5.6),
+        cal(104, "Alvise Bastrani", "D", "inter", costo: 28, pVoto: 0.96, punti: 6.4, diffidato: true),
+        cal(105, "Fabio Dimarzi", "D", "inter", costo: 31, pVoto: 0.90, punti: 6.9),
+        cal(106, "Glauco Brevisi", "D", "juventus", costo: 20, pVoto: 0.93, punti: 6.0),
+        cal(107, "Aurelio Buonvicini", "D", "napoli", costo: 19, pVoto: 0.92, punti: 5.9),
+        cal(108, "Gianni Di Corvara", "D", "napoli", costo: 17, pVoto: 0.94, punti: 6.2),
+        cal(109, "Rolf Gostein", "D", "fiorentina", costo: 9, pVoto: 0.0, punti: 0.0, assente: true),
+        cal(110, "Adriano Cambrisi", "D", "juventus", costo: 15, pVoto: 0.85, punti: 5.7),
+        cal(111, "Ewan Ndolani", "D", "roma", costo: 8, pVoto: 0.78, punti: 5.2),
+        cal(112, "Nestore Barlesi", "C", "inter", costo: 34, pVoto: 0.95, punti: 7.0),
+        cal(113, "Hamit Çalvaroğlu", "C", "inter", costo: 36, pVoto: 0.93, punti: 7.2),
+        cal(114, "Teo Kloosmeijer", "C", "juventus", costo: 21, pVoto: 0.88, punti: 6.3),
+        cal(115, "Cesare Pulinski", "C", "milan", costo: 38, pVoto: 0.91, punti: 6.8),
+        cal(116, "Stanko Lobrenka", "C", "napoli", costo: 10, pVoto: 0.90, punti: 5.6),
+        cal(117, "Tarek Reimvaldt", "C", "milan", costo: 24, pVoto: 0.89, punti: 6.2),
+        cal(118, "Nereo Fagiani", "C", "fiorentina", costo: 6, pVoto: 0.0, punti: 0.0, assente: true),
+        cal(119, "Moussa Kerabo", "C", "roma", costo: 13, pVoto: 0.84, punti: 5.5),
+        cal(120, "Leonel Marténi", "A", "inter", costo: 80, pVoto: 0.92, punti: 7.9, dubbio: true),
+        cal(121, "Marvin Thorvan", "A", "inter", costo: 52, pVoto: 0.90, punti: 7.1),
+        cal(122, "Adebayo Lorkman", "A", "atalanta", costo: 41, pVoto: 0.87, punti: 7.0),
+        cal(123, "Renato Lemão", "A", "milan", costo: 45, pVoto: 0.88, punti: 6.9),
+        cal(124, "Darko Vlasenić", "A", "juventus", costo: 33, pVoto: 0.70, punti: 5.4, dubbio: true),
+        cal(125, "Mosè Kervan", "A", "fiorentina", costo: 18, pVoto: 0.82, punti: 5.8),
     ]
 
     /// Svincolati (non sono in nessuna squadra della lega).
     static let liberi: [Calciatore] = [
-        cal(201, "Andrea Pinamonti", "A", "sassuolo", costo: 0, pVoto: 0.86, punti: 6.4),
-        cal(202, "Matteo Giocatore 077", "C", "napoli", costo: 0, pVoto: 0.81, punti: 6.0),
-        cal(203, "Mateo Retegui", "A", "genoa", costo: 0, pVoto: 0.90, punti: 6.9),
-        cal(204, "Giocatore 069", "A", "lecce", costo: 0, pVoto: 0.88, punti: 6.2),
-        cal(205, "Giocatore 060", "C", "lazio", costo: 0, pVoto: 0.89, punti: 6.1),
-        cal(206, "Alex Meret", "P", "napoli", costo: 0, pVoto: 0.96, punti: 5.7),
-        cal(207, "Marco Brescianini", "C", "atalanta", costo: 0, pVoto: 0.83, punti: 5.6),
-        cal(208, "Federico Gatti", "D", "juventus", costo: 0, pVoto: 0.84, punti: 5.5),
-        cal(209, "Pietro Comuzzo", "D", "fiorentina", costo: 0, pVoto: 0.88, punti: 5.4),
-        cal(210, "Giocatore 068 Rovella", "C", "lazio", costo: 0, pVoto: 0.90, punti: 5.8),
-        cal(211, "Emil Audero", "P", "cremonese", costo: 0, pVoto: 0.95, punti: 5.1),
-        cal(212, "Lorenzo Lucca", "A", "udinese", costo: 0, pVoto: 0.79, punti: 5.9),
-        cal(213, "Matteo Gabbia", "D", "milan", costo: 0, pVoto: 0.75, punti: 5.0, dubbio: true),
-        cal(214, "Alexis Saelemaekers", "C", "milan", costo: 0, pVoto: 0.82, punti: 5.7),
-        cal(215, "Gianluca Mancini", "D", "roma", costo: 0, pVoto: 0.86, punti: 5.5),
+        cal(201, "Aldo Pinarotti", "A", "sassuolo", costo: 0, pVoto: 0.86, punti: 6.4),
+        cal(202, "Marcello Polinardo", "C", "napoli", costo: 0, pVoto: 0.81, punti: 6.0),
+        cal(203, "Mauro Retalli", "A", "genoa", costo: 0, pVoto: 0.90, punti: 6.9),
+        cal(204, "Nenad Krslić", "A", "lecce", costo: 0, pVoto: 0.88, punti: 6.2),
+        cal(205, "Marzio Zaviani", "C", "lazio", costo: 0, pVoto: 0.89, punti: 6.1),
+        cal(206, "Aron Mercati", "P", "napoli", costo: 0, pVoto: 0.96, punti: 5.7),
+        cal(207, "Manuel Brisciani", "C", "atalanta", costo: 0, pVoto: 0.83, punti: 5.6),
+        cal(208, "Furio Gattoni", "D", "juventus", costo: 0, pVoto: 0.84, punti: 5.5),
+        cal(209, "Pino Comurzi", "D", "fiorentina", costo: 0, pVoto: 0.88, punti: 5.4),
+        cal(210, "Nando Rovalli", "C", "lazio", costo: 0, pVoto: 0.90, punti: 5.8),
+        cal(211, "Egon Audrelli", "P", "cremonese", costo: 0, pVoto: 0.95, punti: 5.1),
+        cal(212, "Ludovico Lucarni", "A", "udinese", costo: 0, pVoto: 0.79, punti: 5.9),
+        cal(213, "Michele Gabbrosi", "D", "milan", costo: 0, pVoto: 0.75, punti: 5.0, dubbio: true),
+        cal(214, "Aksel Sandemaker", "C", "milan", costo: 0, pVoto: 0.82, punti: 5.7),
+        cal(215, "Gilberto Mancarini", "D", "roma", costo: 0, pVoto: 0.86, punti: 5.5),
     ]
 
     /// Calciatori delle altre squadre della lega.
     static let altri: [Calciatore] = [
-        alt(301, "Wladimiro Falcone", "P", "lecce"), alt(302, "Marco Silvestri", "P", "udinese"),
-        alt(303, "Michele Di Gregorio", "P", "juventus"), alt(304, "Elia Caprile", "P", "cagliari"),
-        alt(305, "Nahuel Molina", "D", "atalanta"), alt(306, "Matteo Darmian", "D", "inter"),
-        alt(307, "Giocatore 050", "D", "lazio"), alt(308, "Davide Calabria", "D", "bologna"),
-        alt(309, "Sam Beukema", "D", "bologna"), alt(310, "Mario Gila", "D", "lazio"),
-        alt(311, "Pasquale Mazzocchi", "D", "napoli"), alt(312, "Leonardo Spinazzola", "D", "napoli"),
-        alt(313, "Marten de Roon", "C", "atalanta"), alt(314, "Ederson", "C", "atalanta"),
-        alt(315, "Weston Giocatore 061", "C", "juventus"), alt(316, "Manuel Locatelli", "C", "juventus"),
-        alt(317, "Matteo Guendouzi", "C", "lazio"), alt(318, "Danilo Cataldi", "C", "lazio"),
-        alt(319, "Lewis Ferguson", "C", "bologna"), alt(320, "Remo Freuler", "C", "bologna"),
-        alt(321, "Giocatore 086", "C", "napoli"), alt(322, "Kevin Giocatore 014", "C", "napoli"),
-        alt(323, "Matías Soulé", "C", "roma"), alt(324, "Lorenzo Pellegrini", "C", "roma"),
-        alt(325, "Giocatore 039", "A", "juventus"), alt(326, "Jonathan David", "A", "juventus"),
-        alt(327, "Romelu Lukaku", "A", "napoli"), alt(328, "Paulo Dybala", "A", "roma"),
-        alt(329, "Artem Dovbyk", "A", "roma"), alt(330, "Santiago Giocatore 012", "A", "bologna"),
-        alt(331, "Nico Paz", "A", "como"), alt(332, "Pedro", "A", "lazio"),
-        alt(333, "Gianluca Scamacca", "A", "atalanta"), alt(334, "Albert Guðmundsson", "A", "fiorentina"),
-        alt(335, "Rasmus Højlund", "A", "napoli"), alt(336, "Lorenzo Verdi", "A", "roma"),
+        alt(301, "Walter Falcherini", "P", "lecce"), alt(302, "Massimo Silverni", "P", "udinese"),
+        alt(303, "Mirco Di Gradella", "P", "juventus"), alt(304, "Enea Caprisi", "P", "cagliari"),
+        alt(305, "Nelson Morlani", "D", "atalanta"), alt(306, "Massimo Darvini", "D", "inter"),
+        alt(307, "Leone Pellari", "D", "lazio"), alt(308, "Duilio Calbresi", "D", "bologna"),
+        alt(309, "Stijn Beekmans", "D", "bologna"), alt(310, "Mauro Gilbaro", "D", "lazio"),
+        alt(311, "Patrizio Mazzorchi", "D", "napoli"), alt(312, "Livio Spinarola", "D", "napoli"),
+        alt(313, "Mats de Valk", "C", "atalanta"), alt(314, "Edvanson", "C", "atalanta"),
+        alt(315, "Walden McKerrin", "C", "juventus"), alt(316, "Mauro Locardi", "C", "juventus"),
+        alt(317, "Mathis Guermadi", "C", "lazio"), alt(318, "Dino Cavaldi", "C", "lazio"),
+        alt(319, "Lyle Fernshaw", "C", "bologna"), alt(320, "Reto Fraunler", "C", "bologna"),
+        alt(321, "Sandy McTarran", "C", "napoli"), alt(322, "Koen De Vlaam", "C", "napoli"),
+        alt(323, "Matías Sorlé", "C", "roma"), alt(324, "Lamberto Pelozzi", "C", "roma"),
+        alt(325, "Kaan Yurdız", "A", "juventus"), alt(326, "Joel Davenant", "A", "juventus"),
+        alt(327, "Rolando Lumbaku", "A", "napoli"), alt(328, "Pablo Dobrala", "A", "roma"),
+        alt(329, "Artur Dovrenko", "A", "roma"), alt(330, "Santiago Castrel", "A", "bologna"),
+        alt(331, "Nils Pazor", "A", "como"), alt(332, "Pelayo", "A", "lazio"),
+        alt(333, "Giacomo Scalmana", "A", "atalanta"), alt(334, "Alvar Hrafnsson", "A", "fiorentina"),
+        alt(335, "Rune Højvang", "A", "napoli"), alt(336, "Lorenzo Verdi", "A", "roma"),
     ]
 
     static var tutti: [Calciatore] { miaRosa + liberi + altri }
@@ -388,15 +388,15 @@ private enum DatiDemo {
                             "casa": m.casa, "trasferta": m.trasferta, "giocata": false])
         }
         let avvisi: [[String: Any]] = [
-            ["id": 120, "nome": "Giocatore 045", "ruolo": "A", "squadra": "inter", "tipo": "dubbio",
+            ["id": 120, "nome": "Leonel Marténi", "ruolo": "A", "squadra": "inter", "tipo": "dubbio",
              "nota": "Affaticamento muscolare, si decide all'ultimo", "in_formazione": true],
-            ["id": 104, "nome": "Giocatore 002", "ruolo": "D", "squadra": "inter", "tipo": "diffidato",
+            ["id": 104, "nome": "Alvise Bastrani", "ruolo": "D", "squadra": "inter", "tipo": "diffidato",
              "nota": "Un'ammonizione alla squalifica", "in_formazione": true],
-            ["id": 109, "nome": "Giocatore 081", "ruolo": "D", "squadra": "fiorentina", "tipo": "squalificato",
+            ["id": 109, "nome": "Rolf Gostein", "ruolo": "D", "squadra": "fiorentina", "tipo": "squalificato",
              "nota": "Una giornata", "in_formazione": false],
-            ["id": 118, "nome": "Giocatore 068", "ruolo": "C", "squadra": "fiorentina", "tipo": "infortunato",
+            ["id": 118, "nome": "Nereo Fagiani", "ruolo": "C", "squadra": "fiorentina", "tipo": "infortunato",
              "nota": "Lesione al polpaccio, rientro a dicembre", "in_formazione": false],
-            ["id": 124, "nome": "Giocatore 021", "ruolo": "A", "squadra": "juventus", "tipo": "dubbio",
+            ["id": 124, "nome": "Darko Vlasenić", "ruolo": "A", "squadra": "juventus", "tipo": "dubbio",
              "nota": "Botta alla caviglia", "in_formazione": false],
         ]
         let migliori = ids.map { calciatore($0) }.sorted { $0.punti > $1.punti }.prefix(5).map { giocatore($0) }
@@ -416,7 +416,7 @@ private enum DatiDemo {
                            "dev": 4.2, "intervallo": fascia(punteggio(ids)), "tua_scelta": true],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
             "da_fare": [
-                ["id": "dubbio-120", "tipo": "dubbio", "testo": "Giocatore 045 è in dubbio: guarda le alternative", "priorita": 1,
+                ["id": "dubbio-120", "tipo": "dubbio", "testo": "Leonel Marténi è in dubbio: guarda le alternative", "priorita": 1,
                  "azione": "Sostituisci", "destinazione": ["scheda": "formazione", "sezione": "formazione", "link": "schieraxi://formazione"]],
                 ["id": "svincolato-203", "tipo": "svincolato", "testo": "Uno svincolato migliora la squadra di 3,4 punti", "priorita": 2,
                  "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]],
@@ -490,20 +490,20 @@ private enum DatiDemo {
             switch i {
             case 0:
                 p["stato"] = "secondo_tempo"; p["minuto"] = "63'"; p["gol_casa"] = 2; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "12'", "casa", "Thuram", "Barella"), ev("gol", "38'", "trasferta", "Dybala"), ev("giallo", "44'", "casa", "Giocatore 004"),
-                               ev("rigore", "55'", "casa", "Calhanoglu"), ev("rigore_sbagliato", "58'", "trasferta", "Dybala"),
-                               ev("rosso", "61'", "trasferta", "Cristante")]
+                p["eventi"] = [ev("gol", "12'", "casa", "Thorvan", "Barlesi"), ev("gol", "38'", "trasferta", "Dobrala"), ev("giallo", "44'", "casa", "Bastrani"),
+                               ev("rigore", "55'", "casa", "Calvaroglu"), ev("rigore_sbagliato", "58'", "trasferta", "Dobrala"),
+                               ev("rosso", "61'", "trasferta", "Cristoni")]
             case 1:
                 p["stato"] = "intervallo"; p["gol_casa"] = 0; p["gol_trasferta"] = 0
-                p["eventi"] = [ev("giallo", "30'", "trasferta", "Locatelli")]
+                p["eventi"] = [ev("giallo", "30'", "trasferta", "Locardi")]
             case 2:
                 p["stato"] = "finita"; p["gol_casa"] = 3; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "9'", "casa", "Lukaku", "Giocatore 077"), ev("autogol", "40'", "casa", "Djimsiti"), ev("giallo", "52'", "casa", "Giocatore 083"),
-                               ev("rosso", "71'", "trasferta", "De Roon"), ev("gol", "80'", "trasferta", "Retegui", "Pasalic"),
-                               ev("gol", "88'", "casa", "McTominay", "Anguissa"), ev("doppio_giallo", "90'+2'", "casa", "Lobotka")]
+                p["eventi"] = [ev("gol", "9'", "casa", "Lumbaku", "Polinardo"), ev("autogol", "40'", "casa", "Djorsati"), ev("giallo", "52'", "casa", "Rrapaj"),
+                               ev("rosso", "71'", "trasferta", "De Valk"), ev("gol", "80'", "trasferta", "Retalli", "Pasenic"),
+                               ev("gol", "88'", "casa", "McTarran", "Angrassa"), ev("doppio_giallo", "90'+2'", "casa", "Lobrenka")]
             case 3:
                 p["stato"] = "primo_tempo"; p["minuto"] = "27'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "11'", "casa", "Castellanos"), ev("gol", "25'", "trasferta", "Gudmundsson")]
+                p["eventi"] = [ev("gol", "11'", "casa", "Castelvera"), ev("gol", "25'", "trasferta", "Hrafnsson")]
             default: break
             }
             partite.append(p)
@@ -619,7 +619,7 @@ private enum DatiDemo {
 
     static func rosa(_ nome: String, _ giocatori: [Calciatore], mia: Bool) -> String {
         json(["nome": nome, "mia": mia, "crediti_residui": mia ? 12 : 30, "aggiornato": "2026-10-26T19:19:33",
-              "giocatori": giocatori.map { rigaRosa($0) }, "avvisi": mia ? ["Schiera FC: Giocatore 081 e Giocatore 068 sono indisponibili"] : [String]()])
+              "giocatori": giocatori.map { rigaRosa($0) }, "avvisi": mia ? ["Schiera FC: Rolf Gostein e Nereo Fagiani sono indisponibili"] : [String]()])
     }
 
     static func stato(adesso: Date) -> String {
@@ -710,16 +710,16 @@ private enum DatiDemo {
     /// Diario delle giornate: due giornate finite, una con la formazione schierata e una senza.
     static func diario() -> String {
         // Gli id seguono il nome (non la posizione), così due formazioni con un nome diverso risultano davvero diverse.
-        let anagrafe = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Dumfries", "Giocatore 071", "Mkhitaryan", "Zielinski"]
-        let ruoliDi = ["Giocatore 089": "P", "Giocatore 004": "D", "Giocatore 019": "D", "Dumfries": "D", "Giocatore 044": "A", "Thuram": "A", "Giocatore 046": "A", "Pulisic": "A", "Giocatore 071": "A"]
+        let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Calvaroglu", "Leonel", "Thorvan", "Pulinski", "Lemao", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
+        let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Leonel": "A", "Thorvan": "A", "Lemao": "A", "Pulinski": "A", "Orsetti": "A"]
         func titolari(_ nomi: [String]) -> [[String: Any]] {
             nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruoliDi[$0] ?? "C"] }
         }
-        let base = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Dumfries"]
-        let altra = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Calhanoglu", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Koopmeiners", "Giocatore 071"]
-        let altra2 = ["Giocatore 089", "Giocatore 004", "Giocatore 019", "Barella", "Mkhitaryan", "Giocatore 044", "Thuram", "Pulisic", "Giocatore 046", "Zielinski", "Giocatore 071"]
+        let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Calvaroglu", "Leonel", "Thorvan", "Pulinski", "Lemao", "Kloosmeijer", "Dunfrey"]
+        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Calvaroglu", "Leonel", "Thorvan", "Pulinski", "Lemao", "Kloosmeijer", "Orsetti"]
+        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Leonel", "Thorvan", "Pulinski", "Lemao", "Zelawski", "Orsetti"]
         func istantanea(_ g: Int, _ modulo: String, _ nomi: [String], atteso: Double, ora: String) -> [String: Any] {
-            ["giornata": g, "modulo": modulo, "titolari": titolari(nomi), "panchina": titolari(["Mkhitaryan", "Zielinski", "Giocatore 071"]),
+            ["giornata": g, "modulo": modulo, "titolari": titolari(nomi), "panchina": titolari(["Mkhedrian", "Zelawski", "Orsetti"]),
              "atteso": atteso, "stile": "Equilibrato", "calcolata": ora]
         }
         return json([
@@ -743,13 +743,13 @@ private enum DatiDemo {
             "scelte_tue": ["giornate": 9, "meglio_tua": 5, "meglio_consigliata": 3, "pari": 1, "punti_differenza": 4.5,
                            "percentuale_tua": 56, "pochi_dati": false,
                            "per_giornata": [
-                               ["stagione": "2026-27", "giornata": 9, "hai_scelto": ["Giocatore 071"], "consigliava": ["Dumfries"],
+                               ["stagione": "2026-27", "giornata": 9, "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"],
                                 "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"],
-                               ["stagione": "2026-27", "giornata": 6, "hai_scelto": ["Giocatore 046", "Pulisic"], "consigliava": ["Thuram", "Dumfries"],
+                               ["stagione": "2026-27", "giornata": 6, "hai_scelto": ["Lemao", "Pulinski"], "consigliava": ["Thorvan", "Dunfrey"],
                                 "punti_tua": 70.0, "punti_consigliata": 64.5, "differenza": 5.5, "esito": "tua"],
-                               ["stagione": "2026-27", "giornata": 4, "hai_scelto": ["Giocatore 071"], "consigliava": ["Koopmeiners"],
+                               ["stagione": "2026-27", "giornata": 4, "hai_scelto": ["Orsetti"], "consigliava": ["Kloosmeijer"],
                                 "punti_tua": 66.0, "punti_consigliata": 66.0, "differenza": 0.0, "esito": "pari"],
-                               ["stagione": "2026-27", "giornata": 3, "hai_scelto": ["Giocatore 019"], "consigliava": ["Giocatore 004"],
+                               ["stagione": "2026-27", "giornata": 3, "hai_scelto": ["Dimarzi"], "consigliava": ["Bastrani"],
                                 "punti_tua": 68.5, "punti_consigliata": 65.0, "differenza": 3.5, "esito": "tua"],
                            ]],
         ])
@@ -795,14 +795,14 @@ private enum DatiDemo {
         func g(_ id: Int, _ nome: String, _ ruolo: String, _ squadra: String) -> [String: Any] { ["id": id, "nome": nome, "ruolo": ruolo, "squadra": squadra, "costo": 10] }
         return json([
             ["quando": "2026-10-26T19:19:33",
-             "scambi": [["squadre": ["Real Madrink", "Dinamo Pizza"], "da_a": [g(325, "Giocatore 039", "A", "juventus")], "da_b": [g(321, "Giocatore 086", "C", "napoli")]]],
-             "svincolati_presi": [["squadra": "AC Pigra", "giocatori": [g(204, "Giocatore 069", "A", "lecce")]]],
-             "tagliati": [["squadra": "Inter Nos", "giocatori": [g(215, "Gianluca Mancini", "D", "roma")]]],
+             "scambi": [["squadre": ["Real Madrink", "Dinamo Pizza"], "da_a": [g(325, "Kaan Yurdız", "A", "juventus")], "da_b": [g(321, "Sandy McTarran", "C", "napoli")]]],
+             "svincolati_presi": [["squadra": "AC Pigra", "giocatori": [g(204, "Nenad Krslić", "A", "lecce")]]],
+             "tagliati": [["squadra": "Inter Nos", "giocatori": [g(215, "Gilberto Mancarini", "D", "roma")]]],
              "crediti": [["squadra": "AC Pigra", "prima": 30, "dopo": 22]],
-             "testo": "Scambio Real Madrink / Dinamo Pizza: Giocatore 039 ⇄ Giocatore 086"] as [String: Any],
+             "testo": "Scambio Real Madrink / Dinamo Pizza: Kaan Yurdız ⇄ Sandy McTarran"] as [String: Any],
             ["quando": "2026-10-19T08:02:10",
-             "scambi": [[String: Any]](), "svincolati_presi": [["squadra": "Schiera FC", "giocatori": [g(113, "Giocatore 033 Çalhanoğlu", "C", "inter")]]],
-             "tagliati": [[String: Any]](), "crediti": [[String: Any]](), "testo": "Schiera FC prende dagli svincolati: Giocatore 033 Çalhanoğlu"] as [String: Any],
+             "scambi": [[String: Any]](), "svincolati_presi": [["squadra": "Schiera FC", "giocatori": [g(113, "Hamit Çalvaroğlu", "C", "inter")]]],
+             "tagliati": [[String: Any]](), "crediti": [[String: Any]](), "testo": "Schiera FC prende dagli svincolati: Hamit Çalvaroğlu"] as [String: Any],
         ] as [[String: Any]])
     }
 
@@ -812,7 +812,7 @@ private enum DatiDemo {
     }
 
     static func offerta() -> String {
-        json(["con": "Real Madrink", "do": ["Giocatore 021"], "ricevo": ["Romelu Lukaku"], "ambigui": [String](),
+        json(["con": "Real Madrink", "do": ["Darko Vlasenić"], "ricevo": ["Rolando Lumbaku"], "ambigui": [String](),
               "analisi": proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1)
                   .merging(["reparti": ["mio": ["P": 0.0, "D": 0.0, "C": 0.0, "A": 6.2], "loro": ["P": 0.0, "D": 0.0, "C": 1.1, "A": -2.0]],
                             "percentuale_mio": 1.4, "quotazione_do": 14, "quotazione_ricevo": 18]) { $1 }])
@@ -831,7 +831,7 @@ private enum DatiDemo {
         }
         let perTe: [[String: Any]] = [203, 205, 212].map { id in
             let p = calciatore(id)
-            return ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "prezzo": 6, "miglioramento": 38.0 + Double(id % 20), "al_posto_di": "Vlahović"]
+            return ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "prezzo": 6, "miglioramento": 38.0 + Double(id % 20), "al_posto_di": "Vlasenić"]
         }
         return json(["modo": "riparazione", "tuoi_crediti": 12, "crediti_lega": 187, "posti_liberi": 8,
                      "nota": "Prezzi stimati dai crediti rimasti a tutta la lega: chi ha più crediti può alzare i prezzi.",
@@ -840,12 +840,12 @@ private enum DatiDemo {
 
     static func importa() -> String {
         json(["squadre_importate": ["Real Madrink", "Dinamo Pizza"], "totale_squadre": 8, "avvisi": ["Dinamo Pizza: 24 giocatori invece di 25"],
-              "mia_squadra": nomeMia, "riepilogo": "Scambio Real Madrink / Dinamo Pizza: Giocatore 039 ⇄ Giocatore 086",
+              "mia_squadra": nomeMia, "riepilogo": "Scambio Real Madrink / Dinamo Pizza: Kaan Yurdız ⇄ Sandy McTarran",
               "differenze": [
                 "prima_importazione": false, "nessuna_differenza": false,
-                "scambi": [["squadre": ["Real Madrink", "Dinamo Pizza"], "da_a": [["id": 325, "nome": "Giocatore 039", "ruolo": "A", "squadra": "juventus", "costo": 33]],
-                            "da_b": [["id": 321, "nome": "Giocatore 086", "ruolo": "C", "squadra": "napoli", "costo": 25]]]],
-                "svincolati_presi": [["squadra": "AC Pigra", "giocatori": [["id": 204, "nome": "Giocatore 069", "ruolo": "A", "squadra": "lecce", "costo": 5]]]],
+                "scambi": [["squadre": ["Real Madrink", "Dinamo Pizza"], "da_a": [["id": 325, "nome": "Kaan Yurdız", "ruolo": "A", "squadra": "juventus", "costo": 33]],
+                            "da_b": [["id": 321, "nome": "Sandy McTarran", "ruolo": "C", "squadra": "napoli", "costo": 25]]]],
+                "svincolati_presi": [["squadra": "AC Pigra", "giocatori": [["id": 204, "nome": "Nenad Krslić", "ruolo": "A", "squadra": "lecce", "costo": 5]]]],
                 "tagliati": [[String: Any]](), "crediti": [["squadra": "AC Pigra", "prima": 30, "dopo": 22]],
                 "testo": "Scambio Real Madrink / Dinamo Pizza"] as [String: Any]])
     }

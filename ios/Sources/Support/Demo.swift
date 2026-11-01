@@ -177,7 +177,7 @@ extension Demo {
         case "scambi-offerta":
             apriLega(nav, modello, [.scambi])
             modello.scambi.modo = .valuta
-            modello.scambi.testoOfferta = "Ciao! Ti do Vlahovic e tu mi dai Lukaku, ci stai?"
+            modello.scambi.testoOfferta = "Ciao! Ti do Vlasenic e tu mi dai Lumbaku, ci stai?"
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await modello.scambi.valutaOfferta()
@@ -214,7 +214,7 @@ extension Demo {
         case "lega-importa-csv":
             // Un CSV vero (separatore «;», accenti) scritto in una cartella temporanea e importato come se arrivasse da un'altra app.
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("rose-schieraxi.csv")
-            let csv = "Squadra;Ruolo;Giocatore;Costo\nGli Amici del Bar Sport Centrale;P;Giocatore 089;12\nGli Amici del Bar Sport Centrale;D;Giocatore 004;18\nGli Amici del Bar Sport Centrale;A;Giocatore 045;85\n"
+            let csv = "Squadra;Ruolo;Giocatore;Costo\nGli Amici del Bar Sport Centrale;P;Sorvani;12\nGli Amici del Bar Sport Centrale;D;Bastrani;18\nGli Amici del Bar Sport Centrale;A;Leonel Marténi;85\n"
             try? Data(csv.utf8).write(to: url)
             apriLega(nav, modello, [.importa])
             nav.fileDaImportare = url

@@ -60,7 +60,7 @@ enum DirettaLogica {
         return (dopo.golCasa ?? 0) > (prima.golCasa ?? 0) || (dopo.golTrasferta ?? 0) > (prima.golTrasferta ?? 0)
     }
 
-    /// Frase per VoiceOver quando arriva un gol: «Gol! Inter 1, Roma 0. Gol di Thuram al minuto 10». Nil se non c'è un gol nuovo.
+    /// Frase per VoiceOver quando arriva un gol: «Gol! Inter 1, Roma 0. Gol di Thorvan al minuto 10». Nil se non c'è un gol nuovo.
     static func annuncioGol(casa: String, trasferta: String, prima: PartitaLive?, dopo: PartitaLive?) -> String? {
         guard golSegnato(prima: prima, dopo: dopo), let dopo else { return nil }
         var testo = "Gol! \(casa.capitalized) \(dopo.golCasa ?? 0), \(trasferta.capitalized) \(dopo.golTrasferta ?? 0)"
@@ -91,7 +91,7 @@ enum DirettaLogica {
         }
     }
 
-    /// Frase per VoiceOver: «Inter 1, Roma 0, al 34. Gol di Thuram al minuto 10. Giocano i tuoi titolari Giocatore 089, Giocatore 004».
+    /// Frase per VoiceOver: «Inter 1, Roma 0, al 34. Gol di Thorvan al minuto 10. Giocano i tuoi titolari Sorvani, Bastrani».
     static func frase(casa: String, trasferta: String, live: PartitaLive?, ora: String?, titolari: [MioTitolare]) -> String {
         let a = casa.capitalized, b = trasferta.capitalized
         var testo: String

@@ -93,7 +93,7 @@ struct SchedaScelteTueView: View {
 }
 
 #Preview {
-    let dati = Data(#"{"giornate": 9, "meglio_tua": 5, "meglio_consigliata": 3, "pari": 1, "punti_differenza": 4.5, "percentuale_tua": 56, "pochi_dati": false, "per_giornata": [{"stagione": "2026-27", "giornata": 9, "hai_scelto": ["Giocatore 071"], "consigliava": ["Dumfries"], "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"}]}"#.utf8)
+    let dati = Data(#"{"giornate": 9, "meglio_tua": 5, "meglio_consigliata": 3, "pari": 1, "punti_differenza": 4.5, "percentuale_tua": 56, "pochi_dati": false, "per_giornata": [{"stagione": "2026-27", "giornata": 9, "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"], "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"}]}"#.utf8)
     let scelte: ScelteTue? = try? Decodifica.decodifica(dati)
     return ScrollView {
         if let testo = ScelteTueTesto(scelte) { SchedaScelteTueView(testo: testo).padding() }

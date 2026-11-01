@@ -176,7 +176,7 @@ struct ScambiView: View {
                 .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     if vm.testoOfferta.isEmpty {
-                        Text("Es. Ti do Rowe e Giocatore 077, mi dai Giocatore 014?").foregroundStyle(.secondary).padding(.horizontal, 13).padding(.vertical, 16)
+                        Text("Es. Ti do Rowe e Polinardo, mi dai De Vlaam?").foregroundStyle(.secondary).padding(.horizontal, 13).padding(.vertical, 16)
                             .allowsHitTesting(false).accessibilityHidden(true)
                     }
                 }

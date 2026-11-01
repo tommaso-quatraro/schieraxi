@@ -129,7 +129,7 @@ struct AvatarGiocatore: View {
         .accessibilityHidden(true)
     }
 
-    /// Le iniziali del cognome (due lettere): «Giocatore 045» → «MA», «Di Lorenzo» → «DI», «Pedro» → «PE».
+    /// Le iniziali del cognome (due lettere): «Leonel Marténi» → «MA», «Di Corvara» → «DI», «Pelayo» → «PE».
     static func iniziali(_ nome: String?) -> String? {
         let parole = (nome ?? "").split(whereSeparator: { $0 == " " }).map(String.init)
         guard let primo = parole.first else { return nil }

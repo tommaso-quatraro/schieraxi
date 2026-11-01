@@ -375,7 +375,7 @@ struct ProbabiliFresche: Decodable, Equatable {
     }
 }
 
-/// Una cosa da fare in Oggi: «Giocatore 044 è in dubbio: sostituiscilo», «Aggiorna le rose», «Rinnova l'app»...
+/// Una cosa da fare in Oggi: «Leonel è in dubbio: sostituiscilo», «Aggiorna le rose», «Rinnova l'app»...
 struct DaFareVoce: Decodable, Identifiable, Equatable {
     let id: String
     /// dubbio, formazione, svincolato, scambio, rose, certificato, diario, backup, server, primo_avvio

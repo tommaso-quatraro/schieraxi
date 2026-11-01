@@ -5,17 +5,17 @@ import WidgetKit
 enum DatiGalleria {
     // id, nome, ruolo, punti attesi, probabilita di voto, avversario, in casa, ora (minuti da adesso)
     private static let titolari: [Titolare] = [
-        (101, "Giocatore 096", "P", 6.1, 0.98, "roma", true, 300),
-        (102, "Giocatore 002", "D", 6.4, 0.96, "roma", true, 300),
-        (103, "Gleison Bremer", "D", 6.0, 0.95, "lazio", false, 420),
-        (104, "Federico Giocatore 019", "D", 6.8, 0.70, "roma", true, 300),
-        (105, "Giocatore 067 Barella", "C", 6.5, 0.97, "roma", true, 300),
-        (106, "Giocatore 033", "C", 6.6, 0.93, "roma", true, 300),
-        (107, "Tijjani Reijnders", "C", 6.3, 0.94, "napoli", false, 1500),
-        (108, "Piotr Zielinski", "C", 6.2, 0.80, "roma", true, 300),
-        (109, "Giocatore 044", "A", 7.4, 0.55, "roma", true, 300),
-        (110, "Marcus Thuram", "A", 7.0, 0.90, "roma", true, 300),
-        (111, "Rafael Giocatore 046", "A", 7.2, 0.88, "napoli", false, 1500),
+        (101, "Ivo Sorvani", "P", 6.1, 0.98, "roma", true, 300),
+        (102, "Alvise Bastrani", "D", 6.4, 0.96, "roma", true, 300),
+        (103, "Glauco Brevisi", "D", 6.0, 0.95, "lazio", false, 420),
+        (104, "Fabio Dimarzi", "D", 6.8, 0.70, "roma", true, 300),
+        (105, "Nestore Barlesi", "C", 6.5, 0.97, "roma", true, 300),
+        (106, "Hamit Calvaroglu", "C", 6.6, 0.93, "roma", true, 300),
+        (107, "Tarek Reimvaldt", "C", 6.3, 0.94, "napoli", false, 1500),
+        (108, "Piotr Zelawski", "C", 6.2, 0.80, "roma", true, 300),
+        (109, "Leonel Marteni", "A", 7.4, 0.55, "roma", true, 300),
+        (110, "Marvin Thorvan", "A", 7.0, 0.90, "roma", true, 300),
+        (111, "Renato Lemao", "A", 7.2, 0.88, "napoli", false, 1500),
     ]
 
     private static func data(_ minuti: Int) -> String {
@@ -50,15 +50,15 @@ enum DatiGalleria {
          "formazione": {"modulo": "3-4-3", "punti_attesi": 73.7, "intervallo": {"basso": 62.2, "alto": 84.6, "confidenza": 0.8, "indicativo": false}, "titolari": [\#(tit)], "panchina": [201, 202, 203, 204, 205, 206, 207]},
          "avvisi": [\#(avvisi)], "rosa": [\#(rosa)],
          "squalificati": [], "diffidati": [110], "rigoristi": [109],
-         "osservati": [{"id": 30, "nome": "Giocatore 060", "ruolo": "A", "voto_atteso": 6.4, "punti_attesi": 6.9, "avversario": "juventus", "in_casa": true, "data_partita": "\#(data(95))", "stato": "disponibile", "percentuale": 92},
-                       {"id": 31, "nome": "Giocatore 040", "ruolo": "A", "voto_atteso": 6.6, "punti_attesi": 7.3, "avversario": "milan", "in_casa": true, "data_partita": "\#(data(1500))", "stato": "dubbio", "percentuale": 60}],
+         "osservati": [{"id": 30, "nome": "Marzio Zaviani", "ruolo": "A", "voto_atteso": 6.4, "punti_attesi": 6.9, "avversario": "juventus", "in_casa": true, "data_partita": "\#(data(95))", "stato": "disponibile", "percentuale": 92},
+                       {"id": 31, "nome": "Gela Kvaradze", "ruolo": "A", "voto_atteso": 6.6, "punti_attesi": 7.3, "avversario": "milan", "in_casa": true, "data_partita": "\#(data(1500))", "stato": "dubbio", "percentuale": 60}],
          "dati": {"ultimo_aggiornamento": "2026-10-30T14:32:00"},
          "live": {"aggiornato_il": "\#(data(0)):04", "fonte": "espn", "in_corso": 2, "partite": [
            {"casa": "inter", "trasferta": "roma", "data": "\#(data(-63))", "stato": "secondo_tempo", "minuto": "63'", "gol_casa": 2, "gol_trasferta": 0,
-            "eventi": [{"tipo": "gol", "minuto": "10'", "squadra": "casa", "chi": "M. Thuram", "assist": "Barella"}, {"tipo": "gol", "minuto": "41'", "squadra": "casa", "chi": "L. Giocatore 057"},
-                       {"tipo": "giallo", "minuto": "55'", "squadra": "trasferta", "chi": "Cristante"}, {"tipo": "rigore", "minuto": "58'", "squadra": "trasferta", "chi": "Dybala"}]},
+            "eventi": [{"tipo": "gol", "minuto": "10'", "squadra": "casa", "chi": "M. Thorvan", "assist": "Barlesi"}, {"tipo": "gol", "minuto": "41'", "squadra": "casa", "chi": "L. Marteni"},
+                       {"tipo": "giallo", "minuto": "55'", "squadra": "trasferta", "chi": "Cristoni"}, {"tipo": "rigore", "minuto": "58'", "squadra": "trasferta", "chi": "Dobrala"}]},
            {"casa": "napoli", "trasferta": "milan", "data": "\#(data(-21))", "stato": "primo_tempo", "minuto": "21'", "gol_casa": 0, "gol_trasferta": 1,
-            "eventi": [{"tipo": "gol", "minuto": "14'", "squadra": "trasferta", "chi": "R. Giocatore 046"}]},
+            "eventi": [{"tipo": "gol", "minuto": "14'", "squadra": "trasferta", "chi": "R. Lemao"}]},
            {"casa": "lazio", "trasferta": "juventus", "data": "\#(data(95))", "stato": "da_giocare", "minuto": null, "gol_casa": null, "gol_trasferta": null, "eventi": []}]}
         """#
         if parziali {
@@ -68,10 +68,10 @@ enum DatiGalleria {
             , "diario": [{"giornata": 10, "attesi": 66.0, "fatti": 63.5, "intervallo": {"basso": 55.0, "alto": 77.0, "confidenza": 0.8}}, {"giornata": 9, "attesi": 67.0, "fatti": 71.0, "intervallo": {"basso": 56.0, "alto": 78.0, "confidenza": 0.8}},
                         {"giornata": 8, "attesi": 69.0, "fatti": 69.5, "intervallo": {"basso": 58.0, "alto": 80.0, "confidenza": 0.8}}, {"giornata": 7, "attesi": 70.0, "fatti": 64.5, "intervallo": {"basso": 66.0, "alto": 80.0, "confidenza": 0.8}}, {"giornata": 6, "attesi": 68.5, "fatti": 71.0, "intervallo": {"basso": 58.0, "alto": 70.0, "confidenza": 0.8}}],
               "scambio": {"mia": "Schiera FC", "altra": "Real Madrink",
-                          "do": [{"id": 112, "nome": "Giocatore 067", "ruolo": "C"}, {"id": 113, "nome": "Giocatore 056", "ruolo": "P"}],
-                          "ricevo": [{"id": 114, "nome": "Giocatore 060", "ruolo": "A"}], "guadagno_mio": 3.4, "guadagno_loro": 1.1, "valido": true},
-              "svincolato": {"esce": {"id": 115, "nome": "Giocatore 050", "ruolo": "D"},
-                             "entra": {"id": 130, "nome": "Giocatore 025", "ruolo": "D", "quotazione": 8}, "guadagno": 1.9, "fattibile": true}}
+                          "do": [{"id": 112, "nome": "Nico Zanvolo", "ruolo": "C"}, {"id": 113, "nome": "Marcello Carsetti", "ruolo": "P"}],
+                          "ricevo": [{"id": 114, "nome": "Marzio Zaviani", "ruolo": "A"}], "guadagno_mio": 3.4, "guadagno_loro": 1.1, "valido": true},
+              "svincolato": {"esce": {"id": 115, "nome": "Leone Pellari", "ruolo": "D"},
+                             "entra": {"id": 130, "nome": "Fausto Terralini", "ruolo": "D", "quotazione": 8}, "guadagno": 1.9, "fattibile": true}}
             """#
         }
         return Data(t.utf8)

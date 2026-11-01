@@ -41,7 +41,7 @@ extension EventoLive {
         }
     }
 
-    /// Una riga compatta: «6' Varela (rig.)», «33' Pobega (ass. Giocatore 046)», «40' Djimsiti (aut.)», «71' De Roon».
+    /// Una riga compatta: «6' Varsone (rig.)», «33' Poberga (ass. Lemao)», «40' Djorsati (aut.)», «71' De Valk».
     var testoCompatto: String {
         var nota = ""
         switch tipoVisibile {
