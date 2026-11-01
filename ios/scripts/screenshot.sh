@@ -21,9 +21,10 @@ TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
+       squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
        lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-diario lega-novita
        lega-importa lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
-       impostazioni impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
+       impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
 PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
             scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
@@ -45,6 +46,17 @@ if [ "$SCATTI" = "veloce" ]; then
   PRINCIPALI=(oggi lega)
   PER_IPAD=(formazione formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
 fi
+
+# SCATTI=collaudo: OGNI schermata in scuro, chiaro e testo grandissimo (per il giro di stabilita'; un dispositivo per corsa).
+if [ "$SCATTI" = "collaudo" ]; then
+  PER_CHIARO=("${TUTTE[@]}")
+  PER_TESTO_GRANDE=("${TUTTE[@]}")
+  PRINCIPALI=("${TUTTE[@]}")
+  PER_IPAD=("${TUTTE[@]}")
+fi
+# IPHONE=iphone|iphone-piccolo|iphone-grande (quale telefono); DISPOSITIVI=tutti|iphone|ipad (quali giri fare).
+IPHONE="${IPHONE:-iphone}"
+DISPOSITIVI="${DISPOSITIVI:-tutti}"
 
 scegli() {
   python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"
@@ -143,7 +155,8 @@ spegni_simulatore() {
 }
 
 # ---------------------------------------------------------------- iPhone
-IFS=$'\t' read -r UDID_IPHONE NOME_IPHONE IOS_IPHONE <<< "$(scegli iphone)"
+if [ "$DISPOSITIVI" != "ipad" ]; then
+IFS=$'\t' read -r UDID_IPHONE NOME_IPHONE IOS_IPHONE <<< "$(scegli "$IPHONE")"
 echo "iPhone: $NOME_IPHONE ($IOS_IPHONE) $UDID_IPHONE"
 avvia_simulatore "$UDID_IPHONE"
 # lancio di prova: il primo avvio è lento e la prima foto restava nera
@@ -154,7 +167,14 @@ xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
 giro "$UDID_IPHONE" iphone_scuro scuro large "${TUTTE[@]}"
 giro "$UDID_IPHONE" iphone_chiaro chiaro large "${PER_CHIARO[@]}"
 giro "$UDID_IPHONE" iphone_scuro_testogrande scuro accessibility-large "${PER_TESTO_GRANDE[@]}"
-if [ "$SCATTI" != "veloce" ]; then
+if [ "$SCATTI" = "collaudo" ]; then
+  giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large "${TUTTE[@]}"
+  ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
+  RADDRIZZA=1
+  giro "$UDID_IPHONE" iphone_scuro_orizz scuro large oggi formazione formazione-perche squadra mercato-consigliati giocatore lega lega-diario impostazioni accesso-accedi
+  RADDRIZZA=0
+  ARGOMENTI_EXTRA=()
+elif [ "$SCATTI" != "veloce" ]; then
   giro "$UDID_IPHONE" iphone_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large oggi formazione giocatore lega
   ARGOMENTI_EXTRA=(-DEMO_ORIENTAMENTO orizzontale)
   RADDRIZZA=1
@@ -194,6 +214,12 @@ sleep 3
 xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/prova-url_openurl-giocatore.png" >/dev/null 2>&1
 
 spegni_simulatore "$UDID_IPHONE"
+fi
+if [ "$DISPOSITIVI" = "iphone" ]; then
+  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI"
+  [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
+  exit $?
+fi
 
 # ---------------------------------------------------------------- iPad
 IFS=$'\t' read -r UDID_IPAD NOME_IPAD IOS_IPAD <<< "$(scegli ipad)"
@@ -207,6 +233,9 @@ xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
 giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
 if [ "$SCATTI" = "veloce" ]; then
   giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}"
+elif [ "$SCATTI" = "collaudo" ]; then
+  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${TUTTE[@]}"
+  giro "$UDID_IPAD" ipad_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large "${TUTTE[@]}"
 else
   giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta impostazioni-aspetto
   giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
@@ -224,6 +253,9 @@ sleep 3
 RADDRIZZA=1   # col simulatore ruotato la foto esce girata di 90 gradi (come sull'iPhone)
 if [ "$SCATTI" = "veloce" ]; then
   giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large oggi formazione giocatore lega-diario lega
+elif [ "$SCATTI" = "collaudo" ]; then
+  giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${TUTTE[@]}"
+  giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large "${TUTTE[@]}"
 else
   giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${PRINCIPALI[@]}" formazione-manuale mercato-calendario lega-squadre
   giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi formazione mercato-classifica lega
