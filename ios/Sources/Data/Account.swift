@@ -178,6 +178,7 @@ private struct CorpoEmail: Encodable {
 private struct CorpoAvvioSocial: Encodable {
     let scopo: String
     let sfida: String
+    let password: String
     let piattaforma = "ios"
 }
 
@@ -625,12 +626,12 @@ final class SessioneAccount: ObservableObject {
 
     /// Il giro completo: chiede al server l'indirizzo, lo apre nel browser di sistema, e al ritorno riscatta il codice monouso.
     /// Il segreto (`verificatore`) resta solo in memoria per la durata del giro.
-    private func giroGoogle(_ scopo: ScopoSocial, avvio: any AvvioWeb) async throws -> RispostaSocial {
+    private func giroGoogle(_ scopo: ScopoSocial, password: String = "", avvio: any AvvioWeb) async throws -> RispostaSocial {
         try inizia()
         defer { inCorso = false }
         let coppia = CoppiaPKCE.nuova()
         let avviato: RispostaSocial = try await conTraduzione {
-            try await server.posta("POST", "/api/account/social/google/inizia", CorpoAvvioSocial(scopo: scopo.rawValue, sfida: coppia.sfida))
+            try await server.posta("POST", "/api/account/social/google/inizia", CorpoAvvioSocial(scopo: scopo.rawValue, sfida: coppia.sfida, password: password))
         }
         guard let indirizzo = IndirizzoAvvioSocial.valido(avviato.url) else { throw Errore.rispostaNonValida }
         let ritorno = try await avvio.apri(indirizzo, schema: Collegamenti.schema)
@@ -672,9 +673,9 @@ final class SessioneAccount: ObservableObject {
         try conferma(r)
     }
 
-    /// Collega Google all'account con cui si è già dentro.
-    func collegaGoogle(avvio: any AvvioWeb) async throws {
-        let r = try await giroGoogle(.collega, avvio: avvio)
+    /// Collega Google all'account con cui si è già dentro. Il server vuole la password attuale (chi non ne ha una usa la riconferma).
+    func collegaGoogle(password: String, avvio: any AvvioWeb) async throws {
+        let r = try await giroGoogle(.collega, password: passwordPerServer(password), avvio: avvio)
         guard r.stato == "collegato" else { throw Errore.rispostaNonValida }
         if let a = r.accessi { accessi = a } else { await aggiornaAccessi() }
     }

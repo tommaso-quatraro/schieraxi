@@ -258,11 +258,11 @@ struct RispostaSocial: Decodable {
     }
 }
 
-/// L'indirizzo da aprire nel browser: solo https e con un nome di sito. Il resto (per esempio uno schema strano) si rifiuta.
+/// L'indirizzo da aprire nel browser: solo https e solo il sito di accesso di Google (come sul web). Il resto si rifiuta.
 enum IndirizzoAvvioSocial {
     static func valido(_ testo: String?) -> URL? {
         guard let testo, testo.count <= 4000, let url = URL(string: testo), url.scheme?.lowercased() == "https",
-              let host = url.host, !host.isEmpty, url.user == nil, url.password == nil else { return nil }
+              let host = url.host?.lowercased(), host == "accounts.google.com", url.user == nil, url.password == nil else { return nil }
         return url
     }
 }

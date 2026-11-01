@@ -123,6 +123,7 @@ struct AccessiSezione: View {
     @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
     @State private var chiediScollega = false
     @State private var foglioPassword = false
+    @State private var chiediPassword = false
     @State private var errore: String?
     @State private var messaggio: String?
 
@@ -140,7 +141,7 @@ struct AccessiSezione: View {
                             .disabled(sessione.inCorso)
                         }
                     } else {
-                        Button { Task { await collega() } } label: {
+                        Button { if sessione.senzaPassword { Task { await collega(password: "") } } else { chiediPassword = true } } label: {
                             Label("Collega Google", systemImage: "link.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
                         }
                         .disabled(sessione.inCorso)
@@ -167,6 +168,15 @@ struct AccessiSezione: View {
             } message: {
                 Text("Potrai entrare solo con nome utente e password. Se vuoi, puoi ricollegare Google quando vuoi.")
             }
+            .sheet(isPresented: $chiediPassword) {
+                NavigationStack {
+                    FoglioPasswordPerCollegare { password in
+                        chiediPassword = false
+                        Task { await collega(password: password) }
+                    }
+                }
+                .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+            }
             .sheet(isPresented: $foglioPassword) {
                 NavigationStack { FoglioPasswordDaGoogle() }.presentationDragIndicator(.visible)
             }
@@ -181,10 +191,10 @@ struct AccessiSezione: View {
         return "Puoi entrare con la password oppure con Google."
     }
 
-    private func collega() async {
+    private func collega(password: String) async {
         errore = nil; messaggio = nil
         do {
-            try await sessione.collegaGoogle(avvio: AvvioWebSistema())
+            try await sessione.collegaGoogle(password: password, avvio: AvvioWebSistema())
             messaggio = "Google è collegato."
         } catch let e as ErroreSocial where e.eSoloUnaChiusura {
             // chiusa la finestra: nessun errore da mostrare
@@ -201,6 +211,33 @@ struct AccessiSezione: View {
         } catch {
             errore = SchermataAccesso.testoErrore(error)
         }
+    }
+}
+
+/// Chiede la password attuale prima di aprire Google per collegarlo: il server la vuole per le modifiche agli accessi.
+struct FoglioPasswordPerCollegare: View {
+    @Environment(\.dismiss) private var chiudi
+    @State private var password = ""
+    let procedi: (String) -> Void
+
+    var body: some View {
+        Form {
+            Section {
+                SecureField("Password attuale", text: $password).textContentType(.password).frame(minHeight: Tema.areaTocco)
+            } footer: {
+                Text("Per sicurezza, prima di collegare Google scrivi la tua password. Poi si apre la finestra di Google.")
+            }
+            Section {
+                Button { procedi(password) } label: {
+                    Text("Continua con Google").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                }
+                .disabled(password.isEmpty)
+            }
+        }
+        .navigationTitle("Collega Google")
+        .navigationBarTitleDisplayMode(.inline)
+        .schermoProtetto()
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
     }
 }
 
