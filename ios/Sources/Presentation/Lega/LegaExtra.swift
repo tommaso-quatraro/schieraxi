@@ -56,6 +56,7 @@ struct SquadreView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
         }
         .navigationTitle("Squadre")
         .ricercaGlobale()
@@ -215,6 +216,7 @@ struct RosaView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
         }
         .navigationTitle(nome)
         .navigationBarTitleDisplayMode(.inline)
@@ -352,6 +354,7 @@ struct NovitaView: View {
                 .padding(16)
             }
             .refreshable { await caricatore.ricarica() }
+            .avvisoDatiSalvati(caricatore.datiSalvati)
         }
         .navigationTitle("Novità")
         .task {

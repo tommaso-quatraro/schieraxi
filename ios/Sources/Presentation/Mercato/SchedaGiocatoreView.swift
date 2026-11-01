@@ -91,6 +91,7 @@ struct GiocatoreCorpo: View {
             }
             .demoInFondo()
             .refreshable { await vm.carica() }
+            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
             .bordiMorbidi()
         }
         .navigationTitle(vm.caricatore.dato?.calciatore.nome ?? "Giocatore")
@@ -153,7 +154,7 @@ struct GiocatoreCorpo: View {
     private func descrizionePartita(_ p: Giocatore) -> String {
         var testo = ""
         if let g = p.giornata { testo += "Giornata \(g) · " }
-        testo += (p.inCasa == true ? "in casa" : "fuori") + " contro " + (p.avversario ?? "").capitalized
+        testo += (p.inCasa == true ? "in casa" : "in trasferta") + " contro " + (p.avversario ?? "").capitalized
         if let data = p.dataPartita { testo += " · " + Quando.leggibile(data) }
         return testo
     }

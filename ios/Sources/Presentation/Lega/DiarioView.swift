@@ -90,7 +90,7 @@ struct DiarioView: View {
             List {
                 if let d = vm.caricatore.dato {
                     Section {
-                        Text("Per ogni giornata finita: i punti fatti (\"attesi\" = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
+                        Text("Per ogni giornata finita: i punti fatti («attesi» = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if let t = TestoAffidabilita(d.affidabilita) {
@@ -127,6 +127,7 @@ struct DiarioView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
         }
         .navigationTitle("Diario")
         .sheet(item: $daCorreggere) { v in
