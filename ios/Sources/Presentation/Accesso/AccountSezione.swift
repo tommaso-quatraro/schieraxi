@@ -36,11 +36,14 @@ struct AccountSezione: View {
                 Button { chiediEsciDaTutti = true } label: {
                     Label("Esci da tutti i miei telefoni", systemImage: "iphone.slash").labelStyle(.voce(.orange)).frame(minHeight: Tema.areaTocco)
                 }
-                Button { foglio = .password } label: {
-                    Label("Cambia password", systemImage: "key").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
-                }
-                Button { foglio = .codice } label: {
-                    Label("Nuovo codice per recuperare l'accesso", systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
+                // chi entra solo con Google non ha una password da cambiare: la aggiunge dal riquadro «Accessi»
+                if !sessione.senzaPassword {
+                    Button { foglio = .password } label: {
+                        Label("Cambia password", systemImage: "key").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
+                    }
+                    Button { foglio = .codice } label: {
+                        Label("Nuovo codice per recuperare l'accesso", systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
+                    }
                 }
                 Button(role: .destructive) { foglio = .elimina } label: {
                     Label("Elimina l'account", systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
@@ -79,6 +82,7 @@ struct AccountSezione: View {
                 }
                 .presentationDragIndicator(.visible)
             }
+            AccessiSezione()
         }
     }
 }
@@ -223,6 +227,7 @@ struct FoglioElimina: View {
     @Environment(\.dismiss) private var chiudi
     @State private var password = ""
     @State private var capito = false
+    @State private var riconfermato = false
     @State private var errore: String?
 
     var body: some View {
@@ -231,10 +236,13 @@ struct FoglioElimina: View {
                 Text("Cancella il tuo account e TUTTI i tuoi dati: rose, regole, scelte, immagini, avvisi. Non si può annullare. Se vuoi tenere una copia, falla prima da Impostazioni > Copia di sicurezza.")
                     .font(.subheadline)
             }
-            Section("Conferma con la password") {
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-                    .frame(minHeight: Tema.areaTocco)
+            if sessione.senzaPassword { RigaRiconferma(confermato: $riconfermato) }
+            Section(sessione.senzaPassword ? "Ultima conferma" : "Conferma con la password") {
+                if !sessione.senzaPassword {
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .frame(minHeight: Tema.areaTocco)
+                }
                 Toggle("Ho capito: cancella tutto", isOn: $capito)
                     .frame(minHeight: Tema.areaTocco)
             }
@@ -243,7 +251,7 @@ struct FoglioElimina: View {
                 Button(role: .destructive) { Task { await elimina() } } label: {
                     Text(sessione.inCorso ? "Un attimo…" : "Elimina l'account").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
-                .disabled(password.isEmpty || !capito || sessione.inCorso)
+                .disabled((sessione.senzaPassword ? !riconfermato : password.isEmpty) || !capito || sessione.inCorso)
             }
         }
         .navigationTitle("Elimina l'account")
@@ -256,6 +264,7 @@ struct FoglioElimina: View {
         do {
             try await sessione.elimina(password: password)
         } catch {
+            if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
             errore = SchermataAccesso.testoErrore(error)
         }
     }
@@ -325,9 +334,14 @@ struct FoglioEmail: View {
     @State private var codice = ""
     @State private var errore: String?
     @State private var codiceInviato = false
+    @State private var riconfermato = false
+
+    /// Manca la conferma: la password (o, per chi entra solo con Google, la riconferma).
+    private var senzaConferma: Bool { sessione.senzaPassword ? !riconfermato : password.isEmpty }
 
     var body: some View {
         Form {
+            if sessione.senzaPassword { RigaRiconferma(confermato: $riconfermato) }
             if let email = sessione.email {
                 Section {
                     RigaValore(titolo: "Email verificata", valore: email)
@@ -335,13 +349,15 @@ struct FoglioEmail: View {
                     Text("Serve per recuperare la password se la dimentichi.")
                 }
                 Section("Togli l'email") {
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .frame(minHeight: Tema.areaTocco)
+                    if !sessione.senzaPassword {
+                        SecureField("Password", text: $password)
+                            .textContentType(.password)
+                            .frame(minHeight: Tema.areaTocco)
+                    }
                     Button(role: .destructive) { Task { await togli() } } label: {
                         Text(sessione.inCorso ? "Un attimo…" : "Togli l'email").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                     }
-                    .disabled(password.isEmpty || sessione.inCorso)
+                    .disabled(senzaConferma || sessione.inCorso)
                 }
             } else {
                 if codiceInviato || sessione.emailInAttesa != nil {
@@ -367,13 +383,15 @@ struct FoglioEmail: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .frame(minHeight: Tema.areaTocco)
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .frame(minHeight: Tema.areaTocco)
+                    if !sessione.senzaPassword {
+                        SecureField("Password", text: $password)
+                            .textContentType(.password)
+                            .frame(minHeight: Tema.areaTocco)
+                    }
                     Button { Task { await aggiungi() } } label: {
                         Text(sessione.inCorso ? "Un attimo…" : "Manda il codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                     }
-                    .disabled(RegoleAccount.problemaEmail(indirizzo) != nil || password.isEmpty || sessione.inCorso)
+                    .disabled(RegoleAccount.problemaEmail(indirizzo) != nil || senzaConferma || sessione.inCorso)
                 } header: {
                     Text("Aggiungi un'email")
                 } footer: {
@@ -395,6 +413,7 @@ struct FoglioEmail: View {
             errore = nil
             codiceInviato = true
         } catch {
+            if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
             errore = SchermataAccesso.testoErrore(error)
         }
     }
@@ -415,6 +434,7 @@ struct FoglioEmail: View {
             fatto("Email tolta.")
             chiudi()
         } catch {
+            if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
             errore = SchermataAccesso.testoErrore(error)
         }
     }

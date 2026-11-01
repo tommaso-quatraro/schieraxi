@@ -36,8 +36,11 @@ struct RispostaAccount: Decodable {
     /// Registrazione con email: l'account non c'è ancora, serve il codice arrivato per posta e questo segreto dell'iscrizione.
     var verificaEmail: Bool?
     var iscrizione: String?
+    /// I servizi di accesso accesi sul server (per ora «google») e i modi di entrare di questo account: facoltativi.
+    var social: [String]?
+    var accessi: AccessiAccount?
 
-    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, verificaEmail, iscrizione }
+    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, verificaEmail, iscrizione, social, accessi }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -49,6 +52,8 @@ struct RispostaAccount: Decodable {
         emailInAttesa = (try? c.decodeIfPresent(String.self, forKey: .emailInAttesa)) ?? nil
         verificaEmail = (try? c.decodeIfPresent(Bool.self, forKey: .verificaEmail)) ?? nil
         iscrizione = (try? c.decodeIfPresent(String.self, forKey: .iscrizione)) ?? nil
+        social = ((try? c.decodeIfPresent([String].self, forKey: .social)) ?? nil)
+        accessi = (try? c.decodeIfPresent(AccessiAccount.self, forKey: .accessi)) ?? nil
     }
 }
 
@@ -170,6 +175,27 @@ private struct CorpoEmail: Encodable {
     let password: String
 }
 
+private struct CorpoAvvioSocial: Encodable {
+    let scopo: String
+    let sfida: String
+    let piattaforma = "ios"
+}
+
+private struct CorpoScambioSocial: Encodable {
+    let codice: String
+    let verificatore: String
+    let nativo = true
+}
+
+private struct CorpoCompletaSocial: Encodable {
+    let iscrizione: String
+    let nomeUtente: String
+    let invito: String?
+    let accettoTermini: Bool
+    let nativo = true
+    enum CodingKeys: String, CodingKey { case iscrizione, nomeUtente = "nome_utente", invito, accettoTermini = "accetto_termini", nativo }
+}
+
 private struct CorpoCodiceEmail: Encodable {
     let codice: String
 }
@@ -220,6 +246,8 @@ final class SessioneAccount: ObservableObject {
     /// Email dell'account (verificata) e indirizzo in attesa di verifica: dal server, solo con gli account accesi.
     @Published private(set) var email: String?
     @Published private(set) var emailInAttesa: String?
+    /// Come si entra in questo account (password, Google): dal server, solo se Google è acceso.
+    @Published private(set) var accessi: AccessiAccount?
     /// true se l'app ha appena lasciato un vecchio server per quello nuovo: la schermata Accedi lo spiega, finché non si rientra.
     @Published private(set) var serverSpostato = false
 
@@ -324,6 +352,8 @@ final class SessioneAccount: ObservableObject {
                 if let u = r.utente {
                     email = r.email
                     emailInAttesa = r.emailInAttesa
+                    ServiziSociali.salva(ServiziSociali.pulisci(r.social), in: memoria)
+                    accessi = ServiziSociali.googleAcceso(in: memoria) ? r.accessi : nil
                     imposta(.connesso(u))
                     // il widget ha il suo token a scopo limitato (mai quello della sessione)
                     let s = server
@@ -409,6 +439,7 @@ final class SessioneAccount: ObservableObject {
         memoria.removeObject(forKey: Self.chiaveUtente)
         codiceDaMostrare = nil
         avviso = nil
+        accessi = nil
         stato = .daAccedere
         generazione += 1
     }
@@ -433,9 +464,14 @@ final class SessioneAccount: ObservableObject {
     /// Salva il token ricevuto e passa a «connesso». I dati locali di una sessione precedente si cancellano.
     /// Un server ostile potrebbe mandare qualsiasi cosa: token, nome e codice si controllano prima di usarli.
     private func conferma(_ r: RispostaAccount) throws {
-        guard let token = r.token, let utente = r.utente else { throw Errore.serverNonValido }
+        try conferma(token: r.token, utente: r.utente, codiceRecupero: r.codiceRecupero)
+    }
+
+    private func conferma(token: String?, utente: Utente?, codiceRecupero: String?) throws {
+        guard let token, let utente else { throw Errore.serverNonValido }
         guard Accesso.tokenValido(token), utente.nomeUtente.count <= 100, utente.ruolo.count <= 40 else { throw Errore.rispostaNonValida }
-        if let codice = r.codiceRecupero, !Accesso.codiceRecuperoValido(codice) { throw Errore.rispostaNonValida }
+        if let codice = codiceRecupero, !Accesso.codiceRecuperoValido(codice) { throw Errore.rispostaNonValida }
+        accessi = nil
         pulisci()
         memoria.removeObject(forKey: MigrazioneServer.chiaveSpostato)
         serverSpostato = false
@@ -552,7 +588,7 @@ final class SessioneAccount: ObservableObject {
         try inizia()
         defer { inCorso = false }
         let pulita = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        _ = try await server.corpoJSON("POST", "/api/account/email", CorpoEmail(email: pulita, password: password))
+        _ = try await server.corpoJSON("POST", "/api/account/email", CorpoEmail(email: pulita, password: passwordPerServer(password)))
         emailInAttesa = pulita
     }
 
@@ -566,7 +602,7 @@ final class SessioneAccount: ObservableObject {
     func togliEmail(password: String) async throws {
         try inizia()
         defer { inCorso = false }
-        _ = try await server.corpoJSON("POST", "/api/account/email/togli", CorpoSoloPassword(password: password))
+        _ = try await server.corpoJSON("POST", "/api/account/email/togli", CorpoSoloPassword(password: passwordPerServer(password)))
         email = nil
         emailInAttesa = nil
     }
@@ -575,8 +611,103 @@ final class SessioneAccount: ObservableObject {
     func elimina(password: String) async throws {
         try inizia()
         defer { inCorso = false }
-        _ = try await server.corpoJSON("POST", "/api/account/elimina", CorpoSoloPassword(password: password))
+        _ = try await server.corpoJSON("POST", "/api/account/elimina", CorpoSoloPassword(password: passwordPerServer(password)))
         chiudiLocale()
+    }
+
+    // MARK: accesso con Google
+
+    /// Entra solo con Google: non ha una password. Per le azioni delicate il server chiede una riconferma con Google, non la password.
+    var senzaPassword: Bool { accessi?.soloGoogle ?? false }
+
+    /// Il campo password delle azioni delicate: chi non ha una password manda un segnaposto (il server guarda la riconferma recente).
+    private func passwordPerServer(_ scritta: String) -> String { senzaPassword ? "google" : scritta }
+
+    /// Il giro completo: chiede al server l'indirizzo, lo apre nel browser di sistema, e al ritorno riscatta il codice monouso.
+    /// Il segreto (`verificatore`) resta solo in memoria per la durata del giro.
+    private func giroGoogle(_ scopo: ScopoSocial, avvio: any AvvioWeb) async throws -> RispostaSocial {
+        try inizia()
+        defer { inCorso = false }
+        let coppia = CoppiaPKCE.nuova()
+        let avviato: RispostaSocial = try await conTraduzione {
+            try await server.posta("POST", "/api/account/social/google/inizia", CorpoAvvioSocial(scopo: scopo.rawValue, sfida: coppia.sfida))
+        }
+        guard let indirizzo = IndirizzoAvvioSocial.valido(avviato.url) else { throw Errore.rispostaNonValida }
+        let ritorno = try await avvio.apri(indirizzo, schema: Collegamenti.schema)
+        guard let esito = RitornoSocial.interpreta(ritorno) else { throw ErroreSocial.nonValido }
+        switch esito {
+        case .errore(let motivo):
+            throw ErroreSocial(motivo)
+        case .codice(let codice):
+            return try await conTraduzione {
+                try await server.posta("POST", "/api/account/social/scambio", CorpoScambioSocial(codice: codice, verificatore: coppia.verificatore))
+            }
+        }
+    }
+
+    /// Entrare (o iniziare a registrarsi) con Google. `.entrato` = accesso fatto; `.nuovoAccount` = manca la scelta del nome utente.
+    func accediConGoogle(avvio: any AvvioWeb) async throws -> EsitoSocial {
+        let r = try await giroGoogle(.accedi, avvio: avvio)
+        switch r.stato {
+        case "ok":
+            try conferma(token: r.token, utente: r.utente, codiceRecupero: nil)
+            return .entrato
+        case "nuovo":
+            guard let iscrizione = r.iscrizione, !iscrizione.isEmpty, iscrizione.count <= 200 else { throw Errore.rispostaNonValida }
+            return .nuovoAccount(NuovoAccountSocial(iscrizione: iscrizione, provider: r.provider ?? "google",
+                                                    nomeSuggerito: r.nomeSuggerito, serveInvito: r.serveInvito ?? false))
+        default:
+            throw Errore.rispostaNonValida
+        }
+    }
+
+    /// Crea l'account nuovo con il nome scelto (e il codice d'invito, se il server lo chiede).
+    func completaConGoogle(_ nuovo: NuovoAccountSocial, nomeUtente: String, invito: String, accettoTermini: Bool) async throws {
+        try inizia()
+        defer { inCorso = false }
+        let invitoPulito = invito.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let corpo = CorpoCompletaSocial(iscrizione: nuovo.iscrizione, nomeUtente: RegoleAccount.pulisciNome(nomeUtente),
+                                        invito: invitoPulito.isEmpty ? nil : invitoPulito, accettoTermini: accettoTermini)
+        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/social/completa", corpo) }
+        try conferma(r)
+    }
+
+    /// Collega Google all'account con cui si è già dentro.
+    func collegaGoogle(avvio: any AvvioWeb) async throws {
+        let r = try await giroGoogle(.collega, avvio: avvio)
+        guard r.stato == "collegato" else { throw Errore.rispostaNonValida }
+        if let a = r.accessi { accessi = a } else { await aggiornaAccessi() }
+    }
+
+    /// Riconferma con Google (vale 5 minuti): serve a chi non ha una password per eliminare l'account, cambiare l'email o aggiungere una password.
+    func riconfermaGoogle(avvio: any AvvioWeb) async throws {
+        let r = try await giroGoogle(.riconferma, avvio: avvio)
+        guard r.stato == "riconfermato" else { throw Errore.rispostaNonValida }
+    }
+
+    func scollegaGoogle() async throws {
+        try inizia()
+        defer { inCorso = false }
+        let dati = try await server.richiesta("DELETE", "/api/account/social/google", corpo: nil)
+        let r: RispostaSocial = try await conTraduzione { try Decodifica.decodifica(dati) }
+        if let a = r.accessi { accessi = a } else { accessi = nil }
+    }
+
+    /// Rilegge come si entra in questo account (solo con Google acceso). Se il server non risponde si resta com'è.
+    func aggiornaAccessi() async {
+        if Demo.accesso != nil || ProvaEsempio.attiva || !ServiziSociali.googleAcceso(in: memoria) { return }
+        if let a: AccessiAccount = try? await server.get("/api/account/social/accessi") { accessi = a }
+    }
+
+    /// Per chi è entrato solo con Google: aggiunge una password (dopo la riconferma). Il codice di recupero nuovo compare a schermo intero.
+    func impostaPassword(_ nuova: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/imposta-password", CorpoSoloPassword(password: nuova)) }
+        guard let codice = r.codiceRecupero, Accesso.codiceRecuperoValido(codice) else { throw Errore.rispostaNonValida }
+        codiceDaMostrare = codice
+        if var a = accessi { a.password = true; accessi = a }
+        await aggiornaAccessi()
     }
 
     /// Solo per la modalità demo (`-DEMO_ACCESSO`): porta la sessione in uno stato deciso a mano, senza server.

@@ -30,6 +30,11 @@ struct SchermataAccesso: View {
     @State private var codiceEmail = ""
     /// Registrazione con email a metà: manca il codice arrivato per posta.
     @State private var inAttesa: IscrizioneInAttesa?
+    /// Google è acceso sul server? (lo dice il server nel 401; senza, i pulsanti non compaiono)
+    @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
+    /// Dopo Google, account nuovo: manca la scelta del nome utente.
+    @State private var nuovoGoogle: NuovoAccountSocial?
+    private var googleAcceso: Bool { ServiziSociali.googleAcceso(socialTesto) }
     @AppStorage(ModalitaRegistrazione.chiave) private var modoTesto = ModalitaRegistrazione.invito.rawValue
     private var modo: ModalitaRegistrazione { ModalitaRegistrazione(rawValue: modoTesto) ?? .invito }
     @FocusState private var focus: Campo?
@@ -119,6 +124,7 @@ struct SchermataAccesso: View {
                         .transition(.opacity)
                 }
                 pulsante
+                sezioneGoogle
                 linkSecondario
             }
             .frame(maxWidth: 520)
@@ -141,6 +147,10 @@ struct SchermataAccesso: View {
             password = "Tre-Quarti-Dieci"
             try? await Task.sleep(nanoseconds: 600_000_000)
             await invia()
+        }
+        .sheet(item: $nuovoGoogle) { n in
+            NavigationStack { ScegliNomeGoogleView(nuovo: n, invitoIniziale: invito) }
+                .presentationDragIndicator(.visible)
         }
         .sheet(item: Binding(get: { codiceNuovo.map(CodiceDaSalvare.init) }, set: { if $0 == nil { codiceNuovo = nil } })) { c in
             NavigationStack {
@@ -343,6 +353,41 @@ struct SchermataAccesso: View {
             if case ErroreApi.troppiTentativi(_, let attesa) = error, let attesa, attesa > 0 {
                 attesaFinoA = Date().addingTimeInterval(TimeInterval(min(attesa, 3600)))
             }
+            errore = Self.testoErrore(error)
+        }
+    }
+
+    /// «Continua con Google»: solo se il server lo dichiara, e non mentre si cambia la password o si conferma il codice per posta.
+    @ViewBuilder
+    private var sezioneGoogle: some View {
+        if googleAcceso, scheda != .recupera, inAttesa == nil {
+            VStack(spacing: 10) {
+                Text("oppure").font(.footnote).foregroundStyle(.secondary).accessibilityHidden(true)
+                BottoneGoogle(titolo: "Continua con Google", occupato: inInvio || sessione.inCorso || attesaFinoA != nil) {
+                    Task { await continuaConGoogle() }
+                }
+                if scheda == .registrati {
+                    Text(modo.invitoObbligatorio
+                         ? "Con Google scegli il nome utente al passo dopo. Il codice d'invito te lo chiedo lì."
+                         : "Con Google scegli il nome utente al passo dopo.")
+                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                }
+            }
+        }
+    }
+
+    private func continuaConGoogle() async {
+        guard !inInvio, !sessione.inCorso else { return }
+        inInvio = true
+        defer { inInvio = false }
+        errore = nil
+        messaggio = nil
+        focus = nil
+        do {
+            if case .nuovoAccount(let nuovo) = try await sessione.accediConGoogle(avvio: AvvioWebSistema()) { nuovoGoogle = nuovo }
+        } catch let e as ErroreSocial where e.eSoloUnaChiusura {
+            // ha chiuso la finestra di Google: non è un errore
+        } catch {
             errore = Self.testoErrore(error)
         }
     }

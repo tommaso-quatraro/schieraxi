@@ -64,6 +64,8 @@ enum ErroreApi: LocalizedError {
     case conflitto
     /// 404 con il campo `funzione`: la funzione è spenta per questo utente. Non è un guasto: niente «Riprova».
     case funzioneSpenta(funzione: String, messaggio: String)
+    /// Un errore con un nome breve per l'app (campo `codice`, per esempio «serve_riconferma»), accanto al messaggio del server.
+    case codificato(codice: String, messaggio: String)
 
     /// Il server ha detto 412: i dati sono cambiati da un altro dispositivo (la schermata deve ricaricare).
     var eConflitto: Bool { if case .conflitto = self { return true } else { return false } }
@@ -78,6 +80,7 @@ enum ErroreApi: LocalizedError {
             return "\(Self.senzaInvitoARiprovare(messaggio)) Riprova tra \(Self.tempoLeggibile(attesa))."
         case .conflitto: return "È cambiato da un altro dispositivo: ho ricaricato i dati. Controlla e rifai la modifica."
         case .funzioneSpenta(_, let messaggio): return messaggio
+        case .codificato(let codice, let messaggio): return TestiSocial.errore(codice: codice) ?? messaggio
         case .indirizzoNonValido:
             return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo nelle Impostazioni." : "L'indirizzo del server non è valido."
         case .risposta(let codice): return "Il server ha un problema (codice \(codice)). Riprova tra poco."
@@ -235,6 +238,7 @@ struct ServerHTTP: ServerClient {
         switch h.statusCode {
         case 401:
             UserDefaults.standard.set(ModalitaRegistrazione.leggi(corpo: dati).rawValue, forKey: ModalitaRegistrazione.chiave)
+            ServiziSociali.salva(ServiziSociali.leggi(corpo: dati))   // i pulsanti «Continua con Google» solo se il server li dichiara
             if !Self.eDiAccesso(percorso) {
                 // Si dice quale token ha fallito (solo un'impronta): se nel frattempo si è fatto un nuovo accesso, un 401 in ritardo
                 // di una richiesta vecchia non deve buttare fuori la sessione nuova.
@@ -263,8 +267,17 @@ struct ServerHTTP: ServerClient {
         default:
             // Una pagina HTML o un testo qualsiasi al posto del JSON di errore (proxy, server sbagliato): niente messaggio del server.
             if messaggio == "errore \(h.statusCode)" { throw ErroreApi.risposta(h.statusCode) }
+            if let codice = Self.codiceErrore(dati) { throw ErroreApi.codificato(codice: codice, messaggio: messaggio) }
             throw ErroreApi.server(messaggio)
         }
+    }
+
+    /// Il campo `codice` di un errore ({"detail": "...", "codice": "serve_riconferma"}), se c'è: solo lettere minuscole e trattino basso.
+    static func codiceErrore(_ dati: Data) -> String? {
+        guard let o = try? JSONSerialization.jsonObject(with: dati) as? [String: Any],
+              let c = o["codice"] as? String, !c.isEmpty, c.count <= 40,
+              c.allSatisfy({ $0.isASCII && ($0.isLowercase || $0 == "_") }) else { return nil }
+        return c
     }
 
     /// Traduce gli errori di rete: annullamento (resta tale), tempo scaduto, server non raggiungibile.
