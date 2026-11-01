@@ -53,6 +53,9 @@ L'app nativa fa **tutto quello che fa la web app** (tranne le notifiche push, ve
 - **Installazione:** SideStore sull'iPhone firma l'IPA con l'Apple ID gratuito e lo rinnova (ogni 7 giorni, con LocalDevVPN attiva).
 - Il progetto Xcode non è in git: lo genera XcodeGen da `project.yml` (target `Schieraxi`, `SchieraxiWidget`, `SchieraxiTests`, `SchieraxiUITests`).
 
+## Storia
+Le tappe principali dello sviluppo sono in `docs/STORIA.md`.
+
 ## Licenza
 Il codice è sotto licenza **GNU Affero General Public License v3.0** (AGPL-3.0): testo completo in `LICENSE`.
 
