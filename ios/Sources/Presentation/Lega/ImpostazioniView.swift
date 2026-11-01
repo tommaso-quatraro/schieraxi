@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Le pagine che si aprono dalle Impostazioni.
 enum PaginaImpostazioni: Hashable {
-    case aspetto, icona, avvisi, backup, stato, novita, cofano, crediti, avanzate
+    case aspetto, icona, avvisi, backup, stato, novita, cofano, crediti, avanzate, cambiaServer
 }
 
 private struct ApriRosaDiChiave: EnvironmentKey {
@@ -43,6 +43,7 @@ struct ImpostazioniView: View {
         NavigationStack(path: $percorso) {
             List {
                 AccountSezione()
+                SessioneMinimaSezione(nonRaggiungibile: vm.info.datiSalvati != nil || vm.info.errore != nil)
                 if ProvaEsempio.attiva { SezioneProvaEsempio() }
                 sezioneAspetto
                 sezioneAvvisi
@@ -84,6 +85,7 @@ struct ImpostazioniView: View {
         case .cofano: SottoIlCofanoView(server: vm.server, vai: apriDaCofano)
         case .crediti: LicenzeECreditiView(server: vm.server)
         case .avanzate: paginaAvanzate
+        case .cambiaServer: PaginaCambiaServer(dopoProva: { await vm.info.ricarica() })
         }
     }
 
@@ -110,7 +112,7 @@ struct ImpostazioniView: View {
                 ProgressView()
             } else if let s = vm.info.dato {
                 if let salvati = vm.info.datiSalvati {
-                    Label("Server non raggiungibile. Dati salvati del \(salvati.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
+                    Label("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(salvati.formatted(date: .abbreviated, time: .shortened)) e può essere vecchio.", systemImage: "icloud.slash")
                         .font(.footnote).foregroundStyle(Color.attenzione)
                 }
                 RigaValore(titolo: "Squadra", valore: s.miaSquadra ?? "—")

@@ -39,6 +39,8 @@ struct PortaDiAccesso: View {
         .task(id: indirizzo) {
             try? await Task.sleep(nanoseconds: 700_000_000)
             if Task.isCancelled { return }
+            // Un indirizzo salvato che non risponde più (mentre il predefinito sì) si lascia: l'@AppStorage riavvia questo lavoro.
+            if !Demo.attivo, !ProvaEsempio.attiva, await MigrazioneServer.migraSeIrraggiungibile(prova: { await ProvaConnessione.prova($0) }) { return }
             await sessione.cambiaServer()
             Accesso.sincronizzaConIlWidget()
             WidgetCenter.shared.reloadAllTimelines()

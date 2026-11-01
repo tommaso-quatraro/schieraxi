@@ -96,6 +96,12 @@ struct SchermataAccesso: View {
         ScrollView {
             VStack(spacing: 20) {
                 testata
+                if sessione.serverSpostato {
+                    Label(MigrazioneServer.messaggio, systemImage: "arrow.triangle.2.circlepath")
+                        .font(.subheadline.weight(.medium)).foregroundStyle(Color.attenzione)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .combine)
+                }
                 selettore
                 Carta { campi }
                     .animation(Tema.molla, value: scheda)

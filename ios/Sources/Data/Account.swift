@@ -220,6 +220,8 @@ final class SessioneAccount: ObservableObject {
     /// Email dell'account (verificata) e indirizzo in attesa di verifica: dal server, solo con gli account accesi.
     @Published private(set) var email: String?
     @Published private(set) var emailInAttesa: String?
+    /// true se l'app ha appena lasciato un vecchio server per quello nuovo: la schermata Accedi lo spiega, finché non si rientra.
+    @Published private(set) var serverSpostato = false
 
     /// Errori dell'app (non del server) durante accesso e account.
     enum Errore: LocalizedError, Equatable {
@@ -255,7 +257,15 @@ final class SessioneAccount: ObservableObject {
         self.archivio = archivio
         self.memoria = memoria
         self.pulisci = pulisci
-        let iniziale = Self.statoIniziale(server: server.indirizzo, archivio: archivio, memoria: memoria)
+        // Aggiornando da una versione vecchia può restare l'indirizzo di un server che non c'è più: si passa al predefinito
+        // e si butta la sessione di quello vecchio, prima di tutto il resto.
+        if let vecchio = MigrazioneServer.migraSubito(memoria) {
+            Self.lasciaServerVecchio(vecchio, nuovo: server.indirizzo, archivio: archivio, memoria: memoria, pulisci: pulisci)
+        }
+        var iniziale = Self.statoIniziale(server: server.indirizzo, archivio: archivio, memoria: memoria)
+        let spostato = memoria.bool(forKey: MigrazioneServer.chiaveSpostato)
+        if spostato && iniziale == .nonRichiesto { iniziale = .daAccedere }   // dopo lo spostamento si riparte sempre dall'accesso
+        serverSpostato = spostato
         stato = iniziale
         multiutente = iniziale != .nonRichiesto
         if memoria.string(forKey: Self.chiaveIndirizzo) == nil { memoria.set(server.indirizzo, forKey: Self.chiaveIndirizzo) }
@@ -337,19 +347,29 @@ final class SessioneAccount: ObservableObject {
         // Un altro server: il token del vecchio non deve MAI essere mandato al nuovo. Si butta, con i dati locali del vecchio.
         let attuale = server.indirizzo
         if let vecchio = memoria.string(forKey: Self.chiaveIndirizzo), vecchio != attuale {
-            archivio.cancella(server: vecchio)
-            TokenWidget.pulisciLocale(indirizzo: vecchio)
-            pulisci()
-            memoria.removeObject(forKey: Self.chiaveUtente)
-            memoria.removeObject(forKey: Self.chiaveMultiutente)
-            memoria.set(attuale, forKey: Self.chiaveIndirizzo)
+            Self.lasciaServerVecchio(vecchio, nuovo: attuale, archivio: archivio, memoria: memoria, pulisci: pulisci)
             codiceDaMostrare = nil
             avviso = nil
         }
+        serverSpostato = memoria.bool(forKey: MigrazioneServer.chiaveSpostato)
+        if serverSpostato { multiutente = true }
         let nuovo = Self.statoIniziale(server: server.indirizzo, archivio: archivio, memoria: memoria)
         if nuovo != stato { generazione += 1 }
         stato = nuovo
         await verifica()
+    }
+
+    /// Si lascia un server: il suo token, i dati salvati e l'utente ricordato si buttano. Se è uno spostamento automatico
+    /// (`MigrazioneServer`) si resta «con gli account», così si parte dalla schermata Accedi.
+    @MainActor private static func lasciaServerVecchio(_ vecchio: String, nuovo: String, archivio: any ArchivioToken, memoria: UserDefaults,
+                                            pulisci: @MainActor () -> Void) {
+        archivio.cancella(server: vecchio)
+        TokenWidget.pulisciLocale(indirizzo: vecchio)
+        pulisci()
+        memoria.removeObject(forKey: chiaveUtente)
+        memoria.removeObject(forKey: chiaveMultiutente)
+        memoria.set(nuovo, forKey: chiaveIndirizzo)
+        if memoria.bool(forKey: MigrazioneServer.chiaveSpostato) { memoria.set(true, forKey: chiaveMultiutente) }
     }
 
     private func imposta(_ nuovo: StatoAccesso) {
@@ -417,6 +437,8 @@ final class SessioneAccount: ObservableObject {
         guard Accesso.tokenValido(token), utente.nomeUtente.count <= 100, utente.ruolo.count <= 40 else { throw Errore.rispostaNonValida }
         if let codice = r.codiceRecupero, !Accesso.codiceRecuperoValido(codice) { throw Errore.rispostaNonValida }
         pulisci()
+        memoria.removeObject(forKey: MigrazioneServer.chiaveSpostato)
+        serverSpostato = false
         let alSicuro = archivio.salva(token, server: server.indirizzo)
         avviso = alSicuro ? nil : "Non riesco a salvare l'accesso in modo sicuro su questo telefono: funziona finché l'app è aperta, poi dovrai accedere di nuovo."
         memoria.set(server.indirizzo, forKey: Self.chiaveIndirizzo)

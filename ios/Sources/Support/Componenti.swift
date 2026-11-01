@@ -179,7 +179,7 @@ struct AvvisoSalvati: ViewModifier {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
                 if let data {
-                    Label("Server non raggiungibile. Dati salvati del \(data.formatted(date: .abbreviated, time: .shortened))", systemImage: "icloud.slash")
+                    Label("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(data.formatted(date: .abbreviated, time: .shortened)) e può essere vecchio.", systemImage: "icloud.slash")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 14)
