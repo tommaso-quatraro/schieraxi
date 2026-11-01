@@ -36,6 +36,13 @@ enum TempiLega {
         return "G\(serieA)"
     }
 
+    /// La riga sotto il modulo in Formazione. Se la formazione l'hai già scelta tu non si ripete «la tua scelta»
+    /// (lo dicono già il testo sotto e il pulsante «Torna alla consigliata»): resta solo la giornata.
+    static func didascalia(giornata: String, scelta: Bool, comeConsigliato: Bool) -> String {
+        if scelta { return giornata }
+        return giornata + " · " + (comeConsigliato ? "modulo consigliato" : "modulo scelto")
+    }
+
     static let minutiMassimi = 720.0
     static let primaGiornataMassima = 38.0
 
