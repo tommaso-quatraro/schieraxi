@@ -329,7 +329,7 @@ struct ServerHTTP: ServerClient {
                 r.httpBody = corpo
             }
             // Risorse personali con ETag: chi scrive rimanda l'ETag che ha letto; se nel frattempo è cambiato il server risponde 412.
-            let risorsa = VersioniRisorse.risorsa(per: percorso)
+            let risorsa = VersioniRisorse.risorsa(per: percorso, corpo: corpo)
             if let risorsa, metodo != "GET", metodo != "HEAD",
                let visto = VersioniRisorse.condivise.leggi(server: indirizzo, risorsa: risorsa) {
                 r.setValue(visto, forHTTPHeaderField: "If-Match")

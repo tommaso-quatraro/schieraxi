@@ -249,9 +249,21 @@ final class FormazioneViewModel: ViewModelBase {
         } catch {
             if Task.isCancelled || error is CancellationError { return }
             guard numero == contatore, manuale == m else { return }
+            if salvaDavvero, (error as? ErroreApi)?.eConflitto == true { await sceltaCambiataAltrove(); return }
             messaggio = error.localizedDescription
             Haptics.esito(riuscito: false)
         }
+    }
+
+    static let sceltaCambiata = "La scelta di questa giornata è stata cambiata da un altro dispositivo: ho ricaricato quella salvata. Controlla e, se serve, rifai la modifica."
+
+    /// 412 sulla scelta salvata: un altro dispositivo l'ha cambiata (o cancellata) dopo l'ultima lettura. Come per le altre risorse
+    /// si rilegge tutto (formazione e scelta, con l'ETag nuovo) e lo si dice: la modifica a mano di questo telefono non si salva sopra.
+    private func sceltaCambiataAltrove() async {
+        azzeraManuale()
+        await carica()
+        messaggio = Self.sceltaCambiata
+        Haptics.esito(riuscito: false)
     }
 
     func tornaAllaConsigliata(_ f: Formazione) async {
@@ -260,6 +272,8 @@ final class FormazioneViewModel: ViewModelBase {
         do {
             try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)")
             azzeraManuale()
+        } catch let e as ErroreApi where e.eConflitto {
+            await sceltaCambiataAltrove()
         } catch {
             // Se il server non cancella la scelta salvata, resta com'è e lo si dice.
             messaggio = error.localizedDescription

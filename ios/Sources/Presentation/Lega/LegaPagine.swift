@@ -112,6 +112,7 @@ struct MovimentiView: View {
 
 /// Quando le rose sono di una stagione finita: archivia e riparti da rose vuote, poi i passi per la stagione nuova.
 struct StagioneView: View {
+    @EnvironmentObject private var sessione: SessioneAccount
     @ScaledMetric(relativeTo: .headline) private var latoNumero: CGFloat = 28
     @StateObject private var vm: StagioneViewModel
     @State private var conferma = false
@@ -181,10 +182,13 @@ struct StagioneView: View {
             NavigationLink(value: PaginaLega.crediti) {
                 passo("3", "Inserisci i crediti delle squadre", "Servono al mercato per dirti se un cambio è fattibile.")
             }
-            NavigationLink(value: PaginaLega.stato) {
-                passo("4", "Aggiorna i dati", "Calendario, listone e quotazioni nuovi.")
+            // Aggiornare i dati spetta a chi amministra il server (come sulla web): agli altri il server risponderebbe «Solo per l'amministratore».
+            if sessione.puoAmministrare {
+                NavigationLink(value: PaginaLega.stato) {
+                    passo("4", "Aggiorna i dati", "Calendario, listone e quotazioni nuovi.")
+                }
             }
-            passo("5", "Prima dell'asta guarda Altro > Asta e riparazione", "Budget e prezzi consigliati.")
+            passo(sessione.puoAmministrare ? "5" : "4", "Prima dell'asta guarda Altro > Asta e riparazione", "Budget e prezzi consigliati.")
         }
     }
 

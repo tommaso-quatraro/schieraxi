@@ -188,7 +188,7 @@ struct GiocatoreCorpo: View {
             FilaTessere {
                 if ruolo == "P" {
                     TesseraDato(valore: "\(Formato.percento(p.portaInviolata))%", etichetta: "porta inviolata")
-                    TesseraDato(valore: Formato.decimali(p.golAvversario ?? 0), etichetta: "gol subiti attesi")
+                    TesseraDato(valore: Formato.decimali(p.golAvversario), etichetta: "gol subiti attesi")
                     TesseraDato(valore: "\(Formato.percento(p.pGiallo))%", etichetta: "giallo")
                 } else {
                     TesseraDato(valore: "\(Formato.percento(p.pGol))%", etichetta: "segna")

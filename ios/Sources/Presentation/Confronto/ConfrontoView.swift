@@ -142,7 +142,7 @@ struct ConfrontoView: View {
                     riga("Partita") { PillDifficolta.nome($0.difficolta) }
                     riga("Gioca") { "\(Formato.percento($0.pVoto))%" }
                     riga("Fantavoto atteso (se gioca)") { Formato.punti($0.fvAtteso) }
-                    riga("Punti attesi") { Formato.decimali($0.puntiAttesi ?? 0, cifre: 2) }
+                    riga("Punti attesi") { Formato.decimali($0.puntiAttesi, cifre: 2) }
                     riga("Parte titolare") { "\(Formato.percento($0.quotaTitolare))%" }
                     riga("Segna") { "\(Formato.percento($0.pGol))%" }
                     riga("Assist") { "\(Formato.percento($0.pAssist))%" }

@@ -5,8 +5,17 @@ import Foundation
 enum Formato {
     static let locale = Locale(identifier: "it_IT")
 
-    static func decimali(_ valore: Double, cifre: Int = 1) -> String {
-        valore.formatted(.number.precision(.fractionLength(cifre)).locale(locale))
+    /// Un numero con `cifre` decimali, arrotondato come la web app (`toFixed`): a metà si va lontano dallo zero
+    /// (6,25 → 6,3; -6,25 → -6,3), non al pari come fa `formatted` da solo (6,25 → 6,2).
+    /// Un valore assente o non finito si scrive «–», come sul web.
+    static func decimali(_ valore: Double?, cifre: Int = 1) -> String {
+        guard let valore, valore.isFinite else { return "–" }
+        let cifre = min(max(cifre, 0), 6)
+        let scala = pow(10.0, Double(cifre))
+        var tondo = (valore * scala).rounded() / scala
+        if !tondo.isFinite { tondo = valore }   // numeri enormi: la moltiplicazione esce dai limiti, si formatta com'è
+        if tondo == 0 { tondo = 0 }             // niente «-0,0»
+        return tondo.formatted(.number.precision(.fractionLength(cifre)).locale(locale))
     }
 
     /// «1 credito», «12 crediti»: il plurale giusto per ogni numero (anche 0 e i negativi: «0 crediti», «-1 credito» no, «-1 crediti»).
@@ -18,9 +27,9 @@ enum Formato {
     static func giornate(_ n: Int) -> String { plurale(n, "giornata", "giornate") }
     static func giocatori(_ n: Int) -> String { plurale(n, "giocatore", "giocatori") }
 
-    /// Punti attesi: una cifra decimale; un valore mancante vale zero.
+    /// Punti attesi: una cifra decimale; un valore mancante si scrive «–», come sul web.
     static func punti(_ valore: Double?) -> String {
-        decimali(valore ?? 0, cifre: 1)
+        decimali(valore, cifre: 1)
     }
 
     /// Con il segno davanti anche per i positivi: «+2,5».

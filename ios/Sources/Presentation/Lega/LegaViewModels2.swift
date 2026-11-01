@@ -187,6 +187,9 @@ final class StagioneViewModel: ViewModelBase {
         defer { inCorso = false }
         do {
             try await server.invia("POST", "/api/nuova-stagione")
+            // Rose, regole, scelte e osservati ripartono da capo: gli ETag ricordati sono della stagione archiviata
+            // e farebbero rispondere 412 alla prima scrittura.
+            VersioniRisorse.condivise.azzera()
             archiviata = true
             errore = nil
             Haptics.esito(riuscito: true)
