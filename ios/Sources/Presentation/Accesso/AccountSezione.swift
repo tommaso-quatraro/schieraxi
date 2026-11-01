@@ -42,6 +42,7 @@ struct AccountSezione: View {
                         Label("Nuovo codice per recuperare l'accesso", systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
                     }
                 }
+                RigaScaricaDati()
                 Button(role: .destructive) { foglio = .elimina } label: {
                     Label("Elimina l'account", systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
                 }
@@ -82,7 +83,7 @@ struct EsciSezione: View {
                 .accessibilityHint("Esci dal tuo account su questo telefono")
             }
             .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-                Button("Esci", role: .destructive) { Task { await sessione.esci() } }
+                Button("Esci", role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
             } message: {
                 Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
             }
@@ -238,6 +239,8 @@ struct FoglioElimina: View {
             Section {
                 Text("Cancella il tuo account e TUTTI i tuoi dati: rose, regole, scelte, immagini, avvisi. Non si può annullare.")
                     .font(.subheadline)
+            } footer: {
+                Text("Vuoi tenerne una copia? Prima chiudi qui e usa «Scarica i tuoi dati», subito sopra «Elimina l'account».")
             }
             if sessione.senzaPassword { RigaRiconferma(confermato: $riconfermato) }
             Section(sessione.senzaPassword ? "Ultima conferma" : "Conferma con la password") {
@@ -418,4 +421,87 @@ struct FoglioEmail: View {
             errore = SchermataAccesso.testoErrore(error)
         }
     }
+}
+
+/// «Scarica i tuoi dati»: una riga discreta subito prima di «Elimina l'account». Scarica il file dal server, lo salva nella
+/// cartella temporanea e apre il foglio Condividi (Salva in File, AirDrop, Mail...). Nessun ripristino da qui.
+struct RigaScaricaDati: View {
+    @State private var inCorso = false
+    @State private var errore: String?
+    @State private var file: FileDaCondividere?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Scarica i tuoi dati", systemImage: "square.and.arrow.down").labelStyle(.voce(.indigo))
+                Text("Un file con regole, rose, scelte e dati dell'account, da tenere o portare altrove.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            Button { Task { await scarica() } } label: {
+                HStack(spacing: 8) {
+                    if inCorso { ProgressView().accessibilityHidden(true) }
+                    Text(inCorso ? "Preparo il file…" : "Scarica il file")
+                }
+                .frame(minHeight: Tema.areaTocco)
+            }
+            .buttonStyle(.bordered)
+            .disabled(inCorso)
+            .accessibilityHint("Scarica un file con i tuoi dati e apre il menu Condividi per salvarlo")
+            if let errore {
+                Text(errore)
+                    .font(.footnote)
+                    .foregroundStyle(Color.attenzione)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 4)
+        .sheet(item: $file) { f in
+            FoglioCondividi(url: f.url) { file = nil }
+                .presentationDetents([.medium, .large])
+                .ignoresSafeArea()
+        }
+    }
+
+    private func scarica() async {
+        guard !inCorso else { return }
+        inCorso = true
+        errore = nil
+        defer { inCorso = false }
+        do {
+            let url = try await DatiPersonali.scarica(server: ServerCorrente.condiviso)
+            file = FileDaCondividere(url: url)
+        } catch {
+            let testo = DatiPersonali.testoErrore(error)
+            errore = testo
+            AccessibilityNotification.Announcement(testo).post()
+        }
+    }
+}
+
+/// Il file appena scaricato: il foglio Condividi si apre una volta per scaricamento.
+struct FileDaCondividere: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+/// Il foglio Condividi standard di iOS (UIActivityViewController) dentro un foglio di SwiftUI: va bene anche su iPad,
+/// dove così non serve un punto d'ancoraggio per il popover.
+struct FoglioCondividi: UIViewControllerRepresentable {
+    let url: URL
+    let fine: () -> Void
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        vc.completionWithItemsHandler = { _, _, _, _ in fine() }
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+#Preview("Scarica i tuoi dati") {
+    List { Section("Il tuo account") { RigaScaricaDati() } }
 }
