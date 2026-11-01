@@ -65,8 +65,6 @@ targets:
           - CFBundleURLName: <vecchio identificativo>
             CFBundleURLSchemes:
               - schieraxi
-              # compatibilità temporanea (30 giorni): link degli avvisi con lo schema di prima
-              - schieraxi
         # aggiornamento in background (BGAppRefreshTask): identificativo permesso e modalità "fetch"
         UIBackgroundModes:
           - fetch

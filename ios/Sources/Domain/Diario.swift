@@ -78,9 +78,6 @@ struct SintesiDiario: Decodable {
 /// Il file di backup scaricato dal server o scelto per il ripristino: controlli fatti sul telefono PRIMA di inviare.
 enum FileBackup {
     static let formato = "schieraxi-backup"
-    /// Copie fatte prima della rinomina dell'app: il server le legge ancora, quindi anche qui. DA TOGLIERE dopo 30 giorni
-    /// dall'unione (eccezione scritta nel piano di rinomina, punto 8).
-    static let formatiVecchi: Set<String> = ["schieraxi-backup", "schieraxi-backup"]
     static let versioneMassima = 1
     static let massimoByte = 10 * 1024 * 1024
 
@@ -102,7 +99,7 @@ enum FileBackup {
         if dati.isEmpty { return .failure(.vuoto) }
         if dati.count > massimoByte { return .failure(.troppoGrande) }
         guard let radice = (try? JSONSerialization.jsonObject(with: dati)) as? [String: Any],
-              let nome = radice["formato"] as? String, nome == formato || formatiVecchi.contains(nome),
+              let nome = radice["formato"] as? String, nome == formato,
               let versione = radice["versione"] as? Int,
               let file = radice["file"] as? [String: Any], !file.isEmpty else { return .failure(.nonEUnBackup) }
         if versione > versioneMassima { return .failure(.piuNuovo) }
