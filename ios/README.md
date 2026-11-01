@@ -134,3 +134,6 @@ Le foto si scaricano con `gh run download <id> --name screenshot-app --dir .scre
 - Se SideStore rinnova l'app senza che l'app venga aperta, un promemoria di scadenza già programmato può arrivare lo stesso: si corregge alla prima apertura.
 - Mai in git: firme, certificati, profili, password, Apple ID. Le fixture dei test sono dati inventati; il repository è pubblico di proposito (Actions su macOS gratuite e aggiornamenti per SideStore), decisione del 29/10/2026.
 
+
+## Repository unico
+L'app passa nel repository `tommaso-quatraro/schieraxi`, cartella `ios/`. In SideStore va aggiunto il sorgente nuovo (Sorgenti > + > `https://github.com/tommaso-quatraro/schieraxi/releases/latest/download/sorgente.json`) e poi si aggiorna: stesso identificativo `it.schieraxi.app`, quindi l'app si aggiorna al posto e i dati restano. L'avviso «C'è una versione nuova» legge l'elenco delle release di quel repository e considera solo le `build-N`. Le copie dei workflow per la nuova posizione stanno in `docs/ipa-repo-unico.yml` e `docs/ios-repo-unico.yml`.

@@ -146,9 +146,10 @@ struct SchermataAccesso: View {
         // Solo per le fotografie (-DEMO_ACCESSO rete | limite | non-valido): prova da sola ad accedere per mostrare l'errore.
         .task {
             guard Demo.accessoAutomatico else { return }
-            // Account e password finti: servono solo alla prova locale con dati demo, non esistono su nessun server.
+            // Account finto, solo per la prova locale con dati demo (non esiste su nessun server). La password non è scritta nel codice:
+            // si compone al momento con caratteri a caso e il finto server della demo risponde comunque allo stesso modo.
             nome = "mister.rossi"
-            password = "Tre-Quarti-Dieci"
+            password = String(UUID().uuidString.lowercased().filter { $0 != "-" }.prefix(20))
             try? await Task.sleep(nanoseconds: 600_000_000)
             await invia()
         }

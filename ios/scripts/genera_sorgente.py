@@ -1,6 +1,8 @@
 """Crea `sorgente.json`: il "sorgente" di SideStore/AltStore che dice qual è l'ultima versione dell'app e dove scaricare l'IPA.
 Aggiungendo una volta l'indirizzo del sorgente in SideStore, gli aggiornamenti compaiono da soli nella scheda "Sorgenti" (basta un tocco su Aggiorna).
-Uso (nel workflow, dopo aver creato l'IPA):  python3 scripts/genera_sorgente.py <repo> <numero-build> <file.ipa>"""
+Uso (nel workflow, dopo aver creato l'IPA):  python3 scripts/genera_sorgente.py <repo> <numero-build> <file.ipa> [cartella-dell-app]
+La cartella dell'app è vuota nel repository dell'app da solo e `ios` nel repository unico (le icone stanno in `ios/Sources/...`).
+Sorgente fisso per SideStore: https://github.com/tommaso-quatraro/schieraxi/releases/latest/download/sorgente.json"""
 from __future__ import annotations
 
 import json
@@ -9,14 +11,17 @@ import sys
 from datetime import datetime, timezone
 
 repo, build, ipa = sys.argv[1], sys.argv[2], sys.argv[3]
+cartella = sys.argv[4].strip("/") if len(sys.argv) > 4 else ""
+prefisso = f"{cartella}/" if cartella else ""
 base = f"https://github.com/{repo}"
+icona = f"https://raw.githubusercontent.com/{repo}/main/{prefisso}Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
 
 sorgente = {
     "name": "SchieraXI",
     "identifier": "it.schieraxi.app.sorgente",
     "subtitle": "SchieraXI per iPhone e iPad",
     "description": "Le versioni di SchieraXI compilate da GitHub.",
-    "iconURL": f"https://raw.githubusercontent.com/{repo}/main/Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+    "iconURL": icona,
     "tintColor": "3DDC97",
     "apps": [
         {
@@ -25,7 +30,7 @@ sorgente = {
             "developerName": "SchieraXI",
             "subtitle": "Formazioni e scambi per il fantacalcio",
             "localizedDescription": "App nativa per scegliere la formazione e analizzare gli scambi, con widget, Siri e Comandi.",
-            "iconURL": f"https://raw.githubusercontent.com/{repo}/main/Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+            "iconURL": icona,
             "tintColor": "3DDC97",
             "version": f"1.0.{build}",
             "versionDate": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

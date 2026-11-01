@@ -11,7 +11,7 @@ struct NuovaVersioneSezione: View {
                 Section("Aggiornamento dell'app") {
                     Label(sessione.puoAmministrare ? "È disponibile la \(esito.nome) (hai la build \(NuovaVersione.buildInstallata))" : "C'è una versione più nuova di SchieraXI", systemImage: "arrow.down.circle")
                         .foregroundStyle(Color.verde)
-                    Text(sessione.puoAmministrare ? "Apri SideStore, tocca Sorgenti, poi SchieraXI e «Aggiorna». Se non vedi il sorgente: in Sorgenti aggiungi https://github.com/tommaso-quatraro/schieraxi-ios/releases/latest/download/sorgente.json" : "Aggiornala dall'app con cui l'hai installata: i tuoi dati restano dove sono.")
+                    Text(sessione.puoAmministrare ? "Apri SideStore, tocca Sorgenti, poi SchieraXI e «Aggiorna». Se non vedi il sorgente: in Sorgenti aggiungi https://github.com/tommaso-quatraro/schieraxi/releases/latest/download/sorgente.json" : "Aggiornala dall'app con cui l'hai installata: i tuoi dati restano dove sono.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

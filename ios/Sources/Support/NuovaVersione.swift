@@ -9,7 +9,9 @@ enum NuovaVersione {
         let nome: String
     }
 
-    static let indirizzo = "https://api.github.com/repos/tommaso-quatraro/schieraxi-ios/releases/latest"
+    /// L'ELENCO delle release del repository unico: nello stesso repository ci sono anche le release del server (`v1.x`),
+    /// quindi la «latest» di GitHub potrebbe non essere una build dell'app. Si leggono le ultime 30 e si tengono solo le `build-N`.
+    static let indirizzo = "https://api.github.com/repos/tommaso-quatraro/schieraxi/releases?per_page=30"
     private static let chiaveAvvisata = "nuovaVersioneAvvisata"
 
     /// Numero della build installata (CFBundleVersion, impostato dalla compilazione su GitHub).
@@ -28,7 +30,21 @@ enum NuovaVersione {
         return n
     }
 
-    /// Chiede a GitHub l'ultima release (il repository è pubblico: nessun accesso richiesto).
+    /// Dall'elenco delle release di GitHub (JSON) prende il tag `build-N` col numero più alto.
+    /// Ignora bozze, pre-release, tag che non sono `build-N` (per esempio `v1.250`) e voci malformate. Elenco vuoto o illeggibile: `nil`.
+    static func tagPiuAlto(elenco dati: Data) -> String? {
+        guard let voci = try? JSONSerialization.jsonObject(with: dati) as? [[String: Any]] else { return nil }
+        var migliore: (n: Int, tag: String)?
+        for voce in voci {
+            if voce["draft"] as? Bool == true || voce["prerelease"] as? Bool == true { continue }
+            guard let tag = voce["tag_name"] as? String, tag.hasPrefix("build-"), let n = numero(daTag: tag) else { continue }
+            if let attuale = migliore, attuale.n >= n { continue }
+            migliore = (n, tag)
+        }
+        return migliore?.tag
+    }
+
+    /// Chiede a GitHub l'elenco delle release (il repository è pubblico: nessun accesso richiesto).
     static func controlla() async -> Esito? {
         if Demo.attivo { return nil }
         guard let url = URL(string: indirizzo) else { return nil }
@@ -36,8 +52,7 @@ enum NuovaVersione {
         richiesta.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         guard let (dati, risposta) = try? await URLSession.shared.data(for: richiesta),
               (risposta as? HTTPURLResponse)?.statusCode == 200,
-              let o = try? JSONSerialization.jsonObject(with: dati) as? [String: Any],
-              let tag = o["tag_name"] as? String,
+              let tag = tagPiuAlto(elenco: dati),
               let n = piuNuova(tag: tag, installata: buildInstallata) else { return nil }
         return Esito(build: n, nome: tag)
     }
