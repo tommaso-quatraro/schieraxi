@@ -71,6 +71,7 @@ struct ImpostazioniView: View {
             }
         }
         .tint(Color.verde)
+        .schermoProtetto()   // l'email e i dati dell'account non devono comparire nell'anteprima del selettore delle app
     }
 
     @ViewBuilder
@@ -167,7 +168,9 @@ struct ImpostazioniView: View {
                 Label("Configurazione guidata", systemImage: "list.bullet.clipboard").labelStyle(.voce(.teal)).frame(minHeight: 44)
             }
             .accessibilityHint("Rose, squadra, stemma, widget e avvisi, un passo alla volta")
-            NavigationLink(value: PaginaImpostazioni.cofano) { Label("Sotto il cofano", systemImage: "gearshape.2").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
+            if funzioni.stato.acceso(Funzione.sottoIlCofano) {
+                NavigationLink(value: PaginaImpostazioni.cofano) { Label("Sotto il cofano", systemImage: "gearshape.2").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
+            }
             RigheLegali(server: vm.server)
             RigaValore(titolo: "Versione dell'app", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
         }

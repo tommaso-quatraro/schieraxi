@@ -31,7 +31,7 @@ enum Stato<T> {
 
 extension Notification.Name {
     /// Il comando «Aggiorna» (Cmd+R) chiede a tutte le schermate di ricaricare.
-    static let aggiornaTutto = Notification.Name("<vecchio identificativo>.aggiornaTutto")
+    static let aggiornaTutto = Notification.Name("it.schieraxi.app.aggiornaTutto")
 }
 
 /// Carica un dato dal server e tiene lo stato per le schermate.

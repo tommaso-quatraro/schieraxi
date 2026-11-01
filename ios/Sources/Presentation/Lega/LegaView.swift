@@ -16,7 +16,8 @@ struct LegaView: View {
     @Environment(\.horizontalSizeClass) private var classe
 
     var body: some View {
-        if classe == .regular { colonne } else { pila }
+        Group { if classe == .regular { colonne } else { pila } }
+            .schermoProtetto()   // rose e nomi non devono comparire nell'anteprima del selettore delle app
     }
 
     /// Le pagine aperte in questa scheda (Squadra e Altro hanno ciascuna il suo percorso).

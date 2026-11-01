@@ -4,7 +4,7 @@ import Foundation
 /// uno per utente, che permette SOLO di leggere `/api/oggi`, `/api/widget` e la diretta (live). È l'unica cosa che l'app dà al widget (nel file condiviso
 /// dell'App Group e nel codice di collegamento): il token della SESSIONE non esce mai dal Keychain dell'app.
 enum TokenWidget {
-    static let servizio = "<vecchio identificativo>.widget"
+    static let servizio = "it.schieraxi.app.widget"
     private static let chiaveScadenza = "tokenWidgetScade"
     nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.daLancio ? MemoriaToken() : KeychainToken(servizio: servizio)
 

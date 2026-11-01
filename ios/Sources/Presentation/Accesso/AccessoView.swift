@@ -28,6 +28,8 @@ struct SchermataAccesso: View {
     @State private var avanzate = false
     @State private var email = ""
     @State private var codiceEmail = ""
+    /// Casella «Accetto i Termini e la Privacy» della registrazione con nome utente e password.
+    @State private var accetto = false
     /// Registrazione con email a metà: manca il codice arrivato per posta.
     @State private var inAttesa: IscrizioneInAttesa?
     /// Google è acceso sul server? (lo dice il server nel 401; senza, i pulsanti non compaiono)
@@ -67,6 +69,7 @@ struct SchermataAccesso: View {
             return nomeOk && RegoleAccount.problemaPassword(password, nome: nome) == nil
                 && (!modo.chiedeEmail || RegoleAccount.problemaEmail(email) == nil)
                 && (!modo.invitoObbligatorio || !invito.trimmingCharacters(in: .whitespaces).isEmpty)
+                && accetto
         case .recupera:
             return nomeOk && !codice.trimmingCharacters(in: .whitespaces).isEmpty
                 && RegoleAccount.problemaPassword(password, nome: nome) == nil
@@ -252,8 +255,24 @@ struct SchermataAccesso: View {
                 Text("Password di almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            if scheda == .registrati, inAttesa == nil { terminiEPrivacy }
             }
         }
+    }
+
+    /// Casella di accettazione e collegamenti alle pagine legali (come nel percorso Google).
+    private var terminiEPrivacy: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Accetto i Termini d'uso e l'Informativa sulla privacy", isOn: $accetto)
+                .frame(minHeight: Tema.areaTocco)
+            if let url = InformazioniLegali.indirizzo(.termini, server: IndirizzoServer.attuale) {
+                Link("Leggi i Termini d'uso", destination: url).frame(minHeight: Tema.areaTocco)
+            }
+            if let url = InformazioniLegali.indirizzo(.privacy, server: IndirizzoServer.attuale) {
+                Link("Leggi l'Informativa sulla privacy", destination: url).frame(minHeight: Tema.areaTocco)
+            }
+        }
+        .font(.subheadline)
     }
 
     private func campoTesto(_ titolo: String, text: Binding<String>, campo: Campo, problema: String?) -> some View {
@@ -333,7 +352,7 @@ struct SchermataAccesso: View {
             case .registrati:
                 if let attesa = inAttesa {
                     try await sessione.confermaIscrizione(attesa, codice: codiceEmail)
-                } else if let nuova = try await sessione.registra(nomeUtente: nome, password: password, invito: invito, email: modo.chiedeEmail ? email : nil) {
+                } else if let nuova = try await sessione.registra(nomeUtente: nome, password: password, invito: invito, email: modo.chiedeEmail ? email : nil, accettoTermini: accetto) {
                     inAttesa = nuova
                     codiceEmail = ""
                     password = ""
@@ -401,7 +420,7 @@ struct SchermataAccesso: View {
             case .timeout: return "Il server ci mette troppo a rispondere. Riprova tra poco."
             case .server(let m): return m
             case .indirizzoNonValido: return "L'indirizzo del server non è valido: deve cominciare con https://"
-            case .risposta(let codice): return "Il server ha un problema (codice \(codice)). Riprova tra poco."
+            case .risposta(let codice): return ErroreApi.testoRisposta(codice)
             default: return e.errorDescription ?? "Qualcosa non va. Riprova."
             }
         }

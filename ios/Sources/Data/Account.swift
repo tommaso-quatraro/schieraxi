@@ -138,8 +138,9 @@ private struct CorpoRegistrazione: Encodable {
     let password: String
     let invito: String?
     let email: String?
+    let accettoTermini: Bool
     let nativo = true
-    enum CodingKeys: String, CodingKey { case nomeUtente = "nome_utente", password, invito, email, nativo }
+    enum CodingKeys: String, CodingKey { case nomeUtente = "nome_utente", password, invito, email, accettoTermini = "accetto_termini", nativo }
 }
 
 private struct CorpoConfermaIscrizione: Encodable {
@@ -215,6 +216,7 @@ enum AttesaRiprova {
 enum DatiLocali {
     static func svuota() {
         Cache.svuotaTutto()
+        URLCache.shared.removeAllCachedResponses()   // copie delle risposte tenute da iOS, anche loro dell'account che esce
         Immagini.condivise.azzera()
         VersioniRisorse.condivise.azzera()
         Condiviso.dimentica()
@@ -500,14 +502,15 @@ final class SessioneAccount: ObservableObject {
     /// Con l'email (server con registrazione «email» o «aperta») nasce solo dopo il codice arrivato per posta: in quel caso
     /// restituisce l'iscrizione in attesa da confermare con `confermaIscrizione`.
     @discardableResult
-    func registra(nomeUtente: String, password: String, invito: String = "", email: String? = nil) async throws -> IscrizioneInAttesa? {
+    func registra(nomeUtente: String, password: String, invito: String = "", email: String? = nil, accettoTermini: Bool = true) async throws -> IscrizioneInAttesa? {
         try inizia()
         defer { inCorso = false }
         let invitoPulito = invito.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         let emailPulita = email?.trimmingCharacters(in: .whitespacesAndNewlines)
         let corpo = CorpoRegistrazione(nomeUtente: RegoleAccount.pulisciNome(nomeUtente), password: password,
                                        invito: invitoPulito.isEmpty ? nil : invitoPulito,
-                                       email: (emailPulita?.isEmpty ?? true) ? nil : emailPulita)
+                                       email: (emailPulita?.isEmpty ?? true) ? nil : emailPulita,
+                                       accettoTermini: accettoTermini)
         let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/registra", corpo) }
         if r.verificaEmail == true {
             guard let iscrizione = r.iscrizione, let indirizzo = corpo.email, !iscrizione.isEmpty else { throw Errore.rispostaNonValida }

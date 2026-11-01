@@ -18,7 +18,7 @@ Le tappe principali dell'app iOS di SchieraXI, in ordine, con il mese e l'anno. 
 - **Accessibilità.** Contrasti 4,5:1, bersagli di tocco da 44 pt, annunci per VoiceOver, rispetto di «Riduci movimento», testo grande senza tagli.
 - **Semplificazione.** Meno funzioni in vista (menu a poche voci), impostazioni a gruppi, configurazione guidata al primo avvio.
 - **Distribuzione.** Installazione con SideStore e sorgente per gli aggiornamenti, avviso di nuova versione nell'app.
-- **Repository pubblico.** Licenza AGPL-3.0, nota su marchi e fonti di terzi, privacy manifest, pagine di informazioni legali, dati di prova inventati, nessun indirizzo del server nell'app distribuita.
+- **Repository pubblico.** Licenza AGPL-3.0, nota su marchi e fonti di terzi, privacy manifest, pagine di informazioni legali, dati di prova inventati, nell'app distribuita solo l'indirizzo pubblico predefinito, nessun indirizzo privato.
 
 ## Novembre 2026
 

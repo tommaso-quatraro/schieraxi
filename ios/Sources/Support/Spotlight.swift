@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 /// I giocatori osservati compaiono nella ricerca di iOS (Spotlight): toccandoli si apre la loro scheda nell'app.
 enum Spotlight {
-    private static let dominio = "<vecchio identificativo>.osservati"
+    private static let dominio = "it.schieraxi.app.osservati"
 
     /// Sostituisce l'elenco indicizzato con i giocatori osservati di adesso.
     static func indicizza(_ giocatori: [Giocatore]) {

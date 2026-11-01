@@ -33,10 +33,10 @@ enum IndirizzoServer {
         ["localhost", "127.0.0.1", "::1", "[::1]"].contains(host.lowercased())
     }
 
-    /// Manca l'indirizzo: al primo avvio (o dopo aver tolto l'app) si chiede prima di tutto il resto.
+    /// Manca l'indirizzo: non succede mai (senza uno scelto vale il predefinito), resta per sicurezza.
     static var manca: Bool { attuale.isEmpty }
 
-    /// Indirizzo in uso: quello scritto dall'utente (se valido, senza «/» finali), altrimenti vuoto (solo in demo uno finto).
+    /// Indirizzo in uso: quello scritto dall'utente (se valido, senza «/» finali), altrimenti il predefinito pubblico dell'app (in demo uno finto).
     static var attuale: String {
         var salvato = (UserDefaults.standard.string(forKey: "indirizzo") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         while salvato.hasSuffix("/") { salvato.removeLast() }
@@ -83,11 +83,20 @@ enum ErroreApi: LocalizedError {
         case .codificato(let codice, let messaggio): return TestiSocial.errore(codice: codice) ?? messaggio
         case .indirizzoNonValido:
             return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo nelle Impostazioni." : "L'indirizzo del server non è valido."
-        case .risposta(let codice): return "Il server ha un problema (codice \(codice)). Riprova tra poco."
+        case .risposta(let codice): return Self.testoRisposta(codice)
         case .dati: return "Il server ha mandato una risposta che l'app non capisce. Riprova tra poco; se succede ancora, aggiorna l'app."
         case .timeout: return "Il server ci mette troppo a rispondere. Controlla la connessione e riprova tra poco."
         case .rete: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia acceso."
         }
+    }
+
+    /// Una risposta d'errore senza il JSON del server (pagina HTML, testo): per 401 e 403 di solito c'è di mezzo una rete o un indirizzo
+    /// sbagliato, non un guasto del server.
+    static func testoRisposta(_ codice: Int) -> String {
+        if codice == 401 || codice == 403 {
+            return "Il server ha rifiutato la richiesta (codice \(codice)). Controlla l'indirizzo del server e la rete (un Wi-Fi con accesso da fare, un blocco di rete) e riprova."
+        }
+        return "Il server ha un problema (codice \(codice)). Riprova tra poco."
     }
 
     /// Un'attesa in parole: «30 secondi», «10 minuti», «6 h 55 min», «2 giorni».
@@ -222,6 +231,11 @@ struct ServerHTTP: ServerClient {
         return "errore \(codice)"
     }
 
+    /// La risposta è il JSON d'errore del nostro server: un oggetto con il campo `detail` di testo.
+    static func eJsonDelServer(_ dati: Data) -> Bool {
+        ((try? JSONSerialization.jsonObject(with: dati)) as? [String: Any])?["detail"] is String
+    }
+
     /// Il campo `funzione` di un 404 ({"detail": "...", "funzione": "live"}), se c'è e non è vuoto.
     static func funzioneSpenta(_ dati: Data) -> String? {
         guard let o = try? JSONSerialization.jsonObject(with: dati) as? [String: Any],
@@ -237,6 +251,9 @@ struct ServerHTTP: ServerClient {
         let messaggio = messaggioServer(dati, h.statusCode)
         switch h.statusCode {
         case 401:
+            // Solo un 401 col JSON del nostro server ({"detail": "..."}) chiude la sessione o cambia le modalità: una pagina di accesso
+            // di un Wi-Fi pubblico, un proxy o un altro servizio no (come in `ProvaConnessione`).
+            guard Self.eJsonDelServer(dati) else { throw ErroreApi.risposta(401) }
             UserDefaults.standard.set(ModalitaRegistrazione.leggi(corpo: dati).rawValue, forKey: ModalitaRegistrazione.chiave)
             ServiziSociali.salva(ServiziSociali.leggi(corpo: dati))   // i pulsanti «Continua con Google» solo se il server li dichiara
             if !Self.eDiAccesso(percorso) {

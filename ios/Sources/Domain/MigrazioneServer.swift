@@ -37,12 +37,14 @@ enum MigrazioneServer {
         return vecchio
     }
 
-    /// Passo con la rete: il predefinito risponde e quello salvato no per due prove di fila → si torna al predefinito.
+    /// Passo con la rete: il predefinito risponde e quello salvato (di rete privata) no per due prove di fila → si torna al predefinito.
+    /// Un server scelto dalla persona (un indirizzo qualsiasi che non sia di rete privata) NON si tocca mai da solo: anche se per un po'
+    /// non risponde, il suo token e i suoi dati restano; se ne cambia solo da Lega > Server.
     /// (Se non risponde nemmeno il predefinito, il problema è il telefono offline: non si tocca niente.)
     /// Restituisce `true` se ha cambiato l'indirizzo.
     static func migraSeIrraggiungibile(_ memoria: UserDefaults = .standard,
                                        prova: (String) async -> EsitoConnessione) async -> Bool {
-        guard !Demo.attivo, let vecchio = salvatoDiverso(memoria) else { return false }
+        guard !Demo.attivo, let vecchio = salvatoDiverso(memoria), eReteprivata(vecchio) else { return false }
         guard await prova(pulito(Config.indirizzoPredefinito)).raggiunto else { return false }
         for _ in 0..<2 {
             let esito = await prova(vecchio)

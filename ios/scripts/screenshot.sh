@@ -9,7 +9,7 @@
 
 APP="${1:?manca il percorso di Schieraxi.app}"
 USCITA="${2:-screenshot}"
-ID_APP="<vecchio identificativo>"
+ID_APP="it.schieraxi.app"
 ERRORI=0
 ARGOMENTI_EXTRA=()
 STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto

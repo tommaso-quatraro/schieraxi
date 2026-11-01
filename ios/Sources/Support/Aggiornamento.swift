@@ -6,7 +6,7 @@ import WidgetKit
 /// riprogramma i promemoria e, se la formazione consigliata è cambiata, manda una notifica locale.
 /// iOS decide quando svegliarla (di solito poche volte al giorno, di più se usi spesso l'app): non c'è un orario garantito.
 enum Aggiornamento {
-    static let identificativo = "<vecchio identificativo>.aggiorna"
+    static let identificativo = "it.schieraxi.app.aggiorna"
 
     /// Chiede a iOS di svegliare l'app fra non meno di due ore.
     static func programma() {

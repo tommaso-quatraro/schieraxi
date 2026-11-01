@@ -20,6 +20,8 @@ enum Funzione {
     static let immaginiWeb = "immagini_web"
     /// Crediti di tutte le squadre: il server la tiene spenta di norma, quindi serve che la accenda.
     static let crediti = "crediti"
+    /// «Sotto il cofano»: il server la tiene spenta di norma, quindi la voce compare solo se la accende.
+    static let sottoIlCofano = "sotto_il_cofano"
     /// Movimenti e storico: se il server non la nomina (versione vecchia) vale acceso.
     static let movimenti = "movimenti"
 }
@@ -71,7 +73,7 @@ struct CorpoMostraTutte: Encodable {
 
 extension Notification.Name {
     /// Il server ha risposto 404 con il campo `funzione`: quella funzione è spenta (userInfo: `funzione`).
-    static let funzioneSpenta = Notification.Name("<vecchio identificativo>.funzioneSpenta")
+    static let funzioneSpenta = Notification.Name("it.schieraxi.app.funzioneSpenta")
 }
 
 private struct FunzioniChiave: EnvironmentKey {

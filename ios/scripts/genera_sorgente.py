@@ -13,7 +13,7 @@ base = f"https://github.com/{repo}"
 
 sorgente = {
     "name": "SchieraXI",
-    "identifier": "<vecchio identificativo>.sorgente",
+    "identifier": "it.schieraxi.app.sorgente",
     "subtitle": "SchieraXI per iPhone e iPad",
     "description": "Le versioni di SchieraXI compilate da GitHub.",
     "iconURL": f"https://raw.githubusercontent.com/{repo}/main/Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
@@ -21,7 +21,7 @@ sorgente = {
     "apps": [
         {
             "name": "SchieraXI",
-            "bundleIdentifier": "<vecchio identificativo>",
+            "bundleIdentifier": "it.schieraxi.app",
             "developerName": "SchieraXI",
             "subtitle": "Formazioni e scambi per il fantacalcio",
             "localizedDescription": "App nativa per scegliere la formazione e analizzare gli scambi, con widget, Siri e Comandi.",

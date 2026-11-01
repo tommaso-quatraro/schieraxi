@@ -6,7 +6,7 @@ import Security
 
 extension Notification.Name {
     /// Il server ha risposto 401 a una richiesta che non era un accesso: la sessione è finita (o non c'è) e serve l'accesso.
-    static let accessoRichiesto = Notification.Name("<vecchio identificativo>.accessoRichiesto")
+    static let accessoRichiesto = Notification.Name("it.schieraxi.app.accessoRichiesto")
 }
 
 /// Dove si tiene il token. Due implementazioni: il Keychain vero e una in memoria (demo e test).
@@ -40,12 +40,13 @@ final class MemoriaToken: ArchivioToken, @unchecked Sendable {
     }
 }
 
-/// Il Keychain di iOS (`kSecClassGenericPassword`), accessibile dopo il primo sblocco del telefono: serve anche all'aggiornamento
-/// in background e a Siri, che girano a telefono bloccato.
+/// Il Keychain di iOS (`kSecClassGenericPassword`), accessibile dopo il primo sblocco del telefono (serve all'aggiornamento
+/// in background e a Siri, che girano a telefono bloccato) e solo su questo telefono: non entra nei backup trasferibili. Il widget non legge questo
+/// Keychain (senza App Group non lo potrebbe): usa il suo codice di collegamento, quindi la restrizione non lo tocca.
 /// Se iOS rifiuta il Keychain perché l'app non ha i permessi (succede solo nelle compilazioni senza firma per i test) il token resta in
 /// memoria: l'app funziona, ma ci si dovrà accedere di nuovo alla prossima apertura.
 struct KeychainToken: ArchivioToken {
-    var servizio = "<vecchio identificativo>.account"
+    var servizio = "it.schieraxi.app.account"
     private static let riserva = MemoriaToken()
 
     private func base(_ server: String) -> [String: Any] {
@@ -70,7 +71,7 @@ struct KeychainToken: ArchivioToken {
         SecItemDelete(base(server) as CFDictionary)
         var nuovo = base(server)
         nuovo[kSecValueData as String] = Data(token.utf8)
-        nuovo[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        nuovo[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         let esito = SecItemAdd(nuovo as CFDictionary, nil)
         if esito == errSecSuccess {
             Self.riserva.cancella(server: servizio + "|" + server)

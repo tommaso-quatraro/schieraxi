@@ -6,14 +6,26 @@ struct StileVoce: LabelStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 12) {
-            configuration.icon
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 30, height: 30)
-                .background(colore.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .accessibilityHidden(true)
+            IconaVoce(icona: configuration.icon, colore: colore)
             configuration.title
         }
+    }
+}
+
+/// Il quadratino dell'icona: cresce con Dynamic Type, ma fino a un tetto (a 1,6 volte) per non sformare le righe.
+private struct IconaVoce<Icona: View>: View {
+    let icona: Icona
+    let colore: Color
+    @ScaledMetric(relativeTo: .body) private var lato: CGFloat = 30
+    @ScaledMetric(relativeTo: .body) private var corpo: CGFloat = 15
+
+    var body: some View {
+        icona
+            .font(.system(size: min(corpo, 24), weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: min(lato, 48), height: min(lato, 48))
+            .background(colore.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .accessibilityHidden(true)
     }
 }
 

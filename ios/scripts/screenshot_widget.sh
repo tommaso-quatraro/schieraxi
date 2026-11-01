@@ -4,7 +4,7 @@
 # Uso: scripts/screenshot_widget.sh <AnteprimaWidget.app per il simulatore> <cartella dei PNG>
 APP="${1:?manca il percorso di AnteprimaWidget.app}"
 USCITA="${2:-screenshot-widget}"
-ID_APP="<vecchio identificativo>.anteprima"
+ID_APP="it.schieraxi.app.anteprima"
 ERRORI=0
 mkdir -p "$USCITA"
 

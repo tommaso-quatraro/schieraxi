@@ -39,12 +39,14 @@ struct PedinaCampo: View {
                         .offset(x: 6, y: -4)
                 }
             Text(g.nomeCorto)
-                .font(.system(size: perImmagine ? 12 : 12, weight: .semibold))
+                .font(.caption.weight(.semibold))   // 12 pt a misura normale, segue Dynamic Type
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // ma con un tetto: il campo ha spazio fisso
                 .foregroundStyle(.white)
                 .lineLimit(1).minimumScaleFactor(0.6)
                 .shadow(color: .black.opacity(0.5), radius: 1)
             Text("\(Formato.percento(g.pVoto))% · \(ColoriSquadra.sigla(g.avversario))\(g.inCasa == false ? " (f)" : "")")
-                .font(.system(size: 9.5))
+                .font(.caption2)   // segue Dynamic Type (a misura normale 11 pt; la scala minima del testo lo stringe se serve)
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)   // tetto più basso: la riga è lunga e il campo non cambia
                 .foregroundStyle(.white.opacity(0.8))
                 .lineLimit(1).minimumScaleFactor(0.6)
         }

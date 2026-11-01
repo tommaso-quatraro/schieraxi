@@ -94,7 +94,7 @@ struct DatiCondivisi: Codable, Equatable {
 }
 
 enum Condiviso {
-    static let gruppoBase = "group.<vecchio identificativo>"
+    static let gruppoBase = "group.it.schieraxi.app"
     private static let nomeFile = "condiviso.json"
     private static let blocco = NSLock()
     /// Per i test: una cartella al posto del contenitore del gruppo.
