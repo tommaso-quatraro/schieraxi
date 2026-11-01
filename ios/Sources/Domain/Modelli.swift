@@ -300,7 +300,7 @@ struct FormazioneBreve: Decodable {
     }
 
     /// Titolo della scheda in Oggi, coerente con quello che mostra.
-    var titoloScheda: String { tuaScelta ? "La tua formazione · la tua scelta" : "La formazione consigliata" }
+    var titoloScheda: String { tuaScelta ? "La tua scelta" : "La formazione consigliata" }
 }
 
 struct Avviso: Decodable, Identifiable {

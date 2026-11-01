@@ -18,6 +18,10 @@ enum Funzione {
     static let scambiTrova = "scambi_trova"
     static let scambiCostruisci = "scambi_costruisci"
     static let immaginiWeb = "immagini_web"
+    /// Crediti di tutte le squadre: il server la tiene spenta di norma, quindi serve che la accenda.
+    static let crediti = "crediti"
+    /// Movimenti e storico: se il server non la nomina (versione vecchia) vale acceso.
+    static let movimenti = "movimenti"
 }
 
 /// Cosa è acceso e se l'utente ha chiesto «Mostra tutte le funzioni». Valore semplice: sta nell'ambiente di SwiftUI

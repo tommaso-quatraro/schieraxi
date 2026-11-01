@@ -132,6 +132,8 @@ struct RadiceView: View {
     @Namespace private var zoom
 
     private func aggiornaBadge() {
+        // Prima installazione (o dopo l'uscita dall'account): non c'è niente di «nuovo» da vedere, si segna la versione attuale senza pallino.
+        if novitaVista.isEmpty, let v = modello.oggi.info.dato?.versione, !v.isEmpty, v != "?" { novitaVista = v }
         let nuovo = modello.funzioni.stato.acceso(Funzione.novita) && modello.oggi.novitaDaVedere(ultimaVista: novitaVista) != nil
         if nuovo != novitaDaVedere { novitaDaVedere = nuovo }
     }

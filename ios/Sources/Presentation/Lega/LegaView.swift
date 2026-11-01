@@ -87,6 +87,7 @@ struct LegaView: View {
             }
         }
         .scrollContentBackground(.hidden)
+        .contentMargins(.bottom, 24, for: .scrollContent)
         .background(Sfondo())
         .demoInFondo()
         .navigationTitle(ambito.titolo)
@@ -169,8 +170,10 @@ struct LegaView: View {
                 NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer").labelStyle(.voce(.brown)).frame(minHeight: 44) }
             }
             NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
-            if funzioni.acceso(Funzione.squadreAltrui) {
+            if funzioni.acceso(Funzione.squadreAltrui) && funzioni.acceso(Funzione.movimenti) {
                 NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
+            }
+            if funzioni.acceso(Funzione.squadreAltrui) && funzioni.accesoSoloSeNominato(Funzione.crediti) {
                 NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "c.circle").labelStyle(.voce(.mint)).frame(minHeight: 44) }
             }
             if vm.nuovaStagione || funzioni.mostraTutte {
@@ -194,7 +197,7 @@ struct LegaView: View {
                     Label("Impostazioni dell'app e dell'account", systemImage: "gearshape").labelStyle(.voce(.gray)).frame(minHeight: 44)
                 }
             } footer: {
-                Text("Account, collegamento al server, aspetto, avvisi e widget stanno nelle Impostazioni (l'ingranaggio in alto). Lì si accende anche «Mostra tutte le funzioni».")
+                Text("Account, avvisi, widget e aspetto sono nelle Impostazioni (l'ingranaggio in alto).")
             }
         }
     }
