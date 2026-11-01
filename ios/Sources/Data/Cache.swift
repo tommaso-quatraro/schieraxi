@@ -8,6 +8,10 @@ enum Cache {
     /// Oltre questo numero di file si cancellano i più vecchi (le ricerche e le schede dei giocatori ne creano molti).
     private static let massimoFile = 150
     private static let dopoPulizia = 100
+    /// Una sola coda, in ordine, per scrivere, togliere, svuotare e leggere. Prima ogni scrittura era un compito staccato a bassa
+    /// priorità: sotto carico poteva arrivare DOPO `rimuovi` o `svuotaTutto` e rimettere su disco la copia vecchia (per esempio lo
+    /// stemma appena cambiato, o i dati di chi è appena uscito), e una lettura subito dopo una scrittura poteva non trovarla.
+    private static let coda = DispatchQueue(label: "schieraxi.cache", qos: .utility)
 
     /// La cartella dentro Caches: «api» per le risposte JSON, «img» per le immagini (così la pulizia dei file JSON non le cancella).
     private static func cartella(_ nome: String) -> URL {
@@ -37,39 +41,44 @@ enum Cache {
     }
 
     /// Cancella TUTTE le copie su disco (risposte e immagini): all'uscita da un account, perché chi entra dopo non veda i dati di chi c'era prima.
+    /// Aspetta le scritture già in coda, poi cancella: al ritorno nessuna copia vecchia può ricomparire.
     static func svuotaTutto() {
-        for nome in ["api", "img"] {
-            let url = cartella(nome)
-            let file = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
-            for f in file { try? FileManager.default.removeItem(at: f) }
+        let cartelle = ["api", "img"].map(cartella)
+        coda.sync {
+            for url in cartelle {
+                let file = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
+                for f in file { try? FileManager.default.removeItem(at: f) }
+            }
         }
     }
 
-    /// Salva senza aspettare (in coda su un thread di servizio).
+    /// Salva senza aspettare (in coda su un thread di servizio, nell'ordine delle chiamate).
     static func salva(_ dati: Data, _ percorso: String, indirizzo: String, cartella nome: String = "api") {
         let cartellaDiLavoro = cartella(nome)
         let url = cartellaDiLavoro.appendingPathComponent(nomeFile(percorso, indirizzo))
-        let cartellaDaPulire = cartellaDiLavoro
-        Task.detached(priority: .utility) {
+        coda.async {
             try? dati.write(to: url, options: .atomic)
-            pulisci(cartellaDaPulire)
+            pulisci(cartellaDiLavoro)
         }
     }
 
-    /// Toglie la copia su disco di un indirizzo (per esempio uno stemma appena cambiato).
+    /// Toglie la copia su disco di un indirizzo (per esempio uno stemma appena cambiato), dopo le scritture già in coda.
     static func rimuovi(_ percorso: String, indirizzo: String, cartella nome: String = "api") {
-        try? FileManager.default.removeItem(at: cartella(nome).appendingPathComponent(nomeFile(percorso, indirizzo)))
+        let url = cartella(nome).appendingPathComponent(nomeFile(percorso, indirizzo))
+        coda.sync { try? FileManager.default.removeItem(at: url) }
     }
 
-    /// I dati salvati e il momento in cui sono stati scaricati.
+    /// I dati salvati e il momento in cui sono stati scaricati (dopo le scritture già in coda: si legge sempre l'ultima copia).
     static func leggi(_ percorso: String, indirizzo: String, cartella nome: String = "api") async -> (dati: Data, data: Date)? {
         let url = cartella(nome).appendingPathComponent(nomeFile(percorso, indirizzo))
-        return await Task.detached(priority: .userInitiated) { () -> (dati: Data, data: Date)? in
-            guard let dati = try? Data(contentsOf: url) else { return nil }
-            let attributi = try? FileManager.default.attributesOfItem(atPath: url.path)
-            let data = attributi?[.modificationDate] as? Date
-            return (dati, data ?? Date())
-        }.value
+        return await withCheckedContinuation { continuazione in
+            coda.async(qos: .userInitiated) {
+                guard let dati = try? Data(contentsOf: url) else { continuazione.resume(returning: nil); return }
+                let attributi = try? FileManager.default.attributesOfItem(atPath: url.path)
+                let data = attributi?[.modificationDate] as? Date
+                continuazione.resume(returning: (dati: dati, data: data ?? Date()))
+            }
+        }
     }
 
     /// Tiene la cartella sotto il limite cancellando i file meno recenti.
