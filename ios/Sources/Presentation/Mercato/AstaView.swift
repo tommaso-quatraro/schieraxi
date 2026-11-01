@@ -174,7 +174,7 @@ struct AstaContenuto: View {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(g.nome).font(.headline)
-                    Text("\(ColoriSquadra.sigla(g.squadra)) · quot. \(Formato.intero(g.quotazione)) · \(Formato.intero(g.puntiStagione)) punti attesi")
+                    Text("\(ColoriSquadra.sigla(g.squadra)) · quotazione \(Formato.intero(g.quotazione)) · \(Formato.intero(g.puntiStagione)) punti attesi")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)

@@ -15,7 +15,7 @@ enum Config {
 }
 
 enum IndirizzoServer {
-    /// Solo indirizzi https:// sono accettati (il traffico passa da rete privata ma il server parla in HTTPS).
+    /// Solo indirizzi https:// sono accettati (il server parla in HTTPS).
     static func valido(_ testo: String) -> Bool {
         let t = testo.trimmingCharacters(in: .whitespaces)
         guard let url = URL(string: t), let host = url.host?.lowercased(), !host.isEmpty else { return false }
@@ -80,10 +80,10 @@ enum ErroreApi: LocalizedError {
         case .funzioneSpenta(_, let messaggio): return messaggio
         case .indirizzoNonValido:
             return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo nelle Impostazioni." : "L'indirizzo del server non è valido."
-        case .risposta(let codice): return "Il server ha risposto con un errore (\(codice))."
-        case .dati(let dettaglio): return "Risposta inattesa dal server. \(dettaglio)"
+        case .risposta(let codice): return "Il server ha un problema (codice \(codice)). Riprova tra poco."
+        case .dati: return "Il server ha mandato una risposta che l'app non capisce. Riprova tra poco; se succede ancora, aggiorna l'app."
         case .timeout: return "Il server ci mette troppo a rispondere. Controlla la connessione e riprova tra poco."
-        case .rete: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia raggiungibile."
+        case .rete: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia acceso."
         }
     }
 
@@ -322,7 +322,7 @@ struct ServerHTTP: ServerClient {
         var r = try costruisci(percorso, token: token)
         r.httpMethod = "POST"
         r.timeoutInterval = 120
-        let confine = "Fanta-\(UUID().uuidString)"
+        let confine = "Schieraxi-\(UUID().uuidString)"
         r.setValue("multipart/form-data; boundary=\(confine)", forHTTPHeaderField: "Content-Type")
         // Nel nome del file niente virgolette né a capo: romperebbero l'intestazione del multipart.
         let nomePulito = String(nome.filter { $0 != "\"" && !$0.isNewline && $0 != "\\" })

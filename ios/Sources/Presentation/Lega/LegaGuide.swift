@@ -7,7 +7,7 @@ struct NuovaVersioneSezione: View {
 
     var body: some View {
         Group {
-            if let esito {
+            if !ProvaEsempio.attiva, let esito {
                 Section("Aggiornamento dell'app") {
                     Label(sessione.puoAmministrare ? "È disponibile la \(esito.nome) (hai la build \(NuovaVersione.buildInstallata))" : "C'è una versione più nuova di SchieraXI", systemImage: "arrow.down.circle")
                         .foregroundStyle(Color.verde)
@@ -16,7 +16,7 @@ struct NuovaVersioneSezione: View {
                 }
             }
         }
-        .task { esito = await NuovaVersione.controllaEAvvisa() }
+        .task { if !ProvaEsempio.attiva { esito = await NuovaVersione.controllaEAvvisa() } }
     }
 }
 
@@ -37,6 +37,10 @@ struct CertificatoSezione: View {
     }
 
     var body: some View {
+        if !ProvaEsempio.attiva { corpo }
+    }
+
+    private var corpo: some View {
         Section("Certificato dell'app") {
             HStack {
                 Text("Validità")
@@ -66,6 +70,10 @@ struct CertificatoSezione: View {
 /// Come far rinnovare l'app da sola ogni notte con SideStore e l'app Comandi.
 struct RinnovoSideStoreSezione: View {
     var body: some View {
+        if !ProvaEsempio.attiva { corpo }
+    }
+
+    private var corpo: some View {
         Section("Rinnovo automatico (SideStore)") {
             VStack(alignment: .leading, spacing: 8) {
                 Text("1. Nell'app Comandi crea un comando con l'azione di SideStore «Refresh All Apps».")
@@ -86,6 +94,10 @@ struct RinnovoSideStoreSezione: View {
 /// Come far aprire l'app nativa dal tocco su una notifica dell'app ntfy.
 struct NotificheNtfySezione: View {
     var body: some View {
+        if !ProvaEsempio.attiva { corpo }
+    }
+
+    private var corpo: some View {
         Section("Notifiche ntfy che mandi tu") {
             Text("Gli avvisi del server aprono già l'app (con «Avvisi anche per l'app nativa»). Solo se mandi tu una notifica con ntfy, per esempio da Comandi, aggiungi questa intestazione: toccandola si apre l'app sulla schermata scelta.")
                 .font(.footnote).foregroundStyle(.secondary)

@@ -49,7 +49,7 @@ struct SezioneProvaEsempio: View {
         Section("Prova con dati di esempio") {
             Label("Stai guardando una lega inventata. Niente account, niente rete.", systemImage: "play.circle")
                 .font(.subheadline).foregroundStyle(.secondary)
-            Button("Esci dalla prova e collega il tuo server", role: .destructive) { chiedi = true }
+            Button("Esci dalla prova", role: .destructive) { chiedi = true }
                 .frame(minHeight: Tema.areaTocco)
                 .confirmationDialog("Uscire dalla prova?", isPresented: $chiedi, titleVisibility: .visible) {
                     Button("Esci dalla prova", role: .destructive) { ProvaEsempio.esci() }

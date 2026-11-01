@@ -90,9 +90,9 @@ enum FileBackup {
         var errorDescription: String? {
             switch self {
             case .vuoto: return "Il file è vuoto."
-            case .troppoGrande: return "Il file è troppo grande per essere un backup di SchieraXI."
-            case .nonEUnBackup: return "Questo file non è un backup di SchieraXI."
-            case .piuNuovo: return "Il backup viene da una versione più nuova dell'app: aggiorna l'app e riprova."
+            case .troppoGrande: return "Il file è troppo grande per essere una copia di sicurezza di SchieraXI."
+            case .nonEUnBackup: return "Questo file non è una copia di sicurezza di SchieraXI."
+            case .piuNuovo: return "Questa copia di sicurezza viene da una versione più nuova dell'app: aggiorna l'app e riprova."
             }
         }
     }

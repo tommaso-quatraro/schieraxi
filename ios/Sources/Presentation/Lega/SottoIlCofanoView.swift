@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// «Sotto il cofano» (Impostazioni > Informazioni): come ragiona SchieraXI, con i testi che manda il server (uguali su web, iPhone e Android).
-/// Sezioni ripiegabili con il filtro Base / Nerd / Tutto (ricordato), formule in carattere a spaziatura fissa che scorrono di lato,
+/// Sezioni ripiegabili solo le spiegazioni semplici, formule in carattere a spaziatura fissa che scorrono di lato,
 /// esempi con l'etichetta «Numeri veri» o «Esempio di calcolo», numeri con la data della misura, glossario cercabile.
 /// Su iPad (pagina larga) c'è l'indice a sinistra. Senza rete resta l'ultima copia salvata.
 struct SottoIlCofanoView: View {
@@ -9,7 +9,6 @@ struct SottoIlCofanoView: View {
     /// Cosa fare per un rimando a un'altra schermata (lo decide chi ha in mano la navigazione).
     let vai: (DestinazioneCofano) -> Void
 
-    @AppStorage("cofanoLivello") private var livelloRicordato = "base"
     @State private var apertura: [String: Bool] = [:]
     @State private var ricerca = ""
     @State private var larga = false
@@ -18,10 +17,6 @@ struct SottoIlCofanoView: View {
         // Senza conversione dei nomi: le chiavi dei numeri («app.errore_modello») sono dati, non campi.
         _caricatore = StateObject(wrappedValue: Caricatore<SottoIlCofano>("/api/sotto-il-cofano", snake: false, server: server))
         self.vai = vai
-    }
-
-    private var livello: Binding<LivelloCofano> {
-        Binding(get: { LivelloCofano(ricordato: livelloRicordato) }, set: { livelloRicordato = $0.rawValue })
     }
 
     var body: some View {
@@ -53,9 +48,9 @@ struct SottoIlCofanoView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Tema.spazioSchede) {
                         testata(c)
-                        let visibili = c.sezioniVisibili(LivelloCofano(ricordato: livelloRicordato))
+                        let visibili = c.sezioniVisibili(.base)
                         if visibili.isEmpty {
-                            Carta { Text("Nessuna sezione in questo livello. Prova «Tutto».").font(.subheadline).foregroundStyle(.secondary) }
+                            Carta { Text("Per ora non c'è niente da leggere qui.").font(.subheadline).foregroundStyle(.secondary) }
                         }
                         ForEach(visibili) { sezione in
                             scheda(sezione, in: c).id(sezione.id)
@@ -75,7 +70,7 @@ struct SottoIlCofanoView: View {
                 if !larga {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Menu {
-                            ForEach(c.sezioniVisibili(LivelloCofano(ricordato: livelloRicordato))) { s in
+                            ForEach(c.sezioniVisibili(.base)) { s in
                                 Button(s.titolo) { vaiA(s.id, proxy: proxy) }
                             }
                             Button("Glossario") { vaiA("glossario", proxy: proxy) }
@@ -98,7 +93,7 @@ struct SottoIlCofanoView: View {
     private func indice(_ c: SottoIlCofano, proxy: ScrollViewProxy) -> some View {
         List {
             Section("In questa pagina") {
-                ForEach(c.sezioniVisibili(LivelloCofano(ricordato: livelloRicordato))) { s in
+                ForEach(c.sezioniVisibili(.base)) { s in
                     Button { vaiA(s.id, proxy: proxy) } label: {
                         Text(s.titolo).font(.subheadline).frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
                     }
@@ -127,32 +122,11 @@ struct SottoIlCofanoView: View {
                 Label("Questa pagina ha una forma più nuova della tua app: aggiorna l'app per vederla tutta.", systemImage: "arrow.down.app")
                     .font(.footnote).foregroundStyle(Color.attenzione)
             }
-            Picker("Quanto dettaglio", selection: livello) {
-                ForEach(LivelloCofano.allCases) { Text($0.titolo).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .frame(minHeight: Tema.areaTocco)
-            Text(descrizione(LivelloCofano(ricordato: livelloRicordato), c)).font(.caption).foregroundStyle(.secondary)
-        }
-    }
-
-    private func descrizione(_ l: LivelloCofano, _ c: SottoIlCofano) -> String {
-        let testoServer: String?
-        switch l {
-        case .base: testoServer = c.livelli?["base"]
-        case .nerd: testoServer = c.livelli?["nerd"]
-        case .tutto: testoServer = nil
-        }
-        if let t = testoServer, !t.isEmpty { return t }
-        switch l {
-        case .base: return "Le spiegazioni semplici."
-        case .nerd: return "Solo i dettagli tecnici, per chi vuole i conti."
-        case .tutto: return "Le spiegazioni semplici e i dettagli tecnici."
         }
     }
 
     private func aperta(_ s: SezioneCofano) -> Binding<Bool> {
-        Binding(get: { apertura[s.id] ?? !s.eNerd }, set: { apertura[s.id] = $0 })
+        Binding(get: { apertura[s.id] ?? true }, set: { apertura[s.id] = $0 })
     }
 
     private func scheda(_ s: SezioneCofano, in c: SottoIlCofano) -> some View {
@@ -171,7 +145,6 @@ struct SottoIlCofanoView: View {
             } label: {
                 HStack(spacing: 8) {
                     Text(s.titolo).font(.headline).multilineTextAlignment(.leading)
-                    if s.eNerd { Capsula(testo: "Nerd", colore: Color.informazione, simbolo: "function") }
                 }
                 .frame(minHeight: Tema.areaTocco, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)

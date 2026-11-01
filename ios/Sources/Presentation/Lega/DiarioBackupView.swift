@@ -73,7 +73,7 @@ struct CorpoSchierata: Encodable {
     var titolari: [Int]? = nil
 }
 
-/// Per ogni giornata finita: i punti fatti dalla formazione schierata e da quella che il modello avrebbe consigliato.
+/// Per ogni giornata finita: i punti fatti dalla formazione schierata e da quella che SchieraXI avrebbe consigliato.
 struct DiarioView: View {
     @StateObject private var vm: DiarioViewModel
     @State private var daCorreggere: VoceDiario?
@@ -90,7 +90,7 @@ struct DiarioView: View {
             List {
                 if let d = vm.caricatore.dato {
                     Section {
-                        Text("Per ogni giornata finita: i punti fatti (\"attesi\" = quelli previsti prima) dalla formazione che hai schierato e da quella che il modello avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
+                        Text("Per ogni giornata finita: i punti fatti (\"attesi\" = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if let s = d.sintesi, (s.giornate ?? 0) > 0 { sintesi(s) }
@@ -136,8 +136,8 @@ struct DiarioView: View {
     private func sintesi(_ s: SintesiDiario) -> some View {
         Section("In sintesi (\(s.giornate ?? 0) giornate)") {
             RigaValore(titolo: "Punti medi tuoi", valore: Formato.punti(s.puntiSchierata), cifreFisse: true)
-            RigaValore(titolo: "Punti medi del modello", valore: Formato.punti(s.puntiConsigliata), cifreFisse: true)
-            RigaValore(titolo: "Meglio tu – meglio il modello", valore: "\(s.meglioTua ?? 0)–\(s.meglioConsigliata ?? 0)", cifreFisse: true)
+            RigaValore(titolo: "Punti medi di SchieraXI", valore: Formato.punti(s.puntiConsigliata), cifreFisse: true)
+            RigaValore(titolo: "Meglio tu – meglio SchieraXI", valore: "\(s.meglioTua ?? 0)–\(s.meglioConsigliata ?? 0)", cifreFisse: true)
         }
     }
 
@@ -175,7 +175,7 @@ struct DiarioView: View {
                 .accessibilityHint("Scegli a mano i tuoi undici della giornata \(g)")
             }
             if let c = v.consigliata {
-                riga(v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(c.modulo ?? "–"))" : "Del modello (\(c.modulo ?? "–"))", c)
+                riga(v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(c.modulo ?? "–"))" : "Di SchieraXI (\(c.modulo ?? "–"))", c)
             }
         } header: {
             Text("Giornata \(v.giornata ?? 0)" + (v.stagione.map { " · \($0)" } ?? ""))
@@ -222,7 +222,7 @@ final class BackupViewModel: ViewModelBase {
         super.init()
     }
 
-    /// Scarica il backup dal server e lo scrive in un file temporaneo da condividere.
+    /// Scarica la copia di sicurezza dal server e lo scrive in un file temporaneo da condividere.
     func prepara() async {
         guard !inCorso else { return }
         inCorso = true
@@ -236,7 +236,7 @@ final class BackupViewModel: ViewModelBase {
             let url = cartella.appendingPathComponent(FileBackup.nomeFile(dati))
             try dati.write(to: url, options: [.atomic, .completeFileProtection])
             file = url
-            esito("Backup pronto: toccalo per condividerlo o salvarlo in Files.", riuscito: true)
+            esito("Copia di sicurezza pronta: toccala per condividerla o salvarla in File.", riuscito: true)
         } catch {
             esito(error.localizedDescription, riuscito: false)
         }
@@ -274,7 +274,7 @@ final class BackupViewModel: ViewModelBase {
             Cache.svuotaTutto()
             VersioniRisorse.condivise.azzera()
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
-            esito("Ripristinati \(r?.ripristinati?.count ?? 0) file. I dati di prima restano sul server in dati/backup-prima-del-ripristino.json.", riuscito: true)
+            esito("Ripristino completato. I dati di prima restano al sicuro sul server.", riuscito: true)
         } catch {
             daRipristinare = nil
             esito(error.localizedDescription, riuscito: false)
@@ -309,19 +309,19 @@ struct BackupView: View {
             Sfondo()
             List {
                 Section {
-                    Text("Un file con regole, rose, scelte, osservati e impostazioni degli avvisi: serve se cambi server o vuoi una copia al sicuro. Non contiene chiavi né le notifiche già attivate. Ripristinando, i dati di prima restano nel file dati/backup-prima-del-ripristino.json sul server.")
+                    Text("Un file con regole, rose, scelte, osservati e impostazioni degli avvisi: serve se cambi server o vuoi una copia al sicuro. Non contiene chiavi né le notifiche già attivate. Ripristinando, i dati di prima restano al sicuro sul server.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Salva una copia") {
                     Button {
                         Task { await vm.prepara() }
                     } label: {
-                        if vm.inCorso { ProgressView() } else { Label("Scarica il backup", systemImage: "arrow.down.doc") }
+                        if vm.inCorso { ProgressView() } else { Label("Scarica la copia di sicurezza", systemImage: "arrow.down.doc") }
                     }
                     .disabled(vm.inCorso)
                     .frame(minHeight: 44)
                     if let url = vm.file {
-                        ShareLink(item: url, subject: Text("Backup di SchieraXI")) {
+                        ShareLink(item: url, subject: Text("Copia di sicurezza di SchieraXI")) {
                             Label("Condividi \(url.lastPathComponent)", systemImage: "square.and.arrow.up")
                         }
                         .frame(minHeight: 44)
@@ -331,7 +331,7 @@ struct BackupView: View {
                     Button {
                         scegli = true
                     } label: {
-                        Label("Ripristina da file", systemImage: "arrow.up.doc")
+                        Label("Ripristina da un file", systemImage: "arrow.up.doc")
                     }
                     .disabled(vm.inCorso)
                     .frame(minHeight: 44)
@@ -346,12 +346,12 @@ struct BackupView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Backup")
+        .navigationTitle("Copia di sicurezza")
         .ricercaGlobale()
         .fileImporter(isPresented: $scegli, allowedContentTypes: [.json, .plainText], allowsMultipleSelection: false) { risultato in
             Task { await vm.scegli(risultato) }
         }
-        .confirmationDialog("Ripristino il backup?", isPresented: $vm.chiediConferma, titleVisibility: .visible) {
+        .confirmationDialog("Ripristino la copia di sicurezza?", isPresented: $vm.chiediConferma, titleVisibility: .visible) {
             Button("Ripristina", role: .destructive) { Task { await vm.ripristina() } }
             Button("Annulla", role: .cancel) { vm.annullaRipristino() }
         } message: {

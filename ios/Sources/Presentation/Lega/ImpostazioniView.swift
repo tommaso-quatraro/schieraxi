@@ -143,7 +143,7 @@ struct ImpostazioniView: View {
     @ViewBuilder
     private var sezioneDati: some View {
         if funzioni.stato.acceso(Funzione.backup) {
-            Section("Dati e backup") {
+            Section("Dati e copia di sicurezza") {
                 NavigationLink(value: PaginaImpostazioni.backup) { Label("Copia di sicurezza", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
             }
         }

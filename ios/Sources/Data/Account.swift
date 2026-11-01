@@ -301,7 +301,7 @@ final class SessioneAccount: ObservableObject {
 
     /// Le funzioni dell'amministratore (aggiornare i dati del server, lo stato dei dati): sempre senza account, solo per
     /// l'amministratore con gli account (agli altri il server risponde 403).
-    var puoAmministrare: Bool { !multiutente || (utente?.amministratore ?? false) }
+    var puoAmministrare: Bool { !ProvaEsempio.attiva && (!multiutente || (utente?.amministratore ?? false)) }
 
     // MARK: stato
 

@@ -135,7 +135,7 @@ struct ElencoNumeri: View {
 
 // MARK: - Prova del modello
 
-/// Punti delle formazioni giornata per giornata: modello, scelta da fantamedia e massimo possibile.
+/// Punti delle formazioni giornata per giornata: SchieraXI, scelta da fantamedia e massimo possibile.
 struct GraficoAffidabilita: View {
     let righe: [RigaAffidabilita]
 
@@ -144,7 +144,7 @@ struct GraficoAffidabilita: View {
     private var punti: [PuntoGrafico] {
         righe.sorted { $0.giornata < $1.giornata }.flatMap { r -> [PuntoGrafico] in
             var lista: [PuntoGrafico] = []
-            if let v = r.puntiModello { lista.append(PuntoGrafico(serie: "Modello", x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
+            if let v = r.puntiModello { lista.append(PuntoGrafico(serie: "SchieraXI", x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
             if let v = r.puntiFantamedia { lista.append(PuntoGrafico(serie: "Da fantamedia", x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
             if let v = r.puntiPerfetta { lista.append(PuntoGrafico(serie: Self.massimo, x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
             return lista
@@ -153,7 +153,7 @@ struct GraficoAffidabilita: View {
 
     static func descrizione(_ righe: [RigaAffidabilita]) -> [String] {
         righe.sorted { $0.giornata < $1.giornata }.map { r in
-            "Giornata \(r.giornata): modello \(r.puntiModello.map { Formato.decimali($0) } ?? "–"), "
+            "Giornata \(r.giornata): SchieraXI \(r.puntiModello.map { Formato.decimali($0) } ?? "–"), "
                 + "da fantamedia \(r.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), "
                 + "massimo possibile \(r.puntiPerfetta.map { Formato.decimali($0) } ?? "–")"
         }
@@ -170,13 +170,13 @@ struct GraficoAffidabilita: View {
                     .foregroundStyle(by: .value("Serie", p.serie))
                     .symbolSize(p.serie == Self.massimo ? 0 : 24)
             }
-            .chartForegroundStyleScale(["Modello": Color.verde, "Da fantamedia": Color.attenzione, Self.massimo: Color.gray])
+            .chartForegroundStyleScale(["SchieraXI": Color.verde, "Da fantamedia": Color.attenzione, Self.massimo: Color.gray])
             .chartYScale(domain: .automatic(includesZero: false))
             .chartXScale(domain: (righe.map(\.giornata).min() ?? 1)...max((righe.map(\.giornata).max() ?? 1), (righe.map(\.giornata).min() ?? 1) + 1))
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .frame(height: 190)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Grafico dei punti delle formazioni, giornata per giornata: modello, scelta da fantamedia e massimo possibile")
+            .accessibilityLabel("Grafico dei punti delle formazioni, giornata per giornata: SchieraXI, scelta da fantamedia e massimo possibile")
             .accessibilityValue(Self.descrizione(righe).joined(separator: ". "))
             ElencoNumeri(righe: Self.descrizione(righe))
         }

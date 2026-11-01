@@ -45,7 +45,7 @@ struct ConfrontoDiario: Equatable {
             if let stile = ist?.stile, !stile.isEmpty { pezzi.append(stile) }
             sottoConsigliata = pezzi.joined(separator: " · ")
         } else {
-            sottoConsigliata = "Consigliata non registrata: qui c'è quella che il modello rifà oggi con i dati di allora."
+            sottoConsigliata = "Consigliata non registrata: qui c'è quella che SchieraXI rifà oggi con i dati di allora."
         }
         let p = (usaIstantanea ? ist?.panchina : nil) ?? []
         panchina = p.isEmpty ? nil : "Panchina: " + p.compactMap(\.nome).joined(separator: ", ")

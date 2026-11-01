@@ -419,7 +419,7 @@ struct StatoDatiView: View {
                                 }
                                 .accessibilityElement(children: .combine)
                             }
-                        } header: { Text("Quanto ci azzecca il modello") } footer: {
+                        } header: { Text("Quanto sono giuste le previsioni") } footer: {
                             Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.")
                         }
                     }
@@ -428,7 +428,7 @@ struct StatoDatiView: View {
                 } else {
                     ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
-                Section("Quanto è affidabile il modello") {
+                Section("Quanto sono affidabili le previsioni") {
                     affidabilitaContenuto
                 }
             }
@@ -445,16 +445,16 @@ struct StatoDatiView: View {
             Text("Prova sulle ultime \(s.giornate ?? 0) giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la scelta più semplice: chi ha la media più alta.")
                 .font(.footnote).foregroundStyle(.secondary)
             FilaTessere {
-                TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (modello)")
+                TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (SchieraXI)")
                 TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore (da fantamedia)")
-                TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: "punti formazione (modello)")
+                TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: "punti formazione (SchieraXI)")
             }
-            Text("Punti medi per giornata: modello \(s.puntiModello.map { Formato.decimali($0) } ?? "–"), da fantamedia \(s.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), massimo possibile \(s.puntiPerfetta.map { Formato.decimali($0) } ?? "–"). Errore più basso e punti più alti sono meglio. Nelle giornate passate mancano le probabili formazioni, quindi dal vivo il modello va un po' meglio.")
+            Text("Punti medi per giornata: SchieraXI \(s.puntiModello.map { Formato.decimali($0) } ?? "–"), da fantamedia \(s.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), massimo possibile \(s.puntiPerfetta.map { Formato.decimali($0) } ?? "–"). Errore più basso e punti più alti sono meglio. Nelle giornate passate mancano le probabili formazioni, quindi dal vivo il modello va un po' meglio.")
                 .font(.footnote).foregroundStyle(.secondary)
             let righe = (a.righe ?? []).filter { $0.puntiModello != nil }
             if righe.count >= 2 { GraficoAffidabilita(righe: righe) }
         } else if affidabilita.errore != nil, affidabilita.dato == nil {
-            Text("Non riesco a leggere la prova del modello.").font(.footnote).foregroundStyle(Color.attenzione)
+            Text("Non riesco a leggere la prova delle previsioni.").font(.footnote).foregroundStyle(Color.attenzione)
         } else {
             Text("La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.").font(.footnote).foregroundStyle(.secondary)
         }

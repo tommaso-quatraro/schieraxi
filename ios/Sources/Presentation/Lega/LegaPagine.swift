@@ -128,7 +128,7 @@ struct StagioneView: View {
                     if vm.archiviata {
                         Section {
                             Label("Stagione \(s.rose ?? "") archiviata", systemImage: "checkmark.seal.fill").font(.headline).foregroundStyle(Color.verde)
-                            Text("Tutto è salvato nell'archivio del server (lega/archivio). Ora prepara la nuova stagione:").font(.footnote).foregroundStyle(.secondary)
+                            Text("Tutto è salvato nell'archivio del server. Ora prepara la nuova stagione:").font(.footnote).foregroundStyle(.secondary)
                         }
                         passi
                     } else if s.nuova == true {

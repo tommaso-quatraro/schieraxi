@@ -444,7 +444,7 @@ private enum DatiDemo {
             ["id": "formazione", "titolo": "Come scelgo gli undici", "livello": "base",
              "paragrafi": ["Provo i moduli possibili e tengo quello con più punti attesi, simulando anche chi non gioca e chi lo sostituisce dalla panchina."],
              "esempio": ["titolo": "Giornata 9", "testo": "Il 3-4-3 vale 64,2 punti attesi, il 4-3-3 ne vale 62,8.", "origine": "vero"],
-             "rimandi": [["schermata": "diario", "etichetta": "Diario"], ["schermata": "stato-dati", "etichetta": "Stato dei dati"], ["schermata": "schermata-nuova", "etichetta": "Una schermata che l'app non conosce"]]],
+             "rimandi": [["schermata": "diario", "etichetta": "Diario"], ["schermata": "schermata-nuova", "etichetta": "Una schermata che l'app non conosce"]]],
             ["id": "formula-punti", "titolo": "La formula dei punti attesi", "livello": "nerd",
              "paragrafi": ["Somma dei contributi di ogni evento, pesati con la probabilità che accada."],
              "formula": "punti = p_voto * (voto + bonus_gol * gol_attesi + bonus_assist * assist_attesi - malus * p_cartellino)\nfascia 80% = da atteso - 1,18 * scarto a atteso + 1,25 * scarto",
@@ -452,7 +452,7 @@ private enum DatiDemo {
         ]
         let glossario: [[String: Any]] = [
             ["termine": "Fantavoto", "spiegazione": "Il voto in pagella più i bonus e i malus della tua lega."],
-            ["termine": "Backtest", "spiegazione": "La prova del modello sulle giornate passate, usando solo i dati che c'erano prima di ogni partita."],
+            ["termine": "Backtest", "spiegazione": "La prova delle previsioni sulle giornate passate, usando solo i dati che c'erano prima di ogni partita."],
             ["termine": "Indice", "spiegazione": "Un numero da 0 a 100 che riassume quanto conviene schierare un giocatore."],
             ["termine": "Modulo", "spiegazione": "La disposizione in campo: difensori, centrocampisti e attaccanti."],
             ["termine": "Fascia", "spiegazione": "L'intervallo in cui cadono i punti 8 volte su 10."],
@@ -695,7 +695,7 @@ private enum DatiDemo {
              "voci": ["Gli scambi 2 contro 2 si calcolano in metà tempo.", "Il calendario mostra la difficoltà per cinque giornate.",
                       "Corretto il conteggio dei crediti dopo uno svincolo."]],
             ["versione": "1.8", "data": "2026-10-05", "titolo": "Copia di sicurezza e icona",
-             "voci": ["Il backup serale comprende anche le chiavi degli avvisi.", "Nuova icona dell'app."]],
+             "voci": ["La copia di sicurezza notturna comprende anche le chiavi degli avvisi.", "Nuova icona dell'app."]],
             ["versione": "1.7", "data": "2026-09-21", "titolo": "Probabili formazioni",
              "voci": ["Le probabili formazioni arrivano da due fonti.", "Avviso quando un titolare diventa dubbio."]],
         ])

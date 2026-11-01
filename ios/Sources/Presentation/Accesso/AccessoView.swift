@@ -349,7 +349,7 @@ struct SchermataAccesso: View {
             case .timeout: return "Il server ci mette troppo a rispondere. Riprova tra poco."
             case .server(let m): return m
             case .indirizzoNonValido: return "L'indirizzo del server non è valido: deve cominciare con https://"
-            case .risposta(let codice): return "Il server ha un problema (errore \(codice)). Riprova tra poco."
+            case .risposta(let codice): return "Il server ha un problema (codice \(codice)). Riprova tra poco."
             default: return e.errorDescription ?? "Qualcosa non va. Riprova."
             }
         }

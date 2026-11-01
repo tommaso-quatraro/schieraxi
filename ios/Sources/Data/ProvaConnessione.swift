@@ -31,12 +31,12 @@ enum EsitoConnessione: Equatable {
         case .connesso(let utente): return "Connesso come \(utente)"
         case .sessioneScaduta: return "Server raggiunto: la sessione è scaduta"
         case .chiedeAccesso: return "Server raggiunto: chiede l'accesso"
-        case .rifiutato(let codice): return "Il server ha rifiutato la richiesta (\(codice))"
+        case .rifiutato(let codice): return "Il server ha rifiutato la richiesta (codice \(codice))"
         case .nonSchieraxi: return "Non sembra un server di SchieraXI"
         case .nonRaggiungibile: return "Server non raggiungibile"
-        case .certificato: return "Certificato o https non valido"
+        case .certificato: return "Collegamento sicuro non riuscito"
         case .timeout: return "Il server non risponde in tempo"
-        case .erroreServer(let codice): return "Il server ha un problema (errore \(codice))"
+        case .erroreServer(let codice): return "Il server ha un problema (codice \(codice))"
         case .indirizzoNonValido: return "Indirizzo non valido"
         }
     }
@@ -57,9 +57,9 @@ enum EsitoConnessione: Equatable {
         case .nonSchieraxi:
             return "L'indirizzo risponde, ma non è il server di SchieraXI. Controlla l'indirizzo e la porta."
         case .nonRaggiungibile:
-            return "Controlla la connessione e che l'indirizzo sia scritto giusto. Se il server è raggiungibile solo da una VPN, deve essere accesa."
+            return "Controlla la connessione e che l'indirizzo sia scritto giusto. Se il tuo server si raggiunge solo con una VPN, tienila accesa."
         case .certificato:
-            return "Il collegamento sicuro non è riuscito: il certificato non è valido o l'indirizzo non è https. Controlla l'indirizzo."
+            return "Il collegamento sicuro non è riuscito: il certificato di sicurezza del server non è valido o l'indirizzo non inizia con https. Controlla l'indirizzo."
         case .timeout:
             return "Il server ci mette troppo. Controlla la connessione e riprova tra poco."
         case .erroreServer:

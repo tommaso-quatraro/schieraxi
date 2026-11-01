@@ -166,7 +166,7 @@ struct ClassificaView: View {
                                     Button { vm.apri(g.id) } label: {
                                         VStack(alignment: .leading, spacing: 2) {
                                             RigaGiocatore(g: g)
-                                            Text("quot. \(g.quotazione.map { String(Formato.intero($0)) } ?? "–") · \(g.proprietario ?? "svincolato")")
+                                            Text("quotazione \(g.quotazione.map { String(Formato.intero($0)) } ?? "–") · \(g.proprietario ?? "svincolato")")
                                                 .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : .secondary).padding(.leading, 58)
                                         }
                                         .frame(minHeight: 44)
