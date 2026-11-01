@@ -40,12 +40,16 @@ struct IntestazioneWidget: View {
     }
 }
 
-/// «dati delle 14:32» quando il widget mostra una copia, niente quando i dati sono freschi.
+/// «dati delle 14:32» quando il widget mostra una copia, niente quando i dati sono freschi;
+/// «Tocca per ricollegare» quando il codice del widget non vale più (la copia resta sotto).
 struct PiedeDati: View {
     let voce: Voce
 
     var body: some View {
-        if voce.datiSalvati, let r = voce.riassunto {
+        if voce.accessoRichiesto {
+            Label("Tocca per ricollegare", systemImage: "link")
+                .font(.caption2.bold()).foregroundStyle(TintaWidget.testo2)
+        } else if voce.datiSalvati, let r = voce.riassunto {
             Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash")
                 .font(.caption2).foregroundStyle(TintaWidget.testo2)
         }
@@ -53,20 +57,33 @@ struct PiedeDati: View {
 }
 
 /// Quando il widget non ha niente da mostrare: dice cosa fare (e, in piccolo, la diagnostica).
+/// Non collegato: «Tocca per collegare» (il tocco apre l'app su «Collega il widget», vedi `Voce.tocco`).
 struct SenzaDatiWidget: View {
     let voce: Voce
     var compatto = false
+    /// La riga sotto quando il widget è collegato ma non ha dati (rete, server spento).
+    var suggerimento = "Apri SchieraXI per aggiornare i dati"
 
     var body: some View {
         VStack(spacing: 4) {
-            Image(systemName: voce.indirizzoMancante ? "server.rack" : voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
-            Text(voce.indirizzoMancante ? "Manca il server" : voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
+            Image(systemName: voce.daCollegare ? "link" : "wifi.exclamationmark")
+            Text(voce.daCollegare ? CollegamentoWidget.tocca : "Nessun dato").font(.caption.bold())
+                .multilineTextAlignment(.center)
             if !compatto {
-                Text("Impostazioni > Widget > Copia il codice, poi Modifica widget")
+                Text(voce.daCollegare ? CollegamentoWidget.poi : suggerimento)
                     .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 if let d = voce.diagnostica { Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(etichetta)
+    }
+
+    /// La frase completa per VoiceOver.
+    private var etichetta: String {
+        voce.daCollegare
+            ? "Widget da collegare. Toccalo: l'app copia il codice, poi tieni premuto il widget, Modifica widget, e incollalo."
+            : "Nessun dato. " + suggerimento
     }
 }
 

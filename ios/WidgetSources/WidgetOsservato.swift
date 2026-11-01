@@ -117,7 +117,7 @@ struct VistaOsservato: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(Vai.url("mercato"))
+        .widgetURL(voce.tocco(Vai.url("mercato")))
     }
 
     private var vuoto: some View {

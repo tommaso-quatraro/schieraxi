@@ -44,7 +44,7 @@ struct VistaCruscotto: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(Vai.url("oggi"))
+        .widgetURL(voce.tocco(Vai.url("oggi")))
     }
 
     // MARK: schermata di blocco

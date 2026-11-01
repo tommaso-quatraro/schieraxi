@@ -18,6 +18,15 @@ Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limi
 
 Da fare: niente di fisso. Stile e modulo: il server non li mette in `/api/widget`.
 
-Tocchi (indirizzi `schieraxi://`): scadenza -> `oggi`, modulo e punti -> `formazione`, volti e righe dei giocatori -> `giocatore/<id>`, scambio -> `scambi`, svincolo e crediti -> `mercato`, grafico attesi e fatti -> `lega`.
+## Collegamento (Apple ID gratuito + SideStore)
+
+Non è sicuro che SideStore registri l'App Group con l'Apple ID gratuito (mai provato su un telefono vero): il widget NON deve dipenderne.
+- Widget non collegato (manca il server, o il server risponde 401): dice **«Tocca per collegare»** e il tocco apre `schieraxi://widget/collega`.
+- L'app (foglio «Collega il widget», `Presentation/Lega/CollegaWidgetView.swift`, anche dal passo Widget della configurazione guidata) chiede il token `fw_` se manca, crea il codice di collegamento (`CodiceWidget`, prefisso `schieraxi1.`) e lo mette negli appunti di questo telefono per 5 minuti (niente Appunti universali).
+- L'utente tiene premuto il widget > «Modifica widget» > incolla in «Codice di collegamento» (primo campo). Fatto una volta.
+- Il server tiene UN token per utente: quando l'app lo rinnova (a 7 giorni dalla scadenza dei 90) o si esce dall'account, il codice incollato smette di valere. Il widget mostra la copia vecchia con **«Tocca per ricollegare»** e lo stesso tocco.
+- Ordine per indirizzo e token (`CodiceWidget.destinazione`, provato nei test): App Group con token > codice incollato > App Group senza token > indirizzo scritto nel widget.
+
+Tocchi (indirizzi `schieraxi://`): widget da collegare -> `widget/collega`, scadenza -> `oggi`, modulo e punti -> `formazione`, volti e righe dei giocatori -> `giocatore/<id>`, scambio -> `scambi`, svincolo e crediti -> `mercato`, grafico attesi e fatti -> `lega`.
 
 Anteprime: il target `AnteprimaWidget` (solo CI, non entra nell IPA) mostra i widget con dati finti in tutte le misure; il workflow `Screenshot` (`screenshot.yml`, insieme alle foto dell app) li fotografa su iPhone e iPad (chiaro, scuro, dati parziali o assenti) e carica l artifact `screenshot-widget`.

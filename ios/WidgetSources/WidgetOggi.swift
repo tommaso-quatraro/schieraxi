@@ -63,8 +63,8 @@ struct VistaWidget: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        // Un tocco sul widget apre l'app sulla formazione.
-        .widgetURL(URL(string: "schieraxi://formazione"))
+        // Un tocco sul widget apre l'app sulla formazione (o su «Collega il widget» se non è collegato).
+        .widgetURL(voce.tocco(URL(string: "schieraxi://formazione")))
     }
 
     // MARK: pezzi comuni
@@ -92,18 +92,9 @@ struct VistaWidget: View {
         }
     }
 
+    /// Non collegato: «Tocca per collegare»; collegato ma senza dati: «Nessun dato».
     private var senzaDati: some View {
-        VStack(spacing: 4) {
-            Image(systemName: voce.indirizzoMancante ? "server.rack" : voce.accessoRichiesto ? "person.crop.circle.badge.questionmark" : "wifi.exclamationmark")
-            Text(voce.indirizzoMancante ? "Manca il server" : voce.accessoRichiesto ? "Serve l'accesso" : "Nessun dato").font(.caption.bold())
-            if !accessorio {
-                Text(voce.indirizzoMancante ? "Impostazioni > Widget > Copia il codice, poi Modifica widget" : voce.accessoRichiesto ? "Impostazioni > Widget > Copia il codice, poi Modifica widget" : "Apri SchieraXI per aggiornare i dati")
-                    .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                if let d = voce.diagnostica {
-                    Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2)
-                }
-            }
-        }
+        SenzaDatiWidget(voce: voce, compatto: accessorio)
     }
 
     // MARK: Schermata Home
@@ -122,7 +113,7 @@ struct VistaWidget: View {
                 Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
             if voce.datiSalvati || (r.daControllare == 0 && r.probabili != false) {
-                Text(voce.datiSalvati ? "dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
+                Text(voce.accessoRichiesto ? "Tocca per ricollegare" : voce.datiSalvati ? "dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
             }
             if r.daControllare > 0 {
                 Label("\(r.daControllare) da controllare", systemImage: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
@@ -138,7 +129,7 @@ struct VistaWidget: View {
     private func medio(_ r: RiassuntoOggi) -> some View {
         HStack(alignment: .top, spacing: 16) {
             // a sinistra (conto alla rovescia) si apre Oggi, a destra (formazione) la Formazione
-            Link(destination: URL(string: "schieraxi://oggi") ?? URL(fileURLWithPath: "/")) {
+            Link(destination: voce.tocco(URL(string: "schieraxi://oggi")) ?? URL(fileURLWithPath: "/")) {
             VStack(alignment: .leading, spacing: 4) {
                 Label(r.etichettaGiornata, systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
                 conto(r)
@@ -148,12 +139,14 @@ struct VistaWidget: View {
                 Text(r.inizio.map { "alla scadenza, \(Quando.leggibile($0))" } ?? "")
                     .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
-                if voce.datiSalvati {
+                if voce.accessoRichiesto {
+                    Label("Tocca per ricollegare", systemImage: "link").font(.caption2.bold()).foregroundStyle(.secondary)
+                } else if voce.datiSalvati {
                     Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
                 }
             }
             }
-            Link(destination: URL(string: "schieraxi://formazione") ?? URL(fileURLWithPath: "/")) {
+            Link(destination: voce.tocco(URL(string: "schieraxi://formazione")) ?? URL(fileURLWithPath: "/")) {
             VStack(alignment: conDubbi ? .leading : .trailing, spacing: conDubbi ? 2 : 4) {
                 Label("Formazione", systemImage: "sportscourt").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
                 if conDubbi {

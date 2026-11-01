@@ -8,6 +8,8 @@ enum Destinazione: Equatable {
     case pagina(PaginaLega)
     /// Il foglio delle Impostazioni (`schieraxi://impostazioni`).
     case impostazioni
+    /// «Collega il widget» (`schieraxi://widget/collega`, il tocco sul widget non collegato): copia il codice di collegamento.
+    case collegaWidget
 }
 
 /// Indirizzi accettati dall'app (schema `schieraxi://`), per aprirla dal tocco su una notifica di ntfy (intestazione `Click`):
@@ -21,6 +23,12 @@ enum Collegamenti {
     static func interpreta(_ url: URL) -> Destinazione? {
         guard let schemaUrl = url.scheme?.lowercased(), schemaUrl == schema, let host = url.host?.lowercased() else { return nil }
         if host == "impostazioni" { return .impostazioni }
+        if host == "widget" {
+            // "schieraxi://widget/collega" (e, per tolleranza, "schieraxi://widget")
+            let parte = url.pathComponents.dropFirst().first?.lowercased()
+            guard parte == nil || parte == "collega" else { return nil }
+            return .collegaWidget
+        }
         if host == "giocatore" {
             // pathComponents di "schieraxi://giocatore/12" è ["/", "12"]
             guard let testo = url.pathComponents.dropFirst().first, let id = Int(testo), id > 0 else { return nil }

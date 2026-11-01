@@ -2,10 +2,10 @@ import Foundation
 import WidgetKit
 import AppIntents
 
-// Dati del widget. Il widget è un programma a parte. L'indirizzo del server e il token della sessione glieli dà l'app tramite un
-// App Group (`Condiviso`, file nel contenitore condiviso): se il gruppo funziona il widget non chiede niente. Se non funziona
-// (installazione senza App Group) resta il ripiego di una volta: l'indirizzo si scrive nelle impostazioni del widget
-// (tenere premuto > Modifica widget) e, con gli account, il widget chiede l'accesso (non ha il token).
+// Dati del widget. Il widget è un programma a parte. L'indirizzo del server e il token del widget (`fw_`) glieli dà l'app tramite un
+// App Group (`Condiviso`, file nel contenitore condiviso), se SideStore lo ha registrato: allora il widget non chiede niente. Con
+// l'Apple ID gratuito non è sicuro: il widget non collegato dice «Tocca per collegare» e apre l'app (`schieraxi://widget/collega`),
+// che copia il codice di collegamento; l'utente lo incolla una volta in «Modifica widget» (`CollegamentoWidget`).
 // Il modello `Oggi`, `Quando` e `RiassuntoOggi` sono condivisi con l'app.
 
 /// Un istante della timeline del widget.
@@ -22,18 +22,27 @@ struct Voce: TimelineEntry {
     var diagnostica: String?
     /// Il riassunto completo di `/api/widget` (per i widget nuovi); nil con un server che non lo ha ancora.
     var widget: RiassuntoWidget? = nil
+
+    /// Il widget va (ri)collegato: senza dati dice «Tocca per collegare», con una copia vecchia «Tocca per ricollegare».
+    var daCollegare: Bool {
+        CollegamentoWidget.daCollegare(haDati: riassunto != nil || widget != nil, indirizzoMancante: indirizzoMancante, accessoRichiesto: accessoRichiesto)
+    }
+
+    /// Dove porta il tocco: alla schermata «Collega il widget» se va collegato, altrimenti dove porterebbe di solito.
+    func tocco(_ normale: URL?) -> URL? { daCollegare ? CollegamentoWidget.url : normale }
 }
 
-/// Le impostazioni del widget: l'indirizzo del server (solo https, o localhost per le prove).
+/// Le impostazioni del widget: il codice di collegamento (lo copia l'app) e, in alternativa, l'indirizzo del server
+/// (solo https, o localhost per le prove). Il codice sta per primo: è quello che si incolla.
 struct ConfigurazioneWidget: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Server di SchieraXI"
-    static var description = IntentDescription("Di solito non serve: l'app dice al widget dove sta il server. Scrivi l'indirizzo qui solo se il widget dice che manca.")
-
-    @Parameter(title: "Indirizzo del server (solo se manca)", default: "")
-    var indirizzo: String
+    static var title: LocalizedStringResource = "Collega il widget"
+    static var description = IntentDescription("Se il widget dice «Tocca per collegare», toccalo: l'app copia il codice. Poi incollalo qui in «Codice di collegamento».")
 
     @Parameter(title: "Codice di collegamento", default: "")
     var codice: String
+
+    @Parameter(title: "Indirizzo del server (solo se manca)", default: "")
+    var indirizzo: String
 }
 
 enum ScaricaOggi {
@@ -68,18 +77,10 @@ enum ScaricaOggi {
         }
     }
 
-    /// Dove e con quale token scaricare: prima i dati dell'app (App Group), poi l'indirizzo scritto nelle impostazioni del widget.
-    /// Ordine: dati dell'app (App Group) > codice di collegamento incollato nel widget > solo indirizzo scritto nel widget.
+    /// Dove e con quale token scaricare. Ordine (logica in `CodiceWidget.destinazione`, provata nei test): dati dell'app con il token
+    /// (App Group) > codice di collegamento incollato nel widget > indirizzo dell'app senza token > indirizzo scritto nel widget.
     static func destinazione(indirizzo scritto: String, codice: String) -> (indirizzo: String, token: String?)? {
-        let condiviso = Condiviso.leggi()
-        if let base = condiviso.indirizzo, let pulito = indirizzoBase(base) {
-            return (pulito, condiviso.token(per: base))
-        }
-        if let c = CodiceWidget.leggi(codice), let pulito = indirizzoBase(c.i) {
-            return (pulito, c.t)
-        }
-        guard let pulito = indirizzoBase(scritto) else { return nil }
-        return (pulito, nil)
+        CodiceWidget.destinazione(condiviso: Condiviso.leggi(), codice: codice, scritto: scritto, pulisci: indirizzoBase)
     }
 
     /// Tutto in una chiamata: `/api/widget` con If-None-Match. Se il server non ha la rotta si ricade su `/api/oggi` (solo i widget
@@ -94,12 +95,14 @@ enum ScaricaOggi {
 
     static func leggiTutto(base: String, token: String?) async -> Risultato {
         let copia = MemoriaWidget.leggi()
+        // Con un 401 (token del widget scaduto, rinnovato dall'app o revocato) la copia si mostra con la sua ora, ma il widget
+        // dice anche «Tocca per ricollegare»: senza, resterebbe fermo su dati vecchi senza spiegare perché.
         func daCopia(accesso: Bool) -> Risultato {
             if let copia, let w = copia.riassunto {
-                return Risultato(widget: w, riassunto: w.comeRiassuntoOggi(scaricatoIl: copia.scaricatoIl), scaricatoIl: copia.scaricatoIl, salvato: true, accessoRichiesto: false)
+                return Risultato(widget: w, riassunto: w.comeRiassuntoOggi(scaricatoIl: copia.scaricatoIl), scaricatoIl: copia.scaricatoIl, salvato: true, accessoRichiesto: accesso)
             }
             if let ultimo = ultimoSalvato() {
-                return Risultato(widget: nil, riassunto: ultimo, scaricatoIl: ultimo.scaricatoIl, salvato: true, accessoRichiesto: false)
+                return Risultato(widget: nil, riassunto: ultimo, scaricatoIl: ultimo.scaricatoIl, salvato: true, accessoRichiesto: accesso)
             }
             return Risultato(widget: nil, riassunto: nil, scaricatoIl: nil, salvato: false, accessoRichiesto: accesso)
         }

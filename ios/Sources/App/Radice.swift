@@ -64,6 +64,8 @@ final class Navigazione: ObservableObject {
     @Published var scheda: IdGiocatore?
     /// Il foglio delle Impostazioni (l'ingranaggio in testata, o `schieraxi://impostazioni`).
     @Published var impostazioniAperte = false
+    /// «Collega il widget» (`schieraxi://widget/collega`, il tocco sul widget non collegato, o la configurazione guidata).
+    @Published var collegaWidgetAperto = false
     /// La configurazione guidata («Primo avvio»): parte da sola senza rose, si riapre dalla lista «Da fare» di Oggi.
     @Published var guidaAperta = false
     /// Una pagina di Squadra o di Altro da aprire (da un indirizzo `schieraxi://` o da Oggi): la radice la apre nella scheda giusta.
@@ -111,6 +113,8 @@ final class Navigazione: ObservableObject {
             paginaDaAprire = pagina
         case .impostazioni:
             impostazioniAperte = true
+        case .collegaWidget:
+            collegaWidgetAperto = true
         }
     }
 }
@@ -170,6 +174,10 @@ struct RadiceView: View {
                 .tint(Color.verde)
                 // Su iPad un foglio ampio, come le Impostazioni di sistema.
                 .presentationSizing(.page)
+        }
+        .sheet(isPresented: $nav.collegaWidgetAperto) {
+            CollegaWidgetView()
+                .tint(Color.verde)
         }
         .sheet(item: $nav.immagineRicevuta) { r in
             ImmagineRicevutaView(ricevuta: r, server: modello.server)

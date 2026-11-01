@@ -130,7 +130,7 @@ struct ConfigurazioneGuidataView: View {
         case .stemma:
             await uscendo(.squadre(nome: vm.stato.miaSquadra))
         case .widget:
-            await uscendo(.impostazioni)
+            await uscendo(.collegaWidget)
         }
     }
 

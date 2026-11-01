@@ -75,7 +75,7 @@ struct VistaFormazione: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(URL(string: "schieraxi://formazione"))
+        .widgetURL(voce.tocco(URL(string: "schieraxi://formazione")))
     }
 
     private func punti(_ f: FormazioneWidget) -> String { Formato.punti(f.puntiAttesi) }

@@ -38,7 +38,7 @@ struct VistaCrediti: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(URL(string: "schieraxi://mercato"))
+        .widgetURL(voce.tocco(URL(string: "schieraxi://mercato")))
     }
 
     private func intero(_ x: Double) -> String { String(Formato.intero(x)) }

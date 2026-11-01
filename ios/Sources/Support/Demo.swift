@@ -113,6 +113,9 @@ extension Demo {
         case "guida":
             // la configurazione guidata: in demo mostra i passi non ancora fatti
             nav.guidaAperta = true
+        case "collega-widget":
+            // «Collega il widget» (in demo: «Codice copiato» senza toccare gli appunti)
+            nav.collegaWidgetAperto = true
         case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate", "impostazioni-aspetto":
             // le Impostazioni (le pagine «Licenze e crediti», «Avanzate» e «Aspetto» le apre da sola ImpostazioniView)
             nav.impostazioniAperte = true

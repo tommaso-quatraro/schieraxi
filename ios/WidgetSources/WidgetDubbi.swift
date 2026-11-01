@@ -44,7 +44,7 @@ struct VistaDubbi: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(URL(string: "schieraxi://oggi"))
+        .widgetURL(voce.tocco(URL(string: "schieraxi://oggi")))
     }
 
     // MARK: Home
@@ -78,7 +78,10 @@ struct VistaDubbi: View {
                 Text("Apri SchieraXI per i nomi.").font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
             }
-            if voce.datiSalvati {
+            if voce.accessoRichiesto {
+                Label("Tocca per ricollegare", systemImage: "link")
+                    .font(.caption2.bold()).foregroundStyle(.white.opacity(0.7))
+            } else if voce.datiSalvati {
                 Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash")
                     .font(.caption2).foregroundStyle(.white.opacity(0.7))
             }
@@ -130,14 +133,8 @@ struct VistaDubbi: View {
         }
     }
 
+    /// Non collegato: «Tocca per collegare»; collegato ma senza dati: «Nessun dato».
     private var senzaDati: some View {
-        VStack(spacing: 4) {
-            Image(systemName: voce.indirizzoMancante ? "server.rack" : "wifi.exclamationmark")
-            Text(voce.indirizzoMancante ? "Manca il server" : "Nessun dato").font(.caption.bold())
-            if !accessorio {
-                Text("Impostazioni > Widget > Copia il codice, poi Modifica widget")
-                    .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            }
-        }
+        SenzaDatiWidget(voce: voce, compatto: accessorio)
     }
 }

@@ -5,6 +5,8 @@ enum AzioneGuida: Equatable {
     case importaRose
     case squadre(nome: String?)
     case impostazioni
+    /// «Collega il widget»: copia il codice da incollare in «Modifica widget».
+    case collegaWidget
 }
 
 /// Quello che serve della lega per sapere cosa è già fatto (`GET /api/stato`).

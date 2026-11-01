@@ -37,7 +37,7 @@ struct VistaScambio: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(Vai.url("scambi"))
+        .widgetURL(voce.tocco(Vai.url("scambi")))
     }
 
     private var senzaScambio: some View {

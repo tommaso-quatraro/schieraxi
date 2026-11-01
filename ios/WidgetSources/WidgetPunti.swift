@@ -44,7 +44,7 @@ struct VistaPunti: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(Vai.url("lega"))
+        .widgetURL(voce.tocco(Vai.url("lega")))
     }
 
     /// Il server c'e' ma non ci sono ancora giornate giocate nel diario.

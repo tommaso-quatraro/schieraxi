@@ -79,7 +79,7 @@ struct VistaLive: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(Vai.url("oggi"))
+        .widgetURL(voce.tocco(Vai.url("oggi")))
     }
 
     /// Quelle da mostrare: se qualcuna e' in gioco quelle, altrimenti le prossime (e per ultime le finite).

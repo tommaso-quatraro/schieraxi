@@ -43,7 +43,7 @@ struct VistaRosa: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(URL(string: "schieraxi://oggi"))
+        .widgetURL(voce.tocco(URL(string: "schieraxi://oggi")))
     }
 
     @ViewBuilder

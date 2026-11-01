@@ -9,8 +9,8 @@ import Foundation
 //
 // Nel contenitore c'è UN file (`condiviso.json`): l'indirizzo del server, il token del WIDGET (`fw_`, mai quello della sessione; protetto dalla protezione dei dati
 // di iOS e dal sandbox, mai in UserDefaults) e l'ultimo riassunto di «Oggi», così il widget mostra subito qualcosa. Lo scrive solo
-// l'app; il widget lo legge. Se il gruppo non è disponibile tutto funziona come prima (indirizzo nelle impostazioni del widget,
-// nessun token: il widget chiede l'accesso).
+// l'app; il widget lo legge. Se il gruppo non è disponibile (con l'Apple ID gratuito NON è sicuro che SideStore lo registri) il widget
+// dice «Tocca per collegare»: l'app copia il codice di collegamento e l'utente lo incolla una volta in «Modifica widget» (`CollegamentoWidget`).
 
 /// Un giocatore della formazione da controllare (dubbio, infortunio, squalifica), per il widget «Da controllare».
 struct DubbioRiassunto: Codable, Equatable, Identifiable {
@@ -240,7 +240,7 @@ enum Condiviso {
 }
 
 /// Il codice di collegamento del widget: indirizzo e (se c'è una sessione) token in un testo breve da copiare dall'app e incollare
-/// nelle impostazioni del widget. È il ripiego quando l'App Group non c'è. Il token è quello del WIDGET (`fw_`, solo lettura di
+/// nelle impostazioni del widget (l'app lo copia da `schieraxi://widget/collega`, vedi `CollegamentoWidget`). È il ripiego quando l'App Group non c'è. Il token è quello del WIDGET (`fw_`, solo lettura di
 /// /api/oggi e /api/widget, 90 giorni, revocabile): mai quello della sessione.
 enum CodiceWidget {
     static let prefisso = "schieraxi1."
@@ -268,5 +268,42 @@ enum CodiceWidget {
             return c
         }
         return t.lowercased().hasPrefix("http") ? Contenuto(i: t, t: nil) : nil
+    }
+
+    /// Da dove il widget prende indirizzo e token, in ordine: i dati dell'app CON il token (App Group, se SideStore lo ha registrato)
+    /// > il codice di collegamento incollato nel widget > l'indirizzo dell'app senza token > l'indirizzo scritto nel widget.
+    /// Così un codice incollato vale anche quando il gruppo passa l'indirizzo ma non il token. `pulisci` accetta solo indirizzi ammessi.
+    static func destinazione(condiviso: DatiCondivisi, codice: String, scritto: String,
+                             pulisci: (String) -> String?) -> (indirizzo: String, token: String?)? {
+        var dellApp: (indirizzo: String, token: String?)?
+        if let base = condiviso.indirizzo, let pulito = pulisci(base) { dellApp = (pulito, condiviso.token(per: base)) }
+        if let d = dellApp, d.token != nil { return d }
+        if let c = leggi(codice), let pulito = pulisci(c.i) { return (pulito, c.t) }
+        if let d = dellApp { return d }
+        guard let pulito = pulisci(scritto) else { return nil }
+        return (pulito, nil)
+    }
+}
+
+/// Il collegamento del widget quando l'App Group non c'è (Apple ID gratuito + SideStore: non è sicuro che lo registri).
+/// Il widget non collegato dice «Tocca per collegare» e apre `schieraxi://widget/collega`; l'app crea il codice e lo mette negli
+/// appunti di QUESTO telefono per pochi minuti; l'utente lo incolla una volta in «Modifica widget» > «Codice di collegamento».
+enum CollegamentoWidget {
+    static let indirizzo = "schieraxi://widget/collega"
+    static var url: URL? { URL(string: indirizzo) }
+    /// Quanto resta il codice negli appunti (poi iOS lo toglie da solo).
+    static let durataAppunti: TimeInterval = 5 * 60
+    /// Il testo grande del widget non collegato.
+    static let tocca = "Tocca per collegare"
+    /// La riga sotto, nel widget.
+    static let poi = "Poi tieni premuto, Modifica widget e incolla il codice"
+    /// L'istruzione in una riga, nell'app.
+    static let istruzione = "Tieni premuto il widget, tocca «Modifica widget» e incolla il codice in «Codice di collegamento»."
+
+    /// Il widget va (ri)collegato: il server non accetta più il suo codice (401: token scaduto, rinnovato dall'app o revocato;
+    /// anche se mostra ancora una copia vecchia), oppure non sa dove sta il server e non ha niente da mostrare. Un problema di
+    /// rete non conta: lì basta aspettare.
+    static func daCollegare(haDati: Bool, indirizzoMancante: Bool, accessoRichiesto: Bool) -> Bool {
+        accessoRichiesto || (!haDati && indirizzoMancante)
     }
 }

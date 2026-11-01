@@ -97,6 +97,11 @@ struct ContenitoreApp: View {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 nav.impostazioniAperte = true
             }
+        case .collegaWidget:
+            Task {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                nav.collegaWidgetAperto = true
+            }
         }
     }
 }

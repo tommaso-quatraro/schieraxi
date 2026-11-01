@@ -45,7 +45,7 @@ struct VistaStato: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        .widgetURL(URL(string: "schieraxi://lega"))
+        .widgetURL(voce.tocco(URL(string: "schieraxi://lega")))
     }
 
     @ViewBuilder
