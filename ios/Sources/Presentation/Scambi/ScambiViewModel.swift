@@ -174,7 +174,8 @@ final class AnalizzaScambioViewModel: ViewModelBase {
         return t.isEmpty ? 0 : Int(t.replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "+", with: ""))
     }
 
-    var conguaglioValido: Bool { creditiConguaglio.map { abs($0) <= 100_000 } ?? false }
+    /// Niente `abs()`: sul numero più piccolo possibile (−9223372036854775808, incollabile a mano) va in crash.
+    var conguaglioValido: Bool { creditiConguaglio.map { (-100_000...100_000).contains($0) } ?? false }
 
     /// L'indirizzo dell'analisi: sempre completa (rose valide, crediti, giudizio), col conguaglio se c'è.
     var indirizzoAnalisi: String {
