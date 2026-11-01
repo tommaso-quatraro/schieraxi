@@ -185,6 +185,12 @@ enum Decodifica {
     }
 }
 
+/// Dove gira l'app.
+enum Ambiente {
+    /// true quando l'app fa da contenitore dei test automatici (XCTest la avvia con questa variabile): niente schermate e niente rete vera.
+    static let ospiteDeiTest = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+}
+
 /// Il server vero, via URLSession.
 struct ServerHTTP: ServerClient {
     var sessione: URLSession = .shared
@@ -197,6 +203,11 @@ struct ServerHTTP: ServerClient {
     var indirizzo: String { IndirizzoServer.attuale }
 
     private func costruisci(_ percorso: String, token: String?) throws -> URLRequest {
+        // Nei test automatici la rete vera è vietata: ogni test passa una sessione finta (URLProtocol). Una richiesta con la
+        // sessione di sistema arriverebbe al server di produzione dai Mac di GitHub: si ferma qui, senza partire.
+        if Ambiente.ospiteDeiTest, sessione === URLSession.shared {
+            throw ErroreApi.rete("rete vera vietata nei test")
+        }
         let base = indirizzo
         // Il token e le password non viaggiano mai in chiaro: solo https (o questo stesso computer, per le prove).
         guard IndirizzoServer.valido(base), let url = URL(string: base + percorso) else { throw ErroreApi.indirizzoNonValido }

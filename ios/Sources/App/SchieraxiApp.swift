@@ -16,6 +16,11 @@ struct SchieraxiApp: App {
 
     var body: some Scene {
         WindowGroup {
+            if Ambiente.ospiteDeiTest {
+                // L'app fa solo da contenitore dei test automatici (workflow Test): nessuna schermata, quindi nessuna richiesta
+                // al server vero. Prima l'app partiva davvero e, a ogni «Aggiorna» dei test, interrogava il server di produzione.
+                Color.clear
+            } else {
             // Colori chiari o scuri come il sistema: lo sfondo e il verde si adattano da soli.
             PortaDiAccesso()
                 .environmentObject(nav)
@@ -36,6 +41,7 @@ struct SchieraxiApp: App {
                     // Uscendo dall'app si chiede a iOS il prossimo aggiornamento in background.
                     if nuova == .background { Aggiornamento.programma() }
                 }
+            }
         }
         // Aggiornamento in background (iOS lo avvia quando vuole): riscarica la giornata e riprogramma i promemoria.
         .backgroundTask(.appRefresh(Aggiornamento.identificativo)) {
