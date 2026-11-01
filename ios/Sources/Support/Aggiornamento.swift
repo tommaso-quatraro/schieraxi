@@ -75,15 +75,24 @@ enum Aggiornamento {
             let punti = Formato.punti(f.punteggioAtteso)
             if let moduloPrima, moduloPrima != modulo {
                 await Notifiche.avviso(id: "fanta-cambio", titolo: "SchieraXI · Cambio di modulo",
-                                       corpo: "Mister, giornata \(oggi.giornata): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima)).")
+                                       corpo: corpoCambioModulo(oggi, modulo: modulo, punti: punti, moduloPrima: moduloPrima))
             } else if probabiliPrima == false, probabili {
                 await Notifiche.avviso(id: "fanta-probabili", titolo: "SchieraXI · Escono le probabili",
-                                       corpo: "Giornata \(oggi.giornata): modulo consigliato \(modulo), \(punti) punti attesi.")
+                                       corpo: corpoProbabili(oggi, modulo: modulo, punti: punti))
             }
         }
         memoria.set(oggi.giornata, forKey: "bg.giornata")
         memoria.set(modulo, forKey: "bg.modulo")
         memoria.set(probabili, forKey: "bg.probabili")
+    }
+
+    /// I testi degli avvisi: il numero è quello della LEGA (lo stesso che l'utente vede nell'app), non quello di Serie A.
+    static func corpoCambioModulo(_ oggi: Oggi, modulo: String, punti: String, moduloPrima: String) -> String {
+        "Mister, giornata \(oggi.giornataMostrata): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima))."
+    }
+
+    static func corpoProbabili(_ oggi: Oggi, modulo: String, punti: String) -> String {
+        "Giornata \(oggi.giornataMostrata): modulo consigliato \(modulo), \(punti) punti attesi."
     }
 
     /// La giornata di oggi per Siri e Comandi: dal server, o dalla cache se non risponde.

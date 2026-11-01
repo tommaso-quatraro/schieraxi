@@ -46,13 +46,18 @@ struct FormazioneComando: AppIntent {
             throw ErroreComando.senzaFormazione
         }
         let punti = Formato.punti(f.punteggioAtteso)
-        var frase = "Per la giornata \(oggi.giornata) ti consiglio il \(modulo), con \(punti) punti attesi."
+        var frase = Self.fraseBase(oggi, modulo: modulo, punti: punti)
         if oggi.conProbabili == false { frase += " Le probabili formazioni non sono ancora uscite." }
         if risultato.salvato { frase += " Attenzione: sono dati salvati, il server non risponde." }
         return .result(
             dialog: "\(frase)",
-            view: RiquadroComando(titolo: "Giornata \(oggi.giornata)", grande: modulo, dettaglio: "\(punti) punti attesi")
+            view: RiquadroComando(titolo: "Giornata \(oggi.giornataMostrata)", grande: modulo, dettaglio: "\(punti) punti attesi")
         )
+    }
+
+    /// Il numero è quello della LEGA (lo stesso che si vede nell'app e che dice «Quanto manca alla partita»), non quello di Serie A.
+    static func fraseBase(_ oggi: Oggi, modulo: String, punti: String) -> String {
+        "Per la giornata \(oggi.giornataMostrata) ti consiglio il \(modulo), con \(punti) punti attesi."
     }
 }
 
