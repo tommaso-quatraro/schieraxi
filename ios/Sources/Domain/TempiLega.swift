@@ -10,13 +10,17 @@ extension Oggi {
     }
 
     /// Il numero da mostrare: quello della lega se c'è (e ha senso), altrimenti quello di Serie A.
-    var giornataMostrata: Int {
+    /// Nil se il server non manda nessuna giornata.
+    var giornataMostrata: Int? {
         if let g = giornataLega, g > 0 { return g }
         return giornata
     }
 
-    /// «Giornata 7 di lega (Serie A 10)» se i numeri sono diversi, altrimenti «Giornata 10».
-    var etichettaGiornata: String { TempiLega.etichetta(serieA: giornata, lega: giornataLega) }
+    /// «Giornata 7 di lega (Serie A 10)» se i numeri sono diversi, altrimenti «Giornata 10». Nil senza giornata.
+    var etichettaGiornata: String? { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } }
+
+    /// Account senza rose, o lega senza giornata: Oggi non ha una formazione da mostrare.
+    var senzaGiornata: Bool { giornata == nil }
 }
 
 extension Formazione {

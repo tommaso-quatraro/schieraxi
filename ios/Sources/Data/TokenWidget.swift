@@ -29,8 +29,21 @@ enum TokenWidget {
     /// Va rinnovato? Manca il token, o scade entro 7 giorni (o la scadenza non si legge).
     static func daRinnovare(token: String?, scade: String?, adesso: Date = Date()) -> Bool {
         guard token != nil else { return true }
-        guard let scade, let data = formatoScadenza.date(from: String(scade.prefix(19))) else { return true }
+        guard let scade, let data = leggiScadenza(scade) else { return true }
         return data.timeIntervalSince(adesso) < 7 * 24 * 3600
+    }
+
+    /// La scadenza come la manda il server: con il fuso («...+00:00», «...Z») vale quello; senza fuso è ora italiana.
+    static func leggiScadenza(_ testo: String) -> Date? {
+        let t = testo.trimmingCharacters(in: .whitespaces)
+        let resto = t.dropFirst(19)
+        // I decimali dei secondi («.123456») si ignorano: contano solo l'ora e il fuso.
+        let senzaDecimali = resto.drop(while: { $0 == "." || $0.isNumber })
+        if senzaDecimali.isEmpty { return formatoScadenza.date(from: String(t.prefix(19))) }
+        let completo = String(t.prefix(19)) + String(senzaDecimali)
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        return iso.date(from: completo)
     }
 
     private struct Risposta: Decodable {

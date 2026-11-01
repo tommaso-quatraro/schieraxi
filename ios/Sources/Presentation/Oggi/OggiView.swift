@@ -30,10 +30,11 @@ struct OggiView: View {
                     Colonne(spazio: Tema.spazioSchede) {
                         if let oggi = vm.oggi {
                             benvenuto(oggi).ingresso(0)
-                            testata(oggi).ingresso(0)
+                            senzaGiornata(oggi).ingresso(0)
+                            if !oggi.senzaGiornata { testata(oggi).ingresso(0) }
                             daFare(oggi).ingresso(1)
                             novita.ingresso(1)
-                            formazione(oggi).ingresso(2)
+                            if !oggi.senzaGiornata { formazione(oggi).ingresso(2) }
                             daControllare.ingresso(3)
                             suggerimento
                             migliori(oggi).ingresso(4)
@@ -75,12 +76,25 @@ struct OggiView: View {
     private func benvenuto(_ oggi: Oggi) -> some View {
         if oggi.senzaRose == true {
             Carta("Benvenuto in SchieraXI", simbolo: "hand.wave") {
-                Text("Per darti i consigli servono le rose della tua lega. Importale e ti guido nei passi successivi.")
+                Text("Importa la tua rosa per cominciare: per darti i consigli servono le rose della tua lega, poi ti guido nei passi successivi.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Button { nav.guidaAperta = true } label: {
                     Label("Importa le rose", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
+            }
+        }
+    }
+
+    /// Il server non manda nessuna giornata (calendario non pronto, stagione finita): una frase semplice al posto del riquadro principale.
+    /// Per l'account nuovo senza rose c'è già il benvenuto, che dice cosa fare.
+    @ViewBuilder
+    private func senzaGiornata(_ oggi: Oggi) -> some View {
+        if oggi.senzaGiornata, oggi.senzaRose != true {
+            Carta("Oggi", simbolo: "calendar") {
+                Text("Nessuna giornata in programma per ora.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -99,7 +113,7 @@ struct OggiView: View {
     /// Il riquadro in alto: sfondo vivo, giornata, conto alla rovescia grande e maglia della squadra.
     private func testata(_ oggi: Oggi) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(oggi.etichettaGiornata, systemImage: "calendar")
+            Label(oggi.etichettaGiornata ?? "Giornata", systemImage: "calendar")
                 .font(.subheadline.weight(.semibold))
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .vetro(in: Capsule())
@@ -135,7 +149,7 @@ struct OggiView: View {
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(oggi.etichettaGiornata)
+        .accessibilityLabel(oggi.etichettaGiornata ?? "Giornata")
     }
 
     @ViewBuilder

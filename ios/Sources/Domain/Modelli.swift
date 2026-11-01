@@ -326,7 +326,8 @@ struct Partita: Decodable, Identifiable {
 }
 
 struct Oggi: Decodable {
-    let giornata: Int
+    /// `null` (o assente) se il calendario non è pronto, la stagione è finita o l'account è nuovo e senza rose.
+    let giornata: Int?
     let inizio: String?
     /// Quando si chiude l'invio della formazione (prima partita meno i minuti della lega). Facoltativo (server vecchio).
     let scadenza: String?

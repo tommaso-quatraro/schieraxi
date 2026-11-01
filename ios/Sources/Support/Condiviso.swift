@@ -31,7 +31,7 @@ struct DubbioRiassunto: Codable, Equatable, Identifiable {
 
 /// Quello che serve al widget, in forma compatta e salvabile.
 struct RiassuntoOggi: Codable, Equatable {
-    var giornata: Int
+    var giornata: Int?
     var inizio: Date?
     var modulo: String?
     var punti: Double?
@@ -43,13 +43,13 @@ struct RiassuntoOggi: Codable, Equatable {
     /// Il numero nella lega (opzionale: un riassunto salvato da una versione vecchia non ce l'ha).
     var giornataLega: Int?
 
-    var etichettaGiornata: String { TempiLega.etichetta(serieA: giornata, lega: giornataLega) }
-    var siglaGiornata: String { TempiLega.sigla(serieA: giornata, lega: giornataLega) }
+    var etichettaGiornata: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Nessuna giornata" }
+    var siglaGiornata: String { giornata.map { TempiLega.sigla(serieA: $0, lega: giornataLega) } ?? "G–" }
 
     static let esempio = RiassuntoOggi(giornata: 9, inizio: Date().addingTimeInterval(3 * 3600 + 25 * 60), modulo: "3-4-3", punti: 64.5,
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
 
-    init(giornata: Int, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date,
+    init(giornata: Int?, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date,
          dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil) {
         self.giornata = giornata
         self.inizio = inizio

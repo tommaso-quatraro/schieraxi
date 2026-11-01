@@ -8,11 +8,13 @@ enum ErroreComando: Error, CustomLocalizedStringResourceConvertible {
     case senzaServer
     case senzaPartite
     case senzaFormazione
+    case senzaGiornata
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .senzaFormazione: return "La formazione non è ancora disponibile."
         case .senzaServer: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia acceso."
+        case .senzaGiornata: return "Non c'è nessuna giornata in programma per ora."
         case .senzaPartite: return "Non trovo la prossima partita della giornata."
         }
     }
@@ -45,19 +47,20 @@ struct FormazioneComando: AppIntent {
         guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else {
             throw ErroreComando.senzaFormazione
         }
+        guard let numero = oggi.giornataMostrata else { throw ErroreComando.senzaGiornata }
         let punti = Formato.punti(f.punteggioAtteso)
         var frase = Self.fraseBase(oggi, modulo: modulo, punti: punti)
         if oggi.conProbabili == false { frase += " Le probabili formazioni non sono ancora uscite." }
         if risultato.salvato { frase += " Attenzione: sono dati salvati, il server non risponde." }
         return .result(
             dialog: "\(frase)",
-            view: RiquadroComando(titolo: "Giornata \(oggi.giornataMostrata)", grande: modulo, dettaglio: "\(punti) punti attesi")
+            view: RiquadroComando(titolo: "Giornata \(numero)", grande: modulo, dettaglio: "\(punti) punti attesi")
         )
     }
 
     /// Il numero è quello della LEGA (lo stesso che si vede nell'app e che dice «Quanto manca alla partita»), non quello di Serie A.
     static func fraseBase(_ oggi: Oggi, modulo: String, punti: String) -> String {
-        "Per la giornata \(oggi.giornataMostrata) ti consiglio il \(modulo), con \(punti) punti attesi."
+        "Per la giornata \(oggi.giornataMostrata.map(String.init) ?? "in programma") ti consiglio il \(modulo), con \(punti) punti attesi."
     }
 }
 
@@ -68,11 +71,12 @@ struct QuantoMancaComando: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         guard let risultato = await Aggiornamento.leggiOggi() else { throw ErroreComando.senzaServer }
         let oggi = risultato.oggi
+        guard let numero = oggi.giornataMostrata else { throw ErroreComando.senzaGiornata }
         guard let inizio = Quando.data(oggi.chiusura) else { throw ErroreComando.senzaPartite }
         if inizio <= Date() {
             return .result(
-                dialog: "La formazione della giornata \(oggi.giornataMostrata) è già chiusa.",
-                view: RiquadroComando(titolo: "Giornata \(oggi.giornataMostrata)", grande: "In corso", dettaglio: "formazione chiusa \(Quando.leggibile(oggi.chiusura))")
+                dialog: "La formazione della giornata \(numero) è già chiusa.",
+                view: RiquadroComando(titolo: "Giornata \(numero)", grande: "In corso", dettaglio: "formazione chiusa \(Quando.leggibile(oggi.chiusura))")
             )
         }
         var calendario = Calendar(identifier: .gregorian)
@@ -84,8 +88,8 @@ struct QuantoMancaComando: AppIntent {
         formato.maximumUnitCount = 2
         let manca = formato.string(from: Date(), to: inizio) ?? "poco"
         return .result(
-            dialog: "Alla scadenza della formazione della giornata \(oggi.giornataMostrata) mancano \(manca).",
-            view: RiquadroComando(titolo: "Giornata \(oggi.giornataMostrata)", grande: manca, dettaglio: "alla scadenza, \(Quando.leggibile(oggi.chiusura))")
+            dialog: "Alla scadenza della formazione della giornata \(numero) mancano \(manca).",
+            view: RiquadroComando(titolo: "Giornata \(numero)", grande: manca, dettaglio: "alla scadenza, \(Quando.leggibile(oggi.chiusura))")
         )
     }
 }

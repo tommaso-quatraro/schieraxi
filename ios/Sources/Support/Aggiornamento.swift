@@ -56,22 +56,22 @@ enum Aggiornamento {
     /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata.
     static func elabora(_ oggi: Oggi, avvisaSeCambia: Bool) async {
         if Demo.attivo { return }   // demo: niente promemoria, widget o notifiche
-        if let inizio = Quando.data(oggi.chiusura) {
-            await Notifiche.programma(giornata: oggi.giornataMostrata, inizio: inizio, modulo: oggi.formazione?.modulo)
+        if let inizio = Quando.data(oggi.chiusura), let numero = oggi.giornataMostrata {
+            await Notifiche.programma(giornata: numero, inizio: inizio, modulo: oggi.formazione?.modulo)
         }
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
         Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))
         await precaricaWidget()
         WidgetCenter.shared.reloadAllTimelines()
         // Senza una formazione vera (modulo mancante o «–», punti assenti) non si confronta né si ricorda niente.
-        guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else { return }
+        guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo, let giornata = oggi.giornata else { return }
         let memoria = UserDefaults.standard
         let probabili = oggi.conProbabili ?? false
         let giornataPrima = memoria.object(forKey: "bg.giornata") as? Int
         let moduloPrima = memoria.string(forKey: "bg.modulo")
         let probabiliPrima = memoria.object(forKey: "bg.probabili") as? Bool
 
-        if avvisaSeCambia, giornataPrima == oggi.giornata {
+        if avvisaSeCambia, giornataPrima == giornata {
             let punti = Formato.punti(f.punteggioAtteso)
             if let moduloPrima, moduloPrima != modulo {
                 await Notifiche.avviso(id: "fanta-cambio", titolo: "SchieraXI · Cambio di modulo",
@@ -81,18 +81,18 @@ enum Aggiornamento {
                                        corpo: corpoProbabili(oggi, modulo: modulo, punti: punti))
             }
         }
-        memoria.set(oggi.giornata, forKey: "bg.giornata")
+        memoria.set(giornata, forKey: "bg.giornata")
         memoria.set(modulo, forKey: "bg.modulo")
         memoria.set(probabili, forKey: "bg.probabili")
     }
 
     /// I testi degli avvisi: il numero è quello della LEGA (lo stesso che l'utente vede nell'app), non quello di Serie A.
     static func corpoCambioModulo(_ oggi: Oggi, modulo: String, punti: String, moduloPrima: String) -> String {
-        "Mister, giornata \(oggi.giornataMostrata): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima))."
+        "Mister, \(oggi.giornataMostrata.map { "giornata \($0)" } ?? "prossima giornata"): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima))."
     }
 
     static func corpoProbabili(_ oggi: Oggi, modulo: String, punti: String) -> String {
-        "Giornata \(oggi.giornataMostrata): modulo consigliato \(modulo), \(punti) punti attesi."
+        "\(oggi.giornataMostrata.map { "Giornata \($0)" } ?? "Prossima giornata"): modulo consigliato \(modulo), \(punti) punti attesi."
     }
 
     /// La giornata di oggi per Siri e Comandi: dal server, o dalla cache se non risponde.
