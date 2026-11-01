@@ -1,40 +1,37 @@
 import SwiftUI
 
-/// «Il tuo account» nelle Impostazioni: nome, email, esci, cambia password, codice per recuperare l'accesso, elimina l'account.
+/// «Il tuo account» nelle Impostazioni: un solo nome, l'email (quella di Google se è collegato), cambia password,
+/// codice per recuperare l'accesso, elimina l'account. «Esci» sta in fondo alle Impostazioni (`EsciSezione`).
 /// Si vede solo se il server ha gli account (multiutente); con il server di sempre non compare.
 struct AccountSezione: View {
     @EnvironmentObject private var sessione: SessioneAccount
+    @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
 
     private enum Foglio: String, Identifiable {
-        case password, codice, elimina, nome, email
+        case password, codice, elimina, email
         var id: String { rawValue }
     }
 
     @State private var foglio: Foglio?
-    @State private var chiediEsci = false
-    @State private var chiediEsciDaTutti = false
     @State private var errore: String?
     @State private var messaggio: String?
+
+    /// La voce dell'email: solo per chi non ha Google collegato. Finché non si sa come entra (Google acceso, accessi non ancora letti) non si mostra.
+    private var mostraVoceEmail: Bool {
+        let noto = !ServiziSociali.googleAcceso(socialTesto) || sessione.accessi != nil
+        return noto && ProfiloAccount.mostraVoceEmail(googleCollegato: sessione.googleCollegato)
+    }
 
     var body: some View {
         if sessione.multiutente, let utente = sessione.utente {
             Section("Il tuo account") {
                 RigaValore(titolo: "Nome", valore: utente.nome)
-                if utente.nome != utente.nomeUtente {
-                    RigaValore(titolo: "Per accedere", valore: utente.nomeUtente)
-                }
-                RigaValore(titolo: "Email", valore: sessione.email ?? (sessione.emailInAttesa.map { "\($0) (da verificare)" } ?? "Nessuna"))
-                Button { foglio = .nome } label: {
-                    Label("Cambia le maiuscole del nome", systemImage: "textformat").labelStyle(.voce(.indigo)).frame(minHeight: Tema.areaTocco)
-                }
-                Button { foglio = .email } label: {
-                    Label(sessione.email == nil ? "Aggiungi un'email" : "Gestisci l'email", systemImage: "envelope").labelStyle(.voce(.teal)).frame(minHeight: Tema.areaTocco)
-                }
-                Button { chiediEsci = true } label: {
-                    Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
-                }
-                Button { chiediEsciDaTutti = true } label: {
-                    Label("Esci da tutti i miei telefoni", systemImage: "iphone.slash").labelStyle(.voce(.orange)).frame(minHeight: Tema.areaTocco)
+                RigaValore(titolo: "Email", valore: (sessione.emailMostrata ?? "Nessuna") + (sessione.emailDaGoogle && sessione.emailMostrata != nil ? " (da Google)" : ""))
+                if mostraVoceEmail {
+                    Button { foglio = .email } label: {
+                        Label(sessione.email == nil ? "Aggiungi un'email" : "Gestisci l'email", systemImage: "envelope").labelStyle(.voce(.teal)).frame(minHeight: Tema.areaTocco)
+                    }
+                    .accessibilityHint("Serve a recuperare la password se la dimentichi")
                 }
                 // chi entra solo con Google non ha una password da cambiare: la aggiunge dal riquadro «Accessi»
                 if !sessione.senzaPassword {
@@ -51,20 +48,6 @@ struct AccountSezione: View {
                 if let messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
                 if let errore { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
             }
-            .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-                Button("Esci", role: .destructive) { Task { await sessione.esci() } }
-            } message: {
-                Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
-            }
-            .confirmationDialog("Esci da tutti i telefoni?", isPresented: $chiediEsciDaTutti, titleVisibility: .visible) {
-                Button("Esci da tutti", role: .destructive) {
-                    Task {
-                        do { try await sessione.esciDaTutti() } catch { errore = SchermataAccesso.testoErrore(error) }
-                    }
-                }
-            } message: {
-                Text("Su ogni telefono e computer dovrai entrare di nuovo con nome e password, anche su questo.")
-            }
             .sheet(item: $foglio) { f in
                 NavigationStack {
                     switch f {
@@ -74,8 +57,6 @@ struct AccountSezione: View {
                         FoglioNuovoCodice()
                     case .elimina:
                         FoglioElimina()
-                    case .nome:
-                        FoglioMaiuscole(nomeUtente: utente.nomeUtente, attuale: utente.nome) { messaggio = "Nome cambiato." ; errore = nil }
                     case .email:
                         FoglioEmail { messaggio = $0 ; errore = nil }
                     }
@@ -83,6 +64,28 @@ struct AccountSezione: View {
                 .presentationDragIndicator(.visible)
             }
             AccessiSezione()
+        }
+    }
+}
+
+/// «Esci», l'ultima voce delle Impostazioni: solo con un account (senza account c'è `SessioneMinimaSezione`).
+struct EsciSezione: View {
+    @EnvironmentObject private var sessione: SessioneAccount
+    @State private var chiediEsci = false
+
+    var body: some View {
+        if sessione.multiutente, sessione.utente != nil {
+            Section {
+                Button { chiediEsci = true } label: {
+                    Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+                }
+                .accessibilityHint("Esci dal tuo account su questo telefono")
+            }
+            .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
+                Button("Esci", role: .destructive) { Task { await sessione.esci() } }
+            } message: {
+                Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
+            }
         }
     }
 }
@@ -233,7 +236,7 @@ struct FoglioElimina: View {
     var body: some View {
         Form {
             Section {
-                Text("Cancella il tuo account e TUTTI i tuoi dati: rose, regole, scelte, immagini, avvisi. Non si può annullare. Se vuoi tenere una copia, falla prima da Impostazioni > Copia di sicurezza.")
+                Text("Cancella il tuo account e TUTTI i tuoi dati: rose, regole, scelte, immagini, avvisi. Non si può annullare.")
                     .font(.subheadline)
             }
             if sessione.senzaPassword { RigaRiconferma(confermato: $riconfermato) }
@@ -270,59 +273,6 @@ struct FoglioElimina: View {
     }
 }
 
-/// Cambia le maiuscole del nome («thebest» diventa «TheBest»): le lettere restano le stesse, il nome per accedere non cambia.
-struct FoglioMaiuscole: View {
-    let nomeUtente: String
-    let attuale: String
-    let fatto: () -> Void
-    @EnvironmentObject private var sessione: SessioneAccount
-    @Environment(\.dismiss) private var chiudi
-    @State private var nome = ""
-    @State private var errore: String?
-
-    private var problema: String? { RegoleAccount.problemaMaiuscole(nome, nomeUtente: nomeUtente) }
-
-    var body: some View {
-        Form {
-            Section {
-                TextField("Nome", text: $nome)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.go)
-                    .onSubmit { Task { await invia() } }
-                    .frame(minHeight: Tema.areaTocco)
-            } header: {
-                Text("Come vuoi vedere il tuo nome")
-            } footer: {
-                if let problema, !nome.isEmpty { Text(problema).foregroundStyle(Color.attenzione) }
-                else { Text("Cambiano solo le maiuscole. Per accedere si usa sempre «\(nomeUtente)».") }
-            }
-            if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
-            Section {
-                Button { Task { await invia() } } label: {
-                    Text(sessione.inCorso ? "Un attimo…" : "Salva il nome").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-                }
-                .disabled(problema != nil || sessione.inCorso)
-            }
-        }
-        .navigationTitle("Maiuscole del nome")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
-        .onAppear { if nome.isEmpty { nome = attuale } }
-    }
-
-    private func invia() async {
-        guard problema == nil else { return }
-        do {
-            try await sessione.cambiaMaiuscole(nome)
-            fatto()
-            chiudi()
-        } catch {
-            errore = SchermataAccesso.testoErrore(error)
-        }
-    }
-}
-
 /// Email dell'account (facoltativa): serve per recuperare la password. Si aggiunge con la password, si verifica con un codice
 /// ricevuto per email, si toglie con la password.
 struct FoglioEmail: View {
@@ -330,6 +280,8 @@ struct FoglioEmail: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.dismiss) private var chiudi
     @State private var indirizzo = ""
+    /// Il secondo passo: l'indirizzo è deciso, manca la conferma con la password.
+    @State private var indirizzoScelto: String?
     @State private var password = ""
     @State private var codice = ""
     @State private var errore: String?
@@ -376,26 +328,47 @@ struct FoglioEmail: View {
                         Text("Ti ho mandato un codice all'indirizzo scelto (controlla anche la posta indesiderata). Se non arriva, riprova qui sotto.")
                     }
                 }
-                Section {
-                    TextField("Indirizzo email", text: $indirizzo)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .frame(minHeight: Tema.areaTocco)
-                    if !sessione.senzaPassword {
-                        SecureField("Password", text: $password)
-                            .textContentType(.password)
+                // Due passi: prima l'indirizzo, poi la password. Un campo email accanto a un campo password è per iOS un modulo
+                // di accesso: il riempimento automatico ci scriveva da solo nome utente e password salvati.
+                if let scelto = indirizzoScelto {
+                    Section {
+                        RigaValore(titolo: "Indirizzo", valore: scelto)
+                        if !sessione.senzaPassword {
+                            SecureField("Password", text: $password)
+                                .textContentType(.password)
+                                .submitLabel(.send)
+                                .onSubmit { Task { await aggiungi() } }
+                                .frame(minHeight: Tema.areaTocco)
+                        }
+                        Button { Task { await aggiungi() } } label: {
+                            Text(sessione.inCorso ? "Un attimo…" : "Manda il codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                        }
+                        .disabled(senzaConferma || sessione.inCorso)
+                        Button("Cambia indirizzo") { indirizzoScelto = nil; password = "" }
+                            .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    } header: {
+                        Text("Conferma")
+                    } footer: {
+                        Text(sessione.senzaPassword ? "Ti mando un codice a questo indirizzo." : "Per sicurezza scrivi la tua password, poi ti mando un codice a questo indirizzo.")
+                    }
+                } else {
+                    Section {
+                        TextField("Indirizzo email", text: $indirizzo)
+                            .keyboardType(.emailAddress)
+                            .textContentType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .submitLabel(.next)
+                            .onSubmit { avanti() }
                             .frame(minHeight: Tema.areaTocco)
+                        Button("Avanti") { avanti() }
+                            .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                            .disabled(RegoleAccount.problemaEmail(indirizzo) != nil)
+                    } header: {
+                        Text("Aggiungi un'email")
+                    } footer: {
+                        Text("Facoltativa: ti permette di recuperare la password anche senza il codice di recupero.")
                     }
-                    Button { Task { await aggiungi() } } label: {
-                        Text(sessione.inCorso ? "Un attimo…" : "Manda il codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-                    }
-                    .disabled(RegoleAccount.problemaEmail(indirizzo) != nil || senzaConferma || sessione.inCorso)
-                } header: {
-                    Text("Aggiungi un'email")
-                } footer: {
-                    Text("Facoltativa: ti permette di recuperare la password anche senza il codice di recupero.")
                 }
             }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
@@ -406,9 +379,16 @@ struct FoglioEmail: View {
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { chiudi() } } }
     }
 
+    private func avanti() {
+        let pulito = indirizzo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard RegoleAccount.problemaEmail(pulito) == nil else { return }
+        indirizzoScelto = pulito
+    }
+
     private func aggiungi() async {
+        guard let scelto = indirizzoScelto, !senzaConferma, !sessione.inCorso else { return }
         do {
-            try await sessione.aggiungiEmail(indirizzo, password: password)
+            try await sessione.aggiungiEmail(scelto, password: password)
             password = ""
             errore = nil
             codiceInviato = true

@@ -34,9 +34,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: it.schieraxi.app
         PRODUCT_NAME: Schieraxi
         TARGETED_DEVICE_FAMILY: "1,2"
+        # una sola icona (dal 1/11/2026 niente icone alternative)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # icone alternative scelte in Lega > Icona dell'app (AppIcon-<colore> nell'asset catalog; il verde e' AppIcon)
-        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-blu AppIcon-viola AppIcon-arancio AppIcon-rosso AppIcon-grafite"
     info:
       path: Config/Info.plist
       properties:

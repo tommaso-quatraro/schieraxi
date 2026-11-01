@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// I colori principali tra cui scegliere in Lega > Aspetto (la scelta è in `@AppStorage("accento")`).
+/// I colori principali. Dal 1/11/2026 non si sceglie più: resta il verde (una scelta vecchia si toglie all'avvio, `OpzioniTolte`).
 enum Accento: String, CaseIterable, Identifiable {
     case verde, blu, viola, arancio, rosso, argento
 

@@ -203,20 +203,16 @@ struct StagioneView: View {
 
 // MARK: - Aspetto
 
-/// Colore principale, tema, densità, animazioni e sezione di avvio. Le scelte stanno sul telefono (`@AppStorage`).
+/// Impostazioni > Aspetto: il tema (automatico, chiaro, scuro) e le animazioni. Le scelte stanno sul telefono (`@AppStorage`).
 struct AspettoView: View {
-    @AppStorage("accento") private var accento = "verde"
     @AppStorage("tema") private var tema = "auto"
-    @AppStorage("densita") private var densita = "compatta"
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
-    @AppStorage("sezioneAvvio") private var sezioneAvvio = "ultima"
-    @Environment(\.funzioni) private var funzioni
 
     var body: some View {
         ZStack {
             Sfondo()
             List {
-                Section("Tema") {
+                Section {
                     Picker("Tema", selection: $tema) {
                         Text("Automatico").tag("auto")
                         Text("Chiaro").tag("chiaro")
@@ -224,150 +220,21 @@ struct AspettoView: View {
                     }
                     .pickerStyle(.segmented)
                     .sensoryFeedback(.selection, trigger: tema)
-                    Text("Automatico segue il chiaro e lo scuro di iPhone. La dimensione del testo si cambia in Impostazioni > Schermo e luminosità > Dimensione del testo: l'app la segue.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                if funzioni.acceso(Funzione.aspettoAvanzato) {
-                Section("Colore principale") {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 12) { colori }
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 52), spacing: 10)], spacing: 10) { colori }
-                    }
-                }
-                Section("Densità") {
-                    Picker("Densità", selection: $densita) {
-                        Text("Comoda").tag("comoda")
-                        Text("Compatta").tag("compatta")
-                    }
-                    .pickerStyle(.segmented)
-                    Text("Compatta stringe i margini delle schede: ci sta più roba sullo schermo. Le aree di tocco restano grandi.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
+                } header: {
+                    Text("Tema")
+                } footer: {
+                    Text("Automatico segue il chiaro e lo scuro di iPhone. La dimensione del testo si cambia in Impostazioni di iPhone > Schermo e luminosità > Dimensione del testo: l'app la segue.")
                 }
                 Section {
                     Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)
                 } header: { Text("Movimento") } footer: { Text("Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»).") }
-                if funzioni.acceso(Funzione.aspettoAvanzato) {
-                Section {
-                    // il titolo della riga basta: la sezione non lo ripete
-                    Picker("Sezione iniziale", selection: $sezioneAvvio) {
-                        Text("L'ultima sezione").tag("ultima")
-                        ForEach(Sezione.allCases) { Text($0.titolo).tag($0.rawValue) }
-                    }
-                    .frame(minHeight: 44)
-                } header: { Text("Apertura") }
-                }
-                Section {
-                    Label("Volti illustrati", systemImage: "face.smiling").font(.subheadline)
-                } header: { Text("Giocatori") } footer: {
-                    Text("I giocatori hanno un volto illustrato inventato, generato dal loro codice: sempre lo stesso, su ogni dispositivo. Niente foto vere.")
-                }
             }
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Aspetto")
     }
-
-    @ViewBuilder
-    private var colori: some View {
-        ForEach(Accento.allCases) { a in
-            Button { accento = a.rawValue } label: {
-                Circle()
-                    .fill(Color(uiColor: a.scuro))
-                    .frame(width: 44, height: 44)
-                    .overlay(Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: 1))
-                    .overlay {
-                        if accento == a.rawValue {
-                            Image(systemName: "checkmark").font(.headline.bold()).foregroundStyle(.black.opacity(0.75))
-                                .transizione(.scale.combined(with: .opacity))
-                        }
-                    }
-                    .scaleEffect(accento == a.rawValue ? 1.1 : 1)
-                    .animation(Tema.molla, value: accento)
-            }
-            .buttonStyle(.plain)
-            .sensoryFeedback(.selection, trigger: accento)
-            .accessibilityLabel(a.nome)
-            .accessibilityAddTraits(accento == a.rawValue ? .isSelected : [])
-        }
-    }
 }
 
-// MARK: - Icona dell'app
-
-/// Le icone alternative dell'app: il verde è quella normale, le altre sono «AppIcon-<colore>» nell'asset catalog.
-enum IconeApp {
-    static let nomi = ["verde", "blu", "viola", "arancio", "rosso", "grafite"]
-
-    /// Il nome da dare a iOS: nil per l'icona normale (verde).
-    static func nomePerIOS(_ scelta: String) -> String? { scelta == "verde" ? nil : "AppIcon-\(scelta)" }
-
-    /// Dal nome dell'icona in uso (`UIApplication.alternateIconName`) al colore.
-    static func scelta(da nomeIOS: String?) -> String {
-        guard let n = nomeIOS, n.hasPrefix("AppIcon-") else { return "verde" }
-        let colore = String(n.dropFirst("AppIcon-".count))
-        return nomi.contains(colore) ? colore : "verde"
-    }
-
-    static func titolo(_ scelta: String) -> String { scelta.primaMaiuscola }
-}
-
-struct IconaAppView: View {
-    @State private var corrente = IconeApp.scelta(da: UIApplication.shared.alternateIconName)
-    @State private var messaggio: String?
-
-    var body: some View {
-        ZStack {
-            Sfondo()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    Carta("Icona dell'app") {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 14)], spacing: 16) {
-                            ForEach(IconeApp.nomi, id: \.self) { n in
-                                Button { Task { await scegli(n) } } label: {
-                                    VStack(spacing: 6) {
-                                        Image("Icona-\(n)").resizable().scaledToFit().frame(width: 72, height: 72)
-                                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(corrente == n ? Color.verde : Color.primary.opacity(0.15), lineWidth: corrente == n ? 3 : 1))
-                                        Text(IconeApp.titolo(n)).font(.footnote.weight(corrente == n ? .bold : .regular))
-                                    }
-                                    .frame(minHeight: 44)
-                                }
-                                .buttonStyle(StilePressione())
-                                .animation(Tema.molla, value: corrente)
-                                .accessibilityLabel("Icona \(IconeApp.titolo(n))")
-                                .accessibilityAddTraits(corrente == n ? .isSelected : [])
-                            }
-                        }
-                        if let messaggio { Text(messaggio).font(.footnote).foregroundStyle(.secondary) }
-                        Text("L'icona sulla schermata Home cambia subito. Se SideStore rinnova l'app, la scelta resta.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                .padding(16)
-            }
-        }
-        .navigationTitle("Icona")
-    }
-
-    private func scegli(_ nome: String) async {
-        if Demo.attivo {
-            corrente = nome
-            messaggio = "In modalità demo l'icona non cambia davvero."
-            return
-        }
-        guard UIApplication.shared.supportsAlternateIcons else {
-            messaggio = "Questo dispositivo non permette di cambiare l'icona."
-            return
-        }
-        do {
-            try await UIApplication.shared.setAlternateIconName(IconeApp.nomePerIOS(nome))
-            corrente = nome
-            messaggio = "Icona \(IconeApp.titolo(nome).lowercased()) scelta."
-            Haptics.esito(riuscito: true)
-        } catch {
-            messaggio = error.localizedDescription
-            Haptics.esito(riuscito: false)
-        }
-    }
+#Preview("Aspetto") {
+    NavigationStack { AspettoView() }
 }

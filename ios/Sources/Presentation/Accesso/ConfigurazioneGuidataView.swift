@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// La configurazione guidata («Primo avvio»): un passo alla volta, tutti saltabili, con un riepilogo alla fine.
-/// Parte da sola se la lega non ha ancora le rose; si riapre da Impostazioni > Informazioni. Salta i passi già fatti.
+/// Parte da sola se la lega non ha ancora le rose (e dalla lista «Da fare» di Oggi). Salta i passi già fatti.
 struct ConfigurazioneGuidataView: View {
     @StateObject private var vm: ConfigurazioneGuidataViewModel
     /// Cosa fare quando un passo porta in un'altra schermata (la guida si chiude prima).
@@ -151,7 +151,7 @@ struct ConfigurazioneGuidataView: View {
                 .foregroundStyle(Color.verde)
                 .accessibilityHidden(true)
             Text(tuttoFatto ? "Tutto a posto" : "Per ora basta così").font(.title2.bold())
-            Text(tuttoFatto ? "SchieraXI è pronto." : "Quello che hai saltato lo trovi in Oggi, nella lista «Da fare», o qui: Impostazioni > Informazioni.")
+            Text(tuttoFatto ? "SchieraXI è pronto." : "Quello che hai saltato lo trovi in Oggi, nella lista «Da fare».")
                 .font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Carta {
                 ForEach(PassoGuidato.allCases) { passo in

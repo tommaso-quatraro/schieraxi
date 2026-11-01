@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Le schede Squadra e Altro (la «dieta delle funzioni»): un elenco di voci, ognuna una pagina. Squadra ha la mia squadra e le rose,
-/// i cambi consigliati, i seguiti, l'elenco dei giocatori e il calendario; Altro ha Scambi, il diario, le regole, l'asta e il resto.
+/// i cambi consigliati, i seguiti, l'elenco dei giocatori e il calendario; Altro ha Scambi, il diario, le regole, l'asta, lo storico
+/// e le novità. Account, aspetto e avvisi stanno solo nelle Impostazioni (l'ingranaggio in testata): ogni voce in un posto solo.
 /// Le voci di una funzione spenta (`GET /api/funzioni`) non si vedono. Logica in `LegaViewModel`, `MercatoViewModel` e `ScambiViewModel`.
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
@@ -9,8 +10,6 @@ struct LegaView: View {
     let scambi: ScambiViewModel
     /// `.squadra` o `.altro`: quali voci mostra.
     var ambito: Sezione = .altro
-    @EnvironmentObject private var sessione: SessioneAccount
-    @Environment(\.apriImpostazioni) private var apriImpostazioni
     @Environment(\.funzioni) private var funzioni
 
     @Environment(\.horizontalSizeClass) private var classe
@@ -84,7 +83,6 @@ struct LegaView: View {
             } else {
                 if vm.nuovaStagione { bannerStagione }
                 sezioneAltro
-                sezioneImpostazioni
             }
         }
         .scrollContentBackground(.hidden)
@@ -111,10 +109,7 @@ struct LegaView: View {
         case .novita: NovitaView(server: vm.server)
         case .movimenti: MovimentiView(server: vm.server)
         case .stagione: StagioneView(server: vm.server)
-        case .aspetto: AspettoView()
-        case .icona: IconaAppView()
         case .diario: DiarioView(server: vm.server)
-        case .backup: BackupView(server: vm.server)
         case .cambi: PaginaMercato(vm: mercato, titolo: "Cambi consigliati") { ConsigliatiView(vm: mercato) }
         case .seguiti: PaginaMercato(vm: mercato, titolo: "Seguiti") { OsservatiView(vm: mercato) }
         case .elenco: PaginaMercato(vm: mercato, titolo: "Elenco dei giocatori") { GiocatoriView(vm: mercato, ricerca: mercato.ricerca) }
@@ -159,7 +154,7 @@ struct LegaView: View {
         }
     }
 
-    /// Altro: Scambi, il diario, l'asta, le regole, la copia di sicurezza, le novità. I movimenti e i crediti delle squadre solo con «Squadre della lega»;
+    /// Altro: Scambi, il diario, l'asta, le regole, le novità. I movimenti e i crediti delle squadre solo con «Squadre della lega»;
     /// la nuova stagione solo quando le rose sono di un anno passato (o con «Mostra tutte»).
     private var sezioneAltro: some View {
         Section {
@@ -177,28 +172,11 @@ struct LegaView: View {
             if funzioni.acceso(Funzione.squadreAltrui) && funzioni.accesoSoloSeNominato(Funzione.crediti) {
                 NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "c.circle").labelStyle(.voce(.mint)).frame(minHeight: 44) }
             }
-            if vm.nuovaStagione || funzioni.mostraTutte {
+            if !vm.nuovaStagione && funzioni.mostraTutte {   // con la stagione nuova c'è già il riquadro in cima
                 NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.backup) {
-                NavigationLink(value: PaginaLega.backup) { Label("Copia di sicurezza", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
             }
             if funzioni.acceso(Funzione.novita) {
                 NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
-            }
-        }
-    }
-
-    /// Un solo rimando alle Impostazioni (account, collegamento, aspetto, avvisi, widget, informazioni).
-    @ViewBuilder
-    private var sezioneImpostazioni: some View {
-        if let apri = apriImpostazioni {
-            Section {
-                Button { apri() } label: {
-                    Label("Impostazioni dell'app e dell'account", systemImage: "gearshape").labelStyle(.voce(.gray)).frame(minHeight: 44)
-                }
-            } footer: {
-                Text("Account, avvisi, widget e aspetto sono nelle Impostazioni (l'ingranaggio in alto).")
             }
         }
     }

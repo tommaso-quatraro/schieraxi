@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// Le pagine che si aprono dalla schermata Lega.
 enum PaginaLega: Hashable {
     case importa, squadre, rosa(String), asta, regole, crediti, avvisi, stato, novita
-    case movimenti, stagione, aspetto, icona, diario, backup
+    case movimenti, stagione, diario
     /// Dalla dieta delle funzioni: le pagine che prima erano in Mercato e in Scambi stanno in Squadra e in Altro.
     case cambi, seguiti, elenco, calendario, scambi
 

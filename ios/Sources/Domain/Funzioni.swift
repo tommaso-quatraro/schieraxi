@@ -9,9 +9,7 @@ enum Funzione {
     static let elencoGiocatori = "elenco_giocatori"
     static let seguiti = "seguiti"
     static let diario = "diario"
-    static let backup = "backup"
     static let squadreAltrui = "squadre_altrui"
-    static let aspettoAvanzato = "aspetto_avanzato"
     static let novita = "novita"
     static let live = "live"
     static let asta = "asta"
@@ -20,8 +18,6 @@ enum Funzione {
     static let immaginiWeb = "immagini_web"
     /// Crediti di tutte le squadre: il server la tiene spenta di norma, quindi serve che la accenda.
     static let crediti = "crediti"
-    /// «Sotto il cofano»: il server la tiene spenta di norma, quindi la voce compare solo se la accende.
-    static let sottoIlCofano = "sotto_il_cofano"
     /// Movimenti e storico: se il server non la nomina (versione vecchia) vale acceso.
     static let movimenti = "movimenti"
 }

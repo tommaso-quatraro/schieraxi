@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension Color {
-    /// Colore principale dell'app: di solito il verde, ma si cambia in Lega > Aspetto (`Accento`). Chiaro sul fondo scuro,
+    /// Colore principale dell'app: il verde (`Accento`). Chiaro sul fondo scuro,
     /// più scuro sul fondo chiaro (per restare leggibile). Si legge a ogni uso: cambiando scelta l'app si ridisegna (vedi `RadiceView`).
     static var verde: Color {
         Color(uiColor: UIColor { tratti in

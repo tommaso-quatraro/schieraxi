@@ -24,12 +24,12 @@ extension StatoFunzioni {
 
 extension Oggi {
     /// Le cose da fare che questo utente può usare: quelle di una funzione spenta non si vedono, e le voci tecniche
-    /// (certificato di SideStore, server, copia di sicurezza) solo a chi gestisce l'app (`tecniche`).
+    /// (certificato di SideStore, server) solo a chi gestisce l'app (`tecniche`). La copia di sicurezza non si fa dall'app: mai.
     func cose(funzioni: StatoFunzioni, tecniche: Bool) -> [DaFareVoce] {
         raggruppaDiario(cosePerOrdine).filter { voce in
             switch voce.tipo {
             case "certificato", "server": return tecniche
-            case "backup": return tecniche && funzioni.acceso(Funzione.backup)
+            case "backup": return false
             case "diario": return funzioni.acceso(Funzione.diario)
             case "scambio": return funzioni.acceso(Funzione.scambiTrova)
             default: return true

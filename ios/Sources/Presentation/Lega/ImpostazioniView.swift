@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Le pagine che si aprono dalle Impostazioni.
 enum PaginaImpostazioni: Hashable {
-    case aspetto, icona, avvisi, backup, stato, novita, cofano, crediti, avanzate, cambiaServer
+    case aspetto, avvisi, stato, crediti, avanzate, cambiaServer
 }
 
 private struct ApriRosaDiChiave: EnvironmentKey {
@@ -29,13 +29,12 @@ extension EnvironmentValues {
     }
 }
 
-/// Impostazioni: tutto quello che riguarda l'app e l'account, in gruppi. Lega resta solo la lega (rose, regole, storico).
-/// Si apre come foglio dall'ingranaggio in testata, accanto alla lente.
+/// Impostazioni: l'account, l'app (aspetto e avvisi), le informazioni e «Esci». Solo l'essenziale: la lega (scambi, regole,
+/// storico, novità) sta in Altro. Chi amministra il server ha in più «Avanzate». Si apre come foglio dall'ingranaggio in testata.
 struct ImpostazioniView: View {
     @ObservedObject var vm: LegaViewModel
     @ObservedObject var funzioni: ArchivioFunzioni
     @EnvironmentObject private var sessione: SessioneAccount
-    @EnvironmentObject private var nav: Navigazione
     @Environment(\.dismiss) private var chiudi
     @State private var percorso: [PaginaImpostazioni] = []
 
@@ -45,13 +44,11 @@ struct ImpostazioniView: View {
                 AccountSezione()
                 SessioneMinimaSezione(nonRaggiungibile: vm.info.datiSalvati != nil || vm.info.errore != nil)
                 if ProvaEsempio.attiva { SezioneProvaEsempio() }
-                sezioneAspetto
-                sezioneAvvisi
-                SezioneWidget()
-                sezioneDati
+                sezioneApp
                 NuovaVersioneSezione()
                 sezioneInformazioni
                 sezioneAvanzateLink
+                EsciSezione()
             }
             .scrollContentBackground(.hidden)
             .background(Sfondo())
@@ -64,10 +61,10 @@ struct ImpostazioniView: View {
             .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0) }
             .task { await vm.carica() }
             .onAppear {
-                // Solo per le fotografie del simulatore (-DEMO_SCHERMATA impostazioni-cofano).
-                if Demo.schermata == "impostazioni-cofano", percorso.isEmpty { percorso = [.cofano] }
+                // Solo per le fotografie del simulatore (-DEMO_SCHERMATA impostazioni-crediti, ...).
                 if Demo.schermata == "impostazioni-crediti", percorso.isEmpty { percorso = [.crediti] }
                 if Demo.schermata == "impostazioni-avanzate", percorso.isEmpty { percorso = [.avanzate] }
+                if Demo.schermata == "impostazioni-aspetto", percorso.isEmpty { percorso = [.aspetto] }
             }
         }
         .tint(Color.verde)
@@ -78,29 +75,11 @@ struct ImpostazioniView: View {
     private func destinazione(_ pagina: PaginaImpostazioni) -> some View {
         switch pagina {
         case .aspetto: AspettoView()
-        case .icona: IconaAppView()
         case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
-        case .backup: BackupView(server: vm.server)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
-        case .novita: NovitaView(server: vm.server)
-        case .cofano: SottoIlCofanoView(server: vm.server, vai: apriDaCofano)
         case .crediti: LicenzeECreditiView(server: vm.server)
         case .avanzate: paginaAvanzate
         case .cambiaServer: PaginaCambiaServer(dopoProva: { await vm.info.ricarica() })
-        }
-    }
-
-    /// Un rimando di «Sotto il cofano»: un'altra pagina delle Impostazioni, oppure si chiude il foglio e si va alla schermata.
-    private func apriDaCofano(_ destinazione: DestinazioneCofano) {
-        switch destinazione {
-        case .impostazioni(let pagina):
-            percorso.append(pagina)
-        case .sezione(let sezione):
-            nav.sezione = sezione
-            chiudi()
-        case .lega(let pagina):
-            nav.sezione = vm.apri([pagina])
-            chiudi()
         }
     }
 
@@ -125,52 +104,20 @@ struct ImpostazioniView: View {
         }
     }
 
-    private var sezioneAspetto: some View {
-        Section("Aspetto") {
-            NavigationLink(value: PaginaImpostazioni.aspetto) { Label("Tema, colore e densità", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
-            if funzioni.stato.acceso(Funzione.aspettoAvanzato) {
-                NavigationLink(value: PaginaImpostazioni.icona) { Label("Icona dell'app", systemImage: "app.badge").labelStyle(.voce(.purple)).frame(minHeight: 44) }
-            }
-        }
-    }
-
-    private var sezioneAvvisi: some View {
-        Section("Avvisi e promemoria") {
+    /// L'app su questo telefono: aspetto e avvisi.
+    private var sezioneApp: some View {
+        Section("App") {
+            NavigationLink(value: PaginaImpostazioni.aspetto) { Label("Aspetto", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
             NavigationLink(value: PaginaImpostazioni.avvisi) {
-                Label("Avvisi, promemoria e ore tranquille", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44)
+                Label("Avvisi e promemoria", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44)
             }
             RigaValore(titolo: "Notifiche", valore: vm.permesso)
         }
     }
 
-    @ViewBuilder
-    private var sezioneDati: some View {
-        if funzioni.stato.acceso(Funzione.backup) {
-            Section("Dati e copia di sicurezza") {
-                NavigationLink(value: PaginaImpostazioni.backup) { Label("Copia di sicurezza", systemImage: "externaldrive.badge.timemachine").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
-            }
-        }
-    }
-
+    /// Privacy, termini, licenze e la versione. Le novità stanno in Altro.
     private var sezioneInformazioni: some View {
         Section("Informazioni") {
-            if funzioni.stato.acceso(Funzione.novita) {
-                NavigationLink(value: PaginaImpostazioni.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
-            }
-            Button {
-                // si chiude il foglio e, appena è sparito, si apre la guida
-                chiudi()
-                Task {
-                    try? await Task.sleep(nanoseconds: 600_000_000)
-                    nav.guidaAperta = true
-                }
-            } label: {
-                Label("Configurazione guidata", systemImage: "list.bullet.clipboard").labelStyle(.voce(.teal)).frame(minHeight: 44)
-            }
-            .accessibilityHint("Rose, squadra, stemma, widget e avvisi, un passo alla volta")
-            if funzioni.stato.acceso(Funzione.sottoIlCofano) {
-                NavigationLink(value: PaginaImpostazioni.cofano) { Label("Sotto il cofano", systemImage: "gearshape.2").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
-            }
             RigheLegali(server: vm.server)
             RigaValore(titolo: "Versione dell'app", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
         }

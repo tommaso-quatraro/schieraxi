@@ -21,25 +21,25 @@ TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
-       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-diario lega-backup lega-novita
-       lega-importa lega-importa-csv lega-movimenti lega-stagione lega-aspetto lega-icona
+       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-diario lega-novita
+       lega-importa lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
        impostazioni impostazioni-crediti impostazioni-avanzate primo-avvio accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
 PER_CHIARO=(oggi formazione formazione-confronto formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
-            scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato lega-aspetto lega-icona lega-rosa giocatore giocatore-fondo ricerca)
+            scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
 PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-calendario
                   mercato-osservati mercato-asta scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
-                  lega-aspetto giocatore giocatore-fondo)
+                  impostazioni-aspetto giocatore giocatore-fondo)
 PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-classifica
           mercato-calendario mercato-osservati mercato-asta giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
-          lega lega-squadre lega-rosa lega-regole lega-avvisi lega-diario lega-backup lega-aspetto lega-icona)
+          lega lega-squadre lega-rosa lega-regole lega-avvisi lega-diario impostazioni-aspetto)
 
 # SCATTI=veloce (predefinito dei push su main): solo le schermate principali, per controllare in pochi minuti.
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
 SCATTI="${SCATTI:-completo}"
 if [ "$SCATTI" = "veloce" ]; then
-  TUTTE=(oggi formazione giocatore mercato-classifica lega-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
+  TUTTE=(oggi formazione giocatore mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
   PER_CHIARO=(oggi giocatore primo-avvio impostazioni-crediti)
   PER_TESTO_GRANDE=(accesso-accedi)
   PRINCIPALI=(oggi lega)
@@ -208,7 +208,7 @@ giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
 if [ "$SCATTI" = "veloce" ]; then
   giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}"
 else
-  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta lega-aspetto
+  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta impostazioni-aspetto
   giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
 fi
 

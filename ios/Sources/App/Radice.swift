@@ -52,7 +52,7 @@ enum Sezione: String, CaseIterable, Identifiable, Hashable {
 /// Stato condiviso della navigazione: sezione aperta e, se serve, un giocatore da aprire (da Spotlight).
 @MainActor
 final class Navigazione: ObservableObject {
-    /// La sezione aperta; si ricorda l'ultima per «All'apertura mostra: l'ultima sezione» (Lega > Aspetto).
+    /// La sezione aperta; si ricorda l'ultima: all'apertura l'app torna lì.
     @Published var sezione: Sezione = .oggi {
         didSet { if !Demo.attivo { UserDefaults.standard.set(sezione.rawValue, forKey: "ultimaSezione") } }
     }
@@ -64,7 +64,7 @@ final class Navigazione: ObservableObject {
     @Published var scheda: IdGiocatore?
     /// Il foglio delle Impostazioni (l'ingranaggio in testata, o `schieraxi://impostazioni`).
     @Published var impostazioniAperte = false
-    /// La configurazione guidata («Primo avvio»): parte da sola senza rose, si riapre da Impostazioni > Informazioni.
+    /// La configurazione guidata («Primo avvio»): parte da sola senza rose, si riapre dalla lista «Da fare» di Oggi.
     @Published var guidaAperta = false
     /// Una pagina di Squadra o di Altro da aprire (da un indirizzo `schieraxi://` o da Oggi): la radice la apre nella scheda giusta.
     @Published var paginaDaAprire: PaginaLega?
@@ -73,7 +73,7 @@ final class Navigazione: ObservableObject {
         if !Demo.attivo { sezione = Self.sezioneDiAvvio() }
     }
 
-    /// Dove si apre l'app: la sezione scelta in Lega > Aspetto, oppure (predefinito) l'ultima in cui si era.
+    /// Dove si apre l'app: l'ultima sezione in cui si era (una scelta vecchia in `sezioneAvvio` vale ancora, ma all'avvio si toglie).
     static func sezioneDiAvvio(_ memoria: UserDefaults = .standard) -> Sezione {
         let scelta = memoria.string(forKey: "sezioneAvvio") ?? "ultima"
         let nome = scelta == "ultima" ? memoria.string(forKey: "ultimaSezione") : scelta
@@ -121,22 +121,11 @@ final class Navigazione: ObservableObject {
 struct RadiceView: View {
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var modello: AppModel
-    /// Lega > Aspetto: colore principale e animazioni. Cambiando il colore l'albero delle viste si ricostruisce (`.id`), i dati restano.
-    @AppStorage("accento") private var accento = "verde"
+    /// Impostazioni > Aspetto: tema e animazioni.
     @AppStorage("animazioniRidotte") private var animazioniRidotte = false
     @AppStorage("tema") private var tema = "auto"   // auto, chiaro, scuro
-    /// Pallino sulla scheda Altro quando ci sono novità dell'app da guardare (come sulla web app).
-    @AppStorage("novitaVista") private var novitaVista = ""
-    @State private var novitaDaVedere = false
     /// Punto di partenza e arrivo della transizione a zoom tra una riga di giocatore e la sua scheda.
     @Namespace private var zoom
-
-    private func aggiornaBadge() {
-        // Prima installazione (o dopo l'uscita dall'account): non c'è niente di «nuovo» da vedere, si segna la versione attuale senza pallino.
-        if novitaVista.isEmpty, let v = modello.oggi.info.dato?.versione, !v.isEmpty, v != "?" { novitaVista = v }
-        let nuovo = modello.funzioni.stato.acceso(Funzione.novita) && modello.oggi.novitaDaVedere(ultimaVista: novitaVista) != nil
-        if nuovo != novitaDaVedere { novitaDaVedere = nuovo }
-    }
 
     var body: some View {
         TabView(selection: $nav.sezione) {
@@ -146,19 +135,15 @@ struct RadiceView: View {
                 } label: {
                     Label(s.titolo, systemImage: s.icona)
                 }
-                .badge(s == .altro && novitaDaVedere ? 1 : 0)
+                // niente pallino sulle schede: le novità dell'app le annuncia una riga in Oggi, che porta ad Altro > Novità
             }
         }
         .tabViewStyle(.sidebarAdaptable)
-        .onAppear { aggiornaBadge(); apriPaginaRichiesta() }
-        .onChange(of: novitaVista) { _, _ in aggiornaBadge() }
+        .onAppear { apriPaginaRichiesta() }
         .onChange(of: nav.paginaDaAprire) { _, _ in apriPaginaRichiesta() }
-        .onReceive(modello.oggi.objectWillChange) { _ in DispatchQueue.main.async { aggiornaBadge() } }
-        .onReceive(modello.funzioni.objectWillChange) { _ in DispatchQueue.main.async { aggiornaBadge() } }
         .barraSchedeCheSiRiduce()
         // Il conto alla rovescia sta nell'intestazione di Oggi (e nel widget): sotto la barra delle schede faceva due barre sovrapposte.
         .tint(Color.verde)
-        .id(accento)
         .preferredColorScheme(tema == "chiaro" ? ColorScheme.light : tema == "scuro" ? ColorScheme.dark : nil)
         .transaction { if animazioniRidotte { $0.animation = nil } }
         .environment(\.server, modello.server)
@@ -183,7 +168,7 @@ struct RadiceView: View {
         .sheet(isPresented: $nav.impostazioniAperte) {
             ImpostazioniView(vm: modello.lega, funzioni: modello.funzioni)
                 .tint(Color.verde)
-                // Su iPad un foglio ampio: Sotto il cofano ha l'indice a sinistra solo se c'è spazio.
+                // Su iPad un foglio ampio, come le Impostazioni di sistema.
                 .presentationSizing(.page)
         }
         .sheet(item: $nav.immagineRicevuta) { r in
@@ -201,12 +186,19 @@ struct RadiceView: View {
         }
         .onAppear { if nav.fileDaImportare != nil { vaiAllImportazione() } }
         .task { await Aggiornamento.riprogrammaScadenza() }   // a ogni apertura
+        .task { await tornaAllIconaPrincipale() }
         .task { await Immagini.condivise.caricaElenchi() }    // chi ha la foto, stemmi e maglie delle squadre
         .task { await modello.funzioni.carica() }             // quali funzioni sono accese (se non risponde: tutte)
         .onReceive(NotificationCenter.default.publisher(for: .aggiornaTutto)) { _ in
             Task { await Immagini.condivise.caricaElenchi() }
             Task { await modello.funzioni.carica() }
         }
+    }
+
+    /// L'icona dell'app è una sola: chi ne aveva scelta un'altra (versioni vecchie) torna a quella principale.
+    private func tornaAllIconaPrincipale() async {
+        guard !Demo.attivo, UIApplication.shared.supportsAlternateIcons, UIApplication.shared.alternateIconName != nil else { return }
+        try? await UIApplication.shared.setAlternateIconName(nil)
     }
 
     private func vaiAllImportazione() {

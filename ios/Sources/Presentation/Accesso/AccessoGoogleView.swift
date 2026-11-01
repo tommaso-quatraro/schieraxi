@@ -132,8 +132,9 @@ struct AccessiSezione: View {
             Section {
                 if let a = sessione.accessi {
                     RigaValore(titolo: "Password", valore: a.password == true ? "Impostata" : (a.password == false ? "Non impostata" : "Non so"))
-                    if let g = a.google {
-                        RigaValore(titolo: "Google", valore: g.email ?? "Collegato")
+                    if a.google != nil {
+                        // l'email di Google sta già in «Il tuo account»: qui basta dire che è collegato
+                        RigaValore(titolo: "Google", valore: "Collegato")
                         if a.puoScollegareGoogle {
                             Button(role: .destructive) { chiediScollega = true } label: {
                                 Label("Scollega Google", systemImage: "minus.circle").frame(minHeight: Tema.areaTocco)

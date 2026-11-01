@@ -386,8 +386,10 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
     /// Cosa dice il pulsante («Sostituisci», «Vedi»...).
     let azione: String?
     let destinazione: DestinazioneDaFare?
+    /// Perché te lo consiglia, in una frase breve (facoltativo).
+    let motivo: String?
 
-    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione }
+    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione, motivo }
 
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
@@ -400,9 +402,11 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
         priorita = try? k.decodeIfPresent(Int.self, forKey: .priorita)
         azione = try? k.decodeIfPresent(String.self, forKey: .azione)
         destinazione = try? k.decodeIfPresent(DestinazioneDaFare.self, forKey: .destinazione)
+        motivo = (try? k.decodeIfPresent(String.self, forKey: .motivo)) ?? nil
     }
 
-    init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil) {
+    init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil, motivo: String? = nil) {
+        self.motivo = motivo
         self.id = id; self.tipo = tipo; self.testo = testo; self.priorita = priorita; self.azione = azione; self.destinazione = destinazione
     }
 }

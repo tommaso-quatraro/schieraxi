@@ -62,6 +62,10 @@ struct OggiView: View {
             .navigationTitle("Oggi")
             .ricercaGlobale()
             .task { await vm.carica() }
+            // Prima installazione (o dopo l'uscita dall'account): non c'è niente di «nuovo» da vedere, si segna la versione attuale senza riga.
+            .onChange(of: vm.info.dato?.versione, initial: true) { _, v in
+                if novitaVista.isEmpty, let v, !v.isEmpty, v != "?" { novitaVista = v }
+            }
             // Risultati in diretta: solo con la schermata visibile e l'app in primo piano (il lavoro si annulla da solo quando
             // la schermata sparisce) e riparte quando arriva la giornata o cambia.
             .task(id: "\(fase == .active)-\(vm.oggi?.giornata ?? 0)-\(funzioni.acceso(Funzione.live))") {
@@ -271,6 +275,11 @@ struct OggiView: View {
                     .foregroundStyle(Color.verde)
                 }
             }
+        } else if oggi.daFare != nil {
+            Text("Nessuna azione utile oggi")
+                .font(.footnote).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 4)
         }
     }
 
@@ -280,7 +289,12 @@ struct OggiView: View {
                 .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : .secondary)
                 .frame(width: latoIcona)
                 .accessibilityHidden(true)
-            Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                if let m = c.motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty {
+                    Text(m).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Spacer(minLength: 6)
             if let d = c.destinazione?.destinazione {
                 Button(c.azione ?? "Apri") { vaiA(d, tipo: c.tipo) }

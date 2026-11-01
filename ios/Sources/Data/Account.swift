@@ -33,6 +33,8 @@ struct RispostaAccount: Decodable {
     /// Email dell'account e indirizzo ancora da verificare (il server li manda con gli account accesi; facoltativi e letti con tolleranza).
     var email: String?
     var emailInAttesa: String?
+    /// Da dove viene `email`: "account" o "google" (facoltativo: un server più vecchio non lo manda).
+    var emailOrigine: String?
     /// Registrazione con email: l'account non c'è ancora, serve il codice arrivato per posta e questo segreto dell'iscrizione.
     var verificaEmail: Bool?
     var iscrizione: String?
@@ -40,7 +42,7 @@ struct RispostaAccount: Decodable {
     var social: [String]?
     var accessi: AccessiAccount?
 
-    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, verificaEmail, iscrizione, social, accessi }
+    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, emailOrigine, verificaEmail, iscrizione, social, accessi }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -50,6 +52,7 @@ struct RispostaAccount: Decodable {
         codiceRecupero = try c.decodeIfPresent(String.self, forKey: .codiceRecupero)
         email = (try? c.decodeIfPresent(String.self, forKey: .email)) ?? nil
         emailInAttesa = (try? c.decodeIfPresent(String.self, forKey: .emailInAttesa)) ?? nil
+        emailOrigine = (try? c.decodeIfPresent(String.self, forKey: .emailOrigine)) ?? nil
         verificaEmail = (try? c.decodeIfPresent(Bool.self, forKey: .verificaEmail)) ?? nil
         iscrizione = (try? c.decodeIfPresent(String.self, forKey: .iscrizione)) ?? nil
         social = ((try? c.decodeIfPresent([String].self, forKey: .social)) ?? nil)
@@ -75,15 +78,6 @@ enum RegoleAccount {
     /// Il nome utente come lo vuole il server: minuscolo, senza spazi ai lati.
     static func pulisciNome(_ testo: String) -> String {
         testo.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-
-    /// Cambiare le maiuscole del nome: il nome per accedere resta lo stesso (cambiano solo maiuscole e minuscole).
-    /// nil se va bene, altrimenti cosa non va.
-    static func problemaMaiuscole(_ nuovo: String, nomeUtente: String) -> String? {
-        let pulito = nuovo.trimmingCharacters(in: .whitespacesAndNewlines)
-        if pulito.isEmpty { return "Scrivi il nome." }
-        if pulito.lowercased() != nomeUtente.lowercased() { return "Si possono cambiare solo le maiuscole: le lettere devono restare le stesse." }
-        return nil
     }
 
     /// Controllo leggero di un indirizzo email (l'ultima parola è del server).
@@ -166,10 +160,6 @@ private struct CorpoSoloPassword: Encodable {
     let password: String
 }
 
-private struct CorpoNomeUtente: Encodable {
-    let nomeUtente: String
-    enum CodingKeys: String, CodingKey { case nomeUtente = "nome_utente" }
-}
 
 private struct CorpoEmail: Encodable {
     let email: String
@@ -249,6 +239,8 @@ final class SessioneAccount: ObservableObject {
     /// Email dell'account (verificata) e indirizzo in attesa di verifica: dal server, solo con gli account accesi.
     @Published private(set) var email: String?
     @Published private(set) var emailInAttesa: String?
+    /// "google" se `email` è quella di Google (il server la dà quando l'account non ne ha una sua).
+    @Published private(set) var emailOrigine: String?
     /// Come si entra in questo account (password, Google): dal server, solo se Google è acceso.
     @Published private(set) var accessi: AccessiAccount?
     /// true se l'app ha appena lasciato un vecchio server per quello nuovo: la schermata Accedi lo spiega, finché non si rientra.
@@ -355,6 +347,7 @@ final class SessioneAccount: ObservableObject {
                 if let u = r.utente {
                     email = r.email
                     emailInAttesa = r.emailInAttesa
+                    emailOrigine = r.emailOrigine
                     ServiziSociali.salva(ServiziSociali.pulisci(r.social), in: memoria)
                     accessi = ServiziSociali.googleAcceso(in: memoria) ? r.accessi : nil
                     imposta(.connesso(u))
@@ -552,15 +545,6 @@ final class SessioneAccount: ObservableObject {
         chiudiLocale()
     }
 
-    /// Chiude le sessioni di tutti i dispositivi (compreso questo).
-    func esciDaTutti() async throws {
-        try inizia()
-        defer { inCorso = false }
-        await TokenWidget.revoca(server: server)
-        _ = try await server.corpoJSON("POST", "/api/account/esci-da-tutti", [String: String]())
-        chiudiLocale()
-    }
-
     func cambiaPassword(attuale: String, nuova: String) async throws {
         try inizia()
         defer { inCorso = false }
@@ -574,17 +558,6 @@ final class SessioneAccount: ObservableObject {
         let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/codice-recupero", CorpoSoloPassword(password: password)) }
         guard let codice = r.codiceRecupero, Accesso.codiceRecuperoValido(codice) else { throw Errore.rispostaNonValida }
         return codice
-    }
-
-    /// Cambia le maiuscole del nome (il nome per accedere non cambia).
-    func cambiaMaiuscole(_ nuovo: String) async throws {
-        try inizia()
-        defer { inCorso = false }
-        let r: RispostaAccount = try await conTraduzione {
-            try await server.posta("PUT", "/api/account/nome", CorpoNomeUtente(nomeUtente: nuovo.trimmingCharacters(in: .whitespacesAndNewlines)))
-        }
-        guard let u = r.utente, u.nomeUtente.count <= 100 else { throw Errore.serverNonValido }
-        imposta(.connesso(u))
     }
 
     /// Chiede al server di verificare un indirizzo email: arriva un codice a quell'indirizzo. La risposta è sempre la stessa.
@@ -623,6 +596,17 @@ final class SessioneAccount: ObservableObject {
 
     /// Entra solo con Google: non ha una password. Per le azioni delicate il server chiede una riconferma con Google, non la password.
     var senzaPassword: Bool { accessi?.soloGoogle ?? false }
+
+    /// Google è collegato a questo account (solo se il server ha Google acceso e ce l'ha detto).
+    var googleCollegato: Bool { accessi?.google != nil || emailOrigine == "google" }
+
+    /// L'email mostrata viene da Google (nota «da Google»).
+    var emailDaGoogle: Bool { emailOrigine == "google" || (email == nil && emailInAttesa == nil && accessi?.google?.email != nil) }
+
+    /// L'email da mostrare in «Il tuo account»: quella dell'account o, se manca, quella di Google.
+    var emailMostrata: String? {
+        ProfiloAccount.email(account: email, inAttesa: emailInAttesa, google: accessi?.google?.email)
+    }
 
     /// Il campo password delle azioni delicate: chi non ha una password manda un segnaposto (il server guarda la riconferma recente).
     private func passwordPerServer(_ scritta: String) -> String { senzaPassword ? "google" : scritta }

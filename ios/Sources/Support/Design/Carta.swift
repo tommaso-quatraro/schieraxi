@@ -6,7 +6,7 @@ struct Carta<Contenuto: View>: View {
     let titolo: String?
     let simbolo: String?
     let contenuto: Contenuto
-    /// Lega > Aspetto > Densità: «compatta» stringe i margini delle schede (le aree di tocco restano da 44 pt).
+    /// Densità: «compatta» (sempre, dal 1/11/2026 non si sceglie più) stringe i margini delle schede (le aree di tocco restano da 44 pt).
     @AppStorage("densita") private var densita = "compatta"
 
     init(_ titolo: String? = nil, simbolo: String? = nil, @ViewBuilder contenuto: () -> Contenuto) {

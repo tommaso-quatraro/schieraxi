@@ -111,13 +111,10 @@ extension Demo {
         case "oggi":
             nav.sezione = .oggi
         case "guida":
-            // la configurazione guidata (si riapre dalle Impostazioni): in demo mostra i passi non ancora fatti
+            // la configurazione guidata: in demo mostra i passi non ancora fatti
             nav.guidaAperta = true
-        case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate":
-            // le Impostazioni (la pagina «Licenze e crediti» si apre da sola con impostazioni-crediti)
-            nav.impostazioniAperte = true
-        case "impostazioni-cofano":
-            // le Impostazioni si aprono sulla pagina «Sotto il cofano» (la apre ImpostazioniView da sola)
+        case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate", "impostazioni-aspetto":
+            // le Impostazioni (le pagine «Licenze e crediti», «Avanzate» e «Aspetto» le apre da sola ImpostazioniView)
             nav.impostazioniAperte = true
 
         case "formazione":
@@ -205,8 +202,6 @@ extension Demo {
             apriLega(nav, modello, [.avvisi])
         case "lega-diario":
             apriLega(nav, modello, [.diario])
-        case "lega-backup":
-            apriLega(nav, modello, [.backup])
         case "lega-novita":
             apriLega(nav, modello, [.novita])
         case "lega-importa":
@@ -222,10 +217,6 @@ extension Demo {
             apriLega(nav, modello, [.movimenti])
         case "lega-stagione":
             apriLega(nav, modello, [.stagione])
-        case "lega-aspetto":
-            apriLega(nav, modello, [.aspetto])
-        case "lega-icona":
-            apriLega(nav, modello, [.icona])
         case "ricerca":
             nav.sezione = .oggi
         default:

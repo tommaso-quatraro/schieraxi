@@ -10,6 +10,7 @@ struct SchieraxiApp: App {
     @Environment(\.scenePhase) private var fase
 
     init() {
+        OpzioniTolte.pulisci()   // colore, densità e sezione iniziale non si scelgono più: si torna ai valori normali
         Suggerimenti.configura()
     }
 
