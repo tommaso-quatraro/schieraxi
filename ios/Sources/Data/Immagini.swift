@@ -99,8 +99,9 @@ final class Immagini: ObservableObject {
         inCorso.insert(chiave)
         defer { inCorso.remove(chiave) }
         let indirizzo = attivo.indirizzo
-        // Prima il disco: si vede subito anche con il server spento.
-        if let copia = await Cache.leggi(chiave, indirizzo: indirizzo, cartella: "img"), let img = UIImage(data: copia.dati) {
+        // Prima il disco: si vede subito anche con il server spento. Il nome su disco è l'indirizzo SENZA il numero di edizione
+        // (che riparte da zero a ogni apertura): con il numero dentro, dopo un riavvio tornava lo stemma vecchio.
+        if let copia = await Cache.leggi(percorso, indirizzo: indirizzo, cartella: "img"), let img = UIImage(data: copia.dati) {
             memoria.setObject(img, forKey: chiave as NSString)
             versione += 1
             return
@@ -109,7 +110,7 @@ final class Immagini: ObservableObject {
             let dati = try await attivo.binario(percorso)
             guard let img = UIImage(data: dati) else { senzaImmagine.insert(chiave); return }
             memoria.setObject(img, forKey: chiave as NSString)
-            Cache.salva(dati, chiave, indirizzo: indirizzo, cartella: "img")
+            Cache.salva(dati, percorso, indirizzo: indirizzo, cartella: "img")
             versione += 1
         } catch {
             // 404 o rete: per una foto mancante basta non riprovare in questa sessione.
@@ -123,6 +124,7 @@ final class Immagini: ObservableObject {
     func invia(_ dati: Data, squadra: String, tipo: String) async throws {
         let percorso = Self.percorsoSquadra(squadra, tipo: tipo)
         _ = try await attivo.carica(percorso, nome: "immagine.jpg", dati: dati)
+        Cache.rimuovi(percorso, indirizzo: attivo.indirizzo, cartella: "img")   // la copia su disco è quella vecchia
         edizione += 1   // le copie in memoria della squadra non valgono più (nuova chiave)
         await caricaElenchi()
         versione += 1
@@ -132,6 +134,7 @@ final class Immagini: ObservableObject {
     func inviaDaIndirizzo(_ indirizzo: String, squadra: String, tipo: String) async throws {
         guard let url = IndirizzoImmagine.pulito(indirizzo) else { throw ErroreImmagine.indirizzoNonValido }
         _ = try await attivo.corpoJSON("POST", "/api/squadre/immagine/da-url", CorpoImmagineDaUrl(squadra: squadra, tipo: tipo, url: url))
+        Cache.rimuovi(Self.percorsoSquadra(squadra, tipo: tipo), indirizzo: attivo.indirizzo, cartella: "img")   // la copia su disco è quella vecchia
         edizione += 1
         await caricaElenchi()
         versione += 1

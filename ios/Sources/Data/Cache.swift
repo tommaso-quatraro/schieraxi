@@ -56,6 +56,11 @@ enum Cache {
         }
     }
 
+    /// Toglie la copia su disco di un indirizzo (per esempio uno stemma appena cambiato).
+    static func rimuovi(_ percorso: String, indirizzo: String, cartella nome: String = "api") {
+        try? FileManager.default.removeItem(at: cartella(nome).appendingPathComponent(nomeFile(percorso, indirizzo)))
+    }
+
     /// I dati salvati e il momento in cui sono stati scaricati.
     static func leggi(_ percorso: String, indirizzo: String, cartella nome: String = "api") async -> (dati: Data, data: Date)? {
         let url = cartella(nome).appendingPathComponent(nomeFile(percorso, indirizzo))
