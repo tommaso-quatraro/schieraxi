@@ -87,7 +87,7 @@ final class RosaViewModel: ViewModelBase {
         defer { inCorso = false }
         do {
             try await Immagini.condivise.inviaDaIndirizzo(indirizzo, squadra: nome, tipo: tipo)
-            messaggio = tipo == "stemma" ? "Stemma aggiornato." : "Maglia aggiornata."
+            messaggio = tipo == "stemma" ? "Stemma aggiornato." : "Divisa aggiornata."
             Haptics.esito(riuscito: true)
         } catch {
             messaggio = error.localizedDescription
@@ -101,7 +101,7 @@ final class RosaViewModel: ViewModelBase {
         defer { inCorso = false }
         do {
             try await Immagini.condivise.invia(dati, squadra: nome, tipo: tipo)
-            messaggio = tipo == "stemma" ? "Stemma aggiornato." : "Maglia aggiornata."
+            messaggio = tipo == "stemma" ? "Stemma aggiornato." : "Divisa aggiornata."
             Haptics.esito(riuscito: true)
         } catch {
             messaggio = error.localizedDescription
@@ -273,7 +273,7 @@ struct RosaView: View {
         Section {
             HStack(spacing: 16) {
                 slot("stemma", "Stemma", $sceltaStemma)
-                slot("maglia", "Maglia", $sceltaMaglia)
+                slot("maglia", "Divisa", $sceltaMaglia)
             }
             .frame(maxWidth: .infinity)
             if let c = r.creditiResidui { Text("Crediti residui: \(Formato.intero(c))") }
@@ -309,8 +309,11 @@ struct RosaView: View {
             PhotosPicker(selection: scelta, matching: .images) {
                 Label(immagini.haImmagine(nome, tipo: tipo) ? "Cambia \(titolo.lowercased())" : "Carica \(titolo.lowercased())", systemImage: "photo")
                     .font(.footnote.weight(.semibold))
-                    .frame(minHeight: 44)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
             }
+            // due pulsanti nella stessa riga di una lista: senza questo un tocco li attiva come uno solo
+            .buttonStyle(.borderless)
         }
         .frame(maxWidth: .infinity)
     }

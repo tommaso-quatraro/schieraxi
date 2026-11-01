@@ -88,6 +88,8 @@ struct AvatarGiocatore: View {
     @Environment(\.accessibilityReduceMotion) private var ridotto
     /// I tratti di tutti i giocatori (versione 2): quando arrivano i volti si ridisegnano.
     @ObservedObject private var tratti = DepositoTratti.condiviso
+    /// 1 a misura normale; cresce con il testo grande (Dynamic Type), fino a 1,4 volte.
+    @ScaledMetric(relativeTo: .caption2) private var scalaTesto: CGFloat = 1
 
     private var spessore: CGFloat { max(2.5, dimensione / 16) }
     private var frazione: Double { min(1, max(0, (indice ?? 0) / 100)) }
@@ -111,7 +113,7 @@ struct AvatarGiocatore: View {
         .overlay(alignment: .bottomTrailing) {
             if conNumero, let indice {
                 Text("\(Formato.intero(indice))")
-                    .font(.system(size: max(9, dimensione * 0.24), weight: .heavy, design: .rounded))
+                    .font(.system(size: max(9, dimensione * 0.24) * min(scalaTesto, 1.4), weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
                     .padding(.horizontal, 4)

@@ -10,6 +10,8 @@ struct PedinaCampo: View {
     var apribile = false
     @Environment(\.apriGiocatore) private var apri
     @Environment(\.spazioZoom) private var zoom
+    /// 1 a misura normale; cresce con il testo grande (Dynamic Type), fino a 1,4 volte.
+    @ScaledMetric(relativeTo: .caption2) private var scalaTesto: CGFloat = 1
 
     private var incerto: Bool { g.titolarita != nil && g.titolarita != "titolare" }
 
@@ -30,7 +32,7 @@ struct PedinaCampo: View {
                 .overlay(Circle().strokeBorder(incerto ? Color.attenzione : Color.white.opacity(0.0), lineWidth: 3))
                 .overlay(alignment: .topTrailing) {
                     Text(Formato.punti(g.fvAtteso))
-                        .font(.system(size: max(10, diametro * 0.26), weight: .heavy, design: .rounded)).monospacedDigit()
+                        .font(.system(size: max(10, diametro * 0.26) * min(scalaTesto, 1.4), weight: .heavy, design: .rounded)).monospacedDigit()
                         .foregroundStyle(.black)
                         .padding(.horizontal, 4)
                         .background(Color.ruolo(g.ruolo), in: Capsule())

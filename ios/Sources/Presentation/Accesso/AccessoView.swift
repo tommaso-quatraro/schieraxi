@@ -267,10 +267,10 @@ struct SchermataAccesso: View {
             Toggle("Accetto i Termini d'uso e l'Informativa sulla privacy", isOn: $accetto)
                 .frame(minHeight: Tema.areaTocco)
             if let url = InformazioniLegali.indirizzo(.termini, server: IndirizzoServer.attuale) {
-                Link("Leggi i Termini d'uso", destination: url).frame(minHeight: Tema.areaTocco)
+                Link(destination: url) { Text("Leggi i Termini d'uso").frame(minHeight: Tema.areaTocco).contentShape(Rectangle()) }
             }
             if let url = InformazioniLegali.indirizzo(.privacy, server: IndirizzoServer.attuale) {
-                Link("Leggi l'Informativa sulla privacy", destination: url).frame(minHeight: Tema.areaTocco)
+                Link(destination: url) { Text("Leggi l'Informativa sulla privacy").frame(minHeight: Tema.areaTocco).contentShape(Rectangle()) }
             }
         }
         .font(.subheadline)
