@@ -16,11 +16,20 @@ enum Cache {
         return base
     }
 
+    /// Il percorso senza i parametri che cambiano da soli ogni giorno: `/api/oggi?certificato_giorni=5` e `...=4` sono la stessa
+    /// risposta. Con il numero nel nome del file la copia salvata ieri non si ritrovava più oggi, proprio quando il server non risponde.
+    static func percorsoStabile(_ percorso: String) -> String {
+        let pezzi = percorso.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        guard pezzi.count == 2 else { return percorso }
+        let altri = pezzi[1].split(separator: "&", omittingEmptySubsequences: true).filter { !$0.hasPrefix("certificato_giorni=") }
+        return altri.isEmpty ? String(pezzi[0]) : String(pezzi[0]) + "?" + altri.joined(separator: "&")
+    }
+
     /// Nome file stabile ricavato dall'indirizzo completo del server + percorso
     /// (hash FNV-1a a 64 bit: lo stesso testo dà sempre lo stesso nome; cambiando server la cache non si mescola).
     static func nomeFile(_ percorso: String, _ indirizzo: String) -> String {
         var h: UInt64 = 0xcbf29ce484222325
-        for byte in (indirizzo + percorso).utf8 {
+        for byte in (indirizzo + percorsoStabile(percorso)).utf8 {
             h ^= UInt64(byte)
             h = h &* 0x100000001b3
         }
