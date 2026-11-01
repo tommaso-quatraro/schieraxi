@@ -35,7 +35,9 @@ struct VistaDubbi: View {
 
     var body: some View {
         Group {
-            if let r = voce.riassunto {
+            if voce.widget?.acceso(FunzioneWidget.extra) == false {
+                spento
+            } else if let r = voce.riassunto {
                 if accessorio { rettangolare(r) } else { contenuto(r) }
             } else {
                 senzaDati
@@ -114,6 +116,18 @@ struct VistaDubbi: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// «Widget aggiuntivi» spenti dal server per questo utente: un messaggio breve, non un guasto.
+    private var spento: some View {
+        VStack(spacing: 4) {
+            Image(systemName: "moon.zzz")
+            Text("Widget spento").font(.caption.bold())
+            if !accessorio {
+                Text("Non è attivo per il tuo account. Usa Prossima giornata o Formazione.")
+                    .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+        }
     }
 
     private var senzaDati: some View {

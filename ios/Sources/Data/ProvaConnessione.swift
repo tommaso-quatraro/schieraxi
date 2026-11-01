@@ -142,6 +142,7 @@ enum ProvaConnessione {
         guard let base = pulisci(indirizzo), let url = URL(string: base + "/api/stato") else { return .indirizzoNonValido }
         var r = URLRequest(url: url, timeoutInterval: 8)
         r.setValue("1", forHTTPHeaderField: "X-Fanta")
+        LinguaServer.applica(&r)
         r.setValue("application/json", forHTTPHeaderField: "Accept")
         let token = archivio?.leggi(server: base)
         if let token, !token.isEmpty { r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }

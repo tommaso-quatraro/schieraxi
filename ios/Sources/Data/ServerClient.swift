@@ -193,6 +193,7 @@ struct ServerHTTP: ServerClient {
         let attesa: TimeInterval = percorso.hasPrefix("/api/scambi") ? 90 : (percorso.hasPrefix("/api/account/") ? 20 : 25)
         var r = URLRequest(url: url, timeoutInterval: attesa)
         r.setValue("1", forHTTPHeaderField: "X-Fanta")
+        LinguaServer.applica(&r)
         // Account: l'app nativa manda il token come «Bearer» (niente cookie). Il token non si scrive mai nei log.
         if let token, !token.isEmpty {
             r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

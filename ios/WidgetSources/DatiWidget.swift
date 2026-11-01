@@ -152,6 +152,7 @@ enum ScaricaOggi {
         guard let url = URL(string: indirizzo) else { return .errore }
         var richiesta = URLRequest(url: url, timeoutInterval: 15)
         richiesta.setValue("1", forHTTPHeaderField: "X-Fanta")
+        LinguaServer.applica(&richiesta)
         // La sessione dell'app (se il gruppo condiviso funziona): il token va solo all'indirizzo per cui è stato salvato.
         if let token { richiesta.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         do {

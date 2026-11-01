@@ -12,7 +12,7 @@ enum ErroreComando: Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .senzaFormazione: return "La formazione non è ancora disponibile."
-        case .senzaServer: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia raggiungibile."
+        case .senzaServer: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia acceso."
         case .senzaPartite: return "Non trovo la prossima partita della giornata."
         }
     }

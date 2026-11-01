@@ -108,6 +108,7 @@ targets:
       - path: Sources/Domain/Quando.swift
       - path: Sources/Domain/TempiLega.swift
       - path: Sources/Domain/Formato.swift
+      - path: Sources/Domain/LinguaServer.swift
       - path: Sources/Support/Condiviso.swift
       - path: Sources/Support/WidgetRiassunto.swift
       - path: Sources/Support/EventiPartita.swift
@@ -144,6 +145,7 @@ targets:
       - path: Sources/Domain/Quando.swift
       - path: Sources/Domain/TempiLega.swift
       - path: Sources/Domain/Formato.swift
+      - path: Sources/Domain/LinguaServer.swift
       - path: Sources/Support/Condiviso.swift
       - path: Sources/Support/WidgetRiassunto.swift
       - path: Sources/Support/EventiPartita.swift

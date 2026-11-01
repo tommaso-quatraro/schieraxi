@@ -146,6 +146,12 @@ struct DatiAggiornamentoWidget: Codable, Equatable {
     var ultimoAggiornamento: String?
 }
 
+/// Gli id delle funzioni che interessano ai widget (campo `funzioni` di `/api/widget`).
+enum FunzioneWidget {
+    /// «Widget aggiuntivi»: oltre a Prossima giornata e Formazione (qui: Da controllare).
+    static let extra = "widget_extra"
+}
+
 struct RiassuntoWidget: Decodable {
     var giornata: Int?
     /// Il numero nella lega (facoltativo: server vecchio, o lega non ancora partita).
@@ -171,6 +177,14 @@ struct RiassuntoWidget: Decodable {
     private var svincolatoLetto: Facoltativo<SvincolatoWidget>?
     private var liveLetto: Facoltativo<LiveWidget>?
     var mancano: [String]?
+    /// Quali funzioni sono accese per questo utente (facoltativo: un server vecchio non lo manda). Chiave assente = acceso.
+    var funzioni: [String: Bool]?
+
+    /// Vero se la funzione è accesa. Con `convertFromSnakeCase` anche le chiavi del dizionario diventano «widgetExtra»: si guardano entrambe.
+    func acceso(_ id: String) -> Bool {
+        let camelCase = id.split(separator: "_").enumerated().map { $0.offset == 0 ? String($0.element) : $0.element.capitalized }.joined()
+        return (funzioni?[id] ?? funzioni?[camelCase]) != false
+    }
 
     var scambio: ScambioWidget? { scambioLetto?.valore }
     var svincolato: SvincolatoWidget? { svincolatoLetto?.valore }
@@ -178,7 +192,7 @@ struct RiassuntoWidget: Decodable {
 
     enum CodingKeys: String, CodingKey {
         case giornata, giornataLega, primaPartita, scadenza, oreMancanti, iniziata, conProbabili, squadra, creditiResidui, formazione, avvisi, rosa
-        case squalificati, diffidati, rigoristi, diario, osservati, dati, mancano
+        case squalificati, diffidati, rigoristi, diario, osservati, dati, mancano, funzioni
         case scambioLetto = "scambio"
         case svincolatoLetto = "svincolato"
         case liveLetto = "live"
@@ -239,6 +253,7 @@ enum ScaricoWidget {
         guard let url = URL(string: base + "/api/widget") else { return .errore }
         var r = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         r.setValue("1", forHTTPHeaderField: "X-Fanta")
+        LinguaServer.applica(&r)
         r.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let etag, !etag.isEmpty { r.setValue(etag, forHTTPHeaderField: "If-None-Match") }
