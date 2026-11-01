@@ -5,6 +5,9 @@ import TipKit
 struct FormazioneView: View {
     @ObservedObject var vm: FormazioneViewModel
     @State private var daSostituire: Giocatore?
+    /// Dopo «Apri la scheda» nel foglio «Perché questo numero»: la scheda si apre quando il foglio si è chiuso.
+    @State private var schedaDopoPerche: Int?
+    @Environment(\.apriGiocatore) private var apriGiocatore
     @Namespace private var moduloNS
     @Namespace private var stileNS
     @Environment(\.funzioni) private var funzioni
@@ -51,12 +54,12 @@ struct FormazioneView: View {
                             Carta("Panchina", simbolo: "chair.lounge.fill") {
                                 Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(.secondary)
                                 ForEach(Array(v.panchina.enumerated()), id: \.element.id) { i, g in
-                                    RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true) }
+                                    RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true, perche: apriPerche) }
                                 }
                             }
                             .ingresso(5)
                             fuori(f, v)
-                            Text("Il numero è il fantavoto atteso se gioca. I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Anello arancio: non titolare sicuro. Anello attorno alla foto: indice (100 = il migliore del ruolo).")
+                            Text(Self.legenda(conPerche: f.titolari.contains { PercheNumero($0) != nil }))
                                 .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
@@ -104,8 +107,31 @@ struct FormazioneView: View {
             .sheet(item: $vm.anteprimaImmagine) { immagine in
                 AnteprimaImmagineSheet(elemento: immagine)
             }
+            .sheet(item: $vm.percheAperto, onDismiss: {
+                if let id = schedaDopoPerche {
+                    schedaDopoPerche = nil
+                    apriGiocatore(id)
+                }
+            }) { g in
+                PercheNumeroSheet(g: g) {
+                    schedaDopoPerche = g.id
+                    vm.percheAperto = nil
+                }
+            }
             .task { await vm.carica() }
         }
+    }
+
+    /// Il tocco sul numero di un giocatore: apre «Perché questo numero» con i dati già caricati.
+    private var apriPerche: (Giocatore) -> Void {
+        { g in vm.percheAperto = g }
+    }
+
+    /// La riga in fondo alla Formazione: cosa sono i numeri (e, con un server che manda i motivi, che si possono toccare).
+    static func legenda(conPerche: Bool) -> String {
+        "Il numero è il fantavoto atteso: quello che SchieraXI si aspetta dal giocatore se gioca, con le regole della tua lega."
+            + (conPerche ? " Toccalo per sapere perché." : "")
+            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Anello arancio: non titolare sicuro. Anello attorno alla foto: indice (100 = il migliore del ruolo)."
     }
 
     // MARK: un'altra squadra
@@ -137,7 +163,7 @@ struct FormazioneView: View {
         } else {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
-                    RigaGiocatore(g: g, apribile: true)
+                    RigaGiocatore(g: g, apribile: true, perche: apriPerche)
                     Button { vm.confrontoAperto = .scelta(g.id) } label: {
                         Image(systemName: "arrow.left.arrow.right").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                     }
@@ -188,7 +214,7 @@ struct FormazioneView: View {
             Carta {
                 DisclosureGroup("Fuori dalla formazione (\(altri.count))") {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(altri) { RigaGiocatore(g: $0, apribile: true) }
+                        ForEach(altri) { RigaGiocatore(g: $0, apribile: true, perche: apriPerche) }
                         if let senza = f.senzaDati, !senza.isEmpty {
                             Text("Senza dati per questa giornata: " + senza.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
                         }

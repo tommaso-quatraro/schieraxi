@@ -134,6 +134,17 @@ extension Demo {
                 try? await Task.sleep(nanoseconds: 400_000_000)
                 modello.formazione.confrontoAperto = .coppia(120, 123)
             }
+        case "formazione-perche":
+            // «Perché questo numero» di un titolare (meglio uno in dubbio: si vede anche «gioca N%»)
+            nav.sezione = .formazione
+            Task {
+                await modello.formazione.carica()
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                guard let f = modello.formazione.formazione else { return }
+                let conMotivi = f.titolari.filter { PercheNumero($0) != nil }
+                let inDubbio = conMotivi.first { PercheNumero($0)?.righe.contains { $0.verso == .avviso } == true }
+                modello.formazione.percheAperto = inDubbio ?? conMotivi.first
+            }
         case "formazione-immagine":
             nav.sezione = .formazione
             Task {

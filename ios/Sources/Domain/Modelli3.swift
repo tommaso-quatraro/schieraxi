@@ -5,7 +5,7 @@ import Foundation
 
 // MARK: - Confronto tra due giocatori
 
-/// Una causa del confronto («Probabilità di giocare», «Voto atteso»...): quanto pesa, in punti attesi, a favore di A (positivo) o di B.
+/// Una causa del confronto («Probabilità di giocare», «Voto in pagella atteso»...): quanto pesa, in punti attesi, a favore di A (positivo) o di B.
 struct FattoreConfronto: Decodable, Identifiable, Equatable {
     let chiave: String
     let etichetta: String

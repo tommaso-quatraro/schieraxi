@@ -214,7 +214,41 @@ private enum DatiDemo {
         if p.diffidato { d["diffidato"] = true }
         if p.assente { d["assente"] = true }
         if conProprietario, let o = proprietario(p.id) { d["proprietario"] = o }
+        if !p.assente { perche(p, in: &d) }
         return d
+    }
+
+    /// «Perché questo numero» come lo manda il server (`perche_numero`, `fv_atteso_medio_ruolo`): stesse frasi del server,
+    /// effetti in fantavoti rispetto al giocatore medio del ruolo, al massimo tre motivi.
+    static func perche(_ p: Calciatore, in d: inout [String: Any]) {
+        let fv = p.punti + 0.6 + (p.ruolo == "A" ? 0.5 : 0)
+        let medio = ["P": 6.0, "D": 6.1, "C": 6.4, "A": 7.0][p.ruolo] ?? 6.3
+        let casa = avversario(di: p.squadra)?.inCasa ?? true
+        let partita = Double(3 - difficolta(di: p.squadra)) * 0.15
+        let resto = fv - medio - partita
+        let arrotonda: (Double) -> Double = { ($0 * 100).rounded() / 100 }
+        var numerici: [(String, String, Double)] = [
+            ("partita", partita > 0 ? (casa ? "partita favorevole in casa" : "partita favorevole in trasferta")
+                                    : (casa ? "partita difficile in casa" : "partita difficile in trasferta"), partita),
+            ("voti", resto > 0 ? "voti sopra la media del ruolo" : "voti sotto la media del ruolo", resto * 0.4),
+        ]
+        if p.ruolo == "P" {
+            numerici.append(("porta", resto > 0 ? "buone chance di porta inviolata (34%)" : "poche chance di porta inviolata (34%)", resto * 0.6))
+        } else {
+            let pGol = Int((min(0.6, golAttesi(p) * 0.85) * 100).rounded())
+            numerici.append(("gol", resto > 0 ? "segna più della media del ruolo (\(pGol)% di segnare)" : "segna meno della media del ruolo", resto * 0.6))
+        }
+        var motivi: [[String: Any]] = []
+        if p.dubbio {
+            motivi.append(["chiave": "gioca", "testo": "gioca il 60%: dubbio", "effetto": NSNull()])
+        } else if p.pVoto < 0.8 {
+            let pct = Int((p.pVoto * 100).rounded())
+            motivi.append(["chiave": "gioca", "testo": "gioca il \(pct)%: " + (p.pVoto < 0.5 ? "probabile panchina" : "dubbio"), "effetto": NSNull()])
+        }
+        let scelti = numerici.filter { abs($0.2) >= 0.08 }.sorted { abs($0.2) > abs($1.2) }.prefix(3 - motivi.count)
+        motivi += scelti.map { t -> [String: Any] in ["chiave": t.0, "testo": t.1, "effetto": arrotonda(t.2)] }
+        d["perche_numero"] = motivi
+        d["fv_atteso_medio_ruolo"] = medio
     }
 
     /// Il momento di riferimento della demo (per le date delle partite nelle schede).
@@ -678,20 +712,33 @@ private enum DatiDemo {
             ["giornata": g, "modulo": modulo, "titolari": titolari(nomi), "panchina": titolari(["Mkhedrian", "Zelawski", "Orsetti"]),
              "atteso": atteso, "stile": "Equilibrato", "calcolata": ora]
         }
+        // «Quanto ci abbiamo preso»: punti attesi e fatti della consigliata (le stesse voci qui sotto), con la fascia.
+        func avf(_ atteso: Double, _ fatti: Double) -> [String: Any] {
+            let f = fascia(atteso)
+            let basso = f["basso"] as? Double ?? atteso, alto = f["alto"] as? Double ?? atteso
+            return ["riferimento": "consigliata", "atteso": atteso, "fatti": fatti, "scarto": ((fatti - atteso) * 10).rounded() / 10,
+                    "nella_fascia": basso <= fatti && fatti <= alto, "intervallo": ["basso": basso, "alto": alto]]
+        }
+        let affidabilita: [String: Any] = [
+            "giornate": 4, "scarto_medio": 3.4, "errore_medio": -0.4, "punti_medi_attesi": 67.4, "punti_medi_fatti": 67.0,
+            "dentro_fascia": 4, "con_fascia": 4, "percentuale_dentro": 100, "fascia_dichiarata": 80, "pochi_dati": true,
+            "giornate_minime": 8, "giudizio": "pochi_dati",
+        ]
         return json([
+            "affidabilita": affidabilita,
             "giornate": [
-                ["stagione": "2026-27", "giornata": 10,
+                ["stagione": "2026-27", "giornata": 10, "atteso_vs_fatto": avf(69.0, 72.5),
                  "consigliata": ["modulo": "3-4-3", "atteso": 69.0, "reale": 72.5, "intervallo": fascia(69.0), "titolari": titolari(base)],
                  "istantanea": istantanea(10, "3-4-3", base, atteso: 69.0, ora: "2026-10-31T10:05:00")],
-                ["stagione": "2026-27", "giornata": 9,
+                ["stagione": "2026-27", "giornata": 9, "atteso_vs_fatto": avf(68.5, 71.0),
                  "consigliata": ["modulo": "3-4-3", "atteso": 68.5, "reale": 71.0, "intervallo": fascia(68.5), "titolari": titolari(base)],
                  "istantanea": istantanea(9, "3-4-3", base, atteso: 68.5, ora: "2026-10-24T09:40:00"),
                  "schierata": ["modulo": "3-5-2", "atteso": 66.0, "reale": 63.5, "intervallo": fascia(66.0), "titolari": titolari(altra)]],
-                ["stagione": "2026-27", "giornata": 8,
+                ["stagione": "2026-27", "giornata": 8, "atteso_vs_fatto": avf(67.0, 64.0),
                  "consigliata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 64.0, "intervallo": fascia(67.0), "titolari": titolari(base)],
                  "istantanea": istantanea(8, "3-4-3", base, atteso: 67.0, ora: "2026-10-17T11:20:00"),
                  "schierata": ["modulo": "3-4-3", "atteso": 66.0, "reale": 59.5, "intervallo": fascia(66.0), "titolari": titolari(altra2)]],
-                ["stagione": "2026-27", "giornata": 7,
+                ["stagione": "2026-27", "giornata": 7, "atteso_vs_fatto": avf(65.0, 60.5),
                  "consigliata": ["modulo": "4-3-3", "atteso": 65.0, "reale": 60.5, "intervallo": fascia(65.0), "titolari": titolari(base)]],
             ],
             "sintesi": ["giornate": 2, "punti_schierata": 65.0, "punti_consigliata": 67.5, "attesi_schierata": 66.5,
@@ -723,7 +770,7 @@ private enum DatiDemo {
         let consigliato = a.punti >= b.punti ? a : b
         let fattori: [[String: Any]] = [
             ["chiave": "giocare", "etichetta": "Probabilità di giocare", "a": a.pVoto, "b": b.pVoto, "effetto": (a.pVoto - b.pVoto) * 4.0, "percentuale": true],
-            ["chiave": "voto", "etichetta": "Voto atteso", "a": 6.1, "b": 6.0, "effetto": 0.12, "percentuale": false],
+            ["chiave": "voto", "etichetta": "Voto in pagella atteso", "a": 6.1, "b": 6.0, "effetto": 0.12, "percentuale": false],
             ["chiave": "gol", "etichetta": "Gol attesi", "a": golAttesi(a), "b": golAttesi(b), "effetto": (golAttesi(a) - golAttesi(b)) * 3.0, "percentuale": false],
             ["chiave": "assist", "etichetta": "Assist attesi", "a": assistAttesi(a), "b": assistAttesi(b), "effetto": (assistAttesi(a) - assistAttesi(b)) * 1.2, "percentuale": false],
             ["chiave": "rigori", "etichetta": "Rigori", "a": 0.0, "b": 0.0, "effetto": 0.0, "percentuale": false],

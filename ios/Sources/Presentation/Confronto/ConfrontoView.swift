@@ -141,7 +141,7 @@ struct ConfrontoView: View {
                     riga("Avversario") { "\(ColoriSquadra.sigla($0.avversario)) \($0.inCasa == true ? "casa" : "fuori")" }
                     riga("Partita") { PillDifficolta.nome($0.difficolta) }
                     riga("Gioca") { "\(Formato.percento($0.pVoto))%" }
-                    riga("FV atteso se gioca") { Formato.punti($0.fvAtteso) }
+                    riga("Fantavoto atteso (se gioca)") { Formato.punti($0.fvAtteso) }
                     riga("Punti attesi") { Formato.decimali($0.puntiAttesi ?? 0, cifre: 2) }
                     riga("Parte titolare") { "\(Formato.percento($0.quotaTitolare))%" }
                     riga("Segna") { "\(Formato.percento($0.pGol))%" }

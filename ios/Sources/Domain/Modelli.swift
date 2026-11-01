@@ -51,6 +51,43 @@ struct Giocatore: Decodable, Identifiable {
     let motivi: [String]?
     /// Solo nella scheda del giocatore: la giornata a cui si riferisce la previsione.
     let giornata: Int?
+    /// «Perché questo numero» (facoltativo: i server più vecchi non lo mandano). Letto senza far fallire la scheda.
+    private let percheNumero: Tollerante<[Tollerante<MotivoNumero>]>?
+    /// Il fantavoto atteso del giocatore medio del suo ruolo (il riferimento dei motivi). Facoltativo.
+    private let fvAttesoMedioRuolo: Tollerante<Double>?
+
+    /// I motivi del fantavoto atteso, dal più pesante; nil se il server non li manda (server vecchio), vuoto se nessuno spicca.
+    var motiviNumero: [MotivoNumero]? {
+        guard let lista = percheNumero?.valore else { return nil }
+        return lista.compactMap(\.valore)
+    }
+
+    /// Il fantavoto atteso di un giocatore medio del ruolo, se il server lo manda ed è un numero vero.
+    var mediaRuolo: Double? {
+        guard let v = fvAttesoMedioRuolo?.valore, v.isFinite else { return nil }
+        return v
+    }
+}
+
+/// Un motivo del fantavoto atteso (`perche_numero`): `effetto` è in fantavoti rispetto a un giocatore medio del ruolo,
+/// nil per «gioca N%» (non cambia il fantavoto «se gioca»). Tollerante: un campo strano resta vuoto.
+struct MotivoNumero: Decodable, Equatable {
+    var chiave: String?
+    var testo: String?
+    var effetto: Double?
+
+    private enum Chiavi: String, CodingKey { case chiave, testo, effetto }
+
+    init(chiave: String? = nil, testo: String? = nil, effetto: Double? = nil) {
+        self.chiave = chiave; self.testo = testo; self.effetto = effetto
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        chiave = (try? k.decodeIfPresent(String.self, forKey: .chiave)) ?? nil
+        testo = (try? k.decodeIfPresent(String.self, forKey: .testo)) ?? nil
+        effetto = (try? k.decodeIfPresent(Double.self, forKey: .effetto)) ?? nil
+    }
 }
 
 struct GiocatoreBreve: Decodable, Identifiable, Hashable {

@@ -34,6 +34,8 @@ final class FormazioneViewModel: ViewModelBase {
     @Published var confrontoAperto: ConfrontoSheet.Inizio?
     /// L'immagine della formazione, pronta da condividere.
     @Published var anteprimaImmagine: ImmagineCondivisa?
+    /// Il giocatore di cui si guarda «Perché questo numero» (tocco sul fantavoto atteso).
+    @Published var percheAperto: Giocatore?
 
     /// Giornata a cui si riferisce la modifica a mano: se cambia, si riparte da zero.
     private var giornata: Int?

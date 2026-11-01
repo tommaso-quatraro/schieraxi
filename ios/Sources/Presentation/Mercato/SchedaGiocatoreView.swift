@@ -53,6 +53,8 @@ struct GiocatoreCorpo: View {
     @Binding var percorso: [PassoScheda]
     @Environment(\.dynamicTypeSize) private var tagliaTesto
     @Environment(\.funzioni) private var funzioni
+    /// Il fantavoto atteso è il «numero eroe» della scheda: grande, ma segue Dynamic Type.
+    @ScaledMetric(relativeTo: .largeTitle) private var misuraNumero: CGFloat = 54
 
     init(id: Int, server: any ServerClient, percorso: Binding<[PassoScheda]>) {
         self.id = id
@@ -67,7 +69,12 @@ struct GiocatoreCorpo: View {
                 Colonne(spazio: 14) {
                     if let s = vm.caricatore.dato {
                         intestazione(s).ingresso(0)
-                        if let p = s.previsione { previsione(p, ruolo: s.calciatore.ruolo).ingresso(1) } else { senzaPrevisione }
+                        if let p = s.previsione {
+                            previsione(p, ruolo: s.calciatore.ruolo).ingresso(1)
+                            perche(p)
+                        } else {
+                            senzaPrevisione
+                        }
                         prossime.ingresso(2)
                         forma(s).ingresso(3)
                         rendimento(s)
@@ -156,8 +163,10 @@ struct GiocatoreCorpo: View {
             Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 0) {
-                    NumeroCheSale(valore: p.fvAtteso ?? 0).font(.system(size: 44, weight: .bold, design: .rounded))
-                    Text("fantavoto atteso").font(.caption).foregroundStyle(.secondary)
+                    NumeroCheSale(valore: p.fvAtteso ?? 0)
+                        .font(.system(size: min(misuraNumero, 110), weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.verde)
+                    Text(FantavotoAtteso.nome + " · se gioca").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 0) {
@@ -165,7 +174,8 @@ struct GiocatoreCorpo: View {
                     Text("gioca").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(FantavotoAtteso.nome) \(Formato.punti(p.fvAtteso)) se gioca. Gioca al \(Formato.percento(p.pVoto)) per cento.")
             BarraPercentuale(valore: p.pVoto ?? 0)
             HStack {
                 PillDifficolta(difficolta: p.difficolta)
@@ -187,6 +197,20 @@ struct GiocatoreCorpo: View {
                     TesseraDato(valore: "\(Formato.percento(p.pRosso))%", etichetta: "rosso")
                 }
             }
+        }
+    }
+
+    /// «Perché questo numero»: i motivi del fantavoto atteso (solo se il server li manda) e la definizione.
+    @ViewBuilder
+    private func perche(_ p: Giocatore) -> some View {
+        if let motivi = PercheNumero(p) {
+            Carta(PercheNumero.titolo, simbolo: "list.bullet.rectangle") {
+                BloccoPercheNumero(perche: motivi)
+                Text(FantavotoAtteso.definizione)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .ingresso(1)
         }
     }
 

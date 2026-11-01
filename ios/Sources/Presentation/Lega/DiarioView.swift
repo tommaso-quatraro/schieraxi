@@ -93,6 +93,13 @@ struct DiarioView: View {
                         Text("Per ogni giornata finita: i punti fatti (\"attesi\" = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
+                    if let t = TestoAffidabilita(d.affidabilita) {
+                        Section {
+                            QuantoCiAbbiamoPresoView(testo: t, punti: PuntoAttesoFatto.elenco(d.giornate ?? []))
+                        } header: {
+                            Text(TestoAffidabilita.titolo)
+                        }
+                    }
                     if let s = d.sintesi, (s.giornate ?? 0) > 0 { sintesi(s) }
                     if let t = ScelteTueTesto(d.scelteTue) {
                         Section {
@@ -176,6 +183,12 @@ struct DiarioView: View {
             }
             if let c = v.consigliata {
                 riga(v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(c.modulo ?? "–"))" : "Di SchieraXI (\(c.modulo ?? "–"))", c)
+            }
+            if let p = PuntoAttesoFatto(giornata: v.giornata, v.attesoVsFatto), p.dentro != nil {
+                Label(p.frase, systemImage: p.dentro == true ? "checkmark.circle" : "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(p.dentro == true ? Color.secondary : Color.attenzione)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         } header: {
             Text("Giornata \(v.giornata ?? 0)" + (v.stagione.map { " · \($0)" } ?? ""))

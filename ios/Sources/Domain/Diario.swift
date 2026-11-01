@@ -7,6 +7,8 @@ struct DiarioRisposta: Decodable {
     let sintesi: SintesiDiario?
     /// Facoltativo: i server più vecchi non lo mandano.
     let scelteTue: ScelteTue?
+    /// «Quanto ci abbiamo preso» (facoltativo: i server più vecchi non lo mandano; tollerante).
+    let affidabilita: AffidabilitaDiario?
 }
 
 struct VoceDiario: Decodable, Identifiable {
@@ -17,10 +19,12 @@ struct VoceDiario: Decodable, Identifiable {
     let schierata: FormazioneDiario?
     /// Facoltativo: la formazione che SchieraXI consigliava davvero prima della giornata. `null` o assente = non registrata.
     let istantanea: IstantaneaDiario?
+    /// Facoltativo: punti attesi contro punti fatti della consigliata, con la fascia (server nuovi).
+    let attesoVsFatto: AttesoVsFatto?
 
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
 
-    private enum Chiavi: String, CodingKey { case stagione, giornata, consigliata, schierata, istantanea }
+    private enum Chiavi: String, CodingKey { case stagione, giornata, consigliata, schierata, istantanea, attesoVsFatto }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Chiavi.self)
@@ -30,6 +34,7 @@ struct VoceDiario: Decodable, Identifiable {
         schierata = try? c.decodeIfPresent(FormazioneDiario.self, forKey: .schierata)
         // Un'istantanea in un formato che non conosco vale come «non registrata»: il resto del Diario si legge lo stesso.
         istantanea = try? c.decodeIfPresent(IstantaneaDiario.self, forKey: .istantanea)
+        attesoVsFatto = (try? c.decodeIfPresent(AttesoVsFatto.self, forKey: .attesoVsFatto)) ?? nil
     }
 
     /// Il confronto «Cosa consigliava SchieraXI» contro «Cosa hai schierato»; `nil` se non c'è nessuna formazione consigliata da mostrare.
@@ -73,6 +78,89 @@ struct SintesiDiario: Decodable {
     let attesiSchierata: Double?
     let meglioTua: Int?
     let meglioConsigliata: Int?
+}
+
+/// Legge un numero senza far fallire niente: un tipo sbagliato o un numero non finito valgono «manca».
+private func numeroDiario<K: CodingKey>(_ c: KeyedDecodingContainer<K>, _ chiave: K) -> Double? {
+    guard let v = (try? c.decodeIfPresent(Double.self, forKey: chiave)) ?? nil, v.isFinite else { return nil }
+    return v
+}
+
+/// Punti attesi contro punti fatti della formazione consigliata in una giornata (`atteso_vs_fatto` di `GET /api/diario`).
+/// Tollerante: se manca qualcosa resta vuoto e la riga non si mostra.
+struct AttesoVsFatto: Decodable, Equatable {
+    var atteso: Double?
+    var fatti: Double?
+    /// Fatti meno attesi: positivo = meglio del previsto.
+    var scarto: Double?
+    /// nil se la fascia non c'era.
+    var nellaFascia: Bool?
+    var intervallo: IntervalloPunti?
+
+    private enum Chiavi: String, CodingKey { case atteso, fatti, scarto, nellaFascia, intervallo }
+
+    init(atteso: Double? = nil, fatti: Double? = nil, scarto: Double? = nil, nellaFascia: Bool? = nil, intervallo: IntervalloPunti? = nil) {
+        self.atteso = atteso; self.fatti = fatti; self.scarto = scarto; self.nellaFascia = nellaFascia; self.intervallo = intervallo
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        atteso = numeroDiario(k, .atteso)
+        fatti = numeroDiario(k, .fatti)
+        scarto = numeroDiario(k, .scarto)
+        nellaFascia = (try? k.decodeIfPresent(Bool.self, forKey: .nellaFascia)) ?? nil
+        intervallo = (try? k.decodeIfPresent(IntervalloPunti.self, forKey: .intervallo)) ?? nil
+    }
+}
+
+/// «Quanto ci abbiamo preso» (`affidabilita` di `GET /api/diario`): tutte le giornate, anche quelle andate male.
+/// Tollerante: un campo strano resta vuoto, senza rompere il Diario.
+struct AffidabilitaDiario: Decodable, Equatable {
+    var giornate: Int?
+    var scartoMedio: Double?
+    var erroreMedio: Double?
+    var puntiMediAttesi: Double?
+    var puntiMediFatti: Double?
+    var dentroFascia: Int?
+    var conFascia: Int?
+    var percentualeDentro: Double?
+    /// Quante volte su 100 i punti dovrebbero cadere nella fascia (80).
+    var fasciaDichiarata: Double?
+    var pochiDati: Bool?
+    var giornateMinime: Int?
+    /// `pochi_dati`, `in_linea`, `sotto_le_attese`, `sopra_le_attese` (un server più nuovo può aggiungerne).
+    var giudizio: String?
+
+    private enum Chiavi: String, CodingKey {
+        case giornate, scartoMedio, erroreMedio, puntiMediAttesi, puntiMediFatti, dentroFascia, conFascia, percentualeDentro
+        case fasciaDichiarata, pochiDati, giornateMinime, giudizio
+    }
+
+    init(giornate: Int? = nil, scartoMedio: Double? = nil, erroreMedio: Double? = nil, puntiMediAttesi: Double? = nil, puntiMediFatti: Double? = nil,
+         dentroFascia: Int? = nil, conFascia: Int? = nil, percentualeDentro: Double? = nil, fasciaDichiarata: Double? = nil,
+         pochiDati: Bool? = nil, giornateMinime: Int? = nil, giudizio: String? = nil) {
+        self.giornate = giornate; self.scartoMedio = scartoMedio; self.erroreMedio = erroreMedio
+        self.puntiMediAttesi = puntiMediAttesi; self.puntiMediFatti = puntiMediFatti
+        self.dentroFascia = dentroFascia; self.conFascia = conFascia; self.percentualeDentro = percentualeDentro
+        self.fasciaDichiarata = fasciaDichiarata; self.pochiDati = pochiDati; self.giornateMinime = giornateMinime; self.giudizio = giudizio
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        let intero: (Chiavi) -> Int? = { chiave in numeroDiario(k, chiave).map { Formato.intero($0) } }
+        giornate = intero(.giornate)
+        scartoMedio = numeroDiario(k, .scartoMedio)
+        erroreMedio = numeroDiario(k, .erroreMedio)
+        puntiMediAttesi = numeroDiario(k, .puntiMediAttesi)
+        puntiMediFatti = numeroDiario(k, .puntiMediFatti)
+        dentroFascia = intero(.dentroFascia)
+        conFascia = intero(.conFascia)
+        percentualeDentro = numeroDiario(k, .percentualeDentro)
+        fasciaDichiarata = numeroDiario(k, .fasciaDichiarata)
+        pochiDati = (try? k.decodeIfPresent(Bool.self, forKey: .pochiDati)) ?? nil
+        giornateMinime = intero(.giornateMinime)
+        giudizio = (try? k.decodeIfPresent(String.self, forKey: .giudizio)) ?? nil
+    }
 }
 
 /// Il file di backup scaricato dal server o scelto per il ripristino: controlli fatti sul telefono PRIMA di inviare.
