@@ -367,7 +367,7 @@ final class SessioneAccount: ObservableObject {
             // Gli account ci sono e la sessione no (scaduta, chiusa da un altro dispositivo, o mai fatta).
             sessioneFinita(daServer: server.indirizzo, impronta: nil)
         } catch {
-            // Server spento o rete privata non attivo: l'app resta com'è (con i dati salvati).
+            // Server spento o rete non raggiungibile: l'app resta com'è (con i dati salvati).
         }
     }
 

@@ -143,6 +143,7 @@ struct SchermataAccesso: View {
         // Solo per le fotografie (-DEMO_ACCESSO rete | limite | non-valido): prova da sola ad accedere per mostrare l'errore.
         .task {
             guard Demo.accessoAutomatico else { return }
+            // Account e password finti: servono solo alla prova locale con dati demo, non esistono su nessun server.
             nome = "mister.rossi"
             password = "Tre-Quarti-Dieci"
             try? await Task.sleep(nanoseconds: 600_000_000)

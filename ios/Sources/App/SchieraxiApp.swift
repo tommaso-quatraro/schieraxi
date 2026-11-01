@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreSpotlight
 
-/// SchieraXI nativa per iPhone/iPad: SwiftUI puro, parla con il server sul server (rete privata acceso) e usa le funzioni di iOS.
+/// SchieraXI nativa per iPhone/iPad: SwiftUI puro, parla con il server (serve la rete, anche privata) e usa le funzioni di iOS.
 @main
 struct SchieraxiApp: App {
     @StateObject private var nav = Navigazione()

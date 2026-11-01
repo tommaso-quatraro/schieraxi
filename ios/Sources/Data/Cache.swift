@@ -1,7 +1,7 @@
 import Foundation
 
 /// Copia su disco dell'ultima risposta riuscita di ogni indirizzo (cartella Caches dell'app).
-/// Serve a mostrare subito i dati all'apertura e quando il server non risponde (rete privata spento, server irraggiungibile).
+/// Serve a mostrare subito i dati all'apertura e quando il server non risponde (rete assente o server irraggiungibile).
 /// iOS può svuotare questa cartella quando serve spazio: non è un problema, i dati si riscaricano.
 /// Lettura e scrittura avvengono fuori dal thread principale, così le schermate non si bloccano.
 enum Cache {
