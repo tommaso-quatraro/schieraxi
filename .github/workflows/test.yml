@@ -376,6 +376,10 @@ jobs:
     if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # uno alla volta: due corse rosse quasi insieme non aprono due issue uguali (la seconda trova la prima e la commenta)
+    concurrency:
+      group: main-rosso
+      cancel-in-progress: false
     permissions:
       issues: write            # solo per aprire o commentare l'issue «CI: main rosso»
     steps:
