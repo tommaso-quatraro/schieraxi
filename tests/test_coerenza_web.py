@@ -81,7 +81,7 @@ def test_seguiti_un_solo_nome():
 def test_plurale_del_bonus_nelle_regole():
     assert _testo(IT, "regole.media_bonus.one").endswith("{b} punto") and _testo(IT, "regole.media_bonus.other").endswith("{b} punti")
     assert '"regole.media_bonus"' not in TESTI
-    assert 'tp("regole.media_bonus", Math.abs(Math.round(b)),' in APP
+    assert 'tp("regole.media_bonus", Math.abs(b),' in APP          # 1 = «punto», 3,5 = «punti» (Intl.PluralRules), senza arrotondare
 
 
 def test_crediti_non_salvati_e_ripeti_password_come_iphone():
