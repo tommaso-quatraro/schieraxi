@@ -92,6 +92,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}     # controlli in linea (azioni con difetti noti, commit impostori): sola lettura
         run: '"$RUNNER_TEMP/zizmor/bin/zizmor" --persona=regular --format=github --no-progress .'
 
+  # Vulnerabilità note (database di PyPI e OSV) nelle librerie bloccate di requirements.txt e requirements-dev.txt, con pip-audit.
+  # Non installa le librerie (--disable-pip: i file hanno già versioni fisse e hash). pip-audit e le sue dipendenze da PyPI con
+  # versioni e hash fissati in .github/pip-audit-requisiti.txt. Job a sé, fuori dai «needs» di «unisci»: una vulnerabilità appena
+  # pubblicata non blocca le PR che non c'entrano, ma il job diventa rosso e si vede; si corregge con una PR che aggiorna la libreria.
+  pip-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Installa pip-audit (versioni e hash fissati)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pip-audit"
+          "$RUNNER_TEMP/pip-audit/bin/python" -m pip install -q --require-hashes --only-binary=:all: -r .github/pip-audit-requisiti.txt
+      - name: Vulnerabilità note nelle librerie
+        run: '"$RUNNER_TEMP/pip-audit/bin/pip-audit" --disable-pip -r requirements.txt -r requirements-dev.txt --progress-spinner off'
+
   # Contro il lavoro fuori piano: la descrizione della PR dichiara le aree («Aree: fanta/web, tests, docs») e i file cambiati
   # devono stare lì dentro (script/ci/controlla_ambito.py, preso da main). Esenti: PR dei bot e PR di soli documenti.
   # Per ora SEGNALA SOLTANTO: passo con continue-on-error e job fuori dai «needs» di «unisci». La descrizione arriva solo
