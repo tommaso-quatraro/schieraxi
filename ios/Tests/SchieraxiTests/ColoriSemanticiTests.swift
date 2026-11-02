@@ -22,7 +22,8 @@ final class ColoriSemanticiTests: XCTestCase {
     }
 
     func testIlSecondarioESulFondoPiuLeggibile() {
-        XCTAssertEqual(esadecimale(.testo2, scuro: true), "B3C6BA")
-        XCTAssertEqual(esadecimale(.testo2, scuro: false), "587064")
+        // Il grigio unico dei testi secondari (Tema): più contrasto di `--testo-2` della web, anche sotto l'alone sfumato.
+        XCTAssertEqual(esadecimale(.testoSecondario, scuro: true), "BCCDC2")
+        XCTAssertEqual(esadecimale(.testoSecondario, scuro: false), "46564D")
     }
 }
