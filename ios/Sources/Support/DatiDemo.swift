@@ -897,6 +897,7 @@ private enum DatiDemo {
             "/api/asta?modo=riparazione": astaRiparazione(),
             "/api/rose/testo": importa(),
             "/api/rose/file": importa(),
+            "/api/rose/anteprima": DemoAnteprimaRose.json,   // anche /api/rose/anteprima/file
             "/api/aggiorna": json(["avviato": true, "in_corso": false, "righe": [String](), "errori": [String]()]),
             "/api/confronto": confronto(calciatore(120), calciatore(123)),
         ]

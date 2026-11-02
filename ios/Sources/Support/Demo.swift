@@ -54,6 +54,13 @@ enum Demo {
                 senzaRose.errori = ["/api/oggi": "Nessuna rosa importata", "/api/formazione": "Nessuna rosa importata", "/api/stato": "Nessuna rosa importata"]
                 return senzaRose
             }
+            if schermata == "scambi-una-rosa" {
+                // C'è solo la mia rosa: Scambi spiega che servono le rose degli altri.
+                var unaRosa = FinteServer.demo
+                unaRosa.indirizzoFinto = "https://finto-una-rosa.invalid"
+                unaRosa.risposte["/api/squadre"] = DemoAnteprimaRose.unaSquadra
+                return unaRosa
+            }
             // Errori dell'accesso, per le fotografie: rete assente, troppi tentativi, un server che risponde HTML invece del JSON.
             var errore = FinteServer.demo
             switch accesso {
@@ -175,7 +182,7 @@ extension Demo {
         case "giocatore":
             nav.vai(a: .giocatore(203))
 
-        case "scambi":
+        case "scambi", "scambi-una-rosa":
             apriLega(nav, modello, [.scambi])
         case "scambi-dettaglio":
             apriLega(nav, modello, [.scambi])

@@ -5,6 +5,12 @@ enum ScambiLogica {
     /// Sotto questa soglia (punti attesi in stagione) uno scambio «cambia poco». Come fanta/scambi.py.
     static let soglia = 0.5
 
+    /// Si può cominciare con la sola propria rosa: formazione e consigli funzionano, gli scambi no (non c'è con chi farli).
+    /// Vero quando la lega ha meno di due squadre o nessuna oltre la mia.
+    static func servonoAltreRose(_ squadre: [SquadraLega]) -> Bool {
+        squadre.count < 2 || squadre.allSatisfy { $0.mia == true }
+    }
+
     private static func nomi(_ lista: [GiocatoreBreve]) -> String { lista.map(\.nome).joined(separator: " e ") }
 
     /// Il messaggio da mandare all'altro allenatore.

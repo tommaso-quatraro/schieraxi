@@ -135,9 +135,26 @@ protocol ServerClient: Sendable {
     func richiesta(_ metodo: String, _ percorso: String, corpo: Data?) async throws -> Data
     /// Carica un file (campo «file») in multipart, con il suo tipo (Content-Type), e restituisce la risposta.
     func carica(_ percorso: String, nome: String, dati: Data, tipo: String) async throws -> Data
+    /// Come sopra, con dei campi di testo in più nel modulo (es. `correzioni` e `mia_squadra` dell'importazione delle rose).
+    func carica(_ percorso: String, nome: String, dati: Data, tipo: String, campi: [CampoModulo]) async throws -> Data
+}
+
+/// Un campo di testo di un modulo multipart, accanto al file.
+struct CampoModulo: Equatable, Sendable {
+    let nome: String
+    let valore: String
 }
 
 extension ServerClient {
+    /// Chi non sa mandare i campi (server finti delle anteprime) carica solo il file.
+    func carica(_ percorso: String, nome: String, dati: Data, tipo: String, campi: [CampoModulo]) async throws -> Data {
+        try await carica(percorso, nome: nome, dati: dati, tipo: tipo)
+    }
+
+    func caricaFile<T: Decodable>(_ percorso: String, nome: String, dati: Data, tipo: String, campi: [CampoModulo]) async throws -> T {
+        try Decodifica.decodifica(try await carica(percorso, nome: nome, dati: dati, tipo: tipo, campi: campi))
+    }
+
     /// La risposta grezza (JSON) di un indirizzo, per poterla anche salvare nella cache.
     func grezzo(_ percorso: String) async throws -> Data {
         try await richiesta("GET", percorso, corpo: nil)
@@ -366,22 +383,41 @@ struct ServerHTTP: ServerClient {
     }
 
     func carica(_ percorso: String, nome: String, dati: Data, tipo: String) async throws -> Data {
+        try await carica(percorso, nome: nome, dati: dati, tipo: tipo, campi: [])
+    }
+
+    func carica(_ percorso: String, nome: String, dati: Data, tipo: String, campi: [CampoModulo]) async throws -> Data {
         let token = archivioToken.leggi(server: indirizzo)
         var r = try costruisci(percorso, token: token)
         r.httpMethod = "POST"
         r.timeoutInterval = 120
         let confine = "Schieraxi-\(UUID().uuidString)"
         r.setValue("multipart/form-data; boundary=\(confine)", forHTTPHeaderField: "Content-Type")
+        // Le rose (importazione e anteprima da file) hanno un ETag come le scritture JSON: si rimanda quello visto (If-Match).
+        // Solo le rose: stemma e maglia (`/api/squadre/immagine`) restano come prima.
+        let risorsa = percorso.hasPrefix("/api/rose/") ? VersioniRisorse.risorsa(per: percorso) : nil
+        if let risorsa, let visto = VersioniRisorse.condivise.leggi(server: indirizzo, risorsa: risorsa) {
+            r.setValue(visto, forHTTPHeaderField: "If-Match")
+        }
         // Nel nome del file niente virgolette né a capo: romperebbero l'intestazione del multipart.
         let nomePulito = String(nome.filter { $0 != "\"" && !$0.isNewline && $0 != "\\" })
         // Anche il tipo finisce in un'intestazione: niente a capo (altrimenti si potrebbero iniettare altre intestazioni).
         let tipoPulito = String(tipo.filter { !$0.isNewline && $0 != "\r" })
         var corpo = Data()
+        for campo in campi {
+            let nomeCampo = String(campo.nome.filter { $0 != "\"" && !$0.isNewline && $0 != "\\" })
+            corpo.append(Data("--\(confine)\r\nContent-Disposition: form-data; name=\"\(nomeCampo)\"\r\n\r\n".utf8))
+            corpo.append(Data(campo.valore.utf8))
+            corpo.append(Data("\r\n".utf8))
+        }
         corpo.append(Data("--\(confine)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(nomePulito)\"\r\nContent-Type: \(tipoPulito)\r\n\r\n".utf8))
         corpo.append(dati)
         corpo.append(Data("\r\n--\(confine)--\r\n".utf8))
         do {
             let (risposta, resp) = try await sessione.upload(for: r, from: corpo)
+            if let risorsa, let h = resp as? HTTPURLResponse, let nuovo = h.value(forHTTPHeaderField: "ETag") {
+                VersioniRisorse.condivise.imposta(nuovo, server: indirizzo, risorsa: risorsa)
+            }
             try controlla(resp, risposta, percorso: percorso, token: token)
             return risposta
         } catch {

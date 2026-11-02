@@ -1,17 +1,46 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Importazione delle rose da un Excel di Leghe, da un CSV o da un file di testo, o dal testo copiato dalla pagina delle rose.
+/// Importazione delle rose in due passi (piano «Ingresso facile»): il testo incollato o il file (Excel, CSV, testo) passa prima
+/// dall'anteprima del server, che non salva niente; l'utente sistema i dubbi e sceglie la sua squadra; poi «Conferma e salva»
+/// manda lo stesso contenuto con le scelte. La usano Lega > Aggiorna le rose e il primo avvio (che porta lì).
 @MainActor
 final class ImportaExcelViewModel: ViewModelBase {
     private let server: any ServerClient
 
+    /// Da dove vengono le rose da controllare: il testo incollato o un file (nome e tipo già pronti per il server).
+    enum Sorgente: Equatable {
+        case testo(String)
+        case file(nome: String, tipo: String, dati: Data)
+    }
+
     @Published var inCorso = false
+    /// L'esito dell'ultimo salvataggio (cosa è cambiato).
     @Published var esito: EsitoImportazione?
     @Published var errore: String?
     /// «Togli le squadre che non sono nel file»: di norma le squadre assenti restano com'erano.
     @Published var sostituisciTutto = false
     @Published var testoRose = ""
+
+    /// L'anteprima da controllare (nil = si sta ancora scegliendo cosa importare, o si è già salvato).
+    @Published private(set) var anteprima: AnteprimaRose?
+    /// Un messaggio sopra l'anteprima (le rose sono cambiate nel frattempo e l'anteprima è stata rifatta).
+    @Published private(set) var messaggioAnteprima: String?
+    /// Le scelte sui dubbi, per chiave (`AnteprimaLogica.chiave`). Restano quando l'anteprima si rifà dopo un 412.
+    @Published private(set) var scelte: [String: SceltaDubbio] = [:]
+    /// I giocatori trovati con la ricerca, per chiave: si aggiungono alle opzioni del menu.
+    @Published private(set) var trovati: [String: CandidatoAnteprima] = [:]
+    /// La squadra dell'utente scelta nell'anteprima («» = nessuna).
+    @Published var mia = "" { didSet { if mia != oldValue { miaDecisa = true } } }
+
+    private var miaDecisa = false
+    private(set) var sorgente: Sorgente?
+    /// «Togli le squadre che non sono nel file» com'era al momento dell'anteprima: il salvataggio usa lo stesso valore.
+    private var sostituisciAnteprima = false
+    /// L'ETag delle rose dato dall'anteprima: si rimanda in If-Match al salvataggio (se nel frattempo cambiano: 412).
+    private(set) var etagAnteprima: String?
+
+    static let roseCambiate = "Nel frattempo le rose sono cambiate, forse da un altro dispositivo: le ho rilette. Ricontrolla e conferma di nuovo."
 
     init(server: any ServerClient) {
         self.server = server
@@ -21,43 +50,36 @@ final class ImportaExcelViewModel: ViewModelBase {
     /// Excel, CSV, TSV, testo (e qualsiasi altro file: se iOS non riconosce il tipo, si controlla il file dopo la scelta).
     var tipiAmmessi: [UTType] { FileRose.tipiAmmessi }
 
-    /// L'indirizzo dell'importazione da file, con la scelta «togli le squadre che non sono nel file».
-    var percorsoFile: String { "/api/rose/file?sostituisci_tutto=\(sostituisciTutto ? "true" : "false")" }
+    private func conScelta(_ base: String, sostituisci: Bool) -> String {
+        "\(base)?sostituisci_tutto=\(sostituisci ? "true" : "false")"
+    }
 
+    /// L'indirizzo dell'importazione da file, con la scelta «togli le squadre che non sono nel file».
+    var percorsoFile: String { conScelta("/api/rose/file", sostituisci: sostituisciTutto) }
+
+    /// Un file scelto (selettore, «Apri con SchieraXI», Condividi): si controlla qui, poi va all'anteprima.
     func importa(_ risultato: Result<[URL], Error>) async {
         guard case .success(let urls) = risultato, let url = urls.first else {
             if case .failure(let e) = risultato { errore = e.localizedDescription }
             return
         }
         if inCorso { return }   // un secondo file mentre il primo è in viaggio: si ignora
-        inCorso = true
-        defer { inCorso = false }
+        let dati: Data
         do {
-            let dati: Data
-            do {
-                dati = try await LetturaFile.leggi(url)
-            } catch let e as FileRose.Errore {
-                throw e
-            } catch {
-                throw ErroreFile.nonLeggibile
-            }
-            // Estensione e contenuto: se il selettore ha lasciato passare un file che non va, si dice cosa non va e non si invia niente.
-            switch FileRose.prepara(nome: url.lastPathComponent, dati: dati) {
-            case .failure(let e):
-                esito = nil
-                errore = e.localizedDescription
-                Haptics.esito(riuscito: false)
-                return
-            case .success(let preparato):
-                esito = try await server.caricaFile(percorsoFile, nome: preparato.nome, dati: dati, tipo: preparato.tipo)
-            }
-            errore = nil
-            Haptics.esito(riuscito: true)
-            NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+            dati = try await LetturaFile.leggi(url)
+        } catch let e as FileRose.Errore {
+            mostraErrore(e.localizedDescription)
+            return
         } catch {
-            esito = nil
-            errore = error.localizedDescription
-            Haptics.esito(riuscito: false)
+            mostraErrore(ErroreFile.nonLeggibile.localizedDescription)
+            return
+        }
+        // Estensione e contenuto: se il selettore ha lasciato passare un file che non va, si dice cosa non va e non si invia niente.
+        switch FileRose.prepara(nome: url.lastPathComponent, dati: dati) {
+        case .failure(let e):
+            mostraErrore(e.localizedDescription)
+        case .success(let preparato):
+            await controlla(.file(nome: preparato.nome, tipo: preparato.tipo, dati: dati), nuova: true)
         }
     }
 
@@ -69,33 +91,152 @@ final class ImportaExcelViewModel: ViewModelBase {
         }
     }
 
-    /// Importa il testo incollato (se non si ha il file Excel).
+    /// Il testo incollato (se non si ha il file): va all'anteprima.
     func importaTesto() async {
         let testo = testoRose.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty else {
             errore = "Incolla prima il testo delle rose."
             return
         }
+        if inCorso { return }
+        await controlla(.testo(testo), nuova: true)
+    }
+
+    /// Chiede l'anteprima. `nuova`: contenuto nuovo, si azzerano le scelte; altrimenti (rose cambiate nel frattempo) restano.
+    private func controlla(_ s: Sorgente, nuova: Bool, messaggio: String? = nil) async {
         inCorso = true
         defer { inCorso = false }
+        let sostituisci = nuova ? sostituisciTutto : sostituisciAnteprima
         do {
-            esito = try await server.posta("POST", "/api/rose/testo", RichiestaRoseTesto(testo: testo, sostituisci_tutto: sostituisciTutto))
+            let r: AnteprimaRose
+            switch s {
+            case .testo(let testo):
+                r = try await server.posta("POST", "/api/rose/anteprima", RichiestaAnteprimaRose(testo: testo, sostituisci_tutto: sostituisci))
+            case .file(let nome, let tipo, let dati):
+                r = try await server.caricaFile(conScelta("/api/rose/anteprima/file", sostituisci: sostituisci), nome: nome, dati: dati, tipo: tipo)
+            }
+            if nuova {
+                scelte = [:]
+                trovati = [:]
+                miaDecisa = false
+            }
+            sorgente = s
+            sostituisciAnteprima = sostituisci
+            // L'ETag l'ha appena ricordato il trasporto (`VersioniRisorse`, risorsa «rose»): si tiene questo, non quello di una
+            // lettura successiva delle squadre, così un cambio fatto altrove nel frattempo dà 412 invece di passare inosservato.
+            etagAnteprima = VersioniRisorse.condivise.leggi(server: server.indirizzo, risorsa: "rose")
+            let decisa = miaDecisa ? mia : nil
+            anteprima = r
+            let scelta = AnteprimaLogica.mia(decisa: decisa, r)
+            if scelta != mia { mia = scelta }
+            miaDecisa = decisa != nil && decisa == scelta
+            messaggioAnteprima = messaggio
+            esito = nil
+            errore = nil
+        } catch {
+            if error is CancellationError { return }
+            mostraErrore(Self.testo(error))
+        }
+    }
+
+    /// La scelta per un dubbio (quella dell'utente, altrimenti la proposta del server).
+    func scelta(per g: GiocatoreAnteprima, squadra: String) -> SceltaDubbio {
+        AnteprimaLogica.scelta(g, squadra: squadra, scelte: scelte)
+    }
+
+    func scegli(_ scelta: SceltaDubbio, squadra: String, testo: String) {
+        scelte[AnteprimaLogica.chiave(squadra, testo)] = scelta
+    }
+
+    /// Un giocatore trovato con la ricerca diventa la scelta (e un'opzione del menu).
+    func scegli(trovato c: CandidatoAnteprima, squadra: String, testo: String) {
+        let k = AnteprimaLogica.chiave(squadra, testo)
+        trovati[k] = c
+        scelte[k] = .giocatore(c.id)
+    }
+
+    func opzioni(per g: GiocatoreAnteprima, squadra: String) -> [CandidatoAnteprima] {
+        AnteprimaLogica.opzioni(g, trovato: trovati[AnteprimaLogica.chiave(squadra, g.testo)])
+    }
+
+    /// Le correzioni che partiranno con «Conferma e salva».
+    var correzioni: [CorrezioneRosa] {
+        guard let anteprima else { return [] }
+        return AnteprimaLogica.correzioni(anteprima.squadre, scelte: scelte)
+    }
+
+    /// «Conferma e salva»: lo stesso contenuto dell'anteprima, con le scelte, la squadra dell'utente e If-Match.
+    func conferma() async {
+        guard anteprima != nil, let s = sorgente, !inCorso else { return }
+        inCorso = true
+        let correzioni = self.correzioni
+        let miaSquadra = mia.isEmpty ? nil : mia
+        if let etagAnteprima { VersioniRisorse.condivise.imposta(etagAnteprima, server: server.indirizzo, risorsa: "rose") }
+        do {
+            let e: EsitoImportazione
+            switch s {
+            case .testo(let testo):
+                e = try await server.posta("POST", "/api/rose/testo", RichiestaRoseTesto(
+                    testo: testo, sostituisci_tutto: sostituisciAnteprima,
+                    correzioni: correzioni.isEmpty ? nil : correzioni, mia_squadra: miaSquadra))
+            case .file(let nome, let tipo, let dati):
+                var campi: [CampoModulo] = []
+                if !correzioni.isEmpty {
+                    campi.append(CampoModulo(nome: "correzioni", valore: String(decoding: try JSONEncoder().encode(correzioni), as: UTF8.self)))
+                }
+                if let miaSquadra { campi.append(CampoModulo(nome: "mia_squadra", valore: miaSquadra)) }
+                e = try await server.caricaFile(conScelta("/api/rose/file", sostituisci: sostituisciAnteprima), nome: nome, dati: dati, tipo: tipo, campi: campi)
+            }
+            inCorso = false
+            esito = e
+            anteprima = nil
+            sorgente = nil
+            messaggioAnteprima = nil
+            scelte = [:]
+            trovati = [:]
+            testoRose = ""          // il testo ha i nomi delle persone della lega: non resta sullo schermo
             errore = nil
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
-            esito = nil
-            if (error as? ErroreApi)?.eConflitto == true { _ = try? await server.grezzo("/api/squadre") }   // rilegge la versione nuova (e il suo ETag)
-            errore = error.localizedDescription
-            Haptics.esito(riuscito: false)
+            inCorso = false
+            if error is CancellationError { return }
+            if (error as? ErroreApi)?.eConflitto == true {
+                // le rose sono cambiate dopo l'anteprima: si rifà, tenendo le scelte
+                await controlla(s, nuova: false, messaggio: Self.roseCambiate)
+                return
+            }
+            mostraErrore(Self.testo(error))
         }
+    }
+
+    /// «Annulla»: si torna a scegliere cosa importare (il testo incollato resta).
+    func annulla() {
+        anteprima = nil
+        sorgente = nil
+        messaggioAnteprima = nil
+        errore = nil
+    }
+
+    private func mostraErrore(_ testo: String) {
+        errore = testo
+        Haptics.esito(riuscito: false)
+    }
+
+    /// Il messaggio per l'utente: quello del server così com'è (già in italiano), il resto come lo descrive l'errore
+    /// (un 429 dice anche tra quanto riprovare).
+    static func testo(_ error: Error) -> String {
+        if case .server(let messaggio)? = error as? ErroreApi { return messaggio }
+        return error.localizedDescription
     }
 }
 
-/// Il corpo dell'importazione da testo: chiavi identiche a quelle del server.
+/// Il corpo dell'importazione da testo: chiavi identiche a quelle del server. `correzioni` e `mia_squadra` si mandano solo se ci sono.
 struct RichiestaRoseTesto: Encodable {
     let testo: String
     let sostituisci_tutto: Bool
+    var correzioni: [CorrezioneRosa]? = nil
+    var mia_squadra: String? = nil
 }
 
 /// Il tasto «Aggiorna i dati»: avvia l'aggiornamento sul server e ne segue l'avanzamento finché finisce.

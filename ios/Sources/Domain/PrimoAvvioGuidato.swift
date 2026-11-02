@@ -67,7 +67,7 @@ enum PassoGuidato: String, CaseIterable, Identifiable {
     var spiegazione: String {
         switch self {
         case .rose:
-            return "Servono le rose di tutte le squadre della lega. Importa il file della tua lega (Excel, CSV o testo): ci vuole un minuto."
+            return "Incolla la pagina delle rose o scegli il file della lega (Excel, CSV o testo). Prima di salvare controlli cosa ho capito e scegli la tua squadra. Basta anche solo la tua rosa: quelle degli altri servono per gli scambi."
         case .squadra:
             return "Indica quale delle squadre è la tua: i consigli di formazione e di scambio sono per lei."
         case .stemma:

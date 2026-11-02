@@ -7,6 +7,7 @@ struct ScambiView: View {
     /// Dentro la scheda Altro la pagina sta già in una pila di navigazione: niente pila propria.
     var incorporata = false
     @Environment(\.funzioni) private var funzioni
+    @Environment(\.apriImportazione) private var apriImportazione
 
     /// «Valuta un'offerta» c'è sempre; «Trova per me» e «Costruisci» dipendono dalle funzioni accese.
     private var modi: [ModoScambi] {
@@ -33,12 +34,16 @@ struct ScambiView: View {
     private var pagina: some View {
             ZStack {
                 Sfondo()
-                VStack(spacing: 8) {
-                    if modi.count > 1 { selettoreModo }
-                    switch modoAttivo {
-                    case .trova: trova
-                    case .costruisci: AnalizzaScambioView(server: vm.server, incorporata: true)
-                    case .valuta: scorrevole { offerta.ingresso(0) }
+                if vm.servonoAltreRose {
+                    soloLaMiaRosa
+                } else {
+                    VStack(spacing: 8) {
+                        if modi.count > 1 { selettoreModo }
+                        switch modoAttivo {
+                        case .trova: trova
+                        case .costruisci: AnalizzaScambioView(server: vm.server, incorporata: true)
+                        case .valuta: scorrevole { offerta.ingresso(0) }
+                        }
                     }
                 }
             }
@@ -65,6 +70,25 @@ struct ScambiView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+    }
+
+    /// Si è cominciato con la sola propria rosa: per gli scambi servono quelle degli altri.
+    private var soloLaMiaRosa: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                VistaVuota(titolo: "Servono le rose degli altri", icona: "arrow.left.arrow.right",
+                           descrizione: "Per trovare e valutare scambi servono le rose delle altre squadre della lega. Formazione e consigli funzionano già con la tua.")
+                Button { apriImportazione() } label: {
+                    Label("Aggiorna le rose", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                }
+                .pulsanteVetro(prominente: true)
+                .accessibilityHint("Apre l'importazione delle rose")
+            }
+            .frame(maxWidth: 520)
+            .padding(.horizontal, 16).padding(.bottom, 24)
+            .frame(maxWidth: .infinity)
+        }
+        .refreshable { await vm.caricaSquadre() }
     }
 
     // MARK: i tre modi

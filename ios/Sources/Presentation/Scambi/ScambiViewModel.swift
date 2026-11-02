@@ -59,6 +59,13 @@ final class ScambiViewModel: ViewModelBase {
     /// Le altre squadre della lega (non la mia).
     var altre: [SquadraLega] { (squadre.dato ?? []).filter { $0.mia != true } }
 
+    /// C'è solo la mia rosa (si può cominciare così): la schermata spiega che servono quelle degli altri.
+    /// Finché le squadre non sono lette si mostra la schermata di sempre.
+    var servonoAltreRose: Bool {
+        guard let s = squadre.dato else { return false }
+        return ScambiLogica.servonoAltreRose(s)
+    }
+
     var indirizzoProposte: String {
         // Il 2 contro 2 si chiede solo con una squadra scelta (senza, il server risponde 400).
         let grandi = con != "Tutte" && fino >= 2

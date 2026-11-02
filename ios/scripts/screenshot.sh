@@ -47,6 +47,13 @@ if [ "$SCATTI" = "veloce" ]; then
   PER_IPAD=(formazione formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
 fi
 
+# SCHERMATE="a b c" (a mano, dal workflow): SOLO queste schermate, ma in tutte le varianti (come il collaudo):
+# iPhone chiaro, scuro e testo grande, iPad verticale e orizzontale. Per fotografare solo le schermate toccate da una PR.
+if [ -n "${SCHERMATE:-}" ]; then
+  read -r -a TUTTE <<< "$SCHERMATE"
+  SCATTI=collaudo
+fi
+
 # SCATTI=collaudo: OGNI schermata in scuro, chiaro e testo grandissimo (per il giro di stabilita'; un dispositivo per corsa).
 if [ "$SCATTI" = "collaudo" ]; then
   PER_CHIARO=("${TUTTE[@]}")
