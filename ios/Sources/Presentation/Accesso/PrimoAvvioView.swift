@@ -24,9 +24,6 @@ struct PrimoAvvioView: View {
                         ProvaServerView()
                     }
                 }
-                Text("Se il tuo server è raggiungibile solo da una VPN, tienila accesa.")
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
-                    .multilineTextAlignment(.center)
                 provaConDati
             }
             .frame(maxWidth: 520)
