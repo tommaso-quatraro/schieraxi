@@ -64,6 +64,16 @@ Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo
 
 Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Squadra > Aggiorna le rose**.
 
+### Per chi entra in una lega già avviata
+
+Se ti invitano in una lega che gioca già da un po':
+
+1. **Invito.** Apri il link che ti ha mandato chi gestisce l'app: si apre la registrazione con il codice già scritto. Vale una volta sola e per 7 giorni.
+2. **Registrazione.** Scegli nome utente e password, spunta la casella, tocca **Crea l'account** e salva il codice di recupero.
+3. **Rose.** Esporta le rose da Leghe e caricale come nel passo 1 del primo avvio. Per cominciare basta anche solo la tua squadra.
+4. **La tua squadra.** Scegli **Qual è la tua squadra?**, sistema i nomi da controllare e tocca **Conferma e salva**. Poi rispondi alle due domande sui tempi della lega: scadenza e giornata di partenza.
+5. **Prossima giornata.** Se le partite sono già cominciate, Oggi dice **Questa giornata è già iniziata**: la guardi e basta, senza punti finti. Ti indica quando si chiude la prossima e **Formazione** è già quella da preparare. Le giornate chiuse prima del tuo arrivo non ti fanno domande.
+
 ### Le schede in basso
 
 **Oggi**, **Formazione**, **Squadra**, **Altro**. In alto: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda: previsione, forma recente, statistiche, ☆ per seguirlo.
@@ -151,6 +161,8 @@ Ti scrivono quando:
 - **60 e 15 minuti** prima della prima partita (non arrivano se hai già schierato, a meno che un tuo titolare sia diventato indisponibile);
 - **reparto scoperto**: troppo pochi giocatori disponibili in un reparto;
 - il **riepilogo** della giornata.
+
+Gli avvisi dicono le cose a parole (per esempio «ora probabile titolare», senza percentuali) e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
 Attivazione: nella web app, riquadro **Notifiche di questa app**, tocca **Attiva**; **Manda un avviso di prova** controlla che funzioni. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente). **Ore tranquille**: scegli una fascia (per esempio dalle 23 alle 7) in cui non arriva niente; ciò che cade lì arriva dopo.
 
