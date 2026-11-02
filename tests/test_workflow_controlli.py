@@ -94,3 +94,20 @@ def test_zizmor_e_fissato_e_non_blocca_ancora_l_unione():
     requisiti = (CARTELLA_WORKFLOW.parent / "zizmor-requisiti.txt").read_text(encoding="utf-8")
     assert re.search(r"^zizmor==\d+\.\d+\.\d+ \\$", requisiti, re.M), "versione di zizmor fissata"
     assert len(re.findall(r"--hash=sha256:[0-9a-f]{64}", requisiti)) >= 2, "hash dei file di zizmor"
+
+
+def test_pip_audit_controlla_le_librerie_con_versione_e_hash_fissati():
+    """pip-audit cerca le vulnerabilità note nelle librerie bloccate (requirements.txt e requirements-dev.txt), senza installarle
+    (--disable-pip: i file hanno già versioni fisse e hash). Si installa a parte con versione e hash fissati, solo file binari.
+    Job a sé, fuori dai «needs» di «unisci»: una vulnerabilità appena pubblicata non blocca le PR che non c'entrano."""
+    requisiti = (CARTELLA_WORKFLOW.parent / "pip-audit-requisiti.txt").read_text(encoding="utf-8")
+    assert re.search(r"^pip_audit==\d+\.\d+\.\d+ \\$", requisiti, re.M), "versione di pip-audit fissata"
+    librerie = re.findall(r"^([A-Za-z0-9_.-]+)==\S+ \\$", requisiti, re.M)
+    blocchi = re.split(r"^[A-Za-z0-9_.-]+==\S+ \\$", requisiti, flags=re.M)[1:]
+    assert len(librerie) == len(blocchi) > 1
+    assert all(re.search(r"--hash=sha256:[0-9a-f]{64}", b) for b in blocchi), "ogni libreria ha i suoi hash"
+    job = _job()
+    assert "pip-audit" in job and "pip-audit" not in job["unisci"]["needs"]
+    testo = WORKFLOW.read_text(encoding="utf-8")
+    assert "--require-hashes --only-binary=:all: -r .github/pip-audit-requisiti.txt" in testo
+    assert re.search(r"pip-audit\" --disable-pip -r requirements\.txt -r requirements-dev\.txt", testo)
