@@ -91,3 +91,16 @@ def test_crediti_non_salvati_e_ripeti_password_come_iphone():
     assert _testo(IT, "account.password_diverse") == "Le due password non coincidono."
     assert 'campo("acc-ripeti", t("account.ripeti_password")' in APP
     assert 'if (valore("#acc-nuova") !== valore("#acc-ripeti")) {' in APP          # niente richiesta al server se non coincidono
+
+
+def test_lo_stato_del_giocatore_lo_scrive_il_server():
+    """`etichetta` del server (fanta/etichette.py): il web mostra il suo testo con il colore del tono in Formazione, scheda, Rosa,
+    Seguiti, Oggi in corso e avvisi di Oggi; le parole composte in JS restano solo come ripiego quando `etichetta` manca."""
+    assert 'const CLASSE_TONO = { positivo: "", attenzione: "arancio", negativo: "rossa", neutro: "neutra" };' in APP
+    pill = APP[APP.index("function pillTitolarita(x) {"):APP.index("function pillRipiego(x) {")]
+    assert "if (etichettaPronta(x)) return" in pill and "esc(x.etichetta.testo)" in pill
+    assert "!(pronta && motivoDiStato(m))" in APP                                 # niente «infortunato» due volte
+    assert 'etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA' in APP     # campo e righe a partita iniziata
+    assert 'etichettaPronta(pr) ? esc(pr.etichetta.testo)' in APP                 # scheda
+    assert 'if (etichettaPronta(g)) return' in APP                                # Oggi in corso
+    assert "const testo = pronta ? esc(a.etichetta.testo)" in APP                # avvisi di Oggi

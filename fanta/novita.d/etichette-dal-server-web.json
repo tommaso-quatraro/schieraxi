@@ -1,0 +1,10 @@
+{
+  "titolo": "Lo stato dei giocatori scritto allo stesso modo ovunque",
+  "voci": [
+    "«Probabile titolare», «In dubbio», «Voto in arrivo» e gli altri stati dei giocatori ora arrivano già scritti, con le stesse parole e gli stessi colori in Formazione, scheda, Rosa, Seguiti e Oggi, anche in inglese."
+  ],
+  "tecnico": [
+    "Web: pillTitolarita, esitoPartita, scheda, valoreLive e avvisi di Oggi mostrano etichetta.testo con il colore da tono (CLASSE_TONO); codice solo per decidere.",
+    "Ripiego con le parole composte in JS (pillRipiego) solo quando etichetta manca; i motivi infortunato/squalificato/non convocato non si ripetono accanto all'etichetta."
+  ]
+}

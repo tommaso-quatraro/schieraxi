@@ -332,7 +332,17 @@ const badgeRuolo = (r, piccolo = false) => `<span class="ruolo ${esc(r)}" ${picc
 const STATO_PARTITA = { fatto: ["tit.st_fatto", ""], senza_voto: ["tit.st_senza_voto", "arancio"], attesa_voti: ["tit.st_attesa_voti", "neutra"],
   in_corso: ["tit.st_in_corso", ""], da_giocare: ["tit.st_da_giocare", "neutra"], rinviata: ["tit.st_rinviata", "arancio"] };
 const PARTITA_INIZIATA = ["in_corso", "attesa_voti", "fatto", "senza_voto"], PARTITA_FINITA = ["attesa_voti", "fatto", "senza_voto"];
+// Lo stato del giocatore lo scrive il server: `etichetta` = {codice, testo, tono} (fanta/etichette.py, docs/API.md), già nella
+// lingua chiesta. Il web mostra il testo e prende il colore dal tono; `codice` serve solo per decidere, mai per scrivere.
+const CLASSE_TONO = { positivo: "", attenzione: "arancio", negativo: "rossa", neutro: "neutra" };
+const etichettaPronta = x => !!(x && x.etichetta && typeof x.etichetta.testo === "string" && x.etichetta.testo);
+const classeTono = et => CLASSE_TONO[et && et.tono] ?? "neutra";
 function pillTitolarita(x) {
+  if (etichettaPronta(x)) return `<span class="etichetta ${classeTono(x.etichetta)}">${esc(x.etichetta.testo)}</span>`;
+  return pillRipiego(x);
+}
+// Ripiego per le risposte senza `etichetta` (server vecchio, Cambi consigliati, widget): le parole del vocabolario dai campi grezzi.
+function pillRipiego(x) {
   if (x.titolarita == null && Object.hasOwn(STATO_PARTITA, x.stato_partita || "")) {
     const [chiave, classe] = STATO_PARTITA[x.stato_partita];
     return `<span class="etichetta ${classe}">${t(chiave)}</span>`;
@@ -354,10 +364,13 @@ const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.
 // Nelle righe una sola percentuale per giocatore, «gioca N%»: gol atteso e porta inviolata (motivi con un numero) restano nella scheda.
 const MOTIVI_CON_PERCENTUALE = ["motivo.gol_atteso", "motivo.porta_inviolata"];
 const senzaPercentuale = m => !(m.frase && MOTIVI_CON_PERCENTUALE.includes(m.frase.chiave)) && !/\d\s*%/.test(m.testo);
+const MOTIVI_DI_STATO = ["motivo.infortunato", "motivo.squalificato", "motivo.non_convocato"];
+const motivoDiStato = m => (m.frase ? MOTIVI_DI_STATO.includes(m.frase.chiave) : /^(infortunato|squalificato|non tra i convocati)/.test(m.testo));
 function etichetteGiocatore(x) {
-  const altre = motiviUtili(x).filter(senzaPercentuale).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
-  // «Fuori» (infortunato) a partita finita: anche com'è andata («Voto in arrivo», «Senza voto»), che la pillola sola non dice
-  const esito = x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
+  const pronta = etichettaPronta(x);
+  const altre = motiviUtili(x).filter(senzaPercentuale).filter(m => !(pronta && motivoDiStato(m))).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
+  // ripiego: «Fuori» (infortunato) a partita finita, anche com'è andata («Voto in arrivo», «Senza voto»); con l'etichetta lo dice il server
+  const esito = !pronta && x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
     ? `<span class="etichetta ${STATO_PARTITA[x.stato_partita][1]}">${t(STATO_PARTITA[x.stato_partita][0])}</span>` : "";
   return pillTitolarita(x) + esito + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
 }
@@ -387,10 +400,12 @@ function vocePedina(x, esito = null) {             // esito: esitoPartita(x), a 
 const SOGLIA_GIOCA = 0.7;                       // sotto: «⚠ gioca 45%» in una pillola arancio
 // A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
 // del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
+const CODICI_PARTITA_INIZIATA = ["voto", "senza_voto", "voto_in_arrivo", "in_corso"];
 function esitoPartita(x) {
-  if (!PARTITA_INIZIATA.includes(x.stato_partita || "")) return null;
-  if (x.stato_partita === "fatto" && Number.isFinite(x.fv_preso)) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
-  return { fv: null, testo: t(STATO_PARTITA[x.stato_partita][0]) };
+  const codice = etichettaPronta(x) ? x.etichetta.codice : null;
+  if (!PARTITA_INIZIATA.includes(x.stato_partita || "") && !CODICI_PARTITA_INIZIATA.includes(codice)) return null;
+  if (Number.isFinite(x.fv_preso) && (codice === "voto" || x.stato_partita === "fatto")) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
+  return { fv: null, testo: etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA[x.stato_partita][0]) };
 }
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
@@ -620,6 +635,7 @@ const STATO_LIVE = { senza_voto: "oggi.st_senza_voto", attesa_voti: "oggi.st_att
 function valoreLive(g) {
   if (g.stato === "fatto") return `<b class="fv-fatto">${num(g.fantavoto)}</b>`;
   if (g.stato === "da_giocare" && g.data) return `<span class="debole piccolo">${esc(quando(g.data))}</span>`;
+  if (etichettaPronta(g)) return `<span class="piccolo tono ${classeTono(g.etichetta)}">${esc(g.etichetta.testo)}</span>`;
   return `<span class="debole piccolo">${t(STATO_LIVE[g.stato] || "oggi.st_da_giocare")}</span>`;
 }
 
@@ -732,8 +748,11 @@ function mostraOggi(o, opz = {}) {
   const indisponibili = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && (a.tipo === "infortunato" || a.tipo === "squalificato"));
   const altri = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && a.tipo === "diffidato");
   const riga = a => {
-    const colore = a.tipo === "infortunato" || a.tipo === "squalificato" ? "rosso" : a.tipo === "dubbio" ? "arancio" : "giallo";
-    const testo = { infortunato: t("oggi.infortunato"), squalificato: t("oggi.squalificato"), dubbio: t("oggi.dubbio", { p: perc(a.p_voto) }), diffidato: t("oggi.diffidato_tipo") }[a.tipo];
+    const pronta = etichettaPronta(a);
+    const colore = pronta ? ({ negativo: "rosso", attenzione: "arancio" }[a.etichetta.tono] || "giallo")
+      : a.tipo === "infortunato" || a.tipo === "squalificato" ? "rosso" : a.tipo === "dubbio" ? "arancio" : "giallo";
+    const testo = pronta ? esc(a.etichetta.testo)
+      : { infortunato: t("oggi.infortunato"), squalificato: t("oggi.squalificato"), dubbio: t("oggi.dubbio", { p: perc(a.p_voto) }), diffidato: t("oggi.diffidato_tipo") }[a.tipo];
     return `<button class="avviso-riga" data-giocatore="${a.id}">${badgeRuolo(a.ruolo)}
       <span><span class="nome">${esc(a.nome)}</span> <span class="dettaglio">${sigla(a.squadra)}</span>
         <div class="dettaglio nota">${testo}${a.nota ? ` · ${esc(a.nota)}` : ""}</div></span><span class="pallino-stato ${colore}"></span></button>`;
@@ -1588,7 +1607,7 @@ async function apriGiocatore(id) {
         <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata_lega || pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
           ${finitaP ? (votoGiornata && votoGiornata.fv != null
             ? `<div class="grande">${num(votoGiornata.fv)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto")}</span></div>`
-            : `<div class="grande stato-partita">${t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
+            : `<div class="grande stato-partita">${etichettaPronta(pr) ? esc(pr.etichetta.testo) : t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
           : `<div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div>`}</div>
           ${iniziataP ? "" : `<div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>`}</div>
         ${nonGioca || iniziataP ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
