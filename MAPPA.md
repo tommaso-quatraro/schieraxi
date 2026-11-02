@@ -113,6 +113,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   `titolarita` va a parole. Dopo la scadenza `GET /api/formazione` ha `iniziata: true`, `titolarita: null` e `stato_partita`
   (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
 - Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`.
+- Rose dalle schermate di Leghe (OCR dell'app iPhone): testo `ruolo;nome;club;prezzo` (intestazione nella prima riga, una riga con una
+  cella sola = fantasquadra, `crediti;N`) a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.
 
 ## Modo multiutente (`FANTA_MULTIUTENTE=1`, obbligatorio su un server raggiungibile da altri)
 - Spento: nessun accesso, file in `lega/` e `dati/`; chi chiede ha i poteri dell'amministratore, quindi il server risponde
@@ -140,6 +142,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 
 ## Punti delicati
 - Nomi dei giocatori tra fonti diverse: `nomi.py`. Gli abbinamenti incerti non si devono prendere per buoni.
+  Un nome abbreviato è sicuro solo con ruolo E squadra uguali al listone; con uno dei due diverso mai. Misura: `tests/corpus_nomi.py`
+  (anche le varianti OCR, `genera_ocr`) e `prove/misura_nomi.py --vero` sul listone salvato in locale.
 - `dati/` non va mai in git né nei log. Il backup (`backup.py`) non contiene chiavi né iscrizioni alle notifiche.
 - Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json`.
 - Rifare tutto il servizio da una copia notturna (`backup-dati.sh`): `docs/RIPRISTINO-SERVER.md` (provato il 2/11/2026; cosa non c'è nella copia e cosa succede).

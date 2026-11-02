@@ -62,6 +62,13 @@ _DIFFICILI = [
     # cognomi vicini tra loro (una lettera di differenza)
     ("Mancini", "D", "ROM"), ("Mancinu", "C", "CAG"), ("Bianchetti", "D", "CRE"), ("Bianchelli", "C", "BOL"),
     ("Rossetti", "A", "JUV"), ("Rossetto", "C", "TOR"),
+    # come li scrive l'app di Leghe nella scheda di una squadra (tutti inventati): cognome nudo e con l'iniziale in squadre diverse,
+    # iniziali doppie o di due lettere, accento in fondo, nomi composti
+    ("Brahmeri", "D", "NAP"), ("Brahmeri Al.", "A", "PIS"), ("Adamis C.", "D", "TOR"), ("Adamis A.", "C", "CRE"),
+    ("Spadafino Se.", "A", "SAS"), ("Spadafino F.P.", "A", "INT"), ("Turano", "A", "INT"), ("Turano K.", "C", "JUV"),
+    ("Sandoval Ro.", "C", "BOL"), ("Sandoval Ra.", "D", "GEN"), ("Lucumè", "D", "BOL"), ("Bernabò", "C", "PAR"),
+    ("Soulè", "C", "ROM"), ("Nicolosi Cavaglia", "C", "GEN"), ("Kolo Muandi", "A", "JUV"), ("N'Dorka", "D", "ROM"),
+    ("Ederinho D.S.", "C", "ATA"), ("Milanovic-Sabic V.", "P", "NAP"), ("Milanovic-Sabic S.", "C", "LAZ"),
 ]
 
 _SILLABE = ["ba", "be", "bo", "ca", "ce", "ci", "da", "di", "do", "fa", "fe", "ga", "gi", "go", "la", "le", "li", "lo",
@@ -109,6 +116,7 @@ class Prova:
     ruolo: str | None
     atteso: int | None        # codice del calciatore giusto, None = non è nel listone
     tipo: str
+    vietato_sicuro: bool = False    # ruolo o squadra indicati diversi dal listone: mai «sicuro» su chi non li ha
 
 
 def _senza_accenti(t: str) -> str:
@@ -216,8 +224,61 @@ def genera(calciatori: list[Calciatore], seme: int = 7) -> list[Prova]:
         parola = max(_parti(c.nome)[0].split(), key=len)
         if len(parola) >= 6:
             altro = parola[0] + "x" + parola[2:-2] + "k" + parola[-1]
-            if normalizza(altro) not in nomi_esatti:
+            if sum(a != b for a, b in zip(altro, parola)) == 2 and normalizza(altro) not in nomi_esatti:
                 prove.append(Prova(altro, None, None, None, "non è nel listone"))
+    return prove + genera_ocr(calciatori)
+
+
+_ACCENTI_OCR = str.maketrans("èéàáìíòóùú", "éèáàíìóòúù")
+
+
+def _ocr(c: Calciatore, rnd: random.Random) -> list[tuple[str, str]]:
+    """Come l'OCR del telefono legge il nome scritto da Leghe: punti persi, spazi doppi, apostrofi e trattini persi,
+    «0» per «O», «1» per «l», accento cambiato o perso, l'iniziale persa o accorciata."""
+    nome = c.nome
+    cognome, iniziali = _parti(nome)
+    v = [("ocr com'è", nome), ("ocr spazi doppi", nome.replace(" ", "  "))]
+    if "." in nome:
+        v.append(("ocr senza punti", nome.replace(".", "")))
+    if "'" in nome or "-" in nome:
+        v.append(("ocr senza apostrofo", nome.replace("'", "").replace("-", rnd.choice(["", " "]))))
+    if "o" in cognome.lower():
+        i = cognome.lower().index("o")
+        v.append(("ocr 0 per O", cognome[:i] + "0" + cognome[i + 1:] + nome[len(cognome):]))
+    if "l" in cognome[1:]:
+        v.append(("ocr 1 per l", cognome[0] + cognome[1:].replace("l", "1", 1) + nome[len(cognome):]))
+    if _senza_accenti(nome) != nome:
+        v += [("ocr accento cambiato", nome.translate(_ACCENTI_OCR)), ("ocr accento perso", _senza_accenti(nome))]
+    if iniziali:
+        v.append(("ocr senza iniziale", cognome))
+        corta = iniziali[0] + "."
+        if corta != iniziali:
+            v.append(("ocr iniziale corta", f"{cognome} {corta}"))
+    return v
+
+
+def genera_ocr(calciatori: list[Calciatore], seme: int = 5) -> list[Prova]:
+    """Le righe del testo letto dalle schermate di Leghe: nome come lo legge l'OCR, con ruolo E squadra di Serie A (in sigla
+    o per esteso). Più le stesse righe con il ruolo o la squadra sbagliati: lì non deve mai essere «sicuro»."""
+    rnd = random.Random(seme)
+    nomi_esatti = {normalizza(c.nome) for c in calciatori}
+    stessi: dict[str, set[tuple[str, str]]] = {}         # cognome -> (ruolo, squadra) già usati da chi lo porta
+    for c in calciatori:
+        stessi.setdefault(normalizza(_parti(c.nome)[0]), set()).add((c.ruolo, c.squadra))
+    prove = []
+    for c in calciatori:
+        club = rnd.choice([c.squadra, c.squadra_slug.capitalize(), c.squadra_slug.upper()])
+        for tipo, testo in _ocr(c, rnd):
+            prove.append(Prova(testo, club, c.ruolo, c.id, tipo))
+        usati = stessi[normalizza(_parti(c.nome)[0])]
+        ruolo = rnd.choice([r for r in "PDCA" if (r, c.squadra) not in usati])
+        altra = rnd.choice([sq for sq in SQUADRE if (c.ruolo, sq) not in usati])
+        cognome = _parti(c.nome)[0]
+        # il cognome nudo solo se non è il nome esatto di un altro («Turano» A dell'Inter e «Turano K.» C della Juventus)
+        for testo in dict.fromkeys([c.nome] + ([cognome] if normalizza(cognome) not in nomi_esatti else [])):
+            prove.append(Prova(testo, club, ruolo, c.id, "ocr ruolo diverso", vietato_sicuro=True))
+            prove.append(Prova(testo, rnd.choice([altra, SQUADRE[altra].capitalize()]), c.ruolo, c.id,
+                               "ocr squadra diversa", vietato_sicuro=True))
     return prove
 
 
@@ -225,6 +286,8 @@ def esito_di(indice: Indice, p: Prova) -> str:
     e = indice.cerca(p.testo, p.squadra, p.ruolo)
     if e.calciatore is not None:
         sicuro = e.metodo == "esatto" and not e.avviso
+        if sicuro and p.vietato_sicuro and (e.calciatore.ruolo != p.ruolo or not Indice.squadra_corrisponde(p.squadra, e.calciatore)):
+            return "sicuro SBAGLIATO"
         giusto = e.calciatore.id == p.atteso
         return ("sicuro " if sicuro else "proposto ") + ("giusto" if giusto else "SBAGLIATO")
     if e.metodo == "ambiguo":

@@ -7,6 +7,11 @@ E nomi scritti per esteso: "Lautaro Martinez" / "Martinez Lautaro" (il nome prop
 
 Regola d'oro: zero abbinamenti sbagliati dati per sicuri. `esatto` (senza avviso) vuol dire che il nome, tolti ruolo,
 squadra, crediti e simboli, è quello del listone; tutto il resto (abbreviato, simile, ambiguo) va controllato.
+Due eccezioni, pensate per il testo letto con l'OCR dalle schermate di Leghe:
+- errori da lettura automatica che non cambiano il nome (spazi persi o in più, «0» al posto di «O», «1» al posto di «l»/«I»,
+  «F P» per «F.P.»): è ancora `esatto`, ma solo se nel listone c'è un solo nome che si scrive così;
+- un nome abbreviato («Martinez», «Martinez L», «Esposito F.») con ruolo E squadra indicati che coincidono col listone, e un solo
+  giocatore che va bene: diventa `esatto`. Se ruolo o squadra NON coincidono non è mai `esatto` senza avviso.
 """
 from __future__ import annotations
 
@@ -36,11 +41,25 @@ def normalizza(testo: str) -> str:
 
 
 def _abbreviazione_compatibile(a: str, b: str) -> bool:
-    """'esposito s' e 'esposito se': stesso cognome, iniziali compatibili (una è l'inizio dell'altra)."""
+    """'esposito s' e 'esposito se': stesso cognome, iniziali compatibili (una è l'inizio dell'altra).
+    Anche con meno iniziali: 'esposito f' e 'esposito f p' (l'OCR o chi scrive ne ha persa una)."""
     ta, tb = a.split(), b.split()
-    if len(ta) != len(tb) or len(ta) < 2 or ta[0] != tb[0]:
+    if len(ta) < 2 or len(tb) < 2 or ta == tb:
         return False
-    return all(x.startswith(y) or y.startswith(x) for x, y in zip(ta[1:], tb[1:]))
+    if len(ta) == len(tb) and ta[0] == tb[0]:
+        return all(x.startswith(y) or y.startswith(x) for x, y in zip(ta[1:], tb[1:]))
+    ca, ia = _cognome_e_iniziali(a)
+    cb, ib = _cognome_e_iniziali(b)
+    if ca != cb or not ia or not ib:
+        return False
+    return all(x.startswith(y) or y.startswith(x) for x, y in zip(ia, ib))
+
+
+def compatta(n: str) -> list[str]:
+    """Le chiavi di un nome già normalizzato senza gli errori tipici dell'OCR: niente spazi ('n dicka' = 'ndicka',
+    'esposito f p' = 'esposito fp'), «0» letto al posto di «o», «1» al posto di «l» o «i». Più chiavi se l'«1» è incerto."""
+    t = "".join(n.split()).replace("0", "o")
+    return list(dict.fromkeys([t.replace("1", "l"), t.replace("1", "i")]))
 
 
 def _lettere_scambiate(a: str, b: str) -> bool:
@@ -124,6 +143,11 @@ class Indice:
             m = _CON_INIZIALI.fullmatch(str(c.nome).strip())
             if m:
                 self._cognomi[normalizza(m.group(1))].append(c)
+        # chiave senza spazi né errori da OCR -> nomi del listone (vale solo se è di un nome solo)
+        self._compatti: dict[str, set[str]] = defaultdict(set)
+        for k in self._nomi:
+            for chiave in compatta(k):
+                self._compatti[chiave].add(k)
         self._per_parole: dict[tuple, list[str]] = defaultdict(list)
         for k in self._nomi:
             self._per_parole[tuple(sorted(k.split()))].append(k)
@@ -136,7 +160,8 @@ class Indice:
                 self._completi[tuple(sorted(parole))].append(c)
 
     def e_squadra_serie_a(self, testo: str) -> bool:
-        return normalizza(testo) in self._squadre
+        """«INT», «Inter», ma anche «Hellas Verona», «AC Milan»."""
+        return self._e_squadra_norm(normalizza(testo))
 
     @staticmethod
     def squadra_corrisponde(testo: str, c: Calciatore) -> bool:
@@ -223,6 +248,12 @@ class Indice:
         return list(dict.fromkeys(risultato))
 
     # ---------- i modi di trovare i candidati, dal più sicuro al meno sicuro ----------
+    def _compatto(self, n: str) -> list[Calciatore]:
+        """«NDicka» o «N Dicka» per «N'Dicka», «K0ne M» per «Koné M.», «Esposito FP» per «Esposito F.P.»: stesse lettere,
+        cambia solo come le ha lette l'OCR. Solo se la chiave porta a un nome solo del listone."""
+        nomi = {k for chiave in compatta(n) for k in self._compatti.get(chiave, ())}
+        return list(self._per_nome[next(iter(nomi))]) if len(nomi) == 1 else []
+
     def _abbreviati(self, n: str) -> list[Calciatore]:
         return [c for k in self._nomi if _abbreviazione_compatibile(n, k) for c in self._per_nome[k]]
 
@@ -290,12 +321,14 @@ class Indice:
         n = normalizza(nome)
         if not n:
             return Esito(None, "non trovato")
-        if self._per_nome.get(n):                          # il nome scritto pari pari: come sempre
-            return self._decidi("esatto", [(self._per_nome[n], squadra, ruolo)])
         # squadra e ruolo passati da chi chiama valgono più di quelli trovati dentro la cella
         letture = [(k, squadra or sq, ruolo or ru) for k, sq, ru in self._interpretazioni(nome)]
+        for trova in (lambda k: self._per_nome.get(k, []), self._compatto):    # il nome scritto pari pari: come sempre
+            if trovati := trova(n):
+                return self._con_altri(self._decidi("esatto", [(trovati, squadra, ruolo)]), letture)
         for metodo, trova in (
             ("esatto", lambda k: self._per_nome.get(k, [])),
+            ("esatto", self._compatto),
             ("abbreviato", self._abbreviati),
             ("abbreviato", self._solo_cognome),
             ("abbreviato", self._cognome_nudo),
@@ -306,8 +339,25 @@ class Indice:
         ):
             gruppi = [(trovati, sq, ru) for k, sq, ru in letture if (trovati := trova(k))]
             if gruppi:
-                return self._decidi(metodo, gruppi)
+                esito = self._decidi(metodo, gruppi)
+                return self._con_altri(esito, letture) if metodo == "esatto" else esito
         return Esito(None, "non trovato", self._proposte([k for k, _, _ in letture]))
+
+    def _con_altri(self, esito: Esito, letture: list[tuple[str, str | None, str | None]]) -> Esito:
+        """Nome uguale nel listone ma con ruolo o squadra diversi: se un altro giocatore dallo stesso cognome ha proprio quel
+        ruolo e quella squadra («Thuram» C Juventus quando «Thuram» è A dell'Inter e «Thuram K.» C della Juventus: l'OCR ha
+        perso l'iniziale), è un dubbio tra i due, con lui per primo. Mai un abbinamento sicuro."""
+        if esito.calciatore is None or not esito.avviso:
+            return esito
+        altri = []
+        for k, sq, ru in letture:
+            if not (sq and ru):
+                continue
+            for trova in (self._abbreviati, self._solo_cognome, self._cognome_nudo):
+                altri += [c for c in trova(k)
+                          if c is not esito.calciatore and c.ruolo == ru and self.squadra_corrisponde(sq, c)]
+        altri = _senza_doppi(altri)
+        return Esito(None, "ambiguo", altri + [esito.calciatore]) if altri else esito
 
     def _decidi(self, metodo: str, gruppi: list[tuple[list[Calciatore], str | None, str | None]]) -> Esito:
         """Dai candidati di ogni lettura della cella a un esito. Letture che portano a giocatori diversi: dubbio."""
@@ -321,6 +371,9 @@ class Indice:
         if discordanze and metodo != "esatto":
             # nome solo somigliante E ruolo/squadra diversi: troppo rischioso, meglio chiedere
             return Esito(None, "ambiguo", [c])
+        if metodo == "abbreviato" and squadra and ruolo and not discordanze:
+            # nome abbreviato, ma ruolo E squadra indicati sono i suoi e nessun altro va bene: è lui
+            metodo = "esatto"
         avviso = elenco([
             F("nomi.ruolo_diverso", indicato=ruolo, listone=c.ruolo) if d == "ruolo"
             else F("nomi.squadra_diversa", indicata=squadra, listone=c.squadra) for d in discordanze], sep="; ")
