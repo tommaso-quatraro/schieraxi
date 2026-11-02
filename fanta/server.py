@@ -12,7 +12,6 @@ from datetime import datetime
 import json
 import unicodedata
 import logging
-import os
 import re
 import secrets
 import traceback
@@ -896,6 +895,18 @@ def cancella_scelta(request: Request, response: Response, giornata: int = Query(
     return {"ok": True}
 
 
+def _stato_vero(schede: list[dict], db, r, giornata: int) -> list[dict]:
+    """Dopo la scadenza ogni scheda dell'elenco dei Giocatori mostra lo stato vero della giornata («Voto in arrivo»,
+    «Da giocare»...) invece delle probabili, come Rosa, scheda e Formazione. Prima della scadenza le schede restano com'erano.
+    Le voci senza previsione (`assente`) non si toccano."""
+    stagione = consigli.stagione_corrente()
+    if not schede or not fasi.iniziata(db, r, stagione, giornata, datetime.now()):
+        return schede
+    nuove = fasi.schede_a_giornata_iniziata([x for x in schede if not x.get("assente")], db, r, stagione, giornata,
+                                            datetime.now(), _stati_live())
+    return [nuove.get(int(x["id"]), x) if not x.get("assente") else x for x in schede]
+
+
 @app.get("/api/osservati")
 def lista_osservati(response: Response, ctx: Contesto = Depends(lega_corrente)):
     """I giocatori osservati con la previsione di questa giornata e di chi sono (o svincolati)."""
@@ -1303,7 +1314,7 @@ def sotto_il_cofano(request: Request, ctx: Contesto = Depends(lega_corrente)):
         corpo = sotto_il_cofano_mod.costruisci(db, consigli.stagione_corrente(), affidabilita.carica(ctx.affidabilita),
                                                lingua=lingua_testi.della_richiesta(request))
     except sotto_il_cofano_mod.TestiNonDisponibili:
-        raise HTTPException(503, sotto_il_cofano_mod.MESSAGGIO_NON_DISPONIBILE)
+        raise HTTPException(503, sotto_il_cofano_mod.MESSAGGIO_NON_DISPONIBILE) from None
     finally:
         db.close()
     etag = versioni.etag_dati(corpo)
@@ -1349,9 +1360,13 @@ def classifica(ruolo: str | None = None, liberi: bool = False, limite: int = 60,
     if liberi:
         prev = prev[~prev.index.isin(proprietari)]
     prev = prev.sort_values("atteso", ascending=False).head(max(1, min(limite, 800)))
-    return {"giornata": giornata, "giocatori": [
-        consigli.scheda_previsione(i, x) | {"quotazione": quot.get(i), "proprietario": proprietari.get(i)}
-        for i, x in prev.iterrows()]}
+    schede = [consigli.scheda_previsione(i, x) | {"quotazione": quot.get(i), "proprietario": proprietari.get(i)}
+              for i, x in prev.iterrows()]
+    db = _db()
+    try:
+        return {"giornata": giornata, "giocatori": _stato_vero(schede, db, r, giornata)}
+    finally:
+        db.close()
 
 
 @app.get("/api/giocatore/{calciatore_id}")

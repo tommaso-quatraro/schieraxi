@@ -386,7 +386,7 @@ def test_risposte_utente_non_usa_la_rotta_che_scrive_e_classifica_gli_errori(mon
     monkeypatch.setattr(server, "leggi_diario", lambda ctx: (_ for _ in ()).throw(KeyError("x")))
     monkeypatch.setattr(server, "widget", lambda request, ctx: server.JSONResponse(m["widget"]))
     monkeypatch.setattr(server, "risultati_live", lambda request: server.JSONResponse(m["live"]))
-    monkeypatch.setattr(server, "leggi_scelta", lambda g, response, ctx: None)
+    monkeypatch.setattr(server, "leggi_scelta", lambda response, giornata, ctx: None)
     corpi, errori, scelta = sentinella.risposte_utente(NS(), None)
     assert set(corpi) == {"oggi", "widget", "live", "scelta"} and scelta is None
     assert errori == {"formazione": ("ValueError", "rifiutata"), "diario": ("KeyError", "errore"), "oggi:json": ("ValueError", "json")}
@@ -433,3 +433,27 @@ def test_con_gli_account_si_controlla_chi_ha_le_rose(multiutente, tmp_path):
     c.rose.parent.mkdir(parents=True, exist_ok=True)
     c.rose.write_text("{}", encoding="utf-8")
     assert [(e, x.utente_id) for e, x in sentinella._contesti()] == [(f"utente {ids[1]}", ids[1])]
+
+
+def test_risposte_utente_chiama_le_rotte_con_la_loro_firma_vera(monkeypatch):
+    """Il 2/11 una rotta ha cambiato l'ordine dei parametri e la sentinella dava «AttributeError» per tutti:
+    ogni chiamata della sentinella deve stare nella firma VERA della rotta (non in quella di un finto)."""
+    import inspect
+    from fanta import server
+    m = _mondo()
+    finti = {"oggi": m["oggi"], "leggi_diario": {}, "widget": server.JSONResponse(m["widget"]),
+             "risultati_live": server.JSONResponse(m["live"]), "leggi_scelta": None}
+    for nome, valore in finti.items():
+        vera = getattr(server, nome)
+
+        def finta(*a, _vera=vera, _valore=valore, **k):
+            inspect.signature(_vera).bind(*a, **k)      # TypeError se la chiamata non sta nella firma vera
+            for v in list(a) + list(k.values()):
+                assert not isinstance(v, int) or isinstance(v, bool) or "giornata" in k, "giornata passata al posto sbagliato"
+            return _valore
+        monkeypatch.setattr(server, nome, finta)
+    monkeypatch.setattr(server, "_regole", lambda ctx: REGOLE)
+    monkeypatch.setattr(server, "_rose", lambda ctx: None)
+    monkeypatch.setattr(consigli, "formazione", lambda db, r, rose: m["formazione"])
+    corpi, errori, scelta = sentinella.risposte_utente(NS(), None)
+    assert errori == {} and "scelta" in corpi

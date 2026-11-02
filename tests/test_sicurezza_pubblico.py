@@ -1,9 +1,7 @@
 """Correzioni prima di rendere pubblico il codice (revisione di sicurezza del 1/11/2026). Ogni test dice quale attacco prova.
 Tutto su cartelle temporanee e dati finti: nessun file vero viene toccato."""
 import contextlib
-import os
 import threading
-import time
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -11,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from fanta import account, immagini, limiti, percorsi, posta, registro, rotte_account, server
+from fanta import account, immagini, limiti, percorsi, registro, rotte_account, server
 from fanta.account import ErroreAccount
 
 from test_account_http import PASSWORD, cliente, invito

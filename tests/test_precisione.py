@@ -161,10 +161,12 @@ def test_web_disegna_la_carta_senza_buchi(lingua):
     gioc = [_g(i, 0.95, 6.0, 6.0 if i <= 6 else None) for i in range(1, 11)]
     pieno = precisione.riassunto([_voce(g, gioc, reale=60.0 + g, tua=55.0) for g in range(4, 14)])
     poco = precisione.riassunto([_voce(4, [], reale=70.0)])
-    prova = TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + _funzione("cartaPrecisione") + f"""
+    al_percento = next(r for r in APP.splitlines() if r.startswith("const alPercento = "))
+    prova = (TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + al_percento + "\n"
+             + _funzione("cartaPrecisione") + f"""
     LINGUA = "{lingua}";
     console.log(JSON.stringify([cartaPrecisione({json.dumps(pieno)}), cartaPrecisione({json.dumps(poco)}), cartaPrecisione({{"giornate": 0}})]));
-    """
+    """)
     r = subprocess.run(["node", "-"], input=prova, capture_output=True, encoding="utf-8", timeout=30)
     assert r.returncode == 0, r.stderr
     pieno_html, poco_html, vuoto = json.loads(r.stdout)
@@ -183,7 +185,7 @@ def test_cron_per_utente_errori_con_id_e_tempo_finito(monkeypatch, tmp_path, cap
     import time
     from fanta import __main__ as comandi, account, contesto
     cartelle = {i: tmp_path / str(i) for i in (1, 2, 3)}
-    for i, c in cartelle.items():
+    for _i, c in cartelle.items():
         c.mkdir()
         (c / "rose.json").write_text("{}", encoding="utf-8")
     monkeypatch.setattr(account, "apri", lambda *a, **k: SimpleNamespace(close=lambda: None))

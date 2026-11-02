@@ -1,5 +1,4 @@
 """ETag e If-Match: scrivere con un ETag vecchio si ferma con 412; senza If-Match (client vecchi) tutto funziona come prima."""
-import contextlib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
@@ -7,7 +6,7 @@ import pandas as pd
 import pytest
 from fastapi import HTTPException
 
-from fanta import account, calcolo, server, versioni
+from fanta import calcolo, server, versioni
 from fanta.regole import Regole
 
 from test_account_http import PASSWORD, cliente
@@ -75,7 +74,7 @@ def prova(c, leggi, scrivi):
 
 def test_regole(mondo):
     a, _ = nuovo_utente("utentea")
-    prova(a, lambda: a.get("/api/regole"), lambda h, n=iter(range(100)): a.put("/api/regole", json=regole_con(f"Lega {next(n)}"), headers=h))
+    prova(a, lambda: a.get("/api/regole"), lambda h, n=iter(range(100)): a.put("/api/regole", json=regole_con(f"Lega {next(n)}"), headers=h))  # noqa: B008 contatore condiviso fra le chiamate, voluto
 
 
 def test_rose_crediti_mia_squadra_e_importazione(mondo):

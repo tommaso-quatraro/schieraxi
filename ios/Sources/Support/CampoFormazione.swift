@@ -132,20 +132,21 @@ struct DistintivoSquadra: View {
 }
 
 /// La legenda del campo: gli stessi pezzi delle pedine, su un ritaglio di prato, con la spiegazione accanto.
-/// Con `chiudi` ha il pulsante «Ho capito» (la prima volta, sopra il campo); senza, sta nel popover «Come si legge il campo».
+/// Testi uguali alla web app (`formazione.legenda_*` in testi.js). Con `chiudi` ha il pulsante «Ho capito» (la prima volta,
+/// sopra il campo); senza, sta nel riquadro che si apre con «Cosa vuol dire».
 struct LegendaCampo: View {
     var chiudi: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            voce("Fantavoto atteso se gioca, con le regole della tua lega. Tocca il giocatore per la sua scheda.") {
+            voce("fantavoto atteso se gioca, con le regole della tua lega") {
                 PillolaFantavoto(valore: 6.8)
             }
-            voce("Probabilità di giocare.") { RigaGioca(testo: "gioca 85%", incerto: false) }
-            voce("Sotto il 70%: non è sicuro di giocare.") { RigaGioca(testo: "gioca 45%", incerto: true) }
-            voce("In casa contro il Napoli.") { RigaAvversario(avversario: "napoli", inCasa: true) }
-            voce("In trasferta, a Napoli.") { RigaAvversario(avversario: "napoli", inCasa: false) }
-            voce("Il fondo del volto ha i colori della squadra del giocatore.") {
+            voce("probabilità che giochi") { RigaGioca(testo: "gioca 85%", incerto: false) }
+            voce("sotto il 70%: il posto è a rischio") { RigaGioca(testo: "gioca 45%", incerto: true) }
+            voce("gioca in casa contro la squadra della sigla") { RigaAvversario(avversario: "napoli", inCasa: true) }
+            voce("gioca fuori casa contro la squadra della sigla") { RigaAvversario(avversario: "napoli", inCasa: false) }
+            voce("Il volto ha i colori della sua squadra. Tocca il fantavoto atteso per sapere perché è quello.") {
                 AvatarGiocatore(id: 4321, squadra: "napoli", indice: nil, dimensione: 30, nome: nil, ruolo: "C")
             }
             if let chiudi {
