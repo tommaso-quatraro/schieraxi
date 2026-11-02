@@ -1,5 +1,54 @@
 [
   {
+    "versione": "1.370",
+    "data": "2026-11-02T16:14:24",
+    "titolo": "Regole, Squadra e registrazione: testi più chiari e campi con il loro nome",
+    "voci": [
+      "Regole, Prova del modificatore difesa: il bonus si legge com'è, anche con il mezzo punto (prima «+3,5» diventava «+4»).",
+      "Regole: ogni campo numerico ha il nome della sua riga anche per i lettori di schermo (prima alcuni non avevano nome, altri si chiamavano come la sezione).",
+      "Squadra, Altro, Impostazioni e Novità: il pulsante per tornare indietro ha la freccia disegnata, come nelle altre schermate.",
+      "Aggiorna le rose: il comando rapido dell'iPhone si chiama «Importa in SchieraXI».",
+      "Registrazione: se non spunti la casella, il messaggio ricorda anche l'età minima."
+    ],
+    "tecnico": [
+      "fanta/web/impostazioni.js: apriPannello usa ICONA_INDIETRO al posto di «← » nel testo; app.js: lo stesso in vistaNovita.",
+      "fanta/web/app.js: rigaRegola dà al primo input della riga aria-label = testo della riga senza tag; aggiornaProva usa tp(..., Math.abs(b)) e num(b, Number.isInteger(b) ? 0 : 1); accesso.spunta_letto con { eta: ETA_MINIMA }.",
+      "fanta/web/testi.js: lega.una_volta_sola, lega.sc1, lega.per_usarlo_apri con SchieraXI; accesso.spunta_letto con {eta} (it e en). GUIDA-UTENTE: percorso di Stemma e maglia e immagini da indirizzo web solo se accese.",
+      "Test: tests/test_squadra_testi_web.py (rigaRegola provata con node)."
+    ]
+  },
+  {
+    "versione": "1.369",
+    "data": "2026-11-02T16:08:46",
+    "titolo": "Squadra e primo avvio: i dati appena salvati si vedono subito",
+    "voci": [
+      "Nel primo avvio, dopo aver sistemato un giocatore non riconosciuto, «Questa è la mia» salva la squadra: prima diceva che i dati erano cambiati da un altro dispositivo e chiudeva la configurazione.",
+      "Nel primo avvio il titolo «Giocatori da sistemare» scende man mano che li sistemi.",
+      "In Squadra e in Altro, dopo aver scelto la tua squadra, salvato i crediti o aggiornato le rose, le schermate mostrano subito i valori nuovi: prima restavano quelli di prima finché non cambiavi scheda."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: risorsaDi riconosce POST /api/rose/correggi come risorsa «rose» (la web aggiorna l'ETag dopo la correzione; prima la PUT /api/mia-squadra seguente usava l'ETag vecchio e riceveva 412). vistaLega: rileggiSquadre(voce) rilegge /api/squadre dopo mia squadra, crediti e importazione e ridisegna il pannello della mia squadra; miaS e la select si calcolano dentro il corpo del pannello.",
+      "fanta/web/primoavvio.js: paContaDaSistemare aggiorna il titolo «Giocatori da sistemare (N)».",
+      "Test: tests/test_squadra_dati_aggiornati_web.py (ogni rotta del server con If-Match ha la sua risorsa in risorsaDi, provata con node)."
+    ]
+  },
+  {
+    "versione": "1.368",
+    "data": "2026-11-02T15:53:52",
+    "titolo": "Chi schierare e Diario: numeri e parole che tornano",
+    "voci": [
+      "Chi schierare?: il giocatore in verde è sempre quello del titolo «Schiera …», e la giornata è quella della tua lega.",
+      "Diario: punti sempre con un decimale («48,0») e, in «Le tue scelte», il numero della giornata della tua lega.",
+      "Quanto ci abbiamo preso: «chi davamo all'83%» invece di «al 83%», e i quattro numeri sono righe più pulite."
+    ],
+    "tecnico": [
+      "fanta/consigli.py confronto(): consigliato = l'unico titolare tra i due in formazione (posto_a/posto_b), altrimenti chi ha più punti_attesi come prima. Issue #121 punto 1 (vale anche per l'iPhone, che legge consigliato).",
+      "fanta/diario.py scelte_tue(): ogni voce di per_giornata ha giornata_lega (la web la usava già, mancava nella risposta).",
+      "fanta/web/app.js: apriConfronto usa giornata_lega ?? giornata nel titolo e posto_a/posto_b del server per le etichette; apriDiario formatta i punti con num(x, 1); nuova alPercento() per diario.qp_gioca_ric (segnaposto {al} in testi.js, it ed en). stile.css: .qp-voce senza fondo, bordo e raggio (riga con border-top).",
+      "Test: tests/test_confronto_consigliato.py, tests/test_diario_confronto_web.py, tests/test_diario_scelte_lega.py. docs/API.md e GUIDA-UTENTE.md aggiornati."
+    ]
+  },
+  {
     "versione": "1.367",
     "data": "2026-11-02T15:28:10",
     "titolo": "Cambi consigliati: rimborso e costo sempre visibili",
