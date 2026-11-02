@@ -46,7 +46,7 @@ Sigle usate qui:
 6. **Errori**: sempre `{"detail": "testo in italiano"}`. Vedi la tabella della sezione 8.
 7. **ETag e If-Match**: le risorse personali hanno un `ETag` (una impronta del contenuto). Chi scrive può mandare l'ETag letto nell'intestazione `If-Match`. Se nel frattempo è cambiato, `412`. Senza `If-Match` la scrittura va comunque (i client vecchi non si rompono).
    Risorse con ETag: regole, avvisi, osservati, scelta di una giornata, rose (squadre, rosa, scritture delle rose e dei crediti).
-7b. **Lingua e cache**: le `GET /api/` con risposta JSON hanno `Vary: Accept-Language`. Con `Accept-Language: en`, se le note sugli infortuni vengono tradotte, l'`ETag` ha il suffisso `-en` (es. `"abc-en"`) e `If-None-Match` si confronta con quello: un ETag preso dalla risposta italiana non dà `304`. Le risposte da scaricare (`/api/backup`) non cambiano.
+7b. **Lingua e cache**: le `GET /api/` con risposta JSON hanno `Vary: Accept-Language`. Con `Accept-Language: en`, se le note sugli infortuni vengono tradotte, l'`ETag` ha il suffisso `-en` (es. `"abc-en"`) e `If-None-Match` si confronta con quello: un ETag preso dalla risposta italiana non dà `304`. Le risposte da scaricare (`/api/backup`) non cambiano. In `If-Match` (scritture) invece `"abc-en"` vale come `"abc"`: è la stessa versione dei dati in un'altra lingua (dal 2/11/2026; prima dava `412`).
 8. **304 e Cache-Control**: `GET /api/widget` risponde `304` se mandi `If-None-Match` con l'ETag uguale. Le risposte personali hanno `Cache-Control: private` o `no-store`.
 9. **Calcoli pesanti**: se il risultato non è pronto, la rotta risponde `202` (vedi sezione 8). Il client riprova dopo `riprova_tra` secondi (anche in `Retry-After`).
 10. **Limiti**:
