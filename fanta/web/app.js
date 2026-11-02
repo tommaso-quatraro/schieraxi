@@ -394,10 +394,9 @@ function esitoPartita(x) {
 }
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
-  const cognome = x.nome.length > 11 ? x.nome.replace(/\s+\S+\.$/, "") : x.nome;
   return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}" aria-label="${esc(vocePedina(x, esitoPartita(x)))}">
     <span class="avatar-pedina">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
-    <span class="nome">${esc(cognome)}</span>
+    <span class="nome">${esc(cognome(x))}</span>
     ${esitoPartita(x) ? `<span class="gioca esito">${esc(esitoPartita(x).testo)}</span>`
       : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
     ${x.avversario ? `<span class="avv">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
@@ -429,7 +428,10 @@ function collegaLegenda() {
 }
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
-const partitaBreve = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span> · ${quando(x.data_partita)}`;
+// «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo «UDI fuori».
+const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>`;
+const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;
+const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;
 
 function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false) {
   const p = x.p_voto ?? 0;
@@ -546,7 +548,7 @@ async function caricaInfo() {
     // giornata e data dei dati in due pezzi: sui telefoni stanno su due righe (stile.css), altrimenti la data si tagliava a 390 px
     const pezzo = (classe, testo) => { const e = document.createElement("span"); e.className = classe; e.textContent = testo; return e; };
     const dati = (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, "");
-    $("#sottotitolo").replaceChildren(...(i.prossima_giornata ? [pezzo("sotto-giornata", t("testata.giornata", { n: i.prossima_giornata })), pezzo("sotto-sep", " · ")] : []),
+    $("#sottotitolo").replaceChildren(...(i.prossima_giornata ? [pezzo("sotto-giornata", t("testata.giornata", { n: i.prossima_giornata_lega || i.prossima_giornata })), pezzo("sotto-sep", " · ")] : []),
       pezzo("sotto-dati", dati));
     $("#bottone-aggiorna").classList.toggle("gira", i.aggiornamento_in_corso);
   } catch (e) {
@@ -907,13 +909,14 @@ const codiceStile = r => String(r).replace("-", "m");
 const nomeStile = l => (LINGUA === "it" && l.nome) || t("formazione.stile_nome_" + codiceStile(l.rischio));
 const descrizioneStile = l => (LINGUA === "it" && l.descrizione) || t("formazione.stile_desc_" + codiceStile(l.rischio));
 
-const cognome = x => x.nome.length > 11 ? x.nome.replace(/\s+\S+\.$/, "") : x.nome;
+// Sul campo solo il cognome, senza l'iniziale («Rossi L.» → «Rossi»), come sull'iPhone: lo spazio è poco.
+const cognome = x => String(x.nome).replace(/\s+\S{1,3}\.$/u, "");
 
 // La formazione come testo da leggere (o da mandare nel gruppo): Leghe non permette di incollarla, si inserisce a mano.
 function testoFormazione(f, m) {
   const sch = id => f.schede[String(id)];
   const riga = r => `${ruoloSigla(r)}: ${m.titolari.map(sch).filter(x => x.ruolo === r).map(x => x.nome).join(", ")}`;
-  const righe = [`${t("testata.giornata", { n: f.giornata })} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
+  const righe = [`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
   if (m.panchina.length) righe.push(t("scambi.panchina") + ": " + m.panchina.map((id, k) => `${k + 1}) ${sch(id).nome}`).join(", "));
   return righe.join("\n");
 }
@@ -1130,7 +1133,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
         ${st ? rigaStatoScelta(st, sc.salvata) : ""}
-        <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
+        <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
         ${manuale && r.differenza !== null ? `<div class="debole" style="margin-top:6px">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
@@ -1364,7 +1367,7 @@ async function tabCalendario(dove, ok) {
       <table class="tabella-cal"><thead><tr><th></th>${c.giornate.map(g => `<th>G${g}</th>`).join("")}</tr></thead>
       <tbody>${c.squadre.map(s => `<tr class="${mie.has(s.squadra) ? "mia" : ""}"><td>${sigla(s.squadra)}</td>${c.giornate.map(g => {
         const p = s.partite.find(x => x.giornata === g);
-        return p ? `<td><span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span></td>` : `<td></td>`;
+        return p ? `<td><span class="cella d${p.difficolta}">${vsAt(p)}</span></td>` : `<td></td>`;
       }).join("")}</tr>`).join("")}</tbody></table>
       <div class="legenda-cal">${t("diff.1")} ${[1, 2, 3, 4, 5].map(d => `<i class="d${d}"></i>`).join("")} ${t("diff.4")}</div></div>`;
   } catch (e) { if (ok()) dove.innerHTML = erroreVista(e); }
@@ -1582,7 +1585,7 @@ async function apriGiocatore(id) {
           <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
       </div>
       ${pr ? `<div class="carta">
-        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
+        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata_lega || pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
           ${finitaP ? (votoGiornata && votoGiornata.fv != null
             ? `<div class="grande">${num(votoGiornata.fv)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto")}</span></div>`
             : `<div class="grande stato-partita">${t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
@@ -1591,7 +1594,7 @@ async function apriGiocatore(id) {
         ${nonGioca || iniziataP ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
         ${!finitaP && motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
         ${nonGioca || iniziataP ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${finitaP ? "" : cartaPerche(prSenzaGioca)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
-      ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span>`).join("")}</div>
+      ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
         <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
       <div class="carta"><h2>${t("mercato.forma")}</h2>
         ${forma ? `<div class="riga"><div>${forma.pallini}</div><div style="text-align:right"><div class="debole piccolo">${t("mercato.andamento")}</div><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div></div>` : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}
@@ -1680,7 +1683,7 @@ async function apriConfronto(a, b) {
     const schierato = fo ? (fo.posto_a === "titolare" && fo.posto_b !== "titolare" ? x : fo.posto_b === "titolare" && fo.posto_a !== "titolare" ? y : null) : null;
     const vince = c.giocatori.find(g => g.id === c.consigliato);
     const intest = g => `<div class="duello-giocatore ${g.id === c.consigliato ? "scelto" : ""}">${avatarIndice(g, true)}
-      <b class="nome">${esc(g.nome)}</b><span class="debole piccolo">${sigla(g.squadra)} · ${sigla(g.avversario)} ${t(g.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>
+      <b class="nome">${esc(g.nome)}</b><span class="debole piccolo">${partitaRiga(g)}</span>
       ${postoInFormazione(g.id) ? `<span class="etichetta ${inTitolari(g.id) ? "" : "neutra"}">${postoInFormazione(g.id)}</span>` : ""}</div>`;
     const massimo = Math.max(0.3, ...c.fattori.map(f => Math.abs(f.effetto)));
     const valore = (f, v) => f.percentuale ? perc(v) : num(v, 2);
@@ -1704,7 +1707,7 @@ async function apriConfronto(a, b) {
       <div class="carta"><details><summary>${t("mercato.tutti_numeri")}</summary><div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:center;margin-top:8px">
         <div></div><div><b>${esc(x.nome)}</b></div><div><b>${esc(y.nome)}</b></div>
         ${riga(t("mercato.indice"), g => g.indice)}
-        ${riga(t("mercato.avversario"), g => `${sigla(g.avversario)} ${t(g.in_casa ? "giocatore.casa" : "giocatore.fuori")}`)}
+        ${riga(t("mercato.avversario"), g => vsAt(g))}
         ${riga(t("mercato.partita"), g => diffPill(g.difficolta))}
         ${riga(t("mercato.gioca_riga"), g => perc(g.p_voto))}
         ${riga(t("mercato.fantavoto_atteso_riga"), g => num(g.fv_atteso))}
@@ -2483,7 +2486,7 @@ async function condividiImmagine(f, m) {
   g.fillStyle = sfondo; g.fillRect(0, 0, L, A);
   g.textAlign = "center";
   g.fillStyle = "#eef6f0"; g.font = "700 64px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${t("testata.giornata", { n: f.giornata })} · ${m.modulo}`, L / 2, 110);
+  g.fillText(`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, L / 2, 110);
   g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
   g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: virgola(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
@@ -2522,9 +2525,9 @@ async function condividiImmagine(f, m) {
   g.fillText(t("avv.img_numero"), L / 2, 1316);
   const blob = await new Promise(r => c.toBlob(r, "image/png"));
   if (!blob) { avviso(t("formazione.non_riesco_creare")); return; }
-  const file = new File([blob], `formazione-giornata-${f.giornata}.png`, { type: "image/png" });
+  const file = new File([blob], `formazione-giornata-${f.giornata_lega || f.giornata}.png`, { type: "image/png" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { n: f.giornata }) }); return; }
+    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { n: f.giornata_lega || f.giornata }) }); return; }
     catch (e) { if (e && e.name === "AbortError") return; }
   }
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("nav.formazione")}</h2>
