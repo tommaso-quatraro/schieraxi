@@ -1,7 +1,8 @@
 import XCTest
 @testable import Schieraxi
 
-// La schermata di accesso e «Il tuo account» uguali alla web: passi, campi, controlli, testi, recupero con l'email.
+// La schermata di accesso e «Il tuo account» uguali alla web: passi, campi, controlli, testi. Recupero con l'email, posta spenta
+// e passi del modulo: `AccessoComeLaWebTests` (Swift Testing).
 // Solo nomi e indirizzi finti (example.invalid); le password sono di prova.
 
 final class ModuloAccessoTests: XCTestCase {
@@ -114,7 +115,7 @@ final class ModuloAccessoTests: XCTestCase {
         m.vai(.recupera, modo: .invito)
         XCTAssertEqual(m.metodo, .codice, "con gli inviti si parte dal codice di recupero")
         XCTAssertEqual(m.password, "", "la password scritta non resta")
-        XCTAssertTrue(m.mostraMetodi)
+        XCTAssertTrue(m.mostraMetodi())
         m.vai(.recupera, modo: .email)
         XCTAssertEqual(m.metodo, .email)
         XCTAssertEqual(MetodoRecupero.iniziale(.aperta), .email)
@@ -151,7 +152,7 @@ final class ModuloAccessoTests: XCTestCase {
         // il codice è partito
         m.emailRecupero = "nome@example.invalid"
         XCTAssertEqual(m.passo, .recuperoEmailCodice)
-        XCTAssertFalse(m.mostraMetodi, "al secondo passo la scelta del metodo sparisce, come sulla web")
+        XCTAssertFalse(m.mostraMetodi(), "al secondo passo la scelta del metodo sparisce, come sulla web")
         XCTAssertEqual(m.campi(.email), [.codiceEmail, .password])
         XCTAssertEqual(m.titoloPulsante, "Scegli la nuova password")
         XCTAssertEqual(m.spiegazione(.email), "Scrivi il codice arrivato a nome@example.invalid e scegli la nuova password.")
@@ -166,42 +167,6 @@ final class ModuloAccessoTests: XCTestCase {
         m.vai(.recupera, modo: .email)
         XCTAssertEqual(m.passo, .recuperoEmail)
         XCTAssertEqual(m.codiceEmail, "")
-    }
-
-    @MainActor
-    func testRecuperoConLEmailUsaLeRotteDellaWeb() async throws {
-        let server = ServerDiProva { _, percorso, _ in
-            if percorso == "/api/account/recupero-email" { return Data(#"{"ok": true}"#.utf8) }
-            return Data(#"{"ok": true, "codice_recupero": "GGGGG-HHHHH-JJJJJ"}"#.utf8)
-        }
-        try await RecuperoConEmail.chiediCodice(email: " nome@example.invalid ", server: server)
-        let richiesta = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(server.corpiInviati(a: "POST /api/account/recupero-email").first)) as? [String: Any])
-        XCTAssertEqual(richiesta["email"] as? String, "nome@example.invalid")
-
-        let nuovo = try await RecuperoConEmail.conferma(email: "nome@example.invalid", codice: " 123456 ", nuova: passwordBuona, server: server)
-        XCTAssertEqual(nuovo, "GGGGG-HHHHH-JJJJJ")
-        let conferma = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(server.corpiInviati(a: "/recupero-email/conferma").first)) as? [String: Any])
-        XCTAssertEqual(conferma["email"] as? String, "nome@example.invalid")
-        XCTAssertEqual(conferma["codice"] as? String, "123456")
-        XCTAssertEqual(conferma["nuova"] as? String, passwordBuona)
-    }
-
-    @MainActor
-    func testRecuperoConLEmailRifiutaRisposteStrane() async {
-        let senzaCodice = ServerDiProva { _, _, _ in Data(#"{"ok": true}"#.utf8) }
-        do {
-            _ = try await RecuperoConEmail.conferma(email: "nome@example.invalid", codice: "1", nuova: passwordBuona, server: senzaCodice)
-            XCTFail("senza il nuovo codice non si va avanti")
-        } catch {
-            XCTAssertEqual(error as? SessioneAccount.Errore, .rispostaNonValida)
-        }
-        let html = ServerDiProva { _, _, _ in Data("<html><body>Benvenuto</body></html>".utf8) }
-        do {
-            _ = try await RecuperoConEmail.conferma(email: "nome@example.invalid", codice: "1", nuova: passwordBuona, server: html)
-            XCTFail("una pagina HTML non è SchieraXI")
-        } catch {
-            XCTAssertEqual(error as? SessioneAccount.Errore, .serverNonValido)
-        }
     }
 
     // MARK: Il tuo account
@@ -227,7 +192,7 @@ final class ModuloAccessoTests: XCTestCase {
         XCTAssertEqual(TestiAccount.cambiaPassword, "Cambia la password")
         XCTAssertEqual(TestiAccount.recupero, "Codice di recupero")
         XCTAssertEqual(TestiAccount.nuovoCodice, "Genera un nuovo codice")
-        XCTAssertEqual(TestiAccount.ripetiPassword, "Ripeti la nuova password", "resta: sull'iPhone c'è già ed è più sicuro")
+        XCTAssertEqual(TestiAccount.ripetiPassword, "Ripeti la nuova password", "come `account.ripeti_password` della web")
         XCTAssertEqual(TestiAccount.elimina, "Elimina il mio account")
     }
 }

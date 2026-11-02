@@ -72,6 +72,25 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30), "dopo l'accesso compare l'app")
     }
 
+    /// Registrati senza la casella (invio dalla tastiera, dall'ultimo campo): compare la frase della web, non si va avanti e la
+    /// password scritta resta.
+    func testRegistrazioneSenzaCasellaSpiegaCosaMancaETieneLaPassword() {
+        avvia("registra")
+        let invito = app.textFields["Codice d'invito"]
+        XCTAssertTrue(invito.waitForExistence(timeout: 30), "la scheda Registrati deve comparire")
+        invito.tap()
+        invito.typeText("INV-123\n")          // l'invio dalla tastiera passa al campo dopo: nome utente
+        app.typeText("mister.rossi\n")       // poi l'email facoltativa
+        app.typeText("\n")                   // lasciata vuota: si passa alla password
+        app.typeText("Prova-Finta-Zero\n")   // dall'ultimo campo l'invio manda il modulo
+        attendi("Per registrarti spunta la casella: hai letto Privacy e Termini d'uso e hai almeno 14 anni", contiene: true)
+        XCTAssertFalse(app.tabBars.firstMatch.exists, "senza la casella non si entra")
+        XCTAssertEqual(app.buttons["accesso-invia"].label, "Crea l'account", "si resta sul modulo")
+        let password = app.secureTextFields["Password (almeno 10 caratteri)"]
+        XCTAssertTrue(password.exists)
+        XCTAssertTrue((password.value as? String ?? "").contains("•"), "la password scritta resta")
+    }
+
     func testCodiceDiRecuperoSiVedeEsiConfermaPrimaDiProseguire() {
         avvia("codice")
         attendi("Salva il tuo codice di recupero")
@@ -98,7 +117,7 @@ final class AccessoUITests: XCTestCase {
         avvia("account")
         attendi("Il tuo account")
         attendi("mister.rossi", contiene: true)
-        attendi("Utente", contiene: true)
+        attendi("Utente · dal 1 settembre 2026", contiene: true)   // la riga intera, come la web (ruolo e data italiana)
         attendi("Nessuna email collegata.")
         attendi("Cambia la password")
         attendi("Codice di recupero")
