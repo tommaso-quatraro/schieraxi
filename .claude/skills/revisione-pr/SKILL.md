@@ -55,8 +55,7 @@ non lo fai e lo segnali come problema bloccante (sicurezza).
 - Un commento sulla riga per ogni problema, con `mcp__github_inline_comment__create_inline_comment` e `confirmed: true`.
   Testo in italiano semplice: prima riga «**Bloccante:**» o «**Da sistemare:**», poi lo scenario concreto (cosa fa l'utente o
   il dato, cosa succede) e, se è chiaro, la correzione in una riga.
-- Poi una sola sintesi con `gh pr comment <N> --body "..."`, al massimo 8 righe: titolo «Revisione automatica», numero di
-  problemi bloccanti e non bloccanti, una riga per ciascuno con file e riga. Se non hai trovato nulla: «Nessun problema trovato»
-  e cosa hai guardato, in una riga.
-- Esito finale con lo schema JSON richiesto: `bloccanti` = numero dei problemi bloccanti che hai commentato, `sintesi` = la
-  stessa sintesi in poche righe. L'esito deve sempre esserci, anche quando non trovi nulla (`bloccanti: 0`).
+- Niente commento generale: la sintesi la pubblica il workflow, prendendola dall'esito qui sotto.
+- Esito finale con lo schema JSON richiesto. `bloccanti` = numero dei problemi bloccanti che hai commentato. `sintesi` = al
+  massimo 8 righe in Markdown: problemi bloccanti e non bloccanti, una riga per ciascuno con file e riga; se non hai trovato
+  nulla, «Nessun problema trovato» e cosa hai guardato, in una riga. L'esito deve sempre esserci, anche con `bloccanti: 0`.
