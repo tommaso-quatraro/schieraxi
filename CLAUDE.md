@@ -25,6 +25,19 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
 6. L'unione si fa con «squash» e il ramo si cancella. Le pull request del proprietario si uniscono da sole quando i controlli
    passano; quelle degli altri le unisce chi cura il progetto.
 
+## Metodo: Superpowers e questo repository
+- Per il **come** si lavora (idea, piano, test prima del codice, ricerca dei difetti, revisione, verifica) comandano le skill di
+  Superpowers, usate così come sono. Il metodo in breve: `docs/METODO.md`.
+- Questo file comanda su ciò che è del progetto, anche quando una skill dice altro:
+  - ogni ramo finisce con una pull request su `main` (`Closes #N`): mai unione in locale né a mano (la fa il job `unisci`),
+    mai rami lasciati a metà;
+  - test prima del codice sì, ma il codice già scritto non si butta: si scrive il test che fallisce sul comportamento
+    sbagliato, lo si vede fallire, poi si corregge;
+  - la revisione si fa prima di aprire la pull request, perché l'unione è automatica;
+  - ramo indietro rispetto a `main`: `git merge origin/main` nel ramo, niente push forzato;
+  - spec e piani in italiano in `docs/superpowers/specs/` e `docs/superpowers/plans/`, senza dati veri (repository pubblico);
+  - novità in `fanta/novita.d/`, coerenza web-iPhone, foto iOS lanciate da una sola persona (`docs/METODO.md`).
+
 ## Test
 - Ambiente (Windows): `python -m venv .venv`, poi `.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt`.
   Su macOS e Linux usa `.venv/bin/python`.
