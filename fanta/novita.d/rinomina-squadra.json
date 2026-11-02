@@ -1,0 +1,10 @@
+{
+  "titolo": "Il nome di una squadra si può cambiare",
+  "voci": [
+    "Nella rosa di una squadra c'è «Cambia il nome»: utile se l'importazione ha letto il nome sbagliato. Stemma, maglia e la tua squadra lo seguono."
+  ],
+  "tecnico": [
+    "Nuova rotta PUT /api/squadre/nome {nome, nuovo} con If-Match delle rose: 400, 404, 409 (nome già usato o stesso file di stemma), 412.",
+    "immagini.rinomina sposta stemma e maglia; mia_squadra segue il nome; lo storico dei movimenti non cambia."
+  ]
+}

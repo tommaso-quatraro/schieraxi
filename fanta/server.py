@@ -10,6 +10,7 @@ import hashlib
 import shutil
 from datetime import datetime
 import json
+import unicodedata
 import logging
 import os
 import re
@@ -1531,6 +1532,42 @@ def rosa(response: Response, squadra: str | None = None, ctx: Contesto = Depends
 
 class MiaSquadra(BaseModel):
     nome: str
+
+
+class NomeSquadra(BaseModel):
+    nome: str = Field(max_length=100)          # il nome di adesso
+    nuovo: str = Field(max_length=100)
+
+
+NOME_SQUADRA_MAX = 60
+NOME_SQUADRA_NON_VALIDO = "Scrivi un nome da 1 a 60 caratteri."           # 60 = NOME_SQUADRA_MAX
+NOME_SQUADRA_DOPPIO = "C'è già una squadra con questo nome: scegline un altro."
+
+
+@app.put("/api/squadre/nome")
+def rinomina_squadra(dati: NomeSquadra, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+    """Cambia il nome di una squadra della lega dopo l'importazione: rose, «la mia squadra», stemma e maglia. If-Match come le
+    rose (412 se sono cambiate da un altro dispositivo). Il nome vecchio va scritto per intero (maiuscole a parte)."""
+    nuovo = " ".join(dati.nuovo.split())
+    if not nuovo or len(nuovo) > NOME_SQUADRA_MAX or any(unicodedata.category(c)[0] == "C" for c in nuovo):
+        raise HTTPException(400, NOME_SQUADRA_NON_VALIDO)
+    with _scrittura_rose:
+        versioni.controlla(request, versioni.etag_file(ctx.rose))
+        r = _rose(ctx)
+        s = next((x for x in r.squadre if x.nome.lower() == dati.nome.strip().lower()), None)
+        if s is None:
+            raise HTTPException(404, "Squadra non trovata")
+        if any(x is not s and (x.nome.lower() == nuovo.lower() or immagini.slug(x.nome) == immagini.slug(nuovo)) for x in r.squadre):
+            raise HTTPException(409, NOME_SQUADRA_DOPPIO)
+        vecchio = s.nome
+        if vecchio != nuovo:
+            immagini.rinomina(vecchio, nuovo, ctx.immagini)
+            s.nome = nuovo
+            if r.mia_squadra == vecchio:
+                r.mia_squadra = nuovo
+            lega.salva(r, ctx.rose)
+        response.headers["ETag"] = versioni.etag_file(ctx.rose)
+        return {"nome": nuovo, "prima": vecchio, "mia_squadra": r.mia_squadra}
 
 
 @app.put("/api/mia-squadra")

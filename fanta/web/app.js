@@ -78,7 +78,7 @@ function risorsaDi(percorso, opzioni) {
   const [p, qs] = percorso.split("?");
   const metodo = (opzioni.method || "GET").toUpperCase();
   if (p === "/api/regole" || p === "/api/regole/rinvio") return "regole";
-  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/rose/testo", "/api/rose/file"].includes(p)) return "rose";
+  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file"].includes(p)) return "rose";
   if (p === "/api/osservati" || p.startsWith("/api/osservati/")) return "osservati";
   if (p === "/api/avvisi") return "avvisi";
   if (p === "/api/scelta") { const g = new URLSearchParams(qs || "").get("giornata"); return g ? `scelta:${g}` : null; }
@@ -2191,6 +2191,11 @@ async function vistaRosa(nome) {
       <div class="carta">
         <div class="riga"><button class="bottone secondario" data-vai="squadra" style="padding:6px 14px;min-height:44px">${t("scambio.squadra")}</button></div>
         <h2 style="margin-top:14px">${esc(r.nome)}${r.mia ? t("scambio.la_tua") : ""}</h2>
+        <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
+          <div class="riga" style="gap:8px;margin-top:8px"><label class="solo-lettori" for="nome-squadra">${t("scambio.nuovo_nome")}</label>
+            <input class="campo-testo" id="nome-squadra" type="text" maxlength="60" autocomplete="off" value="${esc(r.nome)}" style="flex:1;min-width:0">
+            <button class="bottone secondario" id="salva-nome-squadra" type="button">${t("scambio.salva")}</button></div>
+          <div class="debole piccolo">${t("scambio.nome_aiuto")}</div></details>
         <div class="riga riga-crediti"><label for="crediti-squadra">${t("scambio.crediti_residui")}</label>
           <span class="riga" style="gap:8px"><input class="campo-testo" id="crediti-squadra" type="number" min="0" max="99999" inputmode="numeric" value="${r.crediti_residui ?? ""}" style="width:96px;text-align:right">
           <button class="bottone secondario" id="salva-crediti-squadra" type="button">${t("scambio.salva")}</button></span></div>
@@ -2207,6 +2212,19 @@ async function vistaRosa(nome) {
       </div>`);
     const vf = $("#vedi-formazione");
     if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione"); });
+    $("#salva-nome-squadra").addEventListener("click", async () => {
+      const nuovo = $("#nome-squadra").value.trim().replace(/\s+/g, " ");
+      if (!nuovo || nuovo.length > 60) { avviso(t("scambio.nome_non_valido")); return; }
+      if (nuovo === r.nome) return;
+      try {
+        const esito = await api("/api/squadre/nome", { method: "PUT", body: JSON.stringify({ nome: r.nome, nuovo }) });
+        svuotaCache();
+        if (stato.squadraVista === r.nome) stato.squadraVista = null;
+        await caricaSquadre();
+        avviso(t("scambio.nome_salvato"));
+        vistaRosa(esito.nome);
+      } catch (e) { avviso(e.message, 5000); }
+    });
     $("#salva-crediti-squadra").addEventListener("click", async () => {
       const testo = $("#crediti-squadra").value.trim();
       if (!/^\d{1,5}$/.test(testo)) { avviso(t("scambio.scrivi_crediti_come")); return; }
