@@ -65,7 +65,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 15 | Oggi, partite del turno | «MIL vs INT» | «Milan – Inter» (anche in #17) | web | #17 (da chiedere) |
 | 16 | Oggi, giornata chiusa | «Chiusa» e «… si è chiusa sab 31 14:50» | «In corso» (anche in #17) | web | #17 (da chiedere) |
 | 17 | Oggi, dubbio | «In dubbio · gioca 55%» | «Dubbio (55%)» in #17 | web | #17 (da chiedere) |
-| 18 | Oggi, banner delle novità | «Novità nell'app (versione X): tocca per vedere» | «Novità di SchieraXI» in #17 | web | #17 (da chiedere) |
+| 18 | Oggi, banner delle novità | «Novità della versione X» (dal 2/11/2026, senza ✨ né «tocca per vedere»: `STILE-SENZA-AI.md`) | «Novità di SchieraXI» in #17 | web | iPhone da allineare |
 | 19 | Oggi in corso, stati | «senza voto», «voto in arrivo», «in campo ora», «partita rinviata», «da giocare» | «Senza voto», «Aspetta il voto», «In campo», «Rinviata», «dom 20:45» | vocabolario (Senza voto, Voto in arrivo, Partita in corso, Rinviata, Da giocare) | web: fatto sulla web (pacchetto 1); iPhone: da fare (I-fasi) |
 | 20 | Oggi in corso, squadra e voti | «GEN», voto neutro | «Genoa», voto verde o rosso | «GEN», voto neutro | da fare (I-fasi) |
 | 21 | Segno negativo | «−0,4» | «-0,4» | «−0,4» | da fare (I-formati) |
