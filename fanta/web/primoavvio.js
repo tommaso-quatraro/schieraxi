@@ -177,6 +177,7 @@ async function paTempiSalva() {
   r.prima_giornata_lega = Number($("#pa-prima").value);
   await api("/api/regole", { method: "PUT", body: JSON.stringify(r) });
   svuotaCache();
+  caricaInfo();                    // la testata passa subito alla «Giornata N» della lega (prima restava quella di Serie A fino a ricaricare)
   return true;
 }
 
@@ -230,6 +231,14 @@ const PA_SCHERMATE = {
   }),
 };
 
+// Il titolo «Giocatori da sistemare (N)» segue le righe rimaste; quando non ne resta nessuna, il messaggio verde.
+function paContaDaSistemare(dove) {
+  const rimasti = dove.querySelectorAll("[data-i]").length;
+  if (!rimasti) { dove.innerHTML = `<div class="onb-verde">${t("onb.tutti_giocatori_sono")}</div>`; return; }
+  const titolo = dove.querySelector("#pa-fix-titolo");
+  if (titolo) titolo.textContent = t("pav.da_sistemare", { n: rimasti });
+}
+
 // Giocatori che l'importazione non ha riconosciuto: si cerca quello giusto nel listone e si abbina.
 async function paNonRiconosciuti() {
   const dove = $("#pa-fix");
@@ -240,7 +249,7 @@ async function paNonRiconosciuti() {
     dubbi = rose.flatMap(r => r.giocatori.filter(g => g.id === null).map(g => ({ squadra: r.nome, nome: g.nome })));
   } catch { return; }
   if (!dubbi.length) return;
-  dove.innerHTML = `<h3 class="pa-titolo">${t("pav.da_sistemare", { n: dubbi.length })}</h3>
+  dove.innerHTML = `<h3 class="pa-titolo" id="pa-fix-titolo">${t("pav.da_sistemare", { n: dubbi.length })}</h3>
     <p class="debole piccolo">${t("onb.non_trovati_nel")}</p>
     ${dubbi.map((d, i) => `<div class="onb-blocco" data-i="${i}"><b>${esc(d.nome)}</b> <span class="debole piccolo">(${esc(d.squadra)})</span>
       <input class="campo-testo" placeholder="${t("onb.cerca_giocatore_giusto")}" aria-label="${t("onb.cerca_per", { nome: esc(d.nome) })}"><span class="pa-sugg"></span></div>`).join("")}`;
@@ -258,7 +267,7 @@ async function paNonRiconosciuti() {
             try {
               await api("/api/rose/correggi", { method: "POST", body: JSON.stringify({ squadra: d.squadra, nome: d.nome, id: Number(b.dataset.id) }) });
               riga.remove(); avviso(t("onb.sistemato"));
-              if (!dove.querySelector("[data-i]")) dove.innerHTML = `<div class="onb-verde">${t("onb.tutti_giocatori_sono")}</div>`;
+              paContaDaSistemare(dove);
             } catch (e) { avviso(e.message); }
           }));
         } catch (e) { sugg.textContent = e.message; }

@@ -19,6 +19,7 @@ from test_account_email import codice_di, ultimi
 def posta_finta(monkeypatch):
     messaggi = []
     monkeypatch.setattr(posta, "invia", lambda m: messaggi.append(m) or True)
+    monkeypatch.setattr(posta, "attiva", lambda: True)                # le email «partono» (le raccoglie la lista qui sopra)
     return messaggi
 
 

@@ -11,7 +11,7 @@ struct PartiteDelGiorno: Identifiable {
 @MainActor
 final class OggiViewModel: ViewModelBase {
     let caricatore: Caricatore<Oggi>
-    /// Versione dell'app del server: serve al banner «Novità di SchieraXI».
+    /// Versione dell'app del server: serve al banner «Novità nell'app».
     let info: Caricatore<InfoServer>
     /// Risultati in diretta (GET /api/live). Senza copia su disco: un punteggio vecchio non deve sembrare di adesso.
     let live: Caricatore<LiveWidget>
@@ -62,7 +62,7 @@ final class OggiViewModel: ViewModelBase {
         while !Task.isCancelled {
             await live.ricarica()
             guard !Task.isCancelled,
-                  let attesa = DirettaLogica.attesa(live: risultatiLive, turno: oggi?.partite ?? [], adesso: Date()) else { return }
+                  let attesa = DirettaLogica.attesa(live: risultatiLive, turno: oggi?.partite ?? [], adesso: Orologio.adesso()) else { return }
             do { try await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000)) } catch { return }
         }
     }

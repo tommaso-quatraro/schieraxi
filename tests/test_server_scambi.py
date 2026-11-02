@@ -236,3 +236,23 @@ def test_offerta_a_parole_che_non_si_puo_fare_resta_un_errore_con_i_motivi(clien
     r = client.post("/api/scambi/da-testo", json={"testo": "Ti do g12, mi dai g31 e g32?"})        # A: 4 attaccanti su 3
     assert r.status_code == 400
     assert r.json()["detail"].startswith("Così com'è lo scambio non si può fare: ") and "attaccanti su un massimo di 3" in r.json()["detail"]
+
+
+def test_offerta_a_parole_rispetta_il_limite_delle_analisi(client, monkeypatch):
+    """Revisione 2/11: l'analisi completa N contro M passava da `da-testo` senza il limite di `analizza` (analisi contemporanee)."""
+    import contextlib
+    import threading
+    from types import SimpleNamespace
+    monkeypatch.setattr(limiti, "_analisi_recenti", {})
+    monkeypatch.setattr(limiti, "_analisi_in_corso", {})
+    monkeypatch.setattr(limiti, "_analisi_insieme", threading.BoundedSemaphore(limiti.ANALISI_INSIEME))
+    corpo = {"testo": "Ti do g12 e g9, mi dai g30?"}
+    with contextlib.ExitStack() as pila:                    # il server è già pieno di analisi di altri utenti
+        for i in range(limiti.ANALISI_INSIEME):
+            pila.enter_context(limiti.analisi_scambio(SimpleNamespace(utente_id=100 + i), "x"))
+        r = client.post("/api/scambi/da-testo", json=corpo)
+        assert r.status_code == 429 and r.headers.get("Retry-After")
+        solo_nomi = client.post("/api/scambi/da-testo", json=corpo | {"completo": True})
+        assert solo_nomi.status_code == 200 and solo_nomi.json()["analisi"] is None    # riconoscere i nomi non è un'analisi
+    assert client.post("/api/scambi/da-testo", json=corpo).status_code == 200          # finite le altre, si riparte
+    assert limiti._analisi_in_corso == {}

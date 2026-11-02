@@ -251,6 +251,7 @@ struct RegoleEditorView: View {
                 ScheletroRighe(righe: 6)
             }
         }
+        .ricercaGlobale()   // sull'iPad lente e ingranaggio stanno sulla pagina a destra, non nell'elenco
         .navigationTitle("Regole")
         .task { await vm.carica() }
         // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga)

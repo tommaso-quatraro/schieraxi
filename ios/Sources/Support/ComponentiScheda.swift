@@ -16,6 +16,8 @@ extension Color {
 /// «Facile», «Media», «Dura»... con un pallino del colore giusto (il testo dice la stessa cosa del colore).
 struct PillDifficolta: View {
     let difficolta: Double?
+    /// «Partita media» invece di «Media» dove non è chiaro che si parla della partita (scheda del giocatore).
+    var conPartita = false
 
     static func nome(_ d: Double?) -> String {
         switch Formato.intero(d ?? 3) {
@@ -30,7 +32,7 @@ struct PillDifficolta: View {
     var body: some View {
         HStack(spacing: 5) {
             Circle().fill(Color.difficolta(difficolta)).frame(width: 9, height: 9)
-            Text(Self.nome(difficolta)).font(.caption.weight(.semibold))
+            Text(conPartita ? "Partita " + Self.nome(difficolta).lowercased() : Self.nome(difficolta)).font(.caption.weight(.semibold))
         }
         .padding(.horizontal, 8).padding(.vertical, 3)
         .background(Color.primary.opacity(0.08), in: Capsule())
@@ -98,19 +100,22 @@ struct BarraPercentuale: View {
 struct ProssimePartite: View {
     let partite: [PartitaCalendario]
 
+    /// «vs MIL» in casa, «@ MIL» in trasferta: la forma comune a web e iPhone (prima «MIL» con sotto «casa» o «fuori»).
+    static func cella(_ p: PartitaCalendario) -> String {
+        (p.inCasa == true ? "vs " : "@ ") + ColoriSquadra.sigla(p.avversario)
+    }
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(partite) { p in
-                    VStack(spacing: 1) {
-                        Text(ColoriSquadra.sigla(p.avversario)).font(.caption.bold())
-                        Text(p.inCasa == true ? "casa" : "fuori").font(.caption2)
-                    }
-                    .foregroundStyle(Color.black)
-                    .frame(minWidth: 52, minHeight: 44)
-                    .background(Color.difficolta(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Giornata \(p.giornata) contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                    Text(Self.cella(p)).font(.caption.bold()).lineLimit(1)
+                        .padding(.horizontal, 6)
+                        .foregroundStyle(Color.black)
+                        .frame(minWidth: 52, minHeight: 44)
+                        .background(Color.difficolta(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Serie A, giornata \(p.giornata): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
                 }
             }
         }

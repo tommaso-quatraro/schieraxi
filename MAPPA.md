@@ -4,7 +4,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 
 ## Comandi (Windows, dalla radice del repository)
 - Ambiente: `python -m venv .venv`, poi `.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt`.
-- Librerie: `requirements*.txt` hanno versioni fisse e hash e non si scrivono a mano. L'elenco sta in `requirements.in`, `requirements-dev.in` e `requirements-vincoli.in`; si rigenera con `.venv\Scripts\python.exe script\blocca_dipendenze.py`.
+- Librerie: `requirements*.txt` hanno versioni fisse e hash e non si scrivono a mano. L'elenco sta in `requirements.in`, `requirements-dev.in` e `requirements-vincoli.in`; si rigenera con `.venv\Scripts\python.exe script\blocca_dipendenze.py`. Dependabot (`.github/dependabot.yml`) aggiorna solo le azioni di GitHub: le librerie Python le rigenererebbe con pip-compile.
   Su macOS e Linux: `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
 - Test tutti: `.venv\Scripts\python.exe -m pytest -q`. Un file solo: `... -m pytest -q tests\test_rose_csv.py`.
 - Server locale: `.venv\Scripts\python.exe -m fanta server` (ascolta su 127.0.0.1:8000). Elenco comandi: `-m fanta --help`.
@@ -21,7 +21,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi), `scambi.py`, `scambi_multi.py` (scambi N contro M),
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
-  - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`; regola della lega
+  - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
     (giornata in corso) e nel Diario; campo `rinvio` di `/api/oggi`, rotta `PUT /api/regole/rinvio`. Una partita rinviata non tiene
@@ -55,16 +55,22 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   nome animato della prima schermata con classi `wm-*`. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
   Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
+  Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`).
+  Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request non in bozza). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
 - `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
   con la variabile `FANTA_LEGA=<cartella>`.
 - `dati/`: database, cache e chiavi locali. Non va in git.
 - `script/server/`: script del server (aggiornamento automatico, copie dei dati, promemoria, controllo di salute, sentinella).
-- `script/ci/`: numero di versione e note di rilascio (`controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`).
+- `script/ci/`: numero di versione e note di rilascio (`controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`);
+  `metriche.py`: metriche della squadra per settimana (versioni, tempo PR→unione, etichette `regressione`, `dall-utente`,
+  `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
-- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`).
+  `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
+- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`).
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
-  `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `INCERTEZZA.md`, `LIVE.md`,
+  `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora),
   `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`.
+- `.claude/settings.json`: divieti fissi per Claude Code (`gh pr merge`, push su `main`, push forzato, `--no-verify`); spiegati in `CLAUDE.md`.
 - Radice: `README.md`, `CLAUDE.md`, `MAPPA.md`, `LICENSE` (AGPL-3.0), `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `TRADEMARKS.md`, `THIRD-PARTY-NOTICES.md`, `requirements.txt`, `requirements-dev.txt`, `.env.example`.
 
@@ -81,6 +87,9 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
   controlli verdi. Una pull request in bozza non si unisce.
+- Job `zizmor` (sicurezza dei workflow; zizmor da PyPI con hash in `.github/zizmor-requisiti.txt`): per ora solo avvisi, fuori dai `needs` di `unisci` (bloccante dopo #108). Azioni solo di GitHub e sempre per hash: le altre fanno fallire l'avvio dei controlli (`tests/test_workflow_controlli.py`).
+- Controllo esterno della salute: `.github/workflows/salute.yml` (ogni 30 minuti sui server di GitHub, a mano con «Run workflow»): chiede la salute dell'app e la pagina del sito, 3 tentativi a qualche minuto di distanza, poi apre l'issue `P1` «Server non raggiungibile» (o la commenta) e la chiude quando tutto risponde. Serve perché `script/server/controllo-salute.sh` gira sul server stesso e, se il server si spegne, tace.
+  Non usa segreti né azioni esterne; `issues: write` solo nel job che segnala.
 - Job `rilascia` (in fila, un alla volta, dopo `unisci`): dà il numero di versione dopo il più alto, data e ora dell'unione,
   scrive la voce in `fanta/novita.json`, toglie il file da `fanta/novita.d/`, alza `VERSIONE` in `fanta/web/sw.js` se la
   pull request ha toccato `fanta/web/`, fa un commit su `main` e crea la release.
@@ -98,6 +107,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 
 ## Contratti delle API
 Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non rompere i campi esistenti: aggiungerne si può.
+- Istantanea di tutte le rotte: `docs/openapi.json`, controllata da `tests/test_contratto_api.py`; si rifà con
+  `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
 - Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
 - Errori: JSON `{"detail": "testo in italiano"}`.
 - 202 = «sto calcolando» (coda, solo in modo multiutente): il client riprova. 429 con `Retry-After` = limiti per utente.
@@ -115,7 +126,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Giocatori: all'utente una sola percentuale sul giocare, «gioca N%» (`p_voto`); `percentuale` delle probabili non si mostra e
   `titolarita` va a parole. Dopo la scadenza `GET /api/formazione` ha `iniziata: true`, `titolarita: null` e `stato_partita`
   (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
-- Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`.
+- Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`. `analizza` e `da-testo` passano dallo stesso `limiti.analisi_scambio`.
+- Ogni parametro `giornata` delle rotte ha `ge=1, le=MAX_GIORNATA` (422, mai 500): `tests/test_giornata_limiti.py` trova da solo le rotte nuove.
 - Rose dalle schermate di Leghe (OCR dell'app iPhone): testo `ruolo;nome;club;prezzo` (intestazione nella prima riga, una riga con una
   cella sola = fantasquadra, `crediti;N`) a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.
 
@@ -152,7 +164,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   Un nome abbreviato è sicuro solo con ruolo E squadra uguali al listone; con uno dei due diverso mai. Misura: `tests/corpus_nomi.py`
   (anche le varianti OCR, `genera_ocr`) e `prove/misura_nomi.py --vero` sul listone salvato in locale.
 - `dati/` non va mai in git né nei log. Il backup (`backup.py`) non contiene chiavi né iscrizioni alle notifiche.
-- Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json`.
+- Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json` e non cambia le scelte delle giornate già chiuse (`backup.unisci_scelte`, regola di `fasi.iniziata`).
 - Rifare tutto il servizio da una copia notturna (`backup-dati.sh`): `docs/RIPRISTINO-SERVER.md` (provato il 2/11/2026; cosa non c'è nella copia e cosa succede).
 - Ore tranquille (`silenzio`, `silenzio_da`, `silenzio_a`): bloccano l'invio degli avvisi. La prova le ignora.
 - Il tempo della lega (`scadenza_minuti`, `prima_giornata_lega`) sta nelle regole della lega, non nel codice.
