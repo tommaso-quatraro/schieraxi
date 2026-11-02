@@ -1,0 +1,12 @@
+{
+  "titolo": "Oggi: dubbi più chiari e partite rinviate in fondo",
+  "voci": [
+    "In «Da controllare» un giocatore in dubbio dice «In dubbio · gioca 17%» invece di «Dubbio (17%)»: la percentuale è quella di giocare, come nel resto dell'app.",
+    "«Da fare» scrive «Un'altra cosa da fare» invece di «Altra 1 cosa da fare».",
+    "In «Partite del turno» le partite rinviate senza una data nuova stanno in fondo, dopo quelle che si giocano."
+  ],
+  "tecnico": [
+    "testi.js: oggi.dubbio con «gioca {p}», df.altre.one senza numero; app.js: gruppi senza data ordinati in fondo in mostraOggi.",
+    "Test: tests/test_oggi_dubbi_rinviate_web.py."
+  ]
+}
