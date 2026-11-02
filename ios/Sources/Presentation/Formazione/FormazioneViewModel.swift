@@ -359,7 +359,7 @@ final class FormazioneViewModel: ViewModelBase {
 
     static let annuncioSalvata: String = "Formazione salvata"
 
-    static let sceltaCambiata ="La scelta di questa giornata è stata cambiata da un altro dispositivo: ho ricaricato quella salvata. Controlla e, se serve, rifai la modifica."
+    static let sceltaCambiata = "La scelta di questa giornata è stata cambiata da un altro dispositivo: ho ricaricato quella salvata. Controlla e, se serve, rifai la modifica."
 
     /// 412 sulla scelta salvata: un altro dispositivo l'ha cambiata (o cancellata) dopo l'ultima lettura. Come per le altre risorse
     /// si rilegge tutto (formazione e scelta, con l'ETag nuovo) e lo si dice: la modifica a mano di questo telefono non si salva sopra.
