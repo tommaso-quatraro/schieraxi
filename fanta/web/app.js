@@ -425,7 +425,7 @@ function legendaCampo() {
       <span aria-hidden="true">ⓘ</span> ${t("formazione.legenda_apri")}</button>
     <div class="legenda-campo" id="legenda-campo" ${vista ? "hidden" : ""}>
       <ul>
-        <li><span class="leg-esempio"><b class="fv-esempio">6,8</b></span>${t("formazione.legenda_fv")}</li>
+        <li><span class="leg-esempio"><b class="fv-esempio">${num(6.8)}</b></span>${t("formazione.legenda_fv")}</li>
         <li><span class="leg-esempio"><span class="gioca">${t("giocatore.gioca", { p: "85%" })}</span></span>${t("formazione.legenda_gioca")}</li>
         <li><span class="leg-esempio"><span class="gioca basso">⚠ ${t("giocatore.gioca", { p: "45%" })}</span></span>${t("formazione.legenda_gioca_basso")}</li>
         <li><span class="leg-esempio"><span class="avv">vs ${distintivo("napoli")}</span></span>${t("formazione.legenda_casa")}</li>
@@ -464,6 +464,15 @@ function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false) 
   </button>${conConfronto ? (sostituisci
     ? `<button class="confronta-mini" data-sostituisci="${x.id}" aria-label="${t("formazione.sostituisci_aria", { nome: esc(x.nome) })}" title="${t("formazione.sostituisci_con")}">✎</button>`
     : `<button class="confronta-mini" data-confronta="${x.id}" aria-label="${t("formazione.confronta_aria", { nome: esc(x.nome) })}" title="${t("formazione.confronta_con")}">⇄</button>`) : ""}</li>`;
+}
+
+// Il numero a destra di una riga della Rosa: come le righe della Formazione (voceGiocatore). Prima della partita fantavoto atteso
+// e «gioca N%»; a partita iniziata il fantavoto preso oppure «–» (lo stato è già nell'etichetta), mai «gioca N%».
+function valoreRosa(p, x) {
+  if (!p) return `<span class="valore"><span class="debole piccolo">${x.id ? t("scambio.non_gioca") : "?"}</span></span>`;
+  const esito = esitoPartita(p);
+  if (esito) return `<span class="valore esito">${esito.fv != null ? `<b>${num(esito.fv)}</b><span class="debole piccolo">${t("mercato.fantavoto")}</span>` : `<b class="debole" aria-hidden="true">–</b>`}</span>`;
+  return `<span class="valore"><b>${num(p.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span></span>`;
 }
 
 // ---------------------------------------------------------------- navigazione
@@ -1591,6 +1600,7 @@ async function apriGiocatore(id) {
     // a partita finita solo com'è andata (il fantavoto preso, «Senza voto» o «Voto in arrivo»).
     const iniziataP = !!pr && PARTITA_INIZIATA.includes(pr.stato_partita), finitaP = !!pr && PARTITA_FINITA.includes(pr.stato_partita);
     const votoGiornata = finitaP && pr.stato_partita === "fatto" ? (s.voti || []).find(v => v.giornata === pr.giornata) : null;
+    const statoInGrande = finitaP && !(votoGiornata && votoGiornata.fv != null);     // lo stato è già scritto in grande: niente pillola uguale in testa
     const prSenzaGioca = pr && iniziataP && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
     const tile = (valore, etichetta) => `<div><b>${valore}</b><span>${etichetta}</span></div>`;
     const probabilita = !pr ? "" : c.ruolo === "P"
@@ -1601,7 +1611,7 @@ async function apriGiocatore(id) {
         ${avatarIndice({ id: c.id, nome: c.nome, squadra: c.squadra_slug, ruolo: c.ruolo, indice: pr ? pr.indice : null }, true)}
         <div><h2>${esc(c.nome)}</h2>
           <div class="debole">${NOME_RUOLO_1[c.ruolo] || c.ruolo} · ${esc(c.squadra)} · ${t("mercato.quot", { n: c.quotazione })}</div>
-          <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
+          <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr && !statoInGrande ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
       </div>
       ${pr ? `<div class="carta">
         <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata_lega || pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
@@ -2290,9 +2300,9 @@ async function vistaRosa(nome) {
         return `<li><button class="voce" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
           ${p ? avatarIndice(p) : badgeRuolo(x.ruolo || "?")}
           <span><span class="nome">${esc(x.nome)}</span> <span class="dettaglio">${sigla(x.squadra)}</span>
-            <span class="dettaglio" style="display:block">${t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })}${p ? ` · ${t("scambio.vs", { avv: sigla(p.avversario) })}` : ""}</span>
+            <span class="dettaglio" style="display:block">${t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })}${p ? ` · ${vsAt(p)}${p.data_partita ? ` · ${quando(p.data_partita)}` : ""}` : ""}</span>
             ${p ? `<span class="etichette">${etichetteGiocatore(p)}</span>` : ""}</span>
-          <span class="valore">${p ? `<b>${num(p.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span>` : `<span class="debole piccolo">${x.id ? t("scambio.non_gioca") : "?"}</span>`}</span>
+          ${valoreRosa(p, x)}
         </button></li>`;
       }).join("")}</ul>`;
     }).join("");

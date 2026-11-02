@@ -53,7 +53,9 @@ def test_scheda_senza_sigle_e_rosa_con_gioca():
             assert "xG" not in testo and "xA" not in testo, (chiave, testo)
     assert 'tile(num(av.xg, 2), "xG")' not in APP and 'tile(num(av.xa, 2), "xA")' not in APP
     corpo = APP[APP.index("async function vistaRosa"):APP.index("const NOME_IMMAGINE")]
-    assert 't("giocatore.gioca", { p: perc(p.p_voto) })' in corpo                          # una sola percentuale, «gioca N%»
+    assert "valoreRosa(p, x)" in corpo                                                       # una sola percentuale, «gioca N%»
+    valore = APP[APP.index("function valoreRosa"):APP.index("// ---------------------------------------------------------------- navigazione")]
+    assert 't("giocatore.gioca", { p: perc(p.p_voto) })' in valore
     scheda = APP[APP.index("async function apriGiocatore"):APP.index("async function osservatiIds")]
     assert "motiviUtili(pr).filter(senzaPercentuale)" in scheda                               # niente doppioni delle caselle
 
