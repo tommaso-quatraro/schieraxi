@@ -56,6 +56,20 @@ def salva(nome: str, tipo: str, dati: bytes, cartella: Path | None = None) -> Pa
     return destinazione
 
 
+def rinomina(vecchio: str, nuovo: str, cartella: Path | None = None) -> None:
+    """Stemma e maglia seguono la squadra quando cambia nome (i file si chiamano come la squadra)."""
+    cartella = cartella or CARTELLA
+    if slug(vecchio) == slug(nuovo):
+        return
+    for tipo in TIPI:
+        p = percorso(vecchio, tipo, cartella)
+        if p is None:
+            continue
+        for altra in FORMATI:
+            (cartella / f"{slug(nuovo)}-{tipo}{altra}").unlink(missing_ok=True)
+        p.rename(cartella / f"{slug(nuovo)}-{tipo}{p.suffix}")
+
+
 def rimuovi(nome: str, tipo: str, cartella: Path | None = None) -> bool:
     """Toglie stemma o maglia di una squadra. Vero se c'era qualcosa da togliere."""
     if tipo not in TIPI:

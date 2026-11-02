@@ -93,6 +93,34 @@ def test_rose_crediti_mia_squadra_e_importazione(mondo):
         "file": ("r.txt", (ROSE + f"Quarta {next(quarte)}" + chr(10) + "C" + chr(9) + "Barella" + chr(9) + "5" + chr(10)).encode(), "text/plain")}))
 
 
+def test_rinomina_squadra(mondo):
+    """Il nome di una squadra si cambia dopo l'importazione: rose, «la mia squadra» e stemma la seguono; If-Match come le rose."""
+    a, _ = nuovo_utente("utentea")
+    assert a.post("/api/rose/testo", json={"testo": ROSE}).status_code == 200
+    a.put("/api/mia-squadra", json={"nome": "Mia"})
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 40
+    assert a.post("/api/squadre/immagine", params={"squadra": "Mia", "tipo": "stemma"},
+                  files={"file": ("s.png", png, "image/png")}).status_code == 200
+    nomi = iter(["I Lupi", "Mia"] * 20)
+    prova(a, lambda: a.get("/api/squadre"), lambda h: a.put("/api/squadre/nome", json={"nome": _mia(a), "nuovo": next(nomi)}, headers=h))
+    r = a.put("/api/squadre/nome", json={"nome": _mia(a), "nuovo": "  I   Lupi  "})
+    assert r.status_code == 200 and r.json()["nome"] == "I Lupi" and r.json()["mia_squadra"] == "I Lupi"
+    sq = {s["nome"]: s for s in a.get("/api/squadre").json()}
+    assert set(sq) == {"I Lupi", "Altra"} and sq["I Lupi"]["mia"] and sq["I Lupi"]["immagini"]["stemma"]
+    assert a.get("/api/squadre/immagine", params={"squadra": "I Lupi", "tipo": "stemma"}).status_code == 200
+    assert a.put("/api/squadre/nome", json={"nome": "I Lupi", "nuovo": "altra"}).status_code == 409      # c'è già (maiuscole a parte)
+    assert a.put("/api/squadre/nome", json={"nome": "I Lupi", "nuovo": "Altra!"}).status_code == 409     # stesso file dello stemma
+    assert a.put("/api/squadre/nome", json={"nome": "I Lupi", "nuovo": "   "}).status_code == 400
+    assert a.put("/api/squadre/nome", json={"nome": "I Lupi", "nuovo": "x" * 61}).status_code == 400
+    assert a.put("/api/squadre/nome", json={"nome": "I Lupi", "nuovo": "I\tLupi\nRossi"}).json()["nome"] == "I Lupi Rossi"
+    assert a.put("/api/squadre/nome", json={"nome": "Nessuna", "nuovo": "Altro"}).status_code == 404
+    assert a.put("/api/squadre/nome", json={"nome": "I", "nuovo": "Altro"}).status_code == 404            # niente inizio del nome
+
+
+def _mia(a):
+    return next(s["nome"] for s in a.get("/api/squadre").json() if s["mia"])
+
+
 def test_scelta_di_una_giornata(mondo):
     a, _ = nuovo_utente("utentea")
     a.post("/api/rose/testo", json={"testo": ROSE})

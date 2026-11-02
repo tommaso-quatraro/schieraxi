@@ -99,6 +99,7 @@ def scritture(m: str):
         ("PUT", "/api/regole/rinvio", dict(json={"giornata": 9 if m == "A" else 10, "modo": "voto_ufficio"})),
         ("POST", "/api/rose/testo", dict(json={"testo": d["rose"]})),
         ("PUT", "/api/mia-squadra", dict(json={"nome": nome})),
+        ("PUT", "/api/squadre/nome", dict(json={"nome": nome, "nuovo": nome})),
         ("PUT", "/api/crediti", dict(json={"crediti": d["crediti"]})),
         ("PUT", "/api/osservati/{i}", dict(i=d["osservato"])),
         ("DELETE", "/api/osservati/{i}", dict(i=99)),
