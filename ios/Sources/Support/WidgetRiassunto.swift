@@ -411,19 +411,30 @@ extension RiassuntoWidget {
 
     /// Le giornate del diario che hanno i punti fatti, dalla più recente, con il numero della LEGA (come «Giornata 8» in Oggi):
     /// il server le manda con il numero di Serie A, la differenza tra i due numeri è quella della giornata in corso.
+    /// Prima la stagione in corso, poi le ultime della stagione prima (a inizio stagione il diario le ha ancora).
     var giornateGiocate: [PuntiGiornata] {
-        (diario ?? []).filter { $0.fatti != nil }.sorted { $0.giornata > $1.giornata }.map { g in
-            var x = g
-            x.giornata = numeroDiLega(g.giornata)
-            return x
-        }
+        let attuale = giornata ?? Int.max
+        return (diario ?? []).filter { $0.fatti != nil }
+            .sorted { a, b in
+                let (aInCorso, bInCorso) = (a.giornata <= attuale, b.giornata <= attuale)
+                return aInCorso != bInCorso ? aInCorso : a.giornata > b.giornata
+            }
+            .compactMap { g in
+                guard let n = numeroDiLega(g.giornata) else { return nil }
+                var x = g
+                x.giornata = n
+                return x
+            }
     }
 
-    /// Il numero di lega di una giornata di Serie A (stesso scarto della giornata attuale); senza numero di lega, quello di Serie A.
-    func numeroDiLega(_ serieA: Int) -> Int {
-        guard let g = giornata, let l = giornataLega, l > 0, g >= l else { return serieA }
+    /// Il numero di lega di una giornata di Serie A del diario, con lo scarto della giornata attuale; senza numero di lega, quello di Serie A.
+    /// Il widget non sa la stagione delle voci (la correzione vera, `giornata_lega` per ogni voce, è lato server): una giornata DOPO
+    /// quella attuale è della stagione prima e resta di Serie A (a inizio stagione la 38 resta 38, non diventa 35). Una giornata giocata
+    /// prima che la lega partisse non è della lega: nil, così non si confonde con la giornata della lega che ha lo stesso numero.
+    func numeroDiLega(_ serieA: Int) -> Int? {
+        guard let g = giornata, let l = giornataLega, l > 0, g >= l, serieA <= g else { return serieA }
         let n = serieA - (g - l)
-        return n > 0 ? n : serieA
+        return n > 0 ? n : nil
     }
 }
 

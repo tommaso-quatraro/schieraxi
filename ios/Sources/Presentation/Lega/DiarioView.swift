@@ -17,47 +17,66 @@ final class DiarioViewModel: ViewModelBase {
 
     func carica() async { await caricatore.ricarica() }
 
-    /// La giornata che si sta salvando (un solo salvataggio alla volta) e l'esito dell'ultimo.
-    @Published var inSalvataggio: Int?
+    /// I testi dell'esito, uguali alla web (`diario.salvata` e `diario.salvata_manuale` di `testi.js`).
+    static let salvataConsigliata = "Salvato: ho segnato che hai schierato la consigliata"
+    static let salvataAMano = "Salvato: ho segnato i tuoi undici della giornata"
+
+    /// La voce del diario (`VoceDiario.id`: stagione e giornata) che si sta salvando, un salvataggio alla volta, e l'esito dell'ultimo.
+    @Published var inSalvataggio: String?
     @Published var messaggio: String?
     @Published var messaggioRiuscito = false
-    /// La giornata (numero di Serie A) a cui si riferisce il messaggio: si mostra dentro la sua sezione, vicino al pulsante toccato.
-    @Published var giornataDelMessaggio: Int?
+    /// La voce (stagione e giornata) a cui si riferisce il messaggio: si mostra dentro la sua sezione, vicino al pulsante toccato.
+    @Published var voceDelMessaggio: String?
+    /// Fa leggere un esito a VoiceOver. Si sostituisce nei test per contare gli annunci.
+    var annuncia: @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
+
+    /// L'esito da mostrare nella sezione di questa voce, se è suo (con due stagioni nel Diario la stessa giornata compare due volte).
+    func messaggio(per voce: VoceDiario) -> String? {
+        voceDelMessaggio == voce.id ? messaggio : nil
+    }
 
     /// «Ho schierato un'altra formazione»: undici titolari scelti a mano tra i giocatori della tua rosa (il server controlla modulo e rosa).
-    /// Restituisce vero se è stata salvata.
-    func haSchieratoAMano(giornata: Int, numero: Int? = nil, titolari: [Int]) async -> Bool {
-        guard inSalvataggio == nil else { return false }
-        inSalvataggio = giornata
-        giornataDelMessaggio = giornata
+    /// Restituisce nil se è stata salvata, altrimenti l'errore da mostrare nel foglio «Cosa hai schierato» (la lista sotto è coperta).
+    func haSchieratoAMano(_ voce: VoceDiario, titolari: [Int]) async -> String? {
+        // non succede dal foglio (si apre solo con una giornata e a salvataggi fermi): un testo qualsiasi tiene il foglio aperto
+        guard let giornata = voce.giornata, inSalvataggio == nil else { return "Non riesco a salvare adesso: riprova tra poco." }
+        inizia(voce)
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "manuale", titolari: titolari))
-            esito("Salvato: la formazione che hai schierato nella giornata \(numero ?? giornata).", riuscito: true)
+            esito(Self.salvataAMano, riuscito: true)
             await caricatore.ricarica()
-            return true
+            return nil
         } catch {
-            esito(error.localizedDescription, riuscito: false)
+            let testo = error.localizedDescription
+            Haptics.esito(riuscito: false)
+            annuncia(testo)
             if (error as? ErroreApi)?.eConflitto == true { await caricatore.ricarica() }
-            return false
+            return testo
         }
     }
 
     /// «Ho schierato la consigliata»: il server salva come tua scelta la formazione che il modello avrebbe consigliato per quella
     /// giornata già finita e rifà solo quella voce del diario (non conta nei limiti di ricerca).
-    func haSchieratoLaConsigliata(giornata: Int, numero: Int? = nil) async {
-        guard inSalvataggio == nil else { return }
-        inSalvataggio = giornata
-        giornataDelMessaggio = giornata
+    func haSchieratoLaConsigliata(_ voce: VoceDiario) async {
+        guard let giornata = voce.giornata, inSalvataggio == nil else { return }
+        inizia(voce)
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "consigliata"))
-            esito("Salvato: per la giornata \(numero ?? giornata) hai schierato la consigliata.", riuscito: true)
+            esito(Self.salvataConsigliata, riuscito: true)
             await caricatore.ricarica()
         } catch {
             esito(error.localizedDescription, riuscito: false)
             if (error as? ErroreApi)?.eConflitto == true { await caricatore.ricarica() }
         }
+    }
+
+    /// Un salvataggio parte: l'esito di prima sparisce, così sotto la giornata nuova non resta «Salvato…» di un'altra.
+    private func inizia(_ voce: VoceDiario) {
+        inSalvataggio = voce.id
+        voceDelMessaggio = voce.id
+        messaggio = nil
     }
 
     /// Mostra l'esito nella sezione della giornata e lo fa leggere a VoiceOver: anche quando la riga è già sullo schermo
@@ -66,7 +85,7 @@ final class DiarioViewModel: ViewModelBase {
         messaggio = testo
         messaggioRiuscito = riuscito
         Haptics.esito(riuscito: riuscito)
-        AccessibilityNotification.Announcement(testo).post()
+        annuncia(testo)
     }
 }
 
@@ -140,8 +159,7 @@ struct DiarioView: View {
         .navigationTitle("Diario")
         .sheet(item: $daCorreggere) { v in
             FormazioneManualeDiarioView(voce: v, server: server) { titolari in
-                guard let g = v.giornata else { return false }
-                return await vm.haSchieratoAMano(giornata: g, numero: v.numero, titolari: titolari)
+                await vm.haSchieratoAMano(v, titolari: titolari)
             }
         }
         .ricercaGlobale()
@@ -160,7 +178,7 @@ struct DiarioView: View {
     private func giornata(_ v: VoceDiario) -> some View {
         Section {
             // L'esito di «Ho schierato…» sta nella sezione della giornata toccata: in cima alla lista non si vedeva.
-            if let m = vm.messaggio, vm.giornataDelMessaggio != nil, vm.giornataDelMessaggio == v.giornata {
+            if let m = vm.messaggio(per: v) {
                 Label(m, systemImage: vm.messaggioRiuscito ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .font(.footnote.weight(.semibold)).foregroundStyle(vm.messaggioRiuscito ? Color.verde : Color.attenzione)
                     .fixedSize(horizontal: false, vertical: true)
@@ -176,10 +194,10 @@ struct DiarioView: View {
                 riga(s.tipo == "consigliata" ? "La tua, la consigliata (\(s.modulo ?? "–"))" : "La tua (\(s.modulo ?? "–"))", s)
             } else if let g = v.giornata {
                 Button {
-                    Task { await vm.haSchieratoLaConsigliata(giornata: g, numero: v.numero) }
+                    Task { await vm.haSchieratoLaConsigliata(v) }
                 } label: {
                     HStack {
-                        if vm.inSalvataggio == g { ProgressView() }
+                        if vm.inSalvataggio == v.id { ProgressView() }
                         Label("Ho schierato la consigliata", systemImage: "checkmark.circle").font(.body.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
