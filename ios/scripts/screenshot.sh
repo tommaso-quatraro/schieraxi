@@ -17,7 +17,7 @@ RADDRIZZA=0
 mkdir -p "$USCITA"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche formazione-immagine
+TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche formazione-immagine
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
@@ -40,11 +40,11 @@ PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazi
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
 SCATTI="${SCATTI:-completo}"
 if [ "$SCATTI" = "veloce" ]; then
-  TUTTE=(oggi formazione formazione-perche giocatore lega-diario mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
-  PER_CHIARO=(oggi formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
-  PER_TESTO_GRANDE=(accesso-accedi)
+  TUTTE=(oggi oggi-in-corso oggi-in-corso-fondo oggi-finita formazione formazione-perche giocatore lega-diario mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
+  PER_CHIARO=(oggi oggi-in-corso oggi-finita formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
+  PER_TESTO_GRANDE=(accesso-accedi oggi-in-corso)
   PRINCIPALI=(oggi lega)
-  PER_IPAD=(formazione formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
+  PER_IPAD=(oggi-in-corso oggi-finita formazione formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
 fi
 
 # SCHERMATE="a b c" (a mano, dal workflow): SOLO queste schermate, ma in tutte le varianti (come il collaudo):
@@ -259,6 +259,7 @@ osascript -e 'tell application "System Events" to key code 123 using command dow
 sleep 3
 RADDRIZZA=1   # col simulatore ruotato la foto esce girata di 90 gradi (come sull'iPhone)
 if [ "$SCATTI" = "veloce" ]; then
+  giro "$UDID_IPAD" ipad_chiaro_orizzontale chiaro large oggi-in-corso oggi-finita
   giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large oggi formazione giocatore lega-diario lega
 elif [ "$SCATTI" = "collaudo" ]; then
   giro "$UDID_IPAD" ipad_scuro_orizzontale scuro large "${TUTTE[@]}"

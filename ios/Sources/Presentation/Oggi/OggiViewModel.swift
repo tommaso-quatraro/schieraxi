@@ -67,6 +67,20 @@ final class OggiViewModel: ViewModelBase {
         }
     }
 
+    /// Ogni quanto si rilegge Oggi durante la giornata (i voti escono a fine partita: non serve di più).
+    static let ripassoGiornata: TimeInterval = 300
+
+    /// Fase `in_corso`: rilegge Oggi ogni 5 minuti (punti fatti, cambi), finché la schermata è visibile e la giornata è in corso.
+    /// Solo la lettura: niente promemoria né permessi. La vista annulla il lavoro quando sparisce.
+    func seguiGiornata() async {
+        while !Task.isCancelled {
+            do { try await Task.sleep(nanoseconds: UInt64(Self.ripassoGiornata * 1_000_000_000)) } catch { return }
+            guard !Task.isCancelled else { return }
+            await caricatore.ricarica()
+            guard oggi?.faseGiornata == .inCorso else { return }
+        }
+    }
+
     static func raggruppa(_ partite: [Partita]) -> [PartiteDelGiorno] {
         var perGiorno: [String: [Partita]] = [:]
         var ordine: [String] = []

@@ -7,6 +7,26 @@ import Foundation
 extension FinteServer {
     /// Server della modalità demo (costruito una volta sola all'avvio).
     static let demo: FinteServer = FinteServer(risposte: DatiDemo.risposte(adesso: Date()), binari: { DemoImmagini.dati(per: $0) })
+
+    /// Le fotografie delle fasi della giornata (`-DEMO_SCHERMATA oggi-in-corso` e `oggi-finita`): la stessa demo, con Oggi durante
+    /// e dopo la giornata. Ognuna ha il suo indirizzo finto, così la copia salvata di Oggi non si mescola. Nil per le altre schermate.
+    static func demoFase(_ schermata: String?) -> FinteServer? {
+        let adesso = Date()
+        var server = FinteServer.demo
+        switch schermata ?? "" {
+        case "oggi-in-corso":
+            server.risposte["/api/oggi"] = DatiDemo.oggiInCorso(adesso: adesso)
+            server.risposte["/api/live"] = DatiDemo.live(adesso: adesso, giornataInCorso: true)
+            server.indirizzoFinto = "https://finto-giornata-in-corso.invalid"
+        case "oggi-finita":
+            server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
+            server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
+            server.indirizzoFinto = "https://finto-giornata-finita.invalid"
+        default:
+            return nil
+        }
+        return server
+    }
 }
 
 private struct Calciatore {
@@ -411,7 +431,9 @@ private enum DatiDemo {
 
     // MARK: - Oggi
 
-    static func oggi(adesso: Date) -> String {
+    static func oggi(adesso: Date) -> String { json(oggiDati(adesso: adesso)) }
+
+    static func oggiDati(adesso: Date) -> [String: Any] {
         let inizio = adesso.addingTimeInterval(7 * 3600)
         let ids = moduli[0].titolari
         // minuti di distanza dalla prima partita
@@ -439,8 +461,8 @@ private enum DatiDemo {
             let c = calciatore(id)
             mieiTitolari[c.squadra, default: []].append(["id": c.id, "nome": c.nome, "ruolo": c.ruolo])
         }
-        return json([
-            "miei_titolari": mieiTitolari,
+        return [
+            "miei_titolari": mieiTitolari, "fase": "prima",
             "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"),
             "scadenza": formatta(inizio.addingTimeInterval(-30 * 60), "yyyy-MM-dd HH:mm"), "minuti_scadenza": 30, "giornata_lega": giornata - 3,
             "iniziata": false, "con_probabili": true,
@@ -461,13 +483,95 @@ private enum DatiDemo {
                 ["id": "backup", "tipo": "backup", "testo": "Fai una copia di sicurezza dei tuoi dati", "priorita": 3,
                  "azione": "Apri", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]],
             ],
-        ])
+        ]
+    }
+
+    // MARK: - Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
+
+    /// Fase `in_corso`: scadenza passata da un'ora; Inter-Roma finita con i voti, Milan-Juventus e Lazio-Fiorentina in corso,
+    /// il resto da giocare. Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili.
+    static func oggiInCorso(adesso: Date) -> String {
+        var o = oggiDati(adesso: adesso)
+        let minuti: [Double] = [-130, -45, 150, -20, 240, 1290, 1425, 1560, 2700, 2835]
+        let stati = ["finita", "in_corso", "da_giocare", "in_corso", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare"]
+        func data(_ m: Double) -> String { formatta(adesso.addingTimeInterval(m * 60), "yyyy-MM-dd HH:mm") }
+        o["partite"] = incontri.enumerated().map { i, m in
+            ["data": data(minuti[i]), "casa": m.casa, "trasferta": m.trasferta, "giocata": i == 0, "stato": stati[i]] as [String: Any]
+        }
+        o["fase"] = "in_corso"
+        o["iniziata"] = true
+        o["inizio"] = data(-130)
+        o["scadenza"] = data(-160)
+        o["da_fare"] = [[String: Any]]()
+        // stato di ogni giocatore: (id, titolare, a punteggio, stato, fantavoto)
+        let righe: [(Int, Bool, Bool, String, Double?)] = [
+            (101, true, true, "fatto", 5.0), (104, true, false, "senza_voto", nil), (106, true, true, "in_corso", nil),
+            (107, true, false, "da_giocare", nil), (112, true, true, "fatto", 8.0), (113, true, true, "fatto", 9.5),
+            (114, true, true, "in_corso", nil), (115, true, true, "in_corso", nil), (120, true, false, "senza_voto", nil),
+            (121, true, true, "fatto", 10.0), (122, true, true, "da_giocare", nil),
+            (102, false, false, "in_corso", nil), (105, false, true, "fatto", 6.5), (123, false, true, "in_corso", nil),
+            (108, false, false, "da_giocare", nil), (117, false, false, "in_corso", nil), (125, false, false, "in_corso", nil),
+            (110, false, true, "in_corso", nil),
+        ]
+        let giocatori: [[String: Any]] = righe.map { r in
+            let c = calciatore(r.0)
+            let i = incontri.firstIndex { $0.casa == c.squadra || $0.trasferta == c.squadra } ?? 0
+            return ["id": c.id, "nome": c.nome, "ruolo": c.ruolo, "squadra": c.squadra, "titolare": r.1, "a_punteggio": r.2,
+                    "stato": r.3, "fantavoto": r.4.map { $0 as Any } ?? NSNull(), "data": data(minuti[i])]
+        }
+        func persona(_ id: Int) -> [String: Any] { let c = calciatore(id); return ["id": c.id, "nome": c.nome, "ruolo": c.ruolo] }
+        o["in_corso"] = [
+            "giornata": giornata, "giornata_lega": giornata - 3, "formazione_di": "tua",
+            "punti_fatti": 39.0, "punti_attesi_restanti": 38.7, "punti_previsti": 77.7, "modificatore": NSNull(), "ancora_da_giocare": 6,
+            "giocatori": giocatori,
+            "sostituzioni": [
+                ["esce": persona(104), "entra": persona(105), "certa": true, "motivo": "senza_voto"],
+                ["esce": persona(120), "entra": persona(123), "certa": false, "motivo": "senza_voto"],
+                ["esce": persona(107), "entra": persona(110), "certa": false, "motivo": "fuori"],
+            ],
+            "partite": ["in_corso": 2, "finite": 1, "da_giocare": 7, "rinviate": 0],
+        ] as [String: Any]
+        return json(o)
+    }
+
+    /// Fase `finita`: la giornata 11 è finita ieri, Oggi parla già della 12 (si chiude fra 4 giorni, probabili non ancora uscite).
+    static func oggiFinita(adesso: Date) -> String {
+        var o = oggiDati(adesso: adesso)
+        let scadenza = adesso.addingTimeInterval(4 * 86_400)
+        func data(_ d: Date) -> String { formatta(d, "yyyy-MM-dd HH:mm") }
+        let scarti: [Double] = [0, 135, 1260, 1395, 1530, 1650, 2700, 2835, 2835, 2970]
+        o["partite"] = incontri.enumerated().map { i, m in
+            ["data": data(scadenza.addingTimeInterval(1800 + scarti[i] * 60)), "casa": m.casa, "trasferta": m.trasferta, "giocata": false,
+             "stato": "da_giocare"] as [String: Any]
+        }
+        o["fase"] = "finita"
+        o["giornata"] = giornata + 1
+        o["giornata_lega"] = giornata - 2
+        o["inizio"] = data(scadenza.addingTimeInterval(1800))
+        o["scadenza"] = data(scadenza)
+        o["con_probabili"] = false
+        o["probabili"] = NSNull()
+        o["da_fare"] = [
+            ["id": "svincolato-203", "tipo": "svincolato", "testo": "Uno svincolato migliora la squadra di 3,4 punti", "priorita": 2,
+             "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]],
+        ]
+        o["riepilogo"] = [
+            "giornata": giornata, "giornata_lega": giornata - 3, "formazione_di": "tua", "nel_diario": true,
+            "punti_fatti": 74.5, "punti_attesi": 71.2, "intervallo": fascia(71.2, indicativo: false),
+            "consigliata": ["punti_fatti": 78.0, "punti_attesi": 73.7],
+        ] as [String: Any]
+        o["prossima"] = [
+            "giornata": giornata + 1, "giornata_lega": giornata - 2, "scadenza": data(scadenza),
+            "prepara_da": data(scadenza.addingTimeInterval(-72 * 3600)), "con_probabili": false,
+        ] as [String: Any]
+        return json(o)
     }
 
     // MARK: - Risultati in diretta
 
     /// Alcune partite in corso, una finita e il resto da giocare: la scheda «Partite del turno» di Oggi si vede viva.
-    static func live(adesso: Date) -> String {
+    /// `giornataInCorso`: le partite come nella fotografia `oggi-in-corso` (Inter-Roma finita, Napoli-Atalanta ancora da giocare).
+    static func live(adesso: Date, giornataInCorso: Bool = false) -> String {
         func ev(_ tipo: String, _ minuto: String, _ squadra: String, _ chi: String, _ assist: String? = nil) -> [String: Any] {
             var e: [String: Any] = ["tipo": tipo, "minuto": minuto, "squadra": squadra, "chi": chi]
             if let assist { e["assist"] = assist }
@@ -495,6 +599,11 @@ private enum DatiDemo {
                 p["stato"] = "primo_tempo"; p["minuto"] = "27'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
                 p["eventi"] = [ev("gol", "11'", "casa", "Castelvera"), ev("gol", "25'", "trasferta", "Hrafnsson")]
             default: break
+            }
+            if giornataInCorso && i == 0 { p["stato"] = "finita"; p["minuto"] = nil }
+            if giornataInCorso && i == 2 {
+                p = ["casa": m.casa, "trasferta": m.trasferta, "stato": "da_giocare",
+                     "data": formatta(adesso.addingTimeInterval(150 * 60), "yyyy-MM-dd HH:mm")]
             }
             partite.append(p)
         }

@@ -47,6 +47,8 @@ enum Demo {
     static func serverPredefinito() -> any ServerClient {
         if attivo {
             if !daLancio { return FinteServer.demo }   // la prova con dati di esempio
+            // Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
+            if let fase = FinteServer.demoFase(schermata) { return fase }
             if accesso == "rose" {
                 // La lega non ha rose: il server risponde 409 «Nessuna rosa importata» a tutto quello che le richiede.
                 var senzaRose = FinteServer.demo
@@ -115,7 +117,7 @@ extension Demo {
         }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
         switch nome {
-        case "oggi":
+        case "oggi", "oggi-in-corso", "oggi-finita":
             nav.sezione = .oggi
         case "guida":
             // la configurazione guidata: in demo mostra i passi non ancora fatti

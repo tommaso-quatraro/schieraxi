@@ -359,7 +359,24 @@ struct Partita: Decodable, Identifiable {
     let casa: String
     let trasferta: String
     let giocata: Bool?
+    /// `da_giocare`, `in_corso`, `finita`, `rinviata` (facoltativo: server vecchio; un valore strano si ignora).
+    let stato: String?
     var id: String { (data ?? "") + casa + trasferta }
+
+    private enum CodingKeys: String, CodingKey { case data, casa, trasferta, giocata, stato }
+
+    init(data: String?, casa: String, trasferta: String, giocata: Bool?, stato: String? = nil) {
+        self.data = data; self.casa = casa; self.trasferta = trasferta; self.giocata = giocata; self.stato = stato
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: CodingKeys.self)
+        data = try k.decodeIfPresent(String.self, forKey: .data)
+        casa = try k.decode(String.self, forKey: .casa)
+        trasferta = try k.decode(String.self, forKey: .trasferta)
+        giocata = try k.decodeIfPresent(Bool.self, forKey: .giocata)
+        stato = (try? k.decodeIfPresent(String.self, forKey: .stato)) ?? nil
+    }
 }
 
 struct Oggi: Decodable {
@@ -385,6 +402,14 @@ struct Oggi: Decodable {
     let mieiTitolari: MieiTitolari?
     /// Quanto sono fresche le probabili (facoltativo: server vecchio o probabili assenti). Letto in modo tollerante.
     let probabili: Tollerante<ProbabiliFresche>?
+    /// La fase della giornata: `prima`, `in_corso`, `finita` (facoltativa: se manca vale `prima`, come i server vecchi).
+    let fase: Tollerante<String>?
+    /// Solo con la fase `in_corso`: punti fatti finora, chi va a punteggio, cambi dalla panchina. `null` se non si sa cosa hai schierato.
+    let inCorso: Tollerante<GiornataInCorso>?
+    /// Solo con la fase `finita`: com'è andata la giornata appena chiusa.
+    let riepilogo: Tollerante<RiepilogoGiornata>?
+    /// Solo con la fase `finita`: la prossima giornata e da quando conviene prepararla.
+    let prossima: Tollerante<ProssimaGiornata>?
 }
 
 /// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.
@@ -806,5 +831,245 @@ struct IntervalloPunti: Decodable, Equatable {
         if let t = intervallo?.testo { return t }
         guard let dev, dev.isFinite, dev >= 0 else { return nil }
         return "oscilla di ±\(Formato.intero(dev))"
+    }
+}
+
+// MARK: - Fasi della giornata (campi facoltativi di Oggi, dal 1/11/2026; stanno qui perché Modelli.swift è compilato anche dal widget)
+
+/// Letture che non falliscono mai: tipo sbagliato o `null` = nil; in un elenco un elemento sbagliato si salta.
+private extension KeyedDecodingContainer {
+    func facoltativo<T: Decodable>(_ tipo: T.Type, _ chiave: Key) -> T? {
+        (try? decodeIfPresent(tipo, forKey: chiave)) ?? nil
+    }
+
+    func elenco<T: Decodable>(_ tipo: T.Type, _ chiave: Key) -> [T] {
+        (facoltativo([Tollerante<T>].self, chiave) ?? []).compactMap(\.valore)
+    }
+}
+
+/// Un giocatore della formazione schierata durante la giornata (`in_corso.giocatori`): titolari in ordine, poi la panchina.
+struct GiocatoreInCorso: Decodable, Identifiable, Equatable {
+    let id: Int
+    let nome: String
+    let ruolo: String?
+    let squadra: String?
+    let titolare: Bool
+    /// Va a punteggio con i cambi di adesso.
+    let aPunteggio: Bool
+    /// `fatto` (ha il voto), `senza_voto`, `attesa_voti`, `in_corso`, `da_giocare`, `rinviata`.
+    let stato: String?
+    /// Il fantavoto con le regole della lega (solo con `fatto`).
+    let fantavoto: Double?
+    /// Ora d'inizio della sua partita («AAAA-MM-GG HH:MM»).
+    let data: String?
+
+    private enum Chiavi: String, CodingKey { case id, nome, ruolo, squadra, titolare, aPunteggio, stato, fantavoto, data }
+
+    init(id: Int, nome: String, ruolo: String? = nil, squadra: String? = nil, titolare: Bool = true, aPunteggio: Bool = true,
+         stato: String? = nil, fantavoto: Double? = nil, data: String? = nil) {
+        self.id = id; self.nome = nome; self.ruolo = ruolo; self.squadra = squadra; self.titolare = titolare
+        self.aPunteggio = aPunteggio; self.stato = stato; self.fantavoto = fantavoto; self.data = data
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        id = try k.decode(Int.self, forKey: .id)   // senza id l'elemento si salta (l'elenco è tollerante)
+        nome = k.facoltativo(String.self, .nome) ?? ""
+        ruolo = k.facoltativo(String.self, .ruolo)
+        squadra = k.facoltativo(String.self, .squadra)
+        titolare = k.facoltativo(Bool.self, .titolare) ?? false
+        aPunteggio = k.facoltativo(Bool.self, .aPunteggio) ?? false
+        stato = k.facoltativo(String.self, .stato)
+        fantavoto = k.facoltativo(Double.self, .fantavoto).flatMap { $0.isFinite ? $0 : nil }
+        data = k.facoltativo(String.self, .data)
+    }
+}
+
+/// Chi esce o chi entra in un cambio dalla panchina.
+struct PersonaCambio: Decodable, Equatable {
+    let id: Int?
+    let nome: String
+    let ruolo: String?
+
+    private enum Chiavi: String, CodingKey { case id, nome, ruolo }
+
+    init(id: Int?, nome: String, ruolo: String? = nil) { self.id = id; self.nome = nome; self.ruolo = ruolo }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        id = k.facoltativo(Int.self, .id)
+        nome = k.facoltativo(String.self, .nome) ?? ""
+        ruolo = k.facoltativo(String.self, .ruolo)
+    }
+}
+
+/// Un cambio dalla panchina con le regole della lega: già scattato (`certa`) o probabile.
+struct CambioPanchina: Decodable, Equatable {
+    let esce: PersonaCambio?
+    /// nil = nessun sostituto possibile.
+    let entra: PersonaCambio?
+    let certa: Bool
+    /// `senza_voto`, `fuori` (infortunato o squalificato che deve ancora giocare), `rinviata`.
+    let motivo: String?
+
+    private enum Chiavi: String, CodingKey { case esce, entra, certa, motivo }
+
+    init(esce: PersonaCambio?, entra: PersonaCambio?, certa: Bool, motivo: String? = nil) {
+        self.esce = esce; self.entra = entra; self.certa = certa; self.motivo = motivo
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        esce = k.facoltativo(PersonaCambio.self, .esce)
+        entra = k.facoltativo(PersonaCambio.self, .entra)
+        certa = k.facoltativo(Bool.self, .certa) ?? false
+        motivo = k.facoltativo(String.self, .motivo)
+    }
+}
+
+/// Quante partite del turno sono in corso, finite, da giocare e rinviate.
+struct ContoPartite: Decodable, Equatable {
+    var inCorso = 0
+    var finite = 0
+    var daGiocare = 0
+    var rinviate = 0
+
+    private enum Chiavi: String, CodingKey { case inCorso, finite, daGiocare, rinviate }
+
+    init(inCorso: Int = 0, finite: Int = 0, daGiocare: Int = 0, rinviate: Int = 0) {
+        self.inCorso = inCorso; self.finite = finite; self.daGiocare = daGiocare; self.rinviate = rinviate
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        inCorso = max(0, k.facoltativo(Int.self, .inCorso) ?? 0)
+        finite = max(0, k.facoltativo(Int.self, .finite) ?? 0)
+        daGiocare = max(0, k.facoltativo(Int.self, .daGiocare) ?? 0)
+        rinviate = max(0, k.facoltativo(Int.self, .rinviate) ?? 0)
+    }
+
+    var totale: Int { inCorso + finite + daGiocare + rinviate }
+}
+
+/// Il campo `in_corso` di Oggi: la giornata mentre si gioca.
+struct GiornataInCorso: Decodable, Equatable {
+    let giornata: Int?
+    let giornataLega: Int?
+    /// `tua` (la scelta salvata) o `consigliata`.
+    let formazioneDi: String?
+    let puntiFatti: Double?
+    let puntiAttesiRestanti: Double?
+    /// Punti fatti + attesi di chi non ha ancora il voto: «a fine giornata, circa».
+    let puntiPrevisti: Double?
+    /// Modificatore della difesa già contato, se c'è.
+    let modificatore: Double?
+    /// Quanti di chi va a punteggio non hanno ancora il voto.
+    let ancoraDaGiocare: Int?
+    let giocatori: [GiocatoreInCorso]
+    let sostituzioni: [CambioPanchina]
+    let partite: ContoPartite?
+
+    private enum Chiavi: String, CodingKey {
+        case giornata, giornataLega, formazioneDi, puntiFatti, puntiAttesiRestanti, puntiPrevisti, modificatore, ancoraDaGiocare
+        case giocatori, sostituzioni, partite
+    }
+
+    init(giornata: Int? = nil, giornataLega: Int? = nil, formazioneDi: String? = nil, puntiFatti: Double? = nil,
+         puntiAttesiRestanti: Double? = nil, puntiPrevisti: Double? = nil, modificatore: Double? = nil, ancoraDaGiocare: Int? = nil,
+         giocatori: [GiocatoreInCorso] = [], sostituzioni: [CambioPanchina] = [], partite: ContoPartite? = nil) {
+        self.giornata = giornata; self.giornataLega = giornataLega; self.formazioneDi = formazioneDi; self.puntiFatti = puntiFatti
+        self.puntiAttesiRestanti = puntiAttesiRestanti; self.puntiPrevisti = puntiPrevisti; self.modificatore = modificatore
+        self.ancoraDaGiocare = ancoraDaGiocare; self.giocatori = giocatori; self.sostituzioni = sostituzioni; self.partite = partite
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        giornata = k.facoltativo(Int.self, .giornata)
+        giornataLega = k.facoltativo(Int.self, .giornataLega)
+        formazioneDi = k.facoltativo(String.self, .formazioneDi)
+        puntiFatti = k.facoltativo(Double.self, .puntiFatti)
+        puntiAttesiRestanti = k.facoltativo(Double.self, .puntiAttesiRestanti)
+        puntiPrevisti = k.facoltativo(Double.self, .puntiPrevisti)
+        modificatore = k.facoltativo(Double.self, .modificatore)
+        ancoraDaGiocare = k.facoltativo(Int.self, .ancoraDaGiocare)
+        giocatori = k.elenco(GiocatoreInCorso.self, .giocatori)
+        sostituzioni = k.elenco(CambioPanchina.self, .sostituzioni)
+        partite = k.facoltativo(ContoPartite.self, .partite)
+    }
+}
+
+/// I punti della formazione consigliata nel riepilogo (dal Diario).
+struct PuntiConsigliata: Decodable, Equatable {
+    let puntiFatti: Double?
+    let puntiAttesi: Double?
+
+    private enum Chiavi: String, CodingKey { case puntiFatti, puntiAttesi }
+
+    init(puntiFatti: Double?, puntiAttesi: Double?) { self.puntiFatti = puntiFatti; self.puntiAttesi = puntiAttesi }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        puntiFatti = k.facoltativo(Double.self, .puntiFatti)
+        puntiAttesi = k.facoltativo(Double.self, .puntiAttesi)
+    }
+}
+
+/// Il campo `riepilogo` di Oggi: la giornata appena finita.
+struct RiepilogoGiornata: Decodable, Equatable {
+    let giornata: Int?
+    let giornataLega: Int?
+    /// `tua` o `consigliata`.
+    let formazioneDi: String?
+    /// true = numeri del Diario (con il confronto); false = punti dai voti, il confronto arriva nel Diario.
+    let nelDiario: Bool
+    let puntiFatti: Double?
+    let puntiAttesi: Double?
+    let intervallo: IntervalloPunti?
+    let consigliata: PuntiConsigliata?
+
+    private enum Chiavi: String, CodingKey { case giornata, giornataLega, formazioneDi, nelDiario, puntiFatti, puntiAttesi, intervallo, consigliata }
+
+    init(giornata: Int? = nil, giornataLega: Int? = nil, formazioneDi: String? = nil, nelDiario: Bool = false, puntiFatti: Double? = nil,
+         puntiAttesi: Double? = nil, intervallo: IntervalloPunti? = nil, consigliata: PuntiConsigliata? = nil) {
+        self.giornata = giornata; self.giornataLega = giornataLega; self.formazioneDi = formazioneDi; self.nelDiario = nelDiario
+        self.puntiFatti = puntiFatti; self.puntiAttesi = puntiAttesi; self.intervallo = intervallo; self.consigliata = consigliata
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        giornata = k.facoltativo(Int.self, .giornata)
+        giornataLega = k.facoltativo(Int.self, .giornataLega)
+        formazioneDi = k.facoltativo(String.self, .formazioneDi)
+        nelDiario = k.facoltativo(Bool.self, .nelDiario) ?? false
+        puntiFatti = k.facoltativo(Double.self, .puntiFatti)
+        puntiAttesi = k.facoltativo(Double.self, .puntiAttesi)
+        intervallo = k.facoltativo(IntervalloPunti.self, .intervallo)
+        consigliata = k.facoltativo(PuntiConsigliata.self, .consigliata)
+    }
+}
+
+/// Il campo `prossima` di Oggi: la giornata da preparare dopo quella finita.
+struct ProssimaGiornata: Decodable, Equatable {
+    let giornata: Int?
+    let giornataLega: Int?
+    let scadenza: String?
+    /// Da quando conviene preparare la formazione («AAAA-MM-GG HH:MM»).
+    let preparaDa: String?
+    let conProbabili: Bool
+
+    private enum Chiavi: String, CodingKey { case giornata, giornataLega, scadenza, preparaDa, conProbabili }
+
+    init(giornata: Int? = nil, giornataLega: Int? = nil, scadenza: String? = nil, preparaDa: String? = nil, conProbabili: Bool = false) {
+        self.giornata = giornata; self.giornataLega = giornataLega; self.scadenza = scadenza; self.preparaDa = preparaDa
+        self.conProbabili = conProbabili
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        giornata = k.facoltativo(Int.self, .giornata)
+        giornataLega = k.facoltativo(Int.self, .giornataLega)
+        scadenza = k.facoltativo(String.self, .scadenza)
+        preparaDa = k.facoltativo(String.self, .preparaDa)
+        conProbabili = k.facoltativo(Bool.self, .conProbabili) ?? false
     }
 }

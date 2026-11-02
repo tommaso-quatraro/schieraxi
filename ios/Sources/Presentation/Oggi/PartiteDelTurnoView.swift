@@ -44,7 +44,7 @@ struct RigaPartitaView: View {
     private var ora: String? { Quando.data(partita.data).map { Quando.ora($0) } }
     private var haPunteggio: Bool { live?.golCasa != nil && live?.golTrasferta != nil }
     private var inGioco: Bool { live?.inGioco ?? false }
-    private var finita: Bool { live?.finita ?? (partita.giocata == true) }
+    private var finita: Bool { live?.finita ?? (partita.giocata == true || partita.stato == "finita") }
     private var eventi: [EventoLive] { haPunteggio ? EventiPartita.visibili(live?.eventi) : [] }
 
     var body: some View {
@@ -117,8 +117,13 @@ struct RigaPartitaView: View {
         default:
             if inGioco {
                 badgeLive
-            } else if partita.giocata == true && !haPunteggio {
+            } else if (partita.giocata == true || partita.stato == "finita") && !haPunteggio {
                 Text("Finita").font(.caption).foregroundStyle(.secondary)
+            } else if partita.stato == "in_corso" {
+                // senza la diretta (spenta o non raggiungibile) lo stato arriva da Oggi
+                Text("In corso").font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
+            } else if partita.stato == "rinviata" {
+                Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
             } else {
                 Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(.secondary)
             }

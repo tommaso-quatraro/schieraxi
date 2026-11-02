@@ -32,14 +32,30 @@ struct OggiView: View {
                             benvenuto(oggi).ingresso(0)
                             senzaGiornata(oggi).ingresso(0)
                             if !oggi.senzaGiornata { testata(oggi).ingresso(0) }
-                            daFare(oggi).ingresso(1)
-                            novita.ingresso(1)
-                            if !oggi.senzaGiornata { formazione(oggi).ingresso(2) }
-                            daControllare.ingresso(3)
-                            suggerimento
-                            migliori(oggi).ingresso(4)
-                            indisponibili.ingresso(5)
-                            diffidati.ingresso(6)
+                            // Le fasi della giornata: durante (punti fatti, niente consigli su chi schierare), dopo (riepilogo), prima (come sempre).
+                            switch oggi.faseGiornata {
+                            case .inCorso:
+                                CartaGiornataInCorso(blocco: oggi.giornataInCorso, attesiPrima: oggi.formazione?.punteggioAtteso,
+                                                     partite: oggi.contoPartite).ingresso(1)
+                                if let b = oggi.giornataInCorso, !b.sostituzioni.isEmpty { CartaCambiPanchina(cambi: b.sostituzioni).ingresso(2) }
+                                if let b = oggi.giornataInCorso, !b.giocatori.isEmpty { CartaChiGioca(blocco: b).ingresso(3) }
+                                daFare(oggi).ingresso(4)
+                                novita.ingresso(4)
+                            case .finita:
+                                CartaRiepilogoGiornata(riepilogo: oggi.riepilogoGiornata).ingresso(1)
+                                daFare(oggi).ingresso(2)
+                                novita.ingresso(2)
+                                if !oggi.senzaGiornata { formazione(oggi).ingresso(3) }
+                            case .prima:
+                                daFare(oggi).ingresso(1)
+                                novita.ingresso(1)
+                                if !oggi.senzaGiornata { formazione(oggi).ingresso(2) }
+                                daControllare.ingresso(3)
+                                suggerimento
+                                migliori(oggi).ingresso(4)
+                                indisponibili.ingresso(5)
+                                diffidati.ingresso(6)
+                            }
                             if funzioni.acceso(Funzione.live) { partite.ingresso(7) }
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
@@ -71,6 +87,11 @@ struct OggiView: View {
             .task(id: "\(fase == .active)-\(vm.oggi?.giornata ?? 0)-\(funzioni.acceso(Funzione.live))") {
                 guard fase == .active, funzioni.acceso(Funzione.live) else { return }   // «Risultati in diretta» spenta: non si chiede nulla al server
                 await vm.seguiLive()
+            }
+            // Durante la giornata i punti cambiano quando escono i voti: Oggi si rilegge da solo ogni tanto, solo con la schermata visibile.
+            .task(id: "\(fase == .active)-\(vm.oggi?.faseGiornata.rawValue ?? "")") {
+                guard fase == .active, vm.oggi?.faseGiornata == .inCorso else { return }
+                await vm.seguiGiornata()
             }
         }
     }
@@ -173,6 +194,8 @@ struct OggiView: View {
                         Label("In corso", systemImage: "dot.radiowaves.left.and.right")
                             .symbolEffect(.variableColor.iterative, options: .repeating, isActive: !ridotto)
                             .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)   // testo molto grande: si rimpicciolisce invece di andare a capo a metà parola
                             .foregroundStyle(.white)
                         Text("formazione chiusa \(Quando.leggibile(oggi.chiusura))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     }
@@ -218,8 +241,16 @@ struct OggiView: View {
 
     // MARK: formazione e avvisi
 
+    /// La formazione della giornata da giocare. Dopo una giornata finita parla della PROSSIMA: si chiama così e dice da quando prepararla.
     private func formazione(_ oggi: Oggi) -> some View {
-        Carta(oggi.formazione?.titoloScheda ?? "La formazione consigliata", simbolo: "sportscourt") {
+        let finita = oggi.faseGiornata == .finita
+        return Carta(finita ? "Prossima giornata" : (oggi.formazione?.titoloScheda ?? "La formazione consigliata"),
+                     simbolo: finita ? "calendar.badge.clock" : "sportscourt") {
+            if let p = oggi.prossimaGiornata {
+                Label(TestiFase.prossima(p), systemImage: "clock")
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let f = oggi.formazione, f.disponibile {
                 HStack(alignment: .firstTextBaseline) {
                     Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold))
@@ -275,7 +306,7 @@ struct OggiView: View {
                     .foregroundStyle(Color.verde)
                 }
             }
-        } else if oggi.daFare != nil {
+        } else if oggi.daFare != nil, oggi.conConsigli {   // durante e dopo la giornata la riga vuota non serve
             Text("Nessuna azione utile oggi")
                 .font(.footnote).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
