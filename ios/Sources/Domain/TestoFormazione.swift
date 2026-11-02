@@ -2,7 +2,7 @@ import Foundation
 
 /// La formazione scritta a parole, da copiare o mandare nel gruppo (Leghe non permette di incollarla: si inserisce a mano).
 enum TestoFormazione {
-    /// «Giornata 9 · 4-3-3», una riga per reparto («P: Viscardi»), poi «Panchina: 1) Bilsen, 2) ...».
+    /// «Giornata 9 · 4-3-3», una riga per reparto («P: Noraldi»), poi «Panchina: 1) Pelucci, 2) ...».
     static func crea(giornata: Int, giornataLega: Int? = nil, modulo: String, titolari: [Giocatore], panchina: [Giocatore]) -> String {
         var righe = ["\(TempiLega.etichetta(serieA: giornata, lega: giornataLega)) · \(modulo)"]
         for ruolo in ["P", "D", "C", "A"] {
