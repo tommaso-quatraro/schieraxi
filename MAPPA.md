@@ -21,7 +21,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi), `scambi.py`, `scambi_multi.py` (scambi N contro M),
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
-  - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`; regola della lega
+  - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
     (giornata in corso) e nel Diario; campo `rinvio` di `/api/oggi`, rotta `PUT /api/regole/rinvio`. Una partita rinviata non tiene

@@ -493,7 +493,7 @@ def controlla_comuni(db: sqlite3.Connection, stagione: str, adesso: datetime, li
     turni = {g: turno.inizio(_data(r[1]) for r in rr) for g, rr in per_g.items()}
 
     def nel_turno(g, d) -> bool:
-        return d is not None and turni.get(g) is not None and turno.nel_turno(d, turni[g])
+        return turno.della_giornata(d, turni.get(g))          # anticipi compresi: sono partite della giornata
 
     # partite del turno finite da più di 12 ore e non ancora «giocate» nel calendario; voti delle partite finite
     voti = {(g, s) for g, s in db.execute("SELECT DISTINCT giornata, squadra FROM voti WHERE stagione = ? AND voto_red IS NOT NULL",
@@ -538,7 +538,7 @@ def controlla_comuni(db: sqlite3.Connection, stagione: str, adesso: datetime, li
                 continue
             trascorso = adesso - d
             nome = f"{p.get('casa')}-{p.get('trasferta')}"           # squadre di Serie A: nessun dato personale
-            nel = inizio is not None and turno.nel_turno(d, inizio)
+            nel = turno.della_giornata(d, inizio)
             if nel and trascorso > DOPO_INIZIO_PUNTEGGIO and not (_num(p.get("gol_casa")) and _num(p.get("gol_trasferta"))):
                 out.append(Rottura("punteggio_mancante", None, g, f"{nome} iniziata da {_ore(trascorso)}, stato «{stato}», senza punteggio"))
             if stato == "da_giocare" and trascorso > DOPO_INIZIO_PUNTEGGIO:
