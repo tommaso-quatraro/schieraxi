@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.346",
+    "data": "2026-11-02T13:33:09",
+    "titolo": "Scheda del giocatore e confronto: il numero della giornata della lega",
+    "voci": [
+      "La scheda del giocatore e il confronto tra due giocatori sanno anche il numero della giornata della tua lega: presto l'app lo mostrerà come nelle altre schermate."
+    ],
+    "tecnico": [
+      "Campo facoltativo giornata_lega accanto a giornata in GET /api/giocatore/{id} (previsione) e GET /api/confronto, calcolato con regole.serie_a_a_lega come nelle altre rotte. Test in tests/test_giornata_lega.py; docs/API.md aggiornato."
+    ]
+  },
+  {
     "versione": "1.345",
     "data": "2026-11-02T13:27:12",
     "titolo": "Formazione: chiusa alla scadenza e titolari incerti spiegati",
