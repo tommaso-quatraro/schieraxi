@@ -374,6 +374,17 @@ extension PuntiGiornata {
         }
     }
 
+    /// «Giornata 8».
+    var titolo: String { "Giornata \(giornata)" }
+
+    /// «G8», per gli spazi stretti.
+    var sigla: String { "G\(giornata)" }
+
+    /// Le giornate per il grafico: le ultime `massimo` con almeno un numero, in ordine.
+    static func perGrafico(_ giornate: [PuntiGiornata], massimo: Int) -> [PuntiGiornata] {
+        Array(giornate.filter { $0.fatti != nil || $0.attesi != nil }.sorted { $0.giornata < $1.giornata }.suffix(max(0, massimo)))
+    }
+
     /// Una frase per VoiceOver: «Giornata 10: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 62 e 85».
     var descrizione: String {
         var t = "Giornata \(giornata): "
