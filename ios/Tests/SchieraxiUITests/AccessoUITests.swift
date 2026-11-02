@@ -210,6 +210,92 @@ final class AccessoUITests: XCTestCase {
         chiudiFoglio("Elimina l'account", "Annulla", segno: elimina)
     }
 
+    // MARK: - Diagnosi temporanea #177 (da togliere prima della pull request)
+
+    private func adesso() -> TimeInterval { Date().timeIntervalSinceReferenceDate }
+    private func f(_ t: TimeInterval) -> String { String(format: "%.2f", t) }
+
+    /// Apre il foglio come `apriFoglio`, ma conta tempo, tocchi e scorrimenti.
+    private func apriFoglioMisurato(_ voce: XCUIElement, segno: XCUIElement) -> String {
+        XCTAssertTrue(voce.waitForExistence(timeout: 30), "manca la voce del foglio")
+        let inizio = adesso()
+        var tocchi = 0
+        var scorrimenti = 0
+        var aperto = false
+        for _ in 0..<3 where !aperto {
+            if voce.exists {
+                if !voce.isHittable { app.swipeUp(); scorrimenti += 1 }
+                voce.tap()
+                tocchi += 1
+            }
+            aperto = segno.waitForExistence(timeout: 10)
+        }
+        XCTAssertTrue(aperto, "il foglio non si apre")
+        return "\(f(adesso() - inizio))s/\(tocchi)t/\(scorrimenti)sc"
+    }
+
+    /// Come `restaAperto` (stessa attesa di 4 secondi), ma se il segno sparisce non si ferma: guarda se torna e cosa c'è.
+    private func osserva(_ segno: XCUIElement, voce: XCUIElement, titolo: String) -> String? {
+        let inizio = adesso()
+        guard segno.waitForNonExistence(timeout: 4) else { return nil }
+        let dopo = adesso() - inizio
+        let barra = app.navigationBars[titolo].exists
+        let voceToccabile = voce.exists && voce.isHittable
+        var serie = ""
+        var tornato: TimeInterval?
+        let t0 = adesso()
+        while adesso() - t0 < 6 {
+            let c = segno.exists
+            serie += c ? "1" : "0"
+            if c, tornato == nil { tornato = adesso() - t0 }
+            if tornato != nil, serie.count >= 3 { break }
+            usleep(150_000)
+        }
+        let barre = app.navigationBars.allElementsBoundByIndex.map { $0.identifier }.joined(separator: "+")
+        return "sparito dopo \(f(dopo))s, barra=\(barra), voceToccabile=\(voceToccabile), serie=\(serie), tornato=\(tornato.map { f($0) } ?? "no"), barre=\(barre)"
+    }
+
+    private func chiudiSeAperto(_ titolo: String, _ pulsante: String, segno: XCUIElement, voce: XCUIElement) {
+        let b = app.navigationBars[titolo].buttons[pulsante]
+        for _ in 0..<3 {
+            if !b.waitForExistence(timeout: 3) { break }
+            b.tap()
+            if segno.waitForNonExistence(timeout: 5) { break }
+        }
+        let toccabile = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: voce)
+        _ = XCTWaiter().wait(for: [toccabile], timeout: 5)
+    }
+
+    private func diagnosiFogli(datiCheCambiano: Bool) {
+        avvia("account", altri: datiCheCambiano ? ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"] : [])
+        attendi("Il tuo account")
+        let fogli: [(voce: XCUIElement, segno: XCUIElement, titolo: String)] = [
+            (app.buttons["account-cambia-password"], app.secureTextFields["Password attuale"], "Cambia la password"),
+            (app.buttons["account-elimina"], app.navigationBars["Elimina l'account"], "Elimina l'account"),
+        ]
+        var aperture = 0
+        var esiti: [String] = []
+        var anomalie: [String] = []
+        for giro in 1...15 {
+            for foglio in fogli {
+                let apertura = apriFoglioMisurato(foglio.voce, segno: foglio.segno)
+                aperture += 1
+                if let a = osserva(foglio.segno, voce: foglio.voce, titolo: foglio.titolo) {
+                    anomalie.append("giro \(giro) «\(foglio.titolo)» aperto in \(apertura): \(a)")
+                }
+                esiti.append(apertura)
+                chiudiSeAperto(foglio.titolo, "Annulla", segno: foglio.segno, voce: foglio.voce)
+            }
+        }
+        let riassunto = "DIAGNOSI dati \(datiCheCambiano ? "che cambiano" : "fermi"): sparizioni \(anomalie.count) su \(aperture) aperture || "
+            + anomalie.joined(separator: " || ") + " || aperture: " + esiti.joined(separator: " ")
+        print(riassunto)
+        XCTFail(riassunto)
+    }
+
+    func testDiagnosiFogliConDatiCheCambiano() { diagnosiFogli(datiCheCambiano: true) }
+    func testDiagnosiFogliConDatiFermi() { diagnosiFogli(datiCheCambiano: false) }
+
     func testRetAssenteDiceCosaFare() {
         avvia("rete")
         attendi("Non riesco a collegarmi a SchieraXI", contiene: true)
