@@ -102,7 +102,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
     const etichetta = g.stato === "non_trovato" ? `<span class="etichetta rossa">${t("ar.non_trovato")}</span>` : `<span class="etichetta arancio">${t("ar.da_controllare")}</span>`;
     return `<li class="ar-dubbio ${scelta === AR_TOGLI ? "tolto" : ""}" data-i="${i}">
       <div class="ar-dubbio-testa"><b>«${esc(g.testo)}»</b>${etichetta}</div>
-      ${g.avviso ? `<div class="debole piccolo">${esc(traduciErrore(g.avviso))}</div>` : ""}
+      ${g.avviso ? `<div class="debole piccolo">${esc(testoDi(g, "avviso"))}</div>` : ""}
       <label class="ar-nascosto" for="ar-sel-${i}">${t("ar.chi_e", { nome: esc(g.testo), squadra: esc(s.nome) })}</label>
       <select class="campo-testo ar-scelta" id="ar-sel-${i}">${opzioni(k, g)}</select>
       ${cerca ? `<div class="ar-cerca"><label class="ar-nascosto" for="ar-cerca-${i}">${t("ar.cerca_per", { nome: esc(g.testo) })}</label>
@@ -132,7 +132,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
     }).join("");
     // gli avvisi delle singole squadre si vedono già nella loro carta: in cima solo quelli di tutto il file
     const diSquadra = new Set(r.squadre.flatMap(s => (s.avvisi || []).map(a => `${s.nome}: ${a}`)));
-    const avvisi = (r.avvisi || []).filter(a => !diSquadra.has(a));
+    const avvisi = (r.avvisi || []).map((testo, i) => ({ testo, frase: (r.avvisi_frasi || [])[i] })).filter(a => !diSquadra.has(a.testo));
     const mia = r.squadre.length ? `<fieldset class="ar-mia"><legend>${t("ar.qual_e_tua")}</legend><div class="ar-mia-scelte">
       ${nomiMia(r).map(n => `<label class="chip ${st.mia === n ? "attiva" : ""}"><input type="radio" name="ar-mia" value="${esc(n)}" ${st.mia === n ? "checked" : ""}>${esc(n)}</label>`).join("")}
       </div></fieldset>` : "";
@@ -141,7 +141,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
     dove.innerHTML = `<div class="ar">
       <h3 class="ar-titolo" id="ar-titolo" tabindex="-1">${t("ar.controlla")}</h3>
       <p class="ar-riassunto">${arRiassunto(r)}</p>
-      ${avvisi.length ? `<div class="attenzione">${avvisi.map(a => esc(traduciErrore(a))).join("<br>")}</div>` : ""}
+      ${avvisi.length ? `<div class="attenzione">${avvisi.map(a => esc(traduciFrase(a.frase, a.testo))).join("<br>")}</div>` : ""}
       ${mia}
       <div class="ar-squadre">${squadreHtml}</div>
       ${differenze}

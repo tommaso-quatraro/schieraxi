@@ -291,3 +291,38 @@ def test_oggi_senza_rose_risponde_200(client):
     assert c["senza_rose"] is True and c["avvisi"] == [] and c["migliori"] == [] and "formazione" in c and "partite" in c
     assert c["da_fare"][0]["tipo"] == "rose" and c["da_fare"][0]["destinazione"]["scheda"] == "lega"
     assert client.get("/api/formazione").status_code == 409                    # le altre rotte restano com'erano
+
+
+# ---------------------------------------------------------------- frasi traducibili (fanta/frasi.py)
+def test_ogni_voce_ha_la_frase_per_tradurla(mondo):
+    """Accanto a `testo` e `azione` (italiano, come sempre) c'è l'oggetto con chiave e parametri: ricostruito dà lo stesso testo."""
+    from fanta import frasi
+    voci = vai(mondo, oggi=dict(mondo.oggi, ore_mancanti=2.5), certificato_giorni=1, amministratore=True)
+    assert {"dubbio", "formazione", "certificato"} <= {x["tipo"] for x in voci}
+    for x in voci:
+        assert frasi.da_json(x["frase"]) == x["testo"], x["id"]
+        assert frasi.da_json(x["azione_frase"]) == x["azione"], x["id"]
+    dubbio = next(x for x in voci if x["id"] == "dubbio:5")
+    assert dubbio["frase"] == {"chiave": "dafare.dubbio_incerto_alt", "param": {"nome": "Rossi", "p": 55, "alt": "g14"}}
+    formazione = next(x for x in voci if x["tipo"] == "formazione")
+    assert formazione["frase"]["param"]["tempo"] == {"chiave": "tempo.ore", "param": {"n": 2}}
+
+
+def test_svincolato_e_scambio_portano_motivo_e_guadagno_come_frasi(mondo, monkeypatch):
+    from fanta import frasi
+    motivo = frasi.F("senso.si_titolare_fisso_sq", nome="Nuovo", squadra="Como")
+    proposta = {"esce": {"id": 7, "nome": "Rossi"}, "entra": {"id": 40, "nome": "Nuovo"}, "guadagno": 3.25, "breve": 2.84, "giornate": [1, 2, 3],
+                "fattibile": True, "motivo": str(motivo), "motivo_frase": motivo.json()}       # come dopo un giro di JSON: il motivo è solo testo
+    monkeypatch.setattr(da_fare.consigli, "mercato", lambda *a, **k: {"proposte": [proposta]})
+    s = next(x for x in vai(mondo) if x["tipo"] == "svincolato")
+    assert s["testo"] == "Nuovo (libero) al posto di Rossi: Nuovo è titolare fisso (Como), circa 2,8 punti in più nelle prossime 3 giornate."
+    assert s["frase"]["chiave"] == "dafare.svincolato_motivo"
+    assert s["frase"]["param"]["motivo"] == motivo.json()
+    assert s["frase"]["param"]["guadagno"] == {"chiave": "dafare.guadagno_breve", "param": {"punti": "2.8", "n": 3}}
+    monkeypatch.setattr(da_fare.consigli, "mercato", lambda *a, **k: {"proposte": []})
+    monkeypatch.setattr(da_fare.consigli, "proposte_scambi", lambda *a, **k: (None, [
+        {"altra": "Lupi", "do": [{"nome": "A"}], "ricevo": [{"nome": "B"}, {"nome": "C"}], "guadagno_mio": 2.5, "per_giornata_mio": [1.0, 1.0, 1.0]}]))
+    sc = next(x for x in vai(mondo) if x["tipo"] == "scambio")
+    assert sc["testo"] == "Con Lupi ti conviene scambiare: dai A, ricevi B, C, circa 2,5 punti in più."
+    assert sc["frase"] == {"chiave": "dafare.scambio", "param": {"altra": "Lupi", "do": "A", "ricevo": "B, C",
+                                                                 "guadagno": {"chiave": "dafare.guadagno_stagione", "param": {"punti": "2.5"}}}}

@@ -41,7 +41,7 @@ def test_oggi_mostra_la_card_e_ne_collega_i_pulsanti():
 
 def test_i_testi_del_server_passano_da_esc():
     for dato in ("v.testo", "v.azione"):
-        assert f"esc({dato}" in DAFARE or f"esc(traduciErrore({dato}" in DAFARE, dato          # il testo può passare dalla traduzione, sempre dentro esc()
+        assert f"esc({dato}" in DAFARE or f"esc(testoDi(v" in DAFARE, dato          # il testo può passare dalla traduzione (testoDi), sempre dentro esc()
     corpo_riga = DAFARE[DAFARE.index("function dfRiga"):DAFARE.index("function cardDaFare")]
     assert "${v." not in corpo_riga.replace("${esc(", "")
     # nel primo avvio ogni dato dinamico (nomi di squadre, passi) è protetto

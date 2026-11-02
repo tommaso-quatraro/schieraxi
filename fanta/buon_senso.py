@@ -33,6 +33,8 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from .frasi import F, elenco
+
 # (a) guadagno significativo: punti sommati sulle giornate dell'orizzonte (scambi.ORIZZONTE = 5)
 SOGLIA_BREVE = {"P": 2.0, "D": 2.0, "C": 2.5, "A": 3.0}
 QUOTA_GIORNATE_POSITIVE = 0.6
@@ -61,14 +63,14 @@ def _num(x: float) -> str:
     return f"{x:.1f}".replace(".", ",")
 
 
-def _pc(x: float) -> str:
-    return f"{round(100 * float(x))}%"
+def _pc(x: float) -> int:
+    return round(100 * float(x))
 
 
-def _con_squadra(y: dict) -> str:
-    """« (Roma)» dopo «titolare fisso»: niente articolo, che cambia da squadra a squadra (la Roma, il Milan, l'Inter).
-    Prima: «titolare fisso nel Roma»."""
-    return f" ({str(y['squadra']).capitalize()})" if y.get("squadra") else ""
+def _nome_squadra(y: dict) -> str:
+    """Il nome della squadra (Roma, Milan...) per «titolare fisso (Roma)»: niente articolo, che cambia da squadra a squadra
+    (la Roma, il Milan, l'Inter). Vuoto se non si sa."""
+    return str(y["squadra"]).capitalize() if y.get("squadra") else ""
 
 
 # ---------------------------------------------------------------- profili dei giocatori
@@ -96,14 +98,13 @@ def infortunio_lungo(nota: str | None) -> bool:
 def guadagno_significativo(per_giornata: list[float], ruolo: str) -> str | None:
     """(a) Il motivo per cui il guadagno NON basta, oppure None se basta."""
     if not per_giornata:
-        return "Non ci sono giornate su cui misurare il guadagno."
+        return F("senso.nessuna_giornata")
     breve = sum(per_giornata)
     soglia = SOGLIA_BREVE.get(ruolo, max(SOGLIA_BREVE.values()))
     positive = sum(1 for x in per_giornata if x > 0) / len(per_giornata)
     n = len(per_giornata)
     if breve < soglia or positive < QUOTA_GIORNATE_POSITIVE:
-        giornate = "giornata" if n == 1 else f"{n} giornate"
-        return f"La differenza è piccola ({_num(breve)} punti in {giornate}): meno del normale su e giù del fantavoto."
+        return F("senso.differenza_piccola", punti=round(breve, 1), giornate=F("tempo.giornate", n=n))
     return None
 
 
@@ -114,20 +115,22 @@ def entra_affidabile(y: dict | None) -> str | None:
     nome = y.get("nome", "Chi entra")
     stato = y.get("stato")
     if stato in FUORI:
-        return f"{nome} è {stato}."
+        return F("senso.entra_squalificato" if stato == "squalificato" else "senso.entra_infortunato", nome=nome)
     if y.get("dubbio"):
-        return f"{nome} è in dubbio per la prossima giornata."
+        return F("senso.entra_dubbio", nome=nome)
     p = float(y.get("p_voto") or 0)
     quota = float(y.get("quota_titolare") or 0)
     lungo = float(y.get("p_lungo") or 0)
-    squadra = _con_squadra(y)
+    squadra = _nome_squadra(y)
     if p < P_MIN_ENTRA:
-        return f"{nome} non è sicuro di giocare ({_pc(p)} di prendere voto)."
+        return F("senso.entra_non_sicuro", nome=nome, p=_pc(p))
     if quota < QUOTA_TITOLARE_MIN_ENTRA:
-        return f"{nome} non è un titolare fisso{squadra}: parte dall'inizio {_pc(quota)} delle volte."
+        return (F("senso.entra_non_titolare_sq", nome=nome, squadra=squadra, p=_pc(quota)) if squadra
+                else F("senso.entra_non_titolare", nome=nome, p=_pc(quota)))
     titolare_oggi = stato == "titolare" and float(y.get("percentuale") or 0) >= PERCENTUALE_TITOLARE_SICURO
     if lungo < P_LUNGO_MIN_ENTRA and not titolare_oggi:
-        return f"{nome} non gioca con continuità{squadra} ({_pc(lungo)} di presenze nell'ultimo periodo)."
+        return (F("senso.entra_discontinuo_sq", nome=nome, squadra=squadra, p=_pc(lungo)) if squadra
+                else F("senso.entra_discontinuo", nome=nome, p=_pc(lungo)))
     return None
 
 
@@ -141,12 +144,12 @@ def esce_protetto(x: dict | None, costo: int | None, crediti_iniziali: int | Non
     mu = float(x.get("mu") or 0)
     lungo = stato == "infortunato" and infortunio_lungo(x.get("nota"))
     if stato == "infortunato" and not lungo and quota >= QUOTA_TITOLARE_PROTETTA:
-        return f"{nome} è fuori per poco: non si svincola un titolare per un'assenza breve."
+        return F("senso.esce_fuori_poco", nome=nome)
     continuo = float(x.get("p_lungo") if x.get("p_lungo") is not None else 1.0) >= P_LUNGO_MIN_DO     # chi manca da settimane non è «utile»
     if not lungo and quota >= QUOTA_TITOLARE_PROTETTA and continuo and (mu_entra is None or mu >= mu_entra):
-        return f"{nome}, quando c'è, è titolare e vale almeno quanto chi entra: la sua assenza di oggi passa."
+        return F("senso.esce_titolare", nome=nome)
     if costo is not None and crediti_iniziali and costo >= QUOTA_COSTO_PROTETTO * crediti_iniziali and not lungo and quota >= QUOTA_TITOLARE_FLOP:
-        return f"Hai pagato {nome} {costo} crediti: svincolarlo ne restituisce solo il {round(rimborso * 100)}%."
+        return F("senso.esce_pagato", nome=nome, costo=int(costo), p=round(rimborso * 100))
     return None
 
 
@@ -156,9 +159,9 @@ def ripensamento(id_esce: int | None, id_entra: int | None, recenti: tuple[set[i
         return None
     presi, lasciati = recenti
     if id_esce in presi:
-        return "L'hai preso da poco: dagli il tempo di dimostrare quanto vale."
+        return F("senso.preso_da_poco")
     if id_entra in lasciati:
-        return "L'hai lasciato libero da poco: riprenderlo adesso sarebbe un ripensamento."
+        return F("senso.lasciato_da_poco")
     return None
 
 
@@ -196,17 +199,18 @@ def perche_si(x: dict | None, y: dict | None) -> str:
     """La frase positiva che accompagna un consiglio sensato: perché conviene, a parole."""
     parti = []
     if y:
-        squadra = _con_squadra(y)
-        parti.append(f"{y.get('nome', 'chi entra')} è titolare fisso{squadra}")
+        squadra = _nome_squadra(y)
+        parti.append(F("senso.si_titolare_fisso_sq", nome=y.get("nome", "chi entra"), squadra=squadra) if squadra
+                     else F("senso.si_titolare_fisso", nome=y.get("nome", "chi entra")))
     if x:
         stato = x.get("stato")
         if stato == "infortunato" and infortunio_lungo(x.get("nota")):
-            parti.append(f"{x.get('nome', 'chi esce')} resta fuori a lungo")
+            parti.append(F("senso.si_fuori_a_lungo", nome=x.get("nome", "chi esce")))
         elif stato == "squalificato":
-            parti.append(f"{x.get('nome', 'chi esce')} è squalificato")
+            parti.append(F("senso.si_squalificato", nome=x.get("nome", "chi esce")))
         elif float(x.get("quota_titolare") or 0) < QUOTA_TITOLARE_FLOP or float(x.get("p_lungo") or 1) < P_LUNGO_MIN_DO:
-            parti.append(f"{x.get('nome', 'chi esce')} gioca poco")
-    return ", ".join(parti)
+            parti.append(F("senso.si_gioca_poco", nome=x.get("nome", "chi esce")))
+    return elenco(parti)
 
 
 def giudica_svincolo(x: dict | None, y: dict | None, per_giornata: list[float], ruolo: str, costo: int | None,
@@ -218,7 +222,7 @@ def giudica_svincolo(x: dict | None, y: dict | None, per_giornata: list[float], 
                    esce_protetto(x, costo, crediti_iniziali, rimborso, float(y["mu"]) if y and y.get("mu") is not None else None),
                    entra_affidabile(y),
                    guadagno_significativo(per_giornata, ruolo),
-                   "Non bastano i crediti." if fattibile is False else None):
+                   F("senso.crediti") if fattibile is False else None):
         if motivo:
             return False, motivo
     return True, perche_si(x, y)
@@ -238,8 +242,9 @@ def giudica_scambio(p: dict, prof: dict[int, dict], recenti: tuple[set[int], set
         if m:
             return False, m
         if x and (x.get("stato") in FUORI or float(x.get("p_lungo") or 0) < P_LUNGO_MIN_DO):
-            perche = x.get("stato") if x.get("stato") in FUORI else f"gioca poco, {_pc(float(x.get('p_lungo') or 0))} di presenze"
-            return False, f"Nessuno accetta {x.get('nome', 'un giocatore')} ({perche}) in cambio di un titolare."
+            perche = (F("senso.stato_squalificato" if x.get("stato") == "squalificato" else "senso.stato_infortunato") if x.get("stato") in FUORI
+                      else F("senso.gioca_poco_perc", p=_pc(float(x.get("p_lungo") or 0))))
+            return False, F("senso.nessuno_accetta", nome=x.get("nome", "un giocatore"), perche=perche)
     for g in ricevo:
         y = prof.get(int(g["id"])) if g.get("id") is not None else None
         m = ripensamento(None, g.get("id"), recenti) or entra_affidabile(y)

@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from collections import Counter
 
-from . import lega, movimenti
+from . import frasi, lega, movimenti
+from .frasi import F
 from .listone import Calciatore
 from .nomi import Esito
 from .regole import RUOLI, Regole
@@ -150,7 +151,7 @@ def anteprima(lette: list[SquadraLetta], avvisi_lettura: list[str], regole: Rego
             giocatori.append({
                 "testo": riga.testo, "stato": st, "metodo": riga.esito.metodo,
                 "id": g.id, "nome": g.nome if g.id is not None else None, "ruolo": g.ruolo, "squadra": g.squadra,
-                "costo": g.costo, "avviso": riga.esito.avviso,
+                "costo": g.costo, "avviso": riga.esito.avviso, "avviso_frase": frasi.di(riga.esito.avviso),
                 "alternative": _alternative(riga.esito) if st == DA_CONTROLLARE else [],
             })
         conteggio = _conteggio(salvata, regole)
@@ -170,10 +171,10 @@ def anteprima(lette: list[SquadraLetta], avvisi_lettura: list[str], regole: Rego
     for gid, dove in proprietari.items():
         if len(dove) > 1 and letti & set(dove):
             nome = next(g.nome for s in nuove.squadre for g in s.giocatori if g.id == gid)
-            avvisi.append(f"{nome} è in più squadre: {', '.join(dove)}")
+            avvisi.append(F("rose.in_piu_squadre", nome=nome, squadre=", ".join(dove)))
     if len(nuove.squadre) == 1:
         avvisi.append(lega.UNA_SQUADRA)
     diff = movimenti.differenze(prima, nuove)
-    return {"squadre": squadre, "avvisi": avvisi, "mia_squadra": _mia_suggerita(lette, prima, nuove),
+    return {"squadre": squadre, "avvisi": avvisi, "avvisi_frasi": frasi.lista(avvisi), "mia_squadra": _mia_suggerita(lette, prima, nuove),
             "totale_squadre": len(nuove.squadre), "sicuri": totali[SICURO], "da_controllare": totali[DA_CONTROLLARE],
             "non_trovati": totali[NON_TROVATO], "differenze": diff, "riepilogo": diff["testo"]}

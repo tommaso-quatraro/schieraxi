@@ -9,8 +9,9 @@ from datetime import datetime
 
 import pandas as pd
 
-from . import avvisi, buon_senso, calcolo, consigli, fasi, modello, scambi, scelte
+from . import avvisi, buon_senso, calcolo, consigli, fasi, frasi, modello, scambi, scelte
 from .avvisi import prima_partita       # in `oggi` il nome `avvisi` è anche la lista degli avvisi
+from .frasi import F
 from .lega import Rose
 from .regole import RUOLI, Regole, serie_a_a_lega
 
@@ -125,6 +126,8 @@ def mercato(db: sqlite3.Connection, regole: Regole, rose: Rose, nome: str | None
         ok, motivo = buon_senso.giudica_svincolo(prof.get(t["esce"]["id"]), prof.get(t["entra"]["id"]), t.pop("_per_giornata"),
                                                  t["esce"]["ruolo"], pagato, regole.crediti_iniziali, regole.rimborso_svincolo, t["fattibile"])
         t["sensato"], t["motivo"] = ok or not con_buon_senso, motivo if con_buon_senso else ""
+        if frasi.di(t["motivo"]):
+            t["motivo_frase"] = frasi.di(t["motivo"])             # come tradurlo (fanta/frasi.py); il testo italiano resta in `motivo`
     scelti, scartati, conta = [], [], {}
     for t in trovati:            # varietà: lo stesso giocatore compare al massimo due volte
         if not t["sensato"]:
@@ -165,19 +168,15 @@ def _giornata_lega(giornata: int | None, regole: Regole | None) -> int | None:
     return None if giornata is None or regole is None else serie_a_a_lega(giornata, regole)
 
 
-def _plurale(n: int, uno: str, tanti: str) -> str:
-    return f"{n} {uno if n == 1 else tanti}"
-
-
 def _eta_testo(minuti: int) -> str:
     if minuti < 1:
-        return "meno di un minuto fa"
+        return F("tempo.fa_meno_di_un_minuto")
     if minuti < 60:
-        return _plurale(minuti, "minuto", "minuti") + " fa"
+        return F("tempo.minuti_fa", n=minuti)
     ore = minuti // 60
     if ore < 48:
-        return _plurale(ore, "ora", "ore") + " fa"
-    return _plurale(ore // 24, "giorno", "giorni") + " fa"
+        return F("tempo.ore_fa", n=ore)
+    return F("tempo.giorni_fa", n=ore // 24)
 
 
 def freschezza_probabili(rilevato: str | None, adesso: datetime, ore_mancanti: float | None) -> dict | None:
@@ -193,19 +192,20 @@ def freschezza_probabili(rilevato: str | None, adesso: datetime, ore_mancanti: f
     giorni = (adesso.date() - quando.date()).days
     ora = quando.strftime("%H:%M")
     if giorni <= 0:
-        testo = f"Probabili aggiornate alle {ora}"
+        testo = F("probabili.oggi", ora=ora)
     elif giorni == 1:
-        testo = f"Probabili aggiornate ieri alle {ora}"
+        testo = F("probabili.ieri", ora=ora)
     else:
-        testo = f"Probabili aggiornate il {quando.day}/{quando.month} alle {ora}"
+        testo = F("probabili.data", giorno=quando.day, mese=quando.month, ora=ora)
     vicina = ore_mancanti is not None and 0 < ore_mancanti <= FINESTRA_AVVISO_ORE
     vecchie = bool(vicina and minuti >= VECCHIE_DOPO_ORE * 60)
     avviso = None
     if vecchie:
-        avviso = (f"Le ho lette {_eta_testo(minuti)} e la formazione si chiude tra "
-                  f"{_plurale(max(1, round(ore_mancanti)), 'ora', 'ore')}: potrebbero essere cambiate, ricontrolla prima.")
-    return {"aggiornate_il": quando.isoformat(sep=" ", timespec="minutes"), "minuti_fa": minuti, "eta": _eta_testo(minuti),
-            "testo": testo, "vecchie": vecchie, "avviso": avviso}
+        avviso = F("probabili.vecchie", eta=_eta_testo(minuti), tempo=F("tempo.ore", n=max(1, round(ore_mancanti))))
+    eta = _eta_testo(minuti)
+    # `testo`, `eta` e `avviso` sono in italiano; `frase`, `eta_frase` e `avviso_frase` dicono come tradurli (fanta/frasi.py)
+    return {"aggiornate_il": quando.isoformat(sep=" ", timespec="minutes"), "minuti_fa": minuti, "eta": eta, "eta_frase": frasi.di(eta),
+            "testo": testo, "frase": frasi.di(testo), "vecchie": vecchie, "avviso": avviso, "avviso_frase": frasi.di(avviso)}
 
 
 def _tempi(inizio_dt: datetime | None, adesso: datetime, regole: Regole | None) -> dict:

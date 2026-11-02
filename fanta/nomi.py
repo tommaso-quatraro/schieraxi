@@ -14,6 +14,7 @@ import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+from .frasi import F, elenco
 from .listone import Calciatore
 
 
@@ -259,7 +260,7 @@ class Indice:
         if discordanze and metodo != "esatto":
             # nome solo somigliante E ruolo/squadra diversi: troppo rischioso, meglio chiedere
             return Esito(None, "ambiguo", [c])
-        avviso = "; ".join(
-            f"ruolo diverso: indicato {ruolo}, nel listone {c.ruolo}" if d == "ruolo"
-            else f"squadra diversa: indicata {squadra}, nel listone {c.squadra}" for d in discordanze)
+        avviso = elenco([
+            F("nomi.ruolo_diverso", indicato=ruolo, listone=c.ruolo) if d == "ruolo"
+            else F("nomi.squadra_diversa", indicata=squadra, listone=c.squadra) for d in discordanze], sep="; ")
         return Esito(c, metodo, avviso=avviso)

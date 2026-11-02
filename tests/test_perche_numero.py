@@ -77,7 +77,7 @@ def test_i_motivi_sono_al_massimo_tre_dal_piu_pesante_con_il_segno():
     assert effetti == sorted(effetti, reverse=True)
     assert m[0]["chiave"] == "gol" and m[0]["effetto"] > 0.5
     assert "(" in m[0]["testo"] and "% di segnare" in m[0]["testo"]
-    assert all(set(x) == {"chiave", "testo", "effetto"} for x in m)
+    assert all(set(x) == {"chiave", "testo", "frase", "effetto"} for x in m)
     assert medio.loc[99] == medio.loc[1]                              # il riferimento è uno solo per ruolo
 
 
@@ -92,7 +92,7 @@ def test_partita_difficile_in_trasferta_ha_il_segno_meno():
 def test_dubbio_sul_giocare_e_un_motivo_senza_effetto():
     _, motivi, _ = _giornata(p_voto=0.7)
     gioca = motivi.loc[99][0]
-    assert gioca == {"chiave": "gioca", "testo": "gioca il 70%: dubbio", "effetto": None}
+    assert gioca == {"chiave": "gioca", "testo": "gioca il 70%: dubbio", "frase": {"chiave": "perche.gioca_dubbio", "param": {"p": 70}}, "effetto": None}
     _, motivi, _ = _giornata(p_voto=0.0, stato="infortunato")
     assert motivi.loc[99][0]["testo"] == "infortunato: non gioca"
     _, motivi, _ = _giornata(p_voto=0.35)
@@ -223,6 +223,6 @@ APP = (WEB / "app.js").read_text(encoding="utf-8")
 def test_la_scheda_e_la_formazione_mostrano_il_perche():
     assert "function bloccoPerche(" in APP and "cartaPerche(pr)" in APP         # scheda del giocatore
     assert "function apriPerche(" in APP and "[data-perche]" in APP            # tocco sul numero in Formazione
-    assert "esc(traduciErrore(m.testo))" in APP                                 # il testo del server non va mai nell'HTML senza protezione
+    assert "esc(testoDi(m))" in APP                                 # il testo del server non va mai nell'HTML senza protezione
     assert "cartaPrecisione(d.precisione)" in APP and "rigaFascia(g)" in APP      # Diario («Quanto ci abbiamo preso», test_precisione.py)
     assert 'data-perche="${Number(x.id)}"' in APP

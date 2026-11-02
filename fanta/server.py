@@ -34,7 +34,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
-from . import da_fare, note_infortuni, stato_utente
+from . import da_fare, frasi, note_infortuni, stato_utente
 from . import lingua as lingua_testi
 from . import widget as widget_riassunto
 from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, fonti_attive, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
@@ -1484,11 +1484,12 @@ def rosa(response: Response, squadra: str | None = None, ctx: Contesto = Depends
         if prev is not None and g.id in prev.index:
             x["previsione"] = consigli.scheda_previsione(g.id, prev.loc[g.id])
         giocatori.append(x)
+    avvisi_squadra = [a for a in lega.controlla(r, _regole(ctx))
+                      if a.startswith(s.nome + ":") or a.startswith(s.nome + " (")
+                      or a.endswith(f": {s.nome}") or f" {s.nome}," in a or a.endswith(f", {s.nome}")]
     return {"nome": s.nome, "mia": s.nome == r.mia_squadra, "crediti_residui": s.crediti_residui,
             "aggiornato": r.aggiornato, "giocatori": giocatori,
-            "avvisi": [a for a in lega.controlla(r, _regole(ctx))
-                       if a.startswith(s.nome + ":") or a.startswith(s.nome + " (")
-                       or a.endswith(f": {s.nome}") or f" {s.nome}," in a or a.endswith(f", {s.nome}")]}
+            "avvisi": avvisi_squadra, "avvisi_frasi": frasi.lista(avvisi_squadra)}
 
 
 class MiaSquadra(BaseModel):
