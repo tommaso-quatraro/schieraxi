@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from . import calcolo, frasi, incertezza, perche
+from . import calcolo, etichette, frasi, incertezza, perche
 from . import formazione as fz
 from . import modello, rinvii, stato_dati, turno
 from .aggiorna import Stagione
@@ -191,7 +191,10 @@ def motivi(x: pd.Series) -> list[str]:
     if x["ruolo"] == "P":
         m.append(F("motivo.porta_inviolata", p=round(float(x["p_imbattuto"]) * 100)))
     elif x["e_gol"] >= 0.3:
-        m.append(F("motivo.gol_atteso", p=round(float(x["e_gol"]) * 100)))
+        # la probabilità di segnare almeno un gol (la stessa di «segna N%» nella scheda), non i gol attesi scritti come percentuale
+        p_gol = x.get("p_gol")
+        p_gol = float(p_gol) if p_gol is not None and pd.notna(p_gol) else 1 - float(np.exp(-float(x["e_gol"])))
+        m.append(F("motivo.gol_atteso", p=round(p_gol * 100)))
     if x["gol_squadra"] - x["gol_avversario"] >= 0.8:
         m.append(F("motivo.favorevole"))
     elif x["gol_avversario"] - x["gol_squadra"] >= 0.8:
@@ -213,7 +216,7 @@ def _frase_rinvio(x) -> str:
 def scheda_previsione(i: int, x: pd.Series) -> dict:
     x = x.to_dict()           # una volta sola: leggere ogni campo dalla Series di pandas costa circa 10 volte di più (e qui sono una trentina)
     elenco_motivi = motivi(x)
-    return {
+    s = {
         "id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "squadra": x["squadra"], "avversario": x["avversario"],
         "in_casa": bool(x["in_casa"]), "p_voto": round(float(x["p_voto"]), 3), "fv_atteso": round(float(x["mu"]), 2),
         "voto_atteso": round(float(x["mu_voto"]), 2), "punti_attesi": round(float(x["atteso"]), 2),
@@ -235,11 +238,36 @@ def scheda_previsione(i: int, x: pd.Series) -> dict:
         # partita rinviata: la regola che vale per questa giornata (aspetta, senza_voto, voto_ufficio); null se la partita si gioca
         "rinvio": _rinvio(x),
     }
+    s["etichetta"] = etichette.di_giocatore(s)       # stato a parole, pronto per i client (fanta/etichette.py)
+    return s
+
+
+# Titolare poco sicuro con una riserva quasi sicura dello stesso ruolo: la scelta è giusta (se lui non gioca entra la riserva, e
+# insieme valgono di più che la riserva da sola) ma a prima vista sembra un errore, quindi la si spiega. Soglie su `p_voto` (`Giocatore.p`).
+INCERTO_SOTTO = 0.5        # il titolare gioca meno di così...
+RISERVA_SOPRA = 0.8        # ...e la riserva che entrerebbe al suo posto più di così
+
+
+def incerti(titolari: list, panchina: list) -> list[dict]:
+    """I titolari incerti e la riserva che entra al loro posto: [{titolare, riserva}] (id). La riserva è la prima dello stesso
+    ruolo nell'ordine della panchina (come le sostituzioni, `formazione.chi_va_a_punteggio`), una sola per titolare: con due
+    incerti dello stesso ruolo il secondo prende la riserva dopo. Dal titolare più incerto."""
+    usate: set[int] = set()
+    risultato = []
+    for t in sorted((g for g in titolari if g.p < INCERTO_SOTTO), key=lambda g: g.p):
+        r = next((b for b in panchina if b.ruolo == t.ruolo and b.id not in usate), None)
+        if r is None:
+            continue
+        usate.add(r.id)
+        if r.p > RISERVA_SOPRA:
+            risultato.append({"titolare": int(t.id), "riserva": int(r.id)})
+    return risultato
 
 
 def _moduli(tutte: list) -> list[dict]:
     return [{"modulo": x.modulo, "punteggio_atteso": round(x.atteso, 1), **incertezza.campi(x.atteso, x.dev),
-             "titolari": [g.id for g in x.titolari], "panchina": [g.id for g in x.panchina]} for x in tutte]
+             "titolari": [g.id for g in x.titolari], "panchina": [g.id for g in x.panchina],
+             "incerti": incerti(x.titolari, x.panchina)} for x in tutte]
 
 
 def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra: str | None = None,
@@ -398,7 +426,16 @@ def analisi_scambio(db: sqlite3.Connection, regole: Regole, rose: Rose, con: str
             chiave = ("tasso-crediti", _versione(db), repr(regole), nome, impronta)
             return calcolo.ottieni(chiave, lambda d: scambi_multi.tasso_da_mercato(gestione.mercato(d, regole, rose, nome, con_buon_senso=False)), db,
                                    peso=calcolo.PESO_LEGGERO)
-        tassi = (tasso(rose.squadra(mia).nome), tasso(rose.squadra(con).nome))
+        # i due calcoli partono insieme: con la coda («sto calcolando») l'app riprova una volta sola invece di due
+        tassi, attesa = [], None
+        for nome in (rose.squadra(mia).nome, rose.squadra(con).nome):
+            try:
+                tassi.append(tasso(nome))
+            except calcolo.InCalcolo as e:
+                tassi.append(None)
+                attesa = e
+        if attesa is not None:
+            raise attesa
     return scambi_multi.analizza_completo(v, regole, rose, mia, con, do, ricevo, conguaglio, tassi[0], tassi[1], lingua=lingua)
 
 
@@ -543,6 +580,7 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
     margine = round(abs(a["punti_attesi"] - b["punti_attesi"]), 2)
     in_formazione = _in_formazione(db, regole, rose, nome_squadra, giornata, modulo, id_a, id_b, prev, livello) if rose is not None else None
     perche_testo = _frase_perche(a["nome"], b["nome"], spiegazione, margine)
-    return {"giornata": giornata, "giocatori": risultato, "consigliato": meglio["id"], "margine": margine,
+    return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "giocatori": risultato,
+            "consigliato": meglio["id"], "margine": margine,
             "fattori": spiegazione["fattori"], "perche": perche_testo, "perche_frase": frasi.di(perche_testo),
             "formazione": in_formazione}

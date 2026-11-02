@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from . import avvisi, buon_senso, calcolo, consigli, fasi, frasi, modello, rinvii, scambi, scelte
+from . import avvisi, buon_senso, calcolo, consigli, etichette, fasi, frasi, modello, rinvii, scambi, scelte
 from .avvisi import prima_partita       # in `oggi` il nome `avvisi` è anche la lista degli avvisi
 from .frasi import F
 from .lega import Rose
@@ -306,12 +306,14 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
         scheda = consigli.scheda_previsione(i, x)
         base = {"id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "squadra": x["squadra"]}
         if x["stato"] in ("infortunato", "squalificato"):
-            avvisi.append(base | {"tipo": x["stato"], "nota": scheda["nota"], "in_formazione": i in in_formazione})
+            avvisi.append(base | {"tipo": x["stato"], "nota": scheda["nota"], "in_formazione": i in in_formazione,
+                                  "etichetta": etichette.di_avviso(x["stato"])})
             continue
         if i in in_formazione and (scheda["p_voto"] < 0.75 or x["dubbio"]):
-            avvisi.append(base | {"tipo": "dubbio", "p_voto": scheda["p_voto"], "nota": scheda["nota"], "in_formazione": True})
+            avvisi.append(base | {"tipo": "dubbio", "p_voto": scheda["p_voto"], "nota": scheda["nota"], "in_formazione": True,
+                                  "etichetta": etichette.di_avviso("dubbio", scheda["p_voto"])})
         if x["diffidato"]:
-            avvisi.append(base | {"tipo": "diffidato", "in_formazione": i in in_formazione})
+            avvisi.append(base | {"tipo": "diffidato", "in_formazione": i in in_formazione, "etichetta": etichette.di_avviso("diffidato")})
     ordine = {"infortunato": 0, "squalificato": 1, "dubbio": 2, "diffidato": 3}
     avvisi.sort(key=lambda a: (not a["in_formazione"] and a["tipo"] in ("dubbio", "diffidato"), ordine[a["tipo"]], a["nome"]))
     migliori = sorted(f["titolari"], key=lambda g: -g["punti_attesi"])[:3]

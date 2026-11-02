@@ -11,7 +11,7 @@ struct PartiteDelGiorno: Identifiable {
 @MainActor
 final class OggiViewModel: ViewModelBase {
     let caricatore: Caricatore<Oggi>
-    /// Versione dell'app del server: serve al banner «Novità nell'app».
+    /// Versione dell'app del server: serve al banner «Novità di SchieraXI».
     let info: Caricatore<InfoServer>
     /// Risultati in diretta (GET /api/live). Senza copia su disco: un punteggio vecchio non deve sembrare di adesso.
     let live: Caricatore<LiveWidget>

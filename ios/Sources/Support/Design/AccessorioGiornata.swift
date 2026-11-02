@@ -72,7 +72,7 @@ struct AccessorioGiornata: View {
             }
         } else {
             Text("SchieraXI").font(.subheadline.weight(.semibold))
-                .accessibilityLabel("Schiera SchieraXI")
+                .accessibilityLabel("Schiera undici")
         }
     }
 }

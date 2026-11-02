@@ -220,6 +220,10 @@ struct CreditiView: View {
                         }
                     }
                     Section {
+                        if vm.modificati {
+                            Label("Ci sono crediti scritti e non ancora salvati.", systemImage: "pencil.circle")
+                                .font(.footnote.weight(.semibold)).foregroundStyle(Color.attenzione)
+                        }
                         Button("Salva i crediti") { Task { await vm.salva() } }.frame(minHeight: 44)
                         if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
                         Text("Servono per i consigli del mercato (rimborso e crediti dopo il cambio). Restano anche se importi di nuovo l'Excel.")
@@ -233,6 +237,7 @@ struct CreditiView: View {
             }
             .scrollContentBackground(.hidden)
         }
+        .ricercaGlobale()
         .navigationTitle("Crediti")
         .task { await vm.carica() }
     }

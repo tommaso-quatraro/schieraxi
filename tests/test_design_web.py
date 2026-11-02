@@ -172,7 +172,7 @@ def test_tema_chiaro_azioni_in_oliva_con_contrasto_sufficiente_su_ogni_superfici
 
 
 def test_pulsanti_link_e_azioni_usano_la_variabile_azione_non_il_lime():
-    assert re.search(r"\.bottone \{[^}]*var\(--azione\)[^}]*var\(--azione-2\)[^}]*var\(--azione-testo\)", CSS)
+    assert re.search(r"\.bottone \{[^}]*background: var\(--azione\);[^}]*color: var\(--azione-testo\)", CSS)   # pieno, senza lucido (docs/STILE-SENZA-AI.md)
     assert re.search(r"\.bottone\.secondario \{[^}]*color: var\(--azione\)", CSS)
     assert re.search(r"\.schede button\.attiva \{ color: var\(--azione\)", CSS)
     assert re.search(r"\.testo-lungo a[^{]*\{ color: var\(--azione\)", CSS)

@@ -65,7 +65,7 @@ def test_la_rosa_oltre_il_massimo_si_valuta_liberando_i_meno_forti():
     d = analizza([12], [31], rose=rose)          # 1 contro 1: invariato
     assert d["valido"] is True
     d2 = analizza([12], [31, 32])                # A riceve 2 attaccanti e ne dà 1 -> 4 su un massimo di 3
-    assert d2["valido"] is False and "ne andrebbero liberati 1" in " ".join(d2["problemi"])
+    assert d2["valido"] is False and "ne andrebbe liberato 1" in " ".join(d2["problemi"])
     assert d2["rose"]["mio"]["problemi"] and d2["rose"]["loro"]["problemi"]       # B resta con un solo attaccante: ne servono 2
     # la rosa si valuta già sistemata (A libera l'attaccante in più, il meno forte): vale come il 1 contro 1 con uno dei due
     assert d2["valore_rosa"]["mio"]["dopo"] == analizza([12], [31])["valore_rosa"]["mio"]["dopo"]
@@ -127,6 +127,15 @@ def test_conguaglio_oltre_i_fondi_della_squadra_che_paga():
     assert ok["conguaglio"]["valido"] is True and ok["conguaglio"]["dopo"] == {"mio": 0, "loro": 110}
     loro = analizza([12, 9], [32, 30], conguaglio=150, rose=rose)    # mi dovrebbero dare 150, ne hanno 100
     assert loro["conguaglio"]["valido"] is False and loro["conguaglio"]["chi_paga"] == "loro"
+
+
+def test_conguaglio_oltre_il_limite_di_chi_riceve_non_ha_dopo():
+    rose = _rose()
+    rose.squadre[0].crediti_residui = scambi_multi.LIMITE_CREDITI - 5     # A: quasi al limite
+    rose.squadre[1].crediti_residui = 100                                 # B paga 20
+    d = analizza([12, 9], [32, 30], conguaglio=20, rose=rose)
+    assert d["conguaglio"]["valido"] is False and "supererebbero il limite" in d["conguaglio"]["problema"]
+    assert d["conguaglio"]["dopo"] == {"mio": None, "loro": None}         # niente numero oltre il limite
 
 
 def test_conguaglio_senza_crediti_indicati_avvisa_ma_non_blocca():
@@ -261,3 +270,22 @@ def test_rosa_gia_incompleta_non_blocca_le_proposte():
     prima = {"P": 1, "D": 3, "C": 4, "A": 2}                  # mancano due difensori
     assert scambi_multi.non_peggiora(prima, dict(prima), corta)
     assert not scambi_multi.non_peggiora(prima, {"P": 1, "D": 2, "C": 5, "A": 2}, corta)
+
+
+def test_plurale_dei_giocatori_da_liberare():
+    """Collaudo 2/11: «ne andrebbero liberati 1»."""
+    from fanta.scambi_multi import problemi_rosa
+    uno = problemi_rosa("A", {"P": 1, "D": 4, "C": 4, "A": 4}, REGOLE)
+    due = problemi_rosa("A", {"P": 1, "D": 4, "C": 4, "A": 5}, REGOLE)
+    assert "ne andrebbe liberato 1" in uno[0]["testo"] and "ne andrebbero liberati 2" in due[0]["testo"]
+
+
+def test_conguaglio_oltre_i_fondi_non_si_valuta_in_punti():
+    rose = _rose()
+    rose.squadre[0].crediti_residui = 10
+    rose.squadre[1].crediti_residui = 100
+    d = analizza([12, 9], [32, 30], conguaglio=-50, rose=rose, tasso_mio=0.2, tasso_loro=0.2)
+    assert d["conguaglio"]["dopo"] == {"mio": None, "loro": None} and d["conguaglio"]["valore_mio"] is None
+    assert d["netto_mio"] == d["guadagno_mio"]
+    en = analizza([12, 9], [32, 30], conguaglio=-50, rose=rose, tasso_mio=0.2, tasso_loro=0.2, lingua="en")
+    assert "is not possible" in en["giudizio"]["spiegazione"][-1]
