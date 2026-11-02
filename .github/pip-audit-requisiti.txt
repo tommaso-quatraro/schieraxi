@@ -1,8 +1,9 @@
 # pip-audit per il job «pip-audit» di test.yml, con tutte le sue dipendenze. Versioni e hash fissati (solo file binari da PyPI).
-# Risolte per Linux e Python 3.12 (ubuntu-latest della CI) con:
-#   pip install --dry-run --ignore-installed --report report.json --platform manylinux_2_17_x86_64 --python-version 3.12 \
-#       --implementation cp --abi cp312 --only-binary=:all: --target ./x pip-audit==<versione>
-# poi per ogni libreria gli hash dei file binari da https://pypi.org/pypi/<nome>/<versione>/json (campo digests.sha256).
+# Risolte per Linux e Python 3.12 (ubuntu-latest della CI), lanciando pip con un Python 3.11 o 3.12: pip valuta i marcatori
+# delle dipendenze (per esempio python_version < "3.13") con il Python che lo esegue, non con --python-version.
+#   python -m pip install --dry-run --ignore-installed --report report.json --platform manylinux_2_17_x86_64 \
+#       --python-version 3.12 --implementation cp --abi cp312 --only-binary=:all: --target ./x pip-audit==<versione>
+# poi per ogni libreria del rapporto gli hash dei file binari da https://pypi.org/pypi/<nome>/<versione>/json (digests.sha256).
 boolean.py==5.0 \
     --hash=sha256:ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9
 CacheControl==0.14.4 \
@@ -379,5 +380,7 @@ tomli==2.5.0 \
     --hash=sha256:32a7b79ac57a2e83670ce329ccf675798bc5a2094783a63676866b70503f2e2b
 tomli_w==1.2.0 \
     --hash=sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90
+typing_extensions==4.16.0 \
+    --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
 urllib3==2.8.0 \
     --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3
