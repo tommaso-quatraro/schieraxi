@@ -23,7 +23,13 @@ enum PostaServer {
 
     /// Lo ricorda solo se il server l'ha detto: un 401 senza il campo (nome o password sbagliati) lascia quello di prima.
     static func salva(corpo: Data, in memoria: UserDefaults = .standard) {
-        if let attiva = leggi(corpo: corpo) { memoria.set(attiva, forKey: chiave) }
+        if let attiva = leggi(corpo: corpo) { ricorda(attiva, in: memoria) }
+    }
+
+    /// Scrive solo se cambia: le schermate che la guardano (`@AppStorage`) si ridisegnano a ogni scrittura.
+    static func ricorda(_ attiva: Bool, in memoria: UserDefaults = .standard) {
+        guard memoria.object(forKey: chiave) as? Bool != attiva else { return }
+        memoria.set(attiva, forKey: chiave)
     }
 
     /// Accesa, a meno che il server non abbia detto il contrario.

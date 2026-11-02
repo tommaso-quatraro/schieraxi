@@ -28,6 +28,8 @@ enum TestiAccount {
     static let emailTogli = "Togli l'email"
     static let emailToltaOk = "Email tolta"
     static let emailServePassword = "Scrivi la tua password per confermare"
+    /// Posta spenta sul server e nessuna email: al posto della riga e della voce dell'email, come la web (`account.email_spenta`).
+    static let emailSpenta = "Su questo server l'invio delle email è spento: per ora non puoi collegare un'email. Se dimentichi la password ti serve il codice di recupero."
 
     static let datiTitolo = "Scarica i tuoi dati"
     static let datiSpiega = "Un file con i dati del tuo account (nome, email, accessi collegati, termini accettati) e della tua lega: regole, rose, scelte, giocatori seguiti e notifiche. Contiene solo i tuoi dati, mai la password."

@@ -278,6 +278,16 @@ struct ServerHTTP: ServerClient {
         return f
     }
 
+    /// Cosa dichiara il server nel corpo JSON di un 401: modo di registrazione, servizi di accesso («Continua con Google» solo se
+    /// c'è «google») e posta (spenta: niente email nella registrazione con l'invito né recupero con l'email). Si ricorda SOLO ciò che
+    /// il corpo contiene davvero, come la web (`api()` in `fanta/web/app.js`): il 401 di una password sbagliata ha solo `detail` e
+    /// prima riportava la registrazione a «invito» e spegneva Google (issue #173).
+    static func ricordaDal401(_ dati: Data, in memoria: UserDefaults = .standard) {
+        ModalitaRegistrazione.salva(corpo: dati, in: memoria)
+        ServiziSociali.salva(corpo: dati, in: memoria)
+        PostaServer.salva(corpo: dati, in: memoria)
+    }
+
     /// Se il server ha risposto con un errore, lo lancia con il suo messaggio (es. «Indica la tua squadra nella sezione Lega»).
     /// 401 e 429 hanno errori a parte (accesso richiesto, troppi tentativi con l'attesa); un 401 fuori dalle schermate di accesso
     /// avvisa l'app (notifica `.accessoRichiesto`): la sessione è finita e si torna alla schermata di accesso.
@@ -289,9 +299,7 @@ struct ServerHTTP: ServerClient {
             // Solo un 401 col JSON del nostro server ({"detail": "..."}) chiude la sessione o cambia le modalità: una pagina di accesso
             // di un Wi-Fi pubblico, un proxy o un altro servizio no (come in `ProvaConnessione`).
             guard Self.eJsonDelServer(dati) else { throw ErroreApi.risposta(401) }
-            UserDefaults.standard.set(ModalitaRegistrazione.leggi(corpo: dati).rawValue, forKey: ModalitaRegistrazione.chiave)
-            ServiziSociali.salva(ServiziSociali.leggi(corpo: dati))   // i pulsanti «Continua con Google» solo se il server li dichiara
-            PostaServer.salva(corpo: dati)   // posta spenta: niente email nella registrazione con l'invito né recupero con l'email
+            Self.ricordaDal401(dati)
             if !Self.eDiAccesso(percorso) {
                 // Si dice quale token ha fallito (solo un'impronta): se nel frattempo si è fatto un nuovo accesso, un 401 in ritardo
                 // di una richiesta vecchia non deve buttare fuori la sessione nuova.
