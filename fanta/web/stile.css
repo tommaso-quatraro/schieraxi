@@ -8,7 +8,7 @@
   --z: 1;                                   /* ingrandimento su schermi grandi (vedi in fondo a «Schermi larghi»): serve a dividere le misure in vh */
   --sfondo: #07100b;
   --testo: #eef6f0;
-  --testo-2: #b3c6ba;
+  --testo-2: #bccdc2;                       /* IL grigio dei testi secondari (uguale a iOS Tema.secondarioScuro): 4,5:1 anche sul fondo sfumato. Niente altri grigi e niente opacità sul testo */
   --verde: #3ddc97;
   --capitano: #d4f34a;
   --capitano-testo: #1a2600;                /* testo scuro sopra il lime */
@@ -46,7 +46,7 @@
     color-scheme: light;
     --sfondo: #eaf3ee;
     --testo: #10201a;
-    --testo-2: #587064;
+    --testo-2: #46564d;                     /* uguale a iOS Tema.secondarioChiaro */
     --verde: #0a7d4c;
     --capitano: #86a800;
     --verde-2: #075f38;
@@ -74,7 +74,7 @@
     color-scheme: light;
     --sfondo: #eaf3ee;
     --testo: #10201a;
-    --testo-2: #587064;
+    --testo-2: #46564d;                     /* uguale a iOS Tema.secondarioChiaro */
     --verde: #0a7d4c;
     --capitano: #86a800;
     --verde-2: #075f38;
@@ -156,6 +156,8 @@ b, strong { font-weight: 650; }
 .positivo { color: var(--verde); } .negativo { color: var(--rosso); }
 
 /* ---------------------------------------------------------------- testata */
+/* più opaca delle altre superfici di vetro: scorrendo, il campo verde passa sotto e il grigio secondario del sottotitolo restava sotto 4,5:1 */
+.testata.vetro { --vetro: color-mix(in srgb, var(--solido) 80%, transparent); }
 .testata { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: calc(env(safe-area-inset-top) + 10px) 18px 12px; border-width: 0 0 1px 0; border-radius: 0 0 26px 26px; }
 .titolo { margin: 0; font-weight: 750; font-size: var(--t-card); letter-spacing: -.02em; }
@@ -364,9 +366,9 @@ details[open] > summary { margin-bottom: 8px; }
 .partita .sq.casa { text-align: right; } .partita .sq.trasf { text-align: left; }
 .partita .vs { color: var(--testo-2); font-size: var(--t-eti); text-align: center; }
 .partita .pt { text-align: right; font-weight: 750; color: var(--testo); white-space: nowrap; letter-spacing: .02em; border-radius: 8px; padding: 1px 0; }
-.partita.giocata { opacity: .55; }
+.partita.giocata .sq { color: var(--testo-2); }   /* partita finita: i nomi passano al grigio secondario (niente opacità: spegneva anche il grigio sotto 3:1); il risultato resta pieno */
 .partita.rinviata .ora { color: var(--arancio, var(--testo-2)); font-weight: 650; }   /* «Rinviata» al posto dell'orario */
-.partita.rinviata .sq, .partita.rinviata .vs { opacity: .6; }
+.partita.rinviata .sq { color: var(--testo-2); }
 /* nome e slogan in cima a Oggi */
 .marchio-oggi { margin: 2px 2px 12px; }
 .wordmark { margin: 0; font-family: var(--font-marchio); font-size: var(--t-titolo); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
@@ -406,7 +408,6 @@ details[open] > summary { margin-bottom: 8px; }
 @media (prefers-reduced-motion: reduce) { .partita .pt.gol { animation-name: gol-calmo; } }
 html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 @keyframes gol-calmo { 0% { background: color-mix(in srgb, var(--verde) 45%, transparent); } 100% { background: transparent; } }
-.partita.giocata.con-eventi { opacity: .85; }
 .partita .miei-live, .partita .eventi-live { grid-column: 1 / -1; }
 .miei-live { display: flex; align-items: center; gap: 0; font-size: var(--t-eti); color: var(--testo-2); }
 .mini-av { width: 22px; height: 22px; margin-right: -6px; border-radius: 50%; border: 2px solid var(--solido); overflow: hidden; flex: none; background: var(--solido); }
@@ -868,8 +869,7 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
 .ar-dubbi { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
 .ar-dubbio { padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--arancio) 10%, transparent); border: 1px solid color-mix(in srgb, var(--arancio) 30%, transparent); }
 .ar-dubbio:has(.etichetta.rossa) { background: color-mix(in srgb, var(--rosso) 8%, transparent); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
-.ar-dubbio.tolto { opacity: .7; }
-.ar-dubbio.tolto .ar-dubbio-testa b { text-decoration: line-through; }
+.ar-dubbio.tolto .ar-dubbio-testa b { text-decoration: line-through; color: var(--testo-2); }
 .ar-dubbio-testa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; overflow-wrap: anywhere; }
 .ar-dubbio select { margin-top: 6px; min-height: 46px; font-size: var(--t-corpo); }
 .ar-cerca { margin-top: 8px; }
@@ -913,7 +913,7 @@ body.pagina-testo { padding: 0 0 40px; }
 .analizzatore .scelte label.voce-scelta { min-height: 52px; padding: 6px 4px; gap: 10px; cursor: pointer; border-radius: 12px; }
 .voce-scelta.scelta { background: color-mix(in srgb, var(--verde) 12%, transparent); }
 .voce-scelta input:disabled { opacity: .35; }
-.voce-scelta:has(input:disabled) { opacity: .6; cursor: default; }
+.voce-scelta:has(input:disabled) { color: var(--testo-2); cursor: default; }
 .voce-scelta:has(input:focus-visible) { outline: 2px solid var(--azione); outline-offset: -2px; }
 .nome-scelta { min-width: 0; font-weight: 600; }
 .vuoto-scelte { padding: 14px 4px; }

@@ -2408,7 +2408,7 @@ async function condividiImmagine(f, m) {
   g.textAlign = "center";
   g.fillStyle = "#eef6f0"; g.font = "700 64px -apple-system, Helvetica, Arial, sans-serif";
   g.fillText(`${t("testata.giornata", { n: f.giornata })} · ${m.modulo}`, L / 2, 110);
-  g.fillStyle = "#9db4a5"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
+  g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
   g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: virgola(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
   g.fillStyle = "#1f8a4b"; g.beginPath(); g.roundRect(x0, y0, w, h, 36); g.fill();
@@ -2437,7 +2437,7 @@ async function condividiImmagine(f, m) {
       g.fillText(cognome(x), cx, y + 104);
     });
   });
-  g.fillStyle = "#9db4a5"; g.font = "500 32px -apple-system, Helvetica, Arial, sans-serif";
+  g.fillStyle = "#bccdc2"; g.font = "500 32px -apple-system, Helvetica, Arial, sans-serif";
   const pan = t("scambi.panchina") + ": " + m.panchina.map(sch).map(cognome).join(", ");
   const parole = pan.split(" "), righePan = [""];
   parole.forEach(p => { const ultima = righePan[righePan.length - 1]; if (g.measureText(ultima + " " + p).width > L - 120) righePan.push(p); else righePan[righePan.length - 1] = (ultima + " " + p).trim(); });
