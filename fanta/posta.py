@@ -5,10 +5,15 @@ Il modo si sceglie con la variabile d'ambiente FANTA_MAIL (si legge a ogni invio
 - `log`: NON parte nessuna email. In `posta.log` (cartella dati, con rotazione, righe tenute 30 giorni) resta solo che un
   messaggio sarebbe partito: quando, a chi (indirizzo accorciato) e il tipo. MAI il testo né i codici: il file non serve a
   entrare negli account di nessuno. Serve a provare l'app senza servizio esterno.
-- `smtp`: server SMTP con TLS (porta 465 = TLS subito, altre = STARTTLS; mai senza cifratura). Variabili: FANTA_SMTP_HOST,
-  FANTA_SMTP_PORT (587), FANTA_SMTP_UTENTE; la password in FANTA_SMTP_PASSWORD oppure nel file `dati/smtp-password.txt`.
+- `smtp`: server SMTP con TLS (porta 465 = TLS subito, altre = STARTTLS; mai senza cifratura, certificato sempre controllato).
+  Variabili: FANTA_SMTP_HOST, FANTA_SMTP_PORT (587), FANTA_SMTP_UTENTE. La password, in ordine: il file indicato da
+  FANTA_SMTP_PASSWORD_FILE (consigliato: una riga, permessi 600, altrimenti non si usa), FANTA_SMTP_PASSWORD, il file
+  `dati/smtp-password.txt`. Con un utente e senza password non si prova nemmeno ad accedere.
 - `resend`: API HTTPS di Resend (resend.com). La chiave in FANTA_RESEND_KEY oppure nel file `dati/chiave-resend.txt`.
 Mittente: FANTA_MAIL_DA (per esempio `SchieraXI <noreply@tuodominio.it>`); senza, l'invio vero non parte.
+Tetto: al massimo FANTA_MAIL_MAX_ORA invii veri (smtp e resend) nell'ultima ora (predefinito MAX_ALL_ORA, contati per processo
+del server), così un'ondata di richieste non fa bloccare la casella dal fornitore. Oltre il tetto il messaggio non parte e nel
+registro di sicurezza resta `posta_tetto_ora`.
 Chiavi e password solo da ambiente o da file in `dati/` (mai in git, mai nei log). Un errore di invio non si propaga: l'app va
 avanti, nel registro di sicurezza resta il solo tipo di errore. L'invio avviene in un thread a parte, così il tempo di risposta
 di chi chiede non dice se l'indirizzo esiste (vedi `account.py`).
@@ -20,9 +25,12 @@ import re
 import smtplib
 import ssl
 import threading
+import time
+from collections import deque
 from dataclasses import dataclass
 from email.message import EmailMessage
-from email.utils import parseaddr
+from email.utils import formatdate, make_msgid, parseaddr
+from pathlib import Path
 
 from . import percorsi, registro
 
@@ -32,6 +40,12 @@ FILE_LOG = "posta.log"
 MAX_LOG = 256 * 1024
 TIMEOUT = 15
 IN_BACKGROUND = True            # i test lo spengono per aspettare l'esito
+MAX_ALL_ORA = 50                # invii veri all'ora (FANTA_MAIL_MAX_ORA): molto sotto i limiti delle caselle dei fornitori
+MAX_FILE_PASSWORD = 4096        # byte: un file più grande non è una password
+_orologio = time.monotonic
+_PERMESSI_UNIX = os.name == "posix"     # su Windows i permessi 600 non esistono
+_invii: deque[float] = deque()  # quando sono partiti gli invii veri dell'ultima ora
+_invii_lock = threading.Lock()
 _EMAIL = re.compile(r"[^@\s<>\"',;()\\]{1,64}@[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+")
 
 
@@ -56,6 +70,49 @@ def segreto(variabile: str, file: str) -> str:
         return (percorsi.cartella_account() / file).read_text(encoding="utf-8").strip()
     except OSError:
         return ""
+
+
+class PasswordNonSicura(Exception):
+    """Il file della password è leggibile da altri utenti del server (permessi diversi da 600) o non è una password."""
+
+
+def password_da_file(percorso: str) -> str:
+    """La prima riga del file (senza il ritorno a capo finale). Rifiuta file leggibili da altri o troppo grandi.
+    Un percorso relativo parte dalla cartella dell'app."""
+    p = Path(percorso).expanduser()
+    if not p.is_absolute():
+        p = percorsi.RADICE / p
+    st = p.stat()
+    if _PERMESSI_UNIX and st.st_mode & 0o077:
+        raise PasswordNonSicura("permessi")
+    if st.st_size > MAX_FILE_PASSWORD:
+        raise PasswordNonSicura("dimensione")
+    righe = p.read_text(encoding="utf-8").splitlines()
+    return righe[0] if righe else ""
+
+
+def password_smtp() -> str:
+    file = os.environ.get("FANTA_SMTP_PASSWORD_FILE", "").strip()
+    return password_da_file(file) if file else segreto("FANTA_SMTP_PASSWORD", "smtp-password.txt")
+
+
+def tetto_ora() -> int:
+    try:
+        return max(0, int(os.environ.get("FANTA_MAIL_MAX_ORA", "").strip() or MAX_ALL_ORA))
+    except ValueError:
+        return MAX_ALL_ORA
+
+
+def _prenota_invio() -> bool:
+    """Conta un invio vero se nell'ultima ora non si è già arrivati al tetto."""
+    adesso = _orologio()
+    with _invii_lock:
+        while _invii and adesso - _invii[0] >= 3600:
+            _invii.popleft()
+        if len(_invii) >= tetto_ora():
+            return False
+        _invii.append(adesso)
+        return True
 
 
 def mittente() -> str:
@@ -127,6 +184,9 @@ def _spento(m: Messaggio) -> bool:
 def _costruisci(m: Messaggio, da: str) -> EmailMessage:
     e = EmailMessage()
     e["From"], e["To"], e["Subject"] = da, m.a, m.oggetto          # con a capo nei campi EmailMessage alza ValueError
+    e["Date"] = formatdate(localtime=True)
+    dominio = (parseaddr(da)[1] or da).rpartition("@")[2]
+    e["Message-ID"] = make_msgid(domain=dominio or None)           # col dominio del mittente: non rivela il nome del server
     e.set_content(m.testo)
     return e
 
@@ -139,7 +199,9 @@ def _invia_smtp(m: Messaggio) -> bool:
         porta = int(os.environ.get("FANTA_SMTP_PORT", "587"))
     except ValueError:
         return False
-    utente, password = os.environ.get("FANTA_SMTP_UTENTE", "").strip(), segreto("FANTA_SMTP_PASSWORD", "smtp-password.txt")
+    utente, password = os.environ.get("FANTA_SMTP_UTENTE", "").strip(), password_smtp()
+    if utente and not password:
+        return False
     contesto = ssl.create_default_context()
     e = _costruisci(m, da)
     if porta == 465:
@@ -172,6 +234,9 @@ def _invia_ora(m: Messaggio) -> bool:
         if not indirizzo_valido(m.a) or "\n" in m.oggetto or "\r" in m.oggetto:
             return False
         scelto = modo()
+        if scelto in ("smtp", "resend") and not _prenota_invio():
+            _evento("posta_tetto_ora", modo=scelto)
+            return False
         ok = {"spento": _spento, "log": _scrivi_log, "smtp": _invia_smtp, "resend": _invia_resend}[scelto](m)
         if not ok and scelto != "spento":
             _evento("posta_non_inviata", modo=scelto)

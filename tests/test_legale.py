@@ -137,6 +137,16 @@ def test_privacy_dice_quello_che_l_app_fa_davvero(monkeypatch):
     assert "un solo cookie" not in t
 
 
+def test_privacy_dice_chi_spedisce_le_email(monkeypatch):
+    monkeypatch.delenv("FANTA_POSTA_FORNITORE", raising=False)
+    assert "il servizio che spedisce le email (se sono attive)" in tl.pagina("privacy")
+    assert "the service that sends emails (if active)" in tl.pagina("privacy", "en")
+    monkeypatch.setenv("FANTA_POSTA_FORNITORE", "Fornitore <b>Posta</b>, in Germania")
+    p = tl.pagina("privacy")
+    assert "il servizio che spedisce le email (Fornitore &lt;b&gt;Posta&lt;/b&gt;, in Germania)" in p and "<b>" not in p
+    assert "the service that sends emails (Fornitore &lt;b&gt;Posta&lt;/b&gt;, in Germania)" in tl.pagina("privacy", "en")
+
+
 def test_termini_ed_elimina_parlano_degli_altri_e_di_cosa_resta():
     assert "altri partecipanti" in tl.pagina("termini").lower()
     e = tl.pagina("elimina").lower()
