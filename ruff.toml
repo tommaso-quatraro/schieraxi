@@ -5,8 +5,16 @@ target-version = "py311"          # la versione più vecchia su cui gira l'app (
 line-length = 140                 # usato solo da regole sulla lunghezza, che oggi non sono attive
 
 [lint]
-# E9 = errori di sintassi; F = errori sicuri (import e variabili inutili, nomi che non esistono, doppioni)
-select = ["E9", "F"]
+# E9 = errori di sintassi; F = errori sicuri (import e variabili inutili, nomi che non esistono, doppioni);
+# B = bug probabili (flake8-bugbear: eccezioni ingoiate, valori predefiniti modificabili, variabili del ciclo nelle funzioni...)
+select = ["E9", "F", "B"]
+# B905 «zip senza strict=»: nel codice zip tronca apposta in molti punti (coppie vicine, `zip(a, a[1:])`) e strict=True cambierebbe
+# il comportamento dei calcoli. Non è un bug probabile ma una scelta di stile: spento.
+ignore = ["B905"]
+
+[lint.flake8-bugbear]
+# B008 «chiamata nel valore predefinito»: `Depends(...)` nei parametri delle rotte è il modo in cui FastAPI chiede le dipendenze.
+extend-immutable-calls = ["fastapi.Depends"]
 
 [lint.per-file-ignores]
 # F811 «ridefinito senza essere usato»: questi file importano fixture di pytest da altri file di test

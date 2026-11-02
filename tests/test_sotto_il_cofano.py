@@ -37,7 +37,7 @@ def test_traduzione_inglese_completa_e_della_stessa_forma():
     assert set(en["livelli"]) == set(it["livelli"])
     voci_it, voci_en = it["misure"]["riferimento"]["voci"], en["misure"]["riferimento"]["voci"]
     assert set(voci_en) == set(voci_it)
-    for k, v in voci_en.items():
+    for _k, v in voci_en.items():
         assert v["etichetta"] and set(v) <= {"etichetta", "unita", "valore"}
 
 
