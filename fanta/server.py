@@ -482,7 +482,8 @@ def _messaggio_per_l_utente(e: ValueError) -> bool:
 @app.exception_handler(ValueError)
 def _errore_valore(request: Request, e: ValueError):
     if _messaggio_per_l_utente(e):
-        return JSONResponse(status_code=400, content={"detail": str(e)[:500]})
+        codice = getattr(type(e), "codice", None)           # nome breve dell'errore per i client (es. «formazione_non_valida»), facoltativo
+        return JSONResponse(status_code=400, content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
     codice = secrets.token_hex(4)               # lo stesso codice nel log del servizio: chi gestisce l'app ritrova il caso
     passi = traceback.extract_tb(e.__traceback__)
     dove = f"{Path(passi[-1].filename).name}:{passi[-1].lineno}" if passi else "?"

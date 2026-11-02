@@ -79,7 +79,7 @@ def test_card_introduttive_compatte_con_spiegazione_chiusa():
 
 
 def test_formazione_controlli_compatti_una_riga_e_un_solo_pulsante_primario():
-    blocco = APP[APP.index('<div class="etichetta-riga">${t("formazione.modulo")}</div>'):APP.index('<div class="campo"><i class="area-alta">')]
+    blocco = APP[APP.index('<div class="etichetta-riga">${t("formazione.modulo")}</div>'):APP.index('<div class="campo">')]          # la legenda del campo viene subito dopo
     assert blocco.count('class="chips scorri" data-striscia') == 2          # moduli e stili: una riga che scorre
     assert 'id="modifica"' in blocco and 'class="bottone" id="modifica"' in blocco
     assert 'class="altre-azioni"' in blocco and 'id="copia"' in blocco and 'id="condividi"' in blocco

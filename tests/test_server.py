@@ -370,3 +370,22 @@ def test_head_sulle_pagine_pubbliche_risponde_come_get(client):
         r = client.head(percorso)
         assert r.status_code == 200, percorso
         assert client.get(percorso).status_code == 200
+
+
+def test_formazione_non_valida_ha_il_codice(client, monkeypatch):
+    """Scelta non valida (titolari non della rosa, ripetuti, modulo non ammesso): 400 con il testo e `codice` per i client,
+    che così non cancellano da soli la scelta salvata. Gli altri errori restano senza `codice`."""
+    import pandas as pd
+    from types import SimpleNamespace as NS
+    ids = list(range(1, 16))
+    ruoli = ["P", "P"] + ["D"] * 5 + ["C"] * 5 + ["A"] * 3
+    prev = pd.DataFrame({"nome": [f"G{i}" for i in ids], "ruolo": ruoli, "p_voto": 0.9, "mu": 6.0, "mu_voto": 6.0}, index=ids)
+    monkeypatch.setattr(server.consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    rosa = NS(mia_squadra="Mia", squadra=lambda nome: NS(giocatori=[NS(id=i) for i in ids]) if nome == "Mia" else None)
+    monkeypatch.setattr(server, "_rose", lambda *a: rosa)
+    r = client.post("/api/formazione/valuta", json={"titolari": [1, 2, 3], "giornata": 9})
+    assert r.status_code == 400 and r.json() == {"detail": "Servono 11 titolari diversi, tutti della rosa", "codice": "formazione_non_valida"}
+    r = client.post("/api/formazione/valuta", json={"titolari": [1, 2, 3, 4, 5, 8, 9, 10, 13, 14, 15], "giornata": 9})   # due portieri
+    assert r.status_code == 400 and r.json()["codice"] == "formazione_non_valida" and "non è ammesso" in r.json()["detail"]
+    r = client.post("/api/formazione/valuta", json={"titolari": [1], "squadra": "Altra", "giornata": 9})
+    assert r.status_code == 400 and "codice" not in r.json() and r.json()["detail"].startswith("Squadra non trovata")
