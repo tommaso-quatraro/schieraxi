@@ -358,6 +358,10 @@ def _invito_vivo(db: sqlite3.Connection, invito, adesso: datetime, ip: str | Non
     return inv
 
 
+ISCRIZIONE_POSTA_SPENTA = ("Su questo server l'iscrizione con l'email non è disponibile: l'invio delle email è spento "
+                           "e il codice non potrebbe arrivare. Chiedi un invito a chi gestisce il server.")
+
+
 def iscrivi(db: sqlite3.Connection, nome_utente: str, password: str, email_grezza, invito: str | None, ip: str | None = None,
             adesso: datetime | None = None, accetto_termini: bool | None = None) -> dict:
     """Prima metà dell'iscrizione con email (modi `aperta` e `email`): controlla tutto, tiene nome e hash della password in attesa e
@@ -368,6 +372,8 @@ def iscrivi(db: sqlite3.Connection, nome_utente: str, password: str, email_grezz
     modo = modo_registrazione()
     if modo == "invito":
         raise ErroreAccount(account.INVITO_NON_VALIDO, 403)
+    if not posta.attiva():       # il codice non può arrivare: l'iscrizione resterebbe in attesa per sempre. Uguale per ogni indirizzo, prima dei limiti
+        raise ErroreAccount(ISCRIZIONE_POSTA_SPENTA, 503, codice="iscrizione_posta_spenta")
     if ip:
         limite.consuma(db, _chiave("iscrizioni-ip", ip), *ISCRIZIONI_PER_IP)
         limite.consuma(db, _chiave("registra-ip", ip), *account.REGISTRAZIONI_PER_IP)

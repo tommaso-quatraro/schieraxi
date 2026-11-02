@@ -111,8 +111,9 @@ struct RigaPartitaView: View {
 
     // MARK: pezzi
 
+    /// Come la web: le sigle, prima la squadra di casa («MIL vs INT»). VoiceOver legge i nomi interi (etichetta della riga).
     private var squadre: some View {
-        Text("\(partita.casa.capitalized) – \(partita.trasferta.capitalized)")
+        Text("\(ColoriSquadra.sigla(partita.casa)) vs \(ColoriSquadra.sigla(partita.trasferta))")
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(finita ? Color.testoSecondario : Color.primary)
             .lineLimit(2)
