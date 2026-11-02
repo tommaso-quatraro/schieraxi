@@ -21,7 +21,8 @@ from .regole import Regole
 SOGLIA = 0.08              # sotto questa differenza (fantavoti) un pezzo non è un motivo da dire
 MAX_MOTIVI = 3
 P_RIFERIMENTO = 0.5        # il giocatore «medio» del ruolo è la media di chi gioca davvero (p_voto almeno 0,5)
-PEZZI = ("voti", "partita", "gol", "assist", "rigori", "porta", "altro")
+NON_GIOCA = ("infortunato", "squalificato")
+PEZZI = ("voti","partita", "gol", "assist", "rigori", "porta", "altro")
 
 
 def pezzi(p: pd.DataFrame, regole: Regole) -> pd.DataFrame:
@@ -111,7 +112,8 @@ def calcola(p: pd.DataFrame, regole: Regole) -> tuple[pd.Series, pd.Series]:
     for x, riga in zip(ricerca, differenze.to_dict("records")):
         numerici = sorted(((k, v) for k, v in riga.items() if abs(v) >= SOGLIA), key=lambda kv: -abs(kv[1]))
         gioca = _frase_gioca(x)
-        scelti = numerici[:MAX_MOTIVI - (1 if gioca else 0)]
+        # chi è infortunato o squalificato non gioca: niente motivi sulla partita, i gol o i rigori (sarebbero consigli a vuoto)
+        scelti = [] if x.get("stato") in NON_GIOCA else numerici[:MAX_MOTIVI - (1 if gioca else 0)]
         lista = [{"chiave": "gioca", "testo": gioca, "frase": di(gioca), "effetto": None}] if gioca else []
         for k, v in scelti:
             testo = _frase(k, v, x)

@@ -103,6 +103,13 @@ def test_dubbio_sul_giocare_e_un_motivo_senza_effetto():
     assert all(x["chiave"] != "gioca" for x in motivi.loc[99])            # chi gioca di sicuro non ha bisogno di dirlo
 
 
+def test_chi_non_gioca_non_ha_motivi_sulla_partita():
+    """Collaudo 2/11/2026: un infortunato con «partita favorevole» e «segna più della media»: consigli a vuoto."""
+    for stato in ("infortunato", "squalificato"):
+        _, motivi, _ = _giornata(p_voto=0.0, stato=stato, e_gol=0.9, fattore=1.4, voto_base=6.9, mu_voto=7.3, mu=9.0)
+        assert [(m["chiave"], m["testo"], m["effetto"]) for m in motivi.loc[99]] == [("gioca", f"{stato}: non gioca", None)]
+
+
 def test_il_dubbio_lascia_posto_a_due_motivi_numerici_al_massimo():
     _, motivi, _ = _giornata(p_voto=0.6, e_gol=0.9, e_assist=0.6, fattore=1.4, voto_base=6.9, mu_voto=7.3, mu=9.0)
     assert len(motivi.loc[99]) == perche.MAX_MOTIVI and motivi.loc[99][0]["chiave"] == "gioca"

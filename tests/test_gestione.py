@@ -26,6 +26,38 @@ def test_titolarita_a_parole():
     assert consigli.titolarita(x) == "titolare"
     assert consigli.titolarita(x.where(x.index != "p_voto", 0.55)) == "ballottaggio"
     assert consigli.titolarita(x.where(x.index != "stato", "infortunato")) == "fuori"
+    # le probabili lo danno titolare e gioca al 93%: «titolare», anche se finora è partito spesso dalla panchina (era «ballottaggio»)
+    assert consigli.titolarita(pd.Series({"stato": "titolare", "p_voto": 0.93, "quota_titolare": 0.4})) == "titolare"
+    # senza probabili conta ancora quanto parte titolare di solito
+    assert consigli.titolarita(pd.Series({"stato": None, "p_voto": 0.93, "quota_titolare": 0.4})) == "ballottaggio"
+
+
+def _giocatore(**k):
+    base = {"stato": None, "percentuale": None, "nota": None, "e_rigori": 0.0, "ruolo": "A", "p_imbattuto": 0.0, "e_gol": 0.68,
+            "gol_squadra": 2.0, "gol_avversario": 0.8}
+    return pd.Series(base | k)
+
+
+def test_motivi_senza_percentuali_sul_giocare():
+    """Collaudo 2/11/2026: «parte dalla panchina (25%)» accanto a «gioca 19%», due percentuali con due significati. L'unica
+    percentuale sul giocare è «gioca N%» (p_voto): quella delle probabili diventa parole."""
+    assert consigli.motivi(_giocatore(stato="panchina", percentuale=25.0))[0] == "parte dalla panchina"
+    assert consigli.motivi(_giocatore(stato="titolare", percentuale=85.0))[0] == "titolare"
+    assert consigli.motivi(_giocatore(stato="titolare", percentuale=55.0))[0] == "titolare in ballottaggio"
+    assert consigli.motivi(_giocatore(stato="titolare"))[0] == "titolare"
+    for stato in ("titolare", "panchina"):
+        for perc in (25.0, 55.0, 60.0, 85.0):
+            m = consigli.motivi(_giocatore(stato=stato, percentuale=perc))
+            assert not any(f"{perc:.0f}%" in x for x in m), m
+
+
+def test_infortunato_niente_consigli_sulla_partita():
+    """Collaudo 2/11/2026: un infortunato aveva ancora «gol atteso 68%» e «partita favorevole»."""
+    for stato in ("infortunato", "squalificato"):
+        assert consigli.motivi(_giocatore(stato=stato, e_rigori=0.3)) == [stato]
+        assert consigli.motivi(_giocatore(stato=stato, nota="Lesione muscolare")) == [stato, "Lesione muscolare"]
+    m = consigli.motivi(_giocatore(stato="titolare", percentuale=90.0))
+    assert "gol atteso 68%" in m and "partita favorevole" in m           # chi gioca li tiene
 
 
 def test_mercato_propone_lo_svincolato_che_migliora(monkeypatch):

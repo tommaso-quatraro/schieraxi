@@ -102,6 +102,9 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   `Authorization: Bearer`). La web app usa il cookie `fanta_sessione`, HttpOnly.
 - Token del widget iPhone: `fw_...`, vale 90 giorni, creato con `POST /api/account/token-widget`. Apre solo `GET /api/oggi`,
   `GET /api/widget` e `GET /api/live`. Ogni altra rotta risponde 403. Cambio password e «esci da tutti» lo revocano.
+- Giocatori: all'utente una sola percentuale sul giocare, «gioca N%» (`p_voto`); `percentuale` delle probabili non si mostra e
+  `titolarita` va a parole. Dopo la scadenza `GET /api/formazione` ha `iniziata: true`, `titolarita: null` e `stato_partita`
+  (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
 - Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`.
 
 ## Modo multiutente (`FANTA_MULTIUTENTE=1`, obbligatorio su un server raggiungibile da altri)

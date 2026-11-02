@@ -179,9 +179,16 @@ def test_diario_da_compilare(mondo):
     for g in (7, 8):
         mondo.db.execute("INSERT INTO partite VALUES (?, ?, '2026-10-20 18:00', 1)", (STAGIONE, g))
     d = [x for x in vai(mondo) if x["tipo"] == "diario"]
-    assert [x["giornata"] for x in d] == [8, 7] and d[0]["azione"] == "Ho schierato la consigliata"
+    # una sola voce, l'ultima giornata finita: le vecchie non si accumulano («la giornata 6 è finita», «la 7 è finita»...)
+    assert [x["giornata"] for x in d] == [8] and d[0]["azione"] == "Ho schierato la consigliata"
     scelte.salva(STAGIONE, 8, list(range(1, 12)), "4-4-2", mondo.ctx.scelte, tipo="consigliata")
-    assert [x["giornata"] for x in vai(mondo) if x["tipo"] == "diario"] == [7]
+    assert [x["giornata"] for x in vai(mondo) if x["tipo"] == "diario"] == []      # la 7 non torna fuori
+
+
+def test_diario_una_voce_anche_con_tante_giornate_finite(mondo):
+    for g in (5, 6, 7, 8, 9):
+        mondo.db.execute("INSERT INTO partite VALUES (?, ?, '2026-10-20 18:00', 1)", (STAGIONE, g))
+    assert [x["giornata"] for x in vai(mondo) if x["tipo"] == "diario"] == [9]
 
 
 def test_niente_promemoria_della_copia_di_sicurezza(mondo):

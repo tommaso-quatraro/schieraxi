@@ -40,7 +40,7 @@ from . import widget as widget_riassunto
 from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, fonti_attive, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
 from . import avvisi as avvisi_pronta
 from . import avvisi_utenti
-from . import live
+from . import fasi, live
 from . import scambi_multi
 from . import pianificatore, rotte_account, riscaldamento, social
 from . import blocco, percorsi, registro, scarica_immagine, testi_legali
@@ -765,9 +765,12 @@ def _json_diretto(dati):
 def formazione(squadra: str | None = None, giornata: int | None = None, ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
-        f = consigli.formazione(db, _regole(ctx), _rose(ctx), squadra, giornata)
+        r = _regole(ctx)
+        f = consigli.formazione(db, r, _rose(ctx), squadra, giornata)
         if not squadra:
             _copia_automatica(db, ctx, f)
+        # dopo la scadenza: niente etichette delle probabili, lo stato vero della giornata (fasi.py; f resta intatta nella cache)
+        f = fasi.formazione_a_giornata_iniziata(f, db, r, consigli.stagione_corrente(), datetime.now(), _stati_live())
         return _json_diretto(f)
     finally:
         db.close()
@@ -1270,6 +1273,10 @@ def giocatore(calciatore_id: int, ctx: Contesto = Depends(lega_corrente)):
             if calciatore_id in prev.index:
                 s["previsione"] = consigli.scheda_previsione(calciatore_id, prev.loc[calciatore_id])
                 s["previsione"]["giornata"] = giornata
+                stagione = consigli.stagione_corrente()
+                if fasi.iniziata(db, r, stagione, giornata, datetime.now()):       # dopo la scadenza: lo stato vero, non le probabili
+                    s["previsione"] = fasi.schede_a_giornata_iniziata([s["previsione"]], db, r, stagione, giornata, datetime.now(),
+                                                                      _stati_live())[calciatore_id]
         except ValueError:
             pass
         s["rendimento"] = scheda.rendimento(s["avanzate"], s["calciatore"]["ruolo"], s["stagione"]["con_voto"], r)

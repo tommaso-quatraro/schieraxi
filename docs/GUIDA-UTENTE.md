@@ -19,7 +19,7 @@ SchieraXI è un aiuto per il fantacalcio, accanto all'app Leghe Fantacalcio. Non
 
 Parole che vedrai spesso:
 
-- **Fantavoto atteso**: il fantavoto che SchieraXI si aspetta da un giocatore **se gioca**, con le regole della tua lega. È una stima, non una certezza. Accanto c'è **gioca 85%** (per esempio): la probabilità che prenda voto. Toccando il numero vedi **Perché questo numero**: al massimo tre motivi in frasi semplici, in verde se alzano il numero e in rosso se lo abbassano.
+- **Fantavoto atteso**: il fantavoto che SchieraXI si aspetta da un giocatore **se gioca**, con le regole della tua lega. È una stima, non una certezza. Accanto c'è **gioca 85%** (per esempio): la probabilità che prenda voto. È l'unica percentuale sul giocare: le etichette sotto il nome la dicono a parole (**Probabile titolare**, **In ballottaggio**, **Probabile panchina**, **Improbabile**, **Fuori**). Per chi è infortunato o squalificato non trovi consigli sulla partita. Dopo la scadenza, quando la giornata è iniziata, al posto di queste etichette vedi com'è andata o come sta andando la sua partita (**Da giocare**, **Partita in corso**, **Ha giocato**, **Senza voto**, **Voto in arrivo**, **Rinviata**). Toccando il numero vedi **Perché questo numero**: al massimo tre motivi in frasi semplici, in verde se alzano il numero e in rosso se lo abbassano.
 - **Punti attesi**: i punti che SchieraXI si aspetta da una formazione, tenendo conto di chi potrebbe non giocare. Accanto c'è una **fascia** (per esempio «tra 4 e 9»): il punteggio vero ci cade dentro circa 8 volte su 10.
 - **Scadenza**: l'ora in cui si chiude l'invio della formazione su Leghe.
 
@@ -72,7 +72,7 @@ Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazio
 
 - il nome **SchieraXI** con il motto «Schierali. Schiera gli XI.»;
 - il **conto alla rovescia** alla scadenza della formazione;
-- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata. Se la lista è vuota: «Nessuna azione utile oggi»;
+- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata (te lo chiede solo per l'ultima giornata finita). Se la lista è vuota: «Nessuna azione utile oggi»;
 - quanto sono fresche le **probabili formazioni**; se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare;
 - la **formazione consigliata** con punti attesi e fascia (se ne hai salvata una tua, vedi la tua);
 - **Da controllare** (giocatori in dubbio), **I tuoi migliori**, **Indisponibili** e **Diffidati**;
