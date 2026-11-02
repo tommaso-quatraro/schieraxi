@@ -26,6 +26,17 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 7. **Rilascio automatico**: il job `rilascia` dà il numero di versione e crea la release; il server installa `main` da solo.
 8. **Verifica sul dispositivo**: versione nuova sul server, nuova build dell'app.
 
+## Chi rivede cosa
+- **Chi scrive** rivede il proprio ramo prima della pull request (`requesting-code-review`), con le prove fatte.
+- **Revisione IA in CI** (job `revisione-ia`, `docs/decisioni/0007-revisione-ia-in-ci.md`): ogni pull request non in bozza
+  del repository, non dei bot. Claude Code con la skill `.claude/skills/revisione-pr/SKILL.md` presa da `main`: correttezza,
+  sicurezza, errori silenziosi, test, web e iPhone uguali, documenti, aspetto. Solo problemi certi, commenti sulle righe e una
+  sintesi in italiano. Un problema «bloccante» ferma l'unione automatica: si corregge il ramo (un falso allarme si sistema nella skill, su `main`).
+  Senza il segreto `CLAUDE_CODE_OAUTH_TOKEN` il job passa senza revisione.
+- **Il proprietario** guarda le pull request su rete e server (in bozza fino al suo ok), le decisioni di prodotto
+  e i falsi allarmi della revisione IA. Le regole della revisione si cambiano solo con una pull request su `main`.
+- **Foto iOS** (dopo l'unione): il fotografo, come scritto sotto.
+
 ## Quando un lavoro è finito
 - **Server**: test verdi; `python -m fanta verifica` prima e dopo se cambia il calcolo; voce in `fanta/novita.d/`;
   `docs/API.md` o `docs/GUIDA-UTENTE.md` aggiornati.

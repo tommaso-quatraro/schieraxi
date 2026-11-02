@@ -76,13 +76,22 @@ def test_ogni_azione_esterna_e_fissata_per_hash():
         assert _azioni_non_fissate(file.read_text(encoding="utf-8")) == [], f"{file.name}: azione non fissata per hash"
 
 
+# Le sole azioni di altri ammesse, con il commit esatto e il file dove si usano. Ognuna deve stare anche nell'elenco delle
+# azioni permesse del repository (Settings > Actions > General), insieme alle azioni che usa al suo interno
+# (claude-code-action usa oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6): vedi docs/decisioni/0007.
+AZIONI_DI_ALTRI = {"anthropics/claude-code-action@8041f1d17e0e7d2f2cfe35002962e9f26237c0bb": "revisione.yml"}
+
+
 def test_solo_azioni_di_github():
     # Impostazione del repository (Settings > Actions > General): sono permesse solo le azioni di GitHub (proprietari
-    # «actions» e «github»). Un'azione di altri fa fallire l'avvio di tutto il workflow, «unisci» compreso (PR #109).
+    # «actions» e «github») più quelle in AZIONI_DI_ALTRI. Un'azione non permessa fa fallire l'avvio di tutto il workflow,
+    # «unisci» compreso (PR #109).
     for file in sorted(CARTELLA_WORKFLOW.glob("*.y*ml")):
         for riga in file.read_text(encoding="utf-8").splitlines():
             m = re.match(r"^\s*(?:-\s+)?uses:\s*([^\s#]+)", riga)
             if m and not m.group(1).startswith("./"):
+                if AZIONI_DI_ALTRI.get(m.group(1)) == file.name:
+                    continue
                 assert m.group(1).split("/")[0] in ("actions", "github"), f"{file.name}: {m.group(1)} non è di GitHub"
 
 

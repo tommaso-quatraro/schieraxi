@@ -16,3 +16,4 @@ Formato: [MADR](https://github.com/adr/madr) riscritto in italiano, versione bre
 | [0004](0004-etichette-dal-server.md) | Le etichette dello stato del giocatore le manda il server | accettata |
 | [0005](0005-niente-quote-ne-scommesse.md) | Niente quote né scommesse nel modello | accettata |
 | [0006](0006-foto-ios-su-main.md) | Le foto iOS si fanno su `main` dopo l'unione | accettata |
+| [0007](0007-revisione-ia-in-ci.md) | Revisione IA di ogni pull request in CI | accettata |
