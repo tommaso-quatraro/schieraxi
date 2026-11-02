@@ -39,7 +39,8 @@ ERR="$LOG"; [ "${1:-}" = "--prova" ] && ERR=/dev/null
 REPO="${SCHIERAXI_REPO:-https://github.com/tommaso-quatraro/schieraxi.git}"
 CARTELLE="fanta tests script requirements.txt requirements-dev.txt"     # le sole cose che finiscono sul server
 CHIAVI="${SCHIERAXI_CHIAVI:-$HOME/.config/schieraxi/chiavi-firma.asc}"     # chiavi fidate per le firme: FUORI dal repository
-. "$(dirname "$0")/verifica-firme.sh"
+QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di ogni cd)
+. "$QUI/verifica-firme.sh"
 
 if [ "$PROVA" = 0 ]; then
   mkdir -p "$STATO" "$DEST/dati"
@@ -125,6 +126,33 @@ if [ "$cambiato" = 0 ]; then
   log "versione ${nuovo:0:7}: cambiano solo cose che non riguardano il server (ios, sito, docs...): non installo"
   [ "$PROVA" = 1 ] || echo "$nuovo" > "$STATO/ultimo-rilascio"
   fine; exit 0
+fi
+
+# Mai durante una partita di Serie A ne' nell'ora prima della scadenza della formazione di una lega: il riavvio interromperebbe i
+# risultati in diretta e i giri delle probabili. Decide la versione installata (python -m fanta momento-libero, fanta/libero.py):
+# 3 = occupato (si rimanda al primo giro libero, una riga nel log per versione); qualunque altro esito (0, comando che non c'e'
+# ancora, errore, tempo scaduto) = si installa: un controllo guasto non deve fermare gli aggiornamenti.
+# Emergenza: SCHIERAXI_INSTALLA_SUBITO=1 oppure il file ~/.cache/fantacalcio/installa-subito (si cancella da solo dopo l'uso).
+if [ "${SCHIERAXI_INSTALLA_SUBITO:-0}" = 1 ] || [ -e "$STATO/installa-subito" ]; then
+  log "installazione forzata di ${nuovo:0:7}: non controllo partite e scadenze"
+  [ "$PROVA" = 1 ] || rm -f "$STATO/installa-subito" "$STATO/rimandata"
+else
+  motivo=$(cd "$DEST" && . "$QUI/leggi-ambiente.sh" && leggi_ambiente dati/ambiente.env &&
+           timeout -k 5 "${SCHIERAXI_TIMEOUT_LIBERO:-60}" nice -n 10 .venv/bin/python -m fanta momento-libero 2>>"$ERR")
+  rc=$?
+  if [ "$rc" = 3 ]; then
+    if [ "$PROVA" = 1 ]; then
+      log "rimanderei ${nuovo:0:7}: $motivo"
+    elif [ "$(cat "$STATO/rimandata" 2>/dev/null)" != "$nuovo" ]; then
+      log "rimandata: partite in corso ($motivo); installo ${nuovo:0:7} al primo giro libero"
+      echo "$nuovo" > "$STATO/rimandata"
+    fi
+    fine; exit 0
+  fi
+  if [ "$PROVA" = 0 ] && [ -e "$STATO/rimandata" ]; then
+    log "fine del rimando: momento libero"
+    rm -f "$STATO/rimandata"
+  fi
 fi
 
 if [ "$PROVA" = 1 ]; then

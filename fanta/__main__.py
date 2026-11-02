@@ -59,6 +59,12 @@ def _leggi_appunti() -> str:
         finestra.destroy()
 
 
+def cmd_momento_libero(a) -> None:
+    """Per lo script che installa le versioni nuove: esce con 0 se adesso si può riavviare il servizio, 3 se no (vedi libero.py)."""
+    from . import libero
+    sys.exit(libero.main())
+
+
 def cmd_listone(a) -> None:
     calciatori, quando = listone.carica(aggiorna=a.aggiorna)
     per_ruolo = {r: sum(c.ruolo == r for c in calciatori) for r in regole.RUOLI}
@@ -710,6 +716,8 @@ def main(argv: list[str] | None = None) -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(prog="python -m fanta", description="SchieraXI: la mia lega")
     sub = p.add_subparsers(dest="comando", required=True)
+    x = sub.add_parser("momento-libero", help="0 se si può installare adesso una versione nuova, 3 se no (partite in corso o scadenza vicina)")
+    x.set_defaults(f=cmd_momento_libero)
     x = sub.add_parser("listone", help="scarica o mostra il listone")
     x.add_argument("--aggiorna", action="store_true", help="scarica anche se la copia è recente")
     x.set_defaults(f=cmd_listone)
