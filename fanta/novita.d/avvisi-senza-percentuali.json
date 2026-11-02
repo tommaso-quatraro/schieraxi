@@ -1,9 +1,0 @@
-{
-  "titolo": "Avvisi sulle probabili a parole",
-  "voci": [
-    "Gli avvisi sui cambi nelle probabili formazioni non riportano più una seconda percentuale: dicono a parole cosa è cambiato, per esempio «ora in ballottaggio per partire titolare» o «ora probabile titolare»."
-  ],
-  "tecnico": [
-    "notifiche.confronta: via le chiavi n.titolare_a_panchina_perc, n.ora_titolare_perc e n.perc_da_a; nuove n.ora_ballottaggio e n.ora_titolare_sicuro (italiano e inglese in frasi_avvisi.py), quando un titolare passa la soglia del 60% della fonte (PERC_BALLOTTAGGIO, come consigli.py) al posto del salto di 30 punti."
-  ]
-}

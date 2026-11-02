@@ -1,5 +1,71 @@
 [
   {
+    "versione": "1.322",
+    "data": "2026-11-02T09:21:57",
+    "titolo": "Avvisi sulle probabili a parole",
+    "voci": [
+      "Gli avvisi sui cambi nelle probabili formazioni non riportano più una seconda percentuale: dicono a parole cosa è cambiato, per esempio «ora in ballottaggio per partire titolare» o «ora probabile titolare»."
+    ],
+    "tecnico": [
+      "notifiche.confronta: via le chiavi n.titolare_a_panchina_perc, n.ora_titolare_perc e n.perc_da_a; nuove n.ora_ballottaggio e n.ora_titolare_sicuro (italiano e inglese in frasi_avvisi.py), quando un titolare passa la soglia del 60% della fonte (PERC_BALLOTTAGGIO, come consigli.py) al posto del salto di 30 punti."
+    ]
+  },
+  {
+    "versione": "1.321",
+    "data": "2026-11-02T09:17:31",
+    "titolo": "Oggi: i risultati delle partite giocate ci sono sempre",
+    "voci": [
+      "In «Partite del turno» il risultato di ogni partita già giocata compare anche se i risultati in diretta sono spenti o non disponibili."
+    ],
+    "tecnico": [
+      "/api/oggi: partite[].gol_casa e gol_trasferta (risultato ufficiale quando giocata, altrimenti null); web: LiveSchieraxi.punteggioUfficiale al primo disegno, e la diretta senza punteggio non lo cancella."
+    ]
+  },
+  {
+    "versione": "1.320",
+    "data": "2026-11-02T09:15:16",
+    "titolo": "Una sola percentuale per giocatore e etichette più chiare",
+    "voci": [
+      "Per ogni giocatore vedi una sola percentuale, «gioca N%»: le etichette ora lo dicono a parole («Probabile titolare», «In ballottaggio», «Probabile panchina»), senza un secondo numero che voleva dire un'altra cosa.",
+      "Per chi è infortunato o squalificato non trovi più consigli sulla partita (gol attesi, partita favorevole).",
+      "A giornata iniziata la Formazione non mostra più le etichette delle probabili: al loro posto vedi come sta andando la partita di ogni giocatore (da giocare, in corso, ha giocato, senza voto, rinviata).",
+      "In Oggi > Da fare la domanda «la giornata è finita: hai schierato la consigliata?» compare solo per l'ultima giornata finita: le vecchie non si accumulano più."
+    ],
+    "tecnico": [
+      "consigli.motivi senza la percentuale delle probabili («titolare», «titolare in ballottaggio» sotto il 60%, «parte dalla panchina»); per infortunati e squalificati solo stato e nota. consigli.titolarita: «titolare» anche se la fonte lo dà titolare e p_voto >= 0,8.",
+      "perche.calcola: per infortunati e squalificati solo la riga «non gioca».",
+      "fasi.formazione_a_giornata_iniziata (GET /api/formazione) e fasi.schede_a_giornata_iniziata (previsione di GET /api/giocatore/{id}): dopo la scadenza iniziata: true, titolarita null, motivi delle probabili tolti, stato_partita nuovo (fatto, senza_voto, attesa_voti, in_corso, da_giocare, rinviata). Copia: la formazione in cache non si tocca.",
+      "da_fare._diario: solo l'ultima giornata conclusa (MAX_DIARIO 1).",
+      "Web: etichette senza numero, stato_partita al posto delle probabili, niente «In ballottaggio con» a formazione chiusa, «Quando gioca» a parole nel confronto, scheda di chi non gioca senza partita e probabilità."
+    ]
+  },
+  {
+    "versione": "1.319",
+    "data": "2026-11-02T09:14:08",
+    "titolo": "Gli avvisi sul telefono nella tua lingua",
+    "voci": [
+      "Se usi l'app in inglese, ora anche le notifiche sul telefono (cambi nelle probabili, promemoria, riepilogo di giornata, formazione pronta) arrivano in inglese. Basta cambiare lingua nell'app: se non cambi niente restano in italiano."
+    ],
+    "tecnico": [
+      "Nuova impostazione `lingua` (it/en, predefinito it) in GET/PUT /api/avvisi; notifiche.invia scrive titolo e testo (Frase, fanta/frasi.py) nella lingua dell'utente. L'inglese degli avvisi sta in fanta/frasi_avvisi.py (chiavi n.*). La web app manda PUT /api/avvisi {lingua} quando cambia lingua; iPhone e Android non cambiano (restano in italiano). Il reparto scoperto usa copertura.analizza con la lingua."
+    ],
+    "titolo_en": "Phone alerts in your language",
+    "voci_en": [
+      "If you use the app in English, the phone notifications (changes in the probable lineups, reminders, matchday recap, lineup ready) now arrive in English too. Just change the language in the app: if you change nothing they stay in Italian."
+    ]
+  },
+  {
+    "versione": "1.318",
+    "data": "2026-11-02T09:09:48",
+    "titolo": "Partite del turno: stato giusto anche senza la diretta",
+    "voci": [
+      "Quando i risultati in diretta non hanno ancora detto niente, ogni partita mostra lo stato giusto per l'ora (da giocare, in corso, finita) e le partite spostate a un recupero risultano «Rinviata», come nella schermata Oggi."
+    ],
+    "tecnico": [
+      "live.risposta passa a _da_database l'ora del raccoglitore e l'inizio del turno (turno.inizio); test della sentinella su riavvio e partita rimasta in gioco aggiunti a tests/test_live_resta.py."
+    ]
+  },
+  {
     "versione": "1.317",
     "data": "2026-11-02T09:05:48",
     "titolo": "Aggiornamenti dell'app mai durante le partite",

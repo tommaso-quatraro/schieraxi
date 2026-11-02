@@ -1,3 +1,0 @@
-{"titolo": "Oggi: i risultati delle partite giocate ci sono sempre",
- "voci": ["In «Partite del turno» il risultato di ogni partita già giocata compare anche se i risultati in diretta sono spenti o non disponibili."],
- "tecnico": ["/api/oggi: partite[].gol_casa e gol_trasferta (risultato ufficiale quando giocata, altrimenti null); web: LiveSchieraxi.punteggioUfficiale al primo disegno, e la diretta senza punteggio non lo cancella."]}
