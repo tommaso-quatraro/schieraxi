@@ -121,7 +121,7 @@ struct ScambiView: View {
                 if let d = vm.proposte.dato {
                     if vm.risultatiDiAltriFiltri {
                         Label("Questi scambi sono della ricerca di prima, con altri filtri: tocca «Cerca scambi» per aggiornarli.", systemImage: "info.circle")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Color.testoSecondario)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
