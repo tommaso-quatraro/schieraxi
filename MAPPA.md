@@ -82,7 +82,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
   controlli verdi. Una pull request in bozza non si unisce.
-- Job `zizmor` (sicurezza dei workflow; zizmor da PyPI con hash in `.github/zizmor-requisiti.txt`): per ora solo avvisi, fuori dai `needs` di `unisci` (bloccante dopo #108). Azioni solo di GitHub e sempre per hash: le altre fanno fallire l'avvio dei controlli (`tests/test_workflow_controlli.py`).
+- Job `zizmor` (sicurezza dei workflow; zizmor da PyPI con hash in `.github/zizmor-requisiti.txt`): per ora solo avvisi, fuori dai `needs` di `unisci` (bloccante dopo #108). Azioni solo di GitHub e sempre per hash: le altre fanno fallire l'avvio dei controlli (`tests/test_workflow_controlli.py`); unica eccezione `anthropics/claude-code-action`, nell'elenco delle azioni permesse del repository.
+- Job `revisione-ia` (`.github/workflows/revisione.yml`, istruzioni in `.claude/skills/revisione-pr/SKILL.md`): revisione con Claude Code di ogni PR non in bozza; `unisci` la aspetta. Senza il segreto `CLAUDE_CODE_OAUTH_TOKEN` passa senza revisione. Decisione: `docs/decisioni/0007-revisione-ia-in-ci.md`.
 - Job `rilascia` (in fila, un alla volta, dopo `unisci`): dà il numero di versione dopo il più alto, data e ora dell'unione,
   scrive la voce in `fanta/novita.json`, toglie il file da `fanta/novita.d/`, alza `VERSIONE` in `fanta/web/sw.js` se la
   pull request ha toccato `fanta/web/`, fa un commit su `main` e crea la release.

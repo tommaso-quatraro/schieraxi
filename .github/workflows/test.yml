@@ -1,7 +1,7 @@
 name: Controlli
 
 # Controlli del repository pubblico. Solo server di GitHub (ubuntu-latest, macos-26 per iOS): niente runner propri, niente segreti
-# (solo GITHUB_TOKEN), permessi di sola lettura salvo i job che scrivono (unisci, rilascia), dichiarati nel job.
+# (solo GITHUB_TOKEN, più il token di Claude dato per nome al solo job revisione-ia), permessi di sola lettura salvo i job che scrivono (unisci, rilascia), dichiarati nel job.
 on:
   pull_request:
   push:
@@ -145,10 +145,24 @@ jobs:
       contents: read
     uses: ./.github/workflows/ios.yml
 
+  # Revisione con Claude Code (.github/workflows/revisione.yml): solo PR non in bozza, dal repository stesso (mai fork), non di bot.
+  # Il segreto si passa per nome (niente «secrets: inherit»). Senza segreto il job passa senza revisione (docs/decisioni/0007).
+  revisione-ia:
+    if: >-
+      github.event_name == 'pull_request' && !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.type != 'Bot'
+    permissions:
+      contents: read
+      pull-requests: write      # commenti della revisione
+    uses: ./.github/workflows/revisione.yml
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
   # Unione automatica (squash, ramo cancellato) solo per le PR del proprietario, non in bozza, con i controlli verdi
-  # (iOS: verde, oppure saltato perché la PR non tocca ios/). Mai per Dependabot e mai per le PR da fork.
+  # (iOS: verde, oppure saltato perché la PR non tocca ios/; revisione IA verde). Mai per Dependabot e mai per le PR da fork.
   unisci:
-    needs: [test, script-server, versione, cambi, ios]
+    needs: [test, script-server, versione, cambi, ios, revisione-ia]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' && !github.event.pull_request.draft &&
@@ -156,6 +170,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.test.result == 'success' && needs.script-server.result == 'success' &&
       needs.versione.result == 'success' && needs.cambi.result == 'success' &&
+      needs.revisione-ia.result == 'success' &&
       (needs.ios.result == 'success' || (needs.ios.result == 'skipped' && needs.cambi.outputs.ios == 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
