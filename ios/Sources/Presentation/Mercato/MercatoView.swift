@@ -37,7 +37,7 @@ struct ConsigliatiView: View {
         }
         .demoInFondo()
         .refreshable { await vm.consigliati.ricarica() }
-        .avvisoDatiSalvati(vm.consigliati.datiSalvati)
+        .avvisoDatiSalvati(vm.consigliati)
         .task { await vm.consigliati.ricarica() }
     }
 
@@ -195,7 +195,7 @@ struct ClassificaView: View {
         }
         .demoInFondo()
         .refreshable { await vm.caricaClassifica() }
-        .avvisoDatiSalvati(vm.classifica.datiSalvati)
+        .avvisoDatiSalvati(vm.classifica)
         .task(id: vm.percorsoClassifica) { await vm.caricaClassifica() }
     }
 }
@@ -265,7 +265,7 @@ struct CalendarioView: View {
             .animation(Tema.morbida, value: vm.calendario.dato != nil)
         }
         .refreshable { await vm.calendario.ricarica() }
-        .avvisoDatiSalvati(vm.calendario.datiSalvati)
+        .avvisoDatiSalvati(vm.calendario)
         .task { await vm.calendario.ricarica() }
     }
 }
@@ -311,7 +311,7 @@ struct OsservatiView: View {
         }
         .scrollContentBackground(.hidden)
         .refreshable { await vm.caricaOsservati() }
-        .avvisoDatiSalvati(vm.osservati.datiSalvati)
+        .avvisoDatiSalvati(vm.osservati)
         .task { await vm.caricaOsservati() }
     }
 }

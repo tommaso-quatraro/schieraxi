@@ -142,7 +142,7 @@ struct ScambiView: View {
         }
         .demoInFondo()
         .refreshable { await vm.caricaProposte(forza: true) }
-        .avvisoDatiSalvati(vm.proposte.datiSalvati)
+        .avvisoDatiSalvati(vm.proposte)
         .bordiMorbidi()
     }
 

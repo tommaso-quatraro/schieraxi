@@ -50,6 +50,9 @@ final class Caricatore<T: Decodable>: ObservableObject {
     private var ascolto: AnyCancellable?
     /// true finché i dati mostrati vengono dalla cache e non da una risposta fresca del server.
     private(set) var dallaCache = false
+    /// Perché l'ultimo aggiornamento non è riuscito: nil se il server non era raggiungibile (rete, tempo scaduto) o se è andato bene;
+    /// altrimenti il messaggio dell'errore (limite, guasto del server...), da mostrare nella striscia dei dati salvati.
+    private(set) var motivoDatiSalvati: String?
 
     var dato: T? { stato.dato }
     var errore: String? { stato.errore }
@@ -113,6 +116,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
             percorsoDelDato = richiesto
             scaricatoIl = Date()
             dallaCache = false
+            motivoDatiSalvati = nil
             stato = .loaded(nuovo)
             if usaCache { Cache.salva(dati, richiesto, indirizzo: server.indirizzo) }
         } catch {
@@ -122,6 +126,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
                 stato = inAttesa.map { Stato.loaded($0) } ?? .idle
                 return
             }
+            motivoDatiSalvati = DatiVecchi.eDiRete(error) ? nil : error.localizedDescription
             stato = .failed(error.localizedDescription, inAttesa)   // restano gli ultimi dati, con la loro data
         }
     }

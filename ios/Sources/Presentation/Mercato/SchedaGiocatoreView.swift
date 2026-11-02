@@ -91,7 +91,7 @@ struct GiocatoreCorpo: View {
             }
             .demoInFondo()
             .refreshable { await vm.carica() }
-            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
+            .avvisoDatiSalvati(vm.caricatore)
             .bordiMorbidi()
         }
         .navigationTitle(vm.caricatore.dato?.calciatore.nome ?? "Giocatore")

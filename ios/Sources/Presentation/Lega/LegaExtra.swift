@@ -56,7 +56,7 @@ struct SquadreView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
+            .avvisoDatiSalvati(vm.caricatore)
         }
         .navigationTitle("Squadre")
         .ricercaGlobale()
@@ -216,7 +216,7 @@ struct RosaView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
+            .avvisoDatiSalvati(vm.caricatore)
         }
         .navigationTitle(nome)
         .navigationBarTitleDisplayMode(.inline)
@@ -357,7 +357,7 @@ struct NovitaView: View {
                 .padding(16)
             }
             .refreshable { await caricatore.ricarica() }
-            .avvisoDatiSalvati(caricatore.datiSalvati)
+            .avvisoDatiSalvati(caricatore)
         }
         .navigationTitle("Novità")
         .task {

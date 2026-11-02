@@ -12,6 +12,8 @@ struct PortaDiAccesso: View {
     @AppStorage("indirizzo") private var indirizzo = ""
     /// La prova con dati di esempio (`ProvaEsempio`): accesa o spenta, la porta si ridisegna.
     @AppStorage(ProvaEsempio.chiave) private var prova = false
+    /// Quando l'app è andata in secondo piano: al ritorno, se è passato un po', si ricarica tutto.
+    @State private var uscitaIl: Date?
 
     var body: some View {
         Group {
@@ -46,7 +48,14 @@ struct PortaDiAccesso: View {
             WidgetCenter.shared.reloadAllTimelines()
         }
         .onChange(of: fase) { _, nuova in
+            if nuova == .background { uscitaIl = Date() }
             if nuova == .active {
+                // Tornando dopo un po' (o il giorno dopo) ogni schermata si ricarica: prima restavano i dati di quando si era usciti,
+                // senza nessun avviso. È lo stesso comando «Aggiorna» di Cmd+R.
+                if !Demo.attivo, DatiVecchi.serveAggiornareAlRitorno(uscitaIl: uscitaIl, adesso: Date()) {
+                    NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+                }
+                uscitaIl = nil
                 Task { await sessione.verifica() }   // in prova non fa niente (nessun server vero)
                 // all'apertura il widget riparte con dati nuovi (senza aspettare il suo turno)
                 if !Demo.attivo { WidgetCenter.shared.reloadAllTimelines() }
