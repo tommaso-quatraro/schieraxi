@@ -51,7 +51,7 @@ final class DominioTests: XCTestCase {
         XCTAssertEqual(fuori.etichette.map(\.testo), ["Fuori", "Infortunato"])
         XCTAssertTrue(fuori.etichette.allSatisfy { $0.gravita == .grave })
         let incerto = try giocatore(2, "Bianchi", titolarita: "ballottaggio", extra: "\"dubbio\": true,")
-        XCTAssertEqual(incerto.etichette.map(\.testo), ["Ballottaggio", "In dubbio"])
+        XCTAssertEqual(incerto.etichette.map(\.testo), ["In ballottaggio", "In dubbio"])
     }
 
     // MARK: ballottaggi, testo, nome corto
