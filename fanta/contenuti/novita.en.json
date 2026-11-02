@@ -1,0 +1,110 @@
+{
+  "1.214": {
+    "titolo": "Advice even without xG data",
+    "voci": [
+      "Line-ups and predictions work even when the xG (expected goals) statistics are not there yet: they no longer give an error."
+    ]
+  },
+  "1.213": {
+    "titolo": "English: trade verdict",
+    "voci": [
+      "With English selected, the verdict on trades (good for you, for them or for neither), the explanation of the numbers and the reasons why a trade cannot be made are also written in English."
+    ]
+  },
+  "1.212": {
+    "titolo": "English: \"Under the hood\"",
+    "voci": [
+      "With English selected, the \"Under the hood\" texts (explanations, formulas, glossary and names of the measures) are also written in English."
+    ]
+  },
+  "1.211": {
+    "titolo": "English: alerts on uncovered positions",
+    "voci": [
+      "With English selected, the alerts about a position with too few players or no backup (for example \"You have only 2 defenders available...\") are also written in English."
+    ]
+  },
+  "1.210": {
+    "titolo": "Start section: all entries",
+    "voci": [
+      "In Settings > Appearance you can also choose Market, Trades and League as your start section, besides Today and Line-up."
+    ]
+  },
+  "1.209": {
+    "titolo": "More readable app on large screens",
+    "voci": [
+      "On large screens (Full HD, 2K, ultrawide) the app scales up by itself: text and buttons stay readable with the browser at 100%, and the cards spread over more columns without big empty spaces."
+    ]
+  },
+  "1.208": {
+    "titolo": "English: \"To do\", reasons and probable line-ups",
+    "voci": [
+      "With English selected, the \"To do\" sentences (doubts about starters, deadlines, data copies), the reasons behind the advice (for example \"starter at 85%\") and the time of the probable line-ups are also written in English."
+    ]
+  },
+  "1.207": {
+    "titolo": "Privacy and Terms also in English",
+    "voci": [
+      "The Privacy, Terms of use, Credits and \"Delete your account\" pages can now also be read in English: with English selected, the links in the app open the English version. At the top it says it is a translation and links to the Italian text, which is the one that counts."
+    ]
+  },
+  "1.206": {
+    "titolo": "English: guided setup and first start",
+    "voci": [
+      "With English selected, the guided first sign-in and the first-start steps (squads, team, crest, installation, widget, alerts) are also in English."
+    ]
+  },
+  "1.205": {
+    "titolo": "English: alerts, backup, diary, search and icon",
+    "voci": [
+      "With English selected, alerts, the safety copy, the matchday diary, the model test, player search, the app icon and the line-up image to share are also in English."
+    ]
+  },
+  "1.204": {
+    "titolo": "English: Team, More, Rules and What's new",
+    "voci": [
+      "With English selected, the Team and More entries, the Rules screen, What's new, Under the hood, crest and shirt and the season change are also in English."
+    ]
+  },
+  "1.203": {
+    "titolo": "More complete Privacy",
+    "voci": [
+      "The Privacy page explains that, if you ask, whoever runs the app can import your squads for you and keeps the last 5 copies of your previous squads, deleted together with your account."
+    ]
+  },
+  "1.202": {
+    "titolo": "Safer squad imports",
+    "voci": [
+      "If you import your squads twice almost at the same time, the second waits for the first: no more squads lost or mixed up."
+    ]
+  },
+  "1.201": {
+    "titolo": "English: Trades, squad and data status",
+    "voci": [
+      "With English selected, Trades (find, build, evaluate an offer), the squad page and the data status are also in English."
+    ]
+  },
+  "1.200": {
+    "titolo": "Features really off",
+    "voci": [
+      "\"Show all features\" only shows the menus: features turned off by whoever runs the app, such as images from a web address and live results, stay off for everyone."
+    ]
+  },
+  "1.199": {
+    "titolo": "English: Market and player page",
+    "voci": [
+      "With English selected, the Market (recommended, players, watchlist, calendar), the player page and the comparison are also in English."
+    ]
+  },
+  "1.198": {
+    "titolo": "More readable pitch in the light theme",
+    "voci": [
+      "In the light theme the green pitch is a little darker, so the names and numbers in white are easier to read."
+    ]
+  },
+  "1.197": {
+    "titolo": "Sign-in in the middle of the screen",
+    "voci": [
+      "On a computer the sign-in page (and sign-up, forgotten password and the guided first start) now sits in the middle of the screen, no longer low down."
+    ]
+  }
+}

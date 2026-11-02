@@ -1,0 +1,89 @@
+"""Quando avvisare l'iPhone: "formazione pronta" poco prima di ogni giornata, una volta sola.
+
+Il comando `python -m fanta avviso` stampa il testo da mandare (o niente) e ricorda su file a che giornata è già
+arrivato l'avviso. L'invio vero (ntfy) lo fa lo script del server: qui solo la decisione. Testi generici.
+"""
+from __future__ import annotations
+
+import json
+import sqlite3
+from datetime import datetime, timedelta
+from pathlib import Path
+
+from . import turno
+from .percorsi import RADICE, scrivi_sicuro
+
+FILE_STATO = RADICE / "dati" / "avvisi.json"
+ANTICIPO = timedelta(hours=30)       # si avvisa quando mancano meno di 30 ore alla prima partita
+
+
+def prima_partita(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
+    """Data e ora della PRIMA partita della giornata (anche se già giocata): è quando si chiude la formazione."""
+    date = []
+    for (testo, giocata) in db.execute("SELECT data, giocata FROM partite WHERE stagione = ? AND giornata = ? AND data IS NOT NULL",
+                                       (stagione, giornata)):
+        try:
+            date.append((datetime.fromisoformat(str(testo)[:16].replace("T", " ")), bool(giocata)))
+        except ValueError:
+            continue
+    if not date:
+        return None
+    # Dall'inizio del turno (regola unica in turno.py): né una partita rinviata con la vecchia data mai aggiornata né i recuperi già
+    # in calendario settimane dopo spostano la scadenza. Prima si contava dall'ULTIMA partita: con i recuperi già in calendario la
+    # formazione risultava aperta fino a gennaio.
+    inizio_turno = turno.inizio(d for d, _ in date)
+    valide = [d for d, giocata in date if giocata or d >= inizio_turno]
+    return min(valide)
+
+
+def scadenza(inizio: datetime | None, regole) -> datetime | None:
+    """Quando si chiude la formazione: l'inizio della prima partita meno i minuti della regola della lega (`scadenza_minuti`,
+    0 se la regola non c'è)."""
+    if inizio is None:
+        return None
+    return inizio - timedelta(minutes=getattr(regole, "scadenza_minuti", 0) or 0)
+
+
+def inizio_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
+    """Data e ora della prima partita non ancora giocata della giornata."""
+    r = db.execute("SELECT MIN(data) FROM partite WHERE stagione = ? AND giornata = ? AND giocata = 0 AND data IS NOT NULL",
+                   (stagione, giornata)).fetchone()[0]
+    if not r:
+        return None
+    try:
+        return datetime.fromisoformat(str(r)[:16].replace("T", " "))
+    except ValueError:
+        return None
+
+
+def _letto(percorso: Path) -> dict:
+    try:
+        dati = json.loads(percorso.read_text(encoding="utf-8"))
+        return dati if isinstance(dati, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def segna(stagione: str, giornata: int, file_stato: Path = FILE_STATO) -> None:
+    """Ricorda che l'avviso «formazione pronta» di questa giornata è partito (per chi lo segna dopo l'invio, non prima)."""
+    stato = _letto(file_stato)
+    stato["ultimo"] = f"{stagione}/{giornata}"
+    scrivi_sicuro(file_stato, json.dumps(stato))
+
+
+def da_mandare(db: sqlite3.Connection, stagione: str, giornata: int | None, adesso: datetime,
+               file_stato: Path = FILE_STATO, segna: bool = True) -> dict | None:
+    """{"titolo", "testo"} se è il momento di avvisare per la prossima giornata, altrimenti None."""
+    if giornata is None:
+        return None
+    inizio = inizio_giornata(db, stagione, giornata)
+    if inizio is None or not (timedelta(0) < inizio - adesso <= ANTICIPO):
+        return None
+    chiave = f"{stagione}/{giornata}"
+    stato = _letto(file_stato)
+    if stato.get("ultimo") == chiave:
+        return None
+    if segna:
+        stato["ultimo"] = chiave
+        scrivi_sicuro(file_stato, json.dumps(stato))
+    return {"titolo": "SchieraXI", "testo": f"Giornata {giornata}: la formazione è pronta. Apri l'app e controlla le probabili."}

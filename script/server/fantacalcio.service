@@ -1,0 +1,21 @@
+# Servizio systemd dell'app SchieraXI (da copiare in /etc/systemd/system/fantacalcio.service sostituendo <utente> con l'utente del server).
+# Ascolta solo su 127.0.0.1:8000: dall'esterno ci si arriva con un proxy https (per esempio nginx).
+[Unit]
+Description=SchieraXI - app per la formazione del fantacalcio
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=<utente>
+WorkingDirectory=/home/<utente>/fantacalcio
+ExecStart=/home/<utente>/fantacalcio/.venv/bin/python -m fanta server --host 127.0.0.1 --porta 8000
+Restart=on-failure
+RestartSec=5
+Nice=10
+Environment=PYTHONUNBUFFERED=1
+# Account accesi: OBBLIGATORIO su un server raggiungibile da altri. Senza, chiunque arriva ha i poteri dell'amministratore,
+# quindi il server risponde solo a richieste dirette da 127.0.0.1 senza proxy (tutto il resto: 403).
+Environment=FANTA_MULTIUTENTE=1
+
+[Install]
+WantedBy=multi-user.target

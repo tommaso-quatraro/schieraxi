@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Dati scaricati e database locali (si rigenerano)
+dati/cache/
+*.sqlite
+*.db
+
+# Copie di riserva e file temporanei del programma
+*.bak
+*.tmp
+
+# Segreti e chiavi API (mai in git, anche se il repository diventasse pubblico)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+*.mobileprovision
+*.cer
+id_rsa*
+id_ed25519*
+*.secret
+secrets.*
+chiave-*.txt
+
+# Claude Code: copie di lavoro degli agenti e file locali (launch.json invece e' in git)
+.claude/worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Archivio SQLite: file di appoggio della modalita WAL
+*.sqlite-wal
+*.sqlite-shm
+
+# Foto dei calciatori (si riscaricano)
+dati/foto/
+# lega vera (con nomi di persone): fuori da git; entra solo la lega inventata
+/lega/*
+!/lega/esempio/
+# tratti dei volti dei giocatori (dati su persone vere): restano sul server (o in dati/), mai nel repository pubblico
+fanta/avatar_tratti.json
+# stato dell'app sul server (scelte, osservati, impostazioni, avvisi, chiavi VAPID): niente della cartella dati va in git (la barra iniziale esclude tests/dati, che contiene le pagine di prova)
+/dati/
+dati/*.json
+dati/*.txt
+dati/*.log
+
+# La lega vera sta fuori dal repository (FANTA_LEGA); qui solo l'esempio inventato
+/lega/*
+!/lega/esempio/

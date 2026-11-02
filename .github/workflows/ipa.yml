@@ -1,0 +1,84 @@
+name: Compila IPA
+
+# Compila l'app iPhone su un Mac di GitHub SENZA firma (la firma la fa SideStore sull'iPhone con l'Apple ID gratuito).
+# L'indirizzo del server NON è dentro l'app: si inserisce nell'app al primo avvio. Nessun segreto.
+# Parte dopo un push su main che tocca ios/ e a mano (workflow_dispatch). MAI su pull_request.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ipa.yml"]
+
+permissions:
+  contents: read            # il job che crea la release dichiara da solo la scrittura
+
+# Una build alla volta; su main la build in corso non si annulla mai (può essere quella che crea la release build-N)
+concurrency:
+  group: ipa-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # ultima build pubblicata col repository precedente: la prima di questo repository è BASE_BUILD + 1.
+  # L'esportazione la sovrascrive con --base-build (letta al momento da gh release list); qui il valore del 1/11/2026.
+  BASE_BUILD: "235"
+jobs:
+  ipa:
+    if: github.event.repository.private == false
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: write       # solo per creare la release build-N (con --latest) su main
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Numero della build (non scende mai)
+        run: echo "BUILD_N=$((GITHUB_RUN_NUMBER + BASE_BUILD))" >> "$GITHUB_ENV"
+      - name: Installa XcodeGen
+        run: brew install xcodegen
+      - name: Crea il progetto Xcode
+        run: xcodegen generate
+      - name: Compila (senza firma)
+        run: |
+          set -o pipefail
+          xcodebuild -project Schieraxi.xcodeproj -scheme Schieraxi -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -archivePath build/Schieraxi.xcarchive \
+            archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION="1.0.${{ env.BUILD_N }}" CURRENT_PROJECT_VERSION="${{ env.BUILD_N }}" \
+            2>&1 | tee build.log | tail -n 40
+      - name: Crea l'IPA e controlla che non contenga indirizzi personali
+        run: |
+          mkdir -p Payload
+          cp -R build/Schieraxi.xcarchive/Products/Applications/Schieraxi.app Payload/
+          # App Group con l'Apple ID gratuito: i permessi vanno dentro l'IPA non firmato (ldid), SideStore firma da capo
+          brew install ldid > /dev/null 2>&1 || echo "ldid non installato: niente App Group nell'IPA"
+          if command -v ldid > /dev/null; then
+            ldid -SConfig/SchieraxiWidget.entitlements Payload/Schieraxi.app/PlugIns/SchieraxiWidget.appex/SchieraxiWidget || echo "ldid: widget non riuscito"
+            ldid -SConfig/Schieraxi.entitlements Payload/Schieraxi.app/Schieraxi || echo "ldid: app non riuscito"
+          fi
+          zip -qry Schieraxi.ipa Payload
+          ls -la Schieraxi.ipa
+          test -f Payload/Schieraxi.app/PlugIns/SchieraxiWidget.appex/SchieraxiWidget
+          ! /usr/libexec/PlistBuddy -c "Print :FantaHost" Payload/Schieraxi.app/Info.plist 2>/dev/null
+          if grep -rqiE '[a-z0-9-]+[.]ts[.]net' Payload; then echo "ERRORE: un indirizzo ts.net e' dentro l'IPA"; exit 1; fi
+          ! ls Payload/Schieraxi.app/PlugIns | grep -i test
+      - name: "Pubblica come release build-N (Latest: e' il sorgente di SideStore)"
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -I -s scripts/genera_sorgente.py "$GITHUB_REPOSITORY" "${{ env.BUILD_N }}" Schieraxi.ipa
+          gh release create "build-${{ env.BUILD_N }}" Schieraxi.ipa sorgente.json --title "Build ${{ env.BUILD_N }}" \
+            --notes "IPA non firmato, da installare con SideStore. Aggiornamenti automatici: aggiungi in SideStore il sorgente https://github.com/$GITHUB_REPOSITORY/releases/latest/download/sorgente.json" \
+            --repo "$GITHUB_REPOSITORY" --latest
+      - name: Log in caso di errore (senza righe sensibili)
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: log-compilazione
+          path: ios/build.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,0 +1,2316 @@
+{
+  "squadre": [
+    {
+      "nome": "Real Esempio",
+      "giocatori": [
+        {
+          "id": 7560,
+          "nome": "Pisseri",
+          "ruolo": "P",
+          "squadra": "FRO",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 572,
+          "nome": "Meret",
+          "ruolo": "P",
+          "squadra": "NAP",
+          "costo": 26,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6569,
+          "nome": "Stolz",
+          "ruolo": "P",
+          "squadra": "GEN",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5520,
+          "nome": "Cambiaso",
+          "ruolo": "D",
+          "squadra": "JUV",
+          "costo": 18,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5498,
+          "nome": "Casale",
+          "ruolo": "D",
+          "squadra": "BOL",
+          "costo": 14,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 252,
+          "nome": "Biraghi",
+          "ruolo": "D",
+          "squadra": "TOR",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5514,
+          "nome": "Vasquez",
+          "ruolo": "D",
+          "squadra": "GEN",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5641,
+          "nome": "Chalobah T.",
+          "ruolo": "D",
+          "squadra": "COM",
+          "costo": 24,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2724,
+          "nome": "Buongiorno",
+          "ruolo": "D",
+          "squadra": "NAP",
+          "costo": 10,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4502,
+          "nome": "Gallo",
+          "ruolo": "D",
+          "squadra": "LEC",
+          "costo": 25,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7621,
+          "nome": "Sugawara",
+          "ruolo": "D",
+          "squadra": "CAG",
+          "costo": 10,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7628,
+          "nome": "Sierro",
+          "ruolo": "C",
+          "squadra": "PAR",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 1933,
+          "nome": "Mandragora",
+          "ruolo": "C",
+          "squadra": "TOR",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6506,
+          "nome": "Fini",
+          "ruolo": "C",
+          "squadra": "FRO",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7412,
+          "nome": "Milla",
+          "ruolo": "C",
+          "squadra": "COM",
+          "costo": 20,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7203,
+          "nome": "Jashari",
+          "ruolo": "C",
+          "squadra": "MIL",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6054,
+          "nome": "Moro N.",
+          "ruolo": "C",
+          "squadra": "BOL",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6219,
+          "nome": "Boloca",
+          "ruolo": "C",
+          "squadra": "SAS",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 152,
+          "nome": "Zielinski",
+          "ruolo": "C",
+          "squadra": "INT",
+          "costo": 35,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4510,
+          "nome": "Leao",
+          "ruolo": "A",
+          "squadra": "MIL",
+          "costo": 56,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7627,
+          "nome": "Enem",
+          "ruolo": "A",
+          "squadra": "BOL",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6981,
+          "nome": "Vaz",
+          "ruolo": "A",
+          "squadra": "ROM",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4923,
+          "nome": "Colombo",
+          "ruolo": "A",
+          "squadra": "GEN",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5585,
+          "nome": "Malen",
+          "ruolo": "A",
+          "squadra": "ROM",
+          "costo": 94,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7623,
+          "nome": "Gnonto",
+          "ruolo": "A",
+          "squadra": "FIO",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 18
+    },
+    {
+      "nome": "Atletico Prova",
+      "giocatori": [
+        {
+          "id": 2815,
+          "nome": "Terracciano",
+          "ruolo": "P",
+          "squadra": "MIL",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2297,
+          "nome": "Rossi F.",
+          "ruolo": "P",
+          "squadra": "ATA",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6682,
+          "nome": "Pizzignacco",
+          "ruolo": "P",
+          "squadra": "MON",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7407,
+          "nome": "Cuenca A.",
+          "ruolo": "D",
+          "squadra": "COM",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4401,
+          "nome": "Gabbia",
+          "ruolo": "D",
+          "squadra": "MIL",
+          "costo": 14,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7485,
+          "nome": "Mangas",
+          "ruolo": "D",
+          "squadra": "MON",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5449,
+          "nome": "Parisi",
+          "ruolo": "D",
+          "squadra": "FIO",
+          "costo": 5,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6537,
+          "nome": "Goglichidze",
+          "ruolo": "D",
+          "squadra": "MON",
+          "costo": 22,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6672,
+          "nome": "Idzes",
+          "ruolo": "D",
+          "squadra": "SAS",
+          "costo": 10,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6673,
+          "nome": "Sverko",
+          "ruolo": "D",
+          "squadra": "VEN",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7538,
+          "nome": "Halhal",
+          "ruolo": "D",
+          "squadra": "VEN",
+          "costo": 12,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4465,
+          "nome": "Fagioli",
+          "ruolo": "C",
+          "squadra": "FIO",
+          "costo": 34,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6844,
+          "nome": "Rowe",
+          "ruolo": "C",
+          "squadra": "ATA",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4459,
+          "nome": "Rovella",
+          "ruolo": "C",
+          "squadra": "LAZ",
+          "costo": 14,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4973,
+          "nome": "McKennie",
+          "ruolo": "C",
+          "squadra": "JUV",
+          "costo": 38,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4179,
+          "nome": "Gonzalez N.",
+          "ruolo": "C",
+          "squadra": "JUV",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 801,
+          "nome": "Gagliardini",
+          "ruolo": "C",
+          "squadra": "CAG",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6190,
+          "nome": "Pisilli",
+          "ruolo": "C",
+          "squadra": "ROM",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7223,
+          "nome": "Vergara",
+          "ruolo": "C",
+          "squadra": "NAP",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4371,
+          "nome": "Raspadori",
+          "ruolo": "A",
+          "squadra": "ATA",
+          "costo": 25,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2038,
+          "nome": "Pinamonti",
+          "ruolo": "A",
+          "squadra": "LAZ",
+          "costo": 31,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6752,
+          "nome": "Woltemade",
+          "ruolo": "A",
+          "squadra": "JUV",
+          "costo": 44,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7523,
+          "nome": "Varela G.",
+          "ruolo": "A",
+          "squadra": "MON",
+          "costo": 37,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6145,
+          "nome": "Ngonge",
+          "ruolo": "A",
+          "squadra": "MON",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6530,
+          "nome": "Ghedjemis",
+          "ruolo": "A",
+          "squadra": "FRO",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 28
+    },
+    {
+      "nome": "Dinamo Finta",
+      "giocatori": [
+        {
+          "id": 219,
+          "nome": "Sommariva",
+          "ruolo": "P",
+          "squadra": "GEN",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4360,
+          "nome": "Caprile",
+          "ruolo": "P",
+          "squadra": "CAG",
+          "costo": 42,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6662,
+          "nome": "Corvi",
+          "ruolo": "P",
+          "squadra": "PAR",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2263,
+          "nome": "Lazzari",
+          "ruolo": "D",
+          "squadra": "LAZ",
+          "costo": 6,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7553,
+          "nome": "Omar Fayed",
+          "ruolo": "D",
+          "squadra": "FRO",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7599,
+          "nome": "Lulli",
+          "ruolo": "D",
+          "squadra": "ROM",
+          "costo": 9,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2816,
+          "nome": "Di Lorenzo",
+          "ruolo": "D",
+          "squadra": "NAP",
+          "costo": 35,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7125,
+          "nome": "Idrissi R.",
+          "ruolo": "D",
+          "squadra": "CAG",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4375,
+          "nome": "Terzic",
+          "ruolo": "D",
+          "squadra": "FRO",
+          "costo": 20,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5010,
+          "nome": "Ismajli",
+          "ruolo": "D",
+          "squadra": "TOR",
+          "costo": 16,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4751,
+          "nome": "Tomori",
+          "ruolo": "D",
+          "squadra": "MIL",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2528,
+          "nome": "Matic",
+          "ruolo": "C",
+          "squadra": "SAS",
+          "costo": 25,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6207,
+          "nome": "Almqvist",
+          "ruolo": "C",
+          "squadra": "PAR",
+          "costo": 20,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2423,
+          "nome": "Pulisic",
+          "ruolo": "C",
+          "squadra": "MIL",
+          "costo": 67,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7472,
+          "nome": "Calò",
+          "ruolo": "C",
+          "squadra": "FRO",
+          "costo": 43,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5457,
+          "nome": "Maleh",
+          "ruolo": "C",
+          "squadra": "LEC",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6678,
+          "nome": "Liberali",
+          "ruolo": "C",
+          "squadra": "COM",
+          "costo": 20,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7165,
+          "nome": "Liteta",
+          "ruolo": "C",
+          "squadra": "CAG",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6424,
+          "nome": "Prati",
+          "ruolo": "C",
+          "squadra": "CAG",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7158,
+          "nome": "Moro L.",
+          "ruolo": "A",
+          "squadra": "SAS",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7612,
+          "nome": "Bobcek",
+          "ruolo": "A",
+          "squadra": "FRO",
+          "costo": 19,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7351,
+          "nome": "Santos A.",
+          "ruolo": "A",
+          "squadra": "NAP",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7449,
+          "nome": "Rrahmani Al.",
+          "ruolo": "A",
+          "squadra": "VEN",
+          "costo": 10,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7349,
+          "nome": "Kulenovic",
+          "ruolo": "A",
+          "squadra": "TOR",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2531,
+          "nome": "Lukaku",
+          "ruolo": "A",
+          "squadra": "NAP",
+          "costo": 32,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 28
+    },
+    {
+      "nome": "FC Segnaposto",
+      "giocatori": [
+        {
+          "id": 7475,
+          "nome": "Strajnar",
+          "ruolo": "P",
+          "squadra": "MON",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7332,
+          "nome": "Bijlow",
+          "ruolo": "P",
+          "squadra": "GEN",
+          "costo": 17,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4312,
+          "nome": "Maignan",
+          "ruolo": "P",
+          "squadra": "MIL",
+          "costo": 40,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4734,
+          "nome": "Miranda J.",
+          "ruolo": "D",
+          "squadra": "BOL",
+          "costo": 35,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5757,
+          "nome": "Cittadini",
+          "ruolo": "D",
+          "squadra": "FRO",
+          "costo": 6,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7346,
+          "nome": "Raterink",
+          "ruolo": "D",
+          "squadra": "CAG",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4772,
+          "nome": "Angelino",
+          "ruolo": "D",
+          "squadra": "ROM",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7580,
+          "nome": "Sutalo J.",
+          "ruolo": "D",
+          "squadra": "LAZ",
+          "costo": 12,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7410,
+          "nome": "Viery",
+          "ruolo": "D",
+          "squadra": "FIO",
+          "costo": 9,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6485,
+          "nome": "Kristensen T.",
+          "ruolo": "D",
+          "squadra": "ATA",
+          "costo": 9,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5994,
+          "nome": "Ebosse",
+          "ruolo": "D",
+          "squadra": "UDI",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 184,
+          "nome": "Bernardeschi",
+          "ruolo": "C",
+          "squadra": "BOL",
+          "costo": 34,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7078,
+          "nome": "Mastantuono",
+          "ruolo": "C",
+          "squadra": "FIO",
+          "costo": 41,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4364,
+          "nome": "Gaetano",
+          "ruolo": "C",
+          "squadra": "ATA",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 779,
+          "nome": "Cristante",
+          "ruolo": "C",
+          "squadra": "ROM",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5800,
+          "nome": "Gudmundsson A.",
+          "ruolo": "C",
+          "squadra": "LAZ",
+          "costo": 26,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7409,
+          "nome": "Meichtry",
+          "ruolo": "C",
+          "squadra": "GEN",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7571,
+          "nome": "Laerke",
+          "ruolo": "C",
+          "squadra": "LEC",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5119,
+          "nome": "Samardzic",
+          "ruolo": "C",
+          "squadra": "ATA",
+          "costo": 34,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6556,
+          "nome": "Noslin",
+          "ruolo": "A",
+          "squadra": "LAZ",
+          "costo": 37,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6967,
+          "nome": "Diao",
+          "ruolo": "A",
+          "squadra": "COM",
+          "costo": 17,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5951,
+          "nome": "Kolo Muani",
+          "ruolo": "A",
+          "squadra": "JUV",
+          "costo": 55,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5882,
+          "nome": "Mota",
+          "ruolo": "A",
+          "squadra": "MON",
+          "costo": 27,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7120,
+          "nome": "Lang",
+          "ruolo": "A",
+          "squadra": "NAP",
+          "costo": 22,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 313,
+          "nome": "Morata",
+          "ruolo": "A",
+          "squadra": "COM",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 8
+    },
+    {
+      "nome": "Sporting Demo",
+      "giocatori": [
+        {
+          "id": 4236,
+          "nome": "Muric",
+          "ruolo": "P",
+          "squadra": "SAS",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6482,
+          "nome": "Mandas",
+          "ruolo": "P",
+          "squadra": "LAZ",
+          "costo": 47,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5320,
+          "nome": "Paleari",
+          "ruolo": "P",
+          "squadra": "TOR",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 1852,
+          "nome": "Spinazzola",
+          "ruolo": "D",
+          "squadra": "NAP",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5885,
+          "nome": "Dodò",
+          "ruolo": "D",
+          "squadra": "FIO",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7469,
+          "nome": "Bracaglia",
+          "ruolo": "D",
+          "squadra": "FRO",
+          "costo": 22,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7268,
+          "nome": "Rodriguez Ju.",
+          "ruolo": "D",
+          "squadra": "CAG",
+          "costo": 10,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4317,
+          "nome": "N'Dicka",
+          "ruolo": "D",
+          "squadra": "ROM",
+          "costo": 22,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5620,
+          "nome": "Tavares N.",
+          "ruolo": "D",
+          "squadra": "LAZ",
+          "costo": 26,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6890,
+          "nome": "Moreno M.",
+          "ruolo": "D",
+          "squadra": "VEN",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6217,
+          "nome": "Bisseck",
+          "ruolo": "D",
+          "squadra": "INT",
+          "costo": 44,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6005,
+          "nome": "Ilkhan",
+          "ruolo": "C",
+          "squadra": "TOR",
+          "costo": 10,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6271,
+          "nome": "El Aynaoui",
+          "ruolo": "C",
+          "squadra": "ROM",
+          "costo": 14,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4892,
+          "nome": "Saelemaekers",
+          "ruolo": "C",
+          "squadra": "MIL",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4970,
+          "nome": "Messias",
+          "ruolo": "C",
+          "squadra": "GEN",
+          "costo": 27,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6640,
+          "nome": "Felici",
+          "ruolo": "C",
+          "squadra": "CAG",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7232,
+          "nome": "Fernandez T.",
+          "ruolo": "C",
+          "squadra": "VEN",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7624,
+          "nome": "Braganca",
+          "ruolo": "C",
+          "squadra": "TOR",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7535,
+          "nome": "Fitz-Jim",
+          "ruolo": "C",
+          "squadra": "TOR",
+          "costo": 25,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4387,
+          "nome": "Adorante",
+          "ruolo": "A",
+          "squadra": "VEN",
+          "costo": 5,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7213,
+          "nome": "Frigan",
+          "ruolo": "A",
+          "squadra": "PAR",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5336,
+          "nome": "Nzola",
+          "ruolo": "A",
+          "squadra": "CAG",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6675,
+          "nome": "Dovbyk",
+          "ruolo": "A",
+          "squadra": "BOL",
+          "costo": 41,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6572,
+          "nome": "Castro S.",
+          "ruolo": "A",
+          "squadra": "ROM",
+          "costo": 37,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7313,
+          "nome": "Ratkov",
+          "ruolo": "A",
+          "squadra": "LAZ",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 13
+    },
+    {
+      "nome": "Union Campione",
+      "giocatori": [
+        {
+          "id": 4431,
+          "nome": "Carnesecchi",
+          "ruolo": "P",
+          "squadra": "ATA",
+          "costo": 46,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5707,
+          "nome": "Piana",
+          "ruolo": "P",
+          "squadra": "UDI",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7531,
+          "nome": "Pozzi",
+          "ruolo": "P",
+          "squadra": "VEN",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6826,
+          "nome": "Dembelè A.",
+          "ruolo": "D",
+          "squadra": "LEC",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5578,
+          "nome": "Kossounou",
+          "ruolo": "D",
+          "squadra": "ATA",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6632,
+          "nome": "Gaspar K.",
+          "ruolo": "D",
+          "squadra": "LEC",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7131,
+          "nome": "Floriani Mussolini",
+          "ruolo": "D",
+          "squadra": "LAZ",
+          "costo": 15,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7235,
+          "nome": "Troilo",
+          "ruolo": "D",
+          "squadra": "PAR",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6319,
+          "nome": "Leite",
+          "ruolo": "D",
+          "squadra": "LAZ",
+          "costo": 15,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5833,
+          "nome": "Gila",
+          "ruolo": "D",
+          "squadra": "MIL",
+          "costo": 36,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7240,
+          "nome": "Siebert",
+          "ruolo": "D",
+          "squadra": "LEC",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5301,
+          "nome": "Luis Henrique",
+          "ruolo": "C",
+          "squadra": "INT",
+          "costo": 9,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6629,
+          "nome": "Dele-Bashiru",
+          "ruolo": "C",
+          "squadra": "LAZ",
+          "costo": 18,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7157,
+          "nome": "Iannoni",
+          "ruolo": "C",
+          "squadra": "SAS",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7418,
+          "nome": "Chakvetadze",
+          "ruolo": "C",
+          "squadra": "UDI",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6372,
+          "nome": "Moreira",
+          "ruolo": "C",
+          "squadra": "MIL",
+          "costo": 52,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4856,
+          "nome": "Chukwueze",
+          "ruolo": "C",
+          "squadra": "MIL",
+          "costo": 34,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7209,
+          "nome": "Sorensen O.",
+          "ruolo": "C",
+          "squadra": "PAR",
+          "costo": 5,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5295,
+          "nome": "Musah",
+          "ruolo": "C",
+          "squadra": "MIL",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7374,
+          "nome": "Mendy P.",
+          "ruolo": "A",
+          "squadra": "CAG",
+          "costo": 31,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 531,
+          "nome": "Berardi",
+          "ruolo": "A",
+          "squadra": "SAS",
+          "costo": 57,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6904,
+          "nome": "Yeboah J.",
+          "ruolo": "A",
+          "squadra": "VEN",
+          "costo": 30,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2137,
+          "nome": "Scamacca",
+          "ruolo": "A",
+          "squadra": "ATA",
+          "costo": 32,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5734,
+          "nome": "Soulè",
+          "ruolo": "A",
+          "squadra": "ROM",
+          "costo": 29,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6669,
+          "nome": "Bonny",
+          "ruolo": "A",
+          "squadra": "INT",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 6
+    },
+    {
+      "nome": "Olimpia Test",
+      "giocatori": [
+        {
+          "id": 4485,
+          "nome": "Thiam",
+          "ruolo": "P",
+          "squadra": "MON",
+          "costo": 9,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5841,
+          "nome": "Svilar",
+          "ruolo": "P",
+          "squadra": "ROM",
+          "costo": 40,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7626,
+          "nome": "Pompei",
+          "ruolo": "P",
+          "squadra": "ATA",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6892,
+          "nome": "Schingtienne",
+          "ruolo": "D",
+          "squadra": "VEN",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6660,
+          "nome": "Marcandalli",
+          "ruolo": "D",
+          "squadra": "GEN",
+          "costo": 12,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6426,
+          "nome": "Pedersen",
+          "ruolo": "D",
+          "squadra": "TOR",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7540,
+          "nome": "Akpoguma",
+          "ruolo": "D",
+          "squadra": "FRO",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 787,
+          "nome": "Djimsiti",
+          "ruolo": "D",
+          "squadra": "ATA",
+          "costo": 23,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6681,
+          "nome": "Sagrado",
+          "ruolo": "D",
+          "squadra": "VEN",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2115,
+          "nome": "Delli Carri",
+          "ruolo": "D",
+          "squadra": "MON",
+          "costo": 17,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7573,
+          "nome": "Cinquegrano",
+          "ruolo": "D",
+          "squadra": "SAS",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2517,
+          "nome": "De Bruyne",
+          "ruolo": "C",
+          "squadra": "NAP",
+          "costo": 45,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5680,
+          "nome": "Sarr P.",
+          "ruolo": "C",
+          "squadra": "JUV",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7345,
+          "nome": "Przyborek",
+          "ruolo": "C",
+          "squadra": "LAZ",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6984,
+          "nome": "Ondrejka",
+          "ruolo": "C",
+          "squadra": "PAR",
+          "costo": 18,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7129,
+          "nome": "Rodriguez Je.",
+          "ruolo": "C",
+          "squadra": "COM",
+          "costo": 20,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6225,
+          "nome": "El Azzouzi O.",
+          "ruolo": "C",
+          "squadra": "BOL",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6884,
+          "nome": "Conceicao",
+          "ruolo": "C",
+          "squadra": "JUV",
+          "costo": 39,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6241,
+          "nome": "Gelli F.",
+          "ruolo": "C",
+          "squadra": "FRO",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5029,
+          "nome": "Geubbels",
+          "ruolo": "A",
+          "squadra": "LEC",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 309,
+          "nome": "Dybala",
+          "ruolo": "A",
+          "squadra": "ROM",
+          "costo": 50,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7272,
+          "nome": "Gueye",
+          "ruolo": "A",
+          "squadra": "UDI",
+          "costo": 17,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4463,
+          "nome": "Esposito Se.",
+          "ruolo": "A",
+          "squadra": "SAS",
+          "costo": 35,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7610,
+          "nome": "Birligea",
+          "ruolo": "A",
+          "squadra": "FRO",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6643,
+          "nome": "Dallinga",
+          "ruolo": "A",
+          "squadra": "BOL",
+          "costo": 34,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 19
+    },
+    {
+      "nome": "Borussia Bozza",
+      "giocatori": [
+        {
+          "id": 7301,
+          "nome": "Tornqvist",
+          "ruolo": "P",
+          "squadra": "MON",
+          "costo": 19,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2127,
+          "nome": "Satalino",
+          "ruolo": "P",
+          "squadra": "SAS",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5116,
+          "nome": "Martinez Jo.",
+          "ruolo": "P",
+          "squadra": "INT",
+          "costo": 37,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6047,
+          "nome": "Ehizibue",
+          "ruolo": "D",
+          "squadra": "GEN",
+          "costo": 18,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7529,
+          "nome": "Koulierakis",
+          "ruolo": "D",
+          "squadra": "ROM",
+          "costo": 22,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2514,
+          "nome": "Stones",
+          "ruolo": "D",
+          "squadra": "INT",
+          "costo": 32,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6925,
+          "nome": "Palma",
+          "ruolo": "D",
+          "squadra": "UDI",
+          "costo": 6,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 327,
+          "nome": "Patric",
+          "ruolo": "D",
+          "squadra": "LAZ",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6638,
+          "nome": "Marin R.",
+          "ruolo": "D",
+          "squadra": "NAP",
+          "costo": 6,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4845,
+          "nome": "Correia T.",
+          "ruolo": "D",
+          "squadra": "VEN",
+          "costo": 14,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5695,
+          "nome": "Haps",
+          "ruolo": "D",
+          "squadra": "VEN",
+          "costo": 11,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4686,
+          "nome": "Fofana Y.",
+          "ruolo": "C",
+          "squadra": "MIL",
+          "costo": 10,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5319,
+          "nome": "Sohm",
+          "ruolo": "C",
+          "squadra": "VEN",
+          "costo": 14,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7318,
+          "nome": "Gandelman",
+          "ruolo": "C",
+          "squadra": "LEC",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6151,
+          "nome": "Perrone",
+          "ruolo": "C",
+          "squadra": "COM",
+          "costo": 44,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7322,
+          "nome": "Ngom",
+          "ruolo": "C",
+          "squadra": "LEC",
+          "costo": 12,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6898,
+          "nome": "Keita M.",
+          "ruolo": "C",
+          "squadra": "PAR",
+          "costo": 18,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7311,
+          "nome": "Romano",
+          "ruolo": "C",
+          "squadra": "CAG",
+          "costo": 53,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5823,
+          "nome": "Baldanzi",
+          "ruolo": "C",
+          "squadra": "GEN",
+          "costo": 30,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6164,
+          "nome": "Vitinha O.",
+          "ruolo": "A",
+          "squadra": "GEN",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7620,
+          "nome": "Zeballos",
+          "ruolo": "A",
+          "squadra": "MON",
+          "costo": 17,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5436,
+          "nome": "Raimondo",
+          "ruolo": "A",
+          "squadra": "FRO",
+          "costo": 70,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7408,
+          "nome": "Lisman",
+          "ruolo": "A",
+          "squadra": "VEN",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6229,
+          "nome": "Tourè E.",
+          "ruolo": "A",
+          "squadra": "PAR",
+          "costo": 16,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2012,
+          "nome": "Milik",
+          "ruolo": "A",
+          "squadra": "JUV",
+          "costo": 5,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 8
+    },
+    {
+      "nome": "Club Fittizio",
+      "giocatori": [
+        {
+          "id": 6403,
+          "nome": "Christensen O.",
+          "ruolo": "P",
+          "squadra": "FIO",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4957,
+          "nome": "Montipò",
+          "ruolo": "P",
+          "squadra": "VEN",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 158,
+          "nome": "Lezzerini",
+          "ruolo": "P",
+          "squadra": "FIO",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5812,
+          "nome": "Terracciano F.",
+          "ruolo": "D",
+          "squadra": "MIL",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7414,
+          "nome": "Kaiki",
+          "ruolo": "D",
+          "squadra": "COM",
+          "costo": 56,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 4210,
+          "nome": "Mina",
+          "ruolo": "D",
+          "squadra": "CAG",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6990,
+          "nome": "Veiga D.",
+          "ruolo": "D",
+          "squadra": "LEC",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5982,
+          "nome": "Spence",
+          "ruolo": "D",
+          "squadra": "INT",
+          "costo": 17,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7476,
+          "nome": "Bakoune",
+          "ruolo": "D",
+          "squadra": "MON",
+          "costo": 12,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 460,
+          "nome": "Romagnoli",
+          "ruolo": "D",
+          "squadra": "LAZ",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2593,
+          "nome": "Martin",
+          "ruolo": "D",
+          "squadra": "GEN",
+          "costo": 13,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6980,
+          "nome": "Venturino",
+          "ruolo": "C",
+          "squadra": "GEN",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6274,
+          "nome": "Diouf",
+          "ruolo": "C",
+          "squadra": "INT",
+          "costo": 59,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5858,
+          "nome": "Ferguson",
+          "ruolo": "C",
+          "squadra": "BOL",
+          "costo": 33,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6503,
+          "nome": "Stankovic A.",
+          "ruolo": "C",
+          "squadra": "INT",
+          "costo": 8,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6680,
+          "nome": "Karlstrom",
+          "ruolo": "C",
+          "squadra": "UDI",
+          "costo": 33,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5791,
+          "nome": "Frendrup",
+          "ruolo": "C",
+          "squadra": "GEN",
+          "costo": 16,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2077,
+          "nome": "Pasalic",
+          "ruolo": "C",
+          "squadra": "ATA",
+          "costo": 21,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6895,
+          "nome": "Dominguez B.",
+          "ruolo": "C",
+          "squadra": "SAS",
+          "costo": 17,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6822,
+          "nome": "Ekhator",
+          "ruolo": "A",
+          "squadra": "JUV",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7482,
+          "nome": "Lauberbach",
+          "ruolo": "A",
+          "squadra": "VEN",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7162,
+          "nome": "Giovane",
+          "ruolo": "A",
+          "squadra": "NAP",
+          "costo": 12,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6060,
+          "nome": "Laurientè",
+          "ruolo": "A",
+          "squadra": "SAS",
+          "costo": 26,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7071,
+          "nome": "Esposito F.P.",
+          "ruolo": "A",
+          "squadra": "INT",
+          "costo": 67,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 383,
+          "nome": "Petagna",
+          "ruolo": "A",
+          "squadra": "MON",
+          "costo": 5,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 15
+    },
+    {
+      "nome": "Racing Inventato",
+      "giocatori": [
+        {
+          "id": 6248,
+          "nome": "Stankovic F.",
+          "ruolo": "P",
+          "squadra": "VEN",
+          "costo": 33,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7534,
+          "nome": "Renzetti",
+          "ruolo": "P",
+          "squadra": "LAZ",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 283,
+          "nome": "Neto",
+          "ruolo": "P",
+          "squadra": "JUV",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7470,
+          "nome": "Oyono J.",
+          "ruolo": "D",
+          "squadra": "FRO",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 254,
+          "nome": "Dimarco",
+          "ruolo": "D",
+          "squadra": "INT",
+          "costo": 48,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5739,
+          "nome": "De Winter",
+          "ruolo": "D",
+          "squadra": "MIL",
+          "costo": 18,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7238,
+          "nome": "Kouadio",
+          "ruolo": "D",
+          "squadra": "MON",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6495,
+          "nome": "Comuzzo",
+          "ruolo": "D",
+          "squadra": "TOR",
+          "costo": 18,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5838,
+          "nome": "Birindelli",
+          "ruolo": "D",
+          "squadra": "MON",
+          "costo": 16,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7605,
+          "nome": "Tchato",
+          "ruolo": "D",
+          "squadra": "FRO",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 6021,
+          "nome": "Abankwah",
+          "ruolo": "D",
+          "squadra": "UDI",
+          "costo": 27,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 530,
+          "nome": "Pellegrini Lo.",
+          "ruolo": "C",
+          "squadra": "ROM",
+          "costo": 24,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 632,
+          "nome": "Zaccagni",
+          "ruolo": "C",
+          "squadra": "LAZ",
+          "costo": 57,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5725,
+          "nome": "Kone B.",
+          "ruolo": "C",
+          "squadra": "FRO",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7477,
+          "nome": "Colombo L.",
+          "ruolo": "C",
+          "squadra": "MON",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5422,
+          "nome": "Zalewski",
+          "ruolo": "C",
+          "squadra": "ATA",
+          "costo": 22,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7183,
+          "nome": "Aboukhlal",
+          "ruolo": "C",
+          "squadra": "TOR",
+          "costo": 12,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5485,
+          "nome": "Bjarkason",
+          "ruolo": "C",
+          "squadra": "VEN",
+          "costo": 3,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5298,
+          "nome": "Pobega",
+          "ruolo": "C",
+          "squadra": "BOL",
+          "costo": 47,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7568,
+          "nome": "De Martis",
+          "ruolo": "A",
+          "squadra": "PAR",
+          "costo": 4,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7161,
+          "nome": "Bayo V.",
+          "ruolo": "A",
+          "squadra": "UDI",
+          "costo": 2,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 5918,
+          "nome": "Sulemana K.",
+          "ruolo": "A",
+          "squadra": "ATA",
+          "costo": 7,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7023,
+          "nome": "Pellegrino M.",
+          "ruolo": "A",
+          "squadra": "FIO",
+          "costo": 28,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 7252,
+          "nome": "Stulic",
+          "ruolo": "A",
+          "squadra": "LEC",
+          "costo": 15,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        },
+        {
+          "id": 2061,
+          "nome": "Simeone",
+          "ruolo": "A",
+          "squadra": "TOR",
+          "costo": 65,
+          "riconosciuto": "esatto",
+          "avviso": ""
+        }
+      ],
+      "crediti_residui": 7
+    }
+  ],
+  "mia_squadra": "Real Esempio",
+  "aggiornato": "2026-01-01T00:00:00"
+}

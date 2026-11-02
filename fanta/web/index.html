@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SchieraXI – consigli formazione fantacalcio</title>
+  <meta name="description" content="Consigli di formazione per il fantacalcio, giornata per giornata, per la tua lega.">
+  <meta name="theme-color" content="#07100b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SchieraXI">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icona-180.png">
+  <link rel="icon" href="icona.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+  <div class="sfondo" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <a class="salta" href="#contenuto" data-t="shell.salta">Vai al contenuto</a>
+  <header class="testata vetro">
+    <div class="identita-testata">
+      <img class="stemma-testata" id="stemma-testata" alt="" hidden>
+      <div class="testo-testata">
+        <h1 class="titolo" id="titolo">SchieraXI</h1>
+        <div class="sottotitolo" id="sottotitolo">&nbsp;</div>
+      </div>
+    </div>
+    <div class="bottoni-testata">
+    <button class="bottone-icona vetro-bottone" id="bottone-cerca" aria-label="Cerca un giocatore" title="Cerca un giocatore" data-t-aria="shell.cerca" data-t-title="shell.cerca">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+    </button>
+    <button class="bottone-icona vetro-bottone" id="bottone-impostazioni" aria-label="Impostazioni" title="Impostazioni" data-t-aria="shell.impostazioni" data-t-title="shell.impostazioni">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    </button>
+    <button class="bottone-icona vetro-bottone" id="bottone-aggiorna" aria-label="Aggiorna i dati" title="Aggiorna i dati" data-t-aria="shell.aggiorna" data-t-title="shell.aggiorna">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 4a8 8 0 0 1 7.4 5H17v2h6V5h-2v2.3A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Zm8 8a8 8 0 0 1-14.9 4H7v-2H1v6h2v-2.3A10 10 0 0 0 22 12h-2Z"/></svg>
+    </button>
+    </div>
+  </header>
+
+  <main id="contenuto" tabindex="-1"></main>
+
+  <nav class="schede vetro" aria-label="Sezioni" data-t-aria="nav.sezioni" style="--i:0">
+    <span class="lente" aria-hidden="true"><i></i></span>
+    <button data-vista="oggi" class="attiva">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7ZM5 10h14v10H5V10Zm4 2v4h4v-4H9Z"/></svg>
+      <span data-t="nav.oggi">Oggi</span>
+    </button>
+    <button data-vista="formazione">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 4h18v16H3V4Zm2 2v5h3.1a4 4 0 0 1 7.8 0H19V6H5Zm14 7h-3.1a4 4 0 0 1-7.8 0H5v5h14v-5Zm-7-3a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>
+      <span data-t="nav.formazione">Formazione</span>
+    </button>
+    <button data-vista="squadra">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm0 2c-2.7 0-8 1.3-8 4v3h10v-3c0-1.1.4-2.1 1.2-2.9A13 13 0 0 0 8 13Zm8 0c-.4 0-.9 0-1.4.1A4.2 4.2 0 0 1 16 17v3h8v-3c0-2.7-5.3-4-8-4Z"/></svg>
+      <span data-t="nav.squadra">Squadra</span>
+    </button>
+    <button data-vista="altro">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>
+      <span data-t="nav.altro">Altro</span>
+    </button>
+  </nav>
+
+  <div class="foglio" id="foglio" hidden>
+    <div class="foglio-sfondo" data-chiudi></div>
+    <div class="foglio-corpo vetro" role="dialog" aria-modal="true" aria-label="Dettagli" data-t-aria="shell.dettagli">
+      <div class="maniglia" id="maniglia" aria-hidden="true"><i></i></div>
+      <button class="foglio-chiudi" data-chiudi aria-label="Chiudi" data-t-aria="shell.chiudi">✕</button>
+      <div id="foglio-contenuto"></div>
+    </div>
+  </div>
+  <div class="avviso vetro" id="avviso" role="status" hidden></div>
+
+  <script src="testi.js"></script>
+  <script src="avatar.js"></script>
+  <script src="live.js"></script>
+  <script src="dafare.js"></script>
+  <script src="anteprima.js"></script>
+  <script src="primoavvio.js"></script>
+  <script src="app.js"></script>
+  <script src="impostazioni.js"></script>
+</body>
+</html>

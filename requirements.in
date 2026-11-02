@@ -1,0 +1,10 @@
+requests
+pandas
+openpyxl
+beautifulsoup4
+lxml
+fastapi
+uvicorn
+python-multipart
+pywebpush
+PyJWT[crypto]

@@ -1,0 +1,62 @@
+#!/bin/bash
+# aggiorna.sh - Sul server: scarica i dati nuovi per l'app Fanta e avvisa l'iPhone con ntfy.
+#   Dal crontab dell'utente del server:  0 8,13,17,21 * * * /bin/bash $HOME/fantacalcio/script/server/aggiorna.sh >/dev/null 2>&1
+# - Priorita' bassa (nice), così gli altri servizi del server non rallentano.
+# - Se l'aggiornamento fallisce 2 volte di fila: un solo avviso ("Fantacalcio: aggiornamento dati non riuscito").
+# - "Formazione pronta": quando manca meno di 30 ore alla prossima giornata (una volta sola per giornata).
+# - Canale ntfy: nome in ~/.config/schieraxi/canale (o nel file indicato da SCHIERAXI_CANALE). Messaggi generici, passano da ntfy.sh.
+# - Log: ~/fantacalcio/dati/aggiorna.log (si tengono le ultime 2000 righe).
+set -u
+export PYTHONUTF8=1     # il server può avere la lingua it_IT (Latin-1): senza questo il testo dell'avviso uscirebbe con gli accenti sbagliati
+cd "$HOME/fantacalcio" || exit 1
+# Se c'è dati/ambiente.env (le variabili del servizio, per esempio FANTA_MULTIUTENTE=1) le legge riga per riga, senza eseguirlo
+# (solo CHIAVE=valore per FANTA_* e MAX_UTENTI, vedi leggi-ambiente.sh): senza il file non cambia niente.
+. script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env
+mkdir -p dati "$HOME/.cache/fantacalcio"
+LOG=dati/aggiorna.log
+STATO="$HOME/.cache/fantacalcio/errori"
+umask 077     # i log e i file nuovi di dati/ (indirizzi, iscrizioni) sono leggibili solo dall'utente del server
+chmod 600 dati/*.log 2>/dev/null
+canale=$(tr -d ' \r\n' < "${SCHIERAXI_CANALE:-$HOME/.config/schieraxi/canale}" 2>/dev/null)
+
+avvisa() {   # titolo, testo
+  [ -n "$canale" ] || return 0
+  curl -fsS -m 20 -H 'Content-Type: application/json' \
+    -d "{\"topic\":\"$canale\",\"title\":\"$1\",\"message\":\"$2\",\"priority\":3,\"tags\":[\"soccer\"]}" \
+    https://ntfy.sh >/dev/null
+}
+
+exec 9>"$HOME/.cache/fantacalcio/blocco"
+flock -n 9 || exit 0          # un altro aggiornamento e' gia' in corso
+
+echo "=== $(date '+%F %T')" >> "$LOG"
+if nice -n 10 .venv/bin/python -m fanta aggiorna >> "$LOG" 2>&1; then
+  rm -f "$STATO"
+else
+  n=$(( $(cat "$STATO" 2>/dev/null || echo 0) + 1 ))
+  echo "$n" > "$STATO"
+  [ "$n" -eq 2 ] && avvisa "Fantacalcio" "Aggiornamento dati non riuscito per due volte di fila."
+fi
+
+# (la formazione e il mercato in memoria li prepara il servizio da solo: controlla i dati ogni minuto e,
+# appena sono cambiati, li calcola in anticipo. Funziona anche con gli account e non serve nessuna richiesta da qui.)
+
+# avvisi sul telefono se sono cambiate le probabili dei miei giocatori
+nice -n 10 .venv/bin/python -m fanta cambi >> "$LOG" 2>&1
+# riepilogo di giornata (una volta per giornata, quando sono arrivati i voti)
+nice -n 10 .venv/bin/python -m fanta riepilogo >> "$LOG" 2>&1
+# prova del modello sulle ultime giornate (si rifà solo se è finita una giornata nuova)
+nice -n 15 .venv/bin/python -m fanta affidabilita >> "$LOG" 2>&1
+
+testo=$(nice -n 10 .venv/bin/python -m fanta avviso 2>>"$LOG")
+[ -n "$testo" ] && avvisa "Fantacalcio" "$testo"
+
+# ritagli dei volti dei calciatori: fino a 80 per giro e al massimo 6 minuti, sempre sotto le 30 richieste al minuto del servizio
+# (le altre arrivano ai giri successivi). In fondo, cosi' non ritardano formazione e avviso.
+# Spento di norma (l'app usa i volti illustrati, nessuna foto): per riaccenderlo FANTA_FOTO=1 in dati/ambiente.env.
+if [ "${FANTA_FOTO:-0}" = "1" ]; then
+  nice -n 10 .venv/bin/python -m fanta foto --max 80 --minuti 6 >> "$LOG" 2>&1
+fi
+
+tail -n 2000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+exit 0

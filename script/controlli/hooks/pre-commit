@@ -1,0 +1,17 @@
+#!/bin/sh
+# Controllo prima di ogni commit: dati personali, nomi vecchi, indirizzi della rete privata, segreti.
+# Attivazione, una volta per copia del repository (vale anche per le worktree):
+#     git config core.hooksPath script/controlli/hooks
+# Per saltarlo in un caso eccezionale: git commit --no-verify (la CI lo rifa comunque).
+
+RADICE="$(git rev-parse --show-toplevel)" || exit 1
+PY=python3
+command -v "$PY" >/dev/null 2>&1 || PY=python
+
+"$PY" -I -s "$RADICE/script/controlli/anti_residui.py" --staged || exit 1
+
+# Se gitleaks e' installato, controlla anche il commit in preparazione (facoltativo: «winget install gitleaks» solo con ok)
+if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks protect --staged --redact --no-banner || exit 1
+fi
+exit 0

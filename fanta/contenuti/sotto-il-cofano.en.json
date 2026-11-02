@@ -1,0 +1,444 @@
+{
+  "titolo": "Under the hood",
+  "sottotitolo": "How SchieraXI thinks, step by step, and how far you can trust it",
+  "livelli": {
+    "base": "For everyone: what the app does and why, in plain words.",
+    "nerd": "For those who want the formulas, parameters and limits. Every number here comes from the code."
+  },
+  "introduzione": [
+    "SchieraXI does not predict the future: for every player and every matchday it estimates how many fantasy points he will bring on average, and then picks the line-up that brings the most on average. Below you can see how it does it, where the data comes from and, above all, where it gets things wrong.",
+    "The \"base\" sections take about a minute each. The \"nerd\" ones have formulas, parameters and small examples with real numbers, calculated with the model and with the rules of the league used for testing (goal bonus 3, assist 1, yellow card -0.5, defence modifier with thresholds).",
+    "The reliability numbers are real measurements taken on 30/10/2026 on the matchdays already played (2025-26 from matchday 5 and 2026-27 up to matchday 8) with the test league's squads. In the app they update on their own in the Data status screen."
+  ],
+  "misure": {
+    "riferimento": {
+      "come": "python -m fanta verifica and python -m fanta oracolo, rules and squads of the league in the repository, 300 simulations per line-up, archive with the 2025-26 (38 matchdays) and 2026-27 (8 matchdays played) seasons.",
+      "nota": "A measurement on one precise date and a small sample: it is for understanding the order of magnitude, not for promising points. The values marked \"app\" are the automatic test the app repeats by itself after every finished matchday (last 8 matchdays, reliability file of 28/10/2026).",
+      "voci": {
+        "backtest.giornate": {"etichetta": "Matchdays tested", "unita": "matchdays"},
+        "backtest.casi_rosa": {"etichetta": "Team-matchday cases with a large enough squad (at least 20 players present)", "unita": "cases"},
+        "backtest.errore_modello": {"etichetta": "Model error on the fantasy score of those who played (root mean square error)", "unita": "points"},
+        "backtest.errore_modello_2025_26": {"etichetta": "Model error, 2025-26 season (34 matchdays)", "unita": "points"},
+        "backtest.errore_fantamedia_2025_26": {"etichetta": "Error of a \"fantasy average\" estimate, 2025-26 season", "unita": "points"},
+        "backtest.errore_modello_2026_27": {"etichetta": "Model error, 2026-27 season (7 matchdays)", "unita": "points"},
+        "backtest.errore_fantamedia_2026_27": {"etichetta": "Error of a \"fantasy average\" estimate, 2026-27 season", "unita": "points"},
+        "backtest.brier": {"etichetta": "Brier score of the probabilities of playing (0 = perfect, 0.25 = always saying 50%)", "unita": ""},
+        "backtest.punti_modello": {"etichetta": "Real points per matchday with the recommended line-up", "unita": "points"},
+        "backtest.punti_perfetta": {"etichetta": "Best possible with hindsight (same squad, same days)", "unita": "points"},
+        "backtest.punti_modello_2025_26": {"etichetta": "Points with the recommended line-up, 2025-26", "unita": "points"},
+        "backtest.punti_fantamedia_2025_26": {"etichetta": "Points choosing by fantasy average, 2025-26", "unita": "points"},
+        "backtest.punti_perfetta_2025_26": {"etichetta": "Best possible, 2025-26", "unita": "points"},
+        "backtest.punti_modello_2026_27": {"etichetta": "Points with the recommended line-up, 2026-27", "unita": "points"},
+        "backtest.punti_fantamedia_2026_27": {"etichetta": "Points choosing by fantasy average, 2026-27", "unita": "points"},
+        "backtest.punti_perfetta_2026_27": {"etichetta": "Best possible, 2026-27", "unita": "points"},
+        "oracolo.presenze": {"etichetta": "Gain if we knew in advance who gets a rating", "unita": "points per matchday"},
+        "oracolo.gol_squadra": {"etichetta": "Gain if we knew the real goals of the team", "unita": "points per matchday"},
+        "oracolo.rigorista": {"etichetta": "Gain if we knew the real penalty taker", "unita": "points per matchday"},
+        "oracolo.tutti": {"etichetta": "Gain knowing all three things together", "unita": "points per matchday"},
+        "oracolo.soglia": {"etichetta": "Threshold below which a gap is not worth a new source", "unita": "points per matchday"},
+        "oracolo.errore_gol_squadra": {"etichetta": "Error on the fantasy score knowing the real goals of the team (instead of 1.46)", "unita": "points"},
+        "diario.scarto_tipico": {"etichetta": "Typical gap between points scored and expected for the recommended line-up (8 matchdays of 2026-27)", "unita": "points"},
+        "formazione.oscillazione_mostrata": {"valore": "from 0.7 to 2.6", "etichetta": "Deviation of the simulation alone (dev_simulata) on the line-ups of the first 4 test squads: it is no longer the one shown", "unita": "points"},
+        "incertezza.scarto_vero": {"etichetta": "Deviation of the gap between points scored and expected (913 cases, 41 matchdays)", "unita": "points"},
+        "incertezza.fascia_larghezza": {"etichetta": "Width of the \"8 times out of 10\" range with a dev_simulata of 2 (from −8.0 to +8.5)", "unita": "points"},
+        "incertezza.copertura": {"valore": "80% (76% on the league squads)", "etichetta": "Share of the real points inside the range, target 80%", "unita": ""},
+        "app.errore_modello": {"etichetta": "App: model error over the last 8 matchdays", "unita": "points"},
+        "app.errore_fantamedia": {"etichetta": "App: fantasy-average error over the last 8 matchdays", "unita": "points"},
+        "app.punti_modello": {"etichetta": "App: points with the recommended line-up over the last 8 matchdays", "unita": "points"},
+        "app.punti_fantamedia": {"etichetta": "App: points by fantasy average over the last 8 matchdays", "unita": "points"},
+        "app.punti_perfetta": {"etichetta": "App: best possible over the last 8 matchdays", "unita": "points"}
+      }
+    }
+  },
+  "sezioni": {
+    "mappa": {
+      "titolo": "The big picture",
+      "paragrafi": [
+        "The work happens in four steps. 1) It collects the data: fixtures, ratings, probable line-ups, advanced statistics (xG). 2) For every player it calculates two numbers: the probability of getting a rating and the fantasy score he would make if he plays. 3) With those numbers it picks the line-up, evaluates trades and suggests releases. 4) It checks itself: it redoes the calculations on past matchdays, using only what was known at the time, and compares with what really happened.",
+        "All the rules of your league (bonuses, maluses, formations, bench, defence modifier) come from the league settings and are not written in the code: change the rules and the calculations change."
+      ],
+      "formula": "data -> strength of teams and players -> (probability of playing, fantasy score if he plays) -> line-up / trades / releases -> check against the past",
+      "rimandi": ["Today", "Data status"]
+    },
+    "fantavoto-atteso": {
+      "titolo": "How the expected fantasy score is born",
+      "paragrafi": [
+        "For every player the model keeps two questions apart. The first: will he play? (the probability of getting a rating, called p). The second: if he plays, how much does he score? (the expected fantasy score, called mu). The expected points are simply p times mu.",
+        "Mu is built like the real fantasy score: it starts from the rating you expect and adds your league's bonuses and maluses, each multiplied by how likely it is to happen (expected goals, expected assists, probability of a yellow card and so on). Penalties have a part of their own. For goalkeepers, goals conceded and the clean sheet are added."
+      ],
+      "formula": "expected points = P(gets a rating) × mu\nmu = expected rating\n   + goal_bonus(role) × expected goals + assist_bonus × expected assists\n   + expected penalties × (0.78 × penalty_scored_bonus + 0.22 × penalty_missed_malus)\n   + yellow_card_malus × P(yellow card) + red_card_malus × P(red card) + own_goal_malus × P(own goal) + mvp_bonus × P(best on the pitch)\n   + (goalkeepers only) goal_conceded_malus × expected goals conceded + clean_sheet_bonus × P(clean sheet) + expected penalties saved × bonus",
+      "esempio": {
+        "titolo": "A real case: Thuram, matchday 8 of 2026-27 (Inter-Fiorentina)",
+        "testo": "Recalculated on 30/10/2026 with only the data before matchday 8 (no probable line-ups, so p comes from recent appearances: 1.0). The match is worth 2.46 expected goals for Inter against 0.99 for Fiorentina. Expected rating 6.46; expected goals 0.505, at 3 points each, add +1.52; expected assists 0.144 add +0.14; cards and the rest about -0.06. Total mu = 8.06. The probability of scoring at least one goal is 1 - e^(-0.505) = 39.7%."
+      },
+      "rimandi": ["Line-up (tap a player to see the pieces)", "League > Rules"]
+    },
+    "voto-base": {
+      "titolo": "The expected rating",
+      "paragrafi": [
+        "The expected rating is an average of the player's past ratings (the rating source is a league setting: editorial, statistical or Italia), with two corrections. First: old ratings weigh less (see \"The weight of time\"). Second: the average is pulled towards the typical one of the role when data is scarce (see \"Shrinking towards the average\").",
+        "Then it is adjusted for the match: for every expected goal of advantage of the team over its opponent, 0.1 points of rating are added (beta_voto = 0.1). Whoever plays an easy match gets slightly higher ratings, whoever plays a hard one slightly lower. With 2.46 expected goals against 0.99 that is +0.15 of rating."
+      ],
+      "formula": "expected rating = (Σ weight × rating + 20 × starting_rating) / (Σ weight + 20) + 0.1 × (team expected goals - opponent expected goals)",
+      "esempio": {
+        "titolo": "A calculation example (numbers chosen to show the formula)",
+        "testo": "A midfielder with 5 weighted appearances and a weighted average rating of 7.0, in a role whose starting point is 6.0: (5 × 7.0 + 20 × 6.0) / (5 + 20) = 6.2. With few matches the high average is only taken in part."
+      }
+    },
+    "peso-del-tempo": {
+      "titolo": "The weight of time: recent form and past seasons",
+      "paragrafi": [
+        "Every past match enters the calculations with a weight that falls over time: one matchday earlier counts 0.92 times the one after, two matchdays earlier 0.92 squared, and so on. After about 8 matchdays the weight halves. This is the only way the model takes \"recent form\" into account: there is no separate bonus for someone on a good run.",
+        "Matches of last season count half as much again (peso_stagione_prec = 0.5). Between two seasons the distance counts 50 \"matchdays\" (38 plus the summer break), so at matchday 1 a match from the last matchday of last season weighs 0.92^13 × 0.5, about 0.17 compared with a match just played.",
+        "The same weights are used for ratings, goals, assists, minutes and for the strength of the teams. The model only uses matches played before the start date of the matchday it is predicting: this way the same code can be tested on the past without \"cheating\"."
+      ],
+      "formula": "weight of a match = 0.92 ^ (matchdays of distance) × (1 if same season, 0.5 if last season)",
+      "esempio": {
+        "titolo": "Half-life",
+        "testo": "0.92^8 = 0.51: a match from 8 matchdays ago counts half of the latest one. One from 16 matchdays ago counts a quarter."
+      }
+    },
+    "restringimento": {
+      "titolo": "Shrinking towards the average (shrinkage)",
+      "paragrafi": [
+        "With few matches an average is unreliable: a striker with one goal in one appearance does not have \"a goal per game\". So every estimate is mixed with a starting estimate as if the player had already played a number of made-up matches: 20 appearances for the rating (k_voto), 16 full 90-minute matches for goals and assists (k_90), 10 for cards, 20 for own goals, 6 matches for team strength. The more the player has played, the less the starting estimate counts.",
+        "The starting estimate is not necessarily the role average. For players with few matches the model uses the initial price at the start of the season, set before the league began and so without information from the future. For each role it calculates, on the data already played, the line linking price to rating, goals and assists per 90 minutes (at least 15 players with enough data are needed) and starts the new ones from it: a scorer who has just arrived starts from a scorer's estimate, not from an average forward. For goals and assists the estimate is anyway kept between a quarter and four times the role average.",
+        "The parameter values were tuned on 26/10/2026 on the 2025-26 season (matchdays 5-38) by minimising the squared error, and then checked on 2026-27."
+      ],
+      "formula": "estimate = (Σ weight × observations + k × starting value) / (Σ weight + k)",
+      "esempio": {
+        "titolo": "Calculation example for goals",
+        "testo": "A striker with 3.0 expected goals (without penalties) in 5 full matches and a starting rate of 0.25 goals per 90 minutes: (3.0 + 16 × 0.25) / (5 + 16) = 0.33 goals per 90 minutes. Without shrinkage it would be 0.60."
+      }
+    },
+    "gol-assist": {
+      "titolo": "Goals and assists: from xG and xA to probabilities",
+      "paragrafi": [
+        "xG (expected goals) is the probability that a shot becomes a goal, estimated from where and how it was taken; xA does the same for the final pass. They are more stable than real goals, which are rare and depend a lot on luck. The model uses only xG for goals (peso_xg = 1.0, without penalties: a penalty is worth 0.76 xG and is removed) and for assists it mixes 30% xA and 70% real assists (peso_xa = 0.3).",
+        "The player's rate (goals and assists per 90 minutes, with weights over time and shrinkage) is multiplied by the share of the match he will play (expected minutes divided by 90, at most 1) and by the \"match factor\": the team's expected goals in this match divided by its normal expected goals, kept between 0.5 and 2.",
+        "For penalties what counts is the share of the team's penalties that the player has taken (his penalties / team penalties + 0.5) times the expected penalties per match (league average, 0.13 in the test made on 30/10/2026). Each penalty is scored with probability 0.78 (conversione_rigori) and missed with 0.22.",
+        "The probability of \"at least one goal\" comes from a Poisson distribution (the one for rare, independent events): 1 minus e to the minus the number of expected goals, penalties included. The same goes for assists."
+      ],
+      "formula": "expected goals = goal rate/90' × min(minutes,90)/90 × match factor\nP(at least one goal) = 1 - e^-(expected goals + 0.78 × expected penalties)\nexpected penalties = penalty taker share × team penalties per match × match factor × min(1, minutes/75)",
+      "esempio": {
+        "titolo": "A real case: Ramos G. (Milan-Udinese, matchday 8 of 2026-27)",
+        "testo": "Expected goals 0.498 and expected penalties 0.100. The probability of scoring is 1 - e^-(0.498 + 0.78 × 0.100) = 43.8%, as the app shows. In points: 0.498 × 3 + 0.100 × (0.78 × 3 - 0.22 × 3) = 1.49 + 0.17."
+      },
+      "rimandi": ["Player page"]
+    },
+    "forza-squadre": {
+      "titolo": "Expected goals of the match: team strength",
+      "paragrafi": [
+        "Every team has an attack index and a defence index (1 = average, above 1 the attack scores more or the defence concedes more) and there is a home factor (the home team scores more). They are calculated together from the matches already played: this way a team that has faced strong opponents is not penalised. It starts from goals and xG (60% xG, 40% real goals), recent matches count more (weight 0.98 per matchday, last season weighs 0.8) and teams with few matches are pulled towards the average (like 3 made-up matches).",
+        "Expected goals are obtained by multiplying: league base × attack of one team × defence of the other × home factor (divided, for the away team).",
+        "Team strength comes only from goals and xG: no other source enters the calculation. Measured over 41 past matchdays, the error on the fantasy score is 1.424 and 1.594 (two seasons)."
+      ],
+      "formula": "home goals = base × attack(home) × defence(away) × home factor"
+    },
+    "portieri": {
+      "titolo": "Goalkeepers: goals conceded and clean sheet",
+      "paragrafi": [
+        "For a goalkeeper the expected goals conceded are the opponent's expected goals in that match (see above). The probability of a clean sheet is the probability that a Poisson with that value gives zero: e raised to minus the expected goals conceded. The clean sheet bonus and the malus for each goal conceded come from the league rules.",
+        "A small share is added for saved penalties: expected penalties per team per match × 0.2 × the saved penalty bonus (the 20% is a fixed estimate of the model, not measured on the single goalkeeper).",
+        "The defence modifier is not part of the single goalkeeper's mu: it is a team bonus that depends on the goalkeeper and the defenders together, and it is calculated in the line-up simulation (see \"How the line-up is chosen\")."
+      ],
+      "formula": "P(clean sheet) = e^-(expected goals conceded)\ngoalkeeper mu = expected rating + goal_conceded_malus × expected goals conceded + clean_sheet_bonus × P(clean sheet) + 0.2 × penalties per match × saved_penalty_bonus",
+      "esempio": {
+        "titolo": "A real case: Mandas (Lazio-Parma, matchday 8 of 2026-27)",
+        "testo": "Expected goals conceded 0.74: clean sheet e^-0.74 = 48%. mu = 6.33 (expected rating) - 0.74 + 0.48 + 0.08 (saved penalties) = about 6.13."
+      }
+    },
+    "cartellini": {
+      "titolo": "Cards, own goals and best on the pitch",
+      "paragrafi": [
+        "Yellow cards, red cards, own goals and the best-on-the-pitch award are rare events that depend on playing: they are estimated with the player's weighted frequencies, pulled towards those of the role (10 made-up appearances for yellow cards, red cards in mu and best on the pitch; 20 for own goals).",
+        "To show the probability of a red card in the app more caution is needed (60 made-up appearances instead of 10): a single red card does not make a player \"an easy red\". The value in mu and the one shown differ for this reason."
+      ],
+      "formula": "P(event) = (Σ weight × events + k × role frequency) / (Σ weight + k)"
+    },
+    "probabilita-giocare": {
+      "titolo": "The probability of playing and the probable line-ups",
+      "paragrafi": [
+        "This is the most delicate part, because a star who stays on the bench brings zero points. When the probable line-ups of Fantacalcio.it are available (they update several times a day) the model reads them: starter with a percentage, bench with a percentage, injured, suspended, doubtful, at risk of suspension.",
+        "A starter at 90% does not play with probability 0.90: if he does not start he often comes on from the bench anyway, and the rating is missing only if he comes on for a few minutes. An injured or suspended player is worth 0. A doubtful one is worth a quarter less. A player not mentioned is worth 2%."
+      ],
+      "formula": "starter with percentage q: p = (q + (1 - q) × 0.6) × 0.96\nbench with percentage q: p = q\ndoubtful: p × 0.75 · injured or suspended: 0 · not mentioned: 0.02",
+      "esempio": {
+        "titolo": "Calculation examples",
+        "testo": "Starter at 90%: (0.90 + 0.10 × 0.6) × 0.96 = 92%. Starter at 70%: (0.70 + 0.30 × 0.6) × 0.96 = 84%. Bench at 30% and doubtful: 0.30 × 0.75 = 22.5%."
+      },
+      "rimandi": ["Line-up (status and percentage next to each player)"]
+    },
+    "presenze-storiche": {
+      "titolo": "Without probable line-ups: recent appearances, cups and calibration",
+      "paragrafi": [
+        "For distant matchdays, or when a team is not covered by the probable line-ups, p comes from recent appearances: the share of the last 6 matches of HIS team in which the player got a rating, with weight 0.75 raised to the distance (the most recent weighs 1). Matches before his arrival at that team and postponed ones do not count as absences. With fewer than 3 useful matches the estimate is pulled towards 0.5; with none it is 0.3. For the more distant matchdays a window of 20 matches is also considered (decay 0.93).",
+        "If the team plays in a European cup within 3 days, the probability is multiplied by 0.93 (rotation). The cup dates are written by hand in the code (6 teams, until 28/01/2027) and must be updated: after that date rotation is no longer calculated. When the probable line-ups are available, they already tell us about rotation.",
+        "Once matchdays have been played, the app compares the percentages of the probable line-ups with who really got a rating, by group (starter 90-100%, starter 70-89%, bench 20-49% and so on). If at least 3 matchdays and at least 30 players per group show a gap, it corrects the percentages of that group, but only slightly: the factor is observed/predicted, weighted n / (n + 60) and never more than 15% up or down."
+      ],
+      "formula": "appearances = Σ (0.75^distance × [got a rating]) / Σ 0.75^distance, over the last 6 matches\ncorrection of a group = 1 + (observed/predicted - 1) × n/(n + 60), between 0.85 and 1.15",
+      "esempio": {
+        "titolo": "Calculation example",
+        "testo": "Three matches: he got a rating in the two most recent but not in the oldest. Weights 0.5625 (oldest), 0.75, 1.0: appearances = (0.75 + 1.0) / 2.3125 = 76%. With n = 30 players in a group and observed/predicted = 1.20 the correction is 1 + 0.20 × 30/90 = 1.07."
+      },
+      "rimandi": ["Data status > Calibration of the probable line-ups"]
+    },
+    "formazione": {
+      "titolo": "How the line-up is chosen",
+      "paragrafi": [
+        "For every formation allowed by your league the system builds the best eleven and then tries to improve it by swapping a starter with the best left-out players of the same role, until it finds no more advantage. In the end it picks the formation with the best score.",
+        "\"Best\" does not only mean higher expected points: when they are equal (within 0.2-0.3 points) the line-up with the safest starters wins, that is, with less risk of a bad day. All line-ups are compared on the same simulations, for a fair comparison.",
+        "Every formation has its own best line-up, and you can see them all in the app with their expected points."
+      ],
+      "rimandi": ["Line-up", "Today"]
+    },
+    "simulazione": {
+      "titolo": "The simulation of substitutions",
+      "paragrafi": [
+        "The expected points of a line-up are not the sum of the expected points of the eleven, because a starter without a rating is replaced from the bench and counts as the league decides. To account for this, 600 simulated matchdays are run (300 in the checks on the past, 200 in the app's automatic check). In every simulation each player gets a rating with his probability p, independently of the others, with a fixed seed (7) so the result is repeatable.",
+        "In every simulation the league rules apply: a missing player is replaced by the first on the bench, in order, who got a rating and has the same role. If the league allows changing formation, a player of another role can also come in, but only if the resulting formation is allowed (the choice is among those available, and with the \"by role\" bench the same role is tried first). Substitutions are at most those allowed by the league; goalkeepers are replaced only by goalkeepers; a starter without a replacement is worth zero, or the default rating if the league provides one.",
+        "The defence modifier is calculated in every simulation: if the goalkeeper and at least 4 defenders with a rating are on the pitch, the average rating of the goalkeeper and the 3 best defenders is taken and the bonus of the highest threshold reached is given. Ratings are needed and not just averages, because the bonus goes in steps: to every expected rating a random noise with deviation 0.6 is added.",
+        "The average over the simulations is taken (expected points), together with the standard deviation and the 10th and 90th percentile (bad day and exceptional day)."
+      ],
+      "formula": "simulated score = Σ fantasy score of those who count (starters with a rating + substitutes who came in) + (uncovered × default rating) + defence modifier\nexpected points = average of the simulated scores",
+      "esempio": {
+        "titolo": "Defence modifier with the thresholds of the test league",
+        "testo": "Goalkeeper 6.5 and defenders 6.5, 6.5, 6.0 and 6.0: average of the goalkeeper and the 3 best = (6.5 + 6.5 + 6.5 + 6.0) / 4 = 6.375, which exceeds the threshold 6.25 but not 6.5: bonus +1.5. The league thresholds are 6 = +1, 6.25 = +1.5, 6.5 = +2, 6.75 = +2.5, 7 = +3, 7.25 = +3.5."
+      }
+    },
+    "panchina": {
+      "titolo": "The bench: by role or free",
+      "paragrafi": [
+        "If the league fixes the bench places by role (for example 2 goalkeepers, 3 defenders, 3 midfielders, 3 forwards), the system puts on the bench the best of each role by expected points, as many as there are places. Otherwise it takes the best non-starters, with at least one goalkeeper if there is one.",
+        "The order matters because the first available player comes in first: with the \"by role\" bench the substitutes are sorted by role and then by value, with the \"free\" one by value. Trying different criteria to pick the bench gave no reason to change the current one."
+      ]
+    },
+    "stili": {
+      "titolo": "Styles: risk and formation presets",
+      "paragrafi": [
+        "A style is a way of choosing: from \"Very safe\" to \"Very risky\", passing through \"Balanced\", which is the recommended one. It changes two things together. The player profile: how much it matters to avoid the bad day or chase the exceptional one. And the formation preference: safe styles reward fuller defences, risky ones an extra forward.",
+        "Styles change the character of the choice, they do not magically earn points: in the measurement of 30/10/2026 on the league squads, no style (except \"Very safe\", which costs about a point per matchday) is distinguishable from \"Balanced\" beyond measurement noise."
+      ],
+      "formula": "choice score = expected points - down_weight × (expected points - bad day) + up_weight × (exceptional day - expected points)\n+ formation tilt: points for every defender and every forward beyond the 4-x-3",
+      "esempio": {
+        "titolo": "Balanced with example numbers",
+        "testo": "Weight 0.15: a line-up with 70 expected points and a bad day at 64 (10th percentile) is worth 70 - 0.15 × 6 = 69.1 for the choice. One with 69.7 and a bad day at 67 is worth 69.7 - 0.15 × 2.7 = 69.3 and goes ahead."
+      },
+      "rimandi": ["Line-up > Style"]
+    },
+    "stili-misura": {
+      "titolo": "Styles put to the test",
+      "paragrafi": [
+        "Weights used: Very safe (1.5 down / 0 up, tilt 0.5 points per defender), Safe (0.6 / 0, 0.5), Balanced (0.15 / 0, 0), Risky (0 / 0.25, 0.5 per forward), Very risky (0 / 0.5, 0.5).",
+        "Measurement of 30/10/2026 (76 team-matchday cases, 100 simulations): Balanced 69.29 points per matchday. Safe +0.09 (standard error 0.09), Safe with tilt on defenders +0.18, Very safe -0.96 (0.44), Risky +0.32 (0.31), Very risky +0.26 (0.32). Below about ±0.3 with this sample it is noise.",
+        "Honest readings: moving the formation does not cost points beyond the noise; the advantage of the presets is in the profile, not in average points; with the current quality of the data the 4-3-3 remains the formation chosen most by all styles. To be measured again when the archive has more matchdays."
+      ]
+    },
+    "scambi": {
+      "titolo": "How a trade is evaluated",
+      "paragrafi": [
+        "A trade is worth it for a team if it raises the value of its squad. The value of a squad is the sum of the expected points of its best line-up over the next 5 matchdays (one by one, with fixtures and probable line-ups) plus the rest of the season, which counts half because squads and pecking orders change.",
+        "The app calculates the trade for you and for the other team: a proposal is \"good\" only if both gain at least half a point over the season. The verdict says in words whether it suits you, them, both or neither, and whether the squads stay valid (maximum per role and enough players to field a formation)."
+      ],
+      "rimandi": ["Trades"]
+    },
+    "scambi-formule": {
+      "titolo": "Trades: the calculation, the quick estimate and the proposals",
+      "paragrafi": [
+        "To search among thousands of trades we cannot simulate every time, so the value of a matchday uses a quick estimate: for each allowed formation the best by p × mu of each role are taken; substitutes of the same role come in order, and the j-th substitute counts only if at least j starters of that role are missing (calculated with the absence probabilities, all independent), up to the number of bench places of that role. No limit on substitutions and no defence modifier: it is an approximation.",
+        "For matchdays after the first the probability is half recent appearances and half appearances over 20 matches. Someone injured today also misses the next matchday; then he returns with an estimate based on how often he starts. Someone suspended misses only the current matchday.",
+        "A team's gain is the difference between the value with and without the trade. The 1-for-1 proposals are all pairs of the same role (or of different roles if the squads have room) in which both gain at least 0.5 points; they are sorted by my gain plus half of the smaller of the two gains, and each player appears at most twice."
+      ],
+      "formula": "squad value = Σ(5 matchdays) expected points + 0.5 × remaining matchdays × average expected points of the distant matchdays\ngain = value with the trade - value without\ngood proposal if my_gain ≥ 0.5 and their_gain ≥ 0.5",
+      "esempio": {
+        "titolo": "Calculation example",
+        "testo": "If a trade is worth +2.0 points in total over the first 5 matchdays and +0.6 points per matchday in the distant ones, and 25 matchdays remain, the gain is 2.0 + 0.5 × 25 × 0.6 = 9.5 points over the season."
+      }
+    },
+    "scambi-grandi": {
+      "titolo": "N-for-M trades (1 to 4 players per side)",
+      "paragrafi": [
+        "The analysis of any trade (up to 4 players per side, even 3 for 2) uses the same calculations, but checks that the squads after the trade stay valid: not above the maximum for each role and with enough players for a formation. If they are not, the trade is analysed anyway and tells you the reason; if a role exceeds the maximum, whoever has too many players releases the weakest before evaluating.",
+        "Searching automatically all the 2-for-2, 3-for-2 and similar is huge, so there is a calculation budget: the effect of each player alone is estimated, for each side the most promising are kept (7-9 players in all, at most 4 per role), the combinations are tried starting from the most promising and it stops after 1500 full calculations per opposing team. Time is only a safety net, so the result does not change from one time to the next. Proposals that are a 1-for-1 with extra \"fillers\" are discarded, because the simple version is already in the list.",
+        "A limit to know: in large searches only the best candidates are looked at, so a good trade made of players who are not promising on their own can slip through."
+      ]
+    },
+    "conguagli": {
+      "titolo": "Balancing with credits",
+      "paragrafi": [
+        "A trade can include credits (positive if you receive them, negative if you pay them). The app checks that whoever pays has them, according to the remaining credits saved in League, and that nobody exceeds the limit of 100,000.",
+        "To give a value in points to credits, it uses the team's free-agent market: it adds up the gains in points of its best moves and divides them by what they cost (price of the incoming player minus the refund for the outgoing one). The result is a rate: expected points over the season for each credit. The value of the credits exchanged is balance × rate, and the final verdict uses the net gain. Without a rate (no useful move) the credits are shown but do not enter the verdict.",
+        "It is a rough estimate: it depends on which free agents there are today."
+      ],
+      "formula": "rate = Σ gain of the useful moves / Σ (price of the incoming - refund)\nnet = gain in points + balance × rate",
+      "rimandi": ["Trades > Balance", "League > Credits"]
+    },
+    "svincoli": {
+      "titolo": "Releases and refund",
+      "paragrafi": [
+        "The market suggests releasing one of your players to take a free one of the same role, if your squad gains at least half a point over the season. If you entered your credits, only the free agents you can afford are considered: your credits plus the refund for the outgoing player, which by assumption is half of the price paid (a league rule, can be changed).",
+        "What is left in the credits after the swap is calculated like this: credits + refund - price of the incoming player."
+      ],
+      "formula": "refund = price paid × 0.5 (league parameter)\ncredits after = credits + refund - price of the incoming player",
+      "rimandi": ["Market"]
+    },
+    "asta": {
+      "titolo": "Auction and repair",
+      "paragrafi": [
+        "The auction is a basic version, to find your bearings and not to guarantee prices. The method is the classic \"value over replacement\": the season points of each player are estimated (matchdays × average of p × mu), the level of the first player who would not be a starter in any team is subtracted (10 goalkeepers, 40 defenders, 40 midfielders and 30 forwards for a 10-team league) and the league budget is divided in proportion to what is left. 12% of the budget is left for the bench.",
+        "The repair (in February) is the same idea but only among free agents: the price of each is his share of the credits left to the league, in proportion to how much he is worth above the last free agent who would find a place. The places to fill are those missing in the squads; if they are full, each team is assumed to change 3 players. Without the credits entered, the price is used as the reference price.",
+        "In an auction haste and the opponents' moves also count: these prices do not know that."
+      ],
+      "formula": "value over replacement = max(0, season points - points of the role's replacement)\nprice = spendable budget × value over replacement / sum of values",
+      "rimandi": ["Market"]
+    },
+    "affidabilita": {
+      "titolo": "How reliable is it? The test on the past",
+      "paragrafi": [
+        "To know whether the model is worth anything, it is run again on the matchdays already played, matchday by matchday, giving it only what was known before each one. Then it is compared with what happened and with a simple \"fantasy average\" choice (whoever has the highest average).",
+        "On 30/10/2026, over 41 matchdays and 10 squads: the model gets the fantasy score of those who play wrong by about 1.46 points (typical error). A \"fantasy average\" estimate gets it more wrong: 1.50 against the model's 1.43 in 2025-26 and 1.84 against 1.61 in 2026-27. The recommended line-up made 68.6 points per matchday against a best possible with hindsight of 71.8.",
+        "It reads like this: the model beats the simple choice, but only slightly on line-up points (a few tenths, which with a small sample cannot be told apart from chance) and with more margin on the error of the fantasy score. The gap to the best possible also exists because nobody knows in advance who will score."
+      ],
+      "rimandi": ["Data status (the app's up-to-date numbers)", "Diary"]
+    },
+    "metriche": {
+      "titolo": "The measures: error, Brier and points",
+      "paragrafi": [
+        "Error on the fantasy score: for those who really got a rating, the predicted mu is compared with the real fantasy score calculated with the league rules. The main measure is the root of the mean of the squared errors (RMSE), because mu is an average value and large errors weigh more; the mean absolute error is also reported (0.93 in 2025-26, 1.03 in 2026-27). The comparison is with a hypothetical \"fantasy average\" choice: the average of the season's fantasy scores, 6 if there are none.",
+        "Brier of appearances: mean of the squared difference between the predicted probability of playing (0-1) and what happened (1 got a rating, 0 did not). 0 is perfect; always saying 50% would give 0.25. In the past test it is 0.157 (0.161 in 2025-26, 0.140 in 2026-27).",
+        "Line-up points: for every league squad and every matchday two line-ups are chosen, the recommended one and the \"fantasy average\" one (same probabilities of playing, mu replaced by the fantasy average: the comparison therefore measures the quality of mu, not of p). The real points are calculated with the real substitutions. The \"perfect\" one is the best with hindsight: the best real fantasy scores in the best formation, without the defence modifier. It is a theoretical ceiling that nobody can reach.",
+        "Beware of two things. For past matchdays we do not have the probable line-ups, so p is derived from recent appearances: in the test the model is weaker than live. And the squads are today's applied to the past: only squads that on that matchday have at least 20 players present count (93 cases out of 410 possible, so far fewer than it might seem)."
+      ],
+      "formula": "RMSE = root( mean( (predicted mu - real fantasy score)^2 ) )\nBrier = mean( (predicted p - got a rating)^2 )"
+    },
+    "oracolo": {
+      "titolo": "The \"oracle\" experiment: what knowing in advance is worth",
+      "paragrafi": [
+        "The oracle is a measurement, not an app feature: the model is given, one thing at a time, perfect knowledge of what in reality is not known before the match, and we see by how much the points rise. It serves to decide whether a new source is worth looking for: if the maximum gain is below 0.3 points per matchday, the gap does not deserve it.",
+        "Measurement of 30/10/2026 (41 matchdays, 10 squads, points per matchday per squad compared with 68.56 for the base): knowing who gets a rating is worth +0.68; knowing the team's real goals is worth +1.35 (and the error on the fantasy score falls from 1.46 to 1.30); knowing the real penalty taker is worth +0.02, that is, nothing; all three together +2.50 (71.06 against a maximum of 71.76).",
+        "Honest reading: these are ceilings, not promises. The official line-ups come out about an hour before the match, after the deadline to submit, so the achievable gain on appearances is only how much better we can predict them (more editorial teams, news on injuries and suspensions, history). For the team's goals, instead, the gain can come from a second measure of strength. Penalty takers do not deserve a dedicated source."
+      ]
+    },
+    "diario": {
+      "titolo": "The diary: your choice against the recommended one",
+      "paragrafi": [
+        "For every finished matchday the diary compares the line-up you fielded with the one the system would have recommended, with the expected points and the ones scored. The system redoes the choice with only the data that existed before the matchday, but with today's squad (past squads are not kept), and the bench is the one chosen by the system, also for yours.",
+        "With few matchdays it is just a story: the swing in points is much bigger than the difference between the two choices."
+      ],
+      "rimandi": ["Diary"]
+    },
+    "fonti": {
+      "titolo": "Where the data comes from and how often",
+      "paragrafi": [
+        "Fantacalcio.it: list of players (once a day), fixtures, ratings of the matchdays (the played ones that are missing plus those finished less than 4 days ago, because corrections arrive later) and probable line-ups (at every update).",
+        "Understat: xG, xA, shots, minutes and penalties taken, match by match (totals at every update, detail of the played matches that are missing). It is the only source of these statistics: if it disappeared, there would be a paid plan B still to be decided.",
+        "football-data.co.uk: only team statistics (xG, shots, corners, cards) for the matches played and for the next ones (at most every 6 hours), kept in shadow.",
+        "On the server the update is scheduled at 8, 13, 17 and 21 every day. Requests are polite: one at a time, at least a second of pause, up to 3 attempts, and what is already there is not downloaded again. The data can always be rebuilt from scratch.",
+        "The European cups (for rotation) are dates entered by hand and must be updated."
+      ],
+      "rimandi": ["Data status"]
+    },
+    "qualita-dati": {
+      "titolo": "Clean data: names, checks and risks of the sources",
+      "paragrafi": [
+        "The player code of Fantacalcio.it is the key to everything. The other sources write names differently (\"Laurientè\", \"Lauriente\", \"Esposito Se.\", \"N'Dicka\"): a matching module removes accents, dots and apostrophes and matches by team and similarity. The safe matches (same team) are kept, those by similarity are redone every time: they are the places where an error hides best.",
+        "After every update, consistency checks run: 10 matches per matchday, at least 180 ratings per finished matchday, the sum of the players' xG close to that of the match (maximum gap 1), 11 starters per team. Up to 2% of out-of-range rows is source noise, beyond that it is a warning, and everything can be seen in Data status.",
+        "Honest risk: Understat is the only source of xG, xA and penalties and Fantacalcio.it the one of ratings and probable line-ups. Their terms are not designed for use by a program: for personal use the risk is low, but it must be rethought before opening the app to many people (permissions, alternative sources)."
+      ],
+      "rimandi": ["Data status > Checks"]
+    },
+    "ombra": {
+      "titolo": "Sources in shadow mode and how they are promoted",
+      "paragrafi": [
+        "\"In shadow\" means: the data is collected and kept, but the model does not read it. It serves to understand, with a measurement, whether it would be worth anything before trusting it. Today there are two sources in shadow: the extra columns of football-data.co.uk (team xG, shots, shots on target) and a second source of probable line-ups.",
+        "The tests are launched with verifica --fonti (two variants: football-data team xG in place of Understat's, an average between xG and shots on target; plus the second source of probable line-ups).",
+        "Promotion rule: a source enters the model only if the error on ratings falls by at least 0.5% and the improvement is there in at least 2 of the last 3 measured seasons. For the data plan an improvement of 1% in the Brier of appearances is also needed and, on line-up points, +0.3 per matchday over at least 100 matchdays. With only one season of data the result is \"indicative only\", it is not promoted. The decision is taken by a person looking at the numbers: the model does not change on its own.",
+        "Status on 30/10/2026: no source has been promoted. On the development computer the table of the extra columns is empty (0 matches with the new data), so the test says \"nothing to measure\"; the real collection counts are on the server and can be read in Data status."
+      ],
+      "rimandi": ["Data status > Sources in shadow"]
+    },
+    "avatar": {
+      "titolo": "Avatars: faces invented by the code",
+      "paragrafi": [
+        "The illustrated faces are not photos and do not look like anyone in particular: they are generated from the player code. The same code always gives the same face, on web, iPhone and Android, because every platform uses the same pseudo-random number generator (mulberry32, 32-bit) with the same seed: player code × 0x9E3779B1, XORed with 0xA5C1D1CE.",
+        "With that seed ten draws are made always in the same order (skin, face shape, hairstyle, hair colour, beard, eyebrows, eyes, mouth, accessory, ears), each with weights that make common combinations more frequent. The possible combinations are 2,903,040. A few rules avoid odd pairings (for example no earring with long, afro or wavy hair). Shirt and background colours come from the team's colours; goalkeepers have a grey shirt and gloves.",
+        "To give a little of the real player, for those with a crop already downloaded (about 260 out of 600 do not) four rough traits are used, calculated only once and saved in a file: skin tone, hair colour, hairstyle family (shaved, short, long, curly) and beard yes/no. No photo stays in the app or in the repository.",
+        "The full specification, with test vectors identical for all platforms, is in docs/AVATAR.md: a test checks that the generator always gives the same indexes."
+      ],
+      "formula": "seed = (code × 0x9E3779B1) XOR 0xA5C1D1CE (32 bit)\nweighted choice: n = floor(draw × sum of weights), the parts are scanned adding up the weights"
+    },
+    "tecnologia": {
+      "titolo": "The technology in brief",
+      "paragrafi": [
+        "The brain is in Python (pandas and numpy for the calculations). The server is FastAPI; the archive of downloaded data is a SQLite database in a single file, which can be rebuilt from scratch, while your things (rules, squads, choices, observations, settings) are small JSON files written safely (first to a temporary file, then renamed, so a failure halfway does not ruin the old one).",
+        "The web app is a PWA (it installs on the phone) made with HTML, CSS and JavaScript with no libraries or build step. The iPhone app is native, in SwiftUI; the Android one is in Jetpack Compose with Material 3 (at an early stage). They all talk to the same server: the texts and numbers on this page are the same everywhere.",
+        "The server can run on a small, cheap computer. The app updates itself: every 10 minutes the server checks GitHub, installs the new version, restarts the service, checks that it responds and, if not, goes back to the previous version. Tests are automatic (pytest, on GitHub at every change).",
+        "Phone alerts (line-up ready, changes in the probable line-ups, matchday summary) respect the \"quiet hours\" you set."
+      ],
+      "rimandi": ["What's new"]
+    },
+    "sicurezza": {
+      "titolo": "Backup and security in brief",
+      "paragrafi": [
+        "The backup is a single file with rules, squads, movements, choices, observations and alert settings. It contains no keys or notification subscriptions. When restoring, everything is checked first and the previous state is saved in a safety file. On the server there is also a nightly copy (the last 7).",
+        "Every request that changes something must have a special header from the app, otherwise it is rejected: it protects against sites that try to make your browser write. Personal resources use a version check (ETag and If-Match): if two devices modify the same thing together, the second is warned instead of overwriting.",
+        "With several active users: passwords saved with scrypt (costly parameters, about half a second and 64 MB per check), sessions, limits on attempts and use per user and per address, Excel files read in a separate process. Every user has their own folder and cannot see the others'. This mode is off by default.",
+        "Keys and secrets stay in the server folders and never in git, in logs or in requests."
+      ]
+    },
+    "limiti": {
+      "titolo": "The honest limits: what the model cannot do",
+      "paragrafi": [
+        "It does not know who really plays: the official line-ups come out too late, and until they do it relies on the probable line-ups of a single source. A last-minute absence makes the choice wrong, and the bench exists exactly for this.",
+        "It does not know the single duel (that defender against that forward), the weather, the referee, motivation, who takes set pieces (apart from penalties), the real position on the pitch, the exact length of injuries (only today's injury and the next matchday count), nor how much a teammate's absence opens up space. Mid-season transfers enter only with the few matches already played and with the price.",
+        "Fantasy football is dominated by chance: a goal is worth 3 points and happens rarely. Even an excellent model gets about 1.5 points wrong on a single player. In 2026-27, for the recommended line-up, the difference between points scored and expected swung by about 6 points on average from one matchday to the next: that is why next to the expected points the app does not write a \"small ±\" but a range \"between X and Y, 8 times out of 10\", about 16 points wide (from −8 to +8.5 around the expected points), calibrated exactly on these gaps.",
+        "Choosing well raises the probability of scoring points, it does not guarantee it: against bad days no line-up holds."
+      ]
+    },
+    "limiti-tecnici": {
+      "titolo": "Technical limits and risks of overfitting",
+      "paragrafi": [
+        "The simulation alone is too optimistic: it randomises only who gets a rating and the rating noise for the defence modifier, while goals, assists and ratings of those who play stay at their expected value. Its deviation (dev_simulata, on average 1.6 points over the 913 cases tested) is useful to compare two line-ups but not to estimate risk: the real gap between points scored and expected has a deviation of 6.7 points, with the 10th and 90th percentile at −7.9 and +8.3. That is why the \"between X and Y\" range you see is calibrated on the backtest: typical gap = root(6.47² + dev_simulata²); low = expected − 1.18 × typical gap; high = expected + 1.25 × typical gap. With a dev_simulata of 2 it goes from −8.0 to +8.5 points around the expected, about 16.5 wide, with a declared confidence of 0.8 (8 times out of 10). Measured coverage: 80% over the 913 cases (93 league squads and 820 randomly drawn squads, 41 matchdays), 76% on the league squads alone, 74% if the range is tuned on the random squads and tested on the league ones, 78% and 80% if it is tuned on one season and tested on the other (compared with 24% for the old ±1.28 × dev_simulata range). On the league squads the gap is a bit larger (about 8 against 6.5): while their cases are fewer than 200 the range is marked \"indicative\". The range is almost the same for every line-up: today the model cannot tell which one is \"safer\" (a part that grows with the expected bonuses was tried and removed, correlation with the gap about 0). To choose between two line-ups it is fine anyway, because the comparison is identical for both.",
+        "The simulations treat appearances as independent between players: but when a team rotates, or there is a flu in the dressing room, they come out together. The goals model is a Poisson per team, independent between the two teams; the rate of the single match comes from team strength and has no variability of its own.",
+        "The samples are small: 41 matchdays in all and only 8 of the current season; the cases with enough squads are 93. Differences of 0.3 points per matchday are noise. The estimate of the gain of styles and oracles has a standard error that in some cases exceeds the gain.",
+        "The most serious risk when improving a model is overfitting: tweaking parameters until the numbers on the past improve, adapting to chance and not to a real phenomenon. The current parameters are tuned on one season (2025-26, matchdays 5-38) and checked on another (2026-27). That is why every change is tested with verifica before and after; a new source enters only if it wins in at least two seasons and beyond a threshold; and no number above should be read as a promise.",
+        "Some constants are chosen by hand and not measured: penalty conversion (78%), the 20% of saved penalties, the typical minutes of a starter (78) and of a substitute (22), the probability that a missing starter comes on anyway (0.6), the 4% of missing rating, the rotation factor (0.93). They are reasonable but should be reconfirmed with more data."
+      ]
+    }
+  },
+  "glossario": [
+    {"termine": "Fantasy score", "spiegazione": "A player's score in a matchday: rating plus bonuses and maluses (goals, assists, cards, clean sheet...) with your league's rules."},
+    {"termine": "Expected fantasy score", "spiegazione": "The fantasy score SchieraXI expects from a player in a match, IF he plays, with your league's rules: opponent, home or away, form, penalties, bonuses and maluses. It always comes with \"plays N%\". For a whole lineup we speak of expected points."},
+    {"termine": "mu", "spiegazione": "The expected fantasy score, as a formula: the fantasy score the model expects IF the player gets a rating."},
+    {"termine": "p (probability of getting a rating)", "spiegazione": "How likely it is that the player goes on the pitch enough to get a rating. The expected points are p × mu."},
+    {"termine": "xG (expected goals)", "spiegazione": "For each shot, the probability that it is a goal based on position and type of shot; added up it gives the \"goals the team or player should have scored\". xA does the same for the final pass."},
+    {"termine": "Poisson", "spiegazione": "Distribution of rare, independent events (like goals): from an average number of events it gives the probability of 0, 1, 2... events. With average m, P(zero) = e^-m."},
+    {"termine": "Clean sheet", "spiegazione": "A match with no goals conceded. It gives the goalkeeper a bonus in your league."},
+    {"termine": "Decay", "spiegazione": "Weight that falls for older matches (0.92 for each matchday): it makes the estimate sensitive to recent form."},
+    {"termine": "Shrinkage", "spiegazione": "Mixing an estimate with a starting estimate (the role average or the one linked to the price): it prevents few data from giving exaggerated values."},
+    {"termine": "Initial price", "spiegazione": "The player's price at the start of the season, set before the league: it sums up the experts' expectations and is the starting point for players with few matches."},
+    {"termine": "Expected rating", "spiegazione": "The part of the expected fantasy score that comes from the rating, without bonuses and maluses."},
+    {"termine": "Fantasy average", "spiegazione": "The average of a player's fantasy scores. It is the simple choice the model is compared with."},
+    {"termine": "Simulation (Monte Carlo)", "spiegazione": "Repeating a made-up matchday hundreds of times, drawing at random who plays, to see the average and the variability of the points."},
+    {"termine": "Percentile", "spiegazione": "The 10th percentile is the value below which 10% of the simulated matchdays fall (bad day); the 90th is the one above which 10% sit (exceptional day)."},
+    {"termine": "Defence modifier", "spiegazione": "A team bonus that depends on the average rating of the goalkeeper and the three best defenders, in steps decided by the league."},
+    {"termine": "Free / by-role bench", "spiegazione": "Free: the first on the bench who can come in. By role: first someone of the same role as the missing starter."},
+    {"termine": "Default rating", "spiegazione": "Rating given by the league to a starter with no rating and no substitute, if provided."},
+    {"termine": "Style", "spiegazione": "A line-up choice preset: from Very safe to Very risky."},
+    {"termine": "Balance", "spiegazione": "Credits paid or received in a trade to make up for the difference in value."},
+    {"termine": "Release refund", "spiegazione": "Share of the price paid that you would get back by releasing a player (half, by league assumption)."},
+    {"termine": "Value over replacement", "spiegazione": "A player's points minus those of a low-level replacement of his role: it measures how much he is really worth at auction."},
+    {"termine": "Backtest", "spiegazione": "Redoing the calculations on past matchdays using only what was known before each one, to measure how well it would have worked."},
+    {"termine": "RMSE", "spiegazione": "Root mean square error: the typical error of an estimate, with more weight on large errors."},
+    {"termine": "Brier", "spiegazione": "Error of probabilities: mean of the squares between predicted probability and result (0 or 1). Lower is better."},
+    {"termine": "Calibration", "spiegazione": "Whether, among the players given a 70% chance of playing, about 70% really play."},
+    {"termine": "Oracle", "spiegazione": "Experiment: giving the model a truth about the future to measure what knowing it in advance would be worth."},
+    {"termine": "Source in shadow", "spiegazione": "Data collected but not yet used by the model, until a measurement shows it is useful."},
+    {"termine": "Promotion", "spiegazione": "A source moving from shadow into the model: it needs an error improvement of at least 0.5% in at least 2 seasons out of 3."},
+    {"termine": "Overfitting", "spiegazione": "A model tweaked too much on the past that does well on that data and worse on the future."},
+    {"termine": "Rotation", "spiegazione": "Resting starters, typical around the cups."},
+    {"termine": "mulberry32", "spiegazione": "A small pseudo-random number generator: from the same seed it always gives the same sequence. Used for avatars."},
+    {"termine": "PWA", "spiegazione": "A web application that installs on the phone like an app, without going through the store."},
+    {"termine": "ETag / If-Match", "spiegazione": "A version label of a resource: it lets the server notice that two devices are changing the same thing."}
+  ]
+}

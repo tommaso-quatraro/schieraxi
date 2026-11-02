@@ -1,0 +1,4 @@
+# Versioni imposte a script/blocca_dipendenze.py (una riga nome==versione [; python_version < "X.Y"] e il motivo).
+# Con il marcatore la versione vale solo per i Python più vecchi; il server (Python 3.12) e lo sviluppo usano la versione principale.
+numpy==2.4.6 ; python_version < "3.12"       # numpy 2.5 richiede Python 3.12; la CI con Debian 12 usa ancora 3.11
+soupsieve==2.9.2 ; python_version < "3.12"   # soupsieve 3.x richiede Python 3.11.5 (la 3.0.1 è ritirata); Debian 12 ha 3.11.2
