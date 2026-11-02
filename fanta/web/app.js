@@ -3286,9 +3286,9 @@ function stepper(id, valore, { passo = 0.5, min = -50, max = 999, dec = 1 } = {}
 }
 const leggiN = id => { const el = $("#" + id); return el ? Number(String(el.value).replace(",", ".")) : NaN; };
 const interruttore = (id, testo, acceso, aiuto = "") => `<label class="interruttore-ios"><span>${testo}${aiuto ? `<small>${aiuto}</small>` : ""}</span><input type="checkbox" id="${id}" ${acceso ? "checked" : ""}><i></i></label>`;
-// Il campo della riga prende come nome per i lettori di schermo il testo della riga (senza tag): prima restava senza nome o
+// Il campo della riga prende come nome per i lettori di schermo il testo della riga (testo semplice, passato per esc): prima restava senza nome o
 // con il titolo della sezione («Gol» anche per l'assist).
-const rigaRegola = (etichetta, controllo, aiuto = "") => `<div class="riga-regola"><span>${etichetta}${aiuto ? `<small>${aiuto}</small>` : ""}</span>${controllo.replace("<input ", `<input aria-label="${String(etichetta).replace(/<[^>]*>/g, "").replace(/"/g, "&quot;")}" `)}</div>`;
+const rigaRegola = (etichetta, controllo, aiuto = "") => `<div class="riga-regola"><span>${etichetta}${aiuto ? `<small>${aiuto}</small>` : ""}</span>${controllo.replace("<input ", `<input aria-label="${esc(etichetta)}" `)}</div>`;
 
 document.addEventListener("click", ev => {
   const b = ev.target.closest(".stepper button[data-step]");
