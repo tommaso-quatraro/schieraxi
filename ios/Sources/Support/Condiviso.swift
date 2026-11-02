@@ -106,6 +106,17 @@ struct RiassuntoOggi: Codable, Equatable {
     var dubbi: [DubbioRiassunto]?
     /// Il numero nella lega (opzionale: un riassunto salvato da una versione vecchia non ce l'ha).
     var giornataLega: Int?
+    /// La fase della giornata (`prima`, `in_corso`, `finita`). Nil = server senza fasi o riassunto vecchio: come prima.
+    var fase: String?
+    /// `in_corso`: punti già fatti. `finita`: punti fatti nella giornata appena chiusa.
+    var puntiFatti: Double?
+    /// `in_corso`: punti previsti a fine giornata (fatti + attesi di chi manca). `finita`: punti attesi prima di quella giornata.
+    var puntiFine: Double?
+    /// `in_corso`: quanti di chi va a punteggio devono ancora giocare.
+    var ancoraDaGiocare: Int?
+    /// `finita`: la giornata appena chiusa (Serie A e lega); `giornata` e `inizio` sono già quelli della prossima.
+    var giornataChiusa: Int?
+    var giornataChiusaLega: Int?
 
     var etichettaGiornata: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Nessuna giornata" }
     var siglaGiornata: String { giornata.map { TempiLega.sigla(serieA: $0, lega: giornataLega) } ?? "G–" }
@@ -114,7 +125,7 @@ struct RiassuntoOggi: Codable, Equatable {
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
 
     init(giornata: Int?, inizio: Date?, modulo: String?, punti: Double?, daControllare: Int, probabili: Bool?, scaricatoIl: Date,
-         dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil) {
+         dubbi: [DubbioRiassunto]? = nil, giornataLega: Int? = nil, fase: FaseRiassunto? = nil) {
         self.giornata = giornata
         self.inizio = inizio
         self.modulo = modulo
@@ -124,11 +135,36 @@ struct RiassuntoOggi: Codable, Equatable {
         self.scaricatoIl = scaricatoIl
         self.dubbi = dubbi
         self.giornataLega = giornataLega
+        if let fase { applica(fase) }
     }
+
+    /// Mette i dati della fase. Fuori dalla fase `prima` i «Da controllare» non hanno senso (la formazione è chiusa): si azzerano.
+    private mutating func applica(_ f: FaseRiassunto) {
+        fase = f.fase
+        guard f.chiusa else { return }
+        daControllare = 0
+        dubbi = []
+        if let c = f.inCorso {
+            puntiFatti = c.puntiFatti
+            puntiFine = c.puntiPrevisti
+            ancoraDaGiocare = c.ancoraDaGiocare
+        } else if let r = f.riepilogo {
+            puntiFatti = r.puntiFatti
+            puntiFine = r.puntiAttesi
+            giornataChiusa = r.giornata
+            giornataChiusaLega = r.giornataLega
+        }
+    }
+
+    /// Scadenza passata, partite in corso o da giocare.
+    var inCorso: Bool { fase == FaseRiassunto.faseInCorso }
+    /// La giornata di prima è finita da poco: riepilogo e prossima.
+    var finita: Bool { fase == FaseRiassunto.faseFinita }
 
     /// Dalla risposta di «oggi» (la stessa per l'app e per il widget).
     init(oggi: Oggi, scaricatoIl: Date = Date()) {
-        let daControllare = (oggi.avvisi ?? []).filter { $0.inFormazione == true }
+        let fase = FaseRiassunto(fase: oggi.fase?.valore, inCorso: oggi.inCorso?.valore, riepilogo: oggi.riepilogo?.valore)
+        let daControllare = fase.chiusa ? [] : (oggi.avvisi ?? []).filter { $0.inFormazione == true }
         self.init(giornata: oggi.giornata,
                   inizio: Quando.data(oggi.chiusura),
                   modulo: oggi.formazione?.modulo,
@@ -137,7 +173,87 @@ struct RiassuntoOggi: Codable, Equatable {
                   probabili: oggi.conProbabili,
                   scaricatoIl: scaricatoIl,
                   dubbi: daControllare.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) },
-                  giornataLega: oggi.giornataLega)
+                  giornataLega: oggi.giornataLega,
+                  fase: fase)
+    }
+}
+
+/// La fase della giornata come arriva dal server (`fase`, `in_corso`, `riepilogo` di `/api/oggi`, e di `/api/widget` quando li ha).
+struct FaseRiassunto: Equatable {
+    static let faseInCorso = "in_corso"
+    static let faseFinita = "finita"
+
+    var fase: String?
+    var inCorso: GiornataInCorso?
+    var riepilogo: RiepilogoGiornata?
+
+    /// I blocchi valgono solo nella loro fase (come `Oggi.giornataInCorso` e `Oggi.riepilogoGiornata` nell'app).
+    init(fase: String?, inCorso: GiornataInCorso?, riepilogo: RiepilogoGiornata?) {
+        self.fase = fase
+        self.inCorso = fase == Self.faseInCorso ? inCorso : nil
+        self.riepilogo = fase == Self.faseFinita ? riepilogo : nil
+    }
+
+    /// true se la formazione della giornata è chiusa (in corso o finita): niente «Da controllare».
+    var chiusa: Bool { fase == Self.faseInCorso || fase == Self.faseFinita }
+}
+
+// MARK: testi delle fasi per i widget (qui perché si provano con i test)
+
+extension RiassuntoOggi {
+    /// «Giornata 7 di lega (Serie A 10)» della giornata appena chiusa, o «Giornata appena finita».
+    var etichettaGiornataChiusa: String {
+        giornataChiusa.map { TempiLega.etichetta(serieA: $0, lega: giornataChiusaLega) } ?? "Giornata appena finita"
+    }
+
+    /// «G7» o «G10» della giornata appena chiusa.
+    var siglaGiornataChiusa: String { giornataChiusa.map { TempiLega.sigla(serieA: $0, lega: giornataChiusaLega) } ?? "G–" }
+
+    /// true se i widget mostrano la fase (punti fatti) invece del conto alla rovescia. Senza i numeri (server senza
+    /// `in_corso`/`riepilogo`) restano come prima, ma comunque senza «Da controllare».
+    var mostraFase: Bool {
+        if inCorso { return puntiFatti != nil }
+        if finita { return puntiFatti != nil || giornataChiusa != nil }
+        return false
+    }
+
+    /// Il numero grande del widget in corso o finito: i punti fatti, «—» se non si sanno.
+    var puntiFattiTesto: String { puntiFatti.map { Formato.punti($0) } ?? "—" }
+
+    /// «circa 72,4 a fine giornata» (in corso) o «66,0 attesi» (finita); nil se il numero manca.
+    var puntiFineTesto: String? {
+        guard let p = puntiFine, p.isFinite else { return nil }
+        return inCorso ? "circa \(Formato.punti(p)) a fine giornata" : "\(Formato.punti(p)) attesi"
+    }
+
+    /// «3 devono ancora giocare», «Hanno giocato tutti»; nil se il numero non c'è.
+    var ancoraDaGiocareTesto: String? {
+        guard let n = ancoraDaGiocare, n >= 0 else { return nil }
+        switch n {
+        case 0: return "Hanno giocato tutti"
+        case 1: return "1 deve ancora giocare"
+        default: return "\(n) devono ancora giocare"
+        }
+    }
+
+    /// Una frase per VoiceOver sulla fase; nil nella fase `prima` (lì valgono i testi di sempre).
+    var descrizioneFase: String? {
+        if inCorso {
+            var t = "\(etichettaGiornata) in corso: "
+            t += puntiFatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non ancora noti"
+            if let p = puntiFine, p.isFinite { t += ", circa \(Formato.punti(p)) a fine giornata" }
+            if let a = ancoraDaGiocareTesto { t += ". \(a)" }
+            return t + "."
+        }
+        if finita {
+            var t = "\(etichettaGiornataChiusa) finita: "
+            t += puntiFatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non ancora noti"
+            if let p = puntiFine, p.isFinite { t += " su \(Formato.punti(p)) attesi" }
+            t += ". Prossima: \(etichettaGiornata)"
+            if let inizio { t += ", scadenza \(Quando.leggibile(inizio))" }
+            return t + "."
+        }
+        return nil
     }
 }
 

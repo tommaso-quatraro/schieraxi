@@ -50,7 +50,10 @@ struct VistaWidget: View {
 
     var body: some View {
         Group {
-            if let r = voce.riassunto {
+            if let r = voce.riassunto, r.mostraFase {
+                // giornata in corso (punti fatti e previsti) o appena finita (riepilogo e prossima): niente «Da controllare»
+                vistaFase(r)
+            } else if let r = voce.riassunto {
                 switch famiglia {
                 case .systemMedium: medio(r)
                 case .accessoryCircular: circolare(r)
@@ -63,8 +66,150 @@ struct VistaWidget: View {
             }
         }
         .sfondoWidget(accessorio: accessorio)
-        // Un tocco sul widget apre l'app sulla formazione (o su «Collega il widget» se non è collegato).
-        .widgetURL(voce.tocco(URL(string: "schieraxi://formazione")))
+        // Un tocco sul widget apre l'app sulla formazione (o su «Collega il widget» se non è collegato); durante la giornata
+        // in corso o appena finita apre Oggi, dove ci sono i punti fatti e il riepilogo.
+        .widgetURL(voce.tocco(URL(string: voce.riassunto?.mostraFase == true ? "schieraxi://oggi" : "schieraxi://formazione")))
+    }
+
+    // MARK: giornata in corso o appena finita
+
+    private func vistaFase(_ r: RiassuntoOggi) -> some View {
+        Group {
+            switch famiglia {
+            case .systemMedium: faseMedio(r)
+            case .accessoryCircular: faseCircolare(r)
+            case .accessoryRectangular: faseRettangolare(r)
+            case .accessoryInline: faseRiga(r)
+            default: fasePiccolo(r)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(r.descrizioneFase ?? r.etichettaGiornata)
+    }
+
+    /// «Giornata 8» (in corso) o «Giornata 7» (appena finita), con il simbolo della fase.
+    private func titoloFase(_ r: RiassuntoOggi) -> some View {
+        Label(r.inCorso ? r.etichettaGiornata : r.etichettaGiornataChiusa,
+              systemImage: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
+            .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
+    }
+
+    private func puntiFattiGrandi(_ r: RiassuntoOggi, stile: Font.TextStyle) -> some View {
+        Text(r.puntiFattiTesto)
+            .font(.system(stile, design: .rounded).weight(.bold)).monospacedDigit()
+            .minimumScaleFactor(0.5).lineLimit(1)
+            .widgetAccentable()
+    }
+
+    /// Sotto i numeri: copia vecchia o widget da ricollegare.
+    @ViewBuilder
+    private func statoDati(_ r: RiassuntoOggi) -> some View {
+        if voce.accessoRichiesto {
+            Label("Tocca per ricollegare", systemImage: "link").font(.caption2.bold()).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
+        } else if voce.datiSalvati {
+            Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash")
+                .font(.caption2).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
+        }
+    }
+
+    /// «Prossima: 2g 4h» (conto alla rovescia alla scadenza della prossima giornata).
+    private func prossimaBreve(_ r: RiassuntoOggi) -> some View {
+        HStack(spacing: 3) {
+            Text("Prossima:")
+            conto(r).monospacedDigit()
+        }
+        .lineLimit(1).minimumScaleFactor(0.6)
+    }
+
+    private func fasePiccolo(_ r: RiassuntoOggi) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            titoloFase(r)
+            Text(r.inCorso ? "In corso" : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
+            Spacer(minLength: 0)
+            puntiFattiGrandi(r, stile: .largeTitle)
+            Text("punti fatti").font(.caption2).foregroundStyle(.white.opacity(0.8))
+            if let fine = r.puntiFineTesto {
+                Text(fine).font(.caption2.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            }
+            if r.finita, r.inizio != nil {
+                prossimaBreve(r).font(.caption2).foregroundStyle(.white.opacity(0.8))
+            }
+            statoDati(r)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func faseMedio(_ r: RiassuntoOggi) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                titoloFase(r)
+                Text(r.inCorso ? "In corso" : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
+                Spacer(minLength: 0)
+                puntiFattiGrandi(r, stile: .largeTitle)
+                Text("punti fatti").font(.caption).foregroundStyle(.white.opacity(0.8))
+                if r.finita, let fine = r.puntiFineTesto {
+                    Text(fine).font(.caption.weight(.semibold)).monospacedDigit().foregroundStyle(.white.opacity(0.9))
+                }
+                Spacer(minLength: 0)
+                statoDati(r)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 4) {
+                if r.inCorso {
+                    Label("A fine giornata", systemImage: "chart.line.uptrend.xyaxis").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    Text(r.puntiFine.map { "circa \(Formato.punti($0))" } ?? "—")
+                        .font(.system(.title2, design: .rounded).weight(.bold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                    if r.punti != nil {
+                        Text("attesi prima: \(puntiTesto(r))").font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.85))
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                    }
+                    Spacer(minLength: 0)
+                    if let a = r.ancoraDaGiocareTesto {
+                        Text(a).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
+                    }
+                } else {
+                    Label(r.etichettaGiornata, systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    conto(r).font(.system(.title2, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
+                    if let inizio = r.inizio {
+                        Text("alla scadenza, \(Quando.leggibile(inizio))").font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func faseCircolare(_ r: RiassuntoOggi) -> some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            VStack(spacing: 0) {
+                Text(r.inCorso ? r.siglaGiornata : r.siglaGiornataChiusa).font(.caption2)
+                Text(r.puntiFattiTesto).font(.caption.bold()).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1).widgetAccentable()
+                Text("fatti").font(.caption2)
+            }
+        }
+    }
+
+    private func faseRettangolare(_ r: RiassuntoOggi) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(r.inCorso ? "\(r.siglaGiornata) in corso" : "\(r.siglaGiornataChiusa) finita").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            Text("\(r.puntiFattiTesto) punti fatti").font(.headline).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
+            if r.finita, r.inizio != nil {
+                prossimaBreve(r).font(.caption2)
+            } else if let fine = r.puntiFineTesto {
+                Text(fine).font(.caption2).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func faseRiga(_ r: RiassuntoOggi) -> some View {
+        Label(r.inCorso ? "\(r.siglaGiornata): \(r.puntiFattiTesto) punti, in corso" : "\(r.siglaGiornataChiusa): \(r.puntiFattiTesto) punti fatti",
+              systemImage: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
     }
 
     // MARK: pezzi comuni

@@ -58,7 +58,14 @@ struct VistaDubbi: View {
                 Spacer()
                 Text(r.etichettaGiornata).font(.caption2).foregroundStyle(.white.opacity(0.7))
             }
-            if r.daControllare == 0 {
+            if r.inCorso || r.finita {
+                // formazione chiusa: i dubbi non contano più (i punti stanno in Oggi e nel widget Prossima giornata)
+                Spacer(minLength: 0)
+                Text(r.inCorso ? "Giornata in corso" : "Giornata finita").font(.headline)
+                Text(r.inCorso ? "La formazione è chiusa: i punti fatti sono in Oggi." : "Si ricomincia con la prossima giornata.")
+                    .font(.caption).foregroundStyle(.white.opacity(0.8))
+                Spacer(minLength: 0)
+            } else if r.daControllare == 0 {
                 Spacer(minLength: 0)
                 Text("Nessun dubbio in formazione").font(.headline)
                 Text(r.probabili == false ? "Le probabili non sono ancora uscite." : "Tutti i titolari sono a posto.")
@@ -109,7 +116,8 @@ struct VistaDubbi: View {
 
     private func rettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(r.daControllare > 0 ? "Da controllare: \(r.daControllare)" : "Formazione a posto").font(.headline)
+            Text(r.daControllare > 0 ? "Da controllare: \(r.daControllare)" : r.inCorso ? "Giornata in corso" : r.finita ? "Giornata finita" : "Formazione a posto")
+                .font(.headline)
             if let dubbi = r.dubbi, !dubbi.isEmpty {
                 ForEach(dubbi.prefix(2)) { d in
                     Text("\(d.nome) · \(d.descrizione)").font(.caption2).lineLimit(1)

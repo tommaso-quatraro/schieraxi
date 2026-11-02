@@ -19,6 +19,7 @@ struct OggiView: View {
     @ScaledMetric(relativeTo: .body) private var latoIcona: CGFloat = 24
     @State private var novitaAnimata = false
     @Environment(\.accessibilityReduceMotion) private var ridotto
+    @Environment(\.dynamicTypeSize) private var dimensioneTesto
     @State private var tutteLeCose = false
     @Environment(\.scenePhase) private var fase
 
@@ -143,8 +144,9 @@ struct OggiView: View {
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .vetro(in: Capsule())
             // Conto alla rovescia e maglia sulla stessa riga: il riquadro è più basso e il resto di Oggi sale.
-            HStack(alignment: .center, spacing: 8) {
-                contoAllaRovescia(oggi)
+            // Con le misure di accessibilità grandi il pulsante della divisa va sotto: il testo della fase resta intero.
+            rigaTestata {
+                contoAllaRovescia(oggi).layoutPriority(1)
                 if let squadra = oggi.formazione?.squadra {
                     if immagini.haImmagine(squadra, tipo: "maglia") {
                         StemmaSquadra(nome: squadra, tipo: "maglia", dimensione: 56, nascondiSeMancante: true)
@@ -177,6 +179,13 @@ struct OggiView: View {
         .accessibilityLabel(oggi.etichettaGiornata ?? "Giornata")
     }
 
+    /// Riga della testata: orizzontale di norma, verticale con le misure di accessibilità (testo molto grande).
+    private var rigaTestata: AnyLayout {
+        dimensioneTesto.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+    }
+
     @ViewBuilder
     private func contoAllaRovescia(_ oggi: Oggi) -> some View {
         if let inizio = Quando.data(oggi.chiusura) {
@@ -204,7 +213,7 @@ struct OggiView: View {
                 .accessibilityElement(children: .combine)
             }
         } else {
-            Text(oggi.iniziata == true ? "In corso" : "—")
+            Text(oggi.iniziata == true ? "In corso" : "—").lineLimit(1).minimumScaleFactor(0.5)
                 .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded)).foregroundStyle(.white)
         }
     }

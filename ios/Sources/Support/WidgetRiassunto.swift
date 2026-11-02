@@ -190,6 +190,11 @@ struct RiassuntoWidget: Decodable {
     private var scambioLetto: Facoltativo<ScambioWidget>?
     private var svincolatoLetto: Facoltativo<SvincolatoWidget>?
     private var liveLetto: Facoltativo<LiveWidget>?
+    /// Fase della giornata e i suoi blocchi, come in `/api/oggi` (facoltativi: un server che non li manda = comportamento di sempre).
+    private var faseLetta: Facoltativo<String>?
+    var fase: String? { faseLetta?.valore }
+    private var inCorsoLetto: Facoltativo<GiornataInCorso>?
+    private var riepilogoLetto: Facoltativo<RiepilogoGiornata>?
     var mancano: [String]?
     /// Quali funzioni sono accese per questo utente (facoltativo: un server vecchio non lo manda). Chiave assente = acceso.
     var funzioni: [String: Bool]?
@@ -210,7 +215,14 @@ struct RiassuntoWidget: Decodable {
         case scambioLetto = "scambio"
         case svincolatoLetto = "svincolato"
         case liveLetto = "live"
+        // con convertFromSnakeCase «in_corso» arriva come «inCorso»
+        case faseLetta = "fase"
+        case inCorsoLetto = "inCorso"
+        case riepilogoLetto = "riepilogo"
     }
+
+    /// La fase con i suoi blocchi (ognuno solo nella sua fase).
+    var faseGiornata: FaseRiassunto { FaseRiassunto(fase: fase, inCorso: inCorsoLetto?.valore, riepilogo: riepilogoLetto?.valore) }
 
     /// «Giornata 7 di lega (Serie A 10)», «Giornata 10» o nil se la giornata non si conosce.
     var etichettaGiornata: String? { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } }
@@ -219,8 +231,8 @@ struct RiassuntoWidget: Decodable {
     /// Quando comincia la giornata (la scadenza della formazione).
     var inizio: Date? { Quando.data(scadenza) }
 
-    /// Chi della formazione ha un dubbio, un infortunio o una squalifica.
-    var daControllare: [GiocatoreWidget] { (avvisi ?? []).filter { $0.inFormazione == true } }
+    /// Chi della formazione ha un dubbio, un infortunio o una squalifica. Vuoto a formazione chiusa (giornata in corso o finita).
+    var daControllare: [GiocatoreWidget] { faseGiornata.chiusa ? [] : (avvisi ?? []).filter { $0.inFormazione == true } }
 
     /// I giocatori della mia rosa che giocano a breve, in ordine di orario (solo con la partita nota).
     func giocanoPresto(dopo adesso: Date = Date(), massimo: Int = 8) -> [GiocatoreWidget] {
@@ -236,7 +248,7 @@ struct RiassuntoWidget: Decodable {
         return RiassuntoOggi(giornata: giornata, inizio: inizio, modulo: formazione?.modulo, punti: formazione?.puntiAttesi,
                              daControllare: dubbi.count, probabili: conProbabili, scaricatoIl: scaricatoIl,
                              dubbi: dubbi.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) },
-                             giornataLega: giornataLega)
+                             giornataLega: giornataLega, fase: faseGiornata)
     }
 
     static func leggi(_ dati: Data) -> RiassuntoWidget? {

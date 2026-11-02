@@ -77,11 +77,44 @@ enum DatiGalleria {
         return Data(t.utf8)
     }
 
+    /// Lo stesso testo con la fase della giornata (`in_corso` o `finita`), come la manderà `/api/widget`: per le foto delle fasi.
+    static func json(fase: String) -> Data {
+        let base = json(parziali: false)
+        guard var d = (try? JSONSerialization.jsonObject(with: base)) as? [String: Any] else { return base }
+        d["fase"] = fase
+        if fase == "in_corso" {
+            d["iniziata"] = true
+            d["scadenza"] = data(-90)
+            d["prima_partita"] = data(-80)
+            let inCorso: [String: Any] = ["giornata": 11, "giornata_lega": 8, "formazione_di": "tua", "punti_fatti": 41.5,
+                                          "punti_attesi_restanti": 30.9, "punti_previsti": 72.4, "ancora_da_giocare": 4,
+                                          "giocatori": [Any](), "sostituzioni": [Any](),
+                                          "partite": ["in_corso": 2, "finite": 3, "da_giocare": 5, "rinviate": 0]]
+            d["in_corso"] = inCorso
+        } else {
+            // finita: giornata, scadenza e formazione parlano già della prossima
+            d["giornata"] = 12
+            d["giornata_lega"] = 9
+            d["scadenza"] = data(3 * 24 * 60 + 200)
+            d["prima_partita"] = data(3 * 24 * 60 + 200)
+            d["iniziata"] = false
+            d["con_probabili"] = false
+            let riepilogo: [String: Any] = ["giornata": 11, "giornata_lega": 8, "formazione_di": "tua", "nel_diario": true,
+                                            "punti_fatti": 69.5, "punti_attesi": 73.7,
+                                            "consigliata": ["punti_fatti": 71.0, "punti_attesi": 74.1]]
+            let prossima: [String: Any] = ["giornata": 12, "giornata_lega": 9, "scadenza": data(3 * 24 * 60 + 200),
+                                           "prepara_da": data(200), "con_probabili": false]
+            d["riepilogo"] = riepilogo
+            d["prossima"] = prossima
+        }
+        return (try? JSONSerialization.data(withJSONObject: d)) ?? base
+    }
+
     static func voce(_ tipo: String) -> Voce {
         if tipo == "vuoto" {
             return Voce(date: Date(), riassunto: nil, datiSalvati: false, indirizzoMancante: true, diagnostica: "Gruppo condiviso: non disponibile (prova)")
         }
-        let w = RiassuntoWidget.leggi(json(parziali: tipo == "parziali"))
+        let w = RiassuntoWidget.leggi(tipo == "in_corso" || tipo == "finita" ? json(fase: tipo) : json(parziali: tipo == "parziali"))
         return Voce(date: Date(), riassunto: w?.comeRiassuntoOggi(), datiSalvati: tipo == "salvati", widget: w)
     }
 

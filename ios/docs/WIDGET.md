@@ -18,6 +18,14 @@ Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limi
 
 Da fare: niente di fisso. Stile e modulo: il server non li mette in `/api/widget`.
 
+## Fasi della giornata
+
+Campi facoltativi `fase`, `in_corso`, `riepilogo` (gli stessi di `GET /api/oggi`, contratto «fasi della giornata» nel repository del server), letti da `RiassuntoWidget.faseGiornata` e portati in `RiassuntoOggi` (`fase`, `puntiFatti`, `puntiFine`, `ancoraDaGiocare`, `giornataChiusa`; test in `WidgetFasiTests`).
+- `in_corso`: niente «Da controllare» (anche Formazione e Cruscotto non mostrano i dubbi); Prossima giornata mostra i punti fatti grandi, «circa X a fine giornata», gli attesi di prima e quanti devono ancora giocare; il tocco apre Oggi.
+- `finita`: riepilogo della giornata chiusa (fatti contro attesi) e conto alla rovescia della prossima (`giornata` e `scadenza` sono già quelle della prossima); niente «Da controllare».
+- Senza `fase` (server che non la manda): come prima. Con la fase ma senza i numeri (`in_corso: null`): conto alla rovescia di sempre, ma senza «Da controllare».
+- Foto: galleria con `-DATI in_corso` / `-DATI finita` (`DatiGalleria.json(fase:)`), giri `iphone_fasi` e `ipad_fasi` di `scripts/screenshot_widget.sh`.
+
 ## Collegamento automatico (Apple ID gratuito + SideStore)
 
 L'utente non compila niente: l'app passa al widget l'indirizzo e il token `fw_` da sola. Come firma SideStore (sorgenti, ramo `develop`, novembre 2026):

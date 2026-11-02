@@ -1,6 +1,6 @@
 #!/bin/bash
 # Fotografa i widget nel simulatore (lanciato da .github/workflows/screenshot.yml).
-# L'app di anteprima (target AnteprimaWidget) mostra i widget con dati finti: -GALLERIA <widget>[-blocco], -DATI pieni|parziali|vuoto.
+# L'app di anteprima (target AnteprimaWidget) mostra i widget con dati finti: -GALLERIA <widget>[-blocco], -DATI pieni|parziali|vuoto|in_corso|finita.
 # Uso: scripts/screenshot_widget.sh <AnteprimaWidget.app per il simulatore> <cartella dei PNG>
 APP="${1:?manca il percorso di AnteprimaWidget.app}"
 USCITA="${2:-screenshot-widget}"
@@ -63,6 +63,9 @@ echo "iPhone: $NOME_IPHONE ($IOS_IPHONE)"
 avvia "$UDID_IPHONE"
 giro "$UDID_IPHONE" iphone_scuro dark 600 "${TUTTI[@]}" cruscotto:parziali cruscotto:vuoto punti:parziali scambio:parziali
 giro "$UDID_IPHONE" iphone_chiaro light 600 cruscotto formazione punti scambio oggi osservato
+# Fasi della giornata (in corso e appena finita): Prossima giornata mostra i punti, Da controllare non conta i dubbi.
+giro "$UDID_IPHONE" iphone_fasi dark 600 oggi:in_corso oggi-blocco:in_corso dubbi:in_corso oggi:finita oggi-blocco:finita dubbi:finita formazione:in_corso
+giro "$UDID_IPHONE" iphone_fasi_chiaro light 600 oggi:in_corso oggi:finita
 # Stato vuoto (nessun dato dal server) e testo molto grande (impostazione di accessibilita'): niente deve tagliarsi o sovrapporsi.
 giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto punti:vuoto formazione-blocco:vuoto punti-blocco:vuoto oggi:vuoto
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione punti oggi crediti dubbi formazione-blocco punti-blocco
@@ -74,6 +77,7 @@ echo "iPad: $NOME_IPAD ($IOS_IPAD)"
 avvia "$UDID_IPAD"
 giro "$UDID_IPAD" ipad_scuro_verticale dark 800 cruscotto formazione punti scambio oggi rosa crediti stato-blocco cruscotto:parziali
 giro "$UDID_IPAD" ipad_chiaro_verticale light 800 cruscotto formazione
+giro "$UDID_IPAD" ipad_fasi dark 800 oggi:in_corso oggi:finita dubbi:in_corso
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione punti
 
 # Orizzontale: si ruota il simulatore con la tastiera (puo' non funzionare sul Mac di GitHub: in quel caso le foto restano verticali).
