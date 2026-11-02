@@ -223,7 +223,7 @@ extension View {
     }
 
     /// La striscia dei dati salvati di un `Caricatore`, con il motivo vero se il server ha risposto con un errore.
-    @MainActor func avvisoDatiSalvati<T>(_ caricatore: Caricatore<T>) -> some View {
+    @MainActor func avvisoDatiSalvati<T: Decodable>(_ caricatore: Caricatore<T>) -> some View {
         modifier(AvvisoSalvati(data: caricatore.datiSalvati, motivo: caricatore.motivoDatiSalvati))
     }
 }
