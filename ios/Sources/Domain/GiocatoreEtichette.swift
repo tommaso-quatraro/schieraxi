@@ -20,7 +20,8 @@ extension Giocatore {
         ]
         if let t = titolarita, let (nome, gravita) = nomi[t] {
             var testo = nome
-            if stato == "titolare", let p = percentuale, t != "fuori" { testo += " \(Formato.intero(p.rounded()))%" }
+            // Il numero è quello delle probabili formazioni: si dice da dove viene, così non si confonde con «gioca N%» (il modello).
+            if stato == "titolare", let p = percentuale, t != "fuori" { testo += " · probabili \(Formato.intero(p.rounded()))%" }
             risultato.append(Etichetta(testo: testo, gravita: gravita))
         }
         if diffidato == true { risultato.append(Etichetta(testo: "Diffidato", gravita: .attenzione)) }

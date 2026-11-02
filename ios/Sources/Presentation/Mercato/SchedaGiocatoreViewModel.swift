@@ -45,12 +45,14 @@ final class SchedaGiocatoreViewModel: ViewModelBase {
         osserva(formazione)
     }
 
+    /// Le quattro letture partono insieme (prima una dopo l'altra: la scheda e «Osserva» arrivavano tardi).
     func carica() async {
-        await caricatore.ricarica()
-        await calendario.ricarica()
+        async let scheda: Void = caricatore.ricarica()
+        async let partite: Void = calendario.ricarica()
+        async let rosa: Void = formazione.ricarica()
         await osservati.ricarica()
         osservato = osservati.dato?.giocatori.contains { $0.id == id }
-        await formazione.ricarica()
+        _ = await (scheda, partite, rosa)
     }
 
     /// Le prossime partite della squadra del giocatore (dal calendario).

@@ -159,6 +159,9 @@ struct ClassificaView: View {
                 }
                 .pickerStyle(.segmented)
                 Toggle("Solo svincolati", isOn: $vm.soloLiberi).tint(Color.verde)
+                Text(Self.legenda).font(.caption).foregroundStyle(Color.testoSecondario)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let e = vm.classifica.errore, vm.classifica.dato == nil {
                     ErroreVista(messaggio: e) { Task { await vm.caricaClassifica() } }
                 } else if let d = vm.classifica.dato {
@@ -198,6 +201,11 @@ struct ClassificaView: View {
         .avvisoDatiSalvati(vm.classifica)
         .task(id: vm.percorsoClassifica) { await vm.caricaClassifica() }
     }
+}
+
+extension ClassificaView {
+    /// Cosa sono i numeri della lista (anello, percentuale): prima la spiegazione c'era solo in Formazione.
+    static let legenda = "Il numero grande è il fantavoto atteso se gioca; «gioca» è la probabilità che prenda il voto. Il numero sulla foto è l'indice (100 = il migliore del ruolo). In ordine di punti attesi: il fantavoto pesato per la probabilità di giocare."
 }
 
 // MARK: - Calendario
@@ -344,6 +352,13 @@ struct CercaView: View {
     var body: some View {
         List {
             if let errore = ricerca.errore { Text(errore).foregroundStyle(Color.attenzione) }
+            if ricerca.cercando {
+                // prima, mentre cercava, la lista restava vuota (o con i risultati vecchi) senza nessun segno
+                HStack(spacing: 10) { ProgressView(); Text("Cerco…").foregroundStyle(Color.testoSecondario) }
+                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                    .listRowBackground(Color.clear)
+                    .accessibilityElement(children: .combine)
+            }
             if !ricerca.abbastanzaLungo {
                 VistaVuota(titolo: "Cerca un giocatore", icona: "magnifyingglass", descrizione: "Scrivi almeno due lettere del nome.")
                     .listRowBackground(Color.clear)

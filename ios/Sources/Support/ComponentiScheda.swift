@@ -16,6 +16,8 @@ extension Color {
 /// «Facile», «Media», «Dura»... con un pallino del colore giusto (il testo dice la stessa cosa del colore).
 struct PillDifficolta: View {
     let difficolta: Double?
+    /// «Partita media» invece di «Media» dove non è chiaro che si parla della partita (scheda del giocatore).
+    var conPartita = false
 
     static func nome(_ d: Double?) -> String {
         switch Formato.intero(d ?? 3) {
@@ -30,7 +32,7 @@ struct PillDifficolta: View {
     var body: some View {
         HStack(spacing: 5) {
             Circle().fill(Color.difficolta(difficolta)).frame(width: 9, height: 9)
-            Text(Self.nome(difficolta)).font(.caption.weight(.semibold))
+            Text(conPartita ? "Partita " + Self.nome(difficolta).lowercased() : Self.nome(difficolta)).font(.caption.weight(.semibold))
         }
         .padding(.horizontal, 8).padding(.vertical, 3)
         .background(Color.primary.opacity(0.08), in: Capsule())

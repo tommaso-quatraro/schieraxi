@@ -70,7 +70,7 @@ struct GiocatoreCorpo: View {
                     if let s = vm.caricatore.dato {
                         intestazione(s).ingresso(0)
                         if let p = s.previsione {
-                            previsione(p, ruolo: s.calciatore.ruolo).ingresso(1)
+                            previsione(p, ruolo: s.calciatore.ruolo, squadra: s.calciatore.squadra).ingresso(1)
                             perche(p)
                         } else {
                             senzaPrevisione
@@ -116,6 +116,10 @@ struct GiocatoreCorpo: View {
                         Text("\(nomeRuolo(c.ruolo).primaMaiuscola) · \((c.squadra ?? "").capitalized)").font(.subheadline).foregroundStyle(Color.testoSecondario)
                     }
                     Text("Quotazione \(Formato.intero(c.quotazione))").font(.caption).foregroundStyle(Color.testoSecondario)
+                    if let indice = p?.indice {
+                        // il numero sull'anello della foto: senza questa riga non si capiva cosa fosse
+                        Text("Indice \(Formato.intero(indice)) su 100 (100 = il migliore del ruolo)").font(.caption).foregroundStyle(Color.testoSecondario)
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -159,7 +163,7 @@ struct GiocatoreCorpo: View {
         return testo
     }
 
-    private func previsione(_ p: Giocatore, ruolo: String) -> some View {
+    private func previsione(_ p: Giocatore, ruolo: String, squadra: String?) -> some View {
         Carta("Prossima partita", simbolo: "soccerball") {
             Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(Color.testoSecondario)
             HStack(alignment: .firstTextBaseline) {
@@ -179,11 +183,10 @@ struct GiocatoreCorpo: View {
             .accessibilityLabel("\(FantavotoAtteso.nome) \(Formato.punti(p.fvAtteso)) se gioca. Gioca al \(Formato.percento(p.pVoto)) per cento.")
             BarraPercentuale(valore: p.pVoto ?? 0)
             HStack {
-                PillDifficolta(difficolta: p.difficolta)
+                PillDifficolta(difficolta: p.difficolta, conPartita: true)
                 Spacer()
-                if p.golSquadra != nil || p.golAvversario != nil {
-                    Text("gol attesi \(Formato.decimali(p.golSquadra ?? 0))–\(Formato.decimali(p.golAvversario ?? 0))")
-                        .font(.caption).foregroundStyle(Color.testoSecondario)
+                if let gol = Self.golAttesi(p, squadra: squadra) {
+                    Text(gol).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
                 }
             }
             FilaTessere {
@@ -199,6 +202,16 @@ struct GiocatoreCorpo: View {
                 }
             }
         }
+    }
+
+    /// «Gol attesi: Genoa 1,8 · Como 1,2»: prima era «gol attesi 1,8–1,2» e non si capiva di chi fossero.
+    static func golAttesi(_ p: Giocatore, squadra: String?) -> String? {
+        guard p.golSquadra != nil || p.golAvversario != nil else { return nil }
+        let mia = (squadra ?? p.squadra ?? "").capitalized
+        let loro = (p.avversario ?? "").capitalized
+        let a = Formato.decimali(p.golSquadra ?? 0), b = Formato.decimali(p.golAvversario ?? 0)
+        guard !mia.isEmpty, !loro.isEmpty else { return "Gol attesi: \(a) fatti, \(b) subiti" }
+        return "Gol attesi: \(mia) \(a) · \(loro) \(b)"
     }
 
     /// «Perché questo numero»: i motivi del fantavoto atteso (solo se il server li manda) e la definizione.
