@@ -45,15 +45,17 @@ def scadenza(inizio: datetime | None, regole) -> datetime | None:
 
 
 def inizio_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
-    """Data e ora della prima partita non ancora giocata della giornata."""
-    r = db.execute("SELECT MIN(data) FROM partite WHERE stagione = ? AND giornata = ? AND giocata = 0 AND data IS NOT NULL",
-                   (stagione, giornata)).fetchone()[0]
-    if not r:
-        return None
-    try:
-        return datetime.fromisoformat(str(r)[:16].replace("T", " "))
-    except ValueError:
-        return None
+    """Data e ora della prima partita non ancora giocata della giornata, dall'inizio del turno in poi (regola unica in turno.py,
+    come `prima_partita`): una partita rinviata rimasta con la data vecchia non conta."""
+    date = []
+    for (testo, giocata) in db.execute("SELECT data, giocata FROM partite WHERE stagione = ? AND giornata = ? AND data IS NOT NULL",
+                                       (stagione, giornata)):
+        try:
+            date.append((datetime.fromisoformat(str(testo)[:16].replace("T", " ")), bool(giocata)))
+        except ValueError:
+            continue
+    inizio_turno = turno.inizio(d for d, _ in date)
+    return min((d for d, giocata in date if not giocata and inizio_turno is not None and d >= inizio_turno), default=None)
 
 
 def _letto(percorso: Path) -> dict:

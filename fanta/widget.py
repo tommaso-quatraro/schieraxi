@@ -100,7 +100,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     mia.sort(key=lambda m: (m["data_partita"] is None, m["data_partita"] or "", m["nome"]))
     fuori = [m for m in mia if m["stato"] in ("infortunato", "squalificato")]
 
-    prima = min((p["data"] for p in o["partite"] if p.get("data")), default=None)
+    prima = o.get("inizio")                  # la prima partita del turno (regola unica, turno.py), non la data più vecchia del calendario
     corpo = {
         "giornata": o["giornata"], "giornata_lega": o.get("giornata_lega"), "prima_partita": prima, "scadenza": o.get("scadenza") or o["inizio"], "ore_mancanti": o["ore_mancanti"],
         "iniziata": o["iniziata"], "con_probabili": o["con_probabili"],

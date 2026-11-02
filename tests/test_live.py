@@ -285,6 +285,7 @@ def cliente_live(monkeypatch):
     o = Orologio("2026-10-31 15:20")
     # la giornata «in corso» si sceglie con la stessa ora finta: con l'ora vera le partite di prova sarebbero già vecchie
     monkeypatch.setattr(server.consigli, "_adesso", lambda: datetime(2026, 10, 31, 15, 20))
+    monkeypatch.setattr(live, "_ora", lambda: datetime(2026, 10, 31, 15, 20))          # e lo stato dal calendario (dall'orario)
     f = FonteFinta(o, {"json": _corpo()})
     r = _racc(o, f)
     monkeypatch.setattr(live, "unico", r)
@@ -294,8 +295,11 @@ def cliente_live(monkeypatch):
 def test_rotta_senza_dati_in_cache_risponde_dal_database(monkeypatch, cliente_live):
     c, r, f = cliente_live
     j = c.get("/api/live").json()
-    assert j["aggiornato_il"] is None and j["fonte"] is None and j["in_corso"] == 0
-    assert len(j["partite"]) == 7 and [p["stato"] for p in j["partite"]].count("da_giocare") == 6
+    assert j["aggiornato_il"] is None and j["fonte"] is None
+    # dal calendario lo stato viene dall'orario (come Oggi): inter-fiorentina è cominciata alle 15, senza punteggio; le altre dopo
+    assert len(j["partite"]) == 7 and [p["stato"] for p in j["partite"]].count("da_giocare") == 5 and j["in_corso"] == 1
+    inter = next(p for p in j["partite"] if p["casa"] == "inter")
+    assert inter["stato"] == "in_corso" and inter["gol_casa"] is None
     assert j["partite"][0]["stato"] == "finita" and (j["partite"][0]["gol_casa"], j["partite"][0]["gol_trasferta"]) == (3, 3)
     assert f.url == []                                            # leggere non fa partire richieste
 
@@ -334,3 +338,28 @@ def test_risposta_resta_sotto_il_tetto_senza_gialli_anche_con_tanti_eventi():
     corpo = live._stringi({"aggiornato_il": "x", "fonte": "espn", "in_corso": 0, "partite": [dict(p, casa=f"s{i}") for i in range(10)]})
     assert len(json.dumps(corpo, separators=(",", ":"))) <= live.MAX_BYTE
     assert all(e["tipo"] != "giallo" for e in corpo["partite"][0]["eventi"])
+
+
+def test_dal_calendario_lo_stato_viene_dall_orario():
+    """Senza la diretta (servizio riavviato, live spento, fonte giù) una partita non ancora segnata giocata non è «da_giocare» per
+    sempre: come Oggi (fasi.stato_partita) è in corso fino alla fine stimata e poi finita, senza punteggio finché il calendario non
+    lo scrive. Trovato dalla sentinella (invariante `stato_partita_incoerente`) il 2/11/2026."""
+    r = {"data": "2026-10-31 15:00", "casa": "a", "trasferta": "b", "giocata": 0, "gol_casa": None, "gol_trasferta": None}
+    stato = lambda adesso, **k: live._da_database(r, adesso, **k)["stato"]
+    assert stato(datetime(2026, 10, 31, 14, 59)) == "da_giocare"
+    assert stato(datetime(2026, 10, 31, 15, 0)) == "in_corso"
+    assert stato(datetime(2026, 10, 31, 16, 49)) == "in_corso"
+    assert stato(datetime(2026, 10, 31, 16, 50)) == "finita"
+    p = live._da_database(r, datetime(2026, 10, 31, 18, 10))
+    assert p["gol_casa"] is None and p["gol_trasferta"] is None and p["minuto"] is None
+    assert stato(datetime(2026, 10, 31, 18, 10), inizio_turno=datetime(2026, 11, 7, 15, 0)) == "rinviata"   # fuori dal turno
+    assert live._da_database(r | {"data": None}, datetime(2026, 10, 31, 18, 10))["stato"] == "da_giocare"
+    assert live._da_database(r | {"giocata": 1, "gol_casa": 2, "gol_trasferta": 1})["stato"] == "finita"
+
+
+def test_risposta_senza_diretta_non_dice_da_giocare_per_una_partita_finita():
+    r = {"data": (datetime.now() - timedelta(hours=3)).strftime("%Y-%m-%d %H:%M"), "casa": "a", "trasferta": "b", "giocata": 0,
+         "gol_casa": None, "gol_trasferta": None}
+    corpo = live.risposta(live.Raccoglitore(lambda: []), [r])
+    assert corpo["partite"][0]["stato"] == "finita" and corpo["in_corso"] == 0
+
