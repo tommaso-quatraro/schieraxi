@@ -4,8 +4,9 @@
 #   1. scarica da GitHub (clone https pubblico, nessuna chiave) e confronta con l'ultima versione installata;
 #   1b. controlla le FIRME: ogni commit nuovo di main (linea principale) deve avere la firma di una chiave fidata, quella del file
 #      ~/.config/schieraxi/chiavi-firma.asc (fuori dal repository; oggi la chiave con cui GitHub firma le unioni delle PR e il commit
-#      di versione del bot). Se una firma manca: non installa, segna "rifiutato" e manda un avviso. Senza quel file la verifica e' spenta
-#      (e lo scrive nel log): e' l'interruttore per accenderla. Dettagli e casi limite in script/server/LEGGIMI.md;
+#      di versione del bot). Se una firma manca: non installa, segna "rifiutato" e manda un avviso. Se manca quel file NON installa
+#      niente (riga nel log e un avviso la prima volta); per installare senza firme serve l'interruttore SCHIERAXI_SENZA_FIRME=1.
+#      Dettagli e casi limite in script/server/LEGGIMI.md;
 #   2. se NON sono cambiate le cartelle del server (fanta, tests, script, requirements*) segna la versione come vista e si ferma:
 #      le modifiche a ios/, sito/, docs/ non riavviano l'app e non mandano avvisi;
 #   3. altrimenti salva una copia della versione attuale (per tornare indietro) e copia la nuova in ~/fantacalcio
@@ -103,8 +104,20 @@ if [ -s "$CHIAVI" ]; then
     fine; exit 1
   fi
   if [ "$PROVA" = 1 ]; then log "firme a posto da ${base:0:7} a ${nuovo:0:7}"; else echo "$nuovo" > "$STATO/verificato"; fi
+  [ "$PROVA" = 1 ] || rm -f "$STATO/senza-chiave"
+elif [ "${SCHIERAXI_SENZA_FIRME:-0}" = 1 ]; then
+  log "verifica delle firme SPENTA a mano (SCHIERAXI_SENZA_FIRME=1): installo ${nuovo:0:7} senza controllare le firme"
 else
-  log "verifica delle firme SPENTA: manca $CHIAVI (vedi script/server/LEGGIMI.md)"
+  # Senza chiave fidata non si installa niente (un file sparito non deve spegnere la verifica). Una riga nel log e un avviso solo la
+  # prima volta per versione (stato in senza-chiave); niente "rifiutato": appena la chiave torna, la stessa versione si installa.
+  if [ "$PROVA" = 1 ] || [ "$(cat "$STATO/senza-chiave" 2>/dev/null)" != "$nuovo" ]; then
+    log "versione ${nuovo:0:7} NON installata: manca la chiave fidata $CHIAVI (vedi script/server/LEGGIMI.md; per installare senza firme: SCHIERAXI_SENZA_FIRME=1)"
+  fi
+  if [ "$PROVA" = 0 ]; then
+    [ -e "$STATO/senza-chiave" ] || avvisa "SchieraXI: aggiornamenti fermi" "Manca la chiave per controllare le firme: non installo le versioni nuove. Dettagli in dati/pubblicazione.log." 4
+    echo "$nuovo" > "$STATO/senza-chiave"
+  fi
+  fine; exit 1
 fi
 # Le cartelle del server devono esserci tutte nella versione nuova: se manca qualcosa non si installa niente
 # (e quella versione non si riprova a ogni giro; la prossima, con un altro numero, si).

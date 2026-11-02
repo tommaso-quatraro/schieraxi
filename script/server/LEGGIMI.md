@@ -55,7 +55,11 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
   - Impronta: `968479A1AFF927E37D1A566BB5690EEEBB952194` (utente «GitHub», in uso dal 16/1/2024; fonte: https://github.com/web-flow.gpg).
   - Copia di riferimento nel repository: `script/server/chiavi/github-web-flow.asc`.
   - Quella che conta è la copia **sul server**, fuori dal repository: `~/.config/schieraxi/chiavi-firma.asc` (chi scrive su `main` non può cambiarla).
-    **Se il file manca la verifica è spenta** (e il log lo scrive a ogni versione nuova): è l'interruttore.
+    **Se il file manca NON si installa niente** (dal 2/11/2026; prima la verifica si spegneva): una riga nel log per versione
+    («NON installata: manca la chiave fidata») e un avviso «SchieraXI: aggiornamenti fermi» la prima volta (stato in
+    `~/.cache/fantacalcio/senza-chiave`, si toglie da solo quando la chiave torna). Così un file cancellato per sbaglio o da un
+    intruso non spegne la verifica. Per installare comunque senza firme serve l'interruttore esplicito `SCHIERAXI_SENZA_FIRME=1`
+    (vale solo se la chiave manca: se c'è, le firme si controllano sempre).
   - Stato in `~/.cache/fantacalcio/`: `verificato` (ultimo commit con le firme a posto), `rifiutato` (versione da non riprovare).
   - Se una firma manca o non è fidata: non installa, scrive `rifiutato`, avviso «SchieraXI: aggiornamento bloccato» sul canale degli avvisi.
 - **Librerie**: quando cambia `requirements.txt` prepara un ambiente Python **nuovo** accanto a quello in uso (`~/fantacalcio/.venv.nuova`)
@@ -103,7 +107,7 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
 2. Unire la PR e aspettare che il server la installi (`dati/pubblicazione.log`: «librerie cambiate: preparo un ambiente Python nuovo»,
    poi «installata»). Le versioni sono le stesse già in produzione: `~/fantacalcio/.venv/bin/python -m pip freeze` deve dare le stesse
    righe di prima. Ci vuole qualche minuto in più (si scaricano le librerie); `.venv.precedente` occupa qualche centinaio di MB.
-   Fino al passo 5 la verifica è spenta: il server si comporta come prima, ma con le librerie bloccate.
+   Fino al passo 5, su un server nuovo senza chiave, si installa solo con `SCHIERAXI_SENZA_FIRME=1` (nella riga del crontab o a mano).
 3. Controllare che GitHub firmi anche il commit del bot: `gh api repos/<proprietario>/schieraxi/commits/main --jq .commit.verification`
    deve dare `"verified": true` sia dopo un'unione sia dopo il commit «Versione X».
 4. Nessuna PR aperta fatta prima di questa modifica (o ribasata su `main`).
@@ -118,7 +122,10 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
 7. Alla PR successiva: nel log «installata» e nessun «NON installata».
 
 ### Spegnere e tornare indietro
-- Spegnere solo la verifica: `mv ~/.config/schieraxi/chiavi-firma.asc ~/.config/schieraxi/chiavi-firma.asc.spenta` (al giro dopo installa come prima).
+- Spegnere solo la verifica (sconsigliato): spostare la chiave NON basta più (senza chiave non installa niente). Servono tutte e due:
+  `mv ~/.config/schieraxi/chiavi-firma.asc ~/.config/schieraxi/chiavi-firma.asc.spenta` e l'interruttore nella riga del crontab:
+  `*/10 * * * * SCHIERAXI_SENZA_FIRME=1 /bin/bash $HOME/fantacalcio/script/server/aggiorna-app.sh >/dev/null 2>&1`.
+  Una volta sola, a mano: `SCHIERAXI_SENZA_FIRME=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`.
 - Installare comunque una versione rifiutata, dopo averla guardata: `--fidati <commit>`.
 - Librerie: lo script torna da solo all'ambiente di prima se il servizio non riparte. A mano (servizio fermo un momento):
   `cd ~/fantacalcio && mv .venv .venv.scartata && mv .venv.precedente .venv && sudo systemctl restart fantacalcio`.

@@ -424,12 +424,12 @@ def test_se_il_file_dei_tratti_esce_dal_repository_sul_server_resta(server):
 
 @con_bash
 def test_versione_di_prima_sconosciuta_conta_come_cambiato(server):
-    """Repository nuovo (storia diversa): con le firme spente installa tutto come «cambiato»."""
+    """Repository nuovo (storia diversa): con le firme spente a mano installa tutto come «cambiato»."""
     s = server
     s.chiave.unlink()
     _scrivi(s.stato, "ultimo-rilascio", "0" * 40)               # storia diversa (repository nuovo)
     _commit(s.lavoro, "solo docs", **{"docs/d.md": "doc2"})
-    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert s.esegui("aggiorna-app.sh", SCHIERAXI_SENZA_FIRME="1").returncode == 0
     assert s.riavvii() == 1
     _lega_e_dati_intatti(s)
 
@@ -524,13 +524,51 @@ def test_fidati_senza_commit_spiega_l_uso(server):
 
 
 @con_bash
-def test_senza_chiave_fidata_la_verifica_e_spenta_e_lo_scrive(server):
+def test_senza_chiave_fidata_non_installa_e_avvisa_una_volta(server):
+    """Se la chiave sparisce la verifica NON si spegne: niente installazione, una riga nel log e un solo avviso; torna la chiave, si installa."""
+    s = server
+    s.chiave.unlink()
+    c2 = _commit(s.lavoro, "firmato", **{"fanta/__init__.py": "V2"})
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert s.riavvii() == 0 and s.ultimo() == s.c1
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert f"versione {c2[:7]} NON installata: manca la chiave fidata" in s.log()
+    assert not (s.stato / "rifiutato").exists()                  # non e' un rifiuto: con la chiave si riprova
+    assert len(s.avvisi()) == 1 and "aggiornamenti fermi" in s.avvisi()[0]
+    _lega_e_dati_intatti(s)
+    # giri dopo: niente avvisi ne' righe nuove per la stessa versione; una versione nuova scrive una riga ma non riavvisa
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert s.log().count("manca la chiave fidata") == 1 and len(s.avvisi()) == 1
+    c3 = _commit(s.lavoro, "firmato 2", **{"fanta/__init__.py": "V3"})
+    assert s.esegui("aggiorna-app.sh").returncode == 1
+    assert f"versione {c3[:7]} NON installata: manca la chiave fidata" in s.log() and len(s.avvisi()) == 1
+    # --prova lo dice e non scrive
+    r = s.esegui("aggiorna-app.sh", "--prova")
+    assert r.returncode == 1 and "manca la chiave fidata" in r.stdout
+    # la chiave torna: si installa (firme controllate) e lo stato si pulisce
+    _scrivi(s.chiave.parent, s.chiave.name, s.chiavi_prova["pubblica"])
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert s.ultimo() == c3 and s.riavvii() == 1 and not (s.stato / "senza-chiave").exists()
+
+
+@con_bash
+def test_senza_chiave_si_installa_solo_con_l_interruttore_esplicito(server):
     s = server
     s.chiave.unlink()
     c2 = _commit(s.lavoro, "senza firma", _firma=False, **{"fanta/__init__.py": "V2"})
-    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert s.esegui("aggiorna-app.sh", SCHIERAXI_SENZA_FIRME="0").returncode == 1 and s.riavvii() == 0
+    assert s.esegui("aggiorna-app.sh", SCHIERAXI_SENZA_FIRME="1").returncode == 0
     assert s.ultimo() == c2 and s.riavvii() == 1
-    assert "verifica delle firme SPENTA" in s.log()
+    assert "verifica delle firme SPENTA a mano (SCHIERAXI_SENZA_FIRME=1)" in s.log()
+
+
+@con_bash
+def test_con_la_chiave_l_interruttore_non_salta_le_firme(server):
+    s = server
+    c2 = _commit(s.lavoro, "senza firma", _firma=False, **{"fanta/__init__.py": "MALIGNO"})
+    assert s.esegui("aggiorna-app.sh", SCHIERAXI_SENZA_FIRME="1").returncode == 1
+    assert f"il commit {c2[:7]} non ha una firma valida" in s.log()
+    _non_installata(s, c2)
 
 
 @con_bash
