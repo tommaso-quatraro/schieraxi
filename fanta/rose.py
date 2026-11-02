@@ -28,6 +28,8 @@ PAROLE_INTESTAZIONE = {
     "mv", "fm", "pv", "media", "voto", "fantamedia", "presenze", "di", "del", "della", "in",
 }
 PAROLE_COSTO = {"costo", "prezzo", "acquisto", "pagato", "spesa"}
+# righe di contorno sotto il nome della squadra, copiate dalla pagina delle rose (es. «Allenatore: Marco»): non sono una squadra
+ETICHETTA_PERSONA = re.compile(r"^\s*(allenatore|fantallenatore|presidente|proprietario|manager|coach|mister)\s*[:\-–]", re.IGNORECASE)
 SIGLE_RUOLO = {"p": "P", "por": "P", "portiere": "P", "portieri": "P",
                "d": "D", "dif": "D", "difensore": "D", "difensori": "D",
                "c": "C", "cen": "C", "centrocampista": "C", "centrocampisti": "C",
@@ -219,6 +221,8 @@ class _Celle:
         n = normalizza(v)
         if n.startswith(("crediti", "totale", "spesa", "spesi")):
             return "crediti"
+        if ETICHETTA_PERSONA.match(v):
+            return "intestazione"
         if n in SIGLE_RUOLO:
             return "ruolo"
         if not re.search(r"[a-z]", n) or _e_intestazione(n):
