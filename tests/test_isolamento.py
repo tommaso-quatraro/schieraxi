@@ -153,7 +153,7 @@ def albero(cartella: Path) -> dict[str, str]:
 
 
 @pytest.fixture
-def due(multiutente, dati_isolati, calciatori, monkeypatch):
+def due(multiutente, dati_isolati, listone_in_archivio, calciatori, monkeypatch):
     """Due utenti registrati, ognuno con il suo dispositivo (cookie), e un po' di finti per non toccare la rete e il calcolo."""
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
     monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: "2026-27")
