@@ -70,28 +70,37 @@ struct ImportaExcelView: View {
             if let e = vm.esito { esito(e) }
             daScreenshot
             Section {
-                Text("Incolla la pagina delle rose di Leghe oppure scegli il file. Prima di salvare ti mostro cosa ho capito: sistemi i dubbi e scegli la tua squadra. Basta anche solo la tua rosa.")
+                Text("Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti).")
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+                Button { scegli = true } label: {
+                    Label("Scegli il file Excel", systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                }
+                .disabled(vm.inCorso)
+                Text("Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.")
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+            }
+            Section {
+                Text("Se non hai il file Excel: copia la pagina delle rose di Leghe e incollala qui. Le squadre che non sono nel file restano com'erano.")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 TextEditor(text: $vm.testoRose)
                     .frame(minHeight: 110)
-                    .accessibilityLabel("Testo delle rose")
+                    .overlay(alignment: .topLeading) {
+                        if vm.testoRose.isEmpty {
+                            Text("Incolla qui il testo delle rose")
+                                .foregroundStyle(Color.testoSecondario)
+                                .padding(.top, 8).padding(.leading, 5)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .accessibilityLabel("Incolla qui il testo delle rose")
                     .disabled(vm.inCorso)
+                Toggle("Togli le squadre che non sono nel file", isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
                 Button { Task { await vm.importaTesto() } } label: {
                     Label("Controlla il testo", systemImage: "text.magnifyingglass").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled(vm.inCorso)
             } header: { Text("Incolla il testo delle rose").foregroundStyle(Color.testoSecondario) }
-            Section {
-                Button { scegli = true } label: {
-                    Label("Scegli il file (Excel, CSV, testo)", systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
-                }
-                .disabled(vm.inCorso)
-                Text("Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.")
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
-            } header: { Text("Oppure scegli il file").foregroundStyle(Color.testoSecondario) }
-            Section {
-                Toggle("Togli le squadre che non sono nel file", isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
-            } footer: { Text("Di solito le squadre che non ci sono restano com'erano.").foregroundStyle(Color.testoSecondario) }
             if vm.inCorso {
                 Section {
                     HStack(spacing: 10) { ProgressView(); Text(vm.letturaFoto ?? "Leggo le rose…").foregroundStyle(Color.testoSecondario) }
@@ -131,17 +140,21 @@ struct ImportaExcelView: View {
     @ViewBuilder
     private func esito(_ e: EsitoImportazione) -> some View {
         Section {
+            // sulla web «Rose salvate» è un avviso che passa; qui resta come prima riga
+            Label("Rose salvate", systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde)
             if let d = e.differenze { DifferenzeView(differenze: d) }
             else if let r = e.riepilogo, !r.isEmpty { Text(r) }
             if let mia = e.miaSquadra, !mia.isEmpty {
                 Label("La tua squadra: \(mia)", systemImage: "star.fill").font(.footnote)
             }
             if let squadre = e.squadreImportate, !squadre.isEmpty {
-                Text("Salvate: \(squadre.joined(separator: ", ")) (\(Formato.plurale(e.totaleSquadre ?? squadre.count, "squadra", "squadre")) in tutto).")
+                Text("Importate: \(squadre.joined(separator: ", ")) (\(Formato.plurale(e.totaleSquadre ?? squadre.count, "squadra", "squadre")) in tutto).")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
             }
-        } header: { Label("Rose salvate", systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde) }
-        if !(e.avvisi ?? []).isEmpty {
+        } header: { Text("Cosa è cambiato").foregroundStyle(Color.testoSecondario) }
+        if (e.avvisi ?? []).isEmpty {
+            Section { Label("Rose controllate: tutto in ordine.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(Color.testoSecondario) }
+        } else {
             Section(titolo: "Da controllare") {
                 ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(Color.attenzione) }
             }
