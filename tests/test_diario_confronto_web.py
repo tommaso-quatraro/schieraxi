@@ -63,3 +63,11 @@ def test_quanto_ci_abbiamo_preso_senza_carte_dentro_la_carta():
     regola = re.search(r"^\.qp-voce \{([^}]*)\}", css, re.M).group(1)
     assert "background" not in regola and "border-radius" not in regola and "border:" not in regola
     assert "border-top" in regola
+
+
+def test_confronto_ragiona_sulla_giornata_che_si_vede_in_formazione():
+    """Dopo la scadenza Formazione mostra la giornata successiva: il Confronto deve chiedere QUELLA, non la giornata in corso."""
+    inizio = APP.index("async function apriConfronto(")
+    corpo = APP[inizio:APP.index("\n}\n", inizio)]
+    assert re.search(r"const contesto = stato\.formaz \? `[^`]*&giornata=\$\{Number\(stato\.formaz\.f\.giornata\)\}", corpo), corpo[:600]
+    assert "/api/confronto?a=${a}&b=${b}${contesto}" in corpo      # senza formazione aperta il server sceglie da solo

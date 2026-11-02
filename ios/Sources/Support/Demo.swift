@@ -82,6 +82,17 @@ enum Demo {
 }
 
 extension View {
+    /// Solo in demo, per fotografare una parte in mezzo a una schermata lunga: se `-DEMO_SCHERMATA` è una di `schermate` (e, con
+    /// `inFondo`, c'è anche `-DEMO_FONDO`), appena `pronto` scorre fino alla vista con `id`. Fuori dalla demo non fa niente.
+    func demoScorriA(_ id: String, proxy: ScrollViewProxy, schermate: [String], inFondo: Bool = false, pronto: Bool) -> some View {
+        task(id: pronto) {
+            guard pronto, Demo.attivo, let s = Demo.schermata, schermate.contains(s) else { return }
+            if inFondo && Demo.argomento("DEMO_FONDO") == nil { return }
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            proxy.scrollTo(id, anchor: .top)
+        }
+    }
+
     /// Solo in demo con `-DEMO_FONDO`: la schermata parte scorsa in fondo, per vedere anche la parte sotto la piega.
     @ViewBuilder
     func demoInFondo() -> some View {
@@ -120,7 +131,7 @@ extension Demo {
         }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
         switch nome {
-        case "oggi", "oggi-in-corso", "oggi-finita":
+        case "oggi", "oggi-in-corso", "oggi-finita", "oggi-rinvio", "oggi-finita-recupero":
             nav.sezione = .oggi
         case "guida":
             // la configurazione guidata: in demo mostra i passi non ancora fatti

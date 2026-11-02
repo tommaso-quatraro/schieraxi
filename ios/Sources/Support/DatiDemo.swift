@@ -31,6 +31,13 @@ extension FinteServer {
             // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»)
             server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
             server.indirizzoFinto = "https://finto-scelta-salvata.invalid"
+        case "oggi-rinvio":
+            server.risposte["/api/oggi"] = DatiDemo.oggiRinvio(adesso: adesso)
+            server.indirizzoFinto = "https://finto-partita-rinviata.invalid"
+        case "oggi-finita-recupero":
+            server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso, recupero: true)
+            server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
+            server.indirizzoFinto = "https://finto-recupero-da-giocare.invalid"
         default:
             return nil
         }
@@ -237,9 +244,9 @@ private enum DatiDemo {
             // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque)
             d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["dubbio: affaticamento"]
         } else if p.pVoto < 0.75 {
-            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina (\(Int(p.pVoto * 100))%)"]
+            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina"]
         } else {
-            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare al 90%"]
+            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare"]
         }
         d["quotazione"] = quotazione(p)
         if conAvversario, let a = avversario(di: p.squadra) {
@@ -563,7 +570,31 @@ private enum DatiDemo {
     }
 
     /// Fase `finita`: la giornata 11 è finita ieri, Oggi parla già della 12 (si chiude fra 4 giorni, probabili non ancora uscite).
-    static func oggiFinita(adesso: Date) -> String {
+    // MARK: - Partite rinviate (fotografie `oggi-rinvio` e `oggi-finita-recupero`)
+
+    /// La scelta «per questa giornata» della demo: la lega aspetta il recupero.
+    static func sceltaRinvio(giornata g: Int, partite: [[String: Any]] = [], miei: [[String: Any]] = []) -> [String: Any] {
+        ["stagione": "2026-27", "giornata": g, "giornata_lega": g - 3, "modo": "aspetta", "valore": NSNull(), "predefinito": "aspetta",
+         "eccezione": false, "modi": ["aspetta", "senza_voto", "voto_ufficio"], "voto_ufficio": 6, "partite": partite, "miei": miei]
+    }
+
+    /// Oggi prima della scadenza con l'ultima partita del turno rinviata a fine mese: il riquadro «Partita rinviata».
+    static func oggiRinvio(adesso: Date) -> String {
+        var o = oggiDati(adesso: adesso)
+        var partite = (o["partite"] as? [[String: Any]]) ?? []
+        guard let ultima = incontri.last, !partite.isEmpty else { return json(o) }
+        let recupero = formatta(adesso.addingTimeInterval(20 * 86_400), "yyyy-MM-dd HH:mm")
+        partite[partite.count - 1]["data"] = recupero
+        partite[partite.count - 1]["stato"] = "rinviata"
+        o["partite"] = partite
+        let miei = moduli[0].titolari.map { calciatore($0) }.filter { [ultima.casa, ultima.trasferta].contains($0.squadra) }
+            .map { ["id": $0.id, "nome": $0.nome, "ruolo": $0.ruolo, "squadra": $0.squadra] as [String: Any] }
+        o["rinvio"] = sceltaRinvio(giornata: giornata, partite: [["casa": ultima.casa, "trasferta": ultima.trasferta, "data": recupero]],
+                                   miei: miei)
+        return json(o)
+    }
+
+    static func oggiFinita(adesso: Date, recupero: Bool = false) -> String {
         var o = oggiDati(adesso: adesso)
         let scadenza = adesso.addingTimeInterval(4 * 86_400)
         func data(_ d: Date) -> String { formatta(d, "yyyy-MM-dd HH:mm") }
@@ -588,6 +619,12 @@ private enum DatiDemo {
             "punti_fatti": 74.5, "punti_attesi": 71.2, "intervallo": fascia(71.2, indicativo: false),
             "consigliata": ["punti_fatti": 78.0, "punti_attesi": 73.7],
         ] as [String: Any]
+        if recupero, let ultima = incontri.last {
+            // la giornata è finita ma una partita aspetta il recupero: i punti possono ancora cambiare e si può decidere diversamente
+            let partita: [String: Any] = ["casa": ultima.casa, "trasferta": ultima.trasferta, "data": data(adesso.addingTimeInterval(18 * 86_400))]
+            o["riepilogo"] = (o["riepilogo"] as? [String: Any] ?? [:]).merging(
+                ["nel_diario": false, "consigliata": NSNull(), "recuperi": [partita], "rinvio": sceltaRinvio(giornata: giornata)]) { _, nuovo in nuovo }
+        }
         o["prossima"] = [
             "giornata": giornata + 1, "giornata_lega": giornata - 2, "scadenza": data(scadenza),
             "prepara_da": data(scadenza.addingTimeInterval(-72 * 3600)), "con_probabili": false,
@@ -782,6 +819,7 @@ private enum DatiDemo {
                       "ammonizione": -0.5, "espulsione": -1.0, "mvp": 0.0],
             "rosa": ["P": 3, "D": 8, "C": 8, "A": 6], "crediti_iniziali": 500, "rimborso_svincolo": 0.5,
             "scadenza_minuti": 30, "prima_giornata_lega": 4, "aggiornamenti_vicino_scadenza": true,
+            "partite_rinviate": "aspetta", "voto_ufficio_rinviate": 6, "rinvii_giornate": [String: Any](),
             "moduli": ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"],
             "panchina": ["numero": 11, "tipo": "per_ruolo", "max_sostituzioni": 5, "cambio_modulo": false,
                          "posti": ["P": 2, "D": 3, "C": 3, "A": 3]],

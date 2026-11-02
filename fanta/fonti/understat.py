@@ -161,7 +161,7 @@ def abbina(giocatori_us: list[dict], calciatori: list[Calciatore], slug_di) -> d
     esito: dict[int, tuple[int, str]] = {}
     usati: set[int] = set()
     migliori: dict[int, list[float]] = defaultdict(list)
-    for p, gid, cid in coppie:
+    for p, gid, _cid in coppie:
         migliori[gid].append(p)
     for p, gid, cid in sorted(coppie, reverse=True):
         if gid in esito or cid in usati:

@@ -471,7 +471,7 @@ def _estrai_blocco(celle: _Celle, c0: int, c1: int, nome_foglio: str,
     colonne = range(c0, c1 + 1)
     squadra_corrente: SquadraLetta | None = None
     col_costo: int | None = None
-    for r, riga in enumerate(celle.g):
+    for r, _riga in enumerate(celle.g):
         tipi = {c: celle.tipo[r, c] for c in colonne}
         if all(t == "vuoto" for t in tipi.values()):
             continue

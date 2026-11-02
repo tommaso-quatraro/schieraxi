@@ -37,14 +37,6 @@ extension Oggi {
 
 /// I testi delle fasi della giornata, in un posto solo (e provati in `FasiGiornataTests`).
 enum TestiFase {
-    private static let giornoEOra: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "it_IT")
-        f.timeZone = TimeZone(identifier: "Europe/Rome")
-        f.dateFormat = "EEE HH:mm"
-        return f
-    }()
-
     /// «1 punto», «2,5 punti» (sempre positivo: il segno lo dice la frase).
     static func punti(_ valore: Double) -> String {
         let t = Formato.punti(abs(valore))
@@ -76,15 +68,16 @@ enum TestiFase {
         return Formato.decimali(v, cifre: abs(decimi - decimi.rounded()) < 0.001 ? 1 : 2)
     }
 
-    /// Cosa scrivere a destra del giocatore: il fantavoto, oppure lo stato o l'ora della partita.
+    /// Cosa scrivere a destra del giocatore: il fantavoto, oppure lo stato con le parole della web app (docs/COERENZA-WEB-IPHONE.md):
+    /// Senza voto · Voto in arrivo · Partita in corso · Rinviata · Da giocare.
     static func valore(_ g: GiocatoreInCorso) -> String {
         switch g.stato {
         case "fatto": return g.fantavoto.map(fantavoto) ?? "—"
         case "senza_voto": return "Senza voto"
-        case "attesa_voti": return "Aspetta il voto"
-        case "in_corso": return "In campo"
+        case "attesa_voti": return "Voto in arrivo"
+        case "in_corso": return "Partita in corso"
         case "rinviata": return "Rinviata"
-        case "da_giocare": return Quando.data(g.data).map { giornoEOra.string(from: $0) } ?? "Da giocare"
+        case "da_giocare": return "Da giocare"
         default: return "—"
         }
     }
@@ -94,9 +87,9 @@ enum TestiFase {
         switch g.stato {
         case "fatto": return g.fantavoto.map { "fantavoto \(fantavoto($0))" } ?? "ha giocato"
         case "senza_voto": return "senza voto"
-        case "attesa_voti": return "partita finita, aspetta il voto"
-        case "in_corso": return "in campo adesso"
-        case "rinviata": return "partita rinviata"
+        case "attesa_voti": return "voto in arrivo"
+        case "in_corso": return "partita in corso"
+        case "rinviata": return "rinviata"
         case "da_giocare":
             if let d = Quando.data(g.data) { return "gioca \(Quando.giorno(d)) alle \(Quando.ora(d))" }
             return "deve ancora giocare"
@@ -128,9 +121,9 @@ enum TestiFase {
     /// Perché scatta un cambio, in parole semplici.
     static func motivo(_ m: String?) -> String? {
         switch m {
-        case "senza_voto": return "Non ha preso il voto"
+        case "senza_voto": return "Senza voto"
         case "fuori": return "Infortunato o squalificato"
-        case "rinviata": return "Partita rinviata"
+        case "rinviata": return "Rinviata"
         default: return nil
         }
     }

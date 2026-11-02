@@ -48,7 +48,7 @@ def leggi_primo_avvio(percorso: Path) -> dict | None:
 
 def scrivi_primo_avvio(percorso: Path, fatti: list | None = None, saltati: list | None = None, chiuso: bool | None = None) -> dict:
     """Cambia solo i campi indicati. Un passo sconosciuto o liste troppo lunghe: errore chiaro, non si salva niente."""
-    for nome, lista in (("fatti", fatti), ("saltati", saltati)):
+    for _nome, lista in (("fatti", fatti), ("saltati", saltati)):
         if lista is None:
             continue
         if not isinstance(lista, list) or len(lista) > len(PASSI) or any(not isinstance(p, str) for p in lista):

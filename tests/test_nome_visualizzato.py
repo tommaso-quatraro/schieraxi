@@ -69,7 +69,7 @@ def test_migrazione_con_copia_e_dati_intatti(multiutente):
     db = sqlite3.connect(percorso)
     for m in account.MIGRAZIONI[:5]:     # da nome_visualizzato (la sesta) in poi sono quelle da applicare
         db.executescript(m)
-    db.execute(f"PRAGMA user_version = 5")
+    db.execute("PRAGMA user_version = 5")
     db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('vecchio', 'x', 'y', 'z')")
     db.commit()
     db.close()

@@ -78,6 +78,38 @@ final class RicercaMercatoTests: XCTestCase {
         XCTAssertTrue(vuoto.nessunRisultato)
     }
 
+    func testIRisultatiHannoIlFantavotoAttesoDellElenco() async throws {
+        let classifica = try Fixture.dati("classifica")
+        let elenco: ElencoGiocatori = try Decodifica.decodifica(classifica)
+        let primo = try XCTUnwrap(elenco.giocatori.first)
+        let risultati = Data(#"[{"id": \#(primo.id), "nome": "\#(primo.nome)", "ruolo": "\#(primo.ruolo)", "squadra": "roma", "quotazione": 30}, {"id": 999999, "nome": "Nessuno", "ruolo": "C", "squadra": "roma", "quotazione": 1}]"#.utf8)
+        let s = ServerDiProva { _, percorso, _ in
+            percorso.hasPrefix("/api/classifica") ? classifica : risultati
+        }
+        let vm = RicercaMercatoViewModel(server: s)
+        await vm.previsioni.carica()
+        vm.testo = "ma"
+        await vm.cerca()
+        XCTAssertEqual(vm.previsioni.di(primo.id)?.fvAtteso, primo.fvAtteso, "lo stesso numero della riga dell'elenco")
+        XCTAssertNil(vm.previsioni.di(999999), "chi non è nell'elenco della giornata resta senza numero")
+        XCTAssertTrue(vm.previsioni.arrivate)
+        XCTAssertEqual(s.quante(PrevisioniRicerca.percorso), 1, "l'elenco largo si scarica una volta sola")
+    }
+
+    func testSenzaElencoLaRicercaFunzionaLoStesso() async {
+        let s = ServerDiProva { _, percorso, _ in
+            if percorso.hasPrefix("/api/classifica") { throw ErroreApi.rete("spento") }
+            return elencoFinto(2)
+        }
+        let vm = RicercaMercatoViewModel(server: s)
+        await vm.previsioni.carica()
+        vm.testo = "gio"
+        await vm.cerca()
+        XCTAssertEqual(vm.trovati.count, 2)
+        XCTAssertNil(vm.errore)
+        XCTAssertFalse(vm.previsioni.arrivate, "senza elenco non si dice «non gioca»")
+    }
+
     func testLaRicercaNonFaRidisegnareMercato() {
         let mercato = MercatoViewModel(server: ServerDiProva { _, _, _ in Data("[]".utf8) })
         var cambi = 0
