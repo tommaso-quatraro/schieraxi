@@ -441,11 +441,17 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .df-carta h2 { display: flex; align-items: center; gap: 8px; }
 .df-conto { font-size: var(--t-sec); font-weight: 600; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--capitano) 85%, transparent); color: #1b2a00; }
 .df-elenco { list-style: none; margin: 0; padding: 0; }
-.df-riga { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 10px 0; min-height: 56px; }
+.df-carta { container-type: inline-size; }
+.df-riga { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; min-height: 56px; }
 .df-riga + .df-riga { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
-.df-testo { font-size: var(--t-corpo); }
+.df-testo { font-size: var(--t-corpo); max-width: 60ch; }
 .df-etichetta { font-size: var(--t-eti); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--rosso); }
 .df-azione { min-height: 44px; padding-inline: 14px; }
+/* riquadro stretto (telefono, colonna di sinistra su tablet e PC): pulsante sotto il testo, non accanto (il testo andava su 4-5 righe) */
+@container (max-width: 520px) {
+  .df-riga { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .df-azione { justify-self: start; }
+}
 .df-vuoto { font-size: var(--t-corpo); }
 .pa-passi { list-style: none; display: flex; gap: 8px; overflow-x: auto; margin: 8px 0 12px; padding: 0 0 4px; }
 .pa-passo { min-height: 44px; border: 1px solid var(--bordo); border-radius: 999px; padding: 0 14px; background: none; color: var(--testo-2); font-size: var(--t-sec); white-space: nowrap; }

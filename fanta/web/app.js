@@ -322,7 +322,7 @@ document.addEventListener("error", ev => { if (ev.target instanceof HTMLImageEle
 // Avatar con l'anello dell'indice (0-100) e il numero in un cartellino.
 function avatarIndice(x, grande = false) {
   if (x.indice == null) return `<span class="avatar-anello ${grande ? "grande-a" : ""}">${avatar(x)}</span>`;
-  return `<span class="avatar-anello ${classeIndice(x.indice)} ${grande ? "grande-a" : ""}" style="--v:${x.indice}">${avatar(x)}<b class="badge-indice">${x.indice}</b></span>`;
+  return `<span class="avatar-anello ${classeIndice(x.indice)} ${grande ? "grande-a" : ""}" style="--v:${x.indice}">${avatar(x)}<b class="badge-indice" title="${esc(t("comune.indice_aria", { n: x.indice }))}" aria-label="${esc(t("comune.indice_aria", { n: x.indice }))}">${x.indice}</b></span>`;
 }
 const diffPill = d => `<span class="diff d${d}"><i></i>${NOMI_DIFF[d]}</span>`;
 const badgeRuolo = (r, piccolo = false) => `<span class="ruolo ${esc(r)}" ${piccolo ? `style="width:21px;height:21px;font-size:var(--t-eti);border-radius:7px;display:inline-grid;vertical-align:-4px;margin-right:6px"` : ""}>${esc(ruoloSigla(r))}</span>`;
@@ -349,8 +349,11 @@ const partenzaAParole = q => q == null ? "–" : t(q >= 0.7 ? "mercato.parte_qua
 // I motivi sotto il nome: si scelgono dal testo italiano del server, si mostrano nella lingua scelta (motivi_frasi, vedi fanta/frasi.py).
 const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.motivi_frasi || [])[i] }))
   .filter(m => !/^titolare|^parte dalla panchina|^partita (favorevole|difficile)/.test(m.testo)).slice(0, 2);
+// Nelle righe una sola percentuale per giocatore, «gioca N%»: gol atteso e porta inviolata (motivi con un numero) restano nella scheda.
+const MOTIVI_CON_PERCENTUALE = ["motivo.gol_atteso", "motivo.porta_inviolata"];
+const senzaPercentuale = m => !(m.frase && MOTIVI_CON_PERCENTUALE.includes(m.frase.chiave)) && !/\d\s*%/.test(m.testo);
 function etichetteGiocatore(x) {
-  const altre = motiviUtili(x).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
+  const altre = motiviUtili(x).filter(senzaPercentuale).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
   return pillTitolarita(x) + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
 }
 
@@ -700,7 +703,9 @@ function mostraOggi(o, opz = {}) {
     return `<div class="giorno-titolo">${titolo}</div>` + g.lista.map(p => {
       const ora = parseData(p.data);
       const rinviata = p.stato === "rinviata";                                // rinvio noto (diretta o calendario): l'etichetta al posto dell'ora
-      const oraTesto = rinviata ? t("live.rinviata") : ora ? fOra(ora) : "–";
+      // stato del server (fasi.py: calendario, diretta, poi orario): una partita cominciata senza dati di diretta dice «In corso», non l'ora
+      const oraTesto = rinviata ? t("live.rinviata") : p.stato === "in_corso" ? t("oggi.partita_in_corso")
+        : p.stato === "finita" && !p.giocata ? t("live.finita") : ora ? fOra(ora) : "–";
       const mm = [p.casa, p.trasferta].flatMap(s => (miei[s] || []).map(g => ({ ...g, squadra: s })));       // miei titolari delle due squadre
       const nomiMiei = mm.map(g => g.nome).join(", ");
       const ptUff = LiveSchieraxi.punteggioUfficiale(p);                         // risultato del calendario: c'è anche senza la diretta
@@ -734,7 +739,7 @@ function mostraOggi(o, opz = {}) {
     </div>`}
     </div><div class="col">
     ${inFormazione.length ? `<div class="carta"><h2>${t("oggi.da_controllare")}</h2><div class="debole piccolo">${t("oggi.giocatori_formazione_con")}</div>${inFormazione.map(riga).join("")}</div>` : ""}
-    ${migliori.length ? `<div class="carta"><h2>${t("oggi.tuoi_migliori_della")}</h2><ul class="elenco">${migliori.map(x => voceGiocatore(x)).join("")}</ul></div>` : ""}
+    ${migliori.length ? `<div class="carta"><h2>${t("oggi.tuoi_migliori_della")}</h2><ul class="elenco">${migliori.map(x => voceGiocatore({ ...x, indice: null })).join("")}</ul></div>` : ""}
     ${indisponibili.length ? `<div class="carta"><details><summary>${t("oggi.indisponibili", { n: indisponibili.length })}</summary>${indisponibili.map(riga).join("")}</details></div>` : ""}
     ${altri.length ? `<div class="carta"><h2>${t("oggi.diffidati")}</h2>${altri.map(riga).join("")}</div>` : ""}
     <div class="carta"><h2>${t("oggi.partite_del_turno")}</h2><div class="partite-turno">${partite || `<div class="vuoto">${t("oggi.nessuna_partita_calendario")}</div>`}</div>
