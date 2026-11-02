@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from . import avvisi, buon_senso, calcolo, consigli, fasi, frasi, modello, scambi, scelte
+from . import avvisi, buon_senso, calcolo, consigli, fasi, frasi, modello, rinvii, scambi, scelte
 from .avvisi import prima_partita       # in `oggi` il nome `avvisi` è anche la lista degli avvisi
 from .frasi import F
 from .lega import Rose
@@ -248,7 +248,8 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
             "con_probabili": False, "probabili": None,
             "formazione": {"modulo": "–", "punteggio_atteso": None, "squadra": "", "dev": None, "intervallo": None},
             "avvisi": [], "migliori": [], "partite": partite, "miei_titolari": {},
-            "fase": fasi.IN_CORSO if tempi["iniziata"] else fasi.PRIMA, "in_corso": None, "riepilogo": None, "prossima": None}
+            "fase": fasi.IN_CORSO if tempi["iniziata"] else fasi.PRIMA, "in_corso": None, "riepilogo": None, "prossima": None,
+            "rinvio": None}
 
 
 def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_scelte=None,
@@ -326,4 +327,11 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
         "avvisi": avvisi, "migliori": migliori, "partite": partite, "miei_titolari": miei_titolari,
     }
     # fase della giornata (prima / in_corso / finita) e i blocchi che servono in quella fase: vedi fasi.py e docs/API.md
-    return fasi.aggiungi(corpo, db, regole, rose, prev, f, stagione, adesso, file_scelte, file_diario, live_partite)
+    corpo = fasi.aggiungi(corpo, db, regole, rose, prev, f, stagione, adesso, file_scelte, file_diario, live_partite)
+    # partite rinviate della giornata: la regola che vale e i miei giocatori coinvolti (rinvii.py; null se non ce ne sono)
+    mie = [{"id": int(i), "nome": prev.at[i, "nome"], "ruolo": prev.at[i, "ruolo"], "squadra": prev.at[i, "squadra"]} for i in mie_ids]
+    try:
+        corpo["rinvio"] = rinvii.blocco_oggi(regole, stagione, giornata, corpo.get("partite") or [], mie)
+    except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
+        corpo["rinvio"] = None
+    return corpo

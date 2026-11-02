@@ -235,6 +235,7 @@ Gli scambi usano gli id dei giocatori, separati da virgola (per esempio `do=101,
 | `GET /api/regole` | — | regole della lega (ETag) |
 | `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict` |
 | `POST /api/regole/riconosci` | `{testo}` (massimo 30000 caratteri) | propone i valori letti dal regolamento incollato. Non salva niente |
+| `PUT /api/regole/rinvio` | `{giornata, modo, stagione?}` (X-Fanta, If-Match facoltativo, stesso ETag delle regole) | partite rinviate: decisione per UNA giornata, che vince sulla regola della lega (vedi «Partite rinviate» qui sotto) |
 
 ### Anteprima delle rose (`fanta/anteprima_rose.py`)
 
@@ -393,6 +394,54 @@ Dove si vedono (tutti campi aggiunti, i client vecchi li ignorano):
 - Promemoria, «cambio pronto», copia automatica della formazione e riepilogo usano la scadenza (non l'inizio della partita).
 Aggiornamenti più fitti: il servizio rilegge le probabili (e avvisa dei cambi) anche a 60, 30 e 15 minuti prima della scadenza, oltre ai giri di sempre del server. Nessuna rotta nuova; per spegnerli: `FANTA_PIANIFICATORE=0` nel servizio, oppure `aggiornamenti_vicino_scadenza: false` nelle regole. Le probabili hanno quindi un'ora di rilevazione (`probabili.aggiornate_il` in `/api/oggi`) più recente vicino alla scadenza.
 Le app mostrano il numero della lega (`giornata_lega`) quando c'è, altrimenti `giornata`. Cosa devono fare iOS e Android: mostrare il conto alla rovescia verso `scadenza` (se manca, `inizio`) e, nel pannello delle regole, i due valori; se non li conoscono non cambia nulla.
+
+## Partite rinviate: regola della lega ed eccezione per una giornata
+
+Una partita della giornata è **rinviata** se non è stata giocata e non sta nel turno (regola unica di `fanta/turno.py`): senza data
+o spostata a un recupero, anche settimane dopo. Appena il recupero è giocato non è più rinviata: i suoi voti valgono per la sua
+giornata. Cosa fa la lega con i giocatori di quella partita lo dicono tre campi nuovi di `GET/PUT /api/regole` (facoltativi: se un
+client vecchio rimanda le regole senza, il server tiene i valori che c'erano):
+- `partite_rinviate` (testo, predefinito `"aspetta"`): `aspetta` = la lega aspetta il recupero e conta il voto preso lì (come
+  «Attendi il recupero» di Leghe Fantacalcio); `senza_voto` = restano senza voto ed entra la riserva; `voto_ufficio` = tutti
+  prendono il voto fisso qui sotto (fantavoto = voto, niente bonus né malus).
+- `voto_ufficio_rinviate` (numero 0-10, predefinito 6): il voto d'ufficio.
+- `rinvii_giornate` (oggetto, predefinito `{}`): eccezioni decise volta per volta, `{"2026-27/12": "voto_ufficio"}` (stagione e
+  giornata **di Serie A**, come `giornata` di `/api/oggi`); vince sulla regola generale. Al massimo 76 voci.
+Valori sbagliati: `400` con il testo del problema.
+
+`PUT /api/regole/rinvio` cambia solo l'eccezione di una giornata, senza rimandare tutte le regole. Corpo: `giornata` (1-38, di Serie
+A), `modo` (`aspetta`, `senza_voto`, `voto_ufficio`, oppure `null` = torna alla regola della lega; uguale alla regola della lega =
+tolta), `stagione?` (`AAAA-AA`, predefinita quella in corso). Le eccezioni delle altre stagioni si tolgono. Risponde (con il nuovo
+`ETag` delle regole) `{stagione, giornata, modo, valore, predefinito, eccezione}`: `modo` è quello che vale ora, `valore` il voto
+d'ufficio (solo con `voto_ufficio`, se no `null`), `predefinito` la regola della lega, `eccezione` se la giornata ne ha una.
+Errori: `422` per un corpo sbagliato, `412` con un `If-Match` vecchio. Con il token del widget: `403`.
+
+Dove si vede (tutti campi aggiunti, i client vecchi li ignorano):
+- Previsioni (`/api/formazione` in `titolari`, `panchina`, `fuori`, `schede`; `/api/giocatore/{id}.previsione`; `/api/classifica`):
+  nuovo campo `rinvio` = il modo che vale per la sua partita, oppure `null` se la partita si gioca. Con `senza_voto`: `p_voto` 0,
+  `punti_attesi` 0, `titolarita` `"fuori"` (la formazione consigliata mette chi gioca davvero). Con `voto_ufficio`: `p_voto` 1,
+  `fv_atteso` = `voto_atteso` = `punti_attesi` = il voto d'ufficio, gol, assist, rigori, cartellini e porta inviolata a 0. Con
+  `aspetta`: i numeri di sempre (probabilità di giocare dalle presenze recenti: per il recupero non ci sono probabili).
+  Il primo dei `motivi` e di `perche_numero` (chiave nuova `rinvio`, `effetto: null`) lo spiega: «partita rinviata: conta il voto
+  del recupero del 10/12» (o «(data da definire)»), «partita rinviata: in questa giornata non prende voto», «partita rinviata: voto
+  d'ufficio 6». Con `senza_voto` e `voto_ufficio` è l'unico motivo.
+- `GET /api/oggi`: nuovo campo `rinvio`, `null` se nella giornata non c'è una partita rinviata (calendario o diretta, cioè
+  `partite[].stato == "rinviata"`), altrimenti `{stagione, giornata, giornata_lega, modo, valore, predefinito, eccezione, modi,
+  voto_ufficio, partite: [{casa, trasferta, data}], miei: [{id, nome, ruolo, squadra}]}` (`data` = data del recupero o `null`;
+  `miei` = i giocatori della tua rosa in quelle partite; `modi` = i valori ammessi, nell'ordine in cui mostrarli; `voto_ufficio`
+  = il voto d'ufficio della lega, anche quando non è quello scelto).
+- `in_corso` di `/api/oggi` segue la regola della giornata: con `aspetta` chi ha la partita rinviata resta a punteggio (niente
+  cambio) e i suoi punti attesi restano in `punti_previsti`; con `senza_voto` esce con un cambio certo (`motivo: "rinviata"`);
+  con `voto_ufficio` ha `fantavoto` = il voto d'ufficio, contato subito in `punti_fatti`. `stato` resta `rinviata`.
+- `GET /api/diario` (giornate finite): per le partite giocate fuori dal turno (recuperi) i punti `reale` di consigliata e
+  schierata usano la regola della giornata: con `aspetta` il voto del recupero, con `senza_voto` nessun voto (entra la riserva),
+  con `voto_ufficio` il voto fisso; anche `atteso` è ricalcolato con la stessa regola. `giocatori` (numeri per «Quanto ci abbiamo
+  preso») resta quello del modello e dei voti veri. Cambiare la regola di una giornata (diversa da `aspetta`) rifà la sua voce.
+
+Cosa devono fare iOS e Android: nel pannello delle regole, «Partite rinviate» con le tre scelte e il voto d'ufficio (solo se il
+server manda `partite_rinviate`); in Oggi, se `rinvio` non è `null`, un riquadro «Partita rinviata» con le partite, i tuoi
+giocatori coinvolti e un menu «Per questa giornata i loro giocatori…» con `modi` (selezionato `modo`) che chiama
+`PUT /api/regole/rinvio` e poi ricarica Oggi e la formazione. Mostrare `rinvio` e il motivo nella scheda del giocatore.
 
 ## GET /api/oggi: fasi della giornata (`fase`, `in_corso`, `riepilogo`, `prossima`)
 

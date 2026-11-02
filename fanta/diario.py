@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import consigli, incertezza, scelte
+from . import consigli, incertezza, rinvii, scelte
 from . import formazione as fz
 from .affidabilita import giornate_concluse
 from .blocco import BloccoFile
@@ -101,11 +101,17 @@ def salva_istantanea(f: dict, stagione: str, percorso: Path | None = None) -> bo
     return True
 
 
-def impronta_regole(regole: Regole) -> str:
-    """Impronta (hash corto) di ciò che cambia i punti fatti: fonte del voto, bonus/malus, panchina, modificatore, voto d'ufficio, moduli.
-    Salvata con ogni voce: se la lega cambia una di queste regole, le voci calcolate si rifanno da sole."""
+def impronta_regole(regole: Regole, stagione: str | None = None, giornata: int | None = None) -> str:
+    """Impronta (hash corto) di ciò che cambia i punti fatti: fonte del voto, bonus/malus, panchina, modificatore, voto d'ufficio, moduli
+    e, con stagione e giornata, la regola delle partite rinviate di quella giornata (solo se non è «aspetta», il predefinito: così le
+    voci scritte prima della regola non si rifanno). Salvata con ogni voce: se la lega cambia una di queste regole, le voci
+    calcolate si rifanno da sole."""
     d = asdict(regole)
     parti = {k: d.get(k) for k in ("fonte_voto", "bonus", "panchina", "modificatore_difesa", "voto_senza_sostituto", "moduli")}
+    if giornata is not None:
+        r = rinvii.regola(regole, stagione or "", giornata)
+        if r["modo"] != "aspetta":
+            parti["rinvio"] = [r["modo"], r["valore"]]
     return hashlib.sha1(json.dumps(parti, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 
@@ -163,6 +169,11 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     if pv is None:
         return None
     prev, reali, fv_vero = pv
+    numeri_prev = prev                    # «Quanto ci abbiamo preso» misura il modello: numeri di prima della regola dei rinvii
+    # partite rinviate (giocate fuori dal turno): la regola della lega per quella giornata, come prima della scadenza
+    r_rinvio = rinvii.regola(regole, stagione, giornata)
+    rinviate = rinvii.id_fuori_turno(d.partite, stagione, giornata)
+    prev = rinvii.applica(prev, rinviate, r_rinvio)
     ids = [i for i in ids_rosa if i in prev.index]
     if len(ids) < MIN_GIOCATORI_ROSA:
         return None
@@ -172,17 +183,18 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     gioca = {i: i in fv_vero for i in rosa}
     fv = {i: fv_vero.get(i, 0.0) for i in rosa}
     voto = {i: float(reali.at[i, col]) if i in fv_vero else 0.0 for i in rosa}
+    rinvii.voti_lega(gioca, fv, voto, [i for i in rosa if prev.at[i, "rinvio"] is not None], r_rinvio)
     val = fz.Valutatore(lista, regole, simulazioni)
     try:
         migliore = fz.migliore(lista, regole, simulazioni, valutatore=val)
     except ValueError:
         return None
     voce = {"stagione": stagione, "giornata": giornata, "calcolata": datetime.now().isoformat(timespec="seconds"),
-            "regole": impronta_regole(regole),
+            "regole": impronta_regole(regole, stagione, giornata),
             "consigliata": _riga(migliore.titolari, val.statistiche(migliore.titolari, migliore.panchina),
                                  fz.punteggio(migliore.titolari, migliore.panchina, gioca, fv, voto, regole)),
             "schierata": None, "automatica": None,
-            "giocatori": _numeri_giocatori(prev, fv_vero, list(ids) + list(altri_ids))}
+            "giocatori": _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))}
 
     def riga_di(sc: dict | None) -> dict | None:
         scelti = list(dict.fromkeys(int(i) for i in (sc or {}).get("titolari", [])))
@@ -213,7 +225,6 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
     voci = dati_diario["giornate"]
     istantanee = dati_diario["istantanee"] if isinstance(dati_diario.get("istantanee"), dict) else {}
     nuove_voci: dict = {}
-    impronta = impronta_regole(regole)
     for g in [x for x in giornate_concluse(db, stagione) if x >= regole.prima_giornata_lega][-MASSIMO_GIORNATE:]:
         if scadenza is not None and time.monotonic() > scadenza:
             break
@@ -224,6 +235,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
         scelta = scelte.leggi(stagione, g, file_scelte)
         auto = None if scelta else scelte.leggi(stagione, g, file_scelte, anche_automatica=True)
         vecchia = voci.get(chiave)
+        impronta = impronta_regole(regole, stagione, g)
         if vecchia:
             salta = False
             if vecchia.get("regole") != impronta:

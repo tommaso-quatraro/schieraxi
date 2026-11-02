@@ -16,7 +16,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta
 
-from . import avvisi, diario, scelte, turno as turni
+from . import avvisi, diario, rinvii, scelte, turno as turni
 from . import formazione as fz
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import Regole, serie_a_a_lega
@@ -141,11 +141,18 @@ def _stato_giocatore(g: dict, partita: dict | None, riga_voti: dict | None, squa
 
 def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], voti: dict[int, dict], squadre_voti: set[str],
               attesi: dict[int, float], fuori: set[int], regole: Regole,
-              previsione: dict[int, tuple[float, float, float]] | None = None) -> dict:
+              previsione: dict[int, tuple[float, float, float]] | None = None, rinvio: dict | None = None) -> dict:
     """Come sta andando una formazione schierata. `titolari`/`panchina`: {id, nome, ruolo, squadra} in ordine; `partite` con `stato`;
     `attesi`: punti attesi di chi deve ancora giocare; `fuori`: infortunati e squalificati (probabilmente senza voto).
     Le sostituzioni seguono le regole della lega (formazione.chi_va_a_punteggio), solo sui fatti noti: chi deve ancora giocare
-    si considera in campo, tranne chi è fuori (cambio «probabile»)."""
+    si considera in campo, tranne chi è fuori (cambio «probabile»).
+    `rinvio` (rinvii.regola della giornata; None = la regola generale della lega) dice cosa vale per chi ha la partita rinviata:
+    `aspetta` = resta in formazione e conta il voto del recupero (punti attesi, nessun cambio); `senza_voto` = entra la riserva
+    (cambio certo); `voto_ufficio` = prende il voto fisso, contato subito tra i punti fatti."""
+    modo = (rinvio or {}).get("modo") or getattr(regole, "partite_rinviate", "aspetta")
+    ufficio = (rinvio or {}).get("valore")
+    ufficio = float(getattr(regole, "voto_ufficio_rinviate", 6.0) if ufficio is None else ufficio)
+    senza_partita: set[int] = set()
     per_squadra: dict[str, dict] = {}
     for p in partite:
         for s in (p.get("casa"), p.get("trasferta")):
@@ -161,8 +168,16 @@ def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], v
         stato[i], f = _stato_giocatore(g, p, voti.get(i), squadre_voti, regole)
         if f is not None:
             fv[i], voto[i] = float(f), float(voti[i][col])
-    certo = {i: s in DECISI for i, s in stato.items()}
-    gioca = {i: (s == "fatto") if s in DECISI else (s != "rinviata" and i not in fuori) for i, s in stato.items()}
+        elif stato[i] == "rinviata":
+            if p is None:                    # la sua squadra non ha proprio una partita in questa giornata: niente recupero né voto
+                senza_partita.add(i)
+            elif modo == "voto_ufficio":
+                fv[i], voto[i] = ufficio, ufficio
+    # una partita rinviata: con il voto d'ufficio è come un voto preso; senza voto è un cambio certo; se si aspetta resta in campo
+    aspetta = {i for i, s in stato.items() if s == "rinviata" and modo == "aspetta" and i not in senza_partita}
+    certo = {i: s in DECISI or (s == "rinviata" and i not in aspetta) for i, s in stato.items()}
+    gioca = {i: (s == "fatto") if s in DECISI else (i in fv) if s == "rinviata" and i not in aspetta else i not in fuori
+             for i, s in stato.items()}
     gioc = {g["id"]: fz.Giocatore(g["id"], g.get("nome", ""), g["ruolo"], 0.0, 0.0, 0.0) for g in titolari + panchina}
     tit = [gioc[g["id"]] for g in titolari]
     panc = [gioc[g["id"]] for g in panchina]
@@ -182,21 +197,22 @@ def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], v
                              "motivo": stato[m.id] if stato[m.id] in ("senza_voto", "rinviata") else "fuori" if m.id in fuori else stato[m.id]})
     va, _ = fz.chi_va_a_punteggio(tit, panc, gioca, regole)
     a_punteggio = {g.id for g in va}
-    fatti = sum(fv[g.id] for g in va if stato[g.id] == "fatto")
+    fatti = sum(fv[g.id] for g in va if g.id in fv)          # voti presi e voti d'ufficio delle partite rinviate
     if regole.voto_senza_sostituto is not None:
         fatti += regole.voto_senza_sostituto * sum(1 for s in sostituzioni if s["entra"] is None and s["certa"])
     portiere_difesa = [g for g in va if g.ruolo in ("P", "D")]
     modificatore = None
-    if regole.modificatore_difesa.attivo and portiere_difesa and all(stato[g.id] == "fatto" for g in portiere_difesa):
+    if regole.modificatore_difesa.attivo and portiere_difesa and all(g.id in voto for g in portiere_difesa):
         modificatore = modificatore_difesa(next((voto[g.id] for g in va if g.ruolo == "P"), None),
                                            [voto[g.id] for g in va if g.ruolo == "D"], regole)
         fatti += modificatore
-    restanti = sum(float(attesi.get(g.id) or 0.0) for g in va if stato[g.id] not in DECISI)
+    restanti = sum(float(attesi.get(g.id) or 0.0) for g in va if stato[g.id] not in DECISI and g.id not in fv)
     if previsione is not None:
         # Collaudo 2/11/2026: la somma qui sopra (p×mu dei titolari) non conta le riserve che entrano al posto di chi non gioca:
         # a giornata appena iniziata dava ≈ 61,5 contro i 72,4 attesi prima. Si rifà il conto della formazione (stesse simulazioni
         # e stesse regole di Valutatore) con i fatti noti fissati: chi ha giocato ha il suo fantavoto, chi resta senza voto è fuori.
-        previsti = _previsti_condizionati(tit, panc, stato, fv, voto, {i: x for i, x in previsione.items() if i not in fuori}, regole)
+        previsti = _previsti_condizionati(tit, panc, stato, fv, voto, {i: x for i, x in previsione.items() if i not in fuori}, regole,
+                                          modo)
         if previsti is not None:
             restanti = max(0.0, previsti - fatti)
     giocatori = [{"id": g["id"], "nome": g.get("nome", ""), "ruolo": g["ruolo"], "squadra": g.get("squadra"),
@@ -210,23 +226,25 @@ def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], v
 
 
 def _previsti_condizionati(tit: list[fz.Giocatore], panc: list[fz.Giocatore], stato: dict[int, str], fv: dict[int, float],
-                           voto: dict[int, float], previsione: dict[int, tuple[float, float, float]], regole: Regole) -> float | None:
+                           voto: dict[int, float], previsione: dict[int, tuple[float, float, float]], regole: Regole,
+                           modo: str = "senza_voto") -> float | None:
     """Punti attesi a fine giornata con i fatti noti: (p_voto, mu, mu_voto) del modello per chi deve ancora giocare, il fantavoto
-    vero per chi ha giocato, zero probabilità per chi è rimasto senza voto o ha la partita rinviata. Riserve, voto d'ufficio e
-    modificatore difesa come nel calcolo della formazione. None se il conto non si può fare (dati mancanti)."""
+    vero per chi ha giocato (o il voto d'ufficio di una partita rinviata), zero probabilità per chi è rimasto senza voto. Chi ha la
+    partita rinviata: con `aspetta` conta come chi deve ancora giocare (il recupero), con `senza_voto` è fuori. Riserve, voto
+    d'ufficio e modificatore difesa come nel calcolo della formazione. None se il conto non si può fare (dati mancanti)."""
     try:
         rosa = []
         for g in tit + panc:
             s = stato[g.id]
-            if s == "fatto":
+            if g.id in fv:
                 rosa.append(fz.Giocatore(g.id, g.nome, g.ruolo, 1.0, fv[g.id], voto[g.id]))
-            elif s in ("senza_voto", "rinviata"):
+            elif s == "senza_voto" or (s == "rinviata" and modo != "aspetta"):
                 rosa.append(fz.Giocatore(g.id, g.nome, g.ruolo, 0.0, 0.0, 6.0))
             else:
                 p, mu, mu_voto = previsione.get(g.id, (0.0, 0.0, 6.0))
                 rosa.append(fz.Giocatore(g.id, g.nome, g.ruolo, float(p), float(mu), float(mu_voto)))
         v = fz.Valutatore(rosa, regole)
-        fatti = [i for i, g in enumerate(rosa) if stato[g.id] == "fatto"]
+        fatti = [i for i, g in enumerate(rosa) if g.id in fv]
         v.voti[:, fatti] = [voto[rosa[i].id] for i in fatti]      # voto vero, senza il rumore della simulazione
         idx = {g.id: i for i, g in enumerate(rosa)}
         tit_r, panc_r = [rosa[idx[g.id]] for g in tit], [rosa[idx[g.id]] for g in panc]
@@ -292,7 +310,7 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
     previsione = {int(i): (float(prev.at[i, "p_voto"]), float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"]))
                   for i in tit_ids + panc_ids if prev is not None and i in prev.index}
     a = andamento([info[i] for i in tit_ids], [info[i] for i in panc_ids], partite, voti, squadre_voti, attesi, fuori, regole,
-                  previsione)
+                  previsione, rinvii.regola(regole, stagione, giornata))
     return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "formazione_di": di} | a | {
         "partite": conta_partite(partite)}
 
