@@ -1,0 +1,5 @@
+{"titolo": "Inviti con un link da mandare",
+ "voci": ["Chi gestisce l'app crea l'invito e lo manda con un tocco: l'amico apre il link e trova la registrazione con il codice già scritto.",
+          "Testi più chiari: le probabili formazioni «non ancora uscite» si aggiornano da sole, e l'avviso sulle notifiche non rimanda più a un pulsante che non c'è."],
+ "tecnico": ["app.js: `?invito=CODICE` (ripulito: lettere, cifre e trattini, 4-40) apre «Registrati» con il campo pieno, si toglie dall'indirizzo e resta in sessionStorage fino alla registrazione (anche passando da Google).",
+             "Amministrazione: link, «Condividi l'invito» (navigator.share se c'è) e «Copia il messaggio»; plurale di «utenti» con tp()."]}

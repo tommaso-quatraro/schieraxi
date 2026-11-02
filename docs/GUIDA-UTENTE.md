@@ -27,12 +27,14 @@ Parole che vedrai spesso:
 
 ### Entrare
 
-1. Apri **https://app.schieraxi.it**.
-2. Scheda **Registrati**: scrivi il **codice d'invito** (di solito te lo dà chi gestisce l'app), un **nome utente** (3-32 caratteri: lettere senza accenti, numeri, punto, trattino) e una **password** di almeno 10 caratteri.
+1. Apri il **link d'invito** che ti ha mandato chi gestisce l'app: si apre la scheda **Registrati** con il codice già scritto. Senza link: apri **https://app.schieraxi.it**, scheda **Registrati**, e scrivi il **codice d'invito**.
+2. Scegli un **nome utente** (3-32 caratteri: lettere senza accenti, numeri, punto, trattino) e una **password** di almeno 10 caratteri.
 3. Spunta la casella (hai letto Privacy e Termini e hai almeno 14 anni) e tocca **Crea l'account**.
 4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password.
 
 Per entrare ancora: nome utente e password, poi **Entra nell'app**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni > Il tuo account > Accessi**.
+
+Per chi gestisce l'app: **Impostazioni > Avanzate > Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**); sotto c'è anche il codice, per chi usa l'app per iPhone.
 
 Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'email collegata ti arriva un codice a 6 cifre; altrimenti usi il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
