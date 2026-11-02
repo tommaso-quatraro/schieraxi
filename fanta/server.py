@@ -1121,15 +1121,25 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
         corpo = dict(gestione.oggi(db, r, rose_, file_scelte=ctx.scelte, file_diario=getattr(ctx, "diario", None),
                                    live_partite=_stati_live()))
         try:
-            admin = rotte_account.utente_corrente(request).amministratore
+            utente = rotte_account.utente_corrente(request)
+            admin, dal = utente.amministratore, _ora_locale(utente.creato)
         except HTTPException:
-            admin = False
+            admin, dal = False, None
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
-                                              lingua=lingua_testi.della_richiesta(request))
+                                              lingua=lingua_testi.della_richiesta(request), dal=dal)
         return corpo
     finally:
         db.close()
+
+
+def _ora_locale(quando: str | None) -> datetime | None:
+    """Una data salvata con il fuso (per esempio la nascita dell'account, in UTC) nell'ora locale del server, come il calendario."""
+    try:
+        d = datetime.fromisoformat(str(quando))
+    except (TypeError, ValueError):
+        return None
+    return d.astimezone().replace(tzinfo=None) if d.tzinfo else d
 
 
 def _stati_live() -> dict:

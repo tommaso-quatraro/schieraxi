@@ -191,6 +191,31 @@ def test_diario_una_voce_anche_con_tante_giornate_finite(mondo):
     assert [x["giornata"] for x in vai(mondo) if x["tipo"] == "diario"] == [9]
 
 
+def test_diario_solo_giornate_chiuse_dopo_la_nascita_dell_account(mondo):
+    """Un amico appena entrato non ha mai avuto una consigliata da schierare: niente domande sulle giornate chiuse prima di lui."""
+    mondo.db.execute("INSERT INTO partite VALUES (?, 7, '2026-10-20 18:00', 1)", (STAGIONE,))
+    mondo.db.execute("INSERT INTO partite VALUES (?, 8, '2026-10-27 18:00', 1)", (STAGIONE,))
+    mondo.db.execute("INSERT INTO partite VALUES (?, 8, '2026-10-28 20:45', 1)", (STAGIONE,))
+    regole = NS(prima_giornata_lega=1, scadenza_minuti=10)
+
+    def diario(dal):
+        return [x["giornata"] for x in da_fare.costruisci(mondo.db, regole, mondo.rose, mondo.oggi, mondo.ctx, adesso=ADESSO, dal=dal)
+                if x["tipo"] == "diario"]
+    assert diario(None) == [8]                                            # senza account (o data ignota): come sempre
+    assert diario(datetime(2026, 10, 1)) == [8]                           # account vecchio
+    assert diario(datetime(2026, 10, 24)) == [8]                          # nato tra la 7 e la 8
+    assert diario(datetime(2026, 10, 27, 17, 50)) == []                   # alla scadenza della 8 (10 minuti prima): già chiusa
+    assert diario(datetime(2026, 10, 27, 17, 49)) == [8]                  # un minuto prima: poteva ancora schierarla
+    assert diario(ADESSO) == []                                           # entrato oggi
+
+
+def test_ora_locale_della_nascita_dell_account():
+    assert server._ora_locale(None) is None and server._ora_locale("non una data") is None
+    assert server._ora_locale("2026-11-02T08:43:45") == datetime(2026, 11, 2, 8, 43, 45)
+    d = server._ora_locale("2026-11-02T08:43:45+00:00")
+    assert d.tzinfo is None and d == datetime(2026, 11, 2, 8, 43, 45, tzinfo=__import__("datetime").timezone.utc).astimezone().replace(tzinfo=None)
+
+
 def test_niente_promemoria_della_copia_di_sicurezza(mondo):
     """Dal 1/11/2026 la copia di sicurezza non si scarica più dalle app: nessuna voce «backup», nemmeno dopo mesi."""
     vecchio = (ADESSO - timedelta(days=400)).timestamp()

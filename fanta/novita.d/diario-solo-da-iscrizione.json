@@ -1,0 +1,3 @@
+{"titolo": "Chi entra adesso non riceve domande sulle giornate passate",
+ "voci": ["«Da fare» non chiede più se hai schierato la consigliata nelle giornate chiuse prima che tu entrassi nell'app."],
+ "tecnico": ["da_fare.costruisci riceve `dal` (nascita dell'account in ora locale, da /api/oggi); _diario salta le giornate la cui scadenza è passata prima."]}
