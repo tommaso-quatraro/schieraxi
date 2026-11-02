@@ -1,8 +1,7 @@
-import PhotosUI
 import SwiftUI
 
 /// Lega > Aggiorna le rose (ci porta anche il passo «rose» del primo avvio). Due passi:
-/// 1) si scelgono gli screenshot di Leghe (letti sul telefono), si incolla la pagina delle rose o si sceglie il file (Excel, CSV, testo);
+/// 1) si incolla la pagina delle rose o si sceglie il file (Excel, CSV, testo);
 /// 2) l'anteprima del server, che non salva niente: squadra per squadra i dubbi da sistemare, la propria squadra, poi «Conferma e salva».
 /// Logica in `ImportaExcelViewModel` e `AnteprimaLogica`.
 struct ImportaExcelView: View {
@@ -12,7 +11,6 @@ struct ImportaExcelView: View {
     @EnvironmentObject private var nav: Navigazione
     @State private var scegli = false
     @State private var cerca: DubbioDaCercare?
-    @State private var fotoScelte: [PhotosPickerItem] = []
 
     init(server: any ServerClient) {
         self.server = server
@@ -33,6 +31,8 @@ struct ImportaExcelView: View {
         .animation(Tema.morbida, value: vm.anteprima == nil)
         .navigationTitle("Aggiorna le rose")
         .task { await dubbi.carica() }
+        // Solo per le fotografie del simulatore (-DEMO_SCHERMATA lega-importa-salvate / lega-importa-salvate-ok): l'esito di un salvataggio, con dati inventati.
+        .task { if vm.esito == nil, let esito = DemoEsitoRose.esito(Demo.schermata) { vm.esito = esito } }
         // dopo un salvataggio i «giocatori da sistemare» (rimasti senza codice) si rileggono
         .onChange(of: vm.inCorso) { _, ora in if !ora, vm.esito != nil { Task { await dubbi.carica() } } }
         .onChange(of: vm.errore) { _, nuovo in if let nuovo { AccessibilityNotification.Announcement(nuovo).post() } }
@@ -49,13 +49,6 @@ struct ImportaExcelView: View {
             Task { await vm.importa(risultato) }
         }
         // Un file arrivato da un'altra app («Apri con SchieraXI»): passa dall'anteprima, con gli stessi controlli del selettore.
-        .onChange(of: fotoScelte) { _, scelte in
-            guard !scelte.isEmpty else { return }
-            Task {
-                await vm.leggiFoto(scelte)
-                fotoScelte = []
-            }
-        }
         .task(id: nav.fileDaImportare) {
             guard let url = nav.fileDaImportare else { return }
             nav.fileDaImportare = nil
@@ -68,33 +61,41 @@ struct ImportaExcelView: View {
     private var inserimento: some View {
         List {
             if let e = vm.esito { esito(e) }
-            daScreenshot
             Section {
-                Text("Incolla la pagina delle rose di Leghe oppure scegli il file. Prima di salvare ti mostro cosa ho capito: sistemi i dubbi e scegli la tua squadra. Basta anche solo la tua rosa.")
+                Text("Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti).")
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+                Button { scegli = true } label: {
+                    Label("Scegli il file Excel", systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                }
+                .disabled(vm.inCorso)
+                Text("Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.")
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+            }
+            Section {
+                Text("Se non hai il file Excel: copia la pagina delle rose di Leghe e incollala qui. Le squadre che non sono nel file restano com'erano.")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 TextEditor(text: $vm.testoRose)
                     .frame(minHeight: 110)
-                    .accessibilityLabel("Testo delle rose")
+                    .overlay(alignment: .topLeading) {
+                        if vm.testoRose.isEmpty {
+                            Text("Incolla qui il testo delle rose")
+                                .foregroundStyle(Color.testoSecondario)
+                                .padding(.top, 8).padding(.leading, 5)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .accessibilityLabel("Incolla qui il testo delle rose")
                     .disabled(vm.inCorso)
+                Toggle("Togli le squadre che non sono nel file", isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
                 Button { Task { await vm.importaTesto() } } label: {
                     Label("Controlla il testo", systemImage: "text.magnifyingglass").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled(vm.inCorso)
             } header: { Text("Incolla il testo delle rose").foregroundStyle(Color.testoSecondario) }
-            Section {
-                Button { scegli = true } label: {
-                    Label("Scegli il file (Excel, CSV, testo)", systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
-                }
-                .disabled(vm.inCorso)
-                Text("Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.")
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
-            } header: { Text("Oppure scegli il file").foregroundStyle(Color.testoSecondario) }
-            Section {
-                Toggle("Togli le squadre che non sono nel file", isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
-            } footer: { Text("Di solito le squadre che non ci sono restano com'erano.").foregroundStyle(Color.testoSecondario) }
             if vm.inCorso {
                 Section {
-                    HStack(spacing: 10) { ProgressView(); Text(vm.letturaFoto ?? "Leggo le rose…").foregroundStyle(Color.testoSecondario) }
+                    HStack(spacing: 10) { ProgressView(); Text("Leggo le rose…").foregroundStyle(Color.testoSecondario) }
                         .frame(minHeight: Tema.areaTocco)
                         .accessibilityElement(children: .combine)
                 }
@@ -102,46 +103,29 @@ struct ImportaExcelView: View {
             if let errore = vm.errore {
                 Section { Label(errore, systemImage: "exclamationmark.triangle").foregroundStyle(Color.attenzione) }
             }
-            if !vm.avvisiFoto.isEmpty {
-                Section {
-                    ForEach(vm.avvisiFoto, id: \.self) { Text($0).font(.footnote) }
-                } header: { Text("Dagli screenshot").foregroundStyle(Color.testoSecondario) }
-            }
             daSistemare
         }
         .scrollContentBackground(.hidden)
     }
 
-    /// Dal telefono il testo delle rose di Leghe non si copia: si fanno gli screenshot e il testo lo legge l'iPhone.
-    private var daScreenshot: some View {
-        Section {
-            PhotosPicker(selection: $fotoScelte, maxSelectionCount: 80, selectionBehavior: .ordered, matching: .images) {
-                Label("Scegli gli screenshot", systemImage: "photo.on.rectangle.angled")
-                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
-            }
-            .disabled(vm.inCorso)
-            .accessibilityHint("Sceglie le foto della rosa fatte nell'app Leghe")
-            Text("Nell'app Leghe apri la lega, poi ogni squadra: fai gli screenshot scorrendo tutta la rosa (anche sovrapposti). Qui puoi sceglierli tutti insieme, di più squadre.")
-                .font(.footnote).foregroundStyle(Color.testoSecondario)
-            Label("Le foto restano sul telefono: al server mando solo il testo letto.", systemImage: "lock")
-                .font(.footnote).foregroundStyle(Color.testoSecondario)
-        } header: { Text("Dagli screenshot di Leghe").foregroundStyle(Color.testoSecondario) }
-    }
-
     @ViewBuilder
     private func esito(_ e: EsitoImportazione) -> some View {
         Section {
+            // sulla web «Rose salvate» è un avviso che passa; qui resta come prima riga
+            Label("Rose salvate", systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde)
             if let d = e.differenze { DifferenzeView(differenze: d) }
             else if let r = e.riepilogo, !r.isEmpty { Text(r) }
             if let mia = e.miaSquadra, !mia.isEmpty {
                 Label("La tua squadra: \(mia)", systemImage: "star.fill").font(.footnote)
             }
             if let squadre = e.squadreImportate, !squadre.isEmpty {
-                Text("Salvate: \(squadre.joined(separator: ", ")) (\(Formato.plurale(e.totaleSquadre ?? squadre.count, "squadra", "squadre")) in tutto).")
+                Text("Importate: \(squadre.joined(separator: ", ")) (\(Formato.plurale(e.totaleSquadre ?? squadre.count, "squadra", "squadre")) in tutto).")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
             }
-        } header: { Label("Rose salvate", systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde) }
-        if !(e.avvisi ?? []).isEmpty {
+        } header: { Text("Cosa è cambiato").foregroundStyle(Color.testoSecondario) }
+        if (e.avvisi ?? []).isEmpty {
+            Section { Label("Rose controllate: tutto in ordine.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(Color.testoSecondario) }
+        } else {
             Section(titolo: "Da controllare") {
                 ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(Color.attenzione) }
             }
@@ -232,9 +216,6 @@ struct AnteprimaRoseVista: View {
             Text(AnteprimaLogica.riassunto(anteprima)).font(.subheadline)
             if let m = vm.messaggioAnteprima {
                 Label(m, systemImage: "arrow.triangle.2.circlepath").font(.footnote).foregroundStyle(Color.attenzione)
-            }
-            ForEach(vm.avvisiFoto, id: \.self) { a in
-                Label(a, systemImage: "photo").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             ForEach(AnteprimaLogica.avvisiGenerali(anteprima), id: \.self) { a in
                 Label(a, systemImage: "info.circle").font(.footnote).foregroundStyle(Color.attenzione)
@@ -476,4 +457,22 @@ struct CercaPerAnteprimaView: View {
 #Preview("Aggiorna le rose") {
     NavigationStack { ImportaExcelView(server: FinteServer.esempio) }
         .environmentObject(Navigazione())
+}
+
+/// L'esito di un salvataggio con dati inventati, solo per le fotografie (`Demo.schermata`). Mai usato fuori dalla demo.
+private enum DemoEsitoRose {
+    static func esito(_ schermata: String?) -> EsitoImportazione? {
+        let avvisi = schermata == "lega-importa-salvate" ? #"["Real Mandrake: «Bastrani» non è nel listone."]"# : "[]"
+        let json = #"""
+        {"squadre_importate": ["Gli Amici del Bar Sport Centrale", "Real Mandrake", "Atletico Divano"], "totale_squadre": 3,
+         "avvisi": \#(avvisi), "mia_squadra": "Gli Amici del Bar Sport Centrale",
+         "differenze": {"scambi": [{"squadre": ["Real Mandrake", "Atletico Divano"], "da_a": [{"nome": "Sorvani"}], "da_b": [{"nome": "Marténi"}]}],
+           "svincolati_presi": [{"squadra": "Atletico Divano", "giocatori": [{"nome": "Bastrani"}]}], "tagliati": [],
+           "crediti": [{"squadra": "Real Mandrake", "prima": 120, "dopo": 95}]}}
+        """#
+        guard schermata == "lega-importa-salvate" || schermata == "lega-importa-salvate-ok" else { return nil }
+        let decodificatore = JSONDecoder()
+        decodificatore.keyDecodingStrategy = .convertFromSnakeCase
+        return try? decodificatore.decode(EsitoImportazione.self, from: Data(json.utf8))
+    }
 }

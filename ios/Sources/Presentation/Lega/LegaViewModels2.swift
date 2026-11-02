@@ -1,4 +1,3 @@
-import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -22,10 +21,6 @@ final class ImportaExcelViewModel: ViewModelBase {
     /// «Togli le squadre che non sono nel file»: di norma le squadre assenti restano com'erano.
     @Published var sostituisciTutto = false
     @Published var testoRose = ""
-    /// Lettura degli screenshot di Leghe in corso: «Leggo la foto 2 di 6…» (nil = ferma).
-    @Published private(set) var letturaFoto: String?
-    /// Dopo la lettura degli screenshot: cosa ho letto e cosa controllare. Resta sopra l'anteprima.
-    @Published private(set) var avvisiFoto: [String] = []
 
     /// L'anteprima da controllare (nil = si sta ancora scegliendo cosa importare, o si è già salvato).
     @Published private(set) var anteprima: AnteprimaRose?
@@ -64,7 +59,6 @@ final class ImportaExcelViewModel: ViewModelBase {
 
     /// Un file scelto (selettore, «Apri con SchieraXI», Condividi): si controlla qui, poi va all'anteprima.
     func importa(_ risultato: Result<[URL], Error>) async {
-        avvisiFoto = []
         guard case .success(let urls) = risultato, let url = urls.first else {
             if case .failure(let e) = risultato { errore = e.localizedDescription }
             return
@@ -97,48 +91,8 @@ final class ImportaExcelViewModel: ViewModelBase {
         }
     }
 
-    /// Gli screenshot scelti, nell'ordine: il testo si legge sul telefono (Vision), le foto non partono.
-    func leggiFoto(_ voci: [PhotosPickerItem]) async {
-        guard !voci.isEmpty, !inCorso else { return }
-        inCorso = true
-        errore = nil
-        var pagine: [PaginaScreenshot?] = []
-        for (i, voce) in voci.enumerated() {
-            letturaFoto = "Leggo la foto \(i + 1) di \(voci.count)…"
-            guard let dati = try? await voce.loadTransferable(type: Data.self) else {
-                pagine.append(nil)
-                continue
-            }
-            let pagina = await Task.detached(priority: .userInitiated) { try? LetturaScreenshot.leggi(dati) }.value
-            pagine.append(pagina)
-        }
-        letturaFoto = nil
-        inCorso = false
-        await usaPagine(pagine)
-    }
-
-    /// Le pagine lette (nil = foto che non si apre): squadre, avvisi, poi l'anteprima del server con il testo ricostruito,
-    /// come se fosse stato incollato. I nomi delle squadre letti quasi uguali a quelli salvati prendono quelli salvati.
-    func usaPagine(_ pagine: [PaginaScreenshot?]) async {
-        let lette = pagine.map { $0.flatMap(RoseDaScreenshot.leggi) }
-        let valide = lette.compactMap { $0 }
-        let salvate: [SquadraLega]? = try? await server.get("/api/squadre")
-        let squadre = RoseDaScreenshot.unisci(valide, esistenti: salvate?.map(\.nome) ?? [])
-        guard squadre.contains(where: { $0.righe.contains { $0.ruolo != nil } }) else {
-            avvisiFoto = []
-            mostraErrore(Self.nienteNelleFoto)
-            return
-        }
-        avvisiFoto = [RoseDaScreenshot.riassunto(squadre)] + RoseDaScreenshot.avvisi(squadre, scartate: lette.count - valide.count)
-        testoRose = RoseDaScreenshot.testo(squadre)
-        await importaTesto(daFoto: true)
-    }
-
-    static let nienteNelleFoto = "Nelle foto non trovo nessuna rosa. Servono gli screenshot di «Dettaglio squadra» dell'app Leghe, con l'elenco dei calciatori."
-
     /// Il testo incollato (se non si ha il file): va all'anteprima.
-    func importaTesto(daFoto: Bool = false) async {
-        if !daFoto { avvisiFoto = [] }
+    func importaTesto() async {
         let testo = testoRose.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty else {
             errore = "Incolla prima il testo delle rose."
@@ -241,7 +195,6 @@ final class ImportaExcelViewModel: ViewModelBase {
             scelte = [:]
             trovati = [:]
             testoRose = ""          // il testo ha i nomi delle persone della lega: non resta sullo schermo
-            avvisiFoto = []
             errore = nil
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
