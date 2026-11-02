@@ -198,23 +198,6 @@ struct PassiModuloTests {
 
 // MARK: - recupero della password e registrazione (SessioneAccount)
 
-/// Tiene ferma una risposta del server finto finché il test non la lascia andare.
-private actor Cancello {
-    private var aperto = false
-    private var attese: [CheckedContinuation<Void, Never>] = []
-
-    func aspetta() async {
-        if aperto { return }
-        await withCheckedContinuation { attese.append($0) }
-    }
-
-    func apri() {
-        aperto = true
-        attese.forEach { $0.resume() }
-        attese = []
-    }
-}
-
 /// Quello che l'app manda per confermare il recupero con l'email.
 private struct ConfermaMandata: Decodable, Equatable {
     let email: String
@@ -343,7 +326,7 @@ struct RecuperoTests {
     func unaAllaVolta() async throws {
         let cancello = Cancello()
         let s = try sessione(ServerDiProva { _, percorso, _ in
-            if percorso == "/api/account/recupero-email" { await cancello.aspetta() }
+            if percorso == "/api/account/recupero-email" { await cancello.passa() }   // `Cancello.swift`: ferma finché il test non apre
             return Data(#"{"ok": true, "codice_recupero": "GGGGG-HHHHH-JJJJJ"}"#.utf8)
         })
         let primo = Task { try await s.chiediCodiceEmail("nome@example.invalid") }
