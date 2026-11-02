@@ -5,9 +5,10 @@ import re
 import unicodedata
 from pathlib import Path
 
-from .percorsi import CARTELLA_LEGA
+from .percorsi import CARTELLA_LEGA, RADICE
 
 CARTELLA = CARTELLA_LEGA / "immagini"
+ESEMPIO = RADICE / "lega" / "esempio" / "immagini"
 TIPI = ("stemma", "maglia")
 FORMATI = {".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp"}
 MAX_BYTE = 4 * 1024 * 1024
@@ -108,8 +109,8 @@ def pulisci(nomi: list[str], cartella: Path | None = None) -> int:
     """Toglie stemmi e maglie che non appartengono a nessuna delle squadre `nomi` (per esempio di una squadra tolta dalle rose):
     una squadra nuova con lo stesso nome non deve ereditarli. Le immagini in attesa («_in-attesa») restano. Quante ne ha tolte."""
     cartella = cartella or CARTELLA
-    if not cartella.is_dir():
-        return 0
+    if not cartella.is_dir() or cartella.resolve() == ESEMPIO.resolve():
+        return 0                                  # le immagini della lega di esempio stanno nel repository: mai toccarle
     tenuti = {f"{s}-{t}" for n in nomi for s in _slug_possibili(n) for t in TIPI}
     tolte = 0
     for p in cartella.iterdir():

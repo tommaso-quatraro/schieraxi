@@ -92,3 +92,7 @@ def test_pulisci_tiene_le_immagini_in_attesa_e_quelle_delle_squadre(tmp_path):
         (tmp_path / nome).write_bytes(b"x")
     assert immagini.pulisci(["Lupi"], tmp_path) == 1
     assert sorted(p.name for p in tmp_path.iterdir()) == ["_in-attesa.png", "altro.txt", "lupi-stemma.png"]
+
+
+def test_pulisci_non_tocca_la_lega_di_esempio():
+    assert immagini.pulisci([], immagini.ESEMPIO) == 0 and any(immagini.ESEMPIO.iterdir())
