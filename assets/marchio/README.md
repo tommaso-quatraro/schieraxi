@@ -13,5 +13,6 @@ Si rigenerano tutti con `.venv\Scripts\python.exe prove\crea_marchio.py` (stesse
 | `social-og-1200x630.png` | anteprima link (Open Graph): lo spazio a destra è per il nome |
 | `avatar-800.png` | foto profilo social, con margine per il ritaglio a cerchio |
 
-Versione con testo: segnaposto, da fare quando il nome è deciso (nome a destra del simbolo nell'immagine social, logo orizzontale).
+Versione con testo: il nome disegnato «SchieraXI» sta in `wordmark/` (font Archivo, licenza SIL OFL 1.1; regole e generatore nel suo `README.md`).
+L'immagine social del sito con simbolo e nome (`sito/img/og.png`) si rifà con `wordmark/genera.py --og`.
 Regole d'uso: `MARCHIO.md` e `TRADEMARKS.md`.

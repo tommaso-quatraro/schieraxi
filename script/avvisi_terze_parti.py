@@ -91,6 +91,11 @@ def genera(nomi: list[str]) -> str:
               "", "Apache-2.0, BSD e MIT chiedono di conservare l'avviso di copyright e il testo della licenza: restano nei pacchetti installati da `pip`.",
               "", "## App per iPhone", "",
               "L'app per iPhone non include librerie di terzi: usa solo i framework di sistema di Apple.",
+              "", "## Font", "",
+              "Il nome disegnato «SchieraXI» (sito e app) usa le lettere del font **Archivo** (Copyright 2020 The Archivo Project Authors, "
+              "https://github.com/Omnibus-Type/Archivo), sotto licenza SIL Open Font License 1.1. Sito e app contengono solo i tracciati "
+              "delle lettere, non il font. Un sottoinsieme del font e la sua licenza stanno in `assets/marchio/wordmark/` "
+              "(`Archivo-sottoinsieme.ttf`, `OFL.txt`).",
               "", "## Dati e servizi", "", "I nomi dei dati e dei servizi usati sono elencati nella pagina «Crediti e fonti» dell'app (`/crediti`).", ""]
     return "\n".join(righe)
 

@@ -279,10 +279,28 @@ def test_gioco_di_parole_del_nome():
         assert f'aria-label="{aria}"' in testo and 'class="nome-gioco"' in testo
         assert slogan in testo and not re.search(r"(?i)schièra|OON-dee|si legge schi|is read |pronounc", testo)
         assert "SchieraXI" in p.meta["og:image:alt"]
-        # wordmark disegnato in SVG (nessun font): apertura con la L che diventa X e la i che diventa I
-        assert "wm-hero" in testo and "wm-L" in testo and "wm-X1" in testo and "wm-I" in testo
-        assert testo.count('<symbol id="wm') == 2 and 'href="#wm-c"' in testo and 'href="#wm"' in testo
-        assert "<text" not in testo
+        # nome disegnato in tracciati (nessun font da scaricare): apertura «Schierali» -> «SchieraXI»
+        assert "wm-hero" in testo and "wm-L" in testo and "wm-X1" in testo and "wm-X2" in testo
+        assert "wm-I" in testo and "wm-Id" in testo
+        assert testo.count('<symbol id="wm') == 2 and 'href="#wm-c"' in testo
+        assert "<text" not in testo and "stroke" not in re.search(r'<svg class="sprite".*?</svg>', testo, re.S).group(0)
+
+
+def test_nome_disegnato_con_font_libero():
+    """Il nome viene da Archivo (SIL OFL 1.1): font, licenza e generatore stanno in assets/marchio/wordmark/."""
+    cartella = SITO.parent / "assets" / "marchio" / "wordmark"
+    assert "SIL Open Font License" in (cartella / "OFL.txt").read_text(encoding="utf-8")
+    assert (cartella / "Archivo-sottoinsieme.ttf").is_file() and (cartella / "genera.py").is_file()
+    css = (SITO / "stile.css").read_text(encoding="utf-8")
+    assert "@font-face" not in css  # niente font scaricati dal sito: solo tracciati
+    for nome in ("index.html", "en/index.html", "404.html", "offline.html"):
+        testo = (SITO / nome).read_text(encoding="utf-8")
+        sprite = re.search(r'<svg class="sprite".*?</svg>', testo, re.S).group(0)
+        # due versioni: #wm grande (I con il taglio) e #wm-c compatta (I piena), stesso riquadro
+        caselle = re.findall(r'<symbol id="(wm(?:-c)?)" viewBox="([^"]+)"', sprite)
+        assert [c[0] for c in caselle] == ["wm", "wm-c"] and caselle[0][1] == caselle[1][1]
+        # le misure piccole (barra in alto, piè di pagina) usano la versione compatta
+        assert not re.search(r'class="wm-svg wm-(bar|pie)"[^>]*>\s*<use href="#wm"', testo)
 
 
 # ---- app installabile ----
