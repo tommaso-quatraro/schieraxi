@@ -177,6 +177,7 @@ async function paTempiSalva() {
   r.prima_giornata_lega = Number($("#pa-prima").value);
   await api("/api/regole", { method: "PUT", body: JSON.stringify(r) });
   svuotaCache();
+  caricaInfo();                    // la testata passa subito alla «Giornata N» della lega (prima restava quella di Serie A fino a ricaricare)
   return true;
 }
 

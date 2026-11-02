@@ -3,6 +3,10 @@
    Il vetro vero (sfocatura) è usato solo dove serve (testata, barra, pannelli); le carte usano un vetro "leggero"
    senza sfocatura, che costa meno batteria. Chi ha ridotto i movimenti nelle impostazioni dell'iPhone non vede animazioni.
    ===================================================================================================== */
+/* Un elemento con l'attributo `hidden` resta nascosto anche se la sua classe ha un `display` (prima `.riga` mostrava «Dalle/Alle»
+   delle ore tranquille con l'interruttore spento). */
+[hidden] { display: none !important; }
+
 :root {
   color-scheme: dark;
   --z: 1;                                   /* ingrandimento su schermi grandi (vedi in fondo a «Schermi larghi»): serve a dividere le misure in vh */
