@@ -414,6 +414,8 @@ struct Oggi: Decodable {
     let riepilogo: Tollerante<RiepilogoGiornata>?
     /// Solo con la fase `finita`: la prossima giornata e da quando conviene prepararla.
     let prossima: Tollerante<ProssimaGiornata>?
+    /// Partite rinviate della giornata e cosa vale per i loro giocatori (`null` se non ce ne sono). Facoltativo (server vecchio).
+    let rinvio: Tollerante<SceltaRinvio>?
 }
 
 /// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.
@@ -1032,13 +1034,19 @@ struct RiepilogoGiornata: Decodable, Equatable {
     let puntiAttesi: Double?
     let intervallo: IntervalloPunti?
     let consigliata: PuntiConsigliata?
+    /// Le partite rinviate ancora da recuperare, solo se la lega aspetta il recupero: i punti possono ancora cambiare.
+    let recuperi: [PartitaRinviata]
+    /// Il menu «per questa giornata», finché manca un recupero (nil altrimenti o con un server vecchio).
+    let rinvio: SceltaRinvio?
 
-    private enum Chiavi: String, CodingKey { case giornata, giornataLega, formazioneDi, nelDiario, puntiFatti, puntiAttesi, intervallo, consigliata }
+    private enum Chiavi: String, CodingKey { case giornata, giornataLega, formazioneDi, nelDiario, puntiFatti, puntiAttesi, intervallo, consigliata, recuperi, rinvio }
 
     init(giornata: Int? = nil, giornataLega: Int? = nil, formazioneDi: String? = nil, nelDiario: Bool = false, puntiFatti: Double? = nil,
-         puntiAttesi: Double? = nil, intervallo: IntervalloPunti? = nil, consigliata: PuntiConsigliata? = nil) {
+         puntiAttesi: Double? = nil, intervallo: IntervalloPunti? = nil, consigliata: PuntiConsigliata? = nil,
+         recuperi: [PartitaRinviata] = [], rinvio: SceltaRinvio? = nil) {
         self.giornata = giornata; self.giornataLega = giornataLega; self.formazioneDi = formazioneDi; self.nelDiario = nelDiario
         self.puntiFatti = puntiFatti; self.puntiAttesi = puntiAttesi; self.intervallo = intervallo; self.consigliata = consigliata
+        self.recuperi = recuperi; self.rinvio = rinvio
     }
 
     init(from decoder: Decoder) throws {
@@ -1051,6 +1059,108 @@ struct RiepilogoGiornata: Decodable, Equatable {
         puntiAttesi = k.facoltativo(Double.self, .puntiAttesi)
         intervallo = k.facoltativo(IntervalloPunti.self, .intervallo)
         consigliata = k.facoltativo(PuntiConsigliata.self, .consigliata)
+        recuperi = k.elenco(PartitaRinviata.self, .recuperi)
+        rinvio = k.facoltativo(SceltaRinvio.self, .rinvio)
+    }
+}
+
+// MARK: - Partite rinviate (campi facoltativi `rinvio` di Oggi e `riepilogo.recuperi`/`riepilogo.rinvio`, dal 2/11/2026; testi e corpo
+// della richiesta in PartiteRinviate.swift, solo nell'app)
+
+/// Le regole delle partite rinviate (contratto «Partite rinviate» in `docs/API.md`).
+enum ModoRinvio {
+    /// La lega aspetta il recupero e conta il voto preso lì: i giocatori restano schierabili.
+    static let aspetta = "aspetta"
+    /// I giocatori restano senza voto: entra la riserva.
+    static let senzaVoto = "senza_voto"
+    /// Tutti prendono il voto d'ufficio, senza bonus né malus.
+    static let votoUfficio = "voto_ufficio"
+    /// Nell'ordine in cui si mostrano (se il server non manda `modi`).
+    static let tutti = [aspetta, senzaVoto, votoUfficio]
+}
+
+/// Una partita rinviata della giornata: `data` = quella del recupero, se c'è già.
+struct PartitaRinviata: Decodable, Equatable, Identifiable {
+    let casa: String
+    let trasferta: String
+    let data: String?
+    var id: String { "\(casa)-\(trasferta)" }
+
+    private enum Chiavi: String, CodingKey { case casa, trasferta, data }
+
+    init(casa: String, trasferta: String, data: String? = nil) { self.casa = casa; self.trasferta = trasferta; self.data = data }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        casa = try k.decode(String.self, forKey: .casa)
+        trasferta = try k.decode(String.self, forKey: .trasferta)
+        data = k.facoltativo(String.self, .data)
+    }
+}
+
+/// Un mio giocatore che gioca una partita rinviata.
+struct GiocatoreRinviato: Decodable, Equatable, Identifiable {
+    let id: Int
+    let nome: String
+    let ruolo: String?
+    let squadra: String?
+
+    private enum Chiavi: String, CodingKey { case id, nome, ruolo, squadra }
+
+    init(id: Int, nome: String, ruolo: String? = nil, squadra: String? = nil) {
+        self.id = id; self.nome = nome; self.ruolo = ruolo; self.squadra = squadra
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        id = try k.decode(Int.self, forKey: .id)
+        nome = try k.decode(String.self, forKey: .nome)
+        ruolo = k.facoltativo(String.self, .ruolo)
+        squadra = k.facoltativo(String.self, .squadra)
+    }
+}
+
+/// Cosa vale per una giornata con una partita rinviata e cosa serve al menu «per questa giornata»: campo `rinvio` di Oggi (con
+/// `partite` e `miei`) e `riepilogo.rinvio` della giornata finita (senza). Letto in modo tollerante.
+struct SceltaRinvio: Decodable, Equatable {
+    let stagione: String?
+    let giornata: Int
+    let giornataLega: Int?
+    /// Quello che vale adesso per la giornata (`aspetta`, `senza_voto`, `voto_ufficio`).
+    let modo: String
+    /// La regola della lega.
+    let predefinito: String?
+    /// true = per questa giornata vale una scelta diversa da quella della lega.
+    let eccezione: Bool
+    /// I valori ammessi, nell'ordine in cui mostrarli.
+    let modi: [String]
+    /// Il voto d'ufficio della lega (anche quando non è quello scelto).
+    let votoUfficio: Double?
+    let partite: [PartitaRinviata]
+    let miei: [GiocatoreRinviato]
+
+    private enum Chiavi: String, CodingKey { case stagione, giornata, giornataLega, modo, valore, predefinito, eccezione, modi, votoUfficio, partite, miei }
+
+    init(stagione: String? = nil, giornata: Int, giornataLega: Int? = nil, modo: String, predefinito: String? = nil, eccezione: Bool = false,
+         modi: [String] = ModoRinvio.tutti, votoUfficio: Double? = 6, partite: [PartitaRinviata] = [], miei: [GiocatoreRinviato] = []) {
+        self.stagione = stagione; self.giornata = giornata; self.giornataLega = giornataLega; self.modo = modo
+        self.predefinito = predefinito; self.eccezione = eccezione; self.modi = modi; self.votoUfficio = votoUfficio
+        self.partite = partite; self.miei = miei
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        giornata = try k.decode(Int.self, forKey: .giornata)
+        modo = try k.decode(String.self, forKey: .modo)
+        stagione = k.facoltativo(String.self, .stagione)
+        giornataLega = k.facoltativo(Int.self, .giornataLega)
+        predefinito = k.facoltativo(String.self, .predefinito)
+        eccezione = k.facoltativo(Bool.self, .eccezione) ?? false
+        let elenco = (k.facoltativo([String].self, .modi) ?? []).filter { !$0.isEmpty }
+        modi = elenco.isEmpty ? ModoRinvio.tutti : elenco
+        votoUfficio = k.facoltativo(Double.self, .votoUfficio) ?? k.facoltativo(Double.self, .valore)
+        partite = k.elenco(PartitaRinviata.self, .partite)
+        miei = k.elenco(GiocatoreRinviato.self, .miei)
     }
 }
 
