@@ -68,9 +68,10 @@ async def _ciclo(_):
         threading.Thread(target=riscaldamento.sorveglia, args=(lambda: _versione_dati(), lambda: _scalda(), fermo),
                          kwargs={"ritardo": riscaldamento.ritardo_avvio()}, name="riscaldamento", daemon=True).start()
     threading.Thread(target=pianificatore.sorveglia, args=(fermo, _leghe_attive, _db, _aggiorna_leggero, _dopo_giro_leggero),
+                     kwargs={"risultati": _risultati_leggeri},       # e risultati e voti la sera stessa, dopo le partite
                      name="pianificatore", daemon=True).start()          # giri in più vicino alla scadenza (FANTA_PIANIFICATORE=0 lo spegne)
     if fonti_attive.acceso("espn") and funzioni.acceso("live"):          # risultati in diretta: un solo raccoglitore per tutto il servizio
-        live.unico = live.Raccoglitore(_calendario_live)
+        live.unico = live.Raccoglitore(_calendario_live, file=live.FILE)        # la cache resta anche dopo un riavvio
         threading.Thread(target=live.sorveglia, args=(live.unico, fermo), name="live", daemon=True).start()
     try:
         yield
@@ -539,6 +540,16 @@ def _aggiorna_leggero() -> bool | None:
         return None
     try:
         return pianificatore.aggiorna_probabili()
+    finally:
+        _blocco.release()
+
+
+def _risultati_leggeri(giornate: list[int]) -> bool | None:
+    """Solo risultati e voti delle giornate indicate, mai insieme a un aggiornamento completo. None = occupato (si riprova)."""
+    if not _blocco.acquire(blocking=False):
+        return None
+    try:
+        return pianificatore.aggiorna_risultati(giornate)
     finally:
         _blocco.release()
 
