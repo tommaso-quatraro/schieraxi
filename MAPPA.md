@@ -139,6 +139,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Nomi dei giocatori tra fonti diverse: `nomi.py`. Gli abbinamenti incerti non si devono prendere per buoni.
 - `dati/` non va mai in git né nei log. Il backup (`backup.py`) non contiene chiavi né iscrizioni alle notifiche.
 - Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json`.
+- Rifare tutto il servizio da una copia notturna (`backup-dati.sh`): `docs/RIPRISTINO-SERVER.md` (provato il 2/11/2026; cosa non c'è nella copia e cosa succede).
 - Ore tranquille (`silenzio`, `silenzio_da`, `silenzio_a`): bloccano l'invio degli avvisi. La prova le ignora.
 - Il tempo della lega (`scadenza_minuti`, `prima_giornata_lega`) sta nelle regole della lega, non nel codice.
 - Il modello non legge le quote dei bookmaker: non reintrodurle senza prima e dopo con `verifica`.
