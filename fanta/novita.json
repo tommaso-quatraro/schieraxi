@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.354",
+    "data": "2026-11-02T14:31:28",
+    "titolo": "Rosa e scheda: partite e stato giusti",
+    "voci": [
+      "Nella Rosa le partite in trasferta si leggono «@ JUV» e non più «vs JUV», con il giorno e l'ora, come in Formazione.",
+      "Dopo la scadenza la Rosa non mostra più «gioca N%» accanto a «Voto in arrivo»: c'è il fantavoto preso o un trattino, come in Formazione.",
+      "Nella scheda del giocatore lo stato della partita finita («Voto in arrivo») non compare più due volte.",
+      "In inglese il numero d'esempio della legenda del campo si scrive con il punto."
+    ],
+    "tecnico": [
+      "vistaRosa usa vsAt e quando come le righe della Formazione; valoreRosa usa esitoPartita (tolta la chiave scambio.vs); apriGiocatore: pillola dello stato nascosta quando lo stato è già nel numero grande (statoInGrande); legenda con num(6.8). Test in tests/test_rosa_righe_web.py."
+    ]
+  },
+  {
     "versione": "1.353",
     "data": "2026-11-02T14:20:24",
     "titolo": "Formazioni chiuse protette anche dal backup, Seguiti con lo stato della partita",
