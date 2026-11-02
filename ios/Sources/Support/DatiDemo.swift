@@ -506,19 +506,48 @@ private enum DatiDemo {
             "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia,
                            "dev": 4.2, "intervallo": fascia(punteggio(ids)), "tua_scelta": true],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
-            "da_fare": [
-                ["id": "dubbio-120", "tipo": "dubbio", "testo": "Leonel Marténi è in dubbio: guarda le alternative", "priorita": 1,
-                 "azione": "Sostituisci", "destinazione": ["scheda": "formazione", "sezione": "formazione", "link": "schieraxi://formazione"]],
-                ["id": "svincolato-203", "tipo": "svincolato", "testo": "Uno svincolato migliora la squadra di 3,4 punti", "priorita": 2,
-                 "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]],
-                ["id": "rose", "tipo": "rose", "testo": "Le rose sono vecchie dopo la giornata: aggiornale", "priorita": 2,
-                 "azione": "Aggiorna", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]],
-                ["id": "diario", "tipo": "diario", "testo": "Segna la formazione che hai schierato nella giornata 10", "priorita": 3,
-                 "azione": "Apri", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]],
-                ["id": "backup", "tipo": "backup", "testo": "Fai una copia di sicurezza dei tuoi dati", "priorita": 3,
-                 "azione": "Apri", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]],
-            ],
+            "da_fare": [voceDubbio, voceSvincolato, voceRoseVecchie, voceDiario, voceBackup],
         ]
+    }
+
+    // MARK: - «Da fare» come lo scrive il server
+    // Testi e pulsanti sono quelli di `fanta/frasi.py` (chiavi `dafare.*`), riempiti con i dati della demo;
+    // `DemoDaFareTests` li confronta con il catalogo del server.
+
+    /// Marténi, titolare con il 62% di giocare (`pVoto` della demo): il miglior ricambio libero del ruolo è Lemão.
+    static var voceDubbio: [String: Any] {
+        ["id": "dubbio-120", "tipo": "dubbio", "testo": "Leonel Marténi è in dubbio (62% di giocare). Meglio Renato Lemão.", "priorita": 1,
+         "azione": "Sostituisci", "destinazione": ["scheda": "formazione", "sezione": "formazione", "link": "schieraxi://formazione"]]
+    }
+
+    /// Il primo cambio di `mercato()`: Retalli (libero) al posto di Vlasenić, 3,4 punti in più.
+    static var voceSvincolato: [String: Any] {
+        ["id": "svincolato-203", "tipo": "svincolato",
+         "testo": "Mauro Retalli (libero) al posto di Darko Vlasenić: circa 3,4 punti in più.", "priorita": 2,
+         "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]]
+    }
+
+    /// Rose ferme da 5 giorni dopo una giornata giocata.
+    static var voceRoseVecchie: [String: Any] {
+        ["id": "rose", "tipo": "rose", "testo": "Le rose non sono aggiornate da 5 giorni e nel frattempo si è giocata una giornata.",
+         "priorita": 2, "azione": "Aggiorna le rose", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]]
+    }
+
+    /// L'ultima giornata finita: il server la numera per la lega (la 7, la testata dice «Giornata 8 di lega»), mentre `id`,
+    /// `giornata` e `destinazione.giornata` sono i numeri della Serie A (la 10), come in `_diario` di `fanta/da_fare.py`.
+    static var voceDiario: [String: Any] {
+        let serieA = giornata - 1
+        let lega = (giornata - 3) - 1
+        return ["id": "diario:\(serieA)", "tipo": "diario", "testo": "La giornata \(lega) è finita: dimmi se hai schierato la consigliata.",
+                "priorita": 3, "azione": "Ho schierato la consigliata",
+                "destinazione": ["scheda": "lega", "sezione": "diario", "link": "schieraxi://lega/diario", "giornata": serieA] as [String: Any],
+                "giornata": serieA]
+    }
+
+    /// Una voce che il server non manda più: l'app la nasconde (la copia di sicurezza non si fa dall'app). Resta per provarlo.
+    static var voceBackup: [String: Any] {
+        ["id": "backup", "tipo": "backup", "testo": "Fai una copia di sicurezza dei tuoi dati", "priorita": 3,
+         "azione": "Apri", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]]
     }
 
     // MARK: - Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
@@ -610,10 +639,7 @@ private enum DatiDemo {
         o["scadenza"] = data(scadenza)
         o["con_probabili"] = false
         o["probabili"] = NSNull()
-        o["da_fare"] = [
-            ["id": "svincolato-203", "tipo": "svincolato", "testo": "Uno svincolato migliora la squadra di 3,4 punti", "priorita": 2,
-             "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]],
-        ]
+        o["da_fare"] = [voceSvincolato]
         o["riepilogo"] = [
             "giornata": giornata, "giornata_lega": giornata - 3, "formazione_di": "tua", "nel_diario": true,
             "punti_fatti": 74.5, "punti_attesi": 71.2, "intervallo": fascia(71.2, indicativo: false),
