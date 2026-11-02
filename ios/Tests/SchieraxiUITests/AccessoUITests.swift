@@ -296,6 +296,43 @@ final class AccessoUITests: XCTestCase {
     func testDiagnosiFogliConDatiCheCambiano() { diagnosiFogli(datiCheCambiano: true) }
     func testDiagnosiFogliConDatiFermi() { diagnosiFogli(datiCheCambiano: false) }
 
+    /// Come il test vero, dall'avvio: ogni giro un avvio nuovo, poi i quattro fogli uno dopo l'altro, chiusi come `chiudiFoglio`
+    /// (solo l'attesa che il segno sparisca, niente attesa che la voce sotto torni toccabile).
+    func testDiagnosiFogliComeIlTestDallAvvio() {
+        var anomalie: [String] = []
+        var esiti: [String] = []
+        var aperture = 0
+        for giro in 1...8 {
+            avvia("account", altri: ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"])
+            attendi("Il tuo account")
+            let voceEmail = app.buttons.matching(NSPredicate(format: "label IN %@", ["Aggiungi un'email", "Gestisci l'email"])).firstMatch
+            let fogli: [(voce: XCUIElement, segno: XCUIElement, titolo: String, pulsante: String)] = [
+                (app.buttons["account-cambia-password"], app.secureTextFields["Password attuale"], "Cambia la password", "Annulla"),
+                (app.buttons["account-codice"], app.navigationBars["Codice di recupero"], "Codice di recupero", "Annulla"),
+                (voceEmail, app.navigationBars["Email"], "Email", "Chiudi"),
+                (app.buttons["account-elimina"], app.navigationBars["Elimina l'account"], "Elimina l'account", "Annulla"),
+            ]
+            for foglio in fogli {
+                let apertura = apriFoglioMisurato(foglio.voce, segno: foglio.segno)
+                aperture += 1
+                esiti.append(apertura)
+                if let a = osserva(foglio.segno, voce: foglio.voce, titolo: foglio.titolo) {
+                    anomalie.append("avvio \(giro) «\(foglio.titolo)» aperto in \(apertura): \(a)")
+                    if !foglio.segno.waitForExistence(timeout: 2) { break }   // chiuso davvero: si riparte con un avvio nuovo
+                }
+                let b = app.navigationBars[foglio.titolo].buttons[foglio.pulsante]
+                XCTAssertTrue(b.waitForExistence(timeout: 10), "manca «\(foglio.pulsante)»")
+                b.tap()
+                _ = foglio.segno.waitForNonExistence(timeout: 10)
+            }
+            app.terminate()
+        }
+        let riassunto = "DIAGNOSI dall'avvio: sparizioni \(anomalie.count) su \(aperture) aperture || "
+            + anomalie.joined(separator: " || ") + " || aperture: " + esiti.joined(separator: " ")
+        print(riassunto)
+        XCTFail(riassunto)
+    }
+
     func testRetAssenteDiceCosaFare() {
         avvia("rete")
         attendi("Non riesco a collegarmi a SchieraXI", contiene: true)
