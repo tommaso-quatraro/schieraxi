@@ -14,6 +14,7 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
   con le sue condizioni d'uso. Le fonti restano spente di default.
 - Passi piccoli: ogni passo va provato davvero prima del commit. Non dire che una cosa funziona se non l'hai eseguita.
 - Commit in italiano. Un ramo per ogni lavoro.
+- Ogni modifica a una schermata vale per web e iPhone: vedi `docs/COERENZA-WEB-IPHONE.md`.
 
 ## Flusso di lavoro
 1. Issue: cosa cambiare e perché. Per una correzione di una riga basta la pull request.
