@@ -127,6 +127,9 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   messaggio sarebbe partito, mai il codice). Con registrazione `aperta` o `email` servono `smtp` o `resend`.
 - Registri: righe tenute 30 giorni, indirizzi accorciati (IPv4 senza l'ultimo numero, IPv6 solo /64).
 - Accesso con Google: spento (404) senza `FANTA_GOOGLE_CLIENT_ID` e `FANTA_GOOGLE_CLIENT_SECRET`.
+- Pagine legali (`testi_legali.py`): `FANTA_TITOLARE`, `FANTA_CONTATTO`, `FANTA_SORGENTE`, `FANTA_HOSTING`, `FANTA_BACKUP_GIORNI`,
+  `FANTA_REGISTRO_WEB_GIORNI` (senza: frasi generiche). `tests/test_legale.py` lega i testi al codice: se cambi cookie, durate, Google o widget, cambia la pagina,
+  la data «aggiornato» e `account.VERSIONE_TERMINI`.
 
 ## Fonti dati
 - Ogni fonte ha un suo interruttore: `FANTA_FONTE_<NOME>=1`, oppure l'amministratore la accende da `dati/fonti.json`

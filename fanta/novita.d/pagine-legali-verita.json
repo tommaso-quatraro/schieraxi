@@ -1,0 +1,14 @@
+{
+  "titolo": "Privacy, termini ed eliminazione dell'account più completi",
+  "voci": [
+    "La pagina Privacy dice tutto quello che l'app tiene: accesso con Google (solo identificativo ed email, mai nome o foto), inviti, dati degli altri partecipanti della lega, lettura delle rose dalle foto dello schermo (solo sul telefono), lingua degli avvisi, codice del widget, controlli automatici, registro del server web.",
+    "Cookie spiegati per bene: sono due, entrambi tecnici (sessione e dispositivo riconosciuto).",
+    "Termini d'uso: una regola semplice sui dati degli altri partecipanti della tua lega.",
+    "«Elimina il tuo account» elenca anche collegamento con Google, codice del widget e dispositivi riconosciuti, e cosa può restare per qualche giorno.",
+    "Le pagine in inglese non mostrano più frasi in italiano quando un dato non è indicato."
+  ],
+  "tecnico": [
+    "testi_legali.py: nuove variabili FANTA_HOSTING e FANTA_REGISTRO_WEB_GIORNI; contatto, titolare e durate nella lingua della pagina; account.VERSIONE_TERMINI = 2026-11-02.",
+    "tests/test_legale.py: le affermazioni sono legate al codice (scope di Google, due cookie, 60 e 90 giorni)."
+  ]
+}

@@ -116,3 +116,37 @@ def test_stato_ha_il_campo_sorgente(monkeypatch):
     assert r.status_code == 200 and r.json()["sorgente"] == "https://example.org/schieraxi"
     monkeypatch.delenv("FANTA_SORGENTE")
     assert cliente().get("/api/stato").json()["sorgente"] == ""
+
+
+def test_privacy_dice_quello_che_l_app_fa_davvero(monkeypatch):
+    """Le affermazioni legate al codice: se cambia il codice, cambia anche la pagina (e questo test)."""
+    from fanta import account, rotte_account, social
+    import inspect
+    monkeypatch.setenv("FANTA_HOSTING", "Fornitore Esempio, in Italia")
+    monkeypatch.setenv("FANTA_REGISTRO_WEB_GIORNI", "15")
+    t = tl.pagina("privacy").lower()
+    assert '"scope": "openid email"' in inspect.getsource(social)              # a Google chiediamo solo id ed email
+    assert "«openid» ed «email»" in t and "non riceviamo né conserviamo il tuo nome" in t
+    assert rotte_account.COOKIE and rotte_account.COOKIE_DISPOSITIVO and "due cookie tecnici" in t
+    assert account.NOTO_PER == 60 * 24 * 3600 and "60 giorni" in t
+    assert account.DURATA_TOKEN_WIDGET.days == 90 and "widget" in t and "90 giorni" in t
+    for parola in ("altri partecipanti", "allenatore", "foto dello schermo", "solo il testo", "lingua", "ntfy.sh",
+                   "controlli automatici", "github", "fornitore esempio, in italia", "indirizzo di rete completo", "al massimo 15 giorni",
+                   "invito", "avvisi di sicurezza"):
+        assert parola in t, parola
+    assert "un solo cookie" not in t
+
+
+def test_termini_ed_elimina_parlano_degli_altri_e_di_cosa_resta():
+    assert "altri partecipanti" in tl.pagina("termini").lower()
+    e = tl.pagina("elimina").lower()
+    assert "codice del widget" in e and "collegamento con google" in e and "server web" in e
+
+
+def test_inglese_senza_frasi_italiane_di_ripiego(monkeypatch):
+    for v in ("FANTA_CONTATTO", "FANTA_TITOLARE", "FANTA_BACKUP_GIORNI", "FANTA_HOSTING", "FANTA_REGISTRO_WEB_GIORNI"):
+        monkeypatch.delenv(v, raising=False)
+    p = tl.pagina("privacy", "en")
+    assert "a limited time" in p and "un tempo limitato" not in p and "chi gestisce" not in p and "un fornitore" not in p
+    monkeypatch.setenv("FANTA_BACKUP_GIORNI", "30")
+    assert "at most 30 days" in tl.pagina("privacy", "en")
