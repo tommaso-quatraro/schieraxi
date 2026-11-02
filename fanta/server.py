@@ -42,7 +42,7 @@ from . import avvisi as avvisi_pronta
 from . import avvisi_utenti
 from . import fasi, live
 from . import scambi_multi
-from . import pianificatore, rotte_account, riscaldamento, social
+from . import copia_scadenza, pianificatore, rotte_account, riscaldamento, social
 from . import blocco, percorsi, registro, scarica_immagine, testi_legali
 from .contesto import Contesto
 from . import stagione as cambio_stagione
@@ -70,6 +70,8 @@ async def _ciclo(_):
     threading.Thread(target=pianificatore.sorveglia, args=(fermo, _leghe_attive, _db, _aggiorna_leggero, _dopo_giro_leggero),
                      kwargs={"risultati": _risultati_leggeri},       # e risultati e voti la sera stessa, dopo le partite
                      name="pianificatore", daemon=True).start()          # giri in più vicino alla scadenza (FANTA_PIANIFICATORE=0 lo spegne)
+    threading.Thread(target=copia_scadenza.sorveglia, args=(fermo, lambda: copia_scadenza.contesti(_contesto_locale), _db),
+                     name="copia-scadenza", daemon=True).start()       # copia della consigliata alla scadenza per ogni utente (FANTA_COPIA_SCADENZA=0 la spegne)
     if fonti_attive.acceso("espn") and funzioni.acceso("live"):          # risultati in diretta: un solo raccoglitore per tutto il servizio
         live.unico = live.Raccoglitore(_calendario_live, file=live.FILE)        # la cache resta anche dopo un riavvio
         threading.Thread(target=live.sorveglia, args=(live.unico, fermo), name="live", daemon=True).start()
@@ -778,7 +780,8 @@ def formazione(squadra: str | None = None, giornata: int | None = None, ctx: Con
 
 def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
     """Finché la formazione è aperta (prima della prima partita) e l'utente non ha scelto, tiene una copia della consigliata:
-    dopo la scadenza resta quella, e il diario può dire «salvata automaticamente». Non deve mai far fallire la risposta."""
+    dopo la scadenza resta quella, e il diario può dire «salvata automaticamente». Non deve mai far fallire la risposta.
+    La stessa copia la fa il server da solo poco prima della scadenza, anche se nessuno apre l'app (`copia_scadenza.py`)."""
     try:
         g = f.get("giornata")
         if not g or not f.get("titolari"):
@@ -787,8 +790,7 @@ def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
         prima = avvisi_pronta.scadenza(avvisi_pronta.prima_partita(db, stagione, g), _regole(ctx))
         if prima is None or datetime.now() >= prima:
             return
-        scelte.salva_automatica(stagione, g, [t["id"] for t in f["titolari"]], f.get("modulo", ""), ctx.scelte)
-        diario.salva_istantanea(f, stagione, ctx.diario)         # la consigliata di allora, per il diario (si congela alla scadenza)
+        copia_scadenza.salva(f, stagione, ctx.scelte, ctx.diario)    # copia e consigliata di allora per il diario (si congela alla scadenza)
     except Exception:                       # noqa: BLE001 - la copia è un di più
         pass
 
