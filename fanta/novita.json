@@ -1,5 +1,32 @@
 [
   {
+    "versione": "1.314",
+    "data": "2026-11-02T08:51:47",
+    "titolo": "Risultati delle partite: restano visibili e arrivano prima",
+    "voci": [
+      "Il risultato finale di una partita resta in «Partite del turno» anche se il servizio si riavvia dopo la fine: prima poteva sparire fino al mattino dopo.",
+      "Una partita che finisce più tardi del previsto non resta più segnata «in diretta»: si segue finché è davvero finita.",
+      "Risultati ufficiali e voti si leggono anche la sera stessa, poco dopo le partite: la partita «finita» e i punti fatti arrivano prima."
+    ],
+    "tecnico": [
+      "live.py: cache anche su file (dati/live.json, scrittura atomica, formato in docs/LIVE.md); dopo la finestra di gioco una partita non ancora finita si segue ogni 5 minuti fino a 4 ore dall'inizio; in /api/live il risultato ufficiale del calendario vince sulla diretta.",
+      "pianificatore.giro_risultati: risultati e voti della giornata 2 ore e 30 e 4 ore dopo ogni orario di calcio d'inizio (due pagine per giornata, solo se manca qualcosa); aggiorna.Aggiornamento.risultati_giornata."
+    ]
+  },
+  {
+    "versione": "1.313",
+    "data": "2026-11-02T08:51:45",
+    "titolo": "«Gioca N%» più onesto senza probabili formazioni",
+    "voci": [
+      "Quando le probabili formazioni non ci sono ancora, la probabilità che un giocatore prenda voto è più realistica: chi ha giocato tutte le ultime partite non è più dato quasi sicuro (prima «98%», poi giocava 86 volte su 100), e chi entra spesso dalla panchina o ha saltato l'ultima partita scende un po'."
+    ],
+    "tecnico": [
+      "modello.p_senza_probabili: regressione logistica su presenze recenti, presenze su 20 partite, partite iniziate da titolare, ultima partita e termine per i portieri (CALIBRAZIONE_SENZA_PROBABILI, stimata solo sul 2025-26 g5-38).",
+      "Fuori campione (2026-27 g2-8): Brier 0,139 -> 0,130, errore di calibrazione 0,067 -> 0,041; verifica: rmse invariato, punti delle rose della lega +0,61 nel 2026-27 e -0,35 nel 2025-26, rose a sorte +0,12 e +0,04.",
+      "Nuovo prove/calibra_p_voto.py (misura e ristima); _presenze_recenti_varie calcola anche le partite iniziate da titolare (titolari=True). Le probabili formazioni (dal vivo) non cambiano."
+    ]
+  },
+  {
     "versione": "1.312",
     "data": "2026-11-02T08:49:41",
     "titolo": "Scadenza giusta anche con una partita rinviata",

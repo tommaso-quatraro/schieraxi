@@ -1,6 +1,0 @@
-{"titolo": "Risultati delle partite: restano visibili e arrivano prima",
- "voci": ["Il risultato finale di una partita resta in «Partite del turno» anche se il servizio si riavvia dopo la fine: prima poteva sparire fino al mattino dopo.",
-          "Una partita che finisce più tardi del previsto non resta più segnata «in diretta»: si segue finché è davvero finita.",
-          "Risultati ufficiali e voti si leggono anche la sera stessa, poco dopo le partite: la partita «finita» e i punti fatti arrivano prima."],
- "tecnico": ["live.py: cache anche su file (dati/live.json, scrittura atomica, formato in docs/LIVE.md); dopo la finestra di gioco una partita non ancora finita si segue ogni 5 minuti fino a 4 ore dall'inizio; in /api/live il risultato ufficiale del calendario vince sulla diretta.",
-             "pianificatore.giro_risultati: risultati e voti della giornata 2 ore e 30 e 4 ore dopo ogni orario di calcio d'inizio (due pagine per giornata, solo se manca qualcosa); aggiorna.Aggiornamento.risultati_giornata."]}
