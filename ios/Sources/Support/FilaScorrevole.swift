@@ -26,7 +26,7 @@ struct FilaScorrevole<Contenuto: View>: View {
     private func indicatore(_ simbolo: String, verso: Edge) -> some View {
         Image(systemName: simbolo)
             .font(.caption.weight(.bold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.testoSecondario)
             .padding(.horizontal, 6)
             .frame(maxHeight: .infinity)
             .background(

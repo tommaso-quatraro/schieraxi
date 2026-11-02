@@ -46,9 +46,9 @@ struct SezioneProvaEsempio: View {
     @State private var chiedi = false
 
     var body: some View {
-        Section("Prova con dati di esempio") {
+        Section(titolo: "Prova con dati di esempio") {
             Label("Stai guardando una lega inventata. Niente account, niente rete.", systemImage: "play.circle")
-                .font(.subheadline).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(Color.testoSecondario)
             Button("Esci dalla prova", role: .destructive) { chiedi = true }
                 .frame(minHeight: Tema.areaTocco)
                 .confirmationDialog("Uscire dalla prova?", isPresented: $chiedi, titleVisibility: .visible) {
@@ -68,7 +68,7 @@ struct LicenzeECreditiView: View {
 
     var body: some View {
         List {
-            Section("Licenza di SchieraXI") {
+            Section(titolo: "Licenza di SchieraXI") {
                 Text("SchieraXI è software libero, con licenza GNU Affero General Public License 3.0 (AGPL-3.0). Puoi leggerlo, usarlo, modificarlo e condividerlo secondo i patti di quella licenza. Il testo completo è nel codice sorgente.")
                     .font(.subheadline)
                 if let sorgente {
@@ -78,15 +78,15 @@ struct LicenzeECreditiView: View {
                     .accessibilityHint("Si apre nel browser")
                 }
             }
-            Section("Componenti di terzi") {
+            Section(titolo: "Componenti di terzi") {
                 Text("Nessuna libreria di terzi: l'app usa solo i componenti che trovi in iOS.")
                     .font(.subheadline)
             }
-            Section("Caratteri e simboli") {
+            Section(titolo: "Caratteri e simboli") {
                 Text("I caratteri sono quelli di sistema di Apple (San Francisco). I simboli sono SF Symbols di Apple. Restano di Apple e si usano secondo la sua licenza: non fanno parte della licenza di SchieraXI.")
                     .font(.subheadline)
             }
-            Section("Dati e nomi") {
+            Section(titolo: "Dati e nomi") {
                 Text("SchieraXI non è affiliata né approvata da Lega Serie A, da Fantacalcio.it o dalle società di calcio. I nomi dei calciatori e delle squadre appartengono ai rispettivi titolari e sono usati solo per descrivere i dati. I volti sono disegni creati dall'app, non fotografie.")
                     .font(.subheadline)
             }

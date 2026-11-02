@@ -50,7 +50,7 @@ struct ProvaServerView: View {
             if inCorso {
                 HStack(spacing: 10) {
                     Marchio(lato: 32, muove: true).accessibilityHidden(true)
-                    Text("Provo a raggiungere il server…").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Provo a raggiungere il server…").font(.subheadline).foregroundStyle(Color.testoSecondario)
                 }
                 .transition(.opacity)
                 .accessibilityElement(children: .combine)
@@ -86,7 +86,7 @@ struct ProvaServerView: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(e.titolo).font(.subheadline.weight(.semibold))
-                Text(e.dettaglio).font(.footnote).foregroundStyle(.secondary)
+                Text(e.dettaglio).font(.footnote).foregroundStyle(Color.testoSecondario)
             }
         }
         .transition(.opacity)

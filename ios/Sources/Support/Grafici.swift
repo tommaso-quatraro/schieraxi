@@ -108,7 +108,7 @@ struct GraficoVoti: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Grafico del voto e del fantavoto giornata per giornata. La linea tratteggiata è il sei.")
             .accessibilityValue(Self.descrizione(voti).joined(separator: ". "))
-            Text("La linea tratteggiata è il 6. Tocca il grafico per i numeri di una giornata.").font(.caption).foregroundStyle(.secondary)
+            Text("La linea tratteggiata è il 6. Tocca il grafico per i numeri di una giornata.").font(.caption).foregroundStyle(Color.testoSecondario)
             ElencoNumeri(righe: Self.descrizione(voti))
         }
     }
@@ -122,14 +122,14 @@ struct ElencoNumeri: View {
         DisclosureGroup("Mostra i numeri") {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(righe.enumerated()), id: \.offset) { _, riga in
-                    Text(riga).font(.caption).foregroundStyle(.secondary)
+                    Text(riga).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
         }
         .font(.subheadline)
-        .tint(.secondary)
+        .tint(Color.testoSecondario)
     }
 }
 

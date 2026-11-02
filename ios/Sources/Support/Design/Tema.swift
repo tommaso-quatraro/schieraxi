@@ -19,6 +19,12 @@ enum Tema {
     static let capitanoScuro = Color(red: 0.831, green: 0.953, blue: 0.290)
     static let capitanoChiaro = Color(red: 0.525, green: 0.659, blue: 0)
 
+    /// Il grigio dei testi secondari (sottotitoli, didascalie, intestazioni delle liste), in UN solo punto: `Color.testoSecondario`.
+    /// Il grigio di sistema (`.secondary`) è semitrasparente e sul fondo sfumato scende sotto 3:1. Questi due sono pieni e restano
+    /// sopra 4,5:1 (WCAG AA) sul bianco, sul grigio dei fondi, nei campi incassati e sotto l'alone verde più carico (test `ContrastoTestoSecondarioTests`).
+    static let secondarioChiaro: UInt32 = 0x46564D
+    static let secondarioScuro: UInt32 = 0xBCCDC2
+
     /// Con «Ridurre movimento»: niente spostamenti né rimbalzi, solo dissolvenze brevi (le schermate non restano mai immobili).
     @MainActor static var movimentoRidotto: Bool { UIAccessibility.isReduceMotionEnabled }
     /// La dissolvenza breve che sostituisce ogni animazione di movimento.
@@ -57,19 +63,28 @@ extension Color {
     static let attenzione = dinamico(scuro: 0xFFB04A, chiaro: 0x9C5400)
     /// Informazione.
     static let informazione = dinamico(scuro: 0x62A9FF, chiaro: 0x1A5BB5)
-    /// Testo secondario sul fondo con sfumatura (più leggibile del grigio di sistema).
-    static let testo2 = dinamico(scuro: 0xB3C6BA, chiaro: 0x587064)
+    /// Testo secondario (al posto di `.secondary` e dei grigi di sistema): leggibile anche sul fondo sfumato e sul vetro. Vedi `Tema.secondarioChiaro`.
+    static let testoSecondario = dinamico(scuro: Tema.secondarioScuro, chiaro: Tema.secondarioChiaro)
     /// Positivo: il colore principale dell'app (verde, o l'accento scelto in Aspetto).
     static var esitoBuono: Color { Color.verde }
     static var esitoAttenzione: Color { Color.attenzione }
     static var esitoMalus: Color { Color.malus }
 }
 
+extension Section where Parent == Text, Content: View, Footer == EmptyView {
+    /// Una sezione di lista con il titolo nel grigio leggibile dell'app: quello di sistema sul fondo sfumato scende sotto 3:1.
+    /// Si usa al posto di `Section("Titolo") { ... }`. Le sezioni con `header:`/`footer:` colorano il loro testo con `Color.testoSecondario`.
+    init(titolo: String, @ViewBuilder content: () -> Content) {
+        let testata: Text = Text(titolo).foregroundStyle(Color.testoSecondario)
+        self.init(content: content, header: { testata })
+    }
+}
+
 extension View {
     /// Titoli di sezione dentro una scheda (piccoli, in grigio): «Portiere», «Stagione»...
     func titoletto() -> some View {
         font(.subheadline.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.testoSecondario)
             .accessibilityAddTraits(.isHeader)
     }
 
@@ -127,11 +142,12 @@ extension View {
     /// Fa comparire la vista con un ingresso morbido, scaglionato secondo `ordine` (0 = per prima).
     func ingresso(_ ordine: Int = 0) -> some View { modifier(Ingresso(ordine: ordine)) }
 
-    /// Le schede che entrano o escono dal bordo dello schermo scorrendo si rimpiccioliscono e si schiariscono appena.
+    /// Le schede che entrano o escono dal bordo dello schermo scorrendo si rimpiccioliscono e si schiariscono appena
+    /// (poco: con il 45% di trasparenza le righe vicine alle barre non si leggevano più, collaudo di accessibilità).
     func entraScorrendo() -> some View {
         scrollTransition(.interactive) { contenuto, fase in
             contenuto
-                .opacity(1 - abs(fase.value) * 0.45)
+                .opacity(1 - abs(fase.value) * 0.15)
                 .scaleEffect(1 - abs(fase.value) * 0.04)
         }
     }
@@ -175,7 +191,7 @@ extension View {
     /// scivola da una all'altra.
     func pillola(attiva: Bool, spazio: Namespace.ID) -> some View {
         self
-            .foregroundStyle(attiva ? Color.black.opacity(0.85) : Color.primary)
+            .foregroundStyle(attiva ? Color.black : Color.primary)
             .background {
                 ZStack {
                     Capsule().fill(Color.sfondoIncavo)

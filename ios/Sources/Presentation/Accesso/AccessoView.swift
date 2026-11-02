@@ -180,8 +180,8 @@ struct SchermataAccesso: View {
                 .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 .accessibilityHidden(true)
             Text(frase)
-                // sul fondo sfumato il grigio secondario non aveva contrasto abbastanza
-                .font(.subheadline).foregroundStyle(.primary.opacity(0.8))
+                // sul fondo sfumato serve un colore pieno: il grigio unico dell'app (4,5:1 anche sotto l'alone)
+                .font(.subheadline).foregroundStyle(Color.testoSecondario)
                 .multilineTextAlignment(.center)
         }
         .padding(.top, 12)
@@ -214,7 +214,7 @@ struct SchermataAccesso: View {
     private var campi: some View {
         VStack(alignment: .leading, spacing: 14) {
             if scheda == .registrati, let attesa = inAttesa {
-                Text("Codice inviato a \(attesa.email).").font(.subheadline).foregroundStyle(.secondary)
+                Text("Codice inviato a \(attesa.email).").font(.subheadline).foregroundStyle(Color.testoSecondario)
                 campoTesto("Codice ricevuto per posta", text: $codiceEmail, campo: .codiceEmail, problema: nil)
                     .keyboardType(.numberPad)
                     .submitLabel(.go)
@@ -249,13 +249,13 @@ struct SchermataAccesso: View {
                         .onSubmit { Task { await invia() } }
                     if modo.invitoObbligatorio {
                         Text("L'invito te lo dà chi ti ha parlato di SchieraXI.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(Color.testoSecondario)
                     }
                 }
             }
             if scheda != .accedi {
                 Text("Password di almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
             }
             if scheda == .registrati, inAttesa == nil { terminiEPrivacy }
             }
@@ -384,7 +384,7 @@ struct SchermataAccesso: View {
     private var sezioneGoogle: some View {
         if googleAcceso, scheda != .recupera, inAttesa == nil {
             VStack(spacing: 10) {
-                Text("oppure").font(.footnote).foregroundStyle(.secondary).accessibilityHidden(true)
+                Text("oppure").font(.footnote).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
                 BottoneGoogle(titolo: "Continua con Google", occupato: inInvio || sessione.inCorso || attesaFinoA != nil) {
                     Task { await continuaConGoogle() }
                 }
@@ -392,7 +392,7 @@ struct SchermataAccesso: View {
                     Text(modo.invitoObbligatorio
                          ? "Con Google scegli il nome utente al passo dopo. Il codice d'invito te lo chiedo lì."
                          : "Con Google scegli il nome utente al passo dopo.")
-                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        .font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
                 }
             }
         }
@@ -459,7 +459,7 @@ struct SchermataAccesso: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Solo per chi ha un server proprio. Di norma non serve toccare niente.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(Color.testoSecondario)
                     Carta {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Indirizzo del server", systemImage: "server.rack").font(.headline)
@@ -503,7 +503,7 @@ struct SchermataAttesa: View {
             Sfondo()
             VStack(spacing: 14) {
                 Marchio(lato: 88, muove: true)
-                Text(testo).font(.subheadline).foregroundStyle(.secondary)
+                Text(testo).font(.subheadline).foregroundStyle(Color.testoSecondario)
             }
         }
     }

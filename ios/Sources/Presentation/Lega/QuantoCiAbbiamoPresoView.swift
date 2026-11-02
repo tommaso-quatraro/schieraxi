@@ -10,7 +10,7 @@ struct QuantoCiAbbiamoPresoView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(TestoAffidabilita.intro)
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
             FilaTessere {
                 if let d = testo.dentro { TesseraDato(valore: d, etichetta: "dentro la fascia") }
@@ -23,13 +23,13 @@ struct QuantoCiAbbiamoPresoView: View {
             if let g = testo.giudizio {
                 Label(g, systemImage: testo.fuoriLinea ? "exclamationmark.triangle.fill" : testo.pochiDati ? "hourglass" : "checkmark.seal")
                     .font(.subheadline.weight(testo.fuoriLinea ? .semibold : .regular))
-                    .foregroundStyle(testo.fuoriLinea ? Color.attenzione : Color.secondary)
+                    .foregroundStyle(testo.fuoriLinea ? Color.attenzione : Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !punti.isEmpty {
                 GraficoAttesoFatto(punti: punti)
                 Text("Barra: fascia prevista. Trattino: punti attesi. Pallino: punti fatti, arancio se fuori dalla fascia.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
                 DisclosureGroup("Giornata per giornata") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -37,7 +37,7 @@ struct QuantoCiAbbiamoPresoView: View {
                     }
                     .padding(.top, 6)
                 }
-                .tint(.secondary)
+                .tint(Color.testoSecondario)
             }
         }
         .padding(.vertical, 6)
@@ -50,7 +50,7 @@ struct QuantoCiAbbiamoPresoView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("attesi \(Formato.punti(p.atteso)) · fatti \(Formato.punti(p.fatti))").font(.subheadline).monospacedDigit()
                 Text(p.frase).font(.caption)
-                    .foregroundStyle(p.dentro == false ? Color.attenzione : Color.secondary)
+                    .foregroundStyle(p.dentro == false ? Color.attenzione : Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -96,7 +96,7 @@ struct GraficoAttesoFatto: View {
                     .accessibilityHidden(true)
             }
             PointMark(x: .value("Giornata", Double(p.giornata)), y: .value("Attesi", p.atteso))
-                .symbol { Capsule().fill(Color.secondary).frame(width: 16, height: 3) }
+                .symbol { Capsule().fill(Color.testoSecondario).frame(width: 16, height: 3) }
                 .accessibilityHidden(true)
             PointMark(x: .value("Giornata", Double(p.giornata)), y: .value("Fatti", p.fatti))
                 .foregroundStyle(p.dentro == false ? Color.attenzione : Color.verde)
@@ -134,6 +134,6 @@ struct GraficoAttesoFatto: View {
         PuntoAttesoFatto(giornata: 8, atteso: 68.0, fatti: 79.0, basso: 60.0, alto: 76.5, dentro: false),
     ]
     if let t = TestoAffidabilita(a) {
-        List { Section(TestoAffidabilita.titolo) { QuantoCiAbbiamoPresoView(testo: t, punti: punti) } }
+        List { Section(titolo: TestoAffidabilita.titolo) { QuantoCiAbbiamoPresoView(testo: t, punti: punti) } }
     }
 }

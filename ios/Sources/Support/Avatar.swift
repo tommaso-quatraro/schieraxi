@@ -8,9 +8,10 @@ extension Color {
         self.init(red: Double((n >> 16) & 0xff) / 255, green: Double((n >> 8) & 0xff) / 255, blue: Double(n & 0xff) / 255)
     }
 
-    /// Colore dell'indice 0-100: alto verde, medio arancio, basso rosso (come gli anelli della web app).
+    /// Colore dell'indice 0-100: alto verde, medio arancio, basso rosso (come gli anelli della web app). Sono i colori semantici
+    /// (scuri sul chiaro, chiari sullo scuro): il numero sopra, in `Color.testoSuAccento`, resta sopra 4,5:1.
     static func indice(_ valore: Double) -> Color {
-        valore >= 70 ? Color.verde : valore >= 40 ? .orange : .red
+        valore >= 70 ? Color.verde : valore >= 40 ? Color.attenzione : Color.malus
     }
 }
 
@@ -115,7 +116,7 @@ struct AvatarGiocatore: View {
                 Text("\(Formato.intero(indice))")
                     .font(.system(size: max(9, dimensione * 0.24) * min(scalaTesto, 1.4), weight: .heavy, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.testoSuAccento)
                     .padding(.horizontal, 4)
                     .background(Color.indice(indice), in: Capsule())
                     .overlay(Capsule().strokeBorder(Color.black.opacity(0.25), lineWidth: 0.5))

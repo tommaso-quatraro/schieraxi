@@ -91,7 +91,7 @@ struct DiarioView: View {
                 if let d = vm.caricatore.dato {
                     Section {
                         Text("Per ogni giornata finita: i punti fatti («attesi» = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                     if let p = d.precisione {
                         // server nuovo: i numeri di «Quanto ci abbiamo preso» (niente sezione se non ci sono giornate)
@@ -99,14 +99,14 @@ struct DiarioView: View {
                             Section {
                                 PrecisioneView(testo: t)
                             } header: {
-                                Text(TestoPrecisione.titolo)
+                                Text(TestoPrecisione.titolo).foregroundStyle(Color.testoSecondario)
                             }
                         }
                     } else if let t = TestoAffidabilita(d.affidabilita) {
                         Section {
                             QuantoCiAbbiamoPresoView(testo: t, punti: PuntoAttesoFatto.elenco(d.giornate ?? []))
                         } header: {
-                            Text(TestoAffidabilita.titolo)
+                            Text(TestoAffidabilita.titolo).foregroundStyle(Color.testoSecondario)
                         }
                     }
                     if let s = d.sintesi, (s.giornate ?? 0) > 0 { sintesi(s) }
@@ -151,7 +151,7 @@ struct DiarioView: View {
     }
 
     private func sintesi(_ s: SintesiDiario) -> some View {
-        Section("In sintesi (\(s.giornate ?? 0) giornate)") {
+        Section(titolo: "In sintesi (\(s.giornate ?? 0) giornate)") {
             RigaValore(titolo: "Punti medi tuoi", valore: Formato.punti(s.puntiSchierata), cifreFisse: true)
             RigaValore(titolo: "Punti medi di SchieraXI", valore: Formato.punti(s.puntiConsigliata), cifreFisse: true)
             RigaValore(titolo: "Meglio tu – meglio SchieraXI", valore: "\(s.meglioTua ?? 0)–\(s.meglioConsigliata ?? 0)", cifreFisse: true)
@@ -161,7 +161,7 @@ struct DiarioView: View {
     private func giornata(_ v: VoceDiario) -> some View {
         Section {
             if v.schierata == nil {
-                Text("Non avevi salvato la tua formazione per questa giornata.").font(.footnote).foregroundStyle(.secondary)
+                Text("Non avevi salvato la tua formazione per questa giornata.").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             if let c = v.confronto {
                 ConfrontoDiarioView(confronto: c)
@@ -197,11 +197,11 @@ struct DiarioView: View {
             if let p = PuntoAttesoFatto(giornata: v.giornata, v.attesoVsFatto), p.dentro != nil {
                 Label(p.frase, systemImage: p.dentro == true ? "checkmark.circle" : "exclamationmark.circle")
                     .font(.caption)
-                    .foregroundStyle(p.dentro == true ? Color.secondary : Color.attenzione)
+                    .foregroundStyle(p.dentro == true ? Color.testoSecondario : Color.attenzione)
                     .fixedSize(horizontal: false, vertical: true)
             }
         } header: {
-            Text("Giornata \(v.giornata ?? 0)" + (v.stagione.map { " · \($0)" } ?? ""))
+            Text("Giornata \(v.giornata ?? 0)" + (v.stagione.map { " · \($0)" } ?? "")).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -216,8 +216,8 @@ struct DiarioView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 0) {
                 Text(Formato.punti(f.reale)).font(.headline).monospacedDigit()
-                Text("attesi \(Formato.punti(f.atteso))").font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                if let fascia { Text(fascia).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.trailing) }
+                Text("attesi \(Formato.punti(f.atteso))").font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit()
+                if let fascia { Text(fascia).font(.caption2).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing) }
             }
         }
         .frame(minHeight: 44)

@@ -142,9 +142,9 @@ struct RigaValore: View {
     @ViewBuilder
     private var testoValore: some View {
         if cifreFisse {
-            Text(valore).foregroundStyle(.secondary).monospacedDigit()
+            Text(valore).foregroundStyle(Color.testoSecondario).monospacedDigit()
         } else {
-            Text(valore).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+            Text(valore).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
         }
     }
 }

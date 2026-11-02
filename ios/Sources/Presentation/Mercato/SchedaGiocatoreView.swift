@@ -113,9 +113,9 @@ struct GiocatoreCorpo: View {
                     Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)
                     HStack(spacing: 6) {
                         BadgeRuolo(ruolo: c.ruolo, piccolo: true)
-                        Text("\(nomeRuolo(c.ruolo).primaMaiuscola) · \((c.squadra ?? "").capitalized)").font(.subheadline).foregroundStyle(.secondary)
+                        Text("\(nomeRuolo(c.ruolo).primaMaiuscola) · \((c.squadra ?? "").capitalized)").font(.subheadline).foregroundStyle(Color.testoSecondario)
                     }
-                    Text("Quotazione \(Formato.intero(c.quotazione))").font(.caption).foregroundStyle(.secondary)
+                    Text("Quotazione \(Formato.intero(c.quotazione))").font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 Spacer(minLength: 0)
             }
@@ -147,7 +147,7 @@ struct GiocatoreCorpo: View {
 
     private var senzaPrevisione: some View {
         Carta {
-            Label("Nessuna previsione per la prossima giornata.", systemImage: "info.circle").font(.subheadline).foregroundStyle(.secondary)
+            Label("Nessuna previsione per la prossima giornata.", systemImage: "info.circle").font(.subheadline).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -161,18 +161,18 @@ struct GiocatoreCorpo: View {
 
     private func previsione(_ p: Giocatore, ruolo: String) -> some View {
         Carta("Prossima partita", simbolo: "soccerball") {
-            Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(.secondary)
+            Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(Color.testoSecondario)
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 0) {
                     NumeroCheSale(valore: p.fvAtteso ?? 0)
                         .font(.system(size: min(misuraNumero, 110), weight: .bold, design: .rounded))
                         .foregroundStyle(Color.verde)
-                    Text(FantavotoAtteso.nome + " · se gioca").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    Text(FantavotoAtteso.nome + " · se gioca").font(.subheadline.weight(.semibold)).foregroundStyle(Color.testoSecondario)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 0) {
                     NumeroCheSale(valore: Double(Formato.percento(p.pVoto)), formato: { "\(Formato.intero($0))%" }).font(.title2.bold())
-                    Text("gioca").font(.caption).foregroundStyle(.secondary)
+                    Text("gioca").font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
             .accessibilityElement(children: .ignore)
@@ -183,7 +183,7 @@ struct GiocatoreCorpo: View {
                 Spacer()
                 if p.golSquadra != nil || p.golAvversario != nil {
                     Text("gol attesi \(Formato.decimali(p.golSquadra ?? 0))–\(Formato.decimali(p.golAvversario ?? 0))")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
             FilaTessere {
@@ -208,7 +208,7 @@ struct GiocatoreCorpo: View {
             Carta(PercheNumero.titolo, simbolo: "list.bullet.rectangle") {
                 BloccoPercheNumero(perche: motivi)
                 Text(FantavotoAtteso.definizione)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .ingresso(1)
@@ -220,7 +220,7 @@ struct GiocatoreCorpo: View {
         if !vm.prossime.isEmpty {
             Carta("Prossime partite", simbolo: "calendar") {
                 ProssimePartite(partite: vm.prossime)
-                Text("Verde: partita facile. Rosso: partita dura.").font(.caption).foregroundStyle(.secondary)
+                Text("Verde: partita facile. Rosso: partita dura.").font(.caption).foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -239,7 +239,7 @@ struct GiocatoreCorpo: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 0) {
-                        Text("Andamento").font(.caption2).foregroundStyle(.secondary)
+                        Text("Andamento").font(.caption2).foregroundStyle(Color.testoSecondario)
                         Text("\(forma.andamento.freccia) \(forma.andamento.rawValue)").font(.subheadline.bold())
                             .foregroundStyle(forma.andamento == .crescita ? Color.verde : forma.andamento == .calo ? Color.malus : .primary)
                     }
@@ -247,19 +247,19 @@ struct GiocatoreCorpo: View {
                 }
                 GraficoVoti(voti: s.voti ?? [])
             } else {
-                Text("Nessuna presenza in questa stagione.").font(.subheadline).foregroundStyle(.secondary)
+                Text("Nessuna presenza in questa stagione.").font(.subheadline).foregroundStyle(Color.testoSecondario)
             }
         }
     }
 
     private func pallino(_ v: VotoGiornata) -> some View {
-        let colore: Color = v.fv == nil ? .gray : (v.fv ?? 0) >= 7 ? Color.verde : (v.fv ?? 0) >= 6 ? .orange : .red
+        let colore: Color = v.fv == nil ? Color.testoSecondario : (v.fv ?? 0) >= 7 ? Color.verde : (v.fv ?? 0) >= 6 ? Color.attenzione : Color.malus
         let etichetta = v.fv == nil ? "senza voto" : "fantavoto " + Formato.decimali(v.fv ?? 0)
         return Text(v.fv.map { Formato.decimali($0) } ?? "sv")
             .font(.caption2.bold()).monospacedDigit()
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.testoSuAccento)
             .frame(minWidth: 34, minHeight: 28)
-            .background(colore.opacity(0.9), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(colore, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .accessibilityLabel("Giornata \(v.giornata): \(etichetta)")
     }
 
@@ -270,13 +270,13 @@ struct GiocatoreCorpo: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(Formato.conSegno(sovra, cifre: 2)).font(.title.bold()).monospacedDigit()
                         .foregroundStyle(sovra > 0.3 ? Color.verde : sovra < -0.3 ? Color.malus : .primary)
-                    Text("punti a partita").font(.caption).foregroundStyle(.secondary)
+                    Text("punti a partita").font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 .accessibilityElement(children: .combine)
-                Text("Gol \(Formato.conSegno(r.golMenoXg ?? 0)) rispetto agli xG · assist \(Formato.conSegno(r.assistMenoXa ?? 0)) rispetto agli xA. "
+                Text("Gol \(Formato.conSegno(r.golMenoXg ?? 0)) rispetto ai gol attesi · assist \(Formato.conSegno(r.assistMenoXa ?? 0)) rispetto agli assist attesi. "
                      + (sovra > 0.3 ? "Sta segnando più di quanto crea: è probabile che cali."
                         : sovra < -0.3 ? "Crea più di quanto segna: è probabile che si sblocchi." : "In linea con le occasioni che ha."))
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -303,25 +303,25 @@ struct GiocatoreCorpo: View {
                     if let a = s.avanzate, (a.minuti ?? 0) > 0 {
                         Text("Statistiche avanzate").font(.subheadline.bold())
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 12) {
-                            TesseraDato(valore: Formato.decimali(a.xg ?? 0, cifre: 2), etichetta: "xG")
-                            TesseraDato(valore: Formato.decimali(a.xa ?? 0, cifre: 2), etichetta: "xA")
+                            TesseraDato(valore: Formato.decimali(a.xg ?? 0, cifre: 2), etichetta: "gol attesi")
+                            TesseraDato(valore: Formato.decimali(a.xa ?? 0, cifre: 2), etichetta: "assist attesi")
                             TesseraDato(valore: "\(Formato.intero(a.minuti))'", etichetta: "minuti")
-                            TesseraDato(valore: Formato.decimali(a.per90?.xg ?? 0, cifre: 2), etichetta: "xG ogni 90'")
-                            TesseraDato(valore: Formato.decimali(a.per90?.xa ?? 0, cifre: 2), etichetta: "xA ogni 90'")
+                            TesseraDato(valore: Formato.decimali(a.per90?.xg ?? 0, cifre: 2), etichetta: "gol attesi ogni 90'")
+                            TesseraDato(valore: Formato.decimali(a.per90?.xa ?? 0, cifre: 2), etichetta: "assist attesi ogni 90'")
                             TesseraDato(valore: Formato.decimali(a.per90?.tiri ?? 0), etichetta: "tiri ogni 90'")
                             TesseraDato(valore: "\(Formato.intero(a.rigoriCalciati))", etichetta: "rigori calciati")
                             TesseraDato(valore: "\(Formato.intero(a.passaggiChiave))", etichetta: "passaggi chiave")
                             TesseraDato(valore: "\(Formato.intero(a.punizioni))", etichetta: "punizioni tirate")
                         }
                         ForEach(a.stagioniPrecedenti ?? []) { p in
-                            Text("Stagione \(p.stagione): \(Formato.intero(p.minuti))' · \(Formato.intero(p.gol)) gol (xG \(Formato.decimali(p.xg ?? 0))) · \(Formato.intero(p.assist)) assist (xA \(Formato.decimali(p.xa ?? 0)))")
-                                .font(.caption).foregroundStyle(.secondary)
+                            Text("Stagione \(p.stagione): \(Formato.intero(p.minuti))' · \(Formato.intero(p.gol)) gol (\(Formato.decimali(p.xg ?? 0)) attesi) · \(Formato.intero(p.assist)) assist (\(Formato.decimali(p.xa ?? 0)) attesi)")
+                                .font(.caption).foregroundStyle(Color.testoSecondario)
                         }
                     }
                 }
                 .padding(.top, 8)
             }
-            .tint(.secondary)
+            .tint(Color.testoSecondario)
         }
     }
 
@@ -351,7 +351,7 @@ struct GiocatoreCorpo: View {
                 }
                 .pulsanteVetro()
             }
-            if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(.secondary) }
+            if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
     }
 }

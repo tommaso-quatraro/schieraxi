@@ -89,7 +89,7 @@ struct ImpostazioniView: View {
     // MARK: gruppi
 
     private var sezioneCollegamento: some View {
-        Section("Collegamento") {
+        Section(titolo: "Collegamento") {
             ProvaServerView(utente: sessione.utente?.nome, dopoProva: { await vm.info.ricarica() })
             if vm.info.inCorso {
                 ProgressView()
@@ -109,7 +109,7 @@ struct ImpostazioniView: View {
 
     /// L'app su questo telefono: aspetto e avvisi.
     private var sezioneApp: some View {
-        Section("App") {
+        Section(titolo: "App") {
             NavigationLink(value: PaginaImpostazioni.aspetto) { Label("Aspetto", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
             NavigationLink(value: PaginaImpostazioni.avvisi) {
                 Label("Avvisi e promemoria", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44)
@@ -121,7 +121,7 @@ struct ImpostazioniView: View {
 
     /// Privacy, termini, licenze e la versione. Le novità stanno in Altro.
     private var sezioneInformazioni: some View {
-        Section("Informazioni") {
+        Section(titolo: "Informazioni") {
             RigheLegali(server: vm.server)
             RigaValore(titolo: "Versione dell'app", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
         }
@@ -136,7 +136,7 @@ struct ImpostazioniView: View {
                     Label("Avanzate", systemImage: "wrench.and.screwdriver").labelStyle(.voce(.gray)).frame(minHeight: 44)
                 }
             } footer: {
-                Text("Server, aggiornamento e rinnovo con SideStore, stato dei dati, diagnostica del widget.")
+                Text("Server, aggiornamento e rinnovo con SideStore, stato dei dati, diagnostica del widget.").foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -157,7 +157,7 @@ struct ImpostazioniView: View {
                 AggiornaDatiSezione(vm: vm.aggiornamento)
                 if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
             } footer: {
-                Text("Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche tutto il resto (risultati in diretta, asta, confronto, seguiti, diario e altro). Vale solo per te.")
+                Text("Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche tutto il resto (risultati in diretta, asta, confronto, seguiti, diario e altro). Vale solo per te.").foregroundStyle(Color.testoSecondario)
             }
             DiagnosticaWidgetSezione()
             CertificatoSezione()

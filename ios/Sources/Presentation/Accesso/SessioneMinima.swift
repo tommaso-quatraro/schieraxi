@@ -25,9 +25,9 @@ struct SessioneMinimaSezione: View {
                     Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
                 }
             } header: {
-                Text("Collegamento")
+                Text("Collegamento").foregroundStyle(Color.testoSecondario)
             } footer: {
-                Text("Se l'app non si collega, puoi uscire e accedere di nuovo, oppure scegliere un altro server.")
+                Text("Se l'app non si collega, puoi uscire e accedere di nuovo, oppure scegliere un altro server.").foregroundStyle(Color.testoSecondario)
             }
             .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
                 Button("Esci", role: .destructive) { Task { await sessione.esci() } }
@@ -47,7 +47,7 @@ struct PaginaCambiaServer: View {
             Section {
                 ProvaServerView(dopoProva: dopoProva)
             } footer: {
-                Text("Lascia vuoto per tornare al server di SchieraXI.")
+                Text("Lascia vuoto per tornare al server di SchieraXI.").foregroundStyle(Color.testoSecondario)
             }
         }
         .scrollContentBackground(.hidden)

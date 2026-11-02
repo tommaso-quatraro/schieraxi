@@ -36,14 +36,14 @@ struct ImmagineRicevutaView: View {
                         ProgressView().frame(maxWidth: .infinity)
                     }
                 }
-                Section("Cos'è?") {
+                Section(titolo: "Cos'è?") {
                     Picker("Tipo", selection: $tipo) {
                         Text("Stemma").tag("stemma")
                         Text("Divisa").tag("maglia")
                     }
                     .pickerStyle(.segmented)
                 }
-                Section("Di quale squadra?") {
+                Section(titolo: "Di quale squadra?") {
                     Picker("Squadra", selection: $squadra) {
                         ForEach(squadre.dato ?? []) { Text($0.mia == true ? "\($0.nome) (la tua)" : $0.nome).tag($0.nome) }
                     }

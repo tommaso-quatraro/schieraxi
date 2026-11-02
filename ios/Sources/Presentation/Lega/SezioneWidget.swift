@@ -52,14 +52,14 @@ struct DiagnosticaWidgetSezione: View {
         Section {
             DisclosureGroup(isExpanded: $dettagli) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(diagnostica.lungo).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    Text(diagnostica.lungo).font(.caption).foregroundStyle(Color.testoSecondario).textSelection(.enabled)
                     Button("Aggiorna la diagnostica") { diagnostica = Condiviso.diagnostica() }.font(.caption).frame(minHeight: 44)
                 }
             } label: {
                 Label("Diagnostica widget", systemImage: "stethoscope").font(.subheadline)
             }
         } footer: {
-            Text(diagnostica.breve)
+            Text(diagnostica.breve).foregroundStyle(Color.testoSecondario)
         }
         .onAppear { diagnostica = Condiviso.diagnostica() }
     }

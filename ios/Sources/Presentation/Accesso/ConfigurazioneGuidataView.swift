@@ -68,7 +68,7 @@ struct ConfigurazioneGuidataView: View {
     private func pagina(_ passo: PassoGuidato) -> some View {
         VStack(spacing: 18) {
             VStack(spacing: 6) {
-                Text(vm.testoAvanzamento).font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                Text(vm.testoAvanzamento).font(.footnote.weight(.semibold)).foregroundStyle(Color.testoSecondario)
                 puntini
             }
             Image(systemName: passo.icona)
@@ -77,7 +77,7 @@ struct ConfigurazioneGuidataView: View {
                 .foregroundStyle(Color.verde)
                 .accessibilityHidden(true)
             Text(passo.titolo).font(.title2.bold()).multilineTextAlignment(.center)
-            Text(passo.spiegazione).font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Text(passo.spiegazione).font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 10) {
                 principale(passo)
@@ -91,7 +91,7 @@ struct ConfigurazioneGuidataView: View {
                     Text("Salta questo passo").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -152,7 +152,7 @@ struct ConfigurazioneGuidataView: View {
                 .accessibilityHidden(true)
             Text(tuttoFatto ? "Tutto a posto" : "Per ora basta così").font(.title2.bold())
             Text(tuttoFatto ? "SchieraXI è pronto." : "Quello che hai saltato lo trovi in Oggi, nella lista «Da fare».")
-                .font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
             Carta {
                 ForEach(PassoGuidato.allCases) { passo in
                     let esito = vm.esito(passo)
@@ -160,7 +160,7 @@ struct ConfigurazioneGuidataView: View {
                         Image(systemName: simbolo(esito)).foregroundStyle(colore(esito)).frame(width: 24).accessibilityHidden(true)
                         Text(passo.titolo).font(.subheadline)
                         Spacer(minLength: 8)
-                        Text(esito.testo).font(.caption).foregroundStyle(.secondary)
+                        Text(esito.testo).font(.caption).foregroundStyle(Color.testoSecondario)
                     }
                     .frame(minHeight: 36)
                     .accessibilityElement(children: .ignore)
@@ -193,7 +193,7 @@ struct ConfigurazioneGuidataView: View {
         switch e {
         case .fatto: return Color.verde
         case .saltato: return Color.attenzione
-        case .daFare: return Color.secondary
+        case .daFare: return Color.testoSecondario
         }
     }
 }

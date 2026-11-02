@@ -12,7 +12,7 @@ struct PrimoAvvioView: View {
                         .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                         .accessibilityHidden(true)
                     Text("Scrivi l'indirizzo del tuo server per cominciare.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(Color.testoSecondario)
                         .multilineTextAlignment(.center)
                 }
                 .padding(.top, 12)
@@ -20,12 +20,12 @@ struct PrimoAvvioView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Indirizzo del server", systemImage: "server.rack").font(.headline)
                         Text("È l'indirizzo con cui apri SchieraXI dal browser, per esempio \(Config.esempioIndirizzo). Deve cominciare con https://. Resta solo su questo telefono e puoi cambiarlo in Impostazioni.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Color.testoSecondario)
                         ProvaServerView()
                     }
                 }
                 Text("Se il tuo server è raggiungibile solo da una VPN, tienila accesa.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
                     .multilineTextAlignment(.center)
                 provaConDati
             }
@@ -44,7 +44,7 @@ extension PrimoAvvioView {
         VStack(spacing: 8) {
             Divider().padding(.vertical, 4)
             Text("Non hai ancora un server?")
-                .font(.subheadline).foregroundStyle(.secondary)
+                .font(.subheadline).foregroundStyle(Color.testoSecondario)
             Button {
                 ProvaEsempio.avvia()
             } label: {
@@ -54,7 +54,7 @@ extension PrimoAvvioView {
             .buttonStyle(.bordered)
             .accessibilityHint("Apre l'app con una lega inventata, senza account e senza rete")
             Text("Una lega inventata, senza account e senza rete. Esci quando vuoi da Impostazioni.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .multilineTextAlignment(.center)
         }
     }

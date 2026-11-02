@@ -62,9 +62,9 @@ struct AccessorioGiornata: View {
                     Text("Giornata \(numero)").font(.subheadline.weight(.semibold))
                     if inizio > contesto.date {
                         TestoConto(inizio: inizio, adesso: contesto.date)
-                            .font(.subheadline).foregroundStyle(.secondary)
+                            .font(.subheadline).foregroundStyle(Color.testoSecondario)
                     } else {
-                        Text("in corso").font(.subheadline).foregroundStyle(.secondary)
+                        Text("in corso").font(.subheadline).foregroundStyle(Color.testoSecondario)
                     }
                 }
                 .lineLimit(1)

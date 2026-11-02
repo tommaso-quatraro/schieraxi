@@ -51,15 +51,15 @@ struct ConsigliatiView: View {
                     withAnimation(Tema.morbida) { dettagli.toggle() }
                 } label: {
                     Image(systemName: dettagli ? "xmark.circle.fill" : "info.circle")
-                        .font(.title3).foregroundStyle(.secondary)
+                        .font(.title3).foregroundStyle(Color.testoSecondario)
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(dettagli ? "Nascondi i dettagli" : "Come funziona")
             }
-            Text(riassunto(m)).font(.footnote).foregroundStyle(.secondary)
+            Text(riassunto(m)).font(.footnote).foregroundStyle(Color.testoSecondario)
             if dettagli {
-                Text(spiegazione(m)).font(.caption).foregroundStyle(.secondary).transition(.opacity)
+                Text(spiegazione(m)).font(.caption).foregroundStyle(Color.testoSecondario).transition(.opacity)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
@@ -100,17 +100,17 @@ struct ConsigliatiView: View {
                         AvatarGiocatore(id: p.esce.id, squadra: p.esce.squadra, dimensione: 18, conNumero: false, nome: p.esce.nome, ruolo: p.esce.ruolo)
                         Text(p.esce.nome).font(.caption).lineLimit(2)
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.testoSecondario)
                 }
                 Spacer(minLength: 6)
                 VStack(alignment: .trailing, spacing: 0) {
                     Text(Formato.conSegno(p.guadagno)).font(.title2.bold()).foregroundStyle(Color.verde).monospacedDigit()
-                    Text("punti attesi").font(.caption2).foregroundStyle(.secondary)
+                    Text("punti attesi").font(.caption2).foregroundStyle(Color.testoSecondario)
                 }
                 .fixedSize()
             }
             if let riga = dettaglioRiga(p) {
-                Text(riga).font(.caption).foregroundStyle(p.fattibile == false ? Color.attenzione : .secondary).lineLimit(2)
+                Text(riga).font(.caption).foregroundStyle(p.fattibile == false ? Color.attenzione : Color.testoSecondario).lineLimit(2)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
@@ -172,7 +172,7 @@ struct ClassificaView: View {
                                         VStack(alignment: .leading, spacing: 2) {
                                             RigaGiocatore(g: g)
                                             Text("quotazione \(g.quotazione.map { String(Formato.intero($0)) } ?? "–") · \(g.proprietario ?? "svincolato")")
-                                                .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : .secondary).padding(.leading, 58)
+                                                .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : Color.testoSecondario).padding(.leading, 58)
                                         }
                                         .frame(minHeight: 44)
                                     }
@@ -220,14 +220,14 @@ struct CalendarioView: View {
             VStack(spacing: 12) {
                 if let c = vm.calendario.dato {
                     Carta("Difficoltà delle prossime partite", simbolo: "calendar") {
-                        Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(.secondary)
+                        Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(Color.testoSecondario)
                         // La griglia è una tabella di sigle di tre lettere: con il testo molto grande smette di crescere
                         // (altrimenti le sigle andavano a capo lettera per lettera).
                         VStack(spacing: 6) {
                             HStack(spacing: 6) {
                                 Color.clear.frame(width: 44, height: 1)
                                 ForEach(c.giornate, id: \.self) { g in
-                                    Text("G\(g)").font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+                                    Text("G\(g)").font(.caption2).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity)
                                 }
                             }
                             .accessibilityHidden(true)
@@ -243,7 +243,7 @@ struct CalendarioView: View {
                                             .minimumScaleFactor(0.6)
                                             .frame(maxWidth: .infinity, minHeight: 28)
                                             .background(colore(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                                            .foregroundStyle(.black.opacity(0.8))
+                                            .foregroundStyle(Color.black)
                                             // La difficoltà non è solo un colore: VoiceOver la dice a parole.
                                             .accessibilityLabel("Giornata \(p.giornata) contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
                                     }
@@ -286,7 +286,7 @@ struct OsservatiView: View {
                     Button { vm.apri(g.id) } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             RigaGiocatore(g: g)
-                            if let p = g.proprietario { Text("Di: \(p)").font(.caption).foregroundStyle(.secondary) }
+                            if let p = g.proprietario { Text("Di: \(p)").font(.caption).foregroundStyle(Color.testoSecondario) }
                             else { Text("Svincolato").font(.caption).foregroundStyle(Color.verde) }
                         }
                         .frame(minHeight: Tema.areaTocco)
@@ -358,7 +358,7 @@ struct CercaView: View {
                             Text(g.nome).font(.headline)
                         }
                         Spacer(minLength: 0)
-                        Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
+                        Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(Color.testoSecondario)
                     }
                     .frame(minHeight: Tema.areaTocco)
                     .accessibilityElement(children: .combine)

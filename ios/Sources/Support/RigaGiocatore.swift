@@ -49,9 +49,9 @@ extension EnvironmentValues {
 extension Etichetta.Gravita {
     var colore: Color {
         switch self {
-        case .normale: return .secondary
-        case .attenzione: return .orange
-        case .grave: return .red
+        case .normale: return .testoSecondario
+        case .attenzione: return .attenzione
+        case .grave: return .malus
         }
     }
 }
@@ -124,12 +124,12 @@ struct RigaGiocatore: View {
             // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
             HStack(spacing: 8) {
                 Text(puntiTesto).font(.headline).monospacedDigit().numerico(g.fvAtteso ?? g.puntiAttesi ?? 0)
-                Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(.secondary)
+                Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(Color.testoSecondario)
             }
         } else {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(g.fvAtteso ?? g.puntiAttesi ?? 0)
-                Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
+                Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -146,7 +146,7 @@ struct RigaGiocatore: View {
                     avatar
                     VStack(alignment: .leading, spacing: 2) {
                         nome
-                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                        Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
                         etichette
                         if conNumero { previsione }
                     }
@@ -157,7 +157,7 @@ struct RigaGiocatore: View {
                     avatar
                     VStack(alignment: .leading, spacing: 2) {
                         nome
-                        Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                        Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
                         etichette
                     }
                     Spacer(minLength: 8)
@@ -177,11 +177,11 @@ struct RigaGiocatore: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 if tagliaTesto.isAccessibilitySize {
                     Text(puntiTesto).font(.headline).monospacedDigit().numerico(g.fvAtteso ?? 0)
-                    Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(.secondary)
+                    Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(Color.testoSecondario)
                 } else {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(g.fvAtteso ?? 0)
-                        Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(.secondary)
+                        Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(Color.testoSecondario)
                     }
                 }
                 Image(systemName: "info.circle").font(.caption.weight(.semibold)).foregroundStyle(Color.verde)

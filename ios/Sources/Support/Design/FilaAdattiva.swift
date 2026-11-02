@@ -22,8 +22,8 @@ struct FilaAdattiva<Contenuto: View>: View {
 
 #Preview("Fila adattiva") {
     VStack(spacing: 20) {
-        FilaAdattiva { Text("Aldo Pinarotti").font(.headline); Spacer(minLength: 0); Text("Sassuolo").foregroundStyle(.secondary) }
-        FilaAdattiva { Text("Aldo Pinarotti").font(.headline); Spacer(minLength: 0); Text("Sassuolo").foregroundStyle(.secondary) }
+        FilaAdattiva { Text("Aldo Pinarotti").font(.headline); Spacer(minLength: 0); Text("Sassuolo").foregroundStyle(Color.testoSecondario) }
+        FilaAdattiva { Text("Aldo Pinarotti").font(.headline); Spacer(minLength: 0); Text("Sassuolo").foregroundStyle(Color.testoSecondario) }
             .dynamicTypeSize(.accessibility5)
     }
     .padding()

@@ -33,11 +33,11 @@ struct ConfrontoDiarioView: View {
     private var colonnaConsigliata: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(confronto.titoloConsigliata).font(.headline).accessibilityAddTraits(.isHeader)
-            Text(confronto.sottoConsigliata).font(.footnote).foregroundStyle(.secondary)
+            Text(confronto.sottoConsigliata).font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
             elenco(confronto.consigliata)
             if let p = confronto.panchina {
-                Text(p).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(p).font(.footnote).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -61,7 +61,7 @@ struct ConfrontoDiarioView: View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(righe) { r in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(r.ruolo).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text(r.ruolo).font(.caption.weight(.semibold)).foregroundStyle(Color.testoSecondario)
                         .frame(minWidth: 18, alignment: .leading)
                     Text(r.nome).font(.body.weight(r.diverso ? .bold : .regular))
                         .fixedSize(horizontal: false, vertical: true)

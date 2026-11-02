@@ -22,9 +22,9 @@ struct AvvisiServerView: View {
                     Button("Attiva i promemoria sul telefono") { Task { await lega.attivaPromemoria() } }.frame(minHeight: 44)
                     RigaValore(titolo: "Aggiornamento in background", valore: lega.aggiornamentoInBackground)
                 } header: {
-                    Text("Promemoria sul telefono")
+                    Text("Promemoria sul telefono").foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text("Ti avvisiamo un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.")
+                    Text("Ti avvisiamo un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.").foregroundStyle(Color.testoSecondario)
                 }
                 if let s = vm.caricatore.dato {
                     if let errore = vm.erroreSalvataggio {
@@ -49,7 +49,7 @@ struct AvvisiServerView: View {
                                 .accessibilityAddTraits(.isStaticText)
                         }
                     }
-                    Section("Quali avvisi") {
+                    Section(titolo: "Quali avvisi") {
                         interruttore("Cambi di formazione e probabili", \.cambi)
                         if let prima = vm.impostazioni?.avviso_prima { sceltaAvvisoPrima(prima) }
                         interruttore("Promemoria un'ora prima", \.promemoria_60)
@@ -64,7 +64,7 @@ struct AvvisiServerView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Reparto della rosa scoperto")
                                 Text("Ti avvisa se in un reparto hai pochi giocatori disponibili (infortunati, squalificati, diffidati).")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(Color.testoSecondario)
                             }
                         }
                         .tint(Color.verde)
@@ -74,7 +74,7 @@ struct AvvisiServerView: View {
                     if sessione.multiutente {
                         Section {
                             Text("Per ricevere anche gli avvisi su cambi di formazione e riepilogo, apri SchieraXI con Safari e aggiungilo alla schermata Home: gli avvisi arrivano da lì.")
-                                .font(.footnote).foregroundStyle(.secondary)
+                                .font(.footnote).foregroundStyle(Color.testoSecondario)
                         }
                     } else {
                     Section {
@@ -87,19 +87,19 @@ struct AvvisiServerView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Avvisi anche per l'app nativa")
                                 Text("Arrivano con l'app ntfy e il tocco apre questa app. Se hai attivato anche le notifiche della web app potresti riceverli doppi.")
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(.caption).foregroundStyle(Color.testoSecondario)
                             }
                         }
                         .tint(Color.verde)
                         .frame(minHeight: 44)
                     } header: {
-                        Text("Avanzate (per chi gestisce il server)")
+                        Text("Avanzate (per chi gestisce il server)").foregroundStyle(Color.testoSecondario)
                     } footer: {
-                        Text("Il server aggiunge da solo il tocco che apre l'app: non devi impostare niente.")
+                        Text("Il server aggiunge da solo il tocco che apre l'app: non devi impostare niente.").foregroundStyle(Color.testoSecondario)
                     }
                     Section {
                         Text("Dispositivi con avvisi web attivi: \(s.dispositivi ?? 0). Canale degli avvisi: \(s.canale == true ? "attivo" : "non configurato"). Con l'Apple ID gratuito l'app nativa non può ricevere notifiche push: gli avvisi del server arrivano con ntfy o dalla web app installata dalla Home.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Color.testoSecondario)
                         Button("Manda un avviso di prova") { Task { await vm.provaAvviso() } }.frame(minHeight: 44)
                         if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
                     }
@@ -131,7 +131,7 @@ struct AvvisiServerView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Ore tranquille")
                     Text("Niente avvisi di notte: i promemoria che cadono in quelle ore non partono.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
             .tint(Color.verde)
@@ -141,12 +141,12 @@ struct AvvisiServerView: View {
                 selettoreOra("Alle", \.silenzio_a, predefinita: OreTranquille.predefinite.a)
             }
         } header: {
-            Text("Ore tranquille")
-        } footer: {
+            Text("Ore tranquille").foregroundStyle(Color.testoSecondario)
+        } footer: { Group {
             if let ore = vm.impostazioni?.oreTranquille, ore.attive {
                 Text(ore.da == ore.a ? "Con la stessa ora di inizio e di fine non c'è nessun silenzio." : "Silenzio \(ore.descrizione) (ora italiana).")
             }
-        }
+        }.foregroundStyle(Color.testoSecondario) }
     }
 
     private func selettoreOra(_ titolo: String, _ chiave: WritableKeyPath<ImpostazioniAvvisi, Int?>, predefinita: Int) -> some View {
@@ -179,7 +179,7 @@ struct AvvisiServerView: View {
             .frame(minHeight: 44)
             .accessibilityHint(AvvisoPrima.aiuto)
             Text(AvvisoPrima.aiuto)
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityHidden(true)
         }
@@ -209,7 +209,7 @@ struct CreditiView: View {
             Sfondo()
             List {
                 if let s = vm.caricatore.dato {
-                    Section("Crediti residui di ogni squadra") {
+                    Section(titolo: "Crediti residui di ogni squadra") {
                         ForEach(s) { sq in
                             HStack {
                                 Text(sq.nome)
@@ -223,7 +223,7 @@ struct CreditiView: View {
                         Button("Salva i crediti") { Task { await vm.salva() } }.frame(minHeight: 44)
                         if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
                         Text("Servono per i consigli del mercato (rimborso e crediti dopo il cambio). Restano anche se importi di nuovo l'Excel.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }

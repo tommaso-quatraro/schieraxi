@@ -152,7 +152,7 @@ struct AccountSezione: View {
 
     var body: some View {
         if sessione.multiutente, let utente = sessione.utente {
-            Section("Il tuo account") {
+            Section(titolo: "Il tuo account") {
                 RigaValore(titolo: "Nome", valore: utente.nome)
                 RigaValore(titolo: "Email", valore: (sessione.emailMostrata ?? "Nessuna") + (sessione.emailDaGoogle && sessione.emailMostrata != nil ? " (da Google)" : ""))
                 if mostraVoceEmail {
@@ -228,7 +228,7 @@ struct FoglioCambiaPassword: View {
 
     var body: some View {
         Form {
-            Section("Password di adesso") {
+            Section(titolo: "Password di adesso") {
                 SecureField("Password attuale", text: $attuale)
                     .textContentType(.password)
                     .focused($focus, equals: 0)
@@ -252,14 +252,14 @@ struct FoglioCambiaPassword: View {
                     .onSubmit { focus = nil }
                     .frame(minHeight: Tema.areaTocco)
             } header: {
-                Text("Password nuova")
-            } footer: {
+                Text("Password nuova").foregroundStyle(Color.testoSecondario)
+            } footer: { Group {
                 VStack(alignment: .leading, spacing: 4) {
                     if let problema { Text(problema).foregroundStyle(Color.attenzione) }
                     if !ripeti.isEmpty && nuova != ripeti { Text("Le due password non coincidono.").foregroundStyle(Color.attenzione) }
                     Text("Almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
                 }
-            }
+            }.foregroundStyle(Color.testoSecondario) }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 Button { Task { await invia() } } label: {
@@ -307,9 +307,9 @@ struct FoglioNuovoCodice: View {
                             .onSubmit { Task { await crea() } }
                             .frame(minHeight: Tema.areaTocco)
                     } header: {
-                        Text("Conferma con la password")
+                        Text("Conferma con la password").foregroundStyle(Color.testoSecondario)
                     } footer: {
-                        Text("Il codice di prima non vale più. Quello nuovo lo vedi una volta sola: scrivilo e tienilo al sicuro.")
+                        Text("Il codice di prima non vale più. Quello nuovo lo vedi una volta sola: scrivilo e tienilo al sicuro.").foregroundStyle(Color.testoSecondario)
                     }
                     if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
                     Section {
@@ -356,10 +356,10 @@ struct FoglioElimina: View {
                 Text("Cancella il tuo account e TUTTI i tuoi dati: rose, regole, scelte, immagini, avvisi. Non si può annullare.")
                     .font(.subheadline)
             } footer: {
-                Text("Vuoi tenerne una copia? Prima chiudi qui e usa «Scarica i tuoi dati», subito sopra «Elimina l'account».")
+                Text("Vuoi tenerne una copia? Prima chiudi qui e usa «Scarica i tuoi dati», subito sopra «Elimina l'account».").foregroundStyle(Color.testoSecondario)
             }
             if sessione.senzaPassword { RigaRiconferma(confermato: $riconfermato) }
-            Section(sessione.senzaPassword ? "Ultima conferma" : "Conferma con la password") {
+            Section(titolo: sessione.senzaPassword ? "Ultima conferma" : "Conferma con la password") {
                 if !sessione.senzaPassword {
                     SecureField("Password", text: $password)
                         .textContentType(.password)
@@ -417,9 +417,9 @@ struct FoglioEmail: View {
                 Section {
                     RigaValore(titolo: "Email verificata", valore: email)
                 } footer: {
-                    Text("Serve per recuperare la password se la dimentichi.")
+                    Text("Serve per recuperare la password se la dimentichi.").foregroundStyle(Color.testoSecondario)
                 }
-                Section("Togli l'email") {
+                Section(titolo: "Togli l'email") {
                     if !sessione.senzaPassword {
                         SecureField("Password", text: $password)
                             .textContentType(.password)
@@ -442,9 +442,9 @@ struct FoglioEmail: View {
                         }
                         .disabled(codice.trimmingCharacters(in: .whitespaces).isEmpty || sessione.inCorso)
                     } header: {
-                        Text("Verifica")
+                        Text("Verifica").foregroundStyle(Color.testoSecondario)
                     } footer: {
-                        Text("Ti ho mandato un codice all'indirizzo scelto (controlla anche la posta indesiderata). Se non arriva, riprova qui sotto.")
+                        Text("Ti ho mandato un codice all'indirizzo scelto (controlla anche la posta indesiderata). Se non arriva, riprova qui sotto.").foregroundStyle(Color.testoSecondario)
                     }
                 }
                 // Due passi: prima l'indirizzo, poi la password. Un campo email accanto a un campo password è per iOS un modulo
@@ -466,9 +466,9 @@ struct FoglioEmail: View {
                         Button("Cambia indirizzo") { indirizzoScelto = nil; password = "" }
                             .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                     } header: {
-                        Text("Conferma")
+                        Text("Conferma").foregroundStyle(Color.testoSecondario)
                     } footer: {
-                        Text(sessione.senzaPassword ? "Ti mando un codice a questo indirizzo." : "Per sicurezza scrivi la tua password, poi ti mando un codice a questo indirizzo.")
+                        Text(sessione.senzaPassword ? "Ti mando un codice a questo indirizzo." : "Per sicurezza scrivi la tua password, poi ti mando un codice a questo indirizzo.").foregroundStyle(Color.testoSecondario)
                     }
                 } else {
                     Section {
@@ -484,9 +484,9 @@ struct FoglioEmail: View {
                             .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                             .disabled(RegoleAccount.problemaEmail(indirizzo) != nil)
                     } header: {
-                        Text("Aggiungi un'email")
+                        Text("Aggiungi un'email").foregroundStyle(Color.testoSecondario)
                     } footer: {
-                        Text("Facoltativa: ti permette di recuperare la password anche senza il codice di recupero.")
+                        Text("Facoltativa: ti permette di recuperare la password anche senza il codice di recupero.").foregroundStyle(Color.testoSecondario)
                     }
                 }
             }
@@ -553,7 +553,7 @@ struct RigaScaricaDati: View {
                 Label("Scarica i tuoi dati", systemImage: "square.and.arrow.down").labelStyle(.voce(.indigo))
                 Text("Un file con regole, rose, scelte e dati dell'account, da tenere o portare altrove.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
@@ -609,5 +609,5 @@ struct FoglioCondividi: UIViewControllerRepresentable {
 }
 
 #Preview("Scarica i tuoi dati") {
-    List { Section("Il tuo account") { RigaScaricaDati(fogli: FogliAccount()) } }
+    List { Section(titolo: "Il tuo account") { RigaScaricaDati(fogli: FogliAccount()) } }
 }
