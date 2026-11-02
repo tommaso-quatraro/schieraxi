@@ -15,6 +15,7 @@ from test_registrazione_modi import conferma, iscrivi, modo, utenti
 def posta_finta(monkeypatch):
     messaggi = []
     monkeypatch.setattr(posta, "invia", lambda m: messaggi.append(m) or True)
+    monkeypatch.setattr(posta, "attiva", lambda: True)                # le email «partono» (le raccoglie la lista qui sopra)
     return messaggi
 
 

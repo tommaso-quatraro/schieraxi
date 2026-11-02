@@ -179,3 +179,20 @@ def test_turno_diviso_a_pasqua_non_e_un_anticipo():
     # due anticipi (martedì e mercoledì) restano anticipi
     due = ["2026-11-03 20:45", "2026-11-04 20:45"] + NORMALE
     assert turno.inizio(d(x) for x in due) == d("2026-11-07 15:00")
+
+
+def test_turno_diviso_con_gruppo_principale_cinque_giorni_dopo():
+    """Issue #139 (controesempio di Hypothesis): 3 partite venerdì e 4 il mercoledì dopo, a 5 giorni. Più di MAX_ANTICIPI partite
+    prima del gruppo principale non sono anticipi ma un turno diviso: il turno parte dalla prima e la formazione si chiude venerdì."""
+    from fanta.regole import Regole
+    venerdi, mercoledi = "2026-08-21 12:30", "2026-08-26 12:30"
+    date = [venerdi] * 3 + [mercoledi] * 4
+    inizio = turno.inizio(d(x) for x in date)
+    assert inizio == d(venerdi)
+    assert sum(turno.anticipo(d(x), inizio) for x in date) <= turno.MAX_ANTICIPI
+    assert turno.conta_per_scadenza(d(venerdi), True, inizio)
+    reg = Regole(scadenza_minuti=10)
+    for giocata in (0, 1):                                  # prima e dopo le partite del venerdì: la scadenza è venerdì
+        db = _db([(venerdi, giocata)] * 3 + [(mercoledi, 0)] * 4)
+        assert avvisi.prima_partita(db, ST, 9) == d(venerdi)
+        assert fasi.iniziata(db, reg, ST, 9, d("2026-08-21 12:20"))
