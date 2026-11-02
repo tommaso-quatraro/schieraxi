@@ -1088,9 +1088,9 @@ main > .imp { grid-column: 1 / -1; }
 /* Diario > «Quanto ci abbiamo preso»: 4 numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento */
 .qp { margin-top: 12px; }
 .qp-pochi { margin: 10px 0 0; }
-.qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 12px 0; }
+.qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 24px; margin: 12px 0; }
 @media (min-width: 560px) { .qp-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.qp-voce { min-width: 0; padding: 12px; border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); }
+.qp-voce { min-width: 0; padding: 12px 0 4px; border-top: 1px solid var(--bordo); }          /* righe, non carte dentro la carta (STILE-SENZA-AI) */
 .qp-num { display: block; font-size: var(--t-titolo); font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .qp-eti { display: block; font-size: var(--t-eti); color: var(--testo-2); margin-top: 2px; }
 .qp-frase { font-size: var(--t-sec); margin-top: 8px; }

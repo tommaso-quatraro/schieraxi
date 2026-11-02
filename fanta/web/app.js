@@ -43,6 +43,8 @@ function esc(x) {
 const sigla = s => esc(SIGLE[s] || (s || "").slice(0, 3).toUpperCase());
 const num = (x, d = 1) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : (s => LINGUA === "it" ? s.replace(".", ",") : s)(Number(x).toFixed(d));
 const perc = x => `${Math.round((x || 0) * 100)}%`;
+// «al 98%», «all'83%»: l'articolo davanti a un numero che si legge con la vocale (8, 11, 80-89, 800..., 1, 1100...), come Precisione.alPercento dell'iPhone; in inglese il numero e basta
+const alPercento = x => { const s = String(x); return typeof LINGUA !== "undefined" && LINGUA === "en" ? s + "%" : (s.startsWith("8") || x === 1 || x === 11 || (s.startsWith("11") && s.length === 4) ? "all'" : "al ") + s + "%"; };
 // Numero con il segno: «+1,2», «−0,4» (il meno tipografico, come in «Perché questo numero»), «0,0» senza segno se arrotondato vale zero.
 const segno = (x, d = 1) => { if (x === null || x === undefined || Number.isNaN(x)) return num(x, d); const v = num(Math.abs(x), d); return (/[1-9]/.test(v) ? (x > 0 ? "+" : "−") : "") + v; };
 const menoMovimento = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.animazioni === "ridotte";
@@ -1718,11 +1720,14 @@ async function apriConfronto(a, b) {
     const [x, y] = c.giocatori;
     const nomeCorto = g => g.nome.replace(/(\s+\p{L}{1,2}\.)+$/u, "").trim() || g.nome;
     const fo = c.formazione;
+    // il posto nella formazione del sistema, dalla risposta del server (la stessa del titolo «Schiera X»), non dalla scheda Formazione
+    const codicePosto = g => (!fo ? "" : g.id === x.id ? fo.posto_a : fo.posto_b) || "";
+    const posto = g => { const p = codicePosto(g); return p === "titolare" ? t("tit.titolare") : p.startsWith("panchina ") ? t("mercato.panchina_n", { n: Number(p.split(" ")[1]) }) : p === "fuori" ? t("tit.fuori") : ""; };
     const schierato = fo ? (fo.posto_a === "titolare" && fo.posto_b !== "titolare" ? x : fo.posto_b === "titolare" && fo.posto_a !== "titolare" ? y : null) : null;
     const vince = c.giocatori.find(g => g.id === c.consigliato);
     const intest = g => `<div class="duello-giocatore ${g.id === c.consigliato ? "scelto" : ""}">${avatarIndice(g, true)}
       <b class="nome">${esc(g.nome)}</b><span class="debole piccolo">${partitaRiga(g)}</span>
-      ${postoInFormazione(g.id) ? `<span class="etichetta ${inTitolari(g.id) ? "" : "neutra"}">${postoInFormazione(g.id)}</span>` : ""}</div>`;
+      ${posto(g) ? `<span class="etichetta ${codicePosto(g) === "titolare" ? "" : "neutra"}">${posto(g)}</span>` : ""}</div>`;
     const massimo = Math.max(0.3, ...c.fattori.map(f => Math.abs(f.effetto)));
     const valore = (f, v) => f.percentuale ? perc(v) : num(v, 2);
     const fattori = c.fattori.filter(f => Math.abs(f.effetto) >= 0.005 || f.chiave === "giocare").map(f => {
@@ -1734,7 +1739,7 @@ async function apriConfronto(a, b) {
     }).join("");
     const riga = (etichetta, f) => `<div class="debole">${etichetta}</div><div class="numero"><b>${f(x)}</b></div><div class="numero"><b>${f(y)}</b></div>`;
     apriFoglio(`
-      <h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("mercato.chi_schierare", { n: c.giornata })}</h2>
+      <h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("mercato.chi_schierare", { n: c.giornata_lega ?? c.giornata })}</h2>
       <div class="duello">${intest(x)}<span class="vs-duello">VS</span>${intest(y)}</div>
       <div class="carta hero"><div class="debole">${fo ? t("mercato.nella_formazione", { modulo: esc(fo.modulo) }) : t("mercato.il_sistema_sceglie")}</div>
         <div class="grande">${schierato ? t("mercato.schiera", { nome: esc(schierato.nome) }) : esc(vince.nome)}</div>
@@ -2592,7 +2597,7 @@ function cartaPrecisione(p) {
   const gi = p.gioca, gp = gi && gi.principale != null ? gi.gruppi[gi.principale] : null;
   const giudizioFascia = g => (n(g.giocato) < n(g.detto) - 10 ? ` <span class="attenzione-testo">${t("diario.qp_gioca_ottimisti")}</span>` : n(g.giocato) > n(g.detto) + 10 ? ` <span class="debole">${t("diario.qp_gioca_prudenti")}</span>` : "");
   // con i numeri visti davvero (probabili comprese) «quando diciamo...»; con quelli ricostruiti senza probabili, una frase che lo dice
-  const gArg = gp ? { p: n(gp.detto), k: suDieci(gp.giocato) } : null;
+  const gArg = gp ? { p: n(gp.detto), al: alPercento(n(gp.detto)), k: suDieci(gp.giocato) } : null;
   const gFrase = gp ? `${gi.fonte === "ricostruiti" ? t("diario.qp_gioca_ric", gArg) : t("diario.qp_gioca", gArg)}${giudizioFascia(gp)}
       <details class="qp-dettagli"><summary>${t("diario.qp_gioca_tutte")}</summary><ul class="qp-fasce">${gi.gruppi.map(g => `<li>${t("diario.qp_gioca_fascia", { da: n(g.da), a: n(g.a) >= 100 ? 100 : n(g.a) - 1, d: n(g.detto), g: n(g.giocato) })} <span class="debole">(${tp("diario.qp_giocatori", n(g.giocatori))}${g.pochi ? ", " + t("diario.qp_pochi_casi") : ""})</span></li>`).join("")}</ul></details>`
     : t("diario.qp_fv_vuoto");
@@ -2676,7 +2681,7 @@ async function apriDiario(giornata) {
   try {
     const d = await api("/api/diario");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
-    const v = x => (x == null ? "–" : virgola(x)), s = d.sintesi;
+    const v = x => num(x, 1), s = d.sintesi;          // punti sempre con un decimale: «48,0», non «48»
     const ORDINE_RUOLI = { P: 0, D: 1, C: 2, A: 3 };
     // Un elenco di titolari per ruolo; chi non c'è nell'altra formazione è evidenziato. Dentro il nome solo testo (esc).
     const elencoFormazione = (titolari, altri, panchina) => `<ul class="diario-lista">${[...titolari].sort((a, b) => (ORDINE_RUOLI[a.ruolo] ?? 9) - (ORDINE_RUOLI[b.ruolo] ?? 9))

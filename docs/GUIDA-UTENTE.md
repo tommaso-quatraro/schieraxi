@@ -126,6 +126,7 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
 - Sotto il nome, la partita come sul campo, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Le note lunghe, per esempio un infortunio, vanno a capo dentro la riga. Sul campo c'è solo il cognome («Rossi», senza l'iniziale).
 - «Giornata 7» è sempre il numero della giornata della **tua lega** (in alto, in Formazione, nella scheda e nell'immagine da condividere), come sull'iPhone. Il numero di Serie A compare solo dove si parla del calendario di Serie A.
 - **Panchina** nell'ordine in cui entrano.
+- **Chi schierare?** (dalla scheda di un giocatore, **Confronta**): due giocatori a confronto per la giornata della tua lega. In verde c'è quello da schierare, lo stesso del titolo «Schiera …»: se la consigliata ne tiene titolare uno solo, è lui, anche quando l'altro da solo vale qualche punto in più (per esempio un titolare incerto con una riserva sicura che entra al suo posto). Sotto ogni nome, **Titolare** o **Panchina N** nella consigliata.
 - **Modifica a mano** (✎): cambi un titolare con un altro della rosa e i punti si ricalcolano.
 - **Copia il testo** e **Condividi come immagine**.
 
