@@ -79,7 +79,7 @@ esecuzione per ramo o PR (un nuovo push annulla quella in corso).
 |---|---|---|
 | `iOS` (`ios.yml`) | chiamato da `Controlli` (`test.yml`, job `ios`) solo se la PR o il push toccano `ios/`; a mano per le prove | compila ed esegue i test su un simulatore; l'unione automatica della PR lo aspetta |
 | `Compila IPA` (`ipa.yml`) | dopo l'unione di una PR, lanciato dal job `rilascia` se `ios/` è cambiata dall'ultima IPA riuscita; push diretto a `main` che tocca `ios/`; a mano per le prove | crea `Schieraxi.ipa` e la release `build-N`. Su `main` ne resta in coda solo una (l'ultima) e la build in corso non si annulla mai |
-| `Screenshot` (`screenshot.yml`) | a mano, o su una PR che tocca `ios/` e ha l'etichetta `screenshot` o cambia `Sources/Presentation`, `Sources/Support`, `Sources/App`, `WidgetSources` o `AnteprimaWidget` | fotografa l'app (iPhone e iPad) e i widget in un solo job Mac. Un job Linux, gratis, decide prima se serve il Mac |
+| `Screenshot` (`screenshot.yml`) | a mano, o su una PR che tocca `ios/` e ha l'etichetta `screenshot` (senza etichetta non parte: i Mac gratuiti servono ai test). Un push nuovo annulla la corsa vecchia dello stesso ramo | fotografa l'app (iPhone e iPad) e i widget in un solo job Mac. Un job Linux, gratis, decide prima se serve il Mac |
 
 Non parte più nulla a ogni unione su `main`: prima partivano in automatico gli screenshot (due volte) e la build a ogni unione.
 
