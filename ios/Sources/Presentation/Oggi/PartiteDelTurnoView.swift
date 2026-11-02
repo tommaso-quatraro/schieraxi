@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// La scheda «Partite del turno» di Oggi: orari, e quando c'è una partita in corso il punteggio con il minuto (badge LIVE),
-/// marcatori (con assist), rigori e cartellini rossi, tutti, in due colonne. Le partite in cui giocano miei titolari hanno lo sfondo lime e i loro avatarini.
+/// marcatori (con assist), rigori e cartellini rossi, tutti, in due colonne. Le partite in cui giocano miei titolari hanno lo sfondo lime,
+/// un segno lime a sinistra e i loro avatarini. Tutte le righe stanno sulla stessa griglia: stato, squadre e punteggio in colonna.
 struct PartiteDelTurnoView: View {
     @ObservedObject var vm: OggiViewModel
 
@@ -9,11 +10,13 @@ struct PartiteDelTurnoView: View {
         let giorni = vm.partitePerGiorno
         if !giorni.isEmpty {
             let live = vm.risultatiLive
+            // La colonna del punteggio c'è in tutte le righe appena una partita ha un punteggio: così avatarini e punteggi restano in colonna.
+            let conPunteggio = giorni.contains { g in g.partite.contains { RigaPartitaView.haPunteggio(vm.dalVivo($0)) } }
             Carta("Partite del turno", simbolo: "soccerball") {
                 ForEach(giorni) { giorno in
                     Text(giorno.titolo).titoletto().padding(.top, 4)
                     ForEach(giorno.partite) { p in
-                        RigaPartitaView(partita: p, live: vm.dalVivo(p), titolari: vm.mieiTitolari(p))
+                        RigaPartitaView(partita: p, live: vm.dalVivo(p), titolari: vm.mieiTitolari(p), colonnaPunteggio: conPunteggio)
                     }
                 }
                 if let nota = DirettaLogica.nota(fonte: live?.fonte), !(live?.partite ?? []).isEmpty {
@@ -35,42 +38,58 @@ struct RigaPartitaView: View {
     let partita: Partita
     let live: PartitaLive?
     let titolari: [MioTitolare]
+    /// Riserva lo spazio del punteggio anche se questa partita non ce l'ha (perché ce l'ha un'altra del turno).
+    var colonnaPunteggio = true
 
     @Environment(\.accessibilityReduceMotion) private var ridotto
     @Environment(\.colorScheme) private var schema
+    @Environment(\.dynamicTypeSize) private var dimensioneTesto
+    /// Larghezze fisse della griglia (crescono con la dimensione del testo): stato/ora e un numero di gol.
+    @ScaledMetric(relativeTo: .caption) private var larghezzaStato: CGFloat = 60
+    @ScaledMetric(relativeTo: .title3) private var larghezzaGol: CGFloat = 14
     /// Lo sfondo che si accende per un attimo quando c'è un gol.
     @State private var lampo = false
 
     private var ora: String? { Quando.data(partita.data).map { Quando.ora($0) } }
-    private var haPunteggio: Bool { live?.golCasa != nil && live?.golTrasferta != nil }
+    static func haPunteggio(_ live: PartitaLive?) -> Bool { live?.golCasa != nil && live?.golTrasferta != nil }
+    private var haPunteggio: Bool { Self.haPunteggio(live) }
+    private var mia: Bool { !titolari.isEmpty }
+    /// Con le misure di accessibilità lo stato va sopra le squadre: in colonna non ci starebbe.
+    private var impilata: Bool { dimensioneTesto.isAccessibilitySize }
     private var inGioco: Bool { live?.inGioco ?? false }
     private var finita: Bool { live?.finita ?? (partita.giocata == true || partita.stato == "finita") }
     private var eventi: [EventoLive] { haPunteggio ? EventiPartita.visibili(live?.eventi) : [] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
-                stato.frame(minWidth: 52, alignment: .leading)
-                Text("\(partita.casa.capitalized) – \(partita.trasferta.capitalized)")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(finita ? Color.secondary : Color.primary)
-                    .lineLimit(2)
-                Spacer(minLength: 4)
-                if !titolari.isEmpty { avatar }
-                if haPunteggio {
-                    Text(live?.punteggio ?? "–")
-                        .font(.title3.weight(.bold)).monospacedDigit()
-                        .contentTransition(ridotto ? .opacity : .numericText())
+            if impilata {
+                stato
+                HStack(spacing: 8) {
+                    squadre.frame(maxWidth: .infinity, alignment: .leading)
+                    if mia { avatar }
+                    punteggio
+                }
+            } else {
+                // Griglia unica: stato a larghezza fissa, squadre nello spazio che resta, avatarini e punteggio a destra.
+                HStack(spacing: 10) {
+                    stato.lineLimit(1).minimumScaleFactor(0.8).frame(width: larghezzaStato, alignment: .leading)
+                    squadre.frame(maxWidth: .infinity, alignment: .leading)
+                    if mia { avatar }
+                    punteggio
                 }
             }
-            if !eventi.isEmpty { elencoEventi }
+            if !eventi.isEmpty { elencoEventi.padding(.leading, impilata ? 0 : larghezzaStato + 10) }
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal, titolari.isEmpty ? 0 : 8)
+        // Stessi margini per tutte le righe: le mie si riconoscono da sfondo e segno, senza spostare il contenuto.
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .frame(minHeight: Tema.areaTocco)
         .background {
-            ZStack {
-                if !titolari.isEmpty {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.capitano.opacity(schema == .dark ? 0.12 : 0.16))
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(mia ? Color.capitano.opacity(schema == .dark ? 0.12 : 0.16) : Color.primary.opacity(schema == .dark ? 0.05 : 0.035))
+                if mia {
+                    Capsule().fill(Color.capitano).frame(width: 3).padding(.vertical, 9).padding(.leading, 3)
                 }
                 RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.capitano.opacity(lampo ? (ridotto ? 0.25 : 0.5) : 0))
             }
@@ -91,6 +110,37 @@ struct RigaPartitaView: View {
     }
 
     // MARK: pezzi
+
+    private var squadre: some View {
+        Text("\(partita.casa.capitalized) – \(partita.trasferta.capitalized)")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(finita ? Color.secondary : Color.primary)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Il punteggio in tre pezzi a larghezza fissa (gol di casa a destra, trattino, gol in trasferta a sinistra) con cifre tabulari:
+    /// i trattini di tutte le righe stanno in colonna. Senza punteggio lo spazio resta, vuoto, se un'altra partita del turno ce l'ha.
+    @ViewBuilder
+    private var punteggio: some View {
+        if haPunteggio || colonnaPunteggio {
+            HStack(spacing: 3) {
+                gol(live?.golCasa).frame(minWidth: larghezzaGol, alignment: .trailing)
+                Text("–")
+                gol(live?.golTrasferta).frame(minWidth: larghezzaGol, alignment: .leading)
+            }
+            .font(.title3.weight(.bold))
+            .monospacedDigit()
+            .opacity(haPunteggio ? 1 : 0)
+            .fixedSize()
+            .accessibilityHidden(true)
+        }
+    }
+
+    private func gol(_ n: Int?) -> some View {
+        Text(n.map(String.init) ?? "")
+            .contentTransition(ridotto ? .opacity : .numericText(value: Double(n ?? 0)))
+    }
 
     @ViewBuilder
     private var stato: some View {

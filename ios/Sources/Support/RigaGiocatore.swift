@@ -39,7 +39,7 @@ extension EnvironmentValues {
         set { self[VaiASezioneChiave.self] = newValue }
     }
 
-    /// Apre Lega > Novità (dal banner «Novità nell'app» di Oggi).
+    /// Apre Lega > Novità (dal banner «Novità di SchieraXI» di Oggi).
     var apriNovita: () -> Void {
         get { self[ApriNovitaChiave.self] }
         set { self[ApriNovitaChiave.self] = newValue }
