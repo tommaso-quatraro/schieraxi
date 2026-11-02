@@ -79,7 +79,7 @@ struct ImpostazioniView: View {
         case .aspetto: AspettoView()
         case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
-        case .crediti: CreditiEFontiView(server: vm.server)
+        case .crediti: CreditiEFontiView()
         case .avanzate: paginaAvanzate
         case .cambiaServer: PaginaCambiaServer(dopoProva: { await vm.info.ricarica() })
         }

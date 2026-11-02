@@ -2,29 +2,31 @@ import SwiftUI
 
 /// Le voci «legali» di Impostazioni > Informazioni, con gli stessi nomi e lo stesso ordine della web: Privacy, Termini d'uso e
 /// Crediti e fonti (le pagine del server dell'utente), poi Codice sorgente (solo se il server dà l'indirizzo).
-/// Gli indirizzi non stanno nell'app: si compongono con quello del server.
+/// Gli indirizzi non stanno nell'app: si compongono con quello del server. Quali voci: `InformazioniLegali.vociInformazioni`.
 struct RigheLegali: View {
     let server: any ServerClient
     @AppStorage("indirizzo") private var indirizzo = ""
     @State private var sorgente: URL?
 
-    /// Con la prova con dati di esempio non c'è un server vero: le pagine non hanno un indirizzo e le voci non si mostrano.
-    private var base: String { ProvaEsempio.attiva ? "" : IndirizzoServer.attuale }
+    /// Nella prova con dati di esempio e nelle foto della demo (`Demo.attivo`) non c'è un server vero: niente collegamenti a un
+    /// indirizzo finto, solo «Crediti e fonti» dentro l'app. Così le foto mostrano quello che vede chi fa la prova.
+    private var voci: [VoceInformazioni] {
+        InformazioniLegali.vociInformazioni(prova: Demo.attivo, server: IndirizzoServer.attuale)
+    }
 
     var body: some View {
         Group {
-            ForEach(PaginaServer.allCases, id: \.self) { pagina in
-                if let url = InformazioniLegali.indirizzo(pagina, server: base) {
+            ForEach(voci, id: \.self) { voce in
+                switch voce {
+                case .browser(_, let url):
                     Link(destination: url) {
-                        Label(pagina.titolo, systemImage: pagina.icona).labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
+                        Label(voce.titolo, systemImage: voce.icona).labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
                     }
                     .accessibilityHint("Si apre nel browser")
-                }
-            }
-            if ProvaEsempio.attiva {
-                // Nella prova non c'è un server con le sue pagine: i crediti si leggono qui, dentro l'app.
-                NavigationLink(value: PaginaImpostazioni.crediti) {
-                    Label(PaginaServer.crediti.titolo, systemImage: PaginaServer.crediti.icona).labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
+                case .creditiNellApp:
+                    NavigationLink(value: PaginaImpostazioni.crediti) {
+                        Label(voce.titolo, systemImage: voce.icona).labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
+                    }
                 }
             }
             if let sorgente {
@@ -38,8 +40,9 @@ struct RigheLegali: View {
     }
 
     /// Il campo facoltativo `sorgente` di `/api/stato`: se manca, o non è un indirizzo https, la voce non compare.
+    /// Nella prova e nelle foto della demo non si chiede niente: lì la voce non c'è, come per le pagine del server.
     static func cercaSorgente(_ server: any ServerClient) async -> URL? {
-        if ProvaEsempio.attiva { return nil }
+        if Demo.attivo { return nil }
         let stato: StatoSorgente? = try? await server.get("/api/stato")
         return InformazioniLegali.sorgente(stato?.sorgente)
     }
@@ -65,23 +68,14 @@ struct SezioneProvaEsempio: View {
     }
 }
 
-/// «Crediti e fonti» dentro l'app, solo per la prova con dati di esempio (senza server): a chi appartiene cosa.
-/// Con un server vero la voce apre la sua pagina «Crediti e fonti», la stessa della web. Nessuna libreria di terzi.
+/// «Crediti e fonti» dentro l'app, solo per la prova con dati di esempio e le foto della demo (senza server): a chi appartiene
+/// cosa. Con un server vero la voce apre la sua pagina «Crediti e fonti», la stessa della web. Nessuna libreria di terzi.
 struct CreditiEFontiView: View {
-    let server: any ServerClient
-    @State private var sorgente: URL?
-
     var body: some View {
         List {
             Section(titolo: "Licenza di SchieraXI") {
                 Text("SchieraXI è software libero, con licenza GNU Affero General Public License 3.0 (AGPL-3.0). Puoi leggerlo, usarlo, modificarlo e condividerlo secondo i patti di quella licenza. Il testo completo è nel codice sorgente.")
                     .font(.subheadline)
-                if let sorgente {
-                    Link(destination: sorgente) {
-                        Label("Codice sorgente", systemImage: "chevron.left.forwardslash.chevron.right").frame(minHeight: Tema.areaTocco)
-                    }
-                    .accessibilityHint("Si apre nel browser")
-                }
             }
             Section(titolo: "Componenti di terzi") {
                 Text("Nessuna libreria di terzi: l'app usa solo i componenti che trovi in iOS.")
@@ -100,10 +94,9 @@ struct CreditiEFontiView: View {
         .background(Sfondo())
         .navigationTitle("Crediti e fonti")
         .navigationBarTitleDisplayMode(.inline)
-        .task { sorgente = await RigheLegali.cercaSorgente(server) }
     }
 }
 
 #Preview("Crediti e fonti") {
-    NavigationStack { CreditiEFontiView(server: FinteServer.esempio) }
+    NavigationStack { CreditiEFontiView() }
 }

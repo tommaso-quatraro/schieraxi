@@ -98,10 +98,10 @@ final class AccessoUITests: XCTestCase {
         XCTAssertFalse(elemento("Cambia le maiuscole del nome").exists)
         XCTAssertFalse(elemento("Esci da tutti", contiene: true).exists)
         // «Esci» è l'ultima riga di «Il tuo account», subito sotto «Elimina l'account» (come sulla web), non una sezione a parte in fondo
-        let esci = app.buttons.matching(NSPredicate(format: "label == %@", "Esci")).firstMatch
+        let esci = app.buttons["Esci"].firstMatch   // con la conferma aperta i pulsanti «Esci» sono due
         for _ in 0..<8 where !(esci.exists && esci.isHittable) { app.swipeUp() }
         XCTAssertTrue(esci.waitForExistence(timeout: 5))
-        let elimina = app.buttons.matching(NSPredicate(format: "label == %@", "Elimina l'account")).firstMatch
+        let elimina = app.buttons["Elimina l'account"].firstMatch
         XCTAssertTrue(elimina.exists, "«Elimina l'account» sta subito sopra «Esci»")
         let fraLeDue = esci.frame.minY - elimina.frame.maxY
         // stessa sezione: fra le due righe al massimo il margine delle righe; una sezione nuova aggiunge lo spazio fra le sezioni (oltre 30 punti)
