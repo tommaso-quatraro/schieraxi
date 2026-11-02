@@ -11,3 +11,4 @@ labels: enhancement
 **Come lo immagini** (facoltativo)
 
 Nota: il progetto tiene poche funzioni. Le idee che aumentano molto la complessità si valutano caso per caso.
+Se l'idea usa una fonte di dati nuova, scrivi quali sono le sue condizioni d'uso.

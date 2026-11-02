@@ -1,17 +1,24 @@
 # Sicurezza
 
 ## Segnalare un problema
-Se trovi una falla (per esempio accesso ai dati di un altro utente, esecuzione di codice, fuga di chiavi), **non aprire una
-issue pubblica**. Usa la segnalazione privata di GitHub: scheda **Security** del repository, **Report a vulnerability**.
-In alternativa scrivi a `contatti@schieraxi.it`.
+Se trovi una falla (per esempio l'accesso ai dati di un altro utente, l'esecuzione di codice, la fuga di una chiave),
+**non aprire una issue pubblica**. Scegli una di queste strade:
+1. La segnalazione privata di GitHub: scheda **Security** del repository, poi **Report a vulnerability**.
+2. Una email a `contatti@schieraxi.it`.
 
-Rispondo appena posso (e' un progetto personale, senza orari). Ti chiedo di non rendere pubblico il problema prima che sia
-sistemato; se vuoi, ti cito nelle note della versione.
+Nel messaggio scrivi cosa hai trovato, come riprodurlo e quale versione usi. Non inviare dati personali di altri.
+
+## Cosa aspettarti
+È un progetto personale, senza orari. Rispondo appena posso, di solito entro una settimana. Ti chiedo di non rendere
+pubblico il problema prima che sia sistemato. Se vuoi, ti cito nelle note della versione.
+
+## Versioni che ricevono correzioni
+Solo l'ultima versione pubblicata (pagina **Releases**).
 
 ## Cosa conta
-- Il server (`fanta/`), l'app web e l'app iOS.
-- Non conta: problemi che richiedono gia' l'accesso al computer o al server di chi la usa; esposizione volontaria del
-  server su internet senza accesso protetto.
+- Il server (`fanta/`), l'app web e l'app per iPhone (`ios/`).
+- Non conta: un problema che richiede già l'accesso al computer o al server di chi la usa, o un server messo su internet
+  senza accesso protetto.
 
-## Cosa non c'e' nel repository
-Niente chiavi, password, indirizzi privati, dati di leghe vere. Se ne trovi, segnalalo come sopra.
+## Cosa non c'è nel repository
+Niente chiavi, password, indirizzi privati o dati di leghe vere. Se ne trovi, segnalalo come sopra.

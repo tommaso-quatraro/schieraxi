@@ -10,6 +10,7 @@ labels: bug
 
 **Come riprodurlo** (passi numerati)
 
-**Dove** (iPhone, iPad, computer; versione dell'app o numero della build, se lo sai)
+**Dove** (iPhone, iPad, browser, server proprio; versione dell'app o della build, se la sai)
 
-**Dati personali**: non incollare nomi di persone, indirizzi, email, password o token. Se servono, sostituiscili.
+**Dati personali**: non incollare nomi di persone, indirizzi, IP, email, password o token. Se servono, sostituiscili.
+Per una falla di sicurezza non usare questo modulo: vedi `SECURITY.md`.
