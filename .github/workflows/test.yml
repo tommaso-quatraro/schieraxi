@@ -152,7 +152,8 @@ jobs:
   # (workflow_dispatch è l'eccezione: col GITHUB_TOKEN parte).
   rilascia:
     needs: [unisci]
-    if: github.event_name == 'pull_request' && needs.unisci.result == 'success'
+    # !cancelled(): senza, GitHub salta questo job quando un job a monte di «unisci» è saltato (il job «ios» nelle PR senza ios/)
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.unisci.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
