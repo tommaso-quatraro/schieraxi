@@ -362,6 +362,28 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
                    "intervallo": None, "consigliata": None}
 
 
+def entrato_dopo_la_scadenza(stagione: str, giornata: int, scadenza: datetime | None, dal: datetime | None, file_scelte,
+                             file_diario) -> bool:
+    """Chi è entrato in SchieraXI dopo la scadenza della giornata e non ha nessuna formazione per lei (né sua né la copia della
+    consigliata vista prima della scadenza): quella giornata non l'ha schierata con noi, niente punti finti; si prepara la prossima.
+    `dal` = quando è nato l'account (ora locale); None (senza account o non noto) = mai."""
+    if dal is None or scadenza is None or dal < scadenza:
+        return False
+    return schierata(stagione, giornata, file_scelte, file_diario) is None
+
+
+def prossima_dopo(db, regole: Regole, stagione: str, giornata: int, adesso: datetime) -> dict | None:
+    """Il blocco `prossima` per la giornata dopo `giornata` (stessa forma della fase finita). None se non è in calendario."""
+    g = giornata + 1
+    scad = avvisi.scadenza(avvisi.prima_partita(db, stagione, g), regole)
+    if scad is None:
+        return None
+    con_probabili = db.execute("SELECT 1 FROM probabili WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio' LIMIT 1",
+                               (stagione, g)).fetchone() is not None
+    return blocco_prossima({"giornata": g, "giornata_lega": serie_a_a_lega(g, regole), "con_probabili": con_probabili,
+                            "scadenza": scad.isoformat(sep=" ", timespec="minutes")}, adesso)
+
+
 def blocco_prossima(oggi: dict, adesso: datetime) -> dict:
     """Il campo `prossima` (fase finita): la giornata da preparare, quando si chiude e da quando conviene prepararla."""
     scad = _data(oggi.get("scadenza"))
@@ -375,9 +397,11 @@ def blocco_prossima(oggi: dict, adesso: datetime) -> dict:
 
 # ---------------------------------------------------------------- insieme
 def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str, adesso: datetime, file_scelte=None,
-             file_diario=None, live: dict | None = None) -> dict:
+             file_diario=None, live: dict | None = None, dal: datetime | None = None) -> dict:
     """Aggiunge a Oggi `fase`, `partite[].stato` e, secondo la fase, `in_corso` o `riepilogo` + `prossima`. Non alza mai errori:
-    se qualcosa non va, `fase` resta quella dei soli orari e i blocchi mancano (null)."""
+    se qualcosa non va, `fase` resta quella dei soli orari e i blocchi mancano (null).
+    `dal` (facoltativo): quando è nato l'account. Chi è entrato a giornata iniziata senza una formazione (entrato_dopo_la_scadenza)
+    non ha `in_corso` (niente punti finti) ma `senza_formazione: true` e la `prossima` giornata da preparare."""
     corpo["fase"] = IN_CORSO if corpo.get("iniziata") else PRIMA
     corpo["in_corso"] = corpo["riepilogo"] = corpo["prossima"] = None
     giornata = corpo.get("giornata")
@@ -390,7 +414,12 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
             precedente = giornata - 1
         fine = fine_giornata(db, stagione, precedente) if precedente else None
         corpo["fase"] = calcola_fase(bool(corpo.get("iniziata")), corpo.get("ore_mancanti"), fine, adesso)
-        if corpo["fase"] == IN_CORSO and giornata:
+        if corpo["fase"] == IN_CORSO and giornata and entrato_dopo_la_scadenza(stagione, giornata, _data(corpo.get("scadenza")), dal,
+                                                                            file_scelte, file_diario):
+            corpo["senza_formazione"] = True
+            corpo["prossima"] = prossima_dopo(db, regole, stagione, giornata, adesso)
+            corpo["miei_titolari"] = {}                 # nessun «tuo titolare» nelle partite: la formazione non l'ha schierata
+        elif corpo["fase"] == IN_CORSO and giornata:
             corpo["in_corso"] = blocco_in_corso(db, regole, rose, prev, f, stagione, giornata, corpo.get("partite") or [],
                                                 file_scelte, file_diario)
         elif corpo["fase"] == FINITA:

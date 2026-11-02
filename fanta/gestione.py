@@ -253,10 +253,11 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
 
 
 def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_scelte=None,
-         file_diario=None, live_partite: dict | None = None) -> dict:
+         file_diario=None, live_partite: dict | None = None, dal: datetime | None = None) -> dict:
     """Tutto ciò che serve per decidere oggi: scadenza, formazione in breve, cose da controllare, partite del turno; e, secondo
     la fase della giornata, la giornata in diretta o il riepilogo (fasi.py). `file_diario` e `live_partite` (la cache dei
-    risultati in diretta, {(casa, trasferta): partita}) sono facoltativi: senza, i blocchi usano solo il calendario e i voti."""
+    risultati in diretta, {(casa, trasferta): partita}) sono facoltativi: senza, i blocchi usano solo il calendario e i voti.
+    `dal` (facoltativo): quando è nato l'account, per chi entra a giornata iniziata (fasi.aggiungi)."""
     adesso = adesso or datetime.now()
     s = rose.squadra(rose.mia_squadra or "")
     if not s:
@@ -327,7 +328,7 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
         "avvisi": avvisi, "migliori": migliori, "partite": partite, "miei_titolari": miei_titolari,
     }
     # fase della giornata (prima / in_corso / finita) e i blocchi che servono in quella fase: vedi fasi.py e docs/API.md
-    corpo = fasi.aggiungi(corpo, db, regole, rose, prev, f, stagione, adesso, file_scelte, file_diario, live_partite)
+    corpo = fasi.aggiungi(corpo, db, regole, rose, prev, f, stagione, adesso, file_scelte, file_diario, live_partite, dal)
     # partite rinviate della giornata: la regola che vale e i miei giocatori coinvolti (rinvii.py; null se non ce ne sono)
     mie = [{"id": int(i), "nome": prev.at[i, "nome"], "ruolo": prev.at[i, "ruolo"], "squadra": prev.at[i, "squadra"]} for i in mie_ids]
     try:

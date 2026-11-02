@@ -604,6 +604,16 @@ function cardInCorso(c, f) {
   </div>`;
 }
 
+// Chi è entrato a giornata iniziata senza una formazione (`senza_formazione` di /api/oggi): niente punti, si prepara la prossima.
+function cardSenzaFormazione(p) {
+  const gia = p && (p.con_probabili || !parseData(p.prepara_da) || parseData(p.prepara_da) <= new Date());
+  return `<div class="carta riepilogo-giornata" id="oggi-senza-formazione">
+    <h2>${t("oggi.gia_iniziata")}</h2><p>${t("oggi.gia_iniziata_testo")}</p>
+    ${p && p.scadenza ? `<p class="prossima-giornata">${t("oggi.prossima_chiude", { n: p.giornata_lega || p.giornata, quando: esc(quando(p.scadenza)) })}
+      ${gia ? t("oggi.prossima_pronta") : t("oggi.prossima_da", { quando: esc(quando(p.prepara_da)) })}</p>` : ""}
+    <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.prepara_prossima")}</button></div></div>`;
+}
+
 function cardRiepilogo(r, p) {
   if (!r && !p) return "";
   let html = "";
@@ -726,13 +736,13 @@ function mostraOggi(o, opz = {}) {
       <div class="debole" id="conto-sotto">${esc(c.piccolo)}</div>
     </div>
     ${finita ? cardRiepilogo(o.riepilogo, o.prossima) : ""}
-    ${inCorso ? cardInCorso(o.in_corso, o.formazione) : ""}
+    ${inCorso ? (o.senza_formazione ? cardSenzaFormazione(o.prossima) : cardInCorso(o.in_corso, o.formazione)) : ""}
     ${cardRinvio(o.rinvio)}
     ${cardDaFare(o.da_fare)}
     ${novitaDaVedere() ? `<button class="banner-novita" data-vai-novita>${t("oggi.novita_banner", { versione: esc(stato.info.versione) })}</button>` : ""}
     ${o.con_probabili || inCorso || finita ? "" : `<div class="attenzione">${t("oggi.mancano_probabili_formazioni")}</div>`}
     ${o.probabili && !inCorso ? `<div class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</div>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : ""}
-    ${inCorso && o.in_corso ? "" : `<div class="carta">
+    ${inCorso && (o.in_corso || o.senza_formazione) ? "" : `<div class="carta">
       <div class="riga"><div><div class="debole">${t(o.formazione.tua_scelta ? "oggi.tua_formazione_scelta" : "oggi.tua_formazione")}</div><div class="grande">${esc(o.formazione.modulo)}</div></div>
         <div style="text-align:right"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande" id="oggi-punti">${num(o.formazione.punteggio_atteso)}</div>${fraseFascia(o.formazione) ? `<div class="debole piccolo" id="oggi-fascia">${esc(fraseFascia(o.formazione))}</div>` : ""}</div></div>
       <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.apri_formazione")}</button></div>
@@ -1054,7 +1064,8 @@ function mostraFormazione(f, squadra, opz = {}) {
     pagina(`
       ${squadra ? `<div class="attenzione">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
         <button class="bottone secondario" id="torna-mia" style="margin-left:6px;padding:4px 12px;min-height:0">${t("formazione.torna_alla_tua")}</button></div>` : ""}
-      ${f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
+      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${t("formazione.per_la_prossima", { n: f.giornata_saltata_lega || f.giornata_saltata, m: (f.giornata_saltata_lega || f.giornata_saltata) + 1 })}</div>` : ""}
+      ${f.iniziata ? `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>` : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
         ${st ? rigaStatoScelta(st, sc.salvata) : ""}

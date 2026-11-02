@@ -765,11 +765,14 @@ def _json_diretto(dati):
 
 
 @app.get("/api/formazione")
-def formazione(squadra: str | None = None, giornata: int | None = None, ctx: Contesto = Depends(lega_corrente)):
+def formazione(request: Request, squadra: str | None = None, giornata: int | None = None, ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
         r = _regole(ctx)
-        f = consigli.formazione(db, r, _rose(ctx), squadra, giornata)
+        saltata = None if squadra or giornata else _giornata_saltata(db, r, ctx, request)
+        f = consigli.formazione(db, r, _rose(ctx), squadra, saltata + 1 if saltata else giornata)
+        if saltata:
+            f = f | {"giornata_saltata": saltata, "giornata_saltata_lega": regole.serie_a_a_lega(saltata, r)}
         if not squadra:
             _copia_automatica(db, ctx, f)
         # dopo la scadenza: niente etichette delle probabili, lo stato vero della giornata (fasi.py; f resta intatta nella cache)
@@ -777,6 +780,25 @@ def formazione(squadra: str | None = None, giornata: int | None = None, ctx: Con
         return _json_diretto(f)
     finally:
         db.close()
+
+
+def _giornata_saltata(db, r, ctx: Contesto, request: Request) -> int | None:
+    """La giornata in corso, se l'utente è entrato dopo la sua scadenza e non ha una formazione per lei: allora la Formazione
+    mostra la prossima (fasi.entrato_dopo_la_scadenza, come Oggi). None in tutti gli altri casi (e senza account)."""
+    try:
+        dal = _ora_locale(rotte_account.utente_corrente(request).creato)
+    except HTTPException:
+        return None
+    if dal is None:
+        return None
+    stagione = consigli.stagione_corrente()
+    g = consigli.giornata_da_giocare(db, stagione, r)
+    if not g:
+        return None
+    scad = avvisi_pronta.scadenza(avvisi_pronta.prima_partita(db, stagione, g), r)
+    if scad is None or datetime.now() < scad or avvisi_pronta.prima_partita(db, stagione, g + 1) is None:
+        return None
+    return g if fasi.entrato_dopo_la_scadenza(stagione, g, scad, dal, ctx.scelte, getattr(ctx, "diario", None)) else None
 
 
 def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
@@ -1127,13 +1149,13 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
             corpo["da_fare"] = da_fare.senza_rose(getattr(ctx, "impostazioni_avvisi", None))
             return corpo
         r = _regole(ctx)
-        corpo = dict(gestione.oggi(db, r, rose_, file_scelte=ctx.scelte, file_diario=getattr(ctx, "diario", None),
-                                   live_partite=_stati_live()))
         try:
             utente = rotte_account.utente_corrente(request)
             admin, dal = utente.amministratore, _ora_locale(utente.creato)
         except HTTPException:
             admin, dal = False, None
+        corpo = dict(gestione.oggi(db, r, rose_, file_scelte=ctx.scelte, file_diario=getattr(ctx, "diario", None),
+                                   live_partite=_stati_live(), dal=dal))
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
                                               lingua=lingua_testi.della_richiesta(request), dal=dal)
