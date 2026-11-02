@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 
+from .frasi import F
 from .percorsi import scrivi_sicuro
 from .regole import RUOLI, Regole
 from .rose import SquadraLetta
@@ -65,7 +66,7 @@ def da_import(lette: list[SquadraLetta], precedenti: Rose | None = None, sostitu
             c = r.esito.calciatore
             avviso = r.esito.avviso
             if r.esito.metodo == "ambiguo":
-                avviso = "potrebbe essere: " + ", ".join(f"{a.nome} ({a.ruolo}, {a.squadra})" for a in r.esito.alternative)
+                avviso = F("rose.potrebbe_essere", elenco=", ".join(f"{a.nome} ({a.ruolo}, {a.squadra})" for a in r.esito.alternative))
             giocatori.append(GiocatoreRosa(
                 id=c.id if c else None,
                 nome=c.nome if c else r.testo,
@@ -96,27 +97,27 @@ def controlla(rose: Rose, regole: Regole) -> list[str]:
         conta = Counter(g.ruolo for g in s.giocatori)
         diversi = [f"{r} {conta.get(r, 0)}/{regole.rosa[r]}" for r in RUOLI if conta.get(r, 0) != regole.rosa[r]]
         if diversi:
-            avvisi.append(f"{s.nome}: rosa diversa dalle regole ({', '.join(diversi)})")
+            avvisi.append(F("rose.diversa", squadra=s.nome, dettaglio=", ".join(diversi)))
         ripetuti = Counter(g.id for g in s.giocatori if g.id is not None)
         for gid, volte in ripetuti.items():
             if volte > 1:
                 nome = next(g.nome for g in s.giocatori if g.id == gid)
-                avvisi.append(f"{s.nome}: {nome} compare {volte} volte nella rosa: togli le righe in più")
+                avvisi.append(F("rose.doppione", squadra=s.nome, nome=nome, volte=volte))
         for g in s.giocatori:
             if g.id is None:
-                motivo = g.avviso or "ceduto o nome diverso?"
-                avvisi.append(f"{s.nome}: '{g.nome}' non riconosciuto con certezza ({motivo})")
+                motivo = g.avviso or F("rose.motivo_ceduto")
+                avvisi.append(F("rose.non_riconosciuto", squadra=s.nome, nome=g.nome, motivo=motivo))
                 continue
             if s.nome not in proprietari.setdefault(g.id, []):
                 proprietari[g.id].append(s.nome)
             if g.riconosciuto in ("abbreviato", "simile"):
-                avvisi.append(f"{s.nome}: '{g.nome}' riconosciuto per somiglianza ({g.riconosciuto}), controlla che sia lui")
+                avvisi.append(F("rose.somiglianza", squadra=s.nome, nome=g.nome, come=F("rose.come_" + g.riconosciuto)))
             if g.avviso:
-                avvisi.append(f"{s.nome}: {g.nome}: {g.avviso}")
+                avvisi.append(F("rose.avviso_giocatore", squadra=s.nome, nome=g.nome, avviso=g.avviso))
     for gid, squadre in proprietari.items():
         if len(squadre) > 1:
             nome = next(g.nome for s in rose.squadre for g in s.giocatori if g.id == gid)
-            avvisi.append(f"{nome} è in più squadre: {', '.join(squadre)}")
+            avvisi.append(F("rose.in_piu_squadre", nome=nome, squadre=", ".join(squadre)))
     return avvisi
 
 

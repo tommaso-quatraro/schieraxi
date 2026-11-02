@@ -3,6 +3,7 @@
 Tutto si legge da cose già pronte: previsioni e formazione già in cache (le ha appena usate `gestione.oggi`), svincolati e scambi
 SOLO se già in cache (mai un calcolo nuovo), e piccoli file dell'utente. Ogni controllo è a sé: se uno fallisce gli altri restano,
 e `costruisci` non alza mai errori (Oggi si deve aprire comunque). Contratto per le app in docs/API.md.
+I testi sono `Frase` (fanta/frasi.py): la voce ha `testo` in italiano e, accanto, `frase` (chiave e parametri per tradurlo) e `azione_frase`.
 """
 from __future__ import annotations
 
@@ -10,7 +11,8 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from . import affidabilita, buon_senso, consigli, diario, movimenti, scelte, stato_utente, widget
+from . import affidabilita, buon_senso, consigli, diario, frasi, movimenti, scelte, stato_utente, widget
+from .frasi import F
 from .lega import Rose
 from .regole import Regole
 
@@ -44,14 +46,16 @@ def _destinazione(scheda: str, sezione: str | None = None, **extra) -> dict:
 
 
 def _voce(id: str, tipo: str, testo: str, priorita: int, azione: str, destinazione: dict, **extra) -> dict:
-    return {"id": id, "tipo": tipo, "testo": testo, "priorita": priorita, "azione": azione, "destinazione": destinazione} | extra
+    voce = {"id": id, "tipo": tipo, "testo": testo, "priorita": priorita, "azione": azione, "destinazione": destinazione} | extra
+    if frasi.di(testo):
+        voce["frase"] = frasi.di(testo)
+    if frasi.di(azione):
+        voce["azione_frase"] = frasi.di(azione)
+    return voce
 
 
 def _ore_a_parole(ore: float) -> str:
-    if ore < 1:
-        return "meno di un'ora"
-    n = round(ore)
-    return "1 ora" if n == 1 else f"{n} ore"
+    return F("tempo.meno_di_un_ora") if ore < 1 else F("tempo.ore", n=round(ore))
 
 
 # ---------------------------------------------------------------- i singoli controlli
@@ -78,15 +82,15 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
             continue
         liberi = [y for j, y in schede.items() if j not in titolari and y["ruolo"] == x["ruolo"] and y["stato"] not in FUORI]
         alt = max(liberi, key=lambda y: y["punti_attesi"], default=None)
-        if fuori:
-            testo = f"{x['nome']} {'non può giocare' if x['stato'] == 'squalificato' else 'è infortunato'}."
-        else:
-            testo = f"{x['nome']} è in dubbio ({round(x['p_voto'] * 100)}% di giocare)."
+        chiave, param = (("dafare.dubbio_squalificato" if x["stato"] == "squalificato" else "dafare.dubbio_infortunato", {}) if fuori
+                         else ("dafare.dubbio_incerto", {"p": round(x["p_voto"] * 100)}))
         extra = {}
         if alt:
-            testo += f" Meglio {alt['nome']}" + ("" if str(alt["nome"]).endswith(".") else ".")      # «Adams A.» finisce già col punto
+            testo = F(chiave + "_alt", nome=x["nome"], alt=alt["nome"], **param)       # «Adams A.» finisce già col punto: ne basta uno
             extra["alternativa"] = {"id": alt["id"], "nome": alt["nome"], "ruolo": alt["ruolo"], "punti_attesi": alt["punti_attesi"]}
-        voci.append(_voce(f"dubbio:{i}", "dubbio", testo, ALTA if fuori else MEDIA, "Sostituisci",
+        else:
+            testo = F(chiave, nome=x["nome"], **param)
+        voci.append(_voce(f"dubbio:{i}", "dubbio", testo, ALTA if fuori else MEDIA, F("dafare.az_sostituisci"),
                           _destinazione("formazione", giocatore=i), giocatore={"id": i, "nome": x["nome"]}, **extra))
     voci.sort(key=lambda v: (v["priorita"], v["id"]))
     return voci[:MAX_DUBBI]
@@ -101,7 +105,7 @@ def _copertura(db, regole: Regole, rose: Rose, lingua: str = "it") -> list[dict]
     for x in (r or {}).get("reparti", [])[:MAX_COPERTURA]:
         scoperto = x["livello"] == copertura.SCOPERTO
         voci.append(_voce(f"copertura:{x['ruolo'] or 'moduli'}", "copertura", x["testo"], ALTA if scoperto else MEDIA,
-                          "Cerca un rimpiazzo" if x["ruolo"] else "Apri la formazione",
+                          F("dafare.az_rimpiazzo") if x["ruolo"] else F("dafare.az_formazione"),
                           _destinazione("mercato" if x["ruolo"] else "formazione"), reparto=x["ruolo"], livello=x["livello"],
                           disponibili=x["disponibili"], minimo=x["minimo"]))
     return voci
@@ -112,8 +116,8 @@ def _formazione_non_salvata(ore: float | None, giornata: int, file_scelte: Path 
         return None
     if scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte):
         return None
-    return _voce(f"formazione:{giornata}", "formazione", f"La formazione si chiude tra {_ore_a_parole(ore)} e non l'hai ancora salvata.",
-                 ALTA if ore <= ORE_URGENTE else MEDIA, "Apri la formazione", _destinazione("formazione"))
+    return _voce(f"formazione:{giornata}", "formazione", F("dafare.formazione_chiude", tempo=_ore_a_parole(ore)),
+                 ALTA if ore <= ORE_URGENTE else MEDIA, F("dafare.az_formazione"), _destinazione("formazione"))
 
 
 def _recenti(rose: Rose, file_movimenti: Path | None, adesso: datetime) -> tuple[set[int], set[int]]:
@@ -126,8 +130,8 @@ def _recenti(rose: Rose, file_movimenti: Path | None, adesso: datetime) -> tuple
 def _frase_guadagno(breve: float | None, guadagno: float, n: int | None) -> str:
     """I punti in più a parole: sulle prossime giornate se si sanno (più concreti), altrimenti il totale di stagione."""
     if breve is not None and n:
-        return f"circa {_num(breve)} punti in più nelle prossime {n} giornate"
-    return f"circa {_num(guadagno)} punti in più"
+        return F("dafare.guadagno_breve", punti=float(breve), n=n)
+    return F("dafare.guadagno_stagione", punti=float(guadagno))
 
 
 def _svincolato(db, regole: Regole, rose: Rose, recenti: tuple[set[int], set[int]]) -> dict | None:
@@ -141,11 +145,12 @@ def _svincolato(db, regole: Regole, rose: Rose, recenti: tuple[set[int], set[int
         esce, entra = p["esce"], p["entra"]
         if buon_senso.ripensamento(esce["id"], entra["id"], recenti):
             continue
-        motivo = p.get("motivo") or ""
+        motivo = frasi.da_json(p.get("motivo_frase")) or p.get("motivo") or ""       # il motivo del mercato è una Frase (o il suo oggetto, se è passato da JSON)
         n = len(p.get("giornate") or []) or None
-        testo = f"{entra['nome']} (libero) al posto di {esce['nome']}: " + (f"{motivo}, " if motivo else "") \
-            + _frase_guadagno(p.get("breve"), p["guadagno"], n) + "."
-        return _voce(f"svincolato:{entra['id']}", "svincolato", testo, BASSA, "Vedi",
+        guadagno = _frase_guadagno(p.get("breve"), p["guadagno"], n)
+        testo = (F("dafare.svincolato_motivo", entra=entra["nome"], esce=esce["nome"], motivo=motivo, guadagno=guadagno) if motivo
+                 else F("dafare.svincolato", entra=entra["nome"], esce=esce["nome"], guadagno=guadagno))
+        return _voce(f"svincolato:{entra['id']}", "svincolato", testo, BASSA, F("dafare.az_vedi"),
                      _destinazione("mercato", giocatore=entra["id"]), esce={"id": esce["id"], "nome": esce["nome"]},
                      entra={"id": entra["id"], "nome": entra["nome"]}, guadagno=p["guadagno"], motivo=motivo)
     return None
@@ -170,9 +175,10 @@ def _scambio(db, regole: Regole, rose: Rose, recenti: tuple[set[int], set[int]])
             continue
         do, ricevo = ", ".join(g["nome"] for g in p["do"]), ", ".join(g["nome"] for g in p["ricevo"])
         n = len(p.get("giornate") or []) or None
-        testo = f"Con {p['altra']} ti conviene scambiare: dai {do}, ricevi {ricevo}" + (f" ({motivo})" if motivo else "") \
-            + f", {_frase_guadagno(p.get('breve_mio'), p['guadagno_mio'], n)}."
-        return _voce(f"scambio:{p['altra']}", "scambio", testo, BASSA, "Vedi lo scambio", _destinazione("scambi"), con=p["altra"],
+        guadagno = _frase_guadagno(p.get("breve_mio"), p["guadagno_mio"], n)
+        testo = (F("dafare.scambio_motivo", altra=p["altra"], do=do, ricevo=ricevo, motivo=motivo, guadagno=guadagno) if motivo
+                 else F("dafare.scambio", altra=p["altra"], do=do, ricevo=ricevo, guadagno=guadagno))
+        return _voce(f"scambio:{p['altra']}", "scambio", testo, BASSA, F("dafare.az_scambio"), _destinazione("scambi"), con=p["altra"],
                      guadagno=p["guadagno_mio"], motivo=motivo)
     return None
 
@@ -213,8 +219,8 @@ def _rose_vecchie(db, stagione: str, file_rose: Path, adesso: datetime) -> dict 
     giorni = (adesso - aggiornate).days
     if aggiornate >= ultima or giorni < GIORNI_ROSE:
         return None
-    return _voce("rose-vecchie", "rose", f"Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
-                 MEDIA, "Aggiorna le rose", _destinazione("lega", "rose"), giorni=giorni)
+    return _voce("rose-vecchie", "rose", F("dafare.rose_vecchie", giorni=giorni),
+                 MEDIA, F("dafare.az_aggiorna_rose"), _destinazione("lega", "rose"), giorni=giorni)
 
 
 def _certificato(giorni: int | None) -> dict | None:
@@ -222,12 +228,12 @@ def _certificato(giorni: int | None) -> dict | None:
     if giorni is None or giorni > GIORNI_CERTIFICATO:
         return None
     if giorni < 0:
-        testo, pr = "L'app sul telefono è scaduta: va reinstallata.", ALTA
+        testo, pr = F("dafare.cert_scaduto"), ALTA
     elif giorni == 0:
-        testo, pr = "L'app sul telefono scade oggi: rinnovala adesso.", ALTA
+        testo, pr = F("dafare.cert_oggi"), ALTA
     else:
-        testo, pr = f"L'app sul telefono scade tra {giorni} {'giorno' if giorni == 1 else 'giorni'}: rinnovala.", ALTA if giorni == 1 else MEDIA
-    return _voce("certificato", "certificato", testo, pr, "Rinnova", _destinazione("impostazioni", "installazione"))
+        testo, pr = F("dafare.cert", n=giorni), ALTA if giorni == 1 else MEDIA
+    return _voce("certificato", "certificato", testo, pr, F("dafare.az_rinnova"), _destinazione("impostazioni", "installazione"))
 
 
 def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | None, regole: Regole | None = None) -> list[dict]:
@@ -240,8 +246,8 @@ def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | Non
             continue
         if (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
             continue
-        out.append(_voce(f"diario:{g}", "diario", f"La giornata {g - prima + 1} è finita: dimmi se hai schierato la consigliata.", BASSA,
-                         "Ho schierato la consigliata", _destinazione("lega", "diario", giornata=g), giornata=g))
+        out.append(_voce(f"diario:{g}", "diario", F("dafare.diario", n=g - prima + 1), BASSA,
+                         F("dafare.az_schierato"), _destinazione("lega", "diario", giornata=g), giornata=g))
     return out[:MAX_DIARIO]
 
 
@@ -253,7 +259,7 @@ def _dati_vecchi(db, adesso: datetime) -> dict | None:
     giorni = (adesso - datetime.fromisoformat(str(q)[:19])).days
     if giorni < GIORNI_DATI:
         return None
-    return _voce("dati-vecchi", "server", f"I dati delle partite non si aggiornano da {giorni} giorni.", MEDIA, "Controlla",
+    return _voce("dati-vecchi", "server", F("dafare.dati_vecchi", giorni=giorni), MEDIA, F("dafare.az_controlla"),
                  _destinazione("impostazioni", "avanzate"), giorni=giorni)
 
 
@@ -262,8 +268,8 @@ def _primo_avvio(file_impostazioni: Path | None) -> dict | None:
     if not s or s["chiuso"] or not s["saltati"]:
         return None
     n = len(s["saltati"])
-    return _voce("primo-avvio", "primo_avvio", f"Hai saltato {n} {'passo' if n == 1 else 'passi'} della configurazione iniziale.", BASSA,
-                 "Riprendi", _destinazione("impostazioni", "informazioni"), saltati=s["saltati"])
+    return _voce("primo-avvio", "primo_avvio", F("dafare.primo_avvio", n=n), BASSA,
+                 F("dafare.az_riprendi"), _destinazione("impostazioni", "informazioni"), saltati=s["saltati"])
 
 
 # ---------------------------------------------------------------- senza rose
@@ -271,13 +277,13 @@ def senza_rose(imp: Path | None) -> list[dict]:
     """Per chi non ha ancora importato le rose: Oggi non è un errore ma un benvenuto. Prima voce `rose` (importa), poi, se la
     configurazione guidata non è mai stata iniziata, `primo_avvio`."""
     destinazione = _destinazione("lega", "rose")
-    voci = [_voce("senza-rose", "rose", "Benvenuto! Per cominciare importa le rose della tua lega.", ALTA, "Importa le rose", destinazione)]
+    voci = [_voce("senza-rose", "rose", F("dafare.benvenuto"), ALTA, F("dafare.az_importa"), destinazione)]
     try:
         iniziato = bool(stato_utente.leggi_primo_avvio(imp)) if imp else True
     except Exception:                                       # noqa: BLE001  (Oggi si apre comunque)
         iniziato = True
     if not iniziato:
-        voci.append(_voce("primo-avvio", "primo_avvio", "Ti guido io: sono pochi passi, tutti facoltativi.", MEDIA, "Inizia",
+        voci.append(_voce("primo-avvio", "primo_avvio", F("dafare.ti_guido"), MEDIA, F("dafare.az_inizia"),
                           _destinazione("impostazioni", "informazioni"), saltati=[]))
     return voci
 

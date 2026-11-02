@@ -14,6 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from .frasi import F, di
 from .modello import Parametri
 from .regole import Regole
 
@@ -54,53 +55,50 @@ def riferimento(p: pd.DataFrame, parti: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(righe).T
 
 
-def _pct(x: float) -> str:
-    return f"{round(float(x) * 100):.0f}"
+def _pct(x: float) -> int:
+    return round(float(x) * 100)
 
 
 def _frase_gioca(x: dict) -> str | None:
     """Il motivo sulla probabilità di giocare, solo quando c'è un dubbio (non cambia il fantavoto «se gioca»: cambia i punti attesi)."""
     stato, p = x.get("stato"), float(x["p_voto"])
     if stato == "infortunato":
-        return "infortunato: non gioca"
+        return F("perche.infortunato")
     if stato == "squalificato":
-        return "squalificato: non gioca"
+        return F("perche.squalificato")
     if stato == "non_citato" and p < 0.2:
-        return "non tra i convocati previsti"
+        return F("perche.non_convocato")
     if p < 0.2:
-        return f"gioca solo il {_pct(p)}%: improbabile"
+        return F("perche.gioca_improbabile", p=_pct(p))
     if p < 0.5:
-        return f"gioca il {_pct(p)}%: probabile panchina"
+        return F("perche.gioca_panchina", p=_pct(p))
     if p < 0.8:
-        return f"gioca il {_pct(p)}%: dubbio"
+        return F("perche.gioca_dubbio", p=_pct(p))
     return None
 
 
 def _frase(chiave: str, d: float, x: dict) -> str:
-    """Il motivo in una frase semplice. Le frasi sono scritte per intero (e non assemblate) perché la web app le traduce
-    riconoscendole: se ne cambi una, cambia anche la chiave `srv.pn_*` in `fanta/web/testi.js`."""
+    """Il motivo in una frase semplice. Le frasi sono scritte per intero (e non assemblate): ognuna ha la sua chiave `perche.*`
+    (fanta/frasi.py) e la sua traduzione in `fanta/web/testi.js`."""
     su, casa = d > 0, bool(x["in_casa"])
     if chiave == "voti":
-        return "voti sopra la media del ruolo" if su else "voti sotto la media del ruolo"
+        return F("perche.voti_su" if su else "perche.voti_giu")
     if chiave == "partita":
-        if su:
-            return "partita favorevole in casa" if casa else "partita favorevole in trasferta"
-        return "partita difficile in casa" if casa else "partita difficile in trasferta"
+        return F(f"perche.partita_{'su' if su else 'giu'}_{'casa' if casa else 'fuori'}")
     if chiave == "gol":
-        return f"segna più della media del ruolo ({_pct(x['p_gol'])}% di segnare)" if su else "segna meno della media del ruolo"
+        return F("perche.gol_su", p=_pct(x["p_gol"])) if su else F("perche.gol_giu")
     if chiave == "assist":
-        return "fa più assist della media del ruolo" if su else "fa meno assist della media del ruolo"
+        return F("perche.assist_su" if su else "perche.assist_giu")
     if chiave == "rigori":
-        return "rigorista" if su else "tira pochi rigori"
+        return F("perche.rigori_su" if su else "perche.rigori_giu")
     if chiave == "porta":
-        return (f"buone chance di non subire gol ({_pct(x['p_imbattuto'])}%)" if su
-                else f"poche chance di non subire gol ({_pct(x['p_imbattuto'])}%)")
-    return "bonus extra (per esempio migliore in campo)" if su else "cartellini e altri malus"
+        return F("perche.porta_su" if su else "perche.porta_giu", p=_pct(x["p_imbattuto"]))
+    return F("perche.altro_su" if su else "perche.altro_giu")
 
 
 def calcola(p: pd.DataFrame, regole: Regole) -> tuple[pd.Series, pd.Series]:
     """Per ogni giocatore di `p`: (lista di motivi, fantavoto atteso medio del suo ruolo).
-    Un motivo è `{"chiave", "testo", "effetto"}`; `effetto` è in fantavoti rispetto al giocatore medio del ruolo, con segno
+    Un motivo è `{"chiave", "testo", "frase", "effetto"}` (`frase` = come tradurre `testo`, vedi fanta/frasi.py); `effetto` è in fantavoti rispetto al giocatore medio del ruolo, con segno
     (null per «gioca N%», che non cambia il fantavoto «se gioca»). Al massimo MAX_MOTIVI, dal più pesante."""
     if p.empty:
         return pd.Series(dtype=object), pd.Series(dtype=float)
@@ -114,7 +112,9 @@ def calcola(p: pd.DataFrame, regole: Regole) -> tuple[pd.Series, pd.Series]:
         numerici = sorted(((k, v) for k, v in riga.items() if abs(v) >= SOGLIA), key=lambda kv: -abs(kv[1]))
         gioca = _frase_gioca(x)
         scelti = numerici[:MAX_MOTIVI - (1 if gioca else 0)]
-        lista = [{"chiave": "gioca", "testo": gioca, "effetto": None}] if gioca else []
-        lista += [{"chiave": k, "testo": _frase(k, v, x), "effetto": round(float(v), 2)} for k, v in scelti]
+        lista = [{"chiave": "gioca", "testo": gioca, "frase": di(gioca), "effetto": None}] if gioca else []
+        for k, v in scelti:
+            testo = _frase(k, v, x)
+            lista.append({"chiave": k, "testo": testo, "frase": di(testo), "effetto": round(float(v), 2)})
         motivi.append(lista)
     return pd.Series(motivi, index=p.index, dtype=object), medio.round(2)

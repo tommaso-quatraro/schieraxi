@@ -16,6 +16,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .frasi import F
 from .nomi import Esito, Indice, normalizza
 from .regole import RUOLI
 
@@ -322,7 +323,7 @@ def togli_doppioni(squadre: list[SquadraLetta], avvisi: list[str]) -> None:
         for riga in s.righe:
             c = riga.esito.calciatore
             if c is not None and c.id in visti:
-                avvisi.append(f"{s.nome}: {c.nome} compare due volte, l'ho tenuto una volta sola.")
+                avvisi.append(F("rose.nome_doppio", squadra=s.nome, nome=c.nome))
                 continue
             if c is not None:
                 visti.add(c.id)
@@ -380,7 +381,7 @@ def _estrai_rosters(griglia: list[list], indice: Indice, squadre: dict[str, Squa
         if d is None:
             if not visti_dati and all(not re.search(r"\d", c) for c in celle):       # intestazione sopra i dati
                 continue
-            avvisi.append(f"Riga {numero}: ignorata ({', '.join(celle)[:60]}): mi aspettavo «nome squadra, codice calciatore, costo».")
+            avvisi.append(F("rose.riga_ignorata", riga=numero, celle=", ".join(celle)[:60]))
             continue
         visti_dati = True
         nome, codice, costo = d
@@ -388,11 +389,11 @@ def _estrai_rosters(griglia: list[list], indice: Indice, squadre: dict[str, Squa
         toccate.add(nome)
         c = per_id.get(codice)
         if c is None:
-            avvisi.append(f"{nome}: il codice {codice} non è nel listone, quindi non so chi sia: correggilo a mano.")
-            s.righe.append(RigaRosa(f"Codice {codice}", Esito(None, "non trovato", avviso=f"codice {codice} non presente nel listone"),
+            avvisi.append(F("rose.codice_sconosciuto", squadra=nome, codice=codice))
+            s.righe.append(RigaRosa(f"Codice {codice}", Esito(None, "non trovato", avviso=F("rose.codice_assente", codice=codice)),
                                     costo=_intero(str(costo))))
         elif any(x.esito.calciatore is c for x in s.righe):
-            avvisi.append(f"{nome}: {c.nome} (codice {codice}) compare due volte, l'ho tenuto una volta sola.")
+            avvisi.append(F("rose.codice_doppio", squadra=nome, nome=c.nome, codice=codice))
         else:
             s.righe.append(RigaRosa(c.nome, Esito(c, "esatto"), ruolo=c.ruolo, squadra=c.squadra, costo=_intero(str(costo))))
     return toccate
@@ -419,8 +420,7 @@ def _estrai_blocco(celle: _Celle, c0: int, c1: int, nome_foglio: str,
             celle.esiti[r, testi[0]] = Esito(None, "non trovato")
             giocatori, testi = [testi[0]], testi[1:]
         if len(giocatori) > 1:
-            avvisi.append(f"Riga {r + 1}: più giocatori sulla stessa riga ({', '.join(celle.g[r][c] for c in giocatori)}). "
-                          "Se sono squadre affiancate, lascia una colonna vuota tra una squadra e l'altra.")
+            avvisi.append(F("rose.piu_giocatori_riga", riga=r + 1, nomi=", ".join(celle.g[r][c] for c in giocatori)))
         if giocatori:
             if squadra_corrente is None:
                 nome = nome_foglio if normalizza(nome_foglio) not in FOGLI_ANONIMI else "Squadra senza nome"
@@ -438,8 +438,7 @@ def _estrai_blocco(celle: _Celle, c0: int, c1: int, nome_foglio: str,
             nome = celle.g[r][testi[0]]
             squadra_corrente = squadre.setdefault(nome, SquadraLetta(nome))
         elif len(testi) > 1:
-            avvisi.append(f"Riga {r + 1}: ignorata ({' | '.join(celle.g[r][c] for c in testi)}): "
-                          "non è chiaro se sia un'intestazione o il nome di più squadre.")
+            avvisi.append(F("rose.riga_non_chiara", riga=r + 1, celle=" | ".join(celle.g[r][c] for c in testi)))
         crediti = [c for c, t in tipi.items() if t == "crediti"]
         if crediti and squadra_corrente is not None:
             _leggi_crediti(celle, r, crediti[0], colonne, squadra_corrente)

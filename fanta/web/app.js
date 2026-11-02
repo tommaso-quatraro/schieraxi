@@ -323,10 +323,16 @@ function pillTitolarita(x) {
   return testo ? `<span class="etichetta ${classe}">${testo}${x.stato === "titolare" && x.percentuale != null && x.titolarita !== "fuori" ? ` ${Math.round(x.percentuale)}%` : ""}</span>` : "";
 }
 // Il tocco sul fantavoto atteso apre «Perché questo numero» (nella Formazione; altrove il tocco apre la scheda come sempre).
+// Le sette voci del confronto hanno l'etichetta nella lingua scelta; una voce nuova del server, senza etichetta qui, si mostra com'è.
+const etichettaFattore = f => (Object.hasOwn(TESTI.it, `confronto.fattore_${f.chiave}`) ? t(`confronto.fattore_${f.chiave}`) : f.etichetta);
+// Anche le regole riconosciute dal testo del regolamento («Rigore parato», «Moduli ammessi»...) hanno l'etichetta nella lingua scelta.
+const etichettaRegola = m => (Object.hasOwn(TESTI.it, `regola.et.${m.chiave}`) ? t(`regola.et.${m.chiave}`) : m.etichetta);
 const attrPerche = x => Array.isArray(x.perche_numero) ? ` data-perche="${Number(x.id)}" title="${t("perche.titolo")}"` : "";
-const motiviUtili = x => (x.motivi || []).filter(m => !/^titolare|^parte dalla panchina|^partita (favorevole|difficile)/.test(m)).slice(0, 2);
+// I motivi sotto il nome: si scelgono dal testo italiano del server, si mostrano nella lingua scelta (motivi_frasi, vedi fanta/frasi.py).
+const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.motivi_frasi || [])[i] }))
+  .filter(m => !/^titolare|^parte dalla panchina|^partita (favorevole|difficile)/.test(m.testo)).slice(0, 2);
 function etichetteGiocatore(x) {
-  const altre = motiviUtili(x).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m) ? "rossa" : "neutra"}">${esc(traduciErrore(m))}</span>`).join("");
+  const altre = motiviUtili(x).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
   return pillTitolarita(x) + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
 }
 
@@ -658,7 +664,7 @@ function mostraOggi(o, opz = {}) {
     ${cardDaFare(o.da_fare)}
     ${novitaDaVedere() ? `<button class="banner-novita" data-vai-novita>${t("oggi.novita_banner", { versione: esc(stato.info.versione) })}</button>` : ""}
     ${o.con_probabili || inCorso || finita ? "" : `<div class="attenzione">${t("oggi.mancano_probabili_formazioni")}</div>`}
-    ${o.probabili && !inCorso ? `<div class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(traduciErrore(o.probabili.testo))} (${esc(traduciDurata(o.probabili.eta))})</div>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(traduciErrore(o.probabili.avviso))}</div>` : ""}` : ""}
+    ${o.probabili && !inCorso ? `<div class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</div>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : ""}
     ${inCorso && o.in_corso ? "" : `<div class="carta">
       <div class="riga"><div><div class="debole">${t(o.formazione.tua_scelta ? "oggi.tua_formazione_scelta" : "oggi.tua_formazione")}</div><div class="grande">${esc(o.formazione.modulo)}</div></div>
         <div style="text-align:right"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande" id="oggi-punti">${num(o.formazione.punteggio_atteso)}</div>${fraseFascia(o.formazione) ? `<div class="debole piccolo" id="oggi-fascia">${esc(fraseFascia(o.formazione))}</div>` : ""}</div></div>
@@ -1175,7 +1181,7 @@ async function tabConsigli(dove, ok) {
           <div class="pr-sec">${t("mercato.entra")} · ${sigla(p.entra.squadra)} · ${t("mercato.quot", { n: p.entra.quotazione })}</div>
           <div class="pr-sec">${t("mercato.esce")} <button class="nome-g piccolo" data-giocatore="${p.esce.id}">${esc(p.esce.nome)}</button> · ${sigla(p.esce.squadra)} · ${t("mercato.quot", { n: p.esce.quotazione })}</div>
           <div class="pr-sec">${tp("mercato.punti_prossime", p.giornate.length, { d: segno(p.breve) })}${p.crediti_dopo != null ? t("mercato.rimborso_costo", { r: p.rimborso, c: p.entra.quotazione, dopo: `<b class="${p.fattibile ? "positivo" : "negativo"}">${p.crediti_dopo}</b>`, no: p.fattibile ? "" : t("mercato.non_bastano") }) : ""}</div>
-        ${p.motivo ? `<div class="pr-sec">${esc(p.motivo)}</div>` : ""}
+        ${p.motivo ? `<div class="pr-sec">${esc(testoDi(p, "motivo"))}</div>` : ""}
         </div>
         <div class="pr-num"><b class="${p.guadagno > 0 ? "positivo" : p.guadagno < 0 ? "negativo" : ""}">${segno(p.guadagno)}</b><span>${t("mercato.punti_stagione")}</span></div></div>`).join("") + `</div>`
         : `<div class="carta vuoto">${m.crediti_residui != null ? t("mercato.nessuno_coi_crediti", { n: m.crediti_residui }) : t("mercato.nessuno_migliora")}</div>`);
@@ -1375,7 +1381,7 @@ function bloccoPerche(x) {
   if (!x.perche_numero.length && medio == null) return "";
   const effetto = e => e == null ? `<b class="perche-effetto dubbio" aria-hidden="true">!</b>`
     : `<b class="perche-effetto ${e > 0 ? "su" : "giu"}">${e > 0 ? "+" : "−"}${num(Math.abs(e))}</b>`;
-  const righe = x.perche_numero.map(m => `<li class="perche-voce">${effetto(m.effetto)}<span>${esc(traduciErrore(m.testo))}</span></li>`).join("");
+  const righe = x.perche_numero.map(m => `<li class="perche-voce">${effetto(m.effetto)}<span>${esc(testoDi(m))}</span></li>`).join("");
   return `<div class="perche"><h3>${t("perche.titolo")}</h3>${righe ? `<ul class="perche-lista">${righe}</ul>` : ""}
     <div class="debole piccolo">${t(righe ? "perche.rispetto" : "perche.nessuno", { n: num(medio) })}</div></div>`;
 }
@@ -1425,7 +1431,7 @@ async function apriGiocatore(id) {
           <div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div></div>
           <div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div></div>
         <div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>
-        ${motiviUtili(pr).length ? `<div class="etichette">${motiviUtili(pr).map(m => `<span class="etichetta neutra">${esc(traduciErrore(m))}</span>`).join("")}</div>` : ""}
+        ${motiviUtili(pr).length ? `<div class="etichette">${motiviUtili(pr).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
         <div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div></div>${cartaPerche(pr)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
       ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span>`).join("")}</div>
         <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
@@ -1523,7 +1529,7 @@ async function apriConfronto(a, b) {
     const fattori = c.fattori.filter(f => Math.abs(f.effetto) >= 0.005 || f.chiave === "giocare").map(f => {
       const larghezza = Math.min(100, Math.abs(f.effetto) / massimo * 100);
       const verso = f.effetto > 0.02 ? "sx" : f.effetto < -0.02 ? "dx" : "";
-      return `<div class="fattore"><div class="riga"><span class="debole piccolo">${esc(f.etichetta)}</span><b class="${verso ? "positivo" : "debole"}">${verso ? `${esc(nomeCorto(f.effetto > 0 ? x : y))} +${num(Math.abs(f.effetto), 2)}` : t("mercato.pari")}</b></div>
+      return `<div class="fattore"><div class="riga"><span class="debole piccolo">${esc(etichettaFattore(f))}</span><b class="${verso ? "positivo" : "debole"}">${verso ? `${esc(nomeCorto(f.effetto > 0 ? x : y))} +${num(Math.abs(f.effetto), 2)}` : t("mercato.pari")}</b></div>
         <div class="barra-div"><i class="${verso}" style="width:${larghezza / 2}%"></i></div>
         <div class="riga piccolo debole"><span>${esc(x.nome.split(" ")[0])} ${valore(f, f.a)}</span><span>${valore(f, f.b)} ${esc(y.nome.split(" ")[0])}</span></div></div>`;
     }).join("");
@@ -1533,9 +1539,9 @@ async function apriConfronto(a, b) {
       <div class="duello">${intest(x)}<span class="vs-duello">VS</span>${intest(y)}</div>
       <div class="carta hero"><div class="debole">${fo ? t("mercato.nella_formazione", { modulo: esc(fo.modulo) }) : t("mercato.il_sistema_sceglie")}</div>
         <div class="grande">${schierato ? t("mercato.schiera", { nome: esc(schierato.nome) }) : esc(vince.nome)}</div>
-        <div class="debole" style="margin-top:6px">${esc(fo ? fo.testo : c.perche)}</div></div>
+        <div class="debole" style="margin-top:6px">${esc(fo ? testoDi(fo) : testoDi(c, "perche"))}</div></div>
       <div class="carta"><h2>${t(fo ? "mercato.se_giocassero" : "mercato.cosa_pesa")}</h2>
-        <div class="debole piccolo">${fo ? `${esc(c.perche)} ` : ""}${t("mercato.barra_spiega", { x: esc(nomeCorto(x)), y: esc(nomeCorto(y)), d: segno(x.punti_attesi - y.punti_attesi, 2) })}</div>
+        <div class="debole piccolo">${fo ? `${esc(testoDi(c, "perche"))} ` : ""}${t("mercato.barra_spiega", { x: esc(nomeCorto(x)), y: esc(nomeCorto(y)), d: segno(x.punti_attesi - y.punti_attesi, 2) })}</div>
         <div class="fattori">${fattori}</div></div>
       <div class="carta"><details><summary>${t("mercato.tutti_numeri")}</summary><div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:center;margin-top:8px">
         <div></div><div><b>${esc(x.nome)}</b></div><div><b>${esc(y.nome)}</b></div>
@@ -1550,7 +1556,7 @@ async function apriConfronto(a, b) {
         ${riga(t("mercato.assist"), g => perc(g.p_assist))}
         ${riga(t("mercato.giallo"), g => perc(g.p_giallo))}
       </div></details></div>
-      ${c.giocatori.map(g => `<div class="debole piccolo"><b>${esc(g.nome)}</b>: ${g.motivi.map(m => esc(traduciErrore(m))).join(" · ") || "–"}</div>`).join("")}`);
+      ${c.giocatori.map(g => `<div class="debole piccolo"><b>${esc(g.nome)}</b>: ${testiDi(g, "motivi").map(esc).join(" · ") || "–"}</div>`).join("")}`);
   } catch (e) {
     if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e));
   }
@@ -2124,7 +2130,7 @@ async function vistaRosa(nome) {
             <input id="img-${tipo}" data-tipo="${tipo}" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>`; }).join("")}
         </div>
         <div class="pulsanti">${r.mia ? "" : `<button class="bottone" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
-        ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${r.avvisi.map(esc).join("<br>")}</div>` : ""}
+        ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
       </div>`);
@@ -3207,7 +3213,7 @@ async function vistaRegole() {
         return;
       }
       const vedi = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
-      dove.innerHTML = `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(m.etichetta)}: <b>${esc(vedi(m.valore))}</b>${m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : ""}</span></div>`).join("")}
+      dove.innerHTML = `<h3>${t("regole.riconosciuto")}</h3>${esito.modifiche.map(m => `<div class="movimento"><span class="icona-mov su">✓</span><span>${esc(etichettaRegola(m))}: <b>${esc(vedi(m.valore))}</b>${m.riga ? `<span class="debole piccolo" style="display:block">${t("regole.da_riga", { r: esc(m.riga) })}</span>` : ""}</span></div>`).join("")}
         ${esito.non_riconosciute.length ? `<details><summary style="font-size:var(--t-corpo)">${t("regole.non_riconosciute", { n: esito.non_riconosciute.length })}</summary><div class="debole piccolo">${esito.non_riconosciute.map(esc).join("<br>")}</div></details>` : ""}
         <div class="pulsanti"><button class="bottone" id="applica-regole">${t("regole.applica_campi")}</button></div>
         <div class="debole piccolo">${t("regole.controlla_valori_qui")}</div>`;

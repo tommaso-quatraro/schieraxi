@@ -8,8 +8,8 @@ const DF_URGENTE = 1;
 function dfRiga(v, i) {
   const urgente = v.priorita === DF_URGENTE;
   return `<li class="df-riga${urgente ? " urgente" : ""}">
-    <span class="df-testo">${urgente ? `<span class="df-etichetta">${t("df.urgente")}</span> ` : ""}${esc(traduciErrore(v.testo))}</span>
-    <button class="bottone ${urgente ? "" : "secondario"} df-azione" data-df="${i}">${esc(v.azione ? traduciErrore(v.azione) : t("df.apri"))}</button></li>`;
+    <span class="df-testo">${urgente ? `<span class="df-etichetta">${t("df.urgente")}</span> ` : ""}${esc(testoDi(v))}</span>
+    <button class="bottone ${urgente ? "" : "secondario"} df-azione" data-df="${i}">${esc(v.azione ? testoDi(v, "azione") : t("df.apri"))}</button></li>`;
 }
 
 function cardDaFare(voci) {

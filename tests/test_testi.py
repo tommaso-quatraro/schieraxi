@@ -13,7 +13,7 @@ TESTI_JS = (server.WEB / "testi.js").read_text(encoding="utf-8")
 FILE_WEB = [server.WEB / n for n in ("app.js", "impostazioni.js", "primoavvio.js", "anteprima.js", "dafare.js", "live.js", "avatar.js")]
 CODICE_JS = "\n".join(f.read_text(encoding="utf-8") for f in FILE_WEB) + TESTI_JS[TESTI_JS.index("const LINGUE"):]
 # Chiavi scelte al volo (t("prefisso." + qualcosa)): il prefisso basta a tenerle vive.
-PREFISSI_DINAMICI = ("err.", "srv.", "formazione.stile_", "tempo.giorno_", "lingua.", "asp.col_", "asp.testo_", "asp.tema_", "nav.")
+PREFISSI_DINAMICI = ("err.", "srv.", "frase.", "confronto.fattore_", "regola.et.", "formazione.stile_", "tempo.giorno_", "lingua.", "asp.col_", "asp.testo_", "asp.tema_", "nav.")
 
 
 def _dizionario(lingua: str = "it") -> dict:
@@ -92,13 +92,27 @@ def test_i_messaggi_del_server_si_riconoscono():
     assert r.stdout.strip() == "Frase mai vista"                          # un messaggio sconosciuto resta com'è
 
 
+def _testi_del_server() -> set[str]:
+    """Tutti i testi scritti nel codice del server: stringhe e f-string (ogni {…} diventa il carattere nullo, che vale «qualunque cosa»)."""
+    import ast
+    testi = set()
+    for percorso in server.WEB.parent.glob("*.py"):
+        for nodo in ast.walk(ast.parse(percorso.read_text(encoding="utf-8"))):
+            if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str):
+                testi.add(nodo.value)
+            elif isinstance(nodo, ast.JoinedStr):
+                testi.add("".join(v.value if isinstance(v, ast.Constant) else "\0" for v in nodo.values))
+    return testi
+
+
 def test_i_messaggi_tradotti_esistono_nel_server():
-    """Le frasi dei messaggi che l'app traduce esistono davvero nel codice del server: se qualcuno le cambia, la traduzione si perde."""
-    sorgente = "\n".join(p.read_text(encoding="utf-8") for p in server.WEB.parent.glob("*.py"))
+    """Ogni messaggio che l'app traduce (chiavi err.* e srv.*) è scritto per intero, parola per parola, nel codice del server: se qualcuno
+    cambia un messaggio e non la chiave, la traduzione si perde in silenzio e l'utente inglese rivede l'italiano."""
+    testi = _testi_del_server()
     for k, v in _dizionario("it").items():
         if k.startswith(("err.", "srv.")):
-            pezzo = re.split(r"\{\w+\}", v)[0].strip()
-            assert pezzo[:(40 if k.startswith("err.") else 12)] in sorgente, (k, pezzo)
+            modello = re.compile("^" + ".+?".join(re.escape(pezzo) for pezzo in re.split(r"\{\w+\}", v)) + "$", re.S)
+            assert any(modello.match(t) for t in testi), (k, v)
 
 
 def test_eta_minima_uguale_alle_pagine_legali():
@@ -160,21 +174,72 @@ def test_lingua_scelta_e_rilevata_dal_browser():
     assert json.loads(r.stdout) == ["en", "it", "it", "it", False, "en", True, "it", "1"]
 
 
-@pytest.mark.skipif(shutil.which("node") is None, reason="node non installato")
-def test_testi_del_server_con_nomi_e_tempi():
-    """Frasi vere del server (Da fare, motivi, probabili) con nomi e durate dentro: si traducono tenendo i dati."""
-    prova = TESTI_JS + """
-    LINGUA = "en";
-    console.log(JSON.stringify([
-      traduciErrore("Rossi non può giocare. Meglio Adams A."), traduciErrore("De Bruyne è in dubbio (62% di giocare). Meglio Rossi."),
-      traduciErrore("La formazione si chiude tra 3 ore e non l'hai ancora salvata."), traduciErrore("La formazione si chiude tra meno di un'ora e non l'hai ancora salvata."),
-      traduciErrore("Le ho lette 7 ore fa e la formazione si chiude tra 2 ore: potrebbero essere cambiate, ricontrolla prima."),
-      traduciErrore("titolare al 85%"), traduciErrore("Ho schierato la consigliata"), traduciDurata("1 minuto fa"), traduciDurata("2 giorni fa"), traduciErrore("Frase mai vista")]));
-    """
-    r = subprocess.run(["node", "-"], input=prova, capture_output=True, encoding="utf-8", timeout=30)
-    assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == [
-        "Rossi cannot play. Better Adams A.", "De Bruyne is in doubt (62% chance of playing). Better Rossi.",
-        "The lineup closes in 3 hours and you have not saved it yet.", "The lineup closes in less than an hour and you have not saved it yet.",
-        "I read them 7 hours ago and the lineup closes in 2 hours: they may have changed, check again first.",
-        "starter at 85%", "I fielded the recommended lineup", "1 minute ago", "2 days ago", "Frase mai vista"]
+# Moduli senza messaggi per chi usa l'app (comandi da terminale, email, pagine legali, misure, cose per chi gestisce il server): non si controllano
+MODULI_SENZA_MESSAGGI = {"__main__.py", "testi_legali.py", "posta.py", "verifica.py", "verifica_pacchetti.py", "verifica_fonti.py",
+                         "verifica_probabili_fonte2.py", "aggiorna.py", "contesto.py", "listone.py", "salute.py", "pianificatore.py",
+                         "formazioni_lega.py", "foto.py", "rotte_foto.py", "fonti_attive.py"}
+# Messaggi che l'utente della web app non dovrebbe mai vedere (errori interni, cose per chi gestisce il server): niente traduzione.
+# L'elenco può solo accorciarsi: se un messaggio qui sotto viene tradotto o sparisce, il test chiede di toglierlo.
+MESSAGGI_SENZA_TRADUZIONE = {
+    "Per iscriverti devi accettare Privacy e Termini d'uso. / To sign up you must accept the Privacy policy and the Terms of use.",    # già nelle due lingue
+    "Il database degli account è di una versione più nuova dell'app: aggiorna l'app",           # database degli account: li legge chi gestisce il server
+    "Il database degli account (account.sqlite) non si riesce a leggere: forse è rovinato. Non ho cancellato niente. "
+    "L'amministratore deve rimetterlo dalla copia di backup (cartella backup accanto al file) e riavviare il servizio.",
+    "deve essere una lista", "deve essere un elenco di voci", "formato non riconosciuto",                                        # dentro il controllo del backup
+    "{x}: atteso un gruppo di valori {...}, trovato {x}", "{x}: atteso un valore di tipo {x}, ricevuto {x}",                      # regole.json a mano
+    "calciatore {x} non nel listone", "token non valido",
+    "Questa funzione serve solo con gli account attivi: accendi FANTA_MULTIUTENTE=1 sul server",
+}
+
+
+def _messaggi_di_errore() -> dict[str, str]:
+    """I messaggi che il server scrive nelle eccezioni (`raise X("...")`, `HTTPException(codice, "...")`): testo -> «modulo:riga»."""
+    import ast
+    trovati = {}
+    for percorso in sorted(server.WEB.parent.glob("*.py")):
+        if percorso.name in MODULI_SENZA_MESSAGGI:
+            continue
+        albero = ast.parse(percorso.read_text(encoding="utf-8"))
+        costanti = {}
+
+        def testo(n):
+            if isinstance(n, ast.Constant) and isinstance(n.value, str):
+                return n.value
+            if isinstance(n, ast.Name):
+                return costanti.get(n.id)
+            if isinstance(n, ast.JoinedStr):
+                return "".join(v.value if isinstance(v, ast.Constant) else "{x}" for v in n.values)
+            if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+                a, b = testo(n.left), testo(n.right)
+                return a + b if a is not None and b is not None else None
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "format":
+                return testo(n.func.value)
+            return None
+
+        for n in albero.body:
+            if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name) and testo(n.value):
+                costanti[n.targets[0].id] = testo(n.value)
+        for n in ast.walk(albero):
+            if isinstance(n, ast.Raise) and isinstance(n.exc, ast.Call):
+                http = ast.unparse(n.exc.func).endswith("HTTPException")
+                candidati = n.exc.args[1:2] + [k.value for k in n.exc.keywords if k.arg == "detail"] if http else n.exc.args[:1]
+                for a in candidati:
+                    s = testo(a)
+                    if s and len(s.split()) >= 2 and re.search(r"[àèéìòù]|\b(il|la|le|di|che|non|per|con|è|hai|una|un|più|riprova|rosa|squadra|dati)\b", s, re.I):
+                        trovati.setdefault(s, f"{percorso.name}:{n.lineno}")
+    return trovati
+
+
+def test_ogni_messaggio_d_errore_e_tradotto_o_e_nell_elenco_di_quelli_interni():
+    """Un messaggio nuovo scritto nel server senza la sua traduzione (chiave err.* in testi.js) fa fallire il controllo: l'utente inglese lo vedrebbe
+    in italiano. Se è un messaggio che nessun utente vede, si aggiunge a MESSAGGI_SENZA_TRADUZIONE scrivendo il perché."""
+    modelli = [re.compile("^" + ".+?".join(re.escape(p) for p in re.split(r"\{\w+\}", v)) + "$", re.S)
+               for k, v in _dizionario("it").items() if k.startswith(("err.", "srv."))]
+    senza = {}
+    for messaggio, dove in _messaggi_di_errore().items():
+        if not any(m.match(messaggio.replace("{x}", "7")) for m in modelli):
+            senza[messaggio] = dove
+    nuovi = {m: d for m, d in senza.items() if m not in MESSAGGI_SENZA_TRADUZIONE}
+    assert not nuovi, f"messaggi senza traduzione (aggiungi la chiave err.* in testi.js, italiano e inglese): {nuovi}"
+    superati = sorted(MESSAGGI_SENZA_TRADUZIONE - set(senza))
+    assert not superati, f"ora tradotti o spariti: toglili da MESSAGGI_SENZA_TRADUZIONE: {superati}"

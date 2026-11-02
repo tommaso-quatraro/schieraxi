@@ -59,7 +59,7 @@ Sigle usate qui:
     - analisi di scambi (`GET /api/scambi/analizza`): al massimo 20 analisi diverse al minuto per utente (ripetere la stessa
       non conta) e poche alla volta (2 per utente, 3 in tutto il server): oltre, `429` con `Retry-After`.
 
-11. **Lingua dei testi del server**: italiano se non dici nulla. Per l'inglese manda `?lingua=en` oppure `Accept-Language: en` (vince il parametro). Vale per i testi scritti dal server dove la rotta lo dice (per esempio `GET /api/novita`, `GET /api/sotto-il-cofano`, gli avvisi di copertura in `da_fare`, i giudizi degli scambi, le note sugli infortuni). Le note sugli infortuni delle fonti (campo `nota`, e la stessa nota dentro `motivi`) in qualunque risposta `GET /api/` si traducono con un vocabolario; una nota che non si riconosce tutta resta in italiano. Le risposte che cambiano con la lingua hanno `Vary: Accept-Language`. Attenzione: URLSession e OkHttp mandano da soli `Accept-Language` con la lingua del telefono; un client che vuole sempre l'italiano deve mandare `?lingua=it`. I messaggi d'errore (`detail`) restano in italiano.
+11. **Lingua dei testi del server**: italiano se non dici nulla. Per l'inglese manda `?lingua=en` oppure `Accept-Language: en` (vince il parametro). Vale per i testi scritti dal server dove la rotta lo dice (per esempio `GET /api/novita`, `GET /api/sotto-il-cofano`, gli avvisi di copertura in `da_fare`, i giudizi degli scambi, le note sugli infortuni). Le note sugli infortuni delle fonti (campo `nota`, e la stessa nota dentro `motivi`) in qualunque risposta `GET /api/` si traducono con un vocabolario; una nota che non si riconosce tutta resta in italiano. Le risposte che cambiano con la lingua hanno `Vary: Accept-Language`. Attenzione: URLSession e OkHttp mandano da soli `Accept-Language` con la lingua del telefono; un client che vuole sempre l'italiano deve mandare `?lingua=it`. I messaggi d'errore (`detail`) restano in italiano; le frasi che cambiano con i dati hanno anche la chiave per tradurle (vedi «Frasi con chiave» più sotto).
 
 ## 2. Account (`fanta/rotte_account.py`)
 
@@ -477,6 +477,32 @@ Offerte di scambio ricevute: in questa versione non esistono (l'app non ha scamb
 nessuna voce parla di limiti d'uso, per nessuno.
 
 Il client decide cosa fare delle voci chiuse a mano: la memoria locale per `id` basta; il server non ricorda chi ha «nascosto» cosa.
+
+## Frasi con chiave: `frase`, `X_frase`, `X_frasi` (facoltative: un client vecchio le ignora)
+
+Il testo scritto dal server resta in italiano, nello stesso campo di sempre (`testo`, `motivi`, `avvisi`...): iOS e i widget non cambiano. Le
+frasi che cambiano con i dati (nomi, numeri, orari) hanno in più un oggetto per tradurle, accanto al testo:
+
+```json
+{"testo": "Rossi è infortunato. Meglio Bianchi.",
+ "frase": {"chiave": "dafare.dubbio_infortunato_alt", "param": {"nome": "Rossi", "alt": "Bianchi"}}}
+```
+
+- Per un campo di testo `X` l'oggetto sta in `X_frase` (per `testo`: `frase`); per un elenco di testi `X` sta in `X_frasi`, nello stesso ordine
+  (un oggetto o `null` per ogni voce: `null` = testo semplice, per esempio la nota di un infortunio delle fonti).
+- `chiave` è un nome stabile (`dafare.*`, `senso.*`, `motivo.*`, `perche.*`, `probabili.*`, `confronto.*`, `rose.*`, `tempo.*`, `posto.*`, `nomi.*`);
+  `param` sono i pezzi variabili: testo (nomi, squadre), interi, decimali **come testo con il punto e una cifra** (`"1.5"`) e altre frasi
+  (`{"chiave", "param"}`) per i pezzi che sono a loro volta frasi (per esempio un orario o il motivo di un consiglio). Per le chiavi che hanno il
+  plurale (`x.one` / `x.other` nella web app) c'è il parametro `n`. `elenco` e `elenco_e` (parametri `parti` e `sep`) uniscono più frasi.
+- Il web traduce con `fanta/web/testi.js` (`frase.<chiave>`); in italiano mostra sempre il testo del server. Un client che non sa tradurre
+  una chiave mostra il testo italiano. Le chiavi si possono aggiungere, mai cambiare di significato; un parametro nuovo si aggiunge in fondo.
+- Dove: `da_fare[]` (`frase`, `azione_frase`); `GET /api/oggi` `probabili` (`frase`, `eta_frase`, `avviso_frase`); ogni scheda di giocatore
+  (`motivi_frasi`, e dentro `perche_numero[]` il campo `frase`); proposte di `GET /api/mercato` (`motivo_frase`); `GET /api/confronto`
+  (`perche_frase` e `formazione.frase`); rose: `avvisi_frasi` in `POST /api/rose/anteprima` e `GET /api/squadre/{nome}`, e
+  `giocatori[].avviso_frase` nell'anteprima (le risposte di importazione e correzione non le hanno: l'app non ne mostra i testi).
+- I messaggi d'errore (`detail`) non hanno la chiave: il web li riconosce dal testo (chiavi `err.*` di `testi.js`; un test controlla che ogni
+  messaggio scritto nel server abbia la sua traduzione).
+- Le regole riconosciute da `POST /api/regole/riconosci` hanno `etichetta` in italiano: per tradurla basta la `chiave` della regola (il web usa `regola.et.<chiave>`).
 
 ## Primo avvio: GET e PUT /api/primo-avvio
 

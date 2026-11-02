@@ -1,0 +1,16 @@
+{
+  "titolo": "Anche i consigli e gli avvisi in inglese",
+  "voci": [
+    "Con l'app in inglese, ora anche i consigli di «Da fare», i motivi sotto i nomi dei giocatori, il «perché» di una scelta, l'ora delle probabili formazioni e gli avvisi sulle rose sono scritti in inglese, non più in italiano.",
+    "Anche i messaggi d'errore più comuni (importare le rose, scambi, immagini, accesso con Google) sono tradotti."
+  ],
+  "titolo_en": "Advice and alerts in English too",
+  "voci_en": [
+    "With the app in English, the advice in \"To do\", the reasons under player names, the \"why\" behind a choice, the time of the probable lineups and the roster alerts are now written in English instead of Italian.",
+    "The most common error messages (importing rosters, trades, images, sign-in with Google) are translated too."
+  ],
+  "tecnico": [
+    "Nuovo modulo fanta/frasi.py: classe Frase (str italiano + chiave e parametri) e catalogo CATALOGO. Le risposte hanno, accanto ai campi di testo di sempre, frase / X_frase / X_frasi con {chiave, param}: da_fare[].frase e azione_frase, probabili.frase|eta_frase|avviso_frase, motivi_frasi e perche_numero[].frase nelle schede dei giocatori, motivo_frase nelle proposte di /api/mercato, perche_frase e formazione.frase in /api/confronto, avvisi_frasi nelle risposte sulle rose, avviso_frase nell'anteprima. Tutti facoltativi: i testi italiani non cambiano (iOS, widget e Android non toccati). Unica differenza nei testi italiani: un guadagno su una sola giornata si legge «nella prossima giornata» (prima «nelle prossime 1 giornate»).",
+    "Web: traduciFrase / testoDi / testiDi in testi.js, chiavi frase.* e confronto.fattore_*; le chiavi srv.* sostituite sono tolte. traduciErrore prova prima i modelli più specifici e traduce anche i nomi dentro i messaggi (err.p_*). Le etichette delle regole riconosciute da /api/regole/riconosci si scelgono dalla chiave (regola.et.*). 154 chiavi err.* nuove. test_testi.py: ogni messaggio tradotto è scritto parola per parola nel server e un messaggio d'errore nuovo senza traduzione fa fallire i controlli (elenco MESSAGGI_SENZA_TRADUZIONE solo per quelli interni). test_frasi.py: catalogo e testi.js combaciano, ogni chiave si traduce in inglese (node)."
+  ]
+}

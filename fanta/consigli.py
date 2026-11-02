@@ -9,10 +9,11 @@ from datetime import date, datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from . import calcolo, incertezza, perche
+from . import calcolo, frasi, incertezza, perche
 from . import formazione as fz
 from . import modello, stato_dati, turno
 from .aggiorna import Stagione
+from .frasi import F
 from .lega import Rose
 from .punteggio import modulo_valido
 from .regole import Regole, serie_a_a_lega
@@ -150,34 +151,36 @@ def titolarita(x: pd.Series) -> str:
 
 
 def motivi(x: pd.Series) -> list[str]:
-    """Perché il modello dà quel valore: frasi brevi per l'utente."""
+    """Perché il modello dà quel valore: frasi brevi per l'utente (`Frase`: testo italiano e chiave per tradurlo; la nota delle
+    fonti è un testo semplice, lo traduce il server con note_infortuni.py)."""
     m = []
     stato, perc = x.get("stato"), x.get("percentuale")
     if stato == "titolare":
-        m.append(f"titolare al {perc:.0f}%" if pd.notna(perc) else "titolare")
+        m.append(F("motivo.titolare_perc", p=round(float(perc))) if pd.notna(perc) else F("motivo.titolare"))
     elif stato == "panchina":
-        m.append("parte dalla panchina" + (f" ({perc:.0f}%)" if pd.notna(perc) else ""))
+        m.append(F("motivo.panchina_perc", p=round(float(perc))) if pd.notna(perc) else F("motivo.panchina"))
     elif stato in ("infortunato", "squalificato"):
-        m.append(stato)
+        m.append(F("motivo." + stato))
     elif stato == "non_citato":
-        m.append("non tra i convocati previsti")
+        m.append(F("motivo.non_convocato"))
     if pd.notna(x.get("nota")) and x.get("nota"):
         m.append(str(x["nota"]))
     if x["e_rigori"] >= 0.15:
-        m.append("rigorista")
+        m.append(F("motivo.rigorista"))
     if x["ruolo"] == "P":
-        m.append(f"{x['p_imbattuto'] * 100:.0f}% di non subire gol")
+        m.append(F("motivo.porta_inviolata", p=round(float(x["p_imbattuto"]) * 100)))
     elif x["e_gol"] >= 0.3:
-        m.append(f"gol atteso {x['e_gol'] * 100:.0f}%")
+        m.append(F("motivo.gol_atteso", p=round(float(x["e_gol"]) * 100)))
     if x["gol_squadra"] - x["gol_avversario"] >= 0.8:
-        m.append("partita favorevole")
+        m.append(F("motivo.favorevole"))
     elif x["gol_avversario"] - x["gol_squadra"] >= 0.8:
-        m.append("partita difficile")
+        m.append(F("motivo.difficile"))
     return m
 
 
 def scheda_previsione(i: int, x: pd.Series) -> dict:
     x = x.to_dict()           # una volta sola: leggere ogni campo dalla Series di pandas costa circa 10 volte di più (e qui sono una trentina)
+    elenco_motivi = motivi(x)
     return {
         "id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "squadra": x["squadra"], "avversario": x["avversario"],
         "in_casa": bool(x["in_casa"]), "p_voto": round(float(x["p_voto"]), 3), "fv_atteso": round(float(x["mu"]), 2),
@@ -193,7 +196,7 @@ def scheda_previsione(i: int, x: pd.Series) -> dict:
         "gol_squadra": float(x["gol_squadra"]), "gol_avversario": float(x["gol_avversario"]),
         "stato": None if pd.isna(x["stato"]) else x["stato"],
         "percentuale": None if pd.isna(x["percentuale"]) else float(x["percentuale"]),
-        "nota": None if pd.isna(x["nota"]) else x["nota"], "motivi": motivi(x),
+        "nota": None if pd.isna(x["nota"]) else x["nota"], "motivi": elenco_motivi, "motivi_frasi": frasi.lista(elenco_motivi),
         # «perché questo numero» (fanta/perche.py): al massimo 3 motivi, in fantavoti rispetto a un giocatore medio dello stesso ruolo
         "perche_numero": list(x.get("perche_numero") or []),
         "fv_atteso_medio_ruolo": None if pd.isna(x.get("fv_atteso_medio_ruolo", float("nan"))) else float(x["fv_atteso_medio_ruolo"]),
@@ -406,24 +409,23 @@ def spiega(xa: pd.Series, xb: pd.Series, regole: Regole) -> dict:
 
 
 def _frase_perche(nome_a: str, nome_b: str, spiegazione: dict, margine: float) -> str:
-    virgola = lambda x: f"{x:.1f}".replace(".", ",")   # noqa: E731
     totale = spiegazione["differenza"]
     if abs(totale) < 0.15:
-        return f"{nome_a} e {nome_b} sono quasi alla pari: la differenza è sotto 0,2 punti attesi."
+        return F("confronto.pari", a=nome_a, b=nome_b)
     primo, secondo = (nome_a, nome_b) if totale > 0 else (nome_b, nome_a)
     segno = 1 if totale > 0 else -1
     motivi = sorted((f for f in spiegazione["fattori"] if f["effetto"] * segno > 0.05), key=lambda f: -f["effetto"] * segno)[:3]
     if not motivi:
-        return f"{primo} è avanti di {virgola(abs(totale))} punti attesi, con piccoli vantaggi sparsi."
+        return F("confronto.avanti_sparsi", primo=primo, punti=abs(totale))
     parti = []
     for f in motivi:
         peso = abs(f["effetto"])
         if f["chiave"] == "giocare":
             pa, pb = (f["a"], f["b"]) if segno > 0 else (f["b"], f["a"])
-            parti.append(f"gioca di più ({pa * 100:.0f}% contro {pb * 100:.0f}%: +{virgola(peso)})")
+            parti.append(F("confronto.gioca_di_piu", pa=round(pa * 100), pb=round(pb * 100), peso=peso))
         else:
-            parti.append(f"{f['etichetta'].lower()} più alto (+{virgola(peso)})")
-    return f"{primo} è avanti di {virgola(abs(totale))} punti attesi su {secondo}: " + "; ".join(parti) + "."
+            parti.append(F("confronto.alto_" + f["chiave"], peso=peso))
+    return F("confronto.avanti", primo=primo, secondo=secondo, punti=abs(totale), motivi=frasi.elenco(parti, sep="; "))
 
 
 def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra: str | None, giornata: int | None,
@@ -448,23 +450,25 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
             return "titolare"
         return f"panchina {m['panchina'].index(i) + 1}" if i in m["panchina"] else "fuori"
 
+    def posto_frase(p: str):
+        return F("posto.panchina", n=int(p.split()[1])) if p.startswith("panchina") else F("posto." + p)
+
     pa, pb = posto(id_a), posto(id_b)
-    virgola = lambda x, d=1: f"{x:.{d}f}".replace(".", ",")   # noqa: E731
     base = {"modulo": m["modulo"], "posto_a": pa, "posto_b": pb, "attuale": None, "invertita": None, "differenza": None, "testo": ""}
+
+    def scrivi(frase) -> dict:                               # il testo italiano e, accanto, come tradurlo
+        base["testo"], base["frase"] = frase, frasi.di(frase)
+        return base
     ga, gb = rosa[id_a], rosa[id_b]
     if pa == "titolare" and pb == "titolare":
-        base["testo"] = f"{ga.nome} e {gb.nome} sono tutti e due titolari nel {m['modulo']}: giocano insieme, non si tolgono il posto."
-        return base
+        return scrivi(F("confronto.tutti_titolari", a=ga.nome, b=gb.nome, modulo=m["modulo"]))
     if pa != "titolare" and pb != "titolare":
-        base["testo"] = (f"{ga.nome} e {gb.nome} non sono titolari nel {m['modulo']} ({pa} e {pb}): "
-                         + ("entra per primo chi sta più in alto in panchina, se il ruolo serve." if pa != "fuori" and pb != "fuori" else "chi è fuori non entra."))
-        return base
+        return scrivi(F("confronto.non_titolari_ordine" if pa != "fuori" and pb != "fuori" else "confronto.non_titolari_fuori",
+                        a=ga.nome, b=gb.nome, modulo=m["modulo"], pa=posto_frase(pa), pb=posto_frase(pb)))
     titolare, altro = (ga, gb) if pa == "titolare" else (gb, ga)
     posto_altro = pb if pa == "titolare" else pa
     if titolare.ruolo != altro.ruolo:
-        base["testo"] = (f"{titolare.nome} è titolare, {altro.nome} è {posto_altro}, ma sono di ruoli diversi: non si sostituiscono tra loro "
-                         "(a meno di un cambio di modulo durante le sostituzioni).")
-        return base
+        return scrivi(F("confronto.ruoli_diversi", titolare=titolare.nome, altro=altro.nome, posto=posto_frase(posto_altro)))
     titolari = [rosa[i] for i in m["titolari"]]
     panchina = [rosa[i] for i in m["panchina"]]
     titolari2 = [altro if g.id == titolare.id else g for g in titolari]
@@ -475,21 +479,18 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
     diff = attuale - invertita
     base.update(attuale=round(attuale, 2), invertita=round(invertita, 2), differenza=round(diff, 2))
     if posto_altro == "fuori":
-        entrata = f"{altro.nome} resta fuori: in panchina ci sono giocatori più utili al punteggio."
+        entrata = F("confronto.entra_fuori", altro=altro.nome)
     elif regole.panchina.max_sostituzioni <= 0:
-        entrata = f"Nella tua lega non sono ammesse sostituzioni: {altro.nome} ({posto_altro}) non può entrare al posto di {titolare.nome}" + ("" if titolare.nome.endswith(".") else ".")
+        entrata = F("confronto.senza_sostituzioni", altro=altro.nome, posto=posto_frase(posto_altro), titolare=titolare.nome)
     else:
-        entrata = f"Se {titolare.nome} non prende voto ({virgola((1 - titolare.p) * 100, 0)}% di probabilità), al suo posto può entrare {altro.nome} ({posto_altro})."
+        entrata = F("confronto.entra_se", titolare=titolare.nome, p=round((1 - titolare.p) * 100), altro=altro.nome, posto=posto_frase(posto_altro))
     if diff > 0.04:
-        esito = f"Con {titolare.nome} titolare la formazione vale {virgola(attuale)} punti attesi; con i due invertiti {virgola(invertita)} ({virgola(-diff)}). "
+        esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=-diff)
     elif diff < -0.04:
-        esito = (f"Invertendoli la formazione varrebbe {virgola(invertita)} invece di {virgola(attuale)} ({virgola(-diff)}): "
-                 f"con il modulo {m['modulo']} (non il migliore) la scelta non è la più conveniente. ")
+        esito = F("confronto.esito_peggio", invertita=invertita, attuale=attuale, d=-diff, modulo=m["modulo"])
     else:
-        esito = f"Le due soluzioni valgono praticamente lo stesso ({virgola(attuale)} contro {virgola(invertita)}). "
-    base["testo"] = (f"Il sistema schiera {titolare.nome} come titolare. {entrata} {esito}Conta quanto vale ciascuno quando gioca "
-                     f"({titolare.nome} {virgola(titolare.mu)} contro {altro.nome} {virgola(altro.mu)}), non solo se gioca.")
-    return base
+        esito = F("confronto.esito_pari", attuale=attuale, invertita=invertita)
+    return scrivi(F("confronto.principale", titolare=titolare.nome, entrata=entrata, esito=esito, mu_t=titolare.mu, altro=altro.nome, mu_a=altro.mu))
 
 
 def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, giornata: int | None = None,
@@ -507,6 +508,7 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
     spiegazione = spiega(prev.loc[id_a], prev.loc[id_b], regole)
     margine = round(abs(a["punti_attesi"] - b["punti_attesi"]), 2)
     in_formazione = _in_formazione(db, regole, rose, nome_squadra, giornata, modulo, id_a, id_b, prev, livello) if rose is not None else None
+    perche_testo = _frase_perche(a["nome"], b["nome"], spiegazione, margine)
     return {"giornata": giornata, "giocatori": risultato, "consigliato": meglio["id"], "margine": margine,
-            "fattori": spiegazione["fattori"], "perche": _frase_perche(a["nome"], b["nome"], spiegazione, margine),
+            "fattori": spiegazione["fattori"], "perche": perche_testo, "perche_frase": frasi.di(perche_testo),
             "formazione": in_formazione}
