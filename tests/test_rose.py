@@ -68,6 +68,22 @@ def test_tabella_con_colonne_ruolo_squadra_costo_e_crediti(indice):
     assert squadre["I Bomber"].righe[0].esito.calciatore.id == 16
 
 
+def test_riga_dell_allenatore_non_diventa_il_nome_della_squadra(indice):
+    """Copiando la pagina delle rose sotto il nome della squadra c'è chi la allena: il nome resta quello della squadra."""
+    testo = (
+        "La Banda\nAllenatore: marco\nCrediti residui: 12\nRuolo\tCalciatore\tSquadra\tCosto\n"
+        "P\tSommer\tInter\t10\nD\tRossi\tGenoa\t5\n\n"
+        "I Bomber\nPresidente - luca\nA\tKean\tFiorentina\t30\n"
+    )
+    squadre = _per_nome(rose.estrai([("testo", rose.griglia_da_testo(testo))], indice, ROSA_PICCOLA))
+    assert sorted(squadre) == ["I Bomber", "La Banda"]
+    assert len(squadre["La Banda"].righe) == 2 and squadre["La Banda"].crediti_residui == 12
+    assert squadre["I Bomber"].righe[0].esito.calciatore.id == 14
+    # anche con un valore per riga
+    testo = "Real Fagiolo\nAllenatore: marco\nP\nSommer\nInter\n10\nI Bomber\nManager: luca\nA\nKean\nFiorentina\n30\n"
+    assert sorted(_per_nome(rose.estrai([("testo", rose.griglia_da_testo(testo))], indice))) == ["I Bomber", "Real Fagiolo"]
+
+
 def test_un_valore_per_riga(indice):
     testo = "Real Esempio\nP\nSommer\nInter\n10\nD\nBastoni\nInter\n15\nI Bomber\nA\nKean\nFiorentina\n30\n"
     squadre = _per_nome(rose.estrai([("testo", rose.griglia_da_testo(testo))], indice))
