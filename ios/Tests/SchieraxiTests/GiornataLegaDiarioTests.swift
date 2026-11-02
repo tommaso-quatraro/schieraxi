@@ -1,7 +1,7 @@
 import XCTest
 @testable import Schieraxi
 
-/// Il Diario e il widget «Attesi e fatti» usano il numero della giornata della lega, come Oggi («Giornata 8 di lega (Serie A 11)»).
+/// Il Diario e il widget «Attesi e fatti» usano il numero della giornata della lega, come Oggi e la web («Giornata 8»).
 final class GiornataLegaDiarioTests: XCTestCase {
     private func voce(_ json: String) throws -> VoceDiario {
         try Decodifica.decodifica(Data(json.utf8))
@@ -9,7 +9,7 @@ final class GiornataLegaDiarioTests: XCTestCase {
 
     func testIlDiarioMostraIlNumeroDellaLega() throws {
         let v = try voce(#"{"giornata": 11, "giornata_lega": 8, "stagione": "2026-27"}"#)
-        XCTAssertEqual(v.titolo, "Giornata 8 di lega (Serie A 11)")
+        XCTAssertEqual(v.titolo, "Giornata 8", "come la web: il numero della lega, senza quello di Serie A")
         XCTAssertEqual(v.numero, 8)
         XCTAssertEqual(v.giornata, 11, "al server si manda sempre il numero di Serie A")
     }
@@ -45,7 +45,7 @@ final class GiornataLegaDiarioTests: XCTestCase {
     }
 
     func testPluraleDelleGiornateInSintesi() {
-        XCTAssertEqual(Formato.plurale(1, "giornata", "giornate"), "1 giornata")
-        XCTAssertEqual(Formato.plurale(4, "giornata", "giornate"), "4 giornate")
+        XCTAssertEqual(Formato.giornate(1), "1 giornata")
+        XCTAssertEqual(Formato.giornate(4), "4 giornate")
     }
 }

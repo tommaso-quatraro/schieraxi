@@ -409,7 +409,7 @@ extension RiassuntoWidget {
         return (con.filter { $0 == .dentro }.count, con.count)
     }
 
-    /// Le giornate del diario che hanno i punti fatti, dalla più recente, con il numero della LEGA (come «Giornata 8 di lega» in Oggi):
+    /// Le giornate del diario che hanno i punti fatti, dalla più recente, con il numero della LEGA (come «Giornata 8» in Oggi):
     /// il server le manda con il numero di Serie A, la differenza tra i due numeri è quella della giornata in corso.
     var giornateGiocate: [PuntiGiornata] {
         (diario ?? []).filter { $0.fatti != nil }.sorted { $0.giornata > $1.giornata }.map { g in

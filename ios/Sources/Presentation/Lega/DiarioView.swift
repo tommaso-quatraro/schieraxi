@@ -33,16 +33,12 @@ final class DiarioViewModel: ViewModelBase {
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "manuale", titolari: titolari))
-            messaggio = "Salvato: la formazione che hai schierato nella giornata \(numero ?? giornata)."
-            messaggioRiuscito = true
-            Haptics.esito(riuscito: true)
+            esito("Salvato: la formazione che hai schierato nella giornata \(numero ?? giornata).", riuscito: true)
             await caricatore.ricarica()
             return true
         } catch {
-            messaggio = error.localizedDescription
-            messaggioRiuscito = false
+            esito(error.localizedDescription, riuscito: false)
             if (error as? ErroreApi)?.eConflitto == true { await caricatore.ricarica() }
-            Haptics.esito(riuscito: false)
             return false
         }
     }
@@ -56,16 +52,21 @@ final class DiarioViewModel: ViewModelBase {
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "consigliata"))
-            messaggio = "Salvato: per la giornata \(numero ?? giornata) hai schierato la consigliata."
-            messaggioRiuscito = true
-            Haptics.esito(riuscito: true)
+            esito("Salvato: per la giornata \(numero ?? giornata) hai schierato la consigliata.", riuscito: true)
             await caricatore.ricarica()
         } catch {
-            messaggio = error.localizedDescription
-            messaggioRiuscito = false
+            esito(error.localizedDescription, riuscito: false)
             if (error as? ErroreApi)?.eConflitto == true { await caricatore.ricarica() }
-            Haptics.esito(riuscito: false)
         }
+    }
+
+    /// Mostra l'esito nella sezione della giornata e lo fa leggere a VoiceOver: anche quando la riga è già sullo schermo
+    /// (secondo salvataggio nella stessa giornata), dove un annuncio legato alla comparsa della riga non partirebbe.
+    private func esito(_ testo: String, riuscito: Bool) {
+        messaggio = testo
+        messaggioRiuscito = riuscito
+        Haptics.esito(riuscito: riuscito)
+        AccessibilityNotification.Announcement(testo).post()
     }
 }
 
@@ -149,7 +150,7 @@ struct DiarioView: View {
     }
 
     private func sintesi(_ s: SintesiDiario) -> some View {
-        Section(titolo: "In sintesi (\(Formato.plurale(s.giornate ?? 0, "giornata", "giornate")))") {
+        Section(titolo: "In sintesi (\(Formato.giornate(s.giornate ?? 0)))") {
             RigaValore(titolo: "Punti medi tuoi", valore: Formato.punti(s.puntiSchierata), cifreFisse: true)
             RigaValore(titolo: "Punti medi di SchieraXI", valore: Formato.punti(s.puntiConsigliata), cifreFisse: true)
             RigaValore(titolo: "Meglio tu – meglio SchieraXI", valore: "\(s.meglioTua ?? 0)–\(s.meglioConsigliata ?? 0)", cifreFisse: true)
@@ -163,7 +164,6 @@ struct DiarioView: View {
                 Label(m, systemImage: vm.messaggioRiuscito ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .font(.footnote.weight(.semibold)).foregroundStyle(vm.messaggioRiuscito ? Color.verde : Color.attenzione)
                     .fixedSize(horizontal: false, vertical: true)
-                    .onAppear { AccessibilityNotification.Announcement(m).post() }
             }
             if v.schierata == nil {
                 Text("Non avevi salvato la tua formazione per questa giornata.").font(.footnote).foregroundStyle(Color.testoSecondario)
