@@ -49,7 +49,7 @@ def test_i_testi_del_server_passano_da_esc():
 
 
 def test_un_solo_percorso_breve_e_saltabile():
-    assert 'const PA_PASSI = ["rose", "squadra"]' in PRIMO
+    assert 'const PA_PASSI = ["rose", "squadra", "tempi"]' in PRIMO      # breve: rose, squadra, tempi della lega (2/11/2026)
     assert not (WEB / "onboarding.js").exists() and "onboarding.js" not in (WEB / "index.html").read_text(encoding="utf-8")
     # chi ha già finito (o saltato) la vecchia procedura non la ripassa
     assert 'o.stato === "completato" || o.stato === "saltato"' in PRIMO
