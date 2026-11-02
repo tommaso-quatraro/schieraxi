@@ -27,6 +27,8 @@ struct Giocatore: Decodable, Identifiable {
     let dubbio: Bool?
     let diffidato: Bool?
     let titolarita: String?
+    /// A giornata iniziata (quando `titolarita` arriva vuota): `fatto`, `senza_voto`, `attesa_voti`, `in_corso`, `da_giocare`, `rinviata`.
+    let statoPartita: String?
     let dataPartita: String?
     let proprietario: String?
     let assente: Bool?

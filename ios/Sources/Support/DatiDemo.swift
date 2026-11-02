@@ -223,11 +223,11 @@ private enum DatiDemo {
         if p.assente {
             d["titolarita"] = "fuori"; d["stato"] = "infortunato"; d["percentuale"] = 0.0; d["motivi"] = ["infortunato"]
         } else if p.dubbio {
-            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = 60.0; d["motivi"] = ["dubbio: affaticamento", "titolare al 60%"]
+            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = 60.0; d["motivi"] = ["dubbio: affaticamento", "titolare in ballottaggio"]
         } else if p.pVoto < 0.75 {
-            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina (\(Int(p.pVoto * 100))%)"]
+            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina"]
         } else {
-            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare al 90%"]
+            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare"]
         }
         d["quotazione"] = quotazione(p)
         if conAvversario, let a = avversario(di: p.squadra) {

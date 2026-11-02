@@ -11,18 +11,25 @@ struct Etichetta: Equatable, Hashable {
 }
 
 extension Giocatore {
-    /// Come la web app: titolarità con la percentuale, diffida, dubbio e fino a due motivi utili del server.
+    /// Le etichette della titolarità, a parole e senza numero (come la web): all'utente una sola percentuale, «gioca N%».
+    static let nomiTitolarita: [String: (String, Etichetta.Gravita)] = [
+        "titolare": ("Probabile titolare", .normale), "ballottaggio": ("In ballottaggio", .attenzione),
+        "panchina": ("Probabile panchina", .attenzione), "improbabile": ("Improbabile", .grave), "fuori": ("Fuori", .grave),
+    ]
+
+    /// A giornata iniziata (`titolarita` vuota) lo stato della partita del giocatore (`stato_partita`).
+    static let nomiStatoPartita: [String: (String, Etichetta.Gravita)] = [
+        "da_giocare": ("Da giocare", .normale), "in_corso": ("Partita in corso", .normale), "fatto": ("Ha giocato", .normale),
+        "senza_voto": ("Senza voto", .grave), "attesa_voti": ("Voto in arrivo", .normale), "rinviata": ("Rinviata", .attenzione),
+    ]
+
+    /// Come la web app: titolarità a parole (o, a giornata iniziata, lo stato della partita), diffida, dubbio e fino a due motivi utili.
     var etichette: [Etichetta] {
         var risultato: [Etichetta] = []
-        let nomi: [String: (String, Etichetta.Gravita)] = [
-            "titolare": ("Titolare", .normale), "ballottaggio": ("Ballottaggio", .attenzione), "panchina": ("Panchina", .attenzione),
-            "improbabile": ("Improbabile", .grave), "fuori": ("Fuori", .grave),
-        ]
-        if let t = titolarita, let (nome, gravita) = nomi[t] {
-            var testo = nome
-            // Il numero è quello delle probabili formazioni: si dice da dove viene, così non si confonde con «gioca N%» (il modello).
-            if stato == "titolare", let p = percentuale, t != "fuori" { testo += " · probabili \(Formato.intero(p.rounded()))%" }
-            risultato.append(Etichetta(testo: testo, gravita: gravita))
+        if let t = titolarita, let (nome, gravita) = Self.nomiTitolarita[t] {
+            risultato.append(Etichetta(testo: nome, gravita: gravita))
+        } else if titolarita == nil, let s = statoPartita, let (nome, gravita) = Self.nomiStatoPartita[s] {
+            risultato.append(Etichetta(testo: nome, gravita: gravita))
         }
         if diffidato == true { risultato.append(Etichetta(testo: "Diffidato", gravita: .attenzione)) }
         let utili = (motivi ?? []).filter { m in

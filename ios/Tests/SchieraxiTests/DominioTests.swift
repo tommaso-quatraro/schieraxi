@@ -41,7 +41,7 @@ final class DominioTests: XCTestCase {
     func testEtichetteDiTitolaritaEDiffida() throws {
         let g = try giocatore(1, "Rossi", titolarita: "titolare", extra: "\"stato\": \"titolare\", \"percentuale\": 85.0, \"diffidato\": true, \"motivi\": [\"titolare al 85%\", \"squalifica a rischio\"],")
         let e = g.etichette
-        XCTAssertEqual(e.map(\.testo), ["Titolare · probabili 85%", "Diffidato", "Squalifica a rischio"])
+        XCTAssertEqual(e.map(\.testo), ["Probabile titolare", "Diffidato", "Squalifica a rischio"])
         XCTAssertEqual(e.first?.gravita, .normale)
         XCTAssertEqual(e[1].gravita, .attenzione)
     }

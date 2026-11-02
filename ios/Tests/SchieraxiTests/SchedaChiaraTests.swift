@@ -18,9 +18,28 @@ final class SchedaChiaraTests: XCTestCase {
         XCTAssertNil(GiocatoreCorpo.golAttesi(try giocatore(""), squadra: "Genoa"))
     }
 
-    func testLEtichettaDiTitolaritaDiceCheEDellaProbabili() throws {
+    func testLaTitolaritaEAParoleSenzaNumero() throws {
         let g = try giocatore(#""titolarita": "titolare", "stato": "titolare", "percentuale": 90,"#)
-        XCTAssertEqual(g.etichette.first?.testo, "Titolare · probabili 90%", "non si confonde con «gioca 88%»")
+        XCTAssertEqual(g.etichette.first?.testo, "Probabile titolare", "una sola percentuale all'utente: «gioca N%»")
+        let b = try giocatore(#""titolarita": "ballottaggio", "stato": "titolare", "percentuale": 55,"#)
+        XCTAssertEqual(b.etichette.first?.testo, "In ballottaggio")
+        let p = try giocatore(#""titolarita": "panchina","#)
+        XCTAssertEqual(p.etichette.first?.testo, "Probabile panchina")
+        XCTAssertFalse(g.etichette.contains { $0.testo.contains("%") })
+    }
+
+    func testAGiornataIniziataSiVedeLoStatoDellaPartita() throws {
+        let fatto = try giocatore(#""titolarita": null, "stato_partita": "fatto","#)
+        XCTAssertEqual(fatto.etichette.first?.testo, "Ha giocato")
+        let senza = try giocatore(#""stato_partita": "senza_voto","#)
+        XCTAssertEqual(senza.etichette.first?.testo, "Senza voto")
+        XCTAssertEqual(senza.etichette.first?.gravita, .grave)
+        XCTAssertEqual(try giocatore(#""stato_partita": "attesa_voti","#).etichette.first?.testo, "Voto in arrivo")
+        XCTAssertEqual(try giocatore(#""stato_partita": "in_corso","#).etichette.first?.testo, "Partita in corso")
+        XCTAssertEqual(try giocatore(#""stato_partita": "rinviata","#).etichette.first?.testo, "Rinviata")
+        let fuori = try giocatore(#""titolarita": "fuori", "stato_partita": "da_giocare","#)
+        XCTAssertEqual(fuori.etichette.first?.testo, "Fuori", "infortunati e squalificati restano «Fuori»")
+        XCTAssertTrue(try giocatore(#""stato_partita": "strano","#).etichette.isEmpty, "uno stato sconosciuto non si mostra")
     }
 
     func testLaLegendaDellElencoSpiegaAnelloEPercentuale() {
