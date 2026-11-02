@@ -76,9 +76,21 @@ def test_ogni_azione_esterna_e_fissata_per_hash():
         assert _azioni_non_fissate(file.read_text(encoding="utf-8")) == [], f"{file.name}: azione non fissata per hash"
 
 
+def test_solo_azioni_di_github():
+    # Impostazione del repository (Settings > Actions > General): sono permesse solo le azioni di GitHub (proprietari
+    # «actions» e «github»). Un'azione di altri fa fallire l'avvio di tutto il workflow, «unisci» compreso (PR #109).
+    for file in sorted(CARTELLA_WORKFLOW.glob("*.y*ml")):
+        for riga in file.read_text(encoding="utf-8").splitlines():
+            m = re.match(r"^\s*(?:-\s+)?uses:\s*([^\s#]+)", riga)
+            if m and not m.group(1).startswith("./"):
+                assert m.group(1).split("/")[0] in ("actions", "github"), f"{file.name}: {m.group(1)} non è di GitHub"
+
+
 def test_zizmor_e_fissato_e_non_blocca_ancora_l_unione():
-    testo = WORKFLOW.read_text(encoding="utf-8")
     job = _job()
     assert "zizmor" in job and "zizmor" not in job["unisci"]["needs"]
-    assert re.search(r"uses: zizmorcore/zizmor-action@[0-9a-f]{40}", testo)
-    assert re.search(r"^\s+version: \d+\.\d+\.\d+\s*$", testo, re.M), "versione di zizmor fissata"
+    testo = WORKFLOW.read_text(encoding="utf-8")
+    assert "--require-hashes" in testo and ".github/zizmor-requisiti.txt" in testo
+    requisiti = (CARTELLA_WORKFLOW.parent / "zizmor-requisiti.txt").read_text(encoding="utf-8")
+    assert re.search(r"^zizmor==\d+\.\d+\.\d+ \\$", requisiti, re.M), "versione di zizmor fissata"
+    assert len(re.findall(r"--hash=sha256:[0-9a-f]{64}", requisiti)) >= 2, "hash dei file di zizmor"
