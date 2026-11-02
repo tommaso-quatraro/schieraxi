@@ -1355,9 +1355,8 @@ async function tabConsigli(dove, ok) {
         ${avatarIndice(p.entra)}
         <div class="pr-testo">
           <button class="nome-g" data-giocatore="${p.entra.id}">${esc(p.entra.nome)}</button>
-          <div class="pr-sec">${t("mercato.entra")} · ${sigla(p.entra.squadra)} · ${t("mercato.quot", { n: p.entra.quotazione })}</div>
-          <div class="pr-sec">${t("mercato.esce")} <button class="nome-g piccolo" data-giocatore="${p.esce.id}">${esc(p.esce.nome)}</button> · ${sigla(p.esce.squadra)} · ${t("mercato.quot", { n: p.esce.quotazione })}</div>
-          <div class="pr-sec">${tp("mercato.punti_prossime", p.giornate.length, { d: segno(p.breve) })}${p.crediti_dopo != null ? t("mercato.rimborso_costo", { r: p.rimborso, c: p.entra.quotazione, dopo: `<b class="${p.fattibile ? "positivo" : "negativo"}">${p.crediti_dopo}</b>`, no: p.fattibile ? "" : t("mercato.non_bastano") }) : ""}</div>
+          <div class="pr-sec">${sigla(p.entra.squadra)} · ${t("mercato.quot", { n: p.entra.quotazione })} · ${t("mercato.al_posto_di", { nome: `<button class="nome-g piccolo" data-giocatore="${p.esce.id}">${esc(p.esce.nome)}</button>` })} (${sigla(p.esce.squadra)})</div>
+          <div class="pr-sec">${tp("mercato.punti_prossime", p.giornate.length, { d: segno(p.breve) })}${p.crediti_dopo != null ? `<span title="${t("mercato.rimborso_meno_costo", { r: p.rimborso, c: p.entra.quotazione })}">${t("mercato.crediti_dopo", { dopo: `<b class="${p.fattibile ? "positivo" : "negativo"}">${p.crediti_dopo}</b>`, no: p.fattibile ? "" : t("mercato.non_bastano") })}</span>` : ""}</div>
         ${p.motivo ? `<div class="pr-sec">${esc(testoDi(p, "motivo"))}</div>` : ""}
         </div>
         <div class="pr-num"><b class="${p.guadagno > 0 ? "positivo" : p.guadagno < 0 ? "negativo" : ""}">${segno(p.guadagno)}</b><span>${t("mercato.punti_stagione")}</span></div></div>`).join("") + `</div>`
