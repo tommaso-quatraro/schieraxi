@@ -22,6 +22,10 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
             server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
+        case "formazione-salvata":
+            // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»)
+            server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
+            server.indirizzoFinto = "https://finto-scelta-salvata.invalid"
         default:
             return nil
         }
@@ -420,6 +424,16 @@ private enum DatiDemo {
             "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede,
             "dev": 4.2, "intervallo": fascia(punteggio(ids)),
         ])
+    }
+
+    /// La scelta salvata della giornata (gli undici del primo modulo), salvata un'ora fa (ora italiana, come il server).
+    static func sceltaSalvata(adesso: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return json(["titolari": moduli[0].titolari, "modulo": moduli[0].nome, "salvata": f.string(from: adesso.addingTimeInterval(-3600)),
+                     "tipo": "manuale"])
     }
 
     static func valutazione() -> String {
@@ -1010,6 +1024,7 @@ private enum DatiDemo {
             "/api/giocatori": json(trovati.map { breve($0.id) }),
             "/api/formazione/testo": "Giornata \(giornata) - 3-4-3 (\(Formato.punti(punteggio(moduli[0].titolari))) punti attesi)",
             "/api/formazione/valuta": valutazione(),
+            "/api/scelta": "null",   // nessuna scelta salvata: si vede la consigliata
             "/api/formazione": formazione(),
             "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),
             "/api/oggi": oggi(adesso: adesso),
