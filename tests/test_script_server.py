@@ -301,6 +301,8 @@ def server(tmp_path, chiavi_di_prova):
     # finto Python dell'app: crea ambienti (-m venv copia se stesso), finge pip (esito in esito-pip.txt) e annota gli avvisi
     s.esito_pip = tmp_path / "esito-pip.txt"
     s.esito_pip.write_text("0", encoding="utf-8")
+    s.esito_libero = tmp_path / "esito-libero.txt"           # finto «python -m fanta momento-libero»: codice di uscita (0 = libero)
+    s.esito_libero.write_text("0", encoding="utf-8")
     (s.app / ".venv" / "bin").mkdir(parents=True)
     _scrivi(s.app / ".venv", "QUALE", "vecchia")
     _stub(s.app / ".venv" / "bin", "python", f'''reg="{s.chiamate.as_posix()}"
@@ -308,6 +310,7 @@ case "$1" in
   -m) case "$2" in
         venv) mkdir -p "$3/bin" && cp "$0" "$3/bin/python" && echo "venv $3" >> "$reg" ;;
         pip) shift 2; echo "pip $* (con $0)" >> "$reg"; exit "$(cat "{s.esito_pip.as_posix()}")" ;;
+        fanta) [ "$3" = momento-libero ] && {{ echo "momento-libero FANTA_MULTIUTENTE=${{FANTA_MULTIUTENTE:-}}" >> "$reg"; echo "partita in corso: juventus-napoli (inizio 20:45)"; exit "$(cat "{s.esito_libero.as_posix()}")"; }} ;;
       esac ;;
   -c) case "$2" in *notifiche.invia*) echo "avviso $3 | $4" >> "$reg" ;; esac ;;
 esac
@@ -994,3 +997,67 @@ def test_promemoria_avvisa_una_volta_dopo_tre_salti_per_il_blocco(server):
     for _ in range(3):
         s.esegui("promemoria.sh", SCHIERAXI_ATTESA_BLOCCO="1")
     assert len(s.avvisi()) == 2
+
+
+# ---------------------------------------------------------------- niente installazione durante le partite (fanta/libero.py)
+
+@con_bash
+def test_partita_in_corso_rimanda_l_installazione_e_lo_scrive_una_volta(server):
+    s = server
+    s.esito_libero.write_text("3", encoding="utf-8")
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    for _ in range(2):
+        r = s.esegui("aggiorna-app.sh")
+        assert r.returncode == 0, r.stderr
+    assert s.riavvii() == 0 and s.ultimo() == s.c1
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    assert s.log().count("rimandata: partite in corso (partita in corso: juventus-napoli") == 1      # una riga sola per versione
+    assert "momento-libero FANTA_MULTIUTENTE=1" in s.chiamate.read_text(encoding="utf-8")          # con le variabili del servizio
+    s.esito_libero.write_text("0", encoding="utf-8")                                                # partita finita
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode == 0, r.stderr
+    assert s.riavvii() == 1 and s.ultimo() == c2 and "fine del rimando" in s.log()
+    assert not (s.stato / "rimandata").exists()
+    _lega_e_dati_intatti(s)
+
+
+@con_bash
+def test_controllo_guasto_o_comando_che_non_esiste_ancora_si_installa(server):
+    s = server
+    s.esito_libero.write_text("2", encoding="utf-8")                  # argparse: comando sconosciuto nella versione installata
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode == 0, r.stderr
+    assert s.riavvii() == 1 and s.ultimo() == c2
+
+
+@con_bash
+def test_emergenza_con_il_file_installa_subito_e_il_file_sparisce(server):
+    s = server
+    s.esito_libero.write_text("3", encoding="utf-8")
+    (s.stato / "installa-subito").write_text("", encoding="utf-8")
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode == 0, r.stderr
+    assert s.riavvii() == 1 and s.ultimo() == c2 and "forzata" in s.log()
+    assert not (s.stato / "installa-subito").exists()
+
+
+@con_bash
+def test_emergenza_con_la_variabile(server):
+    s = server
+    s.esito_libero.write_text("3", encoding="utf-8")
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh", SCHIERAXI_INSTALLA_SUBITO="1")
+    assert r.returncode == 0, r.stderr
+    assert s.riavvii() == 1 and s.ultimo() == c2
+
+
+@con_bash
+def test_in_prova_dice_che_rimanderebbe(server):
+    s = server
+    s.esito_libero.write_text("3", encoding="utf-8")
+    _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh", "--prova")
+    assert r.returncode == 0, r.stderr
+    assert "[prova] rimanderei" in r.stdout and s.riavvii() == 0 and s.ultimo() == s.c1

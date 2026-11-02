@@ -31,6 +31,21 @@ Crontab proposto (percorsi con `$HOME`, utente del server):
 ```
 (più `aggiorna.sh` e `backup-serale.sh` se c'erano già nel crontab, con lo stesso orario di prima).
 
+## Niente installazioni durante le partite
+
+Installare una versione nuova riavvia il servizio. Per questo `aggiorna-app.sh` chiede prima alla versione installata
+`python -m fanta momento-libero` (`fanta/libero.py`), che esce con:
+- `3` = occupato: una partita di Serie A è in corso (da 10 minuti prima del calcio d'inizio a 130 minuti dopo, o più a lungo se la
+  diretta salvata in `dati/live.json` la dà ancora in gioco, al massimo 4 ore) oppure manca meno di un'ora alla scadenza della
+  formazione di una lega attiva. L'installazione si rimanda al primo giro libero e nel log c'è una riga sola per versione:
+  «rimandata: partite in corso (motivo)»; quando poi si installa: «fine del rimando».
+- `0` = libero. Ogni altro esito (comando che la versione installata non ha ancora, errore, più di 60 secondi) vale come libero:
+  un controllo guasto non deve fermare gli aggiornamenti.
+
+Emergenza (correzione urgente durante una partita): `touch ~/.cache/fantacalcio/installa-subito` (installa al prossimo giro e il
+file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio/script/server/aggiorna-app.sh`. Nel log:
+«installazione forzata». Per vedere cosa direbbe adesso: `cd ~/fantacalcio && .venv/bin/python -m fanta momento-libero`.
+
 ## Aggiornamenti sicuri: firme dei commit e librerie bloccate
 
 ### Cosa controlla `aggiorna-app.sh`
