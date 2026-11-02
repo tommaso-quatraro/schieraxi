@@ -294,3 +294,47 @@ def test_a_giornata_iniziata_l_infortunato_resta_fuori_fino_ai_voti(ambiente):
 def test_formazione_a_giornata_iniziata_non_fallisce_mai(ambiente):
     f = {"giornata": 10, "titolari": [{"id": 1}], "schede": None}
     assert fasi.formazione_a_giornata_iniziata(f, None, REGOLE, ST, datetime(2026, 11, 8, 21, 30)) == f
+
+
+# ---------------------------------------------------------------- chi entra a giornata iniziata
+def test_chi_entra_a_giornata_iniziata_prepara_la_prossima(ambiente):
+    """Account nato domenica, dopo la scadenza della giornata 10, senza formazione: niente punti finti, la giornata 11 da preparare."""
+    adesso, nato = datetime(2026, 11, 8, 21, 30), datetime(2026, 11, 8, 18, 0)
+    o = _oggi(ambiente, adesso, dal=nato)
+    assert o["fase"] == "in_corso" and o["in_corso"] is None and o["senza_formazione"] is True
+    p = o["prossima"]
+    assert p["giornata"] == 11 and p["scadenza"] == "2026-11-14 15:00" and p["con_probabili"] is False
+    assert o["miei_titolari"] == {}                              # nessun «tuo titolare» nelle partite
+    # chi c'era già prima della scadenza vede la giornata in diretta come sempre (la consigliata)
+    o = _oggi(ambiente, adesso, dal=datetime(2026, 11, 1, 10, 0))
+    assert o["in_corso"]["formazione_di"] == "consigliata" and "senza_formazione" not in o and o["prossima"] is None
+    # senza account (o data non nota): come sempre
+    assert _oggi(ambiente, adesso)["in_corso"] is not None
+
+
+def test_chi_entra_a_giornata_iniziata_ma_ha_salvato_la_sua(ambiente, monkeypatch):
+    from fanta import scelte
+    monkeypatch.setattr(consigli, "valuta", lambda *a, **k: {"modulo": "4-4-2", "punteggio_atteso": 70.0})
+    scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json", panchina=PANCHINA)
+    o = _oggi(ambiente, datetime(2026, 11, 8, 21, 30), dal=datetime(2026, 11, 8, 18, 0))
+    assert o["in_corso"]["formazione_di"] == "tua" and "senza_formazione" not in o
+
+
+def test_formazione_sulla_prossima_per_chi_entra_dopo(ambiente, monkeypatch):
+    """GET /api/formazione senza giornata: chi è entrato a giornata iniziata senza formazione vede la prossima (server._giornata_saltata)."""
+    from fanta import rotte_account, server
+    monkeypatch.setattr(consigli, "giornata_da_giocare", lambda db, st, r: 10)
+
+    class Orologio(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 11, 8, 21, 30)
+    monkeypatch.setattr(server, "datetime", Orologio)
+    ctx = NS(scelte=ambiente.tmp / "scelte.json", diario=ambiente.tmp / "diario.json")
+    nato = lambda quando: monkeypatch.setattr(rotte_account, "utente_corrente", lambda req: NS(creato=quando))  # noqa: E731
+    nato("2026-11-08T17:00:00+00:00")                            # domenica, dopo la scadenza di sabato
+    assert server._giornata_saltata(ambiente.db, REGOLE, ctx, None) == 10
+    nato("2026-11-01T10:00:00+00:00")                            # c'era già: la giornata in corso, come sempre
+    assert server._giornata_saltata(ambiente.db, REGOLE, ctx, None) is None
+    nato(None)                                                   # data non nota (o senza account)
+    assert server._giornata_saltata(ambiente.db, REGOLE, ctx, None) is None
