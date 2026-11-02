@@ -65,6 +65,13 @@ Il file CSV «rosters» di Leghe (una riga per giocatore: squadra, codice, costo
 
 Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Squadra > Aggiorna le rose**.
 
+**Dagli screenshot (app per iPhone e iPad).** Dall'app Leghe sul telefono il testo delle rose non si copia. Allora:
+apri l'app Leghe > la tua lega > ogni squadra (**Dettaglio squadra**, scheda **Rosa**) > fai gli screenshot scorrendo tutta la rosa
+(vanno bene anche sovrapposti). Poi in SchieraXI tocca **Scegli gli screenshot** (nel primo avvio o in **Squadra > Aggiorna le rose**)
+e sceglili tutti insieme, anche di più squadre. Il testo lo legge l'iPhone: le foto restano sul telefono, al server va solo il testo letto
+(nome della squadra, poi ruolo, nome, squadra di Serie A e prezzo di ogni giocatore). Si apre la stessa anteprima di prima: controlla i dubbi e conferma.
+Se una riga non si legge, o manca il prezzo di qualcuno, te lo dice sopra l'anteprima.
+
 ### Per chi entra in una lega già avviata
 
 Se ti invitano in una lega che gioca già da un po':
