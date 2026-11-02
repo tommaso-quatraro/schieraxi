@@ -1,21 +1,20 @@
 name: iOS
 
 # Test dell'app iOS nel simulatore di un Mac di GitHub. Nessuna firma, nessun segreto, nessun IPA pubblicato da qui.
-# NOTA: adattato dal workflow del repository iOS di prima (cartella ios/); la prima volta va provato su GitHub.
+# Non parte da solo: lo chiama test.yml (job «ios», solo se la PR o il push toccano ios/, così «unisci» lo aspetta),
+# oppure a mano (Actions > iOS > Run workflow, o `gh workflow run ios.yml --ref <ramo>`).
+# Niente cache di DerivedData: il checkout cambia le date di tutti i file e Xcode ricompilerebbe comunque tutto;
+# niente pacchetti SwiftPM in ios/project.yml, quindi niente da mettere in cache.
 on:
-  pull_request:
-    paths: ["ios/**", ".github/workflows/ios.yml"]
-  push:
-    branches: [main]
-    paths: ["ios/**", ".github/workflows/ios.yml"]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: ios-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"          # brew install senza aggiornare tutto l'indice (risparmia minuti)
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
 
 jobs:
   test:
@@ -27,27 +26,30 @@ jobs:
       run:
         working-directory: ios
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - name: Installa XcodeGen
-        run: brew install xcodegen
+      - name: Installa XcodeGen (se manca)
+        run: command -v xcodegen > /dev/null || brew install xcodegen
       - name: Crea il progetto Xcode
         run: xcodegen generate
       - name: Scegli il simulatore
         id: sim
         run: |
+          xcodebuild -version
           IFS=$'\t' read -r UDID NOME IOS <<< "$(python3 -I scripts/scegli_simulatore.py iphone)"
           echo "Simulatore: $NOME ($IOS) $UDID"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b > /dev/null
       - name: Compila ed esegui i test
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
         run: |
           set -o pipefail
           mkdir -p build
           xcodebuild test -project Schieraxi.xcodeproj -scheme Schieraxi \
-            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -destination "platform=iOS Simulator,id=$UDID" \
             -resultBundlePath build/test.xcresult \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
             2>&1 | tee build/test.log | tail -n 60

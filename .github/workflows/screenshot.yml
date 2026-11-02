@@ -1,0 +1,218 @@
+name: Screenshot
+
+# Fotografa l'app e i widget nel simulatore di un Mac di GitHub (un solo job, un solo Mac):
+# - l'app parte in modalità demo (-DEMO: dati finti, nessuna rete) e si fotografa su iPhone e iPad (chiaro e scuro, testo normale e grande);
+# - l'anteprima dei widget (target AnteprimaWidget, dati finti, non entra nell'IPA) si fotografa in tutte le misure.
+# Il Mac parte SOLO: a mano (Actions o `gh workflow run screenshot.yml --ref <ramo>`), oppure su una pull request che tocca ios/ e
+# ha l'etichetta «screenshot» o cambia schermate (ios/Sources/Presentation, Support, App) o widget.
+# Le foto stanno negli artifact «screenshot-app» e «screenshot-widget» (14 giorni). Non crea release. Non blocca l'unione.
+on:
+  workflow_dispatch:
+    inputs:
+      scatti:
+        description: "veloce = solo le schermate principali (pochi minuti); completo = tutte le varianti (quasi un'ora)"
+        type: choice
+        options: [veloce, completo, collaudo]
+        default: veloce
+      iphone:
+        description: "quale iPhone: predefinito (Pro), piccolo (SE o il più stretto), grande (Pro Max)"
+        type: choice
+        options: [predefinito, piccolo, grande]
+        default: predefinito
+      dispositivi:
+        description: "quali giri: tutti, solo iphone, solo ipad (per dividere il collaudo su più Mac in parallelo)"
+        type: choice
+        options: [tutti, iphone, ipad]
+        default: tutti
+      schermate:
+        description: "solo queste schermate (nomi separati da spazi, es. «lega-importa-csv scambi-una-rosa»), in tutte le varianti; vuoto = secondo «scatti»"
+        type: string
+        default: ""
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+    paths: ["ios/**", ".github/workflows/screenshot.yml"]
+
+# Una sola esecuzione per PR (o ramo e scelte, se a mano): un nuovo push annulla quella in corso.
+concurrency:
+  group: screenshot-${{ github.event.pull_request.number || github.ref }}-${{ inputs.scatti }}-${{ inputs.iphone }}-${{ inputs.dispositivi }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+
+jobs:
+  # Gira su Linux (gratis e in pochi secondi): decide se serve il Mac, così le PR che non toccano le schermate non lo prenotano.
+  quando:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      serve: ${{ steps.decidi.outputs.serve }}
+    steps:
+      - name: Serve il Mac?
+        id: decidi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+          ETICHETTE: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          NUMERO: ${{ github.event.pull_request.number }}
+        run: |
+          serve=false
+          if [ "$EVENTO" = "workflow_dispatch" ]; then
+            serve=true
+          elif [ "$EVENTO" = "pull_request" ]; then
+            case ",$ETICHETTE," in *,screenshot,*) serve=true ;; esac
+            if [ "$serve" = false ]; then
+              if gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$NUMERO/files" --jq '.[].filename' \
+                | grep -Eq '^ios/(Sources/(Presentation|Support|App)/|WidgetSources/|AnteprimaWidget/|scripts/screenshot)|^\.github/workflows/screenshot\.yml$'; then
+                serve=true
+              fi
+            fi
+          fi
+          echo "Serve il Mac: $serve (evento: $EVENTO)"
+          echo "serve=$serve" >> "$GITHUB_OUTPUT"
+
+  screenshot:
+    needs: quando
+    if: needs.quando.outputs.serve == 'true' && github.event.repository.private == false
+    runs-on: macos-26
+    timeout-minutes: 150
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Installa XcodeGen (se manca)
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      - name: Crea il progetto Xcode
+        run: xcodegen generate
+      - name: Compila l'app per il simulatore (senza firma)
+        run: |
+          set -o pipefail
+          xcodebuild -project Schieraxi.xcodeproj -scheme Schieraxi -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
+            2>&1 | tee build-app.log | tail -n 40
+          test -d build/Build/Products/Debug-iphonesimulator/Schieraxi.app
+      - name: Compila l'anteprima dei widget per il simulatore (senza firma)
+        run: |
+          set +e
+          xcodebuild -project Schieraxi.xcodeproj -scheme AnteprimaWidget -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
+            > build-widget.log 2>&1 || { grep -E "error:" build-widget.log | sort -u | head -30; exit 1; }
+          test -d build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app
+      - name: Scatta le fotografie dell'app
+        env:
+          SCATTI: ${{ inputs.scatti || 'veloce' }}
+          IPHONE: ${{ inputs.iphone == 'piccolo' && 'iphone-piccolo' || inputs.iphone == 'grande' && 'iphone-grande' || 'iphone' }}
+          DISPOSITIVI: ${{ inputs.dispositivi || 'tutti' }}
+          SCHERMATE: ${{ inputs.schermate || '' }}
+        run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
+      - name: Scatta le fotografie dei widget
+        if: always() && inputs.dispositivi != 'ipad'
+        run: bash scripts/screenshot_widget.sh build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app screenshot-widget
+      # i percorsi di upload-artifact partono dalla radice del repository, non da working-directory
+      - name: Carica le fotografie dell'app
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: screenshot-app
+          path: ios/screenshot/*.png
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Carica le fotografie dei widget
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: screenshot-widget
+          path: ios/screenshot-widget/*.png
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Rapporti di crash (solo se qualcosa non va)
+        if: failure()
+        run: |
+          mkdir -p crash
+          cp ~/Library/Logs/DiagnosticReports/Schieraxi* crash/ 2>/dev/null || true
+          ls crash
+      - name: Maschera i log (il repository è pubblico)
+        if: failure()
+        run: |
+          for f in build-app.log build-widget.log; do
+            [ -f "$f" ] && { python3 -I scripts/maschera_log.py "$f" "$f.mascherato" && mv "$f.mascherato" "$f" || rm -f "$f"; }
+          done
+          true
+      - name: Carica i log in caso di problemi
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: log-screenshot
+          path: |
+            ios/build-app.log
+            ios/build-widget.log
+            ios/crash/*
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Solo nel collaudo (scatti = collaudo): il controllo automatico di accessibilità di Xcode su ogni schermata della demo.
+  # Non fallisce per i problemi trovati: li elenca nel log (righe AUDIT|...) e nell'artifact «accessibilita».
+  accessibilita:
+    needs: quando
+    if: needs.quando.outputs.serve == 'true' && inputs.scatti == 'collaudo' && inputs.dispositivi != 'ipad' && github.event.repository.private == false
+    runs-on: macos-26
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Installa XcodeGen (se manca)
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      - name: Crea il progetto Xcode
+        run: xcodegen generate
+      - name: Scegli e accendi il simulatore
+        id: sim
+        env:
+          IPHONE: ${{ inputs.iphone == 'piccolo' && 'iphone-piccolo' || inputs.iphone == 'grande' && 'iphone-grande' || 'iphone' }}
+        run: |
+          IFS=$'\t' read -r UDID NOME IOS <<< "$(python3 -I scripts/scegli_simulatore.py "$IPHONE")"
+          echo "Simulatore: $NOME ($IOS)"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b > /dev/null
+      - name: Controllo di accessibilità
+        env:
+          TEST_RUNNER_AUDIT_ACCESSIBILITA: "1"
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          set +e
+          mkdir -p accessibilita
+          xcodebuild test -project Schieraxi.xcodeproj -scheme Schieraxi \
+            -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath build \
+            -only-testing:SchieraxiUITests/AuditAccessibilitaUITests \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            > accessibilita/test.log 2>&1
+          echo "uscita di xcodebuild: $?"
+          grep -E "^AUDIT" accessibilita/test.log | sort -u > accessibilita/problemi.txt
+          echo "Problemi trovati: $(grep -c '^AUDIT|' accessibilita/problemi.txt)"
+          grep -E "^AUDIT-FINE" accessibilita/problemi.txt
+          grep -E "error:|\*\* TEST" accessibilita/test.log | head -20
+          python3 -I scripts/maschera_log.py accessibilita/test.log accessibilita/test-mascherato.log && mv accessibilita/test-mascherato.log accessibilita/test.log || rm -f accessibilita/test.log
+      - name: Carica i risultati
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: accessibilita
+          path: ios/accessibilita/*
+          retention-days: 14
+          if-no-files-found: warn

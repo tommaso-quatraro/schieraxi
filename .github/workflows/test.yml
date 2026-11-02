@@ -1,7 +1,7 @@
 name: Controlli
 
-# Controlli del repository pubblico. Solo server di GitHub (ubuntu-latest): niente runner propri, niente segreti
-# (solo GITHUB_TOKEN), permessi di sola lettura salvo i due job che scrivono (unisci, rilascia), dichiarati nel job.
+# Controlli del repository pubblico. Solo server di GitHub (ubuntu-latest, macos-26 per iOS): niente runner propri, niente segreti
+# (solo GITHUB_TOKEN), permessi di sola lettura salvo i job che scrivono (unisci, rilascia), dichiarati nel job.
 on:
   pull_request:
   push:
@@ -15,34 +15,39 @@ concurrency:
   group: controlli-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"          # la stessa versione del server
           cache: pip
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
-      - name: Installa le dipendenze
-        run: python -m pip install -r requirements.txt -r requirements-dev.txt
-      - name: Test
-        run: python -m pytest -q
+      # prima dei test: pochi secondi, e se trova qualcosa non si aspetta tutta la suite
       - name: Controllo dei residui (nomi, indirizzi, segreti)
         run: python3 -I -s script/controlli/anti_residui.py --albero
+      - name: Installa le dipendenze
+        run: python -m pip install -q -r requirements.txt -r requirements-dev.txt
+      # pytest-xdist: un processo per CPU (4 sui runner dei repository pubblici). I test usano solo cartelle temporanee (conftest.py).
+      - name: Test in parallelo
+        run: python -m pytest -q -n auto --durations=10
 
-  # Gli script del server (cartella script/server, se c'è) si controllano qui: sintassi e fine riga
+  # Gli script del server (cartella script/server) si controllano qui: sintassi e fine riga
   script-server:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
       - name: Script del server (sintassi e fine riga)
@@ -52,18 +57,20 @@ jobs:
           if grep -lU $'\r' script/server/*.sh; then echo "Fine riga di Windows negli script del server"; exit 1; fi
 
   # Ogni modifica al codice dell'app dice cosa cambia: un file fanta/novita.d/<nome>.json (il numero lo dà il bot all'unione)
-  # Gli script di controllo si prendono da main, mai dal ramo della PR.
+  # Gli script di controllo si prendono da main, mai dal ramo della PR. Le PR di Dependabot non lo richiedono (e non si uniscono da sole).
   versione:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Script di controllo presi da main
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ github.base_ref }}
           path: _ci-main
@@ -74,14 +81,58 @@ jobs:
           BASE: ${{ github.base_ref }}
         run: python3 -I -s _ci-main/script/ci/controlla_versione.py "origin/$BASE"
 
-  # Unione automatica (squash, ramo cancellato) solo per le PR del proprietario, non in bozza, con i controlli verdi.
-  # Mai per Dependabot e mai per le PR da fork (il token di una PR da fork non scrive).
+  # La modifica tocca l'app iOS? Gira su Linux in pochi secondi: il Mac si prenota solo se serve.
+  cambi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read       # elenco dei file della PR
+    outputs:
+      ios: ${{ steps.decidi.outputs.ios }}
+    steps:
+      - name: Tocca ios/?
+        id: decidi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          PRIMA: ${{ github.event.before }}
+          DOPO: ${{ github.sha }}
+        run: |
+          # se l'API non risponde il job fallisce (bash -e) e «unisci» non parte: mai un'unione senza sapere se servivano i test iOS
+          if [ "$EVENTO" = pull_request ]; then
+            file=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+          elif [ -z "$PRIMA" ] || [ "$PRIMA" = 0000000000000000000000000000000000000000 ]; then
+            file="ios/"
+          else
+            file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$PRIMA...$DOPO" --jq '.files[].filename')
+          fi
+          if printf '%s\n' "$file" | grep -qE '^(ios/|\.github/workflows/ios\.yml$)'; then ios=true; else ios=false; fi
+          echo "Tocca ios/: $ios"
+          echo "ios=$ios" >> "$GITHUB_OUTPUT"
+
+  # Test dell'app iOS nel simulatore (macos-26), solo se la modifica tocca ios/. Sta qui (e non come workflow a parte)
+  # perché «unisci» deve aspettarlo: prima una PR su ios/ si univa appena finivano i test Python.
+  ios:
+    needs: cambi
+    if: needs.cambi.outputs.ios == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ios.yml
+
+  # Unione automatica (squash, ramo cancellato) solo per le PR del proprietario, non in bozza, con i controlli verdi
+  # (iOS: verde, oppure saltato perché la PR non tocca ios/). Mai per Dependabot e mai per le PR da fork.
   unisci:
-    needs: [test, script-server, versione]
+    needs: [test, script-server, versione, cambi, ios]
     if: >-
+      !cancelled() &&
       github.event_name == 'pull_request' && !github.event.pull_request.draft &&
       github.event.pull_request.user.login == github.repository_owner &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.test.result == 'success' && needs.script-server.result == 'success' &&
+      needs.versione.result == 'success' && needs.cambi.result == 'success' &&
+      (needs.ios.result == 'success' || (needs.ios.result == 'skipped' && needs.cambi.outputs.ios == 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -96,8 +147,9 @@ jobs:
         run: gh pr merge "$PR" --squash --delete-branch --match-head-commit "$TESTA" --repo "$GITHUB_REPOSITORY"
 
   # Dopo l'unione, uno alla volta: il numero di versione (commit del bot su main), la release vX.Y con --latest=false
-  # (la «Latest» resta alla build iOS), e il lancio della build dell'IPA se la PR ha toccato ios/.
-  # Il commit del bot col GITHUB_TOKEN non fa partire i workflow «on: push»: per questo ipa.yml si lancia a mano qui.
+  # (la «Latest» resta alla build iOS), e il lancio della build dell'IPA se ios/ è cambiata dall'ultima IPA riuscita.
+  # L'unione e il commit del bot col GITHUB_TOKEN non fanno partire i workflow «on: push»: per questo ipa.yml si lancia qui
+  # (workflow_dispatch è l'eccezione: col GITHUB_TOKEN parte).
   rilascia:
     needs: [unisci]
     if: github.event_name == 'pull_request' && needs.unisci.result == 'success'
@@ -108,12 +160,13 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write          # commit del bot su main e release
-      actions: write           # lancia ipa.yml (solo se la PR ha toccato ios/)
+      actions: write           # lancia ipa.yml (solo se ios/ è cambiata)
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: false      # repository pubblico: git fetch non ha bisogno del token; le scritture passano da gh
       - name: Numero di versione alle novità in attesa (commit del bot su main, creato e FIRMATO da GitHub via API)
         # Niente git push: il server installa solo commit firmati (script/server/verifica-firme.sh). Il commit fatto in locale
         # da assegna_versione.py lo ricrea GitHub (createCommitOnBranch, firmato con la sua chiave) solo se main e' ancora quello.
@@ -152,14 +205,17 @@ jobs:
             gh release create "v$VER" --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" --title "Versione $VER" \
               --notes-file note.md --latest=false
           done
-      - name: Build dell'IPA se la PR ha toccato ios/
+      - name: Build dell'IPA se ios/ è cambiata dall'ultima IPA riuscita
+        # Si confronta con l'ultima IPA riuscita e non con i file di questa PR: se un «rilascia» in attesa viene scavalcato
+        # da quello di una PR successiva (la concorrenza ne tiene in attesa uno solo), la modifica a ios/ non si perde.
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
         run: |
-          if gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename' | grep -q '^ios/'; then
+          ultima=$(gh run list --workflow ipa.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha // ""' --repo "$GITHUB_REPOSITORY")
+          if [ -z "$ultima" ] || ! git cat-file -e "$ultima^{commit}" 2>/dev/null \
+             || ! git diff --quiet "$ultima" HEAD -- ios/ .github/workflows/ipa.yml; then
             gh workflow run ipa.yml --ref main --repo "$GITHUB_REPOSITORY"
-            echo "Build IPA lanciata"
+            echo "Build IPA lanciata (ultima IPA riuscita: ${ultima:-nessuna})"
           else
-            echo "La PR non tocca ios/: niente IPA"
+            echo "ios/ non è cambiata dall'ultima IPA ($ultima): niente IPA"
           fi

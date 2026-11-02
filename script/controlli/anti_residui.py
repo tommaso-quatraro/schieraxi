@@ -64,7 +64,10 @@ ECCEZIONI_INFRASTRUTTURA = {
 }
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.([A-Za-z]{2,})")
 ESTENSIONI_FINTE = {"png", "jpg", "jpeg", "webp", "svg", "gif", "json", "js", "py", "swift", "kt", "html", "css", "txt", "ico"}
-EMAIL_AMMESSA = re.compile(r"noreply\.github\.com$", re.I)     # l'unico indirizzo ammesso nei commit
+# indirizzi pubblici di servizio, ammessi ovunque: il committer dei commit fatti da GitHub (unioni, modifiche dal web),
+# il contatto di GitHub citato nei documenti e la firma «Co-Authored-By» dei commit scritti con Claude Code
+INDIRIZZI_DI_SERVIZIO = {"noreply@github.com", "support@github.com", "noreply@anthropic.com"}
+EMAIL_AMMESSA = re.compile(r"noreply\.github\.com$|^(?:" + "|".join(re.escape(x) for x in sorted(INDIRIZZI_DI_SERVIZIO)) + r")$", re.I)     # indirizzi ammessi come autore o committer
 
 ESTENSIONI_BINARIE = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".jar", ".zip", ".gz", ".ttf", ".woff", ".woff2",
                       ".sqlite", ".db", ".pdf", ".icns", ".ipa", ".apk", ".keystore"}
@@ -116,7 +119,7 @@ def scansiona_riga(rel: str, riga: str, parole: list[tuple[str, re.Pattern]]) ->
             trovati.append("indirizzo *.ts.net vero")
     for m in EMAIL.finditer(riga):
         indirizzo = m.group(0).lower()
-        if m.group(1).lower() in ESTENSIONI_FINTE or "noreply.github.com" in indirizzo:
+        if m.group(1).lower() in ESTENSIONI_FINTE or "noreply.github.com" in indirizzo or indirizzo in INDIRIZZI_DI_SERVIZIO:
             continue
         if re.search(r"\.(invalid|example|test)$|@example\.(com|org|net)$|tuodominio\.it$|@x\.it$|@schieraxi\.it$", indirizzo):
             continue                    # indirizzi di prova (RFC 2606), segnaposto e il contatto pubblico del progetto

@@ -21,6 +21,8 @@ env:
   # ultima build pubblicata col repository precedente: la prima di questo repository è BASE_BUILD + 1.
   # L'esportazione la sovrascrive con --base-build (letta al momento da gh release list); qui il valore del 1/11/2026.
   BASE_BUILD: "235"
+  HOMEBREW_NO_AUTO_UPDATE: "1"          # brew install senza aggiornare tutto l'indice
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
 jobs:
   ipa:
     if: github.event.repository.private == false
@@ -32,13 +34,13 @@ jobs:
       run:
         working-directory: ios
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
       - name: Numero della build (non scende mai)
         run: echo "BUILD_N=$((GITHUB_RUN_NUMBER + BASE_BUILD))" >> "$GITHUB_ENV"
-      - name: Installa XcodeGen
-        run: brew install xcodegen
+      - name: Installa XcodeGen (se manca)
+        run: command -v xcodegen > /dev/null || brew install xcodegen
       - name: Crea il progetto Xcode
         run: xcodegen generate
       - name: Compila (senza firma)
@@ -47,7 +49,7 @@ jobs:
           xcodebuild -project Schieraxi.xcodeproj -scheme Schieraxi -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' -archivePath build/Schieraxi.xcarchive \
             archive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            MARKETING_VERSION="1.0.${{ env.BUILD_N }}" CURRENT_PROJECT_VERSION="${{ env.BUILD_N }}" \
+            MARKETING_VERSION="1.0.$BUILD_N" CURRENT_PROJECT_VERSION="$BUILD_N" \
             2>&1 | tee build.log | tail -n 40
       - name: Crea l'IPA e controlla che non contenga indirizzi personali
         run: |
@@ -70,13 +72,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 -I -s scripts/genera_sorgente.py "$GITHUB_REPOSITORY" "${{ env.BUILD_N }}" Schieraxi.ipa ios
-          gh release create "build-${{ env.BUILD_N }}" Schieraxi.ipa sorgente.json --title "Build ${{ env.BUILD_N }}" \
+          python3 -I -s scripts/genera_sorgente.py "$GITHUB_REPOSITORY" "$BUILD_N" Schieraxi.ipa ios
+          gh release create "build-$BUILD_N" Schieraxi.ipa sorgente.json --title "Build $BUILD_N" \
             --notes "IPA non firmato, da installare con SideStore. Aggiornamenti automatici: aggiungi in SideStore il sorgente https://github.com/$GITHUB_REPOSITORY/releases/latest/download/sorgente.json" \
             --repo "$GITHUB_REPOSITORY" --latest
       - name: Log in caso di errore (senza righe sensibili)
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: log-compilazione
           path: ios/build.log
