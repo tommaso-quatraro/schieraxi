@@ -55,3 +55,31 @@ def test_data_dei_dati_su_due_righe_sui_telefoni():
     assert 'pezzo("sotto-dati", dati)' in APP and 'pezzo("sotto-sep", " · ")' in APP
     blocco = re.search(r"@media \(max-width: 480px\) \{(.*?)\n\}", CSS, re.S)
     assert blocco and ".sottotitolo > span { display: block;" in blocco.group(1) and ".sotto-sep { display: none; }" in blocco.group(1)
+
+
+def test_giornata_chiusa_niente_moduli_ne_stili():
+    assert '${chiusa ? "" : `<div class="etichetta-riga">${t("formazione.modulo")}</div>' in APP
+
+
+def test_righe_partita_come_sul_campo_e_note_a_capo():
+    assert "const partitaBreve = x =>" in APP and '${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}' in APP
+    assert "${sigla(x.squadra)} – ${sigla(x.avversario)}" not in APP
+    assert '${m.testo.length > 28 ? " lunga" : ""}' in APP
+    assert ".voce > span { min-width: 0; }" in CSS and ".etichetta.lunga { flex: 1 1 100%; white-space: normal;" in CSS
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_a_partita_finita_il_voto_preso_al_posto_di_gioca():
+    inizio = APP.index("// A partita iniziata «gioca N%» non serve più")
+    funz = APP[inizio:APP.index("function pedina(")]
+    base = ("const PARTITA_INIZIATA=['in_corso','attesa_voti','fatto','senza_voto'];"
+            "const STATO_PARTITA={fatto:['tit.st_fatto',''],senza_voto:['tit.st_senza_voto','arancio'],attesa_voti:['tit.st_attesa_voti','neutra'],in_corso:['tit.st_in_corso','']};"
+            "const T={'formazione.fv_preso':'fantavoto {fv}','tit.st_attesa_voti':'Voto in arrivo','tit.st_senza_voto':'Senza voto','tit.st_in_corso':'In corso','tit.st_fatto':'Ha giocato'};"
+            r"const t=(k,v={})=>T[k].replace(/\{(\w+)\}/g,(m,x)=>v[x]); const num=x=>String(x).replace('.',',');")
+    prova = ("console.log(JSON.stringify([esitoPartita({stato_partita:'fatto',fv_preso:9.5}), esitoPartita({stato_partita:'attesa_voti'}),"
+             "esitoPartita({stato_partita:'in_corso'}), esitoPartita({stato_partita:'da_giocare'}), esitoPartita({})]))")
+    r = subprocess.run([NODE, "-e", base + funz + prova], capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout) == [{"fv": 9.5, "testo": "fantavoto 9,5"}, {"fv": None, "testo": "Voto in arrivo"},
+                                    {"fv": None, "testo": "In corso"}, None, None]
+    assert TESTI.count('"formazione.fv_preso"') == 2

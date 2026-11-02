@@ -104,6 +104,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Scelta della giornata: `GET /api/scelta` dà anche `salvata` (data e ora) e `tipo`; web e iPhone mostrano in Formazione lo stato della scelta confrontando gli 11 mostrati con quelli salvati. Formazione non valida in `POST /api/formazione/valuta`: `400` con `codice: "formazione_non_valida"` (`consigli.FormazioneNonValida`); i client non cancellano la scelta da soli.
 - Formazione chiusa (dal 2/11/2026): dopo la scadenza della lega `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` rispondono 409 con `codice: "formazione_chiusa"`, per tutti (`server._formazione_chiusa`, regola `fasi.iniziata`). La copia automatica (`copia_scadenza.py`) scrive prima della scadenza e non passa dalle rotte.
 - Titolari incerti con una riserva quasi sicura: lista `incerti` in ogni modulo di `/api/formazione` (`consigli.incerti`, soglie 50% e 80%).
+- A giornata iniziata ogni scheda ha anche `fv_preso` (fantavoto preso, `fasi.schede_a_giornata_iniziata`): il web mostra quello al posto di «gioca N%» (`esitoPartita` in `app.js`).
 - ETag e If-Match su scelta, osservati, rose, regole e avvisi. Con un If-Match vecchio: 412. Senza If-Match si scrive come sempre.
 - Partite rinviate: `PUT /api/regole/rinvio` (eccezione per una giornata, stesso ETag delle regole), campo `rinvio` in
   `/api/oggi` e nelle schede dei giocatori; contratto in `docs/API.md`, «Partite rinviate».

@@ -355,8 +355,11 @@ const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.
 const MOTIVI_CON_PERCENTUALE = ["motivo.gol_atteso", "motivo.porta_inviolata"];
 const senzaPercentuale = m => !(m.frase && MOTIVI_CON_PERCENTUALE.includes(m.frase.chiave)) && !/\d\s*%/.test(m.testo);
 function etichetteGiocatore(x) {
-  const altre = motiviUtili(x).filter(senzaPercentuale).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
-  return pillTitolarita(x) + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
+  const altre = motiviUtili(x).filter(senzaPercentuale).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
+  // «Fuori» (infortunato) a partita finita: anche com'è andata («Voto in arrivo», «Senza voto»), che la pillola sola non dice
+  const esito = x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
+    ? `<span class="etichetta ${STATO_PARTITA[x.stato_partita][1]}">${t(STATO_PARTITA[x.stato_partita][0])}</span>` : "";
+  return pillTitolarita(x) + esito + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
 }
 
 // Distintivo della squadra: solo la sigla nei colori sociali (niente stemmi: sono marchi dei club).
@@ -374,21 +377,29 @@ function distintivo(s) {
 // Per i lettori di schermo: «gioca all'85 per cento, in casa contro il Napoli» (in italiano con l'articolo giusto).
 const ARTICOLI_CLUB = { atalanta: "l'", inter: "l'", udinese: "l'", empoli: "l'", juventus: "la ", fiorentina: "la ", lazio: "la ", roma: "la ",
   sampdoria: "la ", cremonese: "la ", salernitana: "la ", spezia: "lo " };
-function vocePedina(x) {
+function vocePedina(x, esito = null) {             // esito: esitoPartita(x), a partita iniziata
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const avv = (LINGUA === "it" ? (ARTICOLI_CLUB[x.avversario] ?? "il ") : "") + nomeClub(x.avversario);
-  return [x.nome, t("formazione.voce_fv", { fv: num(x.fv_atteso) }), t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }),
+  return [x.nome, t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito ? esito.testo : t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }),
     x.avversario ? t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv }) : ""].filter(Boolean).join(", ");
 }
 const SOGLIA_GIOCA = 0.7;                       // sotto: «⚠ gioca 45%» in una pillola arancio
+// A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
+// del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
+function esitoPartita(x) {
+  if (!PARTITA_INIZIATA.includes(x.stato_partita || "")) return null;
+  if (x.stato_partita === "fatto" && Number.isFinite(x.fv_preso)) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
+  return { fv: null, testo: t(STATO_PARTITA[x.stato_partita][0]) };
+}
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
   const cognome = x.nome.length > 11 ? x.nome.replace(/\s+\S+\.$/, "") : x.nome;
-  return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}" aria-label="${esc(vocePedina(x))}">
+  return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}" aria-label="${esc(vocePedina(x, esitoPartita(x)))}">
     <span class="avatar-pedina">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
     <span class="nome">${esc(cognome)}</span>
-    <span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>
+    ${esitoPartita(x) ? `<span class="gioca esito">${esc(esitoPartita(x).testo)}</span>`
+      : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
     ${x.avversario ? `<span class="avv">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
   </button>`;
 }
@@ -417,16 +428,22 @@ function collegaLegenda() {
   info.addEventListener("click", () => { leg.hidden = false; info.hidden = true; info.setAttribute("aria-expanded", "true"); ok.focus(); });
 }
 
+// La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
+const partitaBreve = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span> · ${quando(x.data_partita)}`;
+
 function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false) {
   const p = x.p_voto ?? 0;
   const livello = p >= 0.7 ? "" : p >= 0.4 ? "media" : "bassa";
+  const esito = esitoPartita(x);
   return `<li class="${conConfronto ? "con-confronto" : ""}"><button class="voce" data-giocatore="${x.id}">
     ${avatarIndice(x)}
     <span><span class="nome">${posizione ? `<span class="debole">${posizione}. </span>` : ""}${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
-      <span class="dettaglio" style="display:block"><span class="diff d${x.difficolta}"><i></i></span> ${sigla(x.squadra)} – ${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")} · ${quando(x.data_partita)}</span>
+      <span class="dettaglio" style="display:block"><span class="diff d${x.difficolta}"><i></i></span> ${partitaBreve(x)}</span>
       <span class="etichette">${etichetteGiocatore(x)}</span></span>
-    <span class="valore"><b${attrPerche(x)}>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p) })}</span>
-      <span class="barra-p ${livello}"><i style="width:${Math.round(p * 100)}%"></i></span></span>
+    ${esito ? `<span class="valore esito">${esito.fv != null ? `<b>${num(esito.fv)}</b><span class="debole piccolo">${t("mercato.fantavoto")}</span>`
+        : `<b class="debole" aria-hidden="true">–</b>`}</span>`
+      : `<span class="valore"><b${attrPerche(x)}>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p) })}</span>
+      <span class="barra-p ${livello}"><i style="width:${Math.round(p * 100)}%"></i></span></span>`}
   </button>${conConfronto ? (sostituisci
     ? `<button class="confronta-mini" data-sostituisci="${x.id}" aria-label="${t("formazione.sostituisci_aria", { nome: esc(x.nome) })}" title="${t("formazione.sostituisci_con")}">✎</button>`
     : `<button class="confronta-mini" data-confronta="${x.id}" aria-label="${t("formazione.confronta_aria", { nome: esc(x.nome) })}" title="${t("formazione.confronta_con")}">⇄</button>`) : ""}</li>`;
@@ -1117,13 +1134,13 @@ function mostraFormazione(f, squadra, opz = {}) {
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
         ${manuale && r.differenza !== null ? `<div class="debole" style="margin-top:6px">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
-        <div class="etichetta-riga">${t("formazione.modulo")}</div>
+        ${chiusa ? "" : `<div class="etichetta-riga">${t("formazione.modulo")}</div>
         <div class="chips scorri" data-striscia>${chip}</div>
         <div class="etichetta-riga">${t("formazione.stile")}</div>
         <div class="chips scorri" data-striscia>${chipStile}</div>
         <div class="debole nota-riga" id="descrizione-stile">${manuale ? t("formazione.modificata_mano")
           : `<b>${esc(nomeStile(l))}</b>: ${esc(descrizioneStile(l))}${m.modulo !== l.modulo ? " " + t("formazione.modulo_fissato", { modulo: esc(l.modulo) }) : " " + t("formazione.propone", { modulo: esc(l.modulo) })}${stellaNonMassimo(l)}`}
-          ${t("formazione.stella_consigliata")}</div>
+          ${t("formazione.stella_consigliata")}</div>`}
         <div class="pulsanti">
           ${st || chiusa ? "" : manuale ? `${squadra ? "" : `<button class="bottone" id="salva-scelta">${t("formazione.salva_come_mia")}</button>`}<button class="bottone secondario" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`
                     : `<button class="bottone" id="modifica">${t("formazione.modifica_mano")}</button>`}
@@ -1520,7 +1537,7 @@ const cartaPerche = x => { const b = bloccoPerche(x); return b ? `<div class="ca
 // `incerto` (facoltativo, già pronto per l'HTML): perché è titolare anche se gioca poco (campo `incerti` del modulo).
 function apriPerche(x, incerto = "") {
   apriFoglio(`<div class="intestazione-scheda">${avatarIndice(x, true)}
-      <div><h2>${esc(x.nome)}</h2><div class="debole">${sigla(x.squadra)} – ${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")} · ${quando(x.data_partita)}</div></div></div>
+      <div><h2>${esc(x.nome)}</h2><div class="debole">${partitaBreve(x)}</div></div></div>
     <div class="carta"><div class="riga"><div><div class="debole">${t("mercato.fantavoto_atteso")}</div><div class="grande">${num(x.fv_atteso)}</div></div>
       <div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(x.p_voto)}</div></div></div>
       ${incerto ? `<p class="nota-incerto" id="perche-incerto">${incerto}</p>` : ""}

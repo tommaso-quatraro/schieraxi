@@ -329,6 +329,10 @@ details[open] > summary { margin-bottom: 8px; }
 .etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
 .etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
 .etichetta.neutra { background: color-mix(in srgb, var(--testo) 8%, transparent); color: var(--testo-2); border-color: transparent; }
+/* note lunghe (per esempio l'infortunio): a capo dentro la scheda, mai oltre il bordo né sotto il pulsante ⇄ */
+.etichetta.lunga { flex: 1 1 100%; white-space: normal; text-overflow: clip; border-radius: 12px; line-height: 1.35; }
+.voce > span { min-width: 0; }           /* la colonna del nome si restringe: senza, un testo lungo allargava la griglia oltre la scheda */
+.pedina .gioca.esito { font-weight: 700; }
 .barra-p { height: 4px; background: color-mix(in srgb, var(--testo) 12%, transparent); border-radius: 2px; overflow: hidden; margin-top: 5px; width: 60px; margin-left: auto; }
 .barra-p > i { display: block; height: 100%; background: var(--verde); border-radius: 2px; animation: riempi .8s var(--uscita) both .2s; }
 .barra-p.media > i { background: var(--arancio); } .barra-p.bassa > i { background: var(--rosso); }
