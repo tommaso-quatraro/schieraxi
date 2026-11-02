@@ -56,9 +56,23 @@ def test_dubbi_e_infortuni_con_alternativa(mondo):
     assert [x["id"] for x in d] == ["dubbio:6", "dubbio:5"]                 # prima chi è fuori
     assert d[0]["priorita"] == 1 and d[1]["priorita"] == 2
     assert d[0]["alternativa"]["id"] == 14                                  # il 13 è squalificato: non si propone
-    assert "Meglio g14" in d[1]["testo"] and "55%" in d[1]["testo"]
+    # un sostituto per volta: il 14 va già al posto dell'infortunato, per il 5 resta il 12
+    assert d[1]["alternativa"]["id"] == 12 and "Meglio Riserva" in d[1]["testo"] and "55%" in d[1]["testo"]
     assert d[1]["destinazione"] == {"scheda": "formazione", "sezione": None, "link": "schieraxi://giocatore/5", "giocatore": 5}
     assert all(x["azione"] and x["testo"] for x in v)
+
+
+def test_mai_lo_stesso_sostituto_per_due(mondo, monkeypatch):
+    """Due titolari in dubbio nello stesso ruolo e una sola riserva: il sostituto va a chi rischia di più, l'altro resta senza."""
+    schede = {i: _x(i, f"g{i}") for i in range(1, 15)}
+    schede[5] = _x(5, "Rossi", dubbio=True, p_voto=0.6)
+    schede[7] = _x(7, "Verdi", dubbio=True, p_voto=0.4)
+    for i in (12, 13):
+        schede[i] = _x(i, f"g{i}", ruolo="D")
+    schede[14] = _x(14, "Unica", atteso=7.0)
+    monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+    d = {x["id"]: x for x in vai(mondo) if x["tipo"] == "dubbio"}
+    assert d["dubbio:7"]["alternativa"]["id"] == 14 and "alternativa" not in d["dubbio:5"]
 
 
 def test_nome_con_il_punto_non_raddoppia_il_punto(mondo, monkeypatch):
@@ -342,7 +356,7 @@ def test_ogni_voce_ha_la_frase_per_tradurla(mondo):
         assert frasi.da_json(x["frase"]) == x["testo"], x["id"]
         assert frasi.da_json(x["azione_frase"]) == x["azione"], x["id"]
     dubbio = next(x for x in voci if x["id"] == "dubbio:5")
-    assert dubbio["frase"] == {"chiave": "dafare.dubbio_incerto_alt", "param": {"nome": "Rossi", "p": 55, "alt": "g14"}}
+    assert dubbio["frase"] == {"chiave": "dafare.dubbio_incerto_alt", "param": {"nome": "Rossi", "p": 55, "alt": "Riserva"}}      # il 14 va all'infortunato
     formazione = next(x for x in voci if x["tipo"] == "formazione")
     assert formazione["frase"]["param"]["tempo"] == {"chiave": "tempo.ore", "param": {"n": 2}}
 

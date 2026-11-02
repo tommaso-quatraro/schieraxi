@@ -2892,7 +2892,7 @@ const VOCI_LEGA = [
   { id: "importa", ambito: "squadra", nome: t("lega.voce_importa"), sub: t("lega.voce_importa_sub") },
   { id: "scambi", ambito: "altro", nome: t("lega.voce_scambi"), sub: t("lega.voce_scambi_sub"), vai: () => vai("scambi") },
   { id: "diario", ambito: "altro", f: "diario", nome: t("lega.voce_diario"), sub: t("lega.voce_diario_sub") },
-  { id: "regole", ambito: "altro", nome: t("lega.voce_regole"), sub: t("lega.voce_regole_sub") },
+  { id: "regole", ambito: "altro", nome: t("lega.voce_regole"), sub: t("lega.voce_regole_sub"), vai: () => vistaRegole() },
   { id: "movimenti", ambito: "altro", f: "movimenti", nome: t("lega.voce_movimenti"), sub: t("lega.voce_movimenti_sub") },
   { id: "crediti", ambito: "altro", f: "crediti", nome: t("lega.voce_crediti"), sub: t("lega.voce_crediti_sub") },
   { id: "stagione", ambito: "altro", nome: t("lega.voce_stagione"), sub: t("lega.voce_stagione_sub") },
@@ -2958,8 +2958,6 @@ async function vistaLega(ambito = "altro") {
     movimenti: () => `<div id="storico-movimenti"><div class="carta caricamento">${t("lega.carico_movimenti")}</div></div>`,
     diario: () => `<div class="carta"><div class="debole piccolo">${t("lega.per_ogni_giornata")}</div>
       <div class="pulsanti"><button class="bottone" id="apri-diario" type="button">${t("lega.apri_diario")}</button></div></div>`,
-    regole: () => `<div class="carta"><div class="debole piccolo">${t("lega.punteggi_bonus_malus")}</div>
-      <div class="pulsanti"><button class="bottone" id="apri-regole" type="button">${t("lega.apri_regole")}</button></div></div>`,
     crediti: () => squadre.length ? `<div class="carta"><h3 style="margin-top:0">${t("lega.crediti_residui_ogni")}</h3>
       ${squadre.map((x, i) => `<div class="riga riga-crediti"><label for="cred-${i}">${esc(x.nome)}</label>
         <input class="campo-testo cred-squadra" id="cred-${i}" data-nome="${esc(x.nome)}" type="number" min="0" max="99999" inputmode="numeric" value="${x.crediti_residui ?? ""}" placeholder="—" style="width:96px;text-align:right"></div>`).join("")}
@@ -3015,7 +3013,6 @@ async function vistaLega(ambito = "altro") {
       } catch (e) { const dove = $("#storico-movimenti"); if (dove) dove.innerHTML = `<div class="carta"><div class="debole">${esc(e.message)}</div></div>`; }
     },
     diario: () => $("#apri-diario").addEventListener("click", () => apriDiario()),
-    regole: () => $("#apri-regole").addEventListener("click", () => { stato.legaTorna = "regole"; vistaRegole(); }),
     crediti: () => {
       const b = $("#salva-crediti");
       if (!b) return;
@@ -3037,6 +3034,8 @@ async function vistaLega(ambito = "altro") {
   const voci = VOCI_LEGA.filter(v => v.ambito === ambito && (!v.f || funz(v.f)))
     .map(v => v.id === "squadre" && !funz("squadre_altrui") ? { ...v, nome: t("lega.voce_miasquadra"), sub: t("lega.voce_miasquadra_sub") } : v);
   const apribili = voci.filter(v => !v.vai);                      // le voci con `vai` portano altrove: non si aprono come pannello
+  const diretta = voci.find(v => v.vai && v.id === daUrl);        // «apri le regole» da Da fare o da un collegamento: subito lì
+  if (diretta) { diretta.vai(); return; }
   stato.legaVoce = stato.legaVoce || {};
   const cfg = {
     voci, corpi, collega, aria: t(ambito === "squadra" ? "lega.aria_squadra" : "lega.aria_altro"), indietro: NOME_AMBITO[ambito],
@@ -3709,7 +3708,7 @@ function collegaAccessi() {
 
 // Un codice che si vede una volta sola: va copiato prima di andare avanti.
 function htmlCodiceUnaVolta(codice) {
-  return `<div class="attenzione"><b>${t("codice.salva")}</b> ${t("codice.spiega")}</div>
+  return `<p>${t("codice.a_cosa_serve")}</p><div class="attenzione"><b>${t("codice.salva")}</b> ${t("codice.spiega")}</div>
     <div class="codice-una-volta" id="codice-una-volta">${esc(codice)}</div>
     <div class="pulsanti"><button class="bottone secondario" type="button" id="copia-codice">${t("codice.copia")}</button></div>`;
 }

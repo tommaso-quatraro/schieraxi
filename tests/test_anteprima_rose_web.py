@@ -93,3 +93,14 @@ def test_niente_dati_dell_utente_senza_esc():
     # i nomi letti dal file arrivano dall'utente: in HTML solo con esc()
     for campo in ("${g.testo}", "${s.nome}<", "${c.nome}", "${g.avviso}", "${g.nome}"):
         assert campo not in ANTEPRIMA, campo
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_il_conto_dei_dubbi_scende_quando_li_sistemi():
+    r = {"squadre": SQUADRE, "sicuri": 1, "da_controllare": 4, "non_trovati": 1}
+    prima = _node(f"arRiassuntoScelte({json.dumps(r)}, new Map())")
+    assert "4 da controllare" in prima and "1 non trovato" in prima
+    # Martinez scelto (due righe nella stessa rosa), Pinco tolto, Verdi ancora da cercare
+    scelte = 'new Map([["Rossi\\u0000Martinez", "11"], ["Rossi\\u0000Pinco", "togli"], ["Verdi\\u0000Martinez", "cerca"]])'
+    dopo = _node(f"arRiassuntoScelte({json.dumps(r)}, {scelte})")
+    assert "3 giocatori riconosciuti" in dopo and "2 da controllare" in dopo and "non trovat" not in dopo

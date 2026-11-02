@@ -50,6 +50,7 @@ Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si pu�
    - nomi scritti per intero («Lautaro Martinez», «Martinez Lautaro») o con l'iniziale («Pulisic C.») vengono proposti tra quelli da controllare.
      Nella ricerca dei giocatori puoi scrivere anche il nome proprio («Lautaro»).
    - **riconosciuti**: raccolti in una riga che puoi aprire.
+   Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Su un computer le squadre stanno affiancate.
    In alto scegli **Qual è la tua squadra?** (se aggiungi solo le rose degli altri, c'è anche la tua, già scelta). Sotto, **Cosa cambia rispetto a ora** elenca squadre aggiunte o tolte, scambi, svincolati presi, tagli e crediti.
    Un giocatore scritto due volte nella stessa rosa resta una volta sola, e te lo dice. Poi **Conferma e salva** (oppure **Annulla**: non si salva niente).
 3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Altro > Regole**, sezione **Tempi della lega**.
@@ -77,7 +78,7 @@ Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazio
 
 - il nome **SchieraXI** con il motto «Schierali. Schiera gli XI.»;
 - il **conto alla rovescia** alla scadenza della formazione;
-- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata (te lo chiede solo per l'ultima giornata finita). Se la lista è vuota: «Nessuna azione utile oggi»;
+- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata (te lo chiede solo per l'ultima giornata finita). Per un titolare in dubbio ti propone il miglior sostituto in panchina, uno diverso per ciascuno (se due sono in dubbio nello stesso ruolo, il primo sostituto va a chi rischia di più). Se la lista è vuota: «Nessuna azione utile oggi»;
 - quanto sono fresche le **probabili formazioni**; se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare;
 - la **formazione consigliata** con punti attesi e fascia (se ne hai salvata una tua, vedi la tua);
 - **Da controllare** (giocatori in dubbio, con «gioca N%»: quante probabilità hanno di giocare), **I tuoi migliori** (fantavoto atteso e «gioca N%»), **Indisponibili** e **Diffidati**;
@@ -123,7 +124,7 @@ Servono le rose delle altre squadre: se hai caricato solo la tua, qui trovi un m
 
 ### Altro
 
-- **Regole**: punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
+- **Regole** (si aprono subito): punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
 - **Movimenti e storico**: scambi, svincolati e tagli a ogni aggiornamento delle rose.
 - **Crediti delle squadre**: non sono nel file di Leghe; li scrivi qui e tocchi **Salva i crediti**.
 - **Nuova stagione**: a fine campionato archivia le rose e riparte, senza cancellare niente.

@@ -140,7 +140,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
       ? `<details class="ar-differenze"><summary>${t("ar.cosa_cambia")}</summary>${htmlDifferenze(r.differenze)}</details>` : "";
     dove.innerHTML = `<div class="ar">
       <h3 class="ar-titolo" id="ar-titolo" tabindex="-1">${t("ar.controlla")}</h3>
-      <p class="ar-riassunto">${arRiassunto(r)}</p>
+      <p class="ar-riassunto" aria-live="polite">${arRiassuntoScelte(r, st.scelte)}</p>
       ${avvisi.length ? `<div class="attenzione">${avvisi.map(a => esc(traduciFrase(a.frase, a.testo))).join("<br>")}</div>` : ""}
       ${mia}
       <div class="ar-squadre">${squadreHtml}</div>
@@ -187,6 +187,8 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
   };
 
   const ridisegnaRiga = (i, fuoco) => {
+    const riassunto = $(".ar-riassunto", dove);
+    if (riassunto) riassunto.innerHTML = arRiassuntoScelte(st.ris, st.scelte);       // i dubbi già decisi non si contano più
     const vecchia = $(`.ar-dubbio[data-i="${i}"]`, dove);
     if (!vecchia) return;
     vecchia.insertAdjacentHTML("afterend", rigaDubbio(i));
@@ -243,6 +245,23 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
   };
 
   await carica();
+}
+
+// Il riassunto in cima tiene conto delle scelte già fatte: un dubbio deciso (un giocatore scelto, o «toglilo») non è più da controllare
+// né «non trovato»; chi è stato scelto conta tra i riconosciuti. Funzione pura (provata con node in tests/test_anteprima_rose_web.py).
+function arRiassuntoScelte(r, scelte) {
+  let sistemati = 0, dubbi = 0, nonTrovati = 0;
+  for (const s of r.squadre || []) {
+    for (const g of s.giocatori || []) {
+      if (g.stato === "sicuro") continue;
+      const v = scelte.get(arChiave(s.nome, g.testo));
+      if (v !== AR_TOGLI && !/^\d+$/.test(v || "")) continue;
+      if (g.stato === "non_trovato") nonTrovati++; else dubbi++;
+      if (v !== AR_TOGLI) sistemati++;
+    }
+  }
+  return arRiassunto({ ...r, sicuri: (r.sicuri || 0) + sistemati, da_controllare: Math.max(0, (r.da_controllare || 0) - dubbi),
+    non_trovati: Math.max(0, (r.non_trovati || 0) - nonTrovati) });
 }
 
 function arRiassunto(r) {
