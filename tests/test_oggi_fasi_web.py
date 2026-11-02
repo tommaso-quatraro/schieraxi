@@ -45,7 +45,7 @@ def test_oggi_usa_la_fase_e_i_server_vecchi_restano_come_prima():
 def test_carta_della_giornata_in_corso():
     h = _esegui(f"cardInCorso({json.dumps(IN_CORSO)}, {{punteggio_atteso: 68}})")
     assert "Punti fatti finora" in h and "34,5" in h and "≈ 66,0" in h and "attesi prima: 68,0" in h
-    assert "2 giocatori devono ancora giocare" in h and "QUANDO(2026-11-09 20:45)" in h and "voto in arrivo" in h
+    assert "2 giocatori devono ancora giocare" in h and "QUANDO(2026-11-09 20:45)" in h and "Voto in arrivo" in h        # vocabolario comune (docs/COERENZA-WEB-IPHONE.md)
     assert "Rossi &lt;b&gt;" in h and "<b>\"" not in h                       # nomi sempre ripuliti
     assert "Neri</span>" not in h.split("Cambi dalla panchina")[0]          # chi non va a punteggio non è nell'elenco
     assert "entrato dalla panchina" in h and "Neri → Bianchi" in h and "già fatto" in h

@@ -114,7 +114,8 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
 - **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto).
 - **Titolari** sul campo. Sotto ogni volto (con i colori della sua squadra): il fantavoto atteso nella pillola scura (toccalo per vedere **Perché questo numero**), il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori. La prima volta in cima al campo c'è una legenda: **Ho capito** la chiude, **ⓘ Cosa vuol dire** la riapre. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
 - **Titolare anche se incerto**: a volte la consigliata mette titolare un giocatore che gioca poco (per esempio al 35%) e lascia in panchina uno quasi sicuro dello stesso ruolo. Non è un errore: se il primo non gioca entra il secondo, e insieme valgono di più. Sotto il campo una riga lo spiega («se non gioca entra Gallo dalla panchina»), e lo ripete il **Perché questo numero** di quel giocatore. Compare solo quando il titolare gioca meno del 50% e la riserva più dell'80%.
-- Sotto il nome, la partita come sul campo: «@ MIL · sab 31 20:45» (fuori casa) o «vs PAR» (in casa). Le note lunghe, per esempio un infortunio, vanno a capo dentro la riga.
+- Sotto il nome, la partita come sul campo, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Le note lunghe, per esempio un infortunio, vanno a capo dentro la riga. Sul campo c'è solo il cognome («Rossi», senza l'iniziale).
+- «Giornata 7» è sempre il numero della giornata della **tua lega** (in alto, in Formazione, nella scheda e nell'immagine da condividere), come sull'iPhone. Il numero di Serie A compare solo dove si parla del calendario di Serie A.
 - **Panchina** nell'ordine in cui entrano.
 - **Modifica a mano** (✎): cambi un titolare con un altro della rosa e i punti si ricalcolano.
 - **Copia il testo** e **Condividi come immagine**.
@@ -127,7 +128,7 @@ Gli stili vanno dal più prudente al più rischioso: **Molto sicura**, **Sicura*
   Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.
 - **Cambi consigliati**: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Compaiono solo cambi sensati, con il perché in una frase. Con i crediti inseriti vedi solo quelli che puoi permetterti. Se hai caricato solo la tua squadra, un avviso ricorda che qualche svincolato potrebbe essere già di un altro.
 - **Seguiti**: i giocatori con la ☆. Ti avvisa se si infortunano o tornano disponibili.
-- **Elenco dei giocatori** (filtri per ruolo, solo svincolati, ricerca per nome) e **Calendario** con la difficoltà.
+- **Elenco dei giocatori** (filtri per ruolo, solo svincolati, ricerca per nome) e **Calendario** con la difficoltà: in ogni casella «vs MIL» (in casa) o «@ MIL» (in trasferta).
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
 
 ### Scambi (Altro > Scambi)
@@ -183,7 +184,7 @@ Il widget è il riquadro sulla Home o sulla schermata di blocco. Si collega **da
 
 **Altro > Diario delle giornate.** Per ogni giornata finita vedi **Cosa consigliava SchieraXI** accanto a **Cosa hai schierato** (i giocatori cambiati sono evidenziati), i punti previsti e quelli fatti («azzeccata», «meno del previsto», «più del previsto»).
 
-Se non hai detto cosa hai schierato, tocca **Ho schierato questa** o **Ho schierato un'altra formazione** (scegli a mano i tuoi undici); **Correggi a mano** rifà una formazione già registrata. Se il Diario è vuoto, dice perché: manca la tua squadra, non è finita nessuna giornata, oppure sono ancora da calcolare.
+Se non hai detto cosa hai schierato, tocca **Ho schierato la consigliata** o **Ho schierato un'altra formazione** (scegli a mano i tuoi undici); **Correggi a mano** rifà una formazione già registrata. Se il Diario è vuoto, dice perché: manca la tua squadra, non è finita nessuna giornata, oppure sono ancora da calcolare.
 
 - **Le tue scelte**: nelle giornate in cui hai schierato undici diversi dal consiglio, quante volte hanno fatto più punti le tue scelte e quante il consiglio. Non è un voto: serve a capire dove ti fidi del tuo istinto.
 - **Quanto ci abbiamo preso**: quanto SchieraXI ci ha preso, **anche quando va male**, in quattro numeri con una frase ciascuno:
