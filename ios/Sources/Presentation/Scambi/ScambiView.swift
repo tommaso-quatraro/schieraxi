@@ -153,12 +153,24 @@ struct ScambiView: View {
             FilaAdattiva {
                 Label("Con chi", systemImage: "person.2").font(.subheadline)
                 Spacer(minLength: 8)
-                Picker("Con chi", selection: $vm.con) {
-                    Text("Tutte le squadre").tag("Tutte")
-                    ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
+                // Un menu con un'etichetta sua: l'etichetta di un Picker a menu non cresce in altezza e con il testo grandissimo
+                // «Tutte le squadre» andava sopra le righe sotto (foto del collaudo su iPhone SE).
+                Menu {
+                    Picker("Con chi", selection: $vm.con) {
+                        Text("Tutte le squadre").tag("Tutte")
+                        ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(vm.con == "Tutte" ? "Tutte le squadre" : vm.con).multilineTextAlignment(.leading)
+                        Image(systemName: "chevron.up.chevron.down").font(.caption).accessibilityHidden(true)
+                    }
+                    .foregroundStyle(Color.verde)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .labelsHidden()
-                .tint(Color.verde)
+                .accessibilityLabel("Con chi")
+                .accessibilityValue(vm.con == "Tutte" ? "Tutte le squadre" : vm.con)
             }
             .frame(minHeight: 44)
             Picker("Dimensione", selection: $vm.fino) {
