@@ -1,9 +1,0 @@
-{
-  "titolo": "Stato dei giocatori: le stesse parole ovunque",
-  "voci": [
-    "Lo stato di ogni giocatore («Probabile titolare», «In dubbio · gioca 55%», «Voto in arrivo», «Rinviata»...) ora lo decide il server con una regola sola: presto il sito e l'app per iPhone mostreranno le stesse parole in ogni schermata."
-  ],
-  "tecnico": [
-    "Nuovo campo facoltativo etichetta = {codice, testo, tono} nelle schede dei giocatori (formazione, scheda, rosa, classifica, osservati, confronto, migliori di Oggi), in in_corso.giocatori e negli avvisi di /api/oggi. Regola unica in fanta/etichette.py; testo nella lingua della richiesta (l'inglese lo scrive il passaggio che traduce le note degli infortuni). Il nome non è stato perché il campo stato esiste già. Contratto in docs/API.md; test in tests/test_etichette.py e tests/test_fasi.py."
-  ]
-}
