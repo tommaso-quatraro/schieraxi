@@ -25,7 +25,7 @@ def _scheda(i, **extra):  # squadra: come nelle schede vere
 def due_utenti(multiutente, dati_isolati, monkeypatch):
     from types import SimpleNamespace as NS
     import pandas as pd
-    from fanta import calcolo, consigli, widget as w
+    from fanta import calcolo, widget as w
     def nuovo_db():
         db = sqlite3.connect(":memory:")
         db.execute("CREATE TABLE aggiornamenti (quando TEXT, cosa TEXT, dettaglio TEXT)")

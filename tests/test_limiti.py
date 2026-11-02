@@ -285,7 +285,7 @@ def test_il_ripristino_di_un_backup_enorme_si_ferma(ambiente):
 
 
 def test_lo_spazio_di_uno_non_conta_per_l_altro(ambiente):
-    (a, id_a), (b, _) = nuovo_utente("utentea"), nuovo_utente("utenteb")
+    (_, id_a), (b, _) = nuovo_utente("utentea"), nuovo_utente("utenteb")
     importa(b)
     riempi(id_a, limiti.MAX_BYTE_UTENTE)
     r = b.post("/api/squadre/immagine", params={"squadra": "Mia", "tipo": "stemma"}, files={"file": ("s.png", PNG, "image/png")})

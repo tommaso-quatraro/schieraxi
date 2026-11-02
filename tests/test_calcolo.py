@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from fanta import archivio, calcolo, consigli, server
+from fanta import archivio, calcolo, consigli
 
 from test_account_http import cliente
 from test_limiti import ambiente, nuovo_utente  # noqa: F401 (fixture e utente di prova)

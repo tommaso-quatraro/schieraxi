@@ -23,7 +23,7 @@ import unicodedata
 from datetime import datetime, timedelta
 
 from . import account, posta
-from .account import ErroreAccount, _chiave, _hash_codice, _testo, _data, _ora, limite, evento
+from .account import ErroreAccount, _chiave, _hash_codice, _testo, _ora, limite, evento
 
 DURATA_CODICE = timedelta(minutes=15)
 TENTATIVI_PER_CODICE = 5
