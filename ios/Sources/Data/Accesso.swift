@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import WidgetKit
 
 // Il token di accesso (account del server con più utenti) sta SOLO nel Keychain di iOS: mai in UserDefaults, mai nei log,
 // mai in git. Un token per server (la chiave è l'indirizzo): cambiando server non si manda il token sbagliato.
@@ -41,12 +42,16 @@ final class MemoriaToken: ArchivioToken, @unchecked Sendable {
 }
 
 /// Il Keychain di iOS (`kSecClassGenericPassword`), accessibile dopo il primo sblocco del telefono (serve all'aggiornamento
-/// in background e a Siri, che girano a telefono bloccato) e solo su questo telefono: non entra nei backup trasferibili. Il widget non legge questo
-/// Keychain (senza App Group non lo potrebbe): usa il suo codice di collegamento, quindi la restrizione non lo tocca.
+/// in background e a Siri, che girano a telefono bloccato) e solo su questo telefono: non entra nei backup trasferibili. Questi
+/// elementi stanno nel gruppo PRIVATO dell'app: il widget riceve solo il suo token `fw_` (`PortachiaviCondiviso`, file condiviso).
 /// Se iOS rifiuta il Keychain perché l'app non ha i permessi (succede solo nelle compilazioni senza firma per i test) il token resta in
 /// memoria: l'app funziona, ma ci si dovrà accedere di nuovo alla prossima apertura.
 struct KeychainToken: ArchivioToken {
     var servizio = "it.schieraxi.app.account"
+    /// Il gruppo privato dell'app nel Keychain (`<SQUADRA>.<bundle id>`, dal profilo della firma). Serve da quando i permessi hanno
+    /// anche il gruppo condiviso con il widget: senza indicarlo, iOS metterebbe gli elementi nuovi nel primo gruppo dei permessi,
+    /// quello condiviso. nil (simulatore, nessun profilo) = come prima, il gruppo predefinito.
+    var gruppoPrivato: String? = ProfiloFirma.questo?.identificativoApp
     private static let riserva = MemoriaToken()
 
     private func base(_ server: String) -> [String: Any] {
@@ -72,7 +77,14 @@ struct KeychainToken: ArchivioToken {
         var nuovo = base(server)
         nuovo[kSecValueData as String] = Data(token.utf8)
         nuovo[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let esito = SecItemAdd(nuovo as CFDictionary, nil)
+        var esito = errSecParam
+        if let gruppoPrivato {
+            var privato = nuovo
+            privato[kSecAttrAccessGroup as String] = gruppoPrivato
+            esito = SecItemAdd(privato as CFDictionary, nil)
+        }
+        // senza gruppo privato (o se iOS lo rifiuta): il gruppo predefinito, come sempre
+        if esito != errSecSuccess { esito = SecItemAdd(nuovo as CFDictionary, nil) }
         if esito == errSecSuccess {
             Self.riserva.cancella(server: servizio + "|" + server)
             return true
@@ -105,11 +117,21 @@ enum Accesso {
     /// L'archivio dei token in uso: il Keychain, o la memoria in modalità demo (le fotografie non toccano il Keychain).
     nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.daLancio ? MemoriaToken() : KeychainToken()
 
-    /// Rimette nel file condiviso l'indirizzo e il TOKEN DEL WIDGET (`fw_`, a scopo limitato: solo lettura di oggi e widget) di adesso.
-    /// Il token della sessione non va mai nel file condiviso.
-    static func sincronizzaConIlWidget() {
-        if Demo.attivo { return }
+    /// Passa al widget, da sola, l'indirizzo e il TOKEN DEL WIDGET (`fw_`, a scopo limitato: solo lettura di oggi e widget) di adesso:
+    /// nel file dell'App Group e nel Keychain condiviso (il ripiego). Il token della sessione non esce mai dal Keychain privato.
+    /// Restituisce true se almeno uno dei due funziona (collegamento automatico); se qualcosa è cambiato il widget si ricarica.
+    @discardableResult
+    static func sincronizzaConIlWidget() -> Bool {
+        if Demo.attivo { return true }
         let indirizzo = IndirizzoServer.attuale
-        Condiviso.sincronizza(indirizzo: indirizzo, token: indirizzo.isEmpty ? nil : TokenWidget.leggi(server: indirizzo))
+        let token = indirizzo.isEmpty ? nil : TokenWidget.leggi(server: indirizzo)
+        let tokenPrima = Condiviso.leggi().token(per: indirizzo)
+        let chiavePrima = PortachiaviCondiviso.leggi()
+        let gruppo = Condiviso.sincronizza(indirizzo: indirizzo, token: token)
+        let portachiavi = PortachiaviCondiviso.salva(indirizzo: indirizzo, token: token)
+        if tokenPrima != Condiviso.leggi().token(per: indirizzo) || chiavePrima != PortachiaviCondiviso.leggi() {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        return gruppo || portachiavi
     }
 }

@@ -101,12 +101,12 @@ struct VistaRosa: View {
                 HStack(spacing: 4) {
                     Text(g.nome).font(.subheadline.weight(.semibold)).lineLimit(1)
                     if g.rigorista == true { Image(systemName: "target").font(.caption2).foregroundStyle(TintaWidget.lime) }
-                    if g.titolare == false { Text("panchina").fontWidget(9).foregroundStyle(TintaWidget.testo2) }
+                    if g.titolare == false, g.stato == nil { Text("panchina").fontWidget(9).foregroundStyle(TintaWidget.testo2) }
                 }
                 let stato = g.descrizioneStato
-                Text(stato.isEmpty || stato == "Disponibile" ? g.partitaBreve : "\(g.partitaBreve) · \(stato)")
+                Text(stato.isEmpty ? g.partitaBreve : "\(g.partitaBreve) · \(stato)")
                     .font(.caption2)
-                    .foregroundStyle(g.dubbio == true || g.diffidato == true ? TintaWidget.attenzione : TintaWidget.testo2)
+                    .foregroundStyle(!stato.isEmpty || g.diffidato == true ? TintaWidget.attenzione : TintaWidget.testo2)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)

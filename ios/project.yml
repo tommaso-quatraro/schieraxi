@@ -23,12 +23,16 @@ targets:
     dependencies:
       - target: SchieraxiWidget
     # App Group con l'Apple ID gratuito (SideStore/AltStore): dichiarato qui, incorporato nell'IPA con ldid (vedi ipa.yml);
-    # SideStore lo registra e scrive il nome vero in Info.plist (ALTAppGroups). Vedi Sources/Support/Condiviso.swift.
+    # SideStore lo registra come group.it.schieraxi.app.<SQUADRA> (il nome vero si legge dal profilo della firma).
+    # keychain-access-groups: il ripiego senza App Group (Keychain condiviso con il widget); SideStore cambia il prefisso con la
+    # squadra vera. Vedi Sources/Support/Condiviso.swift.
     entitlements:
       path: Config/Schieraxi.entitlements
       properties:
         com.apple.security.application-groups:
           - group.it.schieraxi.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)it.schieraxi.app.condiviso
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: it.schieraxi.app
@@ -98,6 +102,8 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.it.schieraxi.app
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)it.schieraxi.app.condiviso
     sources:
       - path: WidgetSources
       - path: Resources/Widget

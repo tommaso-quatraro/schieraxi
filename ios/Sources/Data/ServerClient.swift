@@ -8,7 +8,7 @@ enum Config {
     /// Il server pubblico dell'app (un dominio pubblico, non un indirizzo privato). Chi ne ha uno proprio lo cambia in Impostazioni > Server;
     /// chi ha già un indirizzo salvato lo tiene. In modalità demo (fotografie nel simulatore) c'è un indirizzo finto.
     static var indirizzoPredefinito: String {
-        Demo.attivo ? "https://server-demo.invalid:443" : "https://app.schieraxi.it"
+        Demo.attivo ? "https://server-demo.invalid:443" : ServerPubblico.indirizzo
     }
     /// Esempio mostrato nei campi di testo (non è un indirizzo vero e non viene mai usato).
     static let esempioIndirizzo = "https://nome-del-server.example"

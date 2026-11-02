@@ -32,15 +32,29 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
     /// Quando gioca (ora italiana), se la partita è nota.
     var quando: Date? { Quando.data(dataPartita) }
 
-    /// «Dubbio 55%», «Infortunato», «Squalificato»: una riga breve sullo stato.
+    /// Una riga breve SOLO se c'è qualcosa da guardare: «Infortunato», «Squalificato», «Non convocato», «Dubbio 55%», «Panchina».
+    /// Titolare (o nessuno stato) = stringa vuota. Il server manda `stato` = titolare | panchina | non_convocato | infortunato |
+    /// squalificato e il dubbio a parte (`dubbio`); negli avvisi c'è `tipo`. Stesso ordine di `Giocatore.etichette`: prima
+    /// l'assenza sicura, poi il dubbio, poi la panchina. Un valore nuovo si scrive leggibile («nuovo_stato» → «Nuovo stato»).
     var descrizioneStato: String {
-        let base = stato ?? tipo ?? (dubbio == true ? "dubbio" : "")
-        guard !base.isEmpty else { return "" }
-        let testo = base.prefix(1).uppercased() + base.dropFirst()
-        if base == "dubbio", let p = pVoto ?? percentuale.map({ $0 / 100 }), p < 1 {
-            return "\(testo) \(Int((p * 100).rounded()))%"
+        let chiave = (stato ?? tipo ?? "").lowercased()
+        switch chiave {
+        case "infortunato": return "Infortunato"
+        case "squalificato": return "Squalificato"
+        case "non_convocato": return "Non convocato"
+        default: break
         }
-        return testo
+        if dubbio == true || chiave == "dubbio" {
+            if let p = pVoto ?? percentuale.map({ $0 / 100 }), p > 0, p < 1 { return "Dubbio \(Int((p * 100).rounded()))%" }
+            return "Dubbio"
+        }
+        switch chiave {
+        case "", "titolare", "disponibile": return ""
+        case "panchina": return "Panchina"
+        default:
+            let t = chiave.replacingOccurrences(of: "_", with: " ")
+            return t.prefix(1).uppercased() + t.dropFirst()
+        }
     }
 }
 
@@ -210,7 +224,7 @@ struct RiassuntoWidget: Decodable {
 
     /// I giocatori della mia rosa che giocano a breve, in ordine di orario (solo con la partita nota).
     func giocanoPresto(dopo adesso: Date = Date(), massimo: Int = 8) -> [GiocatoreWidget] {
-        (rosa ?? []).filter { ($0.quando ?? .distantPast) > adesso.addingTimeInterval(-2 * 3600) && $0.stato != "infortunato" && $0.stato != "squalificato" }
+        (rosa ?? []).filter { ($0.quando ?? .distantPast) > adesso.addingTimeInterval(-2 * 3600) && $0.stato != "infortunato" && $0.stato != "squalificato" && $0.stato != "non_convocato" }
             .sorted { ($0.quando ?? .distantFuture, $0.nome) < ($1.quando ?? .distantFuture, $1.nome) }
             .prefix(massimo).map { $0 }
     }

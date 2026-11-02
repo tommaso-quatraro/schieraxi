@@ -86,5 +86,6 @@ enum TokenWidget {
                 $0.riassunto = nil
             }
         }
+        if PortachiaviCondiviso.leggi()?.i == indirizzo { PortachiaviCondiviso.cancella() }
     }
 }

@@ -112,6 +112,7 @@ struct ImpostazioniView: View {
                 Label("Avvisi e promemoria", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44)
             }
             RigaValore(titolo: "Notifiche", valore: vm.permesso)
+            RigaCollegamentoWidget()
         }
     }
 

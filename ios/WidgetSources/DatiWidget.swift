@@ -2,10 +2,11 @@ import Foundation
 import WidgetKit
 import AppIntents
 
-// Dati del widget. Il widget è un programma a parte. L'indirizzo del server e il token del widget (`fw_`) glieli dà l'app tramite un
-// App Group (`Condiviso`, file nel contenitore condiviso), se SideStore lo ha registrato: allora il widget non chiede niente. Con
-// l'Apple ID gratuito non è sicuro: il widget non collegato dice «Tocca per collegare» e apre l'app (`schieraxi://widget/collega`),
-// che copia il codice di collegamento; l'utente lo incolla una volta in «Modifica widget» (`CollegamentoWidget`).
+// Dati del widget. Il widget è un programma a parte. L'indirizzo del server e il token del widget (`fw_`) glieli dà l'app da sola:
+// App Group (`Condiviso`, il nome vero si trova nel profilo della firma) o, se manca, Keychain condiviso (`PortachiaviCondiviso`).
+// L'utente non scrive niente; senza indirizzo vale il server pubblico dell'app. Solo se nessuno dei due funziona il widget dice
+// «Tocca per collegare» e apre l'app (`schieraxi://widget/collega`), che copia il codice di collegamento; l'utente lo incolla una
+// volta in «Modifica widget» > «Collegamento manuale» (`CollegamentoWidget`).
 // Il modello `Oggi`, `Quando` e `RiassuntoOggi` sono condivisi con l'app.
 
 /// Un istante della timeline del widget.
@@ -32,17 +33,31 @@ struct Voce: TimelineEntry {
     func tocco(_ normale: URL?) -> URL? { daCollegare ? CollegamentoWidget.url : normale }
 }
 
-/// Le impostazioni del widget: il codice di collegamento (lo copia l'app) e, in alternativa, l'indirizzo del server
-/// (solo https, o localhost per le prove). Il codice sta per primo: è quello che si incolla.
+/// Le impostazioni del widget: niente da compilare. Il collegamento è automatico; il codice (lo copia l'app) compare solo
+/// attivando «Collegamento manuale», l'ultimo ripiego. L'indirizzo del server non si chiede più: lo passa l'app, altrimenti
+/// vale il server pubblico. Un codice incollato con una versione di prima resta valido (stesso nome del parametro).
 struct ConfigurazioneWidget: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Collega il widget"
-    static var description = IntentDescription("Se il widget dice «Tocca per collegare», toccalo: l'app copia il codice. Poi incollalo qui in «Codice di collegamento».")
+    static var title: LocalizedStringResource = "Widget di SchieraXI"
+    static var description = IntentDescription("Si collega da solo all'app. «Collegamento manuale» serve solo se il widget dice «Tocca per collegare» anche dopo averlo toccato.")
+
+    @Parameter(title: "Collegamento manuale", default: false)
+    var manuale: Bool
 
     @Parameter(title: "Codice di collegamento", default: "")
     var codice: String
 
-    @Parameter(title: "Indirizzo del server (solo se manca)", default: "")
-    var indirizzo: String
+    static var parameterSummary: some ParameterSummary {
+        When(\.$manuale, .equalTo, true) {
+            Summary("Collegamento manuale") {
+                \.$manuale
+                \.$codice
+            }
+        } otherwise: {
+            Summary("Collegamento automatico") {
+                \.$manuale
+            }
+        }
+    }
 }
 
 enum ScaricaOggi {
@@ -78,9 +93,9 @@ enum ScaricaOggi {
     }
 
     /// Dove e con quale token scaricare. Ordine (logica in `CodiceWidget.destinazione`, provata nei test): dati dell'app con il token
-    /// (App Group) > codice di collegamento incollato nel widget > indirizzo dell'app senza token > indirizzo scritto nel widget.
-    static func destinazione(indirizzo scritto: String, codice: String) -> (indirizzo: String, token: String?)? {
-        CodiceWidget.destinazione(condiviso: Condiviso.leggi(), codice: codice, scritto: scritto, pulisci: indirizzoBase)
+    /// (App Group, poi Keychain condiviso) > codice di collegamento incollato nel widget > indirizzo dell'app senza token > server pubblico.
+    static func destinazione(codice: String) -> (indirizzo: String, token: String?)? {
+        CodiceWidget.destinazione(condiviso: Condiviso.leggi(), portachiavi: PortachiaviCondiviso.leggi(), codice: codice, pulisci: indirizzoBase)
     }
 
     /// Tutto in una chiamata: `/api/widget` con If-None-Match. Se il server non ha la rotta si ricade su `/api/oggi` (solo i widget
@@ -215,7 +230,7 @@ struct Fornitore: AppIntentTimelineProvider {
 
     private func voce(_ configurazione: ConfigurazioneWidget) async -> Voce {
         let diagnostica = Condiviso.diagnostica().breve
-        guard let dove = ScaricaOggi.destinazione(indirizzo: configurazione.indirizzo, codice: configurazione.codice) else {
+        guard let dove = ScaricaOggi.destinazione(codice: configurazione.codice) else {
             // Nessun indirizzo: se l'app ha già un riassunto lo si mostra, altrimenti si dice cosa fare.
             if let r = Condiviso.leggi().riassunto { return Voce(date: Date(), riassunto: r, datiSalvati: true, diagnostica: diagnostica) }
             return Voce(date: Date(), riassunto: nil, datiSalvati: false, indirizzoMancante: true, diagnostica: diagnostica)

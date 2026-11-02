@@ -5,7 +5,7 @@ enum AzioneGuida: Equatable {
     case importaRose
     case squadre(nome: String?)
     case impostazioni
-    /// «Collega il widget»: copia il codice da incollare in «Modifica widget».
+    /// «Collega il widget»: lo collega da solo (App Group o Keychain condiviso); solo se non va copia il codice.
     case collegaWidget
 }
 

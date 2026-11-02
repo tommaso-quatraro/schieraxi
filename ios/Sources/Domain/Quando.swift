@@ -68,9 +68,11 @@ enum Quando {
     /// «18:30».
     static func ora(_ data: Date) -> String { soloOra.string(from: data) }
 
+    /// «2026-10-27 18:30» e anche con la «T» di ISO 8601 («2026-10-26T23:55:13», per esempio `ultimo_aggiornamento`):
+    /// contano i primi 16 caratteri (secondi e resto si ignorano), sempre ora italiana.
     static func data(_ testo: String?) -> Date? {
         guard let testo else { return nil }
-        return lettura.date(from: String(testo.prefix(16)))
+        return lettura.date(from: String(testo.prefix(16)).replacingOccurrences(of: "T", with: " "))
     }
 
     static func leggibile(_ testo: String?) -> String {

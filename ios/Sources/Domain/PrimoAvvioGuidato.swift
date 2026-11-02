@@ -73,7 +73,7 @@ enum PassoGuidato: String, CaseIterable, Identifiable {
         case .stemma:
             return "Scegli lo stemma e la maglia della tua squadra dalle tue foto. Compaiono in Oggi e nella formazione."
         case .widget:
-            return "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Se il widget dice «Tocca per collegare», toccalo: l'app copia il codice da incollare in «Modifica widget»."
+            return "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Il widget si collega da solo: se dice «Tocca per collegare», toccalo."
         case .avvisi:
             return "Ti avvisiamo prima della partita se un titolare è in dubbio e quando la formazione consigliata cambia."
         }
