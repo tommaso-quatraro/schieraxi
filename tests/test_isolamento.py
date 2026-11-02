@@ -96,6 +96,7 @@ def scritture(m: str):
     nome = f"Real Esempio {m}"
     return [
         ("PUT", "/api/regole", dict(json=d["regole"])),
+        ("PUT", "/api/regole/rinvio", dict(json={"giornata": 9 if m == "A" else 10, "modo": "voto_ufficio"})),
         ("POST", "/api/rose/testo", dict(json={"testo": d["rose"]})),
         ("PUT", "/api/mia-squadra", dict(json={"nome": nome})),
         ("PUT", "/api/crediti", dict(json={"crediti": d["crediti"]})),
@@ -206,6 +207,7 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     esegui_tutto(ca, scritture("A"))
     risposte_a = esegui_tutto(ca, letture("A"))
     assert risposte_a[("GET", "/api/regole")].json()["nome_lega"] == "LEGA-DI-A"
+    assert [k.split("/")[1] for k in risposte_a[("GET", "/api/regole")].json()["rinvii_giornate"]] == ["9"]
     assert [s["nome"] for s in risposte_a[("GET", "/api/squadre")].json()] == ["Real Esempio A", "Altra A"]
     assert risposte_a[("GET", "/api/scelta")].json()["titolari"] == [1, 2, 3]
     assert risposte_a[("GET", "/api/icona")].json()["scelta"] == "viola"
@@ -247,6 +249,7 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     risposte_b = esegui_tutto(cb, letture("B"))
     assert not re.search(r"Real Esempio A|Altra A|LEGA-DI-A|web\.push\.example/A", tutto_il_testo(risposte_b))
     assert risposte_b[("GET", "/api/regole")].json()["nome_lega"] == "LEGA-DI-B"
+    assert [k.split("/")[1] for k in risposte_b[("GET", "/api/regole")].json()["rinvii_giornate"]] == ["10"]     # non vede la 9 di A
     assert [s["nome"] for s in risposte_b[("GET", "/api/squadre")].json()] == ["Real Esempio B", "Altra B"]
     assert risposte_b[("GET", "/api/scelta")].json()["titolari"] == [4, 5, 6]
     assert risposte_b[("GET", "/api/icona")].json()["scelta"] == "rosso"

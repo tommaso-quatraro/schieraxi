@@ -15,9 +15,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import consigli, incertezza, scelte
+from . import consigli, incertezza, rinvii, scelte
 from . import formazione as fz
-from .affidabilita import giornate_concluse
 from .blocco import BloccoFile
 from .lega import Rose
 from .modello import Dati, Parametri, previsioni
@@ -101,11 +100,17 @@ def salva_istantanea(f: dict, stagione: str, percorso: Path | None = None) -> bo
     return True
 
 
-def impronta_regole(regole: Regole) -> str:
-    """Impronta (hash corto) di ciò che cambia i punti fatti: fonte del voto, bonus/malus, panchina, modificatore, voto d'ufficio, moduli.
-    Salvata con ogni voce: se la lega cambia una di queste regole, le voci calcolate si rifanno da sole."""
+def impronta_regole(regole: Regole, stagione: str | None = None, giornata: int | None = None, fuori_turno: bool = False) -> str:
+    """Impronta (hash corto) di ciò che cambia i punti fatti: fonte del voto, bonus/malus, panchina, modificatore, voto d'ufficio, moduli
+    e, con stagione e giornata, la regola delle partite rinviate di quella giornata, solo se la giornata ha partite fuori dal turno
+    (`fuori_turno`) e la regola non è «aspetta», il predefinito: così le altre voci non si rifanno mai. Salvata con ogni voce: se la lega cambia una di queste regole, le voci
+    calcolate si rifanno da sole."""
     d = asdict(regole)
     parti = {k: d.get(k) for k in ("fonte_voto", "bonus", "panchina", "modificatore_difesa", "voto_senza_sostituto", "moduli")}
+    if giornata is not None and fuori_turno:
+        r = rinvii.regola(regole, stagione or "", giornata)
+        if r["modo"] != "aspetta":
+            parti["rinvio"] = [r["modo"], r["valore"]]
     return hashlib.sha1(json.dumps(parti, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 
@@ -118,15 +123,16 @@ def _riga(titolari: list[fz.Giocatore], stat: tuple, reale: float) -> dict:
             "titolari": [{"id": g.id, "nome": g.nome, "ruolo": g.ruolo} for g in titolari]}
 
 
-def _previsti_e_veri(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri):
+def _previsti_e_veri(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, anche=frozenset()):
     """(previsioni ricostruite con i soli dati di prima, voti veri, {id: fantavoto vero} di chi ha preso voto) di una giornata
-    finita, solo per le partite giocate; None se mancano i dati."""
+    finita, solo per le partite giocate e per quelle in `anche` (partite rinviate non ancora recuperate, che la regola della lega
+    conta senza voto o con il voto d'ufficio); None se mancano i dati."""
     col = COLONNA_VOTO[regole.fonte_voto]
     prev = previsioni(d, stagione, giornata, regole, par)
     giocate = d.partite.loc[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata) & (d.partite["giocata"] == 1), "id"]
     if prev.empty or giocate.empty:
         return None
-    prev = prev[prev["partita"].isin(set(giocate))].set_index("id")
+    prev = prev[prev["partita"].isin(set(giocate) | set(anche))].set_index("id")
     reali = d.voti[(d.voti["stagione"] == stagione) & (d.voti["giornata"] == giornata)].drop_duplicates("calciatore_id").set_index("calciatore_id")
     fv_vero = {i: fantavoto(reali.loc[i].to_dict(), prev.at[i, "ruolo"], regole)
                for i in prev.index if i in reali.index and pd.notna(reali.at[i, col])}
@@ -159,10 +165,15 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     """La voce del diario di una giornata finita, o None se mancano i dati (o la rosa è troppo piccola per quella giornata).
     `altri_ids`: chi era nella consigliata di allora (istantanea) ma non è più in rosa, per i numeri per giocatore."""
     col = COLONNA_VOTO[regole.fonte_voto]
-    pv = _previsti_e_veri(d, stagione, giornata, regole, par)
+    # partite rinviate (fuori dal turno, recuperate o no): la regola della lega per quella giornata, come prima della scadenza
+    r_rinvio = rinvii.regola(regole, stagione, giornata)
+    rinviate = rinvii.id_fuori_turno(d.partite, stagione, giornata)
+    pv = _previsti_e_veri(d, stagione, giornata, regole, par, rinviate if r_rinvio["modo"] != "aspetta" else frozenset())
     if pv is None:
         return None
     prev, reali, fv_vero = pv
+    numeri_prev = prev                    # «Quanto ci abbiamo preso» misura il modello: numeri di prima della regola dei rinvii
+    prev = rinvii.applica(prev, rinviate, r_rinvio)
     ids = [i for i in ids_rosa if i in prev.index]
     if len(ids) < MIN_GIOCATORI_ROSA:
         return None
@@ -172,17 +183,18 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     gioca = {i: i in fv_vero for i in rosa}
     fv = {i: fv_vero.get(i, 0.0) for i in rosa}
     voto = {i: float(reali.at[i, col]) if i in fv_vero else 0.0 for i in rosa}
+    rinvii.voti_lega(gioca, fv, voto, [i for i in rosa if prev.at[i, "rinvio"] is not None], r_rinvio)
     val = fz.Valutatore(lista, regole, simulazioni)
     try:
         migliore = fz.migliore(lista, regole, simulazioni, valutatore=val)
     except ValueError:
         return None
     voce = {"stagione": stagione, "giornata": giornata, "calcolata": datetime.now().isoformat(timespec="seconds"),
-            "regole": impronta_regole(regole),
+            "regole": impronta_regole(regole, stagione, giornata, bool(rinviate)),
             "consigliata": _riga(migliore.titolari, val.statistiche(migliore.titolari, migliore.panchina),
                                  fz.punteggio(migliore.titolari, migliore.panchina, gioca, fv, voto, regole)),
             "schierata": None, "automatica": None,
-            "giocatori": _numeri_giocatori(prev, fv_vero, list(ids) + list(altri_ids))}
+            "giocatori": _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))}
 
     def riga_di(sc: dict | None) -> dict | None:
         scelti = list(dict.fromkeys(int(i) for i in (sc or {}).get("titolari", [])))
@@ -213,8 +225,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
     voci = dati_diario["giornate"]
     istantanee = dati_diario["istantanee"] if isinstance(dati_diario.get("istantanee"), dict) else {}
     nuove_voci: dict = {}
-    impronta = impronta_regole(regole)
-    for g in [x for x in giornate_concluse(db, stagione) if x >= regole.prima_giornata_lega][-MASSIMO_GIORNATE:]:
+    for g in [x for x in rinvii.giornate_chiuse(db, stagione, regole) if x >= regole.prima_giornata_lega][-MASSIMO_GIORNATE:]:
         if scadenza is not None and time.monotonic() > scadenza:
             break
         chiave = f"{stagione}/{g}"
@@ -224,6 +235,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
         scelta = scelte.leggi(stagione, g, file_scelte)
         auto = None if scelta else scelte.leggi(stagione, g, file_scelte, anche_automatica=True)
         vecchia = voci.get(chiave)
+        impronta = impronta_regole(regole, stagione, g, rinvii.ha_fuori_turno(db, stagione, g))
         if vecchia:
             salta = False
             if vecchia.get("regole") != impronta:
@@ -278,7 +290,7 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     stagione = consigli.stagione_corrente()
     if giornata < regole.prima_giornata_lega:
         raise SchierataNonValida("Quella giornata è precedente all'inizio della tua lega")
-    if giornata not in giornate_concluse(db, stagione):
+    if giornata not in rinvii.giornate_chiuse(db, stagione, regole):
         raise SchierataNonValida("Si può dire cosa hai schierato solo per le giornate già finite")
     ids = [g.id for g in squadra.giocatori if g.id is not None]
     dati = consigli.dati(db)
@@ -393,7 +405,7 @@ def motivo_vuoto(db: sqlite3.Connection, regole: Regole, rose: Rose | None) -> s
     lega), «calcolo» (tutto a posto, le voci si calcolano al prossimo aggiornamento o al tocco su «Ho schierato la consigliata»)."""
     if not (rose and rose.mia_squadra and rose.squadra(rose.mia_squadra)):
         return "squadra"
-    if not [g for g in giornate_concluse(db, consigli.stagione_corrente()) if g >= regole.prima_giornata_lega]:
+    if not [g for g in rinvii.giornate_chiuse(db, consigli.stagione_corrente(), regole) if g >= regole.prima_giornata_lega]:
         return "giornate"
     return "calcolo"
 

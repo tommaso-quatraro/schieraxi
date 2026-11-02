@@ -77,7 +77,7 @@ const scrittureInCorso = {};  // risorsa -> quante scritture sono in volo
 function risorsaDi(percorso, opzioni) {
   const [p, qs] = percorso.split("?");
   const metodo = (opzioni.method || "GET").toUpperCase();
-  if (p === "/api/regole") return "regole";
+  if (p === "/api/regole" || p === "/api/regole/rinvio") return "regole";
   if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/rose/testo", "/api/rose/file"].includes(p)) return "rose";
   if (p === "/api/osservati" || p.startsWith("/api/osservati/")) return "osservati";
   if (p === "/api/avvisi") return "avvisi";
@@ -611,6 +611,8 @@ function cardRiepilogo(r, p) {
         <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
         ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
       ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
+      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(x => `${sigla(x.casa)}–${sigla(x.trasferta)}`).join(", ") })}</p>` : ""}
+      ${r.rinvio && typeof menuRinvio === "function" ? menuRinvio(r.rinvio) : ""}
       ${r.nel_diario ? "" : `<p class="debole piccolo">${t("oggi.confronto_in_arrivo")}</p>`}
       <div class="pulsanti"><button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("oggi.apri_diario")}</button></div>`;
   }
@@ -629,6 +631,45 @@ function marchioOggi() {
     <p class="wordmark"><span aria-hidden="true">Schiera${xi}</span><span class="solo-lettori">${t("marchio.nome_voce")}</span></p>
     <p class="slogan-oggi"><span aria-hidden="true">${t("marchio.slogan", { xi })}</span><span class="solo-lettori">${t("marchio.slogan_voce")}</span></p>
   </div>`;
+}
+// Partite rinviate della giornata (campo `rinvio` di /api/oggi, docs/API.md): quali, i miei giocatori coinvolti e cosa vale per
+// questa giornata, cambiabile solo per lei (PUT /api/regole/rinvio). Server vecchio senza il campo: niente riquadro.
+const MODI_RINVIO = ["aspetta", "senza_voto", "voto_ufficio"];
+function nomeModoRinvio(m, voto) {
+  if (m === "voto_ufficio") return t("oggi.rinvio_ufficio", { v: num(voto ?? 6, Number.isInteger(voto ?? 6) ? 0 : 1) });
+  return m === "aspetta" || m === "senza_voto" ? t("oggi.rinvio_" + m) : String(m);
+}
+// Il menu «per questa giornata i loro giocatori…» (riquadro di Oggi e riepilogo della giornata finita): cambia solo quella giornata.
+function menuRinvio(rv) {
+  const modi = Array.isArray(rv.modi) && rv.modi.length ? rv.modi : MODI_RINVIO;
+  const voto = rv.voto_ufficio ?? rv.valore;
+  return `<label class="rinvio-scelta"><span class="debole">${t("oggi.rinvio_domanda")}</span>
+      <select class="campo-testo rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === rv.modo ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></label>
+    <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
+}
+function cardRinvio(rv) {
+  if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
+  const partite = rv.partite.map(p => `<li><b>${sigla(p.casa)}–${sigla(p.trasferta)}</b>
+    <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
+  const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
+  return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
+    <ul class="elenco-rinvii">${partite}</ul>
+    ${miei ? `<p class="piccolo">${t("oggi.rinvio_miei", { nomi: miei })}</p>` : ""}
+    ${menuRinvio(rv)}
+  </div>`;
+}
+function collegaRinvio() {
+  document.querySelectorAll("select.rinvio-modo").forEach(sel => sel.addEventListener("change", async () => {
+    sel.disabled = true;
+    try {
+      const corpo = { giornata: Number(sel.dataset.giornata), modo: sel.value };
+      if (sel.dataset.stagione) corpo.stagione = sel.dataset.stagione;
+      await api("/api/regole/rinvio", { method: "PUT", body: JSON.stringify(corpo) });
+      svuotaCache();
+      avviso(t("oggi.rinvio_salvato"));
+      vistaOggi();
+    } catch (e) { avviso(e.message, 8000); sel.disabled = false; }
+  }));
 }
 
 function mostraOggi(o, opz = {}) {
@@ -680,6 +721,7 @@ function mostraOggi(o, opz = {}) {
     </div>
     ${finita ? cardRiepilogo(o.riepilogo, o.prossima) : ""}
     ${inCorso ? cardInCorso(o.in_corso, o.formazione) : ""}
+    ${cardRinvio(o.rinvio)}
     ${cardDaFare(o.da_fare)}
     ${novitaDaVedere() ? `<button class="banner-novita" data-vai-novita>${t("oggi.novita_banner", { versione: esc(stato.info.versione) })}</button>` : ""}
     ${o.con_probabili || inCorso || finita ? "" : `<div class="attenzione">${t("oggi.mancano_probabili_formazioni")}</div>`}
@@ -698,6 +740,7 @@ function mostraOggi(o, opz = {}) {
       <div class="debole piccolo live-agg" id="live-agg" hidden></div><div class="solo-lettori" id="live-annuncio" role="status" aria-live="polite"></div></div>
     </div></div>`, opz);
   collegaDaFare(o.da_fare);
+  collegaRinvio();
   const diario = $("[data-apri-diario]");
   if (diario) diario.addEventListener("click", () => apriDiario(Number(diario.dataset.apriDiario) || undefined));
   if ($("#oggi-punti")) animaNumero($("#oggi-punti"), opz.sostituisce ? (o.formazione.punteggio_atteso ?? 0) : 0, o.formazione.punteggio_atteso ?? 0);
@@ -3174,6 +3217,13 @@ async function vistaRegole() {
       <div class="debole piccolo">${t("regole.con_prima_giornata")}</div>
     </details>
 
+    ${r.partite_rinviate !== undefined ? `<details class="carta regola-sez" id="sez-rinviate"><summary>${t("regole.rinviate")}</summary>
+      <div class="debole piccolo">${t("regole.rinviate_aiuto")}</div>
+      <div class="segmenti" id="rinvio-modo">${[["aspetta", t("regole.rv_aspetta")], ["senza_voto", t("regole.rv_senza_voto")], ["voto_ufficio", t("regole.rv_ufficio")]].map(([k, nome]) => `<button type="button" data-valore="${k}" class="${r.partite_rinviate === k ? "attivo" : ""}">${nome}</button>`).join("")}</div>
+      <div class="debole piccolo" id="aiuto-rinvio"></div>
+      <div id="rinvio-voto-corpo" ${r.partite_rinviate === "voto_ufficio" ? "" : "hidden"}>${rigaRegola(t("regole.rv_voto"), stepper("voto_rinv", r.voto_ufficio_rinviate ?? 6, { passo: 0.5, min: 0, max: 10 }))}</div>
+    </details>` : ""}
+
     <details class="carta regola-sez"><summary>${t("regole.rosa_crediti")}</summary>
       ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, min: 0, max: 20, dec: 0 }))).join("")}
       ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, min: 0, max: 5000, dec: 0 }))}
@@ -3196,9 +3246,15 @@ async function vistaRegole() {
       ? t("regole.aiuto_per_ruolo")
       : t("regole.aiuto_libera");
   };
+  const aiutoRinvio = () => {
+    const el = $("#rinvio-modo .attivo");
+    if (!el) return;
+    $("#aiuto-rinvio").textContent = t("regole.rv_aiuto_" + el.dataset.valore);
+    $("#rinvio-voto-corpo").hidden = el.dataset.valore !== "voto_ufficio";
+  };
   const totalePosti = () => ["P", "D", "C", "A"].reduce((s, x) => s + (leggiN("posti_" + x) || 0), 0);
   const aggiornaPosti = () => { const el = $("#totale-posti"); if (el) el.textContent = t("regole.totale_panchina", { n: tp("sd.n_giocatori", totalePosti()) }); };
-  aggiornaProva(); aiutoPanchina(); aggiornaPosti();
+  aggiornaProva(); aiutoPanchina(); aggiornaPosti(); aiutoRinvio();
   $("#posti_fissi").addEventListener("change", ev => { $("#posti-corpo").hidden = !ev.target.checked; $("#numero-corpo").hidden = ev.target.checked; mostraSalva(); });
   contenuto.addEventListener("input", ev => { aggiornaProva(); aggiornaPosti(); if (ev.target.id !== "testo-regole") mostraSalva(); }, sig);
   $("#md_attivo").addEventListener("change", ev => { $("#md-corpo").hidden = !ev.target.checked; mostraSalva(); });
@@ -3214,7 +3270,7 @@ async function vistaRegole() {
     const x = ev.target.closest(".rimuovi-fascia");
     if (x) { x.closest(".fascia").remove(); aggiornaProva(); mostraSalva(); }
     const seg = ev.target.closest(".segmenti button[data-valore]");
-    if (seg) { seg.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("attivo", b === seg)); aiutoPanchina(); mostraSalva(); }
+    if (seg) { seg.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("attivo", b === seg)); aiutoPanchina(); aiutoRinvio(); mostraSalva(); }
     const m = ev.target.closest("[data-modulo-regola]");
     if (m) { m.classList.toggle("attiva"); mostraSalva(); }
   }, sig);
@@ -3285,6 +3341,10 @@ async function vistaRegole() {
     nuove.scadenza_minuti = leggiN("scad_min");
     nuove.prima_giornata_lega = leggiN("prima_g");
     nuove.aggiornamenti_vicino_scadenza = $("#agg_vicini").checked;
+    if ($("#rinvio-modo .attivo")) {             // (server vecchio senza la regola dei rinvii: la sezione non c'è e non si manda nulla)
+      nuove.partite_rinviate = $("#rinvio-modo .attivo").dataset.valore;
+      nuove.voto_ufficio_rinviate = leggiN("voto_rinv");
+    }
     const fasce = leggiFasce().filter(f => Number.isFinite(f[0]) && Number.isFinite(f[1])).sort((a, b) => a[0] - b[0]);
     if (new Set(fasce.map(f => f[0])).size !== fasce.length) { avviso(t("regole.due_fasce_hanno"), 5000); return; }
     nuove.modificatore_difesa = { attivo: $("#md_attivo").checked, min_difensori: leggiN("md_min"), soglie: fasce };

@@ -382,6 +382,11 @@ details[open] > summary { margin-bottom: 8px; }
 .stato-scelta.non_valida .segno { color: var(--rosso); }
 .stato-scelta .pulsanti { margin-top: 10px; gap: 8px; }
 .stato-scelta .bottone { padding-left: 14px; padding-right: 14px; }
+/* Oggi, riquadro «Partita rinviata»: quali partite, i miei coinvolti e cosa vale per questa giornata */
+.elenco-rinvii { list-style: none; margin: 4px 0 8px; padding: 0; }
+.elenco-rinvii li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 4px 0; }
+.rinvio-scelta { display: block; margin: 8px 0 4px; }
+.rinvio-scelta select { margin-top: 6px; min-height: 46px; font-size: var(--t-corpo); }
 .giorno-titolo { font-size: var(--t-eti); text-transform: uppercase; letter-spacing: .08em; color: var(--testo-2); margin: 10px 0 2px; font-weight: 600; }
 /* ---- risultati in diretta ---- */
 .partita.mia { background: color-mix(in srgb, var(--verde) 9%, transparent); }

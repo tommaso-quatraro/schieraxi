@@ -78,6 +78,8 @@ Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazio
 - **Da controllare** (giocatori in dubbio), **I tuoi migliori**, **Indisponibili** e **Diffidati**;
 - **Partite del turno**, con i risultati in diretta (gol, rigori, espulsioni; una partita rinviata dice **Rinviata**). A sinistra l'ora o lo stato, al centro le squadre, a destra il risultato. Le partite con i tuoi titolari hanno il fondo verde chiaro e una barretta a sinistra.
 
+Se una partita della giornata è **rinviata**, in Oggi compare il riquadro **Partita rinviata**: quali partite, la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Impostazioni › Regole › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
+
 I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una frase. SchieraXI non propone cambi per differenze minime né ti fa svincolare un titolare utile.
 
 ### Formazione
@@ -115,7 +117,7 @@ Servono le rose delle altre squadre: se hai caricato solo la tua, qui trovi un m
 
 ### Altro
 
-- **Regole**: punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*.
+- **Regole**: punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
 - **Movimenti e storico**: scambi, svincolati e tagli a ogni aggiornamento delle rose.
 - **Crediti delle squadre**: non sono nel file di Leghe; li scrivi qui e tocchi **Salva i crediti**.
 - **Nuova stagione**: a fine campionato archivia le rose e riparte, senza cancellare niente.
@@ -129,7 +131,7 @@ Alcune funzioni (risultati in diretta, confronto, seguiti, elenco giocatori, Dia
 
 - **Prima della scadenza**: tutto come nella sezione 3.
 - **Giornata in corso** (formazione chiusa, partite da giocare o in corso): spariscono i consigli su chi schierare. Vedi i **punti fatti finora** dalla formazione schierata (la tua, se l'hai salvata), quanti punti ti aspetti **a fine giornata** (contando anche le riserve che entreranno), il fantavoto di chi ha giocato o l'ora di chi deve ancora giocare, e i **cambi dalla panchina**: «già fatto» se un titolare è rimasto senza voto e il sostituto ha il voto, «probabile» se deve ancora giocare. I fantavoti arrivano quando escono i voti ufficiali, di solito dopo la partita.
-- **Giornata finita** (per due giorni): il riepilogo con punti fatti e attesi, il confronto con la consigliata e un pulsante per aprire il Diario. Sotto, quando si chiude la prossima giornata e da quando conviene prepararla.
+- **Giornata finita** (per due giorni): il riepilogo con punti fatti e attesi, il confronto con la consigliata e un pulsante per aprire il Diario. Una partita rinviata non tiene aperta la giornata: se la tua lega aspetta il recupero, il riepilogo lo dice («Manca il recupero di…: i punti possono ancora cambiare»). Sotto, quando si chiude la prossima giornata e da quando conviene prepararla.
 
 ### Avvisi sul telefono (Impostazioni > Notifiche)
 
@@ -198,6 +200,8 @@ Sulla schermata Home, a schermo intero, senza store:
 **Le stime sono sicure?** No. La fascia dice quanto può oscillare e il Diario mostra quanto ci ha preso finora.
 
 **Perché la formazione è diversa da ieri?** Sono cambiate probabili, infortuni o squalifiche.
+
+**Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e, per una sola giornata, dal riquadro in Oggi. Anche il Diario conta i punti di quella giornata con la stessa regola.
 
 **Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica.
 

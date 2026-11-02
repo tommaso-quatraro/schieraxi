@@ -11,7 +11,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from . import affidabilita, buon_senso, consigli, diario, frasi, movimenti, scelte, stato_utente, widget
+from . import affidabilita, buon_senso, consigli, diario, frasi, movimenti, rinvii, scelte, stato_utente, widget
 from .frasi import F
 from .lega import Rose
 from .regole import Regole
@@ -241,7 +241,9 @@ def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | Non
     Le giornate più vecchie non si chiedono più (prima si accumulavano «la giornata 6 è finita», «la giornata 7 è finita»...)."""
     voci = diario.carica(file_diario).get("giornate", {})
     prima = getattr(regole, "prima_giornata_lega", 1)
-    finite = [x for x in affidabilita.giornate_concluse(db, stagione) if x >= prima]
+    # finite per la lega: con una partita rinviata e la regola «senza voto» o «voto d'ufficio» basta il turno (rinvii.py)
+    concluse = rinvii.giornate_chiuse(db, stagione, regole) if regole is not None else affidabilita.giornate_concluse(db, stagione)
+    finite = [x for x in concluse if x >= prima]
     if not finite:
         return []
     g = max(finite)

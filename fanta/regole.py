@@ -22,6 +22,12 @@ MAX_SCADENZA_MINUTI = 720          # al massimo 12 ore prima
 MAX_MODULI = 30                    # tetti contro regole esagerate (rallentano i calcoli o li fanno fallire)
 MAX_ROSA_PER_RUOLO = 30
 MAX_SOSTITUZIONI = 10
+# Partite rinviate (anche a settimane dopo). `aspetta`: la lega aspetta il recupero e conta il voto preso lì (come «Attendi il
+# recupero» di Leghe Fantacalcio); `senza_voto`: i giocatori restano senza voto ed entra la riserva; `voto_ufficio`: tutti prendono
+# il voto fisso `voto_ufficio_rinviate`. Le eccezioni decise volta per volta stanno in `rinvii_giornate` (vedi rinvii.py).
+MODI_RINVIO = ("aspetta", "senza_voto", "voto_ufficio")
+MAX_ECCEZIONI_RINVII = 2 * GIORNATE_SERIE_A
+_CHIAVE_RINVIO = re.compile(r"\d{4}-\d{2}/([1-9]|[12]\d|3[0-8])")
 
 
 @dataclass
@@ -82,6 +88,11 @@ class Regole:
     prima_giornata_lega: int = 1
     # Aggiornamenti più fitti di probabili e infortuni a 60, 30 e 15 minuti dalla scadenza (pianificatore.py). Interruttore per lega.
     aggiornamenti_vicino_scadenza: bool = True
+    # Partite rinviate: regola generale, voto d'ufficio e eccezioni per una giornata ({"2026-27/12": "voto_ufficio"}: stagione e
+    # giornata di Serie A). L'eccezione vince sulla regola generale. Vedi MODI_RINVIO e rinvii.py.
+    partite_rinviate: str = "aspetta"
+    voto_ufficio_rinviate: float = 6.0
+    rinvii_giornate: dict[str, str] = field(default_factory=dict)
 
     # ---- controlli ----
     def problemi(self) -> list[str]:
@@ -130,6 +141,17 @@ class Regole:
                 p.append("panchina.posti deve indicare quanti posti per P, D, C, A (zero o più)")
             elif sum(posti.values()) != self.panchina.numero:
                 p.append(f"panchina.numero ({self.panchina.numero}) deve essere la somma dei posti per ruolo ({sum(posti.values())})")
+        if self.partite_rinviate not in MODI_RINVIO:
+            p.append(f"partite_rinviate deve essere una di {MODI_RINVIO}")
+        if not 0 <= self.voto_ufficio_rinviate <= 10:
+            p.append("il voto d'ufficio delle partite rinviate deve essere tra 0 e 10")
+        if len(self.rinvii_giornate) > MAX_ECCEZIONI_RINVII:
+            p.append(f"rinvii_giornate: al massimo {MAX_ECCEZIONI_RINVII} eccezioni")
+        for k, v in self.rinvii_giornate.items():
+            if not _CHIAVE_RINVIO.fullmatch(k):
+                p.append(f"rinvii_giornate: {k!r} non è del tipo \"2026-27/12\" (stagione/giornata di Serie A)")
+            if v not in MODI_RINVIO:
+                p.append(f"rinvii_giornate[{k!r}] deve essere una di {MODI_RINVIO}")
         return p
 
     def _problemi_di_tipo(self) -> list[str]:
@@ -137,7 +159,7 @@ class Regole:
         numeri = {f"bonus.{k}": v for k, v in asdict(self.bonus).items() if k != "gol"}
         numeri |= {f"bonus.gol.{k}": v for k, v in self.bonus.gol.items()} if isinstance(self.bonus.gol, dict) else {}
         numeri |= {"fattore_campo": self.fattore_campo, "soglia_primo_gol": self.soglia_primo_gol,
-                   "ampiezza_fascia_gol": self.ampiezza_fascia_gol}
+                   "ampiezza_fascia_gol": self.ampiezza_fascia_gol, "voto_ufficio_rinviate": self.voto_ufficio_rinviate}
         if self.voto_senza_sostituto is not None:
             numeri["voto_senza_sostituto"] = self.voto_senza_sostituto
         p += [f"{k} deve essere un numero" for k, v in numeri.items() if not _numero(v)]
@@ -162,9 +184,13 @@ class Regole:
                      "aggiornamenti_vicino_scadenza": self.aggiornamenti_vicino_scadenza}.items():
             if not isinstance(v, bool):
                 p.append(f"{k} deve essere true o false")
-        for k, v in {"nome_lega": self.nome_lega, "fonte_voto": self.fonte_voto, "panchina.tipo": self.panchina.tipo}.items():
+        for k, v in {"nome_lega": self.nome_lega, "fonte_voto": self.fonte_voto, "panchina.tipo": self.panchina.tipo,
+                     "partite_rinviate": self.partite_rinviate}.items():
             if not isinstance(v, str):
                 p.append(f"{k} deve essere un testo")
+        if not isinstance(self.rinvii_giornate, dict) or not all(isinstance(k, str) and isinstance(v, str)
+                                                                 for k, v in self.rinvii_giornate.items()):
+            p.append('rinvii_giornate deve essere del tipo {"2026-27/12": "voto_ufficio"} oppure vuoto')
         if not isinstance(self.bonus.gol, dict):
             p.append("bonus.gol deve indicare un valore per ruolo")
         if not isinstance(self.moduli, list) or not all(isinstance(m, str) for m in self.moduli):

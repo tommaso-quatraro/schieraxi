@@ -37,7 +37,7 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 from . import da_fare, frasi, note_infortuni, stato_utente
 from . import lingua as lingua_testi
 from . import widget as widget_riassunto
-from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, fonti_attive, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
+from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, fonti_attive, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rinvii, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
 from . import avvisi as avvisi_pronta
 from . import avvisi_utenti
 from . import fasi, live
@@ -1954,17 +1954,38 @@ def leggi_regole(response: Response, ctx: Contesto = Depends(lega_corrente)):
 
 @app.put("/api/regole")
 def scrivi_regole(dati: dict, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
-    campi_lega = ("scadenza_minuti", "prima_giornata_lega", "aggiornamenti_vicino_scadenza")
-    if any(k not in dati for k in campi_lega):
-        # un client vecchio rimanda le regole senza i campi nuovi: non devono tornare al valore di partenza
-        attuali = asdict(_regole(ctx))
-        dati = {**{k: attuali[k] for k in campi_lega}, **dati}
-    nuove = regole.da_dict(dati)        # controlla tutto: chiavi, tipi, valori
+    campi_lega = ("scadenza_minuti", "prima_giornata_lega", "aggiornamenti_vicino_scadenza",
+                  "partite_rinviate", "voto_ufficio_rinviate", "rinvii_giornate")
     with versioni.blocco("regole"):
         versioni.controlla(request, versioni.etag_file(ctx.regole))
+        if any(k not in dati for k in campi_lega):
+            # un client vecchio rimanda le regole senza i campi nuovi: non devono tornare al valore di partenza (letti DENTRO il
+            # lucchetto: un'eccezione dei rinvii salvata intanto da un altro dispositivo non si perde)
+            attuali = asdict(_regole(ctx))
+            dati = {**{k: attuali[k] for k in campi_lega}, **dati}
+        nuove = regole.da_dict(dati)        # controlla tutto: chiavi, tipi, valori
         regole.salva(nuove, ctx.regole)
         response.headers["ETag"] = versioni.etag_file(ctx.regole)
     return asdict(nuove)
+
+
+class EccezioneRinvio(BaseModel):
+    giornata: int = Field(ge=1, le=regole.GIORNATE_SERIE_A)          # giornata di Serie A (il campo `giornata` di /api/oggi)
+    stagione: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")
+    modo: Literal["aspetta", "senza_voto", "voto_ufficio"] | None = None     # None = torna alla regola della lega
+
+
+@app.put("/api/regole/rinvio")
+def scrivi_eccezione_rinvio(dati: EccezioneRinvio, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+    """Partite rinviate, decisione per UNA giornata («per la giornata 12: voto d'ufficio»): vince sulla regola generale della lega.
+    `modo` null (o uguale alla regola generale) toglie l'eccezione. Risponde con la regola che vale ora per quella giornata."""
+    stagione = dati.stagione or consigli.stagione_corrente()
+    with versioni.blocco("regole"):
+        versioni.controlla(request, versioni.etag_file(ctx.regole))
+        nuove = rinvii.con_eccezione(_regole(ctx), stagione, dati.giornata, dati.modo, consigli.stagione_corrente())
+        regole.salva(nuove, ctx.regole)
+        response.headers["ETag"] = versioni.etag_file(ctx.regole)
+    return {"stagione": stagione, "giornata": dati.giornata, **rinvii.regola(nuove, stagione, dati.giornata)}
 
 
 class CorrezioneGiocatore(BaseModel):

@@ -11,7 +11,7 @@ import pandas as pd
 
 from . import calcolo, frasi, incertezza, perche
 from . import formazione as fz
-from . import modello, stato_dati, turno
+from . import modello, rinvii, stato_dati, turno
 from .aggiorna import Stagione
 from .frasi import F
 from .lega import Rose
@@ -119,10 +119,14 @@ def _calcola_previsioni(db, d, regole, stagione, giornata, chiave):
     if p.empty:
         raise ValueError(f"Non ci sono ancora previsioni per la giornata {giornata}: riprova più tardi.")
     p = p.set_index("id")
-    p["indice"] = _indice(p)
     p["difficolta"] = (p["gol_squadra"] - p["gol_avversario"]).map(difficolta)
     # «perché questo numero» (perche.py): spiega mu con i suoi pezzi veri, non cambia nessun numero
     p["perche_numero"], p["fv_atteso_medio_ruolo"] = perche.calcola(p, regole)
+    # partite rinviate: la regola della lega (o l'eccezione per questa giornata) dopo il «perché», che spiega il modello di sempre
+    r = rinvii.regola(regole, stagione, giornata)
+    p = rinvii.applica(p, rinvii.id_rinviate(d.partite, stagione, giornata), r)
+    p["perche_numero"] = rinvii.perche(p, r, perche.MAX_MOTIVI)
+    p["indice"] = _indice(p)
     return (p, giornata, not prob.empty)
 
 
@@ -151,7 +155,7 @@ def titolarita(x: pd.Series) -> str:
     """Etichetta semplice, a parole (senza numero): quanto è sicuro che giochi. L'unico numero mostrato è «gioca N%» (`p_voto`);
     chi le probabili danno titolare e ha `p_voto` alto è titolare anche se finora è partito spesso dalla panchina."""
     stato = x.get("stato")
-    if stato in FUORI:
+    if stato in FUORI or _rinvio(x) == "senza_voto":          # senza voto per la partita rinviata
         return "fuori"
     p, q = float(x["p_voto"]), float(x["quota_titolare"])
     if p >= 0.8 and (q >= 0.6 or stato == "titolare"):
@@ -165,6 +169,10 @@ def motivi(x: pd.Series) -> list[str]:
     (`p_voto`), qui le probabili diventano parole. Chi è infortunato o squalificato non gioca: niente frasi sulla partita, i gol
     o i rigori."""
     m = []
+    if _rinvio(x) in ("senza_voto", "voto_ufficio"):          # la partita non si gioca in questa giornata: conta solo questo
+        return [_frase_rinvio(x)]
+    if _rinvio(x):
+        m.append(_frase_rinvio(x))
     stato, perc = x.get("stato"), x.get("percentuale")
     if stato == "titolare":
         m.append(F("motivo.titolare_ballottaggio") if pd.notna(perc) and perc < PERC_BALLOTTAGGIO else F("motivo.titolare"))
@@ -191,6 +199,17 @@ def motivi(x: pd.Series) -> list[str]:
     return m
 
 
+def _rinvio(x) -> str | None:
+    """Il modo del rinvio della sua partita (colonna `rinvio`), o None se si gioca (o con previsioni senza la colonna)."""
+    v = x.get("rinvio")
+    return v if isinstance(v, str) else None
+
+
+def _frase_rinvio(x) -> str:
+    modo = _rinvio(x)
+    return rinvii.frase(modo, float(x["mu"]) if modo == "voto_ufficio" else None, x.get("data_partita"))
+
+
 def scheda_previsione(i: int, x: pd.Series) -> dict:
     x = x.to_dict()           # una volta sola: leggere ogni campo dalla Series di pandas costa circa 10 volte di più (e qui sono una trentina)
     elenco_motivi = motivi(x)
@@ -213,6 +232,8 @@ def scheda_previsione(i: int, x: pd.Series) -> dict:
         # «perché questo numero» (fanta/perche.py): al massimo 3 motivi, in fantavoti rispetto a un giocatore medio dello stesso ruolo
         "perche_numero": list(x.get("perche_numero") or []),
         "fv_atteso_medio_ruolo": None if pd.isna(x.get("fv_atteso_medio_ruolo", float("nan"))) else float(x["fv_atteso_medio_ruolo"]),
+        # partita rinviata: la regola che vale per questa giornata (aspetta, senza_voto, voto_ufficio); null se la partita si gioca
+        "rinvio": _rinvio(x),
     }
 
 

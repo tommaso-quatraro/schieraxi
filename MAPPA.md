@@ -21,6 +21,11 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi), `scambi.py`, `scambi_multi.py` (scambi N contro M),
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
+  - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`; regola della lega
+    `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
+    Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
+    (giornata in corso) e nel Diario; campo `rinvio` di `/api/oggi`, rotta `PUT /api/regole/rinvio`. Una partita rinviata non tiene
+    aperta la giornata (`fasi.fine_giornata`, `fasi.recuperi_mancanti`, `riepilogo.recuperi`). Test `tests/test_rinvii.py`.
   - Dati della lega: `regole.py` (regole parametriche), `regole_testo.py`, `rose.py` (Excel, CSV, testo), `lega.py`,
     `squadre.py`, `movimenti.py`, `scelte.py`, `formazioni_lega.py`, `osservati.py`, `listone.py`, `nomi.py` (riconoscimento
     dei nomi tra fonti), `immagini.py`, `scarica_immagine.py` (solo indirizzi https pubblici, tetto 4 MB).
@@ -98,6 +103,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - 202 = «sto calcolando» (coda, solo in modo multiutente): il client riprova. 429 con `Retry-After` = limiti per utente.
 - Scelta della giornata: `GET /api/scelta` dà anche `salvata` (data e ora) e `tipo`; web e iPhone mostrano in Formazione lo stato della scelta confrontando gli 11 mostrati con quelli salvati. Formazione non valida in `POST /api/formazione/valuta`: `400` con `codice: "formazione_non_valida"` (`consigli.FormazioneNonValida`); i client non cancellano la scelta da soli.
 - ETag e If-Match su scelta, osservati, rose, regole e avvisi. Con un If-Match vecchio: 412. Senza If-Match si scrive come sempre.
+- Partite rinviate: `PUT /api/regole/rinvio` (eccezione per una giornata, stesso ETag delle regole), campo `rinvio` in
+  `/api/oggi` e nelle schede dei giocatori; contratto in `docs/API.md`, «Partite rinviate».
 - Account: rotte `/api/account/*`. Con `nativo: true` il token torna nel corpo (l'app per iPhone lo manda come
   `Authorization: Bearer`). La web app usa il cookie `fanta_sessione`, HttpOnly.
 - Token del widget iPhone: `fw_...`, vale 90 giorni, creato con `POST /api/account/token-widget`. Apre solo `GET /api/oggi`,
