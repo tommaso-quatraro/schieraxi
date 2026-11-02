@@ -85,11 +85,11 @@ struct DubbioRiassunto: Codable, Equatable, Identifiable {
     /// Probabilità di giocare (0-1), per i dubbi.
     var pVoto: Double?
 
-    /// «Dubbio 55%», «Infortunato»...: una riga breve.
+    /// «Dubbio · gioca 55%», «Infortunato»...: una riga breve.
     var descrizione: String {
         let base = (tipo ?? "da controllare").prefix(1).uppercased() + (tipo ?? "da controllare").dropFirst()
         guard let p = pVoto else { return base }
-        return "\(base) \(Int((p * 100).rounded()))%"
+        return "\(base) · gioca \(Int((p * 100).rounded()))%"   // come nel resto dell'app: «gioca N%»
     }
 }
 

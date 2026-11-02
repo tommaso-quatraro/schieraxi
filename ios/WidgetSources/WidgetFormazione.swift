@@ -115,7 +115,7 @@ struct VistaFormazione: View {
             Text(f.intervallo?.testo.map { "attesi · \($0)" } ?? "punti attesi")
                 .font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1).minimumScaleFactor(0.8)
             if !w.daControllare.isEmpty {
-                Label("\(w.daControllare.count) da controllare", systemImage: "exclamationmark.triangle.fill")
+                EtichettaDaControllare(n: w.daControllare.count)
                     .font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1).minimumScaleFactor(0.8)
             } else {
                 PiedeDati(voce: voce)
@@ -135,7 +135,7 @@ struct VistaFormazione: View {
                 if let t = f.intervallo?.testo { Text(t).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
                 Spacer(minLength: 0)
                 if !w.daControllare.isEmpty {
-                    Label("\(w.daControllare.count) da controllare", systemImage: "exclamationmark.triangle.fill")
+                    EtichettaDaControllare(n: w.daControllare.count)
                         .font(.caption2).foregroundStyle(TintaWidget.attenzione)
                 } else { PiedeDati(voce: voce) }
             }
@@ -158,7 +158,7 @@ struct VistaFormazione: View {
             CampoMini(titolari: tit, lato: 40, conNomi: true)
             HStack {
                 if !w.daControllare.isEmpty {
-                    Label("\(w.daControllare.count) da controllare", systemImage: "exclamationmark.triangle.fill").foregroundStyle(TintaWidget.attenzione)
+                    EtichettaDaControllare(n: w.daControllare.count).foregroundStyle(TintaWidget.attenzione)
                 }
                 Spacer()
                 if let n = f.panchina?.count { Text("\(n) in panchina").foregroundStyle(TintaWidget.testo2) }

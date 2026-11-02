@@ -9,6 +9,11 @@ final class WidgetFrasiTests: XCTestCase {
         XCTAssertEqual(RiassuntoWidget.fraseDentro(dentro: 0, su: 1), "Dentro la fascia prevista in 0 giornate su 1.")
     }
 
+    func testAltri() {
+        XCTAssertEqual(RiassuntoWidget.altri(1), "e un altro")
+        XCTAssertEqual(RiassuntoWidget.altri(3), "e altri 3")
+    }
+
     func testMedia() {
         XCTAssertEqual(RiassuntoWidget.fraseMedia(1.5, giornate: 1), "In media +1,5 punti sul previsto nell'ultima giornata.")
         XCTAssertTrue(RiassuntoWidget.fraseMedia(-0.2, giornate: 5).hasSuffix("nelle ultime 5 giornate."))

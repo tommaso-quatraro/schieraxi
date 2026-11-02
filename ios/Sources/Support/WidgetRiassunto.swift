@@ -45,7 +45,8 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
         default: break
         }
         if dubbio == true || chiave == "dubbio" {
-            if let p = pVoto ?? percentuale.map({ $0 / 100 }), p > 0, p < 1 { return "Dubbio \(Int((p * 100).rounded()))%" }
+            // una sola percentuale in tutta l'app: «gioca N%» (la percentuale delle probabili non si mostra)
+            if let p = pVoto, p > 0, p < 1 { return "Dubbio · gioca \(Int((p * 100).rounded()))%" }
             return "Dubbio"
         }
         switch chiave {
@@ -580,4 +581,9 @@ extension RiassuntoWidget {
     static func fraseMedia(_ media: Double, giornate n: Int) -> String {
         "In media \(Formato.conSegno(media)) punti sul previsto " + (n == 1 ? "nell'ultima giornata." : "nelle ultime \(n) giornate.")
     }
+}
+
+extension RiassuntoWidget {
+    /// «e un altro», «e altri 3» (mai «e altri 1»).
+    static func altri(_ n: Int) -> String { n == 1 ? "e un altro" : "e altri \(n)" }
 }

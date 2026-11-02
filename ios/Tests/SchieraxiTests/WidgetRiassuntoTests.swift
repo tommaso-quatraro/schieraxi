@@ -94,11 +94,11 @@ final class WidgetRiassuntoTests: XCTestCase {
 
     func testLoStatoInUnaRiga() throws {
         let w = try riassunto()
-        XCTAssertEqual(w.rosa?[1].descrizioneStato, "Dubbio 55%")
+        XCTAssertEqual(w.rosa?[1].descrizioneStato, "Dubbio", "la percentuale delle probabili non si mostra")
         XCTAssertEqual(w.rosa?[2].descrizioneStato, "Infortunato")
         XCTAssertEqual(w.rosa?[0].descrizioneStato, "", "titolare: niente da segnalare")
         XCTAssertEqual(w.rosa?[3].descrizioneStato, "Non convocato", "senza trattino basso")
-        XCTAssertEqual(w.avvisi?.first?.descrizioneStato, "Dubbio 55%")
+        XCTAssertEqual(w.avvisi?.first?.descrizioneStato, "Dubbio · gioca 55%")
     }
 
     func testGliStatiVeriDelServer() throws {
@@ -112,7 +112,8 @@ final class WidgetRiassuntoTests: XCTestCase {
         XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "non_convocato"}"#), "Non convocato")
         XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "infortunato", "dubbio": true}"#), "Infortunato", "l'assenza vince sul dubbio")
         XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "squalificato"}"#), "Squalificato")
-        XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "titolare", "dubbio": true, "percentuale": 60}"#), "Dubbio 60%")
+        XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "titolare", "dubbio": true, "percentuale": 60}"#), "Dubbio")
+        XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "titolare", "dubbio": true, "p_voto": 0.7}"#), "Dubbio · gioca 70%")
         XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "titolare", "dubbio": true}"#), "Dubbio")
         XCTAssertEqual(try stato(#"{"id": 1, "nome": "A", "stato": "stato_nuovo"}"#), "Stato nuovo")
         XCTAssertEqual(try stato(#"{"id": 1, "nome": "A"}"#), "")

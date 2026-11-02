@@ -135,7 +135,7 @@ struct VistaCruscotto: View {
             } else {
                 ForEach(elenco.prefix(massimo)) { g in RigaGiocatoreWidget(g: g, lato: lato) }
                 if elenco.count > massimo {
-                    Text("e altri \(elenco.count - massimo)").font(.caption2).foregroundStyle(TintaWidget.testo2)
+                    Text(RiassuntoWidget.altri(elenco.count - massimo)).font(.caption2).foregroundStyle(TintaWidget.testo2)
                 }
             }
         }

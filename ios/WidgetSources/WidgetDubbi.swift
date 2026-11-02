@@ -76,7 +76,7 @@ struct VistaDubbi: View {
                     Link(destination: URL(string: "schieraxi://giocatore/\(d.id)") ?? URL(fileURLWithPath: "/")) { riga(d) }
                 }
                 if dubbi.count > massimo {
-                    Text("e altri \(dubbi.count - massimo)").font(.caption2).foregroundStyle(.white.opacity(0.7))
+                    Text(RiassuntoWidget.altri(dubbi.count - massimo)).font(.caption2).foregroundStyle(.white.opacity(0.7))
                 }
                 Spacer(minLength: 0)
             } else {

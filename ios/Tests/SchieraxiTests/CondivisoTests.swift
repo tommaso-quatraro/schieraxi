@@ -322,7 +322,7 @@ final class DubbiWidgetTests: XCTestCase {
         let r = RiassuntoOggi(oggi: oggi)
         XCTAssertEqual(r.daControllare, 2)
         XCTAssertEqual(r.dubbi?.map(\.id), [5, 6])
-        XCTAssertEqual(r.dubbi?.first?.descrizione, "Dubbio 55%")
+        XCTAssertEqual(r.dubbi?.first?.descrizione, "Dubbio · gioca 55%")
         XCTAssertEqual(r.dubbi?.last?.descrizione, "Diffidato")
     }
 

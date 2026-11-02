@@ -44,6 +44,7 @@ struct VistaWidget: View {
     @Environment(\.famigliaForzata) private var famigliaForzata
     private var famiglia: WidgetFamily { famigliaForzata ?? famigliaSistema }
     let voce: Voce
+    @Environment(\.dynamicTypeSize) private var dimensioneTesto
 
     private var accessorio: Bool {
         switch famiglia {
@@ -265,7 +266,7 @@ struct VistaWidget: View {
                 Text(voce.accessoRichiesto ? "Tocca per ricollegare" : voce.datiSalvati ? "dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
             }
             if r.daControllare > 0 {
-                Label("\(r.daControllare) da controllare", systemImage: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
+                EtichettaDaControllare(n: r.daControllare).font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
             } else if r.probabili == false {
                 Label("probabili non uscite", systemImage: "clock").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
             }
@@ -274,6 +275,9 @@ struct VistaWidget: View {
     }
 
     private var conDubbi: Bool { !(voce.completo?.daControllare.isEmpty ?? true) }
+
+    /// Quanti giocatori da controllare stanno nel widget medio: con il testo molto grande uno solo (due si sovrapponevano).
+    private var righeDubbi: Int { dimensioneTesto >= .xLarge ? 1 : 2 }
 
     private func medio(_ r: RiassuntoOggi) -> some View {
         HStack(alignment: .top, spacing: 16) {
@@ -311,13 +315,13 @@ struct VistaWidget: View {
                 if let w = voce.completo, !w.daControllare.isEmpty {
                     // i miei titolari con un dubbio, un infortunio o una squalifica (dati di /api/widget)
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(w.daControllare.prefix(2)) { g in RigaGiocatoreWidget(g: g, lato: 28, conLink: false) }
-                        if w.daControllare.count > 2 {
-                            Text("e altri \(w.daControllare.count - 2)").font(.caption2).foregroundStyle(TintaWidget.testo2)
+                        ForEach(w.daControllare.prefix(righeDubbi)) { g in RigaGiocatoreWidget(g: g, lato: 28, conLink: false) }
+                        if w.daControllare.count > righeDubbi {
+                            Text(RiassuntoWidget.altri(w.daControllare.count - righeDubbi)).font(.caption2).foregroundStyle(TintaWidget.testo2)
                         }
                     }
                 } else if r.daControllare > 0 {
-                    Label("\(r.daControllare) da controllare", systemImage: "exclamationmark.circle.fill")
+                    EtichettaDaControllare(n: r.daControllare, icona: "exclamationmark.circle.fill")
                         .font(.caption).foregroundStyle(.orange)
                 } else if r.probabili == false {
                     Label("probabili non uscite", systemImage: "clock").font(.caption2).foregroundStyle(.secondary)
