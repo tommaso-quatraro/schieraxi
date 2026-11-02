@@ -9,7 +9,7 @@ enum TestiAccesso {
     static let etaMinima = 14
     /// La casella della registrazione (anche dopo Google): Privacy, Termini d'uso ed età in una sola conferma.
     static let letto = "Ho letto Privacy e Termini d'uso e ho almeno \(etaMinima) anni"
-    static let spuntaLetto = "Per registrarti spunta la casella: hai letto Privacy e Termini d'uso"
+    static let spuntaLetto = "Per registrarti spunta la casella: hai letto Privacy e Termini d'uso e hai almeno \(etaMinima) anni"
     static let leggiPrivacy = "Leggi la Privacy"
     static let leggiTermini = "Leggi i Termini d'uso"
     static let passwordDimenticata = "Password dimenticata"
@@ -18,6 +18,7 @@ enum TestiAccesso {
     static let passwordCambiata = "Password cambiata"
     static let passwordCambiataAccedi = "Password cambiata: accedi con quella nuova."
     static let vaiAllAccesso = "Vai all'accesso"
+    /// Il recupero è andato a metà (nessun nuovo codice leggibile): come `accesso.risposta_incompleta` della web.
     static let rispostaIncompleta = "Qualcosa non ha funzionato: riprova"
 }
 
@@ -33,8 +34,11 @@ enum MetodoRecupero: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Come la web: con la registrazione a invito si parte dal codice di recupero, altrimenti dall'email.
-    static func iniziale(_ modo: ModalitaRegistrazione) -> MetodoRecupero { modo == .invito ? .codice : .email }
+    /// Come la web: con la registrazione a invito, o con la posta spenta sul server, si parte dal codice di recupero;
+    /// altrimenti dall'email.
+    static func iniziale(_ modo: ModalitaRegistrazione, postaAccesa: Bool = true) -> MetodoRecupero {
+        modo == .invito || !postaAccesa ? .codice : .email
+    }
 }
 
 /// Quello che si è scritto nella schermata di accesso e a che punto si è.
@@ -72,16 +76,33 @@ struct ModuloAccesso: Equatable {
         }
     }
 
-    /// Passa a un'altra scheda: la password scritta non resta, il recupero riparte dal primo passo.
-    mutating func vai(_ nuova: Scheda, modo: ModalitaRegistrazione) {
+    /// Passa a un'altra scheda, come la web che riapre il modulo da capo: la password scritta non resta, i codici e i passi
+    /// a metà (recupero, registrazione con il codice per posta) si dimenticano.
+    mutating func vai(_ nuova: Scheda, modo: ModalitaRegistrazione, postaAccesa: Bool = true) {
         scheda = nuova
         password = ""
-        if nuova == .recupera {
-            metodo = MetodoRecupero.iniziale(modo)
+        codiceEmail = ""
+        switch nuova {
+        case .accedi:
+            codice = ""
             emailRecupero = nil
-            codiceEmail = ""
+        case .registrati:
+            iscrizione = nil
+        case .recupera:
+            metodo = MetodoRecupero.iniziale(modo, postaAccesa: postaAccesa)
+            emailRecupero = nil
             codice = ""
         }
+    }
+
+    /// Il codice per posta è partito (recupero con l'email, primo passo): si passa al secondo passo, ma solo se si è ancora
+    /// dove lo si è chiesto (`daPasso`). Restituisce false se nel frattempo si è andati altrove: allora non cambia niente.
+    mutating func codiceInviato(a indirizzo: String, daPasso: Passo) -> Bool {
+        guard daPasso == .recuperoEmail, passo == daPasso else { return false }
+        emailRecupero = indirizzo
+        codiceEmail = ""
+        password = ""
+        return true
     }
 
     // MARK: cosa si vede
@@ -89,11 +110,13 @@ struct ModuloAccesso: Equatable {
     /// I campi del modulo, nell'ordine della web (l'invio dalla tastiera passa al campo dopo; dall'ultimo manda il modulo).
     enum Campo: Hashable { case invito, nome, email, password, codice, codiceEmail }
 
-    func campi(_ modo: ModalitaRegistrazione) -> [Campo] {
+    /// `postaAccesa` falso (il server non manda email): con l'invito l'email non si chiede, come la web.
+    func campi(_ modo: ModalitaRegistrazione, postaAccesa: Bool = true) -> [Campo] {
         switch passo {
         case .accedi: return [.nome, .password]
         case .registra:
-            let base: [Campo] = [.nome, .email, .password]
+            let conEmail = postaAccesa || modo != .invito
+            let base: [Campo] = conEmail ? [.nome, .email, .password] : [.nome, .password]
             return modo.chiedeInvito ? [Campo.invito] + base : base
         case .verificaIscrizione: return [.codiceEmail]
         case .recuperoCodice: return [.nome, .codice, .password]
@@ -104,8 +127,15 @@ struct ModuloAccesso: Equatable {
 
     /// La password da scegliere (registrazione e recupero): si controlla mentre si scrive.
     var passwordNuova: Bool { ([.registra, .recuperoCodice, .recuperoEmailCodice] as [Passo]).contains(passo) }
-    /// La scelta «Con l'email» / «Con il codice di recupero»: solo al primo passo del recupero, come la web.
-    var mostraMetodi: Bool { passo == .recuperoCodice || passo == .recuperoEmail }
+    /// La scelta «Con l'email» / «Con il codice di recupero»: solo al primo passo del recupero e con la posta accesa, come la web.
+    func mostraMetodi(postaAccesa: Bool = true) -> Bool {
+        postaAccesa && (passo == .recuperoCodice || passo == .recuperoEmail)
+    }
+
+    /// L'email da mandare con la registrazione: solo se il campo c'è (con la posta spenta un'email scritta prima non parte).
+    func emailDaMandare(_ modo: ModalitaRegistrazione, postaAccesa: Bool = true) -> String {
+        campi(modo, postaAccesa: postaAccesa).contains(.email) ? email : ""
+    }
 
     var etichettaPassword: String {
         switch passo {
@@ -179,12 +209,17 @@ struct ModuloAccesso: Equatable {
 
     /// Si può premere il pulsante. La casella di Privacy, Termini ed età NON conta qui: come sulla web, se manca lo dice
     /// il messaggio `TestiAccesso.spuntaLetto` al tocco (vedi `problemaPrimaDellInvio`).
-    func pronto(_ modo: ModalitaRegistrazione) -> Bool {
+    func pronto(_ modo: ModalitaRegistrazione, postaAccesa: Bool = true) -> Bool {
         switch passo {
         case .accedi:
             return !RegoleAccount.pulisciNome(nome).isEmpty && !password.isEmpty
         case .registra:
-            let emailOk = modo.chiedeEmail ? RegoleAccount.problemaEmail(email) == nil : problemaEmail == nil
+            let emailOk: Bool
+            if !campi(modo, postaAccesa: postaAccesa).contains(.email) {
+                emailOk = true   // il campo non c'è: un'email scritta prima non conta (e non parte, vedi `emailDaMandare`)
+            } else {
+                emailOk = modo.chiedeEmail ? RegoleAccount.problemaEmail(email) == nil : problemaEmail == nil
+            }
             return nomeOk && passwordOk && emailOk && (!modo.invitoObbligatorio || pieno(invito))
         case .verificaIscrizione:
             return pieno(codiceEmail)
@@ -201,35 +236,21 @@ struct ModuloAccesso: Equatable {
     var problemaPrimaDellInvio: String? {
         passo == .registra && !accetto ? TestiAccesso.spuntaLetto : nil
     }
-}
 
-/// «Password dimenticata» con l'email: le due rotte senza sessione della web (`/api/account/recupero-email` e `/conferma`).
-@MainActor
-enum RecuperoConEmail {
-    private struct Richiesta: Encodable { let email: String }
-    private struct Conferma: Encodable {
-        let email: String
-        let codice: String
-        let nuova: String
+    /// Cosa fa l'invio (pulsante, o tasto Invio dall'ultimo campo).
+    enum PrimaDellInvio: Equatable {
+        /// Si scrive al server.
+        case manda
+        /// Si mostra questo messaggio e non si manda niente.
+        case avvisa(String)
+        /// Il modulo è a metà: i problemi sono già sotto i campi e il pulsante è spento.
+        case aspetta
     }
 
-    /// Chiede il codice per posta. La risposta del server è la stessa che l'indirizzo esista o no: non c'è niente da leggere.
-    static func chiediCodice(email: String, server: any ServerClient) async throws {
-        let pulita = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        _ = try await server.corpoJSON("POST", "/api/account/recupero-email", Richiesta(email: pulita))
-    }
-
-    /// Nuova password con il codice arrivato per posta. Restituisce il NUOVO codice di recupero, da far salvare.
-    static func conferma(email: String, codice: String, nuova: String, server: any ServerClient) async throws -> String {
-        let corpo = Conferma(email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                             codice: codice.trimmingCharacters(in: .whitespacesAndNewlines), nuova: nuova)
-        let r: RispostaAccount
-        do {
-            r = try await server.posta("POST", "/api/account/recupero-email/conferma", corpo)
-        } catch ErroreApi.dati {
-            throw SessioneAccount.Errore.serverNonValido
-        }
-        guard let nuovo = r.codiceRecupero, Accesso.codiceRecuperoValido(nuovo) else { throw SessioneAccount.Errore.rispostaNonValida }
-        return nuovo
+    /// Come la web: la casella si controlla per prima, anche con il modulo a metà. Il resto la web lo fa dire al server; qui
+    /// un modulo a metà non parte (pulsante spento, problemi sotto i campi).
+    func primaDellInvio(_ modo: ModalitaRegistrazione, postaAccesa: Bool = true) -> PrimaDellInvio {
+        if let problema = problemaPrimaDellInvio { return .avvisa(problema) }
+        return pronto(modo, postaAccesa: postaAccesa) ? .manda : .aspetta
     }
 }

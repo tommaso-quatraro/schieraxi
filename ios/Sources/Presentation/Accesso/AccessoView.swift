@@ -21,7 +21,7 @@ struct SchermataAccesso: View {
     @State private var errore: String?
     @State private var messaggio: String?
     /// Il nuovo codice di recupero dopo aver rimesso la password: va salvato prima di proseguire.
-    @State private var codiceNuovo: String?
+    @State private var codiceNuovo: CodiceDaSalvare?
     @State private var avanzate = false
     /// Google è acceso sul server? (lo dice il server nel 401; senza, i pulsanti non compaiono)
     @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
@@ -30,18 +30,19 @@ struct SchermataAccesso: View {
     private var googleAcceso: Bool { ServiziSociali.googleAcceso(socialTesto) }
     @AppStorage(ModalitaRegistrazione.chiave) private var modoTesto = ModalitaRegistrazione.invito.rawValue
     private var modo: ModalitaRegistrazione { ModalitaRegistrazione(rawValue: modoTesto) ?? .invito }
+    /// La posta è accesa sul server? (lo dice il server nel 401; spenta: niente email con l'invito né recupero con l'email)
+    @AppStorage(PostaServer.chiave) private var postaAccesa = true
     @FocusState private var focus: ModuloAccesso.Campo?
     @Namespace private var pillole
     @Namespace private var pilloleMetodo
 
     init(iniziale: Scheda = .accedi) {
         var m = ModuloAccesso(scheda: iniziale)
-        if iniziale == .recupera { m.metodo = MetodoRecupero.iniziale(ModalitaRegistrazione.salvato) }
+        if iniziale == .recupera {
+            m.metodo = MetodoRecupero.iniziale(ModalitaRegistrazione.salvato, postaAccesa: PostaServer.accesa())
+        }
         _modulo = State(initialValue: m)
     }
-
-    /// Il server delle rotte senza sessione (recupero con l'email): lo stesso della sessione (vedi `SchieraxiApp`).
-    private var server: any ServerClient { Demo.daLancio ? ServerCorrente.condiviso : ServerHTTP() }
 
     // MARK: corpo
 
@@ -57,7 +58,7 @@ struct SchermataAccesso: View {
                 }
                 selettore
                 sezioneGoogle
-                if modulo.mostraMetodi { selettoreMetodo }
+                if modulo.mostraMetodi(postaAccesa: postaAccesa) { selettoreMetodo }
                 Carta { campi }
                     .animation(Tema.molla, value: modulo.passo)
                 if let messaggio {
@@ -103,7 +104,7 @@ struct SchermataAccesso: View {
             NavigationStack { ScegliNomeGoogleView(nuovo: n, invitoIniziale: modulo.invito) }
                 .presentationDragIndicator(.visible)
         }
-        .sheet(item: Binding(get: { codiceNuovo.map(CodiceDaSalvare.init) }, set: { if $0 == nil { codiceNuovo = nil } })) { c in
+        .sheet(item: $codiceNuovo) { c in
             NavigationStack {
                 CodiceRecuperoView(codice: c.codice, titolo: TestiAccesso.passwordCambiata, testoPulsante: TestiAccesso.vaiAllAccesso) {
                     codiceNuovo = nil
@@ -171,7 +172,7 @@ struct SchermataAccesso: View {
     // MARK: campi
 
     private var campi: some View {
-        let elenco = modulo.campi(modo)
+        let elenco = modulo.campi(modo, postaAccesa: postaAccesa)
         return VStack(alignment: .leading, spacing: 14) {
             if let spiegazione = modulo.spiegazione(modo) {
                 Text(spiegazione).font(.subheadline).foregroundStyle(Color.testoSecondario)
@@ -287,7 +288,7 @@ struct SchermataAccesso: View {
             }
             .pulsanteVetro(prominente: true)
             .accessibilityIdentifier("accesso-invia")
-            .disabled(!modulo.pronto(modo) || inInvio || sessione.inCorso || resto > 0)
+            .disabled(!modulo.pronto(modo, postaAccesa: postaAccesa) || inInvio || sessione.inCorso || resto > 0)
             .sensoryFeedback(trigger: errore) { _, nuovo in nuovo != nil ? .error : nil }
             .onChange(of: resto) { _, nuovo in
                 // a zero il conto alla rovescia si ferma e il messaggio di attesa sparisce
@@ -297,10 +298,18 @@ struct SchermataAccesso: View {
     }
 
     private func invia() async {
-        guard modulo.pronto(modo), !inInvio, !sessione.inCorso else { return }
+        guard !inInvio, !sessione.inCorso else { return }
         if let fine = attesaFinoA, AttesaRiprova.secondiRimasti(fino: fine) > 0 { return }
-        // controllo sul telefono (la casella non spuntata): la password scritta resta
-        if let problema = modulo.problemaPrimaDellInvio { messaggio = nil; errore = problema; return }
+        switch modulo.primaDellInvio(modo, postaAccesa: postaAccesa) {
+        case .manda: break
+        case .avvisa(let problema):
+            // controllo sul telefono, per primo come la web (la casella non spuntata): la password scritta resta
+            messaggio = nil
+            errore = problema
+            return
+        case .aspetta:
+            return
+        }
         inInvio = true
         defer { inInvio = false }
         let passoInvio = modulo.passo
@@ -313,7 +322,8 @@ struct SchermataAccesso: View {
                 try await sessione.accedi(nomeUtente: modulo.nome, password: modulo.password)
             case .registra:
                 if let nuova = try await sessione.registra(nomeUtente: modulo.nome, password: modulo.password, invito: modulo.invito,
-                                                           email: modulo.email, accettoTermini: modulo.accetto) {
+                                                           email: modulo.emailDaMandare(modo, postaAccesa: postaAccesa),
+                                                           accettoTermini: modulo.accetto) {
                     modulo.iscrizione = nuova
                     modulo.codiceEmail = ""
                     modulo.password = ""
@@ -322,20 +332,19 @@ struct SchermataAccesso: View {
                 guard let attesa = modulo.iscrizione else { return }
                 try await sessione.confermaIscrizione(attesa, codice: modulo.codiceEmail)
             case .recuperoCodice:
+                // la password è cambiata: il nuovo codice si mostra anche se nel frattempo si è andati altrove
                 let nuovo = try await sessione.recupera(nomeUtente: modulo.nome, codice: modulo.codice, nuovaPassword: modulo.password)
-                passwordCambiata(nuovo)
+                codiceNuovo = CodiceDaSalvare(codice: nuovo)
             case .recuperoEmail:
                 let indirizzo = modulo.email.trimmingCharacters(in: .whitespacesAndNewlines)
-                try await RecuperoConEmail.chiediCodice(email: indirizzo, server: server)
-                modulo.emailRecupero = indirizzo
-                modulo.codiceEmail = ""
-                modulo.password = ""
-                messaggio = TestiAccesso.codiceInviato
+                try await sessione.chiediCodiceEmail(indirizzo)
+                // se nel frattempo si è cambiato passo (Torna all'accesso), il secondo passo non si apre da solo
+                if modulo.codiceInviato(a: indirizzo, daPasso: passoInvio) { messaggio = TestiAccesso.codiceInviato }
             case .recuperoEmailCodice:
                 guard let indirizzo = modulo.emailRecupero else { return }
-                let nuovo = try await RecuperoConEmail.conferma(email: indirizzo, codice: modulo.codiceEmail,
-                                                                nuova: modulo.password, server: server)
-                passwordCambiata(nuovo)
+                let nuovo = try await sessione.recuperaConEmail(email: indirizzo, codice: modulo.codiceEmail,
+                                                                nuovaPassword: modulo.password)
+                codiceNuovo = CodiceDaSalvare(codice: nuovo)
             }
         } catch {
             // Se nel frattempo si è cambiato passo, l'errore non c'entra più con quello che si vede.
@@ -347,16 +356,9 @@ struct SchermataAccesso: View {
         }
     }
 
-    /// Dopo il recupero: il nuovo codice da salvare (se il server l'ha mandato), poi di nuovo all'accesso.
-    private func passwordCambiata(_ nuovo: String?) {
-        if let nuovo, !nuovo.isEmpty { codiceNuovo = nuovo } else { tornaDopoIlCambio() }
-    }
-
+    /// Dopo il recupero, salvato il nuovo codice: di nuovo all'accesso (codici e passi del recupero si dimenticano in `vai`).
     private func tornaDopoIlCambio() {
         vai(.accedi)
-        modulo.codice = ""
-        modulo.codiceEmail = ""
-        modulo.emailRecupero = nil
         messaggio = TestiAccesso.passwordCambiataAccedi
     }
 
@@ -423,7 +425,7 @@ struct SchermataAccesso: View {
     }
 
     private func vai(_ s: Scheda) {
-        withAnimation(Tema.molla) { modulo.vai(s, modo: modo) }
+        withAnimation(Tema.molla) { modulo.vai(s, modo: modo, postaAccesa: postaAccesa) }
         errore = nil
         messaggio = nil
     }

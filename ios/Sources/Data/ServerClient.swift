@@ -291,6 +291,7 @@ struct ServerHTTP: ServerClient {
             guard Self.eJsonDelServer(dati) else { throw ErroreApi.risposta(401) }
             UserDefaults.standard.set(ModalitaRegistrazione.leggi(corpo: dati).rawValue, forKey: ModalitaRegistrazione.chiave)
             ServiziSociali.salva(ServiziSociali.leggi(corpo: dati))   // i pulsanti «Continua con Google» solo se il server li dichiara
+            PostaServer.salva(corpo: dati)   // posta spenta: niente email nella registrazione con l'invito né recupero con l'email
             if !Self.eDiAccesso(percorso) {
                 // Si dice quale token ha fallito (solo un'impronta): se nel frattempo si è fatto un nuovo accesso, un 401 in ritardo
                 // di una richiesta vecchia non deve buttare fuori la sessione nuova.

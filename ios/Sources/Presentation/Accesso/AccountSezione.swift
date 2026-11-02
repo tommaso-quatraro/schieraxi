@@ -222,7 +222,7 @@ struct EsciSezione: View {
     }
 }
 
-/// Cambia la password: quella di adesso, la nuova (due volte: «Ripeti la nuova password» c'è solo sull'iPhone, ed è più sicuro).
+/// Cambia la password: quella di adesso e la nuova due volte («Ripeti la nuova password»), come la web.
 struct FoglioCambiaPassword: View {
     let nome: String
     let fatto: () -> Void
@@ -271,7 +271,7 @@ struct FoglioCambiaPassword: View {
             } footer: { Group {
                 VStack(alignment: .leading, spacing: 4) {
                     if let problema { Text(problema).foregroundStyle(Color.attenzione) }
-                    if !ripeti.isEmpty && nuova != ripeti { Text("Le due password non coincidono.").foregroundStyle(Color.attenzione) }
+                    if !ripeti.isEmpty && nuova != ripeti { Text(TestiAccount.passwordDiverse).foregroundStyle(Color.attenzione) }
                     Text(TestiAccount.altriScollegati)
                 }
             }.foregroundStyle(Color.testoSecondario) }

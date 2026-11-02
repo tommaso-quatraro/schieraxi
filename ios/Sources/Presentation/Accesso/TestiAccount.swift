@@ -6,8 +6,9 @@ enum TestiAccount {
     static let cambiaPassword = "Cambia la password"
     static let passwordAttuale = "Password attuale"
     static let nuovaPassword = "Nuova password (almeno \(RegoleAccount.passwordMinima) caratteri)"
-    /// Solo sull'iPhone (è più sicuro): si sta aggiungendo anche alla web.
+    /// La nuova password scritta due volte, come la web (`account.ripeti_password` e `account.password_diverse`).
     static let ripetiPassword = "Ripeti la nuova password"
+    static let passwordDiverse = "Le due password non coincidono."
     static let altriScollegati = "Gli altri dispositivi vengono scollegati."
     static let passwordCambiataOk = "Password cambiata. Gli altri dispositivi sono stati scollegati."
     static let laTuaPassword = "La tua password"
