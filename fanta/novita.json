@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.326",
+    "data": "2026-11-02T10:02:52",
+    "titolo": "Rose incollate: il nome giusto della squadra",
+    "voci": [
+      "Se copi le rose con sotto il nome dell'allenatore (per esempio «Allenatore: Marco»), la squadra prende il suo nome vero e non quello della riga dell'allenatore."
+    ],
+    "tecnico": [
+      "rose._Celle: le celle «Allenatore:», «Presidente:», «Manager:», «Coach:», «Proprietario:», «Mister:» (anche con il trattino) sono intestazioni, non nomi di squadra."
+    ]
+  },
+  {
     "versione": "1.325",
     "data": "2026-11-02T09:59:06",
     "titolo": "Chi entra adesso non riceve domande sulle giornate passate",
