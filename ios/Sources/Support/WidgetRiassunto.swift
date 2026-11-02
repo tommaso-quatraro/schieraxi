@@ -32,7 +32,7 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
     /// Quando gioca (ora italiana), se la partita è nota.
     var quando: Date? { Quando.data(dataPartita) }
 
-    /// Una riga breve SOLO se c'è qualcosa da guardare: «Infortunato», «Squalificato», «Non convocato», «Dubbio 55%», «Panchina».
+    /// Una riga breve SOLO se c'è qualcosa da guardare: «Infortunato», «Squalificato», «Non convocato», «Dubbio · gioca 55%», «Panchina».
     /// Titolare (o nessuno stato) = stringa vuota. Il server manda `stato` = titolare | panchina | non_convocato | infortunato |
     /// squalificato e il dubbio a parte (`dubbio`); negli avvisi c'è `tipo`. Stesso ordine di `Giocatore.etichette`: prima
     /// l'assenza sicura, poi il dubbio, poi la panchina. Un valore nuovo si scrive leggibile («nuovo_stato» → «Nuovo stato»).
