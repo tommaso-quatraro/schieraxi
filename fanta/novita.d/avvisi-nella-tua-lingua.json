@@ -1,0 +1,13 @@
+{
+  "titolo": "Gli avvisi sul telefono nella tua lingua",
+  "voci": [
+    "Se usi l'app in inglese, ora anche le notifiche sul telefono (cambi nelle probabili, promemoria, riepilogo di giornata, formazione pronta) arrivano in inglese. Basta cambiare lingua nell'app: se non cambi niente restano in italiano."
+  ],
+  "titolo_en": "Phone alerts in your language",
+  "voci_en": [
+    "If you use the app in English, the phone notifications (changes in the probable lineups, reminders, matchday recap, lineup ready) now arrive in English too. Just change the language in the app: if you change nothing they stay in Italian."
+  ],
+  "tecnico": [
+    "Nuova impostazione `lingua` (it/en, predefinito it) in GET/PUT /api/avvisi; notifiche.invia scrive titolo e testo (Frase, fanta/frasi.py) nella lingua dell'utente. L'inglese degli avvisi sta in fanta/frasi_avvisi.py (chiavi n.*). La web app manda PUT /api/avvisi {lingua} quando cambia lingua; iPhone e Android non cambiano (restano in italiano). Il reparto scoperto usa copertura.analizza con la lingua."
+  ]
+}

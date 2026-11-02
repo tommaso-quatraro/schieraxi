@@ -3412,7 +3412,13 @@ function scegliLingua(lingua, utente) {
   if (!Object.hasOwn(LINGUE, lingua)) return;
   memScrivi("lingua", lingua);
   if (utente) memScrivi(`lingua:${utente}`, lingua);
+  linguaAgliAvvisi(lingua);
   location.reload();
+}
+// Gli avvisi sul telefono li scrive il server nella lingua salvata nelle impostazioni degli avvisi: si manda quando la lingua cambia.
+// (salvaLinguaAvvisi sta in app.js; senza accesso o senza rete non succede niente e resta la lingua di prima.)
+function linguaAgliAvvisi(lingua) {
+  if (typeof salvaLinguaAvvisi === "function") salvaLinguaAvvisi(lingua);
 }
 // Dopo l'accesso: se questo utente aveva scelto un'altra lingua si ricarica con la sua (true = sto ricaricando); se non l'aveva scelta, si ricorda quella di adesso.
 function usaLinguaDi(utente) {
@@ -3421,6 +3427,7 @@ function usaLinguaDi(utente) {
   if (!mia || !Object.hasOwn(LINGUE, mia)) { memScrivi(`lingua:${utente}`, LINGUA); return false; }
   if (mia === LINGUA) return false;
   memScrivi("lingua", mia);
+  linguaAgliAvvisi(mia);
   location.reload();
   return true;
 }

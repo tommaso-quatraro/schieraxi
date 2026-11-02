@@ -1852,6 +1852,7 @@ class ImpostazioniAvvisi(BaseModel):
     silenzio_da: int = Field(23, ge=0, le=23)
     silenzio_a: int = Field(7, ge=0, le=23)
     avviso_prima: Literal[0, 30, 60, 90] = 60     # avviso «cambia la formazione»: minuti prima della scadenza (0 = spento)
+    lingua: Literal["it", "en"] = "it"            # lingua dei testi degli avvisi sul telefono (la web app la manda quando cambia lingua)
 
 
 def _stato_avvisi(ctx: Contesto, opzioni: dict) -> dict:
@@ -1894,7 +1895,7 @@ def avviso_di_prova(ctx: Contesto = Depends(lega_corrente)):
     if not ((ctx.ntfy and notifiche.canale() is not None) or notifiche_web.iscrizioni(ctx.iscrizioni_push)):
         raise HTTPException(409, "Nessun canale per gli avvisi: attiva le notifiche su questo dispositivo"
                             + (", oppure imposta il canale ntfy sul server." if ctx.ntfy else "."))
-    return {"inviato": _manda(ctx)("SchieraXI · prova", "Se leggi questo, gli avvisi funzionano.", 3, "white_check_mark", ignora_silenzio=True)}
+    return {"inviato": _manda(ctx)(frasi.F("n.t_prova"), frasi.F("n.prova"), 3, "white_check_mark", ignora_silenzio=True)}
 
 
 class IscrizionePush(BaseModel):

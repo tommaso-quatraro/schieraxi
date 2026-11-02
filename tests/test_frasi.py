@@ -11,6 +11,7 @@ import pytest
 
 from fanta import frasi, server
 from fanta.frasi import CATALOGO, F
+from fanta.frasi_avvisi import NOTIFICHE
 
 PACCHETTO = server.WEB.parent
 TESTI_JS = (server.WEB / "testi.js").read_text(encoding="utf-8")
@@ -62,7 +63,7 @@ def test_le_chiavi_scritte_nel_codice_esistono():
             if isinstance(nodo, ast.Call) and isinstance(nodo.func, ast.Name) and nodo.func.id in ("F", "Frase") and nodo.args:
                 a = nodo.args[0]
                 if isinstance(a, ast.Constant) and isinstance(a.value, str) and a.value not in CATALOGO and a.value + ".other" not in CATALOGO \
-                        and a.value not in ("elenco", "elenco_e"):
+                        and a.value not in NOTIFICHE and a.value + ".other" not in NOTIFICHE and a.value not in ("elenco", "elenco_e"):
                     mancanti.append(f"{percorso.name}:{nodo.lineno} {a.value}")
     assert not mancanti, mancanti
 
@@ -269,3 +270,33 @@ def test_le_etichette_delle_regole_riconosciute_hanno_la_traduzione():
         assert it.get("regola.et." + chiave) == etichetta, chiave
         assert en["regola.et." + chiave]
     assert {k for k in it if k.startswith("regola.et.")} == {"regola.et." + c for c in etichette}
+
+
+# ---------------------------------------------------------------- gli avvisi sul telefono: italiano e inglese scritti dal server
+def test_ogni_avviso_sul_telefono_ha_italiano_e_inglese_con_gli_stessi_segnaposto():
+    segnaposto = lambda s: sorted(re.findall(r"\{(\w+)\}", s))      # noqa: E731
+    for chiave, (it, en) in NOTIFICHE.items():
+        assert segnaposto(it) == segnaposto(en), chiave
+        assert en.strip() and chiave.startswith("n."), chiave
+        assert chiave not in CATALOGO                              # un nome solo per volta: le chiavi di testi.js non si confondono con queste
+    base = sorted({re.sub(r"\.(one|other)$", "", k) for k in NOTIFICHE})
+    for chiave in base:
+        for n in ((1, 2) if chiave + ".other" in NOTIFICHE else (None,)):
+            nomi = set(re.findall(r"\{(\w+)\}", NOTIFICHE.get(chiave, NOTIFICHE.get(chiave + ".other"))[0]))
+            f = F(chiave, **({k: ("x" if k != "n" else 2) for k in nomi} | ({"n": n} if n else {})))
+            assert "{" not in f and "{" not in f.in_lingua("en"), chiave
+            if len(f) > 30:
+                assert f.in_lingua("en") != str(f), chiave           # l'inglese c'è davvero
+
+
+def test_una_frase_nella_lingua_dell_utente():
+    f = F("n.riepilogo", giornata=9, fonte=F("n.fonte_scelta"), punti=71.34, attesi=70.0, massimo=80.3)
+    assert f.in_lingua("it") == str(f) == ("Giornata 9: la tua scelta salvata ha fatto circa 71,3 punti (il modello ne aspettava 70,0). "
+                                          "Il massimo possibile con la tua rosa era 80,3.")
+    assert f.in_lingua("en") == ("Matchday 9: your saved choice scored about 71.3 points (the model expected 70.0). "
+                                 "The maximum possible with your roster was 80.3.")
+    righe = frasi.elenco([F("n.ora_dubbio", nome="Rossi"), F("n.ora_infortunato", nome="Bianchi")], sep="\n")
+    assert righe.in_lingua("en") == "Rossi: now in doubt\nBianchi: now injured" and str(righe) == "Rossi: ora in dubbio\nBianchi: ora infortunato"
+    e = frasi.elenco([F("n.m_infortunato", nome="A"), F("n.m_dubbio", nome="B")], con_e=True)
+    assert e.in_lingua("en") == "A is injured and B is in doubt" and str(e) == "A è infortunato e B è in dubbio"
+    assert frasi.testo("già testo", "en") == "già testo" and frasi.testo(f, "en") == f.in_lingua("en")
