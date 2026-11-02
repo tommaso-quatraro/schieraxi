@@ -17,3 +17,4 @@ Formato: [MADR](https://github.com/adr/madr) riscritto in italiano, versione bre
 | [0005](0005-niente-quote-ne-scommesse.md) | Niente quote né scommesse nel modello | accettata |
 | [0006](0006-foto-ios-su-main.md) | Le foto iOS si fanno su `main` dopo l'unione | accettata |
 | [0007](0007-revisione-ia-in-ci.md) | Revisione IA di ogni pull request in CI | accettata |
+| [0008](0008-controlli-su-main-dopo-l-unione.md) | Dopo ogni unione i controlli girano anche su `main` | accettata |
