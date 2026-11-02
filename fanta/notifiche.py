@@ -43,7 +43,9 @@ ORE_PREDEFINITE = {"silenzio_da": 23, "silenzio_a": 7}      # ore tranquille: da
 # a quale sezione dell'app nativa porta il tocco sull'avviso ntfy (schema schieraxi://, vedi l'app iOS); quel che non è qui apre Lega
 SEZIONE_PER_TAG = {"rotating_light": "formazione", "alarm_clock": "formazione", "bar_chart": "oggi", "unlock": "mercato", "no_entry": "mercato"}
 FUORI = ("infortunato", "squalificato")
-SOGLIA_PERCENTUALE = 30          # quanto deve cambiare la probabilità di un titolare per avvisare (punti percentuali)
+# un titolare delle probabili sotto questa percentuale della fonte è «in ballottaggio» (come consigli.PERC_BALLOTTAGGIO): l'avviso
+# scatta quando la passa, in su o in giù, e lo dice a parole (all'utente si mostra una sola percentuale, «gioca N%»)
+PERC_BALLOTTAGGIO = 60
 MAX_RIGHE = 8
 FINESTRE = [("60", 45, 65, "promemoria_60", 3), ("15", 4, 20, "promemoria_15", 4)]   # (nome, da minuti, a minuti, opzione, priorità)
 # avviso intelligente prima della scadenza (vedi `avviso_scadenza`)
@@ -215,27 +217,27 @@ def istantanea(prev: pd.DataFrame, ids: list[int]) -> dict:
 
 
 def confronta(prima: dict, dopo: dict) -> list[str]:
-    """Righe di testo per ogni giocatore il cui stato è cambiato in modo che conti per la formazione."""
+    """Righe di testo per ogni giocatore il cui stato è cambiato in modo che conti per la formazione. A parole, senza la
+    percentuale delle probabili (l'unica percentuale che l'utente vede è «gioca N%»)."""
     righe = []
     for k, d in dopo.items():
         p = prima.get(k)
         if not p:
             continue
         nome, sp, sd = d["nome"], p["stato"], d["stato"]
-        perc = None if d["perc"] is None else round(d["perc"])
         if sd in FUORI and sp not in FUORI:
             righe.append(F("n.ora_" + sd, nome=nome))
         elif sp in FUORI and sd in ("titolare", "panchina"):
             righe.append(F("n.torna_" + sd, nome=nome))
         elif sp == "titolare" and sd == "panchina":
-            righe.append(F("n.titolare_a_panchina", nome=nome) if perc is None else F("n.titolare_a_panchina_perc", nome=nome, perc=perc))
+            righe.append(F("n.titolare_a_panchina", nome=nome))
         elif sp == "panchina" and sd == "titolare":
-            righe.append(F("n.ora_titolare", nome=nome) if perc is None else F("n.ora_titolare_perc", nome=nome, perc=perc))
+            righe.append(F("n.ora_titolare", nome=nome))
         elif sp == "titolare" and sd == "non_citato":
             righe.append(F("n.non_convocato", nome=nome))
         elif sp == "titolare" and sd == "titolare" and p["perc"] is not None and d["perc"] is not None \
-                and abs(d["perc"] - p["perc"]) >= SOGLIA_PERCENTUALE:
-            righe.append(F("n.perc_da_a", nome=nome, da=round(p["perc"]), a=perc))
+                and (p["perc"] < PERC_BALLOTTAGGIO) != (d["perc"] < PERC_BALLOTTAGGIO):
+            righe.append(F("n.ora_ballottaggio" if d["perc"] < PERC_BALLOTTAGGIO else "n.ora_titolare_sicuro", nome=nome))
         elif sd == "titolare" and d["dubbio"] and not p["dubbio"]:
             righe.append(F("n.ora_dubbio", nome=nome))
         if d.get("diffidato") and not p.get("diffidato") and sd not in FUORI:

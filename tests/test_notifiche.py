@@ -25,14 +25,18 @@ def test_confronta_segnala_solo_cio_che_conta():
             "7": _stato("Politano", "titolare", 80, dubbio=True), "8": _stato("Kaiki", "non_citato")}
     righe = notifiche.confronta(prima, dopo)
     testo = "\n".join(righe)
-    assert "Castro: dalla formazione titolare alla panchina (40%)" in testo
-    assert "Bonny: ora titolare (80%)" in testo
+    assert "Castro: dalla formazione titolare alla panchina" in testo
+    assert "Bonny: ora titolare" in testo
     assert "Atta: torna disponibile" in testo
     assert "Vicario: ora infortunato" in testo
-    assert "Rowe: probabilità di partire da 85% a 50%" in testo
+    assert "Rowe: ora in ballottaggio per partire titolare" in testo           # 85 -> 50: sotto la soglia, a parole
     assert "Politano: ora in dubbio" in testo
     assert "Kaiki: non è più tra i convocati previsti" in testo
     assert "Maldini" not in testo                         # +5 punti percentuali: non vale un avviso
+    assert "%" not in testo                               # all'utente una sola percentuale, «gioca N%»: mai quella delle probabili
+    risalita = notifiche.confronta({"1": _stato("Rowe", "titolare", 50)}, {"1": _stato("Rowe", "titolare", 85)})
+    assert risalita == ["Rowe: ora probabile titolare"]
+    assert notifiche.confronta({"1": _stato("Rowe", "titolare", 95)}, {"1": _stato("Rowe", "titolare", 65)}) == []   # resta sopra: niente
     assert notifiche.confronta({}, dopo) == []             # senza stato precedente non c'è niente da confrontare
 
 

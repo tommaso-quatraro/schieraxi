@@ -69,7 +69,7 @@ def test_promemoria_e_cambi_in_inglese(telefono, tmp_path, monkeypatch):
                                 {"1": _stato("Castro", "panchina", 40), "2": _stato("Vicario", "infortunato")})
     assert telefono.manda(frasi.F("n.t_cambi", giornata=9), frasi.elenco(righe, sep="\n"), 4, "rotating_light")
     assert telefono.arrivati[-1] == ("SchieraXI · matchday 9: changes in the probable lineups",
-                                     "Castro: from the starting lineup to the bench (40%)\nVicario: now injured")
+                                     "Castro: from the starting lineup to the bench\nVicario: now injured")
 
 
 def test_formazione_pronta_e_avviso_di_prova_in_inglese(telefono):
@@ -87,3 +87,10 @@ def test_il_web_manda_la_lingua_agli_avvisi_quando_cambia():
     cambia = testi[testi.index("function scegliLingua"):testi.index("// Link alle pagine Privacy")]
     assert cambia.count("linguaAgliAvvisi(") >= 2 and cambia.index("linguaAgliAvvisi(lingua);") < cambia.index("location.reload()")
     assert "keepalive: true" in app and '"/api/avvisi"' in app and "JSON.stringify({ lingua })" in app
+
+
+def test_cambi_di_titolarita_a_parole_anche_in_inglese():
+    """All'utente una sola percentuale, «gioca N%»: i cambi nelle probabili non citano quella della fonte, in nessuna lingua."""
+    giu = notifiche.confronta({"1": _stato("Rowe", "titolare", 85)}, {"1": _stato("Rowe", "titolare", 50)})
+    su = notifiche.confronta({"1": _stato("Rowe", "titolare", 50)}, {"1": _stato("Rowe", "titolare", 85)})
+    assert [x.in_lingua("en") for x in giu + su] == ["Rowe: now contested for a starting spot", "Rowe: now a likely starter"]
