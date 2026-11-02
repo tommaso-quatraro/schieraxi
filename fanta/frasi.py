@@ -24,6 +24,8 @@ from __future__ import annotations
 import numbers
 import re
 
+from .frasi_avvisi import NOTIFICHE
+
 # chiave -> modello italiano con segnaposto {nome}. Le traduzioni stanno in fanta/web/testi.js come «frase.<chiave>».
 CATALOGO: dict[str, str] = {
     "tempo.meno_di_un_ora": "meno di un'ora",
@@ -200,23 +202,38 @@ CATALOGO: dict[str, str] = {
 }
 
 
-def _it(valore) -> str:
-    """Un parametro nel testo italiano: i decimali con una cifra e la virgola."""
+E_ELENCO = {"it": " e ", "en": " and "}
+
+
+def _it(valore, lingua: str = "it") -> str:
+    """Un parametro nel testo: i decimali con una cifra (la virgola in italiano, il punto in inglese); le frasi nella stessa lingua."""
+    if isinstance(valore, Frase):
+        return valore.in_lingua(lingua)
     if isinstance(valore, bool) or not isinstance(valore, numbers.Real) or isinstance(valore, numbers.Integral):
         return str(valore)
-    return f"{float(valore):.1f}".replace(".", ",")
+    testo = f"{float(valore):.1f}"
+    return testo.replace(".", ",") if lingua == "it" else testo
 
 
-def _componi(chiave: str, param: dict) -> str:
+def _modello(chiave: str, param: dict, lingua: str) -> str:
+    """Il modello di una chiave: `CATALOGO` (solo italiano; l'inglese sta in testi.js) o `NOTIFICHE` (italiano e inglese).
+    Una lingua che non c'è si legge in italiano."""
+    if chiave in CATALOGO or chiave + ".other" in CATALOGO:
+        suffisso = (".one" if param.get("n") == 1 else ".other") if chiave + ".other" in CATALOGO else ""
+        return CATALOGO[chiave + suffisso]
+    indice = 1 if lingua == "en" else 0
+    suffisso = (".one" if param.get("n") == 1 else ".other") if chiave + ".other" in NOTIFICHE else ""
+    return NOTIFICHE[chiave + suffisso][indice]
+
+
+def _componi(chiave: str, param: dict, lingua: str = "it") -> str:
     if chiave in ("elenco", "elenco_e"):
-        parti = [str(p) for p in param["parti"]]
+        parti = [_it(p, lingua) for p in param["parti"]]
         sep = str(param.get("sep", ", "))
         if chiave == "elenco_e" and len(parti) > 1:
-            return sep.join(parti[:-1]) + CATALOGO["elenco.e"] + parti[-1]
+            return sep.join(parti[:-1]) + E_ELENCO[lingua if lingua in E_ELENCO else "it"] + parti[-1]
         return sep.join(parti)
-    plurale = chiave + ".other" in CATALOGO
-    modello = CATALOGO[chiave + (".one" if param.get("n") == 1 else ".other")] if plurale else CATALOGO[chiave]
-    testo = modello.format(**{k: _it(v) for k, v in param.items()})
+    testo = _modello(chiave, param, lingua).format(**{k: _it(v, lingua) for k, v in param.items()})
     return re.sub(r"\.\.$", ".", testo)          # «Meglio Adams A.» + «.» = un punto solo
 
 
@@ -249,6 +266,11 @@ class Frase(str):
     def __getnewargs__(self):                    # copy e pickle ricostruiscono la frase dai suoi pezzi
         return (self.chiave, self.param)
 
+    def in_lingua(self, lingua: str) -> str:
+        """Il testo nella lingua data (`it` o `en`), come testo semplice. L'inglese c'è solo per gli avvisi sul telefono (`NOTIFICHE`):
+        le altre frasi le traduce il web da testi.js, e qui restano in italiano."""
+        return _componi(self.chiave, self.param, lingua)
+
     def json(self) -> dict:
         """L'oggetto che va nelle risposte: `{"chiave": ..., "param": {...}}` (i parametri che sono frasi diventano oggetti)."""
         return {"chiave": self.chiave, "param": {k: _json(v) for k, v in self.param.items()}}
@@ -257,6 +279,11 @@ class Frase(str):
 def F(chiave: str, **param) -> Frase:
     """`F("dafare.diario", n=3)`: la frase italiana con la sua chiave."""
     return Frase(chiave, param)
+
+
+def testo(valore, lingua: str = "it") -> str:
+    """Un testo nella lingua data: una `Frase` si riscrive, un testo semplice resta com'è."""
+    return valore.in_lingua(lingua) if isinstance(valore, Frase) else valore
 
 
 def di(valore) -> dict | None:

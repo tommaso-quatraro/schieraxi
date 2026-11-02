@@ -28,7 +28,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     inventati in `tests/dati/`), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py` (si presenta come
     `SchieraXI/<versione>`), `scheda.py`, `fonti_attive.py` (interruttori delle fonti).
   - Risultati in diretta: `live.py` (un solo raccoglitore, cache in memoria e in `dati/live.json` che sopravvive ai riavvii; il risultato ufficiale vince). Rotta `GET /api/live`, vedi `docs/LIVE.md`. Risultati e voti la sera stessa: `pianificatore.giro_risultati`.
-  - Avvisi: `notifiche.py`, `push.py` (Web Push), `avvisi.py`, `avvisi_utenti.py`, `pianificatore.py`, `riscaldamento.py`.
+  - Avvisi: `notifiche.py` (titolo e testo sono `Frase`: `invia` li scrive nella lingua `lingua` delle impostazioni degli avvisi; l'inglese sta in `frasi_avvisi.py`, chiavi `n.*`), `push.py` (Web Push), `avvisi.py`, `avvisi_utenti.py`, `pianificatore.py`, `riscaldamento.py`.
   - Account e posta: `account.py` (database sqlite, sessioni, inviti), `account_email.py`, `posta.py`, `social.py` (accesso
     con Google), `onboarding.py`, `limiti.py`, `importa_sicuro.py`, `gestione.py`.
   - Varie: `backup.py`, `controlli.py` (coerenza dei dati), `sentinella.py` (ogni ora: rifà in sola lettura le risposte di Oggi,

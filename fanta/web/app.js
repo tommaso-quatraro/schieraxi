@@ -27,6 +27,14 @@ const NOMI_DIFF = ["", t("diff.1"), t("diff.2"), t("diff.3"), t("diff.4"), t("di
 const TITOLARITA = { titolare: [t("tit.titolare"), ""], ballottaggio: [t("tit.ballottaggio"), "arancio"], panchina: [t("tit.panchina"), "arancio"],
   improbabile: [t("tit.improbabile"), "rossa"], fuori: [t("tit.fuori"), "rossa"] };
 
+// La lingua degli avvisi sul telefono (PUT /api/avvisi): parte quando cambi lingua e finisce anche se la pagina si ricarica subito (keepalive).
+function salvaLinguaAvvisi(lingua) {
+  try {
+    fetch("/api/avvisi", { method: "PUT", keepalive: true, headers: { "X-Fanta": "1", "Content-Type": "application/json" }, body: JSON.stringify({ lingua }) })
+      .catch(() => { /* senza accesso o senza rete: resta la lingua di prima */ });
+  } catch { /* come sopra */ }
+}
+
 function esc(x) {
   return String(x ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }

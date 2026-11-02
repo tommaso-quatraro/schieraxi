@@ -6,6 +6,9 @@
 
 Il canale ntfy sta nella variabile FANTA_CANALE_AVVISI (o FANTA_NTFY_CANALE) oppure nel file dati/canale-avvisi.txt. I testi contengono i nomi dei calciatori:
 passano dal server pubblico ntfy.sh e il nome del canale fa da password.
+
+Lingua: titolo e testo sono `Frase` (fanta/frasi.py, inglese in fanta/frasi_avvisi.py); `invia` li scrive nella lingua scelta
+dall'utente nelle impostazioni degli avvisi (`lingua`, "it" o "en", predefinito italiano).
 """
 from __future__ import annotations
 
@@ -20,7 +23,8 @@ from typing import Callable
 import pandas as pd
 import requests
 
-from . import avvisi, osservati
+from . import avvisi, frasi, osservati
+from .frasi import F
 from .lega import Rose
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
 from .regole import Regole
@@ -29,6 +33,8 @@ FILE_STATO = RADICE / "dati" / "notifiche.json"
 FILE_PROMEMORIA = RADICE / "dati" / "notifiche-promemoria.json"      # file separato: cambi e promemoria girano da script diversi
 FILE_IMPOSTAZIONI = RADICE / "dati" / "avvisi-impostazioni.json"
 FILE_RIEPILOGO = RADICE / "dati" / "notifiche-riepilogo.json"
+LINGUE = ("it", "en")
+LINGUA_PREDEFINITA = "it"
 IMPOSTAZIONI_PREDEFINITE = {"cambi": True, "promemoria_60": True, "promemoria_15": True, "riepilogo": True, "app_nativa": False,
                             "silenzio": False, "copertura": True}
 CAMPI_UTENTE = ("primo_avvio", "backup_il", "mostra_tutte")    # altri campi dello stesso file, gestiti da stato_utente.py
@@ -77,6 +83,7 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", ignor
     opzioni = impostazioni(file_impostazioni)
     if not ignora_silenzio and in_silenzio(datetime.now(), opzioni):
         return False
+    titolo, testo = frasi.testo(titolo, opzioni["lingua"]), frasi.testo(testo, opzioni["lingua"])      # nella lingua scelta dall'utente
     arrivato = bool(push.iscrizioni(file_iscrizioni)) and push.invia(titolo, testo, priorita, tag, file_iscrizioni) > 0
     if not ntfy:
         return arrivato
@@ -133,11 +140,17 @@ def _minuti_avviso(valore, predefinito: int) -> int:
     return v if v in MINUTI_AVVISO else predefinito
 
 
+def _lingua(valore, predefinita: str) -> str:
+    """«it» o «en»; qualunque altra cosa: quella di prima."""
+    return valore if isinstance(valore, str) and valore in LINGUE else predefinita
+
+
 def impostazioni(percorso: Path | None = None) -> dict:
     d = _json(percorso or FILE_IMPOSTAZIONI)
     ok = {k: bool(d.get(k, v)) for k, v in IMPOSTAZIONI_PREDEFINITE.items()}
     ok |= {k: _ora(d.get(k, v), v) for k, v in ORE_PREDEFINITE.items()}
     ok["avviso_prima"] = _minuti_avviso(d.get("avviso_prima", AVVISO_PRIMA_PREDEFINITO), AVVISO_PRIMA_PREDEFINITO)
+    ok["lingua"] = _lingua(d.get("lingua"), LINGUA_PREDEFINITA)
     if ok["silenzio"] and ok["silenzio_da"] == ok["silenzio_a"]:
         ok["silenzio"] = False      # salvate prima del controllo: inizio = fine non è una fascia, si trattano come spente
     return ok
@@ -157,6 +170,7 @@ def salva_impostazioni(nuove: dict, percorso: Path | None = None) -> dict:
         ok = {k: bool(nuove.get(k, prima[k])) for k in IMPOSTAZIONI_PREDEFINITE}
         ok |= {k: _ora(nuove.get(k, prima[k]), prima[k]) for k in ORE_PREDEFINITE}
         ok["avviso_prima"] = _minuti_avviso(nuove.get("avviso_prima", prima["avviso_prima"]), prima["avviso_prima"])
+        ok["lingua"] = _lingua(nuove.get("lingua"), prima["lingua"])
         # nello stesso file vivono anche piccoli campi dell'utente che non sono avvisi (vedi stato_utente.py): non si perdono
         altri = {k: v for k, v in _json(percorso).items() if k in CAMPI_UTENTE}
         scrivi_sicuro(percorso, json.dumps(altri | ok))
@@ -180,9 +194,9 @@ def osservati_liberi(diff: dict, file_osservati: Path | None = None, manda: Call
     if not opzioni.get("cambi", True):
         return []
     seguiti = set(osservati.leggi(file_osservati))
-    righe = [f"{g['nome']} ({g.get('ruolo') or '?'}): lasciato libero da {t['squadra']}"
+    righe = [F("n.osservato_libero", nome=g["nome"], ruolo=g.get("ruolo") or "?", squadra=t["squadra"])
              for t in diff.get("tagliati", []) for g in t.get("giocatori", []) if g.get("id") in seguiti]
-    if righe and manda("SchieraXI · un osservato è libero", "\n".join(righe[:MAX_RIGHE]), 3, "unlock"):
+    if righe and manda(F("n.t_osservato_libero"), frasi.elenco(righe[:MAX_RIGHE], sep="\n"), 3, "unlock"):
         return righe
     return []
 
@@ -208,23 +222,24 @@ def confronta(prima: dict, dopo: dict) -> list[str]:
         if not p:
             continue
         nome, sp, sd = d["nome"], p["stato"], d["stato"]
+        perc = None if d["perc"] is None else round(d["perc"])
         if sd in FUORI and sp not in FUORI:
-            righe.append(f"{nome}: ora {sd}")
+            righe.append(F("n.ora_" + sd, nome=nome))
         elif sp in FUORI and sd in ("titolare", "panchina"):
-            righe.append(f"{nome}: torna disponibile ({sd})")
+            righe.append(F("n.torna_" + sd, nome=nome))
         elif sp == "titolare" and sd == "panchina":
-            righe.append(f"{nome}: dalla formazione titolare alla panchina" + (f" ({d['perc']:.0f}%)" if d["perc"] is not None else ""))
+            righe.append(F("n.titolare_a_panchina", nome=nome) if perc is None else F("n.titolare_a_panchina_perc", nome=nome, perc=perc))
         elif sp == "panchina" and sd == "titolare":
-            righe.append(f"{nome}: ora titolare" + (f" ({d['perc']:.0f}%)" if d["perc"] is not None else ""))
+            righe.append(F("n.ora_titolare", nome=nome) if perc is None else F("n.ora_titolare_perc", nome=nome, perc=perc))
         elif sp == "titolare" and sd == "non_citato":
-            righe.append(f"{nome}: non è più tra i convocati previsti")
+            righe.append(F("n.non_convocato", nome=nome))
         elif sp == "titolare" and sd == "titolare" and p["perc"] is not None and d["perc"] is not None \
                 and abs(d["perc"] - p["perc"]) >= SOGLIA_PERCENTUALE:
-            righe.append(f"{nome}: probabilità di partire da {p['perc']:.0f}% a {d['perc']:.0f}%")
+            righe.append(F("n.perc_da_a", nome=nome, da=round(p["perc"]), a=perc))
         elif sd == "titolare" and d["dubbio"] and not p["dubbio"]:
-            righe.append(f"{nome}: ora in dubbio")
+            righe.append(F("n.ora_dubbio", nome=nome))
         if d.get("diffidato") and not p.get("diffidato") and sd not in FUORI:
-            righe.append(f"{nome}: diffidato (con un altro giallo salta la partita dopo)")
+            righe.append(F("n.diffidato", nome=nome))
     return righe
 
 
@@ -241,7 +256,7 @@ def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.D
     from . import da_fare, scelte
     scelta = scelte.leggi(chiave.split("/")[0], giornata, file_scelte)
     schierati = [int(i) for i in scelta["titolari"]] if scelta else list(titolari)
-    motivi = {"infortunato": "è infortunato", "squalificato": "è squalificato", "panchina": "parte dalla panchina"}
+    motivi = ("infortunato", "squalificato", "panchina")
     nuovi = {}
     for i in schierati:
         s = (ora.get(str(i)) or {}).get("stato")
@@ -260,14 +275,15 @@ def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.D
         if i not in nuovi or not alt:
             continue
         nome = v["giocatore"]["nome"]
-        guadagno = ""
+        consiglio = F("n.meglio", alt=alt["nome"])
         try:
             d = float(alt["punti_attesi"]) - float(prev.at[i, "atteso"])
-            guadagno = f" (+{d:.1f} punti attesi)".replace(".", ",") if d > 0.05 else ""
+            if d > 0.05:
+                consiglio = F("n.meglio_guadagno", alt=alt["nome"], punti=d)
         except (KeyError, TypeError, ValueError):
             pass
-        risultato.append({"nome": nome, "chiave": f"{chiave}/{i}/{nuovi[i]}", "frase": f"Il tuo {nome} {motivi[nuovi[i]]}.",
-                          "consiglio": f"Meglio {alt['nome']}{guadagno}" + ("" if f"{alt['nome']}{guadagno}".endswith(".") else ".")})
+        risultato.append({"nome": nome, "chiave": f"{chiave}/{i}/{nuovi[i]}", "frase": F("n.tuo_" + nuovi[i], nome=nome),
+                          "consiglio": consiglio})
     return risultato
 
 
@@ -305,7 +321,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     righe, oss = [], []
     if vecchio:
         righe = confronta({k: v for k, v in vecchio["giocatori"].items() if k not in chiavi_oss}, {k: v for k, v in ora.items() if k not in chiavi_oss})
-        oss = ["★ " + r for r in confronta({k: v for k, v in vecchio["giocatori"].items() if k in chiavi_oss}, {k: v for k, v in ora.items() if k in chiavi_oss})]
+        oss = [F("n.osservato_riga", riga=r) for r in confronta({k: v for k, v in vecchio["giocatori"].items() if k in chiavi_oss}, {k: v for k, v in ora.items() if k in chiavi_oss})]
     if risparmia and vecchio and vecchio.get("titolari") and not righe and not oss and set(vecchio["giocatori"]) == set(ora):
         f, titolari = None, vecchio["titolari"]    # niente è cambiato: la formazione di prima vale ancora
     else:
@@ -317,7 +333,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     if righe and vecchio and f and vecchio.get("titolari") != titolari:
         entrano = [prev.at[i, "nome"] for i in set(titolari) - set(vecchio["titolari"]) if i in prev.index]
         escono = [prev.at[i, "nome"] for i in set(vecchio["titolari"]) - set(titolari) if i in prev.index]
-        righe.append(f"Formazione consigliata aggiornata ({f['modulo']}): entra {', '.join(entrano) or '–'}, esce {', '.join(escono) or '–'}")
+        righe.append(F("n.formazione_aggiornata", modulo=f["modulo"], entrano=", ".join(entrano) or "–", escono=", ".join(escono) or "–"))
     pronti = _cambi_pronti(db, regole, rose, prev, ora, titolari, giornata, set(stato.get("pronti", [])), chiave, file_scelte) \
         if opzioni.get("cambi", True) else []
     singoli = []                                   # un cambio pronto che ha già una riga nell'avviso dei cambi la completa; gli altri vanno da soli
@@ -326,7 +342,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         if k is None:
             singoli.append(p)
         else:
-            righe[k] += f" {p['consiglio']}"
+            righe[k] = F("n.riga_consiglio", riga=righe[k], consiglio=p["consiglio"])
     gia_detti = []
     if (righe or singoli) and tocca_all_avviso(inizio, adesso, opzioni):
         file_promemoria = file_promemoria or file_stato.with_name(FILE_PROMEMORIA.name)
@@ -343,13 +359,13 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     if righe and opzioni.get("cambi", True):
         visibili = righe[:MAX_RIGHE]
         if len(righe) > MAX_RIGHE:
-            visibili.append(f"…e altre {len(righe) - MAX_RIGHE} novità")
-        if not manda(f"SchieraXI · giornata {giornata}: cambi nelle probabili", "\n".join(visibili), 4, "rotating_light"):
+            visibili.append(F("n.altre_novita", n=len(righe) - MAX_RIGHE))
+        if not manda(F("n.t_cambi", giornata=giornata), frasi.elenco(visibili, sep="\n"), 4, "rotating_light"):
             return righe                           # invio fallito: lo stato resta quello vecchio e al prossimo giro si riprova
         cambi_mandato = True
     if singoli:
-        testi = [f"{p['frase']} {p['consiglio']}" for p in singoli[:MAX_RIGHE]]
-        if not manda("SchieraXI · cambio pronto", "\n".join(testi), 4, "rotating_light"):   # il tocco apre la Formazione
+        testi = [F("n.frase_consiglio", frase=p["frase"], consiglio=p["consiglio"]) for p in singoli[:MAX_RIGHE]]
+        if not manda(F("n.t_cambio_pronto"), frasi.elenco(testi, sep="\n"), 4, "rotating_light"):   # il tocco apre la Formazione
             if not cambi_mandato:
                 return righe                       # ore tranquille o invio fallito: si riprova al giro dopo
             pronti = [p for p in pronti if p not in singoli]     # l'avviso dei cambi è già partito: lo stato si salva (niente doppioni), il «cambio pronto» riprova
@@ -362,7 +378,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
     for vecchia in chiavi_vecchie(cambi_stato, 6):
         cambi_stato.pop(vecchia, None)
     scrivi_sicuro(file_stato, json.dumps(stato))
-    return gia_detti + righe + [f"{p['frase']} {p['consiglio']}" for p in singoli]
+    return gia_detti + righe + [F("n.frase_consiglio", frase=p["frase"], consiglio=p["consiglio"]) for p in singoli]
 
 
 # ---------------------------------------------------------------- copertura della rosa
@@ -383,7 +399,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     if inizio is None or inizio <= adesso:
         return []
     prev, giornata, _ = consigli.previsioni(db, regole)
-    r = cop.analizza(prev, regole, rose)
+    r = cop.analizza(prev, regole, rose, opzioni.get("lingua", LINGUA_PREDEFINITA))          # il testo del reparto è già nella lingua dell'utente
     stato = _json(file_stato)
     gia = set(stato.get("copertura", []))
     nuovi = [(f"{stagione}/{giornata}/{x['ruolo'] or 'moduli'}/{x['livello']}", x) for x in (r or {}).get("reparti", [])]
@@ -391,7 +407,7 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     if not nuovi:
         return []
     scoperti = any(x["livello"] == cop.SCOPERTO for _, x in nuovi)
-    titolo = "SchieraXI · un reparto della rosa è scoperto" if scoperti else "SchieraXI · un reparto della rosa è a rischio"
+    titolo = F("n.t_reparto_scoperto") if scoperti else F("n.t_reparto_rischio")
     righe = [x["testo"] for _, x in nuovi]
     if not manda(titolo, "\n".join(righe), 4 if scoperti else 3, "no_entry"):
         return righe                                   # ore tranquille o invio fallito: si riprova al giro dopo
@@ -453,23 +469,23 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         if problemi is not None and not problemi:
             continue                               # hai già schierato e va ancora bene: niente disturbo
         if problemi:
-            testo = (f"Hai già schierato, ma {', '.join(problemi[:4])} {'non è più sicuro' if len(problemi) == 1 else 'non sono più sicuri'} "
-                     f"come titolare. La formazione della giornata {giornata} si chiude alle {ora_chiusura}: controlla.")
-            titolo = "SchieraXI · un tuo titolare è a rischio"
+            testo = F("n.rischio", n=len(problemi[:4]), nomi=", ".join(problemi[:4]), giornata=giornata, ora=ora_chiusura)
+            titolo = F("n.t_titolare_rischio")
         elif nome == "60":
-            testo = f"La formazione della giornata {giornata} si chiude tra circa un'ora (scadenza alle {ora_chiusura})."
+            parti = [F("n.tra_un_ora", giornata=giornata, ora=ora_chiusura)]
             try:
                 f = consigli.formazione(db, regole, rose)
                 dubbi = [x["nome"] for x in f["titolari"] if x["titolarita"] != "titolare" or x["dubbio"]][:4]
-                testo += f" Consigliato: {f['modulo']}, {str(f['punteggio_atteso']).replace('.', ',')} punti attesi."
+                parti.append(F("n.consigliato", modulo=f["modulo"], punti=float(f["punteggio_atteso"])))
                 if dubbi:
-                    testo += f" Da controllare: {', '.join(dubbi)}."
+                    parti.append(F("n.da_controllare", nomi=", ".join(dubbi)))
             except Exception:                      # il promemoria parte comunque, anche senza i dettagli della formazione
                 pass
-            titolo = "SchieraXI · formazione tra un'ora"
+            testo = frasi.elenco(parti, sep=" ")
+            titolo = F("n.t_un_ora")
         else:
-            testo = f"Ultimi minuti: la formazione della giornata {giornata} si chiude alle {ora_chiusura}. L'hai inserita su Leghe?"
-            titolo = "SchieraXI · ultimi minuti per la formazione"
+            testo = F("n.ultimi_minuti", giornata=giornata, ora=ora_chiusura)
+            titolo = F("n.t_ultimi_minuti")
         if manda(titolo, testo, priorita, "alarm_clock"):      # se l'invio fallisce si riprova al giro dopo, finché dura la finestra
             mandati.append(chiave)
             inviati.append(testo)
@@ -517,21 +533,19 @@ def _versione_dati(db: sqlite3.Connection) -> str | None:
         return None
 
 
-def _elenco(nomi: list[str], massimo: int = 3) -> str:
-    """«A», «A e B», «A, B e C», «A, B, C e altri 2»."""
+def _elenco(nomi: list, massimo: int = 3):
+    """«A», «A e B», «A, B e C», «A, B, C e altri 2» (`Frase`, nella lingua dell'utente)."""
     nomi = [n for n in nomi if n]
     if len(nomi) > massimo:
-        resto = len(nomi) - massimo
-        return f"{', '.join(nomi[:massimo])} e {'un altro' if resto == 1 else f'altri {resto}'}"
-    return nomi[0] if len(nomi) == 1 else f"{', '.join(nomi[:-1])} e {nomi[-1]}" if nomi else ""
+        return F("n.elenco_altri", lista=frasi.elenco(nomi[:massimo]), n=len(nomi) - massimo)
+    return frasi.elenco(nomi, con_e=True)
 
 
-MOTIVI_FUORI = {"infortunato": "è infortunato", "squalificato": "è squalificato", "panchina": "parte dalla panchina",
-                "non_citato": "non è tra i convocati"}
+MOTIVI_FUORI = ("infortunato", "squalificato", "panchina", "non_citato")
 
 
 def testo_avviso_scadenza(prev: pd.DataFrame, escono: list[int], entrano: list[str], modulo_prima: str | None, modulo_ora: str,
-                          guadagno: float, chiusura: datetime) -> str:
+                          guadagno: float, chiusura: datetime):
     """Il motivo in una frase: «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi). Si chiude alle 18:30.»"""
     motivi, senza = [], []
     for i in escono:
@@ -543,21 +557,20 @@ def testo_avviso_scadenza(prev: pd.DataFrame, escono: list[int], entrano: list[s
         dubbio = prev.at[i, "dubbio"] if "dubbio" in prev.columns else None
         dubbio = False if dubbio is None or pd.isna(dubbio) else bool(dubbio)
         if stato in MOTIVI_FUORI:
-            motivi.append(f"{nome} {MOTIVI_FUORI[stato]}")
+            motivi.append(F("n.m_" + stato, nome=nome))
         elif dubbio:
-            motivi.append(f"{nome} è in dubbio")
+            motivi.append(F("n.m_dubbio", nome=nome))
         else:
             senza.append(nome)
     if motivi:
-        frase = f"{_elenco(motivi, 2)}: metti {_elenco(entrano)}"
+        frase = F("n.metti", motivi=_elenco(motivi, 2), entrano=_elenco(entrano))
     elif entrano:
-        frase = f"Con le ultime probabili conviene {_elenco(entrano)}" + (f" al posto di {_elenco(senza)}" if senza else "")
+        frase = F("n.conviene_al_posto", entrano=_elenco(entrano), senza=_elenco(senza)) if senza else F("n.conviene", entrano=_elenco(entrano))
     else:
-        frase = "Con le ultime probabili conviene un'altra formazione"
+        frase = F("n.altra_formazione")
     if modulo_prima and modulo_prima != modulo_ora:
-        frase += f" e passa al {modulo_ora}"
-    punti = f"{guadagno:.1f}".replace(".", ",")
-    return f"{frase} (+{punti} punti attesi). La formazione si chiude alle {chiusura:%H:%M}."
+        frase = F("n.e_passa", frase=frase, modulo=modulo_ora)
+    return F("n.testo_scadenza", frase=frase, punti=float(guadagno), ora=f"{chiusura:%H:%M}")
 
 
 def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,
@@ -642,7 +655,7 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     entrano = [nomi[i] for i in ora if i not in rif]
     escono = [i for i in rif if i not in ora]
     testo = testo_avviso_scadenza(prev, escono, entrano, v.get("modulo"), f["modulo"], guadagno, chiusura)
-    titolo = "SchieraXI · cambia la formazione" if scelta else "SchieraXI · cambia la formazione consigliata"
+    titolo = F("n.t_cambia") if scelta else F("n.t_cambia_consigliata")
     firme = list(mio.get("firme", [])) + [",".join(map(str, ora))]
     if _da_poco(snap.get("inviato"), adesso, DOPPIONE_CAMBI):
         # l'avviso sui cambi delle probabili dei tuoi giocatori è appena partito con la stessa notizia: questo consiglio non si ripete
@@ -694,9 +707,9 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     scelta = scelte.leggi(stagione, giornata, file_scelte)
     snap = _json(file_cambi).get("cambi", {}).get(chiave)
     if scelta:
-        ids, fonte = scelta["titolari"], "la tua scelta salvata"
+        ids, fonte = scelta["titolari"], F("n.fonte_scelta")
     elif snap and snap.get("titolari"):
-        ids, fonte = snap["titolari"], "la formazione consigliata"
+        ids, fonte = snap["titolari"], F("n.fonte_consigliata")
     else:
         return []                                  # non so cosa avevi schierato
     prev, _, _ = consigli.previsioni(db, regole, giornata)
@@ -720,20 +733,19 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     punti = fz.punteggio(tit, pan, gioca, {g.id: fv_vero.get(g.id, 0.0) for g in lista}, {g.id: voto_vero.get(g.id, 0.0) for g in lista}, regole)
     attesi = fz.Valutatore(lista, regole, 600).atteso(tit, pan)
     massimo = verifica._perfetta(lista, fv_vero, regole)
-    virgola = lambda x: f"{x:.1f}".replace(".", ",")   # noqa: E731
-    testo = (f"Giornata {giornata}: {fonte} ha fatto circa {virgola(punti)} punti (il modello ne aspettava {virgola(attesi)}). "
-             f"Il massimo possibile con la tua rosa era {virgola(massimo)}.")
+    parti = [F("n.riepilogo", giornata=giornata, fonte=fonte, punti=float(punti), attesi=float(attesi), massimo=float(massimo))]
     migliori = sorted((t for t in tit if gioca[t.id]), key=lambda t: -fv_vero[t.id])[:3]
     if migliori:
-        testo += " Migliori: " + ", ".join(f"{t.nome} {virgola(fv_vero[t.id])}" for t in migliori) + "."
+        parti.append(F("n.migliori", elenco=frasi.elenco([F("n.nome_voto", nome=t.nome, voto=float(fv_vero[t.id])) for t in migliori])))
     senza = [t.nome for t in tit if not gioca[t.id]]
     if senza:
-        testo += " Senza voto: " + ", ".join(senza) + "."
+        parti.append(F("n.senza_voto", nomi=", ".join(senza)))
     prossima = consigli.giornata_da_giocare(db, stagione, regole)
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, prossima), regole) if prossima else None
     if inizio:
-        testo += f" Prossima: giornata {prossima}, la formazione si chiude {inizio:%d/%m} alle {inizio:%H:%M}."
-    if manda(f"SchieraXI · riepilogo giornata {giornata}", testo, 3, "bar_chart"):
+        parti.append(F("n.prossima", giornata=prossima, data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
+    testo = frasi.elenco(parti, sep=" ")
+    if manda(F("n.t_riepilogo", giornata=giornata), testo, 3, "bar_chart"):
         fatti.append(chiave)
         stato["riepilogo"] = fatti[-20:]
         scrivi_sicuro(file_stato, json.dumps(stato))

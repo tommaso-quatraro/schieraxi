@@ -97,7 +97,8 @@ def test_cambi_la_prima_volta_non_avvisa_poi_si(tmp_path, monkeypatch):
 def test_impostazioni_e_stato_rovinato(tmp_path):
     f = tmp_path / "i.json"
     assert notifiche.impostazioni(f) == {"cambi": True, "promemoria_60": True, "promemoria_15": True, "riepilogo": True, "app_nativa": False,
-                                         "silenzio": False, "copertura": True, "silenzio_da": 23, "silenzio_a": 7, "avviso_prima": 60}
+                                         "silenzio": False, "copertura": True, "silenzio_da": 23, "silenzio_a": 7, "avviso_prima": 60,
+                                         "lingua": "it"}
     assert notifiche.salva_impostazioni({"cambi": False}, f)["cambi"] is False
     assert notifiche.impostazioni(f)["promemoria_60"] is True
     f.write_text("rotto", encoding="utf-8")

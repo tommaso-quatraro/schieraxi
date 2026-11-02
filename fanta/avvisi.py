@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from . import turno
+from .frasi import F
 from .percorsi import RADICE, scrivi_sicuro
 
 FILE_STATO = RADICE / "dati" / "avvisi.json"
@@ -88,4 +89,4 @@ def da_mandare(db: sqlite3.Connection, stagione: str, giornata: int | None, ades
     if segna:
         stato["ultimo"] = chiave
         scrivi_sicuro(file_stato, json.dumps(stato))
-    return {"titolo": "SchieraXI", "testo": f"Giornata {giornata}: la formazione è pronta. Apri l'app e controlla le probabili."}
+    return {"titolo": "SchieraXI", "testo": F("n.pronta", giornata=giornata)}
