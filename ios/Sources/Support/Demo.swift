@@ -8,6 +8,7 @@ import SwiftUI
 /// - `-DEMO_SCHERMATA <nome>`: apre subito una schermata (vedi `applica`), perché dal simulatore non si può toccare lo schermo.
 /// - `-DEMO_FONDO 1`: le schermate lunghe partono scorse in fondo (iOS 17 o più).
 /// - `-DEMO_ORIENTAMENTO orizzontale`: chiede l'orientamento orizzontale.
+/// - `-DEMO_SCENARIO <nome>`: le «fotografie dal vero» (`ScenarioVero`): risposte vere con nomi inventati in un momento preciso.
 enum Demo {
     static let daLancio: Bool = ProcessInfo.processInfo.arguments.contains("-DEMO")
 
@@ -47,6 +48,8 @@ enum Demo {
     static func serverPredefinito() -> any ServerClient {
         if attivo {
             if !daLancio { return FinteServer.demo }   // la prova con dati di esempio
+            // Fotografie dal vero (`-DEMO_SCENARIO vero-prima`...): risposte vere con nomi inventati, vedi ScenarioVero
+            if let vero = ScenarioVero.attuale { return vero.server }
             // Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
             if let fase = FinteServer.demoFase(schermata) { return fase }
             if accesso == "rose" {
@@ -144,7 +147,8 @@ extension Demo {
             Task {
                 await modello.formazione.carica()
                 try? await Task.sleep(nanoseconds: 400_000_000)
-                modello.formazione.confrontoAperto = .coppia(120, 123)
+                let coppia = ScenarioVero.attuale?.confronto ?? (120, 123)
+                modello.formazione.confrontoAperto = .coppia(coppia.0, coppia.1)
             }
         case "formazione-perche":
             // «Perché questo numero» di un titolare (meglio uno in dubbio: si vede anche «gioca N%»)
@@ -182,7 +186,7 @@ extension Demo {
             apriLega(nav, modello, [.elenco])
             modello.mercato.testoRicerca = "ma"
         case "giocatore":
-            nav.vai(a: .giocatore(203))
+            nav.vai(a: .giocatore(ScenarioVero.attuale?.giocatore ?? 203))
 
         case "scambi", "scambi-una-rosa":
             apriLega(nav, modello, [.scambi])
@@ -197,7 +201,7 @@ extension Demo {
         case "scambi-offerta":
             apriLega(nav, modello, [.scambi])
             modello.scambi.modo = .valuta
-            modello.scambi.testoOfferta = "Ciao! Ti do Vlasenic e tu mi dai Lumbaku, ci stai?"
+            modello.scambi.testoOfferta = ScenarioVero.attuale?.offerta ?? "Ciao! Ti do Vlasenic e tu mi dai Lumbaku, ci stai?"
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await modello.scambi.valutaOfferta()
@@ -212,7 +216,7 @@ extension Demo {
         case "lega-squadre":
             apriLega(nav, modello, [.squadre])
         case "lega-rosa":
-            apriLega(nav, modello, [.squadre, .rosa("Gli Amici del Bar Sport Centrale")])
+            apriLega(nav, modello, [.squadre, .rosa(ScenarioVero.attuale?.rosaAltra ?? "Gli Amici del Bar Sport Centrale")])
         case "lega-regole":
             apriLega(nav, modello, [.regole])
         case "lega-asta":

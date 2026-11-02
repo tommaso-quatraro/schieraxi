@@ -435,10 +435,9 @@ struct FormazioneView: View {
             .foregroundStyle(Color.attenzione)
         }
         if let r = vm.valutazioneAttuale, let d = r.differenza {
-            Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))). "
-                 + (IntervalloPunti.frase(r.intervallo, dev: nil).map { "Punti attesi \($0)." }
-                    ?? "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))."))
-                .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
+            // La fascia «tra X e Y» è già sotto i punti, in alto: qui solo il confronto. Sotto mezzo punto è un pari (grigio, non arancio).
+            Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))).")
+                .font(.subheadline).foregroundStyle(abs(d) < 0.5 ? Color.testoSecondario : d > 0 ? Color.verde : Color.orange)
         }
         // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
         if let f = vm.formazione {

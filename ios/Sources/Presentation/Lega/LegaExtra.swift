@@ -172,6 +172,7 @@ struct RosaView: View {
     @StateObject private var vm: RosaViewModel
     @Environment(\.vediFormazioneDi) private var vediFormazione
     @Environment(\.funzioni) private var funzioni
+    @Environment(\.dynamicTypeSize) private var dimensioneTesto
     @ObservedObject private var immagini = Immagini.condivise
     @State private var sceltaStemma: PhotosPickerItem?
     @State private var sceltaMaglia: PhotosPickerItem?
@@ -307,8 +308,11 @@ struct RosaView: View {
         VStack(spacing: 6) {
             StemmaSquadra(nome: nome, tipo: tipo, dimensione: 72)
             PhotosPicker(selection: scelta, matching: .images) {
+                // testo molto grande: niente icona e due righe intere («Carica / stemma»), invece di «Cari-ca stem…»
                 Label(immagini.haImmagine(nome, tipo: tipo) ? "Cambia \(titolo.lowercased())" : "Carica \(titolo.lowercased())", systemImage: "photo")
+                    .labelStyle(SoloTestoSeGrande(soloTesto: dimensioneTesto.isAccessibilitySize))
                     .font(.footnote.weight(.semibold))
+                    .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
             }
@@ -316,6 +320,16 @@ struct RosaView: View {
             .buttonStyle(.borderless)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// Con il testo molto grande resta solo il testo (l'icona ruba lo spazio che serve alle parole).
+private struct SoloTestoSeGrande: LabelStyle {
+    let soloTesto: Bool
+
+    @ViewBuilder
+    func makeBody(configuration: Configuration) -> some View {
+        if soloTesto { configuration.title } else { Label(configuration) }
     }
 }
 
