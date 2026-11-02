@@ -19,12 +19,12 @@ RADDRIZZA=0
 mkdir -p "$USCITA"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita formazione formazione-fondo formazione-salvata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
+TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
-       lega lega-squadre lega-rosa lega-regole lega-stato lega-crediti lega-avvisi lega-diario lega-novita
+       lega lega-squadre lega-rosa lega-regole lega-regole-fondo lega-stato lega-crediti lega-avvisi lega-diario lega-novita
        lega-importa lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
@@ -42,8 +42,8 @@ PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazi
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
 SCATTI="${SCATTI:-completo}"
 if [ "$SCATTI" = "veloce" ]; then
-  TUTTE=(oggi oggi-in-corso oggi-in-corso-fondo oggi-finita formazione formazione-perche giocatore lega-diario mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
-  PER_CHIARO=(oggi oggi-in-corso oggi-finita formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
+  TUTTE=(oggi oggi-in-corso oggi-in-corso-fondo oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-perche giocatore lega-diario lega-regole-fondo mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
+  PER_CHIARO=(oggi oggi-in-corso oggi-finita oggi-rinvio formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
   PER_TESTO_GRANDE=(accesso-accedi oggi-in-corso)
   PRINCIPALI=(oggi lega)
   PER_IPAD=(oggi-in-corso oggi-finita formazione formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)

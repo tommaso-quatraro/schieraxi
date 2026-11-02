@@ -30,6 +30,7 @@ struct OggiView: View {
             ZStack {
                 Sfondo()
                 ScrollView {
+                    ScrollViewReader { proxy in
                     // Il nome dell'app in testa allo scorrimento: sparisce scorrendo, senza rubare spazio alle schede.
                     VStack(alignment: .leading, spacing: Tema.spazioSchede) {
                         intestazione
@@ -43,16 +44,23 @@ struct OggiView: View {
                                 case .inCorso:
                                     CartaGiornataInCorso(blocco: oggi.giornataInCorso, attesiPrima: oggi.formazione?.punteggioAtteso,
                                                          partite: oggi.contoPartite).ingresso(1)
+                                    partiteRinviate(oggi).ingresso(1)
                                     if let b = oggi.giornataInCorso, !b.sostituzioni.isEmpty { CartaCambiPanchina(cambi: b.sostituzioni).ingresso(2) }
                                     if let b = oggi.giornataInCorso, !b.giocatori.isEmpty { CartaChiGioca(blocco: b).ingresso(3) }
                                     daFare(oggi).ingresso(4)
                                     novita.ingresso(4)
                                 case .finita:
-                                    CartaRiepilogoGiornata(riepilogo: oggi.riepilogoGiornata).ingresso(1)
+                                    CartaRiepilogoGiornata(riepilogo: oggi.riepilogoGiornata, rinvioInCorso: vm.rinvioInCorso) { s, m in
+                                        await vm.cambiaRinvio(s, modo: m)
+                                    }
+                                    .ingresso(1)
+                                    .id("riepilogo")
+                                    partiteRinviate(oggi).ingresso(1)
                                     daFare(oggi).ingresso(2)
                                     novita.ingresso(2)
                                     if !oggi.senzaGiornata { formazione(oggi).ingresso(3) }
                                 case .prima:
+                                    partiteRinviate(oggi).ingresso(1)
                                     daFare(oggi).ingresso(1)
                                     novita.ingresso(1)
                                     if !oggi.senzaGiornata { formazione(oggi).ingresso(2) }
@@ -73,6 +81,10 @@ struct OggiView: View {
                     .padding(.horizontal, Tema.margine)
                     .padding(.bottom, 24)
                     .animation(Tema.morbida, value: vm.oggi != nil)
+                    // fotografie `oggi-rinvio` e `oggi-finita-recupero`: il riquadro sta sotto la piega dell'iPhone
+                    .demoScorriA("rinvio", proxy: proxy, schermate: ["oggi-rinvio"], pronto: vm.oggi != nil)
+                    .demoScorriA("riepilogo", proxy: proxy, schermate: ["oggi-finita-recupero"], pronto: vm.oggi != nil)
+                    }
                 }
                 .demoInFondo()
                 .refreshable {
@@ -110,6 +122,15 @@ struct OggiView: View {
                 guard !Task.isCancelled else { return }
                 await vm.carica()
             }
+        }
+    }
+
+    /// Partite rinviate della giornata: quali, i miei coinvolti e cosa vale per questa giornata (niente se non ce ne sono).
+    @ViewBuilder
+    private func partiteRinviate(_ oggi: Oggi) -> some View {
+        if let r = oggi.partiteRinviate {
+            CartaPartitaRinviata(scelta: r, inCorso: vm.rinvioInCorso, errore: vm.erroreRinvio) { m in await vm.cambiaRinvio(r, modo: m) }
+                .id("rinvio")
         }
     }
 
