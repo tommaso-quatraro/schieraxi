@@ -328,13 +328,19 @@ struct NovitaView: View {
         _caricatore = StateObject(wrappedValue: Caricatore<[VoceNovita]>("/api/novita", server: server))
     }
 
+    /// Quante versioni si mostrano: sono centinaia, tutte insieme rallentavano l'apertura. «Mostra le precedenti» ne aggiunge altre.
+    static let perPagina = 20
+    @State private var mostrate = NovitaView.perPagina
+
     var body: some View {
         ZStack {
             Sfondo()
             ScrollView {
-                Colonne(spazio: 14) {
+                // Una colonna sola, pigra (si disegna solo quello che si vede) e larga al massimo come un testo leggibile:
+                // con le colonne affiancate dell'iPad le versioni si leggevano saltando da una colonna all'altra.
+                LazyVStack(spacing: 14) {
                     if let n = caricatore.dato {
-                        ForEach(n) { v in
+                        ForEach(n.prefix(mostrate)) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
                                 if let data = v.data { Text(Quando.dataVersione(data)).font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit() }
                                 ForEach(v.voci, id: \.self) { voce in
@@ -348,6 +354,14 @@ struct NovitaView: View {
                                 }
                             }
                         }
+                        if n.count > mostrate {
+                            Button {
+                                mostrate += Self.perPagina
+                            } label: {
+                                Text("Mostra le versioni precedenti (\(n.count - mostrate))").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     } else if let e = caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
                     } else {
@@ -355,7 +369,10 @@ struct NovitaView: View {
                     }
                 }
                 .padding(16)
+                .frame(maxWidth: 720)
+                .frame(maxWidth: .infinity)
             }
+            .ricercaGlobale()
             .refreshable { await caricatore.ricarica() }
             .avvisoDatiSalvati(caricatore)
         }
@@ -409,7 +426,7 @@ struct StatoDatiView: View {
                     if let probabili = s.probabili, !probabili.isEmpty {
                         Section(titolo: "Probabili formazioni raccolte") {
                             ForEach(probabili) { p in
-                                riga("Giornata \(p.giornata)", "\(p.giocatori ?? 0) giocatori")
+                                riga("Giornata \(p.giornata)", Formato.plurale(p.giocatori ?? 0, "giocatore", "giocatori"))
                             }
                         }
                     }
@@ -419,7 +436,7 @@ struct StatoDatiView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(g.gruppo)
                                     Text((g.n ?? 0) > 0
-                                         ? "\(g.n ?? 0) giocatori · hanno giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
+                                         ? "\(Formato.plurale(g.n ?? 0, "giocatore", "giocatori")) · \((g.n ?? 0) == 1 ? "ha" : "hanno") giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
                                          : "ancora nessun dato")
                                         .font(.caption).foregroundStyle(Color.testoSecondario)
                                 }
