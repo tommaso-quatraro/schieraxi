@@ -41,6 +41,13 @@ jobs:
       # prima dei test: pochi secondi, e se trova qualcosa non si aspetta tutta la suite
       - name: Controllo dei residui (nomi, indirizzi, segreti)
         run: python3 -I -s script/controlli/anti_residui.py --albero
+      # ruff solo come CONTROLLO (regole in ruff.toml, niente riformattazione): pochi secondi, prima dei test. Ambiente a parte
+      # (non entra nelle librerie dell'app), versione e hash fissati in .github/ruff-requisiti.txt, solo file binari.
+      - name: Controllo del codice (ruff)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/ruff"
+          "$RUNNER_TEMP/ruff/bin/python" -m pip install -q --require-hashes --only-binary=:all: -r .github/ruff-requisiti.txt
+          "$RUNNER_TEMP/ruff/bin/ruff" check --output-format=github fanta tests script prove
       - name: Installa le dipendenze
         run: python -m pip install -q -r requirements.txt -r requirements-dev.txt
       # pytest-xdist: un processo per CPU (4 sui runner dei repository pubblici). I test usano solo cartelle temporanee (conftest.py).
@@ -84,6 +91,37 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}     # controlli in linea (azioni con difetti noti, commit impostori): sola lettura
         run: '"$RUNNER_TEMP/zizmor/bin/zizmor" --persona=regular --format=github --no-progress .'
+
+  # Contro il lavoro fuori piano: la descrizione della PR dichiara le aree («Aree: fanta/web, tests, docs») e i file cambiati
+  # devono stare lì dentro (script/ci/controlla_ambito.py, preso da main). Esenti: PR dei bot e PR di soli documenti.
+  # Per ora SEGNALA SOLTANTO: passo con continue-on-error e job fuori dai «needs» di «unisci». La descrizione arriva solo
+  # come variabile d'ambiente. Se si cambia la riga «Aree:» dopo l'apertura, il controllo si rifà al push successivo.
+  ambito:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2          # il commit di prova della PR e la sua base: git diff HEAD^1 HEAD = i file della PR
+          persist-credentials: false
+      - name: Script di controllo presi da main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: _ci-main
+          sparse-checkout: script/ci
+          persist-credentials: false
+      - name: File della PR dentro le aree dichiarate (per ora solo avvisi)
+        continue-on-error: true
+        env:
+          AUTORE: ${{ github.event.pull_request.user.login }}
+          CORPO: ${{ github.event.pull_request.body }}
+        run: |
+          if [ ! -f _ci-main/script/ci/controlla_ambito.py ]; then echo "controlla_ambito.py non è ancora su main: salto"; exit 0; fi
+          git diff --name-only HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_ambito.py
 
   # Ogni modifica al codice dell'app dice cosa cambia: un file fanta/novita.d/<nome>.json (il numero lo dà il bot all'unione)
   # Gli script di controllo si prendono da main, mai dal ramo della PR. Le PR di Dependabot non lo richiedono (e non si uniscono da sole).

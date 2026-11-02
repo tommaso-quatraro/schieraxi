@@ -1,5 +1,4 @@
 """ETag e If-Match: scrivere con un ETag vecchio si ferma con 412; senza If-Match (client vecchi) tutto funziona come prima."""
-import contextlib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
@@ -7,7 +6,7 @@ import pandas as pd
 import pytest
 from fastapi import HTTPException
 
-from fanta import account, calcolo, server, versioni
+from fanta import calcolo, server, versioni
 from fanta.regole import Regole
 
 from test_account_http import PASSWORD, cliente

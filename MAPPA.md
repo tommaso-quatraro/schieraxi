@@ -68,7 +68,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
 - `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`).
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
-  `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora),
+  `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
   `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`.
 - `.claude/settings.json`: divieti fissi per Claude Code (`gh pr merge`, push su `main`, push forzato, `--no-verify`); spiegati in `CLAUDE.md`.
 - Radice: `README.md`, `CLAUDE.md`, `MAPPA.md`, `LICENSE` (AGPL-3.0), `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
@@ -87,6 +87,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
   controlli verdi. Una pull request in bozza non si unisce.
+- Controllo del codice con ruff (solo controllo, niente riformattazione; regole in `ruff.toml`: `E9` sintassi, `F` errori sicuri): passo del job `test`, quindi blocca l'unione. ruff da PyPI con hash in `.github/ruff-requisiti.txt`. In locale: `ruff check fanta tests script prove`.
+- Job `ambito` (`script/ci/controlla_ambito.py`, preso da `main`): i file della pull request devono stare nelle aree della riga «Aree: …» della descrizione (modello in `.github/PULL_REQUEST_TEMPLATE.md`; issue con il modulo «Lavoro», `.github/ISSUE_TEMPLATE/lavoro.yml`). Esenti i bot e le pull request di soli documenti. Per ora solo avvisi, fuori dai `needs` di `unisci`.
 - Job `zizmor` (sicurezza dei workflow; zizmor da PyPI con hash in `.github/zizmor-requisiti.txt`): per ora solo avvisi, fuori dai `needs` di `unisci` (bloccante dopo #108). Azioni solo di GitHub e sempre per hash: le altre fanno fallire l'avvio dei controlli (`tests/test_workflow_controlli.py`).
 - Controllo esterno della salute: `.github/workflows/salute.yml` (ogni 30 minuti sui server di GitHub, a mano con «Run workflow»): chiede la salute dell'app e la pagina del sito, 3 tentativi a qualche minuto di distanza, poi apre l'issue `P1` «Server non raggiungibile» (o la commenta) e la chiude quando tutto risponde. Serve perché `script/server/controllo-salute.sh` gira sul server stesso e, se il server si spegne, tace.
   Non usa segreti né azioni esterne; `issues: write` solo nel job che segnala.

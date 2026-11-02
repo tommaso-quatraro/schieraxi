@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.374",
+    "data": "2026-11-02T17:30:54",
+    "titolo": "Controllo automatico del codice",
+    "voci": [
+      "Ogni modifica all'app ora passa anche da un controllo automatico del codice che trova errori sicuri prima che arrivino a te. Per te non cambia nulla."
+    ],
+    "tecnico": [
+      "ruff 0.17.3 (solo controllo, regole E9 e F in ruff.toml) nel job test di test.yml, installato con versione e hash fissati da .github/ruff-requisiti.txt.",
+      "Tolti import e variabili inutili segnalati da ruff (account_email, backup, server e 20 file di test); F811 escluso solo nei file di test che importano fixture di pytest da altri file."
+    ]
+  },
+  {
     "versione": "1.373",
     "data": "2026-11-02T16:50:03",
     "titolo": "Giornata divisa in due: la formazione si chiude alla prima partita",
