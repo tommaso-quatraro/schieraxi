@@ -127,6 +127,10 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Registrazione: `FANTA_REGISTRAZIONE=invito|email|aperta` (predefinito `invito`).
 - Posta: `FANTA_MAIL=spento|log|smtp|resend` (predefinito `spento`: nessun invio; `log` scrive in `dati/posta.log` solo che un
   messaggio sarebbe partito, mai il codice). Con registrazione `aperta` o `email` servono `smtp` o `resend`.
+  SMTP (`fanta/posta.py`): `FANTA_SMTP_HOST`, `FANTA_SMTP_PORT` (465 = TLS subito, 587 = STARTTLS; mai in chiaro), `FANTA_SMTP_UTENTE`,
+  `FANTA_MAIL_DA` (stessa casella dell'utente, così SPF e DKIM tornano), password in un file a parte indicato da
+  `FANTA_SMTP_PASSWORD_FILE` (una riga, permessi 600: altrimenti non si usa; mai in `ambiente.env`). Tetto `FANTA_MAIL_MAX_ORA`
+  (predefinito 50 invii veri all'ora; oltre, `posta_tetto_ora` nel registro di sicurezza). Chi spedisce, nella Privacy: `FANTA_POSTA_FORNITORE`.
 - Registri: righe tenute 30 giorni, indirizzi accorciati (IPv4 senza l'ultimo numero, IPv6 solo /64).
 - Accesso con Google: spento (404) senza `FANTA_GOOGLE_CLIENT_ID` e `FANTA_GOOGLE_CLIENT_SECRET`.
 - Pagine legali (`testi_legali.py`): `FANTA_TITOLARE`, `FANTA_CONTATTO`, `FANTA_SORGENTE`, `FANTA_HOSTING`, `FANTA_BACKUP_GIORNI`,

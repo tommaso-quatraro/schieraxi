@@ -16,6 +16,7 @@ quelli dipendono dal server e la loro configurazione non sta in questo repositor
 | `dati/utenti/<account>/` (regole, rose, scelte, diario, avvisi, immagini, backup) | `dati/vapid.json` (chiavi delle notifiche) | l'app ne crea di nuove da sola, ma ogni dispositivo deve **riattivare le notifiche** |
 | `lega/` (regole, rose, immagini) | `push.json` (iscrizioni alle notifiche) | come sopra |
 | `dati/scelte.json`, `diario.json`, `affidabilita.json`, ecc. | `dati/ambiente.env` (variabili del servizio, contiene segreti) | va riscritto: passo 3 |
+| | `dati/smtp.password` (password della casella email) | niente email finché non la riscrivi: passo 3 |
 | | `dati/avatar_tratti.json` (non è pubblico) | volti con la carnagione neutra |
 | | `~/.config/schieraxi/canale` (canale degli avvisi) | niente avvisi al gestore finché non lo rimetti |
 | | `~/.config/schieraxi/chiavi-firma.asc` | si ricopia da `script/server/chiavi/` (vedi `script/server/LEGGIMI.md`, «Accendere») |
@@ -36,7 +37,12 @@ quelli dipendono dal server e la loro configurazione non sta in questo repositor
    - `FANTA_PROXY=1` dietro nginx (in una prova locale senza nginx: `0`);
    - `FANTA_LEGA` (cartella `lega/` della copia, percorso assoluto), `FANTA_AVATAR_TRATTI=dati/avatar_tratti.json`;
    - `FANTA_CONTATTO`, `FANTA_TITOLARE` (pagine Privacy e Termini); `FANTA_GOOGLE_CLIENT_ID`, `FANTA_GOOGLE_CLIENT_SECRET`,
-     `FANTA_GOOGLE_REDIRECT` (accesso con Google: se mancano, il pulsante sparisce e gli account restano usabili con la password).
+     `FANTA_GOOGLE_REDIRECT` (accesso con Google: se mancano, il pulsante sparisce e gli account restano usabili con la password);
+   - email: `FANTA_MAIL=smtp`, `FANTA_SMTP_HOST`, `FANTA_SMTP_PORT`, `FANTA_SMTP_UTENTE`, `FANTA_MAIL_DA`, `FANTA_POSTA_FORNITORE` e
+     `FANTA_SMTP_PASSWORD_FILE=dati/smtp.password` (un percorso relativo parte dalla cartella dell'app). La password NON è nella
+     copia: va riscritta nel file senza farla comparire nella cronologia, con
+     `(umask 077; IFS= read -rs -p "Password: " p; printf '%s\n' "$p" > dati/smtp.password; unset p)` (non si vede mentre la scrivi
+     o la incolli). Senza, le email (codici di verifica e di recupero) non partono, il resto funziona.
    I valori non stanno nel repository. Per i comandi a mano (passi 4-6) le stesse variabili vanno caricate nella shell:
    `. script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env` (legge il file senza eseguirlo; il servizio le prende da solo con il drop-in di systemd).
 4. **Statistiche**: `.venv/bin/python -m fanta aggiorna` (circa 1,5 minuti, una cinquantina di richieste: si fa una volta sola).
