@@ -59,6 +59,8 @@ final class ImportaExcelViewModel: ViewModelBase {
 
     /// Un file scelto (selettore, «Apri con SchieraXI», Condividi): si controlla qui, poi va all'anteprima.
     func importa(_ risultato: Result<[URL], Error>) async {
+        // un tentativo nuovo: il riepilogo del salvataggio di prima se ne va, anche se il file poi non va (come la web)
+        esito = nil
         guard case .success(let urls) = risultato, let url = urls.first else {
             if case .failure(let e) = risultato { errore = e.localizedDescription }
             return
@@ -95,10 +97,13 @@ final class ImportaExcelViewModel: ViewModelBase {
     func importaTesto() async {
         let testo = testoRose.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty else {
-            errore = "Incolla prima il testo delle rose."
+            // come la web (lega.incolla_prima_testo): solo un avviso, il riepilogo di prima resta
+            errore = "Incolla prima il testo delle rose"
             return
         }
         if inCorso { return }
+        // un tentativo nuovo: il riepilogo del salvataggio di prima se ne va, anche se il testo poi non va (come la web)
+        esito = nil
         await controlla(.testo(testo), nuova: true)
     }
 

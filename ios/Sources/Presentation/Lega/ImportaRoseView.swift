@@ -60,7 +60,8 @@ struct ImportaExcelView: View {
 
     private var inserimento: some View {
         List {
-            if let e = vm.esito { esito(e) }
+            // l'esito dell'ultimo salvataggio, in cima (differenza ammessa con la web: docs/COERENZA-WEB-IPHONE.md)
+            if let e = vm.esito { EsitoRoseSalvate(esito: e) }
             Section {
                 Text("Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti).")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
@@ -106,30 +107,6 @@ struct ImportaExcelView: View {
             daSistemare
         }
         .scrollContentBackground(.hidden)
-    }
-
-    @ViewBuilder
-    private func esito(_ e: EsitoImportazione) -> some View {
-        Section {
-            // sulla web «Rose salvate» è un avviso che passa; qui resta come prima riga
-            Label("Rose salvate", systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde)
-            if let d = e.differenze { DifferenzeView(differenze: d) }
-            else if let r = e.riepilogo, !r.isEmpty { Text(r) }
-            if let mia = e.miaSquadra, !mia.isEmpty {
-                Label("La tua squadra: \(mia)", systemImage: "star.fill").font(.footnote)
-            }
-            if let squadre = e.squadreImportate, !squadre.isEmpty {
-                Text("Importate: \(squadre.joined(separator: ", ")) (\(Formato.plurale(e.totaleSquadre ?? squadre.count, "squadra", "squadre")) in tutto).")
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
-            }
-        } header: { Text("Cosa è cambiato").foregroundStyle(Color.testoSecondario) }
-        if (e.avvisi ?? []).isEmpty {
-            Section { Label("Rose controllate: tutto in ordine.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(Color.testoSecondario) }
-        } else {
-            Section(titolo: "Da controllare") {
-                ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(Color.attenzione) }
-            }
-        }
     }
 
     /// I giocatori rimasti senza codice nelle rose salvate (lasciati così nell'anteprima, o da importazioni vecchie).
