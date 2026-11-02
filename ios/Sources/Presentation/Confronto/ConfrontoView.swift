@@ -286,10 +286,12 @@ struct RicercaGiocatoreView: View {
     }
 
     private func riga(_ g: GiocatoreBreve) -> some View {
-        HStack(spacing: 12) {
-            BadgeRuolo(ruolo: g.ruolo)
-            Text(g.nome).font(.headline)
-            Spacer()
+        FilaAdattiva(spazio: 4) {
+            HStack(spacing: 12) {
+                BadgeRuolo(ruolo: g.ruolo)
+                Text(g.nome).font(.headline)
+            }
+            Spacer(minLength: 0)
             Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
         }
         .frame(minHeight: 44)

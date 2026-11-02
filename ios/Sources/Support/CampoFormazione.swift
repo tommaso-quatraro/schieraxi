@@ -49,7 +49,8 @@ struct PedinaCampo: View {
             Text("\(Formato.percento(g.pVoto))% · \(ColoriSquadra.sigla(g.avversario))\(g.inCasa == false ? " (f)" : "")")
                 .font(.caption2)   // segue Dynamic Type (a misura normale 11 pt; la scala minima del testo lo stringe se serve)
                 .dynamicTypeSize(...DynamicTypeSize.xLarge)   // tetto più basso: la riga è lunga e il campo non cambia
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(.white.opacity(0.95))   // sul prato a 0,8 il contrasto non bastava (controllo di accessibilità)
+                .shadow(color: .black.opacity(0.5), radius: 1)
                 .lineLimit(1).minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
@@ -148,11 +149,11 @@ struct ImmagineFormazione: View {
         VStack(spacing: 10) {
             VStack(spacing: 2) {
                 Text("\(TempiLega.etichetta(serieA: giornata, lega: giornataLega)) · \(modulo)").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                Text("\(squadra) · \(Formato.punti(punti)) punti attesi").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.7))
+                Text("\(squadra) · \(Formato.punti(punti)) punti attesi").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
             }
             CampoFormazione(titolari: titolari, diametro: 42, perImmagine: true)
             Text("Panchina: " + panchina.map(\.nomeCorto).joined(separator: ", "))
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.75))
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85))
                 .multilineTextAlignment(.center).lineLimit(3)
                 .frame(maxWidth: .infinity)
             Spacer(minLength: 0)

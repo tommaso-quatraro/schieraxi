@@ -246,11 +246,12 @@ struct FormazioneView: View {
     }
 
     private func intestazione(_ f: Formazione, _ v: VistaFormazione) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        FilaAdattiva(allineamento: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     if let nome = f.squadra { StemmaSquadra(nome: nome, dimensione: 28, nascondiSeMancante: true) }
                     Text(v.modulo).font(.system(.title2, design: .rounded).weight(.bold))
+                        .lineLimit(1).fixedSize()   // «3-4-3» non va mai a capo
                 }
                 Text(TempiLega.didascalia(giornata: f.etichettaGiornata, scelta: vm.manuale != nil,
                                           comeConsigliato: v.modulo == f.modulo && vm.rischio == (f.stileConsigliato ?? 0)))

@@ -18,7 +18,24 @@ extension Color {
 /// Dispone le schede in 1, 2 o 3 colonne secondo la larghezza disponibile:
 /// una sull'iPhone in verticale, due o tre sull'iPad e sui telefoni in orizzontale.
 /// Le schede restano nell'ordine in cui sono scritte (si leggono prima la colonna di sinistra, poi quella di destra) e le colonne sono equilibrate in altezza.
-struct Colonne: Layout {
+/// La vista da usare: come il layout qui sotto, ma con il testo grandissimo (misure Accessibilità di Dynamic Type) una colonna sola.
+/// Sull'iPad due colonne strette con il testo XXXL spezzavano le parole lettera per lettera (foto del collaudo).
+struct Colonne<Contenuto: View>: View {
+    var spazio: CGFloat = 14
+    var larghezzaMinima: CGFloat = 340
+    var massimo: Int = 3
+    let contenuto: Contenuto
+    init(spazio: CGFloat = 14, larghezzaMinima: CGFloat = 340, massimo: Int = 3, @ViewBuilder _ contenuto: () -> Contenuto) {
+        self.spazio = spazio; self.larghezzaMinima = larghezzaMinima; self.massimo = massimo; self.contenuto = contenuto()
+    }
+    @Environment(\.dynamicTypeSize) private var taglia
+
+    var body: some View {
+        ColonneLayout(spazio: spazio, larghezzaMinima: larghezzaMinima, massimo: taglia.isAccessibilitySize ? 1 : massimo) { contenuto }
+    }
+}
+
+struct ColonneLayout: Layout {
     var spazio: CGFloat = 14
     var larghezzaMinima: CGFloat = 340
     var massimo: Int = 3

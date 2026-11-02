@@ -107,7 +107,7 @@ struct GiocatoreCorpo: View {
         let squadra = c.squadraSlug ?? p?.squadra
         let tinta = Color(esadecimale: ColoriSquadra.esadecimali(squadra).0)
         return VStack(spacing: 14) {
-            HStack(spacing: 16) {
+            FilaAdattiva(spazio: 16) {
                 AvatarGiocatore(id: c.id, squadra: squadra, indice: p?.indice, dimensione: 96, nome: c.nome, ruolo: c.ruolo)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)

@@ -88,7 +88,7 @@ struct ConsigliatiView: View {
     /// rimborso e crediti in una riga discreta.
     private func carta(_ p: PropostaMercato) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 10) {
+            FilaAdattiva(spazio: 10) {
                 AvatarGiocatore(id: p.entra.id, squadra: p.entra.squadra, dimensione: 44, conNumero: false, nome: p.entra.nome, ruolo: p.entra.ruolo)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
@@ -352,10 +352,12 @@ struct CercaView: View {
             }
             ForEach(ricerca.visibili) { g in
                 Button { apri(g.id) } label: {
-                    HStack(spacing: 12) {
-                        BadgeRuolo(ruolo: g.ruolo)
-                        Text(g.nome).font(.headline)
-                        Spacer()
+                    FilaAdattiva(spazio: 4) {
+                        HStack(spacing: 12) {
+                            BadgeRuolo(ruolo: g.ruolo)
+                            Text(g.nome).font(.headline)
+                        }
+                        Spacer(minLength: 0)
                         Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
                     }
                     .frame(minHeight: Tema.areaTocco)

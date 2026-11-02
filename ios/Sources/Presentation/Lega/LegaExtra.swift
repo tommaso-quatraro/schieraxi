@@ -207,7 +207,7 @@ struct RosaView: View {
                         }
                     }
                     if let agg = r.aggiornato {
-                        Text("Rose aggiornate il \(String(agg.prefix(10)))").font(.caption).foregroundStyle(.secondary)
+                        Text("Rose aggiornate il \(Quando.dataVersione(String(agg.prefix(10))))").font(.caption).foregroundStyle(.secondary)
                     }
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
@@ -391,7 +391,7 @@ struct StatoDatiView: View {
                         riga("Calciatori", "\(s.calciatori ?? 0)")
                         riga("Partite giocate", "\(s.partite?.giocate ?? 0) / \(s.partite?.totali ?? 0)")
                         riga("Voti", "\(s.voti ?? 0)")
-                        riga("Coppe europee fino al", s.coppeFino ?? "—")
+                        riga("Coppe europee fino al", s.coppeFino.map { Quando.dataVersione($0) } ?? "—")
                     }
                     Section("Avanzate") {
                         // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata

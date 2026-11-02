@@ -180,7 +180,8 @@ struct SchermataAccesso: View {
                 .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 .accessibilityHidden(true)
             Text(frase)
-                .font(.subheadline).foregroundStyle(.secondary)
+                // sul fondo sfumato il grigio secondario non aveva contrasto abbastanza
+                .font(.subheadline).foregroundStyle(.primary.opacity(0.8))
                 .multilineTextAlignment(.center)
         }
         .padding(.top, 12)

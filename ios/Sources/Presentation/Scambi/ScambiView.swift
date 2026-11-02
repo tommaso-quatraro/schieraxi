@@ -150,7 +150,7 @@ struct ScambiView: View {
 
     private var filtro: some View {
         Carta {
-            HStack {
+            FilaAdattiva {
                 Label("Con chi", systemImage: "person.2").font(.subheadline)
                 Spacer(minLength: 8)
                 Picker("Con chi", selection: $vm.con) {
@@ -480,8 +480,12 @@ struct DettaglioScambio: View {
     }
 
     private func elenco(_ g: GiocatoreBreve) -> some View {
-        HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome); Spacer(); Text((g.squadra ?? "").capitalized).foregroundStyle(.secondary) }
-            .accessibilityElement(children: .combine)
+        FilaAdattiva {
+            HStack { BadgeRuolo(ruolo: g.ruolo); Text(g.nome) }
+            Spacer(minLength: 0)
+            Text((g.squadra ?? "").capitalized).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func riga(_ chi: String, _ v: Double) -> some View {
@@ -564,12 +568,14 @@ struct AnalizzaScambioView: View {
             Button {
                 if scelto { scelti.wrappedValue.remove(id) } else { scelti.wrappedValue.insert(id) }
             } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: scelto ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(scelto ? Color.verde : .secondary)
-                    BadgeRuolo(ruolo: g.ruolo ?? "?")
-                    Text(g.nome)
-                    Spacer()
+                FilaAdattiva(spazio: 4) {
+                    HStack(spacing: 10) {
+                        Image(systemName: scelto ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(scelto ? Color.verde : .secondary)
+                        BadgeRuolo(ruolo: g.ruolo ?? "?")
+                        Text(g.nome)
+                    }
+                    Spacer(minLength: 0)
                     Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(minHeight: 44)
