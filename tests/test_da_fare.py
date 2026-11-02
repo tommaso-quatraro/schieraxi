@@ -266,6 +266,13 @@ def test_primo_avvio_http(client):
     assert client.get("/api/primo-avvio").json()["primo_avvio"]["chiuso"] is True
 
 
+def test_primo_avvio_passo_dei_tempi_della_lega(client):
+    """Il passo «tempi» (scadenza e prima giornata) del web: il server lo conosce e lo ricorda."""
+    assert "tempi" in client.get("/api/primo-avvio").json()["passi"]
+    r = client.put("/api/primo-avvio", json={"fatti": ["rose", "squadra", "tempi"]}).json()["primo_avvio"]
+    assert r["fatti"] == ["rose", "squadra", "tempi"]
+
+
 @pytest.mark.parametrize("corpo", [
     {"fatti": ["inventato"]}, {"fatti": ["rose"] * 13}, {"saltati": [1]}, {"saltati": "rose"}, {"chiuso": "forse"}, {"fatti": [["rose"]]},
     {"fatti": ["../../etc/passwd"]}, {"fatti": ["x" * 100000]},

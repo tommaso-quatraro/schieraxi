@@ -53,3 +53,24 @@ def test_se_le_rose_sono_saltate_ma_la_squadra_e_aperta_si_va_alla_squadra():
 def test_non_torna_mai_al_passo_attuale_se_ce_n_e_un_altro_aperto():
     # Dalla squadra, con le rose ancora aperte: si torna alle rose, non si resta sulla squadra.
     assert passo_dopo("squadra", [], []) == "rose"
+
+
+# Con il passo «tempi» (dal 2/11/2026): scadenza e prima giornata, dopo la squadra.
+PASSI_CON_TEMPI = ["rose", "squadra", "tempi"]
+
+
+def test_l_elenco_dei_passi_ha_i_tempi_della_lega():
+    src = PRIMOAVVIO_JS.read_text(encoding="utf-8")
+    assert 'const PA_PASSI = ["rose", "squadra", "tempi"];' in src
+    assert "scadenza_minuti" in src and "prima_giornata_lega" in src
+
+
+def test_dopo_la_squadra_vengono_i_tempi():
+    assert passo_dopo("squadra", ["rose", "squadra"], [], PASSI_CON_TEMPI) == "tempi"
+    # la squadra scelta già nell'anteprima delle rose: dalle rose si salta direttamente ai tempi
+    assert passo_dopo("rose", ["rose", "squadra"], [], PASSI_CON_TEMPI) == "tempi"
+
+
+def test_tempi_fatti_o_saltati_chiude():
+    assert passo_dopo("tempi", ["rose", "squadra", "tempi"], [], PASSI_CON_TEMPI) is None
+    assert passo_dopo("tempi", ["rose", "squadra"], ["tempi"], PASSI_CON_TEMPI) is None

@@ -575,13 +575,14 @@ senza account, a differenza di `/api/onboarding`, che resta per la procedura deg
 
 ```
 GET /api/primo-avvio  ->  {"primo_avvio": null | {"fatti": [...], "saltati": [...], "chiuso": false, "aggiornato": "2026-10-30T12:00:00"},
-                           "passi": ["server","accesso","rose","stemma","squadra","pwa","widget","avvisi"]}
+                           "passi": ["server","accesso","rose","stemma","squadra","tempi","pwa","widget","avvisi"]}
 PUT /api/primo-avvio  {"fatti": [...], "saltati": [...], "chiuso": true}   // tutti facoltativi: si cambiano solo i campi mandati
 ```
 
 `primo_avvio: null` = l'utente non l'ha mai iniziato. I client lo avviano solo se è null E mancano le rose (chi ha già la lega non lo vede). Passi: stringhe
 dell'elenco `passi`; un passo sconosciuto, liste oltre 12 voci o tipi sbagliati: 400/422, e non si salva niente. Un passo non sta mai in `fatti` e `saltati` insieme (vince `fatti`).
 Passi che dipendono dal dispositivo (`pwa` solo web, `widget` solo iPhone) li segna e li salta il client giusto; gli altri client li ignorano.
+`tempi` (dal 2/11/2026): le due domande sui tempi della lega (`scadenza_minuti` e `prima_giornata_lega`, salvate con `PUT /api/regole`); un client che non lo propone lo ignora.
 Ultima scrittura vince (nessun If-Match). Il campo è anche nel backup (dentro le impostazioni degli avvisi) ma non esce da `/api/avvisi`.
 
 Ora `GET /api/backup` ricorda la data dell'ultimo scaricamento (per la voce `backup` di «Da fare»); non cambia la risposta.

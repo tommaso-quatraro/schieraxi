@@ -1,10 +1,13 @@
 "use strict";
-// Primo avvio: UN solo percorso breve (le rose o gli esempi; la squadra con le regole standard; fatto). Ogni passo si può saltare.
+// Primo avvio: UN solo percorso breve (le rose o gli esempi; la squadra con le regole standard; i tempi della lega; fatto).
+// Ogni passo si può saltare.
 // A che punto sei resta sul server (GET e PUT /api/primo-avvio, vedi docs/API.md): si riprende da un altro dispositivo e si riapre
 // quando vuoi da Impostazioni > Informazioni. Si apre da solo una volta sola, se non hai ancora le rose e non hai già chiuso la vecchia procedura.
 // Usa le funzioni di app.js (api, esc, avviso, apriFoglio...), caricato dopo questo file: si chiamano solo a pagina pronta.
-const PA_PASSI = ["rose", "squadra"];
-const PA_NOMI = { rose: t("pav.n_rose"), squadra: t("pav.n_squadra") };
+const PA_PASSI = ["rose", "squadra", "tempi"];
+const PA_NOMI = { rose: t("pav.n_rose"), squadra: t("pav.n_squadra"), tempi: t("pav.n_tempi") };
+// «Quando si chiude la formazione»: le scelte più comuni (minuti prima della prima partita); un valore diverso si aggiunge da solo
+const PA_SCADENZE = [0, 5, 10, 15, 30, 60];
 const pa = { stato: { fatti: [], saltati: [], chiuso: false }, passo: null };
 
 const paFatto = p => pa.stato.fatti.includes(p);
@@ -154,6 +157,29 @@ function paAnteprima() {
   });
 }
 
+// Le due domande sui tempi della lega: scadenza della formazione e giornata di Serie A da cui parte la lega.
+// Si leggono le regole di adesso e si salvano tutte, cambiando solo questi due valori (le altre restano come sono).
+async function paTempiCarica() {
+  try {
+    const r = await api("/api/regole");
+    const sc = $("#pa-scadenza"), pg = $("#pa-prima");
+    if (!sc || !pg) return;
+    const m = Number(r.scadenza_minuti ?? 0), g = Number(r.prima_giornata_lega ?? 1);
+    if (!PA_SCADENZE.includes(m)) sc.insertAdjacentHTML("beforeend", `<option value="${m}">${esc(paScadenzaNome(m))}</option>`);
+    sc.value = String(m); pg.value = String(g);
+  } catch { /* restano i valori più comuni; si cambiano anche in Altro > Regole */ }
+}
+const paScadenzaNome = m => (m === 0 ? t("pav.scad_inizio") : tp("pav.scad_minuti", m));
+
+async function paTempiSalva() {
+  const r = await api("/api/regole");
+  r.scadenza_minuti = Number($("#pa-scadenza").value);
+  r.prima_giornata_lega = Number($("#pa-prima").value);
+  await api("/api/regole", { method: "PUT", body: JSON.stringify(r) });
+  svuotaCache();
+  return true;
+}
+
 const PA_SCHERMATE = {
   rose: () => ({
     principale: t("pav.controlla"),
@@ -191,6 +217,17 @@ const PA_SCHERMATE = {
       },
     };
   },
+  tempi: () => ({
+    principale: t("pav.tempi_salva"),
+    html: `<p class="debole">${t("pav.tempi_spiega")}</p>
+      <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
+        <select class="campo-testo" id="pa-scadenza">${PA_SCADENZE.map(m => `<option value="${m}" ${m === 0 ? "selected" : ""}>${esc(paScadenzaNome(m))}</option>`).join("")}</select></label>
+      <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
+        <select class="campo-testo" id="pa-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === 1 ? "selected" : ""}>${esc(g === 1 ? t("pav.prima_uno") : t("pav.prima_n", { n: g }))}</option>`).join("")}</select></label>
+      <p class="debole piccolo">${t("pav.tempi_dove")}</p>`,
+    dopo: paTempiCarica,
+    esegui: paTempiSalva,
+  }),
 };
 
 // Giocatori che l'importazione non ha riconosciuto: si cerca quello giusto nel listone e si abbina.

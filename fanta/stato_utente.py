@@ -17,7 +17,7 @@ from . import notifiche
 from .percorsi import scrivi_sicuro
 
 # i passi della configurazione guidata (l'ordine è quello in cui si propongono); i primi due si segnano da soli
-PASSI = ("server", "accesso", "rose", "stemma", "squadra", "pwa", "widget", "avvisi")
+PASSI = ("server", "accesso", "rose", "stemma", "squadra", "tempi", "pwa", "widget", "avvisi")
 MAX_TESTO = 40
 
 
