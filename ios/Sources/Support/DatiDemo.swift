@@ -802,7 +802,7 @@ private enum DatiDemo {
 
     static func avvisi() -> String {
         json(["impostazioni": ["cambi": true, "promemoria_60": true, "promemoria_15": false, "riepilogo": true, "copertura": true, "app_nativa": true,
-                              "silenzio": false, "silenzio_da": 23, "silenzio_a": 23],
+                              "silenzio": false, "silenzio_da": 23, "silenzio_a": 23, "avviso_prima": 60],
               "canale": true, "dispositivi": 2, "ore_tranquille_spente": true])
     }
 
@@ -833,8 +833,31 @@ private enum DatiDemo {
             "dentro_fascia": 4, "con_fascia": 4, "percentuale_dentro": 100, "fascia_dichiarata": 80, "pochi_dati": true,
             "giornate_minime": 8, "giudizio": "pochi_dati",
         ]
+        // «Quanto ci abbiamo preso» (forma nuova): numeri onesti anche quando vanno male (qui «gioca» è troppo ottimista).
+        let precisione: [String: Any] = [
+            "giornate": 4, "pochi_dati": true, "giornate_minime": 8, "fonti": ["mostrati": 3, "ricostruiti": 1],
+            "fantavoto": ["errore_medio": 1.4, "scostamento": -0.4, "entro_un_punto": 58, "voti": 41],
+            "gioca": ["giocatori": 52, "principale": 1, "fonte": "mostrati", "giornate": 3, "gruppi": [
+                ["da": 40, "a": 70, "giocatori": 9, "pochi": true, "detto": 55, "giocato": 44],
+                ["da": 90, "a": 100, "giocatori": 43, "pochi": false, "detto": 96, "giocato": 83],
+            ]],
+            "confronto": ["giornate": 2, "meglio_consigliata": 2, "meglio_tua": 0, "pari": 0, "punti": 12.0,
+                          "media_consigliata": 67.5, "media_tua": 61.5],
+            "squadra": affidabilita,
+            "per_giornata": [
+                ["stagione": "2026-27", "giornata": 7, "giornata_lega": 7, "fonte": "ricostruiti", "errore_fantavoto": 1.6, "voti": 10,
+                 "attesi": 65.0, "fatti": 60.5, "tua": NSNull(), "differenza": NSNull()],
+                ["stagione": "2026-27", "giornata": 8, "giornata_lega": 8, "fonte": "mostrati", "errore_fantavoto": 1.2, "voti": 11,
+                 "attesi": 67.0, "fatti": 64.0, "tua": 59.5, "differenza": 4.5],
+                ["stagione": "2026-27", "giornata": 9, "giornata_lega": 9, "fonte": "mostrati", "errore_fantavoto": 1.5, "voti": 10,
+                 "attesi": 68.5, "fatti": 71.0, "tua": 63.5, "differenza": 7.5],
+                ["stagione": "2026-27", "giornata": 10, "giornata_lega": 10, "fonte": "mostrati", "errore_fantavoto": 1.3, "voti": 10,
+                 "attesi": 69.0, "fatti": 72.5, "tua": NSNull(), "differenza": NSNull()],
+            ],
+        ]
         return json([
             "affidabilita": affidabilita,
+            "precisione": precisione,
             "giornate": [
                 ["stagione": "2026-27", "giornata": 10, "atteso_vs_fatto": avf(69.0, 72.5),
                  "consigliata": ["modulo": "3-4-3", "atteso": 69.0, "reale": 72.5, "intervallo": fascia(69.0), "titolari": titolari(base)],

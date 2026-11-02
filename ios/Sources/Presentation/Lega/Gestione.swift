@@ -36,6 +36,7 @@ struct AvvisiServerView: View {
                     }
                     Section("Quali avvisi") {
                         interruttore("Cambi di formazione e probabili", \.cambi)
+                        if let prima = vm.impostazioni?.avviso_prima { sceltaAvvisoPrima(prima) }
                         interruttore("Promemoria un'ora prima", \.promemoria_60)
                         interruttore("Promemoria 15 minuti prima", \.promemoria_15)
                         interruttore("Riepilogo a giornata finita", \.riepilogo)
@@ -143,6 +144,30 @@ struct AvvisiServerView: View {
             ForEach(0..<24, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) }
         }
         .frame(minHeight: 44)
+    }
+
+    /// «Avviso se il consiglio cambia»: si mostra solo se il server manda il campo (un server vecchio non lo conosce).
+    /// Si salva come le altre impostazioni (stesso PUT, con If-Match).
+    private func sceltaAvvisoPrima(_ attuale: Int) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Picker(selection: Binding(
+                get: { vm.impostazioni?.avviso_prima ?? AvvisoPrima.predefinito },
+                set: { nuovo in
+                    guard nuovo != vm.impostazioni?.avviso_prima else { return }
+                    vm.impostazioni?.avviso_prima = nuovo
+                    Task { await vm.salva() }
+                })) {
+                ForEach(AvvisoPrima.scelte(attuale: attuale), id: \.self) { Text(AvvisoPrima.testo($0)).tag($0) }
+            } label: {
+                Text(AvvisoPrima.titolo)
+            }
+            .frame(minHeight: 44)
+            .accessibilityHint(AvvisoPrima.aiuto)
+            Text(AvvisoPrima.aiuto)
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityHidden(true)
+        }
     }
 
     private func interruttore(_ titolo: String, _ chiave: WritableKeyPath<ImpostazioniAvvisi, Bool>) -> some View {

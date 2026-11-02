@@ -9,6 +9,9 @@ struct DiarioRisposta: Decodable {
     let scelteTue: ScelteTue?
     /// «Quanto ci abbiamo preso» (facoltativo: i server più vecchi non lo mandano; tollerante).
     let affidabilita: AffidabilitaDiario?
+    /// «Quanto ci abbiamo preso» nella forma nuova (fantavoto, «gioca N%», consigliata contro tua, squadra). Facoltativo: se manca
+    /// (server vecchio) resta la scheda di `affidabilita`; tollerante, un formato strano vale «niente da mostrare».
+    let precisione: PrecisioneDiario?
 }
 
 struct VoceDiario: Decodable, Identifiable {
