@@ -33,7 +33,8 @@ def nel_turno(quando: datetime, inizio: datetime) -> bool:
 def inizio(date: Iterable[datetime | None]) -> datetime | None:
     """Quando comincia il turno, dalle date delle partite della giornata (quelle senza data si ignorano). None se non ce n'è.
     Il primo gruppo principale (partite a meno di ANTICIPO_MIN l'una dall'altra, almeno metà del totale) se prima ha al massimo
-    MAX_ANTICIPI anticipi; altrimenti il primo intervallo di FINESTRA con almeno metà delle partite, o quello più pieno."""
+    MAX_ANTICIPI anticipi; altrimenti il primo intervallo di FINESTRA con almeno metà delle partite, o quello più pieno, fra
+    quelli che non lasciano prima più di MAX_ANTICIPI anticipi (issue #139: venerdì 3 partite e mercoledì dopo 4 → venerdì)."""
     ordinate = sorted(d for d in date if d is not None)
     if not ordinate:
         return None
@@ -45,9 +46,11 @@ def inizio(date: Iterable[datetime | None]) -> datetime | None:
     principale = next((g for g in gruppi if 2 * len(g) >= len(ordinate)), None)
     if principale is not None and sum(1 for x in ordinate if anticipo(x, principale[0])) <= MAX_ANTICIPI:
         return principale[0]
-    conta = [sum(1 for x in ordinate if nel_turno(x, d)) for d in ordinate]
-    return next((d for d, n in zip(ordinate, conta) if 2 * n >= len(ordinate)),
-                ordinate[conta.index(max(conta))])
+    # mai un inizio con più di MAX_ANTICIPI anticipi prima (turno diviso: parte dalla prima); la prima partita va sempre bene
+    candidati = [d for d in ordinate if sum(1 for x in ordinate if anticipo(x, d)) <= MAX_ANTICIPI]
+    conta = [sum(1 for x in ordinate if nel_turno(x, d)) for d in candidati]
+    return next((d for d, n in zip(candidati, conta) if 2 * n >= len(ordinate)),
+                candidati[conta.index(max(conta))])
 
 
 def anticipo(quando: datetime | None, inizio: datetime | None) -> bool:
