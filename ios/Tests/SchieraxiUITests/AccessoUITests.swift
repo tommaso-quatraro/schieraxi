@@ -126,10 +126,22 @@ final class AccessoUITests: XCTestCase {
         XCTAssertFalse(elemento("Per accedere").exists)
         XCTAssertFalse(elemento("Cambia le maiuscole del nome").exists)
         XCTAssertFalse(elemento("Esci da tutti", contiene: true).exists)
-        // «Esci» è l'ultima voce delle Impostazioni: si scorre fino in fondo
-        let esci = app.buttons["Esci"]
-        for _ in 0..<8 where !esci.exists { app.swipeUp() }
+        // «Esci» è l'ultima riga di «Il tuo account», subito sotto «Elimina l'account» (come sulla web), non una sezione a parte in fondo
+        let esci = app.buttons["Esci"].firstMatch   // con la conferma aperta i pulsanti «Esci» sono due
+        for _ in 0..<8 where !(esci.exists && esci.isHittable) { app.swipeUp() }
         XCTAssertTrue(esci.waitForExistence(timeout: 5))
+        let elimina = app.buttons["Elimina l'account"].firstMatch
+        XCTAssertTrue(elimina.exists, "«Elimina l'account» sta subito sopra «Esci»")
+        let fraLeDue = esci.frame.minY - elimina.frame.maxY
+        // stessa sezione: fra le due righe al massimo il margine delle righe; una sezione nuova aggiunge lo spazio fra le sezioni (oltre 30 punti)
+        XCTAssertTrue(fraLeDue > -1 && fraLeDue < 20, "«Esci» deve seguire «Elimina l'account» nella stessa sezione (spazio: \(fraLeDue))")
+        // il tocco chiede conferma (il tocco perso sul simulatore carico si ripete, al massimo 3 volte)
+        let conferma = elemento("Esci da SchieraXI su questo telefono?")
+        for _ in 0..<3 where !conferma.exists {
+            esci.tap()
+            _ = conferma.waitForExistence(timeout: 5)
+        }
+        XCTAssertTrue(conferma.exists, "toccando «Esci» compare la conferma")
     }
 
     /// Apre un foglio dell'account toccando `voce` e aspetta `segno` (un elemento del foglio). Il tocco perso sul simulatore

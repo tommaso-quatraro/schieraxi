@@ -136,7 +136,7 @@ private struct PresentaFogliAccount: ViewModifier {
 }
 
 /// «Il tuo account» nelle Impostazioni, con i testi della web: il nome con «Utente · dal …», l'email (quella di Google se è
-/// collegato), cambia la password, codice di recupero, scarica i tuoi dati, elimina l'account. «Esci» sta in fondo alle Impostazioni (`EsciSezione`).
+/// collegato), cambia la password, codice di recupero, scarica i tuoi dati, elimina l'account ed «Esci» (l'ultima riga, come sulla web).
 /// Si vede solo se il server ha gli account (multiutente); con il server di sempre non compare.
 /// I fogli si aprono da `fogli` (vedi `FoglioAccount`): qui niente `.sheet`.
 struct AccountSezione: View {
@@ -191,6 +191,7 @@ struct AccountSezione: View {
                     Label(TestiAccount.eliminaTitolo, systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
                 }
                 .accessibilityIdentifier("account-elimina")
+                RigaEsci()
                 if let messaggio = fogli.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
             }
             // niente .sheet qui: su una Section dentro una List finirebbe su ogni riga (vedi `FoglioAccount`)
@@ -199,25 +200,22 @@ struct AccountSezione: View {
     }
 }
 
-/// «Esci», l'ultima voce delle Impostazioni: solo con un account (senza account c'è `SessioneMinimaSezione`).
-struct EsciSezione: View {
+/// «Esci», l'ultima riga di «Il tuo account», come sulla web. Sta dentro la sezione dell'account (che c'è solo con un account:
+/// senza account c'è `SessioneMinimaSezione`).
+struct RigaEsci: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @State private var chiediEsci = false
 
     var body: some View {
-        if sessione.multiutente, sessione.utente != nil {
-            Section {
-                Button { chiediEsci = true } label: {
-                    Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
-                }
-                .accessibilityHint("Esci dal tuo account su questo telefono")
-                // sul pulsante, non sulla Section (vedi `FoglioAccount`)
-                .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-                    Button("Esci", role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
-                } message: {
-                    Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
-                }
-            }
+        Button { chiediEsci = true } label: {
+            Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+        }
+        .accessibilityHint("Esci dal tuo account su questo telefono")
+        // sul pulsante, non sulla Section (vedi `FoglioAccount`)
+        .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
+            Button("Esci", role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
+        } message: {
+            Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
         }
     }
 }

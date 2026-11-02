@@ -140,7 +140,7 @@ extension Demo {
             // «Collega il widget» (in demo: «Codice copiato» senza toccare gli appunti)
             nav.collegaWidgetAperto = true
         case "impostazioni", "impostazioni-crediti", "impostazioni-avanzate", "impostazioni-aspetto":
-            // le Impostazioni (le pagine «Licenze e crediti», «Avanzate» e «Aspetto» le apre da sola ImpostazioniView)
+            // le Impostazioni (le pagine «Crediti e fonti», «Avanzate» e «Aspetto» le apre da sola ImpostazioniView)
             nav.impostazioniAperte = true
 
         case "formazione", "formazione-salvata", "formazione-chiusa":

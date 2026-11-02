@@ -173,35 +173,48 @@ struct StagioneView: View {
 
     private var passi: some View {
         Section(titolo: "Passi per la nuova stagione") {
-            NavigationLink(value: PaginaLega.importa) {
-                passo("1", "Importa le nuove rose", "Con l'Excel di Leghe, da «Aggiorna le rose».")
+            ForEach(PassiNuovaStagione.elenco(amministratore: sessione.puoAmministrare)) { passo in
+                NavigationLink(value: passo.pagina) { riga(passo) }
             }
-            NavigationLink(value: PaginaLega.regole) {
-                passo("2", "Controlla le regole", "Bonus, moduli e crediti possono cambiare da un anno all'altro.")
-            }
-            NavigationLink(value: PaginaLega.crediti) {
-                passo("3", "Inserisci i crediti delle squadre", "Servono al mercato per dirti se un cambio è fattibile.")
-            }
-            // Aggiornare i dati spetta a chi amministra il server (come sulla web): agli altri il server risponderebbe «Solo per l'amministratore».
-            if sessione.puoAmministrare {
-                NavigationLink(value: PaginaLega.stato) {
-                    passo("4", "Aggiorna i dati", "Calendario, listone e quotazioni nuovi.")
-                }
-            }
-            passo(sessione.puoAmministrare ? "5" : "4", "Prima dell'asta guarda Altro > Asta e riparazione", "Budget e prezzi consigliati.")
         }
     }
 
-    private func passo(_ numero: String, _ titolo: String, _ dettaglio: String) -> some View {
+    private func riga(_ passo: PassoStagione) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Text(numero).font(.headline).frame(width: latoNumero, height: latoNumero).background(Color.verde.opacity(0.25), in: Circle()).accessibilityHidden(true)
+            Text(passo.numero, format: .number).font(.headline).frame(width: latoNumero, height: latoNumero).background(Color.verde.opacity(0.25), in: Circle()).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(titolo).font(.subheadline.bold())
-                Text(dettaglio).font(.caption).foregroundStyle(Color.testoSecondario)
+                Text(passo.titolo).font(.subheadline.bold())
+                Text(passo.dettaglio).font(.caption).foregroundStyle(Color.testoSecondario)
             }
         }
         .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Un passo di «Passi per la nuova stagione»: numero, cosa fare, dove farlo.
+struct PassoStagione: Identifiable, Equatable {
+    let numero: Int
+    let titolo: String
+    let dettaglio: String
+    let pagina: PaginaLega
+    var id: PaginaLega { pagina }
+}
+
+/// I passi dopo l'archivio della stagione, gli stessi della web (`nuovaStagione` di `app.js`), senza l'asta: la pagina
+/// «Asta e riparazione» sull'iPhone non c'è più. Logica pura, provata nei test.
+enum PassiNuovaStagione {
+    static func elenco(amministratore: Bool) -> [PassoStagione] {
+        var passi: [(titolo: String, dettaglio: String, pagina: PaginaLega)] = [
+            ("Importa le nuove rose", "Con l'Excel di Leghe, da «Aggiorna le rose».", .importa),
+            ("Controlla le regole", "Bonus, moduli e crediti possono cambiare da un anno all'altro.", .regole),
+            ("Inserisci i crediti delle squadre", "Servono al mercato per dirti se un cambio è fattibile.", .crediti),
+        ]
+        // Aggiornare i dati spetta a chi amministra il server (come sulla web): agli altri il server risponderebbe «Solo per l'amministratore».
+        if amministratore {
+            passi.append(("Aggiorna i dati", "Calendario, listone e quotazioni nuovi.", .stato))
+        }
+        return passi.enumerated().map { PassoStagione(numero: $0.offset + 1, titolo: $0.element.titolo, dettaglio: $0.element.dettaglio, pagina: $0.element.pagina) }
     }
 }
 
