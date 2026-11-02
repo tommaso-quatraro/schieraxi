@@ -329,6 +329,10 @@ details[open] > summary { margin-bottom: 8px; }
 .etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
 .etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
 .etichetta.neutra { background: color-mix(in srgb, var(--testo) 8%, transparent); color: var(--testo-2); border-color: transparent; }
+/* note lunghe (per esempio l'infortunio): a capo dentro la scheda, mai oltre il bordo né sotto il pulsante ⇄ */
+.etichetta.lunga { flex: 1 1 100%; white-space: normal; text-overflow: clip; border-radius: 12px; line-height: 1.35; }
+.voce > span { min-width: 0; }           /* la colonna del nome si restringe: senza, un testo lungo allargava la griglia oltre la scheda */
+.pedina .gioca.esito { font-weight: 700; }
 .barra-p { height: 4px; background: color-mix(in srgb, var(--testo) 12%, transparent); border-radius: 2px; overflow: hidden; margin-top: 5px; width: 60px; margin-left: auto; }
 .barra-p > i { display: block; height: 100%; background: var(--verde); border-radius: 2px; animation: riempi .8s var(--uscita) both .2s; }
 .barra-p.media > i { background: var(--arancio); } .barra-p.bassa > i { background: var(--rosso); }
@@ -383,6 +387,13 @@ details[open] > summary { margin-bottom: 8px; }
 .stato-scelta.salvata .segno, .stato-scelta.salvata p { color: var(--verde); }
 .stato-scelta.modificata .segno, .stato-scelta.mano .segno { color: var(--arancio); }
 .stato-scelta.non_valida .segno { color: var(--rosso); }
+.stato-scelta.chiusa .segno { color: var(--testo-2); }
+/* Titolare incerto con la riserva quasi sicura: la spiegazione sotto il campo e nel «Perché questo numero» */
+.nota-incerti { margin: -4px 4px 14px; font-size: var(--t-sec); line-height: 1.4; color: var(--testo-2); }
+.nota-incerti p { margin: 0 0 6px; }
+.nota-incerti b { color: var(--testo); }
+.nota-incerto { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; font-size: var(--t-sec); line-height: 1.4;
+  background: color-mix(in srgb, var(--arancio) 12%, transparent); }
 .stato-scelta .pulsanti { margin-top: 10px; gap: 8px; }
 .stato-scelta .bottone { padding-left: 14px; padding-right: 14px; }
 /* Oggi, riquadro «Partita rinviata»: quali partite, i miei coinvolti e cosa vale per questa giornata */
@@ -676,6 +687,12 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .testo-testata { min-width: 0; }
 .testo-testata .titolo, .testo-testata .sottotitolo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* testata sempre su due righe, anche sui telefoni stretti */
 @media (max-width: 400px) { .testo-testata .titolo { font-size: var(--t-card); } .sottotitolo { font-size: var(--t-eti); } .testata { gap: 8px; } .bottone-icona { width: 40px; height: 40px; } }
+/* sui telefoni la giornata e la data dei dati vanno su due righe: in una sola la data si tagliava (390 px, anche in inglese a 430) */
+@media (max-width: 480px) {
+  .testo-testata .sottotitolo { line-height: 1.25; }
+  .sottotitolo > span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sottotitolo > .sotto-sep { display: none; }
+}
 .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: 132px; min-height: 150px; }   /* il testo va a capo prima della maglia (la densità compatta non lo deve azzerare) */
 .maglia-hero { position: absolute; right: -6px; bottom: -10px; height: 150px; width: auto; transform: rotate(7deg); transform-origin: 70% 80%; pointer-events: none;
   filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .45)); animation: entra .8s var(--molla) .15s both; }

@@ -355,8 +355,11 @@ const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.
 const MOTIVI_CON_PERCENTUALE = ["motivo.gol_atteso", "motivo.porta_inviolata"];
 const senzaPercentuale = m => !(m.frase && MOTIVI_CON_PERCENTUALE.includes(m.frase.chiave)) && !/\d\s*%/.test(m.testo);
 function etichetteGiocatore(x) {
-  const altre = motiviUtili(x).filter(senzaPercentuale).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
-  return pillTitolarita(x) + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
+  const altre = motiviUtili(x).filter(senzaPercentuale).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
+  // «Fuori» (infortunato) a partita finita: anche com'è andata («Voto in arrivo», «Senza voto»), che la pillola sola non dice
+  const esito = x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
+    ? `<span class="etichetta ${STATO_PARTITA[x.stato_partita][1]}">${t(STATO_PARTITA[x.stato_partita][0])}</span>` : "";
+  return pillTitolarita(x) + esito + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
 }
 
 // Distintivo della squadra: solo la sigla nei colori sociali (niente stemmi: sono marchi dei club).
@@ -374,21 +377,29 @@ function distintivo(s) {
 // Per i lettori di schermo: «gioca all'85 per cento, in casa contro il Napoli» (in italiano con l'articolo giusto).
 const ARTICOLI_CLUB = { atalanta: "l'", inter: "l'", udinese: "l'", empoli: "l'", juventus: "la ", fiorentina: "la ", lazio: "la ", roma: "la ",
   sampdoria: "la ", cremonese: "la ", salernitana: "la ", spezia: "lo " };
-function vocePedina(x) {
+function vocePedina(x, esito = null) {             // esito: esitoPartita(x), a partita iniziata
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const avv = (LINGUA === "it" ? (ARTICOLI_CLUB[x.avversario] ?? "il ") : "") + nomeClub(x.avversario);
-  return [x.nome, t("formazione.voce_fv", { fv: num(x.fv_atteso) }), t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }),
+  return [x.nome, t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito ? esito.testo : t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }),
     x.avversario ? t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv }) : ""].filter(Boolean).join(", ");
 }
 const SOGLIA_GIOCA = 0.7;                       // sotto: «⚠ gioca 45%» in una pillola arancio
+// A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
+// del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
+function esitoPartita(x) {
+  if (!PARTITA_INIZIATA.includes(x.stato_partita || "")) return null;
+  if (x.stato_partita === "fatto" && Number.isFinite(x.fv_preso)) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
+  return { fv: null, testo: t(STATO_PARTITA[x.stato_partita][0]) };
+}
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
   const cognome = x.nome.length > 11 ? x.nome.replace(/\s+\S+\.$/, "") : x.nome;
-  return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}" aria-label="${esc(vocePedina(x))}">
+  return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}" aria-label="${esc(vocePedina(x, esitoPartita(x)))}">
     <span class="avatar-pedina">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
     <span class="nome">${esc(cognome)}</span>
-    <span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>
+    ${esitoPartita(x) ? `<span class="gioca esito">${esc(esitoPartita(x).testo)}</span>`
+      : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
     ${x.avversario ? `<span class="avv">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
   </button>`;
 }
@@ -417,16 +428,22 @@ function collegaLegenda() {
   info.addEventListener("click", () => { leg.hidden = false; info.hidden = true; info.setAttribute("aria-expanded", "true"); ok.focus(); });
 }
 
+// La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
+const partitaBreve = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span> · ${quando(x.data_partita)}`;
+
 function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false) {
   const p = x.p_voto ?? 0;
   const livello = p >= 0.7 ? "" : p >= 0.4 ? "media" : "bassa";
+  const esito = esitoPartita(x);
   return `<li class="${conConfronto ? "con-confronto" : ""}"><button class="voce" data-giocatore="${x.id}">
     ${avatarIndice(x)}
     <span><span class="nome">${posizione ? `<span class="debole">${posizione}. </span>` : ""}${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
-      <span class="dettaglio" style="display:block"><span class="diff d${x.difficolta}"><i></i></span> ${sigla(x.squadra)} – ${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")} · ${quando(x.data_partita)}</span>
+      <span class="dettaglio" style="display:block"><span class="diff d${x.difficolta}"><i></i></span> ${partitaBreve(x)}</span>
       <span class="etichette">${etichetteGiocatore(x)}</span></span>
-    <span class="valore"><b${attrPerche(x)}>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p) })}</span>
-      <span class="barra-p ${livello}"><i style="width:${Math.round(p * 100)}%"></i></span></span>
+    ${esito ? `<span class="valore esito">${esito.fv != null ? `<b>${num(esito.fv)}</b><span class="debole piccolo">${t("mercato.fantavoto")}</span>`
+        : `<b class="debole" aria-hidden="true">–</b>`}</span>`
+      : `<span class="valore"><b${attrPerche(x)}>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p) })}</span>
+      <span class="barra-p ${livello}"><i style="width:${Math.round(p * 100)}%"></i></span></span>`}
   </button>${conConfronto ? (sostituisci
     ? `<button class="confronta-mini" data-sostituisci="${x.id}" aria-label="${t("formazione.sostituisci_aria", { nome: esc(x.nome) })}" title="${t("formazione.sostituisci_con")}">✎</button>`
     : `<button class="confronta-mini" data-confronta="${x.id}" aria-label="${t("formazione.confronta_aria", { nome: esc(x.nome) })}" title="${t("formazione.confronta_con")}">⇄</button>`) : ""}</li>`;
@@ -442,7 +459,20 @@ function novitaDaVedere() {
   try { return !!(stato.info && stato.info.versione && localStorage.getItem("novita-vista") !== stato.info.versione); } catch { return false; }
 }
 
+// «Modifica a mano» cambiata e non salvata nella Formazione (calcolato a ogni disegno, `sc.nonSalvata`).
+const modificaNonSalvata = () => stato.vista === "formazione" && !!(stato.scelta && stato.scelta.nonSalvata);
+// Prima di cambiare scheda si chiede; chi conferma lascia le modifiche (tornando, si riparte dalla consigliata o dalla scelta salvata).
+function lasciaFormazione() {
+  if (!modificaNonSalvata()) return true;
+  if (!confirm(t("formazione.esci_senza_salvare"))) return false;
+  Object.assign(stato.scelta, { manuale: null, nonSalvata: false, richiesta: (stato.scelta.richiesta || 0) + 1, occupato: false });
+  return true;
+}
+// Ricaricare o chiudere la pagina: il browser mostra la sua domanda (il testo lo sceglie lui).
+window.addEventListener("beforeunload", ev => { if (modificaNonSalvata()) { ev.preventDefault(); ev.returnValue = ""; } });
+
 function vai(vista, gruppo) {
+  if (vista !== "formazione" && !lasciaFormazione()) return;             // resta nella Formazione: la modifica a mano non è salvata
   const imp = vista === "impostazioni";                                   // l'ingranaggio in testata: non è una delle schede della barra
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
   if (!imp && !SCHEDA_DI(vista)) vista = "oggi";
@@ -513,9 +543,11 @@ async function caricaInfo() {
     const i = stato.info;
     $("#titolo").textContent = i.mia_squadra || "SchieraXI";
     const quandoAgg = i.ultimo_aggiornamento ? new Date(i.ultimo_aggiornamento) : null;
-    $("#sottotitolo").textContent =
-      (i.prossima_giornata ? t("testata.giornata", { n: i.prossima_giornata }) : "") +
-      (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai"));
+    // giornata e data dei dati in due pezzi: sui telefoni stanno su due righe (stile.css), altrimenti la data si tagliava a 390 px
+    const pezzo = (classe, testo) => { const e = document.createElement("span"); e.className = classe; e.textContent = testo; return e; };
+    const dati = (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, "");
+    $("#sottotitolo").replaceChildren(...(i.prossima_giornata ? [pezzo("sotto-giornata", t("testata.giornata", { n: i.prossima_giornata })), pezzo("sotto-sep", " · ")] : []),
+      pezzo("sotto-dati", dati));
     $("#bottone-aggiorna").classList.toggle("gira", i.aggiornamento_in_corso);
   } catch (e) {
     $("#sottotitolo").textContent = t("testata.offline");
@@ -951,7 +983,9 @@ const stessiIds = (a, b) => a.length === b.length && a.every(x => b.includes(x))
 // `salvata`: risposta di GET /api/scelta (null = nessuna scelta; undefined = non ancora letta o lettura fallita: nessuna riga).
 // Risultato: null, "consigliata" (A), "salvata" (B), "modificata" (C), "mano" (D), "non_valida" (la scelta salvata non vale più)
 // o "altra" (niente di salvato e sullo schermo un altro modulo o un altro stile: non è la consigliata e non si dice che lo sia).
-function statoScelta(mostrati, salvata, manuale, nonValida = false, altra = false) {
+// "chiusa": scadenza della lega passata (`iniziata` del server), niente più da salvare né da cambiare, anche prima di leggere la scelta.
+function statoScelta(mostrati, salvata, manuale, nonValida = false, altra = false, chiusa = false) {
+  if (chiusa) return "chiusa";
   if (salvata === undefined) return null;
   if (salvata && Array.isArray(salvata.titolari)) {
     if (nonValida && !manuale) return "non_valida";            // dopo «Modifica a mano» si può salvare la nuova (stato C)
@@ -969,7 +1003,7 @@ function quandoSalvata(s, breve = false) {
   if (diff === 0) return breve ? t("formazione.alle", { ora }) : t("formazione.giorno_alle", { giorno: t("tempo.oggi"), ora });
   return t("formazione.giorno_alle", { giorno: diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${d.getDate()}`, ora });
 }
-const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!" };
+const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!", chiusa: "■" };
 function rigaStatoScelta(st, salvata) {
   const quando = salvata ? quandoSalvata(salvata.salvata) : "", breve = salvata ? quandoSalvata(salvata.salvata, true) : "";
   const testo = {
@@ -979,6 +1013,7 @@ function rigaStatoScelta(st, salvata) {
     modificata: breve ? t("formazione.stato_modificata_quando", { quando: breve }) : t("formazione.stato_modificata"),
     mano: t("formazione.stato_mano"),
     non_valida: t("formazione.stato_non_valida"),
+    chiusa: t(salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
   }[st];
   const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}">${t(chiave)}</button>`;
   const pulsanti = {
@@ -988,9 +1023,10 @@ function rigaStatoScelta(st, salvata) {
     modificata: b("salva-scelta", "formazione.salva_modifiche", false) + b("annulla-modifiche", "formazione.annulla_modifiche") + b("torna-consigliata", "formazione.torna_alla_consigliata"),
     mano: b("salva-scelta", "formazione.salva_come_mia", false) + b("torna-consigliata", "formazione.torna_alla_consigliata"),
     non_valida: b("modifica", "formazione.modifica_mano", false) + b("torna-consigliata", "formazione.torna_alla_consigliata"),
+    chiusa: "",                                           // dopo la scadenza il server rifiuta comunque (409 formazione_chiusa)
   }[st];
   return `<div class="stato-scelta ${st}" id="stato-scelta"><p role="status"><span class="segno" aria-hidden="true">${SEGNI_SCELTA[st]}</span><span>${testo}</span></p>
-    <div class="pulsanti">${pulsanti}</div></div>`;
+    ${pulsanti ? `<div class="pulsanti">${pulsanti}</div>` : ""}</div>`;
 }
 
 function mostraFormazione(f, squadra, opz = {}) {
@@ -1009,6 +1045,18 @@ function mostraFormazione(f, squadra, opz = {}) {
   const corrente = () => sc.manuale
     ? { modulo: sc.manuale.modulo, titolari: sc.manuale.titolari, panchina: sc.manuale.panchina, punteggio_atteso: sc.manuale.r.punteggio_atteso, dev: sc.manuale.r.dev, intervallo: sc.manuale.r.intervallo }
     : moduloAuto();
+
+  // Titolari incerti con la riserva quasi sicura (campo `incerti` del modulo, fanta/consigli.py): solo per la proposta del server,
+  // non dopo una modifica a mano né a giornata iniziata. {id del titolare: {nome, riga}} (riga già pronta per l'HTML)
+  const incerti = m => {
+    const r = {};
+    if (sc.manuale || f.iniziata) return r;
+    for (const i of (Array.isArray(m.incerti) ? m.incerti : [])) {
+      const a = scheda(i && i.titolare), b = scheda(i && i.riserva);
+      if (a && b) r[a.id] = { nome: a.nome, riga: t("formazione.incerto", { p: perc(a.p_voto), riserva: esc(b.nome) }) };
+    }
+    return r;
+  };
 
   // Una sola valutazione alla volta; se nel frattempo scegli un modulo o uno stile, la risposta che arriva dopo si ignora.
   const valutaManuale = async (ids, salva = false, silenzioso = false) => {
@@ -1035,7 +1083,8 @@ function mostraFormazione(f, squadra, opz = {}) {
       if (n === sc.richiesta) {
         // la scelta salvata non vale più (rosa o regole cambiate): NON si cancella da sola, lo si dice nella riga dello stato
         const qui = sc.chiave === chiaveSc && document.body.contains($("#punti-attesi"));
-        if (silenzioso && e.codice === "formazione_non_valida") { if (sc.chiave === chiaveSc) sc.nonValida = true; if (qui) sc.disegna(true); }
+        if (e.codice === "formazione_chiusa") { avviso(e.message, 5000); sc.manuale = null; sc.nonSalvata = false; if (qui) vistaFormazione(); }      // scadenza passata con la pagina aperta
+        else if (silenzioso && e.codice === "formazione_non_valida") { if (sc.chiave === chiaveSc) sc.nonValida = true; if (qui) sc.disegna(true); }
         // rilettura della scelta fallita (rete): lo stato non è noto, la riga sparisce (niente falso «Modifiche non salvate») e si riprova la prossima volta
         else if (silenzioso) { if (sc.chiave === chiaveSc) { sc.salvata = undefined; sc.letta = false; } if (qui) sc.disegna(true); }
         else avviso(e.message, 5000);
@@ -1060,10 +1109,15 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${esc(nomeStile(x))}<span>${num(x.punteggio_atteso)}</span>${x.rischio === 0 ? `<i title="${t("formazione.consigliata")}">★</i>` : ""}</button>`).join("");
     const r = manuale ? sc.manuale.r : null;
     const altra = !manuale && (l.rischio !== 0 || m.modulo !== l.modulo);                // un altro stile o un altro modulo: non è la consigliata
-    const st = squadra ? null : statoScelta(m.titolari, sc.salvata, manuale, sc.nonValida, altra);     // mai per le squadre altrui
+    const chiusa = !!f.iniziata;                                      // scadenza passata: niente «Modifica a mano» né «Salva»
+    const st = squadra ? null : statoScelta(m.titolari, sc.salvata, manuale, sc.nonValida, altra, chiusa);     // mai per le squadre altrui
+    // «Modifica a mano» cambiata e non salvata: chi lascia la pagina o la scheda lo sa prima (modificaNonSalvata)
+    sc.nonSalvata = !squadra && !chiusa && manuale && (st === "modificata" || (st === "mano" && !sc.manuale.uguale));
+    const modificabile = manuale && !chiusa;
+    const inc = incerti(m);
     let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
     const voceTit = x => {
-      const h = voceGiocatore(x, null, true, manuale);
+      const h = voceGiocatore(x, null, true, modificabile);
       const alt = manuale ? "" : alternativeVicine(x, m, f, etichettaAlt);
       if (alt) etichettaAlt = false;
       return h + alt;
@@ -1072,7 +1126,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${squadra ? `<div class="attenzione">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
         <button class="bottone secondario" id="torna-mia" style="margin-left:6px;padding:4px 12px;min-height:0">${t("formazione.torna_alla_tua")}</button></div>` : ""}
       ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${t("formazione.per_la_prossima", { n: f.giornata_saltata_lega || f.giornata_saltata, m: (f.giornata_saltata_lega || f.giornata_saltata) + 1 })}</div>` : ""}
-      ${f.iniziata ? `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>` : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
+      ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
         ${st ? rigaStatoScelta(st, sc.salvata) : ""}
@@ -1080,15 +1134,15 @@ function mostraFormazione(f, squadra, opz = {}) {
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
         ${manuale && r.differenza !== null ? `<div class="debole" style="margin-top:6px">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
-        <div class="etichetta-riga">${t("formazione.modulo")}</div>
+        ${chiusa ? "" : `<div class="etichetta-riga">${t("formazione.modulo")}</div>
         <div class="chips scorri" data-striscia>${chip}</div>
         <div class="etichetta-riga">${t("formazione.stile")}</div>
         <div class="chips scorri" data-striscia>${chipStile}</div>
         <div class="debole nota-riga" id="descrizione-stile">${manuale ? t("formazione.modificata_mano")
           : `<b>${esc(nomeStile(l))}</b>: ${esc(descrizioneStile(l))}${m.modulo !== l.modulo ? " " + t("formazione.modulo_fissato", { modulo: esc(l.modulo) }) : " " + t("formazione.propone", { modulo: esc(l.modulo) })}${stellaNonMassimo(l)}`}
-          ${t("formazione.stella_consigliata")}</div>
+          ${t("formazione.stella_consigliata")}</div>`}
         <div class="pulsanti">
-          ${st ? "" : manuale ? `${squadra ? "" : `<button class="bottone" id="salva-scelta">${t("formazione.salva_come_mia")}</button>`}<button class="bottone secondario" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`
+          ${st || chiusa ? "" : manuale ? `${squadra ? "" : `<button class="bottone" id="salva-scelta">${t("formazione.salva_come_mia")}</button>`}<button class="bottone secondario" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`
                     : `<button class="bottone" id="modifica">${t("formazione.modifica_mano")}</button>`}
           <details class="altre-azioni"><summary class="bottone secondario">${t("formazione.altro")}</summary>
             <div class="pulsanti"><button class="bottone secondario" id="copia">${t("formazione.copia_formazione")}</button>
@@ -1098,8 +1152,9 @@ function mostraFormazione(f, squadra, opz = {}) {
       <div class="campo">${legendaCampo()}<i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
         ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
       </div>
+      ${Object.keys(inc).length ? `<div class="nota-incerti" id="nota-incerti">${Object.values(inc).map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
-      <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(manuale ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
+      <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
         <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
       <div class="carta"><h2>${t("scambi.panchina")}</h2><div class="debole piccolo">${t("formazione.quest_ordine_entra")}</div>
         <ul class="elenco">${panchina.map((x, k) => voceGiocatore(x, k + 1, true)).join("")}</ul></div>
@@ -1115,7 +1170,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       const x = scheda(b.dataset.perche);
       if (!x) return;
       ev.stopPropagation(); ev.preventDefault();          // non apre la scheda: apre «Perché questo numero»
-      apriPerche(x);
+      apriPerche(x, (inc[x.id] || {}).riga);
     }));
     document.querySelectorAll("[data-coppia]").forEach(b => b.addEventListener("click", () => { const [a, c] = b.dataset.coppia.split(",").map(Number); apriConfronto(a, c); }));
     document.querySelectorAll("[data-sostituisci]").forEach(b => b.addEventListener("click", () => apriSostituzione(Number(b.dataset.sostituisci))));
@@ -1132,7 +1187,10 @@ function mostraFormazione(f, squadra, opz = {}) {
       try {
         await api(`/api/scelta?giornata=${f.giornata}`, { method: "DELETE" });
         sc.salvata = null; sc.nonValida = false;
-      } catch (e) { avviso(e.message, 5000); }
+      } catch (e) {
+        avviso(e.message, 5000);
+        if (e.codice === "formazione_chiusa") { if (document.body.contains($("#punti-attesi"))) vistaFormazione(); return; }     // scadenza passata: la scelta resta
+      }
       if (document.body.contains($("#punti-attesi"))) disegna(true);
     });
     collegaLegenda();
@@ -1148,7 +1206,7 @@ function mostraFormazione(f, squadra, opz = {}) {
   // Sostituisci un titolare con un altro della rosa dello stesso ruolo (il modulo non cambia): poi si ricalcola.
   function apriSostituzione(id) {
     const base = scheda(id);
-    if (!base || !sc.manuale) return;
+    if (!base || !sc.manuale || f.iniziata) return;
     if (sc.occupato) { avviso(t("formazione.sto_ancora_ricalcolando")); return; }
     ultimaScheda++;
     const dentro = new Set(sc.manuale.titolari);
@@ -1476,11 +1534,13 @@ function bloccoPerche(x) {
 }
 const cartaPerche = x => { const b = bloccoPerche(x); return b ? `<div class="carta">${b}<div class="debole piccolo perche-definizione">${t("perche.definizione")}</div></div>` : ""; };
 // Dalla Formazione: il tocco sul numero mostra subito il perché, con i dati già caricati (niente attesa); un tasto porta alla scheda intera.
-function apriPerche(x) {
+// `incerto` (facoltativo, già pronto per l'HTML): perché è titolare anche se gioca poco (campo `incerti` del modulo).
+function apriPerche(x, incerto = "") {
   apriFoglio(`<div class="intestazione-scheda">${avatarIndice(x, true)}
-      <div><h2>${esc(x.nome)}</h2><div class="debole">${sigla(x.squadra)} – ${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")} · ${quando(x.data_partita)}</div></div></div>
+      <div><h2>${esc(x.nome)}</h2><div class="debole">${partitaBreve(x)}</div></div></div>
     <div class="carta"><div class="riga"><div><div class="debole">${t("mercato.fantavoto_atteso")}</div><div class="grande">${num(x.fv_atteso)}</div></div>
       <div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(x.p_voto)}</div></div></div>
+      ${incerto ? `<p class="nota-incerto" id="perche-incerto">${incerto}</p>` : ""}
       ${bloccoPerche(x)}<div class="debole piccolo perche-definizione">${t("perche.definizione")}</div></div>
     <div class="pulsanti"><button class="bottone secondario" data-giocatore="${Number(x.id)}">${t("perche.apri_scheda")}</button></div>`);
 }

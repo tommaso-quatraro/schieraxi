@@ -107,10 +107,14 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
   - ✓ «La tua formazione è salvata (oggi alle 21:40)»: è la tua scelta per la giornata;
   - ● «Modifiche non salvate»: hai cambiato qualcosa dopo aver salvato. **Salva le modifiche** o **Annulla modifiche**;
   - ● «Modifica a mano non ancora salvata»: tocca **Salva come mia scelta**;
-  - ! «La formazione salvata non è più valida»: per esempio un giocatore non è più nella rosa. Rifalla o torna alla consigliata.
+  - ! «La formazione salvata non è più valida»: per esempio un giocatore non è più nella rosa. Rifalla o torna alla consigliata;
+  - ■ «Giornata iniziata: la formazione è chiusa»: è passata la scadenza della tua lega. Non ci sono più **Modifica a mano**, **Salva**, **Torna alla consigliata** né i pulsanti di modulo e stile: resta la formazione di prima (la tua, se l'avevi salvata). Al posto di «gioca 85%» vedi com'è andata: il fantavoto preso, «Voto in arrivo» o «Senza voto».
   **Torna alla consigliata** toglie la tua scelta e rimette modulo e stile consigliati.
+  Se hai cambiato la formazione a mano e non l'hai salvata, prima di cambiare sezione o di ricaricare la pagina SchieraXI te lo chiede.
 - **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto).
 - **Titolari** sul campo. Sotto ogni volto (con i colori della sua squadra): il fantavoto atteso nella pillola scura (toccalo per vedere **Perché questo numero**), il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori. La prima volta in cima al campo c'è una legenda: **Ho capito** la chiude, **ⓘ Cosa vuol dire** la riapre. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
+- **Titolare anche se incerto**: a volte la consigliata mette titolare un giocatore che gioca poco (per esempio al 35%) e lascia in panchina uno quasi sicuro dello stesso ruolo. Non è un errore: se il primo non gioca entra il secondo, e insieme valgono di più. Sotto il campo una riga lo spiega («se non gioca entra Gallo dalla panchina»), e lo ripete il **Perché questo numero** di quel giocatore. Compare solo quando il titolare gioca meno del 50% e la riserva più dell'80%.
+- Sotto il nome, la partita come sul campo: «@ MIL · sab 31 20:45» (fuori casa) o «vs PAR» (in casa). Le note lunghe, per esempio un infortunio, vanno a capo dentro la riga.
 - **Panchina** nell'ordine in cui entrano.
 - **Modifica a mano** (✎): cambi un titolare con un altro della rosa e i punti si ricalcolano.
 - **Copia il testo** e **Condividi come immagine**.

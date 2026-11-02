@@ -466,14 +466,30 @@ def schede_a_giornata_iniziata(schede: list[dict], db: sqlite3.Connection, regol
                                adesso: datetime, live: dict | None = None) -> dict[int, dict]:
     """Dopo la scadenza le etichette delle probabili (titolare, ballottaggio, panchina...) non hanno più senso: ogni scheda
     perde `titolarita` (null; resta `fuori` per infortunati e squalificati finché non c'è il voto) e i motivi delle probabili, e
-    prende `stato_partita` (lo stato vero della sua giornata).
+    prende `stato_partita` (lo stato vero della sua giornata) e `fv_preso` (il fantavoto preso con le regole della lega, solo con
+    `stato_partita` «fatto»; altrimenti null): a partita finita i client mostrano com'è andata invece di «gioca N%».
     Restituisce {id: scheda nuova}; le schede ricevute non si toccano (possono stare nella cache dei calcoli)."""
     uniche = {int(x["id"]): x for x in schede if isinstance(x, dict) and "id" in x}
     stati = stati_giocatori(db, regole, stagione, giornata, list(uniche.values()), adesso, live)
+    fv_presi = _fantavoti_presi(db, regole, stagione, giornata, {i: x for i, x in uniche.items() if stati.get(i) == "fatto"})
     # chi è infortunato o squalificato resta «fuori» finché i voti non dicono com'è andata (altrimenti sarebbe «da giocare»)
     fuori = lambda x, st: x.get("titolarita") == "fuori" and st not in DECISI
-    return {i: x | {"titolarita": "fuori" if fuori(x, stati.get(i)) else None, "stato_partita": stati.get(i)} | _senza_probabili(x)
-            for i, x in uniche.items()}
+    return {i: x | {"titolarita": "fuori" if fuori(x, stati.get(i)) else None, "stato_partita": stati.get(i), "fv_preso": fv_presi.get(i)}
+            | _senza_probabili(x) for i, x in uniche.items()}
+
+
+def _fantavoti_presi(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, giocatori: dict[int, dict]) -> dict[int, float]:
+    """{id: fantavoto preso} con le regole della lega, per chi ha già il voto (stesso calcolo di `_stato_giocatore`)."""
+    if not giocatori:
+        return {}
+    voti, _ = voti_giornata(db, stagione, giornata, list(giocatori), regole)
+    presi = {}
+    for i, g in giocatori.items():
+        if i in voti and g.get("ruolo"):
+            f = fantavoto(voti[i], g["ruolo"], regole)
+            if f is not None:
+                presi[i] = round(float(f), 2)
+    return presi
 
 
 def _senza_probabili(x: dict) -> dict:
