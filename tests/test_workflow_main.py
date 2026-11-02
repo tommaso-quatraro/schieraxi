@@ -95,6 +95,15 @@ def test_corsa_su_main_confronta_ios_con_l_ultima_corsa_riuscita():
     assert 'file="ios/"' in j
 
 
+def test_i_nomi_dei_passi_con_due_punti_sono_fra_virgolette():
+    # «- name: Apre l'issue «CI: main rosso»» non è YAML valido (due punti e spazio dentro un valore senza virgolette):
+    # GitHub scarta tutto il workflow e la corsa fallisce subito, senza job (visto sul primo tentativo di questa PR)
+    for riga in _testo().splitlines():
+        m = re.match(r"^\s*(?:-\s+)?name:\s*(.+?)\s*$", riga)
+        if m and not m.group(1).startswith(('"', "'")):
+            assert ": " not in m.group(1) and " #" not in m.group(1), riga
+
+
 def test_i_job_di_main_non_cambiano_i_permessi_degli_altri():
     # il permesso di scrittura sulle issue e sulle azioni sta solo nei job che ne hanno bisogno
     testo = _testo()

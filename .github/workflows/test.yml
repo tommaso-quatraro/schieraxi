@@ -379,7 +379,7 @@ jobs:
     permissions:
       issues: write            # solo per aprire o commentare l'issue «CI: main rosso»
     steps:
-      - name: Apre o aggiorna l'issue «CI: main rosso»
+      - name: "Apre o aggiorna l'issue «CI: main rosso»"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
