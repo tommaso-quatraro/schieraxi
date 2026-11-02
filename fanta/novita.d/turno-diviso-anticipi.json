@@ -1,0 +1,5 @@
+{
+  "titolo": "Giornata divisa in due: la formazione si chiude alla prima partita",
+  "voci": ["Quando una giornata è divisa in due (per esempio tre partite il venerdì e le altre il mercoledì dopo), la formazione ora si chiude prima delle partite del venerdì, invece di restare aperta fino al mercoledì."],
+  "tecnico": ["turno.inizio: la strada di ripiego sceglie solo inizi che lasciano prima al massimo MAX_ANTICIPI anticipi (la prima partita va sempre bene); prima poteva tornare al gruppo principale e lasciare 3 o più anticipi (issue #139). Test a esempi in tests/test_turno.py."]
+}
