@@ -1439,7 +1439,7 @@ class OffertaTesto(BaseModel):
 
 
 @app.post("/api/scambi/da-testo")
-def scambio_da_testo(dati: OffertaTesto, ctx: Contesto = Depends(lega_corrente)):
+def scambio_da_testo(dati: OffertaTesto, request: Request, ctx: Contesto = Depends(lega_corrente)):
     """Valuta un'offerta scritta a parole (per esempio il messaggio di un altro allenatore): trova i giocatori e fa l'analisi."""
     from . import scambi
     r_ose, r = _rose(ctx), _regole(ctx)
@@ -1455,7 +1455,21 @@ def scambio_da_testo(dati: OffertaTesto, ctx: Contesto = Depends(lega_corrente))
             v = consigli.valori_scambi(db, r)
         finally:
             db.close()
-        risposta["analisi"] = scambi.analizza(v, r, r_ose, r_ose.mia_squadra, trovati["con"], trovati["do"], trovati["ricevo"]).come_dict(v)
+        try:
+            risposta["analisi"] = scambi.analizza(v, r, r_ose, r_ose.mia_squadra, trovati["con"], trovati["do"], trovati["ricevo"]).come_dict(v)
+        except ValueError:
+            # l'analisi semplice vuole lo stesso numero di giocatori per ruolo: un'offerta 2 contro 1, o con ruoli diversi,
+            # riceve l'analisi completa (stessi campi più validità delle rose e giudizio) invece di perdere i nomi riconosciuti
+            # (l'app iPhone dà il giudizio dai soli punti: uno scambio che non si può fare resta un errore, con i motivi)
+            db = _db()
+            try:
+                completa = consigli.analisi_scambio(db, r, r_ose, trovati["con"], list(trovati["do"]), list(trovati["ricevo"]),
+                                                    0, lingua_testi.della_richiesta(request))
+            finally:
+                db.close()
+            if not completa["valido"]:
+                raise ValueError(f"Così com'è lo scambio non si può fare: {'; '.join(completa['problemi'])}") from None
+            risposta["analisi"] = completa
     return risposta
 
 

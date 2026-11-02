@@ -44,7 +44,8 @@ def problemi_rosa(nome: str, conteggio: dict[str, int], regole: Regole, lingua: 
         if massimo is not None and conteggio.get(r, 0) > massimo:
             k = conteggio[r] - massimo
             testo = (f"{nome}: {conteggio[r]} {_ruolo_en(r, conteggio[r])} out of a maximum of {massimo}, {k} would have to be released" if en
-                     else f"{nome}: {conteggio[r]} {NOMI_RUOLO[r]} su un massimo di {massimo}, ne andrebbero liberati {k}")
+                     else f"{nome}: {conteggio[r]} {NOMI_RUOLO[r]} su un massimo di {massimo}, "
+                          + ("ne andrebbe liberato 1" if k == 1 else f"ne andrebbero liberati {k}"))
             problemi.append({"tipo": "eccesso", "squadra": nome, "ruolo": r, "testo": testo})
     mancano = _mancanti(conteggio, regole)
     if mancano:
@@ -155,7 +156,7 @@ def controlla_conguaglio(conguaglio: int, mia: Squadra, loro: Squadra, lingua: s
             problema = (f"{nome_paga} has {residui[paga]} credits and cannot pay {x}" if en
                         else f"{nome_paga} ha {residui[paga]} crediti e non può pagarne {x}")
         for chi, segno in (("mio", 1 if conguaglio > 0 else -1), ("loro", -1 if conguaglio > 0 else 1)):
-            if residui[chi] is not None:
+            if residui[chi] is not None and valido:            # chi non può pagare non va sotto zero: il «dopo» non esiste
                 dopo[chi] = residui[chi] + segno * x
         if valido and residui[riceve] is not None and residui[riceve] + x > LIMITE_CREDITI:
             valido = False
@@ -272,8 +273,9 @@ def analizza_completo(v: scambi.Valori, regole: Regole, rose: Rose, mia: str, al
     pct = lambda p, d: round(100 * (d["breve"] - p["breve"]) / p["breve"], 1) if p["breve"] >= scambi.MIN_BASE else 0.0  # noqa: E731
     s.percentuale_mio = pct(prima_a, dopo_a)
 
-    valore_cred_mio = None if tasso_mio is None else round(conguaglio * tasso_mio, 2)
-    valore_cred_loro = None if tasso_loro is None else round(-conguaglio * tasso_loro, 2)
+    # un conguaglio che non si può fare (fondi che non bastano, crediti oltre il limite) non si valuta: niente punti inventati
+    valore_cred_mio = None if tasso_mio is None or not cred["valido"] else round(conguaglio * tasso_mio, 2)
+    valore_cred_loro = None if tasso_loro is None or not cred["valido"] else round(-conguaglio * tasso_loro, 2)
     netto_mio = s.guadagno_mio + (valore_cred_mio or 0.0)
     netto_loro = s.guadagno_loro + (valore_cred_loro or 0.0)
     valido = not problemi and cred["valido"]
@@ -298,12 +300,14 @@ def analizza_completo(v: scambi.Valori, regole: Regole, rose: Rose, mia: str, al
         "netto_mio": r2(netto_mio), "netto_loro": r2(netto_loro),
     })
     giudizio = _verdetto(netto_mio, netto_loro, valido, soglia, lingua)
-    giudizio["spiegazione"] = _spiegazione(d, sq_a.nome, sq_b.nome, conguaglio, valore_cred_mio, valore_cred_loro, tasso_mio, lingua)
+    giudizio["spiegazione"] = _spiegazione(d, sq_a.nome, sq_b.nome, conguaglio, valore_cred_mio, valore_cred_loro, tasso_mio, lingua,
+                                           cred["valido"])
     d["giudizio"] = giudizio
     return d
 
 
-def _spiegazione_en(d: dict, altra: str, conguaglio: int, vc_mio: float | None, tasso_mio: float | None) -> list[str]:
+def _spiegazione_en(d: dict, altra: str, conguaglio: int, vc_mio: float | None, tasso_mio: float | None,
+                    possibile: bool = True) -> list[str]:
     segno = lambda x: f"{x:+.1f}".replace("-", "−")  # noqa: E731
     righe = [f"For you the best line-up goes from {d['valore_rosa']['mio']['prima']:.1f} to {d['valore_rosa']['mio']['dopo']:.1f} expected points "
              f"over the next {len(d['giornate'])} matchdays; with the rest of the season that is {segno(d['guadagno_mio'])} points.",
@@ -311,7 +315,9 @@ def _spiegazione_en(d: dict, altra: str, conguaglio: int, vc_mio: float | None, 
              f"Bench: you {segno(d['panchina']['mio']['variazione'])}, {altra} {segno(d['panchina']['loro']['variazione'])} expected points."]
     if conguaglio:
         verbo = "receiving" if conguaglio > 0 else "paying"
-        if vc_mio is None:
+        if not possibile:
+            righe.append(f"Balance: {verbo} {abs(conguaglio)} credits is not possible (see above), so it is not counted in the verdict.")
+        elif vc_mio is None:
             righe.append(f"Balance: {verbo} {abs(conguaglio)} credits. I cannot estimate what they are worth in points, so they are not counted in the verdict.")
         else:
             righe.append(f"Balance: {verbo} {abs(conguaglio)} credits is worth about {segno(vc_mio)} points for you "
@@ -320,9 +326,9 @@ def _spiegazione_en(d: dict, altra: str, conguaglio: int, vc_mio: float | None, 
 
 
 def _spiegazione(d: dict, mia: str, altra: str, conguaglio: int, vc_mio: float | None, vc_loro: float | None,
-                 tasso_mio: float | None, lingua: str = "it") -> list[str]:
+                 tasso_mio: float | None, lingua: str = "it", possibile: bool = True) -> list[str]:
     if lingua == EN:
-        return _spiegazione_en(d, altra, conguaglio, vc_mio, tasso_mio)
+        return _spiegazione_en(d, altra, conguaglio, vc_mio, tasso_mio, possibile)
     segno = lambda x: f"{x:+.1f}".replace("-", "−").replace(".", ",")  # noqa: E731
     uno = lambda x: f"{x:.1f}".replace(".", ",")  # noqa: E731
     righe = [f"Per te la formazione migliore passa da {uno(d['valore_rosa']['mio']['prima'])} a {uno(d['valore_rosa']['mio']['dopo'])} punti attesi "
@@ -331,7 +337,9 @@ def _spiegazione(d: dict, mia: str, altra: str, conguaglio: int, vc_mio: float |
              f"Panchina: tu {segno(d['panchina']['mio']['variazione'])}, {altra} {segno(d['panchina']['loro']['variazione'])} punti attesi."]
     if conguaglio:
         verbo = "ricevere" if conguaglio > 0 else "pagare"
-        if vc_mio is None:
+        if not possibile:
+            righe.append(f"Conguaglio: {verbo} {abs(conguaglio)} crediti non si può (vedi sopra), quindi non lo conto nel giudizio.")
+        elif vc_mio is None:
             righe.append(f"Conguaglio: {verbo} {abs(conguaglio)} crediti. Non riesco a stimare quanto valgono in punti, quindi non li conto nel giudizio.")
         else:
             righe.append(f"Conguaglio: {verbo} {abs(conguaglio)} crediti vale circa {segno(vc_mio)} punti per te "

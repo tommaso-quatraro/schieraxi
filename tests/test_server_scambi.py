@@ -52,7 +52,11 @@ def test_analisi_di_sempre_invariata_e_ancora_severa_sui_ruoli(client):
 def test_offerta_scritta_a_parole_con_completo_da_gli_id_e_lascia_l_analisi_alla_rotta_completa(client):
     corpo = {"testo": "Ti do g12 e g9, mi dai g30?"}
     vecchio = client.post("/api/scambi/da-testo", json=corpo)
-    assert vecchio.status_code == 400                                                       # come sempre: 2 contro 1 non passa dall'analisi semplice
+    # 2 contro 1 senza `completo` (l'app iPhone): prima era un 400 e i nomi riconosciuti si perdevano; ora arriva l'analisi completa
+    assert vecchio.status_code == 200
+    v = vecchio.json()
+    assert v["con"] == "B" and v["analisi"]["completo"] is True and v["analisi"]["formato"] == "2v1"
+    assert v["analisi"]["guadagno_mio"] is not None and v["analisi"]["giudizio"]["spiegazione"]     # i campi di sempre ci sono ancora
     r = client.post("/api/scambi/da-testo", json=corpo | {"completo": True})
     assert r.status_code == 200
     d = r.json()
@@ -189,3 +193,46 @@ def test_analisi_completa_con_gli_account_e_personale(con_account):
     assert r.status_code == 200 and r.json()["formato"] == "1v1"
     assert TestClient(server.app, headers={"X-Fanta": "1"}).get(
         "/api/scambi/analizza", params={"con": "Loro", "do": "7", "ricevo": "14", "completo": True}).status_code == 401
+
+
+def test_offerta_a_parole_con_numeri_diversi_e_in_inglese(client):
+    """Collaudo 2/11: «ti do un attaccante e un centrocampista per un centrocampista» rispondeva 400 all'app senza `completo`."""
+    r = client.post("/api/scambi/da-testo", json={"testo": "Ti do g12 e g9, mi dai g30?"}, headers={"Accept-Language": "en"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["analisi"]["completo"] is True and d["analisi"]["giudizio"]["spiegazione"][0].startswith("For you")
+
+
+def test_conguaglio_impossibile_non_vale_punti_e_non_va_sotto_zero(client):
+    p = {"con": "B", "do": "12,9", "ricevo": "32,30"}
+    d = client.get("/api/scambi/analizza", params=p | {"conguaglio": -500}).json()         # ne ho 40
+    c = d["conguaglio"]
+    assert c["valido"] is False and c["dopo"] == {"mio": None, "loro": None}               # prima: 40 -> -460
+    assert c["valore_mio"] is None and c["valore_loro"] is None                           # prima: centinaia di punti inventati
+    assert d["netto_mio"] == d["guadagno_mio"] and d["netto_loro"] == d["guadagno_loro"]
+    assert "non si può (vedi sopra)" in d["giudizio"]["spiegazione"][-1]
+    troppi = client.get("/api/scambi/analizza", params=p | {"conguaglio": 100000}).json()  # B ne ha 100
+    assert troppi["conguaglio"]["valore_mio"] is None and troppi["conguaglio"]["dopo"] == {"mio": None, "loro": None}
+
+
+
+def test_i_due_valori_dei_crediti_partono_insieme(monkeypatch):
+    """Collaudo 2/11: con la coda il primo conguaglio aspettava due giri («sto calcolando» due volte, oltre 6 secondi)."""
+    chieste = []
+
+    def ottieni(chiave, calcola, db, **k):
+        chieste.append(chiave[3])
+        raise calcolo.InCalcolo()
+    monkeypatch.setattr(calcolo, "ottieni", ottieni)
+    monkeypatch.setattr(consigli, "valori_scambi", lambda db, regole: V)
+    monkeypatch.setattr(consigli, "_versione", lambda db: "v1")
+    with pytest.raises(calcolo.InCalcolo):
+        consigli.analisi_scambio(sqlite3.connect(":memory:"), REGOLE, _rose(), "B", [12], [32], 10)
+    assert chieste == ["A", "B"]
+
+
+def test_offerta_a_parole_che_non_si_puo_fare_resta_un_errore_con_i_motivi(client):
+    """L'app iPhone giudica l'offerta dai soli punti: uno scambio con rose non valide non deve arrivarle come «conviene»."""
+    r = client.post("/api/scambi/da-testo", json={"testo": "Ti do g12, mi dai g31 e g32?"})        # A: 4 attaccanti su 3
+    assert r.status_code == 400
+    assert r.json()["detail"].startswith("Così com'è lo scambio non si può fare: ") and "attaccanti su un massimo di 3" in r.json()["detail"]

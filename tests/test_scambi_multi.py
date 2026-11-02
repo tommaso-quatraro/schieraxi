@@ -65,7 +65,7 @@ def test_la_rosa_oltre_il_massimo_si_valuta_liberando_i_meno_forti():
     d = analizza([12], [31], rose=rose)          # 1 contro 1: invariato
     assert d["valido"] is True
     d2 = analizza([12], [31, 32])                # A riceve 2 attaccanti e ne dà 1 -> 4 su un massimo di 3
-    assert d2["valido"] is False and "ne andrebbero liberati 1" in " ".join(d2["problemi"])
+    assert d2["valido"] is False and "ne andrebbe liberato 1" in " ".join(d2["problemi"])
     assert d2["rose"]["mio"]["problemi"] and d2["rose"]["loro"]["problemi"]       # B resta con un solo attaccante: ne servono 2
     # la rosa si valuta già sistemata (A libera l'attaccante in più, il meno forte): vale come il 1 contro 1 con uno dei due
     assert d2["valore_rosa"]["mio"]["dopo"] == analizza([12], [31])["valore_rosa"]["mio"]["dopo"]
@@ -261,3 +261,22 @@ def test_rosa_gia_incompleta_non_blocca_le_proposte():
     prima = {"P": 1, "D": 3, "C": 4, "A": 2}                  # mancano due difensori
     assert scambi_multi.non_peggiora(prima, dict(prima), corta)
     assert not scambi_multi.non_peggiora(prima, {"P": 1, "D": 2, "C": 5, "A": 2}, corta)
+
+
+def test_plurale_dei_giocatori_da_liberare():
+    """Collaudo 2/11: «ne andrebbero liberati 1»."""
+    from fanta.scambi_multi import problemi_rosa
+    uno = problemi_rosa("A", {"P": 1, "D": 4, "C": 4, "A": 4}, REGOLE)
+    due = problemi_rosa("A", {"P": 1, "D": 4, "C": 4, "A": 5}, REGOLE)
+    assert "ne andrebbe liberato 1" in uno[0]["testo"] and "ne andrebbero liberati 2" in due[0]["testo"]
+
+
+def test_conguaglio_oltre_i_fondi_non_si_valuta_in_punti():
+    rose = _rose()
+    rose.squadre[0].crediti_residui = 10
+    rose.squadre[1].crediti_residui = 100
+    d = analizza([12, 9], [32, 30], conguaglio=-50, rose=rose, tasso_mio=0.2, tasso_loro=0.2)
+    assert d["conguaglio"]["dopo"] == {"mio": None, "loro": None} and d["conguaglio"]["valore_mio"] is None
+    assert d["netto_mio"] == d["guadagno_mio"]
+    en = analizza([12, 9], [32, 30], conguaglio=-50, rose=rose, tasso_mio=0.2, tasso_loro=0.2, lingua="en")
+    assert "is not possible" in en["giudizio"]["spiegazione"][-1]
