@@ -192,6 +192,21 @@ private struct CorpoCodiceEmail: Encodable {
     let codice: String
 }
 
+private struct CorpoRecuperoEmail: Encodable {
+    let email: String
+}
+
+private struct CorpoConfermaRecuperoEmail: Encodable {
+    let email: String
+    let codice: String
+    let nuova: String
+}
+
+/// La risposta `{"ok": true}` delle rotte che non mandano altro.
+private struct RispostaOk: Decodable {
+    let ok: Bool?
+}
+
 /// Il conto alla rovescia dopo un «troppi tentativi» (429): quanti secondi mancano, e si ferma a zero.
 enum AttesaRiprova {
     static func secondiRimasti(fino: Date, adesso: Date = Date()) -> Int {
@@ -251,12 +266,16 @@ final class SessioneAccount: ObservableObject {
         case occupato
         case serverNonValido
         case rispostaNonValida
+        /// Recupero della password senza un nuovo codice di recupero leggibile: la password sul server può essere già cambiata,
+        /// quindi niente «Password cambiata» e niente «server non valido». La frase di `accesso.risposta_incompleta` della web.
+        case rispostaIncompleta
 
         var errorDescription: String? {
             switch self {
             case .occupato: return "Un attimo: sto ancora lavorando alla richiesta di prima."
             case .serverNonValido: return "Questo non sembra un server di SchieraXI. Controlla l'indirizzo del server."
             case .rispostaNonValida: return "Il server ha mandato una risposta strana: per sicurezza non entro. Controlla l'indirizzo del server."
+            case .rispostaIncompleta: return TestiAccesso.rispostaIncompleta
             }
         }
     }
@@ -299,7 +318,8 @@ final class SessioneAccount: ObservableObject {
         }
         // Solo per le fotografie (-DEMO_ACCESSO <scenario>): lo stato si decide a mano, senza server.
         if let scenario = Demo.accesso {
-            let utenteDemo = Utente(id: 7, nomeUtente: "mister.rossi", ruolo: "utente", creato: nil)
+            // con la data di iscrizione: «Il tuo account» mostra la riga intera «Utente · dal 1 settembre 2026»
+            let utenteDemo = Utente(id: 7, nomeUtente: "mister.rossi", ruolo: "utente", creato: "2026-09-01")
             multiutente = true
             switch scenario {
             case "codice":
@@ -495,12 +515,13 @@ final class SessioneAccount: ObservableObject {
         inCorso = true
     }
 
-    /// Una risposta che non si può leggere (HTML al posto del JSON, forma strana) non è un errore del server: probabilmente l'indirizzo è sbagliato.
-    private func conTraduzione<T>(_ lavoro: () async throws -> T) async throws -> T {
+    /// Una risposta che non si può leggere (HTML al posto del JSON, forma strana) non è un errore del server: probabilmente l'indirizzo
+    /// è sbagliato. Dove il server può aver già fatto il lavoro (recupero della password) si dice `seIllegibile` al suo posto.
+    private func conTraduzione<T>(seIllegibile: Errore = .serverNonValido, _ lavoro: () async throws -> T) async throws -> T {
         do {
             return try await lavoro()
         } catch ErroreApi.dati {
-            throw Errore.serverNonValido
+            throw seIllegibile
         }
     }
 
@@ -572,14 +593,45 @@ final class SessioneAccount: ObservableObject {
     }
 
     /// Nuova password con il codice di recupero. Restituisce il NUOVO codice di recupero (il vecchio non vale più), da far salvare.
-    func recupera(nomeUtente: String, codice: String, nuovaPassword: String) async throws -> String? {
+    /// Senza un codice nuovo valido: `rispostaIncompleta`, come la web (mai «Password cambiata» senza il codice da salvare).
+    func recupera(nomeUtente: String, codice: String, nuovaPassword: String) async throws -> String {
         try inizia()
         defer { inCorso = false }
         let corpo = CorpoRecupero(nomeUtente: RegoleAccount.pulisciNome(nomeUtente),
                                   codice: codice.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(), nuova: nuovaPassword)
-        let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/recupero", corpo) }
-        if let nuovo = r.codiceRecupero, !Accesso.codiceRecuperoValido(nuovo) { throw Errore.rispostaNonValida }
-        return r.codiceRecupero
+        let r: RispostaAccount = try await conTraduzione(seIllegibile: .rispostaIncompleta) {
+            try await server.posta("POST", "/api/account/recupero", corpo)
+        }
+        return try Self.nuovoCodiceDopoIlRecupero(r)
+    }
+
+    /// «Password dimenticata» con l'email, primo passo: il server manda un codice all'indirizzo, con la stessa risposta che
+    /// l'indirizzo esista o no (`{"ok": true}`). Una risposta diversa (una pagina HTML con 200) non vuol dire «codice in arrivo».
+    func chiediCodiceEmail(_ email: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        let corpo = CorpoRecuperoEmail(email: email.trimmingCharacters(in: .whitespacesAndNewlines))
+        let r: RispostaOk = try await conTraduzione { try await server.posta("POST", "/api/account/recupero-email", corpo) }
+        guard r.ok == true else { throw Errore.serverNonValido }
+    }
+
+    /// «Password dimenticata» con l'email, secondo passo: nuova password con il codice arrivato per posta. Restituisce il NUOVO
+    /// codice di recupero, da far salvare (come `recupera`).
+    func recuperaConEmail(email: String, codice: String, nuovaPassword: String) async throws -> String {
+        try inizia()
+        defer { inCorso = false }
+        let corpo = CorpoConfermaRecuperoEmail(email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                                               codice: codice.trimmingCharacters(in: .whitespacesAndNewlines), nuova: nuovaPassword)
+        let r: RispostaAccount = try await conTraduzione(seIllegibile: .rispostaIncompleta) {
+            try await server.posta("POST", "/api/account/recupero-email/conferma", corpo)
+        }
+        return try Self.nuovoCodiceDopoIlRecupero(r)
+    }
+
+    /// Il nuovo codice di recupero dopo un recupero della password: se manca o non è valido la password può essere già cambiata.
+    private static func nuovoCodiceDopoIlRecupero(_ r: RispostaAccount) throws -> String {
+        guard let nuovo = r.codiceRecupero, Accesso.codiceRecuperoValido(nuovo) else { throw Errore.rispostaIncompleta }
+        return nuovo
     }
 
     /// Esce da questo telefono (il server chiude la sessione, se risponde) e svuota i dati locali.

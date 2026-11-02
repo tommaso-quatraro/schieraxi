@@ -120,7 +120,7 @@ private struct PresentaFogliAccount: ViewModifier {
     private func contenuto(_ foglio: FoglioAccount) -> some View {
         switch foglio {
         case .password:
-            FoglioCambiaPassword(nome: sessione.utente?.nomeUtente ?? "") { fogli.messaggio = "Password cambiata." }
+            FoglioCambiaPassword(nome: sessione.utente?.nomeUtente ?? "") { fogli.messaggio = TestiAccount.passwordCambiataOk }
         case .codice:
             FoglioNuovoCodice()
         case .elimina:
@@ -135,8 +135,8 @@ private struct PresentaFogliAccount: ViewModifier {
     }
 }
 
-/// «Il tuo account» nelle Impostazioni: un solo nome, l'email (quella di Google se è collegato), cambia password,
-/// codice per recuperare l'accesso, elimina l'account. «Esci» sta in fondo alle Impostazioni (`EsciSezione`).
+/// «Il tuo account» nelle Impostazioni, con i testi della web: il nome con «Utente · dal …», l'email (quella di Google se è
+/// collegato), cambia la password, codice di recupero, scarica i tuoi dati, elimina l'account. «Esci» sta in fondo alle Impostazioni (`EsciSezione`).
 /// Si vede solo se il server ha gli account (multiutente); con il server di sempre non compare.
 /// I fogli si aprono da `fogli` (vedi `FoglioAccount`): qui niente `.sheet`.
 struct AccountSezione: View {
@@ -150,11 +150,25 @@ struct AccountSezione: View {
         return noto && ProfiloAccount.mostraVoceEmail(googleCollegato: sessione.googleCollegato)
     }
 
+    /// «Email confermata: …», «Email da Google: …», «In attesa di conferma: …» o «Nessuna email collegata.», come la web.
+    private var rigaEmail: String {
+        let daGoogle = sessione.emailOrigine == "google"
+        return TestiAccount.rigaEmail(account: daGoogle ? nil : sessione.email,
+                                      google: daGoogle ? sessione.email : sessione.accessi?.google?.email,
+                                      inAttesa: sessione.emailInAttesa)
+    }
+
     var body: some View {
         if sessione.multiutente, let utente = sessione.utente {
             Section(titolo: "Il tuo account") {
-                RigaValore(titolo: "Nome", valore: utente.nome)
-                RigaValore(titolo: "Email", valore: (sessione.emailMostrata ?? "Nessuna") + (sessione.emailDaGoogle && sessione.emailMostrata != nil ? " (da Google)" : ""))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(utente.nome).font(.headline)
+                    Text(TestiAccount.ruoloEData(ruolo: utente.ruolo, creato: utente.creato))
+                        .font(.subheadline).foregroundStyle(Color.testoSecondario)
+                }
+                .frame(minHeight: Tema.areaTocco)
+                .accessibilityElement(children: .combine)
+                Text(rigaEmail).font(.subheadline)
                 if mostraVoceEmail {
                     Button { fogli.apri(.email) } label: {
                         Label(sessione.email == nil ? "Aggiungi un'email" : "Gestisci l'email", systemImage: "envelope").labelStyle(.voce(.teal)).frame(minHeight: Tema.areaTocco)
@@ -164,16 +178,19 @@ struct AccountSezione: View {
                 // chi entra solo con Google non ha una password da cambiare: la aggiunge dal riquadro «Accessi»
                 if !sessione.senzaPassword {
                     Button { fogli.apri(.password) } label: {
-                        Label("Cambia password", systemImage: "key").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
+                        Label(TestiAccount.cambiaPassword, systemImage: "key").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
                     }
+                    .accessibilityIdentifier("account-cambia-password")
                     Button { fogli.apri(.codice) } label: {
-                        Label("Nuovo codice per recuperare l'accesso", systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
+                        Label(TestiAccount.recupero, systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
                     }
+                    .accessibilityIdentifier("account-codice")
                 }
                 RigaScaricaDati(fogli: fogli)
                 Button(role: .destructive) { fogli.apri(.elimina) } label: {
-                    Label("Elimina l'account", systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
+                    Label(TestiAccount.eliminaTitolo, systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
                 }
+                .accessibilityIdentifier("account-elimina")
                 if let messaggio = fogli.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
             }
             // niente .sheet qui: su una Section dentro una List finirebbe su ogni riga (vedi `FoglioAccount`)
@@ -205,7 +222,7 @@ struct EsciSezione: View {
     }
 }
 
-/// Cambia la password: quella di adesso, la nuova (due volte).
+/// Cambia la password: quella di adesso e la nuova due volte («Ripeti la nuova password»), come la web.
 struct FoglioCambiaPassword: View {
     let nome: String
     let fatto: () -> Void
@@ -228,8 +245,8 @@ struct FoglioCambiaPassword: View {
 
     var body: some View {
         Form {
-            Section(titolo: "Password di adesso") {
-                SecureField("Password attuale", text: $attuale)
+            Section {
+                SecureField(TestiAccount.passwordAttuale, text: $attuale)
                     .textContentType(.password)
                     .focused($focus, equals: 0)
                     .submitLabel(.next)
@@ -237,13 +254,13 @@ struct FoglioCambiaPassword: View {
                     .frame(minHeight: Tema.areaTocco)
             }
             Section {
-                SecureField("Nuova password", text: $nuova)
+                SecureField(TestiAccount.nuovaPassword, text: $nuova)
                     .textContentType(.newPassword)
                     .focused($focus, equals: 1)
                     .submitLabel(.next)
                     .onSubmit { focus = 2 }
                     .frame(minHeight: Tema.areaTocco)
-                SecureField("Ripeti la nuova password", text: $ripeti)
+                SecureField(TestiAccount.ripetiPassword, text: $ripeti)
                     .textContentType(.newPassword)
                     .focused($focus, equals: 2)
                     // niente invio dal tasto Invio: la password forte suggerita da iOS o il portachiavi non devono mandare
@@ -251,24 +268,22 @@ struct FoglioCambiaPassword: View {
                     .submitLabel(.done)
                     .onSubmit { focus = nil }
                     .frame(minHeight: Tema.areaTocco)
-            } header: {
-                Text("Password nuova").foregroundStyle(Color.testoSecondario)
             } footer: { Group {
                 VStack(alignment: .leading, spacing: 4) {
                     if let problema { Text(problema).foregroundStyle(Color.attenzione) }
-                    if !ripeti.isEmpty && nuova != ripeti { Text("Le due password non coincidono.").foregroundStyle(Color.attenzione) }
-                    Text("Almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
+                    if !ripeti.isEmpty && nuova != ripeti { Text(TestiAccount.passwordDiverse).foregroundStyle(Color.attenzione) }
+                    Text(TestiAccount.altriScollegati)
                 }
             }.foregroundStyle(Color.testoSecondario) }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 Button { Task { await invia() } } label: {
-                    Text(sessione.inCorso ? "Un attimo…" : "Cambia la password").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Text(sessione.inCorso ? "Un attimo…" : TestiAccount.cambiaPassword).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled(!pronto || sessione.inCorso)
             }
         }
-        .navigationTitle("Cambia password")
+        .navigationTitle(TestiAccount.cambiaPassword)
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
@@ -301,27 +316,25 @@ struct FoglioNuovoCodice: View {
             } else {
                 Form {
                     Section {
-                        SecureField("Password", text: $password)
+                        SecureField(TestiAccount.laTuaPassword, text: $password)
                             .textContentType(.password)
                             .submitLabel(.go)
                             .onSubmit { Task { await crea() } }
                             .frame(minHeight: Tema.areaTocco)
                     } header: {
-                        Text("Conferma con la password").foregroundStyle(Color.testoSecondario)
-                    } footer: {
-                        Text("Il codice di prima non vale più. Quello nuovo lo vedi una volta sola: scrivilo e tienilo al sicuro.").foregroundStyle(Color.testoSecondario)
+                        Text(TestiAccount.recuperoSpiega).foregroundStyle(Color.testoSecondario).textCase(nil)
                     }
                     if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
                     Section {
                         Button { Task { await crea() } } label: {
-                            Text(sessione.inCorso ? "Un attimo…" : "Crea un nuovo codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                            Text(sessione.inCorso ? "Un attimo…" : TestiAccount.nuovoCodice).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                         }
                         .disabled(password.isEmpty || sessione.inCorso)
                     }
                 }
             }
         }
-        .navigationTitle("Codice di recupero")
+        .navigationTitle(TestiAccount.recupero)
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -341,42 +354,43 @@ struct FoglioNuovoCodice: View {
     }
 }
 
-/// Elimina l'account e tutti i suoi dati: password e una conferma esplicita. Non si può annullare.
+/// Elimina l'account e tutti i suoi dati: password e una conferma esplicita (come il `confirm` della web). Non si può annullare.
 struct FoglioElimina: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.dismiss) private var chiudi
     @State private var password = ""
-    @State private var capito = false
+    @State private var chiediConferma = false
     @State private var riconfermato = false
     @State private var errore: String?
 
     var body: some View {
         Form {
             Section {
-                Text("Cancella il tuo account e TUTTI i tuoi dati: rose, regole, scelte, immagini, avvisi. Non si può annullare.")
+                Text(LocalizedStringKey(TestiAccount.eliminaAvviso))
                     .font(.subheadline)
-            } footer: {
-                Text("Vuoi tenerne una copia? Prima chiudi qui e usa «Scarica i tuoi dati», subito sopra «Elimina l'account».").foregroundStyle(Color.testoSecondario)
+                    .foregroundStyle(Color.attenzione)
             }
             if sessione.senzaPassword { RigaRiconferma(confermato: $riconfermato) }
-            Section(titolo: sessione.senzaPassword ? "Ultima conferma" : "Conferma con la password") {
-                if !sessione.senzaPassword {
-                    SecureField("Password", text: $password)
+            if !sessione.senzaPassword {
+                Section {
+                    SecureField(TestiAccount.laTuaPassword, text: $password)
                         .textContentType(.password)
                         .frame(minHeight: Tema.areaTocco)
                 }
-                Toggle("Ho capito: cancella tutto", isOn: $capito)
-                    .frame(minHeight: Tema.areaTocco)
             }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
-                Button(role: .destructive) { Task { await elimina() } } label: {
-                    Text(sessione.inCorso ? "Un attimo…" : "Elimina l'account").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                Button(role: .destructive) { chiediConferma = true } label: {
+                    Text(sessione.inCorso ? "Un attimo…" : TestiAccount.elimina).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
-                .disabled((sessione.senzaPassword ? !riconfermato : password.isEmpty) || !capito || sessione.inCorso)
+                .disabled((sessione.senzaPassword ? !riconfermato : password.isEmpty) || sessione.inCorso)
+                // sul pulsante, non sulla Section (vedi `FoglioAccount`)
+                .confirmationDialog(TestiAccount.eliminaConferma, isPresented: $chiediConferma, titleVisibility: .visible) {
+                    Button(TestiAccount.elimina, role: .destructive) { Task { await elimina() } }
+                }
             }
         }
-        .navigationTitle("Elimina l'account")
+        .navigationTitle(TestiAccount.eliminaTitolo)
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
@@ -415,36 +429,36 @@ struct FoglioEmail: View {
             if sessione.senzaPassword { RigaRiconferma(confermato: $riconfermato) }
             if let email = sessione.email {
                 Section {
-                    RigaValore(titolo: "Email verificata", valore: email)
+                    Text(TestiAccount.rigaEmail(account: email, google: nil, inAttesa: nil))
                 } footer: {
-                    Text("Serve per recuperare la password se la dimentichi.").foregroundStyle(Color.testoSecondario)
+                    Text(TestiAccount.emailSpiega).foregroundStyle(Color.testoSecondario)
                 }
-                Section(titolo: "Togli l'email") {
+                Section {
                     if !sessione.senzaPassword {
-                        SecureField("Password", text: $password)
+                        SecureField(TestiAccount.laTuaPassword, text: $password)
                             .textContentType(.password)
                             .frame(minHeight: Tema.areaTocco)
                     }
                     Button(role: .destructive) { Task { await togli() } } label: {
-                        Text(sessione.inCorso ? "Un attimo…" : "Togli l'email").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                        Text(sessione.inCorso ? "Un attimo…" : TestiAccount.emailTogli).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                     }
                     .disabled(senzaConferma || sessione.inCorso)
                 }
             } else {
                 if codiceInviato || sessione.emailInAttesa != nil {
                     Section {
-                        TextField("Codice ricevuto", text: $codice)
+                        TextField(TestiAccount.emailCodice, text: $codice)
                             .keyboardType(.numberPad)
                             .textContentType(.oneTimeCode)
                             .frame(minHeight: Tema.areaTocco)
                         Button { Task { await conferma() } } label: {
-                            Text(sessione.inCorso ? "Un attimo…" : "Conferma il codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                            Text(sessione.inCorso ? "Un attimo…" : TestiAccount.emailConferma).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                         }
                         .disabled(codice.trimmingCharacters(in: .whitespaces).isEmpty || sessione.inCorso)
                     } header: {
-                        Text("Verifica").foregroundStyle(Color.testoSecondario)
+                        Text(TestiAccount.emailAttesa(sessione.emailInAttesa ?? indirizzoScelto ?? "")).foregroundStyle(Color.testoSecondario).textCase(nil)
                     } footer: {
-                        Text("Ti ho mandato un codice all'indirizzo scelto (controlla anche la posta indesiderata). Se non arriva, riprova qui sotto.").foregroundStyle(Color.testoSecondario)
+                        if codiceInviato { Text(TestiAccount.emailInviato).foregroundStyle(Color.verde) }
                     }
                 }
                 // Due passi: prima l'indirizzo, poi la password. Un campo email accanto a un campo password è per iOS un modulo
@@ -453,26 +467,24 @@ struct FoglioEmail: View {
                     Section {
                         RigaValore(titolo: "Indirizzo", valore: scelto)
                         if !sessione.senzaPassword {
-                            SecureField("Password", text: $password)
+                            SecureField(TestiAccount.laTuaPassword, text: $password)
                                 .textContentType(.password)
                                 .submitLabel(.send)
                                 .onSubmit { Task { await aggiungi() } }
                                 .frame(minHeight: Tema.areaTocco)
                         }
                         Button { Task { await aggiungi() } } label: {
-                            Text(sessione.inCorso ? "Un attimo…" : "Manda il codice").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                            Text(sessione.inCorso ? "Un attimo…" : TestiAccount.emailInvia).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                         }
                         .disabled(senzaConferma || sessione.inCorso)
                         Button("Cambia indirizzo") { indirizzoScelto = nil; password = "" }
                             .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-                    } header: {
-                        Text("Conferma").foregroundStyle(Color.testoSecondario)
                     } footer: {
-                        Text(sessione.senzaPassword ? "Ti mando un codice a questo indirizzo." : "Per sicurezza scrivi la tua password, poi ti mando un codice a questo indirizzo.").foregroundStyle(Color.testoSecondario)
+                        if !sessione.senzaPassword { Text(TestiAccount.emailServePassword).foregroundStyle(Color.testoSecondario) }
                     }
                 } else {
                     Section {
-                        TextField("Indirizzo email", text: $indirizzo)
+                        TextField(TestiAccount.emailNuova, text: $indirizzo)
                             .keyboardType(.emailAddress)
                             .textContentType(.emailAddress)
                             .textInputAutocapitalization(.never)
@@ -483,16 +495,14 @@ struct FoglioEmail: View {
                         Button("Avanti") { avanti() }
                             .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                             .disabled(RegoleAccount.problemaEmail(indirizzo) != nil)
-                    } header: {
-                        Text("Aggiungi un'email").foregroundStyle(Color.testoSecondario)
                     } footer: {
-                        Text("Facoltativa: ti permette di recuperare la password anche senza il codice di recupero.").foregroundStyle(Color.testoSecondario)
+                        Text(TestiAccount.emailSpiega).foregroundStyle(Color.testoSecondario)
                     }
                 }
             }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
         }
-        .navigationTitle("Email dell'account")
+        .navigationTitle(TestiAccount.email)
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { chiudi() } } }
@@ -520,7 +530,7 @@ struct FoglioEmail: View {
     private func conferma() async {
         do {
             try await sessione.confermaEmail(codice: codice)
-            fatto("Email verificata.")
+            fatto(TestiAccount.emailConfermataOk)
             chiudi()
         } catch {
             errore = SchermataAccesso.testoErrore(error)
@@ -530,7 +540,7 @@ struct FoglioEmail: View {
     private func togli() async {
         do {
             try await sessione.togliEmail(password: password)
-            fatto("Email tolta.")
+            fatto(TestiAccount.emailToltaOk)
             chiudi()
         } catch {
             if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
@@ -550,8 +560,8 @@ struct RigaScaricaDati: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
-                Label("Scarica i tuoi dati", systemImage: "square.and.arrow.down").labelStyle(.voce(.indigo))
-                Text("Un file con regole, rose, scelte e dati dell'account, da tenere o portare altrove.")
+                Label(TestiAccount.datiTitolo, systemImage: "square.and.arrow.down").labelStyle(.voce(.indigo))
+                Text(TestiAccount.datiSpiega)
                     .font(.footnote)
                     .foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
@@ -560,7 +570,7 @@ struct RigaScaricaDati: View {
             Button { Task { await scarica() } } label: {
                 HStack(spacing: 8) {
                     if inCorso { ProgressView().accessibilityHidden(true) }
-                    Text(inCorso ? "Preparo il file…" : "Scarica il file")
+                    Text(inCorso ? "Preparo il file…" : TestiAccount.datiScarica)
                 }
                 .frame(minHeight: Tema.areaTocco)
             }
