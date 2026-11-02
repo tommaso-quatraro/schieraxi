@@ -301,6 +301,7 @@ def test_valuta_formazione_e_la_mia_scelta(client, tmp_path, monkeypatch):
     monkeypatch.setattr(server.consigli, "valuta", lambda db, regole, rose, titolari, squadra=None, giornata=None, simulazioni=600:
                         {"modulo": "4-3-3", "giornata": 9, "punteggio_atteso": 70.0, "dev": 4.0, "panchina": [], "differenza": -1.0})
     monkeypatch.setattr(server, "_rose", lambda *a: object())
+    monkeypatch.setattr(server.fasi, "iniziata", lambda *a, **k: False)     # giornata aperta, qualunque sia il calendario sul disco
     assert client.get("/api/scelta?giornata=9").json() is None
     r = client.post("/api/formazione/valuta", json={"titolari": [1, 2, 3], "giornata": 9, "salva": True})
     assert r.status_code == 200 and r.json()["punteggio_atteso"] == 70.0

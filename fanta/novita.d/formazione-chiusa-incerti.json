@@ -1,0 +1,14 @@
+{
+  "titolo": "Formazione: chiusa alla scadenza e titolari incerti spiegati",
+  "voci": [
+    "Quando la giornata è iniziata la Formazione lo dice in cima e non si può più cambiare né salvare.",
+    "Se la consigliata mette titolare un giocatore incerto e in panchina uno quasi sicuro dello stesso ruolo, una riga sotto il campo spiega perché: se il primo non gioca entra il secondo.",
+    "Se lasci la Formazione con una modifica a mano non salvata, SchieraXI te lo chiede prima.",
+    "Sui telefoni la data dei dati in alto non è più tagliata."
+  ],
+  "tecnico": [
+    "POST /api/formazione/valuta con salva e DELETE /api/scelta dopo la scadenza: 409 con codice formazione_chiusa, per tutti (server._formazione_chiusa, regola fasi.iniziata); la copia automatica alla scadenza non passa dalle rotte.",
+    "Nuovo campo facoltativo incerti [{titolare, riserva}] in ogni modulo di /api/formazione (consigli.incerti: titolare sotto il 50%, riserva dello stesso ruolo sopra l'80%).",
+    "Web: beforeunload e conferma al cambio di scheda con una modifica a mano non salvata; sottotitolo della testata in due righe sotto i 480 px."
+  ]
+}

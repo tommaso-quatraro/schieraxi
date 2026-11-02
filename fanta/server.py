@@ -831,13 +831,34 @@ def _etag_scelta(ctx: Contesto, giornata: int) -> str:
     return versioni.etag_dati(scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte))
 
 
+FORMAZIONE_CHIUSA = "La giornata è già iniziata: la formazione non si può più cambiare."
+
+
+def _formazione_chiusa(db, ctx: Contesto, giornata: int | None) -> JSONResponse | None:
+    """409 con `codice: "formazione_chiusa"` se la scadenza della lega per questa giornata è passata (stessa regola della Formazione
+    e di Oggi, `fasi.iniziata`): dopo la scadenza nessuno cambia più la scelta, amministratore compreso. La copia automatica alla
+    scadenza (`copia_scadenza.py`) scrive da sola PRIMA della scadenza e non passa di qui. Calendario illeggibile: si lascia scrivere."""
+    try:
+        chiusa = fasi.iniziata(db, _regole(ctx), consigli.stagione_corrente(), giornata, datetime.now())
+    except sqlite3.Error:
+        return None
+    if not chiusa:
+        return None
+    return JSONResponse(status_code=409, content={"detail": FORMAZIONE_CHIUSA, "codice": "formazione_chiusa"},
+                        headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/formazione/valuta")
 def valuta_formazione(dati: FormazioneScelta, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
-    """Punti attesi di una formazione scelta a mano. Con salva=true la ricorda come "la mia scelta" della giornata."""
+    """Punti attesi di una formazione scelta a mano. Con salva=true la ricorda come "la mia scelta" della giornata
+    (solo prima della scadenza: dopo 409 `formazione_chiusa`; valutare senza salvare resta possibile)."""
     db = _db()
     try:
         r = consigli.valuta(db, _regole(ctx), _rose(ctx), dati.titolari, dati.squadra, dati.giornata)
         if dati.salva and not dati.squadra:
+            chiusa = _formazione_chiusa(db, ctx, r["giornata"])
+            if chiusa is not None:
+                return chiusa
             with versioni.blocco("scelte"):
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
                 scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte)
@@ -856,6 +877,13 @@ def leggi_scelta(giornata: int, response: Response, ctx: Contesto = Depends(lega
 
 @app.delete("/api/scelta")
 def cancella_scelta(giornata: int, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+    db = _db()
+    try:
+        chiusa = _formazione_chiusa(db, ctx, giornata)      # dopo la scadenza la scelta resta quella (anche per il Diario)
+    finally:
+        db.close()
+    if chiusa is not None:
+        return chiusa
     with versioni.blocco("scelte"):
         versioni.controlla(request, _etag_scelta(ctx, giornata))
         scelte.cancella(consigli.stagione_corrente(), giornata, ctx.scelte)

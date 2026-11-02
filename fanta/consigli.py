@@ -240,9 +240,32 @@ def scheda_previsione(i: int, x: pd.Series) -> dict:
     }
 
 
+# Titolare poco sicuro con una riserva quasi sicura dello stesso ruolo: la scelta è giusta (se lui non gioca entra la riserva, e
+# insieme valgono di più che la riserva da sola) ma a prima vista sembra un errore, quindi la si spiega. Soglie su `p_voto` (`Giocatore.p`).
+INCERTO_SOTTO = 0.5        # il titolare gioca meno di così...
+RISERVA_SOPRA = 0.8        # ...e la riserva che entrerebbe al suo posto più di così
+
+
+def incerti(titolari: list, panchina: list) -> list[dict]:
+    """I titolari incerti e la riserva che entra al loro posto: [{titolare, riserva}] (id). La riserva è la prima dello stesso
+    ruolo nell'ordine della panchina (come le sostituzioni, `formazione.chi_va_a_punteggio`), una sola per titolare: con due
+    incerti dello stesso ruolo il secondo prende la riserva dopo. Dal titolare più incerto."""
+    usate: set[int] = set()
+    risultato = []
+    for t in sorted((g for g in titolari if g.p < INCERTO_SOTTO), key=lambda g: g.p):
+        r = next((b for b in panchina if b.ruolo == t.ruolo and b.id not in usate), None)
+        if r is None:
+            continue
+        usate.add(r.id)
+        if r.p > RISERVA_SOPRA:
+            risultato.append({"titolare": int(t.id), "riserva": int(r.id)})
+    return risultato
+
+
 def _moduli(tutte: list) -> list[dict]:
     return [{"modulo": x.modulo, "punteggio_atteso": round(x.atteso, 1), **incertezza.campi(x.atteso, x.dev),
-             "titolari": [g.id for g in x.titolari], "panchina": [g.id for g in x.panchina]} for x in tutte]
+             "titolari": [g.id for g in x.titolari], "panchina": [g.id for g in x.panchina],
+             "incerti": incerti(x.titolari, x.panchina)} for x in tutte]
 
 
 def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra: str | None = None,
