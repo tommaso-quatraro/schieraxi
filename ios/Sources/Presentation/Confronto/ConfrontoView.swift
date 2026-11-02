@@ -291,7 +291,7 @@ struct RicercaGiocatoreView: View {
         if let g = vm.previsioni.di(b.id) {
             RigaElencoGiocatore(g: g)
         } else {
-            RigaGiocatoreSenzaPrevisione(g: b, nonGioca: vm.previsioni.arrivate)
+            RigaElencoGiocatore(breve: b, nonGioca: vm.previsioni.arrivate)
         }
     }
 }

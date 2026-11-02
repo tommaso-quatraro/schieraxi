@@ -172,9 +172,12 @@ struct GiocatoreCorpo: View {
         }
     }
 
+    /// Il numero della giornata della lega (`giornata_lega`); con un server che non lo manda, quello di `giornata`.
+    static func giornataMostrata(_ p: Giocatore) -> Int? { p.giornataLega ?? p.giornata }
+
     private func descrizionePartita(_ p: Giocatore) -> String {
         var testo = ""
-        if let g = p.giornata { testo += "Giornata \(g) · " }
+        if let g = Self.giornataMostrata(p) { testo += "Giornata \(g) · " }
         testo += (p.inCasa == true ? "in casa" : "in trasferta") + " contro " + (p.avversario ?? "").capitalized
         if let data = p.dataPartita { testo += " · " + Quando.leggibile(data) }
         return testo
@@ -187,7 +190,7 @@ struct GiocatoreCorpo: View {
                 VStack(alignment: .leading, spacing: 0) {
                     NumeroCheSale(valore: p.fvAtteso ?? 0)
                         .font(.system(size: min(misuraNumero, 110), weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.verde)
+                        .foregroundStyle(.primary)   // neutro, come sulla web: il colore è solo per gli esiti
                     Text(FantavotoAtteso.nome + " · se gioca").font(.subheadline.weight(.semibold)).foregroundStyle(Color.testoSecondario)
                 }
                 Spacer()

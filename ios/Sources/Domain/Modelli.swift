@@ -53,6 +53,8 @@ struct Giocatore: Decodable, Identifiable {
     let motivi: [String]?
     /// Solo nella scheda del giocatore: la giornata a cui si riferisce la previsione.
     let giornata: Int?
+    /// Solo nella scheda: la stessa giornata con il numero della lega (facoltativo, si preferisce a `giornata`).
+    let giornataLega: Int?
     /// «Perché questo numero» (facoltativo: i server più vecchi non lo mandano). Letto senza far fallire la scheda.
     private let percheNumero: Tollerante<[Tollerante<MotivoNumero>]>?
     /// Il fantavoto atteso del giocatore medio del suo ruolo (il riferimento dei motivi). Facoltativo.

@@ -237,69 +237,110 @@ struct LegendaElenco: View {
     }
 }
 
-/// Una riga dell'elenco dei giocatori: volto con l'indice, nome, partita, fantavoto atteso e «gioca N%», e sotto quotazione e
-/// di chi è. La usano l'elenco e la ricerca, così lo stesso giocatore si vede uguale nei due posti.
-struct RigaElencoGiocatore: View {
-    let g: Giocatore
+/// Cosa mostra una riga dell'elenco dei giocatori, come la riga compatta della web (`rigaGiocatoreCompatta`):
+/// nome con il ruolo, «GEN · quotazione 19 · svincolato» e a destra il fantavoto atteso (neutro) con «gioca N%».
+/// Viene da una riga della giornata (`Giocatore`) o, per chi non c'è, da un risultato della ricerca (`GiocatoreBreve`).
+struct DatiRigaElenco: Equatable {
+    let id: Int
+    let nome: String
+    let ruolo: String
+    let squadra: String?
+    let indice: Double?
+    /// «GEN · quotazione 19 · svincolato» (il proprietario solo se lo si conosce).
+    let dettaglio: String
+    /// Il fantavoto atteso («6,9») o «–».
+    let numero: String
+    /// «gioca 90%», «non gioca» o niente.
+    let sotto: String?
+    let voce: String
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            RigaGiocatore(g: g)
-            Text(RigaElencoGiocatore.dettaglio(quotazione: g.quotazione, proprietario: g.proprietario))
-                .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : Color.testoSecondario).padding(.leading, 58)
-        }
-        .frame(minHeight: Tema.areaTocco)
-        .contentShape(Rectangle())
+    static func testoDettaglio(squadra: String?, quotazione: Double?, proprietario: String??) -> String {
+        var parti: [String] = []
+        let sigla = ColoriSquadra.sigla(squadra)
+        if !sigla.isEmpty { parti.append(sigla) }
+        parti.append("quotazione \(quotazione.map { String(Formato.intero($0)) } ?? "–")")
+        if let proprietario { parti.append(proprietario ?? "svincolato") }
+        return parti.joined(separator: " · ")
     }
 
-    static func dettaglio(quotazione: Double?, proprietario: String?) -> String {
-        "quotazione \(quotazione.map { String(Formato.intero($0)) } ?? "–") · \(proprietario ?? "svincolato")"
+    init(_ g: Giocatore) {
+        id = g.id; nome = g.nome; ruolo = g.ruolo; squadra = g.squadra
+        indice = g.assente == true ? nil : g.indice
+        dettaglio = Self.testoDettaglio(squadra: g.squadra, quotazione: g.quotazione, proprietario: .some(g.proprietario))
+        if g.assente == true {
+            numero = "–"
+            sotto = "assente"
+        } else {
+            numero = Formato.punti(g.fvAtteso ?? g.puntiAttesi)
+            sotto = "gioca \(Formato.percento(g.pVoto))%"
+        }
+        var parti = [g.nome, nomeRuolo(g.ruolo), (g.squadra ?? "").capitalized, dettaglio.components(separatedBy: " · ").dropFirst().joined(separator: ", ")]
+        if g.assente == true {
+            parti.append("assente")
+        } else {
+            parti.append("\(FantavotoAtteso.nome) \(numero)")
+            parti.append("gioca al \(Formato.percento(g.pVoto)) per cento")
+            if let i = indice { parti.append("indice \(Formato.intero(i)) su 100") }
+        }
+        voce = parti.filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+
+    /// Chi non è nell'elenco della giornata: «non gioca» solo se l'elenco è arrivato (`nonGioca`).
+    init(_ b: GiocatoreBreve, nonGioca: Bool) {
+        id = b.id; nome = b.nome; ruolo = b.ruolo; squadra = b.squadra
+        indice = nil
+        dettaglio = Self.testoDettaglio(squadra: b.squadra, quotazione: b.quotazione, proprietario: nil)
+        numero = "–"
+        sotto = nonGioca ? "non gioca" : nil
+        voce = [b.nome, nomeRuolo(b.ruolo), (b.squadra ?? "").capitalized, "quotazione \(b.quotazione.map { String(Formato.intero($0)) } ?? "–")",
+                nonGioca ? "non gioca" : ""].filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }
 
-/// Un risultato della ricerca senza previsione (chi non è nell'elenco della giornata, o se l'elenco non è ancora arrivato):
-/// la stessa forma della riga dell'elenco, con «–» al posto del fantavoto atteso e «non gioca» quando lo si sa.
-struct RigaGiocatoreSenzaPrevisione: View {
-    let g: GiocatoreBreve
-    /// Vero solo se l'elenco della giornata è arrivato e il giocatore non c'è.
-    let nonGioca: Bool
+/// Una riga dell'elenco dei giocatori: volto con l'indice, nome, «GEN · quotazione 19 · svincolato», fantavoto atteso e «gioca N%».
+/// La usano l'elenco e le due ricerche, così lo stesso giocatore si vede uguale nei tre posti (e come sulla web).
+struct RigaElencoGiocatore: View {
+    let dati: DatiRigaElenco
     @Environment(\.dynamicTypeSize) private var tagliaTesto
     @ScaledMetric(relativeTo: .body) private var lato: CGFloat = 46
 
-    private var sottotitolo: String {
-        "\((g.squadra ?? "").uppercased()) · quotazione \(g.quotazione.map { String(Formato.intero($0)) } ?? "–")"
+    init(g: Giocatore) { dati = DatiRigaElenco(g) }
+    init(breve: GiocatoreBreve, nonGioca: Bool) { dati = DatiRigaElenco(breve, nonGioca: nonGioca) }
+
+    @ViewBuilder
+    private var numeri: some View {
+        if tagliaTesto.isAccessibilitySize {
+            // testo molto grande: i numeri sotto il nome, su una riga, e il nome ha tutta la larghezza
+            HStack(spacing: 8) {
+                Text(dati.numero).font(.headline).monospacedDigit()
+                if let sotto = dati.sotto { Text(sotto).font(.caption).foregroundStyle(Color.testoSecondario) }
+            }
+        } else {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(dati.numero).font(.title3.weight(.bold)).monospacedDigit()
+                if let sotto = dati.sotto { Text(sotto).font(.caption2).foregroundStyle(Color.testoSecondario) }
+            }
+        }
     }
 
     var body: some View {
         HStack(alignment: tagliaTesto.isAccessibilitySize ? .top : .center, spacing: 12) {
-            AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: min(lato, 64), nome: g.nome, ruolo: g.ruolo)
+            AvatarGiocatore(id: dati.id, squadra: dati.squadra, indice: dati.indice, dimensione: min(lato, 64), nome: dati.nome, ruolo: dati.ruolo)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    BadgeRuolo(ruolo: g.ruolo, piccolo: true)
-                    Text(g.nome).font(.headline).lineLimit(2)
+                    BadgeRuolo(ruolo: dati.ruolo, piccolo: true)
+                    Text(dati.nome).font(.headline).lineLimit(2)
                 }
-                Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
-                if tagliaTesto.isAccessibilitySize, nonGioca {
-                    Text("non gioca").font(.caption).foregroundStyle(Color.testoSecondario)
-                }
+                Text(dati.dettaglio).font(.caption).foregroundStyle(Color.testoSecondario)
+                if tagliaTesto.isAccessibilitySize { numeri }
             }
             Spacer(minLength: 8)
-            if !tagliaTesto.isAccessibilitySize {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("–").font(.title3.weight(.bold)).foregroundStyle(Color.testoSecondario)
-                    if nonGioca { Text("non gioca").font(.caption2).foregroundStyle(Color.testoSecondario) }
-                }
-            }
+            if !tagliaTesto.isAccessibilitySize { numeri }
         }
         .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(RigaGiocatoreSenzaPrevisione.voce(g, nonGioca: nonGioca))
-    }
-
-    static func voce(_ g: GiocatoreBreve, nonGioca: Bool) -> String {
-        [g.nome, nomeRuolo(g.ruolo), (g.squadra ?? "").capitalized, nonGioca ? "non gioca" : ""]
-            .filter { !$0.isEmpty }.joined(separator: ", ")
+        .accessibilityLabel(dati.voce)
     }
 }
 
@@ -336,11 +377,11 @@ struct CalendarioView: View {
                             .accessibilityHidden(true)
                             ForEach(c.squadre) { s in
                                 HStack(spacing: 6) {
-                                    Text(s.squadra.prefix(3).uppercased())
+                                    Text(ColoriSquadra.sigla(s.squadra))
                                         .font(.caption.bold()).lineLimit(1)
                                         .frame(width: 44, alignment: .leading)
                                     ForEach(s.partite) { p in
-                                        Text(String(p.avversario.prefix(3)).uppercased())
+                                        Text(ProssimePartite.cella(p))
                                             .font(.caption2.bold())
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.6)
@@ -348,7 +389,7 @@ struct CalendarioView: View {
                                             .background(colore(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                                             .foregroundStyle(Color.black)
                                             // La difficoltà non è solo un colore: VoiceOver la dice a parole.
-                                            .accessibilityLabel("Giornata \(p.giornata) contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                                            .accessibilityLabel("Serie A, giornata \(p.giornata): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
                                     }
                                 }
                             }
@@ -499,7 +540,7 @@ struct CercaView: View {
         if let g = ricerca.previsioni.di(b.id) {
             RigaElencoGiocatore(g: g)
         } else {
-            RigaGiocatoreSenzaPrevisione(g: b, nonGioca: ricerca.previsioni.arrivate)
+            RigaElencoGiocatore(breve: b, nonGioca: ricerca.previsioni.arrivate)
         }
     }
 }
