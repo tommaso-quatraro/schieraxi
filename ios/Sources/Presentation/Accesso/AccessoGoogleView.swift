@@ -81,10 +81,11 @@ struct ScegliNomeGoogleView: View {
                 }
             }
             Section {
-                Toggle("Accetto i Termini d'uso e l'Informativa sulla privacy", isOn: $accetto)
+                // la stessa casella della registrazione (e della web): Privacy, Termini d'uso ed età minima
+                Toggle(TestiAccesso.letto, isOn: $accetto)
                     .frame(minHeight: Tema.areaTocco)
-                if let url = pagina(.termini) { Link("Leggi i Termini d'uso", destination: url).frame(minHeight: Tema.areaTocco) }
-                if let url = pagina(.privacy) { Link("Leggi l'Informativa sulla privacy", destination: url).frame(minHeight: Tema.areaTocco) }
+                if let url = pagina(.privacy) { Link(TestiAccesso.leggiPrivacy, destination: url).frame(minHeight: Tema.areaTocco) }
+                if let url = pagina(.termini) { Link(TestiAccesso.leggiTermini, destination: url).frame(minHeight: Tema.areaTocco) }
             }
             if let errore {
                 Section { Label(errore, systemImage: "exclamationmark.triangle.fill").foregroundStyle(Color.attenzione) }

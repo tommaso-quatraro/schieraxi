@@ -40,20 +40,28 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(nome.waitForExistence(timeout: 30), "la schermata di accesso deve comparire")
         XCTAssertTrue(app.secureTextFields["Password"].exists)
         XCTAssertFalse(app.tabBars.firstMatch.exists, "senza accesso non si vede l'app")
-        let entra = app.buttons["Entra"]
+        // «Accedi» è sia la scheda sia il pulsante del modulo (come sulla web): si distinguono per identificativo
+        let entra = app.buttons["accesso-invia"]
         XCTAssertTrue(entra.exists)
+        XCTAssertEqual(entra.label, "Accedi")
         XCTAssertFalse(entra.isEnabled, "con i campi vuoti non si può entrare")
+        XCTAssertFalse(elemento("Bentornato", contiene: true).exists, "niente frasi che la web non ha")
 
-        // Registrati: compare il codice d'invito (il server non si vede: è nascosto nell'area avanzata)
-        tocca("Registrati", finchéCompare: "Crea l'account")
+        // Registrati: compare il codice d'invito, l'email facoltativa e la casella con l'età minima
+        tocca("scheda-registrati", finchéCompare: "Crea l'account")
         attendi("Codice d'invito", contiene: true)
-        // Recupera: compare il codice di recupero (prima si torna su Accedi e si aspetta che ci sia davvero)
-        tocca("Accedi", finchéCompare: "Password dimenticata?")
-        tocca("Password dimenticata?", finchéCompare: "Cambia la password")
-        XCTAssertTrue(app.textFields["Codice di recupero"].waitForExistence(timeout: 10))
+        attendi("Email (facoltativa", contiene: true)
+        attendi("ho almeno 14 anni", contiene: true)
+        // Password dimenticata: un collegamento sotto il modulo, con l'email o con il codice di recupero
+        tocca("scheda-accedi", finchéCompare: "Password dimenticata")
+        tocca("Password dimenticata", finchéCompare: "Scegli la nuova password")
+        XCTAssertTrue(app.textFields["Codice"].waitForExistence(timeout: 10))
+        tocca("Con l'email", finchéCompare: "Mandami il codice")
+        XCTAssertTrue(app.textFields["Email"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Torna all'accesso"].exists)
 
         // di nuovo Accedi, con nome e password: si entra
-        tocca("Accedi", finchéCompare: "Entra")
+        tocca("scheda-accedi", finchéCompare: "Password dimenticata")
         nome.tap()
         nome.typeText("mister.rossi")
         let password = app.secureTextFields["Password"]
@@ -89,9 +97,11 @@ final class AccessoUITests: XCTestCase {
     func testSezioneIlTuoAccountInLega() {
         avvia("account")
         attendi("Il tuo account")
-        attendi("mister.rossi")
-        attendi("Cambia password")
-        attendi("Nuovo codice per recuperare l'accesso")
+        attendi("mister.rossi", contiene: true)
+        attendi("Utente", contiene: true)
+        attendi("Nessuna email collegata.")
+        attendi("Cambia la password")
+        attendi("Codice di recupero")
         attendi("Elimina l'account")
         // un solo nome e niente voci tolte (maiuscole del nome, esci da tutti i telefoni)
         XCTAssertFalse(elemento("Per accedere").exists)
@@ -139,31 +149,32 @@ final class AccessoUITests: XCTestCase {
 
         // Cambia password: si apre, resta aperto, il testo scritto resta
         let attuale = app.secureTextFields["Password attuale"]
-        apriFoglio(app.buttons["Cambia password"], segno: attuale)
-        restaAperto(attuale, "Cambia password")
+        apriFoglio(app.buttons["account-cambia-password"], segno: attuale)
+        restaAperto(attuale, "Cambia la password")
         attuale.tap()
         attuale.typeText("vecchia-prova-1")
-        restaAperto(attuale, "Cambia password")
+        restaAperto(attuale, "Cambia la password")
         XCTAssertFalse((attuale.value as? String ?? "").isEmpty, "la password scritta non deve sparire")
-        XCTAssertTrue(app.secureTextFields["Nuova password"].exists)
-        chiudiFoglio("Cambia password", "Annulla", segno: attuale)
+        XCTAssertTrue(app.secureTextFields["Nuova password (almeno 10 caratteri)"].exists)
+        XCTAssertTrue(app.secureTextFields["Ripeti la nuova password"].exists)
+        chiudiFoglio("Cambia la password", "Annulla", segno: attuale)
 
-        // Nuovo codice di recupero
+        // Codice di recupero
         let codice = app.navigationBars["Codice di recupero"]
-        apriFoglio(app.buttons["Nuovo codice per recuperare l'accesso"], segno: codice)
+        apriFoglio(app.buttons["account-codice"], segno: codice)
         restaAperto(codice, "Codice di recupero")
         chiudiFoglio("Codice di recupero", "Annulla", segno: codice)
 
         // Email (la voce cambia nome mentre l'email va e viene)
-        let email = app.navigationBars["Email dell'account"]
+        let email = app.navigationBars["Email"]
         let voceEmail = app.buttons.matching(NSPredicate(format: "label IN %@", ["Aggiungi un'email", "Gestisci l'email"])).firstMatch
         apriFoglio(voceEmail, segno: email)
-        restaAperto(email, "Email dell'account")
-        chiudiFoglio("Email dell'account", "Chiudi", segno: email)
+        restaAperto(email, "Email")
+        chiudiFoglio("Email", "Chiudi", segno: email)
 
         // Elimina l'account
         let elimina = app.navigationBars["Elimina l'account"]
-        apriFoglio(app.buttons["Elimina l'account"].firstMatch, segno: elimina)
+        apriFoglio(app.buttons["account-elimina"], segno: elimina)
         restaAperto(elimina, "Elimina l'account")
         chiudiFoglio("Elimina l'account", "Annulla", segno: elimina)
     }
@@ -171,7 +182,7 @@ final class AccessoUITests: XCTestCase {
     func testRetAssenteDiceCosaFare() {
         avvia("rete")
         attendi("Non riesco a collegarmi a SchieraXI", contiene: true)
-        XCTAssertTrue(app.buttons["Entra"].waitForExistence(timeout: 10), "si può riprovare")
+        XCTAssertTrue(app.buttons["accesso-invia"].waitForExistence(timeout: 10), "si può riprovare")
         XCTAssertFalse(app.tabBars.firstMatch.exists)
     }
 
@@ -195,21 +206,21 @@ final class AccessoUITests: XCTestCase {
         // Ogni cambio aspetta che compaia il pulsante della scheda d'arrivo prima del successivo: niente attese fisse.
         // Il pulsante si cerca ogni volta, così un tocco su una schermata che si sta ancora montando non resta appeso.
         let arrivi: [(tocco: String, atteso: String)] = [
-            ("Registrati", "Crea l'account"),
-            ("Accedi", "Entra"),
-            ("Password dimenticata?", "Cambia la password"),
-            ("Accedi", "Entra"),
+            ("scheda-registrati", "Crea l'account"),
+            ("scheda-accedi", "Password dimenticata"),
+            ("Password dimenticata", "Scegli la nuova password"),
+            ("scheda-accedi", "Password dimenticata"),
         ]
         for giro in 1...6 {
             for passo in arrivi {
                 XCTContext.runActivity(named: "giro \(giro): \(passo.tocco)") { _ in tocca(passo.tocco, finchéCompare: passo.atteso) }
             }
         }
-        // Con i tocchi a raffica sul Mac di GitHub un tocco può perdersi: si rimette «Accedi» finché il pulsante «Entra» compare.
+        // Con i tocchi a raffica sul Mac di GitHub un tocco può perdersi: si rimette «Accedi» finché «Password dimenticata» compare.
         var tornata = false
         for _ in 0..<6 where !tornata {
-            if app.buttons["Entra"].waitForExistence(timeout: 8) { tornata = true; break }
-            app.buttons["Accedi"].tap()
+            if app.buttons["Password dimenticata"].waitForExistence(timeout: 8) { tornata = true; break }
+            app.buttons["scheda-accedi"].tap()
         }
         XCTAssertTrue(tornata, "dopo i cambi rapidi la scheda Accedi deve tornare")
         XCTAssertTrue(app.secureTextFields["Password"].waitForExistence(timeout: 20))
