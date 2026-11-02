@@ -47,3 +47,8 @@ non parte (anche `unisci`): vanno aggiunte PRIMA di unire questa decisione, e ag
   e si rilancia il job. Se la revisione si rompe (token scaduto, servizio giù) il job è rosso e la pull request aspetta.
 - Se si toglie il segreto, la revisione si spegne senza bloccare nulla. Un token scaduto o revocato ma ancora nel segreto
   invece blocca (job rosso): il token di `claude setup-token` dura un anno, poi si rifà con gli stessi due comandi.
+
+## Note
+- 2/11/2026: alla prima corsa Claude non è riuscito a pubblicare la sintesi con `gh pr comment` (permesso negato). Ora la
+  sintesi sta solo nell'esito e la pubblica il job, in un unico commento aggiornato a ogni giro; a Claude resta
+  `gh pr diff/view` e i commenti sulle righe.

@@ -93,7 +93,8 @@ def _cancello(esito: str, tmp_path: Path) -> tuple[int, str]:
     codice = re.search(r"<<'FINE'\n(.*?)\n\s*FINE\n", _testo(), re.S).group(1)
     codice = "\n".join(r[10:] if r.startswith(" " * 10) else r for r in codice.splitlines())
     riepilogo = tmp_path / "riepilogo.md"
-    ambiente = {**os.environ, "ESITO": esito, "GITHUB_STEP_SUMMARY": str(riepilogo)}
+    ambiente = {**os.environ, "ESITO": esito, "GITHUB_STEP_SUMMARY": str(riepilogo), "RUNNER_TEMP": str(tmp_path),
+                "COMMIT": "0123456789abcdef"}
     fatto = subprocess.run([sys.executable, "-I", "-s", "-c", codice], env=ambiente, capture_output=True, text=True)
     return fatto.returncode, fatto.stderr + fatto.stdout
 
@@ -104,8 +105,18 @@ def test_cancello(tmp_path):
     for esito in ("", "   ", "non json", '{"sintesi": "x"}', '{"bloccanti": "0", "sintesi": "x"}',
                   '{"bloccanti": true, "sintesi": "x"}', '{"bloccanti": -1, "sintesi": "x"}', "[]"):
         assert _cancello(esito, tmp_path)[0] != 0, esito
-    codice, uscita = _cancello('{"bloccanti": 2, "sintesi": "due problemi"}', tmp_path)
+    codice, uscita = _cancello('{"bloccanti": 2, "sintesi": "due problemi, cc @qualcuno"}', tmp_path)
     assert codice != 0 and "2 problemi bloccanti" in uscita
+    sintesi = (tmp_path / "sintesi.md").read_text(encoding="utf-8")
+    assert sintesi.startswith("<!-- revisione-ia -->\n") and "0123456" in sintesi and "due problemi" in sintesi
+    assert "@qualcuno" not in sintesi, "la sintesi non deve menzionare persone"
+
+
+def test_la_sintesi_la_pubblica_il_job_anche_quando_il_cancello_e_rosso():
+    testo = _testo()
+    assert "Bash(gh pr comment" not in testo, "Claude non commenta da sé: lo fa il passo «Sintesi nella PR»"
+    passo = testo[testo.index("- name: Sintesi nella PR"):]
+    assert "!cancelled()" in passo and "<!-- revisione-ia -->" in passo and "PATCH" in passo
 
 
 def test_senza_segreto_il_job_passa_senza_revisione():
@@ -114,7 +125,7 @@ def test_senza_segreto_il_job_passa_senza_revisione():
     passi = testo.split("      - ")[1:]
     assert "id: segreto" in passi[0]
     for passo in passi[1:]:
-        assert "if: steps.segreto.outputs.presente == 'true'" in passo
+        assert "steps.segreto.outputs.presente == 'true'" in passo.split("run:")[0]
 
 
 def test_la_skill_della_revisione_c_e_e_chiede_l_esito():
