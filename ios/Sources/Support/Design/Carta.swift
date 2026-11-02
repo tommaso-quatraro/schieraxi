@@ -59,7 +59,7 @@ struct RigaConFilo<Contenuto: View>: View {
 /// Una piccola etichetta tonda (capsula) colorata: «Svincolato», «Titolare 90%»...
 struct Capsula: View {
     let testo: String
-    var colore: Color = .secondary
+    var colore: Color = .testoSecondario
     var simbolo: String? = nil
 
     var body: some View {

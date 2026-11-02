@@ -63,11 +63,11 @@ struct ScegliNomeGoogleView: View {
                     .onSubmit { Task { await crea() } }
                     .frame(minHeight: Tema.areaTocco)
             } header: {
-                Text("Scegli il tuo nome utente")
-            } footer: {
+                Text("Scegli il tuo nome utente").foregroundStyle(Color.testoSecondario)
+            } footer: { Group {
                 if let problemaNome { Text(problemaNome).foregroundStyle(Color.attenzione) }
                 else { Text("È il nome con cui ti vedono gli altri. Da 3 a 32 caratteri: lettere, numeri, punto, trattino.") }
-            }
+            }.foregroundStyle(Color.testoSecondario) }
             if nuovo.serveInvito {
                 Section {
                     TextField("Codice d'invito", text: $invito)
@@ -75,9 +75,9 @@ struct ScegliNomeGoogleView: View {
                         .autocorrectionDisabled()
                         .frame(minHeight: Tema.areaTocco)
                 } header: {
-                    Text("Invito")
+                    Text("Invito").foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text("L'invito te lo dà chi ti ha parlato di SchieraXI.")
+                    Text("L'invito te lo dà chi ti ha parlato di SchieraXI.").foregroundStyle(Color.testoSecondario)
                 }
             }
             Section {
@@ -160,14 +160,14 @@ struct AccessiSezione: View {
                         }
                     }
                 } else {
-                    Text("Controllo come entri…").foregroundStyle(.secondary)
+                    Text("Controllo come entri…").foregroundStyle(Color.testoSecondario)
                 }
                 if let messaggio = fogli.messaggioAccessi { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
                 if let errore = fogli.erroreAccessi { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
             } header: {
-                Text("Accessi")
+                Text("Accessi").foregroundStyle(Color.testoSecondario)
             } footer: {
-                Text(piede)
+                Text(piede).foregroundStyle(Color.testoSecondario)
             }
             // niente .task, .sheet o .confirmationDialog qui: su una Section dentro una List finiscono su OGNI riga.
             // Il controllo degli accessi lo fa una volta sola `fogliAccount(_:)` sulle Impostazioni.
@@ -194,7 +194,7 @@ struct FoglioPasswordPerCollegare: View {
             Section {
                 SecureField("Password attuale", text: $password).textContentType(.password).frame(minHeight: Tema.areaTocco)
             } footer: {
-                Text("Per sicurezza, prima di collegare Google scrivi la tua password. Poi si apre la finestra di Google.")
+                Text("Per sicurezza, prima di collegare Google scrivi la tua password. Poi si apre la finestra di Google.").foregroundStyle(Color.testoSecondario)
             }
             Section {
                 Button { procedi(password) } label: {
@@ -229,9 +229,9 @@ struct RigaRiconferma: View {
             }
             if let errore { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
         } header: {
-            Text("Conferma")
+            Text("Conferma").foregroundStyle(Color.testoSecondario)
         } footer: {
-            Text(confermato ? "Hai cinque minuti per finire." : "Non hai una password: per sicurezza confermi che sei tu con Google.")
+            Text(confermato ? "Hai cinque minuti per finire." : "Non hai una password: per sicurezza confermi che sei tu con Google.").foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -269,14 +269,14 @@ struct FoglioPasswordDaGoogle: View {
                     SecureField("Nuova password", text: $nuova).textContentType(.newPassword).frame(minHeight: Tema.areaTocco)
                     SecureField("Ripeti la nuova password", text: $ripeti).textContentType(.newPassword).frame(minHeight: Tema.areaTocco)
                 } header: {
-                    Text("Password nuova")
-                } footer: {
+                    Text("Password nuova").foregroundStyle(Color.testoSecondario)
+                } footer: { Group {
                     VStack(alignment: .leading, spacing: 4) {
                         if let problema { Text(problema).foregroundStyle(Color.attenzione) }
                         if !ripeti.isEmpty && nuova != ripeti { Text("Le due password non coincidono.").foregroundStyle(Color.attenzione) }
                         Text("Almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
                     }
-                }
+                }.foregroundStyle(Color.testoSecondario) }
                 if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
                 Section {
                     Button { Task { await salva() } } label: {

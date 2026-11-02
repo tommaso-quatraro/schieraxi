@@ -91,7 +91,7 @@ struct AstaContenuto: View {
         if let a = vm.estiva.dato {
             Carta("Piano per l'asta") {
                 Text("Stime per orientarsi, non prezzi garantiti: contano anche gli altri allenatori. Metodo: ogni giocatore vale quanto fa in più di un sostituto, e il budget (\(Formato.intero(a.crediti)) crediti, \(Formato.intero(a.panchina)) per la panchina) si divide in proporzione. Con \(a.squadre ?? 10) squadre.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
                 FilaTessere {
                     ForEach(a.ruoli) { r in
                         TesseraDato(valore: "\(Formato.intero(r.crediti))", etichetta: "\(nomiReparti[r.ruolo] ?? r.ruolo) (\(Formato.percento(r.quota))%)")
@@ -115,7 +115,7 @@ struct AstaContenuto: View {
     private var riparazione: some View {
         if let a = vm.riparazione.dato {
             Carta("Riparazione") {
-                if let nota = a.nota { Text(nota).font(.footnote).foregroundStyle(.secondary) }
+                if let nota = a.nota { Text(nota).font(.footnote).foregroundStyle(Color.testoSecondario) }
                 FilaTessere {
                     TesseraDato(valore: a.tuoiCrediti.map { "\(Formato.intero($0))" } ?? "–", etichetta: "i tuoi crediti")
                     TesseraDato(valore: a.creditiLega.map { "\(Formato.intero($0))" } ?? "–", etichetta: "crediti della lega")
@@ -125,7 +125,7 @@ struct AstaContenuto: View {
             if let perTe = a.perTe, !perTe.isEmpty {
                 Carta("Ti conviene") {
                     Text("Chi migliora di più la tua squadra rispetto al tuo giocatore più debole dello stesso reparto, entro i tuoi crediti.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(Color.testoSecondario)
                     ForEach(perTe) { g in
                         Button { apri(g.id) } label: {
                             HStack(alignment: .top, spacing: 10) {
@@ -133,7 +133,7 @@ struct AstaContenuto: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(g.nome).font(.headline)
                                     Text("\(ColoriSquadra.sigla(g.squadra)) · \(Formato.conSegno(g.miglioramento ?? 0, cifre: 0)) punti attesi sul tuo \(g.alPostoDi ?? "giocatore")")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(Color.testoSecondario)
                                 }
                                 Spacer(minLength: 8)
                                 prezzo(g.prezzo)
@@ -147,7 +147,7 @@ struct AstaContenuto: View {
                     }
                 }
             } else {
-                Carta { Text("Nessuno svincolato migliora la tua squadra entro i tuoi crediti.").foregroundStyle(.secondary) }
+                Carta { Text("Nessuno svincolato migliora la tua squadra entro i tuoi crediti.").foregroundStyle(Color.testoSecondario) }
             }
             sceltaReparto(a.ruoli.map(\.ruolo))
             Carta {
@@ -165,7 +165,7 @@ struct AstaContenuto: View {
     private func prezzo(_ valore: Double?) -> some View {
         VStack(alignment: .trailing, spacing: 0) {
             Text("\(Formato.intero(valore))").font(.headline).monospacedDigit()
-            Text("crediti").font(.caption2).foregroundStyle(.secondary)
+            Text("crediti").font(.caption2).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -175,7 +175,7 @@ struct AstaContenuto: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(g.nome).font(.headline)
                     Text("\(ColoriSquadra.sigla(g.squadra)) · quotazione \(Formato.intero(g.quotazione)) · \(Formato.intero(g.puntiStagione)) punti attesi")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 Spacer(minLength: 8)
                 prezzo(g.prezzo)

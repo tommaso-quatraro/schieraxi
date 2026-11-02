@@ -61,7 +61,7 @@ struct ImportaExcelView: View {
             if let e = vm.esito { esito(e) }
             Section {
                 Text("Incolla la pagina delle rose di Leghe oppure scegli il file. Prima di salvare ti mostro cosa ho capito: sistemi i dubbi e scegli la tua squadra. Basta anche solo la tua rosa.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
                 TextEditor(text: $vm.testoRose)
                     .frame(minHeight: 110)
                     .accessibilityLabel("Testo delle rose")
@@ -70,21 +70,21 @@ struct ImportaExcelView: View {
                     Label("Controlla il testo", systemImage: "text.magnifyingglass").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled(vm.inCorso)
-            } header: { Text("Incolla il testo delle rose") }
+            } header: { Text("Incolla il testo delle rose").foregroundStyle(Color.testoSecondario) }
             Section {
                 Button { scegli = true } label: {
                     Label("Scegli il file (Excel, CSV, testo)", systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
                 }
                 .disabled(vm.inCorso)
                 Text("Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            } header: { Text("Oppure scegli il file") }
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+            } header: { Text("Oppure scegli il file").foregroundStyle(Color.testoSecondario) }
             Section {
                 Toggle("Togli le squadre che non sono nel file", isOn: $vm.sostituisciTutto).tint(Color.verde).frame(minHeight: Tema.areaTocco)
-            } footer: { Text("Di solito le squadre che non ci sono restano com'erano.") }
+            } footer: { Text("Di solito le squadre che non ci sono restano com'erano.").foregroundStyle(Color.testoSecondario) }
             if vm.inCorso {
                 Section {
-                    HStack(spacing: 10) { ProgressView(); Text("Leggo le rose…").foregroundStyle(.secondary) }
+                    HStack(spacing: 10) { ProgressView(); Text("Leggo le rose…").foregroundStyle(Color.testoSecondario) }
                         .frame(minHeight: Tema.areaTocco)
                         .accessibilityElement(children: .combine)
                 }
@@ -107,11 +107,11 @@ struct ImportaExcelView: View {
             }
             if let squadre = e.squadreImportate, !squadre.isEmpty {
                 Text("Salvate: \(squadre.joined(separator: ", ")) (\(Formato.plurale(e.totaleSquadre ?? squadre.count, "squadra", "squadre")) in tutto).")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
             }
         } header: { Label("Rose salvate", systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde) }
         if !(e.avvisi ?? []).isEmpty {
-            Section("Da controllare") {
+            Section(titolo: "Da controllare") {
                 ForEach(e.avvisi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(Color.attenzione) }
             }
         }
@@ -123,25 +123,25 @@ struct ImportaExcelView: View {
         if !dubbi.dubbi.isEmpty {
             Section {
                 Text("Non li ho trovati nel listone (magari ceduti o con un altro nome). Tocca un nome e cerca quello giusto; se non c'è, lascia stare.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
                 ForEach(dubbi.dubbi) { d in
                     Button { dubbi.scelto = d } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(d.nome).foregroundStyle(.primary)
-                                Text(d.squadra).font(.footnote).foregroundStyle(.secondary)
+                                Text(d.squadra).font(.footnote).foregroundStyle(Color.testoSecondario)
                             }
                             Spacer()
-                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+                            Image(systemName: "magnifyingglass").foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
                         }
                         .frame(minHeight: Tema.areaTocco)
                     }
                     .accessibilityLabel("\(d.nome), \(d.squadra), non riconosciuto")
                     .accessibilityHint("Cerca il giocatore giusto")
                 }
-            } header: { Text("Giocatori da sistemare (\(dubbi.dubbi.count))") }
+            } header: { Text("Giocatori da sistemare (\(dubbi.dubbi.count))").foregroundStyle(Color.testoSecondario) }
         } else if dubbi.sistemati > 0 {
-            Section { Label("Tutti i giocatori sono riconosciuti.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(.secondary) }
+            Section { Label("Tutti i giocatori sono riconosciuti.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
     }
 }
@@ -217,7 +217,7 @@ struct AnteprimaRoseVista: View {
             .pickerStyle(.menu)
             .tint(Color.verde)
             .frame(minHeight: Tema.areaTocco)
-            Text("I consigli di formazione e di scambio sono per lei.").font(.caption).foregroundStyle(.secondary)
+            Text("I consigli di formazione e di scambio sono per lei.").font(.caption).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -243,7 +243,7 @@ struct AnteprimaRoseVista: View {
                 Text("Annulla").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.testoSecondario)
             .disabled(vm.inCorso)
             .keyboardShortcut(.cancelAction)
             .accessibilityHint("Torna indietro senza salvare")
@@ -267,7 +267,7 @@ struct CartaSquadraAnteprima: View {
                 if squadra.nuova { Capsula(testo: "Nuova", colore: Color.informazione, simbolo: "sparkles") }
                 Spacer(minLength: 0)
             }
-            Text(AnteprimaLogica.conteggio(squadra)).font(.caption).foregroundStyle(.secondary)
+            Text(AnteprimaLogica.conteggio(squadra)).font(.caption).foregroundStyle(Color.testoSecondario)
             if problemi.isEmpty {
                 Label("Rosa completa", systemImage: "checkmark.circle").font(.caption).foregroundStyle(Color.verde)
             } else {
@@ -283,7 +283,7 @@ struct CartaSquadraAnteprima: View {
             }
             if squadra.sicuri > 0 {
                 DisclosureGroup(isExpanded: $sicuriAperti) {
-                    Text(nomiSicuri).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(nomiSicuri).font(.caption).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
                     Text("\(Formato.giocatori(squadra.sicuri)) \(squadra.sicuri == 1 ? "riconosciuto" : "riconosciuti")")
                         .font(.subheadline).frame(minHeight: Tema.areaTocco)
@@ -324,7 +324,7 @@ struct RigaDubbioAnteprima: View {
             }
             .accessibilityElement(children: .combine)
             if let avviso = giocatore.avviso, !avviso.isEmpty {
-                Text(avviso).font(.caption).foregroundStyle(.secondary)
+                Text(avviso).font(.caption).foregroundStyle(Color.testoSecondario)
             }
             Menu {
                 Section {
@@ -352,7 +352,7 @@ struct RigaDubbioAnteprima: View {
                         .foregroundStyle(scelta == .togli ? Color.malus : Color.primary)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 4)
-                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
                 }
                 .padding(.horizontal, 12)
                 .frame(minHeight: Tema.areaTocco)
@@ -395,7 +395,7 @@ struct CercaPerAnteprimaView: View {
                     .focused($fuoco)
                     .frame(minHeight: Tema.areaTocco)
                     .accessibilityLabel("Cerca il giocatore giusto per «\(dubbio.testo)»")
-            } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.testo)».") }
+            } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.testo)».").foregroundStyle(Color.testoSecondario) }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 if cercando { ProgressView() }
@@ -409,7 +409,7 @@ struct CercaPerAnteprimaView: View {
                     }
                 }
                 if !cercando, trovati.isEmpty, testo.trimmingCharacters(in: .whitespaces).count >= 2 {
-                    Text("Nessun risultato").font(.footnote).foregroundStyle(.secondary)
+                    Text("Nessun risultato").font(.footnote).foregroundStyle(Color.testoSecondario)
                 }
             }
         }

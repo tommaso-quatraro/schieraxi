@@ -11,7 +11,7 @@ struct PrecisioneView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("\(TestoPrecisione.intro) \(testo.calcolatoSu)")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
             if let pochi = testo.pochi {
                 Label(pochi, systemImage: "hourglass")
@@ -31,7 +31,7 @@ struct PrecisioneView: View {
             if testo.barre.count >= 2 {
                 GraficoErroreFantavoto(barre: testo.barre)
                 Text(TestoPrecisione.legendaGrafico)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if !testo.righe.isEmpty {
@@ -45,12 +45,12 @@ struct PrecisioneView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 6)
                 }
-                .tint(.secondary)
+                .tint(Color.testoSecondario)
                 .frame(minHeight: Tema.areaTocco)
             }
             if let nota = testo.notaRicostruiti {
                 Text(nota)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -70,7 +70,7 @@ private struct VocePrecisione: View {
                     .foregroundStyle(voce.attenzione ? Color.attenzione : Color.primary)
                     .lineLimit(1).minimumScaleFactor(0.6)
                 Text(voce.etichetta)
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(voce.frase)
                     .font(.subheadline)
@@ -78,7 +78,7 @@ private struct VocePrecisione: View {
                 if let g = voce.giudizio {
                     Label(g, systemImage: voce.attenzione ? "exclamationmark.triangle.fill" : "info.circle")
                         .font(.subheadline.weight(voce.attenzione ? .semibold : .regular))
-                        .foregroundStyle(voce.attenzione ? Color.attenzione : Color.secondary)
+                        .foregroundStyle(voce.attenzione ? Color.attenzione : Color.testoSecondario)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -96,7 +96,7 @@ private struct VocePrecisione: View {
                     .padding(.top, 4)
                 }
                 .font(.subheadline)
-                .tint(.secondary)
+                .tint(Color.testoSecondario)
                 .frame(minHeight: Tema.areaTocco)
             }
         }
@@ -120,7 +120,7 @@ struct GraficoErroreFantavoto: View {
                 .foregroundStyle(Color.verde.gradient)
                 .cornerRadius(3)
                 .annotation(position: .top, spacing: 2) {
-                    Text(b.valore).font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+                    Text(b.valore).font(.caption2).monospacedDigit().foregroundStyle(Color.testoSecondario)
                 }
                 .accessibilityLabel("Giornata \(b.etichetta)")
                 .accessibilityValue("errore medio \(b.valore) punti")
@@ -153,6 +153,6 @@ struct GraficoErroreFantavoto: View {
                       .init(giornata: 9, erroreFantavoto: 1.5, attesi: 68.5, fatti: 71, tua: 63.5, differenza: 7.5),
                       .init(giornata: 10, erroreFantavoto: 1.3, attesi: 69, fatti: 72.5)])
     if let t = TestoPrecisione(p) {
-        List { Section(TestoPrecisione.titolo) { PrecisioneView(testo: t) } }
+        List { Section(titolo: TestoPrecisione.titolo) { PrecisioneView(testo: t) } }
     }
 }

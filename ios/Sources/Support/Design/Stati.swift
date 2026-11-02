@@ -61,7 +61,7 @@ struct CartaScheletro: View {
             if let testo {
                 VStack(spacing: 8) {
                     Marchio(lato: 58, muove: true)
-                    Text(testo).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    Text(testo).font(.subheadline.weight(.medium)).foregroundStyle(Color.testoSecondario)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 4)

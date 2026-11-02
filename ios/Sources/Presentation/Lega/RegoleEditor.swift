@@ -198,10 +198,10 @@ struct RigaStepper: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(titolo)
-                    if let aiuto { Text(aiuto).font(.caption).foregroundStyle(.secondary) }
+                    if let aiuto { Text(aiuto).font(.caption).foregroundStyle(Color.testoSecondario) }
                 }
                 Spacer(minLength: 8)
-                Text(Formato.decimali(valore, cifre: cifre)).monospacedDigit().foregroundStyle(.secondary)
+                Text(Formato.decimali(valore, cifre: cifre)).monospacedDigit().foregroundStyle(Color.testoSecondario)
             }
         }
         .frame(minHeight: 44)
@@ -251,7 +251,7 @@ struct RegoleEditorView: View {
     }
 
     private var nome: some View {
-        Section("Nome della lega") {
+        Section(titolo: "Nome della lega") {
             TextField("La mia lega", text: vm.testo("nome_lega")).frame(minHeight: 44)
         }
     }
@@ -261,7 +261,7 @@ struct RegoleEditorView: View {
     private var importa: some View {
         Section {
             Text("Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva le regole».")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
             TextEditor(text: $vm.testoRegolamento)
                 .frame(minHeight: 96)
                 .accessibilityLabel("Testo del regolamento")
@@ -272,31 +272,31 @@ struct RegoleEditorView: View {
             .disabled(vm.riconoscimentoInCorso)
             if let e = vm.erroreRiconoscimento { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
             if let r = vm.riconoscimento { riconosciute(r) }
-        } header: { Text("Importa da Leghe") }
+        } header: { Text("Importa da Leghe").foregroundStyle(Color.testoSecondario) }
     }
 
     @ViewBuilder
     private func riconosciute(_ r: RiconoscimentoRegole) -> some View {
         if r.modifiche.isEmpty {
             Label("Non ho riconosciuto nessuna regola in questo testo. Controlla di aver copiato la pagina del regolamento, oppure imposta i valori a mano qui sotto.",
-                  systemImage: "questionmark.circle").font(.footnote).foregroundStyle(.secondary)
+                  systemImage: "questionmark.circle").font(.footnote).foregroundStyle(Color.testoSecondario)
         } else {
             Text("Riconosciuto").font(.headline)
             ForEach(r.modifiche) { m in
                 VStack(alignment: .leading, spacing: 2) {
                     Label("\(m.etichetta): \(RegoleLogica.descrivi(m.valore))", systemImage: "checkmark.circle.fill").font(.subheadline)
-                    if let riga = m.riga { Text("da: «\(riga)»").font(.caption).foregroundStyle(.secondary) }
+                    if let riga = m.riga { Text("da: «\(riga)»").font(.caption).foregroundStyle(Color.testoSecondario) }
                 }
                 .accessibilityElement(children: .combine)
             }
             if let non = r.nonRiconosciute, !non.isEmpty {
                 DisclosureGroup("Righe con numeri non riconosciute (\(non.count))") {
-                    Text(non.joined(separator: "\n")).font(.caption).foregroundStyle(.secondary)
+                    Text(non.joined(separator: "\n")).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
             Button { vm.applicaRiconosciute() } label: { Text("Applica ai campi").frame(maxWidth: .infinity, minHeight: 44) }
                 .buttonStyle(.borderedProminent)
-            Text("Controlla i valori qui sotto e tocca «Salva le regole» in fondo.").font(.caption).foregroundStyle(.secondary)
+            Text("Controlla i valori qui sotto e tocca «Salva le regole» in fondo.").font(.caption).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -304,17 +304,17 @@ struct RegoleEditorView: View {
 
     private var punteggi: some View {
         Group {
-            Section("Gol") {
+            Section(titolo: "Gol") {
                 ForEach(ruoli, id: \.0) { r in
                     RigaStepper(titolo: r.1, valore: vm.numero("bonus.gol.\(r.0)"), minimo: 0, massimo: 20)
                 }
             }
-            Section("Altri bonus") {
+            Section(titolo: "Altri bonus") {
                 ForEach(bonus, id: \.0) { b in
                     RigaStepper(titolo: b.1, valore: vm.numero("bonus.\(b.0)"), minimo: 0, massimo: 20)
                 }
             }
-            Section("Malus") {
+            Section(titolo: "Malus") {
                 ForEach(malus, id: \.0) { m in
                     RigaStepper(titolo: m.1, valore: vm.numero("bonus.\(m.0)"), minimo: -20, massimo: 0,
                                 aiuto: m.0 == "gol_subito_portiere" ? "per ogni gol" : nil)
@@ -327,8 +327,8 @@ struct RegoleEditorView: View {
                     Text("Italia").tag("italia")
                 }
                 .pickerStyle(.segmented)
-            } header: { Text("Voto di partenza") } footer: {
-                Text("Quale voto si somma a bonus e malus: quello che usa la tua lega su Leghe.")
+            } header: { Text("Voto di partenza").foregroundStyle(Color.testoSecondario) } footer: {
+                Text("Quale voto si somma a bonus e malus: quello che usa la tua lega su Leghe.").foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -342,7 +342,7 @@ struct RegoleEditorView: View {
                 RigaStepper(titolo: "Difensori minimi in campo", valore: vm.numero("modificatore_difesa.min_difensori", 4), passo: 1,
                             minimo: 3, massimo: 6, cifre: 0, aiuto: "sotto questo numero non si applica")
                 Text("La media è la somma di portiere + i 3 migliori difensori, divisa per 4. Per ogni fascia raggiunta si prende il bonus più alto raggiunto.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
                 ForEach($vm.fasce) { $f in
                     VStack(alignment: .leading, spacing: 0) {
                         RigaStepper(titolo: "Media almeno", valore: $f.media, passo: 0.25, minimo: 4, massimo: 9, cifre: 2)
@@ -353,7 +353,7 @@ struct RegoleEditorView: View {
                 Button { vm.aggiungiFascia() } label: { Label("Aggiungi una fascia", systemImage: "plus.circle").frame(minHeight: 44) }
                 prova
             }
-        } header: { Text("Modificatore difesa") } footer: { Text("Un bonus se la difesa prende voti alti.") }
+        } header: { Text("Modificatore difesa").foregroundStyle(Color.testoSecondario) } footer: { Text("Un bonus se la difesa prende voti alti.").foregroundStyle(Color.testoSecondario) }
     }
 
     private var prova: some View {
@@ -384,7 +384,7 @@ struct RegoleEditorView: View {
                     .accessibilityAddTraits(attivo ? .isSelected : [])
                 }
             }
-        } header: { Text("Moduli ammessi") } footer: { Text("Quelli che puoi schierare nella tua lega.") }
+        } header: { Text("Moduli ammessi").foregroundStyle(Color.testoSecondario) } footer: { Text("Quelli che puoi schierare nella tua lega.").foregroundStyle(Color.testoSecondario) }
     }
 
     private var panchina: some View {
@@ -406,17 +406,17 @@ struct RegoleEditorView: View {
             Text(vm.valore.valore("panchina.tipo")?.testo == "libera"
                  ? "Libera: entra il primo della panchina che può sostituirlo, anche di un ruolo diverso se il modulo resta valido."
                  : "Per ruolo: se un titolare non gioca, entra il primo della panchina dello stesso ruolo.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
             Toggle("Cambio modulo nelle sostituzioni", isOn: vm.booleano("panchina.cambio_modulo")).tint(Color.verde).frame(minHeight: 44)
             Toggle("Voto d'ufficio se manca il sostituto", isOn: vm.votoUfficioAttivo).tint(Color.verde).frame(minHeight: 44)
             if vm.votoUfficioAttivo.wrappedValue {
                 RigaStepper(titolo: "Voto d'ufficio", valore: vm.numero("voto_senza_sostituto", 4), minimo: 0, massimo: 10)
             }
-        } header: { Text("Panchina e sostituzioni") }
+        } header: { Text("Panchina e sostituzioni").foregroundStyle(Color.testoSecondario) }
     }
 
     private var rosa: some View {
-        Section("Rosa e crediti") {
+        Section(titolo: "Rosa e crediti") {
             ForEach(["P", "D", "C", "A"], id: \.self) { r in
                 RigaStepper(titolo: nomiRuolo[r] ?? r, valore: vm.numero("rosa.\(r)"), passo: 1, minimo: 0, massimo: 20, cifre: 0)
             }
@@ -429,20 +429,20 @@ struct RegoleEditorView: View {
         Section {
             RigaStepper(titolo: "Scadenza (minuti prima)", valore: vm.numero("scadenza_minuti"), passo: 5, minimo: 0,
                         massimo: TempiLega.minutiMassimi, cifre: 0)
-            Text(TempiLega.spiegaScadenza(vm.numero("scadenza_minuti").wrappedValue)).font(.footnote).foregroundStyle(.secondary)
+            Text(TempiLega.spiegaScadenza(vm.numero("scadenza_minuti").wrappedValue)).font(.footnote).foregroundStyle(Color.testoSecondario)
             RigaStepper(titolo: "Prima giornata della lega", valore: vm.numero("prima_giornata_lega", 1), passo: 1, minimo: 1,
                         massimo: TempiLega.primaGiornataMassima, cifre: 0)
-            Text(TempiLega.spiegaPartenza(vm.numero("prima_giornata_lega", 1).wrappedValue)).font(.footnote).foregroundStyle(.secondary)
+            Text(TempiLega.spiegaPartenza(vm.numero("prima_giornata_lega", 1).wrappedValue)).font(.footnote).foregroundStyle(Color.testoSecondario)
             Toggle(isOn: vm.booleano("aggiornamenti_vicino_scadenza", predefinito: true)) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Aggiornamenti più fitti vicino alla scadenza")
                     Text("Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza, con avviso se cambia qualcosa.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
             .tint(Color.verde)
             .frame(minHeight: 44)
-        } header: { Text("Tempi della lega") }
+        } header: { Text("Tempi della lega").foregroundStyle(Color.testoSecondario) }
     }
 
     private var salvataggio: some View {
@@ -457,7 +457,7 @@ struct RegoleEditorView: View {
             .disabled(vm.inCorso || !vm.modificato)
             Button { Task { await vm.annulla() } } label: { Text("Annulla le modifiche").frame(maxWidth: .infinity, minHeight: 44) }
                 .disabled(!vm.modificato)
-            if let esito = vm.esito { Text(esito).font(.footnote).foregroundStyle(vm.esitoRiuscito ? Color.secondary : Color.attenzione) }
+            if let esito = vm.esito { Text(esito).font(.footnote).foregroundStyle(vm.esitoRiuscito ? Color.testoSecondario : Color.attenzione) }
         }
     }
 }

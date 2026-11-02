@@ -20,13 +20,13 @@ struct SquadreView: View {
                     Text(errore).font(.footnote).foregroundStyle(Color.attenzione)
                 }
                 if let s = vm.caricatore.dato {
-                    Section("La tua squadra") {
+                    Section(titolo: "La tua squadra") {
                         Picker("Squadra", selection: Binding(get: { vm.mia }, set: { nuova in Task { await vm.impostaMia(nuova) } })) {
                             ForEach(s) { Text($0.nome).tag($0.nome) }
                         }
                         .frame(minHeight: 44)
                     }
-                    Section(funzioni.acceso(Funzione.squadreAltrui) ? "Le squadre" : "La mia squadra e rosa") {
+                    Section(titolo: funzioni.acceso(Funzione.squadreAltrui) ? "Le squadre" : "La mia squadra e rosa") {
                         ForEach(s.filter { funzioni.acceso(Funzione.squadreAltrui) || $0.mia == true }) { sq in
                             NavigationLink(value: PaginaLega.rosa(sq.nome)) {
                                 HStack(spacing: 12) {
@@ -37,7 +37,7 @@ struct SquadreView: View {
                                             if sq.mia == true { Text("tua").font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2).background(Color.verde.opacity(0.3), in: Capsule()) }
                                         }
                                         Text(Formato.giocatori(sq.giocatori ?? 0) + (sq.creditiResidui.map { " · \(Formato.crediti(Formato.intero($0)))" } ?? ""))
-                                            .font(.caption).foregroundStyle(.secondary)
+                                            .font(.caption).foregroundStyle(Color.testoSecondario)
                                     }
                                 }
                                 .frame(minHeight: 44)
@@ -142,19 +142,19 @@ struct RigaRosa: View {
                         BadgeRuolo(ruolo: g.ruolo ?? "?", piccolo: true)
                         Text(g.nome).font(.headline).lineLimit(2)
                     }
-                    Text(sottotitolo).font(.caption).foregroundStyle(.secondary)
+                    Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
                     if let etichette = p?.etichette, !etichette.isEmpty {
-                        Text(etichette.map(\.testo).joined(separator: " · ")).font(.caption).foregroundStyle(etichette.contains { $0.gravita == .grave } ? Color.malus : .secondary)
+                        Text(etichette.map(\.testo).joined(separator: " · ")).font(.caption).foregroundStyle(etichette.contains { $0.gravita == .grave } ? Color.malus : Color.testoSecondario)
                     }
                 }
                 Spacer(minLength: 8)
                 if let p {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(Formato.punti(p.fvAtteso)).font(.headline).monospacedDigit()
-                        Text("gioca \(Formato.percento(p.pVoto))%").font(.caption2).foregroundStyle(.secondary)
+                        Text("gioca \(Formato.percento(p.pVoto))%").font(.caption2).foregroundStyle(Color.testoSecondario)
                     }
                 } else {
-                    Text(g.id == nil ? "?" : "non gioca").font(.caption).foregroundStyle(.secondary)
+                    Text(g.id == nil ? "?" : "non gioca").font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
             .frame(minHeight: 44)
@@ -195,19 +195,19 @@ struct RosaView: View {
                     intestazione(r)
                     ForEach(reparti, id: \.0) { reparto in
                         let giocatori = r.giocatori.filter { $0.ruolo == reparto.0 }
-                        Section("\(reparto.1) (\(giocatori.count))") {
+                        Section(titolo: "\(reparto.1) (\(giocatori.count))") {
                             ForEach(giocatori, id: \.ident) { RigaRosa(g: $0) }
                         }
                     }
                     // Giocatori che il server non ha saputo collegare a un ruolo (non presenti nel listone).
                     let sconosciuti = r.giocatori.filter { !["P", "D", "C", "A"].contains($0.ruolo ?? "") }
                     if !sconosciuti.isEmpty {
-                        Section("Non riconosciuti (da controllare)") {
+                        Section(titolo: "Non riconosciuti (da controllare)") {
                             ForEach(sconosciuti, id: \.ident) { RigaRosa(g: $0) }
                         }
                     }
                     if let agg = r.aggiornato {
-                        Text("Rose aggiornate il \(Quando.dataVersione(String(agg.prefix(10))))").font(.caption).foregroundStyle(.secondary)
+                        Text("Rose aggiornate il \(Quando.dataVersione(String(agg.prefix(10))))").font(.caption).foregroundStyle(Color.testoSecondario)
                     }
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
@@ -294,11 +294,11 @@ struct RosaView: View {
                 }
                 .disabled(vm.inCorso)
                 Text("Dall'app o dal sito di Leghe tieni premuto sullo stemma o sulla divisa e scegli «Salva immagine» (oppure copia l'indirizzo dell'immagine), poi incollalo qui. Se l'indirizzo non è pubblico, salva l'immagine e caricala dalla libreria foto.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
             } else {
-                Text("Per stemma e divisa scegli una foto dalla libreria o un file.").font(.footnote).foregroundStyle(.secondary)
+                Text("Per stemma e divisa scegli una foto dalla libreria o un file.").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
-            if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(.secondary) }
+            if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(Color.testoSecondario) }
             ForEach(r.avvisi ?? [], id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(Color.attenzione) }
         }
     }
@@ -336,7 +336,7 @@ struct NovitaView: View {
                     if let n = caricatore.dato {
                         ForEach(n) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
-                                if let data = v.data { Text(Quando.dataVersione(data)).font(.caption).foregroundStyle(.secondary).monospacedDigit() }
+                                if let data = v.data { Text(Quando.dataVersione(data)).font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit() }
                                 ForEach(v.voci, id: \.self) { voce in
                                     // il puntino sta a parte: le righe lunghe vanno a capo allineate al testo
                                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -386,20 +386,20 @@ struct StatoDatiView: View {
                     AggiornaDatiSezione(vm: aggiornamento)
                 }
                 if let s = caricatore.dato {
-                    Section("Dati") {
+                    Section(titolo: "Dati") {
                         riga("Stagione", s.stagione ?? "—")
                         riga("Calciatori", "\(s.calciatori ?? 0)")
                         riga("Partite giocate", "\(s.partite?.giocate ?? 0) / \(s.partite?.totali ?? 0)")
                         riga("Voti", "\(s.voti ?? 0)")
                         riga("Coppe europee fino al", s.coppeFino.map { Quando.dataVersione($0) } ?? "—")
                     }
-                    Section("Avanzate") {
+                    Section(titolo: "Avanzate") {
                         // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata
                         DisclosureGroup("Ultimi aggiornamenti dei dati") {
                             ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(NomiDati.leggibile(a.cosa))
-                                    Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(.secondary)
+                                    Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(Color.testoSecondario)
                                     ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
                                 }
                                 .accessibilityElement(children: .combine)
@@ -407,7 +407,7 @@ struct StatoDatiView: View {
                         }
                     }
                     if let probabili = s.probabili, !probabili.isEmpty {
-                        Section("Probabili formazioni raccolte") {
+                        Section(titolo: "Probabili formazioni raccolte") {
                             ForEach(probabili) { p in
                                 riga("Giornata \(p.giornata)", "\(p.giocatori ?? 0) giocatori")
                             }
@@ -421,12 +421,12 @@ struct StatoDatiView: View {
                                     Text((g.n ?? 0) > 0
                                          ? "\(g.n ?? 0) giocatori · hanno giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
                                          : "ancora nessun dato")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(Color.testoSecondario)
                                 }
                                 .accessibilityElement(children: .combine)
                             }
-                        } header: { Text("Quanto sono giuste le previsioni") } footer: {
-                            Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.")
+                        } header: { Text("Quanto sono giuste le previsioni").foregroundStyle(Color.testoSecondario) } footer: {
+                            Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.").foregroundStyle(Color.testoSecondario)
                         }
                     }
                 } else if let e = caricatore.errore {
@@ -434,7 +434,7 @@ struct StatoDatiView: View {
                 } else {
                     ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
-                Section("Quanto sono affidabili le previsioni") {
+                Section(titolo: "Quanto sono affidabili le previsioni") {
                     affidabilitaContenuto
                 }
             }
@@ -449,20 +449,20 @@ struct StatoDatiView: View {
     private var affidabilitaContenuto: some View {
         if let a = affidabilita.dato, let s = a.sintesi, (s.giornate ?? 0) > 0 {
             Text("Prova sulle ultime \(s.giornate ?? 0) giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la scelta più semplice: chi ha la media più alta.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
             FilaTessere {
                 TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (SchieraXI)")
                 TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore (da fantamedia)")
                 TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: "punti formazione (SchieraXI)")
             }
             Text("Punti medi per giornata: SchieraXI \(s.puntiModello.map { Formato.decimali($0) } ?? "–"), da fantamedia \(s.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), massimo possibile \(s.puntiPerfetta.map { Formato.decimali($0) } ?? "–"). Errore più basso e punti più alti sono meglio. Nelle giornate passate mancano le probabili formazioni, quindi dal vivo il modello va un po' meglio.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
             let righe = (a.righe ?? []).filter { $0.puntiModello != nil }
             if righe.count >= 2 { GraficoAffidabilita(righe: righe) }
         } else if affidabilita.errore != nil, affidabilita.dato == nil {
             Text("Non riesco a leggere la prova delle previsioni.").font(.footnote).foregroundStyle(Color.attenzione)
         } else {
-            Text("La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.").font(.footnote).foregroundStyle(.secondary)
+            Text("La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.").font(.footnote).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -486,7 +486,7 @@ struct CercaGiocatoreGiustoView: View {
                     .autocorrectionDisabled()
                     .frame(minHeight: 44)
                     .accessibilityLabel("Cerca il giocatore giusto per \(dubbio.nome)")
-            } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.nome)».") }
+            } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.nome)».").foregroundStyle(Color.testoSecondario) }
             if let errore = vm.errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 if vm.cercando { ProgressView() }
@@ -496,7 +496,7 @@ struct CercaGiocatoreGiustoView: View {
                     }
                 }
                 if !vm.cercando, vm.trovati.isEmpty, testo.trimmingCharacters(in: .whitespaces).count >= 2 {
-                    Text("Nessun risultato").font(.footnote).foregroundStyle(.secondary)
+                    Text("Nessun risultato").font(.footnote).foregroundStyle(Color.testoSecondario)
                 }
             }
         }

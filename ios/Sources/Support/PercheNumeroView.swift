@@ -20,7 +20,7 @@ struct BloccoPercheNumero: View {
                 .accessibilityLabel(r.voce)
             }
             Text(perche.nota)
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -30,7 +30,7 @@ struct BloccoPercheNumero: View {
         case .su: return .verde
         case .giu: return .malus
         case .avviso: return .attenzione
-        case .neutro: return .secondary
+        case .neutro: return .testoSecondario
         }
     }
 
@@ -60,12 +60,12 @@ struct NumeroFantavotoGrande: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 0) {
                 NumeroCheSale(valore: g.fvAtteso ?? 0).font(.system(size: 48, weight: .bold, design: .rounded))
-                Text(FantavotoAtteso.nome + " · se gioca").font(.caption).foregroundStyle(.secondary)
+                Text(FantavotoAtteso.nome + " · se gioca").font(.caption).foregroundStyle(Color.testoSecondario)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 0) {
                 Text("\(Formato.percento(g.pVoto))%").font(.title2.bold()).monospacedDigit()
-                Text("gioca").font(.caption).foregroundStyle(.secondary)
+                Text("gioca").font(.caption).foregroundStyle(Color.testoSecondario)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -96,7 +96,7 @@ struct PercheNumeroSheet: View {
                         AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome, ruolo: g.ruolo)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(g.nome).font(.title2.bold()).accessibilityAddTraits(.isHeader)
-                            Text(partita).font(.subheadline).foregroundStyle(.secondary)
+                            Text(partita).font(.subheadline).foregroundStyle(Color.testoSecondario)
                         }
                         Spacer(minLength: 0)
                     }
@@ -109,7 +109,7 @@ struct PercheNumeroSheet: View {
                         Carta(PercheNumero.titolo, simbolo: "list.bullet.rectangle") { BloccoPercheNumero(perche: p) }
                     }
                     Text(FantavotoAtteso.definizione)
-                        .font(.footnote).foregroundStyle(.secondary)
+                        .font(.footnote).foregroundStyle(Color.testoSecondario)
                         .fixedSize(horizontal: false, vertical: true)
                     if let apriScheda {
                         Button(action: apriScheda) {

@@ -129,7 +129,7 @@ struct LegaView: View {
             NavigationLink(value: PaginaLega.stagione) {
                 VStack(alignment: .leading, spacing: 2) {
                     Label("Nuova stagione \(vm.stagione.dato?.corrente ?? "")", systemImage: "calendar.badge.exclamationmark").font(.headline)
-                    Text("Le rose sono ancora quelle del \(vm.stagione.dato?.rose ?? ""): archivia e riparti.").font(.caption).foregroundStyle(.secondary)
+                    Text("Le rose sono ancora quelle del \(vm.stagione.dato?.rose ?? ""): archivia e riparti.").font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 .frame(minHeight: 44)
                 .accessibilityElement(children: .combine)

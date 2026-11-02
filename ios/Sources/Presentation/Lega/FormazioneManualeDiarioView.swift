@@ -31,12 +31,12 @@ struct FormazioneManualeDiarioView: View {
                 if let r = rosa.dato {
                     Section {
                         Text("Giornata \(voce.giornata ?? 0): tocca i giocatori che hai schierato. Servono 11 titolari.")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                     ForEach(reparti, id: \.0) { reparto in
                         let giocatori = r.giocatori.filter { $0.ruolo == reparto.0 && $0.id != nil }
                         if !giocatori.isEmpty {
-                            Section(reparto.1) {
+                            Section(titolo: reparto.1) {
                                 ForEach(giocatori, id: \.ident) { g in riga(g) }
                             }
                         }
@@ -66,7 +66,7 @@ struct FormazioneManualeDiarioView: View {
             .safeAreaInset(edge: .bottom) {
                 Text("\(scelti.count) di 11")
                     .font(.subheadline.weight(.semibold)).monospacedDigit()
-                    .foregroundStyle(scelti.count == 11 ? Color.verde : (scelti.count > 11 ? Color.attenzione : .secondary))
+                    .foregroundStyle(scelti.count == 11 ? Color.verde : (scelti.count > 11 ? Color.attenzione : Color.testoSecondario))
                     .padding(.vertical, 8).frame(maxWidth: .infinity)
                     .background(.bar)
             }
@@ -84,7 +84,7 @@ struct FormazioneManualeDiarioView: View {
             if scelto { scelti.remove(id) } else { scelti.insert(id) }
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: scelto ? "checkmark.circle.fill" : "circle").foregroundStyle(scelto ? Color.verde : .secondary)
+                Image(systemName: scelto ? "checkmark.circle.fill" : "circle").foregroundStyle(scelto ? Color.verde : Color.testoSecondario)
                 AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? g.squadra, dimensione: 34, conNumero: false, nome: g.nome, ruolo: g.ruolo)
                 Text(g.nome)
                 Spacer()

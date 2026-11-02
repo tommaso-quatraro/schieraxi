@@ -15,7 +15,7 @@ struct AggiornaDatiSezione: View {
         .sensoryFeedback(trigger: vm.inCorso) { vecchio, nuovo in vecchio && !nuovo ? .success : nil }
         .accessibilityHint("Il server riscarica calendario, voti, probabili formazioni e quotazioni")
         if let m = vm.messaggio {
-            Text(m).font(.footnote).foregroundStyle(vm.errori.isEmpty ? Color.secondary : Color.attenzione)
+            Text(m).font(.footnote).foregroundStyle(vm.errori.isEmpty ? Color.testoSecondario : Color.attenzione)
         }
     }
 }
@@ -59,10 +59,10 @@ struct DifferenzeView: View {
                     voce("plus.circle.fill", Color.verde, "\(g.squadra) prende dagli svincolati: \(nomi(g.giocatori))")
                 }
                 ForEach(differenze.tagliati ?? []) { g in
-                    voce("minus.circle.fill", .orange, "\(g.squadra) lascia liberi: \(nomi(g.giocatori))")
+                    voce("minus.circle.fill", .attenzione, "\(g.squadra) lascia liberi: \(nomi(g.giocatori))")
                 }
                 ForEach(differenze.crediti ?? []) { c in
-                    voce("c.circle", .secondary,
+                    voce("c.circle", .testoSecondario,
                          "Crediti \(c.squadra): \(c.prima.map { String(Formato.intero($0)) } ?? "–") → \(c.dopo.map { String(Formato.intero($0)) } ?? "–")")
                 }
                 if vuoto, let t = differenze.testo { Text(t).font(.subheadline) }
@@ -89,7 +89,7 @@ struct MovimentiView: View {
                                    descrizione: "Quando importi di nuovo le rose, qui compaiono scambi, svincolati presi, tagli e crediti cambiati.")
                     }
                     ForEach(elenco) { m in
-                        Section(Quando.leggibile((m.quando ?? "").replacingOccurrences(of: "T", with: " "))) {
+                        Section(titolo: Quando.leggibile((m.quando ?? "").replacingOccurrences(of: "T", with: " "))) {
                             DifferenzeView(differenze: m)
                         }
                     }
@@ -129,14 +129,14 @@ struct StagioneView: View {
                     if vm.archiviata {
                         Section {
                             Label("Stagione \(s.rose ?? "") archiviata", systemImage: "checkmark.seal.fill").font(.headline).foregroundStyle(Color.verde)
-                            Text("Tutto è salvato nell'archivio del server. Ora prepara la nuova stagione:").font(.footnote).foregroundStyle(.secondary)
+                            Text("Tutto è salvato nell'archivio del server. Ora prepara la nuova stagione:").font(.footnote).foregroundStyle(Color.testoSecondario)
                         }
                         passi
                     } else if s.nuova == true {
                         Section {
                             Text("Nuova stagione \(s.corrente ?? "")").font(.headline)
                             Text("Le rose sono ancora quelle del \(s.rose ?? ""). Archivio rose, regole, scelte e osservati e riparto da rose vuote (stessi nomi di squadra): poi importi il nuovo Excel di Leghe. Non si cancella niente.")
-                                .font(.footnote).foregroundStyle(.secondary)
+                                .font(.footnote).foregroundStyle(Color.testoSecondario)
                             Button(role: .destructive) { conferma = true } label: {
                                 if vm.inCorso { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
                                 else { Label("Archivia e riparti", systemImage: "archivebox").frame(maxWidth: .infinity, minHeight: 44) }
@@ -148,7 +148,7 @@ struct StagioneView: View {
                         Section {
                             Label("Le rose sono della stagione in corso (\(s.corrente ?? "")): non c'è niente da fare.", systemImage: "checkmark.circle")
                                 .font(.subheadline)
-                            Text("Quando la stagione finisce e inizia la successiva, qui compare il passaggio guidato.").font(.footnote).foregroundStyle(.secondary)
+                            Text("Quando la stagione finisce e inizia la successiva, qui compare il passaggio guidato.").font(.footnote).foregroundStyle(Color.testoSecondario)
                         }
                     }
                 } else if let e = vm.stato.errore {
@@ -172,7 +172,7 @@ struct StagioneView: View {
     }
 
     private var passi: some View {
-        Section("Passi per la nuova stagione") {
+        Section(titolo: "Passi per la nuova stagione") {
             NavigationLink(value: PaginaLega.importa) {
                 passo("1", "Importa le nuove rose", "Con l'Excel di Leghe, da «Aggiorna le rose».")
             }
@@ -197,7 +197,7 @@ struct StagioneView: View {
             Text(numero).font(.headline).frame(width: latoNumero, height: latoNumero).background(Color.verde.opacity(0.25), in: Circle()).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(titolo).font(.subheadline.bold())
-                Text(dettaglio).font(.caption).foregroundStyle(.secondary)
+                Text(dettaglio).font(.caption).foregroundStyle(Color.testoSecondario)
             }
         }
         .frame(minHeight: 44)
@@ -225,13 +225,13 @@ struct AspettoView: View {
                     .pickerStyle(.segmented)
                     .sensoryFeedback(.selection, trigger: tema)
                 } header: {
-                    Text("Tema")
+                    Text("Tema").foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text("Automatico segue il chiaro e lo scuro di iPhone. La dimensione del testo si cambia in Impostazioni di iPhone > Schermo e luminosità > Dimensione del testo: l'app la segue.")
+                    Text("Automatico segue il chiaro e lo scuro di iPhone. La dimensione del testo si cambia in Impostazioni di iPhone > Schermo e luminosità > Dimensione del testo: l'app la segue.").foregroundStyle(Color.testoSecondario)
                 }
                 Section {
                     Toggle("Animazioni ridotte", isOn: $animazioniRidotte).tint(Color.verde).frame(minHeight: 44)
-                } header: { Text("Movimento") } footer: { Text("Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»).") }
+                } header: { Text("Movimento").foregroundStyle(Color.testoSecondario) } footer: { Text("Toglie le animazioni dell'app (oltre a quelle che iOS già riduce se attivi «Riduci movimento»).").foregroundStyle(Color.testoSecondario) }
             }
             .scrollContentBackground(.hidden)
         }

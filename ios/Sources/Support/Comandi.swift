@@ -28,9 +28,9 @@ struct RiquadroComando: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(titolo).font(.caption).foregroundStyle(.secondary)
+            Text(titolo).font(.caption).foregroundStyle(Color.testoSecondario)
             Text(grande).font(.system(.largeTitle, design: .rounded).weight(.bold))
-            Text(dettaglio).font(.subheadline).foregroundStyle(.secondary)
+            Text(dettaglio).font(.subheadline).foregroundStyle(Color.testoSecondario)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()

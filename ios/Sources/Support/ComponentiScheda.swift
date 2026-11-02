@@ -47,7 +47,7 @@ struct TesseraDato: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(valore).font(.title3.bold()).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
-            Text(etichetta).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Text(etichetta).font(.caption2).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
@@ -106,7 +106,7 @@ struct ProssimePartite: View {
                         Text(ColoriSquadra.sigla(p.avversario)).font(.caption.bold())
                         Text(p.inCasa == true ? "casa" : "fuori").font(.caption2)
                     }
-                    .foregroundStyle(.black.opacity(0.8))
+                    .foregroundStyle(Color.black)
                     .frame(minWidth: 52, minHeight: 44)
                     .background(Color.difficolta(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     .accessibilityElement(children: .ignore)

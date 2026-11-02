@@ -22,13 +22,13 @@ struct CodiceRecuperoView: View {
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
                 Text("Se dimentichi la password, questo codice è l'unico modo per rientrare. Compare una volta sola: scrivilo o copialo in un posto sicuro.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Color.testoSecondario)
                     .multilineTextAlignment(.center)
 
                 Carta {
                     if schermo.registrato {
                         Label("Codice nascosto: lo schermo è in registrazione.", systemImage: "eye.slash")
-                            .font(.subheadline).foregroundStyle(.secondary)
+                            .font(.subheadline).foregroundStyle(Color.testoSecondario)
                             .frame(maxWidth: .infinity)
                     } else {
                         Text(codice)

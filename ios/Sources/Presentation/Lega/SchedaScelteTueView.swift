@@ -22,11 +22,11 @@ struct SchedaScelteTueView: View {
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
                 .monospacedDigit()
                 .minimumScaleFactor(0.6)
-            Text(testo.sottotitolo).font(.subheadline).foregroundStyle(.secondary)
+            Text(testo.sottotitolo).font(.subheadline).foregroundStyle(Color.testoSecondario)
             conti
             Text(testo.frasePunti).font(.body)
             if !testo.fraseCommento.isEmpty {
-                Text(testo.fraseCommento).font(.subheadline).foregroundStyle(.secondary)
+                Text(testo.fraseCommento).font(.subheadline).foregroundStyle(Color.testoSecondario)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -51,7 +51,7 @@ struct SchedaScelteTueView: View {
     private func conto(_ titolo: String, _ n: Int) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(n)").font(.title2.weight(.semibold)).monospacedDigit()
-            Text(titolo).font(.footnote).foregroundStyle(.secondary)
+            Text(titolo).font(.footnote).foregroundStyle(Color.testoSecondario)
         }
         .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
         .padding(.horizontal, 10)
@@ -87,7 +87,7 @@ struct SchedaScelteTueView: View {
         switch e {
         case .tua: return Color.verde
         case .consigliata: return Color.attenzione
-        case .pari: return Color.secondary
+        case .pari: return Color.testoSecondario
         }
     }
 }

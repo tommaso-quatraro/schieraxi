@@ -26,10 +26,10 @@ struct CollegaWidgetView: View {
                     Image(systemName: icona)
                         .font(.system(size: 44))
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(stato == .senzaPermesso ? Color.orange : Color.verde)
+                        .foregroundStyle(stato == .senzaPermesso ? Color.attenzione : Color.verde)
                         .accessibilityHidden(true)
                     Text(titolo).font(.title2.bold()).multilineTextAlignment(.center)
-                    Text(spiegazione).font(.body).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Text(spiegazione).font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                     if stato == .copiato || stato == .senzaPermesso {
                         Button { Task { await copia() } } label: {
@@ -45,7 +45,7 @@ struct CollegaWidgetView: View {
                     .keyboardShortcut(.defaultAction)
                     if stato == .copiato || stato == .senzaPermesso {
                         Text("Il codice permette al widget solo di leggere la tua formazione e vale 90 giorni. Non mandarlo a nessuno.")
-                            .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .font(.footnote).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
