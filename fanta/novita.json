@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.338",
+    "data": "2026-11-02T11:16:53",
+    "titolo": "Rose dalle schermate di Leghe: nomi riconosciuti meglio",
+    "voci": [
+      "Quando carichi le rose, se per un giocatore ci sono anche il ruolo e la squadra di Serie A, i nomi scritti in breve (per esempio solo il cognome, o con l'iniziale) vengono riconosciuti con sicurezza.",
+      "Se il ruolo o la squadra non sono quelli giusti, il giocatore resta sempre da controllare: SchieraXI non indovina.",
+      "Piccoli errori di lettura (accenti persi, punti o spazi mancanti, uno zero al posto della O) non impediscono più di riconoscere il nome, se non può essere un altro giocatore."
+    ],
+    "tecnico": [
+      "rose.py: formato «ruolo;nome;club;prezzo» con l'intestazione nella prima riga (testo letto con l'OCR dall'app per iPhone): righe di una cella = fantasquadra (anche con virgole e numeri), «crediti;N» = crediti residui, colonne fisse.",
+      "nomi.py: un nome abbreviato con ruolo E squadra uguali al listone e un solo candidato diventa metodo «esatto» (quindi «sicuro» nell'anteprima); nome uguale ma ruolo o squadra diversi: mai sicuro, e se un omonimo ha proprio quel ruolo e quella squadra diventa un dubbio tra i due.",
+      "nomi.py: chiave «compattata» (senza spazi, 0→o, 1→l/i) valida solo se porta a un nome solo del listone; iniziali in meno compatibili («Esposito F.» per «Esposito F.P.»); squadre con prefisso («Hellas Verona») riconosciute come squadre.",
+      "Corpus dei nomi: varianti OCR con ruolo e squadra (genera_ocr) e prove con ruolo o squadra sbagliati; zero sicuri sbagliati sul listone inventato e su quello vero."
+    ]
+  },
+  {
     "versione": "1.337",
     "data": "2026-11-02T11:14:18",
     "titolo": "Privacy, termini ed eliminazione dell'account più completi",
