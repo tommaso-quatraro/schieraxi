@@ -10,7 +10,6 @@ from collections import Counter
 from datetime import datetime, timedelta
 from itertools import combinations
 
-import pytest
 from hypothesis import HealthCheck, example, given, settings
 from hypothesis import strategies as st
 
@@ -199,10 +198,9 @@ def test_inizio_del_turno_coerente(date):
     assert turno.inizio(list(reversed(date))) == i                          # l'ordine delle partite non conta
 
 
-@pytest.mark.xfail(strict=True, reason="difetto #139: con il gruppo principale a 5 giorni dalle prime partite, più di 2 anticipi")
 @PROVE
 @given(giornata)
-@example([VENERDI] * 3 + [MERCOLEDI] * 4)        # il controesempio trovato da Hypothesis (issue #139)
+@example([VENERDI] * 3 + [MERCOLEDI] * 4)        # il controesempio trovato da Hypothesis (difetto #139, corretto)
 def test_mai_piu_di_max_anticipi(date):
     """Più di MAX_ANTICIPI partite «anticipate» non sono anticipi ma un turno diviso (fanta/turno.py)."""
     i = turno.inizio(date)
