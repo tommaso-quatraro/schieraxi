@@ -161,14 +161,20 @@ struct CartaChiGioca: View {
     }
 }
 
-/// Una riga di chi gioca: ruolo, nome, squadra (per esteso) e a destra il fantavoto, oppure l'ora o lo stato della partita.
+/// Una riga di chi gioca: ruolo, nome, sigla della squadra («GEN», come la web app) e a destra il fantavoto o lo stato della partita.
 /// Chi non va più a punteggio (sostituito) è più tenue e lo dice anche a parole.
 struct RigaGiocatoreInCorso: View {
     let g: GiocatoreInCorso
     let nota: String?
     let apri: (Int) -> Void
 
+    /// La sigla sulla riga («GEN»); a voce il nome per esteso, più chiaro di tre lettere.
     private var squadra: String? {
+        guard let s = g.squadra, !s.isEmpty else { return nil }
+        return ColoriSquadra.sigla(s)
+    }
+
+    private var squadraPerEsteso: String? {
         guard let s = g.squadra, !s.isEmpty else { return nil }
         return s.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "-", with: " ").capitalized
     }
@@ -203,7 +209,7 @@ struct RigaGiocatoreInCorso: View {
         case "fatto":
             Text(TestiFase.valore(g))
                 .font(.title3.bold()).monospacedDigit()
-                .foregroundStyle(coloreVoto)
+                .foregroundStyle(.primary)          // voto vero neutro, come la web app (niente verde o rosso)
         case "in_corso":
             Capsula(testo: TestiFase.valore(g), colore: .informazione)
         case "senza_voto":
@@ -217,17 +223,9 @@ struct RigaGiocatoreInCorso: View {
         }
     }
 
-    /// Verde dal 7 in su, rosso sotto il 6: il numero resta comunque scritto (il colore non è l'unica informazione).
-    private var coloreVoto: Color {
-        guard let v = g.fantavoto else { return .primary }
-        if v >= 7 { return .verde }
-        if v < 6 { return .malus }
-        return .primary
-    }
-
     private var voce: String {
         var parti = [g.nome, nomeRuolo(g.ruolo ?? "")]
-        if let squadra { parti.append(squadra) }
+        if let squadraPerEsteso { parti.append(squadraPerEsteso) }
         var frase = parti.joined(separator: ", ") + ": " + TestiFase.valoreVoce(g)
         if let nota { frase += ". " + nota }
         return frase
