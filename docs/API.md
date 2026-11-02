@@ -436,6 +436,15 @@ Le app mostrano il numero della lega (`giornata_lega`) quando c'è, altrimenti `
 
 ## Partite rinviate: regola della lega ed eccezione per una giornata
 
+**Anticipi** (dal 2/11/2026, regola unica di `fanta/turno.py`): il turno comincia dal gruppo principale della giornata (partite a
+meno di 36 ore l'una dall'altra, almeno metà del totale). Una partita da più di 36 ore a meno di 7 giorni prima è un anticipo
+(al massimo 2; di più è un turno diviso, come a Pasqua, e vale la regola di prima): non fissa `inizio` né `scadenza` di `/api/oggi` e
+`/api/widget` (né promemoria, pianificatore e copia automatica), non è mai `rinviata` e non fa uscire dal turno il posticipo del
+lunedì. La formazione resta salvabile fino alla scadenza del gruppo principale; in `GET /api/formazione` (con `iniziata: false`) i
+giocatori di un anticipo già cominciato hanno già `stato_partita`, `titolarita: null` ed `etichetta` dello stato vero («Ha giocato»,
+«Voto in arrivo»...), come a giornata iniziata. Partite giocate 7 giorni o più prima del gruppo principale (metà giornata giocata e
+il resto rinviato) fissano la scadenza come prima.
+
 Una partita della giornata è **rinviata** se non è stata giocata e non sta nel turno (regola unica di `fanta/turno.py`): senza data
 o spostata a un recupero, anche settimane dopo. Appena il recupero è giocato non è più rinviata: i suoi voti valgono per la sua
 giornata. Cosa fa la lega con i giocatori di quella partita lo dicono tre campi nuovi di `GET/PUT /api/regole` (facoltativi: se un

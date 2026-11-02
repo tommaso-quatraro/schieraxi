@@ -95,6 +95,8 @@ Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazio
 - **Da controllare** (giocatori in dubbio, con «gioca N%»: quante probabilità hanno di giocare), **I tuoi migliori** (fantavoto atteso e «gioca N%»), **Indisponibili** e **Diffidati**;
 - **Partite del turno**, con i risultati in diretta (gol, rigori, espulsioni; una partita già cominciata dice **In corso** anche senza la diretta; una partita rinviata dice **Rinviata**; quelle senza una data nuova stanno in fondo). A sinistra l'ora o lo stato, al centro le squadre, a destra il risultato. Le partite con i tuoi titolari hanno il fondo verde chiaro e una barretta a sinistra.
 
+Se una partita della giornata è **anticipata** di qualche giorno, la scadenza resta quella del resto della giornata: puoi ancora cambiare la formazione, e i giocatori dell'anticipo mostrano già com'è andata la loro partita.
+
 Se una partita della giornata è **rinviata**, in Oggi compare il riquadro **Partita rinviata**: quali partite, la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Impostazioni › Regole › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
 
 I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una frase. SchieraXI non propone cambi per differenze minime né ti fa svincolare un titolare utile.
