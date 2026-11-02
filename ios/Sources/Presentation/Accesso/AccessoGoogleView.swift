@@ -118,14 +118,12 @@ struct ScegliNomeGoogleView: View {
 
 /// «Accessi» nelle Impostazioni, sotto «Il tuo account»: come si entra (password, Google), collega e scollega Google.
 /// Non compare se il server non ha Google acceso.
+/// I fogli (password per collegare, aggiungi una password) si aprono da `FogliAccount`, fuori dalla lista: vedi `FoglioAccount`.
 struct AccessiSezione: View {
+    @ObservedObject var fogli: FogliAccount
     @EnvironmentObject private var sessione: SessioneAccount
     @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
     @State private var chiediScollega = false
-    @State private var foglioPassword = false
-    @State private var chiediPassword = false
-    @State private var errore: String?
-    @State private var messaggio: String?
 
     var body: some View {
         if sessione.multiutente, sessione.utente != nil, ServiziSociali.googleAcceso(socialTesto) {
@@ -140,47 +138,39 @@ struct AccessiSezione: View {
                                 Label("Scollega Google", systemImage: "minus.circle").frame(minHeight: Tema.areaTocco)
                             }
                             .disabled(sessione.inCorso)
+                            // sul pulsante (una riga sola), non sulla Section: lì finirebbe su ogni riga
+                            .confirmationDialog("Scollegare Google?", isPresented: $chiediScollega, titleVisibility: .visible) {
+                                Button("Scollega Google", role: .destructive) { Task { await fogli.scollegaGoogle(sessione) } }
+                            } message: {
+                                Text("Potrai entrare solo con nome utente e password. Se vuoi, puoi ricollegare Google quando vuoi.")
+                            }
                         }
                     } else {
-                        Button { if sessione.senzaPassword { Task { await collega(password: "") } } else { chiediPassword = true } } label: {
+                        Button {
+                            if sessione.senzaPassword { Task { await fogli.collegaGoogle(password: "", sessione) } } else { fogli.apri(.passwordPerGoogle) }
+                        } label: {
                             Label("Collega Google", systemImage: "link.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
                         }
                         .disabled(sessione.inCorso)
                         .accessibilityHint("Si apre una finestra di Google")
                     }
                     if a.soloGoogle {
-                        Button { foglioPassword = true } label: {
+                        Button { fogli.apri(.passwordDaGoogle) } label: {
                             Label("Aggiungi una password", systemImage: "key").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
                         }
                     }
                 } else {
                     Text("Controllo come entri…").foregroundStyle(.secondary)
                 }
-                if let messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
-                if let errore { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
+                if let messaggio = fogli.messaggioAccessi { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
+                if let errore = fogli.erroreAccessi { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
             } header: {
                 Text("Accessi")
             } footer: {
                 Text(piede)
             }
-            .task { await sessione.aggiornaAccessi() }
-            .confirmationDialog("Scollegare Google?", isPresented: $chiediScollega, titleVisibility: .visible) {
-                Button("Scollega Google", role: .destructive) { Task { await scollega() } }
-            } message: {
-                Text("Potrai entrare solo con nome utente e password. Se vuoi, puoi ricollegare Google quando vuoi.")
-            }
-            .sheet(isPresented: $chiediPassword) {
-                NavigationStack {
-                    FoglioPasswordPerCollegare { password in
-                        chiediPassword = false
-                        Task { await collega(password: password) }
-                    }
-                }
-                .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
-            }
-            .sheet(isPresented: $foglioPassword) {
-                NavigationStack { FoglioPasswordDaGoogle() }.presentationDragIndicator(.visible)
-            }
+            // niente .task, .sheet o .confirmationDialog qui: su una Section dentro una List finiscono su OGNI riga.
+            // Il controllo degli accessi lo fa una volta sola `fogliAccount(_:)` sulle Impostazioni.
         }
     }
 
@@ -190,28 +180,6 @@ struct AccessiSezione: View {
         if a.google != nil && !a.puoScollegareGoogle { return "Google è l'unico modo per entrare: per scollegarlo serve prima un altro accesso." }
         if a.google == nil { return "Collegando Google puoi entrare senza scrivere la password. Il nome utente resta lo stesso." }
         return "Puoi entrare con la password oppure con Google."
-    }
-
-    private func collega(password: String) async {
-        errore = nil; messaggio = nil
-        do {
-            try await sessione.collegaGoogle(password: password, avvio: AvvioWebSistema())
-            messaggio = "Google è collegato."
-        } catch let e as ErroreSocial where e.eSoloUnaChiusura {
-            // chiusa la finestra: nessun errore da mostrare
-        } catch {
-            errore = SchermataAccesso.testoErrore(error)
-        }
-    }
-
-    private func scollega() async {
-        errore = nil; messaggio = nil
-        do {
-            try await sessione.scollegaGoogle()
-            messaggio = "Google è scollegato."
-        } catch {
-            errore = SchermataAccesso.testoErrore(error)
-        }
     }
 }
 

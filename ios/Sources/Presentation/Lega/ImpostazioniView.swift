@@ -37,11 +37,13 @@ struct ImpostazioniView: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.dismiss) private var chiudi
     @State private var percorso: [PaginaImpostazioni] = []
+    /// I fogli dell'account: lo stato vive qui e si presentano dal NavigationStack, mai da una riga della lista.
+    @StateObject private var fogli = FogliAccount()
 
     var body: some View {
         NavigationStack(path: $percorso) {
             List {
-                AccountSezione()
+                AccountSezione(fogli: fogli)
                 SessioneMinimaSezione(nonRaggiungibile: vm.info.datiSalvati != nil || vm.info.errore != nil)
                 if ProvaEsempio.attiva { SezioneProvaEsempio() }
                 sezioneApp
@@ -67,6 +69,7 @@ struct ImpostazioniView: View {
                 if Demo.schermata == "impostazioni-aspetto", percorso.isEmpty { percorso = [.aspetto] }
             }
         }
+        .fogliAccount(fogli)   // fuori dalla List: i dati dell'account che arrivano non chiudono più i fogli
         .tint(Color.verde)
         .schermoProtetto()   // l'email e i dati dell'account non devono comparire nell'anteprima del selettore delle app
     }

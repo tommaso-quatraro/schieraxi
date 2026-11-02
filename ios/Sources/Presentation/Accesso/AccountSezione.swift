@@ -1,20 +1,148 @@
 import SwiftUI
 
-/// «Il tuo account» nelle Impostazioni: un solo nome, l'email (quella di Google se è collegato), cambia password,
-/// codice per recuperare l'accesso, elimina l'account. «Esci» sta in fondo alle Impostazioni (`EsciSezione`).
-/// Si vede solo se il server ha gli account (multiutente); con il server di sempre non compare.
-struct AccountSezione: View {
+/// I fogli dell'account («Il tuo account» e «Accessi»).
+///
+/// Si aprono tutti da UN solo punto, fuori dalla lista delle Impostazioni (`fogliAccount(_:)` sul suo NavigationStack).
+/// Prima ogni sezione aveva il suo `.sheet` attaccato alla `Section`: dentro una `List` un modificatore su una `Section`
+/// finisce su OGNI sua riga (tanti fogli legati allo stesso stato), e le righe si ridisegnano appena arrivano i dati
+/// dell'account (`/api/account/me`, gli accessi, l'email): la riga che teneva il foglio veniva rifatta e il foglio
+/// si chiudeva da solo («Cambia password» si apriva e si chiudeva subito, build 219).
+enum FoglioAccount: Identifiable, Equatable {
+    case password, codice, elimina, email
+    /// La password prima di collegare Google; aggiungi una password (chi entra solo con Google).
+    case passwordPerGoogle, passwordDaGoogle
+    /// Il foglio Condividi del file «Scarica i tuoi dati».
+    case condividi(URL)
+
+    var id: String {
+        switch self {
+        case .password: return "password"
+        case .codice: return "codice"
+        case .elimina: return "elimina"
+        case .email: return "email"
+        case .passwordPerGoogle: return "passwordPerGoogle"
+        case .passwordDaGoogle: return "passwordDaGoogle"
+        case .condividi(let url): return "condividi-" + url.lastPathComponent
+        }
+    }
+}
+
+/// Quale foglio dell'account è aperto e l'ultimo esito da mostrare nelle righe. Vive nelle Impostazioni (non nelle righe
+/// della lista), così niente che si ridisegna lo può azzerare.
+@MainActor
+final class FogliAccount: ObservableObject {
+    @Published var aperto: FoglioAccount?
+    /// «Password cambiata.», «Email verificata.»... sotto «Il tuo account».
+    @Published var messaggio: String?
+    /// Esito di collega/scollega Google sotto «Accessi».
+    @Published var messaggioAccessi: String?
+    @Published var erroreAccessi: String?
+
+    /// Apre un foglio; se ce n'è già uno aperto non fa niente (un doppio tocco non ne apre due).
+    func apri(_ foglio: FoglioAccount) {
+        guard aperto == nil else { return }
+        aperto = foglio
+    }
+
+    func collegaGoogle(password: String, _ sessione: SessioneAccount) async {
+        erroreAccessi = nil; messaggioAccessi = nil
+        do {
+            try await sessione.collegaGoogle(password: password, avvio: AvvioWebSistema())
+            messaggioAccessi = "Google è collegato."
+        } catch let e as ErroreSocial where e.eSoloUnaChiusura {
+            // chiusa la finestra: nessun errore da mostrare
+        } catch {
+            erroreAccessi = SchermataAccesso.testoErrore(error)
+        }
+    }
+
+    func scollegaGoogle(_ sessione: SessioneAccount) async {
+        erroreAccessi = nil; messaggioAccessi = nil
+        do {
+            try await sessione.scollegaGoogle()
+            messaggioAccessi = "Google è scollegato."
+        } catch {
+            erroreAccessi = SchermataAccesso.testoErrore(error)
+        }
+    }
+}
+
+extension View {
+    /// Il punto da cui si aprono i fogli dell'account: va messo FUORI dalla `List` (sul NavigationStack delle Impostazioni).
+    func fogliAccount(_ fogli: FogliAccount) -> some View { modifier(PresentaFogliAccount(fogli: fogli)) }
+}
+
+private struct PresentaFogliAccount: ViewModifier {
+    @ObservedObject var fogli: FogliAccount
     @EnvironmentObject private var sessione: SessioneAccount
     @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
 
-    private enum Foglio: String, Identifiable {
-        case password, codice, elimina, email
-        var id: String { rawValue }
+    /// Cambia quando compare «Accessi» (utente noto e Google acceso): solo allora si chiede di nuovo come si entra.
+    private var chiaveAccessi: String {
+        guard sessione.multiutente, let u = sessione.utente, ServiziSociali.googleAcceso(socialTesto) else { return "" }
+        return String(u.id)
     }
 
-    @State private var foglio: Foglio?
-    @State private var errore: String?
-    @State private var messaggio: String?
+    func body(content: Content) -> some View {
+        content
+            // come si entra (password, Google): una volta, quando «Accessi» compare (prima partiva da ogni riga di «Accessi»)
+            .task(id: chiaveAccessi) {
+                if !chiaveAccessi.isEmpty { await sessione.aggiornaAccessi() }
+            }
+            .sheet(item: $fogli.aperto) { foglio in
+                vista(foglio)
+            }
+    }
+
+    @ViewBuilder
+    private func vista(_ foglio: FoglioAccount) -> some View {
+        switch foglio {
+        case .condividi(let url):
+            FoglioCondividi(url: url) { fogli.aperto = nil }
+                .presentationDetents([.medium, .large])
+                .ignoresSafeArea()
+        case .passwordPerGoogle:
+            NavigationStack {
+                FoglioPasswordPerCollegare { password in
+                    fogli.aperto = nil
+                    Task { await fogli.collegaGoogle(password: password, sessione) }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        default:
+            NavigationStack { contenuto(foglio) }
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    @ViewBuilder
+    private func contenuto(_ foglio: FoglioAccount) -> some View {
+        switch foglio {
+        case .password:
+            FoglioCambiaPassword(nome: sessione.utente?.nomeUtente ?? "") { fogli.messaggio = "Password cambiata." }
+        case .codice:
+            FoglioNuovoCodice()
+        case .elimina:
+            FoglioElimina()
+        case .email:
+            FoglioEmail { fogli.messaggio = $0 }
+        case .passwordDaGoogle:
+            FoglioPasswordDaGoogle()
+        case .passwordPerGoogle, .condividi:
+            EmptyView()   // aperti da `vista`
+        }
+    }
+}
+
+/// «Il tuo account» nelle Impostazioni: un solo nome, l'email (quella di Google se è collegato), cambia password,
+/// codice per recuperare l'accesso, elimina l'account. «Esci» sta in fondo alle Impostazioni (`EsciSezione`).
+/// Si vede solo se il server ha gli account (multiutente); con il server di sempre non compare.
+/// I fogli si aprono da `fogli` (vedi `FoglioAccount`): qui niente `.sheet`.
+struct AccountSezione: View {
+    @ObservedObject var fogli: FogliAccount
+    @EnvironmentObject private var sessione: SessioneAccount
+    @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
 
     /// La voce dell'email: solo per chi non ha Google collegato. Finché non si sa come entra (Google acceso, accessi non ancora letti) non si mostra.
     private var mostraVoceEmail: Bool {
@@ -28,43 +156,28 @@ struct AccountSezione: View {
                 RigaValore(titolo: "Nome", valore: utente.nome)
                 RigaValore(titolo: "Email", valore: (sessione.emailMostrata ?? "Nessuna") + (sessione.emailDaGoogle && sessione.emailMostrata != nil ? " (da Google)" : ""))
                 if mostraVoceEmail {
-                    Button { foglio = .email } label: {
+                    Button { fogli.apri(.email) } label: {
                         Label(sessione.email == nil ? "Aggiungi un'email" : "Gestisci l'email", systemImage: "envelope").labelStyle(.voce(.teal)).frame(minHeight: Tema.areaTocco)
                     }
                     .accessibilityHint("Serve a recuperare la password se la dimentichi")
                 }
                 // chi entra solo con Google non ha una password da cambiare: la aggiunge dal riquadro «Accessi»
                 if !sessione.senzaPassword {
-                    Button { foglio = .password } label: {
+                    Button { fogli.apri(.password) } label: {
                         Label("Cambia password", systemImage: "key").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
                     }
-                    Button { foglio = .codice } label: {
+                    Button { fogli.apri(.codice) } label: {
                         Label("Nuovo codice per recuperare l'accesso", systemImage: "lifepreserver").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
                     }
                 }
-                RigaScaricaDati()
-                Button(role: .destructive) { foglio = .elimina } label: {
+                RigaScaricaDati(fogli: fogli)
+                Button(role: .destructive) { fogli.apri(.elimina) } label: {
                     Label("Elimina l'account", systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
                 }
-                if let messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
-                if let errore { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
+                if let messaggio = fogli.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
             }
-            .sheet(item: $foglio) { f in
-                NavigationStack {
-                    switch f {
-                    case .password:
-                        FoglioCambiaPassword(nome: utente.nomeUtente) { messaggio = "Password cambiata." ; errore = nil }
-                    case .codice:
-                        FoglioNuovoCodice()
-                    case .elimina:
-                        FoglioElimina()
-                    case .email:
-                        FoglioEmail { messaggio = $0 ; errore = nil }
-                    }
-                }
-                .presentationDragIndicator(.visible)
-            }
-            AccessiSezione()
+            // niente .sheet qui: su una Section dentro una List finirebbe su ogni riga (vedi `FoglioAccount`)
+            AccessiSezione(fogli: fogli)
         }
     }
 }
@@ -81,11 +194,12 @@ struct EsciSezione: View {
                     Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
                 }
                 .accessibilityHint("Esci dal tuo account su questo telefono")
-            }
-            .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-                Button("Esci", role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
-            } message: {
-                Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
+                // sul pulsante, non sulla Section (vedi `FoglioAccount`)
+                .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
+                    Button("Esci", role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
+                } message: {
+                    Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
+                }
             }
         }
     }
@@ -132,8 +246,10 @@ struct FoglioCambiaPassword: View {
                 SecureField("Ripeti la nuova password", text: $ripeti)
                     .textContentType(.newPassword)
                     .focused($focus, equals: 2)
-                    .submitLabel(.go)
-                    .onSubmit { Task { await invia() } }
+                    // niente invio dal tasto Invio: la password forte suggerita da iOS o il portachiavi non devono mandare
+                    // il modulo da soli. Si cambia solo con il pulsante.
+                    .submitLabel(.done)
+                    .onSubmit { focus = nil }
                     .frame(minHeight: Tema.areaTocco)
             } header: {
                 Text("Password nuova")
@@ -425,10 +541,11 @@ struct FoglioEmail: View {
 
 /// «Scarica i tuoi dati»: una riga discreta subito prima di «Elimina l'account». Scarica il file dal server, lo salva nella
 /// cartella temporanea e apre il foglio Condividi (Salva in File, AirDrop, Mail...). Nessun ripristino da qui.
+/// Il foglio Condividi si apre da `fogli` (fuori dalla lista), non da questa riga.
 struct RigaScaricaDati: View {
+    @ObservedObject var fogli: FogliAccount
     @State private var inCorso = false
     @State private var errore: String?
-    @State private var file: FileDaCondividere?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -458,11 +575,6 @@ struct RigaScaricaDati: View {
             }
         }
         .padding(.vertical, 4)
-        .sheet(item: $file) { f in
-            FoglioCondividi(url: f.url) { file = nil }
-                .presentationDetents([.medium, .large])
-                .ignoresSafeArea()
-        }
     }
 
     private func scarica() async {
@@ -472,19 +584,13 @@ struct RigaScaricaDati: View {
         defer { inCorso = false }
         do {
             let url = try await DatiPersonali.scarica(server: ServerCorrente.condiviso)
-            file = FileDaCondividere(url: url)
+            fogli.apri(.condividi(url))
         } catch {
             let testo = DatiPersonali.testoErrore(error)
             errore = testo
             AccessibilityNotification.Announcement(testo).post()
         }
     }
-}
-
-/// Il file appena scaricato: il foglio Condividi si apre una volta per scaricamento.
-struct FileDaCondividere: Identifiable {
-    let id = UUID()
-    let url: URL
 }
 
 /// Il foglio Condividi standard di iOS (UIActivityViewController) dentro un foglio di SwiftUI: va bene anche su iPad,
@@ -503,5 +609,5 @@ struct FoglioCondividi: UIViewControllerRepresentable {
 }
 
 #Preview("Scarica i tuoi dati") {
-    List { Section("Il tuo account") { RigaScaricaDati() } }
+    List { Section("Il tuo account") { RigaScaricaDati(fogli: FogliAccount()) } }
 }
