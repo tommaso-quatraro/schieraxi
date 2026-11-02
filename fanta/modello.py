@@ -29,6 +29,10 @@ from .regole import RUOLI, Regole
 
 PASSO_STAGIONE = 50          # distanza "in giornate" tra l'inizio di una stagione e la successiva (38 + pausa estiva)
 XG_RIGORE = 0.76             # xG che Understat assegna a un rigore
+# Quanto della retta quotazione -> voto si usa per il voto di partenza (1 = tutta). Misura del 2/11/2026: con la retta intera
+# il voto dei giocatori da 15 crediti in su era sopravvalutato (0,06-0,15) in tutte e due le stagioni; con metà l'errore
+# scende in entrambe (verifica prima e dopo nella PR). Gol e assist usano ancora la retta intera.
+PESO_QUOTAZIONE_VOTO = 0.5
 
 
 @dataclass
@@ -349,6 +353,8 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
             return media
         intercetta, pendenza = rette[(r, cosa)]
         stima = intercetta + pendenza * quotazione
+        if cosa == "voto_medio":        # solo una parte della retta: vedi PESO_QUOTAZIONE_VOTO
+            return media + PESO_QUOTAZIONE_VOTO * (stima - media)
         return float(np.clip(stima, 0.25 * media, 4 * media)) if media > 0 else float(stima)
 
     righe = []

@@ -167,7 +167,7 @@ Codice: `fanta/modello.py:_pesi`, `fanta/modello.py:Parametri`, `fanta/modello.p
 
 Con poche partite una media è inaffidabile: un attaccante con un gol in una presenza non ha «un gol a partita». Per questo ogni stima è mescolata con una stima di partenza come se il giocatore avesse già giocato un certo numero di partite fittizie: 20 presenze per il voto (k_voto), 16 partite intere da 90 minuti per gol e assist (k_90), 10 per i cartellini, 20 per gli autogol, 6 partite per la forza delle squadre. Più il giocatore ha giocato, meno conta la stima di partenza.
 
-La stima di partenza non è per forza la media del ruolo. Per i giocatori con poche partite il modello usa la quotazione iniziale di inizio stagione, fissata prima del campionato e quindi senza informazioni dal futuro. Per ogni ruolo calcola, sui dati già giocati, la retta che lega quotazione a voto, gol e assist ogni 90 minuti (servono almeno 15 giocatori con dati sufficienti) e vi fa partire i nuovi: un bomber appena arrivato parte da una stima da bomber, non da attaccante medio. Per gol e assist la stima è comunque tenuta tra un quarto e quattro volte la media del ruolo.
+La stima di partenza non è per forza la media del ruolo. Per i giocatori con poche partite il modello usa la quotazione iniziale di inizio stagione, fissata prima del campionato e quindi senza informazioni dal futuro. Per ogni ruolo calcola, sui dati già giocati, la retta che lega quotazione a voto, gol e assist ogni 90 minuti (servono almeno 15 giocatori con dati sufficienti) e vi fa partire i nuovi: un bomber appena arrivato parte da una stima da bomber, non da attaccante medio. Per gol e assist la stima è comunque tenuta tra un quarto e quattro volte la media del ruolo. Per il voto si usa solo metà della retta (a metà strada tra la media del ruolo e la retta): con la retta intera il voto dei giocatori più cari veniva sopravvalutato di circa un decimo, in tutte e due le stagioni provate (misura del 2/11/2026).
 
 I valori dei parametri sono stati tarati il 26/10/2026 sulla stagione 2025-26 (giornate 5-38) minimizzando l'errore quadratico, e poi controllati sul 2026-27.
 
@@ -179,7 +179,7 @@ stima = (Σ peso × osservazioni + k × valore di partenza) / (Σ peso + k)
 
 > **Esempio di calcolo per i gol** (esempio di calcolo). Un attaccante con 3,0 gol attesi (senza rigori) in 5 partite complete e un tasso di partenza di 0,25 gol ogni 90 minuti: (3,0 + 16 × 0,25) / (5 + 16) = 0,33 gol ogni 90 minuti. Senza il restringimento sarebbe 0,60.
 
-Codice: `fanta/modello.py:Parametri`, `fanta/modello.py:previsioni`, `fanta/modello.py:forza_squadre`
+Codice: `fanta/modello.py:Parametri`, `fanta/modello.py:previsioni`, `fanta/modello.py:forza_squadre`, `fanta/modello.py:PESO_QUOTAZIONE_VOTO`
 
 ## 6. Gol e assist: da xG e xA alle probabilità  [nerd]
 
