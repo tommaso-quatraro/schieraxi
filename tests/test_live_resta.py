@@ -5,6 +5,8 @@ import json
 import sqlite3
 from datetime import datetime, timedelta
 
+import pytest
+
 from fanta import live
 
 CAL = [{"data": "2026-11-01 20:45", "casa": "juventus", "trasferta": "napoli", "giornata": 10, "stagione": "2026-27",
@@ -159,3 +161,52 @@ def test_senza_ufficiale_resta_la_diretta():
     r.passo()
     p = live.risposta(r, _riga())["partite"][0]
     assert (p["stato"], p["gol_casa"], p["gol_trasferta"]) == ("finita", 2, 0)
+
+
+# ---------------------------------------------------------------- dalla sentinella (invarianti punteggio_mancante e
+# stato_partita_incoerente), adattati: il raccoglitore dopo un riavvio è quello del servizio, con il file della cache
+RIGA = {"data": "2026-10-31 15:00", "casa": "c0", "trasferta": "t0", "giornata": 10, "stagione": "2026-27", "giocata": 0,
+        "gol_casa": None, "gol_trasferta": None}
+
+
+def _nessuna_richiesta(url):
+    raise AssertionError("nessuna richiesta")
+
+
+def test_sentinella_dopo_un_riavvio_i_risultati_appena_finiti_non_spariscono(tmp_path):
+    f = tmp_path / "live.json"
+    prima = live.Raccoglitore(lambda: [RIGA], scarica=_nessuna_richiesta, adesso=lambda: datetime(2026, 10, 31, 17, 0), file=f)
+    prima._unisci([{"casa": "c0", "trasferta": "t0", "data": "2026-10-31 15:00", "stato": "finita", "minuto": None, "gol_casa": 2,
+                    "gol_trasferta": 1, "eventi": []}], live.FONTE_ESPN, datetime(2026, 10, 31, 16, 55))
+    prima._salva()
+    r = live.Raccoglitore(lambda: [RIGA], scarica=_nessuna_richiesta, adesso=lambda: datetime(2026, 10, 31, 18, 10), file=f)
+    assert r.passo() == "ferma"
+    p = live.risposta(r, [RIGA])["partite"][0]
+    assert (p["stato"], p["gol_casa"], p["gol_trasferta"]) == ("finita", 2, 1)
+
+
+def test_sentinella_una_partita_rimasta_in_gioco_nella_cache_non_copre_il_risultato_finale():
+    giocata = RIGA | {"giocata": 1, "gol_casa": 2, "gol_trasferta": 1}
+    r = live.Raccoglitore(lambda: [giocata], scarica=_nessuna_richiesta, adesso=lambda: datetime(2026, 10, 31, 17, 20))
+    r._unisci([{"casa": "c0", "trasferta": "t0", "data": "2026-10-31 15:00", "stato": "secondo_tempo", "minuto": 88, "gol_casa": 1,
+                "gol_trasferta": 1, "eventi": []}], live.FONTE_ESPN, datetime(2026, 10, 31, 16, 58))
+    assert r.passo() == "ferma"                                      # il calendario la dà per giocata: non si chiede più
+    p = live.risposta(r, [giocata])["partite"][0]
+    assert (p["stato"], p["gol_casa"], p["gol_trasferta"]) == ("finita", 2, 1)
+
+
+# ---------------------------------------------------------------- senza diretta: stato dall'ora del raccoglitore e dal turno
+TURNO = [RIGA | {"casa": f"c{i}", "trasferta": f"t{i}", "data": f"2026-10-3{1 if i < 5 else 0} 15:00"} for i in range(1, 9)]
+
+
+@pytest.mark.parametrize("ora,stato", [((14, 0), "da_giocare"), ((16, 0), "in_corso"), ((17, 0), "finita")])
+def test_senza_diretta_lo_stato_viene_dall_ora_del_raccoglitore(ora, stato):
+    r = live.Raccoglitore(lambda: [], adesso=lambda: datetime(2026, 10, 31, *ora))
+    assert live.risposta(r, [RIGA])["partite"][0]["stato"] == stato
+
+
+def test_senza_diretta_una_partita_fuori_dal_turno_e_rinviata():
+    vecchia = RIGA | {"casa": "x", "trasferta": "y", "data": "2026-09-20 15:00"}     # rinviata, con la data vecchia mai aggiornata
+    r = live.Raccoglitore(lambda: [], adesso=lambda: datetime(2026, 10, 31, 12, 0))
+    stati = {p["casa"]: p["stato"] for p in live.risposta(r, [vecchia, RIGA] + TURNO)["partite"]}
+    assert stati["x"] == "rinviata" and stati["c0"] == "da_giocare"
