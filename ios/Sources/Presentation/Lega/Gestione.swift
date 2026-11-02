@@ -24,7 +24,7 @@ struct AvvisiServerView: View {
                 } header: {
                     Text("Promemoria sul telefono").foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text("Ti avvisiamo un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.").foregroundStyle(Color.testoSecondario)
+                    Text("Ti avvisiamo un'ora e un quarto d'ora prima della scadenza della formazione, anche con l'app chiusa, se lasci accesi i due promemoria qui sotto. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.").foregroundStyle(Color.testoSecondario)
                 }
                 if let s = vm.caricatore.dato {
                     if let errore = vm.erroreSalvataggio {
@@ -74,8 +74,8 @@ struct AvvisiServerView: View {
                     } footer: {
                         // Con gli account l'app nativa non riceve gli avvisi del server: lo si dice QUI, accanto agli interruttori,
                         // non in una sezione più in basso (sembrava che gli interruttori valessero per questo telefono).
-                        if sessione.multiutente {
-                            Text(Self.notaAccount).foregroundStyle(Color.testoSecondario)
+                        if let nota = Self.notaQualiAvvisi(multiutente: sessione.multiutente) {
+                            Text(nota).foregroundStyle(Color.testoSecondario)
                         }
                     }
                     sezioneOreTranquille
@@ -120,8 +120,12 @@ struct AvvisiServerView: View {
         .task { await lega.aggiornaPermesso() }
     }
 
-    /// Con gli account: quali di questi avvisi arrivano su questo telefono e quali solo dalla web app.
-    static let notaAccount = "Su questo telefono arrivano solo i promemoria di un'ora e di 15 minuti prima. Cambi di formazione, riepilogo e reparto scoperto arrivano dalla web app: apri SchieraXI con Safari e aggiungilo alla schermata Home."
+    /// Sotto gli interruttori, solo con gli account: quali avvisi arrivano su questo telefono e quali solo dalla web app.
+    /// Senza account niente nota (gli avvisi del server arrivano anche con ntfy, vedi «Avanzate»).
+    static func notaQualiAvvisi(multiutente: Bool) -> String? {
+        guard multiutente else { return nil }
+        return "Su questo telefono arrivano i due promemoria, se accesi, e l'avviso quando cambia la formazione consigliata. Gli altri avvisi di questo elenco arrivano dalla web app: apri SchieraXI con Safari e aggiungilo alla schermata Home."
+    }
 
     /// Ore tranquille: niente avvisi in quella fascia (anche i promemoria di questo telefono la rispettano).
     private var sezioneOreTranquille: some View {

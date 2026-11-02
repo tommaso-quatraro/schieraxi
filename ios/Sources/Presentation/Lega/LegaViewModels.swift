@@ -132,11 +132,15 @@ final class AvvisiServerViewModel: ViewModelBase {
     /// Le impostazioni come le ha il server (l'ultima lettura o l'ultimo salvataggio riuscito): se un salvataggio fallisce
     /// gli interruttori tornano qui, così non mostrano una scelta che il server non ha.
     private var salvate: ImpostazioniAvvisi?
-    /// La scelta che non è andata: «Riprova» la rimanda.
-    private var daRiprovare: ImpostazioniAvvisi?
+    /// Le modifiche che non sono andate (anche quelle fatte mentre si aspettava): «Riprova» le rimanda. L'errore resta
+    /// finché un salvataggio riuscito non le contiene tutte.
+    private var daRiprovare: ModificaAvvisi?
+    /// I promemoria locali di questo telefono (nei test: una versione che annota le chiamate).
+    private let promemoria: PromemoriaTelefono
 
-    init(server: any ServerClient) {
+    init(server: any ServerClient, promemoria: PromemoriaTelefono = .veri) {
         self.server = server
+        self.promemoria = promemoria
         caricatore = Caricatore<StatoAvvisi>("/api/avvisi", snake: false, cache: false, server: server)
         super.init()
         osserva(caricatore)
@@ -147,17 +151,15 @@ final class AvvisiServerViewModel: ViewModelBase {
         impostazioni = caricatore.dato?.impostazioni
         salvate = impostazioni
         oreTranquilleSpente = caricatore.dato?.oreTranquilleSpente ?? false
-        ricordaOreTranquille()
+        if let i = impostazioni { ricordaSulTelefono(i) }
     }
 
-    /// Le ore tranquille servono anche ai promemoria locali: si ricordano sul telefono.
-    private func ricordaOreTranquille() {
-        if let i = impostazioni, !Demo.attivo {
-            ArchivioOreTranquille.salva(i.oreTranquille)
-            // anche quali promemoria locali sono accesi: spenti qui, il telefono non li manda più
-            ArchivioPromemoria.salva(sessanta: i.promemoria_60, quindici: i.promemoria_15)
-            if !Ambiente.ospiteDeiTest { Notifiche.togliSpenti(ArchivioPromemoria.minutiAttivi()) }
-        }
+    /// Ore tranquille e promemoria accesi servono anche ai promemoria locali: si ricordano sul telefono, e quelli spenti si
+    /// tolgono subito. Sempre con le impostazioni che ha il server (lette o appena salvate), mai con un tocco ancora in coda.
+    private func ricordaSulTelefono(_ i: ImpostazioniAvvisi) {
+        guard !Demo.attivo else { return }
+        promemoria.ricorda(i)
+        promemoria.togliSpenti(i.promemoriaAccesi)
     }
 
     /// Il salvataggio in corso: i salvataggi vanno uno alla volta. Due interruttori toccati in fretta partivano insieme con la
@@ -177,12 +179,25 @@ final class AvvisiServerViewModel: ViewModelBase {
     /// Manda le impostazioni come sono ADESSO (comprese le modifiche fatte mentre si aspettava il salvataggio precedente).
     private func salvaOra() async {
         guard let i = impostazioni else { return }
+        guard i != salvate else {
+            // Niente da mandare: dopo un errore gli interruttori sono tornati come li ha il server e le modifiche aspettano
+            // «Riprova» (mandare questi valori cancellerebbe l'errore e le modifiche). L'errore resta, a meno che il server
+            // non abbia già tutto quello che c'era da riprovare.
+            if let attesa = daRiprovare, attesa.contenuta(in: i) { daRiprovare = nil; erroreSalvataggio = nil }
+            return
+        }
+        let prima = salvate
         do {
             let _: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", i, snake: false)
             salvate = i
-            daRiprovare = nil
-            erroreSalvataggio = nil
-            ricordaOreTranquille()
+            if daRiprovare?.contenuta(in: i) ?? true {
+                daRiprovare = nil
+                erroreSalvataggio = nil
+            }   // altrimenti una modifica non andata prima manca ancora: errore e «Riprova» restano
+            ricordaSulTelefono(i)
+            if let prima, !i.promemoriaAccesi.subtracting(prima.promemoriaAccesi).isEmpty, !Demo.attivo {
+                await promemoria.riprogramma()   // un promemoria si è riacceso: torna in programma
+            }
             oreTranquilleSpente = false
             messaggio = nil
         } catch {
@@ -191,17 +206,21 @@ final class AvvisiServerViewModel: ViewModelBase {
                 await carica()   // cambiato da un altro dispositivo: si rilegge e si mostra il valore nuovo
                 daRiprovare = nil
             } else {
-                impostazioni = salvate   // gli interruttori tornano come li ha il server
-                daRiprovare = i
+                // Tutto ciò che il server non ha (questa modifica, quelle fatte mentre si aspettava e quelle di un errore
+                // precedente) aspetta «Riprova»; gli interruttori tornano come li ha il server.
+                let adesso = impostazioni ?? i
+                let voluta = daRiprovare?.applicata(a: adesso) ?? adesso
+                daRiprovare = ModificaAvvisi(da: salvate ?? i, a: voluta)
+                impostazioni = salvate
             }
             erroreSalvataggio = "Non ho salvato la modifica. " + error.localizedDescription
         }
     }
 
-    /// «Riprova» dopo un salvataggio non riuscito: rimanda la scelta che non era andata.
+    /// «Riprova» dopo un salvataggio non riuscito: rimanda le modifiche che non erano andate, sopra le impostazioni di adesso.
     func riprova() async {
-        guard let scelta = daRiprovare else { erroreSalvataggio = nil; return }
-        impostazioni = scelta
+        guard let attesa = daRiprovare else { erroreSalvataggio = nil; return }
+        impostazioni = attesa.applicata(a: impostazioni ?? attesa.a)
         await salva()
     }
 

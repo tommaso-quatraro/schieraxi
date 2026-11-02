@@ -54,12 +54,25 @@ enum Aggiornamento {
         }
     }
 
-    /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata.
-    static func elabora(_ oggi: Oggi, avvisaSeCambia: Bool) async {
-        if Demo.attivo { return }   // demo: niente promemoria, widget o notifiche
+    /// I promemoria di un'ora e di un quarto d'ora prima della scadenza di questa giornata (solo quelli accesi negli avvisi).
+    static func programmaPromemoria(_ oggi: Oggi) async {
         if let inizio = Quando.data(oggi.chiusura), let numero = oggi.giornataMostrata {
             await Notifiche.programma(giornata: numero, inizio: inizio, modulo: oggi.formazione?.modulo)
         }
+    }
+
+    /// Dopo che un promemoria si è riacceso negli avvisi: lo rimette in programma con l'ultima giornata salvata, senza rete.
+    /// Senza una copia salvata ci pensa la prossima lettura di Oggi.
+    static func riprogrammaPromemoria() async {
+        if Demo.attivo { return }
+        guard let oggi = await OggiRepository(server: ServerCorrente.condiviso).salvato() else { return }
+        await programmaPromemoria(oggi)
+    }
+
+    /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata.
+    static func elabora(_ oggi: Oggi, avvisaSeCambia: Bool) async {
+        if Demo.attivo { return }   // demo: niente promemoria, widget o notifiche
+        await programmaPromemoria(oggi)
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
         Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))
         await precaricaWidget()

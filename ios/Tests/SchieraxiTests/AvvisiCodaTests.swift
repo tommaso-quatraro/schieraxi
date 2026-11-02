@@ -101,7 +101,7 @@ struct AvvisiCodaTests {
             if percorso.hasPrefix("/api/avvisi") { return try Fixture.dati("avvisi") }
             return Data("{}".utf8)
         }
-        let vm = AvvisiServerViewModel(server: s)
+        let vm = AvvisiServerViewModel(server: s, promemoria: PromemoriaAnnotati().telefono)
         await vm.carica()
         let riepilogo = try #require(vm.impostazioni?.riepilogo)
         let cambi = try #require(vm.impostazioni?.cambi)
@@ -122,6 +122,80 @@ struct AvvisiCodaTests {
         #expect(ultimo.cambi == !cambi, "«Riprova» non disfa la modifica salvata dopo")
         #expect(vm.erroreSalvataggio == nil)
         #expect(!vm.puoRiprovare)
+    }
+
+    @Test("Spegnere un promemoria lo toglie dal telefono, riaccenderlo lo rimette in programma")
+    func interruttoriEPromemoriaDelTelefono() async throws {
+        let annotati = PromemoriaAnnotati()
+        let vm = AvvisiServerViewModel(server: ServerDiProva.conFixture(["/api/avvisi": "avvisi"]), promemoria: annotati.telefono)
+        await vm.carica()
+        #expect(annotati.ricordate.last?.promemoriaAccesi == Set([60, 15]), "letti dal server, si ricordano sul telefono")
+
+        vm.impostazioni?.promemoria_60 = false
+        await vm.salva()
+        #expect(annotati.ricordate.last?.promemoriaAccesi == Set([15]))
+        #expect(annotati.accesiQuandoSiTolgono.last == Set([15]), "quello di un'ora si toglie subito dal telefono")
+        #expect(annotati.riprogrammati == 0)
+
+        vm.impostazioni?.promemoria_60 = true
+        await vm.salva()
+        #expect(annotati.ricordate.last?.promemoriaAccesi == Set([60, 15]))
+        #expect(annotati.riprogrammati == 1, "riacceso: torna in programma con l'ultima giornata salvata")
+
+        vm.impostazioni?.riepilogo.toggle()
+        await vm.salva()
+        #expect(annotati.riprogrammati == 1, "un altro interruttore non riprogramma niente")
+    }
+
+    @Test("Dopo un salvataggio il telefono ricorda ciò che è stato salvato, non il tocco ancora in coda", .timeLimit(.minutes(1)))
+    func siRicordaIlSalvato() async throws {
+        let prova = ProvaAvvisi(erroreDellaPrima: nil)
+        let vm = prova.modello()
+        await vm.carica()
+
+        vm.impostazioni?.promemoria_60 = false
+        let primo = Task { await vm.salva() }
+        await prova.aspettaPrimaPut()
+        vm.impostazioni?.promemoria_15 = false   // non ancora salvato quando finisce la prima PUT
+        let secondo = Task { await vm.salva() }
+        prova.lasciaAndare()
+        await primo.value
+        await secondo.value
+
+        let atteso: [Set<Int>] = [[60, 15], [15], []]   // lettura, primo salvataggio, secondo salvataggio
+        #expect(prova.annotati.ricordate.map(\.promemoriaAccesi) == atteso)
+        #expect(prova.annotati.accesiQuandoSiTolgono == atteso)
+        #expect(prova.annotati.riprogrammati == 0)
+    }
+
+    @Test("Una modifica da riprovare porta ogni campo degli avvisi, e solo quelli toccati")
+    func modificaDaRiprovare() {
+        let base = ImpostazioniAvvisi(cambi: true, promemoria_60: true, promemoria_15: true, riepilogo: true, copertura: true,
+                                      app_nativa: false, silenzio: false, silenzio_da: 23, silenzio_a: 7, avviso_prima: 60)
+        let tutta = ImpostazioniAvvisi(cambi: false, promemoria_60: false, promemoria_15: false, riepilogo: false, copertura: false,
+                                       app_nativa: true, silenzio: true, silenzio_da: 22, silenzio_a: 6, avviso_prima: 30)
+        #expect(ModificaAvvisi(da: base, a: tutta).applicata(a: base) == tutta)
+        #expect(Mirror(reflecting: base).children.count == ModificaAvvisi.campiPortati, "un campo nuovo degli avvisi va portato anche qui")
+
+        var soloRiepilogo = base
+        soloRiepilogo.riepilogo = false
+        var salvataDopo = base
+        salvataDopo.cambi = false
+        let modifica = ModificaAvvisi(da: base, a: soloRiepilogo)
+        let rimandata = modifica.applicata(a: salvataDopo)
+        #expect(rimandata.riepilogo == false)
+        #expect(rimandata.cambi == false, "la modifica salvata dopo resta")
+        #expect(modifica.contenuta(in: rimandata))
+        #expect(!modifica.contenuta(in: salvataDopo))
+    }
+
+    @Test("La nota su cosa arriva al telefono compare solo con gli account e non contraddice il riquadro sopra")
+    func notaSoloConGliAccount() throws {
+        #expect(AvvisiServerView.notaQualiAvvisi(multiutente: false) == nil)
+        let nota = try #require(AvvisiServerView.notaQualiAvvisi(multiutente: true))
+        #expect(nota.contains("web app"))
+        #expect(nota.contains("formazione consigliata"), "anche l'avviso dell'app quando cambia la consigliata arriva sul telefono")
+        #expect(!nota.contains("solo i promemoria"))
     }
 
     @Test("I promemoria locali accesi si ricordano sul telefono e si filtrano")
@@ -170,11 +244,29 @@ private final class RegistroPut: @unchecked Sendable {
     }
 }
 
+/// Prende il posto dei promemoria del telefono (UserDefaults e centro notifiche) e annota cosa gli arriva.
+@MainActor
+private final class PromemoriaAnnotati {
+    private(set) var ricordate: [ImpostazioniAvvisi] = []
+    private(set) var accesiQuandoSiTolgono: [Set<Int>] = []
+    private(set) var riprogrammati = 0
+
+    var telefono: PromemoriaTelefono {
+        PromemoriaTelefono(
+            ricorda: { self.ricordate.append($0) },
+            togliSpenti: { self.accesiQuandoSiTolgono.append($0) },
+            riprogramma: { self.riprogrammati += 1 })
+    }
+}
+
 /// Un server finto per gli avvisi: ferma la prima PUT finché il test non la lascia andare (poi riesce, o lancia
 /// `erroreDellaPrima`) e annota le altre, che riescono subito. Le letture rispondono con la fixture `avvisi`.
+/// I promemoria del telefono sono quelli annotati (`annotati`).
+@MainActor
 private struct ProvaAvvisi {
     let server: ServerDiProva
     let registro: RegistroPut
+    let annotati: PromemoriaAnnotati
     private let arrivo: AsyncStream<Void>
     private let via: AsyncStream<Void>.Continuation
 
@@ -183,6 +275,7 @@ private struct ProvaAvvisi {
         let (attesa, via) = AsyncStream<Void>.makeStream()
         let registro = RegistroPut()
         self.registro = registro
+        annotati = PromemoriaAnnotati()
         server = ServerDiProva { metodo, percorso, _ in
             if metodo == "PUT" {
                 let numero = registro.entra()
@@ -200,8 +293,7 @@ private struct ProvaAvvisi {
         self.via = via
     }
 
-    @MainActor
-    func modello() -> AvvisiServerViewModel { AvvisiServerViewModel(server: server) }
+    func modello() -> AvvisiServerViewModel { AvvisiServerViewModel(server: server, promemoria: annotati.telefono) }
 
     /// Aspetta che la prima PUT sia arrivata al server (dove resta ferma).
     func aspettaPrimaPut() async {

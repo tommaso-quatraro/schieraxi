@@ -79,3 +79,13 @@ enum ArchivioPromemoria {
         memoria.set(quindici, forKey: chiave15)
     }
 }
+
+extension ImpostazioniAvvisi {
+    /// I minuti dei promemoria accesi (60 e/o 15).
+    var promemoriaAccesi: Set<Int> {
+        var accesi: Set<Int> = []
+        if promemoria_60 { accesi.insert(60) }
+        if promemoria_15 { accesi.insert(15) }
+        return accesi
+    }
+}
