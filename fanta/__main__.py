@@ -22,6 +22,7 @@
   affidabilita --pubblico [--file F]   scrive il riassunto anonimo «Quanto ci abbiamo preso» per il sito (non lo pubblica)
   backup [--tieni N]              copia dei dati della lega in dati/backup, ne tiene le ultime N (usato sul server, di sera)
   salute                          controlla che l'app risponda e che i dati siano freschi (usato sul server)
+  sentinella [--minuti N] [--senza-invio]   rifà in sola lettura le risposte dell'app per ogni utente e controlla che tornino (usato sul server, ogni ora)
   riepilogo                       riepilogo a giornata finita: punti fatti, attesi e massimo possibile (usato sul server)
   avviso [--prova]                testo dell'avviso "formazione pronta", se è il momento (usato sul server)
   invito --etichetta NOME [--admin | --usi N]   codice d'invito (7 giorni) per un nuovo account, per N amici (solo con FANTA_MULTIUTENTE=1)
@@ -508,6 +509,13 @@ def cmd_salute(a) -> None:
         db.close()
 
 
+def cmd_sentinella(a) -> None:
+    from . import sentinella
+    esito = sentinella.giro(minuti=a.minuti, manda=None if a.senza_invio else sentinella.manda_ntfy)
+    if any(sentinella.INVARIANTI[r.invariante][0] == "errore" for r in esito["rotture"]):
+        sys.exit(2)                       # per chi la lancia a mano: qualcosa che l'utente vede sbagliato
+
+
 def cmd_avviso(a) -> None:
     """Stampa il testo dell'avviso "formazione pronta" se è il momento (e lo segna come mandato), altrimenti niente."""
     from datetime import datetime
@@ -756,6 +764,10 @@ def main(argv: list[str] | None = None) -> None:
     x.set_defaults(f=cmd_backup)
     x = sub.add_parser("salute", help="controlla che l'app risponda e che i dati siano freschi")
     x.set_defaults(f=cmd_salute)
+    x = sub.add_parser("sentinella", help="controlla in sola lettura che le risposte dell'app tornino, per ogni utente")
+    x.add_argument("--minuti", type=float, default=15, help="tempo massimo (di norma 15): gli utenti rimasti al giro dopo")
+    x.add_argument("--senza-invio", action="store_true", help="stampa l'avviso invece di mandarlo e non segna niente")
+    x.set_defaults(f=cmd_sentinella)
     x = sub.add_parser("riepilogo", help="riepilogo a giornata finita")
     x.set_defaults(f=cmd_riepilogo)
     x = sub.add_parser("avviso", help="stampa l'avviso 'formazione pronta' se è il momento (per le notifiche)")

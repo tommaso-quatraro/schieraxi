@@ -2030,7 +2030,10 @@ async function vistaRosa(nome) {
 }
 
 const NOME_IMMAGINE = { stemma: "scambio.stemma", maglia: "scambio.maglia" };
-const NOMI_CONTROLLI = { partite_per_giornata: t("sd.ctl_partite"), voti_per_giornata: t("sd.ctl_voti"), somma_xg: t("sd.ctl_xg"), titolari_per_squadra: t("sd.ctl_titolari") };
+const NOMI_CONTROLLI = { partite_per_giornata: t("sd.ctl_partite"), voti_per_giornata: t("sd.ctl_voti"), somma_xg: t("sd.ctl_xg"), titolari_per_squadra: t("sd.ctl_titolari"), sentinella: t("sd.ctl_sentinella") };
+// righe della sentinella (fanta/sentinella.py): «sentinella_<invariante>», il nome dell'invariante con gli spazi; quelle a posto
+// non si mostrano (le riassume la riga «sentinella»)
+const nomeControllo = n => NOMI_CONTROLLI[n] || (n.startsWith("sentinella_") ? t("sd.ctl_sentinella_una", { nome: n.slice(11).replaceAll("_", " ") }) : n);
 // Stato dei dati: da dove arriva tutto, quando è stato aggiornato, errori, foto e confronto tra probabilità previste e giocatori che hanno giocato.
 async function apriStatoDati() {
   apriFoglio(`<div class="caricamento">${t("scambio.controllo_dati")}</div>`);
@@ -2065,7 +2068,7 @@ async function apriStatoDati() {
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
         ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${t("testata.giornata", { n: p.giornata })}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
-        ${(s.controlli || []).length ? s.controlli.map(k => `<div class="riga"><span>${esc(NOMI_CONTROLLI[k.nome] || k.nome)}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
+        ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(nomeControllo(k.nome))}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
           ${k.esito === "ok" ? "" : `<div class="debole piccolo">${esc(k.dettaglio || "")}</div>`}`).join("") : `<div class="debole">${t("scambio.fanno_ogni_aggiornamento")}</div>`}</div>
       <div class="carta" id="affidabilita"><h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>
       <div class="carta"><h2>${t("scambio.quanto_azzecca_modello")}</h2>

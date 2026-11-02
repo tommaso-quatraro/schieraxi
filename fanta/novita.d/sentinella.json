@@ -1,0 +1,10 @@
+{
+ "titolo": "Controlli automatici ogni ora",
+ "voci": [
+  "Ogni ora il server controlla da solo che quello che vedi in Oggi, Formazione, Diario e nel widget sia giusto e coerente: se qualcosa non torna, chi gestisce l'app lo sa subito."
+ ],
+ "tecnico": [
+  "Nuovo fanta/sentinella.py e comando `python -m fanta sentinella` (cron `script/server/sentinella.sh`, ogni ora al minuto 37): rifà in sola lettura le risposte di /api/oggi, /api/formazione, /api/scelta, /api/diario, /api/widget e /api/live per ogni utente e controlla 21 invarianti; esito nella tabella `controlli` (righe `sentinella` e `sentinella_<invariante>`, in Stato dei dati), avviso ntfy al proprietario solo alla prima rottura confermata (2 giri), senza dati personali.",
+  "I risultati in diretta li legge da dati/live.json quando il servizio lo scrive; senza il file usa il calendario."
+ ]
+}
