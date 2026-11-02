@@ -611,6 +611,7 @@ function cardRiepilogo(r, p) {
         <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
         ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
       ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
+      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(x => `${sigla(x.casa)}–${sigla(x.trasferta)}`).join(", ") })}</p>` : ""}
       ${r.nel_diario ? "" : `<p class="debole piccolo">${t("oggi.confronto_in_arrivo")}</p>`}
       <div class="pulsanti"><button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("oggi.apri_diario")}</button></div>`;
   }

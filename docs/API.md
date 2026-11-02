@@ -470,7 +470,12 @@ Leggono solo dati già pronti (calendario, voti, scelte, Diario, cache dei risul
 | `sostituzioni` | `[{esce {id,nome,ruolo}, entra {id,nome,ruolo} o null, certa, motivo}]`, con le regole di panchina della lega. `certa: true` = già scattata (chi esce è senza voto e chi entra ha il voto); `false` = probabile. `motivo`: `senza_voto`, `fuori` (infortunato o squalificato che deve ancora giocare), `rinviata`. `entra: null` = nessun sostituto possibile |
 | `partite` | `{in_corso, finite, da_giocare, rinviate}`: quante partite del turno in ogni stato |
 
-`riepilogo` (oggetto o `null`; solo con `fase: "finita"`): `{giornata, giornata_lega, formazione_di, nel_diario, punti_fatti, punti_attesi, intervallo, consigliata}`.
+`riepilogo` (oggetto o `null`; solo con `fase: "finita"`): `{giornata, giornata_lega, formazione_di, nel_diario, punti_fatti, punti_attesi, intervallo, consigliata, recuperi}`.
+La giornata è finita quando sono giocate tutte le partite del turno: una partita rinviata (anche da recuperare settimane dopo)
+non la tiene aperta. `recuperi` (lista, facoltativa: un client vecchio la ignora) = le partite rinviate ancora da recuperare
+`[{casa, trasferta, data}]`, solo se per quella giornata vale `aspetta`: i loro giocatori restano in formazione senza voto e i
+punti possono ancora cambiare (la web app scrive «Manca il recupero di ATA–PAR: i punti possono ancora cambiare»). Con
+`senza_voto` o `voto_ufficio` è vuota: i punti sono già quelli finali (riserva o voto d'ufficio).
 Con `nel_diario: true` i numeri sono quelli del Diario (`GET /api/diario`) e `consigliata` = `{punti_fatti, punti_attesi}` della consigliata; con `nel_diario: false` il Diario non ha ancora calcolato la giornata: `punti_fatti` viene dai voti, `punti_attesi` può essere `null`, `consigliata` è `null` (il confronto arriva nel Diario).
 
 `prossima` (oggetto o `null`; solo con `fase: "finita"`): `{giornata, giornata_lega, scadenza, prepara_da, con_probabili}`. `prepara_da` (`AAAA-MM-GG HH:MM`) = da quando conviene preparare la formazione: adesso se le probabili ci sono già, altrimenti 3 giorni prima della scadenza (di solito escono allora).

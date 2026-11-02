@@ -78,16 +78,26 @@ def calcola_fase(iniziata: bool, ore_mancanti: float | None, fine_precedente: da
 
 
 def fine_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> datetime | None:
-    """Fine stimata di una giornata GIÀ CHIUSA (tutte le partite giocate): inizio dell'ultima partita del turno più la durata.
-    Un recupero giocato settimane dopo non conta. None se la giornata non è chiusa o non ha date."""
+    """Fine stimata di una giornata GIÀ CHIUSA (giocate tutte le partite del turno): inizio dell'ultima partita del turno più la
+    durata. Le partite rinviate (fuori dal turno o senza data, rinvii.py) non la tengono aperta, recuperate o no: quelle ancora da
+    recuperare le dice `recuperi_mancanti`. None se una partita del turno è ancora da giocare o se la giornata non ha date."""
     righe = db.execute("SELECT data, giocata FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata)).fetchall()
-    if not righe or not all(r[1] for r in righe):
-        return None
     date = [d for d in (_data(r[0]) for r in righe) if d]
     if not date:
         return None
     primo = turni.inizio(date)
-    return max(d for d in date if turni.nel_turno(d, primo)) + DURATA_PARTITA
+    del_turno = [(d, g) for d, g in ((_data(r[0]), r[1]) for r in righe) if d and turni.nel_turno(d, primo)]
+    if not del_turno or not all(g for _, g in del_turno):
+        return None
+    return max(d for d, _ in del_turno) + DURATA_PARTITA
+
+
+def recuperi_mancanti(db: sqlite3.Connection, stagione: str, giornata: int) -> list[dict]:
+    """Le partite rinviate della giornata non ancora recuperate: [{casa, trasferta, data}] (data del recupero o None)."""
+    righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
+                       (stagione, giornata)).fetchall()
+    partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": r[3]} for r in righe]
+    return [{"casa": p["casa"], "trasferta": p["trasferta"], "data": p["data"]} for p in rinvii.rinviate(partite)]
 
 
 # ---------------------------------------------------------------- la formazione schierata
@@ -316,8 +326,14 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
 
 
 def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, file_scelte, file_diario) -> dict | None:
-    """Il campo `riepilogo` di Oggi (fase finita): dal Diario se la giornata è già calcolata, altrimenti i punti fatti dai voti."""
-    base = {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole)}
+    """Il campo `riepilogo` di Oggi (fase finita): dal Diario se la giornata è già calcolata, altrimenti i punti fatti dai voti.
+    Con una partita rinviata ancora da recuperare la giornata è finita lo stesso (fine_giornata): la regola della lega dice cosa
+    contano i suoi giocatori; con `aspetta` restano in formazione senza voto e `recuperi` elenca le partite che mancano (i punti
+    possono ancora cambiare), con le altre regole `recuperi` è vuoto (i punti sono già quelli finali)."""
+    r_rinvio = rinvii.regola(regole, stagione, giornata)
+    mancano = recuperi_mancanti(db, stagione, giornata)
+    base = {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole),
+            "recuperi": mancano if r_rinvio["modo"] == "aspetta" else []}
     voce = (diario.carica(file_diario).get("giornate") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict):
         mia = voce.get("schierata") or voce.get("automatica") or voce["consigliata"]
@@ -335,7 +351,9 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
     if not squadre_voti:
         return None                                   # voti non ancora scaricati: niente numeri inventati
     partite = [{"casa": s, "trasferta": None, "stato": "finita"} for s in squadre_voti]
-    a = andamento([info[i] for i in tit_ids], [info[i] for i in panc_ids], partite, voti, squadre_voti, {}, set(), regole)
+    partite += [{"casa": p["casa"], "trasferta": p["trasferta"], "data": p["data"], "stato": "rinviata"} for p in mancano]
+    a = andamento([info[i] for i in tit_ids], [info[i] for i in panc_ids], partite, voti, squadre_voti, {}, set(), regole,
+                  rinvio=r_rinvio)
     ist = (diario.carica(file_diario).get("istantanee") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     atteso = ist.get("atteso") if isinstance(ist, dict) and di == "consigliata" else None
     return base | {"formazione_di": di, "nel_diario": False, "punti_fatti": a["punti_fatti"], "punti_attesi": atteso,

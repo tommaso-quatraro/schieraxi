@@ -175,6 +175,50 @@ def test_andamento_con_la_partita_rinviata(modo, fatti, stato_cambio, entra):
         assert a["punti_attesi_restanti"] == 0.0
 
 
+# ---------------------------------------------------------------- giornata finita con un recupero da giocare
+def _db_giornata(tmp_path, recupero_giocato=False, data_recupero="2026-11-30 20:45"):
+    from datetime import datetime as dt
+    db = archivio.apri(tmp_path / "f.sqlite")
+    righe = [(1, "2026-11-07 15:00", "inter", "milan", 1), (2, "2026-11-08 15:00", "roma", "lazio", 1),
+             (3, "2026-11-09 20:45", "napoli", "juve", 1), (4, data_recupero, "atalanta", "parma", int(recupero_giocato))]
+    archivio.inserisci(db, "partite", [{"id": i, "stagione": ST, "giornata": 9, "data": d, "casa": c, "trasferta": t_,
+                                        "gol_casa": None, "gol_trasferta": None, "giocata": g, "understat_id": None}
+                                       for i, d, c, t_, g in righe])
+    return db, dt.fromisoformat("2026-11-09 20:45") + fasi.DURATA_PARTITA
+
+
+@pytest.mark.parametrize("data_recupero", ["2026-11-30 20:45", None, "2026-10-31 15:00"])     # recupero, da definire, data vecchia
+def test_la_partita_rinviata_non_tiene_aperta_la_giornata(tmp_path, data_recupero):
+    db, fine = _db_giornata(tmp_path, data_recupero=data_recupero)
+    assert fasi.fine_giornata(db, ST, 9) == fine
+    assert fasi.recuperi_mancanti(db, ST, 9) == [{"casa": "atalanta", "trasferta": "parma", "data": data_recupero}]
+
+
+def test_giornata_aperta_se_manca_una_partita_del_turno_e_recupero_giocato(tmp_path):
+    db, fine = _db_giornata(tmp_path, recupero_giocato=True)
+    assert fasi.fine_giornata(db, ST, 9) == fine and fasi.recuperi_mancanti(db, ST, 9) == []
+    db.execute("UPDATE partite SET giocata = 0 WHERE id = 3")           # il posticipo del lunedì non è finito
+    assert fasi.fine_giornata(db, ST, 9) is None
+
+
+@pytest.mark.parametrize("modo, punti, recuperi", [("aspetta", 9 * 6 + 7, 1), ("senza_voto", 9 * 6 + 7 + 6, 0),
+                                                   ("voto_ufficio", 9 * 6 + 7 + 6, 0)])
+def test_riepilogo_con_il_recupero_da_giocare(tmp_path, monkeypatch, modo, punti, recuperi):
+    db, _ = _db_giornata(tmp_path)
+    info = {g["id"]: g for g in TIT + PANC}
+    archivio.inserisci(db, "voti", [{"stagione": ST, "giornata": 9, "calciatore_id": i, "nome": info[i]["nome"],
+                                     "squadra": info[i]["squadra"], "ruolo": info[i]["ruolo"], "voto_red": 6.0, "gol": 0}
+                                    for i in VOTI])
+    tit = [dict(g, squadra="atalanta") if g["id"] == 10 else g for g in TIT]        # Rinviato gioca la partita rinviata
+    info[10] = tit[9]
+    monkeypatch.setattr(fasi, "_info_rosa", lambda rose, prev: info)
+    monkeypatch.setattr(fasi, "schierata", lambda *a, **k: ([g["id"] for g in tit], [12], "tua"))
+    r = fasi.blocco_riepilogo(db, replace(Regole(), partite_rinviate=modo), None, ST, 9, None, None)
+    assert r["punti_fatti"] == punti and len(r["recuperi"]) == recuperi           # senza voto: entra la riserva (6)
+    if recuperi:
+        assert r["recuperi"][0]["casa"] == "atalanta"
+
+
 # ---------------------------------------------------------------- Oggi: blocco e rotta
 def test_blocco_di_oggi():
     partite = [{"casa": "inter", "trasferta": "milan", "data": "2026-11-08 15:00", "stato": "da_giocare"},
@@ -288,3 +332,17 @@ console.log(JSON.stringify([cardRinvio({json.dumps(rv)}), cardRinvio(null), card
     assert '<option value="voto_ufficio" selected>' in html and "voto d&#39;ufficio" not in html
     assert "prendono il voto d'ufficio (5,5)" in html
     assert "Di solito la tua lega: aspettano il recupero" in html
+    inizio2 = APP.index("function cardRiepilogo(")
+    corpo = APP[inizio2:APP.index("\nfunction ", inizio2 + 10)]
+    stub2 = stub + 'const fraseFascia = () => "";'
+    r = {"giornata": 9, "punti_fatti": 61, "punti_attesi": 70, "formazione_di": "tua", "nel_diario": False,
+         "recuperi": [{"casa": "atalanta", "trasferta": "parma", "data": None}]}
+    codice = f"""{testi}
+{num}
+{stub2}
+{corpo}
+console.log(JSON.stringify([cardRiepilogo({json.dumps(r)}, null), cardRiepilogo({json.dumps(r | {"recuperi": []})}, null)]));"""
+    esito = subprocess.run([shutil.which("node"), "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert esito.returncode == 0, esito.stderr
+    con, senza = json.loads(esito.stdout)
+    assert "Manca il recupero di ATA–PAR: i punti possono ancora cambiare." in con and "Manca il recupero" not in senza

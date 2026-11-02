@@ -24,7 +24,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
-    (giornata in corso) e nel Diario; campo `rinvio` di `/api/oggi`, rotta `PUT /api/regole/rinvio`. Test `tests/test_rinvii.py`.
+    (giornata in corso) e nel Diario; campo `rinvio` di `/api/oggi`, rotta `PUT /api/regole/rinvio`. Una partita rinviata non tiene
+    aperta la giornata (`fasi.fine_giornata`, `fasi.recuperi_mancanti`, `riepilogo.recuperi`). Test `tests/test_rinvii.py`.
   - Dati della lega: `regole.py` (regole parametriche), `regole_testo.py`, `rose.py` (Excel, CSV, testo), `lega.py`,
     `squadre.py`, `movimenti.py`, `scelte.py`, `formazioni_lega.py`, `osservati.py`, `listone.py`, `nomi.py` (riconoscimento
     dei nomi tra fonti), `immagini.py`, `scarica_immagine.py` (solo indirizzi https pubblici, tetto 4 MB).

@@ -131,7 +131,7 @@ Alcune funzioni (risultati in diretta, confronto, seguiti, elenco giocatori, Dia
 
 - **Prima della scadenza**: tutto come nella sezione 3.
 - **Giornata in corso** (formazione chiusa, partite da giocare o in corso): spariscono i consigli su chi schierare. Vedi i **punti fatti finora** dalla formazione schierata (la tua, se l'hai salvata), quanti punti ti aspetti **a fine giornata** (contando anche le riserve che entreranno), il fantavoto di chi ha giocato o l'ora di chi deve ancora giocare, e i **cambi dalla panchina**: «già fatto» se un titolare è rimasto senza voto e il sostituto ha il voto, «probabile» se deve ancora giocare. I fantavoti arrivano quando escono i voti ufficiali, di solito dopo la partita.
-- **Giornata finita** (per due giorni): il riepilogo con punti fatti e attesi, il confronto con la consigliata e un pulsante per aprire il Diario. Sotto, quando si chiude la prossima giornata e da quando conviene prepararla.
+- **Giornata finita** (per due giorni): il riepilogo con punti fatti e attesi, il confronto con la consigliata e un pulsante per aprire il Diario. Una partita rinviata non tiene aperta la giornata: se la tua lega aspetta il recupero, il riepilogo lo dice («Manca il recupero di…: i punti possono ancora cambiare»). Sotto, quando si chiude la prossima giornata e da quando conviene prepararla.
 
 ### Avvisi sul telefono (Impostazioni > Notifiche)
 

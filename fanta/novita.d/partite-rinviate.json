@@ -2,7 +2,7 @@
   "titolo": "Partite rinviate: decide la tua lega",
   "voci": [
     "Nuova regola in Impostazioni › Regole › Partite rinviate: la tua lega aspetta il recupero (predefinito), lascia i giocatori senza voto o dà un voto d'ufficio.",
-    "Se una partita della giornata è rinviata, Oggi lo dice, mostra i tuoi giocatori coinvolti e ti fa scegliere cosa vale solo per quella giornata.",
+    "Se una partita della giornata è rinviata, Oggi lo dice, mostra i tuoi giocatori coinvolti e ti fa scegliere cosa vale solo per quella giornata; il riepilogo di fine giornata arriva lo stesso e avvisa se i punti possono ancora cambiare.",
     "Formazione consigliata, punti della giornata in corso e Diario seguono la regola: chi resta senza voto lascia il posto a chi gioca, con il voto d'ufficio conta quel voto; il perché lo spiega."
   ],
   "tecnico": [
@@ -10,6 +10,7 @@
     "Nuovo modulo fanta/rinvii.py: partita rinviata = non giocata e fuori dal turno (turno.py); la regola si applica in consigli._calcola_previsioni dopo il modello: modello.py non cambia, verifica identica prima e dopo.",
     "Nuova rotta PUT /api/regole/rinvio {giornata, modo, stagione?} (stesso ETag delle regole); nuovo campo rinvio in /api/oggi e nelle schede dei giocatori; motivo con chiave rinvio in perche_numero.",
     "fasi.andamento: con aspetta chi ha la partita rinviata resta a punteggio, con senza_voto cambio certo, con voto_ufficio fantavoto fisso nei punti fatti.",
-    "diario.calcola_giornata: per le partite giocate fuori dal turno applica la regola della giornata ai voti contati (rinvii.voti_lega) e alle previsioni; impronta_regole cambia solo se la regola della giornata non è «aspetta», così le voci già scritte non si rifanno."
+    "diario.calcola_giornata: per le partite giocate fuori dal turno applica la regola della giornata ai voti contati (rinvii.voti_lega) e alle previsioni; impronta_regole cambia solo se la regola della giornata non è «aspetta», così le voci già scritte non si rifanno.",
+    "fasi.fine_giornata considera solo le partite del turno (le rinviate non tengono aperta la giornata); nuovo fasi.recuperi_mancanti e campo facoltativo riepilogo.recuperi di /api/oggi (solo con «aspetta»)."
   ]
 }
