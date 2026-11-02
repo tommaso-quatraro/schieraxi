@@ -96,9 +96,9 @@ final class RoseDaScreenshotVisionTests: XCTestCase {
             do {
                 pagina = try LetturaScreenshot.leggi(immagine)
             } catch {
-                return XCTFail("DIAGNOSI-TEMPORANEA Vision non disponibile: \(error)")
+                return XCTFail("Vision non ha letto lo screenshot: \(error)")
             }
-            if pagina.parole.isEmpty { return XCTFail("DIAGNOSI-TEMPORANEA Vision non ha letto niente") }
+            if pagina.parole.isEmpty { return XCTFail("Vision non ha letto niente") }
             pagine += [RoseDaScreenshot.leggi(pagina)].compactMap { $0 }
         }
         XCTAssertEqual(pagine.count, 2, "entrambe riconosciute come rose di Leghe")
@@ -111,10 +111,9 @@ final class RoseDaScreenshotVisionTests: XCTestCase {
             else { sbagliati.append("\(g.nome) -> \(righe.first(where: { RoseDaScreenshot.simili($0.nome, g.nome) }).map { "\($0)" } ?? "assente")"); print("VISION, non giusto: \(g.nome) -> \(righe.first(where: { RoseDaScreenshot.simili($0.nome, g.nome) }).map { "\($0)" } ?? "assente")") }
         }
         print("VISION su screenshot inventati: \(giusti) giocatori giusti su \(Self.rosa.count) (righe lette \(righe.count), squadre \(squadre.map(\.nome)))")
-        XCTFail("DIAGNOSI-TEMPORANEA VISION \(giusti)/\(Self.rosa.count) righe \(righe.count) squadre \(squadre.map(\.nome)) crediti \(String(describing: squadre.first?.crediti)) sbagliati \(sbagliati) parole \(pagine.map(\.righe.count))")
         XCTAssertEqual(squadre.map(\.nome), ["Atletico Pigiama"])
         XCTAssertEqual(squadre.first?.crediti, 7)
         XCTAssertEqual(righe.count, Self.rosa.count, "nessun doppione e nessuno perso")
-        XCTAssertGreaterThanOrEqual(giusti, Self.rosa.count - 1, "nome, ruolo, squadra e prezzo")
+        XCTAssertEqual(giusti, Self.rosa.count, "nome, ruolo, squadra e prezzo; sbagliati: \(sbagliati)")
     }
 }

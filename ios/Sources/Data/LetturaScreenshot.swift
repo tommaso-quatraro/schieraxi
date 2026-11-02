@@ -25,10 +25,34 @@ enum LetturaScreenshot {
     static func leggi(_ immagine: CGImage) throws -> PaginaScreenshot {
         let larghezza = Double(immagine.width), altezza = Double(immagine.height)
         guard larghezza > 0, altezza > 0 else { throw Errore.immagineNonLeggibile }
+        var parole = try riconosci(immagine)
+        // Secondo passaggio sulla sola zona dei numeri: una cifra isolata («1») in uno screenshot intero a volte sfugge.
+        // Si aggiungono solo i numeri che mancano.
+        let x0 = Int(larghezza * 0.55), y0 = Int(altezza * 0.2)
+        if let ritaglio = immagine.cropping(to: CGRect(x: x0, y: y0, width: immagine.width - x0, height: immagine.height - y0)),
+           let numeri = try? riconosci(ritaglio) {
+            let scala = Double(ritaglio.width) / larghezza
+            for n in numeri where RoseDaScreenshot.eNumero(n.testo) {
+                let p = ParolaLetta(testo: n.testo, x: Double(x0) / larghezza + n.x * scala, y: Double(y0) / larghezza + n.y * scala,
+                                    larghezza: n.larghezza * scala, altezza: n.altezza * scala)
+                let gia = parole.contains {
+                    RoseDaScreenshot.eNumero($0.testo) && abs($0.medioY - p.medioY) < 0.6 * p.altezza && abs($0.medioX - p.medioX) < 0.03
+                }
+                if !gia { parole.append(p) }
+            }
+        }
+        return PaginaScreenshot(parole: parole, proporzione: altezza / larghezza, strisciaRuoli: striscia(immagine))
+    }
+
+    /// Il testo di un'immagine, in parole con il loro riquadro (in larghezze di questa immagine).
+    private static func riconosci(_ immagine: CGImage) throws -> [ParolaLetta] {
+        let larghezza = Double(immagine.width), altezza = Double(immagine.height)
+        guard larghezza > 0, altezza > 0 else { return [] }
         let richiesta = VNRecognizeTextRequest()
         richiesta.recognitionLevel = .accurate
         richiesta.recognitionLanguages = ["it-IT"]
         richiesta.usesLanguageCorrection = false        // i cognomi stranieri non vanno «corretti»
+        richiesta.minimumTextHeight = Float(min(0.5, 12 / altezza))   // anche le scritte piccole (12 pixel)
         let gestore = VNImageRequestHandler(cgImage: immagine, orientation: .up, options: [:])
         try gestore.perform([richiesta])
         let proporzione = altezza / larghezza
@@ -37,7 +61,7 @@ enum LetturaScreenshot {
             guard let candidato = osservazione.topCandidates(1).first else { continue }
             parole += dividi(candidato, intera: osservazione.boundingBox, proporzione: proporzione)
         }
-        return PaginaScreenshot(parole: parole, proporzione: proporzione, strisciaRuoli: striscia(immagine))
+        return parole
     }
 
     /// Una riga di Vision divisa in parole, ognuna con il suo riquadro (così le colonne dei numeri restano separate).
