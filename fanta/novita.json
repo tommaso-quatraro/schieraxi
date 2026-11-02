@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.348",
+    "data": "2026-11-02T13:37:06",
+    "titolo": "Web e iPhone con le stesse parole e gli stessi numeri",
+    "voci": [
+      "«Giornata 7» è sempre il numero della giornata della tua lega, anche in alto, in Formazione e nella scheda del giocatore.",
+      "Le partite si leggono come sul campo: «INT @ MIL · sab 31 20:45» nelle righe, «@ MIL» e «vs MIL» nel calendario.",
+      "Sul campo solo il cognome; stati della partita con le stesse parole ovunque («Partita in corso», «Voto in arrivo»); nel Diario «Ho schierato la consigliata»."
+    ],
+    "tecnico": [
+      "Web: giornata_lega || giornata in testata, Formazione (titolo, testo, immagine) e scheda (prossima partita); vsAt/partitaRiga/partitaBreve in app.js per righe, confronto e celle.",
+      "testi.js: mercato.partita_fuori «in trasferta contro», oggi.st_* uguali a tit.st_*, diario.ho_schierato_questa «Ho schierato la consigliata»; cognome senza iniziale anche nell'immagine.",
+      "docs/COERENZA-WEB-IPHONE.md: differenze 1, 8, 24 chiuse; 2, 12, 14, 19 chiuse sul lato web. Test: tests/test_coerenza_web.py."
+    ]
+  },
+  {
     "versione": "1.347",
     "data": "2026-11-02T13:33:46",
     "titolo": "Scambi e mercato: conti giusti anche nei casi limite",
