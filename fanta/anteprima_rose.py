@@ -4,7 +4,8 @@ Usa lo stesso lettore dell'importazione (`rose.estrai`) e la stessa costruzione 
 dice esattamente cosa verrà salvato. Per ogni giocatore uno `stato`:
 - `sicuro`: nome trovato uguale nel listone, ruolo e squadra compatibili (o scelto a mano);
 - `da_controllare`: trovato solo per somiglianza o abbreviazione, ambiguo tra più giocatori, o con ruolo/squadra diversi;
-- `non_trovato`: nessun giocatore del listone (ceduto, nome scritto male, codice sconosciuto).
+- `non_trovato`: nessun giocatore del listone (ceduto, nome scritto male, codice sconosciuto); se qualcuno gli somiglia,
+  fino a 3 suggerimenti in `alternative` (nessuno scelto in partenza).
 
 Le `correzioni` (scelte dell'utente sui dubbi) valgono sia qui sia nell'importazione: `applica_correzioni`.
 Funzioni pure: nessun file scritto, niente log del testo (contiene nomi di persone della lega).
@@ -152,7 +153,7 @@ def anteprima(lette: list[SquadraLetta], avvisi_lettura: list[str], regole: Rego
                 "testo": riga.testo, "stato": st, "metodo": riga.esito.metodo,
                 "id": g.id, "nome": g.nome if g.id is not None else None, "ruolo": g.ruolo, "squadra": g.squadra,
                 "costo": g.costo, "avviso": riga.esito.avviso, "avviso_frase": frasi.di(riga.esito.avviso),
-                "alternative": _alternative(riga.esito) if st == DA_CONTROLLARE else [],
+                "alternative": _alternative(riga.esito) if st != SICURO else [],
             })
         conteggio = _conteggio(salvata, regole)
         squadre.append({"nome": s.nome, "nuova": s.nome not in nomi_prima, "crediti_residui": salvata.crediti_residui,

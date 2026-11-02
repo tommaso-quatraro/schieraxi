@@ -62,6 +62,16 @@ def test_stati_e_alternative(calciatori):
     assert a["totale_squadre"] == 2 and a["mia_squadra"] is None and a["differenze"]["prima_importazione"] is True
 
 
+def test_nomi_per_esteso_e_suggerimenti(calciatori):
+    # come li incolla chi comincia: nome e cognome, iniziale in più, un errore che non basta a riconoscerlo
+    testo = "Mia\nA\tLautaro Martinez\t40\nA\tKean M.\t20\nD\tDimarko\t10\n"
+    g = per_testo(leggi(testo, calciatori))
+    assert (g["Lautaro Martinez"]["stato"], g["Lautaro Martinez"]["id"]) == ("da_controllare", 10)
+    assert (g["Kean M."]["stato"], g["Kean M."]["id"]) == ("da_controllare", 14)
+    assert g["Dimarko"]["stato"] == "non_trovato" and g["Dimarko"]["id"] is None
+    assert [x["id"] for x in g["Dimarko"]["alternative"]] == [13]                 # suggerito, non scelto
+
+
 def test_una_sola_squadra_basta_per_cominciare(calciatori):
     a = leggi("Mia\nP\tSommer\t10\n", calciatori)
     assert a["mia_squadra"] == "Mia"                                   # una sola squadra letta: è la tua (si può cambiare)

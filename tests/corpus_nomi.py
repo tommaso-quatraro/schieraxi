@@ -172,6 +172,12 @@ def _varianti(c: Calciatore, rnd: random.Random, nomi_esatti: set[str]) -> list[
         ]
         if normalizza(cognome) not in nomi_esatti:     # «Thuram» è il nome di un altro: non si può pretendere l'altro
             v.append(("solo cognome", cognome))
+        propri = " ".join(i.capitalize() + "ando" for i in normalizza(iniziali).split())   # «L.» -> «Lando»
+        v += [("nome per esteso", f"{propri} {cognome}"), ("cognome e nome", f"{cognome} {propri}")]
+    elif len(normalizza(nome)) >= 4:                    # «Pulisic C.» quando il listone scrive solo «Pulisic»
+        libere = [x for x in "zyxwvqhg" if not any(k.startswith(normalizza(f"{nome} {x}")) for k in nomi_esatti)]
+        if libere:
+            v.append(("iniziale in più", f"{nome} {libere[0].upper()}."))
     parole = cognome.split()
     if len(parole) == 2 and not iniziali:
         v.append(("ordine invertito", f"{parole[1]} {parole[0]}"))

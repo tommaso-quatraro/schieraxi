@@ -1297,7 +1297,8 @@ let listoneCerca = null, listoneQuando = 0, listonePromessa = null, abortoCerca 
 function caricaListoneCerca() {
   if (listoneCerca && Date.now() - listoneQuando < 600000) return Promise.resolve(listoneCerca);
   if (!listonePromessa) {
-    listonePromessa = api("/api/giocatori?tutti=1").then(l => { listoneCerca = l.map(x => ({ ...x, n: normNome(x.nome) })); listoneQuando = Date.now(); return listoneCerca; })
+    // `nome_completo` (facoltativo): si cerca anche per nome proprio, «Lautaro» trova «Martinez L.»
+    listonePromessa = api("/api/giocatori?tutti=1").then(l => { listoneCerca = l.map(x => ({ ...x, n: normNome(x.nome), nc: x.nome_completo ? normNome(x.nome_completo) : "" })); listoneQuando = Date.now(); return listoneCerca; })
       .finally(() => { listonePromessa = null; });
   }
   return listonePromessa;
@@ -1313,9 +1314,10 @@ async function cercaGiocatori(q, limite) {
   return api(`/api/giocatori?q=${encodeURIComponent(q)}&limite=${limite}`, { signal: abortoCerca.signal });
 }
 function filtraListone(n, limite, lista = listoneCerca) {
-  const trovati = lista.filter(x => x.n.includes(n));
-  trovati.sort((a, b) => (a.n.startsWith(n) ? 0 : 1) - (b.n.startsWith(n) ? 0 : 1) || b.quotazione - a.quotazione);
-  return trovati.slice(0, limite).map(({ n: _n, ...x }) => x);
+  const trovati = lista.filter(x => x.n.includes(n) || (x.nc && x.nc.includes(n)));
+  const inizia = x => (x.n.startsWith(n) || (x.nc && x.nc.startsWith(n)) ? 0 : 1);
+  trovati.sort((a, b) => inizia(a) - inizia(b) || b.quotazione - a.quotazione);
+  return trovati.slice(0, limite).map(({ n: _n, nc: _nc, ...x }) => x);
 }
 
 // Giocatori: un solo elenco per cercare, filtrare per ruolo e vedere chi è libero. La classifica larga (tutti quelli che giocano, fino a 800 righe) si scarica una

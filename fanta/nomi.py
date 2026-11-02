@@ -2,6 +2,8 @@
 
 Esempi: "Laurientè" / "Laurienté" / "Lauriente", "Esposito Se." / "Esposito S", "N'Dicka" / "Ndicka".
 Anche celle copiate e incollate: "A Martinez L. (INT) 45", "L. Martinez", "#10 Martinez L. ⭐".
+E nomi scritti per esteso: "Lautaro Martinez" / "Martinez Lautaro" (il nome proprio comincia con l'iniziale del listone),
+"Pulisic C." quando il listone scrive solo "Pulisic", "Christian Pulisic" se si conosce il nome per esteso (`completi`).
 
 Regola d'oro: zero abbinamenti sbagliati dati per sicuri. `esatto` (senza avviso) vuol dire che il nome, tolti ruolo,
 squadra, crediti e simboli, è quello del listone; tutto il resto (abbreviato, simile, ambiguo) va controllato.
@@ -68,6 +70,11 @@ def _iniziali_diverse(a: str, b: str) -> bool:
     return not all(x.startswith(y) or y.startswith(x) for x, y in zip(ia, ib))
 
 
+def _propri_compatibili(iniziali: list[str], propri: list[str]) -> bool:
+    """Le iniziali del listone (['l'], ['jo'], ['f', 'p']) sono l'inizio dei nomi propri scritti per esteso, in ordine."""
+    return 0 < len(iniziali) <= len(propri) and all(p.startswith(i) for i, p in zip(iniziali, propri))
+
+
 # pulizia delle celle copiate e incollate
 _RUOLI = {"p": "P", "por": "P", "portiere": "P", "d": "D", "dif": "D", "difensore": "D",
           "c": "C", "cen": "C", "centrocampista": "C", "a": "A", "att": "A", "attaccante": "A"}
@@ -99,7 +106,9 @@ def _senza_doppi(calciatori: list[Calciatore]) -> list[Calciatore]:
 class Indice:
     """Cerca i giocatori del listone per nome, aiutandosi con squadra e ruolo quando servono."""
 
-    def __init__(self, calciatori: list[Calciatore]):
+    def __init__(self, calciatori: list[Calciatore], completi: dict[int, str] | None = None):
+        """`completi` (facoltativo): nome e cognome per esteso di alcuni giocatori, {codice: "Lautaro Martínez"},
+        da un'altra fonte già abbinata al listone (`listone.nomi_completi`). Servono solo a proporre, mai a dare per sicuro."""
         self.calciatori = calciatori
         self._per_nome: dict[str, list[Calciatore]] = defaultdict(list)
         for c in calciatori:
@@ -118,6 +127,13 @@ class Indice:
         self._per_parole: dict[tuple, list[str]] = defaultdict(list)
         for k in self._nomi:
             self._per_parole[tuple(sorted(k.split()))].append(k)
+        # nome e cognome per esteso, in qualunque ordine: («lautaro», «martinez») -> Martinez L.
+        self._completi: dict[tuple, list[Calciatore]] = defaultdict(list)
+        per_codice = {c.id: c for c in calciatori}
+        for codice, testo in (completi or {}).items():
+            c, parole = per_codice.get(codice), normalizza(testo).split()
+            if c is not None and len(parole) >= 2:
+                self._completi[tuple(sorted(parole))].append(c)
 
     def e_squadra_serie_a(self, testo: str) -> bool:
         return normalizza(testo) in self._squadre
@@ -214,6 +230,48 @@ class Indice:
         """«Pellegrini» quando il listone scrive «Pellegrini Lu.» (con più omonimi tornano tutti: sarà un dubbio)."""
         return list(self._cognomi.get(n, [])) if len(n) >= 4 else []
 
+    def _cognome_nudo(self, n: str) -> list[Calciatore]:
+        """«Pulisic C.» quando il listone scrive solo «Pulisic» (il cognome è di uno solo, l'iniziale non si sa)."""
+        cognome, iniziali = _cognome_e_iniziali(n)
+        return list(self._per_nome.get(" ".join(cognome), [])) if iniziali and len(" ".join(cognome)) >= 4 else []
+
+    def _per_esteso(self, n: str) -> list[Calciatore]:
+        """«Christian Pulisic», «Martinez Lautaro»: il nome per esteso conosciuto da un'altra fonte, in qualunque ordine."""
+        return list(self._completi.get(tuple(sorted(n.split())), []))
+
+    def _nome_e_cognome(self, n: str) -> list[Calciatore]:
+        """«Lautaro Martinez» o «Martinez Lautaro» per «Martinez L.»: i nomi propri cominciano con le iniziali del listone.
+        Il cognome nudo non basta («Real Barella» non è Barella): serve l'iniziale che corrisponde. Se però c'è anche chi ha
+        quel cognome senza iniziale («Colombo» e «Colombo L.»), il nome proprio può essere suo: allora è un dubbio tra i due."""
+        parole = n.split()
+        trovati = []
+        for k in range(1, len(parole)):
+            for cognome, propri in ((parole[k:], parole[:k]), (parole[:k], parole[k:])):
+                if any(len(p) < 3 for p in propri):
+                    continue                               # una o due lettere sono iniziali: ci pensano gli altri modi
+                compatibili = []
+                for c in self._cognomi.get(" ".join(cognome), []):
+                    m = _CON_INIZIALI.fullmatch(str(c.nome).strip())
+                    if m and _propri_compatibili(normalizza(m.group(2)).split(), propri):
+                        compatibili.append(c)
+                if compatibili:
+                    trovati += compatibili + self._per_nome.get(" ".join(cognome), [])
+        return _senza_doppi(trovati)
+
+    def _proposte(self, letture: list[str]) -> list[Calciatore]:
+        """Per chi non è stato trovato, fino a 3 nomi che gli somigliano (solo suggerimenti da scegliere a mano):
+        il nome intero, poi ogni parola lunga come possibile cognome («Dimarko Federico» -> Dimarco)."""
+        trovati: list[Calciatore] = []
+        for n in letture:
+            for k in difflib.get_close_matches(n, self._nomi, n=3, cutoff=0.75):
+                trovati += self._per_nome[k]
+            for parola in (p for p in n.split() if len(p) >= 4):
+                for k in difflib.get_close_matches(parola, self._nomi, n=2, cutoff=0.8):
+                    trovati += self._per_nome[k]
+                for k in difflib.get_close_matches(parola, list(self._cognomi), n=2, cutoff=0.8):
+                    trovati += self._cognomi[k]
+        return _senza_doppi(trovati)[:3]
+
     def _invertito(self, n: str) -> list[Calciatore]:
         """«Mbeki Kolo» per «Kolo Mbeki»: stesse parole in un altro ordine."""
         parole = n.split()
@@ -240,13 +298,16 @@ class Indice:
             ("esatto", lambda k: self._per_nome.get(k, [])),
             ("abbreviato", self._abbreviati),
             ("abbreviato", self._solo_cognome),
+            ("abbreviato", self._cognome_nudo),
             ("simile", self._invertito),
+            ("abbreviato", self._per_esteso),
+            ("abbreviato", self._nome_e_cognome),
             ("simile", self._simili),
         ):
             gruppi = [(trovati, sq, ru) for k, sq, ru in letture if (trovati := trova(k))]
             if gruppi:
                 return self._decidi(metodo, gruppi)
-        return Esito(None, "non trovato")
+        return Esito(None, "non trovato", self._proposte([k for k, _, _ in letture]))
 
     def _decidi(self, metodo: str, gruppi: list[tuple[list[Calciatore], str | None, str | None]]) -> Esito:
         """Dai candidati di ogni lettura della cella a un esito. Letture che portano a giocatori diversi: dubbio."""
