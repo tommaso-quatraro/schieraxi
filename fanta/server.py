@@ -1443,28 +1443,35 @@ def immagine_squadra(squadra: str, tipo: str, ctx: Contesto = Depends(lega_corre
     p = immagini.percorso(s.nome, tipo, ctx.immagini) if s else None
     if p is None:
         raise HTTPException(404, "Nessuna immagine")
-    return FileResponse(p, media_type=immagini.FORMATI[p.suffix], headers={"Cache-Control": "public, max-age=3600"})
+    return FileResponse(p, media_type=immagini.FORMATI[p.suffix], headers={"Cache-Control": "private, max-age=3600"})
 
 
 @app.post("/api/squadre/immagine")
 def carica_immagine_squadra(squadra: str, tipo: str, file: UploadFile, ctx: Contesto = Depends(lega_corrente)):
-    s = _rose(ctx).squadra(squadra)
-    if not s:
-        raise HTTPException(404, "Squadra non trovata")
     dati = file.file.read(immagini.MAX_BYTE + 1)
-    limiti.controlla_spazio(ctx, len(dati))
-    immagini.salva(s.nome, tipo, dati, ctx.immagini)
-    return {"squadra": s.nome, "tipo": tipo, "immagini": immagini.presenti(s.nome, ctx.immagini)}
+    return _salva_immagine(squadra, tipo, dati, ctx)
+
+
+def _salva_immagine(squadra: str, tipo: str, dati: bytes, ctx: Contesto) -> dict:
+    """Con il blocco delle rose: una rinomina o un'importazione nello stesso momento non lascia l'immagine al nome vecchio."""
+    with _scrittura_rose:
+        s = _rose(ctx).squadra(squadra)
+        if not s:
+            raise HTTPException(404, "Squadra non trovata")
+        limiti.controlla_spazio(ctx, len(dati))
+        immagini.salva(s.nome, tipo, dati, ctx.immagini)
+        return {"squadra": s.nome, "tipo": tipo, "immagini": immagini.presenti(s.nome, ctx.immagini)}
 
 
 @app.delete("/api/squadre/immagine")
 def togli_immagine_squadra(squadra: str, tipo: str, ctx: Contesto = Depends(lega_corrente)):
     """Toglie lo stemma o la maglia (200 anche se non c'era: il risultato è lo stesso)."""
-    s = _rose(ctx).squadra(squadra)
-    if not s:
-        raise HTTPException(404, "Squadra non trovata")
-    immagini.rimuovi(s.nome, tipo, ctx.immagini)
-    return {"squadra": s.nome, "tipo": tipo, "immagini": immagini.presenti(s.nome, ctx.immagini)}
+    with _scrittura_rose:
+        s = _rose(ctx).squadra(squadra)
+        if not s:
+            raise HTTPException(404, "Squadra non trovata")
+        immagini.rimuovi(s.nome, tipo, ctx.immagini)
+        return {"squadra": s.nome, "tipo": tipo, "immagini": immagini.presenti(s.nome, ctx.immagini)}
 
 
 class DaUrl(BaseModel):
@@ -1485,10 +1492,8 @@ def immagine_squadra_da_url(corpo: DaUrl, ctx: Contesto = Depends(lega_corrente)
     limiti.distanzia_download(ctx)
     limiti.conta(ctx, "immagini_url")             # si conta prima: anche i tentativi sbagliati fanno lavorare il server
     with limiti.download_in_corso():
-        dati, _ = scarica_immagine.scarica(corpo.url)
-    limiti.controlla_spazio(ctx, len(dati))
-    immagini.salva(s.nome, corpo.tipo, dati, ctx.immagini)
-    return {"squadra": s.nome, "tipo": corpo.tipo, "immagini": immagini.presenti(s.nome, ctx.immagini)}
+        dati, _ = scarica_immagine.scarica(corpo.url)           # fuori dal blocco: lo scaricamento può durare
+    return _salva_immagine(corpo.squadra, corpo.tipo, dati, ctx)
 
 
 @app.post(PERCORSO_CONDIVISIONE)
@@ -1579,15 +1584,25 @@ def rinomina_squadra(dati: NomeSquadra, request: Request, response: Response, ct
         s = next((x for x in r.squadre if x.nome.lower() == dati.nome.strip().lower()), None)
         if s is None:
             raise HTTPException(404, "Squadra non trovata")
-        if any(x is not s and (x.nome.lower() == nuovo.lower() or immagini.slug(x.nome) == immagini.slug(nuovo)) for x in r.squadre):
+        if any(x is not s and x.nome.lower() == nuovo.lower() for x in r.squadre):
             raise HTTPException(409, NOME_SQUADRA_DOPPIO)
+        simile = next((x for x in r.squadre if x is not s and immagini.slug(x.nome) == immagini.slug(nuovo)), None)
+        if simile is not None:                       # nomi diversi ma stesso file per stemma e maglia (simboli, punteggiatura)
+            raise HTTPException(409, f"Questo nome si confonde con «{simile.nome}»: aggiungi o cambia una lettera o un numero.")
         vecchio = s.nome
         if vecchio != nuovo:
-            immagini.rinomina(vecchio, nuovo, ctx.immagini)
+            spostati = immagini.rinomina(vecchio, nuovo, ctx.immagini)
             s.nome = nuovo
+            s.nome_importato = s.nome_importato or vecchio       # il nome di Leghe, per riconoscerla alla prossima importazione
+            if s.nome_importato == nuovo:
+                s.nome_importato = None
             if r.mia_squadra == vecchio:
                 r.mia_squadra = nuovo
-            lega.salva(r, ctx.rose)
+            try:
+                lega.salva(r, ctx.rose)
+            except Exception:
+                immagini.annulla(spostati)           # le rose non sono cambiate: stemma e maglia tornano al nome di prima
+                raise
         response.headers["ETag"] = versioni.etag_file(ctx.rose)
         return {"nome": nuovo, "prima": vecchio, "mia_squadra": r.mia_squadra}
 
@@ -1606,13 +1621,15 @@ def imposta_mia_squadra(dati: MiaSquadra, request: Request, response: Response, 
         return {"mia_squadra": s.nome}
 
 
-def _leggi_rose(griglie, r, correzioni: list[dict] | None = None):
-    """Le squadre lette (con le scelte dell'utente sui dubbi già applicate), gli avvisi della lettura e il listone."""
+def _leggi_rose(griglie, r, correzioni: list[dict] | None = None, prima: lega.Rose | None = None):
+    """Le squadre lette (con le scelte dell'utente sui dubbi già applicate), gli avvisi della lettura e il listone.
+    `prima` (le rose salvate): le squadre rinominate nell'app prendono il nome dell'app (lega.nomi_rinominati)."""
     calciatori, _ = listone.carica()
     avvisi: list[str] = []
     lette = rose.estrai(griglie, nomi.Indice(calciatori, listone.nomi_completi()), r.rosa, avvisi)
     if not lette:
         raise ValueError(rose.NESSUNA_ROSA)
+    lega.nomi_rinominati(lette, prima)
     anteprima_rose.applica_correzioni(lette, correzioni, calciatori)
     rose.togli_doppioni(lette, avvisi)                 # una correzione può indicare chi c'è già nella stessa rosa
     return lette, avvisi
@@ -1621,13 +1638,17 @@ def _leggi_rose(griglie, r, correzioni: list[dict] | None = None):
 def _importa(griglie, sostituisci_tutto: bool, ctx: Contesto, correzioni: list[dict] | None = None,
              mia_squadra: str | None = None) -> dict:
     r = _regole(ctx)
-    lette, avvisi = _leggi_rose(griglie, r, correzioni)
     prima = lega.carica(ctx.rose)
+    lette, avvisi = _leggi_rose(griglie, r, correzioni, prima)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
     limiti.controlla_rose(ctx, nuove)                          # con gli account: al massimo 20 squadre da 40 giocatori
     nuove.stagione = consigli.stagione_corrente()
     lega.salva(nuove, ctx.rose, copia_di_riserva=True)
+    try:                                                       # stemmi e maglie di squadre tolte: una nuova con lo stesso nome non li eredita
+        immagini.pulisci([s.nome for s in nuove.squadre], ctx.immagini)
+    except OSError:
+        pass
     diff = movimenti.differenze(prima, nuove)
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
@@ -1723,8 +1744,8 @@ def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, 
     """Come l'importazione ma senza scrivere niente: legge le rose salvate (per dire cosa cambierebbe) e basta."""
     etag = versioni.etag_file(ctx.rose)          # PRIMA di leggere le rose: se cambiano subito dopo, l'importazione darà 412
     r = _regole(ctx)
-    lette, avvisi = _leggi_rose(griglie, r, correzioni)
     prima = lega.carica(ctx.rose)
+    lette, avvisi = _leggi_rose(griglie, r, correzioni, prima)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     limiti.controlla_rose(ctx, nuove)                              # stessi tetti dell'importazione
     risposta = anteprima_rose.anteprima(lette, avvisi, r, prima, nuove)

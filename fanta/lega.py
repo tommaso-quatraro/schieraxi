@@ -34,6 +34,7 @@ class Squadra:
     nome: str
     giocatori: list[GiocatoreRosa] = field(default_factory=list)
     crediti_residui: int | None = None
+    nome_importato: str | None = None   # il nome scritto nel file di Leghe, se l'utente l'ha cambiato nell'app (rinomina)
 
 
 @dataclass
@@ -51,6 +52,19 @@ class Rose:
             return esatte[0]
         parziali = [s for s in self.squadre if s.nome.lower().startswith(n)]
         return parziali[0] if len(parziali) == 1 else None
+
+
+def nomi_rinominati(lette: list[SquadraLetta], precedenti: Rose | None) -> None:
+    """Le squadre lette che l'utente ha rinominato nell'app prendono il nome dell'app: su Leghe resta il nome vecchio, e alla
+    reimportazione deve aggiornarsi la stessa squadra (con «la tua squadra»), non nascerne una nuova. Da chiamare subito dopo la
+    lettura, prima delle scelte dell'utente sui dubbi (l'anteprima mostra già il nome dell'app)."""
+    if not precedenti:
+        return
+    nomi = {s.nome for s in precedenti.squadre}
+    rinominate = {s.nome_importato: s.nome for s in precedenti.squadre if s.nome_importato}
+    for s in lette:
+        if s.nome not in nomi and s.nome in rinominate:
+            s.nome = rinominate[s.nome]
 
 
 def da_import(lette: list[SquadraLetta], precedenti: Rose | None = None, sostituisci_tutto: bool = False) -> Rose:
@@ -77,8 +91,10 @@ def da_import(lette: list[SquadraLetta], precedenti: Rose | None = None, sostitu
                 avviso=avviso,
             ))
         # se il file non ha i crediti, restano quelli già inseriti a mano
-        prima = next((x.crediti_residui for x in precedenti.squadre if x.nome == s.nome), None) if precedenti else None
-        nuove.append(Squadra(s.nome, giocatori, s.crediti_residui if s.crediti_residui is not None else prima))
+        vecchia = next((x for x in precedenti.squadre if x.nome == s.nome), None) if precedenti else None
+        prima = vecchia.crediti_residui if vecchia else None
+        nuove.append(Squadra(s.nome, giocatori, s.crediti_residui if s.crediti_residui is not None else prima,
+                             vecchia.nome_importato if vecchia else None))
     squadre = nuove
     if precedenti and not sostituisci_tutto:
         per_nome = {s.nome: s for s in nuove}
@@ -142,7 +158,7 @@ def da_dict(dati: dict) -> Rose:
     try:
         return Rose(
             squadre=[Squadra(s["nome"], [GiocatoreRosa(**{k: v for k, v in g.items() if k in _CAMPI_GIOCATORE})
-                                         for g in s["giocatori"]], s.get("crediti_residui"))
+                                         for g in s["giocatori"]], s.get("crediti_residui"), s.get("nome_importato") or None)
                      for s in dati["squadre"]],
             mia_squadra=dati.get("mia_squadra"),
             aggiornato=dati.get("aggiornato", ""),

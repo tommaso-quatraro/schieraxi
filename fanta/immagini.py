@@ -13,19 +13,35 @@ FORMATI = {".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp"}
 MAX_BYTE = 4 * 1024 * 1024
 
 
-def slug(nome: str) -> str:
+MAX_SLUG = 80          # un nome molto lungo (o con caratteri che si espandono, «㎯») darebbe un file troppo lungo per il disco
+
+
+def _slug_pieno(nome: str) -> str:
     t = unicodedata.normalize("NFKD", nome.lower())
     t = "".join(c for c in t if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", "-", t).strip("-") or "squadra"
 
 
+def slug(nome: str) -> str:
+    return _slug_pieno(nome)[:MAX_SLUG].strip("-") or "squadra"
+
+
+def _slug_possibili(nome: str) -> list[str]:
+    """Lo slug di adesso e, se diverso, quello intero di prima (immagini salvate prima del taglio a MAX_SLUG)."""
+    return list(dict.fromkeys([slug(nome), _slug_pieno(nome)]))
+
+
 def percorso(nome: str, tipo: str, cartella: Path | None = None) -> Path | None:
     if tipo not in TIPI:
         return None
-    for estensione in FORMATI:
-        p = (cartella or CARTELLA) / f"{slug(nome)}-{tipo}{estensione}"
-        if p.exists():
-            return p
+    for s in _slug_possibili(nome):
+        for estensione in FORMATI:
+            p = (cartella or CARTELLA) / f"{s}-{tipo}{estensione}"
+            try:
+                if p.exists():
+                    return p
+            except OSError:              # nome di file troppo lungo per il disco: per quel nome non c'è immagine
+                continue
     return None
 
 
@@ -56,18 +72,51 @@ def salva(nome: str, tipo: str, dati: bytes, cartella: Path | None = None) -> Pa
     return destinazione
 
 
-def rinomina(vecchio: str, nuovo: str, cartella: Path | None = None) -> None:
-    """Stemma e maglia seguono la squadra quando cambia nome (i file si chiamano come la squadra)."""
+def rinomina(vecchio: str, nuovo: str, cartella: Path | None = None) -> list[tuple[Path, Path]]:
+    """Stemma e maglia seguono la squadra quando cambia nome (i file si chiamano come la squadra). Restituisce gli spostamenti
+    fatti, per `annulla` se poi il salvataggio delle rose non riesce; se uno spostamento fallisce, quelli già fatti si annullano."""
     cartella = cartella or CARTELLA
+    fatti: list[tuple[Path, Path]] = []
     if slug(vecchio) == slug(nuovo):
-        return
-    for tipo in TIPI:
-        p = percorso(vecchio, tipo, cartella)
-        if p is None:
-            continue
-        for altra in FORMATI:
-            (cartella / f"{slug(nuovo)}-{tipo}{altra}").unlink(missing_ok=True)
-        p.rename(cartella / f"{slug(nuovo)}-{tipo}{p.suffix}")
+        return fatti
+    try:
+        for tipo in TIPI:
+            p = percorso(vecchio, tipo, cartella)
+            if p is None:
+                continue
+            for altra in FORMATI:           # file rimasti di una squadra che non c'è più con lo stesso nome: non si ereditano
+                (cartella / f"{slug(nuovo)}-{tipo}{altra}").unlink(missing_ok=True)
+            dest = cartella / f"{slug(nuovo)}-{tipo}{p.suffix}"
+            p.rename(dest)
+            fatti.append((p, dest))
+    except OSError:
+        annulla(fatti)
+        raise
+    return fatti
+
+
+def annulla(spostamenti: list[tuple[Path, Path]]) -> None:
+    """Rimette i file dove stavano prima di `rinomina` (in ordine inverso)."""
+    for da, a in reversed(spostamenti):
+        try:
+            a.rename(da)
+        except OSError:
+            pass
+
+
+def pulisci(nomi: list[str], cartella: Path | None = None) -> int:
+    """Toglie stemmi e maglie che non appartengono a nessuna delle squadre `nomi` (per esempio di una squadra tolta dalle rose):
+    una squadra nuova con lo stesso nome non deve ereditarli. Le immagini in attesa («_in-attesa») restano. Quante ne ha tolte."""
+    cartella = cartella or CARTELLA
+    if not cartella.is_dir():
+        return 0
+    tenuti = {f"{s}-{t}" for n in nomi for s in _slug_possibili(n) for t in TIPI}
+    tolte = 0
+    for p in cartella.iterdir():
+        if p.suffix in FORMATI and not p.name.startswith("_") and p.stem.endswith(TIPI) and p.stem not in tenuti:
+            p.unlink(missing_ok=True)
+            tolte += 1
+    return tolte
 
 
 def rimuovi(nome: str, tipo: str, cartella: Path | None = None) -> bool:
@@ -75,11 +124,9 @@ def rimuovi(nome: str, tipo: str, cartella: Path | None = None) -> bool:
     if tipo not in TIPI:
         raise ValueError("Tipo di immagine non valido: stemma o maglia")
     tolto = False
-    for estensione in FORMATI:
-        p = (cartella or CARTELLA) / f"{slug(nome)}-{tipo}{estensione}"
-        if p.exists():
-            p.unlink(missing_ok=True)
-            tolto = True
+    while (p := percorso(nome, tipo, cartella)) is not None:
+        p.unlink(missing_ok=True)
+        tolto = True
     return tolto
 
 
