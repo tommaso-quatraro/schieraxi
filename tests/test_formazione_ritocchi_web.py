@@ -40,14 +40,26 @@ def test_stato_della_scelta_dal_confronto_con_il_server():
         (undici, {"titolari": list(reversed(undici))}, True, False), (undici, {"titolari": undici[:10] + [99]}, False, False),
         (undici, {"titolari": undici[:10] + [99]}, True, False), (undici, "NON_LETTA", False, False),
         (undici, {"titolari": undici}, False, True),
+        (undici, {"titolari": undici[:10] + [99]}, True, True),          # scelta non valida + «Modifica a mano»: si può salvare la nuova
     ]
     righe = ",".join(f"statoScelta({json.dumps(m)}, {'undefined' if s == 'NON_LETTA' else json.dumps(s)}, {str(man).lower()}, {str(nv).lower()})"
                      for m, s, man, nv in casi)
-    assert _node(funz + f"console.log(JSON.stringify([{righe}]))") == ["consigliata", "mano", "salvata", "modificata", "modificata", None, "non_valida"]
+    assert _node(funz + f"console.log(JSON.stringify([{righe}]))") == ["consigliata", "mano", "salvata", "modificata", "modificata", None, "non_valida", "modificata"]
     for chiave in ("stato_consigliata", "stato_salvata", "stato_salvata_quando", "stato_modificata_quando", "stato_mano", "stato_non_valida",
                    "salva_questa", "salva_modifiche", "annulla_modifiche"):
         assert TESTI.count(f'"formazione.{chiave}"') == 2, chiave
     assert "squadra ? null : statoScelta(" in APP                        # mai per le squadre altrui
+
+
+def test_rilettura_fallita_e_cambio_giornata_non_falsano_lo_stato():
+    """Revisione della PR: rete assente nella rilettura = stato ignoto (nessuna riga, si riprova); la scelta riletta dopo «Salva»
+    non finisce su un'altra giornata; la legenda viene prima delle pedine nel DOM (lettori di schermo) e sta in alto con `order`."""
+    corpo = APP[APP.index("const valutaManuale"):APP.index("const annullaRichieste")]
+    assert "else if (silenzioso) { if (sc.chiave === chiaveSc) { sc.salvata = undefined; sc.letta = false; }" in corpo
+    assert "const ancoraQui = () => n === sc.richiesta && sc.chiave === chiaveSc" in corpo
+    assert corpo.index("if (!ancoraQui()) return false;                     // nel frattempo") < corpo.index("sc.salvata = riletta;")
+    assert '<div class="campo">${legendaCampo()}<i class="area-alta">' in APP
+    assert re.search(r"^\.legenda-campo \{ order: 1;", CSS, re.M)
 
 
 def test_scelta_non_valida_non_si_cancella_da_sola():

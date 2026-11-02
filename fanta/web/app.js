@@ -867,7 +867,7 @@ const stessiIds = (a, b) => a.length === b.length && a.every(x => b.includes(x))
 function statoScelta(mostrati, salvata, manuale, nonValida = false) {
   if (salvata === undefined) return null;
   if (salvata && Array.isArray(salvata.titolari)) {
-    if (nonValida) return "non_valida";
+    if (nonValida && !manuale) return "non_valida";            // dopo «Modifica a mano» si può salvare la nuova (stato C)
     return stessiIds(mostrati.map(Number), salvata.titolari.map(Number)) ? "salvata" : "modificata";
   }
   return manuale ? "mano" : "consigliata";
@@ -927,14 +927,16 @@ function mostraFormazione(f, squadra, opz = {}) {
     sc.occupato = true;
     try {
       const r = await api("/api/formazione/valuta", { method: "POST", body: JSON.stringify({ titolari: ids, squadra: squadra || null, giornata: f.giornata, salva }) });
-      if (n !== sc.richiesta || !document.body.contains($("#punti-attesi"))) return false;
+      const ancoraQui = () => n === sc.richiesta && sc.chiave === chiaveSc && document.body.contains($("#punti-attesi"));    // stessa richiesta e stessa giornata
+      if (!ancoraQui()) return false;
       // uguale = gli stessi undici della scelta automatica (se non sono quelli salvati, tornando qui si riparte dalla consigliata)
       sc.manuale = { modulo: r.modulo, titolari: ids, panchina: r.panchina, r, uguale: stessiIds(ids, moduloAuto().titolari) };
       if (salva) {                                // lo stato «salvata» viene dal server: si rilegge la scelta appena scritta
-        sc.nonValida = false;
-        try { const s = await api(`/api/scelta?giornata=${f.giornata}`); sc.salvata = s && Array.isArray(s.titolari) ? s : { titolari: ids }; }
-        catch { sc.salvata = { titolari: ids }; }           // scritta (il server ha risposto), ma non riletta: senza l'ora
-        if (n !== sc.richiesta || !document.body.contains($("#punti-attesi"))) return false;
+        let riletta;
+        try { const s = await api(`/api/scelta?giornata=${f.giornata}`); riletta = s && Array.isArray(s.titolari) ? s : { titolari: ids }; }
+        catch { riletta = { titolari: ids }; }              // scritta (il server ha risposto), ma non riletta: senza l'ora
+        if (!ancoraQui()) return false;                     // nel frattempo hai cambiato giornata: la scelta riletta non è di questa
+        sc.salvata = riletta; sc.nonValida = false;
       }
       disegna(true);
       if (salva) avviso(t("formazione.salvata_come_tua"));
@@ -942,8 +944,11 @@ function mostraFormazione(f, squadra, opz = {}) {
     } catch (e) {
       if (n === sc.richiesta) {
         // la scelta salvata non vale più (rosa o regole cambiate): NON si cancella da sola, lo si dice nella riga dello stato
-        if (silenzioso && e.codice === "formazione_non_valida") { sc.nonValida = true; if (document.body.contains($("#punti-attesi"))) disegna(true); }
-        else if (!silenzioso) avviso(e.message, 5000);
+        const qui = sc.chiave === chiaveSc && document.body.contains($("#punti-attesi"));
+        if (silenzioso && e.codice === "formazione_non_valida") { if (sc.chiave === chiaveSc) sc.nonValida = true; if (qui) disegna(true); }
+        // rilettura della scelta fallita (rete): lo stato non è noto, la riga sparisce (niente falso «Modifiche non salvate») e si riprova la prossima volta
+        else if (silenzioso) { if (sc.chiave === chiaveSc) { sc.salvata = undefined; sc.letta = false; } if (qui) disegna(true); }
+        else avviso(e.message, 5000);
       }
       return false;
     } finally { if (n === sc.richiesta) sc.occupato = false; }
@@ -998,9 +1003,8 @@ function mostraFormazione(f, squadra, opz = {}) {
               <button class="bottone secondario" id="condividi">${t("formazione.condividi_immagine")}</button></div></details>
         </div>
       </div>
-      <div class="campo"><i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
+      <div class="campo">${legendaCampo()}<i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
         ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
-        ${legendaCampo()}
       </div>
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(manuale ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>

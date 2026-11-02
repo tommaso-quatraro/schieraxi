@@ -291,12 +291,13 @@ details[open] > summary { margin-bottom: 8px; }
 .pedina .avv, .legenda-campo .avv { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); white-space: nowrap; }
 .dist { font-style: normal; display: inline-block; min-width: 2.6em; padding: 0 4px; border-radius: 5px; background: var(--c1); color: var(--ct); box-shadow: inset 0 -2.5px 0 var(--c2), 0 0 0 1px rgba(0, 0, 0, .25);
   font-size: var(--t-eti); font-weight: 800; letter-spacing: .03em; line-height: 1.5; text-align: center; text-shadow: none; }
-/* legenda del campo (una volta, poi dal pulsante ⓘ in basso a destra): in cima al campo, sopra gli attaccanti */
+/* legenda del campo (una volta, poi dal pulsante ⓘ in basso a destra): prima delle pedine nel DOM (si legge per prima), in cima al campo con `order`
+   (il campo è in column-reverse: l'ordine più alto va in alto) */
 .info-campo { position: absolute; z-index: 2; bottom: 16px; right: 16px; min-height: 44px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid rgba(255, 255, 255, .35);
   background: rgba(8, 14, 10, .55); color: #fff; font-size: var(--t-eti); font-weight: 650; display: inline-flex; align-items: center; gap: 6px; }
 .info-campo span { font-size: var(--t-corpo); }
 .info-campo[hidden], .legenda-campo[hidden] { display: none; }
-.legenda-campo { position: relative; z-index: 2; margin: 0 8px; padding: 12px 14px; border-radius: var(--r-in); background: rgba(8, 14, 10, .82); color: #fff;
+.legenda-campo { order: 1; position: relative; z-index: 2; margin: 0 8px; padding: 12px 14px; border-radius: var(--r-in); background: rgba(8, 14, 10, .82); color: #fff;
   border: 1px solid rgba(255, 255, 255, .2); font-size: var(--t-sec); }
 .legenda-campo ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
 .legenda-campo li { display: grid; grid-template-columns: 6.6em 1fr; gap: 8px; align-items: center; line-height: 1.3; }
