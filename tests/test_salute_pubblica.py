@@ -4,7 +4,7 @@ import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 
-from fanta import account, percorsi, server
+from fanta import percorsi, server
 from test_account_http import registra
 
 

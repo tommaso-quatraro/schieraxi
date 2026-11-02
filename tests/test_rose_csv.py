@@ -1,8 +1,6 @@
 """Rose da CSV: l'esportazione «rosters» di Leghe (nome squadra, codice calciatore, costo) e i CSV a colonne in tutte le
 codifiche e i separatori che capitano (Excel italiano, iPhone, Mac). Fixture: `tests/dati/rosters_ridotto.csv` (2 squadre)."""
 import codecs
-import contextlib
-from collections import Counter
 from pathlib import Path
 
 import pytest

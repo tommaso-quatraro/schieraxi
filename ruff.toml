@@ -1,0 +1,33 @@
+# ruff: solo CONTROLLO del codice Python, niente riformattazione (https://docs.astral.sh/ruff/).
+# Lo lancia il job «test» di .github/workflows/test.yml, con versione e hash fissati in .github/ruff-requisiti.txt.
+# In locale: ruff check fanta tests script prove
+target-version = "py311"          # la versione più vecchia su cui gira l'app (parte della CI)
+line-length = 140                 # usato solo da regole sulla lunghezza, che oggi non sono attive
+
+[lint]
+# E9 = errori di sintassi; F = errori sicuri (import e variabili inutili, nomi che non esistono, doppioni)
+select = ["E9", "F"]
+
+[lint.per-file-ignores]
+# F811 «ridefinito senza essere usato»: questi file importano fixture di pytest da altri file di test
+# (`from test_x import ambiente`) e le ricevono come parametro con lo stesso nome. È il modo in cui pytest le passa,
+# non un doppione. L'eccezione vale solo per questi file: negli altri F811 resta acceso (trova anche due test con lo stesso nome).
+"tests/test_anteprima_rose.py" = ["F811"]
+"tests/test_attacchi_corpo.py" = ["F811"]
+"tests/test_calcolo.py" = ["F811"]
+"tests/test_copia_scadenza.py" = ["F811"]
+"tests/test_etag.py" = ["F811"]
+"tests/test_etag_inglese.py" = ["F811"]
+"tests/test_formazione_chiusa.py" = ["F811"]
+"tests/test_importa_sicuro.py" = ["F811"]
+"tests/test_limiti_atomico.py" = ["F811"]
+"tests/test_nome_visualizzato.py" = ["F811"]
+"tests/test_oggi_risultati_ufficiali.py" = ["F811"]
+"tests/test_onboarding.py" = ["F811"]
+"tests/test_profilo_email_nome.py" = ["F811"]
+"tests/test_rinomina_squadra.py" = ["F811"]
+"tests/test_rinvii.py" = ["F811"]
+"tests/test_rose_csv.py" = ["F811"]
+"tests/test_rose_schermate.py" = ["F811"]
+"tests/test_sicurezza_revisione.py" = ["F811"]
+"tests/test_widget_fasi.py" = ["F811"]

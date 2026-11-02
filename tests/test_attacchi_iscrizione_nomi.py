@@ -1,12 +1,11 @@
 """Attacchi all'iscrizione con email (modo `aperta`): scoprire quali nomi esistono, bloccare l'iscrizione di un altro bruciandogli i codici."""
-import contextlib
 import re
 
 import pytest
 
 from fanta import account, account_email, posta
 
-from test_account_http import PASSWORD, cliente
+from test_account_http import cliente
 from test_account_email import codice_di
 from test_registrazione_modi import conferma, iscrivi, modo, utenti
 
