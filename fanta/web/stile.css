@@ -538,6 +538,9 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .proposta-r button.nome-g.piccolo { display: inline; font-size: var(--t-sec); font-weight: 600; color: var(--testo); padding: 13px 10px; margin: -13px -10px; min-width: 44px; }   /* anche i nomi corti arrivano a 44 px di larghezza, senza spostare le righe */
 .proposta-r button.nome-g { padding: 13px 4px; margin: -13px -4px; }       /* area di tocco da 44px senza cambiare l'altezza delle righe */
 .pr-sec { font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
+/* Scambi: con i segmenti in vista il titolo della carta ripeteva la voce scelta («Trova per me» due volte); resta per i lettori di schermo */
+.pr-num span { max-width: 6.5em; }   /* «punti in stagione» va a capo sotto il numero: la colonna dei nomi resta larga */
+#scambi-modi:not([hidden]) ~ .scambi-colonne .scambi-pannello > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pr-num { text-align: right; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
 .pr-num b { font-size: var(--t-titolo); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .pr-num span { font-size: var(--t-eti); font-weight: 600; color: var(--testo-2); }
