@@ -33,10 +33,9 @@ on:
     types: [opened, reopened, synchronize, labeled]
     paths: ["ios/**", ".github/workflows/screenshot.yml"]
 
-# UNA sola corsa Mac alla volta in tutto il repository (i Mac gratuiti sono pochi e i test iOS hanno la precedenza):
-# gruppo «screenshot-mac» sui job Mac (non sul job Linux «quando», che parte a ogni push e scalzerebbe le richieste vere).
-# La corsa in corso non si annulla; la successiva aspetta. GitHub tiene in attesa UNA sola richiesta:
-# una più nuova sostituisce quella in attesa (che va rilanciata dopo).
+# UNA sola corsa Mac alla volta in tutto il repository, in fila (i Mac gratuiti sono pochi e i test iOS hanno la precedenza):
+# il job Linux «quando» aspetta che finisca ogni corsa Screenshot partita prima di questa (ordine del numero di corsa),
+# poi lascia partire il Mac. Niente gruppo di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
 
 permissions:
   contents: read
@@ -49,8 +48,9 @@ jobs:
   # Gira su Linux (gratis e in pochi secondi): decide se serve il Mac, così le PR senza etichetta «screenshot» non lo prenotano.
   quando:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions: {}
+    timeout-minutes: 330      # l'attesa in fila sta qui (Linux, gratis); il massimo di GitHub è 360
+    permissions:
+      actions: read           # per vedere le corse Screenshot partite prima
     outputs:
       serve: ${{ steps.decidi.outputs.serve }}
     steps:
@@ -74,12 +74,22 @@ jobs:
           fi
           echo "Serve il Mac: $serve (evento: $EVENTO)"
           echo "serve=$serve" >> "$GITHUB_OUTPUT"
+      - name: In fila dietro le corse Screenshot partite prima
+        if: steps.decidi.outputs.serve == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUESTA: ${{ github.run_id }}
+        run: |
+          while :; do
+            prima=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/screenshot.yml/runs?per_page=100"               --jq "[.workflow_runs[] | select(.status != \"completed\" and .id < $QUESTA) | .id] | length")
+            [ "$prima" = "0" ] && break
+            echo "$(date -u +%H:%M) in fila: $prima corse Screenshot prima di questa"
+            sleep 60
+          done
+          echo "Tocca a questa corsa"
 
   screenshot:
     needs: quando
-    concurrency:
-      group: screenshot-mac
-      cancel-in-progress: false
     if: needs.quando.outputs.serve == 'true' && github.event.repository.private == false
     runs-on: macos-26
     timeout-minutes: 150
@@ -166,9 +176,6 @@ jobs:
   # Non fallisce per i problemi trovati: li elenca nel log (righe AUDIT|...) e nell'artifact «accessibilita».
   accessibilita:
     needs: quando
-    concurrency:
-      group: screenshot-mac
-      cancel-in-progress: false
     if: needs.quando.outputs.serve == 'true' && inputs.scatti == 'collaudo' && inputs.dispositivi != 'ipad' && github.event.repository.private == false
     runs-on: macos-26
     timeout-minutes: 90
