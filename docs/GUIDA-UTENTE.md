@@ -38,7 +38,7 @@ Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'emai
 
 ### Caricare la tua squadra
 
-Alla prima apertura SchieraXI ti guida in tre passi brevi. Ogni passo si può **saltare**: resta in **Da fare** in Oggi.
+Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si può **saltare**: resta in **Da fare** in Oggi.
 
 1. **Le rose.** Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla il testo o scegli il file e tocca **Controlla le rose**. Non si salva ancora niente.
    Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per gli scambi e le aggiungi quando vuoi. Se vuoi solo guardare l'app, usa le **squadre di esempio**.
@@ -48,7 +48,8 @@ Alla prima apertura SchieraXI ti guida in tre passi brevi. Ogni passo si può **
    - **riconosciuti**: raccolti in una riga che puoi aprire.
    In alto scegli **Qual è la tua squadra?** (se aggiungi solo le rose degli altri, c'è anche la tua, già scelta). Sotto, **Cosa cambia rispetto a ora** elenca squadre aggiunte o tolte, scambi, svincolati presi, tagli e crediti.
    Un giocatore scritto due volte nella stessa rosa resta una volta sola, e te lo dice. Poi **Conferma e salva** (oppure **Annulla**: non si salva niente).
-3. **Tutto pronto.** Puoi attivare gli avvisi e andare a Oggi.
+3. **I tempi della lega.** Due domande: quando si chiude la formazione (all'inizio della prima partita o qualche minuto prima) e da quale giornata di Serie A è partita la lega. Servono perché promemoria e numeri delle giornate siano giusti; le trovi nelle impostazioni della tua lega su Leghe e le cambi quando vuoi in **Altro > Regole**, sezione **Tempi della lega**.
+4. **Tutto pronto.** Puoi attivare gli avvisi e andare a Oggi.
 
 Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
 
