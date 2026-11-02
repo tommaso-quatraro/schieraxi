@@ -5,7 +5,6 @@ import json
 import time
 from datetime import datetime
 
-import openpyxl
 import pytest
 
 from fanta import contesto, lega, limiti, nomi, rose, server

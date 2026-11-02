@@ -6,7 +6,7 @@ import pytest
 
 from fanta import account, account_email, posta
 
-from test_account_http import PASSWORD, cliente, invito, registra
+from test_account_http import PASSWORD, cliente, invito
 from test_account_email import codice_di, ultimi
 
 

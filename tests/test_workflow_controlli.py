@@ -94,3 +94,24 @@ def test_zizmor_e_fissato_e_non_blocca_ancora_l_unione():
     requisiti = (CARTELLA_WORKFLOW.parent / "zizmor-requisiti.txt").read_text(encoding="utf-8")
     assert re.search(r"^zizmor==\d+\.\d+\.\d+ \\$", requisiti, re.M), "versione di zizmor fissata"
     assert len(re.findall(r"--hash=sha256:[0-9a-f]{64}", requisiti)) >= 2, "hash dei file di zizmor"
+
+
+def _requisiti_fissati(nome: str) -> str:
+    """Un file .github/<nome>-requisiti.txt con una sola libreria a versione fissa e gli hash dei suoi file."""
+    requisiti = (CARTELLA_WORKFLOW.parent / f"{nome}-requisiti.txt").read_text(encoding="utf-8")
+    assert re.search(rf"^{nome}==\d+\.\d+\.\d+ \\$", requisiti, re.M), f"versione di {nome} fissata"
+    assert len(re.findall(r"--hash=sha256:[0-9a-f]{64}", requisiti)) >= 2, f"hash dei file di {nome}"
+    return requisiti
+
+
+def test_ruff_controlla_il_codice_con_versione_e_hash_fissati():
+    """ruff (solo controllo, niente riformattazione) gira nel job «test», quindi blocca l'unione; si installa a parte
+    con versione e hash fissati, solo file binari."""
+    _requisiti_fissati("ruff")
+    testo = WORKFLOW.read_text(encoding="utf-8")
+    blocco_test = testo[testo.index("\n  test:"):testo.index("\n  script-server:")]
+    assert "--require-hashes --only-binary=:all: -r .github/ruff-requisiti.txt" in blocco_test
+    assert re.search(r"ruff\" check (--output-format=github )?fanta tests script prove", blocco_test)
+    assert "ruff format" not in testo and "--fix" not in testo
+    config = (CARTELLA_WORKFLOW.parent.parent / "ruff.toml").read_text(encoding="utf-8")
+    assert re.search(r'^select = \[.*"E9".*"F".*\]', config, re.M)

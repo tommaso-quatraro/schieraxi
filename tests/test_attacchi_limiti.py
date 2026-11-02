@@ -2,7 +2,6 @@
 tetti globali che un attaccante esaurisce per bloccare tutti, scrypt saturato. Cartelle temporanee e posta finta."""
 import collections
 import contextlib
-import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -197,7 +196,7 @@ def test_raffica_da_un_indirizzo_non_lascia_fuori_gli_altri(web, monkeypatch):
         time.sleep(0.15)
         return vero(*a, **k)
     monkeypatch.setattr(account.hashlib, "scrypt", lento)
-    esiti, fine = [], threading.Event()
+    esiti = []
 
     def raffica(i):
         esiti.append(da("5.5.5.5").post("/api/account/accedi", json={"nome_utente": f"n{i}", "password": "x" * 12}).status_code)
