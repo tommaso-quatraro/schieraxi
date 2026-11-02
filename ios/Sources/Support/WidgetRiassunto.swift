@@ -96,23 +96,32 @@ struct FormazioneWidget: Codable, Equatable {
 }
 
 struct PuntiGiornata: Codable, Equatable, Identifiable {
+    /// Il numero di Serie A mandato dal server; in `giornateGiocate` diventa il numero da mostrare (quello della lega se c'è).
     var giornata: Int
+    /// Il numero nella lega e la stagione della voce, gli stessi di `GET /api/diario` (server dal 2/11/2026; uno vecchio non li
+    /// manda). `giornataLega` è nil fuori dalla stagione in corso.
+    var giornataLega: Int?
+    var stagione: String?
     var attesi: Double?
     var fatti: Double?
     /// La fascia prevista per quella giornata (facoltativa: un server vecchio non la manda).
     var intervallo: IntervalloWidget?
-    var id: Int { giornata }
+    var id: String { "\(stagione ?? "")/\(numero)" }
 
-    private enum Chiavi: String, CodingKey { case giornata, attesi, fatti, intervallo }
+    private enum Chiavi: String, CodingKey { case giornata, giornataLega, stagione, attesi, fatti, intervallo }
 
-    init(giornata: Int, attesi: Double? = nil, fatti: Double? = nil, intervallo: IntervalloWidget? = nil) {
-        self.giornata = giornata; self.attesi = attesi; self.fatti = fatti; self.intervallo = intervallo
+    init(giornata: Int, giornataLega: Int? = nil, stagione: String? = nil, attesi: Double? = nil, fatti: Double? = nil,
+         intervallo: IntervalloWidget? = nil) {
+        self.giornata = giornata; self.giornataLega = giornataLega; self.stagione = stagione
+        self.attesi = attesi; self.fatti = fatti; self.intervallo = intervallo
     }
 
-    /// Tollerante: una fascia con la forma sbagliata si ignora, la giornata resta.
+    /// Tollerante: una fascia, un numero di lega o una stagione con la forma sbagliata si ignorano, la giornata resta.
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
         giornata = try k.decode(Int.self, forKey: .giornata)
+        giornataLega = ((try? k.decodeIfPresent(Int.self, forKey: .giornataLega)) ?? nil).flatMap { $0 > 0 ? $0 : nil }
+        stagione = ((try? k.decodeIfPresent(String.self, forKey: .stagione)) ?? nil).flatMap { $0.isEmpty ? nil : $0 }
         attesi = (try? k.decodeIfPresent(Double.self, forKey: .attesi)) ?? nil
         fatti = (try? k.decodeIfPresent(Double.self, forKey: .fatti)) ?? nil
         intervallo = (try? k.decodeIfPresent(IntervalloWidget.self, forKey: .intervallo)) ?? nil
@@ -374,20 +383,29 @@ extension PuntiGiornata {
         }
     }
 
-    /// «Giornata 8».
-    var titolo: String { "Giornata \(giornata)" }
+    /// Il numero da mostrare: `giornata_lega ?? giornata`, come l'app e la web.
+    var numero: Int { giornataLega ?? giornata }
 
-    /// «G8», per gli spazi stretti.
-    var sigla: String { "G\(giornata)" }
+    /// La stagione da scrivere accanto al numero, solo per le voci di un'altra stagione: il server manda `giornata_lega` null
+    /// fuori dalla stagione in corso. Un server vecchio non manda la stagione: nil.
+    var altraStagione: String? { giornataLega == nil ? stagione : nil }
 
-    /// Le giornate per il grafico: le ultime `massimo` con almeno un numero, in ordine.
+    /// «Giornata 8», «Giornata 38 · 2025-26» (un'altra stagione, come il Diario dell'app e della web).
+    var titolo: String { "Giornata \(numero)" + (altraStagione.map { " · \($0)" } ?? "") }
+
+    /// «G8»: per gli spazi stretti, solo il numero (la stagione resta nel titolo e in VoiceOver).
+    var sigla: String { "G\(numero)" }
+
+    /// Le giornate per il grafico, dalla più vecchia alla più recente: le ultime `massimo` con almeno un numero. `giornate` arriva
+    /// dalla più recente (`giornateGiocate`): a inizio stagione la 38 dell'anno prima viene prima della giornata 1, non dopo.
     static func perGrafico(_ giornate: [PuntiGiornata], massimo: Int) -> [PuntiGiornata] {
-        Array(giornate.filter { $0.fatti != nil || $0.attesi != nil }.sorted { $0.giornata < $1.giornata }.suffix(max(0, massimo)))
+        Array(giornate.filter { $0.fatti != nil || $0.attesi != nil }.prefix(max(0, massimo)).reversed())
     }
 
-    /// Una frase per VoiceOver: «Giornata 10: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 62 e 85».
+    /// Una frase per VoiceOver: «Giornata 10: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 62 e 85»;
+    /// per un'altra stagione «Giornata 38 del 2025-26: …». Stesso numero del testo sullo schermo.
     var descrizione: String {
-        var t = "Giornata \(giornata): "
+        var t = "Giornata \(numero)" + (altraStagione.map { " del \($0)" } ?? "") + ": "
         t += fatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non noti"
         if let attesi { t += ", \(Formato.punti(attesi)) attesi" }
         if let f = fasciaTesto, let fascia = intervallo?.testo { t += ", \(f) prevista, \(fascia)" }
@@ -421,12 +439,21 @@ extension RiassuntoWidget {
         return (con.filter { $0 == .dentro }.count, con.count)
     }
 
-    /// Le giornate del diario che hanno i punti fatti, dalla più recente, con il numero della LEGA (come «Giornata 8» in Oggi):
-    /// il server le manda con il numero di Serie A, la differenza tra i due numeri è quella della giornata in corso.
+    /// Le giornate del diario che hanno i punti fatti, dalla più recente, con il numero della LEGA (come «Giornata 8» in Oggi).
     /// Prima la stagione in corso, poi le ultime della stagione prima (a inizio stagione il diario le ha ancora).
+    /// Server dal 2/11/2026: ogni voce porta `giornata_lega` e `stagione`, gli stessi del Diario; ordine e numeri sono i suoi.
+    /// Server vecchio (nessuna voce con i due campi): il numero si ricava con lo scarto della giornata in corso (`numeroDiLega`).
     var giornateGiocate: [PuntiGiornata] {
+        let giocate = (diario ?? []).filter { $0.fatti != nil }
+        if giocate.contains(where: { $0.stagione != nil || $0.giornataLega != nil }) {
+            return giocate.map { g in
+                var x = g
+                x.giornata = g.numero
+                return x
+            }
+        }
         let attuale = giornata ?? Int.max
-        return (diario ?? []).filter { $0.fatti != nil }
+        return giocate
             .sorted { a, b in
                 let (aInCorso, bInCorso) = (a.giornata <= attuale, b.giornata <= attuale)
                 return aInCorso != bInCorso ? aInCorso : a.giornata > b.giornata
@@ -440,7 +467,7 @@ extension RiassuntoWidget {
     }
 
     /// Il numero di lega di una giornata di Serie A del diario, con lo scarto della giornata attuale; senza numero di lega, quello di Serie A.
-    /// Il widget non sa la stagione delle voci (la correzione vera, `giornata_lega` per ogni voce, è lato server): una giornata DOPO
+    /// SOLO ripiego per un server vecchio, che non manda la stagione delle voci (quello nuovo manda `giornata_lega`): una giornata DOPO
     /// quella attuale è della stagione prima e resta di Serie A (a inizio stagione la 38 resta 38, non diventa 35). Una giornata giocata
     /// prima che la lega partisse non è della lega: nil, così non si confonde con la giornata della lega che ha lo stesso numero.
     func numeroDiLega(_ serieA: Int) -> Int? {

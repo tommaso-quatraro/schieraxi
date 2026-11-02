@@ -108,7 +108,7 @@ struct GraficoPunti: View {
                     if conEtichette {
                         Text(Self.scarto(g).map { Formato.conSegno($0) } ?? "—")
                             .monospacedDigit().fontWidget(10, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
-                        Text("G\(g.giornata)").fontWidget(9).foregroundStyle(TintaWidget.testo2)
+                        Text(g.sigla).fontWidget(9).foregroundStyle(TintaWidget.testo2)
                     }
                 }
                 .frame(maxWidth: .infinity)
