@@ -37,6 +37,7 @@ Oggi e «Giornata 7 di lega (Serie A 10)» sull'iPhone. Chi usa le due app non d
 | Date e ore | Ora italiana. «oggi 20:45», «ieri 20:45», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese. Salvataggi: «oggi alle 13:09», «sab 31 alle 13:09». | «sab 8 nov, 18:30» per le partite della settimana |
 | Nomi dei giocatori | Negli elenchi come li manda il server («Rossi L.»). **Sul campo** solo il cognome, senza l'iniziale, come sull'iPhone («Rossi»): lo spazio è poco. | «Carlos Au…» tagliato per colpa dell'iniziale |
 | Sezioni e menu | Nomi e ordine di `VOCI_LEGA` (`fanta/web/app.js`). Squadra: Squadre e rose, Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Aggiorna le rose. Altro: Scambi, Diario delle giornate, Regole, Movimenti e storico, Crediti delle squadre, Nuova stagione, Novità. | voci in un altro ordine, voci in più su un lato solo |
+| Giocatori seguiti | Un solo nome: «**Seguiti**» (menu, scheda del mercato, avvisi). Nella scheda il pulsante «☆ Segui», che diventa «★ Seguito»; «Lo segui: ti avviso se cambia qualcosa», «Non lo segui più». In inglese «Following» / «☆ Follow». | «Osservati», «☆ Osserva», «Osservato», «Watched» |
 
 Scelte già prese con la forma dell'iPhone (da portare sulla web): «INT @ MIL» nelle righe, «in trasferta contro», il
 cognome senza iniziale sul campo, «Ho schierato la consigliata» nel Diario.
@@ -47,30 +48,30 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 
 | # | Schermata | Web | iPhone | Forma giusta | Chi la sistema |
 |---|---|---|---|---|---|
-| 1 | Testata (web) | «Giornata 10» (`prossima_giornata`, Serie A) | – | «Giornata 7» | da fare (W) |
-| 2 | Formazione, intestazione, testo e immagine da condividere | «Giornata 10 · la tua scelta» (`f.giornata`) | «Giornata 7 di lega (Serie A 10)» | «Giornata 7» | da fare (W, I-formati) |
+| 1 | Testata (web) | «Giornata 10» (`prossima_giornata`, Serie A) | – | «Giornata 7» | fatto sulla web (pacchetto 1) |
+| 2 | Formazione, intestazione, testo e immagine da condividere | «Giornata 10 · la tua scelta» (`f.giornata`) | «Giornata 7 di lega (Serie A 10)» | «Giornata 7» | web: fatto sulla web (pacchetto 1); iPhone: da fare (I-formati) |
 | 3 | Oggi, card della giornata | «Giornata 7» | «Giornata 7 di lega (Serie A 10)» | «Giornata 7» | da fare (I-formati) |
 | 4 | Scheda giocatore, prossima partita | «Giornata 11 · fuori contro …» (Serie A) | «Giornata 11 · in trasferta contro …» | «Giornata 8 · in trasferta contro …» | da fare (S, W, #27) |
 | 5 | Diario | «Giornata 7» | «Giornata 10» (Serie A) | «Giornata 7» | #21 |
 | 6 | Campo | «gioca 92%» e «vs PAR / @ UDI» | «92% · PAR (f)» | web | fatto con #22 (build 256): aggiornare l'app sul telefono |
 | 7 | Campo, fantavoto atteso | pillola scura | pallino colorato per valore | pillola scura | fatto con #22 |
-| 8 | Campo, nome | «Rossi L.», tagliato se lungo | «Rossi» | iPhone | da fare (W) |
+| 8 | Campo, nome | «Rossi L.», tagliato se lungo | «Rossi» | iPhone | fatto sulla web (pacchetto 1) |
 | 9 | Formazione chiusa | fascia «chiusa», sola lettura | niente fascia, si può ancora salvare | web | #69 |
 | 10 | Formazione, stato «salvata» | sempre visibile | mancava | web | fatto con #22 |
 | 11 | Formazione, etichette | a parole | «Titolare 85%» | web | #69 (campo e Formazione), #27 (elenco e scheda) |
-| 12 | Righe giocatore (Formazione, Rosa, Seguiti, Elenco) | «INT – MIL fuori · sab 31 20:45» | «INTER @ MILAN» (nome intero maiuscolo), senza data | «INT @ MIL · sab 31 20:45» | da fare (W; I-Oggi per `RigaGiocatore.swift`; #27 per l'elenco) |
+| 12 | Righe giocatore (Formazione, Rosa, Seguiti, Elenco) | «INT – MIL fuori · sab 31 20:45» | «INTER @ MILAN» (nome intero maiuscolo), senza data | «INT @ MIL · sab 31 20:45» | web: fatto sulla web (pacchetto 1); iPhone: I-Oggi per `RigaGiocatore.swift`, #27 per l'elenco |
 | 13 | Righe giocatore, etichette | pillole | testo colorato in fila | pillole | da fare (I-Oggi) |
-| 14 | Calendario e prossime partite (celle) | «MIL» con sotto «fuori» | uguale («MIL» e «fuori») | «@ MIL» / «vs MIL» | da fare (W; iPhone in #27 o dopo, `ComponentiScheda.swift`) |
+| 14 | Calendario e prossime partite (celle) | «MIL» con sotto «fuori» | uguale («MIL» e «fuori») | «@ MIL» / «vs MIL» | web: fatto sulla web (pacchetto 1); iPhone in #27 o dopo, `ComponentiScheda.swift` |
 | 15 | Oggi, partite del turno | «MIL vs INT» | «Milan – Inter» (anche in #17) | web | #17 (da chiedere) |
 | 16 | Oggi, giornata chiusa | «Chiusa» e «… si è chiusa sab 31 14:50» | «In corso» (anche in #17) | web | #17 (da chiedere) |
 | 17 | Oggi, dubbio | «In dubbio · gioca 55%» | «Dubbio (55%)» in #17 | web | #17 (da chiedere) |
-| 18 | Oggi, banner delle novità | «Novità nell'app (versione X): tocca per vedere» | «Novità di SchieraXI» in #17 | web | #17 (da chiedere) |
-| 19 | Oggi in corso, stati | «senza voto», «voto in arrivo», «in campo ora», «partita rinviata», «da giocare» | «Senza voto», «Aspetta il voto», «In campo», «Rinviata», «dom 20:45» | vocabolario (Senza voto, Voto in arrivo, Partita in corso, Rinviata, Da giocare) | da fare (W, I-fasi) |
+| 18 | Oggi, banner delle novità | «Novità della versione X» (dal 2/11/2026, senza ✨ né «tocca per vedere»: `STILE-SENZA-AI.md`) | «Novità di SchieraXI» in #17 | web | iPhone da allineare |
+| 19 | Oggi in corso, stati | «senza voto», «voto in arrivo», «in campo ora», «partita rinviata», «da giocare» | «Senza voto», «Aspetta il voto», «In campo», «Rinviata», «dom 20:45» | vocabolario (Senza voto, Voto in arrivo, Partita in corso, Rinviata, Da giocare) | web: fatto sulla web (pacchetto 1); iPhone: da fare (I-fasi) |
 | 20 | Oggi in corso, squadra e voti | «GEN», voto neutro | «Genoa», voto verde o rosso | «GEN», voto neutro | da fare (I-fasi) |
 | 21 | Segno negativo | «−0,4» | «-0,4» | «−0,4» | da fare (I-formati) |
 | 22 | Date | «sab 31 20:45», «oggi 20:45» | «sab 31 ott, 20:45» | web | da fare (I-formati) |
 | 23 | Scheda giocatore, numero grande | neutro | verde | neutro | #27 (da chiedere) |
-| 24 | Diario, pulsante | «Ho schierato questa» | «Ho schierato la consigliata» (#21) | iPhone | da fare (W) |
+| 24 | Diario, pulsante | «Ho schierato questa» | «Ho schierato la consigliata» (#21) | iPhone | fatto sulla web (pacchetto 1) |
 | 25 | Scambi | «Costruisci uno scambio», «Valuta lo scambio», «Giocatori in rosa dopo lo scambio», «Formazione migliore (prossime N giornate)» | «Analizza», «Valuta l'offerta», «Rose dopo lo scambio», «Tua formazione migliore» | web | da fare (I-Scambi, dopo #14) |
 | 26 | Menu Squadra | «Aggiorna le rose» per ultima | «Aggiorna le rose» per prima | web | da fare (I-menu, dopo #29) |
 | 27 | Menu Altro | niente asta | «Asta e riparazione» | da decidere | decisione dell'utente |
@@ -79,6 +80,8 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.
+
+**Fatto (2/11/2026):** il server manda `etichetta` (PR #83) e la web la mostra in Formazione, campo, scheda, Rosa, Seguiti, Oggi in corso e avvisi di Oggi (testo e colore dal `tono`); le parole composte in JS restano solo come ripiego quando `etichetta` manca (Cambi consigliati, server vecchio). L'iPhone deve fare lo stesso.
 
 **Sì: l'etichetta di stato del giocatore.** Oggi la stessa scelta (titolarità prima della scadenza, stato della partita dopo,
 «Fuori» se infortunato o squalificato, dubbio) si rifà in quattro punti: `pillTitolarita` e `valoreLive` della web,

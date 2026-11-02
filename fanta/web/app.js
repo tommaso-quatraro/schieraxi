@@ -8,6 +8,8 @@ const VISTE = ["oggi", "formazione", "squadra", "altro"];
 // Pagine che non sono nella barra: stanno sotto Squadra (Cambi consigliati, Seguiti, Elenco) o sotto Altro (Scambi). «lega» è il nome vecchio
 // delle voci che ora stanno in Squadra o in Altro: i vecchi indirizzi e le scorciatoie continuano a funzionare.
 const SOTTO_VISTE = { mercato: "squadra", scambi: "altro", lega: "altro" };
+// Pulsante «torna indietro»: la freccia è un'icona, non un carattere nel testo (docs/STILE-SENZA-AI.md).
+const ICONA_INDIETRO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>`;
 const SCHEDA_DI = v => VISTE.includes(v) ? v : SOTTO_VISTE[v] || null;
 // Le funzioni accese (dieta): una chiave che manca vale «acceso», così con un server vecchio o senza risposta si vede tutto come prima.
 const funz = id => !stato.funzioni || stato.funzioni.funzioni[id] !== false;
@@ -153,6 +155,7 @@ async function api(percorso, opzioni = {}) {
         const e = new Error(traduciErrore(testo)); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
         e.codice = dati && typeof dati.codice === "string" ? dati.codice : "";            // nome breve dell'errore (accesso con Google)
         if (dati && Array.isArray(dati.social)) stato.social = dati.social;
+        if (dati && typeof dati.email_attiva === "boolean") stato.emailAttiva = dati.email_attiva;
         if (r.status === 404 && dati && typeof dati.funzione === "string") {           // funzione spenta: il server lo dice con il nome della funzione
           e.funzione = dati.funzione;
           if (stato.funzioni && stato.funzioni.funzioni) stato.funzioni.funzioni[dati.funzione] = false;       // la schermata la nasconde da qui in poi
@@ -332,7 +335,17 @@ const badgeRuolo = (r, piccolo = false) => `<span class="ruolo ${esc(r)}" ${picc
 const STATO_PARTITA = { fatto: ["tit.st_fatto", ""], senza_voto: ["tit.st_senza_voto", "arancio"], attesa_voti: ["tit.st_attesa_voti", "neutra"],
   in_corso: ["tit.st_in_corso", ""], da_giocare: ["tit.st_da_giocare", "neutra"], rinviata: ["tit.st_rinviata", "arancio"] };
 const PARTITA_INIZIATA = ["in_corso", "attesa_voti", "fatto", "senza_voto"], PARTITA_FINITA = ["attesa_voti", "fatto", "senza_voto"];
+// Lo stato del giocatore lo scrive il server: `etichetta` = {codice, testo, tono} (fanta/etichette.py, docs/API.md), già nella
+// lingua chiesta. Il web mostra il testo e prende il colore dal tono; `codice` serve solo per decidere, mai per scrivere.
+const CLASSE_TONO = { positivo: "", attenzione: "arancio", negativo: "rossa", neutro: "neutra" };
+const etichettaPronta = x => !!(x && x.etichetta && typeof x.etichetta.testo === "string" && x.etichetta.testo);
+const classeTono = et => CLASSE_TONO[et && et.tono] ?? "neutra";
 function pillTitolarita(x) {
+  if (etichettaPronta(x)) return `<span class="etichetta ${classeTono(x.etichetta)}">${esc(x.etichetta.testo)}</span>`;
+  return pillRipiego(x);
+}
+// Ripiego per le risposte senza `etichetta` (server vecchio, Cambi consigliati, widget): le parole del vocabolario dai campi grezzi.
+function pillRipiego(x) {
   if (x.titolarita == null && Object.hasOwn(STATO_PARTITA, x.stato_partita || "")) {
     const [chiave, classe] = STATO_PARTITA[x.stato_partita];
     return `<span class="etichetta ${classe}">${t(chiave)}</span>`;
@@ -354,10 +367,13 @@ const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.
 // Nelle righe una sola percentuale per giocatore, «gioca N%»: gol atteso e porta inviolata (motivi con un numero) restano nella scheda.
 const MOTIVI_CON_PERCENTUALE = ["motivo.gol_atteso", "motivo.porta_inviolata"];
 const senzaPercentuale = m => !(m.frase && MOTIVI_CON_PERCENTUALE.includes(m.frase.chiave)) && !/\d\s*%/.test(m.testo);
+const MOTIVI_DI_STATO = ["motivo.infortunato", "motivo.squalificato", "motivo.non_convocato"];
+const motivoDiStato = m => (m.frase ? MOTIVI_DI_STATO.includes(m.frase.chiave) : /^(infortunato|squalificato|non tra i convocati)/.test(m.testo));
 function etichetteGiocatore(x) {
-  const altre = motiviUtili(x).filter(senzaPercentuale).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
-  // «Fuori» (infortunato) a partita finita: anche com'è andata («Voto in arrivo», «Senza voto»), che la pillola sola non dice
-  const esito = x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
+  const pronta = etichettaPronta(x);
+  const altre = motiviUtili(x).filter(senzaPercentuale).filter(m => !(pronta && motivoDiStato(m))).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
+  // ripiego: «Fuori» (infortunato) a partita finita, anche com'è andata («Voto in arrivo», «Senza voto»); con l'etichetta lo dice il server
+  const esito = !pronta && x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
     ? `<span class="etichetta ${STATO_PARTITA[x.stato_partita][1]}">${t(STATO_PARTITA[x.stato_partita][0])}</span>` : "";
   return pillTitolarita(x) + esito + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
 }
@@ -387,17 +403,18 @@ function vocePedina(x, esito = null) {             // esito: esitoPartita(x), a 
 const SOGLIA_GIOCA = 0.7;                       // sotto: «⚠ gioca 45%» in una pillola arancio
 // A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
 // del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
+const CODICI_PARTITA_INIZIATA = ["voto", "senza_voto", "voto_in_arrivo", "in_corso"];
 function esitoPartita(x) {
-  if (!PARTITA_INIZIATA.includes(x.stato_partita || "")) return null;
-  if (x.stato_partita === "fatto" && Number.isFinite(x.fv_preso)) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
-  return { fv: null, testo: t(STATO_PARTITA[x.stato_partita][0]) };
+  const codice = etichettaPronta(x) ? x.etichetta.codice : null;
+  if (!PARTITA_INIZIATA.includes(x.stato_partita || "") && !CODICI_PARTITA_INIZIATA.includes(codice)) return null;
+  if (Number.isFinite(x.fv_preso) && (codice === "voto" || x.stato_partita === "fatto")) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
+  return { fv: null, testo: etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA[x.stato_partita][0]) };
 }
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
-  const cognome = x.nome.length > 11 ? x.nome.replace(/\s+\S+\.$/, "") : x.nome;
   return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}" aria-label="${esc(vocePedina(x, esitoPartita(x)))}">
     <span class="avatar-pedina">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
-    <span class="nome">${esc(cognome)}</span>
+    <span class="nome">${esc(cognome(x))}</span>
     ${esitoPartita(x) ? `<span class="gioca esito">${esc(esitoPartita(x).testo)}</span>`
       : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
     ${x.avversario ? `<span class="avv">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
@@ -411,7 +428,7 @@ function legendaCampo() {
       <span aria-hidden="true">ⓘ</span> ${t("formazione.legenda_apri")}</button>
     <div class="legenda-campo" id="legenda-campo" ${vista ? "hidden" : ""}>
       <ul>
-        <li><span class="leg-esempio"><b class="fv-esempio">6,8</b></span>${t("formazione.legenda_fv")}</li>
+        <li><span class="leg-esempio"><b class="fv-esempio">${num(6.8)}</b></span>${t("formazione.legenda_fv")}</li>
         <li><span class="leg-esempio"><span class="gioca">${t("giocatore.gioca", { p: "85%" })}</span></span>${t("formazione.legenda_gioca")}</li>
         <li><span class="leg-esempio"><span class="gioca basso">⚠ ${t("giocatore.gioca", { p: "45%" })}</span></span>${t("formazione.legenda_gioca_basso")}</li>
         <li><span class="leg-esempio"><span class="avv">vs ${distintivo("napoli")}</span></span>${t("formazione.legenda_casa")}</li>
@@ -429,7 +446,10 @@ function collegaLegenda() {
 }
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
-const partitaBreve = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span> · ${quando(x.data_partita)}`;
+// «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo «UDI fuori».
+const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>`;
+const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;
+const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;
 
 function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false) {
   const p = x.p_voto ?? 0;
@@ -447,6 +467,15 @@ function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false) 
   </button>${conConfronto ? (sostituisci
     ? `<button class="confronta-mini" data-sostituisci="${x.id}" aria-label="${t("formazione.sostituisci_aria", { nome: esc(x.nome) })}" title="${t("formazione.sostituisci_con")}">✎</button>`
     : `<button class="confronta-mini" data-confronta="${x.id}" aria-label="${t("formazione.confronta_aria", { nome: esc(x.nome) })}" title="${t("formazione.confronta_con")}">⇄</button>`) : ""}</li>`;
+}
+
+// Il numero a destra di una riga della Rosa: come le righe della Formazione (voceGiocatore). Prima della partita fantavoto atteso
+// e «gioca N%»; a partita iniziata il fantavoto preso oppure «–» (lo stato è già nell'etichetta), mai «gioca N%».
+function valoreRosa(p, x) {
+  if (!p) return `<span class="valore"><span class="debole piccolo">${x.id ? t("scambio.non_gioca") : "?"}</span></span>`;
+  const esito = esitoPartita(p);
+  if (esito) return `<span class="valore esito">${esito.fv != null ? `<b>${num(esito.fv)}</b><span class="debole piccolo">${t("mercato.fantavoto")}</span>` : `<b class="debole" aria-hidden="true">–</b>`}</span>`;
+  return `<span class="valore"><b>${num(p.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span></span>`;
 }
 
 // ---------------------------------------------------------------- navigazione
@@ -546,7 +575,7 @@ async function caricaInfo() {
     // giornata e data dei dati in due pezzi: sui telefoni stanno su due righe (stile.css), altrimenti la data si tagliava a 390 px
     const pezzo = (classe, testo) => { const e = document.createElement("span"); e.className = classe; e.textContent = testo; return e; };
     const dati = (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, "");
-    $("#sottotitolo").replaceChildren(...(i.prossima_giornata ? [pezzo("sotto-giornata", t("testata.giornata", { n: i.prossima_giornata })), pezzo("sotto-sep", " · ")] : []),
+    $("#sottotitolo").replaceChildren(...(i.prossima_giornata ? [pezzo("sotto-giornata", t("testata.giornata", { n: i.prossima_giornata_lega || i.prossima_giornata })), pezzo("sotto-sep", " · ")] : []),
       pezzo("sotto-dati", dati));
     $("#bottone-aggiorna").classList.toggle("gira", i.aggiornamento_in_corso);
   } catch (e) {
@@ -618,6 +647,7 @@ const STATO_LIVE = { senza_voto: "oggi.st_senza_voto", attesa_voti: "oggi.st_att
 function valoreLive(g) {
   if (g.stato === "fatto") return `<b class="fv-fatto">${num(g.fantavoto)}</b>`;
   if (g.stato === "da_giocare" && g.data) return `<span class="debole piccolo">${esc(quando(g.data))}</span>`;
+  if (etichettaPronta(g)) return `<span class="piccolo tono ${classeTono(g.etichetta)}">${esc(g.etichetta.testo)}</span>`;
   return `<span class="debole piccolo">${t(STATO_LIVE[g.stato] || "oggi.st_da_giocare")}</span>`;
 }
 
@@ -730,8 +760,11 @@ function mostraOggi(o, opz = {}) {
   const indisponibili = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && (a.tipo === "infortunato" || a.tipo === "squalificato"));
   const altri = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && a.tipo === "diffidato");
   const riga = a => {
-    const colore = a.tipo === "infortunato" || a.tipo === "squalificato" ? "rosso" : a.tipo === "dubbio" ? "arancio" : "giallo";
-    const testo = { infortunato: t("oggi.infortunato"), squalificato: t("oggi.squalificato"), dubbio: t("oggi.dubbio", { p: perc(a.p_voto) }), diffidato: t("oggi.diffidato_tipo") }[a.tipo];
+    const pronta = etichettaPronta(a);
+    const colore = pronta ? ({ negativo: "rosso", attenzione: "arancio" }[a.etichetta.tono] || "giallo")
+      : a.tipo === "infortunato" || a.tipo === "squalificato" ? "rosso" : a.tipo === "dubbio" ? "arancio" : "giallo";
+    const testo = pronta ? esc(a.etichetta.testo)
+      : { infortunato: t("oggi.infortunato"), squalificato: t("oggi.squalificato"), dubbio: t("oggi.dubbio", { p: perc(a.p_voto) }), diffidato: t("oggi.diffidato_tipo") }[a.tipo];
     return `<button class="avviso-riga" data-giocatore="${a.id}">${badgeRuolo(a.ruolo)}
       <span><span class="nome">${esc(a.nome)}</span> <span class="dettaglio">${sigla(a.squadra)}</span>
         <div class="dettaglio nota">${testo}${a.nota ? ` · ${esc(a.nota)}` : ""}</div></span><span class="pallino-stato ${colore}"></span></button>`;
@@ -907,13 +940,14 @@ const codiceStile = r => String(r).replace("-", "m");
 const nomeStile = l => (LINGUA === "it" && l.nome) || t("formazione.stile_nome_" + codiceStile(l.rischio));
 const descrizioneStile = l => (LINGUA === "it" && l.descrizione) || t("formazione.stile_desc_" + codiceStile(l.rischio));
 
-const cognome = x => x.nome.length > 11 ? x.nome.replace(/\s+\S+\.$/, "") : x.nome;
+// Sul campo solo il cognome, senza l'iniziale («Rossi L.» → «Rossi»), come sull'iPhone: lo spazio è poco.
+const cognome = x => String(x.nome).replace(/\s+\S{1,3}\.$/u, "");
 
 // La formazione come testo da leggere (o da mandare nel gruppo): Leghe non permette di incollarla, si inserisce a mano.
 function testoFormazione(f, m) {
   const sch = id => f.schede[String(id)];
   const riga = r => `${ruoloSigla(r)}: ${m.titolari.map(sch).filter(x => x.ruolo === r).map(x => x.nome).join(", ")}`;
-  const righe = [`${t("testata.giornata", { n: f.giornata })} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
+  const righe = [`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
   if (m.panchina.length) righe.push(t("scambi.panchina") + ": " + m.panchina.map((id, k) => `${k + 1}) ${sch(id).nome}`).join(", "));
   return righe.join("\n");
 }
@@ -1130,7 +1164,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
         ${st ? rigaStatoScelta(st, sc.salvata) : ""}
-        <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
+        <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
         ${manuale && r.differenza !== null ? `<div class="debole" style="margin-top:6px">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
@@ -1298,7 +1332,7 @@ async function tabOsservati(dove, ok) {
   try {
     const r = await api("/api/osservati");
     if (!ok()) return;
-    dove.innerHTML = introCompatta(t("mercato.n_osservati", { n: `<b>${r.giocatori.length}</b>` }), t("mercato.osservati_spiega")) +
+    dove.innerHTML = introCompatta(tp("mercato.n_osservati", r.giocatori.length, { n: `<b>${r.giocatori.length}</b>` }), t("mercato.osservati_spiega")) +
       (r.giocatori.length ? `<div class="carta"><ul class="elenco">${r.giocatori.map(x => x.assente
         ? `<li><button class="voce" data-giocatore="${x.id}" style="grid-template-columns:1fr auto"><span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
             <span class="dettaglio" style="display:block">${t("mercato.non_gioca_questa")}</span></span><span class="debole piccolo">${esc(x.proprietario || t("mercato.svincolato"))}</span></button></li>`
@@ -1310,6 +1344,12 @@ async function tabOsservati(dove, ok) {
 // Card introduttiva compatta: una riga che dice l'essenziale e, dietro «Come si legge», la spiegazione lunga (chiusa di default).
 const introCompatta = (riga, dettaglio) => `<div class="carta intro-c"><div class="intro-riga">${riga}</div>`
   + (dettaglio ? `<details class="come"><summary>${t("mercato.come_legge")}</summary><div class="debole">${dettaglio}</div></details>` : "") + `</div>`;
+
+// «crediti dopo 2 · rimborso 18 · costo 34»: tre pezzi che a 390 px vanno a capo interi (il puntino resta in fondo al pezzo che lo precede).
+const soldiDelCambio = p => [
+  t("mercato.crediti_dopo", { dopo: `<b class="${p.fattibile ? "positivo" : "negativo"}">${p.crediti_dopo}</b>`, no: p.fattibile ? "" : t("mercato.non_bastano") }),
+  t("mercato.rimborso_n", { r: p.rimborso }), t("mercato.costo_n", { c: p.entra.quotazione })]
+  .map((x, i, tutti) => `<span class="nb">${x}${i < tutti.length - 1 ? " ·" : ""}</span>`).join(" ");
 
 async function tabConsigli(dove, ok) {
   const salvata = leggiCache("mercato");
@@ -1323,9 +1363,9 @@ async function tabConsigli(dove, ok) {
         ${avatarIndice(p.entra)}
         <div class="pr-testo">
           <button class="nome-g" data-giocatore="${p.entra.id}">${esc(p.entra.nome)}</button>
-          <div class="pr-sec">${t("mercato.entra")} · ${sigla(p.entra.squadra)} · ${t("mercato.quot", { n: p.entra.quotazione })}</div>
-          <div class="pr-sec">${t("mercato.esce")} <button class="nome-g piccolo" data-giocatore="${p.esce.id}">${esc(p.esce.nome)}</button> · ${sigla(p.esce.squadra)} · ${t("mercato.quot", { n: p.esce.quotazione })}</div>
-          <div class="pr-sec">${tp("mercato.punti_prossime", p.giornate.length, { d: segno(p.breve) })}${p.crediti_dopo != null ? t("mercato.rimborso_costo", { r: p.rimborso, c: p.entra.quotazione, dopo: `<b class="${p.fattibile ? "positivo" : "negativo"}">${p.crediti_dopo}</b>`, no: p.fattibile ? "" : t("mercato.non_bastano") }) : ""}</div>
+          <div class="pr-sec">${sigla(p.entra.squadra)} · ${t("mercato.quot", { n: p.entra.quotazione })} · ${t("mercato.al_posto_di", { nome: `<button class="nome-g piccolo" data-giocatore="${p.esce.id}">${esc(p.esce.nome)}</button>` })} (${sigla(p.esce.squadra)})</div>
+          <div class="pr-sec">${tp("mercato.punti_prossime", p.giornate.length, { d: segno(p.breve) })}</div>
+          ${p.crediti_dopo != null ? `<div class="pr-sec">${soldiDelCambio(p)}</div>` : ""}
         ${p.motivo ? `<div class="pr-sec">${esc(testoDi(p, "motivo"))}</div>` : ""}
         </div>
         <div class="pr-num"><b class="${p.guadagno > 0 ? "positivo" : p.guadagno < 0 ? "negativo" : ""}">${segno(p.guadagno)}</b><span>${t("mercato.punti_stagione")}</span></div></div>`).join("") + `</div>`
@@ -1364,7 +1404,7 @@ async function tabCalendario(dove, ok) {
       <table class="tabella-cal"><thead><tr><th></th>${c.giornate.map(g => `<th>G${g}</th>`).join("")}</tr></thead>
       <tbody>${c.squadre.map(s => `<tr class="${mie.has(s.squadra) ? "mia" : ""}"><td>${sigla(s.squadra)}</td>${c.giornate.map(g => {
         const p = s.partite.find(x => x.giornata === g);
-        return p ? `<td><span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span></td>` : `<td></td>`;
+        return p ? `<td><span class="cella d${p.difficolta}">${vsAt(p)}</span></td>` : `<td></td>`;
       }).join("")}</tr>`).join("")}</tbody></table>
       <div class="legenda-cal">${t("diff.1")} ${[1, 2, 3, 4, 5].map(d => `<i class="d${d}"></i>`).join("")} ${t("diff.4")}</div></div>`;
   } catch (e) { if (ok()) dove.innerHTML = erroreVista(e); }
@@ -1569,6 +1609,7 @@ async function apriGiocatore(id) {
     // a partita finita solo com'è andata (il fantavoto preso, «Senza voto» o «Voto in arrivo»).
     const iniziataP = !!pr && PARTITA_INIZIATA.includes(pr.stato_partita), finitaP = !!pr && PARTITA_FINITA.includes(pr.stato_partita);
     const votoGiornata = finitaP && pr.stato_partita === "fatto" ? (s.voti || []).find(v => v.giornata === pr.giornata) : null;
+    const statoInGrande = finitaP && !(votoGiornata && votoGiornata.fv != null);     // lo stato è già scritto in grande: niente pillola uguale in testa
     const prSenzaGioca = pr && iniziataP && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
     const tile = (valore, etichetta) => `<div><b>${valore}</b><span>${etichetta}</span></div>`;
     const probabilita = !pr ? "" : c.ruolo === "P"
@@ -1579,19 +1620,19 @@ async function apriGiocatore(id) {
         ${avatarIndice({ id: c.id, nome: c.nome, squadra: c.squadra_slug, ruolo: c.ruolo, indice: pr ? pr.indice : null }, true)}
         <div><h2>${esc(c.nome)}</h2>
           <div class="debole">${NOME_RUOLO_1[c.ruolo] || c.ruolo} · ${esc(c.squadra)} · ${t("mercato.quot", { n: c.quotazione })}</div>
-          <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
+          <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr && !statoInGrande ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
       </div>
       ${pr ? `<div class="carta">
-        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
+        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata_lega || pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
           ${finitaP ? (votoGiornata && votoGiornata.fv != null
             ? `<div class="grande">${num(votoGiornata.fv)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto")}</span></div>`
-            : `<div class="grande stato-partita">${t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
+            : `<div class="grande stato-partita">${etichettaPronta(pr) ? esc(pr.etichetta.testo) : t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
           : `<div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div>`}</div>
           ${iniziataP ? "" : `<div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>`}</div>
         ${nonGioca || iniziataP ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
         ${!finitaP && motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
         ${nonGioca || iniziataP ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${finitaP ? "" : cartaPerche(prSenzaGioca)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
-      ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span>`).join("")}</div>
+      ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
         <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
       <div class="carta"><h2>${t("mercato.forma")}</h2>
         ${forma ? `<div class="riga"><div>${forma.pallini}</div><div style="text-align:right"><div class="debole piccolo">${t("mercato.andamento")}</div><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div></div>` : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}
@@ -1680,7 +1721,7 @@ async function apriConfronto(a, b) {
     const schierato = fo ? (fo.posto_a === "titolare" && fo.posto_b !== "titolare" ? x : fo.posto_b === "titolare" && fo.posto_a !== "titolare" ? y : null) : null;
     const vince = c.giocatori.find(g => g.id === c.consigliato);
     const intest = g => `<div class="duello-giocatore ${g.id === c.consigliato ? "scelto" : ""}">${avatarIndice(g, true)}
-      <b class="nome">${esc(g.nome)}</b><span class="debole piccolo">${sigla(g.squadra)} · ${sigla(g.avversario)} ${t(g.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>
+      <b class="nome">${esc(g.nome)}</b><span class="debole piccolo">${partitaRiga(g)}</span>
       ${postoInFormazione(g.id) ? `<span class="etichetta ${inTitolari(g.id) ? "" : "neutra"}">${postoInFormazione(g.id)}</span>` : ""}</div>`;
     const massimo = Math.max(0.3, ...c.fattori.map(f => Math.abs(f.effetto)));
     const valore = (f, v) => f.percentuale ? perc(v) : num(v, 2);
@@ -1704,7 +1745,7 @@ async function apriConfronto(a, b) {
       <div class="carta"><details><summary>${t("mercato.tutti_numeri")}</summary><div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:center;margin-top:8px">
         <div></div><div><b>${esc(x.nome)}</b></div><div><b>${esc(y.nome)}</b></div>
         ${riga(t("mercato.indice"), g => g.indice)}
-        ${riga(t("mercato.avversario"), g => `${sigla(g.avversario)} ${t(g.in_casa ? "giocatore.casa" : "giocatore.fuori")}`)}
+        ${riga(t("mercato.avversario"), g => vsAt(g))}
         ${riga(t("mercato.partita"), g => diffPill(g.difficolta))}
         ${riga(t("mercato.gioca_riga"), g => perc(g.p_voto))}
         ${riga(t("mercato.fantavoto_atteso_riga"), g => num(g.fv_atteso))}
@@ -1913,7 +1954,7 @@ function esitoAnalisi(s) {
   const titolo = valido ? t("scambi.chi_" + g.chi) : t("scambi.chi_non_valido");
   const tre = (a, b, c3) => `<div class="riga-confronto"><span>${a}</span><b>${b}</b><b>${c3}</b></div>`;
   const prima_dopo = x => `${num(x.prima)} → ${num(x.dopo)} <span class="debole">(${segnoSc(x.variazione)})</span>`;
-  const conta = x => `P${x.conteggio.P} D${x.conteggio.D} C${x.conteggio.C} A${x.conteggio.A}`;
+  const conta = x => ["P", "D", "C", "A"].map(r => `${ruoloSigla(r)}${x.conteggio[r]}`).join(" ");      // in inglese G D M F, come altrove
   const stato = x => `<span class="${x.valida ? "positivo" : "negativo"}">${x.valida ? t("scambi.rosa_ok") : t("scambi.rosa_no")}</span>`;
   const vr = s.valore_rosa, pa = s.panchina, ro = s.rose;
   const confronto = `<div class="carta"><h2>${t("scambi.confronto")}</h2>
@@ -1922,7 +1963,7 @@ function esitoAnalisi(s) {
       ${tre(s.giornate.length === 1 ? t("scambi.formazione_migliore_una") : t("scambi.formazione_migliore", { n: s.giornate.length }), prima_dopo(vr.mio), prima_dopo(vr.loro))}
       ${tre(t("scambi.panchina"), segnoSc(pa.mio.variazione), segnoSc(pa.loro.variazione))}
       ${tre(t("scambi.in_stagione"), segnoSc(s.guadagno_mio), segnoSc(s.guadagno_loro))}
-      ${c.crediti ? tre(t("scambi.con_crediti"), segnoSc(s.netto_mio), segnoSc(s.netto_loro)) : ""}
+      ${c.crediti && c.valore_mio != null ? tre(t("scambi.con_crediti"), segnoSc(s.netto_mio), segnoSc(s.netto_loro)) : ""}
       ${tre(t("scambi.rose_dopo"), `${conta(ro.mio)}<br>${stato(ro.mio)}`, `${conta(ro.loro)}<br>${stato(ro.loro)}`)}
     </div></div>`;
   const residui = x => (x == null ? "–" : x);
@@ -1938,7 +1979,7 @@ function esitoAnalisi(s) {
       ${problemi}
       ${cartaScambio(s)}
       <div class="carta"><h2>${t("scambi.perche")}</h2><ul class="elenco-semplice">${(g.spiegazione || []).map(r => `<li>${esc(r)}</li>`).join("")}</ul>
-        <div class="debole piccolo">${t("scambi.per_giornata")}: ${s.giornate.map((gg, i) => `g${gg} ${segnoSc(s.per_giornata_mio[i])}`).join(" · ")}</div></div>
+        <div class="debole piccolo">${t("scambi.per_giornata")}: ${s.giornate.map((gg, i) => `G${gg} ${segnoSc(s.per_giornata_mio[i])}`).join(" · ")}</div></div>
     </div>
     <div class="colonna-esito">${confronto}${crediti}${impattoReparti(s)}</div>
   </div>`;
@@ -2268,15 +2309,15 @@ async function vistaRosa(nome) {
         return `<li><button class="voce" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
           ${p ? avatarIndice(p) : badgeRuolo(x.ruolo || "?")}
           <span><span class="nome">${esc(x.nome)}</span> <span class="dettaglio">${sigla(x.squadra)}</span>
-            <span class="dettaglio" style="display:block">${t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })}${p ? ` · ${t("scambio.vs", { avv: sigla(p.avversario) })}` : ""}</span>
+            <span class="dettaglio" style="display:block">${t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })}${p ? ` · ${vsAt(p)}${p.data_partita ? ` · ${quando(p.data_partita)}` : ""}` : ""}</span>
             ${p ? `<span class="etichette">${etichetteGiocatore(p)}</span>` : ""}</span>
-          <span class="valore">${p ? `<b>${num(p.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span>` : `<span class="debole piccolo">${x.id ? t("scambio.non_gioca") : "?"}</span>`}</span>
+          ${valoreRosa(p, x)}
         </button></li>`;
       }).join("")}</ul>`;
     }).join("");
     pagina(`
       <div class="carta">
-        <div class="riga"><button class="bottone secondario" data-vai="squadra" style="padding:6px 14px;min-height:44px">${t("scambio.squadra")}</button></div>
+        <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button></div>
         <h2 style="margin-top:14px">${esc(r.nome)}${r.mia ? t("scambio.la_tua") : ""}</h2>
         <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
           <div class="riga" style="gap:8px;margin-top:8px"><label class="solo-lettori" for="nome-squadra">${t("scambio.nuovo_nome")}</label>
@@ -2483,7 +2524,7 @@ async function condividiImmagine(f, m) {
   g.fillStyle = sfondo; g.fillRect(0, 0, L, A);
   g.textAlign = "center";
   g.fillStyle = "#eef6f0"; g.font = "700 64px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${t("testata.giornata", { n: f.giornata })} · ${m.modulo}`, L / 2, 110);
+  g.fillText(`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, L / 2, 110);
   g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
   g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: virgola(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
@@ -2522,9 +2563,9 @@ async function condividiImmagine(f, m) {
   g.fillText(t("avv.img_numero"), L / 2, 1316);
   const blob = await new Promise(r => c.toBlob(r, "image/png"));
   if (!blob) { avviso(t("formazione.non_riesco_creare")); return; }
-  const file = new File([blob], `formazione-giornata-${f.giornata}.png`, { type: "image/png" });
+  const file = new File([blob], `formazione-giornata-${f.giornata_lega || f.giornata}.png`, { type: "image/png" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { n: f.giornata }) }); return; }
+    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { n: f.giornata_lega || f.giornata }) }); return; }
     catch (e) { if (e && e.name === "AbortError") return; }
   }
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("nav.formazione")}</h2>
@@ -2676,7 +2717,8 @@ async function apriDiario(giornata) {
       ${righePunti(g.istantanea ? t("diario.ricostruita", { modulo: esc(g.consigliata.modulo) }) : t("avv.del_modello", { modulo: esc(g.consigliata.modulo) }), g.consigliata)}
       ${rigaFascia(g)}</div>`).join("");
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("avv.diario_delle_giornate")}</h2>
-      <div class="debole piccolo">${t("avv.per_ogni_giornata")}</div>
+      <div class="debole piccolo">${t("avv.diario_riga")}</div>
+      <details class="come-diario"><summary>${t("mercato.come_legge")}</summary><div class="debole piccolo">${t("avv.per_ogni_giornata")}</div></details>
       ${cartaPrecisione(d.precisione)}
       ${cartaScelteTue(d.scelte_tue, s, v)}
       ${righe || `<div class="carta" style="margin-top:12px"><div class="debole">${t("diario.vuoto_" + d.motivo_vuoto) !== "diario.vuoto_" + d.motivo_vuoto ? t("diario.vuoto_" + d.motivo_vuoto) : t("diario.vuoto")}</div></div>`}`);
@@ -2849,10 +2891,12 @@ async function avvisiTelefono() {
         $("#av-fascia").hidden = !$("#av_silenzio").checked;
         if ($("#av_silenzio").checked && $("#av_da").value === $("#av_a").value) {
           avviso(t("avv.ore_tranquille_non"), 6000);
+          $("#av_da").value = String(o.silenzio_da); $("#av_a").value = String(o.silenzio_a);
           return;
         }
-        await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ cambi: $("#av_cambi").checked, promemoria_60: $("#av_60").checked, promemoria_15: $("#av_15").checked, riepilogo: $("#av_riepilogo").checked, copertura: $("#av_copertura").checked, app_nativa: $("#av_nativa") ? $("#av_nativa").checked : undefined,
+        const r = await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ cambi: $("#av_cambi").checked, promemoria_60: $("#av_60").checked, promemoria_15: $("#av_15").checked, riepilogo: $("#av_riepilogo").checked, copertura: $("#av_copertura").checked, app_nativa: $("#av_nativa") ? $("#av_nativa").checked : undefined,
           silenzio: $("#av_silenzio").checked, silenzio_da: Number($("#av_da").value), silenzio_a: Number($("#av_a").value), avviso_prima: Number($("#av_prima").value) }) });
+        if (r && r.impostazioni) Object.assign(o, r.impostazioni);          // l'ultima fascia salvata, per tornarci se la prossima è sbagliata
       } catch (e) { avviso(e.message); }
     };
     ["#av_cambi", "#av_prima", "#av_60", "#av_15", "#av_riepilogo", "#av_copertura", "#av_nativa", "#av_silenzio", "#av_da", "#av_a"].filter(id => $(id)).forEach(id => $(id).addEventListener("change", salva));
@@ -3048,6 +3092,7 @@ async function vistaLega(ambito = "altro") {
     crediti: () => squadre.length ? `<div class="carta"><h3 style="margin-top:0">${t("lega.crediti_residui_ogni")}</h3>
       ${squadre.map((x, i) => `<div class="riga riga-crediti"><label for="cred-${i}">${esc(x.nome)}</label>
         <input class="campo-testo cred-squadra" id="cred-${i}" data-nome="${esc(x.nome)}" type="number" min="0" max="99999" inputmode="numeric" value="${x.crediti_residui ?? ""}" placeholder="—" style="width:96px;text-align:right"></div>`).join("")}
+      <p class="attenzione" id="crediti-non-salvati" role="status" hidden>${t("lega.crediti_non_salvati")}</p>
       <div class="pulsanti"><button class="bottone" id="salva-crediti" type="button">${t("lega.salva_crediti")}</button></div>
       <div class="debole piccolo">${t("lega.servono_per_consigli")}</div></div>`
       : `<div class="carta"><div class="debole">${t("lega.importa_prima_rose")}</div></div>`,
@@ -3103,6 +3148,11 @@ async function vistaLega(ambito = "altro") {
     crediti: () => {
       const b = $("#salva-crediti");
       if (!b) return;
+      // «Ci sono crediti scritti e non ancora salvati»: confronto con i valori arrivati dal server (dopo il salvataggio: quelli salvati)
+      const campi = [...document.querySelectorAll(".cred-squadra")];
+      let salvati = campi.map(c => c.value.trim());
+      const segnaModifiche = () => { const n = $("#crediti-non-salvati"); if (n) n.hidden = campi.every((c, i) => c.value.trim() === salvati[i]); };
+      campi.forEach(c => c.addEventListener("input", segnaModifiche));
       b.addEventListener("click", async () => {
         const crediti = {};
         for (const c of document.querySelectorAll(".cred-squadra")) {
@@ -3111,7 +3161,7 @@ async function vistaLega(ambito = "altro") {
           if (!/^\d{1,5}$/.test(val)) { avviso(t("lega.crediti_numero", { nome: c.dataset.nome })); return; }
           crediti[c.dataset.nome] = Number(val);
         }
-        try { await api("/api/crediti", { method: "PUT", body: JSON.stringify({ crediti }) }); svuotaCache(); caricaSquadre(); avviso(t("lega.crediti_salvati")); }
+        try { await api("/api/crediti", { method: "PUT", body: JSON.stringify({ crediti }) }); salvati = campi.map(c => c.value.trim()); segnaModifiche(); svuotaCache(); caricaSquadre(); avviso(t("lega.crediti_salvati")); }
         catch (e) { avviso(e.message, 5000); }
       });
     },
@@ -3263,7 +3313,7 @@ async function vistaRegole() {
   contenuto.classList.remove("ridisegna");
   contenuto.innerHTML = `
     <div class="carta">
-      <div class="riga"><button class="bottone secondario" data-vai="altro" style="padding:6px 14px;min-height:44px">${t("regole.altro")}</button>
+      <div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
         <button class="bottone secondario" id="annulla-regole" style="padding:6px 14px;min-height:44px">${t("regole.annulla_modifiche")}</button></div>
       <h2 style="margin-top:14px">${esc(r.nome_lega)}</h2>
       <div class="debole piccolo">${t("regole.regole_della_lega")}</div>
@@ -3350,7 +3400,7 @@ async function vistaRegole() {
     const voti = [0, 1, 2, 3].map(k => leggiN("pv" + k));
     const media = voti.reduce((a, b) => a + b, 0) / 4;
     const b = bonusDifesa(media, leggiFasce().sort((x, y) => x[0] - y[0]));
-    $("#prova-esito").innerHTML = `${t("regole.media_bonus", { m: `<b>${num(media, 2)}</b>`, b: `<b class="${b > 0 ? "positivo" : ""}">${b > 0 ? "+" : ""}${num(b, 0)}</b>` })}`;
+    $("#prova-esito").innerHTML = `${tp("regole.media_bonus", Math.abs(Math.round(b)), { m: `<b>${num(media, 2)}</b>`, b: `<b class="${b > 0 ? "positivo" : ""}">${b > 0 ? "+" : ""}${num(b, 0)}</b>` })}`;
   };
   const aiutoPanchina = () => {
     const tipo = $("#tipo-panchina .attivo").dataset.valore;
@@ -3525,7 +3575,7 @@ function campiAccesso(scheda, extra = {}) {
     + CAMPO_CODICE_EMAIL("ac-codice-email");
   if (scheda === "registra") return `<div class="debole piccolo">${modo === "aperta" ? t("accesso.serve_email") : modo === "email" ? t("accesso.serve_invito_email") : t("accesso.serve_invito")}</div>`
     + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
-    + CAMPO_EMAIL("ac-email", modo === "invito")
+    + (stato.emailAttiva === false && modo === "invito" ? "" : CAMPO_EMAIL("ac-email", modo === "invito"))
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
     + `<label class="interruttore accesso-letto"><span>${t("accesso.letto", { privacy: linkLegale("privacy", "legale.privacy"), termini: linkLegale("termini", "legale.termini"), eta: ETA_MINIMA })}</span><input type="checkbox" id="ac-letto"></label>`;
   if (extra.sub === "email") return `<div class="debole piccolo">${t("accesso.recupero_email_spiega")}</div>` + CAMPO_EMAIL("ac-email", false);
@@ -3546,7 +3596,7 @@ function testoInvio(scheda, sub) {
 // La pagina di accesso copre tutto: finché non si entra, dell'app non si vede (e non si carica) niente.
 function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   accessoAperto = true;
-  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" ? "codice" : "email" };
+  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" || stato.emailAttiva === false ? "codice" : "email" };
   stato.account = null;
   document.body.classList.add("senza-accesso");
   contenuto.innerHTML = "";
@@ -3564,7 +3614,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     <div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>
     <div id="accesso-msg" role="alert">${messaggio ? `<div class="attenzione">${esc(messaggio)}</div>` : ""}</div>
     ${socialPronto() && SCHEDE_ACCESSO.includes(scheda) && extra.sub !== "verifica" ? `<div class="accesso-social">${htmlGoogle(t("social.continua"))}<div class="accesso-oppure debole piccolo" aria-hidden="true"><span>${t("social.oppure")}</span></div></div>` : ""}
-    ${scheda === "recupero" && (extra.sub === "email" || extra.sub === "codice") ? `<div class="segmenti" id="accesso-metodi">${[["email", t("accesso.recupero_con_email")], ["codice", t("accesso.recupero_con_codice")]].map(([k, c]) => `<button type="button" data-m="${k}" class="${k === extra.sub ? "attivo" : ""}" aria-pressed="${k === extra.sub}">${c}</button>`).join("")}</div>` : ""}
+    ${scheda === "recupero" && stato.emailAttiva !== false && (extra.sub === "email" || extra.sub === "codice") ? `<div class="segmenti" id="accesso-metodi">${[["email", t("accesso.recupero_con_email")], ["codice", t("accesso.recupero_con_codice")]].map(([k, c]) => `<button type="button" data-m="${k}" class="${k === extra.sub ? "attivo" : ""}" aria-pressed="${k === extra.sub}">${c}</button>`).join("")}</div>` : ""}
     <form id="accesso-form" novalidate>${campiAccesso(scheda, extra)}
       <div class="pulsanti"><button class="bottone" type="submit" id="accesso-invia">${testoInvio(scheda, extra.sub)}</button></div></form>
     ${scheda === "accedi" ? `<p class="accesso-legale"><a href="#" id="accesso-dimenticata">${t("accesso.scheda_recupero")}</a></p>` : ""}
@@ -3599,7 +3649,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
       } else if (scheda === "registra") {
         if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto")); e.status = 400; throw e; }       // controllo locale: la password resta
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
-        const email = v("#ac-email").trim();
+        const email = $("#ac-email") ? v("#ac-email").trim() : "";
         if (email) corpo.email = email;                      // facoltativa: i server vecchi non la conoscono
         const r = await manda("/api/account/registra", corpo);
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
@@ -3822,6 +3872,7 @@ async function esciDa(percorso) {
 // Email dell'account: aggiungere/cambiare (codice a 6 cifre per posta), confermare, togliere. Tutti i valori dell'utente passano da esc().
 function htmlEmailAccount() {
   const e = stato.emailAccount || {};
+  if (stato.emailAttiva === false && !e.email) return `<div class="debole piccolo">${t("account.email_spenta")}</div>`;
   const daGoogle = !!e.email && e.email_origine === "google";            // solo da mostrare: non vale per il recupero e non si «toglie» qui
   const propria = !!e.email && !daGoogle;
   return `<div>${propria ? t("account.email_verificata", { email: esc(e.email) }) : daGoogle ? t("account.email_google", { email: esc(e.email) }) : t("account.email_nessuna")}</div>`
@@ -3871,7 +3922,8 @@ function schedaAccount() {
     ${socialPronto() || (stato.accessi && stato.accessi.social && stato.accessi.social.length) ? `<details style="margin-top:14px"${soloGoogle() ? " open" : ""}><summary>${t("social.accessi")}</summary>
       <div id="acc-accessi">${htmlAccessi()}</div></details>` : ""}
     <details style="margin-top:14px"><summary>${soloGoogle() ? t("social.aggiungi_password") : t("account.cambia_password")}</summary>
-      ${soloGoogle() ? `<div class="debole piccolo">${t("social.aggiungi_spiega")}</div>` : campo("acc-attuale", t("account.password_attuale"), 'autocomplete="current-password"')}${campo("acc-nuova", t("accesso.password_nuova_10"), 'autocomplete="new-password"')}
+      ${soloGoogle() ? `<div class="debole piccolo">${t("social.aggiungi_spiega")}</div>` : campo("acc-attuale", t("account.password_attuale"), 'autocomplete="current-password"')}${campo("acc-nuova", t("accesso.password_nuova_10"), 'autocomplete="new-password"')}${campo("acc-ripeti", t("account.ripeti_password"), 'autocomplete="new-password"')}
+      <p class="attenzione piccolo" id="acc-diverse" role="status" hidden>${t("account.password_diverse")}</p>
       <div class="pulsanti"><button class="bottone" id="acc-cambia">${soloGoogle() ? t("social.aggiungi_password") : t("account.cambia_password")}</button></div>
       <div id="acc-esito-password"></div>
       ${soloGoogle() ? "" : `<div class="debole piccolo">${t("account.altri_scollegati")}</div>`}</details>
@@ -3947,12 +3999,15 @@ function collegaAccount() {
   $("#acc-esci").addEventListener("click", () => esciDa("/api/account/esci"));
   $("#acc-scarica-dati").addEventListener("click", () => scaricaIMieiDati());
   if ($("#acc-accessi")) collegaAccessi();
+  const passwordDiverse = () => valore("#acc-ripeti") !== "" && valore("#acc-nuova") !== valore("#acc-ripeti");
+  for (const id of ["#acc-nuova", "#acc-ripeti"]) $(id).addEventListener("input", () => { $("#acc-diverse").hidden = !passwordDiverse(); });
   $("#acc-cambia").addEventListener("click", () => provaCosi(t("account.password_cambiata_no"), async () => {
+    if (valore("#acc-nuova") !== valore("#acc-ripeti")) { $("#acc-diverse").hidden = false; throw new Error(t("account.password_diverse")); }
     if (soloGoogle()) {                                                  // chi è entrato con Google aggiunge una password (dopo la conferma con Google)
       let r;
       try { r = await api("/api/account/imposta-password", { method: "POST", body: JSON.stringify({ password: valore("#acc-nuova") }) }); }
       catch (e) { throw new Error(erroreGoogle(e)); }
-      $("#acc-nuova").value = "";
+      $("#acc-nuova").value = ""; $("#acc-ripeti").value = "";
       stato.accessi = { ...stato.accessi, password: true };
       $("#acc-esito-password").innerHTML = htmlCodiceUnaVolta(r.codice_recupero) + `<div class="pulsanti"><button class="bottone" id="acc-password-fatto">${t("social.fatto")}</button></div>`;
       collegaCopiaCodice(r.codice_recupero);
@@ -3961,10 +4016,11 @@ function collegaAccount() {
       return;
     }
     await api("/api/account/cambia-password", { method: "POST", body: JSON.stringify({ attuale: valore("#acc-attuale"), nuova: valore("#acc-nuova") }) });
-    $("#acc-attuale").value = ""; $("#acc-nuova").value = "";
+    $("#acc-attuale").value = ""; $("#acc-nuova").value = ""; $("#acc-ripeti").value = "";
     avviso(t("account.password_cambiata_ok"), 5000);
   }));
   if ($("#acc-nuovo-codice")) $("#acc-nuovo-codice").addEventListener("click", () => provaCosi(t("account.nuovo_codice_no"), async () => {
+    if (!valore("#acc-pw-codice")) { avviso(t("account.email_serve_password")); return; }
     const r = await api("/api/account/codice-recupero", { method: "POST", body: JSON.stringify({ password: valore("#acc-pw-codice") }) });
     $("#acc-pw-codice").value = "";
     mostraCodice("#acc-esito-codice", r.codice_recupero);
@@ -4058,6 +4114,7 @@ async function controllaAccesso() {
   if (dati && dati.registrazione) stato.registrazione = dati.registrazione;
   stato.social = dati && Array.isArray(dati.social) ? dati.social : [];                    // servizi di accesso accesi sul server (per ora «google»)
   stato.accessi = dati && dati.accessi ? dati.accessi : null;
+  stato.emailAttiva = !(dati && dati.email_attiva === false);                               // server vecchio (campo assente): come prima
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {

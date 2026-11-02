@@ -45,7 +45,7 @@ struct ConsigliatiView: View {
     private func introduzione(_ m: Mercato) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text("Svincolati che migliorano la squadra").font(.headline).lineLimit(2)
+                Text("Svincolati che migliorano la squadra").font(.headline).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 Button {
                     withAnimation(Tema.morbida) { dettagli.toggle() }

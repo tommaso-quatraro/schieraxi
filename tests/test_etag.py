@@ -17,7 +17,7 @@ ROSE = "Mia\nP\tSommer\t10\nAltra\nA\tKean\t30\n"
 
 
 @pytest.fixture
-def mondo(ambiente, monkeypatch):
+def mondo(ambiente, listone_in_archivio, monkeypatch):
     monkeypatch.setattr(server.consigli, "valuta", lambda db, regole, rose, titolari, squadra=None, giornata=None, simulazioni=600:
                         {"modulo": "4-3-3", "giornata": 9, "punteggio_atteso": 70.0, "dev": 4.0, "panchina": [], "differenza": -1.0})
     monkeypatch.setattr(server.consigli, "previsioni", lambda db, regole, giornata=None: (pd.DataFrame(index=[]), 9, False))

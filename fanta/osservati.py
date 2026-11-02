@@ -23,9 +23,22 @@ def leggi(percorso: Path | None = None) -> list[int]:
         return []
 
 
-def aggiungi(i: int, percorso: Path | None = None) -> list[int]:
+def nel_listone(db, ids: list[int]) -> set[int]:
+    """Quali di questi codici sono giocatori del listone (tabella `calciatori`). Query parametrizzata (al massimo 900 codici: il tetto delle variabili di sqlite)."""
+    ids = [int(i) for i in ids][:900]
+    if not ids:
+        return set()
+    segni = ",".join("?" * len(ids))
+    return {int(r[0]) for r in db.execute(f"SELECT id FROM calciatori WHERE id IN ({segni})", ids)}
+
+
+def aggiungi(i: int, percorso: Path | None = None, validi: set[int] | None = None) -> list[int]:
+    """Aggiunge un osservato (in fondo; oltre MASSIMO si perdono i più vecchi). Con `validi` (i codici del listone) quelli salvati
+    e non più validi si tolgono: non occupano posti."""
     with _blocco:
         lista = leggi(percorso)
+        if validi is not None:
+            lista = [x for x in lista if x in validi]
         if i not in lista:
             lista.append(int(i))
         lista = lista[-MASSIMO:]

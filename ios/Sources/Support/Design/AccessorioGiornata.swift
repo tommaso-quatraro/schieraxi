@@ -7,10 +7,12 @@ struct TestoConto: View {
     let adesso: Date
 
     var body: some View {
+        // `adesso` è l'ora dell'app (`Orologio`); questi testi contano da soli con l'orologio di sistema: si passano gli istanti
+        // di sistema corrispondenti (sono gli stessi fuori dalle fotografie dal vero).
         if inizio.timeIntervalSince(adesso) < 24 * 3600 {
-            Text(timerInterval: adesso...inizio, countsDown: true).monospacedDigit()
+            Text(timerInterval: Orologio.perSistema(adesso)...Orologio.perSistema(inizio), countsDown: true).monospacedDigit()
         } else {
-            Text(inizio, style: .relative)
+            Text(Orologio.perSistema(inizio), style: .relative)
         }
     }
 }
@@ -58,10 +60,11 @@ struct AccessorioGiornata: View {
     private var contenuto: some View {
         if let oggi = vm.oggi, let numero = oggi.giornataMostrata, let inizio = Quando.data(oggi.chiusura) {
             TimelineView(.periodic(from: Date(), by: 1)) { contesto in
+                let ora = Orologio.daSistema(contesto.date)
                 HStack(spacing: 6) {
                     Text("Giornata \(numero)").font(.subheadline.weight(.semibold))
-                    if inizio > contesto.date {
-                        TestoConto(inizio: inizio, adesso: contesto.date)
+                    if inizio > ora {
+                        TestoConto(inizio: inizio, adesso: ora)
                             .font(.subheadline).foregroundStyle(Color.testoSecondario)
                     } else {
                         Text("in corso").font(.subheadline).foregroundStyle(Color.testoSecondario)

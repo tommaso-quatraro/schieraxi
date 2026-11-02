@@ -241,9 +241,10 @@ struct OggiView: View {
         if let inizio = Quando.data(oggi.chiusura) {
             // Ogni secondo ricontrolla: a zero il conto alla rovescia lascia il posto a «In corso».
             TimelineView(.periodic(from: Date(), by: 1)) { contesto in
+                let ora = Orologio.daSistema(contesto.date)
                 VStack(alignment: .leading, spacing: 4) {
-                    if inizio > contesto.date {
-                        TestoConto(inizio: inizio, adesso: contesto.date)
+                    if inizio > ora {
+                        TestoConto(inizio: inizio, adesso: ora)
                             .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.5)
@@ -385,28 +386,39 @@ struct OggiView: View {
     }
 
     private func rigaDaFare(_ c: DaFareVoce) -> some View {
-        HStack(alignment: .center, spacing: 10) {
+        // Con il testo molto grande il pulsante va sotto la frase: affiancati, frase e pulsante andavano a capo a metà parola
+        // («Ho schiera-to la consi-gliata»).
+        let grande = dimensioneTesto.isAccessibilitySize
+        return HStack(alignment: grande ? .top : .center, spacing: 10) {
             Image(systemName: Self.iconaDaFare(c.tipo))
                 .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : Color.testoSecondario)
                 .frame(width: latoIcona)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: grande ? 8 : 2) {
                 Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 if let m = c.motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty {
                     Text(m).font(.caption).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
                 }
+                if grande { pulsanteDaFare(c) }
             }
-            Spacer(minLength: 6)
-            if let d = c.destinazione?.destinazione {
-                Button(c.azione ?? "Apri") { vaiA(d, tipo: c.tipo) }
-                    .font(.subheadline.weight(.semibold))
-                    .buttonStyle(.bordered)
-                    .tint(Color.verde)
-                    .frame(minHeight: 44)
+            if !grande {
+                Spacer(minLength: 6)
+                pulsanteDaFare(c)
             }
         }
         .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func pulsanteDaFare(_ c: DaFareVoce) -> some View {
+        if let d = c.destinazione?.destinazione {
+            Button(c.azione ?? "Apri") { vaiA(d, tipo: c.tipo) }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.bordered)
+                .tint(Color.verde)
+                .frame(minHeight: 44)
+        }
     }
 
     /// Apre la destinazione di una cosa da fare.

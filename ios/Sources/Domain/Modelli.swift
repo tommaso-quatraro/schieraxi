@@ -528,6 +528,8 @@ struct Formazione: Decodable {
     let senzaDati: [String]?
     let dev: Double?
     let intervallo: IntervalloPunti?
+    /// `true` dopo la scadenza della giornata (le partite sono cominciate): la formazione non si può più cambiare. Facoltativo.
+    let iniziata: Bool?
 }
 
 struct RuoloAsta: Decodable, Identifiable {

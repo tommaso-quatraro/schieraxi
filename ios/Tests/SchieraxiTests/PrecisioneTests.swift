@@ -164,4 +164,12 @@ final class PrecisioneTests: XCTestCase {
         let s = try JSONDecoder().decode(StatoAvvisi.self, from: Data(try XCTUnwrap(risposte["/api/avvisi"]).utf8))
         XCTAssertEqual(s.impostazioni.avviso_prima, 60)
     }
+
+    func testArticoloDavantiAllaPercentuale() {
+        XCTAssertEqual(TestoPrecisione.alPercento(84), "all'84%")
+        XCTAssertEqual(TestoPrecisione.alPercento(8), "all'8%")
+        XCTAssertEqual(TestoPrecisione.alPercento(11), "all'11%")
+        XCTAssertEqual(TestoPrecisione.alPercento(75), "al 75%")
+        XCTAssertEqual(TestoPrecisione.alPercento(98), "al 98%")
+    }
 }
