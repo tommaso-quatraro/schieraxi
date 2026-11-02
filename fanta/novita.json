@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.350",
+    "data": "2026-11-02T13:47:37",
+    "titolo": "Seguiti: solo giocatori veri",
+    "voci": [
+      "Tra i giocatori seguiti si possono aggiungere solo giocatori che esistono nell'elenco della Serie A: un codice sbagliato non occupa più un posto."
+    ],
+    "tecnico": [
+      "PUT /api/osservati/{i} risponde 404 «Giocatore non trovato nel listone» se il codice non è nella tabella calciatori (la stessa di GET /api/osservati) e non salva. I codici non validi già salvati si ignorano in lettura e si tolgono al salvataggio successivo (osservati.aggiungi con validi). Nuova fixture listone_in_archivio in tests/conftest.py per i test che usavano codici senza listone (test_server, test_etag, test_isolamento)."
+    ]
+  },
+  {
     "versione": "1.349",
     "data": "2026-11-02T13:42:48",
     "titolo": "Stato dei giocatori: le stesse parole ovunque",
