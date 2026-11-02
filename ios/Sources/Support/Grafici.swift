@@ -15,7 +15,21 @@ struct PuntoGrafico: Identifiable, Equatable {
 
 // MARK: - Voti di un giocatore
 
-/// Voto e fantavoto giornata per giornata; la linea tratteggiata è il 6.
+/// Un punto del grafico dei voti. `tratto` separa le linee: una giornata senza voto (o una giornata che manca) interrompe la linea,
+/// così non si disegnano valori che il giocatore non ha mai preso.
+struct PuntoVoto: Identifiable, Equatable {
+    /// «Fantavoto» o «Voto»: colore e legenda.
+    let serie: String
+    let tratto: Int
+    let giornata: Int
+    let valore: Double
+    var id: String { "\(serie)-\(giornata)" }
+    /// La linea a cui appartiene il punto (una per tratto).
+    var linea: String { "\(serie)-\(tratto)" }
+}
+
+/// Voto e fantavoto giornata per giornata; la linea tratteggiata è il 6. Linee dritte da un punto all'altro (niente curve che
+/// passano per valori mai presi) e un cerchio vuoto «sv» nelle giornate senza voto, come i pallini della Forma.
 struct GraficoVoti: View {
     let voti: [VotoGiornata]
     /// Il grafico «si disegna» quando compare: le linee salgono dal basso ai valori veri.
@@ -30,18 +44,40 @@ struct GraficoVoti: View {
     }
 
     private func testoScelta(_ v: VotoGiornata) -> String {
+        if v.fv == nil && v.voto == nil { return "G\(v.giornata) · senza voto" }
         let voto = v.voto.map { "voto \(Formato.decimali($0))" } ?? "senza voto"
         let fv = v.fv.map { "fantavoto \(Formato.decimali($0))" } ?? "senza fantavoto"
         return "G\(v.giornata) · \(voto) · \(fv)"
     }
 
-    private var punti: [PuntoGrafico] {
-        voti.sorted { $0.giornata < $1.giornata }.flatMap { v -> [PuntoGrafico] in
-            var lista: [PuntoGrafico] = []
-            if let fv = v.fv { lista.append(PuntoGrafico(serie: "Fantavoto", x: "\(v.giornata)", ordine: v.giornata, valore: fv)) }
-            if let voto = v.voto { lista.append(PuntoGrafico(serie: "Voto", x: "\(v.giornata)", ordine: v.giornata, valore: voto)) }
+    private var punti: [PuntoVoto] { Self.puntiDi(voti) }
+    private var senzaVoto: [Int] { Self.giornateSenzaVoto(voti) }
+
+    /// I punti di fantavoto e voto, con il tratto di linea a cui appartengono: si comincia un tratto nuovo dopo una giornata
+    /// senza quel valore o quando manca una giornata nella sequenza. Valori non finiti si scartano.
+    static func puntiDi(_ voti: [VotoGiornata]) -> [PuntoVoto] {
+        let ordinati = voti.sorted { $0.giornata < $1.giornata }
+        func serie(_ nome: String, _ valore: (VotoGiornata) -> Double?) -> [PuntoVoto] {
+            var lista: [PuntoVoto] = []
+            var tratto = 0
+            var precedente: Int?
+            for v in ordinati {
+                guard let x = valore(v), x.isFinite else {
+                    if precedente != nil { tratto += 1; precedente = nil }
+                    continue
+                }
+                if let p = precedente, v.giornata != p + 1 { tratto += 1 }
+                lista.append(PuntoVoto(serie: nome, tratto: tratto, giornata: v.giornata, valore: x))
+                precedente = v.giornata
+            }
             return lista
         }
+        return serie("Fantavoto", \.fv) + serie("Voto", \.voto)
+    }
+
+    /// Le giornate senza voto («sv»), come nei pallini della Forma: quelle senza fantavoto.
+    static func giornateSenzaVoto(_ voti: [VotoGiornata]) -> [Int] {
+        voti.filter { $0.fv == nil || !($0.fv ?? 0).isFinite }.map(\.giornata).sorted()
     }
 
     private var dominio: ClosedRange<Double> {
@@ -86,13 +122,23 @@ struct GraficoVoti: View {
                         }
                 }
                 ForEach(punti) { p in
-                    LineMark(x: .value("Giornata", p.ordine), y: .value("Punti", disegnato || ridotto ? p.valore : dominio.lowerBound), series: .value("Serie", p.serie))
+                    LineMark(x: .value("Giornata", p.giornata), y: .value("Punti", disegnato || ridotto ? p.valore : dominio.lowerBound), series: .value("Linea", p.linea))
                         .foregroundStyle(by: .value("Serie", p.serie))
                         .lineStyle(StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
-                        .interpolationMethod(.monotone)
-                    PointMark(x: .value("Giornata", p.ordine), y: .value("Punti", disegnato || ridotto ? p.valore : dominio.lowerBound))
+                        .interpolationMethod(.linear)
+                    PointMark(x: .value("Giornata", p.giornata), y: .value("Punti", disegnato || ridotto ? p.valore : dominio.lowerBound))
                         .foregroundStyle(by: .value("Serie", p.serie))
-                        .symbolSize(p.ordine == scelta ? 90 : 34)
+                        .symbolSize(p.giornata == scelta ? 90 : 34)
+                }
+                // Giornate senza voto: un cerchio vuoto in basso con «sv», la giornata resta nel grafico.
+                ForEach(senzaVoto, id: \.self) { g in
+                    PointMark(x: .value("Giornata", g), y: .value("Punti", dominio.lowerBound))
+                        .symbol {
+                            Circle().strokeBorder(Color.testoSecondario, lineWidth: 1.5).frame(width: 10, height: 10)
+                        }
+                        .annotation(position: .top, spacing: 2) {
+                            Text("sv").font(.caption2.weight(.semibold)).foregroundStyle(Color.testoSecondario)
+                        }
                 }
             }
             .chartForegroundStyleScale(["Fantavoto": Color.verde, "Voto": Color.blue])
@@ -108,7 +154,10 @@ struct GraficoVoti: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Grafico del voto e del fantavoto giornata per giornata. La linea tratteggiata è il sei.")
             .accessibilityValue(Self.descrizione(voti).joined(separator: ". "))
-            Text("La linea tratteggiata è il 6. Tocca il grafico per i numeri di una giornata.").font(.caption).foregroundStyle(Color.testoSecondario)
+            Text(senzaVoto.isEmpty
+                 ? "La linea tratteggiata è il 6. Tocca il grafico per i numeri di una giornata."
+                 : "La linea tratteggiata è il 6; «sv» è una giornata senza voto. Tocca il grafico per i numeri di una giornata.")
+                .font(.caption).foregroundStyle(Color.testoSecondario)
             ElencoNumeri(righe: Self.descrizione(voti))
         }
     }

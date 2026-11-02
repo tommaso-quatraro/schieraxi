@@ -357,13 +357,15 @@ def registra(dati: Iscrizione, request: Request, risposta: Response):
     with closing(account.apri()) as db:
         utente, token, recupero = account.registra(db, dati.nome_utente, dati.password, dati.invito, ip_reale(request), _dispositivo(request),
                                                   accetto_termini=dati.accetto_termini)
-        if email:                                    # la verifica parte a parte: se non si riesce, l'account c'è lo stesso
+        email_non_salvata = bool(email) and not posta.attiva()      # posta spenta: il codice non può arrivare, l'email non resta «in attesa»
+        if email and not email_non_salvata:          # la verifica parte a parte: se non si riesce, l'account c'è lo stesso
             try:
                 account_email.chiedi_verifica(db, utente.id, email, None, ip_reale(request), senza_password=True)
             except ErroreAccount:
                 pass
         segreto = account.ricorda_dispositivo(db, utente.id, dispositivo_fidato(request))
-    corpo = _con_sessione(risposta, request, utente, token, dati.nativo, {"codice_recupero": recupero})
+    corpo = _con_sessione(risposta, request, utente, token, dati.nativo,
+                          {"codice_recupero": recupero} | ({"email_non_salvata": True} if email_non_salvata else {}))
     return _dai_dispositivo(risposta, request, segreto, dati.nativo, corpo)
 
 

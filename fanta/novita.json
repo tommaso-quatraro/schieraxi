@@ -1,5 +1,60 @@
 [
   {
+    "versione": "1.373",
+    "data": "2026-11-02T16:50:03",
+    "titolo": "Giornata divisa in due: la formazione si chiude alla prima partita",
+    "voci": [
+      "Quando una giornata è divisa in due (per esempio tre partite il venerdì e le altre il mercoledì dopo), la formazione ora si chiude prima delle partite del venerdì, invece di restare aperta fino al mercoledì."
+    ],
+    "tecnico": [
+      "turno.inizio: la strada di ripiego sceglie solo inizi che lasciano prima al massimo MAX_ANTICIPI anticipi (la prima partita va sempre bene); prima poteva tornare al gruppo principale e lasciare 3 o più anticipi (issue #139). Test a esempi in tests/test_turno.py."
+    ]
+  },
+  {
+    "versione": "1.372",
+    "data": "2026-11-02T16:34:14",
+    "titolo": "Iscrizione senza email che non arrivano e Confronto sulla giornata giusta",
+    "voci": [
+      "Se sul server le email sono spente, l'iscrizione con email lo dice subito invece di far aspettare un codice che non arriverà mai.",
+      "Nel Confronto fra due giocatori, dopo la scadenza, i numeri sono quelli della giornata che vedi in Formazione."
+    ],
+    "tecnico": [
+      "POST /api/account/registra senza invito (modi aperta ed email) con posta spenta: 503, codice iscrizione_posta_spenta, controllo prima dei limiti e uguale per ogni nome e indirizzo; nessuna iscrizione in attesa.",
+      "POST /api/account/registra con invito e email a posta spenta: l'account nasce, la verifica non parte, la risposta ha email_non_salvata: true (facoltativo); con la posta accesa è tutto come prima.",
+      "Web: traduzione err.iscrizione_posta_spenta; apriConfronto passa giornata=stato.formaz.f.giornata a /api/confronto.",
+      "Test in tests/test_posta_spenta.py e tests/test_diario_confronto_web.py; i test dell'iscrizione che raccolgono le email finte accendono posta.attiva."
+    ]
+  },
+  {
+    "versione": "1.371",
+    "data": "2026-11-02T16:20:56",
+    "titolo": "Regole: nome dei campi più sicuro",
+    "voci": [
+      "Regole: il nome dei campi per i lettori di schermo è sempre testo semplice."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: rigaRegola usa esc(etichetta) per l'aria-label, senza la regex che toglieva i tag (avviso CodeQL js/incomplete-multi-character-sanitization, n. 26, arrivato con la PR #130). Nessuna etichetta delle regole contiene tag. Test: tests/test_squadra_testi_web.py."
+    ]
+  },
+  {
+    "versione": "1.370",
+    "data": "2026-11-02T16:14:24",
+    "titolo": "Regole, Squadra e registrazione: testi più chiari e campi con il loro nome",
+    "voci": [
+      "Regole, Prova del modificatore difesa: il bonus si legge com'è, anche con il mezzo punto (prima «+3,5» diventava «+4»).",
+      "Regole: ogni campo numerico ha il nome della sua riga anche per i lettori di schermo (prima alcuni non avevano nome, altri si chiamavano come la sezione).",
+      "Squadra, Altro, Impostazioni e Novità: il pulsante per tornare indietro ha la freccia disegnata, come nelle altre schermate.",
+      "Aggiorna le rose: il comando rapido dell'iPhone si chiama «Importa in SchieraXI».",
+      "Registrazione: se non spunti la casella, il messaggio ricorda anche l'età minima."
+    ],
+    "tecnico": [
+      "fanta/web/impostazioni.js: apriPannello usa ICONA_INDIETRO al posto di «← » nel testo; app.js: lo stesso in vistaNovita.",
+      "fanta/web/app.js: rigaRegola dà al primo input della riga aria-label = testo della riga senza tag; aggiornaProva usa tp(..., Math.abs(b)) e num(b, Number.isInteger(b) ? 0 : 1); accesso.spunta_letto con { eta: ETA_MINIMA }.",
+      "fanta/web/testi.js: lega.una_volta_sola, lega.sc1, lega.per_usarlo_apri con SchieraXI; accesso.spunta_letto con {eta} (it e en). GUIDA-UTENTE: percorso di Stemma e maglia e immagini da indirizzo web solo se accese.",
+      "Test: tests/test_squadra_testi_web.py (rigaRegola provata con node)."
+    ]
+  },
+  {
     "versione": "1.369",
     "data": "2026-11-02T16:08:46",
     "titolo": "Squadra e primo avvio: i dati appena salvati si vedono subito",

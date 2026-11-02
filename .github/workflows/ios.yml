@@ -1,7 +1,8 @@
 name: iOS
 
 # Test dell'app iOS nel simulatore di un Mac di GitHub. Nessuna firma, nessun segreto, nessun IPA pubblicato da qui.
-# Non parte da solo: lo chiama test.yml (job «ios», solo se la PR o il push toccano ios/, così «unisci» lo aspetta),
+# Non parte da solo: lo chiama test.yml (job «ios», solo se la PR o il push toccano ios/ e la PR non è in bozza,
+# così «unisci» lo aspetta; quando la bozza diventa pronta parte),
 # oppure a mano (Actions > iOS > Run workflow, o `gh workflow run ios.yml --ref <ramo>`).
 # Niente cache di DerivedData: il checkout cambia le date di tutti i file e Xcode ricompilerebbe comunque tutto;
 # niente pacchetti SwiftPM in ios/project.yml, quindi niente da mettere in cache.
