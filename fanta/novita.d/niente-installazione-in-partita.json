@@ -1,3 +1,0 @@
-{"titolo": "Aggiornamenti dell'app mai durante le partite",
- "voci": ["Le versioni nuove non si installano più mentre si gioca una partita di Serie A o nell'ora prima della chiusura della formazione: la diretta e gli ultimi aggiornamenti delle probabili non si interrompono."],
- "tecnico": ["fanta/libero.py e comando momento-libero (0 libero, 3 occupato: partita nella finestra di gioco o ancora in gioco nella diretta salvata, oppure un'ora prima della scadenza di una lega attiva); aggiorna-app.sh rimanda l'installazione al primo giro libero, emergenza con il file installa-subito o SCHIERAXI_INSTALLA_SUBITO=1."]}
