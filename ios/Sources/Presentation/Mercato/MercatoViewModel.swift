@@ -11,8 +11,6 @@ final class MercatoViewModel: ViewModelBase {
     let classifica: Caricatore<ElencoGiocatori>
     let calendario: Caricatore<Calendario>
     let osservati: Caricatore<ElencoGiocatori>
-    /// Asta di agosto e riparazione di febbraio.
-    let asta: AstaViewModel
 
     /// Giocatore di cui si mostra la scheda (sheet).
     @Published var schedaAperta: IdGiocatore?
@@ -34,14 +32,12 @@ final class MercatoViewModel: ViewModelBase {
         classifica = Caricatore<ElencoGiocatori>("/api/classifica?limite=60&liberi=true", server: server)
         calendario = Caricatore<Calendario>("/api/calendario", server: server)
         osservati = Caricatore<ElencoGiocatori>("/api/osservati", server: server)
-        asta = AstaViewModel(server: server)
         ricerca = RicercaMercatoViewModel(server: server)
         super.init()
         osserva(consigliati)
         osserva(classifica)
         osserva(calendario)
         osserva(osservati)
-        osserva(asta)
     }
 
     func apri(_ id: Int) { schedaAperta = IdGiocatore(id: id) }

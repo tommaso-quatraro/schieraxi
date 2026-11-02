@@ -67,7 +67,7 @@ def test_scheda_solo_per_l_amministratore(admin):
 
 def test_errori_con_rotazione(multiutente, monkeypatch):
     monkeypatch.setattr(registro, "MAX_FILE", 1500)
-    for i in range(200):
+    for _i in range(200):
         registro.errore("GET", "/api/prova", 500, "Errore")
     cartella = percorsi.cartella_account()
     assert (cartella / "errori.log.1").exists() and not (cartella / "errori.log.4").exists()

@@ -237,6 +237,7 @@ struct CreditiView: View {
             }
             .scrollContentBackground(.hidden)
         }
+        .ricercaGlobale()
         .navigationTitle("Crediti")
         .task { await vm.carica() }
     }

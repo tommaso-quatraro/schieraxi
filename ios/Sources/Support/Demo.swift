@@ -8,6 +8,7 @@ import SwiftUI
 /// - `-DEMO_SCHERMATA <nome>`: apre subito una schermata (vedi `applica`), perché dal simulatore non si può toccare lo schermo.
 /// - `-DEMO_FONDO 1`: le schermate lunghe partono scorse in fondo (iOS 17 o più).
 /// - `-DEMO_ORIENTAMENTO orizzontale`: chiede l'orientamento orizzontale.
+/// - `-DEMO_SCENARIO <nome>`: le «fotografie dal vero» (`ScenarioVero`): risposte vere con nomi inventati in un momento preciso.
 enum Demo {
     static let daLancio: Bool = ProcessInfo.processInfo.arguments.contains("-DEMO")
 
@@ -47,6 +48,8 @@ enum Demo {
     static func serverPredefinito() -> any ServerClient {
         if attivo {
             if !daLancio { return FinteServer.demo }   // la prova con dati di esempio
+            // Fotografie dal vero (`-DEMO_SCENARIO vero-prima`...): risposte vere con nomi inventati, vedi ScenarioVero
+            if let vero = ScenarioVero.attuale { return vero.server }
             // Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
             if let fase = FinteServer.demoFase(schermata) { return fase }
             if accesso == "rose" {
@@ -79,6 +82,17 @@ enum Demo {
 }
 
 extension View {
+    /// Solo in demo, per fotografare una parte in mezzo a una schermata lunga: se `-DEMO_SCHERMATA` è una di `schermate` (e, con
+    /// `inFondo`, c'è anche `-DEMO_FONDO`), appena `pronto` scorre fino alla vista con `id`. Fuori dalla demo non fa niente.
+    func demoScorriA(_ id: String, proxy: ScrollViewProxy, schermate: [String], inFondo: Bool = false, pronto: Bool) -> some View {
+        task(id: pronto) {
+            guard pronto, Demo.attivo, let s = Demo.schermata, schermate.contains(s) else { return }
+            if inFondo && Demo.argomento("DEMO_FONDO") == nil { return }
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            proxy.scrollTo(id, anchor: .top)
+        }
+    }
+
     /// Solo in demo con `-DEMO_FONDO`: la schermata parte scorsa in fondo, per vedere anche la parte sotto la piega.
     @ViewBuilder
     func demoInFondo() -> some View {
@@ -117,7 +131,7 @@ extension Demo {
         }
         guard let nome = argomento("DEMO_SCHERMATA") else { return }
         switch nome {
-        case "oggi", "oggi-in-corso", "oggi-finita":
+        case "oggi", "oggi-in-corso", "oggi-finita", "oggi-rinvio", "oggi-finita-recupero":
             nav.sezione = .oggi
         case "guida":
             // la configurazione guidata: in demo mostra i passi non ancora fatti
@@ -129,7 +143,7 @@ extension Demo {
             // le Impostazioni (le pagine «Licenze e crediti», «Avanzate» e «Aspetto» le apre da sola ImpostazioniView)
             nav.impostazioniAperte = true
 
-        case "formazione", "formazione-salvata":
+        case "formazione", "formazione-salvata", "formazione-chiusa":
             nav.sezione = .formazione
         case "formazione-manuale":
             nav.sezione = .formazione
@@ -144,7 +158,8 @@ extension Demo {
             Task {
                 await modello.formazione.carica()
                 try? await Task.sleep(nanoseconds: 400_000_000)
-                modello.formazione.confrontoAperto = .coppia(120, 123)
+                let coppia = ScenarioVero.attuale?.confronto ?? (120, 123)
+                modello.formazione.confrontoAperto = .coppia(coppia.0, coppia.1)
             }
         case "formazione-perche":
             // «Perché questo numero» di un titolare (meglio uno in dubbio: si vede anche «gioca N%»)
@@ -175,14 +190,11 @@ extension Demo {
             apriLega(nav, modello, [.calendario])
         case "mercato-osservati":
             apriLega(nav, modello, [.seguiti])
-        case "mercato-asta", "mercato-asta-riparazione":
-            // l'asta sta in Lega (due volte l'anno): Lega > Asta e riparazione
-            apriLega(nav, modello, [.asta])
         case "mercato-cerca":
             apriLega(nav, modello, [.elenco])
             modello.mercato.testoRicerca = "ma"
         case "giocatore":
-            nav.vai(a: .giocatore(203))
+            nav.vai(a: .giocatore(ScenarioVero.attuale?.giocatore ?? 203))
 
         case "scambi", "scambi-una-rosa":
             apriLega(nav, modello, [.scambi])
@@ -197,7 +209,7 @@ extension Demo {
         case "scambi-offerta":
             apriLega(nav, modello, [.scambi])
             modello.scambi.modo = .valuta
-            modello.scambi.testoOfferta = "Ciao! Ti do Vlasenic e tu mi dai Lumbaku, ci stai?"
+            modello.scambi.testoOfferta = ScenarioVero.attuale?.offerta ?? "Ciao! Ti do Vlasenic e tu mi dai Lumbaku, ci stai?"
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 await modello.scambi.valutaOfferta()
@@ -212,11 +224,9 @@ extension Demo {
         case "lega-squadre":
             apriLega(nav, modello, [.squadre])
         case "lega-rosa":
-            apriLega(nav, modello, [.squadre, .rosa("Gli Amici del Bar Sport Centrale")])
+            apriLega(nav, modello, [.squadre, .rosa(ScenarioVero.attuale?.rosaAltra ?? "Gli Amici del Bar Sport Centrale")])
         case "lega-regole":
             apriLega(nav, modello, [.regole])
-        case "lega-asta":
-            apriLega(nav, modello, [.asta])
         case "lega-stato":
             apriLega(nav, modello, [.stato])
         case "lega-crediti":

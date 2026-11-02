@@ -7,13 +7,17 @@ name: Screenshot
 # ha l'etichetta «screenshot» (`gh pr edit <N> --add-label screenshot`). Senza etichetta le PR non prenotano il Mac
 # (i Mac gratuiti sono pochi e i test iOS hanno la precedenza).
 # Le foto stanno negli artifact «screenshot-app» e «screenshot-widget» (14 giorni). Non crea release. Non blocca l'unione.
+# «Fotografie dal vero» (scatti = vero, o etichetta «screenshot-vero» sulla PR): risposte vere del server con rose e nomi inventati
+# (ios/fotografie/, vedi ios/Sources/Support/ScenarioVero.swift) in tre momenti della giornata, chiaro e scuro, testo grande
+# sugli iPhone, orizzontale sull'iPad. Un solo Mac, un dispositivo dopo l'altro: dispositivi = iphone (predefinito: iPhone
+# piccolo e grande), ipad, tutti. Artifact «screenshot-vero».
 on:
   workflow_dispatch:
     inputs:
       scatti:
-        description: "veloce = solo le schermate principali (pochi minuti); completo = tutte le varianti (quasi un'ora)"
+        description: "veloce = solo le schermate principali (pochi minuti); completo = tutte le varianti (quasi un'ora); vero = fotografie dal vero"
         type: choice
-        options: [veloce, completo, collaudo]
+        options: [veloce, completo, collaudo, vero]
         default: veloce
       iphone:
         description: "quale iPhone: predefinito (Pro), piccolo (SE o il più stretto), grande (Pro Max)"
@@ -35,7 +39,16 @@ on:
 
 # UNA sola corsa Mac alla volta in tutto il repository, in fila (i Mac gratuiti sono pochi e i test iOS hanno la precedenza):
 # il job Linux «quando» aspetta che finisca ogni corsa Screenshot partita prima di questa (ordine del numero di corsa),
-# poi lascia partire il Mac. Niente gruppo di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
+# poi lascia partire il Mac. La fila non usa i gruppi di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
+# Gruppo di concorrenza della PR solo per le foto a ogni push (etichetta «screenshot»): un push nuovo annulla la corsa vecchia
+# della stessa PR. Tutto il resto ha un gruppo suo (run_id) e non annulla né è annullato: corse a mano e su main, le foto dal
+# vero (etichetta «screenshot-vero», partono solo quando si mette l'etichetta), le altre etichette, le PR senza «screenshot».
+concurrency:
+  group: >-
+    ${{ (github.event_name == 'pull_request' && ((github.event.action == 'labeled' && github.event.label.name == 'screenshot')
+    || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'screenshot'))))
+    && format('screenshot-pr-{0}', github.event.pull_request.number) || format('screenshot-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -61,13 +74,17 @@ jobs:
           AZIONE: ${{ github.event.action }}
           ETICHETTA_NUOVA: ${{ github.event.label.name }}
           ETICHETTE: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BOZZA: ${{ github.event.pull_request.draft }}
         run: |
           serve=false
           if [ "$EVENTO" = "workflow_dispatch" ]; then
             serve=true
+          elif [ "$EVENTO" = "pull_request" ] && [ "$BOZZA" = "true" ]; then
+            echo "PR in bozza: niente Mac (le foto prima dell'unione si lanciano a mano: gh workflow run screenshot.yml --ref <ramo>)"
           elif [ "$EVENTO" = "pull_request" ]; then
             if [ "$AZIONE" = "labeled" ]; then
-              if [ "$ETICHETTA_NUOVA" = "screenshot" ]; then serve=true; fi
+              # «screenshot-vero»: le fotografie dal vero, solo quando si mette l'etichetta (mai a ogni push)
+              if [ "$ETICHETTA_NUOVA" = "screenshot" ] || [ "$ETICHETTA_NUOVA" = "screenshot-vero" ]; then serve=true; fi
             else
               case ",$ETICHETTE," in *,screenshot,*) serve=true ;; esac
             fi
@@ -90,7 +107,7 @@ jobs:
 
   screenshot:
     needs: quando
-    if: needs.quando.outputs.serve == 'true' && github.event.repository.private == false
+    if: needs.quando.outputs.serve == 'true' && github.event.repository.private == false && inputs.scatti != 'vero' && github.event.label.name != 'screenshot-vero'
     runs-on: macos-26
     timeout-minutes: 150
     defaults:
@@ -169,6 +186,71 @@ jobs:
             ios/build-app.log
             ios/build-widget.log
             ios/crash/*
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Fotografie dal vero: un solo Mac, in fila come gli altri screenshot (job «quando»), un dispositivo dopo l'altro (scripts/screenshot.sh, SCATTI=vero).
+  vero:
+    needs: quando
+    if: needs.quando.outputs.serve == 'true' && github.event.repository.private == false && (inputs.scatti == 'vero' || github.event.label.name == 'screenshot-vero')
+    runs-on: macos-26
+    timeout-minutes: 170
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Installa XcodeGen (se manca)
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      - name: Crea il progetto Xcode
+        run: xcodegen generate
+      - name: Compila l'app per il simulatore (senza firma)
+        run: |
+          set -o pipefail
+          xcodebuild -project Schieraxi.xcodeproj -scheme Schieraxi -configuration Debug             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build             build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64             2>&1 | tee build-app.log | tail -n 40
+          test -d build/Build/Products/Debug-iphonesimulator/Schieraxi.app
+      - name: Scatta le fotografie dal vero
+        env:
+          SCATTI: vero
+          FOTOGRAFIE: fotografie
+          QUALI: ${{ inputs.dispositivi || 'iphone' }}
+        run: |
+          case "$QUALI" in
+            ipad) giri="ipad" ;;
+            tutti) giri="iphone-piccolo iphone-grande ipad" ;;
+            *) giri="iphone-piccolo iphone-grande" ;;
+          esac
+          esito=0
+          for d in $giri; do
+            if [ "$d" = ipad ]; then
+              DISPOSITIVI=ipad IPHONE=iphone bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot || esito=1
+            else
+              DISPOSITIVI=iphone IPHONE="$d" bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot || esito=1
+            fi
+          done
+          exit $esito
+      # i percorsi di upload-artifact partono dalla radice del repository, non da working-directory
+      - name: Carica le fotografie
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: screenshot-vero
+          path: ios/screenshot/*.png
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Maschera il log (il repository è pubblico)
+        if: failure()
+        run: |
+          [ -f build-app.log ] && { python3 -I scripts/maschera_log.py build-app.log build-app.log.mascherato && mv build-app.log.mascherato build-app.log || rm -f build-app.log; }
+          true
+      - name: Carica il log in caso di problemi
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: log-vero
+          path: ios/build-app.log
           retention-days: 7
           if-no-files-found: ignore
 

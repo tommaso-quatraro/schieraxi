@@ -12,37 +12,38 @@ USCITA="${2:-screenshot}"
 ID_APP="it.schieraxi.app"
 ERRORI=0
 ARGOMENTI_EXTRA=()
+ARGOMENTI_SCENARIO=()   # -DEMO_SCENARIO <nome>: le fotografie dal vero (SCATTI=vero)
 TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qualunque cosa dica il simulatore
 STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
 RADDRIZZA=0
 mkdir -p "$USCITA"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita formazione formazione-fondo formazione-salvata formazione-manuale formazione-confronto formazione-perche formazione-immagine
-       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
+TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
+       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
-       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-diario lega-novita
+       lega lega-squadre lega-rosa lega-regole lega-regole-fondo lega-stato lega-crediti lega-avvisi lega-diario lega-novita
        lega-importa lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
-PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
+PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-classifica
             scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
 PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-calendario
-                  mercato-osservati mercato-asta scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
+                  mercato-osservati scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
                   impostazioni-aspetto giocatore giocatore-fondo)
 PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche mercato-consigliati mercato-classifica
-          mercato-calendario mercato-osservati mercato-asta giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
+          mercato-calendario mercato-osservati giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
           lega lega-squadre lega-rosa lega-regole lega-avvisi lega-diario impostazioni-aspetto)
 
 # SCATTI=veloce (predefinito dei push su main): solo le schermate principali, per controllare in pochi minuti.
 # SCATTI=completo: tutte le schermate, tutte le varianti (ci vuole quasi un'ora).
 SCATTI="${SCATTI:-completo}"
 if [ "$SCATTI" = "veloce" ]; then
-  TUTTE=(oggi oggi-in-corso oggi-in-corso-fondo oggi-finita formazione formazione-perche giocatore lega-diario mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
-  PER_CHIARO=(oggi oggi-in-corso oggi-finita formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
+  TUTTE=(oggi oggi-in-corso oggi-in-corso-fondo oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-perche giocatore lega-diario lega-regole-fondo mercato-classifica impostazioni-aspetto accesso-accedi accesso-limite primo-avvio impostazioni-fondo impostazioni-crediti)
+  PER_CHIARO=(oggi oggi-in-corso oggi-finita oggi-rinvio formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
   PER_TESTO_GRANDE=(accesso-accedi oggi-in-corso)
   PRINCIPALI=(oggi lega)
   PER_IPAD=(oggi-in-corso oggi-finita formazione formazione-perche giocatore lega-diario primo-avvio impostazioni-crediti)
@@ -91,13 +92,17 @@ scatta() {
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
-        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"}         ${STILE_ARG[@]+"${STILE_ARG[@]}"} ${tema[@]+"${tema[@]}"} \
+        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} ${ARGOMENTI_SCENARIO[@]+"${ARGOMENTI_SCENARIO[@]}"}         ${STILE_ARG[@]+"${STILE_ARG[@]}"} ${tema[@]+"${tema[@]}"} \
         -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
     return
   fi
-  sleep 3
+  # L'iPad disegna piÃ¹ lentamente (colonne, pagina a destra): con 3 secondi la foto di Â«legaÂ» usciva con il solo caricamento.
+  case "$etichetta" in
+    ipad*) sleep 6 ;;
+    *) sleep "${ATTESA_SCATTO:-3}" ;;   # 6 nelle fotografie dal vero: risposte grandi, schermate che caricano due volte
+  esac
   # l'app deve essere ancora in esecuzione (altrimenti Ã¨ andata in crash)
   if ! xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "UIKitApplication:$ID_APP"; then
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
@@ -135,7 +140,7 @@ giro() {
   TEMA_ARG=(-tema scuro)
   if [ "$aspetto" = "chiaro" ]; then ui="light"; STILE_ARG=(-AppleInterfaceStyle Light); TEMA_ARG=(-tema chiaro); fi
   echo "=== $etichetta ($ui, testo $dimensione) ==="
-  # Il cambio di aspetto del simulatore è asincrono e subito dopo l'avvio a volte non vale: capitava che le foto «scuro»
+  # Il cambio di aspetto del simulatore Ã¨ asincrono e subito dopo l'avvio a volte non vale: capitava che le foto Â«scuroÂ»
   # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi).
   local t letto
   for t in 1 2 3 4 5; do
@@ -143,7 +148,7 @@ giro() {
     sleep 2
     letto=$(xcrun simctl ui "$udid" appearance 2>/dev/null | tr -d '[:space:]')
     [ "$letto" = "$ui" ] && break
-    echo "  aspetto letto «$letto», voluto «$ui»: riprovo ($t)"
+    echo "  aspetto letto Â«$lettoÂ», voluto Â«$uiÂ»: riprovo ($t)"
   done
   xcrun simctl ui "$udid" content_size "$dimensione"
   local s
@@ -165,6 +170,86 @@ avvia_simulatore() {
 spegni_simulatore() {
   xcrun simctl shutdown "$1" >/dev/null 2>&1
 }
+
+# ---------------------------------------------------------------- fotografie dal vero
+# SCATTI=vero: le schermate con le risposte vere del server (nomi inventati) in tre momenti della giornata: vedi
+# Sources/Support/ScenarioVero.swift e la cartella fotografie/. Un dispositivo per corsa (il workflow ne lancia tre in parallelo):
+# DISPOSITIVI=ipad per l'iPad, altrimenti l'iPhone scelto da IPHONE (iphone-piccolo, iphone-grande, iphone).
+# Nomi dei file: <dispositivo>_<aspetto>_<scenario>_<schermata>.png
+FOTOGRAFIE="${FOTOGRAFIE:-fotografie}"
+VERO_SCENARI=(vero-prima vero-in-corso vero-finita)
+# prima della scadenza: tutte le schermate che mostrano i dati della lega
+VERO_TUTTE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche squadra squadra-fondo
+            mercato-consigliati mercato-classifica mercato-calendario mercato-osservati mercato-cerca
+            giocatore giocatore-fondo ricerca scambi scambi-fondo scambi-dettaglio scambi-offerta scambi-analizza
+            lega lega-squadre lega-rosa lega-regole lega-stato lega-crediti lega-diario lega-diario-fondo lega-movimenti lega-stagione)
+# giornata in corso e giornata finita: le schermate che cambiano con il momento
+VERO_FASE=(oggi oggi-fondo formazione formazione-fondo squadra giocatore lega-diario)
+
+# Copia i file degli scenari nella cartella Documenti dell'app nel simulatore (l'app li legge da lÃ¬: non entrano nell'IPA).
+copia_fotografie() {
+  local udid="$1" dati
+  dati=$(xcrun simctl get_app_container "$udid" "$ID_APP" data 2>/dev/null)
+  if [ -z "$dati" ] || [ ! -d "$dati" ]; then
+    echo "ERRORE: cartella dei dati dell'app non trovata: le foto mostrerebbero la demo di sempre"
+    return 1
+  fi
+  mkdir -p "$dati/Documents/fotografie"
+  cp "$FOTOGRAFIE"/*.json "$dati/Documents/fotografie/" || return 1
+  echo "  scenari copiati: $(ls "$dati/Documents/fotografie" | tr '\n' ' ')"
+}
+
+# giro_vero <udid> <etichetta> <chiaro|scuro> <dimensione del testo>: ogni scenario con le sue schermate
+giro_vero() {
+  local udid="$1" etichetta="$2" aspetto="$3" dimensione="$4" sc
+  for sc in "${VERO_SCENARI[@]}"; do
+    ARGOMENTI_SCENARIO=(-DEMO_SCENARIO "$sc")
+    if [ "$sc" = "vero-prima" ]; then
+      giro "$udid" "${etichetta}_${sc}" "$aspetto" "$dimensione" "${VERO_TUTTE[@]}"
+    else
+      giro "$udid" "${etichetta}_${sc}" "$aspetto" "$dimensione" "${VERO_FASE[@]}"
+    fi
+  done
+  ARGOMENTI_SCENARIO=()
+}
+
+if [ "$SCATTI" = "vero" ]; then
+  ATTESA_SCATTO=6
+  if ! ls "$FOTOGRAFIE"/vero-*.json >/dev/null 2>&1; then
+    echo "ERRORE: nessuno scenario in $FOTOGRAFIE/ (si preparano con prove/fotografie_dal_vero.py nel repository del server)"
+    exit 1
+  fi
+  if [ "$DISPOSITIVI" = "ipad" ]; then QUALE=ipad; else QUALE="$IPHONE"; fi
+  IFS=$'\t' read -r UDID_VERO NOME_VERO IOS_VERO <<< "$(scegli "$QUALE")"
+  echo "Fotografie dal vero su: $NOME_VERO ($IOS_VERO)"
+  avvia_simulatore "$UDID_VERO"
+  # lancio di prova (il primo avvio Ã¨ lento) che crea anche la cartella dei dati dell'app
+  xcrun simctl launch "$UDID_VERO" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
+  sleep 10
+  xcrun simctl terminate "$UDID_VERO" "$ID_APP" >/dev/null 2>&1
+  copia_fotografie "$UDID_VERO" || exit 1
+  giro_vero "$UDID_VERO" "${QUALE}_scuro" scuro large
+  giro_vero "$UDID_VERO" "${QUALE}_chiaro" chiaro large
+  if [ "$QUALE" = "ipad" ]; then
+    # orizzontale: si ruota il simulatore con la tastiera come nel giro normale (le foto escono girate e si raddrizzano)
+    open -a Simulator --args -CurrentDeviceUDID "$UDID_VERO" >/dev/null 2>&1
+    sleep 10
+    osascript -e 'tell application "Simulator" to activate' 2>&1
+    sleep 2
+    osascript -e 'tell application "System Events" to key code 123 using command down' 2>&1
+    sleep 3
+    RADDRIZZA=1
+    giro_vero "$UDID_VERO" "${QUALE}-orizzontale_scuro" scuro large
+    giro_vero "$UDID_VERO" "${QUALE}-orizzontale_chiaro" chiaro large
+    RADDRIZZA=0
+  else
+    giro_vero "$UDID_VERO" "${QUALE}_scuro-testogrande" scuro accessibility-large
+  fi
+  spegni_simulatore "$UDID_VERO"
+  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI"
+  [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
+  exit $?
+fi
 
 # ---------------------------------------------------------------- iPhone
 if [ "$DISPOSITIVI" != "ipad" ]; then
@@ -249,7 +334,7 @@ elif [ "$SCATTI" = "collaudo" ]; then
   giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${TUTTE[@]}"
   giro "$UDID_IPAD" ipad_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large "${TUTTE[@]}"
 else
-  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta impostazioni-aspetto
+  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto scambi-offerta impostazioni-aspetto
   giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
 fi
 

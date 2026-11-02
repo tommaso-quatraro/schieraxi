@@ -1,7 +1,6 @@
 """Accesso con Google: tutto con token finti firmati da una chiave RSA di prova e un elenco di chiavi (JWKS) finto. Nessuna rete."""
 import contextlib
 import json
-import re
 import sqlite3
 import time
 from urllib.parse import parse_qs, urlparse
@@ -689,7 +688,7 @@ def test_l_email_in_chiaro_non_resta_oltre_la_scadenza(scena):
     with contextlib.closing(account.apri()) as db:
         assert db.execute("SELECT COUNT(*) FROM flussi_social WHERE esito IS NOT NULL").fetchone()[0] == 0
     # e dopo l'iscrizione scaduta
-    nuovo = iscrivi_con_google(c, scena, sub="55")
+    iscrivi_con_google(c, scena, sub="55")
     with contextlib.closing(account.apri()) as db:
         db.execute("UPDATE flussi_social SET iscrizione_scade = '2000-01-01T00:00:00+00:00' WHERE iscrizione_hash IS NOT NULL")
         db.commit()
