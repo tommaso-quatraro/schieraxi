@@ -97,7 +97,11 @@ scatta() {
     ERRORI=$((ERRORI + 1))
     return
   fi
-  sleep 3
+  # L'iPad disegna piÃ¹ lentamente (colonne, pagina a destra): con 3 secondi la foto di Â«legaÂ» usciva con il solo caricamento.
+  case "$etichetta" in
+    ipad*) sleep 6 ;;
+    *) sleep 3 ;;
+  esac
   # l'app deve essere ancora in esecuzione (altrimenti Ã¨ andata in crash)
   if ! xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "UIKitApplication:$ID_APP"; then
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
@@ -135,7 +139,7 @@ giro() {
   TEMA_ARG=(-tema scuro)
   if [ "$aspetto" = "chiaro" ]; then ui="light"; STILE_ARG=(-AppleInterfaceStyle Light); TEMA_ARG=(-tema chiaro); fi
   echo "=== $etichetta ($ui, testo $dimensione) ==="
-  # Il cambio di aspetto del simulatore è asincrono e subito dopo l'avvio a volte non vale: capitava che le foto «scuro»
+  # Il cambio di aspetto del simulatore Ã¨ asincrono e subito dopo l'avvio a volte non vale: capitava che le foto Â«scuroÂ»
   # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi).
   local t letto
   for t in 1 2 3 4 5; do
@@ -143,7 +147,7 @@ giro() {
     sleep 2
     letto=$(xcrun simctl ui "$udid" appearance 2>/dev/null | tr -d '[:space:]')
     [ "$letto" = "$ui" ] && break
-    echo "  aspetto letto «$letto», voluto «$ui»: riprovo ($t)"
+    echo "  aspetto letto Â«$lettoÂ», voluto Â«$uiÂ»: riprovo ($t)"
   done
   xcrun simctl ui "$udid" content_size "$dimensione"
   local s
