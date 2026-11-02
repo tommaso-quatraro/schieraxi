@@ -12,7 +12,6 @@ enum Funzione {
     static let squadreAltrui = "squadre_altrui"
     static let novita = "novita"
     static let live = "live"
-    static let asta = "asta"
     static let scambiTrova = "scambi_trova"
     static let scambiCostruisci = "scambi_costruisci"
     static let immaginiWeb = "immagini_web"

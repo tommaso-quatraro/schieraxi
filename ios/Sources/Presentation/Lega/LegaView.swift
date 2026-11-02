@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Le schede Squadra e Altro (la «dieta delle funzioni»): un elenco di voci, ognuna una pagina. Squadra ha la mia squadra e le rose,
-/// i cambi consigliati, i seguiti, l'elenco dei giocatori e il calendario; Altro ha Scambi, il diario, le regole, l'asta, lo storico
+/// i cambi consigliati, i seguiti, l'elenco dei giocatori e il calendario; Altro ha Scambi, il diario, le regole, lo storico
 /// e le novità. Account, aspetto e avvisi stanno solo nelle Impostazioni (l'ingranaggio in testata): ogni voce in un posto solo.
 /// Le voci di una funzione spenta (`GET /api/funzioni`) non si vedono. Logica in `LegaViewModel`, `MercatoViewModel` e `ScambiViewModel`.
 struct LegaView: View {
@@ -105,7 +105,6 @@ struct LegaView: View {
         case .importa: ImportaExcelView(server: vm.server)
         case .squadre: SquadreView(server: vm.server)
         case .rosa(let nome): RosaView(nome: nome, server: vm.server)
-        case .asta: AstaView(server: vm.server)
         case .regole: RegoleEditorView(server: vm.server)
         case .crediti: CreditiView(server: vm.server)
         case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
@@ -158,16 +157,13 @@ struct LegaView: View {
         }
     }
 
-    /// Altro: Scambi, il diario, l'asta, le regole, le novità. I movimenti e i crediti delle squadre solo con «Squadre della lega»;
+    /// Altro: Scambi, il diario, le regole, le novità. I movimenti e i crediti delle squadre solo con «Squadre della lega»;
     /// la nuova stagione solo quando le rose sono di un anno passato (o con «Mostra tutte»).
     private var sezioneAltro: some View {
         Section {
             NavigationLink(value: PaginaLega.scambi) { Label("Scambi", systemImage: "arrow.left.arrow.right").labelStyle(.voce(.purple)).frame(minHeight: 44) }
             if funzioni.acceso(Funzione.diario) {
                 NavigationLink(value: PaginaLega.diario) { Label("Diario delle giornate", systemImage: "book").labelStyle(.voce(.teal)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.asta) {
-                NavigationLink(value: PaginaLega.asta) { Label("Asta e riparazione", systemImage: "hammer").labelStyle(.voce(.brown)).frame(minHeight: 44) }
             }
             NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
             if funzioni.acceso(Funzione.squadreAltrui) && funzioni.acceso(Funzione.movimenti) {

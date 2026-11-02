@@ -786,22 +786,6 @@ private enum DatiDemo {
         ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"]])
     }
 
-    static func asta() -> String {
-        let quote: [(String, Double, Double)] = [("P", 0.08, 40), ("D", 0.17, 85), ("C", 0.30, 150), ("A", 0.45, 225)]
-        var ruoli: [[String: Any]] = []
-        for (ruolo, quota, crediti) in quote {
-            let migliori = tutti.filter { $0.ruolo == ruolo && !$0.assente }.sorted { $0.punti > $1.punti }.prefix(12)
-            var voci: [[String: Any]] = []
-            for p in migliori {
-                voci.append(["id": p.id, "nome": p.nome, "squadra": p.squadra, "quotazione": quotazione(p),
-                             "prezzo": max(1.0, (p.punti * p.punti * quota * 1.6).rounded()),
-                             "punti_stagione": (p.punti * 9.0).rounded()])
-            }
-            ruoli.append(["ruolo": ruolo, "quota": quota, "crediti": crediti, "giocatori": voci])
-        }
-        return json(["crediti": 500, "squadre": 8, "panchina": 60, "ruoli": ruoli])
-    }
-
     static func novita() -> String {
         json([
             ["versione": "1.9", "data": "2026-10-20", "titolo": "Scambi più veloci",
@@ -910,7 +894,7 @@ private enum DatiDemo {
               "file": ["dati/osservati.json": [9001, 9002]]])
     }
 
-    // MARK: - Confronto, prova del modello, movimenti, stagione, asta di febbraio
+    // MARK: - Confronto, prova del modello, movimenti, stagione
 
     static func confronto(_ a: Calciatore, _ b: Calciatore) -> String {
         let consigliato = a.punti >= b.punti ? a : b
@@ -967,26 +951,6 @@ private enum DatiDemo {
                             "percentuale_mio": 1.4, "quotazione_do": 14, "quotazione_ricevo": 18]) { $1 }])
     }
 
-    static func astaRiparazione() -> String {
-        var ruoli: [[String: Any]] = []
-        let posti: [String: Int] = ["P": 1, "D": 3, "C": 2, "A": 2]
-        for ruolo in ["P", "D", "C", "A"] {
-            let migliori = liberi.filter { $0.ruolo == ruolo }.sorted { $0.punti > $1.punti }.prefix(8)
-            let voci: [[String: Any]] = migliori.map { p in
-                ["id": p.id, "nome": p.nome, "squadra": p.squadra, "quotazione": quotazione(p), "punti_stagione": (p.punti * 9).rounded(),
-                 "prezzo": max(1.0, (p.punti * 0.9).rounded())]
-            }
-            ruoli.append(["ruolo": ruolo, "posti": posti[ruolo] ?? 1, "giocatori": voci])
-        }
-        let perTe: [[String: Any]] = [203, 205, 212].map { id in
-            let p = calciatore(id)
-            return ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "prezzo": 6, "miglioramento": 38.0 + Double(id % 20), "al_posto_di": "Vlasenić"]
-        }
-        return json(["modo": "riparazione", "tuoi_crediti": 12, "crediti_lega": 187, "posti_liberi": 8,
-                     "nota": "Prezzi stimati dai crediti rimasti a tutta la lega: chi ha più crediti può alzare i prezzi.",
-                     "ruoli": ruoli, "per_te": perTe])
-    }
-
     static func importa() -> String {
         json(["squadre_importate": ["Real Madrink", "Dinamo Pizza"], "totale_squadre": 8, "avvisi": ["Dinamo Pizza: 24 giocatori invece di 25"],
               "mia_squadra": nomeMia, "riepilogo": "Scambio Real Madrink / Dinamo Pizza: Kaan Yurdız ⇄ Sandy McTarran",
@@ -1033,7 +997,6 @@ private enum DatiDemo {
             "/api/avvisi": avvisi(),
             "/api/diario": diario(),
             "/api/backup": backup(),
-            "/api/asta": asta(),
             "/api/novita": novita(),
             "/api/foto-disponibili": json(["ids": Array(DemoImmagini.idConFoto).sorted()]),
             "/api/affidabilita": affidabilita(),
@@ -1041,7 +1004,6 @@ private enum DatiDemo {
             "/api/stagione": stagione(),
             "/api/scambi/da-testo": offerta(),
             "/api/regole/riconosci": riconosci(),
-            "/api/asta?modo=riparazione": astaRiparazione(),
             "/api/rose/testo": importa(),
             "/api/rose/file": importa(),
             "/api/rose/anteprima": DemoAnteprimaRose.json,   // anche /api/rose/anteprima/file

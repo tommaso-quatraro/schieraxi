@@ -526,51 +526,6 @@ struct Formazione: Decodable {
     let intervallo: IntervalloPunti?
 }
 
-struct RuoloAsta: Decodable, Identifiable {
-    struct Voce: Decodable, Identifiable {
-        let id: Int
-        let nome: String
-        let squadra: String?
-        let quotazione: Double?
-        let prezzo: Double?
-        let puntiStagione: Double?
-    }
-    let ruolo: String
-    let quota: Double?
-    let crediti: Double?
-    /// Solo nella riparazione: i posti da riempire in quel reparto.
-    let posti: Double?
-    let giocatori: [Voce]
-    var id: String { ruolo }
-}
-
-struct PianoAsta: Decodable {
-    let crediti: Double?
-    let squadre: Int?
-    let panchina: Double?
-    let ruoli: [RuoloAsta]
-}
-
-/// Riparazione di febbraio (`/api/asta?modo=riparazione`): solo gli svincolati, con i consigli per la mia squadra.
-struct PianoRiparazione: Decodable {
-    struct PerTe: Decodable, Identifiable {
-        let id: Int
-        let nome: String
-        let ruolo: String?
-        let squadra: String?
-        let prezzo: Double?
-        let miglioramento: Double?
-        let alPostoDi: String?
-    }
-    let modo: String?
-    let tuoiCrediti: Double?
-    let creditiLega: Double?
-    let postiLiberi: Double?
-    let nota: String?
-    let ruoli: [RuoloAsta]
-    let perTe: [PerTe]?
-}
-
 struct VoceNovita: Decodable, Identifiable {
     let versione: String
     let data: String?

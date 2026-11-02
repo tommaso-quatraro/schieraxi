@@ -510,28 +510,13 @@ final class ScambiViewModelTests: XCTestCase {
 }
 
 @MainActor
-final class MercatoEAstaViewModelTests: XCTestCase {
+final class MercatoViewModelTests: XCTestCase {
     func testIndirizzoDellaClassifica() {
         let vm = MercatoViewModel(server: ServerDiProva.conFixture([:]))
         XCTAssertEqual(vm.percorsoClassifica, "/api/classifica?limite=60&liberi=true")
         vm.ruolo = "D"
         vm.soloLiberi = false
         XCTAssertEqual(vm.percorsoClassifica, "/api/classifica?limite=60&liberi=false&ruolo=D")
-    }
-
-    func testAstaDiAgostoERiparazione() async throws {
-        let s = ServerDiProva.conFixture(["/api/asta": "asta", "/api/asta?modo=riparazione": "asta-riparazione"])
-        let vm = AstaViewModel(server: s)
-        await vm.carica()
-        XCTAssertEqual(vm.estiva.dato?.crediti, 500)
-        XCTAssertEqual(vm.giocatori(vm.estiva.dato?.ruoli ?? []).count, 6)
-        vm.ruolo = "P"
-        XCTAssertEqual(vm.giocatori(vm.estiva.dato?.ruoli ?? []).first?.nome, "Noraldi")
-        XCTAssertEqual(s.quante("modo=riparazione"), 0, "la riparazione si carica solo quando la si sceglie")
-        vm.modo = .riparazione
-        await vm.carica()
-        XCTAssertEqual(vm.riparazione.dato?.postiLiberi, 31)
-        XCTAssertEqual(vm.riparazione.dato?.perTe?.count, 4)
     }
 
     func testRicercaConPausaEAnnullamento() async throws {

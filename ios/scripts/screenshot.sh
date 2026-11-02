@@ -19,22 +19,22 @@ mkdir -p "$USCITA"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
 TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita formazione formazione-fondo formazione-salvata formazione-manuale formazione-confronto formazione-perche formazione-immagine
-       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
+       mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
-       lega lega-squadre lega-rosa lega-regole lega-asta lega-stato lega-crediti lega-avvisi lega-diario lega-novita
+       lega lega-squadre lega-rosa lega-regole lega-stato lega-crediti lega-avvisi lega-diario lega-novita
        lega-importa lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
-PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-asta mercato-asta-riparazione mercato-classifica
+PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-classifica
             scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
 PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-calendario
-                  mercato-osservati mercato-asta scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
+                  mercato-osservati scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
                   impostazioni-aspetto giocatore giocatore-fondo)
 PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche mercato-consigliati mercato-classifica
-          mercato-calendario mercato-osservati mercato-asta giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
+          mercato-calendario mercato-osservati giocatore giocatore-fondo scambi scambi-offerta scambi-dettaglio scambi-analizza
           lega lega-squadre lega-rosa lega-regole lega-avvisi lega-diario impostazioni-aspetto)
 
 # SCATTI=veloce (predefinito dei push su main): solo le schermate principali, per controllare in pochi minuti.
@@ -249,7 +249,7 @@ elif [ "$SCATTI" = "collaudo" ]; then
   giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${TUTTE[@]}"
   giro "$UDID_IPAD" ipad_chiaro_testomassimo chiaro accessibility-extra-extra-extra-large "${TUTTE[@]}"
 else
-  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto mercato-asta scambi-offerta impostazioni-aspetto
+  giro "$UDID_IPAD" ipad_chiaro_verticale chiaro large "${PRINCIPALI[@]}" formazione-confronto scambi-offerta impostazioni-aspetto
   giro "$UDID_IPAD" ipad_scuro_testogrande scuro accessibility-large oggi formazione mercato-consigliati scambi lega
 fi
 

@@ -73,7 +73,6 @@ final class FumoUITests: XCTestCase {
         for voce in ["Aggiorna le rose", "Squadre e rose", "Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario"] {
             attendiScorrendo(voce, contiene: true)
         }
-        XCTAssertFalse(elemento("Asta e riparazione", contiene: true).exists, "l'asta sta in Altro")
         elemento("Cambi consigliati", contiene: true).tap()
         attendi("Svincolati che migliorano la squadra")
     }
@@ -103,7 +102,7 @@ final class FumoUITests: XCTestCase {
     func testAltroConLeSuePagine() {
         vaiA("Altro")
         attendi("Scambi", contiene: true)
-        for voce in ["Scambi", "Movimenti e storico", "Asta e riparazione", "Regole", "Diario delle giornate", "Novità"] {
+        for voce in ["Scambi", "Movimenti e storico", "Regole", "Diario delle giornate", "Novità"] {
             attendiScorrendo(voce, contiene: true)
         }
         // ogni voce in un posto solo: niente copia di sicurezza, niente rimando alle Impostazioni (c'è l'ingranaggio)
