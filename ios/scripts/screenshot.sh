@@ -12,6 +12,7 @@ USCITA="${2:-screenshot}"
 ID_APP="it.schieraxi.app"
 ERRORI=0
 ARGOMENTI_EXTRA=()
+TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qualunque cosa dica il simulatore
 STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
 RADDRIZZA=0
 mkdir -p "$USCITA"
@@ -84,10 +85,13 @@ scatta() {
   case "$nome" in
     ricerca) cerca=(-DEMO_CERCA ma) ;;
   esac
+  # il tema forzato tranne che nella schermata che mostra la scelta del tema (deve restare "Automatico")
+  local tema=()
+  [ "$nome" != "impostazioni-aspetto" ] && tema=(${TEMA_ARG[@]+"${TEMA_ARG[@]}"})
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
-        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"}         ${STILE_ARG[@]+"${STILE_ARG[@]}"} \
+        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"}         ${STILE_ARG[@]+"${STILE_ARG[@]}"} ${tema[@]+"${tema[@]}"} \
         -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
@@ -128,7 +132,8 @@ giro() {
   shift 4
   local ui="dark"
   STILE_ARG=(-AppleInterfaceStyle Dark)
-  if [ "$aspetto" = "chiaro" ]; then ui="light"; STILE_ARG=(-AppleInterfaceStyle Light); fi
+  TEMA_ARG=(-tema scuro)
+  if [ "$aspetto" = "chiaro" ]; then ui="light"; STILE_ARG=(-AppleInterfaceStyle Light); TEMA_ARG=(-tema chiaro); fi
   echo "=== $etichetta ($ui, testo $dimensione) ==="
   # Il cambio di aspetto del simulatore è asincrono e subito dopo l'avvio a volte non vale: capitava che le foto «scuro»
   # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi).
