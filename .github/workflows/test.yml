@@ -14,9 +14,10 @@ permissions:
   contents: read
 
 # un nuovo push sulla stessa PR annulla i controlli in corso: l'unione non porta mai un commit non provato.
-# Su main (push) nessuna corsa si annulla: ognuna arriva in fondo.
+# Su main (push) nessuna corsa si annulla: ognuna ha un gruppo suo (run_id), perché in un gruppo GitHub tiene una sola corsa
+# in attesa e annulla le altre in attesa anche con cancel-in-progress false.
 concurrency:
-  group: controlli-${{ github.event.pull_request.number || github.ref }}
+  group: controlli-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:

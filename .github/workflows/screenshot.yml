@@ -40,11 +40,13 @@ on:
 # UNA sola corsa Mac alla volta in tutto il repository, in fila (i Mac gratuiti sono pochi e i test iOS hanno la precedenza):
 # il job Linux «quando» aspetta che finisca ogni corsa Screenshot partita prima di questa (ordine del numero di corsa),
 # poi lascia partire il Mac. La fila non usa i gruppi di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
-# Gruppo di concorrenza solo per le PR: un push nuovo annulla la corsa vecchia della stessa PR. Le altre corse (a mano, su main)
-# e gli eventi «labeled» con etichette diverse da screenshot* hanno un gruppo tutto loro: non annullano e non sono annullate.
+# Gruppo di concorrenza della PR solo per le foto a ogni push (etichetta «screenshot»): un push nuovo annulla la corsa vecchia
+# della stessa PR. Tutto il resto ha un gruppo suo (run_id) e non annulla né è annullato: corse a mano e su main, le foto dal
+# vero (etichetta «screenshot-vero», partono solo quando si mette l'etichetta), le altre etichette, le PR senza «screenshot».
 concurrency:
   group: >-
-    ${{ (github.event_name == 'pull_request' && (github.event.action != 'labeled' || startsWith(github.event.label.name, 'screenshot')))
+    ${{ (github.event_name == 'pull_request' && ((github.event.action == 'labeled' && github.event.label.name == 'screenshot')
+    || (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'screenshot'))))
     && format('screenshot-pr-{0}', github.event.pull_request.number) || format('screenshot-{0}', github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 

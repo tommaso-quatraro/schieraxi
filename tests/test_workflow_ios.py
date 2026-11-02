@@ -80,8 +80,25 @@ def test_bozza_pronta_non_fa_girare_due_volte_i_job_pesanti():
     # quindi la corsa della bozza ancora in corso si ferma; e nella bozza il Mac (job «ios») non è mai partito.
     testo = _testo("test.yml")
     concorrenza = _blocco(testo, "concurrency", 0)
-    assert "group: controlli-${{ github.event.pull_request.number || github.ref }}" in concorrenza
+    assert "group: controlli-${{ github.event.pull_request.number || github.run_id }}" in concorrenza
     _concurrency_annulla_solo_sulle_pr(concorrenza)
     assert "!github.event.pull_request.draft" in re.search(r"^    if:\s*(.+)$", _blocco(testo, "ios", 2), re.M).group(1)
     # gli altri workflow che girano sulle PR non reagiscono a ready_for_review (niente seconda corsa delle foto)
     assert "ready_for_review" not in _testo("screenshot.yml")
+
+
+def test_push_su_main_ognuno_nel_suo_gruppo():
+    # con cancel-in-progress false GitHub tiene comunque UNA sola corsa in attesa per gruppo e annulla le altre in attesa:
+    # ogni push su main ha un gruppo suo (run_id), le PR uno per numero
+    concorrenza = _blocco(_testo("test.yml"), "concurrency", 0)
+    assert "github.event.pull_request.number || github.run_id" in concorrenza
+    assert "github.ref" not in concorrenza
+
+
+def test_foto_dal_vero_mai_annullate_da_un_push():
+    # solo l'etichetta «screenshot» (foto a ogni push) sta nel gruppo della PR; «screenshot-vero» parte solo all'etichetta
+    # e un push dopo non deve annullarla
+    concorrenza = _blocco(_testo("screenshot.yml"), "concurrency", 0)
+    assert "github.event.label.name == 'screenshot'" in concorrenza
+    assert "startsWith(github.event.label.name, 'screenshot')" not in concorrenza
+    assert "contains(github.event.pull_request.labels.*.name, 'screenshot')" in concorrenza
