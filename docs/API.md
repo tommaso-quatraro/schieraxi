@@ -269,9 +269,10 @@ Risposta dell'anteprima:
 - Errori di lettura tollerati (testo da OCR) solo se il nome resta di un giocatore solo del listone: accenti persi o cambiati («Kone M.» per «Koné M.»),
   punti mancanti dopo le iniziali, spazi doppi o persi («NDicka», «Esposito FP»), apostrofi e trattini persi, «0» al posto di «O», «1» al posto di «l»/«i».
 
-### Rose dalle schermate di Leghe (testo da OCR, per l'app iPhone)
+### Rose a colonne «ruolo;nome;club;prezzo» (testo incollato)
 
-Per `POST /api/rose/anteprima` e `POST /api/rose/testo` (campo `testo`). Una riga per voce, celle separate da `;`, UTF-8:
+Formato di testo accettato dal server. È nato per la lettura degli screenshot di Leghe nell'app iPhone (tolta il 2/11/2026) e resta per
+il testo incollato. Per `POST /api/rose/anteprima` e `POST /api/rose/testo` (campo `testo`). Una riga per voce, celle separate da `;`, UTF-8:
 
 ```
 ruolo;nome;club;prezzo

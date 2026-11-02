@@ -243,7 +243,7 @@ final class LegaViewModelTests: XCTestCase {
         }
         let vm = ImportaExcelViewModel(server: s)
         await vm.importaTesto()
-        XCTAssertEqual(vm.errore, "Incolla prima il testo delle rose.")
+        XCTAssertEqual(vm.errore, "Incolla prima il testo delle rose", "come la web (lega.incolla_prima_testo)")
         vm.testoRose = "Squadra A\nPortieri: ..."
         vm.sostituisciTutto = true
         await vm.importaTesto()
