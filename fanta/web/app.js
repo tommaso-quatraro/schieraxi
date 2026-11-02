@@ -153,6 +153,7 @@ async function api(percorso, opzioni = {}) {
         const e = new Error(traduciErrore(testo)); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
         e.codice = dati && typeof dati.codice === "string" ? dati.codice : "";            // nome breve dell'errore (accesso con Google)
         if (dati && Array.isArray(dati.social)) stato.social = dati.social;
+        if (dati && typeof dati.email_attiva === "boolean") stato.emailAttiva = dati.email_attiva;
         if (r.status === 404 && dati && typeof dati.funzione === "string") {           // funzione spenta: il server lo dice con il nome della funzione
           e.funzione = dati.funzione;
           if (stato.funzioni && stato.funzioni.funzioni) stato.funzioni.funzioni[dati.funzione] = false;       // la schermata la nasconde da qui in poi
@@ -3565,7 +3566,7 @@ function campiAccesso(scheda, extra = {}) {
     + CAMPO_CODICE_EMAIL("ac-codice-email");
   if (scheda === "registra") return `<div class="debole piccolo">${modo === "aperta" ? t("accesso.serve_email") : modo === "email" ? t("accesso.serve_invito_email") : t("accesso.serve_invito")}</div>`
     + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
-    + CAMPO_EMAIL("ac-email", modo === "invito")
+    + (stato.emailAttiva === false && modo === "invito" ? "" : CAMPO_EMAIL("ac-email", modo === "invito"))
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
     + `<label class="interruttore accesso-letto"><span>${t("accesso.letto", { privacy: linkLegale("privacy", "legale.privacy"), termini: linkLegale("termini", "legale.termini"), eta: ETA_MINIMA })}</span><input type="checkbox" id="ac-letto"></label>`;
   if (extra.sub === "email") return `<div class="debole piccolo">${t("accesso.recupero_email_spiega")}</div>` + CAMPO_EMAIL("ac-email", false);
@@ -3586,7 +3587,7 @@ function testoInvio(scheda, sub) {
 // La pagina di accesso copre tutto: finché non si entra, dell'app non si vede (e non si carica) niente.
 function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   accessoAperto = true;
-  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" ? "codice" : "email" };
+  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" || stato.emailAttiva === false ? "codice" : "email" };
   stato.account = null;
   document.body.classList.add("senza-accesso");
   contenuto.innerHTML = "";
@@ -3604,7 +3605,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     <div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>
     <div id="accesso-msg" role="alert">${messaggio ? `<div class="attenzione">${esc(messaggio)}</div>` : ""}</div>
     ${socialPronto() && SCHEDE_ACCESSO.includes(scheda) && extra.sub !== "verifica" ? `<div class="accesso-social">${htmlGoogle(t("social.continua"))}<div class="accesso-oppure debole piccolo" aria-hidden="true"><span>${t("social.oppure")}</span></div></div>` : ""}
-    ${scheda === "recupero" && (extra.sub === "email" || extra.sub === "codice") ? `<div class="segmenti" id="accesso-metodi">${[["email", t("accesso.recupero_con_email")], ["codice", t("accesso.recupero_con_codice")]].map(([k, c]) => `<button type="button" data-m="${k}" class="${k === extra.sub ? "attivo" : ""}" aria-pressed="${k === extra.sub}">${c}</button>`).join("")}</div>` : ""}
+    ${scheda === "recupero" && stato.emailAttiva !== false && (extra.sub === "email" || extra.sub === "codice") ? `<div class="segmenti" id="accesso-metodi">${[["email", t("accesso.recupero_con_email")], ["codice", t("accesso.recupero_con_codice")]].map(([k, c]) => `<button type="button" data-m="${k}" class="${k === extra.sub ? "attivo" : ""}" aria-pressed="${k === extra.sub}">${c}</button>`).join("")}</div>` : ""}
     <form id="accesso-form" novalidate>${campiAccesso(scheda, extra)}
       <div class="pulsanti"><button class="bottone" type="submit" id="accesso-invia">${testoInvio(scheda, extra.sub)}</button></div></form>
     ${scheda === "accedi" ? `<p class="accesso-legale"><a href="#" id="accesso-dimenticata">${t("accesso.scheda_recupero")}</a></p>` : ""}
@@ -3639,7 +3640,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
       } else if (scheda === "registra") {
         if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto")); e.status = 400; throw e; }       // controllo locale: la password resta
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
-        const email = v("#ac-email").trim();
+        const email = $("#ac-email") ? v("#ac-email").trim() : "";
         if (email) corpo.email = email;                      // facoltativa: i server vecchi non la conoscono
         const r = await manda("/api/account/registra", corpo);
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
@@ -3862,6 +3863,7 @@ async function esciDa(percorso) {
 // Email dell'account: aggiungere/cambiare (codice a 6 cifre per posta), confermare, togliere. Tutti i valori dell'utente passano da esc().
 function htmlEmailAccount() {
   const e = stato.emailAccount || {};
+  if (stato.emailAttiva === false && !e.email) return `<div class="debole piccolo">${t("account.email_spenta")}</div>`;
   const daGoogle = !!e.email && e.email_origine === "google";            // solo da mostrare: non vale per il recupero e non si «toglie» qui
   const propria = !!e.email && !daGoogle;
   return `<div>${propria ? t("account.email_verificata", { email: esc(e.email) }) : daGoogle ? t("account.email_google", { email: esc(e.email) }) : t("account.email_nessuna")}</div>`
@@ -4103,6 +4105,7 @@ async function controllaAccesso() {
   if (dati && dati.registrazione) stato.registrazione = dati.registrazione;
   stato.social = dati && Array.isArray(dati.social) ? dati.social : [];                    // servizi di accesso accesi sul server (per ora «google»)
   stato.accessi = dati && dati.accessi ? dati.accessi : null;
+  stato.emailAttiva = !(dati && dati.email_attiva === false);                               // server vecchio (campo assente): come prima
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {
