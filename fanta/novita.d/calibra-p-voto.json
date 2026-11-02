@@ -1,0 +1,5 @@
+{"titolo": "«Gioca N%» più onesto senza probabili formazioni",
+ "voci": ["Quando le probabili formazioni non ci sono ancora, la probabilità che un giocatore prenda voto è più realistica: chi ha giocato tutte le ultime partite non è più dato quasi sicuro (prima «98%», poi giocava 86 volte su 100), e chi entra spesso dalla panchina o ha saltato l'ultima partita scende un po'."],
+ "tecnico": ["modello.p_senza_probabili: regressione logistica su presenze recenti, presenze su 20 partite, partite iniziate da titolare, ultima partita e termine per i portieri (CALIBRAZIONE_SENZA_PROBABILI, stimata solo sul 2025-26 g5-38).",
+             "Fuori campione (2026-27 g2-8): Brier 0,139 -> 0,130, errore di calibrazione 0,067 -> 0,041; verifica: rmse invariato, punti delle rose della lega +0,61 nel 2026-27 e -0,35 nel 2025-26, rose a sorte +0,12 e +0,04.",
+             "Nuovo prove/calibra_p_voto.py (misura e ristima); _presenze_recenti_varie calcola anche le partite iniziate da titolare (titolari=True). Le probabili formazioni (dal vivo) non cambiano."]}

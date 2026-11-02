@@ -318,10 +318,12 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
     g = g.join(sv).join(su)
     g = g.fillna({c: 0.0 for c in list(sv.columns) + list(su.columns)})
 
-    # ---- presenze recenti (p_voto nella verifica storica) ----
-    # (e su un periodo lungo, per le giornate lontane: chi oggi è infortunato poi rientra)
-    g["p_storico"], g["p_lungo"] = _presenze_recenti_varie(
-        d, V, col_voto, g, data0, [par, replace(par, giornate_presenze=20, decadimento_presenze=0.93)])
+    # ---- presenze recenti (p_voto senza probabili formazioni) ----
+    # (e su un periodo lungo, per le giornate lontane: chi oggi è infortunato poi rientra; poi l'ultima partita da sola,
+    # e le stesse finestre contando solo le partite iniziate da titolare: servono a `p_senza_probabili`)
+    g["p_storico"], g["p_lungo"], g["p_ultima"], g["p_tit"], _, _ = _presenze_recenti_varie(
+        d, V, col_voto, g, data0, [par, replace(par, giornate_presenze=20, decadimento_presenze=0.93),
+                                   replace(par, giornate_presenze=1)], titolari=True)
 
     # ---- stima di partenza dalla quotazione iniziale ----
     # La quotazione iniziale (fissata prima del campionato, quindi senza dati dal futuro) riassume quanto gli
@@ -401,7 +403,8 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
                 stato, p_voto = "non_citato", 0.02
         else:
             # senza probabili: chi gioca in coppa a ridosso della partita ha più probabilità di essere riposato
-            p_voto = float(x["p_storico"]) * coppe.fattore_turnover(x["squadra_slug"], data_partita.get(partita))
+            p_voto = p_senza_probabili(x["p_storico"], x["p_lungo"], x["p_tit"], x["p_ultima"], r == "P")
+            p_voto *= coppe.fattore_turnover(x["squadra_slug"], data_partita.get(partita))
         # se le probabili dicono che parte titolare, i minuti sono quelli da titolare (anche se finora è entrato dalla panchina)
         if stato == "titolare" and perc is not None and not np.isnan(perc) and p_voto > 0:
             parte = min(1.0, float(perc) / 100 / p_voto)
@@ -477,6 +480,24 @@ P_SUBENTRO_TITOLARE = 0.6      # un titolare previsto che non parte spesso entra
 P_SENZA_VOTO = 0.04            # chi entra per pochi minuti spesso resta senza voto
 QUOTA_PANCHINA = 1.0
 
+# Probabilità di prendere voto SENZA probabili formazioni (giornate lontane, squadre non coperte, verifica storica).
+# Prima era la sola quota delle presenze recenti: chi aveva giocato le ultime 6 partite riceveva «98%» e poi giocava 86 volte
+# su 100. Ora è una regressione logistica (stimata il 2/11/2026 SOLO sul 2025-26, giornate 5-38, 17.579 casi; controllata
+# fuori campione sul 2026-27, giornate 2-8) su: presenze recenti (6 partite), presenze lunghe (20), partite iniziate da
+# titolare (6), presenza nell'ultima partita (0,25 o 0,75: vedi `_presenze_recenti_varie`), più un termine per i portieri
+# (il titolare gioca quasi sempre, la riserva quasi mai). Va da circa 6% a circa 93%. Da ristimare con
+# `prove/calibra_p_voto.py` quando c'è una stagione intera in più; prima e dopo, `python -m fanta verifica`.
+CALIBRAZIONE_SENZA_PROBABILI = {"costante": -2.681, "p_storico": 1.058, "p_lungo": 1.5, "p_titolare": 0.772,
+                                "p_ultima": 2.122, "portiere": -0.909, "portiere_x_p_storico": 1.221}
+
+
+def p_senza_probabili(p_storico: float, p_lungo: float, p_titolare: float, p_ultima: float, portiere: bool) -> float:
+    """Probabilità di prendere voto dalle sole presenze (tutte quote tra 0 e 1, vedi `_presenze_recenti_varie`)."""
+    c = CALIBRAZIONE_SENZA_PROBABILI
+    z = (c["costante"] + c["p_storico"] * p_storico + c["p_lungo"] * p_lungo + c["p_titolare"] * p_titolare
+         + c["p_ultima"] * p_ultima + (c["portiere"] + c["portiere_x_p_storico"] * p_storico if portiere else 0.0))
+    return 1.0 / (1.0 + math.exp(-z))
+
 
 # Gruppi delle probabili per la calibrazione: (nome, stato, percentuale minima, percentuale massima esclusa)
 GRUPPI_PROBABILI = [
@@ -523,7 +544,7 @@ def _presenze_recenti(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataFrame, 
 
 
 def _presenze_recenti_varie(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataFrame, data0: str,
-                            pars: list[Parametri]) -> list[pd.Series]:
+                            pars: list[Parametri], titolari: bool = False) -> list[pd.Series]:
     """Come `_presenze_recenti` per più parametri insieme (la parte comune si prepara una volta sola), con operazioni su tabelle
     intere invece di un ciclo per giocatore. Per ogni giocatore valgono le ultime partite della squadra (al massimo
     `giornate_presenze`) dal suo arrivo in quella squadra; la più recente pesa 1, le precedenti `decadimento_presenze` alla potenza
@@ -536,6 +557,12 @@ def _presenze_recenti_varie(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataF
     con_voto = V.loc[V[col_voto].notna(), ["calciatore_id", "stagione", "giornata"]].drop_duplicates()
     con_voto.columns = ["cid", "st", "gi"]
     con_voto["cv"] = True
+    if titolari:        # partite iniziate da titolare (voto e non subentrato): servono alla calibrazione di p_voto
+        da_tit = V.loc[V[col_voto].notna() & (V["subentrato"].fillna(0) == 0), ["calciatore_id", "stagione", "giornata"]]
+        da_tit = da_tit.drop_duplicates()
+        da_tit.columns = ["cid", "st", "gi"]
+        da_tit["ct"] = True
+        con_voto = con_voto.merge(da_tit, on=["cid", "st", "gi"], how="left")
     # prima partita del giocatore CON QUESTA SQUADRA: le partite della squadra prima del suo arrivo non sono assenze
     prima = V.dropna(subset=["data"]).sort_values("data", kind="stable").drop_duplicates(["calciatore_id", "squadra"])
     prima = prima[["calciatore_id", "squadra", "data"]]
@@ -544,7 +571,7 @@ def _presenze_recenti_varie(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataF
     gg = gg.merge(prima, on=["cid", "slug"], how="left")
     gg["inizio"] = gg["inizio"].fillna("9999")
     gg["inizio"] = gg["inizio"].astype(object)
-    risultati = []
+    risultati, risultati_tit = [], []
     for par in pars:
         ult = lungo.groupby("slug", sort=False).tail(par.giornate_presenze).copy()
         pos = ult.groupby("slug", sort=False).cumcount()
@@ -554,10 +581,16 @@ def _presenze_recenti_varie(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataF
         valida = (m["da"].astype(object) >= m["inizio"]).to_numpy()
         peso = m["w"].to_numpy() * valida
         peso_voto = peso * m["cv"].notna().to_numpy()
-        per = pd.DataFrame({"cid": m["cid"].to_numpy(), "num": peso_voto, "somma": peso, "n": valida.astype(int)}).groupby("cid").sum()
-        quota = per["num"] / per["somma"].where(per["somma"] > 0)
+        colonne = {"cid": m["cid"].to_numpy(), "num": peso_voto, "somma": peso, "n": valida.astype(int)}
+        if titolari:
+            colonne["num_tit"] = peso * m["ct"].notna().to_numpy()
+        per = pd.DataFrame(colonne).groupby("cid").sum()
         piccolo = per["n"] < 3          # appena arrivato: poca informazione
-        quota = quota.where(~piccolo, (quota * per["n"] + 0.5) / (per["n"] + 1))
-        quota = quota.where(per["n"] > 0, 0.3)
-        risultati.append(quota.reindex(gg["cid"]).fillna(0.3).astype(float).rename(None).rename_axis(None))
-    return risultati
+        for num, uscita in (("num", risultati), ("num_tit", risultati_tit)):
+            if num not in per:
+                continue
+            quota = per[num] / per["somma"].where(per["somma"] > 0)
+            quota = quota.where(~piccolo, (quota * per["n"] + 0.5) / (per["n"] + 1))
+            quota = quota.where(per["n"] > 0, 0.3)
+            uscita.append(quota.reindex(gg["cid"]).fillna(0.3).astype(float).rename(None).rename_axis(None))
+    return risultati + risultati_tit
