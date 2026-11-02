@@ -47,7 +47,7 @@ def test_gli_script_che_usano_python_forzano_utf8():
 def test_gli_script_periodici_leggono_l_ambiente_del_servizio_e_restano_prudenti():
     """aggiorna, promemoria e backup leggono dati/ambiente.env se c'è (per FANTA_MULTIUTENTE=1 come il servizio), non lo richiedono,
     hanno set -u e il lucchetto flock, e non cancellano dati (rm solo dei file temporanei dello script)."""
-    for nome in ("aggiorna.sh", "promemoria.sh", "backup-serale.sh"):
+    for nome in ("aggiorna.sh", "promemoria.sh", "backup-serale.sh", "sentinella.sh"):
         t = (SCRIPT / nome).read_text(encoding="utf-8")
         assert '. script/server/leggi-ambiente.sh; leggi_ambiente dati/ambiente.env' in t, nome          # letto riga per riga, mai eseguito
         assert "set -u" in t and "flock -n" in t and "PYTHONUTF8=1" in t, nome
@@ -69,7 +69,7 @@ def test_niente_dispositivo_ne_utente_fisso_negli_script_del_server():
 def test_gli_script_dei_cron_del_server_ci_sono_e_script_pi_non_esiste_piu():
     """La crontab del server punta a script/server/: se uno di questi file sparisce, i cron si fermano in silenzio."""
     assert {f.name for f in SCRIPT.glob("*.sh")} >= {"aggiorna-app.sh", "aggiorna.sh", "backup-dati.sh", "backup-serale.sh",
-                                                     "controllo-salute.sh", "promemoria.sh", "leggi-ambiente.sh", "pubblica-sito.sh"}
+                                                     "controllo-salute.sh", "promemoria.sh", "leggi-ambiente.sh", "pubblica-sito.sh", "sentinella.sh"}
     assert not (RADICE / "script" / "pi").exists()          # i vecchi rimandi sono stati tolti (il server non fa piu' da server)
 
 

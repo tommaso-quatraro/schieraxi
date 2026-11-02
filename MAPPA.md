@@ -31,7 +31,9 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   - Avvisi: `notifiche.py`, `push.py` (Web Push), `avvisi.py`, `avvisi_utenti.py`, `pianificatore.py`, `riscaldamento.py`.
   - Account e posta: `account.py` (database sqlite, sessioni, inviti), `account_email.py`, `posta.py`, `social.py` (accesso
     con Google), `onboarding.py`, `limiti.py`, `importa_sicuro.py`, `gestione.py`.
-  - Varie: `backup.py`, `controlli.py` (coerenza dei dati), `registro.py` (file di registro con rotazione), `testi_legali.py`
+  - Varie: `backup.py`, `controlli.py` (coerenza dei dati), `sentinella.py` (ogni ora: rifà in sola lettura le risposte di Oggi,
+    Formazione, Scelta, Diario, widget e Live per ogni utente e controlla le invarianti di `INVARIANTI`; esito nella tabella
+    `controlli`, avviso al proprietario alla prima rottura confermata; `script/server/sentinella.sh`), `registro.py` (file di registro con rotazione), `testi_legali.py`
     (pagine privacy, termini, crediti), `sotto_il_cofano.py`, `widget.py`, `da_fare.py`, `stato_utente.py`, `copertura.py`,
     `avatar.py` (`GET /api/avatar`).
 - `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
@@ -49,7 +51,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
   con la variabile `FANTA_LEGA=<cartella>`.
 - `dati/`: database, cache e chiavi locali. Non va in git.
-- `script/server/`: script del server (aggiornamento automatico, copie dei dati, promemoria, controllo di salute).
+- `script/server/`: script del server (aggiornamento automatico, copie dei dati, promemoria, controllo di salute, sentinella).
 - `script/ci/`: numero di versione e note di rilascio (`controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`).
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
 - `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico).

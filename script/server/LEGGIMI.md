@@ -11,6 +11,7 @@ Si lanciano dal crontab dell'utente del server. Il servizio systemd è `fantacal
 | `backup-dati.sh` | ogni notte | copia dei dati che non si rigenerano (ultime 14) |
 | `backup-serale.sh` | ogni notte | copia di regole, rose, scelte (ultime 7) |
 | `controllo-salute.sh` | ogni 5 min | app viva, dati freschi, disco, memoria, certificato; avvisi con ntfy |
+| `sentinella.sh` | ogni ora (al minuto 37) | rifà in sola lettura le risposte vere dell'app per ogni utente (Oggi, Formazione, Scelta, Diario, widget, Live) e controlla 21 invarianti (`fanta/sentinella.py`); esito in «Stato dei dati», un avviso ntfy solo alla prima rottura confermata (2 giri), con «utente N» e mai nomi. Prova a mano: `bash ~/fantacalcio/script/server/sentinella.sh --senza-invio`. Log `dati/sentinella.log`, stato `dati/sentinella.json`. Tiene il blocco `blocco-pubblicazione` (condiviso) mentre gira: un aggiornamento dell'app aspetta il giro dopo |
 
 `aggiorna-app.sh`, `pubblica-sito.sh` e il controllo di salute di `promemoria.sh` condividono il blocco
 `~/.cache/fantacalcio/blocco-pubblicazione`: un solo `git fetch` alla volta sul clone e nessun allarme mentre l'app si riavvia.
@@ -26,6 +27,7 @@ Crontab proposto (percorsi con `$HOME`, utente del server):
 */5  * * * * /bin/bash $HOME/fantacalcio/script/server/controllo-salute.sh >/dev/null 2>&1
 */10 * * * * /bin/bash $HOME/fantacalcio/script/server/promemoria.sh >/dev/null 2>&1
 45 3 * * *   /bin/bash $HOME/fantacalcio/script/server/backup-dati.sh >/dev/null 2>&1
+37 * * * *   /bin/bash $HOME/fantacalcio/script/server/sentinella.sh >/dev/null 2>&1
 ```
 (più `aggiorna.sh` e `backup-serale.sh` se c'erano già nel crontab, con lo stesso orario di prima).
 
