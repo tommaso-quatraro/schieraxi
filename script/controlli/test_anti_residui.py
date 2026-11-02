@@ -53,6 +53,16 @@ def test_email_noreply_ammessa_nei_commit():
     assert not ar.EMAIL_AMMESSA.search("persona@gmail.com")
 
 
+def test_indirizzi_di_servizio_ammessi_nei_testi_e_nei_commit():
+    chiocciola = "@"
+    for mail in ("noreply" + chiocciola + "github.com", "support" + chiocciola + "github.com", "noreply" + chiocciola + "anthropic.com"):
+        assert righe(f"Co-Authored-By: Qualcuno <{mail}>\n", "docs/x.md") == [], mail
+        assert ar.EMAIL_AMMESSA.search(mail), mail
+    # solo quegli indirizzi esatti: un altro indirizzo dello stesso dominio resta un problema
+    assert any("email non ammessa" in p for p in righe("m = 'persona" + chiocciola + "github.com'\n"))
+    assert not ar.EMAIL_AMMESSA.search("persona" + chiocciola + "anthropic.com")
+
+
 def test_runner_propri_bloccati():
     assert any("runner propri" in p for p in righe("runs-on: [self-hosted, fanta-pi]\n", "x.yml"))
 

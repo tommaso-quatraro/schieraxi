@@ -77,9 +77,9 @@ esecuzione per ramo o PR (un nuovo push annulla quella in corso).
 
 | Workflow | Quando parte | Cosa fa |
 |---|---|---|
-| `Test` (`test.yml`) | su ogni pull request e su ogni push a `main` (non sui rami di lavoro: la PR li copre) | compila i test e li esegue su un simulatore; compilazione e test sono due passi separati, con cache di DerivedData |
-| `Compila IPA` (`ipa.yml`) | push a `main` solo se cambiano `Sources/`, `WidgetSources/`, `Config/`, `project.yml` o gli script dell'IPA; a mano per le prove | crea `Schieraxi.ipa` e la release `build-N`. Su `main` ne resta in coda solo una (l'ultima) e la build in corso non si annulla mai |
-| `Screenshot` (`screenshot.yml`) | a mano, o su una PR con l'etichetta `screenshot`, o su una PR che cambia `Sources/Presentation`, `Sources/Support`, `Sources/App`, `WidgetSources` o `AnteprimaWidget` | fotografa l'app (iPhone e iPad) e i widget in un solo job Mac. Un job Linux, gratis, decide prima se serve il Mac |
+| `iOS` (`ios.yml`) | chiamato da `Controlli` (`test.yml`, job `ios`) solo se la PR o il push toccano `ios/`; a mano per le prove | compila ed esegue i test su un simulatore; l'unione automatica della PR lo aspetta |
+| `Compila IPA` (`ipa.yml`) | dopo l'unione di una PR, lanciato dal job `rilascia` se `ios/` è cambiata dall'ultima IPA riuscita; push diretto a `main` che tocca `ios/`; a mano per le prove | crea `Schieraxi.ipa` e la release `build-N`. Su `main` ne resta in coda solo una (l'ultima) e la build in corso non si annulla mai |
+| `Screenshot` (`screenshot.yml`) | a mano, o su una PR che tocca `ios/` e ha l'etichetta `screenshot` o cambia `Sources/Presentation`, `Sources/Support`, `Sources/App`, `WidgetSources` o `AnteprimaWidget` | fotografa l'app (iPhone e iPad) e i widget in un solo job Mac. Un job Linux, gratis, decide prima se serve il Mac |
 
 Non parte più nulla a ogni unione su `main`: prima partivano in automatico gli screenshot (due volte) e la build a ogni unione.
 
@@ -142,4 +142,4 @@ Le foto si scaricano con `gh run download <id> --name screenshot-app --dir .scre
 
 
 ## Repository unico
-L'app passa nel repository `tommaso-quatraro/schieraxi`, cartella `ios/`. In SideStore va aggiunto il sorgente nuovo (Sorgenti > + > `https://github.com/tommaso-quatraro/schieraxi/releases/latest/download/sorgente.json`) e poi si aggiorna: stesso identificativo `it.schieraxi.app`, quindi l'app si aggiorna al posto e i dati restano. L'avviso «C'è una versione nuova» legge l'elenco delle release di quel repository e considera solo le `build-N`. I workflow stanno in `.github/workflows/` (`ios.yml` e `ipa.yml`).
+L'app passa nel repository `tommaso-quatraro/schieraxi`, cartella `ios/`. In SideStore va aggiunto il sorgente nuovo (Sorgenti > + > `https://github.com/tommaso-quatraro/schieraxi/releases/latest/download/sorgente.json`) e poi si aggiorna: stesso identificativo `it.schieraxi.app`, quindi l'app si aggiorna al posto e i dati restano. L'avviso «C'è una versione nuova» legge l'elenco delle release di quel repository e considera solo le `build-N`. I workflow stanno in `.github/workflows/` (`ios.yml`, `ipa.yml` e `screenshot.yml`).

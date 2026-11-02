@@ -1,23 +1,31 @@
 version: 2
-# Dependabot propone le versioni nuove con una PR (mai unita da sola: il job «unisci» vale solo per le PR del proprietario).
+# Dependabot propone le versioni nuove con una PR ogni settimana (mai unita da sola: il job «unisci» vale solo per le PR del proprietario).
 # Python: requirements.txt e requirements-dev.txt hanno versioni fisse e hash (script/blocca_dipendenze.py); Dependabot cambia versione
 # e hash della libreria. Se la versione nuova porta dipendenze nuove i controlli falliscono (--require-hashes): si rigenera con lo script.
+# Le PR di Dependabot non chiedono il file fanta/novita.d/<nome>.json (job «versione» saltato) e non si uniscono da sole.
+# Azioni: nei workflow sono fissate per SHA (con la versione in commento); Dependabot aggiorna SHA e commento insieme.
 # Gli avvisi di sicurezza (Dependabot alerts) si accendono dalle impostazioni del repository (Settings > Code security).
 updates:
   - package-ecosystem: pip
     directory: "/"
     schedule:
-      interval: monthly
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Rome
     open-pull-requests-limit: 5
     # numpy e soupsieve hanno anche una riga per Python < 3.12 (requirements-vincoli.in): una PR che la porta oltre quanto va
     # con Python 3.11 fallisce nei controlli; si chiude e, se serve, si rigenera con lo script.
     groups:
-      librerie-python:          # una sola PR al mese per gli aggiornamenti minori e le correzioni
+      librerie-python:          # una sola PR alla settimana per gli aggiornamenti minori e le correzioni
         update-types: [minor, patch]
   - package-ecosystem: github-actions
-    directory: "/"
+    directory: "/"              # legge tutti i file in .github/workflows/
     schedule:
-      interval: monthly
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Rome
     groups:
       azioni:
         patterns: ["*"]

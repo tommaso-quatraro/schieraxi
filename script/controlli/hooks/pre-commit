@@ -5,10 +5,31 @@
 # Per saltarlo in un caso eccezionale: git commit --no-verify (la CI lo rifa comunque).
 
 RADICE="$(git rev-parse --show-toplevel)" || exit 1
-PY=python3
-command -v "$PY" >/dev/null 2>&1 || PY=python
 
-"$PY" -I -s "$RADICE/script/controlli/anti_residui.py" --staged || exit 1
+# Python 3 che risponde davvero. Su Windows «python3» (e a volte «python») puo' essere il collegamento finto del Microsoft Store,
+# che esiste nel PATH ma non esegue niente: si prova prima il launcher «py -3», poi python, poi python3.
+case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*) CANDIDATI="py -3|python|python3" ;;
+    *)                    CANDIDATI="python3|python" ;;
+esac
+PY=""
+VECCHIO_IFS=$IFS; IFS='|'
+for c in $CANDIDATI; do
+    IFS=$VECCHIO_IFS
+    # shellcheck disable=SC2086  # «py -3» sono due parole
+    if $c -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" >/dev/null 2>&1; then
+        PY=$c; break
+    fi
+    IFS='|'
+done
+IFS=$VECCHIO_IFS
+if [ -z "$PY" ]; then
+    echo "Controllo dei residui: nessun Python 3 funzionante (provati: $CANDIDATI). Installalo, oppure git commit --no-verify." >&2
+    exit 1
+fi
+
+# shellcheck disable=SC2086
+$PY -I -s "$RADICE/script/controlli/anti_residui.py" --staged || exit 1
 
 # Se gitleaks e' installato, controlla anche il commit in preparazione (facoltativo: «winget install gitleaks» solo con ok)
 if command -v gitleaks >/dev/null 2>&1; then
