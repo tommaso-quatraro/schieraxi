@@ -24,9 +24,13 @@ extension View {
     @ViewBuilder
     func sfondoWidget(accessorio: Bool) -> some View {
         if accessorio {
-            self.containerBackground(for: .widget) { Color.clear }
+            self.dynamicTypeSize(...TestoWidget.massimo)
+                .containerBackground(for: .widget) { Color.clear }
         } else {
             self
+                // Un widget ha misure fisse: con le dimensioni di accessibilità del testo i numeri diventavano «3-… 7…» e le righe
+                // si sovrapponevano. Il testo cresce fino a «molto grande», poi si ferma (come i widget di sistema).
+                .dynamicTypeSize(...TestoWidget.massimo)
                 .modifier(TestoSuSfondoSchieraxi())
                 .containerBackground(for: .widget) {
                     FondoSchieraxi()
@@ -365,4 +369,10 @@ private struct TestoSuSfondoSchieraxi: ViewModifier {
             content.foregroundStyle(.primary)
         }
     }
+}
+
+/// Fin dove cresce il testo nei widget (misure fisse): oltre, con le dimensioni di accessibilità, i numeri si troncavano e le righe
+/// si sovrapponevano. Chi ha bisogno del testo molto grande ha le stesse informazioni, intere, aprendo l'app.
+enum TestoWidget {
+    static let massimo: DynamicTypeSize = .xxLarge
 }

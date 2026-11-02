@@ -569,3 +569,15 @@ extension RiassuntoWidget {
         return osservati?.first
     }
 }
+
+extension RiassuntoWidget {
+    /// «Dentro la fascia prevista in 1 giornata su 3.» (mai «1 giornate»).
+    static func fraseDentro(dentro: Int, su: Int) -> String {
+        "Dentro la fascia prevista in \(Formato.plurale(dentro, "giornata", "giornate")) su \(su)."
+    }
+
+    /// «In media +1,5 punti sul previsto nelle ultime 4 giornate.» / «…nell'ultima giornata.»
+    static func fraseMedia(_ media: Double, giornate n: Int) -> String {
+        "In media \(Formato.conSegno(media)) punti sul previsto " + (n == 1 ? "nell'ultima giornata." : "nelle ultime \(n) giornate.")
+    }
+}
