@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, UploadFile
+from fastapi import Path as FPath
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
@@ -86,6 +87,7 @@ async def _ciclo(_):
 app = FastAPI(title="SchieraXI", lifespan=_ciclo)
 app.add_middleware(GZipMiddleware, minimum_size=800, compresslevel=5)     # risposte più leggere; livello 5: meno della metà della CPU del 9 per lo 0,5-2% di byte in più (1 solo processore sul server)
 MAX_FILE = 5 * 1024 * 1024
+MAX_ID_CALCIATORE = 2**31 - 1             # codici calciatore: oltre questo numero sqlite non li sa cercare (errore 500)
 PERCORSO_CONDIVISIONE = "/api/squadre/immagine/condivisa"      # azione di `share_target` nel manifest
 
 
@@ -887,7 +889,8 @@ def lista_osservati(response: Response, ctx: Contesto = Depends(lega_corrente)):
 
 
 @app.put("/api/osservati/{i}")
-def osserva(i: int, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+def osserva(request: Request, response: Response, i: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Contesto = Depends(lega_corrente)):
+    # `le`: un numero più grande di quelli che sqlite sa cercare bloccherebbe per sempre l'elenco degli osservati (errore 500)
     with versioni.blocco("osservati"):
         versioni.controlla(request, versioni.etag_file(ctx.osservati))
         elenco = osservati.aggiungi(i, ctx.osservati)
@@ -1304,7 +1307,7 @@ def classifica(ruolo: str | None = None, liberi: bool = False, limite: int = 60,
 
 
 @app.get("/api/giocatore/{calciatore_id}")
-def giocatore(calciatore_id: int, ctx: Contesto = Depends(lega_corrente)):
+def giocatore(calciatore_id: int = FPath(le=MAX_ID_CALCIATORE), ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
         r = _regole(ctx)
@@ -1533,9 +1536,15 @@ def rosa(response: Response, squadra: str | None = None, ctx: Contesto = Depends
         raise HTTPException(404, "Squadra non trovata")
     db = _db()
     try:
-        prev = None
+        prev, schede = None, {}
         try:
-            prev, _, _ = consigli.previsioni(db, _regole(ctx))
+            prev, giornata, _ = consigli.previsioni(db, _regole(ctx))
+            schede = {g.id: consigli.scheda_previsione(g.id, prev.loc[g.id]) for g in s.giocatori if g.id in prev.index}
+            stagione = consigli.stagione_corrente()
+            if schede and fasi.iniziata(db, _regole(ctx), stagione, giornata, datetime.now()):
+                # dopo la scadenza lo stato vero della giornata («Ha giocato», «Voto in arrivo»...), come la scheda e la Formazione
+                schede = schede | fasi.schede_a_giornata_iniziata(list(schede.values()), db, _regole(ctx), stagione, giornata,
+                                                                  datetime.now(), _stati_live())
         except ValueError:
             pass
         quot = {row["id"]: (row["quotazione"], row["squadra_slug"])
@@ -1546,8 +1555,8 @@ def rosa(response: Response, squadra: str | None = None, ctx: Contesto = Depends
     for g in s.giocatori:
         q, slug = quot.get(g.id, (None, None))
         x = asdict(g) | {"quotazione": q, "squadra_slug": slug}
-        if prev is not None and g.id in prev.index:
-            x["previsione"] = consigli.scheda_previsione(g.id, prev.loc[g.id])
+        if g.id in schede:
+            x["previsione"] = schede[g.id]
         giocatori.append(x)
     avvisi_squadra = [a for a in lega.controlla(r, _regole(ctx))
                       if a.startswith(s.nome + ":") or a.startswith(s.nome + " (")

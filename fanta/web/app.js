@@ -1520,7 +1520,7 @@ async function apriGiocatore(id) {
           <div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div></div>
           <div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div></div>
         ${nonGioca ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
-        ${motiviUtili(pr).length ? `<div class="etichette">${motiviUtili(pr).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
+        ${motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
         ${nonGioca ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${cartaPerche(pr)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
       ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span>`).join("")}</div>
         <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
@@ -1537,7 +1537,7 @@ async function apriGiocatore(id) {
           ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, t("mercato.assist"))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
           ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
         ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
-          ${tile(num(av.xg, 2), "xG")}${tile(num(av.xa, 2), "xA")}${tile(`${av.minuti}'`, t("mercato.minuti"))}
+          ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
           ${tile(num(av.per_90?.xg, 2), t("mercato.xg_90"))}${tile(num(av.per_90?.xa, 2), t("mercato.xa_90"))}${tile(num(av.per_90?.tiri, 1), t("mercato.tiri_90"))}
           ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
           ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}` : ""}
@@ -2201,7 +2201,7 @@ async function vistaRosa(nome) {
           <span><span class="nome">${esc(x.nome)}</span> <span class="dettaglio">${sigla(x.squadra)}</span>
             <span class="dettaglio" style="display:block">${t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })}${p ? ` · ${t("scambio.vs", { avv: sigla(p.avversario) })}` : ""}</span>
             ${p ? `<span class="etichette">${etichetteGiocatore(p)}</span>` : ""}</span>
-          <span class="valore">${p ? `<b>${num(p.fv_atteso)}</b><span class="debole piccolo">${perc(p.p_voto)}</span>` : `<span class="debole piccolo">${x.id ? t("scambio.non_gioca") : "?"}</span>`}</span>
+          <span class="valore">${p ? `<b>${num(p.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span>` : `<span class="debole piccolo">${x.id ? t("scambio.non_gioca") : "?"}</span>`}</span>
         </button></li>`;
       }).join("")}</ul>`;
     }).join("");
@@ -2220,7 +2220,7 @@ async function vistaRosa(nome) {
         <div class="immagini-squadra">
           ${["stemma", "maglia"].map(tipo => { const s = (stato.squadre || []).find(x => x.nome === r.nome); const c = s && s.immagini[tipo]; return `<div class="immagine-squadra">
             ${c ? `<img src="${urlImg(r.nome, tipo)}" alt="${t(NOME_IMMAGINE[tipo])}">` : `<span class="vuota">${t(NOME_IMMAGINE[tipo])}</span>`}
-            <label class="bottone secondario" for="img-${tipo}" style="padding:5px 12px;min-height:0;font-size:var(--t-sec)">${t(c ? "scambio.cambia_tipo" : "scambio.carica_tipo", { tipo: t(NOME_IMMAGINE[tipo]).toLowerCase() })}</label>
+            <label class="bottone secondario" for="img-${tipo}" style="padding:5px 12px;min-height:44px;font-size:var(--t-sec)">${t(c ? "scambio.cambia_tipo" : "scambio.carica_tipo", { tipo: t(NOME_IMMAGINE[tipo]).toLowerCase() })}</label>
             <input id="img-${tipo}" data-tipo="${tipo}" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>`; }).join("")}
         </div>
         <div class="pulsanti">${r.mia ? "" : `<button class="bottone" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
