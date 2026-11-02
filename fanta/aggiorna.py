@@ -124,11 +124,7 @@ class Aggiornamento:
                 (st.codice, limite))]
         totale = 0
         for g in giornate:
-            partite = fc.leggi_calendario(rete.scarica(fc.url_calendario(g)).text, g, st.codice)
-            if len(partite) != 10:
-                raise ValueError(f"giornata {g}: trovate {len(partite)} partite della stagione {st.codice} "
-                                 "invece di 10 (a cavallo dell'estate il sito può mostrare l'altra stagione)")
-            totale += self._salva_partite(partite, st)
+            totale += self._calendario_giornata(g)
             self.db.commit()            # una giornata alla volta: il cron e il server non restano bloccati ad aspettare
         if len(giornate) == GIORNATE:
             archivio.segna(self.db, cosa, _ora())
@@ -151,13 +147,34 @@ class Aggiornamento:
                 if len(partite) != 10:
                     raise ValueError(f"voti {st.codice} giornata {g}: trovate {len(partite)} partite invece di 10")
                 self._salva_partite(partite, st)
-            if not righe:
-                continue
-            self.db.execute("DELETE FROM voti WHERE stagione = ? AND giornata = ?", (st.codice, g))
-            archivio.inserisci(self.db, "voti", [{**r, "stagione": st.codice} for r in righe])
-            self.db.commit()
+            self._salva_voti(st, g, righe)
         self.scrivi(f"  voti {st.codice}: {len(giornate)} giornate scaricate"
                     + (f" ({min(giornate)}-{max(giornate)})" if giornate else ""))
+
+    def _calendario_giornata(self, g: int) -> int:
+        """Una richiesta: il calendario (orari, risultati, giocata) di una giornata della stagione in corso."""
+        st = self.st
+        partite = fc.leggi_calendario(rete.scarica(fc.url_calendario(g)).text, g, st.codice)
+        if len(partite) != 10:
+            raise ValueError(f"giornata {g}: trovate {len(partite)} partite della stagione {st.codice} "
+                             "invece di 10 (a cavallo dell'estate il sito può mostrare l'altra stagione)")
+        return self._salva_partite(partite, st)
+
+    def _salva_voti(self, st: Stagione, g: int, righe: list[dict]) -> None:
+        if not righe:
+            return
+        self.db.execute("DELETE FROM voti WHERE stagione = ? AND giornata = ?", (st.codice, g))
+        archivio.inserisci(self.db, "voti", [{**r, "stagione": st.codice} for r in righe])
+        self.db.commit()
+
+    def risultati_giornata(self, g: int) -> None:
+        """Il giro leggero dopo le partite (pianificatore.py): solo risultati e voti di UNA giornata della stagione in corso,
+        due richieste in tutto. Il calendario prima: i voti di una partita valgono quando il calendario la dà per giocata."""
+        n = self._calendario_giornata(g)
+        self.db.commit()
+        righe = fc.leggi_voti(rete.scarica(fc.url_voti(self.st.codice, g)).text, g)
+        self._salva_voti(self.st, g, righe)
+        self.scrivi(f"  risultati {self.st.codice} giornata {g}: {n} partite, {len(righe)} voti")
 
     def _giornate_voti_da_scaricare(self) -> list[int]:
         presenti = {r[0] for r in self.db.execute("SELECT DISTINCT giornata FROM voti WHERE stagione = ?", (self.st.codice,))}

@@ -27,7 +27,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   - Fonti: `fonti/` (`fantacalcio.py`, `understat.py`, `footballdata.py`, `sosfanta.py`: funzioni pure, provate su estratti
     inventati in `tests/dati/`), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py` (si presenta come
     `SchieraXI/<versione>`), `scheda.py`, `fonti_attive.py` (interruttori delle fonti).
-  - Risultati in diretta: `live.py` (un solo raccoglitore, cache in memoria). Rotta `GET /api/live`, vedi `docs/LIVE.md`.
+  - Risultati in diretta: `live.py` (un solo raccoglitore, cache in memoria e in `dati/live.json` che sopravvive ai riavvii; il risultato ufficiale vince). Rotta `GET /api/live`, vedi `docs/LIVE.md`. Risultati e voti la sera stessa: `pianificatore.giro_risultati`.
   - Avvisi: `notifiche.py`, `push.py` (Web Push), `avvisi.py`, `avvisi_utenti.py`, `pianificatore.py`, `riscaldamento.py`.
   - Account e posta: `account.py` (database sqlite, sessioni, inviti), `account_email.py`, `posta.py`, `social.py` (accesso
     con Google), `onboarding.py`, `limiti.py`, `importa_sicuro.py`, `gestione.py`.

@@ -22,6 +22,8 @@ Provato il 30/10/2026 con poche richieste dirette (pausa >= 1 s, User-Agent ones
 - ESPN aggiorna il punteggio in genere entro pochi secondi o un minuto da quanto accade [non misurato]. Con 1 richiesta al minuto il ritardo massimo nostro è ~1 minuto, più la cache del telefono (20 s).
 - Un solo raccoglitore nel servizio (thread `live`), cache in memoria condivisa: 1 utente o 100 utenti = le stesse richieste. Le schede aperte leggono solo `GET /api/live` (mai richieste esterne).
 - Si lavora solo nelle finestre di gioco (da 10 minuti prima del calcio d'inizio a 20 minuti dopo la fine stimata, 110 minuti dall'inizio); le partite segnate «finita» o «rinviata» non si interrogano più. Un sabato con 4 partite ravvicinate = circa 4-6 ore di finestra = al massimo 1 richiesta al minuto = 240-360 richieste. Fuori finestra: zero.
+- Partita che a fine finestra la fonte non dà ancora per finita (inizio in ritardo, recuperi lunghi): si continua a seguirla, una richiesta ogni 5 minuti, finché la fonte dice «finita» o il calendario la dà per giocata, al massimo fino a 4 ore dal calcio d'inizio.
+- Dopo le partite il servizio rilegge risultati e voti della giornata (due pagine di Fantacalcio.it) 2 ore e 30 dopo ogni orario di calcio d'inizio, e una seconda volta 4 ore dopo solo se manca ancora qualcosa (`pianificatore.giro_risultati`). Così la partita «finita» e i punti fatti arrivano la sera stessa.
 - Errori: pausa che raddoppia (1, 2, 4, ... fino a 10 minuti); mai due richieste a meno di un minuto l'una dall'altra, qualunque fonte.
 
 ## Rischi
@@ -30,6 +32,14 @@ Provato il 30/10/2026 con poche richieste dirette (pausa >= 1 s, User-Agent ones
 - Termini d'uso: uso personale, frequenza bassa, nessuna ridistribuzione dei dati oltre agli utenti dell'app. Se l'app diventasse pubblica/commerciale, la fonte va rivista (football-data.org o un provider con licenza).
 - Nomi squadra non riconosciuti: la partita non compare dal vivo e resta quella del database.
 - Memoria: la cache è un dizionario di al massimo qualche decina di partite (2 giorni).
+- Riavvii: la cache si salva anche in `dati/live.json` (dopo ogni lettura riuscita, al massimo una volta al minuto, scrittura atomica) e si rilegge all'avvio. Prima (1/11/2026) un riavvio dopo la fine della partita faceva sparire il risultato fino al giro di aggiornamento del mattino. Il file si rigenera da solo: non va nel backup. Formato (lo leggono anche i controlli sui dati):
+
+```
+{"versione": 1, "aggiornato": "2026-11-01T22:50:07", "fonte": "espn" | "fantacalcio" | null,
+ "partite": {"juventus|napoli": {casa, trasferta, data, stato, minuto, gol_casa, gol_trasferta, eventi,   // come in /api/live
+                                 "visto": "2026-11-01T22:50:07"}}}   // quando la fonte ha dato questa partita l'ultima volta
+```
+Le ore sono italiane, senza fuso. Chi legge ignora i campi che non conosce; file mancante o rotto = cache vuota.
 
 ## Contratto di `GET /api/live` (per web, iOS, Android)
 
@@ -54,6 +64,7 @@ Risposta comune a tutti gli utenti (sola lettura), < 8 kB, `ETag` (con `If-None-
 
 - `partite` = le partite della giornata mostrata in Oggi (stato dal database se la fonte live non le ha ancora viste) più eventuali partite in corso fuori turno (recuperi). Un client sconosciuto deve ignorare stati e tipi nuovi (trattare «stato sconosciuto» come `in_corso` se ha un punteggio).
 - Le partite si abbinano per `casa` + `trasferta`.
+- Quando il calendario dà una partita per giocata, vincono il suo stato («finita») e il suo punteggio; i marcatori visti in diretta restano solo se il punteggio è lo stesso.
 - `GET /api/oggi` ha il campo nuovo `miei_titolari`: `{"inter": [{"id": 123, "nome": "Sommer", "ruolo": "P"}], ...}` = i miei titolari consigliati per squadra (per evidenziare le partite). `GET /api/widget` ha il campo `live` (stessa forma, senza gialli e al più 8 eventi per partita).
 - Frequenza consigliata ai client: ogni 30-60 s solo con la schermata visibile e `in_corso > 0`; altrimenti una lettura all'apertura. Se `in_corso == 0` e nessuna partita sta per iniziare, non serve richiedere di nuovo.
 - Variabile del servizio `FANTA_LIVE=0` spegne il raccoglitore (la rotta risponde comunque, dal database).

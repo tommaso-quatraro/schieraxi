@@ -6,7 +6,11 @@ Un SOLO raccoglitore nel servizio (un thread) interroga la fonte e riempie una c
 - al massimo UNA richiesta al minuto in totale (qualunque fonte, qualunque numero di utenti o di schede aperte);
 - se la fonte sbaglia, aspetta sempre di più (fino a 10 minuti) e dopo 3 errori di fila prova il ripiego (calendario di
   Fantacalcio.it) per 10 minuti, poi riprova la fonte principale;
-- le richieste degli utenti leggono solo la cache: nessuna richiesta esterna parte mai da un utente.
+- le richieste degli utenti leggono solo la cache: nessuna richiesta esterna parte mai da un utente;
+- la cache si salva anche su file (`dati/live.json`, formato in `docs/LIVE.md`): un riavvio del servizio dopo la partita non fa
+  sparire il risultato finale (1/11/2026: Juventus-Napoli senza punteggio fino al mattino dopo un riavvio alle 23);
+- una partita che a fine finestra non è ancora «finita» per la fonte si segue ancora, più piano (ogni 5 minuti), fino a
+  TETTO_SEGUI dal calcio d'inizio o finché il calendario non la dà per giocata.
 Le funzioni di lettura sono pure (testate su estratti in `tests/dati/`); il tempo e la rete si possono sostituire nei test.
 """
 from __future__ import annotations
@@ -16,6 +20,7 @@ import re
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
@@ -23,6 +28,7 @@ from bs4 import BeautifulSoup
 
 from . import fonti_attive, rete
 from . import squadre
+from .percorsi import RADICE, scrivi_sicuro
 
 FUSO = ZoneInfo("Europe/Rome")
 URL_ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard?dates={}"
@@ -33,6 +39,11 @@ PRIMA = timedelta(minutes=10)         # la finestra si apre 10 minuti prima del 
 FINE_STIMATA = timedelta(minutes=110)  # 2 tempi + intervallo + recupero
 DOPO = timedelta(minutes=20)          # e si chiude 20 minuti dopo la fine stimata
 INTERVALLO = 60.0                     # secondi: mai più di una richiesta al minuto in totale
+TETTO_SEGUI = timedelta(hours=4)      # oltre la finestra si segue una partita non ancora «finita» al massimo fino a qui
+INTERVALLO_DOPO = 300.0               # ...e con calma: una richiesta ogni 5 minuti
+TIENI = timedelta(days=2)             # le partite più vecchie escono dalla cache (e dal file)
+VERSIONE_FILE = 1
+FILE = RADICE / "dati" / "live.json"  # la cache su file (si rigenera: non va nel backup)
 ATTESA_MASSIMA = 600.0
 ERRORI_PER_RIPIEGO = 3
 DURATA_RIPIEGO = 600.0
@@ -74,6 +85,12 @@ def in_finestra(data: str, adesso: datetime) -> bool:
     """True se `adesso` (ora italiana, senza fuso) cade fra 10 minuti prima del calcio d'inizio e 20 dopo la fine stimata."""
     i = _inizio(data)
     return i is not None and i - PRIMA <= adesso <= i + FINE_STIMATA + DOPO
+
+
+def dopo_finestra(data: str, adesso: datetime) -> bool:
+    """True se la finestra di gioco è chiusa ma non è passato TETTO_SEGUI dal calcio d'inizio."""
+    i = _inizio(data)
+    return i is not None and i + FINE_STIMATA + DOPO < adesso <= i + TETTO_SEGUI
 
 
 def data_per_fonte(data: str) -> str | None:
@@ -209,12 +226,14 @@ class Raccoglitore:
     calendario() -> elenco di dict {data, casa, trasferta, giornata, stagione} delle partite vicine a oggi (dal database)
     scarica(url) -> testo della risposta (solleva un errore se la rete o la fonte falliscono)
     adesso() -> ora italiana senza fuso; orologio() -> secondi monotoni (per le pause)
+    file -> dove salvare la cache (None = solo in memoria): si rilegge alla partenza, si riscrive dopo ogni lettura riuscita
     """
 
-    def __init__(self, calendario, scarica=_scarica_http, adesso=datetime.now, orologio=time.monotonic):
+    def __init__(self, calendario, scarica=_scarica_http, adesso=datetime.now, orologio=time.monotonic, file: Path | None = None):
         self.calendario, self.scarica, self.adesso, self.orologio = calendario, scarica, adesso, orologio
         self._blocco = threading.Lock()
         self._partite: dict[tuple[str, str], dict] = {}
+        self._visto: dict[tuple[str, str], str] = {}   # quando la fonte ha dato l'ultima volta ogni partita (solo nel file)
         self.aggiornato_il: str | None = None
         self.fonte: str | None = None
         self.errori = 0
@@ -222,6 +241,45 @@ class Raccoglitore:
         self.ripiego_fino = 0.0
         self.richieste = 0                        # per i resoconti e i test
         self._giro = 0
+        self.file = file
+        if file is not None:
+            self._carica()
+
+    # ---- il file (la cache sopravvive ai riavvii del servizio)
+    def _carica(self) -> None:
+        """Rilegge la cache salvata. File mancante, rotto o di forma strana: si parte vuoti, senza errori."""
+        try:
+            dati = json.loads(self.file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if not isinstance(dati, dict) or not isinstance(dati.get("partite"), dict):
+            return
+        limite = (self.adesso() - TIENI).strftime("%Y-%m-%d")
+        for p in dati["partite"].values():
+            if not (isinstance(p, dict) and isinstance(p.get("casa"), str) and isinstance(p.get("trasferta"), str)
+                    and p.get("stato") in STATI and isinstance(p.get("eventi"), list) and (p.get("data") or "9") >= limite):
+                continue
+            k = (p["casa"], p["trasferta"])
+            self._partite[k] = {c: p.get(c) for c in ("casa", "trasferta", "data", "stato", "minuto", "gol_casa", "gol_trasferta")} | {
+                "eventi": [e for e in p["eventi"] if isinstance(e, dict)][:MAX_EVENTI]}
+            if isinstance(p.get("visto"), str):
+                self._visto[k] = p["visto"]
+        if self._partite:
+            agg = dati.get("aggiornato")
+            self.aggiornato_il = agg.replace("T", " ")[:19] if isinstance(agg, str) else None
+            self.fonte = dati.get("fonte") if dati.get("fonte") in (FONTE_ESPN, FONTE_RIPIEGO) else None
+
+    def _salva(self) -> None:
+        """Scrittura atomica del file (mai a metà). Un errore di disco non ferma la raccolta."""
+        if self.file is None:
+            return
+        with self._blocco:
+            dati = {"versione": VERSIONE_FILE, "aggiornato": (self.aggiornato_il or "").replace(" ", "T") or None, "fonte": self.fonte,
+                    "partite": {f"{k[0]}|{k[1]}": p | {"visto": self._visto.get(k)} for k, p in self._partite.items()}}
+        try:
+            scrivi_sicuro(self.file, json.dumps(dati, ensure_ascii=False, separators=(",", ":")))
+        except OSError:
+            pass
 
     # ---- lettura (le richieste degli utenti)
     def istantanea(self) -> dict:
@@ -234,9 +292,12 @@ class Raccoglitore:
 
     # ---- raccolta
     def _da_seguire(self, adesso: datetime, calendario: list[dict]) -> list[dict]:
+        """Le partite nella finestra di gioco, più quelle con la finestra chiusa che la fonte non ha ancora dato per finite (fino a
+        TETTO_SEGUI e solo se il calendario non le dà già per giocate). Mai quelle già finite o rinviate."""
         with self._blocco:
             chiuse = {k for k, p in self._partite.items() if p["stato"] in CHIUSI}
-        return [p for p in calendario if p.get("data") and in_finestra(p["data"], adesso) and (p["casa"], p["trasferta"]) not in chiuse]
+        return [p for p in calendario if p.get("data") and (p["casa"], p["trasferta"]) not in chiuse
+                and (in_finestra(p["data"], adesso) or (dopo_finestra(p["data"], adesso) and not p.get("giocata")))]
 
     def passo(self) -> str:
         """'ferma' (niente da seguire), 'attesa' (troppo presto), 'ok' o 'errore'."""
@@ -248,7 +309,8 @@ class Raccoglitore:
         ora = self.orologio()
         if ora < self.prossima:
             return "attesa"
-        self.prossima = ora + INTERVALLO                 # comunque vada, mai due richieste a meno di un minuto
+        solo_dopo = not any(in_finestra(p["data"], adesso) for p in da_seguire)
+        self.prossima = ora + (INTERVALLO_DOPO if solo_dopo else INTERVALLO)   # mai due richieste a meno di un minuto
         usa_ripiego = ora < self.ripiego_fino
         slug_noti = {p["casa"] for p in calendario} | {p["trasferta"] for p in calendario}
         try:
@@ -269,18 +331,22 @@ class Raccoglitore:
             return "errore"
         self.errori = 0
         self._unisci(nuove, FONTE_RIPIEGO if usa_ripiego else FONTE_ESPN, adesso)
+        self._salva()
         return "ok"
 
     def _unisci(self, nuove: list[dict], fonte: str, adesso: datetime) -> None:
+        visto = adesso.strftime("%Y-%m-%dT%H:%M:%S")
         with self._blocco:
             for p in nuove:
                 vecchia = self._partite.get((p["casa"], p["trasferta"]))
                 if fonte == FONTE_RIPIEGO and vecchia and vecchia["eventi"] and p["stato"] != "finita":
                     p = p | {"eventi": vecchia["eventi"], "minuto": vecchia["minuto"]}      # il ripiego non cancella i marcatori già noti
                 self._partite[(p["casa"], p["trasferta"])] = p
-            limite = (adesso - timedelta(days=2)).strftime("%Y-%m-%d")
+                self._visto[(p["casa"], p["trasferta"])] = visto
+            limite = (adesso - TIENI).strftime("%Y-%m-%d")
             for k in [k for k, p in self._partite.items() if (p.get("data") or "9") < limite]:
                 del self._partite[k]
+                self._visto.pop(k, None)
             self.aggiornato_il = adesso.strftime("%Y-%m-%d %H:%M:%S")
             self.fonte = fonte
 
@@ -326,7 +392,16 @@ def risposta(raccoglitore: Raccoglitore, righe_turno: list) -> dict:
     partite = []
     for r in righe_turno:
         k = (r["casa"], r["trasferta"])
-        partite.append(viste.pop(k, None) or _da_database(r))
+        vista = viste.pop(k, None)
+        if r["giocata"]:
+            # il risultato ufficiale vince (una diretta rimasta ferma su «secondo tempo» non deve restare LIVE); i marcatori
+            # visti in diretta restano solo se il punteggio è lo stesso
+            p = _da_database(r)
+            if vista and (vista.get("gol_casa"), vista.get("gol_trasferta")) == (p["gol_casa"], p["gol_trasferta"]):
+                p["eventi"] = list(vista.get("eventi") or [])
+            partite.append(p)
+        else:
+            partite.append(vista or _da_database(r))
     partite += [p for p in viste.values() if p["stato"] in IN_GIOCO]
     partite.sort(key=lambda p: (p.get("data") or "9", p["casa"]))
     in_corso = sum(p["stato"] in IN_GIOCO for p in partite)

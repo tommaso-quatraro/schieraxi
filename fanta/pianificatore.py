@@ -10,6 +10,11 @@ Non parte se: un aggiornamento completo è in corso (nel servizio o dal cron), l
 la scadenza è passata. Dopo un riavvio non rifà i giri già fatti (stato in `dati/pianificatore.json`). Se il servizio era fermo e
 due giri sono scaduti insieme se ne fa uno solo. Si spegne con `FANTA_PIANIFICATORE=0` oppure, per ogni lega, con l'impostazione
 `aggiornamenti_vicino_scadenza` delle regole (spenta in tutte le leghe attive = nessun giro).
+
+Giro dei risultati (`giro_risultati`): per ogni orario di calcio d'inizio, 2 ore e 30 dopo si leggono risultati e voti di quella
+giornata (due pagine di Fantacalcio.it, `Aggiornamento.risultati_giornata`), e 4 ore dopo una seconda volta solo se mancano
+ancora risultati o voti. Così la partita «finita», i punti fatti e la fine della giornata arrivano la sera stessa e non col giro del
+mattino. Partite alla stessa ora = un giro; niente se il cron ha già portato tutto; niente oltre 12 ore dal calcio d'inizio.
 """
 from __future__ import annotations
 
@@ -32,6 +37,9 @@ INTERVALLO = 60                                    # secondi tra un controllo e 
 CHIAVE_ARCHIVIO = "probabili-rapido"
 LOG = logging.getLogger(__name__)
 TENUTI = 60                                        # giri ricordati nello stato
+GIRI_RISULTATI = (("1", timedelta(minutes=150)), ("2", timedelta(hours=4)))   # dopo il calcio d'inizio
+MARGINE_RISULTATI = timedelta(hours=12)            # oltre, ci pensa l'aggiornamento completo
+CHIAVE_RISULTATI = "risultati-rapido"
 
 
 def acceso() -> bool:
@@ -109,6 +117,76 @@ def giro(adesso: datetime, db, leghe: list[Regole], stato: dict, aggiorna: Calla
     return da_fare
 
 
+def risultati_dovuti(adesso: datetime, db, fatti: set[str]) -> tuple[list[int], list[str]]:
+    """(giornate da rileggere, giri da segnare come fatti). Un giro è per orario di calcio d'inizio: dovuto da `ritardo` dopo, se
+    a qualche partita di quell'orario mancano ancora il risultato o i voti (altrimenti si segna senza leggere niente)."""
+    stagione = consigli.stagione_corrente()
+    righe = db.execute("SELECT giornata, data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND data >= ? AND data <= ?",
+                       (stagione, (adesso - MARGINE_RISULTATI).strftime("%Y-%m-%d %H:%M"),
+                        (adesso - GIRI_RISULTATI[0][1]).strftime("%Y-%m-%d %H:%M"))).fetchall()
+    orari: dict[tuple[int, str], list] = {}
+    for g, data, casa, trasf, giocata in righe:
+        orari.setdefault((int(g), str(data)[:16]), []).append((casa, trasf, giocata))
+    con_voti: dict[int, set[str]] = {}
+    giornate: set[int] = set()
+    segnare: list[str] = []
+    for (g, ora), partite in sorted(orari.items()):
+        try:
+            inizio = datetime.fromisoformat(ora.replace("T", " "))
+        except ValueError:
+            continue
+        dovuti = [f"risultati/{stagione}/{g}/{ora}/{nome}" for nome, ritardo in GIRI_RISULTATI if inizio + ritardo <= adesso]
+        dovuti = [k for k in dovuti if k not in fatti]
+        if not dovuti:
+            continue
+        if g not in con_voti:
+            con_voti[g] = {r[0] for r in db.execute("SELECT DISTINCT squadra FROM voti WHERE stagione = ? AND giornata = ?", (stagione, g))}
+        if any(not giocata or casa not in con_voti[g] or trasf not in con_voti[g] for casa, trasf, giocata in partite):
+            giornate.add(g)
+        segnare += dovuti
+    return sorted(giornate), segnare
+
+
+def giro_risultati(adesso: datetime, db, stato: dict, aggiorna: Callable[[list[int]], bool | None]) -> str | None:
+    """Un controllo del giro dei risultati. `aggiorna(giornate)` legge risultati e voti (True/False, None = occupato: non conta e
+    si riprova). Restituisce "risultati" se ha letto qualcosa, altrimenti None."""
+    giornate, segnare = risultati_dovuti(adesso, db, set(stato.get("fatti", [])))
+    if not segnare:
+        return None
+    prima = list(stato.get("fatti", []))
+    stato["fatti"] = prima + segnare                             # segnato prima: un errore non deve far ripartire un giro dopo l'altro
+    if not giornate:
+        return None                                             # già tutto arrivato (per esempio dal cron)
+    if aggiorna(giornate) is None:
+        stato["fatti"] = prima
+        return None
+    return "risultati"
+
+
+def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lambda _: None) -> bool | None:
+    """Risultati e voti delle giornate indicate (due pagine per giornata) e segna l'aggiornamento (il riscaldamento ricalcola da
+    solo). None se l'aggiornamento completo del server sta girando, False se la fonte è spenta o la lettura non è riuscita."""
+    from . import fonti_attive
+    from .aggiorna import Aggiornamento, Stagione, _ora
+    with blocco_processo() as libero:
+        if not libero:
+            return None
+        if not fonti_attive.acceso("fantacalcio"):
+            return False                                            # fonte spenta: niente richieste
+        db = archivio.apri()
+        try:
+            agg = Aggiornamento(db, Stagione.di(date.today()), scrivi)
+            for g in giornate:
+                agg._passo(f"risultati {g}", lambda g=g: agg.risultati_giornata(g))    # noqa: SLF001 - stesso passo dell'aggiornamento completo
+            if agg.errori:
+                return False
+            archivio.segna(db, CHIAVE_RISULTATI, _ora())               # cambia la «versione» dei dati: il riscaldamento ricalcola
+            db.commit()
+            return True
+        finally:
+            db.close()
+
+
 @contextlib.contextmanager
 def blocco_processo() -> Iterator[bool]:
     """Lo stesso blocco dell'aggiornamento del server (`~/.cache/fantacalcio/blocco`): se `aggiorna.sh` sta girando, si rinuncia.
@@ -163,8 +241,10 @@ def _scarica_probabili(scrivi: Callable[[str], None]) -> bool:
 
 def sorveglia(fermo: threading.Event, leghe: Callable[[], list[Regole]], apri_db: Callable[[], object],
               aggiorna: Callable[[], bool], dopo: Callable[[], object], intervallo: float = INTERVALLO,
-              adesso: Callable[[], datetime] = datetime.now) -> None:
-    """Il thread. `leghe()` dà le regole delle leghe attive; `aggiorna()` scarica le probabili (False se non è riuscito, None se un aggiornamento completo è in corso); `dopo()` ricalcola e manda gli avvisi."""
+              adesso: Callable[[], datetime] = datetime.now,
+              risultati: Callable[[list[int]], bool | None] | None = None) -> None:
+    """Il thread. `leghe()` dà le regole delle leghe attive; `aggiorna()` scarica le probabili (False se non è riuscito, None se un aggiornamento completo è in corso); `dopo()` ricalcola e manda gli avvisi.
+    `risultati(giornate)` legge risultati e voti dopo le partite (giro_risultati); None = niente giro dei risultati."""
     from .riscaldamento import bassa_priorita
     bassa_priorita()
     while not fermo.is_set():
@@ -175,7 +255,11 @@ def sorveglia(fermo: threading.Event, leghe: Callable[[], list[Regole]], apri_db
                 prima = list(stato.get("fatti", []))
                 db = apri_db()
                 try:
-                    giro(adesso(), db, leghe(), stato, aggiorna, dopo)
+                    try:
+                        giro(adesso(), db, leghe(), stato, aggiorna, dopo)
+                    finally:
+                        if risultati is not None:                # anche se il giro delle probabili è andato in errore
+                            giro_risultati(adesso(), db, stato, risultati)
                 finally:
                     db.close()
                     try:
