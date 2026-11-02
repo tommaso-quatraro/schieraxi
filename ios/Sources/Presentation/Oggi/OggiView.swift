@@ -17,6 +17,8 @@ struct OggiView: View {
     @AppStorage("novitaVista") private var novitaVista = ""
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 46
     @ScaledMetric(relativeTo: .body) private var latoIcona: CGFloat = 24
+    /// Altezza del nome in testa: segue la dimensione del testo, con un tetto (non deve rubare spazio alle schede).
+    @ScaledMetric(relativeTo: .title3) private var altezzaNome: CGFloat = 22
     @State private var novitaAnimata = false
     @Environment(\.accessibilityReduceMotion) private var ridotto
     @Environment(\.dynamicTypeSize) private var dimensioneTesto
@@ -28,52 +30,68 @@ struct OggiView: View {
             ZStack {
                 Sfondo()
                 ScrollView {
-                    Colonne(spazio: Tema.spazioSchede) {
-                        if let oggi = vm.oggi {
-                            benvenuto(oggi).ingresso(0)
-                            senzaGiornata(oggi).ingresso(0)
-                            if !oggi.senzaGiornata { testata(oggi).ingresso(0) }
-                            // Le fasi della giornata: durante (punti fatti, niente consigli su chi schierare), dopo (riepilogo), prima (come sempre).
-                            switch oggi.faseGiornata {
-                            case .inCorso:
-                                CartaGiornataInCorso(blocco: oggi.giornataInCorso, attesiPrima: oggi.formazione?.punteggioAtteso,
-                                                     partite: oggi.contoPartite).ingresso(1)
-                                if let b = oggi.giornataInCorso, !b.sostituzioni.isEmpty { CartaCambiPanchina(cambi: b.sostituzioni).ingresso(2) }
-                                if let b = oggi.giornataInCorso, !b.giocatori.isEmpty { CartaChiGioca(blocco: b).ingresso(3) }
-                                daFare(oggi).ingresso(4)
-                                novita.ingresso(4)
-                            case .finita:
-                                CartaRiepilogoGiornata(riepilogo: oggi.riepilogoGiornata).ingresso(1)
-                                daFare(oggi).ingresso(2)
-                                novita.ingresso(2)
-                                if !oggi.senzaGiornata { formazione(oggi).ingresso(3) }
-                            case .prima:
-                                daFare(oggi).ingresso(1)
-                                novita.ingresso(1)
-                                if !oggi.senzaGiornata { formazione(oggi).ingresso(2) }
-                                daControllare.ingresso(3)
-                                suggerimento
-                                migliori(oggi).ingresso(4)
-                                indisponibili.ingresso(5)
-                                diffidati.ingresso(6)
+                    ScrollViewReader { proxy in
+                    // Il nome dell'app in testa allo scorrimento: sparisce scorrendo, senza rubare spazio alle schede.
+                    VStack(alignment: .leading, spacing: Tema.spazioSchede) {
+                        intestazione
+                        Colonne(spazio: Tema.spazioSchede) {
+                            if let oggi = vm.oggi {
+                                benvenuto(oggi).ingresso(0)
+                                senzaGiornata(oggi).ingresso(0)
+                                if !oggi.senzaGiornata { testata(oggi).ingresso(0) }
+                                // Le fasi della giornata: durante (punti fatti, niente consigli su chi schierare), dopo (riepilogo), prima (come sempre).
+                                switch oggi.faseGiornata {
+                                case .inCorso:
+                                    CartaGiornataInCorso(blocco: oggi.giornataInCorso, attesiPrima: oggi.formazione?.punteggioAtteso,
+                                                         partite: oggi.contoPartite).ingresso(1)
+                                    partiteRinviate(oggi).ingresso(1)
+                                    if let b = oggi.giornataInCorso, !b.sostituzioni.isEmpty { CartaCambiPanchina(cambi: b.sostituzioni).ingresso(2) }
+                                    if let b = oggi.giornataInCorso, !b.giocatori.isEmpty { CartaChiGioca(blocco: b).ingresso(3) }
+                                    daFare(oggi).ingresso(4)
+                                    novita.ingresso(4)
+                                case .finita:
+                                    CartaRiepilogoGiornata(riepilogo: oggi.riepilogoGiornata, rinvioInCorso: vm.rinvioInCorso) { s, m in
+                                        await vm.cambiaRinvio(s, modo: m)
+                                    }
+                                    .ingresso(1)
+                                    .id("riepilogo")
+                                    partiteRinviate(oggi).ingresso(1)
+                                    daFare(oggi).ingresso(2)
+                                    novita.ingresso(2)
+                                    if !oggi.senzaGiornata { formazione(oggi).ingresso(3) }
+                                case .prima:
+                                    partiteRinviate(oggi).ingresso(1)
+                                    daFare(oggi).ingresso(1)
+                                    novita.ingresso(1)
+                                    if !oggi.senzaGiornata { formazione(oggi).ingresso(2) }
+                                    daControllare.ingresso(3)
+                                    suggerimento
+                                    migliori(oggi).ingresso(4)
+                                    indisponibili.ingresso(5)
+                                    diffidati.ingresso(6)
+                                }
+                                if funzioni.acceso(Funzione.live) { partite.ingresso(7) }
+                            } else if let errore = vm.errore {
+                                ErroreVista(messaggio: errore) { Task { await vm.carica() } }
+                            } else {
+                                Scheletro(schede: 3, righe: 2, testo: "Preparo la giornata…")
                             }
-                            if funzioni.acceso(Funzione.live) { partite.ingresso(7) }
-                        } else if let errore = vm.errore {
-                            ErroreVista(messaggio: errore) { Task { await vm.carica() } }
-                        } else {
-                            Scheletro(schede: 3, righe: 2, testo: "Preparo la giornata…")
                         }
                     }
                     .padding(.horizontal, Tema.margine)
                     .padding(.bottom, 24)
                     .animation(Tema.morbida, value: vm.oggi != nil)
+                    // fotografie `oggi-rinvio` e `oggi-finita-recupero`: il riquadro sta sotto la piega dell'iPhone
+                    .demoScorriA("rinvio", proxy: proxy, schermate: ["oggi-rinvio"], pronto: vm.oggi != nil)
+                    .demoScorriA("riepilogo", proxy: proxy, schermate: ["oggi-finita-recupero"], pronto: vm.oggi != nil)
+                    }
                 }
                 .demoInFondo()
                 .refreshable {
                     await vm.carica()
                     if funzioni.acceso(Funzione.live) { await vm.live.ricarica() }
                 }
-                .avvisoDatiSalvati(vm.datiSalvati)
+                .avvisoDatiSalvati(vm.caricatore)
                 .bordiMorbidi()
             }
             .navigationTitle("Oggi")
@@ -94,7 +112,39 @@ struct OggiView: View {
                 guard fase == .active, vm.oggi?.faseGiornata == .inCorso else { return }
                 await vm.seguiGiornata()
             }
+            // Allo scadere della formazione il conto alla rovescia diventa «Chiusa»: Oggi si rilegge UNA volta (5 secondi dopo,
+            // per dare tempo al server), così spariscono consigli e «Apri la formazione». Solo con la schermata visibile.
+            .task(id: "\(fase == .active)-\(vm.oggi?.chiusura ?? "")") {
+                guard fase == .active, let inizio = Quando.data(vm.oggi?.chiusura) else { return }
+                let attesa = inizio.timeIntervalSinceNow + 5
+                guard attesa > 0, attesa < 2 * 24 * 3600 else { return }
+                try? await Task.sleep(for: .seconds(attesa))
+                guard !Task.isCancelled else { return }
+                await vm.carica()
+            }
         }
+    }
+
+    /// Partite rinviate della giornata: quali, i miei coinvolti e cosa vale per questa giornata (niente se non ce ne sono).
+    @ViewBuilder
+    private func partiteRinviate(_ oggi: Oggi) -> some View {
+        if let r = oggi.partiteRinviate {
+            CartaPartitaRinviata(scelta: r, inCorso: vm.rinvioInCorso, errore: vm.erroreRinvio) { m in await vm.cambiaRinvio(r, modo: m) }
+                .id("rinvio")
+        }
+    }
+
+    /// Il nome dell'app con lo slogan, piccolo e discreto, in testa allo scorrimento.
+    private var intestazione: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            WordmarkSchieraXI().frame(height: min(altezzaNome, 34))
+            SloganSchieraXI()
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.testoSecondario)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 2)
+        .accessibilityElement(children: .combine)
     }
 
     /// Lega senza rose: un benvenuto con un solo passo chiaro, che apre la configurazione guidata.
@@ -103,7 +153,7 @@ struct OggiView: View {
         if oggi.senzaRose == true {
             Carta("Benvenuto in SchieraXI", simbolo: "hand.wave") {
                 Text("Importa la tua rosa per cominciare: per darti i consigli servono le rose della tua lega, poi ti guido nei passi successivi.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Color.testoSecondario)
                 Button { nav.guidaAperta = true } label: {
                     Label("Importa le rose", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
@@ -119,7 +169,7 @@ struct OggiView: View {
         if oggi.senzaGiornata, oggi.senzaRose != true {
             Carta("Oggi", simbolo: "calendar") {
                 Text("Nessuna giornata in programma per ora.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -139,29 +189,26 @@ struct OggiView: View {
     /// Il riquadro in alto: sfondo vivo, giornata, conto alla rovescia grande e maglia della squadra.
     private func testata(_ oggi: Oggi) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label(oggi.etichettaGiornata ?? "Giornata", systemImage: "calendar")
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .vetro(in: Capsule())
+            // Giornata e, se manca la divisa, l'invito ad aggiungerla sulla stessa riga; se non ci stanno (testo grande,
+            // finestra stretta) l'invito va sotto. Mai accanto al conto alla rovescia: lì diventava una colonna stretta e altissima.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    etichettaGiornata(oggi)
+                    Spacer(minLength: 8)
+                    aggiungiDivisa(oggi)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    etichettaGiornata(oggi)
+                    aggiungiDivisa(oggi)
+                }
+            }
             // Conto alla rovescia e maglia sulla stessa riga: il riquadro è più basso e il resto di Oggi sale.
-            // Con le misure di accessibilità grandi il pulsante della divisa va sotto: il testo della fase resta intero.
+            // Con le misure di accessibilità grandi la maglia va sotto: il testo della fase resta intero.
             rigaTestata {
                 contoAllaRovescia(oggi).layoutPriority(1)
-                if let squadra = oggi.formazione?.squadra {
-                    if immagini.haImmagine(squadra, tipo: "maglia") {
-                        StemmaSquadra(nome: squadra, tipo: "maglia", dimensione: 56, nascondiSeMancante: true)
-                            .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
-                    } else if let apri = apriRosaDi {
-                        // la divisa è LA TUA: se non c'è non si mostra quella di un'altra squadra, si invita ad aggiungerla
-                        Button { apri(squadra) } label: {
-                            Label("Aggiungi la tua divisa", systemImage: "tshirt").font(.footnote.weight(.semibold))
-                                .padding(.horizontal, 10).padding(.vertical, 6).vetro(in: Capsule())
-                                .frame(minHeight: Tema.areaTocco)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Apre la tua squadra per caricare la divisa")
-                    }
+                if let squadra = oggi.formazione?.squadra, immagini.haImmagine(squadra, tipo: "maglia") {
+                    StemmaSquadra(nome: squadra, tipo: "maglia", dimensione: 56, nascondiSeMancante: true)
+                        .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
                 }
             }
             if oggi.conProbabili == false {
@@ -179,6 +226,30 @@ struct OggiView: View {
         .accessibilityLabel(oggi.etichettaGiornata ?? "Giornata")
     }
 
+    private func etichettaGiornata(_ oggi: Oggi) -> some View {
+        Label(oggi.etichettaGiornata ?? "Giornata", systemImage: "calendar")
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .vetro(in: Capsule())
+            .fixedSize()
+    }
+
+    /// La divisa è LA TUA: se non c'è non si mostra quella di un'altra squadra, si invita ad aggiungerla.
+    @ViewBuilder
+    private func aggiungiDivisa(_ oggi: Oggi) -> some View {
+        if let squadra = oggi.formazione?.squadra, !immagini.haImmagine(squadra, tipo: "maglia"), let apri = apriRosaDi {
+            Button { apri(squadra) } label: {
+                Label("Aggiungi la tua divisa", systemImage: "tshirt").font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 6).vetro(in: Capsule())
+                    .fixedSize()
+                    .frame(minHeight: Tema.areaTocco)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Apre la tua squadra per caricare la divisa")
+        }
+    }
+
     /// Riga della testata: orizzontale di norma, verticale con le misure di accessibilità (testo molto grande).
     private var rigaTestata: AnyLayout {
         dimensioneTesto.isAccessibilitySize
@@ -189,33 +260,56 @@ struct OggiView: View {
     @ViewBuilder
     private func contoAllaRovescia(_ oggi: Oggi) -> some View {
         if let inizio = Quando.data(oggi.chiusura) {
-            // Ogni secondo ricontrolla: a zero il conto alla rovescia lascia il posto a «In corso».
+            // Ogni secondo ricontrolla: a zero il conto alla rovescia lascia il posto a «Chiusa» (come la web).
             TimelineView(.periodic(from: Date(), by: 1)) { contesto in
+                let ora = Orologio.daSistema(contesto.date)
                 VStack(alignment: .leading, spacing: 4) {
-                    if inizio > contesto.date {
-                        TestoConto(inizio: inizio, adesso: contesto.date)
+                    if inizio > ora {
+                        TestoConto(inizio: inizio, adesso: ora)
                             .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
-                        Text("alla scadenza della formazione, \(Quando.leggibile(oggi.chiusura))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        Text(Self.quandoSiChiude(oggi)).font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     } else {
-                        Label("In corso", systemImage: "dot.radiowaves.left.and.right")
-                            .symbolEffect(.variableColor.iterative, options: .repeating, isActive: !ridotto)
+                        Text("Chiusa")
                             .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)   // testo molto grande: si rimpicciolisce invece di andare a capo a metà parola
                             .foregroundStyle(.white)
-                        Text("formazione chiusa \(Quando.leggibile(oggi.chiusura))").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        Text(Self.siEChiusa(oggi)).font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
             }
         } else {
-            Text(oggi.iniziata == true ? "In corso" : "—").lineLimit(1).minimumScaleFactor(0.5)
-                .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded)).foregroundStyle(.white)
+            // Senza scadenza: «Chiusa» se la giornata è cominciata, altrimenti una frase al posto di un trattino enorme.
+            if oggi.iniziata == true {
+                Text("Chiusa").lineLimit(1).minimumScaleFactor(0.5)
+                    .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded)).foregroundStyle(.white)
+            } else {
+                Text("Data da definire")
+                    .font(.system(.title2, design: .rounded, weight: .bold)).foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+    }
+
+    /// Sotto il conto alla rovescia, come la web: «La formazione si chiude sab 31 14:50 (10 min prima della prima partita)»,
+    /// o «Prima partita …: la formazione va inserita prima» se la scadenza è l'inizio della prima partita.
+    static func quandoSiChiude(_ oggi: Oggi) -> String {
+        if let s = oggi.scadenza, !s.trimmingCharacters(in: .whitespaces).isEmpty, s != oggi.inizio, let m = oggi.minutiScadenza {
+            return "La formazione si chiude \(Quando.leggibile(s)) (\(m) min prima della prima partita)"
+        }
+        return "Prima partita \(Quando.leggibile(oggi.chiusura)): la formazione va inserita prima"
+    }
+
+    /// A scadenza passata, come la web: «La formazione della giornata 7 si è chiusa sab 31 14:50» (numero della lega).
+    static func siEChiusa(_ oggi: Oggi) -> String {
+        let quando = Quando.leggibile(oggi.chiusura)
+        guard let g = oggi.giornataMostrata else { return "La formazione si è chiusa \(quando)" }
+        return "La formazione della giornata \(g) si è chiusa \(quando)"
     }
 
     // MARK: novità
@@ -229,11 +323,12 @@ struct OggiView: View {
                         .symbolRenderingMode(.hierarchical)
                         .symbolEffect(.bounce, value: ridotto ? false : novitaAnimata)
                         .accessibilityHidden(true)
-                    Text("Novità nell'app (versione \(versione)): tocca per vedere")
-                        .font(.subheadline.weight(.semibold))
+                    // Come la web: «Novità nell'app (versione X): tocca per vedere», con «Novità nell'app» in grassetto.
+                    Text("\(Text("Novità nell'app").fontWeight(.semibold)) (versione \(versione)): tocca per vedere")
+                        .font(.subheadline)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
                 }
                 .foregroundStyle(Color.verde)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -266,9 +361,9 @@ struct OggiView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 0) {
                         NumeroCheSale(valore: f.punteggioAtteso ?? 0).font(.title2.bold())
-                        Text("punti attesi").font(.caption).foregroundStyle(.secondary)
+                        Text("punti attesi").font(.caption).foregroundStyle(Color.testoSecondario)
                         if let fascia = IntervalloPunti.frase(f.intervallo, dev: f.dev) {
-                            Text(fascia).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                            Text(fascia).font(.caption2).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
                         }
                     }
                 }
@@ -283,13 +378,13 @@ struct OggiView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if let riga = p.riga {
-                        Text(riga).font(.footnote).foregroundStyle(.secondary)
+                        Text(riga).font(.footnote).foregroundStyle(Color.testoSecondario)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityLabel(riga)
                     }
                 }
             } else {
-                Text("Formazione non disponibile.").foregroundStyle(.secondary)
+                Text("Formazione non disponibile.").foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -317,35 +412,46 @@ struct OggiView: View {
             }
         } else if oggi.daFare != nil, oggi.conConsigli {   // durante e dopo la giornata la riga vuota non serve
             Text("Nessuna azione utile oggi")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
         }
     }
 
     private func rigaDaFare(_ c: DaFareVoce) -> some View {
-        HStack(alignment: .center, spacing: 10) {
+        // Con il testo molto grande il pulsante va sotto la frase: affiancati, frase e pulsante andavano a capo a metà parola
+        // («Ho schiera-to la consi-gliata»).
+        let grande = dimensioneTesto.isAccessibilitySize
+        return HStack(alignment: grande ? .top : .center, spacing: 10) {
             Image(systemName: Self.iconaDaFare(c.tipo))
-                .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : .secondary)
+                .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : Color.testoSecondario)
                 .frame(width: latoIcona)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: grande ? 8 : 2) {
                 Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 if let m = c.motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty {
-                    Text(m).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(m).font(.caption).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
                 }
+                if grande { pulsanteDaFare(c) }
             }
-            Spacer(minLength: 6)
-            if let d = c.destinazione?.destinazione {
-                Button(c.azione ?? "Apri") { vaiA(d, tipo: c.tipo) }
-                    .font(.subheadline.weight(.semibold))
-                    .buttonStyle(.bordered)
-                    .tint(Color.verde)
-                    .frame(minHeight: 44)
+            if !grande {
+                Spacer(minLength: 6)
+                pulsanteDaFare(c)
             }
         }
         .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func pulsanteDaFare(_ c: DaFareVoce) -> some View {
+        if let d = c.destinazione?.destinazione {
+            Button(c.azione ?? "Apri") { vaiA(d, tipo: c.tipo) }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.bordered)
+                .tint(Color.verde)
+                .frame(minHeight: 44)
+        }
     }
 
     /// Apre la destinazione di una cosa da fare.
@@ -380,7 +486,7 @@ struct OggiView: View {
     private var daControllare: some View {
         if !vm.daControllare.isEmpty {
             Carta("Da controllare", simbolo: "exclamationmark.triangle") {
-                Text("Mister, c'è qualche dubbio in formazione. Riguarda le probabili prima del fischio.").font(.caption).foregroundStyle(.secondary)
+                Text("Mister, c'è qualche dubbio in formazione. Riguarda le probabili prima del fischio.").font(.caption).foregroundStyle(Color.testoSecondario)
                 ForEach(Array(vm.daControllare.enumerated()), id: \.element.ident) { i, a in
                     RigaConFilo(prima: i == 0) { riga(a) }
                 }
@@ -400,7 +506,7 @@ struct OggiView: View {
                     }
                     .padding(.top, 6)
                 }
-                .tint(.secondary)
+                .tint(Color.testoSecondario)
             }
         }
     }
@@ -424,10 +530,10 @@ struct OggiView: View {
         }
     }
 
-    /// «Dubbio (55%)» come nella web app: per i dubbi, la probabilità di giocare.
+    /// «In dubbio · gioca 55%» come nella web app: per i dubbi, la probabilità di giocare.
     private func etichettaTipo(_ a: Avviso) -> String {
         let nome = nomeTipo(a.tipo)
-        if a.tipo == "dubbio", let p = a.pVoto { return "\(nome) (\(Formato.percento(p))%)" }
+        if a.tipo == "dubbio", let p = a.pVoto { return "\(nome) · gioca \(Formato.percento(p))%" }
         return nome
     }
 
@@ -435,7 +541,7 @@ struct OggiView: View {
         switch tipo {
         case "infortunato": return "Infortunato"
         case "squalificato": return "Squalificato"
-        case "dubbio": return "Dubbio"
+        case "dubbio": return "In dubbio"
         case "diffidato": return "Diffidato"
         default: return (tipo ?? "").primaMaiuscola
         }
@@ -449,9 +555,12 @@ struct OggiView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(a.nome).font(.headline)
-                        Text(ColoriSquadra.sigla(a.squadra)).font(.caption).foregroundStyle(.secondary)
+                        Text(ColoriSquadra.sigla(a.squadra)).font(.caption).foregroundStyle(Color.testoSecondario)
                     }
-                    Text([etichettaTipo(a), a.nota].compactMap { $0 }.joined(separator: ": ")).font(.caption).foregroundStyle(.secondary)
+                    // Il tipo («In dubbio · gioca 55%») sta già nella pillola a destra: qui solo la nota, se c'è.
+                    if let nota = a.nota, !nota.isEmpty {
+                        Text(nota).font(.caption).foregroundStyle(Color.testoSecondario)
+                    }
                 }
                 Spacer(minLength: 0)
                 Capsula(testo: etichettaTipo(a), colore: colore(a.tipo)).accessibilityHidden(true)

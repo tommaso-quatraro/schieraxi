@@ -1,0 +1,32 @@
+{
+  "include": [
+    "fanta",
+    "tests",
+    "script",
+    "prove"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    ".venv",
+    "ios",
+    "android",
+    "sito",
+    "fanta/web"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalSubscript": "none",
+  "reportOptionalOperand": "none",
+  "reportOptionalIterable": "none",
+  "reportArgumentType": "none",
+  "reportAttributeAccessIssue": "warning",
+  "reportCallIssue": "warning",
+  "reportOperatorIssue": "warning",
+  "reportIndexIssue": "warning",
+  "reportGeneralTypeIssues": "warning",
+  "reportReturnType": "warning"
+}

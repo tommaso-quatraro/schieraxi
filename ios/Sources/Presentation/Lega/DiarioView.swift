@@ -136,7 +136,7 @@ struct DiarioView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
+            .avvisoDatiSalvati(vm.caricatore)
         }
         .navigationTitle("Diario")
         .sheet(item: $daCorreggere) { v in

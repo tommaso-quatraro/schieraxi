@@ -65,7 +65,7 @@ final class FormazioneViewModelTests: XCTestCase {
                 if metodo == "GET" && scelta {
                     let f: Formazione = try Fixture.decodifica("formazione")
                     let ids = f.titolari.map(\.id).map(String.init).joined(separator: ",")
-                    return Data("{\"titolari\": [\(ids)], \"modulo\": \"4-3-3\"}".utf8)
+                    return Data("{\"titolari\": [\(ids)], \"modulo\": \"4-3-3\", \"salvata\": \"2026-11-02T21:40:00\"}".utf8)
                 }
                 if metodo == "GET" { throw ErroreApi.server("nessuna scelta salvata") }
                 return Data("{\"ok\": true}".utf8)
@@ -88,7 +88,7 @@ final class FormazioneViewModelTests: XCTestCase {
         XCTAssertEqual(v.modulo, "4-3-3")
         XCTAssertEqual(v.titolari.count, 11)
         XCTAssertEqual(v.panchina.count, 11)
-        XCTAssertEqual(v.punti, 71.1, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(v.punti), 71.1, accuracy: 0.01)
         XCTAssertNil(vm.manuale)
         XCTAssertEqual(vm.testo(f).components(separatedBy: "\n").first, "Giornata 9 · 4-3-3")
         XCTAssertEqual(vm.fuori(f, v).count, 3, "25 in rosa, 11 titolari e 11 in panchina")
@@ -102,7 +102,7 @@ final class FormazioneViewModelTests: XCTestCase {
         let audace = try XCTUnwrap(f.livelli?.first { $0.rischio == 2 })
         let atteso = try XCTUnwrap(audace.moduli.first { $0.modulo == audace.modulo })
         XCTAssertEqual(vm.vista(f).modulo, audace.modulo)
-        XCTAssertEqual(vm.vista(f).punti, atteso.punteggioAtteso, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), atteso.punteggioAtteso, accuracy: 0.001)
         XCTAssertEqual(vm.fascia(f), IntervalloPunti.frase(atteso.intervallo, dev: atteso.dev), "la fascia è quella del modulo scelto")
         // un altro modulo dello stesso stile
         let altro = try XCTUnwrap(audace.moduli.first { $0.modulo != audace.modulo })
@@ -124,13 +124,13 @@ final class FormazioneViewModelTests: XCTestCase {
         let altro = try XCTUnwrap(primo.moduli.first { $0.modulo != primo.modulo })
         vm.rischio = primo.rischio
         vm.scegliModulo(altro.modulo)
-        XCTAssertEqual(vm.vista(f).punti, altro.punteggioAtteso, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), altro.punteggioAtteso, accuracy: 0.001)
         XCTAssertEqual(vm.vista(f).modulo, altro.modulo)
         // ...finché si tocca uno stile, anche lo stesso: torna il modulo proposto e i punti di quello
         vm.scegliStile(primo.rischio)
         XCTAssertNil(vm.moduloScelto)
         XCTAssertEqual(vm.vista(f).modulo, primo.modulo)
-        XCTAssertEqual(vm.vista(f).punti, primo.punteggioAtteso, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(vm.vista(f).punti), primo.punteggioAtteso, accuracy: 0.001)
     }
 
     func testStileConDescrizioneESenza() throws {
@@ -202,10 +202,13 @@ final class FormazioneViewModelTests: XCTestCase {
         await vm.valuta(salva: true)
         let corpo = try XCTUnwrap(s.corpiInviati(a: "POST /api/formazione/valuta").last)
         XCTAssertTrue(String(decoding: corpo, as: UTF8.self).contains("\"salva\":true"))
-        XCTAssertEqual(vm.messaggio, "Salvata come la tua scelta per questa giornata.")
+        guard case .salvata = vm.statoScelta else { return XCTFail("dopo il salvataggio la riga dice «salvata»: \(vm.statoScelta)") }
+        XCTAssertFalse(vm.statoScelta.daSalvare, "niente pulsante «Salva» su una formazione già salvata")
+        XCTAssertNil(vm.messaggio, "lo stato sta nella riga fissa, non in un messaggio che sparisce")
         await vm.tornaAllaConsigliata(f)
         XCTAssertNil(vm.manuale)
         XCTAssertNil(vm.valutazione)
+        XCTAssertEqual(vm.statoScelta, .consigliata)
         XCTAssertEqual(s.quante("DELETE /api/scelta?giornata=9"), 1)
     }
 
@@ -252,6 +255,214 @@ final class FormazioneViewModelTests: XCTestCase {
         await vm.tornaAllaConsigliata(f)
         XCTAssertNotNil(vm.manuale, "la scelta salvata non è stata cancellata: resta la modifica a mano")
         XCTAssertNotNil(vm.messaggio)
+    }
+
+    // MARK: scelta salvata sempre visibile
+
+    func testLaSceltaSalvataSiVedeAncheRiaprendo() async throws {
+        let srv = server(scelta: true)
+        let (vm, f) = try await caricata(srv)
+        await attendi("scelta salvata calcolata", finche: { vm.valutazioneAttuale != nil })
+        XCTAssertEqual(vm.statoScelta, .salvata(Quando.data("2026-11-02T21:40:00")))
+        XCTAssertFalse(vm.statoScelta.daSalvare, "riaprendo non sembra di dover risalvare")
+        // una sostituzione: «Modifiche non salvate»; «Annulla modifiche» torna a quella salvata
+        let uscente = try XCTUnwrap(vm.vista(f).titolari.first { $0.ruolo == "D" })
+        let titolari = Set(vm.manuale ?? [])
+        let entrante = try XCTUnwrap(f.schede?.values.first { $0.ruolo == "D" && !titolari.contains($0.id) })
+        vm.sostituisci(uscente.id, con: entrante.id)
+        XCTAssertEqual(vm.statoScelta, .modificata(Quando.data("2026-11-02T21:40:00")))
+        XCTAssertEqual(FormazioneView.etichettaSalva(vm.statoScelta), "Salva le modifiche")
+        vm.annullaModifiche()
+        XCTAssertEqual(vm.statoScelta, .salvata(Quando.data("2026-11-02T21:40:00")))
+        // ricaricando (tornando sulla scheda) non si rifà la valutazione di una scelta già calcolata
+        try await Task.sleep(nanoseconds: 500_000_000)   // finiscono i calcoli partiti con la sostituzione
+        let prima = srv.quante("POST /api/formazione/valuta")
+        await vm.carica()
+        XCTAssertEqual(srv.quante("POST /api/formazione/valuta"), prima)
+        XCTAssertEqual(vm.statoScelta, .salvata(Quando.data("2026-11-02T21:40:00")))
+    }
+
+    func testSenzaSceltaSalvataSiVedeLaConsigliataESiSalvaConUnTocco() async throws {
+        let srv = ServerDiProva { metodo, percorso, corpo in
+            if percorso.hasPrefix("/api/formazione/valuta") { return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 71.1, "panchina": []}"#.utf8) }
+            if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
+            return try Fixture.dati("formazione")
+        }
+        let (vm, f) = try await caricata(srv)
+        XCTAssertEqual(vm.statoScelta, .consigliata)
+        XCTAssertNil(vm.manuale)
+        await vm.salvaQuesta(f)
+        let corpo = String(decoding: try XCTUnwrap(srv.corpiInviati(a: "POST /api/formazione/valuta").last), as: UTF8.self)
+        XCTAssertTrue(corpo.contains("\"salva\":true"), corpo)
+        XCTAssertEqual(vm.manuale?.count, 11, "si salvano gli undici che si stavano guardando")
+        guard case .salvata = vm.statoScelta else { return XCTFail("\(vm.statoScelta)") }
+    }
+
+    func testSeLaLetturaDellaSceltaNonRiesceNonSiDiceNiente() async throws {
+        let (vm, _) = try await caricata(server())   // la lettura della scelta risponde con un errore
+        XCTAssertEqual(vm.statoScelta, .sconosciuto, "non si dice «non hai salvato» se non lo si sa")
+    }
+
+    // MARK: (17) durante il calcolo niente punti della consigliata
+
+    func testDuranteIlCalcoloSiVedeCalcoloENonIPuntiDellaConsigliata() async throws {
+        let srv = ServerDiProva { metodo, percorso, corpo in
+            if percorso.hasPrefix("/api/formazione/valuta") {
+                try await Task.sleep(nanoseconds: 400_000_000)
+                return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
+            }
+            if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
+            return try Fixture.dati("formazione")
+        }
+        let (vm, f) = try await caricata(srv)
+        vm.iniziaModificaManuale(f)
+        XCTAssertNil(vm.vista(f).punti, "mentre il server calcola, niente punti (prima c'erano quelli della consigliata)")
+        XCTAssertTrue(vm.inCalcolo)
+        XCTAssertEqual(vm.vista(f).modulo, "4-3-3", "il modulo si conta dai ruoli dei titolari")
+        XCTAssertNil(vm.fascia(f))
+        await attendi("calcolo finito", finche: { vm.vista(f).punti != nil })
+        XCTAssertEqual(vm.vista(f).punti, 20.0)
+        XCTAssertFalse(vm.inCalcolo)
+    }
+
+    func testSeIlCalcoloNonRiesceSiPuoRiprovare() async throws {
+        let srv = ServerDiProva { metodo, percorso, corpo in
+            if percorso.hasPrefix("/api/formazione/valuta") { throw ErroreApi.rete("giù") }
+            if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
+            return try Fixture.dati("formazione")
+        }
+        let (vm, f) = try await caricata(srv)
+        vm.iniziaModificaManuale(f)
+        await attendi("calcolo non riuscito", finche: { vm.calcoloNonRiuscito })
+        XCTAssertNil(vm.vista(f).punti, "nessun punto della consigliata al posto di quelli non calcolati")
+        XCTAssertFalse(vm.inCalcolo)
+        XCTAssertNotNil(vm.messaggio)
+    }
+
+    // MARK: (18) una scelta salvata non si cancella in silenzio
+
+    /// Un server con una scelta salvata data e una formazione con o senza `schede`; la valutazione risponde come dato.
+    private func serverScelta(titolari: [Int]?, senzaSchede: Bool = false,
+                              valuta: @escaping @Sendable () throws -> Data = { Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8) })
+    throws -> ServerDiProva {
+        let base: Formazione = try Fixture.decodifica("formazione")
+        let ids = titolari ?? base.titolari.map(\.id)
+        var formazione = try XCTUnwrap(JSONSerialization.jsonObject(with: try Fixture.dati("formazione")) as? [String: Any])
+        if senzaSchede { formazione["schede"] = nil }
+        let dati = try JSONSerialization.data(withJSONObject: formazione)
+        let scelta = Data("{\"titolari\": [\(ids.map(String.init).joined(separator: ","))], \"salvata\": \"2026-11-02T21:40:00\"}".utf8)
+        return ServerDiProva { metodo, percorso, _ in
+            if percorso.hasPrefix("/api/formazione/valuta") { return try valuta() }
+            if percorso.hasPrefix("/api/scelta") { return metodo == "GET" ? scelta : Data("{\"ok\": true}".utf8) }
+            return dati
+        }
+    }
+
+    func testSenzaSchedeUnaSceltaStranaNonSiCancella() async throws {
+        let base: Formazione = try Fixture.decodifica("formazione")
+        let dieci = Array(base.titolari.map(\.id).prefix(10))
+        let srv = try serverScelta(titolari: dieci, senzaSchede: true)
+        _ = try await caricata(srv)
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(srv.quante("DELETE /api/scelta"), 0, "senza la rosa non si giudica: la scelta resta")
+    }
+
+    func testConLaRosaUnaSceltaNonValidaSiCancellaELoSiDice() async throws {
+        let base: Formazione = try Fixture.decodifica("formazione")
+        let dieci = Array(base.titolari.map(\.id).prefix(10))
+        let srv = try serverScelta(titolari: dieci)
+        let (vm, _) = try await caricata(srv)
+        XCTAssertEqual(srv.quante("DELETE /api/scelta?giornata=9"), 1)
+        XCTAssertEqual(vm.messaggio, FormazioneViewModel.sceltaNonValida)
+        XCTAssertEqual(vm.statoScelta, .consigliata)
+    }
+
+    func testSiCancellaSoloConIlCodiceDelServerNonConIlTesto() async throws {
+        // il testo «Servono 11…» non basta più
+        let soloTesto = try serverScelta(titolari: nil, valuta: { throw ErroreApi.server("Servono 11 titolari diversi, tutti della rosa") })
+        let (vm1, _) = try await caricata(soloTesto)
+        XCTAssertEqual(soloTesto.quante("DELETE /api/scelta"), 0)
+        XCTAssertNotNil(vm1.manuale, "la scelta resta")
+        // il codice «formazione_non_valida» sì (con la rosa presente)
+        let conCodice = try serverScelta(titolari: nil, valuta: {
+            throw ErroreApi.codificato(codice: ValiditaScelta.codiceNonValida, messaggio: "Il modulo 2-5-3 non è ammesso nella tua lega")
+        })
+        let (vm2, _) = try await caricata(conCodice)
+        XCTAssertEqual(conCodice.quante("DELETE /api/scelta?giornata=9"), 1)
+        XCTAssertNil(vm2.manuale)
+        XCTAssertEqual(vm2.messaggio, FormazioneViewModel.sceltaNonValida)
+    }
+
+    // MARK: giornata chiusa (dopo la scadenza)
+
+    /// Un server con la giornata chiusa (`iniziata: true`) e una scelta salvata; le scritture rispondono 409 `formazione_chiusa`.
+    private func serverChiuso(conScelta: Bool = true) throws -> ServerDiProva {
+        var formazione = try XCTUnwrap(JSONSerialization.jsonObject(with: try Fixture.dati("formazione")) as? [String: Any])
+        formazione["iniziata"] = true
+        let dati = try JSONSerialization.data(withJSONObject: formazione)
+        let base: Formazione = try Fixture.decodifica("formazione")
+        let ids = base.titolari.map(\.id).map(String.init).joined(separator: ",")
+        let scelta = Data((conScelta ? "{\"titolari\": [\(ids)], \"salvata\": \"2026-10-31T13:09:00\"}" : "null").utf8)
+        return ServerDiProva { metodo, percorso, corpo in
+            if percorso.hasPrefix("/api/formazione/valuta") {
+                if let corpo, String(decoding: corpo, as: UTF8.self).contains("\"salva\":true") {
+                    throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "Formazione chiusa")
+                }
+                return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
+            }
+            if percorso.hasPrefix("/api/scelta") {
+                if metodo == "DELETE" { throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "Formazione chiusa") }
+                return scelta
+            }
+            return dati
+        }
+    }
+
+    func testAGiornataChiusaLaFormazioneSalvataSiVedeESoloInLettura() async throws {
+        let srv = try serverChiuso()
+        let (vm, f) = try await caricata(srv)
+        XCTAssertTrue(vm.chiusa)
+        guard case .salvata = vm.statoScelta else { return XCTFail("la scelta salvata si vede anche a giornata chiusa: \(vm.statoScelta)") }
+        let prima = vm.manuale
+        // niente sostituzioni, niente «Salva», niente «Torna alla consigliata», niente ballottaggi
+        let uscente = try XCTUnwrap(vm.vista(f).titolari.first { $0.ruolo == "D" })
+        let titolari = Set(vm.manuale ?? [])
+        let entrante = try XCTUnwrap(f.schede?.values.first { $0.ruolo == "D" && !titolari.contains($0.id) })
+        vm.sostituisci(uscente.id, con: entrante.id)
+        XCTAssertEqual(vm.manuale, prima)
+        await vm.valuta(salva: true)
+        await vm.tornaAllaConsigliata(f)
+        XCTAssertEqual(srv.quante("DELETE /api/scelta"), 0)
+        let salvataggi = srv.corpiInviati(a: "POST /api/formazione/valuta").filter { String(decoding: $0, as: UTF8.self).contains("\"salva\":true") }
+        XCTAssertTrue(salvataggi.isEmpty, "a giornata chiusa non si prova nemmeno a salvare")
+        XCTAssertTrue(vm.ballottaggio(per: uscente, f, vm.vista(f)).isEmpty)
+    }
+
+    func testSenzaSceltaAGiornataChiusaNienteModificaAMano() async throws {
+        let (vm, f) = try await caricata(try serverChiuso(conScelta: false))
+        vm.iniziaModificaManuale(f)
+        XCTAssertNil(vm.manuale)
+        await vm.salvaQuesta(f)
+        XCTAssertNil(vm.manuale)
+        XCTAssertEqual(vm.statoScelta, .consigliata)
+    }
+
+    func testSeLaGiornataSiChiudeMentreSalviLoDiceSenzaErroriGrezzi() async throws {
+        // il server dice «aperta» ma rifiuta il salvataggio con 409 formazione_chiusa (scadenza passata con la pagina aperta)
+        let srv = ServerDiProva { metodo, percorso, corpo in
+            if percorso.hasPrefix("/api/formazione/valuta") {
+                if let corpo, String(decoding: corpo, as: UTF8.self).contains("\"salva\":true") {
+                    throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "testo tecnico")
+                }
+                return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
+            }
+            if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
+            return try Fixture.dati("formazione")
+        }
+        let (vm, f) = try await caricata(srv)
+        await vm.salvaQuesta(f)
+        XCTAssertEqual(vm.messaggio, FormazioneViewModel.testoChiusa)
+        XCTAssertEqual(srv.quante("GET /api/formazione"), 2, "si ricarica per sapere che è chiusa")
     }
 
     func testFormazioneDiUnAltraSquadra() async throws {
@@ -371,28 +582,13 @@ final class ScambiViewModelTests: XCTestCase {
 }
 
 @MainActor
-final class MercatoEAstaViewModelTests: XCTestCase {
+final class MercatoViewModelTests: XCTestCase {
     func testIndirizzoDellaClassifica() {
         let vm = MercatoViewModel(server: ServerDiProva.conFixture([:]))
         XCTAssertEqual(vm.percorsoClassifica, "/api/classifica?limite=60&liberi=true")
         vm.ruolo = "D"
         vm.soloLiberi = false
         XCTAssertEqual(vm.percorsoClassifica, "/api/classifica?limite=60&liberi=false&ruolo=D")
-    }
-
-    func testAstaDiAgostoERiparazione() async throws {
-        let s = ServerDiProva.conFixture(["/api/asta": "asta", "/api/asta?modo=riparazione": "asta-riparazione"])
-        let vm = AstaViewModel(server: s)
-        await vm.carica()
-        XCTAssertEqual(vm.estiva.dato?.crediti, 500)
-        XCTAssertEqual(vm.giocatori(vm.estiva.dato?.ruoli ?? []).count, 6)
-        vm.ruolo = "P"
-        XCTAssertEqual(vm.giocatori(vm.estiva.dato?.ruoli ?? []).first?.nome, "Noraldi")
-        XCTAssertEqual(s.quante("modo=riparazione"), 0, "la riparazione si carica solo quando la si sceglie")
-        vm.modo = .riparazione
-        await vm.carica()
-        XCTAssertEqual(vm.riparazione.dato?.postiLiberi, 31)
-        XCTAssertEqual(vm.riparazione.dato?.perTe?.count, 4)
     }
 
     func testRicercaConPausaEAnnullamento() async throws {

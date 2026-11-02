@@ -188,15 +188,18 @@ struct BadgeRuolo: View {
     }
 }
 
-/// Striscia in alto che avvisa quando si vedono dati salvati perché il server non risponde.
+/// Striscia in alto che avvisa quando si vedono dati salvati perché l'aggiornamento non è riuscito.
+/// `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (limite, guasto del server...): si dice quello.
 struct AvvisoSalvati: ViewModifier {
     let data: Date?
+    var motivo: String? = nil
 
     func body(content: Content) -> some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
                 if let data {
-                    Label("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(data.formatted(date: .abbreviated, time: .shortened)) e può essere vecchio.", systemImage: "icloud.slash")
+                    Label(DatiVecchi.frase(salvatiIl: data.formatted(date: .abbreviated, time: .shortened), motivo: motivo),
+                          systemImage: motivo == nil ? "icloud.slash" : "exclamationmark.triangle")
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.primary)
                         .padding(.horizontal, 14)
@@ -215,7 +218,12 @@ struct AvvisoSalvati: ViewModifier {
 
 extension View {
     /// Mostra «dati salvati» se `data` non è nil (vedi `Caricatore.datiSalvati`).
-    func avvisoDatiSalvati(_ data: Date?) -> some View {
-        modifier(AvvisoSalvati(data: data))
+    func avvisoDatiSalvati(_ data: Date?, motivo: String? = nil) -> some View {
+        modifier(AvvisoSalvati(data: data, motivo: motivo))
+    }
+
+    /// La striscia dei dati salvati di un `Caricatore`, con il motivo vero se il server ha risposto con un errore.
+    @MainActor func avvisoDatiSalvati<T: Decodable>(_ caricatore: Caricatore<T>) -> some View {
+        modifier(AvvisoSalvati(data: caricatore.datiSalvati, motivo: caricatore.motivoDatiSalvati))
     }
 }

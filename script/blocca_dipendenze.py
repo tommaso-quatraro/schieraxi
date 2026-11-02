@@ -139,7 +139,7 @@ def pypi(nome: str, versione: str) -> dict:
     except urllib.error.HTTPError as e:
         if e.code == 429:
             sys.exit("PyPI risponde «troppe richieste» (429): mi fermo. Riprova più tardi (la cache tiene quanto già scaricato).")
-        raise SystemExit(f"PyPI: {nome} {versione} non trovato ({e.code})")
+        raise SystemExit(f"PyPI: {nome} {versione} non trovato ({e.code})") from None
     CACHE.mkdir(parents=True, exist_ok=True)
     f.write_text(json.dumps(dati), encoding="utf-8")
     return dati
@@ -172,7 +172,7 @@ class Risolutore:
             try:
                 principale = md.version(nome)
             except md.PackageNotFoundError:
-                raise SystemExit(f"{nome}: nessuna versione (né in --versioni, né nei requirements*.txt, né nella .venv)")
+                raise SystemExit(f"{nome}: nessuna versione (né in --versioni, né nei requirements*.txt, né nella .venv)") from None
         out = []
         for v, m in vincoli:          # python_version < "X.Y": la principale vale da X.Y in su
             out.append((v, m))

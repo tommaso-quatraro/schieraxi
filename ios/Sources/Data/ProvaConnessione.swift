@@ -57,7 +57,7 @@ enum EsitoConnessione: Equatable {
         case .nonSchieraxi:
             return "L'indirizzo risponde, ma non è il server di SchieraXI. Controlla l'indirizzo e la porta."
         case .nonRaggiungibile:
-            return "Controlla la connessione e che l'indirizzo sia scritto giusto. Se il tuo server si raggiunge solo con una VPN, tienila accesa."
+            return "Controlla la connessione e che l'indirizzo sia scritto giusto."
         case .certificato:
             return "Il collegamento sicuro non è riuscito: il certificato di sicurezza del server non è valido o l'indirizzo non inizia con https. Controlla l'indirizzo."
         case .timeout:

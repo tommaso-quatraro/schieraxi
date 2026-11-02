@@ -78,7 +78,7 @@ struct Marchio: View {
         }
         .frame(width: lato, height: lato)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Schiera SchieraXI")
+        .accessibilityLabel("Schiera undici")
     }
 }
 
@@ -93,6 +93,6 @@ struct MarchioConNome: View {
                 .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Schiera SchieraXI")
+        .accessibilityLabel("Schiera undici")
     }
 }

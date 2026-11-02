@@ -17,6 +17,7 @@ import sqlite3
 from datetime import datetime, timedelta
 
 from . import avvisi, diario, rinvii, scelte, turno as turni
+from . import etichette
 from . import formazione as fz
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import Regole, serie_a_a_lega
@@ -51,7 +52,7 @@ def inizio_turno(partite: list[dict]) -> datetime | None:
 
 def stato_partita(p: dict, adesso: datetime, live: dict | None = None, turno: datetime | None = None) -> str:
     """Lo stato di una partita del turno: prima quello del calendario (giocata), poi quello in diretta, infine l'orario.
-    Con `turno` (l'inizio del turno) una partita non giocata senza data, o fuori dalla finestra del turno, è «rinviata»:
+    Con `turno` (l'inizio del turno) una partita non giocata senza data, o fuori dalla finestra del turno e non in anticipo, è «rinviata»:
     il calendario l'ha già spostata a un recupero."""
     if p.get("giocata"):
         return "finita"
@@ -59,7 +60,7 @@ def stato_partita(p: dict, adesso: datetime, live: dict | None = None, turno: da
     if v:
         return v
     inizio = _data(p.get("data"))
-    if turno is not None and (inizio is None or not turni.nel_turno(inizio, turno)):
+    if turno is not None and not turni.della_giornata(inizio, turno):       # un anticipo non è «rinviata» (turno.py)
         return "rinviata"
     if inizio is None or adesso < inizio:
         return "da_giocare"
@@ -321,6 +322,10 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
                   for i in tit_ids + panc_ids if prev is not None and i in prev.index}
     a = andamento([info[i] for i in tit_ids], [info[i] for i in panc_ids], partite, voti, squadre_voti, attesi, fuori, regole,
                   previsione, rinvii.regola(regole, stagione, giornata))
+    for g in a["giocatori"]:                         # la stessa etichetta di Formazione e scheda (fanta/etichette.py)
+        i = g["id"]
+        g["etichetta"] = etichette.di_giocatore({"stato_partita": g["stato"], "titolarita": "fuori" if i in fuori and g["stato"] not in DECISI else None,
+                                                 "stato": prev.at[i, "stato"] if prev is not None and i in prev.index else None})
     return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "formazione_di": di} | a | {
         "partite": conta_partite(partite)}
 
@@ -466,14 +471,33 @@ def schede_a_giornata_iniziata(schede: list[dict], db: sqlite3.Connection, regol
                                adesso: datetime, live: dict | None = None) -> dict[int, dict]:
     """Dopo la scadenza le etichette delle probabili (titolare, ballottaggio, panchina...) non hanno più senso: ogni scheda
     perde `titolarita` (null; resta `fuori` per infortunati e squalificati finché non c'è il voto) e i motivi delle probabili, e
-    prende `stato_partita` (lo stato vero della sua giornata).
+    prende `stato_partita` (lo stato vero della sua giornata) e `fv_preso` (il fantavoto preso con le regole della lega, solo con
+    `stato_partita` «fatto»; altrimenti null): a partita finita i client mostrano com'è andata invece di «gioca N%».
     Restituisce {id: scheda nuova}; le schede ricevute non si toccano (possono stare nella cache dei calcoli)."""
     uniche = {int(x["id"]): x for x in schede if isinstance(x, dict) and "id" in x}
     stati = stati_giocatori(db, regole, stagione, giornata, list(uniche.values()), adesso, live)
+    fv_presi = _fantavoti_presi(db, regole, stagione, giornata, {i: x for i, x in uniche.items() if stati.get(i) == "fatto"})
     # chi è infortunato o squalificato resta «fuori» finché i voti non dicono com'è andata (altrimenti sarebbe «da giocare»)
     fuori = lambda x, st: x.get("titolarita") == "fuori" and st not in DECISI
-    return {i: x | {"titolarita": "fuori" if fuori(x, stati.get(i)) else None, "stato_partita": stati.get(i)} | _senza_probabili(x)
-            for i, x in uniche.items()}
+    nuove = {i: x | {"titolarita": "fuori" if fuori(x, stati.get(i)) else None, "stato_partita": stati.get(i), "fv_preso": fv_presi.get(i)}
+             | _senza_probabili(x) for i, x in uniche.items()}
+    for x in nuove.values():
+        x["etichetta"] = etichette.di_giocatore(x)
+    return nuove
+
+
+def _fantavoti_presi(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, giocatori: dict[int, dict]) -> dict[int, float]:
+    """{id: fantavoto preso} con le regole della lega, per chi ha già il voto (stesso calcolo di `_stato_giocatore`)."""
+    if not giocatori:
+        return {}
+    voti, _ = voti_giornata(db, stagione, giornata, list(giocatori), regole)
+    presi = {}
+    for i, g in giocatori.items():
+        if i in voti and g.get("ruolo"):
+            f = fantavoto(voti[i], g["ruolo"], regole)
+            if f is not None:
+                presi[i] = round(float(f), 2)
+    return presi
 
 
 def _senza_probabili(x: dict) -> dict:
@@ -486,18 +510,42 @@ def _senza_probabili(x: dict) -> dict:
     return out
 
 
+def squadre_in_anticipo_iniziato(db: sqlite3.Connection, stagione: str, giornata: int | None, adesso: datetime,
+                                 live: dict | None = None) -> set[str]:
+    """Le squadre di Serie A che hanno già cominciato (o finito) una partita in ANTICIPO di questa giornata (turno.anticipo):
+    i loro giocatori mostrano lo stato vero della partita anche con la formazione ancora aperta."""
+    if not giornata:
+        return set()
+    righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ?",
+                       (stagione, giornata)).fetchall()
+    partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": bool(r[3])} for r in righe]
+    inizio = inizio_turno(partite)
+    squadre: set[str] = set()
+    for p in partite:
+        if turni.anticipo(_data(p["data"]), inizio) and stato_partita(p, adesso, live, inizio) != "da_giocare":
+            squadre.update(s for s in (p["casa"], p["trasferta"]) if s)
+    return squadre
+
+
 def formazione_a_giornata_iniziata(f: dict, db: sqlite3.Connection, regole: Regole, stagione: str, adesso: datetime,
                                    live: dict | None = None) -> dict:
     """La risposta della Formazione dopo la scadenza (`iniziata: true`, schede come `schede_a_giornata_iniziata`); prima della
-    scadenza `iniziata: false` e tutto com'era. Una copia: `f` viene dalla cache e non si modifica. Mai un errore: se qualcosa
+    scadenza `iniziata: false` e tutto com'era, tranne i giocatori di un anticipo già cominciato (stato vero della partita).
+    Una copia: `f` viene dalla cache e non si modifica. Mai un errore: se qualcosa
     non va, la formazione torna com'era."""
     try:
-        if not iniziata(db, regole, stagione, f.get("giornata"), adesso):
-            return f | {"iniziata": False}
         tutte = [*(f.get("titolari") or []), *(f.get("panchina") or []), *(f.get("fuori") or []), *(f.get("schede") or {}).values()]
+        aperta = not iniziata(db, regole, stagione, f.get("giornata"), adesso)
+        if aperta:
+            # formazione ancora aperta: solo chi gioca in un anticipo già cominciato ha lo stato vero della partita («Ha giocato»,
+            # «Voto in arrivo»...); la formazione resta salvabile (turno.py, anticipi)
+            squadre = squadre_in_anticipo_iniziato(db, stagione, f.get("giornata"), adesso, live)
+            tutte = [x for x in tutte if isinstance(x, dict) and x.get("squadra") in squadre]
+            if not tutte:
+                return f | {"iniziata": False}
         nuove = schede_a_giornata_iniziata(tutte, db, regole, stagione, f["giornata"], adesso, live)
         lista = lambda chiave: [nuove.get(int(x["id"]), x) for x in f.get(chiave) or []]
-        return f | {"iniziata": True, "titolari": lista("titolari"), "panchina": lista("panchina"), "fuori": lista("fuori"),
+        return f | {"iniziata": not aperta, "titolari": lista("titolari"), "panchina": lista("panchina"), "fuori": lista("fuori"),
                     "schede": {k: nuove.get(int(x["id"]), x) for k, x in (f.get("schede") or {}).items()}}
     except Exception:                                   # noqa: BLE001  (la Formazione si apre comunque)
         return f

@@ -388,7 +388,7 @@ def riconosci_nel_testo(testo: str, rose: Rose, mia: str, altra: str | None = No
             if g.id is not None and chiave and all(x in parole for x in chiave):
                 candidati.setdefault(chiave, []).append(g)
         ids, ambigui = [], []
-        for chiave, lista in candidati.items():
+        for lista in candidati.values():
             if len(lista) == 1:
                 ids.append(lista[0].id)
             else:

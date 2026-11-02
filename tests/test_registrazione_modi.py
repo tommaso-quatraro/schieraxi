@@ -6,7 +6,7 @@ import pytest
 
 from fanta import account, account_email, posta
 
-from test_account_http import PASSWORD, cliente, invito, registra
+from test_account_http import PASSWORD, cliente, invito
 from test_account_email import codice_di, ultimi
 
 
@@ -14,6 +14,7 @@ from test_account_email import codice_di, ultimi
 def posta_finta(monkeypatch):
     messaggi = []
     monkeypatch.setattr(posta, "invia", lambda m: messaggi.append(m) or True)
+    monkeypatch.setattr(posta, "attiva", lambda: True)                # le email «partono» (le raccoglie la lista qui sopra)
     return messaggi
 
 

@@ -33,9 +33,11 @@ final class RegoleEditorViewModel: ViewModelBase {
         osserva(caricatore)
     }
 
-    func carica() async {
+    /// Rilegge le regole. Con modifiche non salvate NON le sovrascrive (prima bastava cambiare scheda e tornare, o il comando
+    /// «Aggiorna», per perderle senza avviso): solo `forza` (Annulla, o le regole cambiate da un altro dispositivo) riparte dal server.
+    func carica(forza: Bool = false) async {
         await caricatore.ricarica()
-        if let d = caricatore.dato {
+        if let d = caricatore.dato, forza || !modificato || !caricato {
             valore = d
             fasce = RegoleLogica.fasce(d)
             caricato = true
@@ -171,14 +173,14 @@ final class RegoleEditorViewModel: ViewModelBase {
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
             let conflitto = (error as? ErroreApi)?.eConflitto == true
-            if conflitto { await carica() }   // un altro dispositivo ha cambiato le regole: si rilegge la versione nuova
+            if conflitto { await carica(forza: true) }   // un altro dispositivo ha cambiato le regole: si rilegge la versione nuova
             esito = error.localizedDescription
             esitoRiuscito = false
             Haptics.esito(riuscito: false)
         }
     }
 
-    func annulla() async { await carica() }
+    func annulla() async { await carica(forza: true) }
 }
 
 // MARK: - Vista
@@ -212,6 +214,9 @@ struct RigaStepper: View {
 /// Regole della lega: punteggi, modificatore difesa, moduli, panchina, rosa e crediti. Si può anche incollare il regolamento di Leghe.
 struct RegoleEditorView: View {
     @StateObject private var vm: RegoleEditorViewModel
+    @Environment(\.dismiss) private var chiudi
+    @Environment(\.horizontalSizeClass) private var classe
+    @State private var chiediUscita = false
 
     init(server: any ServerClient) {
         _vm = StateObject(wrappedValue: RegoleEditorViewModel(server: server))
@@ -228,6 +233,7 @@ struct RegoleEditorView: View {
         ZStack {
             Sfondo()
             if vm.caricato {
+                ScrollViewReader { proxy in
                 List {
                     nome
                     importa
@@ -237,17 +243,65 @@ struct RegoleEditorView: View {
                     panchina
                     rosa
                     tempiLega
+                    partiteRinviate.id("rinviate")
                     salvataggio
                 }
                 .scrollContentBackground(.hidden)
+                // fotografia `lega-regole-fondo`: la sezione delle partite rinviate (in fondo alla lista)
+                .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
+                }
             } else if let e = vm.caricatore.errore {
                 ErroreVista(messaggio: e) { Task { await vm.carica() } }
             } else {
                 ScheletroRighe(righe: 6)
             }
         }
+        .ricercaGlobale()   // sull'iPad lente e ingranaggio stanno sulla pagina a destra, non nell'elenco
         .navigationTitle("Regole")
         .task { await vm.carica() }
+        // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga)
+        // e tornando indietro si chiede cosa fare, invece di perderle in silenzio.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if vm.caricato && vm.modificato { barraNonSalvate }
+        }
+        .navigationBarBackButtonHidden(vm.modificato && classe == .compact)
+        .toolbar {
+            if vm.modificato && classe == .compact {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { chiediUscita = true } label: { Label("Indietro", systemImage: "chevron.backward") }
+                        .accessibilityHint("Le modifiche alle regole non sono salvate: ti chiedo cosa fare")
+                }
+            }
+        }
+        .confirmationDialog("Le modifiche alle regole non sono salvate", isPresented: $chiediUscita, titleVisibility: .visible) {
+            Button("Salva le regole") {
+                Task {
+                    await vm.salva()
+                    if !vm.modificato { chiudi() }
+                }
+            }
+            Button("Esci senza salvare", role: .destructive) { chiudi() }
+            Button("Continua a modificare", role: .cancel) {}
+        }
+    }
+
+    private var barraNonSalvate: some View {
+        HStack(spacing: 10) {
+            Label("Modifiche non salvate", systemImage: "pencil.circle").font(.subheadline.weight(.semibold))
+            Spacer(minLength: 8)
+            Button {
+                Task { await vm.salva() }
+            } label: {
+                if vm.inCorso { ProgressView() } else { Text("Salva").frame(minWidth: 60) }
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(minHeight: 44)
+            .disabled(vm.inCorso)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 6)
+        .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.25))
+        .padding(.horizontal, Tema.margine).padding(.bottom, 8)
+        .accessibilityElement(children: .contain)
     }
 
     private var nome: some View {
@@ -443,6 +497,28 @@ struct RegoleEditorView: View {
             .tint(Color.verde)
             .frame(minHeight: 44)
         } header: { Text("Tempi della lega").foregroundStyle(Color.testoSecondario) }
+    }
+
+    /// Partite rinviate: cosa fa di solito la lega (solo se il server conosce la regola: con un server vecchio la sezione non c'è).
+    @ViewBuilder
+    private var partiteRinviate: some View {
+        if let modo = vm.valore.valore("partite_rinviate")?.testo {
+            Section {
+                // una riga per scelta (il selettore a segmenti tagliava «Aspetta il recupero» sull'iPhone)
+                Picker(TestiRinvio.sezioneRegole, selection: vm.testo("partite_rinviate")) {
+                    ForEach(ModoRinvio.tutti, id: \.self) { m in Text(TestiRinvio.etichetta(m)).tag(m) }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+                Text(TestiRinvio.spiega(modo)).font(.footnote).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+                if modo == ModoRinvio.votoUfficio {
+                    RigaStepper(titolo: "Voto d'ufficio", valore: vm.numero("voto_ufficio_rinviate", 6), minimo: 0, massimo: 10)
+                }
+            } header: { Text(TestiRinvio.sezioneRegole).foregroundStyle(Color.testoSecondario) } footer: {
+                Text(TestiRinvio.aiutoRegole).foregroundStyle(Color.testoSecondario)
+            }
+        }
     }
 
     private var salvataggio: some View {

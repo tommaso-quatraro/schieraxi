@@ -8,9 +8,7 @@ struct PrimoAvvioView: View {
             VStack(spacing: 20) {
                 VStack(spacing: 10) {
                     Marchio(lato: 96)
-                    Text("SchieraXI")
-                        .font(.system(.largeTitle, design: .rounded, weight: .semibold))
-                        .accessibilityHidden(true)
+                    NomeSchieraXIGrande()
                     Text("Scrivi l'indirizzo del tuo server per cominciare.")
                         .font(.subheadline).foregroundStyle(Color.testoSecondario)
                         .multilineTextAlignment(.center)
@@ -24,9 +22,6 @@ struct PrimoAvvioView: View {
                         ProvaServerView()
                     }
                 }
-                Text("Se il tuo server è raggiungibile solo da una VPN, tienila accesa.")
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
-                    .multilineTextAlignment(.center)
                 provaConDati
             }
             .frame(maxWidth: 520)

@@ -49,6 +49,7 @@ extension FinteServer {
          "previsione": {"id": 9, "nome": "Luca Bianchi", "ruolo": "D", "avversario": "genoa", "in_casa": true, "p_voto": 0.88, "punti_attesi": 6.2,
                         "gol_attesi": 0.1, "assist_attesi": 0.15}}
         """,
+        "/api/scelta": "null",
         "/api/formazione/testo": "Giornata 11 - 3-4-3 (64,5 punti attesi)",
         "/api/formazione": """
         {"squadra": "La mia squadra", "giornata": 11, "modulo": "3-4-3", "punteggio_atteso": 64.5, "con_probabili": true,
