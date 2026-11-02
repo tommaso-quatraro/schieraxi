@@ -64,7 +64,7 @@ enum Notifiche {
 
     /// Toglie subito i promemoria già programmati che l'utente ha appena spento negli avvisi.
     static func togliSpenti(_ attivi: Set<Int>) {
-        let spenti = [("fanta-60", 60), ("fanta-15", 15)].filter { !attivi.contains($0.1) }.map(\.0)
+        let spenti = [("fanta-60", 60), ("fanta-15", 15)].filter { !attivi.contains($0.1) }.map { $0.0 }
         if !spenti.isEmpty { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: spenti) }
     }
 
