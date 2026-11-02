@@ -86,3 +86,12 @@ def test_a_due_colonne_su_schermi_larghi():
 def test_sintassi_di_app_js():
     r = subprocess.run(["node", "--check", str(server.WEB / "app.js")], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+def test_rose_dopo_lo_scambio_con_le_sigle_della_lingua_e_crediti_solo_se_valutati():
+    """Collaudo 2/11: in inglese «P3 D8 C9 A6» invece di G/D/M/F; con un conguaglio impossibile la riga «Contando i crediti»
+    mostrava centinaia di punti inventati; «g10» invece di «G10» come nel calendario."""
+    corpo = APP[APP.index("function esitoAnalisi"):APP.index("async function vistaScambi")]
+    assert "ruoloSigla(r)" in corpo and "`P${x.conteggio.P}" not in corpo
+    assert "c.valore_mio != null" in corpo
+    assert "`G${gg}" in corpo and "`g${gg}" not in corpo

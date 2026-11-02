@@ -401,7 +401,16 @@ def analisi_scambio(db: sqlite3.Connection, regole: Regole, rose: Rose, con: str
             chiave = ("tasso-crediti", _versione(db), repr(regole), nome, impronta)
             return calcolo.ottieni(chiave, lambda d: scambi_multi.tasso_da_mercato(gestione.mercato(d, regole, rose, nome, con_buon_senso=False)), db,
                                    peso=calcolo.PESO_LEGGERO)
-        tassi = (tasso(rose.squadra(mia).nome), tasso(rose.squadra(con).nome))
+        # i due calcoli partono insieme: con la coda («sto calcolando») l'app riprova una volta sola invece di due
+        tassi, attesa = [], None
+        for nome in (rose.squadra(mia).nome, rose.squadra(con).nome):
+            try:
+                tassi.append(tasso(nome))
+            except calcolo.InCalcolo as e:
+                tassi.append(None)
+                attesa = e
+        if attesa is not None:
+            raise attesa
     return scambi_multi.analizza_completo(v, regole, rose, mia, con, do, ricevo, conguaglio, tassi[0], tassi[1], lingua=lingua)
 
 

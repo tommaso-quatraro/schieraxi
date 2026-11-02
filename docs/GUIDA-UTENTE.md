@@ -130,6 +130,7 @@ Gli stili vanno dal più prudente al più rischioso: **Molto sicura**, **Sicura*
 
 - **Trova per me**: SchieraXI cerca scambi che convengono a tutte e due le squadre. La ricerca parte solo quando tocchi il pulsante. Restano per oggi un certo numero di ricerche («Ne restano N oggi»); si azzerano a mezzanotte.
 - **Costruisci**: da 1 a 4 giocatori per parte, anche in numero diverso, con eventuale conguaglio in crediti (**Ricevo** o **Pago**). Poi **Valuta lo scambio**.
+  Se chi paga non ha abbastanza crediti, lo scambio risulta «non si può fare» e il conguaglio non entra nel giudizio (niente punti né crediti sotto zero).
 - **Valuta un'offerta**: incolli il messaggio dell'altro allenatore e SchieraXI dice se conviene.
 
 Servono le rose delle altre squadre: se hai caricato solo la tua, qui trovi un messaggio con il pulsante **Aggiorna le rose**. Serve anche aver indicato la tua squadra.

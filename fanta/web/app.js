@@ -1239,7 +1239,7 @@ async function tabOsservati(dove, ok) {
   try {
     const r = await api("/api/osservati");
     if (!ok()) return;
-    dove.innerHTML = introCompatta(t("mercato.n_osservati", { n: `<b>${r.giocatori.length}</b>` }), t("mercato.osservati_spiega")) +
+    dove.innerHTML = introCompatta(tp("mercato.n_osservati", r.giocatori.length, { n: `<b>${r.giocatori.length}</b>` }), t("mercato.osservati_spiega")) +
       (r.giocatori.length ? `<div class="carta"><ul class="elenco">${r.giocatori.map(x => x.assente
         ? `<li><button class="voce" data-giocatore="${x.id}" style="grid-template-columns:1fr auto"><span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
             <span class="dettaglio" style="display:block">${t("mercato.non_gioca_questa")}</span></span><span class="debole piccolo">${esc(x.proprietario || t("mercato.svincolato"))}</span></button></li>`
@@ -1844,7 +1844,7 @@ function esitoAnalisi(s) {
   const titolo = valido ? t("scambi.chi_" + g.chi) : t("scambi.chi_non_valido");
   const tre = (a, b, c3) => `<div class="riga-confronto"><span>${a}</span><b>${b}</b><b>${c3}</b></div>`;
   const prima_dopo = x => `${num(x.prima)} → ${num(x.dopo)} <span class="debole">(${segnoSc(x.variazione)})</span>`;
-  const conta = x => `P${x.conteggio.P} D${x.conteggio.D} C${x.conteggio.C} A${x.conteggio.A}`;
+  const conta = x => ["P", "D", "C", "A"].map(r => `${ruoloSigla(r)}${x.conteggio[r]}`).join(" ");      // in inglese G D M F, come altrove
   const stato = x => `<span class="${x.valida ? "positivo" : "negativo"}">${x.valida ? t("scambi.rosa_ok") : t("scambi.rosa_no")}</span>`;
   const vr = s.valore_rosa, pa = s.panchina, ro = s.rose;
   const confronto = `<div class="carta"><h2>${t("scambi.confronto")}</h2>
@@ -1853,7 +1853,7 @@ function esitoAnalisi(s) {
       ${tre(s.giornate.length === 1 ? t("scambi.formazione_migliore_una") : t("scambi.formazione_migliore", { n: s.giornate.length }), prima_dopo(vr.mio), prima_dopo(vr.loro))}
       ${tre(t("scambi.panchina"), segnoSc(pa.mio.variazione), segnoSc(pa.loro.variazione))}
       ${tre(t("scambi.in_stagione"), segnoSc(s.guadagno_mio), segnoSc(s.guadagno_loro))}
-      ${c.crediti ? tre(t("scambi.con_crediti"), segnoSc(s.netto_mio), segnoSc(s.netto_loro)) : ""}
+      ${c.crediti && c.valore_mio != null ? tre(t("scambi.con_crediti"), segnoSc(s.netto_mio), segnoSc(s.netto_loro)) : ""}
       ${tre(t("scambi.rose_dopo"), `${conta(ro.mio)}<br>${stato(ro.mio)}`, `${conta(ro.loro)}<br>${stato(ro.loro)}`)}
     </div></div>`;
   const residui = x => (x == null ? "–" : x);
@@ -1869,7 +1869,7 @@ function esitoAnalisi(s) {
       ${problemi}
       ${cartaScambio(s)}
       <div class="carta"><h2>${t("scambi.perche")}</h2><ul class="elenco-semplice">${(g.spiegazione || []).map(r => `<li>${esc(r)}</li>`).join("")}</ul>
-        <div class="debole piccolo">${t("scambi.per_giornata")}: ${s.giornate.map((gg, i) => `g${gg} ${segnoSc(s.per_giornata_mio[i])}`).join(" · ")}</div></div>
+        <div class="debole piccolo">${t("scambi.per_giornata")}: ${s.giornate.map((gg, i) => `G${gg} ${segnoSc(s.per_giornata_mio[i])}`).join(" · ")}</div></div>
     </div>
     <div class="colonna-esito">${confronto}${crediti}${impattoReparti(s)}</div>
   </div>`;
