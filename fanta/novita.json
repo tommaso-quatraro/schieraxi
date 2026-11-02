@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.351",
+    "data": "2026-11-02T13:48:24",
+    "titolo": "Seguiti con un nome solo, crediti e password più sicuri da scrivere",
+    "voci": [
+      "I giocatori che segui si chiamano «Seguiti» dappertutto; nella scheda il pulsante è «☆ Segui».",
+      "Crediti delle squadre: se hai scritto dei crediti e non li hai salvati, l'app te lo dice.",
+      "Cambiando la password la scrivi due volte, così un errore di battitura non ti chiude fuori.",
+      "Regole: «bonus +1 punto» al singolare."
+    ],
+    "tecnico": [
+      "testi.js: mercato.*osserv* e lega.voce_osservati → «Seguiti», «☆ Segui» / «★ Seguito» (inglese «Following», «☆ Follow»).",
+      "regole.media_bonus con .one/.other (tp); lega.crediti_non_salvati; account.ripeti_password e account.password_diverse con controllo prima della richiesta.",
+      "docs/COERENZA-WEB-IPHONE.md: voce «Giocatori seguiti» nel vocabolario. Test: tests/test_coerenza_web.py."
+    ]
+  },
+  {
     "versione": "1.350",
     "data": "2026-11-02T13:47:37",
     "titolo": "Seguiti: solo giocatori veri",
