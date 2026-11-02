@@ -127,6 +127,13 @@ final class AvvisiServerViewModel: ViewModelBase {
     @Published var messaggio: String?
     /// Il server ha spento le ore tranquille (inizio = fine): si dice una volta, finché non si salva di nuovo.
     @Published var oreTranquilleSpente = false
+    /// Un salvataggio non riuscito, detto in parole semplici (si vede in ogni caso, anche con gli account accesi).
+    @Published var erroreSalvataggio: String?
+    /// Le impostazioni come le ha il server (l'ultima lettura o l'ultimo salvataggio riuscito): se un salvataggio fallisce
+    /// gli interruttori tornano qui, così non mostrano una scelta che il server non ha.
+    private var salvate: ImpostazioniAvvisi?
+    /// La scelta che non è andata: «Riprova» la rimanda.
+    private var daRiprovare: ImpostazioniAvvisi?
 
     init(server: any ServerClient) {
         self.server = server
@@ -138,6 +145,7 @@ final class AvvisiServerViewModel: ViewModelBase {
     func carica() async {
         await caricatore.ricarica()
         impostazioni = caricatore.dato?.impostazioni
+        salvate = impostazioni
         oreTranquilleSpente = caricatore.dato?.oreTranquilleSpente ?? false
         ricordaOreTranquille()
     }
@@ -151,15 +159,34 @@ final class AvvisiServerViewModel: ViewModelBase {
         guard let i = impostazioni else { return }
         do {
             let _: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", i, snake: false)
+            salvate = i
+            daRiprovare = nil
+            erroreSalvataggio = nil
             ricordaOreTranquille()
             oreTranquilleSpente = false
             messaggio = nil
         } catch {
             let conflitto = (error as? ErroreApi)?.eConflitto == true
-            if conflitto { await carica() }   // cambiato da un altro dispositivo: si rilegge e si mostra il valore nuovo
-            messaggio = error.localizedDescription
+            if conflitto {
+                await carica()   // cambiato da un altro dispositivo: si rilegge e si mostra il valore nuovo
+                daRiprovare = nil
+            } else {
+                impostazioni = salvate   // gli interruttori tornano come li ha il server
+                daRiprovare = i
+            }
+            erroreSalvataggio = "Non ho salvato la modifica. " + error.localizedDescription
         }
     }
+
+    /// «Riprova» dopo un salvataggio non riuscito: rimanda la scelta che non era andata.
+    func riprova() async {
+        guard let scelta = daRiprovare else { erroreSalvataggio = nil; return }
+        impostazioni = scelta
+        await salva()
+    }
+
+    /// Dopo un errore si può riprovare (non dopo un conflitto: lì i dati sono già quelli nuovi del server).
+    var puoRiprovare: Bool { daRiprovare != nil }
 
     func provaAvviso() async {
         do {

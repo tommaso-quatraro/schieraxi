@@ -27,6 +27,21 @@ struct AvvisiServerView: View {
                     Text("Ti avvisiamo un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.")
                 }
                 if let s = vm.caricatore.dato {
+                    if let errore = vm.erroreSalvataggio {
+                        // Prima l'errore finiva solo nella sezione per chi gestisce il server: con gli account non si vedeva.
+                        Section {
+                            Label(errore, systemImage: "exclamationmark.triangle.fill")
+                                .font(.footnote).foregroundStyle(Color.attenzione)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if vm.puoRiprovare {
+                                Button { Task { await vm.riprova() } } label: {
+                                    Label("Riprova", systemImage: "arrow.clockwise").frame(minHeight: 44)
+                                }
+                                .accessibilityHint("Prova di nuovo a salvare la modifica degli avvisi")
+                            }
+                        }
+                        .onAppear { AccessibilityNotification.Announcement(errore).post() }
+                    }
                     if vm.oreTranquilleSpente {
                         Section {
                             Text("Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).")
