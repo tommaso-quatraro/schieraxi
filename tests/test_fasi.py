@@ -239,3 +239,58 @@ def test_partita_rinviata_con_la_data_vecchia_non_chiude_la_formazione(ambiente)
     assert o["iniziata"] is False and o["fase"] == "prima" and o["in_corso"] is None
     assert next(p for p in o["partite"] if p["casa"] == "lecce")["stato"] == "rinviata"
 
+
+
+# ---------------------------------------------------------------- etichette della Formazione a giornata iniziata
+def _formazione_con_etichette():
+    s = lambda i, tit: {"id": i, "nome": ROSA[i][0], "ruolo": ROSA[i][1], "squadra": ROSA[i][2], "p_voto": 0.93, "titolarita": tit,
+                        "motivi": ["titolare", "rigorista", "non tra i convocati previsti", "partita favorevole"],
+                        "motivi_frasi": [{"chiave": "motivo.titolare"}, {"chiave": "motivo.rigorista"}, {"chiave": "motivo.non_convocato"},
+                                         {"chiave": "motivo.favorevole"}]}
+    tit = [s(i, "ballottaggio") for i in TITOLARI]
+    pan = [s(i, "panchina") for i in PANCHINA]
+    return {"giornata": 10, "titolari": tit, "panchina": pan, "fuori": [], "schede": {str(x["id"]): x for x in tit + pan}}
+
+
+def test_formazione_prima_della_scadenza_tiene_le_etichette(ambiente):
+    f = _formazione_con_etichette()
+    r = fasi.formazione_a_giornata_iniziata(f, ambiente.db, REGOLE, ST, datetime(2026, 11, 6, 12, 0))
+    assert r["iniziata"] is False and r["titolari"][0]["titolarita"] == "ballottaggio" and "stato_partita" not in r["titolari"][0]
+
+
+def test_formazione_a_giornata_iniziata_stato_vero_non_le_probabili(ambiente):
+    """Collaudo 2/11/2026: a giornata in corso i 22 giocatori erano tutti «Ballottaggio» (anche al 93%). Dopo la scadenza le
+    etichette delle probabili spariscono: al loro posto lo stato vero della partita."""
+    f = _formazione_con_etichette()
+    copia = json.loads(json.dumps(f))
+    r = fasi.formazione_a_giornata_iniziata(f, ambiente.db, REGOLE, ST, datetime(2026, 11, 8, 21, 30))
+    assert f == copia                                              # la formazione in cache non si tocca
+    assert r["iniziata"] is True
+    tutte = r["titolari"] + r["panchina"] + list(r["schede"].values())
+    assert all(x["titolarita"] is None for x in tutte)
+    assert all(x["motivi"] == ["rigorista", "partita favorevole"] for x in tutte)     # via i motivi delle probabili
+    assert all([m["chiave"] for m in x["motivi_frasi"]] == ["motivo.rigorista", "motivo.favorevole"] for x in tutte)   # in parallelo
+    st = {x["id"]: x["stato_partita"] for x in r["titolari"] + r["panchina"]}
+    # sabato: Portiere ha il voto, Dif3 è rimasto fuori; domenica sera roma-lazio in corso; lunedì napoli-juve da giocare
+    assert (st[1], st[3], st[4], st[5]) == ("fatto", "senza_voto", "in_corso", "da_giocare")
+    assert r["schede"]["4"]["stato_partita"] == "in_corso"
+    # con la diretta: roma-lazio finita, voti non ancora usciti
+    r = fasi.formazione_a_giornata_iniziata(f, ambiente.db, REGOLE, ST, datetime(2026, 11, 8, 21, 30),
+                                            {("roma", "lazio"): {"stato": "finita"}})
+    assert {x["id"]: x["stato_partita"] for x in r["titolari"]}[4] == "attesa_voti"
+
+
+def test_a_giornata_iniziata_l_infortunato_resta_fuori_fino_ai_voti(ambiente):
+    f = _formazione_con_etichette()
+    for x in f["titolari"]:
+        if x["id"] in (5, 3):                 # Dif5 gioca lunedì, Dif3 ha già giocato (senza voto)
+            x["titolarita"], x["motivi"] = "fuori", ["infortunato"]
+    r = fasi.formazione_a_giornata_iniziata(f, ambiente.db, REGOLE, ST, datetime(2026, 11, 8, 21, 30))
+    g = {x["id"]: x for x in r["titolari"]}
+    assert (g[5]["titolarita"], g[5]["stato_partita"], g[5]["motivi"]) == ("fuori", "da_giocare", ["infortunato"])
+    assert (g[3]["titolarita"], g[3]["stato_partita"]) == (None, "senza_voto")         # i voti dicono già com'è andata
+
+
+def test_formazione_a_giornata_iniziata_non_fallisce_mai(ambiente):
+    f = {"giornata": 10, "titolari": [{"id": 1}], "schede": None}
+    assert fasi.formazione_a_giornata_iniziata(f, None, REGOLE, ST, datetime(2026, 11, 8, 21, 30)) == f

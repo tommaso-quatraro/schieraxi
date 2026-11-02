@@ -18,7 +18,7 @@ from .regole import Regole
 
 MAX_VOCI = 8
 MAX_DUBBI = 3
-MAX_DIARIO = 2
+MAX_DIARIO = 1
 MAX_COPERTURA = 2
 ORE_FORMAZIONE = 12            # la formazione non salvata si segnala da qui alla scadenza
 ORE_URGENTE = 3
@@ -237,18 +237,18 @@ def _certificato(giorni: int | None) -> dict | None:
 
 
 def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | None, regole: Regole | None = None) -> list[dict]:
-    """Giornate finite (le ultime 3) senza una formazione dichiarata: basta un tocco per dire «ho schierato la consigliata»."""
+    """Solo l'ULTIMA giornata finita, se manca la formazione dichiarata: basta un tocco per dire «ho schierato la consigliata».
+    Le giornate più vecchie non si chiedono più (prima si accumulavano «la giornata 6 è finita», «la giornata 7 è finita»...)."""
     voci = diario.carica(file_diario).get("giornate", {})
-    out = []
     prima = getattr(regole, "prima_giornata_lega", 1)
-    for g in reversed([x for x in affidabilita.giornate_concluse(db, stagione) if x >= prima][-3:]):
-        if scelte.leggi(stagione, g, file_scelte):
-            continue
-        if (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
-            continue
-        out.append(_voce(f"diario:{g}", "diario", F("dafare.diario", n=g - prima + 1), BASSA,
-                         F("dafare.az_schierato"), _destinazione("lega", "diario", giornata=g), giornata=g))
-    return out[:MAX_DIARIO]
+    finite = [x for x in affidabilita.giornate_concluse(db, stagione) if x >= prima]
+    if not finite:
+        return []
+    g = max(finite)
+    if scelte.leggi(stagione, g, file_scelte) or (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
+        return []
+    return [_voce(f"diario:{g}", "diario", F("dafare.diario", n=g - prima + 1), BASSA,
+                  F("dafare.az_schierato"), _destinazione("lega", "diario", giornata=g), giornata=g)][:MAX_DIARIO]
 
 
 def _dati_vecchi(db, adesso: datetime) -> dict | None:

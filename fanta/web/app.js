@@ -318,9 +318,17 @@ function avatarIndice(x, grande = false) {
 }
 const diffPill = d => `<span class="diff d${d}"><i></i>${NOMI_DIFF[d]}</span>`;
 const badgeRuolo = (r, piccolo = false) => `<span class="ruolo ${esc(r)}" ${piccolo ? `style="width:21px;height:21px;font-size:var(--t-eti);border-radius:7px;display:inline-grid;vertical-align:-4px;margin-right:6px"` : ""}>${esc(ruoloSigla(r))}</span>`;
+// A parole e senza numero: l'unica percentuale sul giocare è «gioca N%» (p_voto), quella delle probabili non si mostra.
+// A giornata iniziata il server toglie `titolarita` e manda `stato_partita`: lo stato vero della giornata al posto delle probabili.
+const STATO_PARTITA = { fatto: ["tit.st_fatto", ""], senza_voto: ["tit.st_senza_voto", "arancio"], attesa_voti: ["tit.st_attesa_voti", "neutra"],
+  in_corso: ["tit.st_in_corso", ""], da_giocare: ["tit.st_da_giocare", "neutra"], rinviata: ["tit.st_rinviata", "arancio"] };
 function pillTitolarita(x) {
+  if (x.titolarita == null && Object.hasOwn(STATO_PARTITA, x.stato_partita || "")) {
+    const [chiave, classe] = STATO_PARTITA[x.stato_partita];
+    return `<span class="etichetta ${classe}">${t(chiave)}</span>`;
+  }
   const [testo, classe] = TITOLARITA[x.titolarita] || ["", "neutra"];
-  return testo ? `<span class="etichetta ${classe}">${testo}${x.stato === "titolare" && x.percentuale != null && x.titolarita !== "fuori" ? ` ${Math.round(x.percentuale)}%` : ""}</span>` : "";
+  return testo ? `<span class="etichetta ${classe}">${testo}</span>` : "";
 }
 // Il tocco sul fantavoto atteso apre «Perché questo numero» (nella Formazione; altrove il tocco apre la scheda come sempre).
 // Le sette voci del confronto hanno l'etichetta nella lingua scelta; una voce nuova del server, senza etichetta qui, si mostra com'è.
@@ -328,6 +336,8 @@ const etichettaFattore = f => (Object.hasOwn(TESTI.it, `confronto.fattore_${f.ch
 // Anche le regole riconosciute dal testo del regolamento («Rigore parato», «Moduli ammessi»...) hanno l'etichetta nella lingua scelta.
 const etichettaRegola = m => (Object.hasOwn(TESTI.it, `regola.et.${m.chiave}`) ? t(`regola.et.${m.chiave}`) : m.etichetta);
 const attrPerche = x => Array.isArray(x.perche_numero) ? ` data-perche="${Number(x.id)}" title="${t("perche.titolo")}"` : "";
+// Quante volte parte titolare quando gioca, a parole: l'unica percentuale sul giocare resta «gioca N%».
+const partenzaAParole = q => q == null ? "–" : t(q >= 0.7 ? "mercato.parte_quasi_sempre" : q >= 0.4 ? "mercato.parte_a_volte" : "mercato.parte_di_rado");
 // I motivi sotto il nome: si scelgono dal testo italiano del server, si mostrano nella lingua scelta (motivi_frasi, vedi fanta/frasi.py).
 const motiviUtili = x => (x.motivi || []).map((testo, i) => ({ testo, frase: (x.motivi_frasi || [])[i] }))
   .filter(m => !/^titolare|^parte dalla panchina|^partita (favorevole|difficile)/.test(m.testo)).slice(0, 2);
@@ -822,7 +832,7 @@ async function copiaTesto(testo) {
 // Chi è in ballottaggio tra i titolari: i due della rosa dello stesso ruolo che gli stanno più vicini, con la differenza di punti attesi.
 // `etichetta`: la scritta «In ballottaggio con» si vede solo sulla prima riga (prima si ripeteva per ogni titolare); nelle altre è per i lettori di schermo.
 function alternativeVicine(x, m, f, etichetta = true) {
-  if (x.titolarita === "titolare") return "";
+  if (f.iniziata || x.titolarita == null || x.titolarita === "titolare") return "";      // a formazione chiusa non si cambia più
   const dentro = new Set(m.titolari);
   const alt = Object.values(f.schede).filter(y => y.ruolo === x.ruolo && !dentro.has(y.id) && y.p_voto >= 0.2)
     .sort((a, b) => b.punti_attesi - a.punti_attesi).slice(0, 2);
@@ -1415,6 +1425,7 @@ async function apriGiocatore(id) {
     const forma = formaGiocatore(s.voti || []);
     const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
     const prossime = cal && pr ? (cal.squadre.find(x => x.squadra === pr.squadra) || { partite: [] }).partite : [];
+    const nonGioca = !!pr && pr.titolarita === "fuori";          // infortunato o squalificato: niente partita, gol o cartellini
     const tile = (valore, etichetta) => `<div><b>${valore}</b><span>${etichetta}</span></div>`;
     const probabilita = !pr ? "" : c.ruolo === "P"
       ? tile(perc(pr.porta_inviolata), t("mercato.porta_inviolata")) + tile(num(pr.gol_avversario, 1), t("mercato.gol_subiti_attesi")) + tile(perc(pr.p_giallo), t("mercato.giallo"))
@@ -1430,9 +1441,9 @@ async function apriGiocatore(id) {
         <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
           <div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div></div>
           <div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div></div>
-        <div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>
+        ${nonGioca ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
         ${motiviUtili(pr).length ? `<div class="etichette">${motiviUtili(pr).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
-        <div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div></div>${cartaPerche(pr)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
+        ${nonGioca ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${cartaPerche(pr)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
       ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span>`).join("")}</div>
         <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
       <div class="carta"><h2>${t("mercato.forma")}</h2>
@@ -1551,7 +1562,7 @@ async function apriConfronto(a, b) {
         ${riga(t("mercato.gioca_riga"), g => perc(g.p_voto))}
         ${riga(t("mercato.fantavoto_atteso_riga"), g => num(g.fv_atteso))}
         ${riga(t("mercato.atteso_ponderato"), g => num(g.punti_attesi, 2))}
-        ${riga(t("mercato.parte_titolare"), g => perc(g.quota_titolare))}
+        ${riga(t("mercato.parte_titolare"), g => partenzaAParole(g.quota_titolare))}
         ${riga(t("mercato.segna"), g => perc(g.p_gol))}
         ${riga(t("mercato.assist"), g => perc(g.p_assist))}
         ${riga(t("mercato.giallo"), g => perc(g.p_giallo))}

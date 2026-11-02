@@ -144,7 +144,7 @@ def test_frasi_vere_in_inglese_con_nomi_numeri_e_frasi_dentro():
           entrata=F("confronto.entra_se", titolare="Rossi", p=15, altro="Bianchi", posto=F("posto.panchina", n=1)),
           esito=F("confronto.esito_pari", attuale=60.1, invertita=60.0)),
         F("rose.mancano", elenco=frasi.elenco([F("rose.portieri", n=2), F("rose.attaccanti", n=1)], con_e=True)),
-        F("motivo.titolare_perc", p=85), F("perche.partita_giu_fuori"),
+        F("motivo.titolare_ballottaggio"), F("perche.partita_giu_fuori"),
     ]
     attesi = [
         "Rossi cannot play. Better Adams A.",
@@ -160,7 +160,7 @@ def test_frasi_vere_in_inglese_con_nomi_numeri_e_frasi_dentro():
         "The system fields Rossi as a starter. If Rossi gets no rating (15% chance), Bianchi (bench 1) can come on in their place. "
         "The two options are worth practically the same (60.1 vs 60.0). What counts is how much each is worth when playing (Rossi 7.2 vs Bianchi 6.9), not only whether they play.",
         "missing 2 goalkeepers and 1 forward",
-        "starter at 85%", "difficult away match",
+        "contested starter", "difficult away match",
     ]
     risultato = _in_node("en", [[f.json(), str(f)] for f in casi])
     assert risultato == attesi

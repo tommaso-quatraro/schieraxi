@@ -312,6 +312,24 @@ def test_valuta_formazione_e_la_mia_scelta(client, tmp_path, monkeypatch):
     assert senza_intestazione.post("/api/formazione/valuta", json={"titolari": [1]}).status_code == 403
 
 
+def test_formazione_dopo_la_scadenza_senza_etichette_delle_probabili(client, monkeypatch):
+    """La rotta della Formazione passa da fasi.formazione_a_giornata_iniziata: dopo la scadenza `iniziata` è true e le schede
+    non hanno più `titolarita` (le etichette delle probabili), prima tutto come sempre."""
+    x = {"id": 1, "nome": "Uno", "ruolo": "P", "squadra": "inter", "titolarita": "ballottaggio", "motivi": ["titolare"]}
+    f = {"squadra": "Mia", "giornata": 9, "titolari": [x], "panchina": [], "fuori": [], "schede": {"1": x}}
+    monkeypatch.setattr(server.consigli, "formazione", lambda *a, **k: f)
+    monkeypatch.setattr(server, "_copia_automatica", lambda *a: None)
+    monkeypatch.setattr(server, "_rose", lambda *a: object())
+    monkeypatch.setattr(server.fasi, "stati_giocatori", lambda *a, **k: {1: "in_corso"})
+    monkeypatch.setattr(server.fasi, "iniziata", lambda *a: False)
+    r = client.get("/api/formazione").json()
+    assert r["iniziata"] is False and r["titolari"][0]["titolarita"] == "ballottaggio"
+    monkeypatch.setattr(server.fasi, "iniziata", lambda *a: True)
+    r = client.get("/api/formazione").json()
+    assert r["iniziata"] is True and r["titolari"][0] | r["schede"]["1"] == x | {"titolarita": None, "motivi": [], "stato_partita": "in_corso"}
+    assert f["titolari"][0]["titolarita"] == "ballottaggio"                      # la formazione in cache non cambia
+
+
 def test_osservati_aggiungi_e_togli(client, tmp_path, monkeypatch):
     monkeypatch.setattr(server.osservati, "FILE_OSSERVATI", tmp_path / "oss.json")
     assert client.put("/api/osservati/5").json() == {"osservati": [5]}

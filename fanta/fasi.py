@@ -16,7 +16,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta
 
-from . import diario, scelte, turno as turni
+from . import avvisi, diario, scelte, turno as turni
 from . import formazione as fz
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import Regole, serie_a_a_lega
@@ -127,6 +127,18 @@ def voti_giornata(db: sqlite3.Connection, stagione: str, giornata: int, ids: lis
 
 
 # ---------------------------------------------------------------- la giornata in diretta
+def _stato_giocatore(g: dict, partita: dict | None, riga_voti: dict | None, squadre_voti: set[str], regole: Regole
+                     ) -> tuple[str, float | None]:
+    """(stato del giocatore nella giornata, fantavoto se l'ha preso). Stati: fatto, senza_voto, attesa_voti, in_corso, da_giocare,
+    rinviata (vedi in cima al file). `partita` è quella della sua squadra, con `stato` già calcolato."""
+    f = fantavoto(riga_voti, g["ruolo"], regole) if riga_voti else None
+    if g.get("squadra") in squadre_voti or (f is not None):
+        return ("fatto" if f is not None else "senza_voto"), f
+    if partita is None or partita.get("stato") == "rinviata":
+        return "rinviata", None
+    return {"finita": "attesa_voti", IN_CORSO: IN_CORSO}.get(partita.get("stato"), "da_giocare"), None
+
+
 def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], voti: dict[int, dict], squadre_voti: set[str],
               attesi: dict[int, float], fuori: set[int], regole: Regole,
               previsione: dict[int, tuple[float, float, float]] | None = None) -> dict:
@@ -146,16 +158,9 @@ def andamento(titolari: list[dict], panchina: list[dict], partite: list[dict], v
     for g in titolari + panchina:
         i, p = g["id"], per_squadra.get(g.get("squadra"))
         data[i] = (p or {}).get("data")
-        r = voti.get(i)
-        f = fantavoto(r, g["ruolo"], regole) if r else None
-        if g.get("squadra") in squadre_voti or (f is not None):
-            stato[i] = "fatto" if f is not None else "senza_voto"
-            if f is not None:
-                fv[i], voto[i] = float(f), float(r[col])
-        elif p is None or p.get("stato") == "rinviata":
-            stato[i] = "rinviata"
-        else:
-            stato[i] = {"finita": "attesa_voti", IN_CORSO: IN_CORSO}.get(p.get("stato"), "da_giocare")
+        stato[i], f = _stato_giocatore(g, p, voti.get(i), squadre_voti, regole)
+        if f is not None:
+            fv[i], voto[i] = float(f), float(voti[i][col])
     certo = {i: s in DECISI for i, s in stato.items()}
     gioca = {i: (s == "fatto") if s in DECISI else (s != "rinviata" and i not in fuori) for i, s in stato.items()}
     gioc = {g["id"]: fz.Giocatore(g["id"], g.get("nome", ""), g["ruolo"], 0.0, 0.0, 0.0) for g in titolari + panchina}
@@ -356,3 +361,76 @@ def aggiungi(corpo: dict, db, regole: Regole, rose, prev, f: dict, stagione: str
     except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
         pass
     return corpo
+
+
+# ---------------------------------------------------------------- etichette a giornata iniziata
+# motivi che vengono dalle probabili formazioni (consigli.motivi): dopo la scadenza non dicono più niente di vero
+_MOTIVI_PROBABILI = ("titolare", "parte dalla panchina", "non tra i convocati previsti")
+
+
+def stati_giocatori(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, giocatori: list[dict], adesso: datetime,
+                    live: dict | None = None) -> dict[int, str]:
+    """{id: stato nella giornata} (fatto, senza_voto, attesa_voti, in_corso, da_giocare, rinviata) per i giocatori chiesti
+    ({id, ruolo, squadra}): dalla partita della sua squadra (calendario, diretta, orario) e dai voti già usciti."""
+    righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
+                       (stagione, giornata)).fetchall()
+    partite = [{"data": r[0], "casa": r[1], "trasferta": r[2], "giocata": bool(r[3])} for r in righe]
+    turno = inizio_turno(partite)
+    per_squadra: dict[str, dict] = {}
+    for p in partite:
+        p["stato"] = stato_partita(p, adesso, live, turno)
+        for sq in (p["casa"], p["trasferta"]):
+            per_squadra.setdefault(sq, p)
+    ids = [int(g["id"]) for g in giocatori]
+    voti, squadre_voti = voti_giornata(db, stagione, giornata, ids, regole)
+    return {int(g["id"]): _stato_giocatore(g, per_squadra.get(g.get("squadra")), voti.get(int(g["id"])), squadre_voti, regole)[0]
+            for g in giocatori}
+
+
+def iniziata(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int | None, adesso: datetime) -> bool:
+    """La formazione di questa giornata è chiusa (scadenza passata): stessa regola di Oggi (`iniziata`)."""
+    if not giornata:
+        return False
+    scad = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
+    return scad is not None and scad <= adesso
+
+
+def schede_a_giornata_iniziata(schede: list[dict], db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int,
+                               adesso: datetime, live: dict | None = None) -> dict[int, dict]:
+    """Dopo la scadenza le etichette delle probabili (titolare, ballottaggio, panchina...) non hanno più senso: ogni scheda
+    perde `titolarita` (null; resta `fuori` per infortunati e squalificati finché non c'è il voto) e i motivi delle probabili, e
+    prende `stato_partita` (lo stato vero della sua giornata).
+    Restituisce {id: scheda nuova}; le schede ricevute non si toccano (possono stare nella cache dei calcoli)."""
+    uniche = {int(x["id"]): x for x in schede if isinstance(x, dict) and "id" in x}
+    stati = stati_giocatori(db, regole, stagione, giornata, list(uniche.values()), adesso, live)
+    # chi è infortunato o squalificato resta «fuori» finché i voti non dicono com'è andata (altrimenti sarebbe «da giocare»)
+    fuori = lambda x, st: x.get("titolarita") == "fuori" and st not in DECISI
+    return {i: x | {"titolarita": "fuori" if fuori(x, stati.get(i)) else None, "stato_partita": stati.get(i)} | _senza_probabili(x)
+            for i, x in uniche.items()}
+
+
+def _senza_probabili(x: dict) -> dict:
+    """`motivi` senza quelli delle probabili; `motivi_frasi` (in parallelo, una per motivo) perde le stesse voci."""
+    motivi = list(x.get("motivi") or [])
+    tieni = [k for k, m in enumerate(motivi) if not str(m).startswith(_MOTIVI_PROBABILI)]
+    out = {"motivi": [motivi[k] for k in tieni]}
+    if isinstance(x.get("motivi_frasi"), list) and len(x["motivi_frasi"]) == len(motivi):
+        out["motivi_frasi"] = [x["motivi_frasi"][k] for k in tieni]
+    return out
+
+
+def formazione_a_giornata_iniziata(f: dict, db: sqlite3.Connection, regole: Regole, stagione: str, adesso: datetime,
+                                   live: dict | None = None) -> dict:
+    """La risposta della Formazione dopo la scadenza (`iniziata: true`, schede come `schede_a_giornata_iniziata`); prima della
+    scadenza `iniziata: false` e tutto com'era. Una copia: `f` viene dalla cache e non si modifica. Mai un errore: se qualcosa
+    non va, la formazione torna com'era."""
+    try:
+        if not iniziata(db, regole, stagione, f.get("giornata"), adesso):
+            return f | {"iniziata": False}
+        tutte = [*(f.get("titolari") or []), *(f.get("panchina") or []), *(f.get("fuori") or []), *(f.get("schede") or {}).values()]
+        nuove = schede_a_giornata_iniziata(tutte, db, regole, stagione, f["giornata"], adesso, live)
+        lista = lambda chiave: [nuove.get(int(x["id"]), x) for x in f.get(chiave) or []]
+        return f | {"iniziata": True, "titolari": lista("titolari"), "panchina": lista("panchina"), "fuori": lista("fuori"),
+                    "schede": {k: nuove.get(int(x["id"]), x) for k, x in (f.get("schede") or {}).items()}}
+    except Exception:                                   # noqa: BLE001  (la Formazione si apre comunque)
+        return f

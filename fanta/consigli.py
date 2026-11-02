@@ -142,29 +142,42 @@ def _indice(p: pd.DataFrame) -> pd.Series:
     return risultato.clip(0, 100).round(0)
 
 
+FUORI = ("infortunato", "squalificato")
+# sotto questa percentuale delle probabili (quella della fonte, che non si mostra) un titolare è «in ballottaggio»
+PERC_BALLOTTAGGIO = 60
+
+
 def titolarita(x: pd.Series) -> str:
-    """Etichetta semplice: quanto è sicuro che giochi."""
-    if x.get("stato") in ("infortunato", "squalificato"):
+    """Etichetta semplice, a parole (senza numero): quanto è sicuro che giochi. L'unico numero mostrato è «gioca N%» (`p_voto`);
+    chi le probabili danno titolare e ha `p_voto` alto è titolare anche se finora è partito spesso dalla panchina."""
+    stato = x.get("stato")
+    if stato in FUORI:
         return "fuori"
     p, q = float(x["p_voto"]), float(x["quota_titolare"])
-    return "titolare" if p >= 0.8 and q >= 0.6 else "ballottaggio" if p >= 0.5 else "panchina" if p >= 0.2 else "improbabile"
+    if p >= 0.8 and (q >= 0.6 or stato == "titolare"):
+        return "titolare"
+    return "ballottaggio" if p >= 0.5 else "panchina" if p >= 0.2 else "improbabile"
 
 
 def motivi(x: pd.Series) -> list[str]:
     """Perché il modello dà quel valore: frasi brevi per l'utente (`Frase`: testo italiano e chiave per tradurlo; la nota delle
-    fonti è un testo semplice, lo traduce il server con note_infortuni.py)."""
+    fonti è un testo semplice, lo traduce il server con note_infortuni.py). Nessuna percentuale sul giocare: l'unica è «gioca N%»
+    (`p_voto`), qui le probabili diventano parole. Chi è infortunato o squalificato non gioca: niente frasi sulla partita, i gol
+    o i rigori."""
     m = []
     stato, perc = x.get("stato"), x.get("percentuale")
     if stato == "titolare":
-        m.append(F("motivo.titolare_perc", p=round(float(perc))) if pd.notna(perc) else F("motivo.titolare"))
+        m.append(F("motivo.titolare_ballottaggio") if pd.notna(perc) and perc < PERC_BALLOTTAGGIO else F("motivo.titolare"))
     elif stato == "panchina":
-        m.append(F("motivo.panchina_perc", p=round(float(perc))) if pd.notna(perc) else F("motivo.panchina"))
-    elif stato in ("infortunato", "squalificato"):
+        m.append(F("motivo.panchina"))
+    elif stato in FUORI:
         m.append(F("motivo." + stato))
     elif stato == "non_citato":
         m.append(F("motivo.non_convocato"))
     if pd.notna(x.get("nota")) and x.get("nota"):
         m.append(str(x["nota"]))
+    if stato in FUORI:
+        return m
     if x["e_rigori"] >= 0.15:
         m.append(F("motivo.rigorista"))
     if x["ruolo"] == "P":
