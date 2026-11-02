@@ -1122,6 +1122,7 @@ main > .imp { grid-column: 1 / -1; }
   .foglio-sfondo { background: rgba(0, 0, 0, .3); }
   .foglio:not([hidden]) .foglio-sfondo { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .foglio-corpo { left: auto; right: 0; top: 0; bottom: 0; max-height: none; width: min(640px, 100%); max-width: none; margin: 0; border-radius: 28px 0 0 28px; padding: 22px 22px 28px; }
+  .foglio-corpo:has(.ar-squadre) { width: min(1180px, 100%); }      /* anteprima delle rose: più squadre affiancate */
   .maniglia { display: none; }
   .foglio:not([hidden]) .foglio-corpo { animation-name: sale-lato; }
   .foglio.chiude .foglio-corpo { animation-name: scende-lato; }

@@ -73,15 +73,18 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         titolari = [g["id"] for g in consigli.formazione(db, regole, rose)["titolari"]]
     schede = {g.id: consigli.scheda_previsione(g.id, prev.loc[g.id]) for g in s.giocatori if g.id is not None and g.id in prev.index}
     voci = []
-    for i in titolari:
-        x = schede.get(i)
-        if not x:
-            continue
+    # un sostituto per volta: prima chi è fuori, poi chi rischia di più; chi è già proposto non si propone una seconda volta
+    in_dubbio = [i for i in titolari if (x := schede.get(i)) and (x["stato"] in FUORI or x["dubbio"] or x["p_voto"] < 0.75)]
+    in_dubbio.sort(key=lambda i: (schede[i]["stato"] not in FUORI, schede[i]["p_voto"]))
+    proposti: set[int] = set()
+    for i in in_dubbio:
+        x = schede[i]
         fuori = x["stato"] in FUORI
-        if not (fuori or x["dubbio"] or x["p_voto"] < 0.75):
-            continue
-        liberi = [y for j, y in schede.items() if j not in titolari and y["ruolo"] == x["ruolo"] and y["stato"] not in FUORI]
+        liberi = [y for j, y in schede.items() if j not in titolari and j not in proposti and y["ruolo"] == x["ruolo"]
+                  and y["stato"] not in FUORI]
         alt = max(liberi, key=lambda y: y["punti_attesi"], default=None)
+        if alt:
+            proposti.add(alt["id"])
         chiave, param = (("dafare.dubbio_squalificato" if x["stato"] == "squalificato" else "dafare.dubbio_infortunato", {}) if fuori
                          else ("dafare.dubbio_incerto", {"p": round(x["p_voto"] * 100)}))
         extra = {}
