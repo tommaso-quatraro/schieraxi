@@ -237,9 +237,9 @@ private enum DatiDemo {
             // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque)
             d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["dubbio: affaticamento"]
         } else if p.pVoto < 0.75 {
-            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina (\(Int(p.pVoto * 100))%)"]
+            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina"]
         } else {
-            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare al 90%"]
+            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare"]
         }
         d["quotazione"] = quotazione(p)
         if conAvversario, let a = avversario(di: p.squadra) {
