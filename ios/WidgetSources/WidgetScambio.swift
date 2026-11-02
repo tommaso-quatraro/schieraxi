@@ -110,7 +110,7 @@ struct VistaScambio: View {
                 if let id = g.id { Link(destination: Vai.giocatore(id)) { riga } } else { riga }
             }
             if (elenco?.count ?? 0) > massimo {
-                Text("e altri \((elenco?.count ?? 0) - massimo)").font(.caption2).foregroundStyle(TintaWidget.testo2)
+                Text(RiassuntoWidget.altri((elenco?.count ?? 0) - massimo)).font(.caption2).foregroundStyle(TintaWidget.testo2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

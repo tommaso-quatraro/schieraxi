@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // Il riassunto compatto per i widget (`GET /api/widget`): TUTTO in una chiamata, meno di 20 kB, con ETag (If-None-Match -> 304).
 // Lo leggono i widget (con il token `fw_` a scopo limitato, o con la sessione per l'app). Il server non fa mai partire calcoli per il
@@ -32,7 +33,7 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
     /// Quando gioca (ora italiana), se la partita è nota.
     var quando: Date? { Quando.data(dataPartita) }
 
-    /// Una riga breve SOLO se c'è qualcosa da guardare: «Infortunato», «Squalificato», «Non convocato», «Dubbio · gioca 55%», «Panchina».
+    /// Una riga breve SOLO se c'è qualcosa da guardare: «Infortunato», «Squalificato», «Non convocato», «In dubbio · gioca 55%», «Panchina».
     /// Titolare (o nessuno stato) = stringa vuota. Il server manda `stato` = titolare | panchina | non_convocato | infortunato |
     /// squalificato e il dubbio a parte (`dubbio`); negli avvisi c'è `tipo`. Stesso ordine di `Giocatore.etichette`: prima
     /// l'assenza sicura, poi il dubbio, poi la panchina. Un valore nuovo si scrive leggibile («nuovo_stato» → «Nuovo stato»).
@@ -45,9 +46,8 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
         default: break
         }
         if dubbio == true || chiave == "dubbio" {
-            // una sola percentuale in tutta l'app: «gioca N%» (la percentuale delle probabili non si mostra)
-            if let p = pVoto, p > 0, p < 1 { return "Dubbio · gioca \(Int((p * 100).rounded()))%" }
-            return "Dubbio"
+            // una sola percentuale in tutta l'app: «gioca N%» da `p_voto` (la percentuale delle probabili non si mostra)
+            return DubbioRiassunto.inDubbio(pVoto)
         }
         switch chiave {
         case "", "titolare", "disponibile": return ""
@@ -586,4 +586,19 @@ extension RiassuntoWidget {
 extension RiassuntoWidget {
     /// «e un altro», «e altri 3» (mai «e altri 1»).
     static func altri(_ n: Int) -> String { n == 1 ? "e un altro" : "e altri \(n)" }
+}
+
+/// Scelte di disposizione dei widget che cambiano con il testo grande (Dynamic Type). Stanno qui, e non nelle viste, perché le
+/// viste dei widget non entrano nei test: così si provano.
+enum DisposizioneWidget {
+    /// Quanti giocatori da controllare entrano nel widget medio «Prossima giornata»: due, uno solo appena il testo è più grande
+    /// del normale (con due righe i nomi si sovrapponevano). Gli altri restano in «e altri N».
+    static func righeDubbi(_ testo: DynamicTypeSize) -> Int { testo >= .xLarge ? 1 : 2 }
+
+    /// La riga in linea del Cruscotto (Schermata di blocco): «3-4-3 · 2 da controllare». Lì il sistema mostra solo un testo e un
+    /// simbolo e taglia quello che non entra, quindi con il testo più grande del normale resta solo «2 da controllare».
+    static func rigaInLinea(modulo: String?, dubbi: Int, testo: DynamicTypeSize) -> String {
+        let stato = dubbi > 0 ? "\(dubbi) da controllare" : "titolari a posto"
+        return testo >= .xLarge ? stato : "\(modulo ?? "—") · \(stato)"
+    }
 }

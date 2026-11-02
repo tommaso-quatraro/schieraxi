@@ -216,7 +216,7 @@ struct VistaFormazione: View {
             Text(f.intervallo?.testo.map { "\(punti(f)) attesi · \($0)" } ?? "\(punti(f)) punti attesi")
                 .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             if !w.daControllare.isEmpty {
-                Text("\(w.daControllare.count) da controllare").font(.caption2)
+                EtichettaDaControllare(n: w.daControllare.count).font(.caption2)
             } else if let g = w.etichettaGiornata {
                 Text(g).lineLimit(1).minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
             }

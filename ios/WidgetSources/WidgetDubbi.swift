@@ -51,13 +51,11 @@ struct VistaDubbi: View {
 
     private func contenuto(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Label("Da controllare", systemImage: r.daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(r.daControllare > 0 ? Color.orange : .white.opacity(0.85))
-                Spacer()
-                Text(r.etichettaGiornata).font(.caption2).foregroundStyle(.white.opacity(0.7))
-            }
+            // con il testo grande il titolo lascia il posto al simbolo (mai «Da contr…»)
+            IntestazioneWidget(titolo: "Da controllare",
+                               icona: r.daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill",
+                               destra: r.etichettaGiornata,
+                               colore: r.daControllare > 0 ? .orange : .white.opacity(0.85))
             if r.inCorso || r.finita {
                 // formazione chiusa: i dubbi non contano più (i punti stanno in Oggi e nel widget Prossima giornata)
                 Spacer(minLength: 0)
@@ -81,7 +79,7 @@ struct VistaDubbi: View {
                 Spacer(minLength: 0)
             } else {
                 Spacer(minLength: 0)
-                Text("\(r.daControllare) da controllare").font(.title3.bold())
+                EtichettaDaControllare(n: r.daControllare).font(.title3.bold())
                 Text("Apri SchieraXI per i nomi.").font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
             }

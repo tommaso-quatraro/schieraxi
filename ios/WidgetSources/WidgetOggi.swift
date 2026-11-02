@@ -276,8 +276,8 @@ struct VistaWidget: View {
 
     private var conDubbi: Bool { !(voce.completo?.daControllare.isEmpty ?? true) }
 
-    /// Quanti giocatori da controllare stanno nel widget medio: con il testo molto grande uno solo (due si sovrapponevano).
-    private var righeDubbi: Int { dimensioneTesto >= .xLarge ? 1 : 2 }
+    /// Quanti giocatori da controllare stanno nel widget medio (la regola, provata dai test, sta in `DisposizioneWidget`).
+    private var righeDubbi: Int { DisposizioneWidget.righeDubbi(dimensioneTesto) }
 
     private func medio(_ r: RiassuntoOggi) -> some View {
         HStack(alignment: .top, spacing: 16) {
