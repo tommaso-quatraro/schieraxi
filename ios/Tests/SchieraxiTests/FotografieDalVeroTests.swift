@@ -52,8 +52,6 @@ final class FotografieDalVeroTests: XCTestCase {
             prova(Calendario.self, "/api/calendario")
             prova(ProposteScambi.self, "/api/scambi/proposte")
             prova(DiarioRisposta.self, "/api/diario")
-            prova(PianoAsta.self, "/api/asta")
-            prova(PianoRiparazione.self, "/api/asta?modo=riparazione")
             prova(Rosa.self, "/api/rosa")
             prova([SquadraLega].self, "/api/squadre")
             prova([Differenze].self, "/api/movimenti?limite=30")

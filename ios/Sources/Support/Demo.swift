@@ -190,9 +190,6 @@ extension Demo {
             apriLega(nav, modello, [.calendario])
         case "mercato-osservati":
             apriLega(nav, modello, [.seguiti])
-        case "mercato-asta", "mercato-asta-riparazione":
-            // l'asta sta in Lega (due volte l'anno): Lega > Asta e riparazione
-            apriLega(nav, modello, [.asta])
         case "mercato-cerca":
             apriLega(nav, modello, [.elenco])
             modello.mercato.testoRicerca = "ma"
@@ -230,8 +227,6 @@ extension Demo {
             apriLega(nav, modello, [.squadre, .rosa(ScenarioVero.attuale?.rosaAltra ?? "Gli Amici del Bar Sport Centrale")])
         case "lega-regole":
             apriLega(nav, modello, [.regole])
-        case "lega-asta":
-            apriLega(nav, modello, [.asta])
         case "lega-stato":
             apriLega(nav, modello, [.stato])
         case "lega-crediti":
