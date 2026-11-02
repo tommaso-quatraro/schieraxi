@@ -3412,7 +3412,7 @@ function campiAccesso(scheda, extra = {}) {
   if (scheda === "registra" && extra.sub === "verifica") return `<div class="debole piccolo">${t("accesso.verifica_spiega", { email: esc(extra.email || "") })}</div>`
     + CAMPO_CODICE_EMAIL("ac-codice-email");
   if (scheda === "registra") return `<div class="debole piccolo">${modo === "aperta" ? t("accesso.serve_email") : modo === "email" ? t("accesso.serve_invito_email") : t("accesso.serve_invito")}</div>`
-    + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI)) + CAMPO_NOME()
+    + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
     + CAMPO_EMAIL("ac-email", modo === "invito")
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
     + `<label class="interruttore accesso-letto"><span>${t("accesso.letto", { privacy: linkLegale("privacy", "legale.privacy"), termini: linkLegale("termini", "legale.termini"), eta: ETA_MINIMA })}</span><input type="checkbox" id="ac-letto"></label>`;
@@ -3482,6 +3482,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
       } else if (scheda === "registra" && extra.sub === "verifica") {
         const r = await manda("/api/account/registra/conferma", { email: extra.email, codice: v("#ac-codice-email").trim(), iscrizione: extra.iscrizione || "" });
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
+        dimenticaInvito();
         mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
       } else if (scheda === "registra") {
         if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto")); e.status = 400; throw e; }       // controllo locale: la password resta
@@ -3491,6 +3492,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         const r = await manda("/api/account/registra", corpo);
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
+        dimenticaInvito();
         mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
       } else if (extra.sub === "email") {
         const email = v("#ac-email").trim();
@@ -3560,6 +3562,29 @@ function collegaGoogleAccesso(el) {
   });
 }
 
+// Link d'invito (`https://<indirizzo>/?invito=CODICE`): il codice si legge, si toglie subito dall'indirizzo (niente cronologia
+// col codice) e si tiene per la sessione del browser, così resta anche passando da «Accedi con Google» e ritorno.
+function invitoDaIndirizzo(search) {
+  let v = "";
+  try { v = new URLSearchParams(search || "").get("invito") || ""; } catch { return ""; }
+  v = v.toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  return v.length >= 4 && v.length <= 40 ? v : "";
+}
+function invitoSalvato() {
+  try { return sessionStorage.getItem("invito") || ""; } catch { return ""; }
+}
+function leggiInvitoDaLink() {
+  const v = invitoDaIndirizzo(location.search);
+  if (v) {
+    try { const u = new URL(location.href); u.searchParams.delete("invito"); history.replaceState(null, "", u.pathname + u.search + u.hash); } catch { /* niente cronologia */ }
+    try { sessionStorage.setItem("invito", v); } catch { /* niente memoria */ }
+  }
+  return v || invitoSalvato();
+}
+const dimenticaInvito = () => { try { sessionStorage.removeItem("invito"); } catch { /* niente memoria */ } };
+const valoreInvito = () => (invitoSalvato() ? ` value="${esc(invitoSalvato())}"` : "");
+const linkInvito = codice => `${location.origin}/?invito=${encodeURIComponent(codice)}`;
+
 // Al ritorno da Google l'indirizzo porta `?social=<codice>` o `?social_errore=<motivo>`: si leggono e si tolgono subito dall'indirizzo.
 function leggiRitornoGoogle() {
   let p;
@@ -3600,7 +3625,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
     <div id="accesso-msg" role="alert">${messaggio ? `<div class="errore">${esc(messaggio)}</div>` : ""}</div>
     <form id="accesso-form" novalidate>
       ${campoAccesso("ac-nome", t("accesso.nome_utente"), "text", `value="${esc(r.nome_suggerito || "")}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" required`)}
-      ${r.serve_invito ? campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI) : ""}
+      ${r.serve_invito ? campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito()) : ""}
       <label class="interruttore accesso-letto"><span>${t("accesso.letto", { privacy: linkLegale("privacy", "legale.privacy"), termini: linkLegale("termini", "legale.termini"), eta: ETA_MINIMA })}</span><input type="checkbox" id="ac-letto"></label>
       <div class="pulsanti"><button class="bottone" type="submit" id="accesso-invia">${t("social.crea")}</button></div></form>
     <p class="accesso-legale"><a href="#" id="accesso-torna">${t("accesso.torna")}</a></p>
@@ -3617,6 +3642,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
     try {
       await api("/api/account/social/completa", { method: "POST", timeout: 30000,
         body: JSON.stringify({ iscrizione: r.iscrizione, nome_utente: $("#ac-nome").value, invito: $("#ac-invito") ? $("#ac-invito").value : "", accetto_termini: true }) });
+      dimenticaInvito();
       location.reload();
     } catch (e) {
       mostra(erroreGoogle(e));
@@ -3855,10 +3881,26 @@ function collegaAmministratore() {
   $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
     const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked }) });
     $("#adm-etichetta").value = "";
-    mostraCodice("#adm-esito-invito", r.codice);
-    $("#adm-esito-invito").insertAdjacentHTML("afterbegin", `<div class="debole piccolo">${t("admin.invito_esito", { etichetta: esc(r.etichetta), giorni: r.valido_giorni })}</div>`);
+    mostraInvito(r);
     caricaUtenti();
   }));
+  const mostraInvito = r => {
+    const dove = $("#adm-esito-invito");
+    if (!dove) return;
+    const link = linkInvito(r.codice), messaggio = t("admin.invito_messaggio", { link, giorni: r.valido_giorni });
+    const condividi = typeof navigator.share === "function";
+    dove.innerHTML = `<div class="debole piccolo">${t("admin.invito_esito", { etichetta: esc(r.etichetta), giorni: r.valido_giorni })}</div>
+      <div class="attenzione">${t("admin.invito_manda")}</div>
+      <div class="codice-una-volta piccolo" id="adm-link-invito">${esc(link)}</div>
+      <div class="pulsanti">${condividi ? `<button class="bottone" type="button" id="adm-condividi">${t("admin.invito_condividi")}</button>` : ""}
+        <button class="bottone ${condividi ? "secondario" : ""}" type="button" id="adm-copia-messaggio">${t("admin.invito_copia_messaggio")}</button></div>
+      <div class="debole piccolo">${t("admin.invito_codice_app", { codice: esc(r.codice) })}</div>`;
+    $("#adm-copia-messaggio").addEventListener("click", async () => avviso(await copiaTesto(messaggio) ? t("admin.invito_copiato") : t("codice.non_copio")));
+    if (condividi) $("#adm-condividi").addEventListener("click", async () => {
+      try { await navigator.share({ title: "SchieraXI", text: messaggio }); }
+      catch (e) { if (e && e.name !== "AbortError") avviso(await copiaTesto(messaggio) ? t("admin.invito_copiato") : t("codice.non_copio")); }
+    });
+  };
   $("#adm-reset").addEventListener("click", () => provaCosi(t("account.nuovo_codice_no"), async () => {
     const r = await api("/api/admin/reset-password", { method: "POST", body: JSON.stringify({ nome_utente: valore("#adm-nome") }) });
     mostraCodice("#adm-esito-reset", r.codice);
@@ -3869,7 +3911,7 @@ function collegaAmministratore() {
       const r = await api("/api/admin/utenti");
       if (!$("#adm-utenti")) return;
       const elenco = r.utenti.map(u => esc(u.nome_visualizzato || u.nome_utente) + (u.ruolo === "amministratore" ? t("admin.admin_breve") : "")).join(", ");
-      $("#adm-utenti").innerHTML = t("admin.utenti_riepilogo", { n: r.utenti.length, massimo: r.massimo, elenco });
+      $("#adm-utenti").innerHTML = tp("admin.utenti_riepilogo", r.utenti.length, { massimo: r.massimo, elenco });
     } catch (e) { if ($("#adm-utenti")) $("#adm-utenti").textContent = e.message; }
   };
   caricaUtenti();
@@ -3905,8 +3947,9 @@ async function controllaAccesso() {
   stato.social = dati && Array.isArray(dati.social) ? dati.social : [];                    // servizi di accesso accesi sul server (per ora «google»)
   stato.accessi = dati && dati.accessi ? dati.accessi : null;
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
+  const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {
-    if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso();
+    if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false); else mostraAccesso("", invito ? "registra" : "accedi");
     return false;
   }
   if (r.ok && dati && dati.multiutente) {
