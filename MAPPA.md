@@ -4,7 +4,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 
 ## Comandi (Windows, dalla radice del repository)
 - Ambiente: `python -m venv .venv`, poi `.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt`.
-- Librerie: `requirements*.txt` hanno versioni fisse e hash e non si scrivono a mano. L'elenco sta in `requirements.in`, `requirements-dev.in` e `requirements-vincoli.in`; si rigenera con `.venv\Scripts\python.exe script\blocca_dipendenze.py`.
+- Librerie: `requirements*.txt` hanno versioni fisse e hash e non si scrivono a mano. L'elenco sta in `requirements.in`, `requirements-dev.in` e `requirements-vincoli.in`; si rigenera con `.venv\Scripts\python.exe script\blocca_dipendenze.py`. Dependabot (`.github/dependabot.yml`) aggiorna solo le azioni di GitHub: le librerie Python le rigenererebbe con pip-compile.
   Su macOS e Linux: `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
 - Test tutti: `.venv\Scripts\python.exe -m pytest -q`. Un file solo: `... -m pytest -q tests\test_rose_csv.py`.
 - Server locale: `.venv\Scripts\python.exe -m fanta server` (ascolta su 127.0.0.1:8000). Elenco comandi: `-m fanta --help`.
