@@ -2,16 +2,19 @@ import SwiftUI
 
 /// Scegli a mano gli undici che hai schierato in una giornata già finita (per il Diario). Si parte da quelli già salvati o, in mancanza,
 /// da quelli della consigliata; il server controlla che siano undici della tua rosa con un modulo valido.
+/// Se il server rifiuta, l'errore si vede qui dentro, sopra il conto «N di 11»: la lista del Diario sotto il foglio non si vede.
 struct FormazioneManualeDiarioView: View {
     let voce: VoceDiario
-    let salva: ([Int]) async -> Bool
+    /// Salva i titolari scelti: nil se è andata bene (il foglio si chiude), altrimenti l'errore da mostrare.
+    let salva: ([Int]) async -> String?
     @StateObject private var rosa: Caricatore<Rosa>
     @Environment(\.dismiss) private var chiudi
     @State private var scelti: Set<Int> = []
     @State private var inCorso = false
     @State private var partito = false
+    @State private var errore: String?
 
-    init(voce: VoceDiario, server: any ServerClient, salva: @escaping ([Int]) async -> Bool) {
+    init(voce: VoceDiario, server: any ServerClient, salva: @escaping ([Int]) async -> String?) {
         self.voce = voce
         self.salva = salva
         _rosa = StateObject(wrappedValue: Caricatore<Rosa>("/api/rosa", cache: false, ascolta: false, server: server))
@@ -30,7 +33,7 @@ struct FormazioneManualeDiarioView: View {
             List {
                 if let r = rosa.dato {
                     Section {
-                        Text("Giornata \(voce.giornata ?? 0): tocca i giocatori che hai schierato. Servono 11 titolari.")
+                        Text("\(voce.titolo): tocca i giocatori che hai schierato. Servono 11 titolari.")
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                     ForEach(reparti, id: \.0) { reparto in
@@ -55,21 +58,33 @@ struct FormazioneManualeDiarioView: View {
                     Button {
                         Task {
                             inCorso = true
-                            let ok = await salva(scelti.sorted())
+                            errore = nil
+                            errore = await salva(scelti.sorted())
                             inCorso = false
-                            if ok { chiudi() }
+                            if errore == nil { chiudi() }
                         }
                     } label: { if inCorso { ProgressView() } else { Text("Salva") } }
                     .disabled(scelti.count != 11 || inCorso)
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Text("\(scelti.count) di 11")
-                    .font(.subheadline.weight(.semibold)).monospacedDigit()
-                    .foregroundStyle(scelti.count == 11 ? Color.verde : (scelti.count > 11 ? Color.attenzione : Color.testoSecondario))
-                    .padding(.vertical, 8).frame(maxWidth: .infinity)
-                    .background(.bar)
+                VStack(spacing: 6) {
+                    if let errore {
+                        Label(errore, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote.weight(.semibold)).foregroundStyle(Color.attenzione)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Text("\(scelti.count) di 11")
+                        .font(.subheadline.weight(.semibold)).monospacedDigit()
+                        .foregroundStyle(scelti.count == 11 ? Color.verde : (scelti.count > 11 ? Color.attenzione : Color.testoSecondario))
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.vertical, 8).padding(.horizontal, Tema.margine)
+                .background(.bar)
             }
+            // cambiando i giocatori l'errore di prima non vale più
+            .onChange(of: scelti) { errore = nil }
             .task {
                 await rosa.ricarica()
                 if !partito { scelti = iniziali; partito = true }
