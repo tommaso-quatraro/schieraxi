@@ -1,7 +1,7 @@
 # SchieraXI: linee guida di design (web, iOS, Android)
 
 Revisione del 30/10/2026 su screenshot web (390 px, `fanta/web/screenshot-*.png`) e iOS (artifact `screenshot-app`, run 41047749574).
-Non verificato: tablet/PC e tema chiaro della web (solo lette le regole CSS), Android. Valori del CSS in `fanta/web/stile.css`, di iOS in `Sources/Support/Design/Tema.swift`.
+Non verificato: tablet/PC e tema chiaro della web (solo lette le regole CSS; il grigio secondario è stato misurato nel browser il 2/11/2026, vedi «Grigio secondario»), Android. Valori del CSS in `fanta/web/stile.css`, di iOS in `Sources/Support/Design/Tema.swift`.
 Densità e Mercato su iOS: le sta già correggendo l'agente iOS (PR non ancora pubblicata al momento della revisione: confrontare prima di iniziare).
 
 ## Principi
@@ -22,7 +22,7 @@ Densità e Mercato su iOS: le sta già correggendo l'agente iOS (PR non ancora p
 | Corpo | 15 / 400 | `.subheadline` | testo normale |
 | Secondario | 13 / 450, `--testo-2` | `.footnote` | squadra, quotazione, spiegazioni brevi |
 | Etichetta | 12 / 600 maiuscolo, spaziatura .06em | `.caption.weight(.semibold)` | intestazioni di sezione, unità («punti attesi») |
-Mai sotto 12 px/`.caption`. Il secondario non usa opacità extra: o `--testo-2` o niente (oggi la web ha 9, 9,5, 10,5, 11 px e testi grigi spenti).
+Mai sotto 12 px/`.caption`. Il secondario non usa opacità extra: o `--testo-2` o niente (dal 2/11/2026 anche la web: le partite finite e rinviate, i dubbi tolti e le voci non selezionabili passano a `--testo-2` invece di sbiadire).
 Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 
 ## Spaziature e forme
@@ -49,11 +49,47 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 | Positivo (bonus, guadagno, sicuro) | `#3DDC97` | `#0A7D4C` | web `--verde`; iOS oggi `Color.green` di sistema: allineare |
 | Negativo (malus, rischio) | `#FF6B5E` | `#B3261E` | `--rosso` |
 | Attenzione (dubbio, diffidato) | `#FFB04A` | `#9C5400` | `--arancio` |
-| Neutro/secondario | `#9DB4A5` | `#587064` | `--testo-2`; iOS `Color.testoSecondario` `#BCCDC2` / `#46564D` (almeno 4,5:1 anche sull'alone sfumato, dal 2/11/2026) |
+| Neutro/secondario | `#BCCDC2` | `#46564D` | `--testo-2` (web) e `Color.testoSecondario` (iOS): lo STESSO valore, l'unico grigio dei testi secondari (vedi «Grigio secondario» sotto) |
 | Capitano / selezione | `#D4F34A` | `#86A800` (solo fondo, mai testo) | `--capitano`; sopra il lime testo scuro (`--capitano-testo`) |
 | Azione (pulsanti, testo di azione) | `#3DDC97` (`--azione`) | `#526600` (testo bianco sopra) | Dal 31/10/2026: in chiaro mai il lime per il testo; `MARCHIO.md`, «Contrasto dei colori delle azioni» |
 | Informazione | `#62A9FF` | `#1A5BB5` | `--blu` |
 Il giallo (`--giallo`) resta solo per la stella «consigliato». Un valore positivo ha il segno `+`, uno negativo `−`.
+
+## Grigio secondario (2/11/2026)
+Un solo grigio per sottotitoli, didascalie, orari, intestazioni di elenco e testi «spenti»: web `--testo-2` in `fanta/web/stile.css`, iOS `Tema.secondarioChiaro`/`secondarioScuro`. Stessi due valori, `#46564D` in chiaro e `#BCCDC2` in scuro; un test (`test_design_web.py`) li tiene uguali. Regole:
+- Nel CSS e nel JS nessun altro grigio per il testo: niente `opacity` sul testo (sbiadire un grigio già grigio lo portava sotto 3:1: le partite finite erano a 2,0:1 in chiaro), niente grigi scritti a mano. Una riga «finita» o «rinviata» cambia il colore dei nomi in `--testo-2`; il risultato resta in `--testo`. Le parti disattivate di un controllo (`:disabled`) possono avere opacità, il testo no.
+- Il grigio deve valere 4,5:1 (3:1 sopra 24 px o 18,66 px in grassetto) su bianco, carte e fondo piatto; sul fondo sfumato più carico, senza carta sopra, in chiaro arriva a 4,3:1 (è il punto con le due macchie sovrapposte). La testata (sticky) ha un vetro più opaco (80%) perché il campo verde le passa sotto.
+
+Contrasto di `--testo-2` sui fondi principali (calcolo con `prove/contrasto_web/fondi.py`; i due «punti più carichi» del fondo sfumato sono i pixel più scuri/più chiari misurati sul fondo vero, 20 immagini, 2 larghezze, 5 momenti dell'animazione):
+
+| Fondo chiaro | prima `#587064` | dopo `#46564D` |
+|---|---|---|
+| bianco | 5,36 | 7,78 |
+| fondo piatto (#eaf3ee) | 4,74 | 6,87 |
+| carta su fondo piatto | 5,18 | 7,52 |
+| fondo sfumato, punto più carico | 2,95 | 4,29 |
+| carta su fondo sfumato più carico | 4,59 | 6,66 |
+
+| Fondo scuro | prima `#B3C6BA` | dopo `#BCCDC2` |
+|---|---|---|
+| fondo piatto (#07100b) | 10,76 | 11,63 |
+| carta su fondo piatto | 7,93 | 8,57 |
+| fondo sfumato, punto più carico | 3,95 | 4,27 |
+| carta su fondo sfumato più carico | 5,36 | 5,79 |
+| carta con riflesso del dito (+22% bianco) | 2,87 | 3,10 |
+
+Contrasto vero sul telefono e sul PC (`prove/contrasto_web/scatta.mjs` + `analizza.py`: Chrome senza finestra apre Oggi, Formazione, Rosa, Diario, Impostazioni a 390 e 1440 px in chiaro e scuro, scorre le pagine, toglie le lettere e confronta il colore di ogni testo con il fondo vero sotto le sue lettere, al 10% peggiore; un testo contato una volta sola). Testi secondari (colore `--testo-2` o sbiaditi dall'opacità):
+
+| Tema e larghezza | testi | peggiore prima | peggiore dopo | 10% più bassi prima | dopo | sotto 4,5:1 prima | dopo |
+|---|---|---|---|---|---|---|---|
+| chiaro 390 px | 390 | 1,22 | 1,77 (*) | 3,64 | 6,05 | 92 | 1 |
+| chiaro 1440 px | 424 | 2,11 | 4,47 | 3,69 | 6,40 | 92 | 1 |
+| scuro 390 px | 390 | 2,97 | 3,93 | 4,62 | 6,26 | 36 | 3 |
+| scuro 1440 px | 424 | 3,14 | 3,89 | 5,10 | 7,07 | 29 | 4 |
+
+(*) un solo testo: una lettera «A» del Diario mentre scorre sotto il bordo alto del foglio; ferma vale 7,5:1.
+
+Rimasti sotto 4,5:1: in chiaro nulla di rilevante; in scuro il simbolo «○» (3,9:1) e le righe «Giornata 10 · …» e «Modulo» sulla scheda con l'alone verde (4,1 a 4,3:1). Per portarle oltre 4,5:1 servirebbe un grigio scuro più chiaro di `#BCCDC2`, ma allora web e iOS non sarebbero più uguali: da decidere insieme.
 
 ## Gerarchia e densità: regole
 - In ogni card il numero chiave è il più grande e a destra o sotto il titolo; l'unità sta sotto in Etichetta.
@@ -85,7 +121,7 @@ Gravità: A = blocca/si legge male, M = fastidio, B = rifinitura. Responsabile: 
 | 10 | W/I | Colore positivo: web `#3DDC97`/`#0A7D4C`, iOS `Color.green` di sistema (diverso, in chiaro poco contrasto) | M | Colori semantici in `Tema.swift` uguali alla tabella |
 | 11 | W/I | Chip modulo: web verde pieno, iOS lime pieno; stile: web chip, iOS menu | M | Lime per attivo ovunque (decisione: sì); stile = menu su entrambi |
 | 12 | W | Scala tipografica con 25 dimensioni (8,5-44 px), 7 raggi, 10+ paddings | M | Variabili CSS `--t-*`, `--r-*`, `--s-*` e sostituzione graduale |
-| 13 | W | Testi secondari (`--testo-2` su vetro, 12-13 px; sotto 11 px) poco evidenti | M | Secondario min 13 px; `--testo-2` scuro più chiaro (#B3C6BA); minimo 12 px |
+| 13 | W | Testi secondari (`--testo-2` su vetro, 12-13 px; sotto 11 px) poco evidenti | M | Fatto il 2/11/2026: `--testo-2` unico `#BCCDC2` / `#46564D` come iOS, niente opacità sul testo. Resta: secondario min 13 px, minimo 12 px |
 | 14 | I | Testi secondari iOS `.secondary` sul fondo con sfumatura verde: contrasto basso | M | Usare `Color.secondary` solo su fondo piatto; su gradiente `.primary.opacity(.75)` |
 | 15 | W | Intestazione: titolo = nome squadra, sottotitolo con giornata; iOS: titolo = nome schermata (grande) | M | Scegliere iOS (titolo schermata) anche su web, nome squadra nella riga di stato |
 | 16 | I/W | Pulsante cerca/aggiorna: web 2 icone in cerchio, iOS 1 o 2 in una capsula | B | Capsula con 2 azioni al massimo, stesso ordine |

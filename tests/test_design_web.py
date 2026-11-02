@@ -119,7 +119,20 @@ def test_colori_semantici_come_su_ios():
     for nome, s, c in (("verde", "#3ddc97", "#0a7d4c"), ("rosso", "#ff6b5e", "#b3261e"), ("arancio", "#ffb04a", "#9c5400"),
                        ("capitano", "#d4f34a", "#86a800"), ("azione", "#3ddc97", "#526600"),("blu", "#62a9ff", "#1a5bb5")):
         assert f"--{nome}: {s}" in scuro and f"--{nome}: {c}" in chiaro, nome
-    assert "--testo-2: #b3c6ba" in scuro and "--testo-2: #587064" in chiaro
+    assert "--testo-2: #bccdc2" in scuro and "--testo-2: #46564d" in chiaro      # il grigio secondario unico, uguale a iOS (Tema.secondarioScuro / secondarioChiaro)
+
+
+def test_grigio_secondario_unico_niente_opacita_sul_testo_e_stessi_valori_di_ios():
+    """Un solo grigio per i testi secondari: le righe «finita» e «rinviata» passano a --testo-2 invece di sbiadire con l'opacità
+    (a .55 il grigio scendeva a ~2:1 in chiaro); l'immagine da condividere usa lo stesso grigio del tema scuro."""
+    assert not re.search(r"\.partita(?:\.\w+)*\s*(?:\.\w+\s*)*\{[^}]*opacity\s*:", CSS)
+    assert not re.search(r"\.ar-dubbio\.tolto\s*\{[^}]*opacity", CSS)
+    assert re.search(r"\.partita\.giocata \.sq \{ color: var\(--testo-2\)", CSS) and re.search(r"\.partita\.rinviata \.sq \{ color: var\(--testo-2\)", CSS)
+    assert "#9db4a5" not in APP and APP.count('"#bccdc2"') == 2
+    ios = (server.WEB.parent.parent / "ios/Sources/Support/Design/Tema.swift")
+    if ios.exists():                                                         # nella copia pubblica c'è anche l'app iPhone: i due valori devono coincidere
+        tema = ios.read_text(encoding="utf-8").lower()
+        assert "secondarioscuro: uint32 = 0xbccdc2" in tema and "secondariochiaro: uint32 = 0x46564d" in tema
 
 
 def test_nomi_piccoli_del_mercato_hanno_area_di_tocco_larga_44px():
