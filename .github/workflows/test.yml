@@ -56,6 +56,28 @@ jobs:
           for f in script/server/*.sh; do bash -n "$f"; done
           if grep -lU $'\r' script/server/*.sh; then echo "Fine riga di Windows negli script del server"; exit 1; fi
 
+  # Sicurezza dei workflow con zizmor (https://docs.zizmor.sh): permessi troppo larghi, testo della PR dentro i comandi,
+  # eventi pericolosi delle PR, azioni non fissate, credenziali lasciate al checkout, Dependabot. Versione fissata (azione per hash,
+  # zizmor 1.31.1 scaricato dall'azione con gli hash). Per ora SEGNALA SOLTANTO: passo con continue-on-error e job fuori
+  # dai «needs» di «unisci»; i rilievi compaiono come avvisi sui file della PR. Diventa bloccante quando è pulito (issue #108).
+  zizmor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Sicurezza dei workflow (zizmor, per ora solo avvisi)
+        continue-on-error: true
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b  # v0.8.0
+        with:
+          version: 1.31.1
+          persona: regular
+          advanced-security: false       # niente caricamento nella scheda Security: bastano gli avvisi nella PR
+          annotations: true
+
   # Ogni modifica al codice dell'app dice cosa cambia: un file fanta/novita.d/<nome>.json (il numero lo dà il bot all'unione)
   # Gli script di controllo si prendono da main, mai dal ramo della PR. Le PR di Dependabot non lo richiedono (e non si uniscono da sole).
   versione:

@@ -81,6 +81,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
   controlli verdi. Una pull request in bozza non si unisce.
+- Job `zizmor` (sicurezza dei workflow, versione fissata): per ora solo avvisi, fuori dai `needs` di `unisci` (bloccante dopo #108). Azioni sempre per hash (`tests/test_workflow_controlli.py`).
 - Job `rilascia` (in fila, un alla volta, dopo `unisci`): dà il numero di versione dopo il più alto, data e ora dell'unione,
   scrive la voce in `fanta/novita.json`, toglie il file da `fanta/novita.d/`, alza `VERSIONE` in `fanta/web/sw.js` se la
   pull request ha toccato `fanta/web/`, fa un commit su `main` e crea la release.
