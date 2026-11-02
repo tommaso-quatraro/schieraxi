@@ -311,7 +311,7 @@ MIGRAZIONI = [
 ]
 
 # Versione dei testi «Privacy» e «Termini d'uso» (la data di «Ultimo aggiornamento» delle pagine): si cambia quando cambiano i testi.
-VERSIONE_TERMINI = "2026-11-01"
+VERSIONE_TERMINI = "2026-11-02"
 TERMINI_RIFIUTATI = ("Per iscriverti devi accettare Privacy e Termini d'uso. / "
                      "To sign up you must accept the Privacy policy and the Terms of use.")
 
