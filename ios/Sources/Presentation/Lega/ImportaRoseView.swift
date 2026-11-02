@@ -1,8 +1,7 @@
-import PhotosUI
 import SwiftUI
 
 /// Lega > Aggiorna le rose (ci porta anche il passo «rose» del primo avvio). Due passi:
-/// 1) si scelgono gli screenshot di Leghe (letti sul telefono), si incolla la pagina delle rose o si sceglie il file (Excel, CSV, testo);
+/// 1) si incolla la pagina delle rose o si sceglie il file (Excel, CSV, testo);
 /// 2) l'anteprima del server, che non salva niente: squadra per squadra i dubbi da sistemare, la propria squadra, poi «Conferma e salva».
 /// Logica in `ImportaExcelViewModel` e `AnteprimaLogica`.
 struct ImportaExcelView: View {
@@ -12,7 +11,6 @@ struct ImportaExcelView: View {
     @EnvironmentObject private var nav: Navigazione
     @State private var scegli = false
     @State private var cerca: DubbioDaCercare?
-    @State private var fotoScelte: [PhotosPickerItem] = []
 
     init(server: any ServerClient) {
         self.server = server
@@ -51,13 +49,6 @@ struct ImportaExcelView: View {
             Task { await vm.importa(risultato) }
         }
         // Un file arrivato da un'altra app («Apri con SchieraXI»): passa dall'anteprima, con gli stessi controlli del selettore.
-        .onChange(of: fotoScelte) { _, scelte in
-            guard !scelte.isEmpty else { return }
-            Task {
-                await vm.leggiFoto(scelte)
-                fotoScelte = []
-            }
-        }
         .task(id: nav.fileDaImportare) {
             guard let url = nav.fileDaImportare else { return }
             nav.fileDaImportare = nil
@@ -70,7 +61,6 @@ struct ImportaExcelView: View {
     private var inserimento: some View {
         List {
             if let e = vm.esito { esito(e) }
-            daScreenshot
             Section {
                 Text("Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato (scambi, svincolati presi, tagli, crediti).")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
@@ -105,7 +95,7 @@ struct ImportaExcelView: View {
             } header: { Text("Incolla il testo delle rose").foregroundStyle(Color.testoSecondario) }
             if vm.inCorso {
                 Section {
-                    HStack(spacing: 10) { ProgressView(); Text(vm.letturaFoto ?? "Leggo le rose…").foregroundStyle(Color.testoSecondario) }
+                    HStack(spacing: 10) { ProgressView(); Text("Leggo le rose…").foregroundStyle(Color.testoSecondario) }
                         .frame(minHeight: Tema.areaTocco)
                         .accessibilityElement(children: .combine)
                 }
@@ -113,30 +103,9 @@ struct ImportaExcelView: View {
             if let errore = vm.errore {
                 Section { Label(errore, systemImage: "exclamationmark.triangle").foregroundStyle(Color.attenzione) }
             }
-            if !vm.avvisiFoto.isEmpty {
-                Section {
-                    ForEach(vm.avvisiFoto, id: \.self) { Text($0).font(.footnote) }
-                } header: { Text("Dagli screenshot").foregroundStyle(Color.testoSecondario) }
-            }
             daSistemare
         }
         .scrollContentBackground(.hidden)
-    }
-
-    /// Dal telefono il testo delle rose di Leghe non si copia: si fanno gli screenshot e il testo lo legge l'iPhone.
-    private var daScreenshot: some View {
-        Section {
-            PhotosPicker(selection: $fotoScelte, maxSelectionCount: 80, selectionBehavior: .ordered, matching: .images) {
-                Label("Scegli gli screenshot", systemImage: "photo.on.rectangle.angled")
-                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
-            }
-            .disabled(vm.inCorso)
-            .accessibilityHint("Sceglie le foto della rosa fatte nell'app Leghe")
-            Text("Nell'app Leghe apri la lega, poi ogni squadra: fai gli screenshot scorrendo tutta la rosa (anche sovrapposti). Qui puoi sceglierli tutti insieme, di più squadre.")
-                .font(.footnote).foregroundStyle(Color.testoSecondario)
-            Label("Le foto restano sul telefono: al server mando solo il testo letto.", systemImage: "lock")
-                .font(.footnote).foregroundStyle(Color.testoSecondario)
-        } header: { Text("Dagli screenshot di Leghe").foregroundStyle(Color.testoSecondario) }
     }
 
     @ViewBuilder
@@ -247,9 +216,6 @@ struct AnteprimaRoseVista: View {
             Text(AnteprimaLogica.riassunto(anteprima)).font(.subheadline)
             if let m = vm.messaggioAnteprima {
                 Label(m, systemImage: "arrow.triangle.2.circlepath").font(.footnote).foregroundStyle(Color.attenzione)
-            }
-            ForEach(vm.avvisiFoto, id: \.self) { a in
-                Label(a, systemImage: "photo").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             ForEach(AnteprimaLogica.avvisiGenerali(anteprima), id: \.self) { a in
                 Label(a, systemImage: "info.circle").font(.footnote).foregroundStyle(Color.attenzione)
