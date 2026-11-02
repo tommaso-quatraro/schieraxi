@@ -1314,7 +1314,7 @@ def sotto_il_cofano(request: Request, ctx: Contesto = Depends(lega_corrente)):
         corpo = sotto_il_cofano_mod.costruisci(db, consigli.stagione_corrente(), affidabilita.carica(ctx.affidabilita),
                                                lingua=lingua_testi.della_richiesta(request))
     except sotto_il_cofano_mod.TestiNonDisponibili:
-        raise HTTPException(503, sotto_il_cofano_mod.MESSAGGIO_NON_DISPONIBILE)
+        raise HTTPException(503, sotto_il_cofano_mod.MESSAGGIO_NON_DISPONIBILE) from None
     finally:
         db.close()
     etag = versioni.etag_dati(corpo)

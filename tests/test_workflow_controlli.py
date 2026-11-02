@@ -131,4 +131,4 @@ def test_ruff_controlla_il_codice_con_versione_e_hash_fissati():
     assert re.search(r"ruff\" check (--output-format=github )?fanta tests script prove", blocco_test)
     assert "ruff format" not in testo and "--fix" not in testo
     config = (CARTELLA_WORKFLOW.parent.parent / "ruff.toml").read_text(encoding="utf-8")
-    assert re.search(r'^select = \[.*"E9".*"F".*\]', config, re.M)
+    assert re.search(r'^select = \[.*"E9".*"F".*"B".*\]', config, re.M)       # B = bug probabili (flake8-bugbear, #146)

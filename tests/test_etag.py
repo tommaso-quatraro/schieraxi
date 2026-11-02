@@ -74,7 +74,7 @@ def prova(c, leggi, scrivi):
 
 def test_regole(mondo):
     a, _ = nuovo_utente("utentea")
-    prova(a, lambda: a.get("/api/regole"), lambda h, n=iter(range(100)): a.put("/api/regole", json=regole_con(f"Lega {next(n)}"), headers=h))
+    prova(a, lambda: a.get("/api/regole"), lambda h, n=iter(range(100)): a.put("/api/regole", json=regole_con(f"Lega {next(n)}"), headers=h))  # noqa: B008 contatore condiviso fra le chiamate, voluto
 
 
 def test_rose_crediti_mia_squadra_e_importazione(mondo):
