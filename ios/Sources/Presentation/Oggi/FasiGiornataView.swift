@@ -237,6 +237,9 @@ struct RigaGiocatoreInCorso: View {
 /// Fase `finita`: com'è andata la giornata appena chiusa (fatti contro attesi, fascia, confronto con la consigliata) e il Diario.
 struct CartaRiepilogoGiornata: View {
     let riepilogo: RiepilogoGiornata?
+    /// Partite rinviate ancora da recuperare: il menu «per questa giornata» (nil = niente menu, per esempio nelle anteprime).
+    var rinvioInCorso = false
+    var cambiaRinvio: (@MainActor (SceltaRinvio, String) async -> Void)? = nil
     @Environment(\.funzioni) private var funzioni
     @EnvironmentObject private var nav: Navigazione
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 46
@@ -275,6 +278,14 @@ struct CartaRiepilogoGiornata: View {
                 }
                 if let n = TestiFase.notaDiario(r) {
                     Text(n).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                if let m = TestiRinvio.recuperoManca(r.recuperi) {
+                    Label(m, systemImage: "calendar.badge.clock")
+                        .font(.subheadline).foregroundStyle(Color.attenzione)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let s = r.rinvio, let cambia = cambiaRinvio {
+                    MenuRinvio(scelta: s, inCorso: rinvioInCorso, cambia: cambia)
                 }
             } else {
                 Text("La giornata è finita. I punti compariranno qui appena escono i voti.")

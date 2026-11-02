@@ -233,6 +233,7 @@ struct RegoleEditorView: View {
         ZStack {
             Sfondo()
             if vm.caricato {
+                ScrollViewReader { proxy in
                 List {
                     nome
                     importa
@@ -242,9 +243,13 @@ struct RegoleEditorView: View {
                     panchina
                     rosa
                     tempiLega
+                    partiteRinviate.id("rinviate")
                     salvataggio
                 }
                 .scrollContentBackground(.hidden)
+                // fotografia `lega-regole-fondo`: la sezione delle partite rinviate (in fondo alla lista)
+                .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
+                }
             } else if let e = vm.caricatore.errore {
                 ErroreVista(messaggio: e) { Task { await vm.carica() } }
             } else {
@@ -492,6 +497,26 @@ struct RegoleEditorView: View {
             .tint(Color.verde)
             .frame(minHeight: 44)
         } header: { Text("Tempi della lega").foregroundStyle(Color.testoSecondario) }
+    }
+
+    /// Partite rinviate: cosa fa di solito la lega (solo se il server conosce la regola: con un server vecchio la sezione non c'è).
+    @ViewBuilder
+    private var partiteRinviate: some View {
+        if let modo = vm.valore.valore("partite_rinviate")?.testo {
+            Section {
+                Picker(TestiRinvio.sezioneRegole, selection: vm.testo("partite_rinviate")) {
+                    ForEach(ModoRinvio.tutti, id: \.self) { m in Text(TestiRinvio.etichetta(m)).tag(m) }
+                }
+                .pickerStyle(.segmented)
+                Text(TestiRinvio.spiega(modo)).font(.footnote).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+                if modo == ModoRinvio.votoUfficio {
+                    RigaStepper(titolo: "Voto d'ufficio", valore: vm.numero("voto_ufficio_rinviate", 6), minimo: 0, massimo: 10)
+                }
+            } header: { Text(TestiRinvio.sezioneRegole).foregroundStyle(Color.testoSecondario) } footer: {
+                Text(TestiRinvio.aiutoRegole).foregroundStyle(Color.testoSecondario)
+            }
+        }
     }
 
     private var salvataggio: some View {
