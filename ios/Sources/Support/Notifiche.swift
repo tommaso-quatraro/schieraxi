@@ -30,9 +30,11 @@ enum Notifiche {
     }
 
     /// I promemoria che cadono nelle ore tranquille si saltano (come fa il server): sono utili solo a quell'ora.
-    static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, adesso: Date = Date()) -> [(id: String, minuti: Int, quando: Date)] {
+    /// Solo quelli accesi negli avvisi (`attivi`: 60 e/o 15 minuti).
+    static func promemoriaConsentiti(inizio: Date, ore: OreTranquille, attivi: Set<Int> = [60, 15],
+                                     adesso: Date = Date()) -> [(id: String, minuti: Int, quando: Date)] {
         var elenco: [(id: String, minuti: Int, quando: Date)] = []
-        for (id, minuti) in [("fanta-60", 60), ("fanta-15", 15)] {
+        for (id, minuti) in [("fanta-60", 60), ("fanta-15", 15)] where attivi.contains(minuti) {
             let quando = inizio.addingTimeInterval(-Double(minuti) * 60)
             guard quando > adesso, !ore.inSilenzio(quando) else { continue }
             elenco.append((id: id, minuti: minuti, quando: quando))
@@ -60,12 +62,18 @@ enum Notifiche {
         }
     }
 
+    /// Toglie subito i promemoria già programmati che l'utente ha appena spento negli avvisi.
+    static func togliSpenti(_ attivi: Set<Int>) {
+        let spenti = [("fanta-60", 60), ("fanta-15", 15)].filter { !attivi.contains($0.1) }.map(\.0)
+        if !spenti.isEmpty { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: spenti) }
+    }
+
     static func programma(giornata: Int, inizio: Date, modulo: String?) async {
         let centro = UNUserNotificationCenter.current()
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
         centro.removePendingNotificationRequests(withIdentifiers: ["fanta-60", "fanta-15"])
-        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi()) {
+        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioPromemoria.minutiAttivi()) {
             let contenuto = UNMutableNotificationContent()
             contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
             contenuto.body = "Giornata \(giornata)" + (modulo.map { ", modulo consigliato \($0)" } ?? "") + ". Mister, dai un'occhiata alla formazione."

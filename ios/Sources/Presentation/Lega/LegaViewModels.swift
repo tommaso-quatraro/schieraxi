@@ -152,10 +152,30 @@ final class AvvisiServerViewModel: ViewModelBase {
 
     /// Le ore tranquille servono anche ai promemoria locali: si ricordano sul telefono.
     private func ricordaOreTranquille() {
-        if let i = impostazioni, !Demo.attivo { ArchivioOreTranquille.salva(i.oreTranquille) }
+        if let i = impostazioni, !Demo.attivo {
+            ArchivioOreTranquille.salva(i.oreTranquille)
+            // anche quali promemoria locali sono accesi: spenti qui, il telefono non li manda più
+            ArchivioPromemoria.salva(sessanta: i.promemoria_60, quindici: i.promemoria_15)
+            if !Ambiente.ospiteDeiTest { Notifiche.togliSpenti(ArchivioPromemoria.minutiAttivi()) }
+        }
     }
 
+    /// Il salvataggio in corso: i salvataggi vanno uno alla volta. Due interruttori toccati in fretta partivano insieme con la
+    /// stessa versione: il secondo riceveva 412 («cambiato da un altro dispositivo», ma era questo) e la modifica si perdeva.
+    private var inCoda: Task<Void, Never>?
+
     func salva() async {
+        let prima = inCoda
+        let questo = Task { @MainActor [weak self] in
+            await prima?.value
+            await self?.salvaOra()
+        }
+        inCoda = questo
+        await questo.value
+    }
+
+    /// Manda le impostazioni come sono ADESSO (comprese le modifiche fatte mentre si aspettava il salvataggio precedente).
+    private func salvaOra() async {
         guard let i = impostazioni else { return }
         do {
             let _: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", i, snake: false)

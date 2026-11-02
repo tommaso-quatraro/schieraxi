@@ -50,6 +50,7 @@ enum Aggiornamento {
         if Demo.attivo { return }
         if let stato: StatoAvvisi = try? await ServerCorrente.condiviso.get("/api/avvisi", snake: false) {
             ArchivioOreTranquille.salva(stato.impostazioni.oreTranquille)
+            ArchivioPromemoria.salva(sessanta: stato.impostazioni.promemoria_60, quindici: stato.impostazioni.promemoria_15)
         }
     }
 

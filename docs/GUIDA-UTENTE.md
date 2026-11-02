@@ -167,6 +167,8 @@ Gli avvisi dicono le cose a parole (per esempio «ora probabile titolare», senz
 
 Attivazione: nella web app, riquadro **Notifiche di questa app**, tocca **Attiva**; **Manda un avviso di prova** controlla che funzioni. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente). **Ore tranquille**: scegli una fascia (per esempio dalle 23 alle 7) in cui non arriva niente; ciò che cade lì arriva dopo.
 
+Nell'app per iPhone e iPad (Impostazioni > Avvisi e promemoria) arrivano solo i promemoria di **60 e 15 minuti** prima, e solo quelli che hai lasciato accesi; gli altri avvisi arrivano dalla web app installata sulla schermata Home.
+
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: **Disattiva**, poi **Attiva** nello stesso riquadro.
 
 ### Widget sull'iPhone

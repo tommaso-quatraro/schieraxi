@@ -49,7 +49,7 @@ struct AvvisiServerView: View {
                                 .accessibilityAddTraits(.isStaticText)
                         }
                     }
-                    Section(titolo: "Quali avvisi") {
+                    Section {
                         interruttore("Cambi di formazione e probabili", \.cambi)
                         if let prima = vm.impostazioni?.avviso_prima { sceltaAvvisoPrima(prima) }
                         interruttore("Promemoria un'ora prima", \.promemoria_60)
@@ -69,14 +69,17 @@ struct AvvisiServerView: View {
                         }
                         .tint(Color.verde)
                         .frame(minHeight: 44)
+                    } header: {
+                        Text("Quali avvisi").foregroundStyle(Color.testoSecondario)
+                    } footer: {
+                        // Con gli account l'app nativa non riceve gli avvisi del server: lo si dice QUI, accanto agli interruttori,
+                        // non in una sezione più in basso (sembrava che gli interruttori valessero per questo telefono).
+                        if sessione.multiutente {
+                            Text(Self.notaAccount).foregroundStyle(Color.testoSecondario)
+                        }
                     }
                     sezioneOreTranquille
-                    if sessione.multiutente {
-                        Section {
-                            Text("Per ricevere anche gli avvisi su cambi di formazione e riepilogo, apri SchieraXI con Safari e aggiungilo alla schermata Home: gli avvisi arrivano da lì.")
-                                .font(.footnote).foregroundStyle(Color.testoSecondario)
-                        }
-                    } else {
+                    if !sessione.multiutente {
                     Section {
                         Toggle(isOn: Binding(
                             get: { vm.impostazioni?.app_nativa ?? false },
@@ -116,6 +119,9 @@ struct AvvisiServerView: View {
         .task { await vm.carica() }
         .task { await lega.aggiornaPermesso() }
     }
+
+    /// Con gli account: quali di questi avvisi arrivano su questo telefono e quali solo dalla web app.
+    static let notaAccount = "Su questo telefono arrivano solo i promemoria di un'ora e di 15 minuti prima. Cambi di formazione, riepilogo e reparto scoperto arrivano dalla web app: apri SchieraXI con Safari e aggiungilo alla schermata Home."
 
     /// Ore tranquille: niente avvisi in quella fascia (anche i promemoria di questo telefono la rispettano).
     private var sezioneOreTranquille: some View {
