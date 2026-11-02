@@ -99,6 +99,7 @@ def cmd_importa(a) -> None:
     if not lette:
         sys.exit(rose.NESSUNA_ROSA)
     precedenti = lega.carica(FILE_ROSE)
+    lega.nomi_rinominati(lette, precedenti)
     nuove = lega.da_import(lette, precedenti, sostituisci_tutto=a.sostituisci_tutto)
     lega.salva(nuove, FILE_ROSE, copia_di_riserva=True)
     diff = movimenti.differenze(precedenti, nuove)

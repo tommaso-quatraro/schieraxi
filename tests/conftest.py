@@ -116,6 +116,8 @@ def _dati_personali_in_cartella_finta(request, tmp_path, monkeypatch):
     for modulo, nome, file in ((scelte, "FILE_SCELTE", "scelte.json"), (osservati, "FILE_OSSERVATI", "osservati.json"),
                                (diario, "FILE", "diario.json"), (affidabilita, "FILE", "affidabilita.json")):
         monkeypatch.setattr(modulo, nome, d / file)
+    from fanta import immagini                                # stemmi e maglie: mai nella cartella della lega (anche quella di esempio)
+    monkeypatch.setattr(immagini, "CARTELLA", d / "immagini")
 
 
 @pytest.fixture

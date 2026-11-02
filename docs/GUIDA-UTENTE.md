@@ -118,7 +118,7 @@ Gli stili vanno dal più prudente al più rischioso: **Molto sicura**, **Sicura*
 ### Squadra
 
 - **Squadre e rose**: la tua squadra (si cambia con «Non è la tua squadra?»), **Stemma e maglia**, **Vedi la rosa**; tocca un'altra squadra per vedere rosa e formazione.
-  Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Se poi reimporti le rose con il nome vecchio, quella squadra torna come nuova: cambialo anche su Leghe.
+  Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.
 - **Cambi consigliati**: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Compaiono solo cambi sensati, con il perché in una frase. Con i crediti inseriti vedi solo quelli che puoi permetterti. Se hai caricato solo la tua squadra, un avviso ricorda che qualche svincolato potrebbe essere già di un altro.
 - **Seguiti**: i giocatori con la ☆. Ti avvisa se si infortunano o tornano disponibili.
 - **Elenco dei giocatori** (filtri per ruolo, solo svincolati, ricerca per nome) e **Calendario** con la difficoltà.
