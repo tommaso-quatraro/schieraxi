@@ -177,7 +177,7 @@ Il widget è il riquadro sulla Home o sulla schermata di blocco. Si collega **da
 
 **Altro > Diario delle giornate.** Per ogni giornata finita vedi **Cosa consigliava SchieraXI** accanto a **Cosa hai schierato** (i giocatori cambiati sono evidenziati), i punti previsti e quelli fatti («azzeccata», «meno del previsto», «più del previsto»).
 
-Se non hai detto cosa hai schierato, tocca **Ho schierato questa** o **Ho schierato un'altra formazione** (scegli a mano i tuoi undici); **Correggi a mano** rifà una formazione già registrata. Se il Diario è vuoto, dice perché: manca la tua squadra, non è finita nessuna giornata, oppure sono ancora da calcolare.
+Se non hai detto cosa hai schierato, tocca **Ho schierato questa** (nell'app per iPhone **Ho schierato la consigliata**) o **Ho schierato un'altra formazione** (scegli a mano i tuoi undici); **Correggi a mano** rifà una formazione già registrata. Se il Diario è vuoto, dice perché: manca la tua squadra, non è finita nessuna giornata, oppure sono ancora da calcolare.
 
 - **Le tue scelte**: nelle giornate in cui hai schierato undici diversi dal consiglio, quante volte hanno fatto più punti le tue scelte e quante il consiglio. Non è un voto: serve a capire dove ti fidi del tuo istinto.
 - **Quanto ci abbiamo preso**: quanto SchieraXI ci ha preso, **anche quando va male**, in quattro numeri con una frase ciascuno:

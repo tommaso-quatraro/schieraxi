@@ -21,12 +21,15 @@ final class DiarioViewModel: ViewModelBase {
     @Published var inSalvataggio: Int?
     @Published var messaggio: String?
     @Published var messaggioRiuscito = false
+    /// La giornata (numero di Serie A) a cui si riferisce il messaggio: si mostra dentro la sua sezione, vicino al pulsante toccato.
+    @Published var giornataDelMessaggio: Int?
 
     /// «Ho schierato un'altra formazione»: undici titolari scelti a mano tra i giocatori della tua rosa (il server controlla modulo e rosa).
     /// Restituisce vero se è stata salvata.
     func haSchieratoAMano(giornata: Int, numero: Int? = nil, titolari: [Int]) async -> Bool {
         guard inSalvataggio == nil else { return false }
         inSalvataggio = giornata
+        giornataDelMessaggio = giornata
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "manuale", titolari: titolari))
@@ -49,6 +52,7 @@ final class DiarioViewModel: ViewModelBase {
     func haSchieratoLaConsigliata(giornata: Int, numero: Int? = nil) async {
         guard inSalvataggio == nil else { return }
         inSalvataggio = giornata
+        giornataDelMessaggio = giornata
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "consigliata"))
@@ -122,12 +126,6 @@ struct DiarioView: View {
                                    descrizione: "Si riempie dopo la prima giornata finita (serve la tua squadra indicata in Squadra).")
                             .listRowBackground(Color.clear)
                     }
-                    if let m = vm.messaggio {
-                        Section {
-                            Label(m, systemImage: vm.messaggioRiuscito ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .font(.footnote).foregroundStyle(vm.messaggioRiuscito ? Color.verde : Color.attenzione)
-                        }
-                    }
                     ForEach(d.giornate ?? []) { voce in giornata(voce) }
                 } else if let e = vm.caricatore.errore {
                     ErroreVista(messaggio: e) { Task { await vm.carica() } }
@@ -160,6 +158,13 @@ struct DiarioView: View {
 
     private func giornata(_ v: VoceDiario) -> some View {
         Section {
+            // L'esito di «Ho schierato…» sta nella sezione della giornata toccata: in cima alla lista non si vedeva.
+            if let m = vm.messaggio, vm.giornataDelMessaggio != nil, vm.giornataDelMessaggio == v.giornata {
+                Label(m, systemImage: vm.messaggioRiuscito ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(.footnote.weight(.semibold)).foregroundStyle(vm.messaggioRiuscito ? Color.verde : Color.attenzione)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onAppear { AccessibilityNotification.Announcement(m).post() }
+            }
             if v.schierata == nil {
                 Text("Non avevi salvato la tua formazione per questa giornata.").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
@@ -175,7 +180,7 @@ struct DiarioView: View {
                 } label: {
                     HStack {
                         if vm.inSalvataggio == g { ProgressView() }
-                        Label("Ho schierato questa", systemImage: "checkmark.circle").font(.body.weight(.semibold))
+                        Label("Ho schierato la consigliata", systemImage: "checkmark.circle").font(.body.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
