@@ -81,7 +81,7 @@ final class SchedaChiaraTests: XCTestCase {
         XCTAssertEqual(fatto.etichette.first?.testo, "Ha giocato")
         let senza = try giocatore(#""stato_partita": "senza_voto","#)
         XCTAssertEqual(senza.etichette.first?.testo, "Senza voto")
-        XCTAssertEqual(senza.etichette.first?.gravita, .grave)
+        XCTAssertEqual(senza.etichette.first?.gravita, .attenzione, "arancio come la web (STATO_PARTITA in app.js)")
         XCTAssertEqual(try giocatore(#""stato_partita": "attesa_voti","#).etichette.first?.testo, "Voto in arrivo")
         XCTAssertEqual(try giocatore(#""stato_partita": "in_corso","#).etichette.first?.testo, "Partita in corso")
         XCTAssertEqual(try giocatore(#""stato_partita": "rinviata","#).etichette.first?.testo, "Rinviata")
