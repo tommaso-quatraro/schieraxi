@@ -101,6 +101,37 @@ def dall_archivio(percorso: Path | None = None) -> tuple[list[Calciatore], str] 
     return calciatori, quando
 
 
+_COMPLETI: dict = {}
+
+
+def nomi_completi(percorso: Path | None = None) -> dict[int, str]:
+    """Nome e cognome per esteso dei giocatori già abbinati con sicurezza a un'altra fonte (Understat, stessa squadra o
+    nome inequivocabile): {codice: "Lautaro Martínez"}. Facoltativo: {} se l'archivio non c'è o non ha la tabella.
+    Sola lettura; si rilegge solo quando il file cambia."""
+    import sqlite3
+
+    from . import archivio
+    p = Path(percorso or archivio.FILE)
+    try:
+        chiave = (str(p), p.stat().st_mtime_ns)
+    except OSError:
+        return {}
+    if _COMPLETI.get("chiave") == chiave:
+        return _COMPLETI["nomi"]
+    try:
+        db = sqlite3.connect(f"file:{p.as_posix()}?mode=ro", uri=True, timeout=30)
+        try:
+            righe = db.execute("SELECT calciatore_id, nome FROM understat_giocatori WHERE calciatore_id IS NOT NULL "
+                               "AND abbinamento IN ('squadra', 'altra_squadra') ORDER BY id").fetchall()
+        finally:
+            db.close()
+    except sqlite3.Error:
+        return {}
+    nomi = {int(cid): str(nome) for cid, nome in righe if nome}
+    _COMPLETI.update(chiave=chiave, nomi=nomi)
+    return nomi
+
+
 def carica(aggiorna: bool = False, max_eta: timedelta = timedelta(hours=24),
            file_cache: Path = FILE_CACHE, archivio_db: Path | None = None) -> tuple[list[Calciatore], str]:
     """Restituisce (calciatori, data di scaricamento). Usa la cache se è recente. Senza file e senza fonte (spenta o che non risponde)

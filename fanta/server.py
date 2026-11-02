@@ -1074,19 +1074,25 @@ def _nome_normalizzato(nome: str) -> str:
 
 @app.get("/api/giocatori")
 def cerca_giocatori(q: str = "", limite: int = 15, tutti: bool = False):
-    """Ricerca per nome nel listone (anche con accenti o iniziali diverse). Con `tutti=1` l'elenco intero (circa 600 righe, senza
-    ordine particolare): l'app lo scarica una volta e cerca sul dispositivo, così ogni tasto risponde subito."""
+    """Ricerca per nome nel listone (anche con accenti o iniziali diverse, e per nome proprio: «Lautaro»). Con `tutti=1` l'elenco
+    intero (circa 600 righe, senza ordine particolare): l'app lo scarica una volta e cerca sul dispositivo, così ogni tasto
+    risponde subito. `nome_completo` (facoltativo, solo per chi lo ha): nome e cognome per esteso, per cercare anche con quello."""
     db = _db()
     try:
         righe = db.execute("SELECT id, nome, ruolo, squadra, quotazione FROM calciatori").fetchall()
     finally:
         db.close()
+    completi = listone.nomi_completi()
+    elenco = [{**dict(r), **({"nome_completo": completi[r["id"]]} if r["id"] in completi else {})} for r in righe]
     if tutti:
-        return [_con_avatar(dict(r)) for r in righe]
+        return [_con_avatar(g) for g in elenco]
     n = nomi.normalizza(q)
-    trovati = [dict(r) for r in righe if n and n in _nome_normalizzato(r["nome"])]
-    trovati.sort(key=lambda r: (not _nome_normalizzato(r["nome"]).startswith(n), -r["quotazione"]))
-    return [_con_avatar(r) for r in trovati[:limite]]
+    if not n:
+        return []
+    chiavi = {g["id"]: (_nome_normalizzato(g["nome"]), _nome_normalizzato(g.get("nome_completo", ""))) for g in elenco}
+    trovati = [g for g in elenco if any(n in k for k in chiavi[g["id"]])]
+    trovati.sort(key=lambda g: (not any(k.startswith(n) for k in chiavi[g["id"]]), -g["quotazione"]))
+    return [_con_avatar(g) for g in trovati[:max(1, min(limite, 100))]]
 
 
 def _con_avatar(g: dict) -> dict:
@@ -1543,7 +1549,7 @@ def _leggi_rose(griglie, r, correzioni: list[dict] | None = None):
     """Le squadre lette (con le scelte dell'utente sui dubbi già applicate), gli avvisi della lettura e il listone."""
     calciatori, _ = listone.carica()
     avvisi: list[str] = []
-    lette = rose.estrai(griglie, nomi.Indice(calciatori), r.rosa, avvisi)
+    lette = rose.estrai(griglie, nomi.Indice(calciatori, listone.nomi_completi()), r.rosa, avvisi)
     if not lette:
         raise ValueError(rose.NESSUNA_ROSA)
     anteprima_rose.applica_correzioni(lette, correzioni, calciatori)

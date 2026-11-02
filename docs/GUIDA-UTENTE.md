@@ -46,7 +46,9 @@ Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si pu�
    Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per gli scambi e le aggiungi quando vuoi. Se vuoi solo guardare l'app, usa le **squadre di esempio**.
 2. **Controlla e conferma.** SchieraXI mostra cosa ha capito, squadra per squadra:
    - **da controllare** (arancione): nome simile a un altro o cognome doppio. Scegli quello giusto dal menu, cerca a mano con **Un altro: lo cerco io**, oppure **Toglilo dalla rosa**;
-   - **non trovati** (rosso): cerca quello giusto, toglilo o lascialo per ora «non riconosciuto»;
+   - **non trovati** (rosso): se qualcuno gli somiglia lo trovi già nel menu; altrimenti cercalo, toglilo o lascialo per ora «non riconosciuto»;
+   - nomi scritti per intero («Lautaro Martinez», «Martinez Lautaro») o con l'iniziale («Pulisic C.») vengono proposti tra quelli da controllare.
+     Nella ricerca dei giocatori puoi scrivere anche il nome proprio («Lautaro»).
    - **riconosciuti**: raccolti in una riga che puoi aprire.
    In alto scegli **Qual è la tua squadra?** (se aggiungi solo le rose degli altri, c'è anche la tua, già scelta). Sotto, **Cosa cambia rispetto a ora** elenca squadre aggiunte o tolte, scambi, svincolati presi, tagli e crediti.
    Un giocatore scritto due volte nella stessa rosa resta una volta sola, e te lo dice. Poi **Conferma e salva** (oppure **Annulla**: non si salva niente).

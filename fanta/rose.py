@@ -230,10 +230,8 @@ class _Celle:
         if self.indice.e_squadra_serie_a(v):
             return "squadra_a"
         esito = self.indice.cerca(v)
-        if esito.metodo != "non trovato":
-            self.esiti[r, c] = esito
-            return "giocatore"
-        return "testo"
+        self.esiti[r, c] = esito              # per un testo: i nomi somiglianti, se poi si rivela un giocatore non riconosciuto
+        return "giocatore" if esito.metodo != "non trovato" else "testo"
 
     def blocchi(self) -> list[tuple[int, int]]:
         """Gruppi di colonne separati da colonne del tutto vuote (es. le squadre affiancate)."""
@@ -421,7 +419,7 @@ def _estrai_blocco(celle: _Celle, c0: int, c1: int, nome_foglio: str,
         # testo con accanto un ruolo o un costo, dentro una squadra: giocatore non riconosciuto (es. ceduto)
         if not giocatori and testi and squadra_corrente is not None and any(
                 t in ("ruolo", "numero") for t in tipi.values()):
-            celle.esiti[r, testi[0]] = Esito(None, "non trovato")
+            celle.esiti[r, testi[0]] = Esito(None, "non trovato", celle.esiti[r, testi[0]].alternative)
             giocatori, testi = [testi[0]], testi[1:]
         if len(giocatori) > 1:
             avvisi.append(F("rose.piu_giocatori_riga", riga=r + 1, nomi=", ".join(celle.g[r][c] for c in giocatori)))

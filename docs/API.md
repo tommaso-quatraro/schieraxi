@@ -202,7 +202,7 @@ Novità collegate: ogni voce di `giornate[]` ha in più, facoltativo, `giocatori
 
 | Metodo e percorso | Parametri | Risposta principale |
 |---|---|---|
-| `GET /api/giocatori` | `q`, `limite?`, `tutti?` | ricerca nel listone (anche senza accenti) |
+| `GET /api/giocatori` | `q`, `limite?`, `tutti?` | ricerca nel listone (anche senza accenti, e per nome proprio: «Lautaro»). Ogni elemento può avere `nome_completo` (facoltativo, solo per chi lo ha: nome e cognome per esteso, es. «Lautaro Martínez» per «Martinez L.»): un client che cerca sul dispositivo con `tutti=1` lo usa come secondo nome da confrontare |
 | `GET /api/giocatore/{id}` | — | scheda del giocatore: previsione, forma, voti, statistiche |
 | `GET /api/avatar` | — | `{versione: 3, tratti: {"<id>": {p?, c?, a?, b?, f?}}}`: tratti dei volti illustrati di tutti i giocatori che li hanno (dati comuni; vedi «GET /api/avatar» più sotto) |
 | `GET /api/mercato` | `squadra?` | Consigliati e proposte di cambio. `proposte` ha solo i cambi che passano il buon senso (campi facoltativi `sensato` = true e `motivo`, una frase); `scartate` (facoltativo, al massimo 5) i cambi che i numeri promuovono ma che un allenatore non farebbe, con `sensato` = false e il `motivo` per cui no. I client vecchi li ignorano |
@@ -257,8 +257,9 @@ Risposta dell'anteprima:
   `completa` (bool), `avvisi` (frasi brevi senza il nome della squadra), `giocatori`.
 - ogni giocatore: `testo` (il nome come scritto nel file: è la chiave per le `correzioni`), `stato`, `metodo` (`esatto`, `abbreviato`,
   `simile`, `ambiguo`, `non trovato`, `manuale`), `id`/`nome`/`ruolo`/`squadra` (il giocatore proposto; `id` e `nome` `null` se nessuno),
-  `costo`, `avviso` (es. «squadra diversa: …», può essere vuoto), `alternative` (`[{id, nome, ruolo, squadra}]`, solo per `da_controllare`;
-  se c'è una proposta è la prima).
+  `costo`, `avviso` (es. «squadra diversa: …», può essere vuoto), `alternative` (`[{id, nome, ruolo, squadra}]`: per `da_controllare`
+  i candidati, se c'è una proposta è la prima; per `non_trovato` fino a 3 nomi somiglianti da suggerire, nessuno scelto in partenza; vuoto per `sicuro`).
+- nomi scritti per esteso: «Lautaro Martinez», «Martinez Lautaro», «Pulisic C.» (iniziale in più) diventano `da_controllare` con la proposta, mai `sicuro`.
 - `stato`: `sicuro` = nome uguale nel listone con ruolo e squadra compatibili (o scelto a mano); `da_controllare` = trovato per somiglianza o
   abbreviazione, ambiguo tra più giocatori, oppure con ruolo o squadra diversi; `non_trovato` = nessuno (ceduto, nome sbagliato, codice sconosciuto).
 - in tutto: `avvisi` (lettura del file, rose incomplete o con ruoli che non tornano, giocatori in più squadre, «una sola squadra»), `mia_squadra`
