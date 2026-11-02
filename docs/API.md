@@ -209,7 +209,7 @@ Novità collegate: ogni voce di `giornate[]` ha in più, facoltativo, `giocatori
 | `GET /api/classifica` | `ruolo?`, `liberi?`, `limite?` | giocatori della giornata per punti attesi |
 | `GET /api/calendario` | — | prossime partite e difficoltà |
 | `GET /api/osservati` | — | i giocatori osservati con la previsione (ETag) |
-| `PUT /api/osservati/{i}` | `i` (X-Fanta, If-Match) | segui il giocatore `i` (da 1 a 2147483647, altrimenti 422) |
+| `PUT /api/osservati/{i}` | `i` (X-Fanta, If-Match) | segui il giocatore `i` (da 1 a 2147483647, altrimenti 422). Solo giocatori del listone: un codice che non c'è risponde `404` «Giocatore non trovato nel listone» e non si salva (dal 2/11/2026). I codici non validi già salvati si ignorano in lettura e si tolgono al salvataggio dopo (non occupano i 60 posti) |
 | `DELETE /api/osservati/{i}` | `i` (X-Fanta, If-Match) | smetti di seguirlo |
 
 ## 5. Scambi, squadre, rose, regole

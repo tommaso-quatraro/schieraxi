@@ -921,10 +921,18 @@ def lista_osservati(response: Response, ctx: Contesto = Depends(lega_corrente)):
 @app.put("/api/osservati/{i}")
 def osserva(request: Request, response: Response, i: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Contesto = Depends(lega_corrente)):
     # `le`: un numero più grande di quelli che sqlite sa cercare bloccherebbe per sempre l'elenco degli osservati (errore 500)
-    with versioni.blocco("osservati"):
-        versioni.controlla(request, versioni.etag_file(ctx.osservati))
-        elenco = osservati.aggiungi(i, ctx.osservati)
-        response.headers["ETag"] = versioni.etag_file(ctx.osservati)
+    # Solo giocatori del listone (tabella `calciatori`, la stessa che usa GET /api/osservati): un codice inventato verrebbe salvato,
+    # non comparirebbe mai e occuperebbe uno dei MASSIMO posti. Quelli già salvati e non validi si tolgono al primo salvataggio.
+    db = _db()
+    try:
+        if not osservati.nel_listone(db, [i]):
+            raise HTTPException(404, "Giocatore non trovato nel listone")
+        with versioni.blocco("osservati"):
+            versioni.controlla(request, versioni.etag_file(ctx.osservati))
+            elenco = osservati.aggiungi(i, ctx.osservati, validi=osservati.nel_listone(db, osservati.leggi(ctx.osservati)))
+            response.headers["ETag"] = versioni.etag_file(ctx.osservati)
+    finally:
+        db.close()
     return {"osservati": elenco}
 
 

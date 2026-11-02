@@ -86,6 +86,21 @@ def calciatori():
 
 
 @pytest.fixture
+def listone_in_archivio(tmp_path, monkeypatch, calciatori):
+    """I giocatori finti di `calciatori` nella tabella `calciatori` di un archivio temporaneo (lo stesso percorso di `dati_isolati`),
+    e il server che legge quello. Serve alle rotte che accettano solo codici del listone (per esempio i Seguiti)."""
+    from fanta import archivio, server
+    percorso = tmp_path / "archivio-finto" / "fanta.sqlite"
+    db = archivio.apri(percorso)
+    db.executemany("INSERT OR REPLACE INTO calciatori(id, nome, ruolo, squadra, squadra_slug, quotazione) VALUES (?, ?, ?, ?, ?, ?)",
+                   [(c.id, c.nome, c.ruolo, c.squadra, c.squadra_slug, c.quotazione) for c in calciatori])
+    db.commit()
+    db.close()
+    monkeypatch.setattr(server, "_db", lambda: archivio.apri(percorso))
+    return {c.id for c in calciatori}
+
+
+@pytest.fixture
 def indice(calciatori):
     return Indice(calciatori)
 

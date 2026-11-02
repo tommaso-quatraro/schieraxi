@@ -332,13 +332,33 @@ def test_formazione_dopo_la_scadenza_senza_etichette_delle_probabili(client, mon
     assert f["titolari"][0]["titolarita"] == "ballottaggio"                      # la formazione in cache non cambia
 
 
-def test_osservati_aggiungi_e_togli(client, tmp_path, monkeypatch):
+def test_osservati_aggiungi_e_togli(client, tmp_path, monkeypatch, listone_in_archivio):
     monkeypatch.setattr(server.osservati, "FILE_OSSERVATI", tmp_path / "oss.json")
     assert client.put("/api/osservati/5").json() == {"osservati": [5]}
     assert client.put("/api/osservati/5").json() == {"osservati": [5]}
     assert client.delete("/api/osservati/5").json() == {"osservati": []}
     assert TestClient(server.app).put("/api/osservati/5").status_code == 403
 
+
+
+def test_osservati_solo_giocatori_del_listone(client, tmp_path, monkeypatch, listone_in_archivio):
+    """Collaudo 2/11/2026: un codice inventato veniva salvato, non compariva mai e occupava uno dei 60 posti."""
+    import json
+    file = tmp_path / "oss.json"
+    monkeypatch.setattr(server.osservati, "FILE_OSSERVATI", file)
+    r = client.put("/api/osservati/123456")
+    assert r.status_code == 404 and r.json()["detail"] == "Giocatore non trovato nel listone"
+    assert not file.exists()                                             # niente salvato
+    # codici non validi già salvati (versioni vecchie): in lettura si ignorano senza errori...
+    file.write_text(json.dumps([123456, 5, 654321]), encoding="utf-8")
+    import pandas as pd
+    monkeypatch.setattr(server.consigli, "previsioni", lambda *a, **k: (pd.DataFrame(index=[]), 9, False))    # nessuna partita
+    r = client.get("/api/osservati")
+    assert r.status_code == 200 and [g["id"] for g in r.json()["giocatori"]] == [5]
+    # ...e al primo salvataggio si tolgono: non occupano posti
+    assert client.put("/api/osservati/7").json() == {"osservati": [5, 7]}
+    assert json.loads(file.read_text(encoding="utf-8")) == [5, 7]
+    assert client.delete("/api/osservati/123456").status_code == 200    # togliere un codice inventato non è un errore
 
 def test_crediti_delle_squadre(client, tmp_path):
     from fanta import lega
