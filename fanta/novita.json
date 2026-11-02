@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.335",
+    "data": "2026-11-02T10:51:17",
+    "titolo": "Chi arriva a giornata iniziata prepara la prossima",
+    "voci": [
+      "Se entri in SchieraXI a partite già cominciate, Oggi non mostra più punti di una formazione che non hai schierato: ti dice che la giornata è iniziata e quando si chiude la prossima.",
+      "La Formazione in quel caso è già quella della prossima giornata.",
+      "Quando guardi la Formazione di una giornata già cominciata, in alto c'è scritto che è chiusa."
+    ],
+    "tecnico": [
+      "fasi.entrato_dopo_la_scadenza: account nato dopo la scadenza e nessuna formazione (scelta, istantanea del Diario, copia automatica).",
+      "GET /api/oggi: campo facoltativo senza_formazione; in quel caso in_corso null, miei_titolari vuoto e prossima con la giornata dopo.",
+      "GET /api/formazione senza squadra né giornata: per quell'utente la giornata dopo, con giornata_saltata e giornata_saltata_lega facoltativi.",
+      "Web: carta «Questa giornata è già iniziata» in Oggi, avviso nella Formazione (giornata saltata o formazione chiusa)."
+    ]
+  },
+  {
     "versione": "1.334",
     "data": "2026-11-02T10:50:56",
     "titolo": "Piccoli ritocchi per chi comincia",
