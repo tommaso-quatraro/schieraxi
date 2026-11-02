@@ -10,7 +10,7 @@ struct FormazioneView: View {
     @Namespace private var moduloNS
     @Namespace private var stileNS
     @Environment(\.funzioni) private var funzioni
-    /// La legenda del campo si mostra da sola una volta; poi si riapre con «Come si legge il campo».
+    /// La legenda del campo si mostra da sola una volta; poi si riapre con «Cosa vuol dire» (come la web app).
     @AppStorage("legendaCampoVista") private var legendaVista = false
     @State private var legendaAperta = false
 
@@ -18,16 +18,8 @@ struct FormazioneView: View {
     private let ruoli = ["A", "C", "D", "P"]
     private let nomiRuolo = ["P": "Portiere", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
 
-    /// Cosa fa ogni stile, a parole (come nella web app).
-    static func descrizioneStile(_ rischio: Int) -> String {
-        switch rischio {
-        case ...(-2): return "Punta su chi gioca quasi di sicuro: meno rischio di una brutta giornata, anche se i punti attesi scendono un po'."
-        case -1: return "Preferisce i titolari più sicuri, accettando di perdere qualche decimo di punto atteso."
-        case 0: return "Il sistema sceglie la formazione con più punti attesi e, a parità, quella con i titolari più sicuri."
-        case 1: return "Qualche puntata su chi, se gioca, può fare molti punti: più possibilità di una giornata eccezionale."
-        default: return "Punta di più su chi può fare il colpo: la giornata eccezionale è più probabile, ma anche quella brutta."
-        }
-    }
+    /// Cosa fa ogni stile, a parole (come il server e la web app): vedi `StileFormazione`.
+    static func descrizioneStile(_ rischio: Int) -> String { StileFormazione.descrizione(rischio) }
 
     var body: some View {
         NavigationStack {
@@ -84,7 +76,7 @@ struct FormazioneView: View {
                 }
                 .demoInFondo()
                 .refreshable { await vm.carica() }
-                .avvisoDatiSalvati(vm.datiSalvati)
+                .avvisoDatiSalvati(vm.caricatore)
                 .bordiMorbidi()
             }
             .navigationTitle("Formazione")
@@ -136,11 +128,12 @@ struct FormazioneView: View {
     /// Riapre la legenda del campo (popover sull'iPad, foglio sull'iPhone).
     private var pulsanteLegenda: some View {
         Button { legendaAperta = true } label: {
-            Label("Come si legge il campo", systemImage: "info.circle").font(.footnote.weight(.semibold))
+            Label("Cosa vuol dire", systemImage: "info.circle").font(.footnote.weight(.semibold))
                 .frame(minHeight: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(Color.verde)
+        .accessibilityHint("Apre la legenda del campo")
         .popover(isPresented: $legendaAperta) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
@@ -302,7 +295,9 @@ struct FormazioneView: View {
         VStack(alignment: .trailing, spacing: 0) {
             if let punti = v.punti {
                 Text(Formato.punti(punti)).font(.title2.bold()).monospacedDigit().numerico(punti)
-                Text("punti attesi" + (vm.fascia(f).map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
+                // «tra 66 e 82 · 8 volte su 10» va a capo solo tra un pezzo e l'altro, mai a metà
+                Text(TestoACapo.soloTraIPezzi("punti attesi" + (vm.fascia(f).map { TestoACapo.separatore + $0 } ?? "")))
+                    .font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
             } else if vm.calcoloNonRiuscito {
                 Text("–").font(.title2.bold()).accessibilityHidden(true)
                 Text("punti non calcolati").font(.caption).foregroundStyle(Color.testoSecondario)
@@ -382,7 +377,8 @@ struct FormazioneView: View {
                 .accessibilityAddTraits(attivo ? .isSelected : [])
             }
         }
-        (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))))
+        (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))
+                                          + (StileFormazione.stellaNonMassimo(livello).map { " " + $0 } ?? "")))
             .font(.footnote).foregroundStyle(Color.testoSecondario)
             .fixedSize(horizontal: false, vertical: true)
         HStack {
