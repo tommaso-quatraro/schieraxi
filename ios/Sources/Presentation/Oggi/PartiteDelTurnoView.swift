@@ -25,7 +25,7 @@ struct PartiteDelTurnoView: View {
                         if let agg = DirettaLogica.aggiornatoAlle(live) { Text(agg) }
                     }
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.testoSecondario)
                     .padding(.top, 2)
                 }
             }
@@ -114,7 +114,7 @@ struct RigaPartitaView: View {
     private var squadre: some View {
         Text("\(partita.casa.capitalized) – \(partita.trasferta.capitalized)")
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(finita ? Color.secondary : Color.primary)
+            .foregroundStyle(finita ? Color.testoSecondario : Color.primary)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -148,7 +148,7 @@ struct RigaPartitaView: View {
         case "primo_tempo", "secondo_tempo", "in_corso":
             VStack(alignment: .leading, spacing: 1) {
                 badgeLive
-                if let m = live?.minuto { Text(m).font(.caption).monospacedDigit().foregroundStyle(.secondary) }
+                if let m = live?.minuto { Text(m).font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario) }
             }
         case "intervallo":
             VStack(alignment: .leading, spacing: 1) {
@@ -161,21 +161,21 @@ struct RigaPartitaView: View {
                 Text("Sospesa").font(.caption).foregroundStyle(Color.attenzione)
             }
         case "finita":
-            Text("Finita").font(.caption).foregroundStyle(.secondary)
+            Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
         case "rinviata":
             Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
         default:
             if inGioco {
                 badgeLive
             } else if (partita.giocata == true || partita.stato == "finita") && !haPunteggio {
-                Text("Finita").font(.caption).foregroundStyle(.secondary)
+                Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
             } else if partita.stato == "in_corso" {
                 // senza la diretta (spenta o non raggiungibile) lo stato arriva da Oggi
                 Text("In corso").font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
             } else if partita.stato == "rinviata" {
                 Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
             } else {
-                Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -196,7 +196,7 @@ struct RigaPartitaView: View {
                     .background(Circle().fill(Color.sfondoScheda))
             }
             if titolari.count > 4 {
-                Text("+\(titolari.count - 4)").font(.caption2.weight(.semibold)).foregroundStyle(.secondary).padding(.leading, 10)
+                Text("+\(titolari.count - 4)").font(.caption2.weight(.semibold)).foregroundStyle(Color.testoSecondario).padding(.leading, 10)
             }
         }
     }

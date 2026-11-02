@@ -132,7 +132,7 @@ struct OggiView: View {
         if oggi.senzaRose == true {
             Carta("Benvenuto in SchieraXI", simbolo: "hand.wave") {
                 Text("Importa la tua rosa per cominciare: per darti i consigli servono le rose della tua lega, poi ti guido nei passi successivi.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Color.testoSecondario)
                 Button { nav.guidaAperta = true } label: {
                     Label("Importa le rose", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
@@ -148,7 +148,7 @@ struct OggiView: View {
         if oggi.senzaGiornata, oggi.senzaRose != true {
             Carta("Oggi", simbolo: "calendar") {
                 Text("Nessuna giornata in programma per ora.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -294,7 +294,7 @@ struct OggiView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Novità di Schiera undici, versione \(versione)")
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
                 }
                 .foregroundStyle(Color.verde)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -327,9 +327,9 @@ struct OggiView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 0) {
                         NumeroCheSale(valore: f.punteggioAtteso ?? 0).font(.title2.bold())
-                        Text("punti attesi").font(.caption).foregroundStyle(.secondary)
+                        Text("punti attesi").font(.caption).foregroundStyle(Color.testoSecondario)
                         if let fascia = IntervalloPunti.frase(f.intervallo, dev: f.dev) {
-                            Text(fascia).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                            Text(fascia).font(.caption2).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
                         }
                     }
                 }
@@ -344,13 +344,13 @@ struct OggiView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if let riga = p.riga {
-                        Text(riga).font(.footnote).foregroundStyle(.secondary)
+                        Text(riga).font(.footnote).foregroundStyle(Color.testoSecondario)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityLabel(riga)
                     }
                 }
             } else {
-                Text("Formazione non disponibile.").foregroundStyle(.secondary)
+                Text("Formazione non disponibile.").foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -378,7 +378,7 @@ struct OggiView: View {
             }
         } else if oggi.daFare != nil, oggi.conConsigli {   // durante e dopo la giornata la riga vuota non serve
             Text("Nessuna azione utile oggi")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 4)
         }
@@ -387,13 +387,13 @@ struct OggiView: View {
     private func rigaDaFare(_ c: DaFareVoce) -> some View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: Self.iconaDaFare(c.tipo))
-                .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : .secondary)
+                .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : Color.testoSecondario)
                 .frame(width: latoIcona)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 if let m = c.motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty {
-                    Text(m).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(m).font(.caption).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer(minLength: 6)
@@ -441,7 +441,7 @@ struct OggiView: View {
     private var daControllare: some View {
         if !vm.daControllare.isEmpty {
             Carta("Da controllare", simbolo: "exclamationmark.triangle") {
-                Text("Mister, c'è qualche dubbio in formazione. Riguarda le probabili prima del fischio.").font(.caption).foregroundStyle(.secondary)
+                Text("Mister, c'è qualche dubbio in formazione. Riguarda le probabili prima del fischio.").font(.caption).foregroundStyle(Color.testoSecondario)
                 ForEach(Array(vm.daControllare.enumerated()), id: \.element.ident) { i, a in
                     RigaConFilo(prima: i == 0) { riga(a) }
                 }
@@ -461,7 +461,7 @@ struct OggiView: View {
                     }
                     .padding(.top, 6)
                 }
-                .tint(.secondary)
+                .tint(Color.testoSecondario)
             }
         }
     }
@@ -510,11 +510,11 @@ struct OggiView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(a.nome).font(.headline)
-                        Text(ColoriSquadra.sigla(a.squadra)).font(.caption).foregroundStyle(.secondary)
+                        Text(ColoriSquadra.sigla(a.squadra)).font(.caption).foregroundStyle(Color.testoSecondario)
                     }
                     // Il tipo («Dubbio (55%)») sta già nella pillola a destra: qui solo la nota, se c'è.
                     if let nota = a.nota, !nota.isEmpty {
-                        Text(nota).font(.caption).foregroundStyle(.secondary)
+                        Text(nota).font(.caption).foregroundStyle(Color.testoSecondario)
                     }
                 }
                 Spacer(minLength: 0)
