@@ -94,6 +94,12 @@ final class ScambiViewModel: ViewModelBase {
         if let r = proposte.dato?.ricerche { limite = r } else { await caricaLimite() }
     }
 
+    /// Non si è ancora cercato niente (né c'è una ricerca in corso): al posto dei risultati un invito a cercare, non un caricamento finto.
+    var maiCercato: Bool { proposte.dato == nil && proposte.errore == nil && !proposte.inCorso }
+
+    /// Le proposte a video sono di una ricerca con altri filtri («Con chi», «fino a»): lo si dice, non sembrano quelle nuove.
+    var risultatiDiAltriFiltri: Bool { proposte.dato != nil && !proposte.inCorso && proposte.percorso != indirizzoProposte }
+
     /// Le squadre che accettano più volentieri (se ce ne sono almeno due con scambi proposti).
     var propense: [ScambiLogica.SquadraPropensa] { ScambiLogica.squadrePropense(proposte.dato?.proposte ?? []) }
 

@@ -119,6 +119,12 @@ struct ScambiView: View {
             Colonne(spazio: Tema.spazioSchede) {
                 filtro.ingresso(0)
                 if let d = vm.proposte.dato {
+                    if vm.risultatiDiAltriFiltri {
+                        Label("Questi scambi sono della ricerca di prima, con altri filtri: tocca «Cerca scambi» per aggiornarli.", systemImage: "info.circle")
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     squadrePropense.ingresso(2)
                     if d.proposte.isEmpty {
                         VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Per ora non c'è niente che convenga a tutti e due.")
@@ -132,6 +138,10 @@ struct ScambiView: View {
                     }
                 } else if let e = vm.proposte.errore {
                     ErroreVista(messaggio: e) { Task { await vm.caricaProposte(forza: true) } }
+                } else if vm.maiCercato {
+                    // Le ricerche non partono da sole (il server le conta): niente caricamento finto, un invito a cercare.
+                    VistaVuota(titolo: "Cerca gli scambi", icona: "magnifyingglass",
+                               descrizione: "Scegli con chi e quanti giocatori per lato, poi tocca «Cerca scambi».")
                 } else {
                     Scheletro(schede: 3, righe: 2, testo: "Guardo gli scambi…")
                 }
@@ -141,7 +151,11 @@ struct ScambiView: View {
             .animation(Tema.morbida, value: vm.proposte.dato != nil)
         }
         .demoInFondo()
-        .refreshable { await vm.caricaProposte(forza: true) }
+        // Tirare giù aggiorna squadre e contatore, NON rifà la ricerca: ogni ricerca conta tra quelle del giorno (si cerca col pulsante).
+        .refreshable {
+            await vm.caricaSquadre()
+            if funzioni.acceso(Funzione.scambiTrova) { await vm.caricaLimite() }
+        }
         .avvisoDatiSalvati(vm.proposte.datiSalvati)
         .bordiMorbidi()
     }
