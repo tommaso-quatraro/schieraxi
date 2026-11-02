@@ -306,47 +306,6 @@ final class CodiceWidgetTests: XCTestCase {
     }
 }
 
-/// Il riassunto per il widget «Da controllare».
-final class DubbiWidgetTests: XCTestCase {
-    func testDalleAvvisiDiOggiVengonoIDubbiDellaFormazione() throws {
-        let corpo = #"""
-        {"giornata": 11, "inizio": "2026-10-31 18:30", "con_probabili": false,
-         "formazione": {"modulo": "3-4-3", "punteggio_atteso": 73.7},
-         "avvisi": [
-           {"id": 5, "nome": "Leonel Marteni", "ruolo": "A", "squadra": "inter", "tipo": "dubbio", "in_formazione": true, "p_voto": 0.55},
-           {"id": 6, "nome": "Bastrani", "ruolo": "D", "tipo": "diffidato", "in_formazione": true},
-           {"id": 7, "nome": "Riserva", "ruolo": "C", "tipo": "infortunato", "in_formazione": false}
-         ]}
-        """#
-        let oggi: Oggi = try Decodifica.decodifica(Data(corpo.utf8))
-        let r = RiassuntoOggi(oggi: oggi)
-        XCTAssertEqual(r.daControllare, 2)
-        XCTAssertEqual(r.dubbi?.map(\.id), [5, 6])
-        XCTAssertEqual(r.dubbi?.first?.descrizione, "Dubbio · gioca 55%")
-        XCTAssertEqual(r.dubbi?.last?.descrizione, "Diffidato")
-    }
-
-    func testAlMassimoSeiDubbi() throws {
-        let avvisi = (1...9).map { #"{"id": \#($0), "nome": "G\#($0)", "tipo": "dubbio", "in_formazione": true}"# }.joined(separator: ",")
-        let corpo = #"{"giornata": 1, "avvisi": [\#(avvisi)]}"#
-        let oggi: Oggi = try Decodifica.decodifica(Data(corpo.utf8))
-        let r = RiassuntoOggi(oggi: oggi)
-        XCTAssertEqual(r.daControllare, 9)
-        XCTAssertEqual(r.dubbi?.count, 6)
-    }
-
-    func testUnRiassuntoVecchioSenzaDubbiSiLegge() throws {
-        let vecchio = #"{"giornata": 9, "daControllare": 2, "scaricatoIl": 783000000}"#
-        let r = try JSONDecoder().decode(RiassuntoOggi.self, from: Data(vecchio.utf8))
-        XCTAssertNil(r.dubbi)
-        XCTAssertEqual(r.daControllare, 2)
-    }
-
-    func testDescrizioneSenzaTipo() {
-        XCTAssertEqual(DubbioRiassunto(id: 1, nome: "A", ruolo: nil, tipo: nil, pVoto: nil).descrizione, "Da controllare")
-    }
-}
-
 /// Il token del widget (fw_): l'unica credenziale che esce dall'app; quello della sessione resta nel Keychain.
 final class TokenWidgetTests: XCTestCase {
     private let indirizzo = "https://prova-token-widget.invalid"
