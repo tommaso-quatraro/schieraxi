@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class AvvisiCodaTests: XCTestCase {
     /// Un server che, come quello vero con If-Match, rifiuta (412) una scrittura che arriva mentre un'altra è ancora in corso.
-    private final class Stato: @unchecked Sendable {
+    private final class Corsie: @unchecked Sendable {
         private let blocco = NSLock()
         private var inCorso = 0
         private(set) var massimo = 0
@@ -15,7 +15,7 @@ final class AvvisiCodaTests: XCTestCase {
     }
 
     func testDueInterruttoriToccatiInFrettaSiSalvanoTuttiEDue() async throws {
-        let stato = Stato()
+        let stato = Corsie()
         let s = ServerDiProva { metodo, percorso, _ in
             if metodo == "PUT" {
                 if stato.occupato { throw ErroreApi.conflitto }
