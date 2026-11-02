@@ -175,8 +175,13 @@ struct ErroreVista: View {
     }
 
     /// Un limite di richieste (429): il messaggio dice già quando riprovare e un pulsante «Riprova» sarebbe inutile.
-    private var eLimite: Bool {
-        messaggio.localizedCaseInsensitiveContains("Riprova tra") || messaggio.localizedCaseInsensitiveContains("Riprova domani")
+    private var eLimite: Bool { Self.eLimite(messaggio) }
+
+    /// «Riprova tra 45 secondi», «Riprova domani», «Troppi tentativi»: un limite. «Riprova tra poco» (rete lenta, guasto) NO:
+    /// lì il pulsante «Riprova» serve (prima spariva e la schermata diceva «Limite raggiunto»).
+    static func eLimite(_ messaggio: String) -> Bool {
+        messaggio.range(of: #"riprova tra \d"#, options: [.regularExpression, .caseInsensitive]) != nil
+            || messaggio.localizedCaseInsensitiveContains("Riprova domani")
             || messaggio.localizedCaseInsensitiveContains("troppi tentativi") || messaggio.localizedCaseInsensitiveContains("già fatto")
     }
 

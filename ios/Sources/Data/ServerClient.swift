@@ -72,7 +72,7 @@ enum ErroreApi: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .server(let messaggio): return "Il server dice: \(messaggio)"
+        case .server(let messaggio): return messaggio   // già in italiano e pensato per chi usa l'app
         case .accessoRichiesto(let messaggio): return messaggio
         case .troppiTentativi(let messaggio, let attesa):
             guard let attesa, attesa > 0 else { return messaggio }
@@ -85,8 +85,8 @@ enum ErroreApi: LocalizedError {
             return IndirizzoServer.manca ? "Manca l'indirizzo del server: scrivilo nelle Impostazioni." : "L'indirizzo del server non è valido."
         case .risposta(let codice): return Self.testoRisposta(codice)
         case .dati: return "Il server ha mandato una risposta che l'app non capisce. Riprova tra poco; se succede ancora, aggiorna l'app."
-        case .timeout: return "Il server ci mette troppo a rispondere. Controlla la connessione e riprova tra poco."
-        case .rete: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia acceso."
+        case .timeout: return "SchieraXI ci mette troppo a rispondere. Controlla la connessione e riprova tra poco."
+        case .rete: return Self.testoNonRaggiungibile
         }
     }
 
@@ -94,10 +94,13 @@ enum ErroreApi: LocalizedError {
     /// sbagliato, non un guasto del server.
     static func testoRisposta(_ codice: Int) -> String {
         if codice == 401 || codice == 403 {
-            return "Il server ha rifiutato la richiesta (codice \(codice)). Controlla l'indirizzo del server e la rete (un Wi-Fi con accesso da fare, un blocco di rete) e riprova."
+            return "La richiesta è stata rifiutata. Se sei su un Wi-Fi pubblico apri prima la sua pagina di accesso, poi riprova."
         }
-        return "Il server ha un problema (codice \(codice)). Riprova tra poco."
+        return "SchieraXI ha un problema in questo momento. Riprova tra poco."
     }
+
+    /// Rete assente o server irraggiungibile: una sola frase in tutta l'app.
+    static let testoNonRaggiungibile = "Non riesco a collegarmi a SchieraXI. Controlla la connessione e riprova."
 
     /// Un'attesa in parole: «30 secondi», «10 minuti», «6 h 55 min», «2 giorni».
     static func tempoLeggibile(_ secondi: Int) -> String {
@@ -110,10 +113,14 @@ enum ErroreApi: LocalizedError {
         return resto == 0 ? "\(ore) h" : "\(ore) h \(resto) min"
     }
 
-    /// Il messaggio senza le frasi che cominciano con «Riprova» (le sostituisce il tempo che manca).
+    /// Il messaggio senza le frasi che cominciano con «Riprova» e senza «aspetta prima di riprovare» (li sostituisce il tempo
+    /// che manca), chiuso da un punto. Prima «riprovare» perdeva solo la parola: «aspetta prima di Riprova tra 45 secondi».
     static func senzaInvitoARiprovare(_ messaggio: String) -> String {
-        let pulito = messaggio.replacingOccurrences(of: #"\s*Riprova[^.!]*[.!]?"#, with: "", options: [.regularExpression, .caseInsensitive])
-        return pulito.trimmingCharacters(in: .whitespacesAndNewlines)
+        var pulito = messaggio.replacingOccurrences(of: #"\s*\bRiprova\b[^.!]*[.!]?"#, with: "", options: [.regularExpression, .caseInsensitive])
+        pulito = pulito.replacingOccurrences(of: #"\s*[:,;]?\s*aspetta prima di riprovare[.!]?"#, with: "", options: [.regularExpression, .caseInsensitive])
+        pulito = pulito.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let ultimo = pulito.last, !".!?".contains(ultimo) { pulito += "." }
+        return pulito
     }
 
     /// Un limite raggiunto (429): riprovare subito non serve a niente.

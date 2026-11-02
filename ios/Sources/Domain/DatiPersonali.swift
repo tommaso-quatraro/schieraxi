@@ -52,7 +52,7 @@ enum DatiPersonali {
         case .accessoRichiesto:
             return "La sessione è scaduta: rientra nel tuo account e riprova."
         case .rete, .timeout:
-            return "Non riesco a raggiungere il server. Controlla la connessione e riprova."
+            return ErroreApi.testoNonRaggiungibile
         case .dati:
             return "Il server non ha mandato il file dei dati. Riprova tra poco."
         default:

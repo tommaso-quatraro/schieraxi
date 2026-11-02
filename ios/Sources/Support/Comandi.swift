@@ -13,7 +13,7 @@ enum ErroreComando: Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .senzaFormazione: return "La formazione non è ancora disponibile."
-        case .senzaServer: return "Non riesco a raggiungere il server. Controlla la connessione e che il server sia acceso."
+        case .senzaServer: return "Non riesco a collegarmi a SchieraXI. Controlla la connessione e riprova."
         case .senzaGiornata: return "Non c'è nessuna giornata in programma per ora."
         case .senzaPartite: return "Non trovo la prossima partita della giornata."
         }
