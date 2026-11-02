@@ -4,7 +4,8 @@ name: Screenshot
 # - l'app parte in modalità demo (-DEMO: dati finti, nessuna rete) e si fotografa su iPhone e iPad (chiaro e scuro, testo normale e grande);
 # - l'anteprima dei widget (target AnteprimaWidget, dati finti, non entra nell'IPA) si fotografa in tutte le misure.
 # Il Mac parte SOLO: a mano (Actions o `gh workflow run screenshot.yml --ref <ramo>`), oppure su una pull request che tocca ios/ e
-# ha l'etichetta «screenshot» o cambia schermate (ios/Sources/Presentation, Support, App) o widget.
+# ha l'etichetta «screenshot» (`gh pr edit <N> --add-label screenshot`). Senza etichetta le PR non prenotano il Mac
+# (i Mac gratuiti sono pochi e i test iOS hanno la precedenza).
 # Le foto stanno negli artifact «screenshot-app» e «screenshot-widget» (14 giorni). Non crea release. Non blocca l'unione.
 on:
   workflow_dispatch:
@@ -33,8 +34,11 @@ on:
     paths: ["ios/**", ".github/workflows/screenshot.yml"]
 
 # Una sola esecuzione per PR (o ramo e scelte, se a mano): un nuovo push annulla quella in corso.
+# Un'etichetta diversa da «screenshot» ha un gruppo tutto suo, così non annulla le foto in corso.
 concurrency:
-  group: screenshot-${{ github.event.pull_request.number || github.ref }}-${{ inputs.scatti }}-${{ inputs.iphone }}-${{ inputs.dispositivi }}
+  group: >-
+    screenshot-${{ (github.event.action == 'labeled' && github.event.label.name != 'screenshot') && github.run_id
+    || (github.event.pull_request.number || github.ref) }}-${{ inputs.scatti }}-${{ inputs.iphone }}-${{ inputs.dispositivi }}
   cancel-in-progress: true
 
 permissions:
@@ -45,34 +49,30 @@ env:
   HOMEBREW_NO_INSTALL_CLEANUP: "1"
 
 jobs:
-  # Gira su Linux (gratis e in pochi secondi): decide se serve il Mac, così le PR che non toccano le schermate non lo prenotano.
+  # Gira su Linux (gratis e in pochi secondi): decide se serve il Mac, così le PR senza etichetta «screenshot» non lo prenotano.
   quando:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
+    permissions: {}
     outputs:
       serve: ${{ steps.decidi.outputs.serve }}
     steps:
       - name: Serve il Mac?
         id: decidi
         env:
-          GH_TOKEN: ${{ github.token }}
           EVENTO: ${{ github.event_name }}
+          AZIONE: ${{ github.event.action }}
+          ETICHETTA_NUOVA: ${{ github.event.label.name }}
           ETICHETTE: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-          NUMERO: ${{ github.event.pull_request.number }}
         run: |
           serve=false
           if [ "$EVENTO" = "workflow_dispatch" ]; then
             serve=true
           elif [ "$EVENTO" = "pull_request" ]; then
-            case ",$ETICHETTE," in *,screenshot,*) serve=true ;; esac
-            if [ "$serve" = false ]; then
-              if gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$NUMERO/files" --jq '.[].filename' \
-                | grep -Eq '^ios/(Sources/(Presentation|Support|App)/|WidgetSources/|AnteprimaWidget/|scripts/screenshot)|^\.github/workflows/screenshot\.yml$'; then
-                serve=true
-              fi
+            if [ "$AZIONE" = "labeled" ]; then
+              if [ "$ETICHETTA_NUOVA" = "screenshot" ]; then serve=true; fi
+            else
+              case ",$ETICHETTE," in *,screenshot,*) serve=true ;; esac
             fi
           fi
           echo "Serve il Mac: $serve (evento: $EVENTO)"
