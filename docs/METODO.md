@@ -31,14 +31,18 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
   `docs/API.md` o `docs/GUIDA-UTENTE.md` aggiornati.
 - **Web**: come il server, più la prova nel browser a 390, 768, 1024 e 1440 px, tema chiaro e scuro, con dati verosimili e
   le schermate guardate davvero.
-- **iPhone**: compilazione e test verdi in CI, foto delle schermate toccate guardate, elenco di cosa provare sul telefono.
+- **iPhone**: prima dell'unione compilazione e test verdi in CI (`ios / test`) e revisione fatta; nella pull request le schermate
+  da fotografare e l'elenco di cosa provare sul telefono. Dopo l'unione le foto delle schermate toccate, guardate davvero.
 - **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …»;
   niente segni da interfaccia generata (`docs/STILE-SENZA-AI.md`).
 
 ## App per iPhone
 - Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.
-- Le foto (`screenshot.yml`) usano un Mac di GitHub alla volta: le lancia una sola persona, con una corsa per tutte le pull
-  request pronte. Le pull request senza cambi visibili non aspettano le foto.
+- Le foto (`screenshot.yml`) usano un Mac di GitHub alla volta e le lancia una sola persona. Si fanno su `main` DOPO l'unione
+  (la pull request si unisce da sola appena i controlli sono verdi): ogni 60-90 minuti una corsa con le schermate delle pull
+  request iOS unite nel frattempo. Ogni difetto visto diventa un'issue `P1` con la foto.
+- Le pull request che cambiano molto l'aspetto possono chiedere una corsa di foto sul loro ramo prima di uscire dalla bozza,
+  una alla volta. Le altre non restano in bozza ad aspettare le foto.
 
 ## Cosa non fare
 - Codice senza test, correzioni senza causa, «dovrebbe andare».
