@@ -693,7 +693,8 @@ function mostraOggi(o, opz = {}) {
   const miei = o.miei_titolari || {};
   const perGiorno = {};
   o.partite.forEach(p => { const d = parseData(p.data); const k = d ? d.toDateString() : "?"; (perGiorno[k] ||= { d, lista: [] }).lista.push(p); });
-  const partite = Object.values(perGiorno).map(g => {
+  // le partite senza data (rinviate, recupero da definire) in fondo: prima si vede quello che si gioca
+  const partite = Object.values(perGiorno).sort((x, y) => (x.d ? 0 : 1) - (y.d ? 0 : 1)).map(g => {
     const locale = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T12:00`;
     const titolo = g.d ? quando(locale(g.d)).replace(/ \d\d:\d\d$/, "") : t("oggi.data_da_definire");
     return `<div class="giorno-titolo">${titolo}</div>` + g.lista.map(p => {

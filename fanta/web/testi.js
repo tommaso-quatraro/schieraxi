@@ -483,7 +483,7 @@ const TESTI = {
     "oggi.preparo": "Preparo la giornata…",
     "oggi.infortunato": "Infortunato",
     "oggi.squalificato": "Squalificato",
-    "oggi.dubbio": "Dubbio ({p})",
+    "oggi.dubbio": "In dubbio · gioca {p}",
     "oggi.diffidato_tipo": "Diffidato",
     "oggi.data_da_definire": "Data da definire",
     "oggi.tuoi_titolari": "I tuoi titolari: {nomi}",
@@ -562,7 +562,7 @@ const TESTI = {
     "df.non_niente_sbrigare": "Nessuna azione utile oggi.",
     "df.da_fare": "Da fare",
     "df.apri": "Apri",
-    "df.altre.one": "Altra {n} cosa da fare",
+    "df.altre.one": "Un'altra cosa da fare",
     "df.altre.other": "Altre {n} cose da fare",
 
     // ---- [formazione] ----
@@ -2190,7 +2190,7 @@ const TESTI = {
     "oggi.preparo": "Getting the matchday ready…",
     "oggi.infortunato": "Injured",
     "oggi.squalificato": "Suspended",
-    "oggi.dubbio": "Doubtful ({p})",
+    "oggi.dubbio": "Doubtful · plays {p}",
     "oggi.diffidato_tipo": "One yellow from a ban",
     "oggi.data_da_definire": "Date to be confirmed",
     "oggi.tuoi_titolari": "Your starters: {nomi}",
@@ -2269,7 +2269,7 @@ const TESTI = {
     "df.non_niente_sbrigare": "No useful action today.",
     "df.da_fare": "To do",
     "df.apri": "Open",
-    "df.altre.one": "{n} more thing to do",
+    "df.altre.one": "One more thing to do",
     "df.altre.other": "{n} more things to do",
 
     // ---- [formazione] ----
