@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.369",
+    "data": "2026-11-02T16:08:46",
+    "titolo": "Squadra e primo avvio: i dati appena salvati si vedono subito",
+    "voci": [
+      "Nel primo avvio, dopo aver sistemato un giocatore non riconosciuto, «Questa è la mia» salva la squadra: prima diceva che i dati erano cambiati da un altro dispositivo e chiudeva la configurazione.",
+      "Nel primo avvio il titolo «Giocatori da sistemare» scende man mano che li sistemi.",
+      "In Squadra e in Altro, dopo aver scelto la tua squadra, salvato i crediti o aggiornato le rose, le schermate mostrano subito i valori nuovi: prima restavano quelli di prima finché non cambiavi scheda."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: risorsaDi riconosce POST /api/rose/correggi come risorsa «rose» (la web aggiorna l'ETag dopo la correzione; prima la PUT /api/mia-squadra seguente usava l'ETag vecchio e riceveva 412). vistaLega: rileggiSquadre(voce) rilegge /api/squadre dopo mia squadra, crediti e importazione e ridisegna il pannello della mia squadra; miaS e la select si calcolano dentro il corpo del pannello.",
+      "fanta/web/primoavvio.js: paContaDaSistemare aggiorna il titolo «Giocatori da sistemare (N)».",
+      "Test: tests/test_squadra_dati_aggiornati_web.py (ogni rotta del server con If-Match ha la sua risorsa in risorsaDi, provata con node)."
+    ]
+  },
+  {
     "versione": "1.368",
     "data": "2026-11-02T15:53:52",
     "titolo": "Chi schierare e Diario: numeri e parole che tornano",
