@@ -11,7 +11,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from . import affidabilita, buon_senso, consigli, diario, frasi, movimenti, rinvii, scelte, stato_utente, widget
+from . import affidabilita, avvisi, buon_senso, consigli, diario, frasi, movimenti, rinvii, scelte, stato_utente, widget
 from .frasi import F
 from .lega import Rose
 from .regole import Regole
@@ -240,11 +240,12 @@ def _certificato(giorni: int | None) -> dict | None:
 
 
 def _chiusa_prima(db, stagione: str, giornata: int, minuti: int, dal: datetime) -> bool:
-    """La formazione della giornata si è chiusa prima di `dal` (per esempio prima che l'account esistesse)."""
-    inizio = db.execute("SELECT MIN(data) FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata)).fetchone()[0]
-    if not inizio:
+    """La formazione della giornata si è chiusa prima di `dal` (per esempio prima che l'account esistesse). Inizio della giornata
+    dalla regola unica (turno.py, `avvisi.prima_partita`): né un anticipo né una partita rinviata con la data vecchia la anticipano."""
+    inizio = avvisi.prima_partita(db, stagione, giornata)
+    if inizio is None:
         return False
-    return datetime.fromisoformat(str(inizio)[:16].replace("T", " ")) - timedelta(minutes=minuti or 0) <= dal
+    return inizio - timedelta(minutes=minuti or 0) <= dal
 
 
 def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | None, regole: Regole | None = None,

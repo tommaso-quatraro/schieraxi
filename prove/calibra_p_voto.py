@@ -41,7 +41,7 @@ def raccogli(d: modello.Dati, r, giornate) -> pd.DataFrame:
         quote = []
 
         def spia(*a):
-            quote.append(a)
+            quote.append(a)  # noqa: B023 la funzione spia si usa solo dentro questo giro del ciclo
             return originale(*a)
         modello.p_senza_probabili = spia
         try:

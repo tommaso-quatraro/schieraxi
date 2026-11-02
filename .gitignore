@@ -64,3 +64,6 @@ dati/*.log
 # La lega vera sta fuori dal repository (FANTA_LEGA); qui solo l'esempio inventato
 /lega/*
 !/lega/esempio/
+
+# Cartella di lavoro del browser di prova (Playwright MCP): screenshot e log locali
+.playwright-mcp/

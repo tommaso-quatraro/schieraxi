@@ -160,6 +160,7 @@ def controlla_conguaglio(conguaglio: int, mia: Squadra, loro: Squadra, lingua: s
                 dopo[chi] = residui[chi] + segno * x
         if valido and residui[riceve] is not None and residui[riceve] + x > LIMITE_CREDITI:
             valido = False
+            dopo = {"mio": None, "loro": None}                # scambio che non si può fare: nessun «dopo» oltre il limite
             chi_riceve = mia.nome if riceve == 'mio' else loro.nome
             problema = (f"The credits of {chi_riceve} would exceed the limit of {LIMITE_CREDITI}" if en
                         else f"I crediti di {chi_riceve} supererebbero il limite di {LIMITE_CREDITI}")

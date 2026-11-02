@@ -16,7 +16,7 @@ extension Oggi {
         return giornata
     }
 
-    /// «Giornata 7 di lega (Serie A 10)» se i numeri sono diversi, altrimenti «Giornata 10». Nil senza giornata.
+    /// «Giornata 7»: il numero della lega, o quello di Serie A se la lega non lo manda. Nil senza giornata.
     var etichettaGiornata: String? { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } }
 
     /// Account senza rose, o lega senza giornata: Oggi non ha una formazione da mostrare.
@@ -28,11 +28,15 @@ extension Formazione {
 }
 
 enum TempiLega {
-    /// «Giornata 7 di lega (Serie A 10)» se il numero di lega c'è ed è diverso, altrimenti «Giornata 10». Lega mancante o non valida: Serie A.
+    /// «Giornata 7»: sempre il numero della lega, come la web (`docs/COERENZA-WEB-IPHONE.md`). Lega mancante o non valida: quello di Serie A.
+    /// Il numero di Serie A da solo si scrive solo dove si parla del calendario: `serieA(_:)`.
     static func etichetta(serieA: Int, lega: Int?) -> String {
         guard let l = lega, l > 0 else { return "Giornata \(serieA)" }
-        return l == serieA ? "Giornata \(l)" : "Giornata \(l) di lega (Serie A \(serieA))"
+        return "Giornata \(l)"
     }
+
+    /// «Serie A, giornata 10»: per il calendario e i dati di Serie A, dove il numero NON è quello della lega.
+    static func serieA(_ giornata: Int) -> String { "Serie A, giornata \(giornata)" }
 
     /// La sigla corta per gli spazi stretti: «G7» (il numero di lega se c'è, altrimenti quello di Serie A).
     static func sigla(serieA: Int, lega: Int?) -> String {

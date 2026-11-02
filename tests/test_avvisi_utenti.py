@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from fanta import __main__ as cli
-from fanta import account, avvisi, avvisi_utenti, backup, consigli, lega, notifiche, percorsi, push
+from fanta import account, avvisi_utenti, backup, consigli, lega, notifiche, percorsi, push
 from fanta.contesto import Contesto
 from fanta.regole import Regole
 

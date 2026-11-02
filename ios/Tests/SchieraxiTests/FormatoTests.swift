@@ -34,9 +34,23 @@ final class FormatoTests: XCTestCase {
 
     func testConSegno() {
         XCTAssertEqual(Formato.conSegno(2.5), "+2,5")
-        XCTAssertEqual(normalizza(Formato.conSegno(-1.2)), "-1,2")
-        XCTAssertEqual(Formato.conSegno(0), "+0,0")
+        XCTAssertEqual(Formato.conSegno(-1.2), "\u{2212}1,2")
         XCTAssertEqual(Formato.conSegno(3.456, cifre: 2), "+3,46")
+    }
+
+    /// Come `segno` della web: il meno tipografico, e lo zero (anche dopo l'arrotondamento) senza segno.
+    func testConSegnoComeLaWeb() {
+        XCTAssertEqual(Formato.conSegno(-0.4), "\u{2212}0,4")
+        XCTAssertFalse(Formato.conSegno(-0.4).contains("-"), "niente trattino: il meno è «−»")
+        XCTAssertEqual(Formato.conSegno(-6.25), "\u{2212}6,3", "a metà si va lontano dallo zero, come toFixed")
+        XCTAssertEqual(Formato.conSegno(0), "0,0")
+        XCTAssertEqual(Formato.conSegno(-0.0), "0,0")
+        XCTAssertEqual(Formato.conSegno(0.04), "0,0", "arrotondato vale zero: niente «+»")
+        XCTAssertEqual(Formato.conSegno(-0.04), "0,0", "niente «−0,0»")
+        XCTAssertEqual(Formato.conSegno(0.04, cifre: 2), "+0,04")
+        XCTAssertEqual(Formato.conSegno(-3, cifre: 0), "\u{2212}3")
+        XCTAssertEqual(Formato.conSegno(.nan), "–")
+        XCTAssertEqual(Formato.conSegno(-.infinity), "–")
     }
 
     func testPercento() {

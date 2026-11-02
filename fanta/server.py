@@ -12,7 +12,6 @@ from datetime import datetime
 import json
 import unicodedata
 import logging
-import os
 import re
 import secrets
 import traceback
@@ -36,7 +35,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
-from . import da_fare, frasi, note_infortuni, stato_utente
+from . import da_fare, etichette, frasi, note_infortuni, stato_utente
 from . import lingua as lingua_testi
 from . import widget as widget_riassunto
 from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, fonti_attive, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rinvii, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
@@ -88,6 +87,7 @@ app = FastAPI(title="SchieraXI", lifespan=_ciclo)
 app.add_middleware(GZipMiddleware, minimum_size=800, compresslevel=5)     # risposte più leggere; livello 5: meno della metà della CPU del 9 per lo 0,5-2% di byte in più (1 solo processore sul server)
 MAX_FILE = 5 * 1024 * 1024
 MAX_ID_CALCIATORE = 2**31 - 1             # codici calciatore: oltre questo numero sqlite non li sa cercare (errore 500)
+MAX_GIORNATA = 100                        # numeri di giornata: un numero enorme farebbe un errore 500 in sqlite (si risponde 422)
 PERCORSO_CONDIVISIONE = "/api/squadre/immagine/condivisa"      # azione di `share_target` nel manifest
 
 
@@ -241,13 +241,15 @@ def _etag_in_if_none_match(valore: str, etag: str) -> bool:
 
 
 def _riscrivi_note(corpo: bytes, compresso: bool) -> bytes:
-    """Il corpo con le note tradotte; se non c'è niente da tradurre (o qualcosa non va) restituisce lo stesso corpo. Lavoro da thread."""
+    """Il corpo con le note e le etichette di stato tradotte; se non c'è niente da tradurre (o qualcosa non va) restituisce lo stesso corpo. Lavoro da thread."""
     try:
         chiaro = gzip.decompress(corpo) if compresso else corpo
-        if len(chiaro) > TETTO_NOTE or not (b'"nota"' in chiaro or b'"motivi"' in chiaro):
+        if len(chiaro) > TETTO_NOTE or not (b'"nota"' in chiaro or b'"motivi"' in chiaro or b'"etichetta"' in chiaro):
             return corpo
         dati = json.loads(chiaro)
         nuovi = note_infortuni.traduci_dati(dati)
+        if b'"etichetta"' in chiaro:                   # le etichette di stato dei giocatori (fanta/etichette.py)
+            nuovi = etichette.traduci_dati(nuovi, lingua_testi.EN)
         if nuovi == dati:
             return corpo
         nuovo = json.dumps(nuovi, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -767,7 +769,7 @@ def _json_diretto(dati):
 
 
 @app.get("/api/formazione")
-def formazione(request: Request, squadra: str | None = None, giornata: int | None = None, ctx: Contesto = Depends(lega_corrente)):
+def formazione(request: Request, squadra: str | None = None, giornata: int | None = Query(None, ge=1, le=MAX_GIORNATA), ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
         r = _regole(ctx)
@@ -823,7 +825,7 @@ def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
 class FormazioneScelta(BaseModel):
     titolari: list[int]
     squadra: str | None = None
-    giornata: int | None = None
+    giornata: int | None = Field(None, ge=1, le=MAX_GIORNATA)
     salva: bool = False
 
 
@@ -869,17 +871,19 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
 
 
 @app.get("/api/scelta")
-def leggi_scelta(giornata: int, response: Response, ctx: Contesto = Depends(lega_corrente)):
+def leggi_scelta(response: Response, giornata: int = Query(ge=1, le=MAX_GIORNATA), ctx: Contesto = Depends(lega_corrente)):
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte)
     response.headers["ETag"] = versioni.etag_dati(scelta)
     return scelta
 
 
 @app.delete("/api/scelta")
-def cancella_scelta(giornata: int, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
+def cancella_scelta(request: Request, response: Response, giornata: int = Query(ge=1, le=MAX_GIORNATA), ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
-        chiusa = _formazione_chiusa(db, ctx, giornata)      # dopo la scadenza la scelta resta quella (anche per il Diario)
+        # dopo la scadenza la scelta non si toglie più da qui (409). Unica eccezione voluta: POST /api/diario/schierata riscrive
+        # la scelta di una giornata FINITA (l'utente dice cosa ha schierato davvero nella lega)
+        chiusa = _formazione_chiusa(db, ctx, giornata)
     finally:
         db.close()
     if chiusa is not None:
@@ -889,6 +893,18 @@ def cancella_scelta(giornata: int, request: Request, response: Response, ctx: Co
         scelte.cancella(consigli.stagione_corrente(), giornata, ctx.scelte)
         response.headers["ETag"] = _etag_scelta(ctx, giornata)
     return {"ok": True}
+
+
+def _stato_vero(schede: list[dict], db, r, giornata: int) -> list[dict]:
+    """Dopo la scadenza ogni scheda dell'elenco dei Giocatori mostra lo stato vero della giornata («Voto in arrivo»,
+    «Da giocare»...) invece delle probabili, come Rosa, scheda e Formazione. Prima della scadenza le schede restano com'erano.
+    Le voci senza previsione (`assente`) non si toccano."""
+    stagione = consigli.stagione_corrente()
+    if not schede or not fasi.iniziata(db, r, stagione, giornata, datetime.now()):
+        return schede
+    nuove = fasi.schede_a_giornata_iniziata([x for x in schede if not x.get("assente")], db, r, stagione, giornata,
+                                            datetime.now(), _stati_live())
+    return [nuove.get(int(x["id"]), x) if not x.get("assente") else x for x in schede]
 
 
 @app.get("/api/osservati")
@@ -911,6 +927,13 @@ def lista_osservati(response: Response, ctx: Contesto = Depends(lega_corrente)):
                 x = {"id": i, "nome": riga["nome"], "ruolo": riga["ruolo"], "squadra": riga["squadra"], "assente": True}
             x["proprietario"] = proprietari.get(i)
             giocatori.append(x)
+        stagione = consigli.stagione_corrente()
+        in_gioco = [x for x in giocatori if not x.get("assente")]
+        if in_gioco and fasi.iniziata(db, _regole(ctx), stagione, giornata, datetime.now()):
+            # dopo la scadenza lo stato vero della giornata («Partita in corso», «Voto in arrivo»...), come la Rosa e la Formazione
+            nuove = fasi.schede_a_giornata_iniziata(in_gioco, db, _regole(ctx), stagione, giornata, datetime.now(), _stati_live())
+            giocatori = [nuove.get(x["id"], x) | {"proprietario": x.get("proprietario")} if not x.get("assente") else x
+                         for x in giocatori]
         return {"giornata": giornata, "giocatori": giocatori}
     finally:
         db.close()
@@ -919,10 +942,18 @@ def lista_osservati(response: Response, ctx: Contesto = Depends(lega_corrente)):
 @app.put("/api/osservati/{i}")
 def osserva(request: Request, response: Response, i: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Contesto = Depends(lega_corrente)):
     # `le`: un numero più grande di quelli che sqlite sa cercare bloccherebbe per sempre l'elenco degli osservati (errore 500)
-    with versioni.blocco("osservati"):
-        versioni.controlla(request, versioni.etag_file(ctx.osservati))
-        elenco = osservati.aggiungi(i, ctx.osservati)
-        response.headers["ETag"] = versioni.etag_file(ctx.osservati)
+    # Solo giocatori del listone (tabella `calciatori`, la stessa che usa GET /api/osservati): un codice inventato verrebbe salvato,
+    # non comparirebbe mai e occuperebbe uno dei MASSIMO posti. Quelli già salvati e non validi si tolgono al primo salvataggio.
+    db = _db()
+    try:
+        if not osservati.nel_listone(db, [i]):
+            raise HTTPException(404, "Giocatore non trovato nel listone")
+        with versioni.blocco("osservati"):
+            versioni.controlla(request, versioni.etag_file(ctx.osservati))
+            elenco = osservati.aggiungi(i, ctx.osservati, validi=osservati.nel_listone(db, osservati.leggi(ctx.osservati)))
+            response.headers["ETag"] = versioni.etag_file(ctx.osservati)
+    finally:
+        db.close()
     return {"osservati": elenco}
 
 
@@ -1005,7 +1036,7 @@ def leggi_affidabilita(ctx: Contesto = Depends(lega_corrente)):
 
 
 class SchierataDiario(BaseModel):
-    giornata: int
+    giornata: int = Field(ge=1, le=MAX_GIORNATA)
     tipo: str                               # "consigliata" | "manuale"
     titolari: list[int] | None = None       # per "manuale": gli 11 titolari
     modulo: str | None = None               # facoltativo: il modulo si ricava dai titolari
@@ -1113,7 +1144,7 @@ def formazione_testo(ctx: Contesto = Depends(lega_corrente)):
 
 
 @app.get("/api/confronto")
-def confronto(a: int, b: int, giornata: int | None = None, squadra: str | None = None, modulo: str | None = None, livello: int = 0, ctx: Contesto = Depends(lega_corrente)):
+def confronto(a: int, b: int, giornata: int | None = Query(None, ge=1, le=MAX_GIORNATA), squadra: str | None = None, modulo: str | None = None, livello: int = 0, ctx: Contesto = Depends(lega_corrente)):
     db = _db()
     try:
         r = lega.carica(ctx.rose)
@@ -1283,7 +1314,7 @@ def sotto_il_cofano(request: Request, ctx: Contesto = Depends(lega_corrente)):
         corpo = sotto_il_cofano_mod.costruisci(db, consigli.stagione_corrente(), affidabilita.carica(ctx.affidabilita),
                                                lingua=lingua_testi.della_richiesta(request))
     except sotto_il_cofano_mod.TestiNonDisponibili:
-        raise HTTPException(503, sotto_il_cofano_mod.MESSAGGIO_NON_DISPONIBILE)
+        raise HTTPException(503, sotto_il_cofano_mod.MESSAGGIO_NON_DISPONIBILE) from None
     finally:
         db.close()
     etag = versioni.etag_dati(corpo)
@@ -1329,9 +1360,13 @@ def classifica(ruolo: str | None = None, liberi: bool = False, limite: int = 60,
     if liberi:
         prev = prev[~prev.index.isin(proprietari)]
     prev = prev.sort_values("atteso", ascending=False).head(max(1, min(limite, 800)))
-    return {"giornata": giornata, "giocatori": [
-        consigli.scheda_previsione(i, x) | {"quotazione": quot.get(i), "proprietario": proprietari.get(i)}
-        for i, x in prev.iterrows()]}
+    schede = [consigli.scheda_previsione(i, x) | {"quotazione": quot.get(i), "proprietario": proprietari.get(i)}
+              for i, x in prev.iterrows()]
+    db = _db()
+    try:
+        return {"giornata": giornata, "giocatori": _stato_vero(schede, db, r, giornata)}
+    finally:
+        db.close()
 
 
 @app.get("/api/giocatore/{calciatore_id}")
@@ -1438,6 +1473,31 @@ class OffertaTesto(BaseModel):
     completo: bool = False      # true: riconosce soltanto (con gli id) e non fa l'analisi semplice; quella completa si chiede a /api/scambi/analizza
 
 
+def _analisi_da_testo(trovati: dict, r, r_ose, request: Request) -> dict:
+    """L'analisi di un'offerta riconosciuta nel testo: quella semplice, o la completa se i ruoli non tornano."""
+    from . import scambi
+    db = _db()
+    try:
+        v = consigli.valori_scambi(db, r)
+    finally:
+        db.close()
+    try:
+        return scambi.analizza(v, r, r_ose, r_ose.mia_squadra, trovati["con"], trovati["do"], trovati["ricevo"]).come_dict(v)
+    except ValueError:
+        # l'analisi semplice vuole lo stesso numero di giocatori per ruolo: un'offerta 2 contro 1, o con ruoli diversi,
+        # riceve l'analisi completa (stessi campi più validità delle rose e giudizio) invece di perdere i nomi riconosciuti
+        # (l'app iPhone dà il giudizio dai soli punti: uno scambio che non si può fare resta un errore, con i motivi)
+        db = _db()
+        try:
+            completa = consigli.analisi_scambio(db, r, r_ose, trovati["con"], list(trovati["do"]), list(trovati["ricevo"]),
+                                                0, lingua_testi.della_richiesta(request))
+        finally:
+            db.close()
+        if not completa["valido"]:
+            raise ValueError(f"Così com'è lo scambio non si può fare: {'; '.join(completa['problemi'])}") from None
+        return completa
+
+
 @app.post("/api/scambi/da-testo")
 def scambio_da_testo(dati: OffertaTesto, request: Request, ctx: Contesto = Depends(lega_corrente)):
     """Valuta un'offerta scritta a parole (per esempio il messaggio di un altro allenatore): trova i giocatori e fa l'analisi."""
@@ -1450,26 +1510,10 @@ def scambio_da_testo(dati: OffertaTesto, request: Request, ctx: Contesto = Depen
     risposta = {"con": trovati["con"], "do": [nomi_[i] for i in trovati["do"]], "ricevo": [nomi_[i] for i in trovati["ricevo"]],
                 "ambigui": trovati["ambigui"], "analisi": None, "ids": {"do": list(trovati["do"]), "ricevo": list(trovati["ricevo"])}}
     if trovati["con"] and trovati["do"] and trovati["ricevo"] and not dati.completo:
-        db = _db()
-        try:
-            v = consigli.valori_scambi(db, r)
-        finally:
-            db.close()
-        try:
-            risposta["analisi"] = scambi.analizza(v, r, r_ose, r_ose.mia_squadra, trovati["con"], trovati["do"], trovati["ricevo"]).come_dict(v)
-        except ValueError:
-            # l'analisi semplice vuole lo stesso numero di giocatori per ruolo: un'offerta 2 contro 1, o con ruoli diversi,
-            # riceve l'analisi completa (stessi campi più validità delle rose e giudizio) invece di perdere i nomi riconosciuti
-            # (l'app iPhone dà il giudizio dai soli punti: uno scambio che non si può fare resta un errore, con i motivi)
-            db = _db()
-            try:
-                completa = consigli.analisi_scambio(db, r, r_ose, trovati["con"], list(trovati["do"]), list(trovati["ricevo"]),
-                                                    0, lingua_testi.della_richiesta(request))
-            finally:
-                db.close()
-            if not completa["valido"]:
-                raise ValueError(f"Così com'è lo scambio non si può fare: {'; '.join(completa['problemi'])}") from None
-            risposta["analisi"] = completa
+        # stesso limite di /api/scambi/analizza (al minuto per utente, analisi contemporanee): anche l'analisi completa N contro M
+        # passa di qui; la stessa offerta ripetuta non conta di nuovo
+        with limiti.analisi_scambio(ctx, ("testo", trovati["con"], tuple(trovati["do"]), tuple(trovati["ricevo"]))):
+            risposta["analisi"] = _analisi_da_testo(trovati, r, r_ose, request)
     return risposta
 
 
@@ -2308,11 +2352,51 @@ def scarica_backup(ctx: Contesto = Depends(lega_corrente)):
     return JSONResponse(b, headers={"Content-Disposition": f'attachment; filename="{nome}"'})
 
 
+RIPRISTINO_FATTO = "Dati ripristinati."
+RIPRISTINO_CHIUSE = "Dati ripristinati. Le formazioni delle giornate già chiuse non sono state cambiate."
+
+
+def _giornata_chiusa_per(ctx: Contesto):
+    """La regola di `_formazione_chiusa` per le voci di `scelte` («stagione/giornata») di un backup: chiuse le stagioni passate e,
+    in questa, le giornate dopo la scadenza. Calendario illeggibile: chiusa (nel dubbio la scelta del server resta)."""
+    stagione_ora, adesso = consigli.stagione_corrente(), datetime.now()
+    try:
+        r = _regole(ctx)
+    except Exception:                       # noqa: BLE001 - regole rovinate: valgono quelle predefinite
+        r = regole.Regole()
+    db = _db()
+    ricordate: dict[str, bool] = {}
+
+    def chiusa(chiave: str) -> bool:
+        if chiave not in ricordate:
+            stagione, _, g = chiave.rpartition("/")
+            if not g.isdigit() or not 1 <= int(g) <= MAX_GIORNATA:
+                ricordate[chiave] = False   # voce che l'app non legge mai: non cambia nessuna formazione
+            elif stagione != stagione_ora:
+                ricordate[chiave] = stagione < stagione_ora
+            else:
+                try:
+                    ricordate[chiave] = fasi.iniziata(db, r, stagione, int(g), adesso)
+                except sqlite3.Error:
+                    ricordate[chiave] = True
+        return ricordate[chiave]
+    return chiusa, db
+
+
 @app.post("/api/backup/ripristina")
 def ripristina_backup(dati: dict, ctx: Contesto = Depends(lega_corrente)):
-    """Rimette i dati di un backup. Controlla tutto prima: se qualcosa non va non cambia niente."""
+    """Rimette i dati di un backup. Controlla tutto prima: se qualcosa non va non cambia niente. Le formazioni delle giornate
+    già chiuse restano quelle del server (il backup non aggira la scadenza, come POST /api/formazione/valuta e DELETE /api/scelta)."""
     limiti.controlla_spazio(ctx, len(json.dumps(dati)), "Questo backup è troppo grande: controlla di aver scelto il file giusto.")
-    return {"ripristinati": backup.ripristina(dati, RADICE, ctx.file_backup, ctx.copia_prima)}
+    chiusa, db = _giornata_chiusa_per(ctx)
+    try:
+        with versioni.blocco("scelte"):
+            esito = backup.ripristina_esito(dati, RADICE, ctx.file_backup, ctx.copia_prima, chiusa)
+    finally:
+        db.close()
+    tenute = esito["scelte_chiuse_tenute"]
+    return {"ripristinati": esito["ripristinati"], "formazioni_chiuse_tenute": tenute,
+            "messaggio": RIPRISTINO_CHIUSE if tenute else RIPRISTINO_FATTO}
 
 
 # ---------------- app ----------------

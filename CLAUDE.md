@@ -15,6 +15,7 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
 - Passi piccoli: ogni passo va provato davvero prima del commit. Non dire che una cosa funziona se non l'hai eseguita.
 - Commit in italiano. Un ramo per ogni lavoro.
 - Ogni modifica a una schermata vale per web e iPhone: vedi `docs/COERENZA-WEB-IPHONE.md`.
+- Decisioni di architettura in `docs/decisioni/` (una per file, modello in `docs/decisioni/modello.md`).
 
 ## Flusso di lavoro
 1. Issue: cosa cambiare e perché. Per una correzione di una riga basta la pull request.
@@ -24,6 +25,27 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
 5. I controlli di GitHub (cartella `.github/workflows/`) devono essere verdi prima dell'unione.
 6. L'unione si fa con «squash» e il ramo si cancella. Le pull request del proprietario si uniscono da sole quando i controlli
    passano; quelle degli altri le unisce chi cura il progetto.
+
+## Metodo: Superpowers e questo repository
+- Per il **come** si lavora (idea, piano, test prima del codice, ricerca dei difetti, revisione, verifica) comandano le skill di
+  Superpowers, usate così come sono. Il metodo in breve: `docs/METODO.md`.
+- Questo file comanda su ciò che è del progetto, anche quando una skill dice altro:
+  - ogni ramo finisce con una pull request su `main` (`Closes #N`): mai unione in locale né a mano (la fa il job `unisci`),
+    mai rami lasciati a metà;
+  - test prima del codice sì, ma il codice già scritto non si butta: si scrive il test che fallisce sul comportamento
+    sbagliato, lo si vede fallire, poi si corregge;
+  - la revisione si fa prima di aprire la pull request, perché l'unione è automatica;
+  - ramo indietro rispetto a `main`: `git merge origin/main` nel ramo, niente push forzato;
+  - spec e piani in italiano in `docs/superpowers/specs/` e `docs/superpowers/plans/`, senza dati veri (repository pubblico);
+  - novità in `fanta/novita.d/`, coerenza web-iPhone, foto iOS lanciate da una sola persona (`docs/METODO.md`).
+
+## Divieti fissi per Claude Code
+`.claude/settings.json` ha regole `deny` che Claude Code applica da solo, in ogni modalità di permesso, a chi lavora con Claude Code
+in questo repository: niente `gh pr merge` (l'unione la fa il job `unisci`), niente push su `main` (si passa sempre da una pull
+request), niente push forzato, niente `git commit --no-verify` (il controllo prima del commit non si salta). Le frasi nelle
+istruzioni si possono dimenticare, queste regole no. Coprono le forme abituali dei comandi, non ogni modo di scriverli: su GitHub
+`main` vieta solo cancellazione e push forzato, quindi il controllo vero è la revisione (in bozza e IA) prima dell'unione automatica. Non toccano i job di GitHub Actions (`unisci`, `rilascia`), che girano senza Claude Code.
+Le eccezioni personali vanno in `.claude/settings.local.json`, che resta fuori da git; un divieto però vale lo stesso.
 
 ## Test
 - Ambiente (Windows): `python -m venv .venv`, poi `.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt`.

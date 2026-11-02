@@ -61,6 +61,12 @@ def modo() -> str:
     return m if m in MODI else PREDEFINITO
 
 
+def attiva() -> bool:
+    """False con FANTA_MAIL=spento: nessun codice può arrivare, e le rotte dell'email lo dicono subito (`posta_spenta`) invece di
+    far aspettare un messaggio che non parte. `log` conta come attiva: serve a provare i giri dell'email senza spedire."""
+    return modo() != "spento"
+
+
 def segreto(variabile: str, file: str) -> str:
     """Una chiave: prima dall'ambiente, poi da un file in dati/ (una riga). Vuota se non c'è."""
     v = os.environ.get(variabile, "").strip()

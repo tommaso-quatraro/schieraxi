@@ -21,7 +21,7 @@ Densità e Mercato su iOS: le sta già correggendo l'agente iOS (PR non ancora p
 | Valore | 17 / 650 | `.headline` | nome giocatore, fantavoto atteso nelle righe |
 | Corpo | 15 / 400 | `.subheadline` | testo normale |
 | Secondario | 13 / 450, `--testo-2` | `.footnote` | squadra, quotazione, spiegazioni brevi |
-| Etichetta | 12 / 600 maiuscolo, spaziatura .06em | `.caption.weight(.semibold)` | intestazioni di sezione, unità («punti attesi») |
+| Etichetta | 12-13 / 600, iniziale maiuscola, senza spaziatura (mai maiuscole spaziate, `STILE-SENZA-AI.md`) | `.caption.weight(.semibold)` | intestazioni di sezione, unità («punti attesi») |
 Mai sotto 12 px/`.caption`. Il secondario non usa opacità extra: o `--testo-2` o niente (dal 2/11/2026 anche la web: le partite finite e rinviate, i dubbi tolti e le voci non selezionabili passano a `--testo-2` invece di sbiadire).
 Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 
@@ -31,12 +31,12 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 - Una riga di elenco: altezza 56-64 (compatta 48), separatore sottile, nessuna card dentro una card.
 
 ## Componenti standard
-- **Card**: sfondo vetro/gradino sopra lo sfondo, titolo (18) + eventuale valore a destra; max 1 card «eroe» per schermata (la prima). Le altre sono piatte.
+- **Card**: superficie piena un gradino di tono sopra il fondo piatto, bordo sottile, niente ombra né riflessi (`STILE-SENZA-AI.md`), titolo (18) + eventuale valore a destra; max 1 card «eroe» per schermata (la prima). Le altre sono piatte.
 - **Riga giocatore** (una sola, uguale ovunque): avatar 40 con anello del ruolo | nome (Valore) e sotto UNA riga secondaria («INT @ MIL · sab 31 20:45» o «INT · quot. 19 · svincolato», forme in `docs/COERENZA-WEB-IPHONE.md`) | a destra fantavoto atteso (Valore, colore neutro, mai colorato in base al valore; nella Formazione il tocco sul numero apre «Perché questo numero») e sotto «gioca 90%» (Etichetta). Max 2 righe di testo a sinistra; icone di stato come simbolo accanto al nome, non come righe in più.
 - **Segmenti/tab di sezione** (Mercato: Consigliati, Osservati, Asta, Classifica, Calendario, Cerca; Lega): al massimo 4 voci in un controllo segmentato a tutta larghezza; oltre le 4, voci in una striscia scorrevole con la voce attiva sempre portata in vista e un bordo sfumato che mostra che scorre. Mai voci tagliate o testo a 12 px stretto (oggi web: 6 voci a 12,5 px; iOS: «Osservati» e «Cerca» tagliate).
 - **Barra delle schede principale** (Oggi, Formazione, Mercato, Scambi, Lega): sempre sotto il contenuto in un'area riservata (non sopra). Sull'iPhone è la `TabView` di sistema; nessun accessorio nella stessa zona (vedi incoerenze). Da 900 px su web: colonna a sinistra.
 - **Intestazione pagina**: titolo pagina (28) + al massimo 2 azioni a destra (cerca, aggiorna/condividi); sottotitolo di stato (giornata, ultimo aggiornamento) in Secondario. Uguale su tutte le schermate.
-- **Intestazione di sezione**: Etichetta (12 maiuscolo) con eventuale conteggio a destra; sopra 16, sotto 8.
+- **Intestazione di sezione**: Etichetta (13, iniziale maiuscola) con eventuale conteggio a destra; sopra 16, sotto 8.
 - **Chip di scelta** (modulo, stile): una sola riga scorrevole o un menu; con valore piccolo accanto («4-3-3 · 71,1»). Quello attivo: lime (`--capitano`) con testo scuro, uguale su web e iOS.
 - **Stato vuoto**: simbolo 32, una frase che dice cosa manca, un solo pulsante che dice cosa fare («Importa le rose»). Mai solo grigio.
 - **Errore**: riga/card rossa (`--rosso`) con simbolo, cosa è successo, come rimediare, pulsante «Riprova». Voce di `MARCHIO.md`.

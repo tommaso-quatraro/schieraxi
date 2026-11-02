@@ -69,10 +69,10 @@ def test_errori_delle_schede_del_mercato_hanno_il_riprova():
 
 
 def test_osservati_col_plurale_giusto():
-    """Collaudo 2/11: «1 giocatori osservati»."""
+    """Collaudo 2/11: «1 giocatori osservati» (dal 2/11 il nome è «Seguiti»)."""
     from fanta import server
     app = (server.WEB / "app.js").read_text(encoding="utf-8")
     testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
     assert 'tp("mercato.n_osservati", r.giocatori.length' in app
-    assert '"mercato.n_osservati.one": "{n} giocatore osservato"' in testi and '"mercato.n_osservati.one": "{n} watched player"' in testi
+    assert '"mercato.n_osservati.one": "{n} giocatore seguito"' in testi and '"mercato.n_osservati.one": "{n} player followed"' in testi    # un solo nome: Seguiti
     assert "prossime 5 giornate una per una" not in testi                  # il testo dei Consigliati diceva «giornata per giornata», la riga mostra il totale

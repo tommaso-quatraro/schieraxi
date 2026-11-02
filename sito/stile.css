@@ -96,7 +96,7 @@ body.dopo-eroe .alto { border-bottom-color: var(--bordo); }
   border-radius: .85rem; font-weight: 800; text-decoration: none; border: 2px solid var(--azione); background: var(--azione); color: var(--azione-testo);
   cursor: pointer; font-size: 1rem; transition: box-shadow .25s, background .2s;
 }
-.tasto:hover { box-shadow: 0 8px 24px var(--glow-2); }
+.tasto:hover { background-color: color-mix(in srgb, var(--azione) 88%, var(--testo)); }
 .tasto.secondario { background: transparent; color: var(--azione); }
 .tasto.piccolo { min-height: 2.75rem; padding: .3rem 1rem; font-size: .92rem; border-radius: .7rem; }
 .tasto.grande { min-height: 3.4rem; padding-inline: 1.9rem; font-size: 1.1rem; }
@@ -104,22 +104,19 @@ body.dopo-eroe .alto { border-bottom-color: var(--bordo); }
 .azioni { display: flex; flex-wrap: wrap; gap: .8rem; margin: 2rem 0 0; }
 
 /* comparsa allo scorrimento (solo con JS): una dissolvenza breve, una volta sola */
-.js .r { opacity: 0; translate: 0 1rem; transition: opacity .6s var(--fluida), translate .6s var(--fluida); transition-delay: calc(var(--i, 0) * 100ms); }
 .js .r.visto, .rivela-tutto .r { opacity: 1; translate: none; }
 
 /* prima schermata: nome, una frase, slogan, due pulsanti e un solo elemento visivo (il campo) */
 .eroe {
   min-height: 100vh; min-height: 100svh; display: grid; align-items: center; padding: calc(var(--alto) + 2.5rem) 0 clamp(3.5rem, 7vw, 6rem);
-  background: radial-gradient(90% 70% at 85% 10%, var(--glow), transparent 70%), radial-gradient(100% 80% at 50% 0%, var(--carta-2), var(--sfondo) 75%);
+  background: var(--sfondo);   /* fondo pieno: l'alone lime sul nero era il fondo di mille pagine generate */
 }
 .eroe-in { display: grid; gap: clamp(2.5rem, 6vw, 6rem); align-items: center; }
 @media (min-width: 56rem) { .eroe-in { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); } }
 .eroe h1 { margin-bottom: .45em; }
-.grad { background: linear-gradient(95deg, var(--azione), var(--grad-c)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .eroe .intro { margin-bottom: 1.2rem; }
 .xi { color: var(--xi); font-weight: 900; letter-spacing: .045em; }
 .slogan { font-weight: 800; font-size: 1.2rem; letter-spacing: -.01em; margin: 0; }
-.evid { background: linear-gradient(transparent 64%, color-mix(in srgb, var(--capitano) 42%, transparent) 64%); }
 
 /* il campo della prima schermata: undici giocatori in 4-3-3, ognuno con il suo fantavoto atteso; entrano una volta */
 .campo-hero {
@@ -141,14 +138,13 @@ body.dopo-eroe .alto { border-bottom-color: var(--bordo); }
 .campo-hero .panca-sfondo { inset: 88% 0 0 0; border-radius: 0 0 1.6rem 1.6rem; }
 .chip-modulo { position: absolute; left: 50%; top: .9rem; translate: -50% 0; background: rgba(6, 40, 30, .7); color: var(--punto); border: 1px solid rgba(234, 246, 238, .25); border-radius: 999px; padding: .1rem .9rem; font-weight: 800; font-size: .85rem; font-variant-numeric: tabular-nums; }
 .panca-sfondo { position: absolute; inset: 86% 0 0 0; background: rgba(0, 0, 0, .28); border-radius: 0 0 1.4rem 1.4rem; border-top: 1px dashed rgba(234, 246, 238, .3); }
-.panca-sfondo span { position: absolute; left: .6rem; top: -1.25em; font-size: clamp(.6rem, 2.3cqw, .75rem); color: rgba(234, 246, 238, .75); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.panca-sfondo span { position: absolute; left: .6rem; top: -1.25em; font-size: clamp(.6rem, 2.3cqw, .75rem); color: rgba(234, 246, 238, .75); font-weight: 700; }
 .didascalia { text-align: center; font-size: .85rem; color: var(--tenue); margin: .9rem 0 0; }
 
 /* cosa fa: tre punti */
-.tre { list-style: none; padding: 0; margin: 0; display: grid; gap: clamp(1.8rem, 4vw, 3.5rem); counter-reset: t; }
+.tre { list-style: none; padding: 0; margin: 0; display: grid; gap: clamp(1.8rem, 4vw, 3.5rem); }
 @media (min-width: 48rem) { .tre { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.tre li { counter-increment: t; }
-.tre h3::before { content: counter(t); display: grid; place-items: center; width: 2.4rem; aspect-ratio: 1; border-radius: 50%; background: var(--capitano); color: var(--capitano-testo); font-size: 1rem; margin-bottom: 1rem; }
+.tre li { border-top: 2px solid var(--bordo); padding-top: 1.2rem; }   /* niente numeri: non sono passi */
 .tre p { color: var(--tenue); margin: 0; max-width: 34ch; }
 
 /* il fantavoto atteso: la sezione firma, l'esempio che si costruisce voce per voce */
@@ -162,11 +158,11 @@ body.dopo-eroe .alto { border-bottom-color: var(--bordo); }
 .fv-nome { margin: 0; font-weight: 800; font-size: 1.15rem; line-height: 1.2; }
 .fv-ruolo { margin: 0; color: #cfe3d6; font-size: .9rem; }
 .esempio { display: inline-block; font-size: .75rem; font-weight: 700; border: 1px dashed rgba(234, 246, 238, .4); color: #cfe3d6; border-radius: 999px; padding: 0 .6rem; margin: 0 0 0 auto; }
-.fv-tit { margin: 1.2rem 0 0; text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; font-weight: 800; color: #d4f34a; }
+.fv-tit { margin: 1.2rem 0 0; font-size: .95rem; font-weight: 700; color: #d4f34a; }
 .fv-riga { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .fv-num { display: block; font-size: clamp(4.5rem, 3rem + 4vw, 6.5rem); font-weight: 900; line-height: 1; letter-spacing: -.05em; font-variant-numeric: tabular-nums; color: #d4f34a; }
-.fv-pg { flex: none; display: grid; justify-items: center; line-height: 1.1; padding: .6rem 1.1rem; border-radius: 1rem; background: rgba(234, 246, 238, .1); border: 1px solid rgba(234, 246, 238, .22); font-size: .85rem; font-weight: 700; color: #cfe3d6; text-transform: uppercase; letter-spacing: .08em; }
-.fv-pg b { font-size: 2rem; letter-spacing: -.02em; color: #fff; text-transform: none; font-variant-numeric: tabular-nums; }
+.fv-pg { flex: none; display: grid; justify-items: center; line-height: 1.1; padding: .6rem 1.1rem; border-radius: 1rem; background: rgba(234, 246, 238, .1); border: 1px solid rgba(234, 246, 238, .22); font-size: .9rem; font-weight: 700; color: #cfe3d6; }
+.fv-pg b { font-size: 2rem; letter-spacing: -.02em; color: #fff; font-variant-numeric: tabular-nums; }
 .fv-voci { list-style: none; padding: 0; margin: 1.2rem 0; display: grid; gap: .35rem; }
 .fv-voci li { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem .75rem; border-radius: .6rem; background: rgba(234, 246, 238, .08); font-size: .95rem; transition: opacity .4s, translate .5s var(--fluida), background .4s; }
 .fv-voci b { font-variant-numeric: tabular-nums; color: #d4f34a; white-space: nowrap; }
@@ -210,7 +206,7 @@ body.dopo-eroe .alto { border-bottom-color: var(--bordo); }
 .pr { position: absolute; left: 50%; top: calc(var(--d) + .14rem); width: var(--d); translate: -50% 0; height: .22rem; border-radius: 9px; background: rgba(234, 246, 238, .28); overflow: hidden; }
 .pr i { display: block; height: 100%; background: #d4f34a; transform-origin: 0 50%; transform: scaleX(var(--v, 1)); }
 .gioc.dubbio .faccia { border-style: dashed; }
-.gioc.top .faccia { box-shadow: 0 0 0 .22rem rgba(212, 243, 74, .55), 0 0 1.2rem rgba(212, 243, 74, .5); }
+.gioc.top .faccia { box-shadow: 0 0 0 .22rem #d4f34a; }
 .gioc[data-ord]::before { content: attr(data-ord); position: absolute; left: calc(50% + var(--d) * .3); top: calc(var(--d) * .62); width: 1.1em; aspect-ratio: 1; border-radius: 50%; background: #d4f34a; color: #1a2600; font-size: clamp(.55rem, 2.3cqw, .72rem); font-weight: 800; display: grid; place-items: center; z-index: 1; }
 @media (hover: hover) { .gioc:hover .faccia { scale: 1.08; } }
 .gioc.sel .faccia { box-shadow: 0 0 0 .3rem #fff, 0 0 1.4rem rgba(255, 255, 255, .55); scale: 1.12; }
@@ -336,7 +332,7 @@ footer p { max-width: 80ch; margin: 0 0 .6rem; }
     mask-image: linear-gradient(90deg, #000 var(--bc), transparent calc(var(--bc) + 4rem), transparent calc(100% - var(--bc) - 4rem), #000 calc(100% - var(--bc)));
   }
   .sez-alt { background: color-mix(in srgb, var(--carta) 55%, transparent); }
-  .eroe { background: radial-gradient(60% 70% at 70% 10%, var(--glow), transparent 70%); }
+  .eroe { background: none; }
 }
 
 /* ---- nome disegnato «SchieraXI»: lettere di Archivo ExtraBold condensato (SIL OFL 1.1) già trasformate in tracciati,

@@ -29,7 +29,8 @@ def _esegui(chiamata: str) -> str:
     stub = """const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const sigla = s => esc((s || "").slice(0, 3).toUpperCase()); const badgeRuolo = r => `<i>${r}</i>`;
 const parseData = s => s ? new Date(String(s).replace(" ", "T")) : null; const quando = s => s ? "QUANDO(" + s + ")" : "–";"""
-    codice = f"{testi}\n{num}\n{stub}\n{APP[inizio:fine]}\nconsole.log(JSON.stringify({chiamata}));"
+    etichette = "\n".join(re.search(rf"^const {n} = .*$", APP, re.M).group(0) for n in ("CLASSE_TONO", "etichettaPronta", "classeTono"))
+    codice = f"{testi}\n{num}\n{stub}\n{etichette}\n{APP[inizio:fine]}\nconsole.log(JSON.stringify({chiamata}));"
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout)
@@ -45,7 +46,7 @@ def test_oggi_usa_la_fase_e_i_server_vecchi_restano_come_prima():
 def test_carta_della_giornata_in_corso():
     h = _esegui(f"cardInCorso({json.dumps(IN_CORSO)}, {{punteggio_atteso: 68}})")
     assert "Punti fatti finora" in h and "34,5" in h and "≈ 66,0" in h and "attesi prima: 68,0" in h
-    assert "2 giocatori devono ancora giocare" in h and "QUANDO(2026-11-09 20:45)" in h and "voto in arrivo" in h
+    assert "2 giocatori devono ancora giocare" in h and "QUANDO(2026-11-09 20:45)" in h and "Voto in arrivo" in h        # vocabolario comune (docs/COERENZA-WEB-IPHONE.md)
     assert "Rossi &lt;b&gt;" in h and "<b>\"" not in h                       # nomi sempre ripuliti
     assert "Neri</span>" not in h.split("Cambi dalla panchina")[0]          # chi non va a punteggio non è nell'elenco
     assert "entrato dalla panchina" in h and "Neri → Bianchi" in h and "già fatto" in h
@@ -68,3 +69,13 @@ def test_carta_del_riepilogo_e_della_prossima():
     assert "arriva nel Diario" in h2 and "Puoi già prepararla." in h2 and "attesi" not in h2.split("Giornata 8")[0]
     assert "undefined" not in h + h2 and "NaN" not in h + h2
     assert _esegui("cardRiepilogo(null, null)") == ""
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_in_corso_lo_stato_viene_dall_etichetta_del_server():
+    """Con `etichetta` (fanta/etichette.py) il web mostra il suo testo, nella lingua della richiesta, con il colore del tono."""
+    dati = json.loads(json.dumps(IN_CORSO))
+    dati["giocatori"][4]["etichetta"] = {"codice": "voto_in_arrivo", "testo": "Grade coming", "tono": "neutro"}
+    h = _esegui(f"cardInCorso({json.dumps(dati)}, {{punteggio_atteso: 68}})")
+    assert '<span class="piccolo tono neutra">Grade coming</span>' in h and "Voto in arrivo" not in h
+    assert "QUANDO(2026-11-09 20:45)" in h                                     # l'ora di chi deve giocare resta: è un dato

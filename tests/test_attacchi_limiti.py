@@ -2,7 +2,6 @@
 tetti globali che un attaccante esaurisce per bloccare tutti, scrypt saturato. Cartelle temporanee e posta finta."""
 import collections
 import contextlib
-import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +18,7 @@ from test_account_email import codice_di, ultimi
 def posta_finta(monkeypatch):
     messaggi = []
     monkeypatch.setattr(posta, "invia", lambda m: messaggi.append(m) or True)
+    monkeypatch.setattr(posta, "attiva", lambda: True)                # le email «partono» (le raccoglie la lista qui sopra)
     return messaggi
 
 
@@ -94,9 +94,9 @@ def test_raffica_sul_codice_email_al_massimo_cinque_prove(web, posta_finta):
         da(f"9.9.{giro}.9").post("/api/account/recupero-email", json={"email": "marco@example.com"})
         giusto = codice_di(ultimi(posta_finta, "marco@example.com")[-1])
         prove = [f"{(int(giusto) + k + 1) % 10 ** 6:06d}" for k in range(39)] + [giusto]
-        esiti = in_parallelo(lambda i: da(f"2001:db8:{giro}:{i}::1").post(
+        esiti = in_parallelo(lambda i: da(f"2001:db8:{giro}:{i}::1").post(  # noqa: B023 in_parallelo finisce prima del giro dopo
             "/api/account/recupero-email/conferma",
-            json={"email": "marco@example.com", "codice": prove[i], "nuova": f"nuova password lunga {giro}"}).status_code, 40)
+            json={"email": "marco@example.com", "codice": prove[i], "nuova": f"nuova password lunga {giro}"}).status_code, 40)  # noqa: B023 in_parallelo finisce prima del giro dopo
         with contextlib.closing(account.apri()) as db:
             tentativi = db.execute("SELECT tentativi FROM codici_email WHERE scopo = 'recupero' ORDER BY id DESC").fetchone()[0]
         assert tentativi <= account_email.TENTATIVI_PER_CODICE
@@ -149,7 +149,7 @@ def test_dopo_tre_codici_bruciati_niente_altri_codici_per_un_giorno(web, posta_f
     """Chi brucia 3 codici (5 errori ciascuno) non ne riceve altri per un giorno: il blocco è suo (il suo indirizzo IP), non
     dell'email a cui puntava, quindi la vittima continua a poter recuperare l'account."""
     utente_con_email(posta_finta=posta_finta)
-    for giro in range(account_email.CODICI_BRUCIATI[0]):
+    for _giro in range(account_email.CODICI_BRUCIATI[0]):
         multiutente.t += account.ORA + 1
         da("7.7.7.1").post("/api/account/recupero-email", json={"email": "marco@example.com"})
         giusto = codice_di(ultimi(posta_finta, "marco@example.com")[-1])
@@ -196,7 +196,7 @@ def test_raffica_da_un_indirizzo_non_lascia_fuori_gli_altri(web, monkeypatch):
         time.sleep(0.15)
         return vero(*a, **k)
     monkeypatch.setattr(account.hashlib, "scrypt", lento)
-    esiti, fine = [], threading.Event()
+    esiti = []
 
     def raffica(i):
         esiti.append(da("5.5.5.5").post("/api/account/accedi", json={"nome_utente": f"n{i}", "password": "x" * 12}).status_code)

@@ -36,6 +36,24 @@ enum Quando {
         return f
     }()
 
+    private static let calendario: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+        return c
+    }()
+
+    /// «31 ott»: per le date oltre la settimana (la web scrive `fData`).
+    private static let giornoMese: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = italia
+        f.timeZone = TimeZone(identifier: "Europe/Rome")
+        f.dateFormat = "d MMM"
+        return f
+    }()
+
+    /// Come `tempo.giorno_0…6` della web, dalla domenica (`Calendar.weekday` parte da 1 = domenica).
+    private static let sigleGiorni = ["dom", "lun", "mar", "mer", "gio", "ven", "sab"]
+
     private static func formato(_ f: String, locale: Locale) -> DateFormatter {
         let d = DateFormatter()
         d.locale = locale
@@ -75,12 +93,32 @@ enum Quando {
         return lettura.date(from: String(testo.prefix(16)).replacingOccurrences(of: "T", with: " "))
     }
 
-    static func leggibile(_ testo: String?) -> String {
+    /// La data di una partita o di una scadenza scritta come la web (`quando` di `app.js`), ora italiana:
+    /// «oggi 20:45», «ieri 15:00», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese «sab 8 nov 18:30».
+    /// Un testo che non si capisce resta com'è (nil: vuoto). `adesso` serve solo ai test.
+    /// L'app è solo in italiano: niente inglese («today», «Sat»).
+    static func leggibile(_ testo: String?, adesso: Date = Date()) -> String {
         guard let d = data(testo) else { return testo ?? "" }
-        return scrittura.string(from: d)
+        return relativa(d, adesso: adesso)
     }
 
-    /// Una data già pronta, scritta come la scrive il server («sab 8 nov, 18:30», ora italiana).
+    /// Come `leggibile(_:adesso:)`, per una data già pronta.
+    static func relativa(_ d: Date, adesso: Date = Date()) -> String {
+        let c = calendario
+        let giorni = c.dateComponents([.day], from: c.startOfDay(for: adesso), to: c.startOfDay(for: d)).day ?? 0
+        let ora = soloOra.string(from: d)
+        switch giorni {
+        case 0: return "oggi \(ora)"
+        case 1: return "domani \(ora)"
+        case -1: return "ieri \(ora)"
+        default:
+            let nome = sigleGiorni[min(max(c.component(.weekday, from: d) - 1, 0), 6)]
+            let giorno = abs(giorni) > 6 ? giornoMese.string(from: d) : String(c.component(.day, from: d))
+            return "\(nome) \(giorno) \(ora)"
+        }
+    }
+
+    /// Un momento già pronto (non la data di una partita), con giorno e mese: «sab 8 nov, 18:30», ora italiana.
     static func leggibile(_ data: Date) -> String {
         scrittura.string(from: data)
     }

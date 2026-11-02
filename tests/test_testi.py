@@ -86,7 +86,7 @@ def test_i_messaggi_del_server_si_riconoscono():
     """
     r = subprocess.run(["node", "-"], input=prova.replace("CAMPIONI", json.dumps(campioni)), capture_output=True, encoding="utf-8", timeout=30)
     assert r.returncode == 0, r.stderr
-    for (k, v), (k2, esito) in zip(campioni, json.loads(r.stdout)):
+    for (k, _v), (_k2, esito) in zip(campioni, json.loads(r.stdout)):
         assert esito == re.sub(r"\{\w+\}", "7", en[k]), (k, esito)
     r = subprocess.run(["node", "-"], input=TESTI_JS + 'LINGUA = "en"; console.log(traduciErrore("Frase mai vista"))', capture_output=True, encoding="utf-8", timeout=30)
     assert r.stdout.strip() == "Frase mai vista"                          # un messaggio sconosciuto resta com'è
@@ -206,7 +206,7 @@ def _messaggi_di_errore() -> dict[str, str]:
             if isinstance(n, ast.Constant) and isinstance(n.value, str):
                 return n.value
             if isinstance(n, ast.Name):
-                return costanti.get(n.id)
+                return costanti.get(n.id)  # noqa: B023 testo() si usa solo per il file di questo giro
             if isinstance(n, ast.JoinedStr):
                 return "".join(v.value if isinstance(v, ast.Constant) else "{x}" for v in n.values)
             if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):

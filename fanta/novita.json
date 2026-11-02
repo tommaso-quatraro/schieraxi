@@ -1,5 +1,372 @@
 [
   {
+    "versione": "1.375",
+    "data": "2026-11-02T18:01:35",
+    "titolo": "Controllo del codice più attento",
+    "voci": [
+      "Il controllo automatico del codice ora cerca anche gli errori probabili, non solo quelli sicuri. Per te non cambia nulla."
+    ],
+    "tecnico": [
+      "ruff: regole B (flake8-bugbear) attive in ruff.toml; B905 spento (zip tronca apposta nei calcoli), fastapi.Depends tra le chiamate ammesse nei valori predefiniti (B008).",
+      "Variabili del ciclo inutilizzate rinominate con _ (understat, rose, scambi, stato_utente e test), raise ... from None in server e blocca_dipendenze; 6 casi voluti con # noqa e il motivo."
+    ]
+  },
+  {
+    "versione": "1.374",
+    "data": "2026-11-02T17:30:54",
+    "titolo": "Controllo automatico del codice",
+    "voci": [
+      "Ogni modifica all'app ora passa anche da un controllo automatico del codice che trova errori sicuri prima che arrivino a te. Per te non cambia nulla."
+    ],
+    "tecnico": [
+      "ruff 0.17.3 (solo controllo, regole E9 e F in ruff.toml) nel job test di test.yml, installato con versione e hash fissati da .github/ruff-requisiti.txt.",
+      "Tolti import e variabili inutili segnalati da ruff (account_email, backup, server e 20 file di test); F811 escluso solo nei file di test che importano fixture di pytest da altri file."
+    ]
+  },
+  {
+    "versione": "1.373",
+    "data": "2026-11-02T16:50:03",
+    "titolo": "Giornata divisa in due: la formazione si chiude alla prima partita",
+    "voci": [
+      "Quando una giornata è divisa in due (per esempio tre partite il venerdì e le altre il mercoledì dopo), la formazione ora si chiude prima delle partite del venerdì, invece di restare aperta fino al mercoledì."
+    ],
+    "tecnico": [
+      "turno.inizio: la strada di ripiego sceglie solo inizi che lasciano prima al massimo MAX_ANTICIPI anticipi (la prima partita va sempre bene); prima poteva tornare al gruppo principale e lasciare 3 o più anticipi (issue #139). Test a esempi in tests/test_turno.py."
+    ]
+  },
+  {
+    "versione": "1.372",
+    "data": "2026-11-02T16:34:14",
+    "titolo": "Iscrizione senza email che non arrivano e Confronto sulla giornata giusta",
+    "voci": [
+      "Se sul server le email sono spente, l'iscrizione con email lo dice subito invece di far aspettare un codice che non arriverà mai.",
+      "Nel Confronto fra due giocatori, dopo la scadenza, i numeri sono quelli della giornata che vedi in Formazione."
+    ],
+    "tecnico": [
+      "POST /api/account/registra senza invito (modi aperta ed email) con posta spenta: 503, codice iscrizione_posta_spenta, controllo prima dei limiti e uguale per ogni nome e indirizzo; nessuna iscrizione in attesa.",
+      "POST /api/account/registra con invito e email a posta spenta: l'account nasce, la verifica non parte, la risposta ha email_non_salvata: true (facoltativo); con la posta accesa è tutto come prima.",
+      "Web: traduzione err.iscrizione_posta_spenta; apriConfronto passa giornata=stato.formaz.f.giornata a /api/confronto.",
+      "Test in tests/test_posta_spenta.py e tests/test_diario_confronto_web.py; i test dell'iscrizione che raccolgono le email finte accendono posta.attiva."
+    ]
+  },
+  {
+    "versione": "1.371",
+    "data": "2026-11-02T16:20:56",
+    "titolo": "Regole: nome dei campi più sicuro",
+    "voci": [
+      "Regole: il nome dei campi per i lettori di schermo è sempre testo semplice."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: rigaRegola usa esc(etichetta) per l'aria-label, senza la regex che toglieva i tag (avviso CodeQL js/incomplete-multi-character-sanitization, n. 26, arrivato con la PR #130). Nessuna etichetta delle regole contiene tag. Test: tests/test_squadra_testi_web.py."
+    ]
+  },
+  {
+    "versione": "1.370",
+    "data": "2026-11-02T16:14:24",
+    "titolo": "Regole, Squadra e registrazione: testi più chiari e campi con il loro nome",
+    "voci": [
+      "Regole, Prova del modificatore difesa: il bonus si legge com'è, anche con il mezzo punto (prima «+3,5» diventava «+4»).",
+      "Regole: ogni campo numerico ha il nome della sua riga anche per i lettori di schermo (prima alcuni non avevano nome, altri si chiamavano come la sezione).",
+      "Squadra, Altro, Impostazioni e Novità: il pulsante per tornare indietro ha la freccia disegnata, come nelle altre schermate.",
+      "Aggiorna le rose: il comando rapido dell'iPhone si chiama «Importa in SchieraXI».",
+      "Registrazione: se non spunti la casella, il messaggio ricorda anche l'età minima."
+    ],
+    "tecnico": [
+      "fanta/web/impostazioni.js: apriPannello usa ICONA_INDIETRO al posto di «← » nel testo; app.js: lo stesso in vistaNovita.",
+      "fanta/web/app.js: rigaRegola dà al primo input della riga aria-label = testo della riga senza tag; aggiornaProva usa tp(..., Math.abs(b)) e num(b, Number.isInteger(b) ? 0 : 1); accesso.spunta_letto con { eta: ETA_MINIMA }.",
+      "fanta/web/testi.js: lega.una_volta_sola, lega.sc1, lega.per_usarlo_apri con SchieraXI; accesso.spunta_letto con {eta} (it e en). GUIDA-UTENTE: percorso di Stemma e maglia e immagini da indirizzo web solo se accese.",
+      "Test: tests/test_squadra_testi_web.py (rigaRegola provata con node)."
+    ]
+  },
+  {
+    "versione": "1.369",
+    "data": "2026-11-02T16:08:46",
+    "titolo": "Squadra e primo avvio: i dati appena salvati si vedono subito",
+    "voci": [
+      "Nel primo avvio, dopo aver sistemato un giocatore non riconosciuto, «Questa è la mia» salva la squadra: prima diceva che i dati erano cambiati da un altro dispositivo e chiudeva la configurazione.",
+      "Nel primo avvio il titolo «Giocatori da sistemare» scende man mano che li sistemi.",
+      "In Squadra e in Altro, dopo aver scelto la tua squadra, salvato i crediti o aggiornato le rose, le schermate mostrano subito i valori nuovi: prima restavano quelli di prima finché non cambiavi scheda."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: risorsaDi riconosce POST /api/rose/correggi come risorsa «rose» (la web aggiorna l'ETag dopo la correzione; prima la PUT /api/mia-squadra seguente usava l'ETag vecchio e riceveva 412). vistaLega: rileggiSquadre(voce) rilegge /api/squadre dopo mia squadra, crediti e importazione e ridisegna il pannello della mia squadra; miaS e la select si calcolano dentro il corpo del pannello.",
+      "fanta/web/primoavvio.js: paContaDaSistemare aggiorna il titolo «Giocatori da sistemare (N)».",
+      "Test: tests/test_squadra_dati_aggiornati_web.py (ogni rotta del server con If-Match ha la sua risorsa in risorsaDi, provata con node)."
+    ]
+  },
+  {
+    "versione": "1.368",
+    "data": "2026-11-02T15:53:52",
+    "titolo": "Chi schierare e Diario: numeri e parole che tornano",
+    "voci": [
+      "Chi schierare?: il giocatore in verde è sempre quello del titolo «Schiera …», e la giornata è quella della tua lega.",
+      "Diario: punti sempre con un decimale («48,0») e, in «Le tue scelte», il numero della giornata della tua lega.",
+      "Quanto ci abbiamo preso: «chi davamo all'83%» invece di «al 83%», e i quattro numeri sono righe più pulite."
+    ],
+    "tecnico": [
+      "fanta/consigli.py confronto(): consigliato = l'unico titolare tra i due in formazione (posto_a/posto_b), altrimenti chi ha più punti_attesi come prima. Issue #121 punto 1 (vale anche per l'iPhone, che legge consigliato).",
+      "fanta/diario.py scelte_tue(): ogni voce di per_giornata ha giornata_lega (la web la usava già, mancava nella risposta).",
+      "fanta/web/app.js: apriConfronto usa giornata_lega ?? giornata nel titolo e posto_a/posto_b del server per le etichette; apriDiario formatta i punti con num(x, 1); nuova alPercento() per diario.qp_gioca_ric (segnaposto {al} in testi.js, it ed en). stile.css: .qp-voce senza fondo, bordo e raggio (riga con border-top).",
+      "Test: tests/test_confronto_consigliato.py, tests/test_diario_confronto_web.py, tests/test_diario_scelte_lega.py. docs/API.md e GUIDA-UTENTE.md aggiornati."
+    ]
+  },
+  {
+    "versione": "1.367",
+    "data": "2026-11-02T15:28:10",
+    "titolo": "Cambi consigliati: rimborso e costo sempre visibili",
+    "voci": [
+      "Nei cambi consigliati del Mercato, sotto i punti, si leggono sempre i crediti che ti restano, il rimborso e il costo del cambio: prima si vedevano solo con il mouse, quindi non sul telefono."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: soldiDelCambio() mette «crediti dopo · rimborso · costo» in una riga pr-sec propria (tre span.nb che vanno a capo interi); tolto il title di rimborso e costo. testi.js: chiavi mercato.rimborso_n e mercato.costo_n, mercato.crediti_dopo senza il puntino iniziale, tolta mercato.rimborso_meno_costo. stile.css: .pr-sec .nb. Stessi numeri di prima, nessuna logica nuova. GUIDA-UTENTE aggiornata. Test: test_design_web.py."
+    ]
+  },
+  {
+    "versione": "1.366",
+    "data": "2026-11-02T15:12:01",
+    "titolo": "Controllo orario: niente falsi allarmi sulla formazione salvata",
+    "voci": [
+      "Il controllo automatico che ogni ora verifica l'app non segnala più per errore un guasto nella lettura della formazione salvata."
+    ],
+    "tecnico": [
+      "fanta/sentinella.py chiama leggi_scelta per nome (la PR #92 aveva cambiato l'ordine dei parametri: AttributeError per ogni utente dalle 14:37 del 2/11). Test che controlla le chiamate contro la firma vera delle rotte."
+    ]
+  },
+  {
+    "versione": "1.365",
+    "data": "2026-11-02T15:00:55",
+    "titolo": "Diario più breve e campo a posto sugli schermi larghi",
+    "voci": [
+      "Il Diario delle giornate si apre con una riga sola; la spiegazione completa sta in «Come si legge».",
+      "Sui computer con lo schermo largo le linee del campo restano dentro il campo invece di attraversare la pagina."
+    ],
+    "tecnico": [
+      "fanta/web/app.js apriDiario: avv.diario_riga (nuova, italiano e inglese) + <details class=\"come-diario\"> con avv.per_ogni_giornata; stile.css: .come-diario > summary.",
+      "stile.css @media (min-width: 1400px): .colonne-campo .campo torna position: relative (la regola position: static lasciava area, cerchio e metà campo posizionati sulla pagina)."
+    ]
+  },
+  {
+    "versione": "1.364",
+    "data": "2026-11-02T15:00:48",
+    "titolo": "Formazione: spiegazioni più brevi",
+    "voci": [
+      "Le frasi sotto moduli e stili, sopra titolari e panchina e nella legenda del campo sono più corte e dicono solo cosa fare."
+    ],
+    "tecnico": [
+      "fanta/web/testi.js: formazione.modificata_mano, tocca_confronto, tocca_sostituire, quest_ordine_entra, legenda_volto accorciate (italiano e inglese). Regola in docs/STILE-SENZA-AI.md."
+    ]
+  },
+  {
+    "versione": "1.363",
+    "data": "2026-11-02T15:00:36",
+    "titolo": "Rosa e scheda: pulsanti e titoli più chiari",
+    "voci": [
+      "I pulsanti per tornare a Squadra e ad Altro hanno un'icona al posto della freccia scritta nel testo.",
+      "Nella scheda del giocatore la parte su gol e assist rispetto alle occasioni ha un titolo che dice cosa mostra, non una domanda."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: ICONA_INDIETRO (svg) nei pulsanti data-vai=\"squadra\" e data-vai=\"altro\", classe .bottone.indietro in stile.css; testi.js: scambio.squadra, regole.altro senza «←», mercato.rende_sopra_sotto riscritto (italiano e inglese)."
+    ]
+  },
+  {
+    "versione": "1.362",
+    "data": "2026-11-02T14:59:26",
+    "titolo": "Cambi consigliati e Scambi più leggibili",
+    "voci": [
+      "Ogni cambio consigliato sta in poche righe: chi entra, al posto di chi, i punti in più e i crediti che ti restano.",
+      "In Scambi il titolo della scheda non ripete più la voce scelta in alto."
+    ],
+    "tecnico": [
+      "fanta/web/app.js tabConsigli: riga proposta senza le etichette Entra/Esce e senza la quotazione di chi esce; rimborso e costo nel title dei crediti (mercato.rimborso_meno_costo); chiavi nuove mercato.al_posto_di e mercato.crediti_dopo, tolte mercato.entra, mercato.esce, mercato.rimborso_costo. stile.css: .pr-num span a capo (6,5em); h2 dei pannelli di Scambi nascosto alla vista (non ai lettori di schermo) quando ci sono i segmenti. GUIDA-UTENTE aggiornata."
+    ]
+  },
+  {
+    "versione": "1.361",
+    "data": "2026-11-02T14:59:12",
+    "titolo": "Oggi: avviso delle novità più semplice",
+    "voci": [
+      "In Oggi l'avviso delle novità è più breve e senza simboli decorativi."
+    ],
+    "tecnico": [
+      "fanta/web/testi.js: oggi.novita_banner senza ✨ e senza «tocca per vedere» (italiano e inglese); docs/COERENZA-WEB-IPHONE.md riga 18 (l'iPhone va allineato)."
+    ]
+  },
+  {
+    "versione": "1.360",
+    "data": "2026-11-02T14:49:31",
+    "titolo": "Un aspetto più pulito",
+    "voci": [
+      "Lo sfondo è fermo e piatto: niente più macchie colorate che si muovono.",
+      "Schede, pulsanti e scelte hanno colori pieni, senza riflessi né aloni: i numeri si leggono meglio.",
+      "Le intestazioni delle sezioni non sono più in maiuscolo.",
+      "I voti della forma nella scheda del giocatore sono numeri semplici, senza colori per valore."
+    ],
+    "tecnico": [
+      "fanta/web/stile.css: fondo piatto (via .sfondo i e @keyframes deriva), via il lucido (linear-gradient con --luce-2) e il bordo luminoso (inset --luce) da carte, vetro, pulsanti, chip, lente e campo; testata senza angoli arrotondati; niente box-shadow 0 0 Npx; etichette senza text-transform: uppercase (resta solo .giorno-titolo::first-letter); niente cascata di entrate su main > *, .elenco li e fogli; .pallini neutri. Regole in docs/STILE-SENZA-AI.md, test in tests/test_stile_senza_ai_web.py.",
+      "docs/DESIGN.md: livello Etichetta e componente Card aggiornati."
+    ]
+  },
+  {
+    "versione": "1.359",
+    "data": "2026-11-02T14:48:24",
+    "titolo": "Elenco dei giocatori con lo stato vero della giornata",
+    "voci": [
+      "Dopo la scadenza, l'elenco dei giocatori dice «Voto in arrivo», «Da giocare» o il fantavoto preso, come Formazione, Rosa, Seguiti e scheda, invece delle probabili e di «gioca N%» per partite già giocate."
+    ],
+    "tecnico": [
+      "GET /api/classifica a giornata iniziata passa da fasi.schede_a_giornata_iniziata (helper server._stato_vero), come /api/rosa, /api/osservati e /api/giocatore; test in tests/test_seguiti_dopo_scadenza.py (anche Seguiti, già corretto su main)."
+    ]
+  },
+  {
+    "versione": "1.358",
+    "data": "2026-11-02T14:45:18",
+    "titolo": "In inglese i salvataggi non si bloccano più",
+    "voci": [
+      "Con l'app in inglese, scegliere la tua squadra, seguire un giocatore o salvare altre modifiche poteva fallire con «dati cambiati da un altro dispositivo» e ricaricare la pagina (per esempio al primo avvio). Ora si salva come in italiano."
+    ],
+    "tecnico": [
+      "versioni._tag toglie il suffisso «-en» di server._etag_inglese prima del confronto con If-Match: la copia inglese di una lettura è la stessa versione dei dati. Una versione davvero vecchia resta 412. Test in tests/test_etag_inglese.py."
+    ]
+  },
+  {
+    "versione": "1.357",
+    "data": "2026-11-02T14:45:10",
+    "titolo": "Email spente sul server: lo diciamo subito",
+    "voci": [
+      "Se sul server l'invio delle email è spento, l'app non dice più «il codice sta arrivando»: spiega che il codice non può arrivare e propone il codice di recupero.",
+      "In questo caso la registrazione non chiede l'email e in «Il tuo account» non compare il modulo per collegarla."
+    ],
+    "tecnico": [
+      "posta.attiva() (FANTA_MAIL diverso da spento); POST /api/account/email e /api/account/recupero-email rispondono 503 con codice posta_spenta; email_attiva in GET /api/account/me e nella risposta 401. Web: stato.emailAttiva nasconde il campo email della registrazione, la scheda «con l'email» del recupero e il modulo dell'email in Account; traduzione err.posta_spenta. Test in tests/test_posta_spenta.py; i test che raccolgono le email finte impostano posta.attiva."
+    ]
+  },
+  {
+    "versione": "1.356",
+    "data": "2026-11-02T14:36:26",
+    "titolo": "Notifiche e Impostazioni: ritocchi dal collaudo",
+    "voci": [
+      "Notifiche: con le ore tranquille spente non compaiono più le tendine «Dalle» e «Alle».",
+      "Notifiche: se scegli la stessa ora di inizio e di fine, le tendine tornano all'ultima fascia salvata.",
+      "Il tuo account: «Genera un nuovo codice» senza password ora chiede di scriverla, invece di dire che è sbagliata.",
+      "Primo avvio: dopo aver scelto da quale giornata è partita la lega, in alto compare subito il numero giusto della giornata.",
+      "Informazioni: c'è il link al codice sorgente di SchieraXI, come sull'iPhone."
+    ],
+    "tecnico": [
+      "stile.css: regola globale [hidden] { display: none !important } (.riga con display:flex vinceva su hidden in #av-fascia); avvisiTelefono riporta le tendine a o.silenzio_da/a e aggiorna o dopo ogni PUT; collegaAccount controlla #acc-pw-codice vuoto prima di /api/account/codice-recupero; paTempiSalva chiama caricaInfo; impostazioni.js voceSorgente da /api/stato.sorgente (solo https). Test in tests/test_impostazioni_collaudo5_web.py."
+    ]
+  },
+  {
+    "versione": "1.355",
+    "data": "2026-11-02T14:33:24",
+    "titolo": "Partite anticipate: la formazione resta aperta",
+    "voci": [
+      "Se una partita della giornata è anticipata di qualche giorno, la formazione non si chiude prima del tempo: la scadenza resta quella del resto della giornata.",
+      "I giocatori della partita anticipata mostrano già com'è andata («Ha giocato», «Voto in arrivo»), e il posticipo del lunedì non risulta più «Rinviata» per sbaglio."
+    ],
+    "tecnico": [
+      "turno.inizio parte dal gruppo principale (partite a meno di 36 ore l'una dall'altra, almeno metà del totale); una partita da più di 36 ore a meno di 7 giorni prima è un anticipo (al massimo 2, oltre è un turno diviso e vale la regola di prima).",
+      "Regola unica in fanta/turno.py: anticipo, della_giornata (usata da fasi.stato_partita, rinvii, live, sentinella) e conta_per_scadenza (avvisi.prima_partita: promemoria, pianificatore, copia automatica, widget, Oggi). Le partite giocate 7 giorni o più prima del gruppo principale fissano la scadenza come prima.",
+      "da_fare._chiusa_prima usa avvisi.prima_partita invece di MIN(data).",
+      "fasi.formazione_a_giornata_iniziata: a formazione aperta i giocatori di un anticipo già cominciato hanno stato_partita ed etichetta dello stato vero (iniziata resta false)."
+    ]
+  },
+  {
+    "versione": "1.354",
+    "data": "2026-11-02T14:31:28",
+    "titolo": "Rosa e scheda: partite e stato giusti",
+    "voci": [
+      "Nella Rosa le partite in trasferta si leggono «@ JUV» e non più «vs JUV», con il giorno e l'ora, come in Formazione.",
+      "Dopo la scadenza la Rosa non mostra più «gioca N%» accanto a «Voto in arrivo»: c'è il fantavoto preso o un trattino, come in Formazione.",
+      "Nella scheda del giocatore lo stato della partita finita («Voto in arrivo») non compare più due volte.",
+      "In inglese il numero d'esempio della legenda del campo si scrive con il punto."
+    ],
+    "tecnico": [
+      "vistaRosa usa vsAt e quando come le righe della Formazione; valoreRosa usa esitoPartita (tolta la chiave scambio.vs); apriGiocatore: pillola dello stato nascosta quando lo stato è già nel numero grande (statoInGrande); legenda con num(6.8). Test in tests/test_rosa_righe_web.py."
+    ]
+  },
+  {
+    "versione": "1.353",
+    "data": "2026-11-02T14:20:24",
+    "titolo": "Formazioni chiuse protette anche dal backup, Seguiti con lo stato della partita",
+    "voci": [
+      "Rimettere un backup non cambia più le formazioni delle giornate già chiuse, e il messaggio finale lo dice.",
+      "Nei Seguiti, a partita iniziata, vedi lo stato vero (per esempio «Partita in corso» o «Voto in arrivo») invece di «Probabile titolare».",
+      "Uno scambio con crediti che non si può fare non mostra più un saldo sbagliato dopo lo scambio."
+    ],
+    "tecnico": [
+      "POST /api/backup/ripristina: le voci di dati/scelte.json delle giornate chiuse (fasi.iniziata, stagioni passate comprese) restano quelle del server (backup.unisci_scelte); risposta con i campi nuovi facoltativi formazioni_chiuse_tenute e messaggio.",
+      "Parametri giornata di /api/formazione, /api/formazione/valuta, /api/scelta (GET e DELETE), /api/diario/schierata e /api/confronto limitati a 1-100: 422 invece del 500 (OverflowError di sqlite).",
+      "POST /api/scambi/da-testo: l'analisi passa da limiti.analisi_scambio come /api/scambi/analizza (429 con Retry-After).",
+      "GET /api/osservati: a giornata iniziata le schede passano da fasi.schede_a_giornata_iniziata (stato_partita, etichetta), come /api/rosa.",
+      "scambi_multi.controlla_conguaglio: se chi riceve supererebbe il limite dei crediti, conguaglio.dopo vale {mio: null, loro: null}.",
+      "Commento di DELETE /api/scelta corretto: POST /api/diario/schierata riscrive apposta la scelta di una giornata finita (documentato in docs/API.md)."
+    ]
+  },
+  {
+    "versione": "1.352",
+    "data": "2026-11-02T14:01:17",
+    "titolo": "Lo stato dei giocatori scritto allo stesso modo ovunque",
+    "voci": [
+      "«Probabile titolare», «In dubbio», «Voto in arrivo» e gli altri stati dei giocatori ora arrivano già scritti, con le stesse parole e gli stessi colori in Formazione, scheda, Rosa, Seguiti e Oggi, anche in inglese."
+    ],
+    "tecnico": [
+      "Web: pillTitolarita, esitoPartita, scheda, valoreLive e avvisi di Oggi mostrano etichetta.testo con il colore da tono (CLASSE_TONO); codice solo per decidere.",
+      "Ripiego con le parole composte in JS (pillRipiego) solo quando etichetta manca; i motivi infortunato/squalificato/non convocato non si ripetono accanto all'etichetta."
+    ]
+  },
+  {
+    "versione": "1.351",
+    "data": "2026-11-02T13:48:24",
+    "titolo": "Seguiti con un nome solo, crediti e password più sicuri da scrivere",
+    "voci": [
+      "I giocatori che segui si chiamano «Seguiti» dappertutto; nella scheda il pulsante è «☆ Segui».",
+      "Crediti delle squadre: se hai scritto dei crediti e non li hai salvati, l'app te lo dice.",
+      "Cambiando la password la scrivi due volte, così un errore di battitura non ti chiude fuori.",
+      "Regole: «bonus +1 punto» al singolare."
+    ],
+    "tecnico": [
+      "testi.js: mercato.*osserv* e lega.voce_osservati → «Seguiti», «☆ Segui» / «★ Seguito» (inglese «Following», «☆ Follow»).",
+      "regole.media_bonus con .one/.other (tp); lega.crediti_non_salvati; account.ripeti_password e account.password_diverse con controllo prima della richiesta.",
+      "docs/COERENZA-WEB-IPHONE.md: voce «Giocatori seguiti» nel vocabolario. Test: tests/test_coerenza_web.py."
+    ]
+  },
+  {
+    "versione": "1.350",
+    "data": "2026-11-02T13:47:37",
+    "titolo": "Seguiti: solo giocatori veri",
+    "voci": [
+      "Tra i giocatori seguiti si possono aggiungere solo giocatori che esistono nell'elenco della Serie A: un codice sbagliato non occupa più un posto."
+    ],
+    "tecnico": [
+      "PUT /api/osservati/{i} risponde 404 «Giocatore non trovato nel listone» se il codice non è nella tabella calciatori (la stessa di GET /api/osservati) e non salva. I codici non validi già salvati si ignorano in lettura e si tolgono al salvataggio successivo (osservati.aggiungi con validi). Nuova fixture listone_in_archivio in tests/conftest.py per i test che usavano codici senza listone (test_server, test_etag, test_isolamento)."
+    ]
+  },
+  {
+    "versione": "1.349",
+    "data": "2026-11-02T13:42:48",
+    "titolo": "Stato dei giocatori: le stesse parole ovunque",
+    "voci": [
+      "Lo stato di ogni giocatore («Probabile titolare», «In dubbio · gioca 55%», «Voto in arrivo», «Rinviata»...) ora lo decide il server con una regola sola: presto il sito e l'app per iPhone mostreranno le stesse parole in ogni schermata."
+    ],
+    "tecnico": [
+      "Nuovo campo facoltativo etichetta = {codice, testo, tono} nelle schede dei giocatori (formazione, scheda, rosa, classifica, osservati, confronto, migliori di Oggi), in in_corso.giocatori e negli avvisi di /api/oggi. Regola unica in fanta/etichette.py; testo nella lingua della richiesta (l'inglese lo scrive il passaggio che traduce le note degli infortuni). Il nome non è stato perché il campo stato esiste già. Contratto in docs/API.md; test in tests/test_etichette.py e tests/test_fasi.py."
+    ]
+  },
+  {
+    "versione": "1.348",
+    "data": "2026-11-02T13:37:06",
+    "titolo": "Web e iPhone con le stesse parole e gli stessi numeri",
+    "voci": [
+      "«Giornata 7» è sempre il numero della giornata della tua lega, anche in alto, in Formazione e nella scheda del giocatore.",
+      "Le partite si leggono come sul campo: «INT @ MIL · sab 31 20:45» nelle righe, «@ MIL» e «vs MIL» nel calendario.",
+      "Sul campo solo il cognome; stati della partita con le stesse parole ovunque («Partita in corso», «Voto in arrivo»); nel Diario «Ho schierato la consigliata»."
+    ],
+    "tecnico": [
+      "Web: giornata_lega || giornata in testata, Formazione (titolo, testo, immagine) e scheda (prossima partita); vsAt/partitaRiga/partitaBreve in app.js per righe, confronto e celle.",
+      "testi.js: mercato.partita_fuori «in trasferta contro», oggi.st_* uguali a tit.st_*, diario.ho_schierato_questa «Ho schierato la consigliata»; cognome senza iniziale anche nell'immagine.",
+      "docs/COERENZA-WEB-IPHONE.md: differenze 1, 8, 24 chiuse; 2, 12, 14, 19 chiuse sul lato web. Test: tests/test_coerenza_web.py."
+    ]
+  },
+  {
     "versione": "1.347",
     "data": "2026-11-02T13:33:46",
     "titolo": "Scambi e mercato: conti giusti anche nei casi limite",

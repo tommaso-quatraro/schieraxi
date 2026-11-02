@@ -53,7 +53,9 @@ def test_scheda_senza_sigle_e_rosa_con_gioca():
             assert "xG" not in testo and "xA" not in testo, (chiave, testo)
     assert 'tile(num(av.xg, 2), "xG")' not in APP and 'tile(num(av.xa, 2), "xA")' not in APP
     corpo = APP[APP.index("async function vistaRosa"):APP.index("const NOME_IMMAGINE")]
-    assert 't("giocatore.gioca", { p: perc(p.p_voto) })' in corpo                          # una sola percentuale, «gioca N%»
+    assert "valoreRosa(p, x)" in corpo                                                       # una sola percentuale, «gioca N%»
+    valore = APP[APP.index("function valoreRosa"):APP.index("// ---------------------------------------------------------------- navigazione")]
+    assert 't("giocatore.gioca", { p: perc(p.p_voto) })' in valore
     scheda = APP[APP.index("async function apriGiocatore"):APP.index("async function osservatiIds")]
     assert "motiviUtili(pr).filter(senzaPercentuale)" in scheda                               # niente doppioni delle caselle
 
@@ -92,3 +94,23 @@ def test_rosa_dopo_la_scadenza_mostra_lo_stato_della_giornata(client, monkeypatc
     dopo = {g["nome"]: g["previsione"] for g in client.get("/api/rosa").json()["giocatori"]}
     assert dopo["Sommer"]["titolarita"] is None and dopo["Sommer"]["stato_partita"] == "attesa_voti"
     assert dopo["Kean"]["stato_partita"] == "da_giocare" and dopo["Kean"]["motivi"] == []
+
+
+def test_seguiti_dopo_la_scadenza_mostrano_lo_stato_della_giornata(client, monkeypatch):
+    """Revisione 2/11: l'elenco dei Seguiti a partita iniziata diceva ancora «Probabile titolare» (la Rosa no)."""
+    client.post("/api/rose/testo", json={"testo": "Mia\nP\tSommer\t10\nA\tKean\t30\n"})
+    client.put("/api/mia-squadra", json={"nome": "Mia"})
+    monkeypatch.setattr(server.osservati, "leggi", lambda *a, **k: [2, 14])
+    prev = pd.DataFrame({"nome": ["Sommer", "Kean"]}, index=[2, 14])
+    monkeypatch.setattr(server.consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, False))
+    monkeypatch.setattr(server.consigli, "scheda_previsione",
+                        lambda i, x: {"id": int(i), "nome": x["nome"], "titolarita": "titolare", "motivi": ["titolare"]})
+    monkeypatch.setattr(server.fasi, "stati_giocatori", lambda *a, **k: {2: "in_corso", 14: "attesa_voti"})
+    monkeypatch.setattr(server.fasi, "iniziata", lambda *a: False)
+    prima = {g["id"]: g for g in client.get("/api/osservati").json()["giocatori"]}
+    assert prima[2]["titolarita"] == "titolare" and "stato_partita" not in prima[2]
+    monkeypatch.setattr(server.fasi, "iniziata", lambda *a: True)
+    dopo = {g["id"]: g for g in client.get("/api/osservati").json()["giocatori"]}
+    assert dopo[2]["titolarita"] is None and dopo[2]["stato_partita"] == "in_corso" and dopo[2]["motivi"] == []
+    assert dopo[14]["stato_partita"] == "attesa_voti" and dopo[14]["etichetta"]["codice"] != "titolare"
+    assert dopo[2]["proprietario"] == "Mia"                                   # il resto della voce resta
