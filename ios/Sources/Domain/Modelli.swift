@@ -352,10 +352,29 @@ struct Avviso: Decodable, Identifiable {
     let tipo: String?
     let nota: String?
     let inFormazione: Bool?
-    /// Probabilità di giocare (0-1), per i dubbi: «Dubbio (55%)» come nella web app.
+    /// Probabilità di giocare (0-1), per i dubbi: «In dubbio · gioca 55%» come nella web app.
     var pVoto: Double? = nil
+    /// L'etichetta pronta dal server (`fanta/etichette.py`): `testo` va mostrato com'è, al posto di quello composto da `tipo`
+    /// e `pVoto`. Facoltativa: un server vecchio non la manda.
+    var etichetta: EtichettaPronta? = nil
     /// Lo stesso giocatore può avere più avvisi (dubbio e diffidato): l'id da solo non basta per le liste.
     var ident: String { "\(id)-\(tipo ?? "")" }
+
+    /// `{codice, testo, tono}` del server. Tollerante: un valore con una forma strana vale «niente etichetta» e non rompe Oggi.
+    struct EtichettaPronta: Decodable {
+        let codice: String?
+        let testo: String?
+        let tono: String?
+
+        private enum CodingKeys: String, CodingKey { case codice, testo, tono }
+
+        init(from decoder: Decoder) throws {
+            let c = try? decoder.container(keyedBy: CodingKeys.self)
+            codice = (try? c?.decodeIfPresent(String.self, forKey: .codice)) ?? nil
+            testo = (try? c?.decodeIfPresent(String.self, forKey: .testo)) ?? nil
+            tono = (try? c?.decodeIfPresent(String.self, forKey: .tono)) ?? nil
+        }
+    }
 }
 
 struct Partita: Decodable, Identifiable {

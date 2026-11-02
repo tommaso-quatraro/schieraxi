@@ -169,11 +169,11 @@ struct VistaPunti: View {
                 }
             }
             if case let (dentro, su) = RiassuntoWidget.quanteDentro(giornate), su > 0 {
-                Text("Dentro la fascia prevista in \(dentro) giornate su \(su).")
+                Text(RiassuntoWidget.fraseDentro(dentro: dentro, su: su))
                     .font(.caption).foregroundStyle(TintaWidget.testo2)
             }
             if let media {
-                Text("In media \(Formato.conSegno(media)) punti sul previsto nelle ultime \(scarti.count) giornate.")
+                Text(RiassuntoWidget.fraseMedia(media, giornate: scarti.count))
                     .font(.caption).foregroundStyle(TintaWidget.testo2)
             }
             Spacer(minLength: 0)

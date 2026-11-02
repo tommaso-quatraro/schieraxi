@@ -26,6 +26,7 @@ struct VistaCruscotto: View {
     @Environment(\.widgetRenderingMode) private var modoSistema
     @Environment(\.renderForzato) private var modoForzato
     private var modo: WidgetRenderingMode { modoForzato ?? modoSistema }
+    @Environment(\.dynamicTypeSize) private var dimensioneTesto
     let voce: Voce
 
     private var accessorio: Bool {
@@ -60,11 +61,12 @@ struct VistaCruscotto: View {
                 VStack(spacing: 0) {
                     Text(w.siglaGiornata ?? "G").fontWidget(10)
                     Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
-                    Text(dubbi > 0 ? "\(dubbi) dubbi" : "ok").fontWidget(9)
+                    Text(dubbi > 0 ? Formato.plurale(dubbi, "dubbio", "dubbi") : "ok").fontWidget(9)
                 }
             }
         case .accessoryInline:
-            Label("\(f.modulo ?? "—") · \(dubbi > 0 ? "\(dubbi) da controllare" : "titolari a posto")", systemImage: "sportscourt")
+            // una riga sola, solo testo e simbolo: con il testo grande senza il modulo (mai «2 da contr…»)
+            Label(DisposizioneWidget.rigaInLinea(modulo: f.modulo, dubbi: dubbi, testo: dimensioneTesto), systemImage: "sportscourt")
         default:
             VStack(alignment: .leading, spacing: 1) {
                 ContoWidget(inizio: w.inizio, adesso: voce.date).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
@@ -72,8 +74,10 @@ struct VistaCruscotto: View {
                     .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                 if let p = w.partiteInGioco.first {
                     Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)").font(.caption2).lineLimit(1)
+                } else if dubbi > 0 {
+                    EtichettaDaControllare(n: dubbi).font(.caption2)
                 } else {
-                    Text(dubbi > 0 ? "\(dubbi) da controllare" : "Titolari a posto").font(.caption2).lineLimit(1)
+                    Text("Titolari a posto").font(.caption2).lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -135,7 +139,7 @@ struct VistaCruscotto: View {
             } else {
                 ForEach(elenco.prefix(massimo)) { g in RigaGiocatoreWidget(g: g, lato: lato) }
                 if elenco.count > massimo {
-                    Text("e altri \(elenco.count - massimo)").font(.caption2).foregroundStyle(TintaWidget.testo2)
+                    Text(RiassuntoWidget.altri(elenco.count - massimo)).font(.caption2).foregroundStyle(TintaWidget.testo2)
                 }
             }
         }

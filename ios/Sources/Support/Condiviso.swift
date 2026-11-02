@@ -84,12 +84,24 @@ struct DubbioRiassunto: Codable, Equatable, Identifiable {
     var tipo: String?
     /// Probabilità di giocare (0-1), per i dubbi.
     var pVoto: Double?
+    /// Il testo dell'etichetta pronta dal server (`etichetta.testo` degli avvisi di Oggi). Facoltativo: un server vecchio non lo
+    /// manda e un riassunto salvato da una versione vecchia non lo ha.
+    var etichetta: String? = nil
 
-    /// «Dubbio 55%», «Infortunato»...: una riga breve.
+    /// «In dubbio · gioca 55%», «Infortunato»...: una riga breve. Prima il testo del server, se c'è; altrimenti le stesse
+    /// parole calcolate qui (vocabolario di `docs/COERENZA-WEB-IPHONE.md`).
     var descrizione: String {
-        let base = (tipo ?? "da controllare").prefix(1).uppercased() + (tipo ?? "da controllare").dropFirst()
-        guard let p = pVoto else { return base }
-        return "\(base) \(Int((p * 100).rounded()))%"
+        if let t = etichetta?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty { return t }
+        if tipo?.lowercased() == "dubbio" { return Self.inDubbio(pVoto) }
+        let base = tipo ?? "da controllare"
+        return base.prefix(1).uppercased() + base.dropFirst()
+    }
+
+    /// «In dubbio · gioca 55%» come il server (`in_dubbio` di `fanta/etichette.py`); «In dubbio» se la probabilità manca o è
+    /// 0 o 1, che per un dubbio non dicono niente. Vale per tutti i widget, anche per i giocatori di `/api/widget`.
+    static func inDubbio(_ pVoto: Double?) -> String {
+        guard let p = pVoto, p > 0, p < 1 else { return "In dubbio" }
+        return "In dubbio · gioca \(Formato.percento(p))%"
     }
 }
 
@@ -172,7 +184,9 @@ struct RiassuntoOggi: Codable, Equatable {
                   daControllare: daControllare.count,
                   probabili: oggi.conProbabili,
                   scaricatoIl: scaricatoIl,
-                  dubbi: daControllare.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) },
+                  dubbi: daControllare.prefix(6).map {
+                      DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto, etichetta: $0.etichetta?.testo)
+                  },
                   giornataLega: oggi.giornataLega,
                   fase: fase)
     }

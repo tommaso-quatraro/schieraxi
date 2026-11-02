@@ -33,7 +33,12 @@ struct IntestazioneWidget: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Label(titolo, systemImage: icona).font(.caption.weight(.semibold)).foregroundStyle(colore).lineLimit(1)
+            // Con il testo grande il titolo non entra: resta il simbolo (mai «Formazi…»).
+            ViewThatFits(in: .horizontal) {
+                Label(titolo, systemImage: icona).lineLimit(1)
+                Image(systemName: icona).accessibilityLabel(titolo)
+            }
+            .font(.caption.weight(.semibold)).foregroundStyle(colore)
             Spacer(minLength: 0)
             if let destra { Text(destra).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
         }
@@ -130,5 +135,19 @@ extension View {
     /// Al posto di `.font(.system(size:))`: la misura cresce col testo grande di sistema.
     func fontWidget(_ misura: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> some View {
         modifier(FontWidgetScalabile(misura, peso: weight, design: design))
+    }
+}
+
+/// «4 da controllare»; se non entra (testo grande) solo «4» con il simbolo: mai «4 da contro…».
+struct EtichettaDaControllare: View {
+    let n: Int
+    var icona = "exclamationmark.triangle.fill"
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Label("\(n) da controllare", systemImage: icona).lineLimit(1)
+            Label("\(n)", systemImage: icona).lineLimit(1)
+        }
+        .accessibilityLabel("\(n) da controllare")
     }
 }
