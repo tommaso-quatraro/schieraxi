@@ -33,6 +33,8 @@ struct ImportaExcelView: View {
         .animation(Tema.morbida, value: vm.anteprima == nil)
         .navigationTitle("Aggiorna le rose")
         .task { await dubbi.carica() }
+        // Solo per le fotografie del simulatore (-DEMO_SCHERMATA lega-importa-salvate / lega-importa-salvate-ok): l'esito di un salvataggio, con dati inventati.
+        .task { if vm.esito == nil, let esito = DemoEsitoRose.esito(Demo.schermata) { vm.esito = esito } }
         // dopo un salvataggio i «giocatori da sistemare» (rimasti senza codice) si rileggono
         .onChange(of: vm.inCorso) { _, ora in if !ora, vm.esito != nil { Task { await dubbi.carica() } } }
         .onChange(of: vm.errore) { _, nuovo in if let nuovo { AccessibilityNotification.Announcement(nuovo).post() } }
@@ -489,4 +491,22 @@ struct CercaPerAnteprimaView: View {
 #Preview("Aggiorna le rose") {
     NavigationStack { ImportaExcelView(server: FinteServer.esempio) }
         .environmentObject(Navigazione())
+}
+
+/// L'esito di un salvataggio con dati inventati, solo per le fotografie (`Demo.schermata`). Mai usato fuori dalla demo.
+private enum DemoEsitoRose {
+    static func esito(_ schermata: String?) -> EsitoImportazione? {
+        let avvisi = schermata == "lega-importa-salvate" ? #"["Real Mandrake: «Bastrani» non è nel listone."]"# : "[]"
+        let json = #"""
+        {"squadre_importate": ["Gli Amici del Bar Sport Centrale", "Real Mandrake", "Atletico Divano"], "totale_squadre": 3,
+         "avvisi": \#(avvisi), "mia_squadra": "Gli Amici del Bar Sport Centrale",
+         "differenze": {"scambi": [{"squadre": ["Real Mandrake", "Atletico Divano"], "da_a": [{"nome": "Sorvani"}], "da_b": [{"nome": "Marténi"}]}],
+           "svincolati_presi": [{"squadra": "Atletico Divano", "giocatori": [{"nome": "Bastrani"}]}], "tagliati": [],
+           "crediti": [{"squadra": "Real Mandrake", "prima": 120, "dopo": 95}]}}
+        """#
+        guard schermata == "lega-importa-salvate" || schermata == "lega-importa-salvate-ok" else { return nil }
+        let decodificatore = JSONDecoder()
+        decodificatore.keyDecodingStrategy = .convertFromSnakeCase
+        return try? decodificatore.decode(EsitoImportazione.self, from: Data(json.utf8))
+    }
 }
