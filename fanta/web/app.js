@@ -1714,7 +1714,7 @@ async function apriConfronto(a, b) {
   apriFoglio(`<div class="caricamento">${t("mercato.confronto")}</div>`);
   const numero = ++ultimaScheda;
   try {
-    const contesto = stato.formaz ? `&livello=${stato.formaz.livello || 0}&modulo=${encodeURIComponent(stato.formaz.modulo.modulo)}${stato.squadraVista ? `&squadra=${encodeURIComponent(stato.squadraVista)}` : ""}` : "";
+    const contesto = stato.formaz ? `&giornata=${Number(stato.formaz.f.giornata)}&livello=${stato.formaz.livello || 0}&modulo=${encodeURIComponent(stato.formaz.modulo.modulo)}${stato.squadraVista ? `&squadra=${encodeURIComponent(stato.squadraVista)}` : ""}` : "";
     const c = await api(`/api/confronto?a=${a}&b=${b}${contesto}`);
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
     const [x, y] = c.giocatori;
