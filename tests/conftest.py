@@ -1,3 +1,5 @@
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -168,3 +170,20 @@ def _ricerche_gia_contate_azzerate():
     limiti._gia_contate.clear()
     yield
     limiti._gia_contate.clear()
+
+
+NODE_ITALIANO = str(Path(__file__).resolve().parent / "node_italiano.cjs")
+
+
+@pytest.fixture(autouse=True)
+def _node_in_italiano(monkeypatch):
+    """I test del codice web girano con Node, che prende navigator.language dalla lingua del sistema (inglese sui server
+    di GitHub, italiano sul PC): l'app sceglierebbe l'inglese. Ogni Node lanciato dai test precarica node_italiano.cjs."""
+    vero = subprocess.run
+
+    def run(args, *a, **k):
+        if isinstance(args, (list, tuple)) and args and os.path.basename(str(args[0])).lower() in ("node", "node.exe"):
+            args = [args[0], "--require", NODE_ITALIANO, *args[1:]]
+        return vero(args, *a, **k)
+
+    monkeypatch.setattr(subprocess, "run", run)
