@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.341",
+    "data": "2026-11-02T12:39:03",
+    "titolo": "Email dell'app più sicure",
+    "voci": [
+      "Le email dell'app (codici per confermare l'indirizzo e per recuperare la password, avvisi di sicurezza) possono partire da una casella del dominio dell'app, con un tetto all'ora che evita blocchi.",
+      "La pagina Privacy può dire chi spedisce le email e in quale Paese."
+    ],
+    "tecnico": [
+      "posta.py: password SMTP da un file indicato da FANTA_SMTP_PASSWORD_FILE (prima riga, permessi 600 su Linux, al massimo 4 KB; altrimenti non si usa e nel registro di sicurezza resta solo il tipo d'errore). FANTA_SMTP_PASSWORD e dati/smtp-password.txt restano validi.",
+      "Tetto FANTA_MAIL_MAX_ORA (predefinito 50 invii veri all'ora, per processo; spento e log non contano): oltre, evento posta_tetto_ora.",
+      "Con un utente SMTP e senza password non si prova l'accesso. Intestazioni Date e Message-ID (col dominio del mittente, non il nome del server).",
+      "testi_legali.py: FANTA_POSTA_FORNITORE riempie «il servizio che spedisce le email (...)» in italiano e inglese; senza, il testo resta quello di prima.",
+      "Test: server SMTP finto in locale con STARTTLS e certificato autofirmato; senza STARTTLS la password non parte."
+    ]
+  },
+  {
     "versione": "1.340",
     "data": "2026-11-02T12:15:44",
     "titolo": "Scheda in cima più leggibile",
