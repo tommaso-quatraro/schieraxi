@@ -63,7 +63,7 @@ struct FormazioneView: View {
                             }
                             .ingresso(4)
                             Carta("Panchina", simbolo: "chair.lounge.fill") {
-                                Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(.secondary)
+                                Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(Color.testoSecondario)
                                 ForEach(Array(v.panchina.enumerated()), id: \.element.id) { i, g in
                                     RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true, perche: apriPerche) }
                                 }
@@ -71,7 +71,7 @@ struct FormazioneView: View {
                             .ingresso(5)
                             fuori(f, v)
                             Text(Self.legenda(conPerche: f.titolari.contains { PercheNumero($0) != nil }))
-                                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                                .font(.caption).foregroundStyle(Color.testoSecondario).padding(.horizontal, 4)
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
@@ -213,7 +213,7 @@ struct FormazioneView: View {
         let alternative = vm.ballottaggio(per: g, f, v)
         if !alternative.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Ballottaggio · alternative vicine").font(.caption).foregroundStyle(.secondary)
+                Text("Ballottaggio · alternative vicine").font(.caption).foregroundStyle(Color.testoSecondario)
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
                     VStack(alignment: .leading, spacing: 6) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
@@ -228,8 +228,8 @@ struct FormazioneView: View {
             HStack(spacing: 5) {
                 Text(a.giocatore.nomeCorto).font(.caption.weight(.semibold))
                 Text(Formato.conSegno(a.differenza)).font(.caption.bold()).monospacedDigit()
-                    .foregroundStyle(a.quasiPari ? Color.secondary : (a.differenza > 0 ? Color.verde : Color.attenzione))
-                if a.quasiPari { Text("quasi pari").font(.caption2).foregroundStyle(.secondary) }
+                    .foregroundStyle(a.quasiPari ? Color.testoSecondario : (a.differenza > 0 ? Color.verde : Color.attenzione))
+                if a.quasiPari { Text("quasi pari").font(.caption2).foregroundStyle(Color.testoSecondario) }
             }
             .padding(.horizontal, 10)
             .frame(minHeight: 44)
@@ -248,12 +248,12 @@ struct FormazioneView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(altri) { RigaGiocatore(g: $0, apribile: true, perche: apriPerche) }
                         if let senza = f.senzaDati, !senza.isEmpty {
-                            Text("Senza dati per questa giornata: " + senza.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                            Text("Senza dati per questa giornata: " + senza.joined(separator: ", ")).font(.caption).foregroundStyle(Color.testoSecondario)
                         }
                     }
                     .padding(.top, 6)
                 }
-                .tint(.secondary)
+                .tint(Color.testoSecondario)
             }
         }
     }
@@ -266,7 +266,7 @@ struct FormazioneView: View {
         Carta {
             intestazione(f, v)
             if f.conProbabili == false {
-                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(.secondary)
+                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             rigaStato(f)
             if vm.manuale == nil {
@@ -274,7 +274,7 @@ struct FormazioneView: View {
             } else {
                 testoManuale
             }
-            if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(.secondary) }
+            if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
     }
 
@@ -288,7 +288,7 @@ struct FormazioneView: View {
                 }
                 Text(TempiLega.didascalia(giornata: f.etichettaGiornata, scelta: vm.manuale != nil,
                                           comeConsigliato: v.modulo == f.modulo && vm.rischio == (f.stileConsigliato ?? 0)))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
             }
             Spacer()
             puntiIntestazione(f, v)
@@ -302,13 +302,13 @@ struct FormazioneView: View {
         VStack(alignment: .trailing, spacing: 0) {
             if let punti = v.punti {
                 Text(Formato.punti(punti)).font(.title2.bold()).monospacedDigit().numerico(punti)
-                Text("punti attesi" + (vm.fascia(f).map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                Text("punti attesi" + (vm.fascia(f).map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
             } else if vm.calcoloNonRiuscito {
                 Text("–").font(.title2.bold()).accessibilityHidden(true)
-                Text("punti non calcolati").font(.caption).foregroundStyle(.secondary)
+                Text("punti non calcolati").font(.caption).foregroundStyle(Color.testoSecondario)
             } else {
                 ProgressView().controlSize(.small).accessibilityHidden(true)
-                Text("Calcolo…").font(.caption).foregroundStyle(.secondary)
+                Text("Calcolo…").font(.caption).foregroundStyle(Color.testoSecondario)
             }
         }
     }
@@ -320,7 +320,7 @@ struct FormazioneView: View {
     private func rigaStato(_ f: Formazione) -> some View {
         let stato = vm.statoScelta
         if stato != .sconosciuto {
-            let colore: Color = stato.tono == .bene ? .verde : stato.tono == .attenzione ? .attenzione : .secondary
+            let colore: Color = stato.tono == .bene ? .verde : stato.tono == .attenzione ? .attenzione : Color.testoSecondario
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 8) {
                     testoStato(stato, colore)
@@ -383,7 +383,7 @@ struct FormazioneView: View {
             }
         }
         (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))))
-            .font(.footnote).foregroundStyle(.secondary)
+            .font(.footnote).foregroundStyle(Color.testoSecondario)
             .fixedSize(horizontal: false, vertical: true)
         HStack {
             Text("Modulo proposto: \(livello.modulo)").font(.footnote.weight(.semibold))
@@ -425,7 +425,7 @@ struct FormazioneView: View {
     @ViewBuilder
     private var testoManuale: some View {
         Text("Tocca un titolare per sostituirlo con un altro della rosa: i punti attesi si ricalcolano.")
-            .font(.footnote).foregroundStyle(.secondary)
+            .font(.footnote).foregroundStyle(Color.testoSecondario)
         if vm.calcoloNonRiuscito {
             Button { Task { await vm.valuta(salva: false) } } label: {
                 Label("Non riesco a calcolare i punti: riprova", systemImage: "arrow.clockwise").font(.footnote.weight(.semibold))
