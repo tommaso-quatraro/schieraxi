@@ -1,0 +1,13 @@
+{
+  "titolo": "Il riepilogo della giornata c'è sempre, Oggi più chiaro",
+  "voci": [
+    "Se non salvi una tua formazione, SchieraXI si segna da solo la consigliata pochi minuti prima della scadenza: a giornata finita trovi il riepilogo in Oggi anche se non hai aperto l'app.",
+    "Partite del turno: una partita già cominciata dice «In corso» anche quando la diretta non arriva.",
+    "I tuoi migliori: una sola percentuale, «gioca N%», e niente numero senza spiegazione sul volto.",
+    "Da fare: su telefono e nelle colonne strette il pulsante sta sotto il testo, che si legge in una o due righe."
+  ],
+  "tecnico": [
+    "Nuovo fanta/copia_scadenza.py, thread del servizio: negli ultimi 10 minuti prima della scadenza della lega di ogni utente (tutti gli utenti con una squadra in multiutente) salva una volta sola scelte.salva_automatica (mai sopra una scelta vera) e diario.salva_istantanea; FANTA_COPIA_SCADENZA=0 la spegne, spenta nei test.",
+    "Web: riga delle partite con p.stato in_corso → «In corso», finita senza calendario → «Finita»; etichetteGiocatore toglie i motivi con percentuale (motivo.gol_atteso, motivo.porta_inviolata); badge dell'indice con title e aria-label, tolto in «I tuoi migliori»; .df-carta con container query (≤520 px pulsante sotto) e .df-testo max 60ch."
+  ]
+}
