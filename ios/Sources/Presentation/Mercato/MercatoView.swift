@@ -150,6 +150,8 @@ struct ConsigliatiView: View {
 struct ClassificaView: View {
     @ObservedObject var vm: MercatoViewModel
     @Environment(\.spazioZoom) private var zoom
+    /// La spiegazione completa dei numeri: chiusa, sopra l'elenco resta una riga sola.
+    @State private var legendaAperta = false
 
     var body: some View {
         ScrollView {
@@ -159,9 +161,7 @@ struct ClassificaView: View {
                 }
                 .pickerStyle(.segmented)
                 Toggle("Solo svincolati", isOn: $vm.soloLiberi).tint(Color.verde)
-                Text(Self.legenda).font(.caption).foregroundStyle(Color.testoSecondario)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                LegendaElenco(aperta: $legendaAperta)
                 if let e = vm.classifica.errore, vm.classifica.dato == nil {
                     ErroreVista(messaggio: e) { Task { await vm.caricaClassifica() } }
                 } else if let d = vm.classifica.dato {
@@ -171,17 +171,10 @@ struct ClassificaView: View {
                         Carta {
                             ForEach(Array(d.giocatori.enumerated()), id: \.element.id) { i, g in
                                 RigaConFilo(prima: i == 0) {
-                                    Button { vm.apri(g.id) } label: {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            RigaGiocatore(g: g)
-                                            Text("quotazione \(g.quotazione.map { String(Formato.intero($0)) } ?? "–") · \(g.proprietario ?? "svincolato")")
-                                                .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : Color.testoSecondario).padding(.leading, 58)
-                                        }
-                                        .frame(minHeight: 44)
-                                    }
-                                    .buttonStyle(StilePressione())
-                                    .origineZoom(g.id, zoom)
-                                    .accessibilityHint("Apre la scheda del giocatore")
+                                    Button { vm.apri(g.id) } label: { RigaElencoGiocatore(g: g) }
+                                        .buttonStyle(StilePressione())
+                                        .origineZoom(g.id, zoom)
+                                        .accessibilityHint("Apre la scheda del giocatore")
                                 }
                             }
                         }
@@ -204,8 +197,110 @@ struct ClassificaView: View {
 }
 
 extension ClassificaView {
-    /// Cosa sono i numeri della lista (anello, percentuale): prima la spiegazione c'era solo in Formazione.
-    static let legenda = "Il numero grande è il fantavoto atteso se gioca; «gioca» è la probabilità che prenda il voto. Il numero sulla foto è l'indice (100 = il migliore del ruolo). In ordine di punti attesi: il fantavoto pesato per la probabilità di giocare."
+    /// Sopra l'elenco: una riga sola, il resto dietro la «i» (prima erano quattro righe che spingevano giù i giocatori).
+    static let legendaBreve = "Numero grande: fantavoto atteso se gioca."
+    /// Cosa sono gli altri numeri della lista (percentuale, anello, ordine): si apre con la «i».
+    static let legenda = "«gioca» è la probabilità che prenda il voto. Il numero sulla foto è l'indice (100 = il migliore del ruolo). In ordine di punti attesi: il fantavoto atteso pesato per la probabilità di giocare."
+}
+
+/// La riga di spiegazione sopra l'elenco dei giocatori, con la «i» (44 pt) che apre il resto.
+struct LegendaElenco: View {
+    @Binding var aperta: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text(ClassificaView.legendaBreve)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    withAnimation(Tema.morbida) { aperta.toggle() }
+                } label: {
+                    Image(systemName: aperta ? "xmark.circle.fill" : "info.circle")
+                        .font(.title3).foregroundStyle(Color.testoSecondario)
+                        .frame(width: Tema.areaTocco, height: Tema.areaTocco)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .hoverEffect(.highlight)
+                .accessibilityLabel(aperta ? "Nascondi la spiegazione" : "Come si leggono i numeri")
+            }
+            if aperta {
+                Text(ClassificaView.legenda)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity)
+            }
+        }
+    }
+}
+
+/// Una riga dell'elenco dei giocatori: volto con l'indice, nome, partita, fantavoto atteso e «gioca N%», e sotto quotazione e
+/// di chi è. La usano l'elenco e la ricerca, così lo stesso giocatore si vede uguale nei due posti.
+struct RigaElencoGiocatore: View {
+    let g: Giocatore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            RigaGiocatore(g: g)
+            Text(RigaElencoGiocatore.dettaglio(quotazione: g.quotazione, proprietario: g.proprietario))
+                .font(.caption).foregroundStyle(g.proprietario == nil ? Color.verde : Color.testoSecondario).padding(.leading, 58)
+        }
+        .frame(minHeight: Tema.areaTocco)
+        .contentShape(Rectangle())
+    }
+
+    static func dettaglio(quotazione: Double?, proprietario: String?) -> String {
+        "quotazione \(quotazione.map { String(Formato.intero($0)) } ?? "–") · \(proprietario ?? "svincolato")"
+    }
+}
+
+/// Un risultato della ricerca senza previsione (chi non è nell'elenco della giornata, o se l'elenco non è ancora arrivato):
+/// la stessa forma della riga dell'elenco, con «–» al posto del fantavoto atteso e «non gioca» quando lo si sa.
+struct RigaGiocatoreSenzaPrevisione: View {
+    let g: GiocatoreBreve
+    /// Vero solo se l'elenco della giornata è arrivato e il giocatore non c'è.
+    let nonGioca: Bool
+    @Environment(\.dynamicTypeSize) private var tagliaTesto
+    @ScaledMetric(relativeTo: .body) private var lato: CGFloat = 46
+
+    private var sottotitolo: String {
+        "\((g.squadra ?? "").uppercased()) · quotazione \(g.quotazione.map { String(Formato.intero($0)) } ?? "–")"
+    }
+
+    var body: some View {
+        HStack(alignment: tagliaTesto.isAccessibilitySize ? .top : .center, spacing: 12) {
+            AvatarGiocatore(id: g.id, squadra: g.squadra, dimensione: min(lato, 64), nome: g.nome, ruolo: g.ruolo)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    BadgeRuolo(ruolo: g.ruolo, piccolo: true)
+                    Text(g.nome).font(.headline).lineLimit(2)
+                }
+                Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
+                if tagliaTesto.isAccessibilitySize, nonGioca {
+                    Text("non gioca").font(.caption).foregroundStyle(Color.testoSecondario)
+                }
+            }
+            Spacer(minLength: 8)
+            if !tagliaTesto.isAccessibilitySize {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("–").font(.title3.weight(.bold)).foregroundStyle(Color.testoSecondario)
+                    if nonGioca { Text("non gioca").font(.caption2).foregroundStyle(Color.testoSecondario) }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(RigaGiocatoreSenzaPrevisione.voce(g, nonGioca: nonGioca))
+    }
+
+    static func voce(_ g: GiocatoreBreve, nonGioca: Bool) -> String {
+        [g.nome, nomeRuolo(g.ruolo), (g.squadra ?? "").capitalized, nonGioca ? "non gioca" : ""]
+            .filter { !$0.isEmpty }.joined(separator: ", ")
+    }
 }
 
 // MARK: - Calendario
@@ -348,49 +443,63 @@ struct GiocatoriView: View {
 struct CercaView: View {
     @ObservedObject var ricerca: RicercaMercatoViewModel
     let apri: (Int) -> Void
+    @Environment(\.spazioZoom) private var zoom
 
     var body: some View {
-        List {
-            if let errore = ricerca.errore { Text(errore).foregroundStyle(Color.attenzione) }
-            if ricerca.cercando {
-                // prima, mentre cercava, la lista restava vuota (o con i risultati vecchi) senza nessun segno
-                HStack(spacing: 10) { ProgressView(); Text("Cerco…").foregroundStyle(Color.testoSecondario) }
-                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
-                    .listRowBackground(Color.clear)
-                    .accessibilityElement(children: .combine)
-            }
-            if !ricerca.abbastanzaLungo {
-                VistaVuota(titolo: "Cerca un giocatore", icona: "magnifyingglass", descrizione: "Scrivi almeno due lettere del nome.")
-                    .listRowBackground(Color.clear)
-            } else if ricerca.nessunRisultato {
-                ContentUnavailableView.search(text: ricerca.testo).listRowBackground(Color.clear)
-            }
-            ForEach(ricerca.visibili) { g in
-                Button { apri(g.id) } label: {
-                    FilaAdattiva(spazio: 4) {
-                        HStack(spacing: 12) {
-                            BadgeRuolo(ruolo: g.ruolo)
-                            Text(g.nome).font(.headline)
+        ScrollView {
+            VStack(spacing: 12) {
+                if let errore = ricerca.errore {
+                    Text(errore).font(.footnote).foregroundStyle(Color.attenzione)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if ricerca.cercando {
+                    // prima, mentre cercava, la lista restava vuota (o con i risultati vecchi) senza nessun segno
+                    HStack(spacing: 10) { ProgressView(); Text("Cerco…").foregroundStyle(Color.testoSecondario) }
+                        .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                        .accessibilityElement(children: .combine)
+                }
+                if !ricerca.abbastanzaLungo {
+                    VistaVuota(titolo: "Cerca un giocatore", icona: "magnifyingglass", descrizione: "Scrivi almeno due lettere del nome.")
+                } else if ricerca.nessunRisultato {
+                    ContentUnavailableView.search(text: ricerca.testo)
+                }
+                if !ricerca.visibili.isEmpty {
+                    Carta {
+                        ForEach(Array(ricerca.visibili.enumerated()), id: \.element.id) { i, b in
+                            RigaConFilo(prima: i == 0) {
+                                Button { apri(b.id) } label: { riga(b) }
+                                    .buttonStyle(StilePressione())
+                                    .origineZoom(b.id, zoom)
+                                    .accessibilityHint("Apre la scheda del giocatore")
+                            }
                         }
-                        Spacer(minLength: 0)
-                        Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(Color.testoSecondario)
                     }
-                    .frame(minHeight: Tema.areaTocco)
-                    .accessibilityElement(children: .combine)
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("Apre la scheda del giocatore")
-            }
-            if ricerca.ciSonoAltri {
-                Button {
-                    ricerca.mostraAltri()
-                } label: {
-                    Text("Mostra altri (\(ricerca.trovati.count - ricerca.visibili.count))").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                if ricerca.ciSonoAltri {
+                    Button {
+                        ricerca.mostraAltri()
+                    } label: {
+                        Text("Mostra altri (\(ricerca.trovati.count - ricerca.visibili.count))").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    }
+                    .pulsanteVetro()
+                    .accessibilityHint("Mostra altri risultati della ricerca")
                 }
-                .accessibilityHint("Mostra altri risultati della ricerca")
             }
+            .padding(.horizontal, 16).padding(.bottom, 24)
+            // Come l'elenco: su iPad una colonna centrale leggibile.
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
         }
-        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.immediately)
+    }
+
+    /// Con la previsione della giornata la riga è identica a quella dell'elenco; senza, la stessa forma con «–».
+    @ViewBuilder
+    private func riga(_ b: GiocatoreBreve) -> some View {
+        if let g = ricerca.previsioni.di(b.id) {
+            RigaElencoGiocatore(g: g)
+        } else {
+            RigaGiocatoreSenzaPrevisione(g: b, nonGioca: ricerca.previsioni.arrivate)
+        }
     }
 }
-

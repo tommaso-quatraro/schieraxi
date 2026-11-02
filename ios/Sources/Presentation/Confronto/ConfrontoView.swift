@@ -285,17 +285,14 @@ struct RicercaGiocatoreView: View {
         .task(id: vm.testo) { await vm.cerca() }
     }
 
-    private func riga(_ g: GiocatoreBreve) -> some View {
-        FilaAdattiva(spazio: 4) {
-            HStack(spacing: 12) {
-                BadgeRuolo(ruolo: g.ruolo)
-                Text(g.nome).font(.headline)
-            }
-            Spacer(minLength: 0)
-            Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(Color.testoSecondario)
+    /// La stessa riga dell'elenco dei giocatori: volto, fantavoto atteso e «gioca N%» (prima solo ruolo e squadra).
+    @ViewBuilder
+    private func riga(_ b: GiocatoreBreve) -> some View {
+        if let g = vm.previsioni.di(b.id) {
+            RigaElencoGiocatore(g: g)
+        } else {
+            RigaGiocatoreSenzaPrevisione(g: b, nonGioca: vm.previsioni.arrivate)
         }
-        .frame(minHeight: 44)
-        .accessibilityElement(children: .combine)
     }
 }
 

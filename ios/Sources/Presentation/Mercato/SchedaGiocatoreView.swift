@@ -94,7 +94,8 @@ struct GiocatoreCorpo: View {
             .avvisoDatiSalvati(vm.caricatore)
             .bordiMorbidi()
         }
-        .navigationTitle(vm.caricatore.dato?.calciatore.nome ?? "Giocatore")
+        // Il nome si legge una volta sola, grande, nell'intestazione (prima c'era anche nella barra in alto).
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await vm.carica() }
     }
@@ -111,10 +112,7 @@ struct GiocatoreCorpo: View {
                 AvatarGiocatore(id: c.id, squadra: squadra, indice: p?.indice, dimensione: 96, nome: c.nome, ruolo: c.ruolo)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)
-                    HStack(spacing: 6) {
-                        BadgeRuolo(ruolo: c.ruolo, piccolo: true)
-                        Text("\(nomeRuolo(c.ruolo).primaMaiuscola) · \((c.squadra ?? "").capitalized)").font(.subheadline).foregroundStyle(Color.testoSecondario)
-                    }
+                    ruoloESquadra(ruolo: c.ruolo, squadra: c.squadra)
                     Text("Quotazione \(Formato.intero(c.quotazione))").font(.caption).foregroundStyle(Color.testoSecondario)
                     if let indice = p?.indice {
                         // il numero sull'anello della foto: senza questa riga non si capiva cosa fosse
@@ -137,6 +135,25 @@ struct GiocatoreCorpo: View {
                 .fill(LinearGradient(colors: [tinta.opacity(0.42), tinta.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
         }
+    }
+
+    /// «Attaccante · Genoa» su una riga; se non ci sta (testo grande, nomi lunghi) la squadra va sotto, intera e senza «·»:
+    /// prima andava a capo da solo «· Genoa».
+    private func ruoloESquadra(ruolo: String, squadra: String?) -> some View {
+        let ruoloTesto = nomeRuolo(ruolo).primaMaiuscola
+        let squadraTesto = (squadra ?? "").capitalized
+        let badge = BadgeRuolo(ruolo: ruolo, piccolo: true)
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                badge
+                Text(squadraTesto.isEmpty ? ruoloTesto : "\(ruoloTesto) · \(squadraTesto)").fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) { badge; Text(ruoloTesto) }
+                if !squadraTesto.isEmpty { Text(squadraTesto) }
+            }
+        }
+        .font(.subheadline).foregroundStyle(Color.testoSecondario)
     }
 
     @ViewBuilder
@@ -185,8 +202,9 @@ struct GiocatoreCorpo: View {
             HStack {
                 PillDifficolta(difficolta: p.difficolta, conPartita: true)
                 Spacer()
-                if let gol = Self.golAttesi(p, squadra: squadra) {
-                    Text(gol).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
+                if let risultato = Self.risultatoAtteso(p) {
+                    Text(risultato).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
+                        .accessibilityLabel(Self.voceRisultatoAtteso(p, squadra: squadra) ?? risultato)
                 }
             }
             FilaTessere {
@@ -204,14 +222,20 @@ struct GiocatoreCorpo: View {
         }
     }
 
-    /// «Gol attesi: Genoa 1,8 · Como 1,2»: prima era «gol attesi 1,8–1,2» e non si capiva di chi fossero.
-    static func golAttesi(_ p: Giocatore, squadra: String?) -> String? {
-        guard p.golSquadra != nil || p.golAvversario != nil else { return nil }
+    /// «Risultato atteso 2,1–1,0»: gol attesi della sua squadra, poi quelli dell'avversario (come il web, `mercato.gol_attesi`).
+    /// Senza uno dei due numeri non si mostra.
+    static func risultatoAtteso(_ p: Giocatore) -> String? {
+        guard let a = p.golSquadra, let b = p.golAvversario, a.isFinite, b.isFinite else { return nil }
+        return "Risultato atteso \(Formato.decimali(a))–\(Formato.decimali(b))"
+    }
+
+    /// Per VoiceOver, con i nomi delle squadre: «Risultato atteso: Genoa 2,1, Como 1,0».
+    static func voceRisultatoAtteso(_ p: Giocatore, squadra: String?) -> String? {
+        guard let a = p.golSquadra, let b = p.golAvversario, a.isFinite, b.isFinite else { return nil }
         let mia = (squadra ?? p.squadra ?? "").capitalized
         let loro = (p.avversario ?? "").capitalized
-        let a = Formato.decimali(p.golSquadra ?? 0), b = Formato.decimali(p.golAvversario ?? 0)
-        guard !mia.isEmpty, !loro.isEmpty else { return "Gol attesi: \(a) fatti, \(b) subiti" }
-        return "Gol attesi: \(mia) \(a) · \(loro) \(b)"
+        guard !mia.isEmpty, !loro.isEmpty else { return "Risultato atteso: \(Formato.decimali(a)) a \(Formato.decimali(b))" }
+        return "Risultato atteso: \(mia) \(Formato.decimali(a)), \(loro) \(Formato.decimali(b))"
     }
 
     /// «Perché questo numero»: i motivi del fantavoto atteso (solo se il server li manda) e la definizione.

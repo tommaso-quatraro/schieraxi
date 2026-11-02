@@ -9,13 +9,36 @@ final class SchedaChiaraTests: XCTestCase {
         return try Decodifica.decodifica(Data(json.utf8))
     }
 
-    func testGolAttesiConINomiDelleSquadre() throws {
-        let g = try giocatore(#""squadra": "genoa", "avversario": "como", "gol_squadra": 1.8, "gol_avversario": 1.2,"#)
-        XCTAssertEqual(GiocatoreCorpo.golAttesi(g, squadra: "GENOA"), "Gol attesi: Genoa 1,8 · Como 1,2")
-        XCTAssertEqual(GiocatoreCorpo.golAttesi(g, squadra: nil), "Gol attesi: Genoa 1,8 · Como 1,2")
+    func testRisultatoAttesoComeSulWeb() throws {
+        let g = try giocatore(#""squadra": "genoa", "avversario": "como", "gol_squadra": 2.08, "gol_avversario": 1,"#)
+        XCTAssertEqual(GiocatoreCorpo.risultatoAtteso(g), "Risultato atteso 2,1–1,0", "una cifra decimale e il trattino lungo, come il web")
+        XCTAssertEqual(GiocatoreCorpo.voceRisultatoAtteso(g, squadra: "GENOA"), "Risultato atteso: Genoa 2,1, Como 1,0")
         let senzaNomi = try giocatore(#""gol_squadra": 1.8, "gol_avversario": 1.2,"#)
-        XCTAssertEqual(GiocatoreCorpo.golAttesi(senzaNomi, squadra: nil), "Gol attesi: 1,8 fatti, 1,2 subiti")
-        XCTAssertNil(GiocatoreCorpo.golAttesi(try giocatore(""), squadra: "Genoa"))
+        XCTAssertEqual(GiocatoreCorpo.risultatoAtteso(senzaNomi), "Risultato atteso 1,8–1,2")
+        XCTAssertEqual(GiocatoreCorpo.voceRisultatoAtteso(senzaNomi, squadra: nil), "Risultato atteso: 1,8 a 1,2")
+        XCTAssertNil(GiocatoreCorpo.risultatoAtteso(try giocatore(#""gol_squadra": 1.8,"#)), "con un numero solo non si mostra")
+        XCTAssertNil(GiocatoreCorpo.risultatoAtteso(try giocatore("")))
+    }
+
+    private func voto(_ giornata: Int, _ fv: Double?, _ voto: Double? = nil) -> VotoGiornata {
+        VotoGiornata(giornata: giornata, voto: voto ?? fv.map { $0 - 0.5 }, fv: fv, gol: nil, assist: nil)
+    }
+
+    func testIlGraficoDeiVotiSiInterrompeSenzaVoto() {
+        let voti = [voto(1, 6.5), voto(2, 7), voto(3, nil, nil), voto(4, 6), voto(6, 8), voto(7, nil, nil)]
+        let fv = GraficoVoti.puntiDi(voti).filter { $0.serie == "Fantavoto" }
+        XCTAssertEqual(fv.map(\.giornata), [1, 2, 4, 6], "nessun punto inventato nelle giornate senza voto")
+        XCTAssertEqual(fv.map(\.tratto), [0, 0, 1, 2], "la sv (G3) e la giornata che manca (G5) spezzano la linea")
+        XCTAssertEqual(GraficoVoti.giornateSenzaVoto(voti), [3, 7], "anche l'ultima giornata senza voto resta nel grafico")
+        XCTAssertEqual(GraficoVoti.puntiDi(voti).filter { $0.serie == "Voto" }.count, 4)
+    }
+
+    func testIlGraficoSenzaGiornateSenzaVotoEUnaLineaSola() {
+        let voti = [voto(3, 6), voto(1, 7), voto(2, 5.5)]
+        let fv = GraficoVoti.puntiDi(voti).filter { $0.serie == "Fantavoto" }
+        XCTAssertEqual(fv.map(\.giornata), [1, 2, 3], "in ordine di giornata")
+        XCTAssertEqual(Set(fv.map(\.linea)).count, 1)
+        XCTAssertTrue(GraficoVoti.giornateSenzaVoto(voti).isEmpty)
     }
 
     func testLaTitolaritaEAParoleSenzaNumero() throws {
@@ -43,6 +66,8 @@ final class SchedaChiaraTests: XCTestCase {
     }
 
     func testLaLegendaDellElencoSpiegaAnelloEPercentuale() {
+        XCTAssertTrue(ClassificaView.legendaBreve.contains("fantavoto atteso"))
+        XCTAssertLessThanOrEqual(ClassificaView.legendaBreve.count, 50, "sopra l'elenco una riga sola")
         XCTAssertTrue(ClassificaView.legenda.contains("indice"))
         XCTAssertTrue(ClassificaView.legenda.contains("gioca"))
     }
