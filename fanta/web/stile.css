@@ -379,7 +379,7 @@ details[open] > summary { margin-bottom: 8px; }
 .stato-scelta { margin: -2px 0 12px; padding: 0 0 12px; border-bottom: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .stato-scelta p { margin: 0; display: flex; gap: 8px; align-items: baseline; font-weight: 650; font-size: var(--t-corpo); line-height: 1.35; }
 .stato-scelta .segno { flex: none; width: 1.2em; text-align: center; font-weight: 800; }
-.stato-scelta.consigliata .segno { color: var(--testo); }   /* il «○» è un simbolo: sul vetro con l'alone verde il grigio restava a 4,3:1 */
+.stato-scelta.consigliata .segno, .stato-scelta.altra .segno { color: var(--testo); }   /* il «○» è un simbolo: sul vetro con l'alone verde il grigio restava a 4,3:1 */
 .stato-scelta.salvata .segno, .stato-scelta.salvata p { color: var(--verde); }
 .stato-scelta.modificata .segno, .stato-scelta.mano .segno { color: var(--arancio); }
 .stato-scelta.non_valida .segno { color: var(--rosso); }

@@ -103,11 +103,12 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
 
 - In cima, **lo stato della tua scelta** per la giornata (lo sa il server, quindi resta uguale anche ricaricando o su un altro dispositivo):
   - ○ «Stai vedendo la consigliata: non hai salvato una tua formazione.» Con **Salva questa** la tieni come tua scelta;
+  - ○ «Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato.» Hai toccato un altro modulo o un altro stile: **Salva questa** lo tiene come tua scelta;
   - ✓ «La tua formazione è salvata (oggi alle 21:40)»: è la tua scelta per la giornata;
   - ● «Modifiche non salvate»: hai cambiato qualcosa dopo aver salvato. **Salva le modifiche** o **Annulla modifiche**;
   - ● «Modifica a mano non ancora salvata»: tocca **Salva come mia scelta**;
   - ! «La formazione salvata non è più valida»: per esempio un giocatore non è più nella rosa. Rifalla o torna alla consigliata.
-  **Torna alla consigliata** toglie la tua scelta.
+  **Torna alla consigliata** toglie la tua scelta e rimette modulo e stile consigliati.
 - **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto).
 - **Titolari** sul campo. Sotto ogni volto (con i colori della sua squadra): il fantavoto atteso nella pillola scura (toccalo per vedere **Perché questo numero**), il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori. La prima volta in cima al campo c'è una legenda: **Ho capito** la chiude, **ⓘ Cosa vuol dire** la riapre. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
 - **Panchina** nell'ordine in cui entrano.
