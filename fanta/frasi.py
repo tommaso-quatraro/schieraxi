@@ -111,7 +111,7 @@ CATALOGO: dict[str, str] = {
     "motivo.non_convocato": "non tra i convocati previsti",
     "motivo.rigorista": "rigorista",
     "motivo.porta_inviolata": "{p}% di non subire gol",
-    "motivo.gol_atteso": "gol atteso {p}%",
+    "motivo.gol_atteso": "{p}% di segnare",
     "motivo.favorevole": "partita favorevole",
     "motivo.difficile": "partita difficile",
     "perche.voti_su": "voti sopra la media del ruolo",
@@ -238,7 +238,18 @@ def _componi(chiave: str, param: dict, lingua: str = "it") -> str:
             return sep.join(parti[:-1]) + E_ELENCO[lingua if lingua in E_ELENCO else "it"] + parti[-1]
         return sep.join(parti)
     testo = _modello(chiave, param, lingua).format(**{k: _it(v, lingua) for k, v in param.items()})
+    if lingua != "en":
+        testo = _apostrofo(testo)
     return re.sub(r"\.\.$", ".", testo)          # «Meglio Adams A.» + «.» = un punto solo
+
+
+# «il 1%» si dice «l'1%» (e «all'8%», «dell'11%», «nell'85%»): davanti a 1, 8, 11 e 80-89 l'articolo perde la vocale.
+_ELISIONE = {"il": "l'", "al": "all'", "dal": "dall'", "del": "dell'", "nel": "nell'", "sul": "sull'"}
+_DAVANTI_A_VOCALE = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:11|1|8\d?)(?:,\d+)?\s?%)")
+
+
+def _apostrofo(testo: str) -> str:
+    return _DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
 
 
 def _json(valore):

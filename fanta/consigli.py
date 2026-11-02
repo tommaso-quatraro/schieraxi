@@ -191,7 +191,10 @@ def motivi(x: pd.Series) -> list[str]:
     if x["ruolo"] == "P":
         m.append(F("motivo.porta_inviolata", p=round(float(x["p_imbattuto"]) * 100)))
     elif x["e_gol"] >= 0.3:
-        m.append(F("motivo.gol_atteso", p=round(float(x["e_gol"]) * 100)))
+        # la probabilità di segnare almeno un gol (la stessa di «segna N%» nella scheda), non i gol attesi scritti come percentuale
+        p_gol = x.get("p_gol")
+        p_gol = float(p_gol) if p_gol is not None and pd.notna(p_gol) else 1 - float(np.exp(-float(x["e_gol"])))
+        m.append(F("motivo.gol_atteso", p=round(p_gol * 100)))
     if x["gol_squadra"] - x["gol_avversario"] >= 0.8:
         m.append(F("motivo.favorevole"))
     elif x["gol_avversario"] - x["gol_squadra"] >= 0.8:

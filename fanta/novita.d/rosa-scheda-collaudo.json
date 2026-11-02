@@ -1,0 +1,14 @@
+{
+  "titolo": "Rosa e scheda del giocatore più chiare",
+  "voci": [
+    "Rosa: a giornata iniziata ogni giocatore mostra com'è andata la sua partita («Voto in arrivo», «Ha giocato»...) al posto delle probabili, e la percentuale si legge «gioca N%» come altrove.",
+    "Scheda del giocatore: «gol attesi» e «assist attesi» scritti per intero, una sola probabilità di segnare e «gioca l'1%» con l'apostrofo.",
+    "I pulsanti per cambiare stemma e maglia sono più facili da toccare."
+  ],
+  "tecnico": [
+    "/api/rosa applica fasi.schede_a_giornata_iniziata dopo la scadenza (titolarita null, stato_partita), come /api/giocatore e /api/formazione.",
+    "Motivo motivo.gol_atteso: ora p_gol (prima e_gol*100, cioè i gol attesi scritti come percentuale); testo «{p}% di segnare».",
+    "frasi._apostrofo: elisione italiana davanti a 1, 8, 11, 80-89 per cento (il/al/dal/del/nel/sul).",
+    "GET /api/giocatore/{id} e PUT /api/osservati/{i}: id oltre 2^31-1 rispondono 422 (prima 500, e un osservato enorme bloccava per sempre GET /api/osservati); osservati.leggi salta i numeri fuori misura già salvati."
+  ]
+}

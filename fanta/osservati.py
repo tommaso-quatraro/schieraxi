@@ -10,13 +10,15 @@ from .percorsi import RADICE, scrivi_sicuro
 
 FILE_OSSERVATI = RADICE / "dati" / "osservati.json"
 MASSIMO = 60
+ID_MASSIMO = 2**31 - 1              # il codice calciatore più grande che sqlite sa cercare
 _blocco = threading.Lock()          # leggere-modificare-scrivere una alla volta: due tocchi insieme non si perdono
 
 
 def leggi(percorso: Path | None = None) -> list[int]:
     try:
         d = json.loads((percorso or FILE_OSSERVATI).read_text(encoding="utf-8"))
-        return [int(i) for i in d] if isinstance(d, list) else []
+        # un numero fuori misura (salvato da una versione vecchia) farebbe fallire ogni lettura dell'elenco: si salta
+        return [int(i) for i in d if 1 <= int(i) <= ID_MASSIMO] if isinstance(d, list) else []
     except (OSError, ValueError, TypeError):
         return []
 
