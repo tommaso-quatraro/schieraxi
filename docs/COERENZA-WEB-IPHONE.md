@@ -37,6 +37,7 @@ Oggi e «Giornata 7 di lega (Serie A 10)» sull'iPhone. Chi usa le due app non d
 | Date e ore | Ora italiana. «oggi 20:45», «ieri 20:45», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese. Salvataggi: «oggi alle 13:09», «sab 31 alle 13:09». | «sab 8 nov, 18:30» per le partite della settimana |
 | Nomi dei giocatori | Negli elenchi come li manda il server («Rossi L.»). **Sul campo** solo il cognome, senza l'iniziale, come sull'iPhone («Rossi»): lo spazio è poco. | «Carlos Au…» tagliato per colpa dell'iniziale |
 | Sezioni e menu | Nomi e ordine di `VOCI_LEGA` (`fanta/web/app.js`). Squadra: Squadre e rose, Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Aggiorna le rose. Altro: Scambi, Diario delle giornate, Regole, Movimenti e storico, Crediti delle squadre, Nuova stagione, Novità. | voci in un altro ordine, voci in più su un lato solo |
+| Giocatori seguiti | Un solo nome: «**Seguiti**» (menu, scheda del mercato, avvisi). Nella scheda il pulsante «☆ Segui», che diventa «★ Seguito»; «Lo segui: ti avviso se cambia qualcosa», «Non lo segui più». In inglese «Following» / «☆ Follow». | «Osservati», «☆ Osserva», «Osservato», «Watched» |
 
 Scelte già prese con la forma dell'iPhone (da portare sulla web): «INT @ MIL» nelle righe, «in trasferta contro», il
 cognome senza iniziale sul campo, «Ho schierato la consigliata» nel Diario.

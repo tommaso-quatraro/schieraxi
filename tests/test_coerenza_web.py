@@ -67,3 +67,27 @@ def test_sul_campo_il_cognome_senza_iniziale():
     assert json.loads(r.stdout) == ["Rossi", "Carlos Augusto", "Martinez", "Zambo Anguissa", "De Ketelaere", "Chalobah", "Gonzalez"]
     pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
     assert "${esc(cognome(x))}" in pedina
+
+
+def test_seguiti_un_solo_nome():
+    for blocco in (IT, EN):
+        valori = re.findall(r'"(?:mercato|lega)\.[a-z_.]*osserv[a-z_.]*": "([^"]*)"', blocco)
+        assert valori and not [v for v in valori if re.search(r"(?i)osserv|watch", v)], valori
+    assert _testo(IT, "mercato.osserva") == "☆ Segui" and _testo(IT, "mercato.osservato") == "★ Seguito"
+    assert _testo(IT, "mercato.tab_osservati") == _testo(IT, "lega.voce_osservati") == "Seguiti"
+    assert _testo(EN, "mercato.osserva") == "☆ Follow" and _testo(EN, "mercato.tab_osservati") == _testo(EN, "lega.voce_osservati") == "Following"
+
+
+def test_plurale_del_bonus_nelle_regole():
+    assert _testo(IT, "regole.media_bonus.one").endswith("{b} punto") and _testo(IT, "regole.media_bonus.other").endswith("{b} punti")
+    assert '"regole.media_bonus"' not in TESTI
+    assert 'tp("regole.media_bonus", Math.abs(Math.round(b)),' in APP
+
+
+def test_crediti_non_salvati_e_ripeti_password_come_iphone():
+    assert _testo(IT, "lega.crediti_non_salvati") == "Ci sono crediti scritti e non ancora salvati."
+    assert 'id="crediti-non-salvati" role="status" hidden' in APP and 'c.addEventListener("input", segnaModifiche)' in APP
+    assert _testo(IT, "account.ripeti_password") == "Ripeti la nuova password"
+    assert _testo(IT, "account.password_diverse") == "Le due password non coincidono."
+    assert 'campo("acc-ripeti", t("account.ripeti_password")' in APP
+    assert 'if (valore("#acc-nuova") !== valore("#acc-ripeti")) {' in APP          # niente richiesta al server se non coincidono
