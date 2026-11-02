@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Le voci «legali» di Impostazioni > Informazioni: Privacy e Termini (le pagine del server dell'utente), Codice sorgente
-/// (solo se il server dà l'indirizzo) e Licenze e crediti. Gli indirizzi non stanno nell'app: si compongono con quello del server.
+/// Le voci «legali» di Impostazioni > Informazioni, con gli stessi nomi e lo stesso ordine della web: Privacy, Termini d'uso e
+/// Crediti e fonti (le pagine del server dell'utente), poi Codice sorgente (solo se il server dà l'indirizzo).
+/// Gli indirizzi non stanno nell'app: si compongono con quello del server.
 struct RigheLegali: View {
     let server: any ServerClient
     @AppStorage("indirizzo") private var indirizzo = ""
@@ -20,14 +21,17 @@ struct RigheLegali: View {
                     .accessibilityHint("Si apre nel browser")
                 }
             }
+            if ProvaEsempio.attiva {
+                // Nella prova non c'è un server con le sue pagine: i crediti si leggono qui, dentro l'app.
+                NavigationLink(value: PaginaImpostazioni.crediti) {
+                    Label(PaginaServer.crediti.titolo, systemImage: PaginaServer.crediti.icona).labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
+                }
+            }
             if let sorgente {
                 Link(destination: sorgente) {
                     Label("Codice sorgente", systemImage: "chevron.left.forwardslash.chevron.right").labelStyle(.voce(.orange)).frame(minHeight: Tema.areaTocco)
                 }
                 .accessibilityHint("Si apre nel browser")
-            }
-            NavigationLink(value: PaginaImpostazioni.crediti) {
-                Label("Licenze e crediti", systemImage: "text.badge.checkmark").labelStyle(.voce(.green)).frame(minHeight: Tema.areaTocco)
             }
         }
         .task(id: indirizzo) { sorgente = await Self.cercaSorgente(server) }
@@ -61,8 +65,9 @@ struct SezioneProvaEsempio: View {
     }
 }
 
-/// «Licenze e crediti»: a chi appartiene cosa. SchieraXI non usa librerie di terzi.
-struct LicenzeECreditiView: View {
+/// «Crediti e fonti» dentro l'app, solo per la prova con dati di esempio (senza server): a chi appartiene cosa.
+/// Con un server vero la voce apre la sua pagina «Crediti e fonti», la stessa della web. Nessuna libreria di terzi.
+struct CreditiEFontiView: View {
     let server: any ServerClient
     @State private var sorgente: URL?
 
@@ -93,12 +98,12 @@ struct LicenzeECreditiView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Sfondo())
-        .navigationTitle("Licenze e crediti")
+        .navigationTitle("Crediti e fonti")
         .navigationBarTitleDisplayMode(.inline)
         .task { sorgente = await RigheLegali.cercaSorgente(server) }
     }
 }
 
-#Preview("Licenze e crediti") {
-    NavigationStack { LicenzeECreditiView(server: FinteServer.esempio) }
+#Preview("Crediti e fonti") {
+    NavigationStack { CreditiEFontiView(server: FinteServer.esempio) }
 }

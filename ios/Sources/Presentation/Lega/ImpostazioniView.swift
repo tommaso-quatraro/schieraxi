@@ -29,7 +29,7 @@ extension EnvironmentValues {
     }
 }
 
-/// Impostazioni: l'account, l'app (aspetto e avvisi), le informazioni e «Esci». Solo l'essenziale: la lega (scambi, regole,
+/// Impostazioni: l'account (con «Esci» in fondo, come sulla web), l'app (aspetto e avvisi) e le informazioni. Solo l'essenziale: la lega (scambi, regole,
 /// storico, novità) sta in Altro. Chi amministra il server ha in più «Avanzate». Si apre come foglio dall'ingranaggio in testata.
 struct ImpostazioniView: View {
     @ObservedObject var vm: LegaViewModel
@@ -50,7 +50,6 @@ struct ImpostazioniView: View {
                 NuovaVersioneSezione()
                 sezioneInformazioni
                 sezioneAvanzateLink
-                EsciSezione()
             }
             .scrollContentBackground(.hidden)
             .background(Sfondo())
@@ -80,7 +79,7 @@ struct ImpostazioniView: View {
         case .aspetto: AspettoView()
         case .avvisi: AvvisiServerView(server: vm.server, lega: vm)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
-        case .crediti: LicenzeECreditiView(server: vm.server)
+        case .crediti: CreditiEFontiView(server: vm.server)
         case .avanzate: paginaAvanzate
         case .cambiaServer: PaginaCambiaServer(dopoProva: { await vm.info.ricarica() })
         }
@@ -119,11 +118,11 @@ struct ImpostazioniView: View {
         }
     }
 
-    /// Privacy, termini, licenze e la versione. Le novità stanno in Altro.
+    /// Privacy, termini, crediti e la versione, come sulla web. Le novità stanno in Altro.
     private var sezioneInformazioni: some View {
         Section(titolo: "Informazioni") {
             RigheLegali(server: vm.server)
-            RigaValore(titolo: "Versione dell'app", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+            RigaValore(titolo: "Versione", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
         }
     }
 

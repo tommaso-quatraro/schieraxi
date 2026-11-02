@@ -9,6 +9,12 @@ final class InformazioniLegaliTests: XCTestCase {
         XCTAssertEqual(InformazioniLegali.indirizzo(.privacy, server: " https://schieraxi.example:8443// ")?.absoluteString, "https://schieraxi.example:8443/privacy")
     }
 
+    /// Nomi e ordine delle voci di Impostazioni > Informazioni sono quelli della web (`legale.*` di `testi.js`).
+    func testVociLegaliUgualiAllaWeb() {
+        XCTAssertEqual(PaginaServer.allCases.map(\.titolo), ["Privacy", "Termini d'uso", "Crediti e fonti"])
+        XCTAssertEqual(InformazioniLegali.indirizzo(.crediti, server: "https://schieraxi.example")?.absoluteString, "https://schieraxi.example/crediti")
+    }
+
     func testSenzaIndirizzoValidoNonCeCollegamento() {
         XCTAssertNil(InformazioniLegali.indirizzo(.privacy, server: ""))
         XCTAssertNil(InformazioniLegali.indirizzo(.privacy, server: "schieraxi.example"))

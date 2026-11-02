@@ -97,7 +97,7 @@ final class AccessoUITests: XCTestCase {
         XCTAssertFalse(elemento("Per accedere").exists)
         XCTAssertFalse(elemento("Cambia le maiuscole del nome").exists)
         XCTAssertFalse(elemento("Esci da tutti", contiene: true).exists)
-        // «Esci» è l'ultima voce delle Impostazioni: si scorre fino in fondo
+        // «Esci» è l'ultima riga di «Il tuo account»
         let esci = app.buttons["Esci"]
         for _ in 0..<8 where !esci.exists { app.swipeUp() }
         XCTAssertTrue(esci.waitForExistence(timeout: 5))
