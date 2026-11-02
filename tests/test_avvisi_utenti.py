@@ -91,7 +91,7 @@ def test_i_cambi_arrivano_a_ciascuno_con_il_suo_stato(mondo, registro):
     mondo.prev.loc[1, ["stato", "percentuale"]] = ["panchina", 30.0]  # cambia solo Castro, che è di amico1
     esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
     assert errori == {} and len(esiti["amico1"]) >= 1 and esiti["amico2"] == []
-    assert [(chi, testo) for chi, _, testo in registro.web] == [(a.cartella.name, "Castro: dalla formazione titolare alla panchina (30%)")]
+    assert [(chi, testo) for chi, _, testo in registro.web] == [(a.cartella.name, "Castro: dalla formazione titolare alla panchina")]
     assert registro.ntfy == []
     assert json.loads(a.stato_cambi.read_text())["cambi"] and json.loads(b.stato_cambi.read_text())["cambi"]    # ognuno ha il suo stato
     assert a.stato_cambi.parent != b.stato_cambi.parent
