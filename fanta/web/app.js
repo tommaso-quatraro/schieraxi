@@ -331,6 +331,7 @@ const badgeRuolo = (r, piccolo = false) => `<span class="ruolo ${esc(r)}" ${picc
 // A giornata iniziata il server toglie `titolarita` e manda `stato_partita`: lo stato vero della giornata al posto delle probabili.
 const STATO_PARTITA = { fatto: ["tit.st_fatto", ""], senza_voto: ["tit.st_senza_voto", "arancio"], attesa_voti: ["tit.st_attesa_voti", "neutra"],
   in_corso: ["tit.st_in_corso", ""], da_giocare: ["tit.st_da_giocare", "neutra"], rinviata: ["tit.st_rinviata", "arancio"] };
+const PARTITA_INIZIATA = ["in_corso", "attesa_voti", "fatto", "senza_voto"], PARTITA_FINITA = ["attesa_voti", "fatto", "senza_voto"];
 function pillTitolarita(x) {
   if (x.titolarita == null && Object.hasOwn(STATO_PARTITA, x.stato_partita || "")) {
     const [chiave, classe] = STATO_PARTITA[x.stato_partita];
@@ -1504,6 +1505,11 @@ async function apriGiocatore(id) {
     const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
     const prossime = cal && pr ? (cal.squadre.find(x => x.squadra === pr.squadra) || { partite: [] }).partite : [];
     const nonGioca = !!pr && pr.titolarita === "fuori";          // infortunato o squalificato: niente partita, gol o cartellini
+    // Partita iniziata o finita (giornata cominciata): le probabilità di prima non servono più. In corso resta il fantavoto atteso,
+    // a partita finita solo com'è andata (il fantavoto preso, «Senza voto» o «Voto in arrivo»).
+    const iniziataP = !!pr && PARTITA_INIZIATA.includes(pr.stato_partita), finitaP = !!pr && PARTITA_FINITA.includes(pr.stato_partita);
+    const votoGiornata = finitaP && pr.stato_partita === "fatto" ? (s.voti || []).find(v => v.giornata === pr.giornata) : null;
+    const prSenzaGioca = pr && iniziataP && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
     const tile = (valore, etichetta) => `<div><b>${valore}</b><span>${etichetta}</span></div>`;
     const probabilita = !pr ? "" : c.ruolo === "P"
       ? tile(perc(pr.porta_inviolata), t("mercato.porta_inviolata")) + tile(num(pr.gol_avversario, 1), t("mercato.gol_subiti_attesi")) + tile(perc(pr.p_giallo), t("mercato.giallo"))
@@ -1517,11 +1523,14 @@ async function apriGiocatore(id) {
       </div>
       ${pr ? `<div class="carta">
         <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
-          <div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div></div>
-          <div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div></div>
-        ${nonGioca ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
-        ${motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
-        ${nonGioca ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${cartaPerche(pr)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
+          ${finitaP ? (votoGiornata && votoGiornata.fv != null
+            ? `<div class="grande">${num(votoGiornata.fv)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto")}</span></div>`
+            : `<div class="grande stato-partita">${t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
+          : `<div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div>`}</div>
+          ${iniziataP ? "" : `<div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>`}</div>
+        ${nonGioca || iniziataP ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
+        ${!finitaP && motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
+        ${nonGioca || iniziataP ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${finitaP ? "" : cartaPerche(prSenzaGioca)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
       ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${sigla(p.avversario)}<small>${t(p.in_casa ? "giocatore.casa" : "giocatore.fuori")}</small></span>`).join("")}</div>
         <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
       <div class="carta"><h2>${t("mercato.forma")}</h2>
@@ -1534,7 +1543,7 @@ async function apriGiocatore(id) {
       <div class="carta"><details><summary>${t("mercato.tutte_statistiche")}</summary>
         <h3>${t("mercato.stagione")}</h3><div class="statistiche">
           ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
-          ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, t("mercato.assist"))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
+          ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
           ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
         ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
           ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
