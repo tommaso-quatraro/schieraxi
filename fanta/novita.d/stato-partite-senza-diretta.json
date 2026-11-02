@@ -1,0 +1,3 @@
+{"titolo": "Partite del turno: stato giusto anche senza la diretta",
+ "voci": ["Quando i risultati in diretta non hanno ancora detto niente, ogni partita mostra lo stato giusto per l'ora (da giocare, in corso, finita) e le partite spostate a un recupero risultano «Rinviata», come nella schermata Oggi."],
+ "tecnico": ["live.risposta passa a _da_database l'ora del raccoglitore e l'inizio del turno (turno.inizio); test della sentinella su riavvio e partita rimasta in gioco aggiunti a tests/test_live_resta.py."]}

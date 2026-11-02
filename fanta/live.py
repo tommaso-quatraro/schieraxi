@@ -407,6 +407,10 @@ def risposta(raccoglitore: Raccoglitore, righe_turno: list) -> dict:
     Corpo: {aggiornato_il, fonte, in_corso, partite: [{casa, trasferta, data, stato, minuto, gol_casa, gol_trasferta, eventi}]}."""
     snap = raccoglitore.istantanea()
     viste = dict(snap["partite"])
+    # senza diretta lo stato viene dall'orario: quello del raccoglitore (lo stesso orologio della cache) e l'inizio del turno (fuori
+    # dal turno = rinviata), come in Oggi
+    adesso = raccoglitore.adesso()
+    inizio_turno = turno.inizio(_inizio((r["data"] or "")[:16]) if r["data"] else None for r in righe_turno)
     partite = []
     for r in righe_turno:
         k = (r["casa"], r["trasferta"])
@@ -414,12 +418,12 @@ def risposta(raccoglitore: Raccoglitore, righe_turno: list) -> dict:
         if r["giocata"]:
             # il risultato ufficiale vince (una diretta rimasta ferma su «secondo tempo» non deve restare LIVE); i marcatori
             # visti in diretta restano solo se il punteggio è lo stesso
-            p = _da_database(r)
+            p = _da_database(r, adesso, inizio_turno)
             if vista and (vista.get("gol_casa"), vista.get("gol_trasferta")) == (p["gol_casa"], p["gol_trasferta"]):
                 p["eventi"] = list(vista.get("eventi") or [])
             partite.append(p)
         else:
-            partite.append(vista or _da_database(r))
+            partite.append(vista or _da_database(r, adesso, inizio_turno))
     partite += [p for p in viste.values() if p["stato"] in IN_GIOCO]
     partite.sort(key=lambda p: (p.get("data") or "9", p["casa"]))
     in_corso = sum(p["stato"] in IN_GIOCO for p in partite)
