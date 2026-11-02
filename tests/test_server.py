@@ -327,7 +327,8 @@ def test_formazione_dopo_la_scadenza_senza_etichette_delle_probabili(client, mon
     assert r["iniziata"] is False and r["titolari"][0]["titolarita"] == "ballottaggio"
     monkeypatch.setattr(server.fasi, "iniziata", lambda *a: True)
     r = client.get("/api/formazione").json()
-    assert r["iniziata"] is True and r["titolari"][0] | r["schede"]["1"] == x | {"titolarita": None, "motivi": [], "stato_partita": "in_corso", "fv_preso": None}
+    assert r["iniziata"] is True and r["titolari"][0] | r["schede"]["1"] == x | {"titolarita": None, "motivi": [], "stato_partita": "in_corso", "fv_preso": None,
+                                                                                "etichetta": {"codice": "in_corso", "testo": "Partita in corso", "tono": "positivo"}}
     assert f["titolari"][0]["titolarita"] == "ballottaggio"                      # la formazione in cache non cambia
 
 

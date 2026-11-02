@@ -17,6 +17,7 @@ import sqlite3
 from datetime import datetime, timedelta
 
 from . import avvisi, diario, rinvii, scelte, turno as turni
+from . import etichette
 from . import formazione as fz
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import Regole, serie_a_a_lega
@@ -321,6 +322,10 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
                   for i in tit_ids + panc_ids if prev is not None and i in prev.index}
     a = andamento([info[i] for i in tit_ids], [info[i] for i in panc_ids], partite, voti, squadre_voti, attesi, fuori, regole,
                   previsione, rinvii.regola(regole, stagione, giornata))
+    for g in a["giocatori"]:                         # la stessa etichetta di Formazione e scheda (fanta/etichette.py)
+        i = g["id"]
+        g["etichetta"] = etichette.di_giocatore({"stato_partita": g["stato"], "titolarita": "fuori" if i in fuori and g["stato"] not in DECISI else None,
+                                                 "stato": prev.at[i, "stato"] if prev is not None and i in prev.index else None})
     return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "formazione_di": di} | a | {
         "partite": conta_partite(partite)}
 
@@ -474,8 +479,11 @@ def schede_a_giornata_iniziata(schede: list[dict], db: sqlite3.Connection, regol
     fv_presi = _fantavoti_presi(db, regole, stagione, giornata, {i: x for i, x in uniche.items() if stati.get(i) == "fatto"})
     # chi è infortunato o squalificato resta «fuori» finché i voti non dicono com'è andata (altrimenti sarebbe «da giocare»)
     fuori = lambda x, st: x.get("titolarita") == "fuori" and st not in DECISI
-    return {i: x | {"titolarita": "fuori" if fuori(x, stati.get(i)) else None, "stato_partita": stati.get(i), "fv_preso": fv_presi.get(i)}
-            | _senza_probabili(x) for i, x in uniche.items()}
+    nuove = {i: x | {"titolarita": "fuori" if fuori(x, stati.get(i)) else None, "stato_partita": stati.get(i), "fv_preso": fv_presi.get(i)}
+             | _senza_probabili(x) for i, x in uniche.items()}
+    for x in nuove.values():
+        x["etichetta"] = etichette.di_giocatore(x)
+    return nuove
 
 
 def _fantavoti_presi(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, giocatori: dict[int, dict]) -> dict[int, float]:
