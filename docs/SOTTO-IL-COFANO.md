@@ -123,7 +123,7 @@ mu = voto in pagella atteso
    + (solo portieri) malus_gol_subito × gol subiti attesi + bonus_imbattuto × P(porta inviolata) + rigori parati attesi × bonus
 ```
 
-> **Un caso vero: Thuram, giornata 8 del 2026-27 (Inter-Fiorentina)** (numeri veri del modello). Calcolo rifatto il 30/10/2026 con i soli dati precedenti alla giornata 8 (senza probabili, quindi p viene dalle presenze recenti: 1,0). La partita vale 2,46 gol attesi per l'Inter contro 0,99 della Fiorentina. Voto in pagella atteso 6,46; gol attesi 0,505 e a 3 punti l'uno fanno +1,52; assist attesi 0,144 fanno +0,14; cartellini e altro circa -0,06. Totale mu = 8,06. La probabilità di segnare almeno un gol è 1 - e^(-0,505) = 39,7%.
+> **Un caso vero: Thuram, giornata 8 del 2026-27 (Inter-Fiorentina)** (numeri veri del modello). Calcolo rifatto il 30/10/2026 con i soli dati precedenti alla giornata 8 (senza probabili, quindi p viene dalle presenze, vedi la sezione 11: ha preso voto in tutte le ultime 6 partite, ma p = 0,86, ricalcolata il 2/11/2026). La partita vale 2,46 gol attesi per l'Inter contro 0,99 della Fiorentina. Voto in pagella atteso 6,46; gol attesi 0,505 e a 3 punti l'uno fanno +1,52; assist attesi 0,144 fanno +0,14; cartellini e altro circa -0,06. Totale mu = 8,06. La probabilità di segnare almeno un gol è 1 - e^(-0,505) = 39,7%.
 
 Nell'app: Formazione (tocca un giocatore per vedere i pezzi); Lega > Regole.
 
@@ -274,7 +274,9 @@ Codice: `fanta/modello.py:_p_da_probabili`, `fanta/modello.py:P_SUBENTRO_TITOLAR
 
 ## 11. Senza probabili: presenze recenti, coppe e calibrazione  [nerd]
 
-Per le giornate lontane, o quando una squadra non è coperta dalle probabili, p viene dalle presenze recenti: la quota delle ultime 6 partite della SUA squadra in cui il giocatore ha preso voto, con peso 0,75 elevato alla distanza (la più recente pesa 1). Le partite prima del suo arrivo in quella squadra e quelle rinviate non contano come assenze. Con meno di 3 partite utili la stima è tirata verso 0,5; senza nessuna è 0,3. Per le giornate più lontane si guarda anche una finestra di 20 partite (decadimento 0,93).
+Per le giornate lontane, o quando una squadra non è coperta dalle probabili, p viene dalle presenze. Si calcolano quattro quote sulle partite della SUA squadra: presenze recenti (le ultime 6 in cui ha preso voto, con peso 0,75 elevato alla distanza: la più recente pesa 1), presenze lunghe (20 partite, decadimento 0,93), partite iniziate da titolare (ultime 6, stessi pesi) e l'ultima partita da sola. Le partite prima del suo arrivo in quella squadra e quelle rinviate non contano come assenze. Con meno di 3 partite utili ogni quota è tirata verso 0,5 (per l'ultima partita da sola: 0,75 se ha preso voto, 0,25 se no); senza nessuna è 0,3.
+
+Le quattro quote entrano in una regressione logistica (con un termine in più per i portieri, perché il titolare gioca quasi sempre e la riserva quasi mai). Prima, p era la sola quota delle presenze recenti: chi aveva giocato le ultime 6 partite riceveva «98%» e poi prendeva voto 86 volte su 100. I pesi sono stimati SOLO sul 2025-26 (giornate 5-38) e provati sul 2026-27 (giornate 2-8), senza guardare il futuro: nella fascia «90-100%» si passa da 98,9% detto e 86,6% giocato a 90,8% detto e 91,1% giocato; l'errore medio di calibrazione passa da 6,7 a 4,1 punti percentuali (da 8,4 a 2,6 tra i giocatori ancora nella squadra). p va da circa 6% a circa 93%.
 
 Se la squadra gioca in coppa europea entro 3 giorni, la probabilità si moltiplica per 0,93 (turnover). Le date delle coppe sono scritte a mano nel codice (6 squadre, fino al 28/01/2027) e vanno aggiornate: dopo quella data il turnover non si calcola più. Quando ci sono le probabili, il turnover lo dicono già loro.
 
@@ -284,14 +286,17 @@ Formula:
 
 ```
 presenze = Σ (0,75^distanza × [ha preso voto]) / Σ 0,75^distanza, sulle ultime 6 partite
+z = -2,681 + 1,058 × presenze + 1,5 × presenze_lunghe + 0,772 × da_titolare + 2,122 × ultima
+    (portieri: + (-0,909 + 1,221 × presenze))
+p = 1 / (1 + e^(-z))
 correzione di un gruppo = 1 + (osservati/previsti - 1) × n/(n + 60), tra 0,85 e 1,15
 ```
 
-> **Esempio di calcolo** (esempio di calcolo). Tre partite: ha preso voto nelle due più recenti ma non nella più vecchia. Pesi 0,5625 (più vecchia), 0,75, 1,0: presenze = (0,75 + 1,0) / 2,3125 = 76%. Con n = 30 giocatori in un gruppo e osservati/previsti = 1,20 la correzione è 1 + 0,20 × 30/90 = 1,07.
+> **Esempio di calcolo** (esempio di calcolo). Tre partite: ha preso voto nelle due più recenti ma non nella più vecchia. Pesi 0,5625 (più vecchia), 0,75, 1,0: presenze = (0,75 + 1,0) / 2,3125 = 76%. Thuram alla giornata 8 del 2026-27: presenze 1,0, presenze lunghe 0,81, da titolare 0,83, ultima 0,75: z = -2,681 + 1,058 + 1,212 + 0,642 + 1,592 = 1,82 e p = 86%. Con n = 30 giocatori in un gruppo e osservati/previsti = 1,20 la correzione è 1 + 0,20 × 30/90 = 1,07.
 
 Nell'app: Stato dei dati > Calibrazione delle probabili.
 
-Codice: `fanta/modello.py:_presenze_recenti`, `fanta/coppe.py:fattore_turnover`, `fanta/coppe.py:COPPE`, `fanta/stato_dati.py:calibrazione`, `fanta/stato_dati.py:fattori_da`
+Codice: `fanta/modello.py:_presenze_recenti_varie`, `fanta/modello.py:p_senza_probabili`, `prove/calibra_p_voto.py`, `fanta/coppe.py:fattore_turnover`, `fanta/coppe.py:COPPE`, `fanta/stato_dati.py:calibrazione`, `fanta/stato_dati.py:fattori_da`
 
 ## 12. Come si sceglie la formazione  [base]
 
