@@ -29,7 +29,10 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
 - Per il **come** si lavora (idea, piano, test prima del codice, ricerca dei difetti, revisione, verifica) comandano le skill di
   Superpowers, usate così come sono. Il metodo in breve: `docs/METODO.md`.
 - Questo file comanda su ciò che è del progetto, anche quando una skill dice altro:
-  - ogni ramo finisce con una pull request su `main` (`Closes #N`): mai unione in locale, mai rami lasciati a metà;
+  - ogni ramo finisce con una pull request su `main` (`Closes #N`): mai unione in locale né a mano (la fa il job `unisci`),
+    mai rami lasciati a metà;
+  - test prima del codice sì, ma il codice già scritto non si butta: si scrive il test che fallisce sul comportamento
+    sbagliato, lo si vede fallire, poi si corregge;
   - la revisione si fa prima di aprire la pull request, perché l'unione è automatica;
   - ramo indietro rispetto a `main`: `git merge origin/main` nel ramo, niente push forzato;
   - spec e piani in italiano in `docs/superpowers/specs/` e `docs/superpowers/plans/`, senza dati veri (repository pubblico);

@@ -16,12 +16,13 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 2. **Misura del lavoro** (skill `brainstorming`): compito chiaro, modifica piccola o progetto.
 3. **Progetto**: spec in `docs/superpowers/specs/` e piano in `docs/superpowers/plans/` (skill `writing-plans`), uniti con
    una pull request di soli documenti prima di scrivere il codice.
-4. **Codice**: ramo da `main` in una copia di lavoro propria; test che fallisce prima del codice (`test-driven-development`);
+4. **Codice**: ramo da `main` in una copia di lavoro propria; test che fallisce prima del codice (`test-driven-development`;
+   il codice già scritto non si butta: prima il test che fallisce sul comportamento sbagliato, poi la correzione);
    i difetti si cercano dalla causa (`systematic-debugging`). Un piano procede un compito alla volta, con una revisione dopo
    ogni compito (`subagent-driven-development`); piani su parti diverse del codice possono andare insieme.
 5. **Revisione del ramo** e verifica (`requesting-code-review`, `verification-before-completion`) **prima** di aprire la pull request:
    la pull request del proprietario si unisce da sola appena i controlli sono verdi.
-6. **Pull request** su `main` con `Closes #N` e le prove fatte. Ramo indietro: si unisce `main` nel ramo (niente push forzato).
+6. **Pull request** su `main` con `Closes #N` e le prove fatte; mai unione in locale o a mano: la fa il job `unisci`. Ramo indietro: si unisce `main` nel ramo (niente push forzato).
 7. **Rilascio automatico**: il job `rilascia` dà il numero di versione e crea la release; il server installa `main` da solo.
 8. **Verifica sul dispositivo**: versione nuova sul server, nuova build dell'app.
 
@@ -31,7 +32,8 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 - **Web**: come il server, più la prova nel browser a 390, 768, 1024 e 1440 px, tema chiaro e scuro, con dati verosimili e
   le schermate guardate davvero.
 - **iPhone**: compilazione e test verdi in CI, foto delle schermate toccate guardate, elenco di cosa provare sul telefono.
-- **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …».
+- **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …»;
+  niente segni da interfaccia generata (`docs/STILE-SENZA-AI.md`).
 
 ## App per iPhone
 - Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.
