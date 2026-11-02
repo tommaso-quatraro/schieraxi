@@ -36,7 +36,7 @@ Per entrare ancora: nome utente e password, poi **Entra nell'app**. Se compare *
 
 Per chi gestisce l'app: **Impostazioni > Avanzate > Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**); sotto c'è anche il codice, per chi usa l'app per iPhone.
 
-Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'email collegata ti arriva un codice a 6 cifre; altrimenti usi il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
+Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'email collegata ti arriva un codice a 6 cifre; altrimenti usi il codice di recupero. Se chi gestisce il server ha spento l'invio delle email, l'app lo dice e propone solo il codice di recupero (e in **Il tuo account** non si può collegare un'email). Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
 ### Caricare la tua squadra
 

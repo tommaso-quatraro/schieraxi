@@ -67,7 +67,7 @@ Tutte le rotte sotto `/api/account/` rispondono `404` con `{"detail": "Gli accou
 
 | Metodo e percorso | Corpo | Risposta principale |
 |---|---|---|
-| `GET /api/account/me` | — | `{multiutente, utente}`; con gli account accesi aggiunge `email`, `email_origine` e `email_in_attesa`. `email` è l'email verificata dell'account; se l'account non ne ha una ma ha Google collegato con un'email verificata, è quella di Google. `email_origine` vale `"account"`, `"google"` o `null` (senza email). Mostra `email` così com'è (con una nota «da Google» se `email_origine` è `"google"`), «nessuna» solo se è `null`. Vale solo per chi chiede: mai l'email di un altro utente |
+| `GET /api/account/me` | — | `{multiutente, utente}`; con gli account accesi aggiunge `email`, `email_origine`, `email_in_attesa` e `email_attiva` (dal 2/11/2026: `false` se sul server l'invio delle email è spento, `FANTA_MAIL=spento`; allora i client non propongono di collegare un'email né il recupero via email; c'è anche nella risposta `401`; assente = server vecchio, come `true`). `email` è l'email verificata dell'account; se l'account non ne ha una ma ha Google collegato con un'email verificata, è quella di Google. `email_origine` vale `"account"`, `"google"` o `null` (senza email). Mostra `email` così com'è (con una nota «da Google» se `email_origine` è `"google"`), «nessuna» solo se è `null`. Vale solo per chi chiede: mai l'email di un altro utente |
 | `POST /api/account/accedi` | `{nome_utente, password, nativo?}`; intestazione facoltativa `X-Fanta-Dispositivo` | `{multiutente, utente}` + `token` e `dispositivo` se `nativo` (vedi 1.4b) |
 | `POST /api/account/registra` | `{nome_utente, password, invito?, email?, accetto_termini?, nativo?}` | con invito: `{multiutente, utente, codice_recupero}` (il codice si vede una volta). Con email: `{ok, verifica_email, scade_minuti, iscrizione}`. `accetto_termini` (facoltativo): `true` = l'utente ha spuntato Privacy e Termini d'uso, il server registra data/ora e versione (`VERSIONE_TERMINI`, oggi `2026-11-01`) sull'account; campo assente = client vecchio, si iscrive lo stesso senza traccia; `false` = `400` con "Per iscriverti devi accettare Privacy e Termini d'uso. / To sign up you must accept the Privacy policy and the Terms of use.". I client nuovi lo mandano sempre `true` dopo la casella; con Google (`social/completa`) resta obbligatorio |
 | `POST /api/account/registra/conferma` | `{email, codice, iscrizione, nativo?}` | come `registra` (sessione aperta) |
@@ -78,10 +78,10 @@ Tutte le rotte sotto `/api/account/` rispondono `404` con `{"detail": "Gli accou
 | `POST /api/account/codice-recupero` | `{password}` | `{codice_recupero}` (nuovo, sostituisce il vecchio) |
 | `POST /api/account/elimina` | `{password}` | `{ok: true}`: cancella account e dati |
 | `POST /api/account/recupero` | `{nome_utente, codice, nuova}` | `{ok, codice_recupero}` |
-| `POST /api/account/email` | `{email, password}` | risposta di verifica (stessa in ogni caso) |
+| `POST /api/account/email` | `{email, password}` | risposta di verifica (stessa in ogni caso). Con la posta spenta sul server (`email_attiva: false`): `503` con `codice: "posta_spenta"`, niente email in attesa (dal 2/11/2026) |
 | `POST /api/account/email/conferma` | `{codice}` | `{ok, email}` |
 | `POST /api/account/email/togli` | `{password}` | `{ok}` |
-| `POST /api/account/recupero-email` | `{email}` | risposta identica se l'indirizzo esiste o no |
+| `POST /api/account/recupero-email` | `{email}` | risposta identica se l'indirizzo esiste o no. Con la posta spenta: `503` `posta_spenta`, uguale per ogni indirizzo (dal 2/11/2026) |
 | `POST /api/account/recupero-email/conferma` | `{email, codice, nuova}` | `{ok, codice_recupero}` |
 | `POST /api/account/token-widget` | — | `{token, scade, etichetta: "widget"}`: il token si vede una volta sola |
 | `GET /api/account/token-widget` | — | `{presente: false}` oppure `{presente, valido, etichetta, creato, scade, ultimo_uso}` (mai il token) |
