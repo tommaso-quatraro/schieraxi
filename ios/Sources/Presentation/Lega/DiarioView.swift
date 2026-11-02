@@ -24,13 +24,13 @@ final class DiarioViewModel: ViewModelBase {
 
     /// «Ho schierato un'altra formazione»: undici titolari scelti a mano tra i giocatori della tua rosa (il server controlla modulo e rosa).
     /// Restituisce vero se è stata salvata.
-    func haSchieratoAMano(giornata: Int, titolari: [Int]) async -> Bool {
+    func haSchieratoAMano(giornata: Int, numero: Int? = nil, titolari: [Int]) async -> Bool {
         guard inSalvataggio == nil else { return false }
         inSalvataggio = giornata
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "manuale", titolari: titolari))
-            messaggio = "Salvato: la formazione che hai schierato nella giornata \(giornata)."
+            messaggio = "Salvato: la formazione che hai schierato nella giornata \(numero ?? giornata)."
             messaggioRiuscito = true
             Haptics.esito(riuscito: true)
             await caricatore.ricarica()
@@ -46,13 +46,13 @@ final class DiarioViewModel: ViewModelBase {
 
     /// «Ho schierato la consigliata»: il server salva come tua scelta la formazione che il modello avrebbe consigliato per quella
     /// giornata già finita e rifà solo quella voce del diario (non conta nei limiti di ricerca).
-    func haSchieratoLaConsigliata(giornata: Int) async {
+    func haSchieratoLaConsigliata(giornata: Int, numero: Int? = nil) async {
         guard inSalvataggio == nil else { return }
         inSalvataggio = giornata
         defer { inSalvataggio = nil }
         do {
             _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "consigliata"))
-            messaggio = "Salvato: per la giornata \(giornata) hai schierato la consigliata."
+            messaggio = "Salvato: per la giornata \(numero ?? giornata) hai schierato la consigliata."
             messaggioRiuscito = true
             Haptics.esito(riuscito: true)
             await caricatore.ricarica()
@@ -142,7 +142,7 @@ struct DiarioView: View {
         .sheet(item: $daCorreggere) { v in
             FormazioneManualeDiarioView(voce: v, server: server) { titolari in
                 guard let g = v.giornata else { return false }
-                return await vm.haSchieratoAMano(giornata: g, titolari: titolari)
+                return await vm.haSchieratoAMano(giornata: g, numero: v.numero, titolari: titolari)
             }
         }
         .ricercaGlobale()
@@ -151,7 +151,7 @@ struct DiarioView: View {
     }
 
     private func sintesi(_ s: SintesiDiario) -> some View {
-        Section(titolo: "In sintesi (\(s.giornate ?? 0) giornate)") {
+        Section(titolo: "In sintesi (\(Formato.plurale(s.giornate ?? 0, "giornata", "giornate")))") {
             RigaValore(titolo: "Punti medi tuoi", valore: Formato.punti(s.puntiSchierata), cifreFisse: true)
             RigaValore(titolo: "Punti medi di SchieraXI", valore: Formato.punti(s.puntiConsigliata), cifreFisse: true)
             RigaValore(titolo: "Meglio tu – meglio SchieraXI", valore: "\(s.meglioTua ?? 0)–\(s.meglioConsigliata ?? 0)", cifreFisse: true)
@@ -171,7 +171,7 @@ struct DiarioView: View {
                 riga(s.tipo == "consigliata" ? "La tua, la consigliata (\(s.modulo ?? "–"))" : "La tua (\(s.modulo ?? "–"))", s)
             } else if let g = v.giornata {
                 Button {
-                    Task { await vm.haSchieratoLaConsigliata(giornata: g) }
+                    Task { await vm.haSchieratoLaConsigliata(giornata: g, numero: v.numero) }
                 } label: {
                     HStack {
                         if vm.inSalvataggio == g { ProgressView() }
@@ -181,7 +181,7 @@ struct DiarioView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(vm.inSalvataggio != nil)
-                .accessibilityHint("Salva come tua scelta la formazione consigliata per la giornata \(g)")
+                .accessibilityHint("Salva come tua scelta la formazione consigliata per la giornata \(v.numero ?? g)")
             }
             if let g = v.giornata {
                 Button { daCorreggere = v } label: {
@@ -189,19 +189,19 @@ struct DiarioView: View {
                         .font(.subheadline).frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .disabled(vm.inSalvataggio != nil)
-                .accessibilityHint("Scegli a mano i tuoi undici della giornata \(g)")
+                .accessibilityHint("Scegli a mano i tuoi undici della giornata \(v.numero ?? g)")
             }
             if let c = v.consigliata {
                 riga(v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(c.modulo ?? "–"))" : "Di SchieraXI (\(c.modulo ?? "–"))", c)
             }
-            if let p = PuntoAttesoFatto(giornata: v.giornata, v.attesoVsFatto), p.dentro != nil {
+            if let p = PuntoAttesoFatto(giornata: v.numero, v.attesoVsFatto), p.dentro != nil {
                 Label(p.frase, systemImage: p.dentro == true ? "checkmark.circle" : "exclamationmark.circle")
                     .font(.caption)
                     .foregroundStyle(p.dentro == true ? Color.testoSecondario : Color.attenzione)
                     .fixedSize(horizontal: false, vertical: true)
             }
         } header: {
-            Text("Giornata \(v.giornata ?? 0)" + (v.stagione.map { " · \($0)" } ?? "")).foregroundStyle(Color.testoSecondario)
+            Text(v.titolo + (v.stagione.map { " · \($0)" } ?? "")).foregroundStyle(Color.testoSecondario)
         }
     }
 

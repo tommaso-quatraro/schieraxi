@@ -30,7 +30,7 @@ struct FormazioneManualeDiarioView: View {
             List {
                 if let r = rosa.dato {
                     Section {
-                        Text("Giornata \(voce.giornata ?? 0): tocca i giocatori che hai schierato. Servono 11 titolari.")
+                        Text("\(voce.titolo): tocca i giocatori che hai schierato. Servono 11 titolari.")
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                     ForEach(reparti, id: \.0) { reparto in

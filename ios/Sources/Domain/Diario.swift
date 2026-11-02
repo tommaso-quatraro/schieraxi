@@ -17,6 +17,8 @@ struct DiarioRisposta: Decodable {
 struct VoceDiario: Decodable, Identifiable {
     let stagione: String?
     let giornata: Int?
+    /// Il numero della giornata nella lega (facoltativo; `null` se la lega non ha una prima giornata diversa).
+    let giornataLega: Int?
     /// La ricostruzione di oggi con i dati di allora (porta i punti fatti).
     let consigliata: FormazioneDiario?
     let schierata: FormazioneDiario?
@@ -27,12 +29,22 @@ struct VoceDiario: Decodable, Identifiable {
 
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
 
-    private enum Chiavi: String, CodingKey { case stagione, giornata, consigliata, schierata, istantanea, attesoVsFatto }
+    /// «Giornata 8 di lega (Serie A 11)», come in Oggi; solo «Giornata 11» se la lega parte dalla prima.
+    var titolo: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Giornata" }
+
+    /// Il numero da mostrare nelle frasi brevi: quello della lega se c'è, altrimenti quello di Serie A.
+    var numero: Int? {
+        if let l = giornataLega, l > 0 { return l }
+        return giornata
+    }
+
+    private enum Chiavi: String, CodingKey { case stagione, giornata, giornataLega, consigliata, schierata, istantanea, attesoVsFatto }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Chiavi.self)
         stagione = try? c.decodeIfPresent(String.self, forKey: .stagione)
         giornata = try? c.decodeIfPresent(Int.self, forKey: .giornata)
+        giornataLega = (try? c.decodeIfPresent(Int.self, forKey: .giornataLega)) ?? nil
         consigliata = try? c.decodeIfPresent(FormazioneDiario.self, forKey: .consigliata)
         schierata = try? c.decodeIfPresent(FormazioneDiario.self, forKey: .schierata)
         // Un'istantanea in un formato che non conosco vale come «non registrata»: il resto del Diario si legge lo stesso.

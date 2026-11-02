@@ -229,7 +229,7 @@ struct PuntoAttesoFatto: Identifiable, Equatable {
         var visti = Set<Int>()
         let punti = voci
             .filter { $0.stagione == stagione }
-            .compactMap { PuntoAttesoFatto(giornata: $0.giornata, $0.attesoVsFatto) }
+            .compactMap { PuntoAttesoFatto(giornata: $0.numero, $0.attesoVsFatto) }
             .filter { visti.insert($0.giornata).inserted }
             .sorted { $0.giornata < $1.giornata }
         return Array(punti.suffix(max(massimo, 1)))
