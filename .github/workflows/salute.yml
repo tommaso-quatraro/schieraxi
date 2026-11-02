@@ -1,0 +1,119 @@
+name: Salute dell'app
+
+# Controllo DALL'ESTERNO: lo scopo è accorgersi se il server si spegne (controllo-salute.sh gira sul server stesso e in quel caso tace).
+# Ogni 30 minuti chiede la salute dell'app e la pagina del sito; se una delle due non risponde ne fa altri 2 tentativi a distanza
+# di qualche minuto, poi apre l'issue «Server non raggiungibile» (P1) o aggiunge un commento a quella già aperta; quando tutto
+# risponde di nuovo la chiude con un commento. Repository pubblico: i minuti sono gratuiti. Nessun segreto, nessuna azione esterna:
+# solo curl e la gh già presente sul runner. Permessi: nessuno nel job che controlla; `issues: write` solo in quello che segnala.
+# A mano (prove): Actions > Salute dell'app > Run workflow, con indirizzi finti per vedere il guasto.
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "Indirizzo della salute dell'app (vuoto = quello vero; solo per le prove)"
+        type: string
+        default: ""
+      sito_url:
+        description: "Indirizzo del sito (vuoto = quello vero; solo per le prove)"
+        type: string
+        default: ""
+      pausa:
+        description: "Secondi fra un tentativo e l'altro (vuoto = 180)"
+        type: string
+        default: ""
+
+permissions: {}
+
+# un giro alla volta: una corsa lenta non si sovrappone alla successiva e non si aprono issue doppie
+concurrency:
+  group: salute-app
+  cancel-in-progress: false
+
+jobs:
+  controlla:
+    name: Controlla app e sito
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {}
+    outputs:
+      esito: ${{ steps.prova.outputs.esito }}
+      dettaglio: ${{ steps.prova.outputs.dettaglio }}
+    steps:
+      - id: prova
+        # gli input passano da variabili d'ambiente, mai dentro il testo dello script
+        env:
+          APP_URL: ${{ inputs.app_url }}
+          SITO_URL: ${{ inputs.sito_url }}
+          PAUSA: ${{ inputs.pausa }}
+        run: |
+          set -u
+          app="${APP_URL:-https://app.schieraxi.it/api/salute}"
+          sito="${SITO_URL:-https://schieraxi.it}"
+          pausa="${PAUSA:-180}"
+          case "$pausa" in ''|*[!0-9]*) echo "pausa non valida"; exit 1;; esac
+          case "$app$sito" in *[[:space:]]*) echo "indirizzo non valido"; exit 1;; esac
+
+          # $1 nome, $2 indirizzo, $3 testo che deve comparire nella risposta (facoltativo).
+          # Scrive l'esito in $guasti (vuoto = tutto bene). Solo https, al massimo 3 reindirizzamenti, 20 secondi.
+          provaUno() {
+            corpo=$(mktemp)
+            codice=$(curl -sS -m 20 -L --max-redirs 3 --proto '=https' --proto-redir '=https' -o "$corpo" -w '%{http_code}' "$2" 2>/dev/null) || true
+            case "$codice" in
+              2??) if [ -n "${3:-}" ] && ! grep -q "$3" "$corpo"; then guasti="$guasti$1: risposta senza «ok»; "; fi ;;
+              *) guasti="$guasti$1: nessuna risposta valida (codice ${codice:-000}); " ;;
+            esac
+            rm -f "$corpo"
+          }
+
+          esito=guasto; dettaglio=""
+          for tentativo in 1 2 3; do
+            guasti=""
+            provaUno "app" "$app" '"ok":true'
+            provaUno "sito" "$sito"
+            if [ -z "$guasti" ]; then esito=ok; dettaglio="tentativo $tentativo"; break; fi
+            dettaglio="$guasti"
+            echo "Tentativo $tentativo: $guasti"
+            [ "$tentativo" -lt 3 ] && sleep "$pausa"
+          done
+          echo "Esito: $esito"
+          { echo "esito=$esito"; echo "dettaglio=$dettaglio"; } >> "$GITHUB_OUTPUT"
+
+  segnala:
+    name: Apre o chiude l'issue
+    needs: controlla
+    # se il controllo stesso si rompe (non il server) non si accusa nessuno: il job resta rosso e si vede in Actions
+    if: ${{ always() && needs.controlla.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write   # solo per aprire, commentare e chiudere l'issue «Server non raggiungibile»
+    steps:
+      - name: Apre, aggiorna o chiude l'issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ESITO: ${{ needs.controlla.outputs.esito }}
+          DETTAGLIO: ${{ needs.controlla.outputs.dettaglio }}
+          CORSA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -eu
+          titolo="Server non raggiungibile"
+          numero=$(gh issue list --state open --label P1 --limit 100 --json number,title \
+            --jq "map(select(.title == \"$titolo\")) | first | .number // empty")
+          if [ "$ESITO" = "guasto" ]; then
+            testo="Il controllo esterno (workflow «Salute dell'app», ogni 30 minuti) non ha avuto una risposta valida dopo 3 tentativi: $DETTAGLIO
+          Corsa: $CORSA
+          L'issue si chiude da sola quando app e sito rispondono di nuovo."
+            if [ -n "$numero" ]; then
+              gh issue comment "$numero" --body "Ancora non raggiungibile. $testo"
+            else
+              gh issue create --title "$titolo" --label P1 --body "$testo"
+            fi
+          elif [ -n "$numero" ]; then
+            gh issue comment "$numero" --body "Torna a rispondere (app e sito), $DETTAGLIO. Corsa: $CORSA"
+            gh issue close "$numero" --reason completed
+          else
+            echo "Tutto a posto e nessuna issue aperta."
+          fi

@@ -10,6 +10,7 @@ Si configurano con variabili d'ambiente:
   FANTA_REGISTRO_WEB_GIORNI  per quanti giorni resta il registro del server web davanti all'app, con l'indirizzo completo
                    (per esempio nginx con logrotate «rotate 14»: 15); se non indicato: «un tempo limitato»;
   FANTA_HOSTING    chi ospita il server e dove (per esempio «Aruba S.p.A., in Italia»); se non indicato, una frase generica.
+  FANTA_POSTA_FORNITORE  chi spedisce le email e dove (per esempio «IONOS SE, in Germania»); se non indicato, «se sono attive».
 Il testo cambia da solo secondo il modo di iscrizione (FANTA_REGISTRAZIONE). Nessuna promessa su ricavi o scopo di lucro.
 """
 from __future__ import annotations
@@ -22,7 +23,7 @@ LINGUA = "it"
 ETA_MINIMA = 14          # in Italia 14 anni è l'età per dare il consenso al trattamento dei dati online
 
 # Ogni pagina è una lista di blocchi: ("h", titolo), ("p", testo), ("li", [voci]), ("sorgente",).
-# Nei testi {contatto}, {titolare}, {eta}, {iscrizione}, {email}, {backup}, {registro_web}, {hosting} sono sostituiti.
+# Nei testi {contatto}, {titolare}, {eta}, {iscrizione}, {email}, {backup}, {registro_web}, {hosting}, {posta} sono sostituiti.
 TESTI: dict[str, dict] = {
     "it": {
         "indietro": "Torna a SchieraXI",
@@ -35,6 +36,7 @@ TESTI: dict[str, dict] = {
         "backup_manca": "un tempo limitato",
         "backup_giorni": "al massimo {n} giorni",
         "hosting_manca": "un fornitore scelto da chi gestisce l'app",
+        "posta_manca": "se sono attive",
         "iscrizione_invito": "Per iscriverti serve un codice d'invito. L'account è personale: non darlo ad altri.",
         "iscrizione_email": "Per iscriverti serve un codice d'invito e un indirizzo email, che verifichi con un codice. L'account è personale: non darlo ad altri.",
         "iscrizione_aperta": "Per iscriverti serve un indirizzo email, che verifichi con un codice (oppure un codice d'invito). L'account è personale: non darlo ad altri.",
@@ -101,7 +103,7 @@ TESTI: dict[str, dict] = {
             ]),
             ("h", "Con chi li condividiamo"),
             ("p", "Non vendiamo né cediamo i tuoi dati a nessuno e non li usiamo per fare pubblicità. Possono trattarli, solo per far funzionare l'app: "
-                  "il fornitore del server ({hosting}); Google, se entri con Google; il servizio che spedisce le email (se sono attive); i servizi di notifica del tuo dispositivo "
+                  "il fornitore del server ({hosting}); Google, se entri con Google; il servizio che spedisce le email ({posta}); i servizi di notifica del tuo dispositivo "
                   "o del tuo browser (per esempio quelli di Apple, Google e Mozilla), che ricevono avvisi cifrati. Se uno di questi servizi ha sede fuori dall'Unione europea, "
                   "il trasferimento avviene con le garanzie previste dalla legge (per esempio le clausole contrattuali standard o la decisione di adeguatezza)."),
             ("p", "Gli avvisi tecnici dei controlli automatici arrivano a chi gestisce l'app tramite il servizio ntfy.sh: contengono al massimo il numero interno dell'account, "
@@ -232,6 +234,7 @@ TESTI: dict[str, dict] = {
         "backup_manca": "a limited time",
         "backup_giorni": "at most {n} days",
         "hosting_manca": "a provider chosen by whoever runs the app",
+        "posta_manca": "if active",
         "iscrizione_invito": "To sign up you need an invitation code. The account is personal: do not give it to others.",
         "iscrizione_email": "To sign up you need an invitation code and an email address, which you verify with a code. The account is personal: do not give it to others.",
         "iscrizione_aperta": "To sign up you need an email address, which you verify with a code (or an invitation code). The account is personal: do not give it to others.",
@@ -300,7 +303,7 @@ TESTI: dict[str, dict] = {
             ]),
             ("h", "Who we share it with"),
             ("p", "We do not sell or give your data to anyone and we do not use it for advertising. It may be processed, only to make the app work, by: "
-                  "the server provider ({hosting}); Google, if you sign in with Google; the service that sends emails (if active); the notification services of your device "
+                  "the server provider ({hosting}); Google, if you sign in with Google; the service that sends emails ({posta}); the notification services of your device "
                   "or browser (for example Apple, Google and Mozilla), which receive encrypted alerts. If one of these services is based outside the European Union, "
                   "the transfer takes place with the safeguards required by law (for example standard contractual clauses or an adequacy decision)."),
             ("p", "The technical alerts of the automatic checks reach whoever runs the app through the ntfy.sh service: they contain at most the internal account number, "
@@ -474,6 +477,11 @@ def _hosting(lingua: str = LINGUA) -> str:
     return os.environ.get("FANTA_HOSTING", "").strip()[:200] or t("hosting_manca", lingua)
 
 
+def _posta(lingua: str = LINGUA) -> str:
+    """Chi spedisce le email e dove (FANTA_POSTA_FORNITORE), oppure «se sono attive»."""
+    return os.environ.get("FANTA_POSTA_FORNITORE", "").strip()[:200] or t("posta_manca", lingua)
+
+
 FONTI_TESTO = {
     "fantacalcio": "Fantacalcio.it: listone e quotazioni, calendario, voti e probabili formazioni.",
     "understat": "Understat: statistiche avanzate (gol e assist attesi, rigori).",
@@ -506,7 +514,7 @@ def pagina(quale: str, lingua: str = LINGUA) -> str:
         raise ValueError(quale)
     modo = _modo()
     valori = {"{contatto}": contatto(lingua), "{titolare}": titolare(lingua), "{eta}": str(ETA_MINIMA), "{backup}": _backup(lingua),
-              "{registro_web}": _giorni("FANTA_REGISTRO_WEB_GIORNI", lingua), "{hosting}": _hosting(lingua),
+              "{registro_web}": _giorni("FANTA_REGISTRO_WEB_GIORNI", lingua), "{hosting}": _hosting(lingua), "{posta}": _posta(lingua),
               "{iscrizione}": t(f"iscrizione_{modo}", lingua), "{email}": t(f"email_{modo}", lingua)}
 
     def testo(s: str) -> str:

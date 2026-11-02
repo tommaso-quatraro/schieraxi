@@ -10,13 +10,14 @@ import pytest
 
 from fanta import account, account_email, posta
 
-from test_account_http import PASSWORD, cliente, invito, registra
+from test_account_http import PASSWORD, cliente, registra
 
 
 @pytest.fixture
 def posta_finta(monkeypatch):
     messaggi = []
     monkeypatch.setattr(posta, "invia", lambda m: messaggi.append(m) or True)
+    monkeypatch.setattr(posta, "attiva", lambda: True)                # le email «partono» (le raccoglie la lista qui sopra)
     return messaggi
 
 
@@ -255,7 +256,7 @@ def test_recupero_email_forza_bruta_dei_codici(web, posta_finta):
 
 def test_recupero_email_codice_di_un_altro_account_non_vale(web, posta_finta):
     utente_con_email(web, posta_finta, "marco", "marco@example.com")
-    luca = utente_con_email(web, posta_finta, "luca", "luca@example.com")
+    utente_con_email(web, posta_finta, "luca", "luca@example.com")
     posta_finta.clear()
     a = cliente()
     a.post("/api/account/recupero-email", json={"email": "luca@example.com"})

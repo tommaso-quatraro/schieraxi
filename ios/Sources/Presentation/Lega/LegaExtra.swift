@@ -56,7 +56,7 @@ struct SquadreView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
+            .avvisoDatiSalvati(vm.caricatore)
         }
         .navigationTitle("Squadre")
         .ricercaGlobale()
@@ -172,6 +172,7 @@ struct RosaView: View {
     @StateObject private var vm: RosaViewModel
     @Environment(\.vediFormazioneDi) private var vediFormazione
     @Environment(\.funzioni) private var funzioni
+    @Environment(\.dynamicTypeSize) private var dimensioneTesto
     @ObservedObject private var immagini = Immagini.condivise
     @State private var sceltaStemma: PhotosPickerItem?
     @State private var sceltaMaglia: PhotosPickerItem?
@@ -216,7 +217,7 @@ struct RosaView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore.datiSalvati)
+            .avvisoDatiSalvati(vm.caricatore)
         }
         .navigationTitle(nome)
         .navigationBarTitleDisplayMode(.inline)
@@ -307,8 +308,11 @@ struct RosaView: View {
         VStack(spacing: 6) {
             StemmaSquadra(nome: nome, tipo: tipo, dimensione: 72)
             PhotosPicker(selection: scelta, matching: .images) {
+                // testo molto grande: niente icona e due righe intere («Carica / stemma»), invece di «Cari-ca stem…»
                 Label(immagini.haImmagine(nome, tipo: tipo) ? "Cambia \(titolo.lowercased())" : "Carica \(titolo.lowercased())", systemImage: "photo")
+                    .labelStyle(SoloTestoSeGrande(soloTesto: dimensioneTesto.isAccessibilitySize))
                     .font(.footnote.weight(.semibold))
+                    .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
             }
@@ -316,6 +320,16 @@ struct RosaView: View {
             .buttonStyle(.borderless)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// Con il testo molto grande resta solo il testo (l'icona ruba lo spazio che serve alle parole).
+private struct SoloTestoSeGrande: LabelStyle {
+    let soloTesto: Bool
+
+    @ViewBuilder
+    func makeBody(configuration: Configuration) -> some View {
+        if soloTesto { configuration.title } else { Label(configuration) }
     }
 }
 
@@ -328,13 +342,19 @@ struct NovitaView: View {
         _caricatore = StateObject(wrappedValue: Caricatore<[VoceNovita]>("/api/novita", server: server))
     }
 
+    /// Quante versioni si mostrano: sono centinaia, tutte insieme rallentavano l'apertura. «Mostra le precedenti» ne aggiunge altre.
+    static let perPagina = 20
+    @State private var mostrate = NovitaView.perPagina
+
     var body: some View {
         ZStack {
             Sfondo()
             ScrollView {
-                Colonne(spazio: 14) {
+                // Una colonna sola, pigra (si disegna solo quello che si vede) e larga al massimo come un testo leggibile:
+                // con le colonne affiancate dell'iPad le versioni si leggevano saltando da una colonna all'altra.
+                LazyVStack(spacing: 14) {
                     if let n = caricatore.dato {
-                        ForEach(n) { v in
+                        ForEach(n.prefix(mostrate)) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
                                 if let data = v.data { Text(Quando.dataVersione(data)).font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit() }
                                 ForEach(v.voci, id: \.self) { voce in
@@ -348,6 +368,14 @@ struct NovitaView: View {
                                 }
                             }
                         }
+                        if n.count > mostrate {
+                            Button {
+                                mostrate += Self.perPagina
+                            } label: {
+                                Text("Mostra le versioni precedenti (\(n.count - mostrate))").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     } else if let e = caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
                     } else {
@@ -355,9 +383,12 @@ struct NovitaView: View {
                     }
                 }
                 .padding(16)
+                .frame(maxWidth: 720)
+                .frame(maxWidth: .infinity)
             }
+            .ricercaGlobale()
             .refreshable { await caricatore.ricarica() }
-            .avvisoDatiSalvati(caricatore.datiSalvati)
+            .avvisoDatiSalvati(caricatore)
         }
         .navigationTitle("Novità")
         .task {
@@ -409,7 +440,7 @@ struct StatoDatiView: View {
                     if let probabili = s.probabili, !probabili.isEmpty {
                         Section(titolo: "Probabili formazioni raccolte") {
                             ForEach(probabili) { p in
-                                riga("Giornata \(p.giornata)", "\(p.giocatori ?? 0) giocatori")
+                                riga("Giornata \(p.giornata)", Formato.plurale(p.giocatori ?? 0, "giocatore", "giocatori"))
                             }
                         }
                     }
@@ -419,7 +450,7 @@ struct StatoDatiView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(g.gruppo)
                                     Text((g.n ?? 0) > 0
-                                         ? "\(g.n ?? 0) giocatori · hanno giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
+                                         ? "\(Formato.plurale(g.n ?? 0, "giocatore", "giocatori")) · \((g.n ?? 0) == 1 ? "ha" : "hanno") giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
                                          : "ancora nessun dato")
                                         .font(.caption).foregroundStyle(Color.testoSecondario)
                                 }

@@ -212,21 +212,6 @@ final class ModelliTests: XCTestCase {
         XCTAssertEqual(o.analisi?.percentualeMio, 0.2)
     }
 
-    func testAsta() throws {
-        let a: PianoAsta = try Fixture.decodifica("asta")
-        XCTAssertEqual(a.crediti, 500)
-        XCTAssertEqual(a.panchina, 60)
-        XCTAssertEqual(a.ruoli.count, 4)
-        XCTAssertEqual(a.ruoli.first?.giocatori.first?.nome, "Noraldi")
-        XCTAssertEqual(a.ruoli.first?.giocatori.first?.prezzo, 65)
-        let r: PianoRiparazione = try Fixture.decodifica("asta-riparazione")
-        XCTAssertNil(r.tuoiCrediti)
-        XCTAssertEqual(r.postiLiberi, 31)
-        XCTAssertEqual(r.perTe?.count, 4)
-        XCTAssertEqual(r.ruoli.map(\.ruolo), ["P", "D", "C", "A"])
-        XCTAssertEqual(r.ruoli.first?.posti, 4)
-    }
-
     func testAvvisiStagioneNovitaCalendario() throws {
         let a: StatoAvvisi = try Fixture.decodifica("avvisi", snake: false)
         XCTAssertTrue(a.impostazioni.cambi)

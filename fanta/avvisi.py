@@ -32,8 +32,9 @@ def prima_partita(db: sqlite3.Connection, stagione: str, giornata: int) -> datet
     # Dall'inizio del turno (regola unica in turno.py): né una partita rinviata con la vecchia data mai aggiornata né i recuperi già
     # in calendario settimane dopo spostano la scadenza. Prima si contava dall'ULTIMA partita: con i recuperi già in calendario la
     # formazione risultava aperta fino a gennaio.
+    # Un anticipo (da 36 ore a 7 giorni prima del gruppo principale) non la fissa: regola in turno.conta_per_scadenza.
     inizio_turno = turno.inizio(d for d, _ in date)
-    valide = [d for d, giocata in date if giocata or d >= inizio_turno]
+    valide = [d for d, giocata in date if turno.conta_per_scadenza(d, giocata, inizio_turno)]
     return min(valide)
 
 

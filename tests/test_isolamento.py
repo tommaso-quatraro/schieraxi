@@ -153,7 +153,7 @@ def albero(cartella: Path) -> dict[str, str]:
 
 
 @pytest.fixture
-def due(multiutente, dati_isolati, calciatori, monkeypatch):
+def due(multiutente, dati_isolati, listone_in_archivio, calciatori, monkeypatch):
     """Due utenti registrati, ognuno con il suo dispositivo (cookie), e un po' di finti per non toccare la rete e il calcolo."""
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
     monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: "2026-27")
@@ -361,7 +361,7 @@ def test_scarica_i_tuoi_dati_senza_database_degli_account(due, monkeypatch):
 
 def test_il_ripristino_ignora_la_sezione_account(due):
     """Un file modificato a mano non può cambiare l'account: nome, ruolo ed email restano quelli di prima."""
-    (ca, id_a), _ = due["A"], due["B"]
+    (ca, _), _ = due["A"], due["B"]
     esegui_tutto(ca, scritture("A"))
     copia = ca.get("/api/backup").json()
     copia["account"] |= {"nome_utente": "utenteb", "ruolo": "amministratore", "email": "x@example.com", "nome_visualizzato": "Capo"}
@@ -374,7 +374,7 @@ def test_il_ripristino_ignora_la_sezione_account(due):
 
 def test_la_cartella_non_si_sceglie_con_i_parametri(due):
     """Nessun parametro, intestazione o nome può far leggere o scrivere i file di un altro."""
-    (ca, id_a), (cb, id_b) = due["A"], due["B"]
+    (ca, id_a), (cb, _) = due["A"], due["B"]
     esegui_tutto(ca, scritture("A"))
     prima = albero(cartella_di(due, "A"))
     furbi = {"utente": id_a, "utente_id": id_a, "id": id_a, "user": id_a, "cartella": f"../{id_a}", "lega": id_a}
@@ -405,7 +405,7 @@ def test_chi_non_e_registrato_non_ha_cartella(due, tmp_path):
 
 
 def test_eliminare_l_account_cancella_solo_i_suoi_dati(due, dati_isolati):
-    (ca, id_a), (cb, id_b) = due["A"], due["B"]
+    (ca, _), (cb, _) = due["A"], due["B"]
     esegui_tutto(ca, scritture("A"))
     esegui_tutto(cb, scritture("B"))
     prima_b = albero(cartella_di(due, "B"))

@@ -32,7 +32,7 @@ t=time.time(); base=errore(par,TARA); print(f"base {base:.4f} controllo {errore(
 griglia={"decadimento":[0.88,0.92,0.94,0.96,0.98],"peso_stagione_prec":[0.3,0.5,0.8],"k_voto":[2,5,10,20,40],
          "k_90":[2,4,8,16,24],"peso_xg":[0.3,0.6,0.8,1.0],"peso_xa":[0.3,0.5,0.8],"beta_voto":[0,0.1,0.2,0.3],
          "k_squadre":[3,6,12]}
-for giro in range(2):
+for _giro in range(2):
     for nome,valori in griglia.items():
         risultati={v: errore(replace(par,**{nome:v}),TARA) for v in valori}
         v=min(risultati,key=risultati.get); par=replace(par,**{nome:v})

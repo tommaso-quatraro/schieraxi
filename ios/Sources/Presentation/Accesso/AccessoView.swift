@@ -176,9 +176,7 @@ struct SchermataAccesso: View {
             Marchio(lato: 96, muove: sessione.inCorso)
                 .onLongPressGesture(minimumDuration: 1.2) { avanzate = true }
                 .accessibilityAction(named: "Impostazioni avanzate del server") { avanzate = true }
-            Text("SchieraXI")
-                .font(.system(.largeTitle, design: .rounded, weight: .semibold))
-                .accessibilityHidden(true)
+            NomeSchieraXIGrande()
             Text(frase)
                 // sul fondo sfumato serve un colore pieno: il grigio unico dell'app (4,5:1 anche sotto l'alone)
                 .font(.subheadline).foregroundStyle(Color.testoSecondario)

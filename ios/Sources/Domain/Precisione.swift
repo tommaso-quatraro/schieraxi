@@ -247,6 +247,13 @@ struct TestoPrecisione: Equatable {
     private static func v(_ x: Double?) -> String { Formato.punti(x) }
     /// `suDieci()` della web: una percentuale in «volte su 10», arrotondata.
     static func suDieci(_ percento: Double?) -> Int { Formato.intero((percento ?? 0) / 10) }
+
+    /// «al 75%», ma «all'84%», «all'8%», «all'11%» e «all'1%»: davanti a una vocale l'articolo si apostrofa.
+    static func alPercento(_ n: Int) -> String {
+        let testo = String(n)
+        let vocale = testo.hasPrefix("8") || n == 1 || n == 11 || (testo.hasPrefix("11") && testo.count == 4)
+        return (vocale ? "all'" : "al ") + testo + "%"
+    }
     /// Il plurale della web (`Intl.PluralRules` italiano): «one» solo per 1 esatto.
     private static func uno(_ x: Double) -> Bool { x == 1 }
 
@@ -288,7 +295,7 @@ struct TestoPrecisione: Equatable {
             let detto = gp.detto ?? 0, giocato = gp.giocato ?? 0
             let k = Self.suDieci(Double(giocato))
             let frase = gi.fonte == "ricostruiti"
-                ? "Con i dati disponibili prima di ogni giornata (senza le probabili formazioni), chi davamo al \(detto)% ha giocato \(k) volte su 10."
+                ? "Con i dati disponibili prima di ogni giornata (senza le probabili formazioni), chi davamo \(Self.alPercento(detto)) ha giocato \(k) volte su 10."
                 : "Quando diciamo «gioca \(detto)%», ha giocato \(k) volte su 10."
             let ottimisti = giocato < detto - 10
             let giudizio: String? = ottimisti ? "Qui siamo stati troppo ottimisti." : giocato > detto + 10 ? "Qui siamo stati troppo prudenti." : nil

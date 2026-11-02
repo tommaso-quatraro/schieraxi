@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 /// Le pagine che si aprono dalla schermata Lega.
 enum PaginaLega: Hashable {
-    case importa, squadre, rosa(String), asta, regole, crediti, avvisi, stato, novita
+    case importa, squadre, rosa(String), regole, crediti, avvisi, stato, novita
     case movimenti, stagione, diario
     /// Dalla dieta delle funzioni: le pagine che prima erano in Mercato e in Scambi stanno in Squadra e in Altro.
     case cambi, seguiti, elenco, calendario, scambi
@@ -213,21 +213,34 @@ final class CreditiViewModel: ViewModelBase {
         osserva(caricatore)
     }
 
-    func carica() async {
+    /// I valori come li ha il server (l'ultima lettura o l'ultimo salvataggio): servono a capire cosa ha cambiato l'utente.
+    private var originali: [String: String] = [:]
+
+    /// Rilegge i crediti. Un valore scritto e non ancora salvato resta (prima cambiare scheda e tornare lo cancellava);
+    /// `forza` (cambiati da un altro dispositivo) riparte da quelli del server.
+    func carica(forza: Bool = false) async {
         await caricatore.ricarica()
-        for s in caricatore.dato ?? [] { valori[s.nome] = s.creditiResidui.map { String(Formato.intero($0)) } ?? "" }
+        for s in caricatore.dato ?? [] {
+            let delServer = s.creditiResidui.map { String(Formato.intero($0)) } ?? ""
+            if forza || valori[s.nome] == nil || valori[s.nome] == originali[s.nome] { valori[s.nome] = delServer }
+            originali[s.nome] = delServer
+        }
     }
+
+    /// C'è almeno un valore scritto e non salvato.
+    var modificati: Bool { valori.contains { nome, testo in originali[nome].map { $0 != testo } ?? false } }
 
     func salva() async {
         var crediti: [String: Int] = [:]
         for (nome, testo) in valori { if let n = Int(testo.trimmingCharacters(in: .whitespaces)) { crediti[nome] = n } }
         do {
             _ = try await server.corpoJSON("PUT", "/api/crediti", CreditiSquadre(crediti: crediti))
+            for (nome, testo) in valori where originali[nome] != nil { originali[nome] = testo }
             messaggio = "Crediti salvati."
             Haptics.esito(riuscito: true)
         } catch {
             let conflitto = (error as? ErroreApi)?.eConflitto == true
-            if conflitto { await carica() }   // cambiato da un altro dispositivo: si rilegge e si mostrano i valori nuovi
+            if conflitto { await carica(forza: true) }   // cambiato da un altro dispositivo: si rilegge e si mostrano i valori nuovi
             messaggio = error.localizedDescription
             Haptics.esito(riuscito: false)
         }

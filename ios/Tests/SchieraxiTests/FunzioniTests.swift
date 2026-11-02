@@ -20,19 +20,19 @@ final class FunzioniTests: XCTestCase {
     }
 
     func testMostraTutteVinceSulleScelte() {
-        let s = StatoFunzioni(scelte: ["live": false, "asta": false], mostraTutte: true)
+        let s = StatoFunzioni(scelte: ["live": false, "diario": false], mostraTutte: true)
         XCTAssertTrue(s.acceso("live"))
-        XCTAssertTrue(s.acceso("asta"))
+        XCTAssertTrue(s.acceso("diario"))
     }
 
     func testUnaFunzioneSpentaDaUn404SiNasconde() {
-        let s = StatoFunzioni.tutteAccese.spenta("asta")
-        XCTAssertFalse(s.acceso("asta"))
+        let s = StatoFunzioni.tutteAccese.spenta("diario")
+        XCTAssertFalse(s.acceso("diario"))
         XCTAssertTrue(s.acceso("live"))
     }
 
     func testIlMessaggioDelServerSiRiconosce() {
-        XCTAssertTrue("«Asta e riparazione» non è disponibile in questa versione dell'app. Si può rivedere da Impostazioni.".dicePerFunzioneSpenta)
+        XCTAssertTrue("«Diario» non è disponibile in questa versione dell'app. Si può rivedere da Impostazioni.".dicePerFunzioneSpenta)
         XCTAssertFalse("Nessuna rosa importata".dicePerFunzioneSpenta)
         XCTAssertFalse("Non riesco a raggiungere il server.".dicePerFunzioneSpenta)
     }
@@ -120,14 +120,14 @@ final class FunzioneSpentaReteTests: XCTestCase {
 
     func testUn404ConIlCampoFunzioneEUnaFunzioneSpenta() async {
         ProtocolloFinto.gestore = { [unowned self] r in
-            (risposta(r, 404), Data(#"{"detail": "«Asta» non è disponibile in questa versione dell'app.", "funzione": "asta"}"#.utf8))
+            (risposta(r, 404), Data(#"{"detail": "«Diario» non è disponibile in questa versione dell'app.", "funzione": "diario"}"#.utf8))
         }
         do {
-            _ = try await server().grezzo("/api/asta")
+            _ = try await server().grezzo("/api/diario")
             XCTFail("doveva lanciare")
         } catch let e as ErroreApi {
             guard case .funzioneSpenta(let funzione, let messaggio) = e else { return XCTFail("errore sbagliato: \(e)") }
-            XCTAssertEqual(funzione, "asta")
+            XCTAssertEqual(funzione, "diario")
             XCTAssertTrue(messaggio.dicePerFunzioneSpenta)
             XCTAssertEqual(e.errorDescription, messaggio, "senza il prefisso «Il server dice»")
         } catch {

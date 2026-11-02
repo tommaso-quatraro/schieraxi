@@ -43,8 +43,12 @@ def etag_dati(dati) -> str:
 
 
 def _tag(t: str) -> str:
+    """Il tag senza «W/» e senza il suffisso della lingua: la copia inglese di una risposta (server._etag_inglese, «"abc-en"») è la
+    STESSA versione dei dati, cambia solo la lingua dei testi. Senza questo, chi usa l'app in inglese riceveva 412 a ogni scrittura
+    dopo una lettura tradotta (per esempio «Questa è la mia» nel primo avvio dopo aver visto una rosa)."""
     t = t.strip()
-    return t[2:] if t[:2] in ("W/", "w/") else t
+    t = t[2:] if t[:2] in ("W/", "w/") else t
+    return t[:-4] + '"' if t.endswith('-en"') else t
 
 
 def controlla(request: Request, attuale: str) -> None:
