@@ -77,7 +77,7 @@ Se ti invitano in una lega che gioca già da un po':
 
 ### Le schede in basso
 
-**Oggi**, **Formazione**, **Squadra**, **Altro**. In alto: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda: previsione, forma recente, statistiche, ☆ per seguirlo.
+**Oggi**, **Formazione**, **Squadra**, **Altro**. In alto: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda: previsione, forma recente, statistiche, **☆ Segui** per seguirlo (diventa **★ Seguito**; lo trovi in **Seguiti**).
 
 Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello.
 
@@ -127,7 +127,7 @@ Gli stili vanno dal più prudente al più rischioso: **Molto sicura**, **Sicura*
 - **Squadre e rose**: la tua squadra (si cambia con «Non è la tua squadra?»), **Stemma e maglia**, **Vedi la rosa**; tocca un'altra squadra per vedere rosa e formazione.
   Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.
 - **Cambi consigliati**: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Compaiono solo cambi sensati, con il perché in una frase. Con i crediti inseriti vedi solo quelli che puoi permetterti. Se hai caricato solo la tua squadra, un avviso ricorda che qualche svincolato potrebbe essere già di un altro.
-- **Seguiti**: i giocatori con la ☆. Ti avvisa se si infortunano o tornano disponibili.
+- **Seguiti**: i giocatori che segui (pulsante **☆ Segui** nella scheda). Ti avvisa se si infortunano o tornano disponibili.
 - **Elenco dei giocatori** (filtri per ruolo, solo svincolati, ricerca per nome) e **Calendario** con la difficoltà: in ogni casella «vs MIL» (in casa) o «@ MIL» (in trasferta).
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
 
@@ -144,7 +144,7 @@ Servono le rose delle altre squadre: se hai caricato solo la tua, qui trovi un m
 
 - **Regole** (si aprono subito): punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
 - **Movimenti e storico**: scambi, svincolati e tagli a ogni aggiornamento delle rose.
-- **Crediti delle squadre**: non sono nel file di Leghe; li scrivi qui e tocchi **Salva i crediti**.
+- **Crediti delle squadre**: non sono nel file di Leghe; li scrivi qui e tocchi **Salva i crediti**. Finché non salvi, sopra il pulsante leggi «Ci sono crediti scritti e non ancora salvati».
 - **Nuova stagione**: a fine campionato archivia le rose e riparte, senza cancellare niente.
 - **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti**.
 
@@ -201,7 +201,7 @@ Tocca un gruppo per aprirlo; **← Impostazioni** torna all'elenco.
 
 | Gruppo | Cosa contiene |
 |---|---|
-| Il tuo account | nome, email, Google collegato (**Accessi**), password, nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci** |
+| Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci** |
 | Aspetto | lingua (italiano o inglese), tema (automatico, chiaro, scuro), dimensione del testo |
 | Notifiche | quali avvisi ricevere e ore tranquille (sezione 4) |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, versione |

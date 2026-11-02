@@ -3051,6 +3051,7 @@ async function vistaLega(ambito = "altro") {
     crediti: () => squadre.length ? `<div class="carta"><h3 style="margin-top:0">${t("lega.crediti_residui_ogni")}</h3>
       ${squadre.map((x, i) => `<div class="riga riga-crediti"><label for="cred-${i}">${esc(x.nome)}</label>
         <input class="campo-testo cred-squadra" id="cred-${i}" data-nome="${esc(x.nome)}" type="number" min="0" max="99999" inputmode="numeric" value="${x.crediti_residui ?? ""}" placeholder="—" style="width:96px;text-align:right"></div>`).join("")}
+      <p class="attenzione" id="crediti-non-salvati" role="status" hidden>${t("lega.crediti_non_salvati")}</p>
       <div class="pulsanti"><button class="bottone" id="salva-crediti" type="button">${t("lega.salva_crediti")}</button></div>
       <div class="debole piccolo">${t("lega.servono_per_consigli")}</div></div>`
       : `<div class="carta"><div class="debole">${t("lega.importa_prima_rose")}</div></div>`,
@@ -3106,6 +3107,11 @@ async function vistaLega(ambito = "altro") {
     crediti: () => {
       const b = $("#salva-crediti");
       if (!b) return;
+      // «Ci sono crediti scritti e non ancora salvati»: confronto con i valori arrivati dal server (dopo il salvataggio: quelli salvati)
+      const campi = [...document.querySelectorAll(".cred-squadra")];
+      let salvati = campi.map(c => c.value.trim());
+      const segnaModifiche = () => { const n = $("#crediti-non-salvati"); if (n) n.hidden = campi.every((c, i) => c.value.trim() === salvati[i]); };
+      campi.forEach(c => c.addEventListener("input", segnaModifiche));
       b.addEventListener("click", async () => {
         const crediti = {};
         for (const c of document.querySelectorAll(".cred-squadra")) {
@@ -3114,7 +3120,7 @@ async function vistaLega(ambito = "altro") {
           if (!/^\d{1,5}$/.test(val)) { avviso(t("lega.crediti_numero", { nome: c.dataset.nome })); return; }
           crediti[c.dataset.nome] = Number(val);
         }
-        try { await api("/api/crediti", { method: "PUT", body: JSON.stringify({ crediti }) }); svuotaCache(); caricaSquadre(); avviso(t("lega.crediti_salvati")); }
+        try { await api("/api/crediti", { method: "PUT", body: JSON.stringify({ crediti }) }); salvati = campi.map(c => c.value.trim()); segnaModifiche(); svuotaCache(); caricaSquadre(); avviso(t("lega.crediti_salvati")); }
         catch (e) { avviso(e.message, 5000); }
       });
     },
@@ -3353,7 +3359,7 @@ async function vistaRegole() {
     const voti = [0, 1, 2, 3].map(k => leggiN("pv" + k));
     const media = voti.reduce((a, b) => a + b, 0) / 4;
     const b = bonusDifesa(media, leggiFasce().sort((x, y) => x[0] - y[0]));
-    $("#prova-esito").innerHTML = `${t("regole.media_bonus", { m: `<b>${num(media, 2)}</b>`, b: `<b class="${b > 0 ? "positivo" : ""}">${b > 0 ? "+" : ""}${num(b, 0)}</b>` })}`;
+    $("#prova-esito").innerHTML = `${tp("regole.media_bonus", Math.abs(Math.round(b)), { m: `<b>${num(media, 2)}</b>`, b: `<b class="${b > 0 ? "positivo" : ""}">${b > 0 ? "+" : ""}${num(b, 0)}</b>` })}`;
   };
   const aiutoPanchina = () => {
     const tipo = $("#tipo-panchina .attivo").dataset.valore;
@@ -3874,7 +3880,8 @@ function schedaAccount() {
     ${socialPronto() || (stato.accessi && stato.accessi.social && stato.accessi.social.length) ? `<details style="margin-top:14px"${soloGoogle() ? " open" : ""}><summary>${t("social.accessi")}</summary>
       <div id="acc-accessi">${htmlAccessi()}</div></details>` : ""}
     <details style="margin-top:14px"><summary>${soloGoogle() ? t("social.aggiungi_password") : t("account.cambia_password")}</summary>
-      ${soloGoogle() ? `<div class="debole piccolo">${t("social.aggiungi_spiega")}</div>` : campo("acc-attuale", t("account.password_attuale"), 'autocomplete="current-password"')}${campo("acc-nuova", t("accesso.password_nuova_10"), 'autocomplete="new-password"')}
+      ${soloGoogle() ? `<div class="debole piccolo">${t("social.aggiungi_spiega")}</div>` : campo("acc-attuale", t("account.password_attuale"), 'autocomplete="current-password"')}${campo("acc-nuova", t("accesso.password_nuova_10"), 'autocomplete="new-password"')}${campo("acc-ripeti", t("account.ripeti_password"), 'autocomplete="new-password"')}
+      <p class="attenzione piccolo" id="acc-diverse" role="status" hidden>${t("account.password_diverse")}</p>
       <div class="pulsanti"><button class="bottone" id="acc-cambia">${soloGoogle() ? t("social.aggiungi_password") : t("account.cambia_password")}</button></div>
       <div id="acc-esito-password"></div>
       ${soloGoogle() ? "" : `<div class="debole piccolo">${t("account.altri_scollegati")}</div>`}</details>
@@ -3950,12 +3957,15 @@ function collegaAccount() {
   $("#acc-esci").addEventListener("click", () => esciDa("/api/account/esci"));
   $("#acc-scarica-dati").addEventListener("click", () => scaricaIMieiDati());
   if ($("#acc-accessi")) collegaAccessi();
+  const passwordDiverse = () => valore("#acc-ripeti") !== "" && valore("#acc-nuova") !== valore("#acc-ripeti");
+  for (const id of ["#acc-nuova", "#acc-ripeti"]) $(id).addEventListener("input", () => { $("#acc-diverse").hidden = !passwordDiverse(); });
   $("#acc-cambia").addEventListener("click", () => provaCosi(t("account.password_cambiata_no"), async () => {
+    if (valore("#acc-nuova") !== valore("#acc-ripeti")) { $("#acc-diverse").hidden = false; throw new Error(t("account.password_diverse")); }
     if (soloGoogle()) {                                                  // chi è entrato con Google aggiunge una password (dopo la conferma con Google)
       let r;
       try { r = await api("/api/account/imposta-password", { method: "POST", body: JSON.stringify({ password: valore("#acc-nuova") }) }); }
       catch (e) { throw new Error(erroreGoogle(e)); }
-      $("#acc-nuova").value = "";
+      $("#acc-nuova").value = ""; $("#acc-ripeti").value = "";
       stato.accessi = { ...stato.accessi, password: true };
       $("#acc-esito-password").innerHTML = htmlCodiceUnaVolta(r.codice_recupero) + `<div class="pulsanti"><button class="bottone" id="acc-password-fatto">${t("social.fatto")}</button></div>`;
       collegaCopiaCodice(r.codice_recupero);
@@ -3964,7 +3974,7 @@ function collegaAccount() {
       return;
     }
     await api("/api/account/cambia-password", { method: "POST", body: JSON.stringify({ attuale: valore("#acc-attuale"), nuova: valore("#acc-nuova") }) });
-    $("#acc-attuale").value = ""; $("#acc-nuova").value = "";
+    $("#acc-attuale").value = ""; $("#acc-nuova").value = ""; $("#acc-ripeti").value = "";
     avviso(t("account.password_cambiata_ok"), 5000);
   }));
   if ($("#acc-nuovo-codice")) $("#acc-nuovo-codice").addEventListener("click", () => provaCosi(t("account.nuovo_codice_no"), async () => {
