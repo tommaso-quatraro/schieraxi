@@ -2709,7 +2709,8 @@ async function apriDiario(giornata) {
       ${righePunti(g.istantanea ? t("diario.ricostruita", { modulo: esc(g.consigliata.modulo) }) : t("avv.del_modello", { modulo: esc(g.consigliata.modulo) }), g.consigliata)}
       ${rigaFascia(g)}</div>`).join("");
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("avv.diario_delle_giornate")}</h2>
-      <div class="debole piccolo">${t("avv.per_ogni_giornata")}</div>
+      <div class="debole piccolo">${t("avv.diario_riga")}</div>
+      <details class="come-diario"><summary>${t("mercato.come_legge")}</summary><div class="debole piccolo">${t("avv.per_ogni_giornata")}</div></details>
       ${cartaPrecisione(d.precisione)}
       ${cartaScelteTue(d.scelte_tue, s, v)}
       ${righe || `<div class="carta" style="margin-top:12px"><div class="debole">${t("diario.vuoto_" + d.motivo_vuoto) !== "diario.vuoto_" + d.motivo_vuoto ? t("diario.vuoto_" + d.motivo_vuoto) : t("diario.vuoto")}</div></div>`}`);
