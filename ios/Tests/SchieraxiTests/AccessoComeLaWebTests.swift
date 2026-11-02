@@ -160,7 +160,8 @@ struct PassiModuloTests {
         var m = ModuloAccesso(scheda: .recupera, metodo: .email)
         m.password = "scritta"
         m.codiceEmail = "1"
-        #expect(m.codiceInviato(a: "nome@example.invalid", daPasso: .recuperoEmail))
+        let passato = m.codiceInviato(a: "nome@example.invalid", daPasso: .recuperoEmail)   // fuori da #expect: è mutating
+        #expect(passato)
         #expect(m.passo == .recuperoEmailCodice)
         #expect(m.emailRecupero == "nome@example.invalid")
         #expect(m.password == "")
@@ -171,7 +172,8 @@ struct PassiModuloTests {
     func codiceInviatoDopoIlCambioDiPasso() {
         var m = ModuloAccesso(scheda: .recupera, metodo: .email)
         m.vai(.accedi, modo: .email)
-        #expect(!m.codiceInviato(a: "nome@example.invalid", daPasso: .recuperoEmail))
+        let passato = m.codiceInviato(a: "nome@example.invalid", daPasso: .recuperoEmail)
+        #expect(!passato)
         #expect(m.passo == .accedi)
         #expect(m.emailRecupero == nil)
     }
