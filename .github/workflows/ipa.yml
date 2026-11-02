@@ -70,7 +70,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 -I -s scripts/genera_sorgente.py "$GITHUB_REPOSITORY" "${{ env.BUILD_N }}" Schieraxi.ipa
+          python3 -I -s scripts/genera_sorgente.py "$GITHUB_REPOSITORY" "${{ env.BUILD_N }}" Schieraxi.ipa ios
           gh release create "build-${{ env.BUILD_N }}" Schieraxi.ipa sorgente.json --title "Build ${{ env.BUILD_N }}" \
             --notes "IPA non firmato, da installare con SideStore. Aggiornamenti automatici: aggiungi in SideStore il sorgente https://github.com/$GITHUB_REPOSITORY/releases/latest/download/sorgente.json" \
             --repo "$GITHUB_REPOSITORY" --latest
