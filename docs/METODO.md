@@ -11,8 +11,11 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
   tutto in italiano semplice.
 
 ## Dall'idea al telefono
-1. **Issue**: cosa, perché, «fatto quando…». Priorità `P1` (rotto o sicurezza), `P2` (nel ciclo in corso), `P3` (dopo).
-   Il ciclo in corso è una milestone: le idee nuove diventano issue `P3` e aspettano.
+1. **Issue**: cosa, perché, «fatto quando…». Priorità `P1` (rotto o sicurezza), `P2` (da fare ora), `P3` (dopo).
+   Gli obiettivi scendono dal generale allo specifico: quattro macro obiettivi sono issue con l'etichetta `obiettivo`
+   (statistiche nostre affidabili, consiglio di formazione giusto e spiegato, app semplice e uguale su iPhone e web, app aperta
+   agli altri) e ogni lavoro concreto è una loro sotto-issue, creata quando ci si lavora. Si lavora su un macro obiettivo alla
+   volta; le idee nuove diventano issue `P3` sotto il macro obiettivo giusto e aspettano.
 2. **Misura del lavoro** (skill `brainstorming`): compito chiaro, modifica piccola o progetto.
 3. **Progetto**: spec in `docs/superpowers/specs/` e piano in `docs/superpowers/plans/` (skill `writing-plans`), uniti con
    una pull request di soli documenti prima di scrivere il codice.
