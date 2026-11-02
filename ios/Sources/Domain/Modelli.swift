@@ -27,6 +27,8 @@ struct Giocatore: Decodable, Identifiable {
     let dubbio: Bool?
     let diffidato: Bool?
     let titolarita: String?
+    /// A giornata iniziata (quando `titolarita` arriva vuota): `fatto`, `senza_voto`, `attesa_voti`, `in_corso`, `da_giocare`, `rinviata`.
+    let statoPartita: String?
     let dataPartita: String?
     let proprietario: String?
     let assente: Bool?
@@ -47,12 +49,12 @@ struct Giocatore: Decodable, Identifiable {
     /// «titolare», «panchina», «infortunato»... come lo scrivono le probabili formazioni.
     let stato: String?
     let percentuale: Double?
-    /// A giornata iniziata (titolarità tolta): `fatto`, `senza_voto`, `attesa_voti`, `in_corso`, `da_giocare`, `rinviata`. Facoltativo.
-    let statoPartita: String?
     let nota: String?
     let motivi: [String]?
     /// Solo nella scheda del giocatore: la giornata a cui si riferisce la previsione.
     let giornata: Int?
+    /// Solo nella scheda: la stessa giornata con il numero della lega (facoltativo, si preferisce a `giornata`).
+    let giornataLega: Int?
     /// «Perché questo numero» (facoltativo: i server più vecchi non lo mandano). Letto senza far fallire la scheda.
     private let percheNumero: Tollerante<[Tollerante<MotivoNumero>]>?
     /// Il fantavoto atteso del giocatore medio del suo ruolo (il riferimento dei motivi). Facoltativo.

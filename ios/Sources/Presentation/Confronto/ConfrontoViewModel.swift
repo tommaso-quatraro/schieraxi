@@ -77,10 +77,14 @@ final class RicercaViewModel: ViewModelBase {
     @Published var risultati: [GiocatoreBreve] = []
     @Published var errore: String?
     @Published var cercando = false
+    /// Fantavoto atteso e «gioca N%» dei risultati, come nell'elenco dei giocatori.
+    let previsioni: PrevisioniRicerca
 
     init(server: any ServerClient) {
         self.server = server
+        previsioni = PrevisioniRicerca(server: server)
         super.init()
+        osserva(previsioni)
         if Demo.attivo, let t = Demo.argomento("DEMO_CERCA") { testo = t }   // solo per le fotografie del simulatore
     }
 
@@ -95,6 +99,7 @@ final class RicercaViewModel: ViewModelBase {
         }
         try? await Task.sleep(nanoseconds: 300_000_000)
         if Task.isCancelled { return }
+        previsioni.avvia()
         cercando = true
         defer { cercando = false }
         do {

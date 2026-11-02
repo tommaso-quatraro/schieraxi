@@ -83,7 +83,7 @@ function risorsaDi(percorso, opzioni) {
   const [p, qs] = percorso.split("?");
   const metodo = (opzioni.method || "GET").toUpperCase();
   if (p === "/api/regole" || p === "/api/regole/rinvio") return "regole";
-  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file"].includes(p)) return "rose";
+  if (["/api/squadre", "/api/rosa", "/api/crediti", "/api/mia-squadra", "/api/squadre/nome", "/api/rose/testo", "/api/rose/file", "/api/rose/correggi"].includes(p)) return "rose";
   if (p === "/api/osservati" || p.startsWith("/api/osservati/")) return "osservati";
   if (p === "/api/avvisi") return "avvisi";
   if (p === "/api/scelta") { const g = new URLSearchParams(qs || "").get("giornata"); return g ? `scelta:${g}` : null; }
@@ -1714,7 +1714,7 @@ async function apriConfronto(a, b) {
   apriFoglio(`<div class="caricamento">${t("mercato.confronto")}</div>`);
   const numero = ++ultimaScheda;
   try {
-    const contesto = stato.formaz ? `&livello=${stato.formaz.livello || 0}&modulo=${encodeURIComponent(stato.formaz.modulo.modulo)}${stato.squadraVista ? `&squadra=${encodeURIComponent(stato.squadraVista)}` : ""}` : "";
+    const contesto = stato.formaz ? `&giornata=${Number(stato.formaz.f.giornata)}&livello=${stato.formaz.livello || 0}&modulo=${encodeURIComponent(stato.formaz.modulo.modulo)}${stato.squadraVista ? `&squadra=${encodeURIComponent(stato.squadraVista)}` : ""}` : "";
     const c = await api(`/api/confronto?a=${a}&b=${b}${contesto}`);
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
     const [x, y] = c.giocatori;
@@ -3049,9 +3049,8 @@ async function vistaLega(ambito = "altro") {
   catch (e) { if (e.rete) { if (ancoraValida(mia)) contenuto.innerHTML = erroreVista(e); return; } squadre = []; }
   if (!ancoraValida(mia)) return;
   const daUrl = stato.legaTorna; stato.legaTorna = null;
-    const miaS = squadre.find(x => x.mia);
   const immagine = (sq, tipo) => sq.immagini && sq.immagini[tipo] ? `<img class="${tipo === "stemma" ? "stemma-lista" : "maglia-lista"}" src="${urlImg(sq.nome, tipo)}" alt="${t("lega.alt_immagine", { tipo: t(NOME_IMMAGINE[tipo]), nome: esc(sq.nome) })}" loading="lazy">` : "";
-  const sceltaMia = `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${squadre.map(x => `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
+  const htmlSceltaMia = () => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${squadre.map(x => `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
 
   const corpi = {
     importa: () => `<div class="carta">
@@ -3077,7 +3076,7 @@ async function vistaLega(ambito = "altro") {
       </details>
       <input id="file-rose" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden>
       <div id="esito-import"></div></div>`,
-    squadre: () => squadre.length ? `<div class="carta" id="mia-squadra-carta"><h3 style="margin-top:0">${t("lega.mia_squadra")}</h3>
+    squadre: () => { const miaS = squadre.find(x => x.mia), sceltaMia = htmlSceltaMia(); return squadre.length ? `<div class="carta" id="mia-squadra-carta"><h3 style="margin-top:0">${t("lega.mia_squadra")}</h3>
       ${miaS ? `<div class="mia-riga">${immagine(miaS, "stemma") || `<span class="iniziale-squadra">${esc(miaS.nome.trim().slice(0, 1).toUpperCase())}</span>`}${immagine(miaS, "maglia")}
         <div><b>${esc(miaS.nome)}</b><span class="debole piccolo" style="display:block">${tp("sd.n_giocatori", miaS.giocatori)}${miaS.crediti_residui != null ? ` · ${tp("lega.n_crediti", miaS.crediti_residui)}` : ""}</span></div></div>
         <div class="pulsanti"><button class="bottone secondario" id="apri-stemma-maglia">${t("lega.stemma_maglia")}</button><button class="bottone secondario" data-squadra="${esc(miaS.nome)}">${t("lega.vedi_rosa")}</button></div>
@@ -3090,7 +3089,7 @@ async function vistaLega(ambito = "altro") {
           <span class="dettaglio" style="display:block">${tp("sd.n_giocatori", x.giocatori)}${x.crediti_residui != null ? ` · ${tp("lega.n_crediti", x.crediti_residui)}` : ""}</span></span>
         <span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul>
       <div class="debole piccolo" style="margin-top:8px">${t("lega.tocca_una_squadra")}</div></div>`}`
-      : `<div class="carta"><div class="debole">${t("lega.importa_prima_rose")}</div></div>`,
+      : `<div class="carta"><div class="debole">${t("lega.importa_prima_rose")}</div></div>`; },
     movimenti: () => `<div id="storico-movimenti"><div class="carta caricamento">${t("lega.carico_movimenti")}</div></div>`,
     diario: () => `<div class="carta"><div class="debole piccolo">${t("lega.per_ogni_giornata")}</div>
       <div class="pulsanti"><button class="bottone" id="apri-diario" type="button">${t("lega.apri_diario")}</button></div></div>`,
@@ -3105,6 +3104,12 @@ async function vistaLega(ambito = "altro") {
   };
 
   const aggiornaSquadre = () => { caricaInfo(); caricaSquadre(); };
+  // I pannelli disegnano `squadre`, lette all'apertura: dopo un salvataggio si rileggono (con `voce`, quel pannello si ridisegna),
+  // così «La mia squadra», i crediti e l'elenco delle squadre non restano quelli di prima finché non si cambia scheda.
+  const rileggiSquadre = async (voce) => {
+    try { squadre = await api("/api/squadre"); } catch { return; }
+    if (voce && stato.pannelli === cfg && $("#imp-pagina")) apriPannello(cfg, voce, false);
+  };
   const collega = {
     importa: () => {
       const mostraEsito = esito => {
@@ -3112,7 +3117,7 @@ async function vistaLega(ambito = "altro") {
         $("#esito-import").innerHTML = `<h3>${t("lega.cosa_cambiato")}</h3>${htmlDifferenze(esito.differenze)}
           <div class="debole piccolo" style="margin-top:10px">${t("lega.importate", { nomi: esito.squadre_importate.map(esc).join(", "), n: tp("lega.n_squadre", esito.totale_squadre) })}</div>
           ${esito.avvisi.length ? `<div class="attenzione" style="margin-top:12px"><b>${t("lega.da_controllare")}</b><br>${esito.avvisi.map(esc).join("<br>")}</div>` : `<div class="debole piccolo">${t("lega.rose_controllate_tutto")}</div>`}`;
-        aggiornaSquadre();
+        aggiornaSquadre(); rileggiSquadre();
       };
       // in due passi (anteprima.js): prima si controlla cosa ha capito l'app, poi «Conferma e salva»
       const controlla = sorgente => anteprimaRose($("#esito-import"), sorgente, {
@@ -3136,7 +3141,7 @@ async function vistaLega(ambito = "altro") {
       if (asm) asm.addEventListener("click", () => apriStemmaMaglia());
       const ms = $("#mia-squadra");
       if (ms) ms.addEventListener("change", async () => {
-        try { await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) }); svuotaCache(); stato.squadraVista = null; avviso(t("lega.squadra_salvata")); aggiornaSquadre(); }
+        try { await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) }); svuotaCache(); stato.squadraVista = null; avviso(t("lega.squadra_salvata")); aggiornaSquadre(); rileggiSquadre("squadre"); }
         catch (e) { avviso(e.message); }
       });
     },
@@ -3166,7 +3171,7 @@ async function vistaLega(ambito = "altro") {
           if (!/^\d{1,5}$/.test(val)) { avviso(t("lega.crediti_numero", { nome: c.dataset.nome })); return; }
           crediti[c.dataset.nome] = Number(val);
         }
-        try { await api("/api/crediti", { method: "PUT", body: JSON.stringify({ crediti }) }); salvati = campi.map(c => c.value.trim()); segnaModifiche(); svuotaCache(); caricaSquadre(); avviso(t("lega.crediti_salvati")); }
+        try { await api("/api/crediti", { method: "PUT", body: JSON.stringify({ crediti }) }); salvati = campi.map(c => c.value.trim()); segnaModifiche(); svuotaCache(); caricaSquadre(); avviso(t("lega.crediti_salvati")); rileggiSquadre(); }
         catch (e) { avviso(e.message, 5000); }
       });
     },
@@ -3259,7 +3264,7 @@ async function vistaNovita() {
         <div class="debole piccolo">${t("novita.versione", { v: esc(v.versione) })} · ${dataNovita(v.data)}</div>
         <ul class="novita-voci">${(v.voci || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
     const visibili = Math.max(NOVITA_VISIBILI, nuoveDa), resto = elenco.length - visibili;
-    pagina(`<div class="carta"><div class="riga"><button class="bottone secondario" data-vai="altro" style="padding:6px 14px;min-height:44px">← ${t("nav.altro")}</button>
+    pagina(`<div class="carta"><div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("nav.altro")}</button>
         <span class="debole">${t("novita.versione", { v: esc(elenco[0] ? elenco[0].versione : "?") })}</span></div><h2 style="margin-top:14px">${t("info.novita")}</h2></div>
       ${elenco.slice(0, visibili).map(carta).join("")}
       ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}`);
@@ -3281,7 +3286,9 @@ function stepper(id, valore, { passo = 0.5, min = -50, max = 999, dec = 1 } = {}
 }
 const leggiN = id => { const el = $("#" + id); return el ? Number(String(el.value).replace(",", ".")) : NaN; };
 const interruttore = (id, testo, acceso, aiuto = "") => `<label class="interruttore-ios"><span>${testo}${aiuto ? `<small>${aiuto}</small>` : ""}</span><input type="checkbox" id="${id}" ${acceso ? "checked" : ""}><i></i></label>`;
-const rigaRegola = (etichetta, controllo, aiuto = "") => `<div class="riga-regola"><span>${etichetta}${aiuto ? `<small>${aiuto}</small>` : ""}</span>${controllo}</div>`;
+// Il campo della riga prende come nome per i lettori di schermo il testo della riga (testo semplice, passato per esc): prima restava senza nome o
+// con il titolo della sezione («Gol» anche per l'assist).
+const rigaRegola = (etichetta, controllo, aiuto = "") => `<div class="riga-regola"><span>${etichetta}${aiuto ? `<small>${aiuto}</small>` : ""}</span>${controllo.replace("<input ", `<input aria-label="${esc(etichetta)}" `)}</div>`;
 
 document.addEventListener("click", ev => {
   const b = ev.target.closest(".stepper button[data-step]");
@@ -3405,7 +3412,7 @@ async function vistaRegole() {
     const voti = [0, 1, 2, 3].map(k => leggiN("pv" + k));
     const media = voti.reduce((a, b) => a + b, 0) / 4;
     const b = bonusDifesa(media, leggiFasce().sort((x, y) => x[0] - y[0]));
-    $("#prova-esito").innerHTML = `${tp("regole.media_bonus", Math.abs(Math.round(b)), { m: `<b>${num(media, 2)}</b>`, b: `<b class="${b > 0 ? "positivo" : ""}">${b > 0 ? "+" : ""}${num(b, 0)}</b>` })}`;
+    $("#prova-esito").innerHTML = `${tp("regole.media_bonus", Math.abs(b), { m: `<b>${num(media, 2)}</b>`, b: `<b class="${b > 0 ? "positivo" : ""}">${b > 0 ? "+" : ""}${num(b, Number.isInteger(b) ? 0 : 1)}</b>` })}`;
   };
   const aiutoPanchina = () => {
     const tipo = $("#tipo-panchina .attivo").dataset.valore;
@@ -3652,7 +3659,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         dimenticaInvito();
         mostraCodiceAccesso(t("accesso.account_creato"), r.codice_recupero, t("accesso.entra"), () => location.reload());
       } else if (scheda === "registra") {
-        if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto")); e.status = 400; throw e; }       // controllo locale: la password resta
+        if (!$("#ac-letto").checked) { const e = new Error(t("accesso.spunta_letto", { eta: ETA_MINIMA })); e.status = 400; throw e; }       // controllo locale: la password resta
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
         const email = $("#ac-email") ? v("#ac-email").trim() : "";
         if (email) corpo.email = email;                      // facoltativa: i server vecchi non la conoscono
@@ -3804,7 +3811,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
     if (inCorso) return;
     const invia = $("#accesso-invia");
     const mostra = testo => { const m = document.createElement("div"); m.className = "errore"; m.textContent = testo; $("#accesso-msg").replaceChildren(m); };
-    if (!$("#ac-letto").checked) { mostra(t("accesso.spunta_letto")); return; }
+    if (!$("#ac-letto").checked) { mostra(t("accesso.spunta_letto", { eta: ETA_MINIMA })); return; }
     inCorso = true; invia.disabled = true; invia.setAttribute("aria-busy", "true");
     try {
       await api("/api/account/social/completa", { method: "POST", timeout: 30000,

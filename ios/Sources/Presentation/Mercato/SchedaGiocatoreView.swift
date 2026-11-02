@@ -70,7 +70,7 @@ struct GiocatoreCorpo: View {
                     if let s = vm.caricatore.dato {
                         intestazione(s).ingresso(0)
                         if let p = s.previsione {
-                            previsione(p, ruolo: s.calciatore.ruolo).ingresso(1)
+                            previsione(p, ruolo: s.calciatore.ruolo, squadra: s.calciatore.squadra).ingresso(1)
                             perche(p)
                         } else {
                             senzaPrevisione
@@ -94,7 +94,8 @@ struct GiocatoreCorpo: View {
             .avvisoDatiSalvati(vm.caricatore)
             .bordiMorbidi()
         }
-        .navigationTitle(vm.caricatore.dato?.calciatore.nome ?? "Giocatore")
+        // Il nome si legge una volta sola, grande, nell'intestazione (prima c'era anche nella barra in alto).
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await vm.carica() }
     }
@@ -111,11 +112,12 @@ struct GiocatoreCorpo: View {
                 AvatarGiocatore(id: c.id, squadra: squadra, indice: p?.indice, dimensione: 96, nome: c.nome, ruolo: c.ruolo)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(c.nome).font(.title.bold()).accessibilityAddTraits(.isHeader)
-                    HStack(spacing: 6) {
-                        BadgeRuolo(ruolo: c.ruolo, piccolo: true)
-                        Text("\(nomeRuolo(c.ruolo).primaMaiuscola) · \((c.squadra ?? "").capitalized)").font(.subheadline).foregroundStyle(Color.testoSecondario)
-                    }
+                    ruoloESquadra(ruolo: c.ruolo, squadra: c.squadra)
                     Text("Quotazione \(Formato.intero(c.quotazione))").font(.caption).foregroundStyle(Color.testoSecondario)
+                    if let indice = p?.indice {
+                        // il numero sull'anello della foto: senza questa riga non si capiva cosa fosse
+                        Text("Indice \(Formato.intero(indice)) su 100 (100 = il migliore del ruolo)").font(.caption).foregroundStyle(Color.testoSecondario)
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -135,6 +137,25 @@ struct GiocatoreCorpo: View {
         }
     }
 
+    /// «Attaccante · Genoa» su una riga; se non ci sta (testo grande, nomi lunghi) la squadra va sotto, intera e senza «·»:
+    /// prima andava a capo da solo «· Genoa».
+    private func ruoloESquadra(ruolo: String, squadra: String?) -> some View {
+        let ruoloTesto = nomeRuolo(ruolo).primaMaiuscola
+        let squadraTesto = (squadra ?? "").capitalized
+        let badge = BadgeRuolo(ruolo: ruolo, piccolo: true)
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                badge
+                Text(squadraTesto.isEmpty ? ruoloTesto : "\(ruoloTesto) · \(squadraTesto)").fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) { badge; Text(ruoloTesto) }
+                if !squadraTesto.isEmpty { Text(squadraTesto) }
+            }
+        }
+        .font(.subheadline).foregroundStyle(Color.testoSecondario)
+    }
+
     @ViewBuilder
     private func etichette(_ s: SchedaGiocatore, _ p: Giocatore?) -> some View {
         Capsula(testo: s.proprietario ?? "Svincolato", colore: s.proprietario == nil ? .orange : Color.verde)
@@ -151,22 +172,25 @@ struct GiocatoreCorpo: View {
         }
     }
 
+    /// Il numero della giornata della lega (`giornata_lega`); con un server che non lo manda, quello di `giornata`.
+    static func giornataMostrata(_ p: Giocatore) -> Int? { p.giornataLega ?? p.giornata }
+
     private func descrizionePartita(_ p: Giocatore) -> String {
         var testo = ""
-        if let g = p.giornata { testo += "Giornata \(g) · " }
+        if let g = Self.giornataMostrata(p) { testo += "Giornata \(g) · " }
         testo += (p.inCasa == true ? "in casa" : "in trasferta") + " contro " + (p.avversario ?? "").capitalized
         if let data = p.dataPartita { testo += " · " + Quando.leggibile(data) }
         return testo
     }
 
-    private func previsione(_ p: Giocatore, ruolo: String) -> some View {
+    private func previsione(_ p: Giocatore, ruolo: String, squadra: String?) -> some View {
         Carta("Prossima partita", simbolo: "soccerball") {
             Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(Color.testoSecondario)
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 0) {
                     NumeroCheSale(valore: p.fvAtteso ?? 0)
                         .font(.system(size: min(misuraNumero, 110), weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.verde)
+                        .foregroundStyle(.primary)   // neutro, come sulla web: il colore è solo per gli esiti
                     Text(FantavotoAtteso.nome + " · se gioca").font(.subheadline.weight(.semibold)).foregroundStyle(Color.testoSecondario)
                 }
                 Spacer()
@@ -179,11 +203,11 @@ struct GiocatoreCorpo: View {
             .accessibilityLabel("\(FantavotoAtteso.nome) \(Formato.punti(p.fvAtteso)) se gioca. Gioca al \(Formato.percento(p.pVoto)) per cento.")
             BarraPercentuale(valore: p.pVoto ?? 0)
             HStack {
-                PillDifficolta(difficolta: p.difficolta)
+                PillDifficolta(difficolta: p.difficolta, conPartita: true)
                 Spacer()
-                if p.golSquadra != nil || p.golAvversario != nil {
-                    Text("gol attesi \(Formato.decimali(p.golSquadra ?? 0))–\(Formato.decimali(p.golAvversario ?? 0))")
-                        .font(.caption).foregroundStyle(Color.testoSecondario)
+                if let risultato = Self.risultatoAtteso(p) {
+                    Text(risultato).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
+                        .accessibilityLabel(Self.voceRisultatoAtteso(p, squadra: squadra) ?? risultato)
                 }
             }
             FilaTessere {
@@ -199,6 +223,22 @@ struct GiocatoreCorpo: View {
                 }
             }
         }
+    }
+
+    /// «Risultato atteso 2,1–1,0»: gol attesi della sua squadra, poi quelli dell'avversario (come il web, `mercato.gol_attesi`).
+    /// Senza uno dei due numeri non si mostra.
+    static func risultatoAtteso(_ p: Giocatore) -> String? {
+        guard let a = p.golSquadra, let b = p.golAvversario, a.isFinite, b.isFinite else { return nil }
+        return "Risultato atteso \(Formato.decimali(a))–\(Formato.decimali(b))"
+    }
+
+    /// Per VoiceOver, con i nomi delle squadre: «Risultato atteso: Genoa 2,1, Como 1,0».
+    static func voceRisultatoAtteso(_ p: Giocatore, squadra: String?) -> String? {
+        guard let a = p.golSquadra, let b = p.golAvversario, a.isFinite, b.isFinite else { return nil }
+        let mia = (squadra ?? p.squadra ?? "").capitalized
+        let loro = (p.avversario ?? "").capitalized
+        guard !mia.isEmpty, !loro.isEmpty else { return "Risultato atteso: \(Formato.decimali(a)) a \(Formato.decimali(b))" }
+        return "Risultato atteso: \(mia) \(Formato.decimali(a)), \(loro) \(Formato.decimali(b))"
     }
 
     /// «Perché questo numero»: i motivi del fantavoto atteso (solo se il server li manda) e la definizione.
@@ -331,13 +371,13 @@ struct GiocatoreCorpo: View {
         Carta {
             if funzioni.acceso(Funzione.seguiti) {
                 Button { Task { await vm.alternaOsservato() } } label: {
-                    Label(vm.osservato == true ? "Osservato" : "Osserva", systemImage: vm.osservato == true ? "star.fill" : "star")
+                    Label(vm.osservato == true ? "Seguito" : "Segui", systemImage: vm.osservato == true ? "star.fill" : "star")
                         .contentTransition(.symbolEffect(.replace))
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .pulsanteVetro(prominente: true)
                 .sensoryFeedback(.success, trigger: vm.osservato)
-                .accessibilityHint(vm.osservato == true ? "Toglie il giocatore dagli osservati" : "Aggiunge il giocatore agli osservati")
+                .accessibilityHint(vm.osservato == true ? "Smette di seguire il giocatore" : "Segue il giocatore: lo trovi in Squadra > Seguiti")
             }
             if funzioni.acceso(Funzione.confronto) && funzioni.acceso(Funzione.elencoGiocatori) {
                 Button { percorso.append(.sceltaAltro(s.calciatore.id)) } label: {
