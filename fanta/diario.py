@@ -347,7 +347,7 @@ def scelte_tue(voci: list[dict]) -> dict:
         if tue == loro:
             continue
         diff = round(s["reale"] - c["reale"], 1)
-        giornate.append({"stagione": v["stagione"], "giornata": v["giornata"],
+        giornate.append({"stagione": v["stagione"], "giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"),
                          "hai_scelto": [t["nome"] for t in s["titolari"] if t["id"] not in loro],
                          "consigliava": [t["nome"] for t in c["titolari"] if t["id"] not in tue],
                          "punti_tua": s["reale"], "punti_consigliata": c["reale"], "differenza": diff,
