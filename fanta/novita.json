@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.329",
+    "data": "2026-11-02T10:16:51",
+    "titolo": "Primo avvio: i tempi della tua lega",
+    "voci": [
+      "Al primo avvio SchieraXI ti chiede quando si chiude la formazione nella tua lega e da quale giornata è partita: così promemoria e numeri delle giornate sono giusti fin dal primo giorno."
+    ],
+    "tecnico": [
+      "primoavvio.js: passo «tempi» dopo «squadra» (scadenza_minuti e prima_giornata_lega, PUT /api/regole); stato_utente.PASSI ha «tempi»; docs/API.md aggiornato."
+    ]
+  },
+  {
     "versione": "1.328",
     "data": "2026-11-02T10:14:49",
     "titolo": "Fantavoto atteso più preciso per i giocatori più cari",
