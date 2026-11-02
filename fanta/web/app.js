@@ -2871,10 +2871,12 @@ async function avvisiTelefono() {
         $("#av-fascia").hidden = !$("#av_silenzio").checked;
         if ($("#av_silenzio").checked && $("#av_da").value === $("#av_a").value) {
           avviso(t("avv.ore_tranquille_non"), 6000);
+          $("#av_da").value = String(o.silenzio_da); $("#av_a").value = String(o.silenzio_a);
           return;
         }
-        await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ cambi: $("#av_cambi").checked, promemoria_60: $("#av_60").checked, promemoria_15: $("#av_15").checked, riepilogo: $("#av_riepilogo").checked, copertura: $("#av_copertura").checked, app_nativa: $("#av_nativa") ? $("#av_nativa").checked : undefined,
+        const r = await api("/api/avvisi", { method: "PUT", body: JSON.stringify({ cambi: $("#av_cambi").checked, promemoria_60: $("#av_60").checked, promemoria_15: $("#av_15").checked, riepilogo: $("#av_riepilogo").checked, copertura: $("#av_copertura").checked, app_nativa: $("#av_nativa") ? $("#av_nativa").checked : undefined,
           silenzio: $("#av_silenzio").checked, silenzio_da: Number($("#av_da").value), silenzio_a: Number($("#av_a").value), avviso_prima: Number($("#av_prima").value) }) });
+        if (r && r.impostazioni) Object.assign(o, r.impostazioni);          // l'ultima fascia salvata, per tornarci se la prossima è sbagliata
       } catch (e) { avviso(e.message); }
     };
     ["#av_cambi", "#av_prima", "#av_60", "#av_15", "#av_riepilogo", "#av_copertura", "#av_nativa", "#av_silenzio", "#av_da", "#av_a"].filter(id => $(id)).forEach(id => $(id).addEventListener("change", salva));
@@ -3997,6 +3999,7 @@ function collegaAccount() {
     avviso(t("account.password_cambiata_ok"), 5000);
   }));
   if ($("#acc-nuovo-codice")) $("#acc-nuovo-codice").addEventListener("click", () => provaCosi(t("account.nuovo_codice_no"), async () => {
+    if (!valore("#acc-pw-codice")) { avviso(t("account.email_serve_password")); return; }
     const r = await api("/api/account/codice-recupero", { method: "POST", body: JSON.stringify({ password: valore("#acc-pw-codice") }) });
     $("#acc-pw-codice").value = "";
     mostraCodice("#acc-esito-codice", r.codice_recupero);

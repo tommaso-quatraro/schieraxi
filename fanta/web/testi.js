@@ -445,6 +445,7 @@ const TESTI = {
     "av.apri_stato": "Apri lo stato dei dati",
     "col.squadra": "Squadra",
     "info.versione": "Versione",
+    "info.sorgente": "Codice sorgente",
     "asp.auto_spiega": "Automatico segue il chiaro e lo scuro del dispositivo.",
 
     // ---- [oggi] ----
@@ -2184,6 +2185,7 @@ const TESTI = {
     "av.apri_stato": "Open the data status",
     "col.squadra": "Team",
     "info.versione": "Version",
+    "info.sorgente": "Source code",
     "asp.auto_spiega": "Automatic follows the light and dark mode of your device.",
 
     // ---- [oggi] ----

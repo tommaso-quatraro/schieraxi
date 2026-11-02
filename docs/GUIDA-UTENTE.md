@@ -204,7 +204,7 @@ Tocca un gruppo per aprirlo; **← Impostazioni** torna all'elenco.
 | Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci** |
 | Aspetto | lingua (italiano o inglese), tema (automatico, chiaro, scuro), dimensione del testo |
 | Notifiche | quali avvisi ricevere e ore tranquille (sezione 4) |
-| Informazioni | Privacy, Termini d'uso, Crediti e fonti, versione |
+| Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente (licenza AGPL-3.0, se il server lo indica), versione |
 | Avanzate | solo per chi gestisce il server: **Mostra tutte le funzioni**, **Stato dei dati**, inviti, utenti, errori |
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, seguiti, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi > Salva su File**.
