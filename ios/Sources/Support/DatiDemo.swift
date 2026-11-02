@@ -22,10 +22,22 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
             server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
+        case "formazione-chiusa":
+            // la giornata chiusa (dopo la scadenza): la formazione salvata in sola lettura
+            server.risposte["/api/formazione"] = DatiDemo.formazione(iniziata: true)
+            server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
+            server.indirizzoFinto = "https://finto-formazione-chiusa.invalid"
         case "formazione-salvata":
             // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»)
             server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
             server.indirizzoFinto = "https://finto-scelta-salvata.invalid"
+        case "oggi-rinvio":
+            server.risposte["/api/oggi"] = DatiDemo.oggiRinvio(adesso: adesso)
+            server.indirizzoFinto = "https://finto-partita-rinviata.invalid"
+        case "oggi-finita-recupero":
+            server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso, recupero: true)
+            server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
+            server.indirizzoFinto = "https://finto-recupero-da-giocare.invalid"
         default:
             return nil
         }
@@ -91,11 +103,11 @@ private enum DatiDemo {
         cal(117, "Tarek Reimvaldt", "C", "milan", costo: 24, pVoto: 0.89, punti: 6.2),
         cal(118, "Nereo Fagiani", "C", "fiorentina", costo: 6, pVoto: 0.0, punti: 0.0, assente: true),
         cal(119, "Moussa Kerabo", "C", "roma", costo: 13, pVoto: 0.84, punti: 5.5),
-        cal(120, "Leonel Marténi", "A", "inter", costo: 80, pVoto: 0.92, punti: 7.9, dubbio: true),
+        cal(120, "Leonel Marténi", "A", "inter", costo: 80, pVoto: 0.62, punti: 7.9, dubbio: true),
         cal(121, "Marvin Thorvan", "A", "inter", costo: 52, pVoto: 0.90, punti: 7.1),
         cal(122, "Adebayo Lorkman", "A", "atalanta", costo: 41, pVoto: 0.87, punti: 7.0),
         cal(123, "Renato Lemão", "A", "milan", costo: 45, pVoto: 0.88, punti: 6.9),
-        cal(124, "Darko Vlasenić", "A", "juventus", costo: 33, pVoto: 0.70, punti: 5.4, dubbio: true),
+        cal(124, "Darko Vlasenić", "A", "juventus", costo: 33, pVoto: 0.65, punti: 5.4, dubbio: true),
         cal(125, "Mosè Kervan", "A", "fiorentina", costo: 18, pVoto: 0.82, punti: 5.8),
     ]
 
@@ -113,7 +125,7 @@ private enum DatiDemo {
         cal(210, "Nando Rovalli", "C", "lazio", costo: 0, pVoto: 0.90, punti: 5.8),
         cal(211, "Egon Audrelli", "P", "cremonese", costo: 0, pVoto: 0.95, punti: 5.1),
         cal(212, "Ludovico Lucarni", "A", "udinese", costo: 0, pVoto: 0.79, punti: 5.9),
-        cal(213, "Michele Gabbrosi", "D", "milan", costo: 0, pVoto: 0.75, punti: 5.0, dubbio: true),
+        cal(213, "Michele Gabbrosi", "D", "milan", costo: 0, pVoto: 0.66, punti: 5.0, dubbio: true),
         cal(214, "Aksel Sandemaker", "C", "milan", costo: 0, pVoto: 0.82, punti: 5.7),
         cal(215, "Gilberto Mancarini", "D", "roma", costo: 0, pVoto: 0.86, punti: 5.5),
     ]
@@ -182,6 +194,12 @@ private enum DatiDemo {
 
     // MARK: - Date
 
+    /// Il calcio d'inizio cade su un quarto d'ora (18:00, 18:15...), come le partite vere: mai «18:57».
+    static func quartoDOra(_ data: Date) -> Date {
+        let quarto = 15.0 * 60
+        return Date(timeIntervalSinceReferenceDate: (data.timeIntervalSinceReferenceDate / quarto).rounded(.up) * quarto)
+    }
+
     static func formatta(_ data: Date, _ formato: String) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -218,16 +236,17 @@ private enum DatiDemo {
         d["difficolta"] = difficolta(di: p.squadra)
         d["gol_squadra"] = 1.8
         d["gol_avversario"] = 1.2
-        d["data_partita"] = formatta(riferimento.addingTimeInterval(7 * 3600), "yyyy-MM-dd HH:mm")
+        d["data_partita"] = formatta(quartoDOra(riferimento.addingTimeInterval(7 * 3600)), "yyyy-MM-dd HH:mm")
         // titolarità: come nelle probabili formazioni
         if p.assente {
             d["titolarita"] = "fuori"; d["stato"] = "infortunato"; d["percentuale"] = 0.0; d["motivi"] = ["infortunato"]
         } else if p.dubbio {
-            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = 60.0; d["motivi"] = ["dubbio: affaticamento", "titolare al 60%"]
+            // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque)
+            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["dubbio: affaticamento"]
         } else if p.pVoto < 0.75 {
-            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina (\(Int(p.pVoto * 100))%)"]
+            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina"]
         } else {
-            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare al 90%"]
+            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare"]
         }
         d["quotazione"] = quotazione(p)
         if conAvversario, let a = avversario(di: p.squadra) {
@@ -264,7 +283,7 @@ private enum DatiDemo {
         }
         var motivi: [[String: Any]] = []
         if p.dubbio {
-            motivi.append(["chiave": "gioca", "testo": "gioca il 60%: dubbio", "effetto": NSNull()])
+            motivi.append(["chiave": "gioca", "testo": "gioca il \(Int((p.pVoto * 100).rounded()))%: dubbio", "effetto": NSNull()])
         } else if p.pVoto < 0.8 {
             let pct = Int((p.pVoto * 100).rounded())
             motivi.append(["chiave": "gioca", "testo": "gioca il \(pct)%: " + (p.pVoto < 0.5 ? "probabile panchina" : "dubbio"), "effetto": NSNull()])
@@ -398,31 +417,33 @@ private enum DatiDemo {
         ["basso": attesi - 8, "alto": attesi + 8.5, "confidenza": 0.8, "indicativo": indicativo]
     }
 
-    static func formazione() -> String {
+    static func formazione(iniziata: Bool = false) -> String {
         let base = moduli[0]
         let ids = base.titolari
         let bench = panchina(per: ids)
         let titolari = ids.map { giocatore(calciatore($0)) }
         let panchinaJSON = bench.map { giocatore(calciatore($0)) }
-        let nomiLivelli = ["Prudente", "Equilibrata", "Audace"]
+        // gli stili come li manda il server (nomi e descrizioni di LIVELLI_RISCHIO): Sicura, Equilibrata (consigliata), Rischiosa
         var livelli: [[String: Any]] = []
-        for (r, nome) in nomiLivelli.enumerated() {
-            let extra = Double(r) * 1.4
+        for r in [-1, 0, 1] {
+            let nome = StileFormazione.nomi[r] ?? ""
+            let extra = Double(r) * 0.6
             var elenco: [[String: Any]] = []
             for m in moduli {
                 elenco.append(["modulo": m.nome, "punteggio_atteso": punteggio(m.titolari) + extra,
                                "titolari": m.titolari, "panchina": panchina(per: m.titolari),
                                "dev": 4.2, "intervallo": fascia(punteggio(m.titolari) + extra)])
             }
-            livelli.append(["rischio": r, "nome": nome, "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco,
+            livelli.append(["rischio": r, "stile": r, "nome": nome, "descrizione": StileFormazione.descrizione(r),
+                            "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco,
                             "intervallo": fascia(punteggio(ids) + extra)])
         }
         var schede: [String: Any] = [:]
         for p in miaRosa { schede[String(p.id)] = giocatore(p) }
         return json([
             "squadra": nomeMia, "giornata": giornata, "giornata_lega": giornata - 3, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
-            "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede,
-            "dev": 4.2, "intervallo": fascia(punteggio(ids)),
+            "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede, "stile_consigliato": 0,
+            "dev": 4.2, "intervallo": fascia(punteggio(ids)), "iniziata": iniziata,
         ])
     }
 
@@ -448,7 +469,7 @@ private enum DatiDemo {
     static func oggi(adesso: Date) -> String { json(oggiDati(adesso: adesso)) }
 
     static func oggiDati(adesso: Date) -> [String: Any] {
-        let inizio = adesso.addingTimeInterval(7 * 3600)
+        let inizio = quartoDOra(adesso.addingTimeInterval(7 * 3600))
         let ids = moduli[0].titolari
         // minuti di distanza dalla prima partita
         let scarti: [Double] = [0, 135, 1260, 1395, 1530, 1650, 2700, 2835, 2835, 2970]
@@ -549,7 +570,31 @@ private enum DatiDemo {
     }
 
     /// Fase `finita`: la giornata 11 è finita ieri, Oggi parla già della 12 (si chiude fra 4 giorni, probabili non ancora uscite).
-    static func oggiFinita(adesso: Date) -> String {
+    // MARK: - Partite rinviate (fotografie `oggi-rinvio` e `oggi-finita-recupero`)
+
+    /// La scelta «per questa giornata» della demo: la lega aspetta il recupero.
+    static func sceltaRinvio(giornata g: Int, partite: [[String: Any]] = [], miei: [[String: Any]] = []) -> [String: Any] {
+        ["stagione": "2026-27", "giornata": g, "giornata_lega": g - 3, "modo": "aspetta", "valore": NSNull(), "predefinito": "aspetta",
+         "eccezione": false, "modi": ["aspetta", "senza_voto", "voto_ufficio"], "voto_ufficio": 6, "partite": partite, "miei": miei]
+    }
+
+    /// Oggi prima della scadenza con l'ultima partita del turno rinviata a fine mese: il riquadro «Partita rinviata».
+    static func oggiRinvio(adesso: Date) -> String {
+        var o = oggiDati(adesso: adesso)
+        var partite = (o["partite"] as? [[String: Any]]) ?? []
+        guard let ultima = incontri.last, !partite.isEmpty else { return json(o) }
+        let recupero = formatta(adesso.addingTimeInterval(20 * 86_400), "yyyy-MM-dd HH:mm")
+        partite[partite.count - 1]["data"] = recupero
+        partite[partite.count - 1]["stato"] = "rinviata"
+        o["partite"] = partite
+        let miei = moduli[0].titolari.map { calciatore($0) }.filter { [ultima.casa, ultima.trasferta].contains($0.squadra) }
+            .map { ["id": $0.id, "nome": $0.nome, "ruolo": $0.ruolo, "squadra": $0.squadra] as [String: Any] }
+        o["rinvio"] = sceltaRinvio(giornata: giornata, partite: [["casa": ultima.casa, "trasferta": ultima.trasferta, "data": recupero]],
+                                   miei: miei)
+        return json(o)
+    }
+
+    static func oggiFinita(adesso: Date, recupero: Bool = false) -> String {
         var o = oggiDati(adesso: adesso)
         let scadenza = adesso.addingTimeInterval(4 * 86_400)
         func data(_ d: Date) -> String { formatta(d, "yyyy-MM-dd HH:mm") }
@@ -574,6 +619,12 @@ private enum DatiDemo {
             "punti_fatti": 74.5, "punti_attesi": 71.2, "intervallo": fascia(71.2, indicativo: false),
             "consigliata": ["punti_fatti": 78.0, "punti_attesi": 73.7],
         ] as [String: Any]
+        if recupero, let ultima = incontri.last {
+            // la giornata è finita ma una partita aspetta il recupero: i punti possono ancora cambiare e si può decidere diversamente
+            let partita: [String: Any] = ["casa": ultima.casa, "trasferta": ultima.trasferta, "data": data(adesso.addingTimeInterval(18 * 86_400))]
+            o["riepilogo"] = (o["riepilogo"] as? [String: Any] ?? [:]).merging(
+                ["nel_diario": false, "consigliata": NSNull(), "recuperi": [partita], "rinvio": sceltaRinvio(giornata: giornata)]) { _, nuovo in nuovo }
+        }
         o["prossima"] = [
             "giornata": giornata + 1, "giornata_lega": giornata - 2, "scadenza": data(scadenza),
             "prepara_da": data(scadenza.addingTimeInterval(-72 * 3600)), "con_probabili": false,
@@ -768,6 +819,7 @@ private enum DatiDemo {
                       "ammonizione": -0.5, "espulsione": -1.0, "mvp": 0.0],
             "rosa": ["P": 3, "D": 8, "C": 8, "A": 6], "crediti_iniziali": 500, "rimborso_svincolo": 0.5,
             "scadenza_minuti": 30, "prima_giornata_lega": 4, "aggiornamenti_vicino_scadenza": true,
+            "partite_rinviate": "aspetta", "voto_ufficio_rinviate": 6, "rinvii_giornate": [String: Any](),
             "moduli": ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"],
             "panchina": ["numero": 11, "tipo": "per_ruolo", "max_sostituzioni": 5, "cambio_modulo": false,
                          "posti": ["P": 2, "D": 3, "C": 3, "A": 3]],
@@ -784,22 +836,6 @@ private enum DatiDemo {
             ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 7, "riga": "Panchina: 7 giocatori"],
             ["chiave": "moduli", "etichetta": "Moduli ammessi", "valore": ["3-4-3", "4-3-3", "4-4-2"], "riga": "Moduli: 3-4-3, 4-3-3, 4-4-2"],
         ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"]])
-    }
-
-    static func asta() -> String {
-        let quote: [(String, Double, Double)] = [("P", 0.08, 40), ("D", 0.17, 85), ("C", 0.30, 150), ("A", 0.45, 225)]
-        var ruoli: [[String: Any]] = []
-        for (ruolo, quota, crediti) in quote {
-            let migliori = tutti.filter { $0.ruolo == ruolo && !$0.assente }.sorted { $0.punti > $1.punti }.prefix(12)
-            var voci: [[String: Any]] = []
-            for p in migliori {
-                voci.append(["id": p.id, "nome": p.nome, "squadra": p.squadra, "quotazione": quotazione(p),
-                             "prezzo": max(1.0, (p.punti * p.punti * quota * 1.6).rounded()),
-                             "punti_stagione": (p.punti * 9.0).rounded()])
-            }
-            ruoli.append(["ruolo": ruolo, "quota": quota, "crediti": crediti, "giocatori": voci])
-        }
-        return json(["crediti": 500, "squadre": 8, "panchina": 60, "ruoli": ruoli])
     }
 
     static func novita() -> String {
@@ -910,7 +946,7 @@ private enum DatiDemo {
               "file": ["dati/osservati.json": [9001, 9002]]])
     }
 
-    // MARK: - Confronto, prova del modello, movimenti, stagione, asta di febbraio
+    // MARK: - Confronto, prova del modello, movimenti, stagione
 
     static func confronto(_ a: Calciatore, _ b: Calciatore) -> String {
         let consigliato = a.punti >= b.punti ? a : b
@@ -967,26 +1003,6 @@ private enum DatiDemo {
                             "percentuale_mio": 1.4, "quotazione_do": 14, "quotazione_ricevo": 18]) { $1 }])
     }
 
-    static func astaRiparazione() -> String {
-        var ruoli: [[String: Any]] = []
-        let posti: [String: Int] = ["P": 1, "D": 3, "C": 2, "A": 2]
-        for ruolo in ["P", "D", "C", "A"] {
-            let migliori = liberi.filter { $0.ruolo == ruolo }.sorted { $0.punti > $1.punti }.prefix(8)
-            let voci: [[String: Any]] = migliori.map { p in
-                ["id": p.id, "nome": p.nome, "squadra": p.squadra, "quotazione": quotazione(p), "punti_stagione": (p.punti * 9).rounded(),
-                 "prezzo": max(1.0, (p.punti * 0.9).rounded())]
-            }
-            ruoli.append(["ruolo": ruolo, "posti": posti[ruolo] ?? 1, "giocatori": voci])
-        }
-        let perTe: [[String: Any]] = [203, 205, 212].map { id in
-            let p = calciatore(id)
-            return ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "prezzo": 6, "miglioramento": 38.0 + Double(id % 20), "al_posto_di": "Vlasenić"]
-        }
-        return json(["modo": "riparazione", "tuoi_crediti": 12, "crediti_lega": 187, "posti_liberi": 8,
-                     "nota": "Prezzi stimati dai crediti rimasti a tutta la lega: chi ha più crediti può alzare i prezzi.",
-                     "ruoli": ruoli, "per_te": perTe])
-    }
-
     static func importa() -> String {
         json(["squadre_importate": ["Real Madrink", "Dinamo Pizza"], "totale_squadre": 8, "avvisi": ["Dinamo Pizza: 24 giocatori invece di 25"],
               "mia_squadra": nomeMia, "riepilogo": "Scambio Real Madrink / Dinamo Pizza: Kaan Yurdız ⇄ Sandy McTarran",
@@ -1033,7 +1049,6 @@ private enum DatiDemo {
             "/api/avvisi": avvisi(),
             "/api/diario": diario(),
             "/api/backup": backup(),
-            "/api/asta": asta(),
             "/api/novita": novita(),
             "/api/foto-disponibili": json(["ids": Array(DemoImmagini.idConFoto).sorted()]),
             "/api/affidabilita": affidabilita(),
@@ -1041,7 +1056,6 @@ private enum DatiDemo {
             "/api/stagione": stagione(),
             "/api/scambi/da-testo": offerta(),
             "/api/regole/riconosci": riconosci(),
-            "/api/asta?modo=riparazione": astaRiparazione(),
             "/api/rose/testo": importa(),
             "/api/rose/file": importa(),
             "/api/rose/anteprima": DemoAnteprimaRose.json,   // anche /api/rose/anteprima/file

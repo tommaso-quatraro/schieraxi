@@ -98,6 +98,23 @@ def test_proposta_di_mercato_ha_il_guadagno_in_evidenza_e_nomi_protetti():
     assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-valore\)", CSS)
 
 
+def test_rimborso_e_costo_dei_cambi_si_vedono_senza_mouse():
+    """Sul telefono non c'è il passaggio del mouse: rimborso e costo stanno nel testo, mai in un `title`.
+    Tre pezzi («crediti dopo», «rimborso», «costo») che a 390 px vanno a capo interi, senza spezzarsi in mezzo."""
+    consigli = APP[APP.index("const soldiDelCambio"):APP.index("async function datiCalendario")]      # l'aiutante e la schermata
+    assert "title=" not in consigli and "${soldiDelCambio(p)}" in consigli
+    for chiave in ("crediti_dopo", "rimborso_n", "costo_n"):
+        assert f't("mercato.{chiave}"' in consigli, chiave
+    assert "r: p.rimborso" in consigli and "c: p.entra.quotazione" in consigli
+    assert re.search(r"\.pr-sec \.nb \{[^}]*display: inline-block; max-width: 100%", CSS)    # intero se ci sta, a capo dentro solo se è più largo della riga
+    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    it, en = testi.split("\n  en: {", 1)
+    for blocco, voci in ((it, ("crediti dopo {dopo}{no}", "rimborso {r}", "costo {c}")), (en, ("credits after {dopo}{no}", "refund {r}", "cost {c}"))):
+        for chiave, testo in zip(("crediti_dopo", "rimborso_n", "costo_n"), voci):
+            assert f'"mercato.{chiave}": "{testo}"' in blocco, chiave
+    assert "mercato.rimborso_meno_costo" not in testi and "mercato.crediti_dettaglio" not in testi
+
+
 def test_scala_tipografica_a_sette_livelli_nessun_testo_sotto_12_px():
     for livello in ("eroe", "titolo", "card", "valore", "corpo", "sec", "eti"):
         assert re.search(rf"--t-{livello}: \d+px", CSS), livello

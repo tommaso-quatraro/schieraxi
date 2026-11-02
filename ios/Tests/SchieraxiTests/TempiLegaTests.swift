@@ -23,7 +23,7 @@ final class TempiLegaTests: XCTestCase {
         XCTAssertEqual(try oggi("").etichettaGiornata, "Giornata 10")
         XCTAssertEqual(try oggi(", \"giornata_lega\": null").etichettaGiornata, "Giornata 10")
         XCTAssertEqual(try oggi(", \"giornata_lega\": 10").etichettaGiornata, "Giornata 10")
-        XCTAssertEqual(try oggi(", \"giornata_lega\": 7").etichettaGiornata, "Giornata 7 di lega (Serie A 10)")
+        XCTAssertEqual(try oggi(", \"giornata_lega\": 7").etichettaGiornata, "Giornata 7")
         XCTAssertEqual(try oggi(", \"giornata_lega\": 7").giornataMostrata, 7)
         XCTAssertEqual(try oggi(", \"giornata_lega\": 0").giornataMostrata, 10)
     }
@@ -76,26 +76,39 @@ final class TempiLegaTests: XCTestCase {
 /// La giornata di lega nelle formazioni, nel testo condiviso e nei widget.
 final class GiornataLegaTests: XCTestCase {
     func testEtichetta() {
-        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: 8), "Giornata 8 di lega (Serie A 11)")
+        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: 8), "Giornata 8")
         XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: 11), "Giornata 11")
         XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: nil), "Giornata 11")
         XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: -2), "Giornata 11")
+        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: 0), "Giornata 11")
         XCTAssertEqual(TempiLega.sigla(serieA: 11, lega: 8), "G8")
         XCTAssertEqual(TempiLega.sigla(serieA: 11, lega: nil), "G11")
     }
 
+    /// Regola comune con la web (`docs/COERENZA-WEB-IPHONE.md`): la giornata della tua formazione è sempre quella della lega,
+    /// mai «di lega (Serie A 10)»; il numero di Serie A si scrive solo dove si parla del calendario.
+    func testLEtichettaNonDiceMaiSerieA() {
+        for (serieA, lega) in [(10, 7), (11, 8), (11, 11), (3, 1)] as [(Int, Int?)] {
+            let t = TempiLega.etichetta(serieA: serieA, lega: lega)
+            XCTAssertEqual(t, "Giornata \(lega ?? serieA)")
+            XCTAssertFalse(t.contains("Serie A"), t)
+            XCTAssertFalse(t.contains("di lega"), t)
+        }
+        XCTAssertEqual(TempiLega.serieA(10), "Serie A, giornata 10")
+    }
+
     func testTestoCondiviso() {
         XCTAssertEqual(TestoFormazione.crea(giornata: 11, giornataLega: 8, modulo: "4-3-3", titolari: [], panchina: []).components(separatedBy: "\n").first,
-                       "Giornata 8 di lega (Serie A 11) · 4-3-3")
+                       "Giornata 8 · 4-3-3")
         XCTAssertEqual(TestoFormazione.crea(giornata: 11, modulo: "4-3-3", titolari: [], panchina: []).components(separatedBy: "\n").first,
                        "Giornata 11 · 4-3-3")
     }
 
     func testIlWidgetLeggeLaGiornataDiLega() throws {
         let con = RiassuntoWidget.leggi(Data(#"{"giornata": 11, "giornata_lega": 8}"#.utf8))
-        XCTAssertEqual(con?.etichettaGiornata, "Giornata 8 di lega (Serie A 11)")
+        XCTAssertEqual(con?.etichettaGiornata, "Giornata 8")
         XCTAssertEqual(con?.siglaGiornata, "G8")
-        XCTAssertEqual(con?.comeRiassuntoOggi()?.etichettaGiornata, "Giornata 8 di lega (Serie A 11)")
+        XCTAssertEqual(con?.comeRiassuntoOggi()?.etichettaGiornata, "Giornata 8")
         // server vecchio o valore nullo
         let senza = RiassuntoWidget.leggi(Data(#"{"giornata": 11, "giornata_lega": null}"#.utf8))
         XCTAssertEqual(senza?.etichettaGiornata, "Giornata 11")

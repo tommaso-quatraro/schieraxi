@@ -32,9 +32,12 @@ enum Formato {
         decimali(valore, cifre: 1)
     }
 
-    /// Con il segno davanti anche per i positivi: «+2,5».
+    /// Con il segno davanti, come la web (`segno` di `app.js`): «+2,5», «−0,4» con il meno tipografico (U+2212).
+    /// Se arrotondato vale zero resta «0,0» senza segno; un valore mancante o non finito si scrive «–».
     static func conSegno(_ valore: Double, cifre: Int = 1) -> String {
-        (valore >= 0 ? "+" : "") + decimali(valore, cifre: cifre)
+        let testo = decimali(abs(valore), cifre: cifre)
+        guard testo.contains(where: { ("1"..."9").contains($0) }) else { return testo }
+        return (valore > 0 ? "+" : "\u{2212}") + testo
     }
 
     /// Una probabilità tra 0 e 1 come percentuale intera.

@@ -8,7 +8,7 @@ import pytest
 
 from fanta import __main__ as cli
 from fanta import account, blocco, percorsi, server
-from fanta import contesto, lega
+from fanta import contesto
 from test_account_http import PASSWORD, cliente
 
 ROSE = "Squadra dell'amico\nP\tSommer\t10\nD\tBastoni\t15\nAltra\nA\tKean\t30\n"
@@ -97,7 +97,7 @@ def test_rose_di_dimensione_vera_non_si_fermano_al_tetto_degli_account(mondo):
 
 
 def test_due_importazioni_insieme_non_si_perdono(mondo):
-    capo, amico = mondo["capo"][0], mondo["amico"]
+    amico = mondo["amico"]
     altre = "Terza\nP\tSommer\t10\nQuarta\nA\tKean\t30\n"
     esiti = []
     fermi = threading.Barrier(2)

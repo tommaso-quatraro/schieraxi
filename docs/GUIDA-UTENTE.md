@@ -119,6 +119,7 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
 - Sotto il nome, la partita come sul campo, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Le note lunghe, per esempio un infortunio, vanno a capo dentro la riga. Sul campo c'è solo il cognome («Rossi», senza l'iniziale).
 - «Giornata 7» è sempre il numero della giornata della **tua lega** (in alto, in Formazione, nella scheda e nell'immagine da condividere), come sull'iPhone. Il numero di Serie A compare solo dove si parla del calendario di Serie A.
 - **Panchina** nell'ordine in cui entrano.
+- **Chi schierare?** (dalla scheda di un giocatore, **Confronta**): due giocatori a confronto per la giornata della tua lega. In verde c'è quello da schierare, lo stesso del titolo «Schiera …»: se la consigliata ne tiene titolare uno solo, è lui, anche quando l'altro da solo vale qualche punto in più (per esempio un titolare incerto con una riserva sicura che entra al suo posto). Sotto ogni nome, **Titolare** o **Panchina N** nella consigliata.
 - **Modifica a mano** (✎): cambi un titolare con un altro della rosa e i punti si ricalcolano.
 - **Copia il testo** e **Condividi come immagine**.
 
@@ -128,7 +129,7 @@ Gli stili vanno dal più prudente al più rischioso: **Molto sicura**, **Sicura*
 
 - **Squadre e rose**: la tua squadra (si cambia con «Non è la tua squadra?»), **Stemma e maglia**, **Vedi la rosa**; tocca un'altra squadra per vedere rosa e formazione.
   Nella rosa di una squadra, **Cambia il nome** corregge il nome (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono. Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.
-- **Cambi consigliati**: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Compaiono solo cambi sensati, con il perché in una frase. Con i crediti inseriti vedi solo quelli che puoi permetterti. Se hai caricato solo la tua squadra, un avviso ricorda che qualche svincolato potrebbe essere già di un altro.
+- **Cambi consigliati**: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Compaiono solo cambi sensati, con il perché in una frase. Ogni riga dice chi entra e al posto di chi, i punti in più nelle prossime giornate e, su una riga sotto, i crediti che ti restano con il rimborso e il costo del cambio (sempre scritti, anche sul telefono); a destra, grandi, i punti in più in stagione. Con i crediti inseriti vedi solo quelli che puoi permetterti. Se hai caricato solo la tua squadra, un avviso ricorda che qualche svincolato potrebbe essere già di un altro.
 - **Seguiti**: i giocatori che segui (pulsante **☆ Segui** nella scheda). Ti avvisa se si infortunano o tornano disponibili. Dopo la scadenza, come nella Rosa, ognuno mostra com'è la sua partita («Partita in corso», «Voto in arrivo»...).
 - **Elenco dei giocatori** (filtri per ruolo, solo svincolati, ricerca per nome) e **Calendario** con la difficoltà: in ogni casella «vs MIL» (in casa) o «@ MIL» (in trasferta).
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
@@ -211,7 +212,7 @@ Tocca un gruppo per aprirlo; **← Impostazioni** torna all'elenco.
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, seguiti, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi > Salva su File**.
 - **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
-- **Stemma e maglia**: da **Squadra > Squadre e rose > La mia squadra > Stemma e maglia**. Scegli la squadra, poi stemma o maglia, poi carica l'immagine da file o foto, da un indirizzo web (`https://`, massimo 4 MB) o dal menu Condividi. Carica solo immagini della tua squadra; **Rimuovi** la toglie.
+- **Stemma e maglia**: da **Squadra > La mia squadra e rosa > Stemma e maglia** (con le squadre degli altri accese la voce si chiama **Squadre e rose**). Scegli la squadra, poi stemma o maglia, poi carica l'immagine da file o foto (PNG, JPEG o WebP, massimo 4 MB). Da un indirizzo web (solo `https://`) o dal menu Condividi si può solo se chi gestisce l'app ha acceso **Immagini da indirizzo web**. Carica solo immagini della tua squadra; **Rimuovi** la toglie.
 
 ### Installare SchieraXI dal browser
 

@@ -203,6 +203,7 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .bottone.secondario { background: color-mix(in srgb, var(--azione) 10%, transparent); color: var(--azione); border-color: color-mix(in srgb, var(--azione) 35%, var(--bordo)); }
 .bottone:disabled { opacity: .5; }
 .pulsanti { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.bottone.indietro { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px !important; }   /* «‹ Squadra»: icona e parola, niente «←» nel testo */
 .interruttore { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: var(--t-corpo); }
 .interruttore { min-height: 44px; }
 .interruttore input[type="checkbox"], .scelte input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; width: 44px; height: 44px; margin: -9px; padding: 0;
@@ -538,6 +539,10 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .proposta-r button.nome-g.piccolo { display: inline; font-size: var(--t-sec); font-weight: 600; color: var(--testo); padding: 13px 10px; margin: -13px -10px; min-width: 44px; }   /* anche i nomi corti arrivano a 44 px di larghezza, senza spostare le righe */
 .proposta-r button.nome-g { padding: 13px 4px; margin: -13px -4px; }       /* area di tocco da 44px senza cambiare l'altezza delle righe */
 .pr-sec { font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
+.pr-sec .nb { display: inline-block; max-width: 100%; font-variant-numeric: tabular-nums; }   /* crediti dopo · rimborso · costo: a capo tra un pezzo e l'altro, mai dentro */
+/* Scambi: con i segmenti in vista il titolo della carta ripeteva la voce scelta («Trova per me» due volte); resta per i lettori di schermo */
+.pr-num span { max-width: 6.5em; }   /* «punti in stagione» va a capo sotto il numero: la colonna dei nomi resta larga */
+#scambi-modi:not([hidden]) ~ .scambi-colonne .scambi-pannello > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pr-num { text-align: right; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
 .pr-num b { font-size: var(--t-titolo); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .pr-num span { font-size: var(--t-eti); font-weight: 600; color: var(--testo-2); }
@@ -691,6 +696,8 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .schede button.novita::after { content: ""; position: absolute; top: 9px; right: calc(50% - 20px); width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
 .banner-novita { width: 100%; text-align: left; border: 1px solid var(--bordo); border-radius: var(--r-card); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo);
   background: var(--vetro-carta); color: var(--testo); }
+/* Diario: una riga in testa, la spiegazione lunga dietro «Come si legge» (docs/STILE-SENZA-AI.md) */
+.come-diario > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .novita-voci { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: var(--t-corpo); }
 
 
@@ -1081,9 +1088,9 @@ main > .imp { grid-column: 1 / -1; }
 /* Diario > «Quanto ci abbiamo preso»: 4 numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento */
 .qp { margin-top: 12px; }
 .qp-pochi { margin: 10px 0 0; }
-.qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 12px 0; }
+.qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 24px; margin: 12px 0; }
 @media (min-width: 560px) { .qp-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.qp-voce { min-width: 0; padding: 12px; border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); }
+.qp-voce { min-width: 0; padding: 12px 0 4px; border-top: 1px solid var(--bordo); }          /* righe, non carte dentro la carta (STILE-SENZA-AI) */
 .qp-num { display: block; font-size: var(--t-titolo); font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .qp-eti { display: block; font-size: var(--t-eti); color: var(--testo-2); margin-top: 2px; }
 .qp-frase { font-size: var(--t-sec); margin-top: 8px; }
@@ -1134,7 +1141,7 @@ main > .imp { grid-column: 1 / -1; }
   main .colonne-oggi > .col:first-child { position: static; }
   main .colonne-campo > .col:first-child { display: block; }
   main .colonne-campo > .col:first-child > * { grid-column: auto; grid-row: auto; position: static; }
-  main .colonne-campo > .col:first-child > .campo { margin-top: 16px; }
+  main .colonne-campo > .col:first-child > .campo { margin-top: 16px; position: relative; }   /* la riga sopra lo rendeva statico: area, cerchio e metà campo uscivano e attraversavano tutta la pagina */
   main .colonne-oggi > .col:nth-child(2), main .colonne-campo > .col:nth-child(2) { display: block; columns: 2; column-gap: 24px; }
   main .colonne-oggi > .col:nth-child(2) > *, main .colonne-campo > .col:nth-child(2) > * { break-inside: avoid; }
 }
