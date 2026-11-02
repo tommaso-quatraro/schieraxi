@@ -43,8 +43,8 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
 `.claude/settings.json` ha regole `deny` che Claude Code applica da solo, in ogni modalità di permesso, a chi lavora con Claude Code
 in questo repository: niente `gh pr merge` (l'unione la fa il job `unisci`), niente push su `main` (si passa sempre da una pull
 request), niente push forzato, niente `git commit --no-verify` (il controllo prima del commit non si salta). Le frasi nelle
-istruzioni si possono dimenticare, queste regole no. Coprono le forme abituali dei comandi, non ogni modo di scriverli: la difesa
-vera resta su GitHub (protezione di `main`). Non toccano i job di GitHub Actions (`unisci`, `rilascia`), che girano senza Claude Code.
+istruzioni si possono dimenticare, queste regole no. Coprono le forme abituali dei comandi, non ogni modo di scriverli: su GitHub
+`main` vieta solo cancellazione e push forzato, quindi il controllo vero è la revisione (in bozza e IA) prima dell'unione automatica. Non toccano i job di GitHub Actions (`unisci`, `rilascia`), che girano senza Claude Code.
 Le eccezioni personali vanno in `.claude/settings.local.json`, che resta fuori da git; un divieto però vale lo stesso.
 
 ## Test
