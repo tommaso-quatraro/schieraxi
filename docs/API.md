@@ -518,7 +518,7 @@ Ogni voce:
 
 Altri campi per tipo (facoltativi): `dubbio`: `giocatore` {id, nome} e `alternativa` {id, nome, ruolo, punti_attesi} (il miglior sostituto libero dello stesso ruolo);
 `svincolato`: `esce`, `entra` {id, nome}, `guadagno` (punti); `scambio`: `con` (squadra), `guadagno`; `rose`/`backup`/`server`: `giorni`;
-`diario`: `giornata`; `primo_avvio`: `saltati` (passi saltati).
+`diario`: `giornata` (solo giornate finite la cui formazione si è chiusa dopo la nascita dell'account: chi è appena entrato non riceve domande sulle giornate di prima); `primo_avvio`: `saltati` (passi saltati).
 
 `destinazione`: `scheda` (`oggi`, `formazione`, `mercato`, `scambi`, `lega`, `impostazioni`), `sezione` (o null: `rose`, `diario` per `lega`;
 `installazione`, `backup`, `avanzate`, `informazioni` per `impostazioni`), `link` (già pronto: `schieraxi://<scheda>[/<sezione>]`, oppure

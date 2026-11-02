@@ -8,7 +8,7 @@ I testi sono `Frase` (fanta/frasi.py): la voce ha `testo` in italiano e, accanto
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from . import affidabilita, buon_senso, consigli, diario, frasi, movimenti, rinvii, scelte, stato_utente, widget
@@ -236,9 +236,20 @@ def _certificato(giorni: int | None) -> dict | None:
     return _voce("certificato", "certificato", testo, pr, F("dafare.az_rinnova"), _destinazione("impostazioni", "installazione"))
 
 
-def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | None, regole: Regole | None = None) -> list[dict]:
+def _chiusa_prima(db, stagione: str, giornata: int, minuti: int, dal: datetime) -> bool:
+    """La formazione della giornata si è chiusa prima di `dal` (per esempio prima che l'account esistesse)."""
+    inizio = db.execute("SELECT MIN(data) FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata)).fetchone()[0]
+    if not inizio:
+        return False
+    return datetime.fromisoformat(str(inizio)[:16].replace("T", " ")) - timedelta(minutes=minuti or 0) <= dal
+
+
+def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | None, regole: Regole | None = None,
+            dal: datetime | None = None) -> list[dict]:
     """Solo l'ULTIMA giornata finita, se manca la formazione dichiarata: basta un tocco per dire «ho schierato la consigliata».
-    Le giornate più vecchie non si chiedono più (prima si accumulavano «la giornata 6 è finita», «la giornata 7 è finita»...)."""
+    Le giornate più vecchie non si chiedono più (prima si accumulavano «la giornata 6 è finita», «la giornata 7 è finita»...).
+    `dal` (ora locale): quando è nato l'account; se la formazione di quella giornata si è chiusa prima, non si chiede niente
+    (chi è appena entrato non aveva nessuna consigliata da schierare)."""
     voci = diario.carica(file_diario).get("giornate", {})
     prima = getattr(regole, "prima_giornata_lega", 1)
     # finite per la lega: con una partita rinviata e la regola «senza voto» o «voto d'ufficio» basta il turno (rinvii.py)
@@ -248,6 +259,8 @@ def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | Non
         return []
     g = max(finite)
     if scelte.leggi(stagione, g, file_scelte) or (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
+        return []
+    if dal is not None and _chiusa_prima(db, stagione, g, getattr(regole, "scadenza_minuti", 0), dal):
         return []
     return [_voce(f"diario:{g}", "diario", F("dafare.diario", n=g - prima + 1), BASSA,
                   F("dafare.az_schierato"), _destinazione("lega", "diario", giornata=g), giornata=g)][:MAX_DIARIO]
@@ -292,9 +305,10 @@ def senza_rose(imp: Path | None) -> list[dict]:
 
 # ---------------------------------------------------------------- insieme
 def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, ctx, certificato_giorni: int | None = None,
-               amministratore: bool = False, adesso: datetime | None = None, lingua: str = "it") -> list[dict]:
+               amministratore: bool = False, adesso: datetime | None = None, lingua: str = "it", dal: datetime | None = None) -> list[dict]:
     """La lista ordinata (priorità 1 = alta, poi 2 e 3; a parità, nell'ordine dei controlli), al massimo MAX_VOCI voci e al
-    massimo buon_senso.MAX_CONSIGLI consigli. `ctx` è il contesto dell'utente (percorsi dei suoi file). Non alza mai errori:
+    massimo buon_senso.MAX_CONSIGLI consigli. `ctx` è il contesto dell'utente (percorsi dei suoi file); `dal` è quando è nato
+    il suo account (ora locale; None = senza account o non noto). Non alza mai errori:
     un controllo che fallisce viene saltato."""
     adesso = adesso or datetime.now()
     stagione = consigli.stagione_corrente()
@@ -318,7 +332,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
     if aperta:
         recenti = _recenti(rose, getattr(ctx, "movimenti", None), adesso)
         controlli += [lambda: _svincolato(db, regole, rose, recenti), lambda: _scambio(db, regole, rose, recenti)]
-    controlli += [lambda: _diario(db, stagione, ctx.scelte, ctx.diario, regole)]
+    controlli += [lambda: _diario(db, stagione, ctx.scelte, ctx.diario, regole, dal)]
     if amministratore or not con_account:
         controlli += [lambda: _dati_vecchi(db, adesso)]
     controlli += [lambda: _primo_avvio(imp)]
