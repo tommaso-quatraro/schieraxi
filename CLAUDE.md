@@ -15,6 +15,7 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
 - Passi piccoli: ogni passo va provato davvero prima del commit. Non dire che una cosa funziona se non l'hai eseguita.
 - Commit in italiano. Un ramo per ogni lavoro.
 - Ogni modifica a una schermata vale per web e iPhone: vedi `docs/COERENZA-WEB-IPHONE.md`.
+- Decisioni di architettura in `docs/decisioni/` (una per file, modello in `docs/decisioni/modello.md`).
 
 ## Flusso di lavoro
 1. Issue: cosa cambiare e perché. Per una correzione di una riga basta la pull request.
