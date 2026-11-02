@@ -260,9 +260,45 @@ Risposta dell'anteprima:
   `simile`, `ambiguo`, `non trovato`, `manuale`), `id`/`nome`/`ruolo`/`squadra` (il giocatore proposto; `id` e `nome` `null` se nessuno),
   `costo`, `avviso` (es. «squadra diversa: …», può essere vuoto), `alternative` (`[{id, nome, ruolo, squadra}]`: per `da_controllare`
   i candidati, se c'è una proposta è la prima; per `non_trovato` fino a 3 nomi somiglianti da suggerire, nessuno scelto in partenza; vuoto per `sicuro`).
-- nomi scritti per esteso: «Lautaro Martinez», «Martinez Lautaro», «Pulisic C.» (iniziale in più) diventano `da_controllare` con la proposta, mai `sicuro`.
-- `stato`: `sicuro` = nome uguale nel listone con ruolo e squadra compatibili (o scelto a mano); `da_controllare` = trovato per somiglianza o
-  abbreviazione, ambiguo tra più giocatori, oppure con ruolo o squadra diversi; `non_trovato` = nessuno (ceduto, nome sbagliato, codice sconosciuto).
+- nomi scritti per esteso: «Lautaro Martinez», «Martinez Lautaro», «Pulisic C.» (iniziale in più) diventano `da_controllare` con la proposta, mai `sicuro`,
+  a meno che la riga abbia anche ruolo E squadra di Serie A uguali al listone (vedi sotto).
+- `stato`: `sicuro` = nome uguale nel listone con ruolo e squadra compatibili (o scelto a mano), oppure nome abbreviato («Martinez», «Martinez L»,
+  «Esposito F.») con ruolo E squadra indicati uguali al listone e un solo giocatore che va bene (`metodo` resta `esatto`);
+  `da_controllare` = trovato per somiglianza o abbreviazione, ambiguo tra più giocatori, oppure con ruolo o squadra diversi (con ruolo o squadra
+  diversi dal listone non è MAI `sicuro`); `non_trovato` = nessuno (ceduto, nome sbagliato, codice sconosciuto).
+- Errori di lettura tollerati (testo da OCR) solo se il nome resta di un giocatore solo del listone: accenti persi o cambiati («Kone M.» per «Koné M.»),
+  punti mancanti dopo le iniziali, spazi doppi o persi («NDicka», «Esposito FP»), apostrofi e trattini persi, «0» al posto di «O», «1» al posto di «l»/«i».
+
+### Rose dalle schermate di Leghe (testo da OCR, per l'app iPhone)
+
+Per `POST /api/rose/anteprima` e `POST /api/rose/testo` (campo `testo`). Una riga per voce, celle separate da `;`, UTF-8:
+
+```
+ruolo;nome;club;prezzo
+FC Esempio 17,5
+P;Ferrandi Jo.;INT;12
+D;Brahmeri;Napoli;20
+A;Ferrandi L.;Inter;40
+crediti;37
+Real Esempio
+C;Kone M.;Roma;9
+```
+
+- **Prima riga** obbligatoria: l'intestazione `ruolo;nome;club;prezzo` (anche `squadra` al posto di `club` e `costo` al posto di `prezzo`;
+  il prezzo può mancare: `ruolo;nome;club`). È lei che attiva questo formato a colonne fisse; senza, il testo passa dal lettore generico.
+- **Riga con una cella sola** (senza `;`) = nome della fantasquadra, com'è: virgole, numeri e spazi restano («FC Esempio 17,5»).
+  Le righe che seguono sono i suoi giocatori fino alla prossima squadra. Il nome della squadra non deve contenere `;`.
+- **Giocatore**: `ruolo;nome;club;prezzo`. `ruolo` = `P`, `D`, `C` o `A` (anche `Por`, `Dif`, `Cen`, `Att`); `nome` come lo scrive Leghe
+  («Martinez L.», «Martinez Jo.», «Milinkovic-Savic V.», «N'Dicka»); `club` = la squadra di Serie A in sigla («INT») o per esteso
+  («Inter», «Hellas Verona»); `prezzo` = crediti d'acquisto, solo cifre (si accettano «12 cr» e la «O» letta al posto dello zero). Club e prezzo
+  possono essere vuoti (`D;Brahmeri;;`), ma senza club e ruolo un nome abbreviato resta `da_controllare`.
+- `crediti;N` (facoltativa, dopo i giocatori di una squadra) = crediti residui di quella squadra.
+- Righe che non tornano (ruolo che non è P/D/C/A, nome vuoto) non si indovinano: finiscono in `avvisi` («Riga N: ignorata (…): mi aspettavo «ruolo;nome;club;prezzo»…», chiave `rose.riga_schermate_ignorata`). Le righe vuote si saltano.
+- Niente virgolette da togliere: le celle si leggono così come sono (niente regole CSV).
+- Ruolo e squadra servono a riconoscere i nomi: con tutti e due uguali al listone un nome abbreviato è `sicuro`; se uno dei due non torna
+  il giocatore è `da_controllare`, con l'avviso «ruolo diverso: indicato X, nel listone Y» / «squadra diversa: indicata X, nel listone Y»,
+  oppure un dubbio tra gli omonimi con quello che ha ruolo e squadra giusti per primo.
+- Stessi tetti del testo incollato (200 mila caratteri, 1500 righe) e stesse risposte dell'anteprima.
 - in tutto: `avvisi` (lettura del file, rose incomplete o con ruoli che non tornano, giocatori in più squadre, «una sola squadra»), `mia_squadra`
   (suggerita: quella già scelta se è tra le lette o se resta com'era perché il file ha solo le rose degli altri, oppure l'unica letta;
   altrimenti `null`; può quindi non essere tra `squadre`: il client la offre comunque nella scelta), `totale_squadre` (dopo l'importazione),

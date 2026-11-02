@@ -47,8 +47,11 @@ def test_somigliante_con_ruolo_diverso_non_accettato(indice):
 
 
 def test_nome_esatto_con_ruolo_diverso_accettato_con_avviso(indice):
+    e = indice.cerca("Kean", squadra="JUV", ruolo="C")
+    assert e.calciatore.id == 14 and "ruolo diverso" in e.avviso and "squadra diversa" in e.avviso
+    # «Thuram» con ruolo e squadra di «Thuram K.»: l'iniziale si è persa, è un dubbio tra i due (prima quello che torna), mai sicuro
     e = indice.cerca("Thuram", squadra="JUV", ruolo="C")
-    assert e.calciatore.id == 7 and "ruolo diverso" in e.avviso and "squadra diversa" in e.avviso
+    assert e.calciatore is None and e.metodo == "ambiguo" and [c.id for c in e.alternative] == [6, 7]
 
 
 def test_somiglianza_segnalata_nei_controlli(indice):

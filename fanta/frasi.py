@@ -169,6 +169,7 @@ CATALOGO: dict[str, str] = {
     "posto.panchina": "panchina {n}",
     "posto.fuori": "fuori",
     "rose.riga_ignorata": "Riga {riga}: ignorata ({celle}): mi aspettavo «nome squadra, codice calciatore, costo».",
+    "rose.riga_schermate_ignorata": "Riga {riga}: ignorata ({celle}): mi aspettavo «ruolo;nome;club;prezzo» con il ruolo P, D, C o A.",
     "rose.codice_sconosciuto": "{squadra}: il codice {codice} non è nel listone, quindi non so chi sia: correggilo a mano.",
     "rose.codice_doppio": "{squadra}: {nome} (codice {codice}) compare due volte, l'ho tenuto una volta sola.",
     "rose.piu_giocatori_riga": "Riga {riga}: più giocatori sulla stessa riga ({nomi}). Se sono squadre affiancate, lascia una colonna vuota tra una squadra e l'altra.",

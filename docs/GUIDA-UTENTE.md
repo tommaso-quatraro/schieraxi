@@ -47,7 +47,8 @@ Alla prima apertura SchieraXI ti guida in quattro passi brevi. Ogni passo si pu�
 2. **Controlla e conferma.** SchieraXI mostra cosa ha capito, squadra per squadra:
    - **da controllare** (arancione): nome simile a un altro o cognome doppio. Scegli quello giusto dal menu, cerca a mano con **Un altro: lo cerco io**, oppure **Toglilo dalla rosa**;
    - **non trovati** (rosso): se qualcuno gli somiglia lo trovi già nel menu; altrimenti cercalo, toglilo o lascialo per ora «non riconosciuto»;
-   - nomi scritti per intero («Lautaro Martinez», «Martinez Lautaro») o con l'iniziale («Pulisic C.») vengono proposti tra quelli da controllare.
+   - nomi scritti per intero («Lautaro Martinez», «Martinez Lautaro») o con l'iniziale («Pulisic C.») vengono proposti tra quelli da controllare;
+     se accanto al nome ci sono anche il ruolo e la squadra di Serie A giusti, un nome scritto in breve viene riconosciuto da solo. Se ruolo o squadra non tornano, resta da controllare.
      Nella ricerca dei giocatori puoi scrivere anche il nome proprio («Lautaro»).
    - **riconosciuti**: raccolti in una riga che puoi aprire.
    Il conto in alto («N da controllare») scende man mano che scegli o togli i giocatori in dubbio. Su un computer le squadre stanno affiancate.

@@ -293,6 +293,9 @@ def estrai(griglie: list[tuple[str, list[list]]], indice: Indice,
     squadre: dict[str, SquadraLetta] = {}
     da_codici: set[str] = set()          # squadre lette dall'esportazione «rosters» (già abbinate per codice)
     for nome_foglio, griglia in griglie:
+        if _e_schermate(griglia):        # già cercate con ruolo e squadra: niente secondo giro qui sotto
+            da_codici |= _estrai_schermate(griglia, indice, squadre, avvisi)
+            continue
         if _e_rosters(griglia, indice):
             da_codici |= _estrai_rosters(griglia, indice, squadre, avvisi)
             continue
@@ -398,6 +401,68 @@ def _estrai_rosters(griglia: list[list], indice: Indice, squadre: dict[str, Squa
             avvisi.append(F("rose.codice_doppio", squadra=nome, nome=c.nome, codice=codice))
         else:
             s.righe.append(RigaRosa(c.nome, Esito(c, "esatto"), ruolo=c.ruolo, squadra=c.squadra, costo=_intero(str(costo))))
+    return toccate
+
+
+# ---------- testo dalle schermate di Leghe (OCR dell'app per iPhone): «ruolo;nome;club;prezzo» ----------
+INTESTAZIONE_SCHERMATE = (("ruolo",), ("nome",), ("club", "squadra"), ("prezzo", "costo"))
+
+
+def _e_schermate(griglia: list[list]) -> bool:
+    """Firma del formato: la prima riga piena è l'intestazione «ruolo;nome;club;prezzo» (il prezzo può mancare)."""
+    prima = next((r for r in (_senza_vuote_finali(r) for r in griglia) if r), None)
+    if not prima or not 3 <= len(prima) <= 4:
+        return False
+    return all(normalizza(c) in ammessi for c, ammessi in zip(prima, INTESTAZIONE_SCHERMATE))
+
+
+def _prezzo(testo: str) -> int | None:
+    """Il prezzo letto dall'OCR: «12», «12 cr», anche «1O» (la O al posto dello zero)."""
+    m = re.search(r"\d+", testo.replace("O", "0").replace("o", "0"))
+    return _intero(m.group()) if m and len(m.group()) <= 5 else None
+
+
+def _estrai_schermate(griglia: list[list], indice: Indice, squadre: dict[str, SquadraLetta], avvisi: list[str]) -> set[str]:
+    """Le colonne sono fisse, niente da indovinare: una riga con una cella sola è il nome della fantasquadra (anche con virgole
+    e numeri: «FC Esempio 17,5»), «crediti;N» i crediti rimasti, le altre «ruolo;nome;club;prezzo». Ogni nome si cerca nel
+    listone con il suo ruolo e la sua squadra: con tutti e due uguali al listone anche un nome abbreviato è sicuro."""
+    toccate: set[str] = set()
+    corrente: SquadraLetta | None = None
+    intestazione = True
+    for numero, riga in enumerate(griglia, 1):
+        celle = [c[:MAX_TESTO_CELLA] for c in _senza_vuote_finali(riga)]
+        if not celle:
+            continue
+        if intestazione:                             # la prima riga piena è l'intestazione (vedi _e_schermate)
+            intestazione = False
+            continue
+        piene = [c for c in celle if c]
+        if len(celle) == 1:
+            n = normalizza(celle[0])
+            if ETICHETTA_PERSONA.match(celle[0]):
+                continue
+            numero_crediti = re.search(r"\d+", celle[0])
+            if n.startswith("crediti") and numero_crediti and corrente is not None:     # «Crediti residui: 37»
+                if len(numero_crediti.group()) <= 5:
+                    corrente.crediti_residui = int(numero_crediti.group())
+                continue
+            corrente = squadre.setdefault(celle[0], SquadraLetta(celle[0]))
+            toccate.add(corrente.nome)
+            continue
+        if normalizza(celle[0]) == "crediti" and len(piene) == 2 and corrente is not None:
+            corrente.crediti_residui = _prezzo(celle[1])
+            continue
+        ruolo = SIGLE_RUOLO.get(normalizza(celle[0]))
+        nome = celle[1] if len(celle) > 1 else ""
+        if not nome or (celle[0] and ruolo is None):
+            avvisi.append(F("rose.riga_schermate_ignorata", riga=numero, celle=", ".join(celle)[:60]))
+            continue
+        if corrente is None:
+            corrente = squadre.setdefault("Squadra senza nome", SquadraLetta("Squadra senza nome"))
+            toccate.add(corrente.nome)
+        club = celle[2] if len(celle) > 2 and celle[2] else None
+        corrente.righe.append(RigaRosa(nome, indice.cerca(nome, club, ruolo), ruolo=ruolo, squadra=club,
+                                       costo=_prezzo(celle[3]) if len(celle) > 3 else None))
     return toccate
 
 

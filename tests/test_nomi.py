@@ -1,6 +1,6 @@
 import pytest
 
-from corpus_nomi import genera, listone_inventato, misura
+from corpus_nomi import genera, genera_ocr, listone_inventato, misura
 from fanta.listone import Calciatore
 from fanta.nomi import Indice, normalizza
 
@@ -142,6 +142,20 @@ def test_corpus_zero_sicuri_sbagliati():
     assert veri["proposto SBAGLIATO"] == 0 and finti["proposto SBAGLIATO"] == 0
     riconosciuti = veri["sicuro giusto"] + veri["proposto giusto"]
     assert riconosciuti / sum(veri.values()) >= 0.97
+
+
+def test_corpus_ocr_con_ruolo_e_squadra():
+    """Righe lette con l'OCR dalle schermate di Leghe, con ruolo e squadra: quasi tutte sicure e giuste; con il ruolo o la
+    squadra sbagliati, mai sicure (`vietato_sicuro` nel corpus conta come sbagliato)."""
+    calciatori = listone_inventato()
+    prove = genera_ocr(calciatori)
+    giuste = [p for p in prove if not p.vietato_sicuro]
+    veri, _, per_tipo = misura(Indice(calciatori), prove)
+    assert veri["sicuro SBAGLIATO"] == 0 and veri["proposto SBAGLIATO"] == 0
+    sicuri = sum(c["sicuro giusto"] for t, c in per_tipo.items() if t not in ("ocr ruolo diverso", "ocr squadra diversa"))
+    assert sicuri / len(giuste) >= 0.97
+    for tipo in ("ocr ruolo diverso", "ocr squadra diversa"):
+        assert per_tipo[tipo]["sicuro giusto"] == 0
 
 
 def test_nome_e_cognome_per_esteso(indice):

@@ -2,7 +2,8 @@
 
 Usa lo stesso lettore dell'importazione (`rose.estrai`) e la stessa costruzione delle rose (`lega.da_import`), così l'anteprima
 dice esattamente cosa verrà salvato. Per ogni giocatore uno `stato`:
-- `sicuro`: nome trovato uguale nel listone, ruolo e squadra compatibili (o scelto a mano);
+- `sicuro`: nome trovato uguale nel listone, ruolo e squadra compatibili (o scelto a mano); anche un nome abbreviato se ruolo E
+  squadra indicati coincidono col listone (`nomi.Indice.cerca` lo dà già come `esatto`);
 - `da_controllare`: trovato solo per somiglianza o abbreviazione, ambiguo tra più giocatori, o con ruolo/squadra diversi;
 - `non_trovato`: nessun giocatore del listone (ceduto, nome scritto male, codice sconosciuto); se qualcuno gli somiglia,
   fino a 3 suggerimenti in `alternative` (nessuno scelto in partenza).
