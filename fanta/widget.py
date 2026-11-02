@@ -95,7 +95,8 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
         if g.id is None or g.id not in prev.index:
             continue
         x = consigli.scheda_previsione(g.id, prev.loc[g.id])
-        mia.append(_g(x, tratti, "avversario", "in_casa", "data_partita", "stato", "percentuale", "dubbio", "diffidato", "punti_attesi")
+        mia.append(_g(x, tratti, "avversario", "in_casa", "data_partita", "stato", "percentuale", "dubbio", "diffidato", "punti_attesi",
+                      "p_voto")                      # «gioca N%» come in Oggi; facoltativo: senza p_voto il campo manca
                    | {"titolare": g.id in titolari, "rigorista": x["rigori_attesi"] >= SOGLIA_RIGORISTA})
     mia.sort(key=lambda m: (m["data_partita"] is None, m["data_partita"] or "", m["nome"]))
     fuori = [m for m in mia if m["stato"] in ("infortunato", "squalificato")]
@@ -118,9 +119,11 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     # fase della giornata (facoltativi, come in /api/oggi): solo quelli che ci sono, i blocchi vuoti (null) non si mandano
     corpo |= {k: o[k] for k in CAMPI_FASE if o.get(k) is not None}
 
-    # punti attesi contro punti fatti nelle ultime giornate (dal diario; con la formazione schierata se c'è, altrimenti la consigliata)
+    # punti attesi contro punti fatti nelle ultime giornate (dal diario; con la formazione schierata se c'è, altrimenti la consigliata).
+    # `giornata_lega` e `stagione` come in /api/diario: il widget scrive lo stesso numero dell'app (null fuori dalla stagione in corso)
     voci = diario.elenco(file_diario, regole)["giornate"][:MAX_DIARIO]
-    corpo["diario"] = [{"giornata": v["giornata"], "attesi": (v.get("schierata") or v["consigliata"])["atteso"],
+    corpo["diario"] = [{"giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"), "stagione": v["stagione"],
+                        "attesi": (v.get("schierata") or v["consigliata"])["atteso"],
                         "fatti": (v.get("schierata") or v["consigliata"])["reale"],
                         "intervallo": (v.get("schierata") or v["consigliata"]).get("intervallo")} for v in voci]
 

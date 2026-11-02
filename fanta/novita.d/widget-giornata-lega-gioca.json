@@ -1,0 +1,12 @@
+{
+  "titolo": "Widget: numero della giornata e «gioca N%» pronti per l'iPhone",
+  "voci": [
+    "Il server manda ai widget il numero della giornata della lega e la stagione di ogni giornata finita: i widget dell'iPhone potranno scrivere lo stesso numero dell'app anche per le giornate della stagione scorsa.",
+    "Per ogni giocatore della rosa arriva ai widget anche quanto è probabile che giochi, così un giocatore in dubbio potrà comparire come nell'app: «In dubbio · gioca 55%»."
+  ],
+  "tecnico": [
+    "/api/widget: ogni voce di `diario` ha anche `giornata_lega` (null fuori dalla stagione in corso) e `stagione`, presi da diario.elenco come in /api/diario (parte server di #170).",
+    "/api/widget: ogni voce di `rosa` ha anche `p_voto` (0-1, facoltativo: se la scheda non lo ha, il campo manca) (parte server di #171).",
+    "Solo campi aggiunti: nessun campo tolto o cambiato, i widget già installati non cambiano. Test in tests/test_widget_diario_rosa.py; docs/API.md aggiornato; docs/openapi.json invariato (la rotta non ha uno schema di risposta)."
+  ]
+}
