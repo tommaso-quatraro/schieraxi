@@ -22,6 +22,11 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
             server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
+        case "formazione-chiusa":
+            // la giornata chiusa (dopo la scadenza): la formazione salvata in sola lettura
+            server.risposte["/api/formazione"] = DatiDemo.formazione(iniziata: true)
+            server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
+            server.indirizzoFinto = "https://finto-formazione-chiusa.invalid"
         case "formazione-salvata":
             // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»)
             server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
@@ -405,7 +410,7 @@ private enum DatiDemo {
         ["basso": attesi - 8, "alto": attesi + 8.5, "confidenza": 0.8, "indicativo": indicativo]
     }
 
-    static func formazione() -> String {
+    static func formazione(iniziata: Bool = false) -> String {
         let base = moduli[0]
         let ids = base.titolari
         let bench = panchina(per: ids)
@@ -431,7 +436,7 @@ private enum DatiDemo {
         return json([
             "squadra": nomeMia, "giornata": giornata, "giornata_lega": giornata - 3, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
             "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede, "stile_consigliato": 0,
-            "dev": 4.2, "intervallo": fascia(punteggio(ids)),
+            "dev": 4.2, "intervallo": fascia(punteggio(ids)), "iniziata": iniziata,
         ])
     }
 

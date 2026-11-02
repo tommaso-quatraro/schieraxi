@@ -178,7 +178,10 @@ struct FormazioneView: View {
     /// «⇄» confronta con un altro della rosa e sotto i titolari incerti ci sono le alternative vicine (ballottaggio).
     @ViewBuilder
     private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> some View {
-        if vm.manuale != nil {
+        if vm.chiusa {
+            // giornata chiusa: sola lettura (un tocco apre la scheda, niente sostituzioni né confronti per cambiare)
+            RigaGiocatore(g: g, apribile: true, perche: apriPerche)
+        } else if vm.manuale != nil {
             Button { daSostituire = g } label: {
                 HStack { RigaGiocatore(g: g); Image(systemName: "arrow.left.arrow.right").foregroundStyle(Color.verde).accessibilityHidden(true) }
                     .frame(minHeight: 44)
@@ -258,11 +261,21 @@ struct FormazioneView: View {
     private func cardStile(_ f: Formazione, _ v: VistaFormazione) -> some View {
         Carta {
             intestazione(f, v)
-            if f.conProbabili == false {
+            if vm.chiusa {
+                // come la web: la fascia della giornata chiusa, e la formazione (salvata o consigliata) in sola lettura
+                Label(FormazioneViewModel.testoChiusa, systemImage: "lock.fill")
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.attenzione.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityElement(children: .combine)
+            } else if f.conProbabili == false {
                 Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             rigaStato(f)
-            if vm.manuale == nil {
+            if vm.chiusa {
+                if let r = vm.valutazioneAttuale, let d = r.differenza { rigaDifferenza(r, d) }
+            } else if vm.manuale == nil {
                 if let livelli = f.livelli, !livelli.isEmpty { sceltaStile(f, livelli) }
             } else {
                 testoManuale
@@ -320,11 +333,11 @@ struct FormazioneView: View {
                 HStack(alignment: .center, spacing: 8) {
                     testoStato(stato, colore)
                     Spacer(minLength: 4)
-                    if stato == .consigliata { salvaQuesta(f) }
+                    if stato == .consigliata, !vm.chiusa { salvaQuesta(f) }
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     testoStato(stato, colore)
-                    if stato == .consigliata { salvaQuesta(f) }
+                    if stato == .consigliata, !vm.chiusa { salvaQuesta(f) }
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
@@ -430,12 +443,7 @@ struct FormazioneView: View {
             .buttonStyle(.plain)
             .foregroundStyle(Color.attenzione)
         }
-        if let r = vm.valutazioneAttuale, let d = r.differenza {
-            Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))). "
-                 + (IntervalloPunti.frase(r.intervallo, dev: nil).map { "Punti attesi \($0)." }
-                    ?? "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))."))
-                .font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : .orange)
-        }
+        if let r = vm.valutazioneAttuale, let d = r.differenza { rigaDifferenza(r, d) }
         // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
         if let f = vm.formazione {
             ViewThatFits(in: .horizontal) {
@@ -444,6 +452,15 @@ struct FormazioneView: View {
             }
             .font(.subheadline)
         }
+    }
+
+    /// Quanto vale la formazione a mano rispetto alla consigliata. La fascia dei punti sta già nell'intestazione: qui non si ripete
+    /// (solo se il server non manda né fascia né oscillazione restano brutta giornata ed eccezionale).
+    private func rigaDifferenza(_ r: ValutazioneManuale, _ d: Double) -> some View {
+        let confronto = "\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata)))."
+        let estremi = IntervalloPunti.frase(r.intervallo, dev: r.dev) == nil
+            ? " Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))." : ""
+        return Text(confronto + estremi).font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : Color.attenzione)
     }
 
     /// «Salva come mia scelta» (o «Salva le modifiche»): solo se c'è qualcosa da salvare e per la propria squadra.

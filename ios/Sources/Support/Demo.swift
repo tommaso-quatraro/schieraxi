@@ -129,7 +129,7 @@ extension Demo {
             // le Impostazioni (le pagine «Licenze e crediti», «Avanzate» e «Aspetto» le apre da sola ImpostazioniView)
             nav.impostazioniAperte = true
 
-        case "formazione", "formazione-salvata":
+        case "formazione", "formazione-salvata", "formazione-chiusa":
             nav.sezione = .formazione
         case "formazione-manuale":
             nav.sezione = .formazione
