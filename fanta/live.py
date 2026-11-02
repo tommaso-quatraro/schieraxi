@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
-from . import fonti_attive, rete
+from . import fonti_attive, rete, turno
 from . import squadre
 
 FUSO = ZoneInfo("Europe/Rome")
@@ -310,11 +310,29 @@ def calendario_da_db(db, adesso: datetime | None = None) -> list[dict]:
     return [dict(r) for r in righe]
 
 
-def _da_database(r) -> dict:
-    """Una partita del nostro calendario (dove la fonte live non ha ancora detto niente)."""
+def _ora() -> datetime:
+    """Ora italiana senza fuso, come le date del calendario (nei test si ferma)."""
+    return datetime.now()
+
+
+def _da_database(r, adesso: datetime | None = None, inizio_turno: datetime | None = None) -> dict:
+    """Una partita del nostro calendario (dove la fonte live non ha ancora detto niente). Se il calendario non la segna ancora giocata
+    lo stato viene dall'orario, come per Oggi (fasi.stato_partita): `da_giocare` prima del calcio d'inizio, `in_corso` fino alla fine
+    stimata, poi `finita` (senza punteggio finché il calendario non lo scrive). Con `inizio_turno`, fuori dal turno è `rinviata`."""
     finita = bool(r["giocata"])
-    return {"casa": r["casa"], "trasferta": r["trasferta"], "data": (r["data"] or "")[:16] or None,
-            "stato": "finita" if finita else "da_giocare", "minuto": None,
+    data = (r["data"] or "")[:16] or None
+    if finita:
+        stato = "finita"
+    else:
+        inizio = _inizio(data) if data else None
+        adesso = adesso or _ora()
+        if inizio_turno is not None and (inizio is None or not turno.nel_turno(inizio, inizio_turno)):
+            stato = "rinviata"
+        elif inizio is None or adesso < inizio:
+            stato = "da_giocare"
+        else:
+            stato = "in_corso" if adesso < inizio + FINE_STIMATA else "finita"
+    return {"casa": r["casa"], "trasferta": r["trasferta"], "data": data, "stato": stato, "minuto": None,
             "gol_casa": r["gol_casa"] if finita else None, "gol_trasferta": r["gol_trasferta"] if finita else None, "eventi": []}
 
 

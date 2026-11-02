@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 
 from . import avvisi, buon_senso, calcolo, consigli, fasi, modello, scambi, scelte
+from .avvisi import prima_partita       # in `oggi` il nome `avvisi` è anche la lista degli avvisi
 from .lega import Rose
 from .regole import RUOLI, Regole, serie_a_a_lega
 
@@ -229,8 +230,7 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
         righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
                            (stagione, giornata)).fetchall() if giornata else []
         partite = [{"data": r["data"], "casa": r["casa"], "trasferta": r["trasferta"], "giocata": bool(r["giocata"])} for r in righe]
-        date = [p["data"] for p in partite if p["data"]]
-        inizio_dt = datetime.fromisoformat(min(date)[:16].replace("T", " ")) if date else None
+        inizio_dt = prima_partita(db, stagione, giornata) if giornata else None     # regola unica (turno.py), come i promemoria
     except (sqlite3.Error, ValueError):                     # archivio non pronto: Oggi si apre lo stesso
         pass
     tempi = _tempi(inizio_dt, adesso, regole)
@@ -274,14 +274,9 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
     righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? "
                        "ORDER BY data", (stagione, giornata)).fetchall()
     partite = [{"data": r["data"], "casa": r["casa"], "trasferta": r["trasferta"], "giocata": bool(r["giocata"])} for r in righe]
-    # la formazione si chiude alla PRIMA partita della giornata, anche se è già stata giocata
-    date = [p["data"] for p in partite if p["data"]]
-    inizio_dt = None
-    if date:
-        try:
-            inizio_dt = datetime.fromisoformat(min(date)[:16].replace("T", " "))
-        except ValueError:
-            inizio_dt = None
+    # la formazione si chiude alla PRIMA partita del turno, anche se è già stata giocata: regola unica (turno.py, avvisi.prima_partita),
+    # la stessa di promemoria e copia automatica. Una partita rinviata rimasta con la data vecchia non chiude la formazione prima.
+    inizio_dt = prima_partita(db, stagione, giornata)
     tempi = _tempi(inizio_dt, adesso, regole)
     ore = tempi["ore_mancanti"]
 

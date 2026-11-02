@@ -226,3 +226,16 @@ def test_oggi_non_si_rompe_se_le_fasi_falliscono(ambiente, monkeypatch):
     monkeypatch.setattr(fasi, "blocco_in_corso", lambda *a, **k: 1 / 0)
     o = _oggi(ambiente, datetime(2026, 11, 8, 21, 30))
     assert o["fase"] == "in_corso" and o["in_corso"] is None and o["formazione"]["modulo"] == "4-4-2"
+
+
+def test_partita_rinviata_con_la_data_vecchia_non_chiude_la_formazione(ambiente):
+    """Una partita della giornata 10 rinviata e rimasta in calendario con la data vecchia (prima del turno): Oggi resta nella fase
+    «prima» con la scadenza della prima partita del turno (regola unica in turno.py, come promemoria e copia automatica)."""
+    archivio.inserisci(ambiente.db, "partite", [{"id": 99, "stagione": ST, "giornata": 10, "data": "2026-10-28 20:45", "casa": "lecce",
+                                                 "trasferta": "genoa", "gol_casa": None, "gol_trasferta": None, "giocata": 0,
+                                                 "understat_id": None}])
+    o = _oggi(ambiente, datetime(2026, 11, 5, 12, 0))
+    assert o["inizio"] == o["scadenza"] == "2026-11-07 15:00"
+    assert o["iniziata"] is False and o["fase"] == "prima" and o["in_corso"] is None
+    assert next(p for p in o["partite"] if p["casa"] == "lecce")["stato"] == "rinviata"
+
