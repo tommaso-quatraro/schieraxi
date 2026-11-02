@@ -1,5 +1,41 @@
 [
   {
+    "versione": "1.365",
+    "data": "2026-11-02T15:00:55",
+    "titolo": "Diario più breve e campo a posto sugli schermi larghi",
+    "voci": [
+      "Il Diario delle giornate si apre con una riga sola; la spiegazione completa sta in «Come si legge».",
+      "Sui computer con lo schermo largo le linee del campo restano dentro il campo invece di attraversare la pagina."
+    ],
+    "tecnico": [
+      "fanta/web/app.js apriDiario: avv.diario_riga (nuova, italiano e inglese) + <details class=\"come-diario\"> con avv.per_ogni_giornata; stile.css: .come-diario > summary.",
+      "stile.css @media (min-width: 1400px): .colonne-campo .campo torna position: relative (la regola position: static lasciava area, cerchio e metà campo posizionati sulla pagina)."
+    ]
+  },
+  {
+    "versione": "1.364",
+    "data": "2026-11-02T15:00:48",
+    "titolo": "Formazione: spiegazioni più brevi",
+    "voci": [
+      "Le frasi sotto moduli e stili, sopra titolari e panchina e nella legenda del campo sono più corte e dicono solo cosa fare."
+    ],
+    "tecnico": [
+      "fanta/web/testi.js: formazione.modificata_mano, tocca_confronto, tocca_sostituire, quest_ordine_entra, legenda_volto accorciate (italiano e inglese). Regola in docs/STILE-SENZA-AI.md."
+    ]
+  },
+  {
+    "versione": "1.363",
+    "data": "2026-11-02T15:00:36",
+    "titolo": "Rosa e scheda: pulsanti e titoli più chiari",
+    "voci": [
+      "I pulsanti per tornare a Squadra e ad Altro hanno un'icona al posto della freccia scritta nel testo.",
+      "Nella scheda del giocatore la parte su gol e assist rispetto alle occasioni ha un titolo che dice cosa mostra, non una domanda."
+    ],
+    "tecnico": [
+      "fanta/web/app.js: ICONA_INDIETRO (svg) nei pulsanti data-vai=\"squadra\" e data-vai=\"altro\", classe .bottone.indietro in stile.css; testi.js: scambio.squadra, regole.altro senza «←», mercato.rende_sopra_sotto riscritto (italiano e inglese)."
+    ]
+  },
+  {
     "versione": "1.362",
     "data": "2026-11-02T14:59:26",
     "titolo": "Cambi consigliati e Scambi più leggibili",
