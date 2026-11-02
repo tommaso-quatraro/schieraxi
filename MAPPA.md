@@ -132,8 +132,9 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
 - Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`. `analizza` e `da-testo` passano dallo stesso `limiti.analisi_scambio`.
 - Ogni parametro `giornata` delle rotte ha `ge=1, le=MAX_GIORNATA` (422, mai 500): `tests/test_giornata_limiti.py` trova da solo le rotte nuove.
-- Rose dalle schermate di Leghe (OCR dell'app iPhone): testo `ruolo;nome;club;prezzo` (intestazione nella prima riga, una riga con una
-  cella sola = fantasquadra, `crediti;N`) a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.
+- Rose a colonne `ruolo;nome;club;prezzo`: formato di testo accettato dal server, nato per la lettura degli screenshot di Leghe
+  nell'app iPhone (tolta il 2/11/2026), resta per il testo incollato. Intestazione nella prima riga, una riga con una cella sola =
+  fantasquadra, `crediti;N`; a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.
 
 ## Modo multiutente (`FANTA_MULTIUTENTE=1`, obbligatorio su un server raggiungibile da altri)
 - Spento: nessun accesso, file in `lega/` e `dati/`; chi chiede ha i poteri dell'amministratore, quindi il server risponde

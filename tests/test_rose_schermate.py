@@ -1,6 +1,7 @@
-"""Rose lette con l'OCR dalle schermate «Dettaglio squadra» dell'app di Leghe (app per iPhone): testo «ruolo;nome;club;prezzo» sotto
-il nome di ogni fantasquadra. Con ruolo E squadra uguali al listone anche un nome abbreviato è sicuro; se uno dei due non torna,
-mai sicuro. Listone e rose INVENTATI (stessi schemi dei nomi veri: iniziali di due lettere, omonimi in squadre diverse, accenti)."""
+"""Rose a colonne «ruolo;nome;club;prezzo» sotto il nome di ogni fantasquadra: formato di testo accettato dal server, nato per la
+lettura (OCR) delle schermate «Dettaglio squadra» di Leghe nell'app iPhone (tolta il 2/11/2026), resta per il testo incollato.
+Con ruolo E squadra uguali al listone anche un nome abbreviato è sicuro; se uno dei due non torna, mai sicuro.
+Listone e rose INVENTATI (stessi schemi dei nomi veri: iniziali di due lettere, omonimi in squadre diverse, accenti)."""
 import pytest
 
 from fanta import lega, limiti, nomi, rose
