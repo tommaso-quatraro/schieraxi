@@ -87,6 +87,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
   controlli verdi. Una pull request in bozza non si unisce.
+- Job `ambito` (`script/ci/controlla_ambito.py`, preso da `main`): i file della pull request devono stare nelle aree della riga «Aree: …» della descrizione (modello in `.github/PULL_REQUEST_TEMPLATE.md`; issue con il modulo «Lavoro», `.github/ISSUE_TEMPLATE/lavoro.yml`). Esenti i bot e le pull request di soli documenti. Per ora solo avvisi, fuori dai `needs` di `unisci`.
 - Job `zizmor` (sicurezza dei workflow; zizmor da PyPI con hash in `.github/zizmor-requisiti.txt`): per ora solo avvisi, fuori dai `needs` di `unisci` (bloccante dopo #108). Azioni solo di GitHub e sempre per hash: le altre fanno fallire l'avvio dei controlli (`tests/test_workflow_controlli.py`).
 - Controllo esterno della salute: `.github/workflows/salute.yml` (ogni 30 minuti sui server di GitHub, a mano con «Run workflow»): chiede la salute dell'app e la pagina del sito, 3 tentativi a qualche minuto di distanza, poi apre l'issue `P1` «Server non raggiungibile» (o la commenta) e la chiude quando tutto risponde. Serve perché `script/server/controllo-salute.sh` gira sul server stesso e, se il server si spegne, tace.
   Non usa segreti né azioni esterne; `issues: write` solo nel job che segnala.
