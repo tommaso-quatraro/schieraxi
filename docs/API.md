@@ -411,7 +411,7 @@ Valori sbagliati: `400` con il testo del problema.
 
 `PUT /api/regole/rinvio` cambia solo l'eccezione di una giornata, senza rimandare tutte le regole. Corpo: `giornata` (1-38, di Serie
 A), `modo` (`aspetta`, `senza_voto`, `voto_ufficio`, oppure `null` = torna alla regola della lega; uguale alla regola della lega =
-tolta), `stagione?` (`AAAA-AA`, predefinita quella in corso). Le eccezioni delle altre stagioni si tolgono. Risponde (con il nuovo
+tolta), `stagione?` (`AAAA-AA`, solo quella in corso: un'altra dà `400`). Le eccezioni delle altre stagioni si tolgono. Risponde (con il nuovo
 `ETag` delle regole) `{stagione, giornata, modo, valore, predefinito, eccezione}`: `modo` è quello che vale ora, `valore` il voto
 d'ufficio (solo con `voto_ufficio`, se no `null`), `predefinito` la regola della lega, `eccezione` se la giornata ne ha una.
 Errori: `422` per un corpo sbagliato, `412` con un `If-Match` vecchio. Con il token del widget: `403`.
@@ -437,7 +437,10 @@ Dove si vede (tutti campi aggiunti, i client vecchi li ignorano):
 - `GET /api/diario` (giornate finite): per le partite giocate fuori dal turno (recuperi) i punti `reale` di consigliata e
   schierata usano la regola della giornata: con `aspetta` il voto del recupero, con `senza_voto` nessun voto (entra la riserva),
   con `voto_ufficio` il voto fisso; anche `atteso` è ricalcolato con la stessa regola. `giocatori` (numeri per «Quanto ci abbiamo
-  preso») resta quello del modello e dei voti veri. Cambiare la regola di una giornata (diversa da `aspetta`) rifà la sua voce.
+  preso») resta quello del modello e dei voti veri. Cambiare la regola di una giornata con partite fuori dal turno (diversa da
+  `aspetta`) rifà solo la sua voce. Con `senza_voto` o `voto_ufficio` la giornata entra nel Diario (e in «Ho schierato…» di
+  `POST /api/diario/schierata` e in «Da fare») appena sono giocate le partite del turno, senza aspettare il recupero; con
+  `aspetta` solo a recupero giocato.
 
 Cosa devono fare iOS e Android: nel pannello delle regole, «Partite rinviate» con le tre scelte e il voto d'ufficio (solo se il
 server manda `partite_rinviate`); in Oggi, se `rinvio` non è `null`, un riquadro «Partita rinviata» con le partite, i tuoi
@@ -476,7 +479,10 @@ La giornata è finita quando sono giocate tutte le partite del turno: una partit
 non la tiene aperta. `recuperi` (lista, facoltativa: un client vecchio la ignora) = le partite rinviate ancora da recuperare
 `[{casa, trasferta, data}]`, solo se per quella giornata vale `aspetta`: i loro giocatori restano in formazione senza voto e i
 punti possono ancora cambiare (la web app scrive «Manca il recupero di ATA–PAR: i punti possono ancora cambiare»). Con
-`senza_voto` o `voto_ufficio` è vuota: i punti sono già quelli finali (riserva o voto d'ufficio).
+`senza_voto` o `voto_ufficio` è vuota: i punti sono già quelli finali (riserva o voto d'ufficio). `rinvio` (oggetto o `null`):
+c'è finché una partita rinviata della giornata è da recuperare, con gli stessi campi del menu di Oggi (`stagione, giornata,
+giornata_lega, modo, valore, predefinito, eccezione, modi, voto_ufficio`): il client mostra lo stesso menu «per questa giornata»
+(che chiama `PUT /api/regole/rinvio`) anche nel riepilogo.
 Con `nel_diario: true` i numeri sono quelli del Diario (`GET /api/diario`) e `consigliata` = `{punti_fatti, punti_attesi}` della consigliata; con `nel_diario: false` il Diario non ha ancora calcolato la giornata: `punti_fatti` viene dai voti, `punti_attesi` può essere `null`, `consigliata` è `null` (il confronto arriva nel Diario).
 
 `prossima` (oggetto o `null`; solo con `fase: "finita"`): `{giornata, giornata_lega, scadenza, prepara_da, con_probabili}`. `prepara_da` (`AAAA-MM-GG HH:MM`) = da quando conviene preparare la formazione: adesso se le probabili ci sono già, altrimenti 3 giorni prima della scadenza (di solito escono allora).

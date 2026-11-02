@@ -332,8 +332,10 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
     possono ancora cambiare), con le altre regole `recuperi` è vuoto (i punti sono già quelli finali)."""
     r_rinvio = rinvii.regola(regole, stagione, giornata)
     mancano = recuperi_mancanti(db, stagione, giornata)
+    # con un recupero da giocare il riepilogo ha anche il menu per decidere quella giornata (`rinvio`, come in Oggi)
     base = {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole),
-            "recuperi": mancano if r_rinvio["modo"] == "aspetta" else []}
+            "recuperi": mancano if r_rinvio["modo"] == "aspetta" else [],
+            "rinvio": rinvii.scelta(regole, stagione, giornata) if mancano else None}
     voce = (diario.carica(file_diario).get("giornate") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict):
         mia = voce.get("schierata") or voce.get("automatica") or voce["consigliata"]

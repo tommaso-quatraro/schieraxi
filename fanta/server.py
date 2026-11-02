@@ -1956,13 +1956,14 @@ def leggi_regole(response: Response, ctx: Contesto = Depends(lega_corrente)):
 def scrivi_regole(dati: dict, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     campi_lega = ("scadenza_minuti", "prima_giornata_lega", "aggiornamenti_vicino_scadenza",
                   "partite_rinviate", "voto_ufficio_rinviate", "rinvii_giornate")
-    if any(k not in dati for k in campi_lega):
-        # un client vecchio rimanda le regole senza i campi nuovi: non devono tornare al valore di partenza
-        attuali = asdict(_regole(ctx))
-        dati = {**{k: attuali[k] for k in campi_lega}, **dati}
-    nuove = regole.da_dict(dati)        # controlla tutto: chiavi, tipi, valori
     with versioni.blocco("regole"):
         versioni.controlla(request, versioni.etag_file(ctx.regole))
+        if any(k not in dati for k in campi_lega):
+            # un client vecchio rimanda le regole senza i campi nuovi: non devono tornare al valore di partenza (letti DENTRO il
+            # lucchetto: un'eccezione dei rinvii salvata intanto da un altro dispositivo non si perde)
+            attuali = asdict(_regole(ctx))
+            dati = {**{k: attuali[k] for k in campi_lega}, **dati}
+        nuove = regole.da_dict(dati)        # controlla tutto: chiavi, tipi, valori
         regole.salva(nuove, ctx.regole)
         response.headers["ETag"] = versioni.etag_file(ctx.regole)
     return asdict(nuove)
@@ -1981,7 +1982,7 @@ def scrivi_eccezione_rinvio(dati: EccezioneRinvio, request: Request, response: R
     stagione = dati.stagione or consigli.stagione_corrente()
     with versioni.blocco("regole"):
         versioni.controlla(request, versioni.etag_file(ctx.regole))
-        nuove = rinvii.con_eccezione(_regole(ctx), stagione, dati.giornata, dati.modo)
+        nuove = rinvii.con_eccezione(_regole(ctx), stagione, dati.giornata, dati.modo, consigli.stagione_corrente())
         regole.salva(nuove, ctx.regole)
         response.headers["ETag"] = versioni.etag_file(ctx.regole)
     return {"stagione": stagione, "giornata": dati.giornata, **rinvii.regola(nuove, stagione, dati.giornata)}

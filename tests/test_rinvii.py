@@ -219,6 +219,53 @@ def test_riepilogo_con_il_recupero_da_giocare(tmp_path, monkeypatch, modo, punti
         assert r["recuperi"][0]["casa"] == "atalanta"
 
 
+def test_riepilogo_ha_il_menu_per_decidere_la_giornata(tmp_path, monkeypatch):
+    db, _ = _db_giornata(tmp_path)
+    monkeypatch.setattr(fasi, "_info_rosa", lambda rose, prev: {g["id"]: g for g in TIT + PANC})
+    monkeypatch.setattr(fasi, "schierata", lambda *a, **k: None)
+    monkeypatch.setattr(fasi.diario, "carica", lambda f=None: {"giornate": {f"{ST}/9": {"consigliata": {"reale": 70, "atteso": 68}}}})
+    r = fasi.blocco_riepilogo(db, Regole(), None, ST, 9, None, "diario.json")
+    assert r["rinvio"]["modo"] == "aspetta" and r["rinvio"]["giornata"] == 9 and r["rinvio"]["modi"][0] == "aspetta"
+    assert len(r["recuperi"]) == 1
+    db.execute("UPDATE partite SET giocata = 1")                         # recupero giocato: niente menu
+    assert fasi.blocco_riepilogo(db, Regole(), None, ST, 9, None, "diario.json")["rinvio"] is None
+
+
+# ---------------------------------------------------------------- Diario: giornata chiusa dal turno se la regola non aspetta
+@pytest.mark.parametrize("modo, chiusa", [("aspetta", False), ("senza_voto", True), ("voto_ufficio", True)])
+def test_giornate_chiuse_per_la_lega(tmp_path, modo, chiusa):
+    db, _ = _db_giornata(tmp_path)
+    regole = replace(Regole(), partite_rinviate=modo)
+    assert (9 in rinvii.giornate_chiuse(db, ST, regole)) is chiusa
+    assert (9 in rinvii.giornate_chiuse(db, ST, rinvii.con_eccezione(Regole(), ST, 9, modo))) is chiusa     # anche per eccezione
+    db.execute("UPDATE partite SET giocata = 0 WHERE id = 3")             # manca una partita del turno: mai chiusa
+    assert 9 not in rinvii.giornate_chiuse(db, ST, regole)
+    assert rinvii.ha_fuori_turno(db, ST, 9)
+
+
+def test_diario_scrive_la_giornata_con_il_recupero_da_giocare(tmp_path, monkeypatch):
+    """`_db_giornata` con «senza voto»: la voce della giornata 9 c'è subito, senza aspettare il recupero; con «aspetta» no."""
+    from fanta import diario, lega
+    db, _ = _db_giornata(tmp_path)
+    partite = pd.read_sql_query("SELECT id, stagione, giornata, data, giocata FROM partite", db)
+    voti = pd.DataFrame([{"stagione": ST, "giornata": 9, "calciatore_id": i, "voto_red": 6.0} for i in range(1, 21)])
+    monkeypatch.setattr(consigli, "dati", lambda db_: NS(partite=partite, voti=voti))
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    monkeypatch.setattr(diario, "previsioni", lambda d, stagione, giornata, regole, par: pd.DataFrame([
+        {"id": i, "nome": f"G{i}", "ruolo": RUOLI_D[i - 1], "p_voto": 0.9, "mu": 6.0, "mu_voto": 6.0, "atteso": 5.4,
+         "partita": 4 if i > 20 else 1} for i in range(1, 26)]))
+    monkeypatch.setattr(diario, "fantavoto", lambda r, ruolo, regole: float(r["voto_red"]))
+    monkeypatch.setattr(diario.scelte, "leggi", lambda *a, **k: None)
+    rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, f"G{i}", RUOLI_D[i - 1], "INT") for i in range(1, 26)])], "Mia")
+    f = tmp_path / "diario.json"
+    assert diario.aggiorna(db, Regole(), rose, f, simulazioni=30) == 0                  # aspetta: si aspetta il recupero
+    assert diario.aggiorna(db, replace(Regole(), partite_rinviate="senza_voto"), rose, f, simulazioni=30) == 1
+    voce = diario.carica(f)["giornate"][f"{ST}/9"]
+    # senza voto: chi ha la partita rinviata conta zero e lascia il posto alle riserve (tutte da 6): 11 voti da 6
+    assert voce["consigliata"]["reale"] == 66.0
+    assert {g["id"] for g in voce["giocatori"]} >= {21, 25}                        # i numeri del modello ci sono anche per loro
+
+
 # ---------------------------------------------------------------- Oggi: blocco e rotta
 def test_blocco_di_oggi():
     partite = [{"casa": "inter", "trasferta": "milan", "data": "2026-11-08 15:00", "stato": "da_giocare"},
@@ -260,8 +307,11 @@ def test_diario_con_la_partita_rinviata(monkeypatch, modo, reale):
         assert v["schierata"]["reale"] == 9 * 6          # 21 e 25 senza voto e in panchina nessuno può entrare (22 ha la stessa partita)
     numeri = {g["id"]: g for g in v["giocatori"]}
     assert numeri[25]["fv"] == 9.0 and numeri[25]["fv_atteso"] == pytest.approx(6.75)     # «Quanto ci abbiamo preso»: il modello
-    assert diario.impronta_regole(regole, ST, 1) == diario.impronta_regole(Regole(), ST, 1) if modo == "aspetta" else         diario.impronta_regole(regole, ST, 1) != diario.impronta_regole(Regole(), ST, 1)
-    assert diario.impronta_regole(Regole()) == diario.impronta_regole(Regole(), ST, 1)       # predefinito: le voci di prima restano
+    base = diario.impronta_regole(Regole())
+    assert v["regole"] == (base if modo == "aspetta" else diario.impronta_regole(regole, ST, 1, True))
+    assert (diario.impronta_regole(regole, ST, 1, True) == base) is (modo == "aspetta")
+    assert diario.impronta_regole(regole, ST, 1, False) == base        # giornata senza partite fuori dal turno: nessun ricalcolo
+    assert diario.impronta_regole(Regole(), ST, 1, True) == base       # predefinito: le voci di prima restano
 
 
 # ---------------------------------------------------------------- rotte (account finti, cartelle temporanee)
@@ -286,6 +336,11 @@ def test_rotta_eccezione_della_giornata(mondo):
     for sbagliato in ({"giornata": 0, "modo": "aspetta"}, {"giornata": 39}, {"giornata": 12, "modo": "rinvia"},
                       {"giornata": 12, "stagione": "../x"}, {"modo": "aspetta"}):
         assert a.put("/api/regole/rinvio", json=sbagliato).status_code in (400, 422), sbagliato
+    a.put("/api/regole/rinvio", json={"giornata": 12, "modo": "senza_voto"})
+    r = a.put("/api/regole/rinvio", json={"giornata": 12, "modo": "voto_ufficio", "stagione": "2019-20"})
+    assert r.status_code == 400 and "stagione in corso" in r.json()["detail"]
+    assert a.get("/api/regole").json()["rinvii_giornate"] == {f"{ST}/12": "senza_voto"}        # una stagione sbagliata non cancella
+    a.put("/api/regole/rinvio", json={"giornata": 12, "modo": None})
     etag = a.get("/api/regole").headers["etag"]
     a.put("/api/regole", json=a.get("/api/regole").json() | {"nome_lega": "Cambiata altrove"})
     assert a.put("/api/regole/rinvio", json={"giornata": 12, "modo": "senza_voto"}, headers={"If-Match": etag}).status_code == 412
@@ -335,14 +390,17 @@ console.log(JSON.stringify([cardRinvio({json.dumps(rv)}), cardRinvio(null), card
     inizio2 = APP.index("function cardRiepilogo(")
     corpo = APP[inizio2:APP.index("\nfunction ", inizio2 + 10)]
     stub2 = stub + 'const fraseFascia = () => "";'
+    corpo = APP[APP.index("const MODI_RINVIO"):APP.index("function cardRinvio(")] + corpo
     r = {"giornata": 9, "punti_fatti": 61, "punti_attesi": 70, "formazione_di": "tua", "nel_diario": False,
-         "recuperi": [{"casa": "atalanta", "trasferta": "parma", "data": None}]}
+         "recuperi": [{"casa": "atalanta", "trasferta": "parma", "data": None}],
+         "rinvio": {"stagione": ST, "giornata": 9, "modo": "aspetta", "predefinito": "aspetta", "eccezione": False, "voto_ufficio": 6}}
     codice = f"""{testi}
 {num}
 {stub2}
 {corpo}
-console.log(JSON.stringify([cardRiepilogo({json.dumps(r)}, null), cardRiepilogo({json.dumps(r | {"recuperi": []})}, null)]));"""
+console.log(JSON.stringify([cardRiepilogo({json.dumps(r)}, null), cardRiepilogo({json.dumps(r | {"recuperi": [], "rinvio": None})}, null)]));"""
     esito = subprocess.run([shutil.which("node"), "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert esito.returncode == 0, esito.stderr
     con, senza = json.loads(esito.stdout)
     assert "Manca il recupero di ATA–PAR: i punti possono ancora cambiare." in con and "Manca il recupero" not in senza
+    assert 'class="campo-testo rinvio-modo" data-giornata="9"' in con and "rinvio-modo" not in senza       # il menu nel riepilogo

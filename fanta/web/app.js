@@ -612,6 +612,7 @@ function cardRiepilogo(r, p) {
         ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
       ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
       ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(x => `${sigla(x.casa)}–${sigla(x.trasferta)}`).join(", ") })}</p>` : ""}
+      ${r.rinvio && typeof menuRinvio === "function" ? menuRinvio(r.rinvio) : ""}
       ${r.nel_diario ? "" : `<p class="debole piccolo">${t("oggi.confronto_in_arrivo")}</p>`}
       <div class="pulsanti"><button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("oggi.apri_diario")}</button></div>`;
   }
@@ -638,25 +639,27 @@ function nomeModoRinvio(m, voto) {
   if (m === "voto_ufficio") return t("oggi.rinvio_ufficio", { v: num(voto ?? 6, Number.isInteger(voto ?? 6) ? 0 : 1) });
   return m === "aspetta" || m === "senza_voto" ? t("oggi.rinvio_" + m) : String(m);
 }
-function cardRinvio(rv) {
-  if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
+// Il menu «per questa giornata i loro giocatori…» (riquadro di Oggi e riepilogo della giornata finita): cambia solo quella giornata.
+function menuRinvio(rv) {
   const modi = Array.isArray(rv.modi) && rv.modi.length ? rv.modi : MODI_RINVIO;
   const voto = rv.voto_ufficio ?? rv.valore;
+  return `<label class="rinvio-scelta"><span class="debole">${t("oggi.rinvio_domanda")}</span>
+      <select class="campo-testo rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === rv.modo ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></label>
+    <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
+}
+function cardRinvio(rv) {
+  if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
   const partite = rv.partite.map(p => `<li><b>${sigla(p.casa)}–${sigla(p.trasferta)}</b>
     <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
   const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
   return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
     <ul class="elenco-rinvii">${partite}</ul>
     ${miei ? `<p class="piccolo">${t("oggi.rinvio_miei", { nomi: miei })}</p>` : ""}
-    <label class="rinvio-scelta"><span class="debole">${t("oggi.rinvio_domanda")}</span>
-      <select class="campo-testo" id="rinvio-modo-oggi" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === rv.modo ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></label>
-    <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>
+    ${menuRinvio(rv)}
   </div>`;
 }
 function collegaRinvio() {
-  const sel = $("#rinvio-modo-oggi");
-  if (!sel) return;
-  sel.addEventListener("change", async () => {
+  document.querySelectorAll("select.rinvio-modo").forEach(sel => sel.addEventListener("change", async () => {
     sel.disabled = true;
     try {
       const corpo = { giornata: Number(sel.dataset.giornata), modo: sel.value };
@@ -666,7 +669,7 @@ function collegaRinvio() {
       avviso(t("oggi.rinvio_salvato"));
       vistaOggi();
     } catch (e) { avviso(e.message, 8000); sel.disabled = false; }
-  });
+  }));
 }
 
 function mostraOggi(o, opz = {}) {

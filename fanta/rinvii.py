@@ -13,6 +13,7 @@ volta per volta per una giornata, che vince sulla regola generale).
 """
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import asdict
 from datetime import datetime
 from typing import Iterable
@@ -41,11 +42,14 @@ def regola(regole: Regole, stagione: str, giornata: int) -> dict:
     return {"modo": modo, "valore": valore, "predefinito": predefinito, "eccezione": eccezione in MODI_RINVIO}
 
 
-def con_eccezione(regole: Regole, stagione: str, giornata: int, modo: str | None) -> Regole:
+def con_eccezione(regole: Regole, stagione: str, giornata: int, modo: str | None, corrente: str | None = None) -> Regole:
     """Nuove regole con l'eccezione della giornata impostata (`modo`) o tolta (None, oppure uguale alla regola generale).
-    Le eccezioni delle altre stagioni non servono più e si tolgono (così l'elenco non cresce per sempre)."""
+    Le eccezioni delle altre stagioni non servono più e si tolgono (così l'elenco non cresce per sempre). Con `corrente` (la
+    stagione in corso) si accetta solo quella: una stagione sbagliata non cancella le eccezioni buone."""
     if modo is not None and modo not in MODI_RINVIO:
         raise ValueError("Scelta non valida per le partite rinviate.")
+    if corrente is not None and stagione != corrente:
+        raise ValueError("Si può decidere solo per la stagione in corso.")
     dati = asdict(regole)
     eccezioni = {k: v for k, v in (dati.get("rinvii_giornate") or {}).items() if k.startswith(f"{stagione}/")}
     k = chiave(stagione, giornata)
@@ -95,6 +99,34 @@ def id_rinviate(partite: pd.DataFrame, stagione: str, giornata: int) -> set[int]
 def id_fuori_turno(partite: pd.DataFrame, stagione: str, giornata: int) -> set[int]:
     """Gli id delle partite fuori dal turno di una giornata, anche già recuperate (per il Diario delle giornate finite)."""
     return {int(p["id"]) for p in fuori_turno(_della_giornata(partite, stagione, giornata))}
+
+
+def _della_giornata_db(db: sqlite3.Connection, stagione: str, giornata: int) -> list[dict]:
+    return [{"data": r[0], "giocata": r[1]} for r in
+            db.execute("SELECT data, giocata FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
+
+
+def ha_fuori_turno(db: sqlite3.Connection, stagione: str, giornata: int) -> bool:
+    """Se la giornata ha almeno una partita fuori dal turno (rinviata, recuperata o no)."""
+    return bool(fuori_turno(_della_giornata_db(db, stagione, giornata)))
+
+
+def giornate_chiuse(db: sqlite3.Connection, stagione: str, regole: Regole) -> list[int]:
+    """Le giornate finite per la lega, in ordine: tutte le partite giocate oppure, se per la giornata la regola non è «aspetta»
+    (senza voto o voto d'ufficio: il recupero non cambia i punti), giocate tutte quelle del turno e da recuperare solo partite
+    rinviate. Con «aspetta» la giornata si chiude solo a recupero giocato (i punti possono ancora cambiare)."""
+    per_giornata: dict[int, list[dict]] = {}
+    for g, data, giocata in db.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata",
+                                       (stagione,)):
+        per_giornata.setdefault(int(g), []).append({"data": data, "giocata": giocata})
+    out = []
+    for g, partite in per_giornata.items():
+        aperte = [p for p in partite if not p["giocata"]]
+        if not aperte:
+            out.append(g)
+        elif regola(regole, stagione, g)["modo"] != "aspetta" and len(rinviate(partite)) == len(aperte):
+            out.append(g)
+    return out
 
 
 def voti_lega(gioca: dict[int, bool], fv: dict[int, float], voto: dict[int, float], coinvolti: Iterable[int], r: dict) -> None:
@@ -160,6 +192,14 @@ def perche(p: pd.DataFrame, r: dict, massimo: int) -> pd.Series:
     return out
 
 
+def scelta(regole: Regole, stagione: str, giornata: int) -> dict:
+    """Cosa serve al menu «per questa giornata»: {stagione, giornata, giornata_lega, modo, valore, predefinito, eccezione, modi,
+    voto_ufficio}. Uguale nel riquadro di Oggi e nel riepilogo della giornata finita."""
+    return {"stagione": stagione, "giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole),
+            **regola(regole, stagione, giornata), "modi": list(MODI_RINVIO),
+            "voto_ufficio": float(getattr(regole, "voto_ufficio_rinviate", 6.0))}
+
+
 def blocco_oggi(regole: Regole, stagione: str, giornata: int | None, partite: list[dict], mie: list[dict]) -> dict | None:
     """Il campo `rinvio` di GET /api/oggi: None se nella giornata non c'è una partita rinviata. `partite` con `stato` (fasi.py:
     calendario e diretta), `mie` = {id, nome, ruolo, squadra} dei giocatori della mia rosa."""
@@ -169,8 +209,6 @@ def blocco_oggi(regole: Regole, stagione: str, giornata: int | None, partite: li
     if not rinv:
         return None
     squadre = {s for p in rinv for s in (p.get("casa"), p.get("trasferta")) if s}
-    r = regola(regole, stagione, giornata)
-    return {"stagione": stagione, "giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), **r,
-            "modi": list(MODI_RINVIO), "voto_ufficio": float(getattr(regole, "voto_ufficio_rinviate", 6.0)),
+    return scelta(regole, stagione, giornata) | {
             "partite": [{"casa": p.get("casa"), "trasferta": p.get("trasferta"), "data": p.get("data")} for p in rinv],
             "miei": [g for g in mie if g.get("squadra") in squadre]}
