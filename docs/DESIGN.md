@@ -49,7 +49,7 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 | Positivo (bonus, guadagno, sicuro) | `#3DDC97` | `#0A7D4C` | web `--verde`; iOS oggi `Color.green` di sistema: allineare |
 | Negativo (malus, rischio) | `#FF6B5E` | `#B3261E` | `--rosso` |
 | Attenzione (dubbio, diffidato) | `#FFB04A` | `#9C5400` | `--arancio` |
-| Neutro/secondario | `#9DB4A5` | `#587064` | `--testo-2` |
+| Neutro/secondario | `#9DB4A5` | `#587064` | `--testo-2`; iOS `Color.testoSecondario` `#BCCDC2` / `#46564D` (almeno 4,5:1 anche sull'alone sfumato, dal 2/11/2026) |
 | Capitano / selezione | `#D4F34A` | `#86A800` (solo fondo, mai testo) | `--capitano`; sopra il lime testo scuro (`--capitano-testo`) |
 | Azione (pulsanti, testo di azione) | `#3DDC97` (`--azione`) | `#526600` (testo bianco sopra) | Dal 31/10/2026: in chiaro mai il lime per il testo; `MARCHIO.md`, «Contrasto dei colori delle azioni» |
 | Informazione | `#62A9FF` | `#1A5BB5` | `--blu` |
