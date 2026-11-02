@@ -695,6 +695,8 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .schede button.novita::after { content: ""; position: absolute; top: 9px; right: calc(50% - 20px); width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
 .banner-novita { width: 100%; text-align: left; border: 1px solid var(--bordo); border-radius: var(--r-card); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo);
   background: var(--vetro-carta); color: var(--testo); }
+/* Diario: una riga in testa, la spiegazione lunga dietro «Come si legge» (docs/STILE-SENZA-AI.md) */
+.come-diario > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .novita-voci { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: var(--t-corpo); }
 
 
@@ -1138,7 +1140,7 @@ main > .imp { grid-column: 1 / -1; }
   main .colonne-oggi > .col:first-child { position: static; }
   main .colonne-campo > .col:first-child { display: block; }
   main .colonne-campo > .col:first-child > * { grid-column: auto; grid-row: auto; position: static; }
-  main .colonne-campo > .col:first-child > .campo { margin-top: 16px; }
+  main .colonne-campo > .col:first-child > .campo { margin-top: 16px; position: relative; }   /* la riga sopra lo rendeva statico: area, cerchio e metà campo uscivano e attraversavano tutta la pagina */
   main .colonne-oggi > .col:nth-child(2), main .colonne-campo > .col:nth-child(2) { display: block; columns: 2; column-gap: 24px; }
   main .colonne-oggi > .col:nth-child(2) > *, main .colonne-campo > .col:nth-child(2) > * { break-inside: avoid; }
 }
