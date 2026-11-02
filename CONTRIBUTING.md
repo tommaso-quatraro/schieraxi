@@ -9,6 +9,7 @@ un'idea che aumenta molto la complessità si valuta caso per caso.
 2. Fai un fork del repository, poi un ramo con un nome breve (per esempio `correggi-titoli-oggi`).
 3. Fai passi piccoli, uno per volta. Ogni passo va provato davvero.
 4. Prova la modifica: `python -m pytest -q` deve passare (l'ambiente è nel `README.md`).
+   La CI controlla anche il codice con ruff (`ruff check fanta tests script prove`, regole in `ruff.toml`).
    Se tocchi il modello di calcolo, lancia `python -m fanta verifica` prima e dopo e scrivi i due numeri nella pull request.
 5. Apri la pull request e descrivi cosa cambia e come l'hai provato. I controlli automatici devono essere verdi.
 

@@ -143,7 +143,7 @@ def test_i_controlli_finali(ambiente):
 # ---------------------------------------------------------------- lega demo
 def test_la_lega_demo(ambiente, monkeypatch):
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (listone_grande(), "oggi"))
-    (a, _), (b, _) = nuovo_utente("utentea"), nuovo_utente("utenteb")
+    (a, _), _ = nuovo_utente("utentea"), nuovo_utente("utenteb")
     prima_b = albero(contesto.cartella_utente(id_di("utenteb")))
     stato = a.post("/api/onboarding/demo").json()
     assert stato["demo"] is True and stato["passo"] == "formazione" and stato["stato"] == "in_corso"

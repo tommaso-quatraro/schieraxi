@@ -120,7 +120,7 @@ def controlla(backup: Any) -> dict[str, Any]:
             raise ValueError(f"Il backup contiene un file che non conosco: {str(nome)[:60]}")
         try:
             CONTROLLI[nome](contenuto)
-        except (ValueError, TypeError, KeyError, AttributeError, OverflowError) as e:      # OverflowError: «Infinity» o 1e999 dove serve un intero
+        except (ValueError, TypeError, KeyError, AttributeError, OverflowError):      # OverflowError: «Infinity» o 1e999 dove serve un intero
             raise ValueError(f"{nome} non è valido: controlla di aver scelto il file di backup giusto") from None
     return file
 

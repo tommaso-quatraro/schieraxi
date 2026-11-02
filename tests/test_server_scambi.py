@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import calcolo, consigli, lega, limiti, server
-from fanta.regole import Regole
 
 from test_scambi import REGOLE, TAB, _rose, _valori
 

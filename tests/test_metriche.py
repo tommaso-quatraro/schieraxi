@@ -1,6 +1,6 @@
 """Metriche della squadra (script/ci/metriche.py): solo le parti pure, senza gh né rete."""
 import importlib.util
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
 
 _f = Path(__file__).resolve().parent.parent / "script" / "ci" / "metriche.py"
