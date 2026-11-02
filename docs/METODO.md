@@ -32,7 +32,7 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
   del repository, non dei bot. Claude Code con la skill `.claude/skills/revisione-pr/SKILL.md` presa da `main`: correttezza,
   sicurezza, errori silenziosi, test, web e iPhone uguali, documenti, aspetto. Solo problemi certi, commenti sulle righe e una
   sintesi in italiano. Un problema «bloccante» ferma l'unione automatica: si corregge il ramo (un falso allarme si sistema nella skill, su `main`).
-  Senza il segreto `CLAUDE_CODE_OAUTH_TOKEN` il job passa senza revisione.
+  Senza il segreto `CLAUDE_CODE_OAUTH_TOKEN` il job passa senza revisione. Per rifare la revisione dopo un falso allarme corretto su `main`: «Re-run failed jobs» nella corsa dei controlli.
 - **Il proprietario** guarda le pull request su rete e server (in bozza fino al suo ok), le decisioni di prodotto
   e i falsi allarmi della revisione IA. Le regole della revisione si cambiano solo con una pull request su `main`.
 - **Foto iOS** (dopo l'unione): il fotografo, come scritto sotto.
