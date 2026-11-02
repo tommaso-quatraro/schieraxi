@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.355",
+    "data": "2026-11-02T14:33:24",
+    "titolo": "Partite anticipate: la formazione resta aperta",
+    "voci": [
+      "Se una partita della giornata è anticipata di qualche giorno, la formazione non si chiude prima del tempo: la scadenza resta quella del resto della giornata.",
+      "I giocatori della partita anticipata mostrano già com'è andata («Ha giocato», «Voto in arrivo»), e il posticipo del lunedì non risulta più «Rinviata» per sbaglio."
+    ],
+    "tecnico": [
+      "turno.inizio parte dal gruppo principale (partite a meno di 36 ore l'una dall'altra, almeno metà del totale); una partita da più di 36 ore a meno di 7 giorni prima è un anticipo (al massimo 2, oltre è un turno diviso e vale la regola di prima).",
+      "Regola unica in fanta/turno.py: anticipo, della_giornata (usata da fasi.stato_partita, rinvii, live, sentinella) e conta_per_scadenza (avvisi.prima_partita: promemoria, pianificatore, copia automatica, widget, Oggi). Le partite giocate 7 giorni o più prima del gruppo principale fissano la scadenza come prima.",
+      "da_fare._chiusa_prima usa avvisi.prima_partita invece di MIN(data).",
+      "fasi.formazione_a_giornata_iniziata: a formazione aperta i giocatori di un anticipo già cominciato hanno stato_partita ed etichetta dello stato vero (iniziata resta false)."
+    ]
+  },
+  {
     "versione": "1.354",
     "data": "2026-11-02T14:31:28",
     "titolo": "Rosa e scheda: partite e stato giusti",
