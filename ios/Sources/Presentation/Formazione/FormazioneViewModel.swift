@@ -62,6 +62,13 @@ final class FormazioneViewModel: ViewModelBase {
         return StatoScelta.calcola(letta: sceltaLetta, salvati: salvati, salvataIl: salvataIl, manuale: manuale)
     }
 
+    /// La giornata è chiusa (dopo la scadenza, `iniziata` del server): la tua formazione si vede in sola lettura, niente modifiche.
+    var chiusa: Bool { formazione?.iniziata == true }
+
+    static let testoChiusa = "La formazione di questa giornata è chiusa: le partite sono cominciate."
+    /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
+    static let codiceChiusa = "formazione_chiusa"
+
     /// In modifica a mano, il server sta calcolando i punti di questa formazione.
     var inCalcolo: Bool { manuale != nil && valutati != manuale && !calcoloNonRiuscito }
 
@@ -109,7 +116,8 @@ final class FormazioneViewModel: ViewModelBase {
         }
         guard squadraVista == nil, giornata == f.giornata else { return }
         // Nessuna modifica di questo telefono: la formazione mostrata è quella salvata di prima (o la consigliata).
-        let senzaModifiche = manuale == nil || salvati.map { Set($0) == Set(manuale ?? []) } == true
+        // A giornata chiusa le modifiche non salvate di questo telefono non contano più: vale quella salvata (o la consigliata).
+        let senzaModifiche = f.iniziata == true || manuale == nil || salvati.map { Set($0) == Set(manuale ?? []) } == true
         sceltaLetta = true
         guard let salvata else {
             salvati = nil
@@ -226,7 +234,7 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// I due della rosa che più si avvicinano a un titolare non sicuro (ballottaggio). Non in modifica a mano.
     func ballottaggio(per g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> [Ballottaggio.Alternativa] {
-        guard manuale == nil else { return [] }
+        guard manuale == nil, !chiusa else { return [] }
         return Ballottaggio.alternative(per: g, rosa: Array((f.schede ?? [:]).values), titolari: v.titolari)
     }
 
@@ -292,12 +300,13 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     func iniziaModificaManuale(_ f: Formazione) {
+        guard !chiusa else { return }
         manuale = vista(f).titolari.map(\.id)
         Task { await valuta(salva: false) }
     }
 
     func sostituisci(_ vecchio: Int, con nuovo: Int) {
-        guard var m = manuale, let i = m.firstIndex(of: vecchio) else { return }
+        guard !chiusa, var m = manuale, let i = m.firstIndex(of: vecchio) else { return }
         m[i] = nuovo
         manuale = m
         Haptics.selezione()
@@ -306,14 +315,14 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// «Salva questa»: salva come tua scelta gli undici che stai guardando (consigliata, stile o modulo scelti, o modifica a mano).
     func salvaQuesta(_ f: Formazione) async {
-        guard squadraVista == nil else { return }
+        guard squadraVista == nil, !chiusa else { return }
         if manuale == nil { manuale = vista(f).titolari.map(\.id) }
         await valuta(salva: true)
     }
 
     /// «Annulla modifiche»: si torna agli undici salvati.
     func annullaModifiche() {
-        guard let salvati else { return }
+        guard !chiusa, let salvati else { return }
         manuale = salvati
         messaggio = nil
         calcoloNonRiuscito = false
@@ -327,6 +336,7 @@ final class FormazioneViewModel: ViewModelBase {
         guard let m = manuale else { return }
         contatore += 1
         let numero = contatore
+        if salva && chiusa { return }
         let salvaDavvero = salva && squadraVista == nil
         calcoloNonRiuscito = false
         codiceUltimoErrore = nil
@@ -350,6 +360,8 @@ final class FormazioneViewModel: ViewModelBase {
             guard numero == contatore, manuale == m else { return }
             if salvaDavvero, (error as? ErroreApi)?.eConflitto == true { await sceltaCambiataAltrove(); return }
             if case .codificato(let codice, _)? = error as? ErroreApi { codiceUltimoErrore = codice }
+            // solo un salvataggio rifiutato porta a ricaricare (una semplice valutazione no: niente giri a vuoto)
+            if salvaDavvero, codiceUltimoErrore == Self.codiceChiusa, !chiusa { await formazioneChiusa(); return }
             // Il salvataggio non riuscito non cancella i punti già calcolati per questi titolari.
             calcoloNonRiuscito = valutati != m
             messaggio = error.localizedDescription
@@ -370,7 +382,17 @@ final class FormazioneViewModel: ViewModelBase {
         Haptics.esito(riuscito: false)
     }
 
+    /// 409 `formazione_chiusa`: la scadenza è passata mentre la pagina era aperta. Si ricarica (il server dice `iniziata`)
+    /// e lo si dice con una frase chiara, senza l'errore del server.
+    private func formazioneChiusa() async {
+        azzeraManuale()
+        await carica()
+        messaggio = Self.testoChiusa
+        Haptics.esito(riuscito: false)
+    }
+
     func tornaAllaConsigliata(_ f: Formazione) async {
+        guard !chiusa else { return }
         // La scelta salvata esiste solo per la propria squadra.
         guard squadraVista == nil else { azzeraManuale(); return }
         do {
@@ -380,6 +402,8 @@ final class FormazioneViewModel: ViewModelBase {
             salvataIl = nil
         } catch let e as ErroreApi where e.eConflitto {
             await sceltaCambiataAltrove()
+        } catch ErroreApi.codificato(let codice, _) where codice == Self.codiceChiusa {
+            await formazioneChiusa()
         } catch {
             // Se il server non cancella la scelta salvata, resta com'è e lo si dice.
             messaggio = error.localizedDescription

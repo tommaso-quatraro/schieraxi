@@ -19,7 +19,7 @@ RADDRIZZA=0
 mkdir -p "$USCITA"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita formazione formazione-fondo formazione-salvata formazione-manuale formazione-confronto formazione-perche formazione-immagine
+TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita formazione formazione-fondo formazione-salvata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati mercato-asta mercato-asta-riparazione
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza

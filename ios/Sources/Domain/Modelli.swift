@@ -47,6 +47,8 @@ struct Giocatore: Decodable, Identifiable {
     /// «titolare», «panchina», «infortunato»... come lo scrivono le probabili formazioni.
     let stato: String?
     let percentuale: Double?
+    /// A giornata iniziata (titolarità tolta): `fatto`, `senza_voto`, `attesa_voti`, `in_corso`, `da_giocare`, `rinviata`. Facoltativo.
+    let statoPartita: String?
     let nota: String?
     let motivi: [String]?
     /// Solo nella scheda del giocatore: la giornata a cui si riferisce la previsione.
@@ -524,6 +526,8 @@ struct Formazione: Decodable {
     let senzaDati: [String]?
     let dev: Double?
     let intervallo: IntervalloPunti?
+    /// `true` dopo la scadenza della giornata (le partite sono cominciate): la formazione non si può più cambiare. Facoltativo.
+    let iniziata: Bool?
 }
 
 struct RuoloAsta: Decodable, Identifiable {

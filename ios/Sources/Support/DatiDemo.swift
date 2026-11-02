@@ -22,6 +22,11 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
             server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
+        case "formazione-chiusa":
+            // la giornata chiusa (dopo la scadenza): la formazione salvata in sola lettura
+            server.risposte["/api/formazione"] = DatiDemo.formazione(iniziata: true)
+            server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
+            server.indirizzoFinto = "https://finto-formazione-chiusa.invalid"
         case "formazione-salvata":
             // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»)
             server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
@@ -91,11 +96,11 @@ private enum DatiDemo {
         cal(117, "Tarek Reimvaldt", "C", "milan", costo: 24, pVoto: 0.89, punti: 6.2),
         cal(118, "Nereo Fagiani", "C", "fiorentina", costo: 6, pVoto: 0.0, punti: 0.0, assente: true),
         cal(119, "Moussa Kerabo", "C", "roma", costo: 13, pVoto: 0.84, punti: 5.5),
-        cal(120, "Leonel Marténi", "A", "inter", costo: 80, pVoto: 0.92, punti: 7.9, dubbio: true),
+        cal(120, "Leonel Marténi", "A", "inter", costo: 80, pVoto: 0.62, punti: 7.9, dubbio: true),
         cal(121, "Marvin Thorvan", "A", "inter", costo: 52, pVoto: 0.90, punti: 7.1),
         cal(122, "Adebayo Lorkman", "A", "atalanta", costo: 41, pVoto: 0.87, punti: 7.0),
         cal(123, "Renato Lemão", "A", "milan", costo: 45, pVoto: 0.88, punti: 6.9),
-        cal(124, "Darko Vlasenić", "A", "juventus", costo: 33, pVoto: 0.70, punti: 5.4, dubbio: true),
+        cal(124, "Darko Vlasenić", "A", "juventus", costo: 33, pVoto: 0.65, punti: 5.4, dubbio: true),
         cal(125, "Mosè Kervan", "A", "fiorentina", costo: 18, pVoto: 0.82, punti: 5.8),
     ]
 
@@ -113,7 +118,7 @@ private enum DatiDemo {
         cal(210, "Nando Rovalli", "C", "lazio", costo: 0, pVoto: 0.90, punti: 5.8),
         cal(211, "Egon Audrelli", "P", "cremonese", costo: 0, pVoto: 0.95, punti: 5.1),
         cal(212, "Ludovico Lucarni", "A", "udinese", costo: 0, pVoto: 0.79, punti: 5.9),
-        cal(213, "Michele Gabbrosi", "D", "milan", costo: 0, pVoto: 0.75, punti: 5.0, dubbio: true),
+        cal(213, "Michele Gabbrosi", "D", "milan", costo: 0, pVoto: 0.66, punti: 5.0, dubbio: true),
         cal(214, "Aksel Sandemaker", "C", "milan", costo: 0, pVoto: 0.82, punti: 5.7),
         cal(215, "Gilberto Mancarini", "D", "roma", costo: 0, pVoto: 0.86, punti: 5.5),
     ]
@@ -182,6 +187,12 @@ private enum DatiDemo {
 
     // MARK: - Date
 
+    /// Il calcio d'inizio cade su un quarto d'ora (18:00, 18:15...), come le partite vere: mai «18:57».
+    static func quartoDOra(_ data: Date) -> Date {
+        let quarto = 15.0 * 60
+        return Date(timeIntervalSinceReferenceDate: (data.timeIntervalSinceReferenceDate / quarto).rounded(.up) * quarto)
+    }
+
     static func formatta(_ data: Date, _ formato: String) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -218,12 +229,13 @@ private enum DatiDemo {
         d["difficolta"] = difficolta(di: p.squadra)
         d["gol_squadra"] = 1.8
         d["gol_avversario"] = 1.2
-        d["data_partita"] = formatta(riferimento.addingTimeInterval(7 * 3600), "yyyy-MM-dd HH:mm")
+        d["data_partita"] = formatta(quartoDOra(riferimento.addingTimeInterval(7 * 3600)), "yyyy-MM-dd HH:mm")
         // titolarità: come nelle probabili formazioni
         if p.assente {
             d["titolarita"] = "fuori"; d["stato"] = "infortunato"; d["percentuale"] = 0.0; d["motivi"] = ["infortunato"]
         } else if p.dubbio {
-            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = 60.0; d["motivi"] = ["dubbio: affaticamento", "titolare al 60%"]
+            // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque)
+            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["dubbio: affaticamento"]
         } else if p.pVoto < 0.75 {
             d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina (\(Int(p.pVoto * 100))%)"]
         } else {
@@ -264,7 +276,7 @@ private enum DatiDemo {
         }
         var motivi: [[String: Any]] = []
         if p.dubbio {
-            motivi.append(["chiave": "gioca", "testo": "gioca il 60%: dubbio", "effetto": NSNull()])
+            motivi.append(["chiave": "gioca", "testo": "gioca il \(Int((p.pVoto * 100).rounded()))%: dubbio", "effetto": NSNull()])
         } else if p.pVoto < 0.8 {
             let pct = Int((p.pVoto * 100).rounded())
             motivi.append(["chiave": "gioca", "testo": "gioca il \(pct)%: " + (p.pVoto < 0.5 ? "probabile panchina" : "dubbio"), "effetto": NSNull()])
@@ -398,31 +410,33 @@ private enum DatiDemo {
         ["basso": attesi - 8, "alto": attesi + 8.5, "confidenza": 0.8, "indicativo": indicativo]
     }
 
-    static func formazione() -> String {
+    static func formazione(iniziata: Bool = false) -> String {
         let base = moduli[0]
         let ids = base.titolari
         let bench = panchina(per: ids)
         let titolari = ids.map { giocatore(calciatore($0)) }
         let panchinaJSON = bench.map { giocatore(calciatore($0)) }
-        let nomiLivelli = ["Prudente", "Equilibrata", "Audace"]
+        // gli stili come li manda il server (nomi e descrizioni di LIVELLI_RISCHIO): Sicura, Equilibrata (consigliata), Rischiosa
         var livelli: [[String: Any]] = []
-        for (r, nome) in nomiLivelli.enumerated() {
-            let extra = Double(r) * 1.4
+        for r in [-1, 0, 1] {
+            let nome = StileFormazione.nomi[r] ?? ""
+            let extra = Double(r) * 0.6
             var elenco: [[String: Any]] = []
             for m in moduli {
                 elenco.append(["modulo": m.nome, "punteggio_atteso": punteggio(m.titolari) + extra,
                                "titolari": m.titolari, "panchina": panchina(per: m.titolari),
                                "dev": 4.2, "intervallo": fascia(punteggio(m.titolari) + extra)])
             }
-            livelli.append(["rischio": r, "nome": nome, "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco,
+            livelli.append(["rischio": r, "stile": r, "nome": nome, "descrizione": StileFormazione.descrizione(r),
+                            "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco,
                             "intervallo": fascia(punteggio(ids) + extra)])
         }
         var schede: [String: Any] = [:]
         for p in miaRosa { schede[String(p.id)] = giocatore(p) }
         return json([
             "squadra": nomeMia, "giornata": giornata, "giornata_lega": giornata - 3, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
-            "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede,
-            "dev": 4.2, "intervallo": fascia(punteggio(ids)),
+            "con_probabili": false, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede, "stile_consigliato": 0,
+            "dev": 4.2, "intervallo": fascia(punteggio(ids)), "iniziata": iniziata,
         ])
     }
 
@@ -448,7 +462,7 @@ private enum DatiDemo {
     static func oggi(adesso: Date) -> String { json(oggiDati(adesso: adesso)) }
 
     static func oggiDati(adesso: Date) -> [String: Any] {
-        let inizio = adesso.addingTimeInterval(7 * 3600)
+        let inizio = quartoDOra(adesso.addingTimeInterval(7 * 3600))
         let ids = moduli[0].titolari
         // minuti di distanza dalla prima partita
         let scarti: [Double] = [0, 135, 1260, 1395, 1530, 1650, 2700, 2835, 2835, 2970]

@@ -10,7 +10,7 @@ struct FormazioneView: View {
     @Namespace private var moduloNS
     @Namespace private var stileNS
     @Environment(\.funzioni) private var funzioni
-    /// La legenda del campo si mostra da sola una volta; poi si riapre con «Come si legge il campo».
+    /// La legenda del campo si mostra da sola una volta; poi si riapre con «Cosa vuol dire» (come la web app).
     @AppStorage("legendaCampoVista") private var legendaVista = false
     @State private var legendaAperta = false
 
@@ -18,16 +18,8 @@ struct FormazioneView: View {
     private let ruoli = ["A", "C", "D", "P"]
     private let nomiRuolo = ["P": "Portiere", "D": "Difensori", "C": "Centrocampisti", "A": "Attaccanti"]
 
-    /// Cosa fa ogni stile, a parole (come nella web app).
-    static func descrizioneStile(_ rischio: Int) -> String {
-        switch rischio {
-        case ...(-2): return "Punta su chi gioca quasi di sicuro: meno rischio di una brutta giornata, anche se i punti attesi scendono un po'."
-        case -1: return "Preferisce i titolari più sicuri, accettando di perdere qualche decimo di punto atteso."
-        case 0: return "Il sistema sceglie la formazione con più punti attesi e, a parità, quella con i titolari più sicuri."
-        case 1: return "Qualche puntata su chi, se gioca, può fare molti punti: più possibilità di una giornata eccezionale."
-        default: return "Punta di più su chi può fare il colpo: la giornata eccezionale è più probabile, ma anche quella brutta."
-        }
-    }
+    /// Cosa fa ogni stile, a parole (come il server e la web app): vedi `StileFormazione`.
+    static func descrizioneStile(_ rischio: Int) -> String { StileFormazione.descrizione(rischio) }
 
     var body: some View {
         NavigationStack {
@@ -84,7 +76,7 @@ struct FormazioneView: View {
                 }
                 .demoInFondo()
                 .refreshable { await vm.carica() }
-                .avvisoDatiSalvati(vm.datiSalvati)
+                .avvisoDatiSalvati(vm.caricatore)
                 .bordiMorbidi()
             }
             .navigationTitle("Formazione")
@@ -136,11 +128,12 @@ struct FormazioneView: View {
     /// Riapre la legenda del campo (popover sull'iPad, foglio sull'iPhone).
     private var pulsanteLegenda: some View {
         Button { legendaAperta = true } label: {
-            Label("Come si legge il campo", systemImage: "info.circle").font(.footnote.weight(.semibold))
+            Label("Cosa vuol dire", systemImage: "info.circle").font(.footnote.weight(.semibold))
                 .frame(minHeight: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(Color.verde)
+        .accessibilityHint("Apre la legenda del campo")
         .popover(isPresented: $legendaAperta) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
@@ -185,7 +178,10 @@ struct FormazioneView: View {
     /// «⇄» confronta con un altro della rosa e sotto i titolari incerti ci sono le alternative vicine (ballottaggio).
     @ViewBuilder
     private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> some View {
-        if vm.manuale != nil {
+        if vm.chiusa {
+            // giornata chiusa: sola lettura (un tocco apre la scheda, niente sostituzioni né confronti per cambiare)
+            RigaGiocatore(g: g, apribile: true, perche: apriPerche)
+        } else if vm.manuale != nil {
             Button { daSostituire = g } label: {
                 HStack { RigaGiocatore(g: g); Image(systemName: "arrow.left.arrow.right").foregroundStyle(Color.verde).accessibilityHidden(true) }
                     .frame(minHeight: 44)
@@ -265,11 +261,21 @@ struct FormazioneView: View {
     private func cardStile(_ f: Formazione, _ v: VistaFormazione) -> some View {
         Carta {
             intestazione(f, v)
-            if f.conProbabili == false {
+            if vm.chiusa {
+                // come la web: la fascia della giornata chiusa, e la formazione (salvata o consigliata) in sola lettura
+                Label(FormazioneViewModel.testoChiusa, systemImage: "lock.fill")
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.attenzione.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityElement(children: .combine)
+            } else if f.conProbabili == false {
                 Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             rigaStato(f)
-            if vm.manuale == nil {
+            if vm.chiusa {
+                if let r = vm.valutazioneAttuale, let d = r.differenza { rigaDifferenza(r, d) }
+            } else if vm.manuale == nil {
                 if let livelli = f.livelli, !livelli.isEmpty { sceltaStile(f, livelli) }
             } else {
                 testoManuale
@@ -302,7 +308,9 @@ struct FormazioneView: View {
         VStack(alignment: .trailing, spacing: 0) {
             if let punti = v.punti {
                 Text(Formato.punti(punti)).font(.title2.bold()).monospacedDigit().numerico(punti)
-                Text("punti attesi" + (vm.fascia(f).map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
+                // «tra 66 e 82 · 8 volte su 10» va a capo solo tra un pezzo e l'altro, mai a metà
+                Text(TestoACapo.soloTraIPezzi("punti attesi" + (vm.fascia(f).map { TestoACapo.separatore + $0 } ?? "")))
+                    .font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
             } else if vm.calcoloNonRiuscito {
                 Text("–").font(.title2.bold()).accessibilityHidden(true)
                 Text("punti non calcolati").font(.caption).foregroundStyle(Color.testoSecondario)
@@ -325,11 +333,11 @@ struct FormazioneView: View {
                 HStack(alignment: .center, spacing: 8) {
                     testoStato(stato, colore)
                     Spacer(minLength: 4)
-                    if stato == .consigliata { salvaQuesta(f) }
+                    if stato == .consigliata, !vm.chiusa { salvaQuesta(f) }
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     testoStato(stato, colore)
-                    if stato == .consigliata { salvaQuesta(f) }
+                    if stato == .consigliata, !vm.chiusa { salvaQuesta(f) }
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 6)
@@ -382,7 +390,8 @@ struct FormazioneView: View {
                 .accessibilityAddTraits(attivo ? .isSelected : [])
             }
         }
-        (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))))
+        (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))
+                                          + (StileFormazione.stellaNonMassimo(livello).map { " " + $0 } ?? "")))
             .font(.footnote).foregroundStyle(Color.testoSecondario)
             .fixedSize(horizontal: false, vertical: true)
         HStack {
@@ -434,11 +443,7 @@ struct FormazioneView: View {
             .buttonStyle(.plain)
             .foregroundStyle(Color.attenzione)
         }
-        if let r = vm.valutazioneAttuale, let d = r.differenza {
-            // La fascia «tra X e Y» è già sotto i punti, in alto: qui solo il confronto. Sotto mezzo punto è un pari (grigio, non arancio).
-            Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))).")
-                .font(.subheadline).foregroundStyle(abs(d) < 0.5 ? Color.testoSecondario : d > 0 ? Color.verde : Color.orange)
-        }
+        if let r = vm.valutazioneAttuale, let d = r.differenza { rigaDifferenza(r, d) }
         // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
         if let f = vm.formazione {
             ViewThatFits(in: .horizontal) {
@@ -447,6 +452,17 @@ struct FormazioneView: View {
             }
             .font(.subheadline)
         }
+    }
+
+    /// Quanto vale la formazione a mano rispetto alla consigliata. La fascia dei punti sta già nell'intestazione: qui non si ripete
+    /// (solo se il server non manda né fascia né oscillazione restano brutta giornata ed eccezionale).
+    private func rigaDifferenza(_ r: ValutazioneManuale, _ d: Double) -> some View {
+        let confronto = "\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata)))."
+        let estremi = IntervalloPunti.frase(r.intervallo, dev: r.dev) == nil
+            ? " Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))." : ""
+        return Text(confronto + estremi).font(.subheadline)
+            // sotto mezzo punto è un pari (grigio, non arancio)
+            .foregroundStyle(abs(d) < 0.5 ? Color.testoSecondario : d > 0 ? Color.verde : Color.attenzione)
     }
 
     /// «Salva come mia scelta» (o «Salva le modifiche»): solo se c'è qualcosa da salvare e per la propria squadra.
