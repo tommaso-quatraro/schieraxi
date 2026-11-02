@@ -9,11 +9,6 @@ on:
   workflow_call:
   workflow_dispatch:
 
-# Un push nuovo sullo stesso ramo annulla la corsa vecchia (da test.yml vale già il gruppo «controlli-*»; questo copre anche le corse a mano).
-concurrency:
-  group: ios-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
