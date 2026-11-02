@@ -81,6 +81,8 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.
 
+**Fatto (2/11/2026):** il server manda `etichetta` (PR #83) e la web la mostra in Formazione, campo, scheda, Rosa, Seguiti, Oggi in corso e avvisi di Oggi (testo e colore dal `tono`); le parole composte in JS restano solo come ripiego quando `etichetta` manca (Cambi consigliati, server vecchio). L'iPhone deve fare lo stesso.
+
 **Sì: l'etichetta di stato del giocatore.** Oggi la stessa scelta (titolarità prima della scadenza, stato della partita dopo,
 «Fuori» se infortunato o squalificato, dubbio) si rifà in quattro punti: `pillTitolarita` e `valoreLive` della web,
 `Giocatore.etichette` e `TestiFase` dell'iPhone. Ci sono già tre vocabolari diversi (righe 11, 17 e 19). Proposta: un campo
