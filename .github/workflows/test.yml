@@ -4,16 +4,20 @@ name: Controlli
 # (solo GITHUB_TOKEN), permessi di sola lettura salvo i job che scrivono (unisci, rilascia), dichiarati nel job.
 on:
   pull_request:
+    # ready_for_review: quando una bozza diventa pronta i controlli ripartono (iOS compreso, saltato nelle bozze) e «unisci»
+    # può unirla senza aspettare un altro push (prima di questo, #69 era rimasta ferma dopo `gh pr ready`)
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
 permissions:
   contents: read
 
-# un nuovo push sulla stessa PR annulla i controlli in corso: l'unione non porta mai un commit non provato
+# un nuovo push sulla stessa PR annulla i controlli in corso: l'unione non porta mai un commit non provato.
+# Su main (push) nessuna corsa si annulla: ognuna arriva in fondo.
 concurrency:
   group: controlli-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
@@ -138,9 +142,11 @@ jobs:
 
   # Test dell'app iOS nel simulatore (macos-26), solo se la modifica tocca ios/. Sta qui (e non come workflow a parte)
   # perché «unisci» deve aspettarlo: prima una PR su ios/ si univa appena finivano i test Python.
+  # Mai sulle PR in bozza (piano Free: pochi Mac insieme): parte quando la bozza diventa pronta (ready_for_review).
+  # Una bozza non si unisce, quindi «unisci» non resta mai ad aspettare un «ios» saltato per la bozza.
   ios:
     needs: cambi
-    if: needs.cambi.outputs.ios == 'true'
+    if: needs.cambi.outputs.ios == 'true' && !github.event.pull_request.draft
     permissions:
       contents: read
     uses: ./.github/workflows/ios.yml

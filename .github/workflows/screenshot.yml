@@ -39,7 +39,14 @@ on:
 
 # UNA sola corsa Mac alla volta in tutto il repository, in fila (i Mac gratuiti sono pochi e i test iOS hanno la precedenza):
 # il job Linux «quando» aspetta che finisca ogni corsa Screenshot partita prima di questa (ordine del numero di corsa),
-# poi lascia partire il Mac. Niente gruppo di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
+# poi lascia partire il Mac. La fila non usa i gruppi di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
+# Gruppo di concorrenza solo per le PR: un push nuovo annulla la corsa vecchia della stessa PR. Le altre corse (a mano, su main)
+# e gli eventi «labeled» con etichette diverse da screenshot* hanno un gruppo tutto loro: non annullano e non sono annullate.
+concurrency:
+  group: >-
+    ${{ (github.event_name == 'pull_request' && (github.event.action != 'labeled' || startsWith(github.event.label.name, 'screenshot')))
+    && format('screenshot-pr-{0}', github.event.pull_request.number) || format('screenshot-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -65,10 +72,13 @@ jobs:
           AZIONE: ${{ github.event.action }}
           ETICHETTA_NUOVA: ${{ github.event.label.name }}
           ETICHETTE: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BOZZA: ${{ github.event.pull_request.draft }}
         run: |
           serve=false
           if [ "$EVENTO" = "workflow_dispatch" ]; then
             serve=true
+          elif [ "$EVENTO" = "pull_request" ] && [ "$BOZZA" = "true" ]; then
+            echo "PR in bozza: niente Mac (le foto prima dell'unione si lanciano a mano: gh workflow run screenshot.yml --ref <ramo>)"
           elif [ "$EVENTO" = "pull_request" ]; then
             if [ "$AZIONE" = "labeled" ]; then
               # «screenshot-vero»: le fotografie dal vero, solo quando si mette l'etichetta (mai a ogni push)
