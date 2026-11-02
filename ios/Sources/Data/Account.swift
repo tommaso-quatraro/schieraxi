@@ -417,11 +417,40 @@ final class SessioneAccount: ObservableObject {
     }
 
     /// Un 401 fuori dall'accesso: il token non vale più. Si butta, si svuotano i dati del telefono e si torna all'accesso.
+    /// Un 401 arrivato da una pagina qualsiasi (`impronta` presente) prima si conferma con `/api/account/me`: un solo 401
+    /// sospetto (un proxy, un server appena riavviato, una richiesta andata storta) non deve buttare fuori l'utente.
     private func sessioneFinita(daServer indirizzo: String?, impronta: Int?) {
         if let indirizzo, indirizzo != server.indirizzo { return }   // un'altra richiesta, di un server che non è più in uso
         if stato == .daAccedere { return }
         // Un 401 di una richiesta fatta con un token che non è più quello di adesso (nel frattempo c'è stato un nuovo accesso): si ignora.
         if let impronta, archivio.leggi(server: server.indirizzo)?.hashValue != impronta { return }
+        if impronta != nil {
+            guard !ricontrolloInCorso else { return }   // anche il 401 di /api/account/me passa di qui: si aspetta il suo esito
+            ricontrolloInCorso = true
+            Task { await ricontrollaSessione(impronta: impronta) }
+            return
+        }
+        chiudiLocale()
+    }
+
+    /// Un ricontrollo alla volta, dopo un 401 da una pagina qualsiasi.
+    private var ricontrolloInCorso = false
+
+    /// Chiede al server se la sessione vale ancora. Chiude solo se il server lo conferma (401, o «account senza utente»);
+    /// con la rete assente o una risposta strana si resta dentro, con i dati salvati.
+    private func ricontrollaSessione(impronta: Int?) async {
+        defer { ricontrolloInCorso = false }
+        let confermata: Bool
+        do {
+            let r: RispostaAccount = try await server.get("/api/account/me")
+            confermata = r.multiutente == true && r.utente == nil
+        } catch ErroreApi.accessoRichiesto {
+            confermata = true
+        } catch {
+            confermata = false
+        }
+        // Nel frattempo può essere cambiato tutto (uscita, nuovo accesso): si chiude solo se il token è ancora quello del 401.
+        guard confermata, stato != .daAccedere, archivio.leggi(server: server.indirizzo)?.hashValue == impronta else { return }
         chiudiLocale()
     }
 
