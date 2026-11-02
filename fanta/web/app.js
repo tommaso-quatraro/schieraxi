@@ -1345,6 +1345,12 @@ async function tabOsservati(dove, ok) {
 const introCompatta = (riga, dettaglio) => `<div class="carta intro-c"><div class="intro-riga">${riga}</div>`
   + (dettaglio ? `<details class="come"><summary>${t("mercato.come_legge")}</summary><div class="debole">${dettaglio}</div></details>` : "") + `</div>`;
 
+// «crediti dopo 2 · rimborso 18 · costo 34»: tre pezzi che a 390 px vanno a capo interi (il puntino resta in fondo al pezzo che lo precede).
+const soldiDelCambio = p => [
+  t("mercato.crediti_dopo", { dopo: `<b class="${p.fattibile ? "positivo" : "negativo"}">${p.crediti_dopo}</b>`, no: p.fattibile ? "" : t("mercato.non_bastano") }),
+  t("mercato.rimborso_n", { r: p.rimborso }), t("mercato.costo_n", { c: p.entra.quotazione })]
+  .map((x, i, tutti) => `<span class="nb">${x}${i < tutti.length - 1 ? " ·" : ""}</span>`).join(" ");
+
 async function tabConsigli(dove, ok) {
   const salvata = leggiCache("mercato");
   const mostra = m => {
@@ -1358,7 +1364,8 @@ async function tabConsigli(dove, ok) {
         <div class="pr-testo">
           <button class="nome-g" data-giocatore="${p.entra.id}">${esc(p.entra.nome)}</button>
           <div class="pr-sec">${sigla(p.entra.squadra)} · ${t("mercato.quot", { n: p.entra.quotazione })} · ${t("mercato.al_posto_di", { nome: `<button class="nome-g piccolo" data-giocatore="${p.esce.id}">${esc(p.esce.nome)}</button>` })} (${sigla(p.esce.squadra)})</div>
-          <div class="pr-sec">${tp("mercato.punti_prossime", p.giornate.length, { d: segno(p.breve) })}${p.crediti_dopo != null ? `<span title="${t("mercato.rimborso_meno_costo", { r: p.rimborso, c: p.entra.quotazione })}">${t("mercato.crediti_dopo", { dopo: `<b class="${p.fattibile ? "positivo" : "negativo"}">${p.crediti_dopo}</b>`, no: p.fattibile ? "" : t("mercato.non_bastano") })}</span>` : ""}</div>
+          <div class="pr-sec">${tp("mercato.punti_prossime", p.giornate.length, { d: segno(p.breve) })}</div>
+          ${p.crediti_dopo != null ? `<div class="pr-sec">${soldiDelCambio(p)}</div>` : ""}
         ${p.motivo ? `<div class="pr-sec">${esc(testoDi(p, "motivo"))}</div>` : ""}
         </div>
         <div class="pr-num"><b class="${p.guadagno > 0 ? "positivo" : p.guadagno < 0 ? "negativo" : ""}">${segno(p.guadagno)}</b><span>${t("mercato.punti_stagione")}</span></div></div>`).join("") + `</div>`
