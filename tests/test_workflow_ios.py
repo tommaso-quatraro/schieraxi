@@ -73,3 +73,15 @@ def test_ipa_mai_sulle_pr_e_mai_annullata():
     testo = _testo("ipa.yml")
     assert not re.search(r"^  pull_request", _blocco(testo, "on", 0), re.M)
     assert re.search(r"cancel-in-progress:\s*false", _blocco(testo, "concurrency", 0))
+
+
+def test_bozza_pronta_non_fa_girare_due_volte_i_job_pesanti():
+    # ready_for_review fa partire una corsa nuova della stessa PR: stesso gruppo (numero della PR) con annullamento,
+    # quindi la corsa della bozza ancora in corso si ferma; e nella bozza il Mac (job «ios») non è mai partito.
+    testo = _testo("test.yml")
+    concorrenza = _blocco(testo, "concurrency", 0)
+    assert "group: controlli-${{ github.event.pull_request.number || github.ref }}" in concorrenza
+    _concurrency_annulla_solo_sulle_pr(concorrenza)
+    assert "!github.event.pull_request.draft" in re.search(r"^    if:\s*(.+)$", _blocco(testo, "ios", 2), re.M).group(1)
+    # gli altri workflow che girano sulle PR non reagiscono a ready_for_review (niente seconda corsa delle foto)
+    assert "ready_for_review" not in _testo("screenshot.yml")
