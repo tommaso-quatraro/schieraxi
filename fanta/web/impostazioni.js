@@ -50,7 +50,7 @@ function apriPannello(cfg, id, sposta = true) {
     b.classList.toggle("attiva", b.dataset.imp === id);
     if (b.dataset.imp === id) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
   });
-  pagina.innerHTML = `<button class="bottone secondario imp-indietro" id="imp-indietro" type="button">← ${cfg.indietro}</button>
+  pagina.innerHTML = `<button class="bottone secondario imp-indietro" id="imp-indietro" type="button">${ICONA_INDIETRO}${cfg.indietro}</button>
     <h2 class="imp-titolo" id="imp-titolo" tabindex="-1">${g.nome}</h2><div id="imp-corpo">${cfg.corpi[id]()}</div>`;
   $("#imp-indietro").addEventListener("click", () => { radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-imp="${id}"]`); if (b) b.focus(); });
   cfg.collega[id]();

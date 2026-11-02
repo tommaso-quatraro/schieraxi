@@ -596,7 +596,7 @@ def risposte_utente(ctx, db) -> tuple[dict, dict, dict | None]:
     prova("live", lambda: _da_risposta(server.risultati_live(_richiesta_finta("/api/live"))))
     g = (corpi.get("oggi") or {}).get("giornata")
     if g:
-        prova("scelta", lambda: server.leggi_scelta(int(g), Response(), ctx))
+        prova("scelta", lambda: server.leggi_scelta(response=Response(), giornata=int(g), ctx=ctx))     # per nome: la firma della rotta può cambiare ordine
     for nome in [n for n in ("oggi", "formazione", "diario", "scelta") if n in corpi]:     # quelle che FastAPI scrive dopo
         try:
             _in_json(corpi[nome])

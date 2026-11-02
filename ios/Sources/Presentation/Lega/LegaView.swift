@@ -94,7 +94,8 @@ struct LegaView: View {
         .background(Sfondo())
         .demoInFondo()
         .navigationTitle(ambito.titolo)
-        .ricercaGlobale()
+        // Sull'iPad (colonne) lente e ingranaggio li ha già la pagina a destra: due coppie una accanto all'altra confondevano.
+        .ricercaGlobale(attiva: classe != .regular)
         .refreshable { await vm.carica() }
         .task { await vm.carica() }
     }

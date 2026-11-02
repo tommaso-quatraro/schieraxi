@@ -29,7 +29,7 @@ final class NomiRealiTests: XCTestCase {
         let estensioni: Set<String> = ["swift", "json", "md", "yml", "csv", "txt", "plist"]
         let cercati = cognomi.map { piega($0) }
         var trovati: [String] = []
-        for nome in ["Sources", "WidgetSources", "AnteprimaWidget", "Tests", "docs", "scripts", ".github"] {
+        for nome in ["Sources", "WidgetSources", "AnteprimaWidget", "Tests", "docs", "scripts", ".github", "fotografie"] {
             guard let elenco = FileManager.default.enumerator(at: radice.appendingPathComponent(nome, isDirectory: true),
                                                               includingPropertiesForKeys: nil) else { continue }
             for caso in elenco {

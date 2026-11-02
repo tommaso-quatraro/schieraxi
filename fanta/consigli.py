@@ -579,6 +579,10 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
     spiegazione = spiega(prev.loc[id_a], prev.loc[id_b], regole)
     margine = round(abs(a["punti_attesi"] - b["punti_attesi"]), 2)
     in_formazione = _in_formazione(db, regole, rose, nome_squadra, giornata, modulo, id_a, id_b, prev, livello) if rose is not None else None
+    if in_formazione:            # chi schierare è il titolare della formazione del sistema, se uno solo dei due lo è (titolo «Schiera X» dei client)
+        titolari = [g for g, p in ((a, in_formazione["posto_a"]), (b, in_formazione["posto_b"])) if p == "titolare"]
+        if len(titolari) == 1:
+            meglio = titolari[0]
     perche_testo = _frase_perche(a["nome"], b["nome"], spiegazione, margine)
     return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "giocatori": risultato,
             "consigliato": meglio["id"], "margine": margine,

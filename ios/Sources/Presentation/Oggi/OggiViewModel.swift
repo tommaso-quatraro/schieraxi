@@ -62,7 +62,7 @@ final class OggiViewModel: ViewModelBase {
         while !Task.isCancelled {
             await live.ricarica()
             guard !Task.isCancelled,
-                  let attesa = DirettaLogica.attesa(live: risultatiLive, turno: oggi?.partite ?? [], adesso: Date()) else { return }
+                  let attesa = DirettaLogica.attesa(live: risultatiLive, turno: oggi?.partite ?? [], adesso: Orologio.adesso()) else { return }
             do { try await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000)) } catch { return }
         }
     }
