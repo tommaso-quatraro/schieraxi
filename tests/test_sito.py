@@ -444,3 +444,14 @@ def test_menu_senza_voce_corrente_in_cima():
     """Tornando in cima alla pagina il menu non deve restare evidenziato sull'ultima sezione vista."""
     js = (SITO / "js" / "effetti.js").read_text(encoding="utf-8")
     assert "getElementById('eroe')" in js and "io.observe(eroe)" in js
+
+
+def test_testata_senza_voci_su_due_righe():
+    """Fra 900 e 1150 px il menu, il nome e i pulsanti stanno su una riga: voci mai spezzate,
+    «Apri la web app» nella barra solo da 72rem, «Installa» solo icona finché manca spazio."""
+    css = (SITO / "stile.css").read_text(encoding="utf-8")
+    regola_menu = re.search(r"\.menu a \{[^}]*\}", css).group(0)
+    assert "white-space: nowrap" in regola_menu
+    assert re.search(r"@media \(min-width: 72rem\) \{ body\.dopo-eroe \.tasto\.tasto-cab \{ display: inline-flex; \} \}", css)
+    assert not re.search(r"@media \(min-width: 56rem\) \{ body\.dopo-eroe \.tasto\.tasto-cab", css)
+    assert re.search(r"@media \(max-width: 84\.99rem\) \{\s*#installa \{", css)
