@@ -504,10 +504,12 @@ struct RegoleEditorView: View {
     private var partiteRinviate: some View {
         if let modo = vm.valore.valore("partite_rinviate")?.testo {
             Section {
+                // una riga per scelta (il selettore a segmenti tagliava «Aspetta il recupero» sull'iPhone)
                 Picker(TestiRinvio.sezioneRegole, selection: vm.testo("partite_rinviate")) {
                     ForEach(ModoRinvio.tutti, id: \.self) { m in Text(TestiRinvio.etichetta(m)).tag(m) }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.inline)
+                .labelsHidden()
                 Text(TestiRinvio.spiega(modo)).font(.footnote).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
                 if modo == ModoRinvio.votoUfficio {
