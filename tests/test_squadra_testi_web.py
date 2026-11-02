@@ -26,7 +26,9 @@ def _riga_regola(etichetta: str) -> str:
     inizio = APP.index("function stepper(")
     stepper = APP[inizio:APP.index("\n}\n", inizio) + 3]
     riga = re.search(r"^const rigaRegola = .*$", APP, re.M).group(0)
-    codice = ("const t = k => k; const num = (x) => String(x); const esc = s => String(s);\n" + stepper + riga
+    inizio_esc = APP.index("function esc(")
+    esc = APP[inizio_esc:APP.index("\n}\n", inizio_esc) + 3]
+    codice = ("const t = k => k; const num = (x) => String(x);\n" + esc + stepper + riga
               + f"\nconsole.log(JSON.stringify(rigaRegola({json.dumps(etichetta)}, stepper('scad_min', 10, {{ passo: 5 }}), 'aiuto')));")
     r = subprocess.run([NODE, "-e", codice], capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
@@ -39,7 +41,9 @@ def test_ogni_campo_delle_regole_ha_il_nome_della_sua_riga():
     # della sezione («Gol» anche per l'assist)
     html = _riga_regola("Scadenza della formazione")
     assert re.search(r'<input aria-label="Scadenza della formazione" id="scad_min"', html)
-    assert _riga_regola("Gol di un <b>portiere</b>").count('aria-label="Gol di un portiere"') == 1
+    # il nome è testo: virgolette e «<» non diventano mai HTML (CodeQL segnalava la prima versione, che toglieva i tag con una regex)
+    assert 'aria-label="Voto &quot;d&#39;ufficio&quot; &lt;script&gt;"' in _riga_regola('Voto "d\'ufficio" <script>')
+    assert "/<[^>]*>/g" not in re.search(r"^const rigaRegola = .*$", APP, re.M).group(0)
 
 
 def test_la_prova_del_modificatore_non_arrotonda_il_bonus():
