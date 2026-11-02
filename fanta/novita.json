@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.356",
+    "data": "2026-11-02T14:36:26",
+    "titolo": "Notifiche e Impostazioni: ritocchi dal collaudo",
+    "voci": [
+      "Notifiche: con le ore tranquille spente non compaiono più le tendine «Dalle» e «Alle».",
+      "Notifiche: se scegli la stessa ora di inizio e di fine, le tendine tornano all'ultima fascia salvata.",
+      "Il tuo account: «Genera un nuovo codice» senza password ora chiede di scriverla, invece di dire che è sbagliata.",
+      "Primo avvio: dopo aver scelto da quale giornata è partita la lega, in alto compare subito il numero giusto della giornata.",
+      "Informazioni: c'è il link al codice sorgente di SchieraXI, come sull'iPhone."
+    ],
+    "tecnico": [
+      "stile.css: regola globale [hidden] { display: none !important } (.riga con display:flex vinceva su hidden in #av-fascia); avvisiTelefono riporta le tendine a o.silenzio_da/a e aggiorna o dopo ogni PUT; collegaAccount controlla #acc-pw-codice vuoto prima di /api/account/codice-recupero; paTempiSalva chiama caricaInfo; impostazioni.js voceSorgente da /api/stato.sorgente (solo https). Test in tests/test_impostazioni_collaudo5_web.py."
+    ]
+  },
+  {
     "versione": "1.355",
     "data": "2026-11-02T14:33:24",
     "titolo": "Partite anticipate: la formazione resta aperta",
