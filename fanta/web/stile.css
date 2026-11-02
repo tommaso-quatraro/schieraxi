@@ -12,6 +12,8 @@
   --verde: #3ddc97;
   --capitano: #d4f34a;
   --capitano-testo: #1a2600;                /* testo scuro sopra il lime */
+  --xi: var(--capitano);                    /* «XI» del nome: lime in scuro, oliva in chiaro (il lime non va mai come testo) */
+  --font-marchio: ui-rounded, "SF Pro Rounded", "Segoe UI Variable Display", "Nunito", system-ui, sans-serif;   /* carattere del nome SchieraXI: si cambia solo qui */
   --verde-2: #1fb574;
   --verde-testo: #04301c;
   --azione: #3ddc97; --azione-2: #1fb574; --azione-testo: #04301c;   /* pulsanti, link e testi di azione: in scuro come il verde */
@@ -50,6 +52,7 @@
     --verde-2: #075f38;
     --verde-testo: #ffffff;
     --azione: #526600; --azione-2: #3f4f00; --azione-testo: #ffffff;   /* oliva scuro: pulsanti, link, testi di azione; il lime resta decorazione e capitano */
+    --xi: var(--azione);
     --spunta: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --rosso: #b3261e;
     --arancio: #9c5400;
@@ -77,6 +80,7 @@
     --verde-2: #075f38;
     --verde-testo: #ffffff;
     --azione: #526600; --azione-2: #3f4f00; --azione-testo: #ffffff;   /* oliva scuro: pulsanti, link, testi di azione; il lime resta decorazione e capitano */
+    --xi: var(--azione);
     --spunta: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --rosso: #b3261e;
     --arancio: #9c5400;
@@ -281,7 +285,24 @@ details[open] > summary { margin-bottom: 8px; }
 .maglia.P { --c1: #f0b73a; --c2: #b27712; } .maglia.D { --c1: #3fbf74; --c2: #1d7440; } .maglia.C { --c1: #4b95ec; --c2: #1f5aa3; } .maglia.A { --c1: #ef5f5b; --c2: #a52b2b; }
 .pedina .maglia.dubbio { animation: respira 2.4s ease-in-out infinite; }
 .pedina .nome { font-size: var(--t-eti); font-weight: 650; line-height: 1.1; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pedina .info { font-size: var(--t-eti); opacity: .92; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-variant-numeric: tabular-nums; }
+/* sotto il nome: «gioca 85%» (sotto il 70% pillola arancio «⚠ gioca 45%»), poi «vs NAP» in casa / «@ NAP» fuori con la sigla nei colori sociali */
+.pedina .gioca, .legenda-campo .gioca { font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.35; }
+.pedina .gioca.basso, .legenda-campo .gioca.basso { background: #ffb04a; color: #2a1600; text-shadow: none; border-radius: var(--r-pill); padding: 0 6px; }
+.pedina .avv, .legenda-campo .avv { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); white-space: nowrap; }
+.dist { font-style: normal; display: inline-block; min-width: 2.6em; padding: 0 4px; border-radius: 5px; background: var(--c1); color: var(--ct); box-shadow: inset 0 -2.5px 0 var(--c2), 0 0 0 1px rgba(0, 0, 0, .25);
+  font-size: var(--t-eti); font-weight: 800; letter-spacing: .03em; line-height: 1.5; text-align: center; text-shadow: none; }
+/* legenda del campo (una volta, poi dal pulsante ⓘ in basso a destra): in cima al campo, sopra gli attaccanti */
+.info-campo { position: absolute; z-index: 2; bottom: 16px; right: 16px; min-height: 44px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid rgba(255, 255, 255, .35);
+  background: rgba(8, 14, 10, .55); color: #fff; font-size: var(--t-eti); font-weight: 650; display: inline-flex; align-items: center; gap: 6px; }
+.info-campo span { font-size: var(--t-corpo); }
+.info-campo[hidden], .legenda-campo[hidden] { display: none; }
+.legenda-campo { position: relative; z-index: 2; margin: 0 8px; padding: 12px 14px; border-radius: var(--r-in); background: rgba(8, 14, 10, .82); color: #fff;
+  border: 1px solid rgba(255, 255, 255, .2); font-size: var(--t-sec); }
+.legenda-campo ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.legenda-campo li { display: grid; grid-template-columns: 6.6em 1fr; gap: 8px; align-items: center; line-height: 1.3; }
+.leg-esempio { display: flex; justify-content: center; }
+.fv-esempio { padding: 1px 8px; border-radius: 10px; background: rgba(8, 14, 10, .9); border: 1px solid rgba(255, 255, 255, .35); font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; }
+.legenda-campo .bottone.secondario { width: 100%; background: rgba(255, 255, 255, .14); color: #fff; border-color: rgba(255, 255, 255, .3); box-shadow: none; }
 
 /* ---------------------------------------------------------------- elenchi di giocatori */
 .elenco { list-style: none; margin: 0; padding: 0; }
@@ -330,33 +351,54 @@ details[open] > summary { margin-bottom: 8px; }
 /* ---------------------------------------------------------------- Oggi */
 .conto { text-align: left; }
 .conto .grande { margin: 2px 0 4px; }
-.partite-turno { display: grid; gap: 2px; }
-.partita { display: grid; grid-template-columns: 74px 1fr auto 1fr; gap: 8px; align-items: center; padding: 9px 0; font-size: var(--t-corpo); font-variant-numeric: tabular-nums; }
+/* Partite del turno: una griglia sola per tutte le righe (colonne fisse: stato/ora, casa, «vs», trasferta, punteggio),
+   così ora, squadre e punteggi stanno in colonna anche quando una riga è evidenziata. Tutte le righe hanno lo stesso rientro:
+   l'evidenziazione delle partite con i tuoi titolari (fondo e barretta nel rientro) non sposta niente. */
+.partite-turno { display: grid; gap: 2px; --col-ora: 4.75em; --col-pt: 3.6em; }
+.partita { display: grid; grid-template-columns: var(--col-ora) minmax(0, 1fr) 1.9em minmax(0, 1fr) var(--col-pt); column-gap: 8px; row-gap: 4px; align-items: center;
+  position: relative; padding: 9px 10px; margin: 0 -10px; border-radius: 12px; font-size: var(--t-corpo); font-variant-numeric: tabular-nums; }
 .partita + .partita { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
-.partita .ora { color: var(--testo-2); font-size: var(--t-sec); }
-.partita .sq { font-weight: 650; } .partita .sq.trasf { text-align: right; }
-.partita .vs { color: var(--testo-2); font-size: var(--t-eti); }
+.partita .ora { color: var(--testo-2); font-size: var(--t-sec); min-width: 0; }
+.partita .sq { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.partita .sq.casa { text-align: right; } .partita .sq.trasf { text-align: left; }
+.partita .vs { color: var(--testo-2); font-size: var(--t-eti); text-align: center; }
+.partita .pt { text-align: right; font-weight: 750; color: var(--testo); white-space: nowrap; letter-spacing: .02em; border-radius: 8px; padding: 1px 0; }
 .partita.giocata { opacity: .55; }
 .partita.rinviata .ora { color: var(--arancio, var(--testo-2)); font-weight: 650; }   /* «Rinviata» al posto dell'orario */
 .partita.rinviata .sq, .partita.rinviata .vs { opacity: .6; }
+/* nome e slogan in cima a Oggi */
+.marchio-oggi { margin: 2px 2px 12px; }
+.wordmark { margin: 0; font-family: var(--font-marchio); font-size: var(--t-titolo); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
+.wordmark .xi, .slogan-oggi .xi { color: var(--xi); letter-spacing: .03em; }
+.slogan-oggi { margin: 3px 0 0; font-size: var(--t-eti); font-weight: 650; color: var(--testo-2); letter-spacing: .01em; }
+/* Formazione: stato della scelta della giornata (in cima, sempre dal server) */
+.stato-scelta { margin: -2px 0 12px; padding: 0 0 12px; border-bottom: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
+.stato-scelta p { margin: 0; display: flex; gap: 8px; align-items: baseline; font-weight: 650; font-size: var(--t-corpo); line-height: 1.35; }
+.stato-scelta .segno { flex: none; width: 1.2em; text-align: center; font-weight: 800; }
+.stato-scelta.consigliata .segno { color: var(--testo-2); }
+.stato-scelta.salvata .segno, .stato-scelta.salvata p { color: var(--verde); }
+.stato-scelta.modificata .segno, .stato-scelta.mano .segno { color: var(--arancio); }
+.stato-scelta.non_valida .segno { color: var(--rosso); }
+.stato-scelta .pulsanti { margin-top: 10px; gap: 8px; }
+.stato-scelta .bottone { padding-left: 14px; padding-right: 14px; }
 .giorno-titolo { font-size: var(--t-eti); text-transform: uppercase; letter-spacing: .08em; color: var(--testo-2); margin: 10px 0 2px; font-weight: 600; }
 /* ---- risultati in diretta ---- */
-.partita.mia { box-shadow: inset 3px 0 0 var(--verde); padding-left: 8px; }
+.partita.mia { background: color-mix(in srgb, var(--verde) 9%, transparent); }
+.partita.mia::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--verde); }
 .partita .ora.live { display: flex; flex-direction: column; gap: 1px; line-height: 1.15; color: var(--testo); }
 .partita .minuto { font-size: var(--t-eti); color: var(--rosso); font-weight: 650; }
 .badge-live { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-eti); letter-spacing: .08em; font-weight: 800; color: var(--rosso);
   background: color-mix(in srgb, var(--rosso) 16%, transparent); border-radius: 6px; padding: 1px 5px; }
 .badge-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: live-pulsa 1.6s ease-in-out infinite; }
 @keyframes live-pulsa { 50% { opacity: .3; } }
-.partita .vs.punteggio { font-size: var(--t-corpo); font-weight: 750; color: var(--testo); padding: 1px 8px; border-radius: 8px; letter-spacing: .02em; }
-.partita .vs.gol { animation: gol-nuovo 2.2s ease-out; }
+.partita .pt.gol { animation: gol-nuovo 2.2s ease-out; }
 @keyframes gol-nuovo {
   0% { background: color-mix(in srgb, var(--verde) 45%, transparent); transform: scale(calc(1 + var(--mov, 1) * .22)); }
   30% { transform: none; }
   100% { background: transparent; }
 }
-@media (prefers-reduced-motion: reduce) { .partita .vs.gol { animation-name: gol-calmo; } }
-html[data-animazioni="ridotte"] .partita .vs.gol { animation-name: gol-calmo; }
+@media (prefers-reduced-motion: reduce) { .partita .pt.gol { animation-name: gol-calmo; } }
+html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 @keyframes gol-calmo { 0% { background: color-mix(in srgb, var(--verde) 45%, transparent); } 100% { background: transparent; } }
 .partita.giocata.con-eventi { opacity: .85; }
 .partita .miei-live, .partita .eventi-live { grid-column: 1 / -1; }
@@ -560,13 +602,11 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
   background: var(--c); color: #04210f; font-size: var(--t-eti); font-weight: 800; font-variant-numeric: tabular-nums; border: 2px solid var(--solido); }
 .avatar-anello.grande-a { --d: 92px; padding: 4px; } .avatar-anello.grande-a .badge-indice { min-width: 30px; height: 30px; border-radius: var(--r-in); font-size: var(--t-corpo); right: -4px; bottom: -2px; }
 .voce { grid-template-columns: 54px 1fr auto; gap: 11px; }
-.avatar-pedina { position: relative; width: 56px; height: 56px; border-radius: 50%; padding: 0; border: 2.5px solid var(--cr, #fff); background: var(--solido);
+.avatar-pedina { position: relative; width: 56px; height: 56px; border-radius: 50%; padding: 0; border: 2px solid rgba(255, 255, 255, .85); background: var(--solido);
   box-shadow: 0 6px 14px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .25); }
-.avatar-pedina.P { --cr: #f0b73a; } .avatar-pedina.D { --cr: #3fbf74; } .avatar-pedina.C { --cr: #4b95ec; } .avatar-pedina.A { --cr: #ef5f5b; }
 .avatar-pedina .avatar { border-radius: 50%; --d: 52px; }
 .avatar-pedina .fv { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); padding: 1px 8px; border-radius: 10px; background: rgba(8, 14, 10, .9); color: #fff;
   font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid rgba(255, 255, 255, .35); white-space: nowrap; }
-.avatar-pedina.dubbio { animation: respira 2.4s ease-in-out infinite; }
 .pedina .nome { margin-top: 5px; }
 .elenco li.con-confronto { position: relative; }
 .confronta-mini { position: absolute; right: 0; bottom: 6px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 55%, transparent);

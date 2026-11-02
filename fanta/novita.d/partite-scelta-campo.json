@@ -1,0 +1,17 @@
+{
+  "titolo": "Partite in colonna, scelta salvata sempre chiara, campo più leggibile",
+  "voci": [
+    "Oggi, Partite del turno: ora, squadre e risultato stanno sempre in colonna, anche nelle partite con i tuoi titolari (che hanno il fondo verde chiaro).",
+    "Formazione: in cima vedi sempre se la formazione è salvata come tua scelta, con l'ora del salvataggio, oppure se hai modifiche ancora da salvare. Resta uguale anche ricaricando la pagina.",
+    "Se la formazione salvata non è più valida (per esempio un giocatore non è più nella rosa) l'app te lo dice e non la cancella da sola.",
+    "Campo: sotto ogni giocatore «gioca 85%» (arancio sotto il 70%) e l'avversario, «vs NAP» in casa e «@ NAP» fuori, con la sigla nei colori della squadra. Una legenda breve spiega tutto.",
+    "Oggi: in cima il nome SchieraXI con il motto «Schierali. Schiera gli XI.»"
+  ],
+  "tecnico": [
+    "Partite del turno: griglia a colonne fisse (ora, casa, vs, trasferta, punteggio), punteggio in `.pt` a destra con cifre tabulari; l'evidenziazione `.mia` non cambia il rientro.",
+    "Formazione: `statoScelta()` (consigliata, salvata, modificata, mano, non_valida) dal confronto con `GET /api/scelta`; dopo «Salva» si rilegge la scelta dal server; corretto il segno «salvata» che restava acceso dopo una sostituzione.",
+    "`POST /api/formazione/valuta`: formazione non valida = 400 con `codice: formazione_non_valida` (`consigli.FormazioneNonValida`); la web app non fa più DELETE automatico della scelta.",
+    "Pedina: niente anello del ruolo né pulsazione; `aria-label` con «gioca all'85 per cento, in casa contro il Napoli»; legenda una tantum (`localStorage` `legenda-campo`).",
+    "Wordmark in Oggi con il carattere in `--font-marchio` (stile.css)."
+  ]
+}

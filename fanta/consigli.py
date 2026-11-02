@@ -261,6 +261,12 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -
     return risultato
 
 
+class FormazioneNonValida(ValueError):
+    """La formazione scelta (o salvata) non è valida: titolari non della rosa, ripetuti o modulo non ammesso. Risposta 400 con il
+    testo per l'utente e `codice` = «formazione_non_valida», così i client sanno che la scelta salvata va rifatta (non cancellata da sola)."""
+    codice = "formazione_non_valida"
+
+
 def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[int], nome_squadra: str | None = None,
            giornata: int | None = None, simulazioni: int = 600) -> dict:
     """Quanto vale una formazione scelta a mano (11 titolari della rosa): punti attesi, oscillazione e differenza dalla consigliata
@@ -274,11 +280,11 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
                                  float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids}
     scelti = list(dict.fromkeys(int(i) for i in titolari))
     if len(scelti) != 11 or any(i not in rosa for i in scelti):
-        raise ValueError("Servono 11 titolari diversi, tutti della rosa")
+        raise FormazioneNonValida("Servono 11 titolari diversi, tutti della rosa")
     tit = [rosa[i] for i in scelti]
     conta = {r: sum(1 for g in tit if g.ruolo == r) for r in "PDCA"}
     if conta["P"] != 1 or not modulo_valido(conta["D"], conta["C"], conta["A"], regole):
-        raise ValueError(f"Il modulo {conta['D']}-{conta['C']}-{conta['A']} con {conta['P']} portieri non è ammesso nella tua lega")
+        raise FormazioneNonValida(f"Il modulo {conta['D']}-{conta['C']}-{conta['A']} con {conta['P']} portieri non è ammesso nella tua lega")
     modulo = f"{conta['D']}-{conta['C']}-{conta['A']}"
     lista = list(rosa.values())
     val = fz.Valutatore(lista, regole, simulazioni)

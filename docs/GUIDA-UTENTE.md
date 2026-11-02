@@ -70,19 +70,27 @@ Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazio
 
 È la schermata da aprire per prima. Dall'alto in basso:
 
+- il nome **SchieraXI** con il motto «Schierali. Schiera gli XI.»;
 - il **conto alla rovescia** alla scadenza della formazione;
 - **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata. Se la lista è vuota: «Nessuna azione utile oggi»;
 - quanto sono fresche le **probabili formazioni**; se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare;
 - la **formazione consigliata** con punti attesi e fascia (se ne hai salvata una tua, vedi la tua);
 - **Da controllare** (giocatori in dubbio), **I tuoi migliori**, **Indisponibili** e **Diffidati**;
-- **Partite del turno**, con i risultati in diretta (gol, rigori, espulsioni; una partita rinviata dice **Rinviata**).
+- **Partite del turno**, con i risultati in diretta (gol, rigori, espulsioni; una partita rinviata dice **Rinviata**). A sinistra l'ora o lo stato, al centro le squadre, a destra il risultato. Le partite con i tuoi titolari hanno il fondo verde chiaro e una barretta a sinistra.
 
 I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una frase. SchieraXI non propone cambi per differenze minime né ti fa svincolare un titolare utile.
 
 ### Formazione
 
+- In cima, **lo stato della tua scelta** per la giornata (lo sa il server, quindi resta uguale anche ricaricando o su un altro dispositivo):
+  - ○ «Stai vedendo la consigliata: non hai salvato una tua formazione.» Con **Salva questa** la tieni come tua scelta;
+  - ✓ «La tua formazione è salvata (oggi alle 21:40)»: è la tua scelta per la giornata;
+  - ● «Modifiche non salvate»: hai cambiato qualcosa dopo aver salvato. **Salva le modifiche** o **Annulla modifiche**;
+  - ● «Modifica a mano non ancora salvata»: tocca **Salva come mia scelta**;
+  - ! «La formazione salvata non è più valida»: per esempio un giocatore non è più nella rosa. Rifalla o torna alla consigliata.
+  **Torna alla consigliata** toglie la tua scelta.
 - **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto).
-- **Titolari** sul campo: il numero sotto ogni volto è il fantavoto atteso; toccalo per vedere **Perché questo numero**. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
+- **Titolari** sul campo. Sotto ogni volto (con i colori della sua squadra): il fantavoto atteso nella pillola scura (toccalo per vedere **Perché questo numero**), il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori. La prima volta in cima al campo c'è una legenda: **Ho capito** la chiude, **ⓘ Cosa vuol dire** la riapre. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
 - **Panchina** nell'ordine in cui entrano.
 - **Modifica a mano** (✎): cambi un titolare con un altro della rosa e i punti si ricalcolano.
 - **Copia il testo** e **Condividi come immagine**.
