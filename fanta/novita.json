@@ -1,5 +1,22 @@
 [
   {
+    "versione": "1.347",
+    "data": "2026-11-02T13:33:46",
+    "titolo": "Scambi e mercato: conti giusti anche nei casi limite",
+    "voci": [
+      "Scambi: se chi paga il conguaglio non ha abbastanza crediti, lo scambio risulta «non si può fare» senza punti inventati né crediti sotto zero.",
+      "Scambi: il primo giudizio con un conguaglio arriva prima (i due calcoli dei crediti partono insieme).",
+      "Valuta un'offerta sull'iPhone: un messaggio con un numero diverso di giocatori per parte viene valutato; se lo scambio non si può fare, il messaggio dice perché.",
+      "Testi più giusti: «1 giocatore osservato», «ne andrebbe liberato 1»; in inglese le rose dopo lo scambio usano le sigle G, D, M, F."
+    ],
+    "tecnico": [
+      "scambi_multi: conguaglio non valido -> conguaglio.dopo null, valore_mio/valore_loro null, netto = guadagno; spiegazione dedicata (it/en).",
+      "consigli.analisi_scambio: i due tassi crediti->punti si chiedono entrambi prima di alzare InCalcolo (un solo 202 invece di due).",
+      "POST /api/scambi/da-testo senza completo: se l'analisi semplice alza ValueError, analisi completa senza conguaglio invece del 400; se non è valida, 400 con i motivi (chiave err.scambio_non_fattibile).",
+      "web: mercato.n_osservati con tp (.one/.other), sigle dei ruoli con ruoloSigla nell'esito, riga «Contando i crediti» solo con valore_mio, G10 al posto di g10."
+    ]
+  },
+  {
     "versione": "1.346",
     "data": "2026-11-02T13:33:09",
     "titolo": "Scheda del giocatore e confronto: il numero della giornata della lega",
