@@ -36,6 +36,16 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 - **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …»;
   niente segni da interfaccia generata (`docs/STILE-SENZA-AI.md`).
 
+## Contratto delle API
+- `docs/openapi.json` è l'istantanea di tutte le rotte del server (parametri, corpi, risposte). `tests/test_contratto_api.py`
+  la confronta con l'API vera: se una pull request cambia l'API senza aggiornarla, il test fallisce e dice cosa è cambiato.
+- Cambio voluto: `python script/ci/aggiorna_openapi.py` e il file aggiornato nella stessa pull request. Così rotte e campi nuovi
+  o tolti si vedono nel diff.
+- **Un cambio dell'istantanea richiede di controllare iPhone e web**: chi rivede la pull request guarda il diff di
+  `docs/openapi.json` e verifica che la web app e l'app per iPhone (e il widget) reggano il cambio. Aggiungere campi si può;
+  togliere o cambiare un campo che un client legge rompe le app già installate: prima si adeguano i client, oppure si apre
+  un'issue «coerenza: …» per il lato che resta indietro.
+
 ## App per iPhone
 - Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.
 - Le foto (`screenshot.yml`) usano un Mac di GitHub alla volta e le lancia una sola persona. Si fanno su `main` DOPO l'unione

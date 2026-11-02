@@ -45,12 +45,14 @@ final class SchedaGiocatoreViewModel: ViewModelBase {
         osserva(formazione)
     }
 
+    /// Le quattro letture partono insieme (prima una dopo l'altra: la scheda e «Osserva» arrivavano tardi).
     func carica() async {
-        await caricatore.ricarica()
-        await calendario.ricarica()
+        async let scheda: Void = caricatore.ricarica()
+        async let partite: Void = calendario.ricarica()
+        async let rosa: Void = formazione.ricarica()
         await osservati.ricarica()
         osservato = osservati.dato?.giocatori.contains { $0.id == id }
-        await formazione.ricarica()
+        _ = await (scheda, partite, rosa)
     }
 
     /// Le prossime partite della squadra del giocatore (dal calendario).
@@ -80,7 +82,7 @@ final class SchedaGiocatoreViewModel: ViewModelBase {
         do {
             try await server.invia(eraOsservato ? "DELETE" : "PUT", "/api/osservati/\(id)")
             osservato = !eraOsservato
-            messaggio = eraOsservato ? "Non lo osservi più." : "Lo osservi: lo trovi in Squadra > Seguiti."
+            messaggio = eraOsservato ? "Non lo segui più." : "Lo segui: lo trovi in Squadra > Seguiti."
             Haptics.esito(riuscito: true)
         } catch {
             if (error as? ErroreApi)?.eConflitto == true {

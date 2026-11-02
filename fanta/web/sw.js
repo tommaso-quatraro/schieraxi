@@ -1,6 +1,6 @@
 // Service worker: tiene in memoria la "scocca" dell'app (pagine, stile, icone) così si apre subito.
 // I dati (/api/...) arrivano sempre freschi dal server; se il server non risponde, l'app lo dice.
-const VERSIONE = "fanta-190";
+const VERSIONE = "fanta-193";
 const FILE = ["/", "/stile.css", "/app.js", "/impostazioni.js", "/dafare.js", "/primoavvio.js", "/anteprima.js", "/avatar.js", "/live.js", "/testi.js", "/manifest.webmanifest", "/icona.svg", "/icona-180.png", "/icona-192.png"];
 
 // Pagina mostrata quando non c'è rete e nessuna copia salvata (si apre aprendo o ricaricando l'app).
