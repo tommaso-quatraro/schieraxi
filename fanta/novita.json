@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.359",
+    "data": "2026-11-02T14:48:24",
+    "titolo": "Elenco dei giocatori con lo stato vero della giornata",
+    "voci": [
+      "Dopo la scadenza, l'elenco dei giocatori dice «Voto in arrivo», «Da giocare» o il fantavoto preso, come Formazione, Rosa, Seguiti e scheda, invece delle probabili e di «gioca N%» per partite già giocate."
+    ],
+    "tecnico": [
+      "GET /api/classifica a giornata iniziata passa da fasi.schede_a_giornata_iniziata (helper server._stato_vero), come /api/rosa, /api/osservati e /api/giocatore; test in tests/test_seguiti_dopo_scadenza.py (anche Seguiti, già corretto su main)."
+    ]
+  },
+  {
     "versione": "1.358",
     "data": "2026-11-02T14:45:18",
     "titolo": "In inglese i salvataggi non si bloccano più",
