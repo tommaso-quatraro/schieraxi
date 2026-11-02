@@ -49,7 +49,7 @@ indirect enum JSONValue: Codable, Equatable {
 }
 
 /// Impostazioni degli avvisi del server: chiavi identiche a quelle del server (si leggono senza conversione).
-struct ImpostazioniAvvisi: Codable {
+struct ImpostazioniAvvisi: Codable, Equatable {
     var cambi: Bool
     var promemoria_60: Bool
     var promemoria_15: Bool

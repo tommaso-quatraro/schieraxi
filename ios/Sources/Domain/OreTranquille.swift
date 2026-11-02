@@ -59,3 +59,33 @@ enum ArchivioOreTranquille {
         memoria.set(ore.a, forKey: chiaveA)
     }
 }
+
+/// Quali promemoria locali (un'ora e 15 minuti prima) l'utente vuole: gli stessi interruttori degli avvisi del server
+/// («Promemoria un'ora prima», «Promemoria 15 minuti prima»). Prima il telefono li mandava comunque, anche spenti.
+enum ArchivioPromemoria {
+    private static let chiave60 = "promemoria_60"
+    private static let chiave15 = "promemoria_15"
+
+    /// I minuti dei promemoria accesi; senza scelta salvata tutti e due (come prima).
+    static func minutiAttivi(_ memoria: UserDefaults = .standard) -> Set<Int> {
+        var attivi: Set<Int> = []
+        if memoria.object(forKey: chiave60) as? Bool ?? true { attivi.insert(60) }
+        if memoria.object(forKey: chiave15) as? Bool ?? true { attivi.insert(15) }
+        return attivi
+    }
+
+    static func salva(sessanta: Bool, quindici: Bool, _ memoria: UserDefaults = .standard) {
+        memoria.set(sessanta, forKey: chiave60)
+        memoria.set(quindici, forKey: chiave15)
+    }
+}
+
+extension ImpostazioniAvvisi {
+    /// I minuti dei promemoria accesi (60 e/o 15).
+    var promemoriaAccesi: Set<Int> {
+        var accesi: Set<Int> = []
+        if promemoria_60 { accesi.insert(60) }
+        if promemoria_15 { accesi.insert(15) }
+        return accesi
+    }
+}

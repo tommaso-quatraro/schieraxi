@@ -169,13 +169,15 @@ Ti scrivono quando:
 - la **formazione consigliata cambia**;
 - **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni;
 - **il consiglio cambia vicino alla scadenza** (voce **Avviso se il consiglio cambia**: 30 minuti, 1 ora o 1 ora e mezza prima, oppure Spento; di base 1 ora). Se le ultime probabili o un infortunio cambiano la formazione da schierare, ti arriva il motivo in una frase, per esempio «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi)». Arriva solo se vale almeno un punto atteso, al massimo due volte per giornata, mai nelle ore tranquille. In quel periodo sostituisce gli avvisi sui cambi delle probabili dei tuoi giocatori, così la stessa notizia non arriva due volte;
-- **60 e 15 minuti** prima della prima partita (non arrivano se hai già schierato, a meno che un tuo titolare sia diventato indisponibile);
+- **un'ora e un quarto d'ora prima** della scadenza della formazione (non arrivano se hai già schierato, a meno che un tuo titolare sia diventato indisponibile);
 - **reparto scoperto**: troppo pochi giocatori disponibili in un reparto;
 - il **riepilogo** della giornata.
 
 Gli avvisi dicono le cose a parole (per esempio «ora probabile titolare», senza percentuali) e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
 Attivazione: nella web app, riquadro **Notifiche di questa app**, tocca **Attiva**; **Manda un avviso di prova** controlla che funzioni. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente). **Ore tranquille**: scegli una fascia (per esempio dalle 23 alle 7) in cui non arriva niente; ciò che cade lì arriva dopo.
+
+Nell'app per iPhone e iPad (Impostazioni > Avvisi e promemoria) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
 Se le notifiche smettono di arrivare dopo un cambio di chiave del server: **Disattiva**, poi **Attiva** nello stesso riquadro.
 

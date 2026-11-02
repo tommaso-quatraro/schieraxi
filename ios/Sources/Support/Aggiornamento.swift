@@ -50,15 +50,29 @@ enum Aggiornamento {
         if Demo.attivo { return }
         if let stato: StatoAvvisi = try? await ServerCorrente.condiviso.get("/api/avvisi", snake: false) {
             ArchivioOreTranquille.salva(stato.impostazioni.oreTranquille)
+            ArchivioPromemoria.salva(sessanta: stato.impostazioni.promemoria_60, quindici: stato.impostazioni.promemoria_15)
         }
+    }
+
+    /// I promemoria di un'ora e di un quarto d'ora prima della scadenza di questa giornata (solo quelli accesi negli avvisi).
+    static func programmaPromemoria(_ oggi: Oggi) async {
+        if let inizio = Quando.data(oggi.chiusura), let numero = oggi.giornataMostrata {
+            await Notifiche.programma(giornata: numero, inizio: inizio, modulo: oggi.formazione?.modulo)
+        }
+    }
+
+    /// Dopo che un promemoria si è riacceso negli avvisi: lo rimette in programma con l'ultima giornata salvata, senza rete.
+    /// Senza una copia salvata ci pensa la prossima lettura di Oggi.
+    static func riprogrammaPromemoria() async {
+        if Demo.attivo { return }
+        guard let oggi = await OggiRepository(server: ServerCorrente.condiviso).salvato() else { return }
+        await programmaPromemoria(oggi)
     }
 
     /// Promemoria, widget e (se richiesto) notifica quando la formazione consigliata cambia nella stessa giornata.
     static func elabora(_ oggi: Oggi, avvisaSeCambia: Bool) async {
         if Demo.attivo { return }   // demo: niente promemoria, widget o notifiche
-        if let inizio = Quando.data(oggi.chiusura), let numero = oggi.giornataMostrata {
-            await Notifiche.programma(giornata: numero, inizio: inizio, modulo: oggi.formazione?.modulo)
-        }
+        await programmaPromemoria(oggi)
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
         Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))
         await precaricaWidget()

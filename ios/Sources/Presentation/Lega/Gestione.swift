@@ -24,7 +24,7 @@ struct AvvisiServerView: View {
                 } header: {
                     Text("Promemoria sul telefono").foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text("Ti avvisiamo un'ora e un quarto d'ora prima della prima partita, anche con l'app chiusa. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.").foregroundStyle(Color.testoSecondario)
+                    Text("Ti avvisiamo un'ora e un quarto d'ora prima della scadenza della formazione, anche con l'app chiusa, se lasci accesi i due promemoria qui sotto. Se la formazione consigliata cambia, l'app te lo dice da sola: è iOS a decidere quando controllare, di solito poche volte al giorno.").foregroundStyle(Color.testoSecondario)
                 }
                 if let s = vm.caricatore.dato {
                     if let errore = vm.erroreSalvataggio {
@@ -49,7 +49,7 @@ struct AvvisiServerView: View {
                                 .accessibilityAddTraits(.isStaticText)
                         }
                     }
-                    Section(titolo: "Quali avvisi") {
+                    Section {
                         interruttore("Cambi di formazione e probabili", \.cambi)
                         if let prima = vm.impostazioni?.avviso_prima { sceltaAvvisoPrima(prima) }
                         interruttore("Promemoria un'ora prima", \.promemoria_60)
@@ -69,14 +69,17 @@ struct AvvisiServerView: View {
                         }
                         .tint(Color.verde)
                         .frame(minHeight: 44)
+                    } header: {
+                        Text("Quali avvisi").foregroundStyle(Color.testoSecondario)
+                    } footer: {
+                        // Con gli account l'app nativa non riceve gli avvisi del server: lo si dice QUI, accanto agli interruttori,
+                        // non in una sezione più in basso (sembrava che gli interruttori valessero per questo telefono).
+                        if let nota = Self.notaQualiAvvisi(multiutente: sessione.multiutente) {
+                            Text(nota).foregroundStyle(Color.testoSecondario)
+                        }
                     }
                     sezioneOreTranquille
-                    if sessione.multiutente {
-                        Section {
-                            Text("Per ricevere anche gli avvisi su cambi di formazione e riepilogo, apri SchieraXI con Safari e aggiungilo alla schermata Home: gli avvisi arrivano da lì.")
-                                .font(.footnote).foregroundStyle(Color.testoSecondario)
-                        }
-                    } else {
+                    if !sessione.multiutente {
                     Section {
                         Toggle(isOn: Binding(
                             get: { vm.impostazioni?.app_nativa ?? false },
@@ -115,6 +118,13 @@ struct AvvisiServerView: View {
         .navigationTitle("Avvisi e promemoria")
         .task { await vm.carica() }
         .task { await lega.aggiornaPermesso() }
+    }
+
+    /// Sotto gli interruttori, solo con gli account: quali avvisi arrivano su questo telefono e quali solo dalla web app.
+    /// Senza account niente nota (gli avvisi del server arrivano anche con ntfy, vedi «Avanzate»).
+    static func notaQualiAvvisi(multiutente: Bool) -> String? {
+        guard multiutente else { return nil }
+        return "Su questo telefono arrivano i due promemoria, se accesi, e l'avviso quando cambia la formazione consigliata. Gli altri avvisi di questo elenco arrivano dalla web app: apri SchieraXI con Safari e aggiungilo alla schermata Home."
     }
 
     /// Ore tranquille: niente avvisi in quella fascia (anche i promemoria di questo telefono la rispettano).
