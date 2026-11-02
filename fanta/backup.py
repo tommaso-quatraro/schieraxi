@@ -38,6 +38,8 @@ def _lista_o_dizionario(d: Any) -> None:
         raise ValueError("formato non riconosciuto")
 
 
+FILE_SCELTE_BACKUP = "dati/scelte.json"     # le formazioni scelte, una voce per «stagione/giornata»
+
 # file salvati (percorso dentro il progetto) -> controllo del contenuto
 CONTROLLI: dict[str, Callable[[Any], None]] = {
     "lega/regole.json": regole.da_dict,
@@ -123,12 +125,38 @@ def controlla(backup: Any) -> dict[str, Any]:
     return file
 
 
-def ripristina(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] | None = None, copia_prima: Path | None = None) -> list[str]:
+def ripristina(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] | None = None, copia_prima: Path | None = None,
+               chiusa: Callable[[str], bool] | None = None) -> list[str]:
+    """Rimette i dati del backup (i nomi dei file ripristinati). Vedi `ripristina_esito`."""
+    return ripristina_esito(backup, radice, file_utente, copia_prima, chiusa)["ripristinati"]
+
+
+def ripristina_esito(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] | None = None, copia_prima: Path | None = None,
+                     chiusa: Callable[[str], bool] | None = None) -> dict:
     """Rimette i dati del backup. Prima controlla tutto: se qualcosa non va non cambia niente. I file che il backup
-    non ha restano com'erano. Lo stato di prima si salva in dati/backup-prima-del-ripristino.json."""
+    non ha restano com'erano. Lo stato di prima si salva in dati/backup-prima-del-ripristino.json.
+    `chiusa(chiave)` dice se la giornata di una voce di `scelte` («stagione/giornata») è già chiusa: quelle voci restano come sono
+    sul server (un backup non deve aggirare la scadenza). Restituisce {ripristinati, scelte_chiuse_tenute: vero se il backup
+    avrebbe cambiato almeno una formazione di una giornata chiusa}."""
     file = controlla(backup)
     dove = _percorsi(radice, file_utente)
     scrivi_sicuro(copia_prima or radice / COPIA_PRIMA, json.dumps(crea(radice, file_utente), ensure_ascii=False))
+    tenute = False
+    if chiusa is not None and FILE_SCELTE_BACKUP in file:
+        try:
+            attuali = json.loads(dove[FILE_SCELTE_BACKUP].read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            attuali = {}
+        file = dict(file)
+        file[FILE_SCELTE_BACKUP], tenute = unisci_scelte(file[FILE_SCELTE_BACKUP], attuali if isinstance(attuali, dict) else {}, chiusa)
     for nome, contenuto in file.items():
         scrivi_sicuro(dove[nome], json.dumps(contenuto, ensure_ascii=False, indent=2))
-    return sorted(file)
+    return {"ripristinati": sorted(file), "scelte_chiuse_tenute": tenute}
+
+
+def unisci_scelte(nuove: dict, attuali: dict, chiusa: Callable[[str], bool]) -> tuple[dict, bool]:
+    """Le scelte da scrivere: quelle del backup per le giornate ancora aperte, quelle del server (o nessuna) per le giornate chiuse.
+    Il secondo valore è vero se il backup ne avrebbe cambiata almeno una chiusa."""
+    chiuse = {k for k in set(nuove) | set(attuali) if chiusa(str(k))}
+    unite = {k: v for k, v in nuove.items() if k not in chiuse} | {k: v for k, v in attuali.items() if k in chiuse}
+    return unite, any(nuove.get(k) != attuali.get(k) for k in chiuse)

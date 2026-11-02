@@ -115,7 +115,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Giocatori: all'utente una sola percentuale sul giocare, «gioca N%» (`p_voto`); `percentuale` delle probabili non si mostra e
   `titolarita` va a parole. Dopo la scadenza `GET /api/formazione` ha `iniziata: true`, `titolarita: null` e `stato_partita`
   (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
-- Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`.
+- Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`. `analizza` e `da-testo` passano dallo stesso `limiti.analisi_scambio`.
+- Ogni parametro `giornata` delle rotte ha `ge=1, le=MAX_GIORNATA` (422, mai 500): `tests/test_giornata_limiti.py` trova da solo le rotte nuove.
 - Rose dalle schermate di Leghe (OCR dell'app iPhone): testo `ruolo;nome;club;prezzo` (intestazione nella prima riga, una riga con una
   cella sola = fantasquadra, `crediti;N`) a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.
 
@@ -152,7 +153,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   Un nome abbreviato è sicuro solo con ruolo E squadra uguali al listone; con uno dei due diverso mai. Misura: `tests/corpus_nomi.py`
   (anche le varianti OCR, `genera_ocr`) e `prove/misura_nomi.py --vero` sul listone salvato in locale.
 - `dati/` non va mai in git né nei log. Il backup (`backup.py`) non contiene chiavi né iscrizioni alle notifiche.
-- Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json`.
+- Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json` e non cambia le scelte delle giornate già chiuse (`backup.unisci_scelte`, regola di `fasi.iniziata`).
 - Rifare tutto il servizio da una copia notturna (`backup-dati.sh`): `docs/RIPRISTINO-SERVER.md` (provato il 2/11/2026; cosa non c'è nella copia e cosa succede).
 - Ore tranquille (`silenzio`, `silenzio_da`, `silenzio_a`): bloccano l'invio degli avvisi. La prova le ignora.
 - Il tempo della lega (`scadenza_minuti`, `prima_giornata_lega`) sta nelle regole della lega, non nel codice.
