@@ -58,7 +58,7 @@ Il giallo (`--giallo`) resta solo per la stella «consigliato». Un valore posit
 ## Grigio secondario (2/11/2026)
 Un solo grigio per sottotitoli, didascalie, orari, intestazioni di elenco e testi «spenti»: web `--testo-2` in `fanta/web/stile.css`, iOS `Tema.secondarioChiaro`/`secondarioScuro`. Stessi due valori, `#46564D` in chiaro e `#BCCDC2` in scuro; un test (`test_design_web.py`) li tiene uguali. Regole:
 - Nel CSS e nel JS nessun altro grigio per il testo: niente `opacity` sul testo (sbiadire un grigio già grigio lo portava sotto 3:1: le partite finite erano a 2,0:1 in chiaro), niente grigi scritti a mano. Una riga «finita» o «rinviata» cambia il colore dei nomi in `--testo-2`; il risultato resta in `--testo`. Le parti disattivate di un controllo (`:disabled`) possono avere opacità, il testo no.
-- Il grigio deve valere 4,5:1 (3:1 sopra 24 px o 18,66 px in grassetto) su bianco, carte e fondo piatto; sul fondo sfumato più carico, senza carta sopra, in chiaro arriva a 4,3:1 (è il punto con le due macchie sovrapposte). La testata (sticky) ha un vetro più opaco (80%) perché il campo verde le passa sotto.
+- Il grigio deve valere 4,5:1 (3:1 sopra 24 px o 18,66 px in grassetto) su bianco, carte e fondo piatto; sul fondo sfumato più carico, senza carta sopra, in chiaro arriva a 4,3:1 (è il punto con le due macchie sovrapposte). La testata (sticky) ha un vetro più opaco (80%) perché il campo verde le passa sotto; la scheda «eroe» ha un velo dello sfondo sotto l'alone verde. Se un testo grigio non arriva a 4,5:1 si ritocca il fondo o quel solo testo (`--testo`), mai il grigio.
 
 Contrasto di `--testo-2` sui fondi principali (calcolo con `prove/contrasto_web/fondi.py`; i due «punti più carichi» del fondo sfumato sono i pixel più scuri/più chiari misurati sul fondo vero, 20 immagini, 2 larghezze, 5 momenti dell'animazione):
 
@@ -89,7 +89,7 @@ Contrasto vero sul telefono e sul PC (`prove/contrasto_web/scatta.mjs` + `analiz
 
 (*) un solo testo: una lettera «A» del Diario mentre scorre sotto il bordo alto del foglio; ferma vale 7,5:1.
 
-Rimasti sotto 4,5:1: in chiaro nulla di rilevante; in scuro il simbolo «○» (3,9:1) e le righe «Giornata 10 · …» e «Modulo» sulla scheda con l'alone verde (4,1 a 4,3:1). Per portarle oltre 4,5:1 servirebbe un grigio scuro più chiaro di `#BCCDC2`, ma allora web e iOS non sarebbero più uguali: da decidere insieme.
+Rimasti sotto 4,5:1 dopo il primo giro: in scuro il simbolo «○» e le righe «Giornata 10 · …» e «Modulo» sulla scheda con l'alone verde (4,1 a 4,3:1). Il grigio non si cambia (resta uguale a iOS): la scheda «eroe» (`.carta.hero`) ha un velo del colore dello sfondo (30%) sotto l'alone verde, e il «○» usa `--testo`. Rimisurato su Oggi e Formazione (390 e 1440 px, chiaro e scuro): nessun testo grigio sotto 4,6:1 (prima 3,9), Oggi più basso 4,61; l'unico caso sotto 4,5:1 delle altre schermate resta la lettera del Diario al bordo del foglio (*).
 
 ## Gerarchia e densità: regole
 - In ogni card il numero chiave è il più grande e a destra o sotto il titolo; l'unità sta sotto in Etichetta.
