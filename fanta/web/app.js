@@ -8,6 +8,8 @@ const VISTE = ["oggi", "formazione", "squadra", "altro"];
 // Pagine che non sono nella barra: stanno sotto Squadra (Cambi consigliati, Seguiti, Elenco) o sotto Altro (Scambi). «lega» è il nome vecchio
 // delle voci che ora stanno in Squadra o in Altro: i vecchi indirizzi e le scorciatoie continuano a funzionare.
 const SOTTO_VISTE = { mercato: "squadra", scambi: "altro", lega: "altro" };
+// Pulsante «torna indietro»: la freccia è un'icona, non un carattere nel testo (docs/STILE-SENZA-AI.md).
+const ICONA_INDIETRO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>`;
 const SCHEDA_DI = v => VISTE.includes(v) ? v : SOTTO_VISTE[v] || null;
 // Le funzioni accese (dieta): una chiave che manca vale «acceso», così con un server vecchio o senza risposta si vede tutto come prima.
 const funz = id => !stato.funzioni || stato.funzioni.funzioni[id] !== false;
@@ -2309,7 +2311,7 @@ async function vistaRosa(nome) {
     }).join("");
     pagina(`
       <div class="carta">
-        <div class="riga"><button class="bottone secondario" data-vai="squadra" style="padding:6px 14px;min-height:44px">${t("scambio.squadra")}</button></div>
+        <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button></div>
         <h2 style="margin-top:14px">${esc(r.nome)}${r.mia ? t("scambio.la_tua") : ""}</h2>
         <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
           <div class="riga" style="gap:8px;margin-top:8px"><label class="solo-lettori" for="nome-squadra">${t("scambio.nuovo_nome")}</label>
@@ -3304,7 +3306,7 @@ async function vistaRegole() {
   contenuto.classList.remove("ridisegna");
   contenuto.innerHTML = `
     <div class="carta">
-      <div class="riga"><button class="bottone secondario" data-vai="altro" style="padding:6px 14px;min-height:44px">${t("regole.altro")}</button>
+      <div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
         <button class="bottone secondario" id="annulla-regole" style="padding:6px 14px;min-height:44px">${t("regole.annulla_modifiche")}</button></div>
       <h2 style="margin-top:14px">${esc(r.nome_lega)}</h2>
       <div class="debole piccolo">${t("regole.regole_della_lega")}</div>

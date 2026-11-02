@@ -203,6 +203,7 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .bottone.secondario { background: color-mix(in srgb, var(--azione) 10%, transparent); color: var(--azione); border-color: color-mix(in srgb, var(--azione) 35%, var(--bordo)); }
 .bottone:disabled { opacity: .5; }
 .pulsanti { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.bottone.indietro { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px !important; }   /* «‹ Squadra»: icona e parola, niente «←» nel testo */
 .interruttore { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: var(--t-corpo); }
 .interruttore { min-height: 44px; }
 .interruttore input[type="checkbox"], .scelte input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; width: 44px; height: 44px; margin: -9px; padding: 0;
