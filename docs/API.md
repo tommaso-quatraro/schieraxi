@@ -422,7 +422,8 @@ Dove si vede (tutti campi aggiunti, i client vecchi li ignorano):
   `punti_attesi` 0, `titolarita` `"fuori"` (la formazione consigliata mette chi gioca davvero). Con `voto_ufficio`: `p_voto` 1,
   `fv_atteso` = `voto_atteso` = `punti_attesi` = il voto d'ufficio, gol, assist, rigori, cartellini e porta inviolata a 0. Con
   `aspetta`: i numeri di sempre (probabilità di giocare dalle presenze recenti: per il recupero non ci sono probabili).
-  Il primo dei `motivi` e di `perche_numero` (chiave nuova `rinvio`, `effetto: null`) lo spiega: «partita rinviata: conta il voto
+  Il primo dei `motivi` e di `perche_numero` (chiave nuova `rinvio`, `effetto: null`; con `frase`/`motivi_frasi`, chiavi
+  `rinvio.*` di `fanta/frasi.py`) lo spiega: «partita rinviata: conta il voto
   del recupero del 10/12» (o «(data da definire)»), «partita rinviata: in questa giornata non prende voto», «partita rinviata: voto
   d'ufficio 6». Con `senza_voto` e `voto_ufficio` è l'unico motivo.
 - `GET /api/oggi`: nuovo campo `rinvio`, `null` se nella giornata non c'è una partita rinviata (calendario o diretta, cioè

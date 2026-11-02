@@ -45,7 +45,7 @@ def con_eccezione(regole: Regole, stagione: str, giornata: int, modo: str | None
     """Nuove regole con l'eccezione della giornata impostata (`modo`) o tolta (None, oppure uguale alla regola generale).
     Le eccezioni delle altre stagioni non servono più e si tolgono (così l'elenco non cresce per sempre)."""
     if modo is not None and modo not in MODI_RINVIO:
-        raise ValueError(f"Scegli una di queste: {', '.join(MODI_RINVIO)}")
+        raise ValueError("Scelta non valida per le partite rinviate.")
     dati = asdict(regole)
     eccezioni = {k: v for k, v in (dati.get("rinvii_giornate") or {}).items() if k.startswith(f"{stagione}/")}
     k = chiave(stagione, giornata)
