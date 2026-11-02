@@ -82,7 +82,7 @@ final class SchedaGiocatoreViewModel: ViewModelBase {
         do {
             try await server.invia(eraOsservato ? "DELETE" : "PUT", "/api/osservati/\(id)")
             osservato = !eraOsservato
-            messaggio = eraOsservato ? "Non lo osservi più." : "Lo osservi: lo trovi in Squadra > Seguiti."
+            messaggio = eraOsservato ? "Non lo segui più." : "Lo segui: lo trovi in Squadra > Seguiti."
             Haptics.esito(riuscito: true)
         } catch {
             if (error as? ErroreApi)?.eConflitto == true {

@@ -424,7 +424,7 @@ struct OsservatiView: View {
             if let messaggio = vm.messaggioOsservati { Text(messaggio).font(.footnote).foregroundStyle(Color.attenzione) }
             if let d = vm.osservati.dato {
                 if d.giocatori.isEmpty {
-                    VistaVuota(titolo: "Nessun giocatore osservato", icona: "star", descrizione: "Apri la scheda di un giocatore e tocca «Osserva».")
+                    VistaVuota(titolo: "Nessun giocatore seguito", icona: "star", descrizione: "Apri la scheda di un giocatore e tocca «Segui».")
                 }
                 ForEach(d.giocatori) { g in
                     Button { vm.apri(g.id) } label: {
@@ -438,13 +438,13 @@ struct OsservatiView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Apre la scheda del giocatore")
-                    .accessibilityAction(named: "Togli dagli osservati") { Task { await vm.togliOsservato(g.id) } }
+                    .accessibilityAction(named: "Non seguire più") { Task { await vm.togliOsservato(g.id) } }
                     .swipeActions {
                         Button(role: .destructive) { Task { await vm.togliOsservato(g.id) } } label: { Label("Togli", systemImage: "star.slash") }
                     }
                     .contextMenu {
                         Button { vm.apri(g.id) } label: { Label("Apri la scheda", systemImage: "person.text.rectangle") }
-                        Button(role: .destructive) { Task { await vm.togliOsservato(g.id) } } label: { Label("Togli dagli osservati", systemImage: "star.slash") }
+                        Button(role: .destructive) { Task { await vm.togliOsservato(g.id) } } label: { Label("Non seguire più", systemImage: "star.slash") }
                     }
                 }
             } else if let e = vm.osservati.errore {

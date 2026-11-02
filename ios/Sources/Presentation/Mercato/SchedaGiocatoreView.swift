@@ -371,13 +371,13 @@ struct GiocatoreCorpo: View {
         Carta {
             if funzioni.acceso(Funzione.seguiti) {
                 Button { Task { await vm.alternaOsservato() } } label: {
-                    Label(vm.osservato == true ? "Osservato" : "Osserva", systemImage: vm.osservato == true ? "star.fill" : "star")
+                    Label(vm.osservato == true ? "Seguito" : "Segui", systemImage: vm.osservato == true ? "star.fill" : "star")
                         .contentTransition(.symbolEffect(.replace))
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .pulsanteVetro(prominente: true)
                 .sensoryFeedback(.success, trigger: vm.osservato)
-                .accessibilityHint(vm.osservato == true ? "Toglie il giocatore dagli osservati" : "Aggiunge il giocatore agli osservati")
+                .accessibilityHint(vm.osservato == true ? "Smette di seguire il giocatore" : "Segue il giocatore: lo trovi in Squadra > Seguiti")
             }
             if funzioni.acceso(Funzione.confronto) && funzioni.acceso(Funzione.elencoGiocatori) {
                 Button { percorso.append(.sceltaAltro(s.calciatore.id)) } label: {
