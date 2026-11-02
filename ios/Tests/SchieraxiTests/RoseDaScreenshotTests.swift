@@ -273,7 +273,7 @@ final class RoseDaScreenshotTests: XCTestCase {
         let testo = try XCTUnwrap(corpo["testo"] as? String)
         XCTAssertTrue(testo.hasPrefix("ruolo;nome;club;prezzo\nReal Fantasia\n"), "intestazione, poi il nome della squadra salvata")
         XCTAssertTrue(testo.contains("\nD;N'Gorra;Roma;12\n"))
-        XCTAssertTrue(testo.contains("\ncrediti;7\n"))
+        XCTAssertTrue(testo.hasSuffix("\ncrediti;7"), "a capo finale tolto prima di inviare")
         XCTAssertEqual(vm.avvisiFoto.first, "Ho letto 1 squadra e 3 giocatori da 1 foto.")
         XCTAssertTrue(vm.avvisiFoto.contains("1 foto non sembra la rosa di una squadra di Leghe: l'ho saltata."))
     }
