@@ -460,7 +460,9 @@ struct FormazioneView: View {
         let confronto = "\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata)))."
         let estremi = IntervalloPunti.frase(r.intervallo, dev: r.dev) == nil
             ? " Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))." : ""
-        return Text(confronto + estremi).font(.subheadline).foregroundStyle(d >= 0 ? Color.verde : Color.attenzione)
+        return Text(confronto + estremi).font(.subheadline)
+            // sotto mezzo punto è un pari (grigio, non arancio)
+            .foregroundStyle(abs(d) < 0.5 ? Color.testoSecondario : d > 0 ? Color.verde : Color.attenzione)
     }
 
     /// «Salva come mia scelta» (o «Salva le modifiche»): solo se c'è qualcosa da salvare e per la propria squadra.

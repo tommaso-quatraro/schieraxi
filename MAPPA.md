@@ -55,13 +55,14 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   nome animato della prima schermata con classi `wm-*`. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
   Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
+  Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
 - `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
   con la variabile `FANTA_LEGA=<cartella>`.
 - `dati/`: database, cache e chiavi locali. Non va in git.
 - `script/server/`: script del server (aggiornamento automatico, copie dei dati, promemoria, controllo di salute, sentinella).
 - `script/ci/`: numero di versione e note di rilascio (`controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`).
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
-- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`).
+- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`).
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
   `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora),
   `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`.

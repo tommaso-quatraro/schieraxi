@@ -183,7 +183,7 @@ enum TestiFase {
     // MARK: prossima giornata
 
     /// Da quando preparare la prossima formazione.
-    static func prossima(_ p: ProssimaGiornata, adesso: Date = Date()) -> String {
+    static func prossima(_ p: ProssimaGiornata, adesso: Date = Orologio.adesso()) -> String {
         if p.conProbabili { return "Le probabili formazioni ci sono già: puoi preparare la formazione." }
         if let da = Quando.data(p.preparaDa), da > adesso.addingTimeInterval(60) {
             return "Prepara la formazione da \(Quando.giorno(da)) alle \(Quando.ora(da)): di solito le probabili escono allora."
