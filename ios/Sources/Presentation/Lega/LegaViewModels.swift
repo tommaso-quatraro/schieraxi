@@ -195,8 +195,12 @@ final class AvvisiServerViewModel: ViewModelBase {
                 erroreSalvataggio = nil
             }   // altrimenti una modifica non andata prima manca ancora: errore e «Riprova» restano
             ricordaSulTelefono(i)
-            if let prima, !i.promemoriaAccesi.subtracting(prima.promemoriaAccesi).isEmpty, !Demo.attivo {
-                await promemoria.riprogramma()   // un promemoria si è riacceso: torna in programma
+            // Un promemoria si è riacceso, o sono cambiate le ore tranquille: i promemoria tornano in programma subito, con le
+            // scelte appena ricordate (quelli che ora cadono nel silenzio spariscono, quelli che ne sono usciti tornano).
+            let riacceso = prima.map { !i.promemoriaAccesi.subtracting($0.promemoriaAccesi).isEmpty } ?? false
+            let oreCambiate = prima.map { i.oreTranquille != $0.oreTranquille } ?? false
+            if riacceso || oreCambiate, !Demo.attivo {
+                await promemoria.riprogramma()
             }
             oreTranquilleSpente = false
             messaggio = nil
