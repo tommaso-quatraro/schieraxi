@@ -1,5 +1,28 @@
 [
   {
+    "versione": "1.362",
+    "data": "2026-11-02T14:59:26",
+    "titolo": "Cambi consigliati e Scambi più leggibili",
+    "voci": [
+      "Ogni cambio consigliato sta in poche righe: chi entra, al posto di chi, i punti in più e i crediti che ti restano.",
+      "In Scambi il titolo della scheda non ripete più la voce scelta in alto."
+    ],
+    "tecnico": [
+      "fanta/web/app.js tabConsigli: riga proposta senza le etichette Entra/Esce e senza la quotazione di chi esce; rimborso e costo nel title dei crediti (mercato.rimborso_meno_costo); chiavi nuove mercato.al_posto_di e mercato.crediti_dopo, tolte mercato.entra, mercato.esce, mercato.rimborso_costo. stile.css: .pr-num span a capo (6,5em); h2 dei pannelli di Scambi nascosto alla vista (non ai lettori di schermo) quando ci sono i segmenti. GUIDA-UTENTE aggiornata."
+    ]
+  },
+  {
+    "versione": "1.361",
+    "data": "2026-11-02T14:59:12",
+    "titolo": "Oggi: avviso delle novità più semplice",
+    "voci": [
+      "In Oggi l'avviso delle novità è più breve e senza simboli decorativi."
+    ],
+    "tecnico": [
+      "fanta/web/testi.js: oggi.novita_banner senza ✨ e senza «tocca per vedere» (italiano e inglese); docs/COERENZA-WEB-IPHONE.md riga 18 (l'iPhone va allineato)."
+    ]
+  },
+  {
     "versione": "1.360",
     "data": "2026-11-02T14:49:31",
     "titolo": "Un aspetto più pulito",
