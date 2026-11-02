@@ -21,10 +21,10 @@ on:
         options: [predefinito, piccolo, grande]
         default: predefinito
       dispositivi:
-        description: "quali giri: tutti, solo iphone, solo ipad (per dividere il collaudo su più Mac in parallelo)"
+        description: "quali giri: iphone (predefinito, basta per le PR), ipad, tutti (solo per le PR che cambiano layout grandi)"
         type: choice
         options: [tutti, iphone, ipad]
-        default: tutti
+        default: iphone
       schermate:
         description: "solo queste schermate (nomi separati da spazi, es. «lega-importa-csv scambi-una-rosa»), in tutte le varianti; vuoto = secondo «scatti»"
         type: string
@@ -33,13 +33,10 @@ on:
     types: [opened, reopened, synchronize, labeled]
     paths: ["ios/**", ".github/workflows/screenshot.yml"]
 
-# Una sola esecuzione per PR (o ramo e scelte, se a mano): un nuovo push annulla quella in corso.
-# Un'etichetta diversa da «screenshot» ha un gruppo tutto suo, così non annulla le foto in corso.
-concurrency:
-  group: >-
-    screenshot-${{ (github.event.action == 'labeled' && github.event.label.name != 'screenshot') && github.run_id
-    || (github.event.pull_request.number || github.ref) }}-${{ inputs.scatti }}-${{ inputs.iphone }}-${{ inputs.dispositivi }}
-  cancel-in-progress: true
+# UNA sola corsa Mac alla volta in tutto il repository (i Mac gratuiti sono pochi e i test iOS hanno la precedenza):
+# gruppo «screenshot-mac» sui job Mac (non sul job Linux «quando», che parte a ogni push e scalzerebbe le richieste vere).
+# La corsa in corso non si annulla; la successiva aspetta. GitHub tiene in attesa UNA sola richiesta:
+# una più nuova sostituisce quella in attesa (che va rilanciata dopo).
 
 permissions:
   contents: read
@@ -80,6 +77,9 @@ jobs:
 
   screenshot:
     needs: quando
+    concurrency:
+      group: screenshot-mac
+      cancel-in-progress: false
     if: needs.quando.outputs.serve == 'true' && github.event.repository.private == false
     runs-on: macos-26
     timeout-minutes: 150
@@ -114,7 +114,7 @@ jobs:
         env:
           SCATTI: ${{ inputs.scatti || 'veloce' }}
           IPHONE: ${{ inputs.iphone == 'piccolo' && 'iphone-piccolo' || inputs.iphone == 'grande' && 'iphone-grande' || 'iphone' }}
-          DISPOSITIVI: ${{ inputs.dispositivi || 'tutti' }}
+          DISPOSITIVI: ${{ inputs.dispositivi || 'iphone' }}
           SCHERMATE: ${{ inputs.schermate || '' }}
         run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
       - name: Scatta le fotografie dei widget
@@ -166,6 +166,9 @@ jobs:
   # Non fallisce per i problemi trovati: li elenca nel log (righe AUDIT|...) e nell'artifact «accessibilita».
   accessibilita:
     needs: quando
+    concurrency:
+      group: screenshot-mac
+      cancel-in-progress: false
     if: needs.quando.outputs.serve == 'true' && inputs.scatti == 'collaudo' && inputs.dispositivi != 'ipad' && github.event.repository.private == false
     runs-on: macos-26
     timeout-minutes: 90
