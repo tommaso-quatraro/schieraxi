@@ -42,6 +42,11 @@ Oggi e «Giornata 7 di lega (Serie A 10)» sull'iPhone. Chi usa le due app non d
 Scelte già prese con la forma dell'iPhone (da portare sulla web): «INT @ MIL» nelle righe, «in trasferta contro», il
 cognome senza iniziale sul campo, «Ho schierato la consigliata» nel Diario.
 
+## Differenze ammesse
+Differenze volute: testi uguali, cambia solo dove o come si mostrano. Una riga per differenza, con il motivo.
+- **Aggiorna le rose, «Rose salvate»**: sulla web è un avviso che passa; sull'iPhone è la prima riga dell'esito. Motivo: l'iPhone non ha avvisi che passano, e così la conferma resta scritta (anche per VoiceOver) finché non si riprova.
+- **Aggiorna le rose, posto dell'esito**: sulla web l'esito prende il posto dell'anteprima, in fondo alla scheda; sull'iPhone sta in cima alla lista. Motivo: dopo «Conferma e salva» l'anteprima si chiude e la lista riparte dall'alto, quindi in cima l'esito si vede subito, senza scorrere sotto il file e il testo incollato.
+
 ## Differenze di oggi
 Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto del telefono e della CI. Le schermate segnate
 «da confrontare» non le ho guardate riga per riga.

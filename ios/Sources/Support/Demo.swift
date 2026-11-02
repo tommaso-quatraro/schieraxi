@@ -237,7 +237,7 @@ extension Demo {
             apriLega(nav, modello, [.diario])
         case "lega-novita":
             apriLega(nav, modello, [.novita])
-        case "lega-importa":
+        case "lega-importa", "lega-importa-salvate", "lega-importa-salvate-ok":
             apriLega(nav, modello, [.importa])
         case "lega-importa-csv":
             // Un CSV vero (separatore «;», accenti) scritto in una cartella temporanea e importato come se arrivasse da un'altra app.

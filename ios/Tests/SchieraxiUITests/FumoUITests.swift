@@ -140,18 +140,44 @@ final class FumoUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
     }
 
+    /// Riapre la demo direttamente su una schermata (`-DEMO_SCHERMATA`).
+    private func apriDemo(_ schermata: String) {
+        app.terminate()
+        app.launchArguments += ["-DEMO_SCHERMATA", schermata]
+        app.launch()
+    }
+
     func testUnCsvDelleRoseSiImportaDaUnAltraApp() {
         // la demo scrive un CSV vero (separatore «;») e lo importa come se arrivasse da «Apri con SchieraXI»
-        app.terminate()
-        app.launchArguments += ["-DEMO_SCHERMATA", "lega-importa-csv"]
-        app.launch()
+        apriDemo("lega-importa-csv")
         // prima l'anteprima (niente si salva), poi «Conferma e salva»
         attendi("Controlla prima di salvare")
         XCTAssertFalse(elemento("Usa un Excel (.xlsx), un CSV o un file di testo.").exists, "il CSV non deve essere rifiutato")
         let conferma = app.buttons["Conferma e salva"]
         for _ in 0..<8 where !conferma.isHittable { app.swipeUp() }
         conferma.tap()
+        // l'esito come la web: «Cosa è cambiato», le squadre importate, poi «Da controllare:» con gli avvisi del server
         attendi("Rose salvate", contiene: true)
+        attendi("Cosa è cambiato")
+        attendiScorrendo("Importate:", contiene: true)
+        attendiScorrendo("Da controllare:")
+        attendiScorrendo("24 giocatori invece di 25", contiene: true)
+    }
+
+    func testLEsitoConAvvisiDiceCosaControllare() {
+        apriDemo("lega-importa-salvate")
+        attendi("Rose salvate", contiene: true)
+        XCTAssertFalse(elemento("La tua squadra:", contiene: true).exists, "come la web: l'esito non ripete la propria squadra")
+        attendiScorrendo("Da controllare:")
+        attendiScorrendo("«Bastrani» non è nel listone", contiene: true)
+        XCTAssertFalse(elemento("tutto in ordine", contiene: true).exists, "con degli avvisi non si dice «tutto in ordine»")
+    }
+
+    func testLEsitoSenzaAvvisiDiceTuttoInOrdine() {
+        apriDemo("lega-importa-salvate-ok")
+        attendi("Rose salvate", contiene: true)
+        attendiScorrendo("Rose controllate: tutto in ordine.", contiene: true)
+        XCTAssertFalse(elemento("Da controllare", contiene: true).exists, "senza avvisi non c'è niente da controllare")
     }
 
     func testLaLenteApreLaRicerca() {
