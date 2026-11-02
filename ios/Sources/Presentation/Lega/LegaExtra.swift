@@ -321,7 +321,7 @@ struct RosaView: View {
 
 struct NovitaView: View {
     @StateObject private var caricatore: Caricatore<[VoceNovita]>
-    /// L'ultima versione guardata: Oggi smette di mostrare il banner «Novità nell'app».
+    /// L'ultima versione guardata: Oggi smette di mostrare il banner «Novità di SchieraXI».
     @AppStorage("novitaVista") private var novitaVista = ""
 
     init(server: any ServerClient) {
