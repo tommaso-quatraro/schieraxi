@@ -124,7 +124,7 @@ final class ImportaExcelViewModel: ViewModelBase {
         let valide = lette.compactMap { $0 }
         let salvate: [SquadraLega]? = try? await server.get("/api/squadre")
         let squadre = RoseDaScreenshot.unisci(valide, esistenti: salvate?.map(\.nome) ?? [])
-        guard squadre.contains(where: { !$0.righe.isEmpty }) else {
+        guard squadre.contains(where: { $0.righe.contains { $0.ruolo != nil } }) else {
             avvisiFoto = []
             mostraErrore(Self.nienteNelleFoto)
             return

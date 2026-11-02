@@ -401,17 +401,19 @@ enum RoseDaScreenshot {
 
     // MARK: testo per il server
 
-    /// Il testo da mandare all'anteprima, come se fosse incollato: colonne separate da tabulazioni, il nome della squadra su
-    /// una riga, sotto un giocatore per riga «ruolo, nome, squadra di Serie A, prezzo», poi i crediti rimasti.
+    /// Il testo da mandare all'anteprima nel formato «Rose dalle schermate di Leghe» del server (`docs/API.md`): intestazione
+    /// `ruolo;nome;club;prezzo`, il nome della squadra su una riga da solo, un giocatore per riga, poi `crediti;N`.
+    /// Senza ruolo il server scarterebbe la riga: quei giocatori restano fuori e lo dice `avvisi`.
     static func testo(_ squadre: [SquadraScreenshot]) -> String {
-        var righe = ["Ruolo\tCalciatore\tSquadra\tCosto"]
-        for s in squadre where !s.righe.isEmpty {
-            righe.append("")
-            righe.append(pulisci(s.nome))
+        func cella(_ s: String) -> String { pulisci(s).replacingOccurrences(of: ";", with: ",") }
+        var righe = ["ruolo;nome;club;prezzo"]
+        for s in squadre where s.righe.contains(where: { $0.ruolo != nil }) {
+            righe.append(cella(s.nome))
             for r in s.righe {
-                righe.append([r.ruolo ?? "", pulisci(r.nome), r.club.map(pulisci) ?? "", r.costo.map(String.init) ?? ""].joined(separator: "\t"))
+                guard let ruolo = r.ruolo else { continue }
+                righe.append([ruolo, cella(r.nome), r.club.map(cella) ?? "", r.costo.map(String.init) ?? ""].joined(separator: ";"))
             }
-            if let c = s.crediti { righe.append("Crediti residui\t\(c)") }
+            if let c = s.crediti { righe.append("crediti;\(c)") }
         }
         return righe.joined(separator: "\n") + "\n"
     }
@@ -430,6 +432,10 @@ enum RoseDaScreenshot {
                     ? "«\(s.nome)»: in 1 riga non leggo il nome. Controlla nell'anteprima chi manca."
                     : "«\(s.nome)»: in \(s.illeggibili) righe non leggo il nome. Controlla nell'anteprima chi manca.")
             }
+            let senzaRuolo = s.righe.filter { $0.ruolo == nil }.map(\.nome)
+            if !senzaRuolo.isEmpty {
+                avvisi.append("«\(s.nome)»: non leggo il ruolo di \(senzaRuolo.joined(separator: ", ")): \(senzaRuolo.count == 1 ? "l'ho lasciato" : "li ho lasciati") fuori. Rifai lo screenshot di quella parte.")
+            }
             let senzaPrezzo = s.righe.filter { $0.costo == nil }.count
             if senzaPrezzo > 0 {
                 avvisi.append("«\(s.nome)»: non leggo il prezzo di \(Formato.giocatori(senzaPrezzo)).")
@@ -440,8 +446,8 @@ enum RoseDaScreenshot {
 
     /// «Ho letto 2 squadre e 50 giocatori da 6 foto.»
     static func riassunto(_ squadre: [SquadraScreenshot]) -> String {
-        let piene = squadre.filter { !$0.righe.isEmpty }
-        let giocatori = piene.reduce(0) { $0 + $1.righe.count }
+        let piene = squadre.filter { $0.righe.contains { $0.ruolo != nil } }
+        let giocatori = piene.reduce(0) { $0 + $1.righe.filter { $0.ruolo != nil }.count }
         let foto = piene.reduce(0) { $0 + $1.foto }
         return "Ho letto \(Formato.plurale(piene.count, "squadra", "squadre")) e \(Formato.giocatori(giocatori)) da \(Formato.plurale(foto, "foto", "foto"))."
     }

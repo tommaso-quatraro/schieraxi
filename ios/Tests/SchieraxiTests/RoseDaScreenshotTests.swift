@@ -227,23 +227,31 @@ final class RoseDaScreenshotTests: XCTestCase {
 
     // MARK: testo per il server e avvisi
 
-    func testTestoPerLAnteprimaDelServer() {
+    func testTestoNelFormatoDelleSchermate() {
         let s = SquadraScreenshot(nome: "FC RISERVE 17,5", crediti: 3, righe: [
             RigaScreenshot(nome: "N'Gorra", club: "Roma", ruolo: "D", costo: 12),
-            RigaScreenshot(nome: "Kolo Muaro", club: nil, ruolo: nil, costo: nil),
+            RigaScreenshot(nome: "Kolo Muaro", club: nil, ruolo: "A", costo: nil),
+            RigaScreenshot(nome: "Senza Ruolo", club: "Pisa", ruolo: nil, costo: 4),
         ])
-        XCTAssertEqual(RoseDaScreenshot.testo([s]),
-                       "Ruolo\tCalciatore\tSquadra\tCosto\n\nFC RISERVE 17,5\nD\tN'Gorra\tRoma\t12\n\tKolo Muaro\t\t\nCrediti residui\t3\n")
+        let vuota = SquadraScreenshot(nome: "Solo Dubbi", crediti: nil, righe: [RigaScreenshot(nome: "Uno", ruolo: nil)])
+        XCTAssertEqual(RoseDaScreenshot.testo([s, vuota]),
+                       "ruolo;nome;club;prezzo\nFC RISERVE 17,5\nD;N'Gorra;Roma;12\nA;Kolo Muaro;;\ncrediti;3\n",
+                       "senza ruolo il server scarterebbe la riga: resta fuori (e lo dicono gli avvisi)")
+        let conPuntoEVirgola = SquadraScreenshot(nome: "Real;Pigiama", crediti: nil, righe: [RigaScreenshot(nome: "Rossi;Al.", ruolo: "C")])
+        XCTAssertEqual(RoseDaScreenshot.testo([conPuntoEVirgola]), "ruolo;nome;club;prezzo\nReal,Pigiama\nC;Rossi,Al.;;\n",
+                       "il punto e virgola non entra nelle celle")
     }
 
     func testAvvisiERiassuntoConIPlurali() {
         let s = SquadraScreenshot(nome: "Real Pigiama", crediti: nil, righe: [
-            RigaScreenshot(nome: "Uno", costo: nil), RigaScreenshot(nome: "Due", costo: 4),
+            RigaScreenshot(nome: "Uno", ruolo: "D", costo: nil), RigaScreenshot(nome: "Due", ruolo: "C", costo: 4),
+            RigaScreenshot(nome: "Tre", ruolo: nil, costo: 2),
         ], illeggibili: 2, foto: 3)
         XCTAssertEqual(RoseDaScreenshot.riassunto([s]), "Ho letto 1 squadra e 2 giocatori da 3 foto.")
         XCTAssertEqual(RoseDaScreenshot.avvisi([s], scartate: 1), [
             "1 foto non sembra la rosa di una squadra di Leghe: l'ho saltata.",
             "«Real Pigiama»: in 2 righe non leggo il nome. Controlla nell'anteprima chi manca.",
+            "«Real Pigiama»: non leggo il ruolo di Tre: l'ho lasciato fuori. Rifai lo screenshot di quella parte.",
             "«Real Pigiama»: non leggo il prezzo di 1 giocatore.",
         ])
     }
@@ -263,8 +271,9 @@ final class RoseDaScreenshotTests: XCTestCase {
         XCTAssertNotNil(vm.anteprima)
         let corpo = try XCTUnwrap(JSONSerialization.jsonObject(with: try XCTUnwrap(s.corpiInviati(a: "/api/rose/anteprima").last)) as? [String: Any])
         let testo = try XCTUnwrap(corpo["testo"] as? String)
-        XCTAssertTrue(testo.contains("\nReal Fantasia\n"), "nome della squadra salvata")
-        XCTAssertTrue(testo.contains("D\tN'Gorra\tRoma\t12"))
+        XCTAssertTrue(testo.hasPrefix("ruolo;nome;club;prezzo\nReal Fantasia\n"), "intestazione, poi il nome della squadra salvata")
+        XCTAssertTrue(testo.contains("\nD;N'Gorra;Roma;12\n"))
+        XCTAssertTrue(testo.contains("\ncrediti;7\n"))
         XCTAssertEqual(vm.avvisiFoto.first, "Ho letto 1 squadra e 3 giocatori da 1 foto.")
         XCTAssertTrue(vm.avvisiFoto.contains("1 foto non sembra la rosa di una squadra di Leghe: l'ho saltata."))
     }
