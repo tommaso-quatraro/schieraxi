@@ -260,14 +260,11 @@ class SchierataNonValida(ValueError):
     """La richiesta «ho schierato...» non si può registrare (giornata non finita, formazione sbagliata)."""
 
 
-STAGIONE_PASSATA = "Si può decidere solo per la stagione in corso."          # stesso testo di rinvii.py: già tradotto (err.rinvio_stagione)
-
-
 def controlla_stagione(stagione: str | None) -> None:
     """«Ho schierato…» vale solo per la stagione in corso: il diario mostra anche le voci dell'anno prima, e scrivere sulla giornata con
     lo stesso numero di quest'anno sarebbe sbagliato. Senza stagione (i client vecchi non la mandano) vale quella in corso."""
     if stagione is not None and stagione != consigli.stagione_corrente():
-        raise SchierataNonValida(STAGIONE_PASSATA)
+        raise SchierataNonValida("Si può decidere solo per la stagione in corso.")      # stesso testo di rinvii.py: già tradotto (err.rinvio_stagione)
 
 
 def salva_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None, giornata: int, tipo: str, titolari: list[int] | None,
