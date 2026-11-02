@@ -1,0 +1,46 @@
+# Metodo di lavoro
+
+Come si sviluppa SchieraXI, dall'idea al telefono. Vale per chi lavora a mano e per gli agenti di Claude Code.
+Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
+
+## Chi decide il metodo
+- Per il **come** (idea, piano, test, ricerca dei difetti, revisione, verifica) si usano le skill del plugin
+  [Superpowers](https://github.com/obra/superpowers) così come sono, senza riscriverle.
+- Questo repository aggiunge solo ciò che è suo: ogni lavoro finisce in una pull request, le novità in `fanta/novita.d/`,
+  il repository è pubblico, l'app per iPhone si compila e si fotografa su GitHub Actions, web e iPhone devono essere uguali,
+  tutto in italiano semplice.
+
+## Dall'idea al telefono
+1. **Issue**: cosa, perché, «fatto quando…». Priorità `P1` (rotto o sicurezza), `P2` (nel ciclo in corso), `P3` (dopo).
+   Il ciclo in corso è una milestone: le idee nuove diventano issue `P3` e aspettano.
+2. **Misura del lavoro** (skill `brainstorming`): compito chiaro, modifica piccola o progetto.
+3. **Progetto**: spec in `docs/superpowers/specs/` e piano in `docs/superpowers/plans/` (skill `writing-plans`), uniti con
+   una pull request di soli documenti prima di scrivere il codice.
+4. **Codice**: ramo da `main` in una copia di lavoro propria; test che fallisce prima del codice (`test-driven-development`);
+   i difetti si cercano dalla causa (`systematic-debugging`). Un piano procede un compito alla volta, con una revisione dopo
+   ogni compito (`subagent-driven-development`); piani su parti diverse del codice possono andare insieme.
+5. **Revisione del ramo** e verifica (`requesting-code-review`, `verification-before-completion`) **prima** di aprire la pull request:
+   la pull request del proprietario si unisce da sola appena i controlli sono verdi.
+6. **Pull request** su `main` con `Closes #N` e le prove fatte. Ramo indietro: si unisce `main` nel ramo (niente push forzato).
+7. **Rilascio automatico**: il job `rilascia` dà il numero di versione e crea la release; il server installa `main` da solo.
+8. **Verifica sul dispositivo**: versione nuova sul server, nuova build dell'app.
+
+## Quando un lavoro è finito
+- **Server**: test verdi; `python -m fanta verifica` prima e dopo se cambia il calcolo; voce in `fanta/novita.d/`;
+  `docs/API.md` o `docs/GUIDA-UTENTE.md` aggiornati.
+- **Web**: come il server, più la prova nel browser a 390, 768, 1024 e 1440 px, tema chiaro e scuro, con dati verosimili e
+  le schermate guardate davvero.
+- **iPhone**: compilazione e test verdi in CI, foto delle schermate toccate guardate, elenco di cosa provare sul telefono.
+- **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …».
+
+## App per iPhone
+- Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.
+- Le foto (`screenshot.yml`) usano un Mac di GitHub alla volta: le lancia una sola persona, con una corsa per tutte le pull
+  request pronte. Le pull request senza cambi visibili non aspettano le foto.
+
+## Cosa non fare
+- Codice senza test, correzioni senza causa, «dovrebbe andare».
+- Pull request enormi o aperte prima della revisione.
+- Una schermata cambiata su un lato solo.
+- Controlli che scattano solo dopo l'unione: ciò che può rompere `main` si controlla già nella pull request.
+- Dati veri, indirizzi o chiavi nel repository, anche nei piani e nelle foto.
