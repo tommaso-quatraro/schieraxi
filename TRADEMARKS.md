@@ -6,6 +6,8 @@ Questo testo non è una consulenza legale.
 - Il **codice** è sotto licenza AGPL-3.0 (file `LICENSE`): si può usare, studiare, modificare e ridistribuire secondo quella licenza.
 - Il **nome** SchieraXI, il **logo** (il simbolo di dieci cerchi con il capitano, e il nome disegnato) e le icone sono marchi di
   Tommaso Quatraro e **non** sono coperti dall'AGPL.
+- Il nome disegnato usa le lettere del font Archivo, che resta sotto licenza SIL Open Font License 1.1
+  (`assets/marchio/wordmark/OFL.txt`): il font si può usare liberamente, il disegno del nome «SchieraXI» no.
 - Nome e logo non sono registrati: sono usati come marchi di fatto da Tommaso Quatraro. I simboli ® e ™ non si usano
   senza registrazione.
 
