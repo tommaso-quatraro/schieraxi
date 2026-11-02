@@ -1,5 +1,4 @@
 import SwiftUI
-import TipKit
 
 /// Schermata Formazione: solo presentazione. Dati e logica sono in `FormazioneViewModel`.
 struct FormazioneView: View {
@@ -11,6 +10,9 @@ struct FormazioneView: View {
     @Namespace private var moduloNS
     @Namespace private var stileNS
     @Environment(\.funzioni) private var funzioni
+    /// La legenda del campo si mostra da sola una volta; poi si riapre con «Come si legge il campo».
+    @AppStorage("legendaCampoVista") private var legendaVista = false
+    @State private var legendaAperta = false
 
     /// Dall'alto in basso come sul campo: attacco in alto, portiere in basso.
     private let ruoli = ["A", "C", "D", "P"]
@@ -37,8 +39,17 @@ struct FormazioneView: View {
                             bannerSquadra
                             let v = vm.vista(f)
                             cardStile(f, v).ingresso(0)
-                            if !Demo.attivo { TipView(Suggerimenti.campo).tipBackground(Color.sfondoScheda) }
-                            Carta("Campo", simbolo: "sportscourt") { CampoFormazione(titolari: v.titolari, apribile: true) }.ingresso(3)
+                            if !legendaVista {
+                                Carta("Come si legge il campo", simbolo: "info.circle") {
+                                    LegendaCampo { withAnimation(Tema.morbida) { legendaVista = true } }
+                                }
+                                .ingresso(2)
+                            }
+                            Carta("Campo", simbolo: "sportscourt") {
+                                CampoFormazione(titolari: v.titolari, apribile: true)
+                                if legendaVista { pulsanteLegenda }
+                            }
+                            .ingresso(3)
                             // Un'unica scheda con i quattro reparti in ordine (Portiere, Difensori, Centrocampisti, Attaccanti):
                             // sull'iPad le colonne si leggono così dall'alto in basso senza saltare da una parte all'altra.
                             Carta("Titolari", simbolo: "person.3.fill") {
@@ -52,7 +63,7 @@ struct FormazioneView: View {
                             }
                             .ingresso(4)
                             Carta("Panchina", simbolo: "chair.lounge.fill") {
-                                Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(.secondary)
+                                Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(Color.testoSecondario)
                                 ForEach(Array(v.panchina.enumerated()), id: \.element.id) { i, g in
                                     RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true, perche: apriPerche) }
                                 }
@@ -60,7 +71,7 @@ struct FormazioneView: View {
                             .ingresso(5)
                             fuori(f, v)
                             Text(Self.legenda(conPerche: f.titolari.contains { PercheNumero($0) != nil }))
-                                .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 4)
+                                .font(.caption).foregroundStyle(Color.testoSecondario).padding(.horizontal, 4)
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
@@ -122,6 +133,27 @@ struct FormazioneView: View {
         }
     }
 
+    /// Riapre la legenda del campo (popover sull'iPad, foglio sull'iPhone).
+    private var pulsanteLegenda: some View {
+        Button { legendaAperta = true } label: {
+            Label("Come si legge il campo", systemImage: "info.circle").font(.footnote.weight(.semibold))
+                .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.verde)
+        .popover(isPresented: $legendaAperta) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Come si legge il campo").font(.headline).accessibilityAddTraits(.isHeader)
+                    LegendaCampo()
+                }
+                .padding(20)
+            }
+            .frame(minWidth: 320, idealWidth: 380)
+            .presentationDetents([.medium, .large])
+        }
+    }
+
     /// Il tocco sul numero di un giocatore: apre «Perché questo numero» con i dati già caricati.
     private var apriPerche: (Giocatore) -> Void {
         { g in vm.percheAperto = g }
@@ -131,7 +163,7 @@ struct FormazioneView: View {
     static func legenda(conPerche: Bool) -> String {
         "Il numero è il fantavoto atteso: quello che SchieraXI si aspetta dal giocatore se gioca, con le regole della tua lega."
             + (conPerche ? " Toccalo per sapere perché." : "")
-            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Anello arancio: non titolare sicuro. Anello attorno alla foto: indice (100 = il migliore del ruolo)."
+            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Nelle righe, l'anello attorno al volto è l'indice (100 = il migliore del ruolo)."
     }
 
     // MARK: un'altra squadra
@@ -181,7 +213,7 @@ struct FormazioneView: View {
         let alternative = vm.ballottaggio(per: g, f, v)
         if !alternative.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Ballottaggio · alternative vicine").font(.caption).foregroundStyle(.secondary)
+                Text("Ballottaggio · alternative vicine").font(.caption).foregroundStyle(Color.testoSecondario)
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
                     VStack(alignment: .leading, spacing: 6) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
@@ -196,8 +228,8 @@ struct FormazioneView: View {
             HStack(spacing: 5) {
                 Text(a.giocatore.nomeCorto).font(.caption.weight(.semibold))
                 Text(Formato.conSegno(a.differenza)).font(.caption.bold()).monospacedDigit()
-                    .foregroundStyle(a.quasiPari ? Color.secondary : (a.differenza > 0 ? Color.verde : Color.attenzione))
-                if a.quasiPari { Text("quasi pari").font(.caption2).foregroundStyle(.secondary) }
+                    .foregroundStyle(a.quasiPari ? Color.testoSecondario : (a.differenza > 0 ? Color.verde : Color.attenzione))
+                if a.quasiPari { Text("quasi pari").font(.caption2).foregroundStyle(Color.testoSecondario) }
             }
             .padding(.horizontal, 10)
             .frame(minHeight: 44)
@@ -216,12 +248,12 @@ struct FormazioneView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(altri) { RigaGiocatore(g: $0, apribile: true, perche: apriPerche) }
                         if let senza = f.senzaDati, !senza.isEmpty {
-                            Text("Senza dati per questa giornata: " + senza.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                            Text("Senza dati per questa giornata: " + senza.joined(separator: ", ")).font(.caption).foregroundStyle(Color.testoSecondario)
                         }
                     }
                     .padding(.top, 6)
                 }
-                .tint(.secondary)
+                .tint(Color.testoSecondario)
             }
         }
     }
@@ -234,14 +266,15 @@ struct FormazioneView: View {
         Carta {
             intestazione(f, v)
             if f.conProbabili == false {
-                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(.secondary)
+                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
+            rigaStato(f)
             if vm.manuale == nil {
                 if let livelli = f.livelli, !livelli.isEmpty { sceltaStile(f, livelli) }
             } else {
                 testoManuale
             }
-            if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(.secondary) }
+            if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
     }
 
@@ -255,15 +288,76 @@ struct FormazioneView: View {
                 }
                 Text(TempiLega.didascalia(giornata: f.etichettaGiornata, scelta: vm.manuale != nil,
                                           comeConsigliato: v.modulo == f.modulo && vm.rischio == (f.stileConsigliato ?? 0)))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Color.testoSecondario)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(Formato.punti(v.punti)).font(.title2.bold()).monospacedDigit().numerico(v.punti)
-                Text("punti attesi" + (vm.fascia(f).map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
-            }
+            puntiIntestazione(f, v)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// I punti attesi; in modifica a mano, finché il server non li ha calcolati, «Calcolo…» (mai quelli della consigliata).
+    @ViewBuilder
+    private func puntiIntestazione(_ f: Formazione, _ v: VistaFormazione) -> some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            if let punti = v.punti {
+                Text(Formato.punti(punti)).font(.title2.bold()).monospacedDigit().numerico(punti)
+                Text("punti attesi" + (vm.fascia(f).map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
+            } else if vm.calcoloNonRiuscito {
+                Text("–").font(.title2.bold()).accessibilityHidden(true)
+                Text("punti non calcolati").font(.caption).foregroundStyle(Color.testoSecondario)
+            } else {
+                ProgressView().controlSize(.small).accessibilityHidden(true)
+                Text("Calcolo…").font(.caption).foregroundStyle(Color.testoSecondario)
+            }
+        }
+    }
+
+    // MARK: riga di stato della scelta
+
+    /// Sempre visibile (per la propria squadra): consigliata non salvata, salvata (con l'ora), modifiche non salvate.
+    @ViewBuilder
+    private func rigaStato(_ f: Formazione) -> some View {
+        let stato = vm.statoScelta
+        if stato != .sconosciuto {
+            let colore: Color = stato.tono == .bene ? .verde : stato.tono == .attenzione ? .attenzione : Color.testoSecondario
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 8) {
+                    testoStato(stato, colore)
+                    Spacer(minLength: 4)
+                    if stato == .consigliata { salvaQuesta(f) }
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    testoStato(stato, colore)
+                    if stato == .consigliata { salvaQuesta(f) }
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(colore.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .animation(Tema.morbida, value: stato)
+        }
+    }
+
+    private func testoStato(_ stato: StatoScelta, _ colore: Color) -> some View {
+        Label {
+            Text(stato.titolo()).font(.footnote.weight(.semibold)).foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: stato.simbolo).foregroundStyle(colore).accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// «Salva questa»: salva come tua scelta la formazione che stai guardando.
+    private func salvaQuesta(_ f: Formazione) -> some View {
+        Button { Task { await vm.salvaQuesta(f) } } label: {
+            Label("Salva questa", systemImage: "tray.and.arrow.down").font(.footnote.weight(.semibold))
+                .fixedSize().frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(StilePressione())
+        .foregroundStyle(Color.verde)
+        .accessibilityHint("Salva come tua scelta per questa giornata la formazione che stai guardando")
     }
 
     /// Gli stili come scelte in fila, la loro descrizione, il modulo proposto e i moduli.
@@ -289,7 +383,7 @@ struct FormazioneView: View {
             }
         }
         (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))))
-            .font(.footnote).foregroundStyle(.secondary)
+            .font(.footnote).foregroundStyle(Color.testoSecondario)
             .fixedSize(horizontal: false, vertical: true)
         HStack {
             Text("Modulo proposto: \(livello.modulo)").font(.footnote.weight(.semibold))
@@ -330,9 +424,17 @@ struct FormazioneView: View {
 
     @ViewBuilder
     private var testoManuale: some View {
-        Text("Hai modificato la formazione a mano: tocca un titolare per sostituirlo con un altro della rosa, i punti attesi si ricalcolano.")
-            .font(.footnote).foregroundStyle(.secondary)
-        if let r = vm.valutazione, let d = r.differenza {
+        Text("Tocca un titolare per sostituirlo con un altro della rosa: i punti attesi si ricalcolano.")
+            .font(.footnote).foregroundStyle(Color.testoSecondario)
+        if vm.calcoloNonRiuscito {
+            Button { Task { await vm.valuta(salva: false) } } label: {
+                Label("Non riesco a calcolare i punti: riprova", systemImage: "arrow.clockwise").font(.footnote.weight(.semibold))
+                    .frame(minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.attenzione)
+        }
+        if let r = vm.valutazioneAttuale, let d = r.differenza {
             Text("\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata))). "
                  + (IntervalloPunti.frase(r.intervallo, dev: nil).map { "Punti attesi \($0)." }
                     ?? "Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))."))
@@ -341,21 +443,37 @@ struct FormazioneView: View {
         // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
         if let f = vm.formazione {
             ViewThatFits(in: .horizontal) {
-                HStack { salva; Spacer(); torna(f) }
-                VStack(alignment: .leading, spacing: 0) { salva; torna(f) }
+                HStack { salva; annulla; Spacer(); torna(f) }
+                VStack(alignment: .leading, spacing: 0) { salva; annulla; torna(f) }
             }
             .font(.subheadline)
         }
     }
 
+    /// «Salva come mia scelta» (o «Salva le modifiche»): solo se c'è qualcosa da salvare e per la propria squadra.
     @ViewBuilder
     private var salva: some View {
-        // La scelta salvata vale solo per la propria squadra.
-        if vm.squadraVista == nil {
+        let stato = vm.statoScelta
+        if vm.squadraVista == nil, stato.daSalvare {
             Button { Task { await vm.valuta(salva: true) } } label: {
-                Label("Salva come mia scelta", systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
+                Label(Self.etichettaSalva(stato), systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
             }
             .keyboardShortcut("s", modifiers: .command)
+        }
+    }
+
+    static func etichettaSalva(_ stato: StatoScelta) -> String {
+        if case .modificata = stato { return "Salva le modifiche" }
+        return "Salva come mia scelta"
+    }
+
+    /// «Annulla modifiche»: si torna agli undici salvati.
+    @ViewBuilder
+    private var annulla: some View {
+        if case .modificata = vm.statoScelta, vm.salvati != nil {
+            Button { vm.annullaModifiche() } label: {
+                Text("Annulla modifiche").fixedSize().frame(minHeight: 44)
+            }
         }
     }
 

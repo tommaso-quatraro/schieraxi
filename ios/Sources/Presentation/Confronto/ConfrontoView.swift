@@ -43,7 +43,7 @@ struct ConfrontoView: View {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 8) {
                     colonna(c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
-                    Text("VS").font(.headline).foregroundStyle(.secondary).padding(.top, 24).accessibilityHidden(true)
+                    Text("VS").font(.headline).foregroundStyle(Color.testoSecondario).padding(.top, 24).accessibilityHidden(true)
                     colonna(c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
                 }
                 VStack(spacing: 12) {
@@ -59,7 +59,7 @@ struct ConfrontoView: View {
             AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome, ruolo: g.ruolo)
             Text(g.nome).font(.headline).multilineTextAlignment(.center).lineLimit(2)
             Text("\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Color.testoSecondario)
             if scelto {
                 Label("Consigliato", systemImage: "checkmark.seal.fill").font(.caption.bold()).foregroundStyle(Color.verde)
             }
@@ -76,7 +76,7 @@ struct ConfrontoView: View {
         let intestazione = c.formazione == nil ? "Il sistema sceglie" : "Nella formazione (\(c.formazione?.modulo ?? "—"))"
         return Carta(intestazione) {
             Text(titolo).font(.system(.title2, design: .rounded).weight(.bold))
-            Text(c.formazione?.testo ?? c.perche ?? "").font(.subheadline).foregroundStyle(.secondary)
+            Text(c.formazione?.testo ?? c.perche ?? "").font(.subheadline).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -84,7 +84,7 @@ struct ConfrontoView: View {
         let x = c.giocatori[0], y = c.giocatori[1]
         return Carta(c.formazione != nil ? "Se giocassero da soli" : "Cosa pesa nella scelta") {
             Text("\(c.formazione != nil ? (c.perche ?? "") + " " : "")Punti attesi in più: la barra va verso \(x.nomeCorto) (sinistra) o verso \(y.nomeCorto) (destra). Le cause sommate danno la differenza totale: \(Formato.conSegno(c.differenzaPunti ?? 0, cifre: 2)) per \(x.nomeCorto).")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
             ForEach(c.fattoriVisibili) { f in fattore(f, c, x, y) }
         }
     }
@@ -100,9 +100,9 @@ struct ConfrontoView: View {
         let testoVerso = verso == 0 ? "pari" : "\(chi.nomeCorto) +\(Formato.decimali(abs(f.effetto), cifre: 2))"
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(f.etichetta).font(.caption).foregroundStyle(.secondary)
+                Text(f.etichetta).font(.caption).foregroundStyle(Color.testoSecondario)
                 Spacer()
-                Text(testoVerso).font(.caption.bold()).foregroundStyle(verso == 0 ? Color.secondary : Color.verde)
+                Text(testoVerso).font(.caption.bold()).foregroundStyle(verso == 0 ? Color.testoSecondario : Color.verde)
             }
             BarraDivergente(effetto: f.effetto, massimo: c.massimoEffetto)
             HStack {
@@ -110,7 +110,7 @@ struct ConfrontoView: View {
                 Spacer()
                 Text("\(valore(f, f.b)) \(y.nome.split(separator: " ").first.map(String.init) ?? y.nome)")
             }
-            .font(.caption2).foregroundStyle(.secondary)
+            .font(.caption2).foregroundStyle(Color.testoSecondario)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(f.etichetta): \(testoVerso). \(x.nomeCorto) \(valore(f, f.a)), \(y.nomeCorto) \(valore(f, f.b))")
@@ -120,7 +120,7 @@ struct ConfrontoView: View {
         let x = c.giocatori[0], y = c.giocatori[1]
         func riga(_ titolo: String, _ f: (Giocatore) -> String) -> some View {
             HStack {
-                Text(titolo).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                Text(titolo).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity, alignment: .leading)
                 Text(f(x)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
                 Text(f(y)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
             }
@@ -150,7 +150,7 @@ struct ConfrontoView: View {
                 }
                 .padding(.top, 8)
             }
-            .tint(.secondary)
+            .tint(Color.testoSecondario)
         }
     }
 
@@ -159,7 +159,7 @@ struct ConfrontoView: View {
             ForEach(c.giocatori) { g in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(g.nome).font(.subheadline.bold())
-                    Text((g.motivi ?? []).isEmpty ? "–" : (g.motivi ?? []).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                    Text((g.motivi ?? []).isEmpty ? "–" : (g.motivi ?? []).joined(separator: " · ")).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -219,7 +219,7 @@ struct SceltaDallaRosaView: View {
                             Button { scelto(g.id) } label: {
                                 HStack {
                                     RigaGiocatore(g: g)
-                                    Text(vm.posto(g.id)).font(.caption2).foregroundStyle(.secondary)
+                                    Text(vm.posto(g.id)).font(.caption2).foregroundStyle(Color.testoSecondario)
                                 }
                                 .frame(minHeight: 44)
                             }
@@ -260,8 +260,8 @@ struct RicercaGiocatoreView: View {
                 if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
                 if vm.testo.trimmingCharacters(in: .whitespaces).count < 2 {
                     VStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(.secondary).accessibilityHidden(true)
-                        Text("Scrivi almeno due lettere del nome.").foregroundStyle(.secondary)
+                        Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
+                        Text("Scrivi almeno due lettere del nome.").foregroundStyle(Color.testoSecondario)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -292,7 +292,7 @@ struct RicercaGiocatoreView: View {
                 Text(g.nome).font(.headline)
             }
             Spacer(minLength: 0)
-            Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
+            Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(Color.testoSecondario)
         }
         .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
