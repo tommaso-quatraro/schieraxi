@@ -142,7 +142,8 @@ b, strong { font-weight: 650; }
 .carta.luce::after { opacity: 1; transition-duration: .08s; }
 .carta h2 { font-size: var(--t-card); margin: 0 0 10px; letter-spacing: -.01em; }
 .carta h3 { font-size: var(--t-eti); text-transform: uppercase; letter-spacing: .08em; color: var(--testo-2); margin: 16px 0 8px; font-weight: 600; }
-.carta.hero { background: linear-gradient(150deg, color-mix(in srgb, var(--verde) 34%, transparent), color-mix(in srgb, var(--blu) 12%, transparent) 70%), var(--vetro-carta);
+.carta.hero { background: linear-gradient(150deg, color-mix(in srgb, var(--verde) 34%, transparent), color-mix(in srgb, var(--blu) 12%, transparent) 70%),
+    linear-gradient(color-mix(in srgb, var(--sfondo) 30%, transparent), color-mix(in srgb, var(--sfondo) 30%, transparent)), var(--vetro-carta);   /* velo del colore dello sfondo sotto l'alone verde: il grigio secondario resta sopra 4,5:1 */
   -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); }
 .riga { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .debole { color: var(--testo-2); font-size: var(--t-sec); }
@@ -378,7 +379,7 @@ details[open] > summary { margin-bottom: 8px; }
 .stato-scelta { margin: -2px 0 12px; padding: 0 0 12px; border-bottom: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .stato-scelta p { margin: 0; display: flex; gap: 8px; align-items: baseline; font-weight: 650; font-size: var(--t-corpo); line-height: 1.35; }
 .stato-scelta .segno { flex: none; width: 1.2em; text-align: center; font-weight: 800; }
-.stato-scelta.consigliata .segno { color: var(--testo-2); }
+.stato-scelta.consigliata .segno { color: var(--testo); }   /* il «○» è un simbolo: sul vetro con l'alone verde il grigio restava a 4,3:1 */
 .stato-scelta.salvata .segno, .stato-scelta.salvata p { color: var(--verde); }
 .stato-scelta.modificata .segno, .stato-scelta.mano .segno { color: var(--arancio); }
 .stato-scelta.non_valida .segno { color: var(--rosso); }
