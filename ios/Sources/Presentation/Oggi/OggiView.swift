@@ -79,7 +79,7 @@ struct OggiView: View {
                     await vm.carica()
                     if funzioni.acceso(Funzione.live) { await vm.live.ricarica() }
                 }
-                .avvisoDatiSalvati(vm.datiSalvati)
+                .avvisoDatiSalvati(vm.caricatore)
                 .bordiMorbidi()
             }
             .navigationTitle("Oggi")
