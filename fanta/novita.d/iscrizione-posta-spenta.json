@@ -1,0 +1,13 @@
+{
+  "titolo": "Iscrizione senza email che non arrivano e Confronto sulla giornata giusta",
+  "voci": [
+    "Se sul server le email sono spente, l'iscrizione con email lo dice subito invece di far aspettare un codice che non arriverà mai.",
+    "Nel Confronto fra due giocatori, dopo la scadenza, i numeri sono quelli della giornata che vedi in Formazione."
+  ],
+  "tecnico": [
+    "POST /api/account/registra senza invito (modi aperta ed email) con posta spenta: 503, codice iscrizione_posta_spenta, controllo prima dei limiti e uguale per ogni nome e indirizzo; nessuna iscrizione in attesa.",
+    "POST /api/account/registra con invito e email a posta spenta: l'account nasce, la verifica non parte, la risposta ha email_non_salvata: true (facoltativo); con la posta accesa è tutto come prima.",
+    "Web: traduzione err.iscrizione_posta_spenta; apriConfronto passa giornata=stato.formaz.f.giornata a /api/confronto.",
+    "Test in tests/test_posta_spenta.py e tests/test_diario_confronto_web.py; i test dell'iscrizione che raccolgono le email finte accendono posta.attiva."
+  ]
+}
