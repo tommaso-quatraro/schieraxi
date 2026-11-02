@@ -661,9 +661,10 @@ function mostraOggi(o, opz = {}) {
       const oraTesto = rinviata ? t("live.rinviata") : ora ? fOra(ora) : "–";
       const mm = [p.casa, p.trasferta].flatMap(s => (miei[s] || []).map(g => ({ ...g, squadra: s })));       // miei titolari delle due squadre
       const nomiMiei = mm.map(g => g.nome).join(", ");
-      return `<div class="partita ${p.giocata || p.stato === "finita" ? "giocata" : ""} ${rinviata ? "rinviata" : ""} ${mm.length ? "mia" : ""}" data-k="${esc(LiveSchieraxi.chiave(p))}" data-ora="${esc(oraTesto)}" data-giocata="${p.giocata ? 1 : 0}">
+      const ptUff = LiveSchieraxi.punteggioUfficiale(p);                         // risultato del calendario: c'è anche senza la diretta
+      return `<div class="partita ${p.giocata || p.stato === "finita" ? "giocata" : ""} ${rinviata ? "rinviata" : ""} ${mm.length ? "mia" : ""}" data-k="${esc(LiveSchieraxi.chiave(p))}" data-ora="${esc(oraTesto)}" data-giocata="${p.giocata ? 1 : 0}" data-pt="${esc(ptUff || "")}">
         <span class="ora">${oraTesto}</span>
-        <span class="sq casa">${sigla(p.casa)}</span><span class="vs">vs</span><span class="sq trasf">${sigla(p.trasferta)}</span><span class="pt"></span>
+        <span class="sq casa">${sigla(p.casa)}</span><span class="vs">vs</span><span class="sq trasf">${sigla(p.trasferta)}</span><span class="pt">${esc(ptUff || "")}</span>
         ${mm.length ? `<span class="miei-live" role="img" aria-label="${esc(t("oggi.tuoi_titolari", { nomi: nomiMiei }))}">${mm.slice(0, 4).map(g => `<span class="mini-av">${avatar(g)}</span>`).join("")}${mm.length > 4 ? `<b class="piu">+${mm.length - 4}</b>` : ""}<span class="miei-testo">${tp("oggi.n_titolari", mm.length)}</span></span>` : ""}
         <span class="eventi-live" hidden></span></div>`;
     }).join("");
@@ -768,7 +769,7 @@ function disegnaLive(live, mio) {
       ora.append(b, m);
     } else ora.textContent = et.testo || el.dataset.ora;
     const pun = el.querySelector(".pt");                                   // colonna del punteggio: sempre la stessa, allineata a destra
-    pun.textContent = pt || "";
+    pun.textContent = pt || el.dataset.pt || "";                           // la diretta senza punteggio non cancella quello ufficiale
     if (nuovi.has(el.dataset.k)) {                                          // gol appena segnato: evidenziazione breve (calma con «Riduci movimento»)
       pun.classList.remove("gol"); void pun.offsetWidth; pun.classList.add("gol");
       setTimeout(() => pun.classList.remove("gol"), 2200);

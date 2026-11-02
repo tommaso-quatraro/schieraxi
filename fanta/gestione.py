@@ -219,6 +219,14 @@ def _tempi(inizio_dt: datetime | None, adesso: datetime, regole: Regole | None) 
             "ore_mancanti": ore, "iniziata": scad is not None and scad <= adesso}
 
 
+def _partita_turno(r) -> dict:
+    """Una partita di Oggi: il risultato ufficiale solo se il calendario la dà per giocata (anche senza i risultati in diretta)."""
+    giocata, colonne = bool(r["giocata"]), r.keys()
+    gol = lambda c: r[c] if giocata and c in colonne else None    # noqa: E731 - archivi vecchi o di prova senza le colonne dei gol
+    return {"data": r["data"], "casa": r["casa"], "trasferta": r["trasferta"], "giocata": giocata,
+            "gol_casa": gol("gol_casa"), "gol_trasferta": gol("gol_trasferta")}
+
+
 def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, regole: Regole | None = None) -> dict:
     """Oggi per chi non ha ancora le rose: stessi campi di `oggi` ma vuoti (i client vecchi non si rompono), `senza_rose: true`,
     e la giornata con la scadenza se il calendario c'è."""
@@ -227,9 +235,9 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
     giornata, partite, inizio_dt = None, [], None
     try:
         giornata = consigli.giornata_da_giocare(db, stagione, regole)
-        righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
+        righe = db.execute("SELECT * FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
                            (stagione, giornata)).fetchall() if giornata else []
-        partite = [{"data": r["data"], "casa": r["casa"], "trasferta": r["trasferta"], "giocata": bool(r["giocata"])} for r in righe]
+        partite = [_partita_turno(r) for r in righe]
         inizio_dt = prima_partita(db, stagione, giornata) if giornata else None     # regola unica (turno.py), come i promemoria
     except (sqlite3.Error, ValueError):                     # archivio non pronto: Oggi si apre lo stesso
         pass
@@ -271,9 +279,9 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
                 tua_scelta = True
         except ValueError:                   # la rosa è cambiata e la scelta non vale più: resta la consigliata
             pass
-    righe = db.execute("SELECT data, casa, trasferta, giocata FROM partite WHERE stagione = ? AND giornata = ? "
+    righe = db.execute("SELECT * FROM partite WHERE stagione = ? AND giornata = ? "
                        "ORDER BY data", (stagione, giornata)).fetchall()
-    partite = [{"data": r["data"], "casa": r["casa"], "trasferta": r["trasferta"], "giocata": bool(r["giocata"])} for r in righe]
+    partite = [_partita_turno(r) for r in righe]
     # la formazione si chiude alla PRIMA partita del turno, anche se è già stata giocata: regola unica (turno.py, avvisi.prima_partita),
     # la stessa di promemoria e copia automatica. Una partita rinviata rimasta con la data vecchia non chiude la formazione prima.
     inizio_dt = prima_partita(db, stagione, giornata)

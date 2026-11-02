@@ -17,6 +17,8 @@
   const inDiretta = p => IN_GIOCO.includes(statoDi(p));
   const haPunteggio = p => CON_PUNTEGGIO.includes(statoDi(p)) && conGol(p);
   const punteggio = p => haPunteggio(p) ? `${p.gol_casa} – ${p.gol_trasferta}` : null;
+  // Il risultato ufficiale di una partita di Oggi (calendario: `giocata` con i gol), anche senza i risultati in diretta.
+  const punteggioUfficiale = p => p && p.giocata ? punteggio({ ...p, stato: "finita" }) : null;
 
   // Cosa scrivere al posto dell'orario. `testo` null = lasciare l'orario di inizio.
   function etichetta(p) {
@@ -87,7 +89,7 @@
     return `${e.minuto} ${e.chi}${nota}`.trim();
   }
 
-  const api = { chiave, inDiretta, haPunteggio, punteggio, etichetta, inFinestra, prossimoControllo, gol, eMio, eventiVisibili, testoEvento };
+  const api = { chiave, inDiretta, haPunteggio, punteggio, punteggioUfficiale, etichetta, inFinestra, prossimoControllo, gol, eMio, eventiVisibili, testoEvento };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else radice.LiveSchieraxi = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

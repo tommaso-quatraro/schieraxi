@@ -91,7 +91,7 @@ def test_pedina_per_i_lettori_di_schermo():
 
 def test_partite_del_turno_in_una_griglia_sola():
     """Le righe con i tuoi titolari non si spostano: stesso rientro per tutte, punteggio nella sua colonna a destra."""
-    assert '<span class="pt"></span>' in APP and 'el.querySelector(".pt")' in APP
+    assert '<span class="pt">${esc(ptUff || "")}</span>' in APP and 'el.querySelector(".pt")' in APP     # vuota o col risultato ufficiale
     regola_mia = re.search(r"^\.partita\.mia \{([^}]*)\}", CSS, re.M).group(1)
     assert "padding" not in regola_mia and "box-shadow" not in regola_mia
     assert "grid-template-columns: var(--col-ora) minmax(0, 1fr) 1.9em minmax(0, 1fr) var(--col-pt)" in CSS

@@ -403,7 +403,7 @@ Leggono solo dati già pronti (calendario, voti, scelte, Diario, cache dei risul
 - `"in_corso"`: la scadenza è passata (`iniziata: true`) e la giornata non è chiusa (partite in corso o da giocare, anche la domenica sera con i posticipi del lunedì). Il client NON mostra «Da controllare», i migliori né altri consigli su chi schierare; mostra `in_corso`. `da_fare` in questa fase non contiene mai `dubbio`, `formazione`, `copertura`, `svincolato`, `scambio`.
 - `"finita"`: la giornata precedente è finita da meno di 48 ore e la prossima si chiude fra più di 24 ore. `giornata`, `scadenza`, `formazione` parlano già della PROSSIMA giornata; il client mostra `riepilogo` e `prossima`, non mostra «Da controllare» né i migliori (le probabili non ci sono ancora). `da_fare` non contiene `dubbio`; coperture, svincolati e scambi solo se superano il buon senso (come sempre).
 
-`partite[].stato` (in ogni partita del turno): `da_giocare`, `in_corso`, `finita`, `rinviata`. Prima il calendario (`giocata`), poi la cache dei risultati in diretta, infine l'orario (110 minuti dopo l'inizio = finita). Per il punteggio e i marcatori resta `GET /api/live`.
+`partite[].stato` (in ogni partita del turno): `da_giocare`, `in_corso`, `finita`, `rinviata`. Prima il calendario (`giocata`), poi la cache dei risultati in diretta, infine l'orario (110 minuti dopo l'inizio = finita). Ogni partita ha anche `gol_casa` e `gol_trasferta`: il risultato ufficiale del calendario se `giocata` è vero, altrimenti `null` (così i client mostrano i risultati anche senza i risultati in diretta). Per il punteggio in diretta e i marcatori resta `GET /api/live`.
 
 `in_corso` (oggetto o `null`; c'è solo con `fase: "in_corso"` e se si sa quale formazione è stata schierata):
 
