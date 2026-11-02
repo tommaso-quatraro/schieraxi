@@ -1,0 +1,12 @@
+{
+  "titolo": "Formazione: lo stato della scelta sempre giusto",
+  "voci": [
+    "Se scegli un altro modulo o un altro stile, la riga in cima non dice più «Stai vedendo la consigliata»; «Torna alla consigliata» rimette anche modulo e stile consigliati.",
+    "Aprendo la Formazione con una scelta salvata si vedono sempre i numeri aggiornati, non quelli della volta prima.",
+    "Sul campo il segnale ⚠ compare solo sotto il 70% che leggi; le partite lontane più di una settimana hanno anche il mese."
+  ],
+  "tecnico": [
+    "app.js: le risposte di valuta e della rilettura della scelta ridisegnano la vista più recente (sc.disegna), non quella della copia locale: prima la copia vecchia ricopriva i dati nuovi e con una rosa cambiata la pagina si fermava con un errore.",
+    "Nuovo stato «altra» in statoScelta (chiave formazione.stato_altra)."
+  ]
+}
