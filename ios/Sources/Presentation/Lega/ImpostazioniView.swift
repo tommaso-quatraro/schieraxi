@@ -156,7 +156,7 @@ struct ImpostazioniView: View {
                 AggiornaDatiSezione(vm: vm.aggiornamento)
                 if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
             } footer: {
-                Text("Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche tutto il resto (risultati in diretta, asta, confronto, seguiti, diario e altro). Vale solo per te.").foregroundStyle(Color.testoSecondario)
+                Text("Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche tutto il resto (risultati in diretta, confronto, seguiti, diario e altro). Vale solo per te.").foregroundStyle(Color.testoSecondario)
             }
             DiagnosticaWidgetSezione()
             CertificatoSezione()

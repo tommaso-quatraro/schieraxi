@@ -188,7 +188,6 @@ struct StagioneView: View {
                     passo("4", "Aggiorna i dati", "Calendario, listone e quotazioni nuovi.")
                 }
             }
-            passo(sessione.puoAmministrare ? "5" : "4", "Prima dell'asta guarda Altro > Asta e riparazione", "Budget e prezzi consigliati.")
         }
     }
 
