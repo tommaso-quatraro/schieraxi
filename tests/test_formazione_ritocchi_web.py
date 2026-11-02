@@ -127,3 +127,44 @@ def test_etichette_su_una_riga_e_colonne_pari_su_ipad_verticale():
 
 def test_controlla_dei_dati_vecchi_apre_stato_dei_dati():
     assert 'if (v.id === "dati-vecchi" && typeof apriStatoDati === "function") { vai("impostazioni", "avanzate"); apriStatoDati(); return; }' in DAFARE
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_altro_modulo_o_stile_non_e_la_consigliata():
+    """Collaudo del 2/11: con il 3-4-3 o lo stile «Rischiosa» la riga diceva «Stai vedendo la consigliata»."""
+    funz = APP[APP.index("const stessiIds"):APP.index("// «oggi alle 21:40»")]
+    undici = list(range(1, 12))
+    r = _node(funz + f"console.log(JSON.stringify([statoScelta({undici}, null, false, false, true), statoScelta({undici}, null, true, false, true),"
+              f"statoScelta({undici}, {{titolari: {undici}}}, false, false, true), statoScelta({undici}, null, false)]))")
+    assert r == ["altra", "mano", "salvata", "consigliata"]
+    assert "const altra = !manuale && (l.rischio !== 0 || m.modulo !== l.modulo);" in APP
+    assert TESTI.count('"formazione.stato_altra"') == 2 and 'altra: b("salva-questa"' in APP
+
+
+def test_torna_alla_consigliata_rimette_stile_e_modulo():
+    corpo = APP[APP.index('bottone("#torna-consigliata"'):APP.index('bottone("#copia"')]
+    assert "sc.manuale = null; sc.livello = 0; sc.modulo = null;" in corpo
+
+
+def test_le_risposte_ridisegnano_la_vista_piu_recente():
+    """Copia locale e poi dati nuovi = due viste: la risposta di valuta disegnava la vecchia sopra la nuova (e con la rosa cambiata
+    la pagina si fermava con un errore)."""
+    corpo = APP[APP.index("const valutaManuale"):APP.index("const annullaRichieste")]
+    assert "const disegna = sc.disegna, moduloAuto = sc.moduloAuto;" in corpo
+    assert "if (qui) disegna(true)" not in corpo
+    assert "Object.assign(sc, { disegna, moduloAuto, valuta: valutaManuale });" in APP
+    assert "sc.valuta(sc.salvata.titolari, false, true)" in APP
+    assert "...(sc.manuale.panchina || [])].every(id => f.schede[String(id)])" in APP
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_avviso_gioca_sul_numero_che_si_legge_e_data_lontana_col_mese():
+    pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    assert "const p = Math.round((x.p_voto ?? 0) * 100) / 100;" in pedina
+    assert _node("const p = Math.round(0.697 * 100) / 100; console.log(JSON.stringify(p < 0.7))") is False
+    funz = APP[APP.index("function quando(s)"):APP.index("// ETag e If-Match")]
+    codice = ("const parseData=s=>new Date(s.replace(' ','T')); const fOra=d=>'20:45'; const fData=d=>d.getDate()+' dic';"
+              "const t=k=>({'tempo.giorno_4':'gio','tempo.oggi':'oggi','tempo.domani':'domani','tempo.ieri':'ieri'})[k]||k;" + funz
+              + "const fra=g=>{const d=new Date(); d.setDate(d.getDate()+g); return d.toISOString().slice(0,10)+' 20:45'};"
+              + "console.log(JSON.stringify([quando(fra(30)).split(' ').length, quando(fra(3)).split(' ').length]))")
+    assert _node(codice) == [4, 3]                                          # «gio 10 dic 20:45» e «sab 7 20:45»

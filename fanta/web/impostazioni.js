@@ -50,7 +50,7 @@ function apriPannello(cfg, id, sposta = true) {
     b.classList.toggle("attiva", b.dataset.imp === id);
     if (b.dataset.imp === id) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
   });
-  pagina.innerHTML = `<button class="bottone secondario imp-indietro" id="imp-indietro" type="button">← ${cfg.indietro}</button>
+  pagina.innerHTML = `<button class="bottone secondario imp-indietro" id="imp-indietro" type="button">${ICONA_INDIETRO}${cfg.indietro}</button>
     <h2 class="imp-titolo" id="imp-titolo" tabindex="-1">${g.nome}</h2><div id="imp-corpo">${cfg.corpi[id]()}</div>`;
   $("#imp-indietro").addEventListener("click", () => { radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-imp="${id}"]`); if (b) b.focus(); });
   cfg.collega[id]();
@@ -62,13 +62,20 @@ function apriPannello(cfg, id, sposta = true) {
 const voceLegale = (pagina, chiave) => `<li><a class="voce voce-link" href="/${pagina}${queryLingua()}" target="_blank" rel="noopener" style="grid-template-columns:1fr auto">
   <span class="nome">${t(chiave)}</span><span class="debole" aria-hidden="true">›</span></a></li>`;
 
+// Il codice sorgente (licenza AGPL-3.0): solo un indirizzo https dichiarato dal server (FANTA_SORGENTE, campo `sorgente` di /api/stato).
+const voceSorgente = () => {
+  const s = stato.info && stato.info.sorgente;
+  return typeof s === "string" && /^https:\/\/[^\s"'<>]+$/.test(s) ? `<li><a class="voce voce-link" href="${esc(s)}" target="_blank" rel="noopener" style="grid-template-columns:1fr auto">
+  <span class="nome">${t("info.sorgente")}</span><span class="debole" aria-hidden="true">›</span></a></li>` : "";
+};
+
 const CORPI_IMP = {
   account: () => schedaAccount(),
   aspetto: () => schedaAspetto(),
   avvisi: () => `<div class="carta" id="avvisi-telefono"><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>`,
   informazioni: () => {
     const v = stato.info && stato.info.versione;
-    return `<div class="carta"><ul class="elenco">${voceLegale("privacy", "legale.privacy")}${voceLegale("termini", "legale.termini")}${voceLegale("crediti", "legale.crediti")}</ul>
+    return `<div class="carta"><ul class="elenco">${voceLegale("privacy", "legale.privacy")}${voceLegale("termini", "legale.termini")}${voceLegale("crediti", "legale.crediti")}${voceSorgente()}</ul>
       <div class="riga"><span>${t("info.versione")}</span><b>${v ? esc(v) : "–"}</b></div></div>`;
   },
   avanzate: () => `<div class="carta"><h3>${t("av.funzioni")}</h3>

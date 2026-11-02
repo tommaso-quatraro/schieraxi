@@ -1,0 +1,125 @@
+name: Revisione IA
+
+# Revisione automatica di ogni PR con Claude Code (anthropics/claude-code-action), chiamata dal job «revisione-ia» di test.yml:
+# sta lì perché «unisci» possa aspettarla (needs vale solo dentro lo stesso workflow). Decisione e motivi:
+# docs/decisioni/0007-revisione-ia-in-ci.md.
+# - Le istruzioni sono la skill .claude/skills/revisione-pr/SKILL.md: l'azione rimette .claude/ come su main prima di avviare
+#   Claude, quindi una PR non può riscriverle.
+# - Il token di Claude (segreto CLAUDE_CODE_OAUTH_TOKEN) non arriva mai alle PR da fork né a quelle di Dependabot: il chiamante
+#   esclude i fork, e senza segreto il job passa senza revisione (lo scrive nel riepilogo).
+# - Claude ha solo strumenti di lettura e i commenti sulle righe: niente Write, Edit, Bash libero; la sintesi la pubblica il job. Permessi: contents read, pull-requests write.
+on:
+  workflow_call:
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  revisione:
+    name: Revisione IA
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      pull-requests: write      # commenti sulle righe e sintesi; niente scritture sul codice
+    concurrency:
+      group: revisione-ia-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      # Un job solo, sempre eseguito: senza segreto i passi dopo si saltano e il job resta verde, così «unisci» non si blocca
+      # prima che il segreto ci sia (o per le PR di Dependabot, che i segreti di Actions non li vedono).
+      - name: C'è il token di Claude?
+        id: segreto
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then presente=true; else presente=false; fi
+          echo "presente=$presente" >> "$GITHUB_OUTPUT"
+          if [ "$presente" = false ]; then
+            echo "Segreto CLAUDE_CODE_OAUTH_TOKEN assente: revisione IA saltata" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        if: steps.segreto.outputs.presente == 'true'
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Versione fissata per commit (del 26/10/2026): fissa anche Claude Code (2.1.311, scritto nell'azione) e Bun (1.4.4).
+      - name: Revisione con Claude Code
+        id: claude
+        if: steps.segreto.outputs.presente == 'true'
+        uses: anthropics/claude-code-action@8041f1d17e0e7d2f2cfe35002962e9f26237c0bb  # v1.0.263
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}   # token del job, permessi qui sopra: niente app di Claude, niente id-token
+          show_full_output: "false"           # repository pubblico: i log li vede chiunque
+          display_report: "false"
+          prompt: |
+            Repository: ${{ github.repository }}. Pull request numero ${{ github.event.pull_request.number }}.
+            Segui la skill revisione-pr (.claude/skills/revisione-pr/SKILL.md) e rispondi con lo schema JSON richiesto.
+          claude_args: |
+            --max-turns 30
+            --allowedTools "Skill,Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --json-schema '{"type":"object","properties":{"bloccanti":{"type":"integer","minimum":0},"sintesi":{"type":"string"}},"required":["bloccanti","sintesi"],"additionalProperties":false}'
+
+      # Il cancello: rosso se Claude non ha dato l'esito (risposta vuota o non valida) o se ha trovato problemi bloccanti.
+      # Scrive anche la sintesi in un file, che il passo dopo mette nella PR (Claude non ha «gh pr comment»).
+      - name: Cancello (nessun problema bloccante)
+        if: steps.segreto.outputs.presente == 'true'
+        env:
+          ESITO: ${{ steps.claude.outputs.structured_output }}
+          COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 -I -s - <<'FINE'
+          import json, os, sys
+
+          def chiudi(testa, sintesi, errore=None):
+              # «@» seguita da un carattere invisibile: la sintesi non chiama in causa nessuno su GitHub
+              testo = (testa + "\n\n" + sintesi).replace("@", "@\u2060").strip()
+              commit = os.environ.get("COMMIT", "")[:7]
+              with open(os.path.join(os.environ["RUNNER_TEMP"], "sintesi.md"), "w", encoding="utf-8") as f:
+                  f.write("<!-- revisione-ia -->\n**Revisione automatica** (commit " + commit + ")\n\n" + testo + "\n")
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+                  f.write("## Revisione IA\n\n" + testo + "\n")
+              sys.exit(errore)
+
+          testo = os.environ.get("ESITO", "").strip()
+          if not testo:
+              chiudi("Esito mancante.", "La revisione non ha dato l'esito: vedi il log del job «revisione-ia».",
+                     "La revisione non ha restituito l'esito (structured_output vuoto)")
+          try:
+              esito = json.loads(testo)
+              bloccanti = esito["bloccanti"]
+              sintesi = str(esito.get("sintesi", ""))
+          except (ValueError, KeyError, TypeError):
+              chiudi("Esito non valido.", "Vedi il log del job «revisione-ia».", "Esito della revisione non valido")
+          if not isinstance(bloccanti, int) or isinstance(bloccanti, bool) or bloccanti < 0:
+              chiudi("Esito non valido.", "Vedi il log del job «revisione-ia».",
+                     "Esito della revisione non valido: «bloccanti» non è un numero intero")
+          if bloccanti > 0:
+              chiudi(f"Problemi bloccanti: {bloccanti}.", sintesi,
+                     f"La revisione ha trovato {bloccanti} problemi bloccanti: vedi i commenti nella PR")
+          chiudi("Nessun problema bloccante.", sintesi)
+          FINE
+
+      # Una sola sintesi per PR, aggiornata a ogni giro (commento del bot con il segno <!-- revisione-ia -->)
+      - name: Sintesi nella PR
+        if: ${{ !cancelled() && steps.segreto.outputs.presente == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          file="$RUNNER_TEMP/sintesi.md"
+          [ -s "$file" ] || { echo "Nessuna sintesi da pubblicare"; exit 0; }
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- revisione-ia -->"))) | .id' | tail -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$file" > /dev/null
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F "body=@$file" > /dev/null
+          fi
+          echo "Sintesi pubblicata"

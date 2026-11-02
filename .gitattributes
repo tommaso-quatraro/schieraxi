@@ -4,3 +4,6 @@ script/controlli/hooks/* text eol=lf
 
 android/gradlew text eol=lf
 *.bat text eol=crlf
+
+# axe-core: byte per byte come nel pacchetto (l hash scritto nel LEGGIMI deve restare vero su ogni sistema)
+tests/strumenti/axe/* -text

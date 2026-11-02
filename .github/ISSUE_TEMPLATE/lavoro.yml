@@ -1,0 +1,58 @@
+name: Lavoro
+description: Un lavoro del ciclo in corso (per chi sviluppa) con obiettivo, confini e criteri per dire che è fatto.
+title: "<area>: <cosa>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Un lavoro = una issue = una pull request che la chiude (`Closes #N`). Le idee nuove durante il ciclo sono `P3` e aspettano.
+        Niente dati personali, indirizzi, email o token: il repository è pubblico.
+  - type: textarea
+    id: obiettivo
+    attributes:
+      label: Obiettivo
+      description: Cosa cambia per chi usa l'app e perché, in poche righe.
+    validations:
+      required: true
+  - type: textarea
+    id: fuori-ambito
+    attributes:
+      label: Fuori ambito
+      description: Cosa NON fa questo lavoro (va in un'altra issue).
+      placeholder: "- niente cambi all'iPhone (issue «coerenza: …» a parte)"
+    validations:
+      required: true
+  - type: input
+    id: aree
+    attributes:
+      label: Aree o cartelle toccate
+      description: Le stesse della riga «Aree:» della pull request, separate da virgole.
+      placeholder: "fanta/web, tests, docs"
+    validations:
+      required: true
+  - type: textarea
+    id: criteri
+    attributes:
+      label: Criteri di accettazione
+      description: Fatto quando… (uno per riga, verificabili).
+      placeholder: "- [ ] …"
+    validations:
+      required: true
+  - type: textarea
+    id: dispositivo
+    attributes:
+      label: Prova sul dispositivo
+      description: Cosa guardare dopo l'unione (versione sul server, schermata sull'iPhone, foto da fare).
+    validations:
+      required: false
+  - type: dropdown
+    id: priorita
+    attributes:
+      label: Priorità
+      description: Metti anche l'etichetta con lo stesso nome.
+      options:
+        - "P1: rotto per l'utente o sicurezza (subito)"
+        - "P2: nel ciclo in corso"
+        - "P3: idea, dopo"
+    validations:
+      required: true

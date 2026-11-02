@@ -271,7 +271,7 @@ def test_niente_che_si_muove_di_continuo():
 
 
 def test_gioco_di_parole_del_nome():
-    for nome, aria, slogan, pron in (
+    for nome, aria, slogan, _pron in (
         ("index.html", "SchieraXI, schiera undici", "Schierali. Schiera gli <span", None),
         ("en/index.html", "SchieraXI, line up eleven", "Line them up. Line up the <span", None),
     ):

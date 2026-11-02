@@ -52,12 +52,12 @@ def test_motivi_senza_percentuali_sul_giocare():
 
 
 def test_infortunato_niente_consigli_sulla_partita():
-    """Collaudo 2/11/2026: un infortunato aveva ancora «gol atteso 68%» e «partita favorevole»."""
+    """Collaudo 2/11/2026: un infortunato aveva ancora «gol atteso 68%» e «partita favorevole» (oggi «49% di segnare»)."""
     for stato in ("infortunato", "squalificato"):
         assert consigli.motivi(_giocatore(stato=stato, e_rigori=0.3)) == [stato]
         assert consigli.motivi(_giocatore(stato=stato, nota="Lesione muscolare")) == [stato, "Lesione muscolare"]
     m = consigli.motivi(_giocatore(stato="titolare", percentuale=90.0))
-    assert "gol atteso 68%" in m and "partita favorevole" in m           # chi gioca li tiene
+    assert "49% di segnare" in m and "partita favorevole" in m           # chi gioca li tiene
 
 
 def test_mercato_propone_lo_svincolato_che_migliora(monkeypatch):

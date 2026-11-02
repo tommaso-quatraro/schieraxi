@@ -28,7 +28,7 @@ def test_inclinazione_sposta_il_modulo_ma_non_i_punti():
 
 def test_stili_sono_preset_completi_e_equilibrata_non_cambia():
     assert [s[0] for s in fz.LIVELLI_RISCHIO] == [-2, -1, 0, 1, 2]
-    for rischio, nome, peso, inclinazione, descrizione in fz.LIVELLI_RISCHIO:
+    for _rischio, nome, _peso, inclinazione, descrizione in fz.LIVELLI_RISCHIO:
         assert nome and len(descrizione) > 20 and len(inclinazione) == 2
     eq = next(s for s in fz.LIVELLI_RISCHIO if s[0] == 0)
     assert eq[2] == fz.PESO_BASE and eq[3] == (0.0, 0.0)

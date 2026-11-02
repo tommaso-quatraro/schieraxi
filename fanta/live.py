@@ -392,7 +392,7 @@ def _da_database(r, adesso: datetime | None = None, inizio_turno: datetime | Non
     else:
         inizio = _inizio(data) if data else None
         adesso = adesso or _ora()
-        if inizio_turno is not None and (inizio is None or not turno.nel_turno(inizio, inizio_turno)):
+        if inizio_turno is not None and not turno.della_giornata(inizio, inizio_turno):     # un anticipo non è «rinviata»
             stato = "rinviata"
         elif inizio is None or adesso < inizio:
             stato = "da_giocare"

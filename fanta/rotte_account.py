@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import account, account_email, contesto, fonti_attive, funzioni, percorsi, registro, social
+from . import account, account_email, contesto, fonti_attive, funzioni, percorsi, posta, registro, social
 from .account import ErroreAccount, Utente
 
 COOKIE = "fanta_sessione"
@@ -185,7 +185,8 @@ def controllo_accesso(request: Request) -> JSONResponse | None:
     if utente is None:
         return JSONResponse(status_code=401, content={"detail": "Accesso richiesto", "multiutente": True,
                                                                          "registrazione": account_email.modo_registrazione(),
-                                                                         "social": social.provider_attivi()})
+                                                                         "social": social.provider_attivi(),
+                                                                         "email_attiva": posta.attiva()})
     request.state.utente = utente
     if (percorso in SOLO_AMMINISTRATORE or percorso.startswith("/api/admin/")) and not utente.amministratore:
         return JSONResponse(status_code=403, content={"detail": "Solo per l'amministratore"})
@@ -197,6 +198,17 @@ def errore_account(_, e: ErroreAccount) -> JSONResponse:
              | ({"codice": e.codice} if getattr(e, "codice", None) else {}))      # secondi: anche nel corpo, non solo in Retry-After
     return JSONResponse(status_code=e.stato, content=corpo,
                         headers={"Retry-After": str(e.riprova_tra)} if e.riprova_tra else None)
+
+
+POSTA_SPENTA = ("Su questo server l'invio delle email è spento: il codice non può arrivare. "
+                "Per la password usa il codice di recupero.")
+
+
+def _posta_accesa() -> None:
+    """Con FANTA_MAIL=spento nessun codice parte: si dice subito (503, `posta_spenta`) invece di far aspettare un'email che non
+    arriva. Non dice niente su chi ha un account: vale uguale per ogni indirizzo."""
+    if not posta.attiva():
+        raise ErroreAccount(POSTA_SPENTA, 503, codice="posta_spenta")
 
 
 def _attivo() -> None:
@@ -327,6 +339,7 @@ def me(request: Request, utente: Utente = Depends(utente_corrente)):
         with closing(account.apri()) as db:
             corpo |= social.profilo_email(db, utente.id, account_email.email_di(db, utente.id))
             corpo["social"] = social.provider_attivi()
+            corpo["email_attiva"] = posta.attiva()       # False: le rotte che mandano un codice per email rispondono 503 `posta_spenta`
             if social.google_attivo():
                 corpo["accessi"] = social.accessi(db, utente.id)
     return corpo
@@ -344,13 +357,15 @@ def registra(dati: Iscrizione, request: Request, risposta: Response):
     with closing(account.apri()) as db:
         utente, token, recupero = account.registra(db, dati.nome_utente, dati.password, dati.invito, ip_reale(request), _dispositivo(request),
                                                   accetto_termini=dati.accetto_termini)
-        if email:                                    # la verifica parte a parte: se non si riesce, l'account c'è lo stesso
+        email_non_salvata = bool(email) and not posta.attiva()      # posta spenta: il codice non può arrivare, l'email non resta «in attesa»
+        if email and not email_non_salvata:          # la verifica parte a parte: se non si riesce, l'account c'è lo stesso
             try:
                 account_email.chiedi_verifica(db, utente.id, email, None, ip_reale(request), senza_password=True)
             except ErroreAccount:
                 pass
         segreto = account.ricorda_dispositivo(db, utente.id, dispositivo_fidato(request))
-    corpo = _con_sessione(risposta, request, utente, token, dati.nativo, {"codice_recupero": recupero})
+    corpo = _con_sessione(risposta, request, utente, token, dati.nativo,
+                          {"codice_recupero": recupero} | ({"email_non_salvata": True} if email_non_salvata else {}))
     return _dai_dispositivo(risposta, request, segreto, dati.nativo, corpo)
 
 
@@ -462,6 +477,7 @@ def recupero(dati: Recupero, request: Request):
 @router.post("/api/account/email", dependencies=[Depends(_attivo)])
 def imposta_email(dati: NuovaEmail, request: Request, utente: Utente = Depends(utente_corrente)):
     """Aggiunge o cambia l'email: manda un codice a 6 cifre al nuovo indirizzo (serve la password). Stessa risposta in ogni caso."""
+    _posta_accesa()
     with closing(account.apri()) as db:
         return account_email.chiedi_verifica(db, utente.id, dati.email, dati.password, ip_reale(request), sessione=token_della_richiesta(request))
 
@@ -481,6 +497,7 @@ def togli_email(dati: SoloPassword, request: Request, utente: Utente = Depends(u
 @router.post("/api/account/recupero-email", dependencies=[Depends(_attivo)])
 def recupero_email_richiesta(dati: RichiestaRecuperoEmail, request: Request):
     """Password dimenticata: manda un codice all'email dell'account. Risposta identica se l'indirizzo esiste o no."""
+    _posta_accesa()
     with closing(account.apri()) as db:
         return account_email.chiedi_recupero(db, dati.email, ip_reale(request))
 

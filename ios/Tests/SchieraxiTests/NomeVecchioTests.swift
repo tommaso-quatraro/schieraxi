@@ -29,7 +29,7 @@ final class NomeVecchioTests: XCTestCase {
                 guard let url = caso as? URL, url.pathExtension == "swift",
                       let testo = try? String(contentsOf: url, encoding: .utf8) else { continue }
                 if testo.lowercased().contains(vecchio1) || testo.lowercased().contains(vecchio3) { trovati.append(url.lastPathComponent) }
-                // «Schiera SchieraXI» è l'etichetta per VoiceOver del titolo: l'unico posto in cui il nome vecchio resta, a voce.
+                // «Schiera undici» (minuscolo) è l'etichetta per VoiceOver del nome: il numero letto a voce, non il nome vecchio.
                 if testo.replacingOccurrences(of: "Schiera Und" + "ici", with: "").contains("Und" + "ici") { trovati.append(url.lastPathComponent) }
             }
         }

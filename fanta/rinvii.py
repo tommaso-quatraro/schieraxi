@@ -76,7 +76,7 @@ def fuori_turno(partite: Iterable[dict]) -> list[dict]:
     inizio = turno.inizio(_data(p.get("data")) for p in partite)
     if inizio is None:
         return []
-    return [p for p in partite if (d := _data(p.get("data"))) is None or not turno.nel_turno(d, inizio)]
+    return [p for p in partite if not turno.della_giornata(_data(p.get("data")), inizio)]          # un anticipo resta della giornata
 
 
 def rinviate(partite: Iterable[dict]) -> list[dict]:

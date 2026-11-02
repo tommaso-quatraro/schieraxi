@@ -43,7 +43,7 @@ struct ConfrontoView: View {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 8) {
                     colonna(c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
-                    Text("VS").font(.headline).foregroundStyle(.secondary).padding(.top, 24).accessibilityHidden(true)
+                    Text("VS").font(.headline).foregroundStyle(Color.testoSecondario).padding(.top, 24).accessibilityHidden(true)
                     colonna(c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
                 }
                 VStack(spacing: 12) {
@@ -59,7 +59,7 @@ struct ConfrontoView: View {
             AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome, ruolo: g.ruolo)
             Text(g.nome).font(.headline).multilineTextAlignment(.center).lineLimit(2)
             Text("\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(Color.testoSecondario)
             if scelto {
                 Label("Consigliato", systemImage: "checkmark.seal.fill").font(.caption.bold()).foregroundStyle(Color.verde)
             }
@@ -76,7 +76,7 @@ struct ConfrontoView: View {
         let intestazione = c.formazione == nil ? "Il sistema sceglie" : "Nella formazione (\(c.formazione?.modulo ?? "—"))"
         return Carta(intestazione) {
             Text(titolo).font(.system(.title2, design: .rounded).weight(.bold))
-            Text(c.formazione?.testo ?? c.perche ?? "").font(.subheadline).foregroundStyle(.secondary)
+            Text(c.formazione?.testo ?? c.perche ?? "").font(.subheadline).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -84,7 +84,7 @@ struct ConfrontoView: View {
         let x = c.giocatori[0], y = c.giocatori[1]
         return Carta(c.formazione != nil ? "Se giocassero da soli" : "Cosa pesa nella scelta") {
             Text("\(c.formazione != nil ? (c.perche ?? "") + " " : "")Punti attesi in più: la barra va verso \(x.nomeCorto) (sinistra) o verso \(y.nomeCorto) (destra). Le cause sommate danno la differenza totale: \(Formato.conSegno(c.differenzaPunti ?? 0, cifre: 2)) per \(x.nomeCorto).")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
             ForEach(c.fattoriVisibili) { f in fattore(f, c, x, y) }
         }
     }
@@ -100,9 +100,9 @@ struct ConfrontoView: View {
         let testoVerso = verso == 0 ? "pari" : "\(chi.nomeCorto) +\(Formato.decimali(abs(f.effetto), cifre: 2))"
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(f.etichetta).font(.caption).foregroundStyle(.secondary)
+                Text(f.etichetta).font(.caption).foregroundStyle(Color.testoSecondario)
                 Spacer()
-                Text(testoVerso).font(.caption.bold()).foregroundStyle(verso == 0 ? Color.secondary : Color.verde)
+                Text(testoVerso).font(.caption.bold()).foregroundStyle(verso == 0 ? Color.testoSecondario : Color.verde)
             }
             BarraDivergente(effetto: f.effetto, massimo: c.massimoEffetto)
             HStack {
@@ -110,7 +110,7 @@ struct ConfrontoView: View {
                 Spacer()
                 Text("\(valore(f, f.b)) \(y.nome.split(separator: " ").first.map(String.init) ?? y.nome)")
             }
-            .font(.caption2).foregroundStyle(.secondary)
+            .font(.caption2).foregroundStyle(Color.testoSecondario)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(f.etichetta): \(testoVerso). \(x.nomeCorto) \(valore(f, f.a)), \(y.nomeCorto) \(valore(f, f.b))")
@@ -120,7 +120,7 @@ struct ConfrontoView: View {
         let x = c.giocatori[0], y = c.giocatori[1]
         func riga(_ titolo: String, _ f: (Giocatore) -> String) -> some View {
             HStack {
-                Text(titolo).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                Text(titolo).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity, alignment: .leading)
                 Text(f(x)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
                 Text(f(y)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
             }
@@ -150,7 +150,7 @@ struct ConfrontoView: View {
                 }
                 .padding(.top, 8)
             }
-            .tint(.secondary)
+            .tint(Color.testoSecondario)
         }
     }
 
@@ -159,7 +159,7 @@ struct ConfrontoView: View {
             ForEach(c.giocatori) { g in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(g.nome).font(.subheadline.bold())
-                    Text((g.motivi ?? []).isEmpty ? "–" : (g.motivi ?? []).joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                    Text((g.motivi ?? []).isEmpty ? "–" : (g.motivi ?? []).joined(separator: " · ")).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -219,7 +219,7 @@ struct SceltaDallaRosaView: View {
                             Button { scelto(g.id) } label: {
                                 HStack {
                                     RigaGiocatore(g: g)
-                                    Text(vm.posto(g.id)).font(.caption2).foregroundStyle(.secondary)
+                                    Text(vm.posto(g.id)).font(.caption2).foregroundStyle(Color.testoSecondario)
                                 }
                                 .frame(minHeight: 44)
                             }
@@ -260,8 +260,8 @@ struct RicercaGiocatoreView: View {
                 if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
                 if vm.testo.trimmingCharacters(in: .whitespaces).count < 2 {
                     VStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(.secondary).accessibilityHidden(true)
-                        Text("Scrivi almeno due lettere del nome.").foregroundStyle(.secondary)
+                        Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
+                        Text("Scrivi almeno due lettere del nome.").foregroundStyle(Color.testoSecondario)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -285,17 +285,14 @@ struct RicercaGiocatoreView: View {
         .task(id: vm.testo) { await vm.cerca() }
     }
 
-    private func riga(_ g: GiocatoreBreve) -> some View {
-        FilaAdattiva(spazio: 4) {
-            HStack(spacing: 12) {
-                BadgeRuolo(ruolo: g.ruolo)
-                Text(g.nome).font(.headline)
-            }
-            Spacer(minLength: 0)
-            Text((g.squadra ?? "").capitalized).font(.caption).foregroundStyle(.secondary)
+    /// La stessa riga dell'elenco dei giocatori: volto, fantavoto atteso e «gioca N%» (prima solo ruolo e squadra).
+    @ViewBuilder
+    private func riga(_ b: GiocatoreBreve) -> some View {
+        if let g = vm.previsioni.di(b.id) {
+            RigaElencoGiocatore(g: g)
+        } else {
+            RigaElencoGiocatore(breve: b, nonGioca: vm.previsioni.arrivate)
         }
-        .frame(minHeight: 44)
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -304,10 +301,15 @@ struct RicercaGlobale: ViewModifier {
     @Environment(\.server) private var server
     @Environment(\.apriImpostazioni) private var apriImpostazioni
     @State private var aperta = false
+    /// false = niente lente e ingranaggio qui (per esempio l'elenco a sinistra sull'iPad: li ha già la pagina a destra).
+    var attiva = true
+
+    init(attiva: Bool = true) { self.attiva = attiva }
 
     func body(content: Content) -> some View {
         content
             .toolbar {
+                if attiva {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button { aperta = true } label: { Image(systemName: "magnifyingglass").frame(minWidth: 44, minHeight: 44) }
                         .accessibilityLabel("Cerca un giocatore")
@@ -316,6 +318,7 @@ struct RicercaGlobale: ViewModifier {
                         Button { apriImpostazioni() } label: { Image(systemName: "gearshape").frame(minWidth: 44, minHeight: 44) }
                             .accessibilityLabel("Impostazioni")
                     }
+                }
                 }
             }
             .sheet(isPresented: $aperta) { RicercaGlobaleSheet(server: server) }
@@ -331,7 +334,8 @@ struct RicercaGlobale: ViewModifier {
 
 extension View {
     /// Aggiunge la lente della ricerca di un giocatore alla barra della schermata.
-    func ricercaGlobale() -> some View { modifier(RicercaGlobale()) }
+    /// `attiva: false` la toglie (stessa struttura della vista, così non si rifà nulla quando cambia).
+    func ricercaGlobale(attiva: Bool = true) -> some View { modifier(RicercaGlobale(attiva: attiva)) }
 }
 
 struct RicercaGlobaleSheet: View {

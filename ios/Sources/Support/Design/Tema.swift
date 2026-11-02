@@ -65,6 +65,9 @@ extension Color {
     static let informazione = dinamico(scuro: 0x62A9FF, chiaro: 0x1A5BB5)
     /// Testo secondario (al posto di `.secondary` e dei grigi di sistema): leggibile anche sul fondo sfumato e sul vetro. Vedi `Tema.secondarioChiaro`.
     static let testoSecondario = dinamico(scuro: Tema.secondarioScuro, chiaro: Tema.secondarioChiaro)
+    /// La «XI» del nome e dello slogan: lime acceso sul fondo scuro, verde scuro sul chiaro (5,6:1 sul grigio dei fondi:
+    /// si può usare anche per il testo, a differenza di `capitano`). Come `--xi` del sito, un filo più scuro sul chiaro.
+    static let xi = dinamico(scuro: 0xD4F34A, chiaro: 0x2E6E00)
     /// Positivo: il colore principale dell'app (verde, o l'accento scelto in Aspetto).
     static var esitoBuono: Color { Color.verde }
     static var esitoAttenzione: Color { Color.attenzione }
