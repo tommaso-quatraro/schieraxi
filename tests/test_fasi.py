@@ -110,6 +110,9 @@ def test_prima_della_scadenza_come_sempre(ambiente):
     assert o["fase"] == "prima" and o["in_corso"] is None and o["riepilogo"] is None and o["prossima"] is None
     assert [p["stato"] for p in o["partite"]] == ["da_giocare"] * 3
     assert any(a["in_formazione"] for a in o["avvisi"])          # «Da controllare» resta (Cen9 infortunato in formazione)
+    cen9 = next(a for a in o["avvisi"] if a["id"] == 9)
+    assert cen9["etichetta"] == {"codice": "infortunato", "testo": "Infortunato", "tono": "negativo"}
+    assert all(a["etichetta"]["codice"] in ("infortunato", "squalificato", "in_dubbio", "diffidato") for a in o["avvisi"])
 
 
 # ---------------------------------------------------------------- (b) giornata in corso: domenica sera, lunedì da giocare
@@ -122,6 +125,9 @@ def test_domenica_sera_con_partite_lunedi(ambiente):
     g = {x["id"]: x for x in c["giocatori"]}
     assert g[1]["stato"] == "fatto" and g[3]["stato"] == "senza_voto" and g[4]["stato"] == "in_corso"
     assert g[5]["stato"] == "da_giocare" and g[5]["data"] == "2026-11-09 20:45"
+    # l'etichetta pronta (fanta/etichette.py): stesse parole di Formazione e scheda; Cen9 infortunato resta «Infortunato»
+    assert [g[i]["etichetta"]["testo"] for i in (1, 3, 4, 5, 9)] == ["Ha giocato", "Senza voto", "Partita in corso", "Da giocare",
+                                                                     "Infortunato"]
     # Dif3 non è entrato: al suo posto Dif12 (primo in panchina, ha il voto) = cambio già scattato;
     # Cen9 è infortunato e gioca lunedì: cambio probabile con Cen13 (che deve ancora giocare)
     cambi = {s["esce"]["id"]: s for s in c["sostituzioni"]}

@@ -36,7 +36,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
-from . import da_fare, frasi, note_infortuni, stato_utente
+from . import da_fare, etichette, frasi, note_infortuni, stato_utente
 from . import lingua as lingua_testi
 from . import widget as widget_riassunto
 from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, fonti_attive, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rinvii, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
@@ -241,13 +241,15 @@ def _etag_in_if_none_match(valore: str, etag: str) -> bool:
 
 
 def _riscrivi_note(corpo: bytes, compresso: bool) -> bytes:
-    """Il corpo con le note tradotte; se non c'è niente da tradurre (o qualcosa non va) restituisce lo stesso corpo. Lavoro da thread."""
+    """Il corpo con le note e le etichette di stato tradotte; se non c'è niente da tradurre (o qualcosa non va) restituisce lo stesso corpo. Lavoro da thread."""
     try:
         chiaro = gzip.decompress(corpo) if compresso else corpo
-        if len(chiaro) > TETTO_NOTE or not (b'"nota"' in chiaro or b'"motivi"' in chiaro):
+        if len(chiaro) > TETTO_NOTE or not (b'"nota"' in chiaro or b'"motivi"' in chiaro or b'"etichetta"' in chiaro):
             return corpo
         dati = json.loads(chiaro)
         nuovi = note_infortuni.traduci_dati(dati)
+        if b'"etichetta"' in chiaro:                   # le etichette di stato dei giocatori (fanta/etichette.py)
+            nuovi = etichette.traduci_dati(nuovi, lingua_testi.EN)
         if nuovi == dati:
             return corpo
         nuovo = json.dumps(nuovi, ensure_ascii=False, separators=(",", ":")).encode("utf-8")

@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from . import calcolo, frasi, incertezza, perche
+from . import calcolo, etichette, frasi, incertezza, perche
 from . import formazione as fz
 from . import modello, rinvii, stato_dati, turno
 from .aggiorna import Stagione
@@ -216,7 +216,7 @@ def _frase_rinvio(x) -> str:
 def scheda_previsione(i: int, x: pd.Series) -> dict:
     x = x.to_dict()           # una volta sola: leggere ogni campo dalla Series di pandas costa circa 10 volte di più (e qui sono una trentina)
     elenco_motivi = motivi(x)
-    return {
+    s = {
         "id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "squadra": x["squadra"], "avversario": x["avversario"],
         "in_casa": bool(x["in_casa"]), "p_voto": round(float(x["p_voto"]), 3), "fv_atteso": round(float(x["mu"]), 2),
         "voto_atteso": round(float(x["mu_voto"]), 2), "punti_attesi": round(float(x["atteso"]), 2),
@@ -238,6 +238,8 @@ def scheda_previsione(i: int, x: pd.Series) -> dict:
         # partita rinviata: la regola che vale per questa giornata (aspetta, senza_voto, voto_ufficio); null se la partita si gioca
         "rinvio": _rinvio(x),
     }
+    s["etichetta"] = etichette.di_giocatore(s)       # stato a parole, pronto per i client (fanta/etichette.py)
+    return s
 
 
 # Titolare poco sicuro con una riserva quasi sicura dello stesso ruolo: la scelta è giusta (se lui non gioca entra la riserva, e
