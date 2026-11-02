@@ -129,6 +129,15 @@ def test_conguaglio_oltre_i_fondi_della_squadra_che_paga():
     assert loro["conguaglio"]["valido"] is False and loro["conguaglio"]["chi_paga"] == "loro"
 
 
+def test_conguaglio_oltre_il_limite_di_chi_riceve_non_ha_dopo():
+    rose = _rose()
+    rose.squadre[0].crediti_residui = scambi_multi.LIMITE_CREDITI - 5     # A: quasi al limite
+    rose.squadre[1].crediti_residui = 100                                 # B paga 20
+    d = analizza([12, 9], [32, 30], conguaglio=20, rose=rose)
+    assert d["conguaglio"]["valido"] is False and "supererebbero il limite" in d["conguaglio"]["problema"]
+    assert d["conguaglio"]["dopo"] == {"mio": None, "loro": None}         # niente numero oltre il limite
+
+
 def test_conguaglio_senza_crediti_indicati_avvisa_ma_non_blocca():
     d = analizza([12, 9], [32, 30], conguaglio=20)
     assert d["conguaglio"]["valido"] is True and "non sono indicati" in d["conguaglio"]["problema"]
