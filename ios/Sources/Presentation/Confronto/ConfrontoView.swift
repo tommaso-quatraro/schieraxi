@@ -307,6 +307,8 @@ struct RicercaGlobale: ViewModifier {
     /// false = niente lente e ingranaggio qui (per esempio l'elenco a sinistra sull'iPad: li ha già la pagina a destra).
     var attiva = true
 
+    init(attiva: Bool = true) { self.attiva = attiva }
+
     func body(content: Content) -> some View {
         content
             .toolbar {
