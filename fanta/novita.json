@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.336",
+    "data": "2026-11-02T11:07:31",
+    "titolo": "Squadra rinominata: la reimportazione la riconosce",
+    "voci": [
+      "Se hai cambiato il nome di una squadra nell'app, quando reimporti le rose da Leghe (dove ha ancora il nome vecchio) si aggiorna la stessa squadra, e la tua squadra resta la tua.",
+      "Una squadra nuova non eredita più lo stemma o la maglia di una squadra tolta con lo stesso nome."
+    ],
+    "tecnico": [
+      "lega.Squadra.nome_importato (facoltativo nel file delle rose) e lega.nomi_rinominati prima delle correzioni dell'anteprima e dell'importazione.",
+      "Rinomina: se il salvataggio delle rose fallisce, immagini.annulla rimette stemma e maglia; 409 con un messaggio a parte per i nomi che danno lo stesso file.",
+      "immagini: slug al massimo di 80 caratteri (e ricerca anche dello slug intero di prima), OSError gestito in percorso, pulisci dopo ogni importazione.",
+      "Caricare e togliere le immagini prende il blocco delle rose; GET /api/squadre/immagine con Cache-Control private."
+    ]
+  },
+  {
     "versione": "1.335",
     "data": "2026-11-02T10:51:17",
     "titolo": "Chi arriva a giornata iniziata prepara la prossima",
