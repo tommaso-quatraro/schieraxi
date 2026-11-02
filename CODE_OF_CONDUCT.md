@@ -12,11 +12,11 @@ Chi partecipa a SchieraXI (issue, pull request, discussioni) si comporta con ris
 - Insulti, molestie, minacce o attacchi personali.
 - Discriminare per origine, genere, orientamento, età, disabilità, religione o opinioni.
 - Pubblicare le informazioni private di qualcuno senza il suo consenso.
-- Chiedere o proporre modi per aggirare i limiti delle fonti dati o per danneggiarne i siti.
+- Proporre modi per aggirare i limiti delle fonti dati o per danneggiarne i siti.
 
 ## Che cosa succede
-Chi cura il progetto può chiudere una issue o una discussione, nascondere un commento o bloccare chi non rispetta questo
-testo. Per segnalare un comportamento scorretto scrivi a chi cura il progetto tramite il suo profilo GitHub.
+Chi cura il progetto può chiudere una issue o una discussione, nascondere un commento o bloccare chi non rispetta questo testo.
+Per segnalare un comportamento scorretto scrivi a `contatti@schieraxi.it`.
 Per le falle di sicurezza vale invece `SECURITY.md`: non usare le issue pubbliche.
 
 Questo testo è breve di proposito e può cambiare nel tempo. Si applica a tutti gli spazi del progetto.

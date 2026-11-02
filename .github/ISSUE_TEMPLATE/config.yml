@@ -3,3 +3,6 @@ contact_links:
   - name: Segnalazione di sicurezza
     url: https://github.com/tommaso-quatraro/schieraxi/security/advisories/new
     about: Per una vulnerabilità usa la segnalazione privata, non una issue pubblica. Vedi SECURITY.md.
+  - name: Sito e guida per chi usa l'app
+    url: https://schieraxi.it
+    about: Prima di aprire una issue guarda il sito e docs/GUIDA-UTENTE.md.
