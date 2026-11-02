@@ -1345,6 +1345,7 @@ def giocatore(calciatore_id: int = FPath(le=MAX_ID_CALCIATORE), ctx: Contesto = 
             if calciatore_id in prev.index:
                 s["previsione"] = consigli.scheda_previsione(calciatore_id, prev.loc[calciatore_id])
                 s["previsione"]["giornata"] = giornata
+                s["previsione"]["giornata_lega"] = regole.serie_a_a_lega(giornata, r)   # numero della lega, come in Oggi
                 stagione = consigli.stagione_corrente()
                 if fasi.iniziata(db, r, stagione, giornata, datetime.now()):       # dopo la scadenza: lo stato vero, non le probabili
                     s["previsione"] = fasi.schede_a_giornata_iniziata([s["previsione"]], db, r, stagione, giornata, datetime.now(),

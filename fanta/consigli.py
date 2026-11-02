@@ -569,6 +569,7 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
     margine = round(abs(a["punti_attesi"] - b["punti_attesi"]), 2)
     in_formazione = _in_formazione(db, regole, rose, nome_squadra, giornata, modulo, id_a, id_b, prev, livello) if rose is not None else None
     perche_testo = _frase_perche(a["nome"], b["nome"], spiegazione, margine)
-    return {"giornata": giornata, "giocatori": risultato, "consigliato": meglio["id"], "margine": margine,
+    return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "giocatori": risultato,
+            "consigliato": meglio["id"], "margine": margine,
             "fattori": spiegazione["fattori"], "perche": perche_testo, "perche_frase": frasi.di(perche_testo),
             "formazione": in_formazione}
