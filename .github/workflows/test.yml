@@ -1,7 +1,7 @@
 name: Controlli
 
 # Controlli del repository pubblico. Solo server di GitHub (ubuntu-latest, macos-26 per iOS): niente runner propri, niente segreti
-# (solo GITHUB_TOKEN, più il token di Claude dato per nome al solo job revisione-ia), permessi di sola lettura salvo i job che scrivono (unisci, rilascia), dichiarati nel job.
+# (solo GITHUB_TOKEN, più il token di Claude dato per nome al solo job revisione-ia), permessi di sola lettura salvo i job che scrivono (unisci, rilascia, prova-main, main-rosso), dichiarati nel job.
 on:
   pull_request:
     # ready_for_review: quando una bozza diventa pronta i controlli ripartono (iOS compreso, saltato nelle bozze) e «unisci»
@@ -9,6 +9,10 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+  # Lancio esplicito. Dopo ogni unione lo fa il job «prova-main» (le unioni e il commit di versione col token di GitHub non fanno
+  # partire «push»: senza questo lancio nessun controllo girava mai sul nuovo main). Si può lanciare anche a mano:
+  # Actions > Controlli > Run workflow, o `gh workflow run test.yml --ref main`. Su un ramo che non è main non apre issue.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -175,6 +179,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read       # elenco dei file della PR
+      actions: read             # ultima corsa riuscita su main (corse lanciate dopo un'unione)
     outputs:
       ios: ${{ steps.decidi.outputs.ios }}
     steps:
@@ -183,6 +188,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENTO: ${{ github.event_name }}
+          RIF: ${{ github.ref }}
           PR: ${{ github.event.pull_request.number }}
           PRIMA: ${{ github.event.before }}
           DOPO: ${{ github.sha }}
@@ -190,6 +196,22 @@ jobs:
           # se l'API non risponde il job fallisce (bash -e) e «unisci» non parte: mai un'unione senza sapere se servivano i test iOS
           if [ "$EVENTO" = pull_request ]; then
             file=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+          elif [ "$EVENTO" = workflow_dispatch ]; then
+            # Corsa lanciata dopo un'unione (o a mano): non c'è «before». Su main si confronta con l'ultima corsa riuscita (push
+            # o lancio): ogni corsa riuscita ha provato iOS oppure non ne aveva bisogno, quindi basta guardare cosa è cambiato
+            # da allora. Su un ramo si confronta con main. Se non si sa (nessuna corsa riuscita, confronto impossibile,
+            # troppi file) i test iOS girano comunque: meglio un Mac in più che un buco.
+            if [ "$RIF" = refs/heads/main ]; then
+              base=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/test.yml/runs?branch=main&status=success&per_page=30" \
+                --jq '[.workflow_runs[] | select(.event == "push" or .event == "workflow_dispatch")][0].head_sha // ""') || base=""
+            else
+              base=main
+            fi
+            file="ios/"
+            if [ -n "$base" ]; then
+              file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$DOPO" --jq '.files[].filename') || file="ios/"
+              if [ "$(printf '%s\n' "$file" | wc -l)" -ge 300 ]; then file="ios/"; fi
+            fi
           elif [ -z "$PRIMA" ] || [ "$PRIMA" = 0000000000000000000000000000000000000000 ]; then
             file="ios/"
           else
@@ -324,4 +346,62 @@ jobs:
             echo "Build IPA lanciata (ultima IPA riuscita: ${ultima:-nessuna})"
           else
             echo "ios/ non è cambiata dall'ultima IPA ($ultima): niente IPA"
+          fi
+
+  # Dopo l'unione i controlli girano anche sul nuovo main (issue #183): l'unione e il commit di versione col token di GitHub non
+  # fanno partire «push», quindi senza questo lancio due PR verdi ognuna da sola potevano rompere main insieme senza che nessuno
+  # lo provasse. Si aspetta «rilascia» per provare il main finale (col commit di versione). workflow_dispatch è l'eccezione che
+  # parte anche col token di GitHub (come per ipa.yml). La corsa lanciata è un workflow_dispatch: qui, in unisci e in rilascia
+  # tutto è legato a pull_request, quindi non si ricomincia da capo. Non unisce e non rilascia nulla.
+  prova-main:
+    needs: [unisci, rilascia]
+    # !cancelled(): «rilascia» può essere stato scavalcato da quello di una PR successiva; main si prova lo stesso
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.unisci.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write           # solo per lanciare questo workflow su main
+    steps:
+      - name: Lancia i controlli su main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run test.yml --ref main --repo "$GITHUB_REPOSITORY"
+
+  # Un rosso su main si vede senza cercarlo: un'issue P1 «CI: main rosso» (una sola, ogni nuovo rosso vi aggiunge un commento).
+  # Solo nelle corse su main (push o lancio dopo l'unione), mai nelle PR né nei lanci a mano su un ramo. L'issue non si chiude
+  # da sola: la chiude chi ha corretto, quando una corsa nuova su main è verde. Dentro i comandi solo dati nostri (esiti dei job,
+  # commit, indirizzo della corsa) passati per variabili d'ambiente, mai testo di PR o issue.
+  main-rosso:
+    needs: [test, script-server, pip-audit, cambi, ios]
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # uno alla volta: due corse rosse quasi insieme non aprono due issue uguali (la seconda trova la prima e la commenta)
+    concurrency:
+      group: main-rosso
+      cancel-in-progress: false
+    permissions:
+      issues: write            # solo per aprire o commentare l'issue «CI: main rosso»
+    steps:
+      - name: "Apre o aggiorna l'issue «CI: main rosso»"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CORSA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          ESITI: "test ${{ needs.test.result }}, script-server ${{ needs.script-server.result }}, pip-audit ${{ needs.pip-audit.result }}, ios ${{ needs.ios.result }}, cambi ${{ needs.cambi.result }}"
+        run: |
+          set -eu
+          titolo="CI: main rosso"
+          numero=$(gh issue list --state open --label P1 --limit 100 --json number,title \
+            --jq "map(select(.title == \"$titolo\")) | first | .number // empty")
+          testo="I controlli sul ramo main sono falliti. Commit: $COMMIT
+          Esiti: $ESITI
+          Corsa: $CORSA
+          Cosa fare: aprire la corsa, guardare quale job è rosso e correggere con una pull request (main rotto ferma tutti). Se il job è fallito in pochi secondi senza passi è un guasto di GitHub: basta rilanciarlo ('Re-run failed jobs').
+          L'issue non si chiude da sola: chiudila quando una corsa nuova su main è verde."
+          if [ -n "$numero" ]; then
+            gh issue comment "$numero" --body "Ancora rosso. $testo"
+          else
+            gh issue create --title "$titolo" --label P1 --label ci --label regressione --body "$testo"
           fi

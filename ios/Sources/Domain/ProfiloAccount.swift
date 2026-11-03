@@ -17,6 +17,13 @@ enum ProfiloAccount {
         !googleCollegato
     }
 
+    /// Posta spenta sul server e nessuna email (né dell'account né di Google): nessun codice può arrivare, quindi non se ne può
+    /// collegare una. Come la web (`htmlEmailAccount`), al posto della riga e della voce dell'email c'è solo `TestiAccount.emailSpenta`.
+    /// Con un'email già collegata resta tutto: si può ancora toglierla.
+    static func soloPostaSpenta(postaAccesa: Bool, account: String?, google: String?) -> Bool {
+        !postaAccesa && pulita(account) == nil && pulita(google) == nil
+    }
+
     private static func pulita(_ testo: String?) -> String? {
         guard let t = testo?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return nil }
         return t

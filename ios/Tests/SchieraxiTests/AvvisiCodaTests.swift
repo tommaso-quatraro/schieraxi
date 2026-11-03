@@ -147,6 +147,34 @@ struct AvvisiCodaTests {
         #expect(annotati.riprogrammati == 1, "un altro interruttore non riprogramma niente")
     }
 
+    @Test("Cambiare le ore tranquille rimette subito in programma i promemoria, con le ore nuove già sul telefono",
+          .bug("https://github.com/tommaso-quatraro/schieraxi/issues/175"))
+    func oreTranquilleRiprogrammanoIPromemoria() async throws {
+        let annotati = PromemoriaAnnotati()
+        let vm = AvvisiServerViewModel(server: ServerDiProva.conFixture(["/api/avvisi": "avvisi"]), promemoria: annotati.telefono)
+        await vm.carica()
+        try #require(vm.impostazioni?.silenzio != true, "la lettura parte con le ore tranquille spente")
+        #expect(annotati.riprogrammati == 0)
+
+        // accese come fa l'interruttore della schermata (con le ore di partenza)
+        vm.impostazioni?.silenzio = true
+        vm.impostazioni?.silenzio_da = 22
+        vm.impostazioni?.silenzio_a = 7
+        await vm.salva()
+        let accese: [OreTranquille?] = [OreTranquille(attive: true, da: 22, a: 7)]
+        #expect(annotati.oreQuandoSiRiprogramma == accese,
+                "i promemoria che ora cadono nel silenzio spariscono subito, non alla prossima lettura di Oggi")
+
+        vm.impostazioni?.silenzio_a = 8   // la fine si sposta di un'ora
+        await vm.salva()
+        vm.impostazioni?.silenzio = false   // spente: quelli saltati tornano
+        await vm.salva()
+        let tutte: [OreTranquille?] = [OreTranquille(attive: true, da: 22, a: 7), OreTranquille(attive: true, da: 22, a: 8),
+                                       OreTranquille(attive: false, da: 22, a: 8)]
+        #expect(annotati.oreQuandoSiRiprogramma == tutte,
+                "ogni cambio delle ore riprogramma, e lo fa con le ore nuove già ricordate sul telefono")
+    }
+
     @Test("Dopo un salvataggio il telefono ricorda ciò che è stato salvato, non il tocco ancora in coda", .timeLimit(.minutes(1)))
     func siRicordaIlSalvato() async throws {
         let prova = ProvaAvvisi(erroreDellaPrima: nil)
@@ -249,13 +277,15 @@ private final class RegistroPut: @unchecked Sendable {
 private final class PromemoriaAnnotati {
     private(set) var ricordate: [ImpostazioniAvvisi] = []
     private(set) var accesiQuandoSiTolgono: [Set<Int>] = []
-    private(set) var riprogrammati = 0
+    /// A ogni riprogrammazione, le ore tranquille già ricordate sul telefono in quel momento (sono quelle che userà).
+    private(set) var oreQuandoSiRiprogramma: [OreTranquille?] = []
+    var riprogrammati: Int { oreQuandoSiRiprogramma.count }
 
     var telefono: PromemoriaTelefono {
         PromemoriaTelefono(
             ricorda: { self.ricordate.append($0) },
             togliSpenti: { self.accesiQuandoSiTolgono.append($0) },
-            riprogramma: { self.riprogrammati += 1 })
+            riprogramma: { self.oreQuandoSiRiprogramma.append(self.ricordate.last?.oreTranquille) })
     }
 }
 

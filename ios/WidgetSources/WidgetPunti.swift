@@ -71,26 +71,34 @@ struct VistaPunti: View {
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
-                    Text("G\(g.giornata)").fontWidget(10)
+                    Text(g.sigla).fontWidget(10)
                     Text(scartoTesto(g)).font(.headline.bold()).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
                     Text("sul previsto").fontWidget(8)
                 }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(g.descrizione)
         case .accessoryRectangular:
+            // una giornata di un'altra stagione: sigla e stagione («G38 · 2025-26»), mai «Giornata 38» da sola (vocabolario)
+            let testa = g.altraStagione.map { g.sigla + " · " + $0 } ?? "Giornata " + String(g.numero)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Giornata \(g.giornata): \(Formato.punti(g.fatti)) punti").font(.headline).lineLimit(1)
+                Text(testa + ": " + Formato.punti(g.fatti) + " punti")
+                    .font(.headline).lineLimit(1).minimumScaleFactor(0.8)
                 Text("attesi \(Formato.punti(g.attesi)) · \(scartoTesto(g))").font(.caption).monospacedDigit()
                 GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(g.descrizione)
         case .accessoryInline:
-            Label("G\(g.giornata) \(Formato.punti(g.fatti)) fatti, \(Formato.punti(g.attesi)) attesi", systemImage: "chart.bar")
+            Label("\(g.sigla) \(Formato.punti(g.fatti)) fatti, \(Formato.punti(g.attesi)) attesi", systemImage: "chart.bar")
+                .accessibilityLabel(g.descrizione)
         default: piccolo(w, g)
         }
     }
 
     private func intestazione(_ g: PuntiGiornata) -> some View {
-        IntestazioneWidget(titolo: "Attesi e fatti", icona: "chart.bar.fill", destra: "G\(g.giornata)")
+        IntestazioneWidget(titolo: "Attesi e fatti", icona: "chart.bar.fill", destra: g.sigla)
     }
 
     private func piccolo(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
@@ -149,7 +157,8 @@ struct VistaPunti: View {
                 Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
-                Text("fatti alla giornata \(g.giornata), attesi \(Formato.punti(g.attesi))").font(.subheadline).foregroundStyle(TintaWidget.testo2)
+                Text("fatti alla giornata \(g.numero)\(g.altraStagione.map { " del \($0)" } ?? ""), attesi \(Formato.punti(g.attesi))")
+                    .font(.subheadline).foregroundStyle(TintaWidget.testo2)
                     .lineLimit(2)
                 Spacer(minLength: 0)
             }
@@ -158,10 +167,12 @@ struct VistaPunti: View {
             VStack(spacing: 3) {
                 ForEach(giornate) { x in
                     HStack {
-                        Text("Giornata \(x.giornata)").font(.footnote)
+                        // «Giornata 38 · 2025-26» per un'altra stagione: titolo e punti vincono sulla fascia, che si accorcia
+                        Text(x.titolo).font(.footnote).lineLimit(1).minimumScaleFactor(0.85).layoutPriority(1)
                         if let f = x.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
                         Spacer()
                         Text("\(Formato.punti(x.fatti)) su \(Formato.punti(x.attesi))").font(.footnote).monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.85).layoutPriority(1)
                         Text(scartoTesto(x)).font(.footnote.weight(.semibold)).monospacedDigit().frame(width: 52, alignment: .trailing)
                     }
                     .accessibilityElement(children: .ignore)

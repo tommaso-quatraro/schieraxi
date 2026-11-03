@@ -129,8 +129,20 @@ enum ServiziSociali {
 
     /// Legge l'elenco dal corpo di una risposta; mancante o strano = nessuno.
     static func leggi(corpo: Data) -> [String] {
-        guard let json = try? JSONSerialization.jsonObject(with: corpo) as? [String: Any] else { return [] }
-        return pulisci(json["social"] as? [Any])
+        letti(corpo: corpo) ?? []
+    }
+
+    /// L'elenco, solo se il corpo lo dice (un elenco, anche vuoto, come `Array.isArray` della web). nil se il campo manca:
+    /// il 401 di nome o password sbagliati ha solo `detail`.
+    static func letti(corpo: Data) -> [String]? {
+        guard let json = try? JSONSerialization.jsonObject(with: corpo) as? [String: Any],
+              let elenco = json["social"] as? [Any] else { return nil }
+        return pulisci(elenco)
+    }
+
+    /// Lo ricorda solo se il server l'ha detto: un 401 senza il campo non spegne «Continua con Google» (issue #173).
+    static func salva(corpo: Data, in memoria: UserDefaults = .standard) {
+        if let elenco = letti(corpo: corpo) { salva(elenco, in: memoria) }
     }
 
     static func pulisci(_ elenco: [Any]?) -> [String] {
