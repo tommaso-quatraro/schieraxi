@@ -159,17 +159,30 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(aperto, "il foglio non si apre", file: file, line: line)
     }
 
+    /// Vero se il foglio (il suo `segno`) si chiude entro `secondi`. Conta solo un'assenza confermata: `waitForNonExistence`
+    /// legge senza ripetere (`existsNoRetry`) e sul Mac di GitHub carico una lettura che l'app serve in ritardo vale «sparito»
+    /// anche con il foglio aperto (#177: subito dopo c'erano il campo e la barra del foglio, e la voce sotto era ancora coperta).
+    /// La conferma è la lettura dopo, che ripete (`exists`): un foglio chiuso davvero non torna, si riapre solo con un tocco.
+    private func siChiude(_ segno: XCUIElement, entro secondi: TimeInterval) -> Bool {
+        let fine = Date().addingTimeInterval(secondi)
+        repeat {
+            if segno.waitForNonExistence(timeout: max(fine.timeIntervalSinceNow, 0.1)), !segno.exists { return true }
+        } while Date() < fine
+        return false
+    }
+
     /// Mentre il foglio è aperto arrivano dati nuovi dell'account (in demo ogni mezzo secondo): deve restare aperto.
     private func restaAperto(_ segno: XCUIElement, _ nome: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertFalse(segno.waitForNonExistence(timeout: 4), "il foglio «\(nome)» si è chiuso da solo", file: file, line: line)
+        XCTAssertFalse(siChiude(segno, entro: 4), "il foglio «\(nome)» si è chiuso da solo", file: file, line: line)
     }
 
     /// Chiude il foglio con il pulsante della sua barra (`titolo`): sotto c'è la barra delle Impostazioni con un altro «Chiudi».
+    /// La chiusura si controlla con `siChiude`, la stessa prova di `restaAperto`: così ogni corsa mostra che vede un foglio che si chiude davvero.
     private func chiudiFoglio(_ titolo: String, _ pulsante: String, segno: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         let b = app.navigationBars[titolo].buttons[pulsante]
         XCTAssertTrue(b.waitForExistence(timeout: 10), "manca «\(pulsante)»", file: file, line: line)
         b.tap()
-        XCTAssertTrue(segno.waitForNonExistence(timeout: 10), "il foglio non si chiude con «\(pulsante)»", file: file, line: line)
+        XCTAssertTrue(siChiude(segno, entro: 10), "il foglio non si chiude con «\(pulsante)»", file: file, line: line)
     }
 
     /// Build 219: «Cambia password» si apriva e si chiudeva subito da solo. Con i dati dell'account che cambiano di continuo
@@ -233,28 +246,6 @@ final class AccessoUITests: XCTestCase {
         return aperto ? "\(f(adesso() - inizio))s/\(tocchi)t/\(scorrimenti)sc" : nil
     }
 
-    /// Come `restaAperto` (stessa attesa di 4 secondi), ma se il segno sparisce non si ferma: guarda se torna e cosa c'è.
-    private func osserva(_ segno: XCUIElement, voce: XCUIElement, titolo: String) -> String? {
-        let inizio = adesso()
-        guard segno.waitForNonExistence(timeout: 4) else { return nil }
-        let dopo = adesso() - inizio
-        let subito = segno.exists   // la lettura dopo, con i suoi tentativi: c'è di nuovo?
-        let barra = app.navigationBars[titolo].exists
-        let voceToccabile = voce.exists && voce.isHittable
-        var serie = ""
-        var tornato: TimeInterval?
-        let t0 = adesso()
-        while adesso() - t0 < 6 {
-            let c = segno.exists
-            serie += c ? "1" : "0"
-            if c, tornato == nil { tornato = adesso() - t0 }
-            if tornato != nil, serie.count >= 3 { break }
-            usleep(150_000)
-        }
-        let barre = app.navigationBars.allElementsBoundByIndex.map { $0.identifier }.joined(separator: "+")
-        return "sparito dopo \(f(dopo))s, subito=\(subito), barra=\(barra), voceToccabile=\(voceToccabile), serie=\(serie), tornato=\(tornato.map { f($0) } ?? "no"), barre=\(barre)"
-    }
-
     private func chiudiSeAperto(_ titolo: String, _ pulsante: String, segno: XCUIElement, voce: XCUIElement) {
         let b = app.navigationBars[titolo].buttons[pulsante]
         for _ in 0..<3 {
@@ -283,11 +274,13 @@ final class AccessoUITests: XCTestCase {
         }
     }
 
-    private func diagnosiSottoCarico(datiCheCambiano: Bool, fili: Int) {
-        avvia("account", altri: datiCheCambiano ? ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"] : [])
+    /// Sotto carico, con i dati che cambiano, sulle stesse aperture: il controllo vecchio (`waitForNonExistence` da solo) e
+    /// quello nuovo (`siChiude`), a turno per primo. Poi «Annulla»: `siChiude` deve vedere la chiusura vera.
+    func testDiagnosiConfrontoSottoCarico() {
+        avvia("account", altri: ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"])
         continueAfterFailure = true
         attendi("Il tuo account")
-        let carico = Carico(fili: fili)
+        let carico = Carico(fili: 6)
         defer { carico.ferma() }
         let fogli: [(voce: XCUIElement, segno: XCUIElement, titolo: String)] = [
             (app.buttons["account-cambia-password"], app.secureTextFields["Password attuale"], "Cambia la password"),
@@ -295,35 +288,54 @@ final class AccessoUITests: XCTestCase {
         ]
         var aperture = 0
         var mancate = 0
-        var esiti: [String] = []
-        var anomalie: [String] = []
+        var allarmiVecchi = 0
+        var allarmiNuovi = 0
+        var chiusureViste = 0
+        var chiusureNonViste = 0
+        var toccoAnnullaPerso = 0
+        var note: [String] = []
         let inizio = adesso()
-        ciclo: for giro in 1...40 {
+        ciclo: for giro in 1...80 {
             for foglio in fogli {
-                if adesso() - inizio > 420 { break ciclo }
+                if adesso() - inizio > 1080 { break ciclo }
                 guard let apertura = apriFoglioMisurato(foglio.voce, segno: foglio.segno) else {
                     mancate += 1
-                    esiti.append("X")
                     chiudiSeAperto(foglio.titolo, "Annulla", segno: foglio.segno, voce: foglio.voce)
                     continue
                 }
                 aperture += 1
-                if let a = osserva(foglio.segno, voce: foglio.voce, titolo: foglio.titolo) {
-                    anomalie.append("giro \(giro) «\(foglio.titolo)» aperto in \(apertura): \(a)")
+                let ordine = aperture.isMultiple(of: 2) ? ["nuovo", "vecchio"] : ["vecchio", "nuovo"]
+                for quale in ordine {
+                    let t = adesso()
+                    let allarme = quale == "vecchio" ? foglio.segno.waitForNonExistence(timeout: 4) : siChiude(foglio.segno, entro: 4)
+                    guard allarme else { continue }
+                    if quale == "vecchio" { allarmiVecchi += 1 } else { allarmiNuovi += 1 }
+                    let apertoDavvero = foglio.segno.exists && app.navigationBars[foglio.titolo].exists
+                    note.append("giro \(giro) «\(foglio.titolo)» controllo \(quale) (aperto in \(apertura)): allarme dopo \(f(adesso() - t))s, foglio aperto davvero=\(apertoDavvero)")
                 }
-                esiti.append(apertura)
+                let b = app.navigationBars[foglio.titolo].buttons["Annulla"]
+                if b.waitForExistence(timeout: 10) {
+                    b.tap()
+                    if siChiude(foglio.segno, entro: 10) {
+                        chiusureViste += 1
+                    } else if foglio.segno.exists {
+                        toccoAnnullaPerso += 1
+                    } else {
+                        chiusureNonViste += 1
+                    }
+                }
                 chiudiSeAperto(foglio.titolo, "Annulla", segno: foglio.segno, voce: foglio.voce)
             }
         }
         carico.ferma()
-        let riassunto = "DIAGNOSI carico \(fili) fili, dati \(datiCheCambiano ? "che cambiano" : "fermi"): sparizioni \(anomalie.count) su \(aperture) aperture"
-            + " (non aperti: \(mancate)) || " + anomalie.joined(separator: " || ") + " || aperture: " + esiti.joined(separator: " ")
+        var parti: [String] = []
+        parti.append("CONFRONTO carico 6 fili, dati che cambiano: aperture \(aperture) (non aperte \(mancate))")
+        parti.append("allarmi controllo vecchio \(allarmiVecchi) su \(aperture), controllo nuovo \(allarmiNuovi) su \(aperture)")
+        parti.append("dopo Annulla chiusure viste \(chiusureViste), non viste \(chiusureNonViste), tocco perso \(toccoAnnullaPerso)")
+        let riassunto = (parti + note).joined(separator: " || ")
         print(riassunto)
         XCTFail(riassunto)
     }
-
-    func testDiagnosiSottoCaricoDatiCheCambiano() { diagnosiSottoCarico(datiCheCambiano: true, fili: 6) }
-    func testDiagnosiSottoCaricoDatiFermi() { diagnosiSottoCarico(datiCheCambiano: false, fili: 6) }
 
     func testRetAssenteDiceCosaFare() {
         avvia("rete")
