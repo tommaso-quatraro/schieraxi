@@ -188,6 +188,102 @@ def test_tema_chiaro_azioni_in_oliva_con_contrasto_sufficiente_su_ogni_superfici
     assert _contrasto("#ffffff", "#1f8a4b") >= 3                        # nomi e numeri sul campo
 
 
+def _variabili(blocco):
+    blocco = re.sub(r"/\*.*?\*/", "", blocco, flags=re.S)
+    return dict(re.findall(r"(--[\w-]+):\s*([^;]+);", blocco))
+
+
+def _temi():
+    """Le variabili del tema scuro (`:root`) e del chiaro (`:root[data-tema="chiaro"]` sopra lo scuro), con i `var()` risolti."""
+    scuro = _variabili(CSS.split(":root {", 1)[1].split("\n}", 1)[0])
+    chiaro = {**scuro, **_variabili(CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0])}
+
+    def risolvi(v, nome):
+        return re.sub(r"var\((--[\w-]+)\)", lambda m: risolvi(v, m.group(1)), v[nome]).strip()
+    return {tema: {k: risolvi(v, k) for k in v} for tema, v in (("scuro", scuro), ("chiaro", chiaro))}
+
+
+def _colore(testo):
+    """«#rrggbb» o «rgba(r, g, b, a)» → ((r, g, b), alfa)."""
+    testo = testo.strip()
+    if testo.startswith("#"):
+        return tuple(int(testo[i:i + 2], 16) for i in (1, 3, 5)), 1.0
+    r, g, b, a = (float(x) for x in re.match(r"rgba\(([^)]*)\)", testo).group(1).split(","))
+    return (r, g, b), a
+
+
+def _sopra(colore, alfa, fondo):
+    return tuple(alfa * c + (1 - alfa) * f for c, f in zip(colore, fondo))
+
+
+def _contrasto_rgb(a, b):
+    def lum(c):
+        c = [x / 255 for x in c]
+        c = [x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    la, lb = sorted((lum(a), lum(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def _fondi_delle_pillole(v):
+    """I fondi veri sotto le pillole (misurati nel browser, issue #234): la carta sul fondo piatto (Formazione, Rosa, Oggi), il fondo
+    piatto, il foglio della scheda del giocatore (le pillole sotto il nome stanno direttamente sul foglio, sopra il velo scuro) e la
+    carta dentro il foglio. Le misure del foglio si leggono dal CSS: se cambiano, il test segue."""
+    sfondo = _colore(v["--sfondo"])[0]
+    carta, a_carta = _colore(v["--vetro-carta"])
+    vetro, a_vetro = _colore(v["--vetro"])
+    velo = float(re.search(r"\.foglio-sfondo \{[^}]*background: rgba\(0, 0, 0, (\.\d+)\)", CSS).group(1))
+    quota = int(re.search(r"\.foglio-corpo \{[^}]*background: color-mix\(in srgb, var\(--sfondo\) (\d+)%, var\(--vetro\)\)", CSS).group(1)) / 100
+    alfa = quota + (1 - quota) * a_vetro                                 # color-mix con un colore trasparente: alfa e colore premoltiplicati
+    corpo = tuple((quota * s + (1 - quota) * a_vetro * w) / alfa for s, w in zip(sfondo, vetro))
+    foglio = _sopra(corpo, alfa, _sopra((0, 0, 0), velo, sfondo))
+    return {"carta sul fondo": _sopra(carta, a_carta, sfondo), "fondo piatto": sfondo,
+            "foglio della scheda": foglio, "carta nel foglio": _sopra(carta, a_carta, foglio)}
+
+
+def _pillole():
+    """Le pillole delle etichette dei giocatori: nome → (variabile della scritta, variabile della tinta, percentuale della tinta)."""
+    regole = {"verde": r"\n\.etichetta \{([^}]*)\}", "arancio": r"\n\.etichetta\.arancio \{([^}]*)\}",
+              "rossa": r"\n\.etichetta\.rossa \{([^}]*)\}", "neutra": r"\n\.etichetta\.neutra \{([^}]*)\}"}
+    pillole = {}
+    for nome, regola in regole.items():
+        corpo = re.search(regola, CSS).group(1)
+        scritta = re.search(r"(?<![\w-])color: var\((--[\w-]+)\);", corpo).group(1)
+        tinta, quota = re.search(r"background: color-mix\(in srgb, var\((--[\w-]+)\) (\d+)%, transparent\);", corpo).groups()
+        pillole[nome] = (scritta, tinta, int(quota) / 100)
+    return pillole
+
+
+def test_pillole_dei_giocatori_almeno_4_5_su_ogni_fondo_in_chiaro_e_scuro():
+    """Issue #234: nel tema chiaro la scritta delle pillole verdi e arancio stava a 4,0:1 e 4,4:1 sulla carta e a 3,5:1 e 3,8:1 sul
+    foglio della scheda. Testo piccolo (12 px): serve 4,5:1 (WCAG 2.2, 1.4.3) su ogni fondo, in chiaro e in scuro."""
+    sotto = []
+    for tema, v in _temi().items():
+        for nome, (scritta, tinta, quota) in _pillole().items():
+            for dove, fondo in _fondi_delle_pillole(v).items():
+                c = _contrasto_rgb(_colore(v[scritta])[0], _sopra(_colore(v[tinta])[0], quota, fondo))
+                if c < 4.5:
+                    sotto.append(f"{tema} {nome} su {dove}: {c:.2f}")
+    assert not sotto, sotto
+
+
+def test_scritta_delle_pillole_uguale_nei_due_temi_chiari_e_su_ios():
+    """Il tema chiaro sta due volte nel CSS (sistema e scelta a mano): le scritte delle pillole devono essere le stesse. L'arancio e il
+    rosso delle pillole dell'iPhone (`Tema` in Tema.swift) sono gli stessi della web, in chiaro e in scuro."""
+    sistema = _variabili(CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0])
+    a_mano = _variabili(CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0])
+    for nome in ("--eti-verde", "--eti-arancio", "--eti-rosso"):
+        assert sistema.get(nome) and sistema.get(nome) == a_mano.get(nome), nome
+    ios = server.WEB.parent.parent / "ios/Sources/Support/Design/Tema.swift"
+    if ios.exists():                                                         # nella copia pubblica c'è anche l'app iPhone
+        tema = ios.read_text(encoding="utf-8").lower()
+        temi = _temi()
+        for variabile, swift in (("--eti-arancio", "pillolaattenzione"), ("--eti-rosso", "pillolamalus")):
+            for nome_tema, suffisso in (("chiaro", "chiaro"), ("scuro", "scuro")):
+                valore = temi[nome_tema][variabile].lstrip("#")
+                assert f"{swift}{suffisso}: uint32 = 0x{valore}" in tema, (variabile, nome_tema)
+
+
 def test_pulsanti_link_e_azioni_usano_la_variabile_azione_non_il_lime():
     assert re.search(r"\.bottone \{[^}]*background: var\(--azione\);[^}]*color: var\(--azione-testo\)", CSS)   # pieno, senza lucido (docs/STILE-SENZA-AI.md)
     assert re.search(r"\.bottone\.secondario \{[^}]*color: var\(--azione\)", CSS)

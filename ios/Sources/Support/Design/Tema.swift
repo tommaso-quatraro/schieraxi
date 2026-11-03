@@ -25,6 +25,15 @@ enum Tema {
     static let secondarioChiaro: UInt32 = 0x46564D
     static let secondarioScuro: UInt32 = 0xBCCDC2
 
+    /// La scritta delle pillole arancio e rosse dei giocatori (`PillolaEtichetta`), uguale a `--eti-arancio` e `--eti-rosso` della
+    /// web: sopra la tinta della pillola l'arancio e il rosso pieni scendevano sotto 4,5:1 (issue #234: in scuro il rosso nei fogli
+    /// faceva 4,1:1). In chiaro un filo più scuri, in scuro il rosso un filo più chiaro; il fondo della pillola non cambia.
+    /// Test `ContrastoPilloleTests` (e `tests/test_design_web.py` per la web).
+    static let pillolaAttenzioneChiaro: UInt32 = 0x834700
+    static let pillolaAttenzioneScuro: UInt32 = 0xFFB04A
+    static let pillolaMalusChiaro: UInt32 = 0xA1221B
+    static let pillolaMalusScuro: UInt32 = 0xFF867B
+
     /// Con «Ridurre movimento»: niente spostamenti né rimbalzi, solo dissolvenze brevi (le schermate non restano mai immobili).
     @MainActor static var movimentoRidotto: Bool { UIAccessibility.isReduceMotionEnabled }
     /// La dissolvenza breve che sostituisce ogni animazione di movimento.
@@ -65,6 +74,9 @@ extension Color {
     static let informazione = dinamico(scuro: 0x62A9FF, chiaro: 0x1A5BB5)
     /// Testo secondario (al posto di `.secondary` e dei grigi di sistema): leggibile anche sul fondo sfumato e sul vetro. Vedi `Tema.secondarioChiaro`.
     static let testoSecondario = dinamico(scuro: Tema.secondarioScuro, chiaro: Tema.secondarioChiaro)
+    /// Scritta delle pillole arancio e rosse (solo dentro la pillola: fuori restano `attenzione` e `malus`). Vedi `Tema.pillolaAttenzioneChiaro`.
+    static let attenzionePillola = dinamico(scuro: Tema.pillolaAttenzioneScuro, chiaro: Tema.pillolaAttenzioneChiaro)
+    static let malusPillola = dinamico(scuro: Tema.pillolaMalusScuro, chiaro: Tema.pillolaMalusChiaro)
     /// La «XI» del nome e dello slogan: lime acceso sul fondo scuro, verde scuro sul chiaro (5,6:1 sul grigio dei fondi:
     /// si può usare anche per il testo, a differenza di `capitano`). Come `--xi` del sito, un filo più scuro sul chiaro.
     static let xi = dinamico(scuro: 0xD4F34A, chiaro: 0x2E6E00)
