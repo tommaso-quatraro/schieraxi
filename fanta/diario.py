@@ -260,13 +260,22 @@ class SchierataNonValida(ValueError):
     """La richiesta «ho schierato...» non si può registrare (giornata non finita, formazione sbagliata)."""
 
 
+def controlla_stagione(stagione: str | None) -> None:
+    """«Ho schierato…» vale solo per la stagione in corso: il diario mostra anche le voci dell'anno prima, e scrivere sulla giornata con
+    lo stesso numero di quest'anno sarebbe sbagliato. Senza stagione (i client vecchi non la mandano) vale quella in corso."""
+    if stagione is not None and stagione != consigli.stagione_corrente():
+        raise SchierataNonValida("Si può decidere solo per la stagione in corso.")      # stesso testo di rinvii.py: già tradotto (err.rinvio_stagione)
+
+
 def salva_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None, giornata: int, tipo: str, titolari: list[int] | None,
-                    file_diario: Path | None = None, file_scelte: Path | None = None, simulazioni: int = SIMULAZIONI) -> dict:
+                    file_diario: Path | None = None, file_scelte: Path | None = None, simulazioni: int = SIMULAZIONI,
+                    stagione: str | None = None) -> dict:
     """Registra cosa l'utente ha schierato in una giornata finita e rifà SOLO quella voce del diario.
     tipo «consigliata»: la formazione che il modello avrebbe consigliato allora (già nella voce del diario, calcolata se manca);
     tipo «manuale»: i `titolari` indicati (11 della tua rosa). Salva la scelta nello stesso file delle scelte (stesso formato).
+    `stagione`: quella della voce del diario (vedi `controlla_stagione`).
     Il server fa i due pezzi separati (`prepara_schierata` fuori dal blocco, `scrivi_schierata` dentro): questa li fa uno dopo l'altro."""
-    voce, scelti = prepara_schierata(db, regole, rose, giornata, tipo, titolari, file_diario, simulazioni)
+    voce, scelti = prepara_schierata(db, regole, rose, giornata, tipo, titolari, file_diario, simulazioni, stagione)
     scrivi_schierata(voce, scelti, giornata, tipo, file_diario, file_scelte)
     return voce
 
@@ -280,10 +289,12 @@ def scrivi_schierata(voce: dict, scelti: list[int], giornata: int, tipo: str, fi
 
 
 def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None, giornata: int, tipo: str, titolari: list[int] | None,
-                      file_diario: Path | None = None, simulazioni: int = SIMULAZIONI) -> tuple[dict, list[int]]:
+                      file_diario: Path | None = None, simulazioni: int = SIMULAZIONI,
+                      stagione: str | None = None) -> tuple[dict, list[int]]:
     """Il pezzo lento (simulazioni), senza scrivere niente: (voce del diario, titolari scelti). Alza SchierataNonValida."""
     if tipo not in ("consigliata", "manuale"):
         raise SchierataNonValida("Il tipo deve essere «consigliata» o «manuale»")
+    controlla_stagione(stagione)
     squadra = rose.squadra(rose.mia_squadra) if rose and rose.mia_squadra else None
     if not squadra:
         raise SchierataNonValida("Indica prima la tua squadra in Squadra > Squadre e rose")
@@ -416,14 +427,15 @@ def elenco(percorso: Path | None = None, regole: Regole | None = None) -> dict:
     d = carica(percorso)
     istantanee = d["istantanee"] if isinstance(d.get("istantanee"), dict) else {}
     voci = sorted(d["giornate"].values(), key=lambda v: (v["stagione"], v["giornata"]), reverse=True)
+    corrente = consigli.stagione_corrente()
     if regole is not None:
-        corrente = consigli.stagione_corrente()
         voci = [v for v in voci if v["stagione"] != corrente or v["giornata"] >= regole.prima_giornata_lega]
         for v in voci:
             v["giornata_lega"] = serie_a_a_lega(v["giornata"], regole) if v["stagione"] == corrente else None
     for v in voci:
         ist = istantanee.get(f"{v['stagione']}/{v['giornata']}")
         v["istantanea"] = ist if isinstance(ist, dict) else None      # la consigliata di allora; null se non era stata registrata
+        v["modificabile"] = v["stagione"] == corrente                 # «Ho schierato…» e «Correggi» solo per la stagione in corso (controlla_stagione)
         # contratto per le app: «schierata» ha sempre il tipo, «automatica» c'è sempre (anche null)
         v.setdefault("automatica", None)
         if v.get("schierata"):
