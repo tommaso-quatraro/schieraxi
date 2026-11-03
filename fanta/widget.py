@@ -112,7 +112,8 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
         "iniziata": o["iniziata"], "con_probabili": o["con_probabili"],
         "squadra": f["squadra"], "crediti_residui": s.crediti_residui,
         "formazione": {"modulo": f["modulo"], "punti_attesi": f["punteggio_atteso"], "intervallo": f.get("intervallo"),
-                       "titolari": [_g(t, tratti, "punti_attesi", "p_voto") for t in f["titolari"]],
+                       # `fv_atteso`: il numero che l'app mostra accanto al titolare (#240); `punti_attesi` resta per i widget già installati
+                       "titolari": [_g(t, tratti, "punti_attesi", "p_voto", "fv_atteso") for t in f["titolari"]],
                        "panchina": [t["id"] for t in f["panchina"]]}
                       | ({"tua_scelta": True, "consigliata": consigliata} if tua else {}),
         "avvisi": [_g(a, tratti, "tipo", "in_formazione", "p_voto") for a in o["avvisi"][:MAX_AVVISI]],
