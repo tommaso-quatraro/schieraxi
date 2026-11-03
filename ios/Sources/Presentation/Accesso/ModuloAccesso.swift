@@ -145,8 +145,9 @@ struct ModuloAccesso: Equatable {
         }
     }
 
-    /// Breve, perché sta sopra il campo: il perché dell'email facoltativa va sotto (`aiuto`). La web ha la frase intera
-    /// nell'etichetta (`accesso.email_facoltativa`): sull'iPhone era tagliata o rimpicciolita (issue #191).
+    /// Breve, perché sta sopra il campo: il perché dell'email facoltativa va sotto (`aiuto`), come la web
+    /// (`accesso.email_facoltativa` sopra, `accesso.email_facoltativa_aiuto` sotto). La frase intera nell'etichetta
+    /// sull'iPhone era tagliata o rimpicciolita (issue #191).
     func etichettaEmail(_ modo: ModalitaRegistrazione) -> String {
         emailFacoltativa(modo) ? "Email (facoltativa)" : "Email"
     }
