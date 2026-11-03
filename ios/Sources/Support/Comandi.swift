@@ -79,16 +79,12 @@ struct QuantoMancaComando: AppIntent {
                 view: RiquadroComando(titolo: "Giornata \(numero)", grande: "In corso", dettaglio: "formazione chiusa \(Quando.leggibile(oggi.chiusura))")
             )
         }
-        var calendario = Calendar(identifier: .gregorian)
-        calendario.locale = Locale(identifier: "it_IT")
-        let formato = DateComponentsFormatter()
-        formato.calendar = calendario
-        formato.unitsStyle = .full
-        formato.allowedUnits = [.day, .hour, .minute]
-        formato.maximumUnitCount = 2
-        let manca = formato.string(from: Date(), to: inizio) ?? "poco"
+        // Lo stesso conto alla rovescia di Oggi e del widget: «6 h 44 min» scritto, «6 ore e 44 minuti» a voce.
+        let adesso = Date()
+        let manca = Quando.contoAllaRovescia(fino: inizio, adesso: adesso) ?? "1 min"
+        let aVoce = Quando.contoAllaRovesciaParlato(fino: inizio, adesso: adesso) ?? "meno di un minuto"
         return .result(
-            dialog: "Alla scadenza della formazione della giornata \(numero) mancano \(manca).",
+            dialog: "Alla scadenza della formazione della giornata \(numero) mancano \(aVoce).",
             view: RiquadroComando(titolo: "Giornata \(numero)", grande: manca, dettaglio: "alla scadenza, \(Quando.leggibile(oggi.chiusura))")
         )
     }

@@ -55,7 +55,7 @@ struct PiedeDati: View {
             Label("Tocca per ricollegare", systemImage: "link")
                 .font(.caption2.bold()).foregroundStyle(TintaWidget.testo2)
         } else if voce.datiSalvati, let r = voce.riassunto {
-            Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash")
+            Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
                 .font(.caption2).foregroundStyle(TintaWidget.testo2)
         }
     }

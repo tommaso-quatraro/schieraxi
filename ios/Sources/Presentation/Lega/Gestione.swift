@@ -2,6 +2,11 @@ import SwiftUI
 
 // MARK: - Avvisi del server
 
+extension AvvisiServerView {
+    /// Il server ha spento le ore tranquille (inizio e fine alla stessa ora): la frase della web (`avv.avevi_scelto_ore`).
+    static let testoOreTranquilleSpente = "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7)."
+}
+
 struct AvvisiServerView: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @StateObject private var vm: AvvisiServerViewModel
@@ -20,7 +25,7 @@ struct AvvisiServerView: View {
                 Section {
                     RigaValore(titolo: "Notifiche", valore: lega.permesso)
                     Button("Attiva i promemoria sul telefono") { Task { await lega.attivaPromemoria() } }.frame(minHeight: 44)
-                    RigaValore(titolo: "Aggiornamento in background", valore: lega.aggiornamentoInBackground)
+                    RigaValore(titolo: LegaViewModel.titoloControlli, valore: lega.aggiornamentoInBackground)
                 } header: {
                     Text("Promemoria sul telefono").foregroundStyle(Color.testoSecondario)
                 } footer: {
@@ -43,10 +48,11 @@ struct AvvisiServerView: View {
                         .onAppear { AccessibilityNotification.Announcement(errore).post() }
                     }
                     if vm.oreTranquilleSpente {
+                        // Un avviso come quello dell'errore qui sopra: triangolo e colore d'attenzione, non solo testo in grassetto.
                         Section {
-                            Text("Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).")
-                                .font(.footnote.weight(.semibold))
-                                .accessibilityAddTraits(.isStaticText)
+                            Label(Self.testoOreTranquilleSpente, systemImage: "exclamationmark.triangle.fill")
+                                .font(.footnote).foregroundStyle(Color.attenzione)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     Section {

@@ -1302,9 +1302,7 @@ def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
         db.close()
     corpo["live"] = _live_per_widget()
     corpo["funzioni"] = widget_riassunto.funzioni_per_widget(stato_utente.leggi_mostra_tutte(ctx.impostazioni_avvisi))
-    for chiave in ("scambio", "osservati"):               # rete di sicurezza sulla dimensione
-        if len(json.dumps(corpo, ensure_ascii=False)) > widget_riassunto.MAX_BYTE:
-            corpo.pop(chiave, None)
+    widget_riassunto.entro_il_peso(corpo)                 # rete di sicurezza sulla dimensione: i blocchi tolti vanno in `mancano`
     etag = versioni.etag_dati(corpo)
     intestazioni = {"ETag": etag, "Cache-Control": "private, no-cache", "Vary": "Authorization, Cookie"}
     if request.headers.get("if-none-match") == etag:

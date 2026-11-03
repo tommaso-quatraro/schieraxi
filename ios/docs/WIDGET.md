@@ -4,7 +4,7 @@ Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limi
 
 | Widget | piccolo | medio | grande | extra large (iPad) | cerchio | rettangolo | riga | Motivo |
 |---|---|---|---|---|---|---|---|---|
-| Prossima giornata | si | si | no | no | si | si | si | conto alla rovescia vivo; grande ed extra large non aggiungerebbero dati |
+| Prossima giornata | si | si | no | no | si | si | si | conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»: una voce della timeline per ogni minuto in cui cambia, per l'ora che viene, senza ricaricare) e scadenza «oggi 05:30» / «ven 6 03:32»; grande ed extra large non aggiungerebbero dati |
 | Formazione consigliata | si | si (campo mini) | si (campo con cognomi) | si (campo + lista) | si | si | si | i volti sul campo sono il dato |
 | Da controllare | no | si | si | no | no | si | no | servono almeno 2-3 nomi per avere senso |
 | Chi gioca (orari) | no | si | si | si (2 colonne) | no | si | si | serve un nome, un orario e un avversario |

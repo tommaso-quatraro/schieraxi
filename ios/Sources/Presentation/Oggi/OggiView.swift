@@ -260,11 +260,11 @@ struct OggiView: View {
     @ViewBuilder
     private func contoAllaRovescia(_ oggi: Oggi) -> some View {
         if let inizio = Quando.data(oggi.chiusura) {
-            // Ogni secondo ricontrolla: a zero il conto alla rovescia lascia il posto a «Chiusa» (come la web).
+            // Ogni secondo ricontrolla: a zero il conto alla rovescia («6 h 44 min», come la web) lascia il posto a «Chiusa».
             TimelineView(.periodic(from: Date(), by: 1)) { contesto in
                 let ora = Orologio.daSistema(contesto.date)
                 VStack(alignment: .leading, spacing: 4) {
-                    if inizio > ora {
+                    if Quando.contoAllaRovescia(fino: inizio, adesso: ora) != nil {
                         TestoConto(inizio: inizio, adesso: ora)
                             .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
@@ -522,32 +522,17 @@ struct OggiView: View {
         }
     }
 
-    private func colore(_ tipo: String?) -> Color {
-        switch tipo {
-        case "infortunato", "squalificato": return .red
-        case "dubbio": return .orange
-        default: return .yellow
-        }
-    }
-
-    /// «In dubbio · gioca 55%» come nella web app: per i dubbi, la probabilità di giocare.
-    private func etichettaTipo(_ a: Avviso) -> String {
-        let nome = nomeTipo(a.tipo)
-        if a.tipo == "dubbio", let p = a.pVoto { return "\(nome) · gioca \(Formato.percento(p))%" }
-        return nome
-    }
-
-    private func nomeTipo(_ tipo: String?) -> String {
-        switch tipo {
-        case "infortunato": return "Infortunato"
-        case "squalificato": return "Squalificato"
-        case "dubbio": return "In dubbio"
-        case "diffidato": return "Diffidato"
-        default: return (tipo ?? "").primaMaiuscola
+    /// Il colore della pillola, come il pallino della web: rosso per le assenze, arancio da guardare, giallo il resto.
+    private func colore(_ gravita: Etichetta.Gravita) -> Color {
+        switch gravita {
+        case .grave: return .red
+        case .attenzione: return .orange
+        case .normale: return .yellow
         }
     }
 
     /// Un avviso su un giocatore: un tocco apre la sua scheda. Il pallino colorato dice la gravità (e il testo la ripete).
+    /// Il testo è quello del server («In dubbio · gioca 55%»), o le stesse parole se un server vecchio non lo manda.
     private func riga(_ a: Avviso) -> some View {
         Button { apri(a.id) } label: {
             HStack(alignment: .top, spacing: 10) {
@@ -563,12 +548,12 @@ struct OggiView: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Capsula(testo: etichettaTipo(a), colore: colore(a.tipo)).accessibilityHidden(true)
+                Capsula(testo: a.descrizione, colore: colore(a.gravita)).accessibilityHidden(true)
             }
             .frame(minHeight: 44)
             .contentShape(Rectangle())
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(a.nome), \(nomeRuolo(a.ruolo ?? "")), \(etichettaTipo(a))\(a.nota.map { ": " + $0 } ?? "")")
+            .accessibilityLabel("\(a.nome), \(nomeRuolo(a.ruolo ?? "")), \(a.descrizione)\(a.nota.map { ": " + $0 } ?? "")")
         }
         .buttonStyle(.plain)
         .accessibilityHint("Apre la scheda del giocatore")
