@@ -21,7 +21,7 @@ def _db():
 
 def _scena(monkeypatch, stato="infortunato", con_alternativa=True):
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 9)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {
         "modulo": "4-3-3", "punteggio_atteso": 70.0, "titolari": [{"id": 1, "nome": "Castro", "titolarita": "titolare", "dubbio": False}]})
     prev = pd.DataFrame([{"nome": "Castro", "stato": stato, "percentuale": 0.0, "dubbio": False, "atteso": 1.0},
