@@ -169,7 +169,7 @@ final class FumoUITests: XCTestCase {
         attendi("Rose salvate", contiene: true)
         XCTAssertFalse(elemento("La tua squadra:", contiene: true).exists, "come la web: l'esito non ripete la propria squadra")
         attendiScorrendo("Da controllare:")
-        attendiScorrendo("«Bastrani» non è nel listone", contiene: true)
+        attendiScorrendo("«Bastrini» non è nel listone", contiene: true)
         XCTAssertFalse(elemento("tutto in ordine", contiene: true).exists, "con degli avvisi non si dice «tutto in ordine»")
     }
 

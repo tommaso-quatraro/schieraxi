@@ -7,8 +7,8 @@ import Foundation
 enum DemoEsitoRose {
     static func esito(_ schermata: String?) -> EsitoImportazione? {
         guard schermata == "lega-importa-salvate" || schermata == "lega-importa-salvate-ok" else { return nil }
-        // l'avviso lo cerca anche il test di fumo (FumoUITests): Bastrani qui non si muove, quindi niente contraddizioni
-        let avvisi = schermata == "lega-importa-salvate" ? #"["Real Madrink: «Bastrani» non è nel listone."]"# : "[]"
+        // un nome che nella demo non esiste (il test di fumo, FumoUITests, cerca questo avviso)
+        let avvisi = schermata == "lega-importa-salvate" ? #"["Real Madrink: «Bastrini» non è nel listone."]"# : "[]"
         let json = #"""
         {"squadre_importate": ["\#(LegaDemo.nomeMia)", "Real Madrink", "Dinamo Pizza"], "totale_squadre": 8,
          "avvisi": \#(avvisi), "mia_squadra": "\#(LegaDemo.nomeMia)",

@@ -130,5 +130,11 @@ struct DemoEsitoRoseTests {
             let cognome = g.nome.split(separator: " ").last.map(String.init) ?? g.nome
             for a in esito.avvisi ?? [] { #expect(!a.contains(cognome), "«\(a)» contraddice il movimento di \(g.nome)") }
         }
+        // «X» non è nel listone: X non può essere un giocatore che nella demo c'è
+        let cognomi = Set(lega.giocatori.compactMap { $0.split(separator: " ").last.map(String.init) })
+        for a in esito.avvisi ?? [] where a.contains("non è nel listone") {
+            let nome = a.split(separator: "«").dropFirst().first?.split(separator: "»").first.map(String.init) ?? ""
+            #expect(!nome.isEmpty && !cognomi.contains(nome), "«\(a)»: \(nome) nella demo è nel listone")
+        }
     }
 }
