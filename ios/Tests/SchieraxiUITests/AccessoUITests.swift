@@ -317,65 +317,67 @@ final class AccessoUITests: XCTestCase {
         }
     }
 
-    /// Come il test vero, dall'avvio: Registrati, Accedi, Password dimenticata, Con l'email, di nuovo Accedi, poi il tocco su
-    /// «Nome utente». Giri dispari: tocco subito (come il test). Giri pari: prima si leggono le posizioni del campo per un secondo
-    /// (si muove ancora?), poi il tocco. Dopo il tocco: chi ha il fuoco della tastiera (nome, password), e se arriva dopo.
-    private func diagnosiCampoNome(fili: Int, secondi: TimeInterval) {
+    /// Problemi di `typeText` senza fuoco visti in questo test (solo per la diagnosi).
+    private var senzaFuoco = 0
+    override func record(_ issue: XCTIssue) {
+        if issue.compactDescription.contains("keyboard focus") { senzaFuoco += 1 }
+        super.record(issue)
+    }
+
+    /// Molte volte nello stesso avvio, come il test: `tap()` e subito `typeText` (una lettera e la cancellazione, così il campo
+    /// resta vuoto). «Nome utente» con la tastiera chiusa, poi «Password» con la tastiera aperta, poi la tastiera si chiude
+    /// trascinando giù. Se `typeText` trova il campo senza fuoco: si guarda se il fuoco arriva dopo (e quando) o mai.
+    private func diagnosiFuoco(fili: Int, secondi: TimeInterval) {
+        avvia("accedi")
+        continueAfterFailure = true
+        let nome = app.textFields["Nome utente"]
+        let password = app.secureTextFields["Password"]
+        XCTAssertTrue(nome.waitForExistence(timeout: 30))
         let carico = fili > 0 ? Carico(fili: fili) : nil
         defer { carico?.ferma() }
-        var giri = 0
-        var subito = 0
-        var dopoMisura = 0
+        var tocchi = ["nome": 0, "password": 0]
         var mancati: [String] = []
-        var posizioni: [String] = []
-        var tempi: [String] = []
+        var tastieraAperta = 0
+        var lenti = 0
         let inizio = adesso()
+        var giro = 0
         while adesso() - inizio < secondi {
-            giri += 1
-            avvia("accedi")
-            continueAfterFailure = true
-            let nome = app.textFields["Nome utente"]
-            let password = app.secureTextFields["Password"]
-            guard nome.waitForExistence(timeout: 30) else { mancati.append("giro \(giri): niente schermata"); app.terminate(); continue }
-            tocca("scheda-registrati", finchéCompare: "Crea l'account")
-            tocca("scheda-accedi", finchéCompare: "Password dimenticata")
-            tocca("Password dimenticata", finchéCompare: "Scegli la nuova password")
-            tocca("Con l'email", finchéCompare: "Mandami il codice")
-            _ = app.textFields["Email"].waitForExistence(timeout: 10)
-            let t0 = adesso()
-            tocca("scheda-accedi", finchéCompare: "Password dimenticata")
-            let t1 = adesso()
-            var serie = ""
-            let misura = giri.isMultiple(of: 2)
-            if misura {
-                dopoMisura += 1
-                while adesso() - t1 < 1.2 { serie += "\(f(adesso() - t1)):\(alto(nome)) " }
-                posizioni.append("giro \(giri): \(serie)")
-            } else {
-                subito += 1
+            giro += 1
+            for (campo, quale, altro) in [(nome, "nome", password), (password, "password", nome)] {
+                let tastieraPrima = app.keyboards.count > 0
+                if quale == "nome", tastieraPrima { tastieraAperta += 1 }
+                let prima = senzaFuoco
+                let t0 = adesso()
+                campo.tap()
+                let durata = adesso() - t0
+                if durata > 3 { lenti += 1 }
+                tocchi[quale, default: 0] += 1
+                campo.typeText("a" + XCUIKeyboardKey.delete.rawValue)
+                guard senzaFuoco > prima else { continue }
+                let fAltro = fuoco(altro)
+                var serie = ""
+                var arrivato: TimeInterval?
+                let t1 = adesso()
+                while adesso() - t1 < 4 {
+                    let s = fuoco(campo)
+                    serie += s
+                    if s == "S" { arrivato = adesso() - t1; break }
+                    usleep(200_000)
+                }
+                mancati.append("giro \(giro) \(quale): tastiera prima=\(tastieraPrima) dopo=\(app.keyboards.count) altro=\(fAltro) "
+                    + "tap=\(f(durata))s serie=\(serie) arrivato=\(arrivato.map { f($0) } ?? "mai")")
+                if arrivato == nil { campo.tap() }
             }
-            let t2 = adesso()
-            nome.tap()
-            let t3 = adesso()
-            let fn = fuoco(nome)
-            let fp = fuoco(password)
-            tempi.append("\(misura ? "m" : "s")\(f(t1 - t0))/\(f(t3 - t2))")
-            if fn != "S" {
-                let yDopo = alto(nome)
-                let tastiera = app.keyboards.count
-                usleep(1_500_000)
-                mancati.append("giro \(giri) \(misura ? "dopo misura" : "subito"): nome=\(fn) password=\(fp) tastiera=\(tastiera) "
-                    + "y=\(yDopo) poi nome=\(fuoco(nome)) password=\(fuoco(password)) | tocca=\(f(t1 - t0))s tap=\(f(t3 - t2))s \(serie)")
-            }
-            app.terminate()
+            app.swipeDown()   // chiude la tastiera (scrollDismissesKeyboard .interactively)
         }
-        let riassunto = "DIAGNOSI campo nome, carico \(fili) fili: senza fuoco \(mancati.count) su \(giri) (subito \(subito), dopo misura \(dopoMisura))"
-            + " || " + mancati.joined(separator: " || ") + " || posizioni: " + posizioni.joined(separator: " || ")
-            + " || tempi: " + tempi.joined(separator: " ")
+        let n = tocchi["nome"] ?? 0
+        let p = tocchi["password"] ?? 0
+        let riassunto = "DIAGNOSI fuoco, carico \(fili) fili: typeText senza fuoco \(mancati.count) su \(n + p) (nome \(n), password \(p); "
+            + "nome con la tastiera già aperta \(tastieraAperta); tap oltre 3 s \(lenti)) || " + mancati.joined(separator: " || ")
         print(riassunto)
         XCTFail(riassunto)
     }
 
-    func testDiagnosiCampoNomeSottoCarico() { diagnosiCampoNome(fili: 6, secondi: 480) }
-    func testDiagnosiCampoNomeSenzaCarico() { diagnosiCampoNome(fili: 0, secondi: 240) }
+    func testDiagnosiFuocoSottoCarico() { diagnosiFuoco(fili: 8, secondi: 900) }
+    func testDiagnosiFuocoSenzaCarico() { diagnosiFuoco(fili: 0, secondi: 300) }
 }
