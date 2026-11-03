@@ -725,6 +725,16 @@ enum ParoleWidget {
                          : ["\(p) punti attesi", "\(p) attesi"]
     }
 
+    /// Il nome di `voto_atteso` (il voto in pagella, senza bonus e malus), lo stesso di app e web (`confronto.fattore_voto`).
+    /// «Fantavoto atteso» è un altro numero (`fv_atteso`, voto più bonus e malus), che `/api/widget` non manda per i seguiti.
+    static let votoInPagellaAtteso = "Voto in pagella atteso"
+
+    /// «Voto in pagella atteso 6,4» → «In pagella 6,4».
+    static func votoInPagella(_ voto: Double) -> [String] {
+        let v = Formato.punti(voto)
+        return ["\(votoInPagellaAtteso) \(v)", "In pagella \(v)"]
+    }
+
     /// «73,7 attesi · tra 62 e 85» → «73,7 attesi»; senza fascia come `puntiAttesi`.
     static func puntiConFascia(_ punti: Double?, fascia: String?) -> [String] {
         guard let fascia else { return puntiAttesi(punti) }
@@ -872,8 +882,9 @@ extension GiocatoreWidget {
     /// «gioca 90%»; nil se non c'è niente da dire.
     var statoOGioca: String? { descrizioneStato.isEmpty ? giocaTesto : descrizioneStato }
 
-    /// La riga del voto atteso nel widget «Osservato» medio, dalla forma più lunga alla più corta; nil senza `voto_atteso`.
-    var rigaVotoAtteso: [String]? { votoAtteso.map { ["Fantavoto atteso \(Formato.punti($0))"] } }
+    /// La riga del voto in pagella atteso nel widget «Osservato» medio, dalla forma più lunga alla più corta; nil senza
+    /// `voto_atteso`. Non si chiama «Fantavoto atteso»: quello è `fv_atteso` (#225).
+    var rigaVotoAtteso: [String]? { votoAtteso.map(ParoleWidget.votoInPagella) }
 }
 
 /// Il widget «Osservato» senza un giocatore da mostrare: nessun seguito, oppure seguiti tolti dal server perché la risposta era
