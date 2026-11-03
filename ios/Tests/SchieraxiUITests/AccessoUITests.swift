@@ -216,8 +216,8 @@ final class AccessoUITests: XCTestCase {
     private func f(_ t: TimeInterval) -> String { String(format: "%.2f", t) }
 
     /// Apre il foglio come `apriFoglio`, ma conta tempo, tocchi e scorrimenti.
-    private func apriFoglioMisurato(_ voce: XCUIElement, segno: XCUIElement) -> String {
-        XCTAssertTrue(voce.waitForExistence(timeout: 30), "manca la voce del foglio")
+    private func apriFoglioMisurato(_ voce: XCUIElement, segno: XCUIElement) -> String? {
+        guard voce.waitForExistence(timeout: 30) else { return nil }
         let inizio = adesso()
         var tocchi = 0
         var scorrimenti = 0
@@ -230,8 +230,7 @@ final class AccessoUITests: XCTestCase {
             }
             aperto = segno.waitForExistence(timeout: 10)
         }
-        XCTAssertTrue(aperto, "il foglio non si apre")
-        return "\(f(adesso() - inizio))s/\(tocchi)t/\(scorrimenti)sc"
+        return aperto ? "\(f(adesso() - inizio))s/\(tocchi)t/\(scorrimenti)sc" : nil
     }
 
     /// Come `restaAperto` (stessa attesa di 4 secondi), ma se il segno sparisce non si ferma: guarda se torna e cosa c'è.
@@ -239,6 +238,7 @@ final class AccessoUITests: XCTestCase {
         let inizio = adesso()
         guard segno.waitForNonExistence(timeout: 4) else { return nil }
         let dopo = adesso() - inizio
+        let subito = segno.exists   // la lettura dopo, con i suoi tentativi: c'è di nuovo?
         let barra = app.navigationBars[titolo].exists
         let voceToccabile = voce.exists && voce.isHittable
         var serie = ""
@@ -252,7 +252,7 @@ final class AccessoUITests: XCTestCase {
             usleep(150_000)
         }
         let barre = app.navigationBars.allElementsBoundByIndex.map { $0.identifier }.joined(separator: "+")
-        return "sparito dopo \(f(dopo))s, barra=\(barra), voceToccabile=\(voceToccabile), serie=\(serie), tornato=\(tornato.map { f($0) } ?? "no"), barre=\(barre)"
+        return "sparito dopo \(f(dopo))s, subito=\(subito), barra=\(barra), voceToccabile=\(voceToccabile), serie=\(serie), tornato=\(tornato.map { f($0) } ?? "no"), barre=\(barre)"
     }
 
     private func chiudiSeAperto(_ titolo: String, _ pulsante: String, segno: XCUIElement, voce: XCUIElement) {
@@ -266,19 +266,47 @@ final class AccessoUITests: XCTestCase {
         _ = XCTWaiter().wait(for: [toccabile], timeout: 5)
     }
 
-    private func diagnosiFogli(datiCheCambiano: Bool) {
+    /// Fili che tengono occupata la CPU del Mac, come su un Mac di GitHub carico (la corsa da 89 secondi). Solo per la diagnosi.
+    private final class Carico: @unchecked Sendable {
+        private let lucchetto = NSLock()
+        private var acceso = true
+        var attivo: Bool { lucchetto.lock(); defer { lucchetto.unlock() }; return acceso }
+        func ferma() { lucchetto.lock(); acceso = false; lucchetto.unlock() }
+        init(fili: Int) {
+            for _ in 0..<fili {
+                Thread.detachNewThread { [self] in
+                    var x = 0.0
+                    while self.attivo { for i in 0..<200_000 { x += sin(Double(i)) } }
+                    if x == 42 { print(x) }
+                }
+            }
+        }
+    }
+
+    private func diagnosiSottoCarico(datiCheCambiano: Bool, fili: Int) {
         avvia("account", altri: datiCheCambiano ? ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"] : [])
+        continueAfterFailure = true
         attendi("Il tuo account")
+        let carico = Carico(fili: fili)
+        defer { carico.ferma() }
         let fogli: [(voce: XCUIElement, segno: XCUIElement, titolo: String)] = [
             (app.buttons["account-cambia-password"], app.secureTextFields["Password attuale"], "Cambia la password"),
             (app.buttons["account-elimina"], app.navigationBars["Elimina l'account"], "Elimina l'account"),
         ]
         var aperture = 0
+        var mancate = 0
         var esiti: [String] = []
         var anomalie: [String] = []
-        for giro in 1...15 {
+        let inizio = adesso()
+        ciclo: for giro in 1...40 {
             for foglio in fogli {
-                let apertura = apriFoglioMisurato(foglio.voce, segno: foglio.segno)
+                if adesso() - inizio > 420 { break ciclo }
+                guard let apertura = apriFoglioMisurato(foglio.voce, segno: foglio.segno) else {
+                    mancate += 1
+                    esiti.append("X")
+                    chiudiSeAperto(foglio.titolo, "Annulla", segno: foglio.segno, voce: foglio.voce)
+                    continue
+                }
                 aperture += 1
                 if let a = osserva(foglio.segno, voce: foglio.voce, titolo: foglio.titolo) {
                     anomalie.append("giro \(giro) «\(foglio.titolo)» aperto in \(apertura): \(a)")
@@ -287,51 +315,15 @@ final class AccessoUITests: XCTestCase {
                 chiudiSeAperto(foglio.titolo, "Annulla", segno: foglio.segno, voce: foglio.voce)
             }
         }
-        let riassunto = "DIAGNOSI dati \(datiCheCambiano ? "che cambiano" : "fermi"): sparizioni \(anomalie.count) su \(aperture) aperture || "
-            + anomalie.joined(separator: " || ") + " || aperture: " + esiti.joined(separator: " ")
+        carico.ferma()
+        let riassunto = "DIAGNOSI carico \(fili) fili, dati \(datiCheCambiano ? "che cambiano" : "fermi"): sparizioni \(anomalie.count) su \(aperture) aperture"
+            + " (non aperti: \(mancate)) || " + anomalie.joined(separator: " || ") + " || aperture: " + esiti.joined(separator: " ")
         print(riassunto)
         XCTFail(riassunto)
     }
 
-    func testDiagnosiFogliConDatiCheCambiano() { diagnosiFogli(datiCheCambiano: true) }
-    func testDiagnosiFogliConDatiFermi() { diagnosiFogli(datiCheCambiano: false) }
-
-    /// Come il test vero, dall'avvio: ogni giro un avvio nuovo, poi i quattro fogli uno dopo l'altro, chiusi come `chiudiFoglio`
-    /// (solo l'attesa che il segno sparisca, niente attesa che la voce sotto torni toccabile).
-    func testDiagnosiFogliComeIlTestDallAvvio() {
-        var anomalie: [String] = []
-        var esiti: [String] = []
-        var aperture = 0
-        for giro in 1...8 {
-            avvia("account", altri: ["-DEMO_ACCOUNT_CHE_CAMBIA", "1"])
-            attendi("Il tuo account")
-            let voceEmail = app.buttons.matching(NSPredicate(format: "label IN %@", ["Aggiungi un'email", "Gestisci l'email"])).firstMatch
-            let fogli: [(voce: XCUIElement, segno: XCUIElement, titolo: String, pulsante: String)] = [
-                (app.buttons["account-cambia-password"], app.secureTextFields["Password attuale"], "Cambia la password", "Annulla"),
-                (app.buttons["account-codice"], app.navigationBars["Codice di recupero"], "Codice di recupero", "Annulla"),
-                (voceEmail, app.navigationBars["Email"], "Email", "Chiudi"),
-                (app.buttons["account-elimina"], app.navigationBars["Elimina l'account"], "Elimina l'account", "Annulla"),
-            ]
-            for foglio in fogli {
-                let apertura = apriFoglioMisurato(foglio.voce, segno: foglio.segno)
-                aperture += 1
-                esiti.append(apertura)
-                if let a = osserva(foglio.segno, voce: foglio.voce, titolo: foglio.titolo) {
-                    anomalie.append("avvio \(giro) «\(foglio.titolo)» aperto in \(apertura): \(a)")
-                    if !foglio.segno.waitForExistence(timeout: 2) { break }   // chiuso davvero: si riparte con un avvio nuovo
-                }
-                let b = app.navigationBars[foglio.titolo].buttons[foglio.pulsante]
-                XCTAssertTrue(b.waitForExistence(timeout: 10), "manca «\(foglio.pulsante)»")
-                b.tap()
-                _ = foglio.segno.waitForNonExistence(timeout: 10)
-            }
-            app.terminate()
-        }
-        let riassunto = "DIAGNOSI dall'avvio: sparizioni \(anomalie.count) su \(aperture) aperture || "
-            + anomalie.joined(separator: " || ") + " || aperture: " + esiti.joined(separator: " ")
-        print(riassunto)
-        XCTFail(riassunto)
-    }
+    func testDiagnosiSottoCaricoDatiCheCambiano() { diagnosiSottoCarico(datiCheCambiano: true, fili: 6) }
+    func testDiagnosiSottoCaricoDatiFermi() { diagnosiSottoCarico(datiCheCambiano: false, fili: 6) }
 
     func testRetAssenteDiceCosaFare() {
         avvia("rete")
