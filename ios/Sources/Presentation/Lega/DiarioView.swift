@@ -108,13 +108,18 @@ struct DiarioView: View {
         self.server = server
     }
 
+    /// I testi in cima al Diario (ancora da allineare alla web).
+    static let rigaIntro = ""
+    static let comeSiLegge = ""
+    static let perOgniGiornata = "Per ogni giornata finita: i punti fatti («attesi» = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato."
+
     var body: some View {
         ZStack {
             Sfondo()
             List {
                 if let d = vm.caricatore.dato {
                     Section {
-                        Text("Per ogni giornata finita: i punti fatti («attesi» = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
+                        Text(Self.perOgniGiornata)
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                     if let p = d.precisione {
