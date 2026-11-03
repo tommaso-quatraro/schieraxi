@@ -29,6 +29,9 @@ struct VoceDiario: Decodable, Identifiable {
 
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
 
+    /// «Ho schierato…» e «Correggi a mano» si mostrano per questa voce (oggi: basta il numero della giornata).
+    var siPuoCambiare: Bool { giornata != nil }
+
     /// «Giornata 8»: il numero della lega, come in Oggi e sulla web; «Giornata 11» (Serie A) se il server non lo manda.
     var titolo: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Giornata" }
 
