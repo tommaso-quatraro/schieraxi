@@ -114,7 +114,7 @@ struct Galleria: View {
         }
     }
 
-    private var voce: Voce { DatiGalleria.voce(args.string(forKey: "DATI") ?? "pieni") }
+    private var voce: Voce { DatiGalleria.voce(args.string(forKey: "DATI") ?? "pieni", widget: widget) }
 
     var body: some View {
         let famiglie = DatiGalleria.famiglie(widget).filter { MisureWidget.accessorio($0) == soloBlocco && (MisureWidget.ipad || $0 != .systemExtraLarge) }

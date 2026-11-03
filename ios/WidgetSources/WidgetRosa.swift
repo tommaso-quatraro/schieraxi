@@ -1,7 +1,8 @@
 import WidgetKit
 import SwiftUI
 
-/// Widget «Chi gioca»: i giocatori della mia rosa che scendono in campo a breve, con orario, avversario e stato (dubbio, rigorista).
+/// Widget «Chi gioca»: i giocatori della mia rosa che scendono in campo a breve, con orario, avversario e stato a parole
+/// (dubbio, diffida, rigorista: `RigaChiGioca`).
 /// Misure: medio (3 righe), grande (6), extra large per iPad (due colonne da 6), rettangolo e riga per la schermata di blocco.
 /// Piccolo e cerchio non hanno senso: servono almeno un nome, un orario e un avversario.
 struct WidgetRosa: Widget {
@@ -87,31 +88,8 @@ struct VistaRosa: View {
 
     private func colonna(_ lista: [GiocatoreWidget]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            ForEach(lista) { g in
-                Link(destination: URL(string: "schieraxi://giocatore/\(g.id)") ?? URL(fileURLWithPath: "/")) { riga(g) }
-            }
+            ForEach(lista) { g in RigaChiGioca(g: g, adesso: voce.date) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func riga(_ g: GiocatoreWidget) -> some View {
-        HStack(spacing: 8) {
-            AvatarMini(g: g, lato: 26)
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 4) {
-                    Text(g.nome).font(.subheadline.weight(.semibold)).lineLimit(1)
-                    if g.rigorista == true { Image(systemName: "target").font(.caption2).foregroundStyle(TintaWidget.lime) }
-                    if g.titolare == false, g.stato == nil { Text("panchina").fontWidget(9).foregroundStyle(TintaWidget.testo2) }
-                }
-                let stato = g.descrizioneStato
-                Text(stato.isEmpty ? g.partitaBreve : "\(g.partitaBreve) · \(stato)")
-                    .font(.caption2)
-                    .foregroundStyle(!stato.isEmpty || g.diffidato == true ? TintaWidget.attenzione : TintaWidget.testo2)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            Text(g.oraBreve).font(.subheadline.weight(.semibold)).monospacedDigit()
-        }
-        .frame(minHeight: 30)
     }
 }
