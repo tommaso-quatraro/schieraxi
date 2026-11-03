@@ -39,3 +39,15 @@ def test_seguito_senza_p_voto_ne_dubbio_non_manda_i_campi(monkeypatch):
 
     assert len(c["osservati"]) == 2                          # facoltativi: se non ci sono, mancano (mai null)
     assert all("p_voto" not in g and "dubbio" not in g for g in c["osservati"])
+
+
+def test_seguiti_del_widget_con_fantavoto_atteso(monkeypatch):
+    """#225: il widget «Giocatore seguito» mostra il fantavoto atteso (`fv_atteso`), come i Seguiti nell'app, non il voto in pagella."""
+    db, rose = _prepara(monkeypatch)
+    monkeypatch.setattr(w.consigli, "scheda_previsione", lambda i, x: _s(i) | {"fv_atteso": 6.85, "voto_atteso": 6.1})
+    monkeypatch.setattr(w.osservati, "leggi", lambda *a, **k: [5, 7])
+
+    c = w.costruisci(db, object(), rose, None, None)
+
+    assert [g["fv_atteso"] for g in c["osservati"]] == [6.85, 6.85]
+    assert all(g["voto_atteso"] == 6.1 for g in c["osservati"])      # il campo di prima resta (widget già installati)

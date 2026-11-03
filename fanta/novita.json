@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.384",
+    "data": "2026-11-03T12:47:58",
+    "titolo": "Widget del giocatore seguito: il fantavoto atteso",
+    "voci": [
+      "Il widget del giocatore che segui riceve il fantavoto atteso, lo stesso numero che vedi nei Seguiti dell'app. Lo mostra con il prossimo aggiornamento dell'app per iPhone."
+    ],
+    "tecnico": [
+      "/api/widget: ogni voce di `osservati` ha anche `fv_atteso` (facoltativo, dalla stessa `consigli.scheda_previsione`). `voto_atteso` resta per i widget già installati. Serve alla PR iOS #238 (#225)."
+    ]
+  },
+  {
     "versione": "1.383",
     "data": "2026-11-03T12:07:29",
     "titolo": "Etichette dei giocatori sempre intere",
