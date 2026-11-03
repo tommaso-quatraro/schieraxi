@@ -1,3 +1,9 @@
-{"titolo": "Widget della formazione: il fantavoto atteso dei titolari",
- "voci": ["Il widget della formazione riceve il fantavoto atteso di ogni titolare, lo stesso numero che vedi accanto al titolare nell'app. Lo mostra con il prossimo aggiornamento dell'app per iPhone."],
- "tecnico": ["/api/widget: ogni titolare di `formazione` ha anche `fv_atteso` (facoltativo, dalla stessa scheda della Formazione). `punti_attesi` resta per i widget già installati (#240)."]}
+{
+ "titolo": "Widget della formazione: il fantavoto atteso dei titolari",
+ "voci": [
+  "Sull'iPad, nel widget della formazione più grande, accanto a ogni titolare compare il fantavoto atteso, lo stesso numero dell'app. Arriva con il prossimo aggiornamento dell'app; sull'iPhone il widget non cambia."
+ ],
+ "tecnico": [
+  "/api/widget: ogni titolare di `formazione` ha anche `fv_atteso` (facoltativo, dalla stessa scheda della Formazione). `punti_attesi` resta per i widget già installati (#240)."
+ ]
+}
