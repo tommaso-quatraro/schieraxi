@@ -23,6 +23,9 @@ struct CalciatoreDemo {
     /// Il voto in pagella atteso (`voto_atteso`).
     var votoAtteso: Double { 5.9 + (punti - 5.0) / 8.0 }
 
+    /// Il fantavoto atteso (`fv_atteso`): lo stesso numero nella Formazione dell'app e accanto ai titolari del widget (#240).
+    var fvAtteso: Double { assente ? 0 : punti + 0.6 + (ruolo == "A" ? 0.5 : 0) }
+
     /// Lo stato delle probabili formazioni (`stato`): infortunato, titolare (anche in dubbio) o panchina.
     var statoProbabili: String {
         if assente { return "infortunato" }
@@ -447,7 +450,7 @@ enum LegaDemo {
         }
         let titolari: [[String: Any]] = ids.map { id -> [String: Any] in
             let p = calciatore(id)
-            return breve(p).merging(["punti_attesi": p.punti, "p_voto": p.pVoto] as [String: Any]) { _, nuovo in nuovo }
+            return breve(p).merging(["punti_attesi": p.punti, "p_voto": p.pVoto, "fv_atteso": p.fvAtteso] as [String: Any]) { _, nuovo in nuovo }
         }
         var formazione: [String: Any] = ["modulo": moduli[0].nome, "punti_attesi": attesi, "intervallo": fascia(attesi),
                                          "titolari": titolari, "panchina": panchina(per: ids)]

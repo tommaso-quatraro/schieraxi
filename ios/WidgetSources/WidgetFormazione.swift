@@ -2,7 +2,8 @@ import WidgetKit
 import SwiftUI
 
 /// Widget «Formazione consigliata»: modulo, punti attesi e i titolari sul campo (con i volti illustrati).
-/// Misure: piccolo (modulo e punti), medio (dato + campo mini), grande (campo con i cognomi), extra large per iPad (campo e lista),
+/// Misure: piccolo (modulo e punti), medio (dato + campo mini), grande (campo con i cognomi), extra large per iPad (campo e lista
+/// dei titolari con il fantavoto atteso, come l'app),
 /// schermata di blocco: cerchio, rettangolo, riga. Ogni volto apre la scheda del giocatore, il resto la Formazione.
 struct WidgetFormazione: Widget {
     let kind = "SchieraxiFormazione"
@@ -201,7 +202,20 @@ struct VistaFormazione: View {
                 CampoMini(titolari: tit, lato: 48, conNomi: true)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("Titolari").font(.caption.weight(.semibold)).foregroundStyle(TintaWidget.testo2)
+                // sopra i numeri il loro nome («Fantavoto atteso», come l'app); se non entra restano i numeri, VoiceOver lo legge sempre
+                let nomi = f.nomeNumeroTitolari
+                PrimaCheEntra(nomi.count) { i in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("Titolari")
+                        Spacer(minLength: 0)
+                        Text(nomi[i])
+                    }
+                    .lineLimit(1)
+                }
+                .font(.caption.weight(.semibold)).foregroundStyle(TintaWidget.testo2)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Titolari, \(nomi.first ?? "")")
+                .accessibilityAddTraits(.isHeader)
                 ForEach(tit) { g in
                     Link(destination: URL(string: "schieraxi://giocatore/\(g.id)") ?? URL(fileURLWithPath: "/")) {
                         HStack(spacing: 8) {
@@ -211,6 +225,7 @@ struct VistaFormazione: View {
                             Text(f.numeroTitolare(g)).font(.subheadline.weight(.semibold)).monospacedDigit()
                         }
                     }
+                    .accessibilityLabel(f.voceTitolare(g))
                 }
                 Spacer(minLength: 0)
                 PiedeDati(voce: voce)

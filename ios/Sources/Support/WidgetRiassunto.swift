@@ -993,12 +993,25 @@ extension GiocatoreWidget {
 // MARK: Widget «Formazione»: il numero accanto ai titolari
 
 extension FormazioneWidget {
-    /// Il nome sopra i numeri dei titolari, dalla forma più lunga alla più corta (l'ultima vuota: solo i numeri).
-    var nomeNumeroTitolari: [String] { [""] }
+    /// true se il server manda il fantavoto atteso (`fv_atteso`, dal #240) per ogni titolare: allora la colonna mostra quello.
+    /// Basta un titolare senza per tenere tutta la colonna sui punti attesi: un solo numero sotto un solo nome.
+    private var conFantavoto: Bool {
+        guard let tit = titolari, !tit.isEmpty else { return false }
+        return tit.allSatisfy { $0.fvAtteso != nil }
+    }
 
-    /// Il numero accanto al titolare nell'elenco del widget extra large.
-    func numeroTitolare(_ g: GiocatoreWidget) -> String { Formato.punti(g.puntiAttesi) }
+    /// Il nome del numero accanto ai titolari: «Fantavoto atteso», come gli elenchi dei titolari nell'app e la web
+    /// (`mercato.fantavoto_atteso`); da un server senza `fv_atteso` «Punti attesi», il numero di prima.
+    private var nomeNumero: String { conFantavoto ? ParoleWidget.fantavotoAtteso : "Punti attesi" }
 
-    /// La riga del titolare per VoiceOver.
-    func voceTitolare(_ g: GiocatoreWidget) -> String { "\(g.nome), \(numeroTitolare(g))" }
+    /// Il nome sopra i numeri dei titolari, dalla forma più lunga alla più corta: se non entra restano solo i numeri
+    /// (l'ultima forma è vuota), ma VoiceOver lo legge sempre (`voceTitolare`).
+    var nomeNumeroTitolari: [String] { [nomeNumero, ""] }
+
+    /// Il numero accanto al titolare nell'elenco del widget extra large: il fantavoto atteso con una cifra decimale («7,6»),
+    /// lo stesso numero dell'app; da un server vecchio i punti attesi di prima; «–» se manca.
+    func numeroTitolare(_ g: GiocatoreWidget) -> String { Formato.punti(conFantavoto ? g.fvAtteso : g.puntiAttesi) }
+
+    /// La riga del titolare per VoiceOver, sempre con il nome del numero: «Leonel Marténi, fantavoto atteso 7,6».
+    func voceTitolare(_ g: GiocatoreWidget) -> String { "\(g.nome), \(nomeNumero.lowercased()) \(numeroTitolare(g))" }
 }

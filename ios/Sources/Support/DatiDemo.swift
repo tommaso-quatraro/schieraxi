@@ -90,7 +90,7 @@ private extension LegaDemo {
             "gol_attesi": golAttesi(p),
             "assist_attesi": assistAttesi(p),
         ]
-        d["fv_atteso"] = p.assente ? 0.0 : p.punti + 0.6 + (p.ruolo == "A" ? 0.5 : 0)
+        d["fv_atteso"] = p.fvAtteso
         d["voto_atteso"] = p.votoAtteso
         d["porta_inviolata"] = p.ruolo == "P" ? 0.34 : 0.0
         d["p_gol"] = min(0.6, golAttesi(p) * 0.85)
@@ -134,7 +134,7 @@ private extension LegaDemo {
     /// «Perché questo numero» come lo manda il server (`perche_numero`, `fv_atteso_medio_ruolo`): stesse frasi del server,
     /// effetti in fantavoti rispetto al giocatore medio del ruolo, al massimo tre motivi.
     static func perche(_ p: Calciatore, in d: inout [String: Any]) {
-        let fv = p.punti + 0.6 + (p.ruolo == "A" ? 0.5 : 0)
+        let fv = p.fvAtteso
         let medio = ["P": 6.0, "D": 6.1, "C": 6.4, "A": 7.0][p.ruolo] ?? 6.3
         let casa = avversario(di: p.squadra)?.inCasa ?? true
         let partita = Double(3 - difficolta(di: p.squadra)) * 0.15
