@@ -57,7 +57,7 @@ def mondo(multiutente, dati_isolati, monkeypatch):
                          {"nome": "Bonny", "stato": "titolare", "percentuale": 80.0, "dubbio": False}], index=[1, 2])
     calcoli = []
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 9)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     monkeypatch.setattr(consigli, "formazione", lambda db, regole, rose, *a, **k: calcoli.append(rose.mia_squadra) or {
         "modulo": "4-3-3", "punteggio_atteso": 70.0, "titolari": [{"id": g.id, "nome": g.nome, "titolarita": "titolare", "dubbio": False}
