@@ -71,7 +71,8 @@ struct VistaPunti: View {
             CerchioWidget {
                 Text(g.sigla).fontWidget(10)
                 Text(scartoTesto(g)).font(.headline.bold()).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
-                Text("sul previsto").fontWidget(8)
+                // con il testo grande si rimpicciolisce invece di uscire dal cerchio
+                Text("sul previsto").fontWidget(8).lineLimit(1).minimumScaleFactor(0.6)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(g.descrizione)
@@ -151,37 +152,47 @@ struct VistaPunti: View {
         let giornate = Array(w.giornateGiocate.prefix(5))
         let scarti = giornate.compactMap(GraficoPunti.scarto)
         let media = scarti.isEmpty ? nil : scarti.reduce(0, +) / Double(scarti.count)
+        let (dentro, su) = RiassuntoWidget.quanteDentro(giornate)
+        // le frasi di riepilogo, la più utile prima
+        let frasi = [su > 0 ? RiassuntoWidget.fraseDentro(dentro: dentro, su: su) : nil,
+                     media.map { RiassuntoWidget.fraseMedia($0, giornate: scarti.count) }].compactMap { $0 }
+        let prove = DisposizioneWidget.provePuntiGrande(righe: giornate.count, frasi: frasi.count)
         return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
+                // va a capo intera anche con il testo grande: mai «attesi 6…»
                 Text("fatti alla giornata \(g.numero)\(g.altraStagione.map { " del \($0)" } ?? ""), attesi \(Formato.punti(g.attesi))")
                     .font(.subheadline).foregroundStyle(TintaWidget.testo2)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             GraficoPunti(giornate: giornate, altezza: 80)
             legenda
-            // la stessa forma per tutte le righe: prima «G7» al posto di «Giornata 7», poi via la fascia, poi solo i fatti
-            // (mai «dentro la fa…» né «63,5 su 6…»); VoiceOver legge la riga intera
-            PrimaCheEntra(PuntiGiornata.FormaRiga.allCases.count) { i in
-                VStack(spacing: 3) {
-                    ForEach(giornate) { x in
-                        RigaTabellaPunti(giornata: x, forma: PuntiGiornata.FormaRiga.allCases[i], scarto: scartoTesto(x))
+            // sotto il grafico quello che entra in altezza: prima via le frasi di riepilogo, poi le righe più vecchie (niente tagli)
+            PrimaCheEntra(prove.count, in: .vertical) { i in
+                VStack(alignment: .leading, spacing: 5) {
+                    tabella(Array(giornate.prefix(prove[i].righe)))
+                    ForEach(frasi.prefix(prove[i].frasi), id: \.self) { frase in
+                        Text(frase).font(.caption).foregroundStyle(TintaWidget.testo2).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            if case let (dentro, su) = RiassuntoWidget.quanteDentro(giornate), su > 0 {
-                Text(RiassuntoWidget.fraseDentro(dentro: dentro, su: su))
-                    .font(.caption).foregroundStyle(TintaWidget.testo2)
-            }
-            if let media {
-                Text(RiassuntoWidget.fraseMedia(media, giornate: scarti.count))
-                    .font(.caption).foregroundStyle(TintaWidget.testo2)
-            }
-            Spacer(minLength: 0)
+            .frame(maxHeight: .infinity, alignment: .top)
             PiedeDati(voce: voce)
+        }
+    }
+
+    /// La tabella delle ultime giornate, con la stessa forma per tutte le righe: prima «G7» al posto di «Giornata 7», poi via la
+    /// fascia, poi solo i fatti (mai «dentro la fa…» né «63,5 su 6…»); VoiceOver legge ogni riga intera.
+    private func tabella(_ giornate: [PuntiGiornata]) -> some View {
+        PrimaCheEntra(PuntiGiornata.FormaRiga.allCases.count) { i in
+            VStack(spacing: 3) {
+                ForEach(giornate) { x in
+                    RigaTabellaPunti(giornata: x, forma: PuntiGiornata.FormaRiga.allCases[i], scarto: scartoTesto(x))
+                }
+            }
         }
     }
 }

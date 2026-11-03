@@ -76,7 +76,8 @@ struct VistaDubbi: View {
                 // tante righe quante ne entrano in altezza (testo grande, iPad): le altre in «e altri N», mai una riga tagliata in fondo
                 let prove = DisposizioneWidget.righeDaProvare(massimo: massimo, totale: dubbi.count)
                 PrimaCheEntra(prove.count, in: .vertical) { i in
-                    VStack(alignment: .leading, spacing: 6) {
+                    // nel medio righe più strette: così entrano tre giocatori e «e un altro», come prima
+                    VStack(alignment: .leading, spacing: famiglia == .systemMedium ? 2 : 6) {
                         ForEach(dubbi.prefix(prove[i])) { d in
                             Link(destination: Vai.giocatore(d.id)) { riga(d) }
                         }
@@ -116,7 +117,7 @@ struct VistaDubbi: View {
             Spacer(minLength: 0)
             Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.white.opacity(0.5))
         }
-        .frame(minHeight: 32)
+        .frame(minHeight: 28)
     }
 
     // MARK: Schermata di blocco

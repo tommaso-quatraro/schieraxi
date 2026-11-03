@@ -171,6 +171,16 @@ struct TestiCortiWidgetTests {
         #expect(DisposizioneWidget.righeDaProvare(massimo: massimo, totale: totale) == attese)
     }
 
+    @Test("Punti, misura grande: prima via le frasi di riepilogo, poi le righe più vecchie (mai meno di due)")
+    func provePuntiGrande() {
+        let prove = DisposizioneWidget.provePuntiGrande(righe: 5, frasi: 2)
+        #expect(prove.map(\.righe) == [5, 5, 5, 4, 3, 2])
+        #expect(prove.map(\.frasi) == [2, 1, 0, 0, 0, 0])
+        #expect(DisposizioneWidget.provePuntiGrande(righe: 2, frasi: 0).map(\.righe) == [2])
+        #expect(DisposizioneWidget.provePuntiGrande(righe: 1, frasi: 1).map(\.righe) == [1, 1])
+        #expect(DisposizioneWidget.provePuntiGrande(righe: 0, frasi: 0).count == 1)
+    }
+
     @Test("Righe da provare: mai zero forme, mai più di sei")
     func righeDaProvareLimiti() {
         #expect(DisposizioneWidget.righeDaProvare(massimo: 3, totale: 0) == [0])

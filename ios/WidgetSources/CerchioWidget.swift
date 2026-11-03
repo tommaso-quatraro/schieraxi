@@ -9,7 +9,9 @@ struct CerchioWidget<Contenuto: View>: View {
     var body: some View {
         ZStack {
             AccessoryWidgetBackground()
+            // un po' di margine ai lati: le righe in alto e in basso stanno dove il cerchio è più stretto
             VStack(spacing: 0) { contenuto }
+                .padding(.horizontal, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

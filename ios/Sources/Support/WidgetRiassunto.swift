@@ -670,6 +670,23 @@ enum DisposizioneWidget {
         guard quante > 0 else { return [0] }
         return Array(stride(from: quante, through: 1, by: -1).prefix(6))
     }
+
+    /// Una prova per la parte bassa del widget Punti grande: quante righe della tabella e quante frasi di riepilogo.
+    struct ProvaTabella: Equatable {
+        let righe: Int
+        let frasi: Int
+    }
+
+    /// Le prove della parte bassa del widget Punti grande, dalla più ricca alla più povera (al più sei): con il testo grande prima
+    /// spariscono le frasi di riepilogo, poi le righe più vecchie, fino a due (o quelle che ci sono). La vista tiene la prima che
+    /// entra in altezza: niente righe o frasi tagliate.
+    static func provePuntiGrande(righe: Int, frasi: Int) -> [ProvaTabella] {
+        let r = max(righe, 0), f = max(frasi, 0)
+        var prove = (0...f).reversed().map { ProvaTabella(righe: r, frasi: $0) }
+        let minimo = min(2, r)
+        if r > minimo { prove += (minimo..<r).reversed().map { ProvaTabella(righe: $0, frasi: 0) } }
+        return Array(prove.prefix(6))
+    }
 }
 
 // MARK: Testi che si accorciano (mai una parola tagliata a metà)
