@@ -1,5 +1,18 @@
 [
   {
+    "versione": "1.379",
+    "data": "2026-11-03T03:59:52",
+    "titolo": "Widget: i giocatori che segui restano anche a giornata in corso",
+    "voci": [
+      "A giornata in corso il widget del giocatore che segui non resta più vuoto: i widget ricevono solo i dati che mostrano, così c'è posto anche per i giocatori seguiti."
+    ],
+    "tecnico": [
+      "/api/widget: sopra il tetto (widget.MAX_BYTE, 18000 caratteri con la misura della sentinella) il server toglie `scambio` e poi `osservati`, solo quanto basta, e ne scrive il nome in `mancano` (prima li toglieva in silenzio). Un blocco vuoto o già assente non si tocca e non si ripete. Funzione `widget.entro_il_peso`.",
+      "/api/widget: `in_corso` senza gli elenchi `giocatori` e `sostituzioni` (`widget.SENZA_IN_CORSO`): nessun widget li legge, iOS usa solo punti_fatti, punti_previsti e ancora_da_giocare. /api/oggi invariato. Scenario delle foto a giornata in corso: da 20,1 kB (19,3 inviati, osservati tolti) a 14,4 kB con gli osservati.",
+      "`percentuale` della rosa e degli osservati resta: la legge il widget «Osservato» («gioca al N%»). Parte server di #180."
+    ]
+  },
+  {
     "versione": "1.378",
     "data": "2026-11-03T01:15:12",
     "titolo": "Diario: le giornate della stagione scorsa restano com'erano",
