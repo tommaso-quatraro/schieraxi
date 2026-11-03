@@ -41,8 +41,10 @@ struct RispostaAccount: Decodable {
     /// I servizi di accesso accesi sul server (per ora «google») e i modi di entrare di questo account: facoltativi.
     var social: [String]?
     var accessi: AccessiAccount?
+    /// L'invio delle email sul server (`email_attiva` di `/api/account/me`): `false` = spento. Facoltativo (server vecchio).
+    var emailAttiva: Bool?
 
-    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, emailOrigine, verificaEmail, iscrizione, social, accessi }
+    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, emailOrigine, verificaEmail, iscrizione, social, accessi, emailAttiva }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -57,6 +59,7 @@ struct RispostaAccount: Decodable {
         iscrizione = (try? c.decodeIfPresent(String.self, forKey: .iscrizione)) ?? nil
         social = ((try? c.decodeIfPresent([String].self, forKey: .social)) ?? nil)
         accessi = (try? c.decodeIfPresent(AccessiAccount.self, forKey: .accessi)) ?? nil
+        emailAttiva = (try? c.decodeIfPresent(Bool.self, forKey: .emailAttiva)) ?? nil
     }
 }
 
@@ -386,6 +389,8 @@ final class SessioneAccount: ObservableObject {
                     if emailInAttesa != r.emailInAttesa { emailInAttesa = r.emailInAttesa }
                     if emailOrigine != r.emailOrigine { emailOrigine = r.emailOrigine }
                     ServiziSociali.salva(ServiziSociali.pulisci(r.social), in: memoria)
+                    // posta spenta: «Il tuo account» non offre di collegare un'email (#174). Come la web: senza il campo, accesa.
+                    PostaServer.ricorda(r.emailAttiva ?? true, in: memoria)
                     let nuoviAccessi = ServiziSociali.googleAcceso(in: memoria) ? r.accessi : nil
                     if accessi != nuoviAccessi { accessi = nuoviAccessi }
                     imposta(.connesso(u))

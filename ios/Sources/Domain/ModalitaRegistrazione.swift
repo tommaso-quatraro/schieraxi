@@ -9,14 +9,28 @@ enum ModalitaRegistrazione: String, Equatable {
 
     /// Legge il campo dal corpo di una risposta; mancante o sconosciuto = invito (il modo di sempre).
     static func leggi(corpo: Data) -> ModalitaRegistrazione {
+        letto(corpo: corpo) ?? .invito
+    }
+
+    /// Il modo, solo se il corpo lo dice (un testo non vuoto, come la web; sconosciuto = invito). nil se il campo manca:
+    /// il 401 di nome o password sbagliati ha solo `detail`.
+    static func letto(corpo: Data) -> ModalitaRegistrazione? {
         guard let json = try? JSONSerialization.jsonObject(with: corpo) as? [String: Any],
-              let testo = json["registrazione"] as? String, let modo = ModalitaRegistrazione(rawValue: testo) else { return .invito }
-        return modo
+              let testo = json["registrazione"] as? String, !testo.isEmpty else { return nil }
+        return ModalitaRegistrazione(rawValue: testo) ?? .invito
+    }
+
+    /// Lo ricorda solo se il server l'ha detto: un 401 senza il campo lascia quello di prima (issue #173).
+    static func salva(corpo: Data, in memoria: UserDefaults = .standard) {
+        guard let modo = letto(corpo: corpo), memoria.string(forKey: chiave) != modo.rawValue else { return }
+        memoria.set(modo.rawValue, forKey: chiave)
     }
 
     /// L'ultimo modo visto dal server (ricordato sul telefono).
-    static var salvato: ModalitaRegistrazione {
-        ModalitaRegistrazione(rawValue: UserDefaults.standard.string(forKey: chiave) ?? "") ?? .invito
+    static var salvato: ModalitaRegistrazione { ricordato(in: .standard) }
+
+    static func ricordato(in memoria: UserDefaults) -> ModalitaRegistrazione {
+        ModalitaRegistrazione(rawValue: memoria.string(forKey: chiave) ?? "") ?? .invito
     }
 
     var chiedeInvito: Bool { self != .aperta }
