@@ -28,6 +28,9 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 6. **Pull request** su `main` con `Closes #N` e le prove fatte; mai unione in locale o a mano: la fa il job `unisci`. Ramo indietro: si unisce `main` nel ramo (niente push forzato).
 7. **Rilascio automatico**: il job `rilascia` dà il numero di versione e crea la release; il server installa `main` da solo.
 8. **Verifica sul dispositivo**: versione nuova sul server, nuova build dell'app.
+9. **Controlli su `main`** (`docs/decisioni/0008`): dopo l'unione il job `prova-main` lancia di nuovo i controlli sul nuovo `main`
+   (iOS compreso se `ios/` è cambiata). Se uno è rosso si apre l'issue `P1` «CI: main rosso» con il link alla corsa: si vede nel
+   giro del coordinatore (`gh issue list --label P1`) e si corregge con una pull request. L'issue la chiude chi ha corretto.
 
 ## Chi rivede cosa
 - **Chi scrive** non rivede il proprio lavoro: apre la pull request in bozza con le prove fatte; la revisione la fa chi coordina (agente revisore e `/code-review`), poi la pull request esce dalla bozza.
@@ -72,5 +75,5 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 - Codice senza test, correzioni senza causa, «dovrebbe andare».
 - Pull request enormi o aperte prima della revisione.
 - Una schermata cambiata su un lato solo.
-- Controlli che scattano solo dopo l'unione: ciò che può rompere `main` si controlla già nella pull request.
+- Controlli che scattano solo dopo l'unione: ciò che può rompere `main` si controlla già nella pull request (la corsa su `main` dopo l'unione, punto 9, è una rete di sicurezza, non il controllo).
 - Dati veri, indirizzi o chiavi nel repository, anche nei piani e nelle foto.
