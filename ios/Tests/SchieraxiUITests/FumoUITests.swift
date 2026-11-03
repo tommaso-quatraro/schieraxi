@@ -238,6 +238,11 @@ final class FumoUITests: XCTestCase {
         var lenti = 0
         var mancati: [String] = []
         var tempi: [String] = []
+        // ogni evento si scrive subito come errore: se la prova si interrompe (interrogazione scaduta), i dati restano nel log
+        func segnala(_ s: String) {
+            mancati.append(s)
+            XCTFail("DIAGNOSI evento, carico \(fili) fili: " + s)
+        }
         let inizio = adesso()
         while adesso() - inizio < secondi {
             avvii += 1
@@ -245,13 +250,14 @@ final class FumoUITests: XCTestCase {
             let subito = !avvii.isMultiple(of: 2)
             let t0 = adesso()
             let barra = app.tabBars.firstMatch
-            guard barra.waitForExistence(timeout: 30) else { mancati.append("avvio \(avvii): niente barra"); continue }
+            guard barra.waitForExistence(timeout: 30) else { segnala("avvio \(avvii): niente barra"); continue }
             let t1 = adesso()
             barra.buttons["Altro"].firstMatch.tap()
             for prova in 0..<4 {
                 let riga = elemento("Scambi", contiene: true)
                 guard riga.waitForExistence(timeout: 20) else {
-                    mancati.append("avvio \(avvii) prova \(prova): niente riga Scambi | \(statoSchermo())")
+                    segnala("avvio \(avvii) prova \(prova): niente riga Scambi")
+                    segnala("avvio \(avvii) prova \(prova): stato \(statoSchermo())")
                     break
                 }
                 if prova == 0 && !subito { usleep(1_500_000) }
@@ -270,7 +276,9 @@ final class FumoUITests: XCTestCase {
                 }
                 if t4 - t3 > 5 { lenti += 1 }
                 if !ok {
+                    segnala("avvio \(avvii) prova \(prova) \(subito ? "subito" : "dopo 1,5 s"): niente «Cerca scambi» in 20 s, y \(yPrima) tap \(f(t3 - t2))s")
                     let stato = statoSchermo()
+                    segnala("avvio \(avvii) prova \(prova): stato \(stato)")
                     let tardi = cerca.waitForExistence(timeout: 30)
                     var dopo = "più tardi=\(tardi)"
                     if !tardi {
@@ -281,15 +289,15 @@ final class FumoUITests: XCTestCase {
                             dopo += " | ritocco=\(cerca.waitForExistence(timeout: 20))"
                         }
                     }
-                    mancati.append("avvio \(avvii) prova \(prova) \(subito ? "subito" : "dopo 1,5 s"): y \(yPrima) tap \(f(t3 - t2))s | \(stato) | \(dopo)")
+                    segnala("avvio \(avvii) prova \(prova): poi \(dopo)")
                     break
                 }
                 guard prova < 3 else { break }
                 // indietro alla lista di Altro, per un altro tocco nello stesso avvio
                 let indietro = app.navigationBars.buttons.element(boundBy: 0)
-                guard indietro.exists else { mancati.append("avvio \(avvii) prova \(prova): niente indietro"); break }
+                guard indietro.exists else { segnala("avvio \(avvii) prova \(prova): niente indietro"); break }
                 indietro.tap()
-                if !cerca.waitForNonExistence(timeout: 10) { mancati.append("avvio \(avvii) prova \(prova): indietro non torna"); break }
+                if !cerca.waitForNonExistence(timeout: 10) { segnala("avvio \(avvii) prova \(prova): indietro non torna"); break }
             }
         }
         let riassunto = "DIAGNOSI Scambi, carico \(fili) fili: senza «Cerca scambi» \(mancati.count) su \(primi + altri) tocchi "
@@ -299,6 +307,15 @@ final class FumoUITests: XCTestCase {
         XCTFail(riassunto)
     }
 
-    func testDiagnosiScambiSenzaCarico() { diagnosiScambi(fili: 0, secondi: 360) }
-    func testDiagnosiScambiSottoCarico() { diagnosiScambi(fili: 6, secondi: 900) }
+    // Prove brevi e separate: se una si interrompe (interrogazione scaduta sotto carico) le altre vanno avanti.
+    func testDiagnosiScambiCarico2a() { diagnosiScambi(fili: 2, secondi: 110) }
+    func testDiagnosiScambiCarico2b() { diagnosiScambi(fili: 2, secondi: 110) }
+    func testDiagnosiScambiCarico2c() { diagnosiScambi(fili: 2, secondi: 110) }
+    func testDiagnosiScambiCarico2d() { diagnosiScambi(fili: 2, secondi: 110) }
+    func testDiagnosiScambiCarico2e() { diagnosiScambi(fili: 2, secondi: 110) }
+    func testDiagnosiScambiCarico4a() { diagnosiScambi(fili: 4, secondi: 110) }
+    func testDiagnosiScambiCarico4b() { diagnosiScambi(fili: 4, secondi: 110) }
+    func testDiagnosiScambiCarico4c() { diagnosiScambi(fili: 4, secondi: 110) }
+    func testDiagnosiScambiCarico4d() { diagnosiScambi(fili: 4, secondi: 110) }
+    func testDiagnosiScambiCarico4e() { diagnosiScambi(fili: 4, secondi: 110) }
 }
