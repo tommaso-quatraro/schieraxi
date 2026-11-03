@@ -159,17 +159,30 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(aperto, "il foglio non si apre", file: file, line: line)
     }
 
+    /// Vero se il foglio (il suo `segno`) si chiude entro `secondi`. Conta solo un'assenza confermata: `waitForNonExistence`
+    /// legge senza ripetere (`existsNoRetry`) e sul Mac di GitHub carico una lettura che l'app serve in ritardo vale «sparito»
+    /// anche con il foglio aperto (#177: subito dopo c'erano il campo e la barra del foglio, e la voce sotto era ancora coperta).
+    /// La conferma è la lettura dopo, che ripete (`exists`): un foglio chiuso davvero non torna, si riapre solo con un tocco.
+    private func siChiude(_ segno: XCUIElement, entro secondi: TimeInterval) -> Bool {
+        let fine = Date().addingTimeInterval(secondi)
+        repeat {
+            if segno.waitForNonExistence(timeout: max(fine.timeIntervalSinceNow, 0.1)), !segno.exists { return true }
+        } while Date() < fine
+        return false
+    }
+
     /// Mentre il foglio è aperto arrivano dati nuovi dell'account (in demo ogni mezzo secondo): deve restare aperto.
     private func restaAperto(_ segno: XCUIElement, _ nome: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertFalse(segno.waitForNonExistence(timeout: 4), "il foglio «\(nome)» si è chiuso da solo", file: file, line: line)
+        XCTAssertFalse(siChiude(segno, entro: 4), "il foglio «\(nome)» si è chiuso da solo", file: file, line: line)
     }
 
     /// Chiude il foglio con il pulsante della sua barra (`titolo`): sotto c'è la barra delle Impostazioni con un altro «Chiudi».
+    /// La chiusura si controlla con `siChiude`, la stessa prova di `restaAperto`: così ogni corsa mostra che vede un foglio che si chiude davvero.
     private func chiudiFoglio(_ titolo: String, _ pulsante: String, segno: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         let b = app.navigationBars[titolo].buttons[pulsante]
         XCTAssertTrue(b.waitForExistence(timeout: 10), "manca «\(pulsante)»", file: file, line: line)
         b.tap()
-        XCTAssertTrue(segno.waitForNonExistence(timeout: 10), "il foglio non si chiude con «\(pulsante)»", file: file, line: line)
+        XCTAssertTrue(siChiude(segno, entro: 10), "il foglio non si chiude con «\(pulsante)»", file: file, line: line)
     }
 
     /// Build 219: «Cambia password» si apriva e si chiudeva subito da solo. Con i dati dell'account che cambiano di continuo
