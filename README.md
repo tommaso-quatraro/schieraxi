@@ -4,21 +4,21 @@
 
 ![SchieraXI: la schermata Oggi](sito/img/schermata-larga.png)
 
-SchieraXI è un'app per iPhone e per il web che consiglia la formazione del fantacalcio per una lega classic di Serie A.
+SchieraXI è un'app web che consiglia la formazione del fantacalcio per una lega classic di Serie A.
 Per ogni giocatore stima il **fantavoto atteso**, cioè il punteggio che ci si può aspettare con le regole della tua lega,
 e da lì ricava gli 11 titolari, il modulo e l'ordine della panchina. Le statistiche sono nostre, calcolate dal progetto.
 È software libero (AGPL-3.0). Sito: <https://schieraxi.it>.
 
 > **In English:** SchieraXI is free software (AGPL-3.0) that suggests the lineup for a classic Serie A fantasy league,
-> based on each player's expected fantasy score (*fantavoto atteso*). Web app (PWA) and iPhone app; you run the server
-> yourself. Data sources are **off by default**. Screens and docs are in Italian.
+> based on each player's expected fantasy score (*fantavoto atteso*). Web app (PWA) available now; the iPhone app is a work in
+> progress and Android is planned. You run the server yourself. Data sources are **off by default**. Screens and docs are in Italian.
 
 ## Cosa fa
 - Ogni giornata propone gli 11 titolari, il modulo e la panchina, con il motivo di ogni scelta in una riga.
 - Mostra per ogni giocatore il fantavoto atteso e la probabilità che giochi, con una fascia di incertezza.
 - Aiuta con gli scambi e avvisa se cambia qualcosa (infortuni, probabili formazioni, scadenza).
 - Nel Diario confronta la formazione schierata con quella consigliata, a giornata finita.
-- Ha un widget per iPhone e i risultati in diretta.
+- Mostra i risultati in diretta durante la giornata.
 
 È una guida, non una garanzia: sono stime. Non fa l'asta e non schiera la squadra al posto tuo.
 Come si usa: `docs/GUIDA-UTENTE.md`. Come ragiona il modello, con numeri e limiti: `docs/SOTTO-IL-COFANO.md`.
@@ -28,8 +28,13 @@ SchieraXI è un progetto indipendente. **Non è affiliata, approvata o sponsoriz
 né dalla Lega Serie A.** I nomi citati appartengono ai rispettivi proprietari e servono solo a dire con cosa funziona.
 Il progetto non include né ridistribuisce dati di terzi: le rose di prova sono inventate.
 
+## Piattaforme
+- **Web**: disponibile ora. Si usa dal browser e si può installare come app (PWA).
+- **iPhone**: in lavorazione, in arrivo. Il codice è nella cartella `ios/`.
+- **Android**: pianificata per il futuro.
+
 ## Come provarla
-Hai tre strade.
+Hai due strade.
 
 ### 1. Web, sul tuo computer
 Servono Python 3.11 e Git. I comandi sono per Windows. Su macOS e Linux usa `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
@@ -42,11 +47,7 @@ Servono Python 3.11 e Git. I comandi sono per Windows. Su macOS e Linux usa `.ve
 
 Il server ascolta solo sul tuo computer. Non aprire la porta su internet senza protezione.
 
-### 2. iPhone, con SideStore
-L'app nativa (cartella `ios/`) non è nell'App Store: si installa con SideStore, senza account Apple a pagamento.
-Serve un server SchieraXI a cui collegarla (strada 1 o 3). Passo per passo: `docs/INSTALLAZIONE-IPHONE.md`.
-
-### 3. Un server tutto tuo (Linux)
+### 2. Un server tutto tuo (Linux)
 1. Scarica il codice in una cartella dell'utente e prepara l'ambiente come sopra (`python3 -m venv .venv`,
    poi `.venv/bin/python -m pip install -r requirements.txt`).
 2. Copia `script/server/fantacalcio.service` in `/etc/systemd/system/`, sostituisci `<utente>` e controlla i percorsi.
@@ -79,11 +80,11 @@ Quattro obiettivi, in quest'ordine di lavoro: 3, 1, 2, 4.
 ## Limiti
 - Sono stime: il voto vero può cadere lontano dalla previsione, per questo la formazione mostra una fascia.
 - Dipende dalle fonti: se un sito cambia, i dati mancano finché non si sistema il lettore. Gli abbinamenti dei nomi tra fonti possono sbagliare.
-- Pensata per una lega classic di Serie A. L'app Android non è sviluppata.
+- Pensata per una lega classic di Serie A.
 
 ## Struttura delle cartelle
 - `fanta/`: il server Python (FastAPI) e la logica; `fanta/web/` è la web app.
-- `ios/`: l'app per iPhone (SwiftUI).
+- `ios/`: l'app per iPhone (SwiftUI), in lavorazione.
 - `lega/esempio/`: la lega inventata.
 - `tests/`: i test automatici (`.venv\Scripts\python.exe -m pytest -q`).
 - `docs/`: guide per chi usa l'app e per chi sviluppa.
