@@ -254,11 +254,13 @@ def test_poche_sezioni_essenziali_in_ordine(nome):
     assert len(re.findall(r'<li class="r">', main.split('id="come"')[1].split("</section>")[0])) == 3
     domande = main.split('id="domande"')[1]
     assert 1 <= domande.count("<details>") <= 5
-    for i in ("demo-campo", "d-dett", "d-tot", "d-conf", "d-reset", "fv-es", "guida-iphone", "scarica"):
+    for i in ("demo-campo", "d-dett", "d-tot", "d-conf", "d-reset", "fv-es", "scarica"):
         assert i in p.ids, i
     # via le cose secondarie: schede di lato, contatori, confronti, scambi tra squadre, giornate e stili
     for vecchio in ("carta-lato", "data-conta", "storia-campo", 'name="giornata"', 'name="stile"', 'id="scambio"', "barra-cta", "avanzamento", "blob", "data-tilt", "data-magnete"):
         assert vecchio not in testo, vecchio
+    # dal 3/11/2026 il sito propone solo la web app: l'app per iPhone è «in arrivo», niente istruzioni per SideStore
+    assert "sidestore" not in testo.lower() and 'id="guida-iphone"' not in testo
 
 
 def test_niente_che_si_muove_di_continuo():
