@@ -7,7 +7,7 @@ import SwiftUI
 /// Argomenti di lancio opzionali (solo con `-DEMO`):
 /// - `-DEMO_SCHERMATA <nome>`: apre subito una schermata (vedi `applica`), perché dal simulatore non si può toccare lo schermo.
 /// - `-DEMO_FONDO 1`: le schermate lunghe partono scorse in fondo (iOS 17 o più).
-/// - `-DEMO_ORIENTAMENTO orizzontale`: chiede l'orientamento orizzontale.
+/// - `-DEMO_ORIENTAMENTO orizzontale`: chiede l'orientamento orizzontale (a tutte le schermate, anche l'accesso: `chiediOrientamento`).
 /// - `-DEMO_SCENARIO <nome>`: le «fotografie dal vero» (`ScenarioVero`): risposte vere con nomi inventati in un momento preciso.
 enum Demo {
     static let daLancio: Bool = ProcessInfo.processInfo.arguments.contains("-DEMO")
@@ -18,12 +18,30 @@ enum Demo {
 
     /// Il valore che segue `-NOME` negli argomenti di lancio.
     static func argomento(_ nome: String) -> String? {
-        let tutti = ProcessInfo.processInfo.arguments
-        guard let i = tutti.firstIndex(of: "-" + nome), i + 1 < tutti.count else { return nil }
-        return tutti[i + 1]
+        argomento(nome, in: ProcessInfo.processInfo.arguments)
+    }
+
+    /// Il valore che segue `-NOME` in `argomenti`.
+    static func argomento(_ nome: String, in argomenti: [String]) -> String? {
+        guard let i = argomenti.firstIndex(of: "-" + nome), i + 1 < argomenti.count else { return nil }
+        return argomenti[i + 1]
     }
 
     static var schermata: String? { attivo ? argomento("DEMO_SCHERMATA") : nil }
+
+    /// Il nome della fotografia chiesta, come in `scripts/screenshot.sh` (senza «-fondo», che arriva con `-DEMO_FONDO`):
+    /// la schermata di `-DEMO_SCHERMATA`, oppure `accesso-<scenario>` con `-DEMO_ACCESSO <scenario>`.
+    static var foto: String? { attivo ? nomeFoto(argomenti: ProcessInfo.processInfo.arguments) : nil }
+
+    static func nomeFoto(argomenti: [String]) -> String? {
+        if let s = argomento("DEMO_SCHERMATA", in: argomenti) { return s }
+        return argomento("DEMO_ACCESSO", in: argomenti).map { "accesso-" + $0 }
+    }
+
+    /// `-DEMO_ORIENTAMENTO orizzontale`: la foto va fatta con l'app in orizzontale.
+    static func chiedeOrizzontale(argomenti: [String]) -> Bool {
+        argomento("DEMO_ORIENTAMENTO", in: argomenti) == "orizzontale"
+    }
 
     /// Solo per la fotografia «ricerca»: la lente si apre da sola la prima volta (e il testo da cercare arriva da `-DEMO_CERCA`).
     static var ricercaMostrata = false
@@ -82,14 +100,16 @@ enum Demo {
 }
 
 extension View {
-    /// Solo in demo, per fotografare una parte in mezzo a una schermata lunga: se `-DEMO_SCHERMATA` è una di `schermate` (e, con
-    /// `inFondo`, c'è anche `-DEMO_FONDO`), appena `pronto` scorre fino alla vista con `id`. Fuori dalla demo non fa niente.
-    func demoScorriA(_ id: String, proxy: ScrollViewProxy, schermate: [String], inFondo: Bool = false, pronto: Bool) -> some View {
+    /// Solo in demo, per fotografare una parte in mezzo a una schermata lunga: se la foto chiesta (`Demo.foto`: `-DEMO_SCHERMATA`,
+    /// o `accesso-<scenario>`) è una di `schermate` (e, con `inFondo`, c'è anche `-DEMO_FONDO`), appena `pronto` scorre fino alla
+    /// vista con `id`, messa in `ancora`. Fuori dalla demo non fa niente.
+    func demoScorriA(_ id: String, proxy: ScrollViewProxy, schermate: [String], inFondo: Bool = false, ancora: UnitPoint = .top,
+                     pronto: Bool) -> some View {
         task(id: pronto) {
-            guard pronto, Demo.attivo, let s = Demo.schermata, schermate.contains(s) else { return }
+            guard pronto, Demo.attivo, let s = Demo.foto, schermate.contains(s) else { return }
             if inFondo && Demo.argomento("DEMO_FONDO") == nil { return }
             try? await Task.sleep(nanoseconds: 700_000_000)
-            proxy.scrollTo(id, anchor: .top)
+            proxy.scrollTo(id, anchor: ancora)
         }
     }
 
@@ -107,22 +127,28 @@ extension View {
 @MainActor
 extension Demo {
     private static var applicata = false
+    private static var orientamentoChiesto = false
+
+    /// Con `-DEMO_ORIENTAMENTO orizzontale` chiede a iOS l'orientamento orizzontale. La chiama la radice (`PortaDiAccesso`), così
+    /// vale per ogni schermata: prima stava in `applica`, che parte solo dopo l'accesso, e la foto dell'accesso restava verticale
+    /// (lo script la raddrizzava lo stesso e usciva girata). Una volta sola all'avvio.
+    static func chiediOrientamento() {
+        guard attivo, !orientamentoChiesto, chiedeOrizzontale(argomenti: ProcessInfo.processInfo.arguments) else { return }
+        orientamentoChiesto = true
+        // Più tentativi: sull'iPad la scena può non essere ancora pronta al primo.
+        Task {
+            for attesa in [0.0, 0.8, 1.6] as [Double] {
+                try? await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000))
+                let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+                scena?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight)) { _ in }
+            }
+        }
+    }
 
     /// Porta l'app sulla schermata chiesta con `-DEMO_SCHERMATA`. Chiamata una volta sola all'avvio.
     static func applica(nav: Navigazione, modello: AppModel) {
         guard attivo, !applicata else { return }
         applicata = true
-
-        if argomento("DEMO_ORIENTAMENTO") == "orizzontale" {
-            // Più tentativi: sull'iPad la scena può non essere ancora pronta al primo.
-            Task {
-                for attesa in [0.0, 0.8, 1.6] as [Double] {
-                    try? await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000))
-                    let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-                    scena?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight)) { _ in }
-                }
-            }
-        }
 
         if accesso == "account" {
             // l'account sta nelle Impostazioni (ingranaggio): in demo si apre subito il foglio
