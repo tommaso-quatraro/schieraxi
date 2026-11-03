@@ -884,8 +884,11 @@ private enum DatiDemo {
               "canale": true, "dispositivi": 2, "ore_tranquille_spente": true])
     }
 
-    /// Diario delle giornate: due giornate finite, una con la formazione schierata e una senza.
+    /// Diario delle giornate: le quattro giornate finite prima di quella di Oggi (la 4, 5, 6 e 7 della lega, Serie A 7-10),
+    /// due con la tua formazione e due senza. Ogni voce porta `giornata_lega`, come le manda il server.
     static func diario() -> String {
+        // la lega parte dalla giornata 4 di Serie A (`prima_giornata_lega` delle regole della demo), come in Oggi: Serie A 11 = giornata 8
+        func lega(_ serieA: Int) -> Int { serieA - 3 }
         // Gli id seguono il nome (non la posizione), così due formazioni con un nome diverso risultano davvero diverse.
         let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Calvaroglu", "Leonel", "Thorvan", "Pulinski", "Lemao", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
         let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Leonel": "A", "Thorvan": "A", "Lemao": "A", "Pulinski": "A", "Orsetti": "A"]
@@ -923,13 +926,13 @@ private enum DatiDemo {
                           "media_consigliata": 67.5, "media_tua": 61.5],
             "squadra": affidabilita,
             "per_giornata": [
-                ["stagione": "2026-27", "giornata": 7, "giornata_lega": 7, "fonte": "ricostruiti", "errore_fantavoto": 1.6, "voti": 10,
+                ["stagione": "2026-27", "giornata": 7, "giornata_lega": lega(7), "fonte": "ricostruiti", "errore_fantavoto": 1.6, "voti": 10,
                  "attesi": 65.0, "fatti": 60.5, "tua": NSNull(), "differenza": NSNull()],
-                ["stagione": "2026-27", "giornata": 8, "giornata_lega": 8, "fonte": "mostrati", "errore_fantavoto": 1.2, "voti": 11,
+                ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "fonte": "mostrati", "errore_fantavoto": 1.2, "voti": 11,
                  "attesi": 67.0, "fatti": 64.0, "tua": 59.5, "differenza": 4.5],
-                ["stagione": "2026-27", "giornata": 9, "giornata_lega": 9, "fonte": "mostrati", "errore_fantavoto": 1.5, "voti": 10,
+                ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "fonte": "mostrati", "errore_fantavoto": 1.5, "voti": 10,
                  "attesi": 68.5, "fatti": 71.0, "tua": 63.5, "differenza": 7.5],
-                ["stagione": "2026-27", "giornata": 10, "giornata_lega": 10, "fonte": "mostrati", "errore_fantavoto": 1.3, "voti": 10,
+                ["stagione": "2026-27", "giornata": 10, "giornata_lega": lega(10), "fonte": "mostrati", "errore_fantavoto": 1.3, "voti": 10,
                  "attesi": 69.0, "fatti": 72.5, "tua": NSNull(), "differenza": NSNull()],
             ],
         ]
@@ -937,33 +940,33 @@ private enum DatiDemo {
             "affidabilita": affidabilita,
             "precisione": precisione,
             "giornate": [
-                ["stagione": "2026-27", "giornata": 10, "atteso_vs_fatto": avf(69.0, 72.5),
+                ["stagione": "2026-27", "giornata": 10, "giornata_lega": lega(10), "atteso_vs_fatto": avf(69.0, 72.5),
                  "consigliata": ["modulo": "3-4-3", "atteso": 69.0, "reale": 72.5, "intervallo": fascia(69.0), "titolari": titolari(base)],
                  "istantanea": istantanea(10, "3-4-3", base, atteso: 69.0, ora: "2026-10-31T10:05:00")],
-                ["stagione": "2026-27", "giornata": 9, "atteso_vs_fatto": avf(68.5, 71.0),
+                ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "atteso_vs_fatto": avf(68.5, 71.0),
                  "consigliata": ["modulo": "3-4-3", "atteso": 68.5, "reale": 71.0, "intervallo": fascia(68.5), "titolari": titolari(base)],
                  "istantanea": istantanea(9, "3-4-3", base, atteso: 68.5, ora: "2026-10-24T09:40:00"),
                  "schierata": ["modulo": "3-5-2", "atteso": 66.0, "reale": 63.5, "intervallo": fascia(66.0), "titolari": titolari(altra)]],
-                ["stagione": "2026-27", "giornata": 8, "atteso_vs_fatto": avf(67.0, 64.0),
+                ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "atteso_vs_fatto": avf(67.0, 64.0),
                  "consigliata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 64.0, "intervallo": fascia(67.0), "titolari": titolari(base)],
                  "istantanea": istantanea(8, "3-4-3", base, atteso: 67.0, ora: "2026-10-17T11:20:00"),
                  "schierata": ["modulo": "3-4-3", "atteso": 66.0, "reale": 59.5, "intervallo": fascia(66.0), "titolari": titolari(altra2)]],
-                ["stagione": "2026-27", "giornata": 7, "atteso_vs_fatto": avf(65.0, 60.5),
+                ["stagione": "2026-27", "giornata": 7, "giornata_lega": lega(7), "atteso_vs_fatto": avf(65.0, 60.5),
                  "consigliata": ["modulo": "4-3-3", "atteso": 65.0, "reale": 60.5, "intervallo": fascia(65.0), "titolari": titolari(base)]],
             ],
-            "sintesi": ["giornate": 2, "punti_schierata": 65.0, "punti_consigliata": 67.5, "attesi_schierata": 66.5,
-                        "meglio_tua": 1, "meglio_consigliata": 1],
-            "scelte_tue": ["giornate": 9, "meglio_tua": 5, "meglio_consigliata": 3, "pari": 1, "punti_differenza": 4.5,
-                           "percentuale_tua": 56, "pochi_dati": false,
+            // come `sintesi` di fanta/diario.py: le giornate 9 e 8 di Serie A, le due con la tua formazione
+            "sintesi": ["giornate": 2, "punti_schierata": 61.5, "punti_consigliata": 67.5, "attesi_schierata": 66.0,
+                        "meglio_tua": 0, "meglio_consigliata": 2],
+            // come `scelte_tue` di fanta/diario.py, dalle stesse voci: le giornate 9 e 8 di Serie A, le sole con la tua formazione
+            // (undici diversi da quelli consigliati); 2 giornate sono sotto le 8 che servono, quindi «pochi dati»
+            "scelte_tue": ["giornate": 2, "meglio_tua": 0, "meglio_consigliata": 2, "pari": 0, "punti_differenza": -12.0,
+                           "percentuale_tua": 0, "pochi_dati": true,
                            "per_giornata": [
-                               ["stagione": "2026-27", "giornata": 9, "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"],
+                               ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"],
                                 "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"],
-                               ["stagione": "2026-27", "giornata": 6, "hai_scelto": ["Lemao", "Pulinski"], "consigliava": ["Thorvan", "Dunfrey"],
-                                "punti_tua": 70.0, "punti_consigliata": 64.5, "differenza": 5.5, "esito": "tua"],
-                               ["stagione": "2026-27", "giornata": 4, "hai_scelto": ["Orsetti"], "consigliava": ["Kloosmeijer"],
-                                "punti_tua": 66.0, "punti_consigliata": 66.0, "differenza": 0.0, "esito": "pari"],
-                               ["stagione": "2026-27", "giornata": 3, "hai_scelto": ["Dimarzi"], "consigliava": ["Bastrani"],
-                                "punti_tua": 68.5, "punti_consigliata": 65.0, "differenza": 3.5, "esito": "tua"],
+                               ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "hai_scelto": ["Mkhedrian", "Zelawski", "Orsetti"],
+                                "consigliava": ["Calvaroglu", "Kloosmeijer", "Dunfrey"],
+                                "punti_tua": 59.5, "punti_consigliata": 64.0, "differenza": -4.5, "esito": "consigliata"],
                            ]],
         ])
     }

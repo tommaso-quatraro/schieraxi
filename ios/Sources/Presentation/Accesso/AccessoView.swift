@@ -125,14 +125,17 @@ struct SchermataAccesso: View {
         .padding(.top, 12)
     }
 
+    /// In fila se «Accedi» e «Registrati» ci stanno interi nella loro metà; con il testo molto grande una sotto l'altra.
     private var selettore: some View {
-        HStack(spacing: 6) {
+        FilaOColonna(spazio: 6) {
             ForEach([Scheda.accedi, .registrati]) { s in
                 Button {
                     vai(s)
                 } label: {
                     Text(s.rawValue)
                         .font(.subheadline.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
                         .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                         .pillola(attiva: s == modulo.scheda, spazio: pillole)
                 }
@@ -196,31 +199,39 @@ struct SchermataAccesso: View {
         }
     }
 
-    @ViewBuilder
-    private func campo(_ c: ModuloAccesso.Campo) -> some View {
+    /// Etichetta, spiegazione e problema di ogni campo vengono da `ModuloAccesso` (provati dai test); qui tastiera e suggerimenti.
+    private func campo(_ c: ModuloAccesso.Campo) -> CampoAccesso {
+        var vista = CampoAccesso(etichetta: modulo.etichetta(c, modo), testo: scritto(c), campo: c, focus: $focus,
+                                 aiuto: modulo.aiuto(c, modo), problema: modulo.problema(c),
+                                 suggerimento: modulo.suggerimento(c, modo))
         switch c {
         case .nome:
-            campoTesto(ModuloAccesso.etichettaNome, text: $modulo.nome, campo: c, problema: modulo.problemaNome)
-                .textContentType(.username)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.asciiCapable)
-        case .invito:
-            campoTesto(ModuloAccesso.etichettaInvito, text: $modulo.invito, campo: c, problema: nil)
-                .textInputAutocapitalization(.characters)
+            vista.contenuto = .username
+            vista.tastiera = .asciiCapable
+        case .invito, .codice:
+            vista.maiuscole = .characters
         case .email:
-            campoTesto(modulo.etichettaEmail(modo), text: $modulo.email, campo: c, problema: modulo.problemaEmail)
-                .textContentType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.emailAddress)
-        case .codice:
-            campoTesto(ModuloAccesso.etichettaCodice, text: $modulo.codice, campo: c, problema: nil)
-                .textInputAutocapitalization(.characters)
+            vista.contenuto = .emailAddress
+            vista.tastiera = .emailAddress
         case .codiceEmail:
-            campoTesto(ModuloAccesso.etichettaCodiceEmail, text: $modulo.codiceEmail, campo: c, problema: nil)
-                .textContentType(.oneTimeCode)
-                .keyboardType(.numberPad)
+            vista.contenuto = .oneTimeCode
+            vista.tastiera = .numberPad
         case .password:
-            campoPassword(modulo.etichettaPassword)
+            vista.segreto = true
+            vista.contenuto = modulo.passwordNuova ? .newPassword : .password
+        }
+        return vista
+    }
+
+    /// Quello che si scrive nel campo `c`.
+    private func scritto(_ c: ModuloAccesso.Campo) -> Binding<String> {
+        switch c {
+        case .nome: $modulo.nome
+        case .invito: $modulo.invito
+        case .email: $modulo.email
+        case .codice: $modulo.codice
+        case .codiceEmail: $modulo.codiceEmail
+        case .password: $modulo.password
         }
     }
 
@@ -237,40 +248,6 @@ struct SchermataAccesso: View {
             }
         }
         .font(.subheadline)
-    }
-
-    private func campoTesto(_ titolo: String, text: Binding<String>, campo: ModuloAccesso.Campo, problema: String?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            TextField(titolo, text: text)
-                .autocorrectionDisabled()
-                .focused($focus, equals: campo)
-                .padding(12)
-                .frame(minHeight: Tema.areaTocco)
-                .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
-                .accessibilityLabel(titolo)
-            if let problema {
-                Text(problema).font(.caption).foregroundStyle(Color.attenzione)
-                    .accessibilityLabel("\(titolo): \(problema)")
-            }
-        }
-    }
-
-    private func campoPassword(_ titolo: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SecureField(titolo, text: $modulo.password)
-                .textContentType(modulo.passwordNuova ? .newPassword : .password)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .focused($focus, equals: .password)
-                .padding(12)
-                .frame(minHeight: Tema.areaTocco)
-                .background(Color.sfondoIncavo, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo, style: .continuous))
-                .accessibilityLabel(titolo)
-            if let problema = modulo.problemaPassword {
-                Text(problema).font(.caption).foregroundStyle(Color.attenzione)
-                    .accessibilityLabel("\(titolo): \(problema)")
-            }
-        }
     }
 
     // MARK: azione

@@ -116,14 +116,28 @@ struct DiarioView: View {
         self.server = server
     }
 
+    /// I testi in cima al Diario, uguali alla web (`avv.diario_riga`, `mercato.come_legge` e `avv.per_ogni_giornata` di `testi.js`):
+    /// una riga sempre visibile e la spiegazione lunga nella parte richiudibile «Come si legge», chiusa all'apertura come sulla web.
+    static let rigaIntro = "Giornata per giornata: la formazione che hai schierato contro la consigliata."
+    static let comeSiLegge = "Come si legge"
+    static let perOgniGiornata = "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI ti avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina la sceglie SchieraXI in entrambi i casi. SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la trovi qui, con in evidenza i giocatori che hai cambiato. Si aggiorna da solo dopo ogni giornata."
+
     var body: some View {
         ZStack {
             Sfondo()
             List {
                 if let d = vm.caricatore.dato {
                     Section {
-                        Text("Per ogni giornata finita: i punti fatti («attesi» = quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina è scelta dal sistema in entrambi i casi. Da ora SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la vedi qui sotto, con in evidenza i giocatori che hai cambiato.")
+                        Text(Self.rigaIntro)
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
+                        DisclosureGroup {
+                            Text(Self.perOgniGiornata)
+                                .font(.footnote).foregroundStyle(Color.testoSecondario)
+                        } label: {
+                            Text(Self.comeSiLegge)
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(Color.testoSecondario)
+                        }
+                        .tint(Color.testoSecondario)
                     }
                     if let p = d.precisione {
                         // server nuovo: i numeri di «Quanto ci abbiamo preso» (niente sezione se non ci sono giornate)
