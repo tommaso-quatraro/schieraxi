@@ -56,18 +56,18 @@ def test_scadenza_e_inizio_meno_i_minuti():
 
 def test_giornata_da_giocare_non_prima_della_lega(monkeypatch):
     r4 = regole.imposta(Regole(), "prima_giornata_lega", "4")
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 2)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 2)
     assert consigli.giornata_da_giocare(None, ST, Regole()) == 2
     assert consigli.giornata_da_giocare(None, ST, r4) == 4
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 10)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 10)
     assert consigli.giornata_da_giocare(None, ST, r4) == 10
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: None)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: None)
     assert consigli.giornata_da_giocare(None, ST, r4) is None
 
 
 def test_oggi_senza_rose_ha_scadenza_e_conto(monkeypatch):
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 10)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 10)
     r = regole.imposta(regole.imposta(Regole(), "scadenza_minuti", "10"), "prima_giornata_lega", "4")
     o = gestione.oggi_senza_rose(_db(), datetime(2026, 11, 7, 17, 20), r)
     assert o["inizio"] == "2026-11-07 18:30" and o["scadenza"] == "2026-11-07 18:20" and o["minuti_scadenza"] == 10
@@ -81,7 +81,7 @@ def test_oggi_senza_rose_ha_scadenza_e_conto(monkeypatch):
 
 def _scena(monkeypatch):
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 10)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 10)
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {"modulo": "4-3-3", "punteggio_atteso": 70.0, "titolari": []})
     mandati = []
     return mandati, lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True
