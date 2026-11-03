@@ -121,7 +121,7 @@ def test_il_thread_fa_il_giro_ricorda_lo_stato_e_si_ferma(tmp_path, monkeypatch)
         giri.append(1)
         fermo.set()
 
-    t = threading.Thread(target=pianificatore.sorveglia, args=(fermo, lambda: [s.regole], _db, lambda: True, dopo, 0, lambda: H(17, 25)))
+    t = threading.Thread(daemon=True, target=pianificatore.sorveglia, args=(fermo, lambda: [s.regole], _db, lambda: True, dopo, 0, lambda: H(17, 25)))
     t.start()
     t.join(10)
     assert not t.is_alive() and giri == [1]
@@ -134,7 +134,7 @@ def test_spento_con_la_variabile_il_thread_non_fa_niente(tmp_path, monkeypatch):
     monkeypatch.setenv("FANTA_PIANIFICATORE", "0")
     fermo = threading.Event()
     chiamate = []
-    t = threading.Thread(target=pianificatore.sorveglia, args=(fermo, lambda: [s.regole], _db, lambda: chiamate.append(1) or True, lambda: None, 0.01,
+    t = threading.Thread(daemon=True, target=pianificatore.sorveglia, args=(fermo, lambda: [s.regole], _db, lambda: chiamate.append(1) or True, lambda: None, 0.01,
                                                               lambda: H(17, 25)))
     t.start()
     fermo.wait(0.2)
@@ -183,7 +183,13 @@ def test_stato_salvato_anche_se_il_giro_va_in_errore(tmp_path, monkeypatch, capl
         raise RuntimeError("dati segreti")
 
     with caplog.at_level("WARNING"):
-        pianificatore.sorveglia(fermo, lambda: [s.regole], _db, aggiorna, lambda: None, 0, lambda: H(17, 25))
+        # in un thread a parte: se `aggiorna` non venisse mai chiamata il ciclo non finirebbe e bloccherebbe tutta la suite
+        t = threading.Thread(daemon=True, target=pianificatore.sorveglia,
+                             args=(fermo, lambda: [s.regole], _db, aggiorna, lambda: None, 0, lambda: H(17, 25)))
+        t.start()
+        t.join(10)
+    fermo.set()
+    assert not t.is_alive()
     assert pianificatore.carica_stato()["fatti"] == [f"{ST}/10/10/60"]
     assert "RuntimeError" in caplog.text and "dati segreti" not in caplog.text
 
