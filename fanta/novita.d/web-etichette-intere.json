@@ -1,0 +1,12 @@
+{
+  "titolo": "Etichette dei giocatori sempre intere",
+  "voci": [
+    "Sul telefono stretto o con il testo grande le etichette dei giocatori («In dubbio · gioca 62%», «Probabile titolare») non finiscono più con i puntini: vanno a capo dentro la loro pillola. Prima si va a capo dopo il «·», poi tra le parole.",
+    "Nella Formazione, quando la riga di un giocatore è stretta (telefono piccolo o testo «Grande» e «Molto grande»), il fantavoto atteso e «gioca N%» vanno sotto il nome, come nell'app per iPhone con il testo molto grande: nome ed etichette hanno tutta la larghezza."
+  ],
+  "tecnico": [
+    "Web (#230, come la PR iOS #228): `.etichetta` è un blocco in linea senza `white-space: nowrap`, `overflow: hidden` né `text-overflow: ellipsis`, largo al massimo quanto la riga, con `overflow-wrap: break-word`; raggio `calc(.7em + 4px)`: capsula su una riga, angoli meno tondi su più righe (come `.etichetta.lunga`, che ora tiene solo `flex: 1 1 100%`).",
+    "`testoEtichetta(testo)` in app.js divide il testo al « · » in `<span class=\"pezzo\">` (blocchi in linea, il «·» attaccato alla parola prima con uno spazio che non va a capo): pillola del server (`pillTitolarita`), motivi sotto il nome e motivi della scheda.",
+    "Riga stretta della Formazione: `li.con-confronto` è un contenitore (`container-type: inline-size`); sotto i 272 px (`@container`) la `.voce` ha due colonne e `.valore` va nella colonna del nome, senza la barretta. Scatta a 320 px con il testo normale e con il testo più grande fino a 375-390 px; a 360 px con il testo normale la riga resta com'era. Test `tests/test_etichette_intere_web.py`."
+  ]
+}

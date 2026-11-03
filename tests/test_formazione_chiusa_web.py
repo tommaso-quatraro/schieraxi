@@ -65,7 +65,8 @@ def test_righe_partita_come_sul_campo_e_note_a_capo():
     assert "const partitaBreve = x =>" in APP and '${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}' in APP
     assert "${sigla(x.squadra)} – ${sigla(x.avversario)}" not in APP
     assert '${m.testo.length > 28 ? " lunga" : ""}' in APP
-    assert ".voce > span { min-width: 0; }" in CSS and ".etichetta.lunga { flex: 1 1 100%; white-space: normal;" in CSS
+    # la nota lunga prende tutta la riga; a capo ci va come ogni etichetta (test_etichette_intere_web.py)
+    assert ".voce > span { min-width: 0; }" in CSS and ".etichetta.lunga { flex: 1 1 100%; }" in CSS
 
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")

@@ -304,7 +304,11 @@ details[open] > summary { margin-bottom: 8px; }
 .ruolo { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: var(--t-sec); font-weight: 700; color: #fff; }
 .ruolo.P { background: #9a5f00; } .ruolo.D { background: #237d46; } .ruolo.C { background: #2b66bf; } .ruolo.A { background: #c13b38; }
 .etichette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-.etichetta { font-size: var(--t-eti); padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--verde); font-weight: 550; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
+/* Pillola mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima tra i pezzi separati da «·»
+   (`.pezzo`, da testoEtichetta in app.js), poi tra le parole. Il raggio supera metà altezza di una riga: su una riga è una capsula,
+   su più righe un rettangolo con gli angoli tondi. */
+.etichetta { display: inline-block; font-size: var(--t-eti); padding: 3px 9px; border-radius: calc(.7em + 4px); background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--verde); font-weight: 550; max-width: 100%; overflow-wrap: break-word; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
+.etichetta .pezzo { display: inline-block; max-width: 100%; }
 .etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
 .etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
 .etichetta.neutra { background: color-mix(in srgb, var(--testo) 8%, transparent); color: var(--testo-2); border-color: transparent; }
@@ -313,8 +317,8 @@ details[open] > summary { margin-bottom: 8px; }
 .tono.arancio { color: var(--arancio); }
 .tono.rossa { color: var(--rosso); }
 .tono.neutra { color: var(--testo-2); font-weight: 400; }
-/* note lunghe (per esempio l'infortunio): a capo dentro la scheda, mai oltre il bordo né sotto il pulsante ⇄ */
-.etichetta.lunga { flex: 1 1 100%; white-space: normal; text-overflow: clip; border-radius: 12px; line-height: 1.35; }
+/* note lunghe (per esempio l'infortunio): tutta la riga, mai oltre il bordo né sotto il pulsante ⇄ */
+.etichetta.lunga { flex: 1 1 100%; }
 .voce > span { min-width: 0; }           /* la colonna del nome si restringe: senza, un testo lungo allargava la griglia oltre la scheda */
 .pedina .gioca.esito { font-weight: 700; }
 .barra-p { height: 4px; background: color-mix(in srgb, var(--testo) 12%, transparent); border-radius: 2px; overflow: hidden; margin-top: 5px; width: 60px; margin-left: auto; }
@@ -620,7 +624,18 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .avatar-pedina .fv { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); padding: 1px 8px; border-radius: 10px; background: rgba(8, 14, 10, .9); color: #fff;
   font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid rgba(255, 255, 255, .35); white-space: nowrap; }
 .pedina .nome { margin-top: 5px; }
-.elenco li.con-confronto { position: relative; }
+.elenco li.con-confronto { position: relative; container-type: inline-size; }
+/* Riga stretta della Formazione (telefono da 320 px, o testo «Grande» e «Molto grande»): accanto ai numeri e al pulsante ⇄ il nome
+   restava largo 10-75 px e le etichette andavano a capo a pezzi, a volte a ogni lettera. Come l'iPhone con il testo molto grande,
+   fantavoto atteso e «gioca N%» vanno sotto il nome, che con le etichette ha tutta la larghezza (issue #230). Scatta quando la
+   colonna del nome scenderebbe sotto i 90 px circa: a 360 px con il testo normale la riga resta com'era. */
+@container (max-width: 272px) {
+  .con-confronto .voce { grid-template-columns: 54px 1fr; row-gap: 4px; }
+  .con-confronto .voce > .valore { grid-column: 2; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; text-align: left; }
+  .con-confronto .voce > .valore > * { white-space: nowrap; }
+  .con-confronto .voce > .valore b { display: inline; }
+  .con-confronto .voce > .valore .barra-p { display: none; }
+}
 .confronta-mini { position: absolute; right: 0; bottom: 6px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 55%, transparent);
   color: var(--verde); font-size: var(--t-valore); display: grid; place-items: center; }
 
