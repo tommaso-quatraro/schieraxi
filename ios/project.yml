@@ -156,6 +156,8 @@ targets:
       - path: Sources/Domain/GeneratoreVolto.swift
       - path: Sources/Support/AvatarVolto.swift
       - path: Sources/Support/Design/PercorsoSVG.swift
+      # la lega della demo, la stessa dell'app: widget e app nelle foto dicono le stesse cose
+      - path: Sources/Support/LegaDemo.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: it.schieraxi.app.anteprima
