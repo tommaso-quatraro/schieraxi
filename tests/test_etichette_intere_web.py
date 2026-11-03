@@ -98,3 +98,20 @@ def test_la_pillola_va_a_capo_dentro_la_riga():
     assert "999" not in raggio and "r-pill" not in raggio
     pezzo = _regola(".etichetta .pezzo")
     assert "display: inline-block" in pezzo and "max-width: 100%" in pezzo
+
+
+def test_riga_stretta_della_formazione_numeri_sotto_il_nome():
+    """Telefono piccolo (320 px) o con il testo «Grande» o «Molto grande»: la colonna del nome di una riga della Formazione (accanto
+    ai numeri e al pulsante ⇄) restava larga 10-75 px e le etichette si leggevano a pezzi, a volte una lettera per riga. Come l'iPhone
+    con il testo molto grande (RigaGiocatore): fantavoto atteso e «gioca N%» vanno sotto il nome, che con le etichette ha tutta la
+    larghezza."""
+    assert "container-type: inline-size" in _regola(".elenco li.con-confronto")
+    blocco = re.search(r"@container\s*\(max-width:\s*(\d+)px\)\s*\{\s*(\.con-confronto .voce\b.*?)\n\}", CSS, re.S)
+    assert blocco, "manca la riga stretta della Formazione (@container) in stile.css"
+    soglia, corpo = int(blocco.group(1)), blocco.group(2)
+    # quando la colonna del nome scenderebbe sotto i 90 px circa: la riga è larga circa 255 px a 320 px (scatta) e circa 294 px a
+    # 360 px con il testo normale (resta com'era)
+    assert 260 <= soglia < 290
+    colonne = re.search(r"\.con-confronto \.voce \{[^}]*grid-template-columns:\s*([^;]+);", corpo).group(1).split()
+    assert len(colonne) == 2                                     # volto e nome: i numeri non hanno più una colonna loro
+    assert re.search(r"\.con-confronto \.voce > \.valore \{[^}]*grid-column:\s*2", corpo)

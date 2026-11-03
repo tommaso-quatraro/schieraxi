@@ -624,7 +624,18 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .avatar-pedina .fv { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); padding: 1px 8px; border-radius: 10px; background: rgba(8, 14, 10, .9); color: #fff;
   font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid rgba(255, 255, 255, .35); white-space: nowrap; }
 .pedina .nome { margin-top: 5px; }
-.elenco li.con-confronto { position: relative; }
+.elenco li.con-confronto { position: relative; container-type: inline-size; }
+/* Riga stretta della Formazione (telefono da 320 px, o testo «Grande» e «Molto grande»): accanto ai numeri e al pulsante ⇄ il nome
+   restava largo 10-75 px e le etichette andavano a capo a pezzi, a volte a ogni lettera. Come l'iPhone con il testo molto grande,
+   fantavoto atteso e «gioca N%» vanno sotto il nome, che con le etichette ha tutta la larghezza (issue #230). Scatta quando la
+   colonna del nome scenderebbe sotto i 90 px circa: a 360 px con il testo normale la riga resta com'era. */
+@container (max-width: 272px) {
+  .con-confronto .voce { grid-template-columns: 54px 1fr; row-gap: 4px; }
+  .con-confronto .voce > .valore { grid-column: 2; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; text-align: left; }
+  .con-confronto .voce > .valore > * { white-space: nowrap; }
+  .con-confronto .voce > .valore b { display: inline; }
+  .con-confronto .voce > .valore .barra-p { display: none; }
+}
 .confronta-mini { position: absolute; right: 0; bottom: 6px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 55%, transparent);
   color: var(--verde); font-size: var(--t-valore); display: grid; place-items: center; }
 
