@@ -3,7 +3,7 @@ import SwiftUI
 import AppIntents
 
 // Widget «Giocatore osservato»: scegli tu quale (tra i tuoi osservati e i tuoi giocatori: tieni premuto > Modifica widget > Giocatore).
-// Mostra punti attesi, fantavoto atteso, la partita con l'orario e se e' in dubbio. Misure: piccolo, medio, cerchio, rettangolo, riga.
+// Mostra punti attesi, fantavoto atteso (`fv_atteso`; da un server vecchio il voto in pagella atteso), la partita con l'orario e se e' in dubbio. Misure: piccolo, medio, cerchio, rettangolo, riga.
 // L'elenco dei giocatori tra cui scegliere viene dall'ultimo riassunto salvato dal widget (si riempie al primo aggiornamento).
 
 /// Un giocatore che si puo' scegliere nelle impostazioni del widget.
@@ -204,7 +204,7 @@ struct VistaOsservato: View {
                         .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
                     Text("punti attesi").font(.caption).foregroundStyle(TintaWidget.testo2)
                 }
-                if let v = g.votoAtteso { Text("Fantavoto atteso \(Formato.punti(v))").font(.caption).monospacedDigit() }
+                if let forme = g.rigaVotoAtteso { TestoCheEntra(forme).font(.caption).monospacedDigit() }
                 Text(g.partitaBreve).font(.subheadline.weight(.semibold)).lineLimit(1)
                 // una sola percentuale, come l'app: l'avviso del server («In dubbio · gioca 55%»), altrimenti «gioca 90%» da p_voto
                 if let riga = g.statoOGioca {
