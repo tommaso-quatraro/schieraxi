@@ -2,8 +2,8 @@ import UserNotifications
 
 /// Promemoria locali di iOS: non servono server né l'account a pagamento di Apple (le notifiche push, invece, sì).
 /// Un'ora e un quarto d'ora prima della scadenza della formazione, solo quelli accesi negli avvisi («Promemoria un'ora prima»,
-/// «Promemoria 15 minuti prima»). Si programmano quando l'app legge la giornata e quando un promemoria si riaccende negli
-/// avvisi; spegnendolo si toglie subito (vedi `PromemoriaTelefono`).
+/// «Promemoria 15 minuti prima»). Si programmano quando l'app legge la giornata e quando negli avvisi un promemoria si
+/// riaccende o cambiano le ore tranquille; spegnendolo si toglie subito (vedi `PromemoriaTelefono`).
 enum Notifiche {
     static func stato() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
@@ -94,7 +94,7 @@ struct PromemoriaTelefono: Sendable {
     var ricorda: @MainActor @Sendable (ImpostazioniAvvisi) -> Void
     /// Toglie subito i promemoria già programmati che non sono fra quelli accesi (minuti: 60 e/o 15).
     var togliSpenti: @MainActor @Sendable (_ accesi: Set<Int>) -> Void
-    /// Rimette in programma i promemoria con l'ultima giornata salvata: serve quando uno si è riacceso.
+    /// Rimette in programma i promemoria con l'ultima giornata salvata: serve quando uno si è riacceso o cambiano le ore tranquille.
     var riprogramma: @MainActor @Sendable () async -> Void
 
     static let veri = PromemoriaTelefono(

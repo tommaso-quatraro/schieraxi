@@ -20,16 +20,20 @@ struct ModificaAvvisi: Equatable {
     /// Quanti campi degli avvisi si portano: un test controlla che siano tutti quelli di `ImpostazioniAvvisi`.
     static var campiPortati: Int { campi.count }
 
-    private typealias Porta = (inout ImpostazioniAvvisi, ImpostazioniAvvisi, ImpostazioniAvvisi) -> Void
+    /// `@Sendable`: `campi` è una costante condivisa (`static let`) e con Swift 6 deve poter passare da un thread all'altro.
+    /// Le closure non catturano niente (il campo si scrive dentro), così non serve che il key path sia `Sendable`.
+    private typealias Porta = @Sendable (inout ImpostazioniAvvisi, ImpostazioniAvvisi, ImpostazioniAvvisi) -> Void
 
     private static let campi: [Porta] = [
-        porta(\.cambi), porta(\.promemoria_60), porta(\.promemoria_15), porta(\.riepilogo), porta(\.copertura),
-        porta(\.app_nativa), porta(\.silenzio), porta(\.silenzio_da), porta(\.silenzio_a), porta(\.avviso_prima),
+        { porta(\.cambi, &$0, $1, $2) }, { porta(\.promemoria_60, &$0, $1, $2) }, { porta(\.promemoria_15, &$0, $1, $2) },
+        { porta(\.riepilogo, &$0, $1, $2) }, { porta(\.copertura, &$0, $1, $2) }, { porta(\.app_nativa, &$0, $1, $2) },
+        { porta(\.silenzio, &$0, $1, $2) }, { porta(\.silenzio_da, &$0, $1, $2) }, { porta(\.silenzio_a, &$0, $1, $2) },
+        { porta(\.avviso_prima, &$0, $1, $2) },
     ]
 
-    private static func porta<T: Equatable>(_ campo: WritableKeyPath<ImpostazioniAvvisi, T>) -> Porta {
-        { risultato, da, a in
-            if a[keyPath: campo] != da[keyPath: campo] { risultato[keyPath: campo] = a[keyPath: campo] }
-        }
+    /// Porta il campo in `risultato` solo se l'utente l'aveva cambiato (da `da` ad `a`).
+    private static func porta<T: Equatable>(_ campo: WritableKeyPath<ImpostazioniAvvisi, T>, _ risultato: inout ImpostazioniAvvisi,
+                                           _ da: ImpostazioniAvvisi, _ a: ImpostazioniAvvisi) {
+        if a[keyPath: campo] != da[keyPath: campo] { risultato[keyPath: campo] = a[keyPath: campo] }
     }
 }
