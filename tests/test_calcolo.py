@@ -227,7 +227,7 @@ def test_in_coda_con_un_archivio_in_memoria_si_calcola_subito():
 @pytest.fixture
 def formazione_lenta(ambiente, monkeypatch):
     """La formazione vera passa dalla coda; il calcolo, invece di durare, aspetta un via e conta le volte."""
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 9)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     stato = {"via": threading.Event(), "chiamate": 0, "errore": None}
 
     def finta(db, s, giornata, regole, simulazioni):

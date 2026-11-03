@@ -24,7 +24,7 @@ def _db(rilevato=None):
 class Scena:
     def __init__(self, monkeypatch, minuti=10, riesce=True):
         monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-        monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 10)
+        monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 10)
         self.regole = regole.imposta(Regole(), "scadenza_minuti", str(minuti))
         self.riesce, self.letture, self.dopo_volte, self.stato = riesce, 0, 0, {}
 
