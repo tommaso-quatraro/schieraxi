@@ -4,7 +4,8 @@ import Testing
 
 /// Il widget «Giocatore osservato»: una sola percentuale, «gioca N%» da `p_voto` con le parole dell'app (#205), mai la
 /// `percentuale` delle probabili; e quando il server toglie i seguiti per il peso (`mancano` contiene «osservati», #206) il
-/// widget lo dice invece di restare vuoto. Dati inventati.
+/// widget lo dice invece di restare vuoto. Il voto in pagella atteso ha il suo nome, non quello del fantavoto atteso (#225).
+/// Dati inventati.
 @Suite("Widget «Osservato»")
 struct WidgetOsservatoTests {
     private func giocatore(_ campi: String) throws -> GiocatoreWidget {
@@ -39,6 +40,20 @@ struct WidgetOsservatoTests {
     ])
     func rigaDelWidget(campi: String, atteso: String?) throws {
         #expect(try giocatore(campi).statoOGioca == atteso)
+    }
+
+    @Test("Il voto in pagella (`voto_atteso`) ha il nome che gli danno app e web, non «Fantavoto atteso», che è `fv_atteso` (#225)")
+    func votoInPagellaColNomeGiusto() throws {
+        let g = try giocatore(#""voto_atteso": 6.37, "punti_attesi": 5.9, "p_voto": 0.9"#)
+        let forme = try #require(g.rigaVotoAtteso)
+        let nomeWeb = try TestiWeb().italiano("confronto.fattore_voto")     // «Voto in pagella atteso», come il confronto
+        #expect(forme == ["\(nomeWeb) 6,4", "In pagella 6,4"])
+        #expect(forme.allSatisfy { !$0.localizedCaseInsensitiveContains(FantavotoAtteso.nome) })
+    }
+
+    @Test("Senza `voto_atteso` la riga del voto non c'è")
+    func senzaVotoInPagella() throws {
+        #expect(try giocatore(#""punti_attesi": 5.9, "p_voto": 0.9"#).rigaVotoAtteso == nil)
     }
 
     @Test("Seguiti tolti dal server per il peso: «Apri l'app per vederli», non «Nessun giocatore»")

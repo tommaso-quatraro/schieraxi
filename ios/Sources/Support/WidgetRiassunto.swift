@@ -871,6 +871,9 @@ extension GiocatoreWidget {
     /// La riga del widget «Osservato» medio: l'avviso del server se c'è («In dubbio · gioca 55%», «Infortunato»), altrimenti
     /// «gioca 90%»; nil se non c'è niente da dire.
     var statoOGioca: String? { descrizioneStato.isEmpty ? giocaTesto : descrizioneStato }
+
+    /// La riga del voto atteso nel widget «Osservato» medio, dalla forma più lunga alla più corta; nil senza `voto_atteso`.
+    var rigaVotoAtteso: [String]? { votoAtteso.map { ["Fantavoto atteso \(Formato.punti($0))"] } }
 }
 
 /// Il widget «Osservato» senza un giocatore da mostrare: nessun seguito, oppure seguiti tolti dal server perché la risposta era

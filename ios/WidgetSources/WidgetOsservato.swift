@@ -204,7 +204,7 @@ struct VistaOsservato: View {
                         .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
                     Text("punti attesi").font(.caption).foregroundStyle(TintaWidget.testo2)
                 }
-                if let v = g.votoAtteso { Text("Fantavoto atteso \(Formato.punti(v))").font(.caption).monospacedDigit() }
+                if let forme = g.rigaVotoAtteso { TestoCheEntra(forme).font(.caption).monospacedDigit() }
                 Text(g.partitaBreve).font(.subheadline.weight(.semibold)).lineLimit(1)
                 // una sola percentuale, come l'app: l'avviso del server («In dubbio · gioca 55%»), altrimenti «gioca 90%» da p_voto
                 if let riga = g.statoOGioca {
