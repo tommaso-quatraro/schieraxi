@@ -145,14 +145,51 @@ struct ModuloAccesso: Equatable {
         }
     }
 
+    /// Breve, perché sta sopra il campo: il perché dell'email facoltativa va sotto (`aiuto`). La web ha la frase intera
+    /// nell'etichetta (`accesso.email_facoltativa`): sull'iPhone era tagliata o rimpicciolita (issue #191).
     func etichettaEmail(_ modo: ModalitaRegistrazione) -> String {
-        passo == .registra && !modo.chiedeEmail ? "Email (facoltativa: serve a recuperare la password)" : "Email"
+        emailFacoltativa(modo) ? "Email (facoltativa)" : "Email"
     }
+
+    private func emailFacoltativa(_ modo: ModalitaRegistrazione) -> Bool { passo == .registra && !modo.chiedeEmail }
 
     static let etichettaNome = "Nome utente"
     static let etichettaInvito = "Codice d'invito"
     static let etichettaCodice = "Codice"
     static let etichettaCodiceEmail = "Codice a 6 cifre ricevuto per email"
+    static let aiutoEmailFacoltativa = "Serve a recuperare la password."
+
+    /// L'etichetta sopra il campo, che resta mentre si scrive (come `campoAccesso` della web). Il campo non ha testo d'esempio.
+    func etichetta(_ campo: Campo, _ modo: ModalitaRegistrazione) -> String {
+        switch campo {
+        case .nome: Self.etichettaNome
+        case .invito: Self.etichettaInvito
+        case .email: etichettaEmail(modo)
+        case .password: etichettaPassword
+        case .codice: Self.etichettaCodice
+        case .codiceEmail: Self.etichettaCodiceEmail
+        }
+    }
+
+    /// La spiegazione sotto il campo, se serve: oggi solo per l'email facoltativa della registrazione.
+    func aiuto(_ campo: Campo, _ modo: ModalitaRegistrazione) -> String? {
+        campo == .email && emailFacoltativa(modo) ? Self.aiutoEmailFacoltativa : nil
+    }
+
+    /// Il problema che si vede sotto il campo mentre si scrive (l'ultima parola resta del server).
+    func problema(_ campo: Campo) -> String? {
+        switch campo {
+        case .nome: problemaNome
+        case .email: problemaEmail
+        case .password: problemaPassword
+        case .invito, .codice, .codiceEmail: nil
+        }
+    }
+
+    /// Cosa legge VoiceOver dopo l'etichetta del campo: il problema, se c'è, altrimenti la spiegazione.
+    func suggerimento(_ campo: Campo, _ modo: ModalitaRegistrazione) -> String? {
+        problema(campo) ?? aiuto(campo, modo)
+    }
 
     /// La frase in cima al modulo (la web la mette come prima riga); nessuna per accedere.
     func spiegazione(_ modo: ModalitaRegistrazione) -> String? {

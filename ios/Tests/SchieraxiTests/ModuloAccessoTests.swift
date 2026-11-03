@@ -47,18 +47,7 @@ final class ModuloAccessoTests: XCTestCase {
         XCTAssertEqual(ModuloAccesso(scheda: .accedi).campi(.invito), [.nome, .password])
     }
 
-    func testConLInvitoLEmailEFacoltativaMaSeCeDeveEssereGiusta() {
-        var m = registrazione(.invito)
-        XCTAssertEqual(m.etichettaEmail(.invito), "Email (facoltativa: serve a recuperare la password)")
-        XCTAssertEqual(m.etichettaEmail(.email), "Email")
-        XCTAssertTrue(m.pronto(.invito), "senza email si può")
-        m.email = "non-una-email"
-        XCTAssertNotNil(m.problemaEmail)
-        XCTAssertFalse(m.pronto(.invito))
-        m.email = " nome@example.invalid "
-        XCTAssertNil(m.problemaEmail)
-        XCTAssertTrue(m.pronto(.invito))
-    }
+    // L'email facoltativa (etichetta breve, spiegazione sotto, controllo se c'è): `EtichetteCampiTests` (Swift Testing).
 
     func testConEmailOApertaLEmailServe() {
         for modo in [ModalitaRegistrazione.email, .aperta] {
