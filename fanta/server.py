@@ -1040,12 +1040,18 @@ class SchierataDiario(BaseModel):
     tipo: str                               # "consigliata" | "manuale"
     titolari: list[int] | None = None       # per "manuale": gli 11 titolari
     modulo: str | None = None               # facoltativo: il modulo si ricava dai titolari
+    stagione: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}$")      # quella della voce; senza (client vecchi): la stagione in corso
 
 
 @app.post("/api/diario/schierata")
 def diario_schierata(dati: SchierataDiario, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     """«Ho schierato la consigliata» (o una formazione a mano) per una giornata già finita: salva la scelta e rifà solo quella voce
-    del diario. Al massimo 30 all'ora per utente (il «sto calcolando» ripetuto con gli stessi dati vale una volta). Risponde con la voce del diario."""
+    del diario. Al massimo 30 all'ora per utente (il «sto calcolando» ripetuto con gli stessi dati vale una volta). Risponde con la voce del diario.
+    Solo per la stagione in corso: una voce di una stagione passata risponde 400 (non scrive sulla giornata con lo stesso numero di quest'anno)."""
+    try:
+        diario.controlla_stagione(dati.stagione)                           # subito: né coda né limiti per una voce dell'anno prima
+    except diario.SchierataNonValida as e:
+        raise HTTPException(400, str(e)) from None
     versioni.controlla(request, _etag_scelta(ctx, dati.giornata))          # subito, prima del lavoro lungo (si ricontrolla sotto, al momento di scrivere)
     regole_, rose_ = _regole(ctx), _rose(ctx)
     firma_regole, firma_rose = repr(regole_), (consigli._impronta_rose(rose_), rose_.mia_squadra)
@@ -1062,7 +1068,7 @@ def diario_schierata(dati: SchierataDiario, request: Request, response: Response
         # le simulazioni girano FUORI dal blocco delle scelte (con gli account in coda: 202 «sto calcolando»); il blocco serve solo a scrivere
         try:
             voce, scelti = calcolo.ottieni(chiave, lambda d: diario.prepara_schierata(d, regole_, rose_, dati.giornata, dati.tipo, dati.titolari,
-                                                                                        ctx.diario), db)
+                                                                                        ctx.diario, stagione=dati.stagione), db)
         except diario.SchierataNonValida as e:
             raise HTTPException(400, str(e)) from None
         with versioni.blocco("scelte"):

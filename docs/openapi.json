@@ -1083,6 +1083,18 @@
       ],
       "title": "Modulo"
      },
+     "stagione": {
+      "anyOf": [
+       {
+        "pattern": "^\\d{4}-\\d{2}$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stagione"
+     },
      "tipo": {
       "title": "Tipo",
       "type": "string"
@@ -2829,7 +2841,7 @@
   },
   "/api/diario/schierata": {
    "post": {
-    "description": "«Ho schierato la consigliata» (o una formazione a mano) per una giornata già finita: salva la scelta e rifà solo quella voce\ndel diario. Al massimo 30 all'ora per utente (il «sto calcolando» ripetuto con gli stessi dati vale una volta). Risponde con la voce del diario.",
+    "description": "«Ho schierato la consigliata» (o una formazione a mano) per una giornata già finita: salva la scelta e rifà solo quella voce\ndel diario. Al massimo 30 all'ora per utente (il «sto calcolando» ripetuto con gli stessi dati vale una volta). Risponde con la voce del diario.\nSolo per la stagione in corso: una voce di una stagione passata risponde 400 (non scrive sulla giornata con lo stesso numero di quest'anno).",
     "requestBody": {
      "content": {
       "application/json": {

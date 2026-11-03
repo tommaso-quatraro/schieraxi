@@ -235,6 +235,56 @@ def test_rotta_diario_schierata(vero, monkeypatch, tmp_path):
     assert TestClient(server.app).post("/api/diario/schierata", json={"giornata": 1, "tipo": "consigliata"}).status_code == 403   # senza X-Fanta
 
 
+PRIMA = "2025-26"          # la stagione scorsa: nel diario resta con le sue voci
+
+
+def _diario_con_la_stagione_scorsa(vero):
+    """Nel diario una voce della stagione scorsa con lo stesso numero di giornata (1) di una giornata finita di quest'anno."""
+    riga = {"modulo": "3-4-3", "atteso": 60.0, "reale": 58.0, "titolari": [{"id": i, "nome": f"G{i}", "ruolo": "A"} for i in range(30, 41)]}
+    vecchia = {"stagione": PRIMA, "giornata": 1, "consigliata": riga, "schierata": None}
+    vero.file.write_text(json.dumps({"giornate": {f"{PRIMA}/1": vecchia}}), encoding="utf-8")
+
+
+def test_ho_schierato_su_una_giornata_della_stagione_scorsa_non_tocca_quella_in_corso(vero):
+    """Issue #176: il diario mostra anche la stagione scorsa; dire «ho schierato» su quella voce non deve scrivere sulla giornata
+    con lo stesso numero della stagione in corso."""
+    _diario_con_la_stagione_scorsa(vero)
+    tuoi = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]
+    _salva(vero, 1, "manuale", tuoi)                                                  # quest'anno, giornata 1: i tuoi undici
+    prima = diario.carica(vero.file)["giornate"]
+    with pytest.raises(diario.SchierataNonValida, match="stagione in corso"):
+        diario.salva_schierata(vero.db, Regole(), vero.rose, 1, "consigliata", None, vero.file, vero.scelte, simulazioni=50, stagione=PRIMA)
+    assert _LEGGI_VERO(ST, 1, vero.scelte)["titolari"] == tuoi and _LEGGI_VERO(ST, 1, vero.scelte)["tipo"] == "manuale"
+    assert diario.carica(vero.file)["giornate"] == prima                             # né la voce di quest'anno né quella vecchia cambiano
+    voce = diario.salva_schierata(vero.db, Regole(), vero.rose, 2, "consigliata", None, vero.file, vero.scelte, simulazioni=50, stagione=ST)
+    assert voce["stagione"] == ST and voce["schierata"]["tipo"] == "consigliata"     # la stagione in corso, detta esplicitamente, va
+
+
+def test_rotta_diario_schierata_con_la_stagione(vero, monkeypatch, tmp_path):
+    import dataclasses
+    from fastapi.testclient import TestClient
+    from fanta import server
+    monkeypatch.setattr(server, "FILE_REGOLE", tmp_path / "regole.json")
+    monkeypatch.setattr(server, "FILE_ROSE", tmp_path / "rose.json")
+    (tmp_path / "regole.json").write_text(json.dumps(dataclasses.asdict(Regole())), encoding="utf-8")
+    lega.salva(vero.rose, tmp_path / "rose.json")
+    vero.db.commit()
+    monkeypatch.setattr(server, "_db", lambda: archivio.apri(tmp_path / "t.sqlite"))
+    _diario_con_la_stagione_scorsa(vero)
+    c = TestClient(server.app, headers={"X-Fanta": "1"})
+    tuoi = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]
+    assert c.post("/api/diario/schierata", json={"giornata": 1, "tipo": "manuale", "titolari": tuoi}).status_code == 200   # client vecchio: stagione in corso
+    r = c.post("/api/diario/schierata", json={"giornata": 1, "tipo": "consigliata", "stagione": PRIMA})
+    assert r.status_code == 400 and "stagione in corso" in r.json()["detail"]
+    assert c.get("/api/scelta", params={"giornata": 1}).json()["titolari"] == tuoi     # la scelta di quest'anno è rimasta la tua
+    voci = {(v["stagione"], v["giornata"]): v for v in c.get("/api/diario").json()["giornate"]}
+    assert voci[(ST, 1)]["schierata"]["tipo"] == "manuale" and voci[(PRIMA, 1)]["schierata"] is None
+    assert voci[(ST, 1)]["modificabile"] is True and voci[(PRIMA, 1)]["modificabile"] is False      # i client nascondono i pulsanti sulle voci vecchie
+    r = c.post("/api/diario/schierata", json={"giornata": 2, "tipo": "consigliata", "stagione": ST})
+    assert r.status_code == 200 and r.json()["stagione"] == ST
+    assert c.post("/api/diario/schierata", json={"giornata": 2, "tipo": "consigliata", "stagione": "boh"}).status_code == 422
+
+
 def test_aprendo_la_formazione_si_tiene_la_copia_automatica_fino_alla_scadenza(vero, monkeypatch, tmp_path):
     import dataclasses
     import json
