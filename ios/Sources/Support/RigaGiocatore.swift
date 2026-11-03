@@ -128,18 +128,10 @@ struct RigaGiocatore: View {
     private var etichette: some View {
         let lista = g.etichette
         if !lista.isEmpty {
-            // Come la web: ogni etichetta in una pillola del suo colore; le pillole vanno a capo se non ci stanno.
-            FilaPillole(spazio: 4) {
-                ForEach(lista, id: \.self) { e in
-                    Text(e.testo)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(e.gravita.colore)
-                        .lineLimit(1)
-                        .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background(e.gravita.colore.opacity(0.14), in: Capsule())
-                }
-            }
-            .padding(.top, 2)
+            // Come la web: ogni etichetta in una pillola del suo colore; le pillole vanno a capo se non ci stanno e
+            // un'etichetta più larga della riga va a capo dentro la sua pillola (mai tagliata, issue #227).
+            PilloleEtichette(etichette: lista)
+                .padding(.top, 2)
         }
     }
 
@@ -265,57 +257,5 @@ struct RigaGiocatore: View {
             .buttonStyle(StilePressione())
             .origineZoom(g.id, zoom)
             .accessibilityHint("Apre la scheda del giocatore")
-    }
-}
-
-/// Pillole una dopo l'altra, a capo quando la riga è piena (come le etichette della web).
-private struct FilaPillole: Layout {
-    var spazio: CGFloat = 4
-
-    private func righe(_ larghezza: CGFloat, _ misure: [CGSize]) -> [[Int]] {
-        var risultato: [[Int]] = [[]]
-        var x: CGFloat = 0
-        for (i, m) in misure.enumerated() {
-            if x > 0, x + m.width > larghezza {
-                risultato.append([])
-                x = 0
-            }
-            risultato[risultato.count - 1].append(i)
-            x += m.width + spazio
-        }
-        return risultato
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let naturali = subviews.map { $0.sizeThatFits(.unspecified) }
-        let larghezza = proposal.width ?? naturali.reduce(0) { $0 + $1.width + spazio }
-        // una pillola più larga della riga si stringe (il testo finisce con «…») invece di uscire dai bordi
-        let misure = naturali.map { CGSize(width: min($0.width, larghezza), height: $0.height) }
-        var altezza: CGFloat = 0
-        var massima: CGFloat = 0
-        for riga in righe(larghezza, misure) {
-            let alta = riga.map { misure[$0].height }.max() ?? 0
-            altezza += alta + (altezza > 0 ? spazio : 0)
-            let lunga = riga.reduce(CGFloat(0)) { $0 + misure[$1].width } + spazio * CGFloat(max(0, riga.count - 1))
-            massima = max(massima, lunga)
-        }
-        return CGSize(width: min(massima, larghezza), height: altezza)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let misure = subviews.map { s -> CGSize in
-            let m = s.sizeThatFits(.unspecified)
-            return CGSize(width: min(m.width, bounds.width), height: m.height)
-        }
-        var y = bounds.minY
-        for riga in righe(bounds.width, misure) {
-            var x = bounds.minX
-            let alta = riga.map { misure[$0].height }.max() ?? 0
-            for i in riga {
-                subviews[i].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(misure[i]))
-                x += misure[i].width + spazio
-            }
-            y += alta + spazio
-        }
     }
 }
