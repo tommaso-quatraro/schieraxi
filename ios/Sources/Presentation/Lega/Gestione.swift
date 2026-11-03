@@ -2,6 +2,11 @@ import SwiftUI
 
 // MARK: - Avvisi del server
 
+// TODO(#189): da scrivere dopo i test.
+extension AvvisiServerView {
+    static let testoOreTranquilleSpente = "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7)."
+}
+
 struct AvvisiServerView: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @StateObject private var vm: AvvisiServerViewModel

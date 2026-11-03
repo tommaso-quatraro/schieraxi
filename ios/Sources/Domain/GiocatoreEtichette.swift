@@ -52,3 +52,9 @@ extension Giocatore {
         return risultato
     }
 }
+
+// TODO(#189): da scrivere dopo i test.
+extension Avviso {
+    var descrizione: String { tipo ?? "" }
+    var gravita: Etichetta.Gravita { .normale }
+}

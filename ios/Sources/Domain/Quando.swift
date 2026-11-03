@@ -122,4 +122,9 @@ enum Quando {
     static func leggibile(_ data: Date) -> String {
         scrittura.string(from: data)
     }
+
+    // TODO(#189): da scrivere dopo i test.
+    static func contoAllaRovescia(fino scadenza: Date, adesso: Date = Date()) -> String? { nil }
+    static func contoAllaRovesciaParlato(fino scadenza: Date, adesso: Date = Date()) -> String? { nil }
+    static func istantiDelConto(fino scadenza: Date, adesso: Date, entro: Date, massimo: Int = 90) -> [Date] { [] }
 }

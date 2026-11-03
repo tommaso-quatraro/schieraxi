@@ -76,6 +76,16 @@ final class LegaViewModel: ViewModelBase {
         }
     }
 
+    // TODO(#189): da scrivere dopo i test.
+    static let titoloControlli = "Aggiornamento in background"
+    static func statoControlli(_ stato: UIBackgroundRefreshStatus) -> String {
+        switch stato {
+        case .available: return "attivo"
+        case .denied: return "disattivato"
+        default: return "limitato"
+        }
+    }
+
     /// Se iOS permette all'app di aggiornarsi in background (Impostazioni > Generali > Aggiornamento app in background).
     var aggiornamentoInBackground: String {
         switch UIApplication.shared.backgroundRefreshStatus {

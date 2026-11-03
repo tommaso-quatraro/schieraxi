@@ -110,6 +110,14 @@ struct MovimentiView: View {
 
 // MARK: - Passaggio di stagione
 
+// TODO(#189): da scrivere dopo i test.
+extension StagioneView {
+    static func testoRoseAncoraQuelle(_ stagione: String) -> String {
+        "Le rose sono ancora quelle del \(stagione). Archivio rose, regole, scelte e osservati e riparto da rose vuote (stessi nomi di squadra): poi importi il nuovo Excel di Leghe. Non si cancella niente."
+    }
+    static let testoArchivioConferma = "Rose, regole, scelte e osservati restano salvati nell'archivio del server."
+}
+
 /// Quando le rose sono di una stagione finita: archivia e riparti da rose vuote, poi i passi per la stagione nuova.
 struct StagioneView: View {
     @EnvironmentObject private var sessione: SessioneAccount
