@@ -2,6 +2,7 @@ import XCTest
 
 /// Test di fumo dell'interfaccia: l'app parte in modalità demo (dati finti, senza rete, tutte le funzioni accese), le quattro sezioni si raggiungono
 /// e le schermate principali mostrano il testo atteso. Si cerca per testo (etichetta di accessibilità), non per posizione.
+/// Ogni tocco che apre qualcosa passa da `tocca(_:finchéCompare:_:)` (Tocchi.swift): se il tocco si perde, si ritocca (#212).
 final class FumoUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -31,10 +32,13 @@ final class FumoUITests: XCTestCase {
         XCTFail("non compare «\(testo)» nemmeno scorrendo", file: file, line: line)
     }
 
-    private func vaiA(_ sezione: String) {
+    /// Apre una sezione dalla barra in basso: è aperta quando c'è la sua barra del titolo.
+    private func vaiA(_ sezione: String, file: StaticString = #filePath, line: UInt = #line) {
         let barra = app.tabBars.firstMatch
-        XCTAssertTrue(barra.waitForExistence(timeout: 30), "la barra delle sezioni deve comparire")
-        barra.buttons[sezione].firstMatch.tap()   // con iOS 26 la barra a volte espone due elementi per la stessa scheda
+        XCTAssertTrue(barra.waitForExistence(timeout: 30), "la barra delle sezioni deve comparire", file: file, line: line)
+        // con iOS 26 la barra a volte espone due elementi per la stessa scheda
+        tocca(barra.buttons[sezione].firstMatch, finchéCompare: app.navigationBars[sezione], "la sezione «\(sezione)» non si apre",
+              file: file, line: line)
     }
 
     func testLeQuattroSezioniSonoRaggiungibili() {
@@ -58,13 +62,10 @@ final class FumoUITests: XCTestCase {
         attendi("Campo")
         attendi("Modulo proposto", contiene: true)
         attendi("Panchina")
-        let modifica = app.buttons["Modifica a mano"]
-        XCTAssertTrue(modifica.waitForExistence(timeout: 20), "il pulsante «Modifica a mano» deve esserci")
-        modifica.tap()
+        tocca(app.buttons["Modifica a mano"], finchéCompare: app.buttons["Torna alla consigliata"], "«Modifica a mano» apre la modifica")
         attendi("Salva come mia scelta")
-        attendi("Torna alla consigliata")
-        app.buttons["Torna alla consigliata"].tap()
-        XCTAssertTrue(app.buttons["Modifica a mano"].waitForExistence(timeout: 20), "tornando alla consigliata ricompare «Modifica a mano»")
+        tocca(app.buttons["Torna alla consigliata"], finchéCompare: app.buttons["Modifica a mano"],
+              "tornando alla consigliata ricompare «Modifica a mano»")
     }
 
     func testSquadraConLeSuePagine() {
@@ -73,30 +74,39 @@ final class FumoUITests: XCTestCase {
         for voce in ["Aggiorna le rose", "Squadre e rose", "Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario"] {
             attendiScorrendo(voce, contiene: true)
         }
-        elemento("Cambi consigliati", contiene: true).tap()
-        attendi("Svincolati che migliorano la squadra")
+        tocca(elemento("Cambi consigliati", contiene: true), finchéCompare: elemento("Svincolati che migliorano la squadra"),
+              "«Cambi consigliati» apre i cambi")
     }
 
     func testElencoDeiGiocatoriDentroSquadra() {
         vaiA("Squadra")
         attendiScorrendo("Elenco dei giocatori", contiene: true)
-        elemento("Elenco dei giocatori", contiene: true).tap()
-        attendi("Solo svincolati")
+        tocca(elemento("Elenco dei giocatori", contiene: true), finchéCompare: elemento("Solo svincolati"), "«Elenco dei giocatori» apre l'elenco")
     }
 
     func testScambiConOffertaEAnalisi() {
         vaiA("Altro")
-        attendi("Scambi", contiene: true)
-        elemento("Scambi", contiene: true).tap()
-        XCTAssertTrue(app.buttons["Cerca scambi"].waitForExistence(timeout: 20), "le proposte si cercano con il pulsante")
+        tocca(elemento("Scambi", contiene: true), finchéCompare: app.buttons["Cerca scambi"], "le proposte si cercano con il pulsante")
         for modo in ["Trova per me", "Costruisci", "Valuta un'offerta"] {
             XCTAssertTrue(app.buttons[modo].waitForExistence(timeout: 10), "manca il modo «\(modo)»")
         }
         attendi("Chi accetta più volentieri")
-        app.buttons["Valuta un'offerta"].tap()
-        attendi("Ho ricevuto un'offerta")
-        app.buttons["Costruisci"].tap()
-        attendi("Squadra")
+        tocca(app.buttons["Valuta un'offerta"], finchéCompare: elemento("Ho ricevuto un'offerta"), "«Valuta un'offerta» mostra il riquadro dell'offerta")
+        // «Costruisci»: le due rose da cui scegliere (prima si aspettava «Squadra», che c'è sempre nella barra in basso)
+        tocca(app.buttons["Costruisci"], finchéCompare: elemento("Tu dai", contiene: true), "«Costruisci» mostra la tua rosa da cui scegliere")
+    }
+
+    /// Il rimedio di #212 funziona davvero: il primo tocco su «Scambi» si perde (non lo si manda all'app) e `tocca` deve
+    /// accorgersene e ritoccare finché compare «Cerca scambi». Senza il nuovo tocco questo test fallisce.
+    func testUnToccoPersoSiRitocca() {
+        vaiA("Altro")
+        var tocchi = 0
+        tocca(elemento("Scambi", contiene: true), finchéCompare: app.buttons["Cerca scambi"], "dopo un tocco perso si ritocca",
+              entro: 5, tap: { riga in
+                  tocchi += 1
+                  if tocchi > 1 { riga.tap() }   // il primo tocco «si perde»
+              })
+        XCTAssertGreaterThanOrEqual(tocchi, 2, "un tocco perso e almeno uno arrivato")
     }
 
     func testAltroConLeSuePagine() {
@@ -112,17 +122,14 @@ final class FumoUITests: XCTestCase {
 
     func testImpostazioniDallIngranaggio() {
         vaiA("Altro")
-        let ingranaggio = app.buttons["Impostazioni"]
-        XCTAssertTrue(ingranaggio.waitForExistence(timeout: 20), "l'ingranaggio sta accanto alla lente")
-        ingranaggio.tap()
-        attendi("Aspetto")
+        // l'ingranaggio sta accanto alla lente
+        tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "l'ingranaggio apre le Impostazioni")
         attendi("Avvisi e promemoria")
         // le voci tolte non ci sono più
         for tolta in ["Icona dell'app", "Sotto il cofano", "Copia di sicurezza", "Configurazione guidata", "Copia il codice per il widget"] {
             XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare nelle Impostazioni")
         }
-        elemento("Aspetto").tap()
-        attendi("Automatico")
+        tocca(elemento("Aspetto"), finchéCompare: elemento("Automatico"), "«Aspetto» apre tema e animazioni")
         attendiScorrendo("Animazioni ridotte", contiene: true)
         XCTAssertFalse(elemento("Colore principale").exists, "l'aspetto ha solo tema e animazioni")
     }
@@ -131,8 +138,7 @@ final class FumoUITests: XCTestCase {
         // un tocco su una riga di Oggi apre la scheda (foglio) con la previsione, la forma e il grafico dei voti
         let riga = app.buttons.matching(NSPredicate(format: "label CONTAINS 'fantavoto atteso'")).firstMatch
         XCTAssertTrue(riga.waitForExistence(timeout: 30), "serve almeno una riga di giocatore in Oggi")
-        riga.tap()
-        attendi("Prossima partita")
+        tocca(riga, finchéCompare: elemento("Prossima partita"), "un tocco sulla riga apre la scheda del giocatore")
         attendi("Forma")
         let chiudi = app.buttons["Chiudi"]
         XCTAssertTrue(chiudi.waitForExistence(timeout: 10))
@@ -155,9 +161,8 @@ final class FumoUITests: XCTestCase {
         XCTAssertFalse(elemento("Usa un Excel (.xlsx), un CSV o un file di testo.").exists, "il CSV non deve essere rifiutato")
         let conferma = app.buttons["Conferma e salva"]
         for _ in 0..<8 where !conferma.isHittable { app.swipeUp() }
-        conferma.tap()
         // l'esito come la web: «Cosa è cambiato», le squadre importate, poi «Da controllare:» con gli avvisi del server
-        attendi("Rose salvate", contiene: true)
+        tocca(conferma, finchéCompare: elemento("Rose salvate", contiene: true), "«Conferma e salva» salva le rose", entro: 20)
         attendi("Cosa è cambiato")
         attendiScorrendo("Importate:", contiene: true)
         attendiScorrendo("Da controllare:")
@@ -183,7 +188,6 @@ final class FumoUITests: XCTestCase {
     func testLaLenteApreLaRicerca() {
         let lente = app.buttons["Cerca un giocatore"]
         XCTAssertTrue(lente.waitForExistence(timeout: 30), "la lente della ricerca deve esserci in Oggi")
-        lente.tap()
-        attendi("Scrivi almeno due lettere del nome.")
+        tocca(lente, finchéCompare: elemento("Scrivi almeno due lettere del nome."), "la lente apre la ricerca")
     }
 }
