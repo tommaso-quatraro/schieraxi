@@ -31,19 +31,18 @@ extension TintaWidget {
     static func accento(_ modo: WidgetRenderingMode) -> Color { modo == .fullColor ? lime : .white }
 }
 
-/// Conto alla rovescia vivo: ore, minuti e secondi se manca meno di un giorno (lo aggiorna iOS da solo, senza ricaricare il widget),
-/// altrimenti giorni e ore; «In corso» a partita iniziata.
+/// Conto alla rovescia alla scadenza come la web: «2 giorni 3 h», «6 h 44 min», «12 min» (`Quando.contoAllaRovescia`, senza secondi);
+/// «In corso» a partita iniziata. Il testo è quello dell'istante della voce: le voci per ogni minuto le prepara il `Fornitore`
+/// (`conConto`), senza ricaricare il widget.
 struct ContoWidget: View {
     let inizio: Date?
     let adesso: Date
 
     var body: some View {
-        if let inizio, inizio > adesso {
-            if inizio.timeIntervalSince(adesso) < 24 * 3600 {
-                Text(timerInterval: adesso...inizio, countsDown: true).monospacedDigit()
-            } else {
-                Text(inizio, style: .relative)
-            }
+        if let inizio, let conto = Quando.contoAllaRovescia(fino: inizio, adesso: adesso) {
+            Text(conto)
+                .monospacedDigit()
+                .accessibilityLabel(Quando.contoAllaRovesciaParlato(fino: inizio, adesso: adesso) ?? conto)
         } else {
             Text(inizio == nil ? "—" : "In corso")
         }

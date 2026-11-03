@@ -122,9 +122,66 @@ enum Quando {
     static func leggibile(_ data: Date) -> String {
         scrittura.string(from: data)
     }
+}
 
-    // TODO(#189): da scrivere dopo i test.
-    static func contoAllaRovescia(fino scadenza: Date, adesso: Date = Date()) -> String? { nil }
-    static func contoAllaRovesciaParlato(fino scadenza: Date, adesso: Date = Date()) -> String? { nil }
-    static func istantiDelConto(fino scadenza: Date, adesso: Date, entro: Date, massimo: Int = 90) -> [Date] { [] }
+// MARK: - Conto alla rovescia
+
+extension Quando {
+    /// Il conto alla rovescia alla scadenza come la web (`testoConto` di `app.js`): i minuti che mancano, arrotondati come
+    /// `Math.round`; «2 giorni 3 h» (un giorno: «1 giorno 3 h»), «6 h 44 min», «12 min». Niente secondi.
+    /// nil se, arrotondato, non manca più niente (meno di mezzo minuto, o scadenza passata): lì la web scrive «Chiusa».
+    /// Lo usano Oggi, la barra sotto le schede e i widget.
+    static func contoAllaRovescia(fino scadenza: Date, adesso: Date = Date()) -> String? {
+        guard let p = partiDelConto(fino: scadenza, adesso: adesso) else { return nil }
+        if p.giorni >= 1 { return "\(Formato.plurale(p.giorni, "giorno", "giorni")) \(p.ore) h" }
+        if p.ore >= 1 { return "\(p.ore) h \(p.minuti) min" }
+        return "\(p.minuti) min"
+    }
+
+    /// Lo stesso conto a parole intere, per VoiceOver: «2 giorni e 3 ore», «6 ore e 44 minuti», «1 minuto».
+    static func contoAllaRovesciaParlato(fino scadenza: Date, adesso: Date = Date()) -> String? {
+        guard let p = partiDelConto(fino: scadenza, adesso: adesso) else { return nil }
+        var pezzi: [String] = []
+        if p.giorni >= 1 { pezzi.append(Formato.plurale(p.giorni, "giorno", "giorni")) }
+        if p.ore >= 1 { pezzi.append(Formato.plurale(p.ore, "ora", "ore")) }
+        if p.giorni == 0, p.minuti >= 1 { pezzi.append(Formato.plurale(p.minuti, "minuto", "minuti")) }
+        return pezzi.joined(separator: " e ")
+    }
+
+    /// Gli istanti, dopo `adesso` e prima di `entro` (e della scadenza, che ha già la sua voce), in cui cambia il testo del conto
+    /// alla rovescia: ogni minuto sotto le 24 ore, ogni ora sopra. In più la mezzanotte, dove «domani» diventa «oggi».
+    /// Servono al widget: un testo come «6 h 44 min» non conta da solo, ogni cambio è una voce della timeline (non una ricarica).
+    /// In ordine, al massimo `massimo`.
+    static func istantiDelConto(fino scadenza: Date, adesso: Date, entro: Date, massimo: Int = 90) -> [Date] {
+        let fine = min(entro, scadenza)
+        let mancano = scadenza.timeIntervalSince(adesso) / 60
+        guard fine > adesso, mancano.isFinite, mancano < 1e9 else { return [] }
+        var istanti: [Date] = []
+        var ultimo = contoAllaRovescia(fino: scadenza, adesso: adesso)
+        // gli istanti a minuti interi dalla scadenza, dal primo dopo «adesso»: lì il testo è esatto
+        var k = Int(mancano.rounded(.up)) - 1
+        while k >= 1 {
+            let istante = scadenza.addingTimeInterval(-Double(k) * 60)
+            if istante >= fine { break }
+            let testo = contoAllaRovescia(fino: scadenza, adesso: istante)
+            if testo != ultimo {
+                istanti.append(istante)
+                ultimo = testo
+            }
+            k -= 1
+        }
+        if let notte = calendario.date(byAdding: .day, value: 1, to: calendario.startOfDay(for: adesso)),
+           notte > adesso, notte < fine, !istanti.contains(notte) {
+            istanti.append(notte)
+            istanti.sort()
+        }
+        return Array(istanti.prefix(max(massimo, 0)))
+    }
+
+    /// Giorni, ore e minuti che mancano, dai minuti arrotondati (come la web); nil se non manca niente.
+    private static func partiDelConto(fino scadenza: Date, adesso: Date) -> (giorni: Int, ore: Int, minuti: Int)? {
+        let minuti = Formato.intero(scadenza.timeIntervalSince(adesso) / 60)
+        guard minuti > 0 else { return nil }
+        return (minuti / 1440, (minuti % 1440) / 60, minuti % 60)
+    }
 }

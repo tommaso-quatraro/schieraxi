@@ -110,12 +110,13 @@ struct MovimentiView: View {
 
 // MARK: - Passaggio di stagione
 
-// TODO(#189): da scrivere dopo i test.
+/// Le frasi del passaggio di stagione, come la web (`lega.rose_ancora_quelle` di testi.js): i giocatori seguiti si chiamano «seguiti».
 extension StagioneView {
     static func testoRoseAncoraQuelle(_ stagione: String) -> String {
-        "Le rose sono ancora quelle del \(stagione). Archivio rose, regole, scelte e osservati e riparto da rose vuote (stessi nomi di squadra): poi importi il nuovo Excel di Leghe. Non si cancella niente."
+        "Le rose sono ancora quelle del \(stagione). Archivio rose, regole, scelte e seguiti e riparto da rose vuote (stessi nomi di squadra): poi importi il nuovo Excel di Leghe. Non si cancella niente."
     }
-    static let testoArchivioConferma = "Rose, regole, scelte e osservati restano salvati nell'archivio del server."
+
+    static let testoArchivioConferma = "Rose, regole, scelte e seguiti restano salvati nell'archivio del server."
 }
 
 /// Quando le rose sono di una stagione finita: archivia e riparti da rose vuote, poi i passi per la stagione nuova.
@@ -143,7 +144,7 @@ struct StagioneView: View {
                     } else if s.nuova == true {
                         Section {
                             Text("Nuova stagione \(s.corrente ?? "")").font(.headline)
-                            Text("Le rose sono ancora quelle del \(s.rose ?? ""). Archivio rose, regole, scelte e osservati e riparto da rose vuote (stessi nomi di squadra): poi importi il nuovo Excel di Leghe. Non si cancella niente.")
+                            Text(Self.testoRoseAncoraQuelle(s.rose ?? ""))
                                 .font(.footnote).foregroundStyle(Color.testoSecondario)
                             Button(role: .destructive) { conferma = true } label: {
                                 if vm.inCorso { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
@@ -175,7 +176,7 @@ struct StagioneView: View {
             Button("Archivia e riparti", role: .destructive) { Task { await vm.archiviaERiparti() } }
             Button("Annulla", role: .cancel) {}
         } message: {
-            Text("Rose, regole, scelte e osservati restano salvati nell'archivio del server.")
+            Text(Self.testoArchivioConferma)
         }
     }
 
