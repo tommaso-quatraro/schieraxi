@@ -11,6 +11,7 @@ APP="${1:?manca il percorso di Schieraxi.app}"
 USCITA="${2:-screenshot}"
 ID_APP="it.schieraxi.app"
 ERRORI=0
+IN_MOVIMENTO=0   # foto scattate allo scadere dell'attesa, con lo schermo che si muoveva ancora (vedi schermo_fermo.py)
 ARGOMENTI_EXTRA=()
 ARGOMENTI_SCENARIO=()   # -DEMO_SCENARIO <nome>: le fotografie dal vero (SCATTI=vero)
 TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qualunque cosa dica il simulatore
@@ -26,7 +27,7 @@ TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recuper
        squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
        lega lega-squadre lega-rosa lega-regole lega-regole-fondo lega-stato lega-crediti lega-avvisi lega-diario lega-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
-       impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-rose accesso-rete accesso-limite accesso-non-valido)
+       impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
 PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-classifica
             scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
@@ -77,9 +78,10 @@ scatta() {
   case "$nome" in
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
   esac
-  # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...)
+  # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...).
+  # Con «-fondo» lo scenario è lo stesso (accesso-account-fondo = scenario «account» con -DEMO_FONDO).
   case "$nome" in
-    accesso-*) cosa=(-DEMO_ACCESSO "${nome#accesso-}") ;;
+    accesso-*) cosa=(-DEMO_ACCESSO "${schermata#accesso-}") ;;
     *) cosa=(-DEMO_SCHERMATA "$schermata") ;;
   esac
   # la ricerca globale si apre da sola con un testo già scritto
@@ -108,8 +110,15 @@ scatta() {
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
     ERRORI=$((ERRORI + 1))
   fi
-  local file="$USCITA/${etichetta}_${nome}.png"
-  if ! xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1; then
+  local file="$USCITA/${etichetta}_${nome}.png" esito
+  # Si fotografa quando lo schermo è fermo (due foto di fila uguali): non mentre la schermata carica o i numeri salgono.
+  # Prima bastavano i secondi fissi qui sopra, e la Formazione in orizzontale usciva con lo scheletro del caricamento.
+  python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
+  esito=$?
+  if [ "$esito" -eq 3 ]; then
+    echo "  ($etichetta / $nome: lo schermo si muoveva ancora dopo l'attesa, foto scattata lo stesso)"
+    IN_MOVIMENTO=$((IN_MOVIMENTO + 1))
+  elif [ "$esito" -ne 0 ]; then
     echo "ERRORE: scatto non riuscito ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
     return
@@ -246,7 +255,7 @@ if [ "$SCATTI" = "vero" ]; then
     giro_vero "$UDID_VERO" "${QUALE}_scuro-testogrande" scuro accessibility-large
   fi
   spegni_simulatore "$UDID_VERO"
-  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI"
+  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
   [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
   exit $?
 fi
@@ -313,7 +322,7 @@ xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/prova-url_openurl-giocatore.p
 spegni_simulatore "$UDID_IPHONE"
 fi
 if [ "$DISPOSITIVI" = "iphone" ]; then
-  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI"
+  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
   [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
   exit $?
 fi
@@ -367,6 +376,6 @@ xcrun simctl io "$UDID_IPAD" screenshot "$USCITA/home_ipad_dark.png" >/dev/null 
 
 spegni_simulatore "$UDID_IPAD"
 
-echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI"
+echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
 # Le foto mancanti non fanno fallire il lavoro: si guardano nell'artifact. Fallisce solo se non c'è nessuna foto.
 [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]

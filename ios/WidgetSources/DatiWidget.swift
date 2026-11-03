@@ -19,8 +19,6 @@ struct Voce: TimelineEntry {
     var accessoRichiesto = false
     /// true se nelle impostazioni del widget manca l'indirizzo del server (o non è valido).
     var indirizzoMancante = false
-    /// Una riga di diagnostica sulla condivisione con l'app (si vede solo quando non ci sono dati).
-    var diagnostica: String?
     /// Il riassunto completo di `/api/widget` (per i widget nuovi); nil con un server che non lo ha ancora.
     var widget: RiassuntoWidget? = nil
 
@@ -35,7 +33,7 @@ struct Voce: TimelineEntry {
     /// La stessa voce in un altro istante: i dati sono gli stessi, cambia solo l'ora con cui si contano conto alla rovescia e date.
     func spostata(a data: Date) -> Voce {
         Voce(date: data, riassunto: riassunto, datiSalvati: datiSalvati, accessoRichiesto: accessoRichiesto,
-             indirizzoMancante: indirizzoMancante, diagnostica: diagnostica, widget: widget)
+             indirizzoMancante: indirizzoMancante, widget: widget)
     }
 }
 
@@ -241,14 +239,13 @@ struct Fornitore: AppIntentTimelineProvider {
     }
 
     private func voce(_ configurazione: ConfigurazioneWidget) async -> Voce {
-        let diagnostica = Condiviso.diagnostica().breve
         guard let dove = ScaricaOggi.destinazione(codice: configurazione.codice) else {
             // Nessun indirizzo: se l'app ha già un riassunto lo si mostra, altrimenti si dice cosa fare.
-            if let r = Condiviso.leggi().riassunto { return Voce(date: Date(), riassunto: r, datiSalvati: true, diagnostica: diagnostica) }
-            return Voce(date: Date(), riassunto: nil, datiSalvati: false, indirizzoMancante: true, diagnostica: diagnostica)
+            if let r = Condiviso.leggi().riassunto { return Voce(date: Date(), riassunto: r, datiSalvati: true) }
+            return Voce(date: Date(), riassunto: nil, datiSalvati: false, indirizzoMancante: true)
         }
         let r = await ScaricaOggi.leggiTutto(base: dove.indirizzo, token: dove.token)
         return Voce(date: Date(), riassunto: r.riassunto, datiSalvati: r.salvato, accessoRichiesto: r.accessoRichiesto,
-                    diagnostica: diagnostica, widget: r.widget)
+                    widget: r.widget)
     }
 }
