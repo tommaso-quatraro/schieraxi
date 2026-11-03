@@ -819,6 +819,7 @@ body.senza-accesso .testata, body.senza-accesso main, body.senza-accesso .schede
 .accesso-oppure::before, .accesso-oppure::after { content: ""; flex: 1; height: 1px; background: var(--bordo); }
 .accesso-campo { display: block; margin: 12px 0 0; }
 .accesso-campo .campo-testo { margin-top: 4px; }
+.accesso-aiuto { margin: 4px 0 0; }
 .codice-una-volta { font: 700 clamp(15px, 5vw, 20px) ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .02em; text-align: center; word-break: break-all;
   padding: 16px 12px; margin: 12px 0 0; border-radius: var(--r-in); border: 1px dashed var(--bordo); background: color-mix(in srgb, var(--solido) 45%, transparent); user-select: all; -webkit-user-select: all; }
 .bottone-icona[hidden] { display: none; }

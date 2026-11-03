@@ -72,7 +72,7 @@ def test_sorveglia_scalda_all_avvio_e_quando_cambia_la_versione():
     versione = ["v1"]
     scaldati = []
     fermo = threading.Event()
-    t = threading.Thread(target=riscaldamento.sorveglia, args=(lambda: versione[0], lambda: scaldati.append(versione[0]), fermo, 0.02))
+    t = threading.Thread(daemon=True, target=riscaldamento.sorveglia, args=(lambda: versione[0], lambda: scaldati.append(versione[0]), fermo, 0.02))
     t.start()
     try:
         _aspetta(lambda: scaldati == ["v1"])
@@ -100,7 +100,7 @@ def test_interruttore_e_ritardo_dall_ambiente(monkeypatch):
 def test_sorveglia_aspetta_il_ritardo_prima_di_scaldare_e_si_ferma_senza_calcolare():
     scaldati = []
     fermo = threading.Event()
-    t = threading.Thread(target=riscaldamento.sorveglia, args=(lambda: "v", lambda: scaldati.append(1), fermo, 0.02, 0.3))
+    t = threading.Thread(daemon=True, target=riscaldamento.sorveglia, args=(lambda: "v", lambda: scaldati.append(1), fermo, 0.02, 0.3))
     t.start()
     time.sleep(0.1)
     assert scaldati == []                    # ancora in attesa: le richieste dell'avvio passano per prime
@@ -109,7 +109,7 @@ def test_sorveglia_aspetta_il_ritardo_prima_di_scaldare_e_si_ferma_senza_calcola
     t.join(2)
     scaldati.clear()
     fermo2 = threading.Event()
-    t2 = threading.Thread(target=riscaldamento.sorveglia, args=(lambda: "v", lambda: scaldati.append(1), fermo2, 0.02, 5))
+    t2 = threading.Thread(daemon=True, target=riscaldamento.sorveglia, args=(lambda: "v", lambda: scaldati.append(1), fermo2, 0.02, 5))
     t2.start()
     fermo2.set()
     t2.join(2)
@@ -127,7 +127,7 @@ def test_sorveglia_resiste_agli_errori():
 
     scaldati = []
     fermo = threading.Event()
-    t = threading.Thread(target=riscaldamento.sorveglia, args=(versione, lambda: scaldati.append(1), fermo, 0.02))
+    t = threading.Thread(daemon=True, target=riscaldamento.sorveglia, args=(versione, lambda: scaldati.append(1), fermo, 0.02))
     t.start()
     try:
         _aspetta(lambda: scaldati == [1])

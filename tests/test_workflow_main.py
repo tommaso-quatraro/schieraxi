@@ -110,5 +110,15 @@ def test_i_job_di_main_non_cambiano_i_permessi_degli_altri():
     assert re.match(r"(?s).*?^permissions:\s*\n  contents: read\s*\n", testo, re.M)
     for nome in ("test", "script-server", "pip-audit", "versione", "ambito"):
         assert "issues: write" not in _job(nome) and "actions: write" not in _job(nome)
-    assert testo.count("issues: write") == 1
+    assert testo.count("issues: write") == 2      # main-rosso (apre l'issue) e unisci (chiude le issue di «Closes #N»)
     assert testo.count("actions: write") == 2      # rilascia (lancia ipa.yml) e prova-main (lancia test.yml)
+
+
+def test_unisci_chiude_le_issue_collegate_alla_pr():
+    # un'unione fatta col token di GitHub Actions non chiude le issue di «Closes #N» (visto il 3/11/2026: 20 issue rimaste aperte)
+    blocco = _job("unisci")
+    assert _permessi(blocco).get("issues") == "write"
+    comandi = _comandi(blocco)
+    assert "closingIssuesReferences" in comandi and "gh issue close" in comandi
+    assert "env.GITHUB_REPOSITORY" in comandi                 # solo issue di questo repository
+    assert "${{" not in comandi.split("Chiudi le issue")[1].split("run:")[1]   # niente espressioni dentro il comando

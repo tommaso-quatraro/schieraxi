@@ -234,7 +234,7 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
     stagione = consigli.stagione_corrente()
     giornata, partite, inizio_dt = None, [], None
     try:
-        giornata = consigli.giornata_da_giocare(db, stagione, regole)
+        giornata = consigli.giornata_da_giocare(db, stagione, regole, adesso)
         righe = db.execute("SELECT * FROM partite WHERE stagione = ? AND giornata = ? ORDER BY data",
                            (stagione, giornata)).fetchall() if giornata else []
         partite = [_partita_turno(r) for r in righe]
