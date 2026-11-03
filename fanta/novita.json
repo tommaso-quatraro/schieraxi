@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.381",
+    "data": "2026-11-03T09:34:08",
+    "titolo": "Registrati: l'email facoltativa ha un'etichetta più corta",
+    "voci": [
+      "In «Registrati» il campo dell'email facoltativa ora dice solo «Email (facoltativa)»; la spiegazione «Serve a recuperare la password.» sta sotto il campo, in piccolo, come nell'app."
+    ],
+    "tecnico": [
+      "Web: `campoAccesso` accetta una spiegazione (`aiuto`) sotto il campo, fuori dall'etichetta e legata con `aria-describedby`; `CAMPO_EMAIL` la usa solo quando l'email è facoltativa.",
+      "Testi: `accesso.email_facoltativa` accorciata e nuova chiave `accesso.email_facoltativa_aiuto` (italiano e inglese). Coerenza con l'iPhone (#207)."
+    ]
+  },
+  {
     "versione": "1.380",
     "data": "2026-11-03T09:27:35",
     "titolo": "Controlli interni più affidabili",
