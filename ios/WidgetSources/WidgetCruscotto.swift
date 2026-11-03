@@ -53,15 +53,16 @@ struct VistaCruscotto: View {
     @ViewBuilder
     private func schermataDiBlocco(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         let dubbi = w.daControllare.count
-        let intervallo: String = f.intervallo?.testo.map { " · " + $0 } ?? ""
         switch famiglia {
         case .accessoryCircular:
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 0) {
-                    Text(w.siglaGiornata ?? "G").fontWidget(10)
-                    Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
-                    Text(dubbi > 0 ? Formato.plurale(dubbi, "dubbio", "dubbi") : "ok").fontWidget(9)
+            // le stesse parole delle altre forme: «4 da controllare» (nel cerchio «⚠ 4»), «titolari a posto» (nel cerchio «a posto»)
+            CerchioWidget {
+                Text(w.siglaGiornata ?? "G").fontWidget(10)
+                Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
+                if dubbi > 0 {
+                    EtichettaDaControllare(n: dubbi).fontWidget(9)
+                } else {
+                    TestoCheEntra(ParoleWidget.daControllare(0)).fontWidget(9)
                 }
             }
         case .accessoryInline:
@@ -70,8 +71,8 @@ struct VistaCruscotto: View {
         default:
             VStack(alignment: .leading, spacing: 1) {
                 ContoWidget(inizio: w.inizio, adesso: voce.date).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
-                Text("\(f.modulo ?? "—") · \(Formato.punti(f.puntiAttesi)) punti\(intervallo)")
-                    .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                TestoCheEntra(ParoleWidget.moduloEPunti(f.modulo, punti: f.puntiAttesi, fascia: f.intervallo?.testo))
+                    .font(.caption).monospacedDigit()
                 if let p = w.partiteInGioco.first {
                     Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)").font(.caption2).lineLimit(1)
                 } else if dubbi > 0 {
@@ -102,7 +103,9 @@ struct VistaCruscotto: View {
 
     private func sottoscadenza(_ w: RiassuntoWidget) -> String {
         guard let inizio = w.inizio else { return "scadenza non nota" }
-        let quando = inizio > voce.date ? "alla scadenza, \(Quando.relativa(inizio, adesso: voce.date))" : "formazione chiusa"
+        // dopo la scadenza come la web: sopra «Chiusa», sotto quando si è chiusa
+        let quando = inizio > voce.date ? "alla scadenza, \(Quando.relativa(inizio, adesso: voce.date))"
+            : "si è chiusa \(Quando.relativa(inizio, adesso: voce.date))"
         return w.conProbabili == false ? "probabili non uscite · \(quando)" : quando
     }
 
@@ -137,7 +140,7 @@ struct VistaCruscotto: View {
                 Text(w.conProbabili == false ? "Le probabili non sono ancora uscite." : "Nessun dubbio in formazione.")
                     .font(.caption2).foregroundStyle(TintaWidget.testo2)
             } else {
-                ForEach(elenco.prefix(massimo)) { g in RigaGiocatoreWidget(g: g, lato: lato) }
+                RigheDaControllare(giocatori: Array(elenco.prefix(massimo)), lato: lato)
                 if elenco.count > massimo {
                     Text(RiassuntoWidget.altri(elenco.count - massimo)).font(.caption2).foregroundStyle(TintaWidget.testo2)
                 }
@@ -160,7 +163,8 @@ struct VistaCruscotto: View {
         let mostra: [PartitaLive] = inGioco.isEmpty ? (w.prossimaPartita(dopo: voce.date).map { [$0] } ?? []) : Array(inGioco.prefix(2))
         if !mostra.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
-                TitoloBlocco(testo: inGioco.isEmpty ? "Prossima partita" : "In corso", icona: "soccerball")
+                // «Partite in corso»: «In corso» da solo sembrava la giornata (che dopo la scadenza è «Chiusa»)
+                TitoloBlocco(testo: inGioco.isEmpty ? "Prossima partita" : "Partite in corso", icona: "soccerball")
                 ForEach(mostra) { p in
                     RigaPartitaLive(p: p, miei: inGioco.isEmpty ? [] : w.mieiTitolari(in: p), lato: lato, compatto: true)
                 }
@@ -197,7 +201,7 @@ struct VistaCruscotto: View {
     private func crediti(_ w: RiassuntoWidget) -> some View {
         Link(destination: Vai.url("mercato")) {
             VStack(alignment: .trailing, spacing: 0) {
-                TitoloBlocco(testo: "Crediti", icona: "eurosign.circle")
+                TitoloBlocco(testo: "Crediti", icona: ParoleWidget.simboloCrediti)
                 Text(w.creditiResidui.map { String(Formato.intero($0)) } ?? "—")
                     .monospacedDigit().fontWidget(30, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
@@ -216,10 +220,13 @@ struct VistaCruscotto: View {
                 Spacer(minLength: 8)
                 formazione(f)
             }
-            HStack(alignment: .top, spacing: 10) {
-                CampoMini(titolari: tit, lato: 20)
-                    .frame(width: 150)
-                dubbi(w, massimo: 2, lato: 22)
+            // su iPad (widget più stretto) il campo si stringe, così «In dubbio · gioca 70%» resta intero accanto al volto
+            PrimaCheEntra(2) { i in
+                HStack(alignment: .top, spacing: 10) {
+                    CampoMini(titolari: tit, lato: 20)
+                        .frame(width: i == 0 ? 150 : 116)
+                    dubbi(w, massimo: 2, lato: 22)
+                }
             }
             liveOScambio(w)
             HStack(alignment: .bottom, spacing: 12) {
