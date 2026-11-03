@@ -9,7 +9,7 @@ struct WidgetOggi: Widget {
     let kind = "SchieraxiOggi"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurazioneWidget.self, provider: Fornitore()) { voce in
+        AppIntentConfiguration(kind: kind, intent: ConfigurazioneWidget.self, provider: Fornitore(conConto: true)) { voce in
             VistaWidget(voce: voce)
         }
         .configurationDisplayName("Prossima giornata")
@@ -112,12 +112,12 @@ struct VistaWidget: View {
         if voce.accessoRichiesto {
             Label("Tocca per ricollegare", systemImage: "link").font(.caption2.bold()).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
         } else if voce.datiSalvati {
-            Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash")
+            Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
                 .font(.caption2).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
         }
     }
 
-    /// «Prossima: 2g 4h» (conto alla rovescia alla scadenza della prossima giornata).
+    /// «Prossima: 3 giorni 3 h» (conto alla rovescia alla scadenza della prossima giornata).
     private func prossimaBreve(_ r: RiassuntoOggi) -> some View {
         HStack(spacing: 3) {
             Text("Prossima:")
@@ -178,7 +178,7 @@ struct VistaWidget: View {
                         .lineLimit(1).minimumScaleFactor(0.7)
                     conto(r).font(.system(.title2, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
                     if let inizio = r.inizio {
-                        Text("alla scadenza, \(Quando.leggibile(inizio))").font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
+                        Text(allaScadenza(inizio)).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
                     }
                     Spacer(minLength: 0)
                 }
@@ -228,18 +228,14 @@ struct VistaWidget: View {
         Formato.punti(r.punti)
     }
 
-    /// Conto alla rovescia: ore, minuti e secondi se manca meno di un giorno, altrimenti giorni e ore.
-    @ViewBuilder
+    /// Conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»); «In corso» a scadenza passata.
     private func conto(_ r: RiassuntoOggi) -> some View {
-        if let inizio = r.inizio, inizio > voce.date {
-            if inizio.timeIntervalSince(voce.date) < 24 * 3600 {
-                Text(timerInterval: voce.date...inizio, countsDown: true).monospacedDigit()
-            } else {
-                Text(inizio, style: .relative)
-            }
-        } else {
-            Text(r.inizio == nil ? "—" : "In corso")
-        }
+        ContoWidget(inizio: r.inizio, adesso: voce.date)
+    }
+
+    /// «alla scadenza, oggi 05:30» / «… ven 6 03:32»: la data come `quando` della web, contata dall'istante della voce.
+    private func allaScadenza(_ inizio: Date) -> String {
+        "alla scadenza, \(Quando.relativa(inizio, adesso: voce.date))"
     }
 
     /// Non collegato: «Tocca per collegare»; collegato ma senza dati: «Nessun dato».
@@ -263,7 +259,7 @@ struct VistaWidget: View {
                 Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
             if voce.datiSalvati || (r.daControllare == 0 && r.probabili != false) {
-                Text(voce.accessoRichiesto ? "Tocca per ricollegare" : voce.datiSalvati ? "dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
+                Text(voce.accessoRichiesto ? "Tocca per ricollegare" : voce.datiSalvati ? "dati delle \(Quando.ora(r.scaricatoIl))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
             }
             if r.daControllare > 0 {
                 EtichettaDaControllare(n: r.daControllare).font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
@@ -289,13 +285,13 @@ struct VistaWidget: View {
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                Text(r.inizio.map { "alla scadenza, \(Quando.leggibile($0))" } ?? "")
+                Text(r.inizio.map(allaScadenza) ?? "")
                     .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
                 if voce.accessoRichiesto {
                     Label("Tocca per ricollegare", systemImage: "link").font(.caption2.bold()).foregroundStyle(.secondary)
                 } else if voce.datiSalvati {
-                    Label("dati delle \(r.scaricatoIl.formatted(date: .omitted, time: .shortened))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
+                    Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
                 }
             }
             }

@@ -76,14 +76,20 @@ final class LegaViewModel: ViewModelBase {
         }
     }
 
-    /// Se iOS permette all'app di aggiornarsi in background (Impostazioni > Generali > Aggiornamento app in background).
-    var aggiornamentoInBackground: String {
-        switch UIApplication.shared.backgroundRefreshStatus {
+    /// La riga di Avvisi sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
+    static let titoloControlli = "Controllo con l'app chiusa"
+
+    /// Lo stato di quel controllo; se è spento, dove si riaccende (Impostazioni > Generali > Aggiornamento app in background).
+    static func statoControlli(_ stato: UIBackgroundRefreshStatus) -> String {
+        switch stato {
         case .available: return "attivo"
-        case .denied: return "disattivato"
+        case .denied: return "disattivato (Impostazioni di iOS)"
         default: return "limitato"
         }
     }
+
+    /// Se iOS permette all'app di controllare da sola, anche chiusa (aggiornamento app in background).
+    var aggiornamentoInBackground: String { Self.statoControlli(UIApplication.shared.backgroundRefreshStatus) }
 }
 
 /// Elenco delle squadre; da qui si indica quale è la propria.

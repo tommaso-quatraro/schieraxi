@@ -241,8 +241,10 @@ private enum DatiDemo {
         if p.assente {
             d["titolarita"] = "fuori"; d["stato"] = "infortunato"; d["percentuale"] = 0.0; d["motivi"] = ["infortunato"]
         } else if p.dubbio {
-            // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque)
-            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["dubbio: affaticamento"]
+            // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque).
+            // Come il server: il motivo della titolarità e l'etichetta pronta «In dubbio · gioca N%» (`fanta/etichette.py`).
+            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["titolare in ballottaggio"]
+            d["etichetta"] = ["codice": "in_dubbio", "testo": DubbioRiassunto.inDubbio(p.pVoto), "tono": "attenzione"]
         } else if p.pVoto < 0.75 {
             d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina"]
         } else {
@@ -479,7 +481,7 @@ private enum DatiDemo {
                             "casa": m.casa, "trasferta": m.trasferta, "giocata": false])
         }
         let avvisi: [[String: Any]] = [
-            ["id": 120, "nome": "Leonel Marténi", "ruolo": "A", "squadra": "inter", "tipo": "dubbio",
+            ["id": 120, "nome": "Leonel Marténi", "ruolo": "A", "squadra": "inter", "tipo": "dubbio", "p_voto": 0.62,
              "nota": "Affaticamento muscolare, si decide all'ultimo", "in_formazione": true],
             ["id": 104, "nome": "Alvise Bastrani", "ruolo": "D", "squadra": "inter", "tipo": "diffidato",
              "nota": "Un'ammonizione alla squalifica", "in_formazione": true],
@@ -487,7 +489,7 @@ private enum DatiDemo {
              "nota": "Una giornata", "in_formazione": false],
             ["id": 118, "nome": "Nereo Fagiani", "ruolo": "C", "squadra": "fiorentina", "tipo": "infortunato",
              "nota": "Lesione al polpaccio, rientro a dicembre", "in_formazione": false],
-            ["id": 124, "nome": "Darko Vlasenić", "ruolo": "A", "squadra": "juventus", "tipo": "dubbio",
+            ["id": 124, "nome": "Darko Vlasenić", "ruolo": "A", "squadra": "juventus", "tipo": "dubbio", "p_voto": 0.65,
              "nota": "Botta alla caviglia", "in_formazione": false],
         ]
         let migliori = ids.map { calciatore($0) }.sorted { $0.punti > $1.punti }.prefix(5).map { giocatore($0) }

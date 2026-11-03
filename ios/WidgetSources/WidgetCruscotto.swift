@@ -10,7 +10,7 @@ struct WidgetCruscotto: Widget {
     let kind = "SchieraxiCruscotto"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurazioneWidget.self, provider: Fornitore()) { voce in
+        AppIntentConfiguration(kind: kind, intent: ConfigurazioneWidget.self, provider: Fornitore(conConto: true)) { voce in
             VistaCruscotto(voce: voce)
         }
         .configurationDisplayName("Cruscotto")
@@ -102,7 +102,7 @@ struct VistaCruscotto: View {
 
     private func sottoscadenza(_ w: RiassuntoWidget) -> String {
         guard let inizio = w.inizio else { return "scadenza non nota" }
-        let quando = inizio > voce.date ? "alla scadenza, \(Quando.leggibile(inizio))" : "formazione chiusa"
+        let quando = inizio > voce.date ? "alla scadenza, \(Quando.relativa(inizio, adesso: voce.date))" : "formazione chiusa"
         return w.conProbabili == false ? "probabili non uscite · \(quando)" : quando
     }
 
