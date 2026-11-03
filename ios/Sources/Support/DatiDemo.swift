@@ -6,13 +6,19 @@ import Foundation
 
 extension FinteServer {
     /// Server della modalità demo (costruito una volta sola all'avvio).
-    static let demo: FinteServer = FinteServer(risposte: DatiDemo.risposte(adesso: Date()), binari: { DemoImmagini.dati(per: $0) })
+    static let demo: FinteServer = demoFissata(adesso: Date())
+
+    /// La stessa demo costruita in un istante preciso: i test confrontano app e widget (`LegaDemo.widget`) nello stesso momento.
+    static func demoFissata(adesso: Date) -> FinteServer {
+        FinteServer(risposte: DatiDemo.risposte(adesso: adesso), binari: { DemoImmagini.dati(per: $0) })
+    }
 
     /// Le fotografie delle fasi della giornata (`-DEMO_SCHERMATA oggi-in-corso` e `oggi-finita`): la stessa demo, con Oggi durante
     /// e dopo la giornata. Ognuna ha il suo indirizzo finto, così la copia salvata di Oggi non si mescola. Nil per le altre schermate.
-    static func demoFase(_ schermata: String?) -> FinteServer? {
-        let adesso = Date()
-        var server = FinteServer.demo
+    /// `fissato`: l'istante della demo (solo i test); senza, adesso.
+    static func demoFase(_ schermata: String?, adesso fissato: Date? = nil) -> FinteServer? {
+        let adesso = fissato ?? Date()
+        var server = fissato.map { demoFissata(adesso: $0) } ?? FinteServer.demo
         switch schermata ?? "" {
         case "oggi-in-corso":
             server.risposte["/api/oggi"] = DatiDemo.oggiInCorso(adesso: adesso)

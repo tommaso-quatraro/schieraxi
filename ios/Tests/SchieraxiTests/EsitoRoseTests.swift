@@ -98,4 +98,37 @@ struct DemoEsitoRoseTests {
     func altreSchermate(_ schermata: String?) {
         #expect(DemoEsitoRose.esito(schermata) == nil)
     }
+
+    /// Le squadre della lega della demo e i nomi interi dei suoi giocatori (dalle schede).
+    private func legaDellaDemo() throws -> (squadre: [String], mia: String?, giocatori: Set<String>) {
+        let risposte = FinteServer.demo.risposte
+        let testo = try #require(risposte["/api/squadre"])
+        let squadre = try #require(try JSONSerialization.jsonObject(with: Data(testo.utf8)) as? [[String: Any]])
+        var giocatori = Set<String>()
+        for (chiave, scheda) in risposte where chiave.hasPrefix("/api/giocatore/") {
+            let d = try JSONSerialization.jsonObject(with: Data(scheda.utf8)) as? [String: Any]
+            if let nome = (d?["calciatore"] as? [String: Any])?["nome"] as? String { giocatori.insert(nome) }
+        }
+        return (squadre.compactMap { $0["nome"] as? String }, squadre.first { $0["mia"] as? Bool == true }?["nome"] as? String, giocatori)
+    }
+
+    @Test("L'esito finto parla della lega della demo e non si contraddice", arguments: ["lega-importa-salvate", "lega-importa-salvate-ok"])
+    func esitoCoerenteConLaDemo(_ schermata: String) throws {
+        let lega = try legaDellaDemo()
+        let esito = try #require(DemoEsitoRose.esito(schermata))
+        let d = try #require(esito.differenze)
+        #expect(esito.miaSquadra == lega.mia)
+        let scambi = d.scambi ?? [], presi = d.svincolatiPresi ?? [], tagliati = d.tagliati ?? []
+        let squadre = (esito.squadreImportate ?? []) + scambi.flatMap(\.squadre) + presi.map(\.squadra) + tagliati.map(\.squadra)
+            + (d.crediti ?? []).map(\.squadra)
+        for s in squadre { #expect(lega.squadre.contains(s), "«\(s)» non è una squadra della lega della demo") }
+        let mossi = scambi.flatMap { $0.daA + $0.daB } + presi.flatMap(\.giocatori) + tagliati.flatMap(\.giocatori)
+        #expect(!mossi.isEmpty)
+        for g in mossi {
+            #expect(lega.giocatori.contains(g.nome), "«\(g.nome)» non è un giocatore della demo (nome intero)")
+            // chi è stato appena preso o scambiato non può essere anche «non nel listone»
+            let cognome = g.nome.split(separator: " ").last.map(String.init) ?? g.nome
+            for a in esito.avvisi ?? [] { #expect(!a.contains(cognome), "«\(a)» contraddice il movimento di \(g.nome)") }
+        }
+    }
 }

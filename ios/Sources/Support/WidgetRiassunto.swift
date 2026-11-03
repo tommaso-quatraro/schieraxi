@@ -860,3 +860,33 @@ extension RiassuntoOggi {
     /// Sotto il titolo del rettangolo «Da controllare» quando non ci sono nomi: la giornata, o a giornata finita la prossima.
     var sottotitoloRettangolo: String { finita ? "Prossima: \(etichettaGiornata)" : etichettaGiornata }
 }
+
+// MARK: Widget «Osservato» e «Chi gioca» (passo 1: il comportamento di prima, da correggere)
+
+extension GiocatoreWidget {
+    var giocaTesto: String? { percentuale.map { "gioca al \(Formato.intero($0))%" } }
+
+    var statoOGioca: String? { descrizioneStato.isEmpty ? giocaTesto : descrizioneStato }
+
+    var formeChiGioca: [String] {
+        let s = descrizioneStato
+        return [s.isEmpty ? partitaBreve : "\(partitaBreve) · \(s)"]
+    }
+
+    var daGuardare: Bool { !descrizioneStato.isEmpty || diffidato == true }
+
+    func quandoGioca(adesso: Date) -> String { oraBreve }
+}
+
+enum VuotoOsservato: Equatable {
+    case nessunSeguito
+    case seguitiNellApp
+
+    var titolo: String { "Nessun giocatore" }
+    var frase: String { "Aggiungi un giocatore ai Seguiti (Squadra), poi scegli qui." }
+    var riga: String { "Nessun osservato" }
+}
+
+extension RiassuntoWidget {
+    var vuotoOsservato: VuotoOsservato { .nessunSeguito }
+}
