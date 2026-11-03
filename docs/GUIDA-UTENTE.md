@@ -3,8 +3,9 @@
 Questa guida è per chi usa l'app, non per chi la sviluppa. Segue l'ordine in cui la usi davvero:
 primo avvio, ogni settimana, durante la giornata, dopo la giornata, impostazioni.
 
-L'indirizzo dell'app è **https://app.schieraxi.it**. Si usa dal browser, oppure installata sul telefono:
-[iPhone](INSTALLAZIONE-IPHONE.md), [Android](INSTALLAZIONE-ANDROID.md) (per ora la web app da Chrome).
+L'indirizzo dell'app è **https://app.schieraxi.it**. Si usa dal browser e si può aggiungere alla schermata Home del telefono
+(vedi «Installare SchieraXI dal browser» più sotto). L'app per iPhone è in lavorazione e arriverà presto; quella per Android è in programma.
+Le parti di questa guida sull'app per iPhone e sul widget valgono da quando l'app sarà disponibile.
 
 ## 1. Cosa fa SchieraXI
 
@@ -183,7 +184,7 @@ Se le notifiche smettono di arrivare dopo un cambio di chiave del server: **Disa
 
 ### Widget sull'iPhone
 
-Il widget è il riquadro sulla Home o sulla schermata di blocco. Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se non si collega, in **Impostazioni** dell'app c'è **Collegamento manuale**. Se dice «Serve l'accesso», apri l'app ed entra. Passi: [INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md). Su Android non ci sono widget.
+Il widget è il riquadro sulla Home o sulla schermata di blocco. Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se non si collega, in **Impostazioni** dell'app c'è **Collegamento manuale**. Se dice «Serve l'accesso», apri l'app ed entra. Su Android non ci sono widget.
 
 ## 5. Dopo la giornata: il Diario
 
@@ -228,7 +229,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 **SchieraXI sostituisce l'app di Leghe?** No. Squadre, asta e offerte restano su Leghe.
 
-**Serve una VPN?** No. Solo SideStore su iPhone ne usa una per rinnovare l'app ogni 7 giorni ([INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md)).
+**Serve una VPN?** No.
 
 **Le stime sono sicure?** No. La fascia dice quanto può oscillare e il Diario mostra quanto ci ha preso finora.
 
