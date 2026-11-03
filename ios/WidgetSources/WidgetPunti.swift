@@ -79,13 +79,17 @@ struct VistaPunti: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(g.descrizione)
         case .accessoryRectangular:
+            // una giornata di un'altra stagione: sigla e stagione («G38 · 2025-26»), mai «Giornata 38» da sola (vocabolario)
+            let testa = g.altraStagione.map { g.sigla + " · " + $0 } ?? "Giornata " + String(g.numero)
             VStack(alignment: .leading, spacing: 2) {
-                // qui la stagione non entra: resta il numero (VoiceOver la dice nelle barre del grafico)
-                Text("Giornata \(g.numero): \(Formato.punti(g.fatti)) punti").font(.headline).lineLimit(1)
+                Text(testa + ": " + Formato.punti(g.fatti) + " punti")
+                    .font(.headline).lineLimit(1).minimumScaleFactor(0.8)
                 Text("attesi \(Formato.punti(g.attesi)) · \(scartoTesto(g))").font(.caption).monospacedDigit()
                 GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(g.descrizione)
         case .accessoryInline:
             Label("\(g.sigla) \(Formato.punti(g.fatti)) fatti, \(Formato.punti(g.attesi)) attesi", systemImage: "chart.bar")
                 .accessibilityLabel(g.descrizione)
