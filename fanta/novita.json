@@ -1,5 +1,32 @@
 [
   {
+    "versione": "1.378",
+    "data": "2026-11-03T01:15:12",
+    "titolo": "Diario: le giornate della stagione scorsa restano com'erano",
+    "voci": [
+      "Nel Diario le giornate della stagione scorsa si leggono e basta: niente più «Ho schierato la consigliata» e «Correggi a mano», così non possono cambiare per sbaglio la giornata con lo stesso numero di quest'anno.",
+      "Con due stagioni nel Diario ogni giornata resta la sua: «Correggi a mano» parte dalla formazione giusta e dopo il salvataggio il Diario torna su quella giornata."
+    ],
+    "tecnico": [
+      "Web: POST /api/diario/schierata manda sempre la `stagione` della voce (consigliata e manuale); «Ho schierato…» e «Correggi» solo se `modificabile` non è falso (server vecchio senza il campo: come prima).",
+      "Web: id della carta, `data-correggi` e `data-schierata` = `diario-<stagione>-g<giornata>`; la voce si cerca per stagione + giornata. `apriDiario(giornata, stagione?)`: senza stagione mostra la voce più recente con quel numero (Oggi e «Da fare» sono della stagione in corso).",
+      "Parte web di #176; resta la parte iPhone."
+    ]
+  },
+  {
+    "versione": "1.377",
+    "data": "2026-11-03T00:56:11",
+    "titolo": "Diario: le stagioni passate non toccano quella in corso",
+    "voci": [
+      "Nel Diario, dire cosa hai schierato in una giornata della stagione scorsa non potrà più cambiare per sbaglio la giornata con lo stesso numero di quest'anno. La protezione è pronta e si attiva con il prossimo aggiornamento dell'app."
+    ],
+    "tecnico": [
+      "POST /api/diario/schierata accetta `stagione` facoltativa (AAAA-AA): una stagione diversa da quella in corso risponde 400 senza scrivere niente, prima di coda e limiti; senza `stagione` (client vecchi) vale la stagione in corso, come prima.",
+      "GET /api/diario: ogni voce ha `modificabile` (vero solo per la stagione in corso), per nascondere «Ho schierato…» e «Correggi» sulle voci vecchie.",
+      "Web e iPhone devono ancora mandare `stagione` e usare `modificabile` (issue #176): finché non lo fanno, il tocco su una voce vecchia scrive ancora sulla stagione in corso."
+    ]
+  },
+  {
     "versione": "1.376",
     "data": "2026-11-03T00:13:51",
     "titolo": "Widget: «gioca N%» per i giocatori in dubbio della rosa",
