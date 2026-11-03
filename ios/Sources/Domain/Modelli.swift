@@ -51,6 +51,9 @@ struct Giocatore: Decodable, Identifiable {
     let percentuale: Double?
     let nota: String?
     let motivi: [String]?
+    /// L'etichetta pronta dal server (`fanta/etichette.py`, `{codice, testo, tono}`): il suo testo va mostrato com'è, al posto
+    /// della titolarità composta qui. Facoltativa e tollerante: un server vecchio non la manda, una forma strana vale «niente».
+    let etichetta: Avviso.EtichettaPronta?
     /// Solo nella scheda del giocatore: la giornata a cui si riferisce la previsione.
     let giornata: Int?
     /// Solo nella scheda: la stessa giornata con il numero della lega (facoltativo, si preferisce a `giornata`).

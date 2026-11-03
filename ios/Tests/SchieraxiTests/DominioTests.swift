@@ -36,31 +36,7 @@ final class DominioTests: XCTestCase {
         XCTAssertEqual(Forma.calcola(stabile)?.ultime.map(\.giornata), [2, 3, 4, 5, 6])
     }
 
-    // MARK: etichette
-
-    func testEtichetteDiTitolaritaEDiffida() throws {
-        let g = try giocatore(1, "Rossi", titolarita: "titolare", extra: "\"stato\": \"titolare\", \"percentuale\": 85.0, \"diffidato\": true, \"motivi\": [\"titolare al 85%\", \"squalifica a rischio\"],")
-        let e = g.etichette
-        XCTAssertEqual(e.map(\.testo), ["Probabile titolare", "Diffidato", "Squalifica a rischio"], "solo parole: l'unica percentuale è «gioca N%»")
-        XCTAssertEqual(e.first?.gravita, .normale)
-        XCTAssertEqual(e[1].gravita, .attenzione)
-    }
-
-    func testEtichetteGraviPerFuoriEImprobabile() throws {
-        let fuori = try giocatore(1, "Rossi", titolarita: "fuori", extra: "\"stato\": \"infortunato\", \"percentuale\": 0.0, \"motivi\": [\"infortunato\"],")
-        XCTAssertEqual(fuori.etichette.map(\.testo), ["Fuori", "Infortunato"])
-        XCTAssertTrue(fuori.etichette.allSatisfy { $0.gravita == .grave })
-        let incerto = try giocatore(2, "Bianchi", titolarita: "ballottaggio", extra: "\"dubbio\": true,")
-        XCTAssertEqual(incerto.etichette.map(\.testo), ["In ballottaggio", "In dubbio"])
-        // un motivo con una percentuale non diventa un'etichetta
-        let conNumero = try giocatore(3, "Verdi", titolarita: "ballottaggio", extra: "\"motivi\": [\"ballottaggio al 55%\", \"dubbio: affaticamento\"],")
-        XCTAssertEqual(conNumero.etichette.map(\.testo), ["In ballottaggio", "Dubbio: affaticamento"])
-        // a giornata iniziata: lo stato della partita al posto delle probabili
-        let giocato = try giocatore(4, "Neri", titolarita: nil, extra: "\"stato_partita\": \"fatto\",")
-        XCTAssertEqual(giocato.etichette.map(\.testo), ["Ha giocato"])
-        let rinviata = try giocatore(5, "Gialli", titolarita: nil, extra: "\"stato_partita\": \"rinviata\",")
-        XCTAssertEqual(rinviata.etichette.first?.gravita, .attenzione)
-    }
+    // Le etichette sono passate a Swift Testing: `EtichetteGiocatoreTests`.
 
     // MARK: ballottaggi, testo, nome corto
 

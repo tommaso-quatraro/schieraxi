@@ -31,6 +31,12 @@ struct Voce: TimelineEntry {
 
     /// Dove porta il tocco: alla schermata «Collega il widget» se va collegato, altrimenti dove porterebbe di solito.
     func tocco(_ normale: URL?) -> URL? { daCollegare ? CollegamentoWidget.url : normale }
+
+    /// La stessa voce in un altro istante: i dati sono gli stessi, cambia solo l'ora con cui si contano conto alla rovescia e date.
+    func spostata(a data: Date) -> Voce {
+        Voce(date: data, riassunto: riassunto, datiSalvati: datiSalvati, accessoRichiesto: accessoRichiesto,
+             indirizzoMancante: indirizzoMancante, diagnostica: diagnostica, widget: widget)
+    }
 }
 
 /// Le impostazioni del widget: niente da compilare. Il collegamento è automatico; il codice (lo copia l'app) compare solo
@@ -190,6 +196,10 @@ enum ScaricaOggi {
 
 /// Decide quando il widget si ricarica: ogni mezz'ora, e di nuovo al calcio d'inizio (per passare da conto alla rovescia a «In corso»).
 struct Fornitore: AppIntentTimelineProvider {
+    /// Per i widget con il conto alla rovescia («6 h 44 min», come la web): una voce in più per ogni minuto in cui il testo cambia,
+    /// per l'ora che viene (`Quando.istantiDelConto`). Sono voci della stessa timeline, non ricariche: non toccano il limite di iOS.
+    var conConto = false
+
     func placeholder(in context: Context) -> Voce {
         Voce(date: Date(), riassunto: .esempio, datiSalvati: false)
     }
@@ -220,9 +230,11 @@ struct Fornitore: AppIntentTimelineProvider {
         if let c = prossimoCalcio, c > adesso, c < prossimo { prossimo = c }
         if primo.indirizzoMancante { prossimo = adesso.addingTimeInterval(60 * 60) }
         if let inizio = primo.riassunto?.inizio, inizio > adesso {
-            var dopo = primo
-            dopo = Voce(date: inizio, riassunto: primo.riassunto, datiSalvati: primo.datiSalvati, accessoRichiesto: primo.accessoRichiesto, diagnostica: primo.diagnostica, widget: primo.widget)
-            voci.append(dopo)
+            if conConto {
+                // senza voci il testo resterebbe fermo fino alla prossima ricarica (che iOS può rimandare)
+                voci += Quando.istantiDelConto(fino: inizio, adesso: adesso, entro: adesso.addingTimeInterval(60 * 60)).map { primo.spostata(a: $0) }
+            }
+            voci.append(primo.spostata(a: inizio))
             if inizio < prossimo { prossimo = inizio.addingTimeInterval(60) }
         }
         return Timeline(entries: voci, policy: .after(prossimo))

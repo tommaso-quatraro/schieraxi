@@ -1,22 +1,5 @@
 import SwiftUI
 
-/// Il conto alla rovescia alla prima partita: ore, minuti e secondi se manca meno di un giorno, altrimenti giorni e ore.
-/// Lo usano il riquadro principale di Oggi e l'accessorio sotto la barra delle schede.
-struct TestoConto: View {
-    let inizio: Date
-    let adesso: Date
-
-    var body: some View {
-        // `adesso` è l'ora dell'app (`Orologio`); questi testi contano da soli con l'orologio di sistema: si passano gli istanti
-        // di sistema corrispondenti (sono gli stessi fuori dalle fotografie dal vero).
-        if inizio.timeIntervalSince(adesso) < 24 * 3600 {
-            Text(timerInterval: Orologio.perSistema(adesso)...Orologio.perSistema(inizio), countsDown: true).monospacedDigit()
-        } else {
-            Text(Orologio.perSistema(inizio), style: .relative)
-        }
-    }
-}
-
 extension View {
     /// Su iOS 26: una piccola barra di vetro sopra le schede con la giornata e il conto alla rovescia; un tocco apre la formazione.
     @ViewBuilder
@@ -63,7 +46,7 @@ struct AccessorioGiornata: View {
                 let ora = Orologio.daSistema(contesto.date)
                 HStack(spacing: 6) {
                     Text("Giornata \(numero)").font(.subheadline.weight(.semibold))
-                    if inizio > ora {
+                    if Quando.contoAllaRovescia(fino: inizio, adesso: ora) != nil {
                         TestoConto(inizio: inizio, adesso: ora)
                             .font(.subheadline).foregroundStyle(Color.testoSecondario)
                     } else {
