@@ -1,8 +1,8 @@
 {
   "titolo": "Etichette dei giocatori più leggibili",
   "voci": [
-    "Le scritte verdi, arancio e rosse nelle etichette dei giocatori («Probabile titolare», «In ballottaggio», «Fuori») sono un po' più scure nel tema chiaro: ora si leggono bene anche nella scheda del giocatore. Nel tema scuro il rosso è un po' più chiaro. I colori e il loro significato non cambiano.",
-    "Le etichette sono uguali sul web e sull'iPhone."
+    "Nel tema chiaro le scritte delle etichette dei giocatori («Probabile titolare», «In ballottaggio», «Fuori») sono un po' più scure: si leggono bene anche nella scheda del giocatore.",
+    "Nel tema scuro il rosso delle etichette è un po' più chiaro. Colori e significato non cambiano, sul web e sull'iPhone."
   ],
   "tecnico": [
     "Issue #234: contrasto della scritta delle pillole `.etichetta` almeno 4,5:1 (WCAG 2.2, 1.4.3, testo da 12 px) su carta, fondo piatto, foglio della scheda e carta nel foglio, in chiaro e in scuro. Prima, nel chiaro: verde 4,02 e arancio 4,40 sulla carta, 3,47 e 3,78 sul foglio della scheda (le pillole sotto il nome stanno direttamente sul foglio).",
