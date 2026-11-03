@@ -77,9 +77,7 @@ struct GraficoPunti: View {
     @Environment(\.renderForzato) private var modoForzato
     private var modo: WidgetRenderingMode { modoForzato ?? modoSistema }
 
-    private var dati: [PuntiGiornata] {
-        Array(giornate.filter { $0.fatti != nil || $0.attesi != nil }.sorted { $0.giornata < $1.giornata }.suffix(massimo))
-    }
+    private var dati: [PuntiGiornata] { PuntiGiornata.perGrafico(giornate, massimo: massimo) }
 
     private var scala: (base: Double, tetto: Double) {
         let valori = dati.flatMap { [$0.attesi, $0.fatti].compactMap { $0 } }
@@ -110,7 +108,7 @@ struct GraficoPunti: View {
                     if conEtichette {
                         Text(Self.scarto(g).map { Formato.conSegno($0) } ?? "—")
                             .monospacedDigit().fontWidget(10, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
-                        Text("G\(g.giornata)").fontWidget(9).foregroundStyle(TintaWidget.testo2)
+                        Text(g.sigla).fontWidget(9).foregroundStyle(TintaWidget.testo2)
                     }
                 }
                 .frame(maxWidth: .infinity)
