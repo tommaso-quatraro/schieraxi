@@ -42,19 +42,24 @@ struct ImpostazioniView: View {
 
     var body: some View {
         NavigationStack(path: $percorso) {
-            List {
-                TitoloNellaPagina()
-                AccountSezione(fogli: fogli)
-                SessioneMinimaSezione(nonRaggiungibile: vm.info.datiSalvati != nil || vm.info.errore != nil)
-                if ProvaEsempio.attiva { SezioneProvaEsempio() }
-                sezioneApp
-                NuovaVersioneSezione()
-                sezioneInformazioni
-                sezioneAvanzateLink
+            ScrollViewReader { proxy in
+                List {
+                    TitoloNellaPagina()
+                    AccountSezione(fogli: fogli)
+                    SessioneMinimaSezione(nonRaggiungibile: vm.info.datiSalvati != nil || vm.info.errore != nil)
+                    if ProvaEsempio.attiva { SezioneProvaEsempio() }
+                    sezioneApp
+                    NuovaVersioneSezione()
+                    sezioneInformazioni
+                    sezioneAvanzateLink
+                }
+                .scrollContentBackground(.hidden)
+                .background(Sfondo())
+                .demoInFondo()
+                // fotografia `accesso-account-fondo`: la fine di «Il tuo account», con «Esci»
+                .demoScorriA(RigaEsci.idDemo, proxy: proxy, schermate: ["accesso-account"], inFondo: true, ancora: .center,
+                             pronto: sessione.utente != nil)
             }
-            .scrollContentBackground(.hidden)
-            .background(Sfondo())
-            .demoInFondo()
             .titoloPagina("Impostazioni")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } }
