@@ -144,7 +144,7 @@ def test_il_thread_fa_anche_il_giro_dei_risultati(tmp_path, monkeypatch):
         fermo.set()
         return True
 
-    t = threading.Thread(target=pianificatore.sorveglia, args=(fermo, lambda: [], _db, lambda: True, lambda: None, 0, lambda: H(7, 17, 30)),
+    t = threading.Thread(daemon=True, target=pianificatore.sorveglia, args=(fermo, lambda: [], _db, lambda: True, lambda: None, 0, lambda: H(7, 17, 30)),
                          kwargs={"risultati": risultati})
     t.start()
     t.join(10)

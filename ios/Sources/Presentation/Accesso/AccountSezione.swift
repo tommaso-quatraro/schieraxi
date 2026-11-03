@@ -206,7 +206,7 @@ struct AccountSezione: View {
                     Label(TestiAccount.eliminaTitolo, systemImage: "trash").labelStyle(.voce(.red)).frame(minHeight: Tema.areaTocco)
                 }
                 .accessibilityIdentifier("account-elimina")
-                RigaEsci()
+                RigaEsci().id(RigaEsci.idDemo)
                 if let messaggio = fogli.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
             }
             // niente .sheet qui: su una Section dentro una List finirebbe su ogni riga (vedi `FoglioAccount`)
@@ -218,6 +218,8 @@ struct AccountSezione: View {
 /// «Esci», l'ultima riga di «Il tuo account», come sulla web. Sta dentro la sezione dell'account (che c'è solo con un account:
 /// senza account c'è `SessioneMinimaSezione`).
 struct RigaEsci: View {
+    /// Dove scorre la foto `accesso-account-fondo` (vedi `ImpostazioniView`); è anche l'identificativo per i test.
+    static let idDemo = "account-esci"
     @EnvironmentObject private var sessione: SessioneAccount
     @State private var chiediEsci = false
 
@@ -226,6 +228,7 @@ struct RigaEsci: View {
             Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
         }
         .accessibilityHint("Esci dal tuo account su questo telefono")
+        .accessibilityIdentifier(Self.idDemo)
         // sul pulsante, non sulla Section (vedi `FoglioAccount`)
         .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
             Button("Esci", role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }

@@ -140,7 +140,7 @@ def _db():
 def _scena(monkeypatch, spec):
     prev, rose = _rosa(spec)
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 9)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(consigli, "previsioni", lambda db, r, g=None: (prev, 9, True))
     mandati = []
     manda = lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo, tag)) or True    # noqa: E731
@@ -191,6 +191,6 @@ def test_copertura_si_ferma_alla_scadenza_non_alla_partita(tmp_path, monkeypatch
 def test_copertura_usa_la_giornata_della_lega(tmp_path, monkeypatch):
     """Prima che la lega parta la giornata da giocare è la sua prima (qui 9), non la prossima della Serie A (qui 1)."""
     rose, mandati, manda = _scena(monkeypatch, _con(_base(), "P", 2))
-    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 1)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 1)
     assert notifiche.copertura(_db(), Regole(prima_giornata_lega=9), rose, ADESSO, tmp_path / "n.json", manda, {})
     assert len(mandati) == 1

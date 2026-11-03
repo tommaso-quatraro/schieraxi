@@ -3581,14 +3581,17 @@ function sessioneScaduta() {
   svuotaDatiLocali().then(() => mostraAccesso(t("accesso.sessione_finita")));
 }
 
-const campoAccesso = (id, etichetta, tipo, extra = "") =>
-  `<label class="accesso-campo"><span class="debole piccolo">${etichetta}</span><input class="campo-testo" id="${id}" type="${tipo}" ${extra}></label>`;
+// `aiuto`: la spiegazione sotto il campo, fuori dall'etichetta (non entra nel nome del campo) e legata con aria-describedby
+const campoAccesso = (id, etichetta, tipo, extra = "", aiuto = "") =>
+  `<label class="accesso-campo"><span class="debole piccolo">${etichetta}</span><input class="campo-testo" id="${id}" type="${tipo}" ${extra}${aiuto ? ` aria-describedby="${id}-aiuto"` : ""}></label>`
+  + (aiuto ? `<div class="debole piccolo accesso-aiuto" id="${id}-aiuto">${aiuto}</div>` : "");
 const CAMPO_NOME = () => campoAccesso("ac-nome", t("accesso.nome_utente"), "text", 'autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" required');
 const SENZA_AIUTI = 'autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="40" required';
 const CAMPO_PW = 'autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200" required';
 const SCHEDE_ACCESSO = ["accedi", "registra"];          // «Password dimenticata» è un link sotto il modulo, non una scheda
 const CAMPO_EMAIL = (id, facoltativa) => campoAccesso(id, facoltativa ? t("accesso.email_facoltativa") : t("accesso.email"), "email",
-  `autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254"${facoltativa ? "" : " required"}`);
+  `autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254"${facoltativa ? "" : " required"}`,
+  facoltativa ? t("accesso.email_facoltativa_aiuto") : "");
 const CAMPO_CODICE_EMAIL = (id) => campoAccesso(id, t("accesso.codice_email"), "text",
   'autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocapitalize="none" autocorrect="off" spellcheck="false" required');
 // `extra.sub`: passo dentro la scheda (registra: "verifica"; recupero: "codice" | "email" | "email-codice"); `extra.email`: indirizzo del passo
