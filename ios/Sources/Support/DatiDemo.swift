@@ -1,18 +1,26 @@
 import Foundation
 
-// Dati finti ma verosimili per la modalità demo (argomento di lancio `-DEMO`, vedi Demo.swift): una lega da 8 squadre,
-// la mia rosa da 25, giornata 11 con partite, avvisi, mercato, scambi, regole, stato dei dati. Le date sono relative a "adesso":
-// la prima partita è sempre tra qualche ora, così il conto alla rovescia di Oggi si vede anche se lo scatto è fatto un altro giorno.
+// Le risposte del server finto della modalità demo (argomento di lancio `-DEMO`, vedi Demo.swift) e della «Prova con dati di
+// esempio»: una lega da 8 squadre, la mia rosa da 25, giornata 11 con partite, avvisi, mercato, scambi, regole, stato dei dati.
+// I fatti della lega (calciatori, partite, date, avvisi, Diario, scambio, svincolo, partite in diretta) stanno in `LegaDemo.swift`,
+// gli stessi dei widget: qui si costruiscono le risposte dell'app. Le date sono relative ad «adesso»: la prima partita è sempre
+// tra qualche ora, così il conto alla rovescia di Oggi si vede anche se lo scatto è fatto un altro giorno.
 
 extension FinteServer {
     /// Server della modalità demo (costruito una volta sola all'avvio).
-    static let demo: FinteServer = FinteServer(risposte: DatiDemo.risposte(adesso: Date()), binari: { DemoImmagini.dati(per: $0) })
+    static let demo: FinteServer = demoFissata(adesso: Date())
+
+    /// La stessa demo costruita in un istante preciso: i test confrontano app e widget (`LegaDemo.widget`) nello stesso momento.
+    static func demoFissata(adesso: Date) -> FinteServer {
+        FinteServer(risposte: DatiDemo.risposte(adesso: adesso), binari: { DemoImmagini.dati(per: $0) })
+    }
 
     /// Le fotografie delle fasi della giornata (`-DEMO_SCHERMATA oggi-in-corso` e `oggi-finita`): la stessa demo, con Oggi durante
     /// e dopo la giornata. Ognuna ha il suo indirizzo finto, così la copia salvata di Oggi non si mescola. Nil per le altre schermate.
-    static func demoFase(_ schermata: String?) -> FinteServer? {
-        let adesso = Date()
-        var server = FinteServer.demo
+    /// `fissato`: l'istante della demo (solo i test); senza, adesso.
+    static func demoFase(_ schermata: String?, adesso fissato: Date? = nil) -> FinteServer? {
+        let adesso = fissato ?? Date()
+        var server = fissato.map { demoFissata(adesso: $0) } ?? FinteServer.demo
         switch schermata ?? "" {
         case "oggi-in-corso":
             server.risposte["/api/oggi"] = DatiDemo.oggiInCorso(adesso: adesso)
@@ -45,118 +53,12 @@ extension FinteServer {
     }
 }
 
-private struct Calciatore {
-    let id: Int
-    let nome: String
-    let ruolo: String
-    let squadra: String
-    var costo: Int = 0
-    var quotazione: Int = 0
-    var pVoto: Double = 0.85
-    var punti: Double = 5.5
-    var dubbio: Bool = false
-    var diffidato: Bool = false
-    var assente: Bool = false
-}
+private typealias Calciatore = CalciatoreDemo
+/// In questo file `DatiDemo` è la lega della demo vista dall'app: le risposte del server finto.
+private typealias DatiDemo = LegaDemo
 
-/// Un calciatore con tutti i valori scritti a mano.
-private func cal(_ id: Int, _ nome: String, _ ruolo: String, _ squadra: String, costo: Int, pVoto: Double, punti: Double,
-                 dubbio: Bool = false, diffidato: Bool = false, assente: Bool = false) -> Calciatore {
-    Calciatore(id: id, nome: nome, ruolo: ruolo, squadra: squadra, costo: costo, quotazione: 0, pVoto: pVoto, punti: punti,
-               dubbio: dubbio, diffidato: diffidato, assente: assente)
-}
-
-/// Un calciatore di contorno: previsione ricavata dall'id, così non serve scriverla.
-private func alt(_ id: Int, _ nome: String, _ ruolo: String, _ squadra: String) -> Calciatore {
-    let punti = 4.6 + Double((id * 7) % 23) / 10.0
-    let pVoto = 0.70 + Double((id * 3) % 27) / 100.0
-    return Calciatore(id: id, nome: nome, ruolo: ruolo, squadra: squadra, costo: 4 + (id * 7) % 26, quotazione: 0, pVoto: pVoto, punti: punti)
-}
-
-private enum DatiDemo {
-    static let nomeMia = "Schiera FC"
-    static let altreSquadre = ["Real Madrink", "Atletico Divano", "Dinamo Pizza", "AC Pigra", "Inter Nos", "Borgo Rossi United",
-                               "Gli Amici del Bar Sport Centrale"]
-    static let giornata = 11
+private extension LegaDemo {
     static let giornate = [11, 12, 13, 14, 15]
-
-    // MARK: - Calciatori
-
-    /// La mia rosa (25): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti.
-    static let miaRosa: [Calciatore] = [
-        cal(101, "Ivo Sorvani", "P", "inter", costo: 12, pVoto: 0.98, punti: 6.1),
-        cal(102, "Milo Magrenti", "P", "milan", costo: 22, pVoto: 0.97, punti: 5.8),
-        cal(103, "Marcello Carsetti", "P", "atalanta", costo: 14, pVoto: 0.96, punti: 5.6),
-        cal(104, "Alvise Bastrani", "D", "inter", costo: 28, pVoto: 0.96, punti: 6.4, diffidato: true),
-        cal(105, "Fabio Dimarzi", "D", "inter", costo: 31, pVoto: 0.90, punti: 6.9),
-        cal(106, "Glauco Brevisi", "D", "juventus", costo: 20, pVoto: 0.93, punti: 6.0),
-        cal(107, "Aurelio Buonvicini", "D", "napoli", costo: 19, pVoto: 0.92, punti: 5.9),
-        cal(108, "Gianni Di Corvara", "D", "napoli", costo: 17, pVoto: 0.94, punti: 6.2),
-        cal(109, "Rolf Gostein", "D", "fiorentina", costo: 9, pVoto: 0.0, punti: 0.0, assente: true),
-        cal(110, "Adriano Cambrisi", "D", "juventus", costo: 15, pVoto: 0.85, punti: 5.7),
-        cal(111, "Ewan Ndolani", "D", "roma", costo: 8, pVoto: 0.78, punti: 5.2),
-        cal(112, "Nestore Barlesi", "C", "inter", costo: 34, pVoto: 0.95, punti: 7.0),
-        cal(113, "Hamit Çalvaroğlu", "C", "inter", costo: 36, pVoto: 0.93, punti: 7.2),
-        cal(114, "Teo Kloosmeijer", "C", "juventus", costo: 21, pVoto: 0.88, punti: 6.3),
-        cal(115, "Cesare Pulinski", "C", "milan", costo: 38, pVoto: 0.91, punti: 6.8),
-        cal(116, "Stanko Lobrenka", "C", "napoli", costo: 10, pVoto: 0.90, punti: 5.6),
-        cal(117, "Tarek Reimvaldt", "C", "milan", costo: 24, pVoto: 0.89, punti: 6.2),
-        cal(118, "Nereo Fagiani", "C", "fiorentina", costo: 6, pVoto: 0.0, punti: 0.0, assente: true),
-        cal(119, "Moussa Kerabo", "C", "roma", costo: 13, pVoto: 0.84, punti: 5.5),
-        cal(120, "Leonel Marténi", "A", "inter", costo: 80, pVoto: 0.62, punti: 7.9, dubbio: true),
-        cal(121, "Marvin Thorvan", "A", "inter", costo: 52, pVoto: 0.90, punti: 7.1),
-        cal(122, "Adebayo Lorkman", "A", "atalanta", costo: 41, pVoto: 0.87, punti: 7.0),
-        cal(123, "Renato Lemão", "A", "milan", costo: 45, pVoto: 0.88, punti: 6.9),
-        cal(124, "Darko Vlasenić", "A", "juventus", costo: 33, pVoto: 0.65, punti: 5.4, dubbio: true),
-        cal(125, "Mosè Kervan", "A", "fiorentina", costo: 18, pVoto: 0.82, punti: 5.8),
-    ]
-
-    /// Svincolati (non sono in nessuna squadra della lega).
-    static let liberi: [Calciatore] = [
-        cal(201, "Aldo Pinarotti", "A", "sassuolo", costo: 0, pVoto: 0.86, punti: 6.4),
-        cal(202, "Marcello Polinardo", "C", "napoli", costo: 0, pVoto: 0.81, punti: 6.0),
-        cal(203, "Mauro Retalli", "A", "genoa", costo: 0, pVoto: 0.90, punti: 6.9),
-        cal(204, "Nenad Krslić", "A", "lecce", costo: 0, pVoto: 0.88, punti: 6.2),
-        cal(205, "Marzio Zaviani", "C", "lazio", costo: 0, pVoto: 0.89, punti: 6.1),
-        cal(206, "Aron Mercati", "P", "napoli", costo: 0, pVoto: 0.96, punti: 5.7),
-        cal(207, "Manuel Brisciani", "C", "atalanta", costo: 0, pVoto: 0.83, punti: 5.6),
-        cal(208, "Furio Gattoni", "D", "juventus", costo: 0, pVoto: 0.84, punti: 5.5),
-        cal(209, "Pino Comurzi", "D", "fiorentina", costo: 0, pVoto: 0.88, punti: 5.4),
-        cal(210, "Nando Rovalli", "C", "lazio", costo: 0, pVoto: 0.90, punti: 5.8),
-        cal(211, "Egon Audrelli", "P", "cremonese", costo: 0, pVoto: 0.95, punti: 5.1),
-        cal(212, "Ludovico Lucarni", "A", "udinese", costo: 0, pVoto: 0.79, punti: 5.9),
-        cal(213, "Michele Gabbrosi", "D", "milan", costo: 0, pVoto: 0.66, punti: 5.0, dubbio: true),
-        cal(214, "Aksel Sandemaker", "C", "milan", costo: 0, pVoto: 0.82, punti: 5.7),
-        cal(215, "Gilberto Mancarini", "D", "roma", costo: 0, pVoto: 0.86, punti: 5.5),
-    ]
-
-    /// Calciatori delle altre squadre della lega.
-    static let altri: [Calciatore] = [
-        alt(301, "Walter Falcherini", "P", "lecce"), alt(302, "Massimo Silverni", "P", "udinese"),
-        alt(303, "Mirco Di Gradella", "P", "juventus"), alt(304, "Enea Caprisi", "P", "cagliari"),
-        alt(305, "Nelson Morlani", "D", "atalanta"), alt(306, "Massimo Darvini", "D", "inter"),
-        alt(307, "Leone Pellari", "D", "lazio"), alt(308, "Duilio Calbresi", "D", "bologna"),
-        alt(309, "Stijn Beekmans", "D", "bologna"), alt(310, "Mauro Gilbaro", "D", "lazio"),
-        alt(311, "Patrizio Mazzorchi", "D", "napoli"), alt(312, "Livio Spinarola", "D", "napoli"),
-        alt(313, "Mats de Valk", "C", "atalanta"), alt(314, "Edvanson", "C", "atalanta"),
-        alt(315, "Walden McKerrin", "C", "juventus"), alt(316, "Mauro Locardi", "C", "juventus"),
-        alt(317, "Mathis Guermadi", "C", "lazio"), alt(318, "Dino Cavaldi", "C", "lazio"),
-        alt(319, "Lyle Fernshaw", "C", "bologna"), alt(320, "Reto Fraunler", "C", "bologna"),
-        alt(321, "Sandy McTarran", "C", "napoli"), alt(322, "Koen De Vlaam", "C", "napoli"),
-        alt(323, "Matías Sorlé", "C", "roma"), alt(324, "Lamberto Pelozzi", "C", "roma"),
-        alt(325, "Kaan Yurdız", "A", "juventus"), alt(326, "Joel Davenant", "A", "juventus"),
-        alt(327, "Rolando Lumbaku", "A", "napoli"), alt(328, "Pablo Dobrala", "A", "roma"),
-        alt(329, "Artur Dovrenko", "A", "roma"), alt(330, "Santiago Castrel", "A", "bologna"),
-        alt(331, "Nils Pazor", "A", "como"), alt(332, "Pelayo", "A", "lazio"),
-        alt(333, "Giacomo Scalmana", "A", "atalanta"), alt(334, "Alvar Hrafnsson", "A", "fiorentina"),
-        alt(335, "Rune Højvang", "A", "napoli"), alt(336, "Lorenzo Verdi", "A", "roma"),
-    ]
-
-    static var tutti: [Calciatore] { miaRosa + liberi + altri }
-
-    static func calciatore(_ id: Int) -> Calciatore {
-        tutti.first { $0.id == id } ?? miaRosa[0]
-    }
 
     /// Rosa di un'altra squadra (indice 0...6): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti, ruotando la scelta.
     static func rosaAltra(_ k: Int) -> [Calciatore] {
@@ -175,45 +77,9 @@ private enum DatiDemo {
 
     // MARK: - Partite
 
-    static let incontri: [(casa: String, trasferta: String)] = [
-        ("inter", "roma"), ("milan", "juventus"), ("napoli", "atalanta"), ("lazio", "fiorentina"), ("bologna", "torino"),
-        ("genoa", "como"), ("udinese", "parma"), ("cagliari", "verona"), ("lecce", "sassuolo"), ("pisa", "cremonese"),
-    ]
-
     /// Dal più forte al più debole (serve per la difficoltà del calendario).
     static let forza = ["inter", "napoli", "milan", "juventus", "atalanta", "roma", "bologna", "lazio", "fiorentina", "como",
                         "torino", "udinese", "genoa", "parma", "cagliari", "verona", "lecce", "sassuolo", "pisa", "cremonese"]
-
-    static func avversario(di squadra: String) -> (nome: String, inCasa: Bool)? {
-        for i in incontri {
-            if i.casa == squadra { return (i.trasferta, true) }
-            if i.trasferta == squadra { return (i.casa, false) }
-        }
-        return nil
-    }
-
-    // MARK: - Date
-
-    /// Il calcio d'inizio cade su un quarto d'ora (18:00, 18:15...), come le partite vere: mai «18:57».
-    static func quartoDOra(_ data: Date) -> Date {
-        let quarto = 15.0 * 60
-        return Date(timeIntervalSinceReferenceDate: (data.timeIntervalSinceReferenceDate / quarto).rounded(.up) * quarto)
-    }
-
-    static func formatta(_ data: Date, _ formato: String) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone(identifier: "Europe/Rome")
-        f.dateFormat = formato
-        return f.string(from: data)
-    }
-
-    // MARK: - JSON
-
-    static func json(_ oggetto: Any) -> String {
-        let dati = (try? JSONSerialization.data(withJSONObject: oggetto, options: [.sortedKeys])) ?? Data("{}".utf8)
-        return String(decoding: dati, as: UTF8.self)
-    }
 
     /// Un giocatore come lo manda il server per formazioni, classifiche e avvisi.
     static func giocatore(_ p: Calciatore, conAvversario: Bool = true, conProprietario: Bool = false) -> [String: Any] {
@@ -225,7 +91,7 @@ private enum DatiDemo {
             "assist_attesi": assistAttesi(p),
         ]
         d["fv_atteso"] = p.assente ? 0.0 : p.punti + 0.6 + (p.ruolo == "A" ? 0.5 : 0)
-        d["voto_atteso"] = 5.9 + (p.punti - 5.0) / 8.0
+        d["voto_atteso"] = p.votoAtteso
         d["porta_inviolata"] = p.ruolo == "P" ? 0.34 : 0.0
         d["p_gol"] = min(0.6, golAttesi(p) * 0.85)
         d["p_assist"] = min(0.4, assistAttesi(p) * 0.9)
@@ -237,18 +103,20 @@ private enum DatiDemo {
         d["gol_squadra"] = 1.8
         d["gol_avversario"] = 1.2
         d["data_partita"] = formatta(quartoDOra(riferimento.addingTimeInterval(7 * 3600)), "yyyy-MM-dd HH:mm")
-        // titolarità: come nelle probabili formazioni
+        // titolarità: come nelle probabili formazioni (stato e percentuale come nel riassunto dei widget, `CalciatoreDemo`)
+        d["stato"] = p.statoProbabili
+        d["percentuale"] = p.percentualeProbabili
         if p.assente {
-            d["titolarita"] = "fuori"; d["stato"] = "infortunato"; d["percentuale"] = 0.0; d["motivi"] = ["infortunato"]
+            d["titolarita"] = "fuori"; d["motivi"] = ["infortunato"]
         } else if p.dubbio {
             // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque).
             // Come il server: il motivo della titolarità e l'etichetta pronta «In dubbio · gioca N%» (`fanta/etichette.py`).
-            d["titolarita"] = "ballottaggio"; d["stato"] = "titolare"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["titolare in ballottaggio"]
+            d["titolarita"] = "ballottaggio"; d["motivi"] = ["titolare in ballottaggio"]
             d["etichetta"] = ["codice": "in_dubbio", "testo": DubbioRiassunto.inDubbio(p.pVoto), "tono": "attenzione"]
         } else if p.pVoto < 0.75 {
-            d["titolarita"] = "improbabile"; d["stato"] = "panchina"; d["percentuale"] = (p.pVoto * 100).rounded(); d["motivi"] = ["parte dalla panchina"]
+            d["titolarita"] = "improbabile"; d["motivi"] = ["parte dalla panchina"]
         } else {
-            d["titolarita"] = "titolare"; d["stato"] = "titolare"; d["percentuale"] = 90.0; d["motivi"] = ["titolare"]
+            d["titolarita"] = "titolare"; d["motivi"] = ["titolare"]
         }
         d["quotazione"] = quotazione(p)
         if conAvversario, let a = avversario(di: p.squadra) {
@@ -320,10 +188,6 @@ private enum DatiDemo {
         return p.punti / 45.0
     }
 
-    static func quotazione(_ p: Calciatore) -> Int {
-        p.quotazione > 0 ? p.quotazione : 3 + Int(p.punti * 2.0) + (p.id % 5)
-    }
-
     /// Giocatore breve (scambi e mercato).
     static func breve(_ id: Int) -> [String: Any] {
         let p = calciatore(id)
@@ -389,36 +253,6 @@ private enum DatiDemo {
 
     // MARK: - Formazione
 
-    struct Modulo {
-        let nome: String
-        let titolari: [Int]
-    }
-
-    static let moduli: [Modulo] = [
-        Modulo(nome: "3-4-3", titolari: [101, 104, 106, 107, 112, 113, 114, 115, 120, 121, 122]),
-        Modulo(nome: "4-3-3", titolari: [101, 104, 105, 106, 107, 112, 113, 115, 120, 121, 122]),
-        Modulo(nome: "3-5-2", titolari: [101, 104, 106, 107, 112, 113, 114, 115, 116, 120, 121]),
-    ]
-
-    /// La panchina (7): un portiere e i sei migliori disponibili tra gli altri.
-    static func panchina(per titolari: [Int]) -> [Int] {
-        let fuori = miaRosa.filter { !titolari.contains($0.id) && !$0.assente }
-        var scelti: [Calciatore] = []
-        if let portiere = fuori.first(where: { $0.ruolo == "P" }) { scelti.append(portiere) }
-        let resto: [Calciatore] = fuori.filter { $0.ruolo != "P" }.sorted { $0.punti > $1.punti }
-        scelti.append(contentsOf: resto.prefix(6))
-        return scelti.map { $0.id }
-    }
-
-    static func punteggio(_ ids: [Int]) -> Double {
-        ids.reduce(0.0) { $0 + calciatore($1).punti }
-    }
-
-    /// La fascia dei punti attesi, come la manda il server: da circa -8 a +8,5 attorno ai punti attesi, 8 volte su 10.
-    static func fascia(_ attesi: Double, indicativo: Bool = true) -> [String: Any] {
-        ["basso": attesi - 8, "alto": attesi + 8.5, "confidenza": 0.8, "indicativo": indicativo]
-    }
-
     static func formazione(iniziata: Bool = false) -> String {
         let base = moduli[0]
         let ids = base.titolari
@@ -471,27 +305,15 @@ private enum DatiDemo {
     static func oggi(adesso: Date) -> String { json(oggiDati(adesso: adesso)) }
 
     static func oggiDati(adesso: Date) -> [String: Any] {
-        let inizio = quartoDOra(adesso.addingTimeInterval(7 * 3600))
+        let primaPartita = inizio(adesso: adesso)
         let ids = moduli[0].titolari
-        // minuti di distanza dalla prima partita
-        let scarti: [Double] = [0, 135, 1260, 1395, 1530, 1650, 2700, 2835, 2835, 2970]
+        // gli orari delle partite e gli avvisi: gli stessi del widget (`LegaDemo`)
         var partite: [[String: Any]] = []
-        for (i, m) in incontri.enumerated() {
-            partite.append(["data": formatta(inizio.addingTimeInterval(scarti[i] * 60), "yyyy-MM-dd HH:mm"),
-                            "casa": m.casa, "trasferta": m.trasferta, "giocata": false])
+        for (i, ora) in orari(adesso: adesso).enumerated() {
+            partite.append(["data": formatta(ora, "yyyy-MM-dd HH:mm"),
+                            "casa": incontri[i].casa, "trasferta": incontri[i].trasferta, "giocata": false])
         }
-        let avvisi: [[String: Any]] = [
-            ["id": 120, "nome": "Leonel Marténi", "ruolo": "A", "squadra": "inter", "tipo": "dubbio", "p_voto": 0.62,
-             "nota": "Affaticamento muscolare, si decide all'ultimo", "in_formazione": true],
-            ["id": 104, "nome": "Alvise Bastrani", "ruolo": "D", "squadra": "inter", "tipo": "diffidato",
-             "nota": "Un'ammonizione alla squalifica", "in_formazione": true],
-            ["id": 109, "nome": "Rolf Gostein", "ruolo": "D", "squadra": "fiorentina", "tipo": "squalificato",
-             "nota": "Una giornata", "in_formazione": false],
-            ["id": 118, "nome": "Nereo Fagiani", "ruolo": "C", "squadra": "fiorentina", "tipo": "infortunato",
-             "nota": "Lesione al polpaccio, rientro a dicembre", "in_formazione": false],
-            ["id": 124, "nome": "Darko Vlasenić", "ruolo": "A", "squadra": "juventus", "tipo": "dubbio", "p_voto": 0.65,
-             "nota": "Botta alla caviglia", "in_formazione": false],
-        ]
+        let avvisi = avvisiOggi()
         let migliori = ids.map { calciatore($0) }.sorted { $0.punti > $1.punti }.prefix(5).map { giocatore($0) }
         var mieiTitolari: [String: [[String: Any]]] = [:]
         for id in ids {
@@ -500,13 +322,13 @@ private enum DatiDemo {
         }
         return [
             "miei_titolari": mieiTitolari, "fase": "prima",
-            "giornata": giornata, "inizio": formatta(inizio, "yyyy-MM-dd HH:mm"),
-            "scadenza": formatta(inizio.addingTimeInterval(-30 * 60), "yyyy-MM-dd HH:mm"), "minuti_scadenza": 30, "giornata_lega": giornata - 3,
+            "giornata": giornata, "inizio": formatta(primaPartita, "yyyy-MM-dd HH:mm"),
+            "scadenza": formatta(scadenza(adesso: adesso), "yyyy-MM-dd HH:mm"), "minuti_scadenza": minutiScadenza, "giornata_lega": giornataLega,
             "iniziata": false, "con_probabili": true,
             "probabili": ["aggiornate_il": "2026-11-08 09:05", "minuti_fa": 480, "eta": "8 ore fa", "testo": "Probabili aggiornate alle 09:05",
                           "vecchie": true, "avviso": "Le probabili hanno 8 ore: ricontrolla prima del fischio."],
             "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia,
-                           "dev": 4.2, "intervallo": fascia(punteggio(ids)), "tua_scelta": true],
+                           "dev": 4.2, "intervallo": fascia(punteggio(ids)), "tua_scelta": tuaScelta],
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
             "da_fare": [voceDubbio, voceSvincolato, voceRoseVecchie, voceDiario, voceBackup],
         ]
@@ -554,53 +376,25 @@ private enum DatiDemo {
 
     // MARK: - Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
 
-    /// Fase `in_corso`: scadenza passata da un'ora; Inter-Roma finita con i voti, Milan-Juventus e Lazio-Fiorentina in corso,
-    /// il resto da giocare. Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili.
+    /// Fase `in_corso`: scadenza passata da più di due ore; Inter-Roma finita con i voti, Milan-Juventus e Lazio-Fiorentina in
+    /// corso, il resto da giocare. Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili. Orari e numeri sono
+    /// quelli del widget (`LegaDemo.bloccoInCorso`).
     static func oggiInCorso(adesso: Date) -> String {
         var o = oggiDati(adesso: adesso)
-        let minuti: [Double] = [-130, -45, 150, -20, 240, 1290, 1425, 1560, 2700, 2835]
         let stati = ["finita", "in_corso", "da_giocare", "in_corso", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare"]
-        func data(_ m: Double) -> String { formatta(adesso.addingTimeInterval(m * 60), "yyyy-MM-dd HH:mm") }
-        o["partite"] = incontri.enumerated().map { i, m in
-            ["data": data(minuti[i]), "casa": m.casa, "trasferta": m.trasferta, "giocata": i == 0, "stato": stati[i]] as [String: Any]
+        o["partite"] = orari(adesso: adesso, fase: .inCorso).enumerated().map { i, ora in
+            ["data": formatta(ora, "yyyy-MM-dd HH:mm"), "casa": incontri[i].casa, "trasferta": incontri[i].trasferta, "giocata": i == 0,
+             "stato": stati[i]] as [String: Any]
         }
         o["fase"] = "in_corso"
         o["iniziata"] = true
-        o["inizio"] = data(-130)
-        o["scadenza"] = data(-160)
+        o["inizio"] = formatta(inizio(adesso: adesso, fase: .inCorso), "yyyy-MM-dd HH:mm")
+        o["scadenza"] = formatta(scadenza(adesso: adesso, fase: .inCorso), "yyyy-MM-dd HH:mm")
         o["da_fare"] = [[String: Any]]()
-        // stato di ogni giocatore: (id, titolare, a punteggio, stato, fantavoto)
-        let righe: [(Int, Bool, Bool, String, Double?)] = [
-            (101, true, true, "fatto", 5.0), (104, true, false, "senza_voto", nil), (106, true, true, "in_corso", nil),
-            (107, true, false, "da_giocare", nil), (112, true, true, "fatto", 8.0), (113, true, true, "fatto", 9.5),
-            (114, true, true, "in_corso", nil), (115, true, true, "in_corso", nil), (120, true, false, "senza_voto", nil),
-            (121, true, true, "fatto", 10.0), (122, true, true, "da_giocare", nil),
-            (102, false, false, "in_corso", nil), (105, false, true, "fatto", 6.5), (123, false, true, "in_corso", nil),
-            (108, false, false, "da_giocare", nil), (117, false, false, "in_corso", nil), (125, false, false, "in_corso", nil),
-            (110, false, true, "in_corso", nil),
-        ]
-        let giocatori: [[String: Any]] = righe.map { r in
-            let c = calciatore(r.0)
-            let i = incontri.firstIndex { $0.casa == c.squadra || $0.trasferta == c.squadra } ?? 0
-            return ["id": c.id, "nome": c.nome, "ruolo": c.ruolo, "squadra": c.squadra, "titolare": r.1, "a_punteggio": r.2,
-                    "stato": r.3, "fantavoto": r.4.map { $0 as Any } ?? NSNull(), "data": data(minuti[i])]
-        }
-        func persona(_ id: Int) -> [String: Any] { let c = calciatore(id); return ["id": c.id, "nome": c.nome, "ruolo": c.ruolo] }
-        o["in_corso"] = [
-            "giornata": giornata, "giornata_lega": giornata - 3, "formazione_di": "tua",
-            "punti_fatti": 39.0, "punti_attesi_restanti": 38.7, "punti_previsti": 77.7, "modificatore": NSNull(), "ancora_da_giocare": 6,
-            "giocatori": giocatori,
-            "sostituzioni": [
-                ["esce": persona(104), "entra": persona(105), "certa": true, "motivo": "senza_voto"],
-                ["esce": persona(120), "entra": persona(123), "certa": false, "motivo": "senza_voto"],
-                ["esce": persona(107), "entra": persona(110), "certa": false, "motivo": "fuori"],
-            ],
-            "partite": ["in_corso": 2, "finite": 1, "da_giocare": 7, "rinviate": 0],
-        ] as [String: Any]
+        o["in_corso"] = bloccoInCorso(adesso: adesso)
         return json(o)
     }
 
-    /// Fase `finita`: la giornata 11 è finita ieri, Oggi parla già della 12 (si chiude fra 4 giorni, probabili non ancora uscite).
     // MARK: - Partite rinviate (fotografie `oggi-rinvio` e `oggi-finita-recupero`)
 
     /// La scelta «per questa giornata» della demo: la lega aspetta il recupero.
@@ -625,98 +419,59 @@ private enum DatiDemo {
         return json(o)
     }
 
+    /// Fase `finita`: la giornata 11 è finita, Oggi parla già della 12 (si chiude fra 4 giorni, probabili non ancora uscite).
+    /// Riepilogo e prossima giornata sono quelli del widget (`LegaDemo.riepilogoFinita`, `prossimaDopoFinita`).
     static func oggiFinita(adesso: Date, recupero: Bool = false) -> String {
         var o = oggiDati(adesso: adesso)
-        let scadenza = adesso.addingTimeInterval(4 * 86_400)
         func data(_ d: Date) -> String { formatta(d, "yyyy-MM-dd HH:mm") }
-        let scarti: [Double] = [0, 135, 1260, 1395, 1530, 1650, 2700, 2835, 2835, 2970]
-        o["partite"] = incontri.enumerated().map { i, m in
-            ["data": data(scadenza.addingTimeInterval(1800 + scarti[i] * 60)), "casa": m.casa, "trasferta": m.trasferta, "giocata": false,
+        o["partite"] = orari(adesso: adesso, fase: .finita).enumerated().map { i, ora in
+            ["data": data(ora), "casa": incontri[i].casa, "trasferta": incontri[i].trasferta, "giocata": false,
              "stato": "da_giocare"] as [String: Any]
         }
         o["fase"] = "finita"
         o["giornata"] = giornata + 1
-        o["giornata_lega"] = giornata - 2
-        o["inizio"] = data(scadenza.addingTimeInterval(1800))
-        o["scadenza"] = data(scadenza)
+        o["giornata_lega"] = giornataLega + 1
+        o["inizio"] = data(inizio(adesso: adesso, fase: .finita))
+        o["scadenza"] = data(scadenza(adesso: adesso, fase: .finita))
         o["con_probabili"] = false
         o["probabili"] = NSNull()
         o["da_fare"] = [voceSvincolato]
-        o["riepilogo"] = [
-            "giornata": giornata, "giornata_lega": giornata - 3, "formazione_di": "tua", "nel_diario": true,
-            "punti_fatti": 74.5, "punti_attesi": 71.2, "intervallo": fascia(71.2, indicativo: false),
-            "consigliata": ["punti_fatti": 78.0, "punti_attesi": 73.7],
-        ] as [String: Any]
+        o["riepilogo"] = riepilogoFinita()
         if recupero, let ultima = incontri.last {
             // la giornata è finita ma una partita aspetta il recupero: i punti possono ancora cambiare e si può decidere diversamente
             let partita: [String: Any] = ["casa": ultima.casa, "trasferta": ultima.trasferta, "data": data(adesso.addingTimeInterval(18 * 86_400))]
             o["riepilogo"] = (o["riepilogo"] as? [String: Any] ?? [:]).merging(
                 ["nel_diario": false, "consigliata": NSNull(), "recuperi": [partita], "rinvio": sceltaRinvio(giornata: giornata)]) { _, nuovo in nuovo }
         }
-        o["prossima"] = [
-            "giornata": giornata + 1, "giornata_lega": giornata - 2, "scadenza": data(scadenza),
-            "prepara_da": data(scadenza.addingTimeInterval(-72 * 3600)), "con_probabili": false,
-        ] as [String: Any]
+        o["prossima"] = prossimaDopoFinita(adesso: adesso)
         return json(o)
     }
 
     // MARK: - Risultati in diretta
 
-    /// Alcune partite in corso, una finita e il resto da giocare: la scheda «Partite del turno» di Oggi si vede viva.
-    /// `giornataInCorso`: le partite come nella fotografia `oggi-in-corso` (Inter-Roma finita, Napoli-Atalanta ancora da giocare).
+    /// Le partite del turno in diretta, le stesse del widget (`LegaDemo.liveDemo`): prima della scadenza tutte da giocare, con gli
+    /// orari di Oggi; con `giornataInCorso` come nella fotografia `oggi-in-corso` (Inter-Roma finita, due partite in gioco).
     static func live(adesso: Date, giornataInCorso: Bool = false) -> String {
-        func ev(_ tipo: String, _ minuto: String, _ squadra: String, _ chi: String, _ assist: String? = nil) -> [String: Any] {
-            var e: [String: Any] = ["tipo": tipo, "minuto": minuto, "squadra": squadra, "chi": chi]
-            if let assist { e["assist"] = assist }
-            return e
-        }
-        var partite: [[String: Any]] = []
-        for (i, m) in incontri.enumerated() {
-            var p: [String: Any] = ["casa": m.casa, "trasferta": m.trasferta, "stato": "da_giocare",
-                                    "data": formatta(adesso.addingTimeInterval(Double(i + 1) * 3600), "yyyy-MM-dd HH:mm")]
-            switch i {
-            case 0:
-                p["stato"] = "secondo_tempo"; p["minuto"] = "63'"; p["gol_casa"] = 2; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "12'", "casa", "Thorvan", "Barlesi"), ev("gol", "38'", "trasferta", "Dobrala"), ev("giallo", "44'", "casa", "Bastrani"),
-                               ev("rigore", "55'", "casa", "Calvaroglu"), ev("rigore_sbagliato", "58'", "trasferta", "Dobrala"),
-                               ev("rosso", "61'", "trasferta", "Cristoni")]
-            case 1:
-                p["stato"] = "intervallo"; p["gol_casa"] = 0; p["gol_trasferta"] = 0
-                p["eventi"] = [ev("giallo", "30'", "trasferta", "Locardi")]
-            case 2:
-                p["stato"] = "finita"; p["gol_casa"] = 3; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "9'", "casa", "Lumbaku", "Polinardo"), ev("autogol", "40'", "casa", "Djorsati"), ev("giallo", "52'", "casa", "Rrapaj"),
-                               ev("rosso", "71'", "trasferta", "De Valk"), ev("gol", "80'", "trasferta", "Retalli", "Pasenic"),
-                               ev("gol", "88'", "casa", "McTarran", "Angrassa"), ev("doppio_giallo", "90'+2'", "casa", "Lobrenka")]
-            case 3:
-                p["stato"] = "primo_tempo"; p["minuto"] = "27'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
-                p["eventi"] = [ev("gol", "11'", "casa", "Castelvera"), ev("gol", "25'", "trasferta", "Hrafnsson")]
-            default: break
-            }
-            if giornataInCorso && i == 0 { p["stato"] = "finita"; p["minuto"] = nil }
-            if giornataInCorso && i == 2 {
-                p = ["casa": m.casa, "trasferta": m.trasferta, "stato": "da_giocare",
-                     "data": formatta(adesso.addingTimeInterval(150 * 60), "yyyy-MM-dd HH:mm")]
-            }
-            partite.append(p)
-        }
-        return json(["aggiornato_il": formatta(adesso, "yyyy-MM-dd HH:mm:ss"), "fonte": "espn", "in_corso": 3, "partite": partite])
+        json(liveDemo(adesso: adesso, fase: giornataInCorso ? .inCorso : .prima))
     }
 
     // MARK: - Mercato
 
     static func mercato() -> String {
+        // il primo è il miglior svincolo, lo stesso del widget
+        let v = svincoloMigliore
         let cambi: [(Int, Int, Double, Double?)] = [
-            (124, 203, 3.4, 11), (119, 205, 1.9, 6), (118, 210, 2.2, 3), (109, 215, 2.6, 4), (110, 209, 1.2, 5), (103, 206, 0.8, nil),
+            (v.esce, v.entra, v.guadagno, v.rimborso), (119, 205, 1.9, 6), (118, 210, 2.2, 3), (109, 215, 2.6, 4), (110, 209, 1.2, 5),
+            (103, 206, 0.8, nil),
         ]
         var proposte: [[String: Any]] = []
         for (esce, entra, guadagno, rimborso) in cambi {
             var d: [String: Any] = ["esce": breve(esce), "entra": breve(entra), "guadagno": guadagno,
-                                    "breve": guadagno * 0.4, "fattibile": true, "crediti_dopo": 12.0 + (rimborso ?? 0)]
+                                    "breve": guadagno * 0.4, "fattibile": true, "crediti_dopo": Double(creditiResidui) + (rimborso ?? 0)]
             if let rimborso { d["rimborso"] = rimborso }
             proposte.append(d)
         }
-        return json(["squadra": nomeMia, "svincolati": 118, "crediti_residui": 12, "proposte": proposte])
+        return json(["squadra": nomeMia, "svincolati": 118, "crediti_residui": creditiResidui, "proposte": proposte])
     }
 
     static func classifica() -> String {
@@ -725,12 +480,8 @@ private enum DatiDemo {
     }
 
     static func osservati() -> String {
-        var elenco: [[String: Any]] = []
-        for id in [203, 205, 321, 328, 214] {
-            var p = calciatore(id)
-            if id == 328 { p.assente = true }
-            elenco.append(giocatore(p, conProprietario: true))
-        }
+        // gli stessi seguiti del widget, nello stesso ordine
+        let elenco = idOsservati.map { giocatore(osservato($0), conProprietario: true) }
         return json(["giornata": giornata, "giocatori": elenco])
     }
 
@@ -763,9 +514,15 @@ private enum DatiDemo {
                 "breve_mio": mio * 0.5, "breve_loro": loro * 0.5, "giornate": giornate]
     }
 
+    /// Il miglior scambio, lo stesso del widget.
+    static var propostaMigliore: [String: Any] {
+        let s = scambioMigliore
+        return proposta(altra: s.altra, dai: s.dai, ricevi: s.ricevi, mio: s.mio, loro: s.loro)
+    }
+
     static func scambi() -> String {
         let proposte: [[String: Any]] = [
-            proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1),
+            propostaMigliore,
             proposta(altra: "Gli Amici del Bar Sport Centrale", dai: [110, 119], ricevi: [321, 308], mio: 3.1, loro: 0.6),
             proposta(altra: "Dinamo Pizza", dai: [116], ricevi: [322], mio: 1.8, loro: 0.9),
             proposta(altra: "Atletico Divano", dai: [125], ricevi: [336], mio: 1.2, loro: 1.0),
@@ -775,7 +532,7 @@ private enum DatiDemo {
     }
 
     static func analisi() -> String {
-        var p = proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1)
+        var p = propostaMigliore
         // l'analisi completa (scambi N contro M con conguaglio): rose valide, crediti, valore e giudizio
         p["completo"] = true
         p["valido"] = true
@@ -810,13 +567,13 @@ private enum DatiDemo {
     }
 
     static func rosa(_ nome: String, _ giocatori: [Calciatore], mia: Bool) -> String {
-        json(["nome": nome, "mia": mia, "crediti_residui": mia ? 12 : 30, "aggiornato": "2026-10-26T19:19:33",
+        json(["nome": nome, "mia": mia, "crediti_residui": mia ? creditiResidui : 30, "aggiornato": "2026-10-26T19:19:33",
               "giocatori": giocatori.map { rigaRosa($0) }, "avvisi": mia ? ["Schiera FC: Rolf Gostein e Nereo Fagiani sono indisponibili"] : [String]()])
     }
 
     static func stato(adesso: Date) -> String {
         json(["stagione": "2026-27", "prossima_giornata": giornata, "mia_squadra": nomeMia, "rose_importate": true, "versione": "1.9",
-              "ultimo_aggiornamento": formatta(adesso.addingTimeInterval(-2 * 3600), "yyyy-MM-dd'T'HH:mm:ss")])
+              "ultimo_aggiornamento": ultimoAggiornamento(adesso: adesso)])
     }
 
     static func statoDati(adesso: Date) -> String {
@@ -890,14 +647,14 @@ private enum DatiDemo {
         // la lega parte dalla giornata 4 di Serie A (`prima_giornata_lega` delle regole della demo), come in Oggi: Serie A 11 = giornata 8
         func lega(_ serieA: Int) -> Int { serieA - 3 }
         // Gli id seguono il nome (non la posizione), così due formazioni con un nome diverso risultano davvero diverse.
-        let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Calvaroglu", "Leonel", "Thorvan", "Pulinski", "Lemao", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
-        let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Leonel": "A", "Thorvan": "A", "Lemao": "A", "Pulinski": "A", "Orsetti": "A"]
+        let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
+        let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Leonel": "A", "Thorvan": "A", "Lemão": "A", "Pulinski": "A", "Orsetti": "A"]
         func titolari(_ nomi: [String]) -> [[String: Any]] {
             nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruoliDi[$0] ?? "C"] }
         }
-        let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Calvaroglu", "Leonel", "Thorvan", "Pulinski", "Lemao", "Kloosmeijer", "Dunfrey"]
-        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Calvaroglu", "Leonel", "Thorvan", "Pulinski", "Lemao", "Kloosmeijer", "Orsetti"]
-        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Leonel", "Thorvan", "Pulinski", "Lemao", "Zelawski", "Orsetti"]
+        let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey"]
+        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Leonel", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Orsetti"]
+        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Leonel", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Orsetti"]
         func istantanea(_ g: Int, _ modulo: String, _ nomi: [String], atteso: Double, ora: String) -> [String: Any] {
             ["giornata": g, "modulo": modulo, "titolari": titolari(nomi), "panchina": titolari(["Mkhedrian", "Zelawski", "Orsetti"]),
              "atteso": atteso, "stile": "Equilibrato", "calcolata": ora]
@@ -936,24 +693,25 @@ private enum DatiDemo {
                  "attesi": 69.0, "fatti": 72.5, "tua": NSNull(), "differenza": NSNull()],
             ],
         ]
+        // le giornate finite sono quelle di «Attesi e fatti» dei widget (`LegaDemo.giornateFinite`); qui chi è sceso in campo e
+        // quando è stata calcolata la consigliata (Serie A 10, 9, 8: l'istantanea; Serie A 7 no)
+        let calcolata: [Int: String] = [10: "2026-10-31T10:05:00", 9: "2026-10-24T09:40:00", 8: "2026-10-17T11:20:00"]
+        let tuoi: [Int: [String]] = [9: altra, 8: altra2]
+        func esito(_ e: EsitoGiornata, _ nomi: [String]) -> [String: Any] {
+            ["modulo": e.modulo, "atteso": e.atteso, "reale": e.fatti, "intervallo": fascia(e.atteso), "titolari": titolari(nomi)]
+        }
+        let voci: [[String: Any]] = giornateFinite.map { g -> [String: Any] in
+            let c = g.consigliata
+            var voce: [String: Any] = ["stagione": stagioneInCorso, "giornata": g.serieA, "giornata_lega": lega(g.serieA),
+                                       "atteso_vs_fatto": avf(c.atteso, c.fatti), "consigliata": esito(c, base)]
+            if let ora = calcolata[g.serieA] { voce["istantanea"] = istantanea(g.serieA, c.modulo, base, atteso: c.atteso, ora: ora) }
+            if let s = g.schierata, let nomi = tuoi[g.serieA] { voce["schierata"] = esito(s, nomi) }
+            return voce
+        }
         return json([
             "affidabilita": affidabilita,
             "precisione": precisione,
-            "giornate": [
-                ["stagione": "2026-27", "giornata": 10, "giornata_lega": lega(10), "atteso_vs_fatto": avf(69.0, 72.5),
-                 "consigliata": ["modulo": "3-4-3", "atteso": 69.0, "reale": 72.5, "intervallo": fascia(69.0), "titolari": titolari(base)],
-                 "istantanea": istantanea(10, "3-4-3", base, atteso: 69.0, ora: "2026-10-31T10:05:00")],
-                ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "atteso_vs_fatto": avf(68.5, 71.0),
-                 "consigliata": ["modulo": "3-4-3", "atteso": 68.5, "reale": 71.0, "intervallo": fascia(68.5), "titolari": titolari(base)],
-                 "istantanea": istantanea(9, "3-4-3", base, atteso: 68.5, ora: "2026-10-24T09:40:00"),
-                 "schierata": ["modulo": "3-5-2", "atteso": 66.0, "reale": 63.5, "intervallo": fascia(66.0), "titolari": titolari(altra)]],
-                ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "atteso_vs_fatto": avf(67.0, 64.0),
-                 "consigliata": ["modulo": "3-4-3", "atteso": 67.0, "reale": 64.0, "intervallo": fascia(67.0), "titolari": titolari(base)],
-                 "istantanea": istantanea(8, "3-4-3", base, atteso: 67.0, ora: "2026-10-17T11:20:00"),
-                 "schierata": ["modulo": "3-4-3", "atteso": 66.0, "reale": 59.5, "intervallo": fascia(66.0), "titolari": titolari(altra2)]],
-                ["stagione": "2026-27", "giornata": 7, "giornata_lega": lega(7), "atteso_vs_fatto": avf(65.0, 60.5),
-                 "consigliata": ["modulo": "4-3-3", "atteso": 65.0, "reale": 60.5, "intervallo": fascia(65.0), "titolari": titolari(base)]],
-            ],
+            "giornate": voci,
             // come `sintesi` di fanta/diario.py: le giornate 9 e 8 di Serie A, le due con la tua formazione
             "sintesi": ["giornate": 2, "punti_schierata": 61.5, "punti_consigliata": 67.5, "attesi_schierata": 66.0,
                         "meglio_tua": 0, "meglio_consigliata": 2],
@@ -965,7 +723,7 @@ private enum DatiDemo {
                                ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"],
                                 "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"],
                                ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "hai_scelto": ["Mkhedrian", "Zelawski", "Orsetti"],
-                                "consigliava": ["Calvaroglu", "Kloosmeijer", "Dunfrey"],
+                                "consigliava": ["Çalvaroğlu", "Kloosmeijer", "Dunfrey"],
                                 "punti_tua": 59.5, "punti_consigliata": 64.0, "differenza": -4.5, "esito": "consigliata"],
                            ]],
         ])
@@ -1029,7 +787,7 @@ private enum DatiDemo {
 
     static func offerta() -> String {
         json(["con": "Real Madrink", "do": ["Darko Vlasenić"], "ricevo": ["Rolando Lumbaku"], "ambigui": [String](),
-              "analisi": proposta(altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1)
+              "analisi": propostaMigliore
                   .merging(["reparti": ["mio": ["P": 0.0, "D": 0.0, "C": 0.0, "A": 6.2], "loro": ["P": 0.0, "D": 0.0, "C": 1.1, "A": -2.0]],
                             "percentuale_mio": 1.4, "quotazione_do": 14, "quotazione_ricevo": 18]) { $1 }])
     }
