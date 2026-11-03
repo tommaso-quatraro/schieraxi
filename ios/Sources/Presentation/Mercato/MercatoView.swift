@@ -12,24 +12,28 @@ struct ConsigliatiView: View {
 
     var body: some View {
         ScrollView {
-            Colonne(spazio: 12) {
-                if let m = vm.consigliati.dato {
-                    introduzione(m)
-                    ForEach(Array(m.proposte.enumerated()), id: \.element.id) { i, p in
-                        Button { vm.apri(p.entra.id) } label: { carta(p) }
-                            .buttonStyle(StilePressione()).puntatore()
-                            .origineZoom(p.entra.id, zoom)
-                            .entraScorrendo()
-                            .ingresso(i + 1)
-                            .accessibilityHint("Apre la scheda del giocatore")
+            // il titolo intero con il testo grande sta sopra le colonne, non dentro la prima
+            VStack(spacing: 12) {
+                TitoloNellaPagina()
+                Colonne(spazio: 12) {
+                    if let m = vm.consigliati.dato {
+                        introduzione(m)
+                        ForEach(Array(m.proposte.enumerated()), id: \.element.id) { i, p in
+                            Button { vm.apri(p.entra.id) } label: { carta(p) }
+                                .buttonStyle(StilePressione()).puntatore()
+                                .origineZoom(p.entra.id, zoom)
+                                .entraScorrendo()
+                                .ingresso(i + 1)
+                                .accessibilityHint("Apre la scheda del giocatore")
+                        }
+                        if m.proposte.isEmpty {
+                            VistaVuota(titolo: "Nessun cambio conviene adesso", icona: "checkmark.circle", descrizione: "Mister, la rosa è già la migliore tra gli svincolati.")
+                        }
+                    } else if let e = vm.consigliati.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.consigliati.ricarica() } }
+                    } else {
+                        Scheletro(schede: 3, righe: 2, testo: "Cerco gli svincolati…")
                     }
-                    if m.proposte.isEmpty {
-                        VistaVuota(titolo: "Nessun cambio conviene adesso", icona: "checkmark.circle", descrizione: "Mister, la rosa è già la migliore tra gli svincolati.")
-                    }
-                } else if let e = vm.consigliati.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.consigliati.ricarica() } }
-                } else {
-                    Scheletro(schede: 3, righe: 2, testo: "Cerco gli svincolati…")
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
@@ -156,6 +160,7 @@ struct ClassificaView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
+                TitoloNellaPagina()
                 Picker("Ruolo", selection: $vm.ruolo) {
                     ForEach(["Tutti", "P", "D", "C", "A"], id: \.self) { Text($0).tag($0) }
                 }
@@ -362,6 +367,7 @@ struct CalendarioView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
+                TitoloNellaPagina()
                 if let c = vm.calendario.dato {
                     Carta("Difficoltà delle prossime partite", simbolo: "calendar") {
                         Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(Color.testoSecondario)
@@ -421,6 +427,7 @@ struct OsservatiView: View {
 
     var body: some View {
         List {
+            TitoloNellaPagina()
             if let messaggio = vm.messaggioOsservati { Text(messaggio).font(.footnote).foregroundStyle(Color.attenzione) }
             if let d = vm.osservati.dato {
                 if d.giocatori.isEmpty {

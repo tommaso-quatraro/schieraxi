@@ -195,9 +195,9 @@ struct PaginaMercato<Contenuto: View>: View {
             Sfondo()
             contenuto()
         }
-        .navigationTitle(titolo)
-        // titolo grande come le altre pagine: in piccolo, accanto a lente e ingranaggio, sull'iPhone SE diventava «Elenco dei gioc…»
-        .navigationBarTitleDisplayMode(.large)
+        // titolo grande come le altre pagine: in piccolo, accanto a lente e ingranaggio, sull'iPhone SE diventava «Elenco dei gioc…».
+        // Con il testo grande va intero nella pagina (TitoloNellaPagina nelle pagine di MercatoView).
+        .titoloPagina(titolo)
         .ricercaGlobale()
         .sheet(item: $vm.schedaAperta) { g in
             GiocatoreSheet(id: g.id, server: vm.server)
