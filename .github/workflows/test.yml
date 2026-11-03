@@ -265,6 +265,7 @@ jobs:
     permissions:
       contents: write          # per cancellare il ramo e fare il commit di unione
       pull-requests: write     # per unire la PR
+      issues: write            # per chiudere le issue di «Closes #N» (vedi sotto)
     steps:
       - name: Unisci la PR (solo il commit che ha passato i test)
         env:
@@ -272,6 +273,20 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           TESTA: ${{ github.event.pull_request.head.sha }}
         run: gh pr merge "$PR" --squash --delete-branch --match-head-commit "$TESTA" --repo "$GITHUB_REPOSITORY"
+      # Un'unione fatta con il token di GitHub Actions non chiude le issue di «Closes #N»: le chiude questo passo.
+      # Solo issue di questo repository collegate dalla PR (closingIssuesReferences), e solo se sono ancora aperte.
+      - name: Chiudi le issue collegate alla PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          numeri=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json closingIssuesReferences --jq '.closingIssuesReferences[] | select((.repository.owner.login + "/" + .repository.name) == env.GITHUB_REPOSITORY) | .number')
+          for n in $numeri; do
+            stato=$(gh issue view "$n" --repo "$GITHUB_REPOSITORY" --json state --jq .state)
+            if [ "$stato" = "OPEN" ]; then
+              gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "Fatta con la PR #$PR, unita su main."
+            fi
+          done
 
   # Dopo l'unione, uno alla volta: il numero di versione (commit del bot su main), la release vX.Y con --latest=false
   # (la «Latest» resta alla build iOS), e il lancio della build dell'IPA se ios/ è cambiata dall'ultima IPA riuscita.
