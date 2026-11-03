@@ -233,7 +233,7 @@ def test_il_web_mostra_le_frasi_tradotte_nei_punti_giusti():
     app = (server.WEB / "app.js").read_text(encoding="utf-8")
     anteprima = (server.WEB / "anteprima.js").read_text(encoding="utf-8")
     dafare = (server.WEB / "dafare.js").read_text(encoding="utf-8")
-    for pezzo in ('esc(traduciFrase(m.frase, m.testo))',                             # motivi sotto il nome (etichette e scheda)
+    for pezzo in ('testoEtichetta(traduciFrase(m.frase, m.testo))',                  # motivi sotto il nome (etichette e scheda): esc dentro testoEtichetta
                   'esc(testoDi(o.probabili))', 'esc(testoDi(o.probabili, "avviso"))',     # probabili di Oggi
                   'esc(testoDi(p, "motivo"))',                                          # consigli di mercato
                   'esc(testoDi(m))',                                                     # «Perché questo numero»

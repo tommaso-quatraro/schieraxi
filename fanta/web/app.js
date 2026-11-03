@@ -342,8 +342,16 @@ const PARTITA_INIZIATA = ["in_corso", "attesa_voti", "fatto", "senza_voto"], PAR
 const CLASSE_TONO = { positivo: "", attenzione: "arancio", negativo: "rossa", neutro: "neutra" };
 const etichettaPronta = x => !!(x && x.etichetta && typeof x.etichetta.testo === "string" && x.etichetta.testo);
 const classeTono = et => CLASSE_TONO[et && et.tono] ?? "neutra";
+// Il testo di una pillola, mai tagliato con i puntini (issue #230, come l'iPhone): se non ci sta su una riga va a capo prima tra i
+// pezzi separati da «·» («In dubbio ·» sopra, «gioca 62%» sotto), poi tra le parole. Ogni pezzo è un blocco (`.etichetta .pezzo`);
+// il «·» resta attaccato alla parola prima (spazio che non va a capo), così non finisce mai da solo su una riga.
+function testoEtichetta(testo) {
+  const pezzi = String(testo ?? "").split(" · ");
+  if (pezzi.length < 2) return esc(testo);
+  return pezzi.map((p, i) => `<span class="pezzo">${esc(p)}${i < pezzi.length - 1 ? "&nbsp;·" : ""}</span>`).join(" ");
+}
 function pillTitolarita(x) {
-  if (etichettaPronta(x)) return `<span class="etichetta ${classeTono(x.etichetta)}">${esc(x.etichetta.testo)}</span>`;
+  if (etichettaPronta(x)) return `<span class="etichetta ${classeTono(x.etichetta)}">${testoEtichetta(x.etichetta.testo)}</span>`;
   return pillRipiego(x);
 }
 // Ripiego per le risposte senza `etichetta` (server vecchio, Cambi consigliati, widget): le parole del vocabolario dai campi grezzi.
@@ -373,7 +381,7 @@ const MOTIVI_DI_STATO = ["motivo.infortunato", "motivo.squalificato", "motivo.no
 const motivoDiStato = m => (m.frase ? MOTIVI_DI_STATO.includes(m.frase.chiave) : /^(infortunato|squalificato|non tra i convocati)/.test(m.testo));
 function etichetteGiocatore(x) {
   const pronta = etichettaPronta(x);
-  const altre = motiviUtili(x).filter(senzaPercentuale).filter(m => !(pronta && motivoDiStato(m))).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("");
+  const altre = motiviUtili(x).filter(senzaPercentuale).filter(m => !(pronta && motivoDiStato(m))).map(m => `<span class="etichetta ${/infortunat|squalificat|dubbio|non tra/.test(m.testo) ? "rossa" : "neutra"}${m.testo.length > 28 ? " lunga" : ""}">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("");
   // ripiego: «Fuori» (infortunato) a partita finita, anche com'è andata («Voto in arrivo», «Senza voto»); con l'etichetta lo dice il server
   const esito = !pronta && x.titolarita != null && PARTITA_FINITA.includes(x.stato_partita || "")
     ? `<span class="etichetta ${STATO_PARTITA[x.stato_partita][1]}">${t(STATO_PARTITA[x.stato_partita][0])}</span>` : "";
@@ -1632,7 +1640,7 @@ async function apriGiocatore(id) {
           : `<div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div>`}</div>
           ${iniziataP ? "" : `<div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>`}</div>
         ${nonGioca || iniziataP ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
-        ${!finitaP && motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${esc(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
+        ${!finitaP && motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
         ${nonGioca || iniziataP ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${finitaP ? "" : cartaPerche(prSenzaGioca)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
       ${prossime.length ? `<div class="carta"><h2>${t("mercato.prossime_partite")}</h2><div class="prossime">${prossime.map(p => `<span class="cella d${p.difficolta}">${vsAt(p)}</span>`).join("")}</div>
         <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div></div>` : ""}
