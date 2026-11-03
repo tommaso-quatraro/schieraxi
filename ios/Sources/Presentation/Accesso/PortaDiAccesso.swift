@@ -38,7 +38,7 @@ struct PortaDiAccesso: View {
         .animation(Tema.morbida, value: indirizzo.isEmpty)
         .tint(Color.verde)   // anche accesso e codice di recupero con il colore dell app (prima restavano blu)
         // Solo per le fotografie (-DEMO_ORIENTAMENTO orizzontale): qui, alla radice, vale anche per l'accesso.
-        .onAppear { Demo.chiediOrientamento() }
+        .task { await Demo.chiediOrientamento() }
         // All'apertura, e poco dopo che si è cambiato l'indirizzo del server, si chiede chi siamo.
         .task(id: indirizzo) {
             try? await Task.sleep(nanoseconds: 700_000_000)

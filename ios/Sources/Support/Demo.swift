@@ -108,7 +108,7 @@ extension View {
         task(id: pronto) {
             guard pronto, Demo.attivo, let s = Demo.foto, schermate.contains(s) else { return }
             if inFondo && Demo.argomento("DEMO_FONDO") == nil { return }
-            try? await Task.sleep(nanoseconds: 700_000_000)
+            try? await Task.sleep(for: .milliseconds(700))
             proxy.scrollTo(id, anchor: ancora)
         }
     }
@@ -132,16 +132,14 @@ extension Demo {
     /// Con `-DEMO_ORIENTAMENTO orizzontale` chiede a iOS l'orientamento orizzontale. La chiama la radice (`PortaDiAccesso`), così
     /// vale per ogni schermata: prima stava in `applica`, che parte solo dopo l'accesso, e la foto dell'accesso restava verticale
     /// (lo script la raddrizzava lo stesso e usciva girata). Una volta sola all'avvio.
-    static func chiediOrientamento() {
+    static func chiediOrientamento() async {
         guard attivo, !orientamentoChiesto, chiedeOrizzontale(argomenti: ProcessInfo.processInfo.arguments) else { return }
         orientamentoChiesto = true
         // Più tentativi: sull'iPad la scena può non essere ancora pronta al primo.
-        Task {
-            for attesa in [0.0, 0.8, 1.6] as [Double] {
-                try? await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000))
-                let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-                scena?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight)) { _ in }
-            }
+        for attesa in [0.0, 0.8, 1.6] {
+            try? await Task.sleep(for: .seconds(attesa))
+            let scena = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+            scena?.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight)) { _ in }
         }
     }
 
