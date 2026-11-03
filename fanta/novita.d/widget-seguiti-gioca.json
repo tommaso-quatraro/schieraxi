@@ -1,0 +1,4 @@
+{"titolo": "Widget del giocatore seguito: quanto è probabile che giochi",
+ "voci": ["Il widget del giocatore che segui riceve anche quanto è probabile che giochi e se è in dubbio («In dubbio · gioca 55%»), come vedi in Oggi e nella tua rosa. Lo mostra con il prossimo aggiornamento dell'app per iPhone."],
+ "tecnico": ["/api/widget: ogni voce di `osservati` ha anche `dubbio` e `p_voto` (facoltativi; `p_voto` da 0 a 1; assenti se la scheda non li ha), dalla stessa `consigli.scheda_previsione` della rosa del widget e di /api/oggi (`p_voto` arrotondato a 3 decimali). `percentuale` resta per i widget già installati. Parte server di #224, per il widget «Giocatore seguito» della PR iOS #223.",
+             "Peso: circa +32 caratteri per seguito, al massimo +272 con 8 seguiti. Scenario delle foto prima della scadenza (3 seguiti): da 12 486 a 12 588 caratteri; scenario a giornata in corso con 8 seguiti: da 14 938 a 15 210, sotto il tetto di 18 000 (`widget.MAX_BYTE`)."]}
