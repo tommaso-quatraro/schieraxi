@@ -143,6 +143,8 @@ struct AccountSezione: View {
     @ObservedObject var fogli: FogliAccount
     @EnvironmentObject private var sessione: SessioneAccount
     @AppStorage(ServiziSociali.chiave) private var socialTesto = ""
+    /// La posta è accesa sul server? (lo dicono il 401 e `/api/account/me`; spenta: non si può collegare un'email)
+    @AppStorage(PostaServer.chiave) private var postaAccesa = true
 
     /// La voce dell'email: solo per chi non ha Google collegato. Finché non si sa come entra (Google acceso, accessi non ancora letti) non si mostra.
     private var mostraVoceEmail: Bool {
@@ -150,12 +152,19 @@ struct AccountSezione: View {
         return noto && ProfiloAccount.mostraVoceEmail(googleCollegato: sessione.googleCollegato)
     }
 
+    private var daGoogle: Bool { sessione.emailOrigine == "google" }
+    /// L'email propria dell'account e quella di Google, come le mostra `rigaEmail`.
+    private var emailAccount: String? { daGoogle ? nil : sessione.email }
+    private var emailGoogle: String? { daGoogle ? sessione.email : sessione.accessi?.google?.email }
+
+    /// Posta spenta e nessuna email: solo la frase della web al posto della riga e della voce dell'email (#174).
+    private var soloPostaSpenta: Bool {
+        ProfiloAccount.soloPostaSpenta(postaAccesa: postaAccesa, account: emailAccount, google: emailGoogle)
+    }
+
     /// «Email confermata: …», «Email da Google: …», «In attesa di conferma: …» o «Nessuna email collegata.», come la web.
     private var rigaEmail: String {
-        let daGoogle = sessione.emailOrigine == "google"
-        return TestiAccount.rigaEmail(account: daGoogle ? nil : sessione.email,
-                                      google: daGoogle ? sessione.email : sessione.accessi?.google?.email,
-                                      inAttesa: sessione.emailInAttesa)
+        TestiAccount.rigaEmail(account: emailAccount, google: emailGoogle, inAttesa: sessione.emailInAttesa)
     }
 
     var body: some View {
@@ -168,12 +177,18 @@ struct AccountSezione: View {
                 }
                 .frame(minHeight: Tema.areaTocco)
                 .accessibilityElement(children: .combine)
-                Text(rigaEmail).font(.subheadline)
-                if mostraVoceEmail {
-                    Button { fogli.apri(.email) } label: {
-                        Label(sessione.email == nil ? "Aggiungi un'email" : "Gestisci l'email", systemImage: "envelope").labelStyle(.voce(.teal)).frame(minHeight: Tema.areaTocco)
+                if soloPostaSpenta {
+                    // come la web: nessun codice può arrivare per posta, quindi niente «Aggiungi un'email»
+                    Text(TestiAccount.emailSpenta).font(.subheadline).foregroundStyle(Color.testoSecondario)
+                        .accessibilityIdentifier("account-email-spenta")
+                } else {
+                    Text(rigaEmail).font(.subheadline)
+                    if mostraVoceEmail {
+                        Button { fogli.apri(.email) } label: {
+                            Label(sessione.email == nil ? "Aggiungi un'email" : "Gestisci l'email", systemImage: "envelope").labelStyle(.voce(.teal)).frame(minHeight: Tema.areaTocco)
+                        }
+                        .accessibilityHint("Serve a recuperare la password se la dimentichi")
                     }
-                    .accessibilityHint("Serve a recuperare la password se la dimentichi")
                 }
                 // chi entra solo con Google non ha una password da cambiare: la aggiunge dal riquadro «Accessi»
                 if !sessione.senzaPassword {

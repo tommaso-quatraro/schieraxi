@@ -26,8 +26,15 @@ struct VoceDiario: Decodable, Identifiable {
     let istantanea: IstantaneaDiario?
     /// Facoltativo: punti attesi contro punti fatti della consigliata, con la fascia (server nuovi).
     let attesoVsFatto: AttesoVsFatto?
+    /// Facoltativo: `false` per le voci di una stagione passata, che si leggono e basta. Un server vecchio non lo manda.
+    let modificabile: Bool?
 
+    /// Stagione e giornata: con due stagioni nel Diario la giornata 10 c'è due volte.
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
+
+    /// «Ho schierato…» e «Correggi a mano» ci sono solo se il server non dice `modificabile: false` (come la web;
+    /// server vecchio senza il campo: ci sono) e se c'è la giornata da mandare.
+    var siPuoCambiare: Bool { giornata != nil && modificabile != false }
 
     /// «Giornata 8»: il numero della lega, come in Oggi e sulla web; «Giornata 11» (Serie A) se il server non lo manda.
     var titolo: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Giornata" }
@@ -38,7 +45,7 @@ struct VoceDiario: Decodable, Identifiable {
         return giornata
     }
 
-    private enum Chiavi: String, CodingKey { case stagione, giornata, giornataLega, consigliata, schierata, istantanea, attesoVsFatto }
+    private enum Chiavi: String, CodingKey { case stagione, giornata, giornataLega, consigliata, schierata, istantanea, attesoVsFatto, modificabile }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Chiavi.self)
@@ -50,6 +57,7 @@ struct VoceDiario: Decodable, Identifiable {
         // Un'istantanea in un formato che non conosco vale come «non registrata»: il resto del Diario si legge lo stesso.
         istantanea = try? c.decodeIfPresent(IstantaneaDiario.self, forKey: .istantanea)
         attesoVsFatto = (try? c.decodeIfPresent(AttesoVsFatto.self, forKey: .attesoVsFatto)) ?? nil
+        modificabile = (try? c.decodeIfPresent(Bool.self, forKey: .modificabile)) ?? nil
     }
 
     /// Il confronto «Cosa consigliava SchieraXI» contro «Cosa hai schierato»; `nil` se non c'è nessuna formazione consigliata da mostrare.
