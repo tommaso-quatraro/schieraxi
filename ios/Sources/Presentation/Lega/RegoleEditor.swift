@@ -232,29 +232,30 @@ struct RegoleEditorView: View {
     var body: some View {
         ZStack {
             Sfondo()
-            if vm.caricato {
-                ScrollViewReader { proxy in
+            ScrollViewReader { proxy in
                 List {
+                    // il titolo intero (testo grande) c'è anche durante il caricamento e con un errore, come nelle altre pagine
                     TitoloNellaPagina()
-                    nome
-                    importa
-                    punteggi
-                    difesa
-                    moduli
-                    panchina
-                    rosa
-                    tempiLega
-                    partiteRinviate.id("rinviate")
-                    salvataggio
+                    if vm.caricato {
+                        nome
+                        importa
+                        punteggi
+                        difesa
+                        moduli
+                        panchina
+                        rosa
+                        tempiLega
+                        partiteRinviate.id("rinviate")
+                        salvataggio
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 6).listRowBackground(Color.clear)
+                    }
                 }
                 .scrollContentBackground(.hidden)
                 // fotografia `lega-regole-fondo`: la sezione delle partite rinviate (in fondo alla lista)
                 .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
-                }
-            } else if let e = vm.caricatore.errore {
-                ErroreVista(messaggio: e) { Task { await vm.carica() } }
-            } else {
-                ScheletroRighe(righe: 6)
             }
         }
         .ricercaGlobale()   // sull'iPad lente e ingranaggio stanno sulla pagina a destra, non nell'elenco
