@@ -139,7 +139,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
         if i in prev.index:
             x = consigli.scheda_previsione(i, prev.loc[i])
             ossv.append(_g(x, tratti, "voto_atteso", "punti_attesi", "avversario", "in_casa", "data_partita", "stato", "percentuale",
-                           "p_voto"))                 # «gioca N%» come la rosa e Oggi (stessa scheda); facoltativo: senza p_voto il campo manca
+                           "dubbio", "p_voto"))       # «In dubbio · gioca N%» come la rosa e Oggi (stessa scheda); facoltativi: se mancano, mancano
     corpo["osservati"] = ossv
 
     ultimo = db.execute("SELECT MAX(quando) FROM aggiornamenti WHERE cosa = 'aggiornamento'").fetchone()[0]
