@@ -162,13 +162,11 @@ struct VistaOsservato: View {
         switch famiglia {
         case .systemMedium: medio(g)
         case .accessoryCircular:
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 0) {
-                    Text(String(g.cognome.prefix(5))).fontWidget(9)
-                    Text(punti(g)).font(.headline.bold()).monospacedDigit().minimumScaleFactor(0.6)
-                    Text("attesi").fontWidget(8)
-                }
+            CerchioWidget {
+                // il cognome intero, rimpicciolito se è lungo (come i cognomi sul campo, CampoMini): mai tagliato a metà
+                Text(g.cognome).fontWidget(9).lineLimit(1).minimumScaleFactor(0.6)
+                Text(punti(g)).font(.headline.bold()).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1)
+                Text("attesi").fontWidget(8)
             }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {

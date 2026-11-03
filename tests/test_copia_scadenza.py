@@ -133,7 +133,7 @@ def test_sorveglia_rispetta_l_interruttore(ambiente, monkeypatch):
         monkeypatch.setenv("FANTA_COPIA_SCADENZA", valore)
         giri.clear()
         fermo = threading.Event()
-        t = threading.Thread(target=copia_scadenza.sorveglia, args=(fermo, lambda: [ctx], _db(ambiente), 0.01,
+        t = threading.Thread(daemon=True, target=copia_scadenza.sorveglia, args=(fermo, lambda: [ctx], _db(ambiente), 0.01,
                                                                     lambda: SCADENZA - timedelta(minutes=5)))
         t.start()
         threading.Event().wait(0.05)
