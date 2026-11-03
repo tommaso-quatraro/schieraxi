@@ -71,6 +71,74 @@ struct DemoDiarioTests {
         #expect(s.meglioConsigliata == meglioConsigliata)
     }
 
+    @Test("«Le tue scelte» è quella che il server calcola dalle giornate del Diario")
+    func scelteTueComeIlServer() async throws {
+        let d = try await diario()
+        let s = try #require(d.scelteTue)
+        let attese = Self.scelteDelServer(d.giornate ?? [])
+        try #require(!attese.isEmpty, "nella demo nessuna giornata ha undici diversi da quelli consigliati")
+        let trovate = (s.perGiornata ?? []).map(Scelta.init)
+        #expect(trovate == attese, "le righe devono essere le giornate del Diario con undici diversi, dalla più recente")
+
+        let n = attese.count
+        let meglioTua = attese.filter { $0.esito == "tua" }.count
+        let meglioConsigliata = attese.filter { $0.esito == "consigliata" }.count
+        let pari = attese.filter { $0.esito == "pari" }.count
+        let somma = attese.compactMap(\.differenza).reduce(0, +)
+        let puntiDifferenza = (somma * 10).rounded() / 10
+        let percentuale = (100 * Double(meglioTua) / Double(n)).rounded()
+        #expect(s.giornate == n)
+        #expect(s.meglioTua == meglioTua)
+        #expect(s.meglioConsigliata == meglioConsigliata)
+        #expect(s.pari == pari)
+        #expect(s.puntiDifferenza == puntiDifferenza)
+        #expect(s.percentualeTua == percentuale)
+        #expect(s.pochiDati == (n < 8), "sotto le 8 giornate il server dice «pochi dati» (POCHI_DATI di fanta/diario.py)")
+    }
+
+    /// Una riga di «Le tue scelte», da confrontare tutta insieme.
+    private struct Scelta: Equatable {
+        let giornata: Int?
+        let haiScelto: [String]
+        let consigliava: [String]
+        let tua: Double?
+        let consigliata: Double?
+        let differenza: Double?
+        let esito: String?
+
+        init(giornata: Int?, haiScelto: [String], consigliava: [String], tua: Double?, consigliata: Double?, differenza: Double?, esito: String?) {
+            self.giornata = giornata; self.haiScelto = haiScelto; self.consigliava = consigliava
+            self.tua = tua; self.consigliata = consigliata; self.differenza = differenza; self.esito = esito
+        }
+
+        /// La riga come la mostra la demo.
+        init(_ r: SceltaGiornata) {
+            self.init(giornata: r.giornata, haiScelto: r.haiScelto ?? [], consigliava: r.consigliava ?? [],
+                      tua: r.puntiTua, consigliata: r.puntiConsigliata, differenza: r.differenza, esito: r.esito)
+        }
+    }
+
+    /// Le righe come le scrive `scelte_tue` di fanta/diario.py: solo le giornate con la tua formazione e undici diversi da quelli
+    /// consigliati, nell'ordine del Diario; i nomi in più e in meno nell'ordine delle due formazioni; differenza = tua − consigliata.
+    private static func scelteDelServer(_ voci: [VoceDiario]) -> [Scelta] {
+        voci.compactMap { v -> Scelta? in
+            guard let tua = v.schierata, let cons = v.consigliata,
+                  let titolariTua = tua.titolari, !titolariTua.isEmpty,
+                  let titolariCons = cons.titolari, !titolariCons.isEmpty else { return nil }
+            let tue = Set(titolariTua.compactMap(\.id))
+            let loro = Set(titolariCons.compactMap(\.id))
+            guard tue != loro else { return nil }
+            let puntiTua = tua.reale ?? 0
+            let puntiCons = cons.reale ?? 0
+            let differenza = ((puntiTua - puntiCons) * 10).rounded() / 10
+            let esito = differenza > 0 ? "tua" : differenza < 0 ? "consigliata" : "pari"
+            return Scelta(giornata: v.giornata,
+                          haiScelto: titolariTua.filter { !loro.contains($0.id ?? -1) }.compactMap(\.nome),
+                          consigliava: titolariCons.filter { !tue.contains($0.id ?? -1) }.compactMap(\.nome),
+                          tua: puntiTua, consigliata: puntiCons, differenza: differenza, esito: esito)
+        }
+    }
+
     /// La media a un decimale, come `round(…, 1)` del server.
     private func media(_ valori: [Double]) -> Double {
         (valori.reduce(0, +) / Double(valori.count) * 10).rounded() / 10

@@ -955,19 +955,16 @@ private enum DatiDemo {
             // come `sintesi` di fanta/diario.py: le giornate 9 e 8 di Serie A, le due con la tua formazione
             "sintesi": ["giornate": 2, "punti_schierata": 61.5, "punti_consigliata": 67.5, "attesi_schierata": 66.0,
                         "meglio_tua": 0, "meglio_consigliata": 2],
-            "scelte_tue": ["giornate": 9, "meglio_tua": 5, "meglio_consigliata": 3, "pari": 1, "punti_differenza": 4.5,
-                           "percentuale_tua": 56, "pochi_dati": false,
-                           // le giornate 9 e 8 sono quelle dell'elenco qui sopra; niente giornate prima che la lega partisse
+            // come `scelte_tue` di fanta/diario.py, dalle stesse voci: le giornate 9 e 8 di Serie A, le sole con la tua formazione
+            // (undici diversi da quelli consigliati); 2 giornate sono sotto le 8 che servono, quindi «pochi dati»
+            "scelte_tue": ["giornate": 2, "meglio_tua": 0, "meglio_consigliata": 2, "pari": 0, "punti_differenza": -12.0,
+                           "percentuale_tua": 0, "pochi_dati": true,
                            "per_giornata": [
                                ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"],
                                 "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"],
                                ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "hai_scelto": ["Mkhedrian", "Zelawski", "Orsetti"],
                                 "consigliava": ["Calvaroglu", "Kloosmeijer", "Dunfrey"],
                                 "punti_tua": 59.5, "punti_consigliata": 64.0, "differenza": -4.5, "esito": "consigliata"],
-                               ["stagione": "2026-27", "giornata": 6, "giornata_lega": lega(6), "hai_scelto": ["Lemao", "Pulinski"], "consigliava": ["Thorvan", "Dunfrey"],
-                                "punti_tua": 70.0, "punti_consigliata": 64.5, "differenza": 5.5, "esito": "tua"],
-                               ["stagione": "2026-27", "giornata": 4, "giornata_lega": lega(4), "hai_scelto": ["Orsetti"], "consigliava": ["Kloosmeijer"],
-                                "punti_tua": 66.0, "punti_consigliata": 66.0, "differenza": 0.0, "esito": "pari"],
                            ]],
         ])
     }
