@@ -50,7 +50,8 @@ final class WidgetFasiTests: XCTestCase {
         XCTAssertEqual(r.puntiFattiTesto, "41,5")
         XCTAssertEqual(r.puntiFineTesto, "circa 72,4 a fine giornata")
         XCTAssertEqual(r.ancoraDaGiocareTesto, "4 devono ancora giocare")
-        XCTAssertEqual(r.descrizioneFase, "Giornata 11 in corso: 41,5 punti fatti, circa 72,4 a fine giornata. 4 devono ancora giocare.")
+        // dopo la scadenza «formazione chiusa» (vocabolario: «Chiusa», mai «in corso» per la giornata)
+        XCTAssertEqual(r.descrizioneFase, "Giornata 11, formazione chiusa: 41,5 punti fatti finora, circa 72,4 a fine giornata. 4 devono ancora giocare.")
     }
 
     func testGiornataFinitaRiepilogoEProssima() throws {
@@ -77,7 +78,7 @@ final class WidgetFasiTests: XCTestCase {
         let r = try XCTUnwrap(try widget(#""fase": "in_corso", "in_corso": null"#).comeRiassuntoOggi())
         XCTAssertTrue(r.inCorso)
         XCTAssertEqual(r.daControllare, 0)
-        XCTAssertFalse(r.mostraFase, "senza punti fatti il widget resta quello di sempre (con «In corso»)")
+        XCTAssertFalse(r.mostraFase, "senza punti fatti il widget resta quello di sempre (con «Chiusa»)")
     }
 
     func testBlocchiFuoriFaseOFaseStranaSiIgnorano() throws {
