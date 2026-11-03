@@ -102,9 +102,25 @@ struct TestiCortiWidgetTests {
         #expect(ParoleWidget.conto(fino: nil, adesso: scadenza) == "—")
     }
 
-    @Test("I crediti hanno la «C» nel cerchio come nell'app, non l'euro")
-    func simboloCrediti() {
+    @Test("App e widget usano lo stesso simbolo dei crediti («C» nel cerchio, `ParoleWidget.simboloCrediti`), mai l'euro")
+    func simboloCrediti() throws {
         #expect(ParoleWidget.simboloCrediti == "c.circle")
+        // i sorgenti stanno accanto ai test sul Mac di GitHub (come in NomiRealiTests): ios/Sources e ios/WidgetSources
+        let ios = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        var conEuro: [String] = [], aMano: [String] = [], letti = 0
+        for cartella in ["Sources", "WidgetSources"] {
+            let elenco = try #require(FileManager.default.enumerator(at: ios.appendingPathComponent(cartella, isDirectory: true),
+                                                                     includingPropertiesForKeys: nil))
+            for case let url as URL in elenco where url.pathExtension == "swift" {
+                let testo = try String(contentsOf: url, encoding: .utf8)
+                letti += 1
+                if testo.contains("eurosign") { conEuro.append(url.lastPathComponent) }
+                if testo.contains("\"c.circle\""), url.lastPathComponent != "WidgetRiassunto.swift" { aMano.append(url.lastPathComponent) }
+            }
+        }
+        #expect(letti > 10, "i sorgenti non si leggono: il test non proverebbe niente")
+        #expect(conEuro.isEmpty, "simbolo dell'euro per i crediti in: \(conEuro)")
+        #expect(aMano.isEmpty, "simbolo dei crediti scritto a mano (usa ParoleWidget.simboloCrediti) in: \(aMano)")
     }
 
     // MARK: tabella e righe del widget «Punti attesi e fatti»
