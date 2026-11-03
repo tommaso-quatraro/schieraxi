@@ -1,0 +1,6 @@
+{"titolo": "Diario: le giornate della stagione scorsa restano com'erano",
+ "voci": ["Nel Diario le giornate della stagione scorsa si leggono e basta: niente più «Ho schierato la consigliata» e «Correggi a mano», così non possono cambiare per sbaglio la giornata con lo stesso numero di quest'anno.",
+          "Con due stagioni nel Diario ogni giornata resta la sua: «Correggi a mano» parte dalla formazione giusta e dopo il salvataggio il Diario torna su quella giornata."],
+ "tecnico": ["Web: POST /api/diario/schierata manda sempre la `stagione` della voce (consigliata e manuale); «Ho schierato…» e «Correggi» solo se `modificabile` non è falso (server vecchio senza il campo: come prima).",
+             "Web: id della carta, `data-correggi` e `data-schierata` = `diario-<stagione>-g<giornata>`; la voce si cerca per stagione + giornata. `apriDiario(giornata, stagione?)`: senza stagione mostra la voce più recente con quel numero (Oggi e «Da fare» sono della stagione in corso).",
+             "Parte web di #176; resta la parte iPhone."]}
