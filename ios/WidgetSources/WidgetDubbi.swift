@@ -52,16 +52,19 @@ struct VistaDubbi: View {
     private func contenuto(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             // con il testo grande il titolo lascia il posto al simbolo (mai «Da contr…»)
+            // a giornata finita la testata dice la giornata finita, non la prossima
             IntestazioneWidget(titolo: "Da controllare",
                                icona: r.daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill",
-                               destra: r.etichettaGiornata,
+                               destra: r.etichettaTestata,
                                colore: r.daControllare > 0 ? .orange : .white.opacity(0.85))
-            if r.inCorso || r.finita {
-                // formazione chiusa: i dubbi non contano più (i punti stanno in Oggi e nel widget Prossima giornata)
+            if let titolo = r.titoloFase {
+                // formazione chiusa: i dubbi non contano più (i punti stanno in Oggi e nel widget Prossima giornata).
+                // Parole della web: «Chiusa» dopo la scadenza, «Giornata 8 finita» a giornata finita.
                 Spacer(minLength: 0)
-                Text(r.inCorso ? "Giornata in corso" : "Giornata finita").font(.headline)
-                Text(r.inCorso ? "La formazione è chiusa: i punti fatti sono in Oggi." : "Si ricomincia con la prossima giornata.")
-                    .font(.caption).foregroundStyle(.white.opacity(0.8))
+                Text(titolo).font(.headline)
+                if let frase = r.fraseFase(adesso: voce.date) {
+                    Text(frase).font(.caption).foregroundStyle(.white.opacity(0.8))
+                }
                 Spacer(minLength: 0)
             } else if r.daControllare == 0 {
                 Spacer(minLength: 0)
@@ -70,13 +73,19 @@ struct VistaDubbi: View {
                     .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
             } else if let dubbi = r.dubbi, !dubbi.isEmpty {
-                ForEach(dubbi.prefix(massimo)) { d in
-                    Link(destination: URL(string: "schieraxi://giocatore/\(d.id)") ?? URL(fileURLWithPath: "/")) { riga(d) }
+                // tante righe quante ne entrano in altezza (testo grande, iPad): le altre in «e altri N», mai una riga tagliata in fondo
+                let prove = DisposizioneWidget.righeDaProvare(massimo: massimo, totale: dubbi.count)
+                PrimaCheEntra(prove.count, in: .vertical) { i in
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(dubbi.prefix(prove[i])) { d in
+                            Link(destination: Vai.giocatore(d.id)) { riga(d) }
+                        }
+                        if dubbi.count > prove[i] {
+                            Text(RiassuntoWidget.altri(dubbi.count - prove[i])).font(.caption2).foregroundStyle(.white.opacity(0.7))
+                        }
+                    }
                 }
-                if dubbi.count > massimo {
-                    Text(RiassuntoWidget.altri(dubbi.count - massimo)).font(.caption2).foregroundStyle(.white.opacity(0.7))
-                }
-                Spacer(minLength: 0)
+                .frame(maxHeight: .infinity, alignment: .top)
             } else {
                 Spacer(minLength: 0)
                 EtichettaDaControllare(n: r.daControllare).font(.title3.bold())
@@ -114,14 +123,18 @@ struct VistaDubbi: View {
 
     private func rettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(r.daControllare > 0 ? "Da controllare: \(r.daControllare)" : r.inCorso ? "Giornata in corso" : r.finita ? "Giornata finita" : "Formazione a posto")
-                .font(.headline)
+            // le stesse parole delle altre forme: «4 da controllare», «Chiusa», «Giornata 8 finita», «Titolari a posto»
+            if r.daControllare > 0 {
+                EtichettaDaControllare(n: r.daControllare).font(.headline)
+            } else {
+                Text(r.titoloFase ?? "Titolari a posto").font(.headline).lineLimit(1)
+            }
             if let dubbi = r.dubbi, !dubbi.isEmpty {
                 ForEach(dubbi.prefix(2)) { d in
-                    Text("\(d.nome) · \(d.descrizione)").font(.caption2).lineLimit(1)
+                    TestoCheEntra(d.formeRiga).font(.caption2)
                 }
             } else {
-                Text(r.etichettaGiornata).font(.caption2).foregroundStyle(.secondary)
+                Text(r.sottotitoloRettangolo).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

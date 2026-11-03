@@ -68,7 +68,13 @@ struct VistaScambio: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         case .accessoryInline:
-            Label("Scambio \(Formato.conSegno(s.guadagnoMio ?? 0)): \(s.daiTesto) per \(s.ricevoTesto)", systemImage: "arrow.left.arrow.right")
+            // se i nomi non entrano resta il guadagno: mai «Zanvolo, Car…»
+            let forme = s.formeInLinea
+            PrimaCheEntra(forme.count) { i in
+                Label(forme[i], systemImage: "arrow.left.arrow.right")
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(s.frase)
         default: piccolo(s)
         }
     }
@@ -123,7 +129,8 @@ struct VistaScambio: View {
                 Spacer(minLength: 0)
                 guadagno(s.guadagnoMio, corpo: 36)
                 Text("punti attesi per te").font(.caption2).foregroundStyle(TintaWidget.testo2)
-                if let a = s.altra { Text("con \(a)").font(.caption2).lineLimit(1) }
+                // su iPad la colonna è stretta: il nome della squadra va a capo intero, mai «con Real Madr…»
+                if let a = s.altra { Text("con \(a)").font(.caption2).lineLimit(2) }
                 PiedeDati(voce: voce)
             }
             .frame(maxWidth: 120, alignment: .leading)

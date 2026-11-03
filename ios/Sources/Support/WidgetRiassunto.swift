@@ -662,4 +662,184 @@ enum DisposizioneWidget {
         let stato = dubbi > 0 ? "\(dubbi) da controllare" : "titolari a posto"
         return testo >= .xLarge ? stato : "\(modulo ?? "—") · \(stato)"
     }
+
+    /// Quante righe provare in un elenco alto quanto il widget (dal massimo che c'è fino a una, al più sei prove): la vista tiene
+    /// la prima che entra in altezza, le altre vanno in «e altri N». Senza nessuno: `[0]`.
+    static func righeDaProvare(massimo: Int, totale: Int) -> [Int] {
+        let quante = min(max(massimo, 0), max(totale, 0))
+        guard quante > 0 else { return [0] }
+        return Array(stride(from: quante, through: 1, by: -1).prefix(6))
+    }
+}
+
+// MARK: Testi che si accorciano (mai una parola tagliata a metà)
+
+/// Le parole dei widget e le forme dei testi, dalla più lunga alla più corta. La vista mostra la prima che entra (`TestoCheEntra`,
+/// `PrimaCheEntra` in WidgetSources): dove non c'è spazio il testo perde parole intere («4 da controllare» → «4»), mai
+/// «4 da contr…»; VoiceOver legge sempre la prima. Stanno qui, e non nelle viste, perché le viste dei widget non entrano nei test.
+enum ParoleWidget {
+    /// Il conto alla rovescia dopo la scadenza, come la web (`oggi.chiusa`): per la giornata mai «In corso».
+    static let chiusa = "Chiusa"
+
+    /// Il simbolo dei crediti, lo stesso dell'app («C» nel cerchio): i crediti non sono euro.
+    static let simboloCrediti = "c.circle"
+
+    /// «6 h 44 min» fino alla scadenza, «Chiusa» dopo, «—» se la scadenza non si sa.
+    static func conto(fino scadenza: Date?, adesso: Date) -> String {
+        guard let scadenza else { return "—" }
+        return Quando.contoAllaRovescia(fino: scadenza, adesso: adesso) ?? chiusa
+    }
+
+    /// «4 da controllare» → «4»; senza niente da controllare «titolari a posto» → «a posto».
+    static func daControllare(_ n: Int) -> [String] {
+        n > 0 ? ["\(n) da controllare", "\(n)"] : ["titolari a posto", "a posto"]
+    }
+
+    /// Lo stato di un giocatore: «In dubbio · gioca 70%» → «gioca 70%», come la pillola del campo; uno stato di un pezzo solo resta.
+    static func stato(_ testo: String) -> [String] {
+        guard let ultima = testo.components(separatedBy: " · ").last, !ultima.isEmpty, ultima != testo else { return [testo] }
+        return [testo, ultima]
+    }
+
+    /// «73,7 punti attesi» → «73,7 attesi»; con la scelta tua «… · la tua scelta» finché entra.
+    static func puntiAttesi(_ punti: Double?, tuaScelta: Bool = false) -> [String] {
+        let p = Formato.punti(punti)
+        return tuaScelta ? ["\(p) punti attesi · la tua scelta", "\(p) attesi · la tua scelta", "\(p) attesi"]
+                         : ["\(p) punti attesi", "\(p) attesi"]
+    }
+
+    /// «73,7 attesi · tra 62 e 85» → «73,7 attesi»; senza fascia come `puntiAttesi`.
+    static func puntiConFascia(_ punti: Double?, fascia: String?) -> [String] {
+        guard let fascia else { return puntiAttesi(punti) }
+        let p = Formato.punti(punti)
+        return ["\(p) attesi · \(fascia)", "\(p) attesi"]
+    }
+
+    /// «3-4-3 · 73,7 punti · tra 62 e 85» → «3-4-3 · 73,7 punti» → «3-4-3 · 73,7».
+    static func moduloEPunti(_ modulo: String?, punti: Double?, fascia: String?) -> [String] {
+        let m = modulo ?? "—", p = Formato.punti(punti)
+        let corte = ["\(m) · \(p) punti", "\(m) · \(p)"]
+        return fascia.map { ["\(m) · \(p) punti · \($0)"] + corte } ?? corte
+    }
+
+    /// «Formazione 3-4-3» (o «La tua scelta 3-4-3») → «3-4-3».
+    static func titoloFormazione(_ modulo: String?, tuaScelta: Bool) -> [String] {
+        let m = modulo ?? "—"
+        return ["\(tuaScelta ? "La tua scelta" : "Formazione") \(m)", m]
+    }
+
+    /// Due parti che si accorciano insieme: prima tutta la seconda (la meno importante), poi la prima.
+    static func coppie(_ a: [String], _ b: [String]) -> [(String, String)] {
+        guard let primaA = a.first, let ultimaB = b.last else { return [] }
+        return b.map { (primaA, $0) } + a.dropFirst().map { ($0, ultimaB) }
+    }
+
+    /// «Sorvani, Bastrani, Dimarzi» → «Sorvani, Bastrani e un altro» → «Sorvani e altri 2» (al più `massimo` nomi).
+    static func nomi(_ nomi: [String], massimo: Int = 3) -> [String] {
+        let quanti = min(nomi.count, max(massimo, 1))
+        guard quanti > 0 else { return [] }
+        return stride(from: quanti, through: 1, by: -1).map { k in
+            let elenco = nomi.prefix(k).joined(separator: ", ")
+            return k == nomi.count ? elenco : "\(elenco) \(RiassuntoWidget.altri(nomi.count - k))"
+        }
+    }
+
+    /// Lo stato dei dati in una riga: «Dati delle 14:32 · probabili uscite» → «14:32 · probabili uscite» → «Dati delle 14:32».
+    static func statoDati(ora: String, probabili: String) -> [String] {
+        ["Dati delle \(ora) · \(probabili)", "\(ora) · \(probabili)", "Dati delle \(ora)"]
+    }
+}
+
+extension PuntiGiornata {
+    /// Le forme di una riga della tabella dei punti, dalla più lunga: «G7» al posto di «Giornata 7», poi via la fascia, poi solo i fatti.
+    enum FormaRiga: CaseIterable { case completa, siglaConFascia, sigla, soloFatti }
+
+    /// «G7», o «G38 · 2025-26» per una giornata di un'altra stagione (la stagione non si perde mai).
+    var siglaConStagione: String { altraStagione.map { "\(sigla) · \($0)" } ?? sigla }
+
+    /// I pezzi di una riga della tabella in quella forma: titolo, fascia (se c'è) e punti.
+    func riga(_ forma: FormaRiga) -> (titolo: String, fascia: String?, punti: String) {
+        let suAttesi = "\(Formato.punti(fatti)) su \(Formato.punti(attesi))"
+        switch forma {
+        case .completa: return (titolo, fasciaTesto, suAttesi)
+        case .siglaConFascia: return (siglaConStagione, fasciaTesto, suAttesi)
+        case .sigla: return (siglaConStagione, nil, suAttesi)
+        case .soloFatti: return (siglaConStagione, nil, Formato.punti(fatti))
+        }
+    }
+
+    /// Il titolo del rettangolo della schermata di blocco: «Giornata 7: 63,5 punti» → «G7: 63,5 punti» → «G7: 63,5».
+    var formeTitolo: [String] {
+        let f = Formato.punti(fatti)
+        if altraStagione != nil { return ["\(siglaConStagione): \(f) punti", "\(siglaConStagione): \(f)"] }
+        return ["Giornata \(numero): \(f) punti", "\(sigla): \(f) punti", "\(sigla): \(f)"]
+    }
+
+    /// La riga in linea: «G7 63,5 fatti, 66,0 attesi» → «G7 63,5 su 66,0» → «G7 63,5 fatti».
+    var formeInLinea: [String] {
+        let f = Formato.punti(fatti), a = Formato.punti(attesi)
+        return ["\(sigla) \(f) fatti, \(a) attesi", "\(sigla) \(f) su \(a)", "\(sigla) \(f) fatti"]
+    }
+}
+
+extension DubbioRiassunto {
+    /// Una riga del rettangolo «Da controllare»: «Fabio Dimarzi · In dubbio · gioca 70%» → «Dimarzi · In dubbio · gioca 70%» →
+    /// «Dimarzi · gioca 70%».
+    var formeRiga: [String] {
+        let cognome = nome.split(separator: " ").last.map(String.init) ?? nome
+        var forme = ["\(nome) · \(descrizione)"]
+        if cognome != nome { forme.append("\(cognome) · \(descrizione)") }
+        if let corto = ParoleWidget.stato(descrizione).last, corto != descrizione { forme.append("\(cognome) · \(corto)") }
+        return forme
+    }
+}
+
+extension ScambioWidget {
+    /// La riga in linea: «Scambio +3,4: Zanvolo, Carsetti per Zaviani» → «Scambio +3,4 punti».
+    var formeInLinea: [String] {
+        let g = Formato.conSegno(guadagnoMio ?? 0)
+        return ["Scambio \(g): \(daiTesto) per \(ricevoTesto)", "Scambio \(g) punti"]
+    }
+}
+
+// MARK: Parole delle fasi della giornata nei widget (le stesse della web: `oggi.chiusa`, `oggi.chiusa_dettaglio`, `oggi.giornata_finita`)
+
+extension RiassuntoOggi {
+    /// La giornata nella testata: a giornata finita quella appena chiusa (giornata e scadenza sono già della prossima);
+    /// nil se il server non dice quale (meglio niente che il numero sbagliato).
+    var etichettaTestata: String? {
+        guard finita else { return etichettaGiornata }
+        return giornataChiusa.map { TempiLega.etichetta(serieA: $0, lega: giornataChiusaLega) }
+    }
+
+    /// Il titolo della fase: «Chiusa» dopo la scadenza, «Giornata 8 finita» a giornata finita; nil prima della scadenza.
+    var titoloFase: String? {
+        if inCorso { return ParoleWidget.chiusa }
+        if finita { return giornataChiusa == nil ? "Giornata finita" : "\(etichettaGiornataChiusa) finita" }
+        return nil
+    }
+
+    /// La frase sotto il titolo della fase: dopo la scadenza come la web («La formazione della giornata 8 si è chiusa oggi 14:50»)
+    /// e dove sono i punti; a giornata finita cosa succede ora. nil prima della scadenza.
+    func fraseFase(adesso: Date) -> String? {
+        if inCorso {
+            var t = giornata == nil ? "La formazione si è chiusa" : "La formazione della \(etichettaGiornata.lowercased()) si è chiusa"
+            if let inizio { t += " \(Quando.relativa(inizio, adesso: adesso))" }
+            return t + ". I punti fatti sono in Oggi."
+        }
+        return finita ? "Si ricomincia con la prossima giornata." : nil
+    }
+
+    /// La prima riga del rettangolo della schermata di blocco: «G8 · Chiusa» dopo la scadenza, «G8 finita» a giornata finita.
+    var testaRettangoloFase: String {
+        inCorso ? "\(siglaGiornata) · \(ParoleWidget.chiusa)" : "\(siglaGiornataChiusa) finita"
+    }
+
+    /// La riga in linea: «G8: 41,5 punti fatti finora» dopo la scadenza, «G8: 69,5 punti fatti» a giornata finita.
+    var rigaInLineaFase: String {
+        inCorso ? "\(siglaGiornata): \(puntiFattiTesto) punti fatti finora" : "\(siglaGiornataChiusa): \(puntiFattiTesto) punti fatti"
+    }
+
+    /// Sotto il titolo del rettangolo «Da controllare» quando non ci sono nomi: la giornata, o a giornata finita la prossima.
+    var sottotitoloRettangolo: String { finita ? "Prossima: \(etichettaGiornata)" : etichettaGiornata }
 }

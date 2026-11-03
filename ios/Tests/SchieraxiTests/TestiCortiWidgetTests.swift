@@ -54,8 +54,8 @@ struct TestiCortiWidgetTests {
     @Test("Due parti che si accorciano insieme: prima tutta la seconda, poi la prima")
     func coppie() {
         let c = ParoleWidget.coppie(["73,7 punti attesi", "73,7 attesi"], ["Giornata 8", "G8"])
-        #expect(c.map(\.0) == ["73,7 punti attesi", "73,7 punti attesi", "73,7 attesi"])
-        #expect(c.map(\.1) == ["Giornata 8", "G8", "G8"])
+        #expect(c.map { $0.0 } == ["73,7 punti attesi", "73,7 punti attesi", "73,7 attesi"])
+        #expect(c.map { $0.1 } == ["Giornata 8", "G8", "G8"])
         #expect(ParoleWidget.coppie(["a"], []).isEmpty)
     }
 
@@ -67,6 +67,14 @@ struct TestiCortiWidgetTests {
         #expect(ParoleWidget.nomi(otto) == ["Sorvani, Bastrani, Dimarzi e altri 5", "Sorvani, Bastrani e altri 6", "Sorvani e altri 7"])
         #expect(ParoleWidget.nomi(["Sorvani"]) == ["Sorvani"])
         #expect(ParoleWidget.nomi([]).isEmpty)
+    }
+
+    @Test("Riga del rettangolo «Da controllare»: prima il cognome, poi lo stato corto")
+    func rigaDubbio() {
+        let d = DubbioRiassunto(id: 1, nome: "Fabio Dimarzi", ruolo: "D", tipo: "dubbio", pVoto: 0.7)
+        #expect(d.formeRiga == ["Fabio Dimarzi · In dubbio · gioca 70%", "Dimarzi · In dubbio · gioca 70%", "Dimarzi · gioca 70%"])
+        let corto = DubbioRiassunto(id: 2, nome: "Bastrani", ruolo: "D", tipo: "diffidato", pVoto: nil)
+        #expect(corto.formeRiga == ["Bastrani · Diffidato"])
     }
 
     @Test("Stato dei dati in linea: senza «Dati delle», poi senza le probabili")
@@ -86,8 +94,8 @@ struct TestiCortiWidgetTests {
 
     @Test("Dopo la scadenza il conto alla rovescia dice «Chiusa», come la web (`oggi.chiusa`)")
     func chiusaComeLaWeb() throws {
-        let web = try TestiWeb()
-        #expect(ParoleWidget.chiusa == (try web.italiano("oggi.chiusa")))
+        let comeLaWeb = try TestiWeb().italiano("oggi.chiusa")
+        #expect(ParoleWidget.chiusa == comeLaWeb)
         let scadenza = try #require(Quando.data("2026-10-31 15:00"))
         #expect(ParoleWidget.conto(fino: scadenza, adesso: scadenza.addingTimeInterval(60)) == "Chiusa")
         #expect(ParoleWidget.conto(fino: scadenza, adesso: scadenza.addingTimeInterval(-24_240)) == "6 h 44 min")

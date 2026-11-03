@@ -21,10 +21,20 @@ Da fare: niente di fisso. Stile e modulo: il server non li mette in `/api/widget
 ## Fasi della giornata
 
 Campi facoltativi `fase`, `in_corso`, `riepilogo` (gli stessi di `GET /api/oggi`, contratto «fasi della giornata» nel repository del server), letti da `RiassuntoWidget.faseGiornata` e portati in `RiassuntoOggi` (`fase`, `puntiFatti`, `puntiFine`, `ancoraDaGiocare`, `giornataChiusa`; test in `WidgetFasiTests`).
-- `in_corso`: niente «Da controllare» (anche Formazione e Cruscotto non mostrano i dubbi); Prossima giornata mostra i punti fatti grandi, «circa X a fine giornata», gli attesi di prima e quanti devono ancora giocare; il tocco apre Oggi.
-- `finita`: riepilogo della giornata chiusa (fatti contro attesi) e conto alla rovescia della prossima (`giornata` e `scadenza` sono già quelle della prossima); niente «Da controllare».
+- `in_corso`: niente «Da controllare» (anche Formazione e Cruscotto non mostrano i dubbi); Prossima giornata mostra i punti fatti grandi, «circa X a fine giornata», gli attesi di prima e quanti devono ancora giocare; il tocco apre Oggi. Dopo la scadenza la giornata è **«Chiusa»** come sulla web (`oggi.chiusa`), mai «In corso»: conto alla rovescia, Prossima giornata, Da controllare («La formazione della giornata 8 si è chiusa oggi 14:50. I punti fatti sono in Oggi.»). «In corso» resta solo per le partite («Partite in corso»).
+- `finita`: riepilogo della giornata chiusa (fatti contro attesi) e conto alla rovescia della prossima (`giornata` e `scadenza` sono già quelle della prossima); niente «Da controllare»: quel widget dice «Giornata 8 finita» (`oggi.giornata_finita` della web) e in testata la giornata finita, non la prossima.
 - Senza `fase` (server che non la manda): come prima. Con la fase ma senza i numeri (`in_corso: null`): conto alla rovescia di sempre, ma senza «Da controllare».
 - Foto: galleria con `-DATI in_corso` / `-DATI finita` (`DatiGalleria.json(fase:)`), giri `iphone_fasi` e `ipad_fasi` di `scripts/screenshot_widget.sh`.
+
+## Testi che non entrano
+
+Un widget ha misure fisse: con il testo grande, su iPad o sulla schermata di blocco un testo può non entrare. Mai tagliarlo a metà
+parola («4 da contr…»): ogni testo ha più forme, dalla più lunga alla più corta, scritte in `ParoleWidget` (`Sources/Support/WidgetRiassunto.swift`,
+provate in `TestiCortiWidgetTests`), e la vista mostra la prima che entra (`TestoCheEntra`, `PrimaCheEntra`, cioè `ViewThatFits`).
+Esempi: «4 da controllare» → «4»; «In dubbio · gioca 70%» → prima senza volti, poi «gioca 70%»; «Giornata 7» → «G7»; tabella dei punti:
+«G7» al posto di «Giornata 7», poi via la fascia; elenchi di nomi: «Sorvani e altri 2». VoiceOver legge sempre la forma intera.
+I widget rotondi della schermata di blocco stanno in `CerchioWidget` (contenuto sempre al centro). Crediti: simbolo «C» nel cerchio
+(`ParoleWidget.simboloCrediti`, come l'app), mai l'euro.
 
 ## Collegamento automatico (Apple ID gratuito + SideStore)
 

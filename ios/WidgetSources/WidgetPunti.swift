@@ -68,22 +68,17 @@ struct VistaPunti: View {
         case .systemMedium: medio(w, g)
         case .systemLarge: grande(w, g)
         case .accessoryCircular:
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 0) {
-                    Text(g.sigla).fontWidget(10)
-                    Text(scartoTesto(g)).font(.headline.bold()).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
-                    Text("sul previsto").fontWidget(8)
-                }
+            CerchioWidget {
+                Text(g.sigla).fontWidget(10)
+                Text(scartoTesto(g)).font(.headline.bold()).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
+                Text("sul previsto").fontWidget(8)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(g.descrizione)
         case .accessoryRectangular:
-            // una giornata di un'altra stagione: sigla e stagione («G38 · 2025-26»), mai «Giornata 38» da sola (vocabolario)
-            let testa = g.altraStagione.map { g.sigla + " · " + $0 } ?? "Giornata " + String(g.numero)
+            // «Giornata 7: 63,5 punti» → «G7: 63,5 punti» → «G7: 63,5»; un'altra stagione sempre con la stagione («G38 · 2025-26»)
             VStack(alignment: .leading, spacing: 2) {
-                Text(testa + ": " + Formato.punti(g.fatti) + " punti")
-                    .font(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                TestoCheEntra(g.formeTitolo).font(.headline)
                 Text("attesi \(Formato.punti(g.attesi)) · \(scartoTesto(g))").font(.caption).monospacedDigit()
                 GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false)
             }
@@ -91,8 +86,12 @@ struct VistaPunti: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(g.descrizione)
         case .accessoryInline:
-            Label("\(g.sigla) \(Formato.punti(g.fatti)) fatti, \(Formato.punti(g.attesi)) attesi", systemImage: "chart.bar")
-                .accessibilityLabel(g.descrizione)
+            let forme = g.formeInLinea
+            PrimaCheEntra(forme.count) { i in
+                Label(forme[i], systemImage: "chart.bar")
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(g.descrizione)
         default: piccolo(w, g)
         }
     }
@@ -164,19 +163,13 @@ struct VistaPunti: View {
             }
             GraficoPunti(giornate: giornate, altezza: 80)
             legenda
-            VStack(spacing: 3) {
-                ForEach(giornate) { x in
-                    HStack {
-                        // «Giornata 38 · 2025-26» per un'altra stagione: titolo e punti vincono sulla fascia, che si accorcia
-                        Text(x.titolo).font(.footnote).lineLimit(1).minimumScaleFactor(0.85).layoutPriority(1)
-                        if let f = x.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
-                        Spacer()
-                        Text("\(Formato.punti(x.fatti)) su \(Formato.punti(x.attesi))").font(.footnote).monospacedDigit()
-                            .lineLimit(1).minimumScaleFactor(0.85).layoutPriority(1)
-                        Text(scartoTesto(x)).font(.footnote.weight(.semibold)).monospacedDigit().frame(width: 52, alignment: .trailing)
+            // la stessa forma per tutte le righe: prima «G7» al posto di «Giornata 7», poi via la fascia, poi solo i fatti
+            // (mai «dentro la fa…» né «63,5 su 6…»); VoiceOver legge la riga intera
+            PrimaCheEntra(PuntiGiornata.FormaRiga.allCases.count) { i in
+                VStack(spacing: 3) {
+                    ForEach(giornate) { x in
+                        RigaTabellaPunti(giornata: x, forma: PuntiGiornata.FormaRiga.allCases[i], scarto: scartoTesto(x))
                     }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(GraficoPunti.descrizione(x))
                 }
             }
             if case let (dentro, su) = RiassuntoWidget.quanteDentro(giornate), su > 0 {

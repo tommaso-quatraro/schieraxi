@@ -129,7 +129,7 @@ struct VistaWidget: View {
     private func fasePiccolo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             titoloFase(r)
-            Text(r.inCorso ? "In corso" : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
+            Text(r.inCorso ? ParoleWidget.chiusa : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
             Spacer(minLength: 0)
             puntiFattiGrandi(r, stile: .largeTitle)
             Text("punti fatti").font(.caption2).foregroundStyle(.white.opacity(0.8))
@@ -148,7 +148,7 @@ struct VistaWidget: View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 titoloFase(r)
-                Text(r.inCorso ? "In corso" : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
+                Text(r.inCorso ? ParoleWidget.chiusa : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
                 Spacer(minLength: 0)
                 puntiFattiGrandi(r, stile: .largeTitle)
                 Text("punti fatti").font(.caption).foregroundStyle(.white.opacity(0.8))
@@ -189,19 +189,16 @@ struct VistaWidget: View {
     }
 
     private func faseCircolare(_ r: RiassuntoOggi) -> some View {
-        ZStack {
-            AccessoryWidgetBackground()
-            VStack(spacing: 0) {
-                Text(r.inCorso ? r.siglaGiornata : r.siglaGiornataChiusa).font(.caption2)
-                Text(r.puntiFattiTesto).font(.caption.bold()).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1).widgetAccentable()
-                Text("fatti").font(.caption2)
-            }
+        CerchioWidget {
+            Text(r.inCorso ? r.siglaGiornata : r.siglaGiornataChiusa).font(.caption2)
+            Text(r.puntiFattiTesto).font(.caption.bold()).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1).widgetAccentable()
+            Text("fatti").font(.caption2)
         }
     }
 
     private func faseRettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(r.inCorso ? "\(r.siglaGiornata) in corso" : "\(r.siglaGiornataChiusa) finita").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            Text(r.testaRettangoloFase).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             Text("\(r.puntiFattiTesto) punti fatti").font(.headline).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
             if r.finita, r.inizio != nil {
                 prossimaBreve(r).font(.caption2)
@@ -213,8 +210,7 @@ struct VistaWidget: View {
     }
 
     private func faseRiga(_ r: RiassuntoOggi) -> some View {
-        Label(r.inCorso ? "\(r.siglaGiornata): \(r.puntiFattiTesto) punti, in corso" : "\(r.siglaGiornataChiusa): \(r.puntiFattiTesto) punti fatti",
-              systemImage: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
+        Label(r.rigaInLineaFase, systemImage: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
     }
 
     // MARK: pezzi comuni
@@ -228,7 +224,7 @@ struct VistaWidget: View {
         Formato.punti(r.punti)
     }
 
-    /// Conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»); «In corso» a scadenza passata.
+    /// Conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»); «Chiusa» a scadenza passata.
     private func conto(_ r: RiassuntoOggi) -> some View {
         ContoWidget(inizio: r.inizio, adesso: voce.date)
     }
@@ -311,7 +307,8 @@ struct VistaWidget: View {
                 if let w = voce.completo, !w.daControllare.isEmpty {
                     // i miei titolari con un dubbio, un infortunio o una squalifica (dati di /api/widget)
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(w.daControllare.prefix(righeDubbi)) { g in RigaGiocatoreWidget(g: g, lato: 28, conLink: false) }
+                        // stato intero anche su iPad: se non entra via i volti, poi «gioca 70%» (mai «In dubbio · gioc…»)
+                        RigheDaControllare(giocatori: Array(w.daControllare.prefix(righeDubbi)), lato: 28, conLink: false, spazio: 2)
                         if w.daControllare.count > righeDubbi {
                             Text(RiassuntoWidget.altri(w.daControllare.count - righeDubbi)).font(.caption2).foregroundStyle(TintaWidget.testo2)
                         }
@@ -331,13 +328,10 @@ struct VistaWidget: View {
     // MARK: Schermata di blocco
 
     private func circolare(_ r: RiassuntoOggi) -> some View {
-        ZStack {
-            AccessoryWidgetBackground()
-            VStack(spacing: 0) {
-                Text(r.siglaGiornata).font(.caption2)
-                Text(r.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
-                Text(puntiTesto(r)).font(.caption2).monospacedDigit()
-            }
+        CerchioWidget {
+            Text(r.siglaGiornata).font(.caption2)
+            Text(r.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
+            Text(puntiTesto(r)).font(.caption2).monospacedDigit()
         }
     }
 

@@ -194,7 +194,7 @@ enum ScaricaOggi {
     }
 }
 
-/// Decide quando il widget si ricarica: ogni mezz'ora, e di nuovo al calcio d'inizio (per passare da conto alla rovescia a «In corso»).
+/// Decide quando il widget si ricarica: ogni mezz'ora, e di nuovo al calcio d'inizio (per passare da conto alla rovescia a «Chiusa»).
 struct Fornitore: AppIntentTimelineProvider {
     /// Per i widget con il conto alla rovescia («6 h 44 min», come la web): una voce in più per ogni minuto in cui il testo cambia,
     /// per l'ora che viene (`Quando.istantiDelConto`). Sono voci della stessa timeline, non ricariche: non toccano il limite di iOS.

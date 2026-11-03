@@ -81,10 +81,12 @@ struct RiquadroWidget<Contenuto: View>: View {
     var body: some View {
         let misura = MisureWidget.dimensione(famiglia)
         let blocco = MisureWidget.accessorio(famiglia)
+        // al centro, come fa WidgetKit con un contenuto più piccolo del widget (in alto a sinistra le foto non erano quelle vere:
+        // il rettangolo della schermata di blocco tagliava «G8 finita» sull'angolo)
         contenuto
             .environment(\.famigliaForzata, famiglia)
             .padding(blocco ? 0 : 16)
-            .frame(width: misura.width, height: misura.height, alignment: .topLeading)
+            .frame(width: misura.width, height: misura.height)
             .background {
                 if blocco {
                     RoundedRectangle(cornerRadius: famiglia == .accessoryCircular ? 38 : 12).fill(.black.opacity(0.55))
