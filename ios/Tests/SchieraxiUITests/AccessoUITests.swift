@@ -34,6 +34,29 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(arrivato, "dopo «\(tocco)» non compare «\(atteso)»", file: file, line: line)
     }
 
+    /// Tocca il `campo` e ci scrive `testo`. `typeText` vuole il campo con il fuoco della tastiera e non lo aspetta: se il tocco
+    /// non è arrivato all'app (sul simulatore carico di GitHub succede, vedi `tocca`), o non ancora, fallisce con «Neither element
+    /// nor any descendant has keyboard focus» (#209). Come `tocca`: si controlla l'effetto (il fuoco, fino a 5 secondi) e, se manca,
+    /// si ritocca (al massimo 3 volte). Il campo deve comunque prendere il fuoco con un tocco, e il testo si scrive con la tastiera.
+    private func scrivi(_ testo: String, in campo: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(campo.waitForExistence(timeout: 10), "manca il campo dove scrivere", file: file, line: line)
+        let conFuoco = NSPredicate { _, _ in self.haIlFuoco(campo) }
+        var pronto = false
+        for _ in 0..<3 where !pronto {
+            campo.tap()
+            pronto = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: conFuoco, object: nil)], timeout: 5) == .completed
+        }
+        XCTAssertTrue(pronto, "il campo «\(campo.label)» non prende il fuoco della tastiera", file: file, line: line)
+        campo.typeText(testo)
+    }
+
+    /// La condizione che `typeText` controlla: il campo, o qualcosa dentro il campo, ha il fuoco della tastiera.
+    private func haIlFuoco(_ campo: XCUIElement) -> Bool {
+        guard campo.exists else { return false }
+        if (campo.value(forKey: "hasKeyboardFocus") as? Bool) == true { return true }
+        return campo.descendants(matching: .any).matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch.exists
+    }
+
     func testAccessoConNomePasswordEPassaggioTraLeSchede() {
         avvia("accedi")
         let nome = app.textFields["Nome utente"]
@@ -62,11 +85,8 @@ final class AccessoUITests: XCTestCase {
 
         // di nuovo Accedi, con nome e password: si entra
         tocca("scheda-accedi", finchéCompare: "Password dimenticata")
-        nome.tap()
-        nome.typeText("mister.rossi")
-        let password = app.secureTextFields["Password"]
-        password.tap()
-        password.typeText("Prova-Finta-Zero")
+        scrivi("mister.rossi", in: nome)
+        scrivi("Prova-Finta-Zero", in: app.secureTextFields["Password"])
         XCTAssertTrue(entra.isEnabled)
         entra.tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30), "dopo l'accesso compare l'app")
@@ -78,8 +98,7 @@ final class AccessoUITests: XCTestCase {
         avvia("registra")
         let invito = app.textFields["Codice d'invito"]
         XCTAssertTrue(invito.waitForExistence(timeout: 30), "la scheda Registrati deve comparire")
-        invito.tap()
-        invito.typeText("INV-123\n")          // l'invio dalla tastiera passa al campo dopo: nome utente
+        scrivi("INV-123\n", in: invito)      // l'invio dalla tastiera passa al campo dopo: nome utente
         app.typeText("mister.rossi\n")       // poi l'email facoltativa
         app.typeText("\n")                   // lasciata vuota: si passa alla password
         app.typeText("Prova-Finta-Zero\n")   // dall'ultimo campo l'invio manda il modulo
@@ -195,8 +214,7 @@ final class AccessoUITests: XCTestCase {
         let attuale = app.secureTextFields["Password attuale"]
         apriFoglio(app.buttons["account-cambia-password"], segno: attuale)
         restaAperto(attuale, "Cambia la password")
-        attuale.tap()
-        attuale.typeText("vecchia-prova-1")
+        scrivi("vecchia-prova-1", in: attuale)
         restaAperto(attuale, "Cambia la password")
         XCTAssertFalse((attuale.value as? String ?? "").isEmpty, "la password scritta non deve sparire")
         XCTAssertTrue(app.secureTextFields["Nuova password (almeno 10 caratteri)"].exists)
@@ -274,8 +292,7 @@ final class AccessoUITests: XCTestCase {
         avvia("accedi")
         let password = app.secureTextFields["Password"]
         XCTAssertTrue(password.waitForExistence(timeout: 30))
-        password.tap()
-        password.typeText("Prova-Finta-Zero")
+        scrivi("Prova-Finta-Zero", in: password)
         XCUIDevice.shared.press(.home)
         sleep(2)
         app.activate()
@@ -289,95 +306,4 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Importa le rose"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Apri la web app nel browser"].exists)
     }
-
-    // MARK: - Diagnosi temporanea #209 (da togliere prima della pull request)
-
-    private func adesso() -> TimeInterval { Date().timeIntervalSinceReferenceDate }
-    private func f(_ t: TimeInterval) -> String { String(format: "%.2f", t) }
-    private func fuoco(_ e: XCUIElement) -> String {
-        guard e.exists else { return "-" }
-        return ((e.value(forKey: "hasKeyboardFocus") as? Bool) ?? false) ? "S" : "n"
-    }
-    private func alto(_ e: XCUIElement) -> String { e.exists ? String(format: "%.0f", e.frame.minY) : "-" }
-
-    /// Fili che tengono occupata la CPU del Mac, come su un Mac di GitHub carico. Solo per la diagnosi (come in #177).
-    private final class Carico: @unchecked Sendable {
-        private let lucchetto = NSLock()
-        private var acceso = true
-        var attivo: Bool { lucchetto.lock(); defer { lucchetto.unlock() }; return acceso }
-        func ferma() { lucchetto.lock(); acceso = false; lucchetto.unlock() }
-        init(fili: Int) {
-            for _ in 0..<fili {
-                Thread.detachNewThread { [self] in
-                    var x = 0.0
-                    while self.attivo { for i in 0..<200_000 { x += sin(Double(i)) } }
-                    if x == 42 { print(x) }
-                }
-            }
-        }
-    }
-
-    /// Problemi di `typeText` senza fuoco visti in questo test (solo per la diagnosi).
-    private var senzaFuoco = 0
-    override func record(_ issue: XCTIssue) {
-        if issue.compactDescription.contains("keyboard focus") { senzaFuoco += 1 }
-        super.record(issue)
-    }
-
-    /// Molte volte nello stesso avvio, come il test: `tap()` e subito `typeText` (una lettera e la cancellazione, così il campo
-    /// resta vuoto). «Nome utente» con la tastiera chiusa, poi «Password» con la tastiera aperta, poi la tastiera si chiude
-    /// trascinando giù. Se `typeText` trova il campo senza fuoco: si guarda se il fuoco arriva dopo (e quando) o mai.
-    private func diagnosiFuoco(fili: Int, secondi: TimeInterval) {
-        avvia("accedi")
-        continueAfterFailure = true
-        let nome = app.textFields["Nome utente"]
-        let password = app.secureTextFields["Password"]
-        XCTAssertTrue(nome.waitForExistence(timeout: 30))
-        let carico = fili > 0 ? Carico(fili: fili) : nil
-        defer { carico?.ferma() }
-        var tocchi = ["nome": 0, "password": 0]
-        var mancati: [String] = []
-        var tastieraAperta = 0
-        var lenti = 0
-        let inizio = adesso()
-        var giro = 0
-        while adesso() - inizio < secondi {
-            giro += 1
-            for (campo, quale, altro) in [(nome, "nome", password), (password, "password", nome)] {
-                let tastieraPrima = app.keyboards.count > 0
-                if quale == "nome", tastieraPrima { tastieraAperta += 1 }
-                let prima = senzaFuoco
-                let t0 = adesso()
-                campo.tap()
-                let durata = adesso() - t0
-                if durata > 3 { lenti += 1 }
-                tocchi[quale, default: 0] += 1
-                campo.typeText("a" + XCUIKeyboardKey.delete.rawValue)
-                guard senzaFuoco > prima else { continue }
-                let fAltro = fuoco(altro)
-                var serie = ""
-                var arrivato: TimeInterval?
-                let t1 = adesso()
-                while adesso() - t1 < 4 {
-                    let s = fuoco(campo)
-                    serie += s
-                    if s == "S" { arrivato = adesso() - t1; break }
-                    usleep(200_000)
-                }
-                mancati.append("giro \(giro) \(quale): tastiera prima=\(tastieraPrima) dopo=\(app.keyboards.count) altro=\(fAltro) "
-                    + "tap=\(f(durata))s serie=\(serie) arrivato=\(arrivato.map { f($0) } ?? "mai")")
-                if arrivato == nil { campo.tap() }
-            }
-            app.swipeDown()   // chiude la tastiera (scrollDismissesKeyboard .interactively)
-        }
-        let n = tocchi["nome"] ?? 0
-        let p = tocchi["password"] ?? 0
-        let riassunto = "DIAGNOSI fuoco, carico \(fili) fili: typeText senza fuoco \(mancati.count) su \(n + p) (nome \(n), password \(p); "
-            + "nome con la tastiera già aperta \(tastieraAperta); tap oltre 3 s \(lenti)) || " + mancati.joined(separator: " || ")
-        print(riassunto)
-        XCTFail(riassunto)
-    }
-
-    func testDiagnosiFuocoSottoCarico() { diagnosiFuoco(fili: 8, secondi: 900) }
-    func testDiagnosiFuocoSenzaCarico() { diagnosiFuoco(fili: 0, secondi: 300) }
 }
