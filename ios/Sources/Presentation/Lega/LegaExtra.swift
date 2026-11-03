@@ -16,6 +16,7 @@ struct SquadreView: View {
         ZStack {
             Sfondo()
             List {
+                TitoloNellaPagina()
                 if let errore = vm.errore {
                     Text(errore).font(.footnote).foregroundStyle(Color.attenzione)
                 }
@@ -58,7 +59,7 @@ struct SquadreView: View {
             .scrollContentBackground(.hidden)
             .avvisoDatiSalvati(vm.caricatore)
         }
-        .navigationTitle("Squadre")
+        .titoloPagina("Squadre")
         .ricercaGlobale()
         .task { await vm.carica() }
     }
@@ -353,6 +354,7 @@ struct NovitaView: View {
                 // Una colonna sola, pigra (si disegna solo quello che si vede) e larga al massimo come un testo leggibile:
                 // con le colonne affiancate dell'iPad le versioni si leggevano saltando da una colonna all'altra.
                 LazyVStack(spacing: 14) {
+                    TitoloNellaPagina()
                     if let n = caricatore.dato {
                         ForEach(n.prefix(mostrate)) { v in
                             Carta("Versione \(v.versione) · \(v.titolo)") {
@@ -390,7 +392,7 @@ struct NovitaView: View {
             .refreshable { await caricatore.ricarica() }
             .avvisoDatiSalvati(caricatore)
         }
-        .navigationTitle("Novità")
+        .titoloPagina("Novità")
         .task {
             await caricatore.ricarica()
             if let ultima = caricatore.dato?.first?.versione { novitaVista = ultima }
@@ -413,6 +415,7 @@ struct StatoDatiView: View {
         ZStack {
             Sfondo()
             List {
+                TitoloNellaPagina()
                 Section {
                     AggiornaDatiSezione(vm: aggiornamento)
                 }
@@ -471,7 +474,7 @@ struct StatoDatiView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Stato dei dati")
+        .titoloPagina("Stato dei dati")
         .refreshable { await caricatore.ricarica(); await affidabilita.ricarica() }
         .task { await caricatore.ricarica(); await affidabilita.ricarica() }
     }

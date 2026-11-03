@@ -235,6 +235,7 @@ struct RegoleEditorView: View {
             if vm.caricato {
                 ScrollViewReader { proxy in
                 List {
+                    TitoloNellaPagina()
                     nome
                     importa
                     punteggi
@@ -257,7 +258,7 @@ struct RegoleEditorView: View {
             }
         }
         .ricercaGlobale()   // sull'iPad lente e ingranaggio stanno sulla pagina a destra, non nell'elenco
-        .navigationTitle("Regole")
+        .titoloPagina("Regole")
         .task { await vm.carica() }
         // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga)
         // e tornando indietro si chiede cosa fare, invece di perderle in silenzio.
@@ -401,7 +402,7 @@ struct RegoleEditorView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         RigaStepper(titolo: "Media almeno", valore: $f.media, passo: 0.25, minimo: 4, massimo: 9, cifre: 2)
                         RigaStepper(titolo: "bonus", valore: $f.bonus, passo: 0.5, minimo: 0, massimo: 20)
-                        Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").frame(minHeight: 44) }
+                        Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").labelStyle(.distruttiva).frame(minHeight: 44) }
                     }
                 }
                 Button { vm.aggiungiFascia() } label: { Label("Aggiungi una fascia", systemImage: "plus.circle").frame(minHeight: 44) }

@@ -22,6 +22,7 @@ struct AvvisiServerView: View {
         ZStack {
             Sfondo()
             List {
+                TitoloNellaPagina()
                 Section {
                     RigaValore(titolo: "Notifiche", valore: lega.permesso)
                     Button("Attiva i promemoria sul telefono") { Task { await lega.attivaPromemoria() } }.frame(minHeight: 44)
@@ -121,7 +122,7 @@ struct AvvisiServerView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Avvisi e promemoria")
+        .titoloPagina("Avvisi e promemoria")
         .task { await vm.carica() }
         .task { await lega.aggiornaPermesso() }
     }
@@ -224,6 +225,7 @@ struct CreditiView: View {
         ZStack {
             Sfondo()
             List {
+                TitoloNellaPagina()
                 if let s = vm.caricatore.dato {
                     Section(titolo: "Crediti residui di ogni squadra") {
                         ForEach(s) { sq in
@@ -254,7 +256,7 @@ struct CreditiView: View {
             .scrollContentBackground(.hidden)
         }
         .ricercaGlobale()
-        .navigationTitle("Crediti")
+        .titoloPagina("Crediti")
         .task { await vm.carica() }
     }
 }
