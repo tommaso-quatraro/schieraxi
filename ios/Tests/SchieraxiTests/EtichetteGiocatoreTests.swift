@@ -125,10 +125,12 @@ struct EtichetteGiocatoreTests {
 
     // MARK: dati di prova (demo e fotografie)
 
-    @Test("Nella demo il dubbio di Oggi è «In dubbio · gioca 62%», mai «Dubbio: …»")
+    @Test("Nella demo il dubbio è «In dubbio · gioca 62%» in Formazione e in Oggi, mai «Dubbio: …»")
     func demoDiOggi() async throws {
         let oggi: Oggi = try Decodifica.decodifica(try await FinteServer.demo.richiesta("GET", "/api/oggi", corpo: nil))
-        let marteni = try #require(oggi.migliori?.first { $0.id == 120 }, "nella demo Marténi non è tra i migliori")
+        // con i punti attesi veri (gioca × fantavoto, #246) Marténi non è tra i migliori di Oggi: la pillola si guarda in Formazione
+        let formazione: Formazione = try Decodifica.decodifica(try await FinteServer.demo.richiesta("GET", "/api/formazione", corpo: nil))
+        let marteni = try #require(formazione.titolari.first { $0.id == 120 }, "nella demo Marténi non è titolare")
         #expect(marteni.etichette.map(\.testo).contains("In dubbio · gioca 62%"))
         #expect(!marteni.etichette.contains { $0.testo.hasPrefix("Dubbio") })
         let avviso = try #require(oggi.avvisi?.first { $0.id == 120 && $0.tipo == "dubbio" })

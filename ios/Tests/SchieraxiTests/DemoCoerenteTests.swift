@@ -178,7 +178,7 @@ struct DemoCoerenteTests {
         try #require(!attesi.isEmpty)
         #expect(Set(trovati.map(\.id)) == Set(attesi.map(\.id)), "risultati: \(trovati.map(\.nome))")
         #expect(!trovati.contains { $0.nome == "Aldo Pinarotti" }, "«Aldo Pinarotti» non contiene «ma»")
-        let comincia = trovati.filter { semplice($0.nome).hasPrefix("ma") }.count
+        let comincia = trovati.count(where: { semplice($0.nome).hasPrefix("ma") })
         #expect(trovati.prefix(comincia).allSatisfy { semplice($0.nome).hasPrefix("ma") }, "prima chi comincia con «ma»")
 
         let pochi = try await leggi("/api/giocatori?limite=6&q=ma", come: [GiocatoreBreve].self)
