@@ -144,17 +144,30 @@ struct VistaFormazione: View {
         }
     }
 
+    /// La frase intera della testata per VoiceOver (sullo schermo la testata si accorcia: «G8», «73,7 attesi»).
+    private func testataParlata(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> String {
+        [f.modulo ?? "—", ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true)[0], f.intervallo?.testo, w.etichettaGiornata]
+            .compactMap { $0 }.joined(separator: ", ")
+    }
+
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .center) {
-                Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("\(punti(f)) punti attesi\(f.tuaScelta == true ? " · la tua scelta" : "")").font(.subheadline).monospacedDigit().foregroundStyle(TintaWidget.testo2).lineLimit(1)
-                    if let t = f.intervallo?.testo { Text(t).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+        // prima «Giornata 8» diventa «G8», poi «73,7 punti attesi» diventa «73,7 attesi»: mai «73,7 punti att…»
+        let testate = ParoleWidget.coppie(ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true),
+                                          w.etichettaGiornata.map { [$0, w.siglaGiornata ?? $0] } ?? [""])
+        return VStack(spacing: 8) {
+            PrimaCheEntra(testate.count) { i in
+                HStack(alignment: .center) {
+                    Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(testate[i].0).font(.subheadline).monospacedDigit().foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                        if let t = f.intervallo?.testo { Text(t).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                    }
+                    Spacer(minLength: 8)
+                    Text(testate[i].1).lineLimit(1).font(.caption).foregroundStyle(TintaWidget.testo2)
                 }
-                Spacer()
-                if let g = w.etichettaGiornata { Text(g).lineLimit(1).minimumScaleFactor(0.7).font(.caption).foregroundStyle(TintaWidget.testo2) }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(testataParlata(w, f))
             CampoMini(titolari: tit, lato: 40, conNomi: true)
             HStack {
                 if !w.daControllare.isEmpty {
@@ -171,12 +184,20 @@ struct VistaFormazione: View {
     private func grandissimo(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         HStack(alignment: .top, spacing: 20) {
             VStack(spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(f.modulo ?? "—").fontWidget(40, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
-                    Text("\(punti(f)) punti attesi\(f.tuaScelta == true ? " · la tua scelta" : "")").font(.headline).monospacedDigit().foregroundStyle(TintaWidget.testo2)
-                    if let t = f.intervallo?.testo { Text(t).font(.subheadline).foregroundStyle(TintaWidget.testo2) }
-                    Spacer()
+                // «73,7 punti attesi» → «73,7 attesi», poi via la fascia: mai «73,7 punti…»
+                let pezzi = ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true)
+                PrimaCheEntra(pezzi.count + 1) { i in
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(f.modulo ?? "—").fontWidget(40, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
+                        Text(pezzi[min(i, pezzi.count - 1)]).font(.headline).monospacedDigit().foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                        if i < pezzi.count, let t = f.intervallo?.testo {
+                            Text(t).font(.subheadline).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                    }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(testataParlata(w, f))
                 CampoMini(titolari: tit, lato: 48, conNomi: true)
             }
             VStack(alignment: .leading, spacing: 4) {
@@ -201,20 +222,18 @@ struct VistaFormazione: View {
     // MARK: Schermata di blocco
 
     private func circolare(_ f: FormazioneWidget) -> some View {
-        ZStack {
-            AccessoryWidgetBackground()
-            VStack(spacing: 0) {
-                Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
-                Text(punti(f)).font(.caption2).monospacedDigit()
-            }
+        CerchioWidget {
+            Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
+            Text(punti(f)).font(.caption2).monospacedDigit()
         }
     }
 
     private func rettangolare(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("\(f.tuaScelta == true ? "La tua scelta" : "Formazione") \(f.modulo ?? "—")").font(.headline)
-            Text(f.intervallo?.testo.map { "\(punti(f)) attesi · \($0)" } ?? "\(punti(f)) punti attesi")
-                .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            // con il testo grande resta il modulo: mai «Formazione 3-4…»
+            TestoCheEntra(ParoleWidget.titoloFormazione(f.modulo, tuaScelta: f.tuaScelta == true)).font(.headline)
+            TestoCheEntra(ParoleWidget.puntiConFascia(f.puntiAttesi, fascia: f.intervallo?.testo))
+                .font(.caption).monospacedDigit()
             if !w.daControllare.isEmpty {
                 EtichettaDaControllare(n: w.daControllare.count).font(.caption2)
             } else if let g = w.etichettaGiornata {

@@ -120,7 +120,8 @@ struct VistaLive: View {
                 let miei = w.mieiTitolari(in: p)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)").font(.headline).lineLimit(1).minimumScaleFactor(0.7)
-                    Text(miei.isEmpty ? titolo(w) : "Tuoi: " + miei.prefix(3).map(\.cognome).joined(separator: ", ")).font(.caption).lineLimit(1)
+                    // i nomi che entrano e «e altri N»: mai «Dima…»
+                    TestoCheEntra(miei.isEmpty ? [titolo(w)] : ParoleWidget.nomi(miei.map(\.cognome)).map { "Tuoi: " + $0 }).font(.caption)
                     if let e = EventiPartita.visibili(p.eventi).last {
                         Text(e.testoCompatto).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }

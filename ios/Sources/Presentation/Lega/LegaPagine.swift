@@ -62,7 +62,7 @@ struct DifferenzeView: View {
                     voce("minus.circle.fill", .attenzione, "\(g.squadra) lascia liberi: \(nomi(g.giocatori))")
                 }
                 ForEach(differenze.crediti ?? []) { c in
-                    voce("c.circle", .testoSecondario,
+                    voce(ParoleWidget.simboloCrediti, .testoSecondario,
                          "Crediti \(c.squadra): \(c.prima.map { String(Formato.intero($0)) } ?? "–") → \(c.dopo.map { String(Formato.intero($0)) } ?? "–")")
                 }
                 if vuoto, let t = differenze.testo { Text(t).font(.subheadline) }
