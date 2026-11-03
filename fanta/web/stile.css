@@ -304,7 +304,11 @@ details[open] > summary { margin-bottom: 8px; }
 .ruolo { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: var(--t-sec); font-weight: 700; color: #fff; }
 .ruolo.P { background: #9a5f00; } .ruolo.D { background: #237d46; } .ruolo.C { background: #2b66bf; } .ruolo.A { background: #c13b38; }
 .etichette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-.etichetta { font-size: var(--t-eti); padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--verde); font-weight: 550; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
+/* Pillola mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima tra i pezzi separati da «·»
+   (`.pezzo`, da testoEtichetta in app.js), poi tra le parole. Il raggio supera metà altezza di una riga: su una riga è una capsula,
+   su più righe un rettangolo con gli angoli tondi. */
+.etichetta { display: inline-block; font-size: var(--t-eti); padding: 3px 9px; border-radius: calc(.7em + 4px); background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--verde); font-weight: 550; max-width: 100%; overflow-wrap: break-word; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
+.etichetta .pezzo { display: inline-block; max-width: 100%; }
 .etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
 .etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
 .etichetta.neutra { background: color-mix(in srgb, var(--testo) 8%, transparent); color: var(--testo-2); border-color: transparent; }
@@ -313,8 +317,8 @@ details[open] > summary { margin-bottom: 8px; }
 .tono.arancio { color: var(--arancio); }
 .tono.rossa { color: var(--rosso); }
 .tono.neutra { color: var(--testo-2); font-weight: 400; }
-/* note lunghe (per esempio l'infortunio): a capo dentro la scheda, mai oltre il bordo né sotto il pulsante ⇄ */
-.etichetta.lunga { flex: 1 1 100%; white-space: normal; text-overflow: clip; border-radius: 12px; line-height: 1.35; }
+/* note lunghe (per esempio l'infortunio): tutta la riga, mai oltre il bordo né sotto il pulsante ⇄ */
+.etichetta.lunga { flex: 1 1 100%; }
 .voce > span { min-width: 0; }           /* la colonna del nome si restringe: senza, un testo lungo allargava la griglia oltre la scheda */
 .pedina .gioca.esito { font-weight: 700; }
 .barra-p { height: 4px; background: color-mix(in srgb, var(--testo) 12%, transparent); border-radius: 2px; overflow: hidden; margin-top: 5px; width: 60px; margin-left: auto; }

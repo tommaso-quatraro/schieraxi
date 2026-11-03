@@ -1,0 +1,10 @@
+{
+  "titolo": "Etichette dei giocatori sempre intere",
+  "voci": [
+    "Sul telefono stretto o con il testo grande le etichette dei giocatori («In dubbio · gioca 62%», «Probabile titolare») non finiscono più con i puntini: vanno a capo dentro la loro pillola. Prima si va a capo dopo il «·», poi tra le parole."
+  ],
+  "tecnico": [
+    "Web (#230, come la PR iOS #228): `.etichetta` è un blocco in linea senza `white-space: nowrap`, `overflow: hidden` né `text-overflow: ellipsis`, largo al massimo quanto la riga, con `overflow-wrap: break-word`; raggio `calc(.7em + 4px)`: capsula su una riga, angoli meno tondi su più righe (come `.etichetta.lunga`, che ora tiene solo `flex: 1 1 100%`).",
+    "`testoEtichetta(testo)` in app.js divide il testo al « · » in `<span class=\"pezzo\">` (blocchi in linea, il «·» attaccato alla parola prima con uno spazio che non va a capo): pillola del server (`pillTitolarita`), motivi sotto il nome e motivi della scheda. Test `tests/test_etichette_intere_web.py`."
+  ]
+}
