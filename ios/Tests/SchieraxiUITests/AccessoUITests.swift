@@ -34,6 +34,29 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(arrivato, "dopo «\(tocco)» non compare «\(atteso)»", file: file, line: line)
     }
 
+    /// Tocca il `campo` e ci scrive `testo`. `typeText` vuole il campo con il fuoco della tastiera e non lo aspetta: se il tocco
+    /// non è arrivato all'app (sul simulatore carico di GitHub succede, vedi `tocca`), o non ancora, fallisce con «Neither element
+    /// nor any descendant has keyboard focus» (#209). Come `tocca`: si controlla l'effetto (il fuoco, fino a 5 secondi) e, se manca,
+    /// si ritocca (al massimo 3 volte). Il campo deve comunque prendere il fuoco con un tocco, e il testo si scrive con la tastiera.
+    private func scrivi(_ testo: String, in campo: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(campo.waitForExistence(timeout: 10), "manca il campo dove scrivere", file: file, line: line)
+        let conFuoco = NSPredicate { _, _ in self.haIlFuoco(campo) }
+        var pronto = false
+        for _ in 0..<3 where !pronto {
+            campo.tap()
+            pronto = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: conFuoco, object: nil)], timeout: 5) == .completed
+        }
+        XCTAssertTrue(pronto, "il campo «\(campo.label)» non prende il fuoco della tastiera", file: file, line: line)
+        campo.typeText(testo)
+    }
+
+    /// La condizione che `typeText` controlla: il campo, o qualcosa dentro il campo, ha il fuoco della tastiera.
+    private func haIlFuoco(_ campo: XCUIElement) -> Bool {
+        guard campo.exists else { return false }
+        if (campo.value(forKey: "hasKeyboardFocus") as? Bool) == true { return true }
+        return campo.descendants(matching: .any).matching(NSPredicate(format: "hasKeyboardFocus == true")).firstMatch.exists
+    }
+
     func testAccessoConNomePasswordEPassaggioTraLeSchede() {
         avvia("accedi")
         let nome = app.textFields["Nome utente"]
@@ -62,11 +85,8 @@ final class AccessoUITests: XCTestCase {
 
         // di nuovo Accedi, con nome e password: si entra
         tocca("scheda-accedi", finchéCompare: "Password dimenticata")
-        nome.tap()
-        nome.typeText("mister.rossi")
-        let password = app.secureTextFields["Password"]
-        password.tap()
-        password.typeText("Prova-Finta-Zero")
+        scrivi("mister.rossi", in: nome)
+        scrivi("Prova-Finta-Zero", in: app.secureTextFields["Password"])
         XCTAssertTrue(entra.isEnabled)
         entra.tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30), "dopo l'accesso compare l'app")
@@ -78,8 +98,7 @@ final class AccessoUITests: XCTestCase {
         avvia("registra")
         let invito = app.textFields["Codice d'invito"]
         XCTAssertTrue(invito.waitForExistence(timeout: 30), "la scheda Registrati deve comparire")
-        invito.tap()
-        invito.typeText("INV-123\n")          // l'invio dalla tastiera passa al campo dopo: nome utente
+        scrivi("INV-123\n", in: invito)      // l'invio dalla tastiera passa al campo dopo: nome utente
         app.typeText("mister.rossi\n")       // poi l'email facoltativa
         app.typeText("\n")                   // lasciata vuota: si passa alla password
         app.typeText("Prova-Finta-Zero\n")   // dall'ultimo campo l'invio manda il modulo
@@ -195,8 +214,7 @@ final class AccessoUITests: XCTestCase {
         let attuale = app.secureTextFields["Password attuale"]
         apriFoglio(app.buttons["account-cambia-password"], segno: attuale)
         restaAperto(attuale, "Cambia la password")
-        attuale.tap()
-        attuale.typeText("vecchia-prova-1")
+        scrivi("vecchia-prova-1", in: attuale)
         restaAperto(attuale, "Cambia la password")
         XCTAssertFalse((attuale.value as? String ?? "").isEmpty, "la password scritta non deve sparire")
         XCTAssertTrue(app.secureTextFields["Nuova password (almeno 10 caratteri)"].exists)
@@ -274,8 +292,7 @@ final class AccessoUITests: XCTestCase {
         avvia("accedi")
         let password = app.secureTextFields["Password"]
         XCTAssertTrue(password.waitForExistence(timeout: 30))
-        password.tap()
-        password.typeText("Prova-Finta-Zero")
+        scrivi("Prova-Finta-Zero", in: password)
         XCUIDevice.shared.press(.home)
         sleep(2)
         app.activate()
