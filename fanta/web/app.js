@@ -2665,7 +2665,13 @@ function cartaScelteTue(st, sintesi, v) {
 }
 
 // Diario delle giornate: formazione schierata contro consigliata, con i punti attesi e quelli fatti.
+// Una voce è stagione + giornata: con due stagioni nel diario la giornata 10 c'è due volte (#176). Nell'id solo cifre e trattini.
+const idVoceDiario = g => `diario-${String(g.stagione ?? "").replace(/[^0-9-]/g, "")}-g${Number(g.giornata)}`;
+// «Ho schierato…» per una voce del diario: sempre con la sua stagione (il server rifiuta quelle passate, senza scrivere sulla giornata di quest'anno)
+const corpoSchierata = (g, tipo, titolari) => JSON.stringify({ giornata: Number(g.giornata), tipo, ...(titolari ? { titolari } : {}), stagione: g.stagione });
+
 // Dal «Da fare» di Oggi: il tocco su «Ho schierato la consigliata» salva subito la scelta e apre il Diario su quella giornata.
+// La voce di «Da fare» ha solo la giornata ed è sempre della stagione in corso: senza `stagione` il server usa quella.
 async function schieraDaOggi(giornata) {
   apriFoglio(`<div class="caricamento">${t("avv.segno_tua_formazione")}</div>`);
   try {
@@ -2675,7 +2681,8 @@ async function schieraDaOggi(giornata) {
   apriDiario(giornata);
 }
 
-async function apriDiario(giornata) {
+// `giornata` (e `stagione`, se c'è): la voce da mostrare. Senza stagione vale la più recente con quel numero (Oggi e «Da fare» parlano della stagione in corso).
+async function apriDiario(giornata, stagione) {
   apriFoglio(`<div class="caricamento">${t("avv.carico_diario")}</div>`);
   const numero = ++ultimaScheda;
   try {
@@ -2707,16 +2714,17 @@ async function apriDiario(giornata) {
       const sotto = ist ? `<div class="debole piccolo">${t("diario.consigliava_il", { quando: esc(quandoCalcolata(ist.calcolata)) })}${ist.stile ? " · " + esc(ist.stile) : ""}</div>` : `<div class="debole piccolo">${t("diario.non_registrata")}</div>`;
       const colCons = `<div class="diario-col"><h3>${titoloCons}</h3>${sotto}${elencoFormazione(cons.titolari, idTue, ist && ist.panchina)}</div>`;
       if (!g.schierata) return `<div class="diario-conf una">${colCons}</div>
-        <div class="pulsanti"><button class="bottone" data-schierata="${Number(g.giornata)}">${t("diario.ho_schierato_questa")}</button></div>`;
+        ${g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone" data-schierata="${idVoceDiario(g)}">${t("diario.ho_schierato_questa")}</button></div>`}`;
       const fuori = g.schierata.titolari.filter(p => !idCons.has(p.id)).map(p => p.nome), dentro = cons.titolari.filter(p => !idTue.has(p.id)).map(p => p.nome);
       const colTue = `<div class="diario-col"><h3>${t("diario.hai_schierato", { modulo: esc(g.schierata.modulo) })}</h3>${elencoFormazione(g.schierata.titolari, idCons)}</div>`;
       return `<div class="diario-conf">${colCons}${colTue}</div>
         <div class="debole piccolo">${fuori.length ? t("diario.cambiato", { n: fuori.length, nomi: t("diario.cambiato_nomi", { dentro: esc(fuori.join(", ")), fuori: esc(dentro.join(", ")) }) }) : t("diario.uguale")}</div>`;
     };
-    const righe = d.giornate.map(g => `<div class="carta" id="diario-g${Number(g.giornata)}"><div class="riga"><h2 style="margin:0">${t("testata.giornata", { n: g.giornata_lega || g.giornata })}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
+    // «Ho schierato…» e «Correggi» solo se la voce si può ancora cambiare (stagione in corso; un server vecchio senza il campo: sì)
+    const righe = d.giornate.map(g => `<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2 style="margin:0">${t("testata.giornata", { n: g.giornata_lega || g.giornata })}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
       ${g.schierata ? "" : `<div class="debole piccolo">${t("diario.non_salvata")}</div>`}
       ${confronto(g)}
-      <div class="pulsanti"><button class="bottone secondario" data-correggi="${Number(g.giornata)}">${g.schierata ? t("diario.correggi") : t("diario.ho_schierato_altra")}</button></div>
+      ${g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" data-correggi="${idVoceDiario(g)}">${g.schierata ? t("diario.correggi") : t("diario.ho_schierato_altra")}</button></div>`}
       ${g.schierata ? righePunti(g.schierata.tipo === "consigliata" ? t("diario.tua_consigliata", { modulo: esc(g.schierata.modulo) }) : t("diario.tua", { modulo: esc(g.schierata.modulo) }), g.schierata)
         : g.automatica ? righePunti(t("diario.automatica", { modulo: esc(g.automatica.modulo) }), g.automatica) : ""}
       ${righePunti(g.istantanea ? t("diario.ricostruita", { modulo: esc(g.consigliata.modulo) }) : t("avv.del_modello", { modulo: esc(g.consigliata.modulo) }), g.consigliata)}
@@ -2727,17 +2735,21 @@ async function apriDiario(giornata) {
       ${cartaPrecisione(d.precisione)}
       ${cartaScelteTue(d.scelte_tue, s, v)}
       ${righe || `<div class="carta" style="margin-top:12px"><div class="debole">${t("diario.vuoto_" + d.motivo_vuoto) !== "diario.vuoto_" + d.motivo_vuoto ? t("diario.vuoto_" + d.motivo_vuoto) : t("diario.vuoto")}</div></div>`}`);
-    if (giornata != null) { const el = document.getElementById("diario-g" + Number(giornata)); if (el) el.scrollIntoView({ block: "start" }); }
+    const voceDi = id => d.giornate.find(x => idVoceDiario(x) === id);
+    const daMostrare = giornata == null ? null : d.giornate.find(x => Number(x.giornata) === Number(giornata) && (stagione == null || x.stagione === stagione));
+    if (daMostrare) { const el = document.getElementById(idVoceDiario(daMostrare)); if (el) el.scrollIntoView({ block: "start" }); }
     $("#foglio").querySelectorAll("[data-correggi]").forEach(bt => bt.addEventListener("click", () => {
-      const g = d.giornate.find(x => Number(x.giornata) === Number(bt.dataset.correggi));
+      const g = voceDi(bt.dataset.correggi);
       if (g) correggiDiario(g);
     }));
     $("#foglio").querySelectorAll("[data-schierata]").forEach(b => b.addEventListener("click", async () => {
+      const g = voceDi(b.dataset.schierata);
+      if (!g) return;
       b.disabled = true;
       try {
-        await api("/api/diario/schierata", { method: "POST", body: JSON.stringify({ giornata: Number(b.dataset.schierata), tipo: "consigliata" }) });
+        await api("/api/diario/schierata", { method: "POST", body: corpoSchierata(g, "consigliata") });
         avviso(t("diario.salvata"));
-        apriDiario(b.dataset.schierata);
+        apriDiario(g.giornata, g.stagione);
       } catch (e) { b.disabled = false; avviso(e.message, 6000); }
     }));
   } catch (e) { if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e)); }
@@ -2772,15 +2784,15 @@ async function correggiDiario(g) {
     };
     caselle().forEach(c => c.addEventListener("change", aggiorna));
     aggiorna();
-    $("#diario-annulla").addEventListener("click", () => apriDiario(g.giornata));
+    $("#diario-annulla").addEventListener("click", () => apriDiario(g.giornata, g.stagione));
     $("#diario-salva").addEventListener("click", async () => {
       const titolari = caselle().filter(c => c.checked).map(c => Number(c.dataset.scelto));
       if (titolari.length !== 11) return;
       $("#diario-salva").disabled = true;
       try {
-        await api("/api/diario/schierata", { method: "POST", body: JSON.stringify({ giornata: Number(g.giornata), tipo: "manuale", titolari }) });
+        await api("/api/diario/schierata", { method: "POST", body: corpoSchierata(g, "manuale", titolari) });
         avviso(t("diario.salvata_manuale"));
-        apriDiario(g.giornata);
+        apriDiario(g.giornata, g.stagione);
       } catch (e) { $("#diario-salva").disabled = false; avviso(e.message, 6000); }
     });
   } catch (e) { if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e)); }
