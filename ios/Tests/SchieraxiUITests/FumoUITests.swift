@@ -6,6 +6,8 @@ final class FumoUITests: XCTestCase {
     private var app: XCUIApplication!
 
     override func setUpWithError() throws {
+        // DIAGNOSI TEMPORANEA (#212): in questa corsa girano solo le diagnosi di questo file
+        if !name.contains("Diagnosi") { throw XCTSkip("diagnosi temporanea #212") }
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments += ["-DEMO", "-AppleLanguages", "(it)", "-AppleLocale", "it_IT"]
@@ -186,4 +188,117 @@ final class FumoUITests: XCTestCase {
         lente.tap()
         attendi("Scrivi almeno due lettere del nome.")
     }
+
+    // MARK: - DIAGNOSI TEMPORANEA (#212), da togliere prima della PR
+
+    private func adesso() -> TimeInterval { Date().timeIntervalSinceReferenceDate }
+    private func f(_ t: TimeInterval) -> String { String(format: "%.2f", t) }
+
+    /// Fili che tengono occupata la CPU del Mac (come nella diagnosi di #177).
+    private final class Carico: @unchecked Sendable {
+        private let lucchetto = NSLock()
+        private var acceso = true
+        var attivo: Bool { lucchetto.lock(); defer { lucchetto.unlock() }; return acceso }
+        func ferma() { lucchetto.lock(); acceso = false; lucchetto.unlock() }
+        init(fili: Int) {
+            for _ in 0..<fili {
+                Thread.detachNewThread { [self] in
+                    var x = 0.0
+                    while self.attivo { for i in 0..<200_000 { x += sin(Double(i)) } }
+                    if x == 42 { print(x) }
+                }
+            }
+        }
+    }
+
+    /// Cosa c'è a schermo: barre di navigazione, scheda scelta, la riga «Scambi», i pezzi della pagina Scambi.
+    private func statoSchermo() -> String {
+        let barre = app.navigationBars.allElementsBoundByIndex.map { $0.identifier }.joined(separator: "/")
+        let schede = app.tabBars.firstMatch.buttons.allElementsBoundByIndex.filter { $0.isSelected }.map { $0.label }.joined(separator: "/")
+        let riga = elemento("Scambi", contiene: true)
+        let rigaStato = riga.exists ? "c'è(tipo \(riga.elementType.rawValue) tocc \(riga.isHittable) y \(Int(riga.frame.minY)))" : "no"
+        let quante = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", "Scambi")).count
+        return "barre=[\(barre)] scheda=[\(schede)] riga=\(rigaStato) etichScambi=\(quante) segm=\(app.segmentedControls.count) "
+            + "cerco=\(app.buttons["Cerco…"].exists) cerca=\(app.buttons["Cerca scambi"].exists) valuta=\(app.buttons["Valuta un'offerta"].exists) "
+            + "guardo=\(elemento("Guardo gli scambi", contiene: true).exists) conChi=\(elemento("Con chi").exists) "
+            + "fogli=\(app.sheets.count) avvisi=\(app.alerts.count)"
+    }
+
+    /// Il percorso del test, molte volte: avvio, scheda Altro, tocco sulla riga «Scambi», attesa di «Cerca scambi» (20 s come il
+    /// test). Avvii dispari: tocco subito appena la riga c'è (come il test); pari: tocco dopo 1,5 s. Poi, nello stesso avvio,
+    /// altri 3 giri indietro e avanti. Se «Cerca scambi» non compare: cosa c'è a schermo, se compare più tardi senza toccare,
+    /// e se compare con un secondo tocco.
+    private func diagnosiScambi(fili: Int, secondi: TimeInterval) {
+        continueAfterFailure = true
+        let carico = fili > 0 ? Carico(fili: fili) : nil
+        defer { carico?.ferma() }
+        var avvii = 0
+        var primi = 0
+        var altri = 0
+        var lenti = 0
+        var mancati: [String] = []
+        var tempi: [String] = []
+        let inizio = adesso()
+        while adesso() - inizio < secondi {
+            avvii += 1
+            if avvii > 1 { app.terminate(); app.launch() }
+            let subito = !avvii.isMultiple(of: 2)
+            let t0 = adesso()
+            let barra = app.tabBars.firstMatch
+            guard barra.waitForExistence(timeout: 30) else { mancati.append("avvio \(avvii): niente barra"); continue }
+            let t1 = adesso()
+            barra.buttons["Altro"].firstMatch.tap()
+            for prova in 0..<4 {
+                let riga = elemento("Scambi", contiene: true)
+                guard riga.waitForExistence(timeout: 20) else {
+                    mancati.append("avvio \(avvii) prova \(prova): niente riga Scambi | \(statoSchermo())")
+                    break
+                }
+                if prova == 0 && !subito { usleep(1_500_000) }
+                let t2 = adesso()
+                let yPrima = riga.exists ? Int(riga.frame.minY) : -1
+                riga.tap()
+                let t3 = adesso()
+                let cerca = app.buttons["Cerca scambi"]
+                let ok = cerca.waitForExistence(timeout: 20)
+                let t4 = adesso()
+                if prova == 0 {
+                    primi += 1
+                    tempi.append("\(subito ? "s" : "a")\(f(t1 - t0))/\(f(t2 - t1))/\(f(t3 - t2))/\(f(t4 - t3))")
+                } else {
+                    altri += 1
+                }
+                if t4 - t3 > 5 { lenti += 1 }
+                if !ok {
+                    let stato = statoSchermo()
+                    let tardi = cerca.waitForExistence(timeout: 30)
+                    var dopo = "più tardi=\(tardi)"
+                    if !tardi {
+                        dopo += " | \(statoSchermo())"
+                        let r = elemento("Scambi", contiene: true)
+                        if r.exists && r.isHittable {
+                            r.tap()
+                            dopo += " | ritocco=\(cerca.waitForExistence(timeout: 20))"
+                        }
+                    }
+                    mancati.append("avvio \(avvii) prova \(prova) \(subito ? "subito" : "dopo 1,5 s"): y \(yPrima) tap \(f(t3 - t2))s | \(stato) | \(dopo)")
+                    break
+                }
+                guard prova < 3 else { break }
+                // indietro alla lista di Altro, per un altro tocco nello stesso avvio
+                let indietro = app.navigationBars.buttons.element(boundBy: 0)
+                guard indietro.exists else { mancati.append("avvio \(avvii) prova \(prova): niente indietro"); break }
+                indietro.tap()
+                if !cerca.waitForNonExistence(timeout: 10) { mancati.append("avvio \(avvii) prova \(prova): indietro non torna"); break }
+            }
+        }
+        let riassunto = "DIAGNOSI Scambi, carico \(fili) fili: senza «Cerca scambi» \(mancati.count) su \(primi + altri) tocchi "
+            + "(primi dopo l'avvio \(primi), successivi \(altri), avvii \(avvii), arrivo oltre 5 s \(lenti)) || "
+            + mancati.joined(separator: " || ") + " || tempi barra/riga/tap/arrivo: " + tempi.joined(separator: " ")
+        print(riassunto)
+        XCTFail(riassunto)
+    }
+
+    func testDiagnosiScambiSenzaCarico() { diagnosiScambi(fili: 0, secondi: 360) }
+    func testDiagnosiScambiSottoCarico() { diagnosiScambi(fili: 6, secondi: 900) }
 }
