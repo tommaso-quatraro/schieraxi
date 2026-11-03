@@ -4,9 +4,15 @@ Le foto uscivano mentre la schermata caricava (scheletro «Scelgo gli undici…�
 atteso»): ora lo script fotografa quando due foto di fila hanno gli stessi pixel. Immagini inventate, costruite qui.
 """
 import importlib.util
+import os
+import re
+import shutil
 import struct
+import subprocess
 import zlib
 from pathlib import Path
+
+import pytest
 
 RADICE = Path(__file__).resolve().parent.parent
 SCRIPT = RADICE / "ios" / "scripts" / "schermo_fermo.py"
@@ -129,10 +135,13 @@ def test_primo_scatto_non_riuscito_e_un_errore_e_non_lascia_file(tmp_path):
     assert not file.exists()
 
 
-def test_se_un_secondo_scatto_non_riesce_resta_la_foto_buona(tmp_path):
+def test_se_un_secondo_scatto_non_riesce_resta_la_foto_buona_con_un_codice_suo(tmp_path):
+    """Issue #222: prima usciva con il codice di «schermo ancora in movimento» e il riepilogo non lo contava tra i problemi."""
     camera = Fotocamera([_png(ROSSO), _png(VERDE)], fallisce_dal=2)
     file = tmp_path / "foto.png"
-    assert _aspetta(camera, file) == sf.SI_MUOVE
+    esito = _aspetta(camera, file)
+    assert esito not in (sf.FERMO, sf.SI_MUOVE, sf.ERRORE, sf.USO)
+    assert esito == sf.NON_RIUSCITO
     assert sf.uguali(file, _scrivi(tmp_path / "attesa.png", _png(ROSSO)))
 
 
@@ -160,3 +169,71 @@ def test_lo_script_delle_foto_aspetta_lo_schermo_fermo_e_conosce_il_fondo_dell_a
 def _scrivi(percorso, dati):
     percorso.write_bytes(dati)
     return percorso
+
+
+# ---------------------------------------------------------------- come screenshot.sh conta gli esiti (bash vero, comandi finti)
+
+def _trova_bash():
+    # su Windows `bash` può essere quello di WSL (System32): meglio quello di Git (usr\bin\bash.exe lascia il PATH com'è)
+    for c in (r"C:\Program Files\Git\usr\bin\bash.exe", r"C:\Program Files\Git\bin\bash.exe"):
+        if Path(c).exists():
+            return c
+    return shutil.which("bash")
+
+
+BASH = _trova_bash()
+
+
+def _funzione(testo, nome):
+    """Una funzione di screenshot.sh, da «nome() {» alla prima «}» a inizio riga. Vuoto se non c'è."""
+    trovata = re.search(rf"^{nome}\(\) \{{\n.*?^\}}\n", testo, re.S | re.M)
+    return trovata.group(0) if trovata else ""
+
+
+def _scatti(tmp_path, esiti):
+    """Lancia `scatta` di screenshot.sh per ogni (schermata, uscita di schermo_fermo.py), poi `riepilogo`.
+    Simulatore, attese, sips e schermo_fermo.py sono finti: si prova come lo script tratta e conta le uscite."""
+    testo = (RADICE / "ios" / "scripts" / "screenshot.sh").read_text(encoding="utf-8")
+    uscita = tmp_path / "foto"
+    uscita.mkdir()
+    righe = [
+        "ID_APP=it.schieraxi.app", f'USCITA="{uscita.as_posix()}"', "ERRORI=0", "IN_MOVIMENTO=0", "RADDRIZZA=1",
+        'xcrun() { [ "$2" = spawn ] && echo "UIKitApplication:$ID_APP"; return 0; }',
+        "sleep() { :; }",
+        "stat() { echo 999999; }",
+        'sips() { echo "$*" >> "$USCITA/sips.txt"; }',
+        # schermo_fermo.py finto: lascia la foto (tranne con l'uscita 1, nessuna foto) ed esce come gli si dice
+        'python3() { [ "$ESITO" != 1 ] && : > "$4"; return "$ESITO"; }',
+        _funzione(testo, "scatta"),
+        _funzione(testo, "riepilogo"),
+    ]
+    for schermata, esito in esiti:
+        righe.append(f"ESITO={esito}; scatta UDID iphone_scuro {schermata}")
+    righe += ['echo "=== riepilogo"', "riepilogo", 'echo "ERRORI=$ERRORI IN_MOVIMENTO=$IN_MOVIMENTO"']
+    prova = tmp_path / "prova.sh"
+    prova.write_text("\n".join(righe) + "\n", encoding="utf-8", newline="\n")
+    ambiente = {**os.environ, "PATH": str(Path(BASH).parent) + os.pathsep + os.environ.get("PATH", "")}
+    r = subprocess.run([BASH, prova.as_posix()], capture_output=True, text=True, encoding="utf-8", timeout=60, env=ambiente)
+    assert r.returncode == 0, r.stderr
+    assert "=== riepilogo\n" in r.stdout, r.stdout + r.stderr
+    return r.stdout.split("=== riepilogo\n", 1)[1], uscita
+
+
+@pytest.mark.skipif(not BASH, reason="serve bash (c'è su GitHub e con Git per Windows)")
+def test_il_riepilogo_conta_lo_scatto_non_riuscito_tra_i_problemi_con_il_nome_della_foto(tmp_path):
+    """Issue #222: lo scatto non riuscito finiva tra le foto «in movimento»; ora è un problema, con il nome della foto."""
+    riepilogo, uscita = _scatti(tmp_path, [("oggi", sf.SI_MUOVE), ("formazione", sf.NON_RIUSCITO), ("lega", sf.FERMO)])
+    assert "ERRORI=1 IN_MOVIMENTO=1" in riepilogo
+    assert "iphone_scuro / formazione" in riepilogo      # la foto con lo scatto non riuscito, per nome
+    assert "iphone_scuro / oggi" not in riepilogo        # lo schermo in movimento non è un problema
+    assert "iphone_scuro / lega" not in riepilogo
+    # la foto rimasta si tiene e si tratta come le altre (qui: raddrizzata), non si scarta
+    raddrizzate = (uscita / "sips.txt").read_text(encoding="utf-8")
+    assert "-r 270 " + (uscita / "iphone_scuro_formazione.png").as_posix() in raddrizzate
+
+
+@pytest.mark.skipif(not BASH, reason="serve bash (c'è su GitHub e con Git per Windows)")
+def test_lo_scatto_non_riuscito_del_tutto_resta_un_problema_senza_foto(tmp_path):
+    riepilogo, uscita = _scatti(tmp_path, [("oggi", sf.ERRORE)])
+    assert "ERRORI=1 IN_MOVIMENTO=0" in riepilogo
+    assert not (uscita / "iphone_scuro_oggi.png").exists()

@@ -12,6 +12,9 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
     var ruolo: String?
     var puntiAttesi: Double?
     var pVoto: Double?
+    /// Il fantavoto atteso se gioca (voto più bonus e malus), lo stesso numero dell'app; negli `osservati` dal server della PR #239.
+    var fvAtteso: Double?
+    /// Il voto in pagella atteso (senza bonus e malus); un server vecchio manda solo questo.
     var votoAtteso: Double?
     /// Tratti grossolani del volto (versione 2 degli avatar), se il server li ha.
     var avatar: TrattiVolto?
@@ -725,6 +728,26 @@ enum ParoleWidget {
                          : ["\(p) punti attesi", "\(p) attesi"]
     }
 
+    /// Il nome di `fv_atteso` (voto più bonus e malus), lo stesso dell'app (`FantavotoAtteso.nome`, che il widget non compila)
+    /// e della web (`mercato.fantavoto_atteso`).
+    static let fantavotoAtteso = "Fantavoto atteso"
+
+    /// «Fantavoto atteso 7,6» → «Fantavoto 7,6».
+    static func fantavoto(_ valore: Double) -> [String] {
+        let v = Formato.punti(valore)
+        return ["\(fantavotoAtteso) \(v)", "Fantavoto \(v)"]
+    }
+
+    /// Il nome di `voto_atteso` (il voto in pagella, senza bonus e malus), lo stesso di app e web (`confronto.fattore_voto`).
+    /// Non è il fantavoto atteso: si usa solo con un server vecchio, che per i seguiti non manda `fv_atteso`.
+    static let votoInPagellaAtteso = "Voto in pagella atteso"
+
+    /// «Voto in pagella atteso 6,4» → «In pagella 6,4».
+    static func votoInPagella(_ voto: Double) -> [String] {
+        let v = Formato.punti(voto)
+        return ["\(votoInPagellaAtteso) \(v)", "In pagella \(v)"]
+    }
+
     /// «73,7 attesi · tra 62 e 85» → «73,7 attesi»; senza fascia come `puntiAttesi`.
     static func puntiConFascia(_ punti: Double?, fascia: String?) -> [String] {
         guard let fascia else { return puntiAttesi(punti) }
@@ -871,6 +894,14 @@ extension GiocatoreWidget {
     /// La riga del widget «Osservato» medio: l'avviso del server se c'è («In dubbio · gioca 55%», «Infortunato»), altrimenti
     /// «gioca 90%»; nil se non c'è niente da dire.
     var statoOGioca: String? { descrizioneStato.isEmpty ? giocaTesto : descrizioneStato }
+
+    /// La riga del widget «Osservato» medio, dalla forma più lunga alla più corta: il fantavoto atteso (`fv_atteso`), come i
+    /// Seguiti nell'app; da un server vecchio, senza `fv_atteso`, il voto in pagella con il suo nome, mai «Fantavoto atteso»
+    /// (#225). Nil se non c'è nessuno dei due.
+    var rigaVotoAtteso: [String]? {
+        if let fvAtteso { return ParoleWidget.fantavoto(fvAtteso) }
+        return votoAtteso.map(ParoleWidget.votoInPagella)
+    }
 }
 
 /// Il widget «Osservato» senza un giocatore da mostrare: nessun seguito, oppure seguiti tolti dal server perché la risposta era

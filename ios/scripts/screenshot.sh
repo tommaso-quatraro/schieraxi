@@ -12,6 +12,7 @@ USCITA="${2:-screenshot}"
 ID_APP="it.schieraxi.app"
 ERRORI=0
 IN_MOVIMENTO=0   # foto scattate allo scadere dell'attesa, con lo schermo che si muoveva ancora (vedi schermo_fermo.py)
+NON_RIUSCITI=()  # foto rimaste a metà attesa perché uno scatto non è riuscito: problemi, non movimento (uscita 4 di schermo_fermo.py)
 ARGOMENTI_EXTRA=()
 ARGOMENTI_SCENARIO=()   # -DEMO_SCENARIO <nome>: le fotografie dal vero (SCATTI=vero)
 TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qualunque cosa dica il simulatore
@@ -118,6 +119,11 @@ scatta() {
   if [ "$esito" -eq 3 ]; then
     echo "  ($etichetta / $nome: lo schermo si muoveva ancora dopo l'attesa, foto scattata lo stesso)"
     IN_MOVIMENTO=$((IN_MOVIMENTO + 1))
+  elif [ "$esito" -eq 4 ]; then
+    # Uno scatto dopo il primo non è riuscito: resta la foto di prima (forse ancora in movimento) e si tratta come le altre.
+    echo "ERRORE: scatto non riuscito durante l'attesa ($etichetta / $nome): resta la foto di prima"
+    ERRORI=$((ERRORI + 1))
+    NON_RIUSCITI+=("$etichetta / $nome")
   elif [ "$esito" -ne 0 ]; then
     echo "ERRORE: scatto non riuscito ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
@@ -178,6 +184,15 @@ avvia_simulatore() {
 
 spegni_simulatore() {
   xcrun simctl shutdown "$1" >/dev/null 2>&1
+}
+
+# In fondo al registro della corsa: quante foto, quanti problemi (con il nome delle foto rimaste a metà attesa), quante in movimento.
+riepilogo() {
+  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
+  if [ "${#NON_RIUSCITI[@]}" -gt 0 ]; then
+    echo "Tra i problemi, foto con uno scatto non riuscito durante l'attesa (resta la foto di prima):"
+    printf '  %s\n' "${NON_RIUSCITI[@]}"
+  fi
 }
 
 # ---------------------------------------------------------------- fotografie dal vero
@@ -255,7 +270,7 @@ if [ "$SCATTI" = "vero" ]; then
     giro_vero "$UDID_VERO" "${QUALE}_scuro-testogrande" scuro accessibility-large
   fi
   spegni_simulatore "$UDID_VERO"
-  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
+  riepilogo
   [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
   exit $?
 fi
@@ -322,7 +337,7 @@ xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/prova-url_openurl-giocatore.p
 spegni_simulatore "$UDID_IPHONE"
 fi
 if [ "$DISPOSITIVI" = "iphone" ]; then
-  echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
+  riepilogo
   [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
   exit $?
 fi
@@ -376,6 +391,6 @@ xcrun simctl io "$UDID_IPAD" screenshot "$USCITA/home_ipad_dark.png" >/dev/null 
 
 spegni_simulatore "$UDID_IPAD"
 
-echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
+riepilogo
 # Le foto mancanti non fanno fallire il lavoro: si guardano nell'artifact. Fallisce solo se non c'è nessuna foto.
 [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
