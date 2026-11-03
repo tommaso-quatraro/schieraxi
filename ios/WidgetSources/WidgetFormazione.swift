@@ -208,7 +208,7 @@ struct VistaFormazione: View {
                             AvatarMini(g: g, lato: 22)
                             Text(g.nome).font(.subheadline).lineLimit(1)
                             Spacer(minLength: 4)
-                            Text(Formato.punti(g.puntiAttesi)).font(.subheadline.weight(.semibold)).monospacedDigit()
+                            Text(f.numeroTitolare(g)).font(.subheadline.weight(.semibold)).monospacedDigit()
                         }
                     }
                 }

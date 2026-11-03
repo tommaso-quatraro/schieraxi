@@ -989,3 +989,16 @@ extension GiocatoreWidget {
         quando.map { Quando.relativa($0, adesso: adesso) } ?? "—"
     }
 }
+
+// MARK: Widget «Formazione»: il numero accanto ai titolari
+
+extension FormazioneWidget {
+    /// Il nome sopra i numeri dei titolari, dalla forma più lunga alla più corta (l'ultima vuota: solo i numeri).
+    var nomeNumeroTitolari: [String] { [""] }
+
+    /// Il numero accanto al titolare nell'elenco del widget extra large.
+    func numeroTitolare(_ g: GiocatoreWidget) -> String { Formato.punti(g.puntiAttesi) }
+
+    /// La riga del titolare per VoiceOver.
+    func voceTitolare(_ g: GiocatoreWidget) -> String { "\(g.nome), \(numeroTitolare(g))" }
+}

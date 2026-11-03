@@ -83,6 +83,18 @@ struct DemoWidgetComeAppTests {
         #expect(Formato.punti(w.formazione?.puntiAttesi) == punti(formazione?["punteggio_atteso"]))
     }
 
+    @Test("Accanto ai titolari il widget scrive il fantavoto atteso della Formazione dell'app, con lo stesso nome (#240)")
+    func titolariComeLaFormazione() throws {
+        let titolariApp = try elenco(try app("/api/formazione"), "titolari")
+        let f = try #require(try widget().formazione)
+        let tit = try #require(f.titolari)
+        #expect(tit.map(\.id) == titolariApp.compactMap { $0["id"] as? Int })
+        for (g, a) in zip(tit, titolariApp) {
+            #expect(f.numeroTitolare(g) == punti(a["fv_atteso"]), "\(g.nome)")
+        }
+        #expect(f.nomeNumeroTitolari.first == FantavotoAtteso.nome)
+    }
+
     @Test("Prima della scadenza nessuna partita è in corso, né nel widget né nell'app; gli orari sono quelli di Oggi")
     func primaDellaScadenza() throws {
         let liveApp = try live(try app("/api/live"))
