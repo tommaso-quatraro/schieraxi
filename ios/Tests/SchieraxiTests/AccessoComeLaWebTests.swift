@@ -199,7 +199,7 @@ struct PassiModuloTests {
 // MARK: - recupero della password e registrazione (SessioneAccount)
 
 /// Tiene ferma una risposta del server finto finché il test non la lascia andare.
-private actor CancelloRisposta {
+private actor Cancello {
     private var aperto = false
     private var attese: [CheckedContinuation<Void, Never>] = []
 
@@ -341,7 +341,7 @@ struct RecuperoTests {
 
     @Test("Con l'email: una richiesta alla volta (passa da «in corso»)", .timeLimit(.minutes(1)))
     func unaAllaVolta() async throws {
-        let cancello = CancelloRisposta()
+        let cancello = Cancello()
         let s = try sessione(ServerDiProva { _, percorso, _ in
             if percorso == "/api/account/recupero-email" { await cancello.aspetta() }
             return Data(#"{"ok": true, "codice_recupero": "GGGGG-HHHHH-JJJJJ"}"#.utf8)
