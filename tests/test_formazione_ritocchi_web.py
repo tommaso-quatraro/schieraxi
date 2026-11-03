@@ -119,9 +119,10 @@ def test_stella_spiegata_solo_se_un_altro_modulo_ha_di_piu_con_stile_prudente():
     assert TESTI.count('"formazione.stella_non_massimo"') == 2
 
 
-def test_etichette_su_una_riga_e_colonne_pari_su_ipad_verticale():
+def test_etichette_mai_piu_larghe_della_riga_e_colonne_pari_su_ipad_verticale():
     regola = re.search(r"^\.etichetta \{([^}]*)\}", CSS, re.M).group(1)
-    assert "white-space: nowrap" in regola and "text-overflow: ellipsis" in regola and "max-width: 100%" in regola
+    # dal 3/11 (issue #230) l'etichetta che non ci sta va a capo dentro la sua pillola invece di finire con i puntini
+    assert "max-width: 100%" in regola and "nowrap" not in regola and "ellipsis" not in regola
     assert "@media (max-width: 1023px) { .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }" in CSS
 
 

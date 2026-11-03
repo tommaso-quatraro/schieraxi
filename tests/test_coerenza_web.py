@@ -98,7 +98,8 @@ def test_lo_stato_del_giocatore_lo_scrive_il_server():
     Seguiti, Oggi in corso e avvisi di Oggi; le parole composte in JS restano solo come ripiego quando `etichetta` manca."""
     assert 'const CLASSE_TONO = { positivo: "", attenzione: "arancio", negativo: "rossa", neutro: "neutra" };' in APP
     pill = APP[APP.index("function pillTitolarita(x) {"):APP.index("function pillRipiego(x) {")]
-    assert "if (etichettaPronta(x)) return" in pill and "esc(x.etichetta.testo)" in pill
+    # testoEtichetta protegge il testo come esc e lo divide al «·» per andare a capo (test_etichette_intere_web.py)
+    assert "if (etichettaPronta(x)) return" in pill and "testoEtichetta(x.etichetta.testo)" in pill
     assert "!(pronta && motivoDiStato(m))" in APP                                 # niente «infortunato» due volte
     assert 'etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA' in APP     # campo e righe a partita iniziata
     assert 'etichettaPronta(pr) ? esc(pr.etichetta.testo)' in APP                 # scheda
