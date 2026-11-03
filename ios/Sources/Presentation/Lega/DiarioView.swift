@@ -38,12 +38,16 @@ final class DiarioViewModel: ViewModelBase {
     /// «Ho schierato un'altra formazione»: undici titolari scelti a mano tra i giocatori della tua rosa (il server controlla modulo e rosa).
     /// Restituisce nil se è stata salvata, altrimenti l'errore da mostrare nel foglio «Cosa hai schierato» (la lista sotto è coperta).
     func haSchieratoAMano(_ voce: VoceDiario, titolari: [Int]) async -> String? {
-        // non succede dal foglio (si apre solo con una giornata e a salvataggi fermi): un testo qualsiasi tiene il foglio aperto
-        guard let giornata = voce.giornata, inSalvataggio == nil else { return "Non riesco a salvare adesso: riprova tra poco." }
+        // non succede dal foglio (si apre solo per una voce che si può cambiare e a salvataggi fermi): un testo qualsiasi
+        // tiene il foglio aperto
+        guard voce.siPuoCambiare, let giornata = voce.giornata, inSalvataggio == nil else {
+            return "Non riesco a salvare adesso: riprova tra poco."
+        }
         inizia(voce)
         defer { inSalvataggio = nil }
         do {
-            _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "manuale", titolari: titolari))
+            let corpo = CorpoSchierata(giornata: giornata, tipo: "manuale", titolari: titolari, stagione: voce.stagione)
+            _ = try await server.corpoJSON("POST", "/api/diario/schierata", corpo)
             esito(Self.salvataAMano, riuscito: true)
             await caricatore.ricarica()
             return nil
@@ -59,11 +63,12 @@ final class DiarioViewModel: ViewModelBase {
     /// «Ho schierato la consigliata»: il server salva come tua scelta la formazione che il modello avrebbe consigliato per quella
     /// giornata già finita e rifà solo quella voce del diario (non conta nei limiti di ricerca).
     func haSchieratoLaConsigliata(_ voce: VoceDiario) async {
-        guard let giornata = voce.giornata, inSalvataggio == nil else { return }
+        guard voce.siPuoCambiare, let giornata = voce.giornata, inSalvataggio == nil else { return }
         inizia(voce)
         defer { inSalvataggio = nil }
         do {
-            _ = try await server.corpoJSON("POST", "/api/diario/schierata", CorpoSchierata(giornata: giornata, tipo: "consigliata"))
+            let corpo = CorpoSchierata(giornata: giornata, tipo: "consigliata", stagione: voce.stagione)
+            _ = try await server.corpoJSON("POST", "/api/diario/schierata", corpo)
             esito(Self.salvataConsigliata, riuscito: true)
             await caricatore.ricarica()
         } catch {
@@ -95,6 +100,9 @@ struct CorpoSchierata: Encodable {
     /// «consigliata» o «manuale» (con `titolari`).
     let tipo: String
     var titolari: [Int]? = nil
+    /// La stagione della voce del diario: il server rifiuta le stagioni passate invece di scrivere sulla giornata con lo stesso
+    /// numero di quest'anno. Senza (nil) il campo non si manda e il server usa la stagione in corso.
+    var stagione: String? = nil
 }
 
 /// Per ogni giornata finita: i punti fatti dalla formazione schierata e da quella che SchieraXI avrebbe consigliato.
@@ -190,9 +198,10 @@ struct DiarioView: View {
                 ConfrontoDiarioView(confronto: c)
                     .padding(.vertical, 4)
             }
+            // «Ho schierato…» e «Correggi» solo per le voci che si possono ancora cambiare (stagione in corso, come la web)
             if let s = v.schierata {
                 riga(s.tipo == "consigliata" ? "La tua, la consigliata (\(s.modulo ?? "–"))" : "La tua (\(s.modulo ?? "–"))", s)
-            } else if let g = v.giornata {
+            } else if v.siPuoCambiare, let g = v.giornata {
                 Button {
                     Task { await vm.haSchieratoLaConsigliata(v) }
                 } label: {
@@ -206,7 +215,7 @@ struct DiarioView: View {
                 .disabled(vm.inSalvataggio != nil)
                 .accessibilityHint("Salva come tua scelta la formazione consigliata per la giornata \(v.numero ?? g)")
             }
-            if let g = v.giornata {
+            if v.siPuoCambiare, let g = v.giornata {
                 Button { daCorreggere = v } label: {
                     Label(v.schierata == nil ? "Ho schierato un'altra formazione" : "Correggi a mano", systemImage: "pencil")
                         .font(.subheadline).frame(maxWidth: .infinity, minHeight: 44)
