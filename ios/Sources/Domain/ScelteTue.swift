@@ -15,7 +15,10 @@ struct ScelteTue: Decodable {
 
 struct SceltaGiornata: Decodable, Identifiable {
     let stagione: String?
+    /// Il numero di Serie A: identifica la giornata.
     let giornata: Int?
+    /// Il numero della giornata nella lega (facoltativo: `null` fuori dalla stagione in corso, assente nei server vecchi).
+    let giornataLega: Int?
     let haiScelto: [String]?
     let consigliava: [String]?
     let puntiTua: Double?
@@ -25,6 +28,27 @@ struct SceltaGiornata: Decodable, Identifiable {
     let esito: String?
 
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
+
+    /// «Giornata 6»: il numero della lega, come la web e le voci del Diario; quello di Serie A se il server non lo manda.
+    var titolo: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Giornata" }
+
+    private enum Chiavi: String, CodingKey {
+        case stagione, giornata, giornataLega, haiScelto, consigliava, puntiTua, puntiConsigliata, differenza, esito
+    }
+
+    /// Tollerante come `VoceDiario`: un campo in un formato che l'app non conosce vale «assente» e non fa sparire il Diario.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Chiavi.self)
+        stagione = try? c.decodeIfPresent(String.self, forKey: .stagione)
+        giornata = try? c.decodeIfPresent(Int.self, forKey: .giornata)
+        giornataLega = try? c.decodeIfPresent(Int.self, forKey: .giornataLega)
+        haiScelto = try? c.decodeIfPresent([String].self, forKey: .haiScelto)
+        consigliava = try? c.decodeIfPresent([String].self, forKey: .consigliava)
+        puntiTua = try? c.decodeIfPresent(Double.self, forKey: .puntiTua)
+        puntiConsigliata = try? c.decodeIfPresent(Double.self, forKey: .puntiConsigliata)
+        differenza = try? c.decodeIfPresent(Double.self, forKey: .differenza)
+        esito = try? c.decodeIfPresent(String.self, forKey: .esito)
+    }
 }
 
 /// I testi della scheda, in un posto solo (si provano nei test, VoiceOver legge le stesse frasi).
@@ -71,7 +95,7 @@ struct ScelteTueTesto: Equatable {
         if (g.haiScelto ?? []).isEmpty || (g.consigliava ?? []).isEmpty { frase = "Hai scelto undici diversi da quelli consigliati." }
         let t = Formato.punti(g.puntiTua), c = Formato.punti(g.puntiConsigliata)
         let verdetto = esito == .tua ? "Meglio tu" : esito == .consigliata ? "Meglio il consiglio" : "Pari"
-        return RigaScelta(id: g.id, titolo: "Giornata \(g.giornata ?? 0)", frase: frase,
+        return RigaScelta(id: g.id, titolo: g.titolo, frase: frase,
                           punti: "\(verdetto): tu \(t), consiglio \(c)", esito: esito)
     }
 
