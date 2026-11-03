@@ -37,8 +37,8 @@ struct QueryGiocatori: EntityQuery {
 }
 
 struct ConfigurazioneOsservato: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Giocatore osservato"
-    static var description = IntentDescription("Il giocatore da seguire. Senza scelta si vede il primo dei tuoi osservati.")
+    static var title: LocalizedStringResource = "Giocatore seguito"
+    static var description = IntentDescription("Il giocatore da seguire. Senza scelta si vede il primo dei tuoi seguiti.")
 
     @Parameter(title: "Giocatore")
     var giocatore: GiocatoreScelto?
@@ -52,13 +52,13 @@ struct ConfigurazioneOsservato: WidgetConfigurationIntent {
 
     static var parameterSummary: some ParameterSummary {
         When(\.$manuale, .equalTo, true) {
-            Summary("Giocatore osservato") {
+            Summary("Giocatore seguito") {
                 \.$giocatore
                 \.$manuale
                 \.$codice
             }
         } otherwise: {
-            Summary("Giocatore osservato") {
+            Summary("Giocatore seguito") {
                 \.$giocatore
                 \.$manuale
             }
@@ -101,7 +101,7 @@ struct WidgetOsservato: Widget {
         AppIntentConfiguration(kind: kind, intent: ConfigurazioneOsservato.self, provider: FornitoreOsservato()) { e in
             VistaOsservato(voce: e.voce, scelto: e.scelto)
         }
-        .configurationDisplayName("Giocatore osservato")
+        .configurationDisplayName("Giocatore seguito")
         .description("Un giocatore a tua scelta: punti attesi, partita, dubbi.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
@@ -127,7 +127,8 @@ struct VistaOsservato: View {
     var body: some View {
         Group {
             if let w = voce.completo {
-                if let g = w.osservato(scelto) { contenuto(g) } else { vuoto }
+                // senza giocatore: «Nessun giocatore», o «Apri l'app per vederli» se il server ha tolto i seguiti per il peso
+                if let g = w.osservato(scelto) { contenuto(g) } else { OsservatoSenzaGiocatore(vuoto: w.vuotoOsservato, famiglia: famiglia) }
             } else {
                 SenzaDatiWidget(voce: voce, compatto: accessorio)
             }
@@ -136,22 +137,9 @@ struct VistaOsservato: View {
         .widgetURL(voce.tocco(Vai.url("mercato")))
     }
 
-    private var vuoto: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            if famiglia == .accessoryInline {
-                Label("Nessun osservato", systemImage: "eye")
-            } else {
-                TitoloBlocco(testo: "Osservato", icona: "eye")
-                Text("Nessun giocatore").font(.headline)
-                Text("Aggiungi un giocatore ai Seguiti (Squadra), poi scegli qui.").font(.caption).foregroundStyle(accessorio ? Color.secondary : TintaWidget.testo2)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
     private func punti(_ g: GiocatoreWidget) -> String { Formato.punti(g.puntiAttesi) }
 
-    /// «Dubbio 55%», «Infortunato»; nil se e' tutto a posto.
+    /// «In dubbio · gioca 55%», «Infortunato»; nil se e' tutto a posto.
     private func avviso(_ g: GiocatoreWidget) -> String? {
         let s = g.descrizioneStato
         return s.isEmpty ? nil : s
@@ -210,7 +198,7 @@ struct VistaOsservato: View {
             }
             .frame(maxWidth: 110)
             VStack(alignment: .leading, spacing: 3) {
-                TitoloBlocco(testo: "Osservato", icona: "eye")
+                TitoloBlocco(testo: "Seguito", icona: "eye")
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(punti(g)).monospacedDigit().fontWidget(38, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                         .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
@@ -218,10 +206,13 @@ struct VistaOsservato: View {
                 }
                 if let v = g.votoAtteso { Text("Fantavoto atteso \(Formato.punti(v))").font(.caption).monospacedDigit() }
                 Text(g.partitaBreve).font(.subheadline.weight(.semibold)).lineLimit(1)
-                if let a = avviso(g) {
-                    Label(a, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
-                } else if let p = g.percentuale {
-                    Text("gioca al \(Formato.intero(p))%").font(.caption).foregroundStyle(TintaWidget.testo2)
+                // una sola percentuale, come l'app: l'avviso del server («In dubbio · gioca 55%»), altrimenti «gioca 90%» da p_voto
+                if let riga = g.statoOGioca {
+                    if avviso(g) != nil {
+                        Label(riga, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
+                    } else {
+                        Text(riga).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                    }
                 }
                 PiedeDati(voce: voce)
             }

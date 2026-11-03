@@ -67,6 +67,21 @@ def test_senza_osservati_non_si_dice_che_mancano(due_utenti, monkeypatch):
     assert corpo["mancano"] == ["scambio"]
 
 
+def test_seguiti_al_massimo_con_gioca_percentuale_entro_il_tetto(due_utenti, monkeypatch):
+    """Il numero massimo di seguiti, ognuno con «In dubbio · gioca N%» (`dubbio`, `p_voto`): la risposta resta sotto il tetto
+    e niente si toglie."""
+    a, _ = due_utenti
+    monkeypatch.setattr(w.osservati, "leggi", lambda f: list(range(1, 15)))     # più seguiti del massimo: il widget ne manda 8
+    c, h = widget(token_di(a))
+    corpo = c.get("/api/widget", headers=h).json()
+    assert len(corpo["osservati"]) == w.MAX_OSSERVATI
+    assert all((g["p_voto"], g["dubbio"]) == (0.9, False) for g in corpo["osservati"])
+    assert _peso(corpo) <= w.MAX_BYTE and corpo["mancano"] == ["scambio"]      # lo scambio non è in cache, i seguiti restano
+    # quanto pesano i due campi in tutto: pochi caratteri per seguito
+    senza = [{k: v for k, v in g.items() if k not in ("p_voto", "dubbio")} for g in corpo["osservati"]]
+    assert _peso(corpo) - _peso(corpo | {"osservati": senza}) <= 35 * w.MAX_OSSERVATI
+
+
 def test_in_corso_del_widget_senza_gli_elenchi_per_giocatore(due_utenti, monkeypatch):
     a, _ = due_utenti
     monkeypatch.setattr(w.gestione, "oggi", lambda *x, **k: OGGI | {"iniziata": True, "fase": "in_corso", "riepilogo": None,

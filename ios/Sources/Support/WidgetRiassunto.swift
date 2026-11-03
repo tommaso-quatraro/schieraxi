@@ -860,3 +860,101 @@ extension RiassuntoOggi {
     /// Sotto il titolo del rettangolo «Da controllare» quando non ci sono nomi: la giornata, o a giornata finita la prossima.
     var sottotitoloRettangolo: String { finita ? "Prossima: \(etichettaGiornata)" : etichettaGiornata }
 }
+
+// MARK: Widget «Osservato»: una sola percentuale, e i seguiti tolti dal server per il peso
+
+extension GiocatoreWidget {
+    /// «gioca 90%» da `p_voto`, con le parole dell'app (`LetturaPedina.gioca`, `docs/COERENZA-WEB-IPHONE.md`); nil senza `p_voto`.
+    /// La `percentuale` delle probabili non si mostra mai: una sola percentuale sul giocare, ovunque.
+    var giocaTesto: String? { pVoto.map { "gioca \(Formato.percento($0))%" } }
+
+    /// La riga del widget «Osservato» medio: l'avviso del server se c'è («In dubbio · gioca 55%», «Infortunato»), altrimenti
+    /// «gioca 90%»; nil se non c'è niente da dire.
+    var statoOGioca: String? { descrizioneStato.isEmpty ? giocaTesto : descrizioneStato }
+}
+
+/// Il widget «Osservato» senza un giocatore da mostrare: nessun seguito, oppure seguiti tolti dal server perché la risposta era
+/// troppo grande (`mancano` contiene «osservati»). Nel secondo caso il widget non resta vuoto: manda nell'app.
+enum VuotoOsservato: Equatable {
+    case nessunSeguito
+    case seguitiNellApp
+
+    /// La riga grande.
+    var titolo: String {
+        switch self {
+        case .nessunSeguito: return "Nessun giocatore"
+        case .seguitiNellApp: return "Apri l'app per vederli"
+        }
+    }
+
+    /// La riga piccola sotto.
+    var frase: String {
+        switch self {
+        case .nessunSeguito: return "Aggiungi un giocatore ai Seguiti (Squadra), poi scegli qui."
+        case .seguitiNellApp: return "I tuoi seguiti sono in Squadra > Seguiti."
+        }
+    }
+
+    /// La riga della schermata di blocco (una riga sola, accanto all'occhio).
+    var riga: String {
+        switch self {
+        case .nessunSeguito: return "Nessun seguito"
+        case .seguitiNellApp: return "Seguiti: apri l'app"
+        }
+    }
+
+    /// Nel cerchio della schermata di blocco: una o due parole.
+    var cerchio: String {
+        switch self {
+        case .nessunSeguito: return "Nessuno"
+        case .seguitiNellApp: return "Apri l'app"
+        }
+    }
+}
+
+extension RiassuntoWidget {
+    /// true se il server ha tolto i seguiti per stare nel peso della risposta (`mancano`, dalla #180).
+    var seguitiMancanti: Bool { mancano?.contains("osservati") == true }
+
+    /// Cosa dice il widget «Osservato» quando non ha un giocatore da mostrare.
+    var vuotoOsservato: VuotoOsservato { seguitiMancanti ? .seguitiNellApp : .nessunSeguito }
+}
+
+// MARK: Widget «Chi gioca»: l'ora una volta sola, ogni colore e ogni segno con la sua parola
+
+extension GiocatoreWidget {
+    /// Le parole di ciò che c'è da sapere, nell'ordine: lo stato del server («In dubbio · gioca 70%», «Infortunato»),
+    /// «Diffidato», «Rigorista»; «Panchina» se non è tra i tuoi titolari e il server non dice altro.
+    var paroleChiGioca: [String] {
+        var parole: [String] = []
+        let stato = descrizioneStato
+        if !stato.isEmpty { parole.append(stato) }
+        if diffidato == true, !parole.contains("Diffidato") { parole.append("Diffidato") }
+        if rigorista == true { parole.append("Rigorista") }
+        if titolare == false, self.stato == nil, tipo == nil { parole.append("Panchina") }
+        return parole
+    }
+
+    /// La riga sotto il nome, dalla forma più lunga alla più corta (la vista mostra la prima che entra): l'avversario («vs ROM»,
+    /// «@ MIL») e le parole; poi senza l'avversario; con il solo dubbio, alla fine «gioca 70%». L'ora non c'è: sta a destra.
+    var formeChiGioca: [String] {
+        let partita = avversario.map { "\(inCasa == true ? "vs" : "@") \(ColoriSquadra.sigla($0))" }
+        let parole = paroleChiGioca
+        let testo = parole.joined(separator: " · ")
+        var forme: [String] = []
+        let piena = [partita, testo.isEmpty ? nil : testo].compactMap { $0 }.joined(separator: " · ")
+        if !piena.isEmpty { forme.append(piena) }
+        if partita != nil, !testo.isEmpty { forme.append(testo) }
+        if parole.count == 1, let corta = ParoleWidget.stato(testo).last, corta != testo { forme.append(corta) }
+        return forme
+    }
+
+    /// La riga va in arancione solo se c'è da guardare (uno stato o la diffida), e allora le parole dicono perché.
+    /// Il rigorista da solo non è un avviso.
+    var daGuardare: Bool { !descrizioneStato.isEmpty || diffidato == true }
+
+    /// Quando gioca, scritto una volta sola, come la web: «oggi 18:30», «domani 20:45», «sab 8 20:45»; «—» se non si sa.
+    func quandoGioca(adesso: Date) -> String {
+        quando.map { Quando.relativa($0, adesso: adesso) } ?? "—"
+    }
+}

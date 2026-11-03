@@ -61,7 +61,8 @@ struct PiedeDati: View {
     }
 }
 
-/// Quando il widget non ha niente da mostrare: dice cosa fare (e, in piccolo, la diagnostica).
+/// Quando il widget non ha niente da mostrare: dice cosa fare, a parole semplici (niente testi tecnici: la diagnostica del
+/// collegamento sta nell'app, Impostazioni > Avanzate > Diagnostica widget).
 /// Non collegato: «Tocca per collegare» (il tocco apre l'app su «Collega il widget», vedi `Voce.tocco`).
 struct SenzaDatiWidget: View {
     let voce: Voce
@@ -91,7 +92,6 @@ struct SenzaDatiWidget: View {
                 if !compatto {
                     Text(voce.daCollegare ? CollegamentoWidget.poi : suggerimento)
                         .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    if let d = voce.diagnostica { Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
                 }
             }
             .accessibilityElement(children: .combine)

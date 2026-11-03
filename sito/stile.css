@@ -237,9 +237,6 @@ body.dopo-eroe .alto { border-bottom-color: var(--bordo); }
 .passi h3::before { content: counter(p) "."; color: var(--azione); margin-right: .35em; }
 .passi p { color: var(--tenue); margin: 0; max-width: 34ch; }
 .altre { color: var(--tenue); margin: 1.4rem 0 0; max-width: 60ch; }
-.guida { margin-top: 1.5rem; max-width: 50rem; }
-.guida ol { padding-left: 1.3rem; }
-.guida li { margin-bottom: .5rem; }
 code { background: var(--sfondo); border: 1px solid var(--bordo); padding: .1rem .4rem; border-radius: .35rem; font-size: .88em; word-break: break-all; }
 
 /* domande a fisarmonica */
