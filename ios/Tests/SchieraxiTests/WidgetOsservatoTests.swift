@@ -4,7 +4,9 @@ import Testing
 
 /// Il widget «Giocatore osservato»: una sola percentuale, «gioca N%» da `p_voto` con le parole dell'app (#205), mai la
 /// `percentuale` delle probabili; e quando il server toglie i seguiti per il peso (`mancano` contiene «osservati», #206) il
-/// widget lo dice invece di restare vuoto. Dati inventati.
+/// widget lo dice invece di restare vuoto. Il widget mostra il fantavoto atteso (`fv_atteso`) come i Seguiti nell'app; da un
+/// server vecchio, senza `fv_atteso`, il voto in pagella con il suo nome, mai con quello del fantavoto atteso (#225).
+/// Dati inventati.
 @Suite("Widget «Osservato»")
 struct WidgetOsservatoTests {
     private func giocatore(_ campi: String) throws -> GiocatoreWidget {
@@ -39,6 +41,35 @@ struct WidgetOsservatoTests {
     ])
     func rigaDelWidget(campi: String, atteso: String?) throws {
         #expect(try giocatore(campi).statoOGioca == atteso)
+    }
+
+    @Test("Con `fv_atteso` la riga dice «Fantavoto atteso», con il numero e il nome dei Seguiti nell'app e della web (#225)",
+          arguments: [
+              #""fv_atteso": 7.62, "voto_atteso": 6.37, "punti_attesi": 6.9, "p_voto": 0.9"#,
+              #""fv_atteso": 7.62, "punti_attesi": 6.9"#,
+          ])
+    func fantavotoAtteso(campi: String) throws {
+        let g = try giocatore(campi)
+        let forme = try #require(g.rigaVotoAtteso)
+        let nomeWeb = try TestiWeb().italiano("mercato.fantavoto_atteso")    // «Fantavoto atteso»
+        #expect(FantavotoAtteso.nome == nomeWeb)
+        #expect(forme == ["\(FantavotoAtteso.nome) 7,6", "Fantavoto 7,6"])
+    }
+
+    @Test("Senza `fv_atteso` (server vecchio) resta il voto in pagella, con il nome che gli danno app e web (#225)", arguments: [
+        #""voto_atteso": 6.37, "punti_attesi": 5.9, "p_voto": 0.9"#,
+        #""fv_atteso": null, "voto_atteso": 6.37"#,
+    ])
+    func votoInPagellaColNomeGiusto(campi: String) throws {
+        let forme = try #require(try giocatore(campi).rigaVotoAtteso)
+        let nomeWeb = try TestiWeb().italiano("confronto.fattore_voto")     // «Voto in pagella atteso», come il confronto
+        #expect(forme == ["\(nomeWeb) 6,4", "In pagella 6,4"])
+        #expect(forme.allSatisfy { !$0.localizedCaseInsensitiveContains(FantavotoAtteso.nome) })
+    }
+
+    @Test("Senza `fv_atteso` né `voto_atteso` la riga non c'è")
+    func senzaVotoAtteso() throws {
+        #expect(try giocatore(#""punti_attesi": 5.9, "p_voto": 0.9"#).rigaVotoAtteso == nil)
     }
 
     @Test("Seguiti tolti dal server per il peso: «Apri l'app per vederli», non «Nessun giocatore»")

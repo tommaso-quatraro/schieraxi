@@ -8,8 +8,9 @@ fotografano lo stesso, con l'ultima foto.
 Si confrontano i pixel (intestazione e dati dell'immagine decompressi), non i file: i metadati possono cambiare a ogni foto.
 
 Uso: python3 -I schermo_fermo.py <udid del simulatore> <file.png> [secondi massimi, predefinito 8]
-Uscita: 0 foto a schermo fermo; 3 foto scattata allo scadere del tempo (lo schermo si muoveva ancora); 1 foto non riuscita;
-2 uso sbagliato. Solo libreria standard.
+Uscita: 0 foto a schermo fermo; 3 foto scattata allo scadere del tempo (lo schermo si muoveva ancora); 4 uno scatto dopo
+il primo non è riuscito (resta l'ultima foto buona, forse ancora in movimento: screenshot.sh lo conta tra i problemi);
+1 foto non riuscita (nessun file); 2 uso sbagliato. Solo libreria standard.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ FERMO = 0
 ERRORE = 1
 USO = 2
 SI_MUOVE = 3
+NON_RIUSCITO = 4   # uno scatto dopo il primo non è riuscito: in `file` resta l'ultima foto buona
 
 MASSIMO = 8.0      # secondi di attesa al massimo dopo la prima foto
 INTERVALLO = 1.0   # secondi tra due foto: più delle pause brevi della demo tra un passo e l'altro (0,4-0,8 s)
@@ -82,7 +84,8 @@ def aspetta_fermo(scatta, file, massimo=MASSIMO, intervallo=INTERVALLO, orologio
         while orologio() < fine:
             dormi(intervallo)
             if not scatta(nuova):
-                break   # resta l'ultima foto buona
+                esito = NON_RIUSCITO   # resta l'ultima foto buona
+                break
             if uguali(ultima, nuova):
                 esito = FERMO
                 break
