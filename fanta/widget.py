@@ -9,6 +9,7 @@ Niente capitano (la lega non lo usa) e niente classifica della lega (l'app non n
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 
 from . import avatar, calcolo, consigli, diario, funzioni, gestione, osservati, scelte
@@ -20,7 +21,11 @@ MAX_OSSERVATI = 8
 MAX_DIARIO = 5
 # la fase della giornata e i suoi blocchi: stessi nomi e stessa forma di /api/oggi (calcolati da gestione.oggi -> fasi.aggiungi)
 CAMPI_FASE = ("fase", "in_corso", "riepilogo", "prossima")
+# tranne questi elenchi di `in_corso`: il widget mostra solo i numeri della giornata (punti fatti, previsti, chi deve giocare);
+# giocatore per giocatore e cambi dalla panchina restano in /api/oggi (sono ~5 kB a giornata in corso)
+SENZA_IN_CORSO = ("giocatori", "sostituzioni")
 MAX_BYTE = 18000              # tetto di sicurezza della risposta (il server toglie le parti facoltative se lo supera)
+TAGLI_PESO = ("scambio", "osservati")    # cosa si toglie sopra MAX_BYTE, in quest'ordine (il nome finisce in `mancano`)
 SOGLIA_RIGORISTA = 0.15       # la stessa del testo «rigorista» nelle schede
 # le sole funzioni che interessano ai widget (il token del widget non può leggere /api/funzioni)
 FUNZIONI_WIDGET = ("live", "diario", "scambi_trova", "seguiti", "widget_extra")
@@ -118,6 +123,8 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     }
     # fase della giornata (facoltativi, come in /api/oggi): solo quelli che ci sono, i blocchi vuoti (null) non si mandano
     corpo |= {k: o[k] for k in CAMPI_FASE if o.get(k) is not None}
+    if isinstance(corpo.get("in_corso"), dict):              # una copia: il blocco di gestione.oggi non si tocca
+        corpo["in_corso"] = {k: v for k, v in corpo["in_corso"].items() if k not in SENZA_IN_CORSO}
 
     # punti attesi contro punti fatti nelle ultime giornate (dal diario; con la formazione schierata se c'è, altrimenti la consigliata).
     # `giornata_lega` e `stagione` come in /api/diario: il widget scrive lo stesso numero dell'app (null fuori dalla stagione in corso)
@@ -155,4 +162,20 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
                                "fattibile": m.get("fattibile")}
     if mancano:
         corpo["mancano"] = mancano
+    return corpo
+
+
+def peso(corpo: dict) -> int:
+    """La misura del tetto: il JSON con gli spazi e i caratteri accentati così come sono (la stessa misura della sentinella)."""
+    return len(json.dumps(corpo, ensure_ascii=False))
+
+
+def entro_il_peso(corpo: dict) -> dict:
+    """Rete di sicurezza sulla dimensione: sopra MAX_BYTE toglie i blocchi di TAGLI_PESO, uno alla volta e solo finché serve, e
+    ne scrive il nome in `mancano`, così il widget sa che mancano invece di perderli in silenzio. Un blocco vuoto o già
+    assente (per esempio lo scambio non in cache, già in `mancano`) non si tocca."""
+    for chiave in TAGLI_PESO:
+        if corpo.get(chiave) and peso(corpo) > MAX_BYTE:
+            del corpo[chiave]
+            corpo["mancano"] = [*corpo.get("mancano", []), chiave]
     return corpo

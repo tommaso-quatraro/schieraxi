@@ -1,4 +1,5 @@
-"""/api/widget porta, facoltativi, `fase`, `in_corso`, `riepilogo` e `prossima` con la stessa forma di /api/oggi (stessa funzione)."""
+"""/api/widget porta, facoltativi, `fase`, `in_corso`, `riepilogo` e `prossima` con la stessa forma di /api/oggi (stessa funzione;
+`in_corso` senza gli elenchi `giocatori` e `sostituzioni`, che nessun widget mostra)."""
 import json
 from datetime import datetime
 
@@ -39,11 +40,14 @@ def test_tre_fasi_come_in_oggi(widget_vero):
     # prima della scadenza: solo `fase`, i blocchi null non si mandano
     c = costruisci(datetime(2026, 11, 6, 12, 0))
     assert c["fase"] == "prima" and not {"in_corso", "riepilogo", "prossima"} & set(c)
-    # giornata in corso: `in_corso` identico a quello di /api/oggi (stessa funzione, anche con la diretta)
+    # giornata in corso: `in_corso` uguale a quello di /api/oggi (stessa funzione, anche con la diretta), tranne gli elenchi per
+    # giocatore che nessun widget mostra (restano in /api/oggi: vedi test_widget_peso)
     adesso, live = datetime(2026, 11, 8, 22, 40), {("roma", "lazio"): {"stato": "finita"}}
     c = costruisci(adesso, live_partite=live)
     o = _oggi(a, adesso, live_partite=live)
-    assert c["fase"] == "in_corso" and c["in_corso"] == o["in_corso"] and c["in_corso"]["punti_fatti"] > 0
+    assert o["in_corso"]["giocatori"]
+    assert c["fase"] == "in_corso" and c["in_corso"]["punti_fatti"] > 0
+    assert c["in_corso"] == {k: v for k, v in o["in_corso"].items() if k not in ("giocatori", "sostituzioni")}
     assert not {"riepilogo", "prossima"} & set(c)
     # giornata finita: `riepilogo` e `prossima` come in /api/oggi
     _giornata_finita(a)
