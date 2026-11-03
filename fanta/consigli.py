@@ -92,10 +92,11 @@ def prossima_giornata(db: sqlite3.Connection, stagione: str, adesso: datetime | 
     return None
 
 
-def giornata_da_giocare(db: sqlite3.Connection, stagione: str, regole: Regole | None) -> int | None:
+def giornata_da_giocare(db: sqlite3.Connection, stagione: str, regole: Regole | None, adesso: datetime | None = None) -> int | None:
     """La prossima giornata PER LA LEGA: come `prossima_giornata`, ma mai prima della prima giornata della lega
-    (regole.prima_giornata_lega). Prima che la lega parta, la «giornata da giocare» è la sua prima."""
-    g = prossima_giornata(db, stagione)
+    (regole.prima_giornata_lega). Prima che la lega parta, la «giornata da giocare» è la sua prima.
+    `adesso`: l'ora da usare (per i test e per chi l'ha già fissata); senza, l'ora vera."""
+    g = prossima_giornata(db, stagione, adesso)
     if g is None or regole is None:
         return g
     return max(g, regole.prima_giornata_lega)

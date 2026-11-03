@@ -45,7 +45,8 @@ const TESTI = {
     "accesso.errore_generico": "Qualcosa non ha funzionato: riprova",
 
     "accesso.email": "Email",
-    "accesso.email_facoltativa": "Email (facoltativa: serve a recuperare la password)",
+    "accesso.email_facoltativa": "Email (facoltativa)",
+    "accesso.email_facoltativa_aiuto": "Serve a recuperare la password.",
     "accesso.codice_email": "Codice a 6 cifre ricevuto per email",
     "accesso.serve_invito_email": "Serve un codice d'invito e un indirizzo email: ti mandiamo un codice per confermarlo.",
     "accesso.serve_email": "Scrivi la tua email: ti mandiamo un codice per confermarla e creare l'account.",
@@ -1789,7 +1790,8 @@ const TESTI = {
     "accesso.errore_generico": "Something went wrong: try again",
 
     "accesso.email": "Email",
-    "accesso.email_facoltativa": "Email (optional: used to recover your password)",
+    "accesso.email_facoltativa": "Email (optional)",
+    "accesso.email_facoltativa_aiuto": "Used to recover your password.",
     "accesso.codice_email": "6-digit code received by email",
     "accesso.serve_invito_email": "You need an invitation code and an email address: we will send you a code to confirm it.",
     "accesso.serve_email": "Enter your email: we will send you a code to confirm it and create the account.",
