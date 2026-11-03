@@ -250,11 +250,12 @@ extension RiassuntoOggi {
         }
     }
 
-    /// Una frase per VoiceOver sulla fase; nil nella fase `prima` (lì valgono i testi di sempre).
+    /// Una frase per VoiceOver sulla fase; nil nella fase `prima` (lì valgono i testi di sempre). Dopo la scadenza «formazione
+    /// chiusa», come la web («Chiusa»), mai «in corso» per la giornata.
     var descrizioneFase: String? {
         if inCorso {
-            var t = "\(etichettaGiornata) in corso: "
-            t += puntiFatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non ancora noti"
+            var t = "\(etichettaGiornata), formazione chiusa: "
+            t += puntiFatti.map { "\(Formato.punti($0)) punti fatti finora" } ?? "punti fatti non ancora noti"
             if let p = puntiFine, p.isFinite { t += ", circa \(Formato.punti(p)) a fine giornata" }
             if let a = ancoraDaGiocareTesto { t += ". \(a)" }
             return t + "."

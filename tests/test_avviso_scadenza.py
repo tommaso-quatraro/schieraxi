@@ -36,7 +36,7 @@ class Finto:
         db.execute("CREATE TABLE aggiornamenti (cosa TEXT PRIMARY KEY, quando TEXT, dettaglio TEXT)")   # come in archivio.py
         db.execute("INSERT INTO aggiornamenti (cosa, quando) VALUES ('probabili', 'v0')")
         monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
-        monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st: 9)
+        monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
         monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (self.prev, 9, True))
         monkeypatch.setattr(consigli, "formazione", self.formazione)
         monkeypatch.setattr(consigli, "valuta", self.valuta)

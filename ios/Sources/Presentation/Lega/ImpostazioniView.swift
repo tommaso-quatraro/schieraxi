@@ -43,6 +43,7 @@ struct ImpostazioniView: View {
     var body: some View {
         NavigationStack(path: $percorso) {
             List {
+                TitoloNellaPagina()
                 AccountSezione(fogli: fogli)
                 SessioneMinimaSezione(nonRaggiungibile: vm.info.datiSalvati != nil || vm.info.errore != nil)
                 if ProvaEsempio.attiva { SezioneProvaEsempio() }
@@ -54,8 +55,7 @@ struct ImpostazioniView: View {
             .scrollContentBackground(.hidden)
             .background(Sfondo())
             .demoInFondo()
-            .navigationTitle("Impostazioni")
-            .navigationBarTitleDisplayMode(.large)
+            .titoloPagina("Impostazioni")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } }
             }

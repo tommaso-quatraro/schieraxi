@@ -68,20 +68,35 @@ struct SenzaDatiWidget: View {
     var compatto = false
     /// La riga sotto quando il widget è collegato ma non ha dati (rete, server spento).
     var suggerimento = "Apri SchieraXI per aggiornare i dati"
+    @Environment(\.widgetFamily) private var famigliaSistema
+    @Environment(\.famigliaForzata) private var famigliaForzata
+
+    private var simbolo: String { voce.daCollegare ? "link" : "wifi.exclamationmark" }
+    private var titolo: String { voce.daCollegare ? CollegamentoWidget.tocca : "Nessun dato" }
 
     var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: voce.daCollegare ? "link" : "wifi.exclamationmark")
-            Text(voce.daCollegare ? CollegamentoWidget.tocca : "Nessun dato").font(.caption.bold())
-                .multilineTextAlignment(.center)
-            if !compatto {
-                Text(voce.daCollegare ? CollegamentoWidget.poi : suggerimento)
-                    .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                if let d = voce.diagnostica { Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
+        if (famigliaForzata ?? famigliaSistema) == .accessoryInline {
+            // la riga in linea ha posto per un simbolo e una riga di testo: «Tocca per collegare» accanto al simbolo, o il simbolo
+            // da solo se non entra (mai simbolo e testo uno sopra l'altro, tagliati a metà); VoiceOver legge la frase intera
+            PrimaCheEntra(2) { i in
+                if i == 0 { Label(titolo, systemImage: simbolo) } else { Image(systemName: simbolo) }
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(etichetta)
+        } else {
+            VStack(spacing: 4) {
+                Image(systemName: simbolo)
+                Text(titolo).font(.caption.bold())
+                    .multilineTextAlignment(.center)
+                if !compatto {
+                    Text(voce.daCollegare ? CollegamentoWidget.poi : suggerimento)
+                        .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    if let d = voce.diagnostica { Text(d).fontWidget(8).foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2) }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(etichetta)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(etichetta)
     }
 
     /// La frase completa per VoiceOver.
@@ -138,16 +153,18 @@ extension View {
     }
 }
 
-/// «4 da controllare»; se non entra (testo grande) solo «4» con il simbolo: mai «4 da contro…».
+/// «4 da controllare»; se non entra (testo grande, cerchio della schermata di blocco) solo «4» con il simbolo: mai «4 da contro…».
+/// Le forme vengono da `ParoleWidget.daControllare`; VoiceOver legge sempre «4 da controllare».
 struct EtichettaDaControllare: View {
     let n: Int
     var icona = "exclamationmark.triangle.fill"
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            Label("\(n) da controllare", systemImage: icona).lineLimit(1)
-            Label("\(n)", systemImage: icona).lineLimit(1)
+        let forme = ParoleWidget.daControllare(n)
+        PrimaCheEntra(forme.count) { i in
+            Label(forme[i], systemImage: icona).lineLimit(1)
         }
-        .accessibilityLabel("\(n) da controllare")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(forme[0])
     }
 }

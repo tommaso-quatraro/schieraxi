@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.380",
+    "data": "2026-11-03T09:27:35",
+    "titolo": "Controlli interni più affidabili",
+    "voci": [
+      "Nessun cambiamento visibile: un controllo interno non dipende più dalla data di oggi."
+    ],
+    "tecnico": [
+      "consigli.giornata_da_giocare accetta `adesso` e lo passa a prossima_giornata; gestione.oggi_senza_rose lo usa. Il test test_oggi_senza_rose_usa_la_regola_unica dopo il 2/11/2026 falliva perché la giornata si calcolava con l'orologio vero."
+    ]
+  },
+  {
     "versione": "1.379",
     "data": "2026-11-03T03:59:52",
     "titolo": "Widget: i giocatori che segui restano anche a giornata in corso",

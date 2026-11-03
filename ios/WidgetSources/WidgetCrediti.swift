@@ -48,12 +48,9 @@ struct VistaCrediti: View {
         switch famiglia {
         case .systemMedium: medio(w, crediti)
         case .accessoryCircular:
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 0) {
-                    Text(intero(crediti)).font(.headline.bold()).minimumScaleFactor(0.6)
-                    Text("crediti").fontWidget(9)
-                }
+            CerchioWidget {
+                Text(intero(crediti)).font(.headline.bold()).minimumScaleFactor(0.6).lineLimit(1)
+                Text("crediti").fontWidget(9)
             }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
@@ -66,14 +63,14 @@ struct VistaCrediti: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         case .accessoryInline:
-            Label("Crediti \(intero(crediti))", systemImage: "eurosign.circle")
+            Label("Crediti \(intero(crediti))", systemImage: ParoleWidget.simboloCrediti)
         default: piccolo(w, crediti)
         }
     }
 
     private func piccolo(_ w: RiassuntoWidget, _ crediti: Double) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            IntestazioneWidget(titolo: "Crediti", icona: "eurosign.circle")
+            IntestazioneWidget(titolo: "Crediti", icona: ParoleWidget.simboloCrediti)
             Spacer(minLength: 0)
             Text(intero(crediti)).fontWidget(44, weight: .bold, design: .rounded).minimumScaleFactor(0.5).lineLimit(1).monospacedDigit()
             Text("crediti residui").font(.caption2).foregroundStyle(TintaWidget.testo2)
@@ -87,7 +84,7 @@ struct VistaCrediti: View {
     private func medio(_ w: RiassuntoWidget, _ crediti: Double) -> some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                IntestazioneWidget(titolo: "Crediti", icona: "eurosign.circle")
+                IntestazioneWidget(titolo: "Crediti", icona: ParoleWidget.simboloCrediti)
                 Spacer(minLength: 0)
                 Text(intero(crediti)).fontWidget(44, weight: .bold, design: .rounded).minimumScaleFactor(0.5).lineLimit(1).monospacedDigit()
                 Text("crediti residui").font(.caption2).foregroundStyle(TintaWidget.testo2)

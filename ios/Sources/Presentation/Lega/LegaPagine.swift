@@ -62,7 +62,7 @@ struct DifferenzeView: View {
                     voce("minus.circle.fill", .attenzione, "\(g.squadra) lascia liberi: \(nomi(g.giocatori))")
                 }
                 ForEach(differenze.crediti ?? []) { c in
-                    voce("c.circle", .testoSecondario,
+                    voce(ParoleWidget.simboloCrediti, .testoSecondario,
                          "Crediti \(c.squadra): \(c.prima.map { String(Formato.intero($0)) } ?? "–") → \(c.dopo.map { String(Formato.intero($0)) } ?? "–")")
                 }
                 if vuoto, let t = differenze.testo { Text(t).font(.subheadline) }
@@ -83,6 +83,7 @@ struct MovimentiView: View {
         ZStack {
             Sfondo()
             List {
+                TitoloNellaPagina()
                 if let elenco = vm.caricatore.dato {
                     if elenco.isEmpty {
                         VistaVuota(titolo: "Nessun movimento", icona: "arrow.left.arrow.right",
@@ -101,7 +102,7 @@ struct MovimentiView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Movimenti")
+        .titoloPagina("Movimenti")
         .ricercaGlobale()
         .refreshable { await vm.carica() }
         .task { await vm.carica() }
@@ -134,6 +135,7 @@ struct StagioneView: View {
         ZStack {
             Sfondo()
             List {
+                TitoloNellaPagina()
                 if let s = vm.stato.dato {
                     if vm.archiviata {
                         Section {
@@ -148,7 +150,7 @@ struct StagioneView: View {
                                 .font(.footnote).foregroundStyle(Color.testoSecondario)
                             Button(role: .destructive) { conferma = true } label: {
                                 if vm.inCorso { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
-                                else { Label("Archivia e riparti", systemImage: "archivebox").frame(maxWidth: .infinity, minHeight: 44) }
+                                else { Label("Archivia e riparti", systemImage: "archivebox").labelStyle(.distruttiva).frame(maxWidth: .infinity, minHeight: 44) }
                             }
                             .disabled(vm.inCorso)
                             if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
@@ -168,7 +170,7 @@ struct StagioneView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Nuova stagione")
+        .titoloPagina("Nuova stagione")
         .ricercaGlobale()
         .task { await vm.carica() }
         // Conferma esplicita: archiviare cambia le rose, le regole e le scelte salvate.
@@ -238,6 +240,7 @@ struct AspettoView: View {
         ZStack {
             Sfondo()
             List {
+                TitoloNellaPagina()
                 Section {
                     Picker("Tema", selection: $tema) {
                         Text("Automatico").tag("auto")
@@ -257,7 +260,7 @@ struct AspettoView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Aspetto")
+        .titoloPagina("Aspetto")
     }
 }
 

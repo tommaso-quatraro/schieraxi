@@ -171,7 +171,7 @@ struct LegaView: View {
                 NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
             }
             if funzioni.acceso(Funzione.squadreAltrui) && funzioni.accesoSoloSeNominato(Funzione.crediti) {
-                NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: "c.circle").labelStyle(.voce(.mint)).frame(minHeight: 44) }
+                NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: ParoleWidget.simboloCrediti).labelStyle(.voce(.mint)).frame(minHeight: 44) }
             }
             if !vm.nuovaStagione && funzioni.mostraTutte {   // con la stagione nuova c'è già il riquadro in cima
                 NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
@@ -195,9 +195,9 @@ struct PaginaMercato<Contenuto: View>: View {
             Sfondo()
             contenuto()
         }
-        .navigationTitle(titolo)
-        // titolo grande come le altre pagine: in piccolo, accanto a lente e ingranaggio, sull'iPhone SE diventava «Elenco dei gioc…»
-        .navigationBarTitleDisplayMode(.large)
+        // titolo grande come le altre pagine: in piccolo, accanto a lente e ingranaggio, sull'iPhone SE diventava «Elenco dei gioc…».
+        // Con il testo grande va intero nella pagina (TitoloNellaPagina nelle pagine di MercatoView).
+        .titoloPagina(titolo)
         .ricercaGlobale()
         .sheet(item: $vm.schedaAperta) { g in
             GiocatoreSheet(id: g.id, server: vm.server)

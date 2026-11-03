@@ -232,32 +232,34 @@ struct RegoleEditorView: View {
     var body: some View {
         ZStack {
             Sfondo()
-            if vm.caricato {
-                ScrollViewReader { proxy in
+            ScrollViewReader { proxy in
                 List {
-                    nome
-                    importa
-                    punteggi
-                    difesa
-                    moduli
-                    panchina
-                    rosa
-                    tempiLega
-                    partiteRinviate.id("rinviate")
-                    salvataggio
+                    // il titolo intero (testo grande) c'è anche durante il caricamento e con un errore, come nelle altre pagine
+                    TitoloNellaPagina()
+                    if vm.caricato {
+                        nome
+                        importa
+                        punteggi
+                        difesa
+                        moduli
+                        panchina
+                        rosa
+                        tempiLega
+                        partiteRinviate.id("rinviate")
+                        salvataggio
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 6).listRowBackground(Color.clear)
+                    }
                 }
                 .scrollContentBackground(.hidden)
                 // fotografia `lega-regole-fondo`: la sezione delle partite rinviate (in fondo alla lista)
                 .demoScorriA("rinviate", proxy: proxy, schermate: ["lega-regole"], inFondo: true, pronto: vm.caricato)
-                }
-            } else if let e = vm.caricatore.errore {
-                ErroreVista(messaggio: e) { Task { await vm.carica() } }
-            } else {
-                ScheletroRighe(righe: 6)
             }
         }
         .ricercaGlobale()   // sull'iPad lente e ingranaggio stanno sulla pagina a destra, non nell'elenco
-        .navigationTitle("Regole")
+        .titoloPagina("Regole")
         .task { await vm.carica() }
         // Modifiche non salvate: una barra in basso lo ricorda (il pulsante «Salva» è in fondo a una lista lunga)
         // e tornando indietro si chiede cosa fare, invece di perderle in silenzio.
@@ -401,7 +403,7 @@ struct RegoleEditorView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         RigaStepper(titolo: "Media almeno", valore: $f.media, passo: 0.25, minimo: 4, massimo: 9, cifre: 2)
                         RigaStepper(titolo: "bonus", valore: $f.bonus, passo: 0.5, minimo: 0, massimo: 20)
-                        Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").frame(minHeight: 44) }
+                        Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").labelStyle(.distruttiva).frame(minHeight: 44) }
                     }
                 }
                 Button { vm.aggiungiFascia() } label: { Label("Aggiungi una fascia", systemImage: "plus.circle").frame(minHeight: 44) }

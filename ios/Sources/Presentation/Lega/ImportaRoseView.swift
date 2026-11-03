@@ -29,7 +29,7 @@ struct ImportaExcelView: View {
             }
         }
         .animation(Tema.morbida, value: vm.anteprima == nil)
-        .navigationTitle("Aggiorna le rose")
+        .titoloPagina("Aggiorna le rose")
         .task { await dubbi.carica() }
         // Solo per le fotografie del simulatore (-DEMO_SCHERMATA lega-importa-salvate / lega-importa-salvate-ok): l'esito di un salvataggio, con dati inventati.
         .task { if vm.esito == nil, let esito = DemoEsitoRose.esito(Demo.schermata) { vm.esito = esito } }
@@ -60,6 +60,7 @@ struct ImportaExcelView: View {
 
     private var inserimento: some View {
         List {
+            TitoloNellaPagina()
             // l'esito dell'ultimo salvataggio, in cima (differenza ammessa con la web: docs/COERENZA-WEB-IPHONE.md)
             if let e = vm.esito { EsitoRoseSalvate(esito: e) }
             Section {
@@ -157,6 +158,7 @@ struct AnteprimaRoseVista: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Tema.spazioSchede) {
+                TitoloNellaPagina()
                 testa
                 if !anteprima.squadre.isEmpty { miaSquadra }
                 Colonne(spazio: Tema.spazioSchede, larghezzaMinima: 320) {

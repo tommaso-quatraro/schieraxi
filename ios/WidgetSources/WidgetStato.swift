@@ -52,14 +52,17 @@ struct VistaStato: View {
     private var contenuto: some View {
         switch famiglia {
         case .accessoryInline:
-            Label("Dati delle \(oraDati) · \(probabili)", systemImage: "externaldrive")
+            // mai «probabili u…»: prima via «Dati delle», poi le probabili
+            let forme = ParoleWidget.statoDati(ora: oraDati, probabili: probabili)
+            PrimaCheEntra(forme.count) { i in
+                Label(forme[i], systemImage: "externaldrive")
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(forme[0])
         case .accessoryCircular:
-            ZStack {
-                AccessoryWidgetBackground()
-                VStack(spacing: 0) {
-                    Image(systemName: "externaldrive").font(.caption2)
-                    Text(oraDati).font(.caption.bold()).monospacedDigit().minimumScaleFactor(0.6)
-                }
+            CerchioWidget {
+                Image(systemName: "externaldrive").font(.caption2).accessibilityHidden(true)
+                Text(oraDati).font(.caption.bold()).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1)
             }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
