@@ -8,7 +8,12 @@ from fanta import consigli, lega, notifiche, scelte
 from fanta.regole import Regole
 
 ST = "2026-27"
-ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(1, "Castro", "A", "ROM", 10)])], "Mia")
+# Castro (1) e dieci compagni: un 4-4-2 che si può schierare
+ALTRI = {2: ("Ferri", "P"), 3: ("Gallo", "D"), 4: ("Lenti", "D"), 5: ("Moro", "D"), 6: ("Neri", "D"), 7: ("Orsi", "C"),
+         8: ("Pace", "C"), 9: ("Riva", "C"), 10: ("Sala", "C"), 11: ("Tosi", "A")}
+TITOLARI = [1] + list(ALTRI)
+ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(1, "Castro", "A", "ROM", 10)]
+                               + [lega.GiocatoreRosa(i, n, r, "COM", 5) for i, (n, r) in ALTRI.items()])], "Mia")
 OPZ = {"cambi": True, "promemoria_60": True, "promemoria_15": True}
 
 
@@ -24,11 +29,13 @@ def _scena(tmp_path, monkeypatch, stato="titolare", salva=True, tipo="manuale"):
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {
         "modulo": "4-3-3", "punteggio_atteso": 71.2, "titolari": [{"id": 1, "nome": "Castro", "titolarita": "titolare", "dubbio": False}]})
-    prev = pd.DataFrame([{"nome": "Castro", "stato": stato, "percentuale": 80.0, "dubbio": False}], index=[1])
+    prev = pd.DataFrame([{"nome": "Castro", "ruolo": "A", "stato": stato, "percentuale": 80.0, "dubbio": False}]
+                        + [{"nome": n, "ruolo": r, "stato": "titolare", "percentuale": 90.0, "dubbio": False} for n, r in ALTRI.values()],
+                        index=TITOLARI)
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
     fs = tmp_path / "scelte.json"
     if salva:
-        scelte.salva(ST, 9, [1], "4-3-3", fs, tipo)
+        scelte.salva(ST, 9, TITOLARI, "4-4-2", fs, tipo)
     mandati = []
     return fs, mandati, (lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True), prev
 

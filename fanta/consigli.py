@@ -12,11 +12,10 @@ import pandas as pd
 
 from . import calcolo, etichette, frasi, incertezza, perche
 from . import formazione as fz
-from . import modello, rinvii, stato_dati, turno
+from . import modello, rinvii, scelte, stato_dati, turno
 from .aggiorna import Stagione
 from .frasi import F
 from .lega import Rose
-from .punteggio import modulo_valido
 from .regole import Regole, serie_a_a_lega
 
 # Risultati già calcolati (vedi calcolo.py: cache con tetto, al massimo due calcoli pesanti insieme, risposta «sto calcolando»).
@@ -345,13 +344,12 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     ids = [g.id for g in s.giocatori if g.id is not None and g.id in prev.index]
     rosa = {int(i): fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
                                  float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids}
+    motivo = scelte.motivo_non_valida(titolari, {i: g.ruolo for i, g in rosa.items()}, regole)     # la regola unica della scelta
+    if motivo:
+        raise FormazioneNonValida(motivo)
     scelti = list(dict.fromkeys(int(i) for i in titolari))
-    if len(scelti) != 11 or any(i not in rosa for i in scelti):
-        raise FormazioneNonValida("Servono 11 titolari diversi, tutti della rosa")
     tit = [rosa[i] for i in scelti]
     conta = {r: sum(1 for g in tit if g.ruolo == r) for r in "PDCA"}
-    if conta["P"] != 1 or not modulo_valido(conta["D"], conta["C"], conta["A"], regole):
-        raise FormazioneNonValida(f"Il modulo {conta['D']}-{conta['C']}-{conta['A']} con {conta['P']} portieri non è ammesso nella tua lega")
     modulo = f"{conta['D']}-{conta['C']}-{conta['A']}"
     lista = list(rosa.values())
     val = fz.Valutatore(lista, regole, simulazioni)
