@@ -49,10 +49,10 @@ struct ConfrontoNumeriTests {
         let lungo = try Self.giocatore(31, Self.nomeLungo)
         let lunghissimo = try Self.giocatore(31, Self.nomeLunghissimo)
         for taglia in Self.taglie {
-            let primo = Self.altezza(TabellaNumeriConfronto(x: lunghissimo, y: altro), taglia: taglia)
+            let primo: CGFloat = Self.altezza(TabellaNumeriConfronto(x: lunghissimo, y: altro), taglia: taglia)
                 - Self.altezza(TabellaNumeriConfronto(x: lungo, y: altro), taglia: taglia)
             #expect(primo >= Self.riga(taglia) * 0.9, "\(taglia), primo giocatore: la tabella cresce solo di \(primo) punti, il nome è tagliato")
-            let secondo = Self.altezza(TabellaNumeriConfronto(x: altro, y: lunghissimo), taglia: taglia)
+            let secondo: CGFloat = Self.altezza(TabellaNumeriConfronto(x: altro, y: lunghissimo), taglia: taglia)
                 - Self.altezza(TabellaNumeriConfronto(x: altro, y: lungo), taglia: taglia)
             #expect(secondo >= Self.riga(taglia) * 0.9, "\(taglia), secondo giocatore: la tabella cresce solo di \(secondo) punti, il nome è tagliato")
         }
@@ -73,34 +73,46 @@ struct ConfrontoNumeriTests {
             (.large, 150, false),
         ]
         for (taglia, larghezza, inTabella) in casi {
-            let vista = Self.altezza(TabellaNumeriConfronto(x: x, y: y), taglia: taglia, larghezza: larghezza)
-            let tabella = Self.altezza(NumeriInTabella(x: x, y: y, voci: voci), taglia: taglia, larghezza: larghezza)
-            let elenco = Self.altezza(NumeriInElenco(x: x, y: y, voci: voci), taglia: taglia, larghezza: larghezza)
-            #expect(abs(tabella - elenco) >= 1, "\(taglia), \(larghezza) punti: tabella ed elenco alti uguali, la prova non vale")
-            let attesa = inTabella ? tabella : elenco
-            #expect(abs(vista - attesa) < 1,
-                    "\(taglia), \(larghezza) punti: attesa \(inTabella ? "la tabella" : "l'elenco") (\(attesa)), disegnata alta \(vista)")
+            let vista: CGFloat = Self.altezza(TabellaNumeriConfronto(x: x, y: y), taglia: taglia, larghezza: larghezza)
+            let tabella: CGFloat = Self.altezza(NumeriInTabella(x: x, y: y, voci: voci), taglia: taglia, larghezza: larghezza)
+            let elenco: CGFloat = Self.altezza(NumeriInElenco(x: x, y: y, voci: voci), taglia: taglia, larghezza: larghezza)
+            let dove = "\(taglia), \(larghezza) punti"
+            #expect(!Self.circa(tabella, elenco, scarto: 1), "\(dove): tabella ed elenco alti uguali, la prova non vale")
+            let attesa: CGFloat = inTabella ? tabella : elenco
+            let forma = inTabella ? "la tabella" : "l'elenco"
+            #expect(Self.circa(vista, attesa, scarto: 1), "\(dove): attesa \(forma) (\(attesa)), disegnata alta \(vista)")
         }
     }
 
     @MainActor
     @Test("Colonne della tabella in parti 1,2 : 1 : 1 della riga, come la web")
-    func colonne() {
-        let colonne = RigaTreColonne.colonne(larghezza: 334, spazio: 10)
-        #expect(colonne.count == 3)
-        #expect(abs(colonne.reduce(0, +) + 20 - 334) < 0.001)
-        #expect(abs(colonne[0] - 117.75) < 0.001)
-        #expect(abs(colonne[1] - 98.125) < 0.001 && abs(colonne[2] - 98.125) < 0.001)
-        #expect(RigaTreColonne.colonne(larghezza: 10, spazio: 10).allSatisfy { $0 == 0 }, "riga più stretta degli spazi: colonne vuote, mai negative")
+    func colonne() throws {
+        let colonne: [CGFloat] = RigaTreColonne.colonne(larghezza: 334, spazio: 10)
+        try #require(colonne.count == 3)
+        let somma: CGFloat = colonne[0] + colonne[1] + colonne[2] + 20
+        #expect(Self.circa(somma, 334))
+        #expect(Self.circa(colonne[0], 117.75))
+        #expect(Self.circa(colonne[1], 98.125))
+        #expect(Self.circa(colonne[2], 98.125))
+        let strette: [CGFloat] = RigaTreColonne.colonne(larghezza: 10, spazio: 10)
+        #expect(strette == [0, 0, 0], "riga più stretta degli spazi: colonne vuote, mai negative")
     }
 
     @MainActor
     @Test("Larghezza che serve: la colonna più esigente decide, tenendo conto della sua parte")
     func larghezzaNecessaria() {
         // un numero che chiede 98,125 punti nella sua colonna: la riga deve essere larga 334
-        #expect(abs(RigaTreColonne.larghezzaNecessaria(minime: [50, 98.125, 60], spazio: 10) - 334) < 0.001)
+        let numero: [CGFloat] = [50, 98.125, 60]
+        #expect(Self.circa(RigaTreColonne.larghezzaNecessaria(minime: numero, spazio: 10), 334))
         // la voce ha una parte più grande (1,2): con 117,75 punti chiede la stessa riga
-        #expect(abs(RigaTreColonne.larghezzaNecessaria(minime: [117.75, 0, 0], spazio: 10) - 334) < 0.001)
-        #expect(RigaTreColonne.larghezzaNecessaria(minime: [], spazio: 10) == 20)
+        let voce: [CGFloat] = [117.75, 0, 0]
+        #expect(Self.circa(RigaTreColonne.larghezzaNecessaria(minime: voce, spazio: 10), 334))
+        let vuota: [CGFloat] = []
+        #expect(Self.circa(RigaTreColonne.larghezzaNecessaria(minime: vuota, spazio: 10), 20))
+    }
+
+    /// Due misure uguali a meno di `scarto` punti.
+    private static func circa(_ a: CGFloat, _ b: CGFloat, scarto: CGFloat = 0.001) -> Bool {
+        abs(a - b) < scarto
     }
 }
