@@ -45,6 +45,12 @@ enum LetturaPedina {
         return parti.joined(separator: ", ")
     }
 
+    /// Provvisorio (issue #274): il cognome con i trattini morbidi. Da scrivere dopo il test rosso.
+    static func sillabato(_ testo: String) -> String { testo }
+
+    /// Provvisorio (issue #274): il nome con una parola per riga. Da scrivere dopo il test rosso.
+    static func parolePerRiga(_ nome: String) -> String? { nil }
+
     /// Il testo del distintivo va scuro o chiaro secondo il colore di fondo (il contrasto più alto, come WCAG).
     static func testoScuro(suEsadecimale hex: String) -> Bool {
         var n: UInt64 = 0
