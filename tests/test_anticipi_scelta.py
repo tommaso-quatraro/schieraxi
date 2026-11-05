@@ -14,7 +14,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 import pytest
 
-from fanta import archivio, calcolo, consigli, diario, lega, scelte, server
+from fanta import archivio, calcolo, consigli, da_fare, diario, lega, scelte, server
+from test_da_fare import la_consigliata_cambia
+from test_da_fare import mondo as mondo_da_fare  # noqa: F401  (fixture di «Da fare» con dati finti)
+from test_da_fare import vai as vai_da_fare
 from test_server import client  # noqa: F401  (fixture del server)
 
 ST = "2026-27"
@@ -216,3 +219,84 @@ def test_web_formazione_usa_i_bloccati():
     assert "voceGiocatore(x, null, true, modificabile && !fermi.has(x.id))" in APP
     assert 'modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""' in APP
     assert "sostituti(f, base, dentro)" in APP
+
+
+def _torna_alla_consigliata(codice: str | None) -> dict:
+    """Il gestore vero di «Torna alla consigliata» (app.js), eseguito con node: la DELETE risponde con l'errore `codice` (None =
+    riesce). Le funzioni intorno sono finte e annotano cosa succede."""
+    inizio = APP.index('bottone("#torna-consigliata", ') + len('bottone("#torna-consigliata", ')
+    gestore = APP[inizio:APP.index("collegaLegenda();", inizio)].rstrip().removesuffix(");")
+    prova = f"""
+    const registro = [];
+    const sc = {{ salvata: {{ titolari: [1, 2, 3] }}, manuale: null, livello: 1, modulo: "3-4-3", nonValida: false }};
+    const f = {{ giornata: {GIORNATA} }}, squadra = null;
+    const annullaRichieste = () => registro.push("annulla");
+    const disegna = () => registro.push(sc.manuale ? "disegna la tua" : "disegna la consigliata");
+    const avviso = m => registro.push("avviso: " + m);
+    const valutaManuale = (ids, salva, silenzioso) => {{ sc.manuale = {{ titolari: ids }}; registro.push("valuta " + JSON.stringify([ids, salva, silenzioso])); }};
+    const vistaFormazione = () => registro.push("ricarica");
+    const $ = () => ({{}}), document = {{ body: {{ contains: () => true }} }};
+    const codice = {json.dumps(codice)};
+    const api = async () => {{ if (codice === null) return {{ ok: true }}; const e = new Error("rifiutato"); e.codice = codice; throw e; }};
+    ({gestore})().then(() => console.log(JSON.stringify({{ registro, salvata: sc.salvata }})));
+    """
+    r = subprocess.run([NODE, "-e", prova], capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_web_ritorno_alla_consigliata_rifiutato_rimette_la_tua():
+    """Il server rifiuta il ritorno (la consigliata sposterebbe chi gioca un anticipo già cominciato): vale ancora la scelta salvata,
+    quindi sullo schermo torna lei (come «Annulla modifiche» e come l'iPhone), non la consigliata con «Modifiche non salvate»."""
+    esito = _torna_alla_consigliata("giocatore_bloccato")
+    assert esito["salvata"] == {"titolari": [1, 2, 3]}
+    assert "avviso: rifiutato" in esito["registro"]
+    dopo = esito["registro"][esito["registro"].index("avviso: rifiutato") + 1:]
+    assert dopo == ["valuta [[1,2,3],false,true]"]                     # si rimette la tua, senza ridisegnare la consigliata
+
+
+# ---------------------------------------------------------------- «Da fare»: nessun cambio su chi è bloccato
+def _con_anticipo(m, monkeypatch, *ids):
+    """Nel `mondo` di test_da_fare.py i giocatori `ids` giocano l'anticipo già cominciato (squadra ANTICIPO), gli altri no."""
+    vecchia = da_fare.consigli.scheda_previsione
+    monkeypatch.setattr(da_fare.consigli, "scheda_previsione",
+                        lambda i, x: vecchia(i, x) | {"squadra": ANTICIPO if i in ids else "aaa"})
+    monkeypatch.setattr(da_fare.consigli, "_anticipi_iniziati", lambda db, st, g: (ANTICIPO,) if ids else ())
+
+
+def _dubbi(m):
+    return [v for v in vai_da_fare(m) if v["tipo"] == "dubbio"]
+
+
+def test_da_fare_niente_cambio_su_un_titolare_bloccato(mondo_da_fare, monkeypatch):
+    """Rossi (5, in dubbio) e Bianchi (6, infortunato): la consigliata li toglie. Rossi gioca l'anticipo già cominciato: non si
+    sposta più (il server rifiuterebbe il salvataggio), quindi niente voce su di lui; per Bianchi il cambio resta."""
+    la_consigliata_cambia(mondo_da_fare, (6, 14), (5, 12))
+    _con_anticipo(mondo_da_fare, monkeypatch, 5)
+    d = _dubbi(mondo_da_fare)
+    assert [v["id"] for v in d] == ["dubbio:6"]
+    assert d[0]["alternativa"]["id"] == 14 and d[0]["azione"] == "Sostituisci"
+
+
+def test_da_fare_chi_e_bloccato_non_entra(mondo_da_fare, monkeypatch):
+    """Il 14 (quello che la consigliata mette al posto di Bianchi) gioca l'anticipo già cominciato: non può entrare."""
+    la_consigliata_cambia(mondo_da_fare, (6, 14), (5, 12))
+    _con_anticipo(mondo_da_fare, monkeypatch, 14)
+    d = _dubbi(mondo_da_fare)
+    assert {v["id"] for v in d} == {"dubbio:5", "dubbio:6"}
+    assert all(v.get("alternativa", {}).get("id") != 14 for v in d)
+
+
+def test_da_fare_senza_anticipi_come_prima(mondo_da_fare, monkeypatch):
+    la_consigliata_cambia(mondo_da_fare, (6, 14), (5, 12))
+    _con_anticipo(mondo_da_fare, monkeypatch)
+    d = _dubbi(mondo_da_fare)
+    assert [(v["id"], v["alternativa"]["id"]) for v in d] == [("dubbio:6", 14), ("dubbio:5", 12)]
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_web_ritorno_alla_consigliata_negli_altri_casi_come_prima():
+    riuscito = _torna_alla_consigliata(None)
+    assert riuscito["salvata"] is None and riuscito["registro"][-1] == "disegna la consigliata"
+    assert _torna_alla_consigliata("formazione_chiusa")["registro"][-1] == "ricarica"

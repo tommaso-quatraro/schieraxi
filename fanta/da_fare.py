@@ -102,9 +102,12 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         return []
     sistema, panchina = consigliata or (None, [])
     schede = {g.id: consigli.scheda_previsione(g.id, prev.loc[g.id]) for g in s.giocatori if g.id is not None and g.id in prev.index}
+    # anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (il server rifiuta il salvataggio), quindi
+    # niente voce su di lui e non entra al posto di un altro; resta solo come riserva che entra da sola dalla panchina
+    fermi = set(scelte.bloccati(schede, consigli._anticipi_iniziati(db, consigli.stagione_corrente(), giornata)))
     voci = []
     # un sostituto per volta: prima chi è fuori, poi chi rischia di più; chi è già nominato (proposto o riserva) non torna una seconda volta
-    in_dubbio = [i for i in titolari if (x := schede.get(i)) and (x["stato"] in FUORI or x["dubbio"] or x["p_voto"] < 0.75)]
+    in_dubbio = [i for i in titolari if i not in fermi and (x := schede.get(i)) and (x["stato"] in FUORI or x["dubbio"] or x["p_voto"] < 0.75)]
     in_dubbio.sort(key=lambda i: (schede[i]["stato"] not in FUORI, schede[i]["p_voto"]))
     usati: set[int] = set()
 
@@ -116,7 +119,7 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         x = schede[i]
         fuori = x["stato"] in FUORI
         # il candidato: chi la consigliata schiera al suo posto, se c'è; altrimenti il libero con più punti attesi
-        alt = max((y for j, y in schede.items() if libero(j, x["ruolo"])),
+        alt = max((y for j, y in schede.items() if libero(j, x["ruolo"]) and j not in fermi),
                   key=lambda y: (bool(sistema) and y["id"] in sistema, y["punti_attesi"]), default=None)
         codice = etichette.codice(x)
         if fuori:

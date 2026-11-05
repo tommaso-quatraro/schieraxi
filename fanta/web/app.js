@@ -1291,6 +1291,8 @@ function mostraFormazione(f, squadra, opz = {}) {
       } catch (e) {
         avviso(e.message, 5000);
         if (e.codice === "formazione_chiusa") { if (document.body.contains($("#punti-attesi"))) vistaFormazione(); return; }     // scadenza passata: la scelta resta
+        // la consigliata sposterebbe chi gioca un anticipo già cominciato (#373): vale ancora la tua, e si rimette lei (come «Annulla modifiche»)
+        if (e.codice === "giocatore_bloccato" && sc.salvata && Array.isArray(sc.salvata.titolari)) { valutaManuale([...sc.salvata.titolari], false, true); return; }
       }
       if (document.body.contains($("#punti-attesi"))) disegna(true);
     });
