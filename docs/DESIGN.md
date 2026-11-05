@@ -38,6 +38,7 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 - **Intestazione pagina**: titolo pagina (28) + al massimo 2 azioni a destra (cerca, aggiorna/condividi); sottotitolo di stato (giornata, ultimo aggiornamento) in Secondario. Uguale su tutte le schermate.
 - **Intestazione di sezione**: Etichetta (13, iniziale maiuscola) con eventuale conteggio a destra; sopra 16, sotto 8.
 - **Chip di scelta** (modulo, stile): una sola riga scorrevole o un menu; con valore piccolo accanto («4-3-3 · 71,1»). Quello attivo: lime (`--capitano`) con testo scuro, uguale su web e iOS.
+- **Sigla della squadra** nei colori sociali (`distintivo()` sulla web, `DistintivoSquadra` sull'iPhone): scritta nera o bianca, quella con il contrasto più alto sul primo colore (`LetturaPedina.testoScuro`); con la vecchia soglia della web il bianco sull'azzurro del Napoli stava a 3,5:1 (issue #244).
 - **Stato vuoto**: simbolo 32, una frase che dice cosa manca, un solo pulsante che dice cosa fare («Importa le rose»). Mai solo grigio.
 - **Errore**: riga/card rossa (`--rosso`) con simbolo, cosa è successo, come rimediare, pulsante «Riprova». Voce di `MARCHIO.md`.
 - **Caricamento**: il marchio animato solo a schermo intero; dentro una card, scheletri (righe grigie) della forma finale; non lasciare solo il testo «Carico…».
@@ -99,6 +100,9 @@ Rimasti sotto 4,5:1 dopo il primo giro: in scuro il simbolo «○» e le righe �
 - Testi di spiegazione: massimo 2 righe visibili; il resto in «Come funziona» comprimibile.
 - Elenchi lunghi: righe, non card. Una card per elemento solo se ha azioni proprie (proposta di scambio).
 - Densità «compatta» (Aspetto) = righe da 48 e un livello di Secondario in meno; è l'impostazione consigliata di default per elenchi di più di 10 voci.
+
+## Pagina strettissima (sotto i 320 px)
+WCAG 2.2, 1.4.10: con lo zoom del browser al 200% un telefono vede 160-195 px. Sotto i 320 px utili (`@container pagina` sul body: conta anche il testo «Molto grande» dell'app, che usa `zoom`) tutto va in una colonna e niente scorre di lato: testata su due righe e non fissa, barra con le sole icone (i nomi restano ai lettori di schermo), righe dei giocatori con volto e numeri sopra e nome sotto, partite con l'ora sopra le squadre, moduli e stili a capo, due pedine per fila con il cognome intero. Nella scheda e nel confronto del giocatore il volto va sopra il nome e le statistiche su due colonne. Fa eccezione solo il calendario, che è una tabella: scorre di lato dentro il suo riquadro. Sopra i 320 px non cambia niente (`tests/test_riflusso_web.py`); a ogni larghezza i pallini della forma vanno a capo.
 
 ## Tablet e PC
 - iPad/web ≥ 900 px: barra a colonna a sinistra, contenuto max 980; ≥ 1100: 2 colonne, ≥ 1700: 3 (già nel CSS). Il campo di formazione ha larghezza massima 620 e sta accanto alle card di controllo, non sopra.
