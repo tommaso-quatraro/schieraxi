@@ -1,5 +1,46 @@
 [
   {
+    "versione": "1.405",
+    "data": "2026-11-05T22:08:28",
+    "titolo": "Stato dei dati: quanto ci prendono i numeri mostrati prima di ogni giornata",
+    "voci": [
+      "In Stato dei dati, per chi gestisce l'app, c'è il registro delle giornate: per l'errore del fantavoto atteso contro la fantamedia, per «gioca N%» contro chi ha giocato davvero e per i punti veri dentro la fascia «8 volte su 10» si vedono la media delle ultime giornate misurate, la soglia e se regge o no.",
+      "Finché le giornate misurate sono meno di 8 c'è scritto quante ne servono ancora; sotto ci sono le giornate perse, cioè non salvate prima della prima partita, con il motivo.",
+      "Uguale sul sito e sull'app per iPhone."
+    ],
+    "tecnico": [
+      "Issue #344, sotto #165. La web mostra il campo facoltativo `registro` di GET /api/stato-dati (PR #342) con `cartaRegistro` in app.js e i testi `sd.reg_*` in testi.js (italiano e inglese); l'iPhone con `StatoDati.Registro`, `ParoleRegistro` e `RegistroGiornateSezione`. Soglie e verdetto (`regge`, `verdetto`) vengono dal server e non si ricalcolano; «servono ancora N giornate» = `finestra` − `giornate`.",
+      "Percentuali e punti con una cifra decimale senza «,0» (−3%, −5,7%), errori con due cifre, Brier con tre. Test: tests/test_stato_dati_registro_web.py (la funzione vera di app.js in node, sui dati di registro_giornate.riepilogo) e RegistroGiornateTests (stesse frasi di testi.js, stessa risposta del server nella fixture stato-dati-registro.json, controllata dal test Python)."
+    ]
+  },
+  {
+    "versione": "1.404",
+    "data": "2026-11-05T21:44:17",
+    "titolo": "Un carattere per i numeri",
+    "voci": [
+      "Prepara il nuovo carattere per i numeri dell'app web, citato in «Crediti e fonti»: per ora i numeri sullo schermo non cambiano."
+    ],
+    "tecnico": [
+      "Archivo semi-stretto (SIL OFL 1.1) in fanta/web/caratteri/archivo.woff2 con OFL.txt accanto: 28132 byte, peso 400-700, cifre tabellari, licenza anche nei nomi del file.",
+      "/caratteri/ pubblico anche con gli account accesi (STATICI_PREFISSI), tipo font/woff2 registrato in server.py, nella scocca offline di sw.js.",
+      "script/carattere_web.py rifà il file da Archivo[wdth,wght].ttf di google/fonts e controlla cifre tabellari, licenza, lettere e assi. Nessuna regola CSS lo usa ancora (dalla PR 4 del piano della grafica B)."
+    ]
+  },
+  {
+    "versione": "1.403",
+    "data": "2026-11-05T21:35:28",
+    "titolo": "Riepilogo dopo la giornata uguale a Oggi e Diario, e avvisi più chiari se la formazione salvata non vale più",
+    "voci": [
+      "Il riepilogo che ti arriva a fine giornata conta i punti della formazione consigliata come l'aveva fissata SchieraXI poco prima della scadenza, la stessa che vedi in Oggi e nel Diario: i numeri ora coincidono.",
+      "Se la formazione che avevi salvato non si può più schierare (per esempio hai ceduto un giocatore), il promemoria e la voce di Da fare lo dicono chiaramente: «quella che hai salvato non è più valida». Prima ti scrivevano che non l'avevi ancora salvata."
+    ],
+    "tecnico": [
+      "notifiche.riepilogo prende la formazione da fasi.schierata (scelta valida, istantanea del Diario, copia automatica); l'ultima consigliata vista dall'avviso dei cambi resta solo come ripiego. Usa anche la panchina dell'istantanea, come il Diario. Nuovo parametro facoltativo file_diario; avvisi_utenti passa il Diario dell'utente.",
+      "notifiche._gia_schierato distingue scelta assente (None) da scelta non valida (NON_VALIDA): frasi n.non_valida_tra_un_ora e n.non_valida_ultimi_minuti (frasi_avvisi.py).",
+      "da_fare._formazione_non_salvata usa la chiave dafare.formazione_non_valida se c'è una scelta salvata ma non vale (frasi.py e testi.js, italiano e inglese). Cambiano solo testo e frase della voce formazione in quel caso: i client che mostrano testo non devono fare niente."
+    ]
+  },
+  {
     "versione": "1.402",
     "data": "2026-11-05T20:15:49",
     "titolo": "Da fare: il promemoria «aggiorna le rose» solo quando le rose possono essere cambiate",

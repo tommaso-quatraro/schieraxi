@@ -54,6 +54,9 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
   `impostazioni.js`, `dafare.js`, `primoavvio.js`, `live.js`, `avatar.js`, `testi.js`, `stile.css`, `sw.js`, icone.
   Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`.
+- `fanta/web/caratteri/`: `archivo.woff2` (Archivo semi-stretto, cifre tabellari, per numeri e titoli) con la licenza `OFL.txt`
+  (SIL OFL 1.1). Pubblico anche con gli account accesi (`STATICI_PREFISSI`), tipo `font/woff2`, nella scocca offline di `sw.js`.
+  Si rifà con `script/carattere_web.py` (fontTools e brotli in un ambiente a parte); test `tests/test_carattere_web.py`.
 - `fanta/web/testi.js`: tutti i testi dell'interfaccia, in italiano e in inglese, con le stesse chiavi (`tests/test_testi.py`
   lo controlla). Nel codice si usa solo `t("chiave")`. I messaggi del server restano in italiano (iOS e Android li leggono): gli errori il web li traduce con le chiavi `err.*` (il testo italiano della chiave È il messaggio del server; `tests/test_testi.py` lo controlla parola per parola e fa fallire un messaggio nuovo senza traduzione). Le frasi che cambiano con i dati (Da fare, motivi, «perché», probabili, avvisi delle rose...) sono `Frase` di `fanta/frasi.py`: testo italiano + `frase` con chiave e parametri accanto (`X_frase`, `X_frasi`; contratto in `docs/API.md`, «Frasi con chiave»); il web le traduce con `traduciFrase`/`testoDi`/`testiDi` da `frase.<chiave>`. Frase nuova = una voce in `CATALOGO` (italiano) e due righe in `testi.js` (`frase.<chiave>`, italiano identico e inglese); `tests/test_frasi.py` controlla che combacino.
 - `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il

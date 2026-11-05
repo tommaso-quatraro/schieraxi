@@ -196,6 +196,7 @@ def test_ogni_giornata_della_web_passa_da_nome_giornata():
         "stato dei dati": "<span>${nomeGiornata(null, p.giornata)}</span>",
         "calendario": '<span aria-hidden="true">G${Number(g)}</span><span class="solo-lettori">${nomeGiornata(null, g)}</span>',
         "grafico dei voti": "${nomeGiornata(null, v.giornata)}",
+        "registro, giornate perse": 't("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })',
     }
     mancano = [dove for dove, codice in usi.items() if codice not in APP]
     assert mancano == [], mancano
@@ -219,6 +220,7 @@ def test_testi_con_la_giornata_intera():
         "diario.qp_su.other": "Calcolato su {n} giornate, dalla {da} alla {a}.",
         "avv.img_titolo": "Formazione · {g}",
         "avv.giornate_da_a": "dalla {a}ª alla {b}ª giornata di Serie A",
+        "sd.reg_giornata": "{g} · {s}",
     }
     for chiave, testo in attesi_it.items():
         assert _testo(IT, chiave) == testo, chiave

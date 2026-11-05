@@ -86,6 +86,7 @@ Frasi esatte, schermata per schermata (italiano; l'inglese è in `fanta/web/test
 | Calendario di Serie A | colonne «G11», lettori di schermo «11ª giornata di Serie A» |
 | Scheda, grafico dei voti | al passaggio sul punto «11ª giornata di Serie A: 6,5» |
 | Stato dei dati, probabili | «11ª giornata di Serie A» |
+| Stato dei dati, registro delle giornate (giornate perse) | «9ª giornata di Serie A · 2026-27» (`sd.reg_giornata`) |
 | Prova del modello (Diario) | «dalla 5ª alla 10ª giornata di Serie A» |
 
 Avvisi sul telefono (testi del server, `fanta/frasi_avvisi.py`): i titoli non hanno più il numero, la forma intera sta in testa al testo.
@@ -148,7 +149,8 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 35 | Oggi, carta del rinvio | «UDI vs MIL» | «UDI–MIL» | web | iPhone da fare (#284): `PartiteRinviate.partita` |
 | 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | iPhone da fare (#282): `GiocatoreWidget.descrizioneStato` |
 | 37 | Formazione chiusa con la scelta salvata non più valida | «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» e la consigliata | uguale alla web | server (`stato_scelta` di `GET /api/formazione`) | web fatto (#319); iPhone fatto (#296, PR #318) |
-| 38 | Numero della giornata, ovunque (anche widget e avvisi) | «Giornata 8 · 11ª di Serie A» (`nomeGiornata`) | «Giornata 8» | sezione «Giornata: le forme» | web e server fatto (#299, PR #306); iPhone fatto (#312) |
+| 38 | Stato dei dati, registro delle giornate | carta «Registro delle giornate» dopo l'affidabilità: tre misure con media, soglia e «regge» / «non regge» / «servono ancora N giornate», poi «Giornate perse» con il motivo (`cartaRegistro`, testi `sd.reg_*`) | uguale; le giornate perse in una sezione loro della lista | web | fatto con #344 (test contro `testi.js` e sulla stessa risposta del server) |
+| 39 | Numero della giornata, ovunque (anche widget e avvisi) | «Giornata 8 · 11ª di Serie A» (`nomeGiornata`) | «Giornata 8» | sezione «Giornata: le forme» | web e server fatto (#299, PR #306); iPhone fatto (#312) |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

@@ -160,13 +160,15 @@ def _copertura(db, regole: Regole, rose: Rose, lingua: str = "it") -> list[dict]
 
 
 def _formazione_non_salvata(db, regole: Regole, rose: Rose, ore: float | None, giornata: int, file_scelte: Path | None) -> dict | None:
-    """La formazione si chiude presto e non c'è una scelta salvata che si possa schierare (una che non vale più conta come nessuna)."""
+    """La formazione si chiude presto e non c'è una scelta salvata che si possa schierare. Una scelta che non vale più (giocatore
+    ceduto, modulo tolto dalla lega) conta come nessuna per i conti, ma la frase lo dice: «quella che hai salvato non è più valida»."""
     if ore is None or not 0 < ore <= ORE_FORMAZIONE:
         return None
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
     if scelta and scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, consigli.previsioni(db, regole)[0]), regole):
         return None
-    return _voce(f"formazione:{giornata}", "formazione", F("dafare.formazione_chiude", tempo=_ore_a_parole(ore)),
+    chiave = "dafare.formazione_non_valida" if scelta else "dafare.formazione_chiude"
+    return _voce(f"formazione:{giornata}", "formazione", F(chiave, tempo=_ore_a_parole(ore)),
                  ALTA if ore <= ORE_URGENTE else MEDIA, F("dafare.az_formazione"), _destinazione("formazione"))
 
 

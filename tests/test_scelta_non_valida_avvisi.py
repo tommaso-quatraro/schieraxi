@@ -71,8 +71,9 @@ def test_la_scelta_che_vale():
 
 # ---------------------------------------------------------------- promemoria prima della scadenza
 @NON_VALIDE
-def test_promemoria_parte_come_per_chi_non_ha_salvato(tmp_path, monkeypatch, salvata):
-    """Prima: «hai già schierato» e il promemoria taceva. Ora la scelta non conta: il promemoria parte come senza scelta."""
+def test_promemoria_parte_anche_con_la_scelta_non_valida(tmp_path, monkeypatch, salvata):
+    """Prima: «hai già schierato» e il promemoria taceva. Ora la scelta non conta: il promemoria parte come senza scelta, ma con la
+    frase propria (#331, vedi test_riepilogo_istantanea.py): «quella che hai salvato non è più valida»."""
     _prima_della_scadenza(monkeypatch)
     fs = tmp_path / "scelte.json"
     mandati, manda = _registro()
@@ -81,7 +82,7 @@ def test_promemoria_parte_come_per_chi_non_ha_salvato(tmp_path, monkeypatch, sal
     scelte.salva(ST, 9, salvata, "4-4-2", fs)
     assert len(notifiche.promemoria(_db(CHIUSURA), Regole(), ROSE, ore(17, 35), tmp_path / "b.json", manda, OPZ, fs)) == 1
     assert mandati[0][0] == "SchieraXI · formazione tra un'ora"
-    assert mandati[0][1].startswith("Giornata 9 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30).")
+    assert mandati[0][1].startswith("Giornata 9 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30), ma quella che hai salvato non è più valida")
 
 
 # ---------------------------------------------------------------- avviso «cambia la formazione»
