@@ -46,6 +46,7 @@ cognome senza iniziale sul campo, «Ho schierato la consigliata» nel Diario.
 Differenze volute: testi uguali, cambia solo dove o come si mostrano. Una riga per differenza, con il motivo.
 - **Aggiorna le rose, «Rose salvate»**: sulla web è un avviso che passa; sull'iPhone è la prima riga dell'esito. Motivo: l'iPhone non ha avvisi che passano, e così la conferma resta scritta (anche per VoiceOver) finché non si riprova.
 - **Aggiorna le rose, posto dell'esito**: sulla web l'esito prende il posto dell'anteprima, in fondo alla scheda; sull'iPhone sta in cima alla lista. Motivo: dopo «Conferma e salva» l'anteprima si chiude e la lista riparte dall'alto, quindi in cima l'esito si vede subito, senza scorrere sotto il file e il testo incollato.
+- **Pagina strettissima** (web sotto i 320 px utili: zoom del browser al 200% sul telefono, o testo «Molto grande» su un telefono piccolo): la testata scorre via, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due pedine per fila. Motivo: l'iPhone non ha lo zoom della pagina; il suo testo grande lo gestiscono la barra di sistema e `RigaGiocatore`. Testi e numeri restano gli stessi.
 
 ## Differenze di oggi
 Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto del telefono e della CI. Le schermate segnate
