@@ -7,6 +7,7 @@ import logging
 import sqlite3
 import threading
 from collections.abc import Collection
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 
 import numpy as np
@@ -14,7 +15,7 @@ import pandas as pd
 
 from . import calcolo, etichette, frasi, incertezza, perche
 from . import formazione as fz
-from . import modello, rinvii, scelte, stato_dati, turno
+from . import modello, perche_scelta, rinvii, scelte, stato_dati, turno
 from .aggiorna import Stagione
 from .blocco import BloccoFile
 from .frasi import F
@@ -294,21 +295,27 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     prima = _consigliate().get(impronta)
     prima = prima if _ids(prima, "titolari") is not None else None          # voce rovinata: come se non ci fosse
     chiusa = _chiusa(db, regole, stagione, giornata)
+    # Anticipi già cominciati (#368): con la formazione ancora aperta i loro giocatori restano dove sono nella consigliata di prima.
+    # Dopo la scadenza resta già tutta; senza una consigliata di prima non c'è niente da tenere.
+    iniziate = () if chiusa or prima is None else _anticipi_iniziati(db, stagione, giornata)
     # stessa squadra, rosa, giornata, regole e dati: stesso risultato (svuotata quando i dati cambiano)
     chiave = ("formazione", _versione(db), s.nome, tuple(g.id for g in s.giocatori), giornata, repr(regole),
               simulazioni)
-    chiave_stabile = chiave + ("stabile", _firma(prima, chiusa), chiusa)
+    chiave_stabile = chiave + ("stabile", _firma(prima, chiusa or bool(iniziate)), chiusa, iniziate)
 
     def con_la_stabile(d, migliore: dict) -> dict:
-        return stabile(migliore, prima, previsioni(d, regole, giornata)[0], s, regole, simulazioni, chiusa)
+        return stabile(migliore, prima, previsioni(d, regole, giornata)[0], s, regole, simulazioni, chiusa, iniziate)
+
+    def da_rivedere(migliore: dict) -> bool:
+        return prima is not None and (bool(iniziate) or not _stessa(prima, migliore, chiusa))
 
     def pronta(d) -> dict:
         migliore = _formazione_pronta(d, s, giornata, regole, simulazioni)
-        if prima is not None and not _stessa(prima, migliore, chiusa):     # nello stesso giro: un solo «sto calcolando»
+        if da_rivedere(migliore):                       # nello stesso giro: un solo «sto calcolando»
             _cache.metti(chiave_stabile, con_la_stabile(d, migliore), peso=calcolo.PESO_LEGGERO)
         return migliore
     f = migliore = calcolo.ottieni(chiave, pronta, db, peso=calcolo.PESO_LEGGERO)
-    if prima is not None and not _stessa(prima, migliore, chiusa):
+    if da_rivedere(migliore):
         f = calcolo.ottieni(chiave_stabile, lambda d: con_la_stabile(d, migliore), db, peso=calcolo.PESO_LEGGERO)
     if prima is None or not chiusa:
         _ricorda(impronta, f, stagione, giornata, prima)
@@ -328,17 +335,20 @@ def _rosa(s: Squadra, prev: pd.DataFrame) -> list[fz.Giocatore]:
                          float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids if i in prev.index]
 
 
-def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -> dict:
+def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, fermi: Fermi | None = None) -> dict:
+    """La risposta della Formazione con la migliore di adesso. Con `fermi` (anticipi già cominciati, #368) ogni modulo e ogni
+    stile li lascia dove sono."""
     rosa = _rosa(s, prev)
     val = fz.Valutatore(rosa, regole, simulazioni)           # le stesse simulazioni per tutti i livelli: i calcoli si riusano
+    candidati, vincoli = (rosa, {}) if fermi is None else fermi.per_la_ricerca(rosa, regole)
     try:
-        f = fz.migliore(rosa, regole, simulazioni, valutatore=val)
+        f = fz.migliore(candidati, regole, simulazioni, valutatore=val, **vincoli)
     except ValueError:
         raise ValueError("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata") from None
     livelli = []
     for rischio, nome, peso, inclinazione, descrizione in fz.LIVELLI_RISCHIO:
         fl = f if (peso, inclinazione) == (fz.PESO_BASE, (0.0, 0.0)) else fz.migliore(
-            rosa, regole, simulazioni, peso=peso, valutatore=val, inclinazione=inclinazione)
+            candidati, regole, simulazioni, peso=peso, valutatore=val, inclinazione=inclinazione, **vincoli)
         livelli.append({"rischio": rischio, "stile": rischio, "nome": nome, "descrizione": descrizione, "modulo": fl.modulo,
                         "punteggio_atteso": round(fl.atteso, 1), **incertezza.campi(fl.atteso, fl.dev),
                         "moduli": _moduli(fl.tutte)})
@@ -360,7 +370,7 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -
         "livelli": livelli, "stile_consigliato": 0,
         "schede": {str(g.id): scheda_previsione(g.id, prev.loc[g.id]) for g in rosa},
     }
-    return risultato
+    return perche_scelta.aggiungi(risultato, rosa, regole, val)       # il perché delle scelte che sembrano storte (#356)
 
 
 # ---------------------------------------------------------------- consigliata stabile (#335)
@@ -483,29 +493,41 @@ def _chiusa(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int
 
 
 def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, regole: Regole, simulazioni: int,
-            chiusa: bool = False) -> dict:
+            chiusa: bool = False, iniziate: Collection[str] = ()) -> dict:
     """La consigliata da mostrare: quella di prima (`prima` = {"titolari": [id], "panchina": [id]}) se c'è e regge, altrimenti la
     migliore di adesso (`migliore`, la risposta di `_calcola_formazione`, restituita così com'è).
     Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
     stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, diventato fuori o improbabile:
     non chi lo era già quando è stata mostrata, `prima["non_giocano"]`) e la migliore lo lascia fuori; tenuta quella di prima, la
     sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
-    resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui."""
+    resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui.
+    `iniziate` (squadre di Serie A con un anticipo già cominciato, #368): prima della scadenza i loro giocatori restano dove erano
+    nella consigliata di prima (titolari, stesso posto in panchina, fuori), anche quando la migliore li sposterebbe: al posto della
+    migliore si confronta la migliore che li lascia lì, con le stesse regole."""
     titolari = _ids(prima, "titolari")
-    nuovi = {int(g["id"]) for g in migliore.get("titolari") or []}
-    if titolari is None or len(nuovi) != 11 or _stessa(prima, migliore, chiusa):
+    if titolari is None or len({int(g["id"]) for g in migliore.get("titolari") or []}) != 11:
+        return migliore
+    rosa = _rosa(s, prev)
+    fermi = None if chiusa else Fermi.di(prima, rosa, prev, iniziate)
+    if _stessa(prima, migliore, chiusa) and (fermi is None or fermi.rispettati(migliore)):
         return migliore
     panchina_prima = _ids(prima, "panchina") or []
-    rosa = _rosa(s, prev)
     per_id = {g.id: g for g in rosa}
     if scelte.motivo_non_valida(titolari, {g.id: g.ruolo for g in rosa}, regole):
         return migliore                  # un titolare uscito dalla rosa o senza previsione, un modulo non più ammesso, un file rovinato
+    if fermi is not None and not fermi.rispettati(migliore):
+        migliore = _calcola_formazione(s, prev, migliore["giornata"], migliore["con_probabili"], regole, simulazioni, fermi)
+        if _stessa(prima, migliore, chiusa):
+            return migliore
+    nuovi = {int(g["id"]) for g in migliore["titolari"]}
     gia = set(_ids(prima, "non_giocano") or [])           # chi non giocava già quando la consigliata è stata mostrata
     if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi and i not in gia for i in titolari):
         return migliore
     tit = sorted((per_id[i] for i in titolari), key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore))
     if chiusa and panchina_prima:
         panchina = [per_id[i] for i in panchina_prima if i in per_id and i not in titolari]
+    elif fermi is not None:
+        panchina = fermi.panchina_di(rosa, tit, regole)
     else:
         panchina = fz._panchina(rosa, tit, regole)
     val = fz.Valutatore(rosa, regole, simulazioni)          # le stesse simulazioni della migliore (stessa rosa, regole e seme)
@@ -514,7 +536,8 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
                                  [per_id[int(g["id"])] for g in migliore.get("panchina") or []])
     if not chiusa and atteso_migliore - atteso >= SOGLIA_CAMBIO_PUNTI:
         return migliore
-    return _con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa)
+    return perche_scelta.aggiungi(_con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa), rosa, regole, val,
+                                  tenuta=not chiusa)
 
 
 def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, dev: float, atteso_migliore: float,
@@ -542,6 +565,74 @@ def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, d
         "titolari": [schede[str(g.id)] for g in tit], "panchina": [schede[str(g.id)] for g in panchina],
         "fuori": sorted((schede[str(g.id)] for g in rosa if g.id not in scelti), key=lambda x: -x["punti_attesi"]),
         "moduli": moduli, "livelli": livelli}
+
+
+# ---------------------------------------------------------------- anticipi già cominciati (#368)
+# Un anticipo (turno.py: da 36 ore a 7 giorni prima del gruppo principale) non fissa la scadenza: la formazione resta aperta, ma
+# nella lega chi gioca una partita già cominciata non si sposta più. Nella consigliata quei giocatori restano dove erano in quella
+# già mostrata (titolari, stesso posto in panchina, fuori); gli altri si spostano come sempre.
+def _anticipi_iniziati(db: sqlite3.Connection, stagione: str, giornata: int) -> tuple[str, ...]:
+    """Le squadre di Serie A con un anticipo della giornata già cominciato o finito (calendario e orario), in ordine."""
+    from . import fasi
+    try:
+        return tuple(sorted(fasi.squadre_in_anticipo_iniziato(db, stagione, giornata, _adesso())))
+    except sqlite3.Error:                 # archivio senza calendario: nessun anticipo
+        return ()
+
+
+@dataclass
+class Fermi:
+    """I giocatori della rosa che non si possono più spostare e il loro posto nella consigliata di prima."""
+    titolari: frozenset[int]
+    panchina: dict[int, int]              # id -> posto in panchina (da 0)
+    fuori: frozenset[int]
+
+    @classmethod
+    def di(cls, prima: dict, rosa: list[fz.Giocatore], prev: pd.DataFrame, iniziate: Collection[str]) -> Fermi | None:
+        """Chi della rosa gioca per una delle squadre `iniziate` e dove stava in `prima`. None se nessuno."""
+        if not iniziate or "squadra" not in prev.columns:
+            return None
+        ids = {g.id for g in rosa if prev.at[g.id, "squadra"] in iniziate}
+        if not ids:
+            return None
+        titolari = set(_ids(prima, "titolari") or [])
+        panchina = _ids(prima, "panchina") or []
+        return cls(frozenset(ids & titolari), {i: k for k, i in enumerate(panchina) if i in ids and i not in titolari},
+                   frozenset(ids - titolari - set(panchina)))
+
+    def _a_posto(self, titolari, panchina) -> bool:
+        t, p = {int(i) for i in titolari}, [int(i) for i in panchina]
+        if not self.titolari <= t or t & (self.panchina.keys() | self.fuori) or self.fuori & set(p):
+            return False
+        return all(k < len(p) and p[k] == i for i, k in self.panchina.items())
+
+    def rispettati(self, f: dict) -> bool:
+        """In ogni formazione della risposta `f` (in cima, in ogni modulo e in ogni stile) i fermi stanno al loro posto."""
+        coppie = [([g["id"] for g in f.get("titolari") or []], [g["id"] for g in f.get("panchina") or []])]
+        coppie += [(m["titolari"], m["panchina"]) for x in [f, *(f.get("livelli") or [])] for m in x.get("moduli") or []]
+        return all(self._a_posto(t, p) for t, p in coppie)
+
+    def per_la_ricerca(self, rosa: list[fz.Giocatore], regole: Regole) -> tuple[list[fz.Giocatore], dict]:
+        """(chi può stare fra i titolari, argomenti per formazione.migliore): la ricerca di sempre con i fermi al loro posto."""
+        candidati = [g for g in rosa if g.id not in self.panchina and g.id not in self.fuori]
+        return candidati, {"fissi": self.titolari, "scegli_panchina": lambda tit: self.panchina_di(rosa, tit, regole)}
+
+    def panchina_di(self, rosa: list[fz.Giocatore], titolari: list[fz.Giocatore], regole: Regole) -> list[fz.Giocatore]:
+        """La panchina di sempre (formazione._panchina) fra chi si può ancora spostare, nei posti che restano (per ruolo se la lega
+        li fissa); chi è fermo in panchina torna al suo posto."""
+        ids = {g.id for g in titolari}
+        fermi = sorted(((self.panchina[g.id], g) for g in rosa if g.id in self.panchina and g.id not in ids), key=lambda x: x[0])
+        liberi = [g for g in rosa if g.id not in ids and g.id not in self.panchina and g.id not in self.fuori]
+        pr = regole.panchina
+        if pr.posti:
+            posti = {r: max(0, n - sum(1 for _, g in fermi if g.ruolo == r)) for r, n in pr.posti.items()}
+            meno = replace(pr, posti=posti, numero=sum(posti.values()))
+        else:
+            meno = replace(pr, numero=max(0, pr.numero - len(fermi)))
+        scelti = fz._panchina(liberi, titolari, replace(regole, panchina=meno))
+        for k, g in fermi:
+            scelti.insert(min(k, len(scelti)), g)
+        return scelti
 
 
 class FormazioneNonValida(ValueError):

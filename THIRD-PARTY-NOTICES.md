@@ -42,7 +42,9 @@ L'app per iPhone non include librerie di terzi: usa solo i framework di sistema 
 
 ## Font
 
-Il nome disegnato «SchieraXI» (sito e app) usa le lettere del font **Archivo** (Copyright 2020 The Archivo Project Authors, https://github.com/Omnibus-Type/Archivo), sotto licenza SIL Open Font License 1.1. Sito e app contengono solo i tracciati delle lettere, non il font. Un sottoinsieme del font e la sua licenza stanno in `assets/marchio/wordmark/` (`Archivo-sottoinsieme.ttf`, `OFL.txt`).
+Il nome disegnato «SchieraXI» (sito e app) usa le lettere del font **Archivo** (Copyright 2020 The Archivo Project Authors, https://github.com/Omnibus-Type/Archivo), sotto licenza SIL Open Font License 1.1. Nel nome disegnato ci sono solo i tracciati delle lettere, non il font. Un sottoinsieme del font e la sua licenza stanno in `assets/marchio/wordmark/` (`Archivo-sottoinsieme.ttf`, `OFL.txt`).
+
+La web app serve anche un sottoinsieme di Archivo per numeri e titoli (larghezza semi-stretta, latino occidentale, cifre tabellari), con la licenza accanto: `fanta/web/caratteri/` (`archivo.woff2`, `OFL.txt`). Copyright e licenza restano anche dentro il file del font. Si rifà con `script/carattere_web.py`.
 
 ## Dati e servizi
 

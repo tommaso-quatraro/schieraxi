@@ -1,0 +1,62 @@
+import Foundation
+import Testing
+@testable import Schieraxi
+
+/// Oggi, riquadro «Partita rinviata», come la web (`cardRinvio` di app.js, #284): la partita come quelle del turno («UDI vs MIL»,
+/// prima la squadra di casa, mai «UDI–MIL») e la data del recupero come `quando` della web («recupero mer 18 nov 20:45»).
+/// Le frasi vengono da `testi.js`. Dati inventati.
+@Suite("Carta del rinvio come la web")
+struct RinvioComeLaWebTests {
+    private let web: TestiWeb
+
+    init() throws { web = try TestiWeb() }
+
+    /// Un momento fisso, ora italiana: giovedì 5 novembre 2026.
+    private func adesso() throws -> Date { try #require(Quando.data("2026-11-05 10:00")) }
+
+    @Test("La partita con le sigle e «vs», come le partite del turno")
+    func partitaConVs() {
+        #expect(TestiRinvio.partita(PartitaRinviata(casa: "udinese", trasferta: "milan", data: nil)) == "UDI vs MIL")
+        #expect(TestiRinvio.partita(PartitaRinviata(casa: "atalanta", trasferta: "parma", data: "2026-11-25 20:45")) == "ATA vs PAR")
+        #expect(!TestiRinvio.partita(PartitaRinviata(casa: "udinese", trasferta: "milan", data: nil)).contains("–"))
+    }
+
+    @Test("VoiceOver legge i nomi interi, come le partite del turno")
+    func partitaAVoce() {
+        #expect(TestiRinvio.partitaAVoce(PartitaRinviata(casa: "udinese", trasferta: "milan", data: nil)) == "Udinese contro Milan")
+    }
+
+    /// La data del recupero e come la scrive `quando` della web, con «adesso» giovedì 5 novembre.
+    static let recuperi: [(String, String)] = [
+        ("2026-11-18 20:45", "mer 18 nov 20:45"),     // oltre la settimana: con il mese
+        ("2026-11-08 15:00", "dom 8 15:00"),          // entro la settimana
+        ("2026-11-06 18:30", "domani 18:30"),
+        ("2026-11-05 20:45", "oggi 20:45"),
+    ]
+
+    @Test("La data del recupero come la web (`oggi.rinvio_recupero` con `quando`)", arguments: RinvioComeLaWebTests.recuperi)
+    func dataDelRecupero(data: String, quando: String) throws {
+        let atteso = try web.italiano("oggi.rinvio_recupero").replacingOccurrences(of: "{quando}", with: quando)
+        let p = PartitaRinviata(casa: "udinese", trasferta: "milan", data: data)
+        let ora = try adesso()
+        #expect(TestiRinvio.recupero(p, adesso: ora) == atteso)
+    }
+
+    @Test("Senza data: «recupero da definire» (`oggi.rinvio_da_definire`)", arguments: [nil, "", "data strana"] as [String?])
+    func senzaData(data: String?) throws {
+        let atteso = try web.italiano("oggi.rinvio_da_definire")
+        let p = PartitaRinviata(casa: "udinese", trasferta: "milan", data: data)
+        let ora = try adesso()
+        #expect(TestiRinvio.recupero(p, adesso: ora) == atteso)
+    }
+
+    @Test("Titolo e giocatori coinvolti con le frasi della web")
+    func titoloEGiocatori() throws {
+        let uno = try web.italiano("oggi.rinvio_titolo_1"), due = try web.italiano("oggi.rinvio_titolo_n")
+        #expect(TestiRinvio.titolo(1) == uno)
+        #expect(TestiRinvio.titolo(2) == due)
+        let s = SceltaRinvio(giornata: 10, modo: ModoRinvio.aspetta, miei: [GiocatoreRinviato(id: 1, nome: "Ruben Tescari")])
+        let miei = try web.italiano("oggi.rinvio_miei").replacingOccurrences(of: "{nomi}", with: "Ruben Tescari")
+        #expect(TestiRinvio.miei(s) == miei)
+    }
+}

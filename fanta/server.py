@@ -10,6 +10,7 @@ import hashlib
 import shutil
 from datetime import datetime
 import json
+import mimetypes
 import unicodedata
 import logging
 import re
@@ -868,16 +869,21 @@ def _formazione_chiusa(db, ctx: Contesto, giornata: int | None) -> JSONResponse 
 def valuta_formazione(dati: FormazioneScelta, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     """Punti attesi di una formazione scelta a mano. Con salva=true la ricorda come "la mia scelta" della giornata
     (solo prima della scadenza: dopo 409 `formazione_chiusa`; valutare senza salvare resta possibile)."""
+    # Se gli 11 sono quelli della consigliata («Salva questa») la scelta ha anche `era_consigliata`: «Da fare» poi non propone
+    # cambi (da_fare.py, #333). Conta anche la consigliata che GET /api/formazione ti ha mostrato (istantanea del Diario), se nel
+    # frattempo i dati si sono aggiornati. Qui un commento e non nella docstring, che finisce nel contratto docs/openapi.json.
     db = _db()
     try:
-        r = consigli.valuta(db, _regole(ctx), _rose(ctx), dati.titolari, dati.squadra, dati.giornata)
+        regole_, rose_ = _regole(ctx), _rose(ctx)
+        r = consigli.valuta(db, regole_, rose_, dati.titolari, dati.squadra, dati.giornata)
         if dati.salva and not dati.squadra:
             chiusa = _formazione_chiusa(db, ctx, r["giornata"])
             if chiusa is not None:
                 return chiusa
+            era = da_fare.era_consigliata(db, regole_, rose_, dati.titolari, r["giornata"], ctx.diario)     # anche quella mostrata
             with versioni.blocco("scelte"):
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
-                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte)
+                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era)
                 response.headers["ETag"] = _etag_scelta(ctx, r["giornata"])
         return r
     finally:
@@ -2517,6 +2523,8 @@ def icona_dell_app(dim: int, request: Request):
     return FileResponse(WEB / "icone" / f"{scelta}-{dim}.png", headers={"Cache-Control": "no-cache"})
 
 
+# Il tipo dei caratteri .woff2 non è conosciuto da Python su tutti i sistemi (Windows): senza, il file andrebbe come text/plain.
+mimetypes.add_type("font/woff2", ".woff2")
 app.mount("/", StaticFiles(directory=WEB), name="web")
 
 

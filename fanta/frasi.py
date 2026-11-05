@@ -53,6 +53,16 @@ CATALOGO: dict[str, str] = {
     "dafare.incerto_alt": "{nome}: {stato}, gioca {p}%. Meglio {alt}.",
     "dafare.incerto_tiene": "{nome} ({stato}, gioca {p}%) resta titolare: se non gioca entra {riserva} dalla panchina.",
     "dafare.formazione_chiude": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    # hai salvato la consigliata e intanto è cambiata (#333): {entrano} e {escono} sono nomi o un elenco «A, B e C»
+    "dafare.consigliata_cambiata": "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
+    "dafare.consigliata_cambiata_molti": "La consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    # la consigliata toglie un titolare salvato che è fuori: {fuori} = una o più `dafare.fuori_*` («Bianchi è infortunato, …»)
+    "dafare.consigliata_cambiata_fuori": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
+    "dafare.consigliata_cambiata_fuori_molti": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    "dafare.fuori_infortunato": "{nome} è infortunato",
+    "dafare.fuori_squalificato": "{nome} è squalificato",
+    # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
+    "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
     "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
     "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della giornata {n}.",
@@ -174,6 +184,15 @@ CATALOGO: dict[str, str] = {
     "confronto.esito_pari": "Le due soluzioni valgono praticamente lo stesso ({attuale} contro {invertita}).",
     # il titolare gioca al posto di un compagno che quasi certamente non gioca (#329): è questo il motivo, anche se invertirli varrebbe di più (#341)
     "confronto.titolare_che_gioca": "{altro} quasi certamente non gioca ({p}% di giocare): il sistema schiera titolare {titolare}, che gioca {pt}%, anche se costa {d} punti attesi. {entrata}",
+    # il perché della scelta in una riga (fanta/perche_scelta.py, #356): nella nota sotto il campo, dopo il nome del titolare
+    "scelta.titolare_che_gioca": "Titolare al posto di {altro}, che quasi certamente non gioca ({p}% di giocare).",
+    "scelta.incerto": "Titolare anche se incerto (gioca {p}%): se non gioca entra {riserva} dalla panchina, e insieme valgono di più.",
+    "scelta.piu_punti": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",
+    "scelta.piu_sicuro": "A pari punti gioca più sicuro di {altro} ({pt}% contro {pa}%).",
+    "scelta.fantavoto_piu_alto": "A pari punti ha il fantavoto atteso più alto di {altro} ({mu_t} contro {mu_a}).",
+    "scelta.motivo": "Preferito a {altro}: {motivo}.",
+    "scelta.pari": "Alla pari con {altro}: con l'uno o con l'altro la formazione vale quasi lo stesso ({attuale} contro {invertita}).",
+    "scelta.stabile": "Con {altro} al suo posto la formazione farebbe {invertita} invece di {attuale}: per meno di 1 punto la consigliata già mostrata non cambia.",
     "posto.titolare": "titolare",
     "posto.panchina": "panchina {n}",
     "posto.fuori": "fuori",

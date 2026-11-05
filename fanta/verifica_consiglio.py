@@ -59,8 +59,18 @@ def rosa_s2(rosa: list[fz.Giocatore], ha_giocato, fantamedia) -> list[fz.Giocato
                          float(fantamedia.get(g.id, FANTAMEDIA_SENZA_VOTI)), 6.0) for g in rosa]
 
 
+def dati_s2(d, stagione: str, giornata: int, regole: Regole) -> tuple[set[int], pd.Series]:
+    """Quello che serve a S2 per una giornata: chi ha preso voto la giornata prima e la fantamedia (regole della lega) delle
+    giornate prima. Lo usano la misura in laboratorio e il Diario (`diario.calcola_giornata`)."""
+    col = COLONNA_VOTO[regole.fonte_voto]
+    vo = d.voti
+    prima = vo[(vo["stagione"] == stagione) & (vo["giornata"] == giornata - 1) & vo[col].notna()]
+    return {int(x) for x in prima["calciatore_id"].dropna()}, verifica._fantamedia(d, stagione, giornata, regole)
+
+
 # ---------------------------------------------------------------- C3: titolari che non giocano
-def _fuori(s: dict) -> bool:
+def e_fuori(s: dict) -> bool:
+    """Vero se la scheda è di un giocatore fuori (infortunato, squalificato, senza voto per il rinvio)."""
     return s.get("stato") in consigli.FUORI or s.get("titolarita") == "fuori"
 
 
@@ -76,9 +86,9 @@ def non_giocano(f: dict) -> list[tuple[int, int | None]]:
     esclusi = _esclusi(f)
     esito = []
     for t in f["titolari"]:
-        if not (_fuori(t) or t["p_voto"] < IMPROBABILE_SOTTO):
+        if not (e_fuori(t) or t["p_voto"] < IMPROBABILE_SOTTO):
             continue
-        compagni = [s for s in esclusi if s["ruolo"] == t["ruolo"] and s["p_voto"] >= COMPAGNO_DA and not _fuori(s)]
+        compagni = [s for s in esclusi if s["ruolo"] == t["ruolo"] and s["p_voto"] >= COMPAGNO_DA and not e_fuori(s)]
         meglio = max(compagni, key=lambda s: s["punti_attesi"], default=None)
         esito.append((int(t["id"]), None if meglio is None else int(meglio["id"])))
     return esito
@@ -96,10 +106,18 @@ def costo_compagno(rosa: list[fz.Giocatore], titolari: list[int], regole: Regole
 
 
 # ---------------------------------------------------------------- C4: scelte che sembrano storte e il loro perché
+def _con_riga(m: dict) -> set[int]:
+    """I titolari con una riga sotto il campo nel modulo `m`, come li mostra l'app: il perché della scelta (`perche_scelta`, #356);
+    da un server senza quel campo, la nota «titolare anche se incerto» (`incerti`)."""
+    if isinstance(m.get("perche_scelta"), list):
+        return {int(r["titolare"]) for r in m["perche_scelta"]}
+    return {int(i["titolare"]) for i in m.get("incerti") or []}
+
+
 def scelte_storte(f: dict) -> dict:
-    """Per reparto: c'è un escluso con più punti attesi del titolare più debole? È «spiegata» se quel titolare ha la nota
-    «titolare anche se incerto» (`incerti` del modulo scelto). Contano solo i reparti con almeno un escluso."""
-    incerti = {int(i["titolare"]) for m in f["moduli"] if m["modulo"] == f["modulo"] for i in m.get("incerti") or []}
+    """Per reparto: c'è un escluso con più punti attesi del titolare più debole? È «spiegata» se quel titolare ha la sua riga sotto
+    il campo nel modulo scelto (`_con_riga`). Contano solo i reparti con almeno un escluso."""
+    con_riga = {i for m in f["moduli"] if m["modulo"] == f["modulo"] for i in _con_riga(m)}
     esclusi = _esclusi(f)
     reparti = storte = spiegate = 0
     for ruolo in RUOLI:
@@ -111,7 +129,7 @@ def scelte_storte(f: dict) -> dict:
         debole = min(t_r, key=lambda s: s["punti_attesi"])
         if max(s["punti_attesi"] for s in e_r) > debole["punti_attesi"]:
             storte += 1
-            spiegate += int(debole["id"]) in incerti
+            spiegate += int(debole["id"]) in con_riga
     return {"reparti": reparti, "storte": storte, "spiegate": spiegate}
 
 
@@ -126,6 +144,14 @@ def perche_titolari(f: dict) -> dict:
 def motivata(prima: dict[int, float], dopo: dict[int, float], titolari: list[int]) -> bool:
     """Vero se un titolare di prima, con i dati nuovi, è sceso sotto il 20% (e prima non lo era)."""
     return any(prima[i] >= IMPROBABILE_SOTTO and dopo[i] < IMPROBABILE_SOTTO for i in titolari)
+
+
+def valore_di_prima(val: fz.Valutatore, rosa: list[fz.Giocatore], titolari: list[int], regole: Regole) -> float:
+    """Punti attesi dei `titolari` di prima con i dati di `val`, con la panchina che sceglie il sistema: il termine di paragone di un
+    cambio (qui e nel Diario, `indicatori_consiglio.guadagno`)."""
+    per_id = {g.id: g for g in rosa}
+    vecchi = [per_id[i] for i in titolari]
+    return val.atteso(vecchi, fz._panchina(rosa, vecchi, regole))
 
 
 def _ritocca(rosa: list[fz.Giocatore], rng: np.random.Generator) -> list[fz.Giocatore]:
@@ -143,9 +169,7 @@ def stabilita(rosa: list[fz.Giocatore], titolari: list[int], modulo: str, regole
     for tipo, rr, seme in varianti:
         val = fz.Valutatore(rr, regole, simulazioni) if seme is None else fz.Valutatore(rr, regole, simulazioni, seme=seme)
         nuova = fz.migliore(rr, regole, simulazioni, valutatore=val)
-        per_id = {g.id: g for g in rr}
-        vecchi = [per_id[i] for i in titolari]
-        guadagno = nuova.atteso - val.atteso(vecchi, fz._panchina(rr, vecchi, regole))
+        guadagno = nuova.atteso - valore_di_prima(val, rr, titolari, regole)
         cambiati = len(titolari) - len(set(titolari) & {g.id for g in nuova.titolari})
         prove.append(Prova(tipo, cambiati, nuova.modulo != modulo, float(guadagno),
                            tipo == "ritocco" and motivata(prima, {g.id: g.p for g in rr}, titolari)))
@@ -188,9 +212,7 @@ def parte_giocate(d, regole: Regole, rose: Rose, stagione: str, simulazioni: int
         fv_vero = {i: fantavoto(reali.loc[i].to_dict(), prev.at[i, "ruolo"], regole) for i in prev.index
                    if i in reali.index and pd.notna(reali.at[i, col])}
         voto_vero = {i: float(reali.at[i, col]) for i in fv_vero}
-        prima = vo[(vo["stagione"] == stagione) & (vo["giornata"] == g - 1) & vo[col].notna()]
-        ha_giocato = {int(x) for x in prima["calciatore_id"].dropna()}
-        fm = verifica._fantamedia(d, stagione, g, regole)
+        ha_giocato, fm = dati_s2(d, stagione, g, regole)
         for k, ids in enumerate(rose_ids):
             mod = _rosa_modello(prev, ids)
             if len(mod) < verifica.MIN_GIOCATORI_ROSA:
@@ -411,7 +433,8 @@ def rapporto(m: dict, scrivi=print) -> None:
            f"{round(MAX_SENZA_MOTIVO * 100)}%): {_esito(e['C4'])}")
     if b:
         scrivi(f"  Reparti con un escluso che ha più punti attesi del titolare più debole: {b['storte']} su {b['reparti']}; "
-               f"spiegati dalla nota «titolare anche se incerto»: {b['spiegate']}")
+               f"spiegati da una riga sotto il campo (il perché della scelta): {b['spiegate']}; "
+               f"senza la loro riga: {b['storte'] - b['spiegate']}")
         scrivi(f"  Titolari con «perché questo numero» vuoto: {b['vuoti']} su {b['titolari']}; senza un motivo proprio "
                f"(solo «gioca N%», partita o «altro»): {_quota(b['senza_motivo'], b['titolari'])}")
     else:

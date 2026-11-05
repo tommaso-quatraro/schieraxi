@@ -7,6 +7,7 @@ voto d'ufficio, modificatore difesa). Tutte le formazioni a confronto usano le s
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -466,11 +467,12 @@ def _per_valore(rosa: list[Giocatore]) -> list[Giocatore]:
 
 
 def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per_ruolo: dict[str, list[Giocatore]],
-                       panchina_di, val: Valutatore, peso: tuple[float, float]) -> tuple[list[Giocatore], list[Giocatore]]:
+                       panchina_di, val: Valutatore, peso: tuple[float, float],
+                       fissi: Collection[int] = ()) -> tuple[list[Giocatore], list[Giocatore]]:
     """Toglie dagli 11 chi gioca meno di IMPROBABILE_SOTTO, se un compagno di ruolo che gioca almeno COMPAGNO_ALMENO costa meno di
     COSTO_MASSIMO_CAMBIO punti attesi. Tra i compagni che si possono mettere vince il migliore per lo stile (`peso`), come nella
     ricerca. Si parte dal titolare meno probabile e dopo ogni cambio si ricomincia: alla fine nessun improbabile rimasto ha un
-    compagno così (ogni cambio toglie un improbabile, quindi i giri finiscono)."""
+    compagno così (ogni cambio toglie un improbabile, quindi i giri finiscono). Chi sta in `fissi` resta dov'è."""
     cambiato = True
     while cambiato:
         cambiato = False
@@ -479,6 +481,8 @@ def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per
         for i, t in sorted(enumerate(titolari), key=lambda c: c[1].p):
             if t.p >= IMPROBABILE_SOTTO:
                 break
+            if t.id in fissi:
+                continue
             meglio = None
             for alt in per_ruolo[t.ruolo]:
                 if alt.id in ids or alt.p < COMPAGNO_ALMENO:
@@ -499,33 +503,41 @@ def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per
 
 def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, ricerca: bool = True,
              peso: tuple[float, float] = PESO_BASE, valutatore: Valutatore | None = None,
-             inclinazione: tuple[float, float] = (0.0, 0.0)) -> Formazione:
+             inclinazione: tuple[float, float] = (0.0, 0.0), fissi: Collection[int] = (),
+             scegli_panchina: Callable[[list[Giocatore]], list[Giocatore]] | None = None) -> Formazione:
     """La formazione migliore tra tutti i moduli ammessi: punteggio atteso alto e, a parità, titolari più sicuri.
     Con più peso alla brutta giornata si preferiscono i titolari sicuri, con più peso alla giornata eccezionale chi può fare il colpo.
     `inclinazione` = (punti per ogni difensore, punti per ogni attaccante) oltre il 4-?-3 neutro: sposta la scelta del MODULO
     (non dei giocatori) verso le difese folte o gli attacchi folti; (0, 0) = solo punti attesi.
     In ogni modulo, dopo la ricerca (anche senza), un titolare che quasi certamente non gioca lascia il posto a un compagno che
-    gioca, se costa poco (`_senza_improbabili`)."""
+    gioca, se costa poco (`_senza_improbabili`).
+    Giocatori che non si possono più spostare (anticipo già cominciato, consigli.py): chi sta in `fissi` resta titolare, la panchina
+    la sceglie `scegli_panchina` e chi non deve diventare titolare si lascia fuori da `rosa` (allora `valutatore`, fatto sulla rosa
+    intera, serve). Senza questi due il calcolo è quello di sempre."""
     rosa = list({g.id: g for g in rosa}.values())       # un giocatore ripetuto nella rosa (riga doppia importata) conta una volta sola
     val = valutatore or Valutatore(rosa, regole, simulazioni)
     per_ruolo = {r: sorted([g for g in rosa if g.ruolo == r], key=lambda g: -g.valore) for r in RUOLI}
     ordinati = _per_valore(rosa)
     # la panchina dipende solo da rosa, regole e titolari: la ricerca (e gli altri stili, con lo stesso valutatore) ripassa dagli stessi
-    panchine = val._panchine.setdefault(tuple(rosa), {}) if regole is val.regole else {}
+    panchine = val._panchine.setdefault(tuple(rosa), {}) if regole is val.regole and scegli_panchina is None else {}
+    fissi = frozenset(fissi)
+    # i titolari di partenza: prima chi resta titolare per forza, poi i migliori per valore (senza `fissi`: per_ruolo com'è)
+    in_testa = {r: sorted(per_ruolo[r], key=lambda g: g.id not in fissi) for r in RUOLI} if fissi else per_ruolo
+    quanti_fissi = {r: sum(1 for g in per_ruolo[r] if g.id in fissi) for r in RUOLI}
 
     def panchina_di(tit: list[Giocatore]) -> list[Giocatore]:
         chiave = frozenset(g.id for g in tit)
         if chiave not in panchine:
-            panchine[chiave] = _panchina(rosa, tit, regole, ordinati)
+            panchine[chiave] = scegli_panchina(tit) if scegli_panchina else _panchina(rosa, tit, regole, ordinati)
         return panchine[chiave]
 
     risultati = []
     for modulo in regole.moduli:
         d, c, a = modulo_in_numeri(modulo)
         servono = {"P": 1, "D": d, "C": c, "A": a}
-        if any(len(per_ruolo[r]) < servono[r] for r in RUOLI):
+        if any(len(per_ruolo[r]) < servono[r] or quanti_fissi[r] > servono[r] for r in RUOLI):
             continue
-        titolari = [g for r in RUOLI for g in per_ruolo[r][:servono[r]]]
+        titolari = [g for r in RUOLI for g in in_testa[r][:servono[r]]]
         panchina = panchina_di(titolari)
         valore = val.scelta(titolari, panchina, peso)
         if ricerca:  # prova a scambiare ogni titolare con i migliori esclusi dello stesso ruolo
@@ -533,6 +545,8 @@ def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, rice
             while migliorato:
                 migliorato = False
                 for i, t in enumerate(titolari):
+                    if t.id in fissi:
+                        continue
                     ids = {x.id for x in titolari}
                     for alt in _candidati(per_ruolo[t.ruolo], ids, peso):
                         prova = titolari[:i] + [alt] + titolari[i + 1:]
@@ -541,7 +555,7 @@ def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, rice
                         if v > valore + 1e-9:
                             titolari, panchina, valore, migliorato = prova, pp, v, True
                             break
-        titolari, panchina = _senza_improbabili(titolari, panchina, per_ruolo, panchina_di, val, peso)
+        titolari, panchina = _senza_improbabili(titolari, panchina, per_ruolo, panchina_di, val, peso, fissi)
         valore = val.scelta(titolari, panchina, peso)
         media, dev = val.statistiche(titolari, panchina)[:2]
         risultati.append(Formazione(modulo, sorted(titolari, key=lambda g: (ORDINE_RUOLO[g.ruolo], -g.valore)),
