@@ -86,11 +86,14 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 29 | Avvisi, Impostazioni, Account, Regole, Novità, Squadre e rose | – | – | da confrontare | da fare (I-confronto) |
 | 30 | Pillole dei giocatori, colore | quattro toni del server: «Probabile titolare», «Ha giocato», «Partita in corso» verdi | le stesse grigie (tre gravità, positivo come neutro) | web (`docs/DESIGN.md`, «Colori semantici») | fatto con #242 |
 | 31 | Pulsanti pieni, tema scuro | testo verde quasi nero sul verde chiaro (`--azione-testo`) | testo bianco sul verde chiaro, 1,8:1 | web (stessi due colori) | fatto con #248 |
-| 32 | Scelta del confronto, posto | «Titolare», «Panchina 2», «Non schierato» e l'etichetta del server | «Titolare», «Panchina 2», «Fuori» | web | iPhone da fare (#281): `ConfrontoViewModel.posto` |
-| 33 | Confronto, numeri negativi nelle barre | «−1,12» | «-1,12» (`Formato.decimali`) | web | iPhone da fare (#281): `ConfrontoView.valore` |
-| 34 | Campo, partita rinviata | «Rinviata» | «gioca 50%» | web | iPhone da fare (#284): `PedinaCampo` |
-| 35 | Oggi, carta del rinvio | «UDI vs MIL» | «UDI–MIL» | web | iPhone da fare (#284): `PartiteRinviate.partita` |
-| 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | iPhone da fare (#282): `GiocatoreWidget.descrizioneStato` |
+| 32 | Scelta del confronto, posto | «Titolare», «Panchina 2», «Non schierato» e l'etichetta del server | «Titolare», «Panchina 2», «Fuori» | web | fatto sull'iPhone (#295) |
+| 33 | Confronto, numeri negativi nelle barre | «−1,12» | «-1,12» (`Formato.decimali`) | web | fatto sull'iPhone (#295) |
+| 34 | Campo, partita rinviata e partita iniziata | «Rinviata»; a partita iniziata il fantavoto preso o lo stato («Partita in corso») | «gioca 50%», anche a partita iniziata | web (`esitoPedina`) | fatto sull'iPhone (#295, #283): `EsitoPedina` |
+| 35 | Oggi, carta del rinvio | «UDI vs MIL» | «UDI–MIL» | web | fatto sull'iPhone (#295) |
+| 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | fatto sull'iPhone (#295) |
+| 37 | Confronto, «Tutti i numeri» | «Atteso ponderato (con la probabilità di giocare)», «Quando gioca» a parole, «vs COM», «Normale» | «Punti attesi», «Parte titolare 75%», «COM casa», «Media» | web (`apriConfronto`) | fatto sull'iPhone (#293) |
+| 38 | Oggi, giornata finita, recuperi | «Manca il recupero di ATA–PAR» | uguale | «ATA vs PAR», come la carta del rinvio | web da fare |
+| 39 | Confronto, in cima ai due nomi | posto sotto il nome («Titolare», «Panchina 2», «Non schierato») | niente posto | web | iPhone da fare (la partita «INT vs ROM» è la #302) |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.
