@@ -171,7 +171,10 @@ def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
         # margini di main (16 px per lato, 8 sotto i 320 px utili) e a sinistra della carta (14 px, densità compatta)
         carta = pagina - (32 if pagina >= 320 else 16)
         assert carta - 14 - min(max(minimo, pagina - togli), massimo) >= 157, pagina
-    assert "display: none" in _regola(_blocco("@container pagina (max-width: 259.98px) {"), ".maglia-hero")
+    senza = _blocco("@container pagina (max-width: 259.98px) {")
+    assert "display: none" in _regola(senza, ".maglia-hero")
+    # senza maglia il testo torna largo quanto la carta (a 256 px «3 h 10 min» andava a capo accanto a un posto vuoto)
+    assert "padding-right: 14px" in _regola(senza, '.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia')
 
 
 def test_cambi_consigliati_in_colonna_sotto_i_320_px_e_nomi_mai_tagliati():

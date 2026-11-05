@@ -750,7 +750,10 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
   .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: clamp(12px, 100cqi - 210px, 132px); }
   .maglia-hero { height: clamp(48px, 100cqi - 210px, 150px); }             /* alta quanto il posto che le si lascia: non copre il testo */
 }
-@container pagina (max-width: 259.98px) { .maglia-hero { display: none; } }
+@container pagina (max-width: 259.98px) {
+  .maglia-hero { display: none; }
+  .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: 14px; }
+}
 .stemma-lista { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .3)); }
 .iniziale-squadra { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: var(--t-valore); color: var(--verde-testo);
   background: var(--verde); }
