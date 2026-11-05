@@ -13,13 +13,18 @@ enum StatoScelta: Equatable {
     case salvata(Date?)
     /// C'è una scelta salvata, ma quella mostrata è diversa: ci sono modifiche non salvate.
     case modificata(Date?)
+    /// Giornata chiusa (scadenza passata, `iniziata` del server): niente più da salvare né da cambiare. `tua`: c'è una scelta
+    /// salvata, ed è quella che vale. Come lo stato «chiusa» della web, vale anche prima di aver letto la scelta.
+    case chiusa(tua: Bool)
 
     /// - Parameters:
     ///   - letta: la scelta della giornata è stata letta dal server (anche «nessuna»).
     ///   - salvati: i titolari salvati (nil = nessuna scelta salvata).
     ///   - manuale: i titolari della modifica a mano (nil = si vede la consigliata).
+    ///   - chiusa: la giornata è chiusa (viene prima di tutto il resto, come sulla web).
     /// L'ordine dei titolari non conta.
-    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?) -> StatoScelta {
+    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, chiusa: Bool = false) -> StatoScelta {
+        if chiusa { return .chiusa(tua: letta && salvati != nil) }
         guard letta else { return .sconosciuto }
         guard let salvati else { return manuale == nil ? .consigliata : .bozza }
         guard let manuale, Set(manuale) == Set(salvati) else { return .modificata(salvataIl) }
@@ -37,6 +42,9 @@ enum StatoScelta: Equatable {
         case .modificata(let d):
             return "Modifiche non salvate: " + (d.map { "la formazione salvata è di \(Self.momento($0, adesso: adesso))." }
                                                  ?? "la formazione salvata è un'altra.")
+        case .chiusa(let tua):
+            // le frasi della web (`formazione.stato_chiusa` e `formazione.stato_chiusa_tua`), senza punto finale come là
+            return "Giornata iniziata: la formazione è chiusa" + (tua ? " · vale quella che hai salvato" : "")
         }
     }
 
@@ -47,6 +55,7 @@ enum StatoScelta: Equatable {
         case .consigliata: return "info.circle"
         case .bozza, .modificata: return "pencil.circle.fill"
         case .salvata: return "checkmark.circle.fill"
+        case .chiusa: return "lock.fill"
         }
     }
 
@@ -56,7 +65,7 @@ enum StatoScelta: Equatable {
         switch self {
         case .salvata: return .bene
         case .bozza, .modificata: return .attenzione
-        case .consigliata, .sconosciuto: return .neutro
+        case .consigliata, .sconosciuto, .chiusa: return .neutro   // chiusa: grigia come il «■» della web
         }
     }
 
@@ -64,7 +73,7 @@ enum StatoScelta: Equatable {
     var daSalvare: Bool {
         switch self {
         case .bozza, .modificata, .sconosciuto: return true
-        case .consigliata, .salvata: return false
+        case .consigliata, .salvata, .chiusa: return false
         }
     }
 

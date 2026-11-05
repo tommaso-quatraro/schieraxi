@@ -393,77 +393,7 @@ final class FormazioneViewModelTests: XCTestCase {
         XCTAssertEqual(vm2.messaggio, FormazioneViewModel.sceltaNonValida)
     }
 
-    // MARK: giornata chiusa (dopo la scadenza)
-
-    /// Un server con la giornata chiusa (`iniziata: true`) e una scelta salvata; le scritture rispondono 409 `formazione_chiusa`.
-    private func serverChiuso(conScelta: Bool = true) throws -> ServerDiProva {
-        var formazione = try XCTUnwrap(JSONSerialization.jsonObject(with: try Fixture.dati("formazione")) as? [String: Any])
-        formazione["iniziata"] = true
-        let dati = try JSONSerialization.data(withJSONObject: formazione)
-        let base: Formazione = try Fixture.decodifica("formazione")
-        let ids = base.titolari.map(\.id).map(String.init).joined(separator: ",")
-        let scelta = Data((conScelta ? "{\"titolari\": [\(ids)], \"salvata\": \"2026-10-31T13:09:00\"}" : "null").utf8)
-        return ServerDiProva { metodo, percorso, corpo in
-            if percorso.hasPrefix("/api/formazione/valuta") {
-                if let corpo, String(decoding: corpo, as: UTF8.self).contains("\"salva\":true") {
-                    throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "Formazione chiusa")
-                }
-                return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
-            }
-            if percorso.hasPrefix("/api/scelta") {
-                if metodo == "DELETE" { throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "Formazione chiusa") }
-                return scelta
-            }
-            return dati
-        }
-    }
-
-    func testAGiornataChiusaLaFormazioneSalvataSiVedeESoloInLettura() async throws {
-        let srv = try serverChiuso()
-        let (vm, f) = try await caricata(srv)
-        XCTAssertTrue(vm.chiusa)
-        guard case .salvata = vm.statoScelta else { return XCTFail("la scelta salvata si vede anche a giornata chiusa: \(vm.statoScelta)") }
-        let prima = vm.manuale
-        // niente sostituzioni, niente «Salva», niente «Torna alla consigliata», niente ballottaggi
-        let uscente = try XCTUnwrap(vm.vista(f).titolari.first { $0.ruolo == "D" })
-        let titolari = Set(vm.manuale ?? [])
-        let entrante = try XCTUnwrap(f.schede?.values.first { $0.ruolo == "D" && !titolari.contains($0.id) })
-        vm.sostituisci(uscente.id, con: entrante.id)
-        XCTAssertEqual(vm.manuale, prima)
-        await vm.valuta(salva: true)
-        await vm.tornaAllaConsigliata(f)
-        XCTAssertEqual(srv.quante("DELETE /api/scelta"), 0)
-        let salvataggi = srv.corpiInviati(a: "POST /api/formazione/valuta").filter { String(decoding: $0, as: UTF8.self).contains("\"salva\":true") }
-        XCTAssertTrue(salvataggi.isEmpty, "a giornata chiusa non si prova nemmeno a salvare")
-        XCTAssertTrue(vm.ballottaggio(per: uscente, f, vm.vista(f)).isEmpty)
-    }
-
-    func testSenzaSceltaAGiornataChiusaNienteModificaAMano() async throws {
-        let (vm, f) = try await caricata(try serverChiuso(conScelta: false))
-        vm.iniziaModificaManuale(f)
-        XCTAssertNil(vm.manuale)
-        await vm.salvaQuesta(f)
-        XCTAssertNil(vm.manuale)
-        XCTAssertEqual(vm.statoScelta, .consigliata)
-    }
-
-    func testSeLaGiornataSiChiudeMentreSalviLoDiceSenzaErroriGrezzi() async throws {
-        // il server dice «aperta» ma rifiuta il salvataggio con 409 formazione_chiusa (scadenza passata con la pagina aperta)
-        let srv = ServerDiProva { metodo, percorso, corpo in
-            if percorso.hasPrefix("/api/formazione/valuta") {
-                if let corpo, String(decoding: corpo, as: UTF8.self).contains("\"salva\":true") {
-                    throw ErroreApi.codificato(codice: FormazioneViewModel.codiceChiusa, messaggio: "testo tecnico")
-                }
-                return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
-            }
-            if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
-            return try Fixture.dati("formazione")
-        }
-        let (vm, f) = try await caricata(srv)
-        await vm.salvaQuesta(f)
-        XCTAssertEqual(vm.messaggio, FormazioneViewModel.testoChiusa)
-        XCTAssertEqual(srv.quante("GET /api/formazione"), 2, "si ricarica per sapere che è chiusa")
-    }
+    // giornata chiusa (dopo la scadenza): `FormazioneChiusaTests`
 
     func testFormazioneDiUnAltraSquadra() async throws {
         let s = server()

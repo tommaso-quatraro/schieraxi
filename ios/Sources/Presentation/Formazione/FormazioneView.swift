@@ -261,15 +261,16 @@ struct FormazioneView: View {
     private func cardStile(_ f: Formazione, _ v: VistaFormazione) -> some View {
         Carta {
             intestazione(f, v)
-            if vm.chiusa {
-                // come la web: la fascia della giornata chiusa, e la formazione (salvata o consigliata) in sola lettura
-                Label(FormazioneViewModel.testoChiusa, systemImage: "lock.fill")
+            if let fascia = vm.fasciaChiusa {
+                // come la web: la fascia della giornata chiusa solo per un'altra squadra (per la tua lo dice la riga di stato),
+                // e la formazione in sola lettura
+                Label(fascia, systemImage: "lock.fill")
                     .font(.footnote.weight(.semibold))
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.attenzione.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityElement(children: .combine)
-            } else if f.conProbabili == false {
+            } else if !vm.chiusa, f.conProbabili == false {
                 Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             rigaStato(f)
