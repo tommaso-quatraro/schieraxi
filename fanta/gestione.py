@@ -310,8 +310,10 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
                                   "etichetta": etichette.di_avviso(x["stato"])})
             continue
         if i in in_formazione and (scheda["p_voto"] < 0.75 or x["dubbio"]):
+            # «da controllare» (tipo `dubbio`, che non cambia per i client) ma con l'etichetta della Formazione e della scheda: chi
+            # gioca al 2% è «Improbabile», non «In dubbio»; «In dubbio · gioca N%» solo se lo dicono le probabili (#282)
             avvisi.append(base | {"tipo": "dubbio", "p_voto": scheda["p_voto"], "nota": scheda["nota"], "in_formazione": True,
-                                  "etichetta": etichette.di_avviso("dubbio", scheda["p_voto"])})
+                                  "etichetta": etichette.di_giocatore(scheda)})
         if x["diffidato"]:
             avvisi.append(base | {"tipo": "diffidato", "in_formazione": i in in_formazione, "etichetta": etichette.di_avviso("diffidato")})
     ordine = {"infortunato": 0, "squalificato": 1, "dubbio": 2, "diffidato": 3}
