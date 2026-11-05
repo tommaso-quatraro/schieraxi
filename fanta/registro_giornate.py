@@ -16,14 +16,26 @@ import os
 import sqlite3
 from datetime import datetime, timedelta
 
+import numpy as np
 import pandas as pd
 
-from . import archivio, avvisi, consigli
+from . import archivio, avvisi, consigli, fasi, incertezza
+from . import formazione as fz
 from .punteggio import COLONNA_VOTO, fantavoto
 from .regole import Regole
 
 ANTICIPO = timedelta(minutes=10)        # si salva negli ultimi 10 minuti prima della prima partita (dopo l'ultimo giro delle probabili)
 REGOLE = Regole()                       # regole classiche: i numeri non dipendono da una lega
+DOPO_FINE = timedelta(hours=24)         # a turno finito si misura un giorno dopo: i voti hanno il tempo di assestarsi
+ATTESA_VOTI = timedelta(hours=72)       # oltre, si misura anche se a qualche partita mancano i voti (quelle partite non contano)
+FASCE = 10                              # fasce di 10 punti di «gioca N%» per l'errore di calibrazione
+FANTAMEDIA_SENZA_VOTI = 6.0             # come nella verifica: chi non ha ancora voti ha fantamedia 6
+# Fascia «8 volte su 10» (I3): come `verifica --incertezza`, su rose estratte a sorte (seme fisso) tra chi ha una probabilità vera di
+# giocare; per ogni rosa la formazione migliore con i numeri MOSTRATI, la sua fascia e i punti veri.
+ROSE_SINTETICHE = 20
+SIMULAZIONI = 300
+POSTI_ROSA = {"P": 3, "D": 8, "C": 8, "A": 6}
+P_MINIMA_ROSA = 0.3
 BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati", "rig_parati", "assist", "mvp", "ammonizioni",
                  "espulsioni")
 
@@ -129,3 +141,97 @@ def salva_se_serve(db: sqlite3.Connection, adesso: datetime, previsioni=None) ->
     if giornata != g:
         return 0
     return salva(db, stagione, g, prev, con_probabili, adesso)
+
+
+# ---------------------------------------------------------------- misura a giornata finita
+def _partite(db: sqlite3.Connection, stagione: str, giornata: int) -> tuple[set[int], set[int]]:
+    """(partite del registro giocate con i voti di tutte e due le squadre, partite del registro giocate ma ancora senza voti)."""
+    col = COLONNA_VOTO[REGOLE.fonte_voto]
+    con_voti = {r[0] for r in db.execute(f"SELECT DISTINCT squadra FROM voti WHERE stagione = ? AND giornata = ? AND {col} IS NOT NULL",
+                                         (stagione, giornata))}
+    valide: set[int] = set()
+    senza: set[int] = set()
+    for pid, casa, trasferta in db.execute(
+            "SELECT id, casa, trasferta FROM partite WHERE stagione = ? AND giocata = 1 AND id IN "
+            "(SELECT DISTINCT partita_id FROM registro_giocatori WHERE stagione = ? AND giornata = ?)", (stagione, stagione, giornata)):
+        (valide if casa in con_voti and trasferta in con_voti else senza).add(int(pid))
+    return valide, senza
+
+
+def da_misurare(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int]]:
+    """Le giornate salvate e non ancora misurate che sono finite: turno giocato (`fasi.fine_giornata`, le rinviate non lo tengono
+    aperto) da almeno DOPO_FINE e voti di ogni partita giocata, oppure da almeno ATTESA_VOTI anche senza tutti i voti."""
+    pronte = []
+    for stagione, g in db.execute("SELECT stagione, giornata FROM registro_giornate WHERE misurato IS NULL "
+                                  "ORDER BY stagione, giornata").fetchall():
+        fine = fasi.fine_giornata(db, stagione, g)
+        if fine is None or adesso < fine + DOPO_FINE:
+            continue
+        if _partite(db, stagione, g)[1] and adesso < fine + ATTESA_VOTI:
+            continue
+        pronte.append((stagione, int(g)))
+    return pronte
+
+
+def _fascia(registro: list[dict], fv: dict[int, float], voto: dict[int, float], stagione: str, giornata: int) -> tuple[int, int]:
+    """(rose provate, rose con i punti veri dentro la fascia 8 volte su 10). Zero rose se i giocatori non bastano."""
+    rng = np.random.default_rng(1000 * giornata + int(stagione[:4]))
+    per_id = {int(r["calciatore_id"]): r for r in registro}
+    pool = {ruolo: np.array(sorted(i for i, r in per_id.items() if r["ruolo"] == ruolo and r["p_voto"] >= P_MINIMA_ROSA))
+            for ruolo in POSTI_ROSA}
+    if any(len(pool[r]) < n for r, n in POSTI_ROSA.items()):
+        return 0, 0
+    casi = dentro = 0
+    for _ in range(ROSE_SINTETICHE):
+        ids = [int(i) for r, n in POSTI_ROSA.items() for i in rng.choice(pool[r], n, replace=False)]
+        rosa = [fz.Giocatore(i, "", per_id[i]["ruolo"], float(per_id[i]["p_voto"]), float(per_id[i]["mu"]),
+                             float(per_id[i]["mu_voto"] if per_id[i]["mu_voto"] is not None else 6.0)) for i in ids]
+        try:
+            f = fz.migliore(rosa, REGOLE, SIMULAZIONI)
+        except ValueError:
+            continue
+        reale = fz.punteggio(f.titolari, f.panchina, {i: i in fv for i in ids}, {i: fv.get(i, 0.0) for i in ids},
+                             {i: voto.get(i, 0.0) for i in ids}, REGOLE)
+        fascia = incertezza.intervallo(f.atteso, f.dev)
+        casi += 1
+        dentro += int(fascia["basso"] <= reale <= fascia["alto"])
+    return casi, dentro
+
+
+def misura_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> dict | None:
+    """I pezzi delle misure di una giornata finita, solo per le partite giocate e con i voti (None se non ce n'è):
+    I1 `voti`, `sq_modello`, `sq_fantamedia` (somme dei quadrati degli errori di chi ha preso voto);
+    I2 `presenze`, `brier_somma`, `fasce` (per fascia di «gioca N%»: [giocatori, somma del detto, quanti hanno preso voto]);
+    I3 `fascia_casi`, `fascia_dentro`. Si sommano poi sulla finestra (`medie`)."""
+    valide, _ = _partite(db, stagione, giornata)
+    registro = [r for r in _righe(db.execute("SELECT * FROM registro_giocatori WHERE stagione = ? AND giornata = ? ORDER BY calciatore_id",
+                                             (stagione, giornata))) if r["partita_id"] in valide]
+    if not registro:
+        return None
+    col = COLONNA_VOTO[REGOLE.fonte_voto]
+    righe_voti = {int(v["calciatore_id"]): v for v in _righe(db.execute(
+        f"SELECT * FROM voti WHERE stagione = ? AND giornata = ? AND {col} IS NOT NULL", (stagione, giornata)))}
+    fv: dict[int, float] = {}
+    voto: dict[int, float] = {}
+    for r in registro:
+        i = int(r["calciatore_id"])
+        if i in righe_voti and (f := fantavoto_vero(righe_voti[i], r["ruolo"])) is not None:
+            fv[i], voto[i] = f, float(righe_voti[i][col])
+    sq_m = sq_f = brier = 0.0
+    fasce = [[0, 0.0, 0] for _ in range(FASCE)]
+    for r in registro:
+        i, p = int(r["calciatore_id"]), float(r["p_voto"])
+        preso = i in fv
+        if preso:
+            fm = r["fantamedia"] if r["fantamedia"] is not None else FANTAMEDIA_SENZA_VOTI
+            sq_m += (r["mu"] - fv[i]) ** 2
+            sq_f += (fm - fv[i]) ** 2
+        brier += (p - preso) ** 2
+        b = min(FASCE - 1, max(0, math.floor(p * FASCE + 1e-9)))
+        fasce[b][0] += 1
+        fasce[b][1] += p
+        fasce[b][2] += int(preso)
+    casi, dentro = _fascia(registro, fv, voto, stagione, giornata)
+    return {"voti": len(fv), "sq_modello": round(sq_m, 4), "sq_fantamedia": round(sq_f, 4), "presenze": len(registro),
+            "brier_somma": round(brier, 4), "fasce": [[n, round(s, 4), g] for n, s, g in fasce],
+            "fascia_casi": casi, "fascia_dentro": dentro}
