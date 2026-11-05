@@ -46,6 +46,15 @@ struct DemoCoerenteTests {
         #expect(abs(f.punteggioAtteso - somma) < 0.05, "la formazione vale \(f.punteggioAtteso), i titolari sommati \(somma)")
     }
 
+    @Test("I migliori di Oggi sono i 3 titolari con più punti attesi, come li manda il server")
+    func miglioriComeIlServer() async throws {
+        let f = try await leggi("/api/formazione", come: Formazione.self)
+        let oggi = try await leggi("/api/oggi", come: Oggi.self)
+        // `migliori` di fanta/gestione.py: i titolari ordinati per punti attesi, i primi 3
+        let attesi = f.titolari.sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }.prefix(3).map(\.id)
+        #expect(oggi.migliori?.map(\.id) == Array(attesi))
+    }
+
     @Test("Confronto: le cause sommate danno la differenza dei punti attesi e la frase dice chi è avanti, con i numeri delle barre",
           arguments: zip([120, 121, 113], [123, 125, 117]))
     func confrontoComeLeBarre(a: Int, b: Int) async throws {

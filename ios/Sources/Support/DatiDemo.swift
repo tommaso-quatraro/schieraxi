@@ -303,7 +303,8 @@ private extension LegaDemo {
                             "casa": incontri[i].casa, "trasferta": incontri[i].trasferta, "giocata": false])
         }
         let avvisi = avvisiOggi()
-        let migliori = ids.map { calciatore($0) }.sorted { $0.puntiAttesi > $1.puntiAttesi }.prefix(5).map { giocatore($0, adesso: adesso) }
+        // come `migliori` di fanta/gestione.py: i 3 titolari con più punti attesi
+        let migliori = ids.map { calciatore($0) }.sorted { $0.puntiAttesi > $1.puntiAttesi }.prefix(3).map { giocatore($0, adesso: adesso) }
         var mieiTitolari: [String: [[String: Any]]] = [:]
         for id in ids {
             let c = calciatore(id)
