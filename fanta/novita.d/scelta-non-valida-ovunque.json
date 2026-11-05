@@ -1,0 +1,15 @@
+{
+  "titolo": "Avvisi e Da fare: una formazione salvata che non vale più conta come non salvata",
+  "voci": [
+    "Se la formazione che hai salvato non si può più schierare (per esempio un giocatore non è più nella tua rosa, o il modulo non è più ammesso nella tua lega), anche gli avvisi e la lista Da fare la trattano come non salvata e parlano della consigliata, come già fanno Formazione, Oggi e Diario.",
+    "Il promemoria prima della scadenza ora arriva anche in questo caso. Prima taceva, come se avessi già schierato.",
+    "L'avviso «cambio pronto» e quello che ti dice di cambiare formazione vicino alla scadenza confrontano la consigliata, non più una formazione che non vale.",
+    "Il riepilogo dopo la giornata racconta i punti della consigliata. Prima, con un giocatore non più in rosa, non arrivava.",
+    "In Da fare i titolari in dubbio sono quelli della consigliata, resta il ricordo che la formazione si chiude e, a giornata finita, ti chiede se hai schierato la consigliata."
+  ],
+  "tecnico": [
+    "Issue #321, dopo la #320. La regola unica scelte.motivo_non_valida si applica con due funzioni nuove di scelte.py: che_vale(scelta, ruoli, regole) (la scelta se si può schierare, altrimenti None) e ruoli_schierabili(rose, prev) (prima della scadenza i giocatori della rosa con una previsione e il ruolo delle previsioni, come la Formazione; senza previsioni, a giornata finita, tutta la rosa come il Diario).",
+    "La usano notifiche._cambi_pronti, notifiche._gia_schierato (promemoria), notifiche.avviso_scadenza (con una scelta salvata legge le previsioni prima del controllo «niente di nuovo»: già in cache dal giro dei cambi), notifiche.riepilogo (ruoli della rosa), da_fare._dubbi, da_fare._formazione_non_salvata e da_fare._diario (ruoli della rosa).",
+    "Nessun campo né rotta nuova: i client non devono fare niente. Testi degli avvisi e delle voci di Da fare invariati."
+  ]
+}
