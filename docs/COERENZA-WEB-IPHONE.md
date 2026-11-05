@@ -93,6 +93,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | iPhone da fare (#282): `GiocatoreWidget.descrizioneStato` |
 | 37 | Formazione chiusa con la scelta salvata non più valida | «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» e la consigliata | uguale alla web | server (`stato_scelta` di `GET /api/formazione`) | web fatto (#319); iPhone fatto (#296, PR #318) |
 | 38 | Stato dei dati, registro delle giornate | carta «Registro delle giornate» dopo l'affidabilità: tre misure con media, soglia e «regge» / «non regge» / «servono ancora N giornate», poi «Giornate perse» con il motivo (`cartaRegistro`, testi `sd.reg_*`) | uguale; le giornate perse in una sezione loro della lista | web | fatto con #344 (test contro `testi.js` e sulla stessa risposta del server) |
+| 39 | Stato dei dati, consiglio di formazione | carta «Consiglio di formazione» dopo il registro: quattro indicatori a parole (niente sigle C1-C4) con media, soglia e «regge» / «non regge» / «servono ancora N giornate» del server (`cartaConsiglio`, testi `sd.cons_*`) | uguale, sezione dopo il registro (`ConsiglioFormazioneSezione`, `ParoleConsiglio`) | web | fatto con #366 (test contro `testi.js` e sulla stessa risposta del server) |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.
