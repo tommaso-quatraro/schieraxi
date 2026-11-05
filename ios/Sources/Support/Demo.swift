@@ -289,9 +289,9 @@ extension Demo {
 /// Solo per le fotografie (`-DEMO_SCHERMATA marchio`): il marchio di SchieraXI fermo, in quattro momenti del movimento,
 /// il segnaposto di caricamento e uno stato vuoto, sul fondo chiaro o scuro del sistema.
 struct ProvaMarchio: View {
-    /// Lo stato vuoto di prova, con le parole della pagina Seguiti dell'app.
-    static let titoloVuoto = "Nessun giocatore osservato"
-    static let descrizioneVuoto = "Apri la scheda di un giocatore e tocca «Osserva»."
+    /// Lo stato vuoto di prova, con le parole della pagina Seguiti dell'app («seguito», «Segui»: #303).
+    static let titoloVuoto = "Nessun giocatore seguito"
+    static let descrizioneVuoto = "Apri la scheda di un giocatore e tocca «Segui»."
 
     var body: some View {
         ZStack {
