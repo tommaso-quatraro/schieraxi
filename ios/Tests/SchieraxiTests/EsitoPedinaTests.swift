@@ -130,7 +130,7 @@ struct EsitoPedinaTests {
     func voceRinviataEVoto() throws {
         let rinviata = try giocatore(#""p_voto": 0.5, "rinvio": "aspetta""#)
         #expect(rinviata.vocePedina == "Mario Prova, difensore, fantavoto atteso 6,5, Rinviata, avversario Napoli, in trasferta")
-        let votato = try giocatore(#""p_voto": 0.72, "stato_partita": "fatto", "fv_preso": 7""#)
+        let votato = try giocatore(#""p_voto": 0.72, "stato_partita": "fatto", "fv_preso": 7"#)
         #expect(votato.vocePedina.contains(", fantavoto 7,0, "))
         #expect(!votato.vocePedina.contains("per cento"))
     }
