@@ -63,10 +63,11 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
 }
 
 extension GiocatoreWidget {
-    /// «18:30», o «—» se la partita non è nota.
+    /// «18:30», o «—» se la partita non è nota. Solo l'ora, senza il giorno: i widget con la partita usano `quandoGioca(adesso:)`.
     var oraBreve: String { quando.map { Quando.ora($0) } ?? "—" }
 
-    /// «vs ROM · 18:30» / «@ MIL · 18:30».
+    /// «vs ROM · 18:30» / «@ MIL · 18:30», senza il giorno. Resta per `RigaGiocatoreWidget` (Da controllare), dove si vede solo per
+    /// un giocatore senza avvisi; Giocatore seguito usa `formePartita(adesso:)`, con il giorno.
     var partitaBreve: String {
         guard let avversario else { return oraBreve }
         return "\(inCasa == true ? "vs" : "@") \(ColoriSquadra.sigla(avversario)) · \(oraBreve)"
@@ -558,8 +559,9 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         return "\(a) \(golCasa ?? 0), \(b) \(golTrasferta ?? 0), \(e)"
     }
 
-    /// «18:30» oggi, «domani 11:23», «ieri 20:45», «mar 3 18:30» negli altri giorni (`Quando.relativa`).
-    private static func orario(_ data: Date, adesso: Date) -> String {
+    /// «18:30» oggi, «domani 11:23», «ieri 20:45», «mar 3 18:30» negli altri giorni (`Quando.relativa`). L'unica regola per l'ora
+    /// di una partita nei widget: la usano anche Giocatore seguito e Chi gioca (`GiocatoreWidget.quandoGioca(adesso:)`).
+    static func orario(_ data: Date, adesso: Date) -> String {
         calendarioItalia.isDate(data, inSameDayAs: adesso) ? Quando.ora(data) : Quando.relativa(data, adesso: adesso)
     }
 }
@@ -1054,7 +1056,7 @@ extension GiocatoreWidget {
     /// La riga sotto il nome, dalla forma più lunga alla più corta (la vista mostra la prima che entra): l'avversario («vs ROM»,
     /// «@ MIL») e le parole; poi senza l'avversario; con il solo dubbio, alla fine «gioca 70%». L'ora non c'è: sta a destra.
     var formeChiGioca: [String] {
-        let partita = avversario.map { "\(inCasa == true ? "vs" : "@") \(ColoriSquadra.sigla($0))" }
+        let partita = controChi
         let parole = paroleChiGioca
         let testo = parole.joined(separator: " · ")
         var forme: [String] = []
@@ -1069,15 +1071,33 @@ extension GiocatoreWidget {
     /// Il rigorista da solo non è un avviso.
     var daGuardare: Bool { !descrizioneStato.isEmpty || diffidato == true }
 
-    /// Quando gioca, scritto una volta sola, come la web: «oggi 18:30», «domani 20:45», «sab 8 20:45»; «—» se non si sa.
+    /// Quando gioca, con la regola delle partite dei widget Live e Cruscotto (`PartitaLive.orario`): «18:30» se è oggi,
+    /// altrimenti anche il giorno («domani 20:45», «dom 8 20:45»); «—» se non si sa. `adesso` è l'istante della voce del
+    /// widget: a mezzanotte la voce della timeline (`VociTimeline.istanti`) cambia «domani 18:30» in «18:30».
     func quandoGioca(adesso: Date) -> String {
-        quando.map { Quando.relativa($0, adesso: adesso) } ?? "—"
+        quando.map { PartitaLive.orario($0, adesso: adesso) } ?? "—"
     }
 
-    // TODO #267: stub per il rosso dei test, si completa nel prossimo commit
-    func formePartita(adesso: Date) -> [String] { [partitaBreve] }
+    /// La partita in una riga (widget «Giocatore seguito»), dalla forma più lunga alla più corta (la vista mostra la prima che
+    /// entra, VoiceOver legge la prima): «vs ROM · domani 11:23», poi solo «domani 11:23». Senza avversario resta quando gioca,
+    /// senza data l'avversario («vs ROM»), senza niente «—».
+    func formePartita(adesso: Date) -> [String] {
+        guard quando != nil else { return [controChi ?? "—"] }
+        let ora = quandoGioca(adesso: adesso)
+        guard let controChi else { return [ora] }
+        return ["\(controChi) · \(ora)", ora]
+    }
 
-    func formeInLineaSeguito(adesso: Date) -> [String] { ["\(cognome) \(Formato.punti(puntiAttesi)) · \(partitaBreve)"] }
+    /// La riga del «Giocatore seguito» sulla schermata di blocco: «Zaviani 6,5 · vs ROM · domani 11:23» → «Zaviani 6,5 ·
+    /// domani 11:23» → «Zaviani 6,5». Cognome e punti attesi restano sempre: sono il dato del widget.
+    func formeInLineaSeguito(adesso: Date) -> [String] {
+        let testa = "\(cognome) \(Formato.punti(puntiAttesi))"
+        let partite = formePartita(adesso: adesso).filter { $0 != "—" }
+        return partite.map { "\(testa) · \($0)" } + [testa]
+    }
+
+    /// «vs ROM» in casa, «@ MIL» in trasferta; nil se l'avversario non si sa.
+    private var controChi: String? { avversario.map { "\(inCasa == true ? "vs" : "@") \(ColoriSquadra.sigla($0))" } }
 }
 
 // MARK: Widget «Formazione»: il numero accanto ai titolari

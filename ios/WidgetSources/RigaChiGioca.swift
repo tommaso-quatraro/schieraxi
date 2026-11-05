@@ -2,11 +2,12 @@ import SwiftUI
 
 /// Una riga del widget «Chi gioca»: volto e nome; sotto l'avversario e le parole di ogni avviso, in arancione solo se c'è da
 /// guardare («Diffidato», «In dubbio · gioca 70%»; «Rigorista» resta grigio): ogni colore e ogni segno ha la sua parola. A destra
-/// quando gioca, scritto una volta sola e con il giorno («oggi 18:30»). Testi e colori vengono da `GiocatoreWidget`
-/// (`formeChiGioca`, `daGuardare`, `quandoGioca`, provati in `WidgetChiGiocaTests`). Il tocco apre la scheda del giocatore.
+/// quando gioca, scritto una volta sola, con il giorno se non è oggi («18:30», «domani 18:30», come il widget Live). Testi e colori
+/// vengono da `GiocatoreWidget` (`formeChiGioca`, `daGuardare`, `quandoGioca`, provati in `WidgetChiGiocaTests` e
+/// `OrarioGiocatoriWidgetTests`). Il tocco apre la scheda del giocatore.
 struct RigaChiGioca: View {
     let g: GiocatoreWidget
-    /// L'istante della voce del widget: dice se la partita è «oggi» o «domani».
+    /// L'istante della voce del widget: dice se la partita è oggi («18:30») o un altro giorno («domani 18:30»).
     let adesso: Date
 
     var body: some View {

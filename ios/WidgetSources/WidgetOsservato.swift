@@ -3,7 +3,8 @@ import SwiftUI
 import AppIntents
 
 // Widget «Giocatore osservato»: scegli tu quale (tra i tuoi osservati e i tuoi giocatori: tieni premuto > Modifica widget > Giocatore).
-// Mostra punti attesi, fantavoto atteso (`fv_atteso`; da un server vecchio il voto in pagella atteso), la partita con l'orario e se e' in dubbio. Misure: piccolo, medio, cerchio, rettangolo, riga.
+// Mostra punti attesi, fantavoto atteso (`fv_atteso`; da un server vecchio il voto in pagella atteso), la partita con l'orario
+// (con il giorno se non è oggi, come il widget Live: `GiocatoreWidget.formePartita`) e se e' in dubbio. Misure: piccolo, medio, cerchio, rettangolo, riga.
 // L'elenco dei giocatori tra cui scegliere viene dall'ultimo riassunto salvato dal widget (si riempie al primo aggiornamento).
 
 /// Un giocatore che si puo' scegliere nelle impostazioni del widget.
@@ -159,12 +160,16 @@ struct VistaOsservato: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Text("\(g.cognome) · \(punti(g)) punti").font(.headline).lineLimit(1)
-                Text(g.partitaBreve).font(.caption).lineLimit(1)
+                TestoCheEntra(g.formePartita(adesso: voce.date)).font(.caption)
                 if let a = avviso(g) { Text(a).font(.caption2).lineLimit(1) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         case .accessoryInline:
-            Label("\(g.cognome) \(punti(g)) · \(g.partitaBreve)", systemImage: "eye")
+            // con il giorno la riga è più lunga: prima via l'avversario, poi la partita (mai «domani 1…»)
+            let forme = g.formeInLineaSeguito(adesso: voce.date)
+            PrimaCheEntra(forme.count) { i in
+                Label(forme[i], systemImage: "eye")
+            }
         default: piccolo(g)
         }
     }
@@ -182,7 +187,7 @@ struct VistaOsservato: View {
             Text(punti(g)).monospacedDigit().fontWidget(36, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                 .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
             Text("punti attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
-            Text(g.partitaBreve).font(.caption).lineLimit(1)
+            TestoCheEntra(g.formePartita(adesso: voce.date)).font(.caption)
             if let a = avviso(g) {
                 Label(a, systemImage: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
             }
@@ -205,7 +210,7 @@ struct VistaOsservato: View {
                     Text("punti attesi").font(.caption).foregroundStyle(TintaWidget.testo2)
                 }
                 if let forme = g.rigaVotoAtteso { TestoCheEntra(forme).font(.caption).monospacedDigit() }
-                Text(g.partitaBreve).font(.subheadline.weight(.semibold)).lineLimit(1)
+                TestoCheEntra(g.formePartita(adesso: voce.date)).font(.subheadline.weight(.semibold))
                 // una sola percentuale, come l'app: l'avviso del server («In dubbio · gioca 55%»), altrimenti «gioca 90%» da p_voto
                 if let riga = g.statoOGioca {
                     if avviso(g) != nil {
