@@ -41,7 +41,8 @@ struct DisposizioneWidgetTests {
     @Test("Durante le partite (o a formazione chiusa) il blocco delle partite resta in ogni prova")
     func proveCruscottoConLePartite() {
         let prove = DisposizioneWidget.proveCruscotto(partitePrima: true, dubbi: 3)
-        #expect(prove.allSatisfy(\.partite))
+        // con una chiusura, non con `\.partite`: dentro #expect il percorso come funzione fa credere che la chiamata lanci errori
+        #expect(prove.allSatisfy { $0.partite })
         #expect(prove == [
             Prova(dubbi: 3),
             Prova(compatto: true, dubbi: 3),
