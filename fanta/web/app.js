@@ -1078,7 +1078,10 @@ function quandoSalvata(s, breve = false) {
   return t("formazione.giorno_alle", { giorno: diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${d.getDate()}`, ora });
 }
 const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!", chiusa: "■" };
-function rigaStatoScelta(st, salvata) {
+// A giornata chiusa la frase dice quale formazione vale. `nonValida`: la scelta salvata non si può schierare (regola unica del
+// server: `stato_scelta: "non_valida"` di GET /api/formazione, o `formazione_non_valida` rileggendola): vale la consigliata, che è
+// anche quella mostrata.
+function rigaStatoScelta(st, salvata, nonValida = false) {
   const quando = salvata ? quandoSalvata(salvata.salvata) : "", breve = salvata ? quandoSalvata(salvata.salvata, true) : "";
   const testo = {
     consigliata: t("formazione.stato_consigliata"),
@@ -1087,7 +1090,7 @@ function rigaStatoScelta(st, salvata) {
     modificata: breve ? t("formazione.stato_modificata_quando", { quando: breve }) : t("formazione.stato_modificata"),
     mano: t("formazione.stato_mano"),
     non_valida: t("formazione.stato_non_valida"),
-    chiusa: t(salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
+    chiusa: t(nonValida ? "formazione.stato_chiusa_non_valida" : salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
   }[st];
   const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}">${t(chiave)}</button>`;
   const pulsanti = {
@@ -1203,7 +1206,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
-        ${st ? rigaStatoScelta(st, sc.salvata) : ""}
+        ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
         <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
