@@ -60,6 +60,25 @@ struct TitoloPaginaTests {
         #expect(trovati.isEmpty, "Titolo grande senza .titoloPagina(…): \(trovati)")
     }
 
+    /// Issue #276: la pagina di una squadra aveva il titolo piccolo della barra (`.inline`) con il nome della squadra, e con il
+    /// testo grande si leggeva «Gli Amici del B…». Un titolo che viene dai dati può essere lungo quanto vuole: anche con la
+    /// barra piccola passa da `.titoloPagina`, così con il testo grande il nome intero va a capo nella pagina.
+    @Test("Nessuna pagina di Lega ha nella barra un titolo preso dai dati senza «titoloPagina» (nome della squadra, #276)")
+    func titoliDaiDatiInteri() throws {
+        var trovati: [String] = []
+        for file in try Self.fileLega() {
+            let righe = try Self.righe(file)
+            for (i, riga) in righe.enumerated() {
+                guard let inizio = riga.range(of: ".navigationTitle(") else { continue }
+                // un testo scritto qui ha una lunghezza nota: lo controlla il test del titolo grande
+                if riga[inizio.upperBound...].hasPrefix("\"") { continue }
+                if Self.eccezioni.contains(where: { riga.contains($0) }) { continue }
+                trovati.append("\(file.lastPathComponent):\(i + 1)")
+            }
+        }
+        #expect(trovati.isEmpty, "Titolo preso dai dati senza .titoloPagina(…), con il testo grande si taglia: \(trovati)")
+    }
+
     @Test("Ogni pagina con «titoloPagina» mostra anche il titolo nella pagina (TitoloNellaPagina)")
     func titoloAncheNellaPagina() throws {
         var mancanti: [String] = []
