@@ -1195,7 +1195,7 @@ body { container: pagina / inline-size; }
   .testata { position: relative; flex-wrap: wrap; row-gap: 6px; padding: calc(env(safe-area-inset-top) + 8px) 8px 8px; }
   .bottoni-testata { margin-left: auto; gap: 6px; }
   .testo-testata .titolo, .testo-testata .sottotitolo, .sottotitolo > span { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
-  /* barra in basso: solo le icone, più bassa; il nome della scheda resta ai lettori di schermo (come la barra dell'iPhone con il testo enorme) */
+  /* barra in basso: solo le icone, più bassa; il nome della scheda resta ai lettori di schermo («Formazione» non ci stava in 40 px) */
   .schede { left: 6px; right: 6px; bottom: calc(env(safe-area-inset-bottom) + 6px); height: 56px; padding: 4px; }
   .lente { top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 4); }
   .schede button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -1239,6 +1239,16 @@ body { container: pagina / inline-size; }
   .linea { flex-wrap: wrap; row-gap: 14px; }
   .pedina { width: 64px; }
   .pedina .nome, .pedina .gioca { white-space: normal; overflow: visible; overflow-wrap: anywhere; max-width: 100%; }
+  /* foglio del giocatore (scheda, ⇄ confronto): volto sopra il nome, i due del confronto uno sotto l'altro */
+  .foglio-corpo { padding-left: 8px; padding-right: 8px; }
+  .intestazione-scheda { grid-template-columns: 1fr; gap: 8px; }
+  .duello { grid-template-columns: 1fr; }
+  .vs-duello { justify-self: center; }
+  .stat-fila, .stat-fila.quattro, .statistiche { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .perche-voce { grid-template-columns: 1fr; gap: 2px; }
+  .perche-effetto { justify-self: start; padding: 3px 12px; }
+  .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pallini { flex-wrap: wrap; }
   .legenda-campo { margin: 0 4px; padding: 10px; }
   .legenda-campo li { grid-template-columns: 1fr; gap: 2px; }
   .leg-esempio { justify-content: flex-start; }

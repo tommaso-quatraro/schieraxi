@@ -75,6 +75,20 @@ def test_squadra_rose_e_calendario_non_si_tagliano():
     assert re.search(r"\n\.scorri-tabella \{[^}]*overflow-x: auto", CSS)
 
 
+def test_scheda_e_confronto_del_giocatore_in_colonna():
+    """Il foglio che si apre toccando un giocatore (scheda, ⇄ confronto): a 160 px il volto grande accanto al nome spingeva il
+    nome fuori e il foglio scorreva di lato."""
+    b = _blocco(STRETTA)
+    assert "grid-template-columns: 1fr" in _regola(b, ".intestazione-scheda")
+    assert "grid-template-columns: 1fr" in _regola(b, ".duello")
+    assert "padding-left: 8px" in _regola(b, ".foglio-corpo")
+    # dentro la scheda: probabilità (segna, assist…), «Perché questo numero», prossime partite e forma andavano oltre la carta
+    assert "repeat(2, minmax(0, 1fr))" in _regola(b, ".stat-fila, .stat-fila.quattro, .statistiche")
+    assert "grid-template-columns: 1fr" in _regola(b, ".perche-voce")
+    assert "repeat(3, minmax(0, 1fr))" in _regola(b, ".prossime")
+    assert "flex-wrap: wrap" in _regola(b, ".pallini")
+
+
 def test_le_query_senza_nome_restano_dentro_i_loro_contenitori():
     """Il body è un contenitore: una @container senza nome su un elemento che non sta in .df-carta o in li.con-confronto
     risponderebbe alla larghezza della pagina. Le due che ci sono toccano solo i loro elementi."""
