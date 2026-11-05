@@ -1,13 +1,13 @@
 {
   "titolo": "Formazione più leggibile, anche con lo zoom",
   "voci": [
-    "Con lo zoom del telefono al 200% Oggi, Formazione e Squadra si dispongono in una colonna: niente più testi tagliati o da scorrere di lato. La barra in basso mostra solo le icone.",
+    "Con lo zoom del telefono al 200% Oggi, Formazione, Squadra e la scheda dei giocatori si dispongono in una colonna: niente più testi tagliati o da scorrere di lato. La barra in basso mostra solo le icone.",
     "Formazione: il numero accanto al modulo e allo stile scelti si legge meglio nel tema chiaro, e la sigla delle squadre (per esempio NAP) ha sempre la scritta ben leggibile.",
     "Con il lettore dello schermo ogni giocatore sul campo si sente con nome, fantavoto atteso, probabilità di giocare e avversario, a partire dal nome che vedi."
   ],
   "tecnico": [
     "Issue #244 (axe su Formazione a 390 e 1440 px, chiaro e scuro, c'erano già prima di #243): `.chip.attiva span, .chip.attiva i` pieni in `--capitano-testo` (prima all'80%: 4,1:1 sul lime del chiaro); `distintivo()` sceglie nero o bianco con il contrasto più alto, come `LetturaPedina.testoScuro` dell'iPhone (prima soglia fissa 0,35: Napoli 3,47:1, Sassuolo 4,38:1); le pedine prendono il nome dal contenuto (pezzi visibili `aria-hidden`, frase intera di `vocePedina` in `.solo-lettori`) al posto di un aria-label che non conteneva il testo visibile (`label-content-name-mismatch`, WCAG 2.5.3).",
-    "Issue #235 (WCAG 1.4.10): `body { container: pagina / inline-size }` e `@container pagina (max-width: 319.98px)`: conta anche il testo «Molto grande» dell'app (`zoom` sulla radice, che le @media non vedono). Testata su due righe e non fissa, barra con le sole icone (nomi per i lettori di schermo), righe dei giocatori impilate, partite su due righe, chip e campo a capo (due pedine per fila, cognome intero), legenda in colonna, sezioni di Mercato su due righe; il calendario scorre dentro un riquadro raggiungibile con la tastiera. Sopra i 320 px non cambia niente.",
+    "Issue #235 (WCAG 1.4.10): `body { container: pagina / inline-size }` e `@container pagina (max-width: 319.98px)`: conta anche il testo «Molto grande» dell'app (`zoom` sulla radice, che le @media non vedono). Testata su due righe e non fissa, barra con le sole icone (nomi per i lettori di schermo), righe dei giocatori impilate, partite su due righe, chip e campo a capo (due pedine per fila, cognome intero), legenda in colonna, sezioni di Mercato su due righe, scheda e confronto del giocatore in colonna; il calendario scorre dentro un riquadro raggiungibile con la tastiera. Sopra i 320 px non cambia niente.",
     "Test: `tests/test_accessibilita_formazione_web.py`, `tests/test_riflusso_web.py`."
   ]
 }
