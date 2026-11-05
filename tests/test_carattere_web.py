@@ -46,6 +46,14 @@ def test_il_carattere_sta_nella_scocca_offline():
     assert "/caratteri/archivo.woff2" in json.loads(re.search(r"const FILE = (\[.*?\]);", sw).group(1))
 
 
+def test_crediti_e_avvisi_citano_archivo(client):
+    for lingua in ("it", "en"):
+        pagina = client.get(f"/crediti?lingua={lingua}").text
+        assert "Archivo" in pagina and "SIL Open Font License 1.1" in pagina, lingua
+    avvisi = (RADICE / "THIRD-PARTY-NOTICES.md").read_text(encoding="utf-8")
+    assert "fanta/web/caratteri/" in avvisi
+
+
 def test_dentro_il_file_ci_sono_cifre_tabellari_lettere_e_licenza():
     """Controllo con fontTools (strumento di chi genera il file, non serve all'app: senza, il test si salta)."""
     pytest.importorskip("fontTools")
