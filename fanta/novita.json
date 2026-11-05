@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.396",
+    "data": "2026-11-05T17:57:51",
+    "titolo": "Misura interna: i consigli con una fonte di dati in meno",
+    "voci": [
+      "Nessun cambiamento visibile: una prova interna misura quanto perderebbero i consigli usando solo i voti di Fantacalcio.it, senza le statistiche avanzate dei tiri."
+    ],
+    "tecnico": [
+      "verifica --pacchetti: scenario nuovo `solo_fantacalcio` (#327, L3a e indicatore I4 di #165). Prestazioni ricostruite dai voti di Fantacalcio.it, una riga per presenza: minuti stimati da entrato e uscito (90, 71, 19, 30: medie dei minuti veri sull'archivio di sviluppo), rigori calciati = segnati + sbagliati, gol con i rigori; niente xG e xA di giocatori e squadre (forza delle squadre dai soli gol). Le prestazioni di Understat non si leggono.",
+      "Per ogni scenario che dà i gol attesi: gol attesi contro gol veri per fasce (verifica_pacchetti.gol_per_fasce, stampate da `confronto`) e nella tabella le colonne `scarto_gol` (scarto più grande nelle fasce con almeno 50 casi) e `rmse_vs_completo_pct`. Il modello (modello.py) e la verifica di default non cambiano."
+    ]
+  },
+  {
     "versione": "1.395",
     "data": "2026-11-05T17:51:35",
     "titolo": "Avvisi e Da fare: una formazione salvata che non vale più conta come non salvata",
