@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import sqlite3
 import threading
 import time
@@ -32,6 +33,7 @@ MASSIMO_GIORNATE = 12
 SIMULAZIONI = 300
 MAX_ISTANTANEE = 60
 _blocco = threading.Lock()
+LOG = logging.getLogger(__name__)
 
 
 def carica(percorso: Path | None = None) -> dict:
@@ -187,11 +189,13 @@ def numeri_giocatori(d: Dati, stagione: str, giornata: int, regole: Regole, par:
 
 def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, ids_rosa: list[int],
                      scelta: dict | None, simulazioni: int = SIMULAZIONI, automatica: dict | None = None,
-                     altri_ids=(), istantanea: dict | None = None, cambi: tuple | None = None) -> dict | None:
+                     altri_ids=(), istantanea: dict | None = None, cambi: tuple | None = None,
+                     indicatori: bool = True) -> dict | None:
     """La voce del diario di una giornata finita, o None se mancano i dati (o la rosa è troppo piccola per quella giornata).
     `altri_ids`: chi era nella consigliata di allora (istantanea) ma non è più in rosa, per i numeri per giocatore.
     `istantanea` (la consigliata mostrata) e `cambi` (C2 già contato, `indicatori_consiglio.conta_cambi`): per gli indicatori del
-    consiglio della voce (`consiglio`, vedi `_consiglio`)."""
+    consiglio della voce (`consiglio`, vedi `_consiglio`). Gli indicatori non fermano mai la voce: se il loro calcolo non riesce (o
+    `indicatori` è falso, perché non si sono potuti preparare) la voce si scrive senza `consiglio`."""
     col = COLONNA_VOTO[regole.fonte_voto]
     # partite rinviate (fuori dal turno, recuperate o no): la regola della lega per quella giornata, come prima della scadenza
     r_rinvio = rinvii.regola(regole, stagione, giornata)
@@ -238,9 +242,18 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     if voce["schierata"]:
         voce["schierata"]["tipo"] = (scelta or {}).get("tipo") or "manuale"        # «manuale» o «consigliata»; i file vecchi non hanno il campo
     voce["automatica"] = riga_di(automatica)      # la consigliata salvata dal programma prima della scadenza, se l'utente non ha scelto
-    voce["consiglio"] = _consiglio(voce, riga_di, istantanea, cambi, d, stagione, giornata, regole, (lista, gioca, fv, voto),
-                                   simulazioni)
+    if indicatori:
+        try:
+            voce["consiglio"] = _consiglio(voce, riga_di, istantanea, cambi, d, stagione, giornata, regole, (lista, gioca, fv, voto),
+                                           simulazioni)
+        except Exception as e:  # noqa: BLE001 - un di più: la voce del Diario si scrive comunque, senza gli indicatori
+            _senza_indicatori(e)
     return voce
+
+
+def _senza_indicatori(e: Exception) -> None:
+    """Nel log del server solo il tipo d'errore: il messaggio può contenere dati."""
+    LOG.warning("diario: indicatori del consiglio non calcolati (%s), la voce si scrive senza", type(e).__name__)
 
 
 def _ids(giocatori) -> list[int]:
@@ -276,16 +289,21 @@ def _consiglio(voce: dict, riga_di, istantanea: dict | None, cambi: tuple | None
 def per_il_consiglio(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, d: dict) -> dict:
     """Gli argomenti di `calcola_giornata` per gli indicatori del consiglio, dal file del diario `d`: l'istantanea della giornata e
     C2 contato sui cambi delle 24 ore prima della scadenza della lega. C2 solo se l'istantanea ha le `misure`: le istantanee
-    salvate prima di questa versione non registravano i cambi."""
-    chiave = f"{stagione}/{giornata}"
-    ist = d.get("istantanee", {}).get(chiave) if isinstance(d.get("istantanee"), dict) else None
-    ist = ist if isinstance(ist, dict) else None
-    if ist is None or not isinstance(ist.get("misure"), dict):
-        return {"istantanea": ist, "cambi": None}
-    tutti = d.get("cambi") if isinstance(d.get("cambi"), dict) else {}
-    cambi = tutti.get(chiave) if isinstance(tutti.get(chiave), list) else []
-    scadenza = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
-    return {"istantanea": ist, "cambi": ic.conta_cambi(cambi, scadenza, regole)}
+    salvate prima di questa versione non registravano i cambi. Non alza mai: se qualcosa non riesce, la voce si fa senza indicatori
+    (`indicatori` falso)."""
+    try:
+        chiave = f"{stagione}/{giornata}"
+        ist = d.get("istantanee", {}).get(chiave) if isinstance(d.get("istantanee"), dict) else None
+        ist = ist if isinstance(ist, dict) else None
+        if ist is None or not isinstance(ist.get("misure"), dict):
+            return {"istantanea": ist, "cambi": None}
+        tutti = d.get("cambi") if isinstance(d.get("cambi"), dict) else {}
+        cambi = tutti.get(chiave) if isinstance(tutti.get(chiave), list) else []
+        scadenza = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
+        return {"istantanea": ist, "cambi": ic.conta_cambi(cambi, scadenza, regole)}
+    except Exception as e:  # noqa: BLE001 - un di più: la voce del Diario si scrive comunque, senza gli indicatori
+        _senza_indicatori(e)
+        return {"indicatori": False}
 
 
 def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso: Path | None = None,
