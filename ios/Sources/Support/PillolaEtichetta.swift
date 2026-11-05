@@ -33,20 +33,32 @@ struct PillolaEtichetta: View {
             Text(etichetta.testo)
         }
         .font(.caption2.weight(.semibold))
-        .foregroundStyle(etichetta.gravita.coloreScritta)
+        .foregroundStyle(etichetta.tono.coloreScritta)
         .padding(.horizontal, 7).padding(.vertical, 2)
-        .background(etichetta.gravita.colore.opacity(Self.tinta), in: .rect(cornerRadius: raggio, style: .continuous))
+        .background(etichetta.tono.colore.opacity(Self.tinta), in: .rect(cornerRadius: raggio, style: .continuous))
     }
 }
 
-extension Etichetta.Gravita {
-    /// La scritta dentro la pillola, come la web (`--eti-*`): il grigio secondario, l'arancio e il rosso delle pillole
-    /// (`Color.attenzionePillola`, `Color.malusPillola`). Il fondo della pillola resta del colore dell'esito (`colore`).
+extension Etichetta.Tono {
+    /// Il colore dell'esito: il fondo della pillola (al `PillolaEtichetta.tinta`) e il pallino della `Capsula` nella scheda del
+    /// giocatore. Come `.etichetta` della web: verde positivo, grigio secondario, arancio, rosso (`ContrastoPilloleTests`).
+    var colore: Color {
+        switch self {
+        case .positivo: return .positivo
+        case .neutro: return .testoSecondario
+        case .attenzione: return .attenzione
+        case .negativo: return .malus
+        }
+    }
+
+    /// La scritta dentro la pillola, come la web (`--eti-*`): un filo più scura nel chiaro del colore dell'esito, così sopra la
+    /// sua tinta resta ad almeno 4,5:1.
     var coloreScritta: Color {
         switch self {
-        case .normale: return .testoSecondario
+        case .positivo: return .positivoPillola
+        case .neutro: return .testoSecondario
         case .attenzione: return .attenzionePillola
-        case .grave: return .malusPillola
+        case .negativo: return .malusPillola
         }
     }
 }

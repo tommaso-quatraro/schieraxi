@@ -159,7 +159,7 @@ struct GiocatoreCorpo: View {
         Capsula(testo: s.proprietario ?? "Svincolato", colore: s.proprietario == nil ? .orange : Color.verde)
         if let p {
             ForEach(Array(p.etichette.prefix(3).enumerated()), id: \.offset) { _, e in
-                Capsula(testo: e.testo, colore: e.gravita.colore)
+                Capsula(testo: e.testo, colore: e.tono.colore)   // «Probabile titolare» verde come la web (#242)
             }
         }
     }

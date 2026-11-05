@@ -225,7 +225,7 @@ struct DiarioView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent)
+                .pulsanteVetro(prominente: true)
                 .disabled(vm.inSalvataggio != nil)
                 .accessibilityHint("Salva come tua scelta la formazione consigliata per la giornata \(v.numero ?? g)")
             }

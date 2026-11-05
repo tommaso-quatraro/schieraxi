@@ -94,7 +94,8 @@ def test_partite_del_turno_in_una_griglia_sola():
     assert '<span class="pt">${esc(ptUff || "")}</span>' in APP and 'el.querySelector(".pt")' in APP     # vuota o col risultato ufficiale
     regola_mia = re.search(r"^\.partita\.mia \{([^}]*)\}", CSS, re.M).group(1)
     assert "padding" not in regola_mia and "box-shadow" not in regola_mia
-    assert "grid-template-columns: var(--col-ora) minmax(0, 1fr) 1.9em minmax(0, 1fr) var(--col-pt)" in CSS
+    # la colonna di «vs» è larga quanto la parola, uguale in ogni riga (issue #265: a 320 px la sigla «MON» perdeva 2 px)
+    assert "grid-template-columns: var(--col-ora) minmax(0, 1fr) auto minmax(0, 1fr) var(--col-pt)" in CSS
     assert re.search(r"^\.partita \.pt \{[^}]*text-align: right", CSS, re.M)
 
 

@@ -15,6 +15,7 @@ struct CalciatoreDemo {
     var costo: Int = 0
     var quotazione: Int = 0
     var pVoto: Double = 0.85
+    /// Il rendimento scritto a mano: da qui vengono fantavoto atteso, punti attesi, indice, quotazione, gol e assist attesi.
     var punti: Double = 5.5
     var dubbio: Bool = false
     var diffidato: Bool = false
@@ -37,6 +38,23 @@ struct CalciatoreDemo {
         if assente { return 0 }
         return dubbio || pVoto < 0.75 ? (pVoto * 100).rounded() : 90
     }
+
+    /// I punti attesi (`punti_attesi`) come li conta il server: probabilità di giocare per fantavoto atteso se gioca, a due
+    /// decimali (#246). Così le barre del confronto sommano la differenza tra due giocatori.
+    var puntiAttesi: Double { assente ? 0 : (pVoto * fvAtteso * 100).rounded() / 100 }
+
+    /// I gol attesi (`gol_attesi`) e gli assist attesi (`assist_attesi`), dal rendimento e dal ruolo.
+    var golAttesi: Double {
+        if assente { return 0 }
+        switch ruolo {
+        case "A": return punti / 15.0
+        case "C": return punti / 35.0
+        case "D": return punti / 80.0
+        default: return 0
+        }
+    }
+
+    var assistAttesi: Double { assente || ruolo == "P" ? 0 : punti / 45.0 }
 }
 
 /// Un calciatore con tutti i valori scritti a mano.
@@ -67,6 +85,8 @@ enum LegaDemo {
     static let giornata = 11
     static let giornataLega = giornata - 3
     static let creditiResidui = 12
+    /// Quanto restituisce uno svincolo, in parte del prezzo pagato (`rimborso_svincolo` delle regole della demo).
+    static let rimborsoSvincolo = 0.5
     /// La formazione della giornata è quella salvata da te (`tua_scelta` di Oggi e del widget).
     static let tuaScelta = true
 
@@ -152,11 +172,23 @@ enum LegaDemo {
         p.quotazione > 0 ? p.quotazione : 3 + Int(p.punti * 2.0) + (p.id % 5)
     }
 
+    /// Il prezzo pagato all'asta (`costo` della rosa).
+    static func costo(_ p: CalciatoreDemo) -> Int {
+        p.costo > 0 ? p.costo : 4 + p.id % 20
+    }
+
+    /// Il rimborso di uno svincolo, come il server: la quota delle regole del prezzo pagato, arrotondata come `round` di Python
+    /// (a metà si va al pari: 16,5 → 16).
+    static func rimborso(_ p: CalciatoreDemo) -> Int {
+        Int((Double(costo(p)) * rimborsoSvincolo).rounded(.toNearestOrEven))
+    }
+
     /// Chi tira i rigori nella mia rosa (il server lo ricava da `rigori_attesi`): Çalvaroğlu, che nelle partite in diretta ne segna uno.
     static let rigoristi: Set<Int> = [113]
 
-    /// I giocatori seguiti (Squadra > Seguiti), nell'ordine.
-    static let idOsservati = [203, 205, 321, 328, 214]
+    /// I giocatori seguiti (Squadra > Seguiti), nell'ordine: gli stessi nell'app e nei widget. Marténi è il primo perché la
+    /// galleria dei widget lo mostra nel widget «Giocatore seguito» (`AnteprimaWidget/DatiGalleria.swift`, #246).
+    static let idOsservati = [120, 203, 205, 321, 328, 214]
 
     /// Un seguito com'è adesso: Dobrala (328) è infortunato.
     static func osservato(_ id: Int) -> CalciatoreDemo {
@@ -178,7 +210,7 @@ enum LegaDemo {
         Modulo(nome: "3-5-2", titolari: [101, 104, 106, 107, 112, 113, 114, 115, 116, 120, 121]),
     ]
 
-    /// La panchina (7): un portiere e i sei migliori disponibili tra gli altri.
+    /// La panchina (7): un portiere e i sei migliori disponibili tra gli altri (per rendimento).
     static func panchina(per titolari: [Int]) -> [Int] {
         let fuori = miaRosa.filter { !titolari.contains($0.id) && !$0.assente }
         var scelti: [CalciatoreDemo] = []
@@ -188,8 +220,9 @@ enum LegaDemo {
         return scelti.map { $0.id }
     }
 
+    /// I punti attesi di una formazione: la somma di quelli dei titolari.
     static func punteggio(_ ids: [Int]) -> Double {
-        ids.reduce(0.0) { $0 + calciatore($1).punti }
+        ids.reduce(0.0) { $0 + calciatore($1).puntiAttesi }
     }
 
     /// La fascia dei punti attesi, come la manda il server: da circa -8 a +8,5 attorno ai punti attesi, 8 volte su 10.
@@ -210,6 +243,13 @@ enum LegaDemo {
             if i.trasferta == squadra { return (i.casa, false) }
         }
         return nil
+    }
+
+    /// Il calcio d'inizio della partita di una squadra (`data_partita`), lo stesso delle partite di Oggi; nil se non gioca.
+    static func dataPartita(di squadra: String, adesso: Date, fase: Fase = .prima) -> String? {
+        guard let i = incontri.firstIndex(where: { $0.casa == squadra || $0.trasferta == squadra }) else { return nil }
+        let ore = orari(adesso: adesso, fase: fase)
+        return i < ore.count ? formatta(ore[i], "yyyy-MM-dd HH:mm") : nil
     }
 
     /// Il calcio d'inizio cade su un quarto d'ora (18:00, 18:15...), come le partite vere: mai «18:57».
@@ -363,8 +403,9 @@ enum LegaDemo {
     /// Il miglior scambio (il primo di Scambi): con chi, chi dai, chi ricevi, quanto guadagnate tu e loro.
     static let scambioMigliore = (altra: "Real Madrink", dai: [124], ricevi: [327], mio: 2.4, loro: 1.1)
 
-    /// Il miglior svincolo (il primo dei Cambi consigliati): chi esce, chi entra, quanto guadagni e il rimborso in crediti.
-    static let svincoloMigliore = (esce: 124, entra: 203, guadagno: 3.4, rimborso: 11.0)
+    /// Il miglior svincolo (il primo dei Cambi consigliati): chi esce, chi entra, quanto guadagni. Rimborso e crediti dopo si
+    /// contano dal prezzo pagato (`rimborso`) e dalla quotazione di chi entra, come il server.
+    static let svincoloMigliore = (esce: 124, entra: 203, guadagno: 3.4)
 
     // MARK: - Partite in diretta
 
@@ -410,7 +451,6 @@ enum LegaDemo {
     /// Il riassunto dei widget (`GET /api/widget`) nella forma del server (`fanta/widget.py`), dagli stessi dati delle risposte
     /// dell'app. `parziali`: un server che non ha ancora scambio, svincolo e Diario (li elenca in `mancano`).
     static func widget(adesso: Date, fase: Fase = .prima, parziali: Bool = false) -> Data {
-        let ore = orari(adesso: adesso, fase: fase)
         let ids = moduli[0].titolari
         let attesi = punteggio(ids)
         func breve(_ p: CalciatoreDemo) -> [String: Any] { ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra] }
@@ -422,12 +462,10 @@ enum LegaDemo {
         func conPartita(_ p: CalciatoreDemo) -> [String: Any] {
             var d = breve(p)
             if let a = avversario(di: p.squadra) { d["avversario"] = a.nome; d["in_casa"] = a.inCasa }
-            if let i = incontri.firstIndex(where: { $0.casa == p.squadra || $0.trasferta == p.squadra }) {
-                d["data_partita"] = formatta(ore[i], "yyyy-MM-dd HH:mm")
-            }
+            if let data = dataPartita(di: p.squadra, adesso: adesso, fase: fase) { d["data_partita"] = data }
             d["stato"] = p.statoProbabili
             d["percentuale"] = p.percentualeProbabili
-            d["punti_attesi"] = p.assente ? 0.0 : p.punti
+            d["punti_attesi"] = p.puntiAttesi
             return d
         }
         // la rosa come il server: con «gioca N%» (`p_voto`), chi è nella formazione e chi tira i rigori, in ordine di partita
@@ -441,16 +479,19 @@ enum LegaDemo {
             d["rigorista"] = rigoristi.contains(p.id)
             return d
         }.sorted { ordine($0) < ordine($1) }
-        // i seguiti come il server: senza `p_voto` (oggi il server manda solo la percentuale delle probabili)
+        // i seguiti come il server (#226, #239): «In dubbio · gioca N%» (`dubbio`, `p_voto`) e il fantavoto atteso dell'app
         let osservati: [[String: Any]] = idOsservati.map { id -> [String: Any] in
             let p = osservato(id)
             var d = conPartita(p)
             d["voto_atteso"] = p.votoAtteso
+            d["fv_atteso"] = p.fvAtteso
+            d["p_voto"] = p.assente ? 0.0 : p.pVoto
+            d["dubbio"] = p.dubbio
             return d
         }
         let titolari: [[String: Any]] = ids.map { id -> [String: Any] in
             let p = calciatore(id)
-            return breve(p).merging(["punti_attesi": p.punti, "p_voto": p.pVoto, "fv_atteso": p.fvAtteso] as [String: Any]) { _, nuovo in nuovo }
+            return breve(p).merging(["punti_attesi": p.puntiAttesi, "p_voto": p.pVoto, "fv_atteso": p.fvAtteso] as [String: Any]) { _, nuovo in nuovo }
         }
         var formazione: [String: Any] = ["modulo": moduli[0].nome, "punti_attesi": attesi, "intervallo": fascia(attesi),
                                          "titolari": titolari, "panchina": panchina(per: ids)]

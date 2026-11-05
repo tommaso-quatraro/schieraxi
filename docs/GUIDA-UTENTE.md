@@ -92,7 +92,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il test
 
 - il nome **SchieraXI** con il motto «Schierali. Schiera gli XI.»;
 - il **conto alla rovescia** alla scadenza della formazione;
-- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata (te lo chiede solo per l'ultima giornata finita). Per un titolare in dubbio ti propone il miglior sostituto in panchina, uno diverso per ciascuno (se due sono in dubbio nello stesso ruolo, il primo sostituto va a chi rischia di più). Se la lista è vuota: «Nessuna azione utile oggi»;
+- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata (te lo chiede solo per l'ultima giornata finita). Per un titolare in dubbio ti propone un sostituto (**Sostituisci**) solo se anche la formazione consigliata lo toglie, uno diverso per ciascuno (se due sono in dubbio nello stesso ruolo, il primo sostituto va a chi rischia di più). Se la consigliata lo tiene, ti dice chi entra dalla panchina se lui non gioca: Oggi e Formazione non si contraddicono. Se la lista è vuota: «Nessuna azione utile oggi»;
 - quanto sono fresche le **probabili formazioni**; se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare;
 - la **formazione consigliata** con punti attesi e fascia (se ne hai salvata una tua, vedi la tua);
 - **Da controllare** (giocatori in dubbio, con «gioca N%»: quante probabilità hanno di giocare), **I tuoi migliori** (fantavoto atteso e «gioca N%»), **Indisponibili** e **Diffidati**;
@@ -170,7 +170,7 @@ Alcune funzioni (risultati in diretta, confronto, seguiti, elenco giocatori, Dia
 Ti scrivono quando:
 
 - la **formazione consigliata cambia**;
-- **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni;
+- **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni (solo se anche la formazione consigliata lo toglie, come in Da fare);
 - **il consiglio cambia vicino alla scadenza** (voce **Avviso se il consiglio cambia**: 30 minuti, 1 ora o 1 ora e mezza prima, oppure Spento; di base 1 ora). Se le ultime probabili o un infortunio cambiano la formazione da schierare, ti arriva il motivo in una frase, per esempio «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi)». Arriva solo se vale almeno un punto atteso, al massimo due volte per giornata, mai nelle ore tranquille. In quel periodo sostituisce gli avvisi sui cambi delle probabili dei tuoi giocatori, così la stessa notizia non arriva due volte;
 - **un'ora e un quarto d'ora prima** della scadenza della formazione (non arrivano se hai già schierato, a meno che un tuo titolare sia diventato indisponibile);
 - **reparto scoperto**: troppo pochi giocatori disponibili in un reparto;

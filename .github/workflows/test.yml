@@ -225,11 +225,14 @@ jobs:
   # perché «unisci» deve aspettarlo: prima una PR su ios/ si univa appena finivano i test Python.
   # Mai sulle PR in bozza (piano Free: pochi Mac insieme): parte quando la bozza diventa pronta (ready_for_review).
   # Una bozza non si unisce, quindi «unisci» non resta mai ad aspettare un «ios» saltato per la bozza.
+  # Se lo stesso codice iOS è già verde in un'altra corsa (a mano sul ramo, o la PR prima dell'unione) il Mac non riparte
+  # e il job risulta riuscito: lo decide il job Linux «gia-verde» di ios.yml (issue #264).
   ios:
     needs: cambi
     if: needs.cambi.outputs.ios == 'true' && !github.event.pull_request.draft
     permissions:
       contents: read
+      actions: read             # «gia-verde» legge l'elenco degli artifact «ios-verde-…»
     uses: ./.github/workflows/ios.yml
 
   # Revisione con Claude Code (.github/workflows/revisione.yml): solo PR non in bozza, dal repository stesso (mai fork), non di bot.

@@ -35,7 +35,7 @@ Oggi e «Giornata 7 di lega (Serie A 10)» sull'iPhone. Chi usa le due app non d
 | Numeri | Virgola italiana; punti con un decimale; «+1,2» e «−0,4» con il meno tipografico; 0,0 senza segno; «–» se manca | «-0,4» con il trattino |
 | Plurali | «1 tuo titolare / 3 tuoi titolari», «1 giocatore deve ancora giocare», «1 credito» | «1 giocatori», «(i)» |
 | Date e ore | Ora italiana. «oggi 20:45», «ieri 20:45», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese. Salvataggi: «oggi alle 13:09», «sab 31 alle 13:09». | «sab 8 nov, 18:30» per le partite della settimana |
-| Nomi dei giocatori | Negli elenchi come li manda il server («Rossi L.»). **Sul campo** solo il cognome, senza l'iniziale, come sull'iPhone («Rossi»): lo spazio è poco. | «Carlos Au…» tagliato per colpa dell'iniziale |
+| Nomi dei giocatori | Negli elenchi come li manda il server («Rossi L.»). **Sul campo** solo il cognome, senza l'iniziale, come sull'iPhone («Rossi»): lo spazio è poco. Il cognome è sempre intero: sulla web va a capo, sull'iPhone si rimpicciolisce un poco. | «Carlos Au…» tagliato per colpa dell'iniziale, «Zosaba Nd…» |
 | Sezioni e menu | Nomi e ordine di `VOCI_LEGA` (`fanta/web/app.js`). Squadra: Squadre e rose, Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Aggiorna le rose. Altro: Scambi, Diario delle giornate, Regole, Movimenti e storico, Crediti delle squadre, Nuova stagione, Novità. | voci in un altro ordine, voci in più su un lato solo |
 | Giocatori seguiti | Un solo nome: «**Seguiti**» (menu, scheda del mercato, avvisi). Nella scheda il pulsante «☆ Segui», che diventa «★ Seguito»; «Lo segui: ti avviso se cambia qualcosa», «Non lo segui più». In inglese «Following» / «☆ Follow». | «Osservati», «☆ Osserva», «Osservato», «Watched» |
 
@@ -83,6 +83,8 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 27 | Menu Altro | niente asta | «Asta e riparazione» | da decidere | decisione dell'utente |
 | 28 | Confronto, titolo | – | «Giornata 10» (Serie A) | «Giornata 7» | da fare (I-menu, dopo #29) |
 | 29 | Avvisi, Impostazioni, Account, Regole, Novità, Squadre e rose | – | – | da confrontare | da fare (I-confronto) |
+| 30 | Pillole dei giocatori, colore | quattro toni del server: «Probabile titolare», «Ha giocato», «Partita in corso» verdi | le stesse grigie (tre gravità, positivo come neutro) | web (`docs/DESIGN.md`, «Colori semantici») | fatto con #242 |
+| 31 | Pulsanti pieni, tema scuro | testo verde quasi nero sul verde chiaro (`--azione-testo`) | testo bianco sul verde chiaro, 1,8:1 | web (stessi due colori) | fatto con #248 |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

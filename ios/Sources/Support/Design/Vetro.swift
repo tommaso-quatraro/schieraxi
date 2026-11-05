@@ -24,13 +24,14 @@ extension View {
         }
     }
 
-    /// Pulsante di vetro (iOS 26) o con contorno (iOS 18). `prominente` per l'azione principale.
+    /// Pulsante di vetro (iOS 26) o con contorno (iOS 18). `prominente` per l'azione principale: un pulsante pieno, con la
+    /// scritta leggibile sul suo fondo (`PulsantePieno`). Ogni pulsante pieno dell'app passa da qui (`tests/test_design_web.py`).
     @ViewBuilder
     func pulsanteVetro(prominente: Bool = false) -> some View {
-        if #available(iOS 26.0, *) {
-            if prominente { self.buttonStyle(.glassProminent) } else { self.buttonStyle(.glass) }
+        if prominente {
+            modifier(PulsantePieno())
         } else {
-            if prominente { self.buttonStyle(.borderedProminent) } else { self.buttonStyle(.bordered) }
+            if #available(iOS 26.0, *) { self.buttonStyle(.glass) } else { self.buttonStyle(.bordered) }
         }
     }
 
@@ -62,6 +63,27 @@ extension View {
         } else {
             self
         }
+    }
+}
+
+/// Il pulsante pieno (l'azione principale): fondo il colore dell'app (`.glassProminent` su iOS 26, `.borderedProminent` su iOS 18).
+/// La scritta la sceglie l'app: lo stile di sistema la fa bianca anche sul verde chiaro del tema scuro (1,8:1, issue #248); qui è
+/// `Color.scrittaPulsante`, come `--azione-testo` della web. Spento, il fondo diventa grigio e la scritta il grigio dell'app
+/// (`Color.testoSecondario`): si legge ancora cosa farà il pulsante («Riprova tra 34 s»), mentre il verde quasi nero sul grigio
+/// scuro dello scuro sparirebbe. Un solo modificatore con il colore che cambia, non due rami: il pulsante resta lo stesso
+/// quando si accende (VoiceOver non perde il punto).
+private struct PulsantePieno: ViewModifier {
+    @Environment(\.isEnabled) private var attivo
+
+    func body(content: Content) -> some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                content.buttonStyle(.glassProminent)
+            } else {
+                content.buttonStyle(.borderedProminent)
+            }
+        }
+        .foregroundStyle(attivo ? Color.scrittaPulsante : Color.testoSecondario)
     }
 }
 

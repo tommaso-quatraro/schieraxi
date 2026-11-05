@@ -53,3 +53,21 @@ def test_titolare_primo_resta_consigliato(finto, monkeypatch):
 def test_tutti_e_due_titolari_o_nessuno_vale_chi_ha_piu_punti(finto, monkeypatch, pa, pb):
     _con_formazione(monkeypatch, pa, pb)
     assert consigli.confronto(None, REGOLE, 2, 1, rose=object())["consigliato"] == 1
+
+
+@pytest.mark.parametrize("titolari,atteso", [(None, 1), ({2, 7}, 2), ({1, 7}, 1), ({1, 2}, 1), ({7}, 1), (set(), 1)])
+def test_regola_unica_da_schierare(titolari, atteso):
+    """La regola di `consigliato` sta in una funzione sola, usata anche da «Da fare» (#266) per decidere se proporre un cambio:
+    `titolari` sono gli id dei titolari della formazione del sistema (None = non si sa)."""
+    sicuro, incerto = {"id": 1, "punti_attesi": 5.4}, {"id": 2, "punti_attesi": 1.3}
+    assert consigli.da_schierare(sicuro, incerto, titolari)["id"] == atteso
+    assert consigli.da_schierare(incerto, sicuro, titolari)["id"] == atteso
+
+
+def test_il_confronto_usa_la_regola_unica(finto, monkeypatch):
+    """Il confronto passa a `da_schierare` i titolari della formazione del sistema tra i due (qui solo il 2)."""
+    _con_formazione(monkeypatch, "panchina 1", "titolare")
+    visti = []
+    vera = consigli.da_schierare
+    monkeypatch.setattr(consigli, "da_schierare", lambda a, b, titolari=None: visti.append(titolari) or vera(a, b, titolari))
+    assert consigli.confronto(None, REGOLE, 1, 2, rose=object())["consigliato"] == 2 and visti == [{2}]

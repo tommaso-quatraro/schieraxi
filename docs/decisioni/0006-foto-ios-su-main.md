@@ -19,9 +19,14 @@ solo per fotografarli.
 Scelta: prima dell'unione bastano `ios / test` verde e la revisione. Le foto si fanno su `main` dopo l'unione, una corsa ogni
 60-90 minuti con le schermate chieste dalle pull request unite («Foto da fare: …»), lanciata da una sola persona. Ogni difetto
 visto diventa un'issue `P1`. Eccezione: una pull request che cambia molto l'aspetto può chiedere una corsa sul suo ramo prima
-di uscire dalla bozza, una alla volta in tutto il repository.
+di uscire dalla bozza, nella stessa fila delle altre corse di foto.
+
+Aggiornamento del 5/11/2026 (issue #264): al posto di «una corsa di foto alla volta» la fila del job `quando` ha 2 posti e
+lascia partire i Mac solo se i job Mac del repository, contando anche quelli della corsa, non passano 5. I test iOS non
+restano così dietro alle foto. I widget si fotografano solo quando servono (corsa `completo`, richiesta, o file dei widget
+cambiati). Su un Mac a parte vanno solo nelle corse lunghe (`completo`, `tutti`); nelle altre seguono l'app sullo stesso Mac.
 
 ## Conseguenze
-- Bene: le pull request iOS si uniscono appena i test sono verdi; un solo Mac per le foto.
+- Bene: le pull request iOS si uniscono appena i test sono verdi; le foto usano al massimo 2 corse insieme e lasciano Mac ai test.
 - Male: un difetto d'aspetto arriva su `main` e si corregge dopo.
 - Controlli: `screenshot.yml` non prende un Mac sulle PR senza etichetta né sulle bozze; mai merge dei rami delle PR per le foto.

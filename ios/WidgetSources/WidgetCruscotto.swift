@@ -74,7 +74,8 @@ struct VistaCruscotto: View {
                 TestoCheEntra(ParoleWidget.moduloEPunti(f.modulo, punti: f.puntiAttesi, fascia: f.intervallo?.testo))
                     .font(.caption).monospacedDigit()
                 if let p = w.partiteInGioco.first {
-                    Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)").font(.caption2).lineLimit(1)
+                    Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta(adesso: voce.date))")
+                        .font(.caption2).lineLimit(1)
                 } else if dubbi > 0 {
                     EtichettaDaControllare(n: dubbi).font(.caption2)
                 } else {
@@ -95,24 +96,18 @@ struct VistaCruscotto: View {
                 ContoWidget(inizio: w.inizio, adesso: voce.date)
                     .fontWidget(grande, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(sottoscadenza(w)).font(.caption2).foregroundStyle(w.conProbabili == false ? TintaWidget.attenzione : TintaWidget.testo2).lineLimit(1)
+                // dopo la scadenza come la web: sopra «Chiusa», sotto quando si è chiusa; se non entra resta l'avviso, mai «…»
+                TestoCheEntra(ParoleWidget.sottoScadenza(w.inizio, adesso: voce.date, conProbabili: w.conProbabili))
+                    .font(.caption2).foregroundStyle(w.conProbabili == false ? TintaWidget.attenzione : TintaWidget.testo2)
             }
         }
         .accessibilityElement(children: .combine)
     }
 
-    private func sottoscadenza(_ w: RiassuntoWidget) -> String {
-        guard let inizio = w.inizio else { return "scadenza non nota" }
-        // dopo la scadenza come la web: sopra «Chiusa», sotto quando si è chiusa
-        let quando = inizio > voce.date ? "alla scadenza, \(Quando.relativa(inizio, adesso: voce.date))"
-            : "si è chiusa \(Quando.relativa(inizio, adesso: voce.date))"
-        return w.conProbabili == false ? "probabili non uscite · \(quando)" : quando
-    }
-
-    /// Modulo e punti attesi.
-    private func formazione(_ f: FormazioneWidget, allineato: HorizontalAlignment = .trailing) -> some View {
+    /// Modulo e punti attesi; la fascia («tra 66 e 82») solo se c'è posto.
+    private func formazione(_ f: FormazioneWidget, conFascia: Bool = true) -> some View {
         Link(destination: Vai.url("formazione")) {
-            VStack(alignment: allineato, spacing: 0) {
+            VStack(alignment: .trailing, spacing: 0) {
                 TitoloBlocco(testo: "Formazione", icona: "sportscourt")
                 Text(f.modulo ?? "—").fontWidget(30, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.6)
                 HStack(spacing: 3) {
@@ -120,7 +115,7 @@ struct VistaCruscotto: View {
                         .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
                     Text("punti attesi").font(.caption2).foregroundStyle(TintaWidget.testo2)
                 }
-                if let t = f.intervallo?.testo {
+                if conFascia, let t = f.intervallo?.testo {
                     Text(t).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
                 }
             }
@@ -128,7 +123,7 @@ struct VistaCruscotto: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// I dubbi, gli infortuni e le squalifiche tra i titolari.
+    /// I dubbi, gli infortuni e le squalifiche tra i titolari. Righe staccate (6 punti): lo stato non tocca il nome sotto.
     private func dubbi(_ w: RiassuntoWidget, massimo: Int, lato: CGFloat = 24) -> some View {
         let elenco = w.daControllare
         return VStack(alignment: .leading, spacing: 3) {
@@ -140,7 +135,7 @@ struct VistaCruscotto: View {
                 Text(w.conProbabili == false ? "Le probabili non sono ancora uscite." : "Nessun dubbio in formazione.")
                     .font(.caption2).foregroundStyle(TintaWidget.testo2)
             } else {
-                RigheDaControllare(giocatori: Array(elenco.prefix(massimo)), lato: lato)
+                RigheDaControllare(giocatori: Array(elenco.prefix(massimo)), lato: lato, spazio: 6)
                 if elenco.count > massimo {
                     Text(RiassuntoWidget.altri(elenco.count - massimo)).font(.caption2).foregroundStyle(TintaWidget.testo2)
                 }
@@ -149,10 +144,10 @@ struct VistaCruscotto: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func scambioESvincolo(_ w: RiassuntoWidget) -> some View {
+    private func scambioESvincolo(_ w: RiassuntoWidget, compatto: Bool) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Link(destination: Vai.url("scambi")) { ScambioCompatto(scambio: w.scambio) }
-            Link(destination: Vai.url("mercato")) { SvincoloCompatto(svincolo: w.svincolato) }
+            Link(destination: Vai.url("scambi")) { ScambioCompatto(scambio: w.scambio, compatto: compatto) }
+            Link(destination: Vai.url("mercato")) { SvincoloCompatto(svincolo: w.svincolato, compatto: compatto) }
         }
     }
 
@@ -166,21 +161,31 @@ struct VistaCruscotto: View {
                 // «Partite in corso»: «In corso» da solo sembrava la giornata (che dopo la scadenza è «Chiusa»)
                 TitoloBlocco(testo: inGioco.isEmpty ? "Prossima partita" : "Partite in corso", icona: "soccerball")
                 ForEach(mostra) { p in
-                    RigaPartitaLive(p: p, miei: inGioco.isEmpty ? [] : w.mieiTitolari(in: p), lato: lato, compatto: true)
+                    RigaPartitaLive(p: p, miei: inGioco.isEmpty ? [] : w.mieiTitolari(in: p), adesso: voce.date, lato: lato, compatto: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    /// Durante le partite il posto di scambio e svincolo lo prende il live.
+    /// Le partite (se la prova le tiene) e, quando nessuna è in gioco, scambio e svincolo: durante le partite il loro posto lo
+    /// prende il live.
     @ViewBuilder
-    private func liveOScambio(_ w: RiassuntoWidget) -> some View {
-        if w.partiteInGioco.isEmpty {
-            live(w)
-            scambioESvincolo(w)
+    private func partiteEScambio(_ w: RiassuntoWidget, _ prova: DisposizioneWidget.ProvaCruscotto) -> some View {
+        if prova.partite { live(w) }
+        if w.partiteInGioco.isEmpty { scambioESvincolo(w, compatto: prova.compatto) }
+    }
+
+    /// In fondo il grafico «Attesi e fatti» con i crediti accanto; senza posto per il grafico, i crediti su una riga.
+    @ViewBuilder
+    private func fondo(_ w: RiassuntoWidget, _ prova: DisposizioneWidget.ProvaCruscotto, altezza: CGFloat) -> some View {
+        if prova.grafico {
+            HStack(alignment: .bottom, spacing: 12) {
+                punti(w, altezza: altezza)
+                crediti(w)
+            }
         } else {
-            live(w)
+            Link(destination: Vai.url("mercato")) { CreditiInRiga(crediti: w.creditiResidui) }
         }
     }
 
@@ -213,55 +218,62 @@ struct VistaCruscotto: View {
 
     // MARK: grande (iPhone, iPad)
 
+    /// Il widget grande è alto da circa 270 punti (iPad mini, iPhone SE) a 350 (iPhone grandi): si tiene la prima prova che entra
+    /// in altezza (`DisposizioneWidget.proveCruscotto`), così niente esce dal bordo (su iPad mancavano «Giornata 8» in alto e le
+    /// giornate del grafico in basso).
     private func alto(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                scadenza(w, grande: 30)
-                Spacer(minLength: 8)
-                formazione(f)
-            }
-            // su iPad (widget più stretto) il campo si stringe, così «In dubbio · gioca 70%» resta intero accanto al volto
-            PrimaCheEntra(2) { i in
-                HStack(alignment: .top, spacing: 10) {
-                    CampoMini(titolari: tit, lato: 20)
-                        .frame(width: i == 0 ? 150 : 116)
-                    dubbi(w, massimo: 2, lato: 22)
+        let prove = DisposizioneWidget.proveCruscotto(partitePrima: w.partiteInPrimoPiano, dubbi: 2)
+        return PrimaCheEntra(prove.count, in: .vertical) { i in
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    scadenza(w, grande: 30)
+                    Spacer(minLength: 8)
+                    formazione(f, conFascia: !prove[i].compatto)
                 }
+                // su iPad (widget più stretto) il campo si stringe, così «In dubbio · gioca 70%» resta intero accanto al volto
+                PrimaCheEntra(2) { j in
+                    HStack(alignment: .top, spacing: 10) {
+                        CampoMini(titolari: tit, lato: 20)
+                            .frame(width: j == 0 ? 150 : 116)
+                        dubbi(w, massimo: prove[i].dubbi, lato: 22)
+                    }
+                }
+                partiteEScambio(w, prove[i])
+                fondo(w, prove[i], altezza: 26)
+                PiedeDati(voce: voce)
             }
-            liveOScambio(w)
-            HStack(alignment: .bottom, spacing: 12) {
-                punti(w, altezza: 26)
-                crediti(w)
-            }
-            PiedeDati(voce: voce)
         }
     }
 
     // MARK: extra large (iPad)
 
+    /// Due colonne, ognuna con la prima prova che entra in altezza: a sinistra il campo più grande che sta sotto scadenza e
+    /// formazione, a destra le stesse prove del grande.
     private func largo(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        HStack(alignment: .top, spacing: 20) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top) {
-                    scadenza(w, grande: 34)
-                    Spacer(minLength: 8)
-                    formazione(f)
+        let lati: [CGFloat] = [40, 34, 28]
+        let prove = DisposizioneWidget.proveCruscotto(partitePrima: w.partiteInPrimoPiano, dubbi: 3)
+        return HStack(alignment: .top, spacing: 20) {
+            PrimaCheEntra(lati.count, in: .vertical) { i in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top) {
+                        scadenza(w, grande: 34)
+                        Spacer(minLength: 8)
+                        formazione(f)
+                    }
+                    CampoMini(titolari: tit, lato: lati[i], conNomi: true)
                 }
-                CampoMini(titolari: tit, lato: 40, conNomi: true)
-                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity)
-            VStack(alignment: .leading, spacing: 10) {
-                dubbi(w, massimo: 3, lato: 28)
-                liveOScambio(w)
-                HStack(alignment: .bottom, spacing: 12) {
-                    punti(w, altezza: 44)
-                    crediti(w)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            PrimaCheEntra(prove.count, in: .vertical) { i in
+                VStack(alignment: .leading, spacing: 10) {
+                    dubbi(w, massimo: prove[i].dubbi, lato: 28)
+                    partiteEScambio(w, prove[i])
+                    fondo(w, prove[i], altezza: 36)
+                    Spacer(minLength: 0)
+                    PiedeDati(voce: voce)
                 }
-                Spacer(minLength: 0)
-                PiedeDati(voce: voce)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 }
