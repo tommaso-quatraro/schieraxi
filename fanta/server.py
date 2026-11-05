@@ -868,16 +868,20 @@ def _formazione_chiusa(db, ctx: Contesto, giornata: int | None) -> JSONResponse 
 def valuta_formazione(dati: FormazioneScelta, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     """Punti attesi di una formazione scelta a mano. Con salva=true la ricorda come "la mia scelta" della giornata
     (solo prima della scadenza: dopo 409 `formazione_chiusa`; valutare senza salvare resta possibile)."""
+    # Se gli 11 sono quelli della consigliata («Salva questa») la scelta ha anche `era_consigliata`: «Da fare» poi non propone
+    # cambi (da_fare.py, #333). Qui un commento e non nella docstring, che finisce nel contratto docs/openapi.json.
     db = _db()
     try:
-        r = consigli.valuta(db, _regole(ctx), _rose(ctx), dati.titolari, dati.squadra, dati.giornata)
+        regole_, rose_ = _regole(ctx), _rose(ctx)
+        r = consigli.valuta(db, regole_, rose_, dati.titolari, dati.squadra, dati.giornata)
         if dati.salva and not dati.squadra:
             chiusa = _formazione_chiusa(db, ctx, r["giornata"])
             if chiusa is not None:
                 return chiusa
+            era = da_fare.era_consigliata(db, regole_, rose_, dati.titolari, r["giornata"])     # la consigliata è già in cache
             with versioni.blocco("scelte"):
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
-                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte)
+                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era)
                 response.headers["ETag"] = _etag_scelta(ctx, r["giornata"])
         return r
     finally:
