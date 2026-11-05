@@ -1,0 +1,13 @@
+{
+  "titolo": "Il Diario misura quanto è buono il consiglio di formazione",
+  "voci": [
+    "A ogni giornata finita il Diario confronta la formazione consigliata con una scelta semplice e con la tua, conta i cambi dell'ultimo giorno e i titolari che non giocavano.",
+    "Chi cura l'app vede le medie delle ultime 8 giornate e riceve un avviso se restano sotto la soglia per due giornate di fila."
+  ],
+  "tecnico": [
+    "#357 (L4 di #166): nuovo fanta/indicatori_consiglio.py con C1-C4 sulla consigliata mostrata (istantanea), riusando le definizioni di verifica_consiglio (e_fuori, dati_s2, valore_di_prima ora pubbliche, stessi numeri).",
+    "diario.salva_istantanea: campo istantanea.misure (C3-C4) e, quando i titolari cambiano, un cambio nel file del diario (chiave cambi, fuori dalle istantanee, al massimo 10 per giornata) con i numeri della rosa per ricalcolarne il valore a giornata finita.",
+    "Voce del Diario: campo facoltativo consiglio {mostrata, punti_consigliata, punti_s2, punti_schierata, cambi, cambi_sotto_soglia, improbabili, con_compagno, reparti, storte, spiegate, titolari, vuoti, senza_motivo}; C2 conta i cambi nelle 24 ore prima della scadenza della lega.",
+    "GET /api/stato-dati: campo facoltativo consiglio (totali di tutti i Diari, medie su 8 giornate, regge/fuori); il comando affidabilita del cron li rifà in dati/indicatori-consiglio.json e manda l'avviso al proprietario (canale della sentinella) dopo 2 giornate fuori soglia, una volta sola, con riprova al giro dopo."
+  ]
+}

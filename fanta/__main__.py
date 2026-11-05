@@ -430,6 +430,21 @@ def cmd_affidabilita(a) -> None:
               + (f", {saltati} rimandati al prossimo giro (tempo finito)" if saltati else ""))
         for uid, tipo in errori:                # solo il numero dell'utente e il tipo di errore: niente nomi né contenuti
             print(f"diario dell'utente {uid}: errore {tipo}")
+    _indicatori_consiglio()
+
+
+def _indicatori_consiglio() -> None:
+    """Dopo il Diario di tutti: i totali degli indicatori del consiglio per «Stato dei dati» e, se una media resta fuori soglia,
+    l'avviso al proprietario (`indicatori_consiglio.giro`). Un errore non ferma il comando: nel log solo il tipo."""
+    from . import indicatori_consiglio, sentinella
+    try:
+        esito = indicatori_consiglio.giro(sentinella.manda_ntfy)
+    except Exception as e:  # noqa: BLE001 - si rifà al prossimo giro del cron
+        print(f"indicatori del consiglio: non aggiornati (errore {type(e).__name__})")
+        return
+    print(f"indicatori del consiglio: {esito['giornate']} giornate"
+          + (f", fuori soglia {', '.join(esito['fuori'])}" if esito["fuori"] else "")
+          + (f", avviso mandato ({', '.join(esito['avvisato'])})" if esito["avvisato"] else ""))
 
 
 def _diario_per_utente(db, scadenza: float | None = None) -> tuple[int, int, int, list[tuple[int, str]]]:
