@@ -137,9 +137,18 @@ jobs:
             if [ "$EVENTO" = pull_request ]; then
               file=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename') || file="ios/WidgetSources/"
             else
-              # dall'ultima foto dei widget di questo ramo; su un altro ramo senza foto, da main; su main senza foto: si fanno
-              base=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=screenshot-widget&per_page=100" \
-                --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == env.RIF)][0].workflow_run.head_sha // ""') || base=""
+              # dall'ultima foto dei widget di questo ramo fatta da una corsa riuscita di questo repository (mai un fork con un
+              # ramo dallo stesso nome, mai una corsa annullata o a metà); su un altro ramo senza foto, da main; su main senza: si fanno
+              candidati=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=screenshot-widget&per_page=100" \
+                --jq '.artifacts[] | select(.expired == false and .workflow_run.head_branch == env.RIF and .workflow_run.head_repository_id == .workflow_run.repository_id) | "\(.workflow_run.id) \(.workflow_run.head_sha)"') || candidati=""
+              base=""
+              provate=0
+              while read -r corsa sha; do
+                if [ -z "$corsa" ] || [ "$provate" -ge 10 ]; then continue; fi
+                provate=$((provate + 1))
+                esito=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$corsa" --jq '.conclusion') || esito=""
+                if [ "$esito" = success ]; then base="$sha"; break; fi
+              done <<< "$candidati"
               file="ios/WidgetSources/"
               if [ -z "$base" ] && [ "$RIF" != main ]; then base=main; fi
               if [ -n "$base" ]; then
@@ -176,9 +185,25 @@ jobs:
           POSTI=2
           MAC_TOTALI=5
           while :; do
-            prima=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/screenshot.yml/runs?per_page=100" \
-              --jq "[.workflow_runs[] | select(.status != \"completed\" and .id < $QUESTA) | .id] | length") || prima=""
-            if printf '%s\n' "$prima" | grep -qxE '[0-9]+' && [ "$prima" -lt "$POSTI" ]; then
+            attendi=""
+            if ! davanti=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/screenshot.yml/runs?per_page=100" \
+              --jq "[.workflow_runs[] | select(.status != \"completed\" and .id < $QUESTA) | .id] | .[]"); then
+              attendi="l'elenco delle corse Screenshot non risponde"
+            else
+              prima=$(printf '%s\n' "$davanti" | grep -c . || true)
+              if [ "$prima" -ge "$POSTI" ]; then
+                attendi="in fila: $prima corse Screenshot prima di questa (posti: $POSTI)"
+              else
+                # I job Mac di una corsa esistono solo dopo il suo «quando»: finché una corsa di foto davanti non l'ha finito
+                # i suoi Mac non si possono contare, e due corse partite quasi insieme arriverebbero a 6 job Mac.
+                for corsa in $davanti; do
+                  q=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$corsa/jobs?per_page=100" \
+                    --jq '[.jobs[] | select(.name == "quando" and .status != "completed")] | length') || q=""
+                  if [ "$q" != 0 ]; then attendi="la corsa Screenshot $corsa davanti non ha ancora deciso i suoi Mac"; break; fi
+                done
+              fi
+            fi
+            if [ -z "$attendi" ]; then
               # job Mac non finiti nelle altre corse del repository (in corso o in coda); se una domanda fallisce si aspetta
               ok=true
               occupati=0
@@ -191,10 +216,9 @@ jobs:
                 if printf '%s\n' "$n" | grep -qxE '[0-9]+'; then occupati=$((occupati + n)); else ok=false; fi
               done
               if [ "$ok" = true ] && [ $((occupati + MAC)) -le "$MAC_TOTALI" ]; then break; fi
-              echo "$(date -u +%H:%M) job Mac occupati: $occupati (conteggio riuscito: $ok), ne servono $MAC, al massimo $MAC_TOTALI"
-            else
-              echo "$(date -u +%H:%M) in fila: ${prima:-?} corse Screenshot prima di questa (posti: $POSTI)"
+              attendi="job Mac occupati: $occupati (conteggio riuscito: $ok), ne servono $MAC, al massimo $MAC_TOTALI"
             fi
+            echo "$(date -u +%H:%M) $attendi"
             sleep 90
           done
           echo "Tocca a questa corsa"
@@ -232,7 +256,7 @@ jobs:
         run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
       # Widget nello stesso job, dopo l'app e sullo stesso simulatore già acceso: corse veloci e collaudo (uscite del job «quando»)
       - name: Compila l'anteprima dei widget per il simulatore (senza firma)
-        if: always() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true'
+        if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
         run: |
           set +e
           xcodebuild -project Schieraxi.xcodeproj -scheme AnteprimaWidget -configuration Debug \
@@ -241,7 +265,7 @@ jobs:
             > build-widget.log 2>&1 || { grep -E "error:" build-widget.log | sort -u | head -30; exit 1; }
           test -d build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app
       - name: Scatta le fotografie dei widget
-        if: always() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true'
+        if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
         run: bash scripts/screenshot_widget.sh build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app screenshot-widget
       # i percorsi di upload-artifact partono dalla radice del repository, non da working-directory
       - name: Carica le fotografie dell'app
@@ -253,7 +277,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       - name: Carica le fotografie dei widget
-        if: always() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true'
+        if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: screenshot-widget
@@ -314,7 +338,7 @@ jobs:
       - name: Scatta le fotografie dei widget
         run: bash scripts/screenshot_widget.sh build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app screenshot-widget
       - name: Carica le fotografie dei widget
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: screenshot-widget

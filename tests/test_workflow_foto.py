@@ -79,7 +79,7 @@ def test_app_e_widget_in_due_job_mac_che_partono_insieme_solo_nelle_corse_lunghe
                  "Carica le fotografie dei widget"):
         passo = _passo(app, nome)
         assert stesso in passo, nome
-    assert "always()" in _passo(app, "Scatta le fotografie dei widget")     # come prima: anche se le foto dell'app falliscono
+    assert "!cancelled()" in _passo(app, "Scatta le fotografie dei widget")  # anche se le foto dell'app falliscono, non se annullata
     assert app.index("Scatta le fotografie dell'app") < app.index("Scatta le fotografie dei widget")
 
 
@@ -129,16 +129,21 @@ gh() {
   [ "${GH_ROTTO:-}" = 1 ] && return 1
   case "$*" in
     *pulls/*/files*) printf '%s\n' "$FILE_PR" ;;
-    *artifacts?name=screenshot-widget*) printf '%s\n' "$BASE" ;;
+    *artifacts?name=screenshot-widget*) printf '%s\n' "$BASE" ;;           # righe «<corsa> <commit>», già filtrate da jq
     *compare/*) printf '%s\n' "$FILE_CONFRONTO" ;;
     *workflows/screenshot.yml/runs*)
-      # la k-esima domanda riceve il k-esimo valore di PRIMA (poi sempre l'ultimo)
+      # corse di foto davanti, non finite: la k-esima domanda riceve il k-esimo gruppo di PRIMA («400,401», «-» = nessuna)
       k=$(grep -c 'screenshot.yml/runs' "$CHIAMATE"); v=$(printf '%s\n' $PRIMA | sed -n "${k}p")
       [ -n "$v" ] || v=$(printf '%s\n' $PRIMA | tail -n 1)
-      echo "$v" ;;
+      [ "$v" = - ] || printf '%s\n' "$v" | tr ',' '\n' ;;
     *status=queued*) printf '%s\n' $IN_CODA ;;
     *status=in_progress*) printf '%s\n' $IN_CORSO ;;
-    *actions/runs/*/jobs*) tutto="$*"; corsa=${tutto#*actions/runs/}; corsa=${corsa%%/*}; v="MAC_$corsa"; echo "${!v:-0}" ;;
+    *actions/runs/*/jobs*)
+      tutto="$*"; corsa=${tutto#*actions/runs/}; corsa=${corsa%%/*}
+      # «quando» non finito della corsa (QUANDO_<id>, 0 se manca) oppure i suoi job Mac non finiti (MAC_<id>)
+      case "$tutto" in *quando*) v="QUANDO_$corsa" ;; *) v="MAC_$corsa" ;; esac
+      echo "${!v:-0}" ;;
+    *actions/runs/*) tutto="$*"; corsa=${tutto#*actions/runs/}; corsa=${corsa%% *}; v="ESITO_$corsa"; echo "${!v:-}" ;;
     *) echo "gh finto: chiamata inattesa $*" >&2; return 1 ;;
   esac
 }
@@ -187,14 +192,39 @@ def test_widget_secondo_la_richiesta(tmp_path, env, atteso):
     assert "compare" not in chiamate
 
 
+BASE_OK = "300 " + "b" * 40          # artifact della corsa 300, riuscita (ESITO_300=success)
+
+
 @serve_bash
 def test_widget_su_main_solo_se_sono_cambiati_i_loro_file_dall_ultima_foto_dei_widget(tmp_path):
     base = "b" * 40
-    usciti, chiamate = _widget(tmp_path, BASE=base, FILE_CONFRONTO="ios/Sources/Views/OggiView.swift\nfanta/web/app.js")
+    usciti, chiamate = _widget(tmp_path, BASE=BASE_OK, ESITO_300="success",
+                               FILE_CONFRONTO="ios/Sources/Views/OggiView.swift\nfanta/web/app.js")
     assert usciti["widget"] == "false" and usciti["mac"] == "1"
     assert f"compare/{base}...{'c' * 40}" in chiamate
-    usciti, _ = _widget(tmp_path, BASE=base, FILE_CONFRONTO="ios/Sources/Views/OggiView.swift\nios/WidgetSources/Cruscotto.swift")
+    usciti, _ = _widget(tmp_path, BASE=BASE_OK, ESITO_300="success",
+                        FILE_CONFRONTO="ios/Sources/Views/OggiView.swift\nios/WidgetSources/Cruscotto.swift")
     assert usciti["widget"] == "true" and usciti["parallelo"] == "false" and usciti["mac"] == "1"   # veloce: stesso Mac
+
+
+def test_la_base_dei_widget_viene_solo_da_corse_di_questo_repository():
+    # una PR da un fork con un ramo che si chiama «main» non deve far saltare le foto dei widget di main
+    passo = _passo(_job("quando"), "Servono le foto dei widget?")
+    assert ".workflow_run.head_repository_id == .workflow_run.repository_id" in passo
+    assert ".expired == false" in passo and ".workflow_run.head_branch == env.RIF" in passo
+
+
+@serve_bash
+def test_la_base_dei_widget_salta_le_corse_annullate_o_fallite(tmp_path):
+    # la foto più recente viene da una corsa annullata (a metà) e quella prima da una fallita: conta la prima riuscita
+    candidati = "\n".join(["301 " + "a" * 40, "302 " + "d" * 40, BASE_OK])
+    usciti, chiamate = _widget(tmp_path, BASE=candidati, ESITO_301="cancelled", ESITO_302="failure", ESITO_300="success",
+                               FILE_CONFRONTO="ios/Sources/Views/OggiView.swift")
+    assert f"compare/{'b' * 40}...{'c' * 40}" in chiamate
+    assert usciti["widget"] == "false"
+    # nessuna corsa riuscita: su main le foto dei widget si fanno, senza confronto
+    usciti, chiamate = _widget(tmp_path, BASE="301 " + "a" * 40, ESITO_301="cancelled")
+    assert usciti["widget"] == "true" and "compare" not in chiamate
 
 
 @serve_bash
@@ -205,7 +235,8 @@ def test_widget_su_un_ramo_senza_foto_dei_widget_si_confronta_con_main(tmp_path)
 
 
 @serve_bash
-@pytest.mark.parametrize("env", [dict(), dict(GH_ROTTO="1"), dict(BASE="b" * 40, FILE_CONFRONTO="\n".join(f"f{i}" for i in range(300)))])
+@pytest.mark.parametrize("env", [dict(), dict(GH_ROTTO="1"),
+                                 dict(BASE=BASE_OK, ESITO_300="success", FILE_CONFRONTO="\n".join(f"f{i}" for i in range(300)))])
 def test_widget_se_non_si_sa_si_fanno(tmp_path, env):
     # su main senza foto dei widget precedenti, API che non risponde, confronto troppo lungo: meglio un Mac in più che un buco
     usciti, _ = _widget(tmp_path, **env)
@@ -220,7 +251,6 @@ def test_widget_nelle_pr_con_l_etichetta_guardano_i_file_della_pr(tmp_path):
     assert usciti["widget"] == "true"
 
 
-@serve_bash
 @serve_bash
 @pytest.mark.parametrize("env, parallelo, mac", [
     (dict(SCATTI="veloce", RICHIESTA="si"), "false", "1"),                       # widget dopo l'app, stesso Mac
@@ -240,23 +270,36 @@ def test_mac_che_servono_alla_corsa(tmp_path, env, parallelo, mac):
 
 def _fila(tmp_path, **env):
     passo = _passo(_job("quando"), "In fila, al massimo 2 corse di foto e mai più di 5 job Mac")
-    base = dict(QUESTA="500", MAC="2", PRIMA="0", IN_CODA="", IN_CORSO="")
+    base = dict(QUESTA="500", MAC="2", PRIMA="-", IN_CODA="", IN_CORSO="")
     base.update(env)
     return _esegui(tmp_path, _comandi(passo), **base)
 
 
 @serve_bash
 def test_fila_parte_subito_con_posto_e_mac_liberi(tmp_path):
-    _, chiamate, testo, codice = _fila(tmp_path, PRIMA="1", IN_CORSO="400 500", MAC_400="3", MAC_500="9")
+    _, chiamate, testo, codice = _fila(tmp_path, PRIMA="400", IN_CORSO="400 500", MAC_400="3", MAC_500="9")
     assert codice == 0 and "Tocca a questa corsa" in testo
     assert "runs/500/jobs" not in chiamate          # i job di questa corsa non contano
 
 
 @serve_bash
 def test_fila_aspetta_se_ci_sono_gia_due_corse_di_foto(tmp_path):
-    _, chiamate, testo, codice = _fila(tmp_path, PRIMA="2 2 1")
+    _, chiamate, testo, codice = _fila(tmp_path, PRIMA="400,401 400,401 401")
     assert codice == 0 and "Tocca a questa corsa" in testo
     assert chiamate.count("sleep") == 2
+
+
+@serve_bash
+def test_fila_aspetta_che_la_corsa_davanti_abbia_deciso_i_suoi_mac(tmp_path):
+    # i job Mac di una corsa esistono solo dopo il suo «quando»: contarli prima farebbe partire due corse con 6 job Mac
+    _, chiamate, testo, codice = _fila(tmp_path, PRIMA="400", QUANDO_400="1")
+    assert codice == 7 and "Tocca a questa corsa" not in testo
+    assert "status=in_progress" not in chiamate     # non si contano i Mac finché la corsa davanti non ha deciso
+    _, _, testo, codice = _fila(tmp_path, PRIMA="400", QUANDO_400="0", IN_CORSO="400", MAC_400="2")
+    assert codice == 0 and "Tocca a questa corsa" in testo
+    # appena decisi, i suoi 2 Mac contano: con 2 iOS in corso (4) + 2 di questa corsa = 6, si aspetta
+    _, _, testo, codice = _fila(tmp_path, PRIMA="400", IN_CORSO="400 401", MAC_400="2", MAC_401="2")
+    assert codice == 7 and "Tocca a questa corsa" not in testo
 
 
 @serve_bash
@@ -272,6 +315,19 @@ def test_fila_aspetta_se_i_mac_liberi_non_bastano(tmp_path):
 def test_fila_se_gh_non_risponde_aspetta(tmp_path):
     _, _, testo, codice = _fila(tmp_path, GH_ROTTO="1")
     assert codice == 7 and "Tocca a questa corsa" not in testo
+
+
+def test_una_corsa_annullata_non_fa_le_foto_dei_widget():
+    # always() vale anche quando la corsa è annullata: si facevano lo stesso circa 20 minuti di foto dei widget
+    for job in ("screenshot", "widget"):
+        blocco = _job(job)
+        for passo in re.split(r"(?m)^      - ", blocco)[1:]:
+            if "AnteprimaWidget" in passo or "screenshot_widget.sh" in passo or "screenshot-widget" in passo:
+                assert "always()" not in passo, (job, passo.splitlines()[0])
+    for nome in ("Compila l'anteprima dei widget per il simulatore (senza firma)", "Scatta le fotografie dei widget",
+                 "Carica le fotografie dei widget"):
+        assert "!cancelled()" in _passo(_job("screenshot"), nome), nome
+    assert "!cancelled()" in _passo(_job("widget"), "Carica le fotografie dei widget")
 
 
 def test_i_comandi_del_job_quando_non_hanno_espressioni():
