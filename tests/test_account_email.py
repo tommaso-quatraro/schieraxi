@@ -331,15 +331,23 @@ def test_tempi_simili_con_email_esistente_o_no(web, posta_finta):
 
 
 def test_la_posta_parte_in_un_thread_a_parte(monkeypatch):
-    """Il tempo di invio (SMTP lento) non deve cambiare il tempo di risposta: `invia` torna subito."""
+    """Il tempo di invio (SMTP lento) non deve cambiare il tempo di risposta: `invia` torna PRIMA che l'invio finisca.
+    Niente cronometro: sul PC carico anche solo avviare un thread ha preso fino a 3 secondi (misurato il 5/11/2026), e la
+    vecchia soglia di mezzo secondo dava falsi errori. Qui l'invio resta fermo finché il test non lo lascia andare."""
     import threading
     monkeypatch.setattr(posta, "IN_BACKGROUND", True)
-    fermo = threading.Event()
-    monkeypatch.setattr(posta, "_invia_ora", lambda m: fermo.wait(5))
-    t = time.perf_counter()
-    assert posta.invia(posta.Messaggio("a@example.com", "x", "y"))
-    assert time.perf_counter() - t < 0.5
-    fermo.set()
+    via, finito = threading.Event(), threading.Event()
+
+    def invio_lento(m):
+        via.wait(30)                                   # largo: se `invia` aspettasse l'invio, il test fallirebbe dopo 30 s
+        finito.set()
+    monkeypatch.setattr(posta, "_invia_ora", invio_lento)
+    try:
+        assert posta.invia(posta.Messaggio("a@example.com", "x", "y"))
+        assert not finito.is_set()                     # `invia` è tornata con l'invio ancora fermo: non lo aspetta
+    finally:
+        via.set()
+    assert finito.wait(30)                             # e il messaggio parte davvero, nel suo thread
 
 
 # ---------------------------------------------------------------- avviso di accesso da un dispositivo nuovo
