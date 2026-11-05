@@ -20,6 +20,7 @@ def _senza_pianificatore(monkeypatch):
     """Nei test il pianificatore (aggiornamenti schedulati dentro il servizio) resta spento: niente rete per sbaglio."""
     monkeypatch.setenv("FANTA_PIANIFICATORE", "0")
     monkeypatch.setenv("FANTA_COPIA_SCADENZA", "0")          # e niente copie alla scadenza nei file veri della lega
+    monkeypatch.setenv("FANTA_REGISTRO_GIORNATE", "0")       # né registro delle giornate (lo accendono le sue prove)
 
 
 @pytest.fixture(autouse=True)
