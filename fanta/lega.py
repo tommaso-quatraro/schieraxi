@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from collections import Counter
 from dataclasses import asdict, dataclass, field, fields
@@ -150,11 +151,21 @@ def carica(percorso: Path) -> Rose | None:
 _CAMPI_GIOCATORE = {f.name for f in fields(GiocatoreRosa)}
 FORMA_SBAGLIATA = ("Il file rose.json non ha la forma giusta: ripristina la copia rose.json.bak o un backup, "
                    "oppure importa di nuovo le rose")
+_STAGIONE = re.compile(r"[0-9]{4}-[0-9]{2}")       # «2026-27», come aggiorna.Stagione.codice
+
+
+def stagione_valida(testo: object) -> bool:
+    """Vero solo per un nome di stagione come «2026-27». Serve anche come nome della cartella dell'archivio (stagione.py)."""
+    return isinstance(testo, str) and _STAGIONE.fullmatch(testo) is not None
 
 
 def da_dict(dati: dict) -> Rose:
     """Le rose dal loro formato su file (usato anche per controllare un backup prima di ripristinarlo).
-    I campi in più (scritti da una versione più nuova dell'app) si ignorano; una forma sbagliata dà un messaggio chiaro."""
+    I campi in più (scritti da una versione più nuova dell'app) si ignorano; una forma sbagliata dà un messaggio chiaro.
+    `stagione` può mancare (rose di prima) ma, se c'è, è un nome di stagione come «2026-27»."""
+    stagione = dati.get("stagione") if isinstance(dati, dict) else None
+    if stagione not in (None, "") and not stagione_valida(stagione):
+        raise ValueError(FORMA_SBAGLIATA)
     try:
         return Rose(
             squadre=[Squadra(s["nome"], [GiocatoreRosa(**{k: v for k, v in g.items() if k in _CAMPI_GIOCATORE})
@@ -162,7 +173,7 @@ def da_dict(dati: dict) -> Rose:
                      for s in dati["squadre"]],
             mia_squadra=dati.get("mia_squadra"),
             aggiornato=dati.get("aggiornato", ""),
-            stagione=dati.get("stagione", ""),
+            stagione=stagione or "",
         )
     except (KeyError, TypeError, AttributeError):
         raise ValueError(FORMA_SBAGLIATA) from None

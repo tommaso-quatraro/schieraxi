@@ -54,6 +54,9 @@ def test_ripristino_tiene_la_copia_dello_stato_di_prima(radice):
     {"formato": backup.FORMATO, "versione": 1, "file": {"dati/osservati.json": [float("inf")]}},     # «Infinity» o 1e999 nel JSON: era un errore 500
     {"formato": backup.FORMATO, "versione": 1, "file": {"lega/regole.json": {"moduli": ["3-4-4"]}}},
     {"formato": backup.FORMATO, "versione": 1, "file": {"lega/rose.json": {"squadre": [{"giocatori": []}]}}},
+    {"formato": backup.FORMATO, "versione": 1, "file": {"lega/rose.json": {"squadre": [], "stagione": "../../altro"}}},
+    {"formato": backup.FORMATO, "versione": 1, "file": {"lega/rose.json": {"squadre": [], "stagione": "/tmp/altro"}}},
+    {"formato": backup.FORMATO, "versione": 1, "file": {"lega/rose.json": {"squadre": [], "stagione": "2026"}}},
 ])
 def test_un_backup_sbagliato_non_cambia_niente(radice, brutto):
     prima = backup.crea(radice)
@@ -82,6 +85,20 @@ def test_indirizzi_del_server(radice, monkeypatch):
     assert json.loads((radice / "dati" / "osservati.json").read_text()) == [5, 7]
     assert client.post("/api/backup/ripristina", json={"formato": "x"}).status_code == 400
     assert TestClient(server.app).post("/api/backup/ripristina", json=b).status_code == 403
+
+
+def test_il_ripristino_rifiuta_rose_con_una_stagione_strana(radice, monkeypatch):
+    from fanta import archivio
+    monkeypatch.setattr(server, "RADICE", radice)
+    monkeypatch.setattr(server, "_db", lambda: archivio.apri(radice / "archivio-finto" / "fanta.sqlite"))
+    client = TestClient(server.app, headers={"X-Fanta": "1"})
+    b = client.get("/api/backup").json()
+    prima = backup.crea(radice)["file"]
+    b["file"]["lega/rose.json"]["stagione"] = "../../altro"
+    b["file"]["dati/osservati.json"] = [1, 2, 3]
+    r = client.post("/api/backup/ripristina", json=b)
+    assert r.status_code == 400 and r.json()["detail"] == "lega/rose.json non è valido: controlla di aver scelto il file di backup giusto"
+    assert backup.crea(radice)["file"] == prima and not (radice / backup.COPIA_PRIMA).exists()
 
 
 def test_nome_del_file_e_formato():
