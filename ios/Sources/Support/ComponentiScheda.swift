@@ -30,15 +30,25 @@ struct PillDifficolta: View {
         }
     }
 
+    /// La scritta della pillola, quella che si vede.
+    static func testo(_ d: Double?, conPartita: Bool) -> String {
+        conPartita ? "Partita " + nome(d).lowercased() : nome(d)
+    }
+
+    /// Quello che legge VoiceOver.
+    static func etichettaVoceOver(_ d: Double?, conPartita: Bool) -> String {
+        "Partita: \(Formato.difficolta(d))"
+    }
+
     var body: some View {
         HStack(spacing: 5) {
             Circle().fill(Color.difficolta(difficolta)).frame(width: 9, height: 9)
-            Text(conPartita ? "Partita " + Self.nome(difficolta).lowercased() : Self.nome(difficolta)).font(.caption.weight(.semibold))
+            Text(Self.testo(difficolta, conPartita: conPartita)).font(.caption.weight(.semibold))
         }
         .padding(.horizontal, 8).padding(.vertical, 3)
         .background(Color.primary.opacity(0.08), in: Capsule())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Partita: \(Formato.difficolta(difficolta))")
+        .accessibilityLabel(Self.etichettaVoceOver(difficolta, conPartita: conPartita))
     }
 }
 
