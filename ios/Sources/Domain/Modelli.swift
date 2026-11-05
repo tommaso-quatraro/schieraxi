@@ -62,6 +62,19 @@ struct Giocatore: Decodable, Identifiable {
     private let percheNumero: Tollerante<[Tollerante<MotivoNumero>]>?
     /// Il fantavoto atteso del giocatore medio del suo ruolo (il riferimento dei motivi). Facoltativo.
     private let fvAttesoMedioRuolo: Tollerante<Double>?
+    /// A giornata iniziata, il fantavoto preso con le regole della lega (`stato_partita` `fatto`; server dal 2/11/2026). Facoltativo.
+    private let fvPreso: Tollerante<Double>?
+    /// Il modo del rinvio se la sua partita è rinviata (`aspetta`, `senza_voto`, `voto_ufficio`), assente se si gioca. Facoltativo.
+    private let rinvio: Tollerante<String>?
+
+    /// Il fantavoto preso, se il server lo manda ed è un numero vero.
+    var fantavotoPreso: Double? {
+        guard let v = fvPreso?.valore, v.isFinite else { return nil }
+        return v
+    }
+
+    /// Il modo del rinvio della sua partita (`rinvio` del server); nil se la partita si gioca o il server non lo dice.
+    var modoRinvio: String? { rinvio?.valore }
 
     /// I motivi del fantavoto atteso, dal più pesante; nil se il server non li manda (server vecchio), vuoto se nessuno spicca.
     var motiviNumero: [MotivoNumero]? {
@@ -518,7 +531,19 @@ struct OpzioneModulo: Decodable, Identifiable {
     let panchina: [Int]
     /// La fascia dei punti (8 volte su 10). Facoltativa (server vecchio).
     let intervallo: IntervalloPunti?
+    /// Il perché delle scelte che sembrano storte, una riga per titolare (#356). Facoltativo (server vecchio).
+    let percheScelta: [PercheScelta]?
     var id: String { modulo }
+}
+
+/// Una riga del perché della scelta (`perche_scelta` del modulo, `fanta/perche_scelta.py`): un titolare con meno punti attesi di
+/// un escluso dello stesso ruolo (o incerto con la riserva sicura) e il motivo, già scritto dal server. Campi facoltativi: una riga
+/// incompleta si salta, non fa fallire la Formazione.
+struct PercheScelta: Decodable {
+    let titolare: Int?
+    /// Il giocatore che la riga nomina (l'escluso o la riserva).
+    let altro: Int?
+    let testo: String?
 }
 
 struct LivelloRischio: Decodable, Identifiable {

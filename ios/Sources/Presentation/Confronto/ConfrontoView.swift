@@ -72,10 +72,8 @@ struct ConfrontoView: View {
         }
     }
 
-    private func valore(_ f: FattoreConfronto, _ v: Double?) -> String {
-        guard let v else { return "–" }
-        return f.percentuale == true ? "\(Formato.percento(v))%" : Formato.decimali(v, cifre: 2)
-    }
+    /// Con il meno tipografico, come la web (`Confronto.valoreFattore`).
+    private func valore(_ f: FattoreConfronto, _ v: Double?) -> String { Confronto.valoreFattore(f, v) }
 
     private func fattore(_ f: FattoreConfronto, _ c: Confronto, _ x: Giocatore, _ y: Giocatore) -> some View {
         let verso = Confronto.verso(f.effetto)

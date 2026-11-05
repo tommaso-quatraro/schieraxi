@@ -60,12 +60,22 @@ final class SceltaDallaRosaViewModel: ViewModelBase {
         }
     }
 
-    /// Titolare, panchina o fuori nella formazione consigliata.
+    /// Il posto in formazione a parole, come `testoPosto` della web: «Titolare», «Panchina 2», «Non schierato» (codici `titolare`,
+    /// `panchina N`, `fuori`, gli stessi di `posto_a` e `posto_b` del confronto). Mai le parole della titolarità («Fuori»): un
+    /// giocatore al 2% può essere titolare nella tua formazione e «Improbabile» per le probabili (#281). Un codice ignoto: niente.
+    nonisolated static func testoPosto(_ codice: String) -> String {
+        let panchina = "panchina "
+        if codice == "titolare" { return "Titolare" }
+        if codice.hasPrefix(panchina), let n = Int(codice.dropFirst(panchina.count)) { return "Panchina \(n)" }
+        return codice == "fuori" ? "Non schierato" : ""
+    }
+
+    /// Titolare, panchina o non schierato nella formazione consigliata.
     func posto(_ idGiocatore: Int) -> String {
         guard let f = formazione.dato else { return "" }
-        if f.titolari.contains(where: { $0.id == idGiocatore }) { return "Titolare" }
-        if let k = f.panchina.firstIndex(where: { $0.id == idGiocatore }) { return "Panchina \(k + 1)" }
-        return "Fuori"
+        if f.titolari.contains(where: { $0.id == idGiocatore }) { return Self.testoPosto("titolare") }
+        if let k = f.panchina.firstIndex(where: { $0.id == idGiocatore }) { return Self.testoPosto("panchina \(k + 1)") }
+        return Self.testoPosto("fuori")
     }
 }
 

@@ -1,5 +1,54 @@
 [
   {
+    "versione": "1.409",
+    "data": "2026-11-05T23:03:02",
+    "titolo": "Da fare: niente cambi se hai salvato la consigliata",
+    "voci": [
+      "Se hai salvato la formazione consigliata, Da fare non ti propone più di sostituire i titolari: la consigliata è già la scelta migliore.",
+      "Se poi la consigliata cambia, Da fare lo dice in una riga sola con chi entra e chi esce (urgente se un tuo titolare è infortunato o squalificato). La tua formazione resta com'è finché non la cambi tu.",
+      "Con una formazione fatta a mano non cambia niente: i cambi rispetto alla consigliata restano."
+    ],
+    "tecnico": [
+      "Issue #333, sotto #167. POST /api/formazione/valuta con salva=true scrive nella scelta il campo facoltativo era_consigliata: true se gli 11 titolari sono quelli della consigliata che l'ultimo GET /api/formazione ha mostrato (istantanea del Diario: vale anche se i dati si aggiornano mentre guardi) o di consigli.formazione per quella giornata (già in cache). Funzione da_fare.era_consigliata; se il confronto non riesce scrive un avviso nel log con il tipo d'errore. Il tipo resta «manuale»: Diario e client di prima non cambiano.",
+      "da_fare._titolari sostituisce _dubbi in costruisci: scelta valida con era_consigliata o tipo «consigliata» e consigliata di adesso con gli stessi titolari → solo le voci di _dubbi senza «alternativa»; titolari diversi → una voce tipo «formazione», id consigliata:<giornata>, priorità 2 (1 se fra chi esce c'è un infortunato o uno squalificato, con il perché: chiavi dafare.consigliata_cambiata_fuori*, dafare.fuori_*), azione «Apri la formazione», campi facoltativi entrano/escono [{id, nome}] (chiavi dafare.consigliata_cambiata, con i nomi fino a 3 cambi, e dafare.consigliata_cambiata_molti). Formazione a mano o senza scelta: _dubbi come prima.",
+      "_dubbi non cambia: l'avviso «cambio pronto» (notifiche._cambi_pronti) resta com'era. Web e iPhone mostrano la voce senza modifiche (tipo già noto)."
+    ],
+    "titolo_en": "To do: no changes if you saved the recommended lineup",
+    "voci_en": [
+      "If you saved the recommended lineup, To do no longer suggests replacing your starters: the recommended lineup is already the best choice.",
+      "If the recommended lineup then changes, To do says so in a single line with who comes in and who goes out (urgent if one of your starters is injured or suspended). Your lineup stays as it is until you change it.",
+      "With a lineup you made by hand nothing changes: the changes compared with the recommended lineup are still suggested."
+    ]
+  },
+  {
+    "versione": "1.408",
+    "data": "2026-11-05T22:56:10",
+    "titolo": "Formazione consigliata: chi ha già giocato l'anticipo resta al suo posto",
+    "voci": [
+      "Se una partita si gioca in anticipo e la formazione è ancora aperta, dopo il fischio d'inizio i suoi giocatori restano dove li metteva la consigliata: titolari, allo stesso posto in panchina o fuori.",
+      "Nella lega non si possono più spostare; gli altri giocatori la consigliata li cambia come sempre."
+    ],
+    "tecnico": [
+      "Issue #368 (L5 di #166). `consigli.stabile` riceve `iniziate` (squadre con un anticipo già cominciato, `fasi.squadre_in_anticipo_iniziato` con l'orario, senza la diretta) e, se la migliore sposta uno di loro, confronta la consigliata di prima con la migliore che li lascia dove sono (`consigli.Fermi`, `_calcola_formazione(..., fermi)`): ogni modulo e ogni stile. Panchina: quella di sempre fra chi si può spostare, nei posti che restano, con chi è fermo al suo posto.",
+      "`formazione.migliore` ha due parametri facoltativi, `fissi` e `scegli_panchina` (e `_senza_improbabili` ha `fissi`): senza di loro il calcolo è identico (verifica e verifica --consiglio invariate). Vale solo con una consigliata già mostrata e prima della scadenza. Test: tests/test_anticipi_consigliata.py."
+    ]
+  },
+  {
+    "versione": "1.407",
+    "data": "2026-11-05T22:49:19",
+    "titolo": "Formazione: il perché delle scelte che sembrano strane, sotto il campo",
+    "voci": [
+      "Se la consigliata mette titolare chi da solo vale meno di uno rimasto fuori, sotto il campo una riga dice perché.",
+      "Per esempio «Preferito a Gallo: con lui la formazione fa più punti attesi» o «A pari punti gioca più sicuro di Gallo». I numeri sono quelli del confronto tra i due.",
+      "Sull'iPhone la stessa nota compare sotto il campo, come sulla web."
+    ],
+    "tecnico": [
+      "Issue #356 (L3 di #166). Modulo nuovo fanta/perche_scelta.py: per i titolari con meno punti_attesi di un escluso dello stesso ruolo (rivale = l'escluso con più punti attesi) e per gli incerti, il motivo come Frase (chiavi scelta.*), con il conto del Confronto (consigli._in_formazione: formazione com'è contro i due scambiati, panchina rifatta, stesse simulazioni). Ordine: titolare che gioca al posto di un improbabile, incerto, più punti attesi, a pari punti più sicuro o fantavoto atteso più alto, primo motivo proprio a favore del perché questo numero, pari; se scambiarli varrebbe di più, nella consigliata stabile tenuta prima della scadenza «per meno di 1 punto non cambia».",
+      "Campo nuovo facoltativo perche_scelta [{titolare, altro, testo, frase}] in ogni modulo di GET /api/formazione (in cima e in ogni stile), aggiunto in consigli._calcola_formazione e consigli.stabile. Nessun numero né scelta cambia: verifica invariata. verifica --consiglio, C4: scelte storte senza riga da 11 a 0 su 14 (giornata 9, archivio di sviluppo, lega d'esempio).",
+      "Web: la nota sotto il campo (nota-incerti) usa perche_scelta del modulo mostrato (senza il campo, gli incerti come prima). iPhone: OpzioneModulo.percheScelta e la nota sotto il campo in FormazioneView, non in modifica a mano né a giornata chiusa."
+    ]
+  },
+  {
     "versione": "1.406",
     "data": "2026-11-05T22:33:05",
     "titolo": "Il Diario misura quanto è buono il consiglio di formazione",
