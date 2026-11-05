@@ -46,25 +46,24 @@ struct CambiConsigliatiInteriTests {
     @Test("La riga «crediti dopo · rimborso · costo» si legge intera: va a capo invece di finire con «…»")
     func rigaDettagliIntera() throws {
         let lunga = Self.proposta()
+        // senza punti delle prossime giornate e senza «crediti dopo» la carta non ha la riga dei dettagli, come la web (#256)
         let corta = Self.proposta(breve: nil, creditiDopo: nil, fattibile: nil)
         let testoLungo = try #require(CartaCambio.dettaglio(lunga))
-        let testoCorto = try #require(CartaCambio.dettaglio(corta))
         #expect(testoLungo.contains("crediti dopo 1 (non bastano)"))
-        #expect(testoCorto == "rimborso 11")
+        #expect(CartaCambio.dettaglio(corta) == nil)
 
         // le due taglie delle foto: «testo grande» e «testo massimo»
         for taglia in [DynamicTypeSize.accessibility2, .accessibility5] {
             // quanto deve crescere la carta: almeno quanto il testo intero, misurato nella larghezza di tutta la carta
             // (dentro la carta il testo ha meno spazio, quindi va a capo almeno altrettanto)
             let interoLungo = Self.altezza(Text(testoLungo).font(.caption), taglia: taglia)
-            let interoCorto = Self.altezza(Text(testoCorto).font(.caption), taglia: taglia)
             #expect(interoLungo > Self.riga(.caption, taglia: taglia) * 2,
                     "\(taglia): la prova ha senso solo se il testo intero supera due righe")
 
             let cresce = Self.altezza(CartaCambio(proposta: lunga), taglia: taglia)
                 - Self.altezza(CartaCambio(proposta: corta), taglia: taglia)
-            #expect(cresce >= interoLungo - interoCorto - 2,
-                    "\(taglia): la carta cresce di \(cresce) punti, il testo intero ne chiede \(interoLungo - interoCorto): la riga è tagliata")
+            #expect(cresce >= interoLungo - 2,
+                    "\(taglia): la carta cresce di \(cresce) punti, il testo intero ne chiede \(interoLungo): la riga è tagliata")
         }
     }
 
