@@ -6,6 +6,8 @@ notturna di `script/server/backup-dati.sh` (`dati-AAAA-MM-GG.tar.gz`).
 **Provato il 2/11/2026** su una cartella di prova: servizio di nuovo in piedi in **circa 5 minuti** (librerie 1,5 min,
 statistiche 1,5 min, il resto meno di un minuto). Non sono compresi i passi di sistema (nginx, certificato, firewall, DNS):
 quelli dipendono dal server e la loro configurazione non sta in questo repository.
+Il passo 5 (registro delle giornate) è provato il 5/11/2026 su una cartella di prova con dati inventati: copia notturna,
+pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate identiche, e il comando ripetuto non aggiunge niente.
 
 ## Cosa c'è nella copia notturna e cosa no
 
