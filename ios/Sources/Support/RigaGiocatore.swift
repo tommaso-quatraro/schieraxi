@@ -97,12 +97,16 @@ struct RigaGiocatore: View {
         return parti.joined(separator: ", ")
     }
 
-    /// Il fantavoto atteso se gioca (lo stesso numero del campo, della scheda e del widget).
+    /// Il fantavoto atteso se gioca, da `Formato.punti` come il campo, la scheda e il widget: a metà si arrotonda come la web
+    /// (6,25 → 6,3), sempre con la virgola anche con il telefono in inglese, e «–» se il server non manda il numero (#251).
+    /// Da un server senza `fv_atteso` restano i punti attesi, come nel Mercato.
     nonisolated static func testoPunti(_ g: Giocatore) -> String {
-        (g.fvAtteso ?? g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1)))
+        Formato.punti(g.fvAtteso ?? g.puntiAttesi)
     }
 
     private var puntiTesto: String { Self.testoPunti(g) }
+    /// Lo stesso numero, per far scorrere le cifre quando cambia.
+    private var puntiValore: Double { g.fvAtteso ?? g.puntiAttesi ?? 0 }
     private var giocaPercento: Int { Formato.percento(g.pVoto) }
 
     /// Frase letta da VoiceOver per tutta la riga.
@@ -147,12 +151,12 @@ struct RigaGiocatore: View {
         } else if tagliaTesto.isAccessibilitySize {
             // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
             HStack(spacing: 8) {
-                Text(puntiTesto).font(.headline).monospacedDigit().numerico(g.fvAtteso ?? g.puntiAttesi ?? 0)
+                Text(puntiTesto).font(.headline).monospacedDigit().numerico(puntiValore)
                 Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(Color.testoSecondario)
             }
         } else {
             VStack(alignment: .trailing, spacing: 2) {
-                Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(g.fvAtteso ?? g.puntiAttesi ?? 0)
+                Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(puntiValore)
                 Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(Color.testoSecondario)
             }
         }
@@ -200,11 +204,11 @@ struct RigaGiocatore: View {
         Button { apriPerche(g) } label: {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 if tagliaTesto.isAccessibilitySize {
-                    Text(puntiTesto).font(.headline).monospacedDigit().numerico(g.fvAtteso ?? 0)
+                    Text(puntiTesto).font(.headline).monospacedDigit().numerico(puntiValore)
                     Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(Color.testoSecondario)
                 } else {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(g.fvAtteso ?? 0)
+                        Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(puntiValore)
                         Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(Color.testoSecondario)
                     }
                 }
