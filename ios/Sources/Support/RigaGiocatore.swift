@@ -84,7 +84,7 @@ struct RigaGiocatore: View {
     }
 
     /// La partita a voce, con i nomi interi: «Inter, in trasferta contro Milan, sab 31 20:45».
-    private var partitaAVoce: String {
+    nonisolated private static func partitaAVoce(_ g: Giocatore) -> String {
         let mia = (g.squadra ?? "").capitalized
         let altra = (g.avversario ?? "").capitalized
         var parti: [String] = []
@@ -104,25 +104,41 @@ struct RigaGiocatore: View {
         Formato.punti(g.fvAtteso ?? g.puntiAttesi)
     }
 
-    private var puntiTesto: String { Self.testoPunti(g) }
-    /// Lo stesso numero, per far scorrere le cifre quando cambia.
-    private var puntiValore: Double { g.fvAtteso ?? g.puntiAttesi ?? 0 }
-    private var giocaPercento: Int { Formato.percento(g.pVoto) }
+    /// Il numero grande a destra della riga.
+    nonisolated static func numero(_ g: Giocatore) -> String {
+        testoPunti(g)
+    }
+
+    /// La riga piccola sotto il numero; nil se c'è solo il numero.
+    nonisolated static func sottoNumero(_ g: Giocatore) -> String? {
+        "gioca \(Formato.percento(g.pVoto))%"
+    }
+
+    /// Se il numero è un pulsante a sé che apre «Perché questo numero» (con i motivi del server).
+    nonisolated static func numeroConPerche(_ g: Giocatore) -> Bool {
+        g.assente != true && PercheNumero(g) != nil
+    }
 
     /// Frase letta da VoiceOver per tutta la riga.
-    private var descrizioneVoce: String {
+    nonisolated static func voce(_ g: Giocatore) -> String {
         var parti = [g.nome, nomeRuolo(g.ruolo)]
-        if !partitaAVoce.isEmpty { parti.append(partitaAVoce) }
+        let partita = partitaAVoce(g)
+        if !partita.isEmpty { parti.append(partita) }
         if g.assente == true {
             parti.append("assente")
         } else {
-            parti.append("fantavoto atteso \(puntiTesto)")
-            parti.append("gioca al \(giocaPercento) per cento")
+            parti.append("fantavoto atteso \(testoPunti(g))")
+            parti.append("gioca al \(Formato.percento(g.pVoto)) per cento")
             if let i = g.indice { parti.append("indice \(Formato.intero(i)) su 100") }
         }
         parti.append(contentsOf: g.etichette.map { $0.testo.lowercased() })
         return parti.joined(separator: ", ")
     }
+
+    private var puntiTesto: String { Self.testoPunti(g) }
+    /// Lo stesso numero, per far scorrere le cifre quando cambia.
+    private var puntiValore: Double { g.fvAtteso ?? g.puntiAttesi ?? 0 }
+    private var giocaPercento: Int { Formato.percento(g.pVoto) }
 
     private var nome: some View {
         HStack(spacing: 6) {
@@ -146,22 +162,33 @@ struct RigaGiocatore: View {
 
     @ViewBuilder
     private var previsione: some View {
+        let sotto = Self.sottoNumero(g)
         if g.assente == true {
             // Un assente non ha previsione: niente «0.0 punti, gioca 0%».
             Label("Assente", systemImage: "xmark.circle.fill").font(.caption.bold()).foregroundStyle(Color.malus)
         } else if tagliaTesto.isAccessibilitySize {
             // Testo molto grande: i punti stanno sotto il nome, su una riga, e il nome ha tutta la larghezza.
             HStack(spacing: 8) {
-                Text(puntiTesto).font(.headline).monospacedDigit().numerico(puntiValore)
-                Text("gioca \(giocaPercento)%").font(.caption).foregroundStyle(Color.testoSecondario)
+                cifra(.headline, solo: sotto == nil)
+                if let sotto { Text(sotto).font(.caption).foregroundStyle(Color.testoSecondario) }
             }
         } else {
             VStack(alignment: .trailing, spacing: 2) {
-                Text(puntiTesto).font(.title3.weight(.bold)).monospacedDigit().numerico(puntiValore)
-                Text("gioca \(giocaPercento)%").font(.caption2).foregroundStyle(Color.testoSecondario)
+                cifra(.title3.weight(.bold), solo: sotto == nil)
+                if let sotto { Text(sotto).font(.caption2).foregroundStyle(Color.testoSecondario) }
             }
         }
     }
+
+    /// Il numero grande (`numero`). `solo`: senza la riga sotto, cioè il «–» di una partita iniziata senza voto, grigio come
+    /// sulla web (lo stato della partita lo dice la pillola).
+    private func cifra(_ carattere: Font, solo: Bool) -> some View {
+        Text(Self.numero(g)).font(carattere).monospacedDigit().numerico(numeroValore)
+            .foregroundStyle(solo ? AnyShapeStyle(Color.testoSecondario) : AnyShapeStyle(.foreground))
+    }
+
+    /// Il numero grande come valore, per far scorrere le cifre quando cambia.
+    private var numeroValore: Double { puntiValore }
 
     private var avatar: some View {
         AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.assente == true ? nil : g.indice, dimensione: min(lato, 64), nome: g.nome, ruolo: g.ruolo)
@@ -195,7 +222,7 @@ struct RigaGiocatore: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(descrizioneVoce)
+        .accessibilityLabel(Self.voce(g))
     }
 
     private var contenuto: some View { corpo(conNumero: true) }
@@ -227,7 +254,7 @@ struct RigaGiocatore: View {
     }
 
     var body: some View {
-        if apribile, g.assente != true, let apriPerche = perche, PercheNumero(g) != nil {
+        if apribile, let apriPerche = perche, Self.numeroConPerche(g) {
             // Due pulsanti affiancati (o il numero sotto, con il testo molto grande): la riga apre la scheda, il numero il perché.
             Group {
                 if tagliaTesto.isAccessibilitySize {
