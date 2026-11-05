@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Una «pedina» sul campo, da leggere senza legenda: il volto (fondo con i colori della SUA squadra) con il fantavoto atteso in una
-/// pillola scura, il cognome, «gioca 85%» (sotto il 70%: pillola arancio con l'icona di avviso) e l'avversario («vs NAP» in casa,
+/// pillola scura, il cognome, «gioca 85%» (sotto il 70%: pillola arancio con l'icona di avviso; a partita iniziata il fantavoto
+/// preso o lo stato della partita, «Rinviata» per una partita rinviata: `EsitoPedina`) e l'avversario («vs NAP» in casa,
 /// «@ NAP» in trasferta) con un distintivo nei colori sociali. Niente anelli colorati con un significato nascosto. Testi in `LetturaPedina`.
 struct PedinaCampo: View {
     let g: Giocatore
@@ -33,15 +34,17 @@ struct PedinaCampo: View {
                 .padding(.bottom, 8)
             // intero e a capo, mai rimpicciolito (12 punti al minimo): vedi `CognomePedina`
             CognomePedina(nome: g.nomeCorto)
-            if let gioca = LetturaPedina.gioca(g.pVoto) {
+            // a partita iniziata o rinviata l'esito al posto di «gioca N%», come la web (`EsitoPedina`, #283 #284)
+            if let esito = g.esitoPedina {
+                RigaGioca(testo: esito, incerto: false)
+            } else if let gioca = LetturaPedina.gioca(g.pVoto) {
                 RigaGioca(testo: gioca, incerto: LetturaPedina.incerto(g.pVoto))
             }
             RigaAvversario(avversario: g.avversario, inCasa: g.inCasa)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(LetturaPedina.voce(nome: g.nome, ruolo: nomeRuolo(g.ruolo), fvAtteso: g.fvAtteso, pVoto: g.pVoto,
-                                               avversario: g.avversario, inCasa: g.inCasa))
+        .accessibilityLabel(g.vocePedina)
     }
 }
 

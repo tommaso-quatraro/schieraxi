@@ -38,14 +38,7 @@ extension Giocatore {
     /// La frase di VoiceOver della pedina: quella di `LetturaPedina.voce` e, a partita iniziata o rinviata, l'esito al posto di
     /// «gioca al N per cento» (come `vocePedina` della web): «Rossi, difensore, fantavoto atteso 6,5, Partita in corso, …».
     var vocePedina: String {
-        let ruoloAVoce = nomeRuolo(ruolo)
-        guard let esito = esitoPedina else {
-            return LetturaPedina.voce(nome: nome, ruolo: ruoloAVoce, fvAtteso: fvAtteso, pVoto: pVoto, avversario: avversario, inCasa: inCasa)
-        }
-        var parti = [nome, ruoloAVoce, "fantavoto atteso \(Formato.punti(fvAtteso))", esito]
-        if let avv = LetturaPedina.nomeSquadra(avversario) {
-            parti.append("avversario \(avv)" + (inCasa == true ? ", in casa" : inCasa == false ? ", in trasferta" : ""))
-        }
-        return parti.joined(separator: ", ")
+        LetturaPedina.voce(nome: nome, ruolo: nomeRuolo(ruolo), fvAtteso: fvAtteso, pVoto: pVoto, avversario: avversario, inCasa: inCasa,
+                           esito: esitoPedina)
     }
 }
