@@ -72,14 +72,15 @@ struct PercheSceltaTests {
         var formazione = try #require(json as? [String: Any])
         let base: Formazione = try Fixture.decodifica("formazione")
         let id = try #require(base.titolari.first { $0.ruolo == "D" }?.id)
-        let righe: [[String: Any]] = [["titolare": id, "altro": 1, "testo": Self.riga,
-                                        "frase": ["chiave": "scelta.piu_punti", "param": ["altro": "Gallo", "attuale": "64.1", "invertita": "64.0"]]]]
-            + extra
+        let parametri: [String: Any] = ["altro": "Gallo", "attuale": "64.1", "invertita": "64.0"]
+        let frase: [String: Any] = ["chiave": "scelta.piu_punti", "param": parametri]
+        var righe: [[String: Any]] = [["titolare": id, "altro": 1, "testo": Self.riga, "frase": frase]]
+        righe += extra
         var livelli = try #require(formazione["livelli"] as? [[String: Any]])
         for i in livelli.indices {
             var moduli = try #require(livelli[i]["moduli"] as? [[String: Any]])
             for j in moduli.indices {
-                let consigliato = moduli[j]["modulo"] as? String == livelli[i]["modulo"] as? String
+                let consigliato = (moduli[j]["modulo"] as? String) == (livelli[i]["modulo"] as? String)
                 moduli[j]["perche_scelta"] = consigliato ? righe : []
             }
             livelli[i]["moduli"] = moduli
