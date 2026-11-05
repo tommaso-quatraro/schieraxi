@@ -1,5 +1,48 @@
 [
   {
+    "versione": "1.395",
+    "data": "2026-11-05T17:51:35",
+    "titolo": "Avvisi e Da fare: una formazione salvata che non vale più conta come non salvata",
+    "voci": [
+      "Se la formazione salvata non si può più schierare (un giocatore non è più in rosa, un modulo non ammesso), avvisi e Da fare parlano della consigliata, come Formazione, Oggi e Diario.",
+      "In questo caso il promemoria prima della scadenza arriva: prima taceva, come se avessi già schierato.",
+      "Il riepilogo dopo la giornata racconta i punti della consigliata: prima, con un giocatore non più in rosa, non arrivava."
+    ],
+    "tecnico": [
+      "Issue #321, dopo la #320. La regola unica scelte.motivo_non_valida si applica con due funzioni nuove di scelte.py: che_vale(scelta, ruoli, regole) (la scelta se si può schierare, altrimenti None) e ruoli_schierabili(rose, prev) (prima della scadenza i giocatori della rosa con una previsione e il ruolo delle previsioni, come la Formazione; senza previsioni, a giornata finita, tutta la rosa come il Diario).",
+      "La usano notifiche._cambi_pronti («cambio pronto» sui titolari della consigliata), notifiche._gia_schierato (promemoria), notifiche.avviso_scadenza (riferimento: la consigliata; con una scelta salvata legge le previsioni prima del controllo «niente di nuovo», già in cache dal giro dei cambi), notifiche.riepilogo (ruoli della rosa), da_fare._dubbi, da_fare._formazione_non_salvata e da_fare._diario (ruoli della rosa).",
+      "Nessun campo né rotta nuova: i client non devono fare niente. Testi degli avvisi e delle voci di Da fare invariati."
+    ]
+  },
+  {
+    "versione": "1.394",
+    "data": "2026-11-05T17:45:43",
+    "titolo": "Immagine da condividere con un decimale e pedine sempre leggibili",
+    "voci": [
+      "Nell'immagine della formazione da mandare nel gruppo, il fantavoto sotto ogni volto ha un decimale, come in tutta l'app (prima c'erano due decimali).",
+      "Quando le pedine del campo compaiono, i testi sulle pillole («gioca 45%» e la sigla della squadra avversaria) non passano più per un momento a metà trasparenza: restano sempre leggibili."
+    ],
+    "tecnico": [
+      "condividiImmagine usa num() per il fantavoto atteso, la stessa funzione di pedine, elenchi e schede, al posto di virgola() che scriveva i due decimali del server (fv_atteso è round(mu, 2) nell'API).",
+      "@keyframes pop: la pedina passa da opacità 0 a 1 entro l'1% dell'animazione (var(--vela, 1)); prima la dissolvenza durava tutta l'entrata e nei primi 100 ms il contrasto delle pillole `.gioca.basso` e `.dist` scendeva sotto 4,5:1 (axe color-contrast, chiaro e scuro). Con il movimento ridotto (--vela: 0) la dissolvenza resta.",
+      "Test: tests/test_immagine_condivisa_web.py (node con tela finta) e tests/test_accessibilita_formazione_web.py (tappe dell'animazione). Issue #307, parte di #167."
+    ]
+  },
+  {
+    "versione": "1.393",
+    "data": "2026-11-05T17:42:41",
+    "titolo": "Formazione chiusa con la tua scelta non più valida: vale la consigliata",
+    "voci": [
+      "Se a giornata iniziata la formazione che avevi salvato non si può più schierare (per esempio un giocatore non è più nella tua rosa), vale la consigliata fissata alla scadenza. La Formazione lo dice: «vale la consigliata, la tua non è più valida», e mostra la consigliata, come Oggi.",
+      "In questo caso Oggi mostra di nuovo i punti della giornata in diretta, con la consigliata. Prima la giornata in diretta non compariva.",
+      "Il Diario usa la stessa regola: una formazione con un modulo che la tua lega non ammette non conta come tua e non si può segnare come schierata."
+    ],
+    "tecnico": [
+      "Regola unica della scelta in scelte.motivo_non_valida (11 titolari diversi della rosa che si può schierare, un portiere, modulo ammesso) e scelte.stato; la usano consigli.valuta (stesse frasi di formazione_non_valida), fasi.schierata (in_corso e riepilogo: una scelta non valida passa all'istantanea della scadenza), diario.calcola_giornata, diario.aggiorna (una scelta non valida non fa più ricalcolare la giornata a ogni giro) e diario.prepara_schierata (modulo non ammesso: SchierataNonValida con la frase del modulo).",
+      "GET /api/formazione: campo nuovo e facoltativo `stato_scelta` (`nessuna`, `valida`, `non_valida`), solo per la tua squadra. La web, a giornata chiusa, scrive formazione.stato_chiusa_non_valida quando vale `non_valida` (o quando rileggendo la scelta il server risponde formazione_non_valida)."
+    ]
+  },
+  {
     "versione": "1.392",
     "data": "2026-11-05T15:25:49",
     "titolo": "Controlli più stretti sul ripristino dei backup e sull'archivio della stagione",
