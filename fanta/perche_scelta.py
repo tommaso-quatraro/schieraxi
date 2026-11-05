@@ -5,8 +5,11 @@ quei titolari, e per i titolari incerti con una riserva sicura (`consigli.incert
 motivo vero della scelta in una riga, come `Frase`. Gli altri titolari non hanno riga: il loro perché sta al tocco sul giocatore.
 
 Il conto è quello del Confronto (`consigli._in_formazione`): la formazione com'è contro la stessa con i due scambiati di posto e la
-panchina rifatta dal sistema, sulle stesse simulazioni. I motivi, in quest'ordine:
+panchina rifatta dal sistema, sulle stesse simulazioni, e la riga non dice mai il contrario del Confronto. I motivi, in quest'ordine:
 1. l'altro quasi certamente non gioca e il titolare sì (la regola dei titolari che giocano, #329 e #341);
+se scambiarli varrebbe di più (il Confronto dice «invertendoli varrebbe di più»): solo con la consigliata già mostrata e tenuta
+(#335) una riga, perché il cambio vale meno della soglia; altrimenti nessuna riga (meglio niente che una scusa: succede con gli
+stili prudenti o rischiosi e con un modulo diverso da quello proposto, che costano punti apposta);
 2. titolare anche se incerto: se non gioca entra la riserva, e insieme valgono di più;
 3. con lui la formazione fa più punti attesi;
 se le due formazioni valgono lo stesso (come per il Confronto, o con lo stesso numero a schermo):
@@ -14,8 +17,6 @@ se le due formazioni valgono lo stesso (come per il Confronto, o con lo stesso n
 5. ha il fantavoto atteso (quello «se gioca») più alto;
 6. il primo motivo proprio a favore del suo «perché questo numero»;
 7. con l'uno o con l'altro la formazione vale quasi lo stesso.
-Se invece scambiarli varrebbe di più: con la consigliata già mostrata e tenuta (#335) è perché il cambio vale meno della soglia;
-altrimenti resta il 6, e senza un motivo vero nessuna riga (meglio niente che una scusa).
 
 Campo `perche_scelta` di ogni modulo della risposta di `GET /api/formazione`: [{titolare, altro, testo, frase}] (contratto in
 docs/API.md). Non cambia nessun numero né nessuna scelta.
@@ -53,17 +54,17 @@ def motivo(t: fz.Giocatore, altro: fz.Giocatore, attuale: float, invertita: floa
     `t`; `tenuta` = è la consigliata già mostrata, tenuta perché la migliore non valeva abbastanza di più (#335). None = nessun
     motivo da dire."""
     diff = attuale - invertita
-    if diff < -PARI and t.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
-        return F("scelta.titolare_che_gioca", altro=altro.nome, p=round(altro.p * 100))
+    if diff < -PARI:              # scambiarli varrebbe di più: il Confronto dice «esito_peggio» (o «titolare_che_gioca»)
+        if t.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
+            return F("scelta.titolare_che_gioca", altro=altro.nome, p=round(altro.p * 100))
+        if tenuta and invertita - attuale < SOGLIA_TENUTA:
+            return F("scelta.stabile", altro=altro.nome, attuale=attuale, invertita=invertita)
+        return None               # un altro motivo contraddirebbe il Confronto (stile o modulo che costano punti)
     if riserva is not None:
         return F("scelta.incerto", p=round(t.p * 100), riserva=riserva.nome)
     if diff > PARI and _uno(attuale) > _uno(invertita):
         return F("scelta.piu_punti", altro=altro.nome, attuale=attuale, invertita=invertita)
     proprio = _motivo_proprio(perche_numero)
-    if diff < -PARI and _uno(invertita) > _uno(attuale):             # scambiarli varrebbe di più
-        if tenuta and invertita - attuale < SOGLIA_TENUTA:
-            return F("scelta.stabile", altro=altro.nome, attuale=attuale, invertita=invertita)
-        return F("scelta.motivo", altro=altro.nome, motivo=proprio) if proprio else None
     if round(t.p * 100) > round(altro.p * 100):
         return F("scelta.piu_sicuro", altro=altro.nome, pt=round(t.p * 100), pa=round(altro.p * 100))
     if _uno(t.mu) > _uno(altro.mu):
@@ -85,8 +86,8 @@ def conto(val: fz.Valutatore, rosa: list[fz.Giocatore], titolari: list[fz.Giocat
 def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.Valutatore, tenuta: bool = False) -> list[dict]:
     """Le righe di un modulo (`titolari`, `panchina`, `incerti` come in `consigli._moduli`), nell'ordine dei titolari.
     Scelta storta = un escluso dello stesso ruolo ha più punti attesi (`punti_attesi` delle schede, il numero che vede l'utente;
-    senza, «gioca» per fantavoto atteso): l'altro è quello che ne ha di più. Per un incerto senza scelta storta l'altro è la sua
-    riserva."""
+    senza, «gioca» per fantavoto atteso): l'altro è quello che ne ha di più. Per un titolare incerto l'altro è la sua riserva, quella
+    che la riga nomina: il conto (e il Confronto) è sempre sulla coppia della riga."""
     per_id = {g.id: g for g in rosa}
     ids = [int(i) for i in m.get("titolari") or []]
     panchina_ids = [int(i) for i in m.get("panchina") or []]
@@ -107,12 +108,11 @@ def del_modulo(m: dict, schede: dict, rosa: list[fz.Giocatore], regole, val: fz.
         riserva = per_id.get(riserve.get(t.id))
         if not rivali and riserva is None:
             continue
-        altro = per_id[max(rivali, key=punti)] if rivali else riserva
+        altro = riserva if riserva is not None else per_id[max(rivali, key=punti)]
         attuale, invertita = conto(val, rosa, titolari, panchina, t, altro, regole)
         frase = motivo(t, altro, attuale, invertita, riserva, (schede.get(str(t.id)) or {}).get("perche_numero"), tenuta)
         if frase is not None:
-            nominato = riserva if frase.chiave == "scelta.incerto" else altro          # chi la riga nomina
-            righe.append({"titolare": t.id, "altro": nominato.id, "testo": frase, "frase": frase.json()})
+            righe.append({"titolare": t.id, "altro": altro.id, "testo": frase, "frase": frase.json()})
     return righe
 
 
