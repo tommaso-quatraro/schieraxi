@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Una riga della rosa: avatar con l'indice, nome, costo e quotazione, titolarità e a destra il numero (fantavoto atteso e
-/// «gioca N%» prima della partita, vedi `numero`).
+/// Una riga della rosa: avatar con l'indice, nome, costo e quotazione, etichette e a destra il numero, come `valoreRosa` di app.js
+/// e come `RigaGiocatore` (#367): fantavoto atteso e «gioca N%» prima della partita, fantavoto preso dopo (vedi `numero`).
 struct RigaRosa: View {
     let g: GiocatoreRosa
     @Environment(\.apriGiocatore) private var apri
@@ -16,24 +16,42 @@ struct RigaRosa: View {
         return parti.joined(separator: " · ")
     }
 
-    /// Il numero grande a destra della riga: il fantavoto atteso; nil se il giocatore non ha previsione (allora a destra c'è
-    /// solo `sottoNumero`: «non gioca» o «?»).
+    /// Il numero grande a destra della riga: prima della partita, e con la partita rinviata, il fantavoto atteso; a partita
+    /// iniziata il fantavoto preso, o «–» se non c'è ancora (o non ci sarà). nil se il giocatore non ha previsione (allora a
+    /// destra c'è solo `sottoNumero`: «non gioca» o «?»).
     nonisolated static func numero(_ g: GiocatoreRosa) -> String? {
         guard let p = g.previsione else { return nil }
-        return Formato.punti(p.fvAtteso)
+        guard let esito = p.esitoPartita else { return Formato.punti(p.fvAtteso) }
+        return Formato.punti(esito.fv)
     }
 
-    /// La riga piccola sotto il numero: «gioca 72%»; senza previsione «non gioca», o «?» se il server non ha riconosciuto il giocatore.
+    /// La riga piccola sotto il numero: «gioca 72%» prima della partita, «fantavoto» (`mercato.fantavoto` della web) sotto il
+    /// fantavoto preso; nil a partita iniziata senza voto, perché lo stato della partita lo dice già la pillola dell'etichetta.
+    /// Senza previsione «non gioca», o «?» se il server non ha riconosciuto il giocatore.
     nonisolated static func sottoNumero(_ g: GiocatoreRosa) -> String? {
         guard let p = g.previsione else { return g.id == nil ? "?" : "non gioca" }
-        return "gioca \(Formato.percento(p.pVoto))%"
+        guard let esito = p.esitoPartita else { return "gioca \(Formato.percento(p.pVoto))%" }
+        return esito.fv == nil ? nil : "fantavoto"
     }
 
-    /// La frase letta da VoiceOver per tutta la riga.
+    /// La frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
+    /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette, che la web legge in
+    /// ogni caso (qui `children: .ignore` le nasconderebbe).
     nonisolated static func voce(_ g: GiocatoreRosa) -> String {
-        var testo = "\(g.nome), \(nomeRuolo(g.ruolo ?? "")), \(sottotitolo(g))"
-        if let p = g.previsione { testo += ", fantavoto atteso " + Formato.punti(p.fvAtteso) } else { testo += ", non gioca" }
-        return testo
+        var parti = [g.nome, nomeRuolo(g.ruolo ?? "")]
+        let sotto = sottotitolo(g)
+        if !sotto.isEmpty { parti.append(sotto) }
+        if let p = g.previsione {
+            if let esito = p.esitoPartita {
+                if esito.fv != nil, let preso = esito.testo { parti.append(preso) }
+            } else {
+                parti.append("fantavoto atteso " + Formato.punti(p.fvAtteso))
+            }
+            parti.append(contentsOf: p.etichette.map { $0.testo.lowercased() })
+        } else {
+            parti.append("non gioca")
+        }
+        return parti.joined(separator: ", ")
     }
 
     var body: some View {
@@ -54,12 +72,15 @@ struct RigaRosa: View {
                     }
                 }
                 Spacer(minLength: 8)
+                let sotto = Self.sottoNumero(g)
                 if let numero = Self.numero(g) {
                     VStack(alignment: .trailing, spacing: 2) {
+                        // il «–» di una partita iniziata senza voto è grigio come sulla web: lo stato lo dice la pillola
                         Text(numero).font(.headline).monospacedDigit()
-                        if let sotto = Self.sottoNumero(g) { Text(sotto).font(.caption2).foregroundStyle(Color.testoSecondario) }
+                            .foregroundStyle(sotto == nil ? AnyShapeStyle(Color.testoSecondario) : AnyShapeStyle(.foreground))
+                        if let sotto { Text(sotto).font(.caption2).foregroundStyle(Color.testoSecondario) }
                     }
-                } else if let sotto = Self.sottoNumero(g) {
+                } else if let sotto {
                     Text(sotto).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
             }
