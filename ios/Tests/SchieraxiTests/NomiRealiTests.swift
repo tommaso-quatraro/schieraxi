@@ -46,4 +46,12 @@ final class NomiRealiTests: XCTestCase {
         }
         XCTAssertTrue(trovati.isEmpty, "Nomi di calciatori veri trovati (inventane di nuovi): \(trovati)")
     }
+
+    /// I giocatori di contorno delle rose della demo hanno il cognome composto da due pezzi nel codice (`LegaDemo`): intero non sta
+    /// in nessun file, quindi si controlla il nome come lo vede l'app.
+    func testINomiDellaDemoSonoInventati() {
+        let cercati = cognomi.map { piega($0) }
+        let trovati = LegaDemo.tutti.map(\.nome).filter { nome in cercati.contains { piega(nome).contains($0) } }
+        XCTAssertTrue(trovati.isEmpty, "Nella demo ci sono nomi di calciatori veri (inventane di nuovi): \(trovati.map { $0.prefix(3) })")
+    }
 }
