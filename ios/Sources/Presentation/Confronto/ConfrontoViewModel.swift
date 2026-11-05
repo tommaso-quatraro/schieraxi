@@ -60,6 +60,11 @@ final class SceltaDallaRosaViewModel: ViewModelBase {
         }
     }
 
+    /// Da fare (#281).
+    nonisolated static func testoPosto(_ codice: String) -> String {
+        codice == "titolare" ? "Titolare" : codice.hasPrefix("panchina ") ? "Panchina \(codice.dropFirst(9))" : codice == "fuori" ? "Fuori" : ""
+    }
+
     /// Titolare, panchina o fuori nella formazione consigliata.
     func posto(_ idGiocatore: Int) -> String {
         guard let f = formazione.dato else { return "" }

@@ -38,6 +38,12 @@ extension Confronto {
         return a - b
     }
 
+    /// Da fare (#281).
+    static func valoreFattore(_ f: FattoreConfronto, _ v: Double?) -> String {
+        guard let v else { return "–" }
+        return f.percentuale == true ? "\(Formato.percento(v))%" : Formato.decimali(v, cifre: 2)
+    }
+
     /// A chi va una causa: 1 = al primo giocatore, -1 = al secondo, 0 = pari.
     static func verso(_ effetto: Double) -> Int {
         effetto > 0.02 ? 1 : effetto < -0.02 ? -1 : 0

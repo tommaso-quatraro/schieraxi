@@ -42,10 +42,13 @@ enum TestiRinvio {
     /// «ATA–PAR».
     static func partita(_ p: PartitaRinviata) -> String { "\(ColoriSquadra.sigla(p.casa))–\(ColoriSquadra.sigla(p.trasferta))" }
 
+    /// Da fare (#284).
+    static func partitaAVoce(_ p: PartitaRinviata) -> String { partita(p) }
+
     /// «recupero mer 25 nov, 20:45» oppure «recupero da definire».
-    static func recupero(_ p: PartitaRinviata) -> String {
+    static func recupero(_ p: PartitaRinviata, adesso: Date = Date()) -> String {
         guard Quando.data(p.data) != nil else { return "recupero da definire" }
-        return "recupero \(Quando.leggibile(p.data))"
+        return "recupero \(Quando.leggibile(p.data, adesso: adesso))"
     }
 
     static func miei(_ s: SceltaRinvio) -> String? {
