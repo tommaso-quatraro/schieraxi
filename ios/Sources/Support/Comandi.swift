@@ -47,20 +47,21 @@ struct FormazioneComando: AppIntent {
         guard let f = oggi.formazione, f.disponibile, let modulo = f.modulo else {
             throw ErroreComando.senzaFormazione
         }
-        guard let numero = oggi.giornataMostrata else { throw ErroreComando.senzaGiornata }
+        guard let nome = oggi.nomeGiornata else { throw ErroreComando.senzaGiornata }
         let punti = Formato.punti(f.punteggioAtteso)
         var frase = Self.fraseBase(oggi, modulo: modulo, punti: punti)
         if oggi.conProbabili == false { frase += " Le probabili formazioni non sono ancora uscite." }
         if risultato.salvato { frase += " Attenzione: sono dati salvati, il server non risponde." }
         return .result(
             dialog: "\(frase)",
-            view: RiquadroComando(titolo: "Giornata \(numero)", grande: modulo, dettaglio: "\(punti) punti attesi")
+            view: RiquadroComando(titolo: nome.intero, grande: modulo, dettaglio: "\(punti) punti attesi")
         )
     }
 
-    /// Il numero è quello della LEGA (lo stesso che si vede nell'app e che dice «Quanto manca alla partita»), non quello di Serie A.
+    /// La giornata con i due numeri in testa, come l'app e gli avvisi (#299); Siri la legge con la virgola al posto di «·».
     static func fraseBase(_ oggi: Oggi, modulo: String, punti: String) -> String {
-        "Per la giornata \(oggi.giornataMostrata.map(String.init) ?? "in programma") ti consiglio il \(modulo), con \(punti) punti attesi."
+        guard let nome = oggi.nomeGiornata else { return "Per la giornata in programma ti consiglio il \(modulo), con \(punti) punti attesi." }
+        return "\(nome.voce): ti consiglio il \(modulo), con \(punti) punti attesi."
     }
 }
 
@@ -71,12 +72,12 @@ struct QuantoMancaComando: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
         guard let risultato = await Aggiornamento.leggiOggi() else { throw ErroreComando.senzaServer }
         let oggi = risultato.oggi
-        guard let numero = oggi.giornataMostrata else { throw ErroreComando.senzaGiornata }
+        guard let nome = oggi.nomeGiornata else { throw ErroreComando.senzaGiornata }
         guard let inizio = Quando.data(oggi.chiusura) else { throw ErroreComando.senzaPartite }
         if inizio <= Date() {
             return .result(
-                dialog: "La formazione della giornata \(numero) è già chiusa.",
-                view: RiquadroComando(titolo: "Giornata \(numero)", grande: "In corso", dettaglio: "formazione chiusa \(Quando.leggibile(oggi.chiusura))")
+                dialog: "\(nome.voce): la formazione è già chiusa.",
+                view: RiquadroComando(titolo: nome.intero, grande: "In corso", dettaglio: "formazione chiusa \(Quando.leggibile(oggi.chiusura))")
             )
         }
         // Lo stesso conto alla rovescia di Oggi e del widget: «6 h 44 min» scritto, «6 ore e 44 minuti» a voce.
@@ -84,8 +85,8 @@ struct QuantoMancaComando: AppIntent {
         let manca = Quando.contoAllaRovescia(fino: inizio, adesso: adesso) ?? "1 min"
         let aVoce = Quando.contoAllaRovesciaParlato(fino: inizio, adesso: adesso) ?? "meno di un minuto"
         return .result(
-            dialog: "Alla scadenza della formazione della giornata \(numero) mancano \(aVoce).",
-            view: RiquadroComando(titolo: "Giornata \(numero)", grande: manca, dettaglio: "alla scadenza, \(Quando.leggibile(oggi.chiusura))")
+            dialog: "\(nome.voce): alla scadenza della formazione mancano \(aVoce).",
+            view: RiquadroComando(titolo: nome.intero, grande: manca, dettaglio: "alla scadenza, \(Quando.leggibile(oggi.chiusura))")
         )
     }
 }

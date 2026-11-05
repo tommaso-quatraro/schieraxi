@@ -186,6 +186,8 @@ struct PuntoAttesoFatto: Identifiable, Equatable {
     let alto: Double?
     /// nil se la fascia non c'era.
     let dentro: Bool?
+    /// La giornata con i due numeri, per VoiceOver (#299); nil nelle anteprime, che hanno solo il numero.
+    var nome: NomeGiornata? = nil
     var id: Int { giornata }
 
     /// Fatti meno attesi: positivo = meglio del previsto.
@@ -202,9 +204,12 @@ struct PuntoAttesoFatto: Identifiable, Equatable {
         return "Previsti \(Formato.punti(atteso)), fatti \(Formato.punti(fatti)) (\(FantavotoAtteso.conSegno(scarto)))"
     }
 
+    /// «Giornata 8, 11ª di Serie A»: la giornata come la legge VoiceOver.
+    var voceGiornata: String { nome?.voce ?? "Giornata \(giornata)" }
+
     /// Frase completa per VoiceOver.
     var voce: String {
-        var t = "Giornata \(giornata): attesi \(Formato.punti(atteso)) punti, fatti \(Formato.punti(fatti))"
+        var t = "\(voceGiornata): attesi \(Formato.punti(atteso)) punti, fatti \(Formato.punti(fatti))"
         if let basso, let alto, let dentro {
             t += ", fascia prevista tra \(Formato.punti(basso)) e \(Formato.punti(alto)), " + (dentro ? "dentro" : "fuori")
         }
@@ -216,11 +221,12 @@ struct PuntoAttesoFatto: Identifiable, Equatable {
         self.basso = basso; self.alto = alto; self.dentro = dentro
     }
 
-    init?(giornata: Int?, _ r: AttesoVsFatto?) {
+    init?(giornata: Int?, _ r: AttesoVsFatto?, nome: NomeGiornata? = nil) {
         guard let giornata, let r, let atteso = r.atteso, let fatti = r.fatti else { return nil }
         let fascia = r.intervallo?.valido == true ? r.intervallo : nil
         self.init(giornata: giornata, atteso: atteso, fatti: fatti, basso: fascia?.basso, alto: fascia?.alto,
                   dentro: fascia == nil ? nil : r.nellaFascia)
+        self.nome = nome
     }
 
     /// Le giornate della stagione più recente del Diario, dalla prima all'ultima, al massimo le ultime `massimo`.
@@ -229,7 +235,7 @@ struct PuntoAttesoFatto: Identifiable, Equatable {
         var visti = Set<Int>()
         let punti = voci
             .filter { $0.stagione == stagione }
-            .compactMap { PuntoAttesoFatto(giornata: $0.numero, $0.attesoVsFatto) }
+            .compactMap { PuntoAttesoFatto(giornata: $0.numero, $0.attesoVsFatto, nome: $0.nomeGiornata) }
             .filter { visti.insert($0.giornata).inserted }
             .sorted { $0.giornata < $1.giornata }
         return Array(punti.suffix(max(massimo, 1)))

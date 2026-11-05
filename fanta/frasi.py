@@ -53,7 +53,11 @@ CATALOGO: dict[str, str] = {
     "dafare.incerto_alt": "{nome}: {stato}, gioca {p}%. Meglio {alt}.",
     "dafare.incerto_tiene": "{nome} ({stato}, gioca {p}%) resta titolare: se non gioca entra {riserva} dalla panchina.",
     "dafare.formazione_chiude": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
+    "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
+    # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
     "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
+    "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della giornata {n}.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
     "dafare.cert.one": "L'app sul telefono scade tra {n} giorno: rinnovala.",
@@ -170,6 +174,8 @@ CATALOGO: dict[str, str] = {
     "confronto.esito_meglio": "Con {titolare} titolare la formazione vale {attuale} punti attesi; con i due invertiti {invertita} ({d}).",
     "confronto.esito_peggio": "Invertendoli la formazione varrebbe {invertita} invece di {attuale} ({d}): con il modulo {modulo} (non il migliore) la scelta non è la più conveniente.",
     "confronto.esito_pari": "Le due soluzioni valgono praticamente lo stesso ({attuale} contro {invertita}).",
+    # il titolare gioca al posto di un compagno che quasi certamente non gioca (#329): è questo il motivo, anche se invertirli varrebbe di più (#341)
+    "confronto.titolare_che_gioca": "{altro} quasi certamente non gioca ({p}% di giocare): il sistema schiera titolare {titolare}, che gioca {pt}%, anche se costa {d} punti attesi. {entrata}",
     "posto.titolare": "titolare",
     "posto.panchina": "panchina {n}",
     "posto.fuori": "fuori",

@@ -51,7 +51,7 @@ final class WidgetFasiTests: XCTestCase {
         XCTAssertEqual(r.puntiFineTesto, "circa 72,4 a fine giornata")
         XCTAssertEqual(r.ancoraDaGiocareTesto, "4 devono ancora giocare")
         // dopo la scadenza «formazione chiusa» (vocabolario: «Chiusa», mai «in corso» per la giornata)
-        XCTAssertEqual(r.descrizioneFase, "Giornata 11, formazione chiusa: 41,5 punti fatti finora, circa 72,4 a fine giornata. 4 devono ancora giocare.")
+        XCTAssertEqual(r.descrizioneFase, "11ª giornata di Serie A: formazione chiusa, 41,5 punti fatti finora, circa 72,4 a fine giornata. 4 devono ancora giocare.")
     }
 
     func testGiornataFinitaRiepilogoEProssima() throws {
@@ -65,12 +65,12 @@ final class WidgetFasiTests: XCTestCase {
         XCTAssertEqual(r.puntiFine, 73.7)
         XCTAssertEqual(r.puntiFineTesto, "73,7 attesi")
         XCTAssertEqual(r.giornataChiusa, 10)
-        XCTAssertEqual(r.etichettaGiornataChiusa, "Giornata 8")
+        XCTAssertEqual(r.etichettaGiornataChiusa, "Giornata 8 · 10ª di Serie A")
         XCTAssertEqual(r.siglaGiornataChiusa, "G8")
         XCTAssertEqual(r.giornata, 11, "giornata e scadenza sono già quelle della prossima")
         XCTAssertEqual(r.siglaGiornata, "G9")
         XCTAssertNil(r.ancoraDaGiocareTesto)
-        XCTAssertTrue(r.descrizioneFase?.hasPrefix("Giornata 8 finita: 69,5 punti fatti su 73,7 attesi. Prossima: Giornata 9") == true,
+        XCTAssertTrue(r.descrizioneFase?.hasPrefix("Giornata 8, 10ª di Serie A: finita, 69,5 punti fatti su 73,7 attesi. Prossima: Giornata 9, 11ª di Serie A") == true,
                       r.descrizioneFase ?? "nil")
     }
 

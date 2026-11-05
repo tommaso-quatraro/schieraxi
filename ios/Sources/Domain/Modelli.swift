@@ -600,6 +600,45 @@ struct StatoDati: Decodable {
         var id: String { gruppo }
     }
     struct Calibrazione: Decodable { let giornate: Int?; let gruppi: [GruppoCalibrazione]? }
+    /// Il registro delle giornate (#344, `registro_giornate.riepilogo` del server): le medie delle ultime `finestra` giornate misurate
+    /// con le soglie e il verdetto (`regge`, solo con `verdetto`), e una riga per giornata. Un server vecchio non lo manda.
+    struct Registro: Decodable {
+        /// Le chiavi «I2_calibrazione»... arrivano come `i2Calibrazione` (`convertFromSnakeCase`); «I1» resta com'è.
+        struct Soglie: Decodable {
+            let i1: Double?
+            let i2Calibrazione: Double?
+            let i2Brier: Double?
+            let i3Minimo: Double?
+            let i3Massimo: Double?
+            enum CodingKeys: String, CodingKey { case i1 = "I1", i2Calibrazione, i2Brier, i3Minimo, i3Massimo }
+        }
+        /// Per ogni misura: vero se regge, falso se no, nil finché non c'è il verdetto o manca il numero.
+        struct Regge: Decodable {
+            let i1: Bool?
+            let i2: Bool?
+            let i3: Bool?
+            enum CodingKeys: String, CodingKey { case i1 = "I1", i2 = "I2", i3 = "I3" }
+        }
+        /// Una giornata salvata o persa (`persa`: il motivo in breve, scritto dal server).
+        struct Giornata: Decodable, Identifiable {
+            let stagione: String?
+            let giornata: Int?
+            let persa: String?
+            var id: String { "\(stagione ?? "")-\(giornata ?? -1)" }
+        }
+        let finestra: Int?
+        let soglie: Soglie?
+        let giornate: Int?
+        let erroreModello: Double?
+        let erroreFantamedia: Double?
+        let i1: Double?
+        let brier: Double?
+        let calibrazione: Double?
+        let copertura: Double?
+        let verdetto: Bool?
+        let regge: Regge?
+        let perGiornata: [Giornata]?
+    }
     let stagione: String?
     let aggiornamenti: [AggiornamentoDati]?
     let calciatori: Int?
@@ -609,6 +648,7 @@ struct StatoDati: Decodable {
     let probabili: [Probabili]?
     let calibrazione: Calibrazione?
     let coppeFino: String?
+    let registro: Registro?
 }
 
 struct EsitoImportazione: Decodable {
