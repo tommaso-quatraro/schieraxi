@@ -1109,6 +1109,20 @@ extension GiocatoreWidget {
         return partite.map { "\(testa) · \($0)" } + [testa]
     }
 
+    /// La riga di «Chi gioca» sulla schermata di blocco, dalla più lunga alla più corta: «Castellanos domani 18:30» →
+    /// «Castellanos domani» → «Castellanos»; oggi «Castellanos oggi 18:30» → «Castellanos 18:30» → «Castellanos». Il giorno
+    /// viene dalle stesse forme di `formeQuandoGioca` (si toglie solo l'ora in fondo): mai «Castellanos domani 1…».
+    func formeInLineaChiGioca(adesso: Date) -> [String] {
+        guard let data = quando else { return [cognome] }
+        let orari = PartitaLive.orari(data, adesso: adesso)
+        var forme = orari.map { "\(cognome) \($0)" }
+        let ora = " " + Quando.ora(data)
+        if orari.count == 1, let intera = orari.first, intera.hasSuffix(ora) {
+            forme.append("\(cognome) \(intera.dropLast(ora.count))")
+        }
+        return forme + [cognome]
+    }
+
     /// «vs ROM» in casa, «@ MIL» in trasferta; nil se l'avversario non si sa.
     private var controChi: String? { avversario.map { "\(inCasa == true ? "vs" : "@") \(ColoriSquadra.sigla($0))" } }
 }

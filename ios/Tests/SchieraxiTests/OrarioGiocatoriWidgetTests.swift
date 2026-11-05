@@ -54,6 +54,23 @@ struct OrarioGiocatoriWidgetTests {
         #expect(giocatore(data).formeInLineaSeguito(adesso: try adesso()) == attese)
     }
 
+    @Test("La riga di Chi gioca sulla schermata di blocco: via l'ora (oggi via «oggi»), poi resta il cognome", arguments: [
+        ("2026-11-01 11:23", ["Zaviani domani 11:23", "Zaviani domani", "Zaviani"]),
+        ("2026-10-31 20:45", ["Zaviani oggi 20:45", "Zaviani 20:45", "Zaviani"]),
+        ("2026-11-10 20:45", ["Zaviani mar 10 nov 20:45", "Zaviani mar 10 nov", "Zaviani"]),
+    ])
+    func rigaInLineaChiGioca(data: String, attese: [String]) throws {
+        let forme = giocatore(data).formeInLineaChiGioca(adesso: try adesso())
+        #expect(forme == attese)
+        // VoiceOver legge la prima (`RigaInLinea`): sempre intera, con il giorno e l'ora di quando gioca
+        #expect(forme.first == "Zaviani \(giocatore(data).quandoGioca(adesso: try adesso()))")
+    }
+
+    @Test("Senza la partita la riga di Chi gioca ha solo il cognome")
+    func rigaInLineaChiGiocaSenzaData() throws {
+        #expect(giocatore(nil).formeInLineaChiGioca(adesso: try adesso()) == ["Zaviani"])
+    }
+
     @Test("Il giorno cambia alla voce della timeline di mezzanotte, ora italiana")
     func mezzanotte() throws {
         let g = giocatore("2026-11-01 00:15")
@@ -75,6 +92,7 @@ struct OrarioGiocatoriWidgetTests {
         #expect(domani.formePartita(adesso: ora).first == "vs ROM · domani 11:23")
         #expect(giocatore("2026-10-31 20:45").formePartita(adesso: ora).first == "vs ROM · oggi 20:45")
         let tutte = domani.formePartita(adesso: ora) + domani.formeInLineaSeguito(adesso: ora) + domani.formeQuandoGioca(adesso: ora)
+            + domani.formeInLineaChiGioca(adesso: ora)
         #expect(tutte.allSatisfy { !$0.contains("11:23") || $0.contains("domani 11:23") }, "\(tutte)")
     }
 }
