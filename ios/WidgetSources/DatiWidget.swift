@@ -227,14 +227,10 @@ struct Fornitore: AppIntentTimelineProvider {
         var prossimo = adesso.addingTimeInterval(minuti * 60)
         if let c = prossimoCalcio, c > adesso, c < prossimo { prossimo = c }
         if primo.indirizzoMancante { prossimo = adesso.addingTimeInterval(60 * 60) }
-        if let inizio = primo.riassunto?.inizio, inizio > adesso {
-            if conConto {
-                // senza voci il testo resterebbe fermo fino alla prossima ricarica (che iOS può rimandare)
-                voci += Quando.istantiDelConto(fino: inizio, adesso: adesso, entro: adesso.addingTimeInterval(60 * 60)).map { primo.spostata(a: $0) }
-            }
-            voci.append(primo.spostata(a: inizio))
-            if inizio < prossimo { prossimo = inizio.addingTimeInterval(60) }
-        }
+        if let inizio = primo.riassunto?.inizio, inizio > adesso, inizio < prossimo { prossimo = inizio.addingTimeInterval(60) }
+        // senza voci il testo resterebbe fermo fino alla prossima ricarica, che iOS può rimandare (di notte anche di ore): voci per
+        // il conto alla rovescia, la scadenza e la mezzanotte, dove «domani 12:30» diventa «12:30»
+        voci += VociTimeline.istanti(adesso: adesso, scadenza: primo.riassunto?.inizio, conConto: conConto).map { primo.spostata(a: $0) }
         return Timeline(entries: voci, policy: .after(prossimo))
     }
 

@@ -58,7 +58,8 @@ def test_formazione_chip_e_campo_vanno_a_capo():
     chips = _regola(b, ".chips.scorri")
     assert "flex-wrap: wrap" in chips and "mask-image: none" in chips                  # tutti i moduli e gli stili in vista, senza scorrere di lato
     assert "flex-wrap: wrap" in _regola(b, ".linea")
-    assert "white-space: normal" in _regola(b, ".pedina .nome, .pedina .gioca")       # cognome intero, mai «Zosaba Nd…»
+    assert "flex: 0 1 64px" in _regola(b, ".pedina")                                # due pedine per fila
+    # cognome intero, mai «Zosaba Nd…»: dal #265 vale a ogni larghezza (tests/test_testo_intero_web.py), non solo qui
     assert "grid-template-columns: 1fr" in _regola(b, ".legenda-campo li")
 
 
