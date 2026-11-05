@@ -397,7 +397,9 @@ function luminosita(hex) {
 }
 function distintivo(s) {
   const [c1, c2] = (Object.hasOwn(COLORI_SQUADRA, s) && COLORI_SQUADRA[s]) || ["#6b7280", "#e5e7eb"];
-  const testo = luminosita(c1) > .35 ? "#10201a" : "#ffffff";
+  // nero o bianco, quello con il contrasto più alto (come LetturaPedina.testoScuro sull'iPhone): con la soglia fissa a 0,35
+  // la sigla bianca sull'azzurro del Napoli stava a 3,5:1 (issue #244)
+  const l = luminosita(c1), testo = (l + .05) / .05 > 1.05 / (l + .05) ? "#000000" : "#ffffff";
   return `<i class="dist" style="--c1:${c1};--c2:${c2};--ct:${testo}">${sigla(s)}</i>`;
 }
 // Per i lettori di schermo: «gioca all'85 per cento, in casa contro il Napoli» (in italiano con l'articolo giusto).
@@ -420,14 +422,18 @@ function esitoPartita(x) {
   if (Number.isFinite(x.fv_preso) && (codice === "voto" || x.stato_partita === "fatto")) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
   return { fv: null, testo: etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA[x.stato_partita][0]) };
 }
+// Il nome per i lettori di schermo viene dal contenuto, non da un aria-label: le abbreviazioni che si vedono («6,8», «vs NAP»)
+// sono nascoste ai lettori e accanto c'è la frase intera, che comincia con il nome (chi usa il controllo vocale dice «Rossi»).
+// Con l'aria-label il testo visibile non stava nel nome (axe `label-content-name-mismatch`, WCAG 2.5.3, issue #244).
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
-  return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}" aria-label="${esc(vocePedina(x, esitoPartita(x)))}">
-    <span class="avatar-pedina">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
-    <span class="nome">${esc(cognome(x))}</span>
-    ${esitoPartita(x) ? `<span class="gioca esito">${esc(esitoPartita(x).testo)}</span>`
-      : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
-    ${x.avversario ? `<span class="avv">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
+  return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}">
+    <span class="avatar-pedina" aria-hidden="true">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
+    <span class="nome" aria-hidden="true">${esc(cognome(x))}</span>
+    ${esitoPartita(x) ? `<span class="gioca esito" aria-hidden="true">${esc(esitoPartita(x).testo)}</span>`
+      : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
+    ${x.avversario ? `<span class="avv" aria-hidden="true">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
+    <span class="solo-lettori">${esc(vocePedina(x, esitoPartita(x)))}</span>
   </button>`;
 }
 // Legenda del campo: si vede una volta (finché non tocchi «Ho capito»), poi si riapre dal pulsante ⓘ «Cosa vuol dire».

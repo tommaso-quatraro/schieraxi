@@ -223,7 +223,8 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .chip i { font-style: normal; color: var(--giallo-testo); }
 /* la scelta attiva è lime (--capitano) con testo scuro, uguale su web e iOS */
 .chip.attiva { background: var(--capitano); border-color: transparent; color: var(--capitano-testo); }
-.chip.attiva span, .chip.attiva i { color: color-mix(in srgb, var(--capitano-testo) 80%, transparent); }
+/* valore e stella pieni, non all'80%: sul lime del tema chiaro il numero da 12 px scendeva a 4,1:1 (issue #244); il nome resta più grande e più forte */
+.chip.attiva span, .chip.attiva i { color: var(--capitano-testo); }
 /* moduli e stili della formazione: una riga che scorre di lato (stessa striscia di Mercato) invece di andare a capo */
 .chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 2px -4px 4px; padding: 4px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
