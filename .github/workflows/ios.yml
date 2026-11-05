@@ -6,8 +6,10 @@ name: iOS
 # oppure a mano (Actions > iOS > Run workflow, o `gh workflow run ios.yml --ref <ramo>`).
 # Niente cache di DerivedData: il checkout cambia le date di tutti i file e Xcode ricompilerebbe comunque tutto;
 # niente pacchetti SwiftPM in ios/project.yml, quindi niente da mettere in cache.
-# Lo stesso codice non si prova due volte (issue #264): i test dipendono solo da ios/ e da questo file. Dopo i test riusciti il
-# Mac lascia un artifact minuscolo «ios-verde-<albero di ios/>-<hash di ios.yml>» (3 giorni). Il job Linux «gia-verde» lo cerca
+# Lo stesso codice non si prova due volte (issue #264): i test dipendono da ios/, da questo file e dai pochi file fuori da ios/
+# che alcuni test leggono (elenco in ios/Tests/file-esterni.txt, issue #308: la stessa lista fa partire i test iOS in test.yml).
+# Dopo i test riusciti il Mac lascia un artifact minuscolo
+# «ios-verde-<albero di ios/>-<hash di ios.yml>-<impronta dei file esterni>» (3 giorni). Il job Linux «gia-verde» lo cerca
 # prima di prenotare il Mac: se una corsa di questo repository (mai di un fork) ha già provato esattamente lo stesso codice,
 # il Mac non parte e il job risulta riuscito. Succedeva fino a tre volte per modifica: corsa a mano sul ramo, «ios / test»
 # della PR (commit di unione con main) e la corsa su main dopo l'unione. Se main nel frattempo ha cambiato ios/, l'albero è
@@ -51,18 +53,41 @@ jobs:
           chiave=""
           albero=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$COMMIT" --jq '.tree[] | select(.path == "ios") | .sha') || albero=""
           file=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/ios.yml?ref=$COMMIT" --jq '.sha') || file=""
-          if printf '%s\n' "$albero-$file" | grep -qxE '[0-9a-f]{40}-[0-9a-f]{40}'; then
-            chiave="$albero-$file"
+          # I file fuori da ios/ che i test iOS leggono (elenco ios/Tests/file-esterni.txt, issue #308) entrano nella chiave con il
+          # loro hash: se ne cambia uno, la chiave è un'altra e i test ripartono. Elenco illeggibile, vuoto, con una riga che non è
+          # un nome di file, o un file che non si trova: nessuna chiave, quindi i test girano.
+          esterni=""
+          impronta=""
+          elenco=$(gh api -H "Accept: application/vnd.github.raw+json" "repos/$GITHUB_REPOSITORY/contents/ios/Tests/file-esterni.txt?ref=$COMMIT") || elenco=""
+          voci=$(printf '%s\n' "$elenco" | grep -vE '^[[:space:]]*(#|$)' || true)
+          if [ -n "$voci" ] && ! printf '%s\n' "$voci" | grep -qvE '^[A-Za-z0-9_./-]+$'; then
+            while IFS= read -r voce; do
+              sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/$voce?ref=$COMMIT" --jq '.sha') || sha=""
+              if ! printf '%s\n' "$sha" | grep -qxE '[0-9a-f]{40}'; then esterni=""; break; fi
+              esterni="$esterni$voce $sha"$'\n'
+            done <<< "$voci"
+            if [ -n "$esterni" ]; then impronta=$(printf '%s' "$esterni" | sha1sum | cut -d' ' -f1); fi
+          fi
+          if printf '%s\n' "$albero-$file-$impronta" | grep -qxE '[0-9a-f]{40}-[0-9a-f]{40}-[0-9a-f]{40}'; then
+            chiave="$albero-$file-$impronta"
             if [ "$FORZA" != true ]; then
               corsa=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=ios-verde-$chiave&per_page=30" \
                 --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_repository_id == (env.REPO_ID | tonumber))][0].workflow_run.id // ""') || corsa=""
               if printf '%s\n' "$corsa" | grep -qxE '[0-9]+'; then
                 verde=true
-                echo "Test iOS non ripetuti: lo stesso codice (ios/ $albero, ios.yml $file) è già verde nella corsa $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$corsa" | tee -a "$GITHUB_STEP_SUMMARY"
+                echo "Test iOS non ripetuti: lo stesso codice (ios/ $albero, ios.yml $file, file esterni $impronta) è già verde nella corsa $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$corsa" | tee -a "$GITHUB_STEP_SUMMARY"
               fi
             fi
           fi
           echo "Chiave: ${chiave:-sconosciuta}; già verde: $verde"
+          # il riepilogo della corsa mostra sempre la chiave e da cosa è fatta
+          {
+            echo "Chiave dei test iOS: \`${chiave:-sconosciuta}\` (già verde: $verde)"
+            echo "- ios/: ${albero:-?}"
+            echo "- ios.yml: ${file:-?}"
+            echo "- file fuori da ios/ (${impronta:-?}):"
+            printf '%s' "$esterni" | while read -r voce sha; do echo "  - $voce ${sha:0:12}"; done
+          } >> "$GITHUB_STEP_SUMMARY"
           echo "verde=$verde" >> "$GITHUB_OUTPUT"
           echo "chiave=$chiave" >> "$GITHUB_OUTPUT"
 
@@ -109,7 +134,7 @@ jobs:
         env:
           CHIAVE: ${{ needs.gia-verde.outputs.chiave }}
         run: |
-          printf 'ios/ e ios.yml: %s\ncommit: %s\n' "$CHIAVE" "$GITHUB_SHA" > build/ios-verde.txt
+          printf 'ios/, ios.yml e file esterni: %s\ncommit: %s\n' "$CHIAVE" "$GITHUB_SHA" > build/ios-verde.txt
       - name: Carica il segno «verde»
         if: needs.gia-verde.outputs.chiave != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

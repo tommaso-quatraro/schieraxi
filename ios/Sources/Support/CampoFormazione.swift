@@ -31,12 +31,8 @@ struct PedinaCampo: View {
                     PillolaFantavoto(valore: g.fvAtteso, diametro: diametro).offset(y: 8)
                 }
                 .padding(.bottom, 8)
-            Text(g.nomeCorto)
-                .font(.caption.weight(.semibold))   // 12 pt a misura normale, segue Dynamic Type
-                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // ma con un tetto: il campo ha spazio fisso
-                .foregroundStyle(.white)
-                .lineLimit(1).minimumScaleFactor(0.6)
-                .shadow(color: .black.opacity(0.5), radius: 1)
+            // intero e a capo, mai rimpicciolito (12 punti al minimo): vedi `CognomePedina`
+            CognomePedina(nome: g.nomeCorto)
             if let gioca = LetturaPedina.gioca(g.pVoto) {
                 RigaGioca(testo: gioca, incerto: LetturaPedina.incerto(g.pVoto))
             }
@@ -68,6 +64,7 @@ struct PillolaFantavoto: View {
 }
 
 /// «gioca 85%»: bianco se è quasi sicuro di giocare; sotto il 70% pillola arancio con l'icona di avviso (non solo il colore).
+/// Se la pedina è stretta va a capo tra le parole («⚠ gioca» sopra «45%»), come la web: il carattere non si rimpicciolisce.
 struct RigaGioca: View {
     let testo: String
     let incerto: Bool
@@ -75,42 +72,52 @@ struct RigaGioca: View {
     var body: some View {
         Group {
             if incerto {
-                HStack(spacing: 2) {
-                    Image(systemName: "exclamationmark.triangle.fill").imageScale(.small)
-                    Text(testo)
-                }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 5).padding(.vertical, 1)
-                // arancio fisso (quello del tema scuro): il prato è scuro anche nel tema chiaro, e il nero sopra si legge bene
-                .background(Color(red: 1.0, green: 0.69, blue: 0.29), in: Capsule())
+                // l'icona dentro il testo, così va a capo insieme alle parole
+                Text("\(Image(systemName: "exclamationmark.triangle.fill")) \(testo)")
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    // arancio fisso (quello del tema scuro): il prato è scuro anche nel tema chiaro, e il nero sopra si legge bene.
+                    // Su una riga è una capsula (il raggio supera metà altezza e si ferma lì); su due righe angoli tondi, come la web.
+                    .background(Color(red: 1.0, green: 0.69, blue: 0.29), in: .rect(cornerRadius: 8))
             } else {
                 Text(testo)
                     .foregroundStyle(.white.opacity(0.95))   // sul prato a 0,8 il contrasto non bastava (controllo di accessibilità)
                     .shadow(color: .black.opacity(0.5), radius: 1)
             }
         }
-        .font(.caption2.weight(.semibold))   // segue Dynamic Type (a misura normale 11 pt; la scala minima lo stringe se serve)
-        .dynamicTypeSize(...DynamicTypeSize.xLarge)   // tetto più basso: il campo non cambia larghezza
-        .lineLimit(1).minimumScaleFactor(0.6)
+        .font(.caption2.weight(.semibold))   // segue Dynamic Type: 11 pt a misura normale, mai rimpicciolito
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)   // tetto più basso: sotto il cognome, nella stessa larghezza
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
 /// «vs [NAP]» in casa, «@ [NAP]» in trasferta. Il distintivo ha i colori sociali e la sigla: mai lo stemma ufficiale.
+/// Se la pedina è stretta «vs» va sopra la sigla, come la web: niente testo rimpicciolito.
 struct RigaAvversario: View {
     let avversario: String?
     let inCasa: Bool?
 
     var body: some View {
         if let avversario, !avversario.isEmpty {
-            HStack(spacing: 3) {
-                if let prefisso = LetturaPedina.prefisso(inCasa: inCasa) {
-                    Text(prefisso).font(.caption2.weight(.bold)).foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.5), radius: 1)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 3) {
+                    prefisso
+                    DistintivoSquadra(squadra: avversario)
                 }
-                DistintivoSquadra(squadra: avversario)
+                VStack(spacing: 1) {
+                    prefisso
+                    DistintivoSquadra(squadra: avversario)
+                }
             }
             .dynamicTypeSize(...DynamicTypeSize.xLarge)
-            .lineLimit(1).minimumScaleFactor(0.6)
+        }
+    }
+
+    @ViewBuilder private var prefisso: some View {
+        if let prefisso = LetturaPedina.prefisso(inCasa: inCasa) {
+            Text(prefisso).font(.caption2.weight(.bold)).foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.5), radius: 1)
         }
     }
 }
@@ -247,7 +254,9 @@ struct CampoFormazione: View {
     }
 }
 
-/// L'immagine da condividere (si disegna con `ImageRenderer`): titolo, campo con i titolari, panchina. Sempre su fondo scuro, 360 x 450 punti.
+/// L'immagine da condividere (si disegna con `ImageRenderer`): titolo, campo con i titolari, panchina. Sempre su fondo scuro,
+/// larga 360 punti e alta almeno 490: se i cognomi vanno a capo il campo cresce e l'immagine con lui. Alta 490 fissi tagliava
+/// già il titolo e la legenda (foto `formazione-immagine` del 3/11/2026, issue #274).
 struct ImmagineFormazione: View {
     let giornata: Int
     var giornataLega: Int? = nil
@@ -267,13 +276,14 @@ struct ImmagineFormazione: View {
             CampoFormazione(titolari: titolari, diametro: 42, perImmagine: true)
             Text("Panchina: " + panchina.map(\.nomeCorto).joined(separator: ", "))
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.85))
-                .multilineTextAlignment(.center).lineLimit(3)
+                .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-            Spacer(minLength: 0)
             Text("Il numero sotto il volto è il fantavoto atteso · vs in casa, @ in trasferta").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color(red: 0.24, green: 0.86, blue: 0.59))
         }
+        .fixedSize(horizontal: false, vertical: true)   // alta quanto serve: niente righe tagliate per stare in 490 punti
         .padding(.horizontal, 14).padding(.top, 18).padding(.bottom, 12)
-        .frame(width: 360, height: 490)
+        .frame(width: 360)
+        .frame(minHeight: 490, alignment: .top)
         .background(LinearGradient(colors: [Color(red: 0.05, green: 0.14, blue: 0.09), Color(red: 0.03, green: 0.06, blue: 0.04)], startPoint: .top, endPoint: .bottom))
         .environment(\.colorScheme, .dark)
     }

@@ -1,5 +1,51 @@
 [
   {
+    "versione": "1.392",
+    "data": "2026-11-05T15:25:49",
+    "titolo": "Controlli più stretti sul ripristino dei backup e sull'archivio della stagione",
+    "voci": [
+      "Ripristino di una copia di sicurezza: le rose devono avere la stagione scritta come «2026-27» e al massimo 20 squadre da 40 giocatori, come quando le importi. Se non va, non cambia niente e un messaggio lo dice.",
+      "«Archivia e riparti» controlla il nome della stagione prima di salvare l'archivio."
+    ],
+    "tecnico": [
+      "lega.da_dict accetta `stagione` solo vuota o nel formato AAAA-AA (lega.stagione_valida, solo cifre ASCII); stagione.archivia_e_riparti ricontrolla il nome e che la cartella resti dentro `archivio/` (percorsi.dentro), altrimenti ValueError (400) senza scrivere niente.",
+      "POST /api/backup/ripristina applica limiti.controlla_rose alle rose del backup prima di scrivere qualsiasi file (backup.ripristina_esito, parametro facoltativo controlla_rose): 413 come l'importazione.",
+      "POST /api/nuova-stagione: il campo `archivio` della risposta è il nome della stagione archiviata (es. \"2026-27\"), non più un percorso; web e iPhone non lo leggono."
+    ]
+  },
+  {
+    "versione": "1.391",
+    "data": "2026-11-05T15:00:42",
+    "titolo": "Web più comoda con la tastiera e con il testo grande",
+    "voci": [
+      "Web: con il tasto Tab il pulsante o la riga scelta resta sempre in vista, non più sotto la barra in basso o sotto la testata; i campi da compilare e i menu hanno un bordo che si vede bene, in chiaro e in scuro.",
+      "Web, telefoni piccoli e testo grande: il nome della squadra in alto si legge intero, il conto alla rovescia non lascia «h» da sola su una riga, Cambi consigliati, Regole e Notifiche non tagliano i nomi e non scorrono di lato.",
+      "Web: i pulsanti «−» e «+» delle Regole e i collegamenti delle pagine Privacy, Termini e Crediti sono più facili da toccare."
+    ],
+    "tecnico": [
+      "#280: html con scroll-padding-top = --alto-testata (altezza vera della testata, ResizeObserver in app.js; 0 quando non è sticky) + 8 px e scroll-padding-bottom = barra + safe area + 22 px (+84 px invece di +22 con «Salva» in vista; 16 px da 900 px). controllaFerme() toglie lo sticky (classe .non-ferma) alle colonne più alte dello schermo (prima colonna di Oggi, campo, .imp-elenco, filtri dei giocatori). Le strisce scorrevoli portano in vista la voce con il focus (focusin → scrollIntoView nearest, scroll-padding-inline 24 px).",
+      "#285: variabile --bordo-campo (#66796e scuro, #728379 chiaro) per .campo-testo, select, textarea, .menu-scelta e .stepper: ≥3:1 con il fondo del campo e con carta, fondo piatto e foglio (test in tests/test_design_web.py).",
+      "#286: testata senza nowrap/ellipsis (overflow-wrap break-word), stemma nascosto tra 320 e 360 px utili; testoConto unisce numero e unità con uno spazio che non va a capo; maglia di Oggi più piccola sotto i 360 px (clamp su 100cqi del contenitore pagina) e nascosta sotto i 260 px.",
+      "#287: nome del cambio senza ellipsis; sotto i 320 px .proposta-r su due righe (volto e guadagno sopra, testo sotto a tutta larghezza). #288: .imp con grid-template-columns minmax(0, 1fr). Sotto i 320 px .riga-regola va a capo.",
+      "#289: link delle pagine legali inline-flex 44 × 44 px (selettori su .pagina-testo e .piede-legale, markup di fanta/testi_legali.py invariato); .prova-voti flex con wrap e pulsanti dello stepper flex none; sincronizzaAria mette aria-pressed solo su button.chip e .segmenti button (niente più sulle <label class=\"chip\"> di Aggiorna le rose)."
+    ]
+  },
+  {
+    "versione": "1.390",
+    "data": "2026-11-05T14:30:24",
+    "titolo": "Le stesse parole per un giocatore in ogni schermata",
+    "voci": [
+      "Oggi: chi gioca poco ma non è in dubbio ora si chiama come in Formazione, per esempio «Improbabile» o «Probabile panchina», anche nelle cose da fare. «In dubbio» resta solo per chi lo è davvero.",
+      "Confronto: il posto in formazione si legge «Titolare», «Panchina 2» o «Non schierato», accanto allo stato del giocatore; i numeri negativi hanno il segno meno giusto.",
+      "Partite rinviate: sul campo il giocatore dice «Rinviata» invece della probabilità di giocare, in Oggi la partita si scrive come le altre del turno e la data del recupero è nella forma «mer 18 nov»."
+    ],
+    "tecnico": [
+      "#282: gli avvisi `dubbio` di /api/oggi hanno `etichetta` = `etichette.di_giocatore(scheda)` (prima `di_avviso(\"dubbio\")`, sempre «In dubbio · gioca N%»); /api/widget manda `etichetta` anche negli `avvisi` (facoltativa). Da fare: chiavi nuove `dafare.incerto*` con il parametro `stato` = frase `etichetta.<codice>` per ballottaggio, panchina, improbabile, rinviata; `dafare.dubbio_incerto*` solo per il codice `in_dubbio`.",
+      "#281: `testoPosto` in app.js (chiavi `mercato.posto_titolare`, `mercato.posto_fuori`) per scelta del confronto, Confronto e sostituzione; la scelta mostra anche `pillTitolarita`. `numMeno` per i valori delle barre del Confronto.",
+      "#284: `esitoPedina` (rinviata dal codice dell'etichetta, da `stato_partita` o da `rinvio`) al posto di «gioca N%» sulla pedina; carta del rinvio «UDI vs MIL». Motivo `rinvio.aspetta` con la data come frase `data.giorno_mese` (`giorno.*`, `mese.*`): «(mer 18 nov)», in inglese «(Wed 18 Nov)»."
+    ]
+  },
+  {
     "versione": "1.389",
     "data": "2026-11-05T11:25:47",
     "titolo": "Testi interi anche sui telefoni piccoli",

@@ -95,7 +95,8 @@ def di_giocatore(x: dict, lingua: str = "it") -> dict | None:
 
 
 def di_avviso(tipo: str, p_voto=None, lingua: str = "it") -> dict | None:
-    """L'etichetta di un avviso di Oggi (`tipo`: infortunato, squalificato, dubbio, diffidato)."""
+    """L'etichetta di un avviso di Oggi per `tipo` (infortunato, squalificato, diffidato). Gli avvisi `dubbio` di Oggi non la usano:
+    hanno `di_giocatore` della loro scheda, la stessa della Formazione («Improbabile», «Probabile panchina»...; #282)."""
     c = "in_dubbio" if tipo == "dubbio" else tipo
     return crea(c, p_voto, lingua) if c in CODICI else None
 
