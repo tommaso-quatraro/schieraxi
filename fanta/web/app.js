@@ -4293,13 +4293,15 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
 // restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, «Apri la formazione») restava sotto la barra o
 // fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
 const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .col > .campo, .imp-elenco, .giocatori-pagina .filtri-giocatori";
+const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
 function controllaFerme() {
   const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è
   document.querySelectorAll(FERME).forEach(el => {
     const era = el.classList.contains("non-ferma"), stile = getComputedStyle(el);
     if (!era && stile.position !== "sticky") return;                     // non è ferma: niente da controllare
+    if (!era) SOPRA_FERME.set(el, parseFloat(stile.top) || 0);           // si legge solo da ferma: così il conto non cambia e non oscilla
     const alto = el.getBoundingClientRect().height, z = el.offsetHeight ? alto / el.offsetHeight : 1;   // con il testo grande la pagina è ingrandita
-    const troppo = alto + ((parseFloat(stile.top) || 0) + sotto) * z > innerHeight;
+    const troppo = alto + ((SOPRA_FERME.get(el) || 0) + sotto) * z > innerHeight;
     if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria osserva le classi)
   });
 }

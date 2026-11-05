@@ -90,7 +90,7 @@ def test_l_altezza_della_testata_segue_quella_vera():
     assert json.loads(r.stdout.strip().splitlines()[-1]) == [["--alto-testata", "77px"], ["--alto-testata", "118px"], ["--alto-testata", "0px"]]
 
 
-def _codice_ferme(dopo: str) -> str:
+def _codice_ferme(dopo: str, top_da_ferma: str = "76px") -> str:
     pezzo = APP[APP.index("const FERME = "):]
     pezzo = pezzo[:pezzo.index("\n}\n") + 3]
     return "\n".join([
@@ -103,7 +103,7 @@ def _codice_ferme(dopo: str) -> str:
         "tutti.forEach(x => { x.classList.o = x; });",
         "const radice = { classi: new Set(), stile: { scrollPaddingBottom: '16px' } };",          # in basso niente barra (da 900 px è a sinistra)
         "const document = { querySelectorAll: () => tutti, documentElement: radice };",
-        "const getComputedStyle = x => (x.classi.has('non-ferma') ? { position: 'static', top: '76px' } : x.stile);",
+        f"const getComputedStyle = x => (x.classi.has('non-ferma') ? {{ position: 'static', top: {json.dumps(top_da_ferma)} }} : x.stile);",
         pezzo,
         dopo,
     ])
@@ -131,6 +131,21 @@ def test_le_colonne_ferme_restano_ferme_solo_se_ci_stanno_nello_schermo():
     assert re.search(r"\n\.non-ferma \{ position: static !important; \}", SENZA_COMMENTI)
     for selettore in (".colonne-oggi > .col:first-child", ".colonne-campo .col > .campo", ".imp-elenco"):
         assert selettore in re.search(r'const FERME = "([^"]+)"', APP).group(1), selettore
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_le_colonne_ferme_non_oscillano_se_il_browser_da_top_auto():
+    """Quando la colonna non è più ferma (`position: static`) qualche browser (Safari) può dare `top: auto`: contato come 0, la colonna
+    sembrerebbe starci, tornerebbe ferma e al giro dopo di nuovo no, avanti e indietro. Vale il `top` di quando era ferma."""
+    fuori = subprocess.run([NODE, "-"], input=_codice_ferme(
+        "innerHeight = 400; tutti.splice(0, tutti.length, el('campo', 350, 'sticky')); tutti[0].classList.o = tutti[0];"
+        "const stati = []; for (let i = 0; i < 4; i++) { controllaFerme(); stati.push(tutti[0].classi.has('non-ferma')); }"
+        "console.log(JSON.stringify({ stati, tocchi: tutti[0].tocchi }));", top_da_ferma="auto"),
+        capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert fuori.returncode == 0, fuori.stderr
+    r = json.loads(fuori.stdout.strip().splitlines()[-1])
+    # 350 + 76 + 16 = 442 > 400: non ci sta, e resta così (con «auto» preso per 0 sarebbe 366: ferma, poi no, poi ferma…)
+    assert r == {"stati": [True, True, True, True], "tocchi": 1}
 
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
