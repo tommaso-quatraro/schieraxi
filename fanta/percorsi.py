@@ -42,6 +42,19 @@ def chiavi_vecchie(chiavi, tieni: int) -> list[str]:
     return ordinate[:-tieni] if tieni > 0 and len(ordinate) > tieni else []
 
 
+def dentro(cartella: Path, percorso: Path) -> bool:
+    """Vero se `percorso`, risolto (niente «..», collegamenti seguiti), sta sotto `cartella` e non è la cartella stessa.
+    Da controllare prima di scrivere in un percorso costruito con un nome che viene dai dati. Un nome che il disco non accetta
+    (carattere nullo, percorso non risolvibile) dà falso, uguale su Windows e su Linux."""
+    if "\x00" in str(percorso):
+        return False
+    try:
+        base, vero = cartella.resolve(), percorso.resolve()
+    except (OSError, ValueError, RuntimeError):         # RuntimeError: giro di collegamenti (Python prima della 3.13)
+        return False
+    return vero != base and vero.is_relative_to(base)
+
+
 def scrivi_sicuro(percorso: Path, testo: str) -> None:
     """Scrive su un file temporaneo e poi lo rinomina: se qualcosa va storto, il file vecchio resta intatto."""
     percorso.parent.mkdir(parents=True, exist_ok=True)

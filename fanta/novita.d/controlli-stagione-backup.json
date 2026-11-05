@@ -1,0 +1,12 @@
+{
+  "titolo": "Controlli più stretti sul ripristino dei backup e sull'archivio della stagione",
+  "voci": [
+    "Ripristino di una copia di sicurezza: le rose devono avere la stagione scritta come «2026-27» e al massimo 20 squadre da 40 giocatori, come quando le importi. Se non va, non cambia niente e un messaggio lo dice.",
+    "«Archivia e riparti» controlla il nome della stagione prima di salvare l'archivio."
+  ],
+  "tecnico": [
+    "lega.da_dict accetta `stagione` solo vuota o nel formato AAAA-AA (lega.stagione_valida, solo cifre ASCII); stagione.archivia_e_riparti ricontrolla il nome e che la cartella resti dentro `archivio/` (percorsi.dentro), altrimenti ValueError (400) senza scrivere niente.",
+    "POST /api/backup/ripristina applica limiti.controlla_rose alle rose del backup prima di scrivere qualsiasi file (backup.ripristina_esito, parametro facoltativo controlla_rose): 413 come l'importazione.",
+    "POST /api/nuova-stagione: il campo `archivio` della risposta è il nome della stagione archiviata (es. \"2026-27\"), non più un percorso; web e iPhone non lo leggono."
+  ]
+}
