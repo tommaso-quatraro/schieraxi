@@ -293,13 +293,18 @@ def test_niente_calcoli_nuovi_se_la_cache_e_vuota(mondo, monkeypatch):
     assert not [x for x in vai(mondo) if x["tipo"] in ("svincolato", "scambio")]
 
 
-def test_rose_vecchie_solo_dopo_una_giornata(mondo):
+def test_rose_da_aggiornare_solo_dopo_la_sosta(mondo):
+    """#334: una giornata giocata con le rose ferme da giorni non basta più (era rumore ogni settimana): serve un momento di
+    mercato della lega, qui la sosta fra la 8 e la 9. Le altre prove in tests/test_promemoria_rose.py."""
     vecchio = (ADESSO - timedelta(days=6)).timestamp()
     os.utime(mondo.ctx.rose, (vecchio, vecchio))
-    assert not [x for x in vai(mondo) if x["tipo"] == "rose"]                # nessuna giornata giocata: va bene così
     mondo.db.execute("INSERT INTO partite VALUES (?, 8, ?, 1)", (STAGIONE, (ADESSO - timedelta(days=2)).isoformat(sep=" ")[:16]))
-    r = [x for x in vai(mondo) if x["tipo"] == "rose"]
+    mondo.db.execute("INSERT INTO partite VALUES (?, 9, ?, 0)", (STAGIONE, (ADESSO + timedelta(days=3)).isoformat(sep=" ")[:16]))
+    assert not [x for x in vai(mondo) if x["tipo"] == "rose"]                # nessuna sosta: niente promemoria
+    mondo.db.execute("UPDATE partite SET data = ? WHERE giornata = 9", ((ADESSO + timedelta(days=9)).isoformat(sep=" ")[:16],))
+    r = [x for x in vai(mondo) if x["tipo"] == "rose"]                       # 11 giorni fra la 8 e la 9: sosta
     assert len(r) == 1 and r[0]["giorni"] == 6 and r[0]["destinazione"]["link"] == "schieraxi://lega/rose"
+    assert r[0]["frase"] == {"chiave": "dafare.rose_mercato", "param": {"n": 9}}
     fresco = (ADESSO - timedelta(days=1)).timestamp()
     os.utime(mondo.ctx.rose, (fresco, fresco))
     assert not [x for x in vai(mondo) if x["tipo"] == "rose"]

@@ -80,5 +80,10 @@
   "voto_senza_sostituto": null,
   "fattore_campo": 0.0,
   "soglia_primo_gol": 66.0,
-  "ampiezza_fascia_gol": 6.0
+  "ampiezza_fascia_gol": 6.0,
+  "asta_invernale": {
+    "dal": "2027-01-26",
+    "al": "2027-01-28"
+  },
+  "finestre_scambio": null
 }

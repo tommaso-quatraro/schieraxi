@@ -2167,7 +2167,7 @@ def leggi_regole(response: Response, ctx: Contesto = Depends(lega_corrente)):
 @app.put("/api/regole")
 def scrivi_regole(dati: dict, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     campi_lega = ("scadenza_minuti", "prima_giornata_lega", "aggiornamenti_vicino_scadenza",
-                  "partite_rinviate", "voto_ufficio_rinviate", "rinvii_giornate")
+                  "partite_rinviate", "voto_ufficio_rinviate", "rinvii_giornate", "asta_invernale", "finestre_scambio")
     with versioni.blocco("regole"):
         versioni.controlla(request, versioni.etag_file(ctx.regole))
         if any(k not in dati for k in campi_lega):

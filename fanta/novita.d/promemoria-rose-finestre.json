@@ -1,0 +1,13 @@
+{
+  "titolo": "Da fare: il promemoria «aggiorna le rose» solo quando le rose possono essere cambiate",
+  "voci": [
+    "Il promemoria per aggiornare le rose non compare più dopo ogni giornata: compare all'inizio della stagione e durante le soste del campionato, quando di solito la lega fa aste e scambi, e solo se da allora non hai aggiornato le rose.",
+    "Dice entro quale giornata aggiornarle e sparisce quando le aggiorni o quando si chiude la formazione di quella giornata.",
+    "Le date dell'asta invernale e delle finestre di scambio della lega si possono scrivere nelle regole della lega: l'asta si aggiunge, le finestre di scambio prendono il posto delle soste."
+  ],
+  "tecnico": [
+    "Issue #334. da_fare._rose_vecchie ora riceve le regole e usa _momenti_mercato: inizio della stagione (dal 1° luglio), asta_invernale e finestre_scambio delle regole; con finestre_scambio null (o solo date di altre stagioni) le soste dal calendario: almeno GIORNI_SOSTA = 10 giorni fra l'ultima partita di una giornata e la prima della successiva, con la regola del turno di turno.py (una partita rinviata non sposta la fine della giornata). Visibile dall'inizio del momento fino alla scadenza della lega (avvisi.scadenza) della prima giornata dopo la fine del momento, se le rose (data di modifica del file) sono più vecchie dell'inizio. Tolto GIORNI_ROSE.",
+    "Campi nuovi facoltativi di regole.json e di GET/PUT /api/regole: asta_invernale ({dal, al?} o null) e finestre_scambio (elenco di {dal, al?} o null; [] = nessuna finestra), date AAAA-MM-GG, al massimo 20 finestre e 60 giorni per periodo. PUT /api/regole tiene i valori che c'erano se un client vecchio non li manda (campi_lega).",
+    "Frase nuova dafare.rose_mercato con il parametro n (giornata della lega), in frasi.py e testi.js. dafare.rose_vecchie resta nel catalogo solo per la demo dell'app iPhone, che va allineata. Voce rose con gli stessi campi di prima (id, azione, destinazione, giorni): i client non devono fare niente."
+  ]
+}
