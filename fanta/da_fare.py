@@ -11,7 +11,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from . import affidabilita, avvisi, buon_senso, consigli, diario, frasi, movimenti, rinvii, scelte, stato_utente, widget
+from . import affidabilita, avvisi, buon_senso, consigli, diario, etichette, frasi, movimenti, rinvii, scelte, stato_utente, widget
 from .frasi import F
 from .lega import Rose
 from .regole import Regole
@@ -30,6 +30,9 @@ GIORNI_DATI = 3
 GIORNI_CERTIFICATO = 3
 ALTA, MEDIA, BASSA = 1, 2, 3
 FUORI = ("infortunato", "squalificato")
+# etichette (fanta/etichette.py) che la voce di un titolare incerto scrive con la stessa parola, in minuscolo (chiavi `etichetta.*`
+# di fanta/frasi.py): «Lerri: improbabile, gioca 2%.». `in_dubbio` resta «è in dubbio» (le chiavi `dafare.dubbio_incerto*`).
+IN_FRASE = ("ballottaggio", "panchina", "improbabile", "rinviata")
 
 
 def _num(x: float) -> str:
@@ -108,8 +111,13 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         # il candidato: chi la consigliata schiera al suo posto, se c'è; altrimenti il libero con più punti attesi
         alt = max((y for j, y in schede.items() if libero(j, x["ruolo"])),
                   key=lambda y: (bool(sistema) and y["id"] in sistema, y["punti_attesi"]), default=None)
-        chiave, param = (("dafare.dubbio_squalificato" if x["stato"] == "squalificato" else "dafare.dubbio_infortunato", {}) if fuori
-                         else ("dafare.dubbio_incerto", {"p": round(x["p_voto"] * 100)}))
+        codice = etichette.codice(x)
+        if fuori:
+            chiave, param = "dafare.dubbio_squalificato" if x["stato"] == "squalificato" else "dafare.dubbio_infortunato", {}
+        elif codice in IN_FRASE:     # con la parola dell'etichetta di Formazione e scheda: «in dubbio» solo se lo dicono le probabili (#282)
+            chiave, param = "dafare.incerto", {"stato": F("etichetta." + codice), "p": round(x["p_voto"] * 100)}
+        else:
+            chiave, param = "dafare.dubbio_incerto", {"p": round(x["p_voto"] * 100)}
         extra = {}
         if alt and consigli.da_schierare(x, alt, sistema)["id"] == alt["id"]:
             usati.add(alt["id"])
@@ -122,7 +130,7 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
                 riserva = next((schede[j] for j in panchina if libero(j, x["ruolo"])), None)
             if riserva:
                 usati.add(riserva["id"])
-                testo = F("dafare.dubbio_incerto_tiene", nome=x["nome"], riserva=riserva["nome"], **param)
+                testo = F(chiave + "_tiene", nome=x["nome"], riserva=riserva["nome"], **param)
                 extra["riserva"] = {"id": riserva["id"], "nome": riserva["nome"]}
             else:
                 testo = F(chiave, nome=x["nome"], **param)

@@ -95,7 +95,7 @@ def test_pedina_nome_accessibile_dal_contenuto_con_il_testo_che_si_vede():
     pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
     apertura = re.search(r'<button class="pedina"[^>]*>', pedina).group(0)
     assert "aria-label" not in apertura
-    assert '<span class="solo-lettori">${esc(vocePedina(x, esitoPartita(x)))}</span>' in pedina
+    assert '<span class="solo-lettori">${esc(vocePedina(x, esito))}</span>' in pedina      # esito = esitoPedina(x) (#284)
     for pezzo in ('<span class="avatar-pedina" aria-hidden="true">', '<span class="nome" aria-hidden="true">',
                   '<span class="gioca esito" aria-hidden="true">', '<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">',
                   '<span class="avv" aria-hidden="true">'):
