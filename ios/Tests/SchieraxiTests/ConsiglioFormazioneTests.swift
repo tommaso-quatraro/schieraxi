@@ -92,7 +92,7 @@ struct ConsiglioFormazioneTests {
 
     @Test("Prima di 8 giornate: quante ne servono ancora, per ogni indicatore")
     func servonoAncora() throws {
-        let c = try consiglio(#"{"finestra": 8, "giornate": 3, "voci": 3, "meno_s2": 1.0, "verdetto": false, "regge": {"C1": null, "C2": null, "C3": null, "C4": null}}"#)
+        let c = try consiglio(#"{"finestra": 8, "soglie": {"C1": 0.0, "C2": 0, "C3": 0, "C4_senza_motivo": 0.1}, "giornate": 3, "voci": 3, "meno_s2": 1.0, "verdetto": false, "regge": {"C1": null, "C2": null, "C3": null, "C4": null}}"#)
         for indicatore in ParoleConsiglio.Indicatore.allCases {
             #expect(ParoleConsiglio.esito(indicatore, di: c) == .servono(5), "\(indicatore)")
         }
