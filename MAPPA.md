@@ -23,7 +23,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
   - Registro delle giornate (#165): `registro_giornate.py`. Negli ultimi 10 minuti prima della prima partita salva i numeri
     mostrati per tutta la Serie A (regole classiche, solo id e numeri); a giornata finita misura I1-I3, medie sulle ultime 8
-    giornate e avviso al proprietario (canale della sentinella) se una media resta fuori soglia per 2 giornate di fila. Tabelle
+    giornate e avviso al proprietario (canale della sentinella) se una media resta fuori soglia per 2 giornate di fila. Giornata
+    non salvata quando inizia la prima partita = «persa»: riga con il motivo in breve (`persa`) e un avviso solo. Tabelle
     `registro_giocatori` e `registro_giornate` dell'archivio: NON si ricostruiscono. Gira nel thread del pianificatore
     (`pianificatore._registro`); `FANTA_REGISTRO_GIORNATE=0` lo spegne. Campo `registro` di `GET /api/stato-dati`.
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
