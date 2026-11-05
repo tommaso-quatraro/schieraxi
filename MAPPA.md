@@ -8,7 +8,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Su macOS e Linux: `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
 - Test tutti: `.venv\Scripts\python.exe -m pytest -q`. Un file solo: `... -m pytest -q tests\test_rose_csv.py`.
 - Server locale: `.venv\Scripts\python.exe -m fanta server` (ascolta su 127.0.0.1:8000). Elenco comandi: `-m fanta --help`.
-- Modello: `-m fanta verifica` prima e dopo ogni modifica al modello.
+- Modello: `-m fanta verifica` prima e dopo ogni modifica al modello. Scelta della formazione (`formazione.py`, consiglio):
+  anche `-m fanta verifica --consiglio` (C1-C4: valore contro una scelta semplice, stabilità, titolari che non giocano, perché).
 
 ## Cartelle e file
 - `fanta/`: il server e la logica. «fanta» è il nome interno storico del pacchetto Python.
@@ -18,6 +19,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `salute.py`, `stato_dati.py`.
   - Modello: `modello.py` (fantavoto atteso `mu` e probabilità di voto `p_voto`), `formazione.py` (11 titolari più panchina;
     livelli di rischio in `LIVELLI_RISCHIO`), `punteggio.py` (fantavoto con le regole della lega), `verifica.py` (backtest),
+    `verifica_consiglio.py` (misura in laboratorio del consiglio, indicatori C1-C4 di #166: `-m fanta verifica --consiglio`),
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi; consigliata stabile, vedi «Contratti delle API»), `scambi.py`, `scambi_multi.py` (scambi N contro M),
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
