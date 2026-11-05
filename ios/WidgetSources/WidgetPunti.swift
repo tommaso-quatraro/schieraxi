@@ -97,9 +97,25 @@ struct VistaPunti: View {
         }
     }
 
-    /// «Attesi e fatti» e a destra la giornata nella forma corta che entra («Giornata 7», poi «G7»; #299).
+    /// «Attesi e fatti» e a destra la giornata nella forma corta che entra («Giornata 7», poi «G7»; #299). Si tiene la prima
+    /// disposizione di `formeTestata` che entra INTERA (#352): se con il testo grande il titolo e «G7» non stanno insieme (widget
+    /// piccolo), resta il solo simbolo e la giornata; mai una scritta tagliata. VoiceOver: la legge `voceWidget` (vedi sotto).
     private func intestazione(_ g: PuntiGiornata) -> some View {
-        IntestazioneWidget(titolo: "Attesi e fatti", icona: "chart.bar.fill", giornata: g.nome, soloCorta: true)
+        let forme = g.formeTestata
+        return PrimaCheEntra(forme.count) { i in
+            HStack(spacing: 4) {
+                Group {
+                    if forme[i].conTitolo {
+                        Label("Attesi e fatti", systemImage: "chart.bar.fill").lineLimit(1)
+                    } else {
+                        Image(systemName: "chart.bar.fill")
+                    }
+                }
+                .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
+                Spacer(minLength: 0)
+                Text(forme[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+            }
+        }
     }
 
     private func piccolo(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
