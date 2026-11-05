@@ -189,6 +189,37 @@ struct RigaStatoComeWebTests {
         #expect(soloTesto.quante("DELETE /api/scelta") == 0)
     }
 
+    @Test("Il server ha detto che la scelta non vale più: rileggendo (ritorno sulla Formazione, tira per aggiornare) resta «non valida», mai «salvata» nel frattempo, nessun messaggio, la prova una volta sola")
+    func nonValidaResta() async throws {
+        let ids = try titolariBase()
+        let dati = try Fixture.dati("formazione")
+        let scelta = Data("{\"titolari\": [\(ids.map(String.init).joined(separator: ","))], \"salvata\": \"2026-11-02T21:40:00\"}".utf8)
+        let modello = Scatola<FormazioneViewModel>()
+        let visti = Scatola<[StatoScelta]>()
+        let srv = ServerDiProva { _, percorso, _ in
+            if percorso.hasPrefix("/api/formazione/valuta") {
+                // la riga mentre il server prova la scelta salvata: è quello che si vede in quel momento
+                if let stato = await MainActor.run(body: { modello.valore?.statoScelta }) { visti.valore = (visti.valore ?? []) + [stato] }
+                throw ErroreApi.codificato(codice: ValiditaScelta.codiceNonValida, messaggio: "Il modulo 2-5-3 non è ammesso nella tua lega")
+            }
+            if percorso.hasPrefix("/api/scelta") { return scelta }
+            return dati
+        }
+        let vm = FormazioneViewModel(server: srv)
+        modello.valore = vm
+        await vm.carica()
+        #expect(vm.statoScelta == .nonValida)
+        #expect(vm.messaggio == nil)
+        await vm.carica()
+        #expect(vm.statoScelta == .nonValida)
+        #expect(vm.messaggio == nil, "nessun errore del server a ogni ritorno sulla Formazione")
+        #expect(vm.manuale == nil, "gli undici che non valgono più non tornano in campo")
+        #expect(srv.quante("POST /api/formazione/valuta") == 1, "la stessa scelta salvata non si riprova")
+        let durante = visti.valore ?? []
+        let salvataVista = durante.contains { if case .salvata = $0 { return true } else { return false } }
+        #expect(!salvataVista, "mai «salvata» mentre il server la prova: \(durante)")
+    }
+
     @Test("Senza la rosa una scelta strana non si giudica: resta salvata")
     func senzaRosaNonSiGiudica() async throws {
         let srv = try server(scelta: try dieciTitolari(), senzaSchede: true)
