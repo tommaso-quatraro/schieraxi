@@ -167,6 +167,16 @@ Tutte le rotte di questa sezione leggono i dati dell'utente (rose, regole, scelt
 
 Campo `intervallo` (in `/api/formazione`, `/api/oggi`, `/api/widget` e `/api/diario`): `{basso, alto, confidenza: 0.8, indicativo}`, la fascia «tra X e Y» mostrata all'utente. Il punteggio cade dentro la fascia circa 8 volte su 10. `dev` è coerente con la fascia; la vecchia deviazione resta in `dev_simulata`. Nessuna rotta nuova: è un campo aggiunto.
 
+**Consigliata stabile** (dal 5/11/2026, #335; nessun campo nuovo, i client mostrano quello che arriva). La consigliata di una giornata
+(`modulo`, `titolari`, `panchina`, `punteggio_atteso` e la voce del suo modulo nello stile `stile_consigliato`, in
+`/api/formazione`, `/api/oggi`, `/api/widget`, `da_fare`, avvisi e copia alla scadenza) una volta calcolata resta la stessa finché
+la migliore con i dati nuovi non vale almeno 1 punto atteso in più (la soglia dell'avviso alla scadenza), o finché un suo titolare
+non gioca più (uscito dalla rosa, infortunato, squalificato o sotto il 20%). Tenuta quella di prima, i suoi punti attesi e la sua
+panchina si rifanno con i dati nuovi; dopo la scadenza della lega resta com'è, panchina compresa. Gli altri moduli e gli altri
+stili sono sempre i migliori del momento: la voce di un altro modulo può avere qualche decimo di punti attesi più della
+consigliata. La scelta salvata dall'utente non cambia mai. Il server ricorda la consigliata in `dati/consigliate.json`
+(`consigli.FILE_CONSIGLIATE`: per ogni squadra, giornata, rosa e regole solo gli id dei giocatori, sotto un'impronta).
+
 ### Fantavoto atteso e «Perché questo numero» (facoltativi: un client vecchio li ignora)
 
 **Nome.** Il numero firma dell'app è il **Fantavoto atteso**: il fantavoto che SchieraXI si aspetta da un giocatore in quella partita, SE gioca, con le regole della lega (in inglese «Expected fantasy score»). Nelle schede dei giocatori (`schede[]`, `titolari[]`, `panchina[]`, `fuori[]` di `/api/formazione`, `previsione` di `/api/giocatore/{id}`, `giocatori[]` di `/api/classifica`, `/api/osservati` e `/api/confronto`) è il campo **`fv_atteso`**, sempre accanto a `p_voto` («gioca N%»). Per la squadra si dice **punti attesi** (`punteggio_atteso`, `punti_attesi`). Il campo **`voto_atteso`** è un'altra cosa: il voto in pagella atteso, senza bonus e malus; i client lo chiamano «voto in pagella atteso» e non lo mostrano come numero firma. Nessun nome di campo è cambiato; l'etichetta del fattore `voto` di `/api/confronto` è ora «Voto in pagella atteso» (prima «Voto atteso»).

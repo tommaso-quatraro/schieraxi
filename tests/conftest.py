@@ -135,6 +135,14 @@ def _dati_personali_in_cartella_finta(request, tmp_path, monkeypatch):
     monkeypatch.setattr(immagini, "CARTELLA", d / "immagini")
 
 
+@pytest.fixture(autouse=True)
+def _consigliate_in_cartella_finta(tmp_path, monkeypatch):
+    """Le consigliate già mostrate (`consigli.FILE_CONSIGLIATE`) mai nel file vero di `dati/`: ogni test parte senza, e quella
+    ricordata da un test non cambia la consigliata di un altro."""
+    from fanta import consigli
+    monkeypatch.setattr(consigli, "FILE_CONSIGLIATE", tmp_path / "consigliate-finte.json")
+
+
 @pytest.fixture
 def multiutente(tmp_path, monkeypatch):
     """Modalità multiutente accesa su una cartella temporanea (la vera `dati/` non si tocca), con password veloci da calcolare

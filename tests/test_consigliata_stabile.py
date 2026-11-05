@@ -1,6 +1,10 @@
 """Consiglio stabile (#335): la consigliata già mostrata per una giornata cambia solo se la nuova vale almeno 1 punto atteso in
 più (ricalcolata con i dati nuovi), oppure se un suo titolare è uscito dalla rosa, fuori o improbabile. Dopo la scadenza resta.
 Rosa e numeri inventati."""
+import json
+import sqlite3
+from datetime import datetime, timedelta
+
 import pandas as pd
 import pytest
 
@@ -146,3 +150,114 @@ def test_la_consigliata_tenuta_e_la_stessa_in_ogni_parte_della_risposta():
     assert f["modulo"] not in [a["modulo"] for a in f["alternative"]]
     assert sorted(a["modulo"] for a in f["alternative"]) == sorted(m["modulo"] for m in f["moduli"] if m["modulo"] != f["modulo"])
     assert migliore["titolari"] != f["titolari"]                  # la risposta in cache della migliore non cambia
+
+
+# ---------------------------------------------------------------- consigli.formazione: ricorda la consigliata e la rilegge
+ST = "2026-27"
+PRIMA_PARTITA = datetime(2026, 11, 8, 15, 0)            # scadenza della giornata 9 (regole senza minuti di anticipo)
+
+
+@pytest.fixture
+def mondo(monkeypatch, tmp_path):
+    """Una giornata 9 con le previsioni che il test cambia (`stato["prev"]`) e una versione dei dati per ogni cambio, come un
+    aggiornamento vero. Il file delle consigliate sta nella cartella temporanea."""
+    monkeypatch.setattr(consigli, "FILE_CONSIGLIATE", tmp_path / "consigliate.json")
+    stato = {"prev": _prev(), "versione": "v1", "adesso": PRIMA_PARTITA - timedelta(hours=5)}
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: GIORNATA)
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (stato["prev"], GIORNATA, True))
+    monkeypatch.setattr(consigli, "_versione", lambda db: stato["versione"])
+    monkeypatch.setattr(consigli, "_adesso", lambda: stato["adesso"])
+    db = sqlite3.connect(":memory:")
+    db.execute("CREATE TABLE partite (stagione TEXT, giornata INT, data TEXT, giocata INT)")
+    db.executemany("INSERT INTO partite VALUES (?,?,?,?)", [(ST, GIORNATA, "2026-11-08 15:00", 0), (ST, GIORNATA, "2026-11-09 20:45", 0)])
+    stato["db"] = db
+    consigli._cache.clear()
+    yield stato
+    consigli._cache.clear()
+
+
+def _rose(*squadre) -> lega.Rose:
+    return lega.Rose(list(squadre) or [_squadra()], "Squadra Prova")
+
+
+def _formazione(mondo, prev=None) -> dict:
+    """La consigliata come la chiedono tutti (Formazione, Oggi, widget, Da fare...): simulazioni di sempre."""
+    if prev is not None:                                   # dati nuovi: come un aggiornamento vero, cambia anche la versione
+        mondo["prev"], mondo["versione"] = prev, mondo["versione"] + "+"
+    return consigli.formazione(mondo["db"], SOLO_442, _rose())
+
+
+def test_formazione_tiene_la_consigliata_dopo_un_ritocco_anche_dopo_un_riavvio(mondo):
+    prima = _formazione(mondo)
+    assert 7 in _ids(prima)
+    dopo = _formazione(mondo, _prev({8: {"mu": 6.4}}))
+    assert _ids(dopo) == _ids(prima)
+    consigli._cache.clear()                                   # riavvio del servizio: la memoria si svuota, il file resta
+    assert _ids(_formazione(mondo)) == _ids(prima)
+
+
+def test_oggi_widget_e_da_fare_leggono_la_stessa_consigliata(mondo):
+    """Da fare (#333) chiama `consigli.formazione` senza sapere niente della consigliata di prima: deve vedere quella tenuta."""
+    from fanta import da_fare
+    prima = _formazione(mondo)
+    _formazione(mondo, _prev({8: {"mu": 6.4}}))
+    titolari, _ = da_fare._consigliata(mondo["db"], SOLO_442, _rose())
+    assert set(titolari) == _ids(prima)
+
+
+def test_cambia_per_almeno_un_punto_e_poi_tiene_la_nuova(mondo):
+    _formazione(mondo)
+    nuova = _formazione(mondo, _prev({8: {"mu": 8.0}}))
+    assert 8 in _ids(nuova) and 7 not in _ids(nuova)
+    dopo = _formazione(mondo, _prev({8: {"mu": 6.2}}))       # ora il 7 vale di nuovo un po' più dell'8: un ritocco, si tiene la nuova
+    assert _ids(dopo) == _ids(nuova)
+
+
+def test_dopo_la_scadenza_la_consigliata_non_cambia_e_il_file_resta_com_era(mondo):
+    prima = _formazione(mondo)
+    scritto = consigli.FILE_CONSIGLIATE.read_bytes()
+    mondo["adesso"] = PRIMA_PARTITA + timedelta(minutes=1)
+    dopo = _formazione(mondo, _prev({8: {"mu": 9.0}, 7: {"stato": "infortunato", "p_voto": 0.0}}))
+    assert _ids(dopo) == _ids(prima) and [g["id"] for g in dopo["panchina"]] == [g["id"] for g in prima["panchina"]]
+    assert consigli.FILE_CONSIGLIATE.read_bytes() == scritto
+
+
+def test_dopo_la_scadenza_senza_consigliata_di_prima_vale_la_prima_vista(mondo):
+    mondo["adesso"] = PRIMA_PARTITA + timedelta(minutes=1)
+    prima = _formazione(mondo)
+    assert _ids(_formazione(mondo, _prev({8: {"mu": 9.0}}))) == _ids(prima)
+
+
+def test_la_panchina_ricordata_e_l_ultima_mostrata_prima_della_scadenza(mondo):
+    _formazione(mondo)
+    dopo = _formazione(mondo, _prev({8: {"mu": 6.4}, 22: {"mu": 3.0}}))      # il terzo attaccante scende: la panchina si riordina
+    ricordata = next(iter(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")).values()))
+    assert ricordata["panchina"] == [g["id"] for g in dopo["panchina"]]
+    assert set(ricordata["titolari"]) == _ids(dopo)
+
+
+def test_il_file_non_ha_nomi_di_squadre_ne_di_giocatori(mondo):
+    _formazione(mondo)
+    testo = consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")
+    assert "Squadra Prova" not in testo and "Giocatore" not in testo
+    voce = next(iter(json.loads(testo).values()))
+    assert set(voce) <= {"stagione", "giornata", "modulo", "titolari", "panchina", "quando"}
+
+
+def test_file_rovinato_vale_la_migliore_e_si_riscrive(mondo):
+    consigli.FILE_CONSIGLIATE.write_text("{non è json", encoding="utf-8")
+    f = _formazione(mondo)
+    assert len(f["titolari"]) == 11
+    assert len(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))) == 1
+
+
+def test_una_voce_per_squadra_e_un_tetto_al_file(mondo, monkeypatch):
+    monkeypatch.setattr(consigli, "MAX_CONSIGLIATE", 2)
+    squadre = [lega.Squadra(nome, _squadra().giocatori) for nome in ("Prima", "Seconda", "Terza")]
+    voci = []
+    for s in squadre:
+        mondo["adesso"] += timedelta(minutes=1)
+        consigli.formazione(mondo["db"], SOLO_442, lega.Rose(squadre, s.nome))
+        voci.append(len(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))))
+    assert voci == [1, 2, 2]                                  # stessa rosa ma squadre diverse: voci diverse; poi esce la più vecchia
