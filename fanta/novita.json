@@ -1,5 +1,94 @@
 [
   {
+    "versione": "1.398",
+    "data": "2026-11-05T19:09:43",
+    "titolo": "La formazione consigliata non cambia più per pochi decimi",
+    "voci": [
+      "Una volta mostrata, la formazione consigliata della giornata resta la stessa finché una nuova non vale almeno 1 punto atteso in più, la stessa soglia dell'avviso prima della scadenza.",
+      "Cambia sempre, invece, se un titolare consigliato non gioca più: si è infortunato, è squalificato, è diventato poco probabile o non è più nella tua rosa.",
+      "Formazione, Oggi, widget, Da fare e avvisi mostrano la stessa consigliata; dopo la scadenza non cambia più. La formazione che salvi tu non viene mai toccata."
+    ],
+    "tecnico": [
+      "consigli.stabile confronta la migliore con la consigliata di prima sulle stesse simulazioni; soglia consigli.SOGLIA_CAMBIO_PUNTI = notifiche.SOGLIA_AVVISO_PUNTI. Cambia sempre per un titolare uscito dalla rosa o diventato fuori o improbabile (chi lo era già quando è stata mostrata sta in non_giocano).",
+      "consigli.formazione ricorda la consigliata in dati/consigliate.json (solo id, chiave = impronta di squadra, rosa, regole, giornata e simulazioni; tetto MAX_CONSIGLIATE) e la usa nella chiave della cache.",
+      "Misura dei ritocchi: prove/misura_stabilita.py (#335)."
+    ]
+  },
+  {
+    "versione": "1.397",
+    "data": "2026-11-05T19:07:49",
+    "titolo": "Ogni giornata misuriamo quanto ci prendono i nostri numeri",
+    "voci": [
+      "Poco prima della prima partita di ogni giornata il server conserva i numeri che l'app mostra per tutti i giocatori della Serie A: «gioca N%», fantavoto atteso, gol e assist attesi, minuti attesi e probabili formazioni. Solo numeri, nessun dato personale.",
+      "A giornata finita misura quanto ci hanno preso: errore del fantavoto atteso contro quello della fantamedia, «gioca N%» contro chi ha giocato davvero, punti veri dentro la fascia «8 volte su 10». Le medie delle ultime 8 giornate restano a disposizione di chi gestisce il server.",
+      "Se una media resta fuori dal limite per due giornate di fila, chi gestisce il server riceve un avviso.",
+      "Se i numeri di una giornata non si riescono a conservare prima della prima partita, chi gestisce il server riceve un avviso con il motivo, e la giornata resta segnata come persa."
+    ],
+    "tecnico": [
+      "Nuovo modulo registro_giornate.py (#326, L1 di #165): negli ultimi 10 minuti prima della prima partita (avvisi.prima_partita) salva consigli.previsioni con Regole() per ogni giocatore della Serie A, esclusi quelli con la partita già iniziata, con la fantamedia di allora. Una volta sola per giornata; nessuna richiesta in più alle fonti.",
+      "Archivio: tabelle nuove registro_giocatori e registro_giornate (CREATE TABLE IF NOT EXISTS, niente migrazioni distruttive). Non si ricostruiscono con aggiorna: una giornata non salvata è persa.",
+      "Misura a turno finito (fasi.fine_giornata) da 24 ore con i voti di tutte le partite giocate, o da 72 ore senza le partite ancora senza voti. I1 = RMSE del fantavoto atteso / RMSE della fantamedia - 1 (soglia -0,03); I2 = errore di calibrazione su fasce di 10 punti (≤ 0,05) e Brier (≤ 0,15); I3 = copertura della fascia 10-90% su 20 rose estratte a sorte con seme fisso, 300 simulazioni (tra 0,72 e 0,88). Medie sulle ultime 8 giornate misurate, verdetto solo a finestra piena.",
+      "Avviso con sentinella.manda_ntfy quando un indicatore è fuori soglia nella giornata misurata e in quella prima; una volta sola finché resta fuori, riprova al minuto dopo se l'invio non riesce.",
+      "Giornata persa: se all'inizio della prima partita la giornata non è salvata (previsioni in errore, zero righe, servizio fermo) registro_giornate.segna_perse scrive una riga con salvato NULL e il motivo in breve nella colonna nuova `persa` (registro_giornate), che non si misura mai; avvisa_perse manda un solo avviso (sentinella.manda_ntfy) e riprova se l'invio non riesce. Contano le giornate dalla prima del registro (o dalla prima tentata) in poi. Nel log: tipo d'errore e punti del codice (file e righe, senza messaggio) e il motivo delle zero righe (colonne mancanti, giornata diversa, numeri mancanti).",
+      "Gira nel thread del pianificatore (pianificatore._registro, non alza mai); FANTA_REGISTRO_GIORNATE=0 lo spegne (spento nei test da conftest). GET /api/stato-dati: campo nuovo e facoltativo `registro` (docs/API.md); la pagina web non lo mostra ancora."
+    ]
+  },
+  {
+    "versione": "1.396",
+    "data": "2026-11-05T17:57:51",
+    "titolo": "Misura interna: i consigli con una fonte di dati in meno",
+    "voci": [
+      "Nessun cambiamento visibile: una prova interna misura quanto perderebbero i consigli usando solo i voti di Fantacalcio.it, senza le statistiche avanzate dei tiri."
+    ],
+    "tecnico": [
+      "verifica --pacchetti: scenario nuovo `solo_fantacalcio` (#327, L3a e indicatore I4 di #165). Prestazioni ricostruite dai voti di Fantacalcio.it, una riga per presenza: minuti stimati da entrato e uscito (90, 71, 19, 30: medie dei minuti veri sull'archivio di sviluppo), rigori calciati = segnati + sbagliati, gol con i rigori; niente xG e xA di giocatori e squadre (forza delle squadre dai soli gol). Le prestazioni di Understat non si leggono.",
+      "Per ogni scenario che dà i gol attesi: gol attesi contro gol veri per fasce (verifica_pacchetti.gol_per_fasce, stampate da `confronto`) e nella tabella le colonne `scarto_gol` (scarto più grande nelle fasce con almeno 50 casi) e `rmse_vs_completo_pct`. Il modello (modello.py) e la verifica di default non cambiano."
+    ]
+  },
+  {
+    "versione": "1.395",
+    "data": "2026-11-05T17:51:35",
+    "titolo": "Avvisi e Da fare: una formazione salvata che non vale più conta come non salvata",
+    "voci": [
+      "Se la formazione salvata non si può più schierare (un giocatore non è più in rosa, un modulo non ammesso), avvisi e Da fare parlano della consigliata, come Formazione, Oggi e Diario.",
+      "In questo caso il promemoria prima della scadenza arriva: prima taceva, come se avessi già schierato.",
+      "Il riepilogo dopo la giornata racconta i punti della consigliata: prima, con un giocatore non più in rosa, non arrivava."
+    ],
+    "tecnico": [
+      "Issue #321, dopo la #320. La regola unica scelte.motivo_non_valida si applica con due funzioni nuove di scelte.py: che_vale(scelta, ruoli, regole) (la scelta se si può schierare, altrimenti None) e ruoli_schierabili(rose, prev) (prima della scadenza i giocatori della rosa con una previsione e il ruolo delle previsioni, come la Formazione; senza previsioni, a giornata finita, tutta la rosa come il Diario).",
+      "La usano notifiche._cambi_pronti («cambio pronto» sui titolari della consigliata), notifiche._gia_schierato (promemoria), notifiche.avviso_scadenza (riferimento: la consigliata; con una scelta salvata legge le previsioni prima del controllo «niente di nuovo», già in cache dal giro dei cambi), notifiche.riepilogo (ruoli della rosa), da_fare._dubbi, da_fare._formazione_non_salvata e da_fare._diario (ruoli della rosa).",
+      "Nessun campo né rotta nuova: i client non devono fare niente. Testi degli avvisi e delle voci di Da fare invariati."
+    ]
+  },
+  {
+    "versione": "1.394",
+    "data": "2026-11-05T17:45:43",
+    "titolo": "Immagine da condividere con un decimale e pedine sempre leggibili",
+    "voci": [
+      "Nell'immagine della formazione da mandare nel gruppo, il fantavoto sotto ogni volto ha un decimale, come in tutta l'app (prima c'erano due decimali).",
+      "Quando le pedine del campo compaiono, i testi sulle pillole («gioca 45%» e la sigla della squadra avversaria) non passano più per un momento a metà trasparenza: restano sempre leggibili."
+    ],
+    "tecnico": [
+      "condividiImmagine usa num() per il fantavoto atteso, la stessa funzione di pedine, elenchi e schede, al posto di virgola() che scriveva i due decimali del server (fv_atteso è round(mu, 2) nell'API).",
+      "@keyframes pop: la pedina passa da opacità 0 a 1 entro l'1% dell'animazione (var(--vela, 1)); prima la dissolvenza durava tutta l'entrata e nei primi 100 ms il contrasto delle pillole `.gioca.basso` e `.dist` scendeva sotto 4,5:1 (axe color-contrast, chiaro e scuro). Con il movimento ridotto (--vela: 0) la dissolvenza resta.",
+      "Test: tests/test_immagine_condivisa_web.py (node con tela finta) e tests/test_accessibilita_formazione_web.py (tappe dell'animazione). Issue #307, parte di #167."
+    ]
+  },
+  {
+    "versione": "1.393",
+    "data": "2026-11-05T17:42:41",
+    "titolo": "Formazione chiusa con la tua scelta non più valida: vale la consigliata",
+    "voci": [
+      "Se a giornata iniziata la formazione che avevi salvato non si può più schierare (per esempio un giocatore non è più nella tua rosa), vale la consigliata fissata alla scadenza. La Formazione lo dice: «vale la consigliata, la tua non è più valida», e mostra la consigliata, come Oggi.",
+      "In questo caso Oggi mostra di nuovo i punti della giornata in diretta, con la consigliata. Prima la giornata in diretta non compariva.",
+      "Il Diario usa la stessa regola: una formazione con un modulo che la tua lega non ammette non conta come tua e non si può segnare come schierata."
+    ],
+    "tecnico": [
+      "Regola unica della scelta in scelte.motivo_non_valida (11 titolari diversi della rosa che si può schierare, un portiere, modulo ammesso) e scelte.stato; la usano consigli.valuta (stesse frasi di formazione_non_valida), fasi.schierata (in_corso e riepilogo: una scelta non valida passa all'istantanea della scadenza), diario.calcola_giornata, diario.aggiorna (una scelta non valida non fa più ricalcolare la giornata a ogni giro) e diario.prepara_schierata (modulo non ammesso: SchierataNonValida con la frase del modulo).",
+      "GET /api/formazione: campo nuovo e facoltativo `stato_scelta` (`nessuna`, `valida`, `non_valida`), solo per la tua squadra. La web, a giornata chiusa, scrive formazione.stato_chiusa_non_valida quando vale `non_valida` (o quando rileggendo la scelta il server risponde formazione_non_valida)."
+    ]
+  },
+  {
     "versione": "1.392",
     "data": "2026-11-05T15:25:49",
     "titolo": "Controlli più stretti sul ripristino dei backup e sull'archivio della stagione",

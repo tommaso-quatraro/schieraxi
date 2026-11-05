@@ -7,6 +7,8 @@ backtest di `verifica.py` (la verità resta quella vera: fantavoti con i voti de
 Scenari (vedi `SCENARI`):
 - `completo`: la verifica normale (nel passato non ci sono le probabili: p_voto viene dalle presenze recenti);
 - `senza_xg`: niente Understat xG/xA (giocatori e squadre); al loro posto gol e assist veri;
+- `solo_fantacalcio`: niente Understat del tutto (indicatore I4 di #165): come `senza_xg`, e in più minuti stimati da
+  entrato e uscito, rigori calciati = segnati + sbagliati, tutto dai voti di Fantacalcio.it (`solo_fantacalcio`);
 - `voto_fisso`: ogni voto dello storico vale la media del ruolo (nessun giudizio della redazione, nessun fatto);
 - `voto_eventi` / `voto_stat`: il voto in pagella dello storico sostituito da un voto STIMATO con una regressione per ruolo
   (gol, assist, rigori, cartellini, autogol, minuti, entrato/uscito, risultato, gol subiti; `voto_stat` anche tiri e
@@ -19,6 +21,7 @@ Scenari (vedi `SCENARI`):
   90% (80%) dei titolari, con indisponibili e squalificati segnati (le probabili vere del passato non le abbiamo);
 - `pacchetto_c`: B+xG + indisponibili + formazioni previste simulate all'87% (quanto dichiara il fornitore);
 - `oracolo_presenze`: limite superiore (si sa già chi prende voto).
+Per ogni scenario che dà i gol attesi si misura anche se sono tarati, per fasce (`gol_per_fasce`, `scarto_gol`).
 Le parti «simulate» usano il futuro di proposito (chi non gioca per 3 giornate di fila = indisponibile noto): sono una
 stima favorevole, scritta nel documento dei risultati (docs/FONTI-DATI-MISURE.md).
 """
@@ -30,7 +33,7 @@ import numpy as np
 import pandas as pd
 
 from . import verifica
-from .modello import Dati, Parametri, _p_da_probabili, forza_squadre, prima_di
+from .modello import Dati, Parametri, _p_da_probabili, forza_squadre, previsioni, prima_di
 from .punteggio import COLONNA_VOTO
 from .regole import RUOLI, Regole
 
@@ -66,6 +69,88 @@ def senza_xg(d: Dati) -> Dati:
 
 def par_senza_xg(par: Parametri) -> Parametri:
     return replace(par, peso_xg=0.0, peso_xa=0.0)
+
+
+# ---------------------------------------------------------------- solo Fantacalcio.it (niente Understat)
+# Minuti giocati per presenza, da «entrato» e «uscito» dei voti di Fantacalcio.it (che non dà i minuti), per
+# (subentrato, sostituito). Medie dei minuti veri di Understat sull'archivio di sviluppo (2025-26 e 2026-27, circa 14.400
+# presenze, misura del 5/11/2026): 89,7 · 70,9 · 19,0 · 30,3 (quest'ultima su 29 casi soltanto).
+MINUTI_STIMATI = {(0, 0): 90.0, (0, 1): 71.0, (1, 0): 19.0, (1, 1): 30.0}
+
+
+def minuti_stimati(voti: pd.DataFrame) -> pd.Series:
+    """Minuti stimati di ogni riga dei voti (vedi `MINUTI_STIMATI`); un dato mancante vale «no»."""
+    sub, sos = (pd.to_numeric(voti[c], errors="coerce").fillna(0).astype(int).clip(0, 1) for c in ("subentrato", "sostituito"))
+    return pd.Series([MINUTI_STIMATI[(a, b)] for a, b in zip(sub, sos)], index=voti.index, dtype=float)
+
+
+def solo_fantacalcio(d: Dati) -> Dati:
+    """Copia dei dati come se avessimo solo Fantacalcio.it: niente xG e xA (giocatori e squadre: la forza delle squadre viene
+    dai soli gol) e prestazioni ricostruite dai voti, una riga per presenza (anche chi resta senza voto): minuti stimati da
+    entrato e uscito, rigori calciati = segnati + sbagliati, gol con i rigori (come Understat; nei voti «gol» li esclude).
+    Le prestazioni di Understat non si leggono; la partita è quella di Fantacalcio.it."""
+    v = d.voti
+    num = lambda c: pd.to_numeric(v[c], errors="coerce").fillna(0)  # noqa: E731
+    pr = pd.DataFrame({"stagione": v["stagione"], "giornata": v["giornata"], "data": v["data"], "t": v["t"],
+                       "squadra": v["squadra"], "calciatore_id": v["calciatore_id"], "minuti": minuti_stimati(v),
+                       "gol": num("gol") + num("rig_segnati"), "assist": num("assist"), "rigori_segnati": num("rig_segnati"),
+                       "rigori_calciati": num("rig_segnati") + num("rig_sbagliati"), "xg": np.nan, "xa": np.nan})
+    partita = pd.concat([d.partite[["stagione", "giornata", c, "id"]].rename(columns={c: "squadra", "id": "understat_partita"})
+                         for c in ("casa", "trasferta")]).drop_duplicates(["stagione", "giornata", "squadra"])
+    pr = pr.merge(partita, on=["stagione", "giornata", "squadra"], how="left")
+    rig = pr.groupby(["understat_partita", "squadra"])["rigori_calciati"].sum().rename("rigori_squadra")
+    return replace(senza_xg(d), prestazioni=pr.join(rig, on=["understat_partita", "squadra"]))
+
+
+# ---------------------------------------------------------------- gol attesi tarati per fasce (indicatore I4)
+FASCE_GOL = (0.0, 0.05, 0.10, 0.20, 0.30, 0.45, np.inf)
+FASCE_GOL_NOMI = ("0-0,05", "0,05-0,10", "0,10-0,20", "0,20-0,30", "0,30-0,45", "0,45 e più")
+MIN_CASI_FASCIA = 50                # sotto, lo scarto di una fascia è quasi solo caso: non entra in `scarto_gol`
+COLONNE_FASCE = ["stagione", "fascia", "casi", "attesi", "veri", "scarto"]
+
+
+def gol_per_fasce(d: Dati, regole: Regole, previsti: pd.DataFrame) -> pd.DataFrame:
+    """Gol attesi contro gol veri, per fascia di gol attesi. `previsti`: stagione, giornata, id, gol_attesi (se gioca, rigori
+    compresi). Contano solo le presenze con voto; gol veri = su azione + rigori segnati. Una riga per stagione («tutte» e
+    ciascuna) e fascia con casi, medie e scarto = veri − attesi (gol a partita)."""
+    col = COLONNA_VOTO[regole.fonte_voto]
+    v = d.voti[d.voti[col].notna()]
+    veri = pd.DataFrame({"stagione": v["stagione"], "giornata": v["giornata"], "id": v["calciatore_id"],
+                         "veri": pd.to_numeric(v["gol"], errors="coerce").fillna(0)
+                         + pd.to_numeric(v["rig_segnati"], errors="coerce").fillna(0)}).drop_duplicates(["stagione", "giornata", "id"])
+    m = previsti.merge(veri, on=["stagione", "giornata", "id"], how="inner")
+    m["fascia"] = pd.cut(m["gol_attesi"], FASCE_GOL, right=False, labels=FASCE_GOL_NOMI)
+    righe = []
+    for s in ["tutte"] + sorted(m["stagione"].unique().tolist()):
+        sel = m if s == "tutte" else m[m["stagione"] == s]
+        for fascia, g in sel.groupby("fascia", observed=True):
+            attesi, gol = float(g["gol_attesi"].mean()), float(g["veri"].mean())
+            righe.append({"stagione": s, "fascia": str(fascia), "casi": len(g), "attesi": attesi, "veri": gol,
+                          "scarto": gol - attesi})
+    return pd.DataFrame(righe, columns=COLONNE_FASCE)
+
+
+def scarto_gol(fasce: pd.DataFrame, stagione: str, minimo: int = MIN_CASI_FASCIA) -> float:
+    """Lo scarto più grande (in valore assoluto) tra gol veri e attesi nelle fasce con almeno `minimo` casi (soglia di I4:
+    0,03 gol a partita); senza fasce abbastanza piene: nan."""
+    sel = fasce[(fasce["stagione"] == stagione) & (fasce["casi"] >= minimo)]
+    return float(sel["scarto"].abs().max()) if len(sel) else float("nan")
+
+
+def _con_registro(prevedi, raccolte: list):
+    """`prevedi` per la verifica che in più mette da parte, giornata per giornata, i gol attesi di ogni giocatore (con i rigori,
+    come `p_gol` del modello). Le previsioni restano quelle: i numeri della verifica non cambiano."""
+    def f(dm: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri) -> pd.DataFrame:
+        prev = prevedi(dm, stagione, giornata, regole, par)
+        if {"id", "e_gol", "e_rigori"} <= set(prev.columns):
+            raccolte.append(pd.DataFrame({"stagione": stagione, "giornata": giornata, "id": prev["id"].astype(int),
+                                          "gol_attesi": prev["e_gol"] + par.conversione_rigori * prev["e_rigori"]}))
+        return prev
+    return f
+
+
+def _previsioni(dm: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri) -> pd.DataFrame:
+    return previsioni(dm, stagione, giornata, regole, par)      # come fa `verifica` quando non riceve `prevedi`
 
 
 # ---------------------------------------------------------------- voto stimato
@@ -301,9 +386,9 @@ def ritocca(regole: Regole, sidelined: bool = False, ufficiali: bool = False, pr
 
 
 # ---------------------------------------------------------------- scenari
-SCENARI = ("completo", "senza_xg", "voto_fisso", "voto_eventi", "voto_stat", "pacchetto_a", "pacchetto_b", "pacchetto_b_xg",
-           "solo_indisponibili", "sportmonks_starter", "attuale_probabili_90", "attuale_probabili_80", "pacchetto_c",
-           "oracolo_presenze")
+SCENARI = ("completo", "senza_xg", "solo_fantacalcio", "voto_fisso", "voto_eventi", "voto_stat", "pacchetto_a", "pacchetto_b",
+           "pacchetto_b_xg", "solo_indisponibili", "sportmonks_starter", "attuale_probabili_90", "attuale_probabili_80",
+           "pacchetto_c", "oracolo_presenze")
 
 
 def prepara(nome: str, d: Dati, regole: Regole, par: Parametri) -> tuple[dict, dict]:
@@ -320,6 +405,8 @@ def prepara(nome: str, d: Dati, regole: Regole, par: Parametri) -> tuple[dict, d
         return dv
     if nome == "senza_xg":
         kw |= {"dati_modello": senza_xg(d), "par": par_senza_xg(par)}
+    elif nome == "solo_fantacalcio":
+        kw |= {"dati_modello": solo_fantacalcio(d), "par": par_senza_xg(par)}
     elif nome == "voto_fisso":
         kw["dati_modello"] = voto(d, [])
     elif nome == "voto_eventi":
@@ -372,15 +459,23 @@ def _riassunto(t: pd.DataFrame) -> dict:
 
 def esegui(nome: str, d: Dati, regole: Regole, par: Parametri, giornate, rose=None,
            simulazioni: int = 300) -> tuple[pd.DataFrame, dict]:
-    """(tabella di `verifica.verifica` per giornata, note) di uno scenario."""
+    """(tabella di `verifica.verifica` per giornata, note) di uno scenario. Nelle note, se il modello dà i gol attesi,
+    `gol_per_fasce` (vedi `gol_per_fasce`)."""
     kw, note = prepara(nome, d, regole, par)
     par_s = kw.pop("par")
-    return verifica.verifica(d, regole, par_s, giornate, rose, simulazioni, scrivi=None, **kw), note
+    raccolte: list = []
+    if "oracolo" not in kw:              # con un oracolo `verifica` chiama `previsioni` da sola, con la verità
+        kw["prevedi"] = _con_registro(kw.get("prevedi") or _previsioni, raccolte)
+    t = verifica.verifica(d, regole, par_s, giornate, rose, simulazioni, scrivi=None, **kw)
+    if raccolte:
+        note["gol_per_fasce"] = gol_per_fasce(d, regole, pd.concat(raccolte, ignore_index=True))
+    return t, note
 
 
-def tabella(tabelle: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def tabella(tabelle: dict[str, pd.DataFrame], fasce: dict[str, pd.DataFrame] | None = None) -> pd.DataFrame:
     """Una riga per scenario e stagione: rmse, mae, Brier, punti della consigliata, massimo col senno di poi, scarto dal
-    massimo e differenze rispetto a `completo` (che deve esserci)."""
+    massimo, differenze rispetto a `completo` (che deve esserci; rmse anche in percentuale) e `scarto_gol` (vedi `scarto_gol`)
+    dalle `fasce` di ogni scenario."""
     righe = []
     base = tabelle["completo"]
     for nome, t in tabelle.items():
@@ -393,13 +488,24 @@ def tabella(tabelle: dict[str, pd.DataFrame]) -> pd.DataFrame:
                 riga["dal_massimo"] = r["punti"] - r["perfetta"]
                 riga["vs_completo"] = r["punti"] - rb["punti"]
             riga["rmse_vs_completo"] = r["rmse"] - rb["rmse"]
+            riga["rmse_vs_completo_pct"] = 100 * (r["rmse"] - rb["rmse"]) / rb["rmse"] if rb["rmse"] else float("nan")
+            riga["scarto_gol"] = scarto_gol(fasce[nome], s) if fasce and nome in fasce else float("nan")
             righe.append(riga)
     return pd.DataFrame(righe)
 
 
+def testo_fasce(fasce: dict[str, pd.DataFrame]) -> str:
+    """Le fasce di gol attesi di ogni scenario, in una tabella da leggere."""
+    t = pd.concat([f.assign(scenario=nome) for nome, f in fasce.items()], ignore_index=True)
+    return ("\nGol attesi per fasce (presenze con voto; attesi e veri = gol a partita, rigori compresi; scarto = veri − attesi;"
+            f" in tabella `scarto_gol` = lo scarto più grande nelle fasce con almeno {MIN_CASI_FASCIA} casi):\n"
+            + t[["scenario"] + COLONNE_FASCE].round(3).to_string(index=False))
+
+
 def confronto(d: Dati, regole: Regole, par: Parametri, giornate, rose=None, simulazioni: int = 300,
               scenari=SCENARI, scrivi=print) -> tuple[pd.DataFrame, dict]:
-    """`tabella` degli scenari scelti (più `completo`, che si calcola sempre) e le note di ciascuno."""
+    """`tabella` degli scenari scelti (più `completo`, che si calcola sempre) e le note di ciascuno; con `scrivi`, anche le
+    fasce dei gol attesi."""
     nomi = ["completo"] + [s for s in scenari if s != "completo"]
     tabelle, note = {}, {}
     for nome in nomi:
@@ -408,4 +514,7 @@ def confronto(d: Dati, regole: Regole, par: Parametri, giornate, rose=None, simu
         t, n = esegui(nome, d, regole, par, giornate, rose, simulazioni)
         if not t.empty:
             tabelle[nome], note[nome] = t, n
-    return (tabella(tabelle) if "completo" in tabelle else pd.DataFrame()), note
+    fasce = {nome: n["gol_per_fasce"] for nome, n in note.items() if "gol_per_fasce" in n}
+    if scrivi and fasce:
+        scrivi(testo_fasce(fasce))
+    return (tabella(tabelle, fasce) if "completo" in tabelle else pd.DataFrame()), note
