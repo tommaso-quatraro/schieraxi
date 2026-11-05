@@ -153,7 +153,7 @@ final class WidgetRiassuntoTests: XCTestCase {
         let w = try riassunto()
         XCTAssertEqual(w.giornateGiocate.map(\.giornata), [10, 9], "dalla piu' recente")
         XCTAssertEqual(try XCTUnwrap(w.giornateGiocate.first).scarto, -2.5)
-        XCTAssertEqual(try XCTUnwrap(w.giornateGiocate.first).descrizione, "Giornata 10: 63,5 punti fatti, 66,0 attesi")
+        XCTAssertEqual(try XCTUnwrap(w.giornateGiocate.first).descrizione, "10ª giornata di Serie A: 63,5 punti fatti, 66,0 attesi")
     }
 
     func testLePartiteLiveEIMieiTitolari() throws {
@@ -208,8 +208,8 @@ final class WidgetRiassuntoTests: XCTestCase {
         let g = w.giornateGiocate
         XCTAssertEqual(g.map(\.postoNellaFascia), [.dentro, .sopra, .sotto, nil, nil])
         XCTAssertEqual(g.first?.fasciaTesto, "dentro la fascia")
-        XCTAssertEqual(g.first?.descrizione, "Giornata 10: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 55 e 77")
-        XCTAssertEqual(g[3].descrizione, "Giornata 7: 64,0 punti fatti, 70,0 attesi", "una fascia con la forma sbagliata si ignora")
+        XCTAssertEqual(g.first?.descrizione, "10ª giornata di Serie A: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 55 e 77")
+        XCTAssertEqual(g[3].descrizione, "7ª giornata di Serie A: 64,0 punti fatti, 70,0 attesi", "una fascia con la forma sbagliata si ignora")
         let q = RiassuntoWidget.quanteDentro(g)
         XCTAssertEqual(q.dentro, 1)
         XCTAssertEqual(q.su, 3)

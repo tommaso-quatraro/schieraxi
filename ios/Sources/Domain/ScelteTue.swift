@@ -29,7 +29,7 @@ struct SceltaGiornata: Decodable, Identifiable {
 
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
 
-    /// «Giornata 6»: il numero della lega, come la web e le voci del Diario; quello di Serie A se il server non lo manda.
+    /// «Giornata 6 · 9ª di Serie A», come la web e le voci del Diario (#299); senza numero della lega «9ª giornata di Serie A».
     var titolo: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Giornata" }
 
     private enum Chiavi: String, CodingKey {
@@ -71,6 +71,8 @@ struct ScelteTueTesto: Equatable {
         let frase: String
         let punti: String
         let esito: Esito
+        /// Il titolo come lo legge VoiceOver: «Giornata 6, 9ª di Serie A» (#299).
+        var voceTitolo: String? = nil
     }
 
     enum Esito: Equatable { case tua, consigliata, pari }
@@ -96,7 +98,8 @@ struct ScelteTueTesto: Equatable {
         let t = Formato.punti(g.puntiTua), c = Formato.punti(g.puntiConsigliata)
         let verdetto = esito == .tua ? "Meglio tu" : esito == .consigliata ? "Meglio il consiglio" : "Pari"
         return RigaScelta(id: g.id, titolo: g.titolo, frase: frase,
-                          punti: "\(verdetto): tu \(t), consiglio \(c)", esito: esito)
+                          punti: "\(verdetto): tu \(t), consiglio \(c)", esito: esito,
+                          voceTitolo: g.giornata.map { NomeGiornata(serieA: $0, lega: g.giornataLega).voce })
     }
 
     private static func elenco(_ nomi: [String]?) -> String {

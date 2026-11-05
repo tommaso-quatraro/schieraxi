@@ -57,7 +57,7 @@ struct VistaCruscotto: View {
         case .accessoryCircular:
             // le stesse parole delle altre forme: «4 da controllare» (nel cerchio «⚠ 4»), «titolari a posto» (nel cerchio «a posto»)
             CerchioWidget {
-                Text(w.siglaGiornata ?? "G").fontWidget(10)
+                Text(w.siglaGiornata ?? "G").fontWidget(10).accessibilityLabel(w.nomeGiornata?.voce ?? "Giornata")
                 Text(f.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
                 if dubbi > 0 {
                     EtichettaDaControllare(n: dubbi).fontWidget(9)
@@ -92,7 +92,8 @@ struct VistaCruscotto: View {
     private func scadenza(_ w: RiassuntoWidget, grande: CGFloat) -> some View {
         Link(destination: Vai.url("oggi")) {
             VStack(alignment: .leading, spacing: 0) {
-                TitoloBlocco(testo: w.etichettaGiornata ?? "Giornata", icona: "calendar")
+                GiornataInRiga(forme: w.nomeGiornata?.forme ?? ["Giornata"], voce: w.nomeGiornata?.voce ?? "Giornata", simbolo: "calendar")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(TintaWidget.testo2)
                 ContoWidget(inizio: w.inizio, adesso: voce.date)
                     .fontWidget(grande, weight: .bold, design: .rounded).lineLimit(1).minimumScaleFactor(0.5)
                     .frame(maxWidth: .infinity, alignment: .leading)
