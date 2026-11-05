@@ -229,7 +229,7 @@ struct Fornitore: AppIntentTimelineProvider {
         if primo.indirizzoMancante { prossimo = adesso.addingTimeInterval(60 * 60) }
         if let inizio = primo.riassunto?.inizio, inizio > adesso, inizio < prossimo { prossimo = inizio.addingTimeInterval(60) }
         // senza voci il testo resterebbe fermo fino alla prossima ricarica, che iOS può rimandare (di notte anche di ore): voci per
-        // il conto alla rovescia, la scadenza e la mezzanotte, dove «domani 12:30» diventa «12:30»
+        // il conto alla rovescia, la scadenza e la mezzanotte, dove «domani 12:30» diventa «oggi 12:30»
         voci += VociTimeline.istanti(adesso: adesso, scadenza: primo.riassunto?.inizio, conConto: conConto).map { primo.spostata(a: $0) }
         return Timeline(entries: voci, policy: .after(prossimo))
     }
