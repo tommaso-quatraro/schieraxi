@@ -18,6 +18,7 @@ from fanta import archivio, calcolo, consigli, da_fare, diario, lega, scelte, se
 from test_da_fare import la_consigliata_cambia
 from test_da_fare import mondo as mondo_da_fare  # noqa: F401  (fixture di «Da fare» con dati finti)
 from test_da_fare import vai as vai_da_fare
+from test_da_fare_consigliata_salvata import _cambia, _salva_la_consigliata
 from test_server import client  # noqa: F401  (fixture del server)
 
 ST = "2026-27"
@@ -293,6 +294,45 @@ def test_da_fare_senza_anticipi_come_prima(mondo_da_fare, monkeypatch):
     _con_anticipo(mondo_da_fare, monkeypatch)
     d = _dubbi(mondo_da_fare)
     assert [(v["id"], v["alternativa"]["id"]) for v in d] == [("dubbio:6", 14), ("dubbio:5", 12)]
+
+
+def _consigliata_cambiata(m):
+    return [v for v in vai_da_fare(m) if v["id"].startswith("consigliata:")]
+
+
+@pytest.mark.parametrize("fermo", [7, 14], ids=["esce-un-bloccato", "entra-un-bloccato"])
+def test_da_fare_consigliata_cambiata_solo_sui_bloccati_niente_voce(mondo_da_fare, monkeypatch, fermo):
+    """Hai salvato la consigliata; ora schiera il 14 al posto del 7. Se uno dei due gioca l'anticipo già cominciato il cambio non
+    si può fare: niente «La consigliata è cambiata»."""
+    _salva_la_consigliata(mondo_da_fare)
+    _cambia(mondo_da_fare, (7, 14))
+    _con_anticipo(mondo_da_fare, monkeypatch)
+    assert len(_consigliata_cambiata(mondo_da_fare)) == 1                 # senza anticipi la voce c'è (#333)
+    _con_anticipo(mondo_da_fare, monkeypatch, fermo)
+    assert _consigliata_cambiata(mondo_da_fare) == []
+
+
+def test_da_fare_consigliata_cambiata_nomina_solo_chi_si_sposta(mondo_da_fare, monkeypatch):
+    """Due cambi fra centrocampisti (14 per il 7, 12 per l'8) e il 7 gioca l'anticipo già cominciato: resta titolare, quindi entra
+    un centrocampista solo, il più utile (il 14, 6,0 punti attesi contro i 4,5 del 12), al posto dell'8. Il 7 non si nomina."""
+    _salva_la_consigliata(mondo_da_fare)
+    _cambia(mondo_da_fare, (7, 14), (8, 12))
+    _con_anticipo(mondo_da_fare, monkeypatch, 7)
+    v = _consigliata_cambiata(mondo_da_fare)
+    assert len(v) == 1
+    assert v[0]["entrano"] == [{"id": 14, "nome": "g14"}] and v[0]["escono"] == [{"id": 8, "nome": "g8"}]
+    assert v[0]["testo"] == "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera g14 al posto di g8."
+
+
+def test_da_fare_consigliata_cambiata_se_non_entra_un_bloccato_resta_il_piu_utile(mondo_da_fare, monkeypatch):
+    """La consigliata fa entrare il 14 (bloccato) e il 12 al posto del 7 e dell'8: il 14 non entra, quindi esce un centrocampista solo,
+    il meno utile. Qui il 7 e l'8 valgono uguale: si dice «Riserva al posto di …» di uno solo dei due."""
+    _salva_la_consigliata(mondo_da_fare)
+    _cambia(mondo_da_fare, (7, 14), (8, 12))
+    _con_anticipo(mondo_da_fare, monkeypatch, 14)
+    v = _consigliata_cambiata(mondo_da_fare)
+    assert len(v) == 1 and v[0]["entrano"] == [{"id": 12, "nome": "Riserva"}] and len(v[0]["escono"]) == 1
+    assert v[0]["escono"][0]["id"] in (7, 8)
 
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
