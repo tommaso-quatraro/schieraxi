@@ -44,6 +44,9 @@ final class FormazioneViewModel: ViewModelBase {
     /// I titolari salvati sul server per questa giornata (nil = nessuna scelta salvata) e quando.
     @Published private(set) var salvati: [Int]?
     @Published private(set) var salvataIl: Date?
+    /// La scelta salvata non vale più (rosa o regole cambiate): come sulla web non si cancella da sola, lo dice la riga di stato
+    /// e si vede la consigliata finché non la rifai o torni alla consigliata.
+    @Published private(set) var salvataNonValida = false
     /// Il calcolo della modifica a mano non è riuscito: invece dei punti, «Non riesco a calcolare» con «Riprova».
     @Published private(set) var calcoloNonRiuscito = false
     /// I titolari a cui si riferisce `valutazione` (dopo una sostituzione la valutazione vecchia non vale più).
@@ -59,7 +62,16 @@ final class FormazioneViewModel: ViewModelBase {
     /// A che punto è la tua scelta (riga di stato della Formazione). Per le altre squadre non si dice niente.
     var statoScelta: StatoScelta {
         guard squadraVista == nil else { return .sconosciuto }
-        return StatoScelta.calcola(letta: sceltaLetta, salvati: salvati, salvataIl: salvataIl, manuale: manuale, chiusa: chiusa)
+        return StatoScelta.calcola(letta: sceltaLetta, salvati: salvati, salvataIl: salvataIl, manuale: manuale, chiusa: chiusa,
+                                   nonValida: salvataNonValida, altra: altraDallaConsigliata)
+    }
+
+    /// Senza modifica a mano si vede un altro stile o un altro modulo, non la consigliata (come `altra` della web).
+    var altraDallaConsigliata: Bool {
+        guard manuale == nil, let f = formazione, let livelli = f.livelli,
+              let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first else { return false }
+        let modulo = (livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first)?.modulo
+        return livello.rischio != (f.stileConsigliato ?? 0) || (modulo.map { $0 != livello.modulo } ?? false)
     }
 
     /// La giornata è chiusa (dopo la scadenza, `iniziata` del server): la tua formazione si vede in sola lettura, niente modifiche.
@@ -111,6 +123,7 @@ final class FormazioneViewModel: ViewModelBase {
             sceltaLetta = false
             salvati = nil
             salvataIl = nil
+            salvataNonValida = false
             giornata = f.giornata
         }
         guard squadraVista == nil else { return }
@@ -128,40 +141,25 @@ final class FormazioneViewModel: ViewModelBase {
         guard let salvata else {
             salvati = nil
             salvataIl = nil
+            salvataNonValida = false
             if senzaModifiche { azzeraManuale() }   // cancellata da un altro dispositivo: si torna alla consigliata
-            return
-        }
-        // Una scelta che non vale più (rosa cambiata) si cancella, ma solo se la rosa c'è davvero: senza rosa non si giudica.
-        if ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida {
-            await cancellaSceltaNonValida(f)
             return
         }
         salvati = salvata.titolari
         salvataIl = Quando.data(salvata.salvata)
+        // Una scelta che non vale più (fuori dalla rosa) NON si cancella da sola, come sulla web: lo dice la riga di stato e si
+        // vede la consigliata. Solo se la rosa c'è davvero: senza rosa non si giudica (decide il server, sotto).
+        salvataNonValida = ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida
         guard senzaModifiche else { return }   // c'è una modifica in corso: non si sovrascrive (la riga dice «Modifiche non salvate»)
+        if salvataNonValida { azzeraManuale(); return }
         if manuale.map({ Set($0) == Set(salvata.titolari) }) == true, valutati == manuale { return }   // già lei, già calcolata
         manuale = salvata.titolari
         await valuta(salva: false)
-        // Il server dice che non si può valutare (codice, non il testo): non vale più. Di nuovo, solo con la rosa presente.
-        if codiceUltimoErrore == ValiditaScelta.codiceNonValida, manuale == salvata.titolari, let rosa = f.schede, !rosa.isEmpty {
-            await cancellaSceltaNonValida(f)
-        }
-    }
-
-    static let sceltaNonValida = "La formazione salvata non vale più (sono cambiate la rosa o le regole): ti mostro la consigliata."
-
-    /// Cancella sul server una scelta che non vale più e lo dice. Se il server non la cancella, resta tutto com'è.
-    private func cancellaSceltaNonValida(_ f: Formazione) async {
-        do {
-            try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)")
+        // Il server dice che non si può valutare (il codice, non il testo): non vale più. Si vede la consigliata, senza il testo
+        // dell'errore (lo dice la riga di stato).
+        if codiceUltimoErrore == ValiditaScelta.codiceNonValida, manuale == salvata.titolari {
+            salvataNonValida = true
             azzeraManuale()
-            salvati = nil
-            salvataIl = nil
-            sceltaLetta = true
-            messaggio = Self.sceltaNonValida
-        } catch {
-            if Task.isCancelled || error is CancellationError { return }
-            messaggio = error.localizedDescription
         }
     }
 
@@ -326,9 +324,10 @@ final class FormazioneViewModel: ViewModelBase {
         await valuta(salva: true)
     }
 
-    /// «Annulla modifiche»: si torna agli undici salvati.
+    /// «Annulla modifiche»: si torna agli undici salvati (o, se non valgono più, alla consigliata con la riga che lo dice).
     func annullaModifiche() {
         guard !chiusa, let salvati else { return }
+        if salvataNonValida { azzeraManuale(); return }
         manuale = salvati
         messaggio = nil
         calcoloNonRiuscito = false
@@ -357,6 +356,7 @@ final class FormazioneViewModel: ViewModelBase {
                 // Lo stato «salvata» resta nella riga fissa (e alla riapertura lo rilegge dal server): niente messaggio che sparisce.
                 salvati = m
                 salvataIl = Date()
+                salvataNonValida = false
                 sceltaLetta = true
                 Haptics.esito(riuscito: true)
                 AccessibilityNotification.Announcement(Self.annuncioSalvata).post()
@@ -397,15 +397,19 @@ final class FormazioneViewModel: ViewModelBase {
         Haptics.esito(riuscito: false)
     }
 
+    /// «Torna alla consigliata»: toglie la tua scelta e, come la web, rimette anche stile e modulo consigliati.
     func tornaAllaConsigliata(_ f: Formazione) async {
         guard !chiusa else { return }
-        // La scelta salvata esiste solo per la propria squadra.
-        guard squadraVista == nil else { azzeraManuale(); return }
+        rischio = f.stileConsigliato ?? 0
+        moduloScelto = nil
+        // La scelta salvata esiste solo per la propria squadra; se il server ha detto che non ce n'è, non c'è niente da togliere.
+        guard squadraVista == nil, !(sceltaLetta && salvati == nil) else { azzeraManuale(); return }
         do {
             try await server.invia("DELETE", "/api/scelta?giornata=\(f.giornata)")
             azzeraManuale()
             salvati = nil
             salvataIl = nil
+            salvataNonValida = false
         } catch let e as ErroreApi where e.eConflitto {
             await sceltaCambiataAltrove()
         } catch ErroreApi.codificato(let codice, _) where codice == Self.codiceChiusa {
