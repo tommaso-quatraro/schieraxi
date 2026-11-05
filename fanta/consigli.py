@@ -15,7 +15,8 @@ from . import formazione as fz
 from . import modello, rinvii, scelte, stato_dati, turno
 from .aggiorna import Stagione
 from .frasi import F
-from .lega import Rose
+from .lega import Rose, Squadra
+from .notifiche import SOGLIA_AVVISO_PUNTI
 from .regole import Regole, serie_a_a_lega
 
 # Risultati già calcolati (vedi calcolo.py: cache con tetto, al massimo due calcoli pesanti insieme, risposta «sto calcolando»).
@@ -290,10 +291,16 @@ def _formazione_pronta(db, s, giornata, regole, simulazioni) -> dict:
     return _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni)
 
 
-def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -> dict:
+def _rosa(s: Squadra, prev: pd.DataFrame) -> list[fz.Giocatore]:
+    """I giocatori della squadra che hanno una previsione per la giornata, nell'ordine della rosa (lo stesso ordine dà le stesse
+    simulazioni: la consigliata e quella di prima si confrontano alla pari)."""
     ids = [g.id for g in s.giocatori if g.id is not None]
-    rosa = [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
+    return [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
                          float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids if i in prev.index]
+
+
+def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -> dict:
+    rosa = _rosa(s, prev)
     val = fz.Valutatore(rosa, regole, simulazioni)           # le stesse simulazioni per tutti i livelli: i calcoli si riusano
     try:
         f = fz.migliore(rosa, regole, simulazioni, valutatore=val)
@@ -325,6 +332,86 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -
         "schede": {str(g.id): scheda_previsione(g.id, prev.loc[g.id]) for g in rosa},
     }
     return risultato
+
+
+# ---------------------------------------------------------------- consigliata stabile (#335)
+# La consigliata già mostrata per una giornata cambia solo se la nuova vale almeno questi punti attesi in più, ricalcolati con i dati
+# nuovi: è la soglia dell'avviso alla scadenza, così app e avvisi dicono la stessa cosa. Sotto è il su e giù normale dei dati
+# (misura del 5/11/2026: quando 3 o più titolari cambiano per un ritocco, la nuova vale in mediana 3-4 centesimi di punto).
+SOGLIA_CAMBIO_PUNTI = SOGLIA_AVVISO_PUNTI
+NON_GIOCA = ("fuori", "improbabile")      # `titolarita`: infortunato, squalificato, senza voto per il rinvio, o gioca meno del 20%
+
+
+def _ids(prima, chiave: str) -> list[int] | None:
+    v = prima.get(chiave) if isinstance(prima, dict) else None
+    if not isinstance(v, list):
+        return None
+    try:
+        return [int(i) for i in v]
+    except (TypeError, ValueError):
+        return None
+
+
+def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, regole: Regole, simulazioni: int,
+            chiusa: bool = False) -> dict:
+    """La consigliata da mostrare: quella di prima (`prima` = {"titolari": [id], "panchina": [id]}) se c'è e regge, altrimenti la
+    migliore di adesso (`migliore`, la risposta di `_calcola_formazione`, restituita così com'è).
+    Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
+    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, fuori o improbabile) e la
+    migliore lo lascia fuori; tenuta quella di prima, la sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
+    resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui."""
+    titolari = _ids(prima, "titolari")
+    nuovi = {int(g["id"]) for g in migliore.get("titolari") or []}
+    if titolari is None or len(nuovi) != 11:
+        return migliore
+    panchina_prima = _ids(prima, "panchina") or []
+    if set(titolari) == nuovi and (not chiusa or panchina_prima == [int(g["id"]) for g in migliore.get("panchina") or []]):
+        return migliore
+    rosa = _rosa(s, prev)
+    per_id = {g.id: g for g in rosa}
+    if scelte.motivo_non_valida(titolari, {g.id: g.ruolo for g in rosa}, regole):
+        return migliore                  # un titolare uscito dalla rosa o senza previsione, un modulo non più ammesso, un file rovinato
+    if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi for i in titolari):
+        return migliore
+    tit = sorted((per_id[i] for i in titolari), key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore))
+    if chiusa and panchina_prima:
+        panchina = [per_id[i] for i in panchina_prima if i in per_id and i not in titolari]
+    else:
+        panchina = fz._panchina(rosa, tit, regole)
+    val = fz.Valutatore(rosa, regole, simulazioni)          # le stesse simulazioni della migliore (stessa rosa, regole e seme)
+    atteso, dev = val.statistiche(tit, panchina)[:2]
+    atteso_migliore = val.atteso([per_id[int(g["id"])] for g in migliore["titolari"]],
+                                 [per_id[int(g["id"])] for g in migliore.get("panchina") or []])
+    if not chiusa and atteso_migliore - atteso >= SOGLIA_CAMBIO_PUNTI:
+        return migliore
+    return _con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa)
+
+
+def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, dev: float, atteso_migliore: float,
+                     rosa: list) -> dict:
+    """Una copia della risposta della migliore con la consigliata di prima al suo posto: in cima, nella voce del suo modulo
+    (`moduli`) e nello stile consigliato (`livelli`), da cui web e iPhone prendono i titolari; `alternative` e `fuori` rifatti.
+    La risposta della migliore (in cache) non cambia."""
+    conta = {r: sum(1 for g in tit if g.ruolo == r) for r in "DCA"}
+    modulo = f"{conta['D']}-{conta['C']}-{conta['A']}"
+    fascia = incertezza.campi(atteso, dev)
+    voce = {"modulo": modulo, "punteggio_atteso": round(atteso, 1), **fascia, "titolari": [g.id for g in tit],
+            "panchina": [g.id for g in panchina], "incerti": incerti(tit, panchina)}
+    moduli = [voce if m["modulo"] == modulo else m for m in migliore.get("moduli") or []]
+    if not any(m["modulo"] == modulo for m in moduli):
+        moduli.append(voce)
+    alternative = [{"modulo": migliore["modulo"], "punteggio_atteso": round(atteso_migliore, 2)}] if migliore["modulo"] != modulo else []
+    alternative += [a for a in migliore.get("alternative") or [] if a["modulo"] != modulo]
+    stile = migliore.get("stile_consigliato", 0)
+    livelli = [x | {"modulo": modulo, "punteggio_atteso": voce["punteggio_atteso"], **fascia, "moduli": moduli}
+               if x.get("rischio") == stile else x for x in migliore.get("livelli") or []]
+    schede = migliore["schede"]
+    scelti = {g.id for g in tit} | {g.id for g in panchina}
+    return migliore | {
+        "modulo": modulo, "punteggio_atteso": voce["punteggio_atteso"], **fascia, "alternative": alternative,
+        "titolari": [schede[str(g.id)] for g in tit], "panchina": [schede[str(g.id)] for g in panchina],
+        "fuori": sorted((schede[str(g.id)] for g in rosa if g.id not in scelti), key=lambda x: -x["punti_attesi"]),
+        "moduli": moduli, "livelli": livelli}
 
 
 class FormazioneNonValida(ValueError):
