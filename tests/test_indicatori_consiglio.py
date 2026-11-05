@@ -1,6 +1,5 @@
 """Indicatori del consiglio nel Diario e in Stato dei dati (C1-C4 di #166, lavoro L4): misurati sulla consigliata MOSTRATA
 (l'istantanea congelata alla scadenza), medie sulle ultime 8 giornate e avviso al proprietario. Dati inventati."""
-import json
 from datetime import datetime, timedelta
 
 import pytest
@@ -94,6 +93,19 @@ def test_cambi_tenuti_al_massimo(tmp_path, orologio):
         diario.salva_istantanea(_app(titolari=MOSTRATI[:-1] + [22 + n % 2], panchina=(2, 7, 16)), ST, f)
     c = diario.carica(f)["cambi"][f"{ST}/1"]
     assert len(c) == ic.MAX_CAMBI and c[-1]["quando"] == orologio["t"].isoformat(timespec="seconds")
+
+
+def test_due_salvataggi_insieme_contano_un_cambio_solo(tmp_path):
+    """L'app e la copia alla scadenza salvano la stessa consigliata nuova nello stesso momento: tutte e due hanno letto
+    l'istantanea vecchia e preparato lo stesso cambio, ma chi scrive per secondo trova già la nuova e non lo aggiunge."""
+    f = tmp_path / "diario.json"
+    diario.salva_istantanea(_app(), ST, f)
+    vecchia = diario.carica(f)["istantanee"][f"{ST}/1"]
+    c = ic.cambio(vecchia, _app(titolari=MOSTRATI[:-1] + [23]), "2026-09-01T12:00:00")
+    nuova = {**vecchia, "titolari": [{"id": i} for i in MOSTRATI[:-1] + [23]]}
+    for _ in range(2):
+        diario._scrivi(f, istantanee={f"{ST}/1": nuova}, cambi={f"{ST}/1": c})
+    assert len(diario.carica(f)["cambi"][f"{ST}/1"]) == 1
 
 
 def test_l_elenco_del_diario_non_manda_i_cambi_alle_app(tmp_path, orologio):

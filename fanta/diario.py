@@ -48,26 +48,31 @@ def _scrivi(percorso: Path | None, voci: dict | None = None, istantanee: dict | 
     (servizio e comando del cron) e una voce con la formazione schierata non viene MAI sostituita da una che non ce l'ha:
     il cron, che ha calcolato su una copia vecchia, non cancella un «Ho schierato» arrivato nel frattempo dall'app.
     `cambi` = {chiave: cambio} (`indicatori_consiglio.cambio`): si aggiunge in fondo a quelli della giornata, al massimo
-    `indicatori_consiglio.MAX_CAMBI` (gli ultimi). Stanno a parte, fuori dalle istantanee che l'app riceve."""
+    `indicatori_consiglio.MAX_CAMBI` (gli ultimi), solo se l'istantanea nel file ha ancora i titolari di prima del cambio: due
+    salvataggi della stessa consigliata nuova nello stesso momento (app e copia alla scadenza) contano un cambio solo.
+    Stanno a parte, fuori dalle istantanee che l'app riceve."""
     file = percorso or FILE
     with _blocco, BloccoFile(file.with_name(file.name + ".lock")):
         d = carica(percorso)
         for chiave, nuova in (voci or {}).items():
             d["giornate"][chiave] = _unisci_voce(d["giornate"].get(chiave), nuova)
-        if istantanee:
-            ist = d["istantanee"] if isinstance(d.get("istantanee"), dict) else {}
-            ist.update(istantanee)
-            for vecchia in chiavi_vecchie(ist, MAX_ISTANTANEE):
-                ist.pop(vecchia, None)
-            d["istantanee"] = ist
+        ist = d["istantanee"] if isinstance(d.get("istantanee"), dict) else {}
         if cambi:
             tutti = d["cambi"] if isinstance(d.get("cambi"), dict) else {}
             for chiave, c in cambi.items():
+                attuale = ist.get(chiave) if isinstance(ist.get(chiave), dict) else {}
+                if set(_ids(attuale.get("titolari"))) != set(c.get("prima") or []):
+                    continue                            # qualcun altro l'ha già sovrascritta: il cambio è già contato
                 prima = tutti.get(chiave) if isinstance(tutti.get(chiave), list) else []
                 tutti[chiave] = (prima + [c])[-ic.MAX_CAMBI:]
             for vecchia in chiavi_vecchie(tutti, MAX_ISTANTANEE):
                 tutti.pop(vecchia, None)
             d["cambi"] = tutti
+        if istantanee:
+            ist.update(istantanee)
+            for vecchia in chiavi_vecchie(ist, MAX_ISTANTANEE):
+                ist.pop(vecchia, None)
+            d["istantanee"] = ist
         scrivi_sicuro(file, json.dumps(d, ensure_ascii=False))
 
 
