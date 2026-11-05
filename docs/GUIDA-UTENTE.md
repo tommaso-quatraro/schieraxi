@@ -92,7 +92,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il test
 
 - il nome **SchieraXI** con il motto «Schierali. Schiera gli XI.»;
 - il **conto alla rovescia** alla scadenza della formazione;
-- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata (te lo chiede solo per l'ultima giornata finita). Per un titolare in dubbio ti propone un sostituto (**Sostituisci**) solo se anche la formazione consigliata lo toglie, uno diverso per ciascuno (se due sono in dubbio nello stesso ruolo, il primo sostituto va a chi rischia di più). Se la consigliata lo tiene, ti dice chi entra dalla panchina se lui non gioca: Oggi e Formazione non si contraddicono. Se la lista è vuota: «Nessuna azione utile oggi»;
+- **Da fare**: le cose da sbrigare, in ordine di importanza, ognuna con un pulsante che porta alla schermata giusta. Le più urgenti hanno **Urgente**. Toccando **Ho schierato la consigliata** la scelta si salva e si apre il Diario su quella giornata (te lo chiede solo per l'ultima giornata finita). Per un titolare in dubbio ti propone un sostituto (**Sostituisci**) solo se anche la formazione consigliata lo toglie, uno diverso per ciascuno (se due sono in dubbio nello stesso ruolo, il primo sostituto va a chi rischia di più). Se la consigliata lo tiene, ti dice chi entra dalla panchina se lui non gioca: Oggi e Formazione non si contraddicono. Una formazione salvata che non è più valida conta come non salvata: Da fare guarda la consigliata e ti ricorda che la formazione si chiude. Se la lista è vuota: «Nessuna azione utile oggi»;
 - quanto sono fresche le **probabili formazioni**; se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare;
 - la **formazione consigliata** con punti attesi e fascia (se ne hai salvata una tua, vedi la tua);
 - **Da controllare** (i tuoi titolari che rischiano di non giocare, con la stessa parola della Formazione: **In dubbio** solo se lo dicono le probabili, altrimenti per esempio **Improbabile** o **Probabile panchina**), **I tuoi migliori** (fantavoto atteso e «gioca N%»), **Indisponibili** e **Diffidati**;
@@ -112,8 +112,8 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
   - ✓ «La tua formazione è salvata (oggi alle 21:40)»: è la tua scelta per la giornata;
   - ● «Modifiche non salvate»: hai cambiato qualcosa dopo aver salvato. **Salva le modifiche** o **Annulla modifiche**;
   - ● «Modifica a mano non ancora salvata»: tocca **Salva come mia scelta**;
-  - ! «La formazione salvata non è più valida»: per esempio un giocatore non è più nella rosa. Rifalla o torna alla consigliata;
-  - ■ «Giornata iniziata: la formazione è chiusa»: è passata la scadenza della tua lega. Non ci sono più **Modifica a mano**, **Salva**, **Torna alla consigliata** né i pulsanti di modulo e stile: resta la formazione di prima (la tua, se l'avevi salvata). Al posto di «gioca 85%» vedi com'è andata: il fantavoto preso, «Voto in arrivo» o «Senza voto».
+  - ! «La formazione salvata non è più valida»: per esempio un giocatore non è più nella rosa, o il modulo non è più ammesso nella tua lega. Rifalla o torna alla consigliata. Finché non la rifai vale la consigliata, anche per Oggi, Da fare, il Diario e gli avvisi;
+  - ■ «Giornata iniziata: la formazione è chiusa»: è passata la scadenza della tua lega. Non ci sono più **Modifica a mano**, **Salva**, **Torna alla consigliata** né i pulsanti di modulo e stile. Se avevi salvato una tua formazione, la riga dice anche quale vale: «· vale quella che hai salvato» (la vedi sul campo) oppure «· vale la consigliata, la tua non è più valida» (sul campo c'è la consigliata, e la usano anche Oggi, il riepilogo e il Diario). Al posto di «gioca 85%» vedi com'è andata: il fantavoto preso, «Voto in arrivo» o «Senza voto».
   **Torna alla consigliata** toglie la tua scelta e rimette modulo e stile consigliati.
   Se hai cambiato la formazione a mano e non l'hai salvata, prima di cambiare sezione o di ricaricare la pagina SchieraXI te lo chiede.
 - **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto).
@@ -161,9 +161,9 @@ Alcune funzioni (risultati in diretta, confronto, seguiti, elenco giocatori, Dia
 **Oggi** cambia con la fase della giornata:
 
 - **Prima della scadenza**: tutto come nella sezione 3.
-- **Giornata in corso** (formazione chiusa, partite da giocare o in corso): spariscono i consigli su chi schierare. Vedi i **punti fatti finora** dalla formazione schierata (la tua, se l'hai salvata), quanti punti ti aspetti **a fine giornata** (contando anche le riserve che entreranno), il fantavoto di chi ha giocato o l'ora di chi deve ancora giocare, e i **cambi dalla panchina**: «già fatto» se un titolare è rimasto senza voto e il sostituto ha il voto, «probabile» se deve ancora giocare. I fantavoti arrivano quando escono i voti ufficiali, di solito dopo la partita.
+- **Giornata in corso** (formazione chiusa, partite da giocare o in corso): spariscono i consigli su chi schierare. Vedi i **punti fatti finora** dalla formazione schierata (la tua, se l'hai salvata ed è valida), quanti punti ti aspetti **a fine giornata** (contando anche le riserve che entreranno), il fantavoto di chi ha giocato o l'ora di chi deve ancora giocare, e i **cambi dalla panchina**: «già fatto» se un titolare è rimasto senza voto e il sostituto ha il voto, «probabile» se deve ancora giocare. I fantavoti arrivano quando escono i voti ufficiali, di solito dopo la partita.
   Se sei entrato in SchieraXI quando la giornata era già iniziata e non hai una formazione per lei, non vedi punti: Oggi ti dice **Questa giornata è già iniziata** e quando si chiude la prossima, con il pulsante **Prepara la prossima**; anche la Formazione è già quella della prossima giornata. Quando apri la Formazione di una giornata già cominciata, in alto leggi che è chiusa.
-- **Giornata finita** (per due giorni): il riepilogo con punti fatti e attesi, il confronto con la consigliata e un pulsante per aprire il Diario. Se non hai salvato una tua formazione, il riepilogo usa la consigliata: SchieraXI se la segna da solo pochi minuti prima della scadenza, anche se non hai aperto l'app. Una partita rinviata non tiene aperta la giornata: se la tua lega aspetta il recupero, il riepilogo lo dice («Manca il recupero di…: i punti possono ancora cambiare»). Sotto, quando si chiude la prossima giornata e da quando conviene prepararla.
+- **Giornata finita** (per due giorni): il riepilogo con punti fatti e attesi, il confronto con la consigliata e un pulsante per aprire il Diario. Se non hai salvato una tua formazione, o quella salvata non è più valida, il riepilogo usa la consigliata: SchieraXI se la segna da solo pochi minuti prima della scadenza, anche se non hai aperto l'app. Una partita rinviata non tiene aperta la giornata: se la tua lega aspetta il recupero, il riepilogo lo dice («Manca il recupero di…: i punti possono ancora cambiare»). Sotto, quando si chiude la prossima giornata e da quando conviene prepararla.
 
 ### Avvisi sul telefono (Impostazioni > Notifiche)
 
@@ -175,6 +175,8 @@ Ti scrivono quando:
 - **un'ora e un quarto d'ora prima** della scadenza della formazione (non arrivano se hai già schierato, a meno che un tuo titolare sia diventato indisponibile);
 - **reparto scoperto**: troppo pochi giocatori disponibili in un reparto;
 - il **riepilogo** della giornata.
+
+Una formazione salvata che non è più valida (per esempio con un giocatore ceduto) per gli avvisi conta come non salvata: parlano della consigliata e i promemoria arrivano.
 
 Gli avvisi dicono le cose a parole (per esempio «ora probabile titolare», senza percentuali) e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
