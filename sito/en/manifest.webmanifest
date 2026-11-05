@@ -2,7 +2,7 @@
   "id": "/en/",
   "name": "SchieraXI – fantasy football lineup advice",
   "short_name": "SchieraXI",
-  "description": "Line them up. Line up the XI: the best lineup for every round, with chances and expected points explained.",
+  "description": "The recommended lineup for classic Serie A fantacalcio leagues: each player's expected fantasy score, the eleven, formation and bench.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/en/?from=app",
@@ -10,8 +10,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#07100b",
-  "theme_color": "#125c42",
+  "background_color": "#ffffff",
+  "theme_color": "#0b6b3a",
   "categories": ["sports", "utilities"],
   "icons": [
     {"src": "/icona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
@@ -20,11 +20,11 @@
     {"src": "/icona-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "screenshots": [
-    {"src": "/img/schermata-larga.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "The first screen of SchieraXI"},
-    {"src": "/img/schermata-stretta.png", "sizes": "720x1280", "type": "image/png", "form_factor": "narrow", "label": "The SchieraXI demo on a phone"}
+    {"src": "/img/schermata-larga.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "SchieraXI on a computer"},
+    {"src": "/img/schermata-stretta.png", "sizes": "720x1280", "type": "image/png", "form_factor": "narrow", "label": "SchieraXI on a phone"}
   ],
   "shortcuts": [
-    {"name": "Try the demo", "short_name": "Demo", "url": "/en/?from=app#demo", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]},
-    {"name": "Open the web app", "short_name": "Web app", "url": "/en/?from=app#scarica", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]}
+    {"name": "How it works", "short_name": "How it works", "url": "/en/?from=app#come", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]},
+    {"name": "Getting started", "short_name": "Getting started", "url": "/en/?from=app#iniziare", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]}
   ]
 }

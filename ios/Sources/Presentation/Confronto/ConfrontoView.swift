@@ -42,16 +42,21 @@ struct ConfrontoView: View {
         Carta(c.titolo) {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 8) {
-                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
+                    colonna(c, c.giocatori[0])
                     Text("VS").font(.headline).foregroundStyle(Color.testoSecondario).padding(.top, 24).accessibilityHidden(true)
-                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
+                    colonna(c, c.giocatori[1])
                 }
                 VStack(spacing: 12) {
-                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
-                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
+                    colonna(c, c.giocatori[0])
+                    colonna(c, c.giocatori[1])
                 }
             }
         }
+    }
+
+    /// Uno dei due in cima, con il posto nella formazione del sistema sotto il nome (#311).
+    private func colonna(_ c: Confronto, _ g: Giocatore) -> ColonnaDuello {
+        ColonnaDuello(g: g, scelto: g.id == c.consigliato, posto: c.codicePosto(di: g))
     }
 
     private func verdetto(_ c: Confronto) -> some View {
