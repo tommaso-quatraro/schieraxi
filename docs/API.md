@@ -528,7 +528,7 @@ Leggono solo dati già pronti (calendario, voti, scelte, Diario, cache dei risul
 La giornata è finita quando sono giocate tutte le partite del turno: una partita rinviata (anche da recuperare settimane dopo)
 non la tiene aperta. `recuperi` (lista, facoltativa: un client vecchio la ignora) = le partite rinviate ancora da recuperare
 `[{casa, trasferta, data}]`, solo se per quella giornata vale `aspetta`: i loro giocatori restano in formazione senza voto e i
-punti possono ancora cambiare (la web app scrive «Manca il recupero di ATA–PAR: i punti possono ancora cambiare»). Con
+punti possono ancora cambiare (la web app e l'iPhone scrivono «Manca il recupero di ATA vs PAR: i punti possono ancora cambiare»). Con
 `senza_voto` o `voto_ufficio` è vuota: i punti sono già quelli finali (riserva o voto d'ufficio). `rinvio` (oggetto o `null`):
 c'è finché una partita rinviata della giornata è da recuperare, con gli stessi campi del menu di Oggi (`stagione, giornata,
 giornata_lega, modo, valore, predefinito, eccezione, modi, voto_ufficio`): il client mostra lo stesso menu «per questa giornata»

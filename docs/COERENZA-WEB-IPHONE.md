@@ -22,7 +22,7 @@ Oggi e «Giornata 7 di lega (Serie A 10)» sull'iPhone. Chi usa le due app non d
 | Avversario sul campo | «vs PAR» in casa, «@ UDI» in trasferta, con la sigla nei colori sociali | «PAR (f)», «UDI fuori» |
 | Partita in una riga | «ATA vs PAR · oggi 20:45» (in casa), «INT @ MIL · sab 31 20:45» (in trasferta). Prima la squadra del giocatore. | «INT – MIL fuori», «GEN – COM casa», «GENOA vs COMO» |
 | Partita nella scheda | «Giornata 7 · in casa contro Como · sab 31 20:45», «… · in trasferta contro Milan · …» | «fuori contro» |
-| Partite del turno (Oggi) | «MIL vs INT», con la squadra di casa prima e le sigle. Uguale nella carta delle partite rinviate: «UDI vs MIL» | «Milan – Inter», «UDI–MIL» |
+| Partite del turno (Oggi) | «MIL vs INT», con la squadra di casa prima e le sigle. Uguale nella carta delle partite rinviate («UDI vs MIL») e nel riepilogo della giornata finita («Manca il recupero di ATA vs PAR») | «Milan – Inter», «UDI–MIL» |
 | Sigle delle squadre | Tre lettere maiuscole, dalla tabella `SIGLE` (web) = `ColoriSquadra.sigle` (iOS): devono restare uguali. Il nome intero («Como») solo in frase: scheda, VoiceOver, lettori di schermo. | Nome intero in maiuscolo («GENOA»); nome intero in una riga di elenco |
 | Titolarità (prima della scadenza) | Probabile titolare · In ballottaggio · Probabile panchina · Improbabile · Fuori; dubbio: «In dubbio · gioca 55%». Sempre l'`etichetta` del server, la stessa in Formazione, campo, scheda, Oggi («Da controllare»), scelta del confronto e widget. «In dubbio» solo se lo dicono le probabili; in una frase la stessa parola in minuscolo («Lerri: improbabile, gioca 2%.») | numeri dentro l'etichetta; «In dubbio» per chi gioca al 2% senza dubbio delle probabili |
 | Posto in formazione (Confronto, scelta del confronto, sostituzione) | «Titolare», «Panchina 2», «Non schierato» (fuori dai titolari e dalla panchina) | «Probabile titolare», «Fuori»: sono parole della titolarità |
@@ -92,7 +92,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 35 | Oggi, carta del rinvio | «UDI vs MIL» | «UDI–MIL» | web | fatto sull'iPhone (#295) |
 | 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | fatto sull'iPhone (#295) |
 | 37 | Confronto, «Tutti i numeri» | «Atteso ponderato (con la probabilità di giocare)», «Quando gioca» a parole, «vs COM», «Normale» | «Punti attesi», «Parte titolare 75%», «COM casa», «Media» | web (`apriConfronto`) | fatto sull'iPhone (#293) |
-| 38 | Oggi, giornata finita, recuperi | «Manca il recupero di ATA–PAR» | uguale | «ATA vs PAR», come la carta del rinvio | web e poi iPhone (#310) |
+| 38 | Oggi, giornata finita, recuperi | «Manca il recupero di ATA–PAR» | uguale | «ATA vs PAR», come la carta del rinvio | fatto sulla web e sull'iPhone (#310): stessa funzione della carta del rinvio (`partitaVs`, `TestiRinvio.partita`) |
 | 39 | Confronto, in cima ai due nomi | posto sotto il nome («Titolare», «Panchina 2», «Non schierato») | niente posto | web | iPhone da fare (#311; la partita «INT vs ROM» è la #302) |
 
 ## Etichette pronte dal server?

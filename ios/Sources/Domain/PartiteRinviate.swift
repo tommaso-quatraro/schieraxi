@@ -64,10 +64,10 @@ enum TestiRinvio {
         return "È la regola della tua lega (Altro › Regole). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata."
     }
 
-    /// Nel riepilogo della giornata finita: «Manca il recupero di ATA–PAR: i punti possono ancora cambiare.» Nil se non manca niente.
-    /// Qui la web scrive ancora le sigle con il trattino (`oggi.recupero_manca` in app.js): si resta uguali alla web.
+    /// Nel riepilogo della giornata finita: «Manca il recupero di ATA vs PAR: i punti possono ancora cambiare.» Nil se non manca
+    /// niente. Le partite scritte come la carta del rinvio (`partita`), uguale alla web (`oggi.recupero_manca` con `partitaVs`, #310).
     static func recuperoManca(_ recuperi: [PartitaRinviata]) -> String? {
-        let partite = recuperi.map { "\(ColoriSquadra.sigla($0.casa))–\(ColoriSquadra.sigla($0.trasferta))" }
+        let partite = recuperi.map { partita($0) }
         return partite.isEmpty ? nil : "Manca il recupero di \(partite.joined(separator: ", ")): i punti possono ancora cambiare."
     }
 

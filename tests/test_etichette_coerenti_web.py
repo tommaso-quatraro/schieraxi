@@ -2,7 +2,8 @@
 - il posto in formazione (scelta del confronto, Confronto, sostituzione) si legge «Titolare», «Panchina N», «Non schierato», mai con
   le parole della titolarità («Probabile titolare» per un giocatore al 2%, «Fuori»); la scelta mostra anche l'etichetta del server;
 - nel Confronto i numeri negativi hanno il meno tipografico «−1,12», non il trattino;
-- la pedina di una partita rinviata dice «Rinviata» al posto di «⚠ gioca 50%»; la carta del rinvio scrive «UDI vs MIL».
+- la pedina di una partita rinviata dice «Rinviata» al posto di «⚠ gioca 50%»; la carta del rinvio scrive «UDI vs MIL», e così
+  anche la riga dei recuperi che mancano nel riepilogo della giornata finita (#310).
 Funzioni di app.js provate con node."""
 import json
 import re
@@ -112,3 +113,16 @@ def test_carta_del_rinvio_scrive_le_squadre_come_le_partite_del_turno():
                         _pezzo("const MODI_RINVIO", "function collegaRinvio")])
     html = _esegui(f"cardRinvio({json.dumps(rv)})", blocco)
     assert "UDI vs MIL" in _testo(html) and "UDI–MIL" not in html
+
+
+def test_recuperi_che_mancano_scritti_come_la_carta_del_rinvio():
+    """Riepilogo della giornata finita: «Manca il recupero di UDI vs MIL, ATA vs PAR: …», non «UDI–MIL» (#310)."""
+    r = {"giornata": 10, "giornata_lega": 7, "formazione_di": "tua", "nel_diario": True, "punti_fatti": 61,
+         "recuperi": [{"casa": "udinese", "trasferta": "milan", "data": None}, {"casa": "atalanta", "trasferta": "parma", "data": "2026-11-25 20:45"}]}
+    blocco = "\n".join([_pezzo("const SIGLE =", "const NOMI_DIFF"), _riga("sigla"), _pezzo("function parseData(s)", "// ETag e If-Match"),
+                        _pezzo("const MODI_RINVIO", "function collegaRinvio"), _pezzo("function cardRiepilogo(", "// Nome e slogan in cima a Oggi")])
+    html = _esegui(f"cardRiepilogo({json.dumps(r)}, null)", blocco)
+    assert "Manca il recupero di UDI vs MIL, ATA vs PAR: i punti possono ancora cambiare." in _testo(html)
+    assert "–" not in _testo(html)
+    en = _esegui(f"cardRiepilogo({json.dumps(r)}, null)", blocco, lingua="en")
+    assert "The make-up game UDI vs MIL, ATA vs PAR is still to be played" in _testo(en)
