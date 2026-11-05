@@ -42,7 +42,7 @@ def genera(sorgente: Path, uscita: Path = USCITA) -> None:
     from fontTools.ttLib import TTFont
     from fontTools.varLib import instancer
 
-    font = TTFont(sorgente)
+    font = TTFont(sorgente, recalcTimestamp=False)      # data del file di partenza: stesso file di partenza = stessi byte
     assi = {a.axisTag for a in font["fvar"].axes} if "fvar" in font else set()
     famiglia = font["name"].getDebugName(16) or font["name"].getDebugName(1) or ""
     if not famiglia.startswith("Archivo") or not set(ASSI) <= assi:

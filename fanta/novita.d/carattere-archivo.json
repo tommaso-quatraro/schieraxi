@@ -2,7 +2,7 @@
   "titolo": "Un carattere per i numeri",
   "voci": ["Prepara il nuovo carattere per i numeri dell'app web, citato in «Crediti e fonti»: per ora i numeri sullo schermo non cambiano."],
   "tecnico": [
-    "Archivo semi-stretto (SIL OFL 1.1) in fanta/web/caratteri/archivo.woff2 con OFL.txt accanto: 28136 byte, peso 400-700, cifre tabellari, licenza anche nei nomi del file.",
+    "Archivo semi-stretto (SIL OFL 1.1) in fanta/web/caratteri/archivo.woff2 con OFL.txt accanto: 28132 byte, peso 400-700, cifre tabellari, licenza anche nei nomi del file.",
     "/caratteri/ pubblico anche con gli account accesi (STATICI_PREFISSI), tipo font/woff2 registrato in server.py, nella scocca offline di sw.js.",
     "script/carattere_web.py rifà il file da Archivo[wdth,wght].ttf di google/fonts e controlla cifre tabellari, licenza, lettere e assi. Nessuna regola CSS lo usa ancora (dalla PR 4 del piano della grafica B)."
   ]
