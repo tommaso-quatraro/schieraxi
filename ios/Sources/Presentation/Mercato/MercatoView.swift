@@ -337,7 +337,7 @@ struct CalendarioView: View {
                                             .background(colore(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                                             .foregroundStyle(Color.black)
                                             // La difficoltà non è solo un colore: VoiceOver la dice a parole.
-                                            .accessibilityLabel("Serie A, giornata \(p.giornata): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                                            .accessibilityLabel("\(TempiLega.serieA(p.giornata)): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
                                     }
                                 }
                             }

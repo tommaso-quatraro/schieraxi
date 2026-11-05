@@ -217,6 +217,7 @@ private extension LegaDemo {
         d["stagione"] = stagione
         var previsione = giocatore(p, adesso: adesso)
         previsione["giornata"] = giornata
+        previsione["giornata_lega"] = giornataLega   // come il server: la scheda dice «Giornata 8 · 11ª di Serie A»
         d["previsione"] = previsione
         d["voti"] = voti(p)
         d["avanzate"] = ["minuti": 560 + p.id % 200, "xg": 3.4 + Double(p.id % 5) * 0.7, "xa": 1.2 + Double(p.id % 3) * 0.4, "tiri": 22 + p.id % 9,
@@ -353,12 +354,13 @@ private extension LegaDemo {
          "priorita": 2, "azione": "Aggiorna le rose", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"]]
     }
 
-    /// L'ultima giornata finita: il server la numera per la lega (la 7, la testata dice «Giornata 8 di lega»), mentre `id`,
-    /// `giornata` e `destinazione.giornata` sono i numeri della Serie A (la 10), come in `_diario` di `fanta/da_fare.py`.
+    /// L'ultima giornata finita con i due numeri, come il server dalla #299 («Giornata 7 · 10ª di Serie A: è finita, …»), mentre
+    /// `id`, `giornata` e `destinazione.giornata` sono i numeri della Serie A (la 10), come in `_diario` di `fanta/da_fare.py`.
     static var voceDiario: [String: Any] {
         let serieA = giornata - 1
         let lega = (giornata - 3) - 1
-        return ["id": "diario:\(serieA)", "tipo": "diario", "testo": "La giornata \(lega) è finita: dimmi se hai schierato la consigliata.",
+        let nome = TempiLega.etichetta(serieA: serieA, lega: lega)
+        return ["id": "diario:\(serieA)", "tipo": "diario", "testo": "\(nome): è finita, dimmi se hai schierato la consigliata.",
                 "priorita": 3, "azione": "Ho schierato la consigliata",
                 "destinazione": ["scheda": "lega", "sezione": "diario", "link": "schieraxi://lega/diario", "giornata": serieA] as [String: Any],
                 "giornata": serieA]

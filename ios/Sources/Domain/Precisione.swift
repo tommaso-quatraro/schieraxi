@@ -161,6 +161,9 @@ struct PrecisioneDiario: Decodable, Equatable {
 
         /// Il numero da mostrare: quello della lega se c'è (come la web).
         var numero: Int? { giornataLega ?? giornata }
+
+        /// La giornata con i due numeri (#299); nil senza il numero di Serie A.
+        var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
     }
 
     private enum Chiavi: String, CodingKey { case giornate, pochiDati, giornateMinime, fonti, fantavoto, gioca, confronto, squadra, perGiornata }
@@ -215,8 +218,12 @@ struct TestoPrecisione: Equatable {
         let id: Int
         let etichetta: String
         let errore: Double
+        /// La giornata con i due numeri, per VoiceOver (#299). Nil se il server non manda il numero di Serie A.
+        var nome: NomeGiornata? = nil
         var valore: String { Formato.punti(errore) }
-        var voce: String { "Giornata \(etichetta): errore medio \(valore) punti" }
+        /// «Giornata 8, 11ª di Serie A»: la giornata della barra come la legge VoiceOver.
+        var voceGiornata: String { nome?.voce ?? "Giornata \(etichetta)" }
+        var voce: String { "\(voceGiornata): errore medio \(valore) punti" }
     }
 
     static let titolo = "Quanto ci abbiamo preso"
@@ -254,6 +261,11 @@ struct TestoPrecisione: Equatable {
         let vocale = testo.hasPrefix("8") || n == 1 || n == 11 || (testo.hasPrefix("11") && testo.count == 4)
         return (vocale ? "all'" : "al ") + testo + "%"
     }
+    /// La giornata dentro «Calcolato su…»: «Giornata 8 · 11ª di Serie A»; con un server senza numero di Serie A «giornata 8».
+    private static func nomeInFrase(_ g: PrecisioneDiario.Giornata) -> String? {
+        g.nomeGiornata?.intero ?? g.numero.map { "giornata \($0)" }
+    }
+
     /// Il plurale della web (`Intl.PluralRules` italiano): «one» solo per 1 esatto.
     private static func uno(_ x: Double) -> Bool { x == 1 }
 
@@ -261,13 +273,14 @@ struct TestoPrecisione: Equatable {
         guard let p, let n = p.giornate, n > 0 else { return nil }
         let v = Self.v
 
-        // Calcolato su N giornate (con la prima e l'ultima, se ci sono)
+        // Calcolato su N giornate (con la prima e l'ultima, se ci sono), con i due numeri come la web (#299):
+        // «dalla Giornata 4 · 7ª di Serie A alla Giornata 8 · 11ª di Serie A». Senza il numero di Serie A, quello che c'è.
         let pg = p.perGiornata
-        let primo = pg.first?.numero, ultimo = pg.last?.numero
+        let primo = pg.first.flatMap(Self.nomeInFrase), ultimo = pg.last.flatMap(Self.nomeInFrase)
         if n == 1 {
             calcolatoSu = primo.map { "Calcolato su 1 giornata (la \($0))." } ?? "Calcolato su 1 giornata."
         } else if let primo, let ultimo {
-            calcolatoSu = "Calcolato su \(n) giornate, dalla giornata \(primo) alla \(ultimo)."
+            calcolatoSu = "Calcolato su \(n) giornate, dalla \(primo) alla \(ultimo)."
         } else {
             calcolatoSu = "Calcolato su \(n) giornate."
         }
@@ -352,13 +365,13 @@ struct TestoPrecisione: Equatable {
             let volte = (viste[etichetta] ?? 0) + 1
             viste[etichetta] = volte
             if volte > 1 { etichetta += " (\(g.stagione ?? String(volte)))" }   // la stessa giornata di due stagioni: etichette diverse
-            elenco.append(Barra(id: elenco.count, etichetta: etichetta, errore: e))
+            elenco.append(Barra(id: elenco.count, etichetta: etichetta, errore: e, nome: g.nomeGiornata))
         }
         barre = elenco
 
         // Andamento, dalla più recente
         righe = pg.reversed().map { (g: PrecisioneDiario.Giornata) -> String in
-            var r = "Giornata \(g.numero.map { String($0) } ?? "–") · "
+            var r = (g.nomeGiornata?.intero ?? "Giornata \(g.numero.map { String($0) } ?? "–")") + " · "
             if let e = g.erroreFantavoto { r += "fantavoto: errore \(v(e)) · " }
             r += "squadra: \(v(g.attesi)) previsti, \(v(g.fatti)) fatti"
             if let tua = g.tua {

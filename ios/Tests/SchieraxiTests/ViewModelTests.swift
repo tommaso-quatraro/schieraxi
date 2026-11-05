@@ -90,7 +90,7 @@ final class FormazioneViewModelTests: XCTestCase {
         XCTAssertEqual(v.panchina.count, 11)
         XCTAssertEqual(try XCTUnwrap(v.punti), 71.1, accuracy: 0.01)
         XCTAssertNil(vm.manuale)
-        XCTAssertEqual(vm.testo(f).components(separatedBy: "\n").first, "Giornata 9 · 4-3-3")
+        XCTAssertEqual(vm.testo(f).components(separatedBy: "\n").first, "9ª giornata di Serie A · 4-3-3", "la fixture non ha `giornata_lega`")
         XCTAssertEqual(vm.fuori(f, v).count, 3, "25 in rosa, 11 titolari e 11 in panchina")
         XCTAssertEqual(vm.contestoConfronto, ContestoConfronto(livello: 0, modulo: "4-3-3", squadra: nil))
     }

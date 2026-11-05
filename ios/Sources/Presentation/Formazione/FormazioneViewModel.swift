@@ -285,7 +285,8 @@ final class FormazioneViewModel: ViewModelBase {
         let renderer = ImageRenderer(content: disegno)
         renderer.scale = 3   // 360 x 490 punti → 1080 x 1470 pixel
         if let immagine = renderer.uiImage {
-            anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: f.etichettaGiornata.replacingOccurrences(of: "Giornata", with: "Formazione giornata"))
+            // come la web: «Formazione · Giornata 8 · 11ª di Serie A» (#299)
+            anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: "Formazione · \(f.etichettaGiornata)")
         } else {
             messaggio = "Non riesco a creare l'immagine."
         }

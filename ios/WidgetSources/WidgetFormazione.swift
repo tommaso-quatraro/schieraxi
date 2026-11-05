@@ -97,7 +97,7 @@ struct VistaFormazione: View {
 
     private func contenutoMinimo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", destra: r.siglaGiornata)
+            IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", giornata: r.nomeGiornata, soloCorta: true)
             Spacer(minLength: 0)
             Text(r.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold))
             Text("\(Formato.punti(r.punti)) punti attesi").font(.caption).foregroundStyle(TintaWidget.testo2)
@@ -109,7 +109,8 @@ struct VistaFormazione: View {
 
     private func piccolo(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            IntestazioneWidget(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", icona: "sportscourt", destra: w.siglaGiornata)
+            IntestazioneWidget(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", icona: "sportscourt",
+                               giornata: w.nomeGiornata, soloCorta: true)
             Spacer(minLength: 0)
             Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
             Text(punti(f)).font(.title3.bold()).monospacedDigit()
@@ -145,16 +146,17 @@ struct VistaFormazione: View {
         }
     }
 
-    /// La frase intera della testata per VoiceOver (sullo schermo la testata si accorcia: «G8», «73,7 attesi»).
+    /// La frase intera della testata per VoiceOver (sullo schermo la testata si accorcia: «Giornata 8», «73,7 attesi»).
     private func testataParlata(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> String {
-        [f.modulo ?? "—", ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true)[0], f.intervallo?.testo, w.etichettaGiornata]
+        [f.modulo ?? "—", ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true)[0], f.intervallo?.testo, w.nomeGiornata?.voce]
             .compactMap { $0 }.joined(separator: ", ")
     }
 
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        // prima «Giornata 8» diventa «G8», poi «73,7 punti attesi» diventa «73,7 attesi»: mai «73,7 punti att…»
+        // prima «Giornata 8 · 11ª di Serie A» diventa «Giornata 8» e poi «G8», poi «73,7 punti attesi» diventa «73,7 attesi»:
+        // mai «73,7 punti att…»
         let testate = ParoleWidget.coppie(ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true),
-                                          w.etichettaGiornata.map { [$0, w.siglaGiornata ?? $0] } ?? [""])
+                                          w.nomeGiornata?.forme ?? [""])
         return VStack(spacing: 8) {
             PrimaCheEntra(testate.count) { i in
                 HStack(alignment: .center) {
@@ -251,8 +253,8 @@ struct VistaFormazione: View {
                 .font(.caption).monospacedDigit()
             if !w.daControllare.isEmpty {
                 EtichettaDaControllare(n: w.daControllare.count).font(.caption2)
-            } else if let g = w.etichettaGiornata {
-                Text(g).lineLimit(1).minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
+            } else if let g = w.nomeGiornata {
+                GiornataInRiga(g).minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

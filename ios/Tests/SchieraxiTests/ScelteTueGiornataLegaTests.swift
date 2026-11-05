@@ -13,16 +13,16 @@ struct ScelteTueGiornataLegaTests {
         return try #require(ScelteTueTesto(s)).righe.map(\.titolo)
     }
 
-    @Test("La riga dice il numero della lega; senza (null, assente o strano) quello di Serie A",
+    @Test("La riga dice i due numeri (#299); senza numero della lega (null, assente o strano) solo quello di Serie A",
           arguments: [
-            (#"{"stagione": "2026-27", "giornata": 9, "giornata_lega": 6, "esito": "consigliata"}"#, "Giornata 6"),
+            (#"{"stagione": "2026-27", "giornata": 9, "giornata_lega": 6, "esito": "consigliata"}"#, "Giornata 6 · 9ª di Serie A"),
             // fuori dalla stagione in corso il server manda null
-            (#"{"stagione": "2025-26", "giornata": 9, "giornata_lega": null, "esito": "consigliata"}"#, "Giornata 9"),
+            (#"{"stagione": "2025-26", "giornata": 9, "giornata_lega": null, "esito": "consigliata"}"#, "9ª giornata di Serie A"),
             // server vecchio: il campo non c'è
-            (#"{"stagione": "2026-27", "giornata": 9, "esito": "consigliata"}"#, "Giornata 9"),
-            (#"{"stagione": "2026-27", "giornata": 9, "giornata_lega": 0, "esito": "consigliata"}"#, "Giornata 9"),
+            (#"{"stagione": "2026-27", "giornata": 9, "esito": "consigliata"}"#, "9ª giornata di Serie A"),
+            (#"{"stagione": "2026-27", "giornata": 9, "giornata_lega": 0, "esito": "consigliata"}"#, "9ª giornata di Serie A"),
             // un formato che l'app non conosce non fa sparire la scheda
-            (#"{"stagione": "2026-27", "giornata": 9, "giornata_lega": "sei", "esito": "consigliata"}"#, "Giornata 9"),
+            (#"{"stagione": "2026-27", "giornata": 9, "giornata_lega": "sei", "esito": "consigliata"}"#, "9ª giornata di Serie A"),
           ])
     func titoloDellaRiga(_ voce: String, _ atteso: String) throws {
         #expect(try titoli(voce) == [atteso])
@@ -47,6 +47,7 @@ struct ScelteTueGiornataLegaTests {
                                     "la giornata \(scelta.giornata ?? 0) di «Le tue scelte» manca nel Diario della demo")
             #expect(riga.titolo == voce.titolo, "«Le tue scelte» e il Diario sotto devono dire la stessa giornata")
         }
-        #expect(righe.map(\.titolo) == ["Giornata 6", "Giornata 5"], "demo: Serie A 9 e 8 sono le giornate 6 e 5 della lega")
+        #expect(righe.map(\.titolo) == ["Giornata 6 · 9ª di Serie A", "Giornata 5 · 8ª di Serie A"],
+                "demo: Serie A 9 e 8 sono le giornate 6 e 5 della lega")
     }
 }

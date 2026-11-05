@@ -162,10 +162,11 @@ struct VistaPunti: View {
                 Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
-                // va a capo intera anche con il testo grande: mai «attesi 6…»
-                Text("fatti alla giornata \(g.numero)\(g.altraStagione.map { " del \($0)" } ?? ""), attesi \(Formato.punti(g.attesi))")
+                // va a capo intera anche con il testo grande: mai «attesi 6…». La giornata in testa con i due numeri (#299)
+                Text("\(g.titolo): fatti, attesi \(Formato.punti(g.attesi))")
                     .font(.subheadline).foregroundStyle(TintaWidget.testo2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(g.descrizione)
                 Spacer(minLength: 0)
             }
             GraficoPunti(giornate: giornate, altezza: 80)
