@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS registro_giornate (
     presenze INTEGER, brier_somma REAL, fasce TEXT,                     -- I2: giocatori delle partite giocate, fasce di 10 punti (JSON)
     fascia_casi INTEGER, fascia_dentro INTEGER,                         -- I3: rose estratte a sorte, punti veri dentro la fascia
     fuori TEXT, da_avvisare TEXT, avvisati TEXT,                        -- indicatori fuori soglia e avvisi al proprietario (JSON)
+    persa TEXT,                     -- motivo in breve se la giornata non è stata salvata prima della prima partita (salvato NULL)
     PRIMARY KEY (stagione, giornata)
 );
 """

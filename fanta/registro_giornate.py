@@ -7,7 +7,9 @@ attesi, minuti attesi e stato delle probabili formazioni, più la fantamedia di 
 fonti: sono le previsioni già calcolate (`consigli.previsioni`, in cache). Chi ha la partita già iniziata (un anticipo) non si salva.
 
 Il registro sta nell'archivio (tabelle `registro_giocatori` e `registro_giornate`) e NON si ricostruisce: una giornata non salvata
-è persa. Gira nel thread del pianificatore, una volta al minuto; `FANTA_REGISTRO_GIORNATE=0` lo spegne.
+è persa. Perché qualcuno se ne accorga, quando la prima partita inizia e la giornata non è salvata diventa «persa» (`segna_perse`):
+una riga con il motivo in breve, che «Stato dei dati» mostra, e un avviso solo al proprietario (`avvisa_perse`).
+Gira nel thread del pianificatore, una volta al minuto; `FANTA_REGISTRO_GIORNATE=0` lo spegne.
 """
 from __future__ import annotations
 
@@ -17,6 +19,7 @@ import logging
 import math
 import os
 import sqlite3
+import traceback
 from datetime import datetime, timedelta
 from typing import Callable
 
@@ -48,6 +51,15 @@ SOGLIE = {"I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0
 LOG = logging.getLogger(__name__)
 BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati", "rig_parati", "assist", "mvp", "ammonizioni",
                  "espulsioni")
+# colonne di `consigli.previsioni` che il registro legge: senza le essenziali non si salva niente (e il motivo va nel log); senza
+# una facoltativa si salva vuota, con un avviso nel log
+ESSENZIALI = ("partita", "ruolo", "p_voto", "mu")
+FACOLTATIVE = ("data_partita", "squadra", "mu_voto", "e_gol", "e_assist", "minuti", "stato", "percentuale", "dubbio")
+PERSA = "persa"                         # in `da_avvisare` / `avvisati` di una giornata persa
+SENZA_TENTATIVI = "nessun tentativo negli ultimi 10 minuti prima della prima partita (servizio fermo o registro spento)"
+# l'ultimo motivo per cui una giornata non si è salvata, {(stagione, giornata): motivo}, finché non si salva o diventa persa. In
+# memoria: dopo un riavvio la giornata diventa persa lo stesso, con il motivo SENZA_TENTATIVI.
+_tentativi: dict[tuple[str, int], str] = {}
 
 
 def acceso() -> bool:
@@ -99,32 +111,61 @@ def _salvata(db: sqlite3.Connection, stagione: str, giornata: int) -> bool:
     return db.execute("SELECT 1 FROM registro_giornate WHERE stagione = ? AND giornata = ?", (stagione, giornata)).fetchone() is not None
 
 
-def salva(db: sqlite3.Connection, stagione: str, giornata: int, prev: pd.DataFrame, con_probabili: bool, adesso: datetime) -> int:
-    """Salva i numeri di `prev` (la tabella di `consigli.previsioni`, indice = id) per la giornata. Una volta sola: se la giornata c'è
-    già restituisce 0 e non cambia niente. Salta chi non ha una partita e chi ha la partita già iniziata. Restituisce le righe scritte."""
-    if _salvata(db, stagione, giornata):
-        return 0
+def _non_salvata(stagione: str, giornata: int, motivo: str, nel_log: bool = True) -> None:
+    """Ricorda il motivo (diventa quello della giornata persa, se resta così) e lo scrive nel log del server. Il motivo ha solo
+    numeri, tipi d'errore e nomi di colonne, mai dati."""
+    _tentativi[(stagione, int(giornata))] = motivo
+    if nel_log:
+        LOG.warning("registro delle giornate: giornata %s (%s) non salvata per ora: %s", giornata, stagione, motivo)
+
+
+def _da_scrivere(db: sqlite3.Connection, stagione: str, giornata: int, prev: pd.DataFrame, adesso: datetime) -> tuple[list[dict], str]:
+    """Le righe da salvare di `prev` e, se non ce n'è nessuna, il motivo in breve."""
+    if prev is None or len(prev) == 0:
+        return [], "previsioni vuote"
+    if mancano := [c for c in ESSENZIALI if c not in prev.columns]:
+        return [], f"nelle previsioni mancano le colonne {', '.join(mancano)}"
+    if mancano := [c for c in FACOLTATIVE if c not in prev.columns]:
+        LOG.warning("registro delle giornate: nelle previsioni mancano le colonne %s, si salvano vuote", ", ".join(mancano))
     fm = fantamedie(db, stagione, giornata)
-    righe = []
+    righe, fuori, senza_numeri = [], 0, 0
     for cid, x in prev.iterrows():
         partita = _numero(x.get("partita"))
         inizio = _data(x.get("data_partita"))
         if partita is None or (inizio is not None and inizio <= adesso):
+            fuori += 1
             continue
-        percentuale = _numero(x.get("percentuale"))
-        righe.append({"stagione": stagione, "giornata": int(giornata), "calciatore_id": int(cid), "ruolo": str(x.get("ruolo")),
-                      "squadra": _testo(x.get("squadra")), "partita_id": int(partita), "p_voto": _numero(x.get("p_voto")),
-                      "mu": _numero(x.get("mu")), "mu_voto": _numero(x.get("mu_voto")), "e_gol": _numero(x.get("e_gol")),
-                      "e_assist": _numero(x.get("e_assist")), "minuti": _numero(x.get("minuti")),
-                      "stato": _testo(x.get("stato")), "percentuale": percentuale,
-                      "dubbio": 1 if x.get("dubbio") == 1 else 0, "fantamedia": fm.get(int(cid))})
-    righe = [r for r in righe if r["p_voto"] is not None and r["mu"] is not None]
+        r = {"stagione": stagione, "giornata": int(giornata), "calciatore_id": int(cid), "ruolo": str(x.get("ruolo")),
+             "squadra": _testo(x.get("squadra")), "partita_id": int(partita), "p_voto": _numero(x.get("p_voto")),
+             "mu": _numero(x.get("mu")), "mu_voto": _numero(x.get("mu_voto")), "e_gol": _numero(x.get("e_gol")),
+             "e_assist": _numero(x.get("e_assist")), "minuti": _numero(x.get("minuti")),
+             "stato": _testo(x.get("stato")), "percentuale": _numero(x.get("percentuale")),
+             "dubbio": 1 if x.get("dubbio") == 1 else 0, "fantamedia": fm.get(int(cid))}
+        if r["p_voto"] is None or r["mu"] is None:
+            senza_numeri += 1
+            continue
+        righe.append(r)
+    if righe:
+        return righe, ""
+    return [], (f"nessun giocatore da salvare su {len(prev)}: {fuori} senza partita o con la partita già iniziata, "
+                f"{senza_numeri} senza «gioca N%» o fantavoto atteso")
+
+
+def salva(db: sqlite3.Connection, stagione: str, giornata: int, prev: pd.DataFrame, con_probabili: bool, adesso: datetime) -> int:
+    """Salva i numeri di `prev` (la tabella di `consigli.previsioni`, indice = id) per la giornata. Una volta sola: se la giornata c'è
+    già restituisce 0 e non cambia niente. Salta chi non ha una partita e chi ha la partita già iniziata. Restituisce le righe scritte;
+    se non ce n'è nessuna da scrivere, il motivo va nel log (e diventa quello della giornata persa, se resta così)."""
+    if _salvata(db, stagione, giornata):
+        return 0
+    righe, motivo = _da_scrivere(db, stagione, giornata, prev, adesso)
     if not righe:
-        return 0                            # niente da salvare (previsioni vuote): si riprova al minuto dopo
+        _non_salvata(stagione, giornata, motivo)
+        return 0                            # si riprova al minuto dopo
     archivio.inserisci(db, "registro_giocatori", righe)
     db.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) VALUES (?, ?, ?, ?, ?)",
                (stagione, int(giornata), adesso.isoformat(timespec="seconds"), len(righe), int(bool(con_probabili))))
     db.commit()
+    _tentativi.pop((stagione, int(giornata)), None)
     return len(righe)
 
 
@@ -142,15 +183,62 @@ def da_salvare(db: sqlite3.Connection, adesso: datetime) -> tuple[str, int] | No
 
 def salva_se_serve(db: sqlite3.Connection, adesso: datetime, previsioni=None) -> int:
     """Se è il momento, salva la giornata con le previsioni già calcolate (`previsioni(db, regole, giornata)`, come
-    `consigli.previsioni`). Restituisce le righe scritte (0 = niente da fare)."""
+    `consigli.previsioni`). Restituisce le righe scritte (0 = niente da fare o niente salvato, col motivo nel log). Un errore delle
+    previsioni o della scrittura si ricorda come motivo e risale a `giro`, che lo scrive nel log con i punti del codice."""
     quale = da_salvare(db, adesso)
     if quale is None:
         return 0
     stagione, g = quale
-    prev, giornata, con_probabili = (previsioni or consigli.previsioni)(db, REGOLE, g)
+    try:
+        prev, giornata, con_probabili = (previsioni or consigli.previsioni)(db, REGOLE, g)
+    except Exception as e:
+        _non_salvata(stagione, g, f"previsioni non calcolate ({type(e).__name__})", nel_log=False)
+        raise
     if giornata != g:
+        _non_salvata(stagione, g, f"previsioni della giornata {giornata} invece della {g}")
         return 0
-    return salva(db, stagione, g, prev, con_probabili, adesso)
+    try:
+        return salva(db, stagione, g, prev, con_probabili, adesso)
+    except Exception as e:
+        _non_salvata(stagione, g, f"scrittura non riuscita ({type(e).__name__})", nel_log=False)
+        raise
+
+
+def segna_perse(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int]]:
+    """Le giornate della stagione con la prima partita già iniziata e non salvate diventano «perse», una volta sola: una riga in
+    `registro_giornate` con `salvato` NULL, 0 giocatori e il motivo in breve in `persa` (l'ultimo salvataggio non riuscito, o
+    SENZA_TENTATIVI), che non si misura mai; l'avviso lo manda `avvisa_perse`. Contano le giornate dalla prima registrata o tentata
+    della stagione in poi (da subito se il registro c'era già nelle stagioni prima); con il registro mai partito, nessuna.
+    Restituisce le giornate segnate."""
+    stagione = consigli.stagione_corrente()
+    presenti = {int(g) for (g,) in db.execute("SELECT giornata FROM registro_giornate WHERE stagione = ?", (stagione,))}
+    tentate = {g for s, g in _tentativi if s == stagione}
+    if presenti or tentate:
+        da = min(presenti | tentate)
+    elif db.execute("SELECT 1 FROM registro_giornate LIMIT 1").fetchone():
+        da = 1
+    else:
+        return []                           # registro appena acceso: le giornate di prima non erano sue
+    perse = []
+    for g, primo in db.execute("SELECT giornata, MIN(data) FROM partite WHERE stagione = ? AND giornata >= ? AND data IS NOT NULL "
+                               "GROUP BY giornata ORDER BY giornata", (stagione, da)).fetchall():
+        g = int(g)
+        if g in presenti or (p := _data(primo)) is None or adesso < p:     # nessuna partita iniziata: si salta subito
+            continue
+        inizio = avvisi.prima_partita(db, stagione, g)
+        if inizio is None or adesso < inizio:
+            continue
+        motivo = _tentativi.get((stagione, g), SENZA_TENTATIVI)
+        db.execute("INSERT INTO registro_giornate (stagione, giornata, giocatori, con_probabili, persa, da_avvisare, avvisati) "
+                   "VALUES (?, ?, 0, 0, ?, ?, '[]')", (stagione, g, motivo, json.dumps([PERSA])))
+        perse.append((stagione, g, motivo))
+    if not perse:
+        return []
+    db.commit()
+    for s, g, motivo in perse:
+        _tentativi.pop((s, g), None)
+        LOG.warning("registro delle giornate: giornata %s (%s) persa, non salvata prima della prima partita: %s", g, s, motivo)
+    return [(s, g) for s, g, _ in perse]
 
 
 # ---------------------------------------------------------------- misura a giornata finita
@@ -172,7 +260,7 @@ def da_misurare(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int
     """Le giornate salvate e non ancora misurate che sono finite: turno giocato (`fasi.fine_giornata`, le rinviate non lo tengono
     aperto) da almeno DOPO_FINE e voti di ogni partita giocata, oppure da almeno ATTESA_VOTI anche senza tutti i voti."""
     pronte = []
-    for stagione, g in db.execute("SELECT stagione, giornata FROM registro_giornate WHERE misurato IS NULL "
+    for stagione, g in db.execute("SELECT stagione, giornata FROM registro_giornate WHERE misurato IS NULL AND persa IS NULL "
                                   "ORDER BY stagione, giornata").fetchall():
         fine = fasi.fine_giornata(db, stagione, g)
         if fine is None or adesso < fine + DOPO_FINE:
@@ -327,8 +415,8 @@ def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dic
 
 def riepilogo(db: sqlite3.Connection) -> dict:
     """Per «Stato dei dati»: finestra, soglie, le medie delle ultime FINESTRA giornate misurate (come `medie`) e una riga per ogni
-    giornata salvata, dalla più recente (al massimo MOSTRATE), con i suoi numeri (None finché la giornata non è misurata). Solo
-    giornate e numeri, niente giocatori."""
+    giornata salvata o persa, dalla più recente (al massimo MOSTRATE), con i suoi numeri (None finché la giornata non è misurata) e
+    `persa` (None, o il motivo in breve se la giornata non è stata salvata in tempo). Solo giornate e numeri, niente giocatori."""
     per_giornata = []
     for r in _righe(db.execute("SELECT * FROM registro_giornate ORDER BY stagione DESC, giornata DESC LIMIT ?", (MOSTRATE,))):
         g = medie([r]) if r["misurato"] else {}
@@ -336,7 +424,7 @@ def riepilogo(db: sqlite3.Connection) -> dict:
             "stagione": r["stagione"], "giornata": r["giornata"], "salvato": r["salvato"], "giocatori": r["giocatori"],
             "con_probabili": bool(r["con_probabili"]), "misurato": r["misurato"], "voti": r["voti"], "presenze": r["presenze"],
             **{k: g.get(k) for k in ("errore_modello", "errore_fantamedia", "i1", "brier", "calibrazione", "copertura")},
-            "fuori": _lista(r["fuori"])})
+            "fuori": _lista(r["fuori"]), "persa": r["persa"]})
     return {"finestra": FINESTRA, "soglie": dict(SOGLIE), **medie(_misurate(db)), "per_giornata": per_giornata}
 
 
@@ -385,16 +473,45 @@ def avvisa(db: sqlite3.Connection, manda: Callable[[str, str], bool]) -> bool:
     return True
 
 
+def testo_perse(righe: list[dict]) -> tuple[str, str]:
+    """Titolo e testo dell'avviso delle giornate perse: giornate e motivi in breve, mai nomi."""
+    voci = [f"• giornata {r['giornata']} ({r['stagione']}): {r['persa']}" for r in righe]
+    return ("SchieraXI: registro delle giornate", "Giornate non salvate prima della prima partita: i numeri mostrati allora sono persi "
+            "e non si potranno misurare (dettagli in Stato dei dati e nel log del server):\n" + "\n".join(voci))
+
+
+def avvisa_perse(db: sqlite3.Connection, manda: Callable[[str, str], bool]) -> bool:
+    """Un avviso solo per le giornate perse non ancora avvisate, tutte insieme (`manda(titolo, testo)`, vero se è partito). Se non
+    parte restano in sospeso e si riprova al giro dopo. True se ha mandato qualcosa."""
+    righe = _righe(db.execute("SELECT stagione, giornata, persa FROM registro_giornate WHERE persa IS NOT NULL AND da_avvisare = ? "
+                              "ORDER BY stagione, giornata", (json.dumps([PERSA]),)))
+    if not righe or not manda(*testo_perse(righe)):
+        return False
+    db.executemany("UPDATE registro_giornate SET da_avvisare = '[]', avvisati = ? WHERE stagione = ? AND giornata = ?",
+                   [(json.dumps([PERSA]), r["stagione"], r["giornata"]) for r in righe])
+    db.commit()
+    return True
+
+
+def _dove(e: BaseException, passi: int = 6) -> str:
+    """Dove è nato un errore, per il log del server: gli ultimi `passi` punti del codice («file.py:riga funzione», dal più vicino
+    all'errore). Senza il messaggio dell'errore, che può contenere dati."""
+    punti = traceback.extract_tb(e.__traceback__)[-passi:]
+    return " < ".join(f"{os.path.basename(p.filename)}:{p.lineno} {p.name}" for p in reversed(punti)) or "punto sconosciuto"
+
+
 def giro(adesso: datetime, db: sqlite3.Connection, manda: Callable[[str, str], bool] | None = None) -> None:
-    """Un controllo (dal thread del pianificatore, una volta al minuto): salva, misura, avvisa. Un passo che va in errore non ferma
-    gli altri; l'errore va nel registro solo come tipo, senza dati."""
+    """Un controllo (dal thread del pianificatore, una volta al minuto): salva, segna le giornate perse, misura, avvisa. Un passo che
+    va in errore non ferma gli altri; nel log vanno il tipo d'errore e i punti del codice (file e righe), mai il messaggio."""
     from . import sentinella
-    passi = (("salvataggio", lambda: salva_se_serve(db, adesso)), ("misura", lambda: chiudi_giornate(db, adesso)),
-             ("avviso", lambda: avvisa(db, manda or sentinella.manda_ntfy)))
+    invia = manda or sentinella.manda_ntfy
+    passi = (("salvataggio", lambda: salva_se_serve(db, adesso)), ("controllo delle giornate perse", lambda: segna_perse(db, adesso)),
+             ("misura", lambda: chiudi_giornate(db, adesso)), ("avviso", lambda: avvisa(db, invia)),
+             ("avviso delle giornate perse", lambda: avvisa_perse(db, invia)))
     for nome, passo in passi:
         try:
             passo()
         except Exception as e:  # noqa: BLE001 - il giro dopo riprova
-            LOG.warning("registro delle giornate: %s non riuscito (%s)", nome, type(e).__name__)
+            LOG.warning("registro delle giornate: %s non riuscito (%s) in %s", nome, type(e).__name__, _dove(e))
             with contextlib.suppress(sqlite3.Error):
                 db.rollback()

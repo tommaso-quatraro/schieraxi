@@ -9,11 +9,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pandas as pd
 import pytest
 
-from fanta import archivio, consigli, registro_giornate as rg
+from fanta import archivio, calcolo, consigli, registro_giornate as rg, stato_dati
 from fanta.regole import Regole
 
 ST = "2026-27"
 ORA = lambda giorno, ora, minuto=0: datetime(2026, 11, giorno, ora, minuto)  # noqa: E731
+
+
+@pytest.fixture(autouse=True)
+def _tentativi_azzerati():
+    """I motivi dei salvataggi non riusciti si ricordano in memoria: ogni prova riparte da zero."""
+    rg._tentativi.clear()
+    yield
+    rg._tentativi.clear()
 
 
 def _partita(db, id_, giornata, data, casa, trasferta, giocata=0):
@@ -348,3 +356,141 @@ def test_testo_avviso_solo_numeri():
     titolo, testo = rg.testo_avviso(["I1", "I3"], {**rg.medie([CATTIVA] * 8), "copertura": 0.65})
     assert titolo == "SchieraXI: statistiche"
     assert "I1" in testo and "I3" in testo and "I2" not in testo and "65%" in testo and "ultime 8 giornate" in testo
+
+
+# ---------------------------------------------------------------- giornata persa: se ne accorge qualcuno
+def _canale():
+    """Un `manda` finto che all'inizio non riesce (rete giù): raccoglie gli avvisi partiti."""
+    inviati, esito = [], {"riesce": False}
+
+    def manda(titolo, testo):
+        if esito["riesce"]:
+            inviati.append((titolo, testo))
+        return esito["riesce"]
+    return manda, inviati, esito
+
+
+def test_previsioni_sempre_in_errore_giornata_persa_e_un_avviso(giornata10, monkeypatch, caplog):
+    def rotte(db, regole, giornata):
+        raise ValueError("dati segreti di un giocatore")
+
+    monkeypatch.setattr(consigli, "previsioni", rotte)
+    manda, inviati, esito = _canale()
+    db = giornata10
+    with caplog.at_level("WARNING"):
+        for minuto in (20, 25, 29):                                             # tutti i controlli della finestra vanno in errore
+            rg.giro(ORA(7, 18, minuto), db, manda)
+    assert "ValueError" in caplog.text and "dati segreti" not in caplog.text
+    assert "test_registro_giornate.py:" in caplog.text                          # dove: file e riga, senza il messaggio
+    assert db.execute("SELECT COUNT(*) FROM registro_giornate").fetchone()[0] == 0   # prima dell'inizio non è ancora persa
+    with caplog.at_level("WARNING"):
+        rg.giro(ORA(7, 18, 30), db, manda)                                      # la prima partita è iniziata: persa
+    riga = dict(db.execute("SELECT * FROM registro_giornate WHERE stagione = ? AND giornata = 10", (ST,)).fetchone())
+    assert riga["salvato"] is None and riga["giocatori"] == 0 and "ValueError" in riga["persa"]
+    assert "persa" in caplog.text and inviati == []                             # l'invio non è riuscito: si riprova
+    esito["riesce"] = True
+    for minuto in (31, 32, 33):
+        rg.giro(ORA(7, 18, minuto), db, manda)
+    assert len(inviati) == 1                                                    # un avviso solo
+    titolo, testo = inviati[0]
+    assert titolo.startswith("SchieraXI") and "giornata 10" in testo and "ValueError" in testo and "segreti" not in testo
+    ultima = stato_dati.riepilogo(db, ST)["registro"]["per_giornata"][0]       # e Stato dei dati la mostra
+    assert ultima["giornata"] == 10 and "ValueError" in ultima["persa"] and ultima["salvato"] is None
+    _gioca(db, 1, 2)
+    assert rg.da_misurare(db, ORA(10, 12)) == []                                # una giornata persa non si misura
+
+
+@pytest.mark.parametrize("previsioni, frase", [
+    (lambda db, r, g: (_prev(PREV_10).rename(columns={"p_voto": "p_gioca"}), g, True), "p_voto"),     # colonna cambiata nel modello
+    (lambda db, r, g: (_prev(PREV_10), 11, True), "giornata 11"),                                       # previsioni di un'altra giornata
+    (lambda db, r, g: (_prev([{**x, "mu": float("nan")} for x in PREV_10]), g, True), "fantavoto atteso"),
+])
+def test_zero_righe_dice_il_motivo_e_la_giornata_diventa_persa(giornata10, caplog, previsioni, frase):
+    db = giornata10
+    with caplog.at_level("WARNING"):
+        assert rg.salva_se_serve(db, ORA(7, 18, 22), previsioni) == 0
+    assert "giornata 10" in caplog.text and frase in caplog.text
+    assert rg.segna_perse(db, ORA(7, 18, 30)) == [(ST, 10)]
+    assert frase in db.execute("SELECT persa FROM registro_giornate WHERE giornata = 10").fetchone()[0]
+
+
+def test_giornata_persa_col_servizio_fermo(giornata10):
+    """Nessun controllo nella finestra (servizio fermo): la giornata è persa se il registro era già partito, una volta sola.
+    Le giornate prima della prima registrata (registro appena acceso) e quelle non iniziate non contano."""
+    db = giornata10
+    _partita(db, 8, 8, "2026-10-24 18:30", "Alfa", "Gamma", giocata=1)
+    _partita(db, 9, 9, "2026-10-31 18:30", "Beta", "Delta", giocata=1)
+    _partita(db, 11, 11, "2026-11-14 18:30", "Gamma", "Alfa")
+    assert rg.segna_perse(db, ORA(7, 18, 31)) == []                             # registro mai partito: niente
+    db.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) VALUES (?, 9, ?, 600, 1)",
+               (ST, "2026-10-31T18:20:00"))
+    assert rg.segna_perse(db, ORA(7, 18, 29)) == []                             # la 10 non è ancora iniziata
+    assert rg.segna_perse(db, ORA(7, 18, 31)) == [(ST, 10)]
+    assert "nessun tentativo" in db.execute("SELECT persa FROM registro_giornate WHERE giornata = 10").fetchone()[0]
+    assert rg.segna_perse(db, ORA(7, 18, 32)) == []                             # una volta sola
+    assert [g for (g,) in db.execute("SELECT giornata FROM registro_giornate ORDER BY giornata")] == [9, 10]
+
+
+def test_salvata_dopo_un_errore_non_e_persa(giornata10):
+    db = giornata10
+
+    def rotte(db, regole, giornata):
+        raise RuntimeError("rete")
+
+    with pytest.raises(RuntimeError):
+        rg.salva_se_serve(db, ORA(7, 18, 20), rotte)
+    assert rg.salva_se_serve(db, ORA(7, 18, 21), lambda db, r, g: (_prev(PREV_10), g, True)) == 2
+    assert rg.segna_perse(db, ORA(7, 18, 31)) == []
+
+
+# ---------------------------------------------------------------- il salvataggio con le previsioni VERE del modello
+SQUADRE = ("alfa", "beta", "gamma", "delta")
+TURNI = ((("alfa", "beta"), ("gamma", "delta")), (("alfa", "gamma"), ("beta", "delta")), (("alfa", "delta"), ("beta", "gamma")),
+         (("beta", "alfa"), ("delta", "gamma")), (("gamma", "alfa"), ("delta", "beta")))
+RUOLI_SQUADRA = ("P", "D", "D", "C", "C", "A")
+
+
+@pytest.fixture
+def campionato_finto(tmp_path, monkeypatch):
+    """Un campionato inventato in un archivio temporaneo: 4 squadre da 6 giocatori, giornate 1-4 giocate con i voti, la 5 sabato
+    7/11 alle 18:30 e alle 20:45 con le probabili formazioni. Nessun dato vero, nessuna sostituzione delle previsioni."""
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    calcolo.cache.clear()                                    # le previsioni in cache di altre prove non contano
+    db = archivio.apri(tmp_path / "campionato.sqlite")
+    giocatori = [(100 * (s + 1) + k, squadra, ruolo) for s, squadra in enumerate(SQUADRE) for k, ruolo in enumerate(RUOLI_SQUADRA)]
+    archivio.inserisci(db, "calciatori", [{"id": i, "nome": f"Finto {i}", "ruolo": r, "squadra": sq[:3].upper(), "squadra_slug": sq,
+                                           "quotazione": 10} for i, sq, r in giocatori])
+    for g, turno in enumerate(TURNI, start=1):
+        giocata = g <= 4
+        for k, (casa, trasferta) in enumerate(turno):
+            data = f"2026-10-{3 + 7 * (g - 1):02d} 15:00" if giocata else f"2026-11-07 {('18:30', '20:45')[k]}"
+            archivio.inserisci(db, "partite", [{"id": 10 * g + k, "stagione": ST, "giornata": g, "data": data, "casa": casa,
+                                                "trasferta": trasferta, "gol_casa": 1 + g % 2 if giocata else None,
+                                                "gol_trasferta": 1 if giocata else None, "giocata": int(giocata), "understat_id": None}])
+        if giocata:
+            for i, sq, r in giocatori:
+                _voto(db, g, i, sq, r, 6.0 + (i % 3) / 2, gol=int(r == "A" and g % 2 == 1))
+    archivio.inserisci(db, "probabili", [{"stagione": ST, "giornata": 5, "fonte": "fantacalcio", "calciatore_id": i, "squadra": sq,
+                                          "partita_id": None, "stato": "titolare", "percentuale": 80.0, "in_dubbio": 0, "diffidato": 0,
+                                          "nota": None, "rilevato": "2026-11-07T17:00:00"} for i, sq, _ in giocatori])
+    db.commit()
+    yield db, {i for i, _, _ in giocatori}
+    calcolo.cache.clear()
+
+
+def test_salva_con_le_previsioni_vere_del_modello(campionato_finto, caplog):
+    """Se il modello cambia il nome di una colonna, il registro non deve salvare righe vuote in silenzio."""
+    db, ids = campionato_finto
+    with caplog.at_level("WARNING"):
+        assert rg.salva_se_serve(db, ORA(7, 18, 22)) == len(ids)
+    assert "mancano" not in caplog.text
+    righe = [dict(r) for r in db.execute("SELECT * FROM registro_giocatori WHERE stagione = ? AND giornata = 5", (ST,))]
+    assert {r["calciatore_id"] for r in righe} == ids
+    for r in righe:
+        assert {k for k, v in r.items() if v is None} == set(), r                # ogni colonna ha un valore
+        assert r["ruolo"] in "PDCA" and r["squadra"] in SQUADRE and r["partita_id"] in (50, 51)
+        assert 0 < r["p_voto"] <= 1 and 2 < r["mu"] < 15 and 4 < r["mu_voto"] < 9
+        assert r["e_gol"] >= 0 and r["e_assist"] >= 0 and 0 < r["minuti"] <= 95
+        assert r["stato"] == "titolare" and r["percentuale"] == 80.0 and r["dubbio"] == 0 and r["fantamedia"] > 5
+    g = dict(db.execute("SELECT * FROM registro_giornate WHERE stagione = ? AND giornata = 5", (ST,)).fetchone())
+    assert g["giocatori"] == len(ids) and g["con_probabili"] == 1 and g["persa"] is None
