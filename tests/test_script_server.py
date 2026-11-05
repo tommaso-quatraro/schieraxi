@@ -751,6 +751,70 @@ def test_backup_dati_copia_lega_e_dati_senza_chiavi_e_non_modifica_l_originale(t
     assert not any(n.endswith("push.json") or n.endswith("vapid.json") for n in nomi)
 
 
+def _lancia_backup_dati(tmp_path, app):
+    """backup-dati.sh su una cartella finta. PYTHONPATH: il pacchetto `fanta` viene da questo repository (sul server sta nella
+    cartella dell'app, da cui lo script parte)."""
+    bin_ = tmp_path / "bin"
+    bin_.mkdir(exist_ok=True)
+    _stub(bin_, "flock", "exit 0")
+    dest, cache = tmp_path / "copie", tmp_path / "cache"
+    r = _lancia([BASH, (SCRIPT / "backup-dati.sh").as_posix()],
+                env={**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "FANTA_RADICE": _msys(app),
+                     "FANTA_BACKUP_DIR": _msys(dest), "FANTA_CACHE": _msys(cache), "FANTA_PYTHON": sys.executable,
+                     "PYTHONPATH": str(RADICE)},
+                ripristina=lambda: [shutil.rmtree(d, ignore_errors=True) for d in (dest, cache)])
+    return r, dest, cache
+
+
+@con_bash
+def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_archivio(tmp_path):
+    """Il registro delle giornate (#343) non si ricostruisce: va nella copia, preso in modo coerente mentre il servizio tiene aperto
+    l'archivio (dati confermati ancora nel file -wal). L'archivio intero invece resta fuori (si rifà con `aggiorna`)."""
+    import contextlib
+    import sqlite3
+    from fanta import archivio, registro_copia
+    app = tmp_path / "app"
+    _scrivi(app, "dati/scelte.json", "SCELTE")
+    servizio = archivio.apri(app / "dati" / "fanta.sqlite")
+    try:
+        servizio.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) "
+                         "VALUES ('2026-27', 9, '2026-10-25T14:50:00', 1, 1)")
+        servizio.execute("INSERT INTO registro_giocatori (stagione, giornata, calciatore_id, ruolo, p_voto, mu) "
+                         "VALUES ('2026-27', 9, 101, 'A', 0.873, 6.734)")
+        servizio.commit()
+        r, dest, _ = _lancia_backup_dati(tmp_path, app)
+    finally:
+        servizio.close()
+    assert r.returncode == 0, r.stderr
+    pacchetti = list(dest.glob("dati-*.tar.gz"))
+    assert len(pacchetti) == 1
+    with tarfile.open(pacchetti[0]) as t:
+        nomi = t.getnames()
+        assert not any("fanta.sqlite" in n for n in nomi)
+        registro = [n for n in nomi if n.endswith("dati/registro-giornate.json")]
+        assert len(registro) == 1, nomi
+        estratto = tmp_path / "registro-giornate.json"
+        estratto.write_bytes(t.extractfile(registro[0]).read())
+    nuovo = tmp_path / "rifatto" / "fanta.sqlite"
+    assert registro_copia.importa(estratto, nuovo) == \
+        {"registro_giornate": (1, 0), "registro_giocatori": (1, 0)}
+    with contextlib.closing(sqlite3.connect(nuovo)) as db:
+        assert db.execute("SELECT stagione, giornata, calciatore_id, ruolo, p_voto, mu FROM registro_giocatori").fetchall() == \
+            [("2026-27", 9, 101, "A", 0.873, 6.734)]
+
+
+@con_bash
+def test_backup_dati_senza_registro_leggibile_non_salva_la_copia_e_lo_scrive_nel_log(tmp_path):
+    """Archivio illeggibile: niente copia di quella notte (e niente rotazione, così restano le copie vecchie con il registro buono)."""
+    app = tmp_path / "app"
+    _scrivi(app, "dati/scelte.json", "SCELTE")
+    (app / "dati" / "fanta.sqlite").write_bytes(b"non sono un database " * 300)
+    r, dest, cache = _lancia_backup_dati(tmp_path, app)
+    assert r.returncode == 1
+    assert not list(dest.glob("dati-*.tar.gz"))
+    assert "registro delle giornate" in (cache / "backup-dati.log").read_text(encoding="utf-8")
+
+
 @con_bash
 def test_pubblica_sito_copia_solo_sito_aggiorna_toglie_i_file_spariti(server, tmp_path):
     s = server

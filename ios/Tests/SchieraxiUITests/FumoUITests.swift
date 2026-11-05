@@ -70,8 +70,9 @@ final class FumoUITests: XCTestCase {
 
     func testSquadraConLeSuePagine() {
         vaiA("Squadra")
-        attendi("Aggiorna le rose")
-        for voce in ["Aggiorna le rose", "Squadre e rose", "Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario"] {
+        attendi("Squadre e rose", contiene: true)
+        // le voci e l'ordine della web (VOCI_LEGA): «Aggiorna le rose» per ultima
+        for voce in ["Squadre e rose", "Cambi consigliati", "Seguiti", "Elenco dei giocatori", "Calendario", "Aggiorna le rose"] {
             attendiScorrendo(voce, contiene: true)
         }
         tocca(elemento("Cambi consigliati", contiene: true), finchéCompare: elemento("Svincolati che migliorano la squadra"),
@@ -112,7 +113,8 @@ final class FumoUITests: XCTestCase {
     func testAltroConLeSuePagine() {
         vaiA("Altro")
         attendi("Scambi", contiene: true)
-        for voce in ["Scambi", "Movimenti e storico", "Regole", "Diario delle giornate", "Novità"] {
+        // le voci della web (VOCI_LEGA), «Nuova stagione» compresa
+        for voce in ["Scambi", "Diario delle giornate", "Regole", "Movimenti e storico", "Crediti delle squadre", "Nuova stagione", "Novità"] {
             attendiScorrendo(voce, contiene: true)
         }
         // ogni voce in un posto solo: niente copia di sicurezza, niente rimando alle Impostazioni (c'è l'ingranaggio)

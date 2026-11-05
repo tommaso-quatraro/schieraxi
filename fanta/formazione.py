@@ -36,6 +36,14 @@ LIVELLI_RISCHIO = [
      "Punta sul colpo e sul reparto offensivo: la giornata eccezionale è più probabile, ma anche quella brutta."),
 ]
 MODULO_NEUTRO = (4, 3)     # difensori e attaccanti del modulo da cui si misura l'inclinazione di uno stile
+# Nessun titolare che non gioca (#329). Per i numeri un titolare improbabile con una riserva sicura dietro vale quasi quanto la
+# riserva titolare (se lui non gioca, entra lei); per chi legge il consiglio è un errore. Dopo la ricerca, un titolare che prende
+# voto meno di IMPROBABILE_SOTTO (chi è infortunato o squalificato ha quasi 0) lascia il posto al miglior compagno di ruolo che lo
+# prende almeno COMPAGNO_ALMENO, se il cambio costa meno di COSTO_MASSIMO_CAMBIO punti attesi. Non sono regole della lega: valgono
+# per ogni lega e ogni stile. Le soglie sono quelle di «improbabile» e «ballottaggio» di consigli.titolarita.
+IMPROBABILE_SOTTO = 0.2
+COMPAGNO_ALMENO = 0.5
+COSTO_MASSIMO_CAMBIO = 0.3
 
 
 @dataclass(frozen=True)
@@ -457,13 +465,47 @@ def _per_valore(rosa: list[Giocatore]) -> list[Giocatore]:
     return sorted(rosa, key=lambda g: -g.valore)
 
 
+def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per_ruolo: dict[str, list[Giocatore]],
+                       panchina_di, val: Valutatore, peso: tuple[float, float]) -> tuple[list[Giocatore], list[Giocatore]]:
+    """Toglie dagli 11 chi gioca meno di IMPROBABILE_SOTTO, se un compagno di ruolo che gioca almeno COMPAGNO_ALMENO costa meno di
+    COSTO_MASSIMO_CAMBIO punti attesi. Tra i compagni che si possono mettere vince il migliore per lo stile (`peso`), come nella
+    ricerca. Si parte dal titolare meno probabile e dopo ogni cambio si ricomincia: alla fine nessun improbabile rimasto ha un
+    compagno così (ogni cambio toglie un improbabile, quindi i giri finiscono)."""
+    cambiato = True
+    while cambiato:
+        cambiato = False
+        atteso = val.atteso(titolari, panchina)
+        ids = {x.id for x in titolari}
+        for i, t in sorted(enumerate(titolari), key=lambda c: c[1].p):
+            if t.p >= IMPROBABILE_SOTTO:
+                break
+            meglio = None
+            for alt in per_ruolo[t.ruolo]:
+                if alt.id in ids or alt.p < COMPAGNO_ALMENO:
+                    continue
+                prova = titolari[:i] + [alt] + titolari[i + 1:]
+                pp = panchina_di(prova)
+                if atteso - val.atteso(prova, pp) >= COSTO_MASSIMO_CAMBIO:
+                    continue
+                v = val.scelta(prova, pp, peso)
+                if meglio is None or v > meglio[2] + 1e-9:
+                    meglio = (prova, pp, v)
+            if meglio is not None:
+                titolari, panchina = meglio[0], meglio[1]
+                cambiato = True
+                break
+    return titolari, panchina
+
+
 def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, ricerca: bool = True,
              peso: tuple[float, float] = PESO_BASE, valutatore: Valutatore | None = None,
              inclinazione: tuple[float, float] = (0.0, 0.0)) -> Formazione:
     """La formazione migliore tra tutti i moduli ammessi: punteggio atteso alto e, a parità, titolari più sicuri.
     Con più peso alla brutta giornata si preferiscono i titolari sicuri, con più peso alla giornata eccezionale chi può fare il colpo.
     `inclinazione` = (punti per ogni difensore, punti per ogni attaccante) oltre il 4-?-3 neutro: sposta la scelta del MODULO
-    (non dei giocatori) verso le difese folte o gli attacchi folti; (0, 0) = solo punti attesi."""
+    (non dei giocatori) verso le difese folte o gli attacchi folti; (0, 0) = solo punti attesi.
+    In ogni modulo, dopo la ricerca (anche senza), un titolare che quasi certamente non gioca lascia il posto a un compagno che
+    gioca, se costa poco (`_senza_improbabili`)."""
     rosa = list({g.id: g for g in rosa}.values())       # un giocatore ripetuto nella rosa (riga doppia importata) conta una volta sola
     val = valutatore or Valutatore(rosa, regole, simulazioni)
     per_ruolo = {r: sorted([g for g in rosa if g.ruolo == r], key=lambda g: -g.valore) for r in RUOLI}
@@ -499,6 +541,8 @@ def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, rice
                         if v > valore + 1e-9:
                             titolari, panchina, valore, migliorato = prova, pp, v, True
                             break
+        titolari, panchina = _senza_improbabili(titolari, panchina, per_ruolo, panchina_di, val, peso)
+        valore = val.scelta(titolari, panchina, peso)
         media, dev = val.statistiche(titolari, panchina)[:2]
         risultati.append(Formazione(modulo, sorted(titolari, key=lambda g: (ORDINE_RUOLO[g.ruolo], -g.valore)),
                                     list(panchina), media, dev))

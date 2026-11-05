@@ -100,3 +100,35 @@ def test_pedina_nome_accessibile_dal_contenuto_con_il_testo_che_si_vede():
                   '<span class="gioca esito" aria-hidden="true">', '<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">',
                   '<span class="avv" aria-hidden="true">'):
         assert pezzo in pedina, pezzo
+
+
+def _opacita_dell_entrata(vela):
+    """L'opacità a ogni tappa (percentuale) dell'animazione di entrata della pedina; `vela` = valore di `--vela` (1 senza
+    la regola del movimento calmo, 0 con `html[data-calmo]`)."""
+    nome = re.search(r"^\.pedina \{[^}]*?animation: ([\w-]+) ", CSS, re.M).group(1)
+    tappe = re.search(r"^@keyframes " + re.escape(nome) + r" \{(.*)\}\s*$", CSS, re.M).group(1)
+    uscita = {}
+    for percento, corpo in re.findall(r"(\d+)% \{([^{}]*)\}", tappe):
+        valore = re.search(r"(?<![\w-])opacity: ([^;]+?)\s*(?:;|$)", corpo.strip())
+        if valore:
+            uscita[int(percento)] = float(re.sub(r"var\(--vela, 1\)", str(vela), valore.group(1)))
+    return uscita
+
+
+def test_entrata_delle_pedine_non_lascia_il_testo_a_meta_dissolvenza():
+    """Issue #307: con la pedina a metà dissolvenza il testo delle pillole («⚠ gioca 45%», sigla della squadra) ha un contrasto più
+    basso di quello a riposo, perché il fondo della pillola si mescola al campo scuro: axe lo segnalava se misurava nei primi
+    100 ms dell'entrata (a opacità 0,7 l'arancio sta a 4,16:1; alcune sigle scendono sotto 4,5:1). La pedina compare di colpo e
+    il resto dell'entrata è solo movimento (scala e spostamento)."""
+    opacita = _opacita_dell_entrata(vela=1)
+    assert opacita[0] == 0                                                   # prima del proprio turno (ritardo) non si vede
+    assert any(p <= 5 and o == 1 for p, o in opacita.items()), opacita       # entro il 5% (27 ms) è già piena
+    assert all(o == 1 for p, o in opacita.items() if p > 5), opacita
+
+
+def test_movimento_calmo_mantiene_la_dissolvenza_delle_pedine():
+    """Con «Riduci movimento» (`--vela: 0`) le pedine non si muovono: restano le sole dissolvenze, come prima."""
+    assert re.search(r"^html\[data-calmo\] \{ --mov: 0; --vela: 0; \}", CSS, re.M)
+    opacita = _opacita_dell_entrata(vela=0)
+    assert opacita[0] == 0 and opacita[100] == 1
+    assert all(o == 0 for p, o in opacita.items() if 0 < p < 100), opacita   # nessun salto: sale in tutta la durata
