@@ -2605,7 +2605,7 @@ async function condividiImmagine(f, m) {
       g.restore();
       g.fillStyle = "rgba(8,14,10,.92)"; g.beginPath(); g.roundRect(cx - 42, y + 34, 84, 38, 19); g.fill();   // fantavoto atteso
       g.fillStyle = "#ffffff"; g.font = "700 28px -apple-system, Helvetica, Arial, sans-serif";
-      g.fillText(virgola(x.fv_atteso), cx, y + 62);
+      g.fillText(num(x.fv_atteso), cx, y + 62);
       g.font = "650 30px -apple-system, Helvetica, Arial, sans-serif";
       g.fillText(cognome(x), cx, y + 104);
     });
