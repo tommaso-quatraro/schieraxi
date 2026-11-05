@@ -59,43 +59,77 @@ def _ore_a_parole(ore: float) -> str:
 
 
 # ---------------------------------------------------------------- i singoli controlli
-def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None, consigliati: list[int] | None = None) -> list[dict]:
-    """Titolari (quelli che l'utente ha salvato, altrimenti i consigliati) fuori o in dubbio, con il miglior sostituto disponibile.
-    `consigliati`: i titolari consigliati già calcolati da chi chiama (evita di ricalcolare la formazione)."""
+def _consigliata(db, regole: Regole, rose: Rose, f: dict | None = None) -> tuple[list[int], list[int]] | None:
+    """(titolari, panchina in ordine) della formazione consigliata `f` se chi chiama l'ha già, altrimenti quella in cache (l'ha appena
+    calcolata `gestione.oggi`); None se non si riesce a formare la squadra."""
+    if f is None:
+        try:
+            f = consigli.formazione(db, regole, rose)
+        except ValueError:
+            return None
+    return [int(g["id"]) for g in f["titolari"]], [int(g["id"]) for g in f.get("panchina") or []]
+
+
+def _sostituzioni_ammesse(regole: Regole) -> bool:
+    return getattr(getattr(regole, "panchina", None), "max_sostituzioni", 1) > 0
+
+
+def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None, *, formazione: dict | None = None) -> list[dict]:
+    """Titolari (quelli che l'utente ha salvato, altrimenti i consigliati) fuori o in dubbio. Il cambio con il miglior sostituto
+    libero («Meglio Y», «Sostituisci») si propone solo se la formazione consigliata lo fa davvero: stessa regola di `consigliato`
+    del confronto (`consigli.da_schierare`). Se la consigliata tiene il titolare, la voce dice chi entra dalla panchina se lui non
+    gioca (la prima riserva dello stesso ruolo, come le sostituzioni) e porta alla formazione: Oggi e Formazione non si contraddicono.
+    `formazione`: la consigliata (`consigli.formazione`) se chi chiama l'ha già calcolata (l'avviso «cambio pronto», notifiche.py)."""
     s = rose.squadra(rose.mia_squadra or "")
     prev, _, _ = consigli.previsioni(db, regole)
+    consigliata = _consigliata(db, regole, rose, formazione)
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
     if scelta:
         titolari = [int(i) for i in scelta["titolari"]]
-    elif consigliati:
-        titolari = [int(i) for i in consigliati]
+    elif consigliata:
+        titolari = consigliata[0]
     else:
-        titolari = [g["id"] for g in consigli.formazione(db, regole, rose)["titolari"]]
+        return []
+    sistema, panchina = consigliata or (None, [])
     schede = {g.id: consigli.scheda_previsione(g.id, prev.loc[g.id]) for g in s.giocatori if g.id is not None and g.id in prev.index}
     voci = []
-    # un sostituto per volta: prima chi è fuori, poi chi rischia di più; chi è già proposto non si propone una seconda volta
+    # un sostituto per volta: prima chi è fuori, poi chi rischia di più; chi è già nominato (proposto o riserva) non torna una seconda volta
     in_dubbio = [i for i in titolari if (x := schede.get(i)) and (x["stato"] in FUORI or x["dubbio"] or x["p_voto"] < 0.75)]
     in_dubbio.sort(key=lambda i: (schede[i]["stato"] not in FUORI, schede[i]["p_voto"]))
-    proposti: set[int] = set()
+    usati: set[int] = set()
+
+    def libero(j: int, ruolo: str) -> bool:
+        y = schede.get(j)
+        return y is not None and j not in titolari and j not in usati and y["ruolo"] == ruolo and y["stato"] not in FUORI
+
     for i in in_dubbio:
         x = schede[i]
         fuori = x["stato"] in FUORI
-        liberi = [y for j, y in schede.items() if j not in titolari and j not in proposti and y["ruolo"] == x["ruolo"]
-                  and y["stato"] not in FUORI]
-        alt = max(liberi, key=lambda y: y["punti_attesi"], default=None)
-        if alt:
-            proposti.add(alt["id"])
+        # il candidato: chi la consigliata schiera al suo posto, se c'è; altrimenti il libero con più punti attesi
+        alt = max((y for j, y in schede.items() if libero(j, x["ruolo"])),
+                  key=lambda y: (bool(sistema) and y["id"] in sistema, y["punti_attesi"]), default=None)
         chiave, param = (("dafare.dubbio_squalificato" if x["stato"] == "squalificato" else "dafare.dubbio_infortunato", {}) if fuori
                          else ("dafare.dubbio_incerto", {"p": round(x["p_voto"] * 100)}))
         extra = {}
-        if alt:
+        if alt and consigli.da_schierare(x, alt, sistema)["id"] == alt["id"]:
+            usati.add(alt["id"])
             testo = F(chiave + "_alt", nome=x["nome"], alt=alt["nome"], **param)       # «Adams A.» finisce già col punto: ne basta uno
             extra["alternativa"] = {"id": alt["id"], "nome": alt["nome"], "ruolo": alt["ruolo"], "punti_attesi": alt["punti_attesi"]}
-        else:
-            testo = F(chiave, nome=x["nome"], **param)
-        voci.append(_voce(f"dubbio:{i}", "dubbio", testo, ALTA if fuori else MEDIA, F("dafare.az_sostituisci"),
-                          _destinazione("formazione", giocatore=i), giocatore={"id": i, "nome": x["nome"]}, **extra))
-    voci.sort(key=lambda v: (v["priorita"], v["id"]))
+            azione, destinazione = F("dafare.az_sostituisci"), _destinazione("formazione", giocatore=i)
+        else:                       # nessun cambio da proporre (la consigliata lo tiene, o non c'è un sostituto): niente «Sostituisci»
+            riserva = None
+            if not fuori and sistema and i in sistema and _sostituzioni_ammesse(regole):
+                riserva = next((schede[j] for j in panchina if libero(j, x["ruolo"])), None)
+            if riserva:
+                usati.add(riserva["id"])
+                testo = F("dafare.dubbio_incerto_tiene", nome=x["nome"], riserva=riserva["nome"], **param)
+                extra["riserva"] = {"id": riserva["id"], "nome": riserva["nome"]}
+            else:
+                testo = F(chiave, nome=x["nome"], **param)
+            azione, destinazione = F("dafare.az_formazione"), _destinazione("formazione")
+        voci.append(_voce(f"dubbio:{i}", "dubbio", testo, ALTA if fuori else MEDIA, azione, destinazione,
+                          giocatore={"id": i, "nome": x["nome"]}, **extra))
+    voci.sort(key=lambda v: (v["priorita"], "alternativa" not in v, v["id"]))     # a pari priorità prima i cambi da fare
     return voci[:MAX_DUBBI]
 
 
@@ -189,7 +223,7 @@ def _scambio(db, regole: Regole, rose: Rose, recenti: tuple[set[int], set[int]])
 def _giocatori_di(v: dict) -> set[int]:
     """Gli id dei giocatori nominati da una voce (per non proporre due consigli sullo stesso giocatore)."""
     ids = set()
-    for k in ("giocatore", "alternativa", "esce", "entra"):
+    for k in ("giocatore", "alternativa", "riserva", "esce", "entra"):
         if isinstance(v.get(k), dict) and v[k].get("id") is not None:
             ids.add(int(v[k]["id"]))
     return ids

@@ -13,6 +13,7 @@ dall'utente nelle impostazioni degli avvisi (`lingua`, "it" o "en", predefinito 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -29,6 +30,7 @@ from .lega import Rose
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
 from .regole import Regole
 
+LOG = logging.getLogger(__name__)
 FILE_STATO = RADICE / "dati" / "notifiche.json"
 FILE_PROMEMORIA = RADICE / "dati" / "notifiche-promemoria.json"      # file separato: cambi e promemoria girano da script diversi
 FILE_IMPOSTAZIONI = RADICE / "dati" / "avvisi-impostazioni.json"
@@ -251,10 +253,11 @@ def _mia_rosa_ids(rose: Rose) -> list[int]:
 
 
 def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.DataFrame, ora: dict, titolari: list[int], giornata: int,
-                  gia: set[str], chiave: str, file_scelte: Path | None) -> list[dict]:
+                  gia: set[str], chiave: str, file_scelte: Path | None, formazione: dict | None = None) -> list[dict]:
     """«Cambio pronto»: per ogni tuo titolare (quello della tua scelta salvata, altrimenti il consigliato) che ora è infortunato,
-    squalificato o in panchina, chi mettere al suo posto (lo stesso calcolo di «Da fare» in Oggi). Ogni cambio una volta sola:
-    la chiave è giornata, giocatore e motivo. Senza un sostituto libero dello stesso ruolo non c'è niente da proporre."""
+    squalificato o in panchina, chi mettere al suo posto (lo stesso calcolo di «Da fare» in Oggi: solo se la consigliata lo toglie).
+    Ogni cambio una volta sola: la chiave è giornata, giocatore e motivo. Senza un sostituto non c'è niente da proporre.
+    `formazione`: la consigliata già calcolata da `cambi` (None = la legge «Da fare», dalla cache)."""
     from . import da_fare, scelte
     scelta = scelte.leggi(chiave.split("/")[0], giornata, file_scelte)
     schierati = [int(i) for i in scelta["titolari"]] if scelta else list(titolari)
@@ -266,9 +269,10 @@ def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.D
             nuovi[i] = s
     if not nuovi:
         return []
-    try:
-        voci = da_fare._dubbi(db, regole, rose, giornata, file_scelte, titolari)
-    except Exception:                              # noqa: BLE001  (l'avviso dei cambi parte comunque)
+    try:                                           # il cambio solo se la consigliata lo fa (come «Da fare», #266)
+        voci = da_fare._dubbi(db, regole, rose, giornata, file_scelte, formazione=formazione)
+    except Exception as e:                         # noqa: BLE001  (l'avviso dei cambi parte comunque)
+        LOG.warning("cambio pronto: sostituti non calcolati (%s)", type(e).__name__)
         return []
     risultato = []
     for v in voci:
@@ -336,7 +340,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         entrano = [prev.at[i, "nome"] for i in set(titolari) - set(vecchio["titolari"]) if i in prev.index]
         escono = [prev.at[i, "nome"] for i in set(vecchio["titolari"]) - set(titolari) if i in prev.index]
         righe.append(F("n.formazione_aggiornata", modulo=f["modulo"], entrano=", ".join(entrano) or "–", escono=", ".join(escono) or "–"))
-    pronti = _cambi_pronti(db, regole, rose, prev, ora, titolari, giornata, set(stato.get("pronti", [])), chiave, file_scelte) \
+    pronti = _cambi_pronti(db, regole, rose, prev, ora, titolari, giornata, set(stato.get("pronti", [])), chiave, file_scelte, f) \
         if opzioni.get("cambi", True) else []
     singoli = []                                   # un cambio pronto che ha già una riga nell'avviso dei cambi la completa; gli altri vanno da soli
     for p in pronti:
