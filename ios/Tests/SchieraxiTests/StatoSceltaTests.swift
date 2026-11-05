@@ -1,39 +1,11 @@
 import XCTest
 @testable import Schieraxi
 
-/// La riga di stato della Formazione (scelta salvata o no) e come si legge una pedina del campo.
+/// Modulo dai ruoli, validità della scelta salvata e come si legge una pedina del campo.
 final class StatoSceltaTests: XCTestCase {
     private let scelti = Array(1...11)
 
-    private func data(_ testo: String) throws -> Date { try XCTUnwrap(Quando.data(testo)) }
-
-    func testGliStati() throws {
-        let alle = try data("2026-11-02T21:40:00")
-        XCTAssertEqual(StatoScelta.calcola(letta: false, salvati: scelti, salvataIl: alle, manuale: scelti), .sconosciuto)
-        XCTAssertEqual(StatoScelta.calcola(letta: true, salvati: nil, salvataIl: nil, manuale: nil), .consigliata)
-        XCTAssertEqual(StatoScelta.calcola(letta: true, salvati: nil, salvataIl: nil, manuale: scelti), .bozza)
-        XCTAssertEqual(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: alle, manuale: scelti.reversed()), .salvata(alle),
-                       "l'ordine dei titolari non conta")
-        var altri = scelti
-        altri[0] = 99
-        XCTAssertEqual(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: alle, manuale: altri), .modificata(alle))
-        XCTAssertEqual(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: alle, manuale: nil), .modificata(alle))
-    }
-
-    func testLeFrasi() throws {
-        let adesso = try data("2026-11-02T22:00:00")
-        XCTAssertEqual(StatoScelta.salvata(try data("2026-11-02T21:40:00")).titolo(adesso: adesso), "La tua formazione è salvata (oggi alle 21:40).")
-        XCTAssertEqual(StatoScelta.salvata(nil).titolo(adesso: adesso), "La tua formazione è salvata.")
-        XCTAssertEqual(StatoScelta.modificata(try data("2026-11-01T09:05:00")).titolo(adesso: adesso),
-                       "Modifiche non salvate: la formazione salvata è di ieri alle 09:05.")
-        XCTAssertEqual(StatoScelta.consigliata.titolo(), "Stai vedendo la consigliata: non hai salvato una tua formazione.")
-        XCTAssertEqual(StatoScelta.momento(try data("2026-10-31T21:40:00"), adesso: adesso), "sab 31 ott alle 21:40")
-        XCTAssertEqual(StatoScelta.sconosciuto.titolo(), "")
-        XCTAssertFalse(StatoScelta.salvata(nil).daSalvare)
-        XCTAssertTrue(StatoScelta.modificata(nil).daSalvare)
-        XCTAssertEqual(StatoScelta.salvata(nil).tono, .bene)
-        XCTAssertFalse(StatoScelta.consigliata.simbolo.isEmpty)
-    }
+    // stati e frasi della riga di stato: `RigaStatoComeWebTests` (confrontati con la web)
 
     func testIlModuloSiContaDaiRuoli() {
         XCTAssertEqual(ModuloTitolari.modulo(ruoli: ["P", "D", "D", "D", "C", "C", "C", "C", "A", "A", "A"]), "3-4-3")

@@ -16,6 +16,8 @@ enum StatoScelta: Equatable {
     /// Giornata chiusa (scadenza passata, `iniziata` del server): niente più da salvare né da cambiare. `tua`: c'è una scelta
     /// salvata, ed è quella che vale. Come lo stato «chiusa» della web, vale anche prima di aver letto la scelta.
     case chiusa(tua: Bool)
+    case altra
+    case nonValida
 
     /// - Parameters:
     ///   - letta: la scelta della giornata è stata letta dal server (anche «nessuna»).
@@ -23,7 +25,8 @@ enum StatoScelta: Equatable {
     ///   - manuale: i titolari della modifica a mano (nil = si vede la consigliata).
     ///   - chiusa: la giornata è chiusa (viene prima di tutto il resto, come sulla web).
     /// L'ordine dei titolari non conta.
-    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, chiusa: Bool = false) -> StatoScelta {
+    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, chiusa: Bool = false,
+                        nonValida: Bool = false, altra: Bool = false) -> StatoScelta {
         if chiusa { return .chiusa(tua: letta && salvati != nil) }
         guard letta else { return .sconosciuto }
         guard let salvati else { return manuale == nil ? .consigliata : .bozza }
@@ -34,7 +37,7 @@ enum StatoScelta: Equatable {
     /// La frase della riga di stato (frase completa: la legge anche VoiceOver).
     func titolo(adesso: Date = Date()) -> String {
         switch self {
-        case .sconosciuto: return ""
+        case .sconosciuto, .altra, .nonValida: return ""
         case .consigliata: return "Stai vedendo la consigliata: non hai salvato una tua formazione."
         case .bozza: return "Modifica a mano non ancora salvata."
         case .salvata(let d):
@@ -51,7 +54,7 @@ enum StatoScelta: Equatable {
     /// Simbolo SF della riga (oltre al colore: lo stato non si legge dal solo colore).
     var simbolo: String {
         switch self {
-        case .sconosciuto: return ""
+        case .sconosciuto, .altra, .nonValida: return ""
         case .consigliata: return "info.circle"
         case .bozza, .modificata: return "pencil.circle.fill"
         case .salvata: return "checkmark.circle.fill"
@@ -59,13 +62,13 @@ enum StatoScelta: Equatable {
         }
     }
 
-    enum Tono: Equatable { case neutro, bene, attenzione }
+    enum Tono: Equatable { case neutro, bene, attenzione, malus }
 
     var tono: Tono {
         switch self {
         case .salvata: return .bene
         case .bozza, .modificata: return .attenzione
-        case .consigliata, .sconosciuto, .chiusa: return .neutro   // chiusa: grigia come il «■» della web
+        case .consigliata, .sconosciuto, .chiusa, .altra, .nonValida: return .neutro   // chiusa: grigia come il «■» della web
         }
     }
 
@@ -73,9 +76,13 @@ enum StatoScelta: Equatable {
     var daSalvare: Bool {
         switch self {
         case .bozza, .modificata, .sconosciuto: return true
-        case .consigliata, .salvata, .chiusa: return false
+        case .consigliata, .salvata, .chiusa, .altra, .nonValida: return false
         }
     }
+
+    func voce(adesso: Date = Date()) -> String { titolo(adesso: adesso) }
+    var conSalvaQuesta: Bool { self == .consigliata }
+    var conTornaNellaRiga: Bool { false }
 
     // MARK: quando
 
