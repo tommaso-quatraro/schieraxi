@@ -166,6 +166,45 @@ def test_nome_con_il_punto_non_raddoppia_il_punto(mondo, monkeypatch):
     assert "Meglio Adams A." in testo and ".." not in testo
 
 
+def _etichettati(monkeypatch, **cambi):
+    """Schede con la titolarità come le manda il server (consigli.titolarita): `cambi` = {id: scheda}."""
+    schede = {i: _x(i, f"g{i}") | {"titolarita": "titolare"} for i in range(1, 15)}
+    schede[12] = _x(12, "Riserva", atteso=4.5) | {"titolarita": "titolare"}
+    schede |= {int(k[1:]): v for k, v in cambi.items()}
+    monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+
+
+def test_chi_non_e_in_dubbio_non_si_chiama_in_dubbio(mondo, monkeypatch):
+    """#282: un titolare al 2% che le probabili NON danno in dubbio è «Improbabile» in Formazione, Oggi e scheda: Da fare lo chiama
+    con la stessa parola, mai «in dubbio»."""
+    _etichettati(monkeypatch, g5=_x(5, "Lerri", p_voto=0.02) | {"titolarita": "improbabile"})
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert "dubbio" not in d["testo"]
+    assert d["testo"] == "Lerri (improbabile, gioca 2%) resta titolare: se non gioca entra Riserva dalla panchina."
+    assert d["frase"] == {"chiave": "dafare.incerto_tiene",
+                          "param": {"nome": "Lerri", "stato": {"chiave": "etichetta.improbabile", "param": {}}, "p": 2, "riserva": "Riserva"}}
+    la_consigliata_cambia(mondo, (5, 12))
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["testo"] == "Lerri: improbabile, gioca 2%. Meglio Riserva." and d["azione"] == "Sostituisci"
+
+
+def test_probabile_panchina_e_ballottaggio_con_le_parole_della_formazione(mondo, monkeypatch):
+    """#282: Merlo (30%) e Fiorini (40%) sono «Probabile panchina» in Formazione; un 60% senza dubbio è «In ballottaggio»."""
+    _etichettati(monkeypatch, g5=_x(5, "Merlo", p_voto=0.3) | {"titolarita": "panchina"},
+                 g7=_x(7, "Fiorini", p_voto=0.6) | {"titolarita": "ballottaggio"})
+    senza_cambi = NS(panchina=NS(max_sostituzioni=0))
+    d = {x["id"]: x["testo"] for x in vai(mondo, regole=senza_cambi) if x["tipo"] == "dubbio"}
+    assert d["dubbio:5"] == "Merlo: probabile panchina, gioca 30%."
+    assert d["dubbio:7"] == "Fiorini: in ballottaggio, gioca 60%."
+
+
+def test_chi_e_davvero_in_dubbio_resta_in_dubbio(mondo, monkeypatch):
+    """Le probabili lo danno in dubbio: l'etichetta è «In dubbio · gioca 55%» e la frase di Da fare resta «è in dubbio»."""
+    _etichettati(monkeypatch, g5=_x(5, "Rossi", dubbio=True, p_voto=0.55) | {"titolarita": "ballottaggio"})
+    d = next(x for x in vai(mondo, regole=NS(panchina=NS(max_sostituzioni=0))) if x["id"] == "dubbio:5")
+    assert d["testo"] == "Rossi è in dubbio (55% di giocare)." and d["frase"]["chiave"] == "dafare.dubbio_incerto"
+
+
 def test_dopo_la_scadenza_niente_dubbi_ne_formazione(mondo):
     assert vai(mondo, oggi={"giornata": 9, "ore_mancanti": -1.0, "iniziata": True}) == []
 
