@@ -115,7 +115,7 @@ struct ProssimePartite: View {
                         .frame(minWidth: 52, minHeight: 44)
                         .background(Color.difficolta(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Serie A, giornata \(p.giornata): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                        .accessibilityLabel("\(TempiLega.serieA(p.giornata)): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
                 }
             }
         }

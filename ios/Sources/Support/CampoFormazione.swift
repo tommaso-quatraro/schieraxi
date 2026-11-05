@@ -270,7 +270,9 @@ struct ImmagineFormazione: View {
     var body: some View {
         VStack(spacing: 10) {
             VStack(spacing: 2) {
+                // «Giornata 8 · 11ª di Serie A · 3-4-3» come la web (#299): su una riga, il carattere si rimpicciolisce se non ci sta
                 Text("\(TempiLega.etichetta(serieA: giornata, lega: giornataLega)) · \(modulo)").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                    .lineLimit(1).minimumScaleFactor(0.6)
                 Text([squadra, punti.map { "\(Formato.punti($0)) punti attesi" }].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")).font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
             }
             CampoFormazione(titolari: titolari, diametro: 42, perImmagine: true)

@@ -227,7 +227,7 @@ struct DiarioView: View {
                 }
                 .pulsanteVetro(prominente: true)
                 .disabled(vm.inSalvataggio != nil)
-                .accessibilityHint("Salva come tua scelta la formazione consigliata per la giornata \(v.numero ?? g)")
+                .accessibilityHint("\(v.nomeGiornata?.voce ?? "Giornata \(g)"): salva come tua scelta la formazione consigliata")
             }
             if v.siPuoCambiare, let g = v.giornata {
                 Button { daCorreggere = v } label: {
@@ -235,7 +235,7 @@ struct DiarioView: View {
                         .font(.subheadline).frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .disabled(vm.inSalvataggio != nil)
-                .accessibilityHint("Scegli a mano i tuoi undici della giornata \(v.numero ?? g)")
+                .accessibilityHint("\(v.nomeGiornata?.voce ?? "Giornata \(g)"): scegli a mano i tuoi undici")
             }
             if let c = v.consigliata {
                 riga(v.istantanea?.titolari?.isEmpty == false ? "Ricostruita oggi (\(c.modulo ?? "–"))" : "Di SchieraXI (\(c.modulo ?? "–"))", c)
@@ -248,6 +248,7 @@ struct DiarioView: View {
             }
         } header: {
             Text(v.titolo + (v.stagione.map { " · \($0)" } ?? "")).foregroundStyle(Color.testoSecondario)
+                .accessibilityLabel((v.nomeGiornata?.voce ?? v.titolo) + (v.stagione.map { ", \($0)" } ?? ""))
         }
     }
 
