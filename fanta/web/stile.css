@@ -32,6 +32,7 @@
   --vetro: rgba(24, 40, 31, .52);           /* colore del vetro (sopra lo sfondo sfocato) */
   --vetro-carta: rgba(26, 42, 33, .62);     /* carte: vetro leggero */
   --bordo: rgba(255, 255, 255, .13);
+  --bordo-campo: #66796e;                   /* bordo di campi, menu e caselle di testo: almeno 3:1 con il fondo del campo e con quello intorno (issue #285) */
   --luce: rgba(255, 255, 255, .34);         /* riflesso sul bordo alto */
   --luce-2: rgba(255, 255, 255, .06);
   --ombra: 0 6px 20px rgba(0, 0, 0, .35);             /* solo per ciò che galleggia: barra, foglio, avvisi */
@@ -69,6 +70,7 @@
     --vetro: rgba(255, 255, 255, .55);
     --vetro-carta: rgba(255, 255, 255, .72);
     --bordo: rgba(16, 32, 26, .1);
+    --bordo-campo: #728379;                 /* almeno 3:1 anche sul fondo piatto e sul foglio della scheda */
     --luce: rgba(255, 255, 255, .95);
     --luce-2: rgba(255, 255, 255, .25);
     --ombra: 0 6px 20px rgba(16, 32, 26, .12);
@@ -98,6 +100,7 @@
     --vetro: rgba(255, 255, 255, .55);
     --vetro-carta: rgba(255, 255, 255, .72);
     --bordo: rgba(16, 32, 26, .1);
+    --bordo-campo: #728379;                 /* almeno 3:1 anche sul fondo piatto e sul foglio della scheda */
     --luce: rgba(255, 255, 255, .95);
     --luce-2: rgba(255, 255, 255, .25);
     --ombra: 0 6px 20px rgba(16, 32, 26, .12);
@@ -177,6 +180,11 @@ main { padding: 14px 16px 0; max-width: 720px; margin: 0 auto; }
 .schede button { border: 0; background: none; color: var(--testo-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: var(--t-eti); font-weight: 550; border-radius: 30px; letter-spacing: .01em; }
 .schede svg { width: 25px; height: 25px; transition: transform .4s var(--molla); }
 .schede button.attiva { color: var(--azione); }
+/* Il focus non finisce sotto la testata né sotto la barra (WCAG 2.2, 2.4.11; issue #280): il browser porta l'elemento che prende il
+   focus (Tab, Maiusc+Tab) dentro la finestra lasciando fuori, in alto, l'altezza vera della testata (la scrive app.js in
+   --alto-testata) e, in basso, la barra con lo spazio sotto di lei. Con «Salva» che galleggia sopra la barra (Regole), di più. */
+html { scroll-padding-top: calc(var(--alto-testata, 80px) + 8px); scroll-padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 22px); }
+html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 84px); }
 
 /* ---------------------------------------------------------------- entrata delle sezioni */
 /* --mov: 1 = movimento pieno, 0 = versione calma (solo dissolvenze). Lo imposta html[data-calmo]. */
@@ -198,7 +206,7 @@ main > * { animation: dissolve .2s ease both; }   /* niente cascata: ogni blocco
 main.ridisegna > * { animation: none; }
 
 /* ---------------------------------------------------------------- controlli */
-.campo-testo, select, textarea { width: 100%; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; padding: 12px 14px; font-size: var(--t-valore);
+.campo-testo, select, textarea { width: 100%; border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; padding: 12px 14px; font-size: var(--t-valore);
   box-shadow: none; }
 textarea { min-height: 140px; resize: vertical; }
 select { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--testo-2) 50%), linear-gradient(135deg, var(--testo-2) 50%, transparent 50%);
@@ -226,7 +234,7 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 /* valore e stella pieni, non all'80%: sul lime del tema chiaro il numero da 12 px scendeva a 4,1:1 (issue #244); il nome resta più grande e più forte */
 .chip.attiva span, .chip.attiva i { color: var(--capitano-testo); }
 /* moduli e stili della formazione: una riga che scorre di lato (stessa striscia di Mercato) invece di andare a capo */
-.chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 2px -4px 4px; padding: 4px;
+.chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 2px -4px 4px; padding: 4px; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent); }
 .chips.scorri::-webkit-scrollbar { display: none; }
@@ -241,7 +249,7 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .segmenti button { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; padding: 11px 4px; border-radius: var(--r-in); font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .segmenti button.attivo { color: var(--testo); background: var(--vetro-carta); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
 /* striscia scorrevole (Mercato): le voci hanno la loro larghezza vera e non si tagliano; la scelta resta in vista e un bordo sfumato dice che si scorre */
-.segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 2px; scroll-snap-type: x proximity;
+.segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 2px; scroll-snap-type: x proximity; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent); }
 .segmenti.scorri::-webkit-scrollbar { display: none; }
@@ -403,7 +411,7 @@ details[open] > summary { margin-bottom: 8px; }
 /* il menu con la scelta intera: il testo scelto va a capo nel riquadro, accanto al simbolo del menu; il <select> vero sta sopra,
    trasparente (tocco, tastiera e lettore di schermo), e apre il menu del sistema. Un <select> non va a capo (issue #265). */
 .menu-scelta { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 6px; min-height: 46px; padding: 11px 16px 11px 14px;
-  border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; font-size: var(--t-corpo); line-height: 1.3; }
+  border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; font-size: var(--t-corpo); line-height: 1.3; }
 .menu-scelta-testo { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
 .menu-scelta::after { content: ""; flex: none; width: 7px; height: 7px; margin-top: -4px; border-right: 2px solid var(--testo-2); border-bottom: 2px solid var(--testo-2); transform: rotate(45deg); }
 .menu-scelta select { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; font-size: var(--t-corpo); }
@@ -560,7 +568,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .proposta-r { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; margin-bottom: 10px; border-radius: 20px; }
 .proposta-r .avatar-anello { --d: 44px; }
 .pr-testo { min-width: 0; }
-.proposta-r button.nome-g { border: 0; background: none; padding: 0; text-align: left; font-weight: 650; font-size: var(--t-valore); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.proposta-r button.nome-g { border: 0; background: none; padding: 0; text-align: left; font-weight: 650; font-size: var(--t-valore); max-width: 100%; overflow-wrap: break-word; display: block; }   /* nome lungo a capo, mai «…» (issue #287) */
 .proposta-r button.nome-g { padding: 13px 4px; margin: -13px -4px; }   /* area di tocco da 44 px senza cambiare l'altezza */
 .proposta-r button.nome-g.piccolo { display: inline; font-size: var(--t-sec); font-weight: 600; color: var(--testo); padding: 13px 10px; margin: -13px -10px; min-width: 44px; }   /* anche i nomi corti arrivano a 44 px di larghezza, senza spostare le righe */
 .proposta-r button.nome-g { padding: 13px 4px; margin: -13px -4px; }       /* area di tocco da 44px senza cambiare l'altezza delle righe */
@@ -692,10 +700,10 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .riga-regola > select.scelta-corta { width: auto; flex: none; max-width: 48%; min-height: 44px; padding: 8px 12px; font-size: var(--t-corpo); }
 .riga-regola small, .interruttore-ios small { display: block; color: var(--testo-2); font-size: var(--t-eti); margin-top: 1px; }
 .riga-regola.evidenzia { background: color-mix(in srgb, var(--verde) 20%, transparent); transition: background 1.5s; }
-.stepper { display: inline-flex; align-items: center; border: 1px solid var(--bordo); border-radius: 14px; background: color-mix(in srgb, var(--solido) 50%, transparent); overflow: hidden; flex: none; }
-.stepper button { width: 44px; height: 44px; border: 0; background: none; font-size: var(--t-card); font-weight: 500; color: var(--azione); line-height: 1; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--bordo-campo); border-radius: 14px; background: color-mix(in srgb, var(--solido) 50%, transparent); overflow: hidden; flex: none; max-width: 100%; }   /* i −/+ restano da 44 px (#289): se il posto non basta cede il numero */
+.stepper button { width: 44px; height: 44px; flex: none; border: 0; background: none; font-size: var(--t-card); font-weight: 500; color: var(--azione); line-height: 1; }
 .stepper button:active { background: color-mix(in srgb, var(--azione) 18%, transparent); transform: none; }
-.stepper input { width: 58px; height: 44px; border: 0; background: none; text-align: center; font-size: var(--t-valore); font-weight: 650; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
+.stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-size: var(--t-valore); font-weight: 650; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
 .interruttore-ios { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; font-size: var(--t-corpo); }
 .interruttore-ios > span { flex: 1; }
 .interruttore-ios input { appearance: none; -webkit-appearance: none; position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -710,7 +718,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .fascia .stepper input { width: 52px; font-size: var(--t-corpo); }       /* i pulsanti restano da 44px (come ogni stepper): a 390 px la fascia va a capo da sola */
 .rimuovi-fascia { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--bordo); background: none; color: var(--rosso); font-size: var(--t-corpo); }
 .prova-difesa { background: color-mix(in srgb, var(--solido) 40%, transparent); border: 1px solid var(--bordo); border-radius: var(--r-in); padding: 12px; }
-.prova-voti { display: grid; grid-template-columns: repeat(2, auto); gap: 8px; justify-content: start; margin: 8px 0; }
+.prova-voti { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }      /* due contatori: vanno a capo invece di stringersi (a 320 px i −/+ erano larghi 26 px) */
 .prova-esito { font-size: var(--t-corpo); }
 .salva-fisso[hidden] { display: none; }
 .salva-fisso { position: sticky; bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 24px); z-index: 4; display: flex; justify-content: center; padding: 6px 0 2px; pointer-events: none; }
@@ -721,17 +729,28 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .stemma-testata { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .35)); flex: none; animation: compare .6s var(--molla) both; }
 .stemma-testata[hidden] { display: none; }
 .testo-testata { min-width: 0; }
-.testo-testata .titolo, .testo-testata .sottotitolo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* testata sempre su due righe, anche sui telefoni stretti */
+/* telefoni da 320 a 360 px utili: lo stemma lasciava al nome 74 px e la testata, ferma in alto, saliva da 77 a 117 px; qui il nome
+   ha la precedenza (sotto i 320 px la testata va su due righe e lo stemma torna) */
+@container pagina (min-width: 320px) and (max-width: 359.98px) { .stemma-testata { display: none; } }
+.testo-testata .titolo, .testo-testata .sottotitolo { overflow-wrap: break-word; }   /* nome della squadra e data dei dati interi: vanno a capo, mai «…» (issue #286) */
 @media (max-width: 400px) { .testo-testata .titolo { font-size: var(--t-card); } .sottotitolo { font-size: var(--t-eti); } .testata { gap: 8px; } .bottone-icona { width: 40px; height: 40px; } }
 /* sui telefoni la giornata e la data dei dati vanno su due righe: in una sola la data si tagliava (390 px, anche in inglese a 430) */
 @media (max-width: 480px) {
   .testo-testata .sottotitolo { line-height: 1.25; }
-  .sottotitolo > span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sottotitolo > span { display: block; }
   .sottotitolo > .sotto-sep { display: none; }
 }
 .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: 132px; min-height: 150px; }   /* il testo va a capo prima della maglia (la densità compatta non lo deve azzerare) */
 .maglia-hero { position: absolute; right: -6px; bottom: -10px; height: 150px; width: auto; transform: rotate(7deg); transform-origin: 70% 80%; pointer-events: none;
   filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .45)); animation: entra .8s var(--molla) .15s both; }
+/* telefoni stretti (sotto i 360 px utili: 320 px, o 390 px con il testo grande): la maglia e il posto che le si lascia si
+   rimpiccioliscono con la pagina, così il conto alla rovescia ha sempre almeno 157 px («14 giorni» a 40 px, che non va a capo);
+   sotto i 260 px non c'è posto e la maglia, che è solo decorazione, non si mostra (issue #286) */
+@container pagina (max-width: 359.98px) {
+  .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: clamp(12px, 100cqi - 210px, 132px); }
+  .maglia-hero { height: clamp(48px, 100cqi - 210px, 150px); }             /* alta quanto il posto che le si lascia: non copre il testo */
+}
+@container pagina (max-width: 259.98px) { .maglia-hero { display: none; } }
 .stemma-lista { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .3)); }
 .iniziale-squadra { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: var(--t-valore); color: var(--verde-testo);
   background: var(--verde); }
@@ -776,6 +795,8 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
   .avviso { left: var(--lato); right: 24px; bottom: 24px; }
   .salva-fisso { bottom: 24px; }
   main { padding: 20px 28px 0; max-width: 980px; }
+  html { scroll-padding-bottom: 16px; }                                       /* la barra sta a sinistra: in basso non copre niente */
+  html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: 86px; }
 }
 @keyframes allunga-v { 0% { transform: scale(1, 1); } 35% { transform: scale(calc(1 - var(--mov, 1) * .1), calc(1 + var(--mov, 1) * .2)); } 100% { transform: scale(1, 1); } }
 
@@ -947,6 +968,10 @@ body.pagina-testo { padding: 0 0 40px; }
 .testo-lungo a, .accesso-legale a, .accesso-letto a, main .debole a { color: var(--azione); text-decoration: underline; text-underline-offset: 2px; }
 .accesso-legale { text-align: center; margin: 14px 0 0; }
 .accesso-letto > span { flex: 1; font-size: var(--t-corpo); }
+/* «Torna a SchieraXI» e i collegamenti in fondo (Privacy, Termini, Crediti) stanno da soli, non dentro una frase: bersagli da 44 px
+   come gli altri (erano alti 20 px, issue #289). La forma della pagina la scrive fanta/testi_legali.py. */
+.pagina-testo #contenuto > p:first-child > a, .piede-legale a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+.piede-legale { display: flex; flex-wrap: wrap; gap: 0 18px; margin-top: 18px; }
 
 .testo-lungo > * { animation: none; }
 .registro-elenco { margin: 4px 0 10px; padding-left: 18px; font-size: var(--t-sec); word-break: break-word; }
@@ -1077,6 +1102,9 @@ body.senza-accesso .salta { display: none; }
   #mercato-corpo > .carta:first-child, #mercato-corpo > .caricamento, #mercato-corpo > .vuoto, #mercato-corpo > .segmenti, #mercato-corpo > .chips { grid-column: 1 / -1; }
 }
 @media (min-width: 768px) and (max-width: 899px) { main { max-width: 1000px; padding-left: 24px; padding-right: 24px; } }
+/* colonna ferma in alto (sticky) più alta dello schermo: il suo fondo non arrivava mai in vista, né con il Tab né scorrendo. app.js
+   (controllaFerme) la fa scorrere con la pagina (issue #280) */
+.non-ferma { position: static !important; }
 @media (min-width: 1100px) { .colonne { gap: 0 24px; } }
 @media (min-width: 1700px) { .colonne { max-width: 1500px; margin: 0 auto; } }
 @media (min-width: 2400px) { .colonne { max-width: 1800px; } }
@@ -1093,7 +1121,7 @@ body.senza-accesso .salta { display: none; }
 .bottone-icona.novita { position: relative; }
 .bottone-icona.novita::after { content: ""; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
 .schede.fuori .lente { opacity: 0; }
-.imp { display: grid; gap: 14px; }
+.imp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }   /* una colonna `auto` era larga quanto il contenuto più lungo: Notifiche scorreva di lato (issue #288) */
 .imp-elenco { padding: 6px 10px; margin: 0; }
 .imp-voce.attiva { background: color-mix(in srgb, var(--verde) 14%, transparent); border-radius: 14px; }
 .imp-indietro { min-height: 44px; }
@@ -1242,6 +1270,15 @@ body { container: pagina / inline-size; }
   .con-confronto .voce > .valore b { display: inline; }
   .con-confronto .voce > .valore .barra-p { display: none; }
   .elenco li.alternative-li { padding: 0 0 12px; }
+  /* Cambi consigliati: volto e guadagno sopra, nome e dettagli sotto a tutta larghezza, come le righe dei giocatori (issue #287) */
+  .proposta-r { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; column-gap: 8px; padding: 10px 12px; }
+  .proposta-r > .pr-testo { grid-row: 2; grid-column: 1 / -1; }
+  .proposta-r > .pr-num { grid-row: 1; grid-column: 2; justify-self: end; }
+  /* Regole e Notifiche: il −/+ o il menu va sotto il nome della regola quando accanto il nome resterebbe una parola per riga */
+  .riga-regola { flex-wrap: wrap; row-gap: 6px; }
+  .riga-regola > span { flex: 1 1 10em; }
+  .riga-regola > :last-child:not(:first-child) { margin-left: auto; }
+  .riga-regola > select.scelta-corta { max-width: 100%; }
   /* Oggi a giornata in corso e «Indisponibili in rosa»: il fantavoto preso o lo stato va sotto il nome; il pallino resta a destra */
   .avviso-riga { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; }
   .avviso-riga > :nth-child(3):not(.pallino-stato) { grid-row: 2; grid-column: 2 / -1; justify-self: start; }
