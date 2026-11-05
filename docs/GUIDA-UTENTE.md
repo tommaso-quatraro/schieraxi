@@ -70,7 +70,7 @@ Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni
 
 Se ti invitano in una lega che gioca già da un po':
 
-1. **Invito.** Apri il link che ti ha mandato chi gestisce l'app: si apre la registrazione con il codice già scritto. Vale una volta sola e per 7 giorni.
+1. **Invito.** Apri il link che ti ha mandato chi gestisce l'app: si apre la registrazione con il codice già scritto. Scade dopo 7 giorni.
 2. **Registrazione.** Scegli nome utente e password, spunta la casella, tocca **Crea l'account** e salva il codice di recupero.
 3. **Rose.** Esporta le rose da Leghe e caricale come nel passo 1 del primo avvio. Per cominciare basta anche solo la tua squadra.
 4. **La tua squadra.** Scegli **Qual è la tua squadra?**, sistema i nomi da controllare e tocca **Conferma e salva**. Poi rispondi alle due domande sui tempi della lega: scadenza e giornata di partenza.
