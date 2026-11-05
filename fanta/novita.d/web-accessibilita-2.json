@@ -1,11 +1,9 @@
 {
   "titolo": "Web più comoda con la tastiera e con il testo grande",
   "voci": [
-    "Web: con il tasto Tab il pulsante o la riga scelta resta sempre in vista, non finisce più sotto la barra in basso o sotto la testata, anche su iPad e con il telefono in orizzontale.",
-    "Web: i campi da compilare e i menu hanno un bordo che si vede bene, nel tema chiaro e in quello scuro.",
-    "Web: il nome della squadra e la data dei dati in alto si leggono interi anche sui telefoni stretti e con il testo grande; nel conto alla rovescia di Oggi il numero resta sulla stessa riga della sua unità.",
-    "Web: Cambi consigliati, Regole e Notifiche si leggono bene sui telefoni piccoli con il testo «Molto grande»: niente nomi tagliati, niente parole una per riga, niente pagina che scorre di lato.",
-    "Web: nelle Regole i pulsanti «−» e «+» restano grandi da toccare; nelle pagine Privacy, Termini e Crediti i collegamenti sono più facili da toccare."
+    "Web: con il tasto Tab il pulsante o la riga scelta resta sempre in vista, non più sotto la barra in basso o sotto la testata; i campi da compilare e i menu hanno un bordo che si vede bene, in chiaro e in scuro.",
+    "Web, telefoni piccoli e testo grande: il nome della squadra in alto si legge intero, il conto alla rovescia non lascia «h» da sola su una riga, Cambi consigliati, Regole e Notifiche non tagliano i nomi e non scorrono di lato.",
+    "Web: i pulsanti «−» e «+» delle Regole e i collegamenti delle pagine Privacy, Termini e Crediti sono più facili da toccare."
   ],
   "tecnico": [
     "#280: html con scroll-padding-top = --alto-testata (altezza vera della testata, ResizeObserver in app.js; 0 quando non è sticky) + 8 px e scroll-padding-bottom = barra + safe area + 22 px (84 px in più con «Salva» in vista; 16 px da 900 px). controllaFerme() toglie lo sticky (classe .non-ferma) alle colonne più alte dello schermo (prima colonna di Oggi, campo, .imp-elenco, filtri dei giocatori). Le strisce scorrevoli portano in vista la voce con il focus (focusin → scrollIntoView nearest, scroll-padding-inline 24 px).",
