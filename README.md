@@ -2,7 +2,7 @@
 
 **Schierali. Schiera gli XI.**
 
-![SchieraXI: la schermata Oggi](sito/img/schermata-larga.png)
+![SchieraXI: la prima schermata del sito, con un esempio di formazione](sito/img/schermata-larga.png)
 
 SchieraXI è un'app che consiglia la formazione del fantacalcio per una lega classic di Serie A.
 Per ogni giocatore stima il **fantavoto atteso**, cioè il punteggio che ci si può aspettare con le regole della tua lega,
