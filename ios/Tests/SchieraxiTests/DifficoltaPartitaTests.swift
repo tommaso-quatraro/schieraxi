@@ -26,7 +26,8 @@ struct DifficoltaPartitaTests {
         #expect(Formato.difficolta(livello) == web.lowercased())
     }
 
-    @Test("Senza il dato o fuori scala: la parola del livello vicino, come la web", arguments: DifficoltaPartitaTests.valoriFuoriScala)
+    @Test("Senza il dato o fuori scala: la parola del livello più vicino (senza dato, «Normale»), mai una scritta vuota",
+          arguments: DifficoltaPartitaTests.valoriFuoriScala)
     @MainActor
     func fuoriScala(valore: Double?, chiave: String) throws {
         let web = try TestiWeb().italiano(chiave)

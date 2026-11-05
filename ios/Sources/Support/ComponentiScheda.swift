@@ -19,25 +19,19 @@ struct PillDifficolta: View {
     /// «Partita normale» invece di «Normale» dove non è chiaro che si parla della partita (scheda del giocatore).
     var conPartita = false
 
-    /// Le parole della web (`diff.1`…`diff.5` di testi.js, #293).
+    /// Le parole della web (`diff.1`…`diff.5` di testi.js, #293): la scala è quella di `Formato`, una sola per tutta l'app.
     static func nome(_ d: Double?) -> String {
-        switch Formato.intero(d ?? 3) {
-        case ...1: return "Facile"
-        case 2: return "Abbordabile"
-        case 3: return "Normale"
-        case 4: return "Dura"
-        default: return "Molto dura"
-        }
+        Formato.nomeDifficolta(d)
     }
 
     /// La scritta della pillola, quella che si vede.
     static func testo(_ d: Double?, conPartita: Bool) -> String {
-        conPartita ? "Partita " + nome(d).lowercased() : nome(d)
+        conPartita ? "Partita " + Formato.difficolta(d) : nome(d)
     }
 
-    /// Quello che legge VoiceOver.
+    /// Quello che legge VoiceOver: le stesse parole dello schermo, non un'altra scala (#322).
     static func etichettaVoceOver(_ d: Double?, conPartita: Bool) -> String {
-        "Partita: \(Formato.difficolta(d))"
+        testo(d, conPartita: conPartita)
     }
 
     var body: some View {
