@@ -54,8 +54,8 @@ enum LetturaPedina {
     /// trova il trattino morbido. Se il telefono non sa sillabare l'italiano il nome resta com'è (e va a capo tra le lettere).
     /// Solo per il disegno: VoiceOver legge il nome del server (`voce`).
     static func sillabato(_ testo: String) -> String {
-        guard !testo.isEmpty, let lingua = CFLocaleCreate(kCFAllocatorDefault, "it_IT" as CFString),
-              CFStringIsHyphenationAvailableForLocale(lingua) else { return testo }
+        let lingua = NSLocale(localeIdentifier: "it_IT") as CFLocale
+        guard !testo.isEmpty, CFStringIsHyphenationAvailableForLocale(lingua) else { return testo }
         // una parola alla volta: gli spazi restano dove sono
         return testo.components(separatedBy: " ").map { sillabaParola($0, lingua: lingua) }.joined(separator: " ")
     }
