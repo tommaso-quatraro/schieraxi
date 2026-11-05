@@ -76,8 +76,9 @@ def ombra(db: sqlite3.Connection) -> dict:
 
 def riepilogo(db: sqlite3.Connection, stagione: str) -> dict:
     """Tutto quello che serve alla pagina "Stato dei dati". `registro`: quanto ci hanno preso i numeri mostrati prima di ogni
-    giornata (I1-I3, `registro_giornate.riepilogo`)."""
-    from . import registro_giornate              # qui dentro: registro_giornate importa consigli, che importa questo modulo
+    giornata (I1-I3, `registro_giornate.riepilogo`). `consiglio`: gli indicatori del consiglio di formazione C1-C4, sommati sui
+    Diari di tutti (`indicatori_consiglio.riepilogo`)."""
+    from . import indicatori_consiglio, registro_giornate      # qui dentro: importano consigli, che importa questo modulo
     agg = []
     for cosa, quando, dettaglio in db.execute("SELECT cosa, quando, dettaglio FROM aggiornamenti ORDER BY cosa"):
         try:
@@ -102,4 +103,5 @@ def riepilogo(db: sqlite3.Connection, stagione: str) -> dict:
         "coppe_fino": coppe.aggiornate_fino().isoformat(),
         "calibrazione": {**(c := calibrazione(db, stagione)), "fattori": fattori_da(c)},
         "registro": registro_giornate.riepilogo(db),
+        "consiglio": indicatori_consiglio.riepilogo(),
     }
