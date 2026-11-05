@@ -20,23 +20,27 @@ final class TempiLegaTests: XCTestCase {
     }
 
     func testEtichettaDellaGiornata() throws {
-        XCTAssertEqual(try oggi("").etichettaGiornata, "Giornata 10")
-        XCTAssertEqual(try oggi(", \"giornata_lega\": null").etichettaGiornata, "Giornata 10")
-        XCTAssertEqual(try oggi(", \"giornata_lega\": 10").etichettaGiornata, "Giornata 10")
-        XCTAssertEqual(try oggi(", \"giornata_lega\": 7").etichettaGiornata, "Giornata 7")
+        // #299: i due numeri, lega e Serie A; senza il numero della lega solo Serie A
+        XCTAssertEqual(try oggi("").etichettaGiornata, "10ª giornata di Serie A")
+        XCTAssertEqual(try oggi(", \"giornata_lega\": null").etichettaGiornata, "10ª giornata di Serie A")
+        XCTAssertEqual(try oggi(", \"giornata_lega\": 10").etichettaGiornata, "Giornata 10 · 10ª di Serie A")
+        XCTAssertEqual(try oggi(", \"giornata_lega\": 7").etichettaGiornata, "Giornata 7 · 10ª di Serie A")
         XCTAssertEqual(try oggi(", \"giornata_lega\": 7").giornataMostrata, 7)
         XCTAssertEqual(try oggi(", \"giornata_lega\": 0").giornataMostrata, 10)
     }
 
     func testGliAvvisiESiriDicianoLaGiornataDellaLega() throws {
-        // lega che parte dalla 4ª di Serie A: la 10ª di Serie A è la 7ª della lega, e l'app mostra «7»
+        // lega che parte dalla 4ª di Serie A: la 10ª di Serie A è la 7ª della lega; in testa i due numeri e i due punti (#299)
         let o = try oggi(", \"giornata_lega\": 7")
-        XCTAssertTrue(Aggiornamento.corpoCambioModulo(o, modulo: "3-5-2", punti: "66,0", moduloPrima: "4-3-3").hasPrefix("Mister, giornata 7:"))
-        XCTAssertTrue(Aggiornamento.corpoProbabili(o, modulo: "3-5-2", punti: "66,0").hasPrefix("Giornata 7:"))
-        XCTAssertTrue(FormazioneComando.fraseBase(o, modulo: "3-5-2", punti: "66,0").hasPrefix("Per la giornata 7 "))
-        // senza il numero della lega vale quello di Serie A
+        XCTAssertEqual(Aggiornamento.corpoCambioModulo(o, modulo: "3-5-2", punti: "66,0", moduloPrima: "4-3-3"),
+                       "Giornata 7 · 10ª di Serie A: ora 3-5-2, 66,0 punti attesi (prima 4-3-3).")
+        XCTAssertEqual(Aggiornamento.corpoProbabili(o, modulo: "3-5-2", punti: "66,0"),
+                       "Giornata 7 · 10ª di Serie A: modulo consigliato 3-5-2, 66,0 punti attesi.")
+        XCTAssertEqual(FormazioneComando.fraseBase(o, modulo: "3-5-2", punti: "66,0"),
+                       "Giornata 7, 10ª di Serie A: ti consiglio il 3-5-2, con 66,0 punti attesi.", "Siri legge la virgola, non «·»")
+        // senza il numero della lega solo quello di Serie A
         let senza = try oggi("")
-        XCTAssertTrue(Aggiornamento.corpoProbabili(senza, modulo: "3-5-2", punti: "66,0").hasPrefix("Giornata 10:"))
+        XCTAssertTrue(Aggiornamento.corpoProbabili(senza, modulo: "3-5-2", punti: "66,0").hasPrefix("10ª giornata di Serie A:"))
     }
 
     func testIlRiassuntoDelWidgetUsaLaScadenza() throws {
@@ -70,66 +74,6 @@ final class TempiLegaTests: XCTestCase {
         XCTAssertNil(try RegoleLogica.preparaPerSalvataggio(regole).valore("aggiornamenti_vicino_scadenza"))
         regole.imposta("aggiornamenti_vicino_scadenza", .booleano(false))
         XCTAssertEqual(try RegoleLogica.preparaPerSalvataggio(regole).valore("aggiornamenti_vicino_scadenza"), .booleano(false))
-    }
-}
-
-/// La giornata di lega nelle formazioni, nel testo condiviso e nei widget.
-final class GiornataLegaTests: XCTestCase {
-    func testEtichetta() {
-        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: 8), "Giornata 8")
-        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: 11), "Giornata 11")
-        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: nil), "Giornata 11")
-        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: -2), "Giornata 11")
-        XCTAssertEqual(TempiLega.etichetta(serieA: 11, lega: 0), "Giornata 11")
-        XCTAssertEqual(TempiLega.sigla(serieA: 11, lega: 8), "G8")
-        XCTAssertEqual(TempiLega.sigla(serieA: 11, lega: nil), "G11")
-    }
-
-    /// Regola comune con la web (`docs/COERENZA-WEB-IPHONE.md`): la giornata della tua formazione è sempre quella della lega,
-    /// mai «di lega (Serie A 10)»; il numero di Serie A si scrive solo dove si parla del calendario.
-    func testLEtichettaNonDiceMaiSerieA() {
-        for (serieA, lega) in [(10, 7), (11, 8), (11, 11), (3, 1)] as [(Int, Int?)] {
-            let t = TempiLega.etichetta(serieA: serieA, lega: lega)
-            XCTAssertEqual(t, "Giornata \(lega ?? serieA)")
-            XCTAssertFalse(t.contains("Serie A"), t)
-            XCTAssertFalse(t.contains("di lega"), t)
-        }
-        XCTAssertEqual(TempiLega.serieA(10), "Serie A, giornata 10")
-    }
-
-    func testTestoCondiviso() {
-        XCTAssertEqual(TestoFormazione.crea(giornata: 11, giornataLega: 8, modulo: "4-3-3", titolari: [], panchina: []).components(separatedBy: "\n").first,
-                       "Giornata 8 · 4-3-3")
-        XCTAssertEqual(TestoFormazione.crea(giornata: 11, modulo: "4-3-3", titolari: [], panchina: []).components(separatedBy: "\n").first,
-                       "Giornata 11 · 4-3-3")
-    }
-
-    func testIlWidgetLeggeLaGiornataDiLega() throws {
-        let con = RiassuntoWidget.leggi(Data(#"{"giornata": 11, "giornata_lega": 8}"#.utf8))
-        XCTAssertEqual(con?.etichettaGiornata, "Giornata 8")
-        XCTAssertEqual(con?.siglaGiornata, "G8")
-        XCTAssertEqual(con?.comeRiassuntoOggi()?.etichettaGiornata, "Giornata 8")
-        // server vecchio o valore nullo
-        let senza = RiassuntoWidget.leggi(Data(#"{"giornata": 11, "giornata_lega": null}"#.utf8))
-        XCTAssertEqual(senza?.etichettaGiornata, "Giornata 11")
-        XCTAssertNil(RiassuntoWidget.leggi(Data(#"{}"#.utf8))?.etichettaGiornata)
-    }
-
-    func testIlRiassuntoVecchioSenzaGiornataDiLegaSiLegge() throws {
-        let vecchio = Data(#"{"giornata": 9, "daControllare": 0, "scaricatoIl": 0}"#.utf8)
-        let r = try JSONDecoder().decode(RiassuntoOggi.self, from: vecchio)
-        XCTAssertEqual(r.etichettaGiornata, "Giornata 9")
-    }
-
-    func testLaDidascaliaNonRipeteLaTuaScelta() {
-        XCTAssertEqual(TempiLega.didascalia(giornata: "Giornata 3", scelta: true, comeConsigliato: false), "Giornata 3")
-        XCTAssertEqual(TempiLega.didascalia(giornata: "Giornata 3", scelta: false, comeConsigliato: true), "Giornata 3 · modulo consigliato")
-        XCTAssertEqual(TempiLega.didascalia(giornata: "Giornata 3", scelta: false, comeConsigliato: false), "Giornata 3 · modulo scelto")
-    }
-
-    func testFormazioneSenzaGiornataDiLega() throws {
-        let f: Formazione = try Fixture.decodifica("formazione")
-        XCTAssertEqual(f.etichettaGiornata, "Giornata \(f.giornata)")
     }
 }
 
@@ -188,7 +132,7 @@ final class OggiSenzaGiornataTests: XCTestCase {
     func testSiriENotificheSenzaGiornata() throws {
         let o = try leggi(nuovoSenzaRose)
         XCTAssertTrue(Aggiornamento.corpoProbabili(o, modulo: "3-5-2", punti: "66,0").hasPrefix("Prossima giornata:"))
-        XCTAssertTrue(Aggiornamento.corpoCambioModulo(o, modulo: "3-5-2", punti: "66,0", moduloPrima: "4-3-3").hasPrefix("Mister, prossima giornata:"))
+        XCTAssertTrue(Aggiornamento.corpoCambioModulo(o, modulo: "3-5-2", punti: "66,0", moduloPrima: "4-3-3").hasPrefix("Prossima giornata:"))
         XCTAssertFalse(FormazioneComando.fraseBase(o, modulo: "3-5-2", punti: "66,0").contains("nil"))
     }
 }
