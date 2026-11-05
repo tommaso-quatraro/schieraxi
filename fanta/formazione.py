@@ -476,8 +476,7 @@ def _senza_improbabili(titolari: list[Giocatore], panchina: list[Giocatore], per
         cambiato = False
         atteso = val.atteso(titolari, panchina)
         ids = {x.id for x in titolari}
-        for i in sorted(range(len(titolari)), key=lambda k: titolari[k].p):
-            t = titolari[i]
+        for i, t in sorted(enumerate(titolari), key=lambda c: c[1].p):
             if t.p >= IMPROBABILE_SOTTO:
                 break
             meglio = None
