@@ -170,6 +170,8 @@ CATALOGO: dict[str, str] = {
     "confronto.esito_meglio": "Con {titolare} titolare la formazione vale {attuale} punti attesi; con i due invertiti {invertita} ({d}).",
     "confronto.esito_peggio": "Invertendoli la formazione varrebbe {invertita} invece di {attuale} ({d}): con il modulo {modulo} (non il migliore) la scelta non è la più conveniente.",
     "confronto.esito_pari": "Le due soluzioni valgono praticamente lo stesso ({attuale} contro {invertita}).",
+    # il titolare gioca al posto di un compagno che quasi certamente non gioca (#329): è questo il motivo, anche se invertirli varrebbe di più (#341)
+    "confronto.titolare_che_gioca": "{altro} quasi certamente non gioca ({p}% di giocare): il sistema schiera titolare {titolare}, che gioca {pt}%, anche se costa {d} punti attesi. {entrata}",
     "posto.titolare": "titolare",
     "posto.panchina": "panchina {n}",
     "posto.fuori": "fuori",

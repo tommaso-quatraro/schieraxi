@@ -163,6 +163,39 @@ def test_titolare_al_20_per_cento_non_e_improbabile():
     assert X in _titolari(f) and Y not in _titolari(f)
 
 
+def _confronto_x_y(monkeypatch, *rosa_param):
+    """Il Confronto (⇄) tra X e Y nella formazione vera calcolata da consigli (`_calcola_formazione`) su `_rosa_terzo_attaccante`."""
+    import pandas as pd
+
+    from fanta import consigli
+    from fanta.lega import GiocatoreRosa, Squadra
+    rosa = _rosa_terzo_attaccante(*rosa_param)
+    prev = pd.DataFrame([{"nome": g.nome, "ruolo": g.ruolo, "p_voto": g.p, "mu": g.mu, "mu_voto": g.mu_voto} for g in rosa],
+                        index=[g.id for g in rosa])
+    squadra = Squadra("Prova", [GiocatoreRosa(g.id, g.nome, g.ruolo, None) for g in rosa])
+    monkeypatch.setattr(consigli, "scheda_previsione", lambda i, x: {"id": int(i), "nome": x["nome"]})
+    monkeypatch.setattr(consigli, "formazione", lambda *a, **k: consigli._calcola_formazione(squadra, prev, 10, True, Regole(), 600))
+    return consigli._in_formazione(None, Regole(), object(), None, 10, None, X, Y, prev)
+
+
+def test_confronto_dice_che_il_titolare_improbabile_quasi_certamente_non_gioca(monkeypatch):
+    """#341: Y (60%) è titolare al posto di X (15%) per la regola sopra, e invertirli varrebbe di più. Il Confronto dice il motivo
+    vero (X quasi certamente non gioca), non «con il modulo 4-3-3 (non il migliore) la scelta non è la più conveniente»."""
+    r = _confronto_x_y(monkeypatch, 0.15, 8, 0.6, 6)
+    assert (r["posto_a"], r["posto_b"]) == ("panchina 1", "titolare")
+    assert r["differenza"] < -0.04                                  # invertirli varrebbe di più: è il caso della issue
+    assert r["frase"]["chiave"] == "confronto.titolare_che_gioca"
+    assert "g40 quasi certamente non gioca (15% di giocare)" in r["testo"] and "g41, che gioca 60%" in r["testo"]
+    assert "non il migliore" not in r["testo"]
+
+
+def test_confronto_senza_improbabile_resta_come_prima(monkeypatch):
+    """X al 15% che fa poco (4) quando gioca: Y è titolare perché vale di più anche da solo, e il Confronto lo dice come prima."""
+    r = _confronto_x_y(monkeypatch, 0.15, 4, 0.6, 6)
+    assert r["posto_b"] == "titolare" and r["differenza"] > 0.04
+    assert r["frase"]["param"]["esito"]["chiave"] == "confronto.esito_meglio"
+
+
 def test_panchina_a_posti_fissi_per_ruolo():
     from fanta.formazione import Giocatore, _panchina
     from fanta.regole import Regole
