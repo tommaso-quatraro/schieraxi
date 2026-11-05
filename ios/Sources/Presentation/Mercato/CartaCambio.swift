@@ -49,7 +49,8 @@ struct CartaCambio: View {
         .accessibilityLabel(Self.voce(proposta))
     }
 
-    /// «+0,6 nelle prossime 5 giornate · rimborso 8, costo 12, crediti dopo 30»: tutto il secondario in una riga.
+    /// «+0,6 nelle prossime 5 giornate · crediti dopo 30 · rimborso 8 · costo 12»: tutto il secondario in una riga.
+    /// I soldi del cambio con l'ordine e il separatore della web (`soldiDelCambio` di `app.js`, issue #256).
     static func dettaglio(_ p: PropostaMercato) -> String? {
         var parti: [String] = []
         if let b = p.breve {
@@ -60,14 +61,17 @@ struct CartaCambio: View {
         }
         if let dopo = p.creditiDopo {
             let nonBastano = p.fattibile == false ? " (non bastano)" : ""
-            parti.append("rimborso \(Formato.intero(p.rimborso)), costo \(Formato.intero(p.entra.quotazione)), crediti dopo \(Formato.intero(dopo))" + nonBastano)
+            parti += ["crediti dopo \(Formato.intero(dopo))" + nonBastano,
+                      "rimborso \(Formato.intero(p.rimborso))",
+                      "costo \(Formato.intero(p.entra.quotazione))"]
         } else if let r = p.rimborso, r > 0 {
             parti.append("rimborso \(Formato.intero(r))")
         }
         return parti.isEmpty ? nil : parti.joined(separator: " · ")
     }
 
-    /// La frase intera per VoiceOver: «Entra X, esce Y, +2,4 punti attesi. Rimborso…».
+    /// La frase intera per VoiceOver, con i dettagli nello stesso ordine della riga:
+    /// «Entra X, esce Y, +2,4 punti attesi. +0,6 nelle prossime 5 giornate · crediti dopo 30 · rimborso 8 · costo 12».
     static func voce(_ p: PropostaMercato) -> String {
         var testo = "Entra \(p.entra.nome), esce \(p.esce.nome), \(Formato.conSegno(p.guadagno)) punti attesi"
         if let riga = dettaglio(p) { testo += ". " + riga }

@@ -43,7 +43,7 @@ struct CambiConsigliatiInteriTests {
     }
 
     @MainActor
-    @Test("La riga «rimborso, costo, crediti dopo» si legge intera: va a capo invece di finire con «…»")
+    @Test("La riga «crediti dopo · rimborso · costo» si legge intera: va a capo invece di finire con «…»")
     func rigaDettagliIntera() throws {
         let lunga = Self.proposta()
         let corta = Self.proposta(breve: nil, creditiDopo: nil, fattibile: nil)
