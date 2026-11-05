@@ -59,13 +59,14 @@ def _ore_a_parole(ore: float) -> str:
 
 
 # ---------------------------------------------------------------- i singoli controlli
-def _consigliata(db, regole: Regole, rose: Rose) -> tuple[list[int], list[int]] | None:
-    """(titolari, panchina in ordine) della formazione consigliata, già in cache (l'ha appena calcolata `gestione.oggi`); None se
-    non si riesce a formare la squadra."""
-    try:
-        f = consigli.formazione(db, regole, rose)
-    except ValueError:
-        return None
+def _consigliata(db, regole: Regole, rose: Rose, f: dict | None = None) -> tuple[list[int], list[int]] | None:
+    """(titolari, panchina in ordine) della formazione consigliata `f` se chi chiama l'ha già, altrimenti quella in cache (l'ha appena
+    calcolata `gestione.oggi`); None se non si riesce a formare la squadra."""
+    if f is None:
+        try:
+            f = consigli.formazione(db, regole, rose)
+        except ValueError:
+            return None
     return [int(g["id"]) for g in f["titolari"]], [int(g["id"]) for g in f.get("panchina") or []]
 
 
@@ -73,14 +74,15 @@ def _sostituzioni_ammesse(regole: Regole) -> bool:
     return getattr(getattr(regole, "panchina", None), "max_sostituzioni", 1) > 0
 
 
-def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None) -> list[dict]:
+def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None, *, formazione: dict | None = None) -> list[dict]:
     """Titolari (quelli che l'utente ha salvato, altrimenti i consigliati) fuori o in dubbio. Il cambio con il miglior sostituto
     libero («Meglio Y», «Sostituisci») si propone solo se la formazione consigliata lo fa davvero: stessa regola di `consigliato`
     del confronto (`consigli.da_schierare`). Se la consigliata tiene il titolare, la voce dice chi entra dalla panchina se lui non
-    gioca (la prima riserva dello stesso ruolo, come le sostituzioni) e porta alla formazione: Oggi e Formazione non si contraddicono."""
+    gioca (la prima riserva dello stesso ruolo, come le sostituzioni) e porta alla formazione: Oggi e Formazione non si contraddicono.
+    `formazione`: la consigliata (`consigli.formazione`) se chi chiama l'ha già calcolata (l'avviso «cambio pronto», notifiche.py)."""
     s = rose.squadra(rose.mia_squadra or "")
     prev, _, _ = consigli.previsioni(db, regole)
-    consigliata = _consigliata(db, regole, rose)
+    consigliata = _consigliata(db, regole, rose, formazione)
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
     if scelta:
         titolari = [int(i) for i in scelta["titolari"]]

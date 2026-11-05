@@ -170,7 +170,7 @@ Alcune funzioni (risultati in diretta, confronto, seguiti, elenco giocatori, Dia
 Ti scrivono quando:
 
 - la **formazione consigliata cambia**;
-- **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni;
+- **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni (solo se anche la formazione consigliata lo toglie, come in Da fare);
 - **il consiglio cambia vicino alla scadenza** (voce **Avviso se il consiglio cambia**: 30 minuti, 1 ora o 1 ora e mezza prima, oppure Spento; di base 1 ora). Se le ultime probabili o un infortunio cambiano la formazione da schierare, ti arriva il motivo in una frase, per esempio «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi)». Arriva solo se vale almeno un punto atteso, al massimo due volte per giornata, mai nelle ore tranquille. In quel periodo sostituisce gli avvisi sui cambi delle probabili dei tuoi giocatori, così la stessa notizia non arriva due volte;
 - **un'ora e un quarto d'ora prima** della scadenza della formazione (non arrivano se hai già schierato, a meno che un tuo titolare sia diventato indisponibile);
 - **reparto scoperto**: troppo pochi giocatori disponibili in un reparto;
