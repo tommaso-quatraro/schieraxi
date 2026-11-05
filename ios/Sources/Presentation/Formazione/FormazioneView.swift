@@ -549,7 +549,7 @@ struct AnteprimaImmagineSheet: View {
                     ShareLink(item: Image(uiImage: elemento.immagine), preview: SharePreview(elemento.titolo, image: Image(uiImage: elemento.immagine))) {
                         Label("Condividi l'immagine", systemImage: "square.and.arrow.up").frame(minHeight: 44)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .pulsanteVetro(prominente: true)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity)

@@ -102,3 +102,76 @@ def test_foto_dal_vero_mai_annullate_da_un_push():
     assert "github.event.label.name == 'screenshot'" in concorrenza
     assert "startsWith(github.event.label.name, 'screenshot')" not in concorrenza
     assert "contains(github.event.pull_request.labels.*.name, 'screenshot')" in concorrenza
+
+
+# --- Issue #264: lo stesso codice iOS già verde non si prova due volte sul Mac ------------------------------------------------
+# Una modifica iOS tipica faceva girare gli stessi test sullo stesso codice fino a tre volte (corsa a mano sul ramo, «ios / test»
+# della PR, la corsa su main di «prova-main»). I test iOS dipendono solo da ios/ e da ios.yml: se una corsa riuscita ha già
+# provato esattamente lo stesso albero (stessi hash git), il Mac non riparte. Il segno «verde» è un artifact di poche righe
+# con l'hash nel nome, caricato solo a test riusciti e accettato solo se viene da una corsa di questo repository (mai da un fork).
+
+def _job_ios(nome: str) -> str:
+    return _blocco(_blocco(_testo("ios.yml"), "jobs", 0), nome, 2)
+
+
+def test_ios_guarda_prima_su_linux_se_lo_stesso_albero_e_gia_verde():
+    gia = _job_ios("gia-verde")
+    assert "runs-on: ubuntu-latest" in gia                       # la domanda costa un Linux, non un Mac
+    assert "actions: read" in gia and "write" not in gia         # legge solo l'elenco degli artifact
+    # la chiave: albero di ios/ e file di ios.yml del commit provato (github.sha: nelle PR è il commit di unione)
+    assert "git/trees/$COMMIT" in gia and '"ios"' in gia
+    assert "contents/.github/workflows/ios.yml?ref=$COMMIT" in gia
+    assert "COMMIT: ${{ github.sha }}" in gia
+    # solo artifact non scaduti di corse di questo repository: un fork non può far saltare i test
+    assert "actions/artifacts?name=ios-verde-$chiave" in gia
+    assert ".expired == false" in gia and ".workflow_run.head_repository_id ==" in gia
+    assert "REPO_ID: ${{ github.repository_id }}" in gia
+    # le espressioni stanno nelle variabili d'ambiente, mai dentro i comandi
+    for riga in gia.split("run: |", 1)[1].splitlines():
+        assert "${{" not in riga, riga
+
+
+def test_se_la_domanda_fallisce_i_test_girano():
+    gia = _job_ios("gia-verde")
+    # API che non risponde o chiave strana: «verde» resta false e il Mac parte (meglio un Mac in più che un buco)
+    assert "verde=false" in gia
+    assert re.search(r"\[0-9a-f\]\{40\}-\[0-9a-f\]\{40\}", gia), "la chiave va controllata (due hash git) prima di usarla"
+
+
+def test_il_mac_parte_solo_se_il_codice_non_e_gia_verde():
+    test = _job_ios("test")
+    assert re.search(r"^    needs:\s*gia-verde\s*$", test, re.M)
+    cond = re.search(r"^    if:\s*(.+)$", test, re.M).group(1)
+    assert "github.event.repository.private == false" in cond
+    assert "needs.gia-verde.outputs.verde != 'true'" in cond
+    # a mano si può sempre forzare la corsa
+    on = _blocco(_testo("ios.yml"), "on", 0)
+    assert "forza:" in on and "type: boolean" in on
+
+
+def test_il_segno_verde_si_carica_solo_dopo_i_test_riusciti():
+    test = _job_ios("test")
+    passi = test.split("      - ")
+    i_test = next(i for i, p in enumerate(passi) if p.startswith("name: Compila ed esegui i test"))
+    i_segno = next(i for i, p in enumerate(passi) if "name: ios-verde-${{ needs.gia-verde.outputs.chiave }}" in p)
+    assert i_segno > i_test
+    segno = passi[i_segno]
+    assert "uses: actions/upload-artifact@" in segno
+    assert "if: failure()" not in segno and "always()" not in segno     # mai dopo un rosso
+    assert "needs.gia-verde.outputs.chiave != ''" in segno
+    assert re.search(r"retention-days:\s*3\b", segno)                   # pochi giorni: l'immagine del Mac cambia
+
+
+def test_i_valori_su_una_riga_di_ios_yml_sono_yaml_valido():
+    # «run: printf 'ios.yml: %s'» non è YAML valido (due punti e spazio in un valore senza virgolette): GitHub scarta tutto il
+    # workflow e «ios / test» fallisce senza job (lo ha trovato zizmor sulla prima stesura di questa modifica)
+    for riga in _testo("ios.yml").splitlines():
+        m = re.match(r"^\s*(?:-\s+)?(?:name|run|if):\s*(.+?)\s*$", riga)
+        if m and not m.group(1).startswith(('"', "'", "|", ">")):
+            assert ": " not in m.group(1).split(" #")[0], riga
+
+
+def test_il_job_ios_dei_controlli_puo_leggere_gli_artifact():
+    ios = _blocco(_testo("test.yml"), "ios", 2)
+    assert "actions: read" in ios and "contents: read" in ios
+    assert "write" not in ios

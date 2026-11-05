@@ -8,7 +8,8 @@ import UIKit
 /// della riga: bianco nelle schede del chiaro, #1C1C1E nelle schede dello scuro e #2C2C2E nei fogli dello scuro (righe della
 /// lista «Sostituisci» e di «Confronta con…»). Prima dell'issue #234 il rosso nei fogli dello scuro faceva 4,1:1 e l'arancio sul
 /// bianco 4,7:1 (la web, con gli stessi colori, 4,4:1 e 3,8:1 nel foglio della scheda). I valori sono gli stessi della web
-/// (`--eti-*` in fanta/web/stile.css; `tests/test_design_web.py` controlla che coincidano).
+/// (`--eti-*` e `--verde` in fanta/web/stile.css; `tests/test_design_web.py` controlla che coincidano). Dall'issue #242 c'è anche
+/// la pillola verde («Probabile titolare», «Ha giocato»), che prima sull'iPhone era grigia.
 @Suite("Pillole dei giocatori leggibili in chiaro e in scuro")
 struct ContrastoPilloleTests {
     private typealias RGB = (r: Double, g: Double, b: Double)
@@ -31,17 +32,21 @@ struct ContrastoPilloleTests {
         return (max(x, y) + 0.05) / (min(x, y) + 0.05)
     }
 
-    /// Per ogni gravità: (scritta, colore della tinta) in chiaro e in scuro. La tinta è il colore dell'esito
-    /// (`Etichetta.Gravita.colore`: grigio secondario, `Color.attenzione`, `Color.malus`, controllati da `ColoriSemanticiTests`).
+    /// Per ogni tono, nello stesso ordine di `toni`: (scritta, colore della tinta) in chiaro e in scuro. La tinta è il colore
+    /// dell'esito (`Etichetta.Tono.colore`: `Color.positivo`, grigio secondario, `Color.attenzione`, `Color.malus`;
+    /// `scrittaEFondoDellaPillola` controlla che la pillola usi proprio questi).
+    private static let toni: [Etichetta.Tono] = [.positivo, .neutro, .attenzione, .negativo]
     private static let chiaro: [(String, scritta: UInt32, tinta: UInt32)] = [
-        ("normale", Tema.secondarioChiaro, Tema.secondarioChiaro),
+        ("positivo", Tema.pillolaPositivoChiaro, Tema.positivoChiaro),
+        ("neutro", Tema.secondarioChiaro, Tema.secondarioChiaro),
         ("attenzione", Tema.pillolaAttenzioneChiaro, 0x9C5400),
-        ("grave", Tema.pillolaMalusChiaro, 0xB3261E),
+        ("negativo", Tema.pillolaMalusChiaro, 0xB3261E),
     ]
     private static let scuro: [(String, scritta: UInt32, tinta: UInt32)] = [
-        ("normale", Tema.secondarioScuro, Tema.secondarioScuro),
+        ("positivo", Tema.pillolaPositivoScuro, Tema.positivoScuro),
+        ("neutro", Tema.secondarioScuro, Tema.secondarioScuro),
         ("attenzione", Tema.pillolaAttenzioneScuro, 0xFFB04A),
-        ("grave", Tema.pillolaMalusScuro, 0xFF6B5E),
+        ("negativo", Tema.pillolaMalusScuro, 0xFF6B5E),
     ]
 
     @MainActor
@@ -78,16 +83,22 @@ struct ContrastoPilloleTests {
         return String(format: "%02X%02X%02X", Int((r * 255).rounded()), Int((g * 255).rounded()), Int((b * 255).rounded()))
     }
 
-    @Test("La pillola scrive con i colori misurati qui sopra")
-    func scrittaDellaPillola() {
-        let attese: [(Etichetta.Gravita, chiaro: UInt32, scuro: UInt32)] = [
-            (.normale, Tema.secondarioChiaro, Tema.secondarioScuro),
-            (.attenzione, Tema.pillolaAttenzioneChiaro, Tema.pillolaAttenzioneScuro),
-            (.grave, Tema.pillolaMalusChiaro, Tema.pillolaMalusScuro),
-        ]
-        for (gravita, chiaro, scuro) in attese {
-            #expect(Self.esadecimale(gravita.coloreScritta, scuro: false) == String(format: "%06X", chiaro), "\(gravita) in chiaro")
-            #expect(Self.esadecimale(gravita.coloreScritta, scuro: true) == String(format: "%06X", scuro), "\(gravita) in scuro")
+    @Test("La pillola scrive e si colora con i colori misurati qui sopra")
+    func scrittaEFondoDellaPillola() {
+        #expect(Self.toni.count == Self.chiaro.count && Self.toni.count == Self.scuro.count)
+        for (i, tono) in Self.toni.enumerated() {
+            let (chiaro, scuro) = (Self.chiaro[i], Self.scuro[i])
+            #expect(Self.esadecimale(tono.coloreScritta, scuro: false) == String(format: "%06X", chiaro.scritta), "scritta \(tono) in chiaro")
+            #expect(Self.esadecimale(tono.coloreScritta, scuro: true) == String(format: "%06X", scuro.scritta), "scritta \(tono) in scuro")
+            #expect(Self.esadecimale(tono.colore, scuro: false) == String(format: "%06X", chiaro.tinta), "fondo \(tono) in chiaro")
+            #expect(Self.esadecimale(tono.colore, scuro: true) == String(format: "%06X", scuro.tinta), "fondo \(tono) in scuro")
         }
+    }
+
+    @Test("«Probabile titolare» è una pillola verde, come sulla web (#242)")
+    func probabileTitolareVerde() {
+        #expect(Giocatore.nomiTitolarita["titolare"]?.1 == .positivo)
+        #expect(Self.esadecimale(Etichetta.Tono.positivo.coloreScritta, scuro: false) == "08643D")
+        #expect(Self.esadecimale(Etichetta.Tono.positivo.coloreScritta, scuro: true) == "3DDC97")
     }
 }

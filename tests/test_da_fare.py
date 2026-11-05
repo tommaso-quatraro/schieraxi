@@ -21,16 +21,19 @@ def _x(i, nome, ruolo="C", stato=None, dubbio=False, p_voto=0.9, atteso=6.0):
 
 @pytest.fixture
 def mondo(tmp_path, monkeypatch):
-    """Una rosa di 14, titolari 1-11 (il 5 in dubbio, il 6 infortunato), panchina 12-14, tutto in cache finta."""
+    """Una rosa di 14, titolari 1-11 (il 5 in dubbio, il 6 infortunato), panchina 12-14, tutto in cache finta.
+    `sistema` è la formazione consigliata (titolari e panchina, in ordine): un test la cambia per dire cosa farebbe il sistema."""
     schede = {i: _x(i, f"g{i}") for i in range(1, 15)}
     schede[5] = _x(5, "Rossi", dubbio=True, p_voto=0.55)
     schede[6] = _x(6, "Bianchi", stato="infortunato", p_voto=0.0)
     schede[12] = _x(12, "Riserva", atteso=4.5)
     schede[13] = _x(13, "Fuori", stato="squalificato", atteso=9.0)
+    sistema = NS(titolari=list(range(1, 12)), panchina=[12, 13, 14])
     monkeypatch.setattr(da_fare.consigli, "stagione_corrente", lambda: STAGIONE)
     monkeypatch.setattr(da_fare.consigli, "previsioni", lambda db, r: (pd.DataFrame(index=list(range(1, 15))), 9, True))
     monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
-    monkeypatch.setattr(da_fare.consigli, "formazione", lambda db, r, ro: {"titolari": [{"id": i} for i in range(1, 12)]})
+    monkeypatch.setattr(da_fare.consigli, "formazione", lambda db, r, ro: {"titolari": [{"id": i} for i in sistema.titolari],
+                                                                          "panchina": [{"id": i} for i in sistema.panchina]})
     monkeypatch.setattr(da_fare.consigli, "mercato", lambda *a, **k: {"proposte": []})
     monkeypatch.setattr(da_fare.consigli, "proposte_scambi", lambda *a, **k: (None, []))
     rose = NS(mia_squadra="Mia", squadra=lambda n: NS(giocatori=[NS(id=i) for i in range(1, 15)]))
@@ -43,14 +46,23 @@ def mondo(tmp_path, monkeypatch):
     ctx = NS(utente_id=None, rose=rose_file, scelte=tmp_path / "scelte.json", diario=tmp_path / "diario.json",
              impostazioni_avvisi=tmp_path / "imp.json")
     oggi = {"giornata": 9, "ore_mancanti": 30.0, "iniziata": False}
-    return NS(db=db, rose=rose, ctx=ctx, oggi=oggi, tmp=tmp_path)
+    return NS(db=db, rose=rose, ctx=ctx, oggi=oggi, tmp=tmp_path, sistema=sistema)
 
 
 def vai(m, **k):
-    return da_fare.costruisci(m.db, object(), m.rose, k.pop("oggi", m.oggi), k.pop("ctx", m.ctx), adesso=ADESSO, **k)
+    return da_fare.costruisci(m.db, k.pop("regole", object()), m.rose, k.pop("oggi", m.oggi), k.pop("ctx", m.ctx), adesso=ADESSO, **k)
+
+
+def la_consigliata_cambia(m, *cambi):
+    """Hai salvato i titolari 1-11; la formazione consigliata invece toglie `esce` (va in panchina) e schiera `entra`."""
+    scelte.salva(STAGIONE, 9, list(range(1, 12)), "4-4-2", m.ctx.scelte)
+    for esce, entra in cambi:
+        m.sistema.titolari = [entra if i == esce else i for i in m.sistema.titolari]
+        m.sistema.panchina = [esce if i == entra else i for i in m.sistema.panchina]
 
 
 def test_dubbi_e_infortuni_con_alternativa(mondo):
+    la_consigliata_cambia(mondo, (6, 14), (5, 12))
     v = vai(mondo)
     d = [x for x in v if x["tipo"] == "dubbio"]
     assert [x["id"] for x in d] == ["dubbio:6", "dubbio:5"]                 # prima chi è fuori
@@ -59,7 +71,71 @@ def test_dubbi_e_infortuni_con_alternativa(mondo):
     # un sostituto per volta: il 14 va già al posto dell'infortunato, per il 5 resta il 12
     assert d[1]["alternativa"]["id"] == 12 and "Meglio Riserva" in d[1]["testo"] and "55%" in d[1]["testo"]
     assert d[1]["destinazione"] == {"scheda": "formazione", "sezione": None, "link": "schieraxi://giocatore/5", "giocatore": 5}
+    assert all(x["azione"] == "Sostituisci" for x in d)
     assert all(x["azione"] and x["testo"] for x in v)
+
+
+def test_titolare_in_dubbio_tenuto_dalla_consigliata_niente_cambio(mondo):
+    """#266: la consigliata tiene Rossi (55%) titolare e la riserva in panchina, quindi Formazione e confronto dicono «Schiera Rossi».
+    Da fare non deve scrivere «Meglio Riserva» né avere «Sostituisci»: dice chi entra se lui non gioca."""
+    mondo.sistema.titolari, mondo.sistema.panchina = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 14], [12, 13, 6]     # l'infortunato non c'è
+    v = vai(mondo)
+    d = [x for x in v if x["tipo"] == "dubbio"]
+    assert [x["id"] for x in d] == ["dubbio:5"]
+    assert "Meglio" not in d[0]["testo"] and "alternativa" not in d[0]
+    assert d[0]["testo"] == "Rossi è in dubbio (55% di giocare) ma resta titolare: se non gioca entra Riserva dalla panchina."
+    assert d[0]["frase"] == {"chiave": "dafare.dubbio_incerto_tiene", "param": {"nome": "Rossi", "p": 55, "riserva": "Riserva"}}
+    assert d[0]["riserva"] == {"id": 12, "nome": "Riserva"} and d[0]["giocatore"] == {"id": 5, "nome": "Rossi"}
+    assert d[0]["priorita"] == 2 and d[0]["azione"] == "Apri la formazione"
+    assert d[0]["destinazione"] == {"scheda": "formazione", "sezione": None, "link": "schieraxi://formazione"}
+
+
+def test_titolare_tolto_dalla_consigliata_il_cambio_resta(mondo):
+    """#266: hai salvato Rossi titolare, ma la consigliata lo mette in panchina e schiera la riserva: il cambio si propone."""
+    la_consigliata_cambia(mondo, (5, 12))
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["testo"] == "Rossi è in dubbio (55% di giocare). Meglio Riserva."
+    assert d["alternativa"]["id"] == 12 and d["azione"] == "Sostituisci" and "riserva" not in d
+
+
+def test_tutti_e_due_titolari_nella_consigliata_decidono_i_punti(mondo, monkeypatch):
+    """Stessa regola di `consigliato` del confronto: se la consigliata schiera tutti e due (tu hai salvato solo Rossi), conta chi ha
+    più punti attesi da solo."""
+    scelte.salva(STAGIONE, 9, [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12], "4-4-2", mondo.ctx.scelte)
+    mondo.sistema.titolari = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 14]          # schiera anche il 14 (6,0 punti attesi)
+    mondo.sistema.panchina = [12, 13, 6]
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")               # Rossi ne ha 6,0 anche lui: a pari punti resta lui
+    assert "Meglio" not in d["testo"] and d["azione"] == "Apri la formazione"
+    schede = {i: da_fare.consigli.scheda_previsione(i, None) for i in range(1, 15)}
+    schede[5] = schede[5] | {"punti_attesi": 3.3}
+    monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["alternativa"]["id"] == 14 and "Meglio g14" in d["testo"] and d["azione"] == "Sostituisci"
+
+
+def test_tenuto_senza_sostituzioni_o_senza_riserva_niente_panchina(mondo):
+    """Senza sostituzioni nella lega (o senza una riserva dello stesso ruolo in panchina) nessuno entra al suo posto: la frase non lo dice."""
+    mondo.sistema.titolari, mondo.sistema.panchina = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 14], [12, 13, 6]
+    senza_cambi = NS(panchina=NS(max_sostituzioni=0))
+    d = next(x for x in vai(mondo, regole=senza_cambi) if x["id"] == "dubbio:5")
+    assert d["testo"] == "Rossi è in dubbio (55% di giocare)." and d["azione"] == "Apri la formazione" and "riserva" not in d
+    mondo.sistema.panchina = [13, 6]                                         # in panchina solo uno squalificato e l'infortunato
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["testo"] == "Rossi è in dubbio (55% di giocare)." and "riserva" not in d
+
+
+def test_il_cambio_da_fare_non_resta_fuori_dal_tetto(mondo, monkeypatch):
+    """Quattro titolari in dubbio, uno solo da cambiare: le voci che non chiedono niente («resta titolare») non lo spingono oltre
+    il tetto di 3 dubbi."""
+    schede = {i: _x(i, f"g{i}") for i in range(1, 15)}
+    for i in (2, 3, 4):
+        schede[i] = _x(i, f"g{i}", dubbio=True, p_voto=0.5)
+    schede[5] = _x(5, "Rossi", dubbio=True, p_voto=0.55)
+    schede[12] = _x(12, "Riserva", atteso=4.5)
+    monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+    la_consigliata_cambia(mondo, (5, 12))
+    d = [x for x in vai(mondo) if x["tipo"] == "dubbio"]
+    assert len(d) == da_fare.MAX_DUBBI and d[0]["id"] == "dubbio:5" and d[0]["azione"] == "Sostituisci"
 
 
 def test_mai_lo_stesso_sostituto_per_due(mondo, monkeypatch):
@@ -71,8 +147,12 @@ def test_mai_lo_stesso_sostituto_per_due(mondo, monkeypatch):
         schede[i] = _x(i, f"g{i}", ruolo="D")
     schede[14] = _x(14, "Unica", atteso=7.0)
     monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+    d = {x["id"]: x for x in vai(mondo) if x["tipo"] == "dubbio"}             # la consigliata li tiene tutti e due
+    assert d["dubbio:7"]["riserva"]["id"] == 14 and "riserva" not in d["dubbio:5"] and "alternativa" not in d["dubbio:5"]
+    la_consigliata_cambia(mondo, (7, 14))                                     # la consigliata toglie Verdi
     d = {x["id"]: x for x in vai(mondo) if x["tipo"] == "dubbio"}
-    assert d["dubbio:7"]["alternativa"]["id"] == 14 and "alternativa" not in d["dubbio:5"]
+    assert d["dubbio:7"]["alternativa"]["id"] == 14 and "alternativa" not in d["dubbio:5"] and "riserva" not in d["dubbio:5"]
+    assert d["dubbio:7"]["azione"] == "Sostituisci" and d["dubbio:5"]["azione"] == "Apri la formazione"     # nessun sostituto: nessun cambio
 
 
 def test_nome_con_il_punto_non_raddoppia_il_punto(mondo, monkeypatch):
@@ -81,6 +161,7 @@ def test_nome_con_il_punto_non_raddoppia_il_punto(mondo, monkeypatch):
     schede[5] = _x(5, "Rossi", dubbio=True, p_voto=0.55)
     schede[14] = _x(14, "Adams A.", atteso=7.0)
     monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+    la_consigliata_cambia(mondo, (5, 14))
     testo = [x for x in vai(mondo) if x["id"] == "dubbio:5"][0]["testo"]
     assert "Meglio Adams A." in testo and ".." not in testo
 
@@ -355,10 +436,16 @@ def test_ogni_voce_ha_la_frase_per_tradurla(mondo):
     for x in voci:
         assert frasi.da_json(x["frase"]) == x["testo"], x["id"]
         assert frasi.da_json(x["azione_frase"]) == x["azione"], x["id"]
-    dubbio = next(x for x in voci if x["id"] == "dubbio:5")
-    assert dubbio["frase"] == {"chiave": "dafare.dubbio_incerto_alt", "param": {"nome": "Rossi", "p": 55, "alt": "Riserva"}}      # il 14 va all'infortunato
+    dubbio = next(x for x in voci if x["id"] == "dubbio:5")                 # la consigliata lo tiene: chi entra se non gioca
+    assert dubbio["frase"] == {"chiave": "dafare.dubbio_incerto_tiene", "param": {"nome": "Rossi", "p": 55, "riserva": "Riserva"}}
     formazione = next(x for x in voci if x["tipo"] == "formazione")
     assert formazione["frase"]["param"]["tempo"] == {"chiave": "tempo.ore", "param": {"n": 2}}
+    la_consigliata_cambia(mondo, (6, 14), (5, 12))                          # la consigliata li cambia: si propone il cambio
+    voci = vai(mondo)
+    dubbio = next(x for x in voci if x["id"] == "dubbio:5")
+    assert dubbio["frase"] == {"chiave": "dafare.dubbio_incerto_alt", "param": {"nome": "Rossi", "p": 55, "alt": "Riserva"}}      # il 14 va all'infortunato
+    for x in voci:
+        assert frasi.da_json(x["frase"]) == x["testo"] and frasi.da_json(x["azione_frase"]) == x["azione"], x["id"]
 
 
 def test_svincolato_e_scambio_portano_motivo_e_guadagno_come_frasi(mondo, monkeypatch):

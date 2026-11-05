@@ -6,9 +6,20 @@ name: iOS
 # oppure a mano (Actions > iOS > Run workflow, o `gh workflow run ios.yml --ref <ramo>`).
 # Niente cache di DerivedData: il checkout cambia le date di tutti i file e Xcode ricompilerebbe comunque tutto;
 # niente pacchetti SwiftPM in ios/project.yml, quindi niente da mettere in cache.
+# Lo stesso codice non si prova due volte (issue #264): i test dipendono solo da ios/ e da questo file. Dopo i test riusciti il
+# Mac lascia un artifact minuscolo «ios-verde-<albero di ios/>-<hash di ios.yml>» (3 giorni). Il job Linux «gia-verde» lo cerca
+# prima di prenotare il Mac: se una corsa di questo repository (mai di un fork) ha già provato esattamente lo stesso codice,
+# il Mac non parte e il job risulta riuscito. Succedeva fino a tre volte per modifica: corsa a mano sul ramo, «ios / test»
+# della PR (commit di unione con main) e la corsa su main dopo l'unione. Se main nel frattempo ha cambiato ios/, l'albero è
+# un altro e i test girano. A mano si può forzare la corsa (forza = vero).
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      forza:
+        description: "prova anche se lo stesso codice iOS è già verde"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -18,9 +29,47 @@ env:
   HOMEBREW_NO_INSTALL_CLEANUP: "1"
 
 jobs:
+  gia-verde:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read             # solo per l'elenco degli artifact «ios-verde-…»
+    outputs:
+      verde: ${{ steps.decidi.outputs.verde }}
+      chiave: ${{ steps.decidi.outputs.chiave }}
+    steps:
+      - name: Lo stesso codice iOS è già verde?
+        id: decidi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.sha }}
+          REPO_ID: ${{ github.repository_id }}
+          FORZA: ${{ inputs.forza }}
+        run: |
+          # ogni errore lascia verde=false: i test girano (meglio un Mac in più che un buco)
+          verde=false
+          chiave=""
+          albero=$(gh api "repos/$GITHUB_REPOSITORY/git/trees/$COMMIT" --jq '.tree[] | select(.path == "ios") | .sha') || albero=""
+          file=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/ios.yml?ref=$COMMIT" --jq '.sha') || file=""
+          if printf '%s\n' "$albero-$file" | grep -qxE '[0-9a-f]{40}-[0-9a-f]{40}'; then
+            chiave="$albero-$file"
+            if [ "$FORZA" != true ]; then
+              corsa=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=ios-verde-$chiave&per_page=30" \
+                --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_repository_id == (env.REPO_ID | tonumber))][0].workflow_run.id // ""') || corsa=""
+              if printf '%s\n' "$corsa" | grep -qxE '[0-9]+'; then
+                verde=true
+                echo "Test iOS non ripetuti: lo stesso codice (ios/ $albero, ios.yml $file) è già verde nella corsa $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$corsa" | tee -a "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
+          fi
+          echo "Chiave: ${chiave:-sconosciuta}; già verde: $verde"
+          echo "verde=$verde" >> "$GITHUB_OUTPUT"
+          echo "chiave=$chiave" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: gia-verde
     # i minuti macOS sono gratuiti solo sui repository pubblici: su un repository privato il job non parte
-    if: github.event.repository.private == false
+    if: github.event.repository.private == false && needs.gia-verde.outputs.verde != 'true'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -54,6 +103,21 @@ jobs:
             -resultBundlePath build/test.xcresult \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
             2>&1 | tee build/test.log | tail -n 60
+      # solo a test riusciti (nessun if: un passo fallito prima lo salta): il segno che «gia-verde» cerca nelle corse dopo
+      - name: Segna lo stesso codice come verde
+        if: needs.gia-verde.outputs.chiave != ''
+        env:
+          CHIAVE: ${{ needs.gia-verde.outputs.chiave }}
+        run: |
+          printf 'ios/ e ios.yml: %s\ncommit: %s\n' "$CHIAVE" "$GITHUB_SHA" > build/ios-verde.txt
+      - name: Carica il segno «verde»
+        if: needs.gia-verde.outputs.chiave != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: ios-verde-${{ needs.gia-verde.outputs.chiave }}
+          path: ios/build/ios-verde.txt
+          if-no-files-found: error
+          retention-days: 3       # pochi giorni: l'immagine del Mac (Xcode, simulatori) cambia
       - name: Righe con errori
         if: failure()
         run: grep -E "error:|Test Case .* failed|\*\* TEST FAILED|failed:" build/test.log | head -n 80 || true

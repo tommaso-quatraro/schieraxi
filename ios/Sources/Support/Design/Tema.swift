@@ -33,6 +33,19 @@ enum Tema {
     static let pillolaAttenzioneScuro: UInt32 = 0xFFB04A
     static let pillolaMalusChiaro: UInt32 = 0xA1221B
     static let pillolaMalusScuro: UInt32 = 0xFF867B
+    /// La pillola verde («Probabile titolare», «Ha giocato», «Partita in corso»), come `.etichetta` della web: fondo il verde
+    /// positivo (`--verde`) e scritta `--eti-verde`. Prima l'iPhone la faceva grigia (issue #242). Il verde positivo non è il colore
+    /// principale dell'app: nel chiaro quello è l'oliva delle azioni (`Accento.verde`).
+    static let positivoChiaro: UInt32 = 0x0A7D4C
+    static let positivoScuro: UInt32 = 0x3DDC97
+    static let pillolaPositivoChiaro: UInt32 = 0x08643D
+    static let pillolaPositivoScuro: UInt32 = 0x3DDC97
+
+    /// La scritta dei pulsanti pieni (`pulsanteVetro(prominente: true)`), come `--azione-testo` della web: verde quasi nero sul verde
+    /// chiaro dello scuro (8,2:1), bianca sull'oliva del chiaro (6,4:1). Lo stile di sistema la scriveva bianca anche nello scuro:
+    /// 1,8:1 (issue #248). Test `ContrastoPulsantiPieniTests` (e `tests/test_design_web.py` per la web).
+    static let scrittaPulsanteChiaro: UInt32 = 0xFFFFFF
+    static let scrittaPulsanteScuro: UInt32 = 0x04301C
 
     /// Con «Ridurre movimento»: niente spostamenti né rimbalzi, solo dissolvenze brevi (le schermate non restano mai immobili).
     @MainActor static var movimentoRidotto: Bool { UIAccessibility.isReduceMotionEnabled }
@@ -77,6 +90,12 @@ extension Color {
     /// Scritta delle pillole arancio e rosse (solo dentro la pillola: fuori restano `attenzione` e `malus`). Vedi `Tema.pillolaAttenzioneChiaro`.
     static let attenzionePillola = dinamico(scuro: Tema.pillolaAttenzioneScuro, chiaro: Tema.pillolaAttenzioneChiaro)
     static let malusPillola = dinamico(scuro: Tema.pillolaMalusScuro, chiaro: Tema.pillolaMalusChiaro)
+    /// Il verde delle pillole positive: `positivo` per il fondo (e il pallino della `Capsula`), `positivoPillola` per la scritta.
+    /// Vedi `Tema.positivoChiaro`.
+    static let positivo = dinamico(scuro: Tema.positivoScuro, chiaro: Tema.positivoChiaro)
+    static let positivoPillola = dinamico(scuro: Tema.pillolaPositivoScuro, chiaro: Tema.pillolaPositivoChiaro)
+    /// La scritta dei pulsanti pieni. Vedi `Tema.scrittaPulsanteChiaro`.
+    static let scrittaPulsante = dinamico(scuro: Tema.scrittaPulsanteScuro, chiaro: Tema.scrittaPulsanteChiaro)
     /// La «XI» del nome e dello slogan: lime acceso sul fondo scuro, verde scuro sul chiaro (5,6:1 sul grigio dei fondi:
     /// si può usare anche per il testo, a differenza di `capitano`). Come `--xi` del sito, un filo più scuro sul chiaro.
     static let xi = dinamico(scuro: 0xD4F34A, chiaro: 0x2E6E00)
