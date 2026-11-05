@@ -1,5 +1,24 @@
 [
   {
+    "versione": "1.397",
+    "data": "2026-11-05T19:07:49",
+    "titolo": "Ogni giornata misuriamo quanto ci prendono i nostri numeri",
+    "voci": [
+      "Poco prima della prima partita di ogni giornata il server conserva i numeri che l'app mostra per tutti i giocatori della Serie A: «gioca N%», fantavoto atteso, gol e assist attesi, minuti attesi e probabili formazioni. Solo numeri, nessun dato personale.",
+      "A giornata finita misura quanto ci hanno preso: errore del fantavoto atteso contro quello della fantamedia, «gioca N%» contro chi ha giocato davvero, punti veri dentro la fascia «8 volte su 10». Le medie delle ultime 8 giornate restano a disposizione di chi gestisce il server.",
+      "Se una media resta fuori dal limite per due giornate di fila, chi gestisce il server riceve un avviso.",
+      "Se i numeri di una giornata non si riescono a conservare prima della prima partita, chi gestisce il server riceve un avviso con il motivo, e la giornata resta segnata come persa."
+    ],
+    "tecnico": [
+      "Nuovo modulo registro_giornate.py (#326, L1 di #165): negli ultimi 10 minuti prima della prima partita (avvisi.prima_partita) salva consigli.previsioni con Regole() per ogni giocatore della Serie A, esclusi quelli con la partita già iniziata, con la fantamedia di allora. Una volta sola per giornata; nessuna richiesta in più alle fonti.",
+      "Archivio: tabelle nuove registro_giocatori e registro_giornate (CREATE TABLE IF NOT EXISTS, niente migrazioni distruttive). Non si ricostruiscono con aggiorna: una giornata non salvata è persa.",
+      "Misura a turno finito (fasi.fine_giornata) da 24 ore con i voti di tutte le partite giocate, o da 72 ore senza le partite ancora senza voti. I1 = RMSE del fantavoto atteso / RMSE della fantamedia - 1 (soglia -0,03); I2 = errore di calibrazione su fasce di 10 punti (≤ 0,05) e Brier (≤ 0,15); I3 = copertura della fascia 10-90% su 20 rose estratte a sorte con seme fisso, 300 simulazioni (tra 0,72 e 0,88). Medie sulle ultime 8 giornate misurate, verdetto solo a finestra piena.",
+      "Avviso con sentinella.manda_ntfy quando un indicatore è fuori soglia nella giornata misurata e in quella prima; una volta sola finché resta fuori, riprova al minuto dopo se l'invio non riesce.",
+      "Giornata persa: se all'inizio della prima partita la giornata non è salvata (previsioni in errore, zero righe, servizio fermo) registro_giornate.segna_perse scrive una riga con salvato NULL e il motivo in breve nella colonna nuova `persa` (registro_giornate), che non si misura mai; avvisa_perse manda un solo avviso (sentinella.manda_ntfy) e riprova se l'invio non riesce. Contano le giornate dalla prima del registro (o dalla prima tentata) in poi. Nel log: tipo d'errore e punti del codice (file e righe, senza messaggio) e il motivo delle zero righe (colonne mancanti, giornata diversa, numeri mancanti).",
+      "Gira nel thread del pianificatore (pianificatore._registro, non alza mai); FANTA_REGISTRO_GIORNATE=0 lo spegne (spento nei test da conftest). GET /api/stato-dati: campo nuovo e facoltativo `registro` (docs/API.md); la pagina web non lo mostra ancora."
+    ]
+  },
+  {
     "versione": "1.396",
     "data": "2026-11-05T17:57:51",
     "titolo": "Misura interna: i consigli con una fonte di dati in meno",
