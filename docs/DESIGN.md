@@ -53,6 +53,7 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 | Capitano / selezione | `#D4F34A` | `#86A800` (solo fondo, mai testo) | `--capitano`; sopra il lime testo scuro (`--capitano-testo`) |
 | Azione (pulsanti, testo di azione) | `#3DDC97` (`--azione`) | `#526600` (testo bianco sopra) | Dal 31/10/2026: in chiaro mai il lime per il testo; `MARCHIO.md`, «Contrasto dei colori delle azioni» |
 | Informazione | `#62A9FF` | `#1A5BB5` | `--blu` |
+Sigla della squadra nei colori sociali (`distintivo()` sulla web, `DistintivoSquadra` sull'iPhone): scritta nera o bianca, quella con il contrasto più alto sul primo colore (`LetturaPedina.testoScuro`); con la vecchia soglia della web il bianco sull'azzurro del Napoli stava a 3,5:1 (issue #244).
 Il giallo (`--giallo`) resta solo per la stella «consigliato». Un valore positivo ha il segno `+`, uno negativo `−`.
 Scritta delle pillole (`.etichetta` sulla web, `PillolaEtichetta` sull'iPhone): non il colore pieno della tabella ma `--eti-verde`, `--eti-arancio`, `--eti-rosso` (web) e `Tema.pillolaAttenzione*`, `Tema.pillolaMalus*` (iPhone), stessi valori: chiaro `#08643D`, `#834700`, `#A1221B`; scuro `#3DDC97`, `#FFB04A`, `#FF867B`. Il fondo resta il colore pieno al 16% (web) o al 14% (iPhone). Perché: sopra quella tinta il colore pieno scendeva sotto 4,5:1 (issue #234: nel chiaro della web verde 3,5:1 e arancio 3,8:1 sul foglio della scheda; nei fogli scuri dell'iPhone il rosso 4,1:1). Test `tests/test_design_web.py` e `ContrastoPilloleTests`.
 
@@ -98,6 +99,9 @@ Rimasti sotto 4,5:1 dopo il primo giro: in scuro il simbolo «○» e le righe �
 - Testi di spiegazione: massimo 2 righe visibili; il resto in «Come funziona» comprimibile.
 - Elenchi lunghi: righe, non card. Una card per elemento solo se ha azioni proprie (proposta di scambio).
 - Densità «compatta» (Aspetto) = righe da 48 e un livello di Secondario in meno; è l'impostazione consigliata di default per elenchi di più di 10 voci.
+
+## Pagina strettissima (sotto i 320 px)
+WCAG 2.2, 1.4.10: con lo zoom del browser al 200% un telefono vede 160-195 px. Sotto i 320 px utili (`@container pagina` sul body: conta anche il testo «Molto grande» dell'app, che usa `zoom`) tutto va in una colonna e niente scorre di lato: testata su due righe e non fissa, barra con le sole icone (i nomi restano ai lettori di schermo), righe dei giocatori con volto e numeri sopra e nome sotto, partite con l'ora sopra le squadre, moduli e stili a capo, due pedine per fila con il cognome intero. Fa eccezione solo il calendario, che è una tabella: scorre di lato dentro il suo riquadro. Sopra i 320 px non cambia niente (`tests/test_riflusso_web.py`).
 
 ## Tablet e PC
 - iPad/web ≥ 900 px: barra a colonna a sinistra, contenuto max 980; ≥ 1100: 2 colonne, ≥ 1700: 3 (già nel CSS). Il campo di formazione ha larghezza massima 620 e sta accanto alle card di controllo, non sopra.

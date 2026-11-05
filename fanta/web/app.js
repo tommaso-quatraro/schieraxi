@@ -1417,11 +1417,11 @@ async function tabCalendario(dove, ok) {
     if (!ok()) return;
     dove.innerHTML = `<div class="carta"><h2>${t("mercato.calendario_difficolta")}</h2>
       <div class="debole piccolo">${tp("mercato.cal_spiega", c.giornate.length)}</div>
-      <table class="tabella-cal"><thead><tr><th></th>${c.giornate.map(g => `<th>G${g}</th>`).join("")}</tr></thead>
+      <div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal"><thead><tr><th></th>${c.giornate.map(g => `<th>G${g}</th>`).join("")}</tr></thead>
       <tbody>${c.squadre.map(s => `<tr class="${mie.has(s.squadra) ? "mia" : ""}"><td>${sigla(s.squadra)}</td>${c.giornate.map(g => {
         const p = s.partite.find(x => x.giornata === g);
         return p ? `<td><span class="cella d${p.difficolta}">${vsAt(p)}</span></td>` : `<td></td>`;
-      }).join("")}</tr>`).join("")}</tbody></table>
+      }).join("")}</tr>`).join("")}</tbody></table></div>
       <div class="legenda-cal">${t("diff.1")} ${[1, 2, 3, 4, 5].map(d => `<i class="d${d}"></i>`).join("")} ${t("diff.4")}</div></div>`;
   } catch (e) { if (ok()) dove.innerHTML = erroreVista(e); }
 }

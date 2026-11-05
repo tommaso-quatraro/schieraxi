@@ -476,6 +476,8 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .stat-fila span { font-size: var(--t-eti); color: var(--testo-2); }
 
 /* ---------------------------------------------------------------- calendario */
+/* il calendario è una tabella: quando non ci sta (pagina sotto i 320 px) scorre di lato dentro il suo riquadro, invece di restare tagliato dalla carta */
+.scorri-tabella { overflow-x: auto; }
 .tabella-cal { width: 100%; border-collapse: separate; border-spacing: 0 5px; font-size: var(--t-sec); }
 .tabella-cal th { font-size: var(--t-eti); font-weight: 600; color: var(--testo-2); padding: 0 2px 2px; }
 .tabella-cal td { padding: 0 2px; }
@@ -1180,3 +1182,64 @@ main > .imp { grid-column: 1 / -1; }
 }
 /* monitor da 5120 px: un gradino in più, così testo e bersagli restano della stessa misura che su un 4K */
 @media (min-width: 4400px) { :root { --z: 1.75; } }
+
+/* =====================================================================================================
+   Pagina strettissima: sotto i 320 px di larghezza utile (telefono con lo zoom del browser al 200%, che vede 160-195 px,
+   o testo «Molto grande» su un telefono piccolo) tutto si legge in una colonna, senza scorrere di lato (WCAG 2.2, 1.4.10;
+   issue #235). La misura è il body come contenitore e non una @media: il testo dell'app ingrandisce la pagina con `zoom`,
+   che le @media non vedono. Sopra i 320 px non cambia niente.
+   ===================================================================================================== */
+body { container: pagina / inline-size; }
+@container pagina (max-width: 319.98px) {
+  /* testata: nome e giornata sopra, i tre pulsanti sotto; scorre via con la pagina (fissa, con lo zoom, copriva un quarto dello schermo) */
+  .testata { position: relative; flex-wrap: wrap; row-gap: 6px; padding: calc(env(safe-area-inset-top) + 8px) 8px 8px; }
+  .bottoni-testata { margin-left: auto; gap: 6px; }
+  .testo-testata .titolo, .testo-testata .sottotitolo, .sottotitolo > span { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  /* barra in basso: solo le icone, più bassa; il nome della scheda resta ai lettori di schermo (come la barra dell'iPhone con il testo enorme) */
+  .schede { left: 6px; right: 6px; bottom: calc(env(safe-area-inset-bottom) + 6px); height: 56px; padding: 4px; }
+  .lente { top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 4); }
+  .schede button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  main { padding: 8px 8px 0; }
+  .carta { padding: 12px; }
+  /* due blocchi affiancati (modulo e punti attesi): uno sotto l'altro, il secondo resta a destra */
+  .riga { flex-wrap: wrap; }
+  .riga > :last-child:not(:first-child) { margin-left: auto; }
+  /* riga del giocatore: volto (e numeri) sopra, nome, partita ed etichette sotto a tutta larghezza */
+  .voce:has(> .avatar-anello) { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; column-gap: 8px; }
+  .voce:has(> .avatar-anello) > .avatar-anello { grid-row: 1; grid-column: 1; }
+  .voce:has(> .avatar-anello) > :nth-child(2) { grid-row: 2; grid-column: 1 / -1; }
+  .voce:has(> .avatar-anello) > .valore { grid-row: 1; grid-column: 2; justify-self: end; }
+  /* nelle righe con ⇄ il pulsante sta in alto a destra e i numeri sotto il nome, su una riga */
+  .elenco li.con-confronto .voce { padding-right: 0; }
+  .elenco li.con-confronto .confronta-mini { top: 13px; bottom: auto; }
+  .con-confronto .voce:has(> .avatar-anello) > .valore { grid-row: 3; grid-column: 1 / -1; justify-self: start; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; text-align: left; }
+  .con-confronto .voce > .valore b { display: inline; }
+  .con-confronto .voce > .valore .barra-p { display: none; }
+  .elenco li.alternative-li { padding: 0 0 12px; }
+  /* Oggi a giornata in corso e «Indisponibili in rosa»: il fantavoto preso o lo stato va sotto il nome; il pallino resta a destra */
+  .avviso-riga { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; }
+  .avviso-riga > :nth-child(3):not(.pallino-stato) { grid-row: 2; grid-column: 2 / -1; justify-self: start; }
+  .voce .nome, .voce .dettaglio { overflow-wrap: anywhere; }          /* «Lokomotiv Demo» nelle squadre: la parola lunga non allarga la pagina */
+  /* sezioni di Squadra (Consigliati, Giocatori, Seguiti, Calendario) e di Lega: le voci vanno su due righe invece di sovrapporsi */
+  .segmenti, .segmenti.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .segmenti button, .segmenti.scorri button { flex: 1 1 auto; padding: 11px 8px; white-space: normal; }
+  .mia-riga { flex-wrap: wrap; gap: 8px; }
+  .immagini-squadra { grid-template-columns: 1fr; }
+  /* partite del turno: ora e risultato sopra, le due squadre sotto */
+  .partita { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 6px; }
+  .partita .ora { grid-row: 1; grid-column: 1 / 3; }
+  .partita .pt { grid-row: 1; grid-column: 3; }
+  .partita .sq.casa { grid-row: 2; grid-column: 1; }
+  .partita .vs { grid-row: 2; grid-column: 2; }
+  .partita .sq.trasf { grid-row: 2; grid-column: 3; }
+  /* Formazione: moduli e stili vanno a capo (tutti in vista), il campo mette due pedine per fila, la legenda va in colonna */
+  .chips.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .chips.scorri .chip { flex: 0 1 auto; max-width: 100%; flex-wrap: wrap; row-gap: 0; text-align: left; }       /* «Molto rischiosa 70,1» a 160 px: il numero va sotto */
+  .campo { padding: 20px 4px; }
+  .linea { flex-wrap: wrap; row-gap: 14px; }
+  .pedina { width: 64px; }
+  .pedina .nome, .pedina .gioca { white-space: normal; overflow: visible; overflow-wrap: anywhere; max-width: 100%; }
+  .legenda-campo { margin: 0 4px; padding: 10px; }
+  .legenda-campo li { grid-template-columns: 1fr; gap: 2px; }
+  .leg-esempio { justify-content: flex-start; }
+}
