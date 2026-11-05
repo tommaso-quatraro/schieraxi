@@ -70,7 +70,7 @@ struct SchedaScelteTueView: View {
                 .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
                 .padding(.vertical, 6)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(r.titolo). \(r.frase) \(r.punti)")
+                .accessibilityLabel("\(r.voceTitolo ?? r.titolo). \(r.frase) \(r.punti)")
             }
             if testo.righe.count > Self.righeIniziali {
                 Button(tutte ? "Mostra meno" : "Mostra tutte le \(testo.righe.count) giornate") {

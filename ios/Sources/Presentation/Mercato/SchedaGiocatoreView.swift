@@ -170,20 +170,21 @@ struct GiocatoreCorpo: View {
         }
     }
 
-    /// Il numero della giornata della lega (`giornata_lega`); con un server che non lo manda, quello di `giornata`.
-    static func giornataMostrata(_ p: Giocatore) -> Int? { p.giornataLega ?? p.giornata }
-
-    private func descrizionePartita(_ p: Giocatore) -> String {
-        var testo = ""
-        if let g = Self.giornataMostrata(p) { testo += "Giornata \(g) · " }
-        testo += (p.inCasa == true ? "in casa" : "in trasferta") + " contro " + (p.avversario ?? "").capitalized
-        if let data = p.dataPartita { testo += " · " + Quando.leggibile(data) }
-        return testo
+    /// «Giornata 8 · 11ª di Serie A · in trasferta contro Milan · sab 31 20:45»: la giornata con i due numeri, come la web (#299).
+    /// Con un server che non manda `giornata_lega`: «11ª giornata di Serie A · …». `voce`: la stessa frase per VoiceOver, con le
+    /// virgole al posto di «·».
+    static func descrizionePartita(_ p: Giocatore, voce: Bool = false) -> String {
+        let nome = p.giornata.map { NomeGiornata(serieA: $0, lega: p.giornataLega) }
+        var pezzi = [nome.map { voce ? $0.voce : $0.intero }].compactMap { $0 }
+        pezzi.append((p.inCasa == true ? "in casa" : "in trasferta") + " contro " + (p.avversario ?? "").capitalized)
+        if let data = p.dataPartita { pezzi.append(Quando.leggibile(data)) }
+        return pezzi.joined(separator: voce ? ", " : " · ")
     }
 
     private func previsione(_ p: Giocatore, ruolo: String, squadra: String?) -> some View {
         Carta("Prossima partita", simbolo: "soccerball") {
-            Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(Color.testoSecondario)
+            Text(Self.descrizionePartita(p)).font(.subheadline).foregroundStyle(Color.testoSecondario)
+                .accessibilityLabel(Self.descrizionePartita(p, voce: true))
             NumeroFantavotoScheda(p: p)
             BarraPercentuale(valore: p.pVoto ?? 0)
             HStack {
@@ -284,7 +285,7 @@ struct GiocatoreCorpo: View {
             .foregroundStyle(Color.testoSuAccento)
             .frame(minWidth: 34, minHeight: 28)
             .background(colore, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .accessibilityLabel("Giornata \(v.giornata): \(etichetta)")
+            .accessibilityLabel("\(TempiLega.serieA(v.giornata)): \(etichetta)")
     }
 
     @ViewBuilder

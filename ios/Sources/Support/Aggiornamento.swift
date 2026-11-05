@@ -56,8 +56,8 @@ enum Aggiornamento {
 
     /// I promemoria di un'ora e di un quarto d'ora prima della scadenza di questa giornata (solo quelli accesi negli avvisi).
     static func programmaPromemoria(_ oggi: Oggi) async {
-        if let inizio = Quando.data(oggi.chiusura), let numero = oggi.giornataMostrata {
-            await Notifiche.programma(giornata: numero, inizio: inizio, modulo: oggi.formazione?.modulo)
+        if let inizio = Quando.data(oggi.chiusura), let nome = oggi.nomeGiornata {
+            await Notifiche.programma(giornata: nome, inizio: inizio, modulo: oggi.formazione?.modulo)
         }
     }
 
@@ -100,13 +100,13 @@ enum Aggiornamento {
         memoria.set(probabili, forKey: "bg.probabili")
     }
 
-    /// I testi degli avvisi: il numero è quello della LEGA (lo stesso che l'utente vede nell'app), non quello di Serie A.
+    /// I testi degli avvisi: la giornata con i due numeri in testa, seguita dai due punti, come gli avvisi del server (#299).
     static func corpoCambioModulo(_ oggi: Oggi, modulo: String, punti: String, moduloPrima: String) -> String {
-        "Mister, \(oggi.giornataMostrata.map { "giornata \($0)" } ?? "prossima giornata"): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima))."
+        "\(oggi.nomeGiornata?.intero ?? "Prossima giornata"): ora \(modulo), \(punti) punti attesi (prima \(moduloPrima))."
     }
 
     static func corpoProbabili(_ oggi: Oggi, modulo: String, punti: String) -> String {
-        "\(oggi.giornataMostrata.map { "Giornata \($0)" } ?? "Prossima giornata"): modulo consigliato \(modulo), \(punti) punti attesi."
+        "\(oggi.nomeGiornata?.intero ?? "Prossima giornata"): modulo consigliato \(modulo), \(punti) punti attesi."
     }
 
     /// La giornata di oggi per Siri e Comandi: dal server, o dalla cache se non risponde.
