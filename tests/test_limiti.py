@@ -257,6 +257,37 @@ def test_quaranta_giocatori_per_squadra(ambiente):
     assert r.status_code == 413 and "41 giocatori" in r.json()["detail"]
 
 
+def _rose_nel_backup(squadre: int, giocatori: int) -> dict:
+    return {"squadre": [{"nome": f"Squadra {i}", "giocatori": [{"id": None, "nome": f"G{i}-{k}", "ruolo": "D", "squadra": None}
+                                                               for k in range(giocatori)]} for i in range(squadre)],
+            "mia_squadra": None, "aggiornato": "", "stagione": "2026-27"}
+
+
+@pytest.mark.parametrize("squadre, giocatori, testo", [(limiti.MAX_SQUADRE + 1, 1, "21 squadre"),
+                                                        (1, limiti.MAX_GIOCATORI_SQUADRA + 1, "41 giocatori")])
+def test_il_ripristino_del_backup_ha_gli_stessi_tetti_dell_importazione(ambiente, squadre, giocatori, testo):
+    a, id_a = nuovo_utente("utentea")
+    assert importa(a).status_code == 200
+    copia = a.get("/api/backup").json()
+    cartella = contesto.cartella_utente(id_a)
+    prima = {p.relative_to(cartella).as_posix(): p.read_bytes() for p in cartella.rglob("*") if p.is_file()}
+    copia["file"]["lega/rose.json"] = _rose_nel_backup(squadre, giocatori)
+    copia["file"]["dati/osservati.json"] = [1, 2]
+    r = a.post("/api/backup/ripristina", json=copia)
+    assert r.status_code == 413 and testo in r.json()["detail"]
+    dopo = {p.relative_to(cartella).as_posix(): p.read_bytes() for p in cartella.rglob("*") if p.is_file()}
+    assert dopo == prima                                                       # niente scritto, nemmeno la copia di prima
+
+
+def test_il_ripristino_del_backup_al_tetto_va(ambiente):
+    a, _ = nuovo_utente("utentea")
+    copia = a.get("/api/backup").json()
+    copia["file"]["lega/rose.json"] = _rose_nel_backup(limiti.MAX_SQUADRE, limiti.MAX_GIOCATORI_SQUADRA)
+    r = a.post("/api/backup/ripristina", json=copia)
+    assert r.status_code == 200 and "lega/rose.json" in r.json()["ripristinati"]
+    assert len(a.get("/api/squadre").json()) == limiti.MAX_SQUADRE
+
+
 # ---------------------------------------------------------------- spazio
 def riempi(utente_id: int, byte: int) -> None:
     cartella = contesto.cartella_utente(utente_id)

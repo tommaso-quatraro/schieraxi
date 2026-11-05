@@ -132,13 +132,16 @@ def ripristina(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] 
 
 
 def ripristina_esito(backup: Any, radice: Path = RADICE, file_utente: dict[str, Path] | None = None, copia_prima: Path | None = None,
-                     chiusa: Callable[[str], bool] | None = None) -> dict:
+                     chiusa: Callable[[str], bool] | None = None, controlla_rose: Callable[[lega.Rose], None] | None = None) -> dict:
     """Rimette i dati del backup. Prima controlla tutto: se qualcosa non va non cambia niente. I file che il backup
     non ha restano com'erano. Lo stato di prima si salva in dati/backup-prima-del-ripristino.json.
     `chiusa(chiave)` dice se la giornata di una voce di `scelte` («stagione/giornata») è già chiusa: quelle voci restano come sono
-    sul server (un backup non deve aggirare la scadenza). Restituisce {ripristinati, scelte_chiuse_tenute: vero se il backup
-    avrebbe cambiato almeno una formazione di una giornata chiusa}."""
+    sul server (un backup non deve aggirare la scadenza). `controlla_rose(rose)` applica alle rose del backup gli stessi tetti
+    dell'importazione (con gli account: `limiti.controlla_rose`), prima di scrivere qualsiasi file. Restituisce {ripristinati,
+    scelte_chiuse_tenute: vero se il backup avrebbe cambiato almeno una formazione di una giornata chiusa}."""
     file = controlla(backup)
+    if controlla_rose is not None and "lega/rose.json" in file:
+        controlla_rose(lega.da_dict(file["lega/rose.json"]))
     dove = _percorsi(radice, file_utente)
     scrivi_sicuro(copia_prima or radice / COPIA_PRIMA, json.dumps(crea(radice, file_utente), ensure_ascii=False))
     tenute = False
