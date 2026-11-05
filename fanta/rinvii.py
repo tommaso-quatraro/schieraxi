@@ -145,9 +145,17 @@ def voti_lega(gioca: dict[int, bool], fv: dict[int, float], voto: dict[int, floa
             gioca[i], fv[i], voto[i] = True, v, v
 
 
-def _quando(data) -> str | None:
+_GIORNI = ("lun", "mar", "mer", "gio", "ven", "sab", "dom")              # datetime.weekday(): 0 = lunedì
+_MESI = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+
+
+def _quando(data) -> Frase | None:
+    """Il giorno del recupero come lo scrive l'app, «mer 18 nov» (docs/COERENZA-WEB-IPHONE.md, «Date e ore»; mai «18/11»). Sempre con
+    il mese e senza «oggi» o «domani»: la frase sta nelle previsioni in cache e non deve invecchiare. È una frase: si traduce."""
     d = _data(data)
-    return f"{d.day}/{d.month}" if d else None
+    if d is None:
+        return None
+    return F("data.giorno_mese", giorno=F("giorno." + _GIORNI[d.weekday()]), n=d.day, mese=F("mese." + _MESI[d.month - 1]))
 
 
 def frase(modo: str, valore: float | None, data_recupero=None) -> Frase:

@@ -19,6 +19,12 @@ enum TitoloPagina {
     static func nellaPagina(_ dimensione: DynamicTypeSize) -> Bool {
         dimensione >= soglia
     }
+
+    /// La barra mostra il titolo grande? Solo sotto la soglia e se la pagina non lo vuole sempre piccolo
+    /// (`piccoloInBarra`: le pagine di dettaglio, come quella di una squadra).
+    static func grandeInBarra(_ dimensione: DynamicTypeSize, piccoloInBarra: Bool = false) -> Bool {
+        !piccoloInBarra && !nellaPagina(dimensione)
+    }
 }
 
 extension EnvironmentValues {
@@ -28,8 +34,9 @@ extension EnvironmentValues {
 
 extension View {
     /// Il titolo della pagina: grande nella barra con il testo normale; con il testo grande piccolo nella barra e intero
-    /// nella pagina, dove `TitoloNellaPagina` lo mostra a capo.
-    func titoloPagina(_ titolo: String) -> some View {
-        modifier(ModificatoreTitoloPagina(titolo: titolo))
+    /// nella pagina, dove `TitoloNellaPagina` lo mostra a capo. Con `piccoloInBarra` la barra ha sempre il titolo piccolo
+    /// (pagine di dettaglio, titoli presi dai dati come il nome di una squadra, #276); nella pagina va lo stesso da `soglia`.
+    func titoloPagina(_ titolo: String, piccoloInBarra: Bool = false) -> some View {
+        modifier(ModificatoreTitoloPagina(titolo: titolo, piccoloInBarra: piccoloInBarra))
     }
 }

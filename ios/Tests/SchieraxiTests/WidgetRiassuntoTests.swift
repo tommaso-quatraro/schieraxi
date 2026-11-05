@@ -177,7 +177,7 @@ final class WidgetRiassuntoTests: XCTestCase {
         let inter = try XCTUnwrap(w.partiteLive.first { $0.casa == "inter" })
         XCTAssertEqual(inter.punteggio, "2–0")
         XCTAssertEqual(inter.etichetta(adesso: prima), "63'")
-        XCTAssertEqual(w.partiteLive.first { $0.casa == "lazio" }?.etichetta(adesso: prima), "20:45")
+        XCTAssertEqual(w.partiteLive.first { $0.casa == "lazio" }?.etichetta(adesso: prima), "oggi 20:45")
         XCTAssertEqual(w.partiteLive.first { $0.casa == "napoli" }?.etichetta(adesso: prima), "Finita")
         XCTAssertEqual(w.mieiTitolari(in: inter).map(\.id), [5], "Leonel gioca in casa contro la Roma")
         XCTAssertTrue(w.mieiTitolari(in: try XCTUnwrap(w.partiteLive.first { $0.casa == "lazio" })).isEmpty)
