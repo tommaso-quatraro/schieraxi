@@ -54,6 +54,9 @@ Casi che la spec non nomina e che un utente incontrerà; ognuno ha il suo contro
    401 e le colonne restano allineate con il carattere di sistema (compiti 2.1 e 4.1).
 
 ## Scelte per l'utente (dalla spec, §18)
+
+**Decise il 5/11/2026:** 1 = (b) verde bosco solo sulla web, quindi il compito 3.2 si fa; 2 = come la prova B; 3 = sito già nella PR #360.
+
 1. **Colore delle azioni nel tema chiaro**: (a) oliva `#526600` di oggi [consigliata, vale finché non risponde];
    (b) verde bosco `#0B6B3A` solo sulla web; (c) verde bosco su web e iPhone. Se (b) o (c): compito 3.2 (e PR iOS-1 per la c).
 2. **Volti sul campo**: come la prova B (numero nel disco, niente volto) [vale finché non risponde] o volto da 40 px con il

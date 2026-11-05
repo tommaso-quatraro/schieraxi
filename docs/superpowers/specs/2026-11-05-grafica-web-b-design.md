@@ -431,6 +431,9 @@ U+2212 (il meno tipografico di «−0,4»). Il «⚠» e le icone restano del si
   passaggio a gradini.
 
 ## 18. Scelte per l'utente
+
+**Decise il 5/11/2026** (il proprietario ha lasciato libero il coordinatore: «se vuoi migliorarla ulteriormente sei libero»): 1 = **(b)**, verde bosco `#0B6B3A` solo sulla web, come la prova B che il proprietario ha scelto; l'iPhone resta oliva. 2 = **come la prova B** (numero nel disco). 3 = già fatto: il sito è rifatto nello stesso stile nella PR #360 (issue #355).
+
 1. **Colore delle azioni nel tema chiaro.** (a) resta l'oliva `#526600` di oggi, uguale all'iPhone: nessun lavoro in più;
    (b) verde bosco `#0B6B3A` della prova B solo sulla web: si scioglie il legame web-iPhone nel test per il tema chiaro;
    (c) verde bosco su web e iPhone: una PR piccola mista web + iPhone. Consiglio (a) per partire: il colore delle azioni si vede
