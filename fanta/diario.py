@@ -236,12 +236,17 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
         altri = [t["id"] for t in (ist.get("titolari") or []) + (ist.get("panchina") or [])
                  if isinstance(t, dict) and isinstance(t.get("id"), int) and t["id"] not in ids]
         scelta = scelte.leggi(stagione, g, file_scelte)
-        # una scelta che non si può schierare (regola unica) conta come nessuna scelta, e la copia automatica non c'è (stesso posto
-        # nel file): così la giornata non si ricalcola a ogni giro
+        # una scelta che non si può schierare (regola unica) conta come nessuna scelta. La copia automatica in quel caso non c'è
+        # (stesso posto nel file): al suo posto la consigliata congelata alla scadenza (istantanea), la stessa di Oggi in diretta e
+        # nel riepilogo (fasi.schierata). Così i punti non cambiano quando il Diario calcola la giornata, né la si ricalcola a ogni giro
         non_vale = bool(scelta) and scelte.motivo_non_valida(scelta.get("titolari") or [], ruoli, regole) is not None
         if non_vale:
             scelta = None
-        auto = None if scelta or non_vale else scelte.leggi(stagione, g, file_scelte, anche_automatica=True)
+            congelati = [t.get("id") for t in ist.get("titolari") or [] if isinstance(t, dict)]
+            auto = None if scelte.motivo_non_valida(congelati, ruoli, regole) else {
+                "titolari": congelati, "panchina": [t["id"] for t in ist.get("panchina") or [] if isinstance(t, dict) and "id" in t]}
+        else:
+            auto = None if scelta else scelte.leggi(stagione, g, file_scelte, anche_automatica=True)
         vecchia = voci.get(chiave)
         impronta = impronta_regole(regole, stagione, g, rinvii.ha_fuori_turno(db, stagione, g))
         if vecchia:

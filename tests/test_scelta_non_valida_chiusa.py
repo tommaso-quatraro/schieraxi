@@ -13,10 +13,10 @@ from datetime import datetime
 
 import pytest
 
-from fanta import consigli, copia_scadenza, diario, scelte, server
+from fanta import consigli, copia_scadenza, diario, fasi, scelte, server
 from fanta.regole import Regole
 from test_fasi import REGOLE, ROSA, ST, TITOLARI, _giornata_finita, _oggi, ambiente  # noqa: F401  (ambiente = fixture)
-from test_diario import finto  # noqa: F401  (fixture del Diario con dati finti)
+from test_diario import _formazione_finta, finto, vero  # noqa: F401  (fixture del Diario con dati finti)
 from test_server import client  # noqa: F401  (fixture del server)
 
 CEDUTO = 99                                                   # era in rosa quando l'utente ha salvato, poi è stato ceduto
@@ -122,6 +122,24 @@ def test_diario_una_scelta_non_valida_non_fa_rifare_la_giornata_a_ogni_giro(fint
     assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 2
     assert diario.carica(finto.file)["giornate"][f"{ST}/2"]["schierata"] is None
     assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 0
+
+
+@pytest.mark.parametrize("salvata", [DIARIO_CEDUTO, DIARIO_DUE_PORTIERI], ids=["giocatore-ceduto", "modulo-non-ammesso"])
+def test_diario_gia_calcolato_con_la_consigliata_congelata_come_oggi(vero, salvata):
+    """Revisione della #320: con una scelta non valida il Diario usava la consigliata ricostruita con la rosa di adesso (punti
+    diversi da quelli visti in Oggi durante la giornata, e «non salvata»). Ora usa la consigliata congelata alla scadenza, come
+    per chi non ha salvato niente: stessi punti nel Diario e nel riepilogo di Oggi."""
+    congelata = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 22]               # 3-4-3 senza l'attaccante da 9: undici da 6
+    diario.salva_istantanea(_formazione_finta(1, congelata), ST, vero.file)
+    scelte.salva(ST, 1, salvata, "3-4-3", vero.scelte)
+    assert diario.aggiorna(vero.db, Regole(), vero.rose, vero.file, simulazioni=50, file_scelte=vero.scelte) == 2
+    v = diario.carica(vero.file)["giornate"][f"{ST}/1"]
+    assert v["schierata"] is None and v["automatica"] is not None                  # prima: vuota, e il Diario diceva «non salvata»
+    assert [t["id"] for t in v["automatica"]["titolari"]] == congelata
+    assert v["automatica"]["reale"] == 11 * 6 and v["consigliata"]["reale"] != 11 * 6       # la ricostruzione è un'altra
+    r = fasi.blocco_riepilogo(vero.db, Regole(), vero.rose, ST, 1, vero.scelte, vero.file)  # il riepilogo di Oggi
+    assert r["nel_diario"] is True and r["formazione_di"] == "consigliata" and r["punti_fatti"] == 11 * 6
+    assert diario.aggiorna(vero.db, Regole(), vero.rose, vero.file, simulazioni=50, file_scelte=vero.scelte) == 0   # resta ferma
 
 
 def test_diario_ho_schierato_con_un_modulo_non_ammesso(finto, monkeypatch, tmp_path):
