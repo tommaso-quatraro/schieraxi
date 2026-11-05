@@ -1,5 +1,46 @@
 [
   {
+    "versione": "1.396",
+    "data": "2026-11-05T17:57:51",
+    "titolo": "Misura interna: i consigli con una fonte di dati in meno",
+    "voci": [
+      "Nessun cambiamento visibile: una prova interna misura quanto perderebbero i consigli usando solo i voti di Fantacalcio.it, senza le statistiche avanzate dei tiri."
+    ],
+    "tecnico": [
+      "verifica --pacchetti: scenario nuovo `solo_fantacalcio` (#327, L3a e indicatore I4 di #165). Prestazioni ricostruite dai voti di Fantacalcio.it, una riga per presenza: minuti stimati da entrato e uscito (90, 71, 19, 30: medie dei minuti veri sull'archivio di sviluppo), rigori calciati = segnati + sbagliati, gol con i rigori; niente xG e xA di giocatori e squadre (forza delle squadre dai soli gol). Le prestazioni di Understat non si leggono.",
+      "Per ogni scenario che dà i gol attesi: gol attesi contro gol veri per fasce (verifica_pacchetti.gol_per_fasce, stampate da `confronto`) e nella tabella le colonne `scarto_gol` (scarto più grande nelle fasce con almeno 50 casi) e `rmse_vs_completo_pct`. Il modello (modello.py) e la verifica di default non cambiano."
+    ]
+  },
+  {
+    "versione": "1.395",
+    "data": "2026-11-05T17:51:35",
+    "titolo": "Avvisi e Da fare: una formazione salvata che non vale più conta come non salvata",
+    "voci": [
+      "Se la formazione salvata non si può più schierare (un giocatore non è più in rosa, un modulo non ammesso), avvisi e Da fare parlano della consigliata, come Formazione, Oggi e Diario.",
+      "In questo caso il promemoria prima della scadenza arriva: prima taceva, come se avessi già schierato.",
+      "Il riepilogo dopo la giornata racconta i punti della consigliata: prima, con un giocatore non più in rosa, non arrivava."
+    ],
+    "tecnico": [
+      "Issue #321, dopo la #320. La regola unica scelte.motivo_non_valida si applica con due funzioni nuove di scelte.py: che_vale(scelta, ruoli, regole) (la scelta se si può schierare, altrimenti None) e ruoli_schierabili(rose, prev) (prima della scadenza i giocatori della rosa con una previsione e il ruolo delle previsioni, come la Formazione; senza previsioni, a giornata finita, tutta la rosa come il Diario).",
+      "La usano notifiche._cambi_pronti («cambio pronto» sui titolari della consigliata), notifiche._gia_schierato (promemoria), notifiche.avviso_scadenza (riferimento: la consigliata; con una scelta salvata legge le previsioni prima del controllo «niente di nuovo», già in cache dal giro dei cambi), notifiche.riepilogo (ruoli della rosa), da_fare._dubbi, da_fare._formazione_non_salvata e da_fare._diario (ruoli della rosa).",
+      "Nessun campo né rotta nuova: i client non devono fare niente. Testi degli avvisi e delle voci di Da fare invariati."
+    ]
+  },
+  {
+    "versione": "1.394",
+    "data": "2026-11-05T17:45:43",
+    "titolo": "Immagine da condividere con un decimale e pedine sempre leggibili",
+    "voci": [
+      "Nell'immagine della formazione da mandare nel gruppo, il fantavoto sotto ogni volto ha un decimale, come in tutta l'app (prima c'erano due decimali).",
+      "Quando le pedine del campo compaiono, i testi sulle pillole («gioca 45%» e la sigla della squadra avversaria) non passano più per un momento a metà trasparenza: restano sempre leggibili."
+    ],
+    "tecnico": [
+      "condividiImmagine usa num() per il fantavoto atteso, la stessa funzione di pedine, elenchi e schede, al posto di virgola() che scriveva i due decimali del server (fv_atteso è round(mu, 2) nell'API).",
+      "@keyframes pop: la pedina passa da opacità 0 a 1 entro l'1% dell'animazione (var(--vela, 1)); prima la dissolvenza durava tutta l'entrata e nei primi 100 ms il contrasto delle pillole `.gioca.basso` e `.dist` scendeva sotto 4,5:1 (axe color-contrast, chiaro e scuro). Con il movimento ridotto (--vela: 0) la dissolvenza resta.",
+      "Test: tests/test_immagine_condivisa_web.py (node con tela finta) e tests/test_accessibilita_formazione_web.py (tappe dell'animazione). Issue #307, parte di #167."
+    ]
+  },
+  {
     "versione": "1.393",
     "data": "2026-11-05T17:42:41",
     "titolo": "Formazione chiusa con la tua scelta non più valida: vale la consigliata",

@@ -190,7 +190,9 @@ html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: calc(var(--barra) 
 /* --mov: 1 = movimento pieno, 0 = versione calma (solo dissolvenze). Lo imposta html[data-calmo]. */
 @keyframes entra { from { opacity: 0; transform: translateY(calc(var(--mov, 1) * 16px)) scale(calc(1 - var(--mov, 1) * .015)); } to { opacity: 1; transform: none; } }
 @keyframes entra-breve { from { opacity: 0; transform: translateY(calc(var(--mov, 1) * 8px)); } to { opacity: 1; transform: none; } }
-@keyframes pop { 0% { opacity: 0; transform: scale(calc(1 - var(--mov, 1) * .6)) translateY(calc(var(--mov, 1) * 10px)); } 70% { transform: scale(calc(1 + var(--mov, 1) * .08)); } 100% { opacity: 1; transform: none; } }
+/* Pedina: compare di colpo (1%: --vela vale 1) e poi si muove. A metà dissolvenza il testo delle pillole («⚠ gioca 45%», sigla della squadra)
+   perde contrasto e axe lo segnala (issue #307). Con il movimento ridotto (--vela: 0) la dissolvenza resta, come per le altre entrate. */
+@keyframes pop { 0% { opacity: 0; transform: scale(calc(1 - var(--mov, 1) * .6)) translateY(calc(var(--mov, 1) * 10px)); } 1% { opacity: var(--vela, 1); } 70% { transform: scale(calc(1 + var(--mov, 1) * .08)); } 100% { opacity: 1; transform: none; } }
 @keyframes dissolve { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sfuma { from { opacity: 1; } to { opacity: 0; } }
 @keyframes sale { from { opacity: var(--vela, 1); transform: translateY(calc(var(--mov, 1) * 100%)); } to { opacity: 1; transform: none; } }
