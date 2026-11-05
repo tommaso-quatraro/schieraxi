@@ -1106,8 +1106,21 @@ function rigaStatoScelta(st, salvata, nonValida = false) {
     ${pulsanti ? `<div class="pulsanti">${pulsanti}</div>` : ""}</div>`;
 }
 
+// Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
+// manca senza anticipi cominciati e con un server vecchio). Il server rifiuta comunque un salvataggio che ne sposta uno.
+const giocatoriFermi = f => new Set((Array.isArray(f && f.bloccati) ? f.bloccati : []).map(Number));
+// Chi può prendere il posto di `base` nella modifica a mano: stesso ruolo, non già fra i titolari (`dentro`) e non fermo, il migliore
+// per punti attesi in cima. Nessuno se `base` stesso è fermo.
+function sostituti(f, base, dentro) {
+  const fermi = giocatoriFermi(f);
+  if (fermi.has(Number(base.id))) return [];
+  return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
+    .sort((a, b) => b.punti_attesi - a.punti_attesi);
+}
+
 function mostraFormazione(f, squadra, opz = {}) {
   const scheda = id => f.schede[String(id)];
+  const fermi = giocatoriFermi(f);
   const sc = stato.scelta || (stato.scelta = {});
   const chiaveSc = `${squadra || "mia"}/${f.giornata}`;
   if (sc.chiave !== chiaveSc) Object.assign(sc, { chiave: chiaveSc, livello: 0, modulo: null, manuale: null, letta: false, salvata: undefined, nonValida: false });
@@ -1194,7 +1207,7 @@ function mostraFormazione(f, squadra, opz = {}) {
     const inc = incerti(m);
     let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
     const voceTit = x => {
-      const h = voceGiocatore(x, null, true, modificabile);
+      const h = voceGiocatore(x, null, true, modificabile && !fermi.has(x.id));      // fermo (anticipo cominciato): ⇄ al posto di ✎
       const alt = manuale ? "" : alternativeVicine(x, m, f, etichettaAlt);
       if (alt) etichettaAlt = false;
       return h + alt;
@@ -1232,6 +1245,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${Object.keys(inc).length ? `<div class="nota-incerti" id="nota-incerti">${Object.values(inc).map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
+        ${modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""}
         <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
       <div class="carta"><h2>${t("scambi.panchina")}</h2><div class="debole piccolo">${t("formazione.quest_ordine_entra")}</div>
         <ul class="elenco">${panchina.map((x, k) => voceGiocatore(x, k + 1, true)).join("")}</ul></div>
@@ -1284,10 +1298,11 @@ function mostraFormazione(f, squadra, opz = {}) {
   function apriSostituzione(id) {
     const base = scheda(id);
     if (!base || !sc.manuale || f.iniziata) return;
+    if (fermi.has(base.id)) return;                                     // gioca un anticipo già cominciato (#373): resta dov'è
     if (sc.occupato) { avviso(t("formazione.sto_ancora_ricalcolando")); return; }
     ultimaScheda++;
     const dentro = new Set(sc.manuale.titolari);
-    const candidati = Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id)).sort((a, b) => b.punti_attesi - a.punti_attesi);
+    const candidati = sostituti(f, base, dentro);
     const riga = x => `<li><button class="voce" data-entra="${x.id}">${avatarIndice(x)}
       <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
         <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || testoPosto("fuori")}</span></span></span>

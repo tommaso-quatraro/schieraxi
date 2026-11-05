@@ -98,7 +98,7 @@ struct FormazioneView: View {
             .ricercaGlobale()
             .sheet(item: $daSostituire) { g in
                 if let f = vm.formazione {
-                    SostituzioneSheet(uscente: g, formazione: f, titolari: vm.manuale ?? []) { nuovo in
+                    SostituzioneSheet(uscente: g, candidati: vm.sostituti(di: g, f)) { nuovo in
                         vm.sostituisci(g.id, con: nuovo)
                         daSostituire = nil
                     }
@@ -174,14 +174,15 @@ struct FormazioneView: View {
 
     // MARK: righe
 
-    /// In modifica a mano ogni titolare è un bottone che apre la scelta del sostituto; altrimenti un tocco apre la scheda,
-    /// «⇄» confronta con un altro della rosa e sotto i titolari incerti ci sono le alternative vicine (ballottaggio).
+    /// In modifica a mano ogni titolare è un bottone che apre la scelta del sostituto (tranne chi gioca un anticipo già cominciato:
+    /// `vm.fermi`); altrimenti un tocco apre la scheda, «⇄» confronta con un altro della rosa e sotto i titolari incerti ci sono le
+    /// alternative vicine (ballottaggio).
     @ViewBuilder
     private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> some View {
         if vm.chiusa {
             // giornata chiusa: sola lettura (un tocco apre la scheda, niente sostituzioni né confronti per cambiare)
             RigaGiocatore(g: g, apribile: true, perche: apriPerche)
-        } else if vm.manuale != nil {
+        } else if vm.manuale != nil && !vm.fermi.contains(g.id) {
             Button { daSostituire = g } label: {
                 HStack { RigaGiocatore(g: g); Image(systemName: "arrow.left.arrow.right").foregroundStyle(Color.verde).accessibilityHidden(true) }
                     .frame(minHeight: 44)
@@ -199,7 +200,8 @@ struct FormazioneView: View {
                     .foregroundStyle(Color.verde)
                     .accessibilityLabel("Confronta \(g.nome) con un altro della rosa")
                 }
-                ballottaggio(g, f, v)
+                // in modifica a mano qui c'è solo chi è fermo (anticipo già cominciato, #373): come la web, ⇄ e niente ballottaggio
+                if vm.manuale == nil { ballottaggio(g, f, v) }
             }
         }
     }
@@ -410,6 +412,9 @@ struct FormazioneView: View {
     private var testoManuale: some View {
         Text("Tocca un titolare per sostituirlo con un altro della rosa: i punti attesi si ricalcolano.")
             .font(.footnote).foregroundStyle(Color.testoSecondario)
+        if let nota = vm.notaFermi {
+            Text(nota).font(.footnote).foregroundStyle(Color.testoSecondario)
+        }
         if vm.calcoloNonRiuscito {
             Button { Task { await vm.valuta(salva: false) } } label: {
                 Label("Non riesco a calcolare i punti: riprova", systemImage: "arrow.clockwise").font(.footnote.weight(.semibold))
@@ -476,19 +481,12 @@ struct FormazioneView: View {
 
 }
 
-/// Scelta del sostituto: giocatori della stessa categoria che non sono già titolari.
+/// Scelta del sostituto: giocatori della stessa categoria che non sono già titolari né fermi (`FormazioneViewModel.sostituti`).
 struct SostituzioneSheet: View {
     let uscente: Giocatore
-    let formazione: Formazione
-    let titolari: [Int]
+    let candidati: [Giocatore]
     let scelto: (Int) -> Void
     @Environment(\.dismiss) private var chiudi
-
-    private var candidati: [Giocatore] {
-        (formazione.schede ?? [:]).values
-            .filter { $0.ruolo == uscente.ruolo && !titolari.contains($0.id) }
-            .sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
-    }
 
     var body: some View {
         NavigationStack {

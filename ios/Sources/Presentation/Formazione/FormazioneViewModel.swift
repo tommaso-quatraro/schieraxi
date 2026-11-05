@@ -96,6 +96,24 @@ final class FormazioneViewModel: ViewModelBase {
     /// In modifica a mano, il server sta calcolando i punti di questa formazione.
     var inCalcolo: Bool { manuale != nil && valutati != manuale && !calcoloNonRiuscito }
 
+    /// Anticipi già cominciati (#373, campo `bloccati` del server): chi gioca una partita già cominciata non si sposta più. Vuoto
+    /// senza anticipi cominciati e con un server vecchio; il server rifiuta comunque un salvataggio che ne sposta uno.
+    var fermi: Set<Int> { Set(formazione?.bloccati ?? []) }
+    /// La frase della web sotto i titolari in modifica a mano (`formazione.bloccati`), solo se qualcuno è fermo.
+    static let testoFermi = "Chi gioca in una partita già cominciata non si può più spostare."
+    var notaFermi: String? { manuale != nil && !chiusa && !fermi.isEmpty ? Self.testoFermi : nil }
+
+    /// Chi può prendere il posto di `uscente` nella modifica a mano, come `sostituti` della web: stesso ruolo, non già titolare e non
+    /// fermo, il migliore per punti attesi in cima. Nessuno se `uscente` stesso è fermo.
+    func sostituti(di uscente: Giocatore, _ f: Formazione) -> [Giocatore] {
+        let fermi = Set(f.bloccati ?? [])
+        guard !fermi.contains(uscente.id) else { return [] }
+        let titolari = Set(manuale ?? [])
+        return (f.schede ?? [:]).values
+            .filter { $0.ruolo == uscente.ruolo && !titolari.contains($0.id) && !fermi.contains($0.id) }
+            .sorted { ($0.puntiAttesi ?? 0) > ($1.puntiAttesi ?? 0) }
+    }
+
     init(server: any ServerClient) {
         self.server = server
         caricatore = Caricatore<Formazione>("/api/formazione", server: server)
@@ -330,7 +348,7 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     func sostituisci(_ vecchio: Int, con nuovo: Int) {
-        guard !chiusa, var m = manuale, let i = m.firstIndex(of: vecchio) else { return }
+        guard !chiusa, !fermi.contains(vecchio), !fermi.contains(nuovo), var m = manuale, let i = m.firstIndex(of: vecchio) else { return }
         m[i] = nuovo
         manuale = m
         Haptics.selezione()
