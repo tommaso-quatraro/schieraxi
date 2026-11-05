@@ -4,14 +4,27 @@
 
 ![SchieraXI: la schermata Oggi](sito/img/schermata-larga.png)
 
-SchieraXI è un'app web che consiglia la formazione del fantacalcio per una lega classic di Serie A.
+SchieraXI è un'app che consiglia la formazione del fantacalcio per una lega classic di Serie A.
 Per ogni giocatore stima il **fantavoto atteso**, cioè il punteggio che ci si può aspettare con le regole della tua lega,
 e da lì ricava gli 11 titolari, il modulo e l'ordine della panchina. Le statistiche sono nostre, calcolate dal progetto.
 È software libero (AGPL-3.0). Sito: <https://schieraxi.it>.
 
 > **In English:** SchieraXI is free software (AGPL-3.0) that suggests the lineup for a classic Serie A fantasy league,
-> based on each player's expected fantasy score (*fantavoto atteso*). Web app (PWA) available now; the iPhone app is a work in
-> progress and Android is planned. You run the server yourself. Data sources are **off by default**. Screens and docs are in Italian.
+> based on each player's expected fantasy score (*fantavoto atteso*). The web app is live at <https://app.schieraxi.it>
+> (invitation only for now); the iPhone app is a work in progress and Android is planned. Screens and docs are in Italian.
+
+## Come si usa
+La web app è su **<https://app.schieraxi.it>**. Per ora si entra su invito.
+
+1. Chiedi un invito a chi gestisce l'app. Apri il link che ti mandano: si apre la registrazione con il codice già scritto.
+   Senza link, apri l'indirizzo qui sopra e scrivi il **codice d'invito** nella scheda **Registrati**.
+2. Scegli nome utente e password, tocca **Crea l'account** e salva il codice di recupero.
+3. Esporta le rose da Leghe (Excel, CSV o testo copiato) e caricale dall'app. Per cominciare basta anche solo la tua squadra.
+4. Imposta i tempi della lega: quando si chiude la formazione e da quale giornata è partita la lega.
+5. Prima di ogni giornata apri **Oggi**, leggi il consiglio e invia la formazione dove giochi.
+
+Si usa dal browser, su telefono e computer, e si può aggiungere alla schermata Home.
+Tutti i passi, schermata per schermata: [`docs/GUIDA-UTENTE.md`](docs/GUIDA-UTENTE.md).
 
 ## Cosa fa
 - Ogni giornata propone gli 11 titolari, il modulo e la panchina, con il motivo di ogni scelta in una riga.
@@ -21,54 +34,17 @@ e da lì ricava gli 11 titolari, il modulo e l'ordine della panchina. Le statist
 - Mostra i risultati in diretta durante la giornata.
 
 È una guida, non una garanzia: sono stime. Non fa l'asta e non schiera la squadra al posto tuo.
-Come si usa: `docs/GUIDA-UTENTE.md`. Come ragiona il modello, con numeri e limiti: `docs/SOTTO-IL-COFANO.md`.
+Come ragiona il modello, con numeri e limiti: [`docs/SOTTO-IL-COFANO.md`](docs/SOTTO-IL-COFANO.md).
+
+## Piattaforme
+- **Web**: disponibile ora su <https://app.schieraxi.it>.
+- **iPhone**: in lavorazione, in arrivo. Il codice è nella cartella `ios/`.
+- **Android**: in programma.
 
 ## Avviso
 SchieraXI è un progetto indipendente. **Non è affiliata, approvata o sponsorizzata da Fantacalcio.it, da Leghe Fantacalcio
 né dalla Lega Serie A.** I nomi citati appartengono ai rispettivi proprietari e servono solo a dire con cosa funziona.
 Il progetto non include né ridistribuisce dati di terzi: le rose di prova sono inventate.
-
-## Piattaforme
-- **Web**: disponibile ora. Si usa dal browser e si può installare come app (PWA).
-- **iPhone**: in lavorazione, in arrivo. Il codice è nella cartella `ios/`.
-- **Android**: pianificata per il futuro.
-
-## Come provarla
-Hai due strade.
-
-### 1. Web, sul tuo computer
-Servono Python 3.11 e Git. I comandi sono per Windows. Su macOS e Linux usa `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
-
-1. Scarica il codice: `git clone https://github.com/tommaso-quatraro/schieraxi.git`, poi `cd schieraxi`.
-2. Crea l'ambiente: `python -m venv .venv`.
-3. Installa le librerie: `.venv\Scripts\python.exe -m pip install -r requirements.txt`.
-4. Avvia il server: `.venv\Scripts\python.exe -m fanta server`.
-5. Apri nel browser `http://127.0.0.1:8000`. Dal browser puoi installarla come app (PWA).
-
-Il server ascolta solo sul tuo computer. Non aprire la porta su internet senza protezione.
-
-### 2. Un server tutto tuo (Linux)
-1. Scarica il codice in una cartella dell'utente e prepara l'ambiente come sopra (`python3 -m venv .venv`,
-   poi `.venv/bin/python -m pip install -r requirements.txt`).
-2. Copia `script/server/fantacalcio.service` in `/etc/systemd/system/`, sostituisci `<utente>` e controlla i percorsi.
-3. Attiva il servizio: `sudo systemctl daemon-reload`, poi `sudo systemctl enable --now fantacalcio`.
-4. Controlla che risponda: `curl -i http://127.0.0.1:8000/api/stato`. Va bene `200`, e anche `401` (gli account sono attivi e manca l'accesso).
-5. Per aprirla fuori casa metti davanti un proxy con HTTPS. Quella configurazione non è nel repository.
-
-Il servizio di esempio usa il modo con account (`FANTA_MULTIUTENTE=1`), obbligatorio su un server raggiungibile da altri.
-Script di manutenzione: `script/server/LEGGIMI.md`. Nomi delle variabili: `.env.example`. Chiavi e segreti vanno in `.env` o in `dati/`, mai in git.
-
-## La tua lega
-In `lega/esempio/` c'è una lega **inventata** (10 squadre finte): serve a provare l'app.
-Per la tua, crea una cartella fuori dal progetto con `regole.json` e `rose.json` e avvia il server con `FANTA_LEGA=<cartella>`.
-Le regole non sono scritte nel codice: bonus, malus, moduli, panchina e scadenza stanno in quel file.
-Non copiare dati veri di una lega dentro il repository.
-
-## Fonti dati: spente di default
-SchieraXI può leggere dati pubblici da siti di terzi (calendario, voti, probabili formazioni, statistiche dei tiri).
-- Ogni fonte ha un interruttore ed è **spenta di default**. Si accende con `FANTA_FONTE_<NOME>=1` (per esempio `FANTA_FONTE_UNDERSTAT=1`).
-- Prima di accenderla leggi e rispetta le condizioni d'uso del sito: chi la accende se ne assume la responsabilità.
-- Le richieste sono poche, una alla volta, con pausa e cache locale. L'agente di rete si presenta come `SchieraXI/<versione>`.
 
 ## Dove va il progetto
 Quattro obiettivi, in quest'ordine di lavoro: 3, 1, 2, 4.
@@ -82,21 +58,39 @@ Quattro obiettivi, in quest'ordine di lavoro: 3, 1, 2, 4.
 - Dipende dalle fonti: se un sito cambia, i dati mancano finché non si sistema il lettore. Gli abbinamenti dei nomi tra fonti possono sbagliare.
 - Pensata per una lega classic di Serie A.
 
-## Struttura delle cartelle
-- `fanta/`: il server Python (FastAPI) e la logica; `fanta/web/` è la web app.
-- `ios/`: l'app per iPhone (SwiftUI), in lavorazione.
-- `lega/esempio/`: la lega inventata.
-- `tests/`: i test automatici (`.venv\Scripts\python.exe -m pytest -q`).
-- `docs/`: guide per chi usa l'app e per chi sviluppa.
-- `script/`: manutenzione del server e controlli.
-- `sito/`: il sito <https://schieraxi.it>.
+## Per chi sviluppa
+Chi usa l'app non ha bisogno di questa parte.
 
-Elenco completo, comandi e regole di lavoro: `MAPPA.md` e `CLAUDE.md`.
+**Avviarla sul tuo computer.** Servono Python 3.12 (la versione usata dai test) e Git. I comandi sono per Windows;
+su macOS e Linux usa `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
 
-## Contribuire
-Le proposte sono benvenute: leggi `CONTRIBUTING.md` (apri prima una issue, fai passi piccoli, niente dati personali).
-Il metodo di lavoro è in `docs/METODO.md`. Per una falla di sicurezza non aprire una issue pubblica: leggi `SECURITY.md`.
-Si applica `CODE_OF_CONDUCT.md`. Le versioni pubblicate sono nella pagina **Releases**.
+1. Scarica il codice: `git clone https://github.com/tommaso-quatraro/schieraxi.git`, poi `cd schieraxi`.
+2. Crea l'ambiente: `python -m venv .venv`.
+3. Installa le librerie: `.venv\Scripts\python.exe -m pip install -r requirements.txt`.
+4. Avvia il server: `.venv\Scripts\python.exe -m fanta server`.
+5. Apri nel browser `http://127.0.0.1:8000`.
+
+Il server ascolta solo sul tuo computer. Usa la lega inventata di `lega/esempio/` (10 squadre finte, regole d'esempio).
+Una lega tua, per provare, sta in una cartella fuori dal progetto con `regole.json` e `rose.json`, e si indica con
+`FANTA_LEGA=<cartella>`. Non copiare dati veri di una lega dentro il repository.
+
+**Fonti dati: spente di default.** SchieraXI può leggere dati pubblici da siti di terzi (calendario, voti, probabili formazioni,
+statistiche dei tiri). Sul tuo computer ogni fonte è spenta finché non la accendi con `FANTA_FONTE_<NOME>=1`
+(per esempio `FANTA_FONTE_UNDERSTAT=1`). Prima di accenderla leggi e rispetta le condizioni d'uso del sito: chi la accende se ne
+assume la responsabilità. Le richieste sono poche, una alla volta, con pausa e cache locale, e l'agente di rete si presenta
+come `SchieraXI/<versione>`. Sul server pubblico le fonti le gestisce chi cura il progetto.
+
+**Test.** Installa anche `requirements-dev.txt`, poi: `.venv\Scripts\python.exe -m pytest -q`.
+
+**Dove sta cosa e come si lavora.**
+- `MAPPA.md`: le cartelle, i comandi e i contratti.
+- `CLAUDE.md`: le regole del repository e il flusso di lavoro.
+- `docs/METODO.md`: il metodo di lavoro.
+- `CONTRIBUTING.md`: come proporre una modifica (apri prima una issue, fai passi piccoli, niente dati personali).
+- `SECURITY.md`: per una falla di sicurezza non aprire una issue pubblica. Si applica anche `CODE_OF_CONDUCT.md`.
+
+Per installarlo su un server: `script/server/LEGGIMI.md`. Chiavi e segreti vanno in `.env` o in `dati/`, mai in git
+(nomi delle variabili in `.env.example`).
 
 ## Licenza
 Il codice è sotto **AGPL-3.0** (file `LICENSE`): puoi usarlo, studiarlo e modificarlo. Se offri una versione modificata a qualcuno
