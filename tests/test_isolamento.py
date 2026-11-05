@@ -429,6 +429,32 @@ def test_nuova_stagione_archivia_nella_cartella_dell_utente(due, dati_isolati):
     assert (cartella_di(due, "A") / "archivio").is_dir()
     assert albero(cartella_di(due, "B")) == prima_b
     assert [p for p in dati_isolati.rglob("*") if p.is_file()] == []
+    assert r.json()["archivio"] == "2026-27"                    # il nome della stagione, non dove sta sul server
+
+
+def test_nuova_stagione_resta_nella_cartella_dell_utente_qualunque_stagione_abbiano_le_rose(due, dati_isolati):
+    (ca, _), (cb, id_b) = due["A"], due["B"]
+    esegui_tutto(ca, scritture("A"))
+    esegui_tutto(cb, scritture("B"))
+    radice = cartella_di(due, "A").parent
+    copia = ca.get("/api/backup").json()                       # lo scarico segna la data del backup: prima di prendere le impronte
+    prima_b, prima_a = albero(cartella_di(due, "B")), albero(cartella_di(due, "A"))
+    for strana in (f"../../{id_b}", str(cartella_di(due, "B")), "2026"):
+        copia["file"]["lega/rose.json"]["stagione"] = strana
+        r = ca.post("/api/backup/ripristina", json=copia)
+        assert r.status_code == 400, (strana, r.text)
+        assert albero(cartella_di(due, "A")) == prima_a
+        # rose già salvate con una stagione così (per esempio da una versione di prima): il passaggio di stagione non scrive niente
+        file_rose = cartella_di(due, "A") / "rose.json"
+        originale = file_rose.read_bytes()
+        file_rose.write_text(json.dumps(json.loads(originale) | {"stagione": strana}), encoding="utf-8")
+        r = ca.post("/api/nuova-stagione")
+        assert r.status_code == 400 and r.json()["detail"] == server.lega.FORMA_SBAGLIATA, (strana, r.text)
+        assert not (cartella_di(due, "A") / "archivio").exists()
+        file_rose.write_bytes(originale)
+    assert albero(cartella_di(due, "B")) == prima_b
+    assert sorted(p.name for p in radice.iterdir()) == sorted({cartella_di(due, "A").name, cartella_di(due, "B").name})
+    assert [p for p in dati_isolati.rglob("*") if p.is_file()] == []
 
 
 # ---------------------------------------------------------------- gli avvisi non escono dal perimetro dell'utente
