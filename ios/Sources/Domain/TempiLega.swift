@@ -92,6 +92,12 @@ enum TempiLega {
     /// La sigla corta per gli spazi strettissimi: «G7» (il numero di lega se c'è, altrimenti quello di Serie A).
     static func sigla(serieA: Int, lega: Int?) -> String { NomeGiornata(serieA: serieA, lega: lega).sigla }
 
+    /// L'apostrofo davanti all'8ª e all'11ª, come la web (`elidiOrdinali`) e il server (`frasi.elidi_ordinali`):
+    /// «dalla 11ª giornata di Serie A» → «dall'11ª giornata di Serie A», «la 8ª» → «l'8ª». Le altre («la 18ª», «la 1ª») restano.
+    static func elidiOrdinali(_ testo: String) -> String {
+        testo.replacingOccurrences(of: #"\b(l|all|dall|dell|nell|sull)a (8ª|11ª)"#, with: "$1'$2", options: .regularExpression)
+    }
+
     /// La riga sotto il modulo in Formazione. Se la formazione l'hai già scelta tu non si ripete «la tua scelta»
     /// (lo dicono già il testo sotto e il pulsante «Torna alla consigliata»): resta solo la giornata.
     static func didascalia(giornata: String, scelta: Bool, comeConsigliato: Bool) -> String {

@@ -405,6 +405,12 @@ extension PuntiGiornata {
     /// «G8»: per gli spazi stretti, solo il numero (la stagione resta nel titolo e in VoiceOver).
     var sigla: String { "G\(numero)" }
 
+    /// Il widget «Attesi e fatti» piccolo e medio in una frase per VoiceOver, sempre con i due numeri della giornata (#299):
+    /// «Attesi e fatti. Giornata 7, 10ª di Serie A: 63,5 punti fatti, 66,0 attesi. −2,5 sul previsto.»
+    var voceWidget: String {
+        "Attesi e fatti. \(descrizione)" + (scarto.map { ". \(Formato.conSegno($0)) sul previsto" } ?? "") + "."
+    }
+
     /// Le giornate per il grafico, dalla più vecchia alla più recente: le ultime `massimo` con almeno un numero. `giornate` arriva
     /// dalla più recente (`giornateGiocate`): a inizio stagione la 38 dell'anno prima viene prima della giornata 1, non dopo.
     static func perGrafico(_ giornate: [PuntiGiornata], massimo: Int) -> [PuntiGiornata] {

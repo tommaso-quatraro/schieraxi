@@ -278,9 +278,10 @@ struct TestoPrecisione: Equatable {
         let pg = p.perGiornata
         let primo = pg.first.flatMap(Self.nomeInFrase), ultimo = pg.last.flatMap(Self.nomeInFrase)
         if n == 1 {
-            calcolatoSu = primo.map { "Calcolato su 1 giornata (la \($0))." } ?? "Calcolato su 1 giornata."
+            // «(l'11ª giornata di Serie A)», «dall'8ª … all'11ª …»: l'apostrofo come la web (`elidiOrdinali`)
+            calcolatoSu = primo.map { TempiLega.elidiOrdinali("Calcolato su 1 giornata (la \($0)).") } ?? "Calcolato su 1 giornata."
         } else if let primo, let ultimo {
-            calcolatoSu = "Calcolato su \(n) giornate, dalla \(primo) alla \(ultimo)."
+            calcolatoSu = TempiLega.elidiOrdinali("Calcolato su \(n) giornate, dalla \(primo) alla \(ultimo).")
         } else {
             calcolatoSu = "Calcolato su \(n) giornate."
         }
@@ -361,7 +362,8 @@ struct TestoPrecisione: Equatable {
         var elenco: [Barra] = []
         for g in conErrore {
             guard let e = g.erroreFantavoto else { continue }
-            var etichetta = g.numero.map { String($0) } ?? "–"
+            // sotto la barra il numero della lega; senza (stagione passata) «G11», come `sottoBarra` della web
+            var etichetta = g.giornataLega.map { String($0) } ?? g.giornata.map { "G\($0)" } ?? "–"
             let volte = (viste[etichetta] ?? 0) + 1
             viste[etichetta] = volte
             if volte > 1 { etichetta += " (\(g.stagione ?? String(volte)))" }   // la stessa giornata di due stagioni: etichette diverse

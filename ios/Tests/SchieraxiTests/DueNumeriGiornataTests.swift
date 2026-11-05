@@ -212,6 +212,32 @@ struct DueNumeriGiornataTests {
                 == "Calcolato su 2 giornate, dalla 1ª giornata di Serie A alla 18ª giornata di Serie A.", "solo 8ª e 11ª")
     }
 
+    @Test("L'apostrofo solo davanti all'8ª e all'11ª, come `elidiOrdinali` della web e `frasi.elidi_ordinali` del server",
+          arguments: [
+            ("la 8ª giornata di Serie A", "l'8ª giornata di Serie A"),
+            ("la 11ª giornata di Serie A", "l'11ª giornata di Serie A"),
+            ("dalla 8ª alla 11ª", "dall'8ª all'11ª"),
+            ("della 11ª, nella 8ª, sulla 11ª", "dell'11ª, nell'8ª, sull'11ª"),
+            ("la 1ª giornata di Serie A", "la 1ª giornata di Serie A"),
+            ("dalla 18ª alla 11ª", "dalla 18ª all'11ª"),
+            // niente articolo, o articolo dentro un'altra parola: si lascia com'è
+            ("Giornata 8 · 11ª di Serie A", "Giornata 8 · 11ª di Serie A"),
+            ("la Giornata 8 · 11ª di Serie A", "la Giornata 8 · 11ª di Serie A"),
+            ("scala 8ª", "scala 8ª"),
+          ])
+    func elisione(_ testo: String, _ atteso: String) {
+        #expect(TempiLega.elidiOrdinali(testo) == atteso)
+    }
+
+    @Test("Widget «Attesi e fatti» piccolo e medio: la testata parte da «Giornata 7»; VoiceOver legge una frase con i due numeri")
+    func widgetAttesiEFatti() {
+        let g = PuntiGiornata(giornata: 10, giornataLega: 7, attesi: 66, fatti: 63.5)
+        #expect(g.nome.formeCorte == ["Giornata 7", "G7"], "prima «Giornata 7», «G7» solo se non entra")
+        #expect(g.voceWidget == "Attesi e fatti. Giornata 7, 10ª di Serie A: 63,5 punti fatti, 66,0 attesi. −2,5 sul previsto.")
+        let senzaAttesi = PuntiGiornata(giornata: 10, giornataLega: 7, fatti: 63.5)
+        #expect(senzaAttesi.voceWidget == "Attesi e fatti. Giornata 7, 10ª di Serie A: 63,5 punti fatti.")
+    }
+
     @Test("Sotto le barre: il numero della lega, o «G11» per una giornata senza numero della lega, come la web (`sottoBarra`)")
     func sottoLeBarre() throws {
         #expect(try precisionePassata([10, 11]).barre.map(\.etichetta) == ["G10", "G11"])

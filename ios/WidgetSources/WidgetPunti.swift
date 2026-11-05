@@ -97,28 +97,14 @@ struct VistaPunti: View {
         }
     }
 
+    /// «Attesi e fatti» e a destra la giornata nella forma corta che entra («Giornata 7», poi «G7»; #299).
     private func intestazione(_ g: PuntiGiornata) -> some View {
-        IntestazioneWidget(titolo: "Attesi e fatti", icona: "chart.bar.fill", destra: g.sigla)
+        IntestazioneWidget(titolo: "Attesi e fatti", icona: "chart.bar.fill", giornata: g.nome, soloCorta: true)
     }
 
     private func piccolo(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            intestazione(g)
-            Spacer(minLength: 0)
-            Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
-                .lineLimit(1).minimumScaleFactor(0.6)
-                .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
-            Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
-            Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
-            if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
-            GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false, massimo: 5).padding(.top, 2).padding(.bottom, 4)
-            PiedeDati(voce: voce)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func medio(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
-        HStack(alignment: .center, spacing: 14) {
+            // testata e numeri: per VoiceOver una frase sola, con i due numeri della giornata (`voceWidget`)
             VStack(alignment: .leading, spacing: 2) {
                 intestazione(g)
                 Spacer(minLength: 0)
@@ -128,6 +114,30 @@ struct VistaPunti: View {
                 Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
                 Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
                 if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(g.voceWidget)
+            GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false, massimo: 5).padding(.top, 2).padding(.bottom, 4)
+            PiedeDati(voce: voce)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func medio(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 2) {
+                    intestazione(g)
+                    Spacer(minLength: 0)
+                    Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                        .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
+                    Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                    Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                    if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(g.voceWidget)
                 PiedeDati(voce: voce)
             }
             .frame(maxWidth: 140, alignment: .leading)
