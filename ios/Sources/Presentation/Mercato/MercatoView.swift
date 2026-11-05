@@ -296,6 +296,11 @@ struct RigaElencoGiocatore: View {
 struct CalendarioView: View {
     @ObservedObject var vm: MercatoViewModel
 
+    static let titolo = "Difficoltà delle prossime partite"
+    static func spiegazione(giornate: Int) -> String { "Verde = facile, rosso = difficile. In ordine di calendario più morbido." }
+    static let legenda = (facile: "", difficile: "")
+    static func squadreMie(_ rosa: Rosa?) -> Set<String> { [] }
+
     private func colore(_ d: Double?) -> Color {
         switch Formato.intero(d ?? 3) {
         case ...1: return Color(red: 0.18, green: 0.82, blue: 0.50)
@@ -311,8 +316,8 @@ struct CalendarioView: View {
             VStack(spacing: 12) {
                 TitoloNellaPagina()
                 if let c = vm.calendario.dato {
-                    Carta("Difficoltà delle prossime partite", simbolo: "calendar") {
-                        Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(Color.testoSecondario)
+                    Carta(Self.titolo, simbolo: "calendar") {
+                        Text(Self.spiegazione(giornate: c.giornate.count)).font(.footnote).foregroundStyle(Color.testoSecondario)
                         // La griglia è una tabella di sigle di tre lettere: con il testo molto grande smette di crescere
                         // (altrimenti le sigle andavano a capo lettera per lettera).
                         VStack(spacing: 6) {

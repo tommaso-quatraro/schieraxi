@@ -140,21 +140,7 @@ struct LegaView: View {
     /// Squadra: la mia squadra e le rose, i cambi consigliati, i seguiti, l'elenco dei giocatori, il calendario.
     private var sezioneSquadra: some View {
         Section {
-            NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose", systemImage: "doc.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.squadre) {
-                Label(funzioni.acceso(Funzione.squadreAltrui) ? "Squadre e rose" : "La mia squadra e rosa", systemImage: "person.3")
-                    .labelStyle(.voce(.green)).frame(minHeight: 44)
-            }
-            NavigationLink(value: PaginaLega.cambi) { Label("Cambi consigliati", systemImage: "arrow.triangle.2.circlepath").labelStyle(.voce(.orange)).frame(minHeight: 44) }
-            if funzioni.acceso(Funzione.seguiti) {
-                NavigationLink(value: PaginaLega.seguiti) { Label("Seguiti", systemImage: "star").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.elencoGiocatori) {
-                NavigationLink(value: PaginaLega.elenco) { Label("Elenco dei giocatori", systemImage: "list.number").labelStyle(.voce(.teal)).frame(minHeight: 44) }
-            }
-            if funzioni.vedeCalendario {
-                NavigationLink(value: PaginaLega.calendario) { Label("Calendario", systemImage: "calendar.badge.clock").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
-            }
+            ForEach(VoceMenuLega.voci(.squadra, funzioni: funzioni)) { riga($0) }
         }
     }
 
@@ -162,23 +148,14 @@ struct LegaView: View {
     /// la nuova stagione solo quando le rose sono di un anno passato (o con «Mostra tutte»).
     private var sezioneAltro: some View {
         Section {
-            NavigationLink(value: PaginaLega.scambi) { Label("Scambi", systemImage: "arrow.left.arrow.right").labelStyle(.voce(.purple)).frame(minHeight: 44) }
-            if funzioni.acceso(Funzione.diario) {
-                NavigationLink(value: PaginaLega.diario) { Label("Diario delle giornate", systemImage: "book").labelStyle(.voce(.teal)).frame(minHeight: 44) }
-            }
-            NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
-            if funzioni.acceso(Funzione.squadreAltrui) && funzioni.acceso(Funzione.movimenti) {
-                NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.squadreAltrui) && funzioni.accesoSoloSeNominato(Funzione.crediti) {
-                NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: ParoleWidget.simboloCrediti).labelStyle(.voce(.mint)).frame(minHeight: 44) }
-            }
-            if !vm.nuovaStagione && funzioni.mostraTutte {   // con la stagione nuova c'è già il riquadro in cima
-                NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.novita) {
-                NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
-            }
+            // con la stagione nuova c'è già il riquadro in cima
+            ForEach(VoceMenuLega.voci(.altro, funzioni: funzioni).filter { $0.id != "stagione" || !vm.nuovaStagione }) { riga($0) }
+        }
+    }
+
+    private func riga(_ voce: VoceMenuLega) -> some View {
+        NavigationLink(value: voce.pagina) {
+            Label(voce.nome, systemImage: voce.simbolo).labelStyle(.voce(voce.colore)).frame(minHeight: 44)
         }
     }
 }
