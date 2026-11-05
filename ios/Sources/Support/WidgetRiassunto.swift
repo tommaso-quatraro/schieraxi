@@ -937,6 +937,21 @@ extension PuntiGiornata {
     /// «G7», o «G38 · 2025-26» per una giornata di un'altra stagione (la stagione non si perde mai).
     var siglaConStagione: String { altraStagione.map { "\(sigla) · \($0)" } ?? sigla }
 
+    /// Una disposizione della testata del widget piccolo e medio: «Attesi e fatti» intero o solo il suo simbolo, e la giornata in
+    /// una forma («Giornata 7» o «G7»).
+    struct FormaTestata: Equatable {
+        let conTitolo: Bool
+        let giornata: String
+    }
+
+    /// Le disposizioni della testata, dalla più ricca alla più povera (#352): prima il titolo con «Giornata 7» e con «G7», poi il
+    /// solo simbolo con le stesse due forme. La vista tiene la prima che entra INTERA: con il testo grande nel widget piccolo il
+    /// titolo e «G7» non stanno insieme, e prima «G7» finiva tagliato; ora si perde il titolo (resta il simbolo), mai la giornata.
+    var formeTestata: [FormaTestata] {
+        let forme = nome.formeCorte
+        return forme.map { FormaTestata(conTitolo: true, giornata: $0) } + forme.map { FormaTestata(conTitolo: false, giornata: $0) }
+    }
+
     /// I pezzi di una riga della tabella in quella forma: titolo, fascia (se c'è) e punti.
     func riga(_ forma: FormaRiga) -> (titolo: String, fascia: String?, punti: String) {
         let suAttesi = "\(Formato.punti(fatti)) su \(Formato.punti(attesi))"

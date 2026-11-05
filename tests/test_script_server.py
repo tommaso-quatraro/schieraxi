@@ -88,12 +88,13 @@ def test_tutti_gli_script_hanno_sintassi_corretta():
 
 # ---------------------------------------------------------------- _lancia: bash che si pianta
 
-def test_lancia_riprova_se_il_comando_si_pianta_e_ripristina(tmp_path):
+def test_lancia_riprova_se_il_comando_si_pianta_e_ripristina(tmp_path, monkeypatch):
     """Il primo tentativo si pianta (resta a dormire), viene fermato, si ripristina e il secondo riesce."""
+    monkeypatch.setattr(sys.modules[__name__], "TIMEOUT_PRIMO_TENTATIVO", 3)       # il secondo ha il tempo normale: Python sotto carico parte piano
     segno, registro = tmp_path / "segno", tmp_path / "ripristini"
     codice = ("import pathlib,sys,time\ns=pathlib.Path(sys.argv[1])\n"
               "if not s.exists():\n    s.write_text('x'); time.sleep(60)\nprint('ok')")
-    r = _lancia([sys.executable, "-c", codice, str(segno)], timeout=3, ripristina=lambda: registro.write_text("fatto"))
+    r = _lancia([sys.executable, "-c", codice, str(segno)], ripristina=lambda: registro.write_text("fatto"))
     assert r.returncode == 0 and r.stdout.strip() == "ok"
     assert registro.read_text() == "fatto"
 
@@ -158,6 +159,9 @@ def _uccidi_albero(p):
 
 
 TIMEOUT_SCRIPT = 90          # secondi: oltre, uno script che di solito ne dura 1-5 e' bloccato
+# Solo per le prove che vogliono un PRIMO giro piantato apposta: il suo tempo, piu' corto per non aspettare 90 secondi. I giri dopo
+# sono normali e hanno sempre TIMEOUT_SCRIPT: con 20 secondi anche per loro, sul PC carico bash non arrivava in fondo (5/11/2026).
+TIMEOUT_PRIMO_TENTATIVO = None
 
 
 def _lancia(comando, env=None, timeout=None, tentativi=2, ripristina=None):
@@ -168,12 +172,13 @@ def _lancia(comando, env=None, timeout=None, tentativi=2, ripristina=None):
     rapporto = []
     timeout = timeout or TIMEOUT_SCRIPT
     for n in range(1, tentativi + 1):
+        limite = TIMEOUT_PRIMO_TENTATIVO if n == 1 and TIMEOUT_PRIMO_TENTATIVO else timeout
         p = subprocess.Popen(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
         try:
-            out, err = p.communicate(timeout=timeout)
+            out, err = p.communicate(timeout=limite)
             return subprocess.CompletedProcess(comando, p.returncode, out, err)
         except subprocess.TimeoutExpired:
-            rapporto.append(f"tentativo {n}: nessuna fine dopo {timeout}s. Processi vivi:\n{_processi_vivi()}")
+            rapporto.append(f"tentativo {n}: nessuna fine dopo {limite}s. Processi vivi:\n{_processi_vivi()}")
             _uccidi_albero(p)
             if ripristina:
                 ripristina()
@@ -391,7 +396,7 @@ def test_se_bash_si_pianta_la_prova_riparte_da_zero_e_riesce(server, monkeypatch
     """Il primo giro si pianta a meta' (finto `flock` che dorme dopo aver sporcato dati/): viene fermato, tutto torna com'era, il secondo giro
     fa l'installazione normale come se il primo non ci fosse stato."""
     s = server
-    monkeypatch.setattr(sys.modules[__name__], "TIMEOUT_SCRIPT", 20)
+    monkeypatch.setattr(sys.modules[__name__], "TIMEOUT_PRIMO_TENTATIVO", 20)      # solo il giro che si pianta; il secondo ha i 90 di sempre
     segno = s.chiamate.parent / "primo-giro-fatto"          # fuori da casa: il ripristino non deve cancellarlo
     _stub(s.bin, "flock", f'[ -e "{segno.as_posix()}" ] && exit 0\n: > "{segno.as_posix()}"; : > "{(s.app / "dati" / "sporco").as_posix()}"; echo "sudo blocco" >> "{s.chiamate.as_posix()}"; sleep 60')
     c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
