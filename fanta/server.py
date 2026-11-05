@@ -10,6 +10,7 @@ import hashlib
 import shutil
 from datetime import datetime
 import json
+import mimetypes
 import unicodedata
 import logging
 import re
@@ -2517,6 +2518,8 @@ def icona_dell_app(dim: int, request: Request):
     return FileResponse(WEB / "icone" / f"{scelta}-{dim}.png", headers={"Cache-Control": "no-cache"})
 
 
+# Il tipo dei caratteri .woff2 non è conosciuto da Python su tutti i sistemi (Windows): senza, il file andrebbe come text/plain.
+mimetypes.add_type("font/woff2", ".woff2")
 app.mount("/", StaticFiles(directory=WEB), name="web")
 
 
