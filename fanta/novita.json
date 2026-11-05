@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.407",
+    "data": "2026-11-05T22:49:19",
+    "titolo": "Formazione: il perché delle scelte che sembrano strane, sotto il campo",
+    "voci": [
+      "Se la consigliata mette titolare chi da solo vale meno di uno rimasto fuori, sotto il campo una riga dice perché.",
+      "Per esempio «Preferito a Gallo: con lui la formazione fa più punti attesi» o «A pari punti gioca più sicuro di Gallo». I numeri sono quelli del confronto tra i due.",
+      "Sull'iPhone la stessa nota compare sotto il campo, come sulla web."
+    ],
+    "tecnico": [
+      "Issue #356 (L3 di #166). Modulo nuovo fanta/perche_scelta.py: per i titolari con meno punti_attesi di un escluso dello stesso ruolo (rivale = l'escluso con più punti attesi) e per gli incerti, il motivo come Frase (chiavi scelta.*), con il conto del Confronto (consigli._in_formazione: formazione com'è contro i due scambiati, panchina rifatta, stesse simulazioni). Ordine: titolare che gioca al posto di un improbabile, incerto, più punti attesi, a pari punti più sicuro o fantavoto atteso più alto, primo motivo proprio a favore del perché questo numero, pari; se scambiarli varrebbe di più, nella consigliata stabile tenuta prima della scadenza «per meno di 1 punto non cambia».",
+      "Campo nuovo facoltativo perche_scelta [{titolare, altro, testo, frase}] in ogni modulo di GET /api/formazione (in cima e in ogni stile), aggiunto in consigli._calcola_formazione e consigli.stabile. Nessun numero né scelta cambia: verifica invariata. verifica --consiglio, C4: scelte storte senza riga da 11 a 0 su 14 (giornata 9, archivio di sviluppo, lega d'esempio).",
+      "Web: la nota sotto il campo (nota-incerti) usa perche_scelta del modulo mostrato (senza il campo, gli incerti come prima). iPhone: OpzioneModulo.percheScelta e la nota sotto il campo in FormazioneView, non in modifica a mano né a giornata chiusa."
+    ]
+  },
+  {
     "versione": "1.406",
     "data": "2026-11-05T22:33:05",
     "titolo": "Il Diario misura quanto è buono il consiglio di formazione",
