@@ -41,6 +41,7 @@ SIMULAZIONI = 300
 POSTI_ROSA = {"P": 3, "D": 8, "C": 8, "A": 6}
 P_MINIMA_ROSA = 0.3
 FINESTRA = 8                            # le medie si fanno sulle ultime 8 giornate misurate; verdetto solo a finestra piena
+MOSTRATE = 38                           # righe per giornata in «Stato dei dati»: al massimo una stagione
 # soglie decise il 5/11/2026 (spec §2 e §4, D1): I1 errore del fantavoto atteso almeno il 3% sotto quello della fantamedia;
 # I2 «gioca N%» con errore di calibrazione al massimo 5 punti e Brier al massimo 0,15; I3 punti veri nella fascia tra 72% e 88%
 SOGLIE = {"I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88}
@@ -322,6 +323,21 @@ def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dic
                (json.dumps(fuori), json.dumps(da_avvisare), json.dumps(avvisati), *chiave))
     db.commit()
     return da_avvisare
+
+
+def riepilogo(db: sqlite3.Connection) -> dict:
+    """Per «Stato dei dati»: finestra, soglie, le medie delle ultime FINESTRA giornate misurate (come `medie`) e una riga per ogni
+    giornata salvata, dalla più recente (al massimo MOSTRATE), con i suoi numeri (None finché la giornata non è misurata). Solo
+    giornate e numeri, niente giocatori."""
+    per_giornata = []
+    for r in _righe(db.execute("SELECT * FROM registro_giornate ORDER BY stagione DESC, giornata DESC LIMIT ?", (MOSTRATE,))):
+        g = medie([r]) if r["misurato"] else {}
+        per_giornata.append({
+            "stagione": r["stagione"], "giornata": r["giornata"], "salvato": r["salvato"], "giocatori": r["giocatori"],
+            "con_probabili": bool(r["con_probabili"]), "misurato": r["misurato"], "voti": r["voti"], "presenze": r["presenze"],
+            **{k: g.get(k) for k in ("errore_modello", "errore_fantamedia", "i1", "brier", "calibrazione", "copertura")},
+            "fuori": _lista(r["fuori"])})
+    return {"finestra": FINESTRA, "soglie": dict(SOGLIE), **medie(_misurate(db)), "per_giornata": per_giornata}
 
 
 def chiudi_giornate(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int]]:

@@ -1,7 +1,10 @@
 """Registro delle giornate (L1 di #165): numeri mostrati prima della prima partita, misura a giornata finita, medie e avviso.
 Solo dati inventati: squadre e giocatori finti, archivio in una cartella temporanea."""
+import json
 import sqlite3
+import threading
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pandas as pd
 import pytest
@@ -285,6 +288,60 @@ def test_avviso_non_mandato_si_riprova(otto_buone):
     esito["riesce"] = True
     assert rg.avvisa(db, lambda t, x: inviati.append((t, x)) or True) is True and len(inviati) == 1
     assert rg.avvisa(db, lambda t, x: inviati.append((t, x)) or True) is False and len(inviati) == 1
+
+
+@pytest.fixture
+def ntfy_finto(tmp_path, monkeypatch):
+    """Un servizio ntfy finto su 127.0.0.1 (porta scelta dal sistema): raccoglie gli avvisi mandati da `sentinella.manda_ntfy`.
+    Il canale del proprietario sta in un file temporaneo, che all'inizio non c'è."""
+    ricevuti = []
+
+    class Gestore(BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802 - nome imposto da http.server
+            ricevuti.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *_):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Gestore)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    canale = tmp_path / "canale"
+    monkeypatch.setenv("SCHIERAXI_CANALE", str(canale))
+    monkeypatch.setenv("SENTINELLA_NTFY_URL", f"http://127.0.0.1:{server.server_port}/")
+    yield canale, ricevuti
+    server.shutdown()
+    server.server_close()
+
+
+def test_giro_salva_misura_e_avvisa_il_proprietario(giornata10, ntfy_finto, monkeypatch):
+    """Tutto il giro con l'invio vero (servizio finto): 8 giornate buone e la 9ª fuori soglia già misurate; la 10ª si salva
+    negli ultimi dieci minuti, si misura un giorno dopo la fine ed è la seconda fuori soglia di fila: un avviso solo."""
+    canale, ricevuti = ntfy_finto
+    db = giornata10
+    for g in range(1, 10):
+        db.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) VALUES (?, ?, ?, 100, 1)",
+                   (ST, g, f"2026-09-{g:02d}T12:00:00"))
+        rg.registra_misura(db, ST, g, BUONA if g < 9 else CATTIVA, datetime(2026, 9, g, 12))
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata: (_prev(PREV_10), giornata, True))
+    rg.giro(ORA(7, 18, 21), db)                                                 # dieci minuti prima: salva
+    assert db.execute("SELECT giocatori FROM registro_giornate WHERE giornata = 10").fetchone()[0] == 2 and ricevuti == []
+    _gioca(db, 1, 2)
+    _voto(db, 10, 101, "Alfa", "P", 6.0)
+    _voto(db, 10, 102, "Gamma", "D", 6.0)
+    _voto(db, 10, 900, "Beta", "C", 6.0)
+    _voto(db, 10, 901, "Delta", "C", 6.0)
+    db.commit()
+    rg.giro(ORA(8, 22, 35), db)                                                 # misurata, ma il canale non c'è: resta da mandare
+    riga = db.execute("SELECT misurato, fuori, da_avvisare FROM registro_giornate WHERE giornata = 10").fetchone()
+    assert riga[0] is not None and riga[1] == '["I1"]' and riga[2] == '["I1"]' and ricevuti == []
+    canale.write_text("canale-finto\n", encoding="utf-8")
+    rg.giro(ORA(8, 22, 36), db)                                                 # canale pronto: parte
+    assert len(ricevuti) == 1 and ricevuti[0]["topic"] == "canale-finto" and ricevuti[0]["title"] == "SchieraXI: statistiche"
+    assert "I1" in ricevuti[0]["message"] and "finto" not in ricevuti[0]["message"]  # niente nomi di giocatori
+    rg.giro(ORA(8, 22, 37), db)
+    assert len(ricevuti) == 1                                                   # una volta sola
 
 
 def test_testo_avviso_solo_numeri():
