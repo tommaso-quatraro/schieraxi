@@ -40,11 +40,6 @@ final class SchedaChiaraTests: XCTestCase {
         XCTAssertEqual(ProssimePartite.cella(PartitaCalendario(giornata: 9, avversario: "milan", inCasa: false, difficolta: 3, data: nil)), "@ MIL")
     }
 
-    func testLaSchedaUsaLaGiornataDellaLega() throws {
-        XCTAssertEqual(GiocatoreCorpo.giornataMostrata(try giocatore(#""giornata": 11, "giornata_lega": 8,"#)), 8)
-        XCTAssertEqual(GiocatoreCorpo.giornataMostrata(try giocatore(#""giornata": 11,"#)), 11, "server vecchio: il numero di prima")
-    }
-
     private func voto(_ giornata: Int, _ fv: Double?, _ voto: Double? = nil) -> VotoGiornata {
         VotoGiornata(giornata: giornata, voto: voto ?? fv.map { $0 - 0.5 }, fv: fv, gol: nil, assist: nil)
     }

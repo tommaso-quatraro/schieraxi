@@ -36,8 +36,11 @@ struct VoceDiario: Decodable, Identifiable {
     /// server vecchio senza il campo: ci sono) e se c'è la giornata da mandare.
     var siPuoCambiare: Bool { giornata != nil && modificabile != false }
 
-    /// «Giornata 8»: il numero della lega, come in Oggi e sulla web; «Giornata 11» (Serie A) se il server non lo manda.
-    var titolo: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Giornata" }
+    /// La giornata con i due numeri (lega e Serie A); nil senza giornata.
+    var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
+
+    /// «Giornata 8 · 11ª di Serie A», come la web (#299); «38ª giornata di Serie A» per una stagione passata (`giornata_lega` null).
+    var titolo: String { nomeGiornata?.intero ?? "Giornata" }
 
     /// Il numero da mostrare nelle frasi brevi: quello della lega se c'è, altrimenti quello di Serie A.
     var numero: Int? {

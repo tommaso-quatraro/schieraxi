@@ -446,7 +446,7 @@ struct StatoDatiView: View {
                     if let probabili = s.probabili, !probabili.isEmpty {
                         Section(titolo: "Probabili formazioni raccolte") {
                             ForEach(probabili) { p in
-                                riga("Giornata \(p.giornata)", Formato.plurale(p.giocatori ?? 0, "giocatore", "giocatori"))
+                                riga(TempiLega.serieA(p.giornata), Formato.plurale(p.giocatori ?? 0, "giocatore", "giocatori"))
                             }
                         }
                     }

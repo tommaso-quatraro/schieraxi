@@ -139,9 +139,15 @@ enum TestiFase {
 
     // MARK: giornata finita
 
-    /// «Giornata 8 di lega (Serie A 11)»; nil se il numero manca.
+    /// «Giornata 8 · 11ª di Serie A» (#299); nil se il numero di Serie A manca.
     static func giornata(serieA: Int?, lega: Int?) -> String? {
         serieA.map { TempiLega.etichetta(serieA: $0, lega: lega) }
+    }
+
+    /// Il titolo della giornata finita, come la web (`oggi.giornata_finita`): «Giornata 8 · 11ª di Serie A: finita»; `voce`:
+    /// la stessa frase per VoiceOver («Giornata 8, 11ª di Serie A: finita»). Nil se il numero di Serie A manca.
+    static func giornataFinita(serieA: Int?, lega: Int?, voce: Bool = false) -> String? {
+        serieA.map { NomeGiornata(serieA: $0, lega: lega) }.map { "\(voce ? $0.voce : $0.intero): finita" }
     }
 
     /// «3,5 punti più del previsto», «2,0 punti meno del previsto», «Proprio come previsto».
