@@ -1274,7 +1274,7 @@ body { container: pagina / inline-size; }
   .con-confronto .voce > .valore .barra-p { display: none; }
   .elenco li.alternative-li { padding: 0 0 12px; }
   /* Cambi consigliati: volto e guadagno sopra, nome e dettagli sotto a tutta larghezza, come le righe dei giocatori (issue #287) */
-  .proposta-r { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; column-gap: 8px; padding: 10px 12px; }
+  .proposta-r { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; column-gap: 8px; }
   .proposta-r > .pr-testo { grid-row: 2; grid-column: 1 / -1; }
   .proposta-r > .pr-num { grid-row: 1; grid-column: 2; justify-self: end; }
   /* Regole e Notifiche: il −/+ o il menu va sotto il nome della regola quando accanto il nome resterebbe una parola per riga */
