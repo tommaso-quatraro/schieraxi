@@ -13,13 +13,14 @@ enum StatoScelta: Equatable {
     case salvata(Date?)
     /// C'è una scelta salvata, ma quella mostrata è diversa: ci sono modifiche non salvate.
     case modificata(Date?)
+    case chiusa(tua: Bool)
 
     /// - Parameters:
     ///   - letta: la scelta della giornata è stata letta dal server (anche «nessuna»).
     ///   - salvati: i titolari salvati (nil = nessuna scelta salvata).
     ///   - manuale: i titolari della modifica a mano (nil = si vede la consigliata).
     /// L'ordine dei titolari non conta.
-    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?) -> StatoScelta {
+    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, chiusa: Bool = false) -> StatoScelta {
         guard letta else { return .sconosciuto }
         guard let salvati else { return manuale == nil ? .consigliata : .bozza }
         guard let manuale, Set(manuale) == Set(salvati) else { return .modificata(salvataIl) }
@@ -37,6 +38,7 @@ enum StatoScelta: Equatable {
         case .modificata(let d):
             return "Modifiche non salvate: " + (d.map { "la formazione salvata è di \(Self.momento($0, adesso: adesso))." }
                                                  ?? "la formazione salvata è un'altra.")
+        case .chiusa: return "La formazione di questa giornata è chiusa: le partite sono cominciate."
         }
     }
 
@@ -47,6 +49,7 @@ enum StatoScelta: Equatable {
         case .consigliata: return "info.circle"
         case .bozza, .modificata: return "pencil.circle.fill"
         case .salvata: return "checkmark.circle.fill"
+        case .chiusa: return "lock.fill"
         }
     }
 
@@ -55,7 +58,7 @@ enum StatoScelta: Equatable {
     var tono: Tono {
         switch self {
         case .salvata: return .bene
-        case .bozza, .modificata: return .attenzione
+        case .bozza, .modificata, .chiusa: return .attenzione
         case .consigliata, .sconosciuto: return .neutro
         }
     }
@@ -64,7 +67,7 @@ enum StatoScelta: Equatable {
     var daSalvare: Bool {
         switch self {
         case .bozza, .modificata, .sconosciuto: return true
-        case .consigliata, .salvata: return false
+        case .consigliata, .salvata, .chiusa: return false
         }
     }
 

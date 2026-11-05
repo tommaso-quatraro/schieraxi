@@ -66,6 +66,7 @@ final class FormazioneViewModel: ViewModelBase {
     var chiusa: Bool { formazione?.iniziata == true }
 
     static let testoChiusa = "La formazione di questa giornata è chiusa: le partite sono cominciate."
+    var fasciaChiusa: String? { chiusa ? Self.testoChiusa : nil }
     /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
     static let codiceChiusa = "formazione_chiusa"
 
