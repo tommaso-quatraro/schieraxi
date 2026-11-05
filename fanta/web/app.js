@@ -1052,6 +1052,14 @@ function stellaNonMassimo(l) {
   return " " + t("formazione.stella_non_massimo", { modulo: esc(top.modulo), stile: esc(nomeStile(l)), consigliato: esc(l.modulo) });
 }
 const stessiIds = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+// Il perché della scelta in una riga (campo `perche_scelta` del modulo, fanta/perche_scelta.py): una riga per ogni titolare che
+// sembra una scelta storta (meno punti attesi di un escluso dello stesso ruolo) o è incerto con la riserva sicura.
+// [{id, nome, riga}] nell'ordine del server (riga già pronta per l'HTML); null = il server non manda il campo.
+function righePercheScelta(m, scheda) {
+  if (!Array.isArray(m.perche_scelta)) return null;
+  return m.perche_scelta.map(x => [x, scheda(x && x.titolare)]).filter(([x, a]) => a && x.testo)
+    .map(([x, a]) => ({ id: a.id, nome: a.nome, riga: esc(testoDi(x)) }));
+}
 
 // Stato della scelta della giornata, dal confronto fra gli 11 mostrati e quelli salvati sul server (l'ordine non conta).
 // `salvata`: risposta di GET /api/scelta (null = nessuna scelta; undefined = non ancora letta o lettura fallita: nessuna riga).
@@ -1192,6 +1200,8 @@ function mostraFormazione(f, squadra, opz = {}) {
     sc.nonSalvata = !squadra && !chiusa && manuale && (st === "modificata" || (st === "mano" && !sc.manuale.uguale));
     const modificabile = manuale && !chiusa;
     const inc = incerti(m);
+    // la nota sotto il campo: il perché delle scelte che sembrano storte, solo per la proposta del server (server senza il campo: gli incerti)
+    const nota = (sc.manuale || f.iniziata) ? [] : (righePercheScelta(m, scheda) ?? Object.values(inc));
     let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
     const voceTit = x => {
       const h = voceGiocatore(x, null, true, modificabile);
@@ -1229,7 +1239,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       <div class="campo">${legendaCampo()}<i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
         ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
       </div>
-      ${Object.keys(inc).length ? `<div class="nota-incerti" id="nota-incerti">${Object.values(inc).map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
+      ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
         <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>

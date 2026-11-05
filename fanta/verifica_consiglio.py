@@ -96,10 +96,18 @@ def costo_compagno(rosa: list[fz.Giocatore], titolari: list[int], regole: Regole
 
 
 # ---------------------------------------------------------------- C4: scelte che sembrano storte e il loro perché
+def _con_riga(m: dict) -> set[int]:
+    """I titolari con una riga sotto il campo nel modulo `m`, come li mostra l'app: il perché della scelta (`perche_scelta`, #356);
+    da un server senza quel campo, la nota «titolare anche se incerto» (`incerti`)."""
+    if isinstance(m.get("perche_scelta"), list):
+        return {int(r["titolare"]) for r in m["perche_scelta"]}
+    return {int(i["titolare"]) for i in m.get("incerti") or []}
+
+
 def scelte_storte(f: dict) -> dict:
-    """Per reparto: c'è un escluso con più punti attesi del titolare più debole? È «spiegata» se quel titolare ha la nota
-    «titolare anche se incerto» (`incerti` del modulo scelto). Contano solo i reparti con almeno un escluso."""
-    incerti = {int(i["titolare"]) for m in f["moduli"] if m["modulo"] == f["modulo"] for i in m.get("incerti") or []}
+    """Per reparto: c'è un escluso con più punti attesi del titolare più debole? È «spiegata» se quel titolare ha la sua riga sotto
+    il campo nel modulo scelto (`_con_riga`). Contano solo i reparti con almeno un escluso."""
+    con_riga = {i for m in f["moduli"] if m["modulo"] == f["modulo"] for i in _con_riga(m)}
     esclusi = _esclusi(f)
     reparti = storte = spiegate = 0
     for ruolo in RUOLI:
@@ -111,7 +119,7 @@ def scelte_storte(f: dict) -> dict:
         debole = min(t_r, key=lambda s: s["punti_attesi"])
         if max(s["punti_attesi"] for s in e_r) > debole["punti_attesi"]:
             storte += 1
-            spiegate += int(debole["id"]) in incerti
+            spiegate += int(debole["id"]) in con_riga
     return {"reparti": reparti, "storte": storte, "spiegate": spiegate}
 
 
@@ -411,7 +419,8 @@ def rapporto(m: dict, scrivi=print) -> None:
            f"{round(MAX_SENZA_MOTIVO * 100)}%): {_esito(e['C4'])}")
     if b:
         scrivi(f"  Reparti con un escluso che ha più punti attesi del titolare più debole: {b['storte']} su {b['reparti']}; "
-               f"spiegati dalla nota «titolare anche se incerto»: {b['spiegate']}")
+               f"spiegati da una riga sotto il campo (il perché della scelta): {b['spiegate']}; "
+               f"senza la loro riga: {b['storte'] - b['spiegate']}")
         scrivi(f"  Titolari con «perché questo numero» vuoto: {b['vuoti']} su {b['titolari']}; senza un motivo proprio "
                f"(solo «gioca N%», partita o «altro»): {_quota(b['senza_motivo'], b['titolari'])}")
     else:
