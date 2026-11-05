@@ -49,7 +49,7 @@ def test_le_forme_degli_avvisi_sono_quelle_dell_app():
 # ---------------------------------------------------------------- server: Da fare, testo della formazione, errori
 def test_da_fare_diario_con_i_due_numeri(tmp_path, monkeypatch):
     monkeypatch.setattr(rinvii, "giornate_chiuse", lambda db, stagione, regole: [8, 9])
-    voce = da_fare._diario(None, ST, tmp_path / "scelte.json", tmp_path / "diario.json", LEGA_DA_4)[0]
+    voce = da_fare._diario(None, ST, None, tmp_path / "scelte.json", tmp_path / "diario.json", LEGA_DA_4)[0]     # senza rose né scelte
     assert voce["testo"] == "Giornata 6 · 9ª di Serie A: è finita, dimmi se hai schierato la consigliata."
     assert voce["frase"] == {"chiave": "dafare.diario", "param": {"giornata": {"chiave": "giornata.lega", "param": {"n": 6, "a": 9}}}}
     assert voce["giornata"] == 9                                                  # il numero per il pulsante resta quello di Serie A
@@ -207,6 +207,7 @@ def test_testi_con_la_giornata_intera():
         "frase.giornata.lega": "Giornata {n} · {a}ª di Serie A",
         "frase.giornata.serie_a": "{a}ª giornata di Serie A",
         "frase.dafare.diario": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
+        "frase.dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
         "oggi.prossima_chiude": "{g}: la formazione si chiude {quando}.",
         "oggi.giornata_finita": "{g}: finita",
         "oggi.chiusa_dettaglio": "La formazione si è chiusa {quando}",

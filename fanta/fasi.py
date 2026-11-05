@@ -103,17 +103,21 @@ def recuperi_mancanti(db: sqlite3.Connection, stagione: str, giornata: int) -> l
 
 # ---------------------------------------------------------------- la formazione schierata
 def schierata(stagione: str, giornata: int, file_scelte, file_diario, consigliata: list[int] | None = None,
-              panchina_consigliata: list[int] | None = None) -> tuple[list[int], list[int] | None, str] | None:
+              panchina_consigliata: list[int] | None = None, ruoli: dict[int, str] | None = None,
+              regole: Regole | None = None) -> tuple[list[int], list[int] | None, str] | None:
     """(titolari, panchina o None, di chi è: `tua` o `consigliata`). In ordine: la scelta dell'utente, la consigliata congelata alla
-    scadenza (istantanea del Diario), la copia automatica, la consigliata di adesso. Senza file non si legge niente (mai i file comuni)."""
+    scadenza (istantanea del Diario), la copia automatica, la consigliata di adesso. Senza file non si legge niente (mai i file comuni).
+    Con `ruoli` ({id: ruolo} della rosa) e `regole` la scelta dell'utente conta solo se si può schierare (regola unica,
+    `scelte.motivo_non_valida`, la stessa della Formazione): se no vale la consigliata, come senza scelta."""
     sc = scelte.leggi(stagione, giornata, file_scelte) if file_scelte else None
-    if sc and len(sc.get("titolari") or []) == 11:
+    controlla = ruoli is not None and regole is not None
+    if sc and len(sc.get("titolari") or []) == 11 and not (controlla and scelte.motivo_non_valida(sc["titolari"], ruoli, regole)):
         return [int(i) for i in sc["titolari"]], [int(i) for i in sc.get("panchina") or []] or None, "tua"
     ist = (diario.carica(file_diario).get("istantanee") or {}).get(f"{stagione}/{giornata}") if file_diario else None
     if isinstance(ist, dict) and len(ist.get("titolari") or []) == 11:
         return ([int(g["id"]) for g in ist["titolari"]], [int(g["id"]) for g in ist.get("panchina") or []] or None, "consigliata")
     auto = scelte.leggi(stagione, giornata, file_scelte, anche_automatica=True) if file_scelte else None
-    if auto and len(auto.get("titolari") or []) == 11:
+    if auto and auto.get("tipo") == scelte.TIPO_AUTOMATICA and len(auto.get("titolari") or []) == 11:    # non la scelta scartata sopra
         return [int(i) for i in auto["titolari"]], None, "consigliata"
     if consigliata and len(consigliata) == 11:
         return [int(i) for i in consigliata], [int(i) for i in panchina_consigliata or []] or None, "consigliata"
@@ -306,7 +310,9 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
     info = _info_rosa(rose, prev)
     consigliata = [int(g["id"]) for g in f.get("titolari") or []]
     panchina_cons = [int(g["id"]) for g in f.get("panchina") or [] if isinstance(g, dict) and "id" in g]
-    sch = schierata(stagione, giornata, file_scelte, file_diario, consigliata, panchina_cons)
+    # chi si può schierare: come la Formazione, i giocatori della rosa con una previsione per la giornata
+    ruoli = {i: x["ruolo"] for i, x in info.items() if prev is None or i in prev.index}
+    sch = schierata(stagione, giornata, file_scelte, file_diario, consigliata, panchina_cons, ruoli, regole)
     if not sch:
         return None
     tit_ids, panc_ids, di = sch
@@ -349,7 +355,7 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
                        "punti_fatti": mia.get("reale"), "punti_attesi": mia.get("atteso"), "intervallo": mia.get("intervallo"),
                        "consigliata": {"punti_fatti": cons.get("reale"), "punti_attesi": cons.get("atteso")}}
     info = _info_rosa(rose, None)
-    sch = schierata(stagione, giornata, file_scelte, file_diario)
+    sch = schierata(stagione, giornata, file_scelte, file_diario, ruoli={i: x["ruolo"] for i, x in info.items()}, regole=regole)
     if not sch or any(i not in info for i in sch[0]):
         return None
     tit_ids, panc_ids, di = sch

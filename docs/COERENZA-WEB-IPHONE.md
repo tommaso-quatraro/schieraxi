@@ -28,7 +28,7 @@ Oggi e «Giornata 7 di lega (Serie A 10)» sull'iPhone. Chi usa le due app non d
 | Posto in formazione (Confronto, scelta del confronto, sostituzione) | «Titolare», «Panchina 2», «Non schierato» (fuori dai titolari e dalla panchina) | «Probabile titolare», «Fuori»: sono parole della titolarità |
 | Stato della partita (dopo la scadenza) | Da giocare · Partita in corso · Ha giocato (o il fantavoto) · Voto in arrivo · Senza voto · Rinviata. Stesse parole in Oggi, Formazione e scheda. | «In campo», «in campo ora», «Aspetta il voto», «partita rinviata» |
 | Stato della scelta (Formazione) | Le frasi di `formazione.stato_*` di `testi.js`: «Stai vedendo la consigliata: non hai salvato una tua formazione.», «La tua formazione è salvata (oggi alle 13:09)», «Modifiche non salvate · salvata …», «Modifica a mano non ancora salvata», «La formazione salvata non è più valida: …» | frasi diverse per lo stesso stato |
-| Formazione chiusa | Formazione in sola lettura. Per la tua squadra una frase sola, nella riga dello stato della scelta: «Giornata iniziata: la formazione è chiusa», con «· vale quella che hai salvato» se hai salvato una scelta (`formazione.stato_chiusa`, `formazione.stato_chiusa_tua`). La fascia «La formazione di questa giornata è chiusa: le partite sono cominciate.» (`formazione.chiusa`) solo per la formazione di un'altra squadra, che non ha la riga di stato. Se la scadenza passa mentre salvi: «La giornata è già iniziata: la formazione non si può più cambiare.» (`err.formazione_chiusa`). | fascia e riga di stato insieme per la tua squadra (due frasi per lo stesso stato); nessuna fascia |
+| Formazione chiusa | Formazione in sola lettura. Per la tua squadra una frase sola, nella riga dello stato della scelta: «Giornata iniziata: la formazione è chiusa», con «· vale quella che hai salvato» se hai salvato una scelta (`formazione.stato_chiusa`, `formazione.stato_chiusa_tua`); se la scelta salvata non si può più schierare (`stato_scelta: "non_valida"` di `GET /api/formazione`, o `formazione_non_valida` rileggendola) «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» (`formazione.stato_chiusa_non_valida`) e si vede la consigliata, come in Oggi (#319). La fascia «La formazione di questa giornata è chiusa: le partite sono cominciate.» (`formazione.chiusa`) solo per la formazione di un'altra squadra, che non ha la riga di stato. Se la scadenza passa mentre salvi: «La giornata è già iniziata: la formazione non si può più cambiare.» (`err.formazione_chiusa`). | fascia e riga di stato insieme per la tua squadra (due frasi per lo stesso stato); nessuna fascia |
 | Stato della giornata (Oggi) | Prima: conto alla rovescia («2 giorni 3 h», «3 h 20 min», «12 min») e sotto «La formazione si chiude sab 31 14:50 (10 min prima della prima partita)». Dopo la scadenza: «**Chiusa**» e «La formazione si è chiusa sab 31 14:50» (la giornata è scritta subito sopra il conto, non si ripete). Finita: «Giornata 7 · 10ª di Serie A: finita». Senza data: «Data da definire». | «In corso» al posto di «Chiusa» |
 | Fantavoto atteso | Numero **neutro** (colore del testo), una cifra decimale, uguale in campo, elenchi, scheda e widget. Sul campo sta in una pillola scura con il numero bianco. | colorato in base al valore (pallino rosso, blu, verde) |
 | Voti veri (giornata in corso) | Numero neutro, come sopra | verde da 7, rosso sotto 6 |
@@ -45,7 +45,7 @@ Decisione del proprietario: come su Leghe Fantacalcio si mostrano **tutti e due 
 I due numeri arrivano dal server in ogni risposta che parla di una giornata: `giornata` (Serie A) e `giornata_lega` (lega; `null`
 per le stagioni passate e prima che la lega parta). Il testo lo costruisce **una sola funzione per piattaforma**, mai a mano:
 web `nomeGiornata(lega, serieA)` in `fanta/web/app.js`; server `frasi.nome_giornata(serie_a, lega)` in `fanta/frasi.py`
-(avvisi, Da fare, testo per i Comandi); iPhone: una funzione sola che restituisce le stesse forme.
+(avvisi, Da fare, testo per i Comandi); iPhone `NomeGiornata` in `ios/Sources/Domain/TempiLega.swift` (app e widget), con le stesse forme.
 
 | Forma | Quando | Italiano | Inglese |
 |---|---|---|---|
@@ -58,7 +58,7 @@ web `nomeGiornata(lega, serieA)` in `fanta/web/app.js`; server `frasi.nome_giorn
 - Lega partita con la Serie A (`prima_giornata_lega` = 1): si scrivono tutti e due anche se uguali, «Giornata 8 · 8ª di Serie A».
 - «ª» è il carattere dell'ordinale femminile (U+00AA), non una «a» piccola.
 - Davanti all'8ª e all'11ª (ottava, undicesima) l'articolo perde la vocale: «l'11ª giornata di Serie A», «dall'8ª all'11ª»,
-  «per l'11ª»; «la 1ª» e «la Giornata 8» restano. Una funzione per lato: web `elidiOrdinali`, server `frasi.elidi_ordinali`.
+  «per l'11ª»; «la 1ª» e «la Giornata 8» restano. Una funzione per lato: web `elidiOrdinali`, server `frasi.elidi_ordinali`, iPhone `TempiLega.elidiOrdinali`.
 - **In una frase** la forma intera va in testa, seguita dai due punti: «Giornata 8 · 11ª di Serie A: la formazione si chiude sab 31 14:50.»
   Così la frase resta grammaticale in ogni lingua e non nasce una terza forma.
 - Se manca anche `giornata` (server vecchio) si scrive «Giornata 8»; se mancano tutti e due, niente.
@@ -81,7 +81,7 @@ Frasi esatte, schermata per schermata (italiano; l'inglese è in `fanta/web/test
 | Diario, correggi | «Giornata 8 · 11ª di Serie A: tocca i giocatori che hai schierato. Servono 11 titolari.» |
 | Diario, «Quando hai scelto diversamente» | «Giornata 8 · 11ª di Serie A: Rossi, Bianchi invece di Verdi, Neri» |
 | Diario, «Quanto ci abbiamo preso» | righe «Giornata 8 · 11ª di Serie A · …»; «Calcolato su 5 giornate, dalla Giornata 4 · 7ª di Serie A alla Giornata 8 · 11ª di Serie A.»; sotto le barre del grafico solo il numero della lega |
-| Da fare (testo del server) | «Giornata 7 · 10ª di Serie A: è finita, dimmi se hai schierato la consigliata.» |
+| Da fare (testo del server) | «Giornata 7 · 10ª di Serie A: è finita, dimmi se hai schierato la consigliata.»; «È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della Giornata 12 · 15ª di Serie A.» |
 | Widget (iPhone) | forma corta; nel widget piccolo solo «Giornata 8»; etichetta di VoiceOver con la forma intera |
 | Calendario di Serie A | colonne «G11», lettori di schermo «11ª giornata di Serie A» |
 | Scheda, grafico dei voti | al passaggio sul punto «11ª giornata di Serie A: 6,5» |
@@ -136,7 +136,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 23 | Scheda giocatore, numero grande | neutro | verde | neutro | #27 (da chiedere) |
 | 24 | Diario, pulsante | «Ho schierato questa» | «Ho schierato la consigliata» (#21) | iPhone | fatto sulla web (pacchetto 1) |
 | 25 | Scambi | «Costruisci uno scambio», «Valuta lo scambio», «Giocatori in rosa dopo lo scambio», «Formazione migliore (prossime N giornate)» | «Analizza», «Valuta l'offerta», «Rose dopo lo scambio», «Tua formazione migliore» | web | da fare (I-Scambi, dopo #14) |
-| 26 | Menu Squadra | «Aggiorna le rose» per ultima | «Aggiorna le rose» per prima | web | da fare (I-menu, dopo #29) |
+| 26 | Menu Squadra e Altro, pagina Calendario | «Aggiorna le rose» per ultima, «Calendario» con l'elenco dei giocatori, «Nuova stagione» sempre, riga sotto ogni voce; Calendario «Calendario e difficoltà» | «Aggiorna le rose» per prima, niente «Calendario» né «Nuova stagione», senza righe sotto; «Difficoltà delle prossime partite» | web | fatto con #304 (test contro `VOCI_LEGA` e `testi.js`) |
 | 27 | Menu Altro | niente asta | «Asta e riparazione» | da decidere | decisione dell'utente |
 | 28 | Confronto, titolo | – | «Giornata 10» (Serie A) | «Giornata 7» | da fare (I-menu, dopo #29) |
 | 29 | Avvisi, Impostazioni, Account, Regole, Novità, Squadre e rose | – | – | da confrontare | da fare (I-confronto) |
@@ -147,7 +147,8 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 34 | Campo, partita rinviata | «Rinviata» | «gioca 50%» | web | iPhone da fare (#284): `PedinaCampo` |
 | 35 | Oggi, carta del rinvio | «UDI vs MIL» | «UDI–MIL» | web | iPhone da fare (#284): `PartiteRinviate.partita` |
 | 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | iPhone da fare (#282): `GiocatoreWidget.descrizioneStato` |
-| 37 | Numero della giornata, ovunque (anche widget e avvisi) | «Giornata 8 · 11ª di Serie A» (`nomeGiornata`) | «Giornata 8» | sezione «Giornata: le forme» | web e server: fatto (#299); iPhone da fare (#299) |
+| 37 | Formazione chiusa con la scelta salvata non più valida | «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» e la consigliata | uguale alla web | server (`stato_scelta` di `GET /api/formazione`) | web fatto (#319); iPhone fatto (#296, PR #318) |
+| 38 | Numero della giornata, ovunque (anche widget e avvisi) | «Giornata 8 · 11ª di Serie A» (`nomeGiornata`) | «Giornata 8» | sezione «Giornata: le forme» | web e server fatto (#299, PR #306); iPhone fatto (#312) |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

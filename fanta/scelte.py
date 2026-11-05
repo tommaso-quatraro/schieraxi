@@ -8,11 +8,62 @@ from datetime import datetime
 from pathlib import Path
 
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
+from .punteggio import modulo_valido
 
 FILE_SCELTE = RADICE / "dati" / "scelte.json"
 MAX_GIORNATE = 60
 TIPO_AUTOMATICA = "automatica"
+NESSUNA, VALIDA, NON_VALIDA = "nessuna", "valida", "non_valida"      # `stato_scelta` di GET /api/formazione
 _blocco = threading.Lock()
+
+
+def motivo_non_valida(titolari, ruoli: dict[int, str], regole) -> str | None:
+    """Perché questi titolari non si possono schierare (frase per l'utente), o None se si può. `ruoli`: {id: ruolo} dei giocatori
+    della rosa che si possono schierare. Servono 11 titolari diversi, tutti lì, con un portiere e un modulo ammesso dalla lega.
+    È la regola unica della scelta: la usano la Formazione (`consigli.valuta`), Oggi, la giornata in diretta, il riepilogo e il
+    Diario. Una scelta salvata che non la rispetta più (giocatore ceduto, ruolo o moduli della lega cambiati) non conta: vale la
+    consigliata, come quando non hai salvato niente."""
+    try:
+        scelti = list(dict.fromkeys(int(i) for i in titolari))
+    except (TypeError, ValueError):                              # file rovinato: non è una formazione
+        scelti = []
+    if len(scelti) != 11 or any(i not in ruoli for i in scelti):
+        return "Servono 11 titolari diversi, tutti della rosa"
+    conta = {r: sum(1 for i in scelti if ruoli[i] == r) for r in "PDCA"}
+    if conta["P"] != 1 or not modulo_valido(conta["D"], conta["C"], conta["A"], regole):
+        return f"Il modulo {conta['D']}-{conta['C']}-{conta['A']} con {conta['P']} portieri non è ammesso nella tua lega"
+    return None
+
+
+def stato(scelta: dict | None, ruoli: dict[int, str], regole) -> str:
+    """`nessuna` (niente salvato dall'utente), `valida` (la scelta salvata vale) o `non_valida` (c'è, ma non si può più schierare:
+    vale la consigliata). `scelta`: quella di `leggi` (la copia automatica non è una scelta dell'utente)."""
+    if not (isinstance(scelta, dict) and isinstance(scelta.get("titolari"), list)):
+        return NESSUNA
+    return NON_VALIDA if motivo_non_valida(scelta["titolari"], ruoli, regole) else VALIDA
+
+
+def che_vale(scelta: dict | None, ruoli: dict[int, str], regole) -> dict | None:
+    """La scelta (quella di `leggi`) se si può schierare, altrimenti None: una scelta che non vale più conta come nessuna scelta e
+    vale la consigliata. La usano gli avvisi (promemoria, «cambia la formazione», «cambio pronto», riepilogo) e «Da fare»."""
+    return scelta if stato(scelta, ruoli, regole) == VALIDA else None
+
+
+def ruoli_schierabili(rose, prev=None) -> dict[int, str]:
+    """{id: ruolo} dei giocatori della tua rosa che si possono schierare, per `motivo_non_valida`. Con le previsioni della giornata
+    da giocare (`prev`) come la Formazione: solo chi ne ha una, con il ruolo delle previsioni. Senza (giornata finita) tutta la
+    rosa con il suo ruolo, come il Diario e il riepilogo di Oggi."""
+    s = rose.squadra(rose.mia_squadra or "") if rose is not None else None
+    ruoli = {}
+    for g in (s.giocatori if s else []):
+        if g.id is None:
+            continue
+        i = int(g.id)
+        if prev is None:
+            ruoli[i] = g.ruolo
+        elif i in prev.index:
+            ruoli[i] = str(prev.at[i, "ruolo"])
+    return ruoli
 
 
 def _tutte(percorso: Path | None = None) -> dict:

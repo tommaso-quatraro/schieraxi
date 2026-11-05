@@ -140,7 +140,7 @@ struct DemoWidgetComeAppTests {
             return "G\(g["giornata_lega"] as? Int ?? 0): \(punti(e["atteso"])) → \(punti(e["reale"]))"
         }
         let w = try widget()
-        #expect(w.giornateGiocate.map { "G\($0.giornata): \(Formato.punti($0.attesi)) → \(Formato.punti($0.fatti))" } == attese)
+        #expect(w.giornateGiocate.map { "G\($0.numero): \(Formato.punti($0.attesi)) → \(Formato.punti($0.fatti))" } == attese)
     }
 
     @Test("Seguiti, crediti, scambio e svincolo del widget sono quelli dell'app")

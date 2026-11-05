@@ -41,11 +41,13 @@ struct AccessorioGiornata: View {
 
     @ViewBuilder
     private var contenuto: some View {
-        if let oggi = vm.oggi, let numero = oggi.giornataMostrata, let inizio = Quando.data(oggi.chiusura) {
+        if let oggi = vm.oggi, let nome = oggi.nomeGiornata, let inizio = Quando.data(oggi.chiusura) {
             TimelineView(.periodic(from: Date(), by: 1)) { contesto in
                 let ora = Orologio.daSistema(contesto.date)
                 HStack(spacing: 6) {
-                    Text("Giornata \(numero)").font(.subheadline.weight(.semibold))
+                    // spazio poco: «Giornata 8»; VoiceOver legge anche il numero di Serie A (#299)
+                    Text(nome.corto).font(.subheadline.weight(.semibold))
+                        .accessibilityLabel(nome.voce)
                     if Quando.contoAllaRovescia(fino: inizio, adesso: ora) != nil {
                         TestoConto(inizio: inizio, adesso: ora)
                             .font(.subheadline).foregroundStyle(Color.testoSecondario)

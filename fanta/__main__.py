@@ -605,6 +605,12 @@ def cmd_verifica(a) -> None:
             if len(esito["tabella"]):
                 print(esito["tabella"].round(3).to_string(index=False))
             print(f"  {vf2.NOME}: {esito['verdetto']}")
+    if a.consiglio is not None:
+        from . import consigli, verifica_consiglio
+        print()
+        if not r_ose or not r_ose.squadre:
+            sys.exit("Errore: per misurare il consiglio servono le rose della lega.")
+        verifica_consiglio.rapporto(verifica_consiglio.misura(d, db, r, r_ose, consigli.stagione_corrente(), a.consiglio or None))
 
 
 def cmd_oracolo(a) -> None:
@@ -831,6 +837,10 @@ def main(argv: list[str] | None = None) -> None:
                    help="con --pacchetti: invece delle rose della lega, tante rose estratte a sorte per stagione")
     x.add_argument("--incertezza", action="store_true",
                    help="in più, misura lo scarto vero tra punti attesi e fatti e la copertura della fascia mostrata (circa 2 minuti)")
+    x.add_argument("--consiglio", nargs="?", type=int, const=0, default=None, metavar="GIORNATA",
+                   help="in più, misura il consiglio di formazione in laboratorio (C1-C4: confronto con una scelta semplice, "
+                        "titolari che non giocano, scelte storte, perché, stabilità; 600 simulazioni come l'app, semi fissi, "
+                        "circa mezzo minuto). Con un numero, la giornata con le probabili da usare (senza: l'ultima che le ha)")
     x.set_defaults(f=cmd_verifica)
     x = sub.add_parser("oracolo", help="misura il guadagno massimo di sapere in anticipo presenze, gol, rigorista")
     x.add_argument("--dalla", type=int, default=5, help="prima giornata della stagione più vecchia")

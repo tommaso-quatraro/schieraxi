@@ -1092,7 +1092,10 @@ function quandoSalvata(s, breve = false) {
   return t("formazione.giorno_alle", { giorno: diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${d.getDate()}`, ora });
 }
 const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!", chiusa: "■" };
-function rigaStatoScelta(st, salvata) {
+// A giornata chiusa la frase dice quale formazione vale. `nonValida`: la scelta salvata non si può schierare (regola unica del
+// server: `stato_scelta: "non_valida"` di GET /api/formazione, o `formazione_non_valida` rileggendola): vale la consigliata, che è
+// anche quella mostrata.
+function rigaStatoScelta(st, salvata, nonValida = false) {
   const quando = salvata ? quandoSalvata(salvata.salvata) : "", breve = salvata ? quandoSalvata(salvata.salvata, true) : "";
   const testo = {
     consigliata: t("formazione.stato_consigliata"),
@@ -1101,7 +1104,7 @@ function rigaStatoScelta(st, salvata) {
     modificata: breve ? t("formazione.stato_modificata_quando", { quando: breve }) : t("formazione.stato_modificata"),
     mano: t("formazione.stato_mano"),
     non_valida: t("formazione.stato_non_valida"),
-    chiusa: t(salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
+    chiusa: t(nonValida ? "formazione.stato_chiusa_non_valida" : salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
   }[st];
   const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}">${t(chiave)}</button>`;
   const pulsanti = {
@@ -1217,7 +1220,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
-        ${st ? rigaStatoScelta(st, sc.salvata) : ""}
+        ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
         <div class="riga"><div><div class="debole">${nomeGiornata(f.giornata_lega, f.giornata)} · <span style="white-space:nowrap">${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</span></div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
@@ -2600,7 +2603,7 @@ async function condividiImmagine(f, m) {
   while (corpo > 40 && g.measureText(titolo).width > L - 100) { corpo -= 2; g.font = `700 ${corpo}px -apple-system, Helvetica, Arial, sans-serif`; }
   g.fillText(titolo, L / 2, 110);
   g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: virgola(m.punteggio_atteso) })}`, L / 2, 168);
+  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: num(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
   g.fillStyle = "#1f8a4b"; g.beginPath(); g.roundRect(x0, y0, w, h, 36); g.fill();
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 4;
@@ -2623,7 +2626,7 @@ async function condividiImmagine(f, m) {
       g.restore();
       g.fillStyle = "rgba(8,14,10,.92)"; g.beginPath(); g.roundRect(cx - 42, y + 34, 84, 38, 19); g.fill();   // fantavoto atteso
       g.fillStyle = "#ffffff"; g.font = "700 28px -apple-system, Helvetica, Arial, sans-serif";
-      g.fillText(virgola(x.fv_atteso), cx, y + 62);
+      g.fillText(num(x.fv_atteso), cx, y + 62);
       g.font = "650 30px -apple-system, Helvetica, Arial, sans-serif";
       g.fillText(cognome(x), cx, y + 104);
     });

@@ -16,8 +16,9 @@ from test_notifiche import ST, _db
 
 NOMI = {1: "Ferraglia", 2: "Lunardi", 3: "Spadoni", 4: "Moretto", 5: "Calvani", 6: "Brugnoli", 7: "Pellizza", 8: "Sartano",
         9: "Lombrici", 10: "Kerani", 11: "Castoldi", 12: "Bonvicini", 13: "Attanasi", 14: "Rovelli"}
-BASE = list(range(1, 12))                         # gli 11 consigliati all'inizio
-ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, n, "A", "ROM", 10) for i, n in NOMI.items()])], "Mia")
+BASE = list(range(1, 12))                         # gli 11 consigliati all'inizio: un 4-3-3 che si può schierare
+RUOLI = {1: "P", 2: "D", 3: "D", 4: "D", 5: "D", 6: "C", 7: "C", 8: "C", 9: "A", 10: "A", 11: "A", 12: "A", 13: "A", 14: "A"}
+ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, n, RUOLI[i], "ROM", 10) for i, n in NOMI.items()])], "Mia")
 GIORNO = (2026, 10, 28)
 
 
@@ -32,7 +33,8 @@ class Finto:
         self.db, self.titolari, self.modulo, self.calcoli = db, list(BASE), "4-3-3", 0
         self.bonus: dict[int, float] = {}
         self.moduli: dict[frozenset, str] = {}
-        self.prev = pd.DataFrame({"nome": list(NOMI.values()), "stato": "titolare", "percentuale": 80.0, "dubbio": False}, index=list(NOMI))
+        self.prev = pd.DataFrame({"nome": list(NOMI.values()), "ruolo": [RUOLI[i] for i in NOMI], "stato": "titolare",
+                                  "percentuale": 80.0, "dubbio": False}, index=list(NOMI))
         db.execute("CREATE TABLE aggiornamenti (cosa TEXT PRIMARY KEY, quando TEXT, dettaglio TEXT)")   # come in archivio.py
         db.execute("INSERT INTO aggiornamenti (cosa, quando) VALUES ('probabili', 'v0')")
         monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)

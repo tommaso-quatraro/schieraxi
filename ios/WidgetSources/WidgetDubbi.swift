@@ -55,13 +55,17 @@ struct VistaDubbi: View {
             // a giornata finita la testata dice la giornata finita, non la prossima
             IntestazioneWidget(titolo: "Da controllare",
                                icona: r.daControllare > 0 ? "exclamationmark.triangle.fill" : "checkmark.seal.fill",
-                               destra: r.etichettaTestata,
-                               colore: r.daControllare > 0 ? .orange : .white.opacity(0.85))
+                               colore: r.daControllare > 0 ? .orange : .white.opacity(0.85),
+                               giornata: r.nomeTestata, soloCorta: famiglia == .systemSmall)
             if let titolo = r.titoloFase {
                 // formazione chiusa: i dubbi non contano più (i punti stanno in Oggi e nel widget Prossima giornata).
-                // Parole della web: «Chiusa» dopo la scadenza, «Giornata 8 finita» a giornata finita.
+                // Parole della web: «Chiusa» dopo la scadenza, «Giornata 8 · 11ª di Serie A: finita» a giornata finita.
                 Spacer(minLength: 0)
-                Text(titolo).font(.headline)
+                // nel widget piccolo senza «11ª di Serie A» («Giornata 8: finita»); VoiceOver legge i due numeri
+                let forme = r.formeTitoloFase ?? [titolo]
+                GiornataInRiga(forme: famiglia == .systemSmall && forme.count > 1 ? Array(forme.dropFirst()) : forme,
+                               voce: r.voceTitoloFase ?? titolo)
+                    .font(.headline)
                 if let frase = r.fraseFase(adesso: voce.date) {
                     Text(frase).font(.caption).foregroundStyle(.white.opacity(0.8))
                 }
@@ -124,18 +128,20 @@ struct VistaDubbi: View {
 
     private func rettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            // le stesse parole delle altre forme: «4 da controllare», «Chiusa», «Giornata 8 finita», «Titolari a posto»
+            // le stesse parole delle altre forme: «4 da controllare», «Chiusa», «Giornata 8: finita», «Titolari a posto»
             if r.daControllare > 0 {
                 EtichettaDaControllare(n: r.daControllare).font(.headline)
             } else {
-                Text(r.titoloFase ?? "Titolari a posto").font(.headline).lineLimit(1)
+                GiornataInRiga(forme: r.formeTitoloFase ?? ["Titolari a posto"], voce: r.voceTitoloFase ?? "Titolari a posto")
+                    .font(.headline)
             }
             if let dubbi = r.dubbi, !dubbi.isEmpty {
                 ForEach(dubbi.prefix(2)) { d in
                     TestoCheEntra(d.formeRiga).font(.caption2)
                 }
             } else {
-                Text(r.sottotitoloRettangolo).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                GiornataInRiga(forme: r.formeSottotitoloRettangolo, voce: r.voceSottotitoloRettangolo)
+                    .font(.caption2).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

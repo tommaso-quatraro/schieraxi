@@ -43,6 +43,9 @@ Lo stato del lavoro sta su GitHub, non nella chat. All'inizio:
 - In bozza il job `ios / test` è saltato: per provare l'iPhone su un ramo `gh workflow run ios.yml --ref <ramo>`.
 - `ios / test` non riparte se lo stesso codice di `ios/` (e `ios.yml`) è già stato provato con successo da una corsa di questo
   repository negli ultimi 3 giorni: il job `ios / gia-verde` lo trova e lo salta (#269). Un test «saltato» lì è giusto, non un guasto.
+- Alcuni test iOS leggono file fuori da `ios/` (oggi `fanta/frasi.py`, `fanta/web/testi.js`): stanno in `ios/Tests/file-esterni.txt`.
+  Una PR che ne cambia uno fa partire `ios / test` e cambia la chiave del «già verde» (#308). Un test iOS nuovo che legge un altro
+  file del repository: aggiungilo all'elenco, altrimenti `tests/test_ios_file_esterni.py` è rosso.
 - Prima di togliere la bozza: `git merge origin/main` nel ramo (mai push forzato). Tra il push e `gh pr ready` aspetta circa
   90 secondi, poi controlla che sia partita una corsa nuova di «Controlli».
 - «Annullato» non è «fallito»: dopo un push nuovo `gh pr checks` mostra come falliti i job della corsa vecchia annullata.

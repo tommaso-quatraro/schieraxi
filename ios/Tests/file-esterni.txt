@@ -1,0 +1,8 @@
+# File FUORI da ios/ che i test iOS leggono davvero (issue #308). Uno per riga, dalla radice del repository.
+# Se una pull request cambia uno di questi file, i test iOS devono ripartire: lo fanno il job «cambi» di test.yml
+# e il segno «già verde» di ios.yml, che leggono questo elenco. Il controllo tests/test_ios_file_esterni.py fallisce
+# se un test iOS legge un file del repository che non è qui (e se qui c'è un file che nessun test legge).
+fanta/frasi.py
+fanta/web/testi.js
+fanta/funzioni.py
+fanta/web/app.js
