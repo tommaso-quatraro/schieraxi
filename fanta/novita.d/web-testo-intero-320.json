@@ -1,0 +1,17 @@
+{
+  "titolo": "Testi interi anche sui telefoni piccoli",
+  "voci": [
+    "Formazione: il cognome lungo sul campo si legge intero e va a capo, invece di finire con i puntini.",
+    "Formazione: a giornata in corso le scritte sotto i giocatori vicini non si sovrappongono più, e con cinque giocatori in una fila nessuno esce dal campo sui telefoni piccoli o con il testo grande.",
+    "Formazione: il pulsante «Cosa vuol dire» sta sotto il portiere e non copre più le sue scritte.",
+    "Oggi: il menu della partita rinviata mostra la scelta intera, anche su due righe. Se la scelta non si salva, il menu torna a quella di prima.",
+    "Oggi: le sigle delle partite del turno si leggono intere anche sui telefoni più stretti.",
+    "Calendario: per chi usa il lettore di schermo le sigle delle squadre sono le intestazioni delle righe e non c'è più una casella d'intestazione vuota."
+  ],
+  "tecnico": [
+    "Pedina: niente larghezza fissa (flex 0 1 88px, si stringe fino al volto); .nome, .gioca e .avv vanno a capo (overflow-wrap anywhere, text-wrap balance), pillola «⚠ gioca» con raggio calc(.7em + 4px). Campo come contenitore (`container: campo`): sotto 308 px il volto passa da 56 a 48 px e il cognome usa la sillabazione; fino a 420 px .info-campo esce dal posizionamento assoluto e va in fondo al campo.",
+    "Partite del turno: colonna di «vs» `auto` invece di 1.9em (a 320 px la sigla passa da 36 a circa 44 px).",
+    "Menu del rinvio: `.menu-scelta` con il testo scelto (`.menu-scelta-testo`, aria-hidden) e il <select> trasparente sopra; il fuoco si vede sul riquadro (:has(select:focus-visible)); se PUT /api/regole/rinvio fallisce il <select> torna al valore salvato.",
+    "Calendario: angolo <td> vuoto, <th scope=\"col\"> per le giornate, <th scope=\"row\"> per le sigle (axe empty-table-header). Issue #265."
+  ]
+}

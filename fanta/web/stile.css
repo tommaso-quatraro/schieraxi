@@ -255,7 +255,7 @@ details[open] > summary::after { transform: rotate(225deg); }
 details[open] > summary { margin-bottom: 8px; }
 
 /* ---------------------------------------------------------------- campo */
-.campo { position: relative; border-radius: 28px; overflow: hidden; margin-bottom: 14px; padding: 24px 6px; display: flex; flex-direction: column-reverse; gap: 20px;
+.campo { container: campo / inline-size; position: relative; border-radius: 28px; overflow: hidden; margin-bottom: 14px; padding: 24px 6px; display: flex; flex-direction: column-reverse; gap: 20px;
   background: repeating-linear-gradient(0deg, transparent 0 46px, rgba(255, 255, 255, .05) 46px 92px), radial-gradient(90% 60% at 50% 40%, color-mix(in srgb, var(--campo) var(--campo-bagliore), #fff), var(--campo));
   border: 1px solid var(--bordo); }
 .campo::before { content: ""; position: absolute; inset: 9px; border: 2px solid var(--campo-righe); border-radius: var(--r-card); pointer-events: none; }
@@ -265,7 +265,7 @@ details[open] > summary { margin-bottom: 8px; }
 .campo .cerchio { left: 50%; top: 50%; width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; }
 .campo .meta { left: 9px; right: 9px; top: 50%; border: 0; border-top: 2px solid var(--campo-righe); }
 .linea { display: flex; justify-content: space-evenly; gap: 4px; position: relative; z-index: 1; }
-.pedina { border: 0; background: none; color: #fff; padding: 0; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; animation: pop .55s var(--molla) both; animation-delay: calc(.12s + var(--k, 0) * .05s); }
+.pedina { border: 0; background: none; color: #fff; padding: 0; flex: 0 1 88px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; animation: pop .55s var(--molla) both; animation-delay: calc(.12s + var(--k, 0) * .05s); }
 .campo .linea:nth-of-type(1) .pedina { animation-delay: calc(.2s + var(--k, 0) * .05s); } .campo .linea:nth-of-type(2) .pedina { animation-delay: calc(.3s + var(--k, 0) * .05s); }
 .campo .linea:nth-of-type(3) .pedina { animation-delay: calc(.4s + var(--k, 0) * .05s); } .campo .linea:nth-of-type(4) .pedina { animation-delay: calc(.5s + var(--k, 0) * .05s); }
 .ridisegna .pedina { animation-duration: .35s; animation-delay: calc(var(--k, 0) * .025s) !important; }
@@ -274,11 +274,11 @@ details[open] > summary { margin-bottom: 8px; }
   box-shadow: 0 5px 12px rgba(0, 0, 0, .35), inset 0 1.5px 0 rgba(255, 255, 255, .45); position: relative; }
 .maglia.P { --c1: #f0b73a; --c2: #b27712; } .maglia.D { --c1: #3fbf74; --c2: #1d7440; } .maglia.C { --c1: #4b95ec; --c2: #1f5aa3; } .maglia.A { --c1: #ef5f5b; --c2: #a52b2b; }
 .pedina .maglia.dubbio { animation: respira 2.4s ease-in-out infinite; }
-.pedina .nome { font-size: var(--t-eti); font-weight: 650; line-height: 1.1; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pedina .nome { font-size: var(--t-eti); font-weight: 650; line-height: 1.1; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); overflow-wrap: anywhere; text-wrap: balance; }
 /* sotto il nome: «gioca 85%» (sotto il 70% pillola arancio «⚠ gioca 45%»), poi «vs NAP» in casa / «@ NAP» fuori con la sigla nei colori sociali */
-.pedina .gioca, .legenda-campo .gioca { font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.35; }
-.pedina .gioca.basso, .legenda-campo .gioca.basso { background: #ffb04a; color: #2a1600; text-shadow: none; border-radius: var(--r-pill); padding: 0 6px; }
-.pedina .avv, .legenda-campo .avv { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); white-space: nowrap; }
+.pedina .gioca, .legenda-campo .gioca { font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-variant-numeric: tabular-nums; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
+.pedina .gioca.basso, .legenda-campo .gioca.basso { background: #ffb04a; color: #2a1600; text-shadow: none; border-radius: calc(.7em + 4px); padding: 0 6px; }
+.pedina .avv, .legenda-campo .avv { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 4px; font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
 .dist { font-style: normal; display: inline-block; min-width: 2.6em; padding: 0 4px; border-radius: 5px; background: var(--c1); color: var(--ct); box-shadow: inset 0 -2.5px 0 var(--c2), 0 0 0 1px rgba(0, 0, 0, .25);
   font-size: var(--t-eti); font-weight: 800; letter-spacing: .03em; line-height: 1.5; text-align: center; text-shadow: none; }
 /* legenda del campo (una volta, poi dal pulsante ⓘ in basso a destra): prima delle pedine nel DOM (si legge per prima), in cima al campo con `order`
@@ -287,6 +287,11 @@ details[open] > summary { margin-bottom: 8px; }
   background: rgba(8, 14, 10, .55); color: #fff; font-size: var(--t-eti); font-weight: 650; display: inline-flex; align-items: center; gap: 6px; }
 .info-campo span { font-size: var(--t-corpo); }
 .info-campo[hidden], .legenda-campo[hidden] { display: none; }
+/* campo fino a 420 px (telefono, colonna stretta del PC, testo grande): sopra il campo il pulsante copriva le scritte del portiere
+   («gioca 92%», «vs BOL»); va in fondo, sotto il portiere, a destra (primo nel DOM: con column-reverse sta in basso). Issue #265. */
+@container campo (max-width: 419.98px) {
+  .info-campo { position: relative; bottom: auto; right: auto; align-self: flex-end; margin: -8px 10px 0 0; }
+}
 .legenda-campo { order: 1; position: relative; z-index: 2; margin: 0 8px; padding: 12px 14px; border-radius: var(--r-in); background: rgba(8, 14, 10, .82); color: #fff;
   border: 1px solid rgba(255, 255, 255, .2); font-size: var(--t-sec); }
 .legenda-campo ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
@@ -355,9 +360,10 @@ details[open] > summary { margin-bottom: 8px; }
 .conto .grande { margin: 2px 0 4px; }
 /* Partite del turno: una griglia sola per tutte le righe (colonne fisse: stato/ora, casa, «vs», trasferta, punteggio),
    così ora, squadre e punteggi stanno in colonna anche quando una riga è evidenziata. Tutte le righe hanno lo stesso rientro:
-   l'evidenziazione delle partite con i tuoi titolari (fondo e barretta nel rientro) non sposta niente. */
+   l'evidenziazione delle partite con i tuoi titolari (fondo e barretta nel rientro) non sposta niente. La colonna di «vs» è larga
+   quanto la parola, uguale in ogni riga: a 320 px una colonna fissa lasciava alle sigle 36 px e «MON» ne chiede 38 (issue #265). */
 .partite-turno { display: grid; gap: 2px; --col-ora: 4.75em; --col-pt: 3.6em; }
-.partita { display: grid; grid-template-columns: var(--col-ora) minmax(0, 1fr) 1.9em minmax(0, 1fr) var(--col-pt); column-gap: 8px; row-gap: 4px; align-items: center;
+.partita { display: grid; grid-template-columns: var(--col-ora) minmax(0, 1fr) auto minmax(0, 1fr) var(--col-pt); column-gap: 8px; row-gap: 4px; align-items: center;
   position: relative; padding: 9px 10px; margin: 0 -10px; border-radius: 12px; font-size: var(--t-corpo); font-variant-numeric: tabular-nums; }
 .partita + .partita { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
 .partita .ora { color: var(--testo-2); font-size: var(--t-sec); min-width: 0; }
@@ -394,7 +400,15 @@ details[open] > summary { margin-bottom: 8px; }
 .elenco-rinvii { list-style: none; margin: 4px 0 8px; padding: 0; }
 .elenco-rinvii li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 4px 0; }
 .rinvio-scelta { display: block; margin: 8px 0 4px; }
-.rinvio-scelta select { margin-top: 6px; min-height: 46px; font-size: var(--t-corpo); }
+/* il menu con la scelta intera: il testo scelto va a capo nel riquadro, accanto al simbolo del menu; il <select> vero sta sopra,
+   trasparente (tocco, tastiera e lettore di schermo), e apre il menu del sistema. Un <select> non va a capo (issue #265). */
+.menu-scelta { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 6px; min-height: 46px; padding: 11px 16px 11px 14px;
+  border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; font-size: var(--t-corpo); line-height: 1.3; }
+.menu-scelta-testo { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
+.menu-scelta::after { content: ""; flex: none; width: 7px; height: 7px; margin-top: -4px; border-right: 2px solid var(--testo-2); border-bottom: 2px solid var(--testo-2); transform: rotate(45deg); }
+.menu-scelta select { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; font-size: var(--t-corpo); }
+.menu-scelta:has(select:focus-visible) { outline: 2px solid var(--azione); outline-offset: 2px; }
+.menu-scelta:has(select:disabled) { opacity: .6; }
 .giorno-titolo { font-size: var(--t-sec); color: var(--testo-2); margin: 10px 0 2px; font-weight: 600; }
 .giorno-titolo::first-letter { text-transform: uppercase; }   /* «sab 31» -> «Sab 31», «ieri» -> «Ieri» */
 /* ---- risultati in diretta ---- */
@@ -481,11 +495,11 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .tabella-cal { width: 100%; border-collapse: separate; border-spacing: 0 5px; font-size: var(--t-sec); }
 .tabella-cal th { font-size: var(--t-eti); font-weight: 600; color: var(--testo-2); padding: 0 2px 2px; }
 .tabella-cal td { padding: 0 2px; }
-.tabella-cal td:first-child { font-weight: 650; font-size: var(--t-corpo); padding-right: 6px; white-space: nowrap; }
+.tabella-cal th[scope="row"] { font-weight: 650; font-size: var(--t-corpo); color: var(--testo); padding: 0 6px 0 2px; white-space: nowrap; text-align: left; }
 .cella { display: block; text-align: center; padding: 8px 2px; border-radius: 11px; font-weight: 650; font-size: var(--t-eti); line-height: 1.1; color: #0b1a10;
   background: var(--c); }
 .cella small { display: block; font-size: var(--t-eti); font-weight: 550; }
-.tabella-cal tr.mia td:first-child::before { content: "● "; color: var(--verde); }
+.tabella-cal tr.mia th[scope="row"]::before { content: "● "; color: var(--verde); }
 .legenda-cal { display: flex; gap: 6px; align-items: center; justify-content: center; font-size: var(--t-eti); color: var(--testo-2); margin-top: 10px; }
 .legenda-cal i { width: 26px; height: 8px; border-radius: 4px; background: var(--c); display: inline-block; }
 .prossime { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
@@ -632,6 +646,16 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .avatar-pedina .fv { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); padding: 1px 8px; border-radius: 10px; background: rgba(8, 14, 10, .9); color: #fff;
   font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid rgba(255, 255, 255, .35); white-space: nowrap; }
 .pedina .nome { margin-top: 5px; }
+/* Pedine sempre intere (issue #265): la pedina parte da 88 px e si stringe fino al volto; cognome, stato («Partita in corso»,
+   «fantavoto 10,0»), «⚠ gioca 19%» e «vs MON» vanno a capo invece di finire con «…» o di uscire dal campo, che le taglierebbe.
+   Campo stretto (cinque pedine in una fila a 320 px, o con il testo grande): cinque volti da 56 px con gli spazi chiedono 308 px,
+   quindi il volto passa a 48 px. Nella pedina da 52 px un cognome di una parola va a capo con la sillabazione, dove il browser
+   la sa fare («Meron-do» invece di «Merond/o»); il carattere resta lo stesso. */
+@container campo (max-width: 307.98px) {
+  .avatar-pedina { width: 48px; height: 48px; }
+  .avatar-pedina .avatar { --d: 44px; }
+  .pedina .nome { -webkit-hyphens: auto; hyphens: auto; }
+}
 .elenco li.con-confronto { position: relative; container-type: inline-size; }
 /* Riga stretta della Formazione (telefono da 320 px, o testo «Grande» e «Molto grande»): accanto ai numeri e al pulsante ⇄ il nome
    restava largo 10-75 px e le etichette andavano a capo a pezzi, a volte a ogni lettera. Come l'iPhone con il testo molto grande,
@@ -1237,8 +1261,7 @@ body { container: pagina / inline-size; }
   .chips.scorri .chip { flex: 0 1 auto; max-width: 100%; flex-wrap: wrap; row-gap: 0; text-align: left; }       /* «Molto rischiosa 70,1» a 160 px: il numero va sotto */
   .campo { padding: 20px 4px; }
   .linea { flex-wrap: wrap; row-gap: 14px; }
-  .pedina { width: 64px; }
-  .pedina .nome, .pedina .gioca { white-space: normal; overflow: visible; overflow-wrap: anywhere; max-width: 100%; }
+  .pedina { flex: 0 1 64px; }                                         /* cognome e stato vanno già a capo a ogni larghezza */
   /* foglio del giocatore (scheda, ⇄ confronto): volto sopra il nome, i due del confronto uno sotto l'altro */
   .foglio-corpo { padding-left: 8px; padding-right: 8px; }
   .intestazione-scheda { grid-template-columns: 1fr; gap: 8px; }

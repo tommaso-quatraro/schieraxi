@@ -733,11 +733,15 @@ function nomeModoRinvio(m, voto) {
   return m === "aspetta" || m === "senza_voto" ? t("oggi.rinvio_" + m) : String(m);
 }
 // Il menu «per questa giornata i loro giocatori…» (riquadro di Oggi e riepilogo della giornata finita): cambia solo quella giornata.
+// Un <select> non va a capo e tagliava la scelta («aspettano il recupero (conta il suo vo»): la scelta si legge intera nel riquadro
+// (`.menu-scelta-testo`, va a capo), il <select> vero sta sopra, trasparente, e apre il menu del sistema. Come MenuRinvio dell'iPhone.
 function menuRinvio(rv) {
   const modi = Array.isArray(rv.modi) && rv.modi.length ? rv.modi : MODI_RINVIO;
   const voto = rv.voto_ufficio ?? rv.valore;
+  const scelto = modi.includes(rv.modo) ? rv.modo : modi[0];                // quello che il <select> mostra
   return `<label class="rinvio-scelta"><span class="debole">${t("oggi.rinvio_domanda")}</span>
-      <select class="campo-testo rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === rv.modo ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></label>
+      <span class="menu-scelta"><span class="menu-scelta-testo" aria-hidden="true">${esc(nomeModoRinvio(scelto, voto))}</span>
+      <select class="rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === scelto ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></span></label>
     <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
 }
 function cardRinvio(rv) {
@@ -752,17 +756,24 @@ function cardRinvio(rv) {
   </div>`;
 }
 function collegaRinvio() {
-  document.querySelectorAll("select.rinvio-modo").forEach(sel => sel.addEventListener("change", async () => {
-    sel.disabled = true;
-    try {
-      const corpo = { giornata: Number(sel.dataset.giornata), modo: sel.value };
-      if (sel.dataset.stagione) corpo.stagione = sel.dataset.stagione;
-      await api("/api/regole/rinvio", { method: "PUT", body: JSON.stringify(corpo) });
-      svuotaCache();
-      avviso(t("oggi.rinvio_salvato"));
-      vistaOggi();
-    } catch (e) { avviso(e.message, 8000); sel.disabled = false; }
-  }));
+  document.querySelectorAll("select.rinvio-modo").forEach(sel => {
+    const riquadro = sel.closest(".menu-scelta"), testo = riquadro && riquadro.querySelector(".menu-scelta-testo");
+    const mostra = () => { if (testo) testo.textContent = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : ""; };
+    let salvato = sel.value;
+    sel.addEventListener("change", async () => {
+      mostra();
+      sel.disabled = true;
+      try {
+        const corpo = { giornata: Number(sel.dataset.giornata), modo: sel.value };
+        if (sel.dataset.stagione) corpo.stagione = sel.dataset.stagione;
+        await api("/api/regole/rinvio", { method: "PUT", body: JSON.stringify(corpo) });
+        salvato = sel.value;
+        svuotaCache();
+        avviso(t("oggi.rinvio_salvato"));
+        vistaOggi();
+      } catch (e) { avviso(e.message, 8000); sel.value = salvato; mostra(); sel.disabled = false; }   // resta la scelta salvata
+    });
+  });
 }
 
 function mostraOggi(o, opz = {}) {
@@ -1407,6 +1418,8 @@ async function datiCalendario() {
   return fresco;
 }
 
+// Calendario: le sigle sono le intestazioni delle righe e G10, G11… quelle delle colonne; l'angolo è una cella vuota normale
+// (un <th> senza testo è un'intestazione vuota per i lettori di schermo: axe `empty-table-header`, issue #265).
 async function tabCalendario(dove, ok) {
   dove.innerHTML = `<div class="caricamento">${t("mercato.carico_calendario")}</div>`;
   try {
@@ -1417,8 +1430,8 @@ async function tabCalendario(dove, ok) {
     if (!ok()) return;
     dove.innerHTML = `<div class="carta"><h2>${t("mercato.calendario_difficolta")}</h2>
       <div class="debole piccolo">${tp("mercato.cal_spiega", c.giornate.length)}</div>
-      <div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal"><thead><tr><th></th>${c.giornate.map(g => `<th>G${g}</th>`).join("")}</tr></thead>
-      <tbody>${c.squadre.map(s => `<tr class="${mie.has(s.squadra) ? "mia" : ""}"><td>${sigla(s.squadra)}</td>${c.giornate.map(g => {
+      <div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal"><thead><tr><td></td>${c.giornate.map(g => `<th scope="col">G${g}</th>`).join("")}</tr></thead>
+      <tbody>${c.squadre.map(s => `<tr class="${mie.has(s.squadra) ? "mia" : ""}"><th scope="row">${sigla(s.squadra)}</th>${c.giornate.map(g => {
         const p = s.partite.find(x => x.giornata === g);
         return p ? `<td><span class="cella d${p.difficolta}">${vsAt(p)}</span></td>` : `<td></td>`;
       }).join("")}</tr>`).join("")}</tbody></table></div>
