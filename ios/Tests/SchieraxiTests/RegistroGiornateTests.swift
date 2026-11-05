@@ -108,7 +108,7 @@ struct RegistroGiornateTests {
         let perse = ParoleRegistro.perse(r)
         #expect(perse.count == 1)
         let g = try #require(perse.first)
-        #expect(ParoleRegistro.giornata(g) == "Serie A 2026-27, giornata 9")
+        #expect(ParoleRegistro.giornata(g) == "9ª giornata di Serie A · 2026-27")
     }
 
     // MARK: - stesse parole della web (testi.js)
