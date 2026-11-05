@@ -59,14 +59,19 @@ final class FormazioneViewModel: ViewModelBase {
     /// A che punto è la tua scelta (riga di stato della Formazione). Per le altre squadre non si dice niente.
     var statoScelta: StatoScelta {
         guard squadraVista == nil else { return .sconosciuto }
-        return StatoScelta.calcola(letta: sceltaLetta, salvati: salvati, salvataIl: salvataIl, manuale: manuale)
+        return StatoScelta.calcola(letta: sceltaLetta, salvati: salvati, salvataIl: salvataIl, manuale: manuale, chiusa: chiusa)
     }
 
     /// La giornata è chiusa (dopo la scadenza, `iniziata` del server): la tua formazione si vede in sola lettura, niente modifiche.
     var chiusa: Bool { formazione?.iniziata == true }
 
+    /// La frase della web per la formazione chiusa di un'altra squadra (`formazione.chiusa`).
     static let testoChiusa = "La formazione di questa giornata è chiusa: le partite sono cominciate."
-    var fasciaChiusa: String? { chiusa ? Self.testoChiusa : nil }
+    /// La fascia sopra la formazione a giornata chiusa, come la web: solo dove non c'è la riga di stato della scelta (un'altra
+    /// squadra). Per la tua squadra lo dice già la riga di stato («Giornata iniziata: la formazione è chiusa»): niente seconda frase.
+    var fasciaChiusa: String? { chiusa && statoScelta == .sconosciuto ? Self.testoChiusa : nil }
+    /// Salvataggio rifiutato perché la scadenza è passata con la pagina aperta: la frase della web (`err.formazione_chiusa`).
+    static let testoChiusaAlSalvataggio = "La giornata è già iniziata: la formazione non si può più cambiare."
     /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
     static let codiceChiusa = "formazione_chiusa"
 
@@ -388,7 +393,7 @@ final class FormazioneViewModel: ViewModelBase {
     private func formazioneChiusa() async {
         azzeraManuale()
         await carica()
-        messaggio = Self.testoChiusa
+        messaggio = Self.testoChiusaAlSalvataggio
         Haptics.esito(riuscito: false)
     }
 
