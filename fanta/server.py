@@ -869,7 +869,8 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
     """Punti attesi di una formazione scelta a mano. Con salva=true la ricorda come "la mia scelta" della giornata
     (solo prima della scadenza: dopo 409 `formazione_chiusa`; valutare senza salvare resta possibile)."""
     # Se gli 11 sono quelli della consigliata («Salva questa») la scelta ha anche `era_consigliata`: «Da fare» poi non propone
-    # cambi (da_fare.py, #333). Qui un commento e non nella docstring, che finisce nel contratto docs/openapi.json.
+    # cambi (da_fare.py, #333). Conta anche la consigliata che GET /api/formazione ti ha mostrato (istantanea del Diario), se nel
+    # frattempo i dati si sono aggiornati. Qui un commento e non nella docstring, che finisce nel contratto docs/openapi.json.
     db = _db()
     try:
         regole_, rose_ = _regole(ctx), _rose(ctx)
@@ -878,7 +879,7 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
             chiusa = _formazione_chiusa(db, ctx, r["giornata"])
             if chiusa is not None:
                 return chiusa
-            era = da_fare.era_consigliata(db, regole_, rose_, dati.titolari, r["giornata"])     # la consigliata è già in cache
+            era = da_fare.era_consigliata(db, regole_, rose_, dati.titolari, r["giornata"], ctx.diario)     # anche quella mostrata
             with versioni.blocco("scelte"):
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
                 scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era)

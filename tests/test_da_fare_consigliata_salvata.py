@@ -2,11 +2,13 @@
 voce sola che porta alla Formazione e dice cosa è cambiato; la scelta salvata non si tocca; con una formazione fatta a mano tutto come
 prima. Dati finti (il `mondo` di test_da_fare.py), file in una cartella temporanea."""
 import json
+import logging
+from datetime import datetime
 
 from fastapi.testclient import TestClient
 
-from fanta import da_fare, frasi, scelte, server
-from test_da_fare import STAGIONE, mondo, vai  # noqa: F401  (mondo = fixture)
+from fanta import da_fare, diario, frasi, scelte, server
+from test_da_fare import RUOLI, STAGIONE, mondo, vai  # noqa: F401  (mondo = fixture)
 from test_frasi import CON_NODE, _in_node
 
 TUTTI = list(range(1, 12))
@@ -53,30 +55,60 @@ def test_1_senza_consigliata_calcolabile_nessun_cambio(mondo, monkeypatch):
 # ---------------------------------------------------------------- (2) salvata la consigliata, ma ora è un'altra
 def test_2_consigliata_cambiata_una_voce_sola(mondo):
     _salva_la_consigliata(mondo)
-    _cambia(mondo, (6, 14))
+    _cambia(mondo, (7, 14))                                                  # g7 sta bene: la consigliata ha solo cambiato idea
     voci = _della_formazione(vai(mondo))
     assert len(voci) == 1                                                    # niente dubbi sui titolari salvati: una voce sola
     v = voci[0]
     assert v["id"] == "consigliata:9" and v["tipo"] == "formazione" and v["priorita"] == 2
-    assert v["testo"] == "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera g14 al posto di Bianchi."
-    assert v["frase"] == {"chiave": "dafare.consigliata_cambiata", "param": {"entrano": "g14", "escono": "Bianchi"}}
+    assert v["testo"] == "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera g14 al posto di g7."
+    assert v["frase"] == {"chiave": "dafare.consigliata_cambiata", "param": {"entrano": "g14", "escono": "g7"}}
     assert v["azione"] == "Apri la formazione"
     assert v["destinazione"] == {"scheda": "formazione", "sezione": None, "link": "schieraxi://formazione"}
-    assert v["entrano"] == [{"id": 14, "nome": "g14"}] and v["escono"] == [{"id": 6, "nome": "Bianchi"}]
+    assert v["entrano"] == [{"id": 14, "nome": "g14"}] and v["escono"] == [{"id": 7, "nome": "g7"}]
     assert frasi.da_json(v["frase"]) == v["testo"] and frasi.da_json(v["azione_frase"]) == v["azione"]
+
+
+def test_2_titolare_salvato_infortunato_priorita_alta_e_il_perche(mondo):
+    """La consigliata toglie Bianchi perché è infortunato: priorità alta («Urgente», come prima il suo dubbio) e il perché in breve."""
+    _salva_la_consigliata(mondo)
+    _cambia(mondo, (6, 14))
+    voci = _della_formazione(vai(mondo))
+    assert len(voci) == 1 and voci[0]["priorita"] == 1
+    v = voci[0]
+    assert v["testo"] == ("Bianchi è infortunato e la consigliata è cambiata da quando l'hai salvata: rivedila. "
+                          "Ora schiera g14 al posto di Bianchi.")
+    assert v["frase"] == {"chiave": "dafare.consigliata_cambiata_fuori", "param": {
+        "fuori": {"chiave": "dafare.fuori_infortunato", "param": {"nome": "Bianchi"}}, "entrano": "g14", "escono": "Bianchi"}}
+    assert frasi.da_json(v["frase"]) == v["testo"]
+
+
+def test_2_infortunato_e_squalificato_insieme(mondo, monkeypatch):
+    schede = {i: da_fare.consigli.scheda_previsione(i, None) for i in range(1, 15)}
+    schede[7] = schede[7] | {"stato": "squalificato", "p_voto": 0.0}
+    monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
+    _salva_la_consigliata(mondo)
+    _cambia(mondo, (6, 14), (7, 12))
+    v = next(x for x in vai(mondo) if x["id"] == "consigliata:9")
+    assert v["priorita"] == 1
+    assert v["testo"] == ("Bianchi è infortunato, g7 è squalificato e la consigliata è cambiata da quando l'hai salvata: rivedila. "
+                          "Ora schiera g14 e Riserva al posto di Bianchi e g7.")
+    monkeypatch.setattr(da_fare, "MAX_NOMI_CAMBIATI", 1)
+    v = next(x for x in vai(mondo) if x["id"] == "consigliata:9")
+    assert v["testo"] == ("Bianchi è infortunato, g7 è squalificato e la consigliata è cambiata da quando l'hai salvata: rivedila. "
+                          "Cambiano 2 titolari.")
+    assert v["frase"]["chiave"] == "dafare.consigliata_cambiata_fuori_molti" and frasi.da_json(v["frase"]) == v["testo"]
 
 
 def test_2_piu_titolari_cambiati_nomi_fino_a_tre_poi_il_numero(mondo, monkeypatch):
     _salva_la_consigliata(mondo)
-    _cambia(mondo, (6, 14), (5, 12))
+    _cambia(mondo, (7, 14), (8, 12))
     v = next(x for x in vai(mondo) if x["id"] == "consigliata:9")
-    assert v["testo"] == ("La consigliata è cambiata da quando l'hai salvata: rivedila. "
-                          "Ora schiera Riserva e g14 al posto di Rossi e Bianchi.")
-    assert [x["id"] for x in v["entrano"]] == [12, 14] and [x["id"] for x in v["escono"]] == [5, 6]
-    assert frasi.da_json(v["frase"]) == v["testo"]
-    _cambia(mondo, (7, 13))                                                  # tre titolari diversi: ancora i nomi
+    assert v["testo"] == "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera g14 e Riserva al posto di g7 e g8."
+    assert [x["id"] for x in v["entrano"]] == [14, 12] and [x["id"] for x in v["escono"]] == [7, 8]
+    assert v["priorita"] == 2 and frasi.da_json(v["frase"]) == v["testo"]
+    _cambia(mondo, (9, 13))                                                  # tre titolari diversi: ancora i nomi
     v = next(x for x in vai(mondo) if x["id"] == "consigliata:9")
-    assert v["testo"].endswith("Ora schiera Riserva, g14 e Fuori al posto di Rossi, Bianchi e g7.")
+    assert v["testo"].endswith("Ora schiera g14, Riserva e Fuori al posto di g7, g8 e g9.")
     assert da_fare.MAX_NOMI_CAMBIATI == 3
     # oltre il tetto solo quanti sono (i nomi restano nei campi `entrano` ed `escono`); la rosa finta ha solo 3 riserve
     monkeypatch.setattr(da_fare, "MAX_NOMI_CAMBIATI", 2)
@@ -93,7 +125,8 @@ def test_2_la_web_la_traduce_con_i_nomi_dentro(mondo):
     v = next(x for x in vai(mondo) if x["id"] == "consigliata:9")
     molti = frasi.F("dafare.consigliata_cambiata_molti", n=5)
     assert _in_node("en", [[v["frase"], v["testo"]], [molti.json(), str(molti)]]) == [
-        "The recommended lineup has changed since you saved it: review it. It now starts Riserva and g14 instead of Rossi and Bianchi.",
+        "Bianchi is injured and the recommended lineup has changed since you saved it: review it. "
+        "It now starts Riserva and g14 instead of Rossi and Bianchi.",
         "The recommended lineup has changed since you saved it: review it. 5 starters are different."]
     assert _in_node("it", [[v["frase"], v["testo"]]]) == [v["testo"]]
 
@@ -138,16 +171,36 @@ def test_era_consigliata_confronta_i_titolari_senza_ordine(mondo, monkeypatch):
     chieste = []
     monkeypatch.setattr(da_fare.consigli, "formazione", lambda db, r, ro, giornata=None: chieste.append(giornata) or {
         "giornata": 9, "titolari": [{"id": i} for i in mondo.sistema.titolari]})
-    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, list(reversed(TUTTI)), 9) is True
+    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, list(reversed(TUTTI)), 9, mondo.ctx.diario) is True
     assert chieste == [9]                                                    # la consigliata della giornata della scelta
-    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 14], 9) is False
+    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 14], 9, mondo.ctx.diario) is False
 
 
-def test_era_consigliata_nel_dubbio_e_falso(mondo, monkeypatch):
+def _mostrata(titolari, giornata=9):
+    """La consigliata come la manda GET /api/formazione (quella che l'app fa vedere)."""
+    return {"giornata": giornata, "modulo": "3-5-2", "punteggio_atteso": 70.0, "schede": {},
+            "titolari": [{"id": i, "nome": f"g{i}", "ruolo": RUOLI[i]} for i in titolari]}
+
+
+def test_era_consigliata_anche_se_la_consigliata_cambia_mentre_la_guardi(mondo, monkeypatch):
+    """Revisione #333: apri la Formazione con la consigliata A, i dati si aggiornano e la consigliata diventa B, poi tocchi «Salva
+    questa» sugli 11 di A. Valgono come consigliata: sono quelli dell'istantanea, la consigliata che l'app ti ha mostrato."""
+    diario.salva_istantanea(_mostrata(TUTTI), STAGIONE, mondo.ctx.diario)            # quello che fa GET /api/formazione
+    adesso = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14]
+    monkeypatch.setattr(da_fare.consigli, "formazione", lambda db, r, ro, giornata=None: {"giornata": 9, "titolari": [{"id": i} for i in adesso]})
+    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, TUTTI, 9, mondo.ctx.diario) is True
+    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, adesso, 9, mondo.ctx.diario) is True     # anche quella di adesso
+    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13], 9, mondo.ctx.diario) is False
+    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, TUTTI, 10, mondo.ctx.diario) is False    # istantanea di un'altra giornata
+
+
+def test_era_consigliata_nel_dubbio_e_falso_e_lo_scrive_nel_log(mondo, monkeypatch, caplog):
     monkeypatch.setattr(da_fare.consigli, "formazione", lambda *a, **k: (_ for _ in ()).throw(ValueError("niente")))
-    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, TUTTI, 9) is False
+    with caplog.at_level(logging.WARNING, logger="fanta.da_fare"):
+        assert da_fare.era_consigliata(mondo.db, None, mondo.rose, TUTTI, 9, mondo.ctx.diario) is False
+    assert "ValueError" in caplog.text and "niente" not in caplog.text                 # il tipo, non il testo dell'errore
     monkeypatch.setattr(da_fare.consigli, "formazione", lambda *a, **k: {"giornata": 10, "titolari": [{"id": i} for i in TUTTI]})
-    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, TUTTI, 9) is False        # è la consigliata di un'altra giornata
+    assert da_fare.era_consigliata(mondo.db, None, mondo.rose, TUTTI, 9, mondo.ctx.diario) is False     # consigliata di un'altra giornata
 
 
 def test_scelta_senza_segno_resta_come_prima_nel_file(tmp_path):
@@ -176,3 +229,23 @@ def test_salva_questa_mette_il_segno_solo_alla_consigliata(dati_isolati, monkeyp
     assert c.post("/api/formazione/valuta", json={"titolari": a_mano, "giornata": 9, "salva": True}).status_code == 200
     s = c.get("/api/scelta?giornata=9").json()
     assert s["titolari"] == a_mano and "era_consigliata" not in s
+
+
+def test_salva_questa_dopo_un_aggiornamento_resta_la_consigliata(dati_isolati, monkeypatch):
+    """Revisione #333, dalla rotta: GET /api/formazione mostra A; la consigliata diventa B; «Salva questa» sugli 11 di A → la scelta
+    ha `era_consigliata`, quindi Da fare non torna a proporre «Meglio Y · Sostituisci»."""
+    adesso = {"f": _mostrata(TUTTI)}
+    monkeypatch.setattr(server.consigli, "stagione_corrente", lambda: STAGIONE)
+    monkeypatch.setattr(server.consigli, "formazione", lambda *a, **k: adesso["f"])
+    monkeypatch.setattr(server.consigli, "valuta", lambda db, regole, rose, titolari, squadra=None, giornata=None, simulazioni=600:
+                        {"modulo": "3-5-2", "giornata": 9, "punteggio_atteso": 70.0, "dev": 4.0, "panchina": [], "differenza": 0.0})
+    monkeypatch.setattr(server, "_rose", lambda *a: object())
+    monkeypatch.setattr(server.fasi, "iniziata", lambda *a, **k: False)
+    monkeypatch.setattr(server.fasi, "formazione_a_giornata_iniziata", lambda f, *a, **k: f)
+    monkeypatch.setattr(server.avvisi_pronta, "prima_partita", lambda *a, **k: datetime(2100, 1, 1, 15, 0))     # formazione aperta
+    c = TestClient(server.app, headers={"X-Fanta": "1"})
+    assert c.get("/api/formazione").status_code == 200                    # l'app mostra A
+    adesso["f"] = _mostrata([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14])           # i dati si aggiornano: la consigliata è B
+    assert c.post("/api/formazione/valuta", json={"titolari": TUTTI, "giornata": 9, "salva": True}).status_code == 200
+    s = c.get("/api/scelta?giornata=9").json()
+    assert s["titolari"] == TUTTI and s["era_consigliata"] is True

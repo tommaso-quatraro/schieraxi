@@ -56,6 +56,11 @@ CATALOGO: dict[str, str] = {
     # hai salvato la consigliata e intanto è cambiata (#333): {entrano} e {escono} sono nomi o un elenco «A, B e C»
     "dafare.consigliata_cambiata": "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
     "dafare.consigliata_cambiata_molti": "La consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    # la consigliata toglie un titolare salvato che è fuori: {fuori} = una o più `dafare.fuori_*` («Bianchi è infortunato, …»)
+    "dafare.consigliata_cambiata_fuori": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
+    "dafare.consigliata_cambiata_fuori_molti": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    "dafare.fuori_infortunato": "{nome} è infortunato",
+    "dafare.fuori_squalificato": "{nome} è squalificato",
     "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
