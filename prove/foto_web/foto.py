@@ -177,6 +177,19 @@ def prepara_copia(dove: Path, dati: Path | None) -> Path:
     return dove
 
 
+def calcola_diario(copia: Path, python: str) -> None:
+    """Il diario delle giornate finite della lega d'esempio, calcolato nella copia (pochi secondi, nessuna rete): senza, la
+    scena «diario» mostra solo «Ancora vuoto». Se non riesce si va avanti lo stesso."""
+    try:
+        r = subprocess.run([python, "-m", "fanta", "affidabilita", "--minuti", "2"], cwd=copia, env=ambiente_server(copia),
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f"Diario non calcolato ({type(e).__name__}): la scena «diario» sarà vuota.", file=sys.stderr)
+        return
+    if r.returncode != 0:
+        print(f"Diario non calcolato (uscita {r.returncode}): la scena «diario» sarà vuota.", file=sys.stderr)
+
+
 def ambiente_server(copia: Path) -> dict:
     """Ambiente del server di prova: nessuna variabile FANTA_ di chi lancia (fonti, account, lega vera), niente lavori di sfondo."""
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith("FANTA_")}
@@ -321,13 +334,18 @@ def main(argv=None) -> int:
         if not base:
             lavoro = Path(pila.enter_context(tempfile.TemporaryDirectory(prefix="foto-web-server-", ignore_cleanup_errors=True)))
             dati = cartella_dati(a.dati)
+            if dati and not (dati / "fanta.sqlite").is_file():
+                dati = None
             if not dati:
                 print("Nessun archivio dei dati (dati/fanta.sqlite): le schermate saranno vuote.", file=sys.stderr)
             copia = prepara_copia(lavoro / "app", dati)
+            python = python_server(a.python_server)
+            if dati:
+                calcola_diario(copia, python)
             porta = porta_libera("127.0.0.1")
             host = host_per(porta)
             porta = porta_libera(host)
-            comando = [python_server(a.python_server), "-m", "fanta", "server", "--host", host, "--porta", str(porta)]
+            comando = [python, "-m", "fanta", "server", "--host", host, "--porta", str(porta)]
             server = pila.enter_context(ServerDiProva(comando, f"http://{host}:{porta}", cwd=copia,
                                                       env=ambiente_server(copia), log=uscita / "server.log"))
             print(f"Server di prova su http://{host}:{porta} (PID {server.processo.pid})", flush=True)

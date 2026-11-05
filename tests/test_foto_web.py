@@ -155,6 +155,46 @@ def test_server_che_non_parte_dice_dove_guardare(tmp_path):
     assert server.processo.poll() is not None
 
 
+def test_il_comando_unico_prepara_il_diario_e_chiude_il_server_anche_dopo_un_errore(tmp_path, monkeypatch):
+    """Senza indirizzo: copia, diario della lega d'esempio (sennò la scena «diario» è vuota), server, foto. Se le foto si
+    rompono a metà il server si ferma lo stesso e l'errore arriva a chi ha lanciato."""
+    m = _modulo()
+    passi = []
+
+    def copia(dove, dati):
+        passi.append("copia")
+        dove.mkdir(parents=True)
+        return dove
+
+    class ServerFinto:
+        def __init__(self, comando, base, **k):
+            self.base, self.processo = base, type("P", (), {"pid": 1})()
+            assert comando[1:4] == ["-m", "fanta", "server"]
+
+        def __enter__(self):
+            passi.append("server acceso")
+            return self
+
+        def __exit__(self, *e):
+            passi.append("server spento")
+            return False
+
+    def foto_rotte(*a, **k):
+        passi.append("foto")
+        raise RuntimeError("Chrome chiuso a metà")
+
+    dati = tmp_path / "dati"                      # un archivio finto: in CI la cartella dati/ non c'è
+    dati.mkdir()
+    (dati / "fanta.sqlite").write_bytes(b"")
+    monkeypatch.setattr(m, "prepara_copia", copia)
+    monkeypatch.setattr(m, "calcola_diario", lambda copia, python: passi.append("diario"))
+    monkeypatch.setattr(m, "ServerDiProva", ServerFinto)
+    monkeypatch.setattr(m, "fotografa", foto_rotte)
+    with pytest.raises(RuntimeError, match="Chrome"):
+        m.main([str(tmp_path / "foto"), "--scene", "diario", "--larghezze", "390", "--temi", "chiaro", "--dati", str(dati)])
+    assert passi == ["copia", "diario", "server acceso", "foto", "server spento"]
+
+
 def test_si_lancia_come_script_e_spiega_l_uso():
     r = subprocess.run([sys.executable, str(PERCORSO), "--help"], capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0 and "--scene" in r.stdout and "riepilogo" in r.stdout

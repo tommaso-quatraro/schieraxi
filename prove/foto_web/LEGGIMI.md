@@ -25,6 +25,8 @@ Senza indirizzo lo strumento avvia da solo un server di prova e lo ferma alla fi
 - usa la lega d'esempio (`lega/esempio/`) e una copia dell'archivio dei dati di calcio `dati/fanta.sqlite` (dal repository o,
   da una worktree, dalla cartella principale; `--dati <cartella>` per sceglierne un altro). L'originale non si tocca;
   diario, scelte e account non si copiano. Senza archivio le schermate restano vuote;
+- calcola nella copia il diario delle giornate finite della lega d'esempio (`python -m fanta affidabilita`, pochi secondi,
+  nessuna rete), così la scena `diario` non è vuota;
 - spegne i lavori di sfondo e le fonti (nessuna richiesta a siti esterni) e ascolta su un indirizzo di loopback suo
   (`127.0.0.NN`, mai `127.0.0.1`) con una porta libera;
 - il Python del server è il `.venv` del repository o della cartella principale (`--python-server` per sceglierne un altro);
