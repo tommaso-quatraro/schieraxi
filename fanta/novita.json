@@ -1,5 +1,18 @@
 [
   {
+    "versione": "1.400",
+    "data": "2026-11-05T19:23:22",
+    "titolo": "La copia di ogni notte conserva anche il registro delle giornate",
+    "voci": [
+      "La copia di sicurezza fatta ogni notte ora conserva anche i numeri mostrati prima di ogni giornata: se il server va rifatto da capo, la misura di quanto ci prendono i consigli riparte da dove era."
+    ],
+    "tecnico": [
+      "backup-dati.sh esporta le tabelle registro_giornate e registro_giocatori dell'archivio in dati/registro-giornate.json con `python3 -m fanta.registro_copia esporta` (nuovo modulo, solo libreria standard: lo script usa il Python di sistema). Archivio aperto in sola lettura, le due tabelle lette nella stessa transazione: coerente anche a servizio acceso, compresi i dati ancora nel file -wal. L'archivio intero resta fuori dalla copia (si riscarica con aggiorna).",
+      "Se l'esportazione non riesce, la copia di quella notte non si fa e non parte la rotazione: restano le copie vecchie con il registro buono; il motivo va in backup-dati.log.",
+      "Ripristino: `python -m fanta.registro_copia importa dati/registro-giornate.json` (docs/RIPRISTINO-SERVER.md, passo 5). INSERT OR IGNORE in una sola transazione: le righe già presenti restano, si può ripetere; file controllato prima di scrivere (formato, solo le due tabelle, colonne dell'archivio con tutta la chiave, valori semplici, tetto 100 MB)."
+    ]
+  },
+  {
     "versione": "1.399",
     "data": "2026-11-05T19:20:10",
     "titolo": "Misura interna del consiglio di formazione",
