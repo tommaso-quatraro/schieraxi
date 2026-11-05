@@ -94,6 +94,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 37 | Confronto, «Tutti i numeri» | «Atteso ponderato (con la probabilità di giocare)», «Quando gioca» a parole, «vs COM», «Normale» | «Punti attesi», «Parte titolare 75%», «COM casa», «Media» | web (`apriConfronto`) | fatto sull'iPhone (#293) |
 | 38 | Oggi, giornata finita, recuperi | «Manca il recupero di ATA–PAR» | uguale | «ATA vs PAR», come la carta del rinvio | web e poi iPhone (#310) |
 | 39 | Confronto, in cima ai due nomi | posto sotto il nome («Titolare», «Panchina 2», «Non schierato») | niente posto | web | iPhone da fare (#311; la partita «INT vs ROM» è la #302) |
+| 40 | Righe giocatore a partita iniziata (Formazione, Seguiti, Oggi) | a partita finita con il voto il fantavoto preso con sotto «fantavoto», altrimenti «–» (lo stato è nella pillola); niente «Perché questo numero». Partita rinviata come prima della partita | fantavoto atteso e «gioca 72%» anche dopo il voto | web (`voceGiocatore`, `esitoPartita`) | fatto sull'iPhone (#313): `EsitoPartita`, `RigaGiocatore`. Righe della rosa di una squadra (`valoreRosa` della web, `RigaRosa` dell'iPhone): iPhone ancora da fare |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

@@ -56,8 +56,8 @@ extension Etichetta.Gravita {
     }
 }
 
-/// Riga di un giocatore: avatar con l'anello dell'indice, nome, partita, etichette e punti attesi.
-/// Con `apribile` un tocco apre la scheda del giocatore.
+/// Riga di un giocatore: avatar con l'anello dell'indice, nome, partita, etichette e a destra il numero (fantavoto atteso e
+/// «gioca N%» prima della partita, fantavoto preso dopo: vedi `numero`). Con `apribile` un tocco apre la scheda del giocatore.
 struct RigaGiocatore: View {
     let g: Giocatore
     var apribile = false
@@ -104,22 +104,28 @@ struct RigaGiocatore: View {
         Formato.punti(g.fvAtteso ?? g.puntiAttesi)
     }
 
-    /// Il numero grande a destra della riga.
+    /// Il numero grande a destra della riga, come `voceGiocatore` di app.js (#313): prima della partita, e con la partita
+    /// rinviata, il fantavoto atteso; a partita iniziata il fantavoto preso, o «–» se non c'è ancora (o non ci sarà).
     nonisolated static func numero(_ g: Giocatore) -> String {
-        testoPunti(g)
+        guard let esito = g.esitoPartita else { return testoPunti(g) }
+        return Formato.punti(esito.fv)
     }
 
-    /// La riga piccola sotto il numero; nil se c'è solo il numero.
+    /// La riga piccola sotto il numero: «gioca 72%» prima della partita, «fantavoto» (`mercato.fantavoto` della web) sotto il
+    /// fantavoto preso; nil a partita iniziata senza voto, perché lo stato della partita lo dice già la pillola dell'etichetta.
     nonisolated static func sottoNumero(_ g: Giocatore) -> String? {
-        "gioca \(Formato.percento(g.pVoto))%"
+        guard let esito = g.esitoPartita else { return "gioca \(Formato.percento(g.pVoto))%" }
+        return esito.fv == nil ? nil : "fantavoto"
     }
 
-    /// Se il numero è un pulsante a sé che apre «Perché questo numero» (con i motivi del server).
+    /// Se il numero è un pulsante a sé che apre «Perché questo numero» (con i motivi del server). A partita iniziata no, come
+    /// la web: i motivi spiegano il fantavoto atteso, che lì non si vede più.
     nonisolated static func numeroConPerche(_ g: Giocatore) -> Bool {
-        g.assente != true && PercheNumero(g) != nil
+        g.assente != true && g.esitoPartita == nil && PercheNumero(g) != nil
     }
 
-    /// Frase letta da VoiceOver per tutta la riga.
+    /// Frase letta da VoiceOver per tutta la riga: le stesse cose che si vedono. A partita iniziata «fantavoto 3,5» come la
+    /// pedina del campo, o niente: il «–» non si legge e lo stato della partita arriva con le etichette.
     nonisolated static func voce(_ g: Giocatore) -> String {
         var parti = [g.nome, nomeRuolo(g.ruolo)]
         let partita = partitaAVoce(g)
@@ -127,8 +133,12 @@ struct RigaGiocatore: View {
         if g.assente == true {
             parti.append("assente")
         } else {
-            parti.append("fantavoto atteso \(testoPunti(g))")
-            parti.append("gioca al \(Formato.percento(g.pVoto)) per cento")
+            if let esito = g.esitoPartita {
+                if esito.fv != nil, let preso = esito.testo { parti.append(preso) }
+            } else {
+                parti.append("fantavoto atteso \(testoPunti(g))")
+                parti.append("gioca al \(Formato.percento(g.pVoto)) per cento")
+            }
             if let i = g.indice { parti.append("indice \(Formato.intero(i)) su 100") }
         }
         parti.append(contentsOf: g.etichette.map { $0.testo.lowercased() })
@@ -188,7 +198,10 @@ struct RigaGiocatore: View {
     }
 
     /// Il numero grande come valore, per far scorrere le cifre quando cambia.
-    private var numeroValore: Double { puntiValore }
+    private var numeroValore: Double {
+        guard let esito = g.esitoPartita else { return puntiValore }
+        return esito.fv ?? 0
+    }
 
     private var avatar: some View {
         AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.assente == true ? nil : g.indice, dimensione: min(lato, 64), nome: g.nome, ruolo: g.ruolo)
