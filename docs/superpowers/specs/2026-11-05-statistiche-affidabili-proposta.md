@@ -101,6 +101,8 @@ xG «veri» calcolati dai tiri (senza Understat i tiri non li abbiamo), schermat
 
 ## 4. Decisioni per il proprietario
 
+**Decise il 5/11/2026: il proprietario ha approvato D1, D2 e D3 come raccomandato.**
+
 **D1. Le soglie del §2 vanno bene?** Sono la definizione di «fatto» per #165.
 Raccomandazione: sì così, da rivedere una volta dopo le prime 8 giornate del registro.
 
