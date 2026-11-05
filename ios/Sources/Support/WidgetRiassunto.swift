@@ -552,6 +552,9 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         }
     }
 
+    // TODO #267: provvisoria per il rosso dei test, si completa nel prossimo commit
+    func formeEtichetta(adesso: Date) -> [String] { [etichetta(adesso: adesso)] }
+
     /// Frase per VoiceOver: «INT 1, ROM 0, 34'»; «GEN contro COM, domani 11:23».
     func frase(adesso: Date) -> String {
         let a = ColoriSquadra.sigla(casa), b = ColoriSquadra.sigla(trasferta), e = etichetta(adesso: adesso)
@@ -1077,6 +1080,9 @@ extension GiocatoreWidget {
     func quandoGioca(adesso: Date) -> String {
         quando.map { PartitaLive.orario($0, adesso: adesso) } ?? "—"
     }
+
+    // TODO #267: provvisoria per il rosso dei test, si completa nel prossimo commit
+    func formeQuandoGioca(adesso: Date) -> [String] { [quandoGioca(adesso: adesso)] }
 
     /// La partita in una riga (widget «Giocatore seguito»), dalla forma più lunga alla più corta (la vista mostra la prima che
     /// entra, VoiceOver legge la prima): «vs ROM · domani 11:23», poi solo «domani 11:23». Senza avversario resta quando gioca,
