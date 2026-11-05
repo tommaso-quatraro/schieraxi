@@ -25,6 +25,13 @@ enum TitoloPagina {
     static func grandeInBarra(_ dimensione: DynamicTypeSize, piccoloInBarra: Bool = false) -> Bool {
         !piccoloInBarra && !nellaPagina(dimensione)
     }
+
+    /// La barra piccola mostra il titolo intero, a capo se serve (`TitoloInBarra`, #293)? Solo per le pagine con
+    /// `piccoloInBarra` e sotto la soglia: il titolo piccolo di sistema sta su una riga e taglia un nome di squadra oltre
+    /// ~22 lettere. Da `soglia` in su il titolo intero sta già nella pagina (#276) e la barra resta quella di sistema.
+    static func interoInBarra(_ dimensione: DynamicTypeSize, piccoloInBarra: Bool) -> Bool {
+        piccoloInBarra && !nellaPagina(dimensione)
+    }
 }
 
 extension EnvironmentValues {
@@ -35,7 +42,8 @@ extension EnvironmentValues {
 extension View {
     /// Il titolo della pagina: grande nella barra con il testo normale; con il testo grande piccolo nella barra e intero
     /// nella pagina, dove `TitoloNellaPagina` lo mostra a capo. Con `piccoloInBarra` la barra ha sempre il titolo piccolo
-    /// (pagine di dettaglio, titoli presi dai dati come il nome di una squadra, #276); nella pagina va lo stesso da `soglia`.
+    /// (pagine di dettaglio, titoli presi dai dati come il nome di una squadra, #276): da `soglia` in su il titolo intero va
+    /// nella pagina, sotto la soglia la barra lo mostra intero, su due righe se non ci sta in una (`TitoloInBarra`, #293).
     func titoloPagina(_ titolo: String, piccoloInBarra: Bool = false) -> some View {
         modifier(ModificatoreTitoloPagina(titolo: titolo, piccoloInBarra: piccoloInBarra))
     }

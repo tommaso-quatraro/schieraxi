@@ -12,8 +12,10 @@ struct TitoloInBarraTests {
 
     /// Il nome della squadra della demo nella foto «lega-rosa»: 32 lettere, inventato.
     private static let nomeLungo = "Gli Amici del Bar Sport Centrale"
-    /// Lo spazio del titolo nella barra di un iPhone stretto, tra la freccia «indietro» e lente e ingranaggio.
-    private static let larghezzaBarra: CGFloat = 200
+    /// Lo spazio del titolo nella barra di un iPhone stretto (375 punti), tra la freccia «indietro» e lente e ingranaggio:
+    /// il titolo centrato ne ha circa 160. Con 200 il nome della prova, a «Piccolo», poteva stare su una riga sola del
+    /// secondo carattere (più piccolo) e la prova delle due righe sarebbe fallita senza un difetto.
+    private static let larghezzaBarra: CGFloat = 160
     /// L'altezza della barra piccola di iOS: il titolo deve starci dentro.
     private static let altezzaBarra: CGFloat = 44
 
