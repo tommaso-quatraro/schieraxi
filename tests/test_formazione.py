@@ -103,13 +103,64 @@ def test_migliore_sceglie_chi_gioca_e_il_modulo():
 
 
 def test_titolare_in_dubbio_con_il_cambio_pronto():
-    """Chi gioca di rado ma vale molto si può schierare se il suo sostituto è il primo in panchina."""
+    """Chi gioca di rado ma vale molto si può schierare se il suo sostituto è il primo in panchina (sotto il 20% solo se metterci
+    il sostituto costa almeno 0,3 punti attesi: vedi i test «nessun titolare che non gioca»)."""
     rosa = ([G(1, "P", 0.95, 6)] + [G(10 + i, "D", 0.9, 6) for i in range(4)]
             + [G(20 + i, "C", 0.9, 6.5) for i in range(4)]
             + [G(30, "A", 0.9, 9), G(31, "A", 0.9, 8.5), G(32, "A", 0.9, 8), G(33, "A", 0.05, 12)])
     f = fz.migliore(rosa, Regole(), simulazioni=600)
     if 33 in {g.id for g in f.titolari}:
         assert f.panchina[0].id == 32
+
+
+# ---------------------------------------------------------------- nessun titolare che non gioca (#329)
+# Rosa con un solo modulo possibile (4-3-3: 4 difensori, 3 centrocampisti, 4 attaccanti) e tutti sicuri tranne due attaccanti per
+# il terzo posto: X (gioca poco ma fa tanti punti) e Y (gioca di più). Il posto vale, in media, con X titolare e Y in panchina
+# pX·M + (1 - pX)·pY·m; con Y titolare e X in panchina pY·m + (1 - pY)·pX·M. La differenza è pX·pY·(M - m): la ricerca
+# sceglie X (quando giocano tutti e due, X fa di più) e lo scambio con Y costa proprio pX·pY·(M - m) punti attesi.
+X, Y = 40, 41
+
+
+def _rosa_terzo_attaccante(p_x, mu_x, p_y, mu_y):
+    return ([G(1, "P", 1, 6)] + [G(10 + i, "D", 1, 6) for i in range(4)] + [G(20 + i, "C", 1, 6.5) for i in range(3)]
+            + [G(30, "A", 1, 8), G(31, "A", 1, 8), G(X, "A", p_x, mu_x), G(Y, "A", p_y, mu_y)])
+
+
+def _titolari(f):
+    return {g.id for g in f.titolari}
+
+
+@pytest.mark.parametrize("stile", fz.LIVELLI_RISCHIO, ids=lambda s: s[1])
+def test_titolare_improbabile_lascia_il_posto_al_compagno_che_gioca(stile):
+    """X al 15% e Y al 60%: lo scambio costa 0,15 x 0,6 x 2 = 0,18 punti attesi (meno di 0,3), quindi gioca Y, con ogni stile."""
+    _, _, peso, inclinazione, _ = stile
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.6, 6), Regole(), peso=peso, inclinazione=inclinazione)
+    assert Y in _titolari(f) and X not in _titolari(f)
+    assert [g.id for g in f.panchina] == [X]                        # X non sparisce: va in panchina
+
+
+def test_compagno_proprio_al_50_per_cento_basta():
+    """Y gioca al 50% (il minimo): costo 0,15 x 0,5 x 2 = 0,15 punti attesi, si scambia."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.5, 6), Regole())
+    assert Y in _titolari(f) and X not in _titolari(f)
+
+
+def test_titolare_improbabile_resta_se_lo_scambio_costa_troppo():
+    """X al 15% che fa 14 quando gioca, Y al 60% che fa 6: lo scambio costerebbe 0,15 x 0,6 x 8 = 0,72 punti attesi."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 14, 0.6, 6), Regole())
+    assert X in _titolari(f) and Y not in _titolari(f)
+
+
+def test_titolare_improbabile_resta_senza_un_compagno_al_50_per_cento():
+    """Y gioca solo al 40%: nessun compagno di ruolo abbastanza sicuro, resta la scelta della ricerca (X)."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.15, 8, 0.4, 6), Regole())
+    assert X in _titolari(f) and Y not in _titolari(f)
+
+
+def test_titolare_al_20_per_cento_non_e_improbabile():
+    """X gioca proprio al 20%: non è sotto la soglia, resta anche se lo scambio costerebbe poco (0,2 x 0,6 x 2 = 0,24)."""
+    f = fz.migliore(_rosa_terzo_attaccante(0.2, 8, 0.6, 6), Regole())
+    assert X in _titolari(f) and Y not in _titolari(f)
 
 
 def test_panchina_a_posti_fissi_per_ruolo():
