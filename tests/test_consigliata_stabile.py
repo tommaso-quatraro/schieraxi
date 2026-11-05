@@ -93,7 +93,7 @@ def test_la_soglia_e_quella_dell_avviso_alla_scadenza():
 @pytest.mark.parametrize("ritocco", [{"stato": "infortunato", "p_voto": 0.0},      # fuori
                                      {"stato": "squalificato", "p_voto": 0.0},
                                      {"stato": "non_citato", "p_voto": 0.1}])       # improbabile: gioca meno del 20%
-def test_titolare_che_non_gioca_cambia_anche_sotto_un_punto(ritocco):
+def test_titolare_diventato_fuori_o_improbabile_cambia_anche_sotto_un_punto(ritocco):
     prima = _migliore(_prev())
     nuove = _prev({7: ritocco})
     migliore = _migliore(nuove)
@@ -190,8 +190,8 @@ def mondo(monkeypatch, tmp_path):
     consigli._cache.clear()
 
 
-def _rose(*squadre) -> lega.Rose:
-    return lega.Rose(list(squadre) or [_squadra()], "Squadra Prova")
+def _rose() -> lega.Rose:
+    return lega.Rose([_squadra()], "Squadra Prova")
 
 
 def _formazione(mondo, prev=None) -> dict:
@@ -210,7 +210,7 @@ def test_formazione_tiene_la_consigliata_dopo_un_ritocco_anche_dopo_un_riavvio(m
     assert _ids(_formazione(mondo)) == _ids(prima)
 
 
-def test_oggi_widget_e_da_fare_leggono_la_stessa_consigliata(mondo):
+def test_da_fare_legge_la_stessa_consigliata(mondo):
     """Da fare (#333) chiama `consigli.formazione` senza sapere niente della consigliata di prima: deve vedere quella tenuta."""
     from fanta import da_fare
     prima = _formazione(mondo)
@@ -243,8 +243,9 @@ def test_dopo_la_scadenza_senza_consigliata_di_prima_vale_la_prima_vista(mondo):
 
 
 def test_la_panchina_ricordata_e_l_ultima_mostrata_prima_della_scadenza(mondo):
-    _formazione(mondo)
+    prima = _formazione(mondo)
     dopo = _formazione(mondo, _prev({8: {"mu": 6.4}, 22: {"mu": 3.0}}))      # il terzo attaccante scende: la panchina si riordina
+    assert _ids(dopo) == _ids(prima) and [g["id"] for g in dopo["panchina"]] != [g["id"] for g in prima["panchina"]]
     ricordata = next(iter(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")).values()))
     assert ricordata["panchina"] == [g["id"] for g in dopo["panchina"]]
     assert set(ricordata["titolari"]) == _ids(dopo)
@@ -258,7 +259,7 @@ def test_il_file_non_ha_nomi_di_squadre_ne_di_giocatori(mondo):
     assert set(voce) <= {"stagione", "giornata", "modulo", "titolari", "panchina", "non_giocano", "quando"}
 
 
-def test_si_ricordano_i_titolari_che_gia_non_giocavano(mondo, monkeypatch):
+def test_si_ricordano_i_titolari_che_gia_non_giocavano(mondo):
     """Con soli 4 difensori il 7 è titolare anche se improbabile: la consigliata ricordata lo segna, e quando poi la si tiene
     (stessi titolari) l'elenco resta quello di quando è stata mostrata."""
     quattro = lega.Rose([_squadra(senza=(8, 9, 10, 11))], "Squadra Prova")

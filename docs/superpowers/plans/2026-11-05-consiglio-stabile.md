@@ -3,7 +3,7 @@
 > **Per chi esegue:** un compito alla volta, test prima del codice (`superpowers:test-driven-development`).
 
 **Obiettivo:** la consigliata già mostrata per una giornata cambia solo se la nuova vale almeno 1 punto atteso in più
-(ricalcolata con i dati nuovi), oppure se un suo titolare è uscito dalla rosa, fuori o improbabile.
+(ricalcolata con i dati nuovi), oppure se un suo titolare è uscito dalla rosa o è diventato fuori o improbabile.
 
 **Architettura:** il calcolo della migliore (`consigli._calcola_formazione`, in cache) non cambia. Sopra c'è un passo nuovo,
 `consigli.stabile`, che confronta la migliore con la consigliata di prima e decide quale tenere. `consigli.formazione` legge la
@@ -31,7 +31,7 @@ l'istantanea vorrebbe dire passare il file del diario a tutti, anche a `da_fare.
 leggerebbe una consigliata diversa da Oggi, proprio il difetto di #333. In più l'istantanea si scrive solo aprendo la
 Formazione o 10 minuti prima della scadenza: chi guarda solo Oggi o il widget vedrebbe la consigliata ballare fino ad allora.
 Quindi: un file comune piccolo, `dati/consigliate.json`, con chiave = impronta (sha256) di stagione, giornata, nome della
-squadra, rosa, regole e simulazioni; valore = id di titolari e panchina, modulo, ora. Niente nomi né id utente: è come la
+squadra, rosa, regole e simulazioni; valore = id di titolari e panchina, modulo, `non_giocano`, ora. Niente nomi né id utente: è come la
 cache dei calcoli (già condivisa fra utenti con la stessa rosa e le stesse regole), ma sopravvive ai riavvii e vale fra
 processi. Tetto di voci, si toglie la più vecchia. L'istantanea del Diario resta com'è: si scrive da `f`, quindi coincide.
 Costo se sbagliata: il file si toglie e la lettura passa all'istantanea in una PR che tocca anche i chiamanti.
@@ -48,8 +48,9 @@ Costo se sbagliata: il file si toglie e la lettura passa all'istantanea in una P
 
 ## Compito 2: `formazione` ricorda e legge
 **File:** `fanta/consigli.py`, `tests/conftest.py` (file nella cartella temporanea), stesso file di test.
-- `FILE_CONSIGLIATE`, `leggi_consigliata(impronta, file=None) -> dict | None`, `_ricorda(...)` con `BloccoFile` e
-  `scrivi_sicuro`, tetto `MAX_CONSIGLIATE`.
+- `FILE_CONSIGLIATE`, `_consigliate() -> dict` (lettura, rifatta solo se il file cambia), `da_ricordare(f, prima) -> dict | None`
+  (modulo, titolari, panchina, `non_giocano`), `_ricorda(...)` con `BloccoFile` e `scrivi_sicuro`, tetto `MAX_CONSIGLIATE`.
+  La consigliata di prima entra nella chiave della cache (`_firma`); la tenuta si calcola nello stesso giro della migliore.
 - Test: due calcoli con un ritocco in mezzo → stessi titolari; dopo un riavvio (cache svuotata) → stessi; dopo la scadenza
   il file non cambia; il file non contiene nomi di squadre o giocatori; file rovinato → la migliore, senza errori.
 

@@ -369,7 +369,8 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -
 # (misura del 5/11/2026: quando 3 o più titolari cambiano per un ritocco, la nuova vale in mediana 3-4 centesimi di punto).
 SOGLIA_CAMBIO_PUNTI = SOGLIA_AVVISO_PUNTI
 NON_GIOCA = ("fuori", "improbabile")      # `titolarita`: infortunato, squalificato, senza voto per il rinvio, o gioca meno del 20%
-# Le consigliate già mostrate, una per squadra e giornata: {impronta: {stagione, giornata, modulo, titolari, panchina, quando}}.
+# Le consigliate già mostrate, una per squadra e giornata:
+# {impronta: {stagione, giornata, modulo, titolari, panchina, non_giocano, quando}} (`da_ricordare`).
 # Comune a tutti come la cache dei calcoli (stessa squadra, rosa e regole: stessa consigliata), ma sopravvive ai riavvii e vale
 # anche per i comandi lanciati a parte (avvisi, sentinella). Solo id di giocatori: la chiave è un'impronta, niente nomi.
 FILE_CONSIGLIATE = RADICE / "dati" / "consigliate.json"

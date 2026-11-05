@@ -6,7 +6,7 @@
     "Formazione, Oggi, widget, Da fare e avvisi mostrano la stessa consigliata; dopo la scadenza non cambia più. La formazione che salvi tu non viene mai toccata."
   ],
   "tecnico": [
-    "consigli.stabile confronta la migliore con la consigliata di prima sulle stesse simulazioni; soglia consigli.SOGLIA_CAMBIO_PUNTI = notifiche.SOGLIA_AVVISO_PUNTI.",
+    "consigli.stabile confronta la migliore con la consigliata di prima sulle stesse simulazioni; soglia consigli.SOGLIA_CAMBIO_PUNTI = notifiche.SOGLIA_AVVISO_PUNTI. Cambia sempre per un titolare uscito dalla rosa o diventato fuori o improbabile (chi lo era già quando è stata mostrata sta in non_giocano).",
     "consigli.formazione ricorda la consigliata in dati/consigliate.json (solo id, chiave = impronta di squadra, rosa, regole, giornata e simulazioni; tetto MAX_CONSIGLIATE) e la usa nella chiave della cache.",
     "Misura dei ritocchi: prove/misura_stabilita.py (#335)."
   ]
