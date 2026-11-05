@@ -1,0 +1,12 @@
+{
+  "titolo": "Da fare e Formazione dicono la stessa cosa",
+  "voci": [
+    "Oggi, lista Da fare: per un titolare in dubbio il consiglio di cambio (con il pulsante Sostituisci) compare solo se anche la formazione consigliata lo toglie. Prima poteva consigliare il cambio mentre la Formazione e il confronto tra i due dicevano di schierare il titolare.",
+    "Se la formazione consigliata tiene il titolare in dubbio, la voce dice chi entra dalla panchina se lui non gioca, per esempio «Rossi è in dubbio (62% di giocare) ma resta titolare: se non gioca entra Bianchi dalla panchina», e il pulsante apre la formazione."
+  ],
+  "tecnico": [
+    "Issue #266. Regola unica `consigli.da_schierare(a, b, titolari)`: la usano `consigliato` di GET /api/confronto (comportamento invariato) e `da_fare._dubbi`, che la applica al titolare in dubbio e al candidato (chi la consigliata schiera al suo posto, se c'è, altrimenti il libero dello stesso ruolo con più punti attesi) con i titolari della consigliata (in cache).",
+    "Voce `dubbio` quando la consigliata tiene il titolare: chiave `dafare.dubbio_incerto_tiene` (o la frase senza «Meglio» se non c'è una riserva dello stesso ruolo in panchina o la lega non ammette sostituzioni), campo nuovo facoltativo `riserva` {id, nome} al posto di `alternativa`, azione «Apri la formazione», destinazione `formazione` (`schieraxi://formazione`). Nessun client da cambiare.",
+    "Test: `tests/test_da_fare.py`, `tests/test_confronto_consigliato.py`."
+  ]
+}
