@@ -42,6 +42,13 @@ parola («4 da contr…»): ogni testo ha più forme, dalla più lunga alla più
 provate in `TestiCortiWidgetTests`), e la vista mostra la prima che entra (`TestoCheEntra`, `PrimaCheEntra`, cioè `ViewThatFits`).
 Esempi: «4 da controllare» → «4»; «In dubbio · gioca 70%» → prima senza volti, poi «gioca 70%»; «Giornata 7» → «G7»; tabella dei punti:
 «G7» al posto di «Giornata 7», poi via la fascia; elenchi di nomi: «Sorvani e altri 2». VoiceOver legge sempre la forma intera.
+Lo stesso vale per i blocchi interi (#249). Il Cruscotto grande è alto da circa 270 punti (iPad mini, iPhone SE) a 350 (iPhone
+grandi) e tiene la prima prova che entra (`DisposizioneWidget.proveCruscotto`, provate in `DisposizioneWidgetTests`): prima della
+scadenza va via la prossima partita, poi la forma compatta (senza fascia e senza la squadra dello scambio, «Scambio +2,4»), poi il
+grafico (i crediti restano su una riga), infine un dubbio solo; durante le partite il blocco delle partite resta sempre. Extra large:
+a sinistra il campo più grande che entra, a destra le stesse prove. Miglior scambio medio: prima la colonna di sinistra più stretta,
+poi senza volti, poi chi dai e chi ricevi su due righe di testo (mai «Vlase…»). Le partite da giocare hanno l'ora se sono di oggi,
+altrimenti anche il giorno, come la web («domani 11:23», `PartitaLive.etichetta(adesso:)`).
 I widget rotondi della schermata di blocco stanno in `CerchioWidget` (contenuto sempre al centro). Crediti: simbolo «C» nel cerchio
 (`ParoleWidget.simboloCrediti`, come l'app), mai l'euro.
 

@@ -100,14 +100,14 @@ struct VistaScambio: View {
         .accessibilityLabel(s.frase)
     }
 
-    /// Una colonna di giocatori (volto e cognome).
-    private func colonna(_ titolo: String, _ elenco: [GiocatoreScambio]?, lato: CGFloat, massimo: Int) -> some View {
+    /// Una colonna di giocatori: volto e cognome, o solo il cognome se manca lo spazio.
+    private func colonna(_ titolo: String, _ elenco: [GiocatoreScambio]?, lato: CGFloat, massimo: Int, conVolti: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(titolo).font(.caption2.weight(.semibold)).foregroundStyle(TintaWidget.testo2)
             ForEach(Array((elenco ?? []).prefix(massimo).enumerated()), id: \.offset) { _, g in
                 let giocatore = g.comeGiocatore
                 let riga = HStack(spacing: 6) {
-                    AvatarMini(g: giocatore, lato: lato)
+                    if conVolti { AvatarMini(g: giocatore, lato: lato) }
                     VStack(alignment: .leading, spacing: 0) {
                         Text(g.cognome).font(.footnote.weight(.semibold)).lineLimit(1)
                         if let r = g.ruolo { Text(r).font(.caption2).foregroundStyle(TintaWidget.testo2) }
@@ -122,21 +122,35 @@ struct VistaScambio: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Medio: il guadagno a sinistra, chi dai e chi ricevi a destra. Il medio dell'iPad e degli iPhone da 6,1" è più stretto:
+    /// si tiene la prima forma che entra in larghezza, così i cognomi restano interi (mai «Vlase…»): prima la colonna di sinistra
+    /// più stretta (il testo va a capo), poi via i volti, infine chi dai e chi ricevi su due righe di testo.
     private func medio(_ s: ScambioWidget) -> some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                IntestazioneWidget(titolo: "Scambio", icona: "arrow.left.arrow.right")
-                Spacer(minLength: 0)
-                guadagno(s.guadagnoMio, corpo: 36)
-                Text("punti attesi per te").font(.caption2).foregroundStyle(TintaWidget.testo2)
-                // su iPad la colonna è stretta: il nome della squadra va a capo intero, mai «con Real Madr…»
-                if let a = s.altra { Text("con \(a)").font(.caption2).lineLimit(2) }
-                PiedeDati(voce: voce)
+        PrimaCheEntra(4) { i in
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    IntestazioneWidget(titolo: "Scambio", icona: "arrow.left.arrow.right")
+                    Spacer(minLength: 0)
+                    guadagno(s.guadagnoMio, corpo: 36)
+                    Text("punti attesi per te").font(.caption2).foregroundStyle(TintaWidget.testo2)
+                    // nella colonna stretta il nome della squadra va a capo intero, mai «con Real Madr…»
+                    if let a = s.altra { Text("con \(a)").font(.caption2).lineLimit(2) }
+                    PiedeDati(voce: voce)
+                }
+                .frame(width: i == 1 ? 80 : nil, alignment: .leading)
+                .frame(maxWidth: 120, alignment: .leading)
+                if i < 3 {
+                    colonna("Dai", s.do, lato: 26, massimo: 2, conVolti: i < 2)
+                    Image(systemName: "arrow.right").font(.caption).foregroundStyle(TintaWidget.testo2).accessibilityHidden(true)
+                    colonna("Ricevi", s.ricevo, lato: 26, massimo: 2, conVolti: i < 2)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Dai \(s.daiTesto)").font(.footnote.weight(.semibold))
+                        Text("Ricevi \(s.ricevoTesto)").font(.footnote.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            .frame(maxWidth: 120, alignment: .leading)
-            colonna("Dai", s.do, lato: 26, massimo: 2)
-            Image(systemName: "arrow.right").font(.caption).foregroundStyle(TintaWidget.testo2).accessibilityHidden(true)
-            colonna("Ricevi", s.ricevo, lato: 26, massimo: 2)
         }
     }
 
@@ -145,7 +159,10 @@ struct VistaScambio: View {
             HStack(alignment: .firstTextBaseline) {
                 TitoloBlocco(testo: "Miglior scambio", icona: "arrow.left.arrow.right")
                 Spacer()
-                if let a = s.altra { Text("con \(a)").font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                // un nome di squadra lungo va a capo intero sotto, mai «con Real Madr…»
+                if let a = s.altra {
+                    Text("con \(a)").font(.caption).foregroundStyle(TintaWidget.testo2).multilineTextAlignment(.trailing)
+                }
             }
             HStack(alignment: .top, spacing: 10) {
                 colonna("Dai", s.do, lato: 40, massimo: 3)

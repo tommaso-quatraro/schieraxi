@@ -538,23 +538,60 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         return "\(c)–\(t)"
     }
 
-    /// Cosa scrivere accanto al punteggio: «34'», «Intervallo», «Finita», «18:30».
-    var etichetta: String {
+    /// Cosa scrivere accanto al punteggio: «34'», «Intervallo», «Finita»; per una partita da giocare l'ora se è oggi («18:30»),
+    /// altrimenti anche il giorno, come la web e Oggi («domani 11:23», «mar 3 18:30»). `adesso` è l'istante della voce del widget.
+    func etichetta(adesso: Date) -> String {
         switch stato ?? "" {
         case "intervallo": return "Intervallo"
         case "finita": return "Finita"
         case "rinviata": return "Rinviata"
         case "sospesa": return "Sospesa"
-        case "da_giocare", "": return quando.map { Quando.ora($0) } ?? "—"
+        case "da_giocare", "": return quando.map { Self.orario($0, adesso: adesso) } ?? "—"
         default: return minuto ?? "In corso"
         }
     }
 
-    /// Frase per VoiceOver: «Inter 1, Roma 0, 34 minuti».
-    var frase: String {
-        let a = ColoriSquadra.sigla(casa), b = ColoriSquadra.sigla(trasferta)
-        guard golCasa != nil else { return "\(a) contro \(b), \(etichetta)" }
-        return "\(a) \(golCasa ?? 0), \(b) \(golTrasferta ?? 0), \(etichetta)"
+    /// Frase per VoiceOver: «INT 1, ROM 0, 34'»; «GEN contro COM, domani 11:23».
+    func frase(adesso: Date) -> String {
+        let a = ColoriSquadra.sigla(casa), b = ColoriSquadra.sigla(trasferta), e = etichetta(adesso: adesso)
+        guard golCasa != nil else { return "\(a) contro \(b), \(e)" }
+        return "\(a) \(golCasa ?? 0), \(b) \(golTrasferta ?? 0), \(e)"
+    }
+
+    /// «18:30» oggi, «domani 11:23», «ieri 20:45», «mar 3 18:30» negli altri giorni (`Quando.relativa`).
+    private static func orario(_ data: Date, adesso: Date) -> String {
+        calendarioItalia.isDate(data, inSameDayAs: adesso) ? Quando.ora(data) : Quando.relativa(data, adesso: adesso)
+    }
+}
+
+/// I giorni si contano in ora italiana, come le date del server (`Quando`): «oggi», «domani», la mezzanotte della timeline.
+private let calendarioItalia: Calendar = {
+    var c = Calendar(identifier: .gregorian)
+    c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+    return c
+}()
+
+/// Gli istanti della timeline dei widget dopo la prima voce (qui, e non nel `Fornitore` del widget, perché si provano). Sono voci
+/// della stessa timeline, non ricariche: non consumano il limite di iOS, che di notte può rimandare le ricariche di ore.
+enum VociTimeline {
+    /// In ordine e senza doppioni: i cambi del conto alla rovescia nell'ora che viene (solo `conConto`), la scadenza se deve
+    /// ancora arrivare, e la prossima mezzanotte in ora italiana, dove «domani 12:30» diventa «12:30» (widget Live) e «alla
+    /// scadenza, domani 20:45» diventa «… oggi 20:45» (Cruscotto).
+    static func istanti(adesso: Date, scadenza: Date?, conConto: Bool) -> [Date] {
+        var istanti: [Date] = []
+        if let scadenza, scadenza > adesso {
+            if conConto {
+                istanti += Quando.istantiDelConto(fino: scadenza, adesso: adesso, entro: adesso.addingTimeInterval(60 * 60))
+            }
+            istanti.append(scadenza)
+        }
+        if let notte = mezzanotte(dopo: adesso) { istanti.append(notte) }
+        return Set(istanti).sorted()
+    }
+
+    /// La prima mezzanotte dopo `adesso`, in ora italiana (alle 00:00 in punto quella del giorno dopo).
+    static func mezzanotte(dopo adesso: Date) -> Date? {
+        calendarioItalia.date(byAdding: .day, value: 1, to: calendarioItalia.startOfDay(for: adesso))
     }
 }
 
@@ -574,6 +611,10 @@ extension RiassuntoWidget {
     }
 
     var partiteInGioco: [PartitaLive] { partiteLive.filter(\.inGioco) }
+
+    /// true quando nel Cruscotto le partite vengono prima di tutto: ce n'è una in gioco, o la formazione è chiusa e la giornata
+    /// è in corso. Prima della scadenza la prossima partita dice quasi lo stesso della scadenza, ed è la prima cosa che si toglie.
+    var partiteInPrimoPiano: Bool { !partiteInGioco.isEmpty || faseGiornata.fase == FaseRiassunto.faseInCorso }
 
     /// La prossima partita da giocare (dopo adesso o iniziata da poco senza dati).
     func prossimaPartita(dopo adesso: Date = Date()) -> PartitaLive? {
@@ -690,6 +731,40 @@ enum DisposizioneWidget {
         if r > minimo { prove += (minimo..<r).reversed().map { ProvaTabella(righe: $0, frasi: 0) } }
         return Array(prove.prefix(6))
     }
+
+    /// Una prova del Cruscotto (grande, e colonna di destra dell'extra large): cosa mostrare oltre a scadenza, formazione e dubbi.
+    struct ProvaCruscotto: Equatable {
+        /// Il blocco delle partite: «Prossima partita» prima delle partite, «Partite in corso» durante.
+        let partite: Bool
+        /// Forma compatta: niente fascia sotto i punti attesi né squadra dello scambio, il guadagno accanto al titolo.
+        let compatto: Bool
+        /// Il grafico «Attesi e fatti» accanto ai crediti; senza, i crediti stanno su una riga.
+        let grafico: Bool
+        /// Quanti giocatori da controllare, al più (gli altri in «e altri N»).
+        let dubbi: Int
+
+        init(partite: Bool = true, compatto: Bool = false, grafico: Bool = true, dubbi: Int) {
+            self.partite = partite
+            self.compatto = compatto
+            self.grafico = grafico
+            self.dubbi = dubbi
+        }
+    }
+
+    /// Le prove del Cruscotto, dalla più ricca alla più povera (al più sei): il widget grande va da circa 270 punti di altezza
+    /// (iPad mini, iPhone SE) a 350 (iPhone grandi), e la vista tiene la prima che entra, così niente esce dal bordo (#249).
+    /// Prima della scadenza va via per prima la prossima partita (dice quasi lo stesso della scadenza), poi la forma compatta,
+    /// poi il grafico; per ultimo (testo grande) un dubbio solo. Con le partite in primo piano (`partiteInPrimoPiano`) il blocco
+    /// delle partite resta sempre. I crediti restano in ogni prova.
+    static func proveCruscotto(partitePrima: Bool, dubbi: Int) -> [ProvaCruscotto] {
+        let d = max(dubbi, 0)
+        var prove = [ProvaCruscotto(dubbi: d)]
+        if !partitePrima { prove.append(ProvaCruscotto(partite: false, dubbi: d)) }
+        prove.append(ProvaCruscotto(partite: partitePrima, compatto: true, dubbi: d))
+        prove.append(ProvaCruscotto(partite: partitePrima, compatto: true, grafico: false, dubbi: d))
+        if d > 1 { prove.append(ProvaCruscotto(partite: partitePrima, compatto: true, grafico: false, dubbi: 1)) }
+        return Array(prove.prefix(6))
+    }
 }
 
 // MARK: Testi che si accorciano (mai una parola tagliata a metà)
@@ -708,6 +783,16 @@ enum ParoleWidget {
     static func conto(fino scadenza: Date?, adesso: Date) -> String {
         guard let scadenza else { return "—" }
         return Quando.contoAllaRovescia(fino: scadenza, adesso: adesso) ?? chiusa
+    }
+
+    /// Sotto il conto alla rovescia del Cruscotto: «alla scadenza, oggi 20:45», dopo la scadenza «si è chiusa oggi 20:45».
+    /// Senza probabili prima «probabili non uscite · alla scadenza, oggi 20:45», poi solo «probabili non uscite» (il conto sopra
+    /// dice già quanto manca; mai «probabili non uscite · oggi 20:45», che sembrerebbe l'ora delle probabili).
+    static func sottoScadenza(_ inizio: Date?, adesso: Date, conProbabili: Bool?) -> [String] {
+        guard let inizio else { return ["scadenza non nota"] }
+        let quando = inizio > adesso ? "alla scadenza, \(Quando.relativa(inizio, adesso: adesso))"
+            : "si è chiusa \(Quando.relativa(inizio, adesso: adesso))"
+        return conProbabili == false ? ["probabili non uscite · \(quando)", "probabili non uscite"] : [quando]
     }
 
     /// «4 da controllare» → «4»; senza niente da controllare «titolari a posto» → «a posto».

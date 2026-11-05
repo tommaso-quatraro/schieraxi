@@ -166,62 +166,57 @@ struct RigaGiocatoreWidget: View {
     }
 }
 
-/// Il miglior scambio in poco spazio: con chi, chi dai e chi ricevi, quanto guadagni.
+/// Il miglior scambio in poco spazio: con chi, chi dai e chi ricevi, quanto guadagni. I nomi vanno a capo interi nella colonna
+/// stretta (mai «Ricevi Lumb…»); `compatto` toglie la squadra e mette il guadagno accanto al titolo (`ProvaCruscotto`).
 struct ScambioCompatto: View {
     let scambio: ScambioWidget?
-    @Environment(\.widgetRenderingMode) private var modoSistema
-    @Environment(\.renderForzato) private var modoForzato
-    private var modo: WidgetRenderingMode { modoForzato ?? modoSistema }
+    var compatto = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            TitoloBlocco(testo: "Miglior scambio", icona: "arrow.left.arrow.right")
             if let s = scambio {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(Formato.conSegno(s.guadagnoMio ?? 0)).font(.title3.bold()).monospacedDigit()
-                        .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
-                    Text("punti").font(.caption2).foregroundStyle(TintaWidget.testo2)
-                }
-                Text("Dai \(s.daiTesto)").font(.caption2).lineLimit(1)
-                Text("Ricevi \(s.ricevoTesto)").font(.caption2).lineLimit(1)
-                if let a = s.altra { Text("con \(a)").fontWidget(9).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                TestaBloccoCompatto(titolo: "Miglior scambio", titoloCorto: "Scambio", icona: "arrow.left.arrow.right",
+                                    guadagno: s.guadagnoMio ?? 0, compatto: compatto)
+                Text("Dai \(s.daiTesto)").font(.caption2)
+                Text("Ricevi \(s.ricevoTesto)").font(.caption2)
+                if !compatto, let a = s.altra { Text("con \(a)").fontWidget(9).foregroundStyle(TintaWidget.testo2) }
             } else {
+                TitoloBlocco(testo: compatto ? "Scambio" : "Miglior scambio", icona: "arrow.left.arrow.right")
                 Text("Non ancora calcolato").font(.footnote.weight(.semibold))
                 Text("Apri Scambi").font(.caption2).foregroundStyle(TintaWidget.testo2)
             }
         }
+        // dentro un Link il testo su più righe andrebbe al centro
+        .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 }
 
-/// Il miglior svincolo in poco spazio: chi entra, al posto di chi, quanto guadagni.
+/// Il miglior svincolo in poco spazio: chi entra, al posto di chi, quanto guadagni. Come `ScambioCompatto`, i testi vanno a capo
+/// interi (mai «Apri Squadra > Cambi co…»).
 struct SvincoloCompatto: View {
     let svincolo: SvincolatoWidget?
-    @Environment(\.widgetRenderingMode) private var modoSistema
-    @Environment(\.renderForzato) private var modoForzato
-    private var modo: WidgetRenderingMode { modoForzato ?? modoSistema }
+    var compatto = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            TitoloBlocco(testo: "Miglior svincolo", icona: "arrow.triangle.swap")
             if let s = svincolo, let entra = s.entra {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(Formato.conSegno(s.guadagno ?? 0)).font(.title3.bold()).monospacedDigit()
-                        .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
-                    Text("punti").font(.caption2).foregroundStyle(TintaWidget.testo2)
-                }
-                Text("Prendi \(entra.cognome)").font(.caption2).lineLimit(1)
-                if let esce = s.esce { Text("al posto di \(esce.cognome)").font(.caption2).lineLimit(1) }
+                TestaBloccoCompatto(titolo: "Miglior svincolo", titoloCorto: "Svincolo", icona: "arrow.triangle.swap",
+                                    guadagno: s.guadagno ?? 0, compatto: compatto)
+                Text("Prendi \(entra.cognome)").font(.caption2)
+                if let esce = s.esce { Text("al posto di \(esce.cognome)").font(.caption2) }
                 if s.fattibile == false {
                     Label("crediti insufficienti", systemImage: "exclamationmark.triangle.fill")
-                        .fontWidget(9).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
+                        .fontWidget(9).foregroundStyle(TintaWidget.attenzione)
                 }
             } else {
+                TitoloBlocco(testo: compatto ? "Svincolo" : "Miglior svincolo", icona: "arrow.triangle.swap")
                 Text("Non ancora calcolato").font(.footnote.weight(.semibold))
                 Text("Apri Squadra > Cambi consigliati").font(.caption2).foregroundStyle(TintaWidget.testo2)
             }
         }
+        .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }

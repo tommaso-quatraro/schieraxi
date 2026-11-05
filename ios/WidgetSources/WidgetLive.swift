@@ -17,10 +17,12 @@ struct WidgetLive: Widget {
     }
 }
 
-/// Una partita su una riga: squadre, punteggio, minuto; sotto (se ci sono) i tuoi titolari.
+/// Una partita su una riga: squadre, punteggio, minuto (o l'ora, con il giorno se non è oggi); sotto (se ci sono) i tuoi titolari.
 struct RigaPartitaLive: View {
     let p: PartitaLive
     let miei: [GiocatoreWidget]
+    /// L'istante della voce del widget: dice se la partita è oggi («18:30») o un altro giorno («domani 11:23»).
+    let adesso: Date
     var conEventi = false
     var lato: CGFloat = 20
     /// Tutto su una riga (avatar dopo la sigla) per il Cruscotto, dove lo spazio e' poco.
@@ -41,7 +43,7 @@ struct RigaPartitaLive: View {
                         HStack(spacing: -4) { ForEach(miei.prefix(3)) { g in AvatarMini(g: g, lato: lato) } }.padding(.leading, 4)
                     }
                     Spacer(minLength: 4)
-                    Text(p.etichetta).font(.caption.weight(p.inGioco ? .bold : .regular)).monospacedDigit()
+                    Text(p.etichetta(adesso: adesso)).font(.caption.weight(p.inGioco ? .bold : .regular)).monospacedDigit()
                         .foregroundStyle(p.inGioco ? TintaWidget.accento(modo) : TintaWidget.testo2).lineLimit(1)
                 }
                 if !miei.isEmpty && !compatto {
@@ -58,7 +60,7 @@ struct RigaPartitaLive: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(p.frase + (miei.isEmpty ? "" : ". Tuoi titolari: " + miei.map(\.cognome).joined(separator: ", ")))
+        .accessibilityLabel(p.frase(adesso: adesso) + (miei.isEmpty ? "" : ". Tuoi titolari: " + miei.map(\.cognome).joined(separator: ", ")))
     }
 }
 
@@ -119,7 +121,8 @@ struct VistaLive: View {
             if let p = scelte(w, massimo: 1).first {
                 let miei = w.mieiTitolari(in: p)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)").font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                    Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta(adesso: voce.date))")
+                        .font(.headline).lineLimit(1).minimumScaleFactor(0.7)
                     // i nomi che entrano e «e altri N»: mai «Dima…»
                     TestoCheEntra(miei.isEmpty ? [titolo(w)] : ParoleWidget.nomi(miei.map(\.cognome)).map { "Tuoi: " + $0 }).font(.caption)
                     if let e = EventiPartita.visibili(p.eventi).last {
@@ -130,7 +133,7 @@ struct VistaLive: View {
             }
         case .accessoryInline:
             if let p = scelte(w, massimo: 1).first {
-                Label("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta)", systemImage: "soccerball")
+                Label("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta(adesso: voce.date))", systemImage: "soccerball")
             }
         default: elenco(w, massimo: 3, eventi: false)
         }
@@ -153,7 +156,7 @@ struct VistaLive: View {
         VStack(alignment: .leading, spacing: 6) {
             IntestazioneWidget(titolo: titolo(w), icona: "soccerball", destra: Quando.data(w.live?.aggiornatoIl).map { "agg. \(Quando.ora($0))" })
             ForEach(entranti(w, massimo: massimo, conEventi: eventi)) { p in
-                RigaPartitaLive(p: p, miei: w.mieiTitolari(in: p), conEventi: eventi, lato: eventi ? 24 : 18)
+                RigaPartitaLive(p: p, miei: w.mieiTitolari(in: p), adesso: voce.date, conEventi: eventi, lato: eventi ? 24 : 18)
             }
             Spacer(minLength: 0)
             PiedeDati(voce: voce)
