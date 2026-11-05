@@ -7,6 +7,7 @@ I testi sono `Frase` (fanta/frasi.py): la voce ha `testo` in italiano e, accanto
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -17,6 +18,7 @@ from .lega import Rose
 from .regole import ASTA_ESTIVA_PREDEFINITA, ASTA_INVERNALE_PREDEFINITA, Regole, periodo, serie_a_a_lega
 from .turno import della_giornata, inizio as inizio_turno
 
+LOG = logging.getLogger(__name__)
 MAX_VOCI = 8
 MAX_DUBBI = 3
 MAX_DIARIO = 1
@@ -31,6 +33,8 @@ GIORNI_DATI = 3
 GIORNI_CERTIFICATO = 3
 ALTA, MEDIA, BASSA = 1, 2, 3
 FUORI = ("infortunato", "squalificato")
+MAX_NOMI_CAMBIATI = 3          # «la consigliata è cambiata» nomina i titolari fino a 3 cambi; oltre dice solo quanti sono
+ORDINE_RUOLI = {"P": 0, "D": 1, "C": 2, "A": 3}
 # etichette (fanta/etichette.py) che la voce di un titolare incerto scrive con la stessa parola, in minuscolo (chiavi `etichetta.*`
 # di fanta/frasi.py): «Lerri: improbabile, gioca 2%.». `in_dubbio` resta «è in dubbio» (le chiavi `dafare.dubbio_incerto*`).
 IN_FRASE = ("ballottaggio", "panchina", "improbabile", "rinviata")
@@ -142,6 +146,75 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
                           giocatore={"id": i, "nome": x["nome"]}, **extra))
     voci.sort(key=lambda v: (v["priorita"], "alternativa" not in v, v["id"]))     # a pari priorità prima i cambi da fare
     return voci[:MAX_DUBBI]
+
+
+def era_consigliata(db, regole: Regole, rose: Rose, titolari: list[int], giornata: int | None = None,
+                    file_diario: Path | None = None) -> bool:
+    """Gli 11 `titolari` sono quelli della consigliata (l'ordine non conta). Lo chiede il server quando salvi la formazione («Salva
+    questa»): lo scrive nella scelta (`era_consigliata`) e «Da fare» sa che hai salvato la consigliata (#333). Vale la consigliata
+    che l'app ti ha mostrato, cioè l'istantanea che GET /api/formazione scrive nel tuo Diario (`file_diario`): se tra l'apertura della
+    Formazione e il salvataggio i dati si aggiornano, quella di adesso è già un'altra. Vale anche la consigliata di adesso (stessa
+    `giornata`, già in cache da `consigli.valuta`). Nel dubbio False, cioè scelta a mano come prima."""
+    try:
+        scelti = {int(i) for i in titolari}
+        if giornata is not None:
+            ist = (diario.carica(file_diario).get("istantanee") or {}).get(f"{consigli.stagione_corrente()}/{giornata}")
+            if isinstance(ist, dict) and {int(t["id"]) for t in ist.get("titolari") or [] if isinstance(t, dict) and "id" in t} == scelti:
+                return True
+        f = consigli.formazione(db, regole, rose, giornata=giornata)
+        if giornata is not None and f.get("giornata") not in (None, giornata):
+            return False
+        return {int(g["id"]) for g in f["titolari"]} == scelti
+    except Exception as e:                              # noqa: BLE001  (il salvataggio non deve fallire per questo)
+        LOG.warning("consigliata salvata: confronto non riuscito (%s), la scelta conta come fatta a mano", type(e).__name__)
+        return False
+
+
+def _e_la_consigliata(scelta: dict) -> bool:
+    """La scelta salvata era la consigliata: il segno di «Salva questa» o «ho schierato la consigliata»."""
+    return scelta.get("era_consigliata") is True or scelta.get("tipo") == "consigliata"
+
+
+def _consigliata_cambiata(prev, salvati: list[int], adesso: list[int], giornata: int) -> dict:
+    """UNA voce: la consigliata ha titolari diversi da quelli che hai salvato. Dice chi entra e chi esce (fino a MAX_NOMI_CAMBIATI
+    cambi, poi solo quanti sono) e porta alla Formazione. Non cambia niente da sola. Se fra chi esce c'è un infortunato o uno
+    squalificato lo dice per primo e la priorità è alta («Urgente»), come la voce del suo dubbio che sostituisce."""
+    schede = {i: consigli.scheda_previsione(i, prev.loc[i]) for i in set(salvati) ^ set(adesso)}
+    ruolo = lambda i: ORDINE_RUOLI.get(schede[i].get("ruolo"), len(ORDINE_RUOLI))     # per ruolo, poi nell'ordine della formazione
+    entrano = sorted((i for i in adesso if i not in salvati), key=ruolo)
+    escono = sorted((i for i in salvati if i not in adesso), key=ruolo)
+    nomi = lambda ids: [schede[i]["nome"] for i in ids]
+    fuori = [i for i in escono if schede[i].get("stato") in FUORI]
+    chiave, perche = "dafare.consigliata_cambiata", {}
+    if fuori:                       # «Bianchi è infortunato, Verdi è squalificato e la consigliata è cambiata…»
+        chiave = "dafare.consigliata_cambiata_fuori"
+        perche = {"fuori": frasi.elenco([F("dafare.fuori_" + schede[i]["stato"], nome=schede[i]["nome"]) for i in fuori])}
+    if len(entrano) <= MAX_NOMI_CAMBIATI:
+        testo = F(chiave, **perche, entrano=frasi.elenco(nomi(entrano), con_e=True), escono=frasi.elenco(nomi(escono), con_e=True))
+    else:
+        testo = F(chiave + "_molti", **perche, n=len(entrano))
+    return _voce(f"consigliata:{giornata}", "formazione", testo, ALTA if fuori else MEDIA, F("dafare.az_formazione"),
+                 _destinazione("formazione"),
+                 entrano=[{"id": i, "nome": schede[i]["nome"]} for i in entrano],
+                 escono=[{"id": i, "nome": schede[i]["nome"]} for i in escono])
+
+
+def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None) -> list[dict]:
+    """Le voci sui tuoi titolari. Con una formazione fatta a mano, o niente di salvato, i dubbi di sempre (`_dubbi`). Se hai salvato
+    la consigliata (#333) nessun cambio proposto: era già la scelta migliore. Se intanto la consigliata ha titolari diversi, UNA voce
+    lo dice e porta alla Formazione. La scelta salvata non si tocca mai: la cambi solo tu."""
+    prev = consigli.previsioni(db, regole)[0]
+    scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
+    if scelta:                      # conta solo se si può ancora schierare (regola unica, come in `_dubbi`)
+        scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
+    if not (scelta and _e_la_consigliata(scelta)):
+        return _dubbi(db, regole, rose, giornata, file_scelte)
+    salvati = [int(i) for i in scelta["titolari"]]
+    consigliata = _consigliata(db, regole, rose)
+    if consigliata and set(consigliata[0]) != set(salvati):
+        return [_consigliata_cambiata(prev, salvati, consigliata[0], giornata)]
+    # la stessa consigliata (o non si riesce a calcolarla): restano solo le voci che non chiedono un cambio
+    return [v for v in _dubbi(db, regole, rose, giornata, file_scelte) if "alternativa" not in v]
 
 
 def _copertura(db, regole: Regole, rose: Rose, lingua: str = "it") -> list[dict]:
@@ -453,7 +526,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
     finita = oggi.get("fase") == "finita"
     controlli = []
     if aperta and giornata and not finita:
-        controlli += [lambda: _dubbi(db, regole, rose, giornata, ctx.scelte)]
+        controlli += [lambda: _titolari(db, regole, rose, giornata, ctx.scelte)]
     if aperta and giornata:
         controlli += [lambda: _copertura(db, regole, rose, lingua),
                       lambda: _formazione_non_salvata(db, regole, rose, ore, giornata, ctx.scelte)]
