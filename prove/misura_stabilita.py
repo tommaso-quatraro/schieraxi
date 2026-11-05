@@ -56,7 +56,7 @@ def main() -> None:
         if len(consigli._rosa(s, prev)) < 20:
             continue
         f0 = consigli._calcola_formazione(s, prev, giornata, con_probabili, regole, a.simulazioni)
-        prima = {"titolari": [g["id"] for g in f0["titolari"]], "panchina": [g["id"] for g in f0["panchina"]]}
+        prima = consigli.da_ricordare(f0)                      # come la ricorda il server (anche chi già non giocava)
         for _ in range(a.prove):
             pk = ritocca(prev, rng)
             migliore = consigli._calcola_formazione(s, pk, giornata, con_probabili, regole, a.simulazioni)

@@ -15,8 +15,10 @@ chiamanti (Formazione, Oggi, widget, Da fare, avvisi, copia alla scadenza, senti
 
 ## Vincoli
 - Soglia: `notifiche.SOGLIA_AVVISO_PUNTI` (1 punto atteso), la stessa dell'avviso alla scadenza, riusata con un nome in `consigli`.
-- Titolare che non gioca più: fuori dalla rosa o senza previsione, `titolarita` «fuori» o «improbabile» (sotto il 20%) →
-  si passa alla migliore, se la migliore non lo tiene anche lei.
+- Titolare che non gioca più: fuori dalla rosa o senza previsione, oppure DIVENTATO «fuori» o «improbabile» (`titolarita`, sotto
+  il 20%) → si passa alla migliore, se la migliore non lo tiene anche lei. Chi era già fuori o improbabile quando la consigliata
+  è stata mostrata (il sistema lo teneva con una riserva sicura dietro) si ricorda in `non_giocano` e non fa cambiare da solo:
+  senza questo, prima della #329, la consigliata cambiava ancora in metà dei ritocchi.
 - Dopo la scadenza nulla cambia: la consigliata di prima resta (titolari e panchina), il file non si riscrive.
 - La scelta salvata dall'utente non si tocca (`consigli` non scrive in `scelte`).
 - File toccati: `fanta/consigli.py`, `tests/`, `prove/`, `MAPPA.md`, `docs/API.md`, `fanta/novita.d/consiglio-stabile.json`.

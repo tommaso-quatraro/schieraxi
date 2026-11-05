@@ -397,9 +397,25 @@ def _stessa(prima: dict, f: dict, chiusa: bool) -> bool:
 
 
 def _firma(prima: dict | None, chiusa: bool) -> tuple:
-    """Ciò della consigliata di prima da cui dipende la risposta, per la chiave della cache: i titolari; dopo la scadenza anche la
-    panchina (prima della scadenza la panchina la rifà il sistema)."""
-    return (tuple(sorted(_ids(prima, "titolari") or [])), tuple(_ids(prima, "panchina") or []) if chiusa else ())
+    """Ciò della consigliata di prima da cui dipende la risposta, per la chiave della cache: i titolari e chi di loro già non
+    giocava; dopo la scadenza anche la panchina (prima della scadenza la panchina la rifà il sistema)."""
+    return (tuple(sorted(_ids(prima, "titolari") or [])), tuple(sorted(_ids(prima, "non_giocano") or [])),
+            tuple(_ids(prima, "panchina") or []) if chiusa else ())
+
+
+def da_ricordare(f: dict, prima: dict | None = None) -> dict | None:
+    """La consigliata `f` come si ricorda: modulo, id di titolari e panchina, e i titolari che già non giocavano (fuori o
+    improbabili) quando è stata mostrata. Con gli stessi titolari di `prima` quell'elenco resta quello di allora.
+    None se `f` non ha 11 titolari."""
+    titolari = [int(g["id"]) for g in f.get("titolari") or []]
+    if len(titolari) != 11:
+        return None
+    if prima is not None and set(_ids(prima, "titolari") or []) == set(titolari):
+        non_giocano = _ids(prima, "non_giocano") or []
+    else:
+        non_giocano = [int(g["id"]) for g in f["titolari"] if g.get("titolarita") in NON_GIOCA]
+    return {"modulo": str(f.get("modulo", ""))[:8], "titolari": titolari,
+            "panchina": [int(g["id"]) for g in f.get("panchina") or []], "non_giocano": non_giocano}
 
 
 def _impronta(stagione: str, giornata: int, s: Squadra, regole: Regole, simulazioni: int) -> str:
@@ -430,17 +446,15 @@ def _consigliate() -> dict:
 
 
 def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict | None) -> None:
-    """Ricorda la consigliata mostrata (id di titolari e panchina, modulo), solo se è cambiata. Rilegge il file subito prima di
-    scrivere, con il blocco valido anche fra processi. Un errore non ferma la risposta: si riprova alla prossima."""
-    titolari = [int(g["id"]) for g in f.get("titolari") or []]
-    if len(titolari) != 11:
+    """Ricorda la consigliata mostrata (`da_ricordare`), solo se è cambiata. Rilegge il file subito prima di scrivere, con il
+    blocco valido anche fra processi. Un errore non ferma la risposta: si riprova alla prossima."""
+    voce = da_ricordare(f, prima)
+    if voce is None:
         return
-    nuova = {"stagione": str(stagione), "giornata": int(giornata), "modulo": str(f.get("modulo", ""))[:8], "titolari": titolari,
-             "panchina": [int(g["id"]) for g in f.get("panchina") or []]}
-    if (prima is not None and set(_ids(prima, "titolari") or []) == set(titolari) and _ids(prima, "panchina") == nuova["panchina"]
-            and prima.get("modulo") == nuova["modulo"]):
+    if (prima is not None and set(_ids(prima, "titolari") or []) == set(voce["titolari"]) and _ids(prima, "panchina") == voce["panchina"]
+            and prima.get("modulo") == voce["modulo"] and _ids(prima, "non_giocano") == voce["non_giocano"]):
         return
-    nuova["quando"] = _adesso().isoformat(timespec="seconds")
+    nuova = {"stagione": str(stagione), "giornata": int(giornata), **voce, "quando": _adesso().isoformat(timespec="seconds")}
     file = FILE_CONSIGLIATE
     try:
         with _blocco_consigliate, BloccoFile(file.with_name(file.name + ".lock")):
@@ -472,8 +486,9 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
     """La consigliata da mostrare: quella di prima (`prima` = {"titolari": [id], "panchina": [id]}) se c'è e regge, altrimenti la
     migliore di adesso (`migliore`, la risposta di `_calcola_formazione`, restituita così com'è).
     Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
-    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, fuori o improbabile) e la
-    migliore lo lascia fuori; tenuta quella di prima, la sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
+    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, diventato fuori o improbabile:
+    non chi lo era già quando è stata mostrata, `prima["non_giocano"]`) e la migliore lo lascia fuori; tenuta quella di prima, la
+    sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
     resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui."""
     titolari = _ids(prima, "titolari")
     nuovi = {int(g["id"]) for g in migliore.get("titolari") or []}
@@ -484,7 +499,8 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
     per_id = {g.id: g for g in rosa}
     if scelte.motivo_non_valida(titolari, {g.id: g.ruolo for g in rosa}, regole):
         return migliore                  # un titolare uscito dalla rosa o senza previsione, un modulo non più ammesso, un file rovinato
-    if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi for i in titolari):
+    gia = set(_ids(prima, "non_giocano") or [])           # chi non giocava già quando la consigliata è stata mostrata
+    if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi and i not in gia for i in titolari):
         return migliore
     tit = sorted((per_id[i] for i in titolari), key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore))
     if chiusa and panchina_prima:

@@ -26,9 +26,10 @@ SOLO_442 = Regole(moduli=["4-4-2"])
 
 @pytest.fixture(autouse=True)
 def _schede_semplici(monkeypatch):
-    """Le schede dei giocatori qui non contano: bastano id, nome, ruolo e punti attesi."""
+    """Le schede dei giocatori qui non contano: bastano id, nome, ruolo, punti attesi e titolarità."""
     monkeypatch.setattr(consigli, "scheda_previsione", lambda i, x: {
-        "id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "punti_attesi": round(float(x["p_voto"] * x["mu"]), 2)})
+        "id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "punti_attesi": round(float(x["p_voto"] * x["mu"]), 2),
+        "titolarita": consigli.titolarita(x)})
 
 
 def _prev(cambi: dict | None = None) -> pd.DataFrame:
@@ -101,6 +102,18 @@ def test_titolare_che_non_gioca_cambia_anche_sotto_un_punto(ritocco):
     assert _valore(nuove, _ids(migliore)) - _valore(nuove, _ids(prima)) < consigli.SOGLIA_CAMBIO_PUNTI
     f = consigli.stabile(migliore, _ricordata(prima), nuove, _squadra(), SOLO_442, SIM)
     assert f is migliore
+
+
+def test_titolare_gia_improbabile_quando_era_mostrata_non_basta_per_cambiare():
+    """D2: cambia sempre un titolare DIVENTATO fuori o improbabile. Se lo era già quando la consigliata è stata mostrata (il sistema
+    lo teneva titolare con una riserva sicura dietro), un ritocco che lo toglie dalla migliore vale come gli altri: sotto 1 punto resta."""
+    nuove = _prev({7: {"stato": "non_citato", "p_voto": 0.1}})
+    prima = _migliore(_prev())
+    migliore = _migliore(nuove)
+    assert 7 not in _ids(migliore)
+    ricordata = _ricordata(prima) | {"non_giocano": [7]}
+    f = consigli.stabile(migliore, ricordata, nuove, _squadra(), SOLO_442, SIM)
+    assert _ids(f) == _ids(prima)
 
 
 def test_titolare_uscito_dalla_rosa_cambia():
@@ -242,7 +255,22 @@ def test_il_file_non_ha_nomi_di_squadre_ne_di_giocatori(mondo):
     testo = consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")
     assert "Squadra Prova" not in testo and "Giocatore" not in testo
     voce = next(iter(json.loads(testo).values()))
-    assert set(voce) <= {"stagione", "giornata", "modulo", "titolari", "panchina", "quando"}
+    assert set(voce) <= {"stagione", "giornata", "modulo", "titolari", "panchina", "non_giocano", "quando"}
+
+
+def test_si_ricordano_i_titolari_che_gia_non_giocavano(mondo, monkeypatch):
+    """Con soli 4 difensori il 7 è titolare anche se improbabile: la consigliata ricordata lo segna, e quando poi la si tiene
+    (stessi titolari) l'elenco resta quello di quando è stata mostrata."""
+    quattro = lega.Rose([_squadra(senza=(8, 9, 10, 11))], "Squadra Prova")
+    mondo["prev"] = _prev({7: {"stato": "non_citato", "p_voto": 0.1}})
+    consigli.formazione(mondo["db"], SOLO_442, quattro)
+    prima = next(iter(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")).values()))
+    assert prima["non_giocano"] == [7]
+    mondo["prev"], mondo["versione"] = _prev({7: {"stato": "titolare", "p_voto": 0.9}, 22: {"mu": 3.0}}), "v2"
+    consigli.formazione(mondo["db"], SOLO_442, quattro)          # il 7 torna sicuro e la panchina cambia: si riscrive
+    dopo = next(iter(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8")).values()))
+    assert set(dopo["titolari"]) == set(prima["titolari"]) and dopo["panchina"] != prima["panchina"]
+    assert dopo["non_giocano"] == [7]
 
 
 def test_file_rovinato_vale_la_migliore_e_si_riscrive(mondo):

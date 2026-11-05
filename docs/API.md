@@ -171,7 +171,8 @@ Campo `intervallo` (in `/api/formazione`, `/api/oggi`, `/api/widget` e `/api/dia
 (`modulo`, `titolari`, `panchina`, `punteggio_atteso` e la voce del suo modulo nello stile `stile_consigliato`, in
 `/api/formazione`, `/api/oggi`, `/api/widget`, `da_fare`, avvisi e copia alla scadenza) una volta calcolata resta la stessa finché
 la migliore con i dati nuovi non vale almeno 1 punto atteso in più (la soglia dell'avviso alla scadenza), o finché un suo titolare
-non gioca più (uscito dalla rosa, infortunato, squalificato o sotto il 20%). Tenuta quella di prima, i suoi punti attesi e la sua
+non gioca più (uscito dalla rosa, o diventato infortunato, squalificato o improbabile, sotto il 20%; chi lo era già quando la
+consigliata è stata mostrata non conta). Tenuta quella di prima, i suoi punti attesi e la sua
 panchina si rifanno con i dati nuovi; dopo la scadenza della lega resta com'è, panchina compresa. Gli altri moduli e gli altri
 stili sono sempre i migliori del momento: la voce di un altro modulo può avere qualche decimo di punti attesi più della
 consigliata. La scelta salvata dall'utente non cambia mai. Il server ricorda la consigliata in `dati/consigliate.json`
