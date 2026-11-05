@@ -59,10 +59,12 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il
   suo punto di codice in `fonte_codice`.
 - `fanta/novita.json`: storia delle versioni (numero, data, titolo, voci). `fanta/novita.d/`: voci in attesa, un file per pull request.
-- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/`, `sw.js`
-  con `VERSIONE`. Niente script né stili dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`).
-  Il nome «SchieraXI» è in tracciati SVG (nessun font da scaricare): simboli `#wm` (grande) e `#wm-c` (compatto) in cima a ogni pagina,
-  nome animato della prima schermata con classi `wm-*`. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
+- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/` (tema e
+  installazione), `font/` (Archivo semi-stretto in woff2, licenza `OFL.txt` accanto), `sw.js` con `VERSIONE`. Niente script né stili
+  dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`). Grafica della web app «direzione B» (#355): fili al posto
+  delle carte, Archivo per titoli e numeri, niente gradienti né ombre; esempi con nomi e numeri inventati che tornano (i test li rifanno).
+  Il nome «SchieraXI» è in tracciati SVG: simboli `#wm` (grande) e `#wm-c` (compatto, l'unico mostrato, nella barra in alto) in cima a
+  ogni pagina. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
   Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
   Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).

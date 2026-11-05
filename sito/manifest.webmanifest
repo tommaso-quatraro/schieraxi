@@ -2,7 +2,7 @@
   "id": "/",
   "name": "SchieraXI – consigli formazione fantacalcio",
   "short_name": "SchieraXI",
-  "description": "Schierali. Schiera gli XI: la formazione migliore giornata per giornata, con probabilità e punti attesi spiegati.",
+  "description": "La formazione consigliata per il fantacalcio classic sulla Serie A: fantavoto atteso di ogni giocatore, undici, modulo e panchina.",
   "lang": "it",
   "dir": "ltr",
   "start_url": "/?da=app",
@@ -10,8 +10,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#07100b",
-  "theme_color": "#125c42",
+  "background_color": "#ffffff",
+  "theme_color": "#0b6b3a",
   "categories": ["sports", "utilities"],
   "icons": [
     {"src": "/icona-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
@@ -20,11 +20,11 @@
     {"src": "/icona-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "screenshots": [
-    {"src": "/img/schermata-larga.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "La prima schermata di SchieraXI"},
-    {"src": "/img/schermata-stretta.png", "sizes": "720x1280", "type": "image/png", "form_factor": "narrow", "label": "La demo di SchieraXI sul telefono"}
+    {"src": "/img/schermata-larga.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "SchieraXI sul computer"},
+    {"src": "/img/schermata-stretta.png", "sizes": "720x1280", "type": "image/png", "form_factor": "narrow", "label": "SchieraXI sul telefono"}
   ],
   "shortcuts": [
-    {"name": "Prova la demo", "short_name": "Demo", "url": "/?da=app#demo", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]},
-    {"name": "Apri la web app", "short_name": "Web app", "url": "/?da=app#scarica", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]}
+    {"name": "Come funziona", "short_name": "Come funziona", "url": "/?da=app#come", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]},
+    {"name": "Per iniziare", "short_name": "Per iniziare", "url": "/?da=app#iniziare", "icons": [{"src": "/icona-192.png", "sizes": "192x192", "type": "image/png"}]}
   ]
 }
