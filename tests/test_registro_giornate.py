@@ -203,3 +203,91 @@ def test_fascia_mancata_se_i_punti_veri_sono_lontani(giornata10):
     _rosa_intera(db, 3.0)                                                      # 3 punti in più a testa: 33 sopra gli attesi
     m = rg.misura_giornata(db, ST, 10)
     assert m["fascia_casi"] == 20 and m["fascia_dentro"] == 0
+
+
+# ---------------------------------------------------------------- compito 3: medie, soglie, avviso
+def _fasce(**per_fascia):
+    f = [[0, 0.0, 0] for _ in range(10)]
+    for k, v in per_fascia.items():
+        f[int(k[1:])] = v
+    return f
+
+
+R1 = {"voti": 2, "sq_modello": 2.0, "sq_fantamedia": 4.0, "presenze": 4, "brier_somma": 0.4,
+      "fasce": _fasce(f9=[2, 1.9, 2], f1=[2, 0.3, 0]), "fascia_casi": 10, "fascia_dentro": 8}
+R2 = {"voti": 2, "sq_modello": 2.0, "sq_fantamedia": 2.25, "presenze": 4, "brier_somma": 0.4,
+      "fasce": _fasce(f9=[2, 1.8, 1], f1=[2, 0.4, 1]), "fascia_casi": 10, "fascia_dentro": 9}
+
+
+def test_medie_sommano_le_giornate_della_finestra():
+    m = rg.medie([R1, R2])
+    assert m["giornate"] == 2 and m["voti"] == 4 and m["fascia_casi"] == 20
+    assert m["errore_modello"] == 1.0 and m["errore_fantamedia"] == 1.25        # radice di 4/4 e di 6,25/4
+    assert m["i1"] == -0.2                                                      # 1 / 1,25 - 1
+    assert m["brier"] == 0.1                                                    # 0,8 / 8
+    assert m["calibrazione"] == 0.125                                           # (4 × |0,925 - 0,75| + 4 × |0,175 - 0,25|) / 8
+    assert m["copertura"] == 0.85                                               # 17 su 20
+    assert rg.medie([])["giornate"] == 0 and rg.medie([])["i1"] is None
+
+
+def test_nessun_verdetto_prima_di_otto_giornate():
+    sette = rg.medie([R1] * 7)
+    assert not sette["verdetto"] and sette["regge"] == {"I1": None, "I2": None, "I3": None} and sette["fuori"] == []
+    otto = rg.medie([R1] * 8)
+    assert otto["verdetto"] and otto["calibrazione"] == 0.1                     # (16 × 0,05 + 16 × 0,15) / 32
+    assert otto["regge"] == {"I1": True, "I2": False, "I3": True} and otto["fuori"] == ["I2"]
+
+
+BUONA = {"voti": 100, "sq_modello": 100.0, "sq_fantamedia": 150.0, "presenze": 100, "brier_somma": 10.0,
+         "fasce": _fasce(f9=[50, 47.5, 47], f1=[50, 7.5, 8]), "fascia_casi": 20, "fascia_dentro": 16}
+CATTIVA = {**BUONA, "sq_modello": 2000.0}                                       # una sola basta a far uscire I1 dalla soglia
+
+
+@pytest.fixture
+def otto_buone(tmp_path):
+    db = archivio.apri(tmp_path / "r.sqlite")
+    inviati = []
+    esito = {"riesce": True}
+
+    def manda(titolo, testo):
+        if esito["riesce"]:
+            inviati.append((titolo, testo))
+        return esito["riesce"]
+
+    def passo(g, m):
+        db.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) VALUES (?, ?, ?, 100, 1)",
+                   (ST, g, f"2026-11-{g:02d}T12:00:00"))
+        rg.registra_misura(db, ST, g, m, ORA(g, 12))
+        return rg.avvisa(db, manda)
+
+    for g in range(1, 9):
+        assert passo(g, BUONA) is False
+    return db, passo, inviati, esito
+
+
+def test_avviso_dopo_due_giornate_fuori_soglia_una_volta_sola(otto_buone):
+    db, passo, inviati, _ = otto_buone
+    assert passo(9, CATTIVA) is False and inviati == []                         # fuori la prima volta: si aspetta
+    assert passo(10, CATTIVA) is True and len(inviati) == 1                     # fuori due giornate di fila: un avviso
+    assert "I1" in inviati[0][1] and "I2" not in inviati[0][1]
+    assert passo(11, CATTIVA) is False and len(inviati) == 1                    # resta fuori: niente raffiche
+    for g in range(12, 20):                                                    # rientra quando le cattive escono dalla finestra
+        assert passo(g, BUONA) is False
+    assert db.execute("SELECT fuori FROM registro_giornate WHERE giornata = 19").fetchone()[0] == "[]"
+    assert passo(20, CATTIVA) is False and passo(21, CATTIVA) is True and len(inviati) == 2   # esce di nuovo: nuovo avviso
+
+
+def test_avviso_non_mandato_si_riprova(otto_buone):
+    db, passo, inviati, esito = otto_buone
+    passo(9, CATTIVA)
+    esito["riesce"] = False                                                     # canale mancante o rete giù
+    assert passo(10, CATTIVA) is False and inviati == []
+    esito["riesce"] = True
+    assert rg.avvisa(db, lambda t, x: inviati.append((t, x)) or True) is True and len(inviati) == 1
+    assert rg.avvisa(db, lambda t, x: inviati.append((t, x)) or True) is False and len(inviati) == 1
+
+
+def test_testo_avviso_solo_numeri():
+    titolo, testo = rg.testo_avviso(["I1", "I3"], {**rg.medie([CATTIVA] * 8), "copertura": 0.65})
+    assert titolo == "SchieraXI: statistiche"
+    assert "I1" in testo and "I3" in testo and "I2" not in testo and "65%" in testo and "ultime 8 giornate" in testo

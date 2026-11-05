@@ -11,10 +11,14 @@ Il registro sta nell'archivio (tabelle `registro_giocatori` e `registro_giornate
 """
 from __future__ import annotations
 
+import contextlib
+import json
+import logging
 import math
 import os
 import sqlite3
 from datetime import datetime, timedelta
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -36,6 +40,11 @@ ROSE_SINTETICHE = 20
 SIMULAZIONI = 300
 POSTI_ROSA = {"P": 3, "D": 8, "C": 8, "A": 6}
 P_MINIMA_ROSA = 0.3
+FINESTRA = 8                            # le medie si fanno sulle ultime 8 giornate misurate; verdetto solo a finestra piena
+# soglie decise il 5/11/2026 (spec §2 e §4, D1): I1 errore del fantavoto atteso almeno il 3% sotto quello della fantamedia;
+# I2 «gioca N%» con errore di calibrazione al massimo 5 punti e Brier al massimo 0,15; I3 punti veri nella fascia tra 72% e 88%
+SOGLIE = {"I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88}
+LOG = logging.getLogger(__name__)
 BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati", "rig_parati", "assist", "mvp", "ammonizioni",
                  "espulsioni")
 
@@ -235,3 +244,141 @@ def misura_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> dic
     return {"voti": len(fv), "sq_modello": round(sq_m, 4), "sq_fantamedia": round(sq_f, 4), "presenze": len(registro),
             "brier_somma": round(brier, 4), "fasce": [[n, round(s, 4), g] for n, s, g in fasce],
             "fascia_casi": casi, "fascia_dentro": dentro}
+
+
+# ---------------------------------------------------------------- medie sulla finestra e soglie (spec §2)
+def _lista(testo) -> list:
+    if isinstance(testo, list):
+        return testo
+    try:
+        v = json.loads(testo) if testo else []
+    except ValueError:
+        return []
+    return v if isinstance(v, list) else []
+
+
+def medie(righe: list[dict]) -> dict:
+    """Le medie di più giornate misurate, sommando i pezzi (ogni giocatore pesa uguale): `errore_modello` e `errore_fantamedia`
+    (radice dell'errore quadratico), `i1` (il primo diviso il secondo, meno 1), `brier`, `calibrazione` (media pesata sulle fasce di
+    |detto − giocato|, 0,05 = 5 punti), `copertura` (quota di rose con i punti veri dentro la fascia). `verdetto` solo con FINESTRA
+    giornate; allora `regge` dice per ogni indicatore se è entro soglia (None = non si può dire) e `fuori` quali non lo sono."""
+    righe = [r for r in righe if (r.get("presenze") or 0) > 0]
+    somma = lambda k: sum(float(r.get(k) or 0) for r in righe)  # noqa: E731
+    voti, presenze, casi = int(somma("voti")), int(somma("presenze")), int(somma("fascia_casi"))
+    sq_m, sq_f = somma("sq_modello"), somma("sq_fantamedia")
+    fasce = [[0, 0.0, 0] for _ in range(FASCE)]
+    for r in righe:
+        for b, f in enumerate(_lista(r.get("fasce"))[:FASCE]):
+            if isinstance(f, list) and len(f) == 3:
+                fasce[b] = [fasce[b][0] + int(f[0]), fasce[b][1] + float(f[1]), fasce[b][2] + int(f[2])]
+    tot = sum(n for n, _, _ in fasce)
+    m = {"giornate": len(righe), "voti": voti, "presenze": presenze, "fascia_casi": casi,
+         "errore_modello": round(math.sqrt(sq_m / voti), 3) if voti else None,
+         "errore_fantamedia": round(math.sqrt(sq_f / voti), 3) if voti else None,
+         "i1": round(math.sqrt(sq_m / sq_f) - 1, 3) if voti and sq_f > 0 else None,
+         "brier": round(somma("brier_somma") / presenze, 3) if presenze else None,
+         "calibrazione": round(sum(abs(s - g) for n, s, g in fasce if n) / tot, 3) if tot else None,
+         "copertura": round(somma("fascia_dentro") / casi, 3) if casi else None}
+    m["verdetto"] = len(righe) >= FINESTRA
+    v = m["verdetto"]
+    m["regge"] = {
+        "I1": None if not v or m["i1"] is None else m["i1"] <= SOGLIE["I1"],
+        "I2": None if not v or m["calibrazione"] is None or m["brier"] is None
+        else m["calibrazione"] <= SOGLIE["I2_calibrazione"] and m["brier"] <= SOGLIE["I2_brier"],
+        "I3": None if not v or m["copertura"] is None else SOGLIE["I3_minimo"] <= m["copertura"] <= SOGLIE["I3_massimo"]}
+    m["fuori"] = [k for k, ok in m["regge"].items() if ok is False]
+    return m
+
+
+def _misurate(db: sqlite3.Connection, fino_a: tuple[str, int] | None = None, quante: int = FINESTRA) -> list[dict]:
+    """Le ultime `quante` giornate misurate con dei dati (fino a `fino_a` compresa), dalla più vecchia."""
+    sql, par = "SELECT * FROM registro_giornate WHERE misurato IS NOT NULL AND presenze > 0", []
+    if fino_a:
+        sql += " AND (stagione < ? OR (stagione = ? AND giornata <= ?))"
+        par = [fino_a[0], fino_a[0], fino_a[1]]
+    return list(reversed(_righe(db.execute(sql + " ORDER BY stagione DESC, giornata DESC LIMIT ?", (*par, quante)))))
+
+
+def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dict | None, adesso: datetime) -> list[str]:
+    """Scrive la misura di una giornata (None = nessuna partita utile: la giornata non conta nella finestra) e decide gli avvisi:
+    da avvisare = fuori soglia adesso E nella giornata misurata prima, e non già avvisati mentre restavano fuori."""
+    chiave = (stagione, int(giornata))
+    if m is None:
+        db.execute("UPDATE registro_giornate SET misurato = ?, voti = 0, presenze = 0, fuori = '[]', da_avvisare = '[]', avvisati = '[]' "
+                   "WHERE stagione = ? AND giornata = ?", (adesso.isoformat(timespec="seconds"), *chiave))
+        db.commit()
+        return []
+    db.execute("UPDATE registro_giornate SET misurato = ?, voti = ?, sq_modello = ?, sq_fantamedia = ?, presenze = ?, brier_somma = ?, "
+               "fasce = ?, fascia_casi = ?, fascia_dentro = ? WHERE stagione = ? AND giornata = ?",
+               (adesso.isoformat(timespec="seconds"), m["voti"], m["sq_modello"], m["sq_fantamedia"], m["presenze"], m["brier_somma"],
+                json.dumps(m["fasce"]), m["fascia_casi"], m["fascia_dentro"], *chiave))
+    finestra = _misurate(db, chiave, FINESTRA + 1)
+    fuori = medie(finestra[-FINESTRA:])["fuori"]
+    prima = finestra[-2] if len(finestra) >= 2 else {}
+    prima_fuori, prima_avvisati = set(_lista(prima.get("fuori"))), set(_lista(prima.get("avvisati")))
+    da_avvisare = sorted(set(fuori) & prima_fuori - prima_avvisati)
+    avvisati = sorted(prima_avvisati & set(fuori))
+    db.execute("UPDATE registro_giornate SET fuori = ?, da_avvisare = ?, avvisati = ? WHERE stagione = ? AND giornata = ?",
+               (json.dumps(fuori), json.dumps(da_avvisare), json.dumps(avvisati), *chiave))
+    db.commit()
+    return da_avvisare
+
+
+def chiudi_giornate(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int]]:
+    """Misura le giornate finite non ancora misurate, dalla più vecchia. Restituisce quelle misurate."""
+    fatte = []
+    for stagione, g in da_misurare(db, adesso):
+        registra_misura(db, stagione, g, misura_giornata(db, stagione, g), adesso)
+        fatte.append((stagione, g))
+    return fatte
+
+
+# ---------------------------------------------------------------- avviso al proprietario (come la sentinella)
+def _percento(x: float) -> str:
+    return f"{100 * x:.0f}%"
+
+
+def testo_avviso(fuori: list[str], m: dict) -> tuple[str, str]:
+    """Titolo e testo dell'avviso: solo indicatori e numeri, mai nomi."""
+    righe = []
+    if "I1" in fuori and m.get("i1") is not None:
+        righe.append(f"• I1 errore del fantavoto atteso {_percento(abs(m['i1']))} {'sotto' if m['i1'] < 0 else 'sopra'} quello della "
+                     "fantamedia (deve stare almeno 3% sotto)")
+    if "I2" in fuori and m.get("calibrazione") is not None and m.get("brier") is not None:
+        righe.append(f"• I2 «gioca N%»: calibrazione sbagliata di {100 * m['calibrazione']:.1f} punti, Brier {m['brier']:.3f} "
+                     "(al massimo 5 punti e 0,150)".replace(".", ","))
+    if "I3" in fuori and m.get("copertura") is not None:
+        righe.append(f"• I3 fascia «8 volte su 10»: punti veri dentro {_percento(m['copertura'])} (deve stare tra 72% e 88%)")
+    return ("SchieraXI: statistiche", f"Fuori soglia da 2 giornate di fila, media delle ultime {m.get('giornate')} giornate "
+            "(dettagli in Stato dei dati):\n" + "\n".join(righe))
+
+
+def avvisa(db: sqlite3.Connection, manda: Callable[[str, str], bool]) -> bool:
+    """Manda l'avviso in sospeso dell'ultima giornata misurata (`manda(titolo, testo)`, vero se è partito). Se non parte resta in
+    sospeso e si riprova al giro dopo. True se ha mandato qualcosa."""
+    ultima = _misurate(db, quante=1)
+    if not ultima or not (da := _lista(ultima[0].get("da_avvisare"))):
+        return False
+    r = ultima[0]
+    titolo, testo = testo_avviso(da, medie(_misurate(db, (r["stagione"], r["giornata"]))))
+    if not manda(titolo, testo):
+        return False
+    db.execute("UPDATE registro_giornate SET da_avvisare = '[]', avvisati = ? WHERE stagione = ? AND giornata = ?",
+               (json.dumps(sorted(set(_lista(r.get("avvisati"))) | set(da))), r["stagione"], r["giornata"]))
+    db.commit()
+    return True
+
+
+def giro(adesso: datetime, db: sqlite3.Connection, manda: Callable[[str, str], bool] | None = None) -> None:
+    """Un controllo (dal thread del pianificatore, una volta al minuto): salva, misura, avvisa. Un passo che va in errore non ferma
+    gli altri; l'errore va nel registro solo come tipo, senza dati."""
+    from . import sentinella
+    passi = (("salvataggio", lambda: salva_se_serve(db, adesso)), ("misura", lambda: chiudi_giornate(db, adesso)),
+             ("avviso", lambda: avvisa(db, manda or sentinella.manda_ntfy)))
+    for nome, passo in passi:
+        try:
+            passo()
+        except Exception as e:  # noqa: BLE001 - il giro dopo riprova
+            LOG.warning("registro delle giornate: %s non riuscito (%s)", nome, type(e).__name__)
+            with contextlib.suppress(sqlite3.Error):
+                db.rollback()
