@@ -55,7 +55,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   nome animato della prima schermata con classi `wm-*`. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
   Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
-  Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
+  Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
   Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request non in bozza). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
 - `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
   con la variabile `FANTA_LEGA=<cartella>`.
@@ -69,7 +69,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`).
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
   `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
-  `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`.
+  `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`, `superpowers/specs/` e `superpowers/plans/` (spec e piani, in italiano).
 - `.claude/settings.json`: divieti fissi per Claude Code (`gh pr merge`, push su `main`, push forzato, `--no-verify`); spiegati in `CLAUDE.md`.
 - Radice: `README.md`, `CLAUDE.md`, `MAPPA.md`, `LICENSE` (AGPL-3.0), `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `TRADEMARKS.md`, `THIRD-PARTY-NOTICES.md`, `requirements.txt`, `requirements-dev.txt`, `.env.example`.
@@ -117,6 +117,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Errori: JSON `{"detail": "testo in italiano"}`.
 - 202 = «sto calcolando» (coda, solo in modo multiutente): il client riprova. 429 con `Retry-After` = limiti per utente.
 - Scelta della giornata: `GET /api/scelta` dà anche `salvata` (data e ora) e `tipo`; web e iPhone mostrano in Formazione lo stato della scelta confrontando gli 11 mostrati con quelli salvati. Formazione non valida in `POST /api/formazione/valuta`: `400` con `codice: "formazione_non_valida"` (`consigli.FormazioneNonValida`); i client non cancellano la scelta da soli.
+- Regola unica della scelta (dal 5/11/2026): `scelte.motivo_non_valida` (11 titolari diversi tra quelli della rosa che si possono schierare, un portiere, modulo ammesso dalla lega), con `scelte.che_vale` e `scelte.ruoli_schierabili` (prima della scadenza i giocatori con una previsione, come la Formazione; a giornata finita la rosa, come il Diario). Una scelta salvata che non la rispetta più (giocatore ceduto, modulo non ammesso) non conta e vale la consigliata, ovunque: Formazione, Oggi (anche in diretta e nel riepilogo), Diario, avvisi (promemoria, «cambia la formazione», «cambio pronto», riepilogo dopo la giornata) e Da fare. `GET /api/formazione` lo dice con `stato_scelta` (`nessuna`, `valida`, `non_valida`; facoltativo, solo per la tua squadra): a giornata chiusa la riga dello stato scrive «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» (con `valida`: «… · vale quella che hai salvato»). Test `tests/test_scelta_non_valida_chiusa.py` e `tests/test_scelta_non_valida_avvisi.py`.
 - Formazione chiusa (dal 2/11/2026): dopo la scadenza della lega `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` rispondono 409 con `codice: "formazione_chiusa"`, per tutti (`server._formazione_chiusa`, regola `fasi.iniziata`). La copia automatica (`copia_scadenza.py`) scrive prima della scadenza e non passa dalle rotte.
 - Titolari incerti con una riserva quasi sicura: lista `incerti` in ogni modulo di `/api/formazione` (`consigli.incerti`, soglie 50% e 80%).
 - A giornata iniziata ogni scheda ha anche `fv_preso` (fantavoto preso, `fasi.schede_a_giornata_iniziata`): il web mostra quello al posto di «gioca N%» (`esitoPartita` in `app.js`).
@@ -130,6 +131,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Giocatori: all'utente una sola percentuale sul giocare, «gioca N%» (`p_voto`); `percentuale` delle probabili non si mostra e
   `titolarita` va a parole. Dopo la scadenza `GET /api/formazione` ha `iniziata: true`, `titolarita: null` e `stato_partita`
   (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
+- Passaggio di stagione: `POST /api/nuova-stagione` risponde `{archivio, squadre, stagione}`; `archivio` è il nome della stagione archiviata (`"2026-27"`), non un percorso.
 - Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`. `analizza` e `da-testo` passano dallo stesso `limiti.analisi_scambio`.
 - Ogni parametro `giornata` delle rotte ha `ge=1, le=MAX_GIORNATA` (422, mai 500): `tests/test_giornata_limiti.py` trova da solo le rotte nuove.
 - Rose a colonne `ruolo;nome;club;prezzo`: formato di testo accettato dal server, nato per la lettura degli screenshot di Leghe
@@ -170,6 +172,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   (anche le varianti OCR, `genera_ocr`) e `prove/misura_nomi.py --vero` sul listone salvato in locale.
 - `dati/` non va mai in git né nei log. Il backup (`backup.py`) non contiene chiavi né iscrizioni alle notifiche.
 - Il ripristino del backup salva prima lo stato di prima in `dati/backup-prima-del-ripristino.json` e non cambia le scelte delle giornate già chiuse (`backup.unisci_scelte`, regola di `fasi.iniziata`).
+- Il ripristino del backup applica alle rose gli stessi tetti dell'importazione (`limiti.controlla_rose`). La `stagione` delle rose è vuota o `AAAA-AA` (`lega.stagione_valida`): fa da nome della cartella dell'archivio (`stagione.archivia_e_riparti`, che controlla anche `percorsi.dentro`). Un percorso costruito con un nome che viene dai dati si controlla con `percorsi.dentro` prima di scrivere.
 - Rifare tutto il servizio da una copia notturna (`backup-dati.sh`): `docs/RIPRISTINO-SERVER.md` (provato il 2/11/2026; cosa non c'è nella copia e cosa succede).
 - Ore tranquille (`silenzio`, `silenzio_da`, `silenzio_a`): bloccano l'invio degli avvisi. La prova le ignora.
 - Il tempo della lega (`scadenza_minuti`, `prima_giornata_lega`) sta nelle regole della lega, non nel codice.

@@ -11,7 +11,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from . import affidabilita, avvisi, buon_senso, consigli, diario, etichette, frasi, movimenti, rinvii, scelte, stato_utente, widget
+from . import avvisi, buon_senso, consigli, diario, etichette, frasi, movimenti, rinvii, scelte, stato_utente, widget
 from .frasi import F
 from .lega import Rose
 from .regole import Regole
@@ -78,7 +78,7 @@ def _sostituzioni_ammesse(regole: Regole) -> bool:
 
 
 def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None, *, formazione: dict | None = None) -> list[dict]:
-    """Titolari (quelli che l'utente ha salvato, altrimenti i consigliati) fuori o in dubbio. Il cambio con il miglior sostituto
+    """Titolari (quelli che l'utente ha salvato, se si possono ancora schierare, altrimenti i consigliati) fuori o in dubbio. Il cambio con il miglior sostituto
     libero («Meglio Y», «Sostituisci») si propone solo se la formazione consigliata lo fa davvero: stessa regola di `consigliato`
     del confronto (`consigli.da_schierare`). Se la consigliata tiene il titolare, la voce dice chi entra dalla panchina se lui non
     gioca (la prima riserva dello stesso ruolo, come le sostituzioni) e porta alla formazione: Oggi e Formazione non si contraddicono.
@@ -87,6 +87,8 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
     prev, _, _ = consigli.previsioni(db, regole)
     consigliata = _consigliata(db, regole, rose, formazione)
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
+    if scelta:                      # conta solo se si può ancora schierare (regola unica, come la Formazione): se no la consigliata
+        scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
     if scelta:
         titolari = [int(i) for i in scelta["titolari"]]
     elif consigliata:
@@ -156,10 +158,12 @@ def _copertura(db, regole: Regole, rose: Rose, lingua: str = "it") -> list[dict]
     return voci
 
 
-def _formazione_non_salvata(ore: float | None, giornata: int, file_scelte: Path | None) -> dict | None:
+def _formazione_non_salvata(db, regole: Regole, rose: Rose, ore: float | None, giornata: int, file_scelte: Path | None) -> dict | None:
+    """La formazione si chiude presto e non c'è una scelta salvata che si possa schierare (una che non vale più conta come nessuna)."""
     if ore is None or not 0 < ore <= ORE_FORMAZIONE:
         return None
-    if scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte):
+    scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
+    if scelta and scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, consigli.previsioni(db, regole)[0]), regole):
         return None
     return _voce(f"formazione:{giornata}", "formazione", F("dafare.formazione_chiude", tempo=_ore_a_parole(ore)),
                  ALTA if ore <= ORE_URGENTE else MEDIA, F("dafare.az_formazione"), _destinazione("formazione"))
@@ -290,21 +294,23 @@ def _chiusa_prima(db, stagione: str, giornata: int, minuti: int, dal: datetime) 
     return inizio - timedelta(minutes=minuti or 0) <= dal
 
 
-def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | None, regole: Regole | None = None,
+def _diario(db, stagione: str, rose: Rose, file_scelte: Path | None, file_diario: Path | None, regole: Regole,
             dal: datetime | None = None) -> list[dict]:
     """Solo l'ULTIMA giornata finita, se manca la formazione dichiarata: basta un tocco per dire «ho schierato la consigliata».
+    Una scelta salvata che non si può schierare con la rosa (regola unica della scelta, come il Diario) non conta come dichiarata.
     Le giornate più vecchie non si chiedono più (prima si accumulavano «la giornata 6 è finita», «la giornata 7 è finita»...).
     `dal` (ora locale): quando è nato l'account; se la formazione di quella giornata si è chiusa prima, non si chiede niente
     (chi è appena entrato non aveva nessuna consigliata da schierare)."""
     voci = diario.carica(file_diario).get("giornate", {})
     prima = getattr(regole, "prima_giornata_lega", 1)
     # finite per la lega: con una partita rinviata e la regola «senza voto» o «voto d'ufficio» basta il turno (rinvii.py)
-    concluse = rinvii.giornate_chiuse(db, stagione, regole) if regole is not None else affidabilita.giornate_concluse(db, stagione)
+    concluse = rinvii.giornate_chiuse(db, stagione, regole)
     finite = [x for x in concluse if x >= prima]
     if not finite:
         return []
     g = max(finite)
-    if scelte.leggi(stagione, g, file_scelte) or (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
+    scelta = scelte.che_vale(scelte.leggi(stagione, g, file_scelte), scelte.ruoli_schierabili(rose), regole)
+    if scelta or (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
         return []
     if dal is not None and _chiusa_prima(db, stagione, g, getattr(regole, "scadenza_minuti", 0), dal):
         return []
@@ -371,14 +377,14 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
         controlli += [lambda: _dubbi(db, regole, rose, giornata, ctx.scelte)]
     if aperta and giornata:
         controlli += [lambda: _copertura(db, regole, rose, lingua),
-                      lambda: _formazione_non_salvata(ore, giornata, ctx.scelte)]
+                      lambda: _formazione_non_salvata(db, regole, rose, ore, giornata, ctx.scelte)]
     controlli += [lambda: _certificato(certificato_giorni)]
     if rose_file is not None:
         controlli += [lambda: _rose_vecchie(db, stagione, rose_file, adesso)]
     if aperta:
         recenti = _recenti(rose, getattr(ctx, "movimenti", None), adesso)
         controlli += [lambda: _svincolato(db, regole, rose, recenti), lambda: _scambio(db, regole, rose, recenti)]
-    controlli += [lambda: _diario(db, stagione, ctx.scelte, ctx.diario, regole, dal)]
+    controlli += [lambda: _diario(db, stagione, rose, ctx.scelte, ctx.diario, regole, dal)]
     if amministratore or not con_account:
         controlli += [lambda: _dati_vecchi(db, adesso)]
     controlli += [lambda: _primo_avvio(imp)]

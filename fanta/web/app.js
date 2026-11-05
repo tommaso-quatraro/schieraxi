@@ -650,7 +650,8 @@ function testoConto(o) {
   const nGiornata = o.giornata_lega || o.giornata;
   if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { n: nGiornata, quando: quando(o.scadenza || o.inizio) }) };
   const g = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
-  const grande = g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`;
+  // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
+  const grande = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
   return { grande, piccolo: o.scadenza && o.scadenza !== o.inizio
     ? t("oggi.si_chiude", { quando: quando(o.scadenza), min: o.minuti_scadenza })
     : t("oggi.prima_partita", { quando: quando(o.inizio) }) };
@@ -1077,7 +1078,10 @@ function quandoSalvata(s, breve = false) {
   return t("formazione.giorno_alle", { giorno: diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${d.getDate()}`, ora });
 }
 const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!", chiusa: "■" };
-function rigaStatoScelta(st, salvata) {
+// A giornata chiusa la frase dice quale formazione vale. `nonValida`: la scelta salvata non si può schierare (regola unica del
+// server: `stato_scelta: "non_valida"` di GET /api/formazione, o `formazione_non_valida` rileggendola): vale la consigliata, che è
+// anche quella mostrata.
+function rigaStatoScelta(st, salvata, nonValida = false) {
   const quando = salvata ? quandoSalvata(salvata.salvata) : "", breve = salvata ? quandoSalvata(salvata.salvata, true) : "";
   const testo = {
     consigliata: t("formazione.stato_consigliata"),
@@ -1086,7 +1090,7 @@ function rigaStatoScelta(st, salvata) {
     modificata: breve ? t("formazione.stato_modificata_quando", { quando: breve }) : t("formazione.stato_modificata"),
     mano: t("formazione.stato_mano"),
     non_valida: t("formazione.stato_non_valida"),
-    chiusa: t(salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
+    chiusa: t(nonValida ? "formazione.stato_chiusa_non_valida" : salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
   }[st];
   const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}">${t(chiave)}</button>`;
   const pulsanti = {
@@ -1202,7 +1206,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
-        ${st ? rigaStatoScelta(st, sc.salvata) : ""}
+        ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
         <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
@@ -1351,7 +1355,12 @@ function striscia(el) {
   };
   const att = el.querySelector(".attivo, .attiva");
   if (att) el.scrollLeft = Math.max(0, att.offsetLeft - (el.clientWidth - att.offsetWidth) / 2);
-  if (!el.dataset.striscia) { el.dataset.striscia = "1"; el.addEventListener("scroll", agg, { passive: true }); }
+  if (!el.dataset.striscia) {
+    el.dataset.striscia = "1";
+    el.addEventListener("scroll", agg, { passive: true });
+    // con il tasto Tab: Chrome fa scorrere la striscia solo se la voce è tutta fuori, e una voce a metà restava mezza nascosta (issue #280)
+    el.addEventListener("focusin", e => { const voce = e.target.closest("button"); if (voce && el.contains(voce)) voce.scrollIntoView({ block: "nearest", inline: "nearest" }); });
+  }
   agg();
 }
 
@@ -2576,7 +2585,7 @@ async function condividiImmagine(f, m) {
   g.fillStyle = "#eef6f0"; g.font = "700 64px -apple-system, Helvetica, Arial, sans-serif";
   g.fillText(`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, L / 2, 110);
   g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: virgola(m.punteggio_atteso) })}`, L / 2, 168);
+  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: num(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
   g.fillStyle = "#1f8a4b"; g.beginPath(); g.roundRect(x0, y0, w, h, 36); g.fill();
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 4;
@@ -2599,7 +2608,7 @@ async function condividiImmagine(f, m) {
       g.restore();
       g.fillStyle = "rgba(8,14,10,.92)"; g.beginPath(); g.roundRect(cx - 42, y + 34, 84, 38, 19); g.fill();   // fantavoto atteso
       g.fillStyle = "#ffffff"; g.font = "700 28px -apple-system, Helvetica, Arial, sans-serif";
-      g.fillText(virgola(x.fv_atteso), cx, y + 62);
+      g.fillText(num(x.fv_atteso), cx, y + 62);
       g.font = "650 30px -apple-system, Helvetica, Arial, sans-serif";
       g.fillText(cognome(x), cx, y + 104);
     });
@@ -4254,7 +4263,8 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   let atteso = false;
   const aggiorna = () => {
     atteso = false;
-    document.querySelectorAll(".chip, .segmenti button, .colore, .icona-scelta").forEach(b => {
+    // solo pulsanti: «Qual è la tua squadra?» (Aggiorna le rose) è un'etichetta con dentro un radio, che lo dice già (axe, issue #289)
+    document.querySelectorAll("button.chip, .segmenti button").forEach(b => {
       b.setAttribute("aria-pressed", String(b.classList.contains("attiva") || b.classList.contains("attivo") || b.classList.contains("scelta")));
     });
     // campi senza etichetta: il testo d'esempio o il titolo della scheda in cui stanno diventano il loro nome per i lettori di schermo
@@ -4269,4 +4279,40 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   osservatore.observe(contenuto, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
   osservatore.observe($("#foglio-contenuto"), { subtree: true, childList: true });
   aggiorna();
+})();
+
+// La testata resta ferma in alto e cresce quando il nome della squadra va a capo o con il testo grande: la sua altezza vera va in
+// --alto-testata, che stile.css usa per scroll-padding-top. Così chi va avanti e indietro con il tasto Tab non trova il focus sotto la
+// testata (WCAG 2.2, 2.4.11; issue #280). Sotto i 320 px utili la testata scorre via con la pagina: 0.
+(function altezzaTestata() {
+  const testata = document.querySelector(".testata"), radice = document.documentElement;
+  if (!testata) return;
+  const misura = () => radice.style.setProperty("--alto-testata", getComputedStyle(testata).position === "sticky" ? `${testata.offsetHeight}px` : "0px");
+  if (typeof ResizeObserver === "function") new ResizeObserver(misura).observe(testata);
+  misura();
+})();
+
+// Colonne ferme in alto su tablet e PC (la prima di Oggi, il campo della Formazione, l'elenco di Impostazioni, i filtri dei giocatori):
+// restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, «Apri la formazione») restava sotto la barra o
+// fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
+const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .col > .campo, .imp-elenco, .giocatori-pagina .filtri-giocatori";
+const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
+function controllaFerme() {
+  const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è
+  document.querySelectorAll(FERME).forEach(el => {
+    const era = el.classList.contains("non-ferma"), stile = getComputedStyle(el);
+    if (!era && stile.position !== "sticky") return;                     // non è ferma: niente da controllare
+    if (!era) SOPRA_FERME.set(el, parseFloat(stile.top) || 0);           // si legge solo da ferma: così il conto non cambia e non oscilla
+    const alto = el.getBoundingClientRect().height, z = el.offsetHeight ? alto / el.offsetHeight : 1;   // con il testo grande la pagina è ingrandita
+    const troppo = alto + ((SOPRA_FERME.get(el) || 0) + sotto) * z > innerHeight;
+    if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria osserva le classi)
+  });
+}
+(function seguiFerme() {
+  let atteso = false;
+  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); }); } };
+  new MutationObserver(pianifica).observe(contenuto, { subtree: true, childList: true });
+  if (typeof ResizeObserver === "function") new ResizeObserver(pianifica).observe(contenuto);          // anche quando una carta cresce dopo
+  addEventListener("resize", pianifica);
+  pianifica();
 })();

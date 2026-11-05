@@ -1,5 +1,91 @@
 [
   {
+    "versione": "1.396",
+    "data": "2026-11-05T17:57:51",
+    "titolo": "Misura interna: i consigli con una fonte di dati in meno",
+    "voci": [
+      "Nessun cambiamento visibile: una prova interna misura quanto perderebbero i consigli usando solo i voti di Fantacalcio.it, senza le statistiche avanzate dei tiri."
+    ],
+    "tecnico": [
+      "verifica --pacchetti: scenario nuovo `solo_fantacalcio` (#327, L3a e indicatore I4 di #165). Prestazioni ricostruite dai voti di Fantacalcio.it, una riga per presenza: minuti stimati da entrato e uscito (90, 71, 19, 30: medie dei minuti veri sull'archivio di sviluppo), rigori calciati = segnati + sbagliati, gol con i rigori; niente xG e xA di giocatori e squadre (forza delle squadre dai soli gol). Le prestazioni di Understat non si leggono.",
+      "Per ogni scenario che dà i gol attesi: gol attesi contro gol veri per fasce (verifica_pacchetti.gol_per_fasce, stampate da `confronto`) e nella tabella le colonne `scarto_gol` (scarto più grande nelle fasce con almeno 50 casi) e `rmse_vs_completo_pct`. Il modello (modello.py) e la verifica di default non cambiano."
+    ]
+  },
+  {
+    "versione": "1.395",
+    "data": "2026-11-05T17:51:35",
+    "titolo": "Avvisi e Da fare: una formazione salvata che non vale più conta come non salvata",
+    "voci": [
+      "Se la formazione salvata non si può più schierare (un giocatore non è più in rosa, un modulo non ammesso), avvisi e Da fare parlano della consigliata, come Formazione, Oggi e Diario.",
+      "In questo caso il promemoria prima della scadenza arriva: prima taceva, come se avessi già schierato.",
+      "Il riepilogo dopo la giornata racconta i punti della consigliata: prima, con un giocatore non più in rosa, non arrivava."
+    ],
+    "tecnico": [
+      "Issue #321, dopo la #320. La regola unica scelte.motivo_non_valida si applica con due funzioni nuove di scelte.py: che_vale(scelta, ruoli, regole) (la scelta se si può schierare, altrimenti None) e ruoli_schierabili(rose, prev) (prima della scadenza i giocatori della rosa con una previsione e il ruolo delle previsioni, come la Formazione; senza previsioni, a giornata finita, tutta la rosa come il Diario).",
+      "La usano notifiche._cambi_pronti («cambio pronto» sui titolari della consigliata), notifiche._gia_schierato (promemoria), notifiche.avviso_scadenza (riferimento: la consigliata; con una scelta salvata legge le previsioni prima del controllo «niente di nuovo», già in cache dal giro dei cambi), notifiche.riepilogo (ruoli della rosa), da_fare._dubbi, da_fare._formazione_non_salvata e da_fare._diario (ruoli della rosa).",
+      "Nessun campo né rotta nuova: i client non devono fare niente. Testi degli avvisi e delle voci di Da fare invariati."
+    ]
+  },
+  {
+    "versione": "1.394",
+    "data": "2026-11-05T17:45:43",
+    "titolo": "Immagine da condividere con un decimale e pedine sempre leggibili",
+    "voci": [
+      "Nell'immagine della formazione da mandare nel gruppo, il fantavoto sotto ogni volto ha un decimale, come in tutta l'app (prima c'erano due decimali).",
+      "Quando le pedine del campo compaiono, i testi sulle pillole («gioca 45%» e la sigla della squadra avversaria) non passano più per un momento a metà trasparenza: restano sempre leggibili."
+    ],
+    "tecnico": [
+      "condividiImmagine usa num() per il fantavoto atteso, la stessa funzione di pedine, elenchi e schede, al posto di virgola() che scriveva i due decimali del server (fv_atteso è round(mu, 2) nell'API).",
+      "@keyframes pop: la pedina passa da opacità 0 a 1 entro l'1% dell'animazione (var(--vela, 1)); prima la dissolvenza durava tutta l'entrata e nei primi 100 ms il contrasto delle pillole `.gioca.basso` e `.dist` scendeva sotto 4,5:1 (axe color-contrast, chiaro e scuro). Con il movimento ridotto (--vela: 0) la dissolvenza resta.",
+      "Test: tests/test_immagine_condivisa_web.py (node con tela finta) e tests/test_accessibilita_formazione_web.py (tappe dell'animazione). Issue #307, parte di #167."
+    ]
+  },
+  {
+    "versione": "1.393",
+    "data": "2026-11-05T17:42:41",
+    "titolo": "Formazione chiusa con la tua scelta non più valida: vale la consigliata",
+    "voci": [
+      "Se a giornata iniziata la formazione che avevi salvato non si può più schierare (per esempio un giocatore non è più nella tua rosa), vale la consigliata fissata alla scadenza. La Formazione lo dice: «vale la consigliata, la tua non è più valida», e mostra la consigliata, come Oggi.",
+      "In questo caso Oggi mostra di nuovo i punti della giornata in diretta, con la consigliata. Prima la giornata in diretta non compariva.",
+      "Il Diario usa la stessa regola: una formazione con un modulo che la tua lega non ammette non conta come tua e non si può segnare come schierata."
+    ],
+    "tecnico": [
+      "Regola unica della scelta in scelte.motivo_non_valida (11 titolari diversi della rosa che si può schierare, un portiere, modulo ammesso) e scelte.stato; la usano consigli.valuta (stesse frasi di formazione_non_valida), fasi.schierata (in_corso e riepilogo: una scelta non valida passa all'istantanea della scadenza), diario.calcola_giornata, diario.aggiorna (una scelta non valida non fa più ricalcolare la giornata a ogni giro) e diario.prepara_schierata (modulo non ammesso: SchierataNonValida con la frase del modulo).",
+      "GET /api/formazione: campo nuovo e facoltativo `stato_scelta` (`nessuna`, `valida`, `non_valida`), solo per la tua squadra. La web, a giornata chiusa, scrive formazione.stato_chiusa_non_valida quando vale `non_valida` (o quando rileggendo la scelta il server risponde formazione_non_valida)."
+    ]
+  },
+  {
+    "versione": "1.392",
+    "data": "2026-11-05T15:25:49",
+    "titolo": "Controlli più stretti sul ripristino dei backup e sull'archivio della stagione",
+    "voci": [
+      "Ripristino di una copia di sicurezza: le rose devono avere la stagione scritta come «2026-27» e al massimo 20 squadre da 40 giocatori, come quando le importi. Se non va, non cambia niente e un messaggio lo dice.",
+      "«Archivia e riparti» controlla il nome della stagione prima di salvare l'archivio."
+    ],
+    "tecnico": [
+      "lega.da_dict accetta `stagione` solo vuota o nel formato AAAA-AA (lega.stagione_valida, solo cifre ASCII); stagione.archivia_e_riparti ricontrolla il nome e che la cartella resti dentro `archivio/` (percorsi.dentro), altrimenti ValueError (400) senza scrivere niente.",
+      "POST /api/backup/ripristina applica limiti.controlla_rose alle rose del backup prima di scrivere qualsiasi file (backup.ripristina_esito, parametro facoltativo controlla_rose): 413 come l'importazione.",
+      "POST /api/nuova-stagione: il campo `archivio` della risposta è il nome della stagione archiviata (es. \"2026-27\"), non più un percorso; web e iPhone non lo leggono."
+    ]
+  },
+  {
+    "versione": "1.391",
+    "data": "2026-11-05T15:00:42",
+    "titolo": "Web più comoda con la tastiera e con il testo grande",
+    "voci": [
+      "Web: con il tasto Tab il pulsante o la riga scelta resta sempre in vista, non più sotto la barra in basso o sotto la testata; i campi da compilare e i menu hanno un bordo che si vede bene, in chiaro e in scuro.",
+      "Web, telefoni piccoli e testo grande: il nome della squadra in alto si legge intero, il conto alla rovescia non lascia «h» da sola su una riga, Cambi consigliati, Regole e Notifiche non tagliano i nomi e non scorrono di lato.",
+      "Web: i pulsanti «−» e «+» delle Regole e i collegamenti delle pagine Privacy, Termini e Crediti sono più facili da toccare."
+    ],
+    "tecnico": [
+      "#280: html con scroll-padding-top = --alto-testata (altezza vera della testata, ResizeObserver in app.js; 0 quando non è sticky) + 8 px e scroll-padding-bottom = barra + safe area + 22 px (+84 px invece di +22 con «Salva» in vista; 16 px da 900 px). controllaFerme() toglie lo sticky (classe .non-ferma) alle colonne più alte dello schermo (prima colonna di Oggi, campo, .imp-elenco, filtri dei giocatori). Le strisce scorrevoli portano in vista la voce con il focus (focusin → scrollIntoView nearest, scroll-padding-inline 24 px).",
+      "#285: variabile --bordo-campo (#66796e scuro, #728379 chiaro) per .campo-testo, select, textarea, .menu-scelta e .stepper: ≥3:1 con il fondo del campo e con carta, fondo piatto e foglio (test in tests/test_design_web.py).",
+      "#286: testata senza nowrap/ellipsis (overflow-wrap break-word), stemma nascosto tra 320 e 360 px utili; testoConto unisce numero e unità con uno spazio che non va a capo; maglia di Oggi più piccola sotto i 360 px (clamp su 100cqi del contenitore pagina) e nascosta sotto i 260 px.",
+      "#287: nome del cambio senza ellipsis; sotto i 320 px .proposta-r su due righe (volto e guadagno sopra, testo sotto a tutta larghezza). #288: .imp con grid-template-columns minmax(0, 1fr). Sotto i 320 px .riga-regola va a capo.",
+      "#289: link delle pagine legali inline-flex 44 × 44 px (selettori su .pagina-testo e .piede-legale, markup di fanta/testi_legali.py invariato); .prova-voti flex con wrap e pulsanti dello stepper flex none; sincronizzaAria mette aria-pressed solo su button.chip e .segmenti button (niente più sulle <label class=\"chip\"> di Aggiorna le rose)."
+    ]
+  },
+  {
     "versione": "1.390",
     "data": "2026-11-05T14:30:24",
     "titolo": "Le stesse parole per un giocatore in ogni schermata",
