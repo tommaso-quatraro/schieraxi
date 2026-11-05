@@ -588,7 +588,25 @@ private extension LegaDemo {
                 ["cosa": "voti e statistiche", "quando": quando(52), "errori": [String]()],
                 ["cosa": "calendario e coppe europee", "quando": quando(100), "errori": [String]()],
             ],
+            "registro": registroGiornate(),
         ])
+    }
+
+    /// Il registro delle giornate (#344) come lo manda il server: 8 giornate di Serie A misurate (dalla 2 alla 10, la 6 persa),
+    /// la fascia «8 volte su 10» sotto la soglia. Numeri inventati.
+    private static func registroGiornate() -> [String: Any] {
+        let righe: [[String: Any]] = (2...10).reversed().map { g -> [String: Any] in
+            g == 6
+                ? ["stagione": "2026-27", "giornata": g, "giocatori": 0,
+                   "persa": "nessun tentativo negli ultimi 10 minuti prima della prima partita (servizio fermo o registro spento)"]
+                : ["stagione": "2026-27", "giornata": g, "giocatori": 598, "persa": NSNull()]
+        }
+        return [
+            "finestra": 8, "giornate": 8, "verdetto": true,
+            "soglie": ["I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88],
+            "errore_modello": 2.38, "errore_fantamedia": 2.52, "i1": -0.056, "brier": 0.128, "calibrazione": 0.034, "copertura": 0.69,
+            "regge": ["I1": true, "I2": true, "I3": false], "fuori": ["I3"], "per_giornata": righe,
+        ]
     }
 
     static func regole() -> String {
