@@ -446,19 +446,22 @@ Dove si vedono (tutti campi aggiunti, i client vecchi li ignorano):
 Aggiornamenti più fitti: il servizio rilegge le probabili (e avvisa dei cambi) anche a 60, 30 e 15 minuti prima della scadenza, oltre ai giri di sempre del server. Nessuna rotta nuova; per spegnerli: `FANTA_PIANIFICATORE=0` nel servizio, oppure `aggiornamenti_vicino_scadenza: false` nelle regole. Le probabili hanno quindi un'ora di rilevazione (`probabili.aggiornate_il` in `/api/oggi`) più recente vicino alla scadenza.
 Le app mostrano il numero della lega (`giornata_lega`) quando c'è, altrimenti `giornata`. Cosa devono fare iOS e Android: mostrare il conto alla rovescia verso `scadenza` (se manca, `inizio`) e, nel pannello delle regole, i due valori; se non li conoscono non cambia nulla.
 
-## Momenti di mercato della lega: asta invernale e finestre di scambio
+## Momenti di mercato della lega: aste e finestre di scambio
 
-Due campi della lega dentro `GET/PUT /api/regole` (dal 5/11/2026, facoltativi: se un client vecchio rimanda le regole senza, il
+Tre campi della lega dentro `GET/PUT /api/regole` (dal 5/11/2026, facoltativi: se un client vecchio rimanda le regole senza, il
 server tiene i valori che c'erano). Servono al promemoria `rose` di «Da fare» (sotto, `fanta/da_fare.py`, `_momenti_mercato`):
-- `asta_invernale` (oggetto o `null`, predefinito `null`): `{"dal": "2027-01-26", "al": "2027-01-28"}`; `al` si può omettere (un
-  giorno solo).
+- `asta_estiva` e `asta_invernale` (oggetto o `null`, predefinito `null`): `{"dal": "2026-09-03", "al": "2026-09-10"}`; `al` si può
+  omettere (un giorno solo). Con `null` valgono le date di partenza, 2-3 settimane dopo la chiusura del mercato della Serie A
+  (`fanta/regole.py`): asta estiva dal 1° al 21 settembre, asta invernale dal 1° al 21 febbraio. La lega non gioca senza rose:
+  se la sua prima giornata (`prima_giornata_lega`) cade dentro il periodo dell'asta estiva, il periodo finisce lì; se la lega è
+  partita prima del 1° settembre, l'asta estiva di partenza non conta (c'è già stata).
 - `finestre_scambio` (elenco o `null`, predefinito `null`): periodi come sopra, al massimo 20. `null` = la lega non le indica e
   valgono le soste del campionato ricavate dal calendario della Serie A (almeno 10 giorni fra l'ultima partita di una giornata e
   la prima della successiva; una partita rinviata non conta, regola di `fanta/turno.py`); `[]` = nessuna finestra.
 Date `AAAA-MM-GG`, fine non prima dell'inizio, al massimo 60 giorni per periodo; valori sbagliati: `400` con il testo del problema.
-Contano solo le date della stagione in corso (dal 1° luglio al 30 giugno): se le finestre indicate sono tutte di un'altra stagione
-(date dell'anno prima rimaste nel file) valgono di nuovo le soste del calendario. Per ora nessuna schermata le cambia: si
-scrivono nel file delle regole, con `python -m fanta regole --imposta asta_invernale '{"dal": "2027-01-26"}'` o con `PUT /api/regole`.
+Contano solo le date della stagione in corso (dal 1° luglio al 30 giugno): date di un'altra stagione rimaste nel file valgono come
+non indicate (aste di partenza e soste). Per ora nessuna schermata le cambia: si scrivono nel file delle regole, con
+`python -m fanta regole --imposta asta_invernale '{"dal": "2027-02-04"}'` o con `PUT /api/regole`.
 
 ## Partite rinviate: regola della lega ed eccezione per una giornata
 
@@ -614,9 +617,10 @@ Quando compaiono (al massimo 8 voci in tutto; la card di Oggi ne mostra 4):
 - `formazione` (1 se mancano ≤ 3 ore, 2 fino a 12): formazione non ancora salvata a poche ore dalla scadenza (o salvata ma non più valida: conta come non salvata).
 - `certificato` (1 se ≤ 1 giorno o scaduto, 2 fino a 3 giorni): solo se il client manda `certificato_giorni`.
 - `rose` (2), dal 5/11/2026: solo dopo un momento di mercato della lega e se le rose non sono state aggiornate da quando è
-  cominciato: l'inizio della stagione (dal 1° luglio), l'asta invernale e le finestre di scambio delle regole oppure, se la lega
-  non le indica, le soste del campionato (sezione «Momenti di mercato della lega»). Resta fino all'aggiornamento delle rose o fino
-  alla scadenza (della lega) della prima giornata dopo la fine del momento. Testo: «È il momento di aste e scambi nella lega: se le
+  cominciato: asta estiva, asta invernale e finestre di scambio delle regole oppure, se la lega non le indica, le date di partenza
+  delle aste e le soste del campionato (sezione «Momenti di mercato della lega»). Compare dall'inizio del momento e resta fino
+  all'aggiornamento delle rose o fino alla scadenza (della lega) della prima giornata della lega dopo la FINE del momento, così
+  copre anche un'asta che cade alla fine del periodo. Testo: «È il momento di aste e scambi nella lega: se le
   rose sono cambiate, aggiornale prima della giornata 12.» (chiave `dafare.rose_mercato`, parametro `n` = giornata della lega). Campi,
   `id` (`rose-vecchie`), azione e destinazione non cambiano; `giorni` = giorni dall'ultimo aggiornamento delle rose. Prima compariva
   dopo ogni giornata giocata con le rose ferme da 4 giorni (chiave `dafare.rose_vecchie`, che il server non scrive più).
