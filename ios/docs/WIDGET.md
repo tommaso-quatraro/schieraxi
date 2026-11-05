@@ -6,7 +6,7 @@ Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limi
 |---|---|---|---|---|---|---|---|---|
 | Prossima giornata | si | si | no | no | si | si | si | conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»: una voce della timeline per ogni minuto in cui cambia, per l'ora che viene, senza ricaricare) e scadenza «oggi 05:30» / «ven 6 03:32»; grande ed extra large non aggiungerebbero dati |
 | Formazione consigliata | si | si (campo mini) | si (campo con cognomi) | si (campo + lista) | si | si | si | i volti sul campo sono il dato |
-| Da controllare | no | si | si | no | no | si | no | servono almeno 2-3 nomi per avere senso |
+| Da controllare | no | si | si | no | no | si | no | servono almeno 2-3 nomi per avere senso. Le parole sono l'`etichetta` degli avvisi del server, come Oggi e la Formazione («Improbabile», «Probabile panchina», «In dubbio · gioca 55%»); senza, quelle calcolate dal `tipo` |
 | Chi gioca (orari) | no | si | si | si (2 colonne) | no | si | si | serve un nome, un orario e un avversario. Riga (`RigaChiGioca`): a destra quando gioca, una volta sola e con il giorno come la web («oggi 18:30», «domani 18:30»; se non c'è posto, oggi «18:30»); sotto l'avversario e le parole («Diffidato», «Rigorista», «In dubbio · gioca 70%»), in arancione solo se c'è da guardare |
 | Crediti e svincolo | si | si | no | no | si | si | si | un numero e un suggerimento: grande sarebbe vuoto |
 | Stato dei dati | si | no | no | no | si | si | si | un'informazione sola (per la diagnosi) |

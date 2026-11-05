@@ -38,6 +38,15 @@ extension Confronto {
         return a - b
     }
 
+    /// Il valore di una causa sotto la sua barra, come la web (la percentuale, o `numMeno(v, 2)` di app.js): «−1,12» con il meno
+    /// tipografico (mai «-1,12»), niente «+» davanti ai positivi, «0,00» senza segno, «–» se manca (#281).
+    static func valoreFattore(_ f: FattoreConfronto, _ v: Double?) -> String {
+        guard let v else { return "–" }
+        if f.percentuale == true { return "\(Formato.percento(v))%" }
+        let testo = Formato.decimali(abs(v), cifre: 2)
+        return v < 0 && testo.contains(where: { ("1"..."9").contains($0) }) ? "\u{2212}" + testo : testo
+    }
+
     /// A chi va una causa: 1 = al primo giocatore, -1 = al secondo, 0 = pari.
     static func verso(_ effetto: Double) -> Int {
         effetto > 0.02 ? 1 : effetto < -0.02 ? -1 : 0

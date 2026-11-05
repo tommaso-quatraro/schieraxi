@@ -34,9 +34,13 @@ enum LetturaPedina {
     }
 
     /// La frase completa per VoiceOver: «Rossi, difensore, fantavoto atteso 6,5, gioca all'85 per cento, avversario Napoli, in casa».
-    static func voce(nome: String, ruolo: String, fvAtteso: Double?, pVoto: Double?, avversario: String?, inCasa: Bool?) -> String {
+    /// Con `esito` (partita iniziata o rinviata, `Giocatore.esitoPedina`) l'esito al posto di «gioca al N per cento», come la web.
+    static func voce(nome: String, ruolo: String, fvAtteso: Double?, pVoto: Double?, avversario: String?, inCasa: Bool?,
+                     esito: String? = nil) -> String {
         var parti = [nome, ruolo, "fantavoto atteso \(Formato.punti(fvAtteso))"]
-        if let pVoto {
+        if let esito {
+            parti.append(esito)
+        } else if let pVoto {
             parti.append("gioca al \(Formato.percento(pVoto)) per cento" + (incerto(pVoto) ? ", non è sicuro di giocare" : ""))
         }
         if let avv = nomeSquadra(avversario) {
