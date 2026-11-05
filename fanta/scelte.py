@@ -110,14 +110,18 @@ def leggi(stagione: str, giornata: int, percorso: Path | None = None, anche_auto
 
 
 def salva(stagione: str, giornata: int, titolari: list[int], modulo: str, percorso: Path | None = None, tipo: str = "manuale",
-          panchina: list[int] | None = None) -> dict:
+          panchina: list[int] | None = None, era_consigliata: bool = False) -> dict:
     """Salva la scelta dell'utente. `tipo`: «manuale» (scelta a mano, anche quando non c'è il campo: file vecchi) o «consigliata»
     (ha detto «ho schierato la consigliata»). `panchina` (facoltativa, per le giornate importate): gli id della panchina nell'ordine
-    in cui l'hai schierata; senza, il Diario sceglie la panchina da solo."""
+    in cui l'hai schierata; senza, il Diario sceglie la panchina da solo. `era_consigliata`: gli 11 erano quelli della consigliata nel
+    momento in cui li hai salvati («Salva questa»): «Da fare» allora non propone cambi (#333). Il campo si scrive solo se è vero e il
+    `tipo` resta «manuale», così il Diario e i client di prima non vedono differenze."""
     with _blocco:
         tutte = _tutte(percorso)
         voce = {"titolari": [int(i) for i in titolari], "modulo": modulo, "salvata": datetime.now().isoformat(timespec="seconds"),
                 "tipo": tipo}
+        if era_consigliata:
+            voce["era_consigliata"] = True
         if panchina:
             voce["panchina"] = [int(i) for i in panchina][:20]
         tutte[f"{stagione}/{giornata}"] = voce

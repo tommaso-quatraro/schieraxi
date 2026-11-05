@@ -39,6 +39,7 @@ struct FormazioneView: View {
                             }
                             Carta("Campo", simbolo: "sportscourt") {
                                 CampoFormazione(titolari: v.titolari, apribile: true)
+                                notaScelta(vm.righeScelta(f))
                                 if legendaVista { pulsanteLegenda }
                             }
                             .ingresso(3)
@@ -144,6 +145,23 @@ struct FormazioneView: View {
             }
             .frame(minWidth: 320, idealWidth: 380)
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    /// Sotto il campo, come la nota della web: per i titolari che sembrano una scelta storta, il nome e il perché (righe del server).
+    @ViewBuilder
+    private func notaScelta(_ righe: [RigaScelta]) -> some View {
+        if !righe.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(righe) { r in
+                    (Text(r.nome).bold() + Text(" · " + r.testo))
+                        .font(.footnote).foregroundStyle(Color.testoSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel(r.voce)
+                }
+            }
+            .padding(.top, 2)
         }
     }
 

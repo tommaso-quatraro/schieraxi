@@ -518,7 +518,19 @@ struct OpzioneModulo: Decodable, Identifiable {
     let panchina: [Int]
     /// La fascia dei punti (8 volte su 10). Facoltativa (server vecchio).
     let intervallo: IntervalloPunti?
+    /// Il perché delle scelte che sembrano storte, una riga per titolare (#356). Facoltativo (server vecchio).
+    let percheScelta: [PercheScelta]?
     var id: String { modulo }
+}
+
+/// Una riga del perché della scelta (`perche_scelta` del modulo, `fanta/perche_scelta.py`): un titolare con meno punti attesi di
+/// un escluso dello stesso ruolo (o incerto con la riserva sicura) e il motivo, già scritto dal server. Campi facoltativi: una riga
+/// incompleta si salta, non fa fallire la Formazione.
+struct PercheScelta: Decodable {
+    let titolare: Int?
+    /// Il giocatore che la riga nomina (l'escluso o la riserva).
+    let altro: Int?
+    let testo: String?
 }
 
 struct LivelloRischio: Decodable, Identifiable {

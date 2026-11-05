@@ -10,6 +10,16 @@ struct VistaFormazione {
     let punti: Double?
 }
 
+/// Una riga della nota sotto il campo (#356): il nome del titolare e il perché della scelta, con le parole del server.
+struct RigaScelta: Identifiable, Equatable {
+    /// L'id del titolare.
+    let id: Int
+    let nome: String
+    let testo: String
+    /// Come la scrive la web («Nome · riga») e come la legge VoiceOver.
+    var voce: String { nome + " · " + testo }
+}
+
 /// Un'immagine pronta da condividere (la formazione disegnata), con un identificativo per `.sheet(item:)`.
 struct ImmagineCondivisa: Identifiable {
     let id = UUID()
@@ -265,6 +275,19 @@ final class FormazioneViewModel: ViewModelBase {
         }
         let modulo = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) })
         return IntervalloPunti.frase(modulo?.intervallo ?? (modulo?.dev == nil ? (livello.intervallo ?? f.intervallo) : nil), dev: modulo?.dev ?? f.dev)
+    }
+
+    /// La nota sotto il campo (#356): il perché delle scelte che sembrano storte nel modulo mostrato (`perche_scelta`), con le
+    /// parole del server, come la web. Solo per la proposta del server: niente righe in modifica a mano né a giornata chiusa.
+    func righeScelta(_ f: Formazione) -> [RigaScelta] {
+        guard manuale == nil, !chiusa, let schede = f.schede, let livelli = f.livelli,
+              let livello = livelli.first(where: { $0.rischio == rischio }) ?? livelli.first,
+              let opzione = livello.moduli.first(where: { $0.modulo == (moduloScelto ?? livello.modulo) }) ?? livello.moduli.first
+        else { return [] }
+        return (opzione.percheScelta ?? []).compactMap { r in
+            guard let id = r.titolare, let g = schede[String(id)], let testo = r.testo, !testo.isEmpty else { return nil }
+            return RigaScelta(id: g.id, nome: g.nome, testo: testo)
+        }
     }
 
     /// Chi è fuori dalla formazione mostrata, dal più forte (punti attesi).

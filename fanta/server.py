@@ -908,20 +908,25 @@ def _non_sposta_i_fermi(ctx: Contesto, regole_: regole.Regole, fermi: tuple[int,
 def valuta_formazione(dati: FormazioneScelta, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     """Punti attesi di una formazione scelta a mano. Con salva=true la ricorda come "la mia scelta" della giornata
     (solo prima della scadenza: dopo 409 `formazione_chiusa`; valutare senza salvare resta possibile)."""
+    # Se gli 11 sono quelli della consigliata («Salva questa») la scelta ha anche `era_consigliata`: «Da fare» poi non propone
+    # cambi (da_fare.py, #333). Conta anche la consigliata che GET /api/formazione ti ha mostrato (istantanea del Diario), se nel
+    # frattempo i dati si sono aggiornati. Qui un commento e non nella docstring, che finisce nel contratto docs/openapi.json.
     # Dopo l'inizio di un anticipo i suoi giocatori non si spostano più: un salvataggio che lo fa risponde 400 `giocatore_bloccato`
-    # (#373, `_fermi` e `_non_sposta_i_fermi`). La docstring qui sopra finisce in docs/openapi.json: la nota sta in questo commento.
+    # (#373, `_fermi` e `_non_sposta_i_fermi`).
     db = _db()
     try:
-        r = consigli.valuta(db, _regole(ctx), _rose(ctx), dati.titolari, dati.squadra, dati.giornata)
+        regole_, rose_ = _regole(ctx), _rose(ctx)
+        r = consigli.valuta(db, regole_, rose_, dati.titolari, dati.squadra, dati.giornata)
         if dati.salva and not dati.squadra:
             chiusa = _formazione_chiusa(db, ctx, r["giornata"])
             if chiusa is not None:
                 return chiusa
+            era = da_fare.era_consigliata(db, regole_, rose_, dati.titolari, r["giornata"], ctx.diario)     # anche quella mostrata
             fermi = _fermi(db, ctx, r["giornata"])
             with versioni.blocco("scelte"):
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
-                _non_sposta_i_fermi(ctx, _regole(ctx), fermi, dati.titolari)
-                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte)
+                _non_sposta_i_fermi(ctx, regole_, fermi, dati.titolari)
+                scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era)
                 response.headers["ETag"] = _etag_scelta(ctx, r["giornata"])
         return r
     finally:

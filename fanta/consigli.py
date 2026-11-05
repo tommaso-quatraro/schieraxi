@@ -15,7 +15,7 @@ import pandas as pd
 
 from . import calcolo, etichette, frasi, incertezza, perche
 from . import formazione as fz
-from . import modello, rinvii, scelte, stato_dati, turno
+from . import modello, perche_scelta, rinvii, scelte, stato_dati, turno
 from .aggiorna import Stagione
 from .blocco import BloccoFile
 from .frasi import F
@@ -370,7 +370,7 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
         "livelli": livelli, "stile_consigliato": 0,
         "schede": {str(g.id): scheda_previsione(g.id, prev.loc[g.id]) for g in rosa},
     }
-    return risultato
+    return perche_scelta.aggiungi(risultato, rosa, regole, val)       # il perché delle scelte che sembrano storte (#356)
 
 
 # ---------------------------------------------------------------- consigliata stabile (#335)
@@ -536,7 +536,8 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
                                  [per_id[int(g["id"])] for g in migliore.get("panchina") or []])
     if not chiusa and atteso_migliore - atteso >= SOGLIA_CAMBIO_PUNTI:
         return migliore
-    return _con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa)
+    return perche_scelta.aggiungi(_con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa), rosa, regole, val,
+                                  tenuta=not chiusa)
 
 
 def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, dev: float, atteso_migliore: float,
