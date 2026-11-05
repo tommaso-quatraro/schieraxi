@@ -539,33 +539,37 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         return "\(c)–\(t)"
     }
 
-    /// Cosa scrivere accanto al punteggio: «34'», «Intervallo», «Finita»; per una partita da giocare l'ora se è oggi («18:30»),
-    /// altrimenti anche il giorno, come la web e Oggi («domani 11:23», «mar 3 18:30»). `adesso` è l'istante della voce del widget.
-    func etichetta(adesso: Date) -> String {
+    /// Cosa scrivere accanto al punteggio: «34'», «Intervallo», «Finita»; per una partita da giocare il giorno e l'ora, come la
+    /// web («oggi 18:30», «domani 11:23», «mar 3 18:30»). È la forma intera, quella che legge VoiceOver; le forme corte sono in
+    /// `formeEtichetta(adesso:)`. `adesso` è l'istante della voce del widget.
+    func etichetta(adesso: Date) -> String { formeEtichetta(adesso: adesso).first ?? "—" }
+
+    /// Dalla forma intera alla più corta (la vista mostra la prima che entra): una partita di oggi «oggi 18:30», poi «18:30»;
+    /// le altre una forma sola (il giorno non si toglie mai; il minuto e gli stati sono già corti).
+    func formeEtichetta(adesso: Date) -> [String] {
         switch stato ?? "" {
-        case "intervallo": return "Intervallo"
-        case "finita": return "Finita"
-        case "rinviata": return "Rinviata"
-        case "sospesa": return "Sospesa"
-        case "da_giocare", "": return quando.map { Self.orario($0, adesso: adesso) } ?? "—"
-        default: return minuto ?? "In corso"
+        case "intervallo": return ["Intervallo"]
+        case "finita": return ["Finita"]
+        case "rinviata": return ["Rinviata"]
+        case "sospesa": return ["Sospesa"]
+        case "da_giocare", "": return quando.map { Self.orari($0, adesso: adesso) } ?? ["—"]
+        default: return [minuto ?? "In corso"]
         }
     }
 
-    // TODO #267: provvisoria per il rosso dei test, si completa nel prossimo commit
-    func formeEtichetta(adesso: Date) -> [String] { [etichetta(adesso: adesso)] }
-
-    /// Frase per VoiceOver: «INT 1, ROM 0, 34'»; «GEN contro COM, domani 11:23».
+    /// Frase per VoiceOver, sempre con la forma intera: «INT 1, ROM 0, 34'»; «GEN contro COM, oggi 18:30».
     func frase(adesso: Date) -> String {
         let a = ColoriSquadra.sigla(casa), b = ColoriSquadra.sigla(trasferta), e = etichetta(adesso: adesso)
         guard golCasa != nil else { return "\(a) contro \(b), \(e)" }
         return "\(a) \(golCasa ?? 0), \(b) \(golTrasferta ?? 0), \(e)"
     }
 
-    /// «18:30» oggi, «domani 11:23», «ieri 20:45», «mar 3 18:30» negli altri giorni (`Quando.relativa`). L'unica regola per l'ora
-    /// di una partita nei widget: la usano anche Giocatore seguito e Chi gioca (`GiocatoreWidget.quandoGioca(adesso:)`).
-    static func orario(_ data: Date, adesso: Date) -> String {
-        calendarioItalia.isDate(data, inSameDayAs: adesso) ? Quando.ora(data) : Quando.relativa(data, adesso: adesso)
+    /// L'unica regola per l'ora di una partita nei widget (la usano anche Giocatore seguito e Chi gioca,
+    /// `GiocatoreWidget.formeQuandoGioca(adesso:)`). Prima la forma intera, come la web (`Quando.relativa`: «oggi 18:30»,
+    /// «domani 11:23», «ieri 20:45», «mar 3 18:30»); per una partita di oggi, dove lo spazio non basta, la sola ora («18:30»).
+    static func orari(_ data: Date, adesso: Date) -> [String] {
+        let intera = Quando.relativa(data, adesso: adesso)
+        return calendarioItalia.isDate(data, inSameDayAs: adesso) ? [intera, Quando.ora(data)] : [intera]
     }
 }
 
@@ -580,7 +584,7 @@ private let calendarioItalia: Calendar = {
 /// della stessa timeline, non ricariche: non consumano il limite di iOS, che di notte può rimandare le ricariche di ore.
 enum VociTimeline {
     /// In ordine e senza doppioni: i cambi del conto alla rovescia nell'ora che viene (solo `conConto`), la scadenza se deve
-    /// ancora arrivare, e la prossima mezzanotte in ora italiana, dove «domani 12:30» diventa «12:30» (widget Live) e «alla
+    /// ancora arrivare, e la prossima mezzanotte in ora italiana, dove «domani 12:30» diventa «oggi 12:30» (partite nei widget) e «alla
     /// scadenza, domani 20:45» diventa «… oggi 20:45» (Cruscotto).
     static func istanti(adesso: Date, scadenza: Date?, conConto: Bool) -> [Date] {
         var istanti: [Date] = []
@@ -1074,28 +1078,31 @@ extension GiocatoreWidget {
     /// Il rigorista da solo non è un avviso.
     var daGuardare: Bool { !descrizioneStato.isEmpty || diffidato == true }
 
-    /// Quando gioca, con la regola delle partite dei widget Live e Cruscotto (`PartitaLive.orario`): «18:30» se è oggi,
-    /// altrimenti anche il giorno («domani 20:45», «dom 8 20:45»); «—» se non si sa. `adesso` è l'istante della voce del
-    /// widget: a mezzanotte la voce della timeline (`VociTimeline.istanti`) cambia «domani 18:30» in «18:30».
-    func quandoGioca(adesso: Date) -> String {
-        quando.map { PartitaLive.orario($0, adesso: adesso) } ?? "—"
+    /// Quando gioca, la forma intera (quella che legge VoiceOver), come la web: «oggi 18:30», «domani 20:45», «dom 8 20:45»;
+    /// «—» se non si sa.
+    func quandoGioca(adesso: Date) -> String { formeQuandoGioca(adesso: adesso).first ?? "—" }
+
+    /// Le forme di quando gioca, con la regola delle partite dei widget Live e Cruscotto (`PartitaLive.orari`): per una partita
+    /// di oggi, dove lo spazio non basta, anche la sola ora («oggi 18:30», poi «18:30»); gli altri giorni tengono sempre il giorno.
+    /// `adesso` è l'istante della voce del widget: a mezzanotte la voce della timeline (`VociTimeline.istanti`) cambia
+    /// «domani 18:30» in «oggi 18:30».
+    func formeQuandoGioca(adesso: Date) -> [String] {
+        quando.map { PartitaLive.orari($0, adesso: adesso) } ?? ["—"]
     }
 
-    // TODO #267: provvisoria per il rosso dei test, si completa nel prossimo commit
-    func formeQuandoGioca(adesso: Date) -> [String] { [quandoGioca(adesso: adesso)] }
-
     /// La partita in una riga (widget «Giocatore seguito»), dalla forma più lunga alla più corta (la vista mostra la prima che
-    /// entra, VoiceOver legge la prima): «vs ROM · domani 11:23», poi solo «domani 11:23». Senza avversario resta quando gioca,
-    /// senza data l'avversario («vs ROM»), senza niente «—».
+    /// entra, VoiceOver legge la prima): «vs ROM · oggi 20:45» → «vs ROM · 20:45» → «20:45»; «vs ROM · domani 11:23» →
+    /// «domani 11:23». Senza avversario restano le forme di quando gioca, senza data l'avversario («vs ROM»), senza niente «—».
     func formePartita(adesso: Date) -> [String] {
         guard quando != nil else { return [controChi ?? "—"] }
-        let ora = quandoGioca(adesso: adesso)
-        guard let controChi else { return [ora] }
-        return ["\(controChi) · \(ora)", ora]
+        let orari = formeQuandoGioca(adesso: adesso)
+        guard let controChi, let corta = orari.last else { return orari }
+        return orari.map { "\(controChi) · \($0)" } + [corta]
     }
 
     /// La riga del «Giocatore seguito» sulla schermata di blocco: «Zaviani 6,5 · vs ROM · domani 11:23» → «Zaviani 6,5 ·
-    /// domani 11:23» → «Zaviani 6,5». Cognome e punti attesi restano sempre: sono il dato del widget.
+    /// domani 11:23» → «Zaviani 6,5» (oggi in mezzo anche senza «oggi»). Cognome e punti attesi restano sempre: sono il dato
+    /// del widget.
     func formeInLineaSeguito(adesso: Date) -> [String] {
         let testa = "\(cognome) \(Formato.punti(puntiAttesi))"
         let partite = formePartita(adesso: adesso).filter { $0 != "—" }

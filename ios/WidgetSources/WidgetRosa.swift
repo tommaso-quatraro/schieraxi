@@ -51,10 +51,10 @@ struct VistaRosa: View {
     private func contenuto(_ w: RiassuntoWidget) -> some View {
         let giocano = w.giocanoPresto(dopo: voce.date, massimo: quanti)
         switch famiglia {
-        // quando gioca con la regola del widget Live: «18:30» oggi, «domani 18:30» (`quandoGioca`)
+        // quando gioca con la regola del widget Live: «oggi 18:30» (se non c'è posto «18:30»), «domani 18:30» (`formeQuandoGioca`)
         case .accessoryInline:
             if let g = giocano.first {
-                Label("\(g.cognome) \(g.quandoGioca(adesso: voce.date))", systemImage: "figure.soccer")
+                RigaInLinea(g.formeQuandoGioca(adesso: voce.date).map { "\(g.cognome) \($0)" }, icona: "figure.soccer")
             } else {
                 Label("Nessuno gioca a breve", systemImage: "figure.soccer")
             }
@@ -63,7 +63,7 @@ struct VistaRosa: View {
                 Text("Chi gioca").font(.headline)
                 if giocano.isEmpty { Text("Nessuno a breve").font(.caption) }
                 ForEach(giocano.prefix(2)) { g in
-                    Text("\(g.cognome) · \(g.quandoGioca(adesso: voce.date))").font(.caption).lineLimit(1).minimumScaleFactor(0.8)
+                    TestoCheEntra(g.formeQuandoGioca(adesso: voce.date).map { "\(g.cognome) · \($0)" }).font(.caption)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

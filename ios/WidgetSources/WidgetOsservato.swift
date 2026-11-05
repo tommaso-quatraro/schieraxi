@@ -3,8 +3,8 @@ import SwiftUI
 import AppIntents
 
 // Widget «Giocatore osservato»: scegli tu quale (tra i tuoi osservati e i tuoi giocatori: tieni premuto > Modifica widget > Giocatore).
-// Mostra punti attesi, fantavoto atteso (`fv_atteso`; da un server vecchio il voto in pagella atteso), la partita con l'orario
-// (con il giorno se non è oggi, come il widget Live: `GiocatoreWidget.formePartita`) e se e' in dubbio. Misure: piccolo, medio, cerchio, rettangolo, riga.
+// Mostra punti attesi, fantavoto atteso (`fv_atteso`; da un server vecchio il voto in pagella atteso), la partita con il giorno e
+// l'ora come la web e il widget Live («vs ROM · oggi 20:45»: `GiocatoreWidget.formePartita`) e se e' in dubbio. Misure: piccolo, medio, cerchio, rettangolo, riga.
 // L'elenco dei giocatori tra cui scegliere viene dall'ultimo riassunto salvato dal widget (si riempie al primo aggiornamento).
 
 /// Un giocatore che si puo' scegliere nelle impostazioni del widget.
@@ -165,11 +165,8 @@ struct VistaOsservato: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         case .accessoryInline:
-            // con il giorno la riga è più lunga: prima via l'avversario, poi la partita (mai «domani 1…»)
-            let forme = g.formeInLineaSeguito(adesso: voce.date)
-            PrimaCheEntra(forme.count) { i in
-                Label(forme[i], systemImage: "eye")
-            }
+            // con il giorno la riga è più lunga: prima via l'avversario (e «oggi»), poi la partita (mai «domani 1…»)
+            RigaInLinea(g.formeInLineaSeguito(adesso: voce.date), icona: "eye")
         default: piccolo(g)
         }
     }
