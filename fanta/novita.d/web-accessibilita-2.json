@@ -1,0 +1,15 @@
+{
+  "titolo": "Web più comoda con la tastiera e con il testo grande",
+  "voci": [
+    "Web: con il tasto Tab il pulsante o la riga scelta resta sempre in vista, non più sotto la barra in basso o sotto la testata; i campi da compilare e i menu hanno un bordo che si vede bene, in chiaro e in scuro.",
+    "Web, telefoni piccoli e testo grande: il nome della squadra in alto si legge intero, il conto alla rovescia non lascia «h» da sola su una riga, Cambi consigliati, Regole e Notifiche non tagliano i nomi e non scorrono di lato.",
+    "Web: i pulsanti «−» e «+» delle Regole e i collegamenti delle pagine Privacy, Termini e Crediti sono più facili da toccare."
+  ],
+  "tecnico": [
+    "#280: html con scroll-padding-top = --alto-testata (altezza vera della testata, ResizeObserver in app.js; 0 quando non è sticky) + 8 px e scroll-padding-bottom = barra + safe area + 22 px (+84 px invece di +22 con «Salva» in vista; 16 px da 900 px). controllaFerme() toglie lo sticky (classe .non-ferma) alle colonne più alte dello schermo (prima colonna di Oggi, campo, .imp-elenco, filtri dei giocatori). Le strisce scorrevoli portano in vista la voce con il focus (focusin → scrollIntoView nearest, scroll-padding-inline 24 px).",
+    "#285: variabile --bordo-campo (#66796e scuro, #728379 chiaro) per .campo-testo, select, textarea, .menu-scelta e .stepper: ≥3:1 con il fondo del campo e con carta, fondo piatto e foglio (test in tests/test_design_web.py).",
+    "#286: testata senza nowrap/ellipsis (overflow-wrap break-word), stemma nascosto tra 320 e 360 px utili; testoConto unisce numero e unità con uno spazio che non va a capo; maglia di Oggi più piccola sotto i 360 px (clamp su 100cqi del contenitore pagina) e nascosta sotto i 260 px.",
+    "#287: nome del cambio senza ellipsis; sotto i 320 px .proposta-r su due righe (volto e guadagno sopra, testo sotto a tutta larghezza). #288: .imp con grid-template-columns minmax(0, 1fr). Sotto i 320 px .riga-regola va a capo.",
+    "#289: link delle pagine legali inline-flex 44 × 44 px (selettori su .pagina-testo e .piede-legale, markup di fanta/testi_legali.py invariato); .prova-voti flex con wrap e pulsanti dello stepper flex none; sincronizzaAria mette aria-pressed solo su button.chip e .segmenti button (niente più sulle <label class=\"chip\"> di Aggiorna le rose)."
+  ]
+}
