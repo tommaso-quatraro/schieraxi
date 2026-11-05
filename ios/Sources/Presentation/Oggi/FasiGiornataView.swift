@@ -183,11 +183,14 @@ struct RigaGiocatoreInCorso: View {
         Button { apri(g.id) } label: {
             HStack(alignment: .center, spacing: 10) {
                 BadgeRuolo(ruolo: g.ruolo ?? "?")
+                // nome e riga sotto vanno a capo interi, anche con il testo grande: mai «…» (#254, `NomiInteriTests`)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(g.nome).font(.headline).lineLimit(2)
+                    Text(g.nome).font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
                     let sotto = [squadra, nota].compactMap { $0 }.joined(separator: " · ")
                     if !sotto.isEmpty {
-                        Text(sotto).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(sotto).font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 6)

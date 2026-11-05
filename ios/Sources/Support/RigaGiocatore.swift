@@ -127,8 +127,9 @@ struct RigaGiocatore: View {
     private var nome: some View {
         HStack(spacing: 6) {
             BadgeRuolo(ruolo: g.ruolo, piccolo: true)
-            // Il nome può andare su due righe: con il testo grande veniva tagliato («Mateo…»).
-            Text(g.nome).font(.headline).lineLimit(2)
+            // Il nome va a capo intero, anche su più righe: con il testo grande finiva con «…» (#254, `NomiInteriTests`).
+            Text(g.nome).font(.headline)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
