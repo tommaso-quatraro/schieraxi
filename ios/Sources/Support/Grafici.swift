@@ -44,10 +44,10 @@ struct GraficoVoti: View {
     }
 
     private func testoScelta(_ v: VotoGiornata) -> String {
-        if v.fv == nil && v.voto == nil { return "G\(v.giornata) · senza voto" }
+        if v.fv == nil && v.voto == nil { return "\(TempiLega.serieA(v.giornata)): senza voto" }
         let voto = v.voto.map { "voto \(Formato.decimali($0))" } ?? "senza voto"
         let fv = v.fv.map { "fantavoto \(Formato.decimali($0))" } ?? "senza fantavoto"
-        return "G\(v.giornata) · \(voto) · \(fv)"
+        return "\(TempiLega.serieA(v.giornata)): \(voto) · \(fv)"
     }
 
     private var punti: [PuntoVoto] { Self.puntiDi(voti) }
@@ -97,10 +97,10 @@ struct GraficoVoti: View {
     /// Frase per VoiceOver e per l'elenco dei numeri.
     static func descrizione(_ voti: [VotoGiornata]) -> [String] {
         voti.sorted { $0.giornata < $1.giornata }.map { v in
-            if v.voto == nil && v.fv == nil { return "Giornata \(v.giornata): senza voto" }
+            if v.voto == nil && v.fv == nil { return "\(TempiLega.serieA(v.giornata)): senza voto" }
             let voto = v.voto.map { "voto \(Formato.decimali($0))" } ?? "senza voto"
             let fv = v.fv.map { "fantavoto \(Formato.decimali($0))" } ?? ""
-            return "Giornata \(v.giornata): " + [voto, fv].filter { !$0.isEmpty }.joined(separator: ", ")
+            return "\(TempiLega.serieA(v.giornata)): " + [voto, fv].filter { !$0.isEmpty }.joined(separator: ", ")
         }
     }
 
@@ -202,7 +202,7 @@ struct GraficoAffidabilita: View {
 
     static func descrizione(_ righe: [RigaAffidabilita]) -> [String] {
         righe.sorted { $0.giornata < $1.giornata }.map { r in
-            "Giornata \(r.giornata): SchieraXI \(r.puntiModello.map { Formato.decimali($0) } ?? "–"), "
+            "\(TempiLega.serieA(r.giornata)): SchieraXI \(r.puntiModello.map { Formato.decimali($0) } ?? "–"), "
                 + "da fantamedia \(r.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), "
                 + "massimo possibile \(r.puntiPerfetta.map { Formato.decimali($0) } ?? "–")"
         }
@@ -253,7 +253,7 @@ struct GraficoScambio: View {
     static func descrizione(giornate: [Int], mio: [Double], loro: [Double]) -> [String] {
         giornate.enumerated().compactMap { i, g in
             guard i < mio.count, i < loro.count else { return nil }
-            return "Giornata \(g): tu \(Formato.conSegno(mio[i], cifre: 2)), loro \(Formato.conSegno(loro[i], cifre: 2))"
+            return "\(TempiLega.serieA(g)): tu \(Formato.conSegno(mio[i], cifre: 2)), loro \(Formato.conSegno(loro[i], cifre: 2))"
         }
     }
 
