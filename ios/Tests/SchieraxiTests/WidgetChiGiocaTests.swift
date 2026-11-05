@@ -2,7 +2,8 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Il widget «Chi gioca» (#194): l'ora della partita si scrive una volta sola, a destra e con il giorno («oggi 18:30»); sotto
+/// Il widget «Chi gioca» (#194): l'ora della partita si scrive una volta sola, a destra, con il giorno se non è oggi
+/// («18:30», «domani 18:30», come le partite del widget Live dal #267); sotto
 /// il nome l'avversario e le parole di ogni avviso. Ogni colore e ogni segno ha la sua parola: la riga arancione dice perché
 /// («Diffidato», «In dubbio · gioca 70%»), il rigorista è scritto («Rigorista») e non solo un simbolo. Dati inventati.
 @Suite("Widget «Chi gioca»")
@@ -49,9 +50,11 @@ struct WidgetChiGiocaTests {
         #expect(giocatore(diffidato: true).formeChiGioca == ["vs ROM · Diffidato", "Diffidato"])
     }
 
-    @Test("A destra quando gioca, con il giorno come la web", arguments: [
-        ("2026-11-08 10:00", "oggi 18:30"),
+    /// Con la funzione delle partite del widget Live (#258, #267): l'ora se è oggi, altrimenti anche il giorno.
+    @Test("A destra quando gioca: l'ora se è oggi, altrimenti anche il giorno, come il widget Live", arguments: [
+        ("2026-11-08 10:00", "18:30"),
         ("2026-11-07 22:00", "domani 18:30"),
+        ("2026-11-06 22:00", "dom 8 18:30"),
     ])
     func quandoGioca(adesso: String, atteso: String) throws {
         let momento = try #require(Quando.data(adesso))

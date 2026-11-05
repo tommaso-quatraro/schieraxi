@@ -1073,6 +1073,11 @@ extension GiocatoreWidget {
     func quandoGioca(adesso: Date) -> String {
         quando.map { Quando.relativa($0, adesso: adesso) } ?? "—"
     }
+
+    // TODO #267: stub per il rosso dei test, si completa nel prossimo commit
+    func formePartita(adesso: Date) -> [String] { [partitaBreve] }
+
+    func formeInLineaSeguito(adesso: Date) -> [String] { ["\(cognome) \(Formato.punti(puntiAttesi)) · \(partitaBreve)"] }
 }
 
 // MARK: Widget «Formazione»: il numero accanto ai titolari
