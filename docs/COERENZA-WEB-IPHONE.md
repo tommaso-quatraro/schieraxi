@@ -82,6 +82,8 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 27 | Menu Altro | niente asta | «Asta e riparazione» | da decidere | decisione dell'utente |
 | 28 | Confronto, titolo | – | «Giornata 10» (Serie A) | «Giornata 7» | da fare (I-menu, dopo #29) |
 | 29 | Avvisi, Impostazioni, Account, Regole, Novità, Squadre e rose | – | – | da confrontare | da fare (I-confronto) |
+| 30 | Pillole dei giocatori, colore | quattro toni del server: «Probabile titolare», «Ha giocato», «Partita in corso» verdi | le stesse grigie (tre gravità, positivo come neutro) | web (`docs/DESIGN.md`, «Colori semantici») | fatto con #242 |
+| 31 | Pulsanti pieni, tema scuro | testo verde quasi nero sul verde chiaro (`--azione-testo`) | testo bianco sul verde chiaro, 1,8:1 | web (stessi due colori) | fatto con #248 |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

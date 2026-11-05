@@ -7,6 +7,7 @@ from fanta import server
 APP = (server.WEB / "app.js").read_text(encoding="utf-8")
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 IMP_JS = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
+IOS = server.WEB.parent.parent / "ios/Sources"                              # l'app iPhone, nella copia pubblica del repository
 
 
 def test_aree_di_tocco_da_44px_anche_in_densita_compatta():
@@ -272,16 +273,82 @@ def test_scritta_delle_pillole_uguale_nei_due_temi_chiari_e_su_ios():
     rosso delle pillole dell'iPhone (`Tema` in Tema.swift) sono gli stessi della web, in chiaro e in scuro."""
     sistema = _variabili(CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0])
     a_mano = _variabili(CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0])
-    for nome in ("--eti-verde", "--eti-arancio", "--eti-rosso"):
+    for nome in ("--eti-verde", "--eti-arancio", "--eti-rosso", "--verde"):
         assert sistema.get(nome) and sistema.get(nome) == a_mano.get(nome), nome
-    ios = server.WEB.parent.parent / "ios/Sources/Support/Design/Tema.swift"
+    ios = IOS / "Support/Design/Tema.swift"
     if ios.exists():                                                         # nella copia pubblica c'è anche l'app iPhone
         tema = ios.read_text(encoding="utf-8").lower()
         temi = _temi()
-        for variabile, swift in (("--eti-arancio", "pillolaattenzione"), ("--eti-rosso", "pillolamalus")):
+        # scritta delle pillole verdi, arancio e rosse; il fondo verde (--verde al 16%, sull'iPhone `Color.positivo` al 14%, #242)
+        for variabile, swift in (("--eti-verde", "pillolapositivo"), ("--eti-arancio", "pillolaattenzione"),
+                                 ("--eti-rosso", "pillolamalus"), ("--verde", "positivo")):
             for nome_tema, suffisso in (("chiaro", "chiaro"), ("scuro", "scuro")):
                 valore = temi[nome_tema][variabile].lstrip("#")
-                assert f"{swift}{suffisso}: uint32 = 0x{valore}" in tema, (variabile, nome_tema)
+                assert re.search(rf"\b{swift}{suffisso}: uint32 = 0x{valore}\b", tema), (variabile, nome_tema)
+
+
+def test_pillole_dei_giocatori_stesso_colore_su_web_e_ios():
+    """Issue #242: «Probabile titolare» (e «Ha giocato», «Partita in corso») era una pillola verde sulla web e grigia sull'iPhone. Il
+    colore viene dal tono: quello del server (`CLASSE_TONO`) o, senza etichetta, quello del ripiego (`TITOLARITA`, `STATO_PARTITA`).
+    L'iPhone usa gli stessi quattro toni (`Etichetta.Tono`) con le stesse scelte: verde, grigio, arancio, rosso."""
+    ios = IOS / "Domain/GiocatoreEtichette.swift"
+    if not ios.exists():
+        return
+    swift = ios.read_text(encoding="utf-8")
+    da_classe = {"": "positivo", "arancio": "attenzione", "rossa": "negativo", "neutra": "neutro"}   # classi di `.etichetta`
+    for nome_js, nome_swift in (("TITOLARITA", "nomiTitolarita"), ("STATO_PARTITA", "nomiStatoPartita")):
+        js = re.search(rf"const {nome_js} = \{{(.*?)\}};", APP, re.S).group(1)
+        web = {chiave: da_classe[classe] for chiave, classe in re.findall(r'(\w+): \[[^\]]*?, "(\w*)"\]', js)}
+        corpo = re.search(rf"static let {nome_swift}: [^=]+= \[(.*?)\n    \]", swift, re.S).group(1)
+        iphone = dict(re.findall(r'"(\w+)": \("[^"]*", \.(\w+)\)', corpo))
+        assert web and iphone == web, (nome_js, web, iphone)
+    # il tono del server: stessa classe per ogni tono, e uno sconosciuto vale neutro (`classeTono`: `?? "neutra"`)
+    classe_tono = dict(re.findall(r'(\w+): "(\w*)"', re.search(r"const CLASSE_TONO = \{([^}]*)\}", APP).group(1)))
+    assert 'CLASSE_TONO[et && et.tono] ?? "neutra"' in APP
+    corpo = re.search(r"init\(server: String\?\) \{(.*?)\n        \}", swift, re.S).group(1)
+    tono_iphone, altrimenti = dict(re.findall(r'case "(\w+)": self = \.(\w+)', corpo)), re.search(r"default: self = \.(\w+)", corpo).group(1)
+    assert classe_tono and {tono: tono_iphone.get(tono, altrimenti) for tono in classe_tono} == {t: da_classe[c] for t, c in classe_tono.items()}
+    assert altrimenti == da_classe["neutra"] and set(tono_iphone) <= set(classe_tono)
+
+
+def test_pulsanti_pieni_almeno_4_5_e_uguali_su_web_e_ios():
+    """Issue #248: sull'iPhone, nel tema scuro, la scritta dei pulsanti pieni era bianca sul verde chiaro (1,77:1). La web scrive con
+    --azione-testo (verde quasi nero nello scuro, bianco nel chiaro) sopra --azione: almeno 4,5:1 in tutti e due i temi. L'iPhone usa
+    gli stessi colori: fondo `Accento.verde` (Aspetto.swift), scritta `Tema.scrittaPulsante*`."""
+    sistema = _variabili(CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0])
+    a_mano = _variabili(CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0])
+    for nome in ("--azione", "--azione-testo"):
+        assert sistema.get(nome) and sistema.get(nome) == a_mano.get(nome), nome
+    temi = _temi()
+    for nome_tema, v in temi.items():
+        c = _contrasto_rgb(_colore(v["--azione-testo"])[0], _colore(v["--azione"])[0])
+        assert c >= 4.5, (nome_tema, round(c, 2))
+    tema, aspetto = IOS / "Support/Design/Tema.swift", IOS / "Support/Aspetto.swift"
+    if not (tema.exists() and aspetto.exists()):
+        return
+    tema, aspetto = tema.read_text(encoding="utf-8").lower(), aspetto.read_text(encoding="utf-8").lower()
+    for nome_tema in ("chiaro", "scuro"):
+        scritta, fondo = (temi[nome_tema][x].lstrip("#") for x in ("--azione-testo", "--azione"))
+        assert re.search(rf"\bscrittapulsante{nome_tema}: uint32 = 0x{scritta}\b", tema), nome_tema
+        verde = re.search(rf"var {nome_tema}: uicolor \{{.*?case \.verde: return self\.da\(0x(\w{{6}})\)", aspetto, re.S).group(1)
+        assert verde == fondo, nome_tema
+
+
+def test_pulsanti_pieni_dell_iphone_passano_tutti_dallo_stesso_stile():
+    """#248: lo stile di sistema dei pulsanti pieni (`.glassProminent`, `.borderedProminent`) scrive bianco anche sul verde chiaro dello
+    scuro. Ogni pulsante pieno passa da `pulsanteVetro(prominente: true)` (Vetro.swift), che mette la scritta `Color.scrittaPulsante`
+    (spento: il grigio dell'app, `Color.testoSecondario`)."""
+    vetro = IOS / "Support/Design/Vetro.swift"
+    if not vetro.exists():
+        return
+    fuori = [f"{p.relative_to(IOS).as_posix()}:{n}" for p in sorted(IOS.rglob("*.swift")) if p != vetro
+             for n, riga in enumerate(p.read_text(encoding="utf-8").splitlines(), 1) if re.search(r"\.(bordered|glass)Prominent\b", riga)]
+    assert not fuori, fuori
+    testo = vetro.read_text(encoding="utf-8")
+    stile = re.search(r"struct PulsantePieno: ViewModifier \{(.*?)\n\}", testo, re.S)
+    assert stile and "modifier(PulsantePieno())" in testo
+    for pezzo in (".glassProminent", ".borderedProminent", "Color.scrittaPulsante", "Color.testoSecondario", ".isEnabled"):
+        assert pezzo in stile.group(1), pezzo
 
 
 def test_pulsanti_link_e_azioni_usano_la_variabile_azione_non_il_lime():
