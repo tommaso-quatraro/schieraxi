@@ -137,7 +137,8 @@ struct PedinaInteraTests {
     func sillabatoLungo() {
         let pezzi = LetturaPedina.sillabato(Self.cognomeLungo).components(separatedBy: Self.trattinoMorbido)
         #expect(pezzi.count >= 3, "punti di sillabazione trovati: \(pezzi)")
-        #expect(pezzi.allSatisfy { $0.count >= 2 }, "un pezzo da una lettera sola: \(pezzi)")
+        // mai una lettera sola in fondo alla riga prima del trattino, né da sola a capo
+        #expect((pezzi.first?.count ?? 0) >= 2 && (pezzi.last?.count ?? 0) >= 2, "una lettera sola a un capo: \(pezzi)")
         #expect(pezzi.joined() == Self.cognomeLungo)
     }
 
@@ -169,7 +170,7 @@ struct PedinaInteraTests {
                                                       punti: 71.4, titolari: titolari, panchina: panchina), larghezza: nil)
         #expect(immagine.width == 360)
         // sopra e sotto il campo: titolo (22 punti) e sottotitolo, panchina, legenda, margini e spazi; contati stretti
-        // fanno più di 100 punti. Prima l'immagine era alta 490 fissi e il campo pieno ne chiedeva quasi tanti da solo:
+        // fanno più di 100 punti. Prima l'immagine era alta 490 fissi e il solo campo ne chiedeva 466 (corsa del test rosso):
         // titolo e legenda restavano fuori (foto `formazione-immagine` del 3/11).
         #expect(immagine.height >= campo.height + 100,
                 "immagine alta \(immagine.height) punti, il solo campo \(campo.height): titolo o legenda restano tagliati")
