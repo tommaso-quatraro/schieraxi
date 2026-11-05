@@ -54,7 +54,7 @@ struct VistaRosa: View {
         // quando gioca con la regola del widget Live: «oggi 18:30» (se non c'è posto «18:30»), «domani 18:30» (`formeQuandoGioca`)
         case .accessoryInline:
             if let g = giocano.first {
-                // «Castellanos domani 18:30» → «Castellanos domani» → «Castellanos»: mai tagliato a metà
+                // «Castelvani domani 18:30» → «Castelvani domani» → «Castelvani»: mai tagliato a metà
                 RigaInLinea(g.formeInLineaChiGioca(adesso: voce.date), icona: "figure.soccer")
             } else {
                 Label("Nessuno gioca a breve", systemImage: "figure.soccer")

@@ -1109,9 +1109,9 @@ extension GiocatoreWidget {
         return partite.map { "\(testa) · \($0)" } + [testa]
     }
 
-    /// La riga di «Chi gioca» sulla schermata di blocco, dalla più lunga alla più corta: «Castellanos domani 18:30» →
-    /// «Castellanos domani» → «Castellanos»; oggi «Castellanos oggi 18:30» → «Castellanos 18:30» → «Castellanos». Il giorno
-    /// viene dalle stesse forme di `formeQuandoGioca` (si toglie solo l'ora in fondo): mai «Castellanos domani 1…».
+    /// La riga di «Chi gioca» sulla schermata di blocco, dalla più lunga alla più corta: «Castelvani domani 18:30» →
+    /// «Castelvani domani» → «Castelvani»; oggi «Castelvani oggi 18:30» → «Castelvani 18:30» → «Castelvani». Il giorno
+    /// viene dalle stesse forme di `formeQuandoGioca` (si toglie solo l'ora in fondo): mai «Castelvani domani 1…».
     func formeInLineaChiGioca(adesso: Date) -> [String] {
         guard let data = quando else { return [cognome] }
         let orari = PartitaLive.orari(data, adesso: adesso)
