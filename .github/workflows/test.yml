@@ -235,17 +235,6 @@ jobs:
       actions: read             # «gia-verde» legge l'elenco degli artifact «ios-verde-…»
     uses: ./.github/workflows/ios.yml
 
-  prova-esito-ios:
-    needs: [cambi, ios]
-    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Esito di ios visto dagli altri job
-        env:
-          ESITO: ${{ needs.ios.result }}
-        run: echo "needs.ios.result=$ESITO"
-
   # Revisione con Claude Code (.github/workflows/revisione.yml): solo PR non in bozza, dal repository stesso (mai fork), non di bot.
   # Il segreto si passa per nome (niente «secrets: inherit»). Senza segreto il job passa senza revisione (docs/decisioni/0007).
   revisione-ia:
