@@ -32,4 +32,13 @@ struct TestiWeb {
         }
         throw Errore(description: "in testi.js manca la chiave \(chiave)")
     }
+
+    /// Il testo italiano di una chiave con ogni segnaposto `{…}` sostituito da `valore`; nil finché la web ha ancora la frase di
+    /// prima della #299 (quella con `{n}`, il solo numero della lega). Così la PR della web e quella dell'iPhone si possono unire in
+    /// qualunque ordine: prima vale il vocabolario di `docs/COERENZA-WEB-IPHONE.md`, poi anche il confronto con `testi.js`.
+    func italianoDopo299(_ chiave: String, _ valore: String) throws -> String? {
+        let modello = try italiano(chiave)
+        guard !modello.contains("{n}") else { return nil }
+        return modello.replacingOccurrences(of: #"\{[a-z_]+\}"#, with: valore, options: .regularExpression)
+    }
 }

@@ -9,6 +9,7 @@ import json
 import math
 import re
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, get_type_hints
@@ -28,6 +29,15 @@ MAX_SOSTITUZIONI = 10
 MODI_RINVIO = ("aspetta", "senza_voto", "voto_ufficio")
 MAX_ECCEZIONI_RINVII = 2 * GIORNATE_SERIE_A
 _CHIAVE_RINVIO = re.compile(r"\d{4}-\d{2}/([1-9]|[12]\d|3[0-8])")
+# Momenti di mercato della lega (aste, finestre di scambio): periodi {"dal": "AAAA-MM-GG", "al": "AAAA-MM-GG"}, `al` facoltativo
+# (un giorno solo). Dopo questi momenti Da fare ricorda di aggiornare le rose (da_fare._momenti_mercato).
+# Aste quando la lega non dice le date: (mese, giorno) di inizio e di fine, 2-3 settimane dopo la chiusura del mercato della Serie A
+# (estivo a fine agosto, invernale a fine gennaio). L'asta estiva è nell'anno d'inizio della stagione, l'invernale in quello dopo.
+ASTA_ESTIVA_PREDEFINITA = ((9, 1), (9, 21))
+ASTA_INVERNALE_PREDEFINITA = ((2, 1), (2, 21))
+MAX_FINESTRE_SCAMBIO = 20
+MAX_GIORNI_PERIODO = 60
+_GIORNO = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 @dataclass
@@ -93,6 +103,13 @@ class Regole:
     partite_rinviate: str = "aspetta"
     voto_ufficio_rinviate: float = 6.0
     rinvii_giornate: dict[str, str] = field(default_factory=dict)
+    # Quando cambiano le rose della lega, per il promemoria «aggiorna le rose» di Da fare. `asta_estiva`, `asta_invernale`: un
+    # periodo; None = ASTA_ESTIVA_PREDEFINITA e ASTA_INVERNALE_PREDEFINITA. `finestre_scambio`: elenco di periodi; None = le soste
+    # del campionato dal calendario della Serie A; [] = nessuna finestra. Contano solo le date della stagione in corso (date di
+    # un'altra stagione rimaste nel file: valgono le aste di partenza e le soste).
+    asta_estiva: dict[str, str | None] | None = None
+    asta_invernale: dict[str, str | None] | None = None
+    finestre_scambio: list[dict[str, str | None]] | None = None
 
     # ---- controlli ----
     def problemi(self) -> list[str]:
@@ -152,6 +169,17 @@ class Regole:
                 p.append(f"rinvii_giornate: {k!r} non è del tipo \"2026-27/12\" (stagione/giornata di Serie A)")
             if v not in MODI_RINVIO:
                 p.append(f"rinvii_giornate[{k!r}] deve essere una di {MODI_RINVIO}")
+        for nome, asta in (("asta_estiva", self.asta_estiva), ("asta_invernale", self.asta_invernale)):
+            if asta is not None:
+                p += _problemi_periodo(nome, asta)
+        f = self.finestre_scambio
+        if f is not None and not isinstance(f, list):
+            p.append('finestre_scambio deve essere un elenco di periodi, es. [{"dal": "2026-11-14", "al": "2026-11-16"}], oppure vuoto')
+        elif f is not None and len(f) > MAX_FINESTRE_SCAMBIO:
+            p.append(f"finestre_scambio: al massimo {MAX_FINESTRE_SCAMBIO} finestre")
+        elif f is not None:
+            for i, x in enumerate(f):
+                p += _problemi_periodo(f"finestre_scambio[{i}]", x)
         return p
 
     def _problemi_di_tipo(self) -> list[str]:
@@ -212,6 +240,32 @@ def serie_a_a_lega(giornata_serie_a: int, regole: "Regole") -> int | None:
     """La giornata della lega di una giornata di Serie A; None se la lega non era ancora partita."""
     n = giornata_serie_a - regole.prima_giornata_lega + 1
     return n if n >= 1 else None
+
+
+def giorno(testo) -> date:
+    """«2027-01-20» -> la data. ValueError se non è una data vera scritta così."""
+    if not isinstance(testo, str) or not _GIORNO.fullmatch(testo):
+        raise ValueError(testo)
+    return date.fromisoformat(testo)
+
+
+def periodo(p: dict) -> tuple[date, date]:
+    """Un periodo della lega già controllato ({"dal", "al"}, `al` facoltativo): primo e ultimo giorno."""
+    return giorno(p["dal"]), giorno(p.get("al") or p["dal"])
+
+
+def _problemi_periodo(nome: str, p) -> list[str]:
+    if not isinstance(p, dict) or "dal" not in p or set(p) - {"dal", "al"}:
+        return [f'{nome} deve essere del tipo {{"dal": "2027-01-20", "al": "2027-01-22"}} ("al" si può omettere per un giorno solo)']
+    try:
+        dal, al = periodo(p)
+    except ValueError:
+        return [f"{nome}: le date vanno scritte come 2027-01-20 (anno, mese, giorno)"]
+    if al < dal:
+        return [f"{nome}: il giorno di fine viene prima di quello d'inizio"]
+    if (al - dal).days >= MAX_GIORNI_PERIODO:
+        return [f"{nome}: al massimo {MAX_GIORNI_PERIODO} giorni"]
+    return []
 
 
 def _e_intero(v) -> bool:

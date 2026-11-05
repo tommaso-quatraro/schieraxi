@@ -1,4 +1,5 @@
-"""Archivio locale (SQLite, un file solo: dati/fanta.sqlite). Si può cancellare: si ricostruisce con `aggiorna`.
+"""Archivio locale (SQLite, un file solo: dati/fanta.sqlite). Si può cancellare: si ricostruisce con `aggiorna`, TRANNE il registro
+delle giornate (tabelle `registro_*`, `registro_giornate.py`): i numeri mostrati prima di una giornata non si rifanno dopo.
 
 Ogni giocatore è identificato dal codice di Fantacalcio.it (calciatore_id); le altre fonti vi vengono abbinate.
 """
@@ -100,6 +101,25 @@ CREATE TABLE IF NOT EXISTS controlli (
     PRIMARY KEY (stagione, nome)
 );
 CREATE TABLE IF NOT EXISTS aggiornamenti (cosa TEXT PRIMARY KEY, quando TEXT, dettaglio TEXT);
+-- registro delle giornate (fanta/registro_giornate.py): i numeri MOSTRATI poco prima della prima partita, per ogni giocatore della
+-- Serie A, con le regole classiche. Solo id e numeri, niente dati personali. NON si ricostruisce: una giornata persa è persa.
+CREATE TABLE IF NOT EXISTS registro_giocatori (
+    stagione TEXT, giornata INTEGER, calciatore_id INTEGER, ruolo TEXT, squadra TEXT, partita_id INTEGER,
+    p_voto REAL, mu REAL, mu_voto REAL, e_gol REAL, e_assist REAL, minuti REAL,
+    stato TEXT, percentuale REAL, dubbio INTEGER,     -- probabili formazioni mostrate allora (stato NULL = non citato)
+    fantamedia REAL,                                  -- con le regole classiche, giornate di prima; NULL = nessun voto
+    PRIMARY KEY (stagione, giornata, calciatore_id)
+);
+-- una riga per giornata: quando è stata salvata e, a giornata finita, i pezzi delle misure I1-I3 (sommati poi sulla finestra)
+CREATE TABLE IF NOT EXISTS registro_giornate (
+    stagione TEXT, giornata INTEGER, salvato TEXT, giocatori INTEGER, con_probabili INTEGER,
+    misurato TEXT, voti INTEGER, sq_modello REAL, sq_fantamedia REAL,   -- I1: chi ha preso voto, somme dei quadrati degli errori
+    presenze INTEGER, brier_somma REAL, fasce TEXT,                     -- I2: giocatori delle partite giocate, fasce di 10 punti (JSON)
+    fascia_casi INTEGER, fascia_dentro INTEGER,                         -- I3: rose estratte a sorte, punti veri dentro la fascia
+    fuori TEXT, da_avvisare TEXT, avvisati TEXT,                        -- indicatori fuori soglia e avvisi al proprietario (JSON)
+    persa TEXT,                     -- motivo in breve se la giornata non è stata salvata prima della prima partita (salvato NULL)
+    PRIMARY KEY (stagione, giornata)
+);
 """
 
 

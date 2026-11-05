@@ -11,10 +11,11 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from . import affidabilita, avvisi, buon_senso, consigli, diario, etichette, frasi, movimenti, rinvii, scelte, stato_utente, widget
+from . import avvisi, buon_senso, consigli, diario, etichette, frasi, movimenti, rinvii, scelte, stato_utente, widget
 from .frasi import F
 from .lega import Rose
-from .regole import Regole
+from .regole import ASTA_ESTIVA_PREDEFINITA, ASTA_INVERNALE_PREDEFINITA, Regole, periodo, serie_a_a_lega
+from .turno import della_giornata, inizio as inizio_turno
 
 MAX_VOCI = 8
 MAX_DUBBI = 3
@@ -25,7 +26,7 @@ ORE_URGENTE = 3
 SOGLIA_GUADAGNO = 1.5          # punti in più (stagione) sotto cui uno svincolato o uno scambio non si nomina nemmeno; le regole
 #                                di buon senso (soglie per ruolo sulle prossime giornate, titolarità, costo...) stanno in buon_senso.py
 CONSIGLI = ("dubbio", "copertura", "svincolato", "scambio")      # le voci che sono consigli: al massimo buon_senso.MAX_CONSIGLI
-GIORNI_ROSE = 4
+GIORNI_SOSTA = 10              # fra l'ultima partita di una giornata e la prima della successiva: da qui in su è una sosta
 GIORNI_DATI = 3
 GIORNI_CERTIFICATO = 3
 ALTA, MEDIA, BASSA = 1, 2, 3
@@ -78,7 +79,7 @@ def _sostituzioni_ammesse(regole: Regole) -> bool:
 
 
 def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None, *, formazione: dict | None = None) -> list[dict]:
-    """Titolari (quelli che l'utente ha salvato, altrimenti i consigliati) fuori o in dubbio. Il cambio con il miglior sostituto
+    """Titolari (quelli che l'utente ha salvato, se si possono ancora schierare, altrimenti i consigliati) fuori o in dubbio. Il cambio con il miglior sostituto
     libero («Meglio Y», «Sostituisci») si propone solo se la formazione consigliata lo fa davvero: stessa regola di `consigliato`
     del confronto (`consigli.da_schierare`). Se la consigliata tiene il titolare, la voce dice chi entra dalla panchina se lui non
     gioca (la prima riserva dello stesso ruolo, come le sostituzioni) e porta alla formazione: Oggi e Formazione non si contraddicono.
@@ -87,6 +88,8 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
     prev, _, _ = consigli.previsioni(db, regole)
     consigliata = _consigliata(db, regole, rose, formazione)
     scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
+    if scelta:                      # conta solo se si può ancora schierare (regola unica, come la Formazione): se no la consigliata
+        scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
     if scelta:
         titolari = [int(i) for i in scelta["titolari"]]
     elif consigliata:
@@ -156,12 +159,16 @@ def _copertura(db, regole: Regole, rose: Rose, lingua: str = "it") -> list[dict]
     return voci
 
 
-def _formazione_non_salvata(ore: float | None, giornata: int, file_scelte: Path | None) -> dict | None:
+def _formazione_non_salvata(db, regole: Regole, rose: Rose, ore: float | None, giornata: int, file_scelte: Path | None) -> dict | None:
+    """La formazione si chiude presto e non c'è una scelta salvata che si possa schierare. Una scelta che non vale più (giocatore
+    ceduto, modulo tolto dalla lega) conta come nessuna per i conti, ma la frase lo dice: «quella che hai salvato non è più valida»."""
     if ore is None or not 0 < ore <= ORE_FORMAZIONE:
         return None
-    if scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte):
+    scelta = scelte.leggi(consigli.stagione_corrente(), giornata, file_scelte)
+    if scelta and scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, consigli.previsioni(db, regole)[0]), regole):
         return None
-    return _voce(f"formazione:{giornata}", "formazione", F("dafare.formazione_chiude", tempo=_ore_a_parole(ore)),
+    chiave = "dafare.formazione_non_valida" if scelta else "dafare.formazione_chiude"
+    return _voce(f"formazione:{giornata}", "formazione", F(chiave, tempo=_ore_a_parole(ore)),
                  ALTA if ore <= ORE_URGENTE else MEDIA, F("dafare.az_formazione"), _destinazione("formazione"))
 
 
@@ -254,17 +261,93 @@ def _limita_consigli(voci: list[dict]) -> list[dict]:
     return out
 
 
-def _rose_vecchie(db, stagione: str, file_rose: Path, adesso: datetime) -> dict | None:
-    """Dopo una giornata giocata le rose non sono state aggiornate per qualche giorno."""
-    ultima = db.execute("SELECT MAX(data) FROM partite WHERE stagione = ? AND giocata = 1", (stagione,)).fetchone()[0]
-    if not ultima:
-        return None
-    ultima = datetime.fromisoformat(str(ultima)[:16].replace("T", " "))
+def _turni(db, stagione: str) -> dict[int, tuple[datetime, datetime]]:
+    """Per ogni giornata della stagione: prima e ultima partita giocata con la sua giornata (turno e anticipi, regola unica di
+    turno.py): una partita rinviata a settimane dopo non sposta la fine della giornata."""
+    date: dict[int, list[datetime]] = {}
+    for g, testo in db.execute("SELECT giornata, data FROM partite WHERE stagione = ? AND data IS NOT NULL", (stagione,)):
+        try:
+            date.setdefault(int(g), []).append(datetime.fromisoformat(str(testo)[:16].replace("T", " ")))
+        except (TypeError, ValueError):
+            continue
+    turni = {}
+    for g, dd in date.items():
+        inizio = inizio_turno(dd)
+        sue = [d for d in dd if della_giornata(d, inizio)]
+        if sue:
+            turni[g] = (min(sue), max(sue))
+    return turni
+
+
+def _momenti_mercato(regole: Regole, stagione: str, turni: dict[int, tuple[datetime, datetime]],
+                     inizio_lega: datetime | None) -> list[tuple[datetime, datetime]]:
+    """Quando cambiano le rose della lega, come (inizio, fine) del momento. Le date sono quelle della lega (regole.json); se non le
+    indica: per le aste ASTA_ESTIVA_PREDEFINITA e ASTA_INVERNALE_PREDEFINITA (2-3 settimane dopo la chiusura del mercato della Serie
+    A), per gli scambi le soste del calendario della Serie A (almeno GIORNI_SOSTA giorni fra l'ultima partita di una giornata e la
+    prima della successiva; `finestre_scambio: []` = nessuna finestra). Contano solo le date della stagione in corso: quelle di
+    un'altra stagione rimaste nel file valgono come non indicate.
+    La lega non gioca senza rose: un'asta estiva che comprende `inizio_lega` (la scadenza della sua prima giornata) finisce lì, e
+    quella di partenza non conta se la lega è partita prima (l'asta c'è già stata)."""
+    anno = int(stagione[:4])
+    dal_stagione, al_stagione = datetime(anno, 7, 1), datetime(anno + 1, 7, 1)
+
+    def momento(p: dict) -> tuple[datetime, datetime] | None:
+        primo, ultimo = periodo(p)
+        inizio = datetime.combine(primo, datetime.min.time())
+        fine = datetime.combine(ultimo, datetime.min.time()) + timedelta(days=1)          # alla fine dell'ultimo giorno
+        return (inizio, fine) if dal_stagione <= inizio < al_stagione else None
+
+    def di_partenza(anno: int, giorni: tuple[tuple[int, int], tuple[int, int]]) -> tuple[datetime, datetime]:
+        (m1, g1), (m2, g2) = giorni
+        return datetime(anno, m1, g1), datetime(anno, m2, g2) + timedelta(days=1)
+
+    estiva = regole.asta_estiva and momento(regole.asta_estiva)
+    if not estiva:
+        estiva = di_partenza(anno, ASTA_ESTIVA_PREDEFINITA)
+        if inizio_lega is not None and inizio_lega <= estiva[0]:
+            estiva = None
+    if estiva and inizio_lega is not None and estiva[0] < inizio_lega < estiva[1]:
+        estiva = (estiva[0], inizio_lega - timedelta(seconds=1))         # così la giornata «dopo la fine» è la prima della lega
+    invernale = regole.asta_invernale and momento(regole.asta_invernale) or di_partenza(anno + 1, ASTA_INVERNALE_PREDEFINITA)
+    momenti = [estiva, invernale]
+    finestre = [momento(p) for p in regole.finestre_scambio or []]
+    if regole.finestre_scambio is not None and (any(finestre) or not regole.finestre_scambio):
+        momenti += finestre
+    else:
+        giornate = sorted(turni)
+        momenti += [(turni[g][1], turni[g][1]) for g, dopo in zip(giornate, giornate[1:])
+                    if turni[dopo][0] - turni[g][1] >= timedelta(days=GIORNI_SOSTA)]
+    return [m for m in momenti if m]
+
+
+def _rose_vecchie(db, stagione: str, regole: Regole, file_rose: Path, adesso: datetime) -> dict | None:
+    """Promemoria «aggiorna le rose» (#334): solo dopo un momento di mercato della lega (`_momenti_mercato`) e solo se le rose non
+    sono state aggiornate da quando è cominciato. Sparisce con l'aggiornamento o alla scadenza della prima giornata della lega
+    dopo la fine del momento (scadenza della lega, `avvisi.scadenza`), così copre anche un'asta alla fine del periodo. Prima
+    compariva dopo ogni giornata giocata: era rumore."""
     aggiornate = datetime.fromtimestamp(file_rose.stat().st_mtime)
-    giorni = (adesso - aggiornate).days
-    if aggiornate >= ultima or giorni < GIORNI_ROSE:
+    turni = _turni(db, stagione)
+    giornate = sorted(g for g in turni if g >= regole.prima_giornata_lega)
+    scadenze: dict[int, datetime | None] = {}
+
+    def scadenza(g: int) -> datetime | None:
+        if g not in scadenze:
+            scadenze[g] = avvisi.scadenza(avvisi.prima_partita(db, stagione, g), regole)
+        return scadenze[g]
+
+    prima = regole.prima_giornata_lega
+    inizio_lega = scadenza(prima) if prima in turni else None
+    entro = None                    # la giornata (di Serie A) entro la cui scadenza aggiornare le rose
+    for inizio, fine in _momenti_mercato(regole, stagione, turni, inizio_lega):
+        if not aggiornate < inizio <= adesso:
+            continue
+        g = next((g for g in giornate if (s := scadenza(g)) is not None and s > fine), None)
+        if g is not None and adesso < scadenza(g) and (entro is None or g < entro):
+            entro = g
+    if entro is None:
         return None
-    return _voce("rose-vecchie", "rose", F("dafare.rose_vecchie", giorni=giorni),
+    giorni = (adesso - aggiornate).days
+    return _voce("rose-vecchie", "rose", F("dafare.rose_mercato", n=serie_a_a_lega(entro, regole)),
                  MEDIA, F("dafare.az_aggiorna_rose"), _destinazione("lega", "rose"), giorni=giorni)
 
 
@@ -290,21 +373,23 @@ def _chiusa_prima(db, stagione: str, giornata: int, minuti: int, dal: datetime) 
     return inizio - timedelta(minutes=minuti or 0) <= dal
 
 
-def _diario(db, stagione: str, file_scelte: Path | None, file_diario: Path | None, regole: Regole | None = None,
+def _diario(db, stagione: str, rose: Rose, file_scelte: Path | None, file_diario: Path | None, regole: Regole,
             dal: datetime | None = None) -> list[dict]:
     """Solo l'ULTIMA giornata finita, se manca la formazione dichiarata: basta un tocco per dire «ho schierato la consigliata».
+    Una scelta salvata che non si può schierare con la rosa (regola unica della scelta, come il Diario) non conta come dichiarata.
     Le giornate più vecchie non si chiedono più (prima si accumulavano «la giornata 6 è finita», «la giornata 7 è finita»...).
     `dal` (ora locale): quando è nato l'account; se la formazione di quella giornata si è chiusa prima, non si chiede niente
     (chi è appena entrato non aveva nessuna consigliata da schierare)."""
     voci = diario.carica(file_diario).get("giornate", {})
     prima = getattr(regole, "prima_giornata_lega", 1)
     # finite per la lega: con una partita rinviata e la regola «senza voto» o «voto d'ufficio» basta il turno (rinvii.py)
-    concluse = rinvii.giornate_chiuse(db, stagione, regole) if regole is not None else affidabilita.giornate_concluse(db, stagione)
+    concluse = rinvii.giornate_chiuse(db, stagione, regole)
     finite = [x for x in concluse if x >= prima]
     if not finite:
         return []
     g = max(finite)
-    if scelte.leggi(stagione, g, file_scelte) or (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
+    scelta = scelte.che_vale(scelte.leggi(stagione, g, file_scelte), scelte.ruoli_schierabili(rose), regole)
+    if scelta or (voci.get(f"{stagione}/{g}") or {}).get("schierata"):
         return []
     if dal is not None and _chiusa_prima(db, stagione, g, getattr(regole, "scadenza_minuti", 0), dal):
         return []
@@ -371,14 +456,14 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, oggi: dict, c
         controlli += [lambda: _dubbi(db, regole, rose, giornata, ctx.scelte)]
     if aperta and giornata:
         controlli += [lambda: _copertura(db, regole, rose, lingua),
-                      lambda: _formazione_non_salvata(ore, giornata, ctx.scelte)]
+                      lambda: _formazione_non_salvata(db, regole, rose, ore, giornata, ctx.scelte)]
     controlli += [lambda: _certificato(certificato_giorni)]
     if rose_file is not None:
-        controlli += [lambda: _rose_vecchie(db, stagione, rose_file, adesso)]
+        controlli += [lambda: _rose_vecchie(db, stagione, regole, rose_file, adesso)]
     if aperta:
         recenti = _recenti(rose, getattr(ctx, "movimenti", None), adesso)
         controlli += [lambda: _svincolato(db, regole, rose, recenti), lambda: _scambio(db, regole, rose, recenti)]
-    controlli += [lambda: _diario(db, stagione, ctx.scelte, ctx.diario, regole, dal)]
+    controlli += [lambda: _diario(db, stagione, rose, ctx.scelte, ctx.diario, regole, dal)]
     if amministratore or not con_account:
         controlli += [lambda: _dati_vecchi(db, adesso)]
     controlli += [lambda: _primo_avvio(imp)]

@@ -46,9 +46,10 @@ struct DemoDiarioTests {
     @Test("I titoli delle giornate e «Calcolato su…» dicono i numeri della lega")
     func titoliEPrecisioneConINumeriDellaLega() async throws {
         let d = try await diario()
-        #expect((d.giornate ?? []).map(\.titolo) == ["Giornata 7", "Giornata 6", "Giornata 5", "Giornata 4"])
+        #expect((d.giornate ?? []).map(\.titolo) == ["Giornata 7 · 10ª di Serie A", "Giornata 6 · 9ª di Serie A",
+                                                    "Giornata 5 · 8ª di Serie A", "Giornata 4 · 7ª di Serie A"])
         let testo = try #require(TestoPrecisione(d.precisione))
-        #expect(testo.calcolatoSu == "Calcolato su 4 giornate, dalla giornata 4 alla 7.")
+        #expect(testo.calcolatoSu == "Calcolato su 4 giornate, dalla Giornata 4 · 7ª di Serie A alla Giornata 7 · 10ª di Serie A.")
     }
 
     @Test("«In sintesi» è quella che il server calcola dalle giornate con la tua formazione")

@@ -169,7 +169,7 @@ final class FantavotoAttesoTests: XCTestCase {
         XCTAssertEqual(punti[1].frase, "Previsti tra 57,0 e 73,5: sopra la fascia (+6,5)")
         XCTAssertEqual(punti[0].frase, "Previsti 64,0, fatti 66,5 (+2,5)")
         XCTAssertNil(punti[0].dentro)
-        XCTAssertEqual(punti[3].voce, "Giornata 9: attesi 68,5 punti, fatti 58,0, fascia prevista tra 60,5 e 77,0, fuori")
+        XCTAssertEqual(punti[3].voce, "9ª giornata di Serie A: attesi 68,5 punti, fatti 58,0, fascia prevista tra 60,5 e 77,0, fuori")
         XCTAssertEqual(PuntoAttesoFatto.elenco(d.giornate ?? [], massimo: 2).map(\.giornata), [8, 9])
     }
 }

@@ -1,0 +1,129 @@
+name: iOS simulatore (Appetize)
+
+# Un iPhone da provare dal vivo nel browser (issue #338). Istruzioni per il proprietario: docs/PROVA-IPHONE-BROWSER.md.
+# Compila l'app per il SIMULATORE (senza firma, Debug come le foto di screenshot.yml), la comprime in .zip con dentro
+# Schieraxi.app e la mette tra gli artifact (7 giorni). La modalità demo (dati finti, nessuna rete) non si compila dentro:
+# la accende l'argomento di lancio -DEMO, che Appetize passa con il parametro launchArgs del link stampato alla fine.
+# Se c'è il segreto APPETIZE_TOKEN carica lo .zip su Appetize.io (API v1, file diretto in multipart):
+# - variabile APPETIZE_APP vuota: crea l'app e stampa la sua chiave pubblica da salvare (`gh variable set APPETIZE_APP`);
+# - variabile piena: aggiorna la stessa app, così il link non cambia.
+# L'app si apre solo a chi ha fatto l'accesso ad Appetize (appPermissions.run=authenticated): i log di questo repository
+# sono pubblici e la chiave pubblica da sola non basta a consumare i minuti gratuiti.
+# Senza segreto si ferma dopo l'artifact, verde. Il token non si stampa mai: va a curl da un file temporaneo.
+# Parte SOLO a mano: `gh workflow run ios-simulatore.yml --ref <ramo>` (o Actions > iOS simulatore > Run workflow).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Una corsa alla volta: due caricamenti insieme sulla stessa app di Appetize si pesterebbero i piedi
+concurrency:
+  group: ios-simulatore
+  cancel-in-progress: false
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"          # brew install senza aggiornare tutto l'indice (risparmia minuti)
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+
+jobs:
+  simulatore:
+    name: App per il simulatore
+    # i minuti macOS sono gratuiti solo sui repository pubblici: su un repository privato il job non parte
+    if: github.event.repository.private == false
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Installa XcodeGen (se manca)
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      - name: Crea il progetto Xcode
+        run: xcodegen generate
+      - name: Compila l'app per il simulatore (senza firma)
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          xcodebuild -project Schieraxi.xcodeproj -scheme Schieraxi -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
+            2>&1 | tee build-app.log | tail -n 40
+          test -f build/Build/Products/Debug-iphonesimulator/Schieraxi.app/Info.plist
+      - name: Comprimi Schieraxi.app in .zip
+        run: |
+          set -o pipefail
+          mkdir -p uscita
+          # ditto tiene collegamenti simbolici e attributi del pacchetto .app; --keepParent mette la cartella Schieraxi.app nello .zip
+          ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug-iphonesimulator/Schieraxi.app uscita/schieraxi-simulatore.zip
+          unzip -l uscita/schieraxi-simulatore.zip | grep -E ' Schieraxi\.app/Info\.plist$'
+          ls -lh uscita/schieraxi-simulatore.zip
+      - name: Carica lo .zip tra gli artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: schieraxi-simulatore
+          path: ios/uscita/schieraxi-simulatore.zip
+          if-no-files-found: error
+          retention-days: 7
+      - name: Carica su Appetize (solo con il segreto APPETIZE_TOKEN)
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_TOKEN }}
+          APPETIZE_APP: ${{ vars.APPETIZE_APP }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APPETIZE_TOKEN:-}" ]; then
+            echo "Nessun segreto APPETIZE_TOKEN: lo .zip è tra gli artifact, niente caricamento su Appetize." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ -z "${APPETIZE_APP:-}" ]; then
+            indirizzo="https://api.appetize.io/v1/apps"
+            echo "Variabile APPETIZE_APP vuota: creo un'app nuova su Appetize."
+          elif printf '%s' "$APPETIZE_APP" | grep -qxE '[A-Za-z0-9_-]{1,100}'; then
+            indirizzo="https://api.appetize.io/v1/apps/$APPETIZE_APP"
+            echo "Aggiorno l'app $APPETIZE_APP su Appetize."
+          else
+            echo "::error::La variabile APPETIZE_APP non sembra una chiave di Appetize (solo lettere, cifre, - e _)."
+            exit 1
+          fi
+          # il token va a curl da un file leggibile solo da questo utente, mai sulla riga di comando né nel log
+          intestazione="$RUNNER_TEMP/appetize-intestazione"
+          ( umask 077; printf 'X-API-KEY: %s\n' "$APPETIZE_TOKEN" > "$intestazione" )
+          risposta="$RUNNER_TEMP/appetize-risposta.json"
+          codice=$(curl -sS -o "$risposta" -w '%{http_code}' --max-time 900 -X POST "$indirizzo" \
+            -H @"$intestazione" \
+            -F "file=@uscita/schieraxi-simulatore.zip" \
+            -F "platform=ios" \
+            -F "appPermissions.run=authenticated" \
+            -F "note=SchieraXI demo, commit $GITHUB_SHA") || codice="000"
+          rm -f "$intestazione"
+          if [ "$codice" != "200" ]; then
+            echo "::error::Appetize ha risposto $codice."
+            head -c 600 "$risposta" 2>/dev/null || true
+            echo
+            exit 1
+          fi
+          chiave=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("publicKey", ""))' "$risposta")
+          if ! printf '%s' "$chiave" | grep -qxE '[A-Za-z0-9_-]{1,100}'; then
+            echo "::error::Nella risposta di Appetize manca la chiave dell'app."
+            exit 1
+          fi
+          # launchArgs: la demo in italiano, come nelle foto (scripts/screenshot.sh)
+          argomenti=$(python3 -I -c 'import json,urllib.parse; print(urllib.parse.quote(json.dumps(["-DEMO","-AppleLanguages","(it)","-AppleLocale","it_IT"],separators=(",",":")),safe=""))')
+          link="https://appetize.io/app/$chiave?device=iphone16pro&launchArgs=$argomenti"
+          {
+            echo "App su Appetize aggiornata (commit $GITHUB_SHA)."
+            echo ""
+            echo "Link con la demo: $link"
+            if [ -z "${APPETIZE_APP:-}" ]; then
+              echo ""
+              echo "App NUOVA. Salva la chiave perché le prossime corse aggiornino questa stessa app:"
+              echo ""
+              echo "    gh variable set APPETIZE_APP --body $chiave"
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Righe con errori
+        if: failure()
+        run: grep -E "error:" build-app.log | head -n 80 || true

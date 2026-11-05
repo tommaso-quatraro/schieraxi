@@ -70,7 +70,13 @@ enum Notifiche {
         if !spenti.isEmpty { UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: spenti) }
     }
 
-    static func programma(giornata: Int, inizio: Date, modulo: String?) async {
+    /// Il testo dei promemoria: la giornata con i due numeri in testa, come gli avvisi del server (#299).
+    static func corpoPromemoria(giornata: NomeGiornata, modulo: String?) -> String {
+        "\(giornata.intero): " + (modulo.map { "modulo consigliato \($0). Mister, dai un'occhiata alla formazione." }
+                                   ?? "mister, dai un'occhiata alla formazione.")
+    }
+
+    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?) async {
         let centro = UNUserNotificationCenter.current()
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
@@ -78,7 +84,7 @@ enum Notifiche {
         for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioPromemoria.minutiAttivi()) {
             let contenuto = UNMutableNotificationContent()
             contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
-            contenuto.body = "Giornata \(giornata)" + (modulo.map { ", modulo consigliato \($0)" } ?? "") + ". Mister, dai un'occhiata alla formazione."
+            contenuto.body = corpoPromemoria(giornata: giornata, modulo: modulo)
             contenuto.sound = .default
             let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: quando)
             let trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)

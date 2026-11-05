@@ -89,14 +89,17 @@ struct VistaWidget: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(r.descrizioneFase ?? r.etichettaGiornata)
+        .accessibilityLabel(r.descrizioneFase ?? r.voceGiornata)
     }
 
-    /// «Giornata 8» (in corso) o «Giornata 7» (appena finita), con il simbolo della fase.
-    private func titoloFase(_ r: RiassuntoOggi) -> some View {
-        Label(r.inCorso ? r.etichettaGiornata : r.etichettaGiornataChiusa,
-              systemImage: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
-            .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
+    /// «Giornata 8 · 11ª di Serie A» (in corso) o «Giornata 7 · 10ª di Serie A» (appena finita), con il simbolo della fase; se non
+    /// entra «Giornata 8». Nel widget piccolo (`corta`) solo «Giornata 8» (#299).
+    private func titoloFase(_ r: RiassuntoOggi, corta: Bool = false) -> some View {
+        let nome = r.inCorso ? r.nomeGiornata : r.nomeGiornataChiusa
+        let ripiego = r.inCorso ? r.etichettaGiornata : r.etichettaGiornataChiusa
+        return GiornataInRiga(forme: nome.map { corta ? $0.formeCorte : $0.forme } ?? [ripiego], voce: nome?.voce ?? ripiego,
+                              simbolo: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
+            .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
     }
 
     private func puntiFattiGrandi(_ r: RiassuntoOggi, stile: Font.TextStyle) -> some View {
@@ -128,7 +131,7 @@ struct VistaWidget: View {
 
     private func fasePiccolo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            titoloFase(r)
+            titoloFase(r, corta: true)
             Text(r.inCorso ? ParoleWidget.chiusa : "Finita").font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.75))
             Spacer(minLength: 0)
             puntiFattiGrandi(r, stile: .largeTitle)
@@ -174,8 +177,8 @@ struct VistaWidget: View {
                         Text(a).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
                     }
                 } else {
-                    Label(r.etichettaGiornata, systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
-                        .lineLimit(1).minimumScaleFactor(0.7)
+                    GiornataInRiga(forme: r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
                     conto(r).font(.system(.title2, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
                     if let inizio = r.inizio {
                         Text(allaScadenza(inizio)).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
@@ -243,7 +246,9 @@ struct VistaWidget: View {
 
     private func piccolo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label(r.etichettaGiornata, systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
+            // nel widget piccolo solo «Giornata 8»; VoiceOver legge anche «11ª di Serie A» (#299)
+            GiornataInRiga(forme: r.nomeGiornata?.formeCorte ?? r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")
+                .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
             conto(r)
                 .font(.system(.title, design: .rounded).weight(.bold))
                 .minimumScaleFactor(0.5)
@@ -276,7 +281,8 @@ struct VistaWidget: View {
             // a sinistra (conto alla rovescia) si apre Oggi, a destra (formazione) la Formazione
             Link(destination: voce.tocco(URL(string: "schieraxi://oggi")) ?? URL(fileURLWithPath: "/")) {
             VStack(alignment: .leading, spacing: 4) {
-                Label(r.etichettaGiornata, systemImage: "calendar").font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).lineLimit(1).minimumScaleFactor(0.7)
+                GiornataInRiga(forme: r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
                 conto(r)
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .minimumScaleFactor(0.5)
@@ -329,7 +335,7 @@ struct VistaWidget: View {
 
     private func circolare(_ r: RiassuntoOggi) -> some View {
         CerchioWidget {
-            Text(r.siglaGiornata).font(.caption2)
+            Text(r.siglaGiornata).font(.caption2).accessibilityLabel(r.voceGiornata)
             Text(r.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
             Text(puntiTesto(r)).font(.caption2).monospacedDigit()
         }
@@ -337,7 +343,7 @@ struct VistaWidget: View {
 
     private func rettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(r.etichettaGiornata).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
+            GiornataInRiga(forme: r.formeGiornata, voce: r.voceGiornata).font(.caption2).foregroundStyle(.secondary).minimumScaleFactor(0.7)
             conto(r).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
             Text("\(r.modulo ?? "—") · \(puntiTesto(r)) punti attesi").font(.caption2)
         }

@@ -91,7 +91,8 @@ def _promemoria(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: dat
 def _riepilogo(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
     if not a.opzioni["riepilogo"]:
         return []
-    return notifiche.riepilogo(db, r, a.rose, adesso, a.ctx.stato_riepilogo, a.manda, a.opzioni, a.ctx.stato_cambi, a.ctx.scelte)
+    return notifiche.riepilogo(db, r, a.rose, adesso, a.ctx.stato_riepilogo, a.manda, a.opzioni, a.ctx.stato_cambi, a.ctx.scelte,
+                               a.ctx.diario)
 
 
 def _pronta(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:

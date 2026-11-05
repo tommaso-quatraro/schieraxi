@@ -39,7 +39,7 @@ struct ConfrontoView: View {
     // MARK: pezzi
 
     private func duello(_ c: Confronto) -> some View {
-        Carta(c.giornata.map { "Giornata \($0)" }) {
+        Carta(c.titolo) {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 8) {
                     ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
