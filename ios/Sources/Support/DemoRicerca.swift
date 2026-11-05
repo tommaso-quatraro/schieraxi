@@ -11,7 +11,7 @@ extension LegaDemo {
     private static let lettereECifre = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789")
 
     /// Un nome come lo confronta il server (`normalizza` di fanta/nomi.py): minuscolo, senza accenti, apostrofi e segni
-    /// («Çalvaroğlu» → «calvaroglu», «N'Dicka» → «ndicka»). Non `localizedStandardContains`: la ricerca deve trovare gli stessi
+    /// («Çalvaroğlu» → «calvaroglu», «D'Arvanzo» → «darvanzo»). Non `localizedStandardContains`: la ricerca deve trovare gli stessi
     /// giocatori del server, che normalizza così.
     static func normalizza(_ testo: String) -> String {
         let semplice = testo.map { lettereSpeciali[$0] ?? String($0) }.joined()
