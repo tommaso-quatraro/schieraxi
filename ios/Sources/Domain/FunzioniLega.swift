@@ -1,10 +1,6 @@
 import Foundation
 
-extension Funzione {
-    /// Il calendario con la difficoltà: il server non lo nomina (la difficoltà sta già nella scheda del giocatore).
-    /// Si vede solo se il server lo accende apposta o con «Mostra tutte le funzioni».
-    static let calendario = "calendario"
-}
+// Le voci dei menu Squadra e Altro e le loro funzioni stanno in `VoceMenuLega` (come `VOCI_LEGA` della web).
 
 extension StatoFunzioni {
     /// Come `acceso`, ma «Mostra tutte» non basta: serve che il server non l'abbia spenta.
@@ -12,14 +8,6 @@ extension StatoFunzioni {
     func accesoDavvero(_ id: String) -> Bool {
         scelte[id] != false
     }
-
-    /// Una funzione che compare solo se il server la accende apposta (o con «Mostra tutte»): una chiave che manca vale «spenta».
-    func accesoSoloSeNominato(_ id: String) -> Bool {
-        mostraTutte || scelte[id] == true
-    }
-
-    /// Il calendario con la difficoltà.
-    var vedeCalendario: Bool { accesoSoloSeNominato(Funzione.calendario) }
 }
 
 extension Oggi {

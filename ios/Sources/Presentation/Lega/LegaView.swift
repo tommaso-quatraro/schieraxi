@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Le schede Squadra e Altro (la «dieta delle funzioni»): un elenco di voci, ognuna una pagina. Squadra ha la mia squadra e le rose,
-/// i cambi consigliati, i seguiti, l'elenco dei giocatori e il calendario; Altro ha Scambi, il diario, le regole, lo storico
-/// e le novità. Account, aspetto e avvisi stanno solo nelle Impostazioni (l'ingranaggio in testata): ogni voce in un posto solo.
+/// Le schede Squadra e Altro (la «dieta delle funzioni»): un elenco di voci, ognuna una pagina. Voci, ordine, testi e condizioni
+/// sono quelli della web (`VoceMenuLega`, da `VOCI_LEGA` di `fanta/web/app.js`). Account, aspetto e avvisi stanno solo nelle
+/// Impostazioni (l'ingranaggio in testata): ogni voce in un posto solo.
 /// Le voci di una funzione spenta (`GET /api/funzioni`) non si vedono. Logica in `LegaViewModel`, `MercatoViewModel` e `ScambiViewModel`.
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
@@ -137,25 +137,20 @@ struct LegaView: View {
         }
     }
 
-    /// Squadra: la mia squadra e le rose, i cambi consigliati, i seguiti, l'elenco dei giocatori, il calendario.
+    /// Squadra: le voci di `VOCI_LEGA` della web (la mia squadra e le rose, i cambi consigliati, i seguiti, l'elenco dei giocatori,
+    /// il calendario, per ultima l'importazione delle rose).
     private var sezioneSquadra: some View {
         Section {
-            ForEach(VoceMenuLega.voci(.squadra, funzioni: funzioni)) { riga($0) }
+            // la pagina come identità della riga: è anche il valore della selezione nelle colonne dell'iPad
+            ForEach(VoceMenuLega.voci(.squadra, funzioni: funzioni), id: \.pagina) { RigaVoceMenuLega(voce: $0) }
         }
     }
 
-    /// Altro: Scambi, il diario, le regole, le novità. I movimenti e i crediti delle squadre solo con «Squadre della lega»;
-    /// la nuova stagione solo quando le rose sono di un anno passato (o con «Mostra tutte»).
+    /// Altro: le voci di `VOCI_LEGA` della web. «Nuova stagione» c'è sempre, come sulla web; quando le rose sono di un anno passato
+    /// c'è in più il riquadro in cima.
     private var sezioneAltro: some View {
         Section {
-            // con la stagione nuova c'è già il riquadro in cima
-            ForEach(VoceMenuLega.voci(.altro, funzioni: funzioni).filter { $0.id != "stagione" || !vm.nuovaStagione }) { riga($0) }
-        }
-    }
-
-    private func riga(_ voce: VoceMenuLega) -> some View {
-        NavigationLink(value: voce.pagina) {
-            Label(voce.nome, systemImage: voce.simbolo).labelStyle(.voce(voce.colore)).frame(minHeight: 44)
+            ForEach(VoceMenuLega.voci(.altro, funzioni: funzioni), id: \.pagina) { RigaVoceMenuLega(voce: $0) }
         }
     }
 }
