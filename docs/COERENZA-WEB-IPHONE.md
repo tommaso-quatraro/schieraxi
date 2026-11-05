@@ -95,6 +95,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 37 | Formazione chiusa con la scelta salvata non più valida | «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» e la consigliata | uguale alla web | server (`stato_scelta` di `GET /api/formazione`) | web fatto (#319); iPhone fatto (#296, PR #318) |
 | 38 | Stato dei dati, registro delle giornate | carta «Registro delle giornate» dopo l'affidabilità: tre misure con media, soglia e «regge» / «non regge» / «servono ancora N giornate», poi «Giornate perse» con il motivo (`cartaRegistro`, testi `sd.reg_*`) | uguale; le giornate perse in una sezione loro della lista | web | fatto con #344 (test contro `testi.js` e sulla stessa risposta del server) |
 | 39 | Formazione, nota sotto il campo | righe del perché della scelta (prima solo gli incerti) | mancava (nemmeno gli incerti) | server (`perche_scelta` di `GET /api/formazione`) | web e iPhone fatti nella stessa PR (#356) |
+| 40 | Diario, «Quanto ci abbiamo preso», riga su tutta la Serie A | riga sotto i quattro numeri, testo del server | uguale, stesso testo | server (`precisione.serie_a.testo` di `GET /api/diario`) | web e iPhone fatti nella stessa PR (#374) |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

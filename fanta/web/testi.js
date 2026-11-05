@@ -1612,6 +1612,14 @@ const TESTI = {
     "frase.rose.potrebbe_essere": "potrebbe essere: {elenco}",
     "frase.nomi.ruolo_diverso": "ruolo diverso: indicato {indicato}, nel listone {listone}",
     "frase.nomi.squadra_diversa": "squadra diversa: indicata {indicata}, nel listone {listone}",
+    "frase.diario.serie_a": "Su tutta la Serie A, nelle ultime {n} giornate: {fv}; {gioca}.",
+    "frase.diario.serie_a_solo": "Su tutta la Serie A, nelle ultime {n} giornate: {parte}.",
+    "frase.diario.serie_a_fv_meno": "il fantavoto atteso ha sbagliato il {pct}% in meno della fantamedia",
+    "frase.diario.serie_a_fv_piu": "il fantavoto atteso ha sbagliato il {pct}% in più della fantamedia",
+    "frase.diario.serie_a_fv_pari": "il fantavoto atteso ha sbagliato quanto la fantamedia",
+    "frase.diario.serie_a_gioca": "quando diciamo «gioca {p}%», ha giocato {k} volte su 10",
+    "frase.diario.serie_a_attesa.one": "Su tutta la Serie A serve ancora {n} giornata per dire quanto ci prendiamo.",
+    "frase.diario.serie_a_attesa.other": "Su tutta la Serie A servono ancora {n} giornate per dire quanto ci prendiamo.",
 
     // ---- [etichette del confronto] ----
     "confronto.fattore_giocare": "Probabilità di giocare",
@@ -3417,6 +3425,14 @@ const TESTI = {
     "frase.rose.potrebbe_essere": "could be: {elenco}",
     "frase.nomi.ruolo_diverso": "different role: given {indicato}, in the player list {listone}",
     "frase.nomi.squadra_diversa": "different team: given {indicata}, in the player list {listone}",
+    "frase.diario.serie_a": "Across the whole Serie A, over the last {n} matchdays: {fv}; {gioca}.",
+    "frase.diario.serie_a_solo": "Across the whole Serie A, over the last {n} matchdays: {parte}.",
+    "frase.diario.serie_a_fv_meno": "the expected fantasy score erred {pct}% less than the fantasy average",
+    "frase.diario.serie_a_fv_piu": "the expected fantasy score erred {pct}% more than the fantasy average",
+    "frase.diario.serie_a_fv_pari": "the expected fantasy score erred as much as the fantasy average",
+    "frase.diario.serie_a_gioca": "when we say “plays {p}%”, they played {k} times out of 10",
+    "frase.diario.serie_a_attesa.one": "Across the whole Serie A we need {n} more matchday to tell how accurate we are.",
+    "frase.diario.serie_a_attesa.other": "Across the whole Serie A we need {n} more matchdays to tell how accurate we are.",
 
     // ---- [etichette del confronto] ----
     "confronto.fattore_giocare": "Chance of playing",

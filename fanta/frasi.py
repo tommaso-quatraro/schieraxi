@@ -249,6 +249,15 @@ CATALOGO: dict[str, str] = {
     "rose.potrebbe_essere": "potrebbe essere: {elenco}",
     "nomi.ruolo_diverso": "ruolo diverso: indicato {indicato}, nel listone {listone}",
     "nomi.squadra_diversa": "squadra diversa: indicata {indicata}, nel listone {listone}",
+    # Diario, «Quanto ci abbiamo preso»: la riga su tutta la Serie A dal registro delle giornate (precisione.serie_a, #374)
+    "diario.serie_a": "Su tutta la Serie A, nelle ultime {n} giornate: {fv}; {gioca}.",
+    "diario.serie_a_solo": "Su tutta la Serie A, nelle ultime {n} giornate: {parte}.",
+    "diario.serie_a_fv_meno": "il fantavoto atteso ha sbagliato il {pct}% in meno della fantamedia",
+    "diario.serie_a_fv_piu": "il fantavoto atteso ha sbagliato il {pct}% in più della fantamedia",
+    "diario.serie_a_fv_pari": "il fantavoto atteso ha sbagliato quanto la fantamedia",
+    "diario.serie_a_gioca": "quando diciamo «gioca {p}%», ha giocato {k} volte su 10",
+    "diario.serie_a_attesa.one": "Su tutta la Serie A serve ancora {n} giornata per dire quanto ci prendiamo.",
+    "diario.serie_a_attesa.other": "Su tutta la Serie A servono ancora {n} giornate per dire quanto ci prendiamo.",
 }
 
 
