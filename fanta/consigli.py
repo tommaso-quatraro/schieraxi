@@ -774,6 +774,10 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
         entrata = F("confronto.entra_se", titolare=titolare.nome, p=round((1 - titolare.p) * 100), altro=altro.nome, posto=posto_frase(posto_altro))
     if diff > 0.04:
         esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=-diff)
+    elif diff < -0.04 and titolare.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
+        # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341)
+        return scrivi(F("confronto.titolare_che_gioca", altro=altro.nome, p=round(altro.p * 100), titolare=titolare.nome,
+                        pt=round(titolare.p * 100), d=-diff, entrata=entrata))
     elif diff < -0.04:
         esito = F("confronto.esito_peggio", invertita=invertita, attuale=attuale, d=-diff, modulo=m["modulo"])
     else:

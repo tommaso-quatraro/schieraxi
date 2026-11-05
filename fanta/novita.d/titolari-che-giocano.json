@@ -1,0 +1,14 @@
+{
+  "titolo": "Nella formazione consigliata niente titolari che non giocano",
+  "voci": [
+    "Un giocatore che quasi certamente non gioca (meno del 20%, o infortunato, o squalificato) non è più titolare nella consigliata se un compagno dello stesso ruolo gioca almeno al 50% e il cambio costa pochissimi punti attesi.",
+    "Vale per ogni stile, e quindi anche per Oggi, il Diario, il widget e gli avvisi.",
+    "Il confronto tra due giocatori dice il motivo vero del cambio: l'altro quasi certamente non gioca, e quanti punti attesi costa schierare chi gioca."
+  ],
+  "tecnico": [
+    "formazione.migliore: dopo la ricerca, in ogni modulo, _senza_improbabili toglie i titolari con p < IMPROBABILE_SOTTO (0,2) se un compagno di ruolo con p >= COMPAGNO_ALMENO (0,5) costa meno di COSTO_MASSIMO_CAMBIO (0,3) punti attesi; tra i compagni ammessi vince il migliore per lo stile. Costanti nel codice, non in regole.json.",
+    "Misura sulla giornata 9 (lega d'esempio, probabili): titolari sotto il 20% con un compagno al 50% da 9 a 0 su 110 (0 con ogni stile); punti attesi per squadra -0,003 in mediana, -0,13 al massimo. python -m fanta verifica: invariato (63,241 / 62,762 / 66,654).",
+    "Nessun cambio alle API: i campi sono gli stessi, cambia solo chi è titolare.",
+    "consigli._in_formazione: se il titolare gioca almeno COMPAGNO_ALMENO, l'altro meno di IMPROBABILE_SOTTO e invertirli varrebbe più di 0,04 punti attesi, il testo è la frase nuova confronto.titolare_che_gioca (frasi.py e testi.js) invece di confronto.esito_peggio («con il modulo X (non il migliore)…», che era falso). Stesse costanti di formazione.py. Nessun campo nuovo: cambia solo testo e frase (#341)."
+  ]
+}
