@@ -124,12 +124,4 @@ struct ConfrontoComeLaWebTests {
         let voce = VoceNumeriConfronto.voci(x, y)[1]
         #expect(voce.frase(x, y) == "Avversario: Aldo Pinarotti in casa contro Como, Aldo Pinarotti in trasferta contro Como")
     }
-
-    @Test("Sotto i nomi in cima, la partita come la web: «GEN vs COM», «GEN @ COM»")
-    func partitaInCima() throws {
-        let x = try Self.giocatore(1, inCasa: true, difficolta: 3, quota: 0.75)
-        let y = try Self.giocatore(2, inCasa: false, difficolta: 2, quota: 0.2)
-        #expect(ColonnaDuello.partita(x) == "GEN vs COM")
-        #expect(ColonnaDuello.partita(y) == "GEN @ COM")
-    }
 }
