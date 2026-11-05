@@ -53,8 +53,6 @@ struct GiocatoreCorpo: View {
     @Binding var percorso: [PassoScheda]
     @Environment(\.dynamicTypeSize) private var tagliaTesto
     @Environment(\.funzioni) private var funzioni
-    /// Il fantavoto atteso è il «numero eroe» della scheda: grande, ma segue Dynamic Type.
-    @ScaledMetric(relativeTo: .largeTitle) private var misuraNumero: CGFloat = 54
 
     init(id: Int, server: any ServerClient, percorso: Binding<[PassoScheda]>) {
         self.id = id
@@ -186,21 +184,7 @@ struct GiocatoreCorpo: View {
     private func previsione(_ p: Giocatore, ruolo: String, squadra: String?) -> some View {
         Carta("Prossima partita", simbolo: "soccerball") {
             Text(descrizionePartita(p)).font(.subheadline).foregroundStyle(Color.testoSecondario)
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 0) {
-                    NumeroCheSale(valore: p.fvAtteso ?? 0)
-                        .font(.system(size: min(misuraNumero, 110), weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)   // neutro, come sulla web: il colore è solo per gli esiti
-                    Text(FantavotoAtteso.nome + " · se gioca").font(.subheadline.weight(.semibold)).foregroundStyle(Color.testoSecondario)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 0) {
-                    NumeroCheSale(valore: Double(Formato.percento(p.pVoto)), formato: { "\(Formato.intero($0))%" }).font(.title2.bold())
-                    Text("gioca").font(.caption).foregroundStyle(Color.testoSecondario)
-                }
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(FantavotoAtteso.nome) \(Formato.punti(p.fvAtteso)) se gioca. Gioca al \(Formato.percento(p.pVoto)) per cento.")
+            NumeroFantavotoScheda(p: p)
             BarraPercentuale(valore: p.pVoto ?? 0)
             HStack {
                 PillDifficolta(difficolta: p.difficolta, conPartita: true)
