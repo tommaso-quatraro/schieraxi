@@ -1,4 +1,4 @@
-"""Sito di presentazione: HTML ben formato, id unici, demo con nomi inventati."""
+"""Sito di presentazione: HTML ben formato, id unici, esempi con nomi inventati."""
 import re
 from html.parser import HTMLParser
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 SITO = Path(__file__).resolve().parent.parent / "sito"
-PAGINE = ["index.html", "en/index.html", "404.html"]
+PAGINE = ["index.html", "en/index.html", "404.html", "offline.html"]
 VUOTI = {"meta", "link", "img", "br", "input", "hr", "source", "area", "base", "col", "embed", "wbr", "path", "circle", "rect"}
 
 
@@ -41,9 +41,13 @@ def test_html_ben_formato(nome):
     assert len(ids) == len(set(ids)), "id duplicati"
 
 
-def test_demo_con_nomi_inventati():
-    testo = (SITO / "js" / "logica.js").read_text(encoding="utf-8")
-    nomi = re.findall(r"n: '([^']+)'", testo)
-    assert len(nomi) == 16 and len(set(nomi)) == 16  # la rosa della demo
-    noti = {"Immobile", "Lukaku", "Vlahovic", "Osimhen", "Lautaro", "Leao", "Barella", "Donnarumma", "Bastoni", "Theo"}
+@pytest.mark.parametrize("nome", ["index.html", "en/index.html"])
+def test_esempi_con_nomi_inventati(nome):
+    testo = (SITO / nome).read_text(encoding="utf-8")
+    nomi = re.findall(r'<span class="nm">([^<]+)</span>', testo)
+    nomi += re.findall(r'<span class="ord n">\d</span> ([^<]+)</th>', testo)
+    nomi += re.findall(r"<caption>[^:<]+: ([^,<]+),", testo)
+    assert len(nomi) == 15 and len(set(nomi)) == 14  # 11 titolari, 3 in panchina; l'esempio del calcolo è un titolare
+    noti = {"Immobile", "Lukaku", "Vlahovic", "Osimhen", "Lautaro", "Leao", "Barella", "Donnarumma", "Bastoni", "Theo",
+            "Thuram", "Kvaratskhelia", "Dybala", "Pulisic", "Retegui", "Calhanoglu", "Dimarco", "Maignan", "Sommer", "Lookman"}
     assert not noti & set(nomi)

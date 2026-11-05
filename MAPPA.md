@@ -67,10 +67,12 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il
   suo punto di codice in `fonte_codice`.
 - `fanta/novita.json`: storia delle versioni (numero, data, titolo, voci). `fanta/novita.d/`: voci in attesa, un file per pull request.
-- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/`, `sw.js`
-  con `VERSIONE`. Niente script né stili dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`).
-  Il nome «SchieraXI» è in tracciati SVG (nessun font da scaricare): simboli `#wm` (grande) e `#wm-c` (compatto) in cima a ogni pagina,
-  nome animato della prima schermata con classi `wm-*`. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
+- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/` (tema e
+  installazione), `font/` (Archivo semi-stretto in woff2, licenza `OFL.txt` accanto), `sw.js` con `VERSIONE`. Niente script né stili
+  dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`). Grafica della web app «direzione B» (#355): fili al posto
+  delle carte, Archivo per titoli e numeri, niente gradienti né ombre; esempi con nomi e numeri inventati che tornano (i test li rifanno).
+  Il nome «SchieraXI» è in tracciati SVG: simboli `#wm` (grande) e `#wm-c` (compatto, l'unico mostrato, nella barra in alto) in cima a
+  ogni pagina. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
   Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
   Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
@@ -85,7 +87,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
   `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
-- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335).
+- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 12 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
   `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
   `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`, `superpowers/specs/` e `superpowers/plans/` (spec e piani, in italiano).

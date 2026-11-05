@@ -98,7 +98,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 39 | Formazione, nota sotto il campo | righe del perché della scelta (prima solo gli incerti) | mancava (nemmeno gli incerti) | server (`perche_scelta` di `GET /api/formazione`) | web e iPhone fatti nella stessa PR (#356) |
 | 40 | Confronto, «Tutti i numeri» | «Atteso ponderato (con la probabilità di giocare)», «Quando gioca» a parole, «vs COM», «Normale» | «Punti attesi», «Parte titolare 75%», «COM casa», «Media» | web (`apriConfronto`) | fatto sull'iPhone (#293) |
 | 41 | Oggi, giornata finita, recuperi | «Manca il recupero di ATA–PAR» | uguale | «ATA vs PAR», come la carta del rinvio | web e poi iPhone (#310) |
-| 42 | Confronto, in cima ai due nomi | posto sotto il nome («Titolare», «Panchina 2», «Non schierato») | niente posto | web | iPhone da fare (#311; la partita «INT vs ROM» è la #302) |
+| 42 | Confronto, in cima ai due nomi | posto sotto il nome («Titolare», «Panchina 2», «Non schierato») | niente posto | web | fatto sull'iPhone (#311): pillola verde per «Titolare», grigia per gli altri, letta da VoiceOver; la partita «INT vs ROM» è la #302 |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.
