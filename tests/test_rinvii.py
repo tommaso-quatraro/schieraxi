@@ -108,7 +108,7 @@ def test_applica_le_tre_regole(modo, p2, mu2, atteso3):
 
 
 def test_frasi():
-    assert rinvii.frase("aspetta", None, "2026-12-10 20:45") == "partita rinviata: conta il voto del recupero del 10/12"
+    assert rinvii.frase("aspetta", None, "2026-12-10 20:45") == "partita rinviata: conta il voto del recupero (gio 10 dic)"
     assert rinvii.frase("aspetta", None, None) == "partita rinviata: conta il voto del recupero (data da definire)"
     assert rinvii.frase("senza_voto", None) == "partita rinviata: in questa giornata non prende voto"
     assert rinvii.frase("voto_ufficio", 5.5) == "partita rinviata: voto d'ufficio 5,5"
@@ -138,7 +138,7 @@ def test_previsioni_di_consigli_con_la_regola(tmp_path, monkeypatch):
     p, _, _ = consigli._calcola_previsioni(db, d, Regole(), ST, 10, None)                      # aspetta: numeri di sempre
     s = consigli.scheda_previsione(2, p.loc[2])
     assert (s["rinvio"], s["p_voto"], s["fv_atteso"]) == ("aspetta", 0.8, 8.0)
-    assert s["motivi"][0] == "partita rinviata: conta il voto del recupero del 10/12"
+    assert s["motivi"][0] == "partita rinviata: conta il voto del recupero (gio 10 dic)"
     assert s["perche_numero"][0]["chiave"] == "rinvio"
 
 
@@ -381,7 +381,7 @@ console.log(JSON.stringify([cardRinvio({json.dumps(rv)}), cardRinvio(null), card
     assert r.returncode == 0, r.stderr
     html, vuoto, vuoto2 = json.loads(r.stdout)
     assert vuoto == vuoto2 == ""
-    assert "Partite rinviate" in html and "ROM–LAZ" in html and "recupero QUANDO(2026-12-10 20:45)" in html
+    assert "Partite rinviate" in html and "ROM vs LAZ" in html and "ROM–LAZ" not in html and "recupero QUANDO(2026-12-10 20:45)" in html
     assert "recupero da definire" in html
     assert "Rossi &lt;b&gt;" in html and "<b>" not in html.replace("<b>ROM", "").replace("<b>COM", "")    # nome con HTML: escapato
     assert '<option value="voto_ufficio" selected>' in html and "voto d&#39;ufficio" not in html
