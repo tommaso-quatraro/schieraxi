@@ -779,6 +779,9 @@ def formazione(request: Request, squadra: str | None = None, giornata: int | Non
             f = f | {"giornata_saltata": saltata, "giornata_saltata_lega": regole.serie_a_a_lega(saltata, r)}
         if not squadra:
             _copia_automatica(db, ctx, f)
+            stato_scelta = _stato_scelta(ctx, f, r)
+            if stato_scelta:
+                f = f | {"stato_scelta": stato_scelta}          # una copia: la formazione in cache non cambia
         # dopo la scadenza: niente etichette delle probabili, lo stato vero della giornata (fasi.py; f resta intatta nella cache)
         f = fasi.formazione_a_giornata_iniziata(f, db, r, consigli.stagione_corrente(), datetime.now(), _stati_live())
         return _json_diretto(f)
@@ -803,6 +806,17 @@ def _giornata_saltata(db, r, ctx: Contesto, request: Request) -> int | None:
     if scad is None or datetime.now() < scad or avvisi_pronta.prima_partita(db, stagione, g + 1) is None:
         return None
     return g if fasi.entrato_dopo_la_scadenza(stagione, g, scad, dal, ctx.scelte, getattr(ctx, "diario", None)) else None
+
+
+def _stato_scelta(ctx: Contesto, f: dict, regole_: regole.Regole) -> str | None:
+    """Il campo `stato_scelta` della tua Formazione: `nessuna`, `valida` o `non_valida`, con la regola unica della scelta
+    (`scelte.motivo_non_valida`) sui giocatori che la Formazione può schierare (`schede`). A giornata chiusa dice quale formazione
+    vale: la tua scelta se `valida`, altrimenti la consigliata (come Oggi, il riepilogo e il Diario). None se non si sa."""
+    try:
+        ruoli = {int(k): x.get("ruolo") for k, x in (f.get("schede") or {}).items() if isinstance(x, dict)}
+    except (TypeError, ValueError):
+        return None
+    return scelte.stato(scelte.leggi(consigli.stagione_corrente(), f.get("giornata"), ctx.scelte), ruoli, regole_)
 
 
 def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
