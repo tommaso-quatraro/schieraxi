@@ -136,7 +136,7 @@ Tutte le rotte di questa sezione leggono i dati dell'utente (rose, regole, scelt
 | Metodo e percorso | Parametri | Risposta principale |
 |---|---|---|
 | `GET /api/stato` | — | stato della lega e dei dati (`errori_ultimo`: per intero solo all'amministratore, agli altri solo `"<passo>: non riuscito"`); campo facoltativo `sorgente` = indirizzo https del codice sorgente AGPL (stringa vuota se non impostato con `FANTA_SORGENTE`): le app lo mostrano come link «Codice sorgente» solo se non è vuoto |
-| `GET /api/stato-dati` | — | fonti, errori, affidabilità (solo amministratore). Campo nuovo e facoltativo `uso`: `{giorni: 28, dal, al, richieste, per_funzione: [{funzione, richieste}], per_rotta: [{rotta, richieste}], per_giorno: [{giorno, richieste}], nota}`, conteggio anonimo e aggregato dell'uso (nessun utente, nessun indirizzo; la rotta è quella di modello, per esempio `GET /api/giocatore/{calciatore_id}`), 28 giorni, nel file `dati/uso.json`. I client che non lo conoscono lo ignorano. In `controlli` ci sono anche le righe della sentinella (ogni ora): `sentinella` (riassunto) e `sentinella_<invariante>` con `esito` `ok`, `avviso` o `errore`; il `dettaglio` dice solo «utente N», giornata e campo, mai nomi. Il web mostra le righe `sentinella_*` solo quando non sono a posto |
+| `GET /api/stato-dati` | — | fonti, errori, affidabilità (solo amministratore). Campo nuovo e facoltativo `uso`: `{giorni: 28, dal, al, richieste, per_funzione: [{funzione, richieste}], per_rotta: [{rotta, richieste}], per_giorno: [{giorno, richieste}], nota}`, conteggio anonimo e aggregato dell'uso (nessun utente, nessun indirizzo; la rotta è quella di modello, per esempio `GET /api/giocatore/{calciatore_id}`), 28 giorni, nel file `dati/uso.json`. I client che non lo conoscono lo ignorano. In `controlli` ci sono anche le righe della sentinella (ogni ora): `sentinella` (riassunto) e `sentinella_<invariante>` con `esito` `ok`, `avviso` o `errore`; il `dettaglio` dice solo «utente N», giornata e campo, mai nomi. Il web mostra le righe `sentinella_*` solo quando non sono a posto. Campo nuovo e facoltativo `registro` (registro delle giornate, `registro_giornate.py`): `{finestra: 8, soglie: {I1, I2_calibrazione, I2_brier, I3_minimo, I3_massimo}, giornate, voti, presenze, fascia_casi, errore_modello, errore_fantamedia, i1, brier, calibrazione, copertura, verdetto, regge: {I1, I2, I3}, fuori: [...], per_giornata: [{stagione, giornata, salvato, giocatori, con_probabili, misurato, voti, presenze, errore_modello, errore_fantamedia, i1, brier, calibrazione, copertura, fuori, persa}]}`. Le medie sono sulle ultime `finestra` giornate misurate; `i1` = errore quadratico del fantavoto atteso diviso quello della fantamedia, meno 1 (regge se ≤ −0,03); `calibrazione` e `copertura` sono quote (0,05 = 5 punti); `regge` vale `null` finché `verdetto` è falso (meno di 8 giornate) o manca il numero; `per_giornata` dalla più recente, al massimo 38, numeri `null` finché la giornata non è misurata. `persa`: `null`, oppure il motivo in breve (testo) se la giornata non è stata salvata prima della prima partita (allora `salvato` è `null`, `giocatori` 0 e la giornata non si misura mai). Solo giornate e numeri, nessun giocatore |
 | `GET /api/aggiorna` | — | stato dell'aggiornamento in corso (solo amministratore con gli account) |
 | `POST /api/aggiorna` | — (X-Fanta) | avvia l'aggiornamento dei dati (solo amministratore con gli account) |
 | `GET /api/novita` | — | elenco delle versioni: `versione`, `data`, `titolo`, `voci`; con `?lingua=en` o `Accept-Language: en` titolo e voci in inglese dove c'è la traduzione; le versioni senza traduzione hanno un titolo e una voce generici in inglese («Improvements and fixes»), mai l'italiano |
@@ -166,6 +166,17 @@ Tutte le rotte di questa sezione leggono i dati dell'utente (rose, regole, scelt
 `GET /api/diario`: ogni voce di `giornate[]` ha in più, facoltativo, `istantanea`: la formazione che SchieraXI consigliava PRIMA della giornata, oppure `null` se non era stata registrata (giornate passate prima di questa novità: il client scrive «consigliata non registrata»). Forma: `{giornata, modulo, titolari[{id, nome, ruolo}] (11), panchina[{id, nome, ruolo}] (in ordine), atteso, stile, calcolata}`; `calcolata` è l'ora italiana ISO senza fuso, `stile` può mancare o essere `null`. Una per giornata (circa 1 KB), si aggiorna ogni volta che l'app chiede `GET /api/formazione` finché manca la prima partita e poi resta com'è. Nessuna rotta nuova: i client che non conoscono il campo lo ignorano. `consigliata` (la ricostruzione di oggi con i dati di allora) resta com'è e porta i punti fatti. `POST /api/diario/schierata` con `tipo: "consigliata"` usa i titolari di `istantanea` se tutti sono ancora nella rosa, altrimenti la ricostruzione. Un client mostra `istantanea` accanto a `schierata` e evidenzia i `titolari[].id` che differiscono.
 
 Campo `intervallo` (in `/api/formazione`, `/api/oggi`, `/api/widget` e `/api/diario`): `{basso, alto, confidenza: 0.8, indicativo}`, la fascia «tra X e Y» mostrata all'utente. Il punteggio cade dentro la fascia circa 8 volte su 10. `dev` è coerente con la fascia; la vecchia deviazione resta in `dev_simulata`. Nessuna rotta nuova: è un campo aggiunto.
+
+**Consigliata stabile** (dal 5/11/2026, #335; nessun campo nuovo, i client mostrano quello che arriva). La consigliata di una giornata
+(`modulo`, `titolari`, `panchina`, `punteggio_atteso` e la voce del suo modulo nello stile `stile_consigliato`, in
+`/api/formazione`, `/api/oggi`, `/api/widget`, `da_fare`, avvisi e copia alla scadenza) una volta calcolata resta la stessa finché
+la migliore con i dati nuovi non vale almeno 1 punto atteso in più (la soglia dell'avviso alla scadenza), o finché un suo titolare
+non gioca più (uscito dalla rosa, o diventato infortunato, squalificato o improbabile, sotto il 20%; chi lo era già quando la
+consigliata è stata mostrata non conta). Tenuta quella di prima, i suoi punti attesi e la sua
+panchina si rifanno con i dati nuovi; dopo la scadenza della lega resta com'è, panchina compresa. Gli altri moduli e gli altri
+stili sono sempre i migliori del momento: la voce di un altro modulo può avere qualche decimo di punti attesi più della
+consigliata. La scelta salvata dall'utente non cambia mai. Il server ricorda la consigliata in `dati/consigliate.json`
+(`consigli.FILE_CONSIGLIATE`: per ogni squadra, giornata, rosa e regole solo gli id dei giocatori, sotto un'impronta).
 
 ### Fantavoto atteso e «Perché questo numero» (facoltativi: un client vecchio li ignora)
 
@@ -435,6 +446,23 @@ Dove si vedono (tutti campi aggiunti, i client vecchi li ignorano):
 Aggiornamenti più fitti: il servizio rilegge le probabili (e avvisa dei cambi) anche a 60, 30 e 15 minuti prima della scadenza, oltre ai giri di sempre del server. Nessuna rotta nuova; per spegnerli: `FANTA_PIANIFICATORE=0` nel servizio, oppure `aggiornamenti_vicino_scadenza: false` nelle regole. Le probabili hanno quindi un'ora di rilevazione (`probabili.aggiornate_il` in `/api/oggi`) più recente vicino alla scadenza.
 Le app mostrano il numero della lega (`giornata_lega`) quando c'è, altrimenti `giornata`. Cosa devono fare iOS e Android: mostrare il conto alla rovescia verso `scadenza` (se manca, `inizio`) e, nel pannello delle regole, i due valori; se non li conoscono non cambia nulla.
 
+## Momenti di mercato della lega: aste e finestre di scambio
+
+Tre campi della lega dentro `GET/PUT /api/regole` (dal 5/11/2026, facoltativi: se un client vecchio rimanda le regole senza, il
+server tiene i valori che c'erano). Servono al promemoria `rose` di «Da fare» (sotto, `fanta/da_fare.py`, `_momenti_mercato`):
+- `asta_estiva` e `asta_invernale` (oggetto o `null`, predefinito `null`): `{"dal": "2026-09-03", "al": "2026-09-10"}`; `al` si può
+  omettere (un giorno solo). Con `null` valgono le date di partenza, 2-3 settimane dopo la chiusura del mercato della Serie A
+  (`fanta/regole.py`): asta estiva dal 1° al 21 settembre, asta invernale dal 1° al 21 febbraio. La lega non gioca senza rose:
+  se la sua prima giornata (`prima_giornata_lega`) cade dentro il periodo dell'asta estiva, il periodo finisce lì; se la lega è
+  partita prima del 1° settembre, l'asta estiva di partenza non conta (c'è già stata).
+- `finestre_scambio` (elenco o `null`, predefinito `null`): periodi come sopra, al massimo 20. `null` = la lega non le indica e
+  valgono le soste del campionato ricavate dal calendario della Serie A (almeno 10 giorni fra l'ultima partita di una giornata e
+  la prima della successiva; una partita rinviata non conta, regola di `fanta/turno.py`); `[]` = nessuna finestra.
+Date `AAAA-MM-GG`, fine non prima dell'inizio, al massimo 60 giorni per periodo; valori sbagliati: `400` con il testo del problema.
+Contano solo le date della stagione in corso (dal 1° luglio al 30 giugno): date di un'altra stagione rimaste nel file valgono come
+non indicate (aste di partenza e soste). Per ora nessuna schermata le cambia: si scrivono nel file delle regole, con
+`python -m fanta regole --imposta asta_invernale '{"dal": "2027-02-04"}'` o con `PUT /api/regole`.
+
 ## Partite rinviate: regola della lega ed eccezione per una giornata
 
 **Anticipi** (dal 2/11/2026, regola unica di `fanta/turno.py`): il turno comincia dal gruppo principale della giornata (partite a
@@ -588,7 +616,14 @@ Quando compaiono (al massimo 8 voci in tutto; la card di Oggi ne mostra 4):
   `etichetta.rinviata`). Campi e azioni non cambiano. Ogni volta che non si propone un cambio (la consigliata tiene il titolare, o non c'è un sostituto libero dello stesso ruolo) l'azione è «Apri la formazione» e la destinazione `formazione` (`schieraxi://formazione`). Così Oggi, Formazione e confronto dicono la stessa cosa.
 - `formazione` (1 se mancano ≤ 3 ore, 2 fino a 12): formazione non ancora salvata a poche ore dalla scadenza (o salvata ma non più valida: conta come non salvata).
 - `certificato` (1 se ≤ 1 giorno o scaduto, 2 fino a 3 giorni): solo se il client manda `certificato_giorni`.
-- `rose` (2): giornata finita dopo l'ultimo aggiornamento delle rose, e rose ferme da 4 giorni o più.
+- `rose` (2), dal 5/11/2026: solo dopo un momento di mercato della lega e se le rose non sono state aggiornate da quando è
+  cominciato: asta estiva, asta invernale e finestre di scambio delle regole oppure, se la lega non le indica, le date di partenza
+  delle aste e le soste del campionato (sezione «Momenti di mercato della lega»). Compare dall'inizio del momento e resta fino
+  all'aggiornamento delle rose o fino alla scadenza (della lega) della prima giornata della lega dopo la FINE del momento, così
+  copre anche un'asta che cade alla fine del periodo. Testo: «È il momento di aste e scambi nella lega: se le
+  rose sono cambiate, aggiornale prima della giornata 12.» (chiave `dafare.rose_mercato`, parametro `n` = giornata della lega). Campi,
+  `id` (`rose-vecchie`), azione e destinazione non cambiano; `giorni` = giorni dall'ultimo aggiornamento delle rose. Prima compariva
+  dopo ogni giornata giocata con le rose ferme da 4 giorni (chiave `dafare.rose_vecchie`, che il server non scrive più).
 - `svincolato` e `scambio` (3): solo se già in cache e solo se superano il buon senso (`fanta/buon_senso.py`): guadagno di almeno 2-3 punti (secondo il ruolo) sulle prossime 5 giornate e positivo nella maggior parte di esse, chi entra gioca davvero (titolare fisso, non in dubbio), chi esce non è un titolare utile né costoso, crediti sufficienti, nessun giocatore preso o lasciato libero negli ultimi 21 giorni. Campo in più facoltativo `motivo` (una frase: perché conviene), anche dentro il `testo`. Mai calcolati qui. Dubbi, coperture, svincolati e scambi insieme sono al massimo 3 consigli, e nessun giocatore compare in due consigli. Se non c'è niente di utile `da_fare` può essere vuota (i client scrivono «Nessuna azione utile oggi»).
 - `diario` (3): l'ultima giornata finita senza formazione dichiarata (una scelta salvata che non si può schierare con la rosa non conta, come nel Diario).
 - `backup`: non si genera più dal 1/11/2026 (le app non scaricano più la copia di sicurezza). Un client vecchio che la conosce non riceve niente da mostrare.

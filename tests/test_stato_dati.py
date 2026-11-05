@@ -28,6 +28,26 @@ def test_calibrazione_confronta_probabili_e_chi_ha_giocato(tmp_path):
     assert r["partite"] == {"totali": 2, "giocate": 1} and r["probabili"][0]["giornata"] == 1 and r["calibrazione"]["giornate"] == 1
 
 
+def test_stato_dati_ha_il_registro_delle_giornate(tmp_path):
+    from datetime import datetime
+    from fanta import registro_giornate
+    db = archivio.apri(tmp_path / "t.sqlite")
+    for g in (9, 10):
+        db.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) VALUES (?, ?, ?, 600, 1)",
+                   (ST, g, f"2026-11-0{g - 8}T18:20:00"))
+    misura = {"voti": 2, "sq_modello": 2.0, "sq_fantamedia": 2.25, "presenze": 4, "brier_somma": 0.4,
+              "fasce": [[2, 0.3, 0]] + [[0, 0.0, 0]] * 8 + [[2, 1.9, 2]], "fascia_casi": 20, "fascia_dentro": 16}
+    registro_giornate.registra_misura(db, ST, 9, misura, datetime(2026, 11, 3, 12))
+    r = stato_dati.riepilogo(db, ST)["registro"]
+    assert r["finestra"] == 8 and r["soglie"]["I1"] == -0.03 and r["soglie"]["I3_minimo"] == 0.72
+    assert r["giornate"] == 1 and not r["verdetto"] and r["regge"] == {"I1": None, "I2": None, "I3": None}
+    assert r["errore_modello"] == 1.0 and r["errore_fantamedia"] == 1.061 and r["copertura"] == 0.8 and r["brier"] == 0.1
+    assert [(g["giornata"], g["misurato"] is not None) for g in r["per_giornata"]] == [(10, False), (9, True)]
+    nona = r["per_giornata"][1]
+    assert nona["errore_modello"] == 1.0 and nona["giocatori"] == 600 and nona["con_probabili"] is True and nona["fuori"] == []
+    assert r["per_giornata"][0]["errore_modello"] is None                     # salvata, giornata non ancora finita
+
+
 def test_fattori_automatici_solo_con_abbastanza_dati():
     base = {"giornate": 3, "gruppi": [{"gruppo": "Titolare 90-100%", "n": 120, "osservato": 0.60, "previsto": 0.95, "indicativo": False},
                                       {"gruppo": "Panchina 20-49%", "n": 10, "osservato": 0.1, "previsto": 0.3, "indicativo": True},

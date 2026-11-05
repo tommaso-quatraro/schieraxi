@@ -1,5 +1,97 @@
 [
   {
+    "versione": "1.402",
+    "data": "2026-11-05T20:15:49",
+    "titolo": "Da fare: il promemoria «aggiorna le rose» solo quando le rose possono essere cambiate",
+    "voci": [
+      "Il promemoria per aggiornare le rose non compare più dopo ogni giornata, ma solo dopo le aste e durante le soste del campionato, se da allora non le hai aggiornate.",
+      "Senza date della lega le aste sono dal 1° al 21 settembre e dal 1° al 21 febbraio; le date vere delle aste e degli scambi si possono scrivere nelle regole della lega.",
+      "Dice entro quale giornata della lega aggiornarle e sparisce quando le aggiorni o quando si chiude la formazione di quella giornata."
+    ],
+    "tecnico": [
+      "Issue #334. da_fare._rose_vecchie ora riceve le regole e usa _momenti_mercato: asta_estiva e asta_invernale delle regole, o di partenza regole.ASTA_ESTIVA_PREDEFINITA (1-21/9) e ASTA_INVERNALE_PREDEFINITA (1-21/2); l'asta estiva finisce alla scadenza della prima giornata della lega se cade dentro il periodo, e quella di partenza non conta se la lega è partita prima; finestre_scambio delle regole; con finestre_scambio null (o solo date di altre stagioni) le soste dal calendario: almeno GIORNI_SOSTA = 10 giorni fra l'ultima partita di una giornata e la prima della successiva, con la regola del turno di turno.py (una partita rinviata non sposta la fine della giornata). Visibile dall'inizio del momento fino alla scadenza della lega (avvisi.scadenza) della prima giornata della lega dopo la fine del momento, se le rose (data di modifica del file) sono più vecchie dell'inizio. Tolto GIORNI_ROSE.",
+      "Campi nuovi facoltativi di regole.json e di GET/PUT /api/regole: asta_estiva e asta_invernale ({dal, al?} o null = date di partenza) e finestre_scambio (elenco di {dal, al?} o null; [] = nessuna finestra), date AAAA-MM-GG, al massimo 20 finestre e 60 giorni per periodo. PUT /api/regole tiene i valori che c'erano se un client vecchio non li manda (campi_lega).",
+      "Frase nuova dafare.rose_mercato con il parametro n (giornata della lega), in frasi.py e testi.js. dafare.rose_vecchie resta nel catalogo solo per la demo dell'app iPhone, che va allineata. Voce rose con gli stessi campi di prima (id, azione, destinazione, giorni): i client non devono fare niente."
+    ]
+  },
+  {
+    "versione": "1.401",
+    "data": "2026-11-05T19:32:58",
+    "titolo": "Nella formazione consigliata niente titolari che non giocano",
+    "voci": [
+      "Un giocatore che quasi certamente non gioca (meno del 20%, o infortunato, o squalificato) non è più titolare nella consigliata se un compagno dello stesso ruolo gioca almeno al 50% e il cambio costa pochissimi punti attesi.",
+      "Vale per ogni stile, e quindi anche per Oggi, il Diario, il widget e gli avvisi.",
+      "Il confronto tra due giocatori dice il motivo vero del cambio: l'altro quasi certamente non gioca, e quanti punti attesi costa schierare chi gioca."
+    ],
+    "tecnico": [
+      "formazione.migliore: dopo la ricerca, in ogni modulo, _senza_improbabili toglie i titolari con p < IMPROBABILE_SOTTO (0,2) se un compagno di ruolo con p >= COMPAGNO_ALMENO (0,5) costa meno di COSTO_MASSIMO_CAMBIO (0,3) punti attesi; tra i compagni ammessi vince il migliore per lo stile. Costanti nel codice, non in regole.json.",
+      "Misura sulla giornata 9 (lega d'esempio, probabili): titolari sotto il 20% con un compagno al 50% da 9 a 0 su 110 (0 con ogni stile); punti attesi per squadra -0,003 in mediana, -0,13 al massimo. python -m fanta verifica: invariato (63,241 / 62,762 / 66,654).",
+      "Nessun cambio alle API: i campi sono gli stessi, cambia solo chi è titolare.",
+      "consigli._in_formazione: se il titolare gioca almeno COMPAGNO_ALMENO, l'altro meno di IMPROBABILE_SOTTO e invertirli varrebbe più di 0,04 punti attesi, il testo è la frase nuova confronto.titolare_che_gioca (frasi.py e testi.js) invece di confronto.esito_peggio («con il modulo X (non il migliore)…», che era falso). Stesse costanti di formazione.py. Nessun campo nuovo: cambia solo testo e frase (#341)."
+    ]
+  },
+  {
+    "versione": "1.400",
+    "data": "2026-11-05T19:23:22",
+    "titolo": "La copia di ogni notte conserva anche il registro delle giornate",
+    "voci": [
+      "La copia di sicurezza fatta ogni notte ora conserva anche i numeri mostrati prima di ogni giornata: se il server va rifatto da capo, la misura di quanto ci prendono i consigli riparte da dove era."
+    ],
+    "tecnico": [
+      "backup-dati.sh esporta le tabelle registro_giornate e registro_giocatori dell'archivio in dati/registro-giornate.json con `python3 -m fanta.registro_copia esporta` (nuovo modulo, solo libreria standard: lo script usa il Python di sistema). Archivio aperto in sola lettura, le due tabelle lette nella stessa transazione: coerente anche a servizio acceso, compresi i dati ancora nel file -wal. L'archivio intero resta fuori dalla copia (si riscarica con aggiorna).",
+      "Se l'esportazione non riesce, la copia di quella notte non si fa e non parte la rotazione: restano le copie vecchie con il registro buono; il motivo va in backup-dati.log.",
+      "Ripristino: `python -m fanta.registro_copia importa dati/registro-giornate.json` (docs/RIPRISTINO-SERVER.md, passo 5). INSERT OR IGNORE in una sola transazione: le righe già presenti restano, si può ripetere; file controllato prima di scrivere (formato, solo le due tabelle, colonne dell'archivio con tutta la chiave, valori semplici, tetto 100 MB)."
+    ]
+  },
+  {
+    "versione": "1.399",
+    "data": "2026-11-05T19:20:10",
+    "titolo": "Misura interna del consiglio di formazione",
+    "voci": [
+      "Nessun cambiamento nell'app: c'è una nuova misura interna di quanto è buona la formazione consigliata, per controllare i prossimi miglioramenti."
+    ],
+    "tecnico": [
+      "Nuovo `python -m fanta verifica --consiglio [GIORNATA]` (fanta/verifica_consiglio.py; #328, lavoro L0 di #166): indicatori C1-C4 della proposta con le loro soglie. C1 punti veri contro S2 (fantamedia tra chi ha preso voto la giornata prima), C2 stabilità con altro seme e piccolo ritocco dei dati (soglia = notifiche.SOGLIA_AVVISO_PUNTI), C3 titolari sotto il 20% o fuori con un compagno di ruolo al 50% e il costo di scambiarli, C4 scelte che sembrano storte spiegate da «incerti» e titolari senza un motivo proprio nel «perché questo numero».",
+      "Parte A sulle giornate giocate (come verifica, senza probabili), parte B sulla formazione di consigli.formazione nell'ultima giornata con le probabili (o quella indicata; senza previsioni la parte B si salta e il rapporto dice perché). 600 simulazioni come l'app, semi fissi: stessi dati, stessi numeri. Circa mezzo minuto.",
+      "Lega d'esempio e archivio di sviluppo: consigliata / S1 / S2 / senno di poi 62,95 / 62,32 / 62,29 / 66,47 (consigliata meno S2 +0,66, errore standard 0,49); C3 9 titolari su 110; C4 22 scelte storte su 40 reparti (8 spiegate) e 48 titolari su 110 senza motivo proprio; ritocco con 3 o più titolari cambiati 18% (A) e 23% (B).",
+      "Nessun numero dell'app cambia: `python -m fanta verifica` di default identico prima e dopo."
+    ]
+  },
+  {
+    "versione": "1.398",
+    "data": "2026-11-05T19:09:43",
+    "titolo": "La formazione consigliata non cambia più per pochi decimi",
+    "voci": [
+      "Una volta mostrata, la formazione consigliata della giornata resta la stessa finché una nuova non vale almeno 1 punto atteso in più, la stessa soglia dell'avviso prima della scadenza.",
+      "Cambia sempre, invece, se un titolare consigliato non gioca più: si è infortunato, è squalificato, è diventato poco probabile o non è più nella tua rosa.",
+      "Formazione, Oggi, widget, Da fare e avvisi mostrano la stessa consigliata; dopo la scadenza non cambia più. La formazione che salvi tu non viene mai toccata."
+    ],
+    "tecnico": [
+      "consigli.stabile confronta la migliore con la consigliata di prima sulle stesse simulazioni; soglia consigli.SOGLIA_CAMBIO_PUNTI = notifiche.SOGLIA_AVVISO_PUNTI. Cambia sempre per un titolare uscito dalla rosa o diventato fuori o improbabile (chi lo era già quando è stata mostrata sta in non_giocano).",
+      "consigli.formazione ricorda la consigliata in dati/consigliate.json (solo id, chiave = impronta di squadra, rosa, regole, giornata e simulazioni; tetto MAX_CONSIGLIATE) e la usa nella chiave della cache.",
+      "Misura dei ritocchi: prove/misura_stabilita.py (#335)."
+    ]
+  },
+  {
+    "versione": "1.397",
+    "data": "2026-11-05T19:07:49",
+    "titolo": "Ogni giornata misuriamo quanto ci prendono i nostri numeri",
+    "voci": [
+      "Poco prima della prima partita di ogni giornata il server conserva i numeri che l'app mostra per tutti i giocatori della Serie A: «gioca N%», fantavoto atteso, gol e assist attesi, minuti attesi e probabili formazioni. Solo numeri, nessun dato personale.",
+      "A giornata finita misura quanto ci hanno preso: errore del fantavoto atteso contro quello della fantamedia, «gioca N%» contro chi ha giocato davvero, punti veri dentro la fascia «8 volte su 10». Le medie delle ultime 8 giornate restano a disposizione di chi gestisce il server.",
+      "Se una media resta fuori dal limite per due giornate di fila, chi gestisce il server riceve un avviso.",
+      "Se i numeri di una giornata non si riescono a conservare prima della prima partita, chi gestisce il server riceve un avviso con il motivo, e la giornata resta segnata come persa."
+    ],
+    "tecnico": [
+      "Nuovo modulo registro_giornate.py (#326, L1 di #165): negli ultimi 10 minuti prima della prima partita (avvisi.prima_partita) salva consigli.previsioni con Regole() per ogni giocatore della Serie A, esclusi quelli con la partita già iniziata, con la fantamedia di allora. Una volta sola per giornata; nessuna richiesta in più alle fonti.",
+      "Archivio: tabelle nuove registro_giocatori e registro_giornate (CREATE TABLE IF NOT EXISTS, niente migrazioni distruttive). Non si ricostruiscono con aggiorna: una giornata non salvata è persa.",
+      "Misura a turno finito (fasi.fine_giornata) da 24 ore con i voti di tutte le partite giocate, o da 72 ore senza le partite ancora senza voti. I1 = RMSE del fantavoto atteso / RMSE della fantamedia - 1 (soglia -0,03); I2 = errore di calibrazione su fasce di 10 punti (≤ 0,05) e Brier (≤ 0,15); I3 = copertura della fascia 10-90% su 20 rose estratte a sorte con seme fisso, 300 simulazioni (tra 0,72 e 0,88). Medie sulle ultime 8 giornate misurate, verdetto solo a finestra piena.",
+      "Avviso con sentinella.manda_ntfy quando un indicatore è fuori soglia nella giornata misurata e in quella prima; una volta sola finché resta fuori, riprova al minuto dopo se l'invio non riesce.",
+      "Giornata persa: se all'inizio della prima partita la giornata non è salvata (previsioni in errore, zero righe, servizio fermo) registro_giornate.segna_perse scrive una riga con salvato NULL e il motivo in breve nella colonna nuova `persa` (registro_giornate), che non si misura mai; avvisa_perse manda un solo avviso (sentinella.manda_ntfy) e riprova se l'invio non riesce. Contano le giornate dalla prima del registro (o dalla prima tentata) in poi. Nel log: tipo d'errore e punti del codice (file e righe, senza messaggio) e il motivo delle zero righe (colonne mancanti, giornata diversa, numeri mancanti).",
+      "Gira nel thread del pianificatore (pianificatore._registro, non alza mai); FANTA_REGISTRO_GIORNATE=0 lo spegne (spento nei test da conftest). GET /api/stato-dati: campo nuovo e facoltativo `registro` (docs/API.md); la pagina web non lo mostra ancora."
+    ]
+  },
+  {
     "versione": "1.396",
     "data": "2026-11-05T17:57:51",
     "titolo": "Misura interna: i consigli con una fonte di dati in meno",
