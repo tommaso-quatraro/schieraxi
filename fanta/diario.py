@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import consigli, incertezza, rinvii, scelte
+from . import indicatori_consiglio as ic
 from . import formazione as fz
 from .blocco import BloccoFile
 from .lega import Rose
@@ -40,11 +41,13 @@ def carica(percorso: Path | None = None) -> dict:
         return {"giornate": {}}
 
 
-def _scrivi(percorso: Path | None, voci: dict | None = None, istantanee: dict | None = None) -> None:
+def _scrivi(percorso: Path | None, voci: dict | None = None, istantanee: dict | None = None, cambi: dict | None = None) -> None:
     """Aggiunge voci e/o istantanee al file ricaricandolo subito prima di scrivere: il calcolo del diario è lungo e nel frattempo
     la schermata della formazione può aver salvato un'istantanea nuova, che non va persa. Il blocco vale anche fra processi
     (servizio e comando del cron) e una voce con la formazione schierata non viene MAI sostituita da una che non ce l'ha:
-    il cron, che ha calcolato su una copia vecchia, non cancella un «Ho schierato» arrivato nel frattempo dall'app."""
+    il cron, che ha calcolato su una copia vecchia, non cancella un «Ho schierato» arrivato nel frattempo dall'app.
+    `cambi` = {chiave: cambio} (`indicatori_consiglio.cambio`): si aggiunge in fondo a quelli della giornata, al massimo
+    `indicatori_consiglio.MAX_CAMBI` (gli ultimi). Stanno a parte, fuori dalle istantanee che l'app riceve."""
     file = percorso or FILE
     with _blocco, BloccoFile(file.with_name(file.name + ".lock")):
         d = carica(percorso)
@@ -56,6 +59,14 @@ def _scrivi(percorso: Path | None, voci: dict | None = None, istantanee: dict | 
             for vecchia in chiavi_vecchie(ist, MAX_ISTANTANEE):
                 ist.pop(vecchia, None)
             d["istantanee"] = ist
+        if cambi:
+            tutti = d["cambi"] if isinstance(d.get("cambi"), dict) else {}
+            for chiave, c in cambi.items():
+                prima = tutti.get(chiave) if isinstance(tutti.get(chiave), list) else []
+                tutti[chiave] = (prima + [c])[-ic.MAX_CAMBI:]
+            for vecchia in chiavi_vecchie(tutti, MAX_ISTANTANEE):
+                tutti.pop(vecchia, None)
+            d["cambi"] = tutti
         scrivi_sicuro(file, json.dumps(d, ensure_ascii=False))
 
 
@@ -78,10 +89,16 @@ def _giocatore(x: dict) -> dict:
     return g
 
 
+def _adesso() -> datetime:
+    return datetime.now()
+
+
 def salva_istantanea(f: dict, stagione: str, percorso: Path | None = None) -> bool:
     """Ricorda la formazione consigliata di una giornata (modulo, 11 titolari, panchina in ordine, punti attesi, stile, ora del calcolo):
     circa 1 KB per giornata, una sola per giornata. Chi chiama la usa solo finché la formazione è aperta; dopo la scadenza non si
-    chiama più e quella già salvata resta com'è (congelata). True se ha scritto."""
+    chiama più e quella già salvata resta com'è (congelata). True se ha scritto.
+    Per gli indicatori del consiglio (`indicatori_consiglio.py`): `misure` = C3 e C4 di questa consigliata; quando l'istantanea si
+    sovrascrive con titolari diversi si registra il cambio (C2), a parte."""
     g = f.get("giornata")
     tit = [_giocatore(x) for x in f.get("titolari", []) if isinstance(x, dict) and "id" in x]
     if not isinstance(g, int) or len(tit) != 11:
@@ -90,13 +107,16 @@ def salva_istantanea(f: dict, stagione: str, percorso: Path | None = None) -> bo
     nuova = {"giornata": g, "modulo": str(f.get("modulo", ""))[:8], "titolari": tit,
              "panchina": [_giocatore(x) for x in f.get("panchina", []) if isinstance(x, dict) and "id" in x][:12],
              "atteso": round(float(f.get("punteggio_atteso", 0.0)), 1), "stile": stile}
+    if (m := ic.misure(f)) is not None:
+        nuova["misure"] = m
     chiave = f"{stagione}/{g}"
     prima = carica(percorso).get("istantanee")
     vecchia = prima.get(chiave) if isinstance(prima, dict) else None
     if isinstance(vecchia, dict) and {k: v for k, v in vecchia.items() if k != "calcolata"} == nuova:
         return False
-    nuova["calcolata"] = datetime.now().isoformat(timespec="seconds")
-    _scrivi(percorso, istantanee={chiave: nuova})
+    nuova["calcolata"] = _adesso().isoformat(timespec="seconds")
+    c = ic.cambio(vecchia, f, nuova["calcolata"]) if isinstance(vecchia, dict) else None
+    _scrivi(percorso, istantanee={chiave: nuova}, cambi={chiave: c} if c else None)
     return True
 
 

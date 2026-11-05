@@ -60,7 +60,8 @@ def rosa_s2(rosa: list[fz.Giocatore], ha_giocato, fantamedia) -> list[fz.Giocato
 
 
 # ---------------------------------------------------------------- C3: titolari che non giocano
-def _fuori(s: dict) -> bool:
+def e_fuori(s: dict) -> bool:
+    """Vero se la scheda è di un giocatore fuori (infortunato, squalificato, senza voto per il rinvio)."""
     return s.get("stato") in consigli.FUORI or s.get("titolarita") == "fuori"
 
 
@@ -76,9 +77,9 @@ def non_giocano(f: dict) -> list[tuple[int, int | None]]:
     esclusi = _esclusi(f)
     esito = []
     for t in f["titolari"]:
-        if not (_fuori(t) or t["p_voto"] < IMPROBABILE_SOTTO):
+        if not (e_fuori(t) or t["p_voto"] < IMPROBABILE_SOTTO):
             continue
-        compagni = [s for s in esclusi if s["ruolo"] == t["ruolo"] and s["p_voto"] >= COMPAGNO_DA and not _fuori(s)]
+        compagni = [s for s in esclusi if s["ruolo"] == t["ruolo"] and s["p_voto"] >= COMPAGNO_DA and not e_fuori(s)]
         meglio = max(compagni, key=lambda s: s["punti_attesi"], default=None)
         esito.append((int(t["id"]), None if meglio is None else int(meglio["id"])))
     return esito
