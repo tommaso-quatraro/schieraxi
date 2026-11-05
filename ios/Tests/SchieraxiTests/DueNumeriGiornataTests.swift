@@ -29,6 +29,19 @@ struct DueNumeriGiornataTests {
         #expect(TempiLega.etichetta(serieA: caso.serieA, lega: caso.lega) == caso.atteso)
     }
 
+    @Test("Le stesse forme della web (`frase.giornata.lega` e `frase.giornata.serie_a` di `testi.js`), appena la web le ha")
+    func comeLaWeb() throws {
+        let web = try TestiWeb()
+        // prima che la PR della web sia su `main` le chiavi non ci sono: vale il vocabolario (test qui sopra)
+        if let lega = try? web.italiano("frase.giornata.lega") {
+            #expect(lega.replacingOccurrences(of: "{n}", with: "8").replacingOccurrences(of: "{a}", with: "11")
+                    == NomeGiornata(serieA: 11, lega: 8).intero)
+        }
+        if let serieA = try? web.italiano("frase.giornata.serie_a") {
+            #expect(serieA.replacingOccurrences(of: "{a}", with: "11") == NomeGiornata(serieA: 11, lega: nil).intero)
+        }
+    }
+
     @Test("Dove si parla solo del calendario di Serie A: «11ª giornata di Serie A»")
     func soloSerieA() {
         #expect(TempiLega.serieA(11) == "11ª giornata di Serie A")
