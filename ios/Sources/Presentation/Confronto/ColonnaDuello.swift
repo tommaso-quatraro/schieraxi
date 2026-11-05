@@ -5,6 +5,11 @@ struct ColonnaDuello: View {
     let g: Giocatore
     let scelto: Bool
 
+    /// Da fare (#293).
+    nonisolated static func partita(_ g: Giocatore) -> String {
+        "\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")"
+    }
+
     var body: some View {
         VStack(spacing: 6) {
             AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome, ruolo: g.ruolo)

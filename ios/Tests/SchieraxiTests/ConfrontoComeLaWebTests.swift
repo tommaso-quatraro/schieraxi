@@ -57,4 +57,79 @@ struct ConfrontoComeLaWebTests {
     func percentuale() {
         #expect(Confronto.valoreFattore(Self.fattore(percentuale: true), 0.45) == "45%")
     }
+
+    // MARK: «Tutti i numeri» (#293)
+
+    private static func giocatore(_ id: Int, inCasa: Bool, difficolta: Int, quota: Double?) throws -> Giocatore {
+        let q = quota.map { #""quota_titolare": \#($0),"# } ?? ""
+        let json = #"""
+        {"id": \#(id), "nome": "Aldo Pinarotti", "ruolo": "C", "squadra": "genoa", "avversario": "como", "in_casa": \#(inCasa), \#(q)
+         "p_voto": 0.8, "fv_atteso": 6.4, "punti_attesi": 5.125, "indice": 72, "difficolta": \#(difficolta),
+         "p_gol": 0.18, "p_assist": 0.12, "p_giallo": 0.2}
+        """#
+        return try Decodifica.decodifica(Data(json.utf8))
+    }
+
+    @Test("Le voci della tabella con le parole della web, nello stesso ordine")
+    @MainActor
+    func vociComeLaWeb() throws {
+        let web = try TestiWeb()
+        let chiavi = ["mercato.indice", "mercato.avversario", "mercato.partita", "mercato.gioca_riga", "mercato.fantavoto_atteso_riga",
+                      "mercato.atteso_ponderato", "mercato.parte_titolare", "mercato.segna", "mercato.assist", "mercato.giallo"]
+        // in testa a una riga con la maiuscola: la web scrive «segna», «assist», «giallo» con le chiavi della scheda
+        let attese = try chiavi.map { try web.italiano($0).primaMaiuscola }
+        let x = try Self.giocatore(1, inCasa: true, difficolta: 3, quota: 0.75)
+        let y = try Self.giocatore(2, inCasa: false, difficolta: 2, quota: 0.2)
+        #expect(VoceNumeriConfronto.voci(x, y).map(\.titolo) == attese)
+    }
+
+    @Test("I valori come la web: «vs COM» / «@ COM», la difficoltà e «Quando gioca» a parole")
+    @MainActor
+    func valoriComeLaWeb() throws {
+        let web = try TestiWeb()
+        let x = try Self.giocatore(1, inCasa: true, difficolta: 3, quota: 0.75)
+        let y = try Self.giocatore(2, inCasa: false, difficolta: 2, quota: 0.2)
+        let voci = VoceNumeriConfronto.voci(x, y)
+        try #require(voci.count == 10)
+        #expect(voci[1].a == "vs COM", "come le pedine e le righe, mai «COM casa»")
+        #expect(voci[1].b == "@ COM")
+        let normale = try web.italiano("diff.3"), abbordabile = try web.italiano("diff.2")
+        #expect(voci[2].a == normale)
+        #expect(voci[2].b == abbordabile)
+        let quasiSempre = try web.italiano("mercato.parte_quasi_sempre"), diRado = try web.italiano("mercato.parte_di_rado")
+        #expect(voci[6].a == quasiSempre)
+        #expect(voci[6].b == diRado)
+        #expect(voci[5].a == "5,13")
+    }
+
+    @Test("«Quando gioca» a parole, con le soglie della web (`partenzaAParole`)", arguments: [
+        (0.7, "mercato.parte_quasi_sempre"), (0.95, "mercato.parte_quasi_sempre"), (0.4, "mercato.parte_a_volte"),
+        (0.69, "mercato.parte_a_volte"), (0.39, "mercato.parte_di_rado"), (0, "mercato.parte_di_rado"),
+    ])
+    func quandoGioca(quota: Double, chiave: String) throws {
+        let parola = try TestiWeb().italiano(chiave)
+        #expect(VoceNumeriConfronto.quandoGioca(quota) == parola)
+    }
+
+    @Test("«Quando gioca» senza il dato: il trattino")
+    func quandoGiocaSenzaDato() {
+        #expect(VoceNumeriConfronto.quandoGioca(nil) == "–")
+    }
+
+    @Test("VoiceOver legge l'avversario per intero: «in casa contro Como»")
+    @MainActor
+    func avversarioAVoce() throws {
+        let x = try Self.giocatore(1, inCasa: true, difficolta: 3, quota: 0.75)
+        let y = try Self.giocatore(2, inCasa: false, difficolta: 2, quota: 0.2)
+        let voce = VoceNumeriConfronto.voci(x, y)[1]
+        #expect(voce.frase(x, y) == "Avversario: Aldo Pinarotti in casa contro Como, Aldo Pinarotti in trasferta contro Como")
+    }
+
+    @Test("Sotto i nomi in cima, la partita come la web: «GEN vs COM», «GEN @ COM»")
+    func partitaInCima() throws {
+        let x = try Self.giocatore(1, inCasa: true, difficolta: 3, quota: 0.75)
+        let y = try Self.giocatore(2, inCasa: false, difficolta: 2, quota: 0.2)
+        #expect(ColonnaDuello.partita(x) == "GEN vs COM")
+        #expect(ColonnaDuello.partita(y) == "GEN @ COM")
+    }
 }

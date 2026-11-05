@@ -16,6 +16,9 @@ struct VoceNumeriConfronto: Identifiable {
         "\(titolo): \(x.nomeCorto) \(a), \(y.nomeCorto) \(b)"
     }
 
+    /// Da fare (#293).
+    static func quandoGioca(_ quota: Double?) -> String { "\(Formato.percento(quota))%" }
+
     /// Le voci, nell'ordine di sempre.
     @MainActor
     static func voci(_ x: Giocatore, _ y: Giocatore) -> [VoceNumeriConfronto] {
