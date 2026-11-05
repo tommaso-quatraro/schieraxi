@@ -60,4 +60,5 @@ Esce con 0 se è tutto a posto, 1 se ci sono violazioni gravi, 2 se una scena no
 
 ## Perché le foto non vanno nel repository
 Il repository è pubblico e le schermate mostrano nomi di calciatori veri: le foto restano fuori. Lo strumento si rifiuta di
-scrivere in una cartella dentro il repository. Nelle pull request vanno solo le misure e l'esito di axe.
+scrivere in una cartella dentro il repository (da una worktree, anche dentro la cartella principale, dove le foto non
+sono escluse dai commit). Nelle pull request vanno solo le misure e l'esito di axe.

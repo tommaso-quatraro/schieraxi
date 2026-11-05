@@ -35,14 +35,29 @@ def test_axe_del_repository_e_tutte_le_larghezze_e_i_temi():
     assert 'color_scheme="light"' in FOTO and 'color_scheme="dark"' in FOTO
 
 
-def test_le_foto_non_finiscono_nel_repository():
+def test_le_foto_non_finiscono_nel_repository(tmp_path):
     assert "def fuori_dal_repository(" in FOTO           # rifiuta una cartella di uscita dentro il repository
     m = _modulo()
     with pytest.raises(SystemExit):
         m.fuori_dal_repository(RADICE / "foto-prova")
     with pytest.raises(SystemExit):
         m.fuori_dal_repository(RADICE)
-    assert m.fuori_dal_repository(RADICE.parent / "fuori-dal-repository") == (RADICE.parent / "fuori-dal-repository").resolve()
+    assert m.fuori_dal_repository(tmp_path / "foto") == (tmp_path / "foto").resolve()     # cartella temporanea: fuori
+
+
+def test_da_una_worktree_rifiuta_anche_la_cartella_principale(tmp_path, monkeypatch):
+    """Da una worktree (`.claude/worktrees/<nome>`) la cartella principale del repository è un altro repository di lavoro:
+    lì .gitignore non esclude le foto, quindi va rifiutata anche lei."""
+    m = _modulo()
+    principale = tmp_path / "principale"
+    worktree = principale / ".claude" / "worktrees" / "agente"
+    worktree.mkdir(parents=True)
+    monkeypatch.setattr(m, "RADICE", worktree)
+    monkeypatch.setattr(m, "_principale", lambda: principale)
+    for dentro in (principale / "foto", principale, worktree / "foto"):
+        with pytest.raises(SystemExit):
+            m.fuori_dal_repository(dentro)
+    assert m.fuori_dal_repository(tmp_path / "altrove") == (tmp_path / "altrove").resolve()
 
 
 def test_le_scene_principali_ci_sono_tutte():
@@ -142,6 +157,23 @@ def test_il_server_di_prova_si_ferma_anche_se_qualcosa_va_storto(tmp_path):
                 assert r.status == 200
             raise RuntimeError("prova di un errore a metà")
     assert server.processo.poll() is not None
+
+
+def test_ctrl_c_mentre_aspetta_il_server_lo_ferma(tmp_path, monkeypatch):
+    """Ctrl+C durante l'attesa (fino a 30 s): `__enter__` non finisce, quindi il `with` non chiamerebbe `__exit__`."""
+    m = _modulo()
+
+    def interrompi(*a, **k):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(m.urllib.request, "urlopen", interrompi)
+    comando = [sys.executable, "-c", "import time; time.sleep(60)"]
+    server = m.ServerDiProva(comando, "http://127.0.0.31:1", cwd=tmp_path, env=None, log=tmp_path / "server.log")
+    with pytest.raises(KeyboardInterrupt):
+        with server:
+            pass
+    assert server.processo.poll() is not None
+    assert server._file_log.closed
 
 
 def test_server_che_non_parte_dice_dove_guardare(tmp_path):

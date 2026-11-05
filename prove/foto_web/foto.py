@@ -74,8 +74,10 @@ def fuori_dal_repository(cartella) -> Path:
     """La cartella delle foto, risolta. Esce se sta dentro il repository: le pagine mostrano nomi di calciatori veri e il
     repository è pubblico, quindi le foto restano fuori (scratchpad o cartella temporanea)."""
     c = Path(cartella).resolve()
-    if c == RADICE or c.is_relative_to(RADICE):
-        sys.exit(f"La cartella delle foto deve stare fuori dal repository ({RADICE}): {c}")
+    for radice in {RADICE, _principale()} - {None}:      # da una worktree anche la cartella principale: lì le foto non sono ignorate
+        r = Path(radice).resolve()
+        if c == r or c.is_relative_to(r):
+            sys.exit(f"La cartella delle foto deve stare fuori dal repository ({r}): {c}")
     return c
 
 
@@ -223,19 +225,28 @@ class ServerDiProva:
         opzioni = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
         self.processo = subprocess.Popen(self.comando, cwd=self.cwd, env=self.env, stdout=self._file_log,
                                          stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **opzioni)
+        try:
+            if self._aspetta():
+                return self
+        except BaseException:                        # anche Ctrl+C: il with non è ancora entrato, quindi niente __exit__
+            self.ferma()
+            raise
+        self.ferma()
+        sys.exit(f"Il server di prova non risponde dopo {self.attesa:.0f} s: guarda {self.log}")
+
+    def _aspetta(self) -> bool:
         fine = time.monotonic() + self.attesa
         while time.monotonic() < fine:
             if self.processo.poll() is not None:
-                break
+                return False
             try:
                 with urllib.request.urlopen(f"{self.base}/api/salute", timeout=2):
-                    return self
+                    return True
             except urllib.error.HTTPError:
-                return self                          # risponde (503 = senza archivio dei dati): è acceso
+                return True                          # risponde (503 = senza archivio dei dati): è acceso
             except (urllib.error.URLError, OSError):
                 time.sleep(0.5)
-        self.ferma()
-        sys.exit(f"Il server di prova non risponde dopo {self.attesa:.0f} s: guarda {self.log}")
+        return False
 
     def ferma(self) -> None:
         if self.processo and self.processo.poll() is None:
