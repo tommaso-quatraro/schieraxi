@@ -98,7 +98,11 @@ struct RigaGiocatore: View {
     }
 
     /// Il fantavoto atteso se gioca (lo stesso numero del campo, della scheda e del widget).
-    private var puntiTesto: String { (g.fvAtteso ?? g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1))) }
+    nonisolated static func testoPunti(_ g: Giocatore) -> String {
+        (g.fvAtteso ?? g.puntiAttesi ?? 0).formatted(.number.precision(.fractionLength(1)))
+    }
+
+    private var puntiTesto: String { Self.testoPunti(g) }
     private var giocaPercento: Int { Formato.percento(g.pVoto) }
 
     /// Frase letta da VoiceOver per tutta la riga.
