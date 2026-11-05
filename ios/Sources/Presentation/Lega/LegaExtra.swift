@@ -474,6 +474,9 @@ struct StatoDatiView: View {
                 Section(titolo: "Quanto sono affidabili le previsioni") {
                     affidabilitaContenuto
                 }
+                if let registro = caricatore.dato?.registro {
+                    RegistroGiornateSezione(registro: registro)
+                }
             }
             .scrollContentBackground(.hidden)
         }
