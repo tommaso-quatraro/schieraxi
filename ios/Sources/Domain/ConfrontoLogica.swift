@@ -22,6 +22,11 @@ extension Confronto {
         return nil
     }
 
+    /// Il posto di un giocatore nella formazione del sistema, come lo manda il server (`posto_a` / `posto_b`).
+    func codicePosto(di g: Giocatore) -> String? {
+        nil
+    }
+
     /// Le cause che contano: quelle con un effetto visibile, più sempre «giocare».
     var fattoriVisibili: [FattoreConfronto] {
         fattori.filter { abs($0.effetto) >= 0.005 || $0.chiave == "giocare" }

@@ -4,6 +4,18 @@ import SwiftUI
 struct ColonnaDuello: View {
     let g: Giocatore
     let scelto: Bool
+    /// Il posto nella formazione del sistema, con il codice del server.
+    let posto: String?
+
+    /// Il posto a parole, in una pillola.
+    nonisolated static func etichettaPosto(_ codice: String?) -> Etichetta? {
+        nil
+    }
+
+    /// Quello che legge VoiceOver.
+    var voce: String {
+        "\(g.nome), \(nomeRuolo(g.ruolo)), indice \(Formato.intero(g.indice)), punti attesi \(Formato.punti(g.puntiAttesi))\(scelto ? ", consigliato" : "")"
+    }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -21,6 +33,6 @@ struct ColonnaDuello: View {
         .padding(10)
         .background(scelto ? Color.verde.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo + 2, style: .continuous))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(g.nome), \(nomeRuolo(g.ruolo)), indice \(Formato.intero(g.indice)), punti attesi \(Formato.punti(g.puntiAttesi))\(scelto ? ", consigliato" : "")")
+        .accessibilityLabel(voce)
     }
 }

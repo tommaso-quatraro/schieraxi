@@ -42,13 +42,13 @@ struct ConfrontoView: View {
         Carta(c.giornata.map { "Giornata \($0)" }) {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 8) {
-                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
+                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato, posto: c.codicePosto(di: c.giocatori[0]))
                     Text("VS").font(.headline).foregroundStyle(Color.testoSecondario).padding(.top, 24).accessibilityHidden(true)
-                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
+                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato, posto: c.codicePosto(di: c.giocatori[1]))
                 }
                 VStack(spacing: 12) {
-                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
-                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
+                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato, posto: c.codicePosto(di: c.giocatori[0]))
+                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato, posto: c.codicePosto(di: c.giocatori[1]))
                 }
             }
         }
