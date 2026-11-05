@@ -173,6 +173,7 @@ jobs:
         run: python3 -I -s _ci-main/script/ci/controlla_versione.py "origin/$BASE"
 
   # La modifica tocca l'app iOS? Gira su Linux in pochi secondi: il Mac si prenota solo se serve.
+  # «Tocca» vuol dire: ios/, ios.yml, o uno dei file fuori da ios/ che i test iOS leggono (elenco in ios/Tests/file-esterni.txt, #308).
   cambi:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -195,7 +196,7 @@ jobs:
         run: |
           # se l'API non risponde il job fallisce (bash -e) e «unisci» non parte: mai un'unione senza sapere se servivano i test iOS
           if [ "$EVENTO" = pull_request ]; then
-            file=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+            file=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[] | .filename, (.previous_filename // empty)')
           elif [ "$EVENTO" = workflow_dispatch ]; then
             # Corsa lanciata dopo un'unione (o a mano): non c'è «before». Su main si confronta con l'ultima corsa riuscita (push
             # o lancio): ogni corsa riuscita ha provato iOS oppure non ne aveva bisogno, quindi basta guardare cosa è cambiato
@@ -209,15 +210,27 @@ jobs:
             fi
             file="ios/"
             if [ -n "$base" ]; then
-              file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$DOPO" --jq '.files[].filename') || file="ios/"
+              file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$DOPO" --jq '.files[] | .filename, (.previous_filename // empty)') || file="ios/"
               if [ "$(printf '%s\n' "$file" | wc -l)" -ge 300 ]; then file="ios/"; fi
             fi
           elif [ -z "$PRIMA" ] || [ "$PRIMA" = 0000000000000000000000000000000000000000 ]; then
             file="ios/"
           else
-            file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$PRIMA...$DOPO" --jq '.files[].filename')
+            file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$PRIMA...$DOPO" --jq '.files[] | .filename, (.previous_filename // empty)')
           fi
-          if printf '%s\n' "$file" | grep -qE '^(ios/|\.github/workflows/ios\.yml$)'; then ios=true; else ios=false; fi
+          if printf '%s\n' "$file" | grep -qE '^(ios/|\.github/workflows/ios\.yml$)'; then
+            ios=true
+          else
+            # Anche i file fuori da ios/ che i test iOS leggono (issue #308): stanno nell'elenco ios/Tests/file-esterni.txt.
+            # Elenco illeggibile, vuoto o con una riga che non è un nome di file: i test girano (meglio un Mac in più che un buco).
+            ios=true
+            if elenco=$(gh api -H "Accept: application/vnd.github.raw+json" "repos/$GITHUB_REPOSITORY/contents/ios/Tests/file-esterni.txt?ref=$DOPO"); then
+              voci=$(printf '%s\n' "$elenco" | grep -vE '^[[:space:]]*(#|$)' || true)
+              if [ -n "$voci" ] && ! printf '%s\n' "$voci" | grep -qvE '^[A-Za-z0-9_./-]+$'; then
+                if printf '%s\n' "$file" | grep -qxF -f <(printf '%s\n' "$voci"); then ios=true; else ios=false; fi
+              fi
+            fi
+          fi
           echo "Tocca ios/: $ios"
           echo "ios=$ios" >> "$GITHUB_OUTPUT"
 
