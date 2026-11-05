@@ -59,7 +59,7 @@ struct NumeroFantavotoGrande: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 0) {
-                NumeroCheSale(valore: g.fvAtteso ?? 0).font(.system(size: 48, weight: .bold, design: .rounded))
+                FantavotoCheSale(valore: g.fvAtteso).font(.system(size: 48, weight: .bold, design: .rounded))
                 Text(FantavotoAtteso.nome + " · se gioca").font(.caption).foregroundStyle(Color.testoSecondario)
             }
             Spacer()

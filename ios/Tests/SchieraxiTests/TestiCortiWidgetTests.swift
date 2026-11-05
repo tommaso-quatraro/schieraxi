@@ -77,6 +77,19 @@ struct TestiCortiWidgetTests {
         #expect(corto.formeRiga == ["Bastrani · Diffidato"])
     }
 
+    @Test("Sotto il conto del Cruscotto: quando scade o quando si è chiusa; senza probabili prima l'avviso intero, poi solo l'avviso")
+    func sottoScadenza() throws {
+        let scadenza = try #require(Quando.data("2026-10-31 20:45"))
+        let prima = scadenza.addingTimeInterval(-6 * 3600), dopo = scadenza.addingTimeInterval(3600)
+        #expect(ParoleWidget.sottoScadenza(scadenza, adesso: prima, conProbabili: true) == ["alla scadenza, oggi 20:45"])
+        #expect(ParoleWidget.sottoScadenza(scadenza, adesso: prima, conProbabili: nil) == ["alla scadenza, oggi 20:45"])
+        #expect(ParoleWidget.sottoScadenza(scadenza, adesso: dopo, conProbabili: true) == ["si è chiusa oggi 20:45"])
+        // mai «probabili non uscite · oggi 20:45»: sembrerebbe l'ora delle probabili
+        #expect(ParoleWidget.sottoScadenza(scadenza, adesso: prima, conProbabili: false)
+                == ["probabili non uscite · alla scadenza, oggi 20:45", "probabili non uscite"])
+        #expect(ParoleWidget.sottoScadenza(nil, adesso: prima, conProbabili: false) == ["scadenza non nota"])
+    }
+
     @Test("Stato dei dati in linea: senza «Dati delle», poi senza le probabili")
     func statoDati() {
         #expect(ParoleWidget.statoDati(ora: "14:32", probabili: "probabili uscite")

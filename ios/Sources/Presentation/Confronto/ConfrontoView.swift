@@ -42,33 +42,16 @@ struct ConfrontoView: View {
         Carta(c.giornata.map { "Giornata \($0)" }) {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .top, spacing: 8) {
-                    colonna(c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
+                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
                     Text("VS").font(.headline).foregroundStyle(Color.testoSecondario).padding(.top, 24).accessibilityHidden(true)
-                    colonna(c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
+                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
                 }
                 VStack(spacing: 12) {
-                    colonna(c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
-                    colonna(c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
+                    ColonnaDuello(g: c.giocatori[0], scelto: c.giocatori[0].id == c.consigliato)
+                    ColonnaDuello(g: c.giocatori[1], scelto: c.giocatori[1].id == c.consigliato)
                 }
             }
         }
-    }
-
-    private func colonna(_ g: Giocatore, scelto: Bool) -> some View {
-        VStack(spacing: 6) {
-            AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome, ruolo: g.ruolo)
-            Text(g.nome).font(.headline).multilineTextAlignment(.center).lineLimit(2)
-            Text("\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")")
-                .font(.caption).foregroundStyle(Color.testoSecondario)
-            if scelto {
-                Label("Consigliato", systemImage: "checkmark.seal.fill").font(.caption.bold()).foregroundStyle(Color.verde)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(10)
-        .background(scelto ? Color.verde.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo + 2, style: .continuous))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(g.nome), \(nomeRuolo(g.ruolo)), indice \(Formato.intero(g.indice)), punti attesi \(Formato.punti(g.puntiAttesi))\(scelto ? ", consigliato" : "")")
     }
 
     private func verdetto(_ c: Confronto) -> some View {
@@ -117,38 +100,10 @@ struct ConfrontoView: View {
     }
 
     private func numeri(_ c: Confronto) -> some View {
-        let x = c.giocatori[0], y = c.giocatori[1]
-        func riga(_ titolo: String, _ f: (Giocatore) -> String) -> some View {
-            HStack {
-                Text(titolo).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity, alignment: .leading)
-                Text(f(x)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
-                Text(f(y)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
-            }
-            .font(.subheadline)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(titolo): \(x.nomeCorto) \(f(x)), \(y.nomeCorto) \(f(y))")
-        }
-        return Carta {
+        Carta {
             DisclosureGroup("Tutti i numeri") {
-                VStack(spacing: 8) {
-                    HStack {
-                        Spacer()
-                        Text(x.nomeCorto).font(.caption.bold()).lineLimit(1).frame(width: 80, alignment: .trailing)
-                        Text(y.nomeCorto).font(.caption.bold()).lineLimit(1).frame(width: 80, alignment: .trailing)
-                    }
-                    .accessibilityHidden(true)
-                    riga("Indice") { "\(Formato.intero($0.indice))" }
-                    riga("Avversario") { "\(ColoriSquadra.sigla($0.avversario)) \($0.inCasa == true ? "casa" : "fuori")" }
-                    riga("Partita") { PillDifficolta.nome($0.difficolta) }
-                    riga("Gioca") { "\(Formato.percento($0.pVoto))%" }
-                    riga("Fantavoto atteso (se gioca)") { Formato.punti($0.fvAtteso) }
-                    riga("Punti attesi") { Formato.decimali($0.puntiAttesi, cifre: 2) }
-                    riga("Parte titolare") { "\(Formato.percento($0.quotaTitolare))%" }
-                    riga("Segna") { "\(Formato.percento($0.pGol))%" }
-                    riga("Assist") { "\(Formato.percento($0.pAssist))%" }
-                    riga("Giallo") { "\(Formato.percento($0.pGiallo))%" }
-                }
-                .padding(.top, 8)
+                TabellaNumeriConfronto(x: c.giocatori[0], y: c.giocatori[1])
+                    .padding(.top, 8)
             }
             .tint(Color.testoSecondario)
         }

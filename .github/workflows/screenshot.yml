@@ -1,8 +1,12 @@
 name: Screenshot
 
-# Fotografa l'app e i widget nel simulatore di un Mac di GitHub (un solo job, un solo Mac):
+# Fotografa l'app e i widget nel simulatore dei Mac di GitHub (issue #264):
 # - l'app parte in modalità demo (-DEMO: dati finti, nessuna rete) e si fotografa su iPhone e iPad (chiaro e scuro, testo normale e grande);
 # - l'anteprima dei widget (target AnteprimaWidget, dati finti, non entra nell'IPA) si fotografa in tutte le misure.
+#   Nelle corse lunghe (scatti = completo o dispositivi = tutti) i widget vanno su un secondo Mac (job «widget») che parte
+#   insieme all'app; nelle altre seguono l'app nello stesso job, sullo stesso simulatore già acceso (un Mac solo).
+#   Circa 20 minuti: parte solo quando serve (ingresso «widget»: auto = nella corsa «completo», o se dall'ultima foto dei widget
+#   dello stesso ramo sono cambiati i file che l'anteprima compila, FILE_WIDGET; se non si sa, parte; si = sempre; no = mai).
 # Il Mac parte SOLO: a mano (Actions o `gh workflow run screenshot.yml --ref <ramo>`), oppure su una pull request che tocca ios/ e
 # ha l'etichetta «screenshot» (`gh pr edit <N> --add-label screenshot`). Senza etichetta le PR non prenotano il Mac
 # (i Mac gratuiti sono pochi e i test iOS hanno la precedenza).
@@ -33,13 +37,20 @@ on:
         description: "solo queste schermate (nomi separati da spazi, es. «lega-importa-csv scambi-una-rosa»), in tutte le varianti; vuoto = secondo «scatti»"
         type: string
         default: ""
+      widget:
+        description: "foto dei widget: auto = nella corsa completa o se sono cambiati i loro file; si = sempre; no = mai"
+        type: choice
+        options: [auto, si, no]
+        default: auto
   pull_request:
     types: [opened, reopened, synchronize, labeled]
     paths: ["ios/**", ".github/workflows/screenshot.yml"]
 
-# UNA sola corsa Mac alla volta in tutto il repository, in fila (i Mac gratuiti sono pochi e i test iOS hanno la precedenza):
-# il job Linux «quando» aspetta che finisca ogni corsa Screenshot partita prima di questa (ordine del numero di corsa),
-# poi lascia partire il Mac. La fila non usa i gruppi di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
+# Al massimo DUE corse di foto insieme in tutto il repository, in fila, e mai più di 5 job Mac (il limite del piano gratuito:
+# oltre, i job aspettano e i test iOS restano dietro alle foto). Il job Linux «quando» aspetta che le corse Screenshot partite
+# prima di questa, non ancora finite, siano meno di 2 (ordine del numero di corsa) e che i job Mac già in corso o in coda nel
+# repository, più quelli di questa corsa, non passino 5; poi lascia partire i Mac. Se non riesce a contarli aspetta.
+# La fila non usa i gruppi di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
 # Gruppo di concorrenza della PR solo per le foto a ogni push (etichetta «screenshot»): un push nuovo annulla la corsa vecchia
 # della stessa PR. Tutto il resto ha un gruppo suo (run_id) e non annulla né è annullato: corse a mano e su main, le foto dal
 # vero (etichetta «screenshot-vero», partono solo quando si mette l'etichetta), le altre etichette, le PR senza «screenshot».
@@ -63,9 +74,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 330      # l'attesa in fila sta qui (Linux, gratis); il massimo di GitHub è 360
     permissions:
-      actions: read           # per vedere le corse Screenshot partite prima
+      actions: read           # per vedere le corse e i job partiti prima, e l'ultima foto dei widget
+      contents: read          # confronto dei commit (file cambiati)
+      pull-requests: read     # file della PR
     outputs:
       serve: ${{ steps.decidi.outputs.serve }}
+      widget: ${{ steps.widget.outputs.widget }}
+      parallelo: ${{ steps.widget.outputs.parallelo }}
     steps:
       - name: Serve il Mac?
         id: decidi
@@ -91,17 +106,120 @@ jobs:
           fi
           echo "Serve il Mac: $serve (evento: $EVENTO)"
           echo "serve=$serve" >> "$GITHUB_OUTPUT"
-      - name: In fila dietro le corse Screenshot partite prima
+      - name: Servono le foto dei widget?
+        id: widget
+        if: steps.decidi.outputs.serve == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTO: ${{ github.event_name }}
+          RIF: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          PR: ${{ github.event.pull_request.number }}
+          SCATTI: ${{ inputs.scatti }}
+          DISPOSITIVI: ${{ inputs.dispositivi }}
+          RICHIESTA: ${{ inputs.widget }}
+          ETICHETTA_NUOVA: ${{ github.event.label.name }}
+          # i file che cambiano le foto dei widget: quelli che compila il target AnteprimaWidget (ios/project.yml), il progetto,
+          # lo script delle foto dei widget e questo workflow (tests/test_workflow_foto.py controlla che l'elenco sia completo)
+          FILE_WIDGET: '^(ios/(AnteprimaWidget/|WidgetSources/|project\.yml$|scripts/(screenshot_widget\.sh|scegli_simulatore\.py)$|Sources/Domain/(Modelli|Quando|TempiLega|Formato|LinguaServer|ColoriSquadra|GeneratoreVolto)\.swift$|Sources/Support/(Condiviso|WidgetRiassunto|EventiPartita|AvatarVolto|LegaDemo)\.swift$|Sources/Support/Design/PercorsoSVG\.swift$)|\.github/workflows/screenshot\.yml$)'
+        run: |
+          widget=false
+          if [ "$SCATTI" = vero ] || [ "$ETICHETTA_NUOVA" = screenshot-vero ] || [ "$DISPOSITIVI" = ipad ]; then
+            perche="foto dal vero o solo iPad (come prima, niente widget)"
+          elif [ "$RICHIESTA" = si ]; then
+            widget=true; perche="chieste"
+          elif [ "$RICHIESTA" = no ]; then
+            perche="escluse a mano"
+          elif [ "$SCATTI" = completo ]; then
+            widget=true; perche="corsa completa"
+          else
+            # auto: solo se sono cambiati i file dei widget. Se non si sa, si fanno (meglio un Mac in più che un buco).
+            if [ "$EVENTO" = pull_request ]; then
+              file=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename') || file="ios/WidgetSources/"
+            else
+              # dall'ultima foto dei widget di questo ramo fatta da una corsa riuscita di questo repository (mai un fork con un
+              # ramo dallo stesso nome, mai una corsa annullata o a metà); su un altro ramo senza foto, da main; su main senza: si fanno
+              candidati=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=screenshot-widget&per_page=100" \
+                --jq '.artifacts[] | select(.expired == false and .workflow_run.head_branch == env.RIF and .workflow_run.head_repository_id == .workflow_run.repository_id) | "\(.workflow_run.id) \(.workflow_run.head_sha)"') || candidati=""
+              base=""
+              provate=0
+              while read -r corsa sha; do
+                if [ -z "$corsa" ] || [ "$provate" -ge 10 ]; then continue; fi
+                provate=$((provate + 1))
+                esito=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$corsa" --jq '.conclusion') || esito=""
+                if [ "$esito" = success ]; then base="$sha"; break; fi
+              done <<< "$candidati"
+              file="ios/WidgetSources/"
+              if [ -z "$base" ] && [ "$RIF" != main ]; then base=main; fi
+              if [ -n "$base" ]; then
+                file=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$COMMIT" --jq '.files[].filename') || file="ios/WidgetSources/"
+                if [ "$(printf '%s\n' "$file" | wc -l)" -ge 300 ]; then file="ios/WidgetSources/"; fi
+              fi
+            fi
+            if printf '%s\n' "$file" | grep -qE "$FILE_WIDGET"; then
+              widget=true; perche="cambiati i file dei widget (o non si sa)"
+            else
+              perche="file dei widget non cambiati"
+            fi
+          fi
+          # Widget su un Mac a parte solo nelle corse lunghe (completo, tutti): in una corsa veloce misurata il secondo Mac
+          # riaccendeva da zero il simulatore (8,9 min) e la corsa non si accorciava (PR #271). Altrimenti i widget seguono
+          # l'app sullo stesso Mac e sullo stesso simulatore, già acceso.
+          parallelo=false
+          if [ "$widget" = true ] && { [ "$SCATTI" = completo ] || [ "$DISPOSITIVI" = tutti ]; }; then parallelo=true; fi
+          # job Mac di questa corsa: app (o foto dal vero), widget a parte, controllo di accessibilità del collaudo
+          mac=1
+          if [ "$parallelo" = true ]; then mac=$((mac + 1)); fi
+          if [ "$SCATTI" = collaudo ] && [ "$DISPOSITIVI" != ipad ]; then mac=$((mac + 1)); fi
+          echo "Foto dei widget: $widget ($perche), su un Mac a parte: $parallelo. Mac per questa corsa: $mac"
+          echo "widget=$widget" >> "$GITHUB_OUTPUT"
+          echo "parallelo=$parallelo" >> "$GITHUB_OUTPUT"
+          echo "mac=$mac" >> "$GITHUB_OUTPUT"
+      - name: In fila, al massimo 2 corse di foto e mai più di 5 job Mac
         if: steps.decidi.outputs.serve == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           QUESTA: ${{ github.run_id }}
+          MAC: ${{ steps.widget.outputs.mac }}
         run: |
+          POSTI=2
+          MAC_TOTALI=5
           while :; do
-            prima=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/screenshot.yml/runs?per_page=100"               --jq "[.workflow_runs[] | select(.status != \"completed\" and .id < $QUESTA) | .id] | length")
-            [ "$prima" = "0" ] && break
-            echo "$(date -u +%H:%M) in fila: $prima corse Screenshot prima di questa"
-            sleep 60
+            attendi=""
+            if ! davanti=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/screenshot.yml/runs?per_page=100" \
+              --jq "[.workflow_runs[] | select(.status != \"completed\" and .id < $QUESTA) | .id] | .[]"); then
+              attendi="l'elenco delle corse Screenshot non risponde"
+            else
+              prima=$(printf '%s\n' "$davanti" | grep -c . || true)
+              if [ "$prima" -ge "$POSTI" ]; then
+                attendi="in fila: $prima corse Screenshot prima di questa (posti: $POSTI)"
+              else
+                # I job Mac di una corsa esistono solo dopo il suo «quando»: finché una corsa di foto davanti non l'ha finito
+                # i suoi Mac non si possono contare, e due corse partite quasi insieme arriverebbero a 6 job Mac.
+                for corsa in $davanti; do
+                  q=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$corsa/jobs?per_page=100" \
+                    --jq '[.jobs[] | select(.name == "quando" and .status != "completed")] | length') || q=""
+                  if [ "$q" != 0 ]; then attendi="la corsa Screenshot $corsa davanti non ha ancora deciso i suoi Mac"; break; fi
+                done
+              fi
+            fi
+            if [ -z "$attendi" ]; then
+              # job Mac non finiti nelle altre corse del repository (in corso o in coda); se una domanda fallisce si aspetta
+              ok=true
+              occupati=0
+              corse=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?status=in_progress&per_page=100" --jq '.workflow_runs[].id') || ok=false
+              coda=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?status=queued&per_page=100" --jq '.workflow_runs[].id') || ok=false
+              for corsa in $corse $coda; do
+                if [ "$ok" != true ] || [ "$corsa" = "$QUESTA" ]; then continue; fi
+                n=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$corsa/jobs?per_page=100" \
+                  --jq '[.jobs[] | select(.status != "completed" and any(.labels[]; startswith("macos")))] | length') || n=""
+                if printf '%s\n' "$n" | grep -qxE '[0-9]+'; then occupati=$((occupati + n)); else ok=false; fi
+              done
+              if [ "$ok" = true ] && [ $((occupati + MAC)) -le "$MAC_TOTALI" ]; then break; fi
+              attendi="job Mac occupati: $occupati (conteggio riuscito: $ok), ne servono $MAC, al massimo $MAC_TOTALI"
+            fi
+            echo "$(date -u +%H:%M) $attendi"
+            sleep 90
           done
           echo "Tocca a questa corsa"
 
@@ -129,14 +247,6 @@ jobs:
             build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
             2>&1 | tee build-app.log | tail -n 40
           test -d build/Build/Products/Debug-iphonesimulator/Schieraxi.app
-      - name: Compila l'anteprima dei widget per il simulatore (senza firma)
-        run: |
-          set +e
-          xcodebuild -project Schieraxi.xcodeproj -scheme AnteprimaWidget -configuration Debug \
-            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
-            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
-            > build-widget.log 2>&1 || { grep -E "error:" build-widget.log | sort -u | head -30; exit 1; }
-          test -d build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app
       - name: Scatta le fotografie dell'app
         env:
           SCATTI: ${{ inputs.scatti || 'veloce' }}
@@ -144,8 +254,18 @@ jobs:
           DISPOSITIVI: ${{ inputs.dispositivi || 'iphone' }}
           SCHERMATE: ${{ inputs.schermate || '' }}
         run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
+      # Widget nello stesso job, dopo l'app e sullo stesso simulatore già acceso: corse veloci e collaudo (uscite del job «quando»)
+      - name: Compila l'anteprima dei widget per il simulatore (senza firma)
+        if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
+        run: |
+          set +e
+          xcodebuild -project Schieraxi.xcodeproj -scheme AnteprimaWidget -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
+            > build-widget.log 2>&1 || { grep -E "error:" build-widget.log | sort -u | head -30; exit 1; }
+          test -d build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app
       - name: Scatta le fotografie dei widget
-        if: always() && inputs.dispositivi != 'ipad'
+        if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
         run: bash scripts/screenshot_widget.sh build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app screenshot-widget
       # i percorsi di upload-artifact partono dalla radice del repository, non da working-directory
       - name: Carica le fotografie dell'app
@@ -157,7 +277,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
       - name: Carica le fotografie dei widget
-        if: always()
+        if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: screenshot-widget
@@ -168,7 +288,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p crash
-          cp ~/Library/Logs/DiagnosticReports/Schieraxi* crash/ 2>/dev/null || true
+          cp ~/Library/Logs/DiagnosticReports/Schieraxi* ~/Library/Logs/DiagnosticReports/AnteprimaWidget* crash/ 2>/dev/null || true
           ls crash
       - name: Maschera i log (il repository è pubblico)
         if: failure()
@@ -184,6 +304,64 @@ jobs:
           name: log-screenshot
           path: |
             ios/build-app.log
+            ios/build-widget.log
+            ios/crash/*
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Le foto dei widget su un Mac a parte, insieme a quelle dell'app: solo nelle corse lunghe (completo, tutti) quando i widget
+  # servono (uscita «parallelo» del job «quando»). Stessi artifact: «screenshot-widget», e «log-widget» se qualcosa non va.
+  widget:
+    needs: quando
+    if: needs.quando.outputs.serve == 'true' && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo == 'true' && github.event.repository.private == false && inputs.scatti != 'vero' && github.event.label.name != 'screenshot-vero'
+    runs-on: macos-26
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Installa XcodeGen (se manca)
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      - name: Crea il progetto Xcode
+        run: xcodegen generate
+      - name: Compila l'anteprima dei widget per il simulatore (senza firma)
+        run: |
+          set +e
+          xcodebuild -project Schieraxi.xcodeproj -scheme AnteprimaWidget -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
+            > build-widget.log 2>&1 || { grep -E "error:" build-widget.log | sort -u | head -30; exit 1; }
+          test -d build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app
+      - name: Scatta le fotografie dei widget
+        run: bash scripts/screenshot_widget.sh build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app screenshot-widget
+      - name: Carica le fotografie dei widget
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: screenshot-widget
+          path: ios/screenshot-widget/*.png
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Rapporti di crash (solo se qualcosa non va)
+        if: failure()
+        run: |
+          mkdir -p crash
+          cp ~/Library/Logs/DiagnosticReports/AnteprimaWidget* crash/ 2>/dev/null || true
+          ls crash
+      - name: Maschera il log (il repository è pubblico)
+        if: failure()
+        run: |
+          [ -f build-widget.log ] && { python3 -I scripts/maschera_log.py build-widget.log build-widget.log.mascherato && mv build-widget.log.mascherato build-widget.log || rm -f build-widget.log; }
+          true
+      - name: Carica i log in caso di problemi
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: log-widget
+          path: |
             ios/build-widget.log
             ios/crash/*
           retention-days: 7

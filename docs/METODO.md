@@ -65,11 +65,12 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 
 ## App per iPhone
 - Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.
-- Le foto (`screenshot.yml`) usano un Mac di GitHub alla volta e le lancia una sola persona. Si fanno su `main` DOPO l'unione
+- Le foto (`screenshot.yml`) le lancia una sola persona: al massimo 2 corse insieme, solo con Mac liberi (mai più di 5 job Mac
+  nel repository), e i widget solo quando servono. Si fanno su `main` DOPO l'unione
   (la pull request si unisce da sola appena i controlli sono verdi): ogni 60-90 minuti una corsa con le schermate delle pull
   request iOS unite nel frattempo. Ogni difetto visto diventa un'issue `P1` con la foto.
 - Le pull request che cambiano molto l'aspetto possono chiedere una corsa di foto sul loro ramo prima di uscire dalla bozza,
-  una alla volta. Le altre non restano in bozza ad aspettare le foto.
+  nella stessa fila. Le altre non restano in bozza ad aspettare le foto.
 
 ## Cosa non fare
 - Codice senza test, correzioni senza causa, «dovrebbe andare».

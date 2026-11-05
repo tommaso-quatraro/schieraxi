@@ -116,7 +116,8 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
                        "titolari": [_g(t, tratti, "punti_attesi", "p_voto", "fv_atteso") for t in f["titolari"]],
                        "panchina": [t["id"] for t in f["panchina"]]}
                       | ({"tua_scelta": True, "consigliata": consigliata} if tua else {}),
-        "avvisi": [_g(a, tratti, "tipo", "in_formazione", "p_voto") for a in o["avvisi"][:MAX_AVVISI]],
+        # `etichetta` (facoltativa): la stessa di Oggi e della Formazione, da mostrare al posto delle parole composte dal `tipo` (#282)
+        "avvisi": [_g(a, tratti, "tipo", "in_formazione", "p_voto", "etichetta") for a in o["avvisi"][:MAX_AVVISI]],
         "rosa": mia,
         "squalificati": [m["id"] for m in fuori if m["stato"] == "squalificato"],
         "diffidati": [m["id"] for m in mia if m["diffidato"]],

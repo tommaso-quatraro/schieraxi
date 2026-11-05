@@ -141,7 +141,9 @@ struct RigaRosa: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         BadgeRuolo(ruolo: g.ruolo ?? "?", piccolo: true)
-                        Text(g.nome).font(.headline).lineLimit(2)
+                        // intero, anche su più righe con il testo grande (#254)
+                        Text(g.nome).font(.headline)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
                     if let etichette = p?.etichette, !etichette.isEmpty {
@@ -193,6 +195,8 @@ struct RosaView: View {
         ZStack {
             Sfondo()
             List {
+                // con il testo grande il nome della squadra intero, a capo: nella barra si taglierebbe (#276)
+                TitoloNellaPagina()
                 if let r = vm.caricatore.dato {
                     intestazione(r)
                     ForEach(reparti, id: \.0) { reparto in
@@ -220,8 +224,7 @@ struct RosaView: View {
             .scrollContentBackground(.hidden)
             .avvisoDatiSalvati(vm.caricatore)
         }
-        .navigationTitle(nome)
-        .navigationBarTitleDisplayMode(.inline)
+        .titoloPagina(nome, piccoloInBarra: true)
         .ricercaGlobale()
         .task { await vm.carica() }
         .fileImporter(isPresented: $sceglieFile, allowedContentTypes: [.image], allowsMultipleSelection: false) { risultato in

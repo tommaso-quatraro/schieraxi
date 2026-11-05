@@ -47,6 +47,9 @@ const perc = x => `${Math.round((x || 0) * 100)}%`;
 const alPercento = x => { const s = String(x); return typeof LINGUA !== "undefined" && LINGUA === "en" ? s + "%" : (s.startsWith("8") || x === 1 || x === 11 || (s.startsWith("11") && s.length === 4) ? "all'" : "al ") + s + "%"; };
 // Numero con il segno: «+1,2», «−0,4» (il meno tipografico, come in «Perché questo numero»), «0,0» senza segno se arrotondato vale zero.
 const segno = (x, d = 1) => { if (x === null || x === undefined || Number.isNaN(x)) return num(x, d); const v = num(Math.abs(x), d); return (/[1-9]/.test(v) ? (x > 0 ? "+" : "−") : "") + v; };
+// Come `num`, ma un negativo ha il meno tipografico («−1,12», mai «-1,12») e niente «+» davanti ai positivi; «0,00» senza segno.
+// Per i numeri che possono essere negativi (nel Confronto: porta, cartellini). `num` resta per i campi da modificare (regole).
+const numMeno = (x, d = 1) => { const v = num(x, d); return v.startsWith("-") ? (/[1-9]/.test(v) ? "−" + v.slice(1) : v.slice(1)) : v; };
 const menoMovimento = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.animazioni === "ridotte";
 // «Ridurre movimento» fatto bene: con il sistema (o l'impostazione Animazioni > Ridotte) l'app passa alla versione calma, non a quella ferma.
 // Restano dissolvenze, colori e pulsazioni leggere; spariscono scorrimenti, zoom e rotazioni (vedi `data-calmo` in stile.css).
@@ -405,7 +408,7 @@ function distintivo(s) {
 // Per i lettori di schermo: «gioca all'85 per cento, in casa contro il Napoli» (in italiano con l'articolo giusto).
 const ARTICOLI_CLUB = { atalanta: "l'", inter: "l'", udinese: "l'", empoli: "l'", juventus: "la ", fiorentina: "la ", lazio: "la ", roma: "la ",
   sampdoria: "la ", cremonese: "la ", salernitana: "la ", spezia: "lo " };
-function vocePedina(x, esito = null) {             // esito: esitoPartita(x), a partita iniziata
+function vocePedina(x, esito = null) {             // esito: esitoPedina(x), a partita iniziata o rinviata
   const p = Math.round((x.p_voto ?? 0) * 100);
   const vocale = p === 1 || p === 8 || p === 11 || (p >= 80 && p <= 89);         // «all'85», «al 65»
   const avv = (LINGUA === "it" ? (ARTICOLI_CLUB[x.avversario] ?? "il ") : "") + nomeClub(x.avversario);
@@ -422,18 +425,27 @@ function esitoPartita(x) {
   if (Number.isFinite(x.fv_preso) && (codice === "voto" || x.stato_partita === "fatto")) return { fv: x.fv_preso, testo: t("formazione.fv_preso", { fv: num(x.fv_preso) }) };
   return { fv: null, testo: etichettaPronta(x) ? x.etichetta.testo : t(STATO_PARTITA[x.stato_partita][0]) };
 }
+// Sulla pedina anche la partita rinviata prende il posto di «gioca N%» (#284), prima e dopo la scadenza, come l'elenco e Oggi:
+// l'etichetta del server («Rinviata») o, con un server vecchio, la stessa parola dai campi grezzi.
+function esitoPedina(x) {
+  const esito = esitoPartita(x);
+  if (esito) return esito;
+  const rinviata = etichettaPronta(x) ? x.etichetta.codice === "rinviata" : x.stato_partita === "rinviata" || typeof x.rinvio === "string";
+  return rinviata ? { fv: null, testo: etichettaPronta(x) ? x.etichetta.testo : t("tit.st_rinviata") } : null;
+}
 // Il nome per i lettori di schermo viene dal contenuto, non da un aria-label: le abbreviazioni che si vedono («6,8», «vs NAP»)
 // sono nascoste ai lettori e accanto c'è la frase intera, che comincia con il nome (chi usa il controllo vocale dice «Rossi»).
 // Con l'aria-label il testo visibile non stava nel nome (axe `label-content-name-mismatch`, WCAG 2.5.3, issue #244).
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
+  const esito = esitoPedina(x);
   return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}">
     <span class="avatar-pedina" aria-hidden="true">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
     <span class="nome" aria-hidden="true">${esc(cognome(x))}</span>
-    ${esitoPartita(x) ? `<span class="gioca esito" aria-hidden="true">${esc(esitoPartita(x).testo)}</span>`
+    ${esito ? `<span class="gioca esito" aria-hidden="true">${esc(esito.testo)}</span>`
       : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
     ${x.avversario ? `<span class="avv" aria-hidden="true">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
-    <span class="solo-lettori">${esc(vocePedina(x, esitoPartita(x)))}</span>
+    <span class="solo-lettori">${esc(vocePedina(x, esito))}</span>
   </button>`;
 }
 // Legenda del campo: si vede una volta (finché non tocchi «Ho capito»), poi si riapre dal pulsante ⓘ «Cosa vuol dire».
@@ -638,7 +650,8 @@ function testoConto(o) {
   const nGiornata = o.giornata_lega || o.giornata;
   if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { n: nGiornata, quando: quando(o.scadenza || o.inizio) }) };
   const g = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
-  const grande = g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`;
+  // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
+  const grande = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
   return { grande, piccolo: o.scadenza && o.scadenza !== o.inizio
     ? t("oggi.si_chiude", { quando: quando(o.scadenza), min: o.minuti_scadenza })
     : t("oggi.prima_partita", { quando: quando(o.inizio) }) };
@@ -746,7 +759,7 @@ function menuRinvio(rv) {
 }
 function cardRinvio(rv) {
   if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
-  const partite = rv.partite.map(p => `<li><b>${sigla(p.casa)}–${sigla(p.trasferta)}</b>
+  const partite = rv.partite.map(p => `<li><b>${sigla(p.casa)} vs ${sigla(p.trasferta)}</b>
     <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
   const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
   return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
@@ -1274,7 +1287,7 @@ function mostraFormazione(f, squadra, opz = {}) {
     const candidati = Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id)).sort((a, b) => b.punti_attesi - a.punti_attesi);
     const riga = x => `<li><button class="voce" data-entra="${x.id}">${avatarIndice(x)}
       <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
-        <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || t("tit.fuori")}</span></span></span>
+        <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || testoPosto("fuori")}</span></span></span>
       <span class="valore"><b>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span></span></button></li>`;
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
       <div class="debole piccolo">${t("formazione.giocatori_dello_stesso")}</div>
@@ -1339,7 +1352,12 @@ function striscia(el) {
   };
   const att = el.querySelector(".attivo, .attiva");
   if (att) el.scrollLeft = Math.max(0, att.offsetLeft - (el.clientWidth - att.offsetWidth) / 2);
-  if (!el.dataset.striscia) { el.dataset.striscia = "1"; el.addEventListener("scroll", agg, { passive: true }); }
+  if (!el.dataset.striscia) {
+    el.dataset.striscia = "1";
+    el.addEventListener("scroll", agg, { passive: true });
+    // con il tasto Tab: Chrome fa scorrere la striscia solo se la voce è tutta fuori, e una voce a metà restava mezza nascosta (issue #280)
+    el.addEventListener("focusin", e => { const voce = e.target.closest("button"); if (voce && el.contains(voce)) voce.scrollIntoView({ block: "nearest", inline: "nearest" }); });
+  }
   agg();
 }
 
@@ -1708,14 +1726,20 @@ async function osservatiIds() {
   return stato.osservati;
 }
 
-// Dove sta un giocatore nella formazione che stai guardando: Titolare, Panchina n., Fuori.
+// Il posto in formazione a parole: «Titolare», «Panchina 2», «Non schierato» (codici `titolare`, `panchina N`, `fuori`: quelli di
+// `posto_a`/`posto_b` del confronto). Parole proprie, mai quelle della titolarità («Probabile titolare», «Fuori»): un giocatore al 2%
+// può essere titolare nella tua formazione e «Improbabile» per le probabili (#281). Come `posto` dell'iPhone (ConfrontoViewModel).
+const testoPosto = p => {
+  const c = String(p || "");
+  return c === "titolare" ? t("mercato.posto_titolare") : c.startsWith("panchina ") ? t("mercato.panchina_n", { n: Number(c.split(" ")[1]) })
+    : c === "fuori" ? t("mercato.posto_fuori") : "";
+};
+// Dove sta un giocatore nella formazione che stai guardando.
 function postoInFormazione(id) {
   const m = stato.formaz && stato.formaz.modulo;
   if (!m) return "";
-  if (m.titolari.includes(id)) return t("tit.titolare");
   const k = m.panchina.indexOf(id);
-  if (k >= 0) return t("mercato.panchina_n", { n: k + 1 });
-  return stato.formaz.f.schede[String(id)] ? t("tit.fuori") : "";
+  return testoPosto(m.titolari.includes(id) ? "titolare" : k >= 0 ? `panchina ${k + 1}` : stato.formaz.f.schede[String(id)] ? "fuori" : "");
 }
 const inTitolari = id => !!(stato.formaz && stato.formaz.modulo && stato.formaz.modulo.titolari.includes(id));
 
@@ -1729,7 +1753,7 @@ function apriScelta(id) {
     .sort((a, b) => (a.ruolo === base.ruolo ? 0 : 1) - (b.ruolo === base.ruolo ? 0 : 1) || b.punti_attesi - a.punti_attesi);
   const riga = x => `<li><button class="voce" data-scegli-confronto="${x.id}">${avatarIndice(x)}
     <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
-      <span class="etichette"><span class="etichetta ${inTitolari(x.id) ? "" : "neutra"}">${postoInFormazione(x.id)}</span></span></span>
+      <span class="etichette">${pillTitolarita(x)}<span class="etichetta ${inTitolari(x.id) ? "" : "neutra"}">${postoInFormazione(x.id)}</span></span></span>
     <span class="valore"><b>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(x.p_voto) })}</span></span></button></li>`;
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("mercato.confronta_nome", { nome: esc(base.nome) })}</h2>
     <div class="debole piccolo">${t("mercato.con_chi_vuoi")}</div>
@@ -1749,14 +1773,14 @@ async function apriConfronto(a, b) {
     const fo = c.formazione;
     // il posto nella formazione del sistema, dalla risposta del server (la stessa del titolo «Schiera X»), non dalla scheda Formazione
     const codicePosto = g => (!fo ? "" : g.id === x.id ? fo.posto_a : fo.posto_b) || "";
-    const posto = g => { const p = codicePosto(g); return p === "titolare" ? t("tit.titolare") : p.startsWith("panchina ") ? t("mercato.panchina_n", { n: Number(p.split(" ")[1]) }) : p === "fuori" ? t("tit.fuori") : ""; };
+    const posto = g => testoPosto(codicePosto(g));
     const schierato = fo ? (fo.posto_a === "titolare" && fo.posto_b !== "titolare" ? x : fo.posto_b === "titolare" && fo.posto_a !== "titolare" ? y : null) : null;
     const vince = c.giocatori.find(g => g.id === c.consigliato);
     const intest = g => `<div class="duello-giocatore ${g.id === c.consigliato ? "scelto" : ""}">${avatarIndice(g, true)}
       <b class="nome">${esc(g.nome)}</b><span class="debole piccolo">${partitaRiga(g)}</span>
       ${posto(g) ? `<span class="etichetta ${codicePosto(g) === "titolare" ? "" : "neutra"}">${posto(g)}</span>` : ""}</div>`;
     const massimo = Math.max(0.3, ...c.fattori.map(f => Math.abs(f.effetto)));
-    const valore = (f, v) => f.percentuale ? perc(v) : num(v, 2);
+    const valore = (f, v) => f.percentuale ? perc(v) : numMeno(v, 2);
     const fattori = c.fattori.filter(f => Math.abs(f.effetto) >= 0.005 || f.chiave === "giocare").map(f => {
       const larghezza = Math.min(100, Math.abs(f.effetto) / massimo * 100);
       const verso = f.effetto > 0.02 ? "sx" : f.effetto < -0.02 ? "dx" : "";
@@ -4236,7 +4260,8 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   let atteso = false;
   const aggiorna = () => {
     atteso = false;
-    document.querySelectorAll(".chip, .segmenti button, .colore, .icona-scelta").forEach(b => {
+    // solo pulsanti: «Qual è la tua squadra?» (Aggiorna le rose) è un'etichetta con dentro un radio, che lo dice già (axe, issue #289)
+    document.querySelectorAll("button.chip, .segmenti button").forEach(b => {
       b.setAttribute("aria-pressed", String(b.classList.contains("attiva") || b.classList.contains("attivo") || b.classList.contains("scelta")));
     });
     // campi senza etichetta: il testo d'esempio o il titolo della scheda in cui stanno diventano il loro nome per i lettori di schermo
@@ -4251,4 +4276,40 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   osservatore.observe(contenuto, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
   osservatore.observe($("#foglio-contenuto"), { subtree: true, childList: true });
   aggiorna();
+})();
+
+// La testata resta ferma in alto e cresce quando il nome della squadra va a capo o con il testo grande: la sua altezza vera va in
+// --alto-testata, che stile.css usa per scroll-padding-top. Così chi va avanti e indietro con il tasto Tab non trova il focus sotto la
+// testata (WCAG 2.2, 2.4.11; issue #280). Sotto i 320 px utili la testata scorre via con la pagina: 0.
+(function altezzaTestata() {
+  const testata = document.querySelector(".testata"), radice = document.documentElement;
+  if (!testata) return;
+  const misura = () => radice.style.setProperty("--alto-testata", getComputedStyle(testata).position === "sticky" ? `${testata.offsetHeight}px` : "0px");
+  if (typeof ResizeObserver === "function") new ResizeObserver(misura).observe(testata);
+  misura();
+})();
+
+// Colonne ferme in alto su tablet e PC (la prima di Oggi, il campo della Formazione, l'elenco di Impostazioni, i filtri dei giocatori):
+// restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, «Apri la formazione») restava sotto la barra o
+// fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
+const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .col > .campo, .imp-elenco, .giocatori-pagina .filtri-giocatori";
+const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
+function controllaFerme() {
+  const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è
+  document.querySelectorAll(FERME).forEach(el => {
+    const era = el.classList.contains("non-ferma"), stile = getComputedStyle(el);
+    if (!era && stile.position !== "sticky") return;                     // non è ferma: niente da controllare
+    if (!era) SOPRA_FERME.set(el, parseFloat(stile.top) || 0);           // si legge solo da ferma: così il conto non cambia e non oscilla
+    const alto = el.getBoundingClientRect().height, z = el.offsetHeight ? alto / el.offsetHeight : 1;   // con il testo grande la pagina è ingrandita
+    const troppo = alto + ((SOPRA_FERME.get(el) || 0) + sotto) * z > innerHeight;
+    if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria osserva le classi)
+  });
+}
+(function seguiFerme() {
+  let atteso = false;
+  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); }); } };
+  new MutationObserver(pianifica).observe(contenuto, { subtree: true, childList: true });
+  if (typeof ResizeObserver === "function") new ResizeObserver(pianifica).observe(contenuto);          // anche quando una carta cresce dopo
+  addEventListener("resize", pianifica);
+  pianifica();
 })();
