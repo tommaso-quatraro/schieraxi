@@ -177,6 +177,10 @@ panchina si rifanno con i dati nuovi; dopo la scadenza della lega resta com'è, 
 stili sono sempre i migliori del momento: la voce di un altro modulo può avere qualche decimo di punti attesi più della
 consigliata. La scelta salvata dall'utente non cambia mai. Il server ricorda la consigliata in `dati/consigliate.json`
 (`consigli.FILE_CONSIGLIATE`: per ogni squadra, giornata, rosa e regole solo gli id dei giocatori, sotto un'impronta).
+Dopo l'inizio di un **anticipo** (vedi «Anticipi»; dal 5/11/2026, #368), con la formazione ancora aperta, i giocatori di quella
+partita restano dove erano nella consigliata già mostrata: titolari, allo stesso posto in panchina, o fuori. Vale per la
+consigliata e per ogni modulo e stile della risposta; gli altri giocatori si spostano con le regole di sopra. «Cominciato» si legge
+dal calendario e dall'orario (`fasi.squadre_in_anticipo_iniziato`, senza la diretta). Nessun campo nuovo.
 
 ### Fantavoto atteso e «Perché questo numero» (facoltativi: un client vecchio li ignora)
 
@@ -471,8 +475,8 @@ meno di 36 ore l'una dall'altra, almeno metà del totale). Una partita da più d
 `/api/widget` (né promemoria, pianificatore e copia automatica), non è mai `rinviata` e non fa uscire dal turno il posticipo del
 lunedì. La formazione resta salvabile fino alla scadenza del gruppo principale; in `GET /api/formazione` (con `iniziata: false`) i
 giocatori di un anticipo già cominciato hanno già `stato_partita`, `titolarita: null` ed `etichetta` dello stato vero («Ha giocato»,
-«Voto in arrivo»...), come a giornata iniziata. Partite giocate 7 giorni o più prima del gruppo principale (metà giornata giocata e
-il resto rinviato) fissano la scadenza come prima.
+«Voto in arrivo»...), come a giornata iniziata, e nella consigliata restano dove erano (vedi «Consigliata stabile»). Partite
+giocate 7 giorni o più prima del gruppo principale (metà giornata giocata e il resto rinviato) fissano la scadenza come prima.
 
 Una partita della giornata è **rinviata** se non è stata giocata e non sta nel turno (regola unica di `fanta/turno.py`): senza data
 o spostata a un recupero, anche settimane dopo. Appena il recupero è giocato non è più rinviata: i suoi voti valgono per la sua
