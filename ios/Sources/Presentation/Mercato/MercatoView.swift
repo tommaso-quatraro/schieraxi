@@ -19,7 +19,7 @@ struct ConsigliatiView: View {
                     if let m = vm.consigliati.dato {
                         introduzione(m)
                         ForEach(Array(m.proposte.enumerated()), id: \.element.id) { i, p in
-                            Button { vm.apri(p.entra.id) } label: { carta(p) }
+                            Button { vm.apri(p.entra.id) } label: { CartaCambio(proposta: p) }
                                 .buttonStyle(StilePressione()).puntatore()
                                 .origineZoom(p.entra.id, zoom)
                                 .entraScorrendo()
@@ -86,66 +86,6 @@ struct ConsigliatiView: View {
         var parti = ["\(m.svincolati ?? 0) svincolati analizzati"]
         if let c = m.creditiResidui { parti.append("crediti \(Formato.intero(c))") }
         return parti.joined(separator: " · ")
-    }
-
-    /// Cambio compatto: l'entrante in primo piano (avatar, nome), l'uscente in piccolo, il guadagno come dato principale a destra,
-    /// rimborso e crediti in una riga discreta.
-    private func carta(_ p: PropostaMercato) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            FilaAdattiva(spazio: 10) {
-                AvatarGiocatore(id: p.entra.id, squadra: p.entra.squadra, dimensione: 44, conNumero: false, nome: p.entra.nome, ruolo: p.entra.ruolo)
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        BadgeRuolo(ruolo: p.entra.ruolo, piccolo: true)
-                        Text(p.entra.nome).font(.headline).lineLimit(2).minimumScaleFactor(0.8)
-                    }
-                    HStack(spacing: 5) {
-                        Image(systemName: "arrow.uturn.backward").font(.caption2)
-                        AvatarGiocatore(id: p.esce.id, squadra: p.esce.squadra, dimensione: 18, conNumero: false, nome: p.esce.nome, ruolo: p.esce.ruolo)
-                        Text(p.esce.nome).font(.caption).lineLimit(2)
-                    }
-                    .foregroundStyle(Color.testoSecondario)
-                }
-                Spacer(minLength: 6)
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text(Formato.conSegno(p.guadagno)).font(.title2.bold()).foregroundStyle(Color.verde).monospacedDigit()
-                    Text("punti attesi").font(.caption2).foregroundStyle(Color.testoSecondario)
-                }
-                .fixedSize()
-            }
-            if let riga = dettaglioRiga(p) {
-                Text(riga).font(.caption).foregroundStyle(p.fattibile == false ? Color.attenzione : Color.testoSecondario).lineLimit(2)
-            }
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.sfondoScheda, in: RoundedRectangle(cornerRadius: Tema.raggioScheda, style: .continuous))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(vocePropostaMercato(p))
-    }
-
-    /// «+0,6 nelle prossime 5 · rimborso 8, costo 12, crediti dopo 30»: tutto il secondario in una riga.
-    private func dettaglioRiga(_ p: PropostaMercato) -> String? {
-        var parti: [String] = []
-        if let b = p.breve {
-            // «nelle prossime 0» usciva quando il server non manda le giornate: allora si dice solo «nelle prossime giornate»
-            let n = p.giornate?.count ?? 0
-            let quando = n == 0 ? "nelle prossime giornate" : n == 1 ? "nella prossima giornata" : "nelle prossime \(n) giornate"
-            parti.append("\(Formato.conSegno(b)) \(quando)")
-        }
-        if let dopo = p.creditiDopo {
-            let nonBastano = p.fattibile == false ? " (non bastano)" : ""
-            parti.append("rimborso \(Formato.intero(p.rimborso)), costo \(Formato.intero(p.entra.quotazione)), crediti dopo \(Formato.intero(dopo))" + nonBastano)
-        } else if let r = p.rimborso, r > 0 {
-            parti.append("rimborso \(Formato.intero(r))")
-        }
-        return parti.isEmpty ? nil : parti.joined(separator: " · ")
-    }
-
-    private func vocePropostaMercato(_ p: PropostaMercato) -> String {
-        var testo = "Entra \(p.entra.nome), esce \(p.esce.nome), \(Formato.conSegno(p.guadagno)) punti attesi"
-        if let riga = dettaglioRiga(p) { testo += ". " + riga }
-        return testo
     }
 }
 
@@ -217,7 +157,8 @@ struct LegendaElenco: View {
             HStack(spacing: 4) {
                 Text(ClassificaView.legendaBreve)
                     .font(.caption).foregroundStyle(Color.testoSecondario)
-                    .lineLimit(2)
+                    // con il testo grande va a capo intera, mai «…» (#247)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button {
                     withAnimation(Tema.morbida) { aperta.toggle() }
@@ -334,7 +275,8 @@ struct RigaElencoGiocatore: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     BadgeRuolo(ruolo: dati.ruolo, piccolo: true)
-                    Text(dati.nome).font(.headline).lineLimit(2)
+                    // il nome intero: con il testo grande va a capo, mai «…» (#247)
+                    Text(dati.nome).font(.headline).fixedSize(horizontal: false, vertical: true)
                 }
                 Text(dati.dettaglio).font(.caption).foregroundStyle(Color.testoSecondario)
                 if tagliaTesto.isAccessibilitySize { numeri }
