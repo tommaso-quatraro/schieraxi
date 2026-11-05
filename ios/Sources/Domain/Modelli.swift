@@ -567,6 +567,9 @@ struct Formazione: Decodable {
     let intervallo: IntervalloPunti?
     /// `true` dopo la scadenza della giornata (le partite sono cominciate): la formazione non si può più cambiare. Facoltativo.
     let iniziata: Bool?
+    /// La tua scelta salvata per la giornata, con la regola del server: "nessuna", "valida" o "non_valida" (non si può più
+    /// schierare: vale la consigliata). Solo per la tua squadra. Facoltativo (server vecchio: manca).
+    let statoScelta: String?
 }
 
 struct VoceNovita: Decodable, Identifiable {
