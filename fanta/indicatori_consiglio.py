@@ -13,9 +13,16 @@ Niente nomi né dati personali: solo id dei giocatori nel Diario dell'utente, e 
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
+from . import formazione as fz
 from . import verifica_consiglio as vc
+from .regole import Regole
 
 MAX_CAMBI = 10                  # cambi ricordati per giornata (gli ultimi: quelli vicini alla scadenza)
+PRIMA_DELLA_SCADENZA = timedelta(hours=24)      # C2 conta i cambi da qui alla scadenza
+# C3 e C4 di una consigliata (`misure`), nell'istantanea e nella voce del Diario
+MISURE = ("improbabili", "con_compagno", "reparti", "storte", "spiegate", "titolari", "vuoti", "senza_motivo")
 
 
 def misure(f: dict) -> dict | None:
@@ -64,3 +71,42 @@ def cambio(vecchia: dict, f: dict, quando: str) -> dict | None:
             pass                                                   # schede incomplete: il valore del cambio non si potrà ricalcolare
         r["panchina"] = [int(t["id"]) for t in f.get("panchina") or [] if isinstance(t, dict) and "id" in t]
     return r
+
+
+def guadagno(c: dict, regole: Regole) -> float | None:
+    """Quanto valeva un cambio (`cambio`): punti attesi della consigliata nuova meno quelli dei titolari di prima, con i numeri di quel
+    momento e le simulazioni dell'app (`verifica_consiglio.valore_di_prima`, lo stesso conto della consigliata stabile). None se il
+    cambio non porta i numeri della rosa o non tornano."""
+    try:
+        rosa = [fz.Giocatore(int(i), "", str(ruolo), float(p), float(mu), float(mv)) for i, ruolo, p, mu, mv in c["rosa"]]
+        per_id = {g.id: g for g in rosa}
+        prima = [int(i) for i in c["prima"]]
+        nuovi = [per_id[int(i)] for i in c["dopo"]]
+        panchina = [per_id[int(i)] for i in c.get("panchina") or [] if int(i) in per_id]
+        if len(prima) != 11 or len(nuovi) != 11 or any(i not in per_id for i in prima):
+            return None
+        val = fz.Valutatore(rosa, regole, vc.SIMULAZIONI)
+        return float(val.atteso(nuovi, panchina) - vc.valore_di_prima(val, rosa, prima, regole))
+    except (KeyError, TypeError, ValueError, IndexError):
+        return None
+
+
+def _quando(testo) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(testo))
+    except ValueError:
+        return None
+
+
+def conta_cambi(cambi: list, scadenza: datetime | None, regole: Regole) -> tuple[int | None, int | None]:
+    """C2 di una giornata: (cambi dei titolari nelle 24 ore prima della scadenza, quanti di loro valevano meno della soglia
+    `verifica_consiglio.SOGLIA_CAMBIO` senza essere motivati). (None, None) senza la scadenza (calendario senza date)."""
+    if scadenza is None:
+        return None, None
+    da = scadenza - PRIMA_DELLA_SCADENZA
+    nel_giorno = [c for c in cambi if isinstance(c, dict) and (q := _quando(c.get("quando"))) is not None and da <= q < scadenza]
+    sotto = 0
+    for c in nel_giorno:
+        if c.get("motivata") is False and (g := guadagno(c, regole)) is not None and g < vc.SOGLIA_CAMBIO:
+            sotto += 1
+    return len(nel_giorno), sotto

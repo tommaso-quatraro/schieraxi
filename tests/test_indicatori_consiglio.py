@@ -103,3 +103,109 @@ def test_l_elenco_del_diario_non_manda_i_cambi_alle_app(tmp_path, orologio):
     diario._scrivi(f, voci={f"{ST}/1": {"stagione": ST, "giornata": 1, "consigliata": {"atteso": 70, "reale": 66}, "schierata": None}})
     e = diario.elenco(f)
     assert "cambi" not in e and "cambi" not in e["giornate"][0]["istantanea"]
+
+
+# ------------------------------------------------------------------ C2 a giornata finita: i cambi delle 24 ore prima della scadenza
+SCADENZA = datetime(2026, 9, 1, 18, 0)
+
+
+def _rosa_cambio(mu=None):
+    """La rosa finta come la ricorda un cambio: tutti al 90% con fantavoto atteso 6 (salvo `mu` = {id: valore})."""
+    return [[i, RUOLI[i - 1], 0.9, (mu or {}).get(i, 6.0), 6.0] for i in range(1, 26)]
+
+
+def _cambio(ore_prima, dopo=MOSTRATI[:-1] + [23], rosa=None, motivata=False):
+    rosa = rosa or _rosa_cambio()
+    giocatori = {r[0]: fz.Giocatore(r[0], "", r[1], r[2], r[3], r[4]) for r in rosa}
+    panchina = fz._panchina(list(giocatori.values()), [giocatori[i] for i in dopo], Regole())
+    return {"quando": (SCADENZA - timedelta(hours=ore_prima)).isoformat(timespec="seconds"), "prima": MOSTRATI, "dopo": dopo,
+            "motivata": motivata, "rosa": rosa, "panchina": [g.id for g in panchina]}
+
+
+def test_contano_solo_i_cambi_delle_24_ore_prima_della_scadenza():
+    cambi = [_cambio(30, motivata=True), _cambio(24, motivata=True), _cambio(23, motivata=True), _cambio(1, motivata=True),
+             _cambio(-1, motivata=True)]                                                   # l'ultimo è dopo la scadenza
+    assert ic.conta_cambi(cambi, SCADENZA, Regole()) == (3, 0)
+    assert ic.conta_cambi([], SCADENZA, Regole()) == (0, 0)
+    assert ic.conta_cambi(cambi, None, Regole()) == (None, None)                           # senza calendario non si misura
+
+
+def test_un_cambio_che_vale_meno_di_un_punto_atteso_e_sotto_soglia():
+    poco = _cambio(2, rosa=_rosa_cambio({23: 6.05}))                                      # il 23 vale appena più del 22
+    assert ic.conta_cambi([poco], SCADENZA, Regole()) == (1, 1)
+    tanto = _cambio(2, rosa=_rosa_cambio({23: 9.0}))                                      # quasi 3 punti attesi in più
+    assert ic.conta_cambi([tanto], SCADENZA, Regole()) == (1, 0)
+    assert ic.conta_cambi([{**poco, "motivata": True}], SCADENZA, Regole()) == (1, 0)     # un titolare non giocava più: va bene
+    senza_numeri = {k: v for k, v in poco.items() if k != "rosa"}
+    assert ic.conta_cambi([senza_numeri], SCADENZA, Regole()) == (1, 0)                   # non ricalcolabile: conta solo come cambio
+
+
+def test_il_valore_del_cambio_e_quello_della_misura_in_laboratorio():
+    """Lo stesso conto di `verifica_consiglio` (e della consigliata stabile): nuova contro i titolari di prima con la panchina del
+    sistema, sulle stesse simulazioni dell'app."""
+    from fanta import verifica_consiglio as vc
+    c = _cambio(2, rosa=_rosa_cambio({23: 7.0}))
+    rosa = [fz.Giocatore(r[0], "", r[1], r[2], r[3], r[4]) for r in c["rosa"]]
+    per_id = {g.id: g for g in rosa}
+    val = fz.Valutatore(rosa, Regole(), vc.SIMULAZIONI)
+    atteso = (val.atteso([per_id[i] for i in c["dopo"]], [per_id[i] for i in c["panchina"]])
+              - vc.valore_di_prima(val, rosa, MOSTRATI, Regole()))
+    assert ic.guadagno(c, Regole()) == pytest.approx(atteso) and 0.5 < atteso < 1.5
+
+
+# ------------------------------------------------------------------ la voce del Diario
+MISURE = {"improbabili": 1, "con_compagno": 0, "reparti": 4, "storte": 2, "spiegate": 1, "titolari": 11, "vuoti": 0, "senza_motivo": 3}
+SENZA_MISURE = dict.fromkeys(MISURE)
+
+
+def _ist(titolari=MOSTRATI, panchina=(2, 7, 16, 23), misure=MISURE):
+    return {"giornata": 2, "modulo": "3-4-3", "titolari": [{"id": i} for i in titolari], "panchina": [{"id": i} for i in panchina],
+            "atteso": 70.0, "stile": "Equilibrata", **({"misure": misure} if misure else {})}
+
+
+def test_la_voce_del_diario_ha_c1_c4_sulla_consigliata_mostrata(finto):
+    scelti = MOSTRATI[:-1] + [25]                                       # la tua, con l'attaccante che ha preso 9
+    v = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), _scelta(scelti), simulazioni=50,
+                                istantanea=_ist(), cambi=(2, 1))
+    # mostrata: 11 da 6. S2: la giornata prima hanno preso voto tutti, la fantamedia più alta è dell'attaccante 25 (9)
+    assert v["consiglio"] == {"mostrata": "istantanea", "punti_consigliata": 66.0, "punti_s2": 69.0, "punti_schierata": 69.0,
+                              "cambi": 2, "cambi_sotto_soglia": 1, **MISURE}
+
+
+def test_senza_istantanea_si_misura_la_consigliata_ricostruita(finto):
+    v = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), None, simulazioni=50)
+    assert v["consiglio"] == {"mostrata": "ricostruita", "punti_consigliata": v["consigliata"]["reale"], "punti_s2": 69.0,
+                              "punti_schierata": None, "cambi": None, "cambi_sotto_soglia": None, **SENZA_MISURE}
+    fuori_rosa = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), None, simulazioni=50,
+                                         istantanea=_ist(titolari=MOSTRATI[:-1] + [99]))
+    assert fuori_rosa["consiglio"]["mostrata"] == "ricostruita"         # un mostrato non è più in rosa: non si può rifare
+
+
+def test_schierata_uguale_alla_mostrata_non_conta_per_c1(finto):
+    v = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), _scelta(list(reversed(MOSTRATI))),
+                                simulazioni=50, istantanea=_ist())
+    assert v["schierata"] and v["consiglio"]["punti_schierata"] is None
+
+
+def test_aggiorna_conta_i_cambi_delle_24_ore_prima_della_scadenza(finto, orologio):
+    orologio["t"] = datetime(2026, 8, 30, 10, 0)                         # la prima partita della giornata 2: 1/9 alle 18
+    diario.salva_istantanea(_app(giornata=2), ST, finto.file)
+    orologio["t"] = datetime(2026, 8, 30, 11, 0)                         # cambio di due giorni prima: non conta
+    diario.salva_istantanea(_app(titolari=MOSTRATI[:-1] + [23], panchina=(2, 7, 16, 22), giornata=2), ST, finto.file)
+    orologio["t"] = datetime(2026, 9, 1, 12, 0)                          # 6 ore prima: conta, e vale quasi niente
+    diario.salva_istantanea(_app(giornata=2, panchina=(2, 7, 16, 23)), ST, finto.file)
+    assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 2
+    voci = diario.carica(finto.file)["giornate"]
+    c = voci[f"{ST}/2"]["consiglio"]
+    assert c["mostrata"] == "istantanea" and c["punti_consigliata"] == 66.0
+    assert (c["cambi"], c["cambi_sotto_soglia"]) == (1, 1)
+    assert c["titolari"] == 11 and c["improbabili"] == 0                 # le misure dell'ultima istantanea, la mostrata
+    assert voci[f"{ST}/1"]["consiglio"]["mostrata"] == "ricostruita"     # nessuna istantanea per la giornata 1
+
+
+def test_ho_schierato_tiene_gli_indicatori(vero, orologio):
+    diario.salva_istantanea(_app(giornata=1), ST, vero.file)
+    voce = _salva(vero, 1, "manuale", MOSTRATI[:-1] + [25])
+    c = diario.carica(vero.file)["giornate"][f"{ST}/1"]["consiglio"]
+    assert c == voce["consiglio"] and c["mostrata"] == "istantanea"
+    assert c["punti_consigliata"] == 66.0 and c["punti_schierata"] == 69.0 and c["titolari"] == 11

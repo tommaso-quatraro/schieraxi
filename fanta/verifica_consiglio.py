@@ -59,6 +59,15 @@ def rosa_s2(rosa: list[fz.Giocatore], ha_giocato, fantamedia) -> list[fz.Giocato
                          float(fantamedia.get(g.id, FANTAMEDIA_SENZA_VOTI)), 6.0) for g in rosa]
 
 
+def dati_s2(d, stagione: str, giornata: int, regole: Regole) -> tuple[set[int], pd.Series]:
+    """Quello che serve a S2 per una giornata: chi ha preso voto la giornata prima e la fantamedia (regole della lega) delle
+    giornate prima. Lo usano la misura in laboratorio e il Diario (`diario.calcola_giornata`)."""
+    col = COLONNA_VOTO[regole.fonte_voto]
+    vo = d.voti
+    prima = vo[(vo["stagione"] == stagione) & (vo["giornata"] == giornata - 1) & vo[col].notna()]
+    return {int(x) for x in prima["calciatore_id"].dropna()}, verifica._fantamedia(d, stagione, giornata, regole)
+
+
 # ---------------------------------------------------------------- C3: titolari che non giocano
 def e_fuori(s: dict) -> bool:
     """Vero se la scheda è di un giocatore fuori (infortunato, squalificato, senza voto per il rinvio)."""
@@ -129,6 +138,14 @@ def motivata(prima: dict[int, float], dopo: dict[int, float], titolari: list[int
     return any(prima[i] >= IMPROBABILE_SOTTO and dopo[i] < IMPROBABILE_SOTTO for i in titolari)
 
 
+def valore_di_prima(val: fz.Valutatore, rosa: list[fz.Giocatore], titolari: list[int], regole: Regole) -> float:
+    """Punti attesi dei `titolari` di prima con i dati di `val`, con la panchina che sceglie il sistema: il termine di paragone di un
+    cambio (qui e nel Diario, `indicatori_consiglio.guadagno`)."""
+    per_id = {g.id: g for g in rosa}
+    vecchi = [per_id[i] for i in titolari]
+    return val.atteso(vecchi, fz._panchina(rosa, vecchi, regole))
+
+
 def _ritocca(rosa: list[fz.Giocatore], rng: np.random.Generator) -> list[fz.Giocatore]:
     return [fz.Giocatore(g.id, g.nome, g.ruolo, float(np.clip(g.p + rng.normal(0, SCARTO_P), 0.01, 0.99)),
                          g.mu + float(rng.normal(0, SCARTO_MU)), g.mu_voto) for g in rosa]
@@ -144,9 +161,7 @@ def stabilita(rosa: list[fz.Giocatore], titolari: list[int], modulo: str, regole
     for tipo, rr, seme in varianti:
         val = fz.Valutatore(rr, regole, simulazioni) if seme is None else fz.Valutatore(rr, regole, simulazioni, seme=seme)
         nuova = fz.migliore(rr, regole, simulazioni, valutatore=val)
-        per_id = {g.id: g for g in rr}
-        vecchi = [per_id[i] for i in titolari]
-        guadagno = nuova.atteso - val.atteso(vecchi, fz._panchina(rr, vecchi, regole))
+        guadagno = nuova.atteso - valore_di_prima(val, rr, titolari, regole)
         cambiati = len(titolari) - len(set(titolari) & {g.id for g in nuova.titolari})
         prove.append(Prova(tipo, cambiati, nuova.modulo != modulo, float(guadagno),
                            tipo == "ritocco" and motivata(prima, {g.id: g.p for g in rr}, titolari)))
@@ -189,9 +204,7 @@ def parte_giocate(d, regole: Regole, rose: Rose, stagione: str, simulazioni: int
         fv_vero = {i: fantavoto(reali.loc[i].to_dict(), prev.at[i, "ruolo"], regole) for i in prev.index
                    if i in reali.index and pd.notna(reali.at[i, col])}
         voto_vero = {i: float(reali.at[i, col]) for i in fv_vero}
-        prima = vo[(vo["stagione"] == stagione) & (vo["giornata"] == g - 1) & vo[col].notna()]
-        ha_giocato = {int(x) for x in prima["calciatore_id"].dropna()}
-        fm = verifica._fantamedia(d, stagione, g, regole)
+        ha_giocato, fm = dati_s2(d, stagione, g, regole)
         for k, ids in enumerate(rose_ids):
             mod = _rosa_modello(prev, ids)
             if len(mod) < verifica.MIN_GIOCATORI_ROSA:
