@@ -1,0 +1,19 @@
+{
+  "titolo": "Da fare: niente cambi se hai salvato la consigliata",
+  "voci": [
+    "Se hai salvato la formazione consigliata, Da fare non ti propone più di sostituire i titolari: la consigliata è già la scelta migliore.",
+    "Se poi la consigliata cambia, Da fare lo dice in una riga sola con chi entra e chi esce (urgente se un tuo titolare è infortunato o squalificato). La tua formazione resta com'è finché non la cambi tu.",
+    "Con una formazione fatta a mano non cambia niente: i cambi rispetto alla consigliata restano."
+  ],
+  "titolo_en": "To do: no changes if you saved the recommended lineup",
+  "voci_en": [
+    "If you saved the recommended lineup, To do no longer suggests replacing your starters: the recommended lineup is already the best choice.",
+    "If the recommended lineup then changes, To do says so in a single line with who comes in and who goes out (urgent if one of your starters is injured or suspended). Your lineup stays as it is until you change it.",
+    "With a lineup you made by hand nothing changes: the changes compared with the recommended lineup are still suggested."
+  ],
+  "tecnico": [
+    "Issue #333, sotto #167. POST /api/formazione/valuta con salva=true scrive nella scelta il campo facoltativo era_consigliata: true se gli 11 titolari sono quelli della consigliata che l'ultimo GET /api/formazione ha mostrato (istantanea del Diario: vale anche se i dati si aggiornano mentre guardi) o di consigli.formazione per quella giornata (già in cache). Funzione da_fare.era_consigliata; se il confronto non riesce scrive un avviso nel log con il tipo d'errore. Il tipo resta «manuale»: Diario e client di prima non cambiano.",
+    "da_fare._titolari sostituisce _dubbi in costruisci: scelta valida con era_consigliata o tipo «consigliata» e consigliata di adesso con gli stessi titolari → solo le voci di _dubbi senza «alternativa»; titolari diversi → una voce tipo «formazione», id consigliata:<giornata>, priorità 2 (1 se fra chi esce c'è un infortunato o uno squalificato, con il perché: chiavi dafare.consigliata_cambiata_fuori*, dafare.fuori_*), azione «Apri la formazione», campi facoltativi entrano/escono [{id, nome}] (chiavi dafare.consigliata_cambiata, con i nomi fino a 3 cambi, e dafare.consigliata_cambiata_molti). Formazione a mano o senza scelta: _dubbi come prima.",
+    "_dubbi non cambia: l'avviso «cambio pronto» (notifiche._cambi_pronti) resta com'era. Web e iPhone mostrano la voce senza modifiche (tipo già noto)."
+  ]
+}

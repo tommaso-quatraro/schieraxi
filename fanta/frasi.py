@@ -53,6 +53,14 @@ CATALOGO: dict[str, str] = {
     "dafare.incerto_alt": "{nome}: {stato}, gioca {p}%. Meglio {alt}.",
     "dafare.incerto_tiene": "{nome} ({stato}, gioca {p}%) resta titolare: se non gioca entra {riserva} dalla panchina.",
     "dafare.formazione_chiude": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    # hai salvato la consigliata e intanto è cambiata (#333): {entrano} e {escono} sono nomi o un elenco «A, B e C»
+    "dafare.consigliata_cambiata": "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
+    "dafare.consigliata_cambiata_molti": "La consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    # la consigliata toglie un titolare salvato che è fuori: {fuori} = una o più `dafare.fuori_*` («Bianchi è infortunato, …»)
+    "dafare.consigliata_cambiata_fuori": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
+    "dafare.consigliata_cambiata_fuori_molti": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    "dafare.fuori_infortunato": "{nome} è infortunato",
+    "dafare.fuori_squalificato": "{nome} è squalificato",
     # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
     "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
