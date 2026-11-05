@@ -130,8 +130,15 @@ struct RiassuntoOggi: Codable, Equatable {
     var giornataChiusa: Int?
     var giornataChiusaLega: Int?
 
-    var etichettaGiornata: String { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } ?? "Nessuna giornata" }
-    var siglaGiornata: String { giornata.map { TempiLega.sigla(serieA: $0, lega: giornataLega) } ?? "G–" }
+    /// La giornata con i due numeri (#299); nil senza giornata.
+    var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
+    /// «Giornata 8 · 11ª di Serie A» (dove c'è spazio), o «Nessuna giornata».
+    var etichettaGiornata: String { nomeGiornata?.intero ?? "Nessuna giornata" }
+    /// Le forme di una riga, dalla più lunga: «Giornata 8 · 11ª di Serie A», «Giornata 8», «G8».
+    var formeGiornata: [String] { nomeGiornata?.forme ?? ["Nessuna giornata"] }
+    /// Per VoiceOver, sempre intera: «Giornata 8, 11ª di Serie A».
+    var voceGiornata: String { nomeGiornata?.voce ?? "Nessuna giornata" }
+    var siglaGiornata: String { nomeGiornata?.sigla ?? "G–" }
 
     static let esempio = RiassuntoOggi(giornata: 9, inizio: Date().addingTimeInterval(3 * 3600 + 25 * 60), modulo: "3-4-3", punti: 64.5,
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
@@ -215,13 +222,16 @@ struct FaseRiassunto: Equatable {
 // MARK: testi delle fasi per i widget (qui perché si provano con i test)
 
 extension RiassuntoOggi {
-    /// «Giornata 7 di lega (Serie A 10)» della giornata appena chiusa, o «Giornata appena finita».
-    var etichettaGiornataChiusa: String {
-        giornataChiusa.map { TempiLega.etichetta(serieA: $0, lega: giornataChiusaLega) } ?? "Giornata appena finita"
-    }
+    /// La giornata appena chiusa con i due numeri; nil se il server non dice quale.
+    var nomeGiornataChiusa: NomeGiornata? { giornataChiusa.map { NomeGiornata(serieA: $0, lega: giornataChiusaLega) } }
+
+    /// «Giornata 7 · 10ª di Serie A» della giornata appena chiusa, o «Giornata appena finita».
+    var etichettaGiornataChiusa: String { nomeGiornataChiusa?.intero ?? "Giornata appena finita" }
+    var formeGiornataChiusa: [String] { nomeGiornataChiusa?.forme ?? ["Giornata appena finita"] }
+    var voceGiornataChiusa: String { nomeGiornataChiusa?.voce ?? "Giornata appena finita" }
 
     /// «G7» o «G10» della giornata appena chiusa.
-    var siglaGiornataChiusa: String { giornataChiusa.map { TempiLega.sigla(serieA: $0, lega: giornataChiusaLega) } ?? "G–" }
+    var siglaGiornataChiusa: String { nomeGiornataChiusa?.sigla ?? "G–" }
 
     /// true se i widget mostrano la fase (punti fatti) invece del conto alla rovescia. Senza i numeri (server senza
     /// `in_corso`/`riepilogo`) restano come prima, ma comunque senza «Da controllare».
@@ -251,20 +261,20 @@ extension RiassuntoOggi {
     }
 
     /// Una frase per VoiceOver sulla fase; nil nella fase `prima` (lì valgono i testi di sempre). Dopo la scadenza «formazione
-    /// chiusa», come la web («Chiusa»), mai «in corso» per la giornata.
+    /// chiusa», come la web («Chiusa»), mai «in corso» per la giornata. La giornata in testa con i due numeri (#299).
     var descrizioneFase: String? {
         if inCorso {
-            var t = "\(etichettaGiornata), formazione chiusa: "
+            var t = "\(voceGiornata): formazione chiusa, "
             t += puntiFatti.map { "\(Formato.punti($0)) punti fatti finora" } ?? "punti fatti non ancora noti"
             if let p = puntiFine, p.isFinite { t += ", circa \(Formato.punti(p)) a fine giornata" }
             if let a = ancoraDaGiocareTesto { t += ". \(a)" }
             return t + "."
         }
         if finita {
-            var t = "\(etichettaGiornataChiusa) finita: "
+            var t = (nomeGiornataChiusa.map { "\($0.voce): finita" } ?? "Giornata finita") + ", "
             t += puntiFatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non ancora noti"
             if let p = puntiFine, p.isFinite { t += " su \(Formato.punti(p)) attesi" }
-            t += ". Prossima: \(etichettaGiornata)"
+            t += ". Prossima: \(voceGiornata)"
             if let inizio { t += ", scadenza \(Quando.leggibile(inizio))" }
             return t + "."
         }

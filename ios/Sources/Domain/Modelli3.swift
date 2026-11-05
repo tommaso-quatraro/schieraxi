@@ -27,6 +27,8 @@ struct ConfrontoFormazione: Decodable, Equatable {
 
 struct Confronto: Decodable {
     let giornata: Int?
+    /// Il numero della giornata nella lega (facoltativo: `null` prima che la lega parta, assente nei server vecchi).
+    let giornataLega: Int?
     let giocatori: [Giocatore]
     /// L'id del giocatore consigliato.
     let consigliato: Int?
@@ -34,6 +36,9 @@ struct Confronto: Decodable {
     let fattori: [FattoreConfronto]
     let perche: String?
     let formazione: ConfrontoFormazione?
+
+    /// Il titolo del duello, come la web (`mercato.chi_schierare`): «Giornata 8 · 11ª di Serie A» (#299, #302); nil senza giornata.
+    var titolo: String? { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } }
 }
 
 // MARK: - Prova del modello

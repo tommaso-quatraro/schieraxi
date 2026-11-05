@@ -194,6 +194,49 @@ def test_stato_salvato_anche_se_il_giro_va_in_errore(tmp_path, monkeypatch, capl
     assert "RuntimeError" in caplog.text and "dati segreti" not in caplog.text
 
 
+def _thread_con_registro(monkeypatch, tmp_path, registro_acceso: str, finto, intervallo=0.0):
+    """Il thread del pianificatore con il registro delle giornate finto: gira finché `finto` non ferma o passano 0,3 secondi."""
+    from fanta import registro_giornate
+    s = Scena(monkeypatch)
+    monkeypatch.setattr(pianificatore, "FILE_STATO", tmp_path / "pianificatore.json")
+    monkeypatch.setattr(pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))
+    monkeypatch.delenv("FANTA_PIANIFICATORE", raising=False)
+    monkeypatch.setenv("FANTA_REGISTRO_GIORNATE", registro_acceso)
+    monkeypatch.setattr(registro_giornate, "giro", finto)
+    fermo = threading.Event()
+    t = threading.Thread(daemon=True, target=pianificatore.sorveglia,
+                         args=(fermo, lambda: [s.regole], _db, lambda: True, lambda: None, intervallo, lambda: H(17, 25)))
+    t.start()
+    fermo.wait(0.3)
+    fermo.set()
+    t.join(10)
+    assert not t.is_alive()
+    return fermo
+
+
+def test_il_thread_chiama_il_registro_delle_giornate(tmp_path, monkeypatch):
+    chiamate = []
+    _thread_con_registro(monkeypatch, tmp_path, "1", lambda adesso, db: chiamate.append(adesso), intervallo=10)
+    assert chiamate == [H(17, 25)]                              # un giro, con l'ora del pianificatore
+    assert pianificatore.carica_stato()["fatti"] == [f"{ST}/10/10/60"]      # e il giro delle probabili c'è sempre
+
+
+def test_registro_spento_con_la_variabile(tmp_path, monkeypatch):
+    chiamate = []
+    _thread_con_registro(monkeypatch, tmp_path, "0", lambda adesso, db: chiamate.append(adesso), intervallo=0.01)
+    assert chiamate == []
+
+
+def test_un_errore_del_registro_non_ferma_il_pianificatore(tmp_path, monkeypatch, caplog):
+    def rotto(adesso, db):
+        raise RuntimeError("dati segreti")
+
+    with caplog.at_level("WARNING"):
+        _thread_con_registro(monkeypatch, tmp_path, "1", rotto, intervallo=10)
+    assert pianificatore.carica_stato()["fatti"] == [f"{ST}/10/10/60"]
+    assert "RuntimeError" in caplog.text and "dati segreti" not in caplog.text
+
+
 def test_lega_a_serie_a_solo_giornate_vere():
     r = regole.imposta(Regole(), "prima_giornata_lega", "4")
     assert regole.lega_a_serie_a(1, r) == 4 and regole.lega_a_serie_a(35, r) == 38

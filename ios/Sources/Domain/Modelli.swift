@@ -531,7 +531,19 @@ struct OpzioneModulo: Decodable, Identifiable {
     let panchina: [Int]
     /// La fascia dei punti (8 volte su 10). Facoltativa (server vecchio).
     let intervallo: IntervalloPunti?
+    /// Il perché delle scelte che sembrano storte, una riga per titolare (#356). Facoltativo (server vecchio).
+    let percheScelta: [PercheScelta]?
     var id: String { modulo }
+}
+
+/// Una riga del perché della scelta (`perche_scelta` del modulo, `fanta/perche_scelta.py`): un titolare con meno punti attesi di
+/// un escluso dello stesso ruolo (o incerto con la riserva sicura) e il motivo, già scritto dal server. Campi facoltativi: una riga
+/// incompleta si salta, non fa fallire la Formazione.
+struct PercheScelta: Decodable {
+    let titolare: Int?
+    /// Il giocatore che la riga nomina (l'escluso o la riserva).
+    let altro: Int?
+    let testo: String?
 }
 
 struct LivelloRischio: Decodable, Identifiable {
@@ -567,6 +579,9 @@ struct Formazione: Decodable {
     let intervallo: IntervalloPunti?
     /// `true` dopo la scadenza della giornata (le partite sono cominciate): la formazione non si può più cambiare. Facoltativo.
     let iniziata: Bool?
+    /// La tua scelta salvata per la giornata, con la regola del server: "nessuna", "valida" o "non_valida" (non si può più
+    /// schierare: vale la consigliata). Solo per la tua squadra. Facoltativo (server vecchio: manca).
+    let statoScelta: String?
 }
 
 struct VoceNovita: Decodable, Identifiable {
@@ -597,6 +612,45 @@ struct StatoDati: Decodable {
         var id: String { gruppo }
     }
     struct Calibrazione: Decodable { let giornate: Int?; let gruppi: [GruppoCalibrazione]? }
+    /// Il registro delle giornate (#344, `registro_giornate.riepilogo` del server): le medie delle ultime `finestra` giornate misurate
+    /// con le soglie e il verdetto (`regge`, solo con `verdetto`), e una riga per giornata. Un server vecchio non lo manda.
+    struct Registro: Decodable {
+        /// Le chiavi «I2_calibrazione»... arrivano come `i2Calibrazione` (`convertFromSnakeCase`); «I1» resta com'è.
+        struct Soglie: Decodable {
+            let i1: Double?
+            let i2Calibrazione: Double?
+            let i2Brier: Double?
+            let i3Minimo: Double?
+            let i3Massimo: Double?
+            enum CodingKeys: String, CodingKey { case i1 = "I1", i2Calibrazione, i2Brier, i3Minimo, i3Massimo }
+        }
+        /// Per ogni misura: vero se regge, falso se no, nil finché non c'è il verdetto o manca il numero.
+        struct Regge: Decodable {
+            let i1: Bool?
+            let i2: Bool?
+            let i3: Bool?
+            enum CodingKeys: String, CodingKey { case i1 = "I1", i2 = "I2", i3 = "I3" }
+        }
+        /// Una giornata salvata o persa (`persa`: il motivo in breve, scritto dal server).
+        struct Giornata: Decodable, Identifiable {
+            let stagione: String?
+            let giornata: Int?
+            let persa: String?
+            var id: String { "\(stagione ?? "")-\(giornata ?? -1)" }
+        }
+        let finestra: Int?
+        let soglie: Soglie?
+        let giornate: Int?
+        let erroreModello: Double?
+        let erroreFantamedia: Double?
+        let i1: Double?
+        let brier: Double?
+        let calibrazione: Double?
+        let copertura: Double?
+        let verdetto: Bool?
+        let regge: Regge?
+        let perGiornata: [Giornata]?
+    }
     let stagione: String?
     let aggiornamenti: [AggiornamentoDati]?
     let calciatori: Int?
@@ -606,6 +660,7 @@ struct StatoDati: Decodable {
     let probabili: [Probabili]?
     let calibrazione: Calibrazione?
     let coppeFino: String?
+    let registro: Registro?
 }
 
 struct EsitoImportazione: Decodable {

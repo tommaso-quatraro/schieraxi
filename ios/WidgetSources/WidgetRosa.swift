@@ -70,7 +70,7 @@ struct VistaRosa: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         case .systemExtraLarge:
             VStack(alignment: .leading, spacing: 6) {
-                IntestazioneWidget(titolo: "Chi gioca", icona: "figure.soccer", destra: w.etichettaGiornata)
+                IntestazioneWidget(titolo: "Chi gioca", icona: "figure.soccer", giornata: w.nomeGiornata)
                 HStack(alignment: .top, spacing: 24) {
                     colonna(Array(giocano.prefix(6)))
                     colonna(Array(giocano.dropFirst(6)))
@@ -80,7 +80,7 @@ struct VistaRosa: View {
             }
         default:
             VStack(alignment: .leading, spacing: 6) {
-                IntestazioneWidget(titolo: "Chi gioca", icona: "figure.soccer", destra: w.etichettaGiornata)
+                IntestazioneWidget(titolo: "Chi gioca", icona: "figure.soccer", giornata: w.nomeGiornata)
                 if giocano.isEmpty {
                     Spacer(minLength: 0)
                     Text("Nessuno gioca a breve").font(.headline)

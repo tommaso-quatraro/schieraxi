@@ -133,7 +133,7 @@ struct FormazioneWidget: Codable, Equatable {
 }
 
 struct PuntiGiornata: Codable, Equatable, Identifiable {
-    /// Il numero di Serie A mandato dal server; in `giornateGiocate` diventa il numero da mostrare (quello della lega se c'è).
+    /// Il numero di Serie A mandato dal server (il numero da mostrare è `numero`, i due insieme `nome`).
     var giornata: Int
     /// Il numero nella lega e la stagione della voce, gli stessi di `GET /api/diario` (server dal 2/11/2026; uno vecchio non li
     /// manda). `giornataLega` è nil fuori dalla stagione in corso.
@@ -271,9 +271,11 @@ struct RiassuntoWidget: Decodable {
     /// La fase con i suoi blocchi (ognuno solo nella sua fase).
     var faseGiornata: FaseRiassunto { FaseRiassunto(fase: fase, inCorso: inCorsoLetto?.valore, riepilogo: riepilogoLetto?.valore) }
 
-    /// «Giornata 7 di lega (Serie A 10)», «Giornata 10» o nil se la giornata non si conosce.
-    var etichettaGiornata: String? { giornata.map { TempiLega.etichetta(serieA: $0, lega: giornataLega) } }
-    var siglaGiornata: String? { giornata.map { TempiLega.sigla(serieA: $0, lega: giornataLega) } }
+    /// La giornata con i due numeri (#299); nil se la giornata non si conosce.
+    var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
+    /// «Giornata 7 · 10ª di Serie A», «10ª giornata di Serie A» senza numero della lega, o nil.
+    var etichettaGiornata: String? { nomeGiornata?.intero }
+    var siglaGiornata: String? { nomeGiornata?.sigla }
 
     /// Quando comincia la giornata (la scadenza della formazione).
     var inizio: Date? { Quando.data(scadenza) }
@@ -425,15 +427,24 @@ extension PuntiGiornata {
     /// Il numero da mostrare: `giornata_lega ?? giornata`, come l'app e la web.
     var numero: Int { giornataLega ?? giornata }
 
+    /// La giornata con i due numeri (#299): «Giornata 7 · 10ª di Serie A», o «38ª giornata di Serie A» per un'altra stagione.
+    var nome: NomeGiornata { NomeGiornata(serieA: giornata, lega: giornataLega) }
+
     /// La stagione da scrivere accanto al numero, solo per le voci di un'altra stagione: il server manda `giornata_lega` null
     /// fuori dalla stagione in corso. Un server vecchio non manda la stagione: nil.
     var altraStagione: String? { giornataLega == nil ? stagione : nil }
 
-    /// «Giornata 8», «Giornata 38 · 2025-26» (un'altra stagione, come il Diario dell'app e della web).
-    var titolo: String { "Giornata \(numero)" + (altraStagione.map { " · \($0)" } ?? "") }
+    /// «Giornata 8 · 11ª di Serie A», «38ª giornata di Serie A · 2025-26» (un'altra stagione, come il Diario dell'app e della web).
+    var titolo: String { nome.intero + (altraStagione.map { " · \($0)" } ?? "") }
 
     /// «G8»: per gli spazi stretti, solo il numero (la stagione resta nel titolo e in VoiceOver).
     var sigla: String { "G\(numero)" }
+
+    /// Il widget «Attesi e fatti» piccolo e medio in una frase per VoiceOver, sempre con i due numeri della giornata (#299):
+    /// «Attesi e fatti. Giornata 7, 10ª di Serie A: 63,5 punti fatti, 66,0 attesi. −2,5 sul previsto.»
+    var voceWidget: String {
+        "Attesi e fatti. \(descrizione)" + (scarto.map { ". \(Formato.conSegno($0)) sul previsto" } ?? "") + "."
+    }
 
     /// Le giornate per il grafico, dalla più vecchia alla più recente: le ultime `massimo` con almeno un numero. `giornate` arriva
     /// dalla più recente (`giornateGiocate`): a inizio stagione la 38 dell'anno prima viene prima della giornata 1, non dopo.
@@ -441,10 +452,10 @@ extension PuntiGiornata {
         Array(giornate.filter { $0.fatti != nil || $0.attesi != nil }.prefix(max(0, massimo)).reversed())
     }
 
-    /// Una frase per VoiceOver: «Giornata 10: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 62 e 85»;
-    /// per un'altra stagione «Giornata 38 del 2025-26: …». Stesso numero del testo sullo schermo.
+    /// Una frase per VoiceOver: «Giornata 7, 10ª di Serie A: 63,5 punti fatti, 66,0 attesi, dentro la fascia prevista, tra 62
+    /// e 85»; per un'altra stagione «38ª giornata di Serie A del 2025-26: …». Sempre i due numeri (#299).
     var descrizione: String {
-        var t = "Giornata \(numero)" + (altraStagione.map { " del \($0)" } ?? "") + ": "
+        var t = nome.voce + (altraStagione.map { " del \($0)" } ?? "") + ": "
         t += fatti.map { "\(Formato.punti($0)) punti fatti" } ?? "punti fatti non noti"
         if let attesi { t += ", \(Formato.punti(attesi)) attesi" }
         if let f = fasciaTesto, let fascia = intervallo?.testo { t += ", \(f) prevista, \(fascia)" }
@@ -484,14 +495,10 @@ extension RiassuntoWidget {
     /// Server vecchio (nessuna voce con i due campi): il numero si ricava con lo scarto della giornata in corso (`numeroDiLega`).
     var giornateGiocate: [PuntiGiornata] {
         let giocate = (diario ?? []).filter { $0.fatti != nil }
-        if giocate.contains(where: { $0.stagione != nil || $0.giornataLega != nil }) {
-            return giocate.map { g in
-                var x = g
-                x.giornata = g.numero
-                return x
-            }
-        }
+        if giocate.contains(where: { $0.stagione != nil || $0.giornataLega != nil }) { return giocate }
         let attuale = giornata ?? Int.max
+        // il numero della lega si calcola solo per la stagione in corso, e solo se il server manda quello della giornata attuale
+        let conLega = giornataLega.map { $0 > 0 && attuale >= $0 } ?? false
         return giocate
             .sorted { a, b in
                 let (aInCorso, bInCorso) = (a.giornata <= attuale, b.giornata <= attuale)
@@ -500,7 +507,7 @@ extension RiassuntoWidget {
             .compactMap { g in
                 guard let n = numeroDiLega(g.giornata) else { return nil }
                 var x = g
-                x.giornata = n
+                if conLega && g.giornata <= attuale { x.giornataLega = n }   // la giornata di Serie A resta in `giornata`
                 return x
             }
     }
@@ -920,28 +927,49 @@ enum ParoleWidget {
 }
 
 extension PuntiGiornata {
-    /// Le forme di una riga della tabella dei punti, dalla più lunga: «G7» al posto di «Giornata 7», poi via la fascia, poi solo i fatti.
-    enum FormaRiga: CaseIterable { case completa, siglaConFascia, sigla, soloFatti }
+    /// Le forme di una riga della tabella dei punti, dalla più lunga: «Giornata 7» senza Serie A, poi «G7», poi via la fascia, poi
+    /// solo i fatti.
+    enum FormaRiga: CaseIterable { case completa, cortaConFascia, siglaConFascia, sigla, soloFatti }
+
+    /// «Giornata 7», o «38ª di Serie A · 2025-26» per una giornata di un'altra stagione.
+    var cortoConStagione: String { nome.corto + (altraStagione.map { " · \($0)" } ?? "") }
 
     /// «G7», o «G38 · 2025-26» per una giornata di un'altra stagione (la stagione non si perde mai).
     var siglaConStagione: String { altraStagione.map { "\(sigla) · \($0)" } ?? sigla }
+
+    /// Una disposizione della testata del widget piccolo e medio: «Attesi e fatti» intero o solo il suo simbolo, e la giornata in
+    /// una forma («Giornata 7» o «G7»).
+    struct FormaTestata: Equatable {
+        let conTitolo: Bool
+        let giornata: String
+    }
+
+    /// Le disposizioni della testata, dalla più ricca alla più povera (#352): prima il titolo con «Giornata 7» e con «G7», poi il
+    /// solo simbolo con le stesse due forme. La vista tiene la prima che entra INTERA: con il testo grande nel widget piccolo il
+    /// titolo e «G7» non stanno insieme, e prima «G7» finiva tagliato; ora si perde il titolo (resta il simbolo), mai la giornata.
+    var formeTestata: [FormaTestata] {
+        let forme = nome.formeCorte
+        return forme.map { FormaTestata(conTitolo: true, giornata: $0) } + forme.map { FormaTestata(conTitolo: false, giornata: $0) }
+    }
 
     /// I pezzi di una riga della tabella in quella forma: titolo, fascia (se c'è) e punti.
     func riga(_ forma: FormaRiga) -> (titolo: String, fascia: String?, punti: String) {
         let suAttesi = "\(Formato.punti(fatti)) su \(Formato.punti(attesi))"
         switch forma {
         case .completa: return (titolo, fasciaTesto, suAttesi)
+        case .cortaConFascia: return (cortoConStagione, fasciaTesto, suAttesi)
         case .siglaConFascia: return (siglaConStagione, fasciaTesto, suAttesi)
         case .sigla: return (siglaConStagione, nil, suAttesi)
         case .soloFatti: return (siglaConStagione, nil, Formato.punti(fatti))
         }
     }
 
-    /// Il titolo del rettangolo della schermata di blocco: «Giornata 7: 63,5 punti» → «G7: 63,5 punti» → «G7: 63,5».
+    /// Il titolo del rettangolo della schermata di blocco: «Giornata 7 · 10ª di Serie A: 63,5 punti» → «Giornata 7: 63,5 punti» →
+    /// «G7: 63,5 punti» → «G7: 63,5».
     var formeTitolo: [String] {
         let f = Formato.punti(fatti)
         if altraStagione != nil { return ["\(siglaConStagione): \(f) punti", "\(siglaConStagione): \(f)"] }
-        return ["Giornata \(numero): \(f) punti", "\(sigla): \(f) punti", "\(sigla): \(f)"]
+        return ["\(nome.intero): \(f) punti", "\(nome.corto): \(f) punti", "\(sigla): \(f) punti", "\(sigla): \(f)"]
     }
 
     /// La riga in linea: «G7 63,5 fatti, 66,0 attesi» → «G7 63,5 su 66,0» → «G7 63,5 fatti».
@@ -976,23 +1004,33 @@ extension ScambioWidget {
 extension RiassuntoOggi {
     /// La giornata nella testata: a giornata finita quella appena chiusa (giornata e scadenza sono già della prossima);
     /// nil se il server non dice quale (meglio niente che il numero sbagliato).
-    var etichettaTestata: String? {
-        guard finita else { return etichettaGiornata }
-        return giornataChiusa.map { TempiLega.etichetta(serieA: $0, lega: giornataChiusaLega) }
+    var nomeTestata: NomeGiornata? { finita ? nomeGiornataChiusa : nomeGiornata }
+
+    /// «Giornata 8 · 11ª di Serie A» nella testata (le forme più corte in `nomeTestata`), o nil.
+    var etichettaTestata: String? { nomeTestata?.intero }
+
+    /// Il titolo della fase: «Chiusa» dopo la scadenza, «Giornata 8 · 11ª di Serie A: finita» a giornata finita (come la web,
+    /// la forma intera in testa e i due punti); nil prima della scadenza.
+    var titoloFase: String? { formeTitoloFase?.first }
+
+    /// Il titolo della fase dalla forma più lunga: «Giornata 8 · 11ª di Serie A: finita», «Giornata 8: finita», «G8: finita».
+    var formeTitoloFase: [String]? {
+        if inCorso { return [ParoleWidget.chiusa] }
+        guard finita else { return nil }
+        return nomeGiornataChiusa.map { n in n.forme.map { "\($0): finita" } } ?? ["Giornata finita"]
     }
 
-    /// Il titolo della fase: «Chiusa» dopo la scadenza, «Giornata 8 finita» a giornata finita; nil prima della scadenza.
-    var titoloFase: String? {
-        if inCorso { return ParoleWidget.chiusa }
-        if finita { return giornataChiusa == nil ? "Giornata finita" : "\(etichettaGiornataChiusa) finita" }
-        return nil
+    /// Il titolo della fase per VoiceOver: «Giornata 8, 11ª di Serie A: finita».
+    var voceTitoloFase: String? {
+        guard finita, let n = nomeGiornataChiusa else { return titoloFase }
+        return "\(n.voce): finita"
     }
 
-    /// La frase sotto il titolo della fase: dopo la scadenza come la web («La formazione della giornata 8 si è chiusa oggi 14:50»)
-    /// e dove sono i punti; a giornata finita cosa succede ora. nil prima della scadenza.
+    /// La frase sotto il titolo della fase: dopo la scadenza come la web («La formazione si è chiusa oggi 14:50»: la giornata è
+    /// scritta sopra, non si ripete) e dove sono i punti; a giornata finita cosa succede ora. nil prima della scadenza.
     func fraseFase(adesso: Date) -> String? {
         if inCorso {
-            var t = giornata == nil ? "La formazione si è chiusa" : "La formazione della \(etichettaGiornata.lowercased()) si è chiusa"
+            var t = "La formazione si è chiusa"
             if let inizio { t += " \(Quando.relativa(inizio, adesso: adesso))" }
             return t + ". I punti fatti sono in Oggi."
         }
@@ -1010,7 +1048,13 @@ extension RiassuntoOggi {
     }
 
     /// Sotto il titolo del rettangolo «Da controllare» quando non ci sono nomi: la giornata, o a giornata finita la prossima.
-    var sottotitoloRettangolo: String { finita ? "Prossima: \(etichettaGiornata)" : etichettaGiornata }
+    var sottotitoloRettangolo: String { formeSottotitoloRettangolo.first ?? etichettaGiornata }
+
+    /// Le forme del sottotitolo, dalla più lunga: «Prossima: Giornata 9 · 12ª di Serie A», «Prossima: Giornata 9», «Prossima: G9».
+    var formeSottotitoloRettangolo: [String] { finita ? formeGiornata.map { "Prossima: \($0)" } : formeGiornata }
+
+    /// Il sottotitolo per VoiceOver, con i due numeri.
+    var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
 }
 
 // MARK: Widget «Osservato»: una sola percentuale, e i seguiti tolti dal server per il peso
