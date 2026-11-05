@@ -16,7 +16,9 @@ struct CartaPartitaRinviata: View {
                     Text(TestiRinvio.recupero(p)).font(.footnote).foregroundStyle(Color.testoSecondario)
                     Spacer(minLength: 0)
                 }
-                .accessibilityElement(children: .combine)
+                // le sigle si vedono; VoiceOver legge i nomi interi, come le partite del turno
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(TestiRinvio.partitaAVoce(p)), \(TestiRinvio.recupero(p))")
             }
             if let m = TestiRinvio.miei(scelta) {
                 Text(m).font(.subheadline).fixedSize(horizontal: false, vertical: true)
