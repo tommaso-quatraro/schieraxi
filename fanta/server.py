@@ -2395,7 +2395,8 @@ def ripristina_backup(dati: dict, ctx: Contesto = Depends(lega_corrente)):
     chiusa, db = _giornata_chiusa_per(ctx)
     try:
         with versioni.blocco("scelte"):
-            esito = backup.ripristina_esito(dati, RADICE, ctx.file_backup, ctx.copia_prima, chiusa)
+            esito = backup.ripristina_esito(dati, RADICE, ctx.file_backup, ctx.copia_prima, chiusa,
+                                            lambda rose: limiti.controlla_rose(ctx, rose))     # stessi tetti dell'importazione
     finally:
         db.close()
     tenute = esito["scelte_chiuse_tenute"]
