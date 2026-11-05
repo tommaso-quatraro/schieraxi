@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Le schede Squadra e Altro (la «dieta delle funzioni»): un elenco di voci, ognuna una pagina. Squadra ha la mia squadra e le rose,
-/// i cambi consigliati, i seguiti, l'elenco dei giocatori e il calendario; Altro ha Scambi, il diario, le regole, lo storico
-/// e le novità. Account, aspetto e avvisi stanno solo nelle Impostazioni (l'ingranaggio in testata): ogni voce in un posto solo.
+/// Le schede Squadra e Altro (la «dieta delle funzioni»): un elenco di voci, ognuna una pagina. Voci, ordine, testi e condizioni
+/// sono quelli della web (`VoceMenuLega`, da `VOCI_LEGA` di `fanta/web/app.js`). Account, aspetto e avvisi stanno solo nelle
+/// Impostazioni (l'ingranaggio in testata): ogni voce in un posto solo.
 /// Le voci di una funzione spenta (`GET /api/funzioni`) non si vedono. Logica in `LegaViewModel`, `MercatoViewModel` e `ScambiViewModel`.
 struct LegaView: View {
     @ObservedObject var vm: LegaViewModel
@@ -137,48 +137,20 @@ struct LegaView: View {
         }
     }
 
-    /// Squadra: la mia squadra e le rose, i cambi consigliati, i seguiti, l'elenco dei giocatori, il calendario.
+    /// Squadra: le voci di `VOCI_LEGA` della web (la mia squadra e le rose, i cambi consigliati, i seguiti, l'elenco dei giocatori,
+    /// il calendario, per ultima l'importazione delle rose).
     private var sezioneSquadra: some View {
         Section {
-            NavigationLink(value: PaginaLega.importa) { Label("Aggiorna le rose", systemImage: "doc.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: 44) }
-            NavigationLink(value: PaginaLega.squadre) {
-                Label(funzioni.acceso(Funzione.squadreAltrui) ? "Squadre e rose" : "La mia squadra e rosa", systemImage: "person.3")
-                    .labelStyle(.voce(.green)).frame(minHeight: 44)
-            }
-            NavigationLink(value: PaginaLega.cambi) { Label("Cambi consigliati", systemImage: "arrow.triangle.2.circlepath").labelStyle(.voce(.orange)).frame(minHeight: 44) }
-            if funzioni.acceso(Funzione.seguiti) {
-                NavigationLink(value: PaginaLega.seguiti) { Label("Seguiti", systemImage: "star").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.elencoGiocatori) {
-                NavigationLink(value: PaginaLega.elenco) { Label("Elenco dei giocatori", systemImage: "list.number").labelStyle(.voce(.teal)).frame(minHeight: 44) }
-            }
-            if funzioni.vedeCalendario {
-                NavigationLink(value: PaginaLega.calendario) { Label("Calendario", systemImage: "calendar.badge.clock").labelStyle(.voce(.cyan)).frame(minHeight: 44) }
-            }
+            // la pagina come identità della riga: è anche il valore della selezione nelle colonne dell'iPad
+            ForEach(VoceMenuLega.voci(.squadra, funzioni: funzioni), id: \.pagina) { RigaVoceMenuLega(voce: $0) }
         }
     }
 
-    /// Altro: Scambi, il diario, le regole, le novità. I movimenti e i crediti delle squadre solo con «Squadre della lega»;
-    /// la nuova stagione solo quando le rose sono di un anno passato (o con «Mostra tutte»).
+    /// Altro: le voci di `VOCI_LEGA` della web. «Nuova stagione» c'è sempre, come sulla web; quando le rose sono di un anno passato
+    /// c'è in più il riquadro in cima.
     private var sezioneAltro: some View {
         Section {
-            NavigationLink(value: PaginaLega.scambi) { Label("Scambi", systemImage: "arrow.left.arrow.right").labelStyle(.voce(.purple)).frame(minHeight: 44) }
-            if funzioni.acceso(Funzione.diario) {
-                NavigationLink(value: PaginaLega.diario) { Label("Diario delle giornate", systemImage: "book").labelStyle(.voce(.teal)).frame(minHeight: 44) }
-            }
-            NavigationLink(value: PaginaLega.regole) { Label("Regole", systemImage: "list.bullet.rectangle").labelStyle(.voce(.indigo)).frame(minHeight: 44) }
-            if funzioni.acceso(Funzione.squadreAltrui) && funzioni.acceso(Funzione.movimenti) {
-                NavigationLink(value: PaginaLega.movimenti) { Label("Movimenti e storico", systemImage: "list.bullet.clipboard").labelStyle(.voce(.orange)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.squadreAltrui) && funzioni.accesoSoloSeNominato(Funzione.crediti) {
-                NavigationLink(value: PaginaLega.crediti) { Label("Crediti delle squadre", systemImage: ParoleWidget.simboloCrediti).labelStyle(.voce(.mint)).frame(minHeight: 44) }
-            }
-            if !vm.nuovaStagione && funzioni.mostraTutte {   // con la stagione nuova c'è già il riquadro in cima
-                NavigationLink(value: PaginaLega.stagione) { Label("Nuova stagione", systemImage: "calendar").labelStyle(.voce(.red)).frame(minHeight: 44) }
-            }
-            if funzioni.acceso(Funzione.novita) {
-                NavigationLink(value: PaginaLega.novita) { Label("Novità", systemImage: "sparkles").labelStyle(.voce(.yellow)).frame(minHeight: 44) }
-            }
+            ForEach(VoceMenuLega.voci(.altro, funzioni: funzioni), id: \.pagina) { RigaVoceMenuLega(voce: $0) }
         }
     }
 }

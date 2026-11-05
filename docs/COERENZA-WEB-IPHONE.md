@@ -80,7 +80,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 23 | Scheda giocatore, numero grande | neutro | verde | neutro | #27 (da chiedere) |
 | 24 | Diario, pulsante | «Ho schierato questa» | «Ho schierato la consigliata» (#21) | iPhone | fatto sulla web (pacchetto 1) |
 | 25 | Scambi | «Costruisci uno scambio», «Valuta lo scambio», «Giocatori in rosa dopo lo scambio», «Formazione migliore (prossime N giornate)» | «Analizza», «Valuta l'offerta», «Rose dopo lo scambio», «Tua formazione migliore» | web | da fare (I-Scambi, dopo #14) |
-| 26 | Menu Squadra | «Aggiorna le rose» per ultima | «Aggiorna le rose» per prima | web | da fare (I-menu, dopo #29) |
+| 26 | Menu Squadra e Altro, pagina Calendario | «Aggiorna le rose» per ultima, «Calendario» con l'elenco dei giocatori, «Nuova stagione» sempre, riga sotto ogni voce; Calendario «Calendario e difficoltà» | «Aggiorna le rose» per prima, niente «Calendario» né «Nuova stagione», senza righe sotto; «Difficoltà delle prossime partite» | web | fatto con #304 (test contro `VOCI_LEGA` e `testi.js`) |
 | 27 | Menu Altro | niente asta | «Asta e riparazione» | da decidere | decisione dell'utente |
 | 28 | Confronto, titolo | – | «Giornata 10» (Serie A) | «Giornata 7» | da fare (I-menu, dopo #29) |
 | 29 | Avvisi, Impostazioni, Account, Regole, Novità, Squadre e rose | – | – | da confrontare | da fare (I-confronto) |
