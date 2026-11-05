@@ -38,6 +38,7 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 - **Intestazione pagina**: titolo pagina (28) + al massimo 2 azioni a destra (cerca, aggiorna/condividi); sottotitolo di stato (giornata, ultimo aggiornamento) in Secondario. Uguale su tutte le schermate.
 - **Intestazione di sezione**: Etichetta (13, iniziale maiuscola) con eventuale conteggio a destra; sopra 16, sotto 8.
 - **Chip di scelta** (modulo, stile): una sola riga scorrevole o un menu; con valore piccolo accanto («4-3-3 · 71,1»). Quello attivo: lime (`--capitano`) con testo scuro, uguale su web e iOS.
+- **Sigla della squadra** nei colori sociali (`distintivo()` sulla web, `DistintivoSquadra` sull'iPhone): scritta nera o bianca, quella con il contrasto più alto sul primo colore (`LetturaPedina.testoScuro`); con la vecchia soglia della web il bianco sull'azzurro del Napoli stava a 3,5:1 (issue #244).
 - **Stato vuoto**: simbolo 32, una frase che dice cosa manca, un solo pulsante che dice cosa fare («Importa le rose»). Mai solo grigio.
 - **Errore**: riga/card rossa (`--rosso`) con simbolo, cosa è successo, come rimediare, pulsante «Riprova». Voce di `MARCHIO.md`.
 - **Caricamento**: il marchio animato solo a schermo intero; dentro una card, scheletri (righe grigie) della forma finale; non lasciare solo il testo «Carico…».
@@ -53,7 +54,6 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 | Capitano / selezione | `#D4F34A` | `#86A800` (solo fondo, mai testo) | `--capitano`; sopra il lime testo scuro (`--capitano-testo`) |
 | Azione (pulsanti, testo di azione) | `#3DDC97` (`--azione`) | `#526600` (testo bianco sopra) | Dal 31/10/2026: in chiaro mai il lime per il testo; `MARCHIO.md`, «Contrasto dei colori delle azioni» |
 | Informazione | `#62A9FF` | `#1A5BB5` | `--blu` |
-Sigla della squadra nei colori sociali (`distintivo()` sulla web, `DistintivoSquadra` sull'iPhone): scritta nera o bianca, quella con il contrasto più alto sul primo colore (`LetturaPedina.testoScuro`); con la vecchia soglia della web il bianco sull'azzurro del Napoli stava a 3,5:1 (issue #244).
 Il giallo (`--giallo`) resta solo per la stella «consigliato». Un valore positivo ha il segno `+`, uno negativo `−`.
 Scritta delle pillole (`.etichetta` sulla web, `PillolaEtichetta` sull'iPhone): non il colore pieno della tabella ma `--eti-verde`, `--eti-arancio`, `--eti-rosso` (web) e `Tema.pillolaAttenzione*`, `Tema.pillolaMalus*` (iPhone), stessi valori: chiaro `#08643D`, `#834700`, `#A1221B`; scuro `#3DDC97`, `#FFB04A`, `#FF867B`. Il fondo resta il colore pieno al 16% (web) o al 14% (iPhone). Perché: sopra quella tinta il colore pieno scendeva sotto 4,5:1 (issue #234: nel chiaro della web verde 3,5:1 e arancio 3,8:1 sul foglio della scheda; nei fogli scuri dell'iPhone il rosso 4,1:1). Test `tests/test_design_web.py` e `ContrastoPilloleTests`.
 
