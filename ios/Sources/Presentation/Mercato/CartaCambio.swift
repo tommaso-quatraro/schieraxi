@@ -49,32 +49,32 @@ struct CartaCambio: View {
         .accessibilityLabel(Self.voce(proposta))
     }
 
-    /// «+0,6 nelle prossime 5 giornate · crediti dopo 30 · rimborso 8 · costo 12»: tutto il secondario in una riga.
-    /// I soldi del cambio con l'ordine e il separatore della web (`soldiDelCambio` di `app.js`, issue #256).
+    /// «+0,6 punti nelle prossime 5 giornate · crediti dopo 30 · rimborso 8 · costo 12»: tutto il secondario in una riga.
+    /// Testi, ordine e separatore della web (`mercato.punti_prossime` e `soldiDelCambio` di `app.js`, issue #256):
+    /// i soldi del cambio solo se il server manda i crediti dopo, come la web.
     static func dettaglio(_ p: PropostaMercato) -> String? {
         var parti: [String] = []
         if let b = p.breve {
             // «nelle prossime 0» usciva quando il server non manda le giornate: allora si dice solo «nelle prossime giornate»
             let n = p.giornate?.count ?? 0
             let quando = n == 0 ? "nelle prossime giornate" : n == 1 ? "nella prossima giornata" : "nelle prossime \(n) giornate"
-            parti.append("\(Formato.conSegno(b)) \(quando)")
+            parti.append("\(Formato.conSegno(b)) punti \(quando)")
         }
         if let dopo = p.creditiDopo {
             let nonBastano = p.fattibile == false ? " (non bastano)" : ""
             parti += ["crediti dopo \(Formato.intero(dopo))" + nonBastano,
                       "rimborso \(Formato.intero(p.rimborso))",
                       "costo \(Formato.intero(p.entra.quotazione))"]
-        } else if let r = p.rimborso, r > 0 {
-            parti.append("rimborso \(Formato.intero(r))")
         }
         return parti.isEmpty ? nil : parti.joined(separator: " · ")
     }
 
-    /// La frase intera per VoiceOver, con i dettagli nello stesso ordine della riga:
-    /// «Entra X, esce Y, +2,4 punti attesi. +0,6 nelle prossime 5 giornate · crediti dopo 30 · rimborso 8 · costo 12».
+    /// La frase intera per VoiceOver, con i dettagli nello stesso ordine della riga e le virgole al posto di «·»
+    /// (come `FasiGiornata.partiteVoce`): «Entra X, esce Y, +2,4 punti attesi. +0,6 punti nelle prossime 5 giornate,
+    /// crediti dopo 30, rimborso 8, costo 12».
     static func voce(_ p: PropostaMercato) -> String {
         var testo = "Entra \(p.entra.nome), esce \(p.esce.nome), \(Formato.conSegno(p.guadagno)) punti attesi"
-        if let riga = dettaglio(p) { testo += ". " + riga }
+        if let riga = dettaglio(p) { testo += ". " + riga.replacingOccurrences(of: " · ", with: ", ") }
         return testo
     }
 }
