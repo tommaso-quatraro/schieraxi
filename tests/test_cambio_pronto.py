@@ -108,3 +108,55 @@ def test_nelle_ore_tranquille_riprova_dopo(tmp_path, monkeypatch):
     assert len(mandati) == 1
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")
     assert len(mandati) == 1
+
+
+# ---------------------------------------------------------------- con il vero `da_fare._dubbi` (#266, revisione della PR #268)
+def _scena_vera(monkeypatch, stato, consigliata, panchina):
+    """Come `_scena`, ma `da_fare._dubbi` è quello vero: si finge solo ciò che legge (previsioni, schede, formazione consigliata).
+    Castro (1) e Bonny (2) sono attaccanti; `consigliata` e `panchina` sono gli id della formazione consigliata."""
+    monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
+    monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
+    monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {
+        "modulo": "4-3-3", "punteggio_atteso": 70.0, "titolari": [{"id": i} for i in consigliata], "panchina": [{"id": i} for i in panchina]})
+    prev = pd.DataFrame([{"nome": "Castro", "ruolo": "A", "stato": stato, "percentuale": 0.0, "dubbio": False, "p_voto": 0.3, "atteso": 1.0},
+                         {"nome": "Bonny", "ruolo": "A", "stato": "titolare", "percentuale": 80.0, "dubbio": False, "p_voto": 0.9,
+                          "atteso": 6.2}], index=[1, 2])
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    monkeypatch.setattr(consigli, "scheda_previsione", lambda i, x: {"id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "stato": x["stato"],
+                                                                     "dubbio": bool(x["dubbio"]), "p_voto": float(x["p_voto"]),
+                                                                     "punti_attesi": float(x["atteso"])})
+    mandati = []
+    return mandati, lambda titolo, testo, priorita=3, tag="x": mandati.append((titolo, testo)) or True     # noqa: E731
+
+
+def test_cambio_pronto_con_il_vero_dubbi_quando_la_consigliata_lo_toglie(tmp_path, monkeypatch):
+    """Hai salvato Castro, ora in panchina nelle probabili; la consigliata schiera Bonny: «cambio pronto» con Bonny."""
+    mandati, manda = _scena_vera(monkeypatch, "panchina", consigliata=[2], panchina=[1])
+    fs = tmp_path / "s.json"
+    scelte.salva(ST, 9, [1], "4-3-3", fs)
+    notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=fs)
+    assert len(mandati) == 1 and mandati[0][0] == "SchieraXI · cambio pronto"
+    assert "Il tuo Castro parte dalla panchina. Meglio Bonny" in mandati[0][1]
+
+
+def test_niente_cambio_pronto_se_la_consigliata_lo_tiene(tmp_path, monkeypatch):
+    """Come «Da fare» (#266): se la formazione consigliata tiene Castro titolare, l'avviso non propone di toglierlo."""
+    mandati, manda = _scena_vera(monkeypatch, "panchina", consigliata=[1], panchina=[2])
+    fs = tmp_path / "s.json"
+    scelte.salva(ST, 9, [1], "4-3-3", fs)
+    notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=fs)
+    assert not [m for m in mandati if m[0] == "SchieraXI · cambio pronto"]
+
+
+def test_se_il_calcolo_dei_dubbi_fallisce_lo_dice_il_log_senza_dati(tmp_path, monkeypatch, caplog):
+    mandati, manda = _scena_vera(monkeypatch, "infortunato", consigliata=[2], panchina=[1])
+
+    def rotto(*a, **k):
+        raise RuntimeError("Castro Rossi")
+    monkeypatch.setattr(da_fare, "_dubbi", rotto)
+    fs = tmp_path / "s.json"
+    scelte.salva(ST, 9, [1], "4-3-3", fs)
+    with caplog.at_level("WARNING", logger="fanta.notifiche"):
+        notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=fs)
+    assert mandati == []
+    assert "RuntimeError" in caplog.text and "Castro" not in caplog.text

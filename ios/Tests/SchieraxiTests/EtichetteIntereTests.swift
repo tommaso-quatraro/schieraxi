@@ -21,7 +21,7 @@ struct EtichetteIntereTests {
     /// La misura delle pillole quando la riga è larga `larghezza` punti (nil: tutto lo spazio che vogliono).
     @MainActor
     private static func misura(_ testi: [String], larghezza: CGFloat?, taglia: DynamicTypeSize = .large) -> CGSize {
-        let etichette = testi.map { Etichetta(testo: $0, gravita: .attenzione) }
+        let etichette = testi.map { Etichetta(testo: $0, tono: .attenzione) }
         let disegno = ImageRenderer(content: PilloleEtichette(etichette: etichette).dynamicTypeSize(taglia))
         disegno.proposedSize = ProposedViewSize(width: larghezza, height: nil)
         disegno.scale = 1

@@ -3,25 +3,53 @@ import Foundation
 /// Una piccola etichetta sotto il nome di un giocatore («Probabile titolare», «In ballottaggio», «Diffidato», «Infortunato»).
 /// Solo parole: l'unica percentuale sul giocare è «gioca N%» (come la web app, dal 2/11/2026).
 struct Etichetta: Equatable, Hashable {
+    /// Il colore della pillola, con i quattro toni del server (`tono` di `fanta/etichette.py`) e delle pillole della web
+    /// (`CLASSE_TONO` di app.js): positivo verde, neutro grigio, attenzione arancio, negativo rosso.
+    enum Tono: Equatable, Hashable {
+        case positivo, neutro, attenzione, negativo
+
+        /// Il tono scritto dal server; uno mancante o sconosciuto vale neutro, come `classeTono` della web.
+        init(server: String?) {
+            switch server {
+            case "positivo": self = .positivo
+            case "attenzione": self = .attenzione
+            case "negativo": self = .negativo
+            default: self = .neutro
+            }
+        }
+
+        var gravita: Gravita {
+            switch self {
+            case .positivo, .neutro: return .normale
+            case .attenzione: return .attenzione
+            case .negativo: return .grave
+            }
+        }
+    }
+
+    /// Quanto conta l'etichetta, per chi distingue solo grave, attenzione e il resto (righe compatte, pallini di Oggi): positivo e
+    /// neutro sono «normale».
     enum Gravita: Equatable, Hashable {
         case normale, attenzione, grave
     }
 
     let testo: String
-    let gravita: Gravita
+    let tono: Tono
+    var gravita: Gravita { tono.gravita }
 }
 
 extension Giocatore {
-    /// Le etichette della titolarità, come la web app (`tit.*` in testi.js).
-    static let nomiTitolarita: [String: (String, Etichetta.Gravita)] = [
-        "titolare": ("Probabile titolare", .normale), "ballottaggio": ("In ballottaggio", .attenzione),
-        "panchina": ("Probabile panchina", .attenzione), "improbabile": ("Improbabile", .grave), "fuori": ("Fuori", .grave),
+    /// Le etichette della titolarità, con le parole e i colori della web app (`tit.*` in testi.js, `TITOLARITA` in app.js).
+    static let nomiTitolarita: [String: (String, Etichetta.Tono)] = [
+        "titolare": ("Probabile titolare", .positivo), "ballottaggio": ("In ballottaggio", .attenzione),
+        "panchina": ("Probabile panchina", .attenzione), "improbabile": ("Improbabile", .negativo), "fuori": ("Fuori", .negativo),
     ]
 
-    /// A giornata iniziata il server toglie `titolarita` e manda `stato_partita`: lo stato vero al posto delle probabili.
-    static let nomiStatoPartita: [String: (String, Etichetta.Gravita)] = [
-        "fatto": ("Ha giocato", .normale), "senza_voto": ("Senza voto", .attenzione), "attesa_voti": ("Voto in arrivo", .normale),
-        "in_corso": ("Partita in corso", .normale), "da_giocare": ("Da giocare", .normale), "rinviata": ("Rinviata", .attenzione),
+    /// A giornata iniziata il server toglie `titolarita` e manda `stato_partita`: lo stato vero al posto delle probabili
+    /// (colori come `STATO_PARTITA` di app.js).
+    static let nomiStatoPartita: [String: (String, Etichetta.Tono)] = [
+        "fatto": ("Ha giocato", .positivo), "senza_voto": ("Senza voto", .attenzione), "attesa_voti": ("Voto in arrivo", .neutro),
+        "in_corso": ("Partita in corso", .positivo), "da_giocare": ("Da giocare", .neutro), "rinviata": ("Rinviata", .attenzione),
     ]
 
     /// Come la web app (`etichetteGiocatore` di `app.js`): prima l'etichetta pronta del server, se c'è; altrimenti la titolarità a
@@ -32,19 +60,19 @@ extension Giocatore {
         var risultato: [Etichetta] = []
         let pronta = etichetta?.testoPronto
         if let e = etichetta, let testo = pronta {
-            risultato.append(Etichetta(testo: testo, gravita: e.gravita))
-        } else if titolarita == nil, let s = statoPartita, let (nome, gravita) = Self.nomiStatoPartita[s] {
-            risultato.append(Etichetta(testo: nome, gravita: gravita))
+            risultato.append(Etichetta(testo: testo, tono: Etichetta.Tono(server: e.tono)))
+        } else if titolarita == nil, let s = statoPartita, let (nome, tono) = Self.nomiStatoPartita[s] {
+            risultato.append(Etichetta(testo: nome, tono: tono))
         } else {
-            if let t = titolarita, let (nome, gravita) = Self.nomiTitolarita[t] {
-                risultato.append(Etichetta(testo: nome, gravita: gravita))
+            if let t = titolarita, let (nome, tono) = Self.nomiTitolarita[t] {
+                risultato.append(Etichetta(testo: nome, tono: tono))
             }
             // Server senza etichetta: il dubbio con le parole del server (`in_dubbio` di `fanta/etichette.py`); dopo «Fuori» no.
             if dubbio == true, titolarita != "fuori" {
-                risultato.append(Etichetta(testo: DubbioRiassunto.inDubbio(pVoto), gravita: .attenzione))
+                risultato.append(Etichetta(testo: DubbioRiassunto.inDubbio(pVoto), tono: .attenzione))
             }
         }
-        if diffidato == true { risultato.append(Etichetta(testo: "Diffidato", gravita: .attenzione)) }
+        if diffidato == true { risultato.append(Etichetta(testo: "Diffidato", tono: .attenzione)) }
         let utili = (motivi ?? []).filter { m in
             let minuscolo = m.lowercased()
             return !(minuscolo.hasPrefix("titolare") || minuscolo.hasPrefix("parte dalla panchina")
@@ -55,7 +83,7 @@ extension Giocatore {
         for m in utili.prefix(2) {
             let minuscolo = m.lowercased()
             let grave = ["infortunat", "squalificat", "dubbio", "non tra"].contains { minuscolo.contains($0) }
-            risultato.append(Etichetta(testo: m.primaMaiuscola, gravita: grave ? .grave : .normale))
+            risultato.append(Etichetta(testo: m.primaMaiuscola, tono: grave ? .negativo : .neutro))
         }
         return risultato
     }
@@ -74,15 +102,9 @@ extension Avviso.EtichettaPronta {
         return t
     }
 
-    /// Il colore dal tono del server (`fanta/etichette.py`): negativo grave, attenzione arancio; positivo, neutro o un tono nuovo
-    /// normale, come `classeTono` della web.
-    var gravita: Etichetta.Gravita {
-        switch tono {
-        case "negativo": return .grave
-        case "attenzione": return .attenzione
-        default: return .normale
-        }
-    }
+    /// La gravità dal tono del server (`fanta/etichette.py`): negativo grave, attenzione arancio; positivo, neutro o un tono nuovo
+    /// normale. Il colore della pillola invece distingue anche il positivo (`Etichetta.Tono`).
+    var gravita: Etichetta.Gravita { Etichetta.Tono(server: tono).gravita }
 }
 
 extension Avviso {

@@ -296,7 +296,7 @@ struct RegoleEditorView: View {
             } label: {
                 if vm.inCorso { ProgressView() } else { Text("Salva").frame(minWidth: 60) }
             }
-            .buttonStyle(.borderedProminent)
+            .pulsanteVetro(prominente: true)
             .frame(minHeight: 44)
             .disabled(vm.inCorso)
         }
@@ -351,7 +351,7 @@ struct RegoleEditorView: View {
                 }
             }
             Button { vm.applicaRiconosciute() } label: { Text("Applica ai campi").frame(maxWidth: .infinity, minHeight: 44) }
-                .buttonStyle(.borderedProminent)
+                .pulsanteVetro(prominente: true)
             Text("Controlla i valori qui sotto e tocca «Salva le regole» in fondo.").font(.caption).foregroundStyle(Color.testoSecondario)
         }
     }
@@ -531,7 +531,7 @@ struct RegoleEditorView: View {
                 if vm.inCorso { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
                 else { Label("Salva le regole", systemImage: "checkmark.circle").frame(maxWidth: .infinity, minHeight: 44) }
             }
-            .buttonStyle(.borderedProminent)
+            .pulsanteVetro(prominente: true)
             .disabled(vm.inCorso || !vm.modificato)
             Button { Task { await vm.annulla() } } label: { Text("Annulla le modifiche").frame(maxWidth: .infinity, minHeight: 44) }
                 .disabled(!vm.modificato)

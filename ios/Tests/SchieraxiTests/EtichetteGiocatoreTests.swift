@@ -25,18 +25,21 @@ struct EtichetteGiocatoreTests {
             "dubbio": true, "motivi": ["titolare in ballottaggio"],
             "etichetta": {"codice": "in_dubbio", "testo": "In dubbio · gioca 62%", "tono": "attenzione"},
             """#)
-        #expect(g.etichette == [Etichetta(testo: "In dubbio · gioca 62%", gravita: .attenzione)])
+        #expect(g.etichette == [Etichetta(testo: "In dubbio · gioca 62%", tono: .attenzione)])
     }
 
-    /// I toni di `fanta/etichette.py` e il colore che danno (uno sconosciuto vale neutro).
-    static let toni: [(String, Etichetta.Gravita)] = [
-        ("negativo", .grave), ("attenzione", .attenzione), ("positivo", .normale), ("neutro", .normale), ("strano", .normale),
+    /// I toni di `fanta/etichette.py`, il colore che danno (come `CLASSE_TONO` della web: uno sconosciuto vale neutro) e la gravità
+    /// per chi distingue solo grave e attenzione. Prima di #242 «positivo» diventava grigio come «neutro».
+    static let toni: [(String, Etichetta.Tono, Etichetta.Gravita)] = [
+        ("negativo", .negativo, .grave), ("attenzione", .attenzione, .attenzione), ("positivo", .positivo, .normale),
+        ("neutro", .neutro, .normale), ("strano", .neutro, .normale),
     ]
 
     @Test("Il tono del server dà il colore", arguments: EtichetteGiocatoreTests.toni)
-    func tono(tono: String, gravita: Etichetta.Gravita) throws {
-        let g = try giocatore(#""etichetta": {"codice": "x", "testo": "Qualcosa", "tono": "\#(tono)"},"#)
-        #expect(g.etichette.first == Etichetta(testo: "Qualcosa", gravita: gravita))
+    func tono(server: String, atteso: Etichetta.Tono, gravita: Etichetta.Gravita) throws {
+        let g = try giocatore(#""etichetta": {"codice": "x", "testo": "Qualcosa", "tono": "\#(server)"},"#)
+        #expect(g.etichette.first == Etichetta(testo: "Qualcosa", tono: atteso))
+        #expect(g.etichette.first?.gravita == gravita)
     }
 
     @Test("Con l'etichetta del server infortunio e squalifica non si ripetono nei motivi; la nota resta")
@@ -63,14 +66,14 @@ struct EtichetteGiocatoreTests {
     @Test("Senza etichetta un dubbio dice anche «gioca N%», come il server")
     func dubbioSenzaEtichetta() throws {
         let g = try giocatore(titolarita: "ballottaggio", pVoto: 0.62, #""dubbio": true,"#)
-        #expect(g.etichette == [Etichetta(testo: "In ballottaggio", gravita: .attenzione), Etichetta(testo: "In dubbio · gioca 62%", gravita: .attenzione)])
+        #expect(g.etichette == [Etichetta(testo: "In ballottaggio", tono: .attenzione), Etichetta(testo: "In dubbio · gioca 62%", tono: .attenzione)])
     }
 
     @Test("Titolarità a parole, diffida e motivi utili (senza percentuali)")
     func titolaritaEDiffida() throws {
         let g = try giocatore(titolarita: "titolare", #""stato": "titolare", "percentuale": 85.0, "diffidato": true, "motivi": ["titolare al 85%", "squalifica a rischio"],"#)
         #expect(g.etichette.map(\.testo) == ["Probabile titolare", "Diffidato", "Squalifica a rischio"], "solo parole: l'unica percentuale è «gioca N%»")
-        #expect(g.etichette.map(\.gravita) == [.normale, .attenzione, .normale])
+        #expect(g.etichette.map(\.tono) == [.positivo, .attenzione, .neutro], "«Probabile titolare» verde come la web (#242)")
     }
 
     @Test("Fuori e infortunato sono gravi; un motivo con una percentuale non diventa un'etichetta")
@@ -86,6 +89,7 @@ struct EtichetteGiocatoreTests {
     func statoDellaPartita() throws {
         let giocato = try giocatore(titolarita: nil, #""stato_partita": "fatto","#)
         #expect(giocato.etichette.map(\.testo) == ["Ha giocato"])
+        #expect(giocato.etichette.first?.tono == .positivo, "verde come la web (STATO_PARTITA in app.js)")
         let rinviata = try giocatore(titolarita: nil, #""stato_partita": "rinviata","#)
         #expect(rinviata.etichette.first?.gravita == .attenzione)
     }
@@ -125,10 +129,12 @@ struct EtichetteGiocatoreTests {
 
     // MARK: dati di prova (demo e fotografie)
 
-    @Test("Nella demo il dubbio di Oggi è «In dubbio · gioca 62%», mai «Dubbio: …»")
+    @Test("Nella demo il dubbio è «In dubbio · gioca 62%» in Formazione e in Oggi, mai «Dubbio: …»")
     func demoDiOggi() async throws {
         let oggi: Oggi = try Decodifica.decodifica(try await FinteServer.demo.richiesta("GET", "/api/oggi", corpo: nil))
-        let marteni = try #require(oggi.migliori?.first { $0.id == 120 }, "nella demo Marténi non è tra i migliori")
+        // con i punti attesi veri (gioca × fantavoto, #246) Marténi non è tra i migliori di Oggi: la pillola si guarda in Formazione
+        let formazione: Formazione = try Decodifica.decodifica(try await FinteServer.demo.richiesta("GET", "/api/formazione", corpo: nil))
+        let marteni = try #require(formazione.titolari.first { $0.id == 120 }, "nella demo Marténi non è titolare")
         #expect(marteni.etichette.map(\.testo).contains("In dubbio · gioca 62%"))
         #expect(!marteni.etichette.contains { $0.testo.hasPrefix("Dubbio") })
         let avviso = try #require(oggi.avvisi?.first { $0.id == 120 && $0.tipo == "dubbio" })
