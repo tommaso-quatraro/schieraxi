@@ -53,7 +53,9 @@ CATALOGO: dict[str, str] = {
     "dafare.incerto_alt": "{nome}: {stato}, gioca {p}%. Meglio {alt}.",
     "dafare.incerto_tiene": "{nome} ({stato}, gioca {p}%) resta titolare: se non gioca entra {riserva} dalla panchina.",
     "dafare.formazione_chiude": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
     "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
+    "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della giornata {n}.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
     "dafare.cert.one": "L'app sul telefono scade tra {n} giorno: rinnovala.",
