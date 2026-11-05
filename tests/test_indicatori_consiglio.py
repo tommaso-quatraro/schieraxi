@@ -26,7 +26,7 @@ def _app(titolari=MOSTRATI, panchina=(2, 7, 16, 23), giornata=1, **schede):
 
 
 @pytest.fixture
-def con_ruolo(finto):
+def con_ruolo(finto):  # noqa: F811 (fixture importata)
     """Come nell'archivio vero, i voti hanno il ruolo: serve alla fantamedia di S2 (`verifica_consiglio.dati_s2`). I dati finti
     del Diario non ce l'hanno, e così restano: senza, gli indicatori non si calcolano ma la voce si scrive lo stesso."""
     finto.dati.voti["ruolo"] = [RUOLI[i - 1] for i in finto.dati.voti["calciatore_id"]]
@@ -183,7 +183,7 @@ def _ist(titolari=MOSTRATI, panchina=(2, 7, 16, 23), misure=MISURE):
             "atteso": 70.0, "stile": "Equilibrata", **({"misure": misure} if misure else {})}
 
 
-def test_la_voce_del_diario_ha_c1_c4_sulla_consigliata_mostrata(finto, con_ruolo):
+def test_la_voce_del_diario_ha_c1_c4_sulla_consigliata_mostrata(finto, con_ruolo):  # noqa: F811 (fixture importata)
     scelti = MOSTRATI[:-1] + [25]                                       # la tua, con l'attaccante che ha preso 9
     v = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), _scelta(scelti), simulazioni=50,
                                 istantanea=_ist(), cambi=(2, 1))
@@ -192,7 +192,7 @@ def test_la_voce_del_diario_ha_c1_c4_sulla_consigliata_mostrata(finto, con_ruolo
                               "cambi": 2, "cambi_sotto_soglia": 1, **MISURE}
 
 
-def test_senza_istantanea_si_misura_la_consigliata_ricostruita(finto, con_ruolo):
+def test_senza_istantanea_si_misura_la_consigliata_ricostruita(finto, con_ruolo):  # noqa: F811 (fixture importata)
     v = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), None, simulazioni=50)
     assert v["consiglio"] == {"mostrata": "ricostruita", "punti_consigliata": v["consigliata"]["reale"], "punti_s2": 69.0,
                               "punti_schierata": None, "cambi": None, "cambi_sotto_soglia": None, **SENZA_MISURE}
@@ -201,13 +201,13 @@ def test_senza_istantanea_si_misura_la_consigliata_ricostruita(finto, con_ruolo)
     assert fuori_rosa["consiglio"]["mostrata"] == "ricostruita"         # un mostrato non è più in rosa: non si può rifare
 
 
-def test_schierata_uguale_alla_mostrata_non_conta_per_c1(finto, con_ruolo):
+def test_schierata_uguale_alla_mostrata_non_conta_per_c1(finto, con_ruolo):  # noqa: F811 (fixture importata)
     v = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), _scelta(list(reversed(MOSTRATI))),
                                 simulazioni=50, istantanea=_ist())
     assert v["schierata"] and v["consiglio"]["punti_schierata"] is None
 
 
-def test_aggiorna_conta_i_cambi_delle_24_ore_prima_della_scadenza(finto, con_ruolo, orologio):
+def test_aggiorna_conta_i_cambi_delle_24_ore_prima_della_scadenza(finto, con_ruolo, orologio):  # noqa: F811 (fixture importata)
     orologio["t"] = datetime(2026, 8, 30, 10, 0)                         # la prima partita della giornata 2: 1/9 alle 18
     diario.salva_istantanea(_app(giornata=2), ST, finto.file)
     orologio["t"] = datetime(2026, 8, 30, 11, 0)                         # cambio di due giorni prima: non conta
@@ -223,7 +223,7 @@ def test_aggiorna_conta_i_cambi_delle_24_ore_prima_della_scadenza(finto, con_ruo
     assert voci[f"{ST}/1"]["consiglio"]["mostrata"] == "ricostruita"     # nessuna istantanea per la giornata 1
 
 
-def test_ho_schierato_tiene_gli_indicatori(vero, con_ruolo, orologio):
+def test_ho_schierato_tiene_gli_indicatori(vero, con_ruolo, orologio):  # noqa: F811 (fixture importata)
     diario.salva_istantanea(_app(giornata=1), ST, vero.file)
     voce = _salva(vero, 1, "manuale", MOSTRATI[:-1] + [25])
     c = diario.carica(vero.file)["giornate"][f"{ST}/1"]["consiglio"]
@@ -232,7 +232,7 @@ def test_ho_schierato_tiene_gli_indicatori(vero, con_ruolo, orologio):
 
 
 # ------------------------------------------------------------------ gli indicatori non fermano mai il Diario
-def test_se_gli_indicatori_falliscono_la_voce_si_scrive_senza(finto, caplog):
+def test_se_gli_indicatori_falliscono_la_voce_si_scrive_senza(finto, caplog):  # noqa: F811 (fixture importata)
     """I dati finti del Diario non hanno il ruolo nei voti: S2 non si calcola. La voce c'è lo stesso, senza `consiglio`, e nel log
     va solo il tipo d'errore."""
     v = diario.calcola_giornata(finto.dati, ST, 2, Regole(), None, list(range(1, 26)), _scelta(MOSTRATI), simulazioni=50,
@@ -241,7 +241,7 @@ def test_se_gli_indicatori_falliscono_la_voce_si_scrive_senza(finto, caplog):
     assert "indicatori del consiglio non calcolati (KeyError)" in caplog.text
 
 
-def test_aggiorna_scrive_le_voci_anche_se_gli_indicatori_falliscono(finto, orologio, monkeypatch):
+def test_aggiorna_scrive_le_voci_anche_se_gli_indicatori_falliscono(finto, orologio, monkeypatch):  # noqa: F811 (fixture importata)
     diario.salva_istantanea(_app(giornata=2), ST, finto.file)
     monkeypatch.setattr(diario.avvisi, "prima_partita", lambda *a: (_ for _ in ()).throw(RuntimeError("calendario rotto")))
     assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 2
@@ -249,7 +249,7 @@ def test_aggiorna_scrive_le_voci_anche_se_gli_indicatori_falliscono(finto, orolo
     assert set(voci) == {f"{ST}/1", f"{ST}/2"} and "consiglio" not in voci[f"{ST}/2"]
 
 
-def test_ho_schierato_funziona_anche_se_gli_indicatori_falliscono(vero, orologio):
+def test_ho_schierato_funziona_anche_se_gli_indicatori_falliscono(vero, orologio):  # noqa: F811 (fixture importata)
     diario.salva_istantanea(_app(giornata=2), ST, vero.file)
     voce = _salva(vero, 2, "manuale", MOSTRATI[:-1] + [25])                 # giornata 2: S2 avrebbe bisogno del ruolo
     assert voce["schierata"]["reale"] == 69.0 and "consiglio" not in voce
