@@ -22,18 +22,22 @@ enum StatoScelta: Equatable {
     /// Giornata chiusa (scadenza passata, `iniziata` del server): niente più da salvare né da cambiare. `tua`: c'è una scelta
     /// salvata, ed è quella che vale. Come lo stato «chiusa» della web, vale anche prima di aver letto la scelta.
     case chiusa(tua: Bool)
+    /// Giornata chiusa e la scelta salvata non si può schierare (`stato_scelta: "non_valida"` del server, o non valida
+    /// rileggendola): vale la consigliata, che è anche quella mostrata (web: `formazione.stato_chiusa_non_valida`).
+    case chiusaNonValida
 
     /// - Parameters:
     ///   - letta: la scelta della giornata è stata letta dal server (anche «nessuna»).
     ///   - salvati: i titolari salvati (nil = nessuna scelta salvata).
     ///   - manuale: i titolari della modifica a mano (nil = si vede la consigliata, o uno stile o un modulo).
     ///   - chiusa: la giornata è chiusa (viene prima di tutto il resto, come sulla web).
-    ///   - nonValida: la scelta salvata non vale più (lo dice il server con `formazione_non_valida`, o non è nella rosa).
+    ///   - nonValida: la scelta salvata non vale più (lo dice il server con `formazione_non_valida` o, a giornata chiusa, con
+    ///     `stato_scelta`; o non è nella rosa).
     ///   - altra: senza modifica a mano si vede un altro stile o un altro modulo.
     /// L'ordine dei titolari non conta.
     static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, chiusa: Bool = false,
                         nonValida: Bool = false, altra: Bool = false) -> StatoScelta {
-        if chiusa { return .chiusa(tua: letta && salvati != nil) }
+        if chiusa { return nonValida ? .chiusaNonValida : .chiusa(tua: letta && salvati != nil) }
         guard letta else { return .sconosciuto }
         guard let salvati else { return manuale != nil ? .bozza : altra ? .altra : .consigliata }
         // dopo «Modifica a mano» si può salvare la nuova («modificata»); gli undici che non valgono più non sono «salvata»
@@ -56,6 +60,8 @@ enum StatoScelta: Equatable {
         case .nonValida: return "La formazione salvata non è più valida: rifalla o torna alla consigliata."
         case .chiusa(let tua):
             return "Giornata iniziata: la formazione è chiusa" + (tua ? " · vale quella che hai salvato" : "")
+        case .chiusaNonValida:
+            return "Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida"
         }
     }
 
@@ -72,7 +78,7 @@ enum StatoScelta: Equatable {
         case .bozza, .modificata: return "pencil.circle.fill"
         case .salvata: return "checkmark.circle.fill"
         case .nonValida: return "exclamationmark.triangle.fill"
-        case .chiusa: return "lock.fill"
+        case .chiusa, .chiusaNonValida: return "lock.fill"
         }
     }
 
@@ -84,7 +90,7 @@ enum StatoScelta: Equatable {
         case .salvata: return .bene
         case .bozza, .modificata: return .attenzione
         case .nonValida: return .malus
-        case .consigliata, .altra, .sconosciuto, .chiusa: return .neutro
+        case .consigliata, .altra, .sconosciuto, .chiusa, .chiusaNonValida: return .neutro
         }
     }
 
@@ -92,7 +98,7 @@ enum StatoScelta: Equatable {
     var daSalvare: Bool {
         switch self {
         case .bozza, .modificata, .sconosciuto: return true
-        case .consigliata, .altra, .salvata, .nonValida, .chiusa: return false
+        case .consigliata, .altra, .salvata, .nonValida, .chiusa, .chiusaNonValida: return false
         }
     }
 

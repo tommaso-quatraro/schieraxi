@@ -80,13 +80,25 @@ struct RigaStatoComeWebTests {
         #expect(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: alle, manuale: scelti, nonValida: true) == .nonValida,
                 "gli undici che non valgono più non sono «salvata»")
         #expect(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: alle, manuale: altri, nonValida: true) == .modificata(alle))
-        #expect(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: alle, manuale: nil, chiusa: true, nonValida: true) == .chiusa(tua: true),
-                "a giornata chiusa vale quella che hai salvato, come scrive la web")
+        #expect(StatoScelta.calcola(letta: true, salvati: scelti, salvataIl: alle, manuale: nil, chiusa: true, nonValida: true) == .chiusaNonValida,
+                "a giornata chiusa vale la consigliata")
+        #expect(StatoScelta.calcola(letta: false, salvati: nil, salvataIl: nil, manuale: nil, chiusa: true, nonValida: true) == .chiusaNonValida,
+                "lo dice il server (`stato_scelta`) anche prima di leggere la scelta")
+    }
+
+    @Test("Giornata chiusa con la scelta salvata non più valida: la frase della web, lucchetto, grigia, nessun pulsante")
+    func fraseChiusaNonValida() throws {
+        let stato = StatoScelta.chiusaNonValida
+        let web = try fraseChiusaNonValidaWeb()
+        #expect(stato.titolo() == web)
+        #expect(stato.simbolo == "lock.fill")
+        #expect(stato.tono == .neutro)
+        #expect(!stato.daSalvare && !stato.conSalvaQuesta && !stato.conTornaNellaRiga)
     }
 
     @Test("Segno, colore e pulsanti della riga come la web")
     func segniEPulsanti() {
-        let tutti: [StatoScelta] = [.consigliata, .altra, .bozza, .salvata(nil), .modificata(nil), .nonValida, .chiusa(tua: false)]
+        let tutti: [StatoScelta] = [.consigliata, .altra, .bozza, .salvata(nil), .modificata(nil), .nonValida, .chiusa(tua: false), .chiusaNonValida]
         for s in tutti { #expect(!s.simbolo.isEmpty, "\(s): lo stato non si legge dal solo colore") }
         #expect(StatoScelta.altra.tono == .neutro)
         #expect(StatoScelta.nonValida.tono == .malus, "il «!» rosso della web")
@@ -228,15 +240,38 @@ struct RigaStatoComeWebTests {
         #expect(vm.statoScelta == .salvata(Quando.data("2026-11-02T21:40:00")))
     }
 
-    @Test("Giornata chiusa con una scelta salvata non più valida: «vale quella che hai salvato», come la web, senza provare a cancellarla")
+    @Test("Giornata chiusa con una scelta salvata fuori dalla rosa: «vale la consigliata», la consigliata in campo, senza provare a cancellarla")
     func chiusaConSceltaNonValida() async throws {
-        let frase = try web("formazione.stato_chiusa_tua")
+        let frase = try fraseChiusaNonValidaWeb()
         let srv = try server(scelta: try dieciTitolari(), iniziata: true)
         let (vm, _) = try await caricata(srv)
-        #expect(vm.statoScelta == .chiusa(tua: true))
+        #expect(vm.statoScelta == .chiusaNonValida)
         #expect(vm.statoScelta.titolo() == frase)
+        #expect(vm.manuale == nil, "in campo la consigliata")
         #expect(srv.quante("DELETE /api/scelta") == 0)
         #expect(vm.messaggio == nil, "niente errore del server per una cancellazione rifiutata")
+    }
+
+    @Test("A giornata chiusa decide `stato_scelta` del server: «non_valida» → vale la consigliata (senza riprovarla), «valida» → la tua",
+          arguments: zip(["non_valida", "valida"], [true, false]))
+    func chiusaConStatoDelServer(statoServer: String, nonValida: Bool) async throws {
+        let srv = try server(scelta: try titolariBase(), iniziata: true, statoScelta: statoServer)
+        let (vm, _) = try await caricata(srv)
+        if nonValida {
+            #expect(vm.statoScelta == .chiusaNonValida)
+            #expect(vm.manuale == nil, "in campo la consigliata")
+            #expect(srv.quante("POST /api/formazione/valuta") == 0, "lo sa già il server: non si riprova")
+        } else {
+            #expect(vm.statoScelta == .chiusa(tua: true))
+            #expect(vm.manuale != nil, "in campo la tua")
+        }
+    }
+
+    @Test("Prima della scadenza `stato_scelta` non cambia la riga (come la web): conta la prova della scelta letta")
+    func apertaIgnoraStatoDelServer() async throws {
+        let srv = try server(scelta: try titolariBase(), statoScelta: "non_valida")
+        let (vm, _) = try await caricata(srv)
+        #expect(vm.statoScelta == .salvata(Quando.data("2026-11-02T21:40:00")))
     }
 
     // MARK: aiuti
@@ -246,6 +281,16 @@ struct RigaStatoComeWebTests {
         var testo = try TestiWeb().italiano(chiave)
         for (nome, valore) in valori { testo = testo.replacingOccurrences(of: "{\(nome)}", with: valore) }
         return testo
+    }
+
+    /// `formazione.stato_chiusa_non_valida` della web. La chiave arriva con la PR del server e della web (#320): finché
+    /// `testi.js` non ce l'ha, si confronta con la frase scritta lì; dopo l'unione il confronto è con `testi.js`.
+    private func fraseChiusaNonValidaWeb() throws -> String {
+        let scrittaNellaPR = "Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida"
+        guard let testi = try? TestiWeb(), let frase = try? testi.italiano("formazione.stato_chiusa_non_valida") else {
+            return scrittaNellaPR
+        }
+        return frase
     }
 
     /// «oggi alle 21:40», «sab 31 alle 21:40» con `formazione.giorno_alle` della web.
@@ -265,12 +310,13 @@ struct RigaStatoComeWebTests {
 
     /// Un server con la formazione della fixture (aperta o chiusa, con o senza `schede`) e una scelta salvata (`scelta`; nil =
     /// nessuna). A giornata chiusa le scritture rispondono 409 `formazione_chiusa`, come il server vero.
-    private func server(scelta: [Int]?, iniziata: Bool = false, senzaSchede: Bool = false,
+    private func server(scelta: [Int]?, iniziata: Bool = false, senzaSchede: Bool = false, statoScelta: String? = nil,
                         valuta: @escaping @Sendable () throws -> Data = { Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8) })
     throws -> ServerDiProva {
         let json = try JSONSerialization.jsonObject(with: try Fixture.dati("formazione"))
         var formazione = try #require(json as? [String: Any])
         if iniziata { formazione["iniziata"] = true }
+        if let statoScelta { formazione["stato_scelta"] = statoScelta }
         if senzaSchede { formazione["schede"] = nil }
         let dati = try JSONSerialization.data(withJSONObject: formazione)
         let salvata = Data((scelta.map { "{\"titolari\": [\($0.map(String.init).joined(separator: ","))], \"salvata\": \"2026-11-02T21:40:00\"}" } ?? "null").utf8)

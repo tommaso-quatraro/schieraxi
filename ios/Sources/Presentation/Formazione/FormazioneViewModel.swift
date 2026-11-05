@@ -65,8 +65,12 @@ final class FormazioneViewModel: ViewModelBase {
     var statoScelta: StatoScelta {
         guard squadraVista == nil else { return .sconosciuto }
         return StatoScelta.calcola(letta: sceltaLetta && !provaSalvata, salvati: salvati, salvataIl: salvataIl, manuale: manuale, chiusa: chiusa,
-                                   nonValida: salvataNonValida, altra: altraDallaConsigliata)
+                                   nonValida: salvataNonValida || sceltaNonValidaPerIlServer, altra: altraDallaConsigliata)
     }
+
+    /// A giornata chiusa il server dice se la tua scelta salvata si può schierare (`stato_scelta`, facoltativo: un server vecchio
+    /// non lo manda). Come la web, conta solo a giornata chiusa: prima la scelta può cambiare e il campo sarebbe vecchio.
+    var sceltaNonValidaPerIlServer: Bool { chiusa && formazione?.statoScelta == "non_valida" }
 
     /// Senza modifica a mano si vede un altro stile o un altro modulo, non la consigliata (come `altra` della web).
     var altraDallaConsigliata: Bool {
@@ -155,7 +159,9 @@ final class FormazioneViewModel: ViewModelBase {
         salvataIl = Quando.data(salvata.salvata)
         // Una scelta che non vale più (fuori dalla rosa) NON si cancella da sola, come sulla web: lo dice la riga di stato e si
         // vede la consigliata. Solo se la rosa c'è davvero: senza rosa non si giudica (decide il server, sotto).
-        salvataNonValida = giaNonValida || ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida
+        // A giornata chiusa con `stato_scelta: "non_valida"` lo sa già il server: si vede la consigliata, senza riprovarla.
+        salvataNonValida = giaNonValida || (f.iniziata == true && f.statoScelta == "non_valida")
+            || ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida
         guard senzaModifiche else { return }   // c'è una modifica in corso: non si sovrascrive (la riga dice «Modifiche non salvate»)
         if salvataNonValida {
             if manuale != nil { azzeraManuale() }

@@ -79,7 +79,7 @@ struct RigaStatoScelta: View {
 }
 
 #Preview("Riga di stato") {
-    let stati: [StatoScelta] = [.consigliata, .altra, .salvata(Date()), .modificata(Date()), .bozza, .nonValida, .chiusa(tua: true)]
+    let stati: [StatoScelta] = [.consigliata, .altra, .salvata(Date()), .modificata(Date()), .bozza, .nonValida, .chiusa(tua: true), .chiusaNonValida]
     VStack(spacing: 12) {
         ForEach(stati.indices, id: \.self) { i in
             RigaStatoScelta(stato: stati[i], salvaQuesta: {}, tornaAllaConsigliata: {})
