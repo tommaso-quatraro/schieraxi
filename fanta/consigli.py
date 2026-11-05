@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import logging
 import sqlite3
 import threading
 from collections.abc import Collection
@@ -14,9 +16,14 @@ from . import calcolo, etichette, frasi, incertezza, perche
 from . import formazione as fz
 from . import modello, rinvii, scelte, stato_dati, turno
 from .aggiorna import Stagione
+from .blocco import BloccoFile
 from .frasi import F
-from .lega import Rose
+from .lega import Rose, Squadra
+from .notifiche import SOGLIA_AVVISO_PUNTI
+from .percorsi import RADICE, scrivi_sicuro
 from .regole import Regole, serie_a_a_lega
+
+LOG = logging.getLogger(__name__)
 
 # Risultati già calcolati (vedi calcolo.py: cache con tetto, al massimo due calcoli pesanti insieme, risposta «sto calcolando»).
 # Le chiavi contengono la "versione" dei dati (ora dell'ultimo aggiornamento), così un risultato calcolato con dati vecchi
@@ -276,13 +283,36 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
         raise ValueError("Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose")
-    giornata = giornata or giornata_da_giocare(db, stagione_corrente(), regole)
+    stagione = stagione_corrente()
+    giornata = giornata or giornata_da_giocare(db, stagione, regole)
     if giornata is None:
         raise ValueError(SENZA_CALENDARIO)
+    # La consigliata già mostrata per questa squadra e giornata (#335): resta finché la migliore non vale almeno SOGLIA_CAMBIO_PUNTI in
+    # più o un suo titolare non gioca più (`stabile`); dopo la scadenza resta e basta. Tutti passano di qui (Formazione, Oggi, widget,
+    # Da fare, avvisi, copia alla scadenza): leggono la stessa.
+    impronta = _impronta(stagione, giornata, s, regole, simulazioni)
+    prima = _consigliate().get(impronta)
+    prima = prima if _ids(prima, "titolari") is not None else None          # voce rovinata: come se non ci fosse
+    chiusa = _chiusa(db, regole, stagione, giornata)
     # stessa squadra, rosa, giornata, regole e dati: stesso risultato (svuotata quando i dati cambiano)
     chiave = ("formazione", _versione(db), s.nome, tuple(g.id for g in s.giocatori), giornata, repr(regole),
               simulazioni)
-    return calcolo.ottieni(chiave, lambda d: _formazione_pronta(d, s, giornata, regole, simulazioni), db, peso=calcolo.PESO_LEGGERO)
+    chiave_stabile = chiave + ("stabile", _firma(prima, chiusa), chiusa)
+
+    def con_la_stabile(d, migliore: dict) -> dict:
+        return stabile(migliore, prima, previsioni(d, regole, giornata)[0], s, regole, simulazioni, chiusa)
+
+    def pronta(d) -> dict:
+        migliore = _formazione_pronta(d, s, giornata, regole, simulazioni)
+        if prima is not None and not _stessa(prima, migliore, chiusa):     # nello stesso giro: un solo «sto calcolando»
+            _cache.metti(chiave_stabile, con_la_stabile(d, migliore), peso=calcolo.PESO_LEGGERO)
+        return migliore
+    f = migliore = calcolo.ottieni(chiave, pronta, db, peso=calcolo.PESO_LEGGERO)
+    if prima is not None and not _stessa(prima, migliore, chiusa):
+        f = calcolo.ottieni(chiave_stabile, lambda d: con_la_stabile(d, migliore), db, peso=calcolo.PESO_LEGGERO)
+    if prima is None or not chiusa:
+        _ricorda(impronta, f, stagione, giornata, prima)
+    return f
 
 
 def _formazione_pronta(db, s, giornata, regole, simulazioni) -> dict:
@@ -290,10 +320,16 @@ def _formazione_pronta(db, s, giornata, regole, simulazioni) -> dict:
     return _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni)
 
 
-def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -> dict:
+def _rosa(s: Squadra, prev: pd.DataFrame) -> list[fz.Giocatore]:
+    """I giocatori della squadra che hanno una previsione per la giornata, nell'ordine della rosa (lo stesso ordine dà le stesse
+    simulazioni: la consigliata e quella di prima si confrontano alla pari)."""
     ids = [g.id for g in s.giocatori if g.id is not None]
-    rosa = [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
+    return [fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
                          float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids if i in prev.index]
+
+
+def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -> dict:
+    rosa = _rosa(s, prev)
     val = fz.Valutatore(rosa, regole, simulazioni)           # le stesse simulazioni per tutti i livelli: i calcoli si riusano
     try:
         f = fz.migliore(rosa, regole, simulazioni, valutatore=val)
@@ -325,6 +361,187 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni) -
         "schede": {str(g.id): scheda_previsione(g.id, prev.loc[g.id]) for g in rosa},
     }
     return risultato
+
+
+# ---------------------------------------------------------------- consigliata stabile (#335)
+# La consigliata già mostrata per una giornata cambia solo se la nuova vale almeno questi punti attesi in più, ricalcolati con i dati
+# nuovi: è la soglia dell'avviso alla scadenza, così app e avvisi dicono la stessa cosa. Sotto è il su e giù normale dei dati
+# (misura del 5/11/2026: quando 3 o più titolari cambiano per un ritocco, la nuova vale in mediana 3-4 centesimi di punto).
+SOGLIA_CAMBIO_PUNTI = SOGLIA_AVVISO_PUNTI
+NON_GIOCA = ("fuori", "improbabile")      # `titolarita`: infortunato, squalificato, senza voto per il rinvio, o gioca meno del 20%
+# Le consigliate già mostrate, una per squadra e giornata:
+# {impronta: {stagione, giornata, modulo, titolari, panchina, non_giocano, quando}} (`da_ricordare`).
+# Comune a tutti come la cache dei calcoli (stessa squadra, rosa e regole: stessa consigliata), ma sopravvive ai riavvii e vale
+# anche per i comandi lanciati a parte (avvisi, sentinella). Solo id di giocatori: la chiave è un'impronta, niente nomi.
+FILE_CONSIGLIATE = RADICE / "dati" / "consigliate.json"
+MAX_CONSIGLIATE = 1000                    # oltre, esce la più vecchia: ~250 byte l'una
+_blocco_consigliate = threading.Lock()
+_letto: tuple = (None, {})                # (firma del file, contenuto): si rilegge solo quando il file cambia
+
+
+def _ids(prima, chiave: str) -> list[int] | None:
+    v = prima.get(chiave) if isinstance(prima, dict) else None
+    if not isinstance(v, list):
+        return None
+    try:
+        return [int(i) for i in v]
+    except (TypeError, ValueError):
+        return None
+
+
+def _stessa(prima: dict, f: dict, chiusa: bool) -> bool:
+    """La consigliata di prima ha gli stessi titolari della risposta `f` (dopo la scadenza anche la stessa panchina, in ordine)."""
+    titolari = _ids(prima, "titolari")
+    if titolari is None or set(titolari) != {int(g["id"]) for g in f.get("titolari") or []}:
+        return False
+    return not chiusa or (_ids(prima, "panchina") or []) == [int(g["id"]) for g in f.get("panchina") or []]
+
+
+def _firma(prima: dict | None, chiusa: bool) -> tuple:
+    """Ciò della consigliata di prima da cui dipende la risposta, per la chiave della cache: i titolari e chi di loro già non
+    giocava; dopo la scadenza anche la panchina (prima della scadenza la panchina la rifà il sistema)."""
+    return (tuple(sorted(_ids(prima, "titolari") or [])), tuple(sorted(_ids(prima, "non_giocano") or [])),
+            tuple(_ids(prima, "panchina") or []) if chiusa else ())
+
+
+def da_ricordare(f: dict, prima: dict | None = None) -> dict | None:
+    """La consigliata `f` come si ricorda: modulo, id di titolari e panchina, e i titolari che già non giocavano (fuori o
+    improbabili) quando è stata mostrata. Con gli stessi titolari di `prima` quell'elenco resta quello di allora.
+    None se `f` non ha 11 titolari."""
+    titolari = [int(g["id"]) for g in f.get("titolari") or []]
+    if len(titolari) != 11:
+        return None
+    if prima is not None and set(_ids(prima, "titolari") or []) == set(titolari):
+        non_giocano = _ids(prima, "non_giocano") or []
+    else:
+        non_giocano = [int(g["id"]) for g in f["titolari"] if g.get("titolarita") in NON_GIOCA]
+    return {"modulo": str(f.get("modulo", ""))[:8], "titolari": titolari,
+            "panchina": [int(g["id"]) for g in f.get("panchina") or []], "non_giocano": non_giocano}
+
+
+def _impronta(stagione: str, giornata: int, s: Squadra, regole: Regole, simulazioni: int) -> str:
+    """La chiave della consigliata ricordata: stagione, giornata, squadra, rosa, regole e simulazioni, in un'impronta."""
+    testo = json.dumps([stagione, int(giornata), s.nome, sorted(g.id for g in s.giocatori if g.id is not None), repr(regole),
+                        simulazioni], ensure_ascii=False)
+    return hashlib.sha256(testo.encode("utf-8")).hexdigest()[:32]
+
+
+def _consigliate() -> dict:
+    """Le consigliate ricordate; {} se il file non c'è o è rovinato."""
+    global _letto
+    file = FILE_CONSIGLIATE
+    try:
+        st = file.stat()
+    except OSError:
+        return {}
+    firma = (str(file), st.st_mtime_ns, st.st_size, st.st_ino)
+    if _letto[0] == firma:
+        return _letto[1]
+    try:
+        d = json.loads(file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        d = {}
+    d = d if isinstance(d, dict) else {}
+    _letto = (firma, d)
+    return d
+
+
+def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict | None) -> None:
+    """Ricorda la consigliata mostrata (`da_ricordare`), solo se è cambiata. Rilegge il file subito prima di scrivere, con il
+    blocco valido anche fra processi. Un errore non ferma la risposta: si riprova alla prossima."""
+    voce = da_ricordare(f, prima)
+    if voce is None:
+        return
+    if (prima is not None and set(_ids(prima, "titolari") or []) == set(voce["titolari"]) and _ids(prima, "panchina") == voce["panchina"]
+            and prima.get("modulo") == voce["modulo"] and _ids(prima, "non_giocano") == voce["non_giocano"]):
+        return
+    nuova = {"stagione": str(stagione), "giornata": int(giornata), **voce, "quando": _adesso().isoformat(timespec="seconds")}
+    file = FILE_CONSIGLIATE
+    try:
+        with _blocco_consigliate, BloccoFile(file.with_name(file.name + ".lock")):
+            try:
+                tutte = json.loads(file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                tutte = {}
+            tutte = tutte if isinstance(tutte, dict) else {}
+            tutte[impronta] = nuova
+            per_eta = sorted(tutte, key=lambda k: str(tutte[k].get("quando", "")) if isinstance(tutte[k], dict) else "")
+            for vecchia in per_eta[:max(0, len(tutte) - MAX_CONSIGLIATE)]:
+                tutte.pop(vecchia, None)
+            scrivi_sicuro(file, json.dumps(tutte, ensure_ascii=False))
+    except OSError as e:
+        LOG.warning("consigliata non ricordata (%s)", type(e).__name__)
+
+
+def _chiusa(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int) -> bool:
+    """La formazione della giornata è chiusa (scadenza della lega passata): la regola di Oggi e della Formazione."""
+    from . import fasi
+    try:
+        return fasi.iniziata(db, regole, stagione, giornata, _adesso())
+    except sqlite3.Error:                 # archivio senza calendario: come una giornata ancora aperta
+        return False
+
+
+def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, regole: Regole, simulazioni: int,
+            chiusa: bool = False) -> dict:
+    """La consigliata da mostrare: quella di prima (`prima` = {"titolari": [id], "panchina": [id]}) se c'è e regge, altrimenti la
+    migliore di adesso (`migliore`, la risposta di `_calcola_formazione`, restituita così com'è).
+    Prima della scadenza la migliore prende il posto di quella di prima se vale almeno SOGLIA_CAMBIO_PUNTI punti attesi in più (sulle
+    stesse simulazioni, con i dati nuovi), o se un titolare di prima non gioca più (uscito dalla rosa, diventato fuori o improbabile:
+    non chi lo era già quando è stata mostrata, `prima["non_giocano"]`) e la migliore lo lascia fuori; tenuta quella di prima, la
+    sua panchina la sceglie il sistema come sempre. Dopo la scadenza (`chiusa`)
+    resta quella di prima, panchina compresa. La scelta salvata dall'utente non passa di qui."""
+    titolari = _ids(prima, "titolari")
+    nuovi = {int(g["id"]) for g in migliore.get("titolari") or []}
+    if titolari is None or len(nuovi) != 11 or _stessa(prima, migliore, chiusa):
+        return migliore
+    panchina_prima = _ids(prima, "panchina") or []
+    rosa = _rosa(s, prev)
+    per_id = {g.id: g for g in rosa}
+    if scelte.motivo_non_valida(titolari, {g.id: g.ruolo for g in rosa}, regole):
+        return migliore                  # un titolare uscito dalla rosa o senza previsione, un modulo non più ammesso, un file rovinato
+    gia = set(_ids(prima, "non_giocano") or [])           # chi non giocava già quando la consigliata è stata mostrata
+    if not chiusa and any(titolarita(prev.loc[i]) in NON_GIOCA and i not in nuovi and i not in gia for i in titolari):
+        return migliore
+    tit = sorted((per_id[i] for i in titolari), key=lambda g: (fz.ORDINE_RUOLO[g.ruolo], -g.valore))
+    if chiusa and panchina_prima:
+        panchina = [per_id[i] for i in panchina_prima if i in per_id and i not in titolari]
+    else:
+        panchina = fz._panchina(rosa, tit, regole)
+    val = fz.Valutatore(rosa, regole, simulazioni)          # le stesse simulazioni della migliore (stessa rosa, regole e seme)
+    atteso, dev = val.statistiche(tit, panchina)[:2]
+    atteso_migliore = val.atteso([per_id[int(g["id"])] for g in migliore["titolari"]],
+                                 [per_id[int(g["id"])] for g in migliore.get("panchina") or []])
+    if not chiusa and atteso_migliore - atteso >= SOGLIA_CAMBIO_PUNTI:
+        return migliore
+    return _con_consigliata(migliore, tit, panchina, atteso, dev, atteso_migliore, rosa)
+
+
+def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, dev: float, atteso_migliore: float,
+                     rosa: list) -> dict:
+    """Una copia della risposta della migliore con la consigliata di prima al suo posto: in cima, nella voce del suo modulo
+    (`moduli`) e nello stile consigliato (`livelli`), da cui web e iPhone prendono i titolari; `alternative` e `fuori` rifatti.
+    La risposta della migliore (in cache) non cambia."""
+    conta = {r: sum(1 for g in tit if g.ruolo == r) for r in "DCA"}
+    modulo = f"{conta['D']}-{conta['C']}-{conta['A']}"
+    fascia = incertezza.campi(atteso, dev)
+    voce = {"modulo": modulo, "punteggio_atteso": round(atteso, 1), **fascia, "titolari": [g.id for g in tit],
+            "panchina": [g.id for g in panchina], "incerti": incerti(tit, panchina)}
+    moduli = [voce if m["modulo"] == modulo else m for m in migliore.get("moduli") or []]
+    if not any(m["modulo"] == modulo for m in moduli):
+        moduli.append(voce)
+    alternative = [{"modulo": migliore["modulo"], "punteggio_atteso": round(atteso_migliore, 2)}] if migliore["modulo"] != modulo else []
+    alternative += [a for a in migliore.get("alternative") or [] if a["modulo"] != modulo]
+    stile = migliore.get("stile_consigliato", 0)
+    livelli = [x | {"modulo": modulo, "punteggio_atteso": voce["punteggio_atteso"], **fascia, "moduli": moduli}
+               if x.get("rischio") == stile else x for x in migliore.get("livelli") or []]
+    schede = migliore["schede"]
+    scelti = {g.id for g in tit} | {g.id for g in panchina}
+    return migliore | {
+        "modulo": modulo, "punteggio_atteso": voce["punteggio_atteso"], **fascia, "alternative": alternative,
+        "titolari": [schede[str(g.id)] for g in tit], "panchina": [schede[str(g.id)] for g in panchina],
+        "fuori": sorted((schede[str(g.id)] for g in rosa if g.id not in scelti), key=lambda x: -x["punti_attesi"]),
+        "moduli": moduli, "livelli": livelli}
 
 
 class FormazioneNonValida(ValueError):
