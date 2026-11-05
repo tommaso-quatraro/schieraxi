@@ -8,7 +8,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Su macOS e Linux: `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
 - Test tutti: `.venv\Scripts\python.exe -m pytest -q`. Un file solo: `... -m pytest -q tests\test_rose_csv.py`.
 - Server locale: `.venv\Scripts\python.exe -m fanta server` (ascolta su 127.0.0.1:8000). Elenco comandi: `-m fanta --help`.
-- Modello: `-m fanta verifica` prima e dopo ogni modifica al modello.
+- Modello: `-m fanta verifica` prima e dopo ogni modifica al modello. Scelta della formazione (`formazione.py`, consiglio):
+  anche `-m fanta verifica --consiglio` (C1-C4: valore contro una scelta semplice, stabilità, titolari che non giocano, perché).
 
 ## Cartelle e file
 - `fanta/`: il server e la logica. «fanta» è il nome interno storico del pacchetto Python.
@@ -18,9 +19,23 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `salute.py`, `stato_dati.py`.
   - Modello: `modello.py` (fantavoto atteso `mu` e probabilità di voto `p_voto`), `formazione.py` (11 titolari più panchina;
     livelli di rischio in `LIVELLI_RISCHIO`), `punteggio.py` (fantavoto con le regole della lega), `verifica.py` (backtest),
+    `verifica_consiglio.py` (misura in laboratorio del consiglio, indicatori C1-C4 di #166: `-m fanta verifica --consiglio`),
+    `indicatori_consiglio.py` (C1-C4 misurati davvero nel Diario a giornata finita sulla consigliata mostrata, con le funzioni di
+    `verifica_consiglio`; totali di tutti i Diari, medie su 8 giornate e avviso al proprietario dopo 2 giornate fuori soglia: comando
+    `affidabilita` del cron, file `dati/indicatori-consiglio.json`, campo `consiglio` di `GET /api/stato-dati`),
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
-    `consigli.py` (formazione e spiegazioni, usato da app e comandi), `scambi.py`, `scambi_multi.py` (scambi N contro M),
+    `consigli.py` (formazione e spiegazioni, usato da app e comandi; consigliata stabile, vedi «Contratti delle API»),
+    `perche_scelta.py` (il perché delle scelte che sembrano storte in una riga, campo `perche_scelta` dei moduli di `/api/formazione`,
+    con il conto del Confronto, #356), `scambi.py`, `scambi_multi.py` (scambi N contro M),
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
+  - Registro delle giornate (#165): `registro_giornate.py`. Negli ultimi 10 minuti prima della prima partita salva i numeri
+    mostrati per tutta la Serie A (regole classiche, solo id e numeri); a giornata finita misura I1-I3, medie sulle ultime 8
+    giornate e avviso al proprietario (canale della sentinella) se una media resta fuori soglia per 2 giornate di fila. Giornata
+    non salvata quando inizia la prima partita = «persa»: riga con il motivo in breve (`persa`) e un avviso solo. Tabelle
+    `registro_giocatori` e `registro_giornate` dell'archivio: NON si ricostruiscono. Gira nel thread del pianificatore
+    (`pianificatore._registro`); `FANTA_REGISTRO_GIORNATE=0` lo spegne. Campo `registro` di `GET /api/stato-dati`.
+    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le due tabelle in `dati/registro-giornate.json` per la
+    copia notturna (`script/server/backup-dati.sh`) e le rimette con `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
@@ -44,6 +59,9 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
   `impostazioni.js`, `dafare.js`, `primoavvio.js`, `live.js`, `avatar.js`, `testi.js`, `stile.css`, `sw.js`, icone.
   Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`.
+- `fanta/web/caratteri/`: `archivo.woff2` (Archivo semi-stretto, cifre tabellari, per numeri e titoli) con la licenza `OFL.txt`
+  (SIL OFL 1.1). Pubblico anche con gli account accesi (`STATICI_PREFISSI`), tipo `font/woff2`, nella scocca offline di `sw.js`.
+  Si rifà con `script/carattere_web.py` (fontTools e brotli in un ambiente a parte); test `tests/test_carattere_web.py`.
 - `fanta/web/testi.js`: tutti i testi dell'interfaccia, in italiano e in inglese, con le stesse chiavi (`tests/test_testi.py`
   lo controlla). Nel codice si usa solo `t("chiave")`. I messaggi del server restano in italiano (iOS e Android li leggono): gli errori il web li traduce con le chiavi `err.*` (il testo italiano della chiave È il messaggio del server; `tests/test_testi.py` lo controlla parola per parola e fa fallire un messaggio nuovo senza traduzione). Le frasi che cambiano con i dati (Da fare, motivi, «perché», probabili, avvisi delle rose...) sono `Frase` di `fanta/frasi.py`: testo italiano + `frase` con chiave e parametri accanto (`X_frase`, `X_frasi`; contratto in `docs/API.md`, «Frasi con chiave»); il web le traduce con `traduciFrase`/`testoDi`/`testiDi` da `frase.<chiave>`. Frase nuova = una voce in `CATALOGO` (italiano) e due righe in `testi.js` (`frase.<chiave>`, italiano identico e inglese); `tests/test_frasi.py` controlla che combacino.
 - `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il
@@ -57,6 +75,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
   Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
   Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request non in bozza). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
+  iPhone da provare nel browser: workflow `ios-simulatore.yml` (solo a mano), app per il simulatore in demo come artifact `.zip` e, con il segreto `APPETIZE_TOKEN`, caricata su Appetize.io (variabile `APPETIZE_APP`). Istruzioni: `docs/PROVA-IPHONE-BROWSER.md`.
 - `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
   con la variabile `FANTA_LEGA=<cartella>`.
 - `dati/`: database, cache e chiavi locali. Non va in git.
@@ -66,10 +85,10 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
   `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
-- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`).
+- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335).
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
   `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
-  `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`.
+  `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`, `superpowers/specs/` e `superpowers/plans/` (spec e piani, in italiano).
 - `.claude/settings.json`: divieti fissi per Claude Code (`gh pr merge`, push su `main`, push forzato, `--no-verify`); spiegati in `CLAUDE.md`.
 - Radice: `README.md`, `CLAUDE.md`, `MAPPA.md`, `LICENSE` (AGPL-3.0), `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
   `TRADEMARKS.md`, `THIRD-PARTY-NOTICES.md`, `requirements.txt`, `requirements-dev.txt`, `.env.example`.
@@ -114,11 +133,18 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Istantanea di tutte le rotte: `docs/openapi.json`, controllata da `tests/test_contratto_api.py`; si rifà con
   `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
 - Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
+- `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate) e `consiglio`
+  (C1-C4 del consiglio, totali dei Diari): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
+- `GET /api/diario`: ogni voce ha il campo facoltativo `consiglio` (C1-C4 di quella giornata) e `istantanea` ha `misure` (C3-C4);
+  forma in `docs/API.md`, «Indicatori del consiglio».
 - Errori: JSON `{"detail": "testo in italiano"}`.
 - 202 = «sto calcolando» (coda, solo in modo multiutente): il client riprova. 429 con `Retry-After` = limiti per utente.
-- Scelta della giornata: `GET /api/scelta` dà anche `salvata` (data e ora) e `tipo`; web e iPhone mostrano in Formazione lo stato della scelta confrontando gli 11 mostrati con quelli salvati. Formazione non valida in `POST /api/formazione/valuta`: `400` con `codice: "formazione_non_valida"` (`consigli.FormazioneNonValida`); i client non cancellano la scelta da soli.
+- Scelta della giornata: `GET /api/scelta` dà anche `salvata` (data e ora), `tipo` e, solo se vero, `era_consigliata` (gli 11 salvati erano la consigliata: «Da fare» allora non propone cambi e, se la consigliata cambia, lo dice con una voce sola, `da_fare._titolari`, #333); web e iPhone mostrano in Formazione lo stato della scelta confrontando gli 11 mostrati con quelli salvati. Formazione non valida in `POST /api/formazione/valuta`: `400` con `codice: "formazione_non_valida"` (`consigli.FormazioneNonValida`); i client non cancellano la scelta da soli.
+- Regola unica della scelta (dal 5/11/2026): `scelte.motivo_non_valida` (11 titolari diversi tra quelli della rosa che si possono schierare, un portiere, modulo ammesso dalla lega), con `scelte.che_vale` e `scelte.ruoli_schierabili` (prima della scadenza i giocatori con una previsione, come la Formazione; a giornata finita la rosa, come il Diario). Una scelta salvata che non la rispetta più (giocatore ceduto, modulo non ammesso) non conta e vale la consigliata, ovunque: Formazione, Oggi (anche in diretta e nel riepilogo), Diario, avvisi (promemoria, «cambia la formazione», «cambio pronto», riepilogo dopo la giornata) e Da fare. `GET /api/formazione` lo dice con `stato_scelta` (`nessuna`, `valida`, `non_valida`; facoltativo, solo per la tua squadra): a giornata chiusa la riga dello stato scrive «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» (con `valida`: «… · vale quella che hai salvato»). Test `tests/test_scelta_non_valida_chiusa.py` e `tests/test_scelta_non_valida_avvisi.py`.
 - Formazione chiusa (dal 2/11/2026): dopo la scadenza della lega `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` rispondono 409 con `codice: "formazione_chiusa"`, per tutti (`server._formazione_chiusa`, regola `fasi.iniziata`). La copia automatica (`copia_scadenza.py`) scrive prima della scadenza e non passa dalle rotte.
 - Titolari incerti con una riserva quasi sicura: lista `incerti` in ogni modulo di `/api/formazione` (`consigli.incerti`, soglie 50% e 80%).
+- Il perché della scelta (dal 5/11/2026, #356): lista facoltativa `perche_scelta` `[{titolare, altro, testo, frase}]` in ogni modulo di `/api/formazione` (`perche_scelta.py`), una riga per i titolari che sembrano una scelta storta e per gli incerti; web e iPhone la mostrano sotto il campo. Mai il contrario del Confronto sulla stessa coppia (`tests/test_perche_scelta.py`, su tutti gli stili e moduli).
+- Consigliata stabile (dal 5/11/2026, #335): `consigli.formazione` tiene la consigliata già calcolata per squadra, rosa, regole e giornata (file comune `dati/consigliate.json`, `consigli.FILE_CONSIGLIATE`, solo id sotto un'impronta, tetto `MAX_CONSIGLIATE`) e la cambia solo se la migliore vale almeno `consigli.SOGLIA_CAMBIO_PUNTI` (= `notifiche.SOGLIA_AVVISO_PUNTI`, 1 punto atteso) in più o se un suo titolare è uscito dalla rosa o è diventato fuori o improbabile (`consigli.stabile`; chi lo era già quando è stata mostrata sta in `non_giocano`); dopo la scadenza resta. Formazione, Oggi, widget, Da fare, avvisi, copia alla scadenza e sentinella passano tutti da lì. Test `tests/test_consigliata_stabile.py`; misura `prove/misura_stabilita.py`.
 - A giornata iniziata ogni scheda ha anche `fv_preso` (fantavoto preso, `fasi.schede_a_giornata_iniziata`): il web mostra quello al posto di «gioca N%» (`esitoPartita` in `app.js`).
 - ETag e If-Match su scelta, osservati, rose, regole e avvisi. Con un If-Match vecchio: 412. Senza If-Match si scrive come sempre.
 - Partite rinviate: `PUT /api/regole/rinvio` (eccezione per una giornata, stesso ETag delle regole), campo `rinvio` in

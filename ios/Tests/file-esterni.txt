@@ -4,3 +4,5 @@
 # se un test iOS legge un file del repository che non è qui (e se qui c'è un file che nessun test legge).
 fanta/frasi.py
 fanta/web/testi.js
+fanta/funzioni.py
+fanta/web/app.js

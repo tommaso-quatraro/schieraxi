@@ -2,8 +2,10 @@
 # backup-dati.sh - Sul server, una volta a notte: salva in ~/backup-dati/dati-AAAA-MM-GG.tar.gz una copia dei dati
 # che non si rigenerano: account (account.sqlite, copiato con l'API di backup di SQLite), cartelle degli utenti,
 # lega/ (regole, rose, movimenti, immagini), scelte, osservati, impostazioni degli avvisi, icona, diario, affidabilità,
-# formazioni delle altre squadre, calendario della lega, stato del pianificatore, chiave delle impronte (chiave-impronte.key, 600).
-# NON copia: chiavi (vapid.json), il file di configurazione dell'ambiente, iscrizioni alle notifiche (push.json), cache, backup già fatti.
+# formazioni delle altre squadre, calendario della lega, stato del pianificatore, chiave delle impronte (chiave-impronte.key, 600),
+# registro delle giornate (le tabelle registro_* dell'archivio, esportate in dati/registro-giornate.json: non si ricostruiscono).
+# NON copia: chiavi (vapid.json), il file di configurazione dell'ambiente, iscrizioni alle notifiche (push.json), cache, backup già fatti,
+# l'archivio delle statistiche (fanta.sqlite: si riscarica con `python -m fanta aggiorna`).
 # Tiene le ultime 14 copie. Portarle anche fuori dal server (altro computer o altro disco).
 # Non si installa da solo: serve la riga nel crontab dell'utente del server (ok dell'utente), per esempio:
 #   45 3 * * * /bin/bash $HOME/fantacalcio/script/server/backup-dati.sh >/dev/null 2>&1
@@ -61,17 +63,26 @@ sys.exit(0 if esito == "ok" else 1)
   fi
 fi
 
-# 3. Niente chiavi né iscrizioni alle notifiche né file a metà: tolti dalla copia prima di impacchettare.
+# 3. Registro delle giornate: solo le sue tabelle, lette in sola lettura e tutte insieme (coerenti anche mentre il servizio scrive),
+#    in un file JSON piccolo (fanta/registro_copia.py, solo libreria standard). Se non riesce, niente copia stanotte: così non parte
+#    nemmeno la rotazione e restano le copie vecchie con il registro buono. Ripristino: docs/RIPRISTINO-SERVER.md.
+if [ -f dati/fanta.sqlite ]; then
+  if ! errore=$($PY -m fanta.registro_copia esporta --archivio dati/fanta.sqlite "$stage/dati/registro-giornate.json" 2>&1 >/dev/null); then
+    fallito "copia del registro delle giornate non riuscita: $errore"
+  fi
+fi
+
+# 4. Niente chiavi né iscrizioni alle notifiche né file a metà: tolti dalla copia prima di impacchettare.
 find "$stage" \( -name push.json -o -name '*.tmp' \) -delete
 
-# 4. Pacchetto nella stessa cartella (così lo spostamento finale è atomico), poi controllo che si possa leggere.
+# 5. Pacchetto nella stessa cartella (così lo spostamento finale è atomico), poi controllo che si possa leggere.
 if ! tar -czf "$tmp/nuovo.tar.gz" -C "$stage" . || ! tar -tzf "$tmp/nuovo.tar.gz" >/dev/null; then
   fallito "pacchetto non riuscito"
 fi
 chmod 600 "$tmp/nuovo.tar.gz"
 mv -f "$tmp/nuovo.tar.gz" "$out" || fallito "non riesco a salvare $out"
 
-# 5. Rotazione: restano le ultime $TIENI copie (i nomi con la data si ordinano da soli).
+# 6. Rotazione: restano le ultime $TIENI copie (i nomi con la data si ordinano da soli).
 ls -1 "$DEST"/dati-????-??-??.tar.gz 2>/dev/null | sort | head -n -"$TIENI" | while IFS= read -r vecchia; do
   rm -f -- "$vecchia"
 done

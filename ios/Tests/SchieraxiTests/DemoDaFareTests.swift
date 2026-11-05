@@ -3,7 +3,7 @@ import Testing
 @testable import Schieraxi
 
 /// «Da fare» dei dati di prova (modalità demo e fotografie): deve dire quello che direbbe il server, con gli stessi testi
-/// (`fanta/frasi.py`, chiavi `dafare.*`) e il numero di giornata della lega (non quello della Serie A).
+/// (`fanta/frasi.py`, chiavi `dafare.*`) e la giornata con i due numeri, lega e Serie A (#299).
 /// Dati inventati: i nomi sono quelli della demo (`DatiDemo.swift`).
 struct DemoDaFareTests {
 
@@ -14,7 +14,7 @@ struct DemoDaFareTests {
         return try Decodifica.decodifica(try await finto.richiesta("GET", "/api/oggi", corpo: nil))
     }
 
-    @Test("Il diario numera la giornata della lega, non quella della Serie A")
+    @Test("Il diario dice la giornata con i due numeri, lega e Serie A")
     func diarioConIlNumeroDellaLega() async throws {
         let o = try await oggi("oggi")
         let serieA = try #require(o.giornata)
@@ -22,8 +22,7 @@ struct DemoDaFareTests {
         #expect(serieA != lega, "se i due numeri coincidono il test non distingue più la lega dalla Serie A")
         let voce = try #require(o.daFare?.first(where: { $0.tipo == "diario" }), "nella demo manca la voce del diario")
         // l'ultima giornata finita della lega è quella prima della giornata in corso, come in `_diario` di fanta/da_fare.py
-        #expect(voce.testo == "La giornata \(lega - 1) è finita: dimmi se hai schierato la consigliata.")
-        #expect(!voce.testo.contains("giornata \(serieA - 1) "), "il numero è quello della Serie A")
+        #expect(voce.testo == "Giornata \(lega - 1) · \(serieA - 1)ª di Serie A: è finita, dimmi se hai schierato la consigliata.")
         #expect(voce.azione == "Ho schierato la consigliata")
         #expect(voce.destinazione?.link == "schieraxi://lega/diario")
     }
@@ -44,17 +43,17 @@ struct DemoDaFareTests {
         let o = try await oggi(schermata)
         let voci = try #require(o.daFare, "\(schermata): manca «da_fare»")
 
-        // i dati della demo (stessi numeri del mercato: Vlasenić esce, Retalli entra, 3,4 punti; Marténi ha il 62% di giocare)
+        // i dati della demo (stessi numeri del mercato: Vlasenić esce, Retalli entra, 3,4 punti; Marténi ha il 62% di giocare e la
+        // consigliata lo tiene titolare, quindi niente «Meglio»: se non gioca entra Lemão, il primo attaccante della panchina, #305)
         let guadagno = try frasi.frase("dafare.guadagno_stagione", ["punti": "3,4"])
         let attese: [String: (testo: String, azione: String)] = [
-            "dubbio": (try frasi.frase("dafare.dubbio_incerto_alt", ["nome": "Leonel Marténi", "p": "62", "alt": "Renato Lemão"]),
-                       try frasi.frase("dafare.az_sostituisci")),
+            "dubbio": (try frasi.frase("dafare.dubbio_incerto_tiene", ["nome": "Leonel Marténi", "p": "62", "riserva": "Renato Lemão"]),
+                       try frasi.frase("dafare.az_formazione")),
             "svincolato": (try frasi.frase("dafare.svincolato", ["entra": "Mauro Retalli", "esce": "Darko Vlasenić", "guadagno": guadagno]),
                            try frasi.frase("dafare.az_vedi")),
             "rose": (try frasi.frase("dafare.rose_vecchie", ["giorni": "5"]),
                      try frasi.frase("dafare.az_aggiorna_rose")),
-            "diario": (try frasi.frase("dafare.diario", ["n": "7"]),
-                       try frasi.frase("dafare.az_schierato")),
+            "diario": (try Self.fraseDiario(frasi), try frasi.frase("dafare.az_schierato")),
         ]
 
         var controllati: Set<String> = []
@@ -70,6 +69,17 @@ struct DemoDaFareTests {
             controllati.insert(tipo)
         }
         #expect(controllati == tipi, "\(schermata): voci confrontate \(controllati.sorted()), attese \(tipi.sorted())")
+    }
+}
+
+extension DemoDaFareTests {
+    /// La voce del diario della demo (Serie A 10 = giornata 7 della lega). Dalla #299 il server mette in testa la giornata con i due
+    /// numeri (parametro `giornata` di `dafare.diario`, `docs/API.md`). Finché `fanta/frasi.py` ha ancora la frase di prima (con
+    /// `{n}`) vale il testo scritto in `docs/COERENZA-WEB-IPHONE.md`: la PR del server e questa si possono unire in qualunque ordine.
+    fileprivate static func fraseDiario(_ frasi: FrasiDelServer) throws -> String {
+        let nome = "Giornata 7 · 10ª di Serie A"
+        guard try frasi.modello("dafare.diario").contains("{n}") else { return try frasi.frase("dafare.diario", ["giornata": nome]) }
+        return "\(nome): è finita, dimmi se hai schierato la consigliata."
     }
 }
 
@@ -103,6 +113,12 @@ private struct FrasiDelServer {
     }
 
     /// La frase del server con i segnaposto riempiti.
+    /// Il modello com'è scritto nel catalogo, con i segnaposto.
+    func modello(_ chiave: String) throws -> String {
+        guard let testo = modelli[chiave] else { throw Errore(description: "manca la frase «\(chiave)» in fanta/frasi.py") }
+        return testo
+    }
+
     func frase(_ chiave: String, _ parametri: [String: String] = [:]) throws -> String {
         guard var testo = modelli[chiave] else { throw Errore(description: "manca la frase «\(chiave)» in fanta/frasi.py") }
         for (nome, valore) in parametri { testo = testo.replacingOccurrences(of: "{\(nome)}", with: valore) }

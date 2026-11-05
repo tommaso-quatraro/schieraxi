@@ -97,28 +97,30 @@ struct VistaPunti: View {
         }
     }
 
+    /// «Attesi e fatti» e a destra la giornata nella forma corta che entra («Giornata 7», poi «G7»; #299). Si tiene la prima
+    /// disposizione di `formeTestata` che entra INTERA (#352): se con il testo grande il titolo e «G7» non stanno insieme (widget
+    /// piccolo), resta il solo simbolo e la giornata; mai una scritta tagliata. VoiceOver: la legge `voceWidget` (vedi sotto).
     private func intestazione(_ g: PuntiGiornata) -> some View {
-        IntestazioneWidget(titolo: "Attesi e fatti", icona: "chart.bar.fill", destra: g.sigla)
+        let forme = g.formeTestata
+        return PrimaCheEntra(forme.count) { i in
+            HStack(spacing: 4) {
+                Group {
+                    if forme[i].conTitolo {
+                        Label("Attesi e fatti", systemImage: "chart.bar.fill").lineLimit(1)
+                    } else {
+                        Image(systemName: "chart.bar.fill")
+                    }
+                }
+                .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
+                Spacer(minLength: 0)
+                Text(forme[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+            }
+        }
     }
 
     private func piccolo(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            intestazione(g)
-            Spacer(minLength: 0)
-            Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
-                .lineLimit(1).minimumScaleFactor(0.6)
-                .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
-            Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
-            Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
-            if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
-            GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false, massimo: 5).padding(.top, 2).padding(.bottom, 4)
-            PiedeDati(voce: voce)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func medio(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
-        HStack(alignment: .center, spacing: 14) {
+            // testata e numeri: per VoiceOver una frase sola, con i due numeri della giornata (`voceWidget`)
             VStack(alignment: .leading, spacing: 2) {
                 intestazione(g)
                 Spacer(minLength: 0)
@@ -128,12 +130,41 @@ struct VistaPunti: View {
                 Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
                 Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
                 if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
-                PiedeDati(voce: voce)
             }
-            .frame(maxWidth: 140, alignment: .leading)
-            VStack(alignment: .leading, spacing: 4) {
-                GraficoPunti(giornate: w.giornateGiocate, altezza: 70)
-                legenda
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(g.voceWidget)
+            GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false, massimo: 5).padding(.top, 2).padding(.bottom, 4)
+            PiedeDati(voce: voce)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func medio(_ w: RiassuntoWidget, _ g: PuntiGiornata) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // L'intestazione sta su tutta la larghezza: nella colonna di sinistra (140 pt) il titolo ha la precedenza e alla giornata
+            // restava lo spazio di «G7», anche con il widget largo (#352). VoiceOver non la legge qui: `voceWidget` qui sotto dice già
+            // titolo e giornata con i due numeri, in una frase sola (come prima, quando l'intestazione stava nello stesso gruppo).
+            intestazione(g).accessibilityHidden(true)
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Spacer(minLength: 0)
+                        Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                            .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
+                        Text("fatti, attesi \(Formato.punti(g.attesi))").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                        Text("\(scartoTesto(g)) sul previsto").font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                        if let f = g.fasciaTesto { Text(f).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(g.voceWidget)
+                    PiedeDati(voce: voce)
+                }
+                .frame(maxWidth: 140, alignment: .leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    GraficoPunti(giornate: w.giornateGiocate, altezza: 70)
+                    legenda
+                }
             }
         }
     }
@@ -162,10 +193,11 @@ struct VistaPunti: View {
                 Text(Formato.punti(g.fatti)).font(.system(.largeTitle, design: .rounded).weight(.bold)).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.6)
                     .foregroundStyle(TintaWidget.accento(modo)).widgetAccentable()
-                // va a capo intera anche con il testo grande: mai «attesi 6…»
-                Text("fatti alla giornata \(g.numero)\(g.altraStagione.map { " del \($0)" } ?? ""), attesi \(Formato.punti(g.attesi))")
+                // va a capo intera anche con il testo grande: mai «attesi 6…». La giornata in testa con i due numeri (#299)
+                Text("\(g.titolo): fatti, attesi \(Formato.punti(g.attesi))")
                     .font(.subheadline).foregroundStyle(TintaWidget.testo2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(g.descrizione)
                 Spacer(minLength: 0)
             }
             GraficoPunti(giornate: giornate, altezza: 80)

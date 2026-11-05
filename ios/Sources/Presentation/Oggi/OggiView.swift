@@ -193,12 +193,12 @@ struct OggiView: View {
             // finestra stretta) l'invito va sotto. Mai accanto al conto alla rovescia: lì diventava una colonna stretta e altissima.
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
-                    etichettaGiornata(oggi)
+                    CapsulaGiornata(nome: oggi.nomeGiornata)
                     Spacer(minLength: 8)
                     aggiungiDivisa(oggi)
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    etichettaGiornata(oggi)
+                    CapsulaGiornata(nome: oggi.nomeGiornata)
                     aggiungiDivisa(oggi)
                 }
             }
@@ -223,15 +223,7 @@ struct OggiView: View {
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(oggi.etichettaGiornata ?? "Giornata")
-    }
-
-    private func etichettaGiornata(_ oggi: Oggi) -> some View {
-        Label(oggi.etichettaGiornata ?? "Giornata", systemImage: "calendar")
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .vetro(in: Capsule())
-            .fixedSize()
+        .accessibilityLabel(oggi.nomeGiornata?.voce ?? "Giornata")
     }
 
     /// La divisa è LA TUA: se non c'è non si mostra quella di un'altra squadra, si invita ad aggiungerla.
@@ -305,11 +297,10 @@ struct OggiView: View {
         return "Prima partita \(Quando.leggibile(oggi.chiusura)): la formazione va inserita prima"
     }
 
-    /// A scadenza passata, come la web: «La formazione della giornata 7 si è chiusa sab 31 14:50» (numero della lega).
+    /// A scadenza passata, come la web: «La formazione si è chiusa sab 31 14:50». La giornata è scritta subito sopra il conto,
+    /// con i due numeri, e non si ripete (#299).
     static func siEChiusa(_ oggi: Oggi) -> String {
-        let quando = Quando.leggibile(oggi.chiusura)
-        guard let g = oggi.giornataMostrata else { return "La formazione si è chiusa \(quando)" }
-        return "La formazione della giornata \(g) si è chiusa \(quando)"
+        "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura))"
     }
 
     // MARK: novità

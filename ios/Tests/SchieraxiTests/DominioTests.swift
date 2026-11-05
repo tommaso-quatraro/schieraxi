@@ -68,7 +68,7 @@ final class DominioTests: XCTestCase {
         let a = try giocatore(5, "Castotti", ruolo: "A")
         let panchina = [try giocatore(6, "Pelucci", ruolo: "P"), try giocatore(7, "Fosaldi", ruolo: "P")]
         let testo = TestoFormazione.crea(giornata: 9, modulo: "2-1-1", titolari: [a, c, d1, p, d2], panchina: panchina)
-        XCTAssertEqual(testo, "Giornata 9 · 2-1-1\nP: Noraldi\nD: Foselli, Barucci\nC: Delardi\nA: Castotti\nPanchina: 1) Pelucci, 2) Fosaldi")
+        XCTAssertEqual(testo, "9ª giornata di Serie A · 2-1-1\nP: Noraldi\nD: Foselli, Barucci\nC: Delardi\nA: Castotti\nPanchina: 1) Pelucci, 2) Fosaldi")
         XCTAssertFalse(TestoFormazione.crea(giornata: 1, modulo: "x", titolari: [], panchina: []).contains("Panchina"))
     }
 

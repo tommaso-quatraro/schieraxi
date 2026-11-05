@@ -126,7 +126,6 @@ enum LegaDemo {
         cal(201, "Aldo Pinarotti", "A", "sassuolo", costo: 0, pVoto: 0.86, punti: 6.4),
         cal(202, "Marcello Polinardo", "C", "napoli", costo: 0, pVoto: 0.81, punti: 6.0),
         cal(203, "Mauro Retalli", "A", "genoa", costo: 0, pVoto: 0.90, punti: 6.9),
-        cal(204, "Nenad Krslić", "A", "lecce", costo: 0, pVoto: 0.88, punti: 6.2),
         cal(205, "Marzio Zaviani", "C", "lazio", costo: 0, pVoto: 0.89, punti: 6.1),
         cal(206, "Aron Mercati", "P", "napoli", costo: 0, pVoto: 0.96, punti: 5.7),
         cal(207, "Manuel Brisciani", "C", "atalanta", costo: 0, pVoto: 0.83, punti: 5.6),
@@ -140,8 +139,10 @@ enum LegaDemo {
         cal(215, "Gilberto Mancarini", "D", "roma", costo: 0, pVoto: 0.86, punti: 5.5),
     ]
 
-    /// Calciatori delle altre squadre della lega.
+    /// Calciatori delle altre squadre della lega con un nome scritto qui (la loro squadra è in `altriPerSquadra`). Krslić era
+    /// svincolato: l'ha preso AC Pigra (Movimenti).
     static let altri: [CalciatoreDemo] = [
+        cal(204, "Nenad Krslić", "A", "lecce", costo: 5, pVoto: 0.88, punti: 6.2),
         alt(301, "Walter Falcherini", "P", "lecce"), alt(302, "Massimo Silverni", "P", "udinese"),
         alt(303, "Mirco Di Gradella", "P", "juventus"), alt(304, "Enea Caprisi", "P", "cagliari"),
         alt(305, "Nelson Morlani", "D", "atalanta"), alt(306, "Massimo Darvini", "D", "inter"),
@@ -162,7 +163,86 @@ enum LegaDemo {
         alt(335, "Rune Højvang", "A", "napoli"), alt(336, "Lorenzo Verdi", "A", "roma"),
     ]
 
-    static var tutti: [CalciatoreDemo] { miaRosa + liberi + altri }
+    // MARK: - Rose delle altre squadre
+
+    /// I posti di ogni rosa (`rosa` delle regole della demo).
+    static let posti: [(ruolo: String, n: Int)] = [("P", 3), ("D", 8), ("C", 8), ("A", 6)]
+    /// Gli stessi posti come li scrivono le regole: ruolo → quanti.
+    static let postiRosa: [String: Int] = Dictionary(uniqueKeysWithValues: posti.map { ($0.ruolo, $0.n) })
+
+    /// Di quale squadra della lega è ogni giocatore di `altri`: gli stessi degli scambi proposti e dei Movimenti (Lumbaku è di Real
+    /// Madrink, Krslić l'ha preso AC Pigra, Yurdız è passato da Real Madrink a Dinamo Pizza e McTarran al contrario).
+    static let altriPerSquadra: [String: [Int]] = [
+        "Real Madrink": [301, 305, 313, 321, 326, 327],
+        "Atletico Divano": [302, 306, 314, 315, 328, 336],
+        "Dinamo Pizza": [303, 307, 316, 322, 325, 329],
+        "AC Pigra": [304, 309, 310, 317, 204, 330],
+        "Inter Nos": [311, 318, 319, 331, 332],
+        "Borgo Rossi United": [312, 320, 333, 334],
+        "Gli Amici del Bar Sport Centrale": [308, 323, 324, 335],
+    ]
+
+    /// Le squadre di Serie A del turno, per dare una squadra ai giocatori di contorno.
+    private static let squadreSerieA: [String] = incontri.flatMap { [$0.casa, $0.trasferta] }
+
+    /// Nomi e pezzi di cognome dei giocatori di contorno, tutti inventati: il cognome intero non sta in nessun file, quindi
+    /// `NomiRealiTests` controlla i nomi come li vede l'app. Nessuno contiene «ma»: la foto della ricerca («ma») resta com'era.
+    private static let nomiContorno = ["Dario", "Elio", "Fausto", "Gino", "Ivo", "Lino", "Nico", "Oscar", "Piero", "Remo", "Sergio",
+                                       "Tito", "Ugo", "Vito", "Yuri", "Zeno", "Bruno", "Carlo", "Enzo", "Franco", "Guido", "Luca",
+                                       "Nevio", "Paolo", "Silvio"]
+    private static let iniziCognome = ["Cav", "Dor", "Fen", "Gol", "Lir", "Mur", "Orb", "Pel", "Ros", "Tav", "Vel", "Brun"]
+    private static let finiCognome = ["accini", "aldoni", "anzi", "elloni", "erbi", "esani", "iccardi", "ognetti", "olari", "ugheri",
+                                      "urlini", "ezzi"]
+
+    /// Il k-esimo giocatore di contorno: id dal 401 (tre cifre come gli altri), un cognome diverso per ognuno (fino a 144), una
+    /// squadra di Serie A a rotazione e la previsione ricavata dall'id.
+    private static func contorno(_ k: Int, ruolo: String) -> CalciatoreDemo {
+        let nome = nomiContorno[k % nomiContorno.count]
+        let cognome = iniziCognome[k % iniziCognome.count] + finiCognome[(k / iniziCognome.count + k) % finiCognome.count]
+        return alt(401 + k, "\(nome) \(cognome)", ruolo, squadreSerieA[(k * 7) % squadreSerieA.count])
+    }
+
+    /// Le rose delle altre squadre, ognuna con i posti delle regole: chi ha un nome scritto in `altri`, poi i giocatori di
+    /// contorno fino a riempire i posti. Ogni giocatore sta in una rosa sola (#303).
+    static let roseAltre: [String: [CalciatoreDemo]] = {
+        var rose: [String: [CalciatoreDemo]] = [:]
+        var k = 0
+        for squadra in altreSquadre {
+            let ids = altriPerSquadra[squadra] ?? []
+            let noti = altri.filter { ids.contains($0.id) }
+            var rosa: [CalciatoreDemo] = []
+            for posto in posti {
+                let delRuolo = noti.filter { $0.ruolo == posto.ruolo }
+                rosa += delRuolo
+                for _ in 0..<max(0, posto.n - delRuolo.count) {
+                    rosa.append(contorno(k, ruolo: posto.ruolo))
+                    k += 1
+                }
+            }
+            rose[squadra] = rosa
+        }
+        return rose
+    }()
+
+    /// I giocatori di contorno di tutte le rose.
+    private static let diContorno: [CalciatoreDemo] = altreSquadre.flatMap { squadra in
+        (roseAltre[squadra] ?? []).filter { p in !altri.contains { $0.id == p.id } }
+    }
+
+    /// La squadra della lega di ogni giocatore che sta in una rosa.
+    private static let fantasquadre: [Int: String] = {
+        var d: [Int: String] = [:]
+        for p in miaRosa { d[p.id] = nomeMia }
+        for (squadra, rosa) in roseAltre {
+            for p in rosa { d[p.id] = squadra }
+        }
+        return d
+    }()
+
+    /// La squadra della lega che ha in rosa il giocatore (`proprietario` dell'Elenco e della scheda), nil se è svincolato.
+    static func fantasquadra(di id: Int) -> String? { fantasquadre[id] }
+
+    static let tutti: [CalciatoreDemo] = miaRosa + liberi + altri + diContorno
 
     static func calciatore(_ id: Int) -> CalciatoreDemo {
         tutti.first { $0.id == id } ?? miaRosa[0]
@@ -252,10 +332,10 @@ enum LegaDemo {
         return i < ore.count ? formatta(ore[i], "yyyy-MM-dd HH:mm") : nil
     }
 
-    /// Il calcio d'inizio cade su un quarto d'ora (18:00, 18:15...), come le partite vere: mai «18:57».
-    static func quartoDOra(_ data: Date) -> Date {
+    /// Un istante portato al quarto d'ora prima (18:07 → 18:00): il calcio d'inizio delle partite già cominciate.
+    static func quartoPrima(_ data: Date) -> Date {
         let quarto = 15.0 * 60
-        return Date(timeIntervalSinceReferenceDate: (data.timeIntervalSinceReferenceDate / quarto).rounded(.up) * quarto)
+        return Date(timeIntervalSinceReferenceDate: (data.timeIntervalSinceReferenceDate / quarto).rounded(.down) * quarto)
     }
 
     static func formatta(_ data: Date, _ formato: String) -> String {
@@ -273,31 +353,74 @@ enum LegaDemo {
 
     /// La formazione si chiude mezz'ora prima della prima partita (le regole della demo).
     static let minutiScadenza = 30
-    /// Dalla prima partita, i minuti del calcio d'inizio di ogni incontro (dalla sera del primo giorno a due giorni dopo).
-    static let scarti: [Double] = [0, 135, 1260, 1395, 1530, 1650, 2700, 2835, 2835, 2970]
-    /// A giornata in corso, i minuti da adesso del calcio d'inizio di ogni incontro: Inter-Roma finita, Milan-Juventus
-    /// all'intervallo, Lazio-Fiorentina nel primo tempo, il resto da giocare.
-    static let minutiInCorso: [Double] = [-130, -45, 150, -30, 240, 1290, 1425, 1560, 2700, 2835]
+    /// Gli orari dei calci d'inizio (ora italiana), come in Serie A: le partite della demo cadono solo qui, mai a mezzanotte (#303).
+    static let orariDaPartita: [(ora: Int, minuto: Int)] = [(12, 30), (15, 0), (18, 0), (20, 45)]
+    /// Per ogni incontro (nell'ordine di `incontri`), quanti orari da partita dopo il primo: un turno di poco più di due giorni,
+    /// con due partite alla stessa ora.
+    static let passi = [0, 1, 2, 3, 3, 4, 5, 6, 6, 7]
+    /// A giornata in corso, da quanti minuti sono cominciate le partite già in gioco o finite (indice di `incontri`): Inter-Roma
+    /// finita, Milan-Juventus all'intervallo, Lazio-Fiorentina nel primo tempo. Il calcio d'inizio va al quarto d'ora prima.
+    static let minutiDaIniziate: [Int: Double] = [0: 125, 1: 50, 3: 28]
 
-    /// La prima partita del turno: fra circa sette ore (prima della scadenza), iniziata da poco più di due ore (giornata in
-    /// corso), fra quattro giorni (giornata finita: è già la prossima).
-    static func inizio(adesso: Date, fase: Fase = .prima) -> Date {
-        switch fase {
-        case .prima: return quartoDOra(adesso.addingTimeInterval(7 * 3600))
-        case .inCorso: return adesso.addingTimeInterval((minutiInCorso.min() ?? 0) * 60)
-        case .finita: return adesso.addingTimeInterval(4 * 86_400 + Double(minutiScadenza) * 60)
+    /// Il calendario con l'ora italiana, per gli orari da partita.
+    static var oraItaliana: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+        return c
+    }
+
+    /// I primi `quanti` orari da partita da `da` in poi (compreso).
+    static func prossimiOrari(da: Date, quanti: Int) -> [Date] {
+        let roma = oraItaliana
+        var elenco: [Date] = []
+        var giorno = roma.startOfDay(for: da)
+        for _ in 0..<(quanti / max(1, orariDaPartita.count) + 3) where elenco.count < quanti {
+            for o in orariDaPartita where elenco.count < quanti {
+                if let d = roma.date(bySettingHour: o.ora, minute: o.minuto, second: 0, of: giorno), d >= da { elenco.append(d) }
+            }
+            giorno = roma.date(byAdding: .day, value: 1, to: giorno) ?? giorno.addingTimeInterval(86_400)
         }
+        return elenco
+    }
+
+    /// Un turno che comincia dal primo orario da partita da `da` in poi: un calcio d'inizio per incontro, secondo `passi`.
+    private static func turno(da: Date) -> [Date] {
+        let ore = prossimiOrari(da: da, quanti: (passi.max() ?? 0) + 1)
+        guard let ultimo = ore.last else { return passi.map { _ in da } }
+        return passi.map { $0 < ore.count ? ore[$0] : ultimo }
+    }
+
+    /// Il calcio d'inizio di ogni incontro (nell'ordine di `incontri`), sempre a un orario da partita. Prima della scadenza il turno
+    /// parte ad almeno sei ore da adesso; a giornata finita è già la prossima, fra quattro giorni; a giornata in corso le partite di
+    /// `minutiDaIniziate` sono cominciate (al quarto d'ora) e le altre hanno i prossimi orari da partita da un'ora in poi.
+    static func orari(adesso: Date, fase: Fase = .prima) -> [Date] {
+        switch fase {
+        case .prima: return turno(da: adesso.addingTimeInterval(6 * 3600))
+        case .finita: return turno(da: adesso.addingTimeInterval(4 * 86_400))
+        case .inCorso:
+            let prossime = turno(da: adesso.addingTimeInterval(3600))
+            var ore: [Date] = []
+            var n = 0
+            for i in incontri.indices {
+                if let minuti = minutiDaIniziate[i] {
+                    ore.append(quartoPrima(adesso.addingTimeInterval(-minuti * 60)))
+                } else {
+                    ore.append(n < prossime.count ? prossime[n] : (prossime.last ?? adesso))
+                    n += 1
+                }
+            }
+            return ore
+        }
+    }
+
+    /// La prima partita del turno: fra almeno sei ore (prima della scadenza), cominciata da un paio d'ore (giornata in corso), fra
+    /// quattro giorni (giornata finita: è già la prossima).
+    static func inizio(adesso: Date, fase: Fase = .prima) -> Date {
+        orari(adesso: adesso, fase: fase).min() ?? adesso
     }
 
     static func scadenza(adesso: Date, fase: Fase = .prima) -> Date {
         inizio(adesso: adesso, fase: fase).addingTimeInterval(-Double(minutiScadenza) * 60)
-    }
-
-    /// Il calcio d'inizio di ogni incontro (nell'ordine di `incontri`).
-    static func orari(adesso: Date, fase: Fase = .prima) -> [Date] {
-        if fase == .inCorso { return minutiInCorso.map { adesso.addingTimeInterval($0 * 60) } }
-        let primo = inizio(adesso: adesso, fase: fase)
-        return scarti.map { primo.addingTimeInterval($0 * 60) }
     }
 
     /// L'ultimo aggiornamento dei dati: due ore fa.
@@ -435,7 +558,9 @@ enum LegaDemo {
                     p["stato"] = "intervallo"; p["gol_casa"] = 0; p["gol_trasferta"] = 0
                     p["eventi"] = [ev("giallo", "30'", "trasferta", "Locardi")]
                 case 3:
-                    p["stato"] = "primo_tempo"; p["minuto"] = "27'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
+                    // il minuto dal calcio d'inizio (cominciata da 28-42 minuti), dopo i due gol del primo tempo
+                    let minuto = max(26, min(45, Int(adesso.timeIntervalSince(ore[i]) / 60)))
+                    p["stato"] = "primo_tempo"; p["minuto"] = "\(minuto)'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
                     p["eventi"] = [ev("gol", "11'", "casa", "Castelvera"), ev("gol", "25'", "trasferta", "Hrafnsson")]
                 default: break
                 }
