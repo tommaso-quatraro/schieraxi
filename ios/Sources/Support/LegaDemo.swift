@@ -491,7 +491,7 @@ enum LegaDemo {
         }
         let titolari: [[String: Any]] = ids.map { id -> [String: Any] in
             let p = calciatore(id)
-            return breve(p).merging(["punti_attesi": p.puntiAttesi, "p_voto": p.pVoto] as [String: Any]) { _, nuovo in nuovo }
+            return breve(p).merging(["punti_attesi": p.puntiAttesi, "p_voto": p.pVoto, "fv_atteso": p.fvAtteso] as [String: Any]) { _, nuovo in nuovo }
         }
         var formazione: [String: Any] = ["modulo": moduli[0].nome, "punti_attesi": attesi, "intervallo": fascia(attesi),
                                          "titolari": titolari, "panchina": panchina(per: ids)]

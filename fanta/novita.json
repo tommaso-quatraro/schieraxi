@@ -1,5 +1,30 @@
 [
   {
+    "versione": "1.386",
+    "data": "2026-11-03T15:06:07",
+    "titolo": "Etichette dei giocatori più leggibili",
+    "voci": [
+      "Nel tema chiaro le scritte delle etichette dei giocatori («Probabile titolare», «In ballottaggio», «Fuori») sono un po' più scure: si leggono bene anche nella scheda del giocatore.",
+      "Nel tema scuro il rosso delle etichette è un po' più chiaro. Colori e significato non cambiano, sul web e sull'iPhone."
+    ],
+    "tecnico": [
+      "Issue #234: contrasto della scritta delle pillole `.etichetta` almeno 4,5:1 (WCAG 2.2, 1.4.3, testo da 12 px) su carta, fondo piatto, foglio della scheda e carta nel foglio, in chiaro e in scuro. Prima, nel chiaro: verde 4,02 e arancio 4,40 sulla carta, 3,47 e 3,78 sul foglio della scheda (le pillole sotto il nome stanno direttamente sul foglio).",
+      "Nuove variabili solo per la scritta: `--eti-verde`, `--eti-arancio`, `--eti-rosso` (scuro: `var(--verde)`, `var(--arancio)`, `#ff867b`; chiaro: `#08643d`, `#834700`, `#a1221b`). Tinta e bordo della pillola restano il colore dell'esito; `--verde`, `--arancio` e `--rosso` non cambiano.",
+      "iPhone: `Tema.pillolaAttenzione*` e `Tema.pillolaMalus*` (stessi valori), `Color.attenzionePillola`, `Color.malusPillola` ed `Etichetta.Gravita.coloreScritta` in `PillolaEtichetta`; nel tema scuro il rosso nei fogli era a 4,1:1. Test `tests/test_design_web.py` (contrasto calcolato dal CSS e stessi valori di Tema.swift) e `ContrastoPilloleTests`."
+    ]
+  },
+  {
+    "versione": "1.385",
+    "data": "2026-11-03T14:55:34",
+    "titolo": "Widget della formazione: il fantavoto atteso dei titolari",
+    "voci": [
+      "Sull'iPad, nel widget della formazione più grande, accanto a ogni titolare compare il fantavoto atteso, lo stesso numero dell'app. Arriva con il prossimo aggiornamento dell'app; sull'iPhone il widget non cambia."
+    ],
+    "tecnico": [
+      "/api/widget: ogni titolare di `formazione` ha anche `fv_atteso` (facoltativo, dalla stessa scheda della Formazione). `punti_attesi` resta per i widget già installati (#240)."
+    ]
+  },
+  {
     "versione": "1.384",
     "data": "2026-11-03T12:47:58",
     "titolo": "Widget del giocatore seguito: il fantavoto atteso",

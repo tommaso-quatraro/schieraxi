@@ -3,7 +3,7 @@ e `in_corso` porta solo i numeri della giornata (gli elenchi per giocatore, che 
 import json
 
 from fanta import widget as w
-from test_token_widget import OGGI, due_utenti, token_di, widget  # noqa: F401  (fixture)
+from test_token_widget import OGGI, _scheda, due_utenti, token_di, widget  # noqa: F401  (fixture)
 
 SCAMBIO = {"mia": "Real Esempio", "altra": "Altra Prova", "do": [{"id": 4, "nome": "g4"}], "ricevo": [{"id": 70, "nome": "g70"}],
            "guadagno_mio": 1.5, "guadagno_loro": 0.4, "valido": True}
@@ -80,6 +80,23 @@ def test_seguiti_al_massimo_con_gioca_percentuale_entro_il_tetto(due_utenti, mon
     # quanto pesano i due campi in tutto: pochi caratteri per seguito
     senza = [{k: v for k, v in g.items() if k not in ("p_voto", "dubbio")} for g in corpo["osservati"]]
     assert _peso(corpo) - _peso(corpo | {"osservati": senza}) <= 35 * w.MAX_OSSERVATI
+
+
+def test_titolari_con_fantavoto_atteso_entro_il_tetto(due_utenti, monkeypatch):
+    """Il fantavoto atteso accanto a ogni titolare (`fv_atteso`, #240), anche con i seguiti al massimo: la risposta resta sotto
+    il tetto, niente si toglie, e il campo costa pochi caratteri per titolare."""
+    a, _ = due_utenti
+    monkeypatch.setattr(w.osservati, "leggi", lambda f: list(range(1, 15)))
+    monkeypatch.setattr(w.consigli, "formazione", lambda *x, **k: {
+        "squadra": "Real Esempio", "modulo": "3-4-3", "punteggio_atteso": 71.5,
+        "titolari": [_scheda(i, fv_atteso=7.62) for i in range(1, 12)], "panchina": [_scheda(i) for i in range(12, 15)]})
+    c, h = widget(token_di(a))
+    corpo = c.get("/api/widget", headers=h).json()
+    tit = corpo["formazione"]["titolari"]
+    assert [t["fv_atteso"] for t in tit] == [7.62] * 11
+    assert _peso(corpo) <= w.MAX_BYTE and corpo["mancano"] == ["scambio"]      # i seguiti restano
+    senza = [{k: v for k, v in t.items() if k != "fv_atteso"} for t in tit]
+    assert _peso(corpo) - _peso(corpo | {"formazione": corpo["formazione"] | {"titolari": senza}}) <= 20 * len(tit)
 
 
 def test_in_corso_del_widget_senza_gli_elenchi_per_giocatore(due_utenti, monkeypatch):

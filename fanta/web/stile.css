@@ -26,6 +26,9 @@
   --giallo: #f2d04a;
   --blu: #62a9ff;
   --giallo-testo: var(--giallo);          /* giallo usato per scritte e simboli: in chiaro più scuro (contrasto 4,5:1) */
+  /* scritta delle pillole dei giocatori (.etichetta): sopra la tinta della pillola il colore pieno non arrivava a 4,5:1 (issue #234).
+     Uguali all'iPhone (Tema.pillolaAttenzione*, Tema.pillolaMalus*): in scuro il rosso un filo più chiaro, in chiaro tutte più scure */
+  --eti-verde: var(--verde); --eti-arancio: var(--arancio); --eti-rosso: #ff867b;
   --vetro: rgba(24, 40, 31, .52);           /* colore del vetro (sopra lo sfondo sfocato) */
   --vetro-carta: rgba(26, 42, 33, .62);     /* carte: vetro leggero */
   --bordo: rgba(255, 255, 255, .13);
@@ -62,6 +65,7 @@
     --giallo: #c9a100;
     --giallo-testo: #7d6000;
     --blu: #1a5bb5;
+    --eti-verde: #08643d; --eti-arancio: #834700; --eti-rosso: #a1221b;   /* scritta delle pillole: >= 4,5:1 anche sul foglio della scheda */
     --vetro: rgba(255, 255, 255, .55);
     --vetro-carta: rgba(255, 255, 255, .72);
     --bordo: rgba(16, 32, 26, .1);
@@ -90,6 +94,7 @@
     --giallo: #c9a100;
     --giallo-testo: #7d6000;
     --blu: #1a5bb5;
+    --eti-verde: #08643d; --eti-arancio: #834700; --eti-rosso: #a1221b;   /* scritta delle pillole: >= 4,5:1 anche sul foglio della scheda */
     --vetro: rgba(255, 255, 255, .55);
     --vetro-carta: rgba(255, 255, 255, .72);
     --bordo: rgba(16, 32, 26, .1);
@@ -307,10 +312,10 @@ details[open] > summary { margin-bottom: 8px; }
 /* Pillola mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima tra i pezzi separati da «·»
    (`.pezzo`, da testoEtichetta in app.js), poi tra le parole. Il raggio supera metà altezza di una riga: su una riga è una capsula,
    su più righe un rettangolo con gli angoli tondi. */
-.etichetta { display: inline-block; font-size: var(--t-eti); padding: 3px 9px; border-radius: calc(.7em + 4px); background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--verde); font-weight: 550; max-width: 100%; overflow-wrap: break-word; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
+.etichetta { display: inline-block; font-size: var(--t-eti); padding: 3px 9px; border-radius: calc(.7em + 4px); background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--eti-verde); font-weight: 550; max-width: 100%; overflow-wrap: break-word; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
 .etichetta .pezzo { display: inline-block; max-width: 100%; }
-.etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
-.etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
+.etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--eti-rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
+.etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--eti-arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
 .etichetta.neutra { background: color-mix(in srgb, var(--testo) 8%, transparent); color: var(--testo-2); border-color: transparent; }
 /* Oggi in corso: lo stato di chi non ha il voto, colorato dal `tono` dell'etichetta del server */
 .tono { color: var(--verde); font-weight: 600; }
