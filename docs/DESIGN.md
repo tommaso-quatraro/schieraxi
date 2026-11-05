@@ -4,6 +4,30 @@ Revisione del 30/10/2026 su screenshot web (390 px, `fanta/web/screenshot-*.png`
 Non verificato: tablet/PC e tema chiaro della web (solo lette le regole CSS; il grigio secondario è stato misurato nel browser il 2/11/2026, vedi «Grigio secondario»), Android. Valori del CSS in `fanta/web/stile.css`, di iOS in `Sources/Support/Design/Tema.swift`.
 Densità e Mercato su iOS: le sta già correggendo l'agente iOS (PR non ancora pubblicata al momento della revisione: confrontare prima di iniziare).
 
+## Web: grafica B «Distinta» (decisa il 5/11/2026, issue #354)
+Il proprietario ha scelto per la web la direzione B: niente carte, righe con fili e colonne di numeri, comoda sul PC. Spec:
+`docs/superpowers/specs/2026-11-05-grafica-web-b-design.md`; piano a PR piccole: `docs/superpowers/plans/2026-11-05-grafica-web-b.md`.
+**Stato: in arrivo.** Ogni punto sotto vale per la web dalla PR del piano che lo introduce; fino ad allora sulla web vale il resto
+di questo documento. L'iPhone non cambia: segue il resto del documento (stessi testi e numeri, aspetto nativo).
+Cosa cambia per la web rispetto alle sezioni qui sotto:
+- **Barra delle schede**: sotto i 900 px barra piena in basso con un filo sopra (niente capsula); da 900 px le schede stanno in
+  alto in una testata unica (non più la colonna a sinistra). Indietro del browser torna alla schermata di prima.
+- **Intestazione pagina**: titolo della schermata (`h1`) in cima alla pagina e sotto la riga di stato (giornata, squadra, dati);
+  il nome della squadra non è più il titolo (incoerenza n. 15).
+- **Card**: sostituita dalla sezione (titolo con filo spesso sotto, righe con filo sottile). Riquadri solo per la proposta di scambio.
+- **Scala**: stessi 7 livelli, valori nuovi (numero eroe 56/72, titolo 32, card 17, valore 20, corpo 15, secondario 13,
+  etichetta 12); numeri e titoli nel carattere Archivo semi-stretto servito dal server, testo nel carattere di sistema.
+- **Raggi**: 8 px (pulsanti, campi, controlli), 12 px (campo), pillole solo per «⚠ gioca N%» sul campo e il contatore di Da fare.
+- **Fondi**: bianco `#FFFFFF` e grigio quasi nero `#121513` (non più menta e verde scuro); colori semantici, grigio secondario e
+  colore delle azioni invariati.
+- **Riga giocatore** (web): colonne allineate («gioca N%» intero e fantavoto atteso), lettera del ruolo grigia senza quadrato,
+  indice neutro senza anello, niente pallino della difficoltà né barra della probabilità; etichette come testo colorato.
+- **Sigla della squadra** (web): lineetta nel colore sociale accanto alla sigla, al posto della sigla nei colori sociali.
+- **Pedina sul campo** (web): disco bianco con il fantavoto atteso; legenda sotto il campo, non sopra.
+- **Chip di scelta**: la voce scelta resta lime con scritta scura e ha in più un bordo di 2 px nel colore del testo.
+- **PC**: dettagli dei giocatori in un pannello accanto alla pagina da 1200 px; Squadra e Altro a due colonne da 1100 px; pagina
+  larga al massimo 1240 px.
+
 ## Principi
 1. **Un dato principale per schermata/card**, visibile a colpo d'occhio (numero grande, tabulare). Il resto è secondario.
 2. **Densità**: una card deve dire almeno 3 cose utili per 100 pt di altezza. Spiegazioni lunghe stanno dietro «Come si legge», non in testa alla pagina.
