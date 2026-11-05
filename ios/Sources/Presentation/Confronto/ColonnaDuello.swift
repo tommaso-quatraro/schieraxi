@@ -1,20 +1,29 @@
 import SwiftUI
 
-/// Uno dei due giocatori in cima a «Chi schierare?»: volto, nome, partita e «Consigliato» se è lui da schierare.
+/// Uno dei due giocatori in cima a «Chi schierare?»: volto, nome, partita, posto nella formazione del sistema e «Consigliato» se
+/// è lui da schierare.
 struct ColonnaDuello: View {
     let g: Giocatore
     let scelto: Bool
-    /// Il posto nella formazione del sistema, con il codice del server.
+    /// Il posto nella formazione del sistema, con il codice del server («titolare», «panchina 2», «fuori»:
+    /// `Confronto.codicePosto`); nil senza formazione.
     let posto: String?
+    /// Gli angoli del fondo sotto la pillola del posto: gli stessi di `PillolaEtichetta`, che crescono con il testo.
+    @ScaledMetric(relativeTo: .caption2) private var raggioPillola: CGFloat = 10
 
-    /// Il posto a parole, in una pillola.
+    /// Il posto sotto il nome, come la web (`intest` di `apriConfronto`, #311): le parole di `testoPosto`, «Titolare» nella pillola
+    /// verde, «Panchina 2» e «Non schierato» in quella grigia. Nil senza posto o con un codice che non si conosce: niente pillola.
     nonisolated static func etichettaPosto(_ codice: String?) -> Etichetta? {
-        nil
+        guard let codice else { return nil }
+        let testo = SceltaDallaRosaViewModel.testoPosto(codice)
+        return testo.isEmpty ? nil : Etichetta(testo: testo, tono: codice == "titolare" ? .positivo : .neutro)
     }
 
-    /// Quello che legge VoiceOver.
+    /// Quello che legge VoiceOver: nome, ruolo, posto (se c'è), indice, punti attesi e «consigliato».
     var voce: String {
-        "\(g.nome), \(nomeRuolo(g.ruolo)), indice \(Formato.intero(g.indice)), punti attesi \(Formato.punti(g.puntiAttesi))\(scelto ? ", consigliato" : "")"
+        let parti: [String?] = [g.nome, nomeRuolo(g.ruolo), Self.etichettaPosto(posto)?.testo, "indice \(Formato.intero(g.indice))",
+                                "punti attesi \(Formato.punti(g.puntiAttesi))", scelto ? "consigliato" : nil]
+        return parti.compactMap { $0 }.joined(separator: ", ")
     }
 
     var body: some View {
@@ -25,6 +34,12 @@ struct ColonnaDuello: View {
                 .fixedSize(horizontal: false, vertical: true)
             Text("\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")")
                 .font(.caption).foregroundStyle(Color.testoSecondario)
+            if let etichetta = Self.etichettaPosto(posto) {
+                // Sotto la pillola il fondo della scheda: sul verde del consigliato la scritta resta leggibile come nelle altre
+                // pillole (almeno 4,5:1, `ContrastoPilloleTests`). Senza, «Titolare» verde su verde nel foglio scuro scende a 4,4:1.
+                PillolaEtichetta(etichetta: etichetta)
+                    .background(Color.sfondoScheda, in: .rect(cornerRadius: raggioPillola, style: .continuous))
+            }
             if scelto {
                 Label("Consigliato", systemImage: "checkmark.seal.fill").font(.caption.bold()).foregroundStyle(Color.verde)
             }
