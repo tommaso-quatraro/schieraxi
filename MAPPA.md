@@ -20,6 +20,9 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   - Modello: `modello.py` (fantavoto atteso `mu` e probabilità di voto `p_voto`), `formazione.py` (11 titolari più panchina;
     livelli di rischio in `LIVELLI_RISCHIO`), `punteggio.py` (fantavoto con le regole della lega), `verifica.py` (backtest),
     `verifica_consiglio.py` (misura in laboratorio del consiglio, indicatori C1-C4 di #166: `-m fanta verifica --consiglio`),
+    `indicatori_consiglio.py` (C1-C4 misurati davvero nel Diario a giornata finita sulla consigliata mostrata, con le funzioni di
+    `verifica_consiglio`; totali di tutti i Diari, medie su 8 giornate e avviso al proprietario dopo 2 giornate fuori soglia: comando
+    `affidabilita` del cron, file `dati/indicatori-consiglio.json`, campo `consiglio` di `GET /api/stato-dati`),
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi; consigliata stabile, vedi «Contratti delle API»), `scambi.py`, `scambi_multi.py` (scambi N contro M),
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
@@ -128,8 +131,10 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Istantanea di tutte le rotte: `docs/openapi.json`, controllata da `tests/test_contratto_api.py`; si rifà con
   `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
 - Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
-- `GET /api/stato-dati` (solo amministratore) ha il campo facoltativo `registro` (I1-I3 del registro delle giornate): i client
-  che non lo conoscono lo ignorano. Forma in `docs/API.md`.
+- `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate) e `consiglio`
+  (C1-C4 del consiglio, totali dei Diari): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
+- `GET /api/diario`: ogni voce ha il campo facoltativo `consiglio` (C1-C4 di quella giornata) e `istantanea` ha `misure` (C3-C4);
+  forma in `docs/API.md`, «Indicatori del consiglio».
 - Errori: JSON `{"detail": "testo in italiano"}`.
 - 202 = «sto calcolando» (coda, solo in modo multiutente): il client riprova. 429 con `Retry-After` = limiti per utente.
 - Scelta della giornata: `GET /api/scelta` dà anche `salvata` (data e ora) e `tipo`; web e iPhone mostrano in Formazione lo stato della scelta confrontando gli 11 mostrati con quelli salvati. Formazione non valida in `POST /api/formazione/valuta`: `400` con `codice: "formazione_non_valida"` (`consigli.FormazioneNonValida`); i client non cancellano la scelta da soli.
