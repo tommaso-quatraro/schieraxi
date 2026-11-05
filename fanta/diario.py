@@ -196,9 +196,11 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             "schierata": None, "automatica": None,
             "giocatori": _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))}
 
+    ruoli = {i: g.ruolo for i, g in rosa.items()}
+
     def riga_di(sc: dict | None) -> dict | None:
         scelti = list(dict.fromkeys(int(i) for i in (sc or {}).get("titolari", [])))
-        if len(scelti) == 11 and all(i in rosa for i in scelti):
+        if not scelte.motivo_non_valida(scelti, ruoli, regole):        # la regola unica della scelta (anche il modulo)
             tit = [rosa[i] for i in scelti]
             propria = [rosa[i] for i in dict.fromkeys(int(i) for i in (sc or {}).get("panchina", []) if i in rosa and i not in scelti)]
             panchina = propria or fz._panchina(lista, tit, regole)      # la panchina schierata davvero, se la conosciamo (giornate importate)
@@ -221,6 +223,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
         return 0
     stagione = consigli.stagione_corrente()
     ids = [g.id for g in squadra.giocatori if g.id is not None]
+    ruoli = {g.id: g.ruolo for g in squadra.giocatori if g.id is not None}
     dati_diario = carica(percorso)
     voci = dati_diario["giornate"]
     istantanee = dati_diario["istantanee"] if isinstance(dati_diario.get("istantanee"), dict) else {}
@@ -233,7 +236,12 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
         altri = [t["id"] for t in (ist.get("titolari") or []) + (ist.get("panchina") or [])
                  if isinstance(t, dict) and isinstance(t.get("id"), int) and t["id"] not in ids]
         scelta = scelte.leggi(stagione, g, file_scelte)
-        auto = None if scelta else scelte.leggi(stagione, g, file_scelte, anche_automatica=True)
+        # una scelta che non si può schierare (regola unica) conta come nessuna scelta, e la copia automatica non c'è (stesso posto
+        # nel file): così la giornata non si ricalcola a ogni giro
+        non_vale = bool(scelta) and scelte.motivo_non_valida(scelta.get("titolari") or [], ruoli, regole) is not None
+        if non_vale:
+            scelta = None
+        auto = None if scelta or non_vale else scelte.leggi(stagione, g, file_scelte, anche_automatica=True)
         vecchia = voci.get(chiave)
         impronta = impronta_regole(regole, stagione, g, rinvii.ha_fuori_turno(db, stagione, g))
         if vecchia:
@@ -323,6 +331,9 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
             raise SchierataNonValida("Servono 11 titolari diversi")
         if not set(scelti) <= set(ids):
             raise SchierataNonValida("Tra i titolari ci sono giocatori che non sono nella tua rosa")
+        motivo = scelte.motivo_non_valida(scelti, {g.id: g.ruolo for g in squadra.giocatori if g.id is not None}, regole)
+        if motivo:                                                   # la regola unica della scelta: qui resta il modulo
+            raise SchierataNonValida(motivo)
     scelta = {"titolari": scelti, "tipo": tipo}
     voce = calcola_giornata(dati, stagione, giornata, regole, Parametri(), ids, scelta, simulazioni)
     if not voce or not voce["schierata"]:
