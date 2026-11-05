@@ -8,6 +8,8 @@ struct PillolaEtichetta: View {
     /// Angoli della pillola: su una riga è una capsula (il raggio supera metà altezza e si ferma lì); su più righe gli angoli
     /// restano tondi ma meno, come `.etichetta.lunga` della web. Cresce con il testo.
     @ScaledMetric(relativeTo: .caption2) private var raggio: CGFloat = 10
+    /// Il fondo della pillola: il colore dell'esito con questa opacità (la scritta sopra resta ad almeno 4,5:1, `ContrastoPilloleTests`).
+    static let tinta: Double = 0.14
 
     /// Le righe di un testo a pezzi: «In dubbio · gioca 62%» → «In dubbio ·» e «gioca 62%» (il «·» resta in fondo alla
     /// riga, come in `TestoACapo`). Un testo senza «·» è una riga sola.
@@ -31,8 +33,20 @@ struct PillolaEtichetta: View {
             Text(etichetta.testo)
         }
         .font(.caption2.weight(.semibold))
-        .foregroundStyle(etichetta.gravita.colore)
+        .foregroundStyle(etichetta.gravita.coloreScritta)
         .padding(.horizontal, 7).padding(.vertical, 2)
-        .background(etichetta.gravita.colore.opacity(0.14), in: .rect(cornerRadius: raggio, style: .continuous))
+        .background(etichetta.gravita.colore.opacity(Self.tinta), in: .rect(cornerRadius: raggio, style: .continuous))
+    }
+}
+
+extension Etichetta.Gravita {
+    /// La scritta dentro la pillola, come la web (`--eti-*`): il grigio secondario, l'arancio e il rosso delle pillole
+    /// (`Color.attenzionePillola`, `Color.malusPillola`). Il fondo della pillola resta del colore dell'esito (`colore`).
+    var coloreScritta: Color {
+        switch self {
+        case .normale: return .testoSecondario
+        case .attenzione: return .attenzionePillola
+        case .grave: return .malusPillola
+        }
     }
 }

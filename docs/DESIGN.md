@@ -54,6 +54,7 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 | Azione (pulsanti, testo di azione) | `#3DDC97` (`--azione`) | `#526600` (testo bianco sopra) | Dal 31/10/2026: in chiaro mai il lime per il testo; `MARCHIO.md`, «Contrasto dei colori delle azioni» |
 | Informazione | `#62A9FF` | `#1A5BB5` | `--blu` |
 Il giallo (`--giallo`) resta solo per la stella «consigliato». Un valore positivo ha il segno `+`, uno negativo `−`.
+Scritta delle pillole (`.etichetta` sulla web, `PillolaEtichetta` sull'iPhone): non il colore pieno della tabella ma `--eti-verde`, `--eti-arancio`, `--eti-rosso` (web) e `Tema.pillolaAttenzione*`, `Tema.pillolaMalus*` (iPhone), stessi valori: chiaro `#08643D`, `#834700`, `#A1221B`; scuro `#3DDC97`, `#FFB04A`, `#FF867B`. Il fondo resta il colore pieno al 16% (web) o al 14% (iPhone). Perché: sopra quella tinta il colore pieno scendeva sotto 4,5:1 (issue #234: nel chiaro della web verde 3,5:1 e arancio 3,8:1 sul foglio della scheda; nei fogli scuri dell'iPhone il rosso 4,1:1). Test `tests/test_design_web.py` e `ContrastoPilloleTests`.
 
 ## Grigio secondario (2/11/2026)
 Un solo grigio per sottotitoli, didascalie, orari, intestazioni di elenco e testi «spenti»: web `--testo-2` in `fanta/web/stile.css`, iOS `Tema.secondarioChiaro`/`secondarioScuro`. Stessi due valori, `#46564D` in chiaro e `#BCCDC2` in scuro; un test (`test_design_web.py`) li tiene uguali. Regole:
