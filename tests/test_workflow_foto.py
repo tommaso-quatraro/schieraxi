@@ -2,7 +2,8 @@
 
 - Le foto dei widget (circa 20 minuti) si fanno solo quando servono: se si chiedono, nella corsa «completo», o se sono cambiati
   i file che l'anteprima dei widget compila (ios/project.yml, target AnteprimaWidget). Se non si sa, si fanno.
-- App e widget sono due job su due Mac che partono insieme, non uno dopo l'altro.
+- App e widget su due Mac che partono insieme solo nelle corse lunghe («completo» o «tutti»); nelle altre i widget seguono
+  l'app sullo stesso Mac e sullo stesso simulatore, già acceso (una corsa veloce su due Mac non si accorciava, PR #271).
 - Fino a 2 corse di foto insieme (prima una), e solo se ci sono abbastanza Mac liberi: mai più di 5 job Mac nel repository.
 I passi bash del job «quando» si provano davvero, con `gh` e `sleep` finti. I workflow si leggono come testo (niente PyYAML)."""
 import os
@@ -60,16 +61,26 @@ def _file_widget() -> str:
 
 # ------------------------------------------------------------------------------------------------- struttura dei job
 
-def test_app_e_widget_in_due_job_mac_che_partono_insieme():
+def test_app_e_widget_in_due_job_mac_che_partono_insieme_solo_nelle_corse_lunghe():
+    # corsa veloce misurata (#271): sul Mac a parte i widget riaccendevano da zero il simulatore (8,9 min) e la corsa non si
+    # accorciava; quindi due Mac solo con «completo» o «tutti», altrimenti i widget seguono l'app sullo stesso simulatore
     app, widget = _job("screenshot"), _job("widget")
     for job in (app, widget):
         assert re.search(r"^    needs:\s*quando\s*$", job, re.M)          # nessuno aspetta l'altro
         assert "runs-on: macos-26" in job
         assert "github.event.repository.private == false" in job
-    assert "screenshot_widget.sh" not in app and "-scheme AnteprimaWidget" not in app
     assert "scripts/screenshot.sh" in app and "name: screenshot-app" in app
     assert "-scheme AnteprimaWidget" in widget and "scripts/screenshot_widget.sh" in widget
     assert "name: screenshot-widget" in widget                          # stesso nome di prima per chi guarda le foto
+    assert "needs.quando.outputs.parallelo == 'true'" in re.search(r"^    if:\s*(.+)$", widget, re.M).group(1)
+    # nello stesso job: compila, scatta e carica i widget dopo l'app, solo quando servono e non c'è il job a parte
+    stesso = "needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true'"
+    for nome in ("Compila l'anteprima dei widget per il simulatore (senza firma)", "Scatta le fotografie dei widget",
+                 "Carica le fotografie dei widget"):
+        passo = _passo(app, nome)
+        assert stesso in passo, nome
+    assert "always()" in _passo(app, "Scatta le fotografie dei widget")     # come prima: anche se le foto dell'app falliscono
+    assert app.index("Scatta le fotografie dell'app") < app.index("Scatta le fotografie dei widget")
 
 
 def test_il_job_dei_widget_parte_solo_quando_servono():
@@ -78,6 +89,7 @@ def test_il_job_dei_widget_parte_solo_quando_servono():
     assert "needs.quando.outputs.serve == 'true'" in cond
     quando = _job("quando")
     assert "widget: ${{ steps.widget.outputs.widget }}" in quando
+    assert "parallelo: ${{ steps.widget.outputs.parallelo }}" in quando
     entrate = _blocco(_blocco(_blocco(_testo(), "on", 0), "workflow_dispatch", 2), "inputs", 4)
     widget = _blocco(entrate, "widget", 6)
     assert re.search(r"options:\s*\[auto, si, no\]", widget) and re.search(r"default:\s*auto", widget)
@@ -182,7 +194,7 @@ def test_widget_su_main_solo_se_sono_cambiati_i_loro_file_dall_ultima_foto_dei_w
     assert usciti["widget"] == "false" and usciti["mac"] == "1"
     assert f"compare/{base}...{'c' * 40}" in chiamate
     usciti, _ = _widget(tmp_path, BASE=base, FILE_CONFRONTO="ios/Sources/Views/OggiView.swift\nios/WidgetSources/Cruscotto.swift")
-    assert usciti["widget"] == "true" and usciti["mac"] == "2"
+    assert usciti["widget"] == "true" and usciti["parallelo"] == "false" and usciti["mac"] == "1"   # veloce: stesso Mac
 
 
 @serve_bash
@@ -209,10 +221,21 @@ def test_widget_nelle_pr_con_l_etichetta_guardano_i_file_della_pr(tmp_path):
 
 
 @serve_bash
-def test_mac_che_servono_alla_corsa(tmp_path):
-    assert _widget(tmp_path, SCATTI="collaudo", RICHIESTA="no")[0]["mac"] == "2"     # app + accessibilità
-    assert _widget(tmp_path, SCATTI="collaudo", RICHIESTA="si")[0]["mac"] == "3"
-    assert _widget(tmp_path, SCATTI="vero")[0]["mac"] == "1"
+@serve_bash
+@pytest.mark.parametrize("env, parallelo, mac", [
+    (dict(SCATTI="veloce", RICHIESTA="si"), "false", "1"),                       # widget dopo l'app, stesso Mac
+    (dict(SCATTI="veloce", RICHIESTA="no"), "false", "1"),
+    (dict(SCATTI="completo"), "true", "2"),                                      # corsa lunga: due Mac insieme
+    (dict(SCATTI="veloce", DISPOSITIVI="tutti", RICHIESTA="si"), "true", "2"),
+    (dict(SCATTI="veloce", DISPOSITIVI="tutti", RICHIESTA="no"), "false", "1"),  # senza widget niente secondo Mac
+    (dict(SCATTI="completo", RICHIESTA="no"), "false", "1"),
+    (dict(SCATTI="collaudo", RICHIESTA="si"), "false", "2"),                     # app con i widget + accessibilità
+    (dict(SCATTI="collaudo", RICHIESTA="no"), "false", "2"),
+    (dict(SCATTI="vero"), "false", "1"),
+])
+def test_mac_che_servono_alla_corsa(tmp_path, env, parallelo, mac):
+    usciti, _ = _widget(tmp_path, **env)
+    assert (usciti["parallelo"], usciti["mac"]) == (parallelo, mac)
 
 
 def _fila(tmp_path, **env):

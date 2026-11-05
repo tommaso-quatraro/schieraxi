@@ -46,8 +46,9 @@ Lo stato del lavoro sta su GitHub, non nella chat. All'inizio:
 - «Annullato» non è «fallito»: dopo un push nuovo `gh pr checks` mostra come falliti i job della corsa vecchia annullata.
   Conta l'ultima corsa di `test.yml` sul commit in testa (`gh run list --commit <sha> --workflow test.yml`).
 - Niente Mac in locale: l'app per iPhone si compila, si prova e si fotografa solo su GitHub Actions (macOS).
-- Foto (`screenshot.yml`): un Mac alla volta, le lancia una sola persona; su `main` dopo l'unione, o sul ramo per le pull request
-  che cambiano molto l'aspetto. Le foto si guardano davvero; ogni difetto visto diventa un'issue.
+- Foto (`screenshot.yml`): al massimo 2 corse insieme e mai più di 5 job Mac nel repository (la fila la tiene il job `quando`);
+  le lancia una sola persona; su `main` dopo l'unione, o sul ramo per le pull request che cambiano molto l'aspetto. I widget si
+  fotografano solo quando servono (ingresso `widget`). Le foto si guardano davvero; ogni difetto visto diventa un'issue.
 - Nei test non si usa l'orologio vero: chi calcola giornate e scadenze riceve `adesso`. Un test che dipende dalla data fallisce un giorno e blocca tutte le pull request.
 - Se la suite resta appesa su un ramo e non su `main`, la causa è nel ramo (per esempio un finto con gli argomenti sbagliati in un thread).
 

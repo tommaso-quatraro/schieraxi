@@ -1,8 +1,10 @@
 name: Screenshot
 
-# Fotografa l'app e i widget nel simulatore dei Mac di GitHub, in due job che partono insieme (due Mac, issue #264):
-# - job «screenshot»: l'app parte in modalità demo (-DEMO: dati finti, nessuna rete) e si fotografa su iPhone e iPad (chiaro e scuro, testo normale e grande);
-# - job «widget»: l'anteprima dei widget (target AnteprimaWidget, dati finti, non entra nell'IPA) si fotografa in tutte le misure.
+# Fotografa l'app e i widget nel simulatore dei Mac di GitHub (issue #264):
+# - l'app parte in modalità demo (-DEMO: dati finti, nessuna rete) e si fotografa su iPhone e iPad (chiaro e scuro, testo normale e grande);
+# - l'anteprima dei widget (target AnteprimaWidget, dati finti, non entra nell'IPA) si fotografa in tutte le misure.
+#   Nelle corse lunghe (scatti = completo o dispositivi = tutti) i widget vanno su un secondo Mac (job «widget») che parte
+#   insieme all'app; nelle altre seguono l'app nello stesso job, sullo stesso simulatore già acceso (un Mac solo).
 #   Circa 20 minuti: parte solo quando serve (ingresso «widget»: auto = nella corsa «completo», o se dall'ultima foto dei widget
 #   dello stesso ramo sono cambiati i file che l'anteprima compila, FILE_WIDGET; se non si sa, parte; si = sempre; no = mai).
 # Il Mac parte SOLO: a mano (Actions o `gh workflow run screenshot.yml --ref <ramo>`), oppure su una pull request che tocca ios/ e
@@ -78,6 +80,7 @@ jobs:
     outputs:
       serve: ${{ steps.decidi.outputs.serve }}
       widget: ${{ steps.widget.outputs.widget }}
+      parallelo: ${{ steps.widget.outputs.parallelo }}
     steps:
       - name: Serve il Mac?
         id: decidi
@@ -150,12 +153,18 @@ jobs:
               perche="file dei widget non cambiati"
             fi
           fi
-          # job Mac di questa corsa: app (o foto dal vero), widget, controllo di accessibilità del collaudo
+          # Widget su un Mac a parte solo nelle corse lunghe (completo, tutti): in una corsa veloce misurata il secondo Mac
+          # riaccendeva da zero il simulatore (8,9 min) e la corsa non si accorciava (PR #271). Altrimenti i widget seguono
+          # l'app sullo stesso Mac e sullo stesso simulatore, già acceso.
+          parallelo=false
+          if [ "$widget" = true ] && { [ "$SCATTI" = completo ] || [ "$DISPOSITIVI" = tutti ]; }; then parallelo=true; fi
+          # job Mac di questa corsa: app (o foto dal vero), widget a parte, controllo di accessibilità del collaudo
           mac=1
-          if [ "$widget" = true ]; then mac=$((mac + 1)); fi
+          if [ "$parallelo" = true ]; then mac=$((mac + 1)); fi
           if [ "$SCATTI" = collaudo ] && [ "$DISPOSITIVI" != ipad ]; then mac=$((mac + 1)); fi
-          echo "Foto dei widget: $widget ($perche). Mac per questa corsa: $mac"
+          echo "Foto dei widget: $widget ($perche), su un Mac a parte: $parallelo. Mac per questa corsa: $mac"
           echo "widget=$widget" >> "$GITHUB_OUTPUT"
+          echo "parallelo=$parallelo" >> "$GITHUB_OUTPUT"
           echo "mac=$mac" >> "$GITHUB_OUTPUT"
       - name: In fila, al massimo 2 corse di foto e mai più di 5 job Mac
         if: steps.decidi.outputs.serve == 'true'
@@ -221,6 +230,19 @@ jobs:
           DISPOSITIVI: ${{ inputs.dispositivi || 'iphone' }}
           SCHERMATE: ${{ inputs.schermate || '' }}
         run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
+      # Widget nello stesso job, dopo l'app e sullo stesso simulatore già acceso: corse veloci e collaudo (uscite del job «quando»)
+      - name: Compila l'anteprima dei widget per il simulatore (senza firma)
+        if: always() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true'
+        run: |
+          set +e
+          xcodebuild -project Schieraxi.xcodeproj -scheme AnteprimaWidget -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 \
+            > build-widget.log 2>&1 || { grep -E "error:" build-widget.log | sort -u | head -30; exit 1; }
+          test -d build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app
+      - name: Scatta le fotografie dei widget
+        if: always() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true'
+        run: bash scripts/screenshot_widget.sh build/Build/Products/Debug-iphonesimulator/AnteprimaWidget.app screenshot-widget
       # i percorsi di upload-artifact partono dalla radice del repository, non da working-directory
       - name: Carica le fotografie dell'app
         if: always()
@@ -230,16 +252,26 @@ jobs:
           path: ios/screenshot/*.png
           retention-days: 14
           if-no-files-found: warn
+      - name: Carica le fotografie dei widget
+        if: always() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: screenshot-widget
+          path: ios/screenshot-widget/*.png
+          retention-days: 14
+          if-no-files-found: warn
       - name: Rapporti di crash (solo se qualcosa non va)
         if: failure()
         run: |
           mkdir -p crash
-          cp ~/Library/Logs/DiagnosticReports/Schieraxi* crash/ 2>/dev/null || true
+          cp ~/Library/Logs/DiagnosticReports/Schieraxi* ~/Library/Logs/DiagnosticReports/AnteprimaWidget* crash/ 2>/dev/null || true
           ls crash
       - name: Maschera i log (il repository è pubblico)
         if: failure()
         run: |
-          [ -f build-app.log ] && { python3 -I scripts/maschera_log.py build-app.log build-app.log.mascherato && mv build-app.log.mascherato build-app.log || rm -f build-app.log; }
+          for f in build-app.log build-widget.log; do
+            [ -f "$f" ] && { python3 -I scripts/maschera_log.py "$f" "$f.mascherato" && mv "$f.mascherato" "$f" || rm -f "$f"; }
+          done
           true
       - name: Carica i log in caso di problemi
         if: failure()
@@ -248,15 +280,16 @@ jobs:
           name: log-screenshot
           path: |
             ios/build-app.log
+            ios/build-widget.log
             ios/crash/*
           retention-days: 7
           if-no-files-found: ignore
 
-  # Le foto dei widget su un Mac a parte, insieme a quelle dell'app (prima venivano dopo, sullo stesso Mac). Solo quando servono
-  # (uscita «widget» del job «quando»). Stessi artifact di prima: «screenshot-widget», e «log-widget» se qualcosa non va.
+  # Le foto dei widget su un Mac a parte, insieme a quelle dell'app: solo nelle corse lunghe (completo, tutti) quando i widget
+  # servono (uscita «parallelo» del job «quando»). Stessi artifact: «screenshot-widget», e «log-widget» se qualcosa non va.
   widget:
     needs: quando
-    if: needs.quando.outputs.serve == 'true' && needs.quando.outputs.widget == 'true' && github.event.repository.private == false && inputs.scatti != 'vero' && github.event.label.name != 'screenshot-vero'
+    if: needs.quando.outputs.serve == 'true' && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo == 'true' && github.event.repository.private == false && inputs.scatti != 'vero' && github.event.label.name != 'screenshot-vero'
     runs-on: macos-26
     timeout-minutes: 90
     defaults:
