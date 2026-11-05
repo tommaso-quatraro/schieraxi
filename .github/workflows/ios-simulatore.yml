@@ -13,9 +13,6 @@ name: iOS simulatore (Appetize)
 # Parte SOLO a mano: `gh workflow run ios-simulatore.yml --ref <ramo>` (o Actions > iOS simulatore > Run workflow).
 on:
   workflow_dispatch:
-  # TEMPORANEO, solo per la prova nella PR #338 (workflow_dispatch vuole il file già su main): da togliere prima dell'unione
-  pull_request:
-    paths: [".github/workflows/ios-simulatore.yml"]
 
 permissions:
   contents: read
