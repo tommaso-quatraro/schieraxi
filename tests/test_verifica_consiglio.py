@@ -28,13 +28,18 @@ def S(id, ruolo, p=0.9, punti=5.0, stato=None, perche=("gioca", "voti")):
             "titolarita": tit, "perche_numero": [{"chiave": c, "testo": c, "frase": None, "effetto": None} for c in perche]}
 
 
-def F(titolari, panchina=(), fuori=(), incerti=(), modulo="3-4-3"):
-    """Una formazione come quella di `consigli.formazione`: titolari, panchina, fuori, schede di tutti e incerti per modulo."""
+def F(titolari, panchina=(), fuori=(), incerti=(), modulo="3-4-3", scelta=None):
+    """Una formazione come quella di `consigli.formazione`: titolari, panchina, fuori, schede di tutti, incerti per modulo e, se
+    `scelta` non è None, le righe del perché della scelta (`perche_scelta`) del modulo scelto per quei titolari."""
     tutte = [*titolari, *panchina, *fuori]
+    scelto = {"modulo": modulo, "incerti": [{"titolare": t, "riserva": r} for t, r in incerti]}
+    if scelta is not None:
+        scelto["perche_scelta"] = [{"titolare": t, "altro": 0, "testo": "riga", "frase": None} for t in scelta]
+    altro = {"modulo": "4-4-2", "incerti": [{"titolare": 999, "riserva": 998}]}
+    if scelta is not None:
+        altro["perche_scelta"] = [{"titolare": t, "altro": 0, "testo": "riga", "frase": None} for t in (2, 3, 4)]
     return {"modulo": modulo, "titolari": list(titolari), "panchina": list(panchina), "fuori": list(fuori),
-            "schede": {str(x["id"]): x for x in tutte},
-            "moduli": [{"modulo": "4-4-2", "incerti": [{"titolare": 999, "riserva": 998}]},
-                       {"modulo": modulo, "incerti": [{"titolare": t, "riserva": r} for t, r in incerti]}]}
+            "schede": {str(x["id"]): x for x in tutte}, "moduli": [altro, scelto]}
 
 
 def _titolari_343(**cambi):
@@ -90,6 +95,16 @@ def test_scelte_storte_per_reparto_e_quelle_spiegate_dagli_incerti():
     # la nota «titolare anche se incerto» del modulo scelto spiega la scelta (quella di un altro modulo no)
     assert vc.scelte_storte(F(tit, pan, incerti=[(2, 20)])) == {"reparti": 2, "storte": 1, "spiegate": 1}
     assert vc.scelte_storte(F(tit, pan, incerti=[(3, 20)])) == {"reparti": 2, "storte": 1, "spiegate": 0}
+
+
+def test_scelte_storte_spiegate_dalla_riga_del_perche_della_scelta():
+    """Con il campo `perche_scelta` (#356) conta la riga sotto il campo del titolare più debole, come la mostra l'app; quelle di
+    un altro modulo no, e la nota degli incerti vale solo per un server senza il campo."""
+    tit = _titolari_343(t2=S(2, "D", punti=4.0), t3=S(3, "D", punti=5.0), t4=S(4, "D", punti=4.5))
+    pan = [S(20, "D", punti=4.2)]
+    assert vc.scelte_storte(F(tit, pan, scelta=[2])) == {"reparti": 1, "storte": 1, "spiegate": 1}
+    assert vc.scelte_storte(F(tit, pan, scelta=[3])) == {"reparti": 1, "storte": 1, "spiegate": 0}
+    assert vc.scelte_storte(F(tit, pan, incerti=[(2, 20)], scelta=[])) == {"reparti": 1, "storte": 1, "spiegate": 0}
 
 
 def test_perche_vuoto_e_senza_un_motivo_proprio():
@@ -254,7 +269,7 @@ def test_rapporto_completo_dice_i_numeri_della_proposta_in_italiano():
     righe = []
     vc.rapporto(m, scrivi=righe.append)
     testo = "\n".join(righe)
-    for frammento in ("+0,66", "62,29", "39 su 57", "9 su 110", "22 su 40", "48 su 110", "giornata 9",
+    for frammento in ("+0,66", "62,29", "39 su 57", "9 su 110", "22 su 40", "senza la loro riga: 14", "48 su 110", "giornata 9",
                       "meno di 1 punto atteso"):
         assert frammento in testo, frammento
 
