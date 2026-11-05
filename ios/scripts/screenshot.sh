@@ -186,6 +186,30 @@ spegni_simulatore() {
   xcrun simctl shutdown "$1" >/dev/null 2>&1
 }
 
+# Prova dello schema schieraxi:// con "simctl openurl" (come un tocco su una notifica di ntfy). Le altre schermate si aprono
+# con un argomento di lancio. I link di "simctl openurl" arrivano da CoreSimulatorBridge come da un'altra app e il simulatore
+# chiede "Open in "SchieraXI"?" (issue #250: le foto mostravano la finestra). Si approva prima lo schema per chi apre i link,
+# come farebbe il tocco su «Open»: chiave "<chi apre>--><schema in minuscolo>", valore il bundle id. Niente finestra da toccare.
+prova_url() {
+  local udid="$1"
+  if ! xcrun simctl spawn "$udid" defaults write com.apple.launchservices.schemeapproval \
+        "com.apple.CoreSimulator.CoreSimulatorBridge-->schieraxi" -string "$ID_APP" >/dev/null; then
+    echo "ATTENZIONE: schema schieraxi:// non approvato: le foto prova-url possono mostrare la conferma di iOS"
+    ERRORI=$((ERRORI + 1))
+  fi
+  xcrun simctl ui "$udid" appearance dark
+  xcrun simctl ui "$udid" content_size large
+  xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
+  xcrun simctl launch "$udid" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
+  sleep 3
+  xcrun simctl openurl "$udid" "schieraxi://formazione"
+  sleep 3
+  xcrun simctl io "$udid" screenshot "$USCITA/prova-url_openurl-formazione.png" >/dev/null 2>&1
+  xcrun simctl openurl "$udid" "schieraxi://giocatore/203"
+  sleep 3
+  xcrun simctl io "$udid" screenshot "$USCITA/prova-url_openurl-giocatore.png" >/dev/null 2>&1
+}
+
 # In fondo al registro della corsa: quante foto, quanti problemi (con il nome delle foto rimaste a metà attesa), quante in movimento.
 riepilogo() {
   echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
@@ -305,7 +329,7 @@ elif [ "$SCATTI" != "veloce" ]; then
 fi
 
 # La schermata di avvio (tentativo: si fotografa subito dopo il lancio, può essere già passata) e la Home di iOS
-# (serve a vedere nome e icona dell'app). Va fatta PRIMA della prova dello schema, che lascia a video una conferma di iOS.
+# (serve a vedere nome e icona dell'app). Va fatta PRIMA della prova dello schema, che lascia l'app aperta sul giocatore.
 xcrun simctl ui "$UDID_IPHONE" appearance dark
 xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
 sleep 2
@@ -320,19 +344,7 @@ for aspetto in dark light; do
 done
 
 STILE_ARG=()
-# Prova dello schema schieraxi:// con "simctl openurl" (come un tocco su una notifica di ntfy). Su alcuni sistemi iOS chiede
-# conferma "Aprire in SchieraXI?": la foto lo mostra. Per questo le altre schermate si aprono con un argomento di lancio.
-xcrun simctl ui "$UDID_IPHONE" appearance dark
-xcrun simctl ui "$UDID_IPHONE" content_size large
-xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
-xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
-sleep 3
-xcrun simctl openurl "$UDID_IPHONE" "schieraxi://formazione"
-sleep 3
-xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/prova-url_openurl-formazione.png" >/dev/null 2>&1
-xcrun simctl openurl "$UDID_IPHONE" "schieraxi://giocatore/203"
-sleep 3
-xcrun simctl io "$UDID_IPHONE" screenshot "$USCITA/prova-url_openurl-giocatore.png" >/dev/null 2>&1
+prova_url "$UDID_IPHONE"
 
 spegni_simulatore "$UDID_IPHONE"
 fi

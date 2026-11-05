@@ -1,30 +1,55 @@
 # SchieraXI: come si lavora nel repository
 
-SchieraXI è un'app libera (licenza AGPL-3.0) che consiglia la formazione del fantacalcio per una lega classic di Serie A.
-Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come si usa l'app: `README.md`.
+SchieraXI è un'app libera (licenza AGPL-3.0) che consiglia la formazione del fantacalcio per una lega classic di Serie A,
+con statistiche nostre (il **fantavoto atteso** di ogni giocatore). Oggi è disponibile la **web app**; l'app per **iPhone**
+(cartella `ios/`) è in lavorazione; Android è in programma.
+Questo file dice come si lavora. Dove sta ogni cosa: `MAPPA.md`. Il metodo passo per passo: `docs/METODO.md`. Come si usa l'app: `README.md`.
+
+## Ripartire in una sessione nuova
+Lo stato del lavoro sta su GitHub, non nella chat. All'inizio:
+- Obiettivi: `gh issue list --label obiettivo` (quattro macro obiettivi; si lavora su uno alla volta, i lavori sono loro sotto-issue).
+  Per vedere cosa resta di uno: `gh api repos/tommaso-quatraro/schieraxi/issues/<N>/sub_issues --paginate --jq '.[] | select(.state=="open") | "#\(.number) \(.title)"'`.
+- Urgenze: `gh issue list --label P1` (compresa «CI: main rosso», aperta da sola se i controlli su `main` falliscono).
+- Lavori aperti: `gh pr list` (le bozze sono in attesa di revisione o di foto).
+- La copia locale: `git status`, `git worktree list` (le copie di lavoro con ramo già unito si tolgono).
 
 ## Regole
 - Testi e commenti per l'utente: italiano semplice.
-- Niente dati veri nel repository: né chiavi, password, token, file `.env`, né indirizzi di server o di reti private,
+- Niente dati veri nel repository (è pubblico): né chiavi, password, token, file `.env`, né indirizzi di server o di reti private,
   né email personali, né nomi di persone o di squadre reali.
-- Nei documenti usa il segnaposto `<indirizzo-del-server>`. Nei test e negli esempi usa dati inventati
-  (`lega/esempio/`, `tests/dati/`).
+- Nei documenti usa il segnaposto `<indirizzo-del-server>`. Nei test e negli esempi usa dati inventati (`lega/esempio/`, `tests/dati/`).
 - Le regole di una lega non si scrivono nel codice: stanno nel file di configurazione della lega (`regole.json`, `rose.json`).
 - Le fonti dati si interrogano con poche richieste, una alla volta, con cache. Una fonte nuova si propone in una issue,
   con le sue condizioni d'uso. Le fonti restano spente di default.
 - Passi piccoli: ogni passo va provato davvero prima del commit. Non dire che una cosa funziona se non l'hai eseguita.
 - Commit in italiano. Un ramo per ogni lavoro.
-- Ogni modifica a una schermata vale per web e iPhone: vedi `docs/COERENZA-WEB-IPHONE.md`.
+- Ogni modifica a una schermata vale per web e iPhone, con gli stessi testi e numeri: `docs/COERENZA-WEB-IPHONE.md`
+  (la web è il riferimento). Se un lato resta indietro, si apre un'issue «coerenza: …».
+- Mai testo tagliato con «…» per l'utente: si va a capo (anche con il testo grande).
 - Decisioni di architettura in `docs/decisioni/` (una per file, modello in `docs/decisioni/modello.md`).
 
 ## Flusso di lavoro
-1. Issue: cosa cambiare e perché. Per una correzione di una riga basta la pull request.
-2. Ramo nuovo da `main`: `git switch -c nome-breve`.
-3. Modifiche piccole, con test mirati.
-4. Pull request verso `main`. Nella descrizione: cosa cambia e come l'hai provato. Scrivi `Closes #N` se c'è una issue.
-5. I controlli di GitHub (cartella `.github/workflows/`) devono essere verdi prima dell'unione.
-6. L'unione si fa con «squash» e il ramo si cancella. Le pull request del proprietario si uniscono da sole quando i controlli
-   passano; quelle degli altri le unisce chi cura il progetto.
+1. Issue: cosa, perché, «fatto quando». Priorità `P1` (rotto o sicurezza), `P2` (da fare ora), `P3` (dopo); sotto il macro
+   obiettivo giusto. Per una correzione di una riga basta la pull request.
+2. Ramo nuovo da `main` in una copia di lavoro propria: `git switch -c nome-breve`.
+3. Modifiche piccole, con il test scritto prima (si vede fallire, poi si corregge).
+4. Revisione del ramo **prima** di togliere la bozza: l'unione è automatica.
+5. Pull request verso `main`, in bozza finché non è rivista. Nella descrizione: cosa cambia e come l'hai provato; `Closes #N`.
+6. I controlli di GitHub (`.github/workflows/`) devono essere verdi. L'unione la fa il job `unisci` («squash», ramo cancellato,
+   issue di `Closes #N` chiuse) per le pull request del proprietario non in bozza; quelle degli altri le unisce chi cura il progetto.
+7. Dopo l'unione il job `prova-main` rifà i controlli sul nuovo `main`.
+
+## Trappole note
+- In bozza il job `ios / test` è saltato: per provare l'iPhone su un ramo `gh workflow run ios.yml --ref <ramo>`.
+- Prima di togliere la bozza: `git merge origin/main` nel ramo (mai push forzato). Tra il push e `gh pr ready` aspetta circa
+  90 secondi, poi controlla che sia partita una corsa nuova di «Controlli».
+- «Annullato» non è «fallito»: dopo un push nuovo `gh pr checks` mostra come falliti i job della corsa vecchia annullata.
+  Conta l'ultima corsa di `test.yml` sul commit in testa (`gh run list --commit <sha> --workflow test.yml`).
+- Niente Mac in locale: l'app per iPhone si compila, si prova e si fotografa solo su GitHub Actions (macOS).
+- Foto (`screenshot.yml`): un Mac alla volta, le lancia una sola persona; su `main` dopo l'unione, o sul ramo per le pull request
+  che cambiano molto l'aspetto. Le foto si guardano davvero; ogni difetto visto diventa un'issue.
+- Nei test non si usa l'orologio vero: chi calcola giornate e scadenze riceve `adesso`. Un test che dipende dalla data fallisce un giorno e blocca tutte le pull request.
+- Se la suite resta appesa su un ramo e non su `main`, la causa è nel ramo (per esempio un finto con gli argomenti sbagliati in un thread).
 
 ## Metodo: Superpowers e questo repository
 - Per il **come** si lavora (idea, piano, test prima del codice, ricerca dei difetti, revisione, verifica) comandano le skill di
@@ -34,36 +59,37 @@ Questo file dice come si lavora sul codice. Dove sta ogni cosa: `MAPPA.md`. Come
     mai rami lasciati a metà;
   - test prima del codice sì, ma il codice già scritto non si butta: si scrive il test che fallisce sul comportamento
     sbagliato, lo si vede fallire, poi si corregge;
-  - la revisione si fa prima di aprire la pull request, perché l'unione è automatica;
-  - ramo indietro rispetto a `main`: `git merge origin/main` nel ramo, niente push forzato;
   - spec e piani in italiano in `docs/superpowers/specs/` e `docs/superpowers/plans/`, senza dati veri (repository pubblico);
-  - novità in `fanta/novita.d/`, coerenza web-iPhone, foto iOS lanciate da una sola persona (`docs/METODO.md`).
+  - novità in `fanta/novita.d/`, coerenza web-iPhone, foto iOS lanciate da una sola persona.
 
 ## Divieti fissi per Claude Code
 `.claude/settings.json` ha regole `deny` che Claude Code applica da solo, in ogni modalità di permesso, a chi lavora con Claude Code
 in questo repository: niente `gh pr merge` (l'unione la fa il job `unisci`), niente push su `main` (si passa sempre da una pull
 request), niente push forzato, niente `git commit --no-verify` (il controllo prima del commit non si salta). Le frasi nelle
 istruzioni si possono dimenticare, queste regole no. Coprono le forme abituali dei comandi, non ogni modo di scriverli: su GitHub
-`main` vieta solo cancellazione e push forzato, quindi il controllo vero è la revisione (in bozza e IA) prima dell'unione automatica. Non toccano i job di GitHub Actions (`unisci`, `rilascia`), che girano senza Claude Code.
+`main` vieta solo cancellazione e push forzato, quindi il controllo vero è la revisione (in bozza e IA) prima dell'unione automatica.
+Non toccano i job di GitHub Actions (`unisci`, `rilascia`), che girano senza Claude Code.
 Le eccezioni personali vanno in `.claude/settings.local.json`, che resta fuori da git; un divieto però vale lo stesso.
 
-## Test
+## Comandi e test
 - Ambiente (Windows): `python -m venv .venv`, poi `.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt`.
   Su macOS e Linux usa `.venv/bin/python`.
-- Tutti i test: `.venv\Scripts\python.exe -m pytest -q`. Un file solo: `.venv\Scripts\python.exe -m pytest -q tests\test_rose_csv.py`.
+- Tutti i test: `.venv\Scripts\python.exe -m pytest -q -n auto` (circa un minuto). Un file solo: `.venv\Scripts\python.exe -m pytest -q tests\test_rose_csv.py`.
+- Server locale: `.venv\Scripts\python.exe -m fanta server` (127.0.0.1:8000).
 - Modello di calcolo: prima e dopo la modifica lancia `python -m fanta verifica`, e scrivi i due numeri nella pull request.
-- Se cambi una schermata o una rotta del server, aggiorna `docs/GUIDA-UTENTE.md` o `docs/API.md` nella stessa pull request.
+- Se cambi una schermata o una rotta del server, aggiorna `docs/GUIDA-UTENTE.md` o `docs/API.md` nella stessa pull request;
+  se cambia l'API, anche `docs/openapi.json` (`python script/ci/aggiorna_openapi.py`).
 
 ## Versioni e novità
 - Il numero di versione non si scrive a mano: lo dà il job `rilascia` quando la pull request si unisce.
 - Una pull request che tocca `fanta/`, `script/server/` o `requirements.txt` aggiunge un solo file
-  `fanta/novita.d/<nome-breve>.json` (minuscole, cifre, trattini), senza numero:
+  `fanta/novita.d/<nome-breve>.json` (minuscole, cifre, trattini), senza numero (la cartella può non esistere su `main`: creala):
 
   ```json
   {"titolo": "...", "voci": ["..."], "tecnico": ["..."]}
   ```
 
-  - `voci`: cosa vede l'utente. Italiano semplice, niente sigle, percorsi di file, metodi HTTP o codici.
+  - `voci`: cosa vede l'utente, e dove (web, iPhone, iPad). Italiano semplice, niente sigle, percorsi di file, metodi HTTP o codici.
   - `tecnico`: dettagli per chi sviluppa (facoltativo).
 - Non toccare `fanta/novita.json` né `VERSIONE` in `fanta/web/sw.js`: li aggiorna il job `rilascia`.
 - Dopo una modifica ai file di `sito/`, alza a mano `VERSIONE` in `sito/sw.js`.
