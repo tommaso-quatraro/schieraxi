@@ -497,7 +497,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .statistiche span { font-size: var(--t-eti); color: var(--testo-2); }
 .intestazione-scheda { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 14px; }
 .intestazione-scheda h2 { margin: 0 0 2px; font-size: var(--t-titolo); letter-spacing: -.025em; }
-.pallini { display: flex; gap: 6px; margin-top: 6px; }
+.pallini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }      /* a 320 px i cinque pallini e «Andamento» non stavano in una riga */
 .pallini i { font-style: normal; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--testo);
   background: color-mix(in srgb, var(--testo) 8%, transparent); border: 1px solid var(--bordo); }
 /* i voti passati sono numeri neutri come ogni voto (COERENZA-WEB-IPHONE.md): niente verde, oliva e rosso per valore, niente cascata */
@@ -1248,7 +1248,6 @@ body { container: pagina / inline-size; }
   .perche-voce { grid-template-columns: 1fr; gap: 2px; }
   .perche-effetto { justify-self: start; padding: 3px 12px; }
   .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .pallini { flex-wrap: wrap; }
   .legenda-campo { margin: 0 4px; padding: 10px; }
   .legenda-campo li { grid-template-columns: 1fr; gap: 2px; }
   .leg-esempio { justify-content: flex-start; }

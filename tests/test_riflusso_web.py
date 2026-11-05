@@ -86,7 +86,8 @@ def test_scheda_e_confronto_del_giocatore_in_colonna():
     assert "repeat(2, minmax(0, 1fr))" in _regola(b, ".stat-fila, .stat-fila.quattro, .statistiche")
     assert "grid-template-columns: 1fr" in _regola(b, ".perche-voce")
     assert "repeat(3, minmax(0, 1fr))" in _regola(b, ".prossime")
-    assert "flex-wrap: wrap" in _regola(b, ".pallini")
+    # la forma (5 pallini da 40 px) accanto ad «Andamento» non stava già a 320 px: va a capo a ogni larghezza
+    assert re.search(r"\n\.pallini \{[^}]*flex-wrap: wrap", CSS) and ".pallini {" not in b
 
 
 def test_le_query_senza_nome_restano_dentro_i_loro_contenitori():
