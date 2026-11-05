@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.390",
+    "data": "2026-11-05T14:30:24",
+    "titolo": "Le stesse parole per un giocatore in ogni schermata",
+    "voci": [
+      "Oggi: chi gioca poco ma non è in dubbio ora si chiama come in Formazione, per esempio «Improbabile» o «Probabile panchina», anche nelle cose da fare. «In dubbio» resta solo per chi lo è davvero.",
+      "Confronto: il posto in formazione si legge «Titolare», «Panchina 2» o «Non schierato», accanto allo stato del giocatore; i numeri negativi hanno il segno meno giusto.",
+      "Partite rinviate: sul campo il giocatore dice «Rinviata» invece della probabilità di giocare, in Oggi la partita si scrive come le altre del turno e la data del recupero è nella forma «mer 18 nov»."
+    ],
+    "tecnico": [
+      "#282: gli avvisi `dubbio` di /api/oggi hanno `etichetta` = `etichette.di_giocatore(scheda)` (prima `di_avviso(\"dubbio\")`, sempre «In dubbio · gioca N%»); /api/widget manda `etichetta` anche negli `avvisi` (facoltativa). Da fare: chiavi nuove `dafare.incerto*` con il parametro `stato` = frase `etichetta.<codice>` per ballottaggio, panchina, improbabile, rinviata; `dafare.dubbio_incerto*` solo per il codice `in_dubbio`.",
+      "#281: `testoPosto` in app.js (chiavi `mercato.posto_titolare`, `mercato.posto_fuori`) per scelta del confronto, Confronto e sostituzione; la scelta mostra anche `pillTitolarita`. `numMeno` per i valori delle barre del Confronto.",
+      "#284: `esitoPedina` (rinviata dal codice dell'etichetta, da `stato_partita` o da `rinvio`) al posto di «gioca N%» sulla pedina; carta del rinvio «UDI vs MIL». Motivo `rinvio.aspetta` con la data come frase `data.giorno_mese` (`giorno.*`, `mese.*`): «(mer 18 nov)», in inglese «(Wed 18 Nov)»."
+    ]
+  },
+  {
     "versione": "1.389",
     "data": "2026-11-05T11:25:47",
     "titolo": "Testi interi anche sui telefoni piccoli",
