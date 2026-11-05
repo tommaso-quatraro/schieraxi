@@ -44,11 +44,12 @@ struct DemoDaFareTests {
         let o = try await oggi(schermata)
         let voci = try #require(o.daFare, "\(schermata): manca «da_fare»")
 
-        // i dati della demo (stessi numeri del mercato: Vlasenić esce, Retalli entra, 3,4 punti; Marténi ha il 62% di giocare)
+        // i dati della demo (stessi numeri del mercato: Vlasenić esce, Retalli entra, 3,4 punti; Marténi ha il 62% di giocare e la
+        // consigliata lo tiene titolare, quindi niente «Meglio»: se non gioca entra Lemão, il primo attaccante della panchina, #305)
         let guadagno = try frasi.frase("dafare.guadagno_stagione", ["punti": "3,4"])
         let attese: [String: (testo: String, azione: String)] = [
-            "dubbio": (try frasi.frase("dafare.dubbio_incerto_alt", ["nome": "Leonel Marténi", "p": "62", "alt": "Renato Lemão"]),
-                       try frasi.frase("dafare.az_sostituisci")),
+            "dubbio": (try frasi.frase("dafare.dubbio_incerto_tiene", ["nome": "Leonel Marténi", "p": "62", "riserva": "Renato Lemão"]),
+                       try frasi.frase("dafare.az_formazione")),
             "svincolato": (try frasi.frase("dafare.svincolato", ["entra": "Mauro Retalli", "esce": "Darko Vlasenić", "guadagno": guadagno]),
                            try frasi.frase("dafare.az_vedi")),
             "rose": (try frasi.frase("dafare.rose_vecchie", ["giorni": "5"]),

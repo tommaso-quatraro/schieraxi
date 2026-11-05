@@ -15,6 +15,10 @@ Giro dei risultati (`giro_risultati`): per ogni orario di calcio d'inizio, 2 ore
 giornata (due pagine di Fantacalcio.it, `Aggiornamento.risultati_giornata`), e 4 ore dopo una seconda volta solo se mancano
 ancora risultati o voti. Così la partita «finita», i punti fatti e la fine della giornata arrivano la sera stessa e non col giro del
 mattino. Partite alla stessa ora = un giro; niente se il cron ha già portato tutto; niente oltre 12 ore dal calcio d'inizio.
+
+Registro delle giornate (`registro_giornate.py`): a ogni controllo, dopo i giri, salva i numeri mostrati poco prima della prima
+partita, misura le giornate finite e avvisa il proprietario se una media resta fuori soglia. Si spegne con
+`FANTA_REGISTRO_GIORNATE=0`.
 """
 from __future__ import annotations
 
@@ -239,12 +243,25 @@ def _scarica_probabili(scrivi: Callable[[str], None]) -> bool:
         db.close()
 
 
+def _registro(adesso: datetime, db) -> None:
+    """Il registro delle giornate (`registro_giornate.py`, #165): salva i numeri mostrati prima della prima partita, misura le
+    giornate finite e avvisa il proprietario. Non alza mai: un suo errore non ferma il pianificatore. `FANTA_REGISTRO_GIORNATE=0`
+    lo spegne."""
+    try:
+        from . import registro_giornate
+        if registro_giornate.acceso():
+            registro_giornate.giro(adesso, db)
+    except Exception as e:  # noqa: BLE001 - il giro dopo riprova; nel registro solo il tipo, mai i dati
+        LOG.warning("pianificatore: registro delle giornate non riuscito (%s)", type(e).__name__)
+
+
 def sorveglia(fermo: threading.Event, leghe: Callable[[], list[Regole]], apri_db: Callable[[], object],
               aggiorna: Callable[[], bool], dopo: Callable[[], object], intervallo: float = INTERVALLO,
               adesso: Callable[[], datetime] = datetime.now,
               risultati: Callable[[list[int]], bool | None] | None = None) -> None:
     """Il thread. `leghe()` dà le regole delle leghe attive; `aggiorna()` scarica le probabili (False se non è riuscito, None se un aggiornamento completo è in corso); `dopo()` ricalcola e manda gli avvisi.
-    `risultati(giornate)` legge risultati e voti dopo le partite (giro_risultati); None = niente giro dei risultati."""
+    `risultati(giornate)` legge risultati e voti dopo le partite (giro_risultati); None = niente giro dei risultati.
+    Dopo i giri, il registro delle giornate (`_registro`): nessuna richiesta alle fonti, solo l'archivio."""
     from .riscaldamento import bassa_priorita
     bassa_priorita()
     while not fermo.is_set():
@@ -261,6 +278,7 @@ def sorveglia(fermo: threading.Event, leghe: Callable[[], list[Regole]], apri_db
                         if risultati is not None:                # anche se il giro delle probabili è andato in errore
                             giro_risultati(adesso(), db, stato, risultati)
                 finally:
+                    _registro(adesso(), db)                     # anche se i giri prima sono andati in errore; non alza mai
                     db.close()
                     try:
                         if stato.get("fatti", []) != prima:
