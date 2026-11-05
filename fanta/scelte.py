@@ -43,6 +43,29 @@ def stato(scelta: dict | None, ruoli: dict[int, str], regole) -> str:
     return NON_VALIDA if motivo_non_valida(scelta["titolari"], ruoli, regole) else VALIDA
 
 
+def che_vale(scelta: dict | None, ruoli: dict[int, str], regole) -> dict | None:
+    """La scelta (quella di `leggi`) se si può schierare, altrimenti None: una scelta che non vale più conta come nessuna scelta e
+    vale la consigliata. La usano gli avvisi (promemoria, «cambia la formazione», «cambio pronto», riepilogo) e «Da fare»."""
+    return scelta if stato(scelta, ruoli, regole) == VALIDA else None
+
+
+def ruoli_schierabili(rose, prev=None) -> dict[int, str]:
+    """{id: ruolo} dei giocatori della tua rosa che si possono schierare, per `motivo_non_valida`. Con le previsioni della giornata
+    da giocare (`prev`) come la Formazione: solo chi ne ha una, con il ruolo delle previsioni. Senza (giornata finita) tutta la
+    rosa con il suo ruolo, come il Diario e il riepilogo di Oggi."""
+    s = rose.squadra(rose.mia_squadra or "") if rose is not None else None
+    ruoli = {}
+    for g in (s.giocatori if s else []):
+        if g.id is None:
+            continue
+        i = int(g.id)
+        if prev is None:
+            ruoli[i] = g.ruolo
+        elif i in prev.index:
+            ruoli[i] = str(prev.at[i, "ruolo"])
+    return ruoli
+
+
 def _tutte(percorso: Path | None = None) -> dict:
     try:
         d = json.loads((percorso or FILE_SCELTE).read_text(encoding="utf-8"))
