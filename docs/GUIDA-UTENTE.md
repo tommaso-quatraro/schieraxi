@@ -82,6 +82,8 @@ Se ti invitano in una lega che gioca già da un po':
 
 Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello.
 
+Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il testo **Molto grande** su un telefono piccolo, le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
+
 ## 3. Ogni settimana
 
 ### Oggi
