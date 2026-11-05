@@ -28,7 +28,7 @@ from . import avvisi, frasi, osservati
 from .frasi import F
 from .lega import Rose
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
-from .regole import Regole
+from .regole import Regole, serie_a_a_lega
 
 LOG = logging.getLogger(__name__)
 FILE_STATO = RADICE / "dati" / "notifiche.json"
@@ -366,7 +366,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         visibili = righe[:MAX_RIGHE]
         if len(righe) > MAX_RIGHE:
             visibili.append(F("n.altre_novita", n=len(righe) - MAX_RIGHE))
-        if not manda(F("n.t_cambi", giornata=giornata), frasi.elenco(visibili, sep="\n"), 4, "rotating_light"):
+        if not manda(F("n.t_cambi"), frasi.elenco([_giornata(giornata, regole)] + visibili, sep="\n"), 4, "rotating_light"):
             return righe                           # invio fallito: lo stato resta quello vecchio e al prossimo giro si riprova
         cambi_mandato = True
     if singoli:
@@ -423,6 +423,11 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
 
 
 # ---------------------------------------------------------------- promemoria prima della scadenza
+def _giornata(giornata: int, regole: Regole) -> frasi.Frase:
+    """La giornata negli avvisi con i due numeri, «Giornata 6 · 9ª di Serie A» (frasi.nome_giornata): `giornata` è quella di Serie A."""
+    return frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole), avviso=True)
+
+
 def _gia_schierato(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, file_scelte: Path | None) -> list[str] | None:
     """None se non hai ancora schierato (nessuna scelta salvata, né «ho schierato la consigliata»). Altrimenti la lista, anche vuota,
     dei titolari che hai schierato e che ora risultano fuori, in panchina o non citati nelle probabili."""
@@ -475,10 +480,10 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
         if problemi is not None and not problemi:
             continue                               # hai già schierato e va ancora bene: niente disturbo
         if problemi:
-            testo = F("n.rischio", n=len(problemi[:4]), nomi=", ".join(problemi[:4]), giornata=giornata, ora=ora_chiusura)
+            testo = F("n.rischio", n=len(problemi[:4]), nomi=", ".join(problemi[:4]), giornata=_giornata(giornata, regole), ora=ora_chiusura)
             titolo = F("n.t_titolare_rischio")
         elif nome == "60":
-            parti = [F("n.tra_un_ora", giornata=giornata, ora=ora_chiusura)]
+            parti = [F("n.tra_un_ora", giornata=_giornata(giornata, regole), ora=ora_chiusura)]
             try:
                 f = consigli.formazione(db, regole, rose)
                 dubbi = [x["nome"] for x in f["titolari"] if x["titolarita"] != "titolare" or x["dubbio"]][:4]
@@ -490,7 +495,7 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
             testo = frasi.elenco(parti, sep=" ")
             titolo = F("n.t_un_ora")
         else:
-            testo = F("n.ultimi_minuti", giornata=giornata, ora=ora_chiusura)
+            testo = F("n.ultimi_minuti", giornata=_giornata(giornata, regole), ora=ora_chiusura)
             titolo = F("n.t_ultimi_minuti")
         if manda(titolo, testo, priorita, "alarm_clock"):      # se l'invio fallisce si riprova al giro dopo, finché dura la finestra
             mandati.append(chiave)
@@ -739,7 +744,7 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     punti = fz.punteggio(tit, pan, gioca, {g.id: fv_vero.get(g.id, 0.0) for g in lista}, {g.id: voto_vero.get(g.id, 0.0) for g in lista}, regole)
     attesi = fz.Valutatore(lista, regole, 600).atteso(tit, pan)
     massimo = verifica._perfetta(lista, fv_vero, regole)
-    parti = [F("n.riepilogo", giornata=giornata, fonte=fonte, punti=float(punti), attesi=float(attesi), massimo=float(massimo))]
+    parti = [F("n.riepilogo", giornata=_giornata(giornata, regole), fonte=fonte, punti=float(punti), attesi=float(attesi), massimo=float(massimo))]
     migliori = sorted((t for t in tit if gioca[t.id]), key=lambda t: -fv_vero[t.id])[:3]
     if migliori:
         parti.append(F("n.migliori", elenco=frasi.elenco([F("n.nome_voto", nome=t.nome, voto=float(fv_vero[t.id])) for t in migliori])))
@@ -749,9 +754,9 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     prossima = consigli.giornata_da_giocare(db, stagione, regole)
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, prossima), regole) if prossima else None
     if inizio:
-        parti.append(F("n.prossima", giornata=prossima, data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
+        parti.append(F("n.prossima", giornata=_giornata(prossima, regole), data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
     testo = frasi.elenco(parti, sep=" ")
-    if manda(F("n.t_riepilogo", giornata=giornata), testo, 3, "bar_chart"):
+    if manda(F("n.t_riepilogo"), testo, 3, "bar_chart"):
         fatti.append(chiave)
         stato["riepilogo"] = fatti[-20:]
         scrivi_sicuro(file_stato, json.dumps(stato))

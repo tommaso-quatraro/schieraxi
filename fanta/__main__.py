@@ -534,7 +534,8 @@ def cmd_avviso(a) -> None:
     db = archivio.apri()
     try:
         st = consigli.stagione_corrente()
-        avviso = avvisi.da_mandare(db, st, consigli.giornata_da_giocare(db, st, regole.carica(FILE_REGOLE)), datetime.now(), segna=not a.prova)
+        r = regole.carica(FILE_REGOLE)
+        avviso = avvisi.da_mandare(db, st, consigli.giornata_da_giocare(db, st, r), datetime.now(), segna=not a.prova, regole=r)
     finally:
         db.close()
     if avviso:

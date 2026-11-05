@@ -132,6 +132,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
 - Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`. `analizza` e `da-testo` passano dallo stesso `limiti.analisi_scambio`.
 - Ogni parametro `giornata` delle rotte ha `ge=1, le=MAX_GIORNATA` (422, mai 500): `tests/test_giornata_limiti.py` trova da solo le rotte nuove.
+- Numero della giornata (dal 5/11/2026, #299): le risposte mandano `giornata` (Serie A) e `giornata_lega` (lega, `null` per le stagioni passate e prima che la lega parta); il testo «Giornata 8 · 11ª di Serie A» lo scrive una funzione sola per lato, `nomeGiornata` in `fanta/web/app.js` e `frasi.nome_giornata` sul server (avvisi, Da fare, testo per i Comandi). Forme in `docs/COERENZA-WEB-IPHONE.md`, «Giornata: le forme»; test `tests/test_giornate_lega_serie_a.py`.
 - Rose a colonne `ruolo;nome;club;prezzo`: formato di testo accettato dal server, nato per la lettura degli screenshot di Leghe
   nell'app iPhone (tolta il 2/11/2026), resta per il testo incollato. Intestazione nella prima riga, una riga con una cella sola =
   fantasquadra, `crediti;N`; a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.

@@ -40,6 +40,9 @@ CATALOGO: dict[str, str] = {
     "tempo.giorni_fa.other": "{n} giorni fa",
     "tempo.giornate.one": "giornata",
     "tempo.giornate.other": "{n} giornate",
+    # il numero della giornata, lega e Serie A insieme (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»): si usa con nome_giornata
+    "giornata.lega": "Giornata {n} · {a}ª di Serie A",
+    "giornata.serie_a": "{a}ª giornata di Serie A",
     "elenco.e": " e ",
     "dafare.dubbio_squalificato": "{nome} non può giocare.",
     "dafare.dubbio_squalificato_alt": "{nome} non può giocare. Meglio {alt}.",
@@ -58,7 +61,7 @@ CATALOGO: dict[str, str] = {
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
     "dafare.cert.one": "L'app sul telefono scade tra {n} giorno: rinnovala.",
     "dafare.cert.other": "L'app sul telefono scade tra {n} giorni: rinnovala.",
-    "dafare.diario": "La giornata {n} è finita: dimmi se hai schierato la consigliata.",
+    "dafare.diario": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
     "dafare.dati_vecchi": "I dati delle partite non si aggiornano da {giorni} giorni.",
     "dafare.primo_avvio.one": "Hai saltato {n} passo della configurazione iniziale.",
     "dafare.primo_avvio.other": "Hai saltato {n} passi della configurazione iniziale.",
@@ -340,6 +343,17 @@ def di(valore) -> dict | None:
 def lista(valori) -> list[dict | None]:
     """Per un elenco di testi: un oggetto (o None) per ogni voce, nello stesso ordine."""
     return [di(v) for v in valori]
+
+
+def nome_giornata(serie_a: int, lega: int | None, avviso: bool = False) -> Frase:
+    """La giornata con i due numeri, come su Leghe: «Giornata 8 · 11ª di Serie A» (`lega` = giornata della lega, `serie_a` = giornata
+    di Serie A); senza il numero della lega (stagioni passate, prima che la lega parta) «11ª giornata di Serie A». Stesse forme di
+    `nomeGiornata` in fanta/web/app.js (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»). In una frase va in testa, con i due punti.
+    `avviso`: le chiavi degli avvisi sul telefono (`n.giornata.*`, in italiano e in inglese); le altre le traduce la web da testi.js."""
+    prima = "n." if avviso else ""
+    if lega is None:
+        return F(prima + "giornata.serie_a", a=int(serie_a))
+    return F(prima + "giornata.lega", n=int(lega), a=int(serie_a))
 
 
 def elenco(parti: list, sep: str = ", ", con_e: bool = False):
