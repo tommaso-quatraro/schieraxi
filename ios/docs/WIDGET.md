@@ -7,7 +7,7 @@ Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limi
 | Prossima giornata | si | si | no | no | si | si | si | conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»: una voce della timeline per ogni minuto in cui cambia, per l'ora che viene, senza ricaricare) e scadenza «oggi 05:30» / «ven 6 03:32»; grande ed extra large non aggiungerebbero dati |
 | Formazione consigliata | si | si (campo mini) | si (campo con cognomi) | si (campo + lista) | si | si | si | i volti sul campo sono il dato |
 | Da controllare | no | si | si | no | no | si | no | servono almeno 2-3 nomi per avere senso |
-| Chi gioca (orari) | no | si | si | si (2 colonne) | no | si | si | serve un nome, un orario e un avversario. Riga (`RigaChiGioca`): a destra quando gioca, una volta sola e con il giorno («oggi 18:30»); sotto l'avversario e le parole («Diffidato», «Rigorista», «In dubbio · gioca 70%»), in arancione solo se c'è da guardare |
+| Chi gioca (orari) | no | si | si | si (2 colonne) | no | si | si | serve un nome, un orario e un avversario. Riga (`RigaChiGioca`): a destra quando gioca, una volta sola e con il giorno come la web («oggi 18:30», «domani 18:30»; se non c'è posto, oggi «18:30»); sotto l'avversario e le parole («Diffidato», «Rigorista», «In dubbio · gioca 70%»), in arancione solo se c'è da guardare |
 | Crediti e svincolo | si | si | no | no | si | si | si | un numero e un suggerimento: grande sarebbe vuoto |
 | Stato dei dati | si | no | no | no | si | si | si | un'informazione sola (per la diagnosi) |
 | Cruscotto | no | no | si | si (2 colonne) | si | si | si | tutto prima di una giornata: scadenza viva, formazione, dubbi, scambio, svincolo, attesi e fatti, crediti; ogni blocco apre la sua schermata |
@@ -47,8 +47,12 @@ grandi) e tiene la prima prova che entra (`DisposizioneWidget.proveCruscotto`, p
 scadenza va via la prossima partita, poi la forma compatta (senza fascia e senza la squadra dello scambio, «Scambio +2,4»), poi il
 grafico (i crediti restano su una riga), infine un dubbio solo; durante le partite il blocco delle partite resta sempre. Extra large:
 a sinistra il campo più grande che entra, a destra le stesse prove. Miglior scambio medio: prima la colonna di sinistra più stretta,
-poi senza volti, poi chi dai e chi ricevi su due righe di testo (mai «Vlase…»). Le partite da giocare hanno l'ora se sono di oggi,
-altrimenti anche il giorno, come la web («domani 11:23», `PartitaLive.etichetta(adesso:)`).
+poi senza volti, poi chi dai e chi ricevi su due righe di testo (mai «Vlase…»). Le partite da giocare hanno il giorno e l'ora come
+la web («oggi 20:45», «domani 11:23», «mar 3 18:30»): una regola sola per tutti i widget, `PartitaLive.orari`. Dove lo spazio non
+basta una partita di oggi ripiega sulla sola ora («20:45»); gli altri giorni tengono sempre il giorno. VoiceOver legge sempre la forma
+intera. La usano Partite live e Cruscotto (`PartitaLive.formeEtichetta`), Giocatore seguito e Chi gioca
+(`GiocatoreWidget.formeQuandoGioca`, `formePartita`, #267); le righe sulla schermata di blocco con `RigaInLinea`. A mezzanotte la
+voce della timeline (`VociTimeline.istanti`) cambia «domani 11:23» in «oggi 11:23».
 I widget rotondi della schermata di blocco stanno in `CerchioWidget` (contenuto sempre al centro). Crediti: simbolo «C» nel cerchio
 (`ParoleWidget.simboloCrediti`, come l'app), mai l'euro.
 
