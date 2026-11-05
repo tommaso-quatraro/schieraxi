@@ -457,11 +457,13 @@ Il testo si costruisce con una funzione sola per piattaforma (web `nomeGiornata`
 
 Testi del server con la forma intera (frasi con chiave, `fanta/frasi.py`): la chiave `giornata.lega` (`{n}` lega, `{a}` Serie A)
 e `giornata.serie_a` (`{a}`), dentro il parametro `giornata` di `dafare.diario` («Giornata 7 · 10ª di Serie A: è finita, dimmi se
-hai schierato la consigliata.»); negli avvisi le stesse forme con le chiavi `n.giornata_lega` e `n.giornata_serie_a`, in italiano e
+hai schierato la consigliata.»); negli avvisi le stesse forme con le chiavi `n.giornata.lega` e `n.giornata.serie_a`, in italiano e
 in inglese. I titoli degli avvisi «cambi nelle probabili» e «riepilogo» non hanno più il numero: la forma intera sta in testa al
 testo. `GET /api/formazione/testo` comincia con «Giornata 8 · 11ª di Serie A · 3-4-3». I messaggi d'errore «Non ci sono ancora
 previsioni per la Giornata 8 · 11ª di Serie A: riprova più tardi.» e «Giocatore … senza previsione per la Giornata 8 · 11ª di Serie A
-(la sua squadra non gioca?)» usano la stessa forma. Un client vecchio non deve fare niente: legge `testo` come sempre.
+(la sua squadra non gioca?)» usano la stessa forma, con l'articolo davanti all'8ª e all'11ª eliso («per l'11ª giornata di Serie A»,
+`frasi.elidi_ordinali`); la web riconosce la giornata (articolo compreso) e la traduce («for Serie A matchday 11»). Chi legge `testo`
+riceve la frase nuova senza fare niente; chi ne tiene una copia scritta a mano (dati di prova e test dell'iPhone) la allinea.
 
 ## Partite rinviate: regola della lega ed eccezione per una giornata
 

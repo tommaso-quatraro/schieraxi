@@ -358,7 +358,7 @@ private extension LegaDemo {
     static var voceDiario: [String: Any] {
         let serieA = giornata - 1
         let lega = (giornata - 3) - 1
-        return ["id": "diario:\(serieA)", "tipo": "diario", "testo": "La giornata \(lega) è finita: dimmi se hai schierato la consigliata.",
+        return ["id": "diario:\(serieA)", "tipo": "diario", "testo": "Giornata \(lega) · \(serieA)ª di Serie A: è finita, dimmi se hai schierato la consigliata.",
                 "priorita": 3, "azione": "Ho schierato la consigliata",
                 "destinazione": ["scheda": "lega", "sezione": "diario", "link": "schieraxi://lega/diario", "giornata": serieA] as [String: Any],
                 "giornata": serieA]

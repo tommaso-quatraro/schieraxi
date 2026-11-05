@@ -57,6 +57,8 @@ web `nomeGiornata(lega, serieA)` in `fanta/web/app.js`; server `frasi.nome_giorn
 - VoiceOver e lettori di schermo leggono **sempre la forma intera** (o «11ª giornata di Serie A» per la colonna «G11»).
 - Lega partita con la Serie A (`prima_giornata_lega` = 1): si scrivono tutti e due anche se uguali, «Giornata 8 · 8ª di Serie A».
 - «ª» è il carattere dell'ordinale femminile (U+00AA), non una «a» piccola.
+- Davanti all'8ª e all'11ª (ottava, undicesima) l'articolo perde la vocale: «l'11ª giornata di Serie A», «dall'8ª all'11ª»,
+  «per l'11ª»; «la 1ª» e «la Giornata 8» restano. Una funzione per lato: web `elidiOrdinali`, server `frasi.elidi_ordinali`.
 - **In una frase** la forma intera va in testa, seguita dai due punti: «Giornata 8 · 11ª di Serie A: la formazione si chiude sab 31 14:50.»
   Così la frase resta grammaticale in ogni lingua e non nasce una terza forma.
 - Se manca anche `giornata` (server vecchio) si scrive «Giornata 8»; se mancano tutti e due, niente.

@@ -483,6 +483,9 @@ function nomeGiornata(lega, serieA) {
   if (a) return t("frase.giornata.serie_a", { a });
   return n ? t("testata.giornata", { n }) : "";
 }
+// «la 8ª» si dice «l'8ª» («dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una vocale, fra 1 e 38
+// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server.
+const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
 // «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo «UDI fuori».
@@ -1210,7 +1213,7 @@ function mostraFormazione(f, squadra, opz = {}) {
     pagina(`
       ${squadra ? `<div class="attenzione">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
         <button class="bottone secondario" id="torna-mia" style="margin-left:6px;padding:4px 12px;min-height:0">${t("formazione.torna_alla_tua")}</button></div>` : ""}
-      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${t("formazione.per_la_prossima", { g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata) })}</div>` : ""}
+      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${elidiOrdinali(t("formazione.per_la_prossima", { g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata) }))}</div>` : ""}
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
@@ -2699,7 +2702,7 @@ function cartaPrecisione(p) {
   const primo = pg.length ? nomeG(pg[0]) : null, ultimo = pg.length ? nomeG(pg[pg.length - 1]) : null;
   const ric = n((p.fonti || {}).ricostruiti) || 0;
   return `<div class="carta qp"><h2>${t("diario.af_titolo")}</h2>
-    <div class="debole piccolo">${t("diario.qp_intro")} ${tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo })}</div>
+    <div class="debole piccolo">${t("diario.qp_intro")} ${elidiOrdinali(tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo }))}</div>
     ${p.pochi_dati ? `<div class="attenzione qp-pochi" role="status">${t("diario.qp_pochi", { n: n(p.giornate_minime) || 8 })}</div>` : ""}
     <div class="qp-griglia">
       ${voce(fv ? v(fv.errore_medio) : "–", t("diario.qp_fv_eti"), fvFrase)}
@@ -2884,7 +2887,7 @@ async function mostraAffidabilita(numero) {
       const linea = (k, col, tratteggio) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" ${tratteggio ? 'stroke-dasharray="4 4"' : ""} stroke-linecap="round" stroke-linejoin="round" points="${righe.map((r, i) => xy(i, r[k])).join(" ")}"/>`;
       grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("avv.punti_delle_formazioni")}" style="margin-top:10px">
         ${linea("punti_perfetta", "var(--testo-2)", true)}${linea("punti_fantamedia", "var(--arancio)")}${linea("punti_modello", "var(--verde)")}</svg>
-        <div class="debole piccolo"><b style="color:var(--verde)">—</b> ${t("avv.modello_nbsp")} <b style="color:var(--arancio)">—</b> ${t("avv.fantamedia_nbsp")} <b>- -</b> ${t("avv.max_possibile")} · ${t("avv.giornate_da_a", { a: Number(righe[0].giornata), b: Number(righe[righe.length - 1].giornata) })}</div>`;
+        <div class="debole piccolo"><b style="color:var(--verde)">—</b> ${t("avv.modello_nbsp")} <b style="color:var(--arancio)">—</b> ${t("avv.fantamedia_nbsp")} <b>- -</b> ${t("avv.max_possibile")} · ${elidiOrdinali(t("avv.giornate_da_a", { a: Number(righe[0].giornata), b: Number(righe[righe.length - 1].giornata) }))}</div>`;
     }
     dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>
       <div class="debole piccolo">${tp("avv.prova_su", s.giornate)}</div>

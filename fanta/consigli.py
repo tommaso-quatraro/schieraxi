@@ -119,7 +119,7 @@ def _calcola_previsioni(db, d, regole, stagione, giornata, chiave):
     p = modello.previsioni(d, stagione, giornata, regole, probabili=None if prob.empty else prob,
                            giocatori=d.calciatori, fattori_probabili=stato_dati.fattori(db, stagione))
     if p.empty:
-        raise ValueError(f"Non ci sono ancora previsioni per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))}: riprova più tardi.")
+        raise ValueError(frasi.elidi_ordinali(f"Non ci sono ancora previsioni per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))}: riprova più tardi."))
     p = p.set_index("id")
     p["difficolta"] = (p["gol_squadra"] - p["gol_avversario"]).map(difficolta)
     # «perché questo numero» (perche.py): spiega mu con i suoi pezzi veri, non cambia nessun numero
@@ -585,8 +585,7 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
     risultato = []
     for i in (id_a, id_b):
         if i not in prev.index:
-            raise ValueError(f"Giocatore {i} senza previsione per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))} "
-                             "(la sua squadra non gioca?)")
+            raise ValueError(frasi.elidi_ordinali(f"Giocatore {i} senza previsione per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))} (la sua squadra non gioca?)"))
         risultato.append(scheda_previsione(i, prev.loc[i]))
     a, b = risultato
     spiegazione = spiega(prev.loc[id_a], prev.loc[id_b], regole)

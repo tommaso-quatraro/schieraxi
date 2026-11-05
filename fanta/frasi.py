@@ -283,7 +283,17 @@ _DAVANTI_A_VOCALE = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:11|1|8\d?)(?:,\d+
 
 
 def _apostrofo(testo: str) -> str:
-    return _DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
+    return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo))
+
+
+# «la 8ª» si dice «l'8ª» (e «dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una
+# vocale, fra 1 e 38 l'8ª (ottava) e l'11ª (undicesima); «la 1ª» (prima) e «la Giornata 8» restano. Uguale a `elidiOrdinali` in app.js.
+_DAVANTI_A_ORDINALE = re.compile(r"\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)")
+
+
+def elidi_ordinali(testo: str) -> str:
+    """Il testo italiano con l'apostrofo davanti all'8ª e all'11ª («per la 11ª giornata di Serie A» → «per l'11ª giornata di Serie A»)."""
+    return _DAVANTI_A_ORDINALE.sub(lambda m: m.group(1)[:-1] + "'" + m.group(2), testo)
 
 
 def _json(valore):

@@ -163,7 +163,8 @@ def test_web_disegna_la_carta_senza_buchi(lingua):
     poco = precisione.riassunto([_voce(4, [], reale=70.0)])
     al_percento = next(r for r in APP.splitlines() if r.startswith("const alPercento = "))
     prova = (TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + al_percento + "\n"
-             + _funzione("nomeGiornata") + _funzione("cartaPrecisione") + f"""
+             + _funzione("nomeGiornata") + next(r for r in APP.splitlines() if r.startswith("const elidiOrdinali = ")) + "\n"
+             + _funzione("cartaPrecisione") + f"""
     LINGUA = "{lingua}";
     console.log(JSON.stringify([cartaPrecisione({json.dumps(pieno)}), cartaPrecisione({json.dumps(poco)}), cartaPrecisione({{"giornate": 0}})]));
     """)

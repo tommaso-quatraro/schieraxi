@@ -402,7 +402,7 @@ const TESTI = {
     "err.funzione_spenta": "«{1}» non è disponibile in questa versione dell'app.",
     "err.rinvio_non_valido": "Scelta non valida per le partite rinviate.",
     "err.rinvio_stagione": "Si può decidere solo per la stagione in corso.",
-    "err.nessuna_previsione": "Non ci sono ancora previsioni per la {1}: riprova più tardi.",
+    "err.nessuna_previsione": "Non ci sono ancora previsioni per {1}: riprova più tardi.",
     "err.nessuna_rosa": "Nessuna rosa importata: importale in Squadra > Aggiorna le rose",
     "err.limite_oggi": "Hai raggiunto il limite di {1} di oggi ({2}). Si azzera tra {3}.",
     "err.troppe_ora": "Hai fatto troppe richieste in quest'ora. Riprova tra {1}.",
@@ -1666,7 +1666,7 @@ const TESTI = {
     "err.modulo_non_ammesso": "Il modulo {1}-{2}-{3} con {4} portieri non è ammesso nella tua lega",
     "err.nessuno_gioca": "Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata",
     "err.nessun_modulo": "Nessun modulo ammesso è compatibile con la rosa",
-    "err.senza_previsione": "Giocatore {1} senza previsione per la {2} (la sua squadra non gioca?)",
+    "err.senza_previsione": "Giocatore {1} senza previsione per {2} (la sua squadra non gioca?)",
     "err.elenco_giocatori": "Elenco di giocatori non valido",
     "err.crediti_non_validi": "Crediti non validi per {1}",
     "err.giocatore_non_nel_listone": "Giocatore non trovato nel listone",
@@ -3622,7 +3622,16 @@ function traduciErrore(messaggio) {
 let paroleErrori = null;
 function traduciParametro(v) {
   if (!paroleErrori) paroleErrori = new Map(Object.keys(TESTI.it).filter(k => k.startsWith("err.p_")).map(k => [TESTI.it[k], k]));
-  return paroleErrori.has(v) ? t(paroleErrori.get(v)) : traduciDurata(v);
+  return paroleErrori.has(v) ? t(paroleErrori.get(v)) : traduciGiornata(v) ?? traduciDurata(v);
+}
+// La giornata dentro un messaggio del server, con il suo articolo («la Giornata 8 · 11ª di Serie A», «l'11ª giornata di Serie A»:
+// frasi.nome_giornata sul server): nella lingua scelta e senza l'articolo italiano. null se il testo non è una giornata.
+let regoleGiornata = null;
+function traduciGiornata(v) {
+  if (!regoleGiornata) regoleGiornata = ["frase.giornata.lega", "frase.giornata.serie_a"].map(k => [k, new RegExp("^(?:la |l')?"
+    + TESTI.it[k].replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\{(\w+)\}/g, "(?<$1>\\d+)") + "$")]);
+  for (const [k, re] of regoleGiornata) { const m = re.exec(v); if (m) return t(k, m.groups); }
+  return null;
 }
 
 // Frasi del server con la chiave (fanta/frasi.py): {chiave, param} accanto al testo italiano. In italiano si mostra il testo del server

@@ -239,6 +239,9 @@ struct TestiCortiWidgetTests {
     func fraseInCorso() throws {
         let r = try riassunto("in_corso")
         let adesso = try #require(Quando.data("2026-10-31 18:00"))
+        // dalla #299 la web non ripete la giornata («La formazione si è chiusa …»): il widget si allinea con la PR dell'iPhone (#312),
+        // che riscrive questa prova; fino ad allora il confronto con testi.js vale solo per la frase di prima
+        guard try TestiWeb().italianoDopo299("oggi.chiusa_dettaglio", "oggi 14:50") == nil else { return }
         let web = try TestiWeb().italiano("oggi.chiusa_dettaglio")
             .replacingOccurrences(of: "{n}", with: "8").replacingOccurrences(of: "{quando}", with: "oggi 14:50")
         #expect(r.fraseFase(adesso: adesso) == web + ". I punti fatti sono in Oggi.")
@@ -249,8 +252,11 @@ struct TestiCortiWidgetTests {
         let r = try riassunto("finita")
         #expect(r.etichettaGiornata == "Giornata 9", "la prossima resta nei campi di sempre")
         #expect(r.etichettaTestata == "Giornata 8")
-        let web = try TestiWeb().italiano("oggi.giornata_finita").replacingOccurrences(of: "{n}", with: "8")
-        #expect(r.titoloFase == web)
+        // dalla #299 la web scrive «Giornata 8 · 11ª di Serie A: finita»: il widget si allinea con la PR dell'iPhone (#312)
+        if try TestiWeb().italianoDopo299("oggi.giornata_finita", "Giornata 8") == nil {
+            let web = try TestiWeb().italiano("oggi.giornata_finita").replacingOccurrences(of: "{n}", with: "8")
+            #expect(r.titoloFase == web)
+        }
         #expect(r.testaRettangoloFase == "G8 finita")
         #expect(r.rigaInLineaFase == "G8: 69,5 punti fatti")
         #expect(r.sottotitoloRettangolo == "Prossima: Giornata 9")

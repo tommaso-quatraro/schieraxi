@@ -60,17 +60,37 @@ def test_testo_della_formazione_per_i_comandi():
     assert consigli.testo_formazione(f, "0-0-1", [1, 2], []).splitlines()[0] == "Giornata 6 · 9ª di Serie A · 0-0-1"
 
 
-def test_errore_senza_previsioni_con_i_due_numeri(monkeypatch):
+def _errore_senza_previsioni(monkeypatch, regole, giornata):
     monkeypatch.setattr(consigli.modello, "previsioni", lambda *a, **k: pd.DataFrame())
     db = sqlite3.connect(":memory:")
     db.execute("CREATE TABLE probabili (stagione TEXT, giornata INT, fonte TEXT)")
     d = type("D", (), {"calciatori": None})()
     monkeypatch.setattr(consigli.stato_dati, "fattori", lambda *a, **k: None)
     with pytest.raises(ValueError) as e:
-        consigli._calcola_previsioni(db, d, LEGA_DA_4, ST, 9, None)
-    assert str(e.value) == "Non ci sono ancora previsioni per la Giornata 6 · 9ª di Serie A: riprova più tardi."
-    assert _testo(IT, "err.nessuna_previsione") == "Non ci sono ancora previsioni per la {1}: riprova più tardi."
-    assert _testo(IT, "err.senza_previsione") == "Giocatore {1} senza previsione per la {2} (la sua squadra non gioca?)"
+        consigli._calcola_previsioni(db, d, regole, ST, giornata, None)
+    return str(e.value)
+
+
+def test_errore_senza_previsioni_con_i_due_numeri(monkeypatch):
+    assert _errore_senza_previsioni(monkeypatch, LEGA_DA_4, 9) == "Non ci sono ancora previsioni per la Giornata 6 · 9ª di Serie A: riprova più tardi."
+    # prima che la lega parta: solo la Serie A, con l'articolo giusto («l'11ª», non «la 11ª»)
+    prima = _errore_senza_previsioni(monkeypatch, Regole(prima_giornata_lega=12), 11)
+    assert prima == "Non ci sono ancora previsioni per l'11ª giornata di Serie A: riprova più tardi."
+    # l'articolo sta nella parte variabile: il web lo riconosce e lo traduce insieme alla giornata
+    assert _testo(IT, "err.nessuna_previsione") == "Non ci sono ancora previsioni per {1}: riprova più tardi."
+    assert _testo(IT, "err.senza_previsione") == "Giocatore {1} senza previsione per {2} (la sua squadra non gioca?)"
+
+
+@pytest.mark.parametrize("testo, atteso", [
+    ("la 8ª giornata di Serie A", "l'8ª giornata di Serie A"),
+    ("per la 11ª giornata di Serie A", "per l'11ª giornata di Serie A"),
+    ("dalla 8ª alla 11ª giornata di Serie A", "dall'8ª all'11ª giornata di Serie A"),
+    ("la 1ª giornata di Serie A", "la 1ª giornata di Serie A"),                     # «la prima»: niente apostrofo
+    ("dalla 18ª alla 38ª", "dalla 18ª alla 38ª"),
+    ("per la Giornata 8 · 11ª di Serie A", "per la Giornata 8 · 11ª di Serie A"),   # davanti a «Giornata» l'articolo resta
+])
+def test_articolo_davanti_all_ordinale_sul_server(testo, atteso):
+    assert frasi.elidi_ordinali(testo) == atteso
 
 
 # ---------------------------------------------------------------- server: avvisi sul telefono
@@ -205,3 +225,67 @@ def test_testi_con_la_giornata_intera():
         assert set(re.findall(r"\{(\w+)\}", _testo(EN, chiave))) == segnaposto, chiave
     assert _testo(EN, "frase.giornata.lega") == "Matchday {n} · Serie A matchday {a}"
     assert _testo(EN, "frase.giornata.serie_a") == "Serie A matchday {a}"
+
+
+# ---------------------------------------------------------------- articolo davanti all'ordinale ed errori tradotti (revisione della #306)
+def test_errore_del_confronto_con_i_due_numeri(monkeypatch):
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None, *a, **k: (pd.DataFrame(index=[5]), giornata or 9, True))
+    with pytest.raises(ValueError) as e:
+        consigli.confronto(None, LEGA_DA_4, 1, 2)
+    assert str(e.value) == "Giocatore 1 senza previsione per la Giornata 6 · 9ª di Serie A (la sua squadra non gioca?)"
+    with pytest.raises(ValueError) as e:
+        consigli.confronto(None, Regole(prima_giornata_lega=12), 1, 2, giornata=8)
+    assert str(e.value) == "Giocatore 1 senza previsione per l'8ª giornata di Serie A (la sua squadra non gioca?)"
+
+
+def _node(codice: str):
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+def _riga_js(nome: str) -> str:
+    m = re.search(rf"^const {nome} = .*$", APP, re.M)
+    assert m, nome
+    return m.group(0)
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+@pytest.mark.parametrize("lingua", ["it", "en"])
+def test_articolo_davanti_all_ordinale_sul_web(lingua):
+    casi = ["la 8ª giornata di Serie A", "per la 11ª giornata di Serie A", "dalla 8ª alla 11ª giornata di Serie A",
+            "la 1ª giornata di Serie A", "dalla 18ª alla 38ª", "per la Giornata 8 · 11ª di Serie A"]
+    codice = (f'globalThis.localStorage = {{ getItem: () => "{lingua}", setItem() {{}} }};' + TESTI + _riga_js("elidiOrdinali")
+              + f"console.log(JSON.stringify({json.dumps(casi)}.map(elidiOrdinali)))")
+    attesi = (["l'8ª giornata di Serie A", "per l'11ª giornata di Serie A", "dall'8ª all'11ª giornata di Serie A",
+               "la 1ª giornata di Serie A", "dalla 18ª alla 38ª", "per la Giornata 8 · 11ª di Serie A"] if lingua == "it" else casi)
+    assert _node(codice) == attesi
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_frasi_della_web_con_l_articolo_giusto():
+    codice = ('globalThis.localStorage = { getItem: () => "it", setItem() {} };' + TESTI + _funzione_js("nomeGiornata") + _riga_js("elidiOrdinali")
+              + 'console.log(JSON.stringify([elidiOrdinali(tp("diario.qp_su", 4, { da: nomeGiornata(null, 8), a: nomeGiornata(null, 11) })),'
+              + ' elidiOrdinali(tp("diario.qp_su", 1, { da: nomeGiornata(null, 11) })),'
+              + ' elidiOrdinali(t("formazione.per_la_prossima", { g: nomeGiornata(null, 10), m: nomeGiornata(null, 11) })),'
+              + ' elidiOrdinali(t("avv.giornate_da_a", { a: 8, b: 11 }))]))')
+    assert _node(codice) == ["Calcolato su 4 giornate, dall'8ª giornata di Serie A all'11ª giornata di Serie A.",
+                             "Calcolato su 1 giornata (l'11ª giornata di Serie A).",
+                             "10ª giornata di Serie A: è già iniziata. Questa è la formazione per l'11ª giornata di Serie A.",
+                             "dall'8ª all'11ª giornata di Serie A"]
+    for chiamata in ('elidiOrdinali(tp("diario.qp_su"', 'elidiOrdinali(t("formazione.per_la_prossima"', 'elidiOrdinali(t("avv.giornate_da_a"'):
+        assert chiamata in APP, chiamata
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_errori_con_la_giornata_tradotti_in_inglese():
+    """La giornata dentro un messaggio d'errore del server (con il suo articolo) si traduce insieme al resto: «matchday …», niente italiano."""
+    messaggi = ["Non ci sono ancora previsioni per la Giornata 6 · 9ª di Serie A: riprova più tardi.",
+                "Non ci sono ancora previsioni per l'11ª giornata di Serie A: riprova più tardi.",
+                "Giocatore 12 senza previsione per la Giornata 6 · 9ª di Serie A (la sua squadra non gioca?)",
+                "Giocatore 12 senza previsione per l'8ª giornata di Serie A (la sua squadra non gioca?)"]
+    codice = TESTI + f'LINGUA = "en"; console.log(JSON.stringify({json.dumps(messaggi)}.map(traduciErrore)))'
+    assert _node(codice) == ["There are no forecasts yet for Matchday 6 · Serie A matchday 9: try again later.",
+                             "There are no forecasts yet for Serie A matchday 11: try again later.",
+                             "Player 12 has no forecast for Matchday 6 · Serie A matchday 9 (is their team not playing?)",
+                             "Player 12 has no forecast for Serie A matchday 8 (is their team not playing?)"]
