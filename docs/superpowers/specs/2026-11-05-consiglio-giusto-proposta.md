@@ -117,6 +117,8 @@ schermate nuove.
 
 ## 4. Decisioni per il proprietario
 
+**Decise il 5/11/2026: il proprietario ha approvato D1, D2 e D3 come raccomandato.**
+
 **D1. Gli indicatori e le soglie del §2 vanno bene?** Sono la definizione di «fatto» per #166.
 Raccomandazione: sì così, da rivedere una volta dopo 8 giornate di L4.
 
