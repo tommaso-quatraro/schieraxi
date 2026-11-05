@@ -39,13 +39,17 @@ enum TestiRinvio {
     /// «6», «5,5».
     static func numero(_ v: Double) -> String { Formato.decimali(v, cifre: v.rounded() == v ? 0 : 1) }
 
-    /// «ATA–PAR».
-    static func partita(_ p: PartitaRinviata) -> String { "\(ColoriSquadra.sigla(p.casa))–\(ColoriSquadra.sigla(p.trasferta))" }
+    /// «UDI vs MIL»: le sigle, prima la squadra di casa, come le partite del turno e la carta della web (`cardRinvio`, #284).
+    static func partita(_ p: PartitaRinviata) -> String { "\(ColoriSquadra.sigla(p.casa)) vs \(ColoriSquadra.sigla(p.trasferta))" }
 
-    /// «recupero mer 25 nov, 20:45» oppure «recupero da definire».
-    static func recupero(_ p: PartitaRinviata) -> String {
+    /// La stessa partita per VoiceOver, con i nomi interi come le partite del turno: «Udinese contro Milan».
+    static func partitaAVoce(_ p: PartitaRinviata) -> String { "\(p.casa.capitalized) contro \(p.trasferta.capitalized)" }
+
+    /// «recupero mer 18 nov 20:45» (la data come `quando` della web: «oggi 20:45», «dom 8 15:00», oltre la settimana con il
+    /// mese) oppure «recupero da definire». `adesso` serve solo ai test.
+    static func recupero(_ p: PartitaRinviata, adesso: Date = Date()) -> String {
         guard Quando.data(p.data) != nil else { return "recupero da definire" }
-        return "recupero \(Quando.leggibile(p.data))"
+        return "recupero \(Quando.leggibile(p.data, adesso: adesso))"
     }
 
     static func miei(_ s: SceltaRinvio) -> String? {
@@ -61,8 +65,10 @@ enum TestiRinvio {
     }
 
     /// Nel riepilogo della giornata finita: «Manca il recupero di ATA–PAR: i punti possono ancora cambiare.» Nil se non manca niente.
+    /// Qui la web scrive ancora le sigle con il trattino (`oggi.recupero_manca` in app.js): si resta uguali alla web.
     static func recuperoManca(_ recuperi: [PartitaRinviata]) -> String? {
-        recuperi.isEmpty ? nil : "Manca il recupero di \(recuperi.map(partita).joined(separator: ", ")): i punti possono ancora cambiare."
+        let partite = recuperi.map { "\(ColoriSquadra.sigla($0.casa))–\(ColoriSquadra.sigla($0.trasferta))" }
+        return partite.isEmpty ? nil : "Manca il recupero di \(partite.joined(separator: ", ")): i punti possono ancora cambiare."
     }
 
     static let salvato = "Fatto: consigli aggiornati per questa giornata"

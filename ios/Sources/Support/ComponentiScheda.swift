@@ -13,17 +13,18 @@ extension Color {
     }
 }
 
-/// «Facile», «Media», «Dura»... con un pallino del colore giusto (il testo dice la stessa cosa del colore).
+/// «Facile», «Normale», «Dura»... con un pallino del colore giusto (il testo dice la stessa cosa del colore).
 struct PillDifficolta: View {
     let difficolta: Double?
-    /// «Partita media» invece di «Media» dove non è chiaro che si parla della partita (scheda del giocatore).
+    /// «Partita normale» invece di «Normale» dove non è chiaro che si parla della partita (scheda del giocatore).
     var conPartita = false
 
+    /// Le parole della web (`diff.1`…`diff.5` di testi.js, #293).
     static func nome(_ d: Double?) -> String {
         switch Formato.intero(d ?? 3) {
         case ...1: return "Facile"
         case 2: return "Abbordabile"
-        case 3: return "Media"
+        case 3: return "Normale"
         case 4: return "Dura"
         default: return "Molto dura"
         }
