@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import pytest
 
-from fanta import archivio, calcolo, consigli, lega, scelte, server
+from fanta import archivio, calcolo, consigli, diario, lega, scelte, server
 from test_server import client  # noqa: F401  (fixture del server)
 
 ST = "2026-27"
@@ -73,6 +73,7 @@ def mondo(client, monkeypatch, tmp_path):
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, GIORNATA, True))
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: CONSIGLIATA_F)
     monkeypatch.setattr(scelte, "FILE_SCELTE", tmp_path / "scelte.json")
+    monkeypatch.setattr(diario, "FILE", tmp_path / "diario.json")          # il salvataggio legge l'istantanea del Diario (#333)
     calcolo.cache.clear()
     stato["client"], stato["file"] = client, tmp_path / "scelte.json"
     return stato
