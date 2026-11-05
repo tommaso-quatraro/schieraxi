@@ -62,6 +62,19 @@ struct Giocatore: Decodable, Identifiable {
     private let percheNumero: Tollerante<[Tollerante<MotivoNumero>]>?
     /// Il fantavoto atteso del giocatore medio del suo ruolo (il riferimento dei motivi). Facoltativo.
     private let fvAttesoMedioRuolo: Tollerante<Double>?
+    /// A giornata iniziata, il fantavoto preso con le regole della lega (`stato_partita` `fatto`; server dal 2/11/2026). Facoltativo.
+    private let fvPreso: Tollerante<Double>?
+    /// Il modo del rinvio se la sua partita è rinviata (`aspetta`, `senza_voto`, `voto_ufficio`), assente se si gioca. Facoltativo.
+    private let rinvio: Tollerante<String>?
+
+    /// Il fantavoto preso, se il server lo manda ed è un numero vero.
+    var fantavotoPreso: Double? {
+        guard let v = fvPreso?.valore, v.isFinite else { return nil }
+        return v
+    }
+
+    /// Il modo del rinvio della sua partita (`rinvio` del server); nil se la partita si gioca o il server non lo dice.
+    var modoRinvio: String? { rinvio?.valore }
 
     /// I motivi del fantavoto atteso, dal più pesante; nil se il server non li manda (server vecchio), vuoto se nessuno spicca.
     var motiviNumero: [MotivoNumero]? {
