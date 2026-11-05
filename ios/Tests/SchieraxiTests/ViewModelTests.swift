@@ -339,59 +339,7 @@ final class FormazioneViewModelTests: XCTestCase {
         XCTAssertNotNil(vm.messaggio)
     }
 
-    // MARK: (18) una scelta salvata non si cancella in silenzio
-
-    /// Un server con una scelta salvata data e una formazione con o senza `schede`; la valutazione risponde come dato.
-    private func serverScelta(titolari: [Int]?, senzaSchede: Bool = false,
-                              valuta: @escaping @Sendable () throws -> Data = { Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8) })
-    throws -> ServerDiProva {
-        let base: Formazione = try Fixture.decodifica("formazione")
-        let ids = titolari ?? base.titolari.map(\.id)
-        var formazione = try XCTUnwrap(JSONSerialization.jsonObject(with: try Fixture.dati("formazione")) as? [String: Any])
-        if senzaSchede { formazione["schede"] = nil }
-        let dati = try JSONSerialization.data(withJSONObject: formazione)
-        let scelta = Data("{\"titolari\": [\(ids.map(String.init).joined(separator: ","))], \"salvata\": \"2026-11-02T21:40:00\"}".utf8)
-        return ServerDiProva { metodo, percorso, _ in
-            if percorso.hasPrefix("/api/formazione/valuta") { return try valuta() }
-            if percorso.hasPrefix("/api/scelta") { return metodo == "GET" ? scelta : Data("{\"ok\": true}".utf8) }
-            return dati
-        }
-    }
-
-    func testSenzaSchedeUnaSceltaStranaNonSiCancella() async throws {
-        let base: Formazione = try Fixture.decodifica("formazione")
-        let dieci = Array(base.titolari.map(\.id).prefix(10))
-        let srv = try serverScelta(titolari: dieci, senzaSchede: true)
-        _ = try await caricata(srv)
-        try await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertEqual(srv.quante("DELETE /api/scelta"), 0, "senza la rosa non si giudica: la scelta resta")
-    }
-
-    func testConLaRosaUnaSceltaNonValidaSiCancellaELoSiDice() async throws {
-        let base: Formazione = try Fixture.decodifica("formazione")
-        let dieci = Array(base.titolari.map(\.id).prefix(10))
-        let srv = try serverScelta(titolari: dieci)
-        let (vm, _) = try await caricata(srv)
-        XCTAssertEqual(srv.quante("DELETE /api/scelta?giornata=9"), 1)
-        XCTAssertEqual(vm.messaggio, FormazioneViewModel.sceltaNonValida)
-        XCTAssertEqual(vm.statoScelta, .consigliata)
-    }
-
-    func testSiCancellaSoloConIlCodiceDelServerNonConIlTesto() async throws {
-        // il testo «Servono 11…» non basta più
-        let soloTesto = try serverScelta(titolari: nil, valuta: { throw ErroreApi.server("Servono 11 titolari diversi, tutti della rosa") })
-        let (vm1, _) = try await caricata(soloTesto)
-        XCTAssertEqual(soloTesto.quante("DELETE /api/scelta"), 0)
-        XCTAssertNotNil(vm1.manuale, "la scelta resta")
-        // il codice «formazione_non_valida» sì (con la rosa presente)
-        let conCodice = try serverScelta(titolari: nil, valuta: {
-            throw ErroreApi.codificato(codice: ValiditaScelta.codiceNonValida, messaggio: "Il modulo 2-5-3 non è ammesso nella tua lega")
-        })
-        let (vm2, _) = try await caricata(conCodice)
-        XCTAssertEqual(conCodice.quante("DELETE /api/scelta?giornata=9"), 1)
-        XCTAssertNil(vm2.manuale)
-        XCTAssertEqual(vm2.messaggio, FormazioneViewModel.sceltaNonValida)
-    }
+    // (18) una scelta salvata che non vale più non si cancella da sola: `RigaStatoComeWebTests`
 
     // giornata chiusa (dopo la scadenza): `FormazioneChiusaTests`
 
