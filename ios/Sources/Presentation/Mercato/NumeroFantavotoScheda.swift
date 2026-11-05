@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Il fantavoto atteso nella scheda del giocatore, il «numero eroe»: grande e neutro, con «gioca N%» a destra.
+/// Senza il numero del server si legge «–», come la web (`FantavotoCheSale`, issue #262).
 struct NumeroFantavotoScheda: View {
     let p: Giocatore
     /// Grande, ma segue Dynamic Type.

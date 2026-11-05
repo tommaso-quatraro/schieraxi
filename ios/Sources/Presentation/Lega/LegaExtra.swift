@@ -141,7 +141,9 @@ struct RigaRosa: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         BadgeRuolo(ruolo: g.ruolo ?? "?", piccolo: true)
-                        Text(g.nome).font(.headline).lineLimit(2)
+                        // intero, anche su più righe con il testo grande (#254)
+                        Text(g.nome).font(.headline)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
                     if let etichette = p?.etichette, !etichette.isEmpty {

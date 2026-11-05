@@ -8,7 +8,9 @@ struct ColonnaDuello: View {
     var body: some View {
         VStack(spacing: 6) {
             AvatarGiocatore(id: g.id, squadra: g.squadra, indice: g.indice, dimensione: 64, nome: g.nome, ruolo: g.ruolo)
-            Text(g.nome).font(.headline).multilineTextAlignment(.center).lineLimit(2)
+            // intero, anche su più righe con il testo grande: mai «…» (#254, `NomiInteriTests`)
+            Text(g.nome).font(.headline).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text("\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")")
                 .font(.caption).foregroundStyle(Color.testoSecondario)
             if scelto {
