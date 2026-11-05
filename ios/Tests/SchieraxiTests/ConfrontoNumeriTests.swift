@@ -17,8 +17,10 @@ struct ConfrontoNumeriTests {
     /// Testo normale, «testo grande» e «testo massimo» (le taglie delle foto).
     private static let taglie: [DynamicTypeSize] = [.large, .accessibility2, .accessibility5]
 
+    /// L'altezza che la vista si prende quando è larga `larghezza` punti, alla taglia del testo data.
     @MainActor
-    private static func altezza<V: View>(_ vista: V, taglia: DynamicTypeSize) -> CGFloat {
+    private static func altezza<V: View>(_ vista: V, taglia: DynamicTypeSize,
+                                         larghezza: CGFloat = ConfrontoNumeriTests.larghezza) -> CGFloat {
         let disegno = ImageRenderer(content: vista.dynamicTypeSize(taglia))
         disegno.proposedSize = ProposedViewSize(width: larghezza, height: nil)
         disegno.scale = 1
@@ -54,5 +56,51 @@ struct ConfrontoNumeriTests {
                 - Self.altezza(TabellaNumeriConfronto(x: altro, y: lungo), taglia: taglia)
             #expect(secondo >= Self.riga(taglia) * 0.9, "\(taglia), secondo giocatore: la tabella cresce solo di \(secondo) punti, il nome è tagliato")
         }
+    }
+
+    /// Quale delle due forme c'è: la tabella (come la web) se ogni parola sta intera nella sua colonna, altrimenti l'elenco.
+    /// Si riconosce dall'altezza: è quella della tabella da sola o dell'elenco da solo (che sono diverse).
+    @MainActor
+    @Test("Tabella con il testo normale; elenco con il testo grande e massimo, e quando la scheda è troppo stretta")
+    func tabellaOElenco() throws {
+        let x = try Self.giocatore(31, "Aldo Pinarotti"), y = try Self.giocatore(32, "Bruno Castelvecchi")
+        let voci = VoceNumeriConfronto.voci(x, y)
+        let casi: [(DynamicTypeSize, CGFloat, Bool)] = [
+            (.large, Self.larghezza, true),
+            (.accessibility2, Self.larghezza, false),
+            (.accessibility5, Self.larghezza, false),
+            // «Avversario» non ci sta in una colonna da 48 punti: niente parola spezzata, si passa all'elenco
+            (.large, 150, false),
+        ]
+        for (taglia, larghezza, inTabella) in casi {
+            let vista = Self.altezza(TabellaNumeriConfronto(x: x, y: y), taglia: taglia, larghezza: larghezza)
+            let tabella = Self.altezza(NumeriInTabella(x: x, y: y, voci: voci), taglia: taglia, larghezza: larghezza)
+            let elenco = Self.altezza(NumeriInElenco(x: x, y: y, voci: voci), taglia: taglia, larghezza: larghezza)
+            #expect(abs(tabella - elenco) >= 1, "\(taglia), \(larghezza) punti: tabella ed elenco alti uguali, la prova non vale")
+            let attesa = inTabella ? tabella : elenco
+            #expect(abs(vista - attesa) < 1,
+                    "\(taglia), \(larghezza) punti: attesa \(inTabella ? "la tabella" : "l'elenco") (\(attesa)), disegnata alta \(vista)")
+        }
+    }
+
+    @MainActor
+    @Test("Colonne della tabella in parti 1,2 : 1 : 1 della riga, come la web")
+    func colonne() {
+        let colonne = RigaTreColonne.colonne(larghezza: 334, spazio: 10)
+        #expect(colonne.count == 3)
+        #expect(abs(colonne.reduce(0, +) + 20 - 334) < 0.001)
+        #expect(abs(colonne[0] - 117.75) < 0.001)
+        #expect(abs(colonne[1] - 98.125) < 0.001 && abs(colonne[2] - 98.125) < 0.001)
+        #expect(RigaTreColonne.colonne(larghezza: 10, spazio: 10).allSatisfy { $0 == 0 }, "riga più stretta degli spazi: colonne vuote, mai negative")
+    }
+
+    @MainActor
+    @Test("Larghezza che serve: la colonna più esigente decide, tenendo conto della sua parte")
+    func larghezzaNecessaria() {
+        // un numero che chiede 98,125 punti nella sua colonna: la riga deve essere larga 334
+        #expect(abs(RigaTreColonne.larghezzaNecessaria(minime: [50, 98.125, 60], spazio: 10) - 334) < 0.001)
+        // la voce ha una parte più grande (1,2): con 117,75 punti chiede la stessa riga
+        #expect(abs(RigaTreColonne.larghezzaNecessaria(minime: [117.75, 0, 0], spazio: 10) - 334) < 0.001)
+        #expect(RigaTreColonne.larghezzaNecessaria(minime: [], spazio: 10) == 20)
     }
 }

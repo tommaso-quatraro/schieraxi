@@ -60,6 +60,38 @@ struct TitoloPaginaTests {
         #expect(trovati.isEmpty, "Titolo grande senza .titoloPagina(…): \(trovati)")
     }
 
+    @Test("Barra sempre piccola per le pagine di dettaglio (piccoloInBarra); le altre come prima")
+    func barraPiccola() {
+        for dimensione in DynamicTypeSize.allCases {
+            #expect(!TitoloPagina.grandeInBarra(dimensione, piccoloInBarra: true), "\(dimensione)")
+            #expect(TitoloPagina.grandeInBarra(dimensione) == !TitoloPagina.nellaPagina(dimensione), "\(dimensione)")
+        }
+    }
+
+    /// La pagina di una squadra (#276): la barra resta piccola, ma con il testo grande il nome intero va a capo nella pagina.
+    @MainActor
+    @Test("Nome della squadra: con il testo grande intero nella pagina anche con la barra piccola; con il testo normale niente")
+    func nomeSquadraNellaPagina() {
+        func altezza(_ dimensione: DynamicTypeSize) -> CGFloat {
+            let vista = VStack(spacing: 0) { TitoloNellaPagina() }
+                .titoloPagina("Gli Amici del Bar Sport", piccoloInBarra: true)
+                .frame(width: 320)
+                .dynamicTypeSize(dimensione)
+            let disegno = ImageRenderer(content: vista)
+            disegno.scale = 1
+            return disegno.uiImage?.size.height ?? 0
+        }
+        let riga = ImageRenderer(content: Text("Amici").font(.largeTitle.bold()).dynamicTypeSize(.xxLarge))
+        riga.scale = 1
+        let unaRiga = riga.uiImage?.size.height ?? 0
+
+        #expect(altezza(.large) == 0, "testo normale: il nome sta nella barra piccola, niente doppione nella pagina")
+        #expect(unaRiga > 0)
+        #expect(altezza(.xxLarge) >= unaRiga * 0.9, "da XXL in su il nome intero c'è nella pagina")
+        #expect(altezza(.accessibility2) > unaRiga * 1.5, "testo grande: il nome va a capo, non si taglia")
+        #expect(altezza(.accessibility5) > unaRiga * 1.5)
+    }
+
     /// Issue #276: la pagina di una squadra aveva il titolo piccolo della barra (`.inline`) con il nome della squadra, e con il
     /// testo grande si leggeva «Gli Amici del B…». Un titolo che viene dai dati può essere lungo quanto vuole: anche con la
     /// barra piccola passa da `.titoloPagina`, così con il testo grande il nome intero va a capo nella pagina.

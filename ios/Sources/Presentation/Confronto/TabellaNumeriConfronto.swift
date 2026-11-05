@@ -1,39 +1,42 @@
 import SwiftUI
 
 /// «Tutti i numeri» di «Chi schierare?»: indice, partita, probabilità e punti attesi dei due giocatori, uno accanto all'altro.
+/// In tabella come la web quando ogni parola sta intera nella sua colonna; altrimenti (testo grande, scheda stretta) in un
+/// elenco, una voce per volta con sotto i due valori. Prima i nomi stavano su una riga e finivano con «…» (#272).
 struct TabellaNumeriConfronto: View {
     let x: Giocatore
     let y: Giocatore
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Spacer()
-                Text(x.nomeCorto).font(.caption.bold()).lineLimit(1).frame(width: 80, alignment: .trailing)
-                Text(y.nomeCorto).font(.caption.bold()).lineLimit(1).frame(width: 80, alignment: .trailing)
-            }
-            .accessibilityHidden(true)
-            riga("Indice") { "\(Formato.intero($0.indice))" }
-            riga("Avversario") { "\(ColoriSquadra.sigla($0.avversario)) \($0.inCasa == true ? "casa" : "fuori")" }
-            riga("Partita") { PillDifficolta.nome($0.difficolta) }
-            riga("Gioca") { "\(Formato.percento($0.pVoto))%" }
-            riga("Fantavoto atteso (se gioca)") { Formato.punti($0.fvAtteso) }
-            riga("Punti attesi") { Formato.decimali($0.puntiAttesi, cifre: 2) }
-            riga("Parte titolare") { "\(Formato.percento($0.quotaTitolare))%" }
-            riga("Segna") { "\(Formato.percento($0.pGol))%" }
-            riga("Assist") { "\(Formato.percento($0.pAssist))%" }
-            riga("Giallo") { "\(Formato.percento($0.pGiallo))%" }
+        let voci = VoceNumeriConfronto.voci(x, y)
+        ViewThatFits(in: .horizontal) {
+            NumeriInTabella(x: x, y: y, voci: voci)
+            NumeriInElenco(x: x, y: y, voci: voci)
         }
     }
+}
 
-    private func riga(_ titolo: String, _ f: (Giocatore) -> String) -> some View {
-        HStack {
-            Text(titolo).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity, alignment: .leading)
-            Text(f(x)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
-            Text(f(y)).bold().monospacedDigit().frame(width: 80, alignment: .trailing)
-        }
-        .font(.subheadline)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(titolo): \(x.nomeCorto) \(f(x)), \(y.nomeCorto) \(f(y))")
+/// Un giocatore inventato per le anteprime.
+private func giocatoreAnteprima(_ id: Int, _ nome: String, avversario: String) -> Giocatore? {
+    let json = """
+    {"id": \(id), "nome": "\(nome)", "ruolo": "C", "squadra": "genoa", "avversario": "\(avversario)", "in_casa": true,
+     "p_voto": 0.82, "fv_atteso": 6.4, "punti_attesi": 5.25, "indice": 72, "difficolta": 2, "quota_titolare": 0.75,
+     "p_gol": 0.18, "p_assist": 0.12, "p_giallo": 0.2}
+    """
+    return try? Decodifica.decodifica(Data(json.utf8))
+}
+
+#Preview("Testo normale: tabella") {
+    if let x = giocatoreAnteprima(1, "Leonel Marteni", avversario: "roma"),
+       let y = giocatoreAnteprima(2, "Gianmarco Pierantoni Castelvecchi", avversario: "juventus") {
+        TabellaNumeriConfronto(x: x, y: y).padding()
+    }
+}
+
+#Preview("Testo massimo: elenco") {
+    if let x = giocatoreAnteprima(1, "Leonel Marteni", avversario: "roma"),
+       let y = giocatoreAnteprima(2, "Gianmarco Pierantoni Castelvecchi", avversario: "juventus") {
+        ScrollView { TabellaNumeriConfronto(x: x, y: y).padding() }
+            .dynamicTypeSize(.accessibility5)
     }
 }
