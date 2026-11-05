@@ -293,17 +293,34 @@ struct RigaElencoGiocatore: View {
 
 // MARK: - Calendario
 
+/// Il calendario con la difficoltà, come `tabCalendario` della web: titolo e spiegazione di `testi.js`, le squadre dalla più facile
+/// alla più difficile, il pallino verde sulle squadre dei miei giocatori e la legenda dei colori sotto la tabella.
 struct CalendarioView: View {
     @ObservedObject var vm: MercatoViewModel
+    /// La mia rosa, solo per il pallino verde. Se non arriva la tabella resta uguale, senza pallini (come la web).
+    @StateObject private var rosa: Caricatore<Rosa>
 
-    private func colore(_ d: Double?) -> Color {
-        switch Formato.intero(d ?? 3) {
-        case ...1: return Color(red: 0.18, green: 0.82, blue: 0.50)
-        case 2: return Color(red: 0.56, green: 0.83, blue: 0.29)
-        case 3: return Color(red: 0.95, green: 0.78, blue: 0.27)
-        case 4: return Color(red: 1.0, green: 0.60, blue: 0.24)
-        default: return Color(red: 1.0, green: 0.36, blue: 0.31)
-        }
+    init(vm: MercatoViewModel) {
+        self.vm = vm
+        _rosa = StateObject(wrappedValue: Caricatore<Rosa>("/api/rosa", server: vm.server))
+    }
+
+    /// `mercato.calendario_difficolta` di `testi.js`.
+    static let titolo = "Calendario e difficoltà"
+
+    /// `mercato.cal_spiega` di `testi.js`, al singolare con una giornata sola.
+    static func spiegazione(giornate: Int) -> String {
+        giornate == 1
+            ? "Dalla più facile alla più difficile nella prossima giornata · pallino verde = tue squadre."
+            : "Dalla più facile alla più difficile nelle prossime \(giornate) giornate · pallino verde = tue squadre."
+    }
+
+    /// Le parole ai due lati della legenda dei colori: `diff.1` e `diff.4` di `testi.js`, come la web.
+    static let legenda = (facile: "Facile", difficile: "Dura")
+
+    /// Le squadre di Serie A in cui gioca almeno uno dei miei giocatori: le righe con il pallino verde.
+    static func squadreMie(_ rosa: Rosa?) -> Set<String> {
+        Set(rosa?.giocatori.compactMap(\.squadraSlug) ?? [])
     }
 
     var body: some View {
@@ -311,13 +328,14 @@ struct CalendarioView: View {
             VStack(spacing: 12) {
                 TitoloNellaPagina()
                 if let c = vm.calendario.dato {
-                    Carta("Difficoltà delle prossime partite", simbolo: "calendar") {
-                        Text("Verde = facile, rosso = difficile. In ordine di calendario più morbido.").font(.footnote).foregroundStyle(Color.testoSecondario)
+                    let mie = Self.squadreMie(rosa.dato)
+                    Carta(Self.titolo, simbolo: "calendar") {
+                        Text(Self.spiegazione(giornate: c.giornate.count)).font(.footnote).foregroundStyle(Color.testoSecondario)
                         // La griglia è una tabella di sigle di tre lettere: con il testo molto grande smette di crescere
                         // (altrimenti le sigle andavano a capo lettera per lettera).
                         VStack(spacing: 6) {
                             HStack(spacing: 6) {
-                                Color.clear.frame(width: 44, height: 1)
+                                Color.clear.frame(width: SiglaCalendario.larghezza, height: 1)
                                 ForEach(c.giornate, id: \.self) { g in
                                     Text("G\(g)").font(.caption2).foregroundStyle(Color.testoSecondario).frame(maxWidth: .infinity)
                                 }
@@ -325,22 +343,22 @@ struct CalendarioView: View {
                             .accessibilityHidden(true)
                             ForEach(c.squadre) { s in
                                 HStack(spacing: 6) {
-                                    Text(ColoriSquadra.sigla(s.squadra))
-                                        .font(.caption.bold()).lineLimit(1)
-                                        .frame(width: 44, alignment: .leading)
+                                    SiglaCalendario(squadra: s.squadra, mia: mie.contains(s.squadra))
                                     ForEach(s.partite) { p in
                                         Text(ProssimePartite.cella(p))
                                             .font(.caption2.bold())
                                             .lineLimit(1)
                                             .minimumScaleFactor(0.6)
                                             .frame(maxWidth: .infinity, minHeight: 28)
-                                            .background(colore(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                                            // stessi colori della legenda sotto la tabella
+                                            .background(Color.difficolta(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                                             .foregroundStyle(Color.black)
                                             // La difficoltà non è solo un colore: VoiceOver la dice a parole.
-                                            .accessibilityLabel("Serie A, giornata \(p.giornata): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                                            .accessibilityLabel("\(TempiLega.serieA(p.giornata)): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
                                     }
                                 }
                             }
+                            LegendaCalendario()
                         }
                         .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     }
@@ -356,9 +374,13 @@ struct CalendarioView: View {
             .frame(maxWidth: .infinity)
             .animation(Tema.morbida, value: vm.calendario.dato != nil)
         }
-        .refreshable { await vm.calendario.ricarica() }
+        .refreshable {
+            await vm.calendario.ricarica()
+            await rosa.ricarica()
+        }
         .avvisoDatiSalvati(vm.calendario)
         .task { await vm.calendario.ricarica() }
+        .task { await rosa.ricarica() }
     }
 }
 

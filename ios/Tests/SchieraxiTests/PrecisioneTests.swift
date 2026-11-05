@@ -44,7 +44,7 @@ final class PrecisioneTests: XCTestCase {
 
     func testFrasiUgualiAllaWeb() throws {
         let t = try XCTUnwrap(TestoPrecisione(try diario(completo).precisione))
-        XCTAssertEqual(t.calcolatoSu, "Calcolato su 6 giornate, dalla giornata 3 alla 5.")
+        XCTAssertEqual(t.calcolatoSu, "Calcolato su 6 giornate, dalla Giornata 3 · 5ª di Serie A alla Giornata 5 · 7ª di Serie A.")
         XCTAssertEqual(t.pochi, "Ancora pochi dati: servono almeno 8 giornate perché questi numeri siano affidabili. Per ora possono cambiare molto.")
         XCTAssertEqual(t.fantavoto.numero, "1,3")
         XCTAssertEqual(t.fantavoto.frase, "In media il fantavoto atteso dei tuoi giocatori sbaglia di 1,3 punti; 6 voti su 10 sono entro un punto. Su 64 voti. In media hanno fatto 0,5 in meno del previsto.")
@@ -61,8 +61,8 @@ final class PrecisioneTests: XCTestCase {
         XCTAssertEqual(t.notaRicostruiti, "In 2 giornate su 6 i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati.")
         // il grafico salta le giornate senza errore; l'andamento parte dalla più recente
         XCTAssertEqual(t.barre.map(\.etichetta), ["3", "4"])
-        XCTAssertEqual(t.righe.first, "Giornata 5 · squadra: 69,5 previsti, 68,0 fatti · tua: 70,5 (−2,5)")
-        XCTAssertEqual(t.righe.last, "Giornata 3 · fantavoto: errore 1,4 · squadra: 70,0 previsti, 66,5 fatti")
+        XCTAssertEqual(t.righe.first, "Giornata 5 · 7ª di Serie A · squadra: 69,5 previsti, 68,0 fatti · tua: 70,5 (−2,5)")
+        XCTAssertEqual(t.righe.last, "Giornata 3 · 5ª di Serie A · fantavoto: errore 1,4 · squadra: 70,0 previsti, 66,5 fatti")
         XCTAssertEqual(t.gioca.voce, "Hanno giocato davvero, quando diciamo che giocano: 8 su 10. Quando diciamo «gioca 98%», ha giocato 8 volte su 10. Qui siamo stati troppo ottimisti.")
     }
 
@@ -82,7 +82,7 @@ final class PrecisioneTests: XCTestCase {
             gioca: .init(gruppi: [.init(da: 70, a: 90, giocatori: 1, pochi: true, detto: 75, giocato: 100)], principale: 0, fonte: "mostrati"),
             confronto: .init(giornate: 1, meglioConsigliata: 0, meglioTua: 1, pari: 0, punti: -1),
             perGiornata: [.init(giornata: 2, erroreFantavoto: 3.0, attesi: 70, fatti: 58)])))
-        XCTAssertEqual(t.calcolatoSu, "Calcolato su 1 giornata (la 2).")
+        XCTAssertEqual(t.calcolatoSu, "Calcolato su 1 giornata (la 2ª giornata di Serie A).")
         XCTAssertEqual(t.fantavoto.frase, "In media il fantavoto atteso dei tuoi giocatori sbaglia di 3,0 punti; 2 voti su 10 sono entro un punto. Su 1 voto. In media hanno fatto 2,1 in più del previsto.")
         XCTAssertEqual(t.gioca.giudizio, "Qui siamo stati troppo prudenti.")
         XCTAssertEqual(t.gioca.fasce, ["Gioca 70-89%: dicevamo 75%, hanno giocato nel 100% dei casi (1 caso, pochi per dirlo)"])

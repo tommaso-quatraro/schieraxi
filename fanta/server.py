@@ -10,6 +10,7 @@ import hashlib
 import shutil
 from datetime import datetime
 import json
+import mimetypes
 import unicodedata
 import logging
 import re
@@ -2172,7 +2173,8 @@ def leggi_regole(response: Response, ctx: Contesto = Depends(lega_corrente)):
 @app.put("/api/regole")
 def scrivi_regole(dati: dict, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     campi_lega = ("scadenza_minuti", "prima_giornata_lega", "aggiornamenti_vicino_scadenza",
-                  "partite_rinviate", "voto_ufficio_rinviate", "rinvii_giornate")
+                  "partite_rinviate", "voto_ufficio_rinviate", "rinvii_giornate", "asta_estiva", "asta_invernale",
+                  "finestre_scambio")
     with versioni.blocco("regole"):
         versioni.controlla(request, versioni.etag_file(ctx.regole))
         if any(k not in dati for k in campi_lega):
@@ -2521,6 +2523,8 @@ def icona_dell_app(dim: int, request: Request):
     return FileResponse(WEB / "icone" / f"{scelta}-{dim}.png", headers={"Cache-Control": "no-cache"})
 
 
+# Il tipo dei caratteri .woff2 non è conosciuto da Python su tutti i sistemi (Windows): senza, il file andrebbe come text/plain.
+mimetypes.add_type("font/woff2", ".woff2")
 app.mount("/", StaticFiles(directory=WEB), name="web")
 
 

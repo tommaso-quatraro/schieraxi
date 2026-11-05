@@ -8,7 +8,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   Su macOS e Linux: `.venv/bin/python` al posto di `.venv\Scripts\python.exe`.
 - Test tutti: `.venv\Scripts\python.exe -m pytest -q`. Un file solo: `... -m pytest -q tests\test_rose_csv.py`.
 - Server locale: `.venv\Scripts\python.exe -m fanta server` (ascolta su 127.0.0.1:8000). Elenco comandi: `-m fanta --help`.
-- Modello: `-m fanta verifica` prima e dopo ogni modifica al modello.
+- Modello: `-m fanta verifica` prima e dopo ogni modifica al modello. Scelta della formazione (`formazione.py`, consiglio):
+  anche `-m fanta verifica --consiglio` (C1-C4: valore contro una scelta semplice, stabilità, titolari che non giocano, perché).
 
 ## Cartelle e file
 - `fanta/`: il server e la logica. «fanta» è il nome interno storico del pacchetto Python.
@@ -18,6 +19,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `salute.py`, `stato_dati.py`.
   - Modello: `modello.py` (fantavoto atteso `mu` e probabilità di voto `p_voto`), `formazione.py` (11 titolari più panchina;
     livelli di rischio in `LIVELLI_RISCHIO`), `punteggio.py` (fantavoto con le regole della lega), `verifica.py` (backtest),
+    `verifica_consiglio.py` (misura in laboratorio del consiglio, indicatori C1-C4 di #166: `-m fanta verifica --consiglio`),
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi; consigliata stabile, vedi «Contratti delle API»), `scambi.py`, `scambi_multi.py` (scambi N contro M),
     `asta.py` (solo prezzi consigliati), `stagione.py`, `coppe.py`.
@@ -27,6 +29,8 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     non salvata quando inizia la prima partita = «persa»: riga con il motivo in breve (`persa`) e un avviso solo. Tabelle
     `registro_giocatori` e `registro_giornate` dell'archivio: NON si ricostruiscono. Gira nel thread del pianificatore
     (`pianificatore._registro`); `FANTA_REGISTRO_GIORNATE=0` lo spegne. Campo `registro` di `GET /api/stato-dati`.
+    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le due tabelle in `dati/registro-giornate.json` per la
+    copia notturna (`script/server/backup-dati.sh`) e le rimette con `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
@@ -50,6 +54,9 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
   `impostazioni.js`, `dafare.js`, `primoavvio.js`, `live.js`, `avatar.js`, `testi.js`, `stile.css`, `sw.js`, icone.
   Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`.
+- `fanta/web/caratteri/`: `archivo.woff2` (Archivo semi-stretto, cifre tabellari, per numeri e titoli) con la licenza `OFL.txt`
+  (SIL OFL 1.1). Pubblico anche con gli account accesi (`STATICI_PREFISSI`), tipo `font/woff2`, nella scocca offline di `sw.js`.
+  Si rifà con `script/carattere_web.py` (fontTools e brotli in un ambiente a parte); test `tests/test_carattere_web.py`.
 - `fanta/web/testi.js`: tutti i testi dell'interfaccia, in italiano e in inglese, con le stesse chiavi (`tests/test_testi.py`
   lo controlla). Nel codice si usa solo `t("chiave")`. I messaggi del server restano in italiano (iOS e Android li leggono): gli errori il web li traduce con le chiavi `err.*` (il testo italiano della chiave È il messaggio del server; `tests/test_testi.py` lo controlla parola per parola e fa fallire un messaggio nuovo senza traduzione). Le frasi che cambiano con i dati (Da fare, motivi, «perché», probabili, avvisi delle rose...) sono `Frase` di `fanta/frasi.py`: testo italiano + `frase` con chiave e parametri accanto (`X_frase`, `X_frasi`; contratto in `docs/API.md`, «Frasi con chiave»); il web le traduce con `traduciFrase`/`testoDi`/`testiDi` da `frase.<chiave>`. Frase nuova = una voce in `CATALOGO` (italiano) e due righe in `testi.js` (`frase.<chiave>`, italiano identico e inglese); `tests/test_frasi.py` controlla che combacino.
 - `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il
@@ -63,6 +70,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
   Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
   Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request non in bozza). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
+  iPhone da provare nel browser: workflow `ios-simulatore.yml` (solo a mano), app per il simulatore in demo come artifact `.zip` e, con il segreto `APPETIZE_TOKEN`, caricata su Appetize.io (variabile `APPETIZE_APP`). Istruzioni: `docs/PROVA-IPHONE-BROWSER.md`.
 - `lega/esempio/`: la lega inventata (10 squadre finte, regole d'esempio). La lega vera sta fuori dal repository e si indica
   con la variabile `FANTA_LEGA=<cartella>`.
 - `dati/`: database, cache e chiavi locali. Non va in git.

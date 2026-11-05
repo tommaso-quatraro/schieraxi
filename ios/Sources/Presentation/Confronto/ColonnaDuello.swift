@@ -11,8 +11,7 @@ struct ColonnaDuello: View {
             // intero, anche su più righe con il testo grande: mai «…» (#254, `NomiInteriTests`)
             Text(g.nome).font(.headline).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("\(ColoriSquadra.sigla(g.squadra)) – \(ColoriSquadra.sigla(g.avversario)) \(g.inCasa == true ? "casa" : "fuori")")
-                .font(.caption).foregroundStyle(Color.testoSecondario)
+            Text(Self.partita(g)).font(.caption).foregroundStyle(Color.testoSecondario)
             if scelto {
                 Label("Consigliato", systemImage: "checkmark.seal.fill").font(.caption.bold()).foregroundStyle(Color.verde)
             }
@@ -22,5 +21,13 @@ struct ColonnaDuello: View {
         .background(scelto ? Color.verde.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: Tema.raggioPiccolo + 2, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(g.nome), \(nomeRuolo(g.ruolo)), indice \(Formato.intero(g.indice)), punti attesi \(Formato.punti(g.puntiAttesi))\(scelto ? ", consigliato" : "")")
+    }
+
+    /// La partita sotto il nome, come la web (`partitaRiga`, #302): «INT vs ROM» in casa, «INT @ ROM» in trasferta, prima la squadra
+    /// del giocatore; senza avversario solo la sua sigla.
+    static func partita(_ g: Giocatore) -> String {
+        let mia = ColoriSquadra.sigla(g.squadra), altra = ColoriSquadra.sigla(g.avversario)
+        guard !altra.isEmpty else { return mia }
+        return "\(mia) \(g.inCasa == true ? "vs" : "@") \(altra)"
     }
 }
