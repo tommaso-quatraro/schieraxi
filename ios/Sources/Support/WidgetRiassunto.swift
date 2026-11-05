@@ -558,16 +558,40 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         return "\(a) \(golCasa ?? 0), \(b) \(golTrasferta ?? 0), \(e)"
     }
 
-    /// Il giorno si conta in ora italiana, come le date del server.
-    private static let calendarioItalia: Calendar = {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
-        return c
-    }()
-
     /// «18:30» oggi, «domani 11:23», «ieri 20:45», «mar 3 18:30» negli altri giorni (`Quando.relativa`).
     private static func orario(_ data: Date, adesso: Date) -> String {
         calendarioItalia.isDate(data, inSameDayAs: adesso) ? Quando.ora(data) : Quando.relativa(data, adesso: adesso)
+    }
+}
+
+/// I giorni si contano in ora italiana, come le date del server (`Quando`): «oggi», «domani», la mezzanotte della timeline.
+private let calendarioItalia: Calendar = {
+    var c = Calendar(identifier: .gregorian)
+    c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
+    return c
+}()
+
+/// Gli istanti della timeline dei widget dopo la prima voce (qui, e non nel `Fornitore` del widget, perché si provano). Sono voci
+/// della stessa timeline, non ricariche: non consumano il limite di iOS, che di notte può rimandare le ricariche di ore.
+enum VociTimeline {
+    /// In ordine e senza doppioni: i cambi del conto alla rovescia nell'ora che viene (solo `conConto`), la scadenza se deve
+    /// ancora arrivare, e la prossima mezzanotte in ora italiana, dove «domani 12:30» diventa «12:30» (widget Live) e «alla
+    /// scadenza, domani 20:45» diventa «… oggi 20:45» (Cruscotto).
+    static func istanti(adesso: Date, scadenza: Date?, conConto: Bool) -> [Date] {
+        var istanti: [Date] = []
+        if let scadenza, scadenza > adesso {
+            if conConto {
+                istanti += Quando.istantiDelConto(fino: scadenza, adesso: adesso, entro: adesso.addingTimeInterval(60 * 60))
+            }
+            istanti.append(scadenza)
+        }
+        if let notte = mezzanotte(dopo: adesso) { istanti.append(notte) }
+        return Set(istanti).sorted()
+    }
+
+    /// La prima mezzanotte dopo `adesso`, in ora italiana (alle 00:00 in punto quella del giorno dopo).
+    static func mezzanotte(dopo adesso: Date) -> Date? {
+        calendarioItalia.date(byAdding: .day, value: 1, to: calendarioItalia.startOfDay(for: adesso))
     }
 }
 
