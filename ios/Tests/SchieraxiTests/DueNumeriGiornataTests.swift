@@ -195,6 +195,34 @@ struct DueNumeriGiornataTests {
         #expect(barra.voce == "Giornata 8, 11ª di Serie A: errore medio 1,4 punti")
     }
 
+    /// Una stagione passata in «Quanto ci abbiamo preso»: il server manda `giornata_lega` null.
+    private func precisionePassata(_ giornate: [Int]) throws -> TestoPrecisione {
+        let voci = giornate.map { #"{"stagione": "2025-26", "giornata": \#($0), "giornata_lega": null, "errore_fantavoto": 1.5}"# }
+        let json = #"{"precisione": {"giornate": \#(giornate.count), "per_giornata": [\#(voci.joined(separator: ", "))]}}"#
+        let d: DiarioRisposta = try Decodifica.decodifica(Data(json.utf8))
+        return try #require(TestoPrecisione(d.precisione))
+    }
+
+    @Test("«Calcolato su…» di una stagione passata: «dall'8ª» e «all'11ª» con l'apostrofo, come la web (`elidiOrdinali`)")
+    func calcolatoSuConApostrofo() throws {
+        #expect(try precisionePassata([8, 11]).calcolatoSu
+                == "Calcolato su 2 giornate, dall'8ª giornata di Serie A all'11ª giornata di Serie A.")
+        #expect(try precisionePassata([11]).calcolatoSu == "Calcolato su 1 giornata (l'11ª giornata di Serie A).")
+        #expect(try precisionePassata([1, 18]).calcolatoSu
+                == "Calcolato su 2 giornate, dalla 1ª giornata di Serie A alla 18ª giornata di Serie A.", "solo 8ª e 11ª")
+    }
+
+    @Test("Sotto le barre: il numero della lega, o «G11» per una giornata senza numero della lega, come la web (`sottoBarra`)")
+    func sottoLeBarre() throws {
+        #expect(try precisionePassata([10, 11]).barre.map(\.etichetta) == ["G10", "G11"])
+        let corrente: DiarioRisposta = try Decodifica.decodifica(Data(#"""
+        {"precisione": {"giornate": 2, "per_giornata": [
+          {"stagione": "2026-27", "giornata": 10, "giornata_lega": 7, "errore_fantavoto": 1.2},
+          {"stagione": "2026-27", "giornata": 11, "giornata_lega": 8, "errore_fantavoto": 1.4}]}}
+        """#.utf8))
+        #expect(try #require(TestoPrecisione(corrente.precisione)).barre.map(\.etichetta) == ["7", "8"])
+    }
+
     @Test("Avvisi del telefono: la giornata in testa, seguita dai due punti, come gli avvisi del server")
     func promemoria() {
         let n = NomeGiornata(serieA: 11, lega: 8)
