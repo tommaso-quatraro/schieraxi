@@ -8,7 +8,8 @@ Scenari (vedi `SCENARI`):
 - `completo`: la verifica normale (nel passato non ci sono le probabili: p_voto viene dalle presenze recenti);
 - `senza_xg`: niente Understat xG/xA (giocatori e squadre); al loro posto gol e assist veri;
 - `solo_fantacalcio`: niente Understat del tutto (indicatore I4 di #165): come `senza_xg`, e in più minuti stimati da
-  entrato e uscito, rigori calciati = segnati + sbagliati, tutto dai voti di Fantacalcio.it (`solo_fantacalcio`);
+  entrato e uscito, rigori calciati = segnati + sbagliati, tutto dai voti di Fantacalcio.it: i numeri «nostri» di
+  `nostri.py` (dati e parametri);
 - `voto_fisso`: ogni voto dello storico vale la media del ruolo (nessun giudizio della redazione, nessun fatto);
 - `voto_eventi` / `voto_stat`: il voto in pagella dello storico sostituito da un voto STIMATO con una regressione per ruolo
   (gol, assist, rigori, cartellini, autogol, minuti, entrato/uscito, risultato, gol subiti; `voto_stat` anche tiri e
@@ -32,7 +33,7 @@ from dataclasses import dataclass, replace
 import numpy as np
 import pandas as pd
 
-from . import verifica
+from . import nostri, verifica
 from .modello import Dati, Parametri, _p_da_probabili, forza_squadre, previsioni, prima_di
 from .punteggio import COLONNA_VOTO
 from .regole import RUOLI, Regole
@@ -72,40 +73,16 @@ def par_senza_xg(par: Parametri) -> Parametri:
 
 
 # ---------------------------------------------------------------- solo Fantacalcio.it (niente Understat)
-# Minuti giocati per presenza, da «entrato» e «uscito» dei voti di Fantacalcio.it (che non dà i minuti), per
-# (subentrato, sostituito). Medie dei minuti veri di Understat sull'archivio di sviluppo (2025-26 e 2026-27, circa 14.400
-# presenze, misura del 5/11/2026): 89,7 · 70,9 · 19,0 · 30,3 (quest'ultima su 29 casi soltanto).
-MINUTI_STIMATI = {(0, 0): 90.0, (0, 1): 71.0, (1, 0): 19.0, (1, 1): 30.0}
-
-
-def minuti_stimati(voti: pd.DataFrame) -> pd.Series:
-    """Minuti stimati di ogni riga dei voti (vedi `MINUTI_STIMATI`); un dato mancante vale «no»."""
-    sub, sos = (pd.to_numeric(voti[c], errors="coerce").fillna(0).astype(int).clip(0, 1) for c in ("subentrato", "sostituito"))
-    return pd.Series([MINUTI_STIMATI[(a, b)] for a, b in zip(sub, sos)], index=voti.index, dtype=float)
-
-
-def solo_fantacalcio(d: Dati) -> Dati:
-    """Copia dei dati come se avessimo solo Fantacalcio.it: niente xG e xA (giocatori e squadre: la forza delle squadre viene
-    dai soli gol) e prestazioni ricostruite dai voti, una riga per presenza (anche chi resta senza voto): minuti stimati da
-    entrato e uscito, rigori calciati = segnati + sbagliati, gol con i rigori (come Understat; nei voti «gol» li esclude).
-    Le prestazioni di Understat non si leggono; la partita è quella di Fantacalcio.it."""
-    v = d.voti
-    num = lambda c: pd.to_numeric(v[c], errors="coerce").fillna(0)  # noqa: E731
-    pr = pd.DataFrame({"stagione": v["stagione"], "giornata": v["giornata"], "data": v["data"], "t": v["t"],
-                       "squadra": v["squadra"], "calciatore_id": v["calciatore_id"], "minuti": minuti_stimati(v),
-                       "gol": num("gol") + num("rig_segnati"), "assist": num("assist"), "rigori_segnati": num("rig_segnati"),
-                       "rigori_calciati": num("rig_segnati") + num("rig_sbagliati"), "xg": np.nan, "xa": np.nan})
-    partita = pd.concat([d.partite[["stagione", "giornata", c, "id"]].rename(columns={c: "squadra", "id": "understat_partita"})
-                         for c in ("casa", "trasferta")]).drop_duplicates(["stagione", "giornata", "squadra"])
-    pr = pr.merge(partita, on=["stagione", "giornata", "squadra"], how="left")
-    rig = pr.groupby(["understat_partita", "squadra"])["rigori_calciati"].sum().rename("rigori_squadra")
-    return replace(senza_xg(d), prestazioni=pr.join(rig, on=["understat_partita", "squadra"]))
+# I dati, i minuti stimati e le fasce stanno in `nostri` (gol e assist attesi nostri); qui restano gli stessi nomi.
+MINUTI_STIMATI = nostri.MINUTI_STIMATI
+minuti_stimati = nostri.minuti_stimati
+solo_fantacalcio = nostri.dati
 
 
 # ---------------------------------------------------------------- gol attesi tarati per fasce (indicatore I4)
-FASCE_GOL = (0.0, 0.05, 0.10, 0.20, 0.30, 0.45, np.inf)
-FASCE_GOL_NOMI = ("0-0,05", "0,05-0,10", "0,10-0,20", "0,20-0,30", "0,30-0,45", "0,45 e più")
-MIN_CASI_FASCIA = 50                # sotto, lo scarto di una fascia è quasi solo caso: non entra in `scarto_gol`
+FASCE_GOL = nostri.FASCE_GOL
+FASCE_GOL_NOMI = nostri.FASCE_GOL_NOMI
+MIN_CASI_FASCIA = nostri.MIN_CASI_FASCIA
 COLONNE_FASCE = ["stagione", "fascia", "casi", "attesi", "veri", "scarto"]
 
 
@@ -144,7 +121,7 @@ def _con_registro(prevedi, raccolte: list):
         prev = prevedi(dm, stagione, giornata, regole, par)
         if {"id", "e_gol", "e_rigori"} <= set(prev.columns):
             raccolte.append(pd.DataFrame({"stagione": stagione, "giornata": giornata, "id": prev["id"].astype(int),
-                                          "gol_attesi": prev["e_gol"] + par.conversione_rigori * prev["e_rigori"]}))
+                                          "gol_attesi": nostri.gol_attesi(prev, par)}))
         return prev
     return f
 
@@ -406,7 +383,7 @@ def prepara(nome: str, d: Dati, regole: Regole, par: Parametri) -> tuple[dict, d
     if nome == "senza_xg":
         kw |= {"dati_modello": senza_xg(d), "par": par_senza_xg(par)}
     elif nome == "solo_fantacalcio":
-        kw |= {"dati_modello": solo_fantacalcio(d), "par": par_senza_xg(par)}
+        kw |= {"dati_modello": nostri.dati(d), "par": nostri.parametri(par)}
     elif nome == "voto_fisso":
         kw["dati_modello"] = voto(d, [])
     elif nome == "voto_eventi":
