@@ -444,7 +444,8 @@ struct FormazioneView: View {
     @ViewBuilder
     private var salva: some View {
         let stato = vm.statoScelta
-        if vm.squadraVista == nil, stato.daSalvare {
+        // non mentre il server prova la scelta salvata appena letta (lo stato non si sa ancora)
+        if vm.squadraVista == nil, stato.daSalvare, !vm.provaSalvata {
             Button { Task { await vm.valuta(salva: true) } } label: {
                 Label(Self.etichettaSalva(stato), systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
             }

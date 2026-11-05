@@ -47,6 +47,8 @@ final class FormazioneViewModel: ViewModelBase {
     /// La scelta salvata non vale più (rosa o regole cambiate): come sulla web non si cancella da sola, lo dice la riga di stato
     /// e si vede la consigliata finché non la rifai o torni alla consigliata.
     @Published private(set) var salvataNonValida = false
+    /// Il server sta provando la scelta salvata appena letta: finché non risponde la riga non dice niente (come la web).
+    @Published private(set) var provaSalvata = false
     /// Il calcolo della modifica a mano non è riuscito: invece dei punti, «Non riesco a calcolare» con «Riprova».
     @Published private(set) var calcoloNonRiuscito = false
     /// I titolari a cui si riferisce `valutazione` (dopo una sostituzione la valutazione vecchia non vale più).
@@ -62,7 +64,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// A che punto è la tua scelta (riga di stato della Formazione). Per le altre squadre non si dice niente.
     var statoScelta: StatoScelta {
         guard squadraVista == nil else { return .sconosciuto }
-        return StatoScelta.calcola(letta: sceltaLetta, salvati: salvati, salvataIl: salvataIl, manuale: manuale, chiusa: chiusa,
+        return StatoScelta.calcola(letta: sceltaLetta && !provaSalvata, salvati: salvati, salvataIl: salvataIl, manuale: manuale, chiusa: chiusa,
                                    nonValida: salvataNonValida, altra: altraDallaConsigliata)
     }
 
@@ -145,16 +147,27 @@ final class FormazioneViewModel: ViewModelBase {
             if senzaModifiche { azzeraManuale() }   // cancellata da un altro dispositivo: si torna alla consigliata
             return
         }
+        // Già giudicata non valida (anche dal server) e intanto non è cambiata: resta così senza riprovarla, come la web che
+        // tiene `nonValida` per la giornata. Altrimenti a ogni ritorno sulla Formazione tornerebbe in campo con errore e vibrazione.
+        let stessa = salvati.map { Set($0) == Set(salvata.titolari) } == true && salvataIl == Quando.data(salvata.salvata)
+        let giaNonValida = salvataNonValida && stessa
         salvati = salvata.titolari
         salvataIl = Quando.data(salvata.salvata)
         // Una scelta che non vale più (fuori dalla rosa) NON si cancella da sola, come sulla web: lo dice la riga di stato e si
         // vede la consigliata. Solo se la rosa c'è davvero: senza rosa non si giudica (decide il server, sotto).
-        salvataNonValida = ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida
+        salvataNonValida = giaNonValida || ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida
         guard senzaModifiche else { return }   // c'è una modifica in corso: non si sovrascrive (la riga dice «Modifiche non salvate»)
-        if salvataNonValida { azzeraManuale(); return }
+        if salvataNonValida {
+            if manuale != nil { azzeraManuale() }
+            return
+        }
         if manuale.map({ Set($0) == Set(salvata.titolari) }) == true, valutati == manuale { return }   // già lei, già calcolata
         manuale = salvata.titolari
-        await valuta(salva: false)
+        // Mentre il server la prova la riga non dice niente (come la web, che la mostra solo dopo): niente «salvata» per un
+        // attimo se poi non vale.
+        provaSalvata = true
+        await valuta(salva: false, silenzioso: true)
+        provaSalvata = false
         // Il server dice che non si può valutare (il codice, non il testo): non vale più. Si vede la consigliata, senza il testo
         // dell'errore (lo dice la riga di stato).
         if codiceUltimoErrore == ValiditaScelta.codiceNonValida, manuale == salvata.titolari {
@@ -337,7 +350,9 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Chiede al server i punti della formazione scelta a mano (e, se `salva`, la salva: solo per la propria squadra).
     /// Se nel frattempo la scelta è cambiata, la risposta (arrivata in ritardo) viene ignorata.
-    func valuta(salva: Bool) async {
+    /// `silenzioso`: la prova della scelta salvata appena letta; se il server dice che non vale più, niente messaggio né vibrazione
+    /// (lo dice la riga di stato).
+    func valuta(salva: Bool, silenzioso: Bool = false) async {
         guard let m = manuale else { return }
         contatore += 1
         let numero = contatore
@@ -368,6 +383,7 @@ final class FormazioneViewModel: ViewModelBase {
             if case .codificato(let codice, _)? = error as? ErroreApi { codiceUltimoErrore = codice }
             // solo un salvataggio rifiutato porta a ricaricare (una semplice valutazione no: niente giri a vuoto)
             if salvaDavvero, codiceUltimoErrore == Self.codiceChiusa, !chiusa { await formazioneChiusa(); return }
+            if silenzioso, codiceUltimoErrore == ValiditaScelta.codiceNonValida { return }
             // Il salvataggio non riuscito non cancella i punti già calcolati per questi titolari.
             calcoloNonRiuscito = valutati != m
             messaggio = error.localizedDescription
