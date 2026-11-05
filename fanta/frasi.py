@@ -47,6 +47,7 @@ CATALOGO: dict[str, str] = {
     "dafare.dubbio_infortunato_alt": "{nome} è infortunato. Meglio {alt}.",
     "dafare.dubbio_incerto": "{nome} è in dubbio ({p}% di giocare).",
     "dafare.dubbio_incerto_alt": "{nome} è in dubbio ({p}% di giocare). Meglio {alt}.",
+    "dafare.dubbio_incerto_tiene": "{nome} è in dubbio ({p}% di giocare) ma resta titolare: se non gioca entra {riserva} dalla panchina.",
     "dafare.formazione_chiude": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
     "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",

@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import sqlite3
 import threading
+from collections.abc import Collection
 from datetime import date, datetime, timedelta
 
 import numpy as np
@@ -565,6 +566,17 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
     return scrivi(F("confronto.principale", titolare=titolare.nome, entrata=entrata, esito=esito, mu_t=titolare.mu, altro=altro.nome, mu_a=altro.mu))
 
 
+def da_schierare(a: dict, b: dict, titolari: Collection[int] | None = None) -> dict:
+    """Chi schierare tra due giocatori (schede con `id` e `punti_attesi`): se la formazione del sistema (`titolari`, i suoi id; None
+    = non si sa) ne schiera uno solo, è lui, anche con meno punti attesi da solo (se non gioca entra la riserva, e insieme valgono di
+    più); altrimenti chi ha più punti attesi. Regola unica: `consigliato` del confronto e cambi proposti da «Da fare» (da_fare.py)."""
+    if titolari is not None:
+        dentro = [g for g in (a, b) if g["id"] in titolari]
+        if len(dentro) == 1:
+            return dentro[0]
+    return a if a["punti_attesi"] >= b["punti_attesi"] else b
+
+
 def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, giornata: int | None = None,
               rose: Rose | None = None, nome_squadra: str | None = None, modulo: str | None = None, livello: int = 0) -> dict:
     """Ballottaggio: chi dei due schierare questa giornata, e perché (le differenze tra le statistiche usate per scegliere).
@@ -576,14 +588,13 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
             raise ValueError(f"Giocatore {i} senza previsione per la giornata {giornata} (la sua squadra non gioca?)")
         risultato.append(scheda_previsione(i, prev.loc[i]))
     a, b = risultato
-    meglio = a if a["punti_attesi"] >= b["punti_attesi"] else b
     spiegazione = spiega(prev.loc[id_a], prev.loc[id_b], regole)
     margine = round(abs(a["punti_attesi"] - b["punti_attesi"]), 2)
     in_formazione = _in_formazione(db, regole, rose, nome_squadra, giornata, modulo, id_a, id_b, prev, livello) if rose is not None else None
-    if in_formazione:            # chi schierare è il titolare della formazione del sistema, se uno solo dei due lo è (titolo «Schiera X» dei client)
-        titolari = [g for g, p in ((a, in_formazione["posto_a"]), (b, in_formazione["posto_b"])) if p == "titolare"]
-        if len(titolari) == 1:
-            meglio = titolari[0]
+    titolari = None              # chi dei due è titolare nella formazione del sistema (titolo «Schiera X» dei client)
+    if in_formazione:
+        titolari = {g["id"] for g, p in ((a, in_formazione["posto_a"]), (b, in_formazione["posto_b"])) if p == "titolare"}
+    meglio = da_schierare(a, b, titolari)
     perche_testo = _frase_perche(a["nome"], b["nome"], spiegazione, margine)
     return {"giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "giocatori": risultato,
             "consigliato": meglio["id"], "margine": margine,
