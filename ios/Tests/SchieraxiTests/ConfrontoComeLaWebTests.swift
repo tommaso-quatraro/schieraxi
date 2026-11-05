@@ -104,7 +104,7 @@ struct ConfrontoComeLaWebTests {
 
     @Test("«Quando gioca» a parole, con le soglie della web (`partenzaAParole`)", arguments: [
         (0.7, "mercato.parte_quasi_sempre"), (0.95, "mercato.parte_quasi_sempre"), (0.4, "mercato.parte_a_volte"),
-        (0.69, "mercato.parte_a_volte"), (0.39, "mercato.parte_di_rado"), (0, "mercato.parte_di_rado"),
+        (0.69, "mercato.parte_a_volte"), (0.39, "mercato.parte_di_rado"), (0.0, "mercato.parte_di_rado"),
     ])
     func quandoGioca(quota: Double, chiave: String) throws {
         let parola = try TestiWeb().italiano(chiave)
