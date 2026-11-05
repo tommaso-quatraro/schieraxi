@@ -650,7 +650,8 @@ function testoConto(o) {
   const nGiornata = o.giornata_lega || o.giornata;
   if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { n: nGiornata, quando: quando(o.scadenza || o.inizio) }) };
   const g = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
-  const grande = g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`;
+  // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
+  const grande = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
   return { grande, piccolo: o.scadenza && o.scadenza !== o.inizio
     ? t("oggi.si_chiude", { quando: quando(o.scadenza), min: o.minuti_scadenza })
     : t("oggi.prima_partita", { quando: quando(o.inizio) }) };
@@ -1351,7 +1352,12 @@ function striscia(el) {
   };
   const att = el.querySelector(".attivo, .attiva");
   if (att) el.scrollLeft = Math.max(0, att.offsetLeft - (el.clientWidth - att.offsetWidth) / 2);
-  if (!el.dataset.striscia) { el.dataset.striscia = "1"; el.addEventListener("scroll", agg, { passive: true }); }
+  if (!el.dataset.striscia) {
+    el.dataset.striscia = "1";
+    el.addEventListener("scroll", agg, { passive: true });
+    // con il tasto Tab: Chrome fa scorrere la striscia solo se la voce è tutta fuori, e una voce a metà restava mezza nascosta (issue #280)
+    el.addEventListener("focusin", e => { const voce = e.target.closest("button"); if (voce && el.contains(voce)) voce.scrollIntoView({ block: "nearest", inline: "nearest" }); });
+  }
   agg();
 }
 
@@ -4254,7 +4260,8 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   let atteso = false;
   const aggiorna = () => {
     atteso = false;
-    document.querySelectorAll(".chip, .segmenti button, .colore, .icona-scelta").forEach(b => {
+    // solo pulsanti: «Qual è la tua squadra?» (Aggiorna le rose) è un'etichetta con dentro un radio, che lo dice già (axe, issue #289)
+    document.querySelectorAll("button.chip, .segmenti button").forEach(b => {
       b.setAttribute("aria-pressed", String(b.classList.contains("attiva") || b.classList.contains("attivo") || b.classList.contains("scelta")));
     });
     // campi senza etichetta: il testo d'esempio o il titolo della scheda in cui stanno diventano il loro nome per i lettori di schermo
@@ -4269,4 +4276,40 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   osservatore.observe(contenuto, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
   osservatore.observe($("#foglio-contenuto"), { subtree: true, childList: true });
   aggiorna();
+})();
+
+// La testata resta ferma in alto e cresce quando il nome della squadra va a capo o con il testo grande: la sua altezza vera va in
+// --alto-testata, che stile.css usa per scroll-padding-top. Così chi va avanti e indietro con il tasto Tab non trova il focus sotto la
+// testata (WCAG 2.2, 2.4.11; issue #280). Sotto i 320 px utili la testata scorre via con la pagina: 0.
+(function altezzaTestata() {
+  const testata = document.querySelector(".testata"), radice = document.documentElement;
+  if (!testata) return;
+  const misura = () => radice.style.setProperty("--alto-testata", getComputedStyle(testata).position === "sticky" ? `${testata.offsetHeight}px` : "0px");
+  if (typeof ResizeObserver === "function") new ResizeObserver(misura).observe(testata);
+  misura();
+})();
+
+// Colonne ferme in alto su tablet e PC (la prima di Oggi, il campo della Formazione, l'elenco di Impostazioni, i filtri dei giocatori):
+// restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, «Apri la formazione») restava sotto la barra o
+// fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
+const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .col > .campo, .imp-elenco, .giocatori-pagina .filtri-giocatori";
+const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
+function controllaFerme() {
+  const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è
+  document.querySelectorAll(FERME).forEach(el => {
+    const era = el.classList.contains("non-ferma"), stile = getComputedStyle(el);
+    if (!era && stile.position !== "sticky") return;                     // non è ferma: niente da controllare
+    if (!era) SOPRA_FERME.set(el, parseFloat(stile.top) || 0);           // si legge solo da ferma: così il conto non cambia e non oscilla
+    const alto = el.getBoundingClientRect().height, z = el.offsetHeight ? alto / el.offsetHeight : 1;   // con il testo grande la pagina è ingrandita
+    const troppo = alto + ((SOPRA_FERME.get(el) || 0) + sotto) * z > innerHeight;
+    if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria osserva le classi)
+  });
+}
+(function seguiFerme() {
+  let atteso = false;
+  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); }); } };
+  new MutationObserver(pianifica).observe(contenuto, { subtree: true, childList: true });
+  if (typeof ResizeObserver === "function") new ResizeObserver(pianifica).observe(contenuto);          // anche quando una carta cresce dopo
+  addEventListener("resize", pianifica);
+  pianifica();
 })();

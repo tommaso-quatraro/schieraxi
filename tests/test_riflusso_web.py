@@ -4,12 +4,21 @@ tagliava «Altro», i nomi andavano a capo una lettera per riga e le sigle delle
 Ora sotto i 320 px di larghezza utile la pagina si dispone in una colonna. La misura è il body come contenitore (`pagina`),
 non @media: così conta anche il testo «Molto grande» dell'app, che ingrandisce la pagina con `zoom` e le @media non lo vedono.
 La prova vera è nel browser (larghezze 160, 195 e 320 px); qui si controlla che le regole ci siano."""
+import json
 import re
+import shutil
+import subprocess
+
+import pytest
 
 from fanta import server
 
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
+APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+NODE = shutil.which("node")
 STRETTA = "@container pagina (max-width: 319.98px) {"
+SENZA_COMMENTI = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
 
 
 def _blocco(apertura):
@@ -99,3 +108,97 @@ def test_le_query_senza_nome_restano_dentro_i_loro_contenitori():
         assert selettori, m.group(0)
         for s in selettori:
             assert all(p.strip().startswith((".con-confronto ", ".df-")) for p in s.split(",")), s
+
+
+def _corpi(selettore, testo=SENZA_COMMENTI):
+    """I corpi di tutte le regole (anche dentro le @media e le @container) il cui elenco di selettori contiene proprio `selettore`."""
+    return [corpo for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", testo) if selettore in [s.strip() for s in sel.split(",")]]
+
+
+def test_nome_della_squadra_e_data_dei_dati_vanno_a_capo_nella_testata():
+    """Issue #286: nella testata «Real Es…» a 320 px, «Real Esempi…» a 390 px con il testo «Grande» e un nome di 25 caratteri
+    tagliato anche a 390 px; «dati del 26 …» lo stesso. Mai «…» (CLAUDE.md): il nome e la data vanno a capo, a ogni larghezza, e
+    una parola più lunga della riga si spezza invece di uscire."""
+    for selettore in (".testo-testata .titolo", ".testo-testata .sottotitolo", ".sottotitolo > span"):
+        corpi = " ".join(_corpi(selettore))
+        assert corpi, selettore
+        assert "ellipsis" not in corpi and "nowrap" not in corpi, selettore
+    assert "overflow-wrap: break-word" in " ".join(_corpi(".testo-testata .titolo"))
+
+
+def test_lo_stemma_della_testata_lascia_posto_al_nome_sui_telefoni_stretti():
+    """A 320 px lo stemma (42 px più lo spazio) lasciava al nome della squadra 74 px: «Real Esempio» e «dati del 26 ott 23:55» su
+    due righe ciascuno e la testata, ferma in alto, alta 117 px invece di 77 (un quinto di un telefono da 568 px). Tra 320 e 360 px
+    utili lo stemma non si mostra nella testata; sotto i 320 px la testata va su due righe e lo stemma resta."""
+    b = _blocco("@container pagina (min-width: 320px) and (max-width: 359.98px) {")
+    assert "display: none" in _regola(b, ".stemma-testata")
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_il_conto_alla_rovescia_non_lascia_l_unita_da_sola():
+    """Issue #286: a 390 px, nella carta con la maglia, «1 giorno 8» su una riga e «h» da sola sotto (a 320 px anche «1», «giorno» e
+    «8 h» su tre righe). Il numero e la sua unità stanno insieme con uno spazio che non va a capo: si va a capo solo tra «1 giorno»
+    e «8 h». Qui testoConto di app.js, eseguito con node e l'orologio fermo."""
+    inizio, fine = "function parseData(s)", "// ETag e If-Match"
+    codice = "\n".join([
+        TESTI,
+        "const FERMO = Date.parse('2026-10-26T09:35:00Z'), DataVera = Date;",
+        "globalThis.Date = class extends DataVera { constructor(...a) { super(...(a.length ? a : [FERMO])); } static now() { return FERMO; } };",
+        APP[APP.index(inizio):APP.index(fine)],
+        APP[APP.index("function testoConto(o)"):APP.index("function vistaOggi()")],
+        "const minuti = [32 * 60 + 5, 2 * 1440 + 14 * 60, 3 * 60 + 10, 45], fuori = {};",
+        "for (const L of ['it', 'en']) { LINGUA = L; fuori[L] = minuti.map(m => testoConto({ giornata: 9, scadenza: new DataVera(FERMO + m * 60000).toISOString() }).grande); }",
+        "console.log(JSON.stringify(fuori));",
+    ])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    fuori = json.loads(r.stdout.strip().splitlines()[-1])
+    nb = " "
+    assert fuori["it"] == [f"1{nb}giorno 8{nb}h", f"2{nb}giorni 14{nb}h", f"3{nb}h 10{nb}min", f"45{nb}min"]
+    assert fuori["en"] == [f"1{nb}day 8{nb}h", f"2{nb}days 14{nb}h", f"3{nb}h 10{nb}min", f"45{nb}min"]
+
+
+def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
+    """Con il numero attaccato all'unità, «14 giorni» (157 px a 40 px) non va più a capo: accanto alla maglia, che si tiene 132 px a
+    destra, a 320 px restavano 140 px. Sotto i 360 px utili il margine e la maglia si rimpiccioliscono con la pagina, così il conto ha
+    sempre almeno 157 px; sotto i 260 px la maglia (solo decorazione) non si mostra."""
+    b = _blocco("@container pagina (max-width: 359.98px) {")
+    margine = re.search(r"padding-right: clamp\((\d+)px, 100cqi - (\d+)px, (\d+)px\)",
+                        _regola(b, '.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia'))
+    assert margine and "height: clamp(" in _regola(b, ".maglia-hero")
+    minimo, togli, massimo = (int(x) for x in margine.groups())
+    for pagina in range(260, 360):
+        # margini di main (16 px per lato, 8 sotto i 320 px utili) e a sinistra della carta (14 px, densità compatta)
+        carta = pagina - (32 if pagina >= 320 else 16)
+        assert carta - 14 - min(max(minimo, pagina - togli), massimo) >= 157, pagina
+    senza = _blocco("@container pagina (max-width: 259.98px) {")
+    assert "display: none" in _regola(senza, ".maglia-hero")
+    # senza maglia il testo torna largo quanto la carta (a 256 px «3 h 10 min» andava a capo accanto a un posto vuoto)
+    assert "padding-right: 14px" in _regola(senza, '.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia')
+
+
+def test_cambi_consigliati_in_colonna_sotto_i_320_px_e_nomi_mai_tagliati():
+    """Issue #287: a 320 px con il testo «Grande» e «Molto grande» la carta del cambio restava su tre colonne: il nome tagliato
+    («Ram…») e la colonna del testo larga ~80 px, una parola per riga. Sotto i 320 px utili volto e guadagno stanno sopra, nome e
+    dettagli sotto a tutta larghezza, come le righe dei giocatori. A ogni larghezza il nome lungo va a capo invece dei puntini."""
+    b = _blocco(STRETTA)
+    assert "grid-template-columns: auto minmax(0, 1fr)" in _regola(b, ".proposta-r")
+    testo = _regola(b, ".proposta-r > .pr-testo")
+    assert "grid-row: 2" in testo and "grid-column: 1 / -1" in testo
+    assert "grid-row: 1" in _regola(b, ".proposta-r > .pr-num")
+    nome = " ".join(_corpi(".proposta-r button.nome-g"))
+    assert "ellipsis" not in nome and "nowrap" not in nome and "overflow-wrap: break-word" in nome
+
+
+def test_le_impostazioni_non_scorrono_di_lato():
+    """Issue #288: Notifiche a 320 px con il testo «Molto grande» scorreva di lato (337 px contro 320): la griglia `.imp` aveva una
+    colonna `auto`, larga quanto il contenuto più lungo (261 px su 240). Con `minmax(0, 1fr)` resta larga quanto la pagina."""
+    assert "grid-template-columns: minmax(0, 1fr)" in _regola(CSS, ".imp")
+
+
+def test_le_righe_delle_regole_vanno_a_capo_sotto_i_320_px():
+    """Regole e Notifiche a 320 px con il testo «Molto grande»: accanto al −/+ o al menu il nome della regola restava largo ~60 px,
+    una parola per riga. Sotto i 320 px utili il controllo va sotto il nome quando non c'è posto."""
+    b = _blocco(STRETTA)
+    assert "flex-wrap: wrap" in _regola(b, ".riga-regola")
+    assert "max-width: 100%" in _regola(b, ".riga-regola > select.scelta-corta")

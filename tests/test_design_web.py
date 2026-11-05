@@ -311,6 +311,28 @@ def test_pillole_dei_giocatori_stesso_colore_su_web_e_ios():
     assert altrimenti == da_classe["neutra"] and set(tono_iphone) <= set(classe_tono)
 
 
+def test_bordo_dei_campi_almeno_3_a_1_in_chiaro_e_scuro():
+    """Issue #285: campi di testo, menu e caselle di testo avevano il bordo `--bordo` (il filo sottile delle carte): 1,2:1 nel chiaro e
+    1,4:1 nello scuro, misurato in Registrati; il campo si riconosceva solo dall'etichetta. WCAG 2.2, 1.4.11: il bordo che fa
+    riconoscere il campo vale almeno 3:1 sia con il fondo del campo sia con quello che gli sta intorno, su ogni superficie."""
+    for regola in (r"\n\.campo-testo, select, textarea \{([^}]*)\}", r"\n\.stepper \{([^}]*)\}", r"\n\.menu-scelta \{([^}]*)\}"):
+        corpo = re.search(regola, CSS).group(1)
+        assert "border: 1px solid var(--bordo-campo)" in corpo, regola
+    sistema = _variabili(CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0])
+    a_mano = _variabili(CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0])
+    assert sistema.get("--bordo-campo") and sistema["--bordo-campo"] == a_mano.get("--bordo-campo")
+    quota = int(re.search(r"\n\.campo-testo, select, textarea \{[^}]*background: color-mix\(in srgb, var\(--solido\) (\d+)%, transparent\)", CSS).group(1)) / 100
+    sotto = []
+    for tema, v in _temi().items():
+        bordo, solido = _colore(v["--bordo-campo"])[0], _colore(v["--solido"])[0]
+        for dove, fondo in _fondi_delle_pillole(v).items():
+            for lato, colore in (("intorno", fondo), ("dentro", _sopra(solido, quota, fondo))):
+                c = _contrasto_rgb(bordo, colore)
+                if c < 3:
+                    sotto.append(f"{tema} {dove} {lato}: {c:.2f}")
+    assert not sotto, sotto
+
+
 def test_pulsanti_pieni_almeno_4_5_e_uguali_su_web_e_ios():
     """Issue #248: sull'iPhone, nel tema scuro, la scritta dei pulsanti pieni era bianca sul verde chiaro (1,77:1). La web scrive con
     --azione-testo (verde quasi nero nello scuro, bianco nel chiaro) sopra --azione: almeno 4,5:1 in tutti e due i temi. L'iPhone usa
