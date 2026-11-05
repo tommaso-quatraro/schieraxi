@@ -650,7 +650,9 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
    «fantavoto 10,0»), «⚠ gioca 19%» e «vs MON» vanno a capo invece di finire con «…» o di uscire dal campo, che le taglierebbe.
    Campo stretto (cinque pedine in una fila a 320 px, o con il testo grande): cinque volti da 56 px con gli spazi chiedono 308 px,
    quindi il volto passa a 48 px. Nella pedina da 52 px un cognome di una parola va a capo con la sillabazione, dove il browser
-   la sa fare («Meron-do» invece di «Merond/o»); il carattere resta lo stesso. */
+   la sa fare («Meron-do» invece di «Merond/o»); il carattere resta lo stesso. Lo stesso in ogni fila da cinque, dove le pedine sono
+   strette anche con il volto normale (390 px con il testo «Grande»). */
+.linea:has(> .pedina:nth-child(5)) .nome { -webkit-hyphens: auto; hyphens: auto; }
 @container campo (max-width: 307.98px) {
   .avatar-pedina { width: 48px; height: 48px; }
   .avatar-pedina .avatar { --d: 44px; }

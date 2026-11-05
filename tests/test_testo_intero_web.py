@@ -98,6 +98,9 @@ def test_le_pedine_si_stringono_dentro_il_campo_anche_con_cinque_per_fila():
     # trattino della sillabazione («Meron-do») invece che a una lettera dalla fine («Merond/o»); il testo non si rimpicciolisce
     sillabe = _regole(_blocco(stretto.group(0)), ".pedina .nome")
     assert "hyphens: auto" in sillabe and "-webkit-hyphens: auto" in sillabe and "font-size" not in sillabe
+    # lo stesso in ogni fila da cinque, anche con il volto normale (390 px con il testo «Grande»: pedine da 58 px, «Rogheceb/e»)
+    cinque = _regole(GLOBALE, ".linea:has(> .pedina:nth-child(5)) .nome")
+    assert "hyphens: auto" in cinque and "-webkit-hyphens: auto" in cinque
 
 
 def test_il_pulsante_della_legenda_non_copre_il_portiere():
