@@ -244,14 +244,14 @@ struct OggiView: View {
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
-                        Text(Self.quandoSiChiude(oggi)).font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        Text(Self.quandoSiChiude(oggi, adesso: ora)).font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     } else {
                         Text("Chiusa")
                             .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)   // testo molto grande: si rimpicciolisce invece di andare a capo a metà parola
                             .foregroundStyle(.white)
-                        Text(Self.siEChiusa(oggi)).font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        Text(Self.siEChiusa(oggi, adesso: ora)).font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -271,18 +271,20 @@ struct OggiView: View {
     }
 
     /// Sotto il conto alla rovescia, come la web: «La formazione si chiude sab 31 14:50 (10 min prima della prima partita)»,
-    /// o «Prima partita …: la formazione va inserita prima» se la scadenza è l'inizio della prima partita.
-    static func quandoSiChiude(_ oggi: Oggi) -> String {
+    /// o «Prima partita …: la formazione va inserita prima» se la scadenza è l'inizio della prima partita. «oggi», «domani» si
+    /// contano dall'ora dell'app (`Orologio`), la stessa del conto alla rovescia.
+    static func quandoSiChiude(_ oggi: Oggi, adesso: Date = Orologio.adesso()) -> String {
         if let s = oggi.scadenza, !s.trimmingCharacters(in: .whitespaces).isEmpty, s != oggi.inizio, let m = oggi.minutiScadenza {
-            return "La formazione si chiude \(Quando.leggibile(s)) (\(m) min prima della prima partita)"
+            return "La formazione si chiude \(Quando.leggibile(s, adesso: adesso)) (\(m) min prima della prima partita)"
         }
-        return "Prima partita \(Quando.leggibile(oggi.chiusura)): la formazione va inserita prima"
+        return "Prima partita \(Quando.leggibile(oggi.chiusura, adesso: adesso)): la formazione va inserita prima"
     }
 
     /// A scadenza passata, come la web: «La formazione si è chiusa sab 31 14:50». La giornata è scritta subito sopra il conto,
-    /// con i due numeri, e non si ripete (#299).
-    static func siEChiusa(_ oggi: Oggi) -> String {
-        "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura))"
+    /// con i due numeri, e non si ripete (#299). «ieri» si conta dall'ora dell'app (`Orologio`), come il conto alla rovescia e il
+    /// widget: nella demo a giornata in corso «si è chiusa ieri 20:35» anche con la foto scattata di notte (#424).
+    static func siEChiusa(_ oggi: Oggi, adesso: Date = Orologio.adesso()) -> String {
+        "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: adesso))"
     }
 
     // MARK: novità
