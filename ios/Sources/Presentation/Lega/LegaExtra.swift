@@ -1,11 +1,13 @@
 import SwiftUI
 import PhotosUI
 
-/// Squadre della lega e loro rose; da qui si indica quale è la propria.
+/// Squadre della lega e loro rose; da qui si indica quale è la propria. Le parole sono quelle della web (`ParoleSquadre`).
 struct SquadreView: View {
     @StateObject private var vm: SquadreViewModel
     private let server: any ServerClient
     @Environment(\.funzioni) private var funzioni
+    /// Il foglio «Stemma e maglia» della mia squadra.
+    @State private var apriImmagini = false
 
     init(server: any ServerClient) {
         self.server = server
@@ -21,21 +23,25 @@ struct SquadreView: View {
                     Text(errore).font(.footnote).foregroundStyle(Color.attenzione)
                 }
                 if let s = vm.caricatore.dato {
-                    Section(titolo: "La tua squadra") {
-                        Picker("Squadra", selection: Binding(get: { vm.mia }, set: { nuova in Task { await vm.impostaMia(nuova) } })) {
-                            ForEach(s) { Text($0.nome).tag($0.nome) }
-                        }
-                        .frame(minHeight: 44)
-                    }
-                    Section(titolo: funzioni.acceso(Funzione.squadreAltrui) ? "Le squadre" : "La mia squadra e rosa") {
-                        ForEach(s.filter { funzioni.acceso(Funzione.squadreAltrui) || $0.mia == true }) { sq in
-                            NavigationLink(value: PaginaLega.rosa(sq.nome)) {
-                                RigaSquadra(squadra: sq)
+                    if s.isEmpty {
+                        Text(ParoleSquadre.importaPrima).foregroundStyle(Color.testoSecondario)
+                    } else {
+                        Section(titolo: ParoleSquadre.miaSquadra) { miaSquadra(s) }
+                        // senza le rose degli altri c'è solo la carta «La mia squadra», con «Vedi la rosa» (come la web)
+                        if funzioni.acceso(Funzione.squadreAltrui) {
+                            Section {
+                                ForEach(s) { sq in
+                                    NavigationLink(value: PaginaLega.rosa(sq.nome)) {
+                                        RigaSquadra(squadra: sq)
+                                    }
+                                    .swipeActions {
+                                        Button("È la mia") { Task { await vm.impostaMia(sq.nome) } }.tint(Color.verde)
+                                    }
+                                    .accessibilityAction(named: "È la mia squadra") { Task { await vm.impostaMia(sq.nome) } }
+                                }
+                            } footer: {
+                                Text(ParoleSquadre.toccaUnaSquadra).foregroundStyle(Color.testoSecondario)
                             }
-                            .swipeActions {
-                                Button("È la mia") { Task { await vm.impostaMia(sq.nome) } }.tint(Color.verde)
-                            }
-                            .accessibilityAction(named: "È la mia squadra") { Task { await vm.impostaMia(sq.nome) } }
                         }
                     }
                 } else if let e = vm.caricatore.errore {
@@ -47,36 +53,177 @@ struct SquadreView: View {
             .scrollContentBackground(.hidden)
             .avvisoDatiSalvati(vm.caricatore)
         }
-        .titoloPagina("Squadre")
+        .titoloPagina(ParoleSquadre.titoloPagina(squadreAltrui: funzioni.acceso(Funzione.squadreAltrui)))
         .ricercaGlobale()
         .task { await vm.carica() }
+        .sheet(isPresented: $apriImmagini) {
+            NavigationStack {
+                RosaView(nome: vm.mia, server: server, soloImmagini: true)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) { Button(ParoleSquadre.chiudi) { apriImmagini = false } }
+                    }
+            }
+        }
+    }
+
+    /// La carta «La mia squadra» (come la web): stemma e maglia, nome, giocatori e crediti, «Stemma e maglia», «Vedi la rosa»
+    /// e, dietro «Non è la tua squadra?», la scelta di un'altra. Senza una squadra scelta solo l'invito a sceglierla.
+    @ViewBuilder
+    private func miaSquadra(_ squadre: [SquadraLega]) -> some View {
+        if let mia = squadre.first(where: { $0.mia == true }) {
+            HStack(spacing: 12) {
+                StemmaSquadra(nome: mia.nome, dimensione: 44)
+                StemmaSquadra(nome: mia.nome, tipo: "maglia", dimensione: 44, nascondiSeMancante: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    NomeConPillola(nome: mia.nome) { EmptyView() }
+                    Text(ParoleSquadre.riepilogo(giocatori: mia.giocatori, crediti: mia.creditiResidui))
+                        .font(.caption).foregroundStyle(Color.testoSecondario)
+                }
+            }
+            .frame(minHeight: 44)
+            .accessibilityElement(children: .combine)
+            Button { apriImmagini = true } label: {
+                Label(ParoleSquadre.stemmaEMaglia, systemImage: "photo").frame(minHeight: 44)
+            }
+            NavigationLink(value: PaginaLega.rosa(mia.nome)) {
+                Label(ParoleSquadre.vediLaRosa, systemImage: "person.3").frame(minHeight: 44)
+            }
+            DisclosureGroup(ParoleSquadre.nonLaTua) { sceltaMia(squadre) }
+        } else {
+            Text(ParoleSquadre.scegliLaTua).foregroundStyle(Color.testoSecondario)
+            sceltaMia(squadre)
+        }
+    }
+
+    private func sceltaMia(_ squadre: [SquadraLega]) -> some View {
+        Picker(ParoleSquadre.tuaSquadra, selection: Binding(get: { vm.mia }, set: { nuova in Task { await vm.impostaMia(nuova) } })) {
+            ForEach(squadre) { Text($0.nome).tag($0.nome) }
+        }
+        .frame(minHeight: 44)
     }
 }
 
-/// Logica della rosa di una squadra: i giocatori e il caricamento di stemma e maglia.
+/// Un corpo `{nome, nuovo}` per `PUT /api/squadre/nome` (lo stesso della web).
+private struct CorpoNuovoNome: Encodable {
+    let nome: String
+    let nuovo: String
+}
+
+/// Della risposta di `PUT /api/squadre/nome` serve il nome come l'ha scritto il server (spazi sistemati).
+private struct EsitoNuovoNome: Decodable {
+    let nome: String
+}
+
+/// Logica della rosa di una squadra: i giocatori, il nome e i crediti che si possono cambiare, il caricamento di stemma e maglia.
 @MainActor
 final class RosaViewModel: ViewModelBase {
-    let nome: String
+    private let server: any ServerClient
+    private let immagini: Immagini
+    /// Il nome della squadra: cambia quando la si rinomina («Cambia il nome»).
+    @Published private(set) var nome: String
     let caricatore: Caricatore<Rosa>
     @Published var messaggio: String?
     @Published var inCorso = false
+    /// I due campi che si scrivono: partono dai valori del server (la rosa) e restano come li scrive l'utente finché non salva.
+    @Published var nuovoNome: String
+    @Published var crediti = ""
+    private var nomeDelServer: String
+    private var creditiDelServer = ""
 
-    init(nome: String, server: any ServerClient) {
+    init(nome: String, server: any ServerClient, immagini: Immagini) {
+        self.server = server
+        self.immagini = immagini
         self.nome = nome
-        caricatore = Caricatore<Rosa>("/api/rosa?squadra=\(IndirizzoServer.codifica(nome))", server: server)
+        nuovoNome = nome
+        nomeDelServer = nome
+        caricatore = Caricatore<Rosa>(Self.percorso(nome), server: server)
         super.init()
         osserva(caricatore)
     }
 
-    func carica() async { await caricatore.ricarica() }
+    private static func percorso(_ nome: String) -> String { "/api/rosa?squadra=\(IndirizzoServer.codifica(nome))" }
+
+    /// Rilegge la rosa. Un nome o dei crediti scritti e non ancora salvati restano; `forza` (cambiati da un altro dispositivo) riparte
+    /// da quelli del server.
+    func carica(forza: Bool = false) async {
+        await caricatore.ricarica()
+        if let r = caricatore.dato { allinea(a: r, forza: forza) }
+    }
+
+    private func allinea(a r: Rosa, forza: Bool) {
+        let creditiServer = r.creditiResidui.map { String(Formato.intero($0)) } ?? ""
+        if forza || nuovoNome == nomeDelServer { nuovoNome = nome }
+        if forza || crediti == creditiDelServer { crediti = creditiServer }
+        nomeDelServer = nome
+        creditiDelServer = creditiServer
+    }
+
+    /// «Cambia il nome» (`PUT /api/squadre/nome`, come la web): il nome nuovo senza spazi in più, da 1 a 60 caratteri. Il server
+    /// sposta con il nome rose, «la mia squadra», stemma e maglia; poi la rosa si rilegge con il nome nuovo.
+    func rinomina() async {
+        let nuovo = nuovoNome.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard !nuovo.isEmpty, nuovo.count <= 60 else {
+            messaggio = ParoleSquadre.nomeNonValido
+            Haptics.esito(riuscito: false)
+            return
+        }
+        guard nuovo != nome else {
+            nuovoNome = nuovo
+            return
+        }
+        inCorso = true
+        defer { inCorso = false }
+        do {
+            let risposta = try await server.corpoJSON("PUT", "/api/squadre/nome", CorpoNuovoNome(nome: nome, nuovo: nuovo))
+            let esito: EsitoNuovoNome? = try? Decodifica.decodifica(risposta)
+            let scelto = esito?.nome ?? nuovo
+            nome = scelto
+            nomeDelServer = scelto
+            nuovoNome = scelto
+            messaggio = ParoleSquadre.nomeSalvato
+            Haptics.esito(riuscito: true)
+            await immagini.caricaElenchi()          // stemma e maglia hanno seguito il nome
+            await caricatore.ricarica(Self.percorso(scelto))
+            if let r = caricatore.dato { allinea(a: r, forza: false) }
+        } catch {
+            let conflitto = (error as? ErroreApi)?.eConflitto == true
+            messaggio = error.localizedDescription
+            Haptics.esito(riuscito: false)
+            if conflitto { await carica(forza: true) }   // cambiata da un altro dispositivo: si rilegge e si mostrano i valori nuovi
+        }
+    }
+
+    /// «Salva» accanto ai crediti residui (`PUT /api/crediti`, come la web): un numero intero da 0 a 99999.
+    func salvaCrediti() async {
+        let testo = crediti.trimmingCharacters(in: .whitespaces)
+        guard testo.range(of: "^[0-9]{1,5}$", options: .regularExpression) != nil, let numero = Int(testo) else {
+            messaggio = ParoleSquadre.scriviCrediti
+            Haptics.esito(riuscito: false)
+            return
+        }
+        inCorso = true
+        defer { inCorso = false }
+        do {
+            _ = try await server.corpoJSON("PUT", "/api/crediti", CreditiSquadre(crediti: [nome: numero]))
+            crediti = testo
+            creditiDelServer = testo
+            messaggio = ParoleSquadre.creditiSalvati
+            Haptics.esito(riuscito: true)
+        } catch {
+            let conflitto = (error as? ErroreApi)?.eConflitto == true
+            messaggio = error.localizedDescription
+            Haptics.esito(riuscito: false)
+            if conflitto { await carica(forza: true) }
+        }
+    }
 
     /// Lo stemma o la maglia da un indirizzo web: lo scarica il server.
     func inviaDaIndirizzo(_ indirizzo: String, tipo: String) async {
         inCorso = true
         defer { inCorso = false }
         do {
-            try await Immagini.condivise.inviaDaIndirizzo(indirizzo, squadra: nome, tipo: tipo)
-            messaggio = tipo == "stemma" ? "Stemma aggiornato." : "Divisa aggiornata."
+            try await immagini.inviaDaIndirizzo(indirizzo, squadra: nome, tipo: tipo)
+            messaggio = ParoleSquadre.aggiornata(tipo: tipo)
             Haptics.esito(riuscito: true)
         } catch {
             messaggio = error.localizedDescription
@@ -89,8 +236,8 @@ final class RosaViewModel: ViewModelBase {
         inCorso = true
         defer { inCorso = false }
         do {
-            try await Immagini.condivise.invia(dati, squadra: nome, tipo: tipo)
-            messaggio = tipo == "stemma" ? "Stemma aggiornato." : "Divisa aggiornata."
+            try await immagini.invia(dati, squadra: nome, tipo: tipo)
+            messaggio = ParoleSquadre.aggiornata(tipo: tipo)
             Haptics.esito(riuscito: true)
         } catch {
             messaggio = error.localizedDescription
@@ -101,6 +248,8 @@ final class RosaViewModel: ViewModelBase {
 
 struct RosaView: View {
     let nome: String
+    /// Nel foglio «Stemma e maglia» di Squadre: solo le immagini della squadra, senza i giocatori.
+    let soloImmagini: Bool
     @StateObject private var vm: RosaViewModel
     @Environment(\.vediFormazioneDi) private var vediFormazione
     @Environment(\.funzioni) private var funzioni
@@ -113,67 +262,33 @@ struct RosaView: View {
     @State private var chiediIndirizzo = false
     @State private var indirizzoScritto = ""
 
-    init(nome: String, server: any ServerClient) {
+    init(nome: String, server: any ServerClient, soloImmagini: Bool = false) {
         self.nome = nome
-        _vm = StateObject(wrappedValue: RosaViewModel(nome: nome, server: server))
+        self.soloImmagini = soloImmagini
+        _vm = StateObject(wrappedValue: RosaViewModel(nome: nome, server: server, immagini: Immagini.condivise))
     }
 
     private let reparti = [("P", "Portieri"), ("D", "Difensori"), ("C", "Centrocampisti"), ("A", "Attaccanti")]
 
     var body: some View {
-        ZStack {
-            Sfondo()
-            ScrollViewReader { proxy in
-                List {
-                    // con il testo grande il nome della squadra intero, a capo: nella barra si taglierebbe (#276)
-                    TitoloNellaPagina()
-                    if let r = vm.caricatore.dato {
-                        intestazione(r)
-                        ForEach(reparti, id: \.0) { reparto in
-                            let giocatori = r.giocatori.filter { $0.ruolo == reparto.0 }
-                            Section(titolo: "\(reparto.1) (\(giocatori.count))") {
-                                ForEach(giocatori, id: \.ident) { RigaRosa(g: $0) }
-                            }
-                        }
-                        // Giocatori che il server non ha saputo collegare a un ruolo (non presenti nel listone).
-                        let sconosciuti = r.giocatori.filter { !["P", "D", "C", "A"].contains($0.ruolo ?? "") }
-                        if !sconosciuti.isEmpty {
-                            Section(titolo: "Non riconosciuti (da controllare)") {
-                                ForEach(sconosciuti, id: \.ident) { RigaRosa(g: $0) }
-                            }
-                        }
-                        if let agg = r.aggiornato {
-                            Text("Rose aggiornate il \(Quando.dataVersione(String(agg.prefix(10))))").font(.caption).foregroundStyle(Color.testoSecondario)
-                        }
-                        RigaFondoDemo()
-                    } else if let e = vm.caricatore.errore {
-                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                    } else {
-                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
-                    }
-                }
-                .scrollContentBackground(.hidden)
-                .avvisoDatiSalvati(vm.caricatore)
-                // fotografia `lega-rosa-fondo` (#425): la lista scorsa fino all'ultima riga, a dati arrivati
-                .demoInFondo()
-                .demoScorriA(FondoDemo.idRiga, proxy: proxy, schermate: ["lega-rosa"], inFondo: true, ancora: .bottom,
-                             pronto: vm.caricatore.dato != nil)
+        conTitolo(
+            ZStack {
+                Sfondo()
+                if soloImmagini { soloLeImmagini } else { rosaCompleta }
             }
-        }
-        .titoloPagina(nome, piccoloInBarra: true)
-        .ricercaGlobale()
-        .task { await vm.carica() }
+        )
+        .task { if !soloImmagini { await vm.carica() } }
         .fileImporter(isPresented: $sceglieFile, allowedContentTypes: [.image], allowsMultipleSelection: false) { risultato in
             Task { await caricaDaFile(risultato, tipo: tipoFile) }
         }
-        .alert("Indirizzo dell'immagine", isPresented: $chiediIndirizzo) {
+        .alert(ParoleSquadre.indirizzoDellImmagine, isPresented: $chiediIndirizzo) {
             TextField("https://…", text: $indirizzoScritto)
                 .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
-            Button("Usa come stemma") { Task { await vm.inviaDaIndirizzo(indirizzoScritto, tipo: "stemma") } }
-            Button("Usa come divisa") { Task { await vm.inviaDaIndirizzo(indirizzoScritto, tipo: "maglia") } }
-            Button("Annulla", role: .cancel) {}
+            Button(ParoleSquadre.usaCome(tipo: "stemma")) { Task { await vm.inviaDaIndirizzo(indirizzoScritto, tipo: "stemma") } }
+            Button(ParoleSquadre.usaCome(tipo: "maglia")) { Task { await vm.inviaDaIndirizzo(indirizzoScritto, tipo: "maglia") } }
+            Button(ParoleSquadre.annulla, role: .cancel) {}
         } message: {
-            Text("Solo indirizzi https di un'immagine (stemma o divisa della tua squadra).")
+            Text(ParoleSquadre.indirizzoImmagine)
         }
         .onChange(of: sceltaStemma) { _, nuovo in
             guard let nuovo else { return }
@@ -185,6 +300,62 @@ struct RosaView: View {
         }
     }
 
+    /// Il titolo: nella pagina il nome della squadra (intero, a capo: nella barra si taglierebbe, #276); nel foglio «Stemma e maglia».
+    @ViewBuilder
+    private func conTitolo<Contenuto: View>(_ contenuto: Contenuto) -> some View {
+        if soloImmagini {
+            contenuto.navigationTitle(ParoleSquadre.stemmaEMaglia).navigationBarTitleDisplayMode(.inline)
+        } else {
+            contenuto.titoloPagina(vm.nome, piccoloInBarra: true).ricercaGlobale()
+        }
+    }
+
+    private var soloLeImmagini: some View {
+        List {
+            Section {
+                righeImmagini
+                if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(Color.testoSecondario) }
+            }
+        }
+        .scrollContentBackground(.hidden)
+    }
+
+    private var rosaCompleta: some View {
+        ScrollViewReader { proxy in
+            List {
+                TitoloNellaPagina()
+                if let r = vm.caricatore.dato {
+                    intestazione(r)
+                    ForEach(reparti, id: \.0) { reparto in
+                        let giocatori = r.giocatori.filter { $0.ruolo == reparto.0 }
+                        Section(titolo: "\(reparto.1) (\(giocatori.count))") {
+                            ForEach(giocatori, id: \.ident) { RigaRosa(g: $0) }
+                        }
+                    }
+                    // Giocatori che il server non ha saputo collegare a un ruolo (non presenti nel listone).
+                    let sconosciuti = r.giocatori.filter { !["P", "D", "C", "A"].contains($0.ruolo ?? "") }
+                    if !sconosciuti.isEmpty {
+                        Section(titolo: ParoleSquadre.senzaRuolo) {
+                            ForEach(sconosciuti, id: \.ident) { RigaRosa(g: $0) }
+                        }
+                    }
+                    Text(ParoleSquadre.roseAggiornate(r.aggiornato)).font(.caption).foregroundStyle(Color.testoSecondario)
+                    RigaFondoDemo()
+                } else if let e = vm.caricatore.errore {
+                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                } else {
+                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .avvisoDatiSalvati(vm.caricatore)
+            // fotografia `lega-rosa-fondo` (#425): la lista scorsa fino all'ultima riga, a dati arrivati
+            .demoInFondo()
+            .demoScorriA(FondoDemo.idRiga, proxy: proxy, schermate: ["lega-rosa"], inFondo: true, ancora: .bottom,
+                         pronto: vm.caricatore.dato != nil)
+        }
+    }
+
     /// Un'immagine scelta con Files: letta, ridotta e mandata al server.
     private func caricaDaFile(_ risultato: Result<[URL], Error>, tipo: String) async {
         guard case .success(let urls) = risultato, let url = urls.first else {
@@ -193,7 +364,7 @@ struct RosaView: View {
         }
         guard let dati = try? await LetturaFile.leggi(url, massimo: 20 * 1024 * 1024), let immagine = UIImage(data: dati),
               let pronti = immagine.datiPerServer() else {
-            vm.messaggio = "Non riesco a leggere l'immagine. Salvala su questo iPhone (Files > Sul mio iPhone) e riprova."
+            vm.messaggio = ParoleSquadre.immagineDaFileNonLeggibile
             return
         }
         await vm.inviaImmagine(pronti, tipo: tipo)
@@ -203,53 +374,116 @@ struct RosaView: View {
     private func carica(_ voce: PhotosPickerItem, tipo: String) async {
         guard let dati = try? await voce.loadTransferable(type: Data.self), let immagine = UIImage(data: dati),
               let pronti = immagine.datiPerServer() else {
-            vm.messaggio = "Non riesco a leggere l'immagine."
+            vm.messaggio = ParoleSquadre.immagineNonLeggibile
             return
         }
         await vm.inviaImmagine(pronti, tipo: tipo)
     }
 
+    /// In testa alla rosa, nell'ordine della web: «Cambia il nome», i crediti residui, stemma e maglia, la formazione consigliata.
     @ViewBuilder
     private func intestazione(_ r: Rosa) -> some View {
         Section {
-            HStack(spacing: 16) {
-                slot("stemma", "Stemma", $sceltaStemma)
-                slot("maglia", "Divisa", $sceltaMaglia)
-            }
-            .frame(maxWidth: .infinity)
-            if let c = r.creditiResidui { Text("Crediti residui: \(Formato.intero(c))") }
+            cambiaIlNome
+            creditiResidui
+            righeImmagini
             if r.mia != true {
-                Button { vediFormazione(nome) } label: { Label("Formazione consigliata per loro", systemImage: "sportscourt").frame(minHeight: 44) }
-            }
-            Menu {
-                Button("Stemma da un file") { tipoFile = "stemma"; sceglieFile = true }
-                Button("Divisa da un file") { tipoFile = "maglia"; sceglieFile = true }
-            } label: {
-                Label("Da un file", systemImage: "folder").frame(minHeight: 44)
-            }
-            .disabled(vm.inCorso)
-            // Lo scarica il server: il server la blocca per tutti se l'amministratore la spegne, anche con «Mostra tutte» (qui uguale).
-            if funzioni.accesoDavvero(Funzione.immaginiWeb) {
-                Button { indirizzoScritto = ""; chiediIndirizzo = true } label: {
-                    Label("Da un indirizzo web", systemImage: "link").frame(minHeight: 44)
+                Button { vediFormazione(vm.nome) } label: {
+                    Label(ParoleSquadre.formazioneConsigliataPerLoro, systemImage: "sportscourt").frame(minHeight: 44)
                 }
-                .disabled(vm.inCorso)
-                Text("Dall'app o dal sito di Leghe tieni premuto sullo stemma o sulla divisa e scegli «Salva immagine» (oppure copia l'indirizzo dell'immagine), poi incollalo qui. Se l'indirizzo non è pubblico, salva l'immagine e caricala dalla libreria foto.")
-                    .font(.footnote).foregroundStyle(Color.testoSecondario)
-            } else {
-                Text("Per stemma e divisa scegli una foto dalla libreria o un file.").font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(Color.testoSecondario) }
             ForEach(r.avvisi ?? [], id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(Color.attenzione) }
         }
     }
 
-    private func slot(_ tipo: String, _ titolo: String, _ scelta: Binding<PhotosPickerItem?>) -> some View {
+    /// «Cambia il nome»: il campo con il nome di adesso, «Salva» e la spiegazione (`PUT /api/squadre/nome`).
+    private var cambiaIlNome: some View {
+        DisclosureGroup(ParoleSquadre.cambiaIlNome) {
+            TextField(ParoleSquadre.nuovoNome, text: $vm.nuovoNome)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit { Task { await vm.rinomina() } }
+                .frame(minHeight: 44)
+            Button(ParoleSquadre.salva) { Task { await vm.rinomina() } }
+                .frame(minHeight: 44)
+                .disabled(vm.inCorso)
+            Text(ParoleSquadre.aiutoNome).font(.footnote).foregroundStyle(Color.testoSecondario)
+        }
+    }
+
+    /// «Crediti residui» con il campo e «Salva» (`PUT /api/crediti`). Con il testo grande il campo passa sotto il nome.
+    private var creditiResidui: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                Text(ParoleSquadre.creditiResidui)
+                Spacer(minLength: 8)
+                campoCrediti
+                salvaCrediti
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text(ParoleSquadre.creditiResidui)
+                HStack(spacing: 12) {
+                    campoCrediti
+                    salvaCrediti
+                }
+            }
+        }
+        .frame(minHeight: 44)
+    }
+
+    private var campoCrediti: some View {
+        TextField("—", text: $vm.crediti)
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 96, minHeight: 44)
+            .accessibilityLabel(ParoleSquadre.creditiResidui)
+    }
+
+    private var salvaCrediti: some View {
+        Button(ParoleSquadre.salva) { Task { await vm.salvaCrediti() } }
+            // il campo e il pulsante stanno nella stessa riga di una lista: senza questo un tocco li attiva come uno solo
+            .buttonStyle(.borderless)
+            .frame(minHeight: 44)
+            .disabled(vm.inCorso)
+    }
+
+    /// Stemma e maglia: le due immagini con «Carica/Cambia», da un file, da un indirizzo web e le spiegazioni.
+    @ViewBuilder
+    private var righeImmagini: some View {
+        HStack(spacing: 16) {
+            slot("stemma", $sceltaStemma)
+            slot("maglia", $sceltaMaglia)
+        }
+        .frame(maxWidth: .infinity)
+        Menu {
+            Button(ParoleSquadre.daUnFile(tipo: "stemma")) { tipoFile = "stemma"; sceglieFile = true }
+            Button(ParoleSquadre.daUnFile(tipo: "maglia")) { tipoFile = "maglia"; sceglieFile = true }
+        } label: {
+            Label(ParoleSquadre.daUnFileMenu, systemImage: "folder").frame(minHeight: 44)
+        }
+        .disabled(vm.inCorso)
+        // Lo scarica il server: il server la blocca per tutti se l'amministratore la spegne, anche con «Mostra tutte» (qui uguale).
+        if funzioni.accesoDavvero(Funzione.immaginiWeb) {
+            Button { indirizzoScritto = ""; chiediIndirizzo = true } label: {
+                Label(ParoleSquadre.daUnIndirizzoWeb, systemImage: "link").frame(minHeight: 44)
+            }
+            .disabled(vm.inCorso)
+            Text(ParoleSquadre.aiutoIndirizzo)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
+        } else {
+            Text(ParoleSquadre.senzaIndirizzoWeb).font(.footnote).foregroundStyle(Color.testoSecondario)
+        }
+    }
+
+    private func slot(_ tipo: String, _ scelta: Binding<PhotosPickerItem?>) -> some View {
         VStack(spacing: 6) {
-            StemmaSquadra(nome: nome, tipo: tipo, dimensione: 72)
+            StemmaSquadra(nome: vm.nome, tipo: tipo, dimensione: 72)
             PhotosPicker(selection: scelta, matching: .images) {
                 // testo molto grande: niente icona e due righe intere («Carica / stemma»), invece di «Cari-ca stem…»
-                Label(immagini.haImmagine(nome, tipo: tipo) ? "Cambia \(titolo.lowercased())" : "Carica \(titolo.lowercased())", systemImage: "photo")
+                Label(immagini.haImmagine(vm.nome, tipo: tipo) ? ParoleSquadre.cambia(tipo: tipo) : ParoleSquadre.carica(tipo: tipo),
+                      systemImage: "photo")
                     .labelStyle(SoloTestoSeGrande(soloTesto: dimensioneTesto.isAccessibilitySize))
                     .font(.footnote.weight(.semibold))
                     .multilineTextAlignment(.center)
@@ -273,18 +507,31 @@ private struct SoloTestoSeGrande: LabelStyle {
     }
 }
 
+/// La pillola «Nuovo» accanto al titolo di una versione non ancora vista (come `etichetta` della web).
+private struct PillolaNuovo: View {
+    var body: some View {
+        Text(ParoleNovita.nuovo)
+            .font(.caption2.bold())
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(Color.verde.opacity(0.3), in: Capsule())
+    }
+}
+
+/// Le novità come la web (`vistaNovita`): ogni carta ha per titolo il titolo della versione e sotto «Versione 1.432 · data»; le
+/// versioni non ancora viste hanno «Nuovo»; si vedono le prime 10 (almeno tutte le nuove) e «Mostra le 42 versioni precedenti»
+/// apre tutte le altre. Le regole sono in `ParoleNovita`.
 struct NovitaView: View {
     @StateObject private var caricatore: Caricatore<[VoceNovita]>
     /// L'ultima versione guardata: Oggi smette di mostrare il banner «Novità nell'app».
     @AppStorage("novitaVista") private var novitaVista = ""
+    /// L'ultima versione guardata PRIMA di aprire la pagina: dice quali versioni sono «Nuovo». Si ricorda qui perché `novitaVista`
+    /// diventa subito l'ultima versione, e le etichette sparirebbero mentre si legge.
+    @State private var vistaPrima: String?
+    @State private var tutte = false
 
     init(server: any ServerClient) {
         _caricatore = StateObject(wrappedValue: Caricatore<[VoceNovita]>("/api/novita", server: server))
     }
-
-    /// Quante versioni si mostrano: sono centinaia, tutte insieme rallentavano l'apertura. «Mostra le precedenti» ne aggiunge altre.
-    static let perPagina = 20
-    @State private var mostrate = NovitaView.perPagina
 
     var body: some View {
         ZStack {
@@ -295,25 +542,16 @@ struct NovitaView: View {
                 LazyVStack(spacing: 14) {
                     TitoloNellaPagina()
                     if let n = caricatore.dato {
-                        ForEach(n.prefix(mostrate)) { v in
-                            Carta("Versione \(v.versione) · \(v.titolo)") {
-                                if let data = v.data { Text(Quando.dataVersione(data)).font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit() }
-                                ForEach(v.voci, id: \.self) { voce in
-                                    // il puntino sta a parte: le righe lunghe vanno a capo allineate al testo
-                                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                        Text("•")
-                                        Text(voce)
-                                    }
-                                    .font(.subheadline)
-                                    .accessibilityElement(children: .combine)
-                                }
-                            }
+                        let nuoveDa = ParoleNovita.nuoveDa(versioni: n.map(\.versione), ultimaVista: vistaPrima)
+                        let mostrate = tutte ? n.count : ParoleNovita.quanteVisibili(totale: n.count, nuoveDa: nuoveDa)
+                        ForEach(Array(n.prefix(mostrate).enumerated()), id: \.element.id) { indice, v in
+                            carta(v, nuova: indice < nuoveDa)
                         }
                         if n.count > mostrate {
                             Button {
-                                mostrate += Self.perPagina
+                                tutte = true
                             } label: {
-                                Text("Mostra le versioni precedenti (\(n.count - mostrate))").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                                Text(ParoleNovita.precedenti(n.count - mostrate)).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                             }
                             .buttonStyle(.bordered)
                         }
@@ -333,8 +571,31 @@ struct NovitaView: View {
         }
         .titoloPagina("Novità")
         .task {
+            if vistaPrima == nil { vistaPrima = novitaVista }
             await caricatore.ricarica()
             if let ultima = caricatore.dato?.first?.versione { novitaVista = ultima }
+        }
+    }
+
+    private func carta(_ v: VoceNovita, nuova: Bool) -> some View {
+        Carta {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(v.titolo).font(.headline).fixedSize(horizontal: false, vertical: true)
+                if nuova { PillolaNuovo() }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            Text(ParoleNovita.sotto(versione: v.versione, data: v.data))
+                .font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit()
+            ForEach(v.voci, id: \.self) { voce in
+                // il puntino sta a parte: le righe lunghe vanno a capo allineate al testo
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("•")
+                    Text(voce)
+                }
+                .font(.subheadline)
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 }

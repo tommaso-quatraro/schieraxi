@@ -43,7 +43,9 @@ struct SquadreComeLaWebTests {
         let unCredito = try Self.pezzo("lega.n_crediti.one", ["n": "1"])
         #expect(ParoleSquadre.riepilogo(giocatori: 1, crediti: 1) == "\(uno) · \(unCredito)")
         #expect(ParoleSquadre.riepilogo(giocatori: 24, crediti: nil) == giocatori)
-        #expect(ParoleSquadre.riepilogo(giocatori: nil, crediti: 0) == "\(try Self.pezzo("sd.n_giocatori.other", ["n": "0"])) · \(try Self.pezzo("lega.n_crediti.other", ["n": "0"]))")
+        let zeroGiocatori = try Self.pezzo("sd.n_giocatori.other", ["n": "0"])
+        let zeroCrediti = try Self.pezzo("lega.n_crediti.other", ["n": "0"])
+        #expect(ParoleSquadre.riepilogo(giocatori: nil, crediti: 0) == "\(zeroGiocatori) · \(zeroCrediti)")
     }
 
     // MARK: maglia, mai divisa

@@ -395,7 +395,7 @@ struct OsservatiView: View {
             if let messaggio = vm.messaggioOsservati { Text(messaggio).font(.footnote).foregroundStyle(Color.attenzione) }
             if let d = vm.osservati.dato {
                 if d.giocatori.isEmpty {
-                    VistaVuota(titolo: "Nessun giocatore seguito", icona: "star", descrizione: "Apri la scheda di un giocatore e tocca «Segui».")
+                    VistaVuota(titolo: ParoleSeguiti.nessunGiocatore, icona: "star")
                 }
                 ForEach(d.giocatori) { g in
                     Button { vm.apri(g.id) } label: {

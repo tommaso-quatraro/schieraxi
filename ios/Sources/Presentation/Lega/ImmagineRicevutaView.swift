@@ -6,7 +6,7 @@ struct ImmagineRicevuta: Identifiable, Equatable {
     var id: URL { url }
 }
 
-/// «Stemma o divisa? Di quale squadra?»: si sceglie e si carica (ridotta, come dalla libreria foto).
+/// «Stemma o maglia? Di quale squadra?»: si sceglie e si carica (ridotta, come dalla libreria foto).
 struct ImmagineRicevutaView: View {
     let ricevuta: ImmagineRicevuta
     @StateObject private var squadre: Caricatore<[SquadraLega]>
@@ -38,8 +38,8 @@ struct ImmagineRicevutaView: View {
                 }
                 Section(titolo: "Cos'è?") {
                     Picker("Tipo", selection: $tipo) {
-                        Text("Stemma").tag("stemma")
-                        Text("Divisa").tag("maglia")
+                        Text(ParoleSquadre.nome(tipo: "stemma")).tag("stemma")
+                        Text(ParoleSquadre.nome(tipo: "maglia")).tag("maglia")
                     }
                     .pickerStyle(.segmented)
                 }
@@ -58,7 +58,7 @@ struct ImmagineRicevutaView: View {
                     .disabled(immagine == nil || squadra.isEmpty || inCorso || fatto)
                 }
             }
-            .navigationTitle("Stemma o divisa")
+            .navigationTitle(ParoleSquadre.stemmaEMaglia)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } } }
             .task { await carica() }
