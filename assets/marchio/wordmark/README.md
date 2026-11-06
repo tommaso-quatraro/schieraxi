@@ -11,13 +11,14 @@ L'etichetta per chi usa lettori dello schermo è «Schiera undici» (sul sito «
   - Versione **grande** (`#wm` nel sito, sopra i ~40 px di altezza): un taglio obliquo sottile (circa 30 gradi) stacca il pezzo in cima.
   - Versione **compatta** (`#wm-c`: barra in alto, piè di pagina, app): la I è piena. Sotto i ~40 px il taglio la farebbe leggere «i».
 - Colori dell'accento: `#378000` sul chiaro, `#D4F34A` sullo scuro (variabile `--xi` del sito).
-- Sito e app **non caricano nessun font**: usano solo i tracciati già calcolati. Così la Content-Security-Policy del sito resta stretta
-  e non ci sono lampi di carattere sbagliato.
+- Il nome è sempre fatto di tracciati già calcolati, mai di testo in un font: si vede uguale ovunque, senza lampi di carattere
+  sbagliato. Dal 5/11/2026 (#355) il sito serve anche Archivo semi-stretto per titoli e numeri, dai suoi file (`sito/font/`, licenza
+  accanto): quello è il carattere del testo, non il nome.
 
-## Animazione d'apertura del sito
-«Schierali» diventa «SchieraXI»: la l esce ruotando, la i scivola a destra e il suo punto scende sul palo (diventa la cima della I),
-poi la X si disegna con due barre che si incrociano. Una volta sola, all'apertura. Con «Riduci movimento» si vede subito il nome finito.
-Classi `wm-*` in `sito/stile.css`.
+## Nel sito
+Dal 5/11/2026 il sito mostra il nome una volta sola, compatto (`#wm-c`), nella barra in alto: niente nome grande né animazione
+d'apertura. Lo sprite con `#wm` e `#wm-c` resta in ogni pagina perché `--sito` lo riscrive; la funzione che riscrive il nome
+animato (`eroe`) agisce solo se una pagina ha di nuovo `class="nome-gioco"`.
 
 ## File
 | File | Cosa |
@@ -39,7 +40,7 @@ python -m venv .venv-marchio
 - `--og` rifà `sito/img/og.png` (serve Chrome o Edge);
 - `--swift PERCORSO` scrive la View SwiftUI `WordmarkSchieraXI` (forme disegnate, niente font nell'app).
 
-Alla fine stampa i valori da copiare in `sito/stile.css` (proporzione e partenza dell'animazione) se cambiano. Dopo `--sito`
+Alla fine stampa i valori da copiare in `sito/stile.css` (la proporzione `aspect-ratio` di `.wm-svg`) se cambiano. Dopo `--sito`
 alza `VERSIONE` in `sito/sw.js`.
 
 ## Licenza

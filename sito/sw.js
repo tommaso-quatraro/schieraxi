@@ -3,12 +3,12 @@
 // - file di stile, script, immagini: subito dalla copia salvata e intanto si rinfrescano dalla rete
 //   (stale-while-revalidate, saltando la cache del browser); se il file è cambiato, la pagina propone di ricaricare.
 // Per forzare un rinnovo completo basta alzare VERSIONE.
-const VERSIONE = '12';
+const VERSIONE = '13';
 const CACHE = 'schieraxi-' + VERSIONE;
 const PRECACHE = [
   '/', '/en/', '/offline.html', '/stile.css', '/favicon.svg', '/icona-192.png', '/icona-512.png',
-  '/manifest.webmanifest', '/en/manifest.webmanifest',
-  '/js/tema.js', '/js/principale.js', '/js/effetti.js', '/js/logica.js', '/js/demo.js', '/js/installa.js',
+  '/manifest.webmanifest', '/en/manifest.webmanifest', '/font/archivo-semistretto.woff2',
+  '/js/tema.js', '/js/principale.js', '/js/installa.js',
 ];
 
 self.addEventListener('install', (e) => {

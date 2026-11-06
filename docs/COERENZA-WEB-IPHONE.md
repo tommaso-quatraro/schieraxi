@@ -145,15 +145,19 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 29 | Avvisi, Impostazioni, Account, Regole, Novità, Squadre e rose | – | – | da confrontare | da fare (I-confronto) |
 | 30 | Pillole dei giocatori, colore | quattro toni del server: «Probabile titolare», «Ha giocato», «Partita in corso» verdi | le stesse grigie (tre gravità, positivo come neutro) | web (`docs/DESIGN.md`, «Colori semantici») | fatto con #242 |
 | 31 | Pulsanti pieni, tema scuro | testo verde quasi nero sul verde chiaro (`--azione-testo`) | testo bianco sul verde chiaro, 1,8:1 | web (stessi due colori) | fatto con #248 |
-| 32 | Scelta del confronto, posto | «Titolare», «Panchina 2», «Non schierato» e l'etichetta del server | «Titolare», «Panchina 2», «Fuori» | web | iPhone da fare (#281): `ConfrontoViewModel.posto` |
-| 33 | Confronto, numeri negativi nelle barre | «−1,12» | «-1,12» (`Formato.decimali`) | web | iPhone da fare (#281): `ConfrontoView.valore` |
-| 34 | Campo, partita rinviata | «Rinviata» | «gioca 50%» | web | iPhone da fare (#284): `PedinaCampo` |
-| 35 | Oggi, carta del rinvio | «UDI vs MIL» | «UDI–MIL» | web | iPhone da fare (#284): `PartiteRinviate.partita` |
-| 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | iPhone da fare (#282): `GiocatoreWidget.descrizioneStato` |
+| 32 | Scelta del confronto, posto | «Titolare», «Panchina 2», «Non schierato» e l'etichetta del server | «Titolare», «Panchina 2», «Fuori» | web | fatto sull'iPhone (#295) |
+| 33 | Confronto, numeri negativi nelle barre | «−1,12» | «-1,12» (`Formato.decimali`) | web | fatto sull'iPhone (#295) |
+| 34 | Campo, partita rinviata e partita iniziata | «Rinviata»; a partita iniziata il fantavoto preso o lo stato («Partita in corso») | «gioca 50%», anche a partita iniziata | web (`esitoPedina`) | fatto sull'iPhone (#295, #283): `EsitoPedina` |
+| 35 | Oggi, carta del rinvio | «UDI vs MIL» | «UDI–MIL» | web | fatto sull'iPhone (#295) |
+| 36 | Widget, «Da controllare» | `etichetta` di `/api/widget` («Improbabile») | «In dubbio · gioca 2%» dal `tipo` | server | fatto sull'iPhone (#295) |
 | 37 | Formazione chiusa con la scelta salvata non più valida | «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» e la consigliata | uguale alla web | server (`stato_scelta` di `GET /api/formazione`) | web fatto (#319); iPhone fatto (#296, PR #318) |
 | 38 | Stato dei dati, registro delle giornate | carta «Registro delle giornate» dopo l'affidabilità: tre misure con media, soglia e «regge» / «non regge» / «servono ancora N giornate», poi «Giornate perse» con il motivo (`cartaRegistro`, testi `sd.reg_*`) | uguale; le giornate perse in una sezione loro della lista | web | fatto con #344 (test contro `testi.js` e sulla stessa risposta del server) |
 | 39 | Formazione, nota sotto il campo | righe del perché della scelta (prima solo gli incerti) | mancava (nemmeno gli incerti) | server (`perche_scelta` di `GET /api/formazione`) | web e iPhone fatti nella stessa PR (#356) |
-| 40 | Numero della giornata, ovunque (anche widget e avvisi) | «Giornata 8 · 11ª di Serie A» (`nomeGiornata`) | «Giornata 8» | sezione «Giornata: le forme» | web e server fatto (#299, PR #306); iPhone fatto (#312) |
+| 40 | Confronto, «Tutti i numeri» | «Atteso ponderato (con la probabilità di giocare)», «Quando gioca» a parole, «vs COM», «Normale» | «Punti attesi», «Parte titolare 75%», «COM casa», «Media» | web (`apriConfronto`) | fatto sull'iPhone (#293) |
+| 41 | Oggi, giornata finita, recuperi | «Manca il recupero di ATA–PAR» | uguale | «ATA vs PAR», come la carta del rinvio | web e poi iPhone (#310) |
+| 42 | Confronto, in cima ai due nomi | posto sotto il nome («Titolare», «Panchina 2», «Non schierato») | niente posto | web | fatto sull'iPhone (#311): pillola verde per «Titolare», grigia per gli altri, letta da VoiceOver; la partita «INT vs ROM» è la #302 |
+| 43 | Righe giocatore a partita iniziata (Formazione, Seguiti, Oggi) | a partita finita con il voto il fantavoto preso con sotto «fantavoto», altrimenti «–» (lo stato è nella pillola); niente «Perché questo numero». Partita rinviata come prima della partita | fantavoto atteso e «gioca 72%» anche dopo il voto | web (`voceGiocatore`, `esitoPartita`) | fatto sull'iPhone (#313): `EsitoPartita`, `RigaGiocatore`. Righe della rosa di una squadra (`valoreRosa` della web, `RigaRosa` dell'iPhone): iPhone ancora da fare |
+| 44 | Numero della giornata, ovunque (anche widget e avvisi) | «Giornata 8 · 11ª di Serie A» (`nomeGiornata`) | «Giornata 8» | sezione «Giornata: le forme» | web e server fatto (#299, PR #306); iPhone fatto (#312) |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

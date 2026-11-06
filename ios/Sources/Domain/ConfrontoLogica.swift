@@ -22,6 +22,16 @@ extension Confronto {
         return nil
     }
 
+    /// Il posto di un giocatore nella formazione del sistema, come lo manda il server: `posto_a` per il primo, `posto_b` per il
+    /// secondo («titolare», «panchina N», «fuori»), come `codicePosto` di `apriConfronto` della web. Mai ricalcolato qui. Nil senza
+    /// formazione (i due non sono della stessa rosa) o per un giocatore che non è uno dei due.
+    func codicePosto(di g: Giocatore) -> String? {
+        guard let f = formazione, giocatori.count == 2 else { return nil }
+        if g.id == giocatori[0].id { return f.postoA }
+        if g.id == giocatori[1].id { return f.postoB }
+        return nil
+    }
+
     /// Le cause che contano: quelle con un effetto visibile, più sempre «giocare».
     var fattoriVisibili: [FattoreConfronto] {
         fattori.filter { abs($0.effetto) >= 0.005 || $0.chiave == "giocare" }
@@ -36,6 +46,15 @@ extension Confronto {
     var differenzaPunti: Double? {
         guard giocatori.count == 2, let a = giocatori[0].puntiAttesi, let b = giocatori[1].puntiAttesi else { return nil }
         return a - b
+    }
+
+    /// Il valore di una causa sotto la sua barra, come la web (la percentuale, o `numMeno(v, 2)` di app.js): «−1,12» con il meno
+    /// tipografico (mai «-1,12»), niente «+» davanti ai positivi, «0,00» senza segno, «–» se manca (#281).
+    static func valoreFattore(_ f: FattoreConfronto, _ v: Double?) -> String {
+        guard let v else { return "–" }
+        if f.percentuale == true { return "\(Formato.percento(v))%" }
+        let testo = Formato.decimali(abs(v), cifre: 2)
+        return v < 0 && testo.contains(where: { ("1"..."9").contains($0) }) ? "\u{2212}" + testo : testo
     }
 
     /// A chi va una causa: 1 = al primo giocatore, -1 = al secondo, 0 = pari.

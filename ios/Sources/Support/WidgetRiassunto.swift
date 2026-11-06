@@ -21,6 +21,8 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
     // avvisi
     var tipo: String?
     var inFormazione: Bool?
+    /// L'etichetta pronta del server, la stessa di Oggi e della Formazione (negli `avvisi`, dal 5/11/2026; facoltativa).
+    var etichetta: EtichettaWidget?
     // la mia rosa e gli osservati
     var avversario: String?
     var inCasa: Bool?
@@ -37,10 +39,13 @@ struct GiocatoreWidget: Codable, Identifiable, Equatable {
     var quando: Date? { Quando.data(dataPartita) }
 
     /// Una riga breve SOLO se c'è qualcosa da guardare: «Infortunato», «Squalificato», «Non convocato», «In dubbio · gioca 55%», «Panchina».
-    /// Titolare (o nessuno stato) = stringa vuota. Il server manda `stato` = titolare | panchina | non_convocato | infortunato |
-    /// squalificato e il dubbio a parte (`dubbio`); negli avvisi c'è `tipo`. Stesso ordine di `Giocatore.etichette`: prima
-    /// l'assenza sicura, poi il dubbio, poi la panchina. Un valore nuovo si scrive leggibile («nuovo_stato» → «Nuovo stato»).
+    /// Titolare (o nessuno stato) = stringa vuota. Prima l'etichetta pronta del server, se c'è (gli avvisi: «Improbabile»,
+    /// «Probabile panchina», «In dubbio · gioca 55%», come Oggi e la Formazione, #282). Senza, il server manda `stato` = titolare |
+    /// panchina | non_convocato | infortunato | squalificato e il dubbio a parte (`dubbio`); negli avvisi c'è `tipo`. Stesso ordine di
+    /// `Giocatore.etichette`: prima l'assenza sicura, poi il dubbio, poi la panchina. Un valore nuovo si scrive leggibile
+    /// («nuovo_stato» → «Nuovo stato»).
     var descrizioneStato: String {
+        if let pronta = etichetta?.testoPronto { return pronta }
         let chiave = (stato ?? tipo ?? "").lowercased()
         switch chiave {
         case "infortunato": return "Infortunato"
@@ -75,6 +80,34 @@ extension GiocatoreWidget {
 
     /// Il cognome (l'ultima parola), per i campi stretti.
     var cognome: String { nome.split(separator: " ").last.map(String.init) ?? nome }
+}
+
+/// L'etichetta pronta del server negli `avvisi` di `/api/widget`: `{codice, testo, tono}`, la stessa di `avvisi[]` di `/api/oggi`
+/// (`fanta/etichette.py`). Il widget mostra `testo` com'è; `codice` serve solo per decidere. Tollerante: una forma strana vale
+/// «niente etichetta» e non rompe il riassunto.
+struct EtichettaWidget: Codable, Equatable {
+    var codice: String?
+    var testo: String?
+    var tono: String?
+
+    private enum CodingKeys: String, CodingKey { case codice, testo, tono }
+
+    init(codice: String? = nil, testo: String? = nil, tono: String? = nil) {
+        self.codice = codice; self.testo = testo; self.tono = tono
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try? decoder.container(keyedBy: CodingKeys.self)
+        codice = (try? c?.decodeIfPresent(String.self, forKey: .codice)) ?? nil
+        testo = (try? c?.decodeIfPresent(String.self, forKey: .testo)) ?? nil
+        tono = (try? c?.decodeIfPresent(String.self, forKey: .tono)) ?? nil
+    }
+
+    /// Il testo senza spazi ai bordi; nil se manca o è vuoto (allora valgono le parole calcolate qui).
+    var testoPronto: String? {
+        guard let t = testo?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return nil }
+        return t
+    }
 }
 
 struct FormazioneWidget: Codable, Equatable {
@@ -263,7 +296,9 @@ struct RiassuntoWidget: Decodable {
         let dubbi = daControllare
         return RiassuntoOggi(giornata: giornata, inizio: inizio, modulo: formazione?.modulo, punti: formazione?.puntiAttesi,
                              daControllare: dubbi.count, probabili: conProbabili, scaricatoIl: scaricatoIl,
-                             dubbi: dubbi.prefix(6).map { DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto) },
+                             dubbi: dubbi.prefix(6).map {
+                                 DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto, etichetta: $0.etichetta?.testoPronto)
+                             },
                              giornataLega: giornataLega, fase: faseGiornata)
     }
 

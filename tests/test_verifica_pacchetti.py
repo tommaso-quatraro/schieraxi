@@ -163,6 +163,59 @@ def test_esegui_completo_identico_alla_verifica_normale():
     assert "gol_per_fasce" in note
 
 
+def test_conti_attesi_a_mano():
+    # giornata 3: Bomber (1) segna su azione e su rigore, Mediano (3) niente ed esce prima; la Riserva (4) entra e resta senza voto
+    d = _dati([_riga(3, cid=4, nome="Riserva", voto_red=None, subentrato=1)])
+    d.voti.loc[(d.voti["calciatore_id"] == 3) & (d.voti["giornata"] == 3), "sostituito"] = 1
+    previsti = pd.DataFrame({"stagione": ST, "giornata": 3, "id": [1, 3, 4], "e_gol": [0.3, 0.1, 0.9],
+                             "e_rigori": [0.5, 0.0, 0.5], "e_assist": [0.2, 0.2, 0.9], "minuti": [95.0, 60.0, 20.0],
+                             "gol_attesi": [0.69, 0.10, 1.29]})
+    c = vp.conti_attesi(d, Regole(), previsti)
+    assert c["stagione"].tolist() == ["tutte", ST]
+    for _, r in c.iterrows():
+        assert r["casi"] == 2                                     # la Riserva, senza voto, non conta
+        assert r["azione_su_veri"] == pytest.approx(0.4)          # (0,3 + 0,1) / 1 gol su azione
+        assert r["rigori_su_veri"] == pytest.approx(0.5)          # 0,5 rigori attesi / 1 calciato
+        assert r["gol_su_veri"] == pytest.approx((0.4 + 0.39) / 2)  # gol con i rigori: 0,79 attesi / 2 veri
+        assert np.isnan(r["assist_su_veri"])                      # nessun assist vero: niente rapporto
+        assert r["minuti_attesi"] == pytest.approx(75.0)          # 95 conta 90
+        assert r["minuti_stimati"] == pytest.approx(80.5)         # 90 (tutta la partita) e 71 (uscito)
+
+
+def test_conti_attesi_rigore_sbagliato_e_calciato_ma_non_gol():
+    d = _dati()
+    d.voti.loc[(d.voti["calciatore_id"] == 3) & (d.voti["giornata"] == 3), "rig_sbagliati"] = 1
+    previsti = pd.DataFrame({"stagione": ST, "giornata": 3, "id": [1, 3], "e_gol": [0.3, 0.1], "e_rigori": [0.5, 0.0],
+                             "e_assist": [0.2, 0.2], "minuti": [90.0, 90.0], "gol_attesi": [0.69, 0.10]})
+    r = vp.conti_attesi(d, Regole(), previsti).set_index("stagione").loc["tutte"]
+    assert r["rigori_su_veri"] == pytest.approx(0.25)            # 0,5 attesi / 2 calciati (uno segnato, uno sbagliato)
+    assert r["gol_su_veri"] == pytest.approx(0.79 / 2)          # il rigore sbagliato non è un gol
+
+
+def test_tabella_con_i_conti_dei_gol_attesi():
+    t = pd.DataFrame({"stagione": [ST, ST], "quadratico_modello": [1.0, 1.0], "errore_modello": [0.9, 0.9],
+                      "brier": [0.1, 0.1]})
+    conti = pd.DataFrame({"stagione": ["tutte", ST], "casi": [10, 10], "gol_su_veri": [1.01, 1.02],
+                          "azione_su_veri": [1.0, 1.0], "rigori_su_veri": [0.42, 0.43], "assist_su_veri": [0.95, 0.96],
+                          "minuti_attesi": [65.0, 65.0], "minuti_stimati": [68.0, 68.0]})
+    tab = vp.tabella({"completo": t, "pacchetto_a": t}, None, {"completo": conti}).set_index(["scenario", "stagione"])
+    assert tab.loc[("completo", "tutte"), ["gol_su_veri", "rigori_su_veri", "assist_su_veri"]].tolist() == [1.01, 0.42, 0.95]
+    assert tab.loc[("completo", ST), ["gol_su_veri", "rigori_su_veri", "assist_su_veri"]].tolist() == [1.02, 0.43, 0.96]
+    assert tab.loc[("pacchetto_a", "tutte"), ["gol_su_veri", "rigori_su_veri", "assist_su_veri"]].isna().all()
+
+
+def test_confronto_con_i_conti_dei_gol_attesi():
+    righe = []
+    t, note = vp.confronto(_dati(), Regole(), Parametri(), [(ST, 3), (ST, 4)], None, 20,
+                           ("completo", "solo_fantacalcio", "pacchetto_a"), scrivi=righe.append)
+    t = t.set_index(["scenario", "stagione"])
+    for nome in ("completo", "solo_fantacalcio"):
+        assert np.isfinite(t.loc[(nome, "tutte"), ["gol_su_veri", "rigori_su_veri"]].astype(float)).all()
+        assert note[nome]["conti_attesi"].set_index("stagione").at["tutte", "casi"] == 6    # 3 giocatori con voto, 2 giornate
+    assert t.loc[("pacchetto_a", "tutte"), ["gol_su_veri", "rigori_su_veri", "assist_su_veri"]].isna().all()
+    assert any("Conti dei gol attesi" in r for r in righe)
+
+
 def test_confronto_con_solo_fantacalcio_e_gol_per_fasce():
     righe = []
     t, note = vp.confronto(_dati(), Regole(), Parametri(), [(ST, 3), (ST, 4)], None, 20,
