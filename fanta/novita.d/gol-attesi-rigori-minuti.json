@@ -1,0 +1,11 @@
+{
+  "titolo": "Gol attesi: rigori e minuti più vicini a quelli veri (prova interna)",
+  "voci": [
+    "Nessun cambiamento visibile: la prova interna dei gol attesi fatti solo con i voti di Fantacalcio.it ora conta meglio rigori e minuti giocati."
+  ],
+  "tecnico": [
+    "Issue #389, Fase B del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). modello.Parametri ha due interruttori nuovi, spenti di default: rigori_squadra (B1: la parte dei rigori della squadra che va al giocatore viene dai rigori calciati con memoria lunga, DECADIMENTO_RIGORI 0,98 a giornata e PESO_PREC_RIGORI 0,8 per la stagione prima, con qualunque squadra; parte = i suoi / (i suoi + quelli dei compagni di oggi pesati con p_storico), 0 a chi non ne ha mai calciati; funzione modello._rigori_divisi) e minuti_con_voto (B2: le prestazioni si limitano alle presenze con voto, così minuti a presenza, da titolare e da subentro, tassi per 90' e medie del ruolo guardano solo quelle). nostri.parametri li accende; nostri.VERSIONE = \"2\".",
+    "verifica --pacchetti completo,solo_fantacalcio (archivio di sviluppo, lega d'esempio, 300 simulazioni), solo_fantacalcio 2025-26 · 2026-27, prima → dopo: rigori_su_veri 0,417 · 0,251 → 0,656 · 0,765; gol_su_veri 0,857 · 0,694 → 0,934 · 0,764; assist_su_veri 0,863 · 0,805 → 0,917 · 0,862; minuti_attesi 65,3 · 64,9 → 68,2 · 68,0; rmse_vs_completo_pct +0,471 · +0,811 → +0,490 · +0,587; scarto_gol 0,020 · 0,070 → 0,028 · 0,104 (si chiude nella Fase C).",
+    "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+  ]
+}
