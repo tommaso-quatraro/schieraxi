@@ -70,9 +70,10 @@ def test_dopo_un_salvataggio_i_pannelli_rileggono_le_squadre():
     assert re.search(r"\blet squadre = \[\];", lega)                     # le squadre si possono rileggere
     m = re.search(r"const rileggiSquadre = async \(voce\) => \{(.*?)\n  \};", lega, re.S)
     assert m, "manca rileggiSquadre in vistaLega"
-    assert 'squadre = await api("/api/squadre")' in m.group(1) and "apriPannello(cfg, voce, false)" in m.group(1)
+    # la pagina si ridisegna solo se è ancora quella aperta (non se nel frattempo si è passati a un'altra voce)
+    assert 'squadre = await api("/api/squadre")' in m.group(1) and "if (voce && stato.legaVoce[ambito] === voce) apri(voce, false);" in m.group(1)
     # la mia squadra scelta, i crediti salvati, le rose importate: dopo ognuno si rileggono le squadre
-    collega = lega[lega.index("const collega = {"):lega.index("const voci = VOCI_LEGA")]
+    collega = lega[lega.index("const collega = {"):lega.index("const voci = vociLega(ambito)")]
     assert collega.count("rileggiSquadre(") >= 3
     for blocco in ('"/api/mia-squadra"', '"/api/crediti"'):
         dopo = collega[collega.index(blocco):]

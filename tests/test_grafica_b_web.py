@@ -453,8 +453,9 @@ def test_la_scelta_si_riconosce_anche_con_il_contrasto_elevato_di_windows():
     """Revisione di accessibilità della #405: con i colori forzati (contrasto elevato di Windows) il browser toglie il fondo lime e le
     ombre, quindi il bordo della voce scelta di un controllo segmentato (un'ombra interna) spariva e la scelta non si vedeva più. Lì la
     voce scelta ha un contorno vero nel colore di sistema della selezione. Moduli e stili hanno un bordo vero, che resta."""
+    # nello stesso blocco anche il ruolo scelto dell'Elenco e la voce aperta del menu di Squadra (tests/test_squadra_colonne_web.py)
     assert re.search(r"@media \(forced-colors: active\) \{\s*\.segmenti button\.attivo \{ outline: 2px solid Highlight; "
-                     r"outline-offset: -2px; \}\s*\}", SENZA_COMMENTI)
+                     r"outline-offset: -2px; \}", SENZA_COMMENTI)
     assert "border: 2px solid var(--testo)" in _corpo(".chip.attiva")
 
 

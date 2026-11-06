@@ -43,10 +43,13 @@ def test_le_voci_nascoste_dalla_dieta_hanno_la_loro_funzione():
     assert f["squadre"] == "" and f["regole"] == "" and f["scambi"] == ""            # il nucleo non si spegne
 
 
-def test_lega_riusa_il_componente_a_due_pannelli_delle_impostazioni():
+def test_squadra_e_altro_hanno_il_menu_e_la_pagina_le_impostazioni_i_loro_pannelli():
+    """Grafica B, PR 10 (spec C10): Squadra e Altro hanno il loro menu con la pagina accanto (da 1100 px, anche le pagine di Mercato),
+    le Impostazioni restano con il componente a due pannelli (da 768 px). Le voci e i loro contenuti sono quelli di prima."""
     imp = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
     assert "function montaPannelli(cfg)" in imp and "function apriPannello(cfg, id" in imp
-    assert "montaPannelli(cfg)" in _lega() and "montaPannelli(cfg)" in imp[: imp.index("function montaPannelli")]
+    assert "montaPannelli(cfg)" in imp[: imp.index("function montaPannelli")] and "montaPannelli(" not in _lega()
+    assert 'class="lega-colonne"' in _lega() and "menuLega(voci, scelta," in _lega()
     assert 'id="storico-movimenti"' in _lega() and "/api/movimenti?limite=20" in _lega()
 
 
