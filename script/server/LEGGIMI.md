@@ -62,6 +62,10 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
     (vale solo se la chiave manca: se c'è, le firme si controllano sempre).
   - Stato in `~/.cache/fantacalcio/`: `verificato` (ultimo commit con le firme a posto), `rifiutato` (versione da non riprovare).
   - Se una firma manca o non è fidata: non installa, scrive `rifiutato`, avviso «SchieraXI: aggiornamento bloccato» sul canale degli avvisi.
+- **Solo la storia di `main`** (dal 6/11/2026, #481): il commit da installare è la punta del ramo `main` di origin, letta con il nome
+  intero `refs/remotes/origin/main` (con `origin/main` scritto corto git sceglierebbe prima un tag o un ramo locale con lo stesso nome).
+  `verifica-firme.sh` controlla anche che il commit stia nella storia di quel ramo e discenda dall'ultimo verificato: se no rifiuta,
+  con il motivo nel log («non e' nella storia di main» oppure «storia riscritta»). Gli aggiornamenti normali non cambiano.
 - **Librerie**: quando cambia `requirements.txt` prepara un ambiente Python **nuovo** accanto a quello in uso (`~/fantacalcio/.venv.nuova`)
   con `pip install --require-hashes`: solo le versioni e i file con l'hash scritto lì. Solo se l'installazione riesce tutta scambia le
   cartelle (`.venv` diventa `.venv.precedente`, la nuova diventa `.venv`): l'ambiente in uso non resta mai a metà. Funziona perché
@@ -90,6 +94,7 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
 ### Casi limite
 - **Commit spinto a mano su `main`** (anche dal proprietario): rifiutato. Si guarda cosa contiene e, se va bene:
   `bash ~/fantacalcio/script/server/aggiorna-app.sh --fidati origin/main` (installa al giro dopo). Meglio: sempre PR, mai push diretti.
+  `--fidati origin/main` vuol dire sempre il ramo `main` di origin, anche se nel clone c'è un tag con lo stesso nome.
 - **PR aperte prima di questa modifica e unite dopo**: il loro giro di controlli usa ancora il vecchio `rilascia` (con `git push`), quindi il
   commit «Versione X» esce senza firma e il server lo rifiuta. Per questo la chiave si copia sul server solo quando quelle PR sono
   unite o ribasate (vedi «Accendere»). Se capita: controllare e `--fidati origin/main`.
