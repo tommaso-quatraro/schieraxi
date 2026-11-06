@@ -2553,9 +2553,10 @@ function togliPrefVecchie() { try { PREF_TOLTE.forEach(k => localStorage.removeI
 function applicaAspetto() {
   const a = leggiAspetto(), radice = document.documentElement;
   if (a.tema === "auto") delete radice.dataset.tema; else radice.dataset.tema = a.tema;
-  const scuro = a.tema === "scuro" || (a.tema === "auto" && !matchMedia("(prefers-color-scheme: light)").matches);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = scuro ? "#07100b" : "#eaf3ee";
+  // colore della barra del browser (le due righe di index.html): col tema automatico ognuna tiene il suo e sceglie il sistema
+  // (attributo media); con un tema scelto a mano tutte e due prendono il fondo di quel tema
+  const fondo = scuro => (scuro ? "#121513" : "#ffffff");
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.content = fondo(a.tema === "auto" ? m.media.includes("dark") : a.tema === "scuro"); });
   document.documentElement.style.zoom = a.testo === "1" ? "" : a.testo;      // vale per tutta l'app: testata, barra e pannelli compresi
   radice.dataset.densita = "compatta";
   segnaMovimento();
