@@ -1,0 +1,13 @@
+{
+  "righe": [
+    {
+      "id": 56,
+      "schermata": "Squadre e rose",
+      "web": "titolo «Squadre e rose»; carta «La mia squadra» con «Stemma e maglia», «Vedi la rosa», «Non è la tua squadra?»; elenco «Squadre e rose» con «Tocca una squadra per vedere la rosa.»; nella rosa «Cambia il nome», crediti modificabili, «Senza ruolo (da controllare)», «Rose aggiornate il 6 novembre 2026»; sempre «maglia»",
+      "iphone": "come la web: titolo «Squadre e rose» (senza le rose degli altri «La mia squadra e rosa»), carta «La mia squadra» con «Stemma e maglia», «Vedi la rosa», «Non è la tua squadra?», «Tocca una squadra per vedere la rosa.»; nella rosa «Cambia il nome» (`PUT /api/squadre/nome`), crediti modificabili, «Senza ruolo (da controllare)», «6 novembre 2026»; sempre «maglia» (`SquadreView`, `RosaView`, `ParoleSquadre` in `Lega/`, `ImmagineRicevutaView.swift`)",
+      "forma": "web",
+      "chi": "fatto sull'iPhone (#441): `SquadreComeLaWebTests`. Resta diverso: il foglio «Stemma e maglia» è della sola mia squadra (le altre si cambiano dalla loro rosa); sopra l'elenco non c'è un secondo titolo «Squadre e rose» (è già il titolo della pagina); la pillola accanto al nome dice «tua» e non «la tua» (`PillolaTua`)",
+      "stato": "fatto"
+    }
+  ]
+}

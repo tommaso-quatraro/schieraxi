@@ -1,0 +1,67 @@
+{
+  "righe": [
+    {
+      "id": 2,
+      "schermata": "Formazione, intestazione, testo e immagine da condividere",
+      "web": "«Giornata 10 · la tua scelta» (`f.giornata`)",
+      "iphone": "«Giornata 7 di lega (Serie A 10)»",
+      "forma": "sezione «Giornata: le forme»",
+      "chi": "fatto (rassegna 6/11): web `nomeGiornata`; iPhone `TempiLega.didascalia` con `NomeGiornata.intero` (`FormazioneView.intestazione`), `TestoFormazione.crea` e il titolo dell'immagine «Formazione · …» (`FormazioneViewModel`), #312. «· la tua scelta» con #437 (riga 52)",
+      "stato": "fatto"
+    },
+    {
+      "id": 9,
+      "schermata": "Formazione chiusa",
+      "web": "fascia «chiusa», sola lettura",
+      "iphone": "niente fascia, si può ancora salvare",
+      "forma": "web",
+      "chi": "fatto con #69 (sola lettura) e #290 (stessa frase)",
+      "stato": "fatto"
+    },
+    {
+      "id": 10,
+      "schermata": "Formazione, stato «salvata»",
+      "web": "sempre visibile",
+      "iphone": "mancava",
+      "forma": "web",
+      "chi": "fatto con #22",
+      "stato": "fatto"
+    },
+    {
+      "id": 37,
+      "schermata": "Formazione chiusa con la scelta salvata non più valida",
+      "web": "«Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» e la consigliata",
+      "iphone": "uguale alla web",
+      "forma": "server (`stato_scelta` di `GET /api/formazione`)",
+      "chi": "web fatto (#319); iPhone fatto (#296, PR #318)",
+      "stato": "fatto"
+    },
+    {
+      "id": 39,
+      "schermata": "Formazione, nota sotto il campo",
+      "web": "righe del perché della scelta (prima solo gli incerti)",
+      "iphone": "mancava (nemmeno gli incerti)",
+      "forma": "server (`perche_scelta` di `GET /api/formazione`)",
+      "chi": "web e iPhone fatti nella stessa PR (#356)",
+      "stato": "fatto"
+    },
+    {
+      "id": 47,
+      "schermata": "Formazione aperta con un anticipo già cominciato",
+      "web": "in «Modifica a mano» i `bloccati` non si sostituiscono né entrano, riga `formazione.bloccati`; rifiuto del server con la sua frase",
+      "iphone": "uguale alla web",
+      "forma": "server (`bloccati`, 400 `giocatore_bloccato`)",
+      "chi": "fatto con #373 (web e iPhone nella stessa PR; test contro `testi.js`)",
+      "stato": "fatto"
+    },
+    {
+      "id": 52,
+      "schermata": "Formazione, frasi",
+      "web": "intestazione «… · la tua scelta»; «Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono.»; «Entra il primo che può sostituire chi resta senza voto.»; «In ballottaggio con»; «Propone il 3-4-3.», «Modulo fissato a mano …», «Modificata a mano …»; «Tocca ✎ per sostituire un titolare …» o «Tocca ⇄ per confrontarlo …»; nella sostituzione «Giocatori dello stesso ruolo della tua rosa …» (testi `formazione.*`)",
+      "iphone": "con la tua scelta solo la giornata; «Probabili formazioni non ancora uscite: uso le presenze recenti.»; «In quest'ordine: entra il primo …»; «Ballottaggio · alternative vicine»; «Modulo proposto: 3-4-3»; «Tocca un titolare per sostituirlo …», ⇄ anche per sostituire (`FormazioneView.swift`, `TempiLega.didascalia`)",
+      "forma": "web",
+      "chi": "fatto con #437 tranne la frase della modifica a mano («Modificata a mano. Tocca un modulo o uno stile …»): issue #463. A giornata chiusa l'iPhone resta in sola lettura, senza ⇄ né «Tocca ⇄». Prova: `FormazioneComeLaWebTests` (frasi confrontate con `testi.js`)",
+      "stato": "da-fare"
+    }
+  ]
+}

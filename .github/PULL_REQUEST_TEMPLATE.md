@@ -9,9 +9,15 @@ Aree: <!-- cartelle o file toccati, separati da virgole (es. «fanta/web, tests,
 ## Come l'ho provato
 <!-- comandi e risultati; per le schermate, quali hai guardato e a che larghezza -->
 
+## Revisione
+<!-- Chi ha rivisto il ramo e con che esito, una riga per revisione, prima di togliere la bozza (fuori dalla bozza il job
+«ambito» la chiede; esenti le PR di soli documenti). Esempio:
+- revisore: nessun rilievo bloccante
+- /code-review: due rilievi minori, chiusi nel commit abc1234 -->
+
 ## «Fatto» (docs/METODO.md)
 - [ ] Test visto fallire prima della correzione e poi passare; suite intera verde (`python -m pytest -q`).
-- [ ] Revisione del ramo fatta (`/code-review`) e rilievi chiusi prima di togliere la bozza.
+- [ ] Revisione del ramo fatta (`/code-review`), rilievi chiusi e scritti in «Revisione» prima di togliere la bozza.
 - [ ] Schermate cambiate guardate davvero (web a 390, 768, 1024 e 1440 px, chiaro e scuro; iPhone: «Foto da fare: …»).
 - [ ] `docs/GUIDA-UTENTE.md` o `docs/API.md` aggiornati se cambia una schermata o una rotta.
 - [ ] Web e iPhone uguali (`docs/COERENZA-WEB-IPHONE.md`), oppure issue «coerenza: …» aperta.
