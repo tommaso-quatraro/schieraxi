@@ -50,10 +50,11 @@ pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate i
 4. **Statistiche**: `.venv/bin/python -m fanta aggiorna` (circa 1,5 minuti, una cinquantina di richieste: si fa una volta sola).
 5. **Registro delle giornate** (i numeri mostrati prima di ogni giornata, che non si riscaricano):
    `.venv/bin/python -m fanta.registro_copia importa dati/registro-giornate.json` → `Registro rimesso in .../dati/fanta.sqlite:
-   N giornate, M righe di giocatori, K righe dei numeri nostri e J righe delle misure dei numeri nostri nuove; 0 righe c'erano già e
-   sono rimaste com'erano.` Aggiunge solo le righe che mancano e non tocca il resto dell'archivio; con un file rovinato non scrive
-   niente. Controllo: lo stesso comando una seconda volta dà `0 giornate, 0 righe di giocatori, 0 righe dei numeri nostri e 0 righe
-   delle misure dei numeri nostri nuove`. Se `dati/registro-giornate.json` non c'è (copie fatte prima del 5/11/2026) il
+   N giornate, M righe di giocatori, K righe dei numeri nostri, J righe delle misure dei numeri nostri e T versioni della taratura
+   di «gioca N%» nuove; 0 righe c'erano già e sono rimaste com'erano.` Aggiunge solo le righe che mancano e non tocca il resto
+   dell'archivio; con un file rovinato non scrive niente. Controllo: lo stesso comando una seconda volta dà `0 giornate, 0 righe di
+   giocatori, 0 righe dei numeri nostri, 0 righe delle misure dei numeri nostri e 0 versioni della taratura di «gioca N%» nuove`.
+   Se `dati/registro-giornate.json` non c'è (copie fatte prima del 5/11/2026) il
    registro riparte vuoto. Le giornate salvate tra la notte della copia e il guasto sono perse: il registro non si rifà.
 6. **Diario**: `.venv/bin/python -m fanta affidabilita` (rimette nel diario le giornate chiuse dopo la copia; pochi secondi).
 7. **Controlli prima di aprire al pubblico**:

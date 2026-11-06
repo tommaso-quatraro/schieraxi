@@ -34,7 +34,8 @@ GIORNATE = [
     ("2026-27", 11, None, 0, 0, None, None, None, None, None, None, None, None, None, None, None, None, "servizio fermo"),
 ]
 ORDINE = {"registro_giocatori": "stagione, giornata, calciatore_id", "registro_giornate": "stagione, giornata"}
-SENZA_NOSTRI = {"registro_nostri": 0, "registro_i4": 0}          # tabelle dei numeri nostri: ci sono anche vuote
+# tabelle arrivate dopo (numeri nostri, taratura di «gioca N%»): ci sono anche vuote
+SENZA_NOSTRI = {"registro_nostri": 0, "registro_i4": 0, "taratura_probabili": 0}
 
 
 def _inserisci(db, tabella, righe):
@@ -227,9 +228,9 @@ def test_copia_notturna_porta_le_tabelle_nuove(tmp_path):
         db.executemany(f"INSERT INTO registro_i4 VALUES ({', '.join('?' * 15)})", I4)
         db.commit()
     assert registro_copia.esporta(vecchio, copia) == {"registro_giornate": 3, "registro_giocatori": 3, "registro_nostri": 2,
-                                                      "registro_i4": 2}
+                                                      "registro_i4": 2, "taratura_probabili": 0}
     assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (3, 0), "registro_giocatori": (3, 0),
-                                                    "registro_nostri": (2, 0), "registro_i4": (2, 0)}
+                                                    "registro_nostri": (2, 0), "registro_i4": (2, 0), "taratura_probabili": (0, 0)}
     with contextlib.closing(sqlite3.connect(nuovo)) as db:
         assert db.execute("SELECT * FROM registro_nostri ORDER BY calciatore_id").fetchall() == NOSTRI
         assert db.execute("SELECT * FROM registro_i4 ORDER BY giornata").fetchall() == I4
@@ -243,3 +244,26 @@ def test_comando_da_terminale_errore_in_una_riga_senza_traccia(tmp_path):
     r = _comando("importa", "--archivio", tmp_path / "nuovo.sqlite", tmp_path / "manca.json")
     assert r.returncode == 1
     assert r.stderr.startswith("Errore: ") and "Traceback" not in r.stderr
+
+
+TARATURA = [(1, "2026-12-01T13:00:00", "scartata", '{"titolare":[-1.2,4.1]}', '[["2026-27",9],["2026-27",10]]',
+             '[["2026-27",11],["2026-27",12]]', '{"nuova":{"brier":0.1316}}', "non_migliora", 0),
+            (2, "2026-12-08T13:00:00", "pronta", '{"titolare":[-1.0,4.0]}', '[["2026-27",9],["2026-27",10],["2026-27",11]]',
+             '[["2026-27",12],["2026-27",13]]', '{"nuova":{"brier":0.0912}}', "migliora", 0)]
+
+
+def test_copia_notturna_porta_la_taratura(tmp_path):
+    """La storia delle versioni della taratura di «gioca N%» (#379) viaggia con il registro, identica; rimetterla due volte non
+    cambia niente."""
+    vecchio, copia, nuovo = tmp_path / "vecchio.sqlite", tmp_path / "registro-giornate.json", tmp_path / "nuovo.sqlite"
+    with contextlib.closing(archivio.apri(vecchio)) as db:
+        _riempi(db)
+        db.executemany(f"INSERT INTO taratura_probabili VALUES ({', '.join('?' * 9)})", TARATURA)
+        db.commit()
+    assert registro_copia.esporta(vecchio, copia)["taratura_probabili"] == 2
+    assert registro_copia.importa(copia, nuovo)["taratura_probabili"] == (2, 0)
+    assert registro_copia.importa(copia, nuovo)["taratura_probabili"] == (0, 2)
+    with contextlib.closing(sqlite3.connect(nuovo)) as db:
+        assert db.execute("SELECT * FROM taratura_probabili ORDER BY versione").fetchall() == TARATURA
+    r = _comando("esporta", "--archivio", vecchio, copia)
+    assert r.returncode == 0 and "2 versioni della taratura" in r.stdout
