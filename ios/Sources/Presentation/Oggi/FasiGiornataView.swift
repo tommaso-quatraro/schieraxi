@@ -54,7 +54,11 @@ struct CartaGiornataInCorso: View {
 
     private func fatti(_ b: GiornataInCorso) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            NumeroCheSale(valore: b.puntiFatti ?? 0)
+            // Scritto subito giusto, come la web (#416): un numero che sale da 0 resta a metà in una foto o con l'app lenta.
+            // Quando arrivano voti nuovi le cifre scorrono (`numerico`).
+            Text(Formato.punti(b.puntiFatti))
+                .monospacedDigit()
+                .numerico(b.puntiFatti ?? 0)
                 .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -307,7 +311,8 @@ struct CartaRiepilogoGiornata: View {
 
     private func numeroFatti(_ fatti: Double) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            NumeroCheSale(valore: fatti)
+            Text(Formato.punti(fatti))   // subito giusto, come la web (#416)
+                .monospacedDigit()
                 .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

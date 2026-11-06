@@ -44,8 +44,14 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     a giornata finita li misura contro i mostrati (errore, punti sulle rose di I3, gol attesi per fasce) e avvisa il proprietario
     quando 8 giornate della stessa versione reggono; nostri non salvati o misura non riuscita 3 volte = «persa». Tabelle `registro_nostri` e
     `registro_i4` (tabelle a sé: gli archivi che ci sono le ricevono senza migrazione). Campo `registro_nostri` di `GET /api/stato-dati`.
-    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` in `dati/registro-giornate.json` per la
-    copia notturna (`script/server/backup-dati.sh`) e le rimette con `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
+    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` (e `taratura_probabili`) in
+    `dati/registro-giornate.json` per la copia notturna (`script/server/backup-dati.sh`) e le rimette con
+    `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
+    Taratura di «gioca N%» con le probabili (#379): `taratura_probabili.py`, comando `python -m fanta taratura-probabili [--prova]`,
+    ultimo passo di `script/server/aggiorna.sh`. Legge solo `registro_giocatori` (probabili di prima della scadenza), tara una
+    regressione logistica sulla metà più vecchia delle giornate e la prova sulla più recente contro la formula di partenza e i numeri
+    mostrati; esito nella tabella `taratura_probabili` (`pronta` o `scartata`). Oggi SOLO misura: il modello non la legge e nessun
+    numero mostrato cambia (piano `docs/superpowers/plans/2026-11-06-gioca-probabili-server.md`, PR B per l'accensione).
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`

@@ -50,11 +50,20 @@ pacchetto estratto, archivio nuovo; 7 giornate e 21 righe di giocatori tornate i
 4. **Statistiche**: `.venv/bin/python -m fanta aggiorna` (circa 1,5 minuti, una cinquantina di richieste: si fa una volta sola).
 5. **Registro delle giornate** (i numeri mostrati prima di ogni giornata, che non si riscaricano):
    `.venv/bin/python -m fanta.registro_copia importa dati/registro-giornate.json` → `Registro rimesso in .../dati/fanta.sqlite:
-   N giornate, M righe di giocatori, K righe dei numeri nostri e J righe delle misure dei numeri nostri nuove; 0 righe c'erano già e
-   sono rimaste com'erano.` Aggiunge solo le righe che mancano e non tocca il resto dell'archivio; con un file rovinato non scrive
-   niente. Controllo: lo stesso comando una seconda volta dà `0 giornate, 0 righe di giocatori, 0 righe dei numeri nostri e 0 righe
-   delle misure dei numeri nostri nuove`. Se `dati/registro-giornate.json` non c'è (copie fatte prima del 5/11/2026) il
+   N giornate, M righe di giocatori, K righe dei numeri nostri, J righe delle misure dei numeri nostri e T versioni della taratura
+   di «gioca N%» nuove; 0 righe c'erano già e sono rimaste com'erano.` Aggiunge solo le righe che mancano e non tocca il resto
+   dell'archivio; con un file rovinato non scrive niente. Controllo: lo stesso comando una seconda volta dà `0 giornate, 0 righe di
+   giocatori, 0 righe dei numeri nostri, 0 righe delle misure dei numeri nostri e 0 versioni della taratura di «gioca N%» nuove`.
+   Se `dati/registro-giornate.json` non c'è (copie fatte prima del 5/11/2026) il
    registro riparte vuoto. Le giornate salvate tra la notte della copia e il guasto sono perse: il registro non si rifà.
+   **Server tornato a una versione di prima della taratura di «gioca N%»** (#379, novembre 2026): le copie fatte dopo hanno anche
+   la tabella `taratura_probabili` e quella versione le rifiuta (`il file contiene tabelle che non sono del registro:
+   taratura_probabili`), senza scrivere niente. Prima si fa una copia del file senza la taratura (l'originale resta com'è), poi si
+   rimette quella:
+   `python3 -c "import json,sys; f=sys.argv[1]; d=json.load(open(f,encoding='utf-8')); d['tabelle'].pop('taratura_probabili',None); open(f+'.senza-taratura','w',encoding='utf-8').write(json.dumps(d,ensure_ascii=False))" dati/registro-giornate.json`
+   e poi `.venv/bin/python -m fanta.registro_copia importa dati/registro-giornate.json.senza-taratura`. La taratura non si perde:
+   tornati a una versione che la conosce, `python -m fanta taratura-probabili` la rifà dal registro con gli stessi numeri (o si
+   rimette il file originale, che aggiunge solo le righe che mancano).
 6. **Diario**: `.venv/bin/python -m fanta affidabilita` (rimette nel diario le giornate chiuse dopo la copia; pochi secondi).
 7. **Controlli prima di aprire al pubblico**:
    - `.venv/bin/python -m fanta sentinella --senza-invio` → `0 rotture` (rifà per ogni utente le risposte di Oggi, Formazione,
