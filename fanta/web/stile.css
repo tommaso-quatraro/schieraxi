@@ -432,7 +432,6 @@ details[open] > summary { margin-bottom: 8px; }
 .formazione-oggi > .cifre-oggi, .in-corso > .cifre-oggi { padding-top: 12px; border-top: 1px solid var(--filo); }
 .cifre-oggi > .cifra { min-width: 0; }
 .cifre-oggi > .cifra + .cifra { border-left: 1px solid var(--filo); padding-left: 16px; margin-left: 16px; }
-.cifra > .debole:first-child::first-letter { text-transform: uppercase; }   /* «punti attesi» accanto a «La tua formazione»: «Punti attesi» */
 .cifre-oggi .grande { margin: 2px 0; }
 .riepilogo-giornata > .cifre-oggi { margin-bottom: 8px; }
 .formazione-oggi .pulsanti { margin-top: 16px; }
