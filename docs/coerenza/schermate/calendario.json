@@ -1,0 +1,13 @@
+{
+  "righe": [
+    {
+      "id": 14,
+      "schermata": "Calendario e prossime partite (celle)",
+      "web": "«MIL» con sotto «fuori»",
+      "iphone": "uguale («MIL» e «fuori»)",
+      "forma": "«@ MIL» / «vs MIL»",
+      "chi": "web: fatto sulla web (pacchetto 1); iPhone fatto (rassegna 6/11): `ProssimePartite.cella` (`Support/ComponentiScheda.swift`), usata nella scheda e nel Calendario (`CalendarioView`)",
+      "stato": "fatto"
+    }
+  ]
+}

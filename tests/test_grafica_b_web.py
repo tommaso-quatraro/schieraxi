@@ -256,23 +256,56 @@ def test_guida_indietro_del_browser():
     assert "Indietro del browser torna alla schermata di prima" in guida
 
 
-def _voce_di_novita(file, titolo):
-    """La voce delle novità di una PR: prima del rilascio sta in `fanta/novita.d/<file>`, dopo il job `rilascia` la sposta in
-    `fanta/novita.json` (con il numero di versione) e toglie il file. Il test deve passare in tutti e due i momenti: leggendo solo il
-    file, `main` diventava rosso appena la PR era rilasciata (successo con la PR 4, versione 1.419)."""
-    percorso = RADICE / "fanta" / "novita.d" / file
-    if percorso.exists():
-        voce = json.loads(percorso.read_text(encoding="utf-8"))
-        assert voce["titolo"] == titolo, voce["titolo"]
-        return voce
-    rilasciate = json.loads((RADICE / "fanta" / "novita.json").read_text(encoding="utf-8"))
-    voce = next((v for v in rilasciate if v.get("titolo") == titolo), None)
-    assert voce, f"manca la novità «{titolo}» sia in novita.d sia in novita.json"
-    return voce
+def _voce_di_novita(titolo, radice=RADICE):
+    """La voce delle novità di una PR, cercata per titolo: prima del rilascio sta in un file di `fanta/novita.d/`, dopo il job
+    `rilascia` la sposta in `fanta/novita.json` (con il numero di versione) e toglie il file. Il test deve passare in tutti e
+    due i momenti: leggendo solo il file, `main` diventava rosso appena la PR era rilasciata (successo con la PR 4, versione
+    1.419). Per titolo e non per nome del file: lo controlla `script/ci/controlla_pr.py`.
+    Un file di novita.d che non è un JSON valido (di un'altra PR: lo segnala il suo controllo «versione») si salta, e se la
+    voce manca il messaggio lo nomina. Due voci con lo stesso titolo: il test lo dice invece di sceglierne una."""
+    trovate, saltati = [], []
+    for p in sorted((radice / "fanta" / "novita.d").glob("*.json")):
+        try:
+            dati = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            saltati.append(f"{p.name} ({e.__class__.__name__})")
+            continue
+        if isinstance(dati, dict) and dati.get("titolo") == titolo:
+            trovate.append(dati)
+    rilasciate = json.loads((radice / "fanta" / "novita.json").read_text(encoding="utf-8"))
+    trovate += [v for v in rilasciate if isinstance(v, dict) and v.get("titolo") == titolo]
+    assert trovate, (f"manca la novità «{titolo}» sia in novita.d sia in novita.json"
+                     + (f"; saltati perché non sono JSON validi: {', '.join(saltati)}" if saltati else ""))
+    assert len(trovate) == 1, f"{len(trovate)} novità con il titolo «{titolo}»: il titolo deve essere unico"
+    return trovate[0]
+
+
+def _radice_finta(tmp_path, in_attesa: dict[str, str], rilasciate: list[dict]):
+    (tmp_path / "fanta" / "novita.d").mkdir(parents=True)
+    for nome, testo in in_attesa.items():
+        (tmp_path / "fanta" / "novita.d" / nome).write_text(testo, encoding="utf-8")
+    (tmp_path / "fanta" / "novita.json").write_text(json.dumps(rilasciate), encoding="utf-8")
+    return tmp_path
+
+
+def test_voce_di_novita_non_cade_per_il_json_rotto_di_un_altra_pr(tmp_path):
+    radice = _radice_finta(tmp_path, {"rotta.json": '{"titolo": ', "mia.json": '{"titolo": "Mia", "voci": ["a"]}'},
+                           [{"versione": "1.1", "titolo": "Vecchia", "voci": ["b"]}])
+    assert _voce_di_novita("Mia", radice)["voci"] == ["a"]
+    assert _voce_di_novita("Vecchia", radice)["voci"] == ["b"]
+    with pytest.raises(AssertionError, match="rotta.json"):          # se manca, il messaggio dice quale file è saltato
+        _voce_di_novita("Nessuna", radice)
+
+
+def test_voce_di_novita_con_lo_stesso_titolo_due_volte(tmp_path):
+    radice = _radice_finta(tmp_path, {"mia.json": '{"titolo": "Doppia", "voci": ["a"]}'},
+                           [{"versione": "1.1", "titolo": "Doppia", "voci": ["b"]}])
+    with pytest.raises(AssertionError, match="2 novità"):
+        _voce_di_novita("Doppia", radice)
 
 
 def test_novita_della_testata():
-    voce = _voce_di_novita("testata-schede.json", "Nuova testata: schede in alto sugli schermi larghi e titolo in ogni schermata")
+    voce = _voce_di_novita("Nuova testata: schede in alto sugli schermi larghi e titolo in ogni schermata")
     assert len(voce["voci"]) >= 2
 
 
@@ -570,7 +603,7 @@ def test_novita_della_versione_una_riga_con_il_filo():
 
 
 def test_novita_delle_sezioni():
-    voce = _voce_di_novita("sezioni-pulsanti.json", "Meno riquadri: sezioni con un titolo e righe")
+    voce = _voce_di_novita("Meno riquadri: sezioni con un titolo e righe")
     assert len(voce["voci"]) >= 2
 
 
@@ -787,7 +820,7 @@ def test_differenza_ammessa_della_lineetta_scritta():
 
 
 def test_novita_della_riga_del_giocatore():
-    voce = _voce_di_novita("riga-giocatore.json", "Righe dei giocatori più basse, numeri in colonna")
+    voce = _voce_di_novita("Righe dei giocatori più basse, numeri in colonna")
     assert len(voce["voci"]) >= 2
 
 
@@ -935,7 +968,7 @@ def test_differenze_di_oggi_scritte_al_posto_giusto():
 
 
 def test_novita_di_oggi():
-    voce = _voce_di_novita("oggi-distinta.json", "Oggi più ordinata")
+    voce = _voce_di_novita("Oggi più ordinata")
     assert voce["voci"] and all("PC" not in v and "cqi" not in v for v in voce["voci"])
     k = re.search(r"font-size: min\(var\(--t-eroe\), (\d+)cqi\)", _corpo(".conto-testo .enorme")).group(1)
     for riga in voce.get("tecnico", []):                         # dopo il rilascio in novita.json può non esserci
@@ -1214,7 +1247,7 @@ def test_guida_ctrl_s_e_campo_della_formazione():
 
 
 def test_novita_della_formazione():
-    voce = _voce_di_novita("formazione-b.json", "Formazione più comoda")
+    voce = _voce_di_novita("Formazione più comoda")
     assert len(voce["voci"]) >= 3 and all("PC" not in v for v in voce["voci"])
 
 
@@ -1552,7 +1585,7 @@ def test_guida_pannello_e_ricerca_della_testata():
 
 
 def test_novita_del_pannello_affiancato():
-    voce = _voce_di_novita("pannello-affiancato.json", "Dettagli accanto alla pagina")
+    voce = _voce_di_novita("Dettagli accanto alla pagina")
     assert len(voce["voci"]) >= 2 and all("PC" not in v for v in voce["voci"])
 
 
@@ -1652,5 +1685,5 @@ def test_documenti_della_grafica_b_in_vigore():
 
 
 def test_novita_della_grafica_finita():
-    voce = _voce_di_novita("grafica-b-finita.json", "Grafica nuova anche in Impostazioni e accesso")
+    voce = _voce_di_novita("Grafica nuova anche in Impostazioni e accesso")
     assert len(voce["voci"]) >= 2 and all("PC" not in v and ".css" not in v and ".js" not in v for v in voce["voci"])

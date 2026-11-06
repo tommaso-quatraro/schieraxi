@@ -1,0 +1,13 @@
+{
+  "righe": [
+    {
+      "id": 1,
+      "schermata": "Testata (web)",
+      "web": "«Giornata 10» (`prossima_giornata`, Serie A)",
+      "iphone": "–",
+      "forma": "sezione «Giornata: le forme»",
+      "chi": "fatto: `nomeGiornata` di `fanta/web/app.js` (pacchetto 1, poi #299); l'iPhone non ha la testata",
+      "stato": "fatto"
+    }
+  ]
+}
