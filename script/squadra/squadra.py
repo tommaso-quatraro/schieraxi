@@ -8,9 +8,10 @@ import argparse
 import sys
 
 import comune
+import attendi
 import stato
 
-COMANDI = [stato]
+COMANDI = [stato, attendi]
 
 
 def parser() -> argparse.ArgumentParser:
