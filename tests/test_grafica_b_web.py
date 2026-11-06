@@ -448,3 +448,56 @@ def test_piu_etichette_nella_stessa_riga_separate_dal_punto():
     schermo non lo leggono (testo alternativo vuoto)."""
     punto = _corpo(".etichette > .etichetta:not(:last-child)::after")
     assert 'content: "\\a0·" / ""' in punto and "color: var(--testo-2)" in punto
+
+
+# ---------------------------------------------------------------- 5.4 avvisi, errori, stati vuoti, messaggio che passa
+AVVISI = ("errore", "attenzione", "verdetto", "nota-incerto", "banner-novita", "vuoto")
+
+
+def test_avvisi_con_filo_a_sinistra_nel_colore_del_significato():
+    assert re.search(r"\n\.errore \{[^}]*border-left: 3px solid var\(--rosso\)", CSS)
+    assert re.search(r"\n\.attenzione \{[^}]*border-left: 3px solid var\(--arancio\)", CSS)
+
+
+def test_avvisi_ed_errori_senza_riquadro_con_il_testo_pieno():
+    """Spec §8.12-8.13: un avviso è una riga con il filo di 3 px a sinistra nel colore del significato (rosso errore, arancio dubbio,
+    verde per il verdetto buono di uno scambio) e il testo nel colore del testo: l'errore non è più tutto rosso su un fondo rosa.
+    Niente fondo, bordo intorno né angoli, in nessuna variante; lo stato vuoto è una riga grigia allineata a sinistra. Il filo si vede
+    sul fondo della pagina (almeno 3:1) in chiaro e in scuro, ma non è l'unico segno: la frase dice già cosa succede."""
+    from tests.test_design_web import _colore, _contrasto_rgb, _temi
+    assert not _scatole(AVVISI)
+    assert "color: var(--testo)" in _corpo(".errore") and "color: var(--rosso)" not in _corpo(".errore")
+    for classe, colore in ((".verdetto.ok", "--verde"), (".verdetto.attenzione-lieve", "--arancio"), (".verdetto.no", "--rosso"),
+                           (".nota-incerto", "--arancio")):
+        assert f"border-left-color: var({colore})" in _corpo(classe) or f"border-left: 3px solid var({colore})" in _corpo(classe), classe
+    vuoto = _corpo(".vuoto")
+    assert "color: var(--testo-2)" in vuoto and "text-align: center" not in vuoto
+    for tema, v in _temi().items():
+        for colore in ("--rosso", "--arancio", "--verde"):
+            assert _contrasto_rgb(_colore(v[colore])[0], _colore(v["--sfondo"])[0]) >= 3, (tema, colore)
+
+
+def test_il_messaggio_che_passa_e_pieno_e_si_stacca_dalla_pagina():
+    """Spec §8.13: il messaggio che passa resta (in basso a sinistra sul PC), pieno, senza vetro. Con le superfici piene il «vetro» ha
+    il colore della pagina: nello scuro il messaggio non si staccava dal fondo. Ora ha i colori del testo e della pagina scambiati
+    (la scritta almeno 4,5:1), senza ombra né l'anello verde che si allargava; l'errore non ha più l'anello rosso intorno."""
+    from tests.test_design_web import _colore, _contrasto_rgb, _temi
+    corpo = _corpo(".avviso")
+    assert all(x in corpo for x in ("background: var(--testo)", "color: var(--sfondo)", "border: 0", "box-shadow: none",
+                                    "border-radius: var(--r-in)"))
+    for tema, v in _temi().items():
+        assert _contrasto_rgb(_colore(v["--sfondo"])[0], _colore(v["--testo"])[0]) >= 4.5, tema
+    assert "anello" not in _corpo(".avviso:not([hidden])")
+    assert "anello-rosso" not in SENZA_COMMENTI
+
+
+def test_novita_della_versione_una_riga_con_il_filo():
+    """Spec §9 (Oggi): il banner delle novità diventa una riga con il filo sopra e sotto («Novità della versione 1.402»), alta 44 px."""
+    corpo = _corpo(".banner-novita")
+    assert all(x in corpo for x in ("border: 0", "border-top: 1px solid var(--filo)", "border-bottom: 1px solid var(--filo)",
+                                    "min-height: 44px", "background: none"))
+
+
+def test_novita_delle_sezioni():
+    voce = json.loads(Path(RADICE / "fanta" / "novita.d" / "sezioni-pulsanti.json").read_text(encoding="utf-8"))
+    assert voce["titolo"] and len(voce["voci"]) >= 2

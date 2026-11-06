@@ -164,8 +164,10 @@ b, strong { font-weight: 650; }
 .grande { font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .enorme { font-family: var(--font-numeri); font-size: var(--t-eroe); font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .vuoto { color: var(--testo-2); padding: 12px 0; }      /* stato vuoto: una riga grigia che dice cosa manca, niente riquadro (spec §8.12) */
-.errore { background: color-mix(in srgb, var(--rosso) 16%, var(--vetro-carta)); color: var(--rosso); border: 1px solid color-mix(in srgb, var(--rosso) 40%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; }
-.attenzione { background: color-mix(in srgb, var(--arancio) 16%, var(--vetro-carta)); border: 1px solid color-mix(in srgb, var(--arancio) 36%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo); }
+/* Avvisi ed errori (spec §8.13): una riga con il filo di 3 px a sinistra nel colore del significato (rosso errore, arancio dubbio), il
+   testo nel colore del testo, niente fondo né riquadro. La frase dice già cosa succede: il colore non è l'unico segno */
+.errore { background: none; color: var(--testo); border: 0; border-left: 3px solid var(--rosso); padding: 6px 0 6px 12px; margin-bottom: 16px; }
+.attenzione { background: none; color: var(--testo); border: 0; border-left: 3px solid var(--arancio); padding: 6px 0 6px 12px; margin-bottom: 16px; font-size: var(--t-corpo); }
 .nota { font-size: var(--t-eti); color: var(--testo-2); text-align: center; margin: -6px 0 10px; }
 .positivo { color: var(--verde); } .negativo { color: var(--rosso); }
 
@@ -455,8 +457,7 @@ details[open] > summary { margin-bottom: 8px; }
 .nota-incerti { margin: -4px 4px 14px; font-size: var(--t-sec); line-height: 1.4; color: var(--testo-2); }
 .nota-incerti p { margin: 0 0 6px; }
 .nota-incerti b { color: var(--testo); }
-.nota-incerto { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; font-size: var(--t-sec); line-height: 1.4;
-  background: color-mix(in srgb, var(--arancio) 12%, transparent); }
+.nota-incerto { margin: 10px 0 0; padding: 4px 0 4px 12px; font-size: var(--t-sec); line-height: 1.4; border-left: 3px solid var(--arancio); }
 .stato-scelta .pulsanti { margin-top: 10px; gap: 8px; }
 .stato-scelta .bottone { padding-left: 14px; padding-right: 14px; }
 /* Oggi, riquadro «Partita rinviata»: quali partite, i miei coinvolti e cosa vale per questa giornata */
@@ -655,7 +656,9 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 /* avviso (toast) */
 .aggiornamento-pronto { position: fixed; left: 18px; right: 18px; top: calc(env(safe-area-inset-top) + 10px); z-index: 40; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 9px 14px; border-radius: 20px; font-size: var(--t-corpo); max-width: 420px; margin: 0 auto; }
 .aggiornamento-pronto button { border: 0; background: none; color: var(--azione); font: inherit; font-weight: 650; text-decoration: underline; padding: 4px 6px; cursor: pointer; }
-.avviso { position: fixed; left: 18px; right: 18px; bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 26px); z-index: 30; padding: 13px 16px; border-radius: 20px; font-size: var(--t-corpo); max-width: 540px; margin: 0 auto; }
+/* il messaggio che passa: pieno, con i colori del testo e della pagina scambiati, così si stacca dal fondo anche senza ombra (spec §8.13) */
+.avviso { position: fixed; left: 18px; right: 18px; bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 26px); z-index: 30; padding: 13px 16px; border-radius: var(--r-in);
+  background: var(--testo); color: var(--sfondo); border: 0; box-shadow: none; font-size: var(--t-corpo); font-weight: 550; max-width: 540px; margin: 0 auto; }
 
 /* caricamento a scheletro */
 .caricamento { text-align: center; padding: 22px 0 8px; color: var(--testo-2); }
@@ -805,8 +808,9 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .immagine-squadra .vuota { height: 84px; display: grid; place-items: center; color: var(--testo-2); font-size: var(--t-sec); }
 
 /* ---- novità ---- */
-.banner-novita { width: 100%; text-align: left; border: 1px solid var(--bordo); border-radius: var(--r-card); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo);
-  background: var(--vetro-carta); color: var(--testo); }
+/* «Novità della versione 1.402»: una riga con il filo sopra e sotto, come le altre (spec §9) */
+.banner-novita { display: block; width: 100%; min-height: 44px; text-align: left; border: 0; border-top: 1px solid var(--filo); border-bottom: 1px solid var(--filo); border-radius: 0;
+  padding: 12px 0; margin-bottom: 24px; font-size: var(--t-corpo); font-weight: 650; background: none; color: var(--testo); }
 /* Diario: una riga in testa, la spiegazione lunga dietro «Come si legge» (docs/STILE-SENZA-AI.md) */
 .come-diario > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .novita-voci { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: var(--t-corpo); }
@@ -1051,12 +1055,13 @@ body.pagina-testo { padding: 0 0 40px; }
 .riga-conguaglio .segmenti { margin: 0; min-width: 190px; flex: 1 1 190px; }
 .riga-conguaglio .campo-testo { width: 130px; flex: 0 0 130px; min-height: 52px; font-variant-numeric: tabular-nums; }
 .formato-scambio { font-weight: 650; color: var(--verde); }
-.verdetto { border-radius: var(--r-card); padding: 14px 16px; margin-bottom: 14px; border: 1px solid var(--bordo); background: var(--vetro-carta); }
+/* verdetto di un'offerta: come gli avvisi, il filo a sinistra nel colore del giudizio (verde conviene, arancio così così, rosso no) */
+.verdetto { padding: 4px 0 4px 12px; margin-bottom: 16px; border: 0; border-left: 3px solid var(--filo); background: none; }
 .verdetto h3 { margin: 0 0 4px; font-size: var(--t-card); text-transform: none; letter-spacing: -.01em; color: var(--testo); font-weight: 700; }
 .verdetto p { margin: 0; font-size: var(--t-corpo); }
-.verdetto.ok { background: color-mix(in srgb, var(--verde) 16%, var(--vetro-carta)); border-color: color-mix(in srgb, var(--verde) 45%, transparent); }
-.verdetto.attenzione-lieve { background: color-mix(in srgb, var(--arancio) 14%, var(--vetro-carta)); border-color: color-mix(in srgb, var(--arancio) 40%, transparent); }
-.verdetto.no { background: color-mix(in srgb, var(--rosso) 14%, var(--vetro-carta)); border-color: color-mix(in srgb, var(--rosso) 45%, transparent); }
+.verdetto.ok { border-left-color: var(--verde); }
+.verdetto.attenzione-lieve { border-left-color: var(--arancio); }
+.verdetto.no { border-left-color: var(--rosso); }
 .elenco-semplice { margin: 8px 0 0; padding-left: 20px; font-size: var(--t-corpo); }
 .elenco-semplice li { margin: 4px 0; }
 .confronto .riga-confronto { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; padding: 9px 0;
@@ -1093,11 +1098,11 @@ body.pagina-testo { padding: 0 0 40px; }
 .accesso-corpo:not(.primo) > :not(.accesso-marchio):not(.accesso-titolo) { animation: entra-breve .3s var(--uscita) both; }   /* passaggio Accedi / Registrati / Recupera */
 @keyframes errore { 0% { opacity: 0; transform: translateX(0); } 18% { opacity: 1; transform: translateX(calc(var(--mov, 1) * -7px)); } 38% { transform: translateX(calc(var(--mov, 1) * 6px)); }
   58% { transform: translateX(calc(var(--mov, 1) * -4px)); } 78% { transform: translateX(calc(var(--mov, 1) * 2px)); } 100% { opacity: 1; transform: none; } }
-@keyframes anello-rosso { from { box-shadow: 0 0 0 5px color-mix(in srgb, var(--rosso) 45%, transparent); } to { box-shadow: 0 0 0 0 transparent; } }
-.errore, [role="alert"] > .attenzione { animation: errore .42s var(--uscita) both, anello-rosso .8s ease-out both; }
+/* l'errore appena comparso si scuote appena (risponde al gesto); niente più anello rosso intorno: senza riquadro disegnava una scatola */
+.errore, [role="alert"] > .attenzione { animation: errore .42s var(--uscita) both; }
 @keyframes anello-verde { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--verde) 60%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
 button.salvato { animation: anello-verde .7s ease-out both; }
-.avviso:not([hidden]) { animation: entra .35s var(--molla) both, anello-verde .8s ease-out both; }
+.avviso:not([hidden]) { animation: entra .35s var(--molla) both; }
 .bottone[aria-busy="true"] { animation: pulsa 1s ease-in-out infinite; }
 
 /* ---------------------------------------------------------------- «Ridurre movimento» fatto bene (sistema o Lega > Aspetto > Animazioni > Ridotte)
