@@ -1,5 +1,6 @@
-"""Gol attesi «nostri», Fase B del piano 2026-11-06-gol-attesi-nostri: rigori con memoria lunga divisi nella squadra (B1) e
-minuti attesi «se prende voto» (B2). Dati inventati: due stagioni, due squadre."""
+"""Gol attesi «nostri», Fasi B e C del piano 2026-11-06-gol-attesi-nostri: rigori con memoria lunga divisi nella squadra (B1),
+minuti attesi «se prende voto» (B2), livello recente del campionato nella forza delle squadre (C1) e medie del ruolo pesate (C2).
+Dati inventati: due stagioni, due squadre."""
 from dataclasses import replace
 
 import pandas as pd
@@ -31,15 +32,15 @@ def _data(stagione: str, giornata: int) -> str:
     return f"{stagione[:4]}-09-{giornata:02d} 15:00"
 
 
-def _dati(eventi: dict | None = None) -> modello.Dati:
+def _dati(eventi: dict | None = None, giocate=GIOCATE, prossima=PROSSIMA) -> modello.Dati:
     """Alfa e beta si affrontano a ogni giornata. `eventi`: {(id, stagione, giornata): presenza() o None (non gioca)}; vale
     anche per la giornata da prevedere (dati «dal futuro»). Prestazioni come quelle di `nostri.dati`: niente xG né xA."""
     eventi = eventi or {}
     stagioni = [S1, S2]
     partite, voti, prest = [], [], []
-    for i, (st, g) in enumerate(GIOCATE + [PROSSIMA]):
+    for i, (st, g) in enumerate(list(giocate) + [prossima]):
         casa, trasf = ("alfa", "beta") if g % 2 else ("beta", "alfa")
-        giocata = (st, g) != PROSSIMA
+        giocata = (st, g) != prossima
         gol = {"alfa": 0, "beta": 0}
         for cid, (nome, ruolo, sq) in GIOCATORI.items():
             solito = presenza(gol=int(g % GOL_OGNI.get(cid, 99) == 0)) if giocata and cid in SEMPRE_IN_CAMPO else None
@@ -166,3 +167,67 @@ def test_solo_presenze_senza_voto_minuti_di_partenza():
     p = _p(d, _par(rigori_squadra=True, minuti_con_voto=True))
     assert p.at[6, "minuti"] == pytest.approx(82 * 0.7 + 25 * 0.3)     # 64,9: la formula di chi non ha presenze
     assert not p.loc[6, ["e_gol", "e_assist", "e_rigori", "mu", "p_gol", "minuti"]].isna().any()
+
+
+# ---------------------------------------------------------------- C1: forza delle squadre con il livello recente del campionato
+LUNGA = [(S2, g) for g in range(1, 26)]          # 25 giornate della nuova stagione
+DOPO_LUNGA = (S2, 26)
+
+
+def _salto(prima: int, dopo: int) -> modello.Dati:
+    """20 giornate in cui la Spalla (alfa) e la Punta (beta) segnano `prima` gol a testa, poi 5 con `dopo` (gli altri mai): le
+    partite finiscono `prima`-`prima`, poi `dopo`-`dopo`."""
+    eventi = {(cid, S2, g): presenza(gol=prima if g <= 20 else dopo) for g in range(1, 26) for cid in (2, 4)}
+    return _dati(eventi, LUNGA, DOPO_LUNGA)
+
+
+def test_livello_segue_i_gol_recenti():
+    d = _salto(1, 2)                                  # 2 gol a partita, poi 4
+    acceso = _par(decadimento_base=0.9)
+    f_acceso, f_spento = modello.forza_squadre(d, *DOPO_LUNGA, acceso), modello.forza_squadre(d, *DOPO_LUNGA, NOSTRI)
+    # gol a squadra a partita: base (memoria 0,98) = (4,71 × 2 + 14,72 × 1) / 19,43 = 1,242;
+    # recente (memoria 0,9) = (3,686 × 2 + 4,668 × 1) / 8,354 = 1,441; livello = 1,441 / 1,242
+    assert f_acceso.livello == pytest.approx(1.160, abs=0.002)
+    assert sum(f_acceso.gol_attesi("alfa", "beta")) == pytest.approx(1.160 * sum(f_spento.gol_attesi("alfa", "beta")),
+                                                                     rel=0.003)
+    # spento: livello 1 e i numeri di oggi (base × attacco × difesa × campo)
+    assert f_spento.livello == 1.0
+    a, dif = f_spento.attacco, f_spento.difesa
+    assert f_spento.gol_attesi("alfa", "beta")[0] == f_spento.base * a["alfa"] * dif["beta"] * f_spento.casa
+    # il livello arriva ai gol del giocatore
+    p_acceso = modello.previsioni(d, *DOPO_LUNGA, Regole(), acceso).set_index("id")
+    p_spento = modello.previsioni(d, *DOPO_LUNGA, Regole(), NOSTRI).set_index("id")
+    assert p_acceso.at[2, "e_gol"] == pytest.approx(1.160 * p_spento.at[2, "e_gol"], rel=0.01)
+
+
+@pytest.mark.parametrize("prima, dopo, atteso", [(1, 10, 1.25), (3, 0, 0.8)])
+def test_livello_limitato(prima, dopo, atteso):
+    # 2 gol a partita e poi 20 (livello 1,56 senza limite); 6 a partita e poi nessuno (0,74)
+    assert modello.forza_squadre(_salto(prima, dopo), *DOPO_LUNGA, _par(decadimento_base=0.9)).livello == atteso
+
+
+def test_livello_senza_dati_dal_futuro():
+    par = _par(decadimento_base=0.9)
+    oggi = modello.forza_squadre(_salto(1, 2), *DOPO_LUNGA, par)
+    futuro = _salto(1, 2)
+    # la giornata da prevedere già «giocata» 9-9, e una partita dopo, 9-9 anche lei
+    riga = futuro.partite["giornata"] == DOPO_LUNGA[1]
+    futuro.partite.loc[riga, ["gol_casa", "gol_trasferta", "giocata"]] = [9, 9, 1]
+    dopo = futuro.partite[riga].assign(id=999, giornata=27, data=_data(S2, 27), t=futuro.partite["t"].max() + 1)
+    futuro.partite = pd.concat([futuro.partite, dopo], ignore_index=True)
+    assert modello.forza_squadre(futuro, *DOPO_LUNGA, par) == oggi
+
+
+# ---------------------------------------------------------------- C2: medie del ruolo pesate come i giocatori
+def test_medie_del_ruolo_seguono_la_stagione():
+    # attaccanti sempre in campo 90' (Rigorista, Spalla, Punta). Stagione prima: solo 2 gol del Rigorista (3ª e 6ª) in 24
+    # presenze, 0,083 a 90'. Stagione nuova come al solito: Spalla 3ª, 6ª, 9ª e Punta 2ª, 4ª, ..., 10ª, 8 gol in 30, 0,267.
+    eventi = {(cid, S1, g): presenza(gol=int(cid == 1 and g in (3, 6))) for cid in (1, 2, 4) for g in range(1, 9)}
+    d = _dati(eventi)
+    acceso, spento = (modello.previsioni(d, *PROSSIMA, Regole(), par, giocatori=d.calciatori).set_index("id")
+                      for par in (_par(medie_ruolo_pesate=True), NOSTRI))
+    # la Riserva non ha mai giocato: parte dalla media del ruolo. Senza pesi 10 gol / 54 presenze da 90' = 0,185;
+    # con i pesi dei giocatori (0,92 a giornata, metà per la stagione prima) 5,416 / 19,624 = 0,276
+    assert acceso.at[6, "e_gol"] / spento.at[6, "e_gol"] == pytest.approx(0.2760 / 0.1852, rel=0.005)
+    # sale anche chi ha giocato, ma meno: accanto alle sue presenze la media del ruolo vale 16 presenze da 90' fittizie
+    assert 1 < acceso.at[4, "e_gol"] / spento.at[4, "e_gol"] < acceso.at[6, "e_gol"] / spento.at[6, "e_gol"]
