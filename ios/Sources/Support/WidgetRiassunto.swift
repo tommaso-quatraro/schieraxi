@@ -1044,6 +1044,9 @@ extension PuntiGiornata {
         let f = Formato.punti(fatti), a = Formato.punti(attesi), g = cortoConStagione
         return ["\(g): \(f) fatti, \(a) attesi", "\(g): \(f) su \(a)", "\(g): \(f) fatti"]
     }
+
+    /// La seconda riga del rettangolo della schermata di blocco.
+    var formeSottoTitolo: [String] { ["attesi \(Formato.punti(attesi)) · \(scarto.map { Formato.conSegno($0) } ?? "—")"] }
 }
 
 extension DubbioRiassunto {

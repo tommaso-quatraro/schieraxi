@@ -153,14 +153,15 @@ struct TestiCortiWidgetTests {
         #expect(g.riga(.completa).titolo == "38ª giornata di Serie A · 2025-26")
         #expect(g.riga(.cortaConFascia).titolo == "38ª di Serie A · 2025-26")
         #expect(g.riga(.corta).titolo == "38ª di Serie A · 2025-26")
-        #expect(g.formeTitolo == ["38ª di Serie A · 2025-26: 71,0 punti", "38ª di Serie A · 2025-26: 71,0"])
+        #expect(g.formeTitolo == ["38ª giornata di Serie A: 71,0 punti", "38ª di Serie A: 71,0 punti", "38ª di Serie A: 71,0"])
+        #expect(g.formeSottoTitolo.first?.hasPrefix("2025-26 · ") == true, "la stagione sulla seconda riga")
     }
 
     @Test("Rettangolo e riga in linea del widget «Punti»")
     func formeRettangoloERiga() {
         let g = PuntiGiornata(giornata: 10, giornataLega: 7, attesi: 66.0, fatti: 63.5)
         #expect(g.formeTitolo == ["Giornata 7 · 10ª di Serie A: 63,5 punti", "Giornata 7: 63,5 punti", "Giornata 7: 63,5"])
-        #expect(g.formeInLinea == ["Giornata 7: 63,5 fatti, 66,0 attesi", "Giornata 7: 63,5 su 66,0", "Giornata 7: 63,5 fatti"])
+        #expect(g.formeInLinea == ["Giornata 7: 63,5 fatti, 66,0 attesi", "Giornata 7: 63,5 su 66,0", "Giornata 7: 63,5 fatti", "Giornata 7: 63,5"])
     }
 
     @Test("Scambio in linea: se i nomi non entrano resta il guadagno")

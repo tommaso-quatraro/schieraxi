@@ -15,9 +15,10 @@ struct GiornataInteraWidgetTests {
     /// true se il testo contiene una sigla di giornata («G8», «G11»), la forma che nei widget non si usa più.
     private func haSigla(_ testo: String) -> Bool { testo.range(of: #"\bG\d+\b"#, options: .regularExpression) != nil }
 
-    /// Il riassunto di un `/api/widget` inventato nella fase data (`prima`, `in_corso`, `finita`).
-    private func riassunto(_ fase: String) throws -> RiassuntoOggi {
-        let corpo: String
+    /// Il riassunto di un `/api/widget` inventato nella fase data (`prima`, `in_corso`, `finita`). `conLega` false: senza
+    /// `giornata_lega`, come prima che la lega parta o con un server che non lo manda («11ª di Serie A»).
+    private func riassunto(_ fase: String, conLega: Bool = true) throws -> RiassuntoOggi {
+        var corpo: String
         switch fase {
         case "in_corso":
             corpo = #"""
@@ -33,9 +34,20 @@ struct GiornataInteraWidgetTests {
         default:
             corpo = #"{"giornata": 11, "giornata_lega": 8, "scadenza": "2026-10-31 14:50"}"#
         }
+        if !conLega {
+            corpo = corpo.replacingOccurrences(of: #""giornata_lega": \d+"#, with: #""giornata_lega": null"#, options: .regularExpression)
+        }
         let w = try #require(RiassuntoWidget.leggi(Data(corpo.utf8)))
         return try #require(w.comeRiassuntoOggi())
     }
+
+    /// Le giornate di «Attesi e fatti» da provare: con il numero della lega, senza (stagione in corso, server che non lo manda)
+    /// e di una stagione passata (agosto: l'ultima giornata è la 38 dell'anno prima).
+    private let giornatePunti = [
+        PuntiGiornata(giornata: 10, giornataLega: 7, attesi: 66, fatti: 63.5),
+        PuntiGiornata(giornata: 10, attesi: 66, fatti: 63.5),
+        PuntiGiornata(giornata: 38, stagione: "2025-26", attesi: 70, fatti: 71),
+    ]
 
     @Test("Nei cerchi della schermata di blocco «Giornata 8» (rimpicciolita se serve), mai «G8»")
     func cerchio() {
@@ -75,7 +87,39 @@ struct GiornataInteraWidgetTests {
         #expect(g.formeTestata.map(\.giornata) == ["Giornata 7", "Giornata 7"])
         #expect(PuntiGiornata.FormaRiga.allCases.map { g.riga($0).titolo } == ["Giornata 7 · 10ª di Serie A", "Giornata 7", "Giornata 7", "Giornata 7"])
         #expect(g.formeTitolo == ["Giornata 7 · 10ª di Serie A: 63,5 punti", "Giornata 7: 63,5 punti", "Giornata 7: 63,5"])
-        #expect(g.formeInLinea == ["Giornata 7: 63,5 fatti, 66,0 attesi", "Giornata 7: 63,5 su 66,0", "Giornata 7: 63,5 fatti"])
+        #expect(g.formeSottoTitolo == ["attesi 66,0 · −2,5"])
+        #expect(g.formeInLinea == ["Giornata 7: 63,5 fatti, 66,0 attesi", "Giornata 7: 63,5 su 66,0", "Giornata 7: 63,5 fatti", "Giornata 7: 63,5"])
+    }
+
+    @Test("Stagione passata (agosto): la stagione scende sulla seconda riga del rettangolo, e la riga in linea la perde per ultima")
+    func stagionePassata() {
+        let g = PuntiGiornata(giornata: 38, stagione: "2025-26", attesi: 70, fatti: 71)
+        #expect(g.formeTitolo == ["38ª giornata di Serie A: 71,0 punti", "38ª di Serie A: 71,0 punti", "38ª di Serie A: 71,0"])
+        #expect(g.formeSottoTitolo == ["2025-26 · attesi 70,0 · +1,0", "2025-26 · +1,0"], "la stagione non si perde mai")
+        #expect(g.formeInLinea == ["38ª di Serie A · 2025-26: 71,0 su 70,0", "38ª di Serie A · 2025-26: 71,0 fatti",
+                                   "38ª di Serie A: 71,0 fatti", "38ª di Serie A: 71,0"])
+        #expect(g.descrizione.contains("2025-26"), "VoiceOver dice la stagione anche quando la riga in linea non c'è")
+    }
+
+    /// Quanti caratteri entrano, al più, nell'ultima forma: titolo del rettangolo in `.headline` (circa 160 punti), seconda riga
+    /// in `.caption`, riga in linea della schermata di blocco (circa 25). Con o senza lega, stagione in corso o passata.
+    @Test("L'ultima forma del rettangolo e della riga in linea è abbastanza corta da entrare, anche senza il numero della lega")
+    func ultimeFormeCorte() throws {
+        for g in giornatePunti {
+            let titolo = try #require(g.formeTitolo.last), sotto = try #require(g.formeSottoTitolo.last)
+            let inLinea = try #require(g.formeInLinea.last)
+            #expect(titolo.count <= 20, "titolo del rettangolo troppo lungo: «\(titolo)»")
+            #expect(sotto.count <= 24, "seconda riga troppo lunga: «\(sotto)»")
+            #expect(inLinea.count <= 25, "riga in linea troppo lunga: «\(inLinea)»")
+        }
+        for conLega in [true, false] {
+            for fase in ["in_corso", "finita"] {
+                let r = try riassunto(fase, conLega: conLega)
+                let inLinea = try #require(r.formeRigaInLineaFase.last)
+                #expect(inLinea.count <= 25, "riga in linea della fase troppo lunga: «\(inLinea)»")
+                #expect(r.testaRettangoloFase.count <= 26, "prima riga del rettangolo troppo lunga: «\(r.testaRettangoloFase)»")
+            }
+        }
     }
 
     @Test("Nessuna forma dei widget ha la sigla della giornata, con e senza il numero della lega, in nessuna fase")
@@ -85,15 +129,16 @@ struct GiornataInteraWidgetTests {
             forme += ParoleWidget.formeGiornata(nome) + [ParoleWidget.giornataNelCerchio(nome)]
             forme += (ParoleWidget.testata(nome, soloCorta: false) + ParoleWidget.testata(nome, soloCorta: true)).map(\.giornata)
         }
-        for fase in ["prima", "in_corso", "finita"] {
-            let r = try riassunto(fase)
-            forme += r.formeGiornata + r.formeGiornataChiusa + (r.formeTitoloFase ?? []) + r.formeSottotitoloRettangolo
-            forme += [r.testaRettangoloFase] + r.formeRigaInLineaFase
+        for conLega in [true, false] {
+            for fase in ["prima", "in_corso", "finita"] {
+                let r = try riassunto(fase, conLega: conLega)
+                forme += r.formeGiornata + r.formeGiornataChiusa + (r.formeTitoloFase ?? []) + r.formeSottotitoloRettangolo
+                forme += [r.testaRettangoloFase] + r.formeRigaInLineaFase
+            }
         }
-        for g in [PuntiGiornata(giornata: 10, giornataLega: 7, attesi: 66, fatti: 63.5),
-                  PuntiGiornata(giornata: 38, stagione: "2025-26", attesi: 70, fatti: 71)] {
+        for g in giornatePunti {
             forme += g.formeTestata.map(\.giornata) + PuntiGiornata.FormaRiga.allCases.map { g.riga($0).titolo }
-            forme += g.formeTitolo + g.formeInLinea
+            forme += g.formeTitolo + g.formeSottoTitolo + g.formeInLinea
         }
         #expect(forme.count > 40, "troppe poche forme: il test non proverebbe niente")
         let conSigla = forme.filter { haSigla($0) }
