@@ -55,8 +55,9 @@ def _semplice(titolo: str) -> str:
 
 def _sezioni(corpo: str | None) -> dict[str, str]:
     """{titolo semplificato: testo} per ogni titolo Markdown («#» … «######») fuori dai commenti HTML.
-    Il testo di una sezione va fino al titolo successivo, di qualunque livello. Titoli ripetuti: vale il primo."""
-    testo = _senza_commenti(corpo)
+    Il testo di una sezione va fino al titolo successivo, di qualunque livello. Titoli ripetuti: vale il primo.
+    Un blocco di codice (```) conta come testo, e un «# commento» lì dentro non è un titolo."""
+    testo = re.sub(r"^[ \t]*(```|~~~).*?(?:^[ \t]*\1[ \t]*\r?$|\Z)", "[codice]", _senza_commenti(corpo), flags=re.S | re.M)
     teste = list(re.finditer(r"^[ \t]{0,3}#{1,6}[ \t]+(.+?)[ \t#]*\r?$", testo, re.M))
     sezioni: dict[str, str] = {}
     for i, m in enumerate(teste):

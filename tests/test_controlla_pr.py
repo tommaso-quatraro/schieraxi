@@ -59,6 +59,14 @@ def test_titoli_scritti_in_modo_diverso_valgono():
     assert pr.descrizione(corpo) == ([], [])
 
 
+def test_un_commento_dentro_un_blocco_di_codice_non_e_un_titolo():
+    corpo = BUONO.replace("## Revisione", "```sh\n# Revisione\npytest -q\n```\n\n## Revisione")
+    assert pr.descrizione(corpo) == ([], [])
+    assert pr.revisione(corpo, bozza=False, autore="persona", file=["fanta/server.py"]) == ([], [])
+    corpo = BUONO.replace("Le due app dicevano due cose diverse.", "```\n# solo codice\n```")
+    assert pr.descrizione(corpo) == ([], [])
+
+
 def test_issue_mancante_e_solo_un_avviso():
     corpo = BUONO.replace("Closes #440. Parte di #167.", "")
     problemi, avvisi = pr.descrizione(corpo)
