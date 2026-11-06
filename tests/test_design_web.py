@@ -108,9 +108,9 @@ def test_proposta_di_mercato_ha_il_guadagno_in_evidenza_e_nomi_protetti():
     consigli = APP[APP.index("async function tabConsigli"):APP.index("async function datiCalendario")]
     assert 'class="pr-num"' in consigli and "esc(p.entra.nome)" in consigli and "esc(p.esce.nome)" in consigli
     assert re.search(r"\.pr-num b \{[^}]*font-size: var\(--t-titolo\)", CSS)
-    # il nome grande quanto quello delle righe dei giocatori (grafica B: --t-valore è passato a 20 px per i numeri)
-    assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-card\)", CSS)
-    assert re.search(r"\.voce \.nome \{[^}]*font-size: var\(--t-card\)", CSS)
+    # il nome grande quanto quello delle righe dei giocatori (grafica B, spec §7.3 e §8.4: nomi dei giocatori a 15 px)
+    assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-corpo\)", CSS)
+    assert re.search(r"\.voce-g \.nome \{[^}]*font-size: var\(--t-corpo\)", CSS)
 
 
 def test_rimborso_e_costo_dei_cambi_si_vedono_senza_mouse():

@@ -317,9 +317,7 @@ function animaNumero(el, da, a, decimali = 1, durata = 650) {
 }
 
 // ---------------------------------------------------------------- pezzi grafici riusati
-const classeIndice = v => v >= 70 ? "alto" : v >= 40 ? "medio" : "basso";
-const anello = (v, grande = false) => `<span class="indice ${classeIndice(v)} ${grande ? "grande-i" : ""}" style="--v:${v}"><b>${v}</b>${grande ? "<small>INDICE</small>" : ""}</span>`;
-// Colori principali e secondari delle squadre (per il cerchio degli avatar).
+// Colori principali e secondari delle squadre (per il cerchio degli avatar e la lineetta davanti alla sigla).
 const COLORI_SQUADRA = { atalanta: ["#1e71b8", "#111827"], bologna: ["#a21c26", "#1a2f5a"], cagliari: ["#a51e36", "#0b2a52"], como: ["#1b5fa8", "#f3f4f6"],
   fiorentina: ["#6b2f9a", "#f3f4f6"], frosinone: ["#f2d200", "#1a56a6"], genoa: ["#b3202a", "#0a2a52"], inter: ["#0a58a8", "#111827"],
   juventus: ["#f3f4f6", "#111827"], lazio: ["#8fc4ea", "#f3f4f6"], lecce: ["#d8232a", "#f2d200"], milan: ["#d11f2f", "#111827"], monza: ["#d11f2f", "#f3f4f6"],
@@ -350,10 +348,10 @@ function avatar(x) {
 }
 // Un ritaglio che non arriva sparisce e lascia il volto illustrato (niente gestori in linea: la CSP non li permette).
 document.addEventListener("error", ev => { if (ev.target instanceof HTMLImageElement && ev.target.classList.contains("volto")) ev.target.remove(); }, true);
-// Avatar con l'anello dell'indice (0-100) e il numero in un cartellino.
+// Volto con l'indice (0-100) come numero piccolo e neutro nell'angolo (grafica B, spec §8.4: niente anello colorato attorno).
 function avatarIndice(x, grande = false) {
   if (x.indice == null) return `<span class="avatar-anello ${grande ? "grande-a" : ""}">${avatar(x)}</span>`;
-  return `<span class="avatar-anello ${classeIndice(x.indice)} ${grande ? "grande-a" : ""}" style="--v:${x.indice}">${avatar(x)}<b class="badge-indice" title="${esc(t("comune.indice_aria", { n: x.indice }))}" aria-label="${esc(t("comune.indice_aria", { n: x.indice }))}">${x.indice}</b></span>`;
+  return `<span class="avatar-anello ${grande ? "grande-a" : ""}">${avatar(x)}<b class="badge-indice" title="${esc(t("comune.indice_aria", { n: x.indice }))}" aria-label="${esc(t("comune.indice_aria", { n: x.indice }))}">${x.indice}</b></span>`;
 }
 const diffPill = d => `<span class="diff d${d}"><i></i>${NOMI_DIFF[d]}</span>`;
 const badgeRuolo = (r, piccolo = false) => `<span class="ruolo ${esc(r)}" ${piccolo ? `style="width:21px;height:21px;font-size:var(--t-eti);border-radius:7px;display:inline-grid;vertical-align:-4px;margin-right:6px"` : ""}>${esc(ruoloSigla(r))}</span>`;
@@ -437,10 +435,10 @@ function vocePedina(x, esito = null) {             // esito: esitoPedina(x), a p
   return [x.nome, t("formazione.voce_fv", { fv: num(x.fv_atteso) }), esito ? esito.testo : t(vocale ? "formazione.voce_gioca_v" : "formazione.voce_gioca", { p }),
     x.avversario ? t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv }) : ""].filter(Boolean).join(", ");
 }
-const SOGLIA_GIOCA = 0.7;                       // sotto: «⚠ gioca 45%» in una pillola arancio
 // A partita iniziata «gioca N%» non serve più (come la scheda, PARTITA_INIZIATA): a partita finita il fantavoto preso (`fv_preso`
 // del server) o lo stato («Voto in arrivo», «Senza voto»); in corso lo stato. Null = la partita non è cominciata: «gioca N%».
 const CODICI_PARTITA_INIZIATA = ["voto", "senza_voto", "voto_in_arrivo", "in_corso"];
+const SOGLIA_GIOCA = 0.7;                       // sotto: «⚠ gioca 45%» in una pillola arancio sul campo, arancio e in grassetto nelle righe
 function esitoPartita(x) {
   const codice = etichettaPronta(x) ? x.etichetta.codice : null;
   if (!PARTITA_INIZIATA.includes(x.stato_partita || "") && !CODICI_PARTITA_INIZIATA.includes(codice)) return null;
@@ -515,31 +513,63 @@ const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.
 const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;
 const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;
 
-function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false) {
-  const p = x.p_voto ?? 0;
-  const livello = p >= 0.7 ? "" : p >= 0.4 ? "media" : "bassa";
-  const esito = esitoPartita(x);
-  return `<li class="${conConfronto ? "con-confronto" : ""}"><button class="voce" data-giocatore="${x.id}">
+// ---- la riga di un giocatore (grafica B, spec §8.4-8.5): una sola, uguale in Formazione, Oggi, Rosa, Seguiti ed Elenco.
+// Volto da 36 px con l'indice come numero neutro, la lettera del ruolo grigia, il nome e sotto la partita (con la lineetta del club)
+// e le etichette; a destra «gioca N%» e il fantavoto atteso in due colonne della stessa larghezza in ogni riga (`--col-gioca`,
+// `--col-fv`): uno sopra l'altro quando la riga è stretta, una riga sola con la colonna della partita quando è larga (stile.css).
+// La lineetta nei colori sociali davanti alla sigla della squadra: decorativa (la sigla dice già la squadra), grigia per un club che
+// non conosciamo. Per ogni tema il primo colore del club, o il secondo se il primo quasi sparisce sul fondo (il bianco della Juventus
+// sul fondo chiaro, il verde scuro del Venezia su quello scuro). I colori vengono dalla nostra tabella, mai dai dati.
+const FONDI_LINEETTA = { chiaro: "#ffffff", scuro: "#121513" };           // --sfondo dei due temi (stile.css)
+const contrastoColori = (a, b) => { const [x, y] = [luminosita(a), luminosita(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+function lineetta(slug) {
+  const [c1, c2] = (Object.hasOwn(COLORI_SQUADRA, slug) && COLORI_SQUADRA[slug]) || ["#6b7280", "#6b7280"];
+  const sul = fondo => contrastoColori(c1, fondo) >= 1.6 || contrastoColori(c1, fondo) >= contrastoColori(c2, fondo) ? c1 : c2;
+  return `<i class="lineetta" style="--c:${sul(FONDI_LINEETTA.chiaro)};--c-scuro:${sul(FONDI_LINEETTA.scuro)}" aria-hidden="true"></i>`;
+}
+// I nomi delle colonne sopra un elenco di giocatori, allineati alle colonne delle righe; nascosti ai lettori di schermo, perché il
+// nome di ogni riga dice già tutto. `partita: false` senza la colonna della partita (Elenco dei giocatori); `ferma` resta sotto
+// la testata mentre si scorre (elenchi lunghi); `azione` lascia il posto del pulsante ⇄ o ✎ delle righe.
+function intestazioneColonne(opz = { partita: true }) {
+  return `<div class="intestazione-colonne${opz.ferma ? " ferma" : ""}${opz.azione ? " posto-azione" : ""}" aria-hidden="true"><div class="voce-g">`
+    + (opz.partita === false ? "" : `<span class="ic-partita">${t("mercato.partita")}</span>`)
+    + `<span class="ic-fv">${t("mercato.fantavoto_atteso")}</span></div></div>`;
+}
+
+// La riga sotto il nome in pezzi interi («NAP vs LAZ · sab 31 20:45 ·», «Real Esempio»): va a capo tra un pezzo e l'altro, mai
+// dentro il nome di una squadra; il «·» resta in fondo al pezzo prima. I pezzi sono già sicuri per l'HTML.
+const pezziRiga = pezzi => pezzi.filter(Boolean).map((p, i, tutti) => `<span class="nb">${p}${i < tutti.length - 1 ? " ·" : ""}</span>`).join(" ");
+
+// `extra`: un pezzo in più in fondo alla riga della partita, già sicuro per l'HTML (la squadra che lo ha, nei Seguiti).
+function voceGiocatore(x, posizione, conConfronto = false, sostituisci = false, extra = "") {
+  return `<li class="riga-gioc${conConfronto ? " con-confronto" : ""}"><button class="voce voce-g" data-giocatore="${x.id}">
     ${avatarIndice(x)}
-    <span><span class="nome">${posizione ? `<span class="debole">${posizione}. </span>` : ""}${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
-      <span class="dettaglio" style="display:block"><span class="diff d${x.difficolta}"><i></i></span> ${partitaBreve(x)}</span>
+    <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${posizione ? `<span class="debole">${posizione}. </span>` : ""}${esc(x.nome)}</span></span>
+      <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([partitaBreve(x), extra])}</span>
       <span class="etichette">${etichetteGiocatore(x)}</span></span>
-    ${esito ? `<span class="valore esito">${esito.fv != null ? `<b>${num(esito.fv)}</b><span class="debole piccolo">${t("mercato.fantavoto")}</span>`
-        : `<b class="debole" aria-hidden="true">–</b>`}</span>`
-      : `<span class="valore"><b${attrPerche(x)}>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p) })}</span>
-      <span class="barra-p ${livello}"><i style="width:${Math.round(p * 100)}%"></i></span></span>`}
+    ${numeriRiga(x, attrPerche(x))}
   </button>${conConfronto ? (sostituisci
     ? `<button class="confronta-mini" data-sostituisci="${x.id}" aria-label="${t("formazione.sostituisci_aria", { nome: esc(x.nome) })}" title="${t("formazione.sostituisci_con")}">✎</button>`
     : `<button class="confronta-mini" data-confronta="${x.id}" aria-label="${t("formazione.confronta_aria", { nome: esc(x.nome) })}" title="${t("formazione.confronta_con")}">⇄</button>`) : ""}</li>`;
 }
 
-// Il numero a destra di una riga della Rosa: come le righe della Formazione (voceGiocatore). Prima della partita fantavoto atteso
-// e «gioca N%»; a partita iniziata il fantavoto preso oppure «–» (lo stato è già nell'etichetta), mai «gioca N%».
+// I numeri a destra di una riga della Rosa: come le righe della Formazione (voceGiocatore). Senza previsione «non gioca» (o «?» per
+// un giocatore che non abbiamo riconosciuto) al posto di «gioca N%».
 function valoreRosa(p, x) {
-  if (!p) return `<span class="valore"><span class="debole piccolo">${x.id ? t("scambio.non_gioca") : "?"}</span></span>`;
+  if (!p) return `<span class="pv-g">${x.id ? t("scambio.non_gioca") : "?"}</span><span class="valore"></span>`;
+  return numeriRiga(p);
+}
+
+// Le due colonne dei numeri di ogni riga: «gioca N%» (grigio; sotto il 70% arancio e in grassetto) e il fantavoto atteso. A partita
+// iniziata il fantavoto preso con accanto «fantavoto», oppure «–» (lo stato è già nell'etichetta): mai «gioca N%».
+// `perche`: gli attributi che fanno aprire «Perché questo numero» dal numero (attrPerche, nella Formazione).
+function numeriRiga(p, perche = "") {
   const esito = esitoPartita(p);
-  if (esito) return `<span class="valore esito">${esito.fv != null ? `<b>${num(esito.fv)}</b><span class="debole piccolo">${t("mercato.fantavoto")}</span>` : `<b class="debole" aria-hidden="true">–</b>`}</span>`;
-  return `<span class="valore"><b>${num(p.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span></span>`;
+  if (esito) return esito.fv != null
+    ? `<span class="pv-g">${t("mercato.fantavoto")}</span><span class="valore esito"><b>${num(esito.fv)}</b></span>`
+    : `<span class="pv-g"></span><span class="valore esito"><b class="debole" aria-hidden="true">–</b></span>`;
+  const basso = Math.round((p.p_voto ?? 0) * 100) / 100 < SOGLIA_GIOCA;        // sul numero che si legge, come la pedina
+  return `<span class="pv-g${basso ? " basso" : ""}">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span><span class="valore"><b${perche}>${num(p.fv_atteso)}</b></span>`;
 }
 
 // ---------------------------------------------------------------- navigazione
@@ -924,7 +954,7 @@ function mostraOggi(o, opz = {}) {
     </div>`}
     </div><div class="col">
     ${inFormazione.length ? `<div class="carta"><h2>${t("oggi.da_controllare")}</h2><div class="debole piccolo">${t("oggi.giocatori_formazione_con")}</div>${inFormazione.map(riga).join("")}</div>` : ""}
-    ${migliori.length ? `<div class="carta"><h2>${t("oggi.tuoi_migliori_della")}</h2><ul class="elenco">${migliori.map(x => voceGiocatore({ ...x, indice: null })).join("")}</ul></div>` : ""}
+    ${migliori.length ? `<div class="carta"><h2>${t("oggi.tuoi_migliori_della")}</h2>${intestazioneColonne()}<ul class="elenco">${migliori.map(x => voceGiocatore({ ...x, indice: null })).join("")}</ul></div>` : ""}
     ${indisponibili.length ? `<div class="carta"><details><summary>${t("oggi.indisponibili", { n: indisponibili.length })}</summary>${indisponibili.map(riga).join("")}</details></div>` : ""}
     ${altri.length ? `<div class="carta"><h2>${t("oggi.diffidati")}</h2>${altri.map(riga).join("")}</div>` : ""}
     <div class="carta"><h2>${t("oggi.partite_del_turno")}</h2><div class="partite-turno">${partite || `<div class="vuoto">${t("oggi.nessuna_partita_calendario")}</div>`}</div>
@@ -1310,10 +1340,10 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
-        <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
+        ${intestazioneColonne({ partita: true, azione: true })}<ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
       <div class="carta"><h2>${t("scambi.panchina")}</h2><div class="debole piccolo">${t("formazione.quest_ordine_entra")}</div>
-        <ul class="elenco">${panchina.map((x, k) => voceGiocatore(x, k + 1, true)).join("")}</ul></div>
-      ${fuori.length || f.senza_dati.length ? `<div class="carta"><details><summary>${t("formazione.fuori_dalla", { n: fuori.length })}</summary><ul class="elenco">${fuori.map(x => voceGiocatore(x)).join("")}</ul>
+        ${intestazioneColonne({ partita: true, azione: true })}<ul class="elenco">${panchina.map((x, k) => voceGiocatore(x, k + 1, true)).join("")}</ul></div>
+      ${fuori.length || f.senza_dati.length ? `<div class="carta"><details><summary>${t("formazione.fuori_dalla", { n: fuori.length })}</summary>${fuori.length ? intestazioneColonne({ partita: true, azione: true }) : ""}<ul class="elenco posto-azione">${fuori.map(x => voceGiocatore(x)).join("")}</ul>
         ${f.senza_dati.length ? `<div class="debole piccolo">${t("formazione.senza_dati", { nomi: f.senza_dati.map(esc).join(", ") })}</div>` : ""}</details></div>` : ""}
       <p class="debole piccolo">${t("formazione.numero_sulla_maglia")}</p>
       </div></div>`,
@@ -1366,10 +1396,10 @@ function mostraFormazione(f, squadra, opz = {}) {
     ultimaScheda++;
     const dentro = new Set(sc.manuale.titolari);
     const candidati = Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id)).sort((a, b) => b.punti_attesi - a.punti_attesi);
-    const riga = x => `<li><button class="voce" data-entra="${x.id}">${avatarIndice(x)}
-      <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
+    const riga = x => `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${avatarIndice(x)}
+      <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
         <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || testoPosto("fuori")}</span></span></span>
-      <span class="valore"><b>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span></span></button></li>`;
+      <span class="pv-g largo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span><span class="valore"><b>${num(x.fv_atteso)}</b></span></button></li>`;
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
       <div class="debole piccolo">${t("formazione.giocatori_dello_stesso")}</div>
       <div class="carta" style="margin-top:12px">${candidati.length ? `<ul class="elenco">${candidati.map(riga).join("")}</ul>` : `<div class="debole">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`);
@@ -1460,10 +1490,13 @@ async function tabOsservati(dove, ok) {
     const r = await api("/api/osservati");
     if (!ok()) return;
     dove.innerHTML = introCompatta(tp("mercato.n_osservati", r.giocatori.length, { n: `<b>${r.giocatori.length}</b>` }), t("mercato.osservati_spiega")) +
-      (r.giocatori.length ? `<div class="carta"><ul class="elenco">${r.giocatori.map(x => x.assente
-        ? `<li><button class="voce" data-giocatore="${x.id}" style="grid-template-columns:1fr auto"><span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
-            <span class="dettaglio" style="display:block">${t("mercato.non_gioca_questa")}</span></span><span class="debole piccolo">${esc(x.proprietario || t("mercato.svincolato"))}</span></button></li>`
-        : voceGiocatore(x, null).replace("</li>", `<div class="debole piccolo" style="padding:0 0 10px 54px">${esc(x.proprietario || t("mercato.svincolato"))}</div></li>`)).join("")}</ul></div>`
+      // la squadra che ha il giocatore (o «Svincolato») in fondo alla riga della partita, come un pezzo della riga
+      (r.giocatori.length ? `<div class="carta">${intestazioneColonne()}<ul class="elenco">${r.giocatori.map(x => x.assente
+        ? `<li class="riga-gioc"><button class="voce voce-g" data-giocatore="${x.id}">${avatarIndice({ id: x.id, nome: x.nome, ruolo: x.ruolo, squadra: slugQualunque(x.squadra) })}
+            <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
+            <span class="dettaglio">${lineetta(slugQualunque(x.squadra))}${pezziRiga([siglaQualunque(x.squadra), t("mercato.non_gioca_questa"), esc(x.proprietario || t("mercato.svincolato"))])}</span></span>
+            <span class="pv-g"></span><span class="valore"></span></button></li>`
+        : voceGiocatore(x, null, false, false, esc(x.proprietario || t("mercato.svincolato")))).join("")}</ul></div>`
         : `<div class="carta vuoto">${t("mercato.nessun_giocatore_osservato")}</div>`);
   } catch (e) { if (ok()) dove.innerHTML = erroreVista(e); }
 }
@@ -1584,17 +1617,19 @@ function classificaLarga(liberi) {
   datiGiocatori[k] = { ...(d || {}), promessa };
   return promessa;
 }
-const siglaQualunque = s => SIGLE[s] ? sigla(s) : SIGLE[normNome(s)] ? sigla(normNome(s)) : sigla(s);
+// La squadra di Serie A di un giocatore come la tabella delle sigle la conosce: il listone a volte scrive il nome («Inter») invece della chiave.
+const slugQualunque = s => SIGLE[s] ? s : SIGLE[normNome(s)] ? normNome(s) : s;
+const siglaQualunque = s => sigla(slugQualunque(s));
 
 function rigaGiocatoreCompatta(x) {
-  const proprietario = x.proprietario === undefined ? "" : x.proprietario ? ` · ${esc(x.proprietario)}` : t("mercato.svincolato_riga");
-  const atteso = x.fv_atteso != null
-    ? `<b>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(x.p_voto) })}</span>`
-    : `<b class="debole">–</b><span class="debole piccolo">${x.in_classifica === false ? t("mercato.non_gioca") : "&nbsp;"}</span>`;
-  return `<li><button class="voce riga-g" data-giocatore="${x.id}">${avatarIndice(x)}
-    <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
-      <span class="dettaglio" style="display:block">${siglaQualunque(x.squadra)} · ${t("mercato.quot", { n: x.quotazione ?? "–" })}${proprietario}</span></span>
-    <span class="valore">${atteso}</span></button></li>`;
+  // la squadra che lo ha, o «svincolato» (la chiave porta già il « · » davanti: qui lo mette pezziRiga)
+  const proprietario = x.proprietario === undefined ? "" : x.proprietario ? esc(x.proprietario) : t("mercato.svincolato_riga").replace(/^ · /, "");
+  const numeri = x.fv_atteso != null ? numeriRiga(x)
+    : `<span class="pv-g">${x.in_classifica === false ? t("mercato.non_gioca") : ""}</span><span class="valore"><b class="debole">–</b></span>`;
+  return `<li class="riga-gioc"><button class="voce voce-g riga-g" data-giocatore="${x.id}">${avatarIndice(x)}
+    <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
+      <span class="dettaglio">${lineetta(slugQualunque(x.squadra))}${pezziRiga([siglaQualunque(x.squadra), t("mercato.quot", { n: x.quotazione ?? "–" }), proprietario])}</span></span>
+    ${numeri}</button></li>`;
 }
 
 function tabGiocatori(dove, ok) {
@@ -1607,7 +1642,7 @@ function tabGiocatori(dove, ok) {
       ${stato.confronto ? `<div class="attenzione" style="margin-top:12px">${t("mercato.scegli_giocatore_confrontare")} <b>${esc(stato.confronto.nome)}</b>
         <button class="bottone secondario" id="annulla-confronto" style="padding:4px 12px;min-height:44px;margin-left:6px">${t("mercato.annulla")}</button></div>` : ""}
     </div>
-    <div class="carta"><div class="intestazione-elenco"><span>${t("mercato.giocatori")}</span><span>${t("mercato.voto_atteso")}</span></div><ul class="elenco" id="risultati"><li class="caricamento">${t("comune.carico")}</li></ul></div></div>`;
+    <div class="carta">${intestazioneColonne({ partita: false })}<ul class="elenco" id="risultati"><li class="caricamento">${t("comune.carico")}</li></ul></div></div>`;
   const campo = $("#cerca"), lista = $("#risultati");
   let righe = null, errore_ = null;
   const disegna = async () => {
@@ -1833,10 +1868,10 @@ function apriScelta(id) {
   ultimaScheda++;     // una scheda ancora in caricamento non deve sovrascrivere questa lista
   const altri = Object.values(f.schede).filter(x => x.id !== id)
     .sort((a, b) => (a.ruolo === base.ruolo ? 0 : 1) - (b.ruolo === base.ruolo ? 0 : 1) || b.punti_attesi - a.punti_attesi);
-  const riga = x => `<li><button class="voce" data-scegli-confronto="${x.id}">${avatarIndice(x)}
-    <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
+  const riga = x => `<li class="riga-gioc"><button class="voce voce-g" data-scegli-confronto="${x.id}">${avatarIndice(x)}
+    <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
       <span class="etichette">${pillTitolarita(x)}<span class="etichetta ${inTitolari(x.id) ? "" : "neutra"}">${postoInFormazione(x.id)}</span></span></span>
-    <span class="valore"><b>${num(x.fv_atteso)}</b><span class="debole piccolo">${t("giocatore.gioca", { p: perc(x.p_voto) })}</span></span></button></li>`;
+    ${numeriRiga({ p_voto: x.p_voto, fv_atteso: x.fv_atteso })}</button></li>`;      // sempre il fantavoto atteso: si sceglie con chi confrontarlo
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("mercato.confronta_nome", { nome: esc(base.nome) })}</h2>
     <div class="debole piccolo">${t("mercato.con_chi_vuoi")}</div>
     <div class="carta" style="margin-top:12px"><ul class="elenco">${altri.map(riga).join("")}</ul></div>`);
@@ -2442,15 +2477,20 @@ async function vistaRosa(nome) {
     const r = await api("/api/rosa" + (nome ? `?squadra=${encodeURIComponent(nome)}` : ""));
     if (!ancoraValida(mia)) return;
     const senzaRuolo = r.giocatori.filter(x => !NOMI_RUOLO[x.ruolo]);
+    let conIntestazione = false;                    // i nomi delle colonne una volta sola, sotto il titolo del primo ruolo
     const gruppi = ["P", "D", "C", "A", "?"].map(ruolo => {
       const g = ruolo === "?" ? senzaRuolo : r.giocatori.filter(x => x.ruolo === ruolo);
       if (ruolo === "?" && !g.length) return "";
-      return `<h3>${NOMI_RUOLO[ruolo] || t("scambio.senza_ruolo")} (${g.length})</h3><ul class="elenco">${g.map(x => {
-        const p = x.previsione;
-        return `<li><button class="voce" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
-          ${p ? avatarIndice(p) : badgeRuolo(x.ruolo || "?")}
-          <span><span class="nome">${esc(x.nome)}</span> <span class="dettaglio">${sigla(x.squadra)}</span>
-            <span class="dettaglio" style="display:block">${t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })}${p ? ` · ${vsAt(p)}${p.data_partita ? ` · ${quando(p.data_partita)}` : ""}` : ""}</span>
+      const intestazione = g.length && !conIntestazione ? (conIntestazione = true, intestazioneColonne()) : "";
+      // la riga di ogni giocatore come nelle altre schermate (grafica B): la partita con la lineetta del club, poi costo e quotazione
+      return `<h3>${NOMI_RUOLO[ruolo] || t("scambio.senza_ruolo")} (${g.length})</h3>${intestazione}<ul class="elenco">${g.map(x => {
+        const p = x.previsione, slug = slugQualunque((p && p.squadra) || x.squadra);
+        const partita = pezziRiga([[[sigla(x.squadra), p ? vsAt(p) : ""].filter(Boolean).join(" "), p && p.data_partita ? quando(p.data_partita) : ""]
+          .filter(Boolean).join(" · "), t("scambio.costo_quot", { c: x.costo ?? "–", q: x.quotazione ?? "–" })]);
+        return `<li class="riga-gioc"><button class="voce voce-g" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
+          ${avatarIndice(p || { id: x.id, nome: x.nome, ruolo: x.ruolo, squadra: slug })}
+          <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo || "?"))}</span><span class="nome-t">${esc(x.nome)}</span></span>
+            <span class="dettaglio">${lineetta(slug)}${partita}</span>
             ${p ? `<span class="etichette">${etichetteGiocatore(p)}</span>` : ""}</span>
           ${valoreRosa(p, x)}
         </button></li>`;

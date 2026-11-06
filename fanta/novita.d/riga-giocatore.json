@@ -1,0 +1,14 @@
+{
+  "titolo": "Righe dei giocatori più basse, numeri in colonna",
+  "voci": [
+    "Ogni giocatore sta su una riga più bassa e uguale in Formazione, Oggi, rosa, Seguiti ed elenco dei giocatori: volto, nome, partita ed etichette a sinistra, «gioca N%» e fantavoto atteso a destra.",
+    "I numeri stanno sempre nella stessa colonna, anche tra titolari, panchina e fuori dalla formazione, con il nome della colonna in alto: si confrontano scorrendo con l'occhio.",
+    "Sugli schermi larghi la riga sta su una linea sola, con la partita in una colonna sua; nella Formazione titolari e panchina stanno uno sotto l'altro.",
+    "Meno segni: la lettera del ruolo è grigia, l'indice è un numero piccolo sul volto, la squadra ha una lineetta nei suoi colori; sotto il 70% «gioca N%» è arancio."
+  ],
+  "tecnico": [
+    "Grafica B, PR 6 (parte di #354): voceGiocatore, valoreRosa, rigaGiocatoreCompatta, le righe dei Seguiti, della rosa, della sostituzione e della scelta del confronto usano .voce-g (grid-template-areas) dentro li.riga-gioc, contenitore «riga»; da 680 px di riga una linea sola con le colonne nome, partita, etichette, --col-gioca (8ch), --col-fv (5ch).",
+    "Nuove: lineetta(slug) (colori da COLORI_SQUADRA, grigia se manca), intestazioneColonne(opz) (aria-hidden, «Partita» e «Fantavoto atteso», opz.ferma e opz.azione), numeriRiga(p, perche). voceGiocatore ha un parametro facoltativo in fondo (extra) per la squadra nei Seguiti.",
+    "Tolti: anello colorato dell'indice (.avatar-anello senza conic-gradient, .badge-indice neutro), .indice e anello(), .barra-p, pallino della difficoltà nelle righe, sottolineatura a puntini del numero, .intestazione-elenco e le chiavi mercato.giocatori e mercato.voto_atteso. ⇄ e ✎ senza cerchio (colore --azione). Formazione da 1400 px senza columns: 2."
+  ]
+}
