@@ -74,3 +74,24 @@ def test_dopo_la_squadra_vengono_i_tempi():
 def test_tempi_fatti_o_saltati_chiude():
     assert passo_dopo("tempi", ["rose", "squadra", "tempi"], [], PASSI_CON_TEMPI) is None
     assert passo_dopo("tempi", ["rose", "squadra"], ["tempi"], PASSI_CON_TEMPI) is None
+
+
+# ---- #456: nel passo «Le rose» il file si sceglie con il pulsante dell'app, come in Squadra › Aggiorna le rose ----
+def _rose_html() -> str:
+    testi = (RADICE / "fanta" / "web" / "testi.js").read_text(encoding="utf-8")
+    codice = "\n".join([testi, "const esc = x => String(x); const stato = { account: true };",
+                        PRIMOAVVIO_JS.read_text(encoding="utf-8"), "console.log(JSON.stringify(PA_SCHERMATE.rose().html));"])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+def test_il_file_si_sceglie_con_il_pulsante_dell_app():
+    html = _rose_html()
+    campo = re.search(r"<input id=\"pa-file\"[^>]*>", html).group(0)
+    assert 'type="file"' in campo and " hidden" in campo                  # il controllo del browser non si vede più
+    assert re.search(r'<button class="bottone secondario" id="pa-scegli-file" type="button">Scegli il file Excel</button>', html)
+    assert re.search(r'<p class="debole piccolo" id="pa-file-nome" role="status"[^>]*></p>', html)   # il nome del file scelto
+    src = PRIMOAVVIO_JS.read_text(encoding="utf-8")
+    assert '$("#pa-scegli-file").addEventListener("click", () => $("#pa-file").click())' in src
+    assert '$("#pa-file").addEventListener("change"' in src
