@@ -1033,7 +1033,7 @@ body.senza-accesso .testata, body.senza-accesso main, body.senza-accesso .schede
 .accesso-corpo { width: 100%; max-width: 420px; margin: auto; }
 .accesso-titolo { font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; margin: 0 0 16px; letter-spacing: -.01em; line-height: 1.1; text-align: center;
   overflow-wrap: anywhere; }
-.accesso-titolo .wm { height: 40px; margin: 0 auto; }
+.accesso-titolo .wm { height: 40px; max-width: 100%; margin: 0 auto; }      /* con lo zoom al 200% il nome si stringe, non esce dalla pagina */
 .accesso-corpo h2 { font-size: var(--t-card); font-weight: 650; margin: 16px 0 8px; padding-bottom: 8px; border-bottom: 2px solid var(--testo); letter-spacing: -.01em; }
 /* «Continua con Google»: grafica di Google (fondo bianco, G a colori, testo scuro), largo quanto il modulo, mai meno evidente degli altri pulsanti */
 .bottone-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 46px; padding: 10px 16px; border-radius: var(--r-in);
@@ -1543,4 +1543,9 @@ body { container: pagina / inline-size; }
   .leg-esempio { justify-self: start; }
   /* la riga dello stato con «Salva» non resta ferma: qui sarebbe alta mezza finestra (revisione della #420) */
   .stato-scelta.modificata, .stato-scelta.mano { position: static; }
+  /* primo avvio: i tre passi uno sotto l'altro (affiancati, a 60 px l'uno, «La tua squadra (fatto)» andava su quattro righe) */
+  .pa-passi { flex-direction: column; }
+  .pa-passi li + li { border-left: 0; border-top: 1px solid var(--filo); }
+  .pa-passi li:first-child .pa-passo { border-radius: calc(var(--r-in) - 1px) calc(var(--r-in) - 1px) 0 0; }
+  .pa-passi li:last-child .pa-passo { border-radius: 0 0 calc(var(--r-in) - 1px) calc(var(--r-in) - 1px); }
 }
