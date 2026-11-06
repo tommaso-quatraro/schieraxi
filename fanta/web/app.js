@@ -568,7 +568,9 @@ document.querySelectorAll(".schede .scheda, .testata .marchio").forEach(a => a.a
   vai(a.dataset.vista || "oggi", undefined, { focoTitolo: true });
 }));
 // L'indirizzo di ogni schermata, lo stesso che l'app sa aprire all'avvio: va nella cronologia, così Indietro e Avanti funzionano.
-const indirizzoVista = (vista, gruppo, scheda) => "/?vista=" + encodeURIComponent(vista) + (vista === "impostazioni" && gruppo ? "&gruppo=" + encodeURIComponent(gruppo) : "") + (vista === "mercato" && scheda ? "&scheda=" + encodeURIComponent(scheda) : "");
+// Anche le pagine dentro Squadra e Altro (#449): la voce (`&voce=`, Squadre e rose, Regole...) e la rosa di una squadra (`&rosa=`, il
+// nome; vuoto = la mia). Scritto come lo scrive il browser (URLSearchParams: l'apostrofo diventa %27), così l'indirizzo resta uguale.
+const indirizzoVista = (vista, gruppo, scheda, voce, rosa) => "/?" + new URLSearchParams([["vista", vista], ...(vista === "impostazioni" && gruppo ? [["gruppo", gruppo]] : []), ...(vista === "mercato" && scheda ? [["scheda", scheda]] : []), ...((vista === "squadra" || vista === "altro") && voce && typeof rosa !== "string" ? [["voce", voce]] : []), ...(vista === "squadra" && typeof rosa === "string" ? [["rosa", rosa]] : [])]);
 let indirizzoMostrato = null;      // l'indirizzo (senza «#…») della schermata in pagina: un popstate che porta qui non ridisegna niente
 let timerConto = null;
 let regoleAC = null;      // gestori della schermata regole: si staccano quando si esce
@@ -596,6 +598,9 @@ const DISEGNO_VISTE = new Map([["oggi", () => vistaOggi()], ["formazione", () =>
 // opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
 // opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
 // così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
+// opz.sostituisci: la schermata prende il posto della voce di adesso nella cronologia («‹ Altro» di una pagina aperta da un indirizzo,
+// una voce di Squadra che porta subito a un'altra pagina): Indietro non torna a una voce che riaprirebbe la stessa cosa.
+// La voce di Squadra o di Altro da aprire (`stato.legaTorna`) e la rosa di una squadra (`stato.rosaTorna`) vanno nell'indirizzo (#449).
 function vai(vista, gruppo, opz = {}) {
   if (vista !== "formazione" && !lasciaFormazione()) {                   // resta nella Formazione: la modifica a mano non è salvata
     if (opz.daCronologia) try { history.pushState({ vista: "formazione" }, "", indirizzoVista("formazione")); } catch { /* niente cronologia */ }   // con Indietro: l'indirizzo torna quello della Formazione
@@ -607,6 +612,7 @@ function vai(vista, gruppo, opz = {}) {
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
   if (!imp && !(SCHEDA_DI(vista) && DISEGNO_VISTE.has(vista))) vista = "oggi";
   const scheda = imp ? null : SCHEDA_DI(vista);                           // la scheda della barra che si accende
+  if (vista !== "squadra" && vista !== "altro") { stato.legaTorna = null; stato.rosaTorna = null; }   // valgono solo per Squadra e Altro
   const prima = stato.vista;
   stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
   document.querySelectorAll(".schede .scheda").forEach(b => {
@@ -620,12 +626,18 @@ function vai(vista, gruppo, opz = {}) {
   if (!opz.daCronologia) {
     // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
     const g = imp ? gruppo || stato.impDaUrl || null : null, sm = vista === "mercato" ? stato.mercatoTab || null : null;
-    const indirizzo = indirizzoVista(vista, g, sm), voce = { vista, gruppo: g, scheda: sm };
-    // da 1100 px Squadra e le sue pagine di Mercato sono una schermata sola (menu e pagina affiancati): la scheda «Squadra» o il tasto 3
-    // con il Calendario aperto non aggiungono una voce che la pagina riporta subito al Calendario (Indietro non farebbe niente)
-    const stessa = [prima, vista].every(v => v === "squadra" || v === "mercato") && legaLarga();
+    const vl = (vista === "squadra" || vista === "altro") && typeof stato.legaTorna === "string" ? stato.legaTorna : null;
+    const rosa = vista === "squadra" && typeof stato.rosaTorna === "string" ? stato.rosaTorna : null;
+    const indirizzo = indirizzoVista(vista, g, sm, vl, rosa), voce = { vista, gruppo: g, scheda: sm, voce: vl, rosa };
+    // da 1100 px Squadra (con le sue pagine di Mercato) e Altro sono una schermata sola (menu e pagina affiancati), da 768 px anche le
+    // Impostazioni: la scheda o il tasto 3 con il Calendario aperto non aggiungono una voce che la pagina riporta subito al Calendario
+    // (Indietro non farebbe niente). Non da Regole, Novità o dalla rosa di una squadra, che sono pagine loro (`pagina`).
+    const sezione = v => (v === "mercato" ? "squadra" : v);
+    const larga = imp ? !g && typeof impLargo === "function" && impLargo() : (vista === "squadra" || vista === "altro") && vl === null && rosa === null && legaLarga();
+    const stessa = larga && sezione(prima) === vista && !(history.state && history.state.pagina);
     try {
-      if (!history.state || location.pathname + location.search === indirizzo || stessa) history.replaceState(voce, "", indirizzo);
+      // sostituendo la voce si tiene da dove era arrivata (`da`, scriviIndirizzo): è ancora la stessa pagina
+      if (!history.state || location.pathname + location.search === indirizzo || stessa || opz.sostituisci) history.replaceState({ ...voce, da: (history.state && history.state.da) || null }, "", indirizzo);
       else history.pushState(voce, "", indirizzo);
     } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
   }
@@ -643,13 +655,47 @@ function vai(vista, gruppo, opz = {}) {
 // Indietro e Avanti del browser (e del mouse): la schermata di quella voce, come un clic sulla sua scheda (il foglio si chiude con lei).
 window.addEventListener("popstate", ev => {
   if (location.pathname + location.search === indirizzoMostrato) return;   // è cambiata solo la parte dopo «#» (link «Vai al contenuto»): niente da ridisegnare
-  let v = ev.state || {};
-  if (!v.vista) { try { const q = new URLSearchParams(location.search); v = { vista: q.get("vista"), gruppo: q.get("gruppo"), scheda: q.get("scheda") }; } catch { v = {}; } }
-  if (v.scheda) stato.mercatoTab = schedaMercato(v.scheda);
-  if (typeof v.voce === "string") stato.legaTorna = v.voce;               // la voce di Squadra o di Altro aperta lì (indirizzoLega)
   chiudiFoglio();
+  const q = new URLSearchParams(location.search);                          // voce senza stato: si legge l'indirizzo
+  const v = ev.state && ev.state.vista ? ev.state : { vista: q.get("vista"), gruppo: q.get("gruppo"), scheda: q.get("scheda"), voce: q.get("voce"), rosa: q.get("rosa") };
+  if (v.scheda) stato.mercatoTab = schedaMercato(v.scheda);
+  stato.legaTorna = typeof v.voce === "string" ? v.voce : null;           // voce di Squadra o Altro, o il menu (#449)
+  stato.rosaTorna = typeof v.rosa === "string" ? v.rosa : null;           // rosa di una squadra
   vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
 });
+// L'indirizzo di una pagina dentro Squadra, Altro o Impostazioni (#449): la voce aperta accanto al menu, Regole, Novità, la rosa di
+// una squadra (`pagina: true`: pagine loro, non accanto al menu), il gruppo delle Impostazioni. `nuova` (un clic di chi usa l'app):
+// una voce nuova nella cronologia, che si ricorda da dove si veniva (`da`), così i pulsanti «‹» dell'app tornano lì come Indietro.
+// Senza (prima apertura, Indietro, ridisegno dopo un salvataggio) si corregge la voce di adesso, che tiene il suo `da`; con lo stesso
+// indirizzo anche con `nuova` (una voce uguale non cambierebbe niente con Indietro).
+function scriviIndirizzo(voce, nuova) {
+  const indirizzo = indirizzoVista(voce.vista, voce.gruppo, voce.scheda, voce.voce, voce.rosa), ora = location.pathname + location.search;
+  try {
+    if (nuova && ora !== indirizzo) history.pushState({ ...voce, da: ora }, "", indirizzo);
+    else history.replaceState({ ...voce, da: (history.state && history.state.da) || null }, "", indirizzo);
+  } catch { /* niente cronologia (pagina aperta da un file) */ }
+  indirizzoMostrato = location.pathname + location.search;
+}
+// I pulsanti «‹ Squadra», «‹ Altro», «‹ Impostazioni»: se la voce di prima nella cronologia è quella giusta (`prima(da)`), sono
+// Indietro del browser e non lasciano una voce morta. `inPosto`: l'indirizzo che la pagina ha già disegnato da sola (il menu accanto):
+// Indietro non ridisegna niente. Torna false se non c'è una voce di prima giusta (pagina aperta da un indirizzo o da un collegamento).
+function tornaIndietro(prima, inPosto) {
+  const da = history.state && history.state.da;
+  if (typeof da !== "string" || !prima(da)) return false;
+  if (inPosto) indirizzoMostrato = inPosto;
+  history.back();
+  return true;
+}
+// «‹ Squadra» della rosa di una squadra (`squadre`: torna a Squadre e rose) e «‹ Altro» di Regole e Novità (`altro`). Senza una voce
+// di prima nella stessa sezione, la sezione prende il posto della pagina nella cronologia.
+function tornaAllaSezione(dove) {
+  const sezione = dove === "altro" ? "altro" : "squadra";
+  const vistaDi = u => { try { return new URLSearchParams(u.split("?")[1] || "").get("vista"); } catch { return null; } };
+  if (tornaIndietro(da => vistaDi(da) === sezione)) return;
+  stato.rosaTorna = null;
+  if (dove === "altro") { stato.legaTorna = null; vai("altro", undefined, { sostituisci: true, focoTitolo: true }); }
+  else vaiLega(dove, { sostituisci: true, focoTitolo: true });
+}
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
@@ -1449,7 +1495,8 @@ function mostraFormazione(f, squadra, opz = {}) {
 }
 
 // ---------------------------------------------------------------- mercato: consigliati, classifica, calendario, cerca
-const TAB_MERCATO = [["consigli", "mercato.tab_consigli"], ["giocatori", "mercato.tab_giocatori"], ["osservati", "mercato.tab_osservati"], ["calendario", "mercato.tab_calendario"]];
+// Le sezioni in cima alle pagine di Squadra sotto i 1100 px: gli stessi nomi del menu (le chiavi di VOCI_LEGA) e lo stesso ordine (#458)
+const TAB_MERCATO = [["consigli", "lega.voce_consigli"], ["osservati", "lega.voce_osservati"], ["giocatori", "lega.voce_giocatori"], ["calendario", "lega.voce_calendario"]];
 let richiestaMercato = 0;
 // Le schede di prima portano a quelle nuove: Classifica e Cerca sono diventate Giocatori (l'asta non c'è più: si va ai Consigliati).
 const SCHEDE_MERCATO_VECCHIE = { classifica: "giocatori", cerca: "giocatori" };
@@ -2022,13 +2069,16 @@ function apriFoglio(html, opz = {}) {
   const lato = affiancato();
   if (!eraAperto || lato) corpo.scrollTop = 0;                           // un giocatore nuovo nel pannello: si legge dall'inizio
   if (!eraAperto || eraModale === lato) modoFoglio();                     // prima apertura, o da foglio modale a pannello e viceversa
-  if (lato) {
+  if (lato || eraModale) {
     // il titolo del contenuto prende il focus (spec §14), se il focus è ancora su chi l'ha aperto o è andato perso con il contenuto
-    // di prima; non se nel frattempo si è andati altrove nella pagina
+    // di prima; non se nel frattempo si è andati altrove nella pagina. Anche nel foglio modale già aperto che cambia contenuto
+    // (ricerca → scheda, Diario, #448): il pulsante premuto se ne va con il contenuto e il focus finiva sul body. Un contenuto senza
+    // titolo (il caricamento) lo dà alla ✕, che resta: quando arriva il contenuto vero passa al suo titolo
     const ora = document.activeElement;
-    if (!opz.focusResta && titoloFoglio && (!ora || ora === focusPrima || ora === document.body || corpo.contains(ora))) {
-      titoloFoglio.tabIndex = -1;
-      titoloFoglio.focus({ preventScroll: true });
+    if (!opz.focusResta && (!ora || ora === focusPrima || ora === document.body || corpo.contains(ora))) {
+      const chiudi = document.querySelector(".foglio-chiudi");
+      if (titoloFoglio) { titoloFoglio.tabIndex = -1; titoloFoglio.focus({ preventScroll: true }); }
+      else if (!lato && chiudi) chiudi.focus({ preventScroll: true });
     }
   }
 }
@@ -2097,7 +2147,9 @@ document.addEventListener("click", ev => {
   if (cf) { ev.stopPropagation(); apriScelta(Number(cf.dataset.confronta)); return; }
   const v = ev.target.closest("[data-vai]");
   if (v) { chiudiFoglio(); vai(v.dataset.vai); }
-  if (ev.target.closest("[data-vai-novita]")) { vai("altro"); vistaNovita(); }
+  const ind = ev.target.closest("[data-indietro]");                       // «‹ Squadra» della rosa, «‹ Altro» di Regole e Novità (#449)
+  if (ind) { chiudiFoglio(); tornaAllaSezione(ind.dataset.indietro); }
+  if (ev.target.closest("[data-vai-novita]")) vaiLega("novita");
   const ig = ev.target.closest("[data-imp-gruppo]");
   if (ig) { chiudiFoglio(); vai("impostazioni", ig.dataset.impGruppo); }
   if (ev.target.closest("[data-chiudi]")) chiudiFoglio();
@@ -2559,8 +2611,12 @@ function htmlDifferenze(d) {
   return righe.join("");
 }
 
-async function vistaRosa(nome) {
+// `o.nuova`: aperta con un clic da Squadre e rose, una voce nuova nella cronologia (#449: Indietro torna a Squadre e rose, un
+// ricaricamento riapre la rosa); senza (indirizzo, Indietro, nome cambiato, stemma caricato) si corregge la voce di adesso.
+async function vistaRosa(nome, o = {}) {
   const mia = nuovaRichiesta();
+  stato.vista = "squadra";
+  scriviIndirizzo({ vista: "squadra", gruppo: null, scheda: null, voce: "squadre", rosa: nome == null ? "" : String(nome), pagina: true }, !!o.nuova);
   caricamento(t("scambio.carico_rosa"));
   try {
     const r = await api("/api/rosa" + (nome ? `?squadra=${encodeURIComponent(nome)}` : ""));
@@ -2588,7 +2644,7 @@ async function vistaRosa(nome) {
     // sul PC il menu di Squadra resta a sinistra, con «Squadre e rose» aperta: dalla rosa al Calendario con un clic (spec C10)
     pagina(`<div class="lega-colonne" data-aperto="1">${menuLega(vociLega("squadra"), "squadre", t("lega.aria_squadra"))}<div class="lega-pagina">
       <div class="carta">
-        <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button>${r.mia ? `<span class="etichetta">${t("lega.la_tua")}</span>` : ""}</div>
+        <div class="riga"><button class="bottone secondario indietro" data-indietro="squadre" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button>${r.mia ? `<span class="etichetta">${t("lega.la_tua")}</span>` : ""}</div>
         <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
           <div class="riga" style="gap:8px;margin-top:8px"><label class="solo-lettori" for="nome-squadra">${t("scambio.nuovo_nome")}</label>
             <input class="campo-testo" id="nome-squadra" type="text" maxlength="60" autocomplete="off" value="${esc(r.nome)}" style="flex:1;min-width:0">
@@ -3195,7 +3251,15 @@ async function apriDiario(giornata, stagione) {
       ${righe || `<div class="carta" style="margin-top:12px"><div class="debole">${t("diario.vuoto_" + d.motivo_vuoto) !== "diario.vuoto_" + d.motivo_vuoto ? t("diario.vuoto_" + d.motivo_vuoto) : t("diario.vuoto")}</div></div>`}`);
     const voceDi = id => d.giornate.find(x => idVoceDiario(x) === id);
     const daMostrare = giornata == null ? null : d.giornate.find(x => Number(x.giornata) === Number(giornata) && (stagione == null || x.stagione === stagione));
-    if (daMostrare) { const el = document.getElementById(idVoceDiario(daMostrare)); if (el) el.scrollIntoView({ block: "start" }); }
+    if (daMostrare) {
+      const el = document.getElementById(idVoceDiario(daMostrare));
+      if (el) {
+        el.scrollIntoView({ block: "start" });
+        // il focus (che apriFoglio ha messo sul titolo in cima, #448) va sul titolo della giornata appena segnata: il Tab riparte da lì
+        const h = el.querySelector("h2"), corpo = $(".foglio-corpo");
+        if (h && corpo && corpo.contains(document.activeElement)) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+      }
+    }
     $("#foglio").querySelectorAll("[data-correggi]").forEach(bt => bt.addEventListener("click", () => {
       const g = voceDi(bt.dataset.correggi);
       if (g) correggiDiario(g);
@@ -3489,27 +3553,29 @@ async function apriStemmaMaglia(nome, inAttesa = false) {
 // Lega: un elenco di voci con il pannello a destra (stesso componente delle Impostazioni), le stesse otto voci dell'app per iPhone.
 // Dal 31/10/2026 le voci sono divise in due schede: Squadra (la mia squadra, cambi, seguiti, elenco, aggiornamento rose) e Altro (tutto il resto).
 // `ambito` dice dove sta la voce; `f` è la funzione (docs/DIETA-FUNZIONI.md) che la accende; `vai` è una voce che porta a un'altra pagina invece di aprire un pannello.
+// `vai(o)`: `o.nuova` = clic nel menu (Regole e Novità scrivono una voce nuova nella cronologia, #449); `o.sostituisci` = la voce è stata
+// chiesta da un indirizzo o da un collegamento e la pagina prende il posto della voce di adesso (niente voce che riporta qui).
 const VOCI_LEGA = [
   { id: "squadre", ambito: "squadra", nome: t("lega.voce_squadre"), sub: t("lega.voce_squadre_sub") },
-  { id: "consigli", ambito: "squadra", nome: t("lega.voce_consigli"), sub: t("lega.voce_consigli_sub"), vai: () => vaiMercato("consigli") },
-  { id: "osservati", ambito: "squadra", f: "seguiti", nome: t("lega.voce_osservati"), sub: t("lega.voce_osservati_sub"), vai: () => vaiMercato("osservati") },
-  { id: "giocatori", ambito: "squadra", f: "elenco_giocatori", nome: t("lega.voce_giocatori"), sub: t("lega.voce_giocatori_sub"), vai: () => vaiMercato("giocatori") },
-  { id: "calendario", ambito: "squadra", f: "elenco_giocatori", nome: t("lega.voce_calendario"), sub: t("lega.voce_calendario_sub"), vai: () => vaiMercato("calendario") },
+  { id: "consigli", ambito: "squadra", nome: t("lega.voce_consigli"), sub: t("lega.voce_consigli_sub"), vai: o => vaiMercato("consigli", o) },
+  { id: "osservati", ambito: "squadra", f: "seguiti", nome: t("lega.voce_osservati"), sub: t("lega.voce_osservati_sub"), vai: o => vaiMercato("osservati", o) },
+  { id: "giocatori", ambito: "squadra", f: "elenco_giocatori", nome: t("lega.voce_giocatori"), sub: t("lega.voce_giocatori_sub"), vai: o => vaiMercato("giocatori", o) },
+  { id: "calendario", ambito: "squadra", f: "elenco_giocatori", nome: t("lega.voce_calendario"), sub: t("lega.voce_calendario_sub"), vai: o => vaiMercato("calendario", o) },
   { id: "importa", ambito: "squadra", nome: t("lega.voce_importa"), sub: t("lega.voce_importa_sub") },
-  { id: "scambi", ambito: "altro", nome: t("lega.voce_scambi"), sub: t("lega.voce_scambi_sub"), vai: () => vai("scambi") },
+  { id: "scambi", ambito: "altro", nome: t("lega.voce_scambi"), sub: t("lega.voce_scambi_sub"), vai: o => vai("scambi", undefined, o) },
   { id: "diario", ambito: "altro", f: "diario", nome: t("lega.voce_diario"), sub: t("lega.voce_diario_sub") },
-  { id: "regole", ambito: "altro", nome: t("lega.voce_regole"), sub: t("lega.voce_regole_sub"), vai: () => vistaRegole() },
+  { id: "regole", ambito: "altro", nome: t("lega.voce_regole"), sub: t("lega.voce_regole_sub"), vai: o => vistaRegole(o) },
   { id: "movimenti", ambito: "altro", f: "movimenti", nome: t("lega.voce_movimenti"), sub: t("lega.voce_movimenti_sub") },
   { id: "crediti", ambito: "altro", f: "crediti", nome: t("lega.voce_crediti"), sub: t("lega.voce_crediti_sub") },
   { id: "stagione", ambito: "altro", nome: t("lega.voce_stagione"), sub: t("lega.voce_stagione_sub") },
-  { id: "novita", ambito: "altro", f: "novita", nome: t("lega.voce_novita"), sub: t("lega.voce_novita_sub"), vai: () => vistaNovita() },
+  { id: "novita", ambito: "altro", f: "novita", nome: t("lega.voce_novita"), sub: t("lega.voce_novita_sub"), vai: o => vistaNovita(o) },
 ];
 const NOME_AMBITO = { squadra: t("nav.squadra"), altro: t("nav.altro") };
 // In quale scheda sta una voce (per i collegamenti che dicono solo «apri le regole»): se non la conosciamo, Altro.
 const ambitoVoce = id => (VOCI_LEGA.find(v => v.id === id) || {}).ambito || "altro";
-function vaiMercato(scheda) { stato.mercatoTab = schedaMercato(scheda); vai("mercato"); }
-// Apre Squadra o Altro già su una voce (anche tornando da una pagina come la rosa di una squadra o le regole).
-function vaiLega(voce) { stato.legaTorna = voce; vai("lega"); }
+function vaiMercato(scheda, o) { stato.mercatoTab = schedaMercato(scheda); vai("mercato", undefined, { sostituisci: !!(o && o.sostituisci) }); }
+// Apre Squadra o Altro già su una voce (anche tornando da una pagina come la rosa di una squadra o le regole). `opz` come in vai().
+function vaiLega(voce, opz) { stato.legaTorna = voce; vai("lega", undefined, opz); }
 
 // Squadra e Altro sugli schermi larghi (spec grafica B §5 C10): da 1100 px il menu delle voci resta a sinistra e la voce scelta si apre
 // a destra, comprese le pagine di Mercato (Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario): da una all'altra con un clic,
@@ -3525,26 +3591,20 @@ function vociLega(ambito) {
 // restano pagine loro.
 const nellaPagina = (v, largo = legaLarga()) => !v.vai || (largo && TAB_MERCATO.some(([k]) => k === v.id));
 // Da una pagina con il menu che non è la pagina della scheda (la rosa di una squadra): una voce porta alla sua pagina.
-const vaiVoceLega = v => (v.vai ? v.vai() : vaiLega(v.id));
+const vaiVoceLega = v => (v.vai ? v.vai({ nuova: true }) : vaiLega(v.id));
 // Il menu delle voci: la voce aperta ha aria-current="page" (il lettore di schermo la dice; a vista il fondo e la linea a sinistra).
 // Nomi e sottotitoli vengono da testi.js, non dall'utente.
 function menuLega(voci, aperta, aria) {
   return `<nav class="lega-menu" aria-label="${aria}"><ul class="elenco">${voci.map(v => `<li><button class="voce lega-voce" type="button" data-lega="${v.id}"${v.id === aperta ? ' aria-current="page"' : ""}>
     <span><span class="nome">${v.nome}</span><span class="dettaglio">${v.sub}</span></span><span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></nav>`;
 }
-// L'indirizzo della voce aperta accanto al menu (spec C2): una pagina di Mercato scrive ?vista=mercato&scheda=…, le altre voci
-// ?vista=squadra o ?vista=altro. Così Indietro torna alla voce di prima e un ricaricamento riapre questa. `nuova` (un clic): una voce
-// nuova nella cronologia; senza (prima apertura) si corregge quella di adesso. La voce aperta (`id`) sta nello stato della cronologia,
-// perché l'indirizzo di Squadra non la dice: tornando con Indietro si riapre quella, non l'ultima vista. Con lo stesso indirizzo si
-// corregge la voce di adesso (una nuova uguale non cambierebbe niente con Indietro).
+// L'indirizzo della voce aperta (spec C2): una pagina di Mercato scrive ?vista=mercato&scheda=…, le altre voci ?vista=squadra&voce=…
+// o ?vista=altro&voce=… (#449: prima l'indirizzo non diceva la voce e sotto i 1100 px Indietro usciva dalla sezione). Così Indietro
+// torna alla voce di prima (o al menu) e un ricaricamento riapre questa. `nuova` (un clic): una voce nuova nella cronologia; senza
+// (prima apertura) si corregge quella di adesso (scriviIndirizzo). La voce aperta (`id`) sta anche nello stato della cronologia.
 function indirizzoLega(vista, scheda, nuova, id) {
   stato.vista = vista;
-  const indirizzo = indirizzoVista(vista, null, scheda), voce = { vista, gruppo: null, scheda, voce: id };
-  try {
-    if (nuova && location.pathname + location.search !== indirizzo) history.pushState(voce, "", indirizzo);
-    else history.replaceState(voce, "", indirizzo);
-  } catch { /* niente cronologia */ }
-  indirizzoMostrato = location.pathname + location.search;
+  scriviIndirizzo({ vista, gruppo: null, scheda, voce: id }, nuova);
 }
 // Finestra allargata oltre i 1100 px con il solo menu in pagina: a destra si apre la voce dell'ultima volta (o la prima), invece di
 // lasciare una colonna vuota. La prepara vistaLega a ogni disegno.
@@ -3564,6 +3624,8 @@ function focusLegaVisibile() {
 LEGA_LARGA.addEventListener("change", () => { if (LEGA_LARGA.matches && legaQuandoLarga) legaQuandoLarga(); focusLegaVisibile(); });
 
 async function vistaLega(ambito = "altro") {
+  const rosaChiesta = stato.rosaTorna; stato.rosaTorna = null;
+  if (ambito === "squadra" && typeof rosaChiesta === "string") { stato.legaTorna = null; return vistaRosa(rosaChiesta); }   // ?vista=squadra&rosa=… (indirizzo, Indietro)
   const mia = nuovaRichiesta();
   caricamento(t(ambito === "squadra" ? "lega.carico_squadra" : "comune.carico"));
   let squadre = [];
@@ -3658,7 +3720,7 @@ async function vistaLega(ambito = "altro") {
       });
     },
     squadre: () => {
-      document.querySelectorAll("[data-squadra]").forEach(b => b.addEventListener("click", () => { stato.legaTorna = "squadre"; vistaRosa(b.dataset.squadra); }));
+      document.querySelectorAll("[data-squadra]").forEach(b => b.addEventListener("click", () => vistaRosa(b.dataset.squadra, { nuova: true })));
       const asm = $("#apri-stemma-maglia");
       if (asm) asm.addEventListener("click", () => apriStemmaMaglia());
       const ms = $("#mia-squadra");
@@ -3702,7 +3764,7 @@ async function vistaLega(ambito = "altro") {
 
   const voci = vociLega(ambito);
   const diretta = voci.find(v => v.id === daUrl && !nellaPagina(v));      // «apri le regole» da Da fare o da un collegamento: subito lì
-  if (diretta) { diretta.vai(); return; }
+  if (diretta) { diretta.vai({ sostituisci: true }); return; }            // al posto della voce di adesso: Indietro non torna qui
   stato.legaVoce = stato.legaVoce || {};
   // a destra la voce chiesta (un collegamento, «‹ Squadra» dalla rosa) e, da 1100 px, quella dell'ultima volta in questa scheda o la prima
   const daAprire = () => { const accanto = voci.filter(v => nellaPagina(v)); return (accanto.find(v => v.id === stato.legaVoce[ambito]) || accanto[0] || {}).id; };
@@ -3722,14 +3784,21 @@ async function vistaLega(ambito = "altro") {
     const mercato = !!v.vai;                                      // da 1100 px: Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario
     dove.innerHTML = `<button class="bottone secondario lega-indietro" id="lega-indietro" type="button">${ICONA_INDIETRO}${nome}</button>
       <h2 class="lega-titolo" id="lega-titolo" tabindex="-1">${v.nome}</h2>${mercato ? '<div id="mercato-corpo"></div>' : `<div id="lega-corpo">${corpi[id]()}</div>`}`;
-    $("#lega-indietro", dove).addEventListener("click", () => { radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-lega="${id}"]`, radice); if (b) b.focus(); });
+    // «‹ Squadra» (sotto i 1100 px): il menu è già in pagina. Se la voce di prima nella cronologia è il menu è Indietro (#449), altrimenti
+    // il menu prende il posto della voce
+    $("#lega-indietro", dove).addEventListener("click", () => {
+      radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-lega="${id}"]`, radice); if (b) b.focus();
+      const menu = indirizzoVista(ambito);
+      stato.vista = ambito;
+      if (!tornaIndietro(da => da === menu, menu)) scriviIndirizzo({ vista: ambito, gruppo: null, scheda: null }, false);
+    });
     indirizzoLega(mercato ? "mercato" : ambito, mercato ? id : null, sposta, id);
     if (mercato) { stato.mercatoTab = id; caricaMercato(); } else collega[id]();
     if (sposta) { window.scrollTo(0, 0); if (!legaLarga()) $("#lega-titolo", dove).focus({ preventScroll: true }); }
   };
   radice.querySelectorAll("[data-lega]").forEach(b => b.addEventListener("click", () => {
     const v = voci.find(x => x.id === b.dataset.lega);
-    if (v && nellaPagina(v)) apri(v.id); else if (v) v.vai();      // una voce con `vai` porta a un'altra pagina (Scambi, Regole; Mercato sotto i 1100 px)
+    if (v && nellaPagina(v)) apri(v.id); else if (v) v.vai({ nuova: true });   // una voce con `vai` porta a un'altra pagina (Scambi, Regole; Mercato sotto i 1100 px)
   }));
   legaQuandoLarga = () => { if (document.body.contains(radice) && radice.dataset.aperto === "0") { const id = daAprire(); if (id) apri(id, false); } };
   if (scelta) apri(scelta, false);
@@ -3794,8 +3863,11 @@ function dataNovita(d) {
 // Novità: le ultime NOVITA_VISIBILI versioni; le altre (sono centinaia) solo a richiesta, così la pagina resta leggera.
 // Alla prima visita (nessuna versione vista) è «Nuovo» solo l'ultima, non tutto lo storico.
 const NOVITA_VISIBILI = 10;
-async function vistaNovita() {
+// `o.nuova`: aperta con un clic dal menu di Altro, una voce nuova nella cronologia (#449); senza si corregge quella di adesso.
+async function vistaNovita(o = {}) {
   const mia = nuovaRichiesta();
+  stato.vista = "altro";
+  scriviIndirizzo({ vista: "altro", gruppo: null, scheda: null, voce: "novita", pagina: true }, !!o.nuova);
   caricamento(t("novita.carico"), { titolo: t("info.novita") });
   try {
     const elenco = await api("/api/novita");
@@ -3808,7 +3880,7 @@ async function vistaNovita() {
         <ul class="novita-voci">${(v.voci || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
     const visibili = Math.max(NOVITA_VISIBILI, nuoveDa), resto = elenco.length - visibili;
     // una colonna da leggere: righe di testo al massimo 70 caratteri anche sul PC (spec grafica B, C12)
-    pagina(`<div class="novita-pagina"><div class="carta"><div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("nav.altro")}</button>
+    pagina(`<div class="novita-pagina"><div class="carta"><div class="riga"><button class="bottone secondario indietro" data-indietro="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("nav.altro")}</button>
         <span class="debole">${t("novita.versione", { v: esc(elenco[0] ? elenco[0].versione : "?") })}</span></div></div>
       ${elenco.slice(0, visibili).map(carta).join("")}
       ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}</div>`, { titolo: t("info.novita") });
@@ -3870,8 +3942,12 @@ document.addEventListener("click", ev => {
 // bonus della difesa per una media: l'ultima fascia raggiunta (come fa il calcolo della formazione)
 const bonusDifesa = (media, fasce) => fasce.filter(f => media >= f[0]).reduce((b, f) => f[1], 0);
 
-async function vistaRegole() {
+// `o.nuova`: aperta con un clic dal menu di Altro, una voce nuova nella cronologia (#449); senza (indirizzo, «Da fare», ridisegno dopo
+// «Salva») si corregge quella di adesso.
+async function vistaRegole(o = {}) {
   const mia = nuovaRichiesta();
+  stato.vista = "altro";
+  scriviIndirizzo({ vista: "altro", gruppo: null, scheda: null, voce: "regole", pagina: true }, !!o.nuova);
   caricamento(t("regole.carico"), { titolo: t("lega.voce_regole") });
   let r;
   try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) pagina(errore(e), { titolo: t("lega.voce_regole") }); return; }
@@ -3888,7 +3964,7 @@ async function vistaRegole() {
   // del testo riconosciuto sta accanto ai valori che cambia. Sotto, una colonna sola nello stesso ordine (stile.css, «regole»).
   pagina(`<div class="regole-colonne"><div class="regole-testa">
     <div class="carta">
-      <div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
+      <div class="riga"><button class="bottone secondario indietro" data-indietro="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
         <button class="bottone secondario" id="annulla-regole" style="padding:6px 14px;min-height:44px">${t("regole.annulla_modifiche")}</button></div>
       <h2 style="margin-top:14px">${esc(r.nome_lega)}</h2>
       <div class="debole piccolo">${t("regole.regole_della_lega")}</div>
@@ -4737,6 +4813,8 @@ let iniziale = "oggi";
 try { iniziale = localStorage.getItem("vista") || "oggi"; } catch { /* niente memoria */ }
 togliPrefVecchie();                                                                        // colore, densità, animazioni e sezione iniziale non si scelgono più
 try { const v = new URLSearchParams(location.search).get("vista"); if (SCHEDA_DI(v) || v === "impostazioni") iniziale = v; stato.impDaUrl = new URLSearchParams(location.search).get("gruppo"); } catch { /* indirizzo strano */ }   // scorciatoie dell'icona (Formazione, Mercato)
+// la voce di Squadra o di Altro e la rosa di una squadra (#449): un ricaricamento riapre la pagina, senza voci nuove nella cronologia
+try { const q = new URLSearchParams(location.search); if (q.get("voce")) stato.legaTorna = q.get("voce"); if (q.get("vista") === "squadra" && q.has("rosa")) stato.rosaTorna = q.get("rosa"); } catch { /* indirizzo strano */ }
 try { const sc = new URLSearchParams(location.search).get("scheda"); if (sc) stato.mercatoTab = schedaMercato(sc); } catch { /* indirizzo strano */ }   // ?vista=mercato&scheda=classifica funziona ancora
 if (!SCHEDA_DI(iniziale) && iniziale !== "impostazioni") iniziale = "oggi";          // «mercato», «scambi» e «lega» dei vecchi salvataggi e indirizzi valgono ancora
 controllaAccesso().then(async entrato => {

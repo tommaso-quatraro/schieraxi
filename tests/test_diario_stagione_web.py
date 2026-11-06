@@ -42,7 +42,8 @@ let elementi = {}, trovati = {};
 const decodifica = s => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 function nuovoElemento(id) {
   return { id, textContent: "", className: "", disabled: false, checked: false, dataset: {}, ascoltatori: {},
-           addEventListener(tipo, fn) { this.ascoltatori[tipo] = fn; }, scrollIntoView() { scorrimenti.push(this.id); } };
+           addEventListener(tipo, fn) { this.ascoltatori[tipo] = fn; }, scrollIntoView() { scorrimenti.push(this.id); },
+           querySelector() { return null; } };
 }
 const foglio = {
   hidden: false, html: "",

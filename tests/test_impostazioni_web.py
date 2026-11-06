@@ -83,7 +83,7 @@ def test_altro_ogni_cosa_in_un_posto_solo():
     ids = re.findall(r'\{ id: "(\w+)", ambito: "altro"', voci)
     assert ids == ["scambi", "diario", "regole", "movimenti", "crediti", "stagione", "novita"]
     assert 'vai("impostazioni"' not in voci                                     # Impostazioni solo dall'ingranaggio
-    assert 'vai: () => vistaNovita()' in voci                                   # le novità stanno solo in Altro
+    assert 'vai: o => vistaNovita(o)' in voci                                   # le novità stanno solo in Altro
     assert 'classList.toggle("novita"' not in APP and 'classList.toggle("novita"' not in IMP     # niente pallino sull'ingranaggio
 
 
@@ -91,7 +91,7 @@ def test_indirizzi_esistenti_continuano_a_funzionare():
     assert 'const VISTE = ["oggi", "formazione", "squadra", "altro"]' in APP     # le quattro schede della dieta
     assert 'v === "impostazioni"' in APP and 'get("gruppo")' in APP                         # ?vista=impostazioni&gruppo=avvisi
     assert 'get("vista")' in APP and 'get("condivisa")' in APP
-    assert '[data-vai-novita]")) { vai("altro"); vistaNovita(); }' in APP                 # la riga delle novità in Oggi
+    assert '[data-vai-novita]")) vaiLega("novita");' in APP                                # la riga delle novità in Oggi
 
 
 def test_le_scelte_tolte_dell_aspetto_si_cancellano():
