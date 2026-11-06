@@ -43,6 +43,18 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
   e i falsi allarmi della revisione IA. Le regole della revisione si cambiano solo con una pull request su `main`.
 - **Foto iOS** (dopo l'unione): il fotografo, come scritto sotto.
 
+## Controlli della pull request (job `ambito`, bloccante)
+Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dopo la sua unione. Un problema ferma `unisci`.
+- **Aree** (`script/ci/controlla_ambito.py`): la riga «Aree: …» c'è e ogni file cambiato sta in una delle aree. Esenti bot e soli documenti.
+- **Descrizione** (`script/ci/controlla_pr.py`): «Cosa cambia», «Perché», «Come l'ho provato» ci sono e non sono vuote;
+  senza «Closes #N» o «Parte di #N» solo un avviso.
+- **Revisione registrata**: fuori dalla bozza, la sezione «## Revisione» con una riga «- <chi>: <esito>» per ogni revisione
+  (es. «- revisore: nessun rilievo bloccante»). Si scrive in bozza, prima di `gh pr ready`. Esenti bot e soli documenti.
+- **Novità solo della PR**: in `fanta/novita.d/` al massimo un file, solo aggiunto; `fanta/novita.json` non si tocca a mano.
+- **Test e novità**: nessun test legge un file di `fanta/novita.d/` per nome (dopo il rilascio non c'è più): si cerca per titolo.
+- La descrizione corretta dopo l'apertura si rilegge al push successivo o con `gh pr ready --undo` e poi `gh pr ready`
+  («Re-run» rilegge la descrizione di prima).
+
 ## Quando un lavoro è finito
 - **Server**: test verdi; `python -m fanta verifica` prima e dopo se cambia il calcolo; voce in `fanta/novita.d/`;
   `docs/API.md` o `docs/GUIDA-UTENTE.md` aggiornati.
