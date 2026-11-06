@@ -196,6 +196,41 @@ def test_confronto_senza_improbabile_resta_come_prima(monkeypatch):
     assert r["frase"]["param"]["esito"]["chiave"] == "confronto.esito_meglio"
 
 
+def _confronto_con_punti(monkeypatch, attuale, invertita, *rosa_param):
+    """Il Confronto tra X e Y con i punti attesi della formazione fissati: `attuale` (com'è) e `invertita` (i due scambiati)."""
+    import pandas as pd
+
+    from fanta import consigli
+    from fanta.lega import GiocatoreRosa, Squadra
+    rosa = _rosa_terzo_attaccante(*rosa_param)
+    prev = pd.DataFrame([{"nome": g.nome, "ruolo": g.ruolo, "p_voto": g.p, "mu": g.mu, "mu_voto": g.mu_voto} for g in rosa],
+                        index=[g.id for g in rosa])
+    squadra = Squadra("Prova", [GiocatoreRosa(g.id, g.nome, g.ruolo, None) for g in rosa])
+    monkeypatch.setattr(consigli, "scheda_previsione", lambda i, x: {"id": int(i), "nome": x["nome"]})
+    f = consigli._calcola_formazione(squadra, prev, 10, True, Regole(), 600)        # prima, con le simulazioni vere
+    monkeypatch.setattr(consigli, "formazione", lambda *a, **k: f)
+    punti = iter([attuale, invertita])
+    monkeypatch.setattr(fz.Valutatore, "atteso", lambda self, *a, **k: next(punti))
+    return consigli._in_formazione(None, Regole(), object(), None, 10, None, X, Y, prev)
+
+
+@pytest.mark.parametrize("attuale", [72.74, 72.66])
+def test_confronto_la_differenza_torna_con_i_numeri_scritti(monkeypatch, attuale):
+    """#392: «vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)»: la differenza è quella dei due numeri scritti (72,66 − 72,14
+    = 0,52 darebbe «0,5») e il meno è quello tipografico, non il trattino."""
+    r = _confronto_con_punti(monkeypatch, attuale, 72.14, 0.15, 4, 0.6, 6)
+    assert r["posto_b"] == "titolare"
+    assert "Con g41 titolare la formazione vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)." in r["testo"]
+    assert r["frase"]["param"]["esito"]["param"]["d"] == "-0.6"
+
+
+def test_confronto_invertirli_varrebbe_di_piu_con_il_piu_davanti(monkeypatch):
+    """Invertendoli si guadagna: la differenza è positiva e si scrive «+0,6» (60,6 − 60,0), non «0,5» (60,56 − 60,04 = 0,52)."""
+    r = _confronto_con_punti(monkeypatch, 60.04, 60.56, 0.3, 4, 0.6, 6)
+    assert r["posto_b"] == "titolare" and r["frase"]["param"]["esito"]["chiave"] == "confronto.esito_peggio"
+    assert "Invertendoli la formazione varrebbe 60,6 invece di 60,0 (+0,6):" in r["testo"]
+
+
 def test_panchina_a_posti_fissi_per_ruolo():
     from fanta.formazione import Giocatore, _panchina
     from fanta.regole import Regole

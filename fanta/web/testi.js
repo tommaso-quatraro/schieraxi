@@ -3762,6 +3762,9 @@ function traduciGiornata(v) {
 function testoParametro(v) {
   if (v && typeof v === "object" && !Array.isArray(v)) return traduciFrase(v, "");
   if (Array.isArray(v)) return v.map(testoParametro).join(", ");
+  // un numero negativo con il meno tipografico («−0.6», mai «-0.6»), come `segno` e il testo italiano del server (#392)
+  if (typeof v === "number" && v < 0) return "−" + String(-v);
+  if (typeof v === "string" && /^-\d+(\.\d+)?$/.test(v)) return "−" + v.slice(1);
   if (typeof v === "string") return v.split("; ").map(traduciErrore).join("; ");           // un testo salvato prima di avere la chiave (nomi, squadre: non cambiano)
   return v;
 }

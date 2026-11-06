@@ -99,6 +99,32 @@ def test_copie_e_ricostruzione_tengono_la_chiave():
     assert frasi.di("testo qualunque") is None and frasi.di(f) == f.json() and frasi.lista(["x", F("senso.crediti")])[0] is None
 
 
+# ---------------------------------------------------------------- numeri con il segno (#392)
+def test_un_numero_negativo_ha_il_meno_tipografico():
+    """«−0,4», mai «-0,4» (come `segno` e `numMeno` della web); se arrotondato vale zero, «0,0» senza segno. Nel JSON resta il
+    numero con il trattino, che si legge con qualunque linguaggio."""
+    f = F("senso.differenza_piccola", punti=-0.43, giornate="3 giornate")
+    assert f.startswith("La differenza è piccola (−0,4 punti in 3 giornate)") and "-" not in f
+    assert f.json()["param"]["punti"] == "-0.4"
+    assert F("senso.differenza_piccola", punti=-0.04, giornate="3 giornate").startswith("La differenza è piccola (0,0 punti")
+    assert F("posto.panchina", n=-3) == "panchina −3"                         # un intero negativo, anche lui con il meno tipografico
+
+
+@pytest.mark.parametrize("a, b, testo, nel_json", [
+    (72.14, 72.74, "−0,6", "-0.6"),          # la foto della issue: 72,7 e 72,1 → la differenza è 0,6
+    (72.14, 72.66, "−0,6", "-0.6"),          # quella vera (0,52) arrotondata da sola darebbe 0,5: non torna con 72,7 e 72,1
+    (60.56, 60.04, "+0,6", "+0.6"),          # positiva: con il «+»
+    (72.10, 72.14, "0,0", "0.0"),            # stessi numeri a schermo: zero, senza segno
+])
+def test_la_differenza_e_quella_dei_due_numeri_mostrati(a, b, testo, nel_json):
+    d = frasi.differenza(a, b)
+    f = F("confronto.esito_peggio", invertita=a, attuale=b, d=d, modulo="3-4-3")
+    assert f.startswith(f"Invertendoli la formazione varrebbe {frasi._it(a)} invece di {frasi._it(b)} ({testo}):")
+    assert f.json()["param"]["d"] == nel_json
+    copia = frasi.da_json(json.loads(json.dumps(f.json())))             # passa dal JSON (cache) e torna uguale
+    assert copia == f and copia.json() == f.json()
+
+
 # ---------------------------------------------------------------- la traduzione nel web (node)
 def _in_node(lingua: str, casi: list) -> list:
     """Per ogni caso [frase, testo italiano] il risultato di `traduciFrase` con la lingua data."""
@@ -165,6 +191,22 @@ def test_frasi_vere_in_inglese_con_nomi_numeri_e_frasi_dentro():
     ]
     risultato = _in_node("en", [[f.json(), str(f)] for f in casi])
     assert risultato == attesi
+
+
+@CON_NODE
+def test_in_inglese_i_numeri_con_il_segno_hanno_il_meno_tipografico():
+    """#392: la frase del Confronto in inglese con la differenza dei due numeri mostrati, «−0.6» e «+0.6»; un decimale negativo
+    qualunque ha il meno tipografico anche qui."""
+    casi = [F("confronto.esito_meglio", titolare="Rossi", attuale=72.66, invertita=72.14, d=frasi.differenza(72.14, 72.66)),
+            F("confronto.esito_peggio", invertita=60.56, attuale=60.04, d=frasi.differenza(60.56, 60.04), modulo="3-4-3"),
+            F("senso.differenza_piccola", punti=-0.43, giornate=F("tempo.giornate", n=3)),
+            F("posto.panchina", n=-3)]
+    assert casi[0] == "Con Rossi titolare la formazione vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)."
+    inglese = _in_node("en", [[f.json(), str(f)] for f in casi])
+    assert inglese[0] == "With Rossi as a starter the lineup is worth 72.7 expected points; with the two swapped 72.1 (−0.6)."
+    assert inglese[1].startswith("Swapping them the lineup would be worth 60.6 instead of 60.0 (+0.6):")
+    assert "(−0.4 " in inglese[2] and "-" not in inglese[2]
+    assert "−3" in inglese[3] and "-3" not in inglese[3]
 
 
 @CON_NODE
