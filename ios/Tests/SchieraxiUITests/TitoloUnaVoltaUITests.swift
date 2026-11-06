@@ -2,12 +2,11 @@ import XCTest
 
 /// Issue #419: VoiceOver legge il titolo di una pagina una volta sola, con ogni dimensione del testo. Con il testo normale lo
 /// legge nella barra (`TitoloInBarra`, #340); con il testo grande nella pagina (`TitoloNellaPagina`, intestazione), e la barra
-/// è nascosta a VoiceOver anche quando mostra il titolo perché ci sta (se no un titolo corto si sentirebbe due volte).
-/// Si contano tutti i testi accessibili con il titolo, anche quelli che non si vedono: la prima versione lasciava nella barra
-/// il titolo di sistema (`navigationTitle`), invisibile sotto `TitoloInBarra` ma trovato da VoiceOver (con il testo massimo
-/// un riquadro con il nome su una zona vuota, con il testo normale il nome due volte); e nella barra nessun testo vuoto
-/// (VoiceOver si fermerebbe su niente). Ogni messaggio d'errore descrive tutti i testi trovati (posizione, misura, se si
-/// vedono), su una riga sola.
+/// resta senza titolo. Si contano tutti i testi accessibili con il titolo, anche quelli che non si vedono, e nella barra
+/// nessun testo vuoto (VoiceOver si fermerebbe su niente). Le versioni di prova lasciavano nella barra elementi invisibili
+/// con il nome: il titolo di sistema sotto `TitoloInBarra` (con il testo normale il nome due volte) e, con il testo grande,
+/// l'elemento del titolo «solo se ci sta» anche se nascosto a VoiceOver (con il nome corto, o vuoto con quello lungo).
+/// Ogni messaggio d'errore descrive tutti i testi trovati (posizione, misura, se si vedono), su una riga sola.
 /// Questo controlla la barra vera, che i test unitari non possono disegnare.
 final class TitoloUnaVoltaUITests: XCTestCase {
     /// Il nome della squadra che apre `-DEMO_SCHERMATA lega-rosa` (inventato, 32 lettere: con il testo grande non ci sta nella barra).
@@ -72,7 +71,7 @@ final class TitoloUnaVoltaUITests: XCTestCase {
         XCTAssertEqual(vuotiNellaBarra(app), 0, "nella barra nessun testo vuoto: VoiceOver si fermerebbe su niente")
     }
 
-    /// «Squadre» ci sta nella barra anche con il testo massimo: si vede lì e nella pagina, ma VoiceOver lo legge una volta.
+    /// Un titolo corto, «Squadre» (una pagina senza `piccoloInBarra`): con il testo massimo anche lui solo nella pagina.
     func testTestoMassimoIlTitoloCortoSiLeggeUnaVoltaSola() {
         let app = avvia("lega-squadre", testo: Self.testoMassimo)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "Squadre")).firstMatch.waitForExistence(timeout: 30),

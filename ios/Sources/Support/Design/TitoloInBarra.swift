@@ -1,38 +1,19 @@
 import SwiftUI
 
-/// Il titolo piccolo della barra, sempre intero: mai tagliato con «…» mentre lo stesso titolo è intero nella pagina.
-/// `ModificatoreTitoloPagina` lo mette al posto del titolo di sistema, che sta su una riga e taglia.
-///
-/// - Testo normale (`TitoloPagina.interoInBarra`, pagine con `piccoloInBarra`, #293): il nome sta su una riga, come il
-///   titolo di sistema, se ci sta; se no va a capo su due righe, un po' più piccolo, e si stringe appena (fino all'80%) solo
-///   se due righe non bastano. Limite: un nome che non sta in due righe nemmeno all'80% (oltre ~40-45 lettere con il testo
-///   grande) si accorcia con «…». iPhone in orizzontale: una riga sola.
-/// - Testo grande (`soloSeCiSta`, `TitoloPagina.inBarraSeCiSta`, tutte le pagine, #419): il titolo intero sta già nella
-///   pagina (`TitoloNellaPagina`), quindi la barra lo mostra solo se ci sta intero su una riga; se no non mostra niente.
-///   VoiceOver salta la barra e legge il titolo nella pagina, come intestazione (`TitoloPagina.voceNellaPagina`).
+/// Il titolo piccolo della barra, intero (#293). Il titolo di sistema della barra piccola sta su una riga: con il testo
+/// normale tagliava un nome di squadra oltre ~22 lettere («Gli Amici del Bar Spo…»). Qui il nome sta su una riga, come il
+/// titolo di sistema, se ci sta; se no va a capo su due righe, un po' più piccolo, e si stringe appena (fino all'80%) solo
+/// se due righe non bastano. Limite: un nome che non sta in due righe nemmeno all'80% (oltre ~40-45 lettere con il testo
+/// grande) si accorcia con «…». iPhone in orizzontale: una riga sola (sotto). `ModificatoreTitoloPagina` lo mette al posto
+/// del titolo di sistema nelle pagine con `piccoloInBarra`, sotto `TitoloPagina.soglia` (`TitoloPagina.interoInBarra`); da
+/// `soglia` in su la barra resta senza titolo e il titolo intero è nella pagina (`TitoloPagina.barraSenzaTitolo`, #419).
 struct TitoloInBarra: View {
     let titolo: String
-    /// Testo grande: una riga se il titolo ci sta intero, se no niente (il titolo intero è nella pagina).
-    var soloSeCiSta = false
     @Environment(\.verticalSizeClass) private var classeVerticale
 
     var body: some View {
         Group {
-            if soloSeCiSta {
-                // Testo grande: il titolo su una riga, intero, oppure niente. `ViewThatFits` prende la prima vista che ci sta in
-                // larghezza: se il titolo non ci sta, l'ultima, vuota e alta zero (nessun riquadro vuoto per VoiceOver o Zoom).
-                // In orizzontale vale lo stesso: con il tetto una riga sta anche nella barra bassa.
-                ViewThatFits(in: .horizontal) {
-                    Text(titolo)
-                        .font(.headline)
-                        .lineLimit(1)
-                    Color.clear
-                        .frame(width: 0, height: 0)
-                        .accessibilityHidden(true)
-                }
-                // cresce come il titolo piccolo di sistema, non oltre: la barra resta alta come nelle altre pagine
-                .dynamicTypeSize(...TitoloPagina.tettoBarra)
-            } else if classeVerticale == .compact {
+            if classeVerticale == .compact {
                 // iPhone in orizzontale: la barra piccola è alta ~32 punti e due righe non ci stanno; in larghezza c'è molto
                 // più posto, quindi una riga sola che si stringe appena (fino all'80%) solo se serve
                 Text(titolo)
@@ -55,11 +36,8 @@ struct TitoloInBarra: View {
                 }
             }
         }
-        // VoiceOver lo legge come il titolo della pagina, come quello di sistema che sostituisce. Con il testo grande no
-        // (`soloSeCiSta`): VoiceOver lo legge nella pagina, come intestazione, dove è sempre intero; qui lo ripeterebbe
-        // quando il titolo ci sta (`TitoloPagina.voceNellaPagina`)
+        // VoiceOver lo legge come il titolo della pagina, come quello di sistema che sostituisce (che resta vuoto)
         .accessibilityAddTraits(.isHeader)
-        .accessibilityHidden(soloSeCiSta)
     }
 }
 
@@ -108,7 +86,7 @@ extension View {
     }
 }
 
-#Preview("Testo grande, nome lungo: niente nella barra, intero nella pagina") {
+#Preview("Testo grande: barra senza titolo, nome intero nella pagina") {
     NavigationStack {
         List {
             TitoloNellaPagina()
