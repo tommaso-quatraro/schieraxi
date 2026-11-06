@@ -59,13 +59,20 @@ final class FormazioneViewModel: ViewModelBase {
     @Published private(set) var salvataNonValida = false
     /// Il server sta provando la scelta salvata appena letta: finché non risponde la riga non dice niente (come la web).
     @Published private(set) var provaSalvata = false
-    var salvataggioInCorso: Bool { false }
+    /// Un salvataggio è partito e il server non ha ancora risposto: un secondo tocco su Salva (o ⌘S) non ne manda un altro, come
+    /// `sc.occupato` della web. Finché dura, i pulsanti di salvataggio e «Annulla modifiche» sono spenti.
+    @Published private(set) var salvataggioInCorso = false
     /// Il calcolo della modifica a mano non è riuscito: invece dei punti, «Non riesco a calcolare» con «Riprova».
     @Published private(set) var calcoloNonRiuscito = false
     /// I titolari a cui si riferisce `valutazione` (dopo una sostituzione la valutazione vecchia non vale più).
     private var valutati: [Int]?
     /// Il codice dell'ultimo errore di `valuta` (campo `codice` del server), se c'era.
     private var codiceUltimoErrore: String?
+
+    /// Hai toccato tu un modulo o uno stile (fuori dalla modifica a mano). Solo allora, rileggendo la scelta, quello che guardi resta
+    /// e la scelta salvata non lo copre. Si azzera con tutto ciò che riparte da capo (`azzeraManuale`: «Torna alla consigliata»,
+    /// un'altra squadra e ritorno, scelta cambiata da un altro dispositivo).
+    private var moduloToccato = false
 
     /// Giornata a cui si riferisce la modifica a mano: se cambia, si riparte da zero.
     private var giornata: Int?
@@ -87,10 +94,12 @@ final class FormazioneViewModel: ViewModelBase {
         return vista(f).titolari.map(\.id)
     }
 
-    /// Senza modifica a mano si guarda un modulo o uno stile diverso dalla scelta salvata, che vale ancora: è una modifica di
+    /// Senza modifica a mano hai toccato un modulo o uno stile diverso dalla scelta salvata, che vale ancora: è una modifica di
     /// questo telefono. Rileggendo la scelta (ritorno sulla Formazione, tira per aggiornare) non si copre con quella salvata.
+    /// Conta solo un tocco vero (`moduloToccato`): dopo un 412, «Torna alla consigliata» o il ritorno da un'altra squadra sullo
+    /// schermo c'è la consigliata, ma la scelta salvata va rimessa in campo.
     private var modificaSenzaMano: Bool {
-        guard manuale == nil, let salvati, !salvataNonValida, let mostrati = titolariMostrati else { return false }
+        guard moduloToccato, manuale == nil, let salvati, !salvataNonValida, let mostrati = titolariMostrati else { return false }
         return Set(mostrati) != Set(salvati)
     }
 
@@ -229,6 +238,7 @@ final class FormazioneViewModel: ViewModelBase {
 
     private func azzeraManuale() {
         manuale = nil
+        moduloToccato = false
         valutazione = nil
         valutati = nil
         calcoloNonRiuscito = false
@@ -337,12 +347,14 @@ final class FormazioneViewModel: ViewModelBase {
     func cambiaStile() {
         moduloScelto = nil
         esciDallaModificaAMano()
+        moduloToccato = true
         Haptics.selezione()
     }
 
     func scegliModulo(_ modulo: String) {
         moduloScelto = modulo
         esciDallaModificaAMano()
+        moduloToccato = true
         Haptics.selezione()
     }
 
@@ -408,7 +420,9 @@ final class FormazioneViewModel: ViewModelBase {
     /// «Salva questa», «Salva le modifiche», «Salva come mia scelta»: salva come tua scelta gli undici che stai guardando
     /// (consigliata, stile o modulo scelti, o modifica a mano).
     func salvaQuesta(_ f: Formazione) async {
-        guard squadraVista == nil, !chiusa else { return }
+        guard squadraVista == nil, !chiusa, !salvataggioInCorso else { return }
+        salvataggioInCorso = true
+        defer { salvataggioInCorso = false }
         if manuale == nil { manuale = vista(f).titolari.map(\.id) }
         await valuta(salva: true)
     }
@@ -416,7 +430,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// «Annulla modifiche»: si torna agli undici salvati (o, se non valgono più, alla consigliata con la riga che lo dice), anche
     /// da un modulo o uno stile toccato fuori dalla modifica a mano.
     func annullaModifiche() {
-        guard !chiusa, let salvati else { return }
+        guard !chiusa, !salvataggioInCorso, let salvati else { return }
         if salvataNonValida { azzeraManuale(); return }
         manuale = salvati
         messaggio = nil

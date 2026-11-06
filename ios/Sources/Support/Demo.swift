@@ -143,7 +143,12 @@ extension Demo {
         }
     }
 
-    static func moduloDaToccare(_ f: Formazione, rischio: Int, salvati: [Int]?) -> String? { nil }
+    /// La foto `formazione-modificata` (#463): un modulo dello stile in uso con undici diversi dalla scelta salvata. Toccato, la
+    /// riga dice «Modifiche non salvate» con «Salva le modifiche», «Annulla modifiche» e «Torna alla consigliata».
+    static func moduloDaToccare(_ f: Formazione, rischio: Int, salvati: [Int]?) -> String? {
+        guard let salvati, let livello = f.livelli?.first(where: { $0.rischio == rischio }) ?? f.livelli?.first else { return nil }
+        return livello.moduli.first { Set($0.titolari) != Set(salvati) }?.modulo
+    }
 
     /// Porta l'app sulla schermata chiesta con `-DEMO_SCHERMATA`. Chiamata una volta sola all'avvio.
     static func applica(nav: Navigazione, modello: AppModel) {
@@ -177,6 +182,15 @@ extension Demo {
                 await modello.formazione.carica()
                 try? await Task.sleep(nanoseconds: 400_000_000)
                 if let f = modello.formazione.formazione { modello.formazione.iniziaModificaManuale(f) }
+            }
+        case "formazione-modificata":
+            // la tua scelta salvata e un altro modulo toccato: «Modifiche non salvate» con Salva, Annulla e Torna (#463)
+            nav.sezione = .formazione
+            Task {
+                let vm = modello.formazione
+                await vm.carica()
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                if let f = vm.formazione, let modulo = moduloDaToccare(f, rischio: vm.rischio, salvati: vm.salvati) { vm.scegliModulo(modulo) }
             }
 
         case "formazione-confronto", "confronto", "confronto-fondo":

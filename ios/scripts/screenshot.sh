@@ -23,7 +23,7 @@ mkdir -p "$USCITA"
 source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
-TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
+TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-modificata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
        mercato-consigliati mercato-classifica mercato-classifica-fondo mercato-calendario mercato-osservati
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
@@ -35,7 +35,7 @@ TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recuper
 PER_CHIARO=(oggi formazione formazione-confronto formazione-perche formazione-immagine mercato-consigliati mercato-classifica
             scambi scambi-offerta scambi-dettaglio lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(oggi formazione mercato-consigliati mercato-classifica scambi lega giocatore)
-PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto mercato-consigliati mercato-calendario
+PER_TESTO_GRANDE=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-salvata formazione-modificata formazione-confronto mercato-consigliati mercato-calendario
                   mercato-osservati scambi scambi-offerta scambi-dettaglio scambi-analizza lega lega-squadre lega-regole lega-stato
                   impostazioni-aspetto giocatore giocatore-fondo)
 PER_IPAD=(oggi oggi-fondo formazione formazione-fondo formazione-manuale formazione-confronto formazione-perche mercato-consigliati mercato-classifica

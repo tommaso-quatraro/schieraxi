@@ -37,6 +37,8 @@ struct FormazioneView: View {
     /// In modifica a mano, al posto della frase dello stile (`formazione.modificata_mano`): moduli e stili restano sullo schermo e
     /// un tocco torna alla loro proposta (#463).
     static let testoModificataAMano = "Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata."
+    /// In modifica a mano, per VoiceOver su ogni stile e modulo: cosa fa il tocco, come dice la frase sopra.
+    static let suggerimentoChipAMano = "Torna alla consigliata"
 
     /// La riga sotto «Titolari» (`formazione.tocca_sostituire` in modifica a mano, altrimenti `formazione.tocca_confronto`).
     static func istruzioneTitolari(modificabile: Bool) -> String {
@@ -402,6 +404,7 @@ struct FormazioneView: View {
         let stato = vm.statoScelta
         if stato != .sconosciuto {
             RigaStatoScelta(stato: stato,
+                            salvando: vm.salvataggioInCorso,
                             salva: { salvaQuesta(f) },
                             annulla: { vm.annullaModifiche() },
                             tornaAllaConsigliata: { tornaAllaConsigliata(f) })
@@ -438,6 +441,7 @@ struct FormazioneView: View {
                 }
                 .buttonStyle(StilePressione())
                 .accessibilityLabel("Stile \(l.nome)\(l.rischio == consigliato ? ", consigliato" : "")")
+                .accessibilityHint(aMano ? Self.suggerimentoChipAMano : "")
                 .accessibilityAddTraits(attivo ? .isSelected : [])
             }
         }
@@ -466,6 +470,7 @@ struct FormazioneView: View {
                 }
                 .buttonStyle(StilePressione())
                 .accessibilityLabel("Modulo \(m.modulo), \(Formato.punti(m.punteggioAtteso)) punti attesi\(m.modulo == livello.modulo ? ", proposto dallo stile" : "")")
+                .accessibilityHint(aMano ? Self.suggerimentoChipAMano : "")
                 .accessibilityAddTraits(attivo ? .isSelected : [])
             }
         }
@@ -557,6 +562,7 @@ struct FormazioneView: View {
     private func salva(_ f: Formazione) -> some View {
         PulsanteRigaStato(testo: Self.etichettaSalva(vm.statoScelta), simbolo: "tray.and.arrow.down", colore: .verde) { salvaQuesta(f) }
             .keyboardShortcut("s", modifiers: .command)
+            .disabled(vm.salvataggioInCorso)
     }
 
     private func torna(_ f: Formazione) -> some View {

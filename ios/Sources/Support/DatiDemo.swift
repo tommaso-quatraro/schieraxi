@@ -34,12 +34,14 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
             server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
-        case "formazione-salvata":
+        case "formazione-salvata", "formazione-modificata":
             // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»); Oggi dice lo stesso
-            // («La tua formazione · la tua scelta», #418)
+            // («La tua formazione · la tua scelta», #418). `formazione-modificata`: la stessa scelta e poi un altro modulo
+            // toccato (`Demo.moduloDaToccare`), «Modifiche non salvate» con Salva, Annulla e Torna (#463)
             server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
             server.risposte["/api/oggi"] = DatiDemo.json(DatiDemo.oggiDati(adesso: adesso, tuaScelta: true))
-            server.indirizzoFinto = "https://finto-scelta-salvata.invalid"
+            server.indirizzoFinto = schermata == "formazione-modificata" ? "https://finto-scelta-modificata.invalid"
+                                                                         : "https://finto-scelta-salvata.invalid"
         case "oggi-rinvio":
             server.risposte["/api/oggi"] = DatiDemo.oggiRinvio(adesso: adesso)
             server.indirizzoFinto = "https://finto-partita-rinviata.invalid"

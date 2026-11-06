@@ -5,6 +5,8 @@ import SwiftUI
 /// come mia scelta», «Annulla modifiche», «Torna alla consigliata». «Modifica a mano» sta accanto alla frase dello stile.
 struct RigaStatoScelta: View {
     let stato: StatoScelta
+    /// Un salvataggio è in corso: i pulsanti che salvano e «Annulla modifiche» sono spenti (niente doppio salvataggio).
+    let salvando: Bool
     /// Salva come tua scelta gli undici sullo schermo («Salva questa», «Salva le modifiche», «Salva come mia scelta»).
     let salva: () -> Void
     let annulla: () -> Void
@@ -70,13 +72,16 @@ struct RigaStatoScelta: View {
             switch pulsante {
             case .salvaQuesta:
                 PulsanteRigaStato(testo: Self.testoSalvaQuesta, simbolo: "tray.and.arrow.down", colore: .verde, azione: salva)
+                    .disabled(salvando)
                     .accessibilityHint(Self.suggerimentoSalva)
             case .salva:
                 PulsanteRigaStato(testo: FormazioneView.etichettaSalva(stato), simbolo: "tray.and.arrow.down", colore: .verde, azione: salva)
                     .keyboardShortcut("s", modifiers: .command)
+                    .disabled(salvando)
                     .accessibilityHint(Self.suggerimentoSalva)
             case .annulla:
                 PulsanteRigaStato(testo: Self.testoAnnulla, simbolo: "arrow.counterclockwise", colore: .primary, azione: annulla)
+                    .disabled(salvando)
                     .accessibilityHint("Rimette la formazione che hai salvato")
             case .torna:
                 PulsanteRigaStato(testo: Self.testoTorna, simbolo: "arrow.uturn.backward", colore: .primary, azione: tornaAllaConsigliata)
@@ -98,7 +103,7 @@ struct RigaStatoScelta: View {
     let stati: [StatoScelta] = [.consigliata, .altra, .salvata(Date()), .modificata(Date()), .bozza, .nonValida, .chiusa(tua: true), .chiusaNonValida]
     VStack(spacing: 12) {
         ForEach(stati.indices, id: \.self) { i in
-            RigaStatoScelta(stato: stati[i], salva: {}, annulla: {}, tornaAllaConsigliata: {})
+            RigaStatoScelta(stato: stati[i], salvando: false, salva: {}, annulla: {}, tornaAllaConsigliata: {})
         }
     }
     .padding()
