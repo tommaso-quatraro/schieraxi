@@ -165,13 +165,15 @@ Nell'**Elenco dei giocatori** e nella rosa di una squadra i nomi delle colonne (
   Se chi paga non ha abbastanza crediti, lo scambio risulta «non si può fare» e il conguaglio non entra nel giudizio (niente punti né crediti sotto zero).
 - **Valuta un'offerta**: incolli il messaggio dell'altro allenatore e SchieraXI dice se conviene.
 
+Ogni proposta sta in un riquadro: chi dai a sinistra, chi ricevi a destra, sotto i punti in più in stagione per te e per l'altro (grandi) e, sulla stessa riga, **Copia bozza del messaggio** e **Vedi il giudizio completo**. Su uno schermo largo le scelte stanno a sinistra e il risultato a destra.
+
 Servono le rose delle altre squadre: se hai caricato solo la tua, qui trovi un messaggio con il pulsante **Aggiorna le rose**. Serve anche aver indicato la tua squadra.
 
 ### Altro
 
-- **Regole** (si aprono subito): punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
+- **Regole** (si aprono subito): punteggi, moduli, panchina, rosa. Puoi incollare il regolamento di Leghe: SchieraXI propone i valori da controllare; con **Applica ai campi** le righe cambiate restano evidenziate per un attimo. Su uno schermo largo il regolamento da incollare sta a sinistra e le regole a destra, così vedi insieme cosa ha riconosciuto e i valori che cambia. Nei **Tempi della lega**: *Scadenza della formazione* (minuti prima della prima partita), *Prima giornata della lega* (da quale giornata di Serie A parte la tua lega) e *Aggiornamenti più fitti vicino alla scadenza*. In **Partite rinviate**: cosa fa di solito la lega con i giocatori di una partita rinviata (anche a settimane dopo): *Aspetta il recupero* (predefinito), *Senza voto* o *Voto d'ufficio* (con il voto, per esempio 6).
 - **Movimenti e storico**: scambi, svincolati e tagli a ogni aggiornamento delle rose.
-- **Crediti delle squadre**: non sono nel file di Leghe; li scrivi qui e tocchi **Salva i crediti**. Finché non salvi, sopra il pulsante leggi «Ci sono crediti scritti e non ancora salvati».
+- **Crediti delle squadre**: non sono nel file di Leghe; li scrivi qui (una riga per squadra, su due colonne se lo schermo è largo) e tocchi **Salva i crediti**. Finché non salvi, sopra il pulsante leggi «Ci sono crediti scritti e non ancora salvati».
 - **Nuova stagione**: a fine campionato archivia le rose e riparte, senza cancellare niente.
 - **Novità**: le ultime dieci versioni, le altre con **Mostra le versioni precedenti**.
 
@@ -215,7 +217,7 @@ Il widget è il riquadro sulla Home o sulla schermata di blocco. Si collega **da
 
 **Altro > Diario delle giornate.** Per ogni giornata finita vedi **Cosa consigliava SchieraXI** accanto a **Cosa hai schierato** (i giocatori cambiati sono evidenziati), i punti previsti e quelli fatti («azzeccata», «meno del previsto», «più del previsto»).
 
-Se non hai detto cosa hai schierato, tocca **Ho schierato la consigliata** o **Ho schierato un'altra formazione** (scegli a mano i tuoi undici); **Correggi a mano** rifà una formazione già registrata. Questi pulsanti ci sono solo per le giornate della stagione in corso: quelle delle stagioni passate si leggono e basta. Se il Diario è vuoto, dice perché: manca la tua squadra, non è finita nessuna giornata, oppure sono ancora da calcolare.
+Sotto le formazioni, a destra, i punti fatti e quelli attesi, sempre in colonna. Se non hai detto cosa hai schierato, tocca **Ho schierato la consigliata** (pieno nella giornata più recente da segnare) o, accanto, **Ho schierato un'altra formazione** (scegli a mano i tuoi undici); **Correggi a mano** rifà una formazione già registrata. Questi pulsanti ci sono solo per le giornate della stagione in corso: quelle delle stagioni passate si leggono e basta. Se il Diario è vuoto, dice perché: manca la tua squadra, non è finita nessuna giornata, oppure sono ancora da calcolare.
 
 - **Le tue scelte**: nelle giornate in cui hai schierato undici diversi dal consiglio, quante volte hanno fatto più punti le tue scelte e quante il consiglio. Non è un voto: serve a capire dove ti fidi del tuo istinto.
 - **Quanto ci abbiamo preso**: quanto SchieraXI ci ha preso, **anche quando va male**, in quattro numeri con una frase ciascuno:

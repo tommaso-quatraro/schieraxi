@@ -309,6 +309,8 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 @media (forced-colors: active) {
   .segmenti button.attivo { outline: 2px solid Highlight; outline-offset: -2px; }
   .chips.filtri .chip.attiva, .lega-voce[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }   /* ruolo dell'Elenco, voce aperta del menu */
+  /* misura degli Scambi e moduli delle Regole scelti; regola appena cambiata da «Applica ai campi» (il fondo e la linea spariscono) */
+  .chips.misure .chip.attiva, #moduli .chip.attiva, .riga-regola.evidenzia { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 /* striscia scorrevole (Mercato): le voci hanno la loro larghezza vera e non si tagliano; la scelta resta in vista e un bordo sfumato dice che si scorre */
 .segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 0; scroll-snap-type: x proximity; scroll-padding-inline: 24px;
@@ -380,8 +382,6 @@ details[open] > summary { margin-bottom: 8px; }
 .voce .dettaglio { font-size: var(--t-sec); color: var(--testo-2); }
 .voce .valore { text-align: right; font-variant-numeric: tabular-nums; }
 .voce .valore b { display: block; font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.ruolo { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: var(--t-sec); font-weight: 700; color: #fff; }
-.ruolo.P { background: #9a5f00; } .ruolo.D { background: #237d46; } .ruolo.C { background: #2b66bf; } .ruolo.A { background: #c13b38; }
 .etichette { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; }
 /* Etichette dei giocatori (grafica B, spec §8.9): testo da 13 px nel colore del tono, senza fondo né bordo (sull'iPhone restano
    pillole: parole e toni uguali). Mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima
@@ -541,7 +541,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .avviso-riga .avviso-nota { display: block; margin-top: 2px; }
 .avviso-riga .nota { text-align: left; margin: 2px 0 0; }
 /* Oggi a giornata in corso e finita (fasi della giornata) */
-.fv-fatto { font-size: var(--t-valore); font-variant-numeric: tabular-nums; }
+.fv-fatto { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; }
 .cambi-live { list-style: none; margin: 6px 0 0; padding: 0; }
 .cambi-live li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; flex-wrap: wrap; }
 .cambi-live li + li { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
@@ -622,11 +622,13 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .grafico text { font-size: var(--t-eti); fill: var(--testo-2); } .grafico text.sv { font-weight: 600; }
 .legenda { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 8px; vertical-align: middle; }
 .legenda.fv { background: var(--verde); } .legenda.voto { background: var(--blu); }
+/* impatto sui reparti (Scambi): righe con il filo, la lettera del ruolo grigia, la variazione a destra nel carattere dei numeri */
 .reparto { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; }
+.reparto + .reparto { border-top: 1px solid var(--filo); }
+.reparto > b { font-family: var(--font-numeri); font-weight: 600; font-variant-numeric: tabular-nums; }
 .voce-archivio { display: flex; justify-content: space-between; gap: 10px; padding: 11px 0; }
-.scambio .lati { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; margin: 8px 0; }
-.scambio .freccia { color: var(--verde); font-size: var(--t-card); }
-.guadagno { font-weight: 700; font-variant-numeric: tabular-nums; }
+.scambio .freccia { color: var(--testo-2); font-size: var(--t-card); }     /* il ⇄ è un segno, non un esito: niente verde */
+.guadagno { font-family: var(--font-numeri); font-weight: 650; font-variant-numeric: tabular-nums; }
 .guadagno.su { color: var(--verde); } .guadagno.giu { color: var(--rosso); }
 /* Perché questo numero (scheda del giocatore e foglio che si apre dal numero nella Formazione) */
 .perche { margin-top: 12px; }
@@ -638,13 +640,15 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .perche-definizione { margin-top: 10px; }
 [data-perche] { cursor: pointer; }      /* il numero apre «Perché questo numero»: lo dicono la manina e il nome; niente sottolineatura a puntini (spec §8.4) */
 .af-fascia.fuori { color: var(--arancio); }
-.scelte { max-height: 260px; overflow: auto; border: 1px solid var(--bordo); border-radius: var(--r-in); padding: 4px 12px; background: color-mix(in srgb, var(--solido) 40%, transparent); }
-.scelte label { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); font-size: var(--t-corpo); }
+/* elenco che scorre dentro la pagina (Costruisci): il bordo dei controlli dice dove scorre; righe con il filo, senza fondo */
+.scelte { max-height: 260px; overflow: auto; border: 1px solid var(--bordo-campo); border-radius: var(--r-in); padding: 4px 12px; background: none; }
+.scelte label { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--filo); font-size: var(--t-corpo); }
 .scelte label:first-child { border-top: 0; }
 .proposta { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
 .proposta .lato { min-width: 0; } .proposta .lato.dx { text-align: right; }
-.proposta button.nome-g { border: 0; background: none; padding: 0; text-align: inherit; font-weight: 650; font-size: var(--t-corpo); display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.proposta .freccia { color: var(--verde); font-size: var(--t-card); }
+/* il nome accanto alla lettera del ruolo; un nome lungo va a capo, mai «…» (piano grafica B, «Attenzione in revisione» 1) */
+.proposta button.nome-g { border: 0; background: none; padding: 0; text-align: inherit; font-weight: 650; font-size: var(--t-corpo); color: var(--testo); display: inline; max-width: 100%; overflow-wrap: anywhere; }
+.proposta .freccia { color: var(--testo-2); font-size: var(--t-card); }
 /* card introduttiva compatta: una riga + «Come si legge» chiuso */
 .intro-c { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; padding: 0; margin-bottom: 12px; }
 .intro-c .intro-riga { font-size: var(--t-corpo); }
@@ -670,8 +674,11 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .pr-num { text-align: right; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
 .pr-num b { font-size: var(--t-titolo); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .pr-num span { font-size: var(--t-eti); font-weight: 600; color: var(--testo-2); }
+/* il guadagno in stagione è il dato grande della proposta (spec §4.3): i due numeri nel carattere dei numeri, la frase intorno piccola */
 .guadagno-grande { text-align: center; margin-top: 8px; font-size: var(--t-sec); color: var(--testo-2); }
-.guadagno-grande b { color: var(--verde); font-size: var(--t-titolo); letter-spacing: -.02em; }
+.guadagno-grande .guadagno { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; letter-spacing: -.01em; }
+.guadagno-breve { text-align: center; }
+.azioni-scambio { justify-content: center; }
 
 /* ---------------------------------------------------------------- foglio che sale dal basso (pannello affiancato: «PC e schermi larghi») */
 .foglio { position: fixed; inset: 0; z-index: 20; }
@@ -709,12 +716,13 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .guida code { font-size: var(--t-eti); background: color-mix(in srgb, var(--solido) 55%, transparent); border: 1px solid var(--bordo); border-radius: 7px; padding: 1px 6px; word-break: break-all; }
 /* ---- riepilogo dei movimenti delle rose ---- */
 .movimento { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; padding: 9px 0; font-size: var(--t-corpo); }
-.movimento + .movimento { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
-.icona-mov { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-weight: 700; font-size: var(--t-corpo);
-  background: color-mix(in srgb, var(--blu) 20%, transparent); color: var(--blu); }
-.icona-mov.su { background: color-mix(in srgb, var(--verde) 20%, transparent); color: var(--verde); }
-.icona-mov.giu { background: color-mix(in srgb, var(--rosso) 20%, transparent); color: var(--rosso); }
-.movimento.ok .icona-mov { background: color-mix(in srgb, var(--verde) 20%, transparent); color: var(--verde); }
+.movimento + .movimento { border-top: 1px solid var(--filo); }
+/* il segno del movimento (＋ preso, － lasciato, ⇄ scambio, ¢ crediti) nel suo colore, senza quadratino colorato (spec §11); la frase
+   accanto dice già cosa è successo */
+.icona-mov { width: 28px; height: 28px; display: grid; place-items: center; font-weight: 700; font-size: var(--t-card); color: var(--blu); }
+.icona-mov.su { color: var(--verde); }
+.icona-mov.giu { color: var(--rosso); }
+.movimento.ok .icona-mov { color: var(--verde); }
 .movimento .nome-g { border: 0; background: none; padding: 0; font: inherit; font-weight: 650; color: var(--testo); text-decoration: underline dotted; }
 .proposta button.nome-g, .movimento .nome-g { padding: 13px 4px; margin: -13px -4px; }       /* area di tocco da 44px senza cambiare l'altezza delle righe */
 
@@ -758,6 +766,7 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 .voce-g .nome { display: flex; align-items: baseline; gap: 6px; font-size: var(--t-corpo); font-weight: 650; line-height: 1.35; }
 .voce-g .nome-t { min-width: 0; overflow-wrap: break-word; }
 .ruolo-l { flex: none; width: 1.2em; font-size: var(--t-sec); font-weight: 650; color: var(--testo-2); }
+.ruolo-l.ruolo-in { display: inline-block; margin-right: 2px; }        /* davanti al nome in una riga di testo (Scambi, Diario, ricerca) */
 .voce-g .dettaglio { display: block; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
 .voce-g .dettaglio .nb { display: inline-block; max-width: 100%; }        /* a capo tra i pezzi («… 20:45 ·» / «Real Esempio»), non dentro */
 .voce-g .etichette { margin-top: 1px; }
@@ -829,16 +838,26 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 .barra-div i.sx { right: 50%; } .barra-div i.dx { left: 50%; background: var(--blu); }
 
 /* ---- regole: − / +, interruttori, fasce ---- */
-.riga-regola { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); border-radius: 10px; }
+/* Regole (spec §9): righe con il nome a sinistra e il «−/+» a destra, separate dal filo. Una colonna larga al massimo 720 px (il «−/+»
+   resta vicino al nome); da 1100 px due colonne: nome della lega e «Importa da Leghe» a sinistra, le sezioni a destra */
+.regole-colonne { max-width: 720px; }
+.regole-testa, .regole-sezioni { min-width: 0; }
+@media (min-width: 1100px) {
+  .regole-colonne { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 0 32px; align-items: start; max-width: none; }
+}
+.riga-regola { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--filo); }
 .riga-regola:first-of-type { border-top: 0; }
 .riga-regola > span { font-size: var(--t-corpo); flex: 1; min-width: 0; }
 .riga-regola > select.scelta-corta { width: auto; flex: none; max-width: 48%; min-height: 44px; padding: 8px 12px; font-size: var(--t-corpo); }
 .riga-regola small, .interruttore-ios small { display: block; color: var(--testo-2); font-size: var(--t-eti); margin-top: 1px; }
-.riga-regola.evidenzia { background: color-mix(in srgb, var(--verde) 20%, transparent); transition: background 1.5s; }
+/* regola appena cambiata da «Applica ai campi»: il fondo del passaggio del mouse e la linea di 3 px a sinistra nel colore delle azioni,
+   come la voce aperta del menu di Altro. Le ombre allungano il fondo di 8 px ai lati senza spostare il testo (resta sul filo del titolo) */
+.riga-regola.evidenzia { background: var(--superficie); box-shadow: -8px 0 0 var(--superficie), 8px 0 0 var(--superficie), -11px 0 0 var(--azione);
+  transition: background-color 1.5s, box-shadow 1.5s; }
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--bordo-campo); border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 50%, transparent); overflow: hidden; flex: none; max-width: 100%; }   /* i −/+ restano da 44 px (#289): se il posto non basta cede il numero */
 .stepper button { width: 44px; height: 44px; flex: none; border: 0; background: none; font-size: var(--t-card); font-weight: 500; color: var(--azione); line-height: 1; }
 .stepper button:active { background: color-mix(in srgb, var(--azione) 18%, transparent); }
-.stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-size: var(--t-card); font-weight: 650; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
+.stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
 .interruttore-ios { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; font-size: var(--t-corpo); }
 .interruttore-ios > span { flex: 1; }
 .interruttore-ios input { appearance: none; -webkit-appearance: none; position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -847,17 +866,17 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 .interruttore-ios input:checked + i { background: var(--azione); }
 .interruttore-ios input:checked + i::after { transform: translateX(20px); }
 .interruttore-ios input:focus-visible + i { outline: 2px solid var(--testo); outline-offset: 2px; }
-.fascia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 0; border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
+.fascia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 0; border-top: 1px solid var(--filo); }
 .fascia .coppia { display: flex; align-items: center; gap: 8px; }
 .fascia .rimuovi-fascia { margin-left: auto; }
 .fascia .stepper input { width: 52px; font-size: var(--t-corpo); }       /* i pulsanti restano da 44px (come ogni stepper): a 390 px la fascia va a capo da sola */
 .rimuovi-fascia { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--bordo); background: none; color: var(--rosso); font-size: var(--t-corpo); }
-.prova-difesa { background: color-mix(in srgb, var(--solido) 40%, transparent); border: 1px solid var(--bordo); border-radius: var(--r-in); padding: 12px; }
+.prova-difesa { padding: 10px 0 0; border-top: 1px solid var(--filo); }      /* la prova del modificatore: righe e spazio, niente riquadro */
 .prova-voti { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }      /* due contatori: vanno a capo invece di stringersi (a 320 px i −/+ erano larghi 26 px) */
 .prova-esito { font-size: var(--t-corpo); }
 .salva-fisso[hidden] { display: none; }
 .salva-fisso { position: sticky; bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 24px); z-index: 4; display: flex; justify-content: center; padding: 6px 0 2px; pointer-events: none; }
-.salva-fisso .bottone { pointer-events: auto; min-width: 70%; box-shadow: var(--ombra); }   /* galleggia: l'ombra dice che sta sopra */
+.salva-fisso .bottone { pointer-events: auto; min-width: 70%; }   /* galleggia pieno sopra le righe, senza ombra (spec §7.5), come il messaggio che passa */
 
 /* ---- stemma e maglia ---- */
 /* sotto i 260 px utili (zoom al 200%) la maglia accanto al conto alla rovescia, che è solo decorazione, non si mostra: il numero ha
@@ -882,6 +901,7 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 /* Diario: una riga in testa, la spiegazione lunga dietro «Come si legge» (docs/STILE-SENZA-AI.md) */
 .come-diario > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .novita-voci { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: var(--t-corpo); }
+.novita-pagina { max-width: 70ch; }      /* pagina Novità: una colonna da leggere, righe al massimo 70 caratteri anche sul PC (spec C12) */
 
 
 /* ---- ballottaggi con le alternative vicine ---- */
@@ -1111,14 +1131,15 @@ body.pagina-testo { padding: 0 0 40px; }
 .conta-scelti { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--testo-2); margin-left: 6px; }
 .conta-scelti.pieno { color: var(--arancio); }
 .scelti { display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px; align-items: center; }
-.scelto-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px 4px 6px; border-radius: var(--r-in); border: 1px solid var(--bordo);
-  background: color-mix(in srgb, var(--verde) 14%, var(--vetro-carta)); color: var(--testo); font-size: var(--t-corpo); font-weight: 600; max-width: 100%; }
+/* giocatore scelto (Dai / Ricevi): un rettangolo con il bordo dei controlli, come le voci di scelta, senza tinta; la × lo toglie */
+.scelto-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px 4px 6px; border-radius: var(--r-in); border: 1px solid var(--bordo-campo);
+  background: none; color: var(--testo); font-size: var(--t-corpo); font-weight: 600; max-width: 100%; }
 .scelto-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scelto-chip i { font-style: normal; color: var(--testo-2); font-size: var(--t-card); line-height: 1; }
 .scelto-chip > .avatar, .voce-scelta > .avatar { width: 36px; height: 36px; --d: 36px; flex: none; }
 .analizzatore .scelte { max-height: 300px; padding: 0 8px; }
-.analizzatore .scelte label.voce-scelta { min-height: 52px; padding: 6px 4px; gap: 10px; cursor: pointer; border-radius: 12px; }
-.voce-scelta.scelta { background: color-mix(in srgb, var(--verde) 12%, transparent); }
+.analizzatore .scelte label.voce-scelta { min-height: 52px; padding: 6px 4px; gap: 10px; cursor: pointer; border-radius: var(--r-in); }
+.voce-scelta.scelta { background: var(--superficie); }       /* la casella spuntata dice «scelto»; il fondo è quello del passaggio del mouse */
 .voce-scelta input:disabled { opacity: .35; }
 .voce-scelta:has(input:disabled) { color: var(--testo-2); cursor: default; }
 .voce-scelta:has(input:focus-visible) { outline: 2px solid var(--testo); outline-offset: -2px; }
@@ -1128,7 +1149,7 @@ body.pagina-testo { padding: 0 0 40px; }
 .riga-conguaglio { display: flex; gap: 10px; align-items: center; margin: 8px 0 4px; flex-wrap: wrap; }
 .riga-conguaglio .segmenti { margin: 0; min-width: 190px; flex: 1 1 190px; }
 .riga-conguaglio .campo-testo { width: 130px; flex: 0 0 130px; min-height: 52px; font-variant-numeric: tabular-nums; }
-.formato-scambio { font-weight: 650; color: var(--verde); }
+.formato-scambio { font-weight: 650; color: var(--testo); }
 /* verdetto di un'offerta: come gli avvisi, il filo a sinistra nel colore del giudizio (verde conviene, arancio così così, rosso no) */
 .verdetto { padding: 4px 0 4px 12px; margin-bottom: 16px; border: 0; border-left: 3px solid var(--filo); background: none; }
 .verdetto h3 { margin: 0 0 4px; font-size: var(--t-card); text-transform: none; letter-spacing: -.01em; color: var(--testo); font-weight: 700; }
@@ -1139,9 +1160,9 @@ body.pagina-testo { padding: 0 0 40px; }
 .elenco-semplice { margin: 8px 0 0; padding-left: 20px; font-size: var(--t-corpo); }
 .elenco-semplice li { margin: 4px 0; }
 .confronto .riga-confronto { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; padding: 9px 0;
-  border-top: 1px solid color-mix(in srgb, var(--testo) 9%, transparent); font-size: var(--t-corpo); }
+  border-top: 1px solid var(--filo); font-size: var(--t-corpo); }
 .confronto .riga-confronto:first-child { border-top: 0; }
-.confronto .riga-confronto > b { font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.confronto .riga-confronto > b { font-family: var(--font-numeri); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .confronto .riga-confronto.intestazione { font-size: var(--t-eti); color: var(--testo-2); }
 .esito-scambio-colonne { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 20px; margin-top: 16px; }
 .colonna-esito { min-width: 0; }
@@ -1155,6 +1176,9 @@ body.pagina-testo { padding: 0 0 40px; }
 #scambi-modi { max-width: 640px; }
 .contatore-scambi { margin-top: 10px; font-size: var(--t-sec); font-weight: 600; color: var(--testo-2); }
 .chips.misure { margin: 10px 0 2px; }
+/* «Chi accetta più volentieri»: righe con il filo, il guadagno medio a destra nel carattere dei numeri */
+.propensa { padding: 8px 0; border-top: 1px solid var(--filo); }
+.propensa > b { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; }
 .chips.misure .chip { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 8px 4px; }
 .chip:disabled { opacity: .45; }
 .dettaglio-scambio .esito-scambio-colonne { display: block; margin-top: 12px; }
@@ -1301,6 +1325,11 @@ body.senza-accesso .salta { display: none; }
 .mia-riga .stemma-lista, .mia-riga .iniziale-squadra { width: 56px; height: 56px; flex: none; }
 .maglia-lista { height: 56px; width: auto; max-width: 64px; object-fit: contain; flex: none; }
 .riga-crediti { margin: 10px 0 4px; }
+/* Altro > Crediti delle squadre: righe con il filo, il nome a sinistra e i crediti a destra; sul PC in due colonne (da 632 px utili) */
+.crediti-righe { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); column-gap: 32px; margin: 4px 0 8px; }
+.crediti-righe .riga-crediti { margin: 0; padding: 6px 0; border-top: 1px solid var(--filo); min-width: 0; }
+.crediti-righe .riga-crediti label { min-width: 0; overflow-wrap: anywhere; }
+.cred-squadra { font-family: var(--font-numeri); font-variant-numeric: tabular-nums; }
 .regola-sez { padding-top: 6px; padding-bottom: 6px; }
 .regola-sez[open] > summary { margin-bottom: 8px; }
 
@@ -1312,14 +1341,19 @@ body.senza-accesso .salta { display: none; }
 .qp { margin-top: 12px; }
 .qp-pochi { margin: 10px 0 0; }
 .qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 24px; margin: 12px 0; }
-@media (min-width: 560px) { .qp-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.qp-voce { min-width: 0; padding: 12px 0 4px; border-top: 1px solid var(--bordo); }          /* righe, non carte dentro la carta (STILE-SENZA-AI) */
-.qp-num { display: block; font-size: var(--t-titolo); font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+@media (min-width: 560px) {
+  .qp-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diario-conf.una .diario-lista { columns: 2; column-gap: 24px; display: block; }      /* la consigliata da sola: gli 11 su due colonne */
+  .diario-conf.una .diario-lista li { break-inside: avoid; }
+}
+.qp-voce { min-width: 0; padding: 12px 0 4px; border-top: 1px solid var(--filo); }          /* righe, non carte dentro la carta (STILE-SENZA-AI) */
+.qp-num { display: block; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .qp-eti { display: block; font-size: var(--t-eti); color: var(--testo-2); margin-top: 2px; }
 .qp-frase { font-size: var(--t-sec); margin-top: 8px; }
 .attenzione-testo { color: var(--arancio); }
 .qp-dettagli { margin-top: 6px; font-size: var(--t-sec); }
 .qp-dettagli summary { cursor: pointer; color: var(--testo-2); min-height: 44px; display: flex; align-items: center; }
+.qp-dettagli > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; }     /* «Tutte le fasce»: una tendina, non un titolo */
 .qp-fasce, .qp-giornate { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }
 .qp-grafico { display: block; margin-top: 4px; max-width: 460px; }
 .qp-barra { fill: color-mix(in srgb, var(--verde) 70%, transparent); }
@@ -1331,7 +1365,11 @@ body.senza-accesso .salta { display: none; }
 .diario-col h3 { margin: 0 0 4px; font-size: var(--t-sec); }
 .diario-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-size: var(--t-sec); }
 .diario-lista li { overflow-wrap: anywhere; padding: 2px 6px; border-radius: 8px; border-left: 3px solid transparent; }
-.diario-lista li.diario-diverso { font-weight: 700; background: color-mix(in srgb, var(--arancio) 22%, transparent); border-left-color: var(--arancio); }
+.diario-lista li.diario-diverso { font-weight: 700; border-left-color: var(--arancio); }      /* chi non c'è nell'altra: grassetto e filo arancio, senza tinta */
+/* i punti fatti e «attesi N» di ogni giornata in due colonne della stessa larghezza (spec §9, «numeri in colonna») */
+.diario-punti { display: grid; grid-template-columns: minmax(0, 1fr) 4.2em 7.5em; column-gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--filo); font-size: var(--t-corpo); }
+.dp-fatti { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.1; }
+.dp-attesi { font-size: var(--t-eti); color: var(--testo-2); font-variant-numeric: tabular-nums; }
 .diario-ruolo { display: inline-block; min-width: 1.2em; color: var(--testo-2); font-size: var(--t-eti); }
 .diario-panchina { margin-top: 8px; }
 .elenco-scelte { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
@@ -1470,6 +1508,9 @@ body { container: pagina / inline-size; }
   .stat-fila, .stat-fila.quattro, .statistiche { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .perche-voce { grid-template-columns: 1fr; gap: 2px; }
   .perche-effetto { justify-self: start; }
+  /* Diario: il nome della formazione su una riga sua, i punti fatti e «attesi N» sotto, a destra */
+  .diario-punti { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+  .diario-punti > span:first-child { grid-column: 1 / -1; }
   .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .legenda-campo li { grid-template-columns: 1fr; gap: 4px; }
   .leg-esempio { justify-self: start; }
