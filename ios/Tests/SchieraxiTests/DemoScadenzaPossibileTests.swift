@@ -72,8 +72,8 @@ struct DemoScadenzaPossibileTests {
         }
 
         // nel momento della demo: una finita, due in gioco (#303), le altre da giocare; ognuna al punto giusto della partita
-        #expect(partite.filter(\.finita).count == 1, "\(dove): \(partite.filter(\.finita).count) partite finite")
-        #expect(partite.filter(\.inGioco).count == 2, "\(dove): \(partite.filter(\.inGioco).count) partite in gioco")
+        #expect(partite.count(where: \.finita) == 1, "\(dove): \(partite.count(where: \.finita)) partite finite")
+        #expect(partite.count(where: \.inGioco) == 2, "\(dove): \(partite.count(where: \.inGioco)) partite in gioco")
         for p in partite {
             let quando = try #require(p.quando, "\(dove): \(p.id) senza orario")
             let giocati = adesso.timeIntervalSince(quando) / 60   // minuti dal calcio d'inizio
