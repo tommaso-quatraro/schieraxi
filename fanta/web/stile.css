@@ -1328,8 +1328,9 @@ body.senza-accesso .salta { display: none; }
   body.con-pannello main { margin-right: var(--pannello); margin-left: max(0px, (100% - var(--pannello) - 1240px) / 2); }
   body.con-pannello .foglio { left: auto; top: var(--alto-testata, 56px); width: var(--pannello); }
   body.con-pannello .foglio-sfondo { display: none; }
-  body.con-pannello .foglio-corpo { inset: 0; width: auto; border-radius: 0; border-left: 1px solid var(--filo); padding: 16px 24px 28px; }
-  body.con-pannello .foglio-chiudi { position: sticky; top: 0; right: auto; float: right; margin: -4px -10px 0 8px; background: var(--sfondo); }
+  body.con-pannello .foglio-corpo { inset: 0; width: auto; border-radius: 0; border-left: 1px solid var(--filo); padding: 16px 24px 28px; scroll-padding-top: 72px; }
+  body.con-pannello .foglio-chiudi { position: sticky; top: 0; right: auto; float: right; margin: 0 -10px 6px 8px; background: var(--sfondo); }
+  body.con-pannello #foglio-contenuto > :not(:first-child) { clear: right; }   /* la ✕ ferma non copre il primo risultato né il suo focus */
   body.con-pannello main .colonne-campo { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); --quota-campo: calc(5 / 12); }
   body.con-pannello main .colonne-oggi > .col:nth-child(2) { columns: auto; }
 }

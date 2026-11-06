@@ -1214,6 +1214,12 @@ function sostituti(f, base, dentro) {
   return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
     .sort((a, b) => b.punti_attesi - a.punti_attesi);
 }
+// La Formazione si ridisegna (modulo, stile, «Torna alla consigliata», un calcolo arrivato): la sostituzione di un titolare aperta
+// (`data-sostituzione`) si chiude, perché i suoi candidati erano quelli della formazione di prima. Le schede dei giocatori restano.
+function chiudiSostituzione() {
+  const foglio = $("#foglio");
+  if (foglio && !foglio.hidden && $("#foglio-contenuto [data-sostituzione]")) chiudiFoglio();
+}
 
 function mostraFormazione(f, squadra, opz = {}) {
   const scheda = id => f.schede[String(id)];
@@ -1282,6 +1288,7 @@ function mostraFormazione(f, squadra, opz = {}) {
   const annullaRichieste = () => { sc.richiesta = (sc.richiesta || 0) + 1; sc.occupato = false; };
 
   const disegna = (mantieniScroll = false) => {
+    chiudiSostituzione();                                               // i candidati aperti erano quelli della formazione di prima
     const y0 = window.scrollY;
     const l = livello(), m = corrente(), manuale = !!sc.manuale;
     stato.formaz = { f, modulo: m, livello: sc.livello, manuale };      // serve al confronto: chi è titolare, in panchina o fuori in questa formazione
@@ -1408,8 +1415,11 @@ function mostraFormazione(f, squadra, opz = {}) {
       <span class="pv-g largo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span><span class="valore">${nomeFvAtteso()}<b>${num(x.fv_atteso)}</b></span></button></li>`;
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
       <div class="debole piccolo">${t("formazione.giocatori_dello_stesso")}</div>
-      <div class="carta" style="margin-top:12px">${candidati.length ? `<ul class="elenco">${candidati.map(riga).join("")}</ul>` : `<div class="debole">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });   // accanto al campo, da 1200 px
+      <div class="carta" style="margin-top:12px" data-sostituzione>${candidati.length ? `<ul class="elenco">${candidati.map(riga).join("")}</ul>` : `<div class="debole">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });   // accanto al campo, da 1200 px
     document.querySelectorAll("[data-entra]").forEach(b => b.addEventListener("click", () => {
+      // con il pannello affiancato la pagina resta attiva: nel frattempo un modulo, uno stile o «Torna alla consigliata» possono aver
+      // tolto la modifica a mano, o il titolare non c'è più (revisione della #426). Allora si chiude e non si cambia niente.
+      if (!sc.manuale || !sc.manuale.titolari.includes(id)) { chiudiFoglio(); return; }
       const ids = sc.manuale.titolari.map(t => t === id ? Number(b.dataset.entra) : t);
       chiudiFoglio();
       valutaManuale(ids);
@@ -1994,6 +2004,8 @@ function apriFoglio(html, opz = {}) {
   corpo.classList.remove("trascina");
   corpo.style.transform = ""; corpo.style.transition = "";
   $("#foglio-contenuto").innerHTML = html;
+  const statoRicerca = $("#stato-ricerca");                              // «12 risultati» vale per la ricerca: un contenuto nuovo la svuota
+  if (statoRicerca) statoRicerca.textContent = "";
   const titoloFoglio = $("#foglio-contenuto").querySelector("h1, h2, h3");          // il pannello prende il nome dal suo primo titolo
   if (titoloFoglio && titoloFoglio.textContent.trim()) { titoloFoglio.id = "foglio-titolo"; corpo.setAttribute("aria-labelledby", "foglio-titolo"); corpo.removeAttribute("aria-label"); }
   else { corpo.removeAttribute("aria-labelledby"); corpo.setAttribute("aria-label", t("shell.dettagli")); }
@@ -2011,7 +2023,18 @@ function apriFoglio(html, opz = {}) {
     }
   }
 }
-PANNELLO_LARGO.addEventListener("change", () => { if (!$("#foglio").hidden && chiedeAffianco) modoFoglio(); });
+PANNELLO_LARGO.addEventListener("change", () => {
+  if ($("#foglio").hidden || !chiedeAffianco) return;
+  // la ricerca della testata non ha un campo suo e sotto i 1200 px la testata diventa inerte: riparte la ricerca del foglio, con il
+  // suo campo e il testo già scritto, che lascia la testata (revisione della #426)
+  if (!PANNELLO_LARGO.matches && $("#risultati-ricerca") && !$("#ricerca-veloce")) {
+    const campo = $("#campo-cerca"), testo = campo.value;
+    campo.value = "";
+    apriRicerca(testo);
+    return;
+  }
+  modoFoglio();
+});
 function chiudiFoglio() {
   const foglio = $("#foglio");
   if (foglio.hidden) return;
@@ -2843,7 +2866,8 @@ function apriRicerca(testo = "") {
   campo.focus({ preventScroll: true });
   setTimeout(() => caricaListoneCerca().catch(() => {}), 350);
   campo.addEventListener("input", () => scriviRisultati(campo.value));
-  campo.addEventListener("keydown", ev => {                             // Invio: il primo risultato
+  campo.addEventListener("keydown", ev => {                             // Invio: il primo risultato; ↓ i risultati
+    frecceRicerca(ev);
     if (ev.key !== "Enter" || ev.isComposing) return;
     ev.preventDefault();
     if (!ev.repeat) apriPrimoRisultato(campo);
@@ -2851,19 +2875,39 @@ function apriRicerca(testo = "") {
   if (testo.trim()) scriviRisultati(testo);                            // dalla testata: cerca subito quello che è già scritto
 }
 // I risultati (al massimo 12) nel posto della ricerca aperta; vale solo l'ultima ricerca partita. Nomi e squadre passano da esc().
+// Quanti sono lo dice la riga `role="status"` del foglio (#stato-ricerca, fissa in index.html: un annuncio si sente solo se la riga
+// c'era già), per chi usa un lettore di schermo: i risultati arrivano mentre si scrive, in un posto dove il cursore non c'è.
 let giroRicerca = 0;
 async function scriviRisultati(testo) {
-  const q = String(testo).trim(), mio = ++giroRicerca, dove = $("#risultati-ricerca");
+  const q = String(testo).trim(), mio = ++giroRicerca, dove = $("#risultati-ricerca"), conta = $("#stato-ricerca");
+  const annuncia = frase => { if (conta && conta.textContent !== frase) conta.textContent = frase; };
   if (!dove) return;
-  if (q.length < 2) { dove.innerHTML = `<div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div>`; return; }
+  if (q.length < 2) { dove.innerHTML = `<div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div>`; annuncia(""); return; }
   try {
     const r = await cercaGiocatori(q, 12), qui = $("#risultati-ricerca");
     if (mio !== giroRicerca || !qui) return;
     qui.innerHTML = r.length ? `<ul class="elenco">${r.map(x => `<li><button class="voce" data-giocatore="${x.id}" style="grid-template-columns:1fr auto">
       <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span><span class="dettaglio" style="display:block">${esc(x.squadra)}</span></span>
       <span class="debole piccolo">${t("avv.quot", { n: x.quotazione })}</span></button></li>`).join("")}</ul>` : `<div class="debole">${t("avv.nessun_giocatore_trovato")}</div>`;
-  } catch (e) { if (e.name !== "AbortError" && mio === giroRicerca && $("#risultati-ricerca")) $("#risultati-ricerca").innerHTML = errore(e); }
+    annuncia(r.length ? tp("avv.n_risultati", r.length) : t("avv.nessun_giocatore_trovato"));
+  } catch (e) { if (e.name !== "AbortError" && mio === giroRicerca && $("#risultati-ricerca")) { $("#risultati-ricerca").innerHTML = errore(e); annuncia(""); } }
 }
+// Frecce nella ricerca (revisione della #426): i risultati stanno nel pannello, dopo la pagina, e con il solo Tab non si arrivava.
+// ↓ nel campo porta al primo risultato, ↓ e ↑ passano dall'uno all'altro, ↑ sul primo torna al campo (quello della testata o del
+// foglio). Senza risultati, a foglio chiuso o oltre l'ultimo le frecce fanno quello di sempre.
+function frecceRicerca(ev) {
+  if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
+  const elenco = [...document.querySelectorAll("#risultati-ricerca [data-giocatore]")];
+  if (!elenco.length || $("#foglio").hidden) return;
+  const campo = $("#ricerca-veloce") || $("#campo-cerca"), k = elenco.indexOf(ev.target);
+  let dove = null;
+  if (ev.target === campo) dove = ev.key === "ArrowDown" ? elenco[0] : null;
+  else if (k >= 0) dove = ev.key === "ArrowDown" ? elenco[k + 1] || null : k === 0 ? campo : elenco[k - 1];
+  if (!dove) return;
+  ev.preventDefault();
+  dove.focus();
+}
+$("#foglio-contenuto").addEventListener("keydown", ev => { if (ev.target.closest("#risultati-ricerca")) frecceRicerca(ev); });
 // Campo della testata svuotato: il pannello si chiude se mostra la ricerca (non una scheda aperta da lì).
 function chiudiRicercaAffiancata() {
   if (!$("#foglio").hidden && $("#risultati-ricerca") && !$("#ricerca-veloce")) chiudiFoglio();
@@ -2875,10 +2919,12 @@ $("#bottone-cerca").addEventListener("click", () => apriRicerca());
 const ricercaInTestata = () => PANNELLO_LARGO.matches && $("#campo-cerca").getClientRects().length > 0;
 let attesaRicerca = null;
 // Invio: si apre il primo risultato, nello stesso pannello; senza risultati, nella testata si vedono quelli («Nessun giocatore trovato»).
+// Campo vuoto o una lettera sola: niente da aprire, il pannello della ricerca si chiude (revisione della #426).
 async function apriPrimoRisultato(campo) {
   const q = campo.value;
+  if (q.trim().length < 2) { if (campo === $("#campo-cerca")) chiudiRicercaAffiancata(); return; }
   let primo = null;
-  if (q.trim().length >= 2) try { primo = (await cercaGiocatori(q.trim(), 12))[0] || null; } catch { /* rete: restano i risultati con l'errore */ }
+  try { primo = (await cercaGiocatori(q.trim(), 12))[0] || null; } catch { /* rete: restano i risultati con l'errore */ }
   if (campo.value !== q) return;                                      // nel frattempo si è scritto altro: vale l'ultima ricerca
   if (primo) apriGiocatore(primo.id);
   else if (campo === $("#campo-cerca")) apriRicerca(q);
@@ -2897,6 +2943,7 @@ $("#campo-cerca").addEventListener("input", ev => {
   apriRicerca(q);
 });
 $("#campo-cerca").addEventListener("keydown", ev => {
+  frecceRicerca(ev);                                                  // ↓ porta ai risultati nel pannello
   if (ev.key !== "Enter" || ev.isComposing) return;
   ev.preventDefault();
   if (!ricercaInTestata()) { const q = ev.target.value; ev.target.value = ""; apriRicerca(q); return; }
