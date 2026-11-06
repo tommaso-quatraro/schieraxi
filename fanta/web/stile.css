@@ -284,7 +284,8 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 /* valore e stella pieni, non all'80%: sul lime del tema chiaro il numero da 12 px scendeva a 4,1:1 (issue #244); il nome resta più grande e più forte */
 .chip.attiva span, .chip.attiva i { color: var(--capitano-testo); }
 /* moduli e stili della formazione: una riga che scorre di lato (stessa striscia di Mercato) invece di andare a capo */
-.chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 2px -4px 4px; padding: 4px; scroll-padding-inline: 24px;
+/* 5 px intorno alle voci: il focus della voce scelta (che sporge di 1 px) sta 2 + 2 px più in là e la striscia taglia ciò che esce */
+.chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 1px -5px 3px; padding: 5px; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent); }
 .chips.scorri::-webkit-scrollbar { display: none; }
@@ -305,6 +306,10 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .segmenti button:last-child { border-radius: 0 calc(var(--r-in) - 1px) calc(var(--r-in) - 1px) 0; }
 .segmenti button:only-child { border-radius: calc(var(--r-in) - 1px); }
 .segmenti button.attivo { color: var(--capitano-testo); background: var(--capitano); box-shadow: inset 0 0 0 2px var(--testo); font-weight: 650; }
+/* contrasto elevato di Windows: il browser toglie il fondo lime e l'ombra interna, la voce scelta prende un contorno vero */
+@media (forced-colors: active) {
+  .segmenti button.attivo { outline: 2px solid Highlight; outline-offset: -2px; }
+}
 /* striscia scorrevole (Mercato): le voci hanno la loro larghezza vera e non si tagliano; la scelta resta in vista e un bordo sfumato dice che si scorre */
 .segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 0; scroll-snap-type: x proximity; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);

@@ -436,6 +436,28 @@ def test_la_scelta_si_riconosce_anche_senza_il_colore():
     assert re.search(r"\.segmenti button \+ button \{[^}]*border-left: 1px solid var\(--filo\)", SENZA_COMMENTI)   # voci separate da un filo
 
 
+def test_la_scelta_si_riconosce_anche_con_il_contrasto_elevato_di_windows():
+    """Revisione di accessibilità della #405: con i colori forzati (contrasto elevato di Windows) il browser toglie il fondo lime e le
+    ombre, quindi il bordo della voce scelta di un controllo segmentato (un'ombra interna) spariva e la scelta non si vedeva più. Lì la
+    voce scelta ha un contorno vero nel colore di sistema della selezione. Moduli e stili hanno un bordo vero, che resta."""
+    assert re.search(r"@media \(forced-colors: active\) \{\s*\.segmenti button\.attivo \{ outline: 2px solid Highlight; "
+                     r"outline-offset: -2px; \}\s*\}", SENZA_COMMENTI)
+    assert "border: 2px solid var(--testo)" in _corpo(".chip.attiva")
+
+
+def test_il_focus_della_voce_scelta_sta_dentro_la_striscia_che_scorre():
+    """Revisione di accessibilità della #405: nella striscia dei moduli e degli stili (che scorre di lato e taglia ciò che esce) la voce
+    scelta sporge di 1 px (bordo di 2 px e margine di −1 px) e il focus sta 2 + 2 px più in là: 5 px, con 4 px di spazio il contorno
+    veniva tagliato. Lo spazio intorno alle voci basta per tutto il contorno; il margine negativo uguale tiene le voci allineate."""
+    fuoco = re.search(r"\n:focus-visible \{ outline: (\d+)px solid var\(--testo\); outline-offset: (\d+)px; \}", SENZA_COMMENTI)
+    sporge = -int(re.search(r"margin: (-\d+)px", _corpo(".chip.attiva")).group(1))
+    serve = int(fuoco.group(1)) + int(fuoco.group(2)) + sporge
+    striscia = _corpo(".chips.scorri")
+    spazio = int(re.search(r"(?<![\w-])padding: (\d+)px;", striscia).group(1))
+    assert spazio >= serve, (spazio, serve)
+    assert f"margin: {2 - (spazio - 4)}px -{spazio}px {4 - (spazio - 4)}px" in striscia     # stesso ingombro di prima, voci allineate
+
+
 def test_pulsante_secondario_da_solo_con_il_bordo_nella_riga_solo_testo():
     """Spec §8.7: un pulsante pieno per schermata (fondo `--azione`); il secondario da solo ha il bordo dei controlli e la scritta del
     testo, quello nella riga (`.azione-testo`) è solo testo del colore delle azioni, con l'area da 44 px. Mai tre contorni in fila."""
