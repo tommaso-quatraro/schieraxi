@@ -9,6 +9,7 @@ import shutil
 import subprocess
 
 import pytest
+from test_diario_stagione_web import DOM, ORA, ROSA, TESTI, _pezzo, _voce
 from test_grafica_b_web import AMBIENTE_PANNELLO, _codice_pannello
 from test_navigazione_web import AMBIENTE, _da_a, _funzione, _riga
 
@@ -245,13 +246,73 @@ def test_foglio_modale_che_cambia_contenuto_porta_il_focus_sul_titolo():
                  "correggi": "titolo:Cosa hai schierato", "ricerca": "campo", "chiuso": "riga1", "primo": "chiudi"}
 
 
+# il DOM finto del Diario (test_diario_stagione_web.py) con il focus: la carta di una giornata ha il suo titolo h2, il foglio
+# (.foglio-corpo) dice cosa c'è dentro e apriFoglio, come quello vero (#448), mette il focus sul titolo in cima al foglio, oppure
+# lo lascia fuori se nel frattempo si è andati altrove nella pagina (`fuoriDalFoglio`)
+DOM_FOCUS = (DOM
+             .replace("querySelector() { return null; } };",
+                      'querySelector(s) { return s === "h2" ? (this.h2 ||= titolo("h2 " + this.id)) : null; } };')
+             .replace("function apriFoglio(html) { foglio.html = html; elementi = {}; trovati = {}; }",
+                      "function apriFoglio(html) { foglio.html = html; elementi = {}; trovati = {}; "
+                      "document.activeElement = fuoriDalFoglio ? fuori : inCima; }")
+             .replace('querySelector(sel) { return sel === "#foglio" ? foglio :',
+                      'querySelector(sel) { return sel === ".foglio-corpo" ? corpoFoglio : sel === "#foglio" ? foglio :')
+             + r"""
+const focati = [];
+const titolo = nome => ({ nome, tabIndex: 0, focus(o) { document.activeElement = this; focati.push([nome, this.tabIndex, !!(o && o.preventScroll)]); } });
+const inCima = titolo("titolo in cima"), fuori = titolo("pagina");
+let fuoriDalFoglio = false;
+const corpoFoglio = { contains: x => !!x && x !== fuori };
+""")
+assert DOM_FOCUS.count("titolo(") >= 2 and "corpoFoglio :" in DOM_FOCUS and "fuoriDalFoglio ? fuori" in DOM_FOCUS
+
+
+@serve_node
 def test_il_diario_riaperto_su_una_giornata_porta_li_il_focus():
-    """Dopo «Ho schierato la consigliata» o «Salva» il Diario si riapre scorso sulla giornata appena segnata: il focus va sul suo
-    titolo, non su quello in cima (il Tab dopo farebbe saltare la pagina all'inizio)."""
-    corpo = _funzione("apriDiario")
-    i = corpo.index("const daMostrare")
-    pezzo = corpo[i:corpo.index('$("#foglio").querySelectorAll("[data-correggi]")', i)]
-    assert "scrollIntoView" in pezzo and ".focus({ preventScroll: true })" in pezzo and 'querySelector("h2")' in pezzo
+    """Dopo «Ho schierato la consigliata», «Salva» o «Annulla» il Diario si riapre scorso sulla giornata appena segnata: il focus
+    (document.activeElement) va sul titolo di quella giornata, non su quello in cima al foglio (il Tab dopo riportava il foglio
+    all'inizio). Il Diario aperto senza giornata lo lascia in cima; se il focus è altrove nella pagina non si sposta."""
+    diario = {"giornate": [_voce(ORA, 10), _voce(ORA, 9)]}
+    codice = "\n".join([
+        TESTI,
+        re.search(r"^const \$ = .*$", APP, re.M).group(0),
+        _pezzo("function esc(x)", "const perc ="),
+        re.search(r"^const segno = .*$", APP, re.M).group(0),
+        re.search(r"^const NOMI_RUOLO = .*$", APP, re.M).group(0),
+        re.search(r"^const ruoloSigla = .*$", APP, re.M).group(0),
+        re.search(r"^const badgeRuolo = .*$", APP, re.M).group(0),
+        re.search(r"^function nomeGiornata\(.*?^\}$", APP, re.M | re.S).group(0),
+        DOM_FOCUS,
+        f"const ROSA = {json.dumps(ROSA)}; DIARIO = {json.dumps(diario)};",
+        _pezzo("// Diario delle giornate: formazione schierata", "// Prova del modello sulle ultime giornate giocate"),
+        """(async () => {
+          const esiti = {}, chi = () => document.activeElement && document.activeElement.nome;
+          await apriDiario(9); esiti.giornata = [chi(), focati.splice(0)];
+          await apriDiario(); esiti.senza = [chi(), focati.splice(0)];
+          await clicca(foglio.querySelectorAll("[data-schierata]")[0]); esiti.schierata = [chi(), focati.splice(0)];
+          fuoriDalFoglio = true; await apriDiario(9); esiti.fuori = [chi(), focati.splice(0)];
+          console.log(JSON.stringify(esiti));
+        })().catch(e => { console.error(e.stack || e); process.exit(1); });""",
+    ])
+    e = _node(codice)
+    g9, g10 = "h2 diario-2026-27-g9", "h2 diario-2026-27-g10"
+    assert e["giornata"] == [g9, [[g9, -1, True]]]                  # il titolo della giornata, senza far scorrere di nuovo il foglio
+    assert e["senza"] == ["titolo in cima", []]
+    assert e["schierata"] == [g10, [[g10, -1, True]]]               # «Ho schierato la consigliata» sulla giornata 10
+    assert e["fuori"] == ["pagina", []]
+
+
+def test_il_titolo_della_giornata_con_il_focus_non_finisce_sotto_la_maniglia():
+    """Revisione della #462: sotto i 1100 px il foglio dal basso ha la maniglia ferma in alto (33 px: 14 + 5 + 14) e il titolo della
+    giornata, portato in cima da scrollIntoView, le finiva sotto. Il foglio lascia in alto lo spazio della maniglia più 8 px
+    (`scroll-padding-top`); da 1100 px la maniglia non c'è. Il titolo che prende il focus non ha il contorno, come gli altri titoli."""
+    stretta = re.search(r"\n@media \(max-width: 1099\.98px\) \{(.*?)\n\}", CSS, re.S).group(1)
+    m = re.search(r"\.foglio-corpo \{ scroll-padding-top: (\d+)px; \}", stretta)
+    maniglia = re.search(r"\n\.maniglia \{[^}]*padding: (\d+)px 0 (\d+)px", CSS)
+    barretta = re.search(r"\n\.maniglia i \{ width: \d+px; height: (\d+)px", CSS)
+    assert m and maniglia and barretta
+    assert int(m.group(1)) >= int(maniglia.group(1)) + int(maniglia.group(2)) + int(barretta.group(1)) + 8
+    assert re.search(r'\n#foglio-contenuto h2\[tabindex="-1"\]:focus \{ outline: none; \}', CSS)
 
 
 # ---------------------------------------------------------------- #450: il titolo del foglio non passa sotto la ✕

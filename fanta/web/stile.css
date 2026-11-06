@@ -611,6 +611,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .cifre-scheda { margin: 10px 0 4px; align-items: last baseline; }   /* i due numeri sulla stessa riga di base */
 .cifre-scheda .enorme { margin: 2px 0 0; }
 #foglio-titolo:focus { outline: none; }        /* prende il focus all'apertura del pannello (spec §14): come il titolo della pagina */
+#foglio-contenuto h2[tabindex="-1"]:focus { outline: none; }     /* il titolo della giornata nel Diario riaperto (#448): come gli altri titoli */
 .pallini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }      /* a 320 px i cinque pallini e «Andamento» non stavano in una riga */
 .pallini i { font-style: normal; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--testo);
   background: color-mix(in srgb, var(--testo) 8%, transparent); border: 1px solid var(--bordo); }
@@ -1319,6 +1320,9 @@ body.senza-accesso .salta { display: none; }
   .lega-colonne[data-aperto="1"] > .lega-menu { display: none; }
   .lega-colonne[data-aperto="0"] > .lega-pagina { display: none; }
   .lega-voce { padding-left: 0; }                                   /* al telefono il menu è la pagina: le voci partono dal bordo */
+  /* il foglio dal basso ha la maniglia ferma in alto (33 px): ciò che prende il focus o si porta in cima (il titolo della giornata nel
+     Diario riaperto, #448) si ferma sotto di lei, con 8 px di stacco. Da 1100 px il foglio sta di lato e la maniglia non c'è */
+  .foglio-corpo { scroll-padding-top: 41px; }
 }
 @media (min-width: 1100px) {
   .lega-colonne { grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: start; }
