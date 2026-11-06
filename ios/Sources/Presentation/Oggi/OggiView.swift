@@ -330,7 +330,7 @@ struct OggiView: View {
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
-                    Image(systemName: "checkmark").foregroundStyle(Color.verde)
+                    Image(systemName: "checkmark").foregroundStyle(Color.verde).accessibilityHidden(true)
                 }
             }
             .accessibilityElement(children: .combine)

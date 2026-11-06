@@ -83,23 +83,6 @@ struct CartaGiornataInCorso: View {
     }
 }
 
-/// Un cambio dalla panchina: «Rossi → Bianchi» e l'etichetta «già fatto» (verde) o «probabile» (arancio), come la web.
-struct RigaCambioPanchina: View {
-    let cambio: CambioPanchina
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Text(TestiFase.cambio(cambio) ?? "").font(.subheadline.weight(.semibold))
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 6)
-            Capsula(testo: TestiFase.etichettaCambio(cambio), colore: cambio.certa ? Color.verde : Color.attenzione)
-        }
-        .frame(minHeight: Tema.areaTocco)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(TestiFase.cambioVoce(cambio) ?? "")
-    }
-}
-
 /// Una riga di chi va a punteggio: ruolo, nome, sigla della squadra («GEN», come la web) e, per chi è entrato dalla panchina,
 /// «entrato dalla panchina»; a destra il fantavoto, la data della partita o lo stato.
 struct RigaGiocatoreInCorso: View {
@@ -176,28 +159,6 @@ struct RigaGiocatoreInCorso: View {
         var frase = parti.joined(separator: ", ") + ": " + TestiFase.valoreVoce(g)
         if let nota { frase += ". " + nota }
         return frase
-    }
-}
-
-/// Fase `in_corso` per chi è entrato a giornata iniziata senza una formazione (`senza_formazione`), come `cardSenzaFormazione`
-/// della web: niente punti, la prossima giornata e «Prepara la prossima», che apre la Formazione (già quella della prossima).
-struct CartaSenzaFormazione: View {
-    let prossima: ProssimaGiornata?
-    @Environment(\.vaiASezione) private var vaiASezione
-
-    var body: some View {
-        Carta(TestiFase.giaIniziata) {
-            Text(TestiFase.giaIniziataTesto).font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
-            if let p = prossima, let riga = TestiFase.prossima(p) {
-                Text(riga).font(.subheadline).foregroundStyle(Color.testoSecondario)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Button { vaiASezione(.formazione) } label: {
-                Label(TestiFase.preparaProssima, systemImage: "sportscourt").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-            }
-            .pulsanteVetro(prominente: true)
-        }
     }
 }
 
@@ -344,10 +305,4 @@ private enum EsempiFase {
         .padding()
         .background(Color.sfondoBase)
         .environmentObject(Navigazione())
-}
-
-#Preview("Giornata già iniziata") {
-    CartaSenzaFormazione(prossima: EsempiFase.prossima)
-        .padding()
-        .background(Color.sfondoBase)
 }
