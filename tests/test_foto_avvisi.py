@@ -34,23 +34,37 @@ RIGA_AVVISO = ("2026-11-06 05:18:34.770 Df generativeexperiencesd[5393:bdb3] [co
                "Posted new Readiness CFU with item: <FLFollowUpItem")
 
 
-def _bash(tmp_path, corpo, avviso_dopo=None):
+RIGA_ALTRA = ("2026-11-06 05:00:00.000 Df SpringBoard[5284:8bf4] [com.apple.usernotificationsd:NotificationsPipeline] "
+              "[create, [id=1111-2222, time=2026-11-06 05:00:00, bundle=com.example.altra], Time elapsed=0.057 sec]: Running step")
+
+
+def _bash(tmp_path, corpo, avviso_dopo=None, eventi=None, altre=()):
     """Esegue `corpo` dopo aver caricato avvisi.sh con `xcrun`, `date +%s` e `sleep` finti.
 
-    Ogni sleep fa passare i secondi che chiede. «log show» risponde con la riga d'avviso solo da `avviso_dopo` secondi
-    dall'inizio in poi (None = mai). Torna (processo, chiamate a xcrun, secondi dormiti)."""
+    Ogni sleep fa passare i secondi che chiede. «log show» risponde, secondo il filtro e la finestra chiesti (`--last Ns`):
+    - con la riga dell'invito di Apple Intelligence per ogni istante di `eventi` (secondi dall'inizio; `avviso_dopo` ne è
+      la scorciatoia per uno solo; nessuno = mai);
+    - con la riga di una notifica qualunque (`[create,`) per ogni istante di `altre`, ma SOLO se il filtro la chiede.
+    Torna (processo, chiamate a xcrun, secondi dormiti)."""
+    if eventi is None:
+        eventi = [] if avviso_dopo is None else [avviso_dopo]
     chiamate = tmp_path / "chiamate.txt"
     ora = tmp_path / "ora.txt"
     ora.write_text("1000\n", encoding="utf-8")
-    soglia = "-1" if avviso_dopo is None else str(1000 + avviso_dopo)
+    eventi_txt = " ".join(str(1000 + t) for t in eventi)
+    altre_txt = " ".join(str(1000 + t) for t in altre)
     righe = [
         f'source "{SCRIPT.as_posix()}"',
-        f'ORA="{ora.as_posix()}"; CHIAMATE="{chiamate.as_posix()}"; SOGLIA={soglia}',
+        f'ORA="{ora.as_posix()}"; CHIAMATE="{chiamate.as_posix()}"; EVENTI="{eventi_txt}"; ALTRE="{altre_txt}"',
         'date() { cat "$ORA"; }',
         'sleep() { echo "sleep $1" >> "$CHIAMATE"; echo $(( $(cat "$ORA") + $1 )) > "$ORA"; }',
         'xcrun() {',
         '  echo "xcrun $*" >> "$CHIAMATE"',
-        f'  case "$*" in *"log show"*) [ "$SOGLIA" -ge 0 ] && [ "$(cat "$ORA")" -ge "$SOGLIA" ] && echo "{RIGA_AVVISO}"; return 0 ;; esac',
+        '  case "$*" in *"log show"*) ;; *) return 0 ;; esac',
+        '  finestra=$(echo "$*" | sed -n "s/.*--last \\([0-9]*\\)s.*/\\1/p"); ora=$(cat "$ORA")',
+        f'  for t in $EVENTI; do [ "$t" -le "$ora" ] && [ "$t" -ge $((ora - finestra)) ] && echo "{RIGA_AVVISO}"; done',
+        f'  case "$*" in *"[create,"*) for t in $ALTRE; do [ "$t" -le "$ora" ] && [ "$t" -ge $((ora - finestra)) ] && echo "{RIGA_ALTRA}"; done ;; esac',
+        '  return 0',
         '}',
         corpo,
     ]
@@ -84,10 +98,12 @@ def test_gli_script_delle_foto_aspettano_gli_avvisi_prima_di_fotografare():
 
 
 def test_il_registro_interrogato_e_quello_dell_avviso_di_apple_intelligence():
-    """Il filtro deve prendere sia l'invito di Apple Intelligence sia la creazione di una notifica del sistema."""
+    """Il filtro prende solo l'invito di Apple Intelligence: un'altra notifica di sistema non deve chiudere l'attesa."""
     testo = SCRIPT.read_text(encoding="utf-8")
-    assert "Posted new Readiness CFU" in testo
-    assert "com.apple.usernotificationsd" in testo and "NotificationsPipeline" in testo
+    filtro = re.search(r"^AVVISI_FILTRO='([^']*)'", testo, re.M)
+    assert filtro, "AVVISI_FILTRO non trovato"
+    assert filtro.group(1) == 'eventMessage CONTAINS "Posted new Readiness CFU"', "solo l'invito di Apple Intelligence chiude l'attesa"
+    assert "[create," not in filtro.group(1), "una notifica qualunque non è l'avviso"
     assert "log show" in testo and "log stream" not in testo.replace("«log stream»", ""), "il registro in diretta arriva in ritardo"
 
 
@@ -130,12 +146,41 @@ def test_l_attesa_guarda_indietro_nel_registro_non_solo_gli_ultimi_secondi(tmp_p
 
 
 @serve_bash
+def test_un_altra_notifica_non_chiude_l_attesa(tmp_path):
+    # una notifica qualunque a 50 secondi, l'invito di Apple a 170: l'attesa deve arrivare fino all'invito
+    r, _, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 400; echo "VISTO=$AVVISI_VISTO"',
+                          eventi=[170], altre=[50])
+    assert r.returncode == 0, r.stderr
+    assert "VISTO=si" in r.stdout
+    assert dormiti >= 170, f"l'altra notifica ha chiuso l'attesa dopo {dormiti} secondi"
+
+
+@serve_bash
 def test_prima_di_spegnere_si_controlla_se_l_avviso_e_comparso_dopo_l_attesa(tmp_path):
     # attesa di 30 secondi senza avviso; l'avviso compare a 100 secondi, quando le foto sono già cominciate
     r, _, _ = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 30; sleep 120; avvisi_ferma; avvisi_riepilogo', avviso_dopo=100)
     assert r.returncode == 0, r.stderr
     assert "comparso DOPO l'attesa" in r.stdout
     assert "comparsi dopo l'attesa: 1" in r.stdout and "controllare le foto" in r.stdout
+
+
+@serve_bash
+def test_il_controllo_finale_c_e_anche_se_l_avviso_e_stato_visto_durante_l_attesa(tmp_path):
+    # primo invito a 20 secondi (visto e aspettato), un secondo a 100 quando le foto sono già cominciate: va segnalato
+    r, _, _ = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 400; sleep 120; avvisi_ferma; avvisi_riepilogo',
+                    eventi=[20, 100])
+    assert r.returncode == 0, r.stderr
+    assert "comparso DOPO l'attesa" in r.stdout
+    assert "aspettati prima delle foto: 1; comparsi dopo l'attesa: 1" in r.stdout
+
+
+@serve_bash
+def test_il_controllo_finale_ignora_un_altra_notifica_e_l_invito_gia_aspettato(tmp_path):
+    r, _, _ = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 400; sleep 120; avvisi_ferma; avvisi_riepilogo',
+                    eventi=[20], altre=[100])
+    assert r.returncode == 0, r.stderr
+    assert "comparso DOPO l'attesa" not in r.stdout
+    assert "comparsi dopo l'attesa: 0" in r.stdout
 
 
 @serve_bash

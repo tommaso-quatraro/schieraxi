@@ -19,10 +19,14 @@
 #   avvisi_riepilogo          una riga per il registro della corsa
 
 AVVISI_PAUSA="${AVVISI_PAUSA:-12}"   # secondi in cui un avviso sta sullo schermo (visti 5), con margine
-AVVISI_FILTRO='(subsystem == "com.apple.usernotificationsd" AND category == "NotificationsPipeline" AND eventMessage CONTAINS "[create,") OR (eventMessage CONTAINS "Posted new Readiness CFU")'
+# Solo la riga dell'invito di Apple Intelligence: un'altra notifica di sistema non deve chiudere l'attesa (e poi lasciare l'avviso vero
+# sopra le foto). Subito dopo questa riga SpringBoard crea la notifica di Impostazioni (NotificationsPipeline, «[create,»), ma
+# quella riga c'è per qualunque notifica e non serve.
+AVVISI_FILTRO='eventMessage CONTAINS "Posted new Readiness CFU"'
 AVVISI_UDID=""
 AVVISI_AVVIATO=0     # ora (secondi) dell'accensione
-AVVISI_VISTO=""      # "" = non si è aspettato; "si" = visto durante l'attesa; "no" = non visto in tempo
+AVVISI_FINE_ATTESA=0 # ora (secondi) in cui è finita l'attesa: gli avvisi dopo questa ora sono sulle foto
+AVVISI_VISTO=""      # "" = non si è aspettato; "si" = visto durante l'attesa; "no" = non visto in tempo (solo per il registro)
 AVVISI_TARDI=0       # righe di avviso viste dopo l'attesa (sono nelle foto fatte dopo)
 AVVISI_ASPETTATI=0   # avvisi visti durante l'attesa e lasciati passare prima delle foto
 
@@ -35,6 +39,7 @@ avvisi_contati() {
 avvisi_avvia() {
   AVVISI_UDID="$1"
   AVVISI_AVVIATO=$(date +%s)
+  AVVISI_FINE_ATTESA=0
   AVVISI_VISTO=""
 }
 
@@ -50,12 +55,14 @@ avvisi_attendi() {
     if [ "${visti:-0}" -gt 0 ]; then
       echo "  avviso visto ($((passati)) s di attesa, $(( $(date +%s) - AVVISI_AVVIATO )) s dall'accensione): aspetto $AVVISI_PAUSA s che sparisca"
       sleep "$AVVISI_PAUSA"
+      AVVISI_FINE_ATTESA=$(date +%s)
       AVVISI_VISTO=si
       AVVISI_ASPETTATI=$((AVVISI_ASPETTATI + 1))
       return 0
     fi
     if [ "$passati" -ge "$massimo" ]; then
       echo "  ATTENZIONE: nessun avviso in $massimo s: si va avanti (se comparirà più tardi, lo dirà il riepilogo)"
+      AVVISI_FINE_ATTESA=$(date +%s)
       AVVISI_VISTO=no
       return 0
     fi
@@ -63,10 +70,16 @@ avvisi_attendi() {
   done
 }
 
+# Prima di spegnere: dopo la fine dell'attesa è comparso un altro invito? (Sempre, qualunque cosa abbia visto l'attesa: se la
+# riga del registro è più nuova della fine dell'attesa, le foto fatte da allora possono avere l'avviso sopra.)
 avvisi_ferma() {
-  local visti
-  if [ -n "$AVVISI_UDID" ] && [ "$AVVISI_VISTO" = no ]; then
-    visti=$(avvisi_contati "$AVVISI_UDID" $(( $(date +%s) - AVVISI_AVVIATO + 10 )))   # solo da questa accensione
+  local visti da
+  if [ -n "$AVVISI_UDID" ]; then
+    da="$AVVISI_FINE_ATTESA"
+    [ "$da" -gt 0 ] || da="$AVVISI_AVVIATO"
+    da=$(( $(date +%s) - da ))
+    [ "$da" -ge 1 ] || da=1
+    visti=$(avvisi_contati "$AVVISI_UDID" "$da")
     if [ "${visti:-0}" -gt 0 ]; then
       AVVISI_TARDI=$((AVVISI_TARDI + visti))
       echo "ATTENZIONE: l'avviso di sistema è comparso DOPO l'attesa: le foto fatte in quel momento possono averlo sopra"

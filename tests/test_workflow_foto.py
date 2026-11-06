@@ -346,9 +346,16 @@ def test_fila_dopo_45_minuti_parte_lo_stesso(tmp_path):
 
 
 @serve_bash
-def test_fila_il_limite_vale_anche_se_le_corse_davanti_non_finiscono(tmp_path):
+def test_fila_il_limite_non_vale_per_le_corse_davanti(tmp_path):
+    # «al massimo 2 corse di foto» e «la corsa davanti non ha ancora deciso» finiscono da sole quando finiscono le corse davanti:
+    # niente stallo da sciogliere, e partire lo stesso porterebbe a più di 2 corse e a 6 job Mac. Anche con 3000 secondi per attesa
     _, _, testo, codice = _fila(tmp_path, PRIMA="400,401", PASSO="1000")
-    assert codice == 0 and "parte lo stesso" in testo and "(in fila: 2 corse Screenshot prima di questa" in testo
+    assert codice == 7 and "TROPPA ATTESA" in testo and "parte lo stesso" not in testo
+    _, _, testo, codice = _fila(tmp_path, PRIMA="400", QUANDO_400="1", PASSO="1000")
+    assert codice == 7 and "TROPPA ATTESA" in testo and "parte lo stesso" not in testo
+    # e finiscono: appena le corse davanti sono due in meno, la corsa parte
+    _, _, testo, codice = _fila(tmp_path, PRIMA="400,401 400,401 -", PASSO="1000")
+    assert codice == 0 and "Tocca a questa corsa" in testo and "parte lo stesso" not in testo
 
 
 @serve_bash
