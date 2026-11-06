@@ -31,9 +31,9 @@ def test_partita_nelle_righe_e_nelle_celle():
     assert 'const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span>' in APP
     assert "const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;" in APP
     assert "const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;" in APP
-    # «casa» / «fuori» dopo una sigla solo per i lettori di schermo, dentro vsAt
-    assert APP.count('t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")') == 1
-    assert not re.search(r'sigla\([^)]*\)\s*(<small>)?\$\{t\([a-z]+\.in_casa \? "giocatore\.casa"', APP)
+    # per i lettori di schermo la frase intera, «in trasferta contro Genoa», dentro vsAt; mai «GEN fuori» (#453)
+    assert APP.count('t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv: nomeClub(x.avversario) })') == 1
+    assert "giocatore.casa" not in APP and "giocatore.fuori" not in APP
     assert APP.count('<span class="cella d${p.difficolta}">${vsAt(p)}</span>') == 2           # calendario e prossime partite
     assert "${sigla(x.squadra)} – ${sigla(x.avversario)}" not in APP
 

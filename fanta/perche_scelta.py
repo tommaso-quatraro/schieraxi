@@ -24,6 +24,7 @@ docs/API.md). Non cambia nessun numero né nessuna scelta.
 from __future__ import annotations
 
 from . import formazione as fz
+from .etichette import percento
 from .frasi import F, Frase, da_json
 from .notifiche import SOGLIA_AVVISO_PUNTI
 
@@ -56,17 +57,17 @@ def motivo(t: fz.Giocatore, altro: fz.Giocatore, attuale: float, invertita: floa
     diff = attuale - invertita
     if diff < -PARI:              # scambiarli varrebbe di più: il Confronto dice «esito_peggio» (o «titolare_che_gioca»)
         if t.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
-            return F("scelta.titolare_che_gioca", altro=altro.nome, p=round(altro.p * 100))
+            return F("scelta.titolare_che_gioca", altro=altro.nome, p=percento(altro.p))
         if tenuta and invertita - attuale < SOGLIA_TENUTA:
             return F("scelta.stabile", altro=altro.nome, attuale=attuale, invertita=invertita)
         return None               # un altro motivo contraddirebbe il Confronto (stile o modulo che costano punti)
     if riserva is not None:
-        return F("scelta.incerto", p=round(t.p * 100), riserva=riserva.nome)
+        return F("scelta.incerto", p=percento(t.p), riserva=riserva.nome)
     if diff > PARI and _uno(attuale) > _uno(invertita):
         return F("scelta.piu_punti", altro=altro.nome, attuale=attuale, invertita=invertita)
     proprio = _motivo_proprio(perche_numero)
-    if round(t.p * 100) > round(altro.p * 100):
-        return F("scelta.piu_sicuro", altro=altro.nome, pt=round(t.p * 100), pa=round(altro.p * 100))
+    if percento(t.p) > percento(altro.p):
+        return F("scelta.piu_sicuro", altro=altro.nome, pt=percento(t.p), pa=percento(altro.p))
     if _uno(t.mu) > _uno(altro.mu):
         return F("scelta.fantavoto_piu_alto", altro=altro.nome, mu_t=t.mu, mu_a=altro.mu)
     if proprio:

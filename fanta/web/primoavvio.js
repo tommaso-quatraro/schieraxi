@@ -186,13 +186,22 @@ const PA_SCHERMATE = {
     principale: t("pav.controlla"),
     html: `<div id="pa-ingresso"><p class="debole">${t("pav.incolla_testo_delle")}</p>
       <textarea id="pa-testo" class="campo-testo" placeholder="${t("lega.incolla_qui_testo")}" maxlength="200000" aria-label="${t("pav.testo_delle_rose")}"></textarea>
-      <label class="debole piccolo" for="pa-file" style="display:block;margin-top:12px">${t("pav.oppure_file")}</label>
-      <input id="pa-file" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values">
+      <p class="debole piccolo" style="margin:12px 0 0">${t("pav.oppure_file")}</p>
+      <div class="pulsanti"><button class="bottone secondario" id="pa-scegli-file" type="button">${t("lega.scegli_file_excel")}</button></div>
+      <p class="debole piccolo" id="pa-file-nome" role="status"></p>
+      <input id="pa-file" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden>
       ${stato.account ? `<div class="onb-blocco"><b>${t("onb.prova_con_una")}</b><p class="debole piccolo">${t("onb.quattro_squadre_inventate")}</p>
         <button class="bottone secondario" id="pa-esempi" type="button">${t("pav.usa_esempi")}</button></div>` : ""}</div>
       <div id="pa-anteprima"></div>`,
     esegui: async () => { paAnteprima(); return false; },        // il passo si segna fatto alla conferma dell'anteprima
     dopo: () => {
+      // il pulsante dell'app al posto del controllo del browser (#456), come in Squadra › Aggiorna le rose: scelto il file, si controlla subito
+      $("#pa-scegli-file").addEventListener("click", () => $("#pa-file").click());
+      $("#pa-file").addEventListener("change", ev => {
+        const file = ev.target.files[0];
+        $("#pa-file-nome").textContent = file ? t("pav.file_scelto", { nome: file.name }) : "";
+        if (file) { try { paAnteprima(); } catch (err) { paErrore(err); } }
+      });
       const e = $("#pa-esempi");
       if (e) e.addEventListener("click", async () => {
         e.disabled = true;

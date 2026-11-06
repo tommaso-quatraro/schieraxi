@@ -1,0 +1,22 @@
+{
+  "titolo": "Diario, Confronto e rose: numeri e testi corretti",
+  "voci": [
+    "Nel Diario, «Correggi a mano» salva anche quando hai schierato il secondo o il terzo portiere: se non ha preso voto, conta il portiere della panchina.",
+    "Nel Confronto, nelle righe sotto il campo e in «Da fare» le percentuali sono le stesse di «gioca N%»: se un giocatore gioca all'85%, la probabilità che non prenda voto è il 15%.",
+    "Nell'anteprima delle rose si legge «1 giocatore su 25» e non più «1 giocatori su 25».",
+    "In Oggi, «I tuoi migliori della giornata» sono in ordine di fantavoto atteso, il numero scritto accanto.",
+    "Nel primo avvio il file delle rose si sceglie con il pulsante «Scegli il file Excel», come in Aggiorna le rose, e il controllo parte subito.",
+    "Sul computer, senza rose, il benvenuto di Oggi sta a sinistra sotto il titolo e non più in mezzo alla pagina.",
+    "Per chi usa un lettore di schermo: la partita nelle righe dei giocatori si sente «in trasferta contro Genoa» e i campi delle fasce del modificatore si chiamano «Fascia 2, media almeno», «Fascia 2, bonus»."
+  ],
+  "tecnico": [
+    "#447: diario.calcola_giornata riceve giocatori_rosa ({id: (nome, ruolo)}); chi è in rosa senza previsione ricostruita entra nella schierata con il voto vero se c'è, come colonna fissa del Valutatore (parametro fissi, dopo le estrazioni della rosa: le simulazioni degli altri non cambiano). Con una partita rinviata, trovata dal club (calciatori e partite), segue la regola della lega (rinvii.voti_lega; con il voto d'ufficio prende quel voto).",
+    "#452: etichette.percento (p_voto a 3 decimali come le schede, poi Math.round della web) al posto di round() di Python in confronto.entra_se (100 − percentuale scritta), confronto.titolare_che_gioca, confronto.gioca_di_piu, scelta.* di perche_scelta e dafare.incerto / dafare.dubbio_incerto.",
+    "#457: gestione.migliori_della_giornata, i tre titolari con più punti attesi ordinati per fv_atteso (a pari, per punti attesi); web e iPhone usano l'ordine di /api/oggi.",
+    "#451: arConteggio in anteprima.js con il plurale ar.n_su.one / ar.n_su.other.",
+    "#453: vsAt dice formazione.voce_casa / formazione.voce_fuori con nomeClub; tolte le chiavi giocatore.casa e giocatore.fuori.",
+    "#454: rigaFascia, numeraFasce e votiProva in app.js: aria-label numerati sui campi delle fasce, rifatti dopo «Togli»; nomi anche per i quattro voti della prova.",
+    "#455: stile.css, .benvenuto da 1100 px senza margini automatici (justify-self: start nelle griglie di Mercato e Scambi).",
+    "#456: primoavvio.js, input file nascosto, pulsante #pa-scegli-file e riga #pa-file-nome; al cambio del file parte paAnteprima."
+  ]
+}

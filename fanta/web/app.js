@@ -491,8 +491,9 @@ function nomeGiornata(lega, serieA) {
 const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
-// «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo «UDI fuori».
-const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>`;
+// «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo
+// la frase con il nome intero, come VoiceOver sull'iPhone: «in casa contro Parma», «in trasferta contro Udinese» (mai «UDI fuori», #453).
+const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${esc(t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv: nomeClub(x.avversario) }))}</span>`;
 const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;
 const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;
 
@@ -3832,6 +3833,27 @@ const interruttore = (id, testo, acceso, aiuto = "") => `<label class="interrutt
 // Il campo della riga prende come nome per i lettori di schermo il testo della riga (testo semplice, passato per esc): prima restava senza nome o
 // con il titolo della sezione («Gol» anche per l'assist).
 const rigaRegola = (etichetta, controllo, aiuto = "") => `<div class="riga-regola"><span>${etichetta}${aiuto ? `<small>${aiuto}</small>` : ""}</span>${controllo.replace("<input ", `<input aria-label="${esc(etichetta)}" `)}</div>`;
+// Il nome dei campi delle fasce del modificatore per i lettori di schermo: «Fascia 2, media almeno», «Fascia 2, bonus», «Togli la fascia 2»
+// (#454: senza, sincronizzaAria dava a tutti il titolo della sezione, «Fasce di bonus»). `n` = posto della fascia, da 1; dopo «Togli» i numeri
+// si rifanno (numeraFasce). Anche i quattro voti della prova hanno il loro nome.
+const conNome = (controllo, nome) => controllo.replace("<input ", `<input aria-label="${esc(nome)}" `);
+const nomiFascia = n => [t("regole.fascia_media", { n }), t("regole.fascia_bonus", { n }), t("regole.togli_fascia", { n })];
+function rigaFascia(media, bonus, n) {
+  const [nomeMedia, nomeBonus, nomeTogli] = nomiFascia(n);
+  return `<div class="fascia"><div class="coppia"><span class="debole piccolo">${t("regole.media_almeno")}</span>${conNome(stepper("", media, { passo: 0.25, min: 4, max: 9, dec: 2 }), nomeMedia).replace('id=""', 'class="f-media"')}</div>
+    <div class="coppia"><span class="debole piccolo">${t("regole.bonus")}</span>${conNome(stepper("", bonus, { passo: 0.5, min: 0, max: 20, dec: 1 }), nomeBonus).replace('id=""', 'class="f-bonus"')}</div>
+    <button type="button" class="rimuovi-fascia" aria-label="${esc(nomeTogli)}">✕</button></div>`;
+}
+function numeraFasce() {
+  document.querySelectorAll("#fasce .fascia").forEach((f, k) => {
+    const [nomeMedia, nomeBonus, nomeTogli] = nomiFascia(k + 1);
+    f.querySelector("input.f-media").setAttribute("aria-label", nomeMedia);
+    f.querySelector("input.f-bonus").setAttribute("aria-label", nomeBonus);
+    f.querySelector(".rimuovi-fascia").setAttribute("aria-label", nomeTogli);
+  });
+}
+const votiProva = voti => voti.map((v, k) => conNome(stepper("pv" + k, v, { passo: 0.5, min: 3, max: 10 }),
+  k ? t("regole.voto_difensore", { n: k }) : t("regole.voto_portiere"))).join("");
 
 document.addEventListener("click", ev => {
   const b = ev.target.closest(".stepper button[data-step]");
@@ -3862,9 +3884,6 @@ async function vistaRegole() {
   const rigaGol = x => rigaRegola(t("regole.gol_di", { ruolo: NOME_RUOLO_1[x].toLowerCase() }), stepper("gol_" + x, r.bonus.gol[x], { passo: 0.5, min: 0, max: 20 }));
   const bonusRighe = [["assist", t("bonus.assist")], ["rigore_segnato", t("bonus.rigore_segnato")], ["rigore_parato", t("regole.rigore_parato_p")], ["portiere_imbattuto", t("bonus.portiere_imbattuto")], ["mvp", t("bonus.mvp")]];
   const malusRighe = [["ammonizione", t("bonus.ammonizione")], ["espulsione", t("bonus.espulsione")], ["autogol", t("bonus.autogol")], ["rigore_sbagliato", t("bonus.rigore_sbagliato")], ["gol_subito_portiere", t("bonus.gol_subito_portiere"), t("regole.per_ogni_gol")]];
-  const fascia = (media, bonus) => `<div class="fascia"><div class="coppia"><span class="debole piccolo">${t("regole.media_almeno")}</span>${stepper("", media, { passo: 0.25, min: 4, max: 9, dec: 2 }).replace('id=""', 'class="f-media"')}</div>
-    <div class="coppia"><span class="debole piccolo">${t("regole.bonus")}</span>${stepper("", bonus, { passo: 0.5, min: 0, max: 20, dec: 1 }).replace('id=""', 'class="f-bonus"')}</div>
-    <button type="button" class="rimuovi-fascia" aria-label="${t("regole.togli_fascia")}">✕</button></div>`;
   // Sul PC (da 1100 px) due colonne: a sinistra il nome della lega e «Importa da Leghe», a destra le sezioni con i «−/+», così l'anteprima
   // del testo riconosciuto sta accanto ai valori che cambia. Sotto, una colonna sola nello stesso ordine (stile.css, «regole»).
   pagina(`<div class="regole-colonne"><div class="regole-testa">
@@ -3899,11 +3918,11 @@ async function vistaRegole() {
         ${rigaRegola(t("regole.md_min"), stepper("md_min", md.min_difensori, { passo: 1, min: 3, max: 6, dec: 0 }), t("regole.md_min_aiuto"))}
         <h3>${t("regole.fasce_bonus")}</h3>
         <div class="debole piccolo">${t("regole.media_somma")} <b>${t("regole.portiere_migliori_difensori")}</b> ${t("regole.divisa_per_per")}</div>
-        <div id="fasce">${[...md.soglie].sort((a, b) => a[0] - b[0]).map(s => fascia(s[0], s[1])).join("")}</div>
+        <div id="fasce">${[...md.soglie].sort((a, b) => a[0] - b[0]).map((s, k) => rigaFascia(s[0], s[1], k + 1)).join("")}</div>
         <div class="pulsanti"><button type="button" class="bottone secondario" id="aggiungi-fascia">${t("regole.aggiungi_fascia")}</button></div>
         <h3>${t("regole.prova")}</h3>
         <div class="prova-difesa"><span class="debole piccolo">${t("regole.voti_portiere_difensori")}</span>
-          <div class="prova-voti">${[6.5, 6, 6.5, 7].map((v, k) => stepper("pv" + k, v, { passo: 0.5, min: 3, max: 10 })).join("")}</div>
+          <div class="prova-voti">${votiProva([6.5, 6, 6.5, 7])}</div>
           <div id="prova-esito" class="prova-esito"></div></div>
       </div>
     </details>
@@ -3982,12 +4001,12 @@ async function vistaRegole() {
   $("#agg_vicini").addEventListener("change", mostraSalva);
   $("#aggiungi-fascia").addEventListener("click", () => {
     const f = leggiFasce(), ultima = f.length ? f[f.length - 1] : [6, 0];
-    $("#fasce").insertAdjacentHTML("beforeend", fascia(Math.min(9, ultima[0] + 0.5), ultima[1] + 1));
+    $("#fasce").insertAdjacentHTML("beforeend", rigaFascia(Math.min(9, ultima[0] + 0.5), ultima[1] + 1, f.length + 1));
     aggiornaProva(); mostraSalva();
   });
   contenuto.addEventListener("click", ev => {
     const x = ev.target.closest(".rimuovi-fascia");
-    if (x) { x.closest(".fascia").remove(); aggiornaProva(); mostraSalva(); }
+    if (x) { x.closest(".fascia").remove(); numeraFasce(); aggiornaProva(); mostraSalva(); }
     const seg = ev.target.closest(".segmenti button[data-valore]");
     if (seg) { seg.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("attivo", b === seg)); aiutoPanchina(); aiutoRinvio(); mostraSalva(); }
     const m = ev.target.closest("[data-modulo-regola]");
@@ -4033,7 +4052,7 @@ async function vistaRegole() {
       else if (k === "moduli") document.querySelectorAll("[data-modulo-regola]").forEach(b => b.classList.toggle("attiva", v.includes(b.dataset.moduloRegola)));
       else if (k === "modificatore_difesa.attivo") { $("#md_attivo").checked = !!v; $("#md-corpo").hidden = !v; }
       else if (k === "modificatore_difesa.min_difensori") imposta("md_min", v, 0);
-      else if (k === "modificatore_difesa.soglie") { $("#fasce").innerHTML = v.map(s => fascia(s[0], s[1])).join(""); aggiornaProva(); }
+      else if (k === "modificatore_difesa.soglie") { $("#fasce").innerHTML = v.map((s, i) => rigaFascia(s[0], s[1], i + 1)).join(""); aggiornaProva(); }
     }
     mostraSalva();
     setTimeout(() => document.querySelectorAll(".evidenzia").forEach(e => e.classList.remove("evidenzia")), 2500);

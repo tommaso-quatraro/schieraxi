@@ -162,3 +162,20 @@ def test_la_rotta_risponde_nella_lingua_chiesta(tmp_path, monkeypatch):
     assert c.get("/api/giocatore/1?lingua=en").json()["previsione"]["etichetta"]["testo"] == "Doubtful · plays 55%"
     en = c.get("/api/giocatore/1", headers={"Accept-Language": "en-GB,en;q=0.9"}).json()["previsione"]["etichetta"]
     assert en == {"codice": "in_dubbio", "testo": "Doubtful · plays 55%", "tono": "attenzione"}
+
+
+def test_percento_e_quello_che_scrive_la_web():
+    """`percento` dà il numero di «gioca N%» della web: `p_voto` arrotondato a 3 decimali (come nelle schede, consigli.py) e
+    Math.round(p × 100). Con la probabilità intera 0,3447 la web dice 35% (0,345); il Confronto diceva 34% (revisione di #461)."""
+    import shutil
+    import subprocess
+    assert etichette.percento(0.3447) == 35 and etichette.percento(0.845) == 85 and etichette.percento(0.3444) == 34
+    assert etichette.percento(None) == 0 and etichette.percento(1.2) == 100
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node non installato")
+    valori = [k / 1000 for k in range(1001)]
+    r = subprocess.run([node, "-e", f"console.log(JSON.stringify({json.dumps(valori)}.map(p => Math.round(p * 100))))"],
+                       capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert [etichette.percento(p) for p in valori] == json.loads(r.stdout)

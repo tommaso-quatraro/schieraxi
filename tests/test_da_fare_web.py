@@ -67,3 +67,14 @@ def test_senza_rose_e_un_benvenuto_non_un_errore():
     assert "if (o.senza_rose)" in APP and "data-importa-rose" in APP
     assert "const erroreVista = e => senzaRose(e) ? cartaSenzaRose()" in APP     # Formazione, Mercato, Scambi: stato vuoto
     assert "nessuna rosa" in APP and ".benvenuto" in CSS
+
+
+def test_il_benvenuto_sta_a_sinistra_con_il_titolo():
+    """#455: sul PC «Benvenuto in SchieraXI» stava in mezzo alla pagina (x 410-1030 a 1440 px) e il titolo «Oggi» a sinistra.
+    Resta stretto (620 px) ma parte dal bordo sinistro del titolo, come le altre carte."""
+    regole = re.findall(r"([^{}]*\.benvenuto[^{}]*)\{([^}]*)\}", CSS)
+    assert regole
+    for selettore, corpo in regole:
+        assert "auto" not in re.sub(r"\s+", "", corpo).replace("width:100%", ""), selettore     # niente margini automatici
+        assert "justify-self: center" not in corpo and "margin: 0 auto" not in corpo, selettore
+    assert any("max-width: 620px" in corpo for _, corpo in regole)

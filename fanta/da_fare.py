@@ -131,9 +131,9 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         if fuori:
             chiave, param = "dafare.dubbio_squalificato" if x["stato"] == "squalificato" else "dafare.dubbio_infortunato", {}
         elif codice in IN_FRASE:     # con la parola dell'etichetta di Formazione e scheda: «in dubbio» solo se lo dicono le probabili (#282)
-            chiave, param = "dafare.incerto", {"stato": F("etichetta." + codice), "p": round(x["p_voto"] * 100)}
+            chiave, param = "dafare.incerto", {"stato": F("etichetta." + codice), "p": etichette.percento(x["p_voto"])}
         else:
-            chiave, param = "dafare.dubbio_incerto", {"p": round(x["p_voto"] * 100)}
+            chiave, param = "dafare.dubbio_incerto", {"p": etichette.percento(x["p_voto"])}
         extra = {}
         if alt and consigli.da_schierare(x, alt, sistema)["id"] == alt["id"]:
             usati.add(alt["id"])
