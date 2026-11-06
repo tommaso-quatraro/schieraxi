@@ -1,0 +1,12 @@
+{
+  "titolo": "Misura dal vivo dei gol attesi calcolati solo con Fantacalcio.it",
+  "voci": [
+    "Nessun cambiamento visibile: prima di ogni giornata l'app mette da parte anche i numeri calcolati solo con i voti di Fantacalcio.it e, a giornata finita, misura se sono buoni quanto quelli mostrati. I numeri che vedi non cambiano."
+  ],
+  "tecnico": [
+    "Issue #388, Fase D del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (I4 dal vivo, L3b di #165). Nuovo modulo fanta/registro_nostri.py: nel giro del registro delle giornate, ognuno DOPO il passo dei mostrati e in un passo a sé (il modulo si importa dentro il passo: anche se non si carica i mostrati si salvano), salva_se_serve (nostri.previsioni degli stessi giocatori di registro_giocatori, con nostri.VERSIONE ed e_rigori mostrato), segna_perse (nostri non salvati prima della prima partita: riga con il motivo, non conta), chiudi_giornate (dopo la misura dei mostrati: errore del fantavoto, punti sulle stesse 20 rose di I3, gol attesi per fasce con nostri.gol_attesi, nostri e mostrati; una misura in errore non ferma le giornate dopo e, dopo 3 tentativi contati nell'archivio, la giornata diventa persa), avvisa (8 giornate della versione di oggi entro le soglie errore +1%, punti -0,3, scarto 0,03: un avviso per versione) e avvisa_perse (un avviso solo).",
+    "Archivio: tabelle nuove registro_nostri e registro_i4 (CREATE TABLE IF NOT EXISTS: gli archivi con il registro le ricevono senza toccare le tabelle che ci sono). Copia notturna (registro_copia): TABELLE con le due tabelle nuove; le copie di prima si rimettono lo stesso. GET /api/stato-dati: campo nuovo e facoltativo registro_nostri (null se non si legge, con il tipo d'errore nel log).",
+    "Tempo in più, archivio di sviluppo: salvataggio dei nostri 0,12 s e misura 1,7 s, una volta per giornata; un giro senza niente da fare 0,01 s.",
+    "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+  ]
+}
