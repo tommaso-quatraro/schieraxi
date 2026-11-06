@@ -19,8 +19,11 @@ enum DatiGalleria {
         case "pieni" where widget == "live": fase = .inCorso
         default: fase = .prima
         }
-        let w = RiassuntoWidget.leggi(LegaDemo.widget(adesso: adesso, fase: fase, parziali: tipo == "parziali"))
-        return Voce(date: adesso, riassunto: w?.comeRiassuntoOggi(scaricatoIl: adesso), datiSalvati: tipo == "salvati", widget: w)
+        // a giornata in corso la demo vive nel suo momento (alle 18:48, ora italiana: `LegaDemo.momento`, #417): i widget scrivono
+        // «si è chiusa ieri 20:35» e gli orari delle partite da quell'ora, come Oggi dell'app, anche se la foto si scatta di notte
+        let quando = LegaDemo.momento(adesso: adesso, fase: fase)
+        let w = RiassuntoWidget.leggi(LegaDemo.widget(adesso: quando, fase: fase, parziali: tipo == "parziali"))
+        return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: tipo == "salvati", widget: w)
     }
 
     static func famiglie(_ widget: String) -> [WidgetFamily] {

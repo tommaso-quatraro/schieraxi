@@ -3,7 +3,8 @@ import Foundation
 // La lega inventata della demo: UNA fonte per l'app (`DatiDemo.swift`: modalità `-DEMO`, «Prova con dati di esempio» e foto
 // dell'app) e per i widget (`LegaDemo.widget`, mostrato dalla galleria `AnteprimaWidget` nelle foto dei widget). Così widget e
 // app dicono le stesse cose: stessi nomi con gli accenti, stessa percentuale di chi è in dubbio, stessa scadenza, stesse giornate
-// del Diario (#192, provato in `DemoWidgetComeAppTests`). Nomi, squadre e numeri INVENTATI; le date sono relative ad «adesso».
+// del Diario (#192, provato in `DemoWidgetComeAppTests`). Nomi, squadre e numeri INVENTATI; le date sono relative ad «adesso»,
+// tranne a giornata in corso, che vive in un momento fisso della giornata (`momento`, #417).
 // Solo Foundation: il file si compila anche nella galleria dei widget (target `AnteprimaWidget` in `project.yml`).
 
 /// Un calciatore della lega inventata.
@@ -338,12 +339,6 @@ enum LegaDemo {
         return i < ore.count ? formatta(ore[i], "yyyy-MM-dd HH:mm") : nil
     }
 
-    /// Un istante portato al quarto d'ora prima (18:07 → 18:00): il calcio d'inizio delle partite già cominciate.
-    static func quartoPrima(_ data: Date) -> Date {
-        let quarto = 15.0 * 60
-        return Date(timeIntervalSinceReferenceDate: (data.timeIntervalSinceReferenceDate / quarto).rounded(.down) * quarto)
-    }
-
     static func formatta(_ data: Date, _ formato: String) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -357,16 +352,25 @@ enum LegaDemo {
         return String(decoding: dati, as: UTF8.self)
     }
 
-    /// La formazione si chiude mezz'ora prima della prima partita (le regole della demo).
-    static let minutiScadenza = 30
+    /// La formazione si chiude 10 minuti prima della prima partita (le regole della demo, `scadenza_minuti`), come la scadenza di
+    /// una lega vera (#417).
+    static let minutiScadenza = 10
     /// Gli orari dei calci d'inizio (ora italiana), come in Serie A: le partite della demo cadono solo qui, mai a mezzanotte (#303).
     static let orariDaPartita: [(ora: Int, minuto: Int)] = [(12, 30), (15, 0), (18, 0), (20, 45)]
     /// Per ogni incontro (nell'ordine di `incontri`), quanti orari da partita dopo il primo: un turno di poco più di due giorni,
     /// con due partite alla stessa ora.
     static let passi = [0, 1, 2, 3, 3, 4, 5, 6, 6, 7]
-    /// A giornata in corso, da quanti minuti sono cominciate le partite già in gioco o finite (indice di `incontri`): Inter-Roma
-    /// finita, Milan-Juventus all'intervallo, Lazio-Fiorentina nel primo tempo. Il calcio d'inizio va al quarto d'ora prima.
-    static let minutiDaIniziate: [Int: Double] = [0: 125, 1: 50, 3: 28]
+
+    /// A giornata in corso le partite già cominciate (indice di `incontri`), con il giorno (0 quello del momento della demo, 1 il
+    /// giorno prima) e l'orario da partita: Inter-Roma è l'anticipo della sera prima ed è finita, Milan-Juventus e Lazio-Fiorentina
+    /// sono cominciate alle 18:00. La prima partita del turno è Inter-Roma, quindi la formazione si è chiusa la sera prima alle 20:35.
+    static let cominciate: [Int: (giorniPrima: Int, ora: Int, minuto: Int)] = [
+        0: (1, 20, 45), 1: (0, calcioInGioco.ora, calcioInGioco.minuto), 3: (0, calcioInGioco.ora, calcioInGioco.minuto),
+    ]
+    /// Il calcio d'inizio delle partite in gioco nel momento della demo e da quanti minuti sono cominciate: 48 minuti dopo le 18:00
+    /// Milan-Juventus è all'intervallo e Lazio-Fiorentina è nel recupero del primo tempo.
+    static let calcioInGioco = (ora: 18, minuto: 0)
+    static let minutiInGioco = 48.0
 
     /// Il calendario con l'ora italiana, per gli orari da partita.
     static var oraItaliana: Calendar {
@@ -396,22 +400,47 @@ enum LegaDemo {
         return passi.map { $0 < ore.count ? ore[$0] : ultimo }
     }
 
+    /// L'istante in cui vive la demo nella fase. Prima della scadenza e a giornata finita è adesso. A giornata in corso è un momento
+    /// fisso della giornata, 48 minuti dopo il calcio d'inizio delle 18:00 (alle 18:48, ora italiana), dell'ultimo giorno che è già
+    /// arrivato a quell'ora: così partite in gioco e scadenza hanno orari possibili anche se la foto si scatta di notte (#417), e
+    /// la scadenza è già passata anche per l'orologio del telefono, con cui Oggi scrive «Chiusa». Prima (#303) le partite in gioco
+    /// partivano da adesso meno qualche minuto: con le foto delle 5:38 la formazione «si è chiusa oggi 03:00».
+    /// Un momento della demo resta se stesso: `momento(adesso: momento(adesso: t, fase: f), fase: f) == momento(adesso: t, fase: f)`.
+    static func momento(adesso: Date, fase: Fase) -> Date {
+        guard fase == .inCorso else { return adesso }
+        let roma = oraItaliana
+        var giorno = roma.startOfDay(for: adesso)
+        for _ in 0..<3 {
+            if let calcio = roma.date(bySettingHour: calcioInGioco.ora, minute: calcioInGioco.minuto, second: 0, of: giorno) {
+                let m = calcio.addingTimeInterval(minutiInGioco * 60)
+                if m <= adesso { return m }
+            }
+            giorno = roma.date(byAdding: .day, value: -1, to: giorno) ?? giorno.addingTimeInterval(-86_400)
+        }
+        return adesso
+    }
+
     /// Il calcio d'inizio di ogni incontro (nell'ordine di `incontri`), sempre a un orario da partita. Prima della scadenza il turno
-    /// parte ad almeno sei ore da adesso; a giornata finita è già la prossima, fra quattro giorni; a giornata in corso le partite di
-    /// `minutiDaIniziate` sono cominciate (al quarto d'ora) e le altre hanno i prossimi orari da partita da un'ora in poi.
+    /// parte ad almeno sei ore da adesso; a giornata finita è già la prossima, fra quattro giorni; a giornata in corso, nel momento
+    /// della demo (`momento`), le partite di `cominciate` sono cominciate e le altre hanno i prossimi orari da partita.
     static func orari(adesso: Date, fase: Fase = .prima) -> [Date] {
         switch fase {
         case .prima: return turno(da: adesso.addingTimeInterval(6 * 3600))
         case .finita: return turno(da: adesso.addingTimeInterval(4 * 86_400))
         case .inCorso:
-            let prossime = turno(da: adesso.addingTimeInterval(3600))
+            let istante = momento(adesso: adesso, fase: .inCorso)
+            let roma = oraItaliana
+            let giorno = roma.startOfDay(for: istante)
+            let prossime = turno(da: istante)
             var ore: [Date] = []
             var n = 0
             for i in incontri.indices {
-                if let minuti = minutiDaIniziate[i] {
-                    ore.append(quartoPrima(adesso.addingTimeInterval(-minuti * 60)))
+                if let c = cominciate[i] {
+                    let quel = roma.date(byAdding: .day, value: -c.giorniPrima, to: giorno)
+                        ?? giorno.addingTimeInterval(-Double(c.giorniPrima) * 86_400)
+                    ore.append(roma.date(bySettingHour: c.ora, minute: c.minuto, second: 0, of: quel) ?? quel)
                 } else {
-                    ore.append(n < prossime.count ? prossime[n] : (prossime.last ?? adesso))
+                    ore.append(n < prossime.count ? prossime[n] : (prossime.last ?? istante))
                     n += 1
                 }
             }
@@ -419,8 +448,8 @@ enum LegaDemo {
         }
     }
 
-    /// La prima partita del turno: fra almeno sei ore (prima della scadenza), cominciata da un paio d'ore (giornata in corso), fra
-    /// quattro giorni (giornata finita: è già la prossima).
+    /// La prima partita del turno: fra almeno sei ore (prima della scadenza), la sera prima del momento della demo (giornata in
+    /// corso), fra quattro giorni (giornata finita: è già la prossima).
     static func inizio(adesso: Date, fase: Fase = .prima) -> Date {
         orari(adesso: adesso, fase: fase).min() ?? adesso
     }
@@ -543,10 +572,12 @@ enum LegaDemo {
     // MARK: - Partite in diretta
 
     /// Le partite in diretta (`GET /api/live` e `live` del widget) nella fase della giornata. Prima della scadenza tutte da giocare,
-    /// con gli orari di Oggi: nessuna partita può essere in corso prima che la formazione si chiuda. A giornata in corso Inter-Roma
-    /// finita, Milan-Juventus all'intervallo e Lazio-Fiorentina nel primo tempo. A giornata finita nessuna.
+    /// con gli orari di Oggi: nessuna partita può essere in corso prima che la formazione si chiuda. A giornata in corso, nel momento
+    /// della demo (`momento`), Inter-Roma finita, Milan-Juventus all'intervallo e Lazio-Fiorentina nel recupero del primo tempo.
+    /// A giornata finita nessuna.
     static func liveDemo(adesso: Date, fase: Fase) -> [String: Any] {
         guard fase != .finita else { return ["in_corso": 0, "partite": [[String: Any]]()] }
+        let adesso = momento(adesso: adesso, fase: fase)
         func ev(_ tipo: String, _ minuto: String, _ squadra: String, _ chi: String, _ assist: String? = nil) -> [String: Any] {
             var e: [String: Any] = ["tipo": tipo, "minuto": minuto, "squadra": squadra, "chi": chi]
             if let assist { e["assist"] = assist }
@@ -568,7 +599,7 @@ enum LegaDemo {
                     p["stato"] = "intervallo"; p["gol_casa"] = 0; p["gol_trasferta"] = 0
                     p["eventi"] = [ev("giallo", "30'", "trasferta", "Locardi")]
                 case 3:
-                    // il minuto dal calcio d'inizio (cominciata da 28-42 minuti), dopo i due gol del primo tempo
+                    // il minuto dal calcio d'inizio, al massimo 45 (cominciata da 48 minuti: è nel recupero), dopo i due gol del primo tempo
                     let minuto = max(26, min(45, Int(adesso.timeIntervalSince(ore[i]) / 60)))
                     p["stato"] = "primo_tempo"; p["minuto"] = "\(minuto)'"; p["gol_casa"] = 1; p["gol_trasferta"] = 1
                     p["eventi"] = [ev("gol", "11'", "casa", "Castelvera"), ev("gol", "25'", "trasferta", "Hrafnsson")]
@@ -584,8 +615,10 @@ enum LegaDemo {
     // MARK: - Widget
 
     /// Il riassunto dei widget (`GET /api/widget`) nella forma del server (`fanta/widget.py`), dagli stessi dati delle risposte
-    /// dell'app. `parziali`: un server che non ha ancora scambio, svincolo e Diario (li elenca in `mancano`).
+    /// dell'app. `parziali`: un server che non ha ancora scambio, svincolo e Diario (li elenca in `mancano`). A giornata in corso
+    /// il riassunto è quello del momento della demo (`momento`), come Oggi dell'app.
     static func widget(adesso: Date, fase: Fase = .prima, parziali: Bool = false) -> Data {
+        let adesso = momento(adesso: adesso, fase: fase)
         let ids = moduli[0].titolari
         let attesi = attesiGiornata   // la stessa fonte dell'app (#390)
         func breve(_ p: CalciatoreDemo) -> [String: Any] { ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra] }
