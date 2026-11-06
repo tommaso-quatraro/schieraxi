@@ -25,8 +25,9 @@
   sentinella [--minuti N] [--senza-invio]   rifà in sola lettura le risposte dell'app per ogni utente e controlla che tornino (usato sul server, ogni ora)
   riepilogo                       riepilogo a giornata finita: punti fatti, attesi e massimo possibile (usato sul server)
   avviso [--prova]                testo dell'avviso "formazione pronta", se è il momento (usato sul server)
-  taratura-probabili [--prova]    misura se «gioca N%» con le probabili sbaglia meno ritarato sulle giornate giocate (usato sul server;
-                                  --prova stampa i numeri e non scrive niente)
+  taratura-probabili [--prova | --spegni | --accendi]   ritara «gioca N%» con le probabili sulle giornate giocate e lo usa solo se
+                                  sbaglia meno (usato sul server; --prova stampa i numeri e non scrive niente; --spegni torna subito
+                                  ai numeri di partenza; --accendi, dopo --spegni, fa ripartire la prova al giro dopo)
   invito --etichetta NOME [--admin | --usi N]   codice d'invito (7 giorni) per un nuovo account, per N amici (solo con FANTA_MULTIUTENTE=1)
   utente-nome --utente NOME --nome Nome   cambia le maiuscole del nome mostrato di un account
   utente-ruolo --utente NOME --ruolo admin|normale   promuove o declassa un account (non lascia il server senza amministratori)
@@ -561,8 +562,9 @@ def cmd_avviso(a) -> None:
 
 def cmd_taratura_probabili(a) -> None:
     """Un giro della taratura di «gioca N%» con le probabili (una riga per il log di aggiorna.sh), o con --prova i numeri senza
-    scrivere niente. Senza --prova un errore dà una riga sola con il tipo d'errore (mai il messaggio, che può contenere dati) e
-    l'uscita 1: aggiorna.sh lo scrive nel log e va avanti. Con --prova lo lancia una persona a mano: tutta la traccia e l'uscita 1."""
+    scrivere niente; --spegni e --accendi a mano. Senza --prova un errore dà una riga sola con il tipo d'errore (mai il messaggio, che
+    può contenere dati) e l'uscita 1: aggiorna.sh lo scrive nel log e va avanti. Con --prova lo lancia una persona a mano: tutta la
+    traccia e l'uscita 1."""
     import time
     import traceback
     from datetime import datetime
@@ -571,7 +573,14 @@ def cmd_taratura_probabili(a) -> None:
     try:
         db = archivio.apri(archivio.FILE)
         try:
-            righe = taratura_probabili.rapporto(db) if a.prova else [taratura_probabili.esegui(db, datetime.now())]
+            if a.prova:
+                righe = taratura_probabili.rapporto(db)
+            elif a.spegni:
+                righe = [taratura_probabili.spegni(db, datetime.now())]
+            elif a.accendi:
+                righe = [taratura_probabili.accendi(db, datetime.now())]
+            else:
+                righe = [taratura_probabili.esegui(db, datetime.now())]
         finally:
             db.close()
     except Exception as e:  # noqa: BLE001 - qualunque errore: una riga nel log, mai la traccia con i dati
@@ -833,8 +842,11 @@ def main(argv: list[str] | None = None) -> None:
     x = sub.add_parser("avviso", help="stampa l'avviso 'formazione pronta' se è il momento (per le notifiche)")
     x.add_argument("--prova", action="store_true", help="non segnare l'avviso come mandato")
     x.set_defaults(f=cmd_avviso)
-    x = sub.add_parser("taratura-probabili", help="misura se «gioca N%%» con le probabili sbaglia meno ritarato sulle giornate giocate")
-    x.add_argument("--prova", action="store_true", help="stampa giornate, numeri e verdetto senza scrivere niente")
+    x = sub.add_parser("taratura-probabili", help="ritara «gioca N%%» con le probabili sulle giornate giocate e lo usa solo se sbaglia meno")
+    scelta = x.add_mutually_exclusive_group()
+    scelta.add_argument("--prova", action="store_true", help="stampa giornate, numeri e verdetto senza scrivere niente")
+    scelta.add_argument("--spegni", action="store_true", help="torna subito ai numeri di partenza e non ritara più finché non si riaccende")
+    scelta.add_argument("--accendi", action="store_true", help="dopo --spegni: al giro dopo la prova riparte da capo")
     x.set_defaults(f=cmd_taratura_probabili)
     x = sub.add_parser("invito", help="crea un codice d'invito per un nuovo account, monouso o per più amici con --usi (multiutente)")
     x.add_argument("--etichetta", required=True, help="per chi è (per ricordarlo)")

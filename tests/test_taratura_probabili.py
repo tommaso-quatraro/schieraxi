@@ -1,9 +1,10 @@
-"""Taratura di «gioca N%» con le probabili formazioni (#379, PR A: solo misura, nessun numero mostrato cambia).
-Solo dati inventati: squadre e giocatori finti, archivi in cartelle temporanee."""
+"""Taratura di «gioca N%» con le probabili formazioni (#379): la misura (PR A) e il passaggio (PR B: accensione, ritorno indietro,
+spegnimento a mano, il modello che usa la riga attiva). Solo dati inventati: squadre e giocatori finti, archivi in cartelle temporanee."""
 import importlib.util
 import json
 import math
-from datetime import datetime
+import sqlite3
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +16,20 @@ from fanta import archivio, modello, taratura_probabili as tp
 RADICE = Path(__file__).resolve().parent.parent
 ST = "2026-27"
 COLONNE = ["stagione", "giornata", "calciatore_id", "stato", "percentuale", "dubbio", "p_mostrato", "preso"]
+
+
+@pytest.fixture(autouse=True)
+def avvisi(monkeypatch):
+    """Nessun avviso vero dai test: il canale del proprietario è finto e tiene da parte titolo e testo di ogni avviso."""
+    from fanta import sentinella
+    mandati = []
+
+    def finto(titolo, testo):
+        mandati.append((titolo, testo))
+        return True
+
+    monkeypatch.setattr(sentinella, "manda_ntfy", finto)
+    return mandati
 
 
 # ---------------------------------------------------------------- costruttore del registro finto
@@ -349,9 +364,9 @@ def test_archivio_vuoto_in_attesa(db):
 def test_prova_curva_vera_batte_i_valori_di_partenza(db):
     _genera(db, range(1, 7))
     riga = tp.esegui(db, ADESSO)
-    assert riga.startswith("taratura-probabili: versione 1 pronta (migliora)"), riga
+    assert riga.startswith("taratura-probabili: versione 1 pronta (poche_giornate)"), riga       # passa, ma 6 giornate su 8
     [t] = _tabella(db)
-    assert t["stato"] == "pronta" and t["motivo"] == "migliora" and t["avvisato"] == 0 and t["creata"] == "2026-12-01T13:00:00"
+    assert t["stato"] == "pronta" and t["motivo"] == "poche_giornate" and t["avvisato"] == 0 and t["creata"] == "2026-12-01T13:00:00"
     assert json.loads(t["taratura"]) == [[ST, 1], [ST, 2], [ST, 3]] and json.loads(t["prova"]) == [[ST, 4], [ST, 5], [ST, 6]]
     c = json.loads(t["coefficienti"])
     assert tp.coerente(c)
@@ -361,14 +376,6 @@ def test_prova_curva_vera_batte_i_valori_di_partenza(db):
     assert m["nuova"]["brier"] < m["attuale"]["brier"] and m["nuova"]["brier"] < m["mostrati"]["brier"]
     assert m["nuova"]["casi"] == 3 * 20 * 24 and [g[:2] for g in m["nuova"]["per_giornata"]] == [[ST, 4], [ST, 5], [ST, 6]]
     assert m["nuova"]["calibrazione"] <= 0.05
-
-
-def test_mai_attiva_in_questa_versione(db):
-    """La PR A misura soltanto: anche con 8 giornate che superano la prova la riga resta «pronta», nessuna «attiva»."""
-    assert tp.ATTIVAZIONE is False
-    _genera(db, range(1, 9))
-    assert " pronta " in tp.esegui(db, ADESSO)
-    assert [t["stato"] for t in _tabella(db)] == ["pronta"]
 
 
 def test_prova_dati_dai_valori_di_partenza_non_migliora(db):
@@ -471,7 +478,7 @@ def test_comando_una_riga_per_il_log(tmp_path, monkeypatch, capsys):
     file = _archivio_con(tmp_path, range(1, 5))
     _comando(monkeypatch, file)
     out = capsys.readouterr().out
-    assert out.startswith("taratura-probabili: versione 1 pronta (migliora): Brier ") and out.count("\n") == 1
+    assert out.startswith("taratura-probabili: versione 1 pronta (poche_giornate): Brier ") and out.count("\n") == 1
     _comando(monkeypatch, file)
     assert capsys.readouterr().out == "taratura-probabili: niente di nuovo (versione 1, pronta)\n"
     assert len(_versioni(file)) == 1
@@ -593,3 +600,262 @@ def test_aggiorna_sh_lancia_la_taratura_per_ultima_con_priorita_bassa_e_tempo_ma
     riga = next(r for r in t.splitlines() if "taratura-probabili" in r and not r.lstrip().startswith("#"))
     assert riga.startswith("nice -n 15 timeout 300 .venv/bin/python -m fanta taratura-probabili >> \"$LOG\" 2>&1 || ")
     assert t.index(riga) > t.index("fanta foto") and t.index(riga) > t.index("fanta avviso") and t.index(riga) < t.index("tail -n 2000")
+
+
+# ---------------------------------------------------------------- B1: accensione, ritorno indietro, spegnimento
+PRIMA = ADESSO - timedelta(days=7)          # giro senza giornate da giocare in calendario: lontano da ogni scadenza
+
+
+def _prossima(db, giornata, quando):
+    """Le 10 partite di una giornata ancora da giocare, tutte alla stessa ora."""
+    for s in range(0, len(SQUADRE), 2):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, ?, ?, ?, ?, 0)",
+                   (1000 * giornata + s // 2, ST, giornata, quando.strftime("%Y-%m-%d %H:%M"), SQUADRE[s], SQUADRE[s + 1]))
+    db.commit()
+
+
+def _segnato(db):
+    """L'ora della riga della taratura in `aggiornamenti` (quella che fa ricalcolare le previsioni), None se non c'è."""
+    r = db.execute("SELECT quando FROM aggiornamenti WHERE cosa = ?", (tp.CHIAVE,)).fetchone()
+    return r[0] if r else None
+
+
+def _stati(db):
+    return [(t["versione"], t["stato"], t["motivo"]) for t in _tabella(db)]
+
+
+def _v(x, cifre):
+    return f"{x:.{cifre}f}".replace(".", ",")
+
+
+def test_attiva_quando_supera(db):
+    _genera(db, range(1, 9))
+    riga = tp.esegui(db, ADESSO)
+    assert riga.startswith("taratura-probabili: versione 1 attiva (migliora): Brier "), riga
+    [t] = _tabella(db)
+    assert t["stato"] == "attiva" and json.loads(t["prova"]) == [[ST, g] for g in range(5, 9)]
+    c = tp.attiva(db)
+    assert c == json.loads(t["coefficienti"]) and tp.coerente(c)
+    assert _segnato(db) == "2026-12-01T13:00:00"
+
+
+def test_pronta_sotto_otto_giornate(db):
+    _genera(db, range(1, 7))
+    assert tp.esegui(db, ADESSO).startswith("taratura-probabili: versione 1 pronta (poche_giornate): ")
+    assert tp.attiva(db) is None and _segnato(db) is None
+    # una «pronta» si rifà a ogni giro, ma con le stesse giornate e lo stesso esito non scrive doppioni
+    assert tp.esegui(db, ADESSO) == "taratura-probabili: niente di nuovo (versione 1, pronta)"
+    assert _stati(db) == [(1, "pronta", "poche_giornate")]
+
+
+def test_la_pronta_della_sola_misura_si_accende_senza_giornate_nuove(db, monkeypatch):
+    """Una riga «pronta» scritta quando il comando misurava soltanto, con già 8 giornate, si accende al primo giro dopo
+    l'aggiornamento, senza aspettare una giornata nuova."""
+    _genera(db, range(1, 9))
+    monkeypatch.setattr(tp, "ATTIVAZIONE", False)
+    assert tp.esegui(db, ADESSO).startswith("taratura-probabili: versione 1 pronta (migliora)")
+    monkeypatch.setattr(tp, "ATTIVAZIONE", True)
+    assert tp.esegui(db, ADESSO).startswith("taratura-probabili: versione 2 attiva (migliora)")
+    assert tp.attiva(db) is not None
+
+
+def test_vicina_la_scadenza(db):
+    _genera(db, range(1, 5))
+    assert not tp.vicina_la_scadenza(db, ADESSO)                              # niente da giocare in calendario
+    _prossima(db, 5, ADESSO + timedelta(hours=30))
+    assert not tp.vicina_la_scadenza(db, ADESSO)                              # prima partita fra 30 ore
+    assert tp.vicina_la_scadenza(db, ADESSO + timedelta(hours=7))             # fra 23 ore
+    assert not tp.vicina_la_scadenza(db, ADESSO + timedelta(hours=31))        # già cominciata
+
+
+def test_vicina_la_scadenza_con_il_turno_infrasettimanale(db):
+    """La giornata in corso ha ancora partite da giocare e la dopo comincia entro 24 ore: anche questa è la vigilia."""
+    _genera(db, range(1, 5))
+    _prossima(db, 5, ADESSO - timedelta(hours=2))
+    _prossima(db, 6, ADESSO + timedelta(hours=20))
+    assert tp.vicina_la_scadenza(db, ADESSO)
+
+
+def test_niente_cambi_nelle_24_ore_prima(db):
+    _genera(db, range(1, 9))
+    _prossima(db, 9, ADESSO + timedelta(hours=20))
+    riga = tp.esegui(db, ADESSO)
+    assert riga.startswith("taratura-probabili: versione 1 rimandata (scadenza_vicina)"), riga
+    assert _stati(db) == [(1, "rimandata", "scadenza_vicina")]
+    assert tp.attiva(db) is None and _segnato(db) is None
+    # ancora nelle 24 ore, stesse giornate: la riga rimandata si aggiorna, niente «niente di nuovo» e niente doppioni
+    riga = tp.esegui(db, ADESSO + timedelta(hours=4))
+    assert riga.startswith("taratura-probabili: versione 1 rimandata (scadenza_vicina)"), riga
+    assert _stati(db) == [(1, "rimandata", "scadenza_vicina")] and _tabella(db)[0]["creata"] == "2026-12-01T17:00:00"
+    # primo giro fuori dalle 24 ore (la giornata è cominciata): la prova non era consumata, si accende
+    dopo = ADESSO + timedelta(hours=21)
+    assert tp.esegui(db, dopo).startswith("taratura-probabili: versione 2 attiva (migliora)")
+    assert tp.attiva(db) is not None and _segnato(db) == dopo.isoformat(timespec="seconds")
+
+
+def test_nelle_24_ore_senza_cambi_la_misura_si_scrive(db):
+    """Nelle 24 ore si rimanda solo un cambio della riga attiva: una prova che non accende niente si scrive come sempre."""
+    _genera(db, range(1, 7), gioca=_gioca_partenza, seme=5)
+    _prossima(db, 7, ADESSO + timedelta(hours=20))
+    assert " scartata " in tp.esegui(db, ADESSO)
+
+
+def test_torna_indietro_se_peggiora(db, avvisi):
+    _genera(db, range(1, 9))
+    assert " attiva " in tp.esegui(db, PRIMA)
+    v1 = tp.attiva(db)
+    _genera(db, [9], gioca=_gioca_partenza, seme=21)
+    riga = tp.esegui(db, PRIMA + timedelta(days=1))
+    assert "ritirata" not in riga and tp.attiva(db) == v1                 # una giornata sola: troppo presto per giudicare
+    _genera(db, [10], gioca=_gioca_partenza, seme=22)
+    riga = tp.esegui(db, ADESSO)
+    assert riga.startswith("taratura-probabili: versione 1 ritirata (peggiorata)"), riga
+    assert tp.attiva(db) is None and _segnato(db) == "2026-12-01T13:00:00"
+    t = _tabella(db)[0]
+    assert (t["stato"], t["motivo"]) == ("ritirata", "peggiorata")
+    r = json.loads(t["misura"])["ritorno"]
+    assert r["giornate"] == [[ST, 9], [ST, 10]]
+    assert r["attiva"]["brier"] >= r["partenza"]["brier"] * (1 + tp.SOGLIA_BRIER)
+    assert avvisi[-1] == ("SchieraXI: «gioca N%»",
+                          "Tornato ai valori di partenza: la versione 1 sbagliava di più nelle ultime 2 giornate.")
+
+
+def test_ritorno_rimandato_non_si_perde(db):
+    _genera(db, range(1, 9))
+    tp.esegui(db, PRIMA)
+    v1 = tp.attiva(db)
+    assert v1 is not None
+    _genera(db, [9, 10], gioca=_gioca_partenza, seme=21)
+    _prossima(db, 11, ADESSO + timedelta(hours=20))
+    riga = tp.esegui(db, ADESSO)                                            # nelle 24 ore: rimandata, la attiva resta
+    assert riga.startswith("taratura-probabili: versione 2 rimandata (scadenza_vicina)"), riga
+    assert tp.attiva(db) == v1 and _segnato(db) == PRIMA.isoformat(timespec="seconds")
+    riga = tp.esegui(db, ADESSO + timedelta(hours=4))                       # ancora nelle 24 ore, stesse giornate
+    assert riga.startswith("taratura-probabili: versione 2 rimandata (scadenza_vicina)"), riga
+    assert tp.attiva(db) == v1
+    dopo = ADESSO + timedelta(hours=21)                                     # fuori dalle 24 ore: il ritorno non si è perso
+    riga = tp.esegui(db, dopo)
+    assert riga.startswith("taratura-probabili: versione 1 ritirata (peggiorata)"), riga
+    assert tp.attiva(db) is None and _segnato(db) == dopo.isoformat(timespec="seconds")
+
+
+def test_attiva_e_segna_nella_stessa_transazione(db, monkeypatch):
+    _genera(db, range(1, 9))
+    vera = archivio.segna
+
+    def rotta(*a, **k):
+        raise sqlite3.OperationalError("disco pieno")
+
+    monkeypatch.setattr(archivio, "segna", rotta)
+    with pytest.raises(sqlite3.OperationalError):
+        tp.esegui(db, ADESSO)
+    assert _tabella(db) == [] and tp.attiva(db) is None and _segnato(db) is None    # niente a metà
+    monkeypatch.setattr(archivio, "segna", vera)
+    adesso = datetime(2026, 12, 1, 13, 0, 7, 654321)
+    assert " attiva " in tp.esegui(db, adesso)
+    assert _segnato(db) == "2026-12-01T13:00:07"                           # l'ora di adesso, al secondo
+
+
+def test_segna_solo_quando_cambia_la_attiva(db, tmp_path):
+    _genera(db, range(1, 7), gioca=_gioca_partenza, seme=5)
+    assert " scartata " in tp.esegui(db, PRIMA)
+    assert _segnato(db) is None                                  # una prova che non accende niente non fa ricalcolare
+    d = archivio.apri(tmp_path / "b.sqlite")
+    try:
+        _genera(d, range(1, 9))
+        assert " attiva " in tp.esegui(d, PRIMA)
+        v1 = tp.attiva(d)
+        assert _segnato(d) == PRIMA.isoformat(timespec="seconds")
+        assert "niente di nuovo" in tp.esegui(d, ADESSO)
+        _genera(d, [9], seme=8)
+        riga = tp.esegui(d, ADESSO)                              # una giornata in più: prova nuova contro la attiva, che resta
+        assert " attiva " not in riga and tp.attiva(d) == v1, riga
+        assert _segnato(d) == PRIMA.isoformat(timespec="seconds")
+    finally:
+        d.close()
+
+
+def test_spegni_e_riaccendi(db, avvisi):
+    _genera(db, range(1, 9))
+    tp.esegui(db, PRIMA)
+    assert [a[1].split(":")[0] for a in avvisi] == ["Versione 1 attiva"]
+    _prossima(db, 9, ADESSO + timedelta(hours=20))              # nelle 24 ore prima: --spegni vale lo stesso, subito
+    assert tp.spegni(db, ADESSO) == ("taratura-probabili: spenta a mano: la versione 1 non è più attiva, tornano i numeri di "
+                                     "partenza")
+    assert tp.attiva(db) is None and _segnato(db) == "2026-12-01T13:00:00"
+    assert _stati(db) == [(1, "ritirata", "spenta_a_mano"), (2, "spenta", "spenta_a_mano")]
+    assert tp.spegni(db, ADESSO) == "taratura-probabili: già spenta a mano"
+    dopo = ADESSO + timedelta(hours=21)
+    assert tp.esegui(db, dopo) == "taratura-probabili: spenta a mano (versione 2): non fa niente finché non si riaccende"
+    assert len(_tabella(db)) == 2 and tp.attiva(db) is None
+    assert len(avvisi) == 1                                     # chi l'ha spenta lo sa già: nessun avviso
+    assert tp.accendi(db, dopo) == "taratura-probabili: riaccesa: al prossimo giro la prova riparte da capo"
+    assert tp.accendi(db, dopo) == "taratura-probabili: non è spenta: niente da fare"
+    assert tp.attiva(db) is None                                # riaccendere non accende niente da solo
+    assert tp.esegui(db, dopo).startswith("taratura-probabili: versione 4 attiva (migliora)")
+    assert _stati(db)[2:] == [(3, "riaccesa", None), (4, "attiva", "migliora")]
+    assert [a[1].split(":")[0] for a in avvisi] == ["Versione 1 attiva", "Versione 4 attiva"]
+
+
+def test_spegni_senza_attiva_non_ricalcola(db):
+    _genera(db, range(1, 7))
+    tp.esegui(db, ADESSO)
+    assert tp.spegni(db, ADESSO) == "taratura-probabili: spenta a mano: nessuna versione era attiva"
+    assert _segnato(db) is None and [s for _, s, _ in _stati(db)] == ["pronta", "spenta"]
+
+
+def test_avviso_una_volta_senza_nomi(db):
+    _genera(db, range(1, 9))
+    mandati, parte = [], [False]
+
+    def manda(titolo, testo):
+        mandati.append((titolo, testo))
+        return parte[0]
+
+    tp.esegui(db, ADESSO, manda)
+    assert len(mandati) == 1 and _tabella(db)[0]["avvisato"] == 0          # non è partito: si riprova al giro dopo
+    parte[0] = True
+    assert tp.esegui(db, ADESSO + timedelta(hours=4), manda).startswith("taratura-probabili: niente di nuovo")
+    assert len(mandati) == 2 and _tabella(db)[0]["avvisato"] == 1
+    tp.esegui(db, ADESSO + timedelta(hours=8), manda)
+    assert len(mandati) == 2                                                # una volta sola
+    m = json.loads(_tabella(db)[0]["misura"])
+    assert mandati[-1] == ("SchieraXI: «gioca N%»",
+                           f"Versione 1 attiva: Brier {_v(m['nuova']['brier'], 3)} invece di {_v(m['attuale']['brier'], 3)}, "
+                           f"calibrazione {_v(100 * m['nuova']['calibrazione'], 1)} punti, su 4 giornate di prova.")
+    testo = " ".join(mandati[-1]).lower()
+    assert "finto" not in testo and "squadra" not in testo
+
+
+@pytest.mark.parametrize("coefficienti", ["{rotto", "[1, 2]", "null", json.dumps({**TARATURA, "dubbio": 0.4})])
+def test_json_rovinato_valori_di_partenza(db, coefficienti, caplog):
+    db.execute("INSERT INTO taratura_probabili (creata, stato, coefficienti) VALUES ('2026-11-30T08:00:00', 'attiva', ?)",
+               (coefficienti,))
+    db.commit()
+    with caplog.at_level("WARNING"):
+        assert tp.attiva(db) is None
+    assert "rotto" not in caplog.text and "0.4" not in caplog.text            # nel log il tipo d'errore, mai il contenuto
+
+
+def test_tabella_assente_valori_di_partenza(db):
+    db.execute("DROP TABLE taratura_probabili")
+    db.commit()
+    assert tp.attiva(db) is None
+
+
+def test_comando_spegni_e_accendi(tmp_path, monkeypatch, capsys):
+    file = _archivio_con(tmp_path, range(1, 9))
+    _comando(monkeypatch, file)
+    assert capsys.readouterr().out.startswith("taratura-probabili: versione 1 attiva (migliora)")
+    _comando(monkeypatch, file, "--spegni")
+    assert capsys.readouterr().out.startswith("taratura-probabili: spenta a mano: la versione 1 non è più attiva")
+    _comando(monkeypatch, file, "--accendi")
+    assert capsys.readouterr().out.startswith("taratura-probabili: riaccesa")
+    assert [t["stato"] for t in _versioni(file)] == ["ritirata", "spenta", "riaccesa"]
+
+
+@pytest.mark.parametrize("opzioni", [("--spegni", "--prova"), ("--spegni", "--accendi"), ("--accendi", "--prova")])
+def test_comando_una_opzione_alla_volta(tmp_path, monkeypatch, opzioni):
+    with pytest.raises(SystemExit) as uscita:
+        _comando(monkeypatch, tmp_path / "fanta.sqlite", *opzioni)
+    assert uscita.value.code == 2
