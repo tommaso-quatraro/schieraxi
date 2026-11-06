@@ -5,7 +5,13 @@ import Foundation
 /// scorre normalmente: così scadenze e fasi sono quelle di quel momento, qualunque giorno si scattino le foto.
 enum Orologio {
     /// Secondi da aggiungere all'ora vera: 0 fuori dalle fotografie dal vero. Si calcola una volta, all'avvio.
-    static let scarto: TimeInterval = ScenarioVero.attuale.map { $0.adesso.timeIntervalSinceNow } ?? 0
+    static let scarto: TimeInterval = scartoAllAvvio(scenario: ScenarioVero.attuale?.adesso, demo: Demo.daLancio,
+                                                     schermata: Demo.argomento("DEMO_SCHERMATA"), adesso: Date())
+
+    /// Lo scarto di un avvio (provato in `DemoFormazioneInCorsoTests`).
+    static func scartoAllAvvio(scenario: Date?, demo: Bool, schermata: String?, adesso: Date) -> TimeInterval {
+        scenario.map { $0.timeIntervalSince(adesso) } ?? 0
+    }
 
     /// Adesso, per l'app.
     static func adesso() -> Date { Date().addingTimeInterval(scarto) }

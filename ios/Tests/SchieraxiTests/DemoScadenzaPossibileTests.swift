@@ -29,6 +29,11 @@ struct DemoScadenzaPossibileTests {
         return try Decodifica.decodifica(Data(testo.utf8))
     }
 
+    /// L'ora dell'app (`Orologio`) con la demo `oggi-in-corso` avviata quando il telefono segna `telefono`.
+    private func oraApp(_ telefono: Date) -> Date {
+        telefono.addingTimeInterval(Orologio.scartoAllAvvio(scenario: nil, demo: true, schermata: "oggi-in-corso", adesso: telefono))
+    }
+
     private func demoInCorso(_ telefono: Date) throws -> FinteServer {
         try #require(FinteServer.demoFase("oggi-in-corso", adesso: telefono), "la demo «oggi-in-corso» non esiste")
     }
@@ -58,10 +63,14 @@ struct DemoScadenzaPossibileTests {
         #expect(inizio.timeIntervalSince(scadenza) == Double(Self.minutiPrima * 60),
                 "\(dove): la formazione si chiude alle \(ora(oggi.scadenza)), la prima partita è alle \(ora(oggi.inizio))")
         #expect(scadenza < adesso, "\(dove): la giornata è in corso ma la formazione si chiude alle \(oggi.scadenza ?? "")")
-        // l'app confronta la scadenza con l'ora del telefono: «Chiusa» e sotto quando si è chiusa (`OggiView.siEChiusa`)
+        // l'app confronta la scadenza con la sua ora (`Orologio`: nella demo in corso il momento della demo, #424) e scrive
+        // «Chiusa» e sotto quando si è chiusa (`OggiView.siEChiusa`), contando «ieri» da quell'ora come il widget
+        let ora = oraApp(telefono)
+        #expect(scadenza <= ora, "\(dove): per l'app la formazione non è ancora chiusa (\(oggi.scadenza ?? ""))")
         #expect(scadenza <= telefono, "\(dove): sul telefono la formazione non è ancora chiusa (\(oggi.scadenza ?? ""))")
-        let frase = "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: telefono))"
+        let frase = "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: ora))"
         #expect(Self.orariScadenza.contains(String(frase.suffix(5))), "\(dove): «\(frase)»")
+        #expect(frase == "La formazione si è chiusa ieri 20:35", "\(dove): «\(frase)»")
 
         // ogni partita del turno a un orario da partita, le stesse in Oggi e nei risultati in diretta
         let partite = live.partite ?? []
@@ -116,7 +125,8 @@ struct DemoScadenzaPossibileTests {
         let momento: String
         let inizio: String
         let scadenza: String
-        /// La frase sotto «Chiusa» in Oggi, scritta con l'ora del telefono.
+        /// La frase sotto «Chiusa» in Oggi, scritta con l'ora dell'app: nella demo in corso il momento della demo (#424), quindi
+        /// sempre «ieri», come il widget. Prima si contava dall'ora del telefono («gio 5 20:35» con le foto delle 5:38).
         let frase: String
         var testDescription: String { "telefono alle \(telefono)" }
     }
@@ -124,21 +134,21 @@ struct DemoScadenzaPossibileTests {
     @Test("Giornata in corso in casi noti, di notte, di giorno e nei giorni del cambio dell'ora", arguments: [
         // di notte, come le foto della #412 (5:38), che dicevano «La formazione si è chiusa oggi 03:00»
         CasoInCorso(telefono: "2026-11-07 05:38", momento: "2026-11-06 18:48", inizio: "2026-11-05 20:45", scadenza: "2026-11-05 20:35",
-                    frase: "La formazione si è chiusa gio 5 20:35"),
+                    frase: "La formazione si è chiusa ieri 20:35"),
         // di giorno, prima delle 18:48: la giornata in corso è quella del giorno prima
         CasoInCorso(telefono: "2026-11-07 16:20", momento: "2026-11-06 18:48", inizio: "2026-11-05 20:45", scadenza: "2026-11-05 20:35",
-                    frase: "La formazione si è chiusa gio 5 20:35"),
+                    frase: "La formazione si è chiusa ieri 20:35"),
         // di sera, dopo le 18:48: la giornata in corso è quella di oggi, la formazione si è chiusa ieri sera
         CasoInCorso(telefono: "2026-11-07 21:10", momento: "2026-11-07 18:48", inizio: "2026-11-06 20:45", scadenza: "2026-11-06 20:35",
                     frase: "La formazione si è chiusa ieri 20:35"),
         // fine dell'ora legale (domenica 25 ottobre 2026, alle 3 si torna alle 2)
         CasoInCorso(telefono: "2026-10-25 05:38", momento: "2026-10-24 18:48", inizio: "2026-10-23 20:45", scadenza: "2026-10-23 20:35",
-                    frase: "La formazione si è chiusa ven 23 20:35"),
+                    frase: "La formazione si è chiusa ieri 20:35"),
         CasoInCorso(telefono: "2026-10-25 19:00", momento: "2026-10-25 18:48", inizio: "2026-10-24 20:45", scadenza: "2026-10-24 20:35",
                     frase: "La formazione si è chiusa ieri 20:35"),
         // inizio dell'ora legale (domenica 28 marzo 2027, alle 2 si passa alle 3)
         CasoInCorso(telefono: "2027-03-28 05:38", momento: "2027-03-27 18:48", inizio: "2027-03-26 20:45", scadenza: "2027-03-26 20:35",
-                    frase: "La formazione si è chiusa ven 26 20:35"),
+                    frase: "La formazione si è chiusa ieri 20:35"),
         CasoInCorso(telefono: "2027-03-28 19:00", momento: "2027-03-28 18:48", inizio: "2027-03-27 20:45", scadenza: "2027-03-27 20:35",
                     frase: "La formazione si è chiusa ieri 20:35"),
     ])
@@ -151,7 +161,7 @@ struct DemoScadenzaPossibileTests {
         #expect(String((live.aggiornatoIl ?? "").prefix(16)) == caso.momento)
         #expect(oggi.inizio == caso.inizio)
         #expect(oggi.scadenza == caso.scadenza)
-        #expect("La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: telefono))" == caso.frase)
+        #expect("La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: oraApp(telefono)))" == caso.frase)
         // le due partite in gioco sono cominciate alle 18:00 del giorno della demo
         let giorno = String(caso.momento.prefix(10))
         for p in live.partite ?? [] where p.inGioco {

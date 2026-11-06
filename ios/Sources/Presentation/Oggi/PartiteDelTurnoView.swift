@@ -53,6 +53,27 @@ struct RigaPartitaView: View {
     private var ora: String? { Quando.data(partita.data).map { Quando.ora($0) } }
     static func haPunteggio(_ live: PartitaLive?) -> Bool { live?.golCasa != nil && live?.golTrasferta != nil }
     private var haPunteggio: Bool { Self.haPunteggio(live) }
+
+    /// Cosa scrive la riga al posto dell'ora senza uno stato in diretta.
+    enum SenzaDiretta: Equatable { case ora, inCorso, finita, rinviata }
+
+    nonisolated static func statoSenzaDiretta(_ p: Partita) -> SenzaDiretta {
+        if p.giocata == true || p.stato == "finita" { return .finita }
+        if p.stato == "in_corso" { return .inCorso }
+        if p.stato == "rinviata" { return .rinviata }
+        return .ora
+    }
+
+    /// I gol da scrivere nella colonna del punteggio.
+    nonisolated static func golMostrati(live: PartitaLive?, partita: Partita) -> (casa: Int, trasferta: Int)? {
+        guard let c = live?.golCasa, let t = live?.golTrasferta else { return nil }
+        return (c, t)
+    }
+
+    /// La frase di VoiceOver della riga.
+    nonisolated static func voce(partita: Partita, live: PartitaLive?, ora: String?, titolari: [MioTitolare]) -> String {
+        DirettaLogica.frase(casa: partita.casa, trasferta: partita.trasferta, live: live, ora: ora, titolari: titolari)
+    }
     private var mia: Bool { !titolari.isEmpty }
     /// Con le misure di accessibilità lo stato va sopra le squadre: in colonna non ci starebbe.
     private var impilata: Bool { dimensioneTesto.isAccessibilitySize }

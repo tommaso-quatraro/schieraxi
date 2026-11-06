@@ -281,8 +281,8 @@ struct OggiView: View {
 
     /// A scadenza passata, come la web: «La formazione si è chiusa sab 31 14:50». La giornata è scritta subito sopra il conto,
     /// con i due numeri, e non si ripete (#299).
-    static func siEChiusa(_ oggi: Oggi) -> String {
-        "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura))"
+    static func siEChiusa(_ oggi: Oggi, adesso: Date = Date()) -> String {
+        "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: adesso))"
     }
 
     // MARK: novità
