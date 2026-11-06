@@ -252,6 +252,14 @@ def oggi_senza_rose(db: sqlite3.Connection, adesso: datetime | None = None, rego
             "rinvio": None}
 
 
+def migliori_della_giornata(titolari: list[dict]) -> list[dict]:
+    """«I tuoi migliori della giornata» di Oggi: i tre titolari con più punti attesi (contano anche «gioca N%»), mostrati in ordine di
+    fantavoto atteso, il numero che si vede accanto (a pari, prima chi ha più punti attesi). Prima uscivano 8,3 · 6,5 · 6,6 (#457).
+    Web e iPhone usano quest'ordine così com'è."""
+    tre = sorted(titolari, key=lambda g: -g["punti_attesi"])[:3]
+    return sorted(tre, key=lambda g: (-(g.get("fv_atteso") or 0.0), -g["punti_attesi"]))
+
+
 def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_scelte=None,
          file_diario=None, live_partite: dict | None = None, dal: datetime | None = None) -> dict:
     """Tutto ciò che serve per decidere oggi: scadenza, formazione in breve, cose da controllare, partite del turno; e, secondo
@@ -318,7 +326,7 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
             avvisi.append(base | {"tipo": "diffidato", "in_formazione": i in in_formazione, "etichetta": etichette.di_avviso("diffidato")})
     ordine = {"infortunato": 0, "squalificato": 1, "dubbio": 2, "diffidato": 3}
     avvisi.sort(key=lambda a: (not a["in_formazione"] and a["tipo"] in ("dubbio", "diffidato"), ordine[a["tipo"]], a["nome"]))
-    migliori = sorted(f["titolari"], key=lambda g: -g["punti_attesi"])[:3]
+    migliori = migliori_della_giornata(f["titolari"])
     # i miei titolari per squadra reale: serve a evidenziare le partite dei miei giocatori nei risultati in diretta
     miei_titolari: dict[str, list] = {}
     for g in f["titolari"]:

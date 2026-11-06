@@ -122,6 +122,16 @@ def test_confronto_in_formazione_spiega_titolare_e_panchinaro(monkeypatch):
     assert r3 is None
 
 
+def test_i_tuoi_migliori_in_ordine_di_fantavoto_atteso():
+    """#457: Oggi mostrava 8,3 · 6,5 · 6,6. I tre si scelgono per punti attesi, poi si ordinano per il numero sullo schermo."""
+    tit = [{"id": 1, "fv_atteso": 8.3, "punti_attesi": 7.5}, {"id": 2, "fv_atteso": 6.5, "punti_attesi": 5.9},
+           {"id": 3, "fv_atteso": 6.6, "punti_attesi": 5.4}, {"id": 4, "fv_atteso": 9.0, "punti_attesi": 2.7}]   # 4 gioca poco: fuori
+    assert [g["id"] for g in gestione.migliori_della_giornata(tit)] == [1, 3, 2]      # 8,3 · 6,6 · 6,5
+    pari = [{"id": 1, "fv_atteso": 6.5, "punti_attesi": 5.0}, {"id": 2, "fv_atteso": 6.5, "punti_attesi": 5.8}]
+    assert [g["id"] for g in gestione.migliori_della_giornata(pari)] == [2, 1]        # a pari fantavoto, più punti attesi
+    assert gestione.migliori_della_giornata([]) == []
+
+
 def test_confronto_le_percentuali_tornano_con_gioca_n(monkeypatch):
     """#452: accanto al giocatore la web scrive «gioca 85%» (Math.round di 0,845); la frase del Confronto deve dire 15%, non 16%."""
     from fanta import consigli
