@@ -54,14 +54,20 @@ extension Formato {
         return Int((valore + 0.5).rounded(.down))
     }
 
-    /// Difficoltà di una partita (1 facile ... 5 difficile) a parole, anche per VoiceOver.
-    static func difficolta(_ valore: Double?) -> String {
+    /// Difficoltà di una partita (1 facile ... 5 molto dura) a parole: l'unica scala dell'app, quella della web
+    /// (`diff.1`…`diff.5` di testi.js, #293), uguale su schermo e per VoiceOver. Con la maiuscola, come nelle pillole.
+    static func nomeDifficolta(_ valore: Double?) -> String {
         switch intero(valore ?? 3) {
-        case ...1: return "molto facile"
-        case 2: return "facile"
-        case 3: return "difficoltà media"
-        case 4: return "difficile"
-        default: return "molto difficile"
+        case ...1: return "Facile"
+        case 2: return "Abbordabile"
+        case 3: return "Normale"
+        case 4: return "Dura"
+        default: return "Molto dura"
         }
+    }
+
+    /// Le stesse parole in minuscolo, dentro una frase («Partita normale», «…, in casa, dura»), anche per VoiceOver.
+    static func difficolta(_ valore: Double?) -> String {
+        nomeDifficolta(valore).lowercased()
     }
 }
