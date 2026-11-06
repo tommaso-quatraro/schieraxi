@@ -2129,17 +2129,6 @@ document.addEventListener("keydown", ev => {
   else if (/^[1-4]$/.test(ev.key) && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
   else if (ev.key === "," && !foglioModale()) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
-// il riflesso del vetro segue il dito
-document.addEventListener("pointerdown", ev => {
-  const carta = ev.target.closest(".carta");
-  if (!carta) return;
-  const r = carta.getBoundingClientRect();
-  carta.style.setProperty("--px", `${ev.clientX - r.left}px`);
-  carta.style.setProperty("--py", `${ev.clientY - r.top}px`);
-  carta.classList.add("luce");
-  setTimeout(() => carta.classList.remove("luce"), 450);
-}, { passive: true });
-
 // ---------------------------------------------------------------- scambi
 const segnoSc = x => `<span class="guadagno ${x > 0.05 ? "su" : x < -0.05 ? "giu" : ""}">${segno(x, 1)}</span>`;
 
@@ -4179,9 +4168,10 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", t("accesso.nome_aria"));
     document.body.appendChild(el);
   }
-  el.innerHTML = `<div class="carta accesso-corpo${primaVolta ? " primo" : ""}">
+  // grafica B (spec §9): un modulo centrato senza carta; il nome è quello disegnato della testata, per i lettori di schermo «SchieraXI»
+  el.innerHTML = `<div class="accesso-corpo${primaVolta ? " primo" : ""}">
     <div class="accesso-marchio">${marchio(72, true)}</div>
-    <h1 class="accesso-titolo">SchieraXI</h1>
+    <h1 class="accesso-titolo"><svg class="wm" aria-hidden="true" focusable="false"><use href="#wm-c"/></svg><span class="solo-lettori">SchieraXI</span></h1>
     <div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>
     <div id="accesso-msg" role="alert">${messaggio ? `<div class="attenzione">${esc(messaggio)}</div>` : ""}</div>
     ${socialPronto() && SCHEDE_ACCESSO.includes(scheda) && extra.sub !== "verifica" ? `<div class="accesso-social">${htmlGoogle(t("social.continua"))}<div class="accesso-oppure debole piccolo" aria-hidden="true"><span>${t("social.oppure")}</span></div></div>` : ""}
@@ -4352,7 +4342,7 @@ async function gestisciRitornoGoogle(rit, dentro) {
 // Primo accesso con Google: un passo solo, il nome utente (e il codice d'invito se il server lo chiede).
 function mostraNuovoGoogle(r, messaggio = "") {
   const el = $("#accesso");
-  el.innerHTML = `<div class="carta accesso-corpo"><div class="accesso-marchio">${marchio(72, true)}</div>
+  el.innerHTML = `<div class="accesso-corpo"><div class="accesso-marchio">${marchio(72, true)}</div>
     <h1 class="accesso-titolo">${t("social.scegli_nome")}</h1>
     <div class="debole piccolo">${t("social.scegli_spiega")}</div>
     <div id="accesso-msg" role="alert">${messaggio ? `<div class="errore">${esc(messaggio)}</div>` : ""}</div>
@@ -4424,7 +4414,7 @@ function collegaCopiaCodice(codice) {
   $("#copia-codice").addEventListener("click", async () => avviso(await copiaTesto(codice) ? t("codice.copiato") : t("codice.non_copio")));
 }
 function mostraCodiceAccesso(titolo, codice, continua, dopo) {
-  $("#accesso").innerHTML = `<div class="carta accesso-corpo"><h1 class="accesso-titolo">${esc(titolo)}</h1>
+  $("#accesso").innerHTML = `<div class="accesso-corpo"><h1 class="accesso-titolo">${esc(titolo)}</h1>
     <h2>${t("codice.titolo")}</h2>${htmlCodiceUnaVolta(codice)}
     <label class="interruttore"><span>${t("codice.salvato")}</span><input type="checkbox" id="codice-salvato"></label>
     <div class="pulsanti"><button class="bottone" id="codice-continua" disabled>${esc(continua)}</button></div></div>`;

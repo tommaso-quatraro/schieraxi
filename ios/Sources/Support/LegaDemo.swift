@@ -88,8 +88,12 @@ enum LegaDemo {
     static let creditiResidui = 12
     /// Quanto restituisce uno svincolo, in parte del prezzo pagato (`rimborso_svincolo` delle regole della demo).
     static let rimborsoSvincolo = 0.5
-    /// La formazione della giornata è quella salvata da te (`tua_scelta` di Oggi e del widget).
-    static let tuaScelta = true
+    /// C'è la tua formazione salvata (`tua_scelta` di Oggi e del widget, `GET /api/scelta` della Formazione)? Una risposta per
+    /// fase, la stessa in Oggi, Formazione e widget (#418). Prima della scadenza no: la demo mostra la consigliata, che si salva con
+    /// «Salva questa». A giornata in corso sì: vale quella che hai salvato, gli undici della consigliata. A giornata finita Oggi e
+    /// widget parlano già della prossima giornata, non ancora salvata. La foto `formazione-salvata` ha la scelta salvata anche
+    /// prima della scadenza (`DatiDemo.swift`).
+    static func tuaScelta(_ fase: Fase) -> Bool { fase == .inCorso }
 
     // MARK: - Calciatori
 
@@ -483,25 +487,44 @@ enum LegaDemo {
         ]
     }
 
+    /// Com'è andata finora la giornata della tua formazione, nel momento della demo a giornata in corso: (id, titolare, a
+    /// punteggio, stato della partita, fantavoto preso). Una fonte per «Chi va a punteggio» di Oggi (`bloccoInCorso`) e per le
+    /// righe di Formazione, Rosa e schede (`statoInCorso`, #424): Inter-Roma è finita (voti presi, Bastrani e Marténi senza voto),
+    /// Milan-Juventus e Lazio-Fiorentina sono in gioco, Napoli-Atalanta si gioca alle 20:45.
+    static let righeInCorso: [(id: Int, titolare: Bool, aPunteggio: Bool, stato: String, fv: Double?)] = [
+        (101, true, true, "fatto", 5.0), (104, true, false, "senza_voto", nil), (106, true, true, "in_corso", nil),
+        (107, true, false, "da_giocare", nil), (112, true, true, "fatto", 8.0), (113, true, true, "fatto", 9.5),
+        (114, true, true, "in_corso", nil), (115, true, true, "in_corso", nil), (120, true, false, "senza_voto", nil),
+        (121, true, true, "fatto", 10.0), (122, true, true, "da_giocare", nil),
+        (102, false, false, "in_corso", nil), (105, false, true, "fatto", 6.5), (123, false, true, "in_corso", nil),
+        (108, false, false, "da_giocare", nil), (117, false, false, "in_corso", nil), (125, false, false, "in_corso", nil),
+        (110, false, true, "in_corso", nil),
+    ]
+
+    /// Lo stato della giornata di un giocatore nel momento della demo a giornata in corso, come `stati_giocatori` di
+    /// fanta/fasi.py: `fatto` (con il fantavoto preso), `senza_voto`, `in_corso`, `da_giocare`. Per la tua formazione quello di
+    /// `righeInCorso`; per gli altri dalla partita della sua squadra in quel momento (`cominciate`): finita, ha preso il voto (senza
+    /// voto chi è indisponibile o partiva dalla panchina); in gioco; da giocare.
+    static func statoInCorso(_ p: CalciatoreDemo) -> (stato: String, fv: Double?) {
+        if let r = righeInCorso.first(where: { $0.id == p.id }) { return (r.stato, r.fv) }
+        guard let i = incontri.firstIndex(where: { $0.casa == p.squadra || $0.trasferta == p.squadra }), cominciate[i] != nil else {
+            return ("da_giocare", nil)
+        }
+        if i != 0 { return ("in_corso", nil) }   // l'unica finita è Inter-Roma, la prima del turno
+        if p.assente || p.pVoto < 0.75 { return ("senza_voto", nil) }
+        // un fantavoto inventato ma possibile, da 5,5 a 9,5 a mezzi punti, sempre lo stesso per lo stesso giocatore
+        return ("fatto", 5.5 + Double((p.id * 7) % 9) * 0.5)
+    }
+
     /// Il blocco `in_corso` di Oggi a giornata in corso: punti fatti, previsti, giocatore per giocatore e i cambi dalla panchina.
     /// Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili.
     static func bloccoInCorso(adesso: Date) -> [String: Any] {
         let ore = orari(adesso: adesso, fase: .inCorso)
-        // stato di ogni giocatore: (id, titolare, a punteggio, stato, fantavoto)
-        let righe: [(Int, Bool, Bool, String, Double?)] = [
-            (101, true, true, "fatto", 5.0), (104, true, false, "senza_voto", nil), (106, true, true, "in_corso", nil),
-            (107, true, false, "da_giocare", nil), (112, true, true, "fatto", 8.0), (113, true, true, "fatto", 9.5),
-            (114, true, true, "in_corso", nil), (115, true, true, "in_corso", nil), (120, true, false, "senza_voto", nil),
-            (121, true, true, "fatto", 10.0), (122, true, true, "da_giocare", nil),
-            (102, false, false, "in_corso", nil), (105, false, true, "fatto", 6.5), (123, false, true, "in_corso", nil),
-            (108, false, false, "da_giocare", nil), (117, false, false, "in_corso", nil), (125, false, false, "in_corso", nil),
-            (110, false, true, "in_corso", nil),
-        ]
-        let giocatori: [[String: Any]] = righe.map { r in
-            let c = calciatore(r.0)
+        let giocatori: [[String: Any]] = righeInCorso.map { r in
+            let c = calciatore(r.id)
             let i = incontri.firstIndex { $0.casa == c.squadra || $0.trasferta == c.squadra } ?? 0
-            return ["id": c.id, "nome": c.nome, "ruolo": c.ruolo, "squadra": c.squadra, "titolare": r.1, "a_punteggio": r.2,
-                    "stato": r.3, "fantavoto": r.4.map { $0 as Any } ?? NSNull(), "data": formatta(ore[i], "yyyy-MM-dd HH:mm")]
+            return ["id": c.id, "nome": c.nome, "ruolo": c.ruolo, "squadra": c.squadra, "titolare": r.titolare, "a_punteggio": r.aPunteggio,
+                    "stato": r.stato, "fantavoto": r.fv.map { $0 as Any } ?? NSNull(), "data": formatta(ore[i], "yyyy-MM-dd HH:mm")]
         }
         func persona(_ id: Int) -> [String: Any] { let c = calciatore(id); return ["id": c.id, "nome": c.nome, "ruolo": c.ruolo] }
         return [
@@ -663,7 +686,7 @@ enum LegaDemo {
         }
         var formazione: [String: Any] = ["modulo": moduli[0].nome, "punti_attesi": attesi, "intervallo": fascia(attesi),
                                          "titolari": titolari, "panchina": panchina(per: ids)]
-        if tuaScelta {
+        if tuaScelta(fase) {
             formazione["tua_scelta"] = true
             formazione["consigliata"] = ["modulo": moduli[0].nome, "punti_attesi": attesi] as [String: Any]
         }
