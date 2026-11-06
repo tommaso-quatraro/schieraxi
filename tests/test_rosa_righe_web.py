@@ -78,5 +78,5 @@ def test_scheda_niente_stato_doppio_a_partita_finita():
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_legenda_del_campo_nella_lingua_scelta():
-    assert '<b class="fv-esempio">${num(6.8)}</b>' in APP and '<b class="fv-esempio">6,8</b>' not in APP
+    assert '<span class="disco">${num(6.8)}</span>' in APP and '<span class="disco">6,8</span>' not in APP
     assert _esegui("num(6.8)", "en") == "6.8" and _esegui("num(6.8)", "it") == "6,8"

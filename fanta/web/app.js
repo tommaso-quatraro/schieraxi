@@ -14,7 +14,7 @@ const SCHEDA_DI = v => VISTE.includes(v) ? v : Object.hasOwn(SOTTO_VISTE, String
 // Le funzioni accese (dieta): una chiave che manca vale «acceso», così con un server vecchio o senza risposta si vede tutto come prima.
 const funz = id => !stato.funzioni || stato.funzioni.funzioni[id] !== false;
 const stato = { vista: "oggi", info: null, squadraVista: null, confronto: null, richiesta: 0, ruoloClassifica: "A",
-  soloLiberi: false, ruoloGiocatori: "", mercatoTab: "consigli", punteggioPrec: null, calendario: null };
+  soloLiberi: false, ruoloGiocatori: "", mercatoTab: "consigli", calendario: null };
 // ogni cambio di sezione ha un numero: una risposta arrivata in ritardo per una sezione già lasciata viene ignorata
 const nuovaRichiesta = () => ++stato.richiesta;
 const ancoraValida = n => n === stato.richiesta;
@@ -301,21 +301,6 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
   }
 }
 
-// Un numero che sale (o scende) fino al valore finale: dà la sensazione che il calcolo sia "vivo".
-function animaNumero(el, da, a, decimali = 1, durata = 650) {
-  if (!el) return;
-  const scrivi = v => { el.textContent = num(v, decimali); };
-  if (!Number.isFinite(da) || da === a) { scrivi(a); return; }
-  if (menoMovimento()) durata = Math.min(durata, 350);
-  const inizio = performance.now();
-  const passo = ora => {
-    const k = Math.min(1, (ora - inizio) / durata);
-    scrivi(da + (a - da) * (1 - Math.pow(1 - k, 3)));
-    if (k < 1 && document.body.contains(el)) requestAnimationFrame(passo); else scrivi(a);
-  };
-  requestAnimationFrame(passo);
-}
-
 // ---------------------------------------------------------------- pezzi grafici riusati
 // Colori principali e secondari delle squadre (per il cerchio degli avatar e la lineetta davanti alla sigla).
 const COLORI_SQUADRA = { atalanta: ["#1e71b8", "#111827"], bologna: ["#a21c26", "#1a2f5a"], cagliari: ["#a51e36", "#0b2a52"], como: ["#1b5fa8", "#f3f4f6"],
@@ -411,19 +396,12 @@ function etichetteGiocatore(x) {
   return pillTitolarita(x) + esito + (x.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : "") + altre;
 }
 
-// Distintivo della squadra: solo la sigla nei colori sociali (niente stemmi: sono marchi dei club).
+// Il nome del club per i lettori di schermo («il Napoli»); la luminosità di un colore per il contrasto della lineetta (lineetta()).
 const nomeClub = s => String(s || "").replace(/(^|[\s-])\S/g, c => c.toUpperCase());
 function luminosita(hex) {
   const n = parseInt(String(hex).slice(1), 16);
   const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
   return .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
-}
-function distintivo(s) {
-  const [c1, c2] = (Object.hasOwn(COLORI_SQUADRA, s) && COLORI_SQUADRA[s]) || ["#6b7280", "#e5e7eb"];
-  // nero o bianco, quello con il contrasto più alto (come LetturaPedina.testoScuro sull'iPhone): con la soglia fissa a 0,35
-  // la sigla bianca sull'azzurro del Napoli stava a 3,5:1 (issue #244)
-  const l = luminosita(c1), testo = (l + .05) / .05 > 1.05 / (l + .05) ? "#000000" : "#ffffff";
-  return `<i class="dist" style="--c1:${c1};--c2:${c2};--ct:${testo}">${sigla(s)}</i>`;
 }
 // Per i lettori di schermo: «gioca all'85 per cento, in casa contro il Napoli» (in italiano con l'articolo giusto).
 const ARTICOLI_CLUB = { atalanta: "l'", inter: "l'", udinese: "l'", empoli: "l'", juventus: "la ", fiorentina: "la ", lazio: "la ", roma: "la ",
@@ -456,35 +434,38 @@ function esitoPedina(x) {
 // Il nome per i lettori di schermo viene dal contenuto, non da un aria-label: le abbreviazioni che si vedono («6,8», «vs NAP»)
 // sono nascoste ai lettori e accanto c'è la frase intera, che comincia con il nome (chi usa il controllo vocale dice «Rossi»).
 // Con l'aria-label il testo visibile non stava nel nome (axe `label-content-name-mismatch`, WCAG 2.5.3, issue #244).
+// Grafica B (spec §8.10, scelta 2 dell'utente): la pedina è un disco bianco con il fantavoto atteso, niente volto (i volti stanno
+// negli elenchi e nella scheda; sull'iPhone la pedina ha il volto). Sotto il 70% un anello arancio attorno al disco (stile.css).
+// L'avversario con la lineetta nel colore sociale davanti alla sigla, come nelle righe.
 function pedina(x, k = 0) {
   const p = Math.round((x.p_voto ?? 0) * 100) / 100;            // soglia sul numero che si legge: 69,7% si mostra «70%» e non è «sotto il 70%»
   const esito = esitoPedina(x);
   return `<button class="pedina" data-giocatore="${x.id}" style="--k:${k}">
-    <span class="avatar-pedina" aria-hidden="true">${avatar(x)}<b class="fv"${attrPerche(x)}>${num(x.fv_atteso)}</b></span>
+    <span class="disco" aria-hidden="true"${attrPerche(x)}>${num(x.fv_atteso)}</span>
     <span class="nome" aria-hidden="true">${esc(cognome(x))}</span>
     ${esito ? `<span class="gioca esito" aria-hidden="true">${esc(esito.testo)}</span>`
       : `<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">${p < SOGLIA_GIOCA ? "⚠ " : ""}${t("giocatore.gioca", { p: perc(p) })}</span>`}
-    ${x.avversario ? `<span class="avv" aria-hidden="true">${x.in_casa ? "vs" : "@"} ${distintivo(x.avversario)}</span>` : ""}
+    ${x.avversario ? `<span class="avv" aria-hidden="true">${x.in_casa ? "vs" : "@"} <span>${lineetta(x.avversario)}${sigla(x.avversario)}</span></span>` : ""}
     <span class="solo-lettori">${esc(vocePedina(x, esito))}</span>
   </button>`;
 }
-// Legenda del campo: si vede una volta (finché non tocchi «Ho capito»), poi si riapre dal pulsante ⓘ «Cosa vuol dire».
+// Legenda del campo, sotto il campo (spec §8.10: non lo copre più): si vede una volta (finché non tocchi «Ho capito»), poi si
+// riapre dal collegamento «Cosa vuol dire». Gli esempi sono disegnati come sul campo, sul verde.
 const legendaCampoVista = () => memLeggi("legenda-campo") === "1";
 function legendaCampo() {
   const vista = legendaCampoVista();
-  return `<button class="info-campo" type="button" id="info-campo" aria-expanded="${!vista}" aria-controls="legenda-campo" ${vista ? "" : "hidden"}>
-      <span aria-hidden="true">ⓘ</span> ${t("formazione.legenda_apri")}</button>
+  return `<div class="sotto-campo"><button class="info-campo azione-testo" type="button" id="info-campo" aria-expanded="${!vista}" aria-controls="legenda-campo" ${vista ? "" : "hidden"}>${t("formazione.legenda_apri")}</button>
     <div class="legenda-campo" id="legenda-campo" ${vista ? "hidden" : ""}>
       <ul>
-        <li><span class="leg-esempio"><b class="fv-esempio">${num(6.8)}</b></span>${t("formazione.legenda_fv")}</li>
+        <li><span class="leg-esempio"><span class="disco">${num(6.8)}</span></span>${t("formazione.legenda_fv")}</li>
         <li><span class="leg-esempio"><span class="gioca">${t("giocatore.gioca", { p: "85%" })}</span></span>${t("formazione.legenda_gioca")}</li>
         <li><span class="leg-esempio"><span class="gioca basso">⚠ ${t("giocatore.gioca", { p: "45%" })}</span></span>${t("formazione.legenda_gioca_basso")}</li>
-        <li><span class="leg-esempio"><span class="avv">vs ${distintivo("napoli")}</span></span>${t("formazione.legenda_casa")}</li>
-        <li><span class="leg-esempio"><span class="avv">@ ${distintivo("napoli")}</span></span>${t("formazione.legenda_fuori")}</li>
-        <li><span class="leg-esempio"></span>${t("formazione.legenda_volto")}</li>
+        <li><span class="leg-esempio"><span class="avv">vs <span>${lineetta("napoli")}${sigla("napoli")}</span></span></span>${t("formazione.legenda_casa")}</li>
+        <li><span class="leg-esempio"><span class="avv">@ <span>${lineetta("napoli")}${sigla("napoli")}</span></span></span>${t("formazione.legenda_fuori")}</li>
+        <li><span class="leg-vuoto"></span>${t("formazione.legenda_volto")}</li>
       </ul>
       <button class="bottone secondario" type="button" id="legenda-ok">${t("formazione.legenda_ok")}</button>
-    </div>`;
+    </div></div>`;
 }
 function collegaLegenda() {
   const info = $("#info-campo"), leg = $("#legenda-campo"), ok = $("#legenda-ok");
@@ -647,7 +628,6 @@ function vai(vista, gruppo, opz = {}) {
   clearInterval(timerConto);
   fermaLive();
   if (regoleAC) { regoleAC.abort(); regoleAC = null; }
-  stato.punteggioPrec = null;
   if (imp) vistaImpostazioni(gruppo);
   else DISEGNO_VISTE.get(vista)();
   if (opz.focoTitolo) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }   // pagina() lo tiene anche quando la schermata si ridisegna
@@ -1192,6 +1172,8 @@ function quandoSalvata(s, breve = false) {
   return t("formazione.giorno_alle", { giorno: diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${d.getDate()}`, ora });
 }
 const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!", chiusa: "■" };
+// Il tasto che salva la formazione (gestore `keydown`, spec C3): ⌘+S sul Mac, sull'iPhone e sull'iPad, Ctrl+S altrove.
+const tastoSalva = () => /Mac|iPhone|iPad|iPod/.test((globalThis.navigator && navigator.platform) || "") ? "⌘+S" : "Ctrl+S";
 // A giornata chiusa la frase dice quale formazione vale. `nonValida`: la scelta salvata non si può schierare (regola unica del
 // server: `stato_scelta: "non_valida"` di GET /api/formazione, o `formazione_non_valida` rileggendola): vale la consigliata, che è
 // anche quella mostrata.
@@ -1206,7 +1188,7 @@ function rigaStatoScelta(st, salvata, nonValida = false) {
     non_valida: t("formazione.stato_non_valida"),
     chiusa: t(nonValida ? "formazione.stato_chiusa_non_valida" : salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
   }[st];
-  const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}">${t(chiave)}</button>`;
+  const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}"${id.startsWith("salva-") ? ` title="${t("formazione.salva_tasto", { tasto: tastoSalva() })}"` : ""}>${t(chiave)}</button>`;
   const pulsanti = {
     consigliata: b("salva-questa", "formazione.salva_questa", false) + b("modifica", "formazione.modifica_mano"),
     altra: b("salva-questa", "formazione.salva_questa", false) + b("modifica", "formazione.modifica_mano") + b("torna-consigliata", "formazione.torna_alla_consigliata"),
@@ -1334,32 +1316,32 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${elidiOrdinali(t("formazione.per_la_prossima", { g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata) }))}</div>` : ""}
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
-      <div class="carta hero">
-        ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
-        <div class="riga"><div><div class="debole">${nomeGiornata(f.giornata_lega, f.giornata)} · <span style="white-space:nowrap">${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</span></div><div class="grande">${esc(m.modulo)}</div></div>
-          <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
-            ${fascia(m)}</div></div>
-        ${manuale && r.differenza !== null ? `<div class="debole" style="margin-top:6px">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
-        ${chiusa ? "" : `<div class="etichetta-riga">${t("formazione.modulo")}</div>
-        <div class="chips scorri" data-striscia>${chip}</div>
-        <div class="etichetta-riga">${t("formazione.stile")}</div>
-        <div class="chips scorri" data-striscia>${chipStile}</div>
-        <div class="debole nota-riga" id="descrizione-stile">${manuale ? t("formazione.modificata_mano")
-          : `<b>${esc(nomeStile(l))}</b>: ${esc(descrizioneStile(l))}${m.modulo !== l.modulo ? " " + t("formazione.modulo_fissato", { modulo: esc(l.modulo) }) : " " + t("formazione.propone", { modulo: esc(l.modulo) })}${stellaNonMassimo(l)}`}
-          ${t("formazione.stella_consigliata")}</div>`}
-        <div class="pulsanti">
-          ${st || chiusa ? "" : manuale ? `${squadra ? "" : `<button class="bottone" id="salva-scelta">${t("formazione.salva_come_mia")}</button>`}<button class="bottone secondario" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`
-                    : `<button class="bottone" id="modifica">${t("formazione.modifica_mano")}</button>`}
-          <details class="altre-azioni"><summary class="bottone secondario">${t("formazione.altro")}</summary>
-            <div class="pulsanti"><button class="bottone secondario" id="copia">${t("formazione.copia_formazione")}</button>
-              <button class="bottone secondario" id="condividi">${t("formazione.condividi_immagine")}</button></div></details>
-        </div>
+      <div class="cifre-oggi cifre-formazione"><div class="cifra"><div class="debole">${nomeGiornata(f.giornata_lega, f.giornata)} · <span class="nb">${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</span></div><div class="grande">${esc(m.modulo)}</div></div>
+        <div class="cifra"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>${fascia(m)}</div></div>
+      ${manuale && r.differenza !== null ? `<div class="debole rispetto">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
+      ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
+      ${chiusa ? "" : `<div class="etichetta-riga">${t("formazione.modulo")}</div>
+      <div class="chips scorri" data-striscia>${chip}</div>
+      <div class="etichetta-riga">${t("formazione.stile")}</div>
+      <div class="chips scorri" data-striscia>${chipStile}</div>
+      <div class="debole nota-riga" id="descrizione-stile">${manuale ? t("formazione.modificata_mano")
+        : `<b>${esc(nomeStile(l))}</b>: ${m.modulo !== l.modulo ? t("formazione.modulo_fissato", { modulo: esc(l.modulo) }) : t("formazione.propone", { modulo: esc(l.modulo) })}`}
+        ${t("formazione.stella_consigliata")}${manuale ? "" : `
+        <details class="come"><summary>${t("mercato.come_legge")}</summary><p>${esc(descrizioneStile(l))}${stellaNonMassimo(l)}</p></details>`}</div>`}
+      <div class="pulsanti azioni-formazione">
+        ${st || chiusa ? "" : manuale ? `${squadra ? "" : `<button class="bottone" id="salva-scelta">${t("formazione.salva_come_mia")}</button>`}<button class="bottone secondario" id="torna-consigliata">${t("formazione.torna_alla_consigliata")}</button>`
+                  : `<button class="bottone" id="modifica">${t("formazione.modifica_mano")}</button>`}
+        <details class="altre-azioni"><summary class="bottone secondario">${t("formazione.altro")}</summary>
+          <div class="pulsanti"><button class="bottone secondario" id="copia">${t("formazione.copia_formazione")}</button>
+            <button class="bottone secondario" id="condividi">${t("formazione.condividi_immagine")}</button></div></details>
       </div>
-      <div class="campo">${legendaCampo()}<i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
+      <div class="zona-campo"><div class="campo-fermo">
+      <div class="campo"><i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
         ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
       </div>
+      ${legendaCampo()}
       ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
-      </div><div class="col">
+      </div></div>
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
         ${modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""}
         ${intestazioneColonne({ partita: true, azione: true })}<ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
@@ -1405,9 +1387,7 @@ function mostraFormazione(f, squadra, opz = {}) {
     collegaLegenda();
     bottone("#copia", async () => avviso(await copiaTesto(testoFormazione(f, m)) ? t("formazione.copiata") : t("formazione.non_copio")));
     bottone("#condividi", () => condividiImmagine(f, m).catch(() => avviso(t("formazione.non_riesco_creare"))));
-    if (mantieniScroll) window.scrollTo(0, y0);
-    animaNumero($("#punti-attesi"), mantieniScroll ? stato.punteggioPrec : 0, m.punteggio_atteso);
-    stato.punteggioPrec = m.punteggio_atteso;
+    if (mantieniScroll) window.scrollTo(0, y0);      // i punti attesi sono già scritti giusti nell'HTML: nessun numero che sale (spec §7.6)
     const torna = $("#torna-mia");
     if (torna) torna.addEventListener("click", () => { stato.squadraVista = null; vistaFormazione(); });
   };
@@ -2046,6 +2026,13 @@ document.addEventListener("click", ev => {
 });
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape") { chiudiFoglio(); return; }
+  // Ctrl+S (⌘+S sul Mac) nella Formazione preme il «Salva» che si vede in quel momento (spec C3); senza niente da salvare, in un'altra
+  // schermata o con un pannello aperto non si ferma: fa quello che fa di solito il browser. Anche mentre si scrive nella ricerca.
+  if (typeof ev.key === "string" && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s" && !ev.altKey && !ev.shiftKey
+      && stato.vista === "formazione" && $("#foglio").hidden) {
+    const salva = $("#salva-scelta") || $("#salva-questa");
+    if (salva && !salva.disabled && salva.getClientRects().length) { ev.preventDefault(); salva.click(); return; }
+  }
   if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
   const bersaglio = ev.target;
   if (bersaglio && (["INPUT", "TEXTAREA", "SELECT"].includes(bersaglio.tagName) || bersaglio.isContentEditable)) return;      // si sta scrivendo
@@ -4553,7 +4540,7 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
 // Colonne ferme in alto su tablet e PC (la prima di Oggi, il campo della Formazione, l'elenco di Impostazioni, i filtri dei giocatori):
 // restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, «Apri la formazione») restava sotto la barra o
 // fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
-const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .col > .campo, .imp-elenco, .giocatori-pagina .filtri-giocatori";
+const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .campo-fermo, .imp-elenco, .giocatori-pagina .filtri-giocatori";
 const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
 function controllaFerme() {
   const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è

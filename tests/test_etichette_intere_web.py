@@ -78,7 +78,7 @@ def test_la_pillola_del_server_usa_i_pezzi():
     html = _esegui('pillTitolarita({etichetta: {codice: "dubbio", testo: "In dubbio · gioca 55%", tono: "attenzione"}})')
     assert html == '<span class="etichetta arancio"><span class="pezzo">In dubbio&nbsp;·</span> <span class="pezzo">gioca 55%</span></span>'
     # anche i motivi sotto il nome (note lunghe) passano dallo stesso testo
-    assert "testoEtichetta(traduciFrase(m.frase, m.testo))" in _pezzo("function etichetteGiocatore(x)", "// Distintivo della squadra")
+    assert "testoEtichetta(traduciFrase(m.frase, m.testo))" in _pezzo("function etichetteGiocatore(x)", "const nomeClub")
 
 
 def test_nessuna_pillola_finisce_con_i_puntini():
