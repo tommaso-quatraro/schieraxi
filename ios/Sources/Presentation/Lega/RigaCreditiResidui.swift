@@ -27,7 +27,7 @@ struct RigaCreditiResidui: View {
             VStack(alignment: .leading, spacing: 8) {
                 titolo
                 campoInColonna
-                pulsanteSalva
+                pulsanteSalva(larghezzaMinima: DisposizioneCrediti.latoMinimoTocco)
             }
         case .inRiga:
             ViewThatFits(in: .horizontal) {
@@ -35,13 +35,13 @@ struct RigaCreditiResidui: View {
                     titolo
                     Spacer(minLength: 8)
                     campoInRiga
-                    pulsanteSalva
+                    pulsanteSalva()
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     titolo
                     HStack(spacing: 12) {
                         campoInRiga
-                        pulsanteSalva
+                        pulsanteSalva()
                     }
                 }
             }
@@ -73,12 +73,13 @@ struct RigaCreditiResidui: View {
     }
 
     /// «Salva» sta sempre su una riga (`fixedSize`) e il bersaglio di tocco è nell'etichetta: con lo stile `.borderless` una
-    /// cornice messa fuori dal pulsante non allarga la zona che risponde al tocco.
-    private var pulsanteSalva: some View {
+    /// cornice messa fuori dal pulsante non allarga la zona che risponde al tocco. `larghezzaMinima` solo nella colonna: in
+    /// riga il pulsante resta largo quanto la parola, come prima.
+    private func pulsanteSalva(larghezzaMinima: CGFloat? = nil) -> some View {
         Button(action: salva) {
             Text(ParoleSquadre.salva)
                 .fixedSize(horizontal: true, vertical: false)
-                .frame(minWidth: DisposizioneCrediti.latoMinimoTocco, minHeight: DisposizioneCrediti.latoMinimoTocco)
+                .frame(minWidth: larghezzaMinima, minHeight: DisposizioneCrediti.latoMinimoTocco)
                 .contentShape(Rectangle())
         }
         // il campo e il pulsante stanno nella stessa riga di una lista: senza questo un tocco li attiva come uno solo

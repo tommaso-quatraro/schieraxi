@@ -4,9 +4,9 @@ import Testing
 
 /// «Crediti residui» nella rosa di una squadra con il testo molto grande (issue #467). Nelle foto con il testo al massimo il
 /// campo (largo quanto il testo, `@ScaledMetric`) lasciava a «Salva» una striscia di pochi punti e la parola andava a capo
-/// una lettera per riga («S», «al», «va»). Da «Accessibilità 1» in su titolo, campo e «Salva» vanno uno sotto l'altro, e
-/// «Salva» ha un bersaglio di tocco intero. Qui si prova la scelta della disposizione; l'aspetto lo guarda la foto
-/// `lega-rosa` a testo massimo, scattata su `main` dopo l'unione.
+/// una lettera per riga («S», «al», «va»). Da «Accessibilità 1» in su titolo, campo e «Salva» vanno uno sotto l'altro.
+/// Qui si prova la scelta della disposizione, misura per misura; l'aspetto (e il bersaglio di tocco di «Salva») lo guarda la
+/// foto `lega-rosa` a testo massimo, scattata su `main` dopo l'unione.
 @Suite("Crediti residui nella rosa: disposizione con il testo grande (#467)")
 struct DisposizioneCreditiTests {
 
@@ -18,19 +18,15 @@ struct DisposizioneCreditiTests {
         #expect(inRiga == [.xSmall, .small, .medium, .large, .xLarge, .xxLarge, .xxxLarge])
     }
 
-    @Test("La disposizione segue le misure «Accessibilità» di sistema, senza una soglia scritta a parte", arguments: DynamicTypeSize.allCases)
-    func comeIlSistema(dimensione: DynamicTypeSize) {
-        #expect((DisposizioneCrediti.per(dimensione) == .inColonna) == dimensione.isAccessibilitySize, "\(dimensione)")
+    @Test("Ogni misura sotto «Accessibilità 1», compreso il testo predefinito di iOS (.large): la riga resta com'è",
+          arguments: [DynamicTypeSize.xSmall, .small, .medium, .large, .xLarge, .xxLarge, .xxxLarge])
+    func sottoLaSoglia(dimensione: DynamicTypeSize) {
+        #expect(DisposizioneCrediti.per(dimensione) == .inRiga, "\(dimensione)")
     }
 
-    @Test("Il testo predefinito di iOS resta in riga; il testo al massimo (la foto) va in colonna")
-    func predefinitoEMassimo() {
-        #expect(DisposizioneCrediti.per(.large) == .inRiga, "il testo predefinito di iOS non cambia")
-        #expect(DisposizioneCrediti.per(.accessibility5) == .inColonna, "il testo al massimo è il caso della foto")
-    }
-
-    @Test("Il bersaglio di tocco di «Salva» è alto almeno 44 punti")
-    func bersaglioDiTocco() {
-        #expect(DisposizioneCrediti.latoMinimoTocco >= 44)
+    @Test("Ogni misura da «Accessibilità 1» in su, compreso il testo al massimo della foto: titolo, campo e «Salva» in colonna",
+          arguments: [DynamicTypeSize.accessibility1, .accessibility2, .accessibility3, .accessibility4, .accessibility5])
+    func daAccessibilitaInSu(dimensione: DynamicTypeSize) {
+        #expect(DisposizioneCrediti.per(dimensione) == .inColonna, "\(dimensione)")
     }
 }
