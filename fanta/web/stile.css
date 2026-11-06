@@ -972,13 +972,14 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 }
 
 @media (min-width: 1100px) {
-  main > .benvenuto { max-width: 620px; margin-left: auto; margin-right: auto; }
+  /* il benvenuto senza rose resta stretto ma parte dal bordo sinistro, sotto il titolo (#455: stava in mezzo alla pagina) */
+  main > .benvenuto { max-width: 620px; }
   /* le sezioni che contengono tante carte (Mercato, Scambi) le dispongono da sole in colonne */
   main > #mercato-corpo, main > #elenco-scambi { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 18px 22px; align-items: start; }
   #mercato-corpo > *, #elenco-scambi > * { margin-bottom: 0; }
   #mercato-corpo > .carta:first-child, #mercato-corpo > .caricamento, #mercato-corpo > .vuoto, #elenco-scambi > .caricamento, #elenco-scambi > .vuoto,
   #elenco-scambi > .carta:first-child { grid-column: 1 / -1; }
-  #mercato-corpo > .benvenuto, #elenco-scambi > .benvenuto { grid-column: 1 / -1; max-width: 620px; justify-self: center; width: 100%; }
+  #mercato-corpo > .benvenuto, #elenco-scambi > .benvenuto { grid-column: 1 / -1; max-width: 620px; justify-self: start; width: 100%; }
 }
 /* Schermi grandi (PC, ultrawide): tutta l'interfaccia si ingrandisce, così testo e bersagli restano leggibili a zoom 100% del browser.
    La pagina resta di 1240 px di interfaccia, centrata. L'iPad (fino a 1366) non cambia. */
