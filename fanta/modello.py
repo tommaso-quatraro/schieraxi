@@ -56,7 +56,7 @@ class Parametri:
     giornate_presenze: int = 6
     # Correzioni dei gol attesi «nostri» (piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md): spente di default,
     # le accende `nostri.parametri`. La produzione non cambia fino alla Fase G1.
-    rigori_squadra: bool = False      # quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_quote_rigori`)
+    rigori_squadra: bool = False      # quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`)
     minuti_con_voto: bool = False     # minuti, tassi per 90' e medie del ruolo dalle sole presenze con voto (vedi `_pezzi`)
 
 
@@ -133,7 +133,7 @@ DECADIMENTO_RIGORI = 0.98       # peso di un rigore calciato una giornata prima 
 PESO_PREC_RIGORI = 0.8          # i rigori della stagione scorsa
 
 
-def _quote_rigori(U: pd.DataFrame, g: pd.DataFrame, t0: int, stagione: str, par: Parametri) -> pd.Series:
+def _rigori_divisi(U: pd.DataFrame, g: pd.DataFrame, t0: int, stagione: str, par: Parametri) -> pd.Series:
     """Quota dei rigori della squadra che va a ogni giocatore di `g`, se gioca (Parametri.rigori_squadra). Si contano i suoi
     rigori calciati con memoria lunga (con qualunque squadra) e quelli dei compagni di oggi, ognuno pesato con la sua quota di
     presenze recenti (`p_storico`): quota = i suoi / (i suoi + quelli dei compagni). Chi non ne ha mai calciati ha quota 0.
@@ -358,7 +358,7 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
         d, V, col_voto, g, data0, [par, replace(par, giornate_presenze=20, decadimento_presenze=0.93),
                                    replace(par, giornate_presenze=1)], titolari=True)
     if par.rigori_squadra:
-        g["quota_rig"] = _quote_rigori(U, g, t0, stagione, par)
+        g["quota_rig"] = _rigori_divisi(U, g, t0, stagione, par)
 
     # ---- stima di partenza dalla quotazione iniziale ----
     # La quotazione iniziale (fissata prima del campionato, quindi senza dati dal futuro) riassume quanto gli
