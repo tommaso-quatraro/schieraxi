@@ -58,6 +58,8 @@ class Parametri:
     # le accende `nostri.parametri`. La produzione non cambia fino alla Fase G1.
     rigori_squadra: bool = False      # quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_rigori_divisi`)
     minuti_con_voto: bool = False     # minuti, tassi per 90' e medie del ruolo dalle sole presenze con voto (vedi `_pezzi`)
+    decadimento_base: float | None = None   # memoria del livello recente del campionato (vedi `forza_squadre`); None = niente livello
+    medie_ruolo_pesate: bool = False  # medie del ruolo (gol, assist, xG, xA, minuti) con i pesi dei giocatori (vedi `_pezzi`)
 
 
 # ---------------------------------------------------------------- dati
@@ -156,12 +158,20 @@ class Forza:
     attacco: dict[str, float]
     difesa: dict[str, float]     # > 1 = subisce più della media
     rigori_partita: float        # rigori calciati per squadra a partita
+    livello: float = 1.0         # gol recenti del campionato rispetto a `base` (Parametri.decadimento_base)
 
     def gol_attesi(self, casa: str, trasferta: str) -> tuple[float, float]:
         a, d = self.attacco, self.difesa
-        lc = self.base * a.get(casa, 0.85) * d.get(trasferta, 1.15) * self.casa
-        lt = self.base * a.get(trasferta, 0.85) * d.get(casa, 1.15) / self.casa
+        lc = self.base * a.get(casa, 0.85) * d.get(trasferta, 1.15) * self.casa * self.livello
+        lt = self.base * a.get(trasferta, 0.85) * d.get(casa, 1.15) / self.casa * self.livello
         return lc, lt
+
+
+# Livello recente del campionato (Parametri.decadimento_base): gol a squadra a partita delle ultime giornate rispetto a `base`,
+# che ha la memoria lunga delle squadre. Misura del 6/11/2026 (piano 2026-11-06-gol-attesi-nostri, §1): nel 2026-27 si segna il
+# 24% in più e la forza delle squadre non lo vedeva. Limiti per non inseguire poche giornate strane.
+LIVELLO_MIN = 0.8
+LIVELLO_MAX = 1.25
 
 
 def prima_di(df: pd.DataFrame, data0: str) -> pd.Series:
@@ -205,8 +215,14 @@ def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazi
     p = d.prestazioni[prima_di(d.prestazioni, data0)]
     partite_squadra = p.groupby(["understat_partita", "squadra"]).ngroups
     rigori = float(p["rigori_calciati"].sum() / partite_squadra) if partite_squadra else 0.25
+    # livello recente: dopo attacco e difesa, che altrimenti lo riassorbirebbero (sono stimati intorno a `base`)
+    livello = 1.0
+    if par.decadimento_base is not None:
+        wr = _pesi(m["t"], m["stagione"], t0, stagione, replace(pp, decadimento=par.decadimento_base))
+        base_recente = float(np.sum(wr * (gc + gt)) / (2 * np.sum(wr)))
+        livello = float(np.clip(base_recente / base, LIVELLO_MIN, LIVELLO_MAX)) if base > 0 else 1.0
     return Forza(base, casa, {s: float(att[i]) for s, i in indice.items()},
-                 {s: float(dif[i]) for s, i in indice.items()}, rigori)
+                 {s: float(dif[i]) for s, i in indice.items()}, rigori, livello)
 
 
 # ---------------------------------------------------------------- giocatori
@@ -319,17 +335,25 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
     for r in RUOLI:
         vr = Vv[Vv["ruolo"] == r]
         ur = U[U["calciatore_id"].isin(vr["calciatore_id"].unique())]
-        min90 = max(ur["minuti"].sum() / 90, 1)
+        per_presenza = ur.groupby(["understat_partita", "calciatore_id"])
+        if par.medie_ruolo_pesate:      # le presenze pesano come quelle dei giocatori: la stima di partenza segue la stagione
+            somma = lambda c, ur=ur: float((ur["w"] * ur[c]).sum())  # noqa: E731
+            mp = per_presenza.agg(minuti=("minuti", "sum"), w=("w", "first"))
+            minuti_ruolo = float((mp["w"] * mp["minuti"]).sum() / mp["w"].sum()) if mp["w"].sum() > 0 else 70.0
+        else:
+            somma = lambda c, ur=ur: ur[c].sum()  # noqa: E731
+            minuti_ruolo = float(per_presenza["minuti"].sum().mean()) if len(ur) else 70.0
+        min90 = max(somma("minuti") / 90, 1)
         medie_ruolo[r] = {
             "voto": float(vr[col_voto].mean()) if len(vr) else 6.0,
-            "gol90": float((ur["gol"].sum() - ur["rigori_segnati"].sum()) / min90),
-            "xg90": float((ur["xg"].sum() - XG_RIGORE * ur["rigori_calciati"].sum()) / min90),
-            "ass90": float(ur["assist"].sum() / min90), "xa90": float(ur["xa"].sum() / min90),
+            "gol90": float((somma("gol") - somma("rigori_segnati")) / min90),
+            "xg90": float((somma("xg") - XG_RIGORE * somma("rigori_calciati")) / min90),
+            "ass90": float(somma("assist") / min90), "xa90": float(somma("xa") / min90),
             "amm": float(vr["ammonizioni"].mean()) if len(vr) else 0.15,
             "esp": float(vr["espulsioni"].mean()) if len(vr) else 0.01,
             "autogol": float(vr["autogol"].mean()) if len(vr) else 0.003,
             "mvp": float(vr["mvp"].mean()) if len(vr) else 0.0,
-            "minuti": float(ur.groupby(["understat_partita", "calciatore_id"])["minuti"].sum().mean()) if len(ur) else 70.0,
+            "minuti": minuti_ruolo,
         }
 
     # ---- somme pesate per giocatore ----

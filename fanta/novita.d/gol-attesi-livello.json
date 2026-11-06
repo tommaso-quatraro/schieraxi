@@ -1,0 +1,12 @@
+{
+  "titolo": "Gol attesi: forza delle squadre e livello del campionato (prova interna)",
+  "voci": [
+    "Nessun cambiamento visibile: la prova interna dei gol attesi fatti solo con i voti di Fantacalcio.it ora segue anche quanti gol si segnano nelle ultime giornate del campionato."
+  ],
+  "tecnico": [
+    "Issue #395, Fase C del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). modello.Parametri ha due campi nuovi, spenti di default: decadimento_base (C1: forza_squadre calcola il livello recente del campionato, gol a squadra a partita con memoria decadimento_base e peso_stagione_prec_squadre per la stagione prima, diviso per base e limitato tra LIVELLO_MIN 0,8 e LIVELLO_MAX 1,25; Forza.livello moltiplica i gol attesi delle due squadre dopo la stima di attacco e difesa, e da lì arriva ai gol del giocatore, al voto e ai portieri) e medie_ruolo_pesate (C2: le medie del ruolo di gol, assist, xG, xA e minuti usano i pesi dei giocatori). Il Compito C3 (taratura per ruolo) non è servito.",
+    "nostri.parametri accende i due campi e usa nostri.FORZA (decadimento_squadre 0,99, k_squadre 8, decadimento_base 0,85), tarati con prove/tara_forza_gol.py sui gol di squadra del 2025-26 dalla 5ª giornata e controllati sul 2026-27; nostri.VERSIONE = \"3\".",
+    "verifica --pacchetti completo,solo_fantacalcio (archivio di sviluppo, lega d'esempio, 300 simulazioni), solo_fantacalcio 2025-26 · 2026-27, prima → dopo: scarto_gol 0,028 · 0,104 → 0,029 · 0,020; gol_su_veri 0,934 · 0,764 → 0,954 · 0,865; rigori_su_veri 0,656 · 0,765 → 0,671 · 0,849; assist_su_veri 0,917 · 0,862 → 0,937 · 0,977; rmse_vs_completo_pct +0,490 · +0,587 → +0,404 · +0,436; vs_completo 2026-27 −0,004 → −0,082. Con 20 rose sintetiche e 200 simulazioni, vs_completo −0,019 · −0,143 → −0,054 · −0,124.",
+    "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+  ]
+}
