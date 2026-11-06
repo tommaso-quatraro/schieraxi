@@ -502,12 +502,24 @@ def _dove(e: BaseException, passi: int = 6) -> str:
 
 def giro(adesso: datetime, db: sqlite3.Connection, manda: Callable[[str, str], bool] | None = None) -> None:
     """Un controllo (dal thread del pianificatore, una volta al minuto): salva, segna le giornate perse, misura, avvisa. Un passo che
-    va in errore non ferma gli altri; nel log vanno il tipo d'errore e i punti del codice (file e righe), mai il messaggio."""
+    va in errore non ferma gli altri; nel log vanno il tipo d'errore e i punti del codice (file e righe), mai il messaggio.
+    I passi dei numeri «nostri» (`registro_nostri.py`, I4 dal vivo) vengono ciascuno DOPO il passo dei mostrati: un loro errore non
+    tocca mai i numeri mostrati (nemmeno se il modulo non si carica: si importa dentro il passo)."""
     from . import sentinella
     invia = manda or sentinella.manda_ntfy
-    passi = (("salvataggio", lambda: salva_se_serve(db, adesso)), ("controllo delle giornate perse", lambda: segna_perse(db, adesso)),
-             ("misura", lambda: chiudi_giornate(db, adesso)), ("avviso", lambda: avvisa(db, invia)),
-             ("avviso delle giornate perse", lambda: avvisa_perse(db, invia)))
+
+    def rn():
+        from . import registro_nostri
+        return registro_nostri
+
+    passi = (("salvataggio", lambda: salva_se_serve(db, adesso)),
+             ("salvataggio dei numeri nostri", lambda: rn().salva_se_serve(db, adesso)),
+             ("controllo delle giornate perse", lambda: segna_perse(db, adesso)),
+             ("controllo delle giornate perse dei numeri nostri", lambda: rn().segna_perse(db, adesso)),
+             ("misura", lambda: chiudi_giornate(db, adesso)), ("misura dei numeri nostri", lambda: rn().chiudi_giornate(db, adesso)),
+             ("avviso", lambda: avvisa(db, invia)), ("avviso delle giornate perse", lambda: avvisa_perse(db, invia)),
+             ("avviso dei numeri nostri", lambda: rn().avvisa(db, invia)),
+             ("avviso delle giornate perse dei numeri nostri", lambda: rn().avvisa_perse(db, invia)))
     for nome, passo in passi:
         try:
             passo()

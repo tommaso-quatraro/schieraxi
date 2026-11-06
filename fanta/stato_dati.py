@@ -7,6 +7,7 @@ quanti hanno davvero preso voto con la probabilità che il modello aveva stimato
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 
 from . import controlli, coppe, fonti_attive, modello, uso
@@ -16,6 +17,7 @@ try:                                              # senza foto.py (versione pubb
 except ImportError:
     foto = None
 
+LOG = logging.getLogger(__name__)
 GRUPPI = modello.GRUPPI_PROBABILI      # (nome del gruppo, stato nelle probabili, percentuale minima, percentuale massima esclusa)
 MINIMO_PER_GRUPPO = 20      # sotto questo numero di giocatori il confronto è solo indicativo
 
@@ -74,9 +76,22 @@ def ombra(db: sqlite3.Connection) -> dict:
     return {"partite_extra": conta("partite_extra", "rilevato"), "probabili_fonte2": pf2}
 
 
+def _registro_nostri(db: sqlite3.Connection) -> dict | None:
+    """I4 dal vivo (`registro_nostri.riepilogo`). Campo in più e facoltativo: se va in errore la pagina resta in piedi, il campo vale
+    None e nel log vanno il tipo d'errore e i punti del codice (mai il messaggio, che può contenere dati)."""
+    from . import registro_giornate
+    try:
+        from . import registro_nostri
+        return registro_nostri.riepilogo(db)
+    except Exception as e:  # noqa: BLE001 - un campo in più non deve togliere la pagina
+        LOG.warning("stato dei dati: registro dei numeri nostri non letto (%s) in %s", type(e).__name__, registro_giornate._dove(e))
+        return None
+
+
 def riepilogo(db: sqlite3.Connection, stagione: str) -> dict:
     """Tutto quello che serve alla pagina "Stato dei dati". `registro`: quanto ci hanno preso i numeri mostrati prima di ogni
-    giornata (I1-I3, `registro_giornate.riepilogo`). `consiglio`: gli indicatori del consiglio di formazione C1-C4, sommati sui
+    giornata (I1-I3, `registro_giornate.riepilogo`). `registro_nostri`: i numeri «nostri» contro i mostrati (I4 dal vivo,
+    `registro_nostri.riepilogo`; None se non si leggono). `consiglio`: gli indicatori del consiglio di formazione C1-C4, sommati sui
     Diari di tutti (`indicatori_consiglio.riepilogo`)."""
     from . import indicatori_consiglio, registro_giornate      # qui dentro: importano consigli, che importa questo modulo
     agg = []
@@ -103,5 +118,6 @@ def riepilogo(db: sqlite3.Connection, stagione: str) -> dict:
         "coppe_fino": coppe.aggiornate_fino().isoformat(),
         "calibrazione": {**(c := calibrazione(db, stagione)), "fattori": fattori_da(c)},
         "registro": registro_giornate.riepilogo(db),
+        "registro_nostri": _registro_nostri(db),
         "consiglio": indicatori_consiglio.riepilogo(),
     }

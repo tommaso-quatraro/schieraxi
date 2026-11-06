@@ -391,6 +391,7 @@ console.log(JSON.stringify([cardRinvio({json.dumps(rv)}), cardRinvio(null), card
     corpo = APP[inizio2:APP.index("\nfunction ", inizio2 + 10)]
     stub2 = stub + 'const fraseFascia = () => "";'
     corpo = APP[APP.index("const MODI_RINVIO"):APP.index("function cardRinvio(")] + corpo
+    corpo += "\n" + re.search(r"^function nomeGiornata\(.*?^\}$", APP, re.M | re.S).group(0)     # il titolo «Giornata 6 · 9ª di Serie A: finita»
     r = {"giornata": 9, "punti_fatti": 61, "punti_attesi": 70, "formazione_di": "tua", "nel_diario": False,
          "recuperi": [{"casa": "atalanta", "trasferta": "parma", "data": None}],
          "rinvio": {"stagione": ST, "giornata": 9, "modo": "aspetta", "predefinito": "aspetta", "eccezione": False, "voto_ufficio": 6}}

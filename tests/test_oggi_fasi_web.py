@@ -30,7 +30,8 @@ def _esegui(chiamata: str) -> str:
 const sigla = s => esc((s || "").slice(0, 3).toUpperCase()); const badgeRuolo = r => `<i>${r}</i>`;
 const parseData = s => s ? new Date(String(s).replace(" ", "T")) : null; const quando = s => s ? "QUANDO(" + s + ")" : "–";"""
     etichette = "\n".join(re.search(rf"^const {n} = .*$", APP, re.M).group(0) for n in ("CLASSE_TONO", "etichettaPronta", "classeTono"))
-    codice = f"{testi}\n{num}\n{stub}\n{etichette}\n{APP[inizio:fine]}\nconsole.log(JSON.stringify({chiamata}));"
+    giornata = re.search(r"^function nomeGiornata\(.*?^\}$", APP, re.M | re.S).group(0)
+    codice = f"{testi}\n{num}\n{stub}\n{etichette}\n{giornata}\n{APP[inizio:fine]}\nconsole.log(JSON.stringify({chiamata}));"
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout)
@@ -61,8 +62,8 @@ def test_carta_del_riepilogo_e_della_prossima():
          "consigliata": {"punti_fatti": 70.5, "punti_attesi": 68}}
     p = {"giornata": 11, "giornata_lega": 8, "scadenza": "2099-11-14 15:00", "prepara_da": "2099-11-11 15:00", "con_probabili": False}
     h = _esegui(f"cardRiepilogo({json.dumps(r)}, {json.dumps(p)})")
-    assert "Giornata 7 finita" in h and "66,0" in h and "67,0" in h and "Con la consigliata: 70,5 punti (68,0 attesi)." in h
-    assert 'data-apri-diario="10"' in h and "Giornata 8: la formazione si chiude QUANDO(2099-11-14 15:00)." in h
+    assert "Giornata 7 · 10ª di Serie A: finita" in h and "66,0" in h and "67,0" in h and "Con la consigliata: 70,5 punti (68,0 attesi)." in h
+    assert 'data-apri-diario="10"' in h and "Giornata 8 · 11ª di Serie A: la formazione si chiude QUANDO(2099-11-14 15:00)." in h
     assert "Conviene prepararla da QUANDO(2099-11-11 15:00)" in h
     h2 = _esegui(f"cardRiepilogo({json.dumps(r | {'nel_diario': False, 'consigliata': None, 'punti_attesi': None})}, "
                  f"{json.dumps(p | {'con_probabili': True})})")
