@@ -45,9 +45,12 @@ enum TitoloPagina {
         nellaPagina(dimensione)
     }
 
-    /// Da completare (#419): per ora VoiceOver legge sempre la barra.
+    /// VoiceOver legge il titolo nella pagina (`TitoloNellaPagina`, come intestazione) invece che nella barra? (#419) Sì
+    /// quando la barra mostra il titolo solo se ci sta (`inBarraSeCiSta`): lì la barra è nascosta a VoiceOver, anche quando
+    /// il titolo ci sta e si vede, così il nome si sente una volta sola, nel posto dove è sempre intero. Negli altri casi
+    /// VoiceOver legge la barra e il titolo nella pagina (se c'è) gli resta nascosto.
     static func voceNellaPagina(_ dimensione: DynamicTypeSize) -> Bool {
-        false
+        inBarraSeCiSta(dimensione)
     }
 }
 

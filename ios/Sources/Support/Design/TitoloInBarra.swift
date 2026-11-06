@@ -9,6 +9,7 @@ import SwiftUI
 ///   grande) si accorcia con «…». iPhone in orizzontale: una riga sola.
 /// - Testo grande (`soloSeCiSta`, `TitoloPagina.inBarraSeCiSta`, tutte le pagine, #419): il titolo intero sta già nella
 ///   pagina (`TitoloNellaPagina`), quindi la barra lo mostra solo se ci sta intero su una riga; se no non mostra niente.
+///   VoiceOver salta la barra e legge il titolo nella pagina, come intestazione (`TitoloPagina.voceNellaPagina`).
 struct TitoloInBarra: View {
     let titolo: String
     /// Testo grande: una riga se il titolo ci sta intero, se no niente (il titolo intero è nella pagina).
@@ -19,17 +20,15 @@ struct TitoloInBarra: View {
         Group {
             if soloSeCiSta {
                 // Testo grande: il titolo su una riga, intero, oppure niente. `ViewThatFits` prende la prima vista che ci sta in
-                // larghezza; se nessuna ci sta prende l'ultima: lo stesso testo trasparente, che non si vede ma tiene il posto,
-                // così VoiceOver legge il titolo intero nella barra, dove lo cerca (il titolo nella pagina VoiceOver lo salta).
+                // larghezza: se il titolo non ci sta, l'ultima, vuota e alta zero (nessun riquadro vuoto per VoiceOver o Zoom).
                 // In orizzontale vale lo stesso: con il tetto una riga sta anche nella barra bassa.
                 ViewThatFits(in: .horizontal) {
                     Text(titolo)
                         .font(.headline)
                         .lineLimit(1)
-                    Text(titolo)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .foregroundStyle(.clear)
+                    Color.clear
+                        .frame(width: 0, height: 0)
+                        .accessibilityHidden(true)
                 }
                 // cresce come il titolo piccolo di sistema, non oltre: la barra resta alta come nelle altre pagine
                 .dynamicTypeSize(...TitoloPagina.tettoBarra)
@@ -56,8 +55,11 @@ struct TitoloInBarra: View {
                 }
             }
         }
-        // VoiceOver lo legge come il titolo della pagina, come quello di sistema che sostituisce
+        // VoiceOver lo legge come il titolo della pagina, come quello di sistema che sostituisce. Con il testo grande no
+        // (`soloSeCiSta`): VoiceOver lo legge nella pagina, come intestazione, dove è sempre intero; qui lo ripeterebbe
+        // quando il titolo ci sta (`TitoloPagina.voceNellaPagina`)
         .accessibilityAddTraits(.isHeader)
+        .accessibilityHidden(soloSeCiSta)
     }
 }
 
