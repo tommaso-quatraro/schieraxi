@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.430",
+    "data": "2026-11-06T09:10:34",
+    "titolo": "«Gioca N%» si misura con le probabili",
+    "voci": [
+      "Nessun cambiamento visibile: SchieraXI comincia a misurare quanto è giusto «gioca N%» con le probabili formazioni, sulle giornate già giocate."
+    ],
+    "tecnico": [
+      "Issue #379, PR A del piano 2026-11-06-gioca-probabili-server: solo misura. Modulo nuovo fanta/taratura_probabili.py e comando python -m fanta taratura-probabili [--prova], ultimo passo di script/server/aggiorna.sh (nice -n 15, timeout 300, uscita diversa da zero scritta nel log senza fermare lo script).",
+      "Legge solo registro_giocatori (probabili salvate prima della prima partita), mai probabili né probabili_storia; tara una regressione logistica (titolare e panchina, un peso per «in dubbio») sulla metà più vecchia delle giornate e la prova sulla più recente contro la formula di partenza e i numeri mostrati.",
+      "Tabella nuova taratura_probabili (CREATE TABLE IF NOT EXISTS, nessuna migrazione) con righe «pronta» o «scartata»; viaggia nella copia notturna del registro (registro_copia.TABELLE). Nessuna riga in aggiornamenti: le previsioni non si ricalcolano e nessun numero cambia.",
+      "modello._p_da_probabili ha il parametro facoltativo taratura (None = numeri di oggi, identici); la regressione logistica di prove/calibra_p_voto.py è spostata in taratura_probabili.regressione_logistica."
+    ]
+  },
+  {
     "versione": "1.429",
     "data": "2026-11-06T08:57:49",
     "titolo": "Dettagli accanto alla pagina",
