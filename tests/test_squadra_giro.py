@@ -22,6 +22,7 @@ def risposte(**extra):
         "gh run list --commit testa-b": [{"databaseId": 50, "workflowName": "Controlli", "status": "completed",
                                           "conclusion": "failure", "event": "pull_request", "createdAt": "2026-11-06T10:00:00Z"}],
         "gh run view 50": {"jobs": [{"name": "test", "conclusion": "failure", "steps": []}]},     # guasto d'infrastruttura
+        "gh run view 50 --json attempt": {"attempt": 1},
         "gh run rerun": "",
         "gh run cancel": "",
     })

@@ -36,6 +36,7 @@ def risposte(p=None, file=None, corse=None, **extra):
         "gh run list --commit t1": corse if corse is not None else
         [{"databaseId": 1, "workflowName": "Controlli", "status": "completed", "conclusion": "success",
           "event": "pull_request", "createdAt": "2026-11-06T10:00:00Z"}],
+        "gh api repos/{owner}/{repo}/compare/main...t1": "0\n",
         "git fetch origin refs/pull/7/head": "",
         "gh pr ready 7": "",
     }
@@ -69,11 +70,6 @@ def test_mergeable_deve_essere_esattamente_mergeable(valore, parola, capsys):
     codice, f, _ = lancia(risposte(pr(mergeable=valore)), esegui_davvero=True)
     assert codice == 1 and not f.lanciati("gh pr ready")
     assert parola in capsys.readouterr().out
-
-
-def test_ramo_indietro_rispetto_a_main(capsys):
-    assert lancia(risposte(pr(dietro=True)))[0] == 1
-    assert "git merge origin/main" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("corse,parola", [
@@ -164,3 +160,10 @@ def test_coerenza_vera_usa_lo_script_della_pr(tmp_path, monkeypatch):
     problemi = pr_pronta.coerenza_vera(f, "t1", ["docs/coerenza/vocabolario.json"])
     assert problemi and "riga doppia" in problemi[0]
     assert pr_pronta.coerenza_vera(f, "t1", ["fanta/server.py"]) == []          # la PR non tocca la coerenza
+
+
+def test_ramo_indietro_secondo_compare(capsys):
+    r = risposte(**{"gh api repos/{owner}/{repo}/compare/main...t1": "3\n"})
+    assert lancia(r)[0] == 1
+    uscita = capsys.readouterr().out
+    assert "3 commit" in uscita and "git merge origin/main" in uscita

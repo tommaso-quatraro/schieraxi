@@ -13,7 +13,8 @@ Regole comuni:
   **prova** e stampa cosa farebbe. Agisce solo con `--esegui` (per `foto`: `--lancia`).
 - Nessun comando unisce una PR né scrive su `main`.
 - `gh` e `git` passano da una sola funzione (`comune.esegui_vero`); i test le danno risposte finte e non toccano GitHub.
-- Ogni comando ha `--json` per gli altri script. I codici di uscita stanno nel `--help` di ogni comando.
+- Ogni comando ha `--json` per gli altri script. I codici di uscita stanno nel `--help` di ogni comando; argomenti sbagliati
+  escono sempre con 64 (mai con un codice che un comando usa per altro).
 - Niente dati privati: l'indirizzo del server arriva solo dalla variabile d'ambiente `SCHIERAXI_URL`, se c'è.
 - Lo stato fra due giri sta in `.superpowers/squadra/` (fuori da git: la cartella ha un suo `.gitignore`).
 - Serve `gh` autenticato. Python della sola libreria standard.
@@ -55,7 +56,7 @@ python script/squadra/squadra.py annulla-superate --esegui   # annulla davvero
 
 ## pulisci
 Le worktree di `.claude/worktrees/` in gruppi: da togliere (ramo unito e niente modifiche), con modifiche, senza PR, con PR
-aperta, bloccate da un agente. Con `--esegui` toglie solo il primo gruppo: `git worktree remove` senza `--force`, poi il ramo
+aperta, bloccate da un agente, cartelle sparite (cancellate a mano: si tolgono dall'elenco con `git worktree prune`). Con `--esegui` toglie solo il primo gruppo: `git worktree remove` senza `--force`, poi il ramo
 locale. «Unito» = PR `MERGED` con la stessa testa, oppure testa già dentro `origin/main` (dell'ultimo `git fetch`).
 
 ```
@@ -84,7 +85,7 @@ python script/squadra/squadra.py foto --da abc1234 --lancia
 La procedura del coordinatore in un comando: `stato`, PR in conflitto, guasti d'infrastruttura, corse superate, worktree da
 pulire (sempre solo prova) e versione in produzione se c'è `SCHIERAXI_URL` (letta dal file pubblico `/sw.js`). Stampa solo
 ciò che è cambiato dal giro prima (`+` nuovo, `~` cambiato, `-` finito); `--tutto` stampa anche il resto. Con `--esegui`
-rilancia una volta sola i guasti (`gh run rerun <id> --failed`) e annulla le corse superate. Esce con 10 se c'è qualcosa da
+rilancia una volta sola i guasti, e solo le corse al primo tentativo (`gh run rerun <id> --failed`) e annulla le corse superate. Esce con 10 se c'è qualcosa da
 guardare.
 
 ```
@@ -92,7 +93,7 @@ python script/squadra/squadra.py giro
 ```
 
 ## pr-pronta
-Toglie la bozza solo se tutto torna: PR aperta, `mergeable` esattamente `MERGEABLE`, ramo non indietro, controlli verdi sul
+Toglie la bozza solo se tutto torna: PR aperta, `mergeable` esattamente `MERGEABLE`, ramo non indietro (`compare/main...<testa>`, `behind_by` uguale a 0), controlli verdi sul
 commit in testa, descrizione, revisione e novità (`script/ci/controlla_pr.py`), coerenza web-iPhone (`script/coerenza.py
 --controlla` sui file della PR, se li tocca), «Foto da fare» se la PR tocca `ios/`. Altrimenti stampa ogni motivo ed esce con 1.
 Se `controlla_pr.py` o `coerenza.py` non ci sono su questo `main`, rifiuta («controllo non disponibile su questo main").

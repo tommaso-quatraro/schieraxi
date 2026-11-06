@@ -86,9 +86,14 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
         spiegazione = {"CONFLICTING": "conflitto con main: «git merge origin/main» nel ramo",
                        "UNKNOWN": "GitHub non l'ha ancora calcolato: riprova fra un minuto"}.get(mergeable, "valore inatteso")
         motivi.append(f"mergeable è «{mergeable}», non «MERGEABLE» ({spiegazione})")
-    if pr.get("mergeStateStatus") == "BEHIND":
-        motivi.append("il ramo è indietro rispetto a main: «git merge origin/main» nel ramo e push, poi aspetta i controlli")
     testa = pr["headRefOid"]
+    # Qui GitHub non dà «BEHIND» (main non chiede rami aggiornati): si conta quanti commit di main mancano al ramo.
+    dietro = comune.chiama(esegui, ["gh", "api", f"repos/{{owner}}/{{repo}}/compare/main...{testa}", "--jq", ".behind_by"]).strip()
+    if not dietro.isdigit():
+        motivi.append(f"non so se il ramo è indietro rispetto a main (risposta inattesa: «{dietro[:40]}»)")
+    elif int(dietro) > 0:
+        motivi.append(f"il ramo è indietro di {dietro} commit rispetto a main: «git merge origin/main» nel ramo e push, "
+                      "poi aspetta i controlli")
     corse = attendi.ultime_corse(esegui, testa)
     if not corse:
         motivi.append(f"nessuna corsa dei controlli sul commit in testa {testa[:7]}")

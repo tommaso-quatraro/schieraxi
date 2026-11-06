@@ -117,3 +117,11 @@ def test_json(capsys):
     lancia({"gh pr view 5": pr(stato="MERGED")}, json_=True)
     dati = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert dati["codice"] == 0 and dati["pr"] == 5
+
+
+def test_passo_fallito_vince_sul_job_fermo_per_guasto():
+    risposte = {"gh pr view 5": pr(), "gh run list --commit t1": [corsa(1, esito="failure")],
+                "gh run view 1": {"jobs": [{"name": "ios", "conclusion": "failure", "steps": []},
+                                           {"name": "test", "conclusion": "failure",
+                                            "steps": [{"name": "pytest", "conclusion": "failure"}]}]}}
+    assert lancia(risposte)[0] == 3

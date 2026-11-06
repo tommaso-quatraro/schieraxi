@@ -16,7 +16,8 @@ TITOLI = [("da_togliere", "Da togliere", "ramo unito, niente modifiche"),
           ("con_modifiche", "Con modifiche", "da chiedere all'utente"),
           ("senza_pr", "Senza PR", "niente PR aperta né unita: da chiedere"),
           ("in_corso", "Con PR aperta", "lavoro in corso"),
-          ("bloccata", "Bloccate", "un agente le sta usando")]
+          ("bloccata", "Bloccate", "un agente le sta usando"),
+          ("sparita", "Cartelle sparite", "per toglierle dall'elenco di git: «git worktree prune»")]
 
 
 def _riga(w: dict) -> str:

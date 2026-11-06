@@ -43,10 +43,10 @@ def esito_corsa(esegui: comune.Esegui, corsa: dict) -> str:
     falliti = [j for j in lavori if (j.get("conclusion") or "").lower() in RICHIEDE_PASSI | INFRA]
     if not falliti:
         return "infrastruttura"
-    for j in falliti:
-        if not any((s.get("conclusion") or "").lower() in RICHIEDE_PASSI for s in j.get("steps") or []):
-            return "infrastruttura"
-    return "rosso"
+    # Un passo fallito in un qualunque job = rosso vero, anche se un altro job è fermo per un guasto.
+    if any((s.get("conclusion") or "").lower() in RICHIEDE_PASSI for j in falliti for s in j.get("steps") or []):
+        return "rosso"
+    return "infrastruttura"
 
 
 def valuta(esegui: comune.Esegui, numero: int) -> tuple[str, int | None]:

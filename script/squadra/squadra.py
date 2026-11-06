@@ -18,15 +18,22 @@ import pulisci
 import stato
 
 COMANDI = [stato, attendi, annulla_superate, pulisci, brief, foto, giro, pr_pronta]
+USO_SBAGLIATO = 64     # come EX_USAGE: diverso da ogni codice dei comandi (argparse userebbe 2, che per «attendi» è il conflitto)
+
+
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.exit(USO_SBAGLIATO, f"{self.prog}: errore: {message}\n")
 
 
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="squadra.py", description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter,
-                                epilog="Codici di uscita: vedi «squadra.py <comando> --help». Argomenti sbagliati: 2.")
+    p = Parser(prog="squadra.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+               epilog=f"Codici di uscita: vedi «squadra.py <comando> --help». Argomenti sbagliati: {USO_SBAGLIATO}.")
     sotto = p.add_subparsers(dest="comando", required=True, metavar="comando")
     for m in COMANDI:
-        q = sotto.add_parser(m.NOME, help=m.AIUTO, description=m.AIUTO, epilog=f"Codici di uscita: {m.USCITE}",
+        q = sotto.add_parser(m.NOME, help=m.AIUTO, description=m.AIUTO,
+                             epilog=f"Codici di uscita: {m.USCITE} Argomenti sbagliati: {USO_SBAGLIATO}.",
                              formatter_class=argparse.RawDescriptionHelpFormatter)
         m.opzioni(q)
         q.set_defaults(modulo=m)

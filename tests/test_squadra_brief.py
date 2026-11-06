@@ -71,3 +71,10 @@ def test_issue_che_non_esiste_esce_con_1(capsys):
 def test_modello_pubblico_senza_dati_privati():
     testo = (brief.comune.CARTELLA / "modello-brief.md").read_text(encoding="utf-8")
     assert "~/.claude" not in testo and "C:\\Users" not in testo and "@" not in testo
+
+
+def test_modello_dice_come_aprire_la_pr():
+    testo = (brief.comune.CARTELLA / "modello-brief.md").read_text(encoding="utf-8")
+    for parola in ("gh pr create --draft --body-file", "mai `--body`", "prima riga `Aree:", "Closes #{{issue}}",
+                   "Parte di #{{issue}}", "## Cosa cambia", "## Perché", "## Come l'ho provato", "## Revisione` vuota"):
+        assert parola in testo, parola

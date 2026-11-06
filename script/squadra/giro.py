@@ -57,7 +57,9 @@ def guasti(esegui: comune.Esegui, prs: list[dict]) -> list[dict]:
             continue
         for c in attendi.ultime_corse(esegui, p["testa"]):
             if attendi.esito_corsa(esegui, c) == "infrastruttura":
-                uscita.append({"id": c["databaseId"], "workflow": c["workflowName"], "pr": p["numero"]})
+                vista = comune.chiama_json(esegui, ["gh", "run", "view", str(c["databaseId"]), "--json", "attempt"]) or {}
+                uscita.append({"id": c["databaseId"], "workflow": c["workflowName"], "pr": p["numero"],
+                               "tentativo": vista.get("attempt", 0)})
     return uscita
 
 
@@ -77,7 +79,7 @@ def osserva(esegui: comune.Esegui, url: str | None, leggi_url: Callable[[str], s
     for o in s["obiettivi"]:
         voci[f"obiettivo:{o['numero']}"] = f"Obiettivo #{o['numero']} {o['titolo']}: {o['aperte']} sotto-issue aperte su {o['totali']}"
     for w in s["worktree"]:
-        if w["gruppo"] in ("da_togliere", "con_modifiche", "senza_pr"):
+        if w["gruppo"] in ("da_togliere", "con_modifiche", "senza_pr", "sparita"):
             nome = w["percorso"].rsplit("/", 1)[-1]
             voci[f"worktree:{nome}"] = f"Worktree {nome} ({w['ramo'] or 'staccata'}): {w['gruppo'].replace('_', ' ')}"
     rotte = guasti(esegui, s["pr"])
@@ -104,11 +106,13 @@ def main(esegui: comune.Esegui, esegui_davvero: bool = False, tutto: bool = Fals
     prima = {"voci": {}, "rilanciate": []}
     if stato_file.exists():
         prima.update(json.loads(stato_file.read_text(encoding="utf-8")))
-    rilanciate = [i for i in prima["rilanciate"] if f"guasto:{i}" in voci]
+    # Le corse rilanciate si ricordano anche quando il rilancio è in corso (e la corsa sparisce dai guasti):
+    # una corsa si rilancia al massimo una volta, e solo se è al primo tentativo.
+    rilanciate = list(prima["rilanciate"])[-200:]
     azioni = []
     for g in rotte:
-        if g["id"] in rilanciate:
-            azioni.append(f"corsa {g['id']} già rilanciata in un giro prima: non la rilancio di nuovo, guardala a mano")
+        if g["id"] in rilanciate or g["tentativo"] != 1:
+            azioni.append(f"corsa {g['id']} (tentativo {g['tentativo']}) già rilanciata: non la rilancio di nuovo, guardala a mano")
         elif esegui_davvero:
             r = esegui(["gh", "run", "rerun", str(g["id"]), "--failed"])
             if r.codice == 0:

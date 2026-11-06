@@ -31,3 +31,12 @@ def test_lo_script_si_lancia_da_solo():
     r = subprocess.run([sys.executable, str(test_squadra_comune.CARTELLA / "squadra.py"), "--help"],
                        capture_output=True, text=True, encoding="utf-8", check=False)
     assert r.returncode == 0 and "stato" in r.stdout and "--esegui" in r.stdout
+
+
+def test_argomento_sbagliato_esce_con_64_non_con_un_codice_dei_comandi():
+    with pytest.raises(SystemExit) as e:
+        squadra.main(["attendi", "non-un-numero"])
+    assert e.value.code == 64
+    with pytest.raises(SystemExit) as e:
+        squadra.main(["comando-che-non-esiste"])
+    assert e.value.code == 64

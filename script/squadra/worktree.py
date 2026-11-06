@@ -2,6 +2,7 @@
 
 Gruppi:
 - bloccata: un agente la sta usando (`git worktree lock`): non si guarda e non si tocca.
+- sparita: la cartella non c'è più (`prunable`): non si guarda; si sistema con `git worktree prune`.
 - con_modifiche: file cambiati non salvati in un commit, o commit fatti dopo l'unione della PR. Si chiede all'utente.
 - in_corso: la PR del ramo è aperta.
 - da_togliere: ramo unito (PR MERGED con la stessa testa, o testa già dentro origin/main) e niente modifiche.
@@ -23,7 +24,7 @@ def _leggi_porcelain(testo: str) -> list[dict]:
             continue
         chiave, _, valore = riga.partition(" ")
         if chiave == "worktree":
-            voce = {"percorso": valore.replace("\\", "/"), "testa": None, "ramo": None, "bloccata": False}
+            voce = {"percorso": valore.replace("\\", "/"), "testa": None, "ramo": None, "bloccata": False, "sparita": False}
         elif voce is None:
             continue
         elif chiave == "HEAD":
@@ -32,6 +33,8 @@ def _leggi_porcelain(testo: str) -> list[dict]:
             voce["ramo"] = valore.removeprefix("refs/heads/")
         elif chiave == "locked":
             voce["bloccata"] = True
+        elif chiave == "prunable":
+            voce["sparita"] = True
     return voci
 
 
@@ -62,6 +65,9 @@ def raccogli(esegui: comune.Esegui) -> list[dict]:
         v.update(pr=pr["number"] if pr else None, stato_pr=pr["state"] if pr else None, modifiche=False, unito=False)
         if v["bloccata"]:
             v["gruppo"] = "bloccata"
+            continue
+        if v["sparita"]:
+            v["gruppo"], v["motivo"] = "sparita", "cartella cancellata a mano"
             continue
         v["modifiche"] = bool(comune.chiama(esegui, ["git", "-C", v["percorso"], "status", "--porcelain"]).strip())
         v["pr_unita_stessa_testa"] = bool(pr and pr["state"] == "MERGED" and pr["headRefOid"] == v["testa"])

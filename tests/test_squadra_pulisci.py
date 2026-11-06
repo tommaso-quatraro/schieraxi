@@ -61,3 +61,11 @@ def test_json(capsys):
     dati = json.loads(capsys.readouterr().out)
     assert dati["prova"] is True
     assert sorted(w["percorso"].rsplit("/", 1)[1] for w in dati["gruppi"]["da_togliere"]) == ["agent-1", "agent-5"]
+
+
+def test_cartelle_sparite_suggeriscono_prune(capsys):
+    porcelain = f"worktree {WT}/agent-9\nHEAD h9\nbranch refs/heads/sparita\nprunable gitdir file points to non-existent location\n"
+    f = Finto({"git worktree list --porcelain": porcelain, "gh pr list --state all": []})
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert "git worktree prune" in capsys.readouterr().out
+    assert not f.lanciati("git worktree remove")

@@ -164,3 +164,11 @@ def test_stato_con_gh_rotto_esce_con_1(capsys):
 def test_sequenza_del_finto():
     s = Sequenza("a", "b")
     assert [s.prossima(), s.prossima(), s.prossima()] == ["a", "b", "b"]
+
+
+def test_worktree_con_cartella_sparita_messa_da_parte():
+    porcelain = (f"worktree {WT}/agent-9\nHEAD h9\nbranch refs/heads/sparita\n"
+                 "prunable gitdir file points to non-existent location\n\n")
+    f = Finto({"git worktree list --porcelain": porcelain, "gh pr list --state all": []})
+    [v] = worktree.raccogli(f)
+    assert v["gruppo"] == "sparita" and not f.lanciati("git -C") and not f.lanciati("git merge-base")
