@@ -22,10 +22,10 @@ struct OggiComeLaWebTests {
         ])
     }
 
-    @Test("Giornata in corso: conto, punti finora, chi va a punteggio, cambi dalla panchina, rinvio, Da fare, novità, partite")
+    @Test("Giornata in corso: conto, una carta sola con punti, chi va a punteggio e cambi (#436), rinvio, Da fare, novità, partite")
     func ordineInCorso() {
         #expect(SezioneOggi.ordine(fase: .inCorso, conGiornata: true) == [
-            .benvenuto, .conto, .inCorso, .chiGioca, .cambiPanchina, .rinvio, .daFare, .novita, .partite,
+            .benvenuto, .conto, .inCorso, .rinvio, .daFare, .novita, .partite,
         ])
     }
 
@@ -74,16 +74,17 @@ struct OggiComeLaWebTests {
         #expect(iPhone == attese, "in più sull'iPhone: \(iPhone.subtracting(attese)); mancano sull'iPhone: \(attese.subtracting(iPhone))")
     }
 
-    @Test("Giornata in corso: prima chi va a punteggio, poi i cambi dalla panchina, come la carta della web")
+    /// La web ha una carta sola, senza titolo (`cardInCorso`): cifre, chi deve ancora giocare, chi va a punteggio, poi i cambi
+    /// dalla panchina. Sull'iPhone è la sola sezione `.inCorso` (`CartaGiornataInCorso`), con le parti nello stesso ordine.
+    @Test("Giornata in corso: una carta sola, prima chi va a punteggio, poi i cambi dalla panchina, come la carta della web")
     func inCorsoComeLaWeb() throws {
         let web = try OggiWeb()
         let righe = try #require(web.cardInCorso.range(of: "a_punteggio"), "cardInCorso non ha più le righe di chi va a punteggio")
         let cambi = try #require(web.cardInCorso.range(of: "\"oggi.cambi_panchina\""), "cardInCorso non ha più i cambi dalla panchina")
         #expect(righe.lowerBound < cambi.lowerBound)
+        #expect(!web.cardInCorso.contains("<h2>"), "la carta della web non ha titolo")
         let sezioni = SezioneOggi.ordine(fase: .inCorso, conGiornata: true)
-        let chi = try #require(sezioni.firstIndex(of: .chiGioca))
-        let panchina = try #require(sezioni.firstIndex(of: .cambiPanchina))
-        #expect(chi < panchina)
+        #expect(sezioni.filter { OggiWeb.segno($0) == OggiWeb.segno(.inCorso) } == [.inCorso], "sull'iPhone la carta è una sola")
     }
 
     // MARK: testa della schermata
