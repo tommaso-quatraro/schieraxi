@@ -1,0 +1,40 @@
+{
+  "righe": [
+    {
+      "id": 6,
+      "schermata": "Campo",
+      "web": "«gioca 92%» e «vs PAR / @ UDI»",
+      "iphone": "«92% · PAR (f)»",
+      "forma": "web",
+      "chi": "fatto con #22 (build 256): aggiornare l'app sul telefono",
+      "stato": "fatto"
+    },
+    {
+      "id": 7,
+      "schermata": "Campo, fantavoto atteso",
+      "web": "pillola scura",
+      "iphone": "pallino colorato per valore",
+      "forma": "pillola scura",
+      "chi": "fatto con #22",
+      "stato": "fatto"
+    },
+    {
+      "id": 8,
+      "schermata": "Campo, nome",
+      "web": "«Rossi L.», tagliato se lungo",
+      "iphone": "«Rossi»",
+      "forma": "iPhone",
+      "chi": "fatto sulla web (pacchetto 1)",
+      "stato": "fatto"
+    },
+    {
+      "id": 34,
+      "schermata": "Campo, partita rinviata e partita iniziata",
+      "web": "«Rinviata»; a partita iniziata il fantavoto preso o lo stato («Partita in corso»)",
+      "iphone": "«gioca 50%», anche a partita iniziata",
+      "forma": "web (`esitoPedina`)",
+      "chi": "fatto sull'iPhone (#295, #283): `EsitoPedina`",
+      "stato": "fatto"
+    }
+  ]
+}

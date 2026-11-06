@@ -1,0 +1,94 @@
+{
+  "introduzione": "Differenze volute: testi uguali, cambia solo dove o come si mostrano. Una riga per differenza, con il motivo.",
+  "voci": [
+    {
+      "titolo": "Impostazioni, Aspetto",
+      "testo": "la web ha Lingua (italiano, inglese) e Dimensione del testo; l'iPhone non le ha (è solo in italiano e la dimensione del testo la prende da iOS) e ha in più «Animazioni ridotte». Il Tema c'è su tutti e due.",
+      "motivo": "decisione del proprietario del 6/11/2026 (riga 58 di «Differenze di oggi»): tradurre l'iPhone è un lavoro grande, testo e movimento li regola già iOS."
+    },
+    {
+      "titolo": "Aggiorna le rose, «Rose salvate»",
+      "testo": "sulla web è un avviso che passa; sull'iPhone è la prima riga dell'esito.",
+      "motivo": "l'iPhone non ha avvisi che passano, e così la conferma resta scritta (anche per VoiceOver) finché non si riprova."
+    },
+    {
+      "titolo": "Aggiorna le rose, posto dell'esito",
+      "testo": "sulla web l'esito prende il posto dell'anteprima, in fondo alla scheda; sull'iPhone sta in cima alla lista.",
+      "motivo": "dopo «Conferma e salva» l'anteprima si chiude e la lista riparte dall'alto, quindi in cima l'esito si vede subito, senza scorrere sotto il file e il testo incollato."
+    },
+    {
+      "titolo": "Colore delle azioni nel tema chiaro",
+      "precisazione": "(pulsanti pieni, link, linea della scheda attiva)",
+      "testo": "verde bosco `#0B6B3A` sulla web, oliva `#526600` sull'iPhone; nel tema scuro è lo stesso verde.",
+      "motivo": "scelta 1b del proprietario nella spec della grafica B (5/11/2026): cambia l'aspetto della web, l'iPhone resta com'è. Testi e funzioni uguali."
+    },
+    {
+      "titolo": "Schede in alto sul PC",
+      "precisazione": "(web da 900 px)",
+      "testo": "le quattro schede stanno nella testata ferma in alto, con la ricerca sempre aperta; il tasto Indietro del browser torna alla schermata di prima. Sull'iPhone e sulla web più stretta restano nella barra in basso.",
+      "motivo": "con il mouse la barra in alto si raggiunge meglio; le schede e i loro nomi sono gli stessi."
+    },
+    {
+      "titolo": "Etichette dei giocatori",
+      "precisazione": "(«Probabile titolare», «In ballottaggio · gioca 55%», «Improbabile»)",
+      "testo": "sulla web sono testo colorato, senza fondo, e due vicine si separano con « · »; sull'iPhone restano pillole.",
+      "motivo": "grafica B della web (spec del 5/11/2026, §8.9), meno riquadri sulla pagina. Parole e toni (verde, arancio, rosso, grigio) sono gli stessi, perché vengono dal server."
+    },
+    {
+      "titolo": "Sigla della squadra nelle righe dei giocatori",
+      "precisazione": "(Formazione, Oggi, Rosa, Seguiti, Elenco)",
+      "testo": "sulla web davanti alla sigla c'è una lineetta di 3 px in uno dei colori sociali del club (quello che si vede sul fondo del tema), decorativa; sull'iPhone la riga è solo testo (`RigaGiocatore`, nessun colore del club).",
+      "motivo": "grafica B della web (spec del 5/11/2026, §8.4), il colore del club in un segno piccolo accanto alla sigla. Il testo è lo stesso e grigio sui due lati («NAP vs LAZ · sab 31 20:45»)."
+    },
+    {
+      "titolo": "Indice sul volto nelle righe",
+      "testo": "sulla web è un numero piccolo nell'angolo del volto, nei colori del testo, senza anello colorato; sull'iPhone c'è l'anello colorato con il numero.",
+      "motivo": "grafica B della web (§8.4), meno segni per riga. Il numero è lo stesso, e la frase sotto la Formazione è la stessa sui due lati («Negli elenchi il numero sul volto è l'indice: 100 = il migliore del suo ruolo questa giornata.»): la prova è `FraseIndiceComeLaWebTests`, che la confronta con `formazione.numero_sulla_maglia` di `testi.js`."
+    },
+    {
+      "titolo": "Pedina sul campo",
+      "precisazione": "(Formazione)",
+      "testo": "sulla web la pedina è il numero nel disco, senza volto: un disco bianco da 44 px con il fantavoto atteso, sotto il cognome, «gioca 85%» (o lo stato a partita iniziata, «Rinviata») e «vs NAP» / «@ NAP» con la lineetta del colore sociale; sotto il 70% un anello arancio attorno al disco e «⚠ gioca 57%» nella pillola arancio. Sull'iPhone la pedina ha il volto, con il fantavoto nella pillola scura e la sigla nei colori sociali. Il contenuto è uguale: fantavoto, cognome, «gioca N%» o stato, avversario, e la frase per i lettori di schermo.",
+      "motivo": "scelta 2 del proprietario nella spec della grafica B (5/11/2026, §8.10): sulla web il numero è la pedina e i volti stanno negli elenchi e nella scheda. La legenda della web sta sotto il campo e si riapre con «Cosa vuol dire» (sull'iPhone la prima volta è una scheda sopra il campo, poi «Cosa vuol dire» sotto); testi uguali."
+    },
+    {
+      "titolo": "Formazione sul PC",
+      "precisazione": "(web da 768 px; da 900 px 5:7)",
+      "testo": "il campo resta fermo a sinistra accanto all'elenco, a destra cifre, stato della scelta, modulo, stile, titolari, panchina e fuori; con modifiche da salvare la riga dello stato con «Salva» resta in vista mentre si scorre, e **Ctrl+S** (⌘+S sul Mac) salva. Sotto Stile una riga di nota: la descrizione dello stile si apre con «Come si legge». Sull'iPhone una colonna sola (stato della scelta, stile e modulo, campo, titolari), con la descrizione dello stile scritta per intero.",
+      "motivo": "grafica B della web (spec §5, C3, C6 e C9), comodità con mouse e tastiera. Testi, numeri e pulsanti sono gli stessi."
+    },
+    {
+      "titolo": "Scheda del giocatore sul PC",
+      "precisazione": "(web da 1200 px)",
+      "testo": "scheda, confronto, scelta per il confronto, sostituzione di un titolare, «Perché questo numero» e risultati della ricerca si aprono in un pannello a destra, accanto alla pagina che resta attiva (un clic su un altro giocatore cambia il pannello); la ricerca si scrive nel campo della testata. Sull'iPhone e sull'iPad la scheda è un foglio di sistema, e sulla web più stretta il foglio di sempre. Nella scheda il fantavoto atteso è il numero grande con accanto «gioca N%», separati da un filo, e nel «Perché questo numero» l'effetto di ogni motivo sta a destra, in colonna (sull'iPhone a sinistra: «+1,1 · Segna più della media del ruolo»).",
+      "motivo": "grafica B della web (spec del 5/11/2026, §5 C5, §8.11 e §9), comodità con il mouse. Testi e numeri sono gli stessi."
+    },
+    {
+      "titolo": "Squadra e Altro sul PC",
+      "precisazione": "(web da 1100 px)",
+      "testo": "le voci restano a sinistra e la voce scelta si apre a destra, comprese Cambi consigliati, Seguiti, Elenco dei giocatori e Calendario (sotto i 1100 px sono pagine con le quattro sezioni in alto, come prima); la rosa di una squadra ha il menu accanto. Nell'Elenco dei giocatori e nella rosa i nomi delle colonne restano fermi in alto mentre si scorre. Sull'iPad è lo stesso schema (elenco a sinistra e pagina a destra, `LegaView`), sull'iPhone una pagina alla volta.",
+      "motivo": "grafica B della web (spec del 5/11/2026, §5 C7 e C10), da una voce all'altra con un clic. Nomi e ordine delle voci sono quelli di `VOCI_LEGA`, uguali sui due lati."
+    },
+    {
+      "titolo": "«gioca N%» nelle righe sotto il 70%",
+      "testo": "sulla web arancio e in grassetto (accanto c'è l'etichetta a parole), sull'iPhone grigio come gli altri.",
+      "motivo": "grafica B della web (§8.4). Parole e numero uguali."
+    },
+    {
+      "titolo": "Pagina strettissima",
+      "precisazione": "(web sotto i 320 px utili: zoom del browser al 200% sul telefono, o testo «Molto grande» su un telefono piccolo)",
+      "testo": "la testata scorre via, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due pedine per fila.",
+      "motivo": "l'iPhone non ha lo zoom della pagina; il suo testo grande lo gestiscono la barra di sistema e `RigaGiocatore`. Testi e numeri restano gli stessi."
+    },
+    {
+      "titolo": "Oggi, aspetto",
+      "testo": "sulla web la maglia accanto al conto alla rovescia è piccola e dritta (72 px; sull'iPhone 56 pt); le cifre della formazione (modulo | punti attesi) sono separate da un filo; le azioni di Da fare sono testo nel colore delle azioni, a destra nella riga, e il loro numero è grigio accanto al titolo (sull'iPhone pulsanti con il bordo); le righe di Da controllare, Indisponibili e Diffidati hanno la lettera grigia del ruolo e l'etichetta scritta nel colore del tono (sull'iPhone il quadratino del ruolo e la pillola); sul PC due colonne 5:7.",
+      "motivo": "grafica B della web (spec del 5/11/2026, §9), un solo pulsante pieno e meno riquadri. Testi e numeri sono gli stessi. La testa della schermata e la posizione delle sezioni non sono aspetto: riga 49 di «Differenze di oggi»."
+    },
+    {
+      "titolo": "Altro, aspetto",
+      "testo": "sulla web il ruolo negli Scambi, nel Diario («Correggi a mano») e nei risultati della ricerca è la lettera grigia delle righe (sull'iPhone il quadratino colorato); nel Diario «Ho schierato la consigliata» è un pulsante pieno solo nella giornata più recente da segnare (nelle altre ha il bordo) e sta sulla stessa riga di «Ho schierato un'altra formazione», i punti fatti e «attesi N» stanno in due colonne a destra, i giocatori cambiati sono in grassetto con il filo arancio senza tinta; negli Scambi «Copia bozza del messaggio» e «Vedi il giudizio completo» stanno sulla stessa riga; sul PC le Regole hanno «Importa da Leghe» a sinistra e le sezioni a destra, i Crediti delle squadre due colonne di righe, le Novità una colonna da leggere.",
+      "motivo": "grafica B della web (spec del 5/11/2026, §4, §8.7 e §9), un solo pulsante pieno e meno riquadri. Testi, numeri e ordine delle sezioni sono gli stessi."
+    }
+  ]
+}

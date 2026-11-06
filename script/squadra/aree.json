@@ -1,0 +1,21 @@
+{
+  "_leggimi": "Aree del repository per i comandi di script/squadra (LEGGIMI.md). Per ogni file vince la PRIMA area con un percorso che corrisponde: le aree più strette vanno prima. Nei percorsi «**» vale qualunque cosa (anche «/»), «*» e «?» non attraversano «/». Gruppo = tetto delle PR aperte (REGOLE §1); le aree neutre non cambiano il gruppo. Etichetta = etichetta delle issue che porta a quest'area nel brief.",
+  "aree": [
+    {"nome": "web", "percorsi": ["fanta/web/**"], "agente": "sviluppatore-web"},
+    {"nome": "server", "percorsi": ["fanta/**", "script/server/**", "requirements*"], "agente": "sviluppatore-web"},
+    {"nome": "ios", "percorsi": ["ios/**"], "agente": "sviluppatore-ios"},
+    {"nome": "sito", "percorsi": ["sito/**"], "agente": "sviluppatore-web"},
+    {"nome": "ci", "percorsi": [".github/**", "script/ci/**", "script/controlli/**", "script/squadra/**"], "agente": "rilascio"},
+    {"nome": "docs", "percorsi": ["docs/**", "*.md"], "agente": "documentatore"},
+    {"nome": "test", "percorsi": ["tests/**"], "agente": "collaudatore"},
+    {"nome": "altro", "percorsi": ["**"], "agente": "sviluppatore"}
+  ],
+  "gruppi": {
+    "server-web": {"aree": ["server", "web", "sito", "ci", "altro"], "tetto": 4},
+    "ios": {"aree": ["ios"], "tetto": 3}
+  },
+  "gruppo_vince": "ios",
+  "neutre": ["docs", "test"],
+  "workflow_mac": ["iOS", "Compila IPA", "Screenshot", "iOS simulatore (Appetize)"],
+  "etichetta_obiettivo": "obiettivo"
+}

@@ -1,0 +1,22 @@
+{
+  "righe": [
+    {
+      "id": 4,
+      "schermata": "Scheda giocatore, prossima partita",
+      "web": "«Giornata 11 · fuori contro …» (Serie A)",
+      "iphone": "«Giornata 11 · in trasferta contro …»",
+      "forma": "«Giornata 8 · 11ª di Serie A · in trasferta contro …»",
+      "chi": "fatto (rassegna 6/11): web `mercato.partita_casa` e `mercato.partita_fuori`; iPhone `GiocatoreCorpo.descrizionePartita` (`SchedaGiocatoreView.swift`)",
+      "stato": "fatto"
+    },
+    {
+      "id": 23,
+      "schermata": "Scheda giocatore, numero grande",
+      "web": "neutro",
+      "iphone": "verde",
+      "forma": "neutro",
+      "chi": "fatto (rassegna 6/11): `NumeroFantavotoScheda` (colore del testo)",
+      "stato": "fatto"
+    }
+  ]
+}

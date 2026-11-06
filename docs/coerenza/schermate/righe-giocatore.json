@@ -1,0 +1,49 @@
+{
+  "righe": [
+    {
+      "id": 11,
+      "schermata": "Formazione, etichette",
+      "web": "a parole",
+      "iphone": "«Titolare 85%»",
+      "forma": "web",
+      "chi": "fatto (rassegna 6/11): `Giocatore.etichette` (`Domain/GiocatoreEtichette.swift`) mostra l'`etichetta` del server; senza, le parole di `tit.*` (`nomiTitolarita`), mai numeri",
+      "stato": "fatto"
+    },
+    {
+      "id": 12,
+      "schermata": "Righe giocatore (Formazione, Rosa, Seguiti, Elenco)",
+      "web": "«INT – MIL fuori · sab 31 20:45»",
+      "iphone": "«INTER @ MILAN» (nome intero maiuscolo), senza data",
+      "forma": "«INT @ MIL · sab 31 20:45»",
+      "chi": "web: fatto sulla web (pacchetto 1); iPhone fatto (rassegna 6/11): `RigaGiocatore` (`Support/RigaGiocatore.swift`, sigle di `ColoriSquadra`), usata anche nell'Elenco (`MercatoView`)",
+      "stato": "fatto"
+    },
+    {
+      "id": 13,
+      "schermata": "Righe giocatore, etichette",
+      "web": "pillole",
+      "iphone": "testo colorato in fila",
+      "forma": "superata",
+      "chi": "fatto (rassegna 6/11): oggi sulla web sono testo colorato e sull'iPhone pillole, con le stesse parole e gli stessi toni («Differenze ammesse», «Etichette dei giocatori»)",
+      "stato": "fatto"
+    },
+    {
+      "id": 30,
+      "schermata": "Pillole dei giocatori, colore",
+      "web": "quattro toni del server: «Probabile titolare», «Ha giocato», «Partita in corso» verdi",
+      "iphone": "le stesse grigie (tre gravità, positivo come neutro)",
+      "forma": "web (`docs/DESIGN.md`, «Colori semantici»)",
+      "chi": "fatto con #242",
+      "stato": "fatto"
+    },
+    {
+      "id": 43,
+      "schermata": "Righe giocatore a partita iniziata (Formazione, Seguiti, Oggi, Rosa di una squadra)",
+      "web": "a partita finita con il voto il fantavoto preso con sotto «fantavoto», altrimenti «–» (lo stato è nella pillola); niente «Perché questo numero». Partita rinviata come prima della partita",
+      "iphone": "fantavoto atteso e «gioca 72%» anche dopo il voto",
+      "forma": "web (`voceGiocatore`, `valoreRosa`, `esitoPartita`)",
+      "chi": "fatto sull'iPhone (#313, #367): `EsitoPartita`, `RigaGiocatore`, `RigaRosa`. VoiceOver dice le stesse cose: «fantavoto 3,5» a partita finita, niente a partita in corso (il «–» non si legge), e le etichette sempre",
+      "stato": "fatto"
+    }
+  ]
+}

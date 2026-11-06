@@ -120,6 +120,12 @@ final class RegoleEditorViewModel: ViewModelBase {
         fasce.removeAll { $0.id == id }
     }
 
+    /// Il posto della fascia nell'elenco, da 1 (nil se non c'è più): VoiceOver lo legge nel nome dei suoi campi
+    /// («Fascia 2, media almeno»). Dopo «Togli» i numeri si rifanno, perché si contano le fasce rimaste.
+    func postoFascia(_ id: UUID) -> Int? {
+        fasce.firstIndex { $0.id == id }.map { $0 + 1 }
+    }
+
     /// Bonus che darebbero i voti della prova con le fasce attuali.
     var mediaProva: Double { RegoleLogica.mediaDifesa(votiProva) }
     var bonusProva: Double { RegoleLogica.bonusDifesa(media: mediaProva, fasce: fasce) }
@@ -194,8 +200,19 @@ struct RigaStepper: View {
     var massimo = 20.0
     var cifre = 1
     var aiuto: String? = nil
+    /// Il nome che legge VoiceOver, quando il testo a vista non basta a distinguere la riga (le fasce: «Fascia 2, media almeno»).
+    /// Senza, VoiceOver legge il titolo come prima.
+    var nomeAccessibile: String? = nil
 
     var body: some View {
+        if let nomeAccessibile {
+            campo.accessibilityLabel(nomeAccessibile)
+        } else {
+            campo
+        }
+    }
+
+    private var campo: some View {
         Stepper(value: $valore, in: minimo...massimo, step: passo) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -421,10 +438,15 @@ struct RegoleEditorView: View {
                 Text("La media è la somma di portiere + i 3 migliori difensori, divisa per 4. Per ogni fascia raggiunta si prende il bonus più alto raggiunto.")
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 ForEach($vm.fasce) { $f in
+                    // il numero è il posto della riga: dopo «Togli» si rifanno (#460, come la web)
+                    let nomi = TestiRegole.nomiFascia(posto: vm.postoFascia(f.id) ?? 1)
                     VStack(alignment: .leading, spacing: 0) {
-                        RigaStepper(titolo: "Media almeno", valore: $f.media, passo: 0.25, minimo: 4, massimo: 9, cifre: 2)
-                        RigaStepper(titolo: "bonus", valore: $f.bonus, passo: 0.5, minimo: 0, massimo: 20)
+                        RigaStepper(titolo: "Media almeno", valore: $f.media, passo: 0.25, minimo: 4, massimo: 9, cifre: 2,
+                                    nomeAccessibile: nomi.media)
+                        RigaStepper(titolo: "bonus", valore: $f.bonus, passo: 0.5, minimo: 0, massimo: 20,
+                                    nomeAccessibile: nomi.bonus)
                         Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").labelStyle(.distruttiva).frame(minHeight: 44) }
+                            .accessibilityLabel(nomi.togli)
                     }
                 }
                 Button { vm.aggiungiFascia() } label: { Label(TestiRegole.aggiungiFascia, systemImage: "plus.circle").frame(minHeight: 44) }
@@ -438,7 +460,8 @@ struct RegoleEditorView: View {
             Text(TestiRegole.prova).font(.subheadline.bold()).accessibilityAddTraits(.isHeader)
             Text(TestiRegole.provaVoti).font(.footnote).foregroundStyle(Color.testoSecondario)
             ForEach(vm.votiProva.indices, id: \.self) { i in
-                RigaStepper(titolo: i == 0 ? "Portiere" : "Difensore \(i)", valore: $vm.votiProva[i], minimo: 3, massimo: 10)
+                RigaStepper(titolo: i == 0 ? "Portiere" : "Difensore \(i)", valore: $vm.votiProva[i], minimo: 3, massimo: 10,
+                            nomeAccessibile: TestiRegole.nomeVotoProva(indice: i))
             }
             Text(TestiRegole.esitoProva(media: vm.mediaProva, bonus: vm.bonusProva)).font(.headline)
                 .accessibilityElement(children: .combine)

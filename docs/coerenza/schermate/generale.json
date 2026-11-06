@@ -1,0 +1,40 @@
+{
+  "righe": [
+    {
+      "id": 21,
+      "schermata": "Segno negativo",
+      "web": "«−0,4»",
+      "iphone": "«-0,4»",
+      "forma": "«−0,4»",
+      "chi": "fatto (rassegna 6/11): `Formato.conSegno` (meno tipografico U+2212)",
+      "stato": "fatto"
+    },
+    {
+      "id": 22,
+      "schermata": "Date",
+      "web": "«sab 31 20:45», «oggi 20:45»",
+      "iphone": "«sab 31 ott, 20:45»",
+      "forma": "web",
+      "chi": "fatto (rassegna 6/11): `Quando.leggibile` e `Quando.relativa`, come `quando` di `app.js`",
+      "stato": "fatto"
+    },
+    {
+      "id": 31,
+      "schermata": "Pulsanti pieni, tema scuro",
+      "web": "testo verde quasi nero sul verde chiaro (`--azione-testo`)",
+      "iphone": "testo bianco sul verde chiaro, 1,8:1",
+      "forma": "web (stessi due colori)",
+      "chi": "fatto con #248",
+      "stato": "fatto"
+    },
+    {
+      "id": 44,
+      "schermata": "Numero della giornata, ovunque (anche widget e avvisi)",
+      "web": "«Giornata 8 · 11ª di Serie A» (`nomeGiornata`)",
+      "iphone": "«Giornata 8»",
+      "forma": "sezione «Giornata: le forme»",
+      "chi": "web e server fatto (#299, PR #306); iPhone fatto (#312)",
+      "stato": "fatto"
+    }
+  ]
+}
