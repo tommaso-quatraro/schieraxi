@@ -65,7 +65,7 @@ struct VistaDubbi: View {
                 let forme = r.formeTitoloFase ?? [titolo]
                 GiornataInRiga(forme: famiglia == .systemSmall && forme.count > 1 ? Array(forme.dropFirst()) : forme,
                                voce: r.voceTitoloFase ?? titolo)
-                    .font(.headline)
+                    .font(.headline).minimumScaleFactor(0.7)
                 if let frase = r.fraseFase(adesso: voce.date) {
                     Text(frase).font(.caption).foregroundStyle(.white.opacity(0.8))
                 }
@@ -133,7 +133,7 @@ struct VistaDubbi: View {
                 EtichettaDaControllare(n: r.daControllare).font(.headline)
             } else {
                 GiornataInRiga(forme: r.formeTitoloFase ?? ["Titolari a posto"], voce: r.voceTitoloFase ?? "Titolari a posto")
-                    .font(.headline)
+                    .font(.headline).minimumScaleFactor(0.7)
             }
             if let dubbi = r.dubbi, !dubbi.isEmpty {
                 ForEach(dubbi.prefix(2)) { d in
@@ -141,7 +141,7 @@ struct VistaDubbi: View {
                 }
             } else {
                 GiornataInRiga(forme: r.formeSottotitoloRettangolo, voce: r.voceSottotitoloRettangolo)
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption2).foregroundStyle(.secondary).minimumScaleFactor(0.7)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

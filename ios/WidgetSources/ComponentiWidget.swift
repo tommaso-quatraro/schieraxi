@@ -30,29 +30,51 @@ struct IntestazioneWidget: View {
     let icona: String
     var destra: String? = nil
     var colore: Color = .white.opacity(0.85)
-    /// La giornata a destra (#299), al posto di `destra`: la prima forma che entra, letta da VoiceOver con i due numeri.
-    /// Nil: niente giornata.
+    /// La giornata a destra (#299), al posto di `destra`: intera dove entra, almeno «Giornata 8», mai «G8»; VoiceOver legge i due
+    /// numeri. Nil: niente giornata.
     var giornata: NomeGiornata? = nil
-    /// Nei widget piccoli la giornata parte dalla forma corta («Giornata 8», poi «G8»), senza «11ª di Serie A».
+    /// Nei widget piccoli la giornata è solo «Giornata 8», senza «11ª di Serie A».
     var soloCorta = false
 
     var body: some View {
-        HStack(spacing: 4) {
-            // Con il testo grande il titolo non entra: resta il simbolo (mai «Formazi…»). Il titolo ha la precedenza sulla giornata,
-            // che si accorcia per prima.
-            ViewThatFits(in: .horizontal) {
-                Label(titolo, systemImage: icona).lineLimit(1)
-                Image(systemName: icona).accessibilityLabel(titolo)
+        if let giornata {
+            // La prima disposizione che entra intera (`ParoleWidget.testata`): il titolo con la giornata intera, poi con «Giornata 8»,
+            // poi il solo simbolo con le stesse forme. Si perde il titolo (mai «Formazi…»), mai la giornata (#352, #299).
+            let disposizioni = ParoleWidget.testata(giornata, soloCorta: soloCorta)
+            PrimaCheEntra(disposizioni.count) { i in
+                HStack(spacing: 4) {
+                    titoloOSimbolo(disposizioni[i].conTitolo)
+                    Spacer(minLength: 4)
+                    Text(disposizioni[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                        .accessibilityLabel(giornata.voce)
+                }
             }
-            .font(.caption.weight(.semibold)).foregroundStyle(colore)
-            .layoutPriority(giornata == nil ? 0 : 1)
-            Spacer(minLength: 0)
-            if let giornata {
-                GiornataInRiga(giornata, soloCorta: soloCorta).font(.caption2).foregroundStyle(TintaWidget.testo2)
-            } else if let destra {
-                Text(destra).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+        } else {
+            HStack(spacing: 4) {
+                // Con il testo grande il titolo non entra: resta il simbolo (mai «Formazi…»).
+                ViewThatFits(in: .horizontal) {
+                    titoloOSimbolo(true)
+                    titoloOSimbolo(false)
+                }
+                Spacer(minLength: 0)
+                if let destra {
+                    Text(destra).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                }
             }
         }
+    }
+
+    /// Il titolo con il simbolo, o il solo simbolo (VoiceOver legge comunque il titolo).
+    @ViewBuilder
+    private func titoloOSimbolo(_ conTitolo: Bool) -> some View {
+        Group {
+            if conTitolo {
+                Label(titolo, systemImage: icona).lineLimit(1)
+            } else {
+                Image(systemName: icona).accessibilityLabel(titolo)
+            }
+        }
+        .font(.caption.weight(.semibold)).foregroundStyle(colore)
     }
 }
 

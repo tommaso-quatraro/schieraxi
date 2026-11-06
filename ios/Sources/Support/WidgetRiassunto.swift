@@ -275,7 +275,6 @@ struct RiassuntoWidget: Decodable {
     var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
     /// «Giornata 7 · 10ª di Serie A», «10ª giornata di Serie A» senza numero della lega, o nil.
     var etichettaGiornata: String? { nomeGiornata?.intero }
-    var siglaGiornata: String? { nomeGiornata?.sigla }
 
     /// Quando comincia la giornata (la scadenza della formazione).
     var inizio: Date? { Quando.data(scadenza) }
@@ -930,23 +929,27 @@ enum ParoleWidget {
         return ["\(tuaScelta ? "La tua scelta" : "Formazione") \(m)", m]
     }
 
-    /// La giornata nei widget della Formazione (grande, piccolo, schermata di blocco), dalla forma intera alla più corta:
-    /// «Giornata 8 · 11ª di Serie A», poi «Giornata 8»; senza il numero della lega «11ª giornata di Serie A», poi «11ª di Serie A».
-    /// Mai «G8» né «G11» (#299, `docs/COERENZA-WEB-IPHONE.md`): dove lo spazio è poco la vista sposta la giornata su un'altra riga,
-    /// non la accorcia. VoiceOver legge `NomeGiornata.voce`. Senza giornata nessuna forma.
+    /// La giornata nei widget (tutti, dal #299), dalla forma intera alla più corta: «Giornata 8 · 11ª di Serie A», poi
+    /// «Giornata 8»; senza il numero della lega «11ª giornata di Serie A», poi «11ª di Serie A». Mai «G8» né «G11»
+    /// (`docs/COERENZA-WEB-IPHONE.md`, «Giornata: le forme»: la sigla solo nelle colonne strette): dove lo spazio è poco la vista
+    /// sposta la giornata su un'altra riga o toglie il titolo, non la accorcia. VoiceOver legge `NomeGiornata.voce`. Senza giornata
+    /// nessuna forma.
     static func formeGiornata(_ nome: NomeGiornata?) -> [String] {
         guard let nome else { return [] }
         return [nome.intero, nome.corto].reduce(into: [String]()) { forme, f in if !forme.contains(f) { forme.append(f) } }
     }
 
-    /// La giornata nei cerchi della schermata di blocco.
+    /// La giornata nei cerchi della schermata di blocco: «Giornata 8» (la vista la rimpicciolisce se serve), senza il numero della
+    /// lega «11ª di Serie A», senza giornata «Giornata –». Mai «G8» (#299).
     static func giornataNelCerchio(_ nome: NomeGiornata?) -> String {
-        nome?.sigla ?? "G–"
+        nome?.corto ?? "Giornata –"
     }
 
-    /// Le disposizioni di una testata con titolo e giornata, dalla più ricca alla più povera.
+    /// Le disposizioni di una testata con titolo e giornata, dalla più ricca alla più povera (#352, #299): il titolo con ogni forma
+    /// della giornata, poi il solo simbolo con le stesse forme. La vista tiene la prima che entra INTERA: si perde il titolo, mai
+    /// la giornata, che resta almeno «Giornata 8». `soloCorta`: nei widget piccoli senza la forma intera.
     static func testata(_ nome: NomeGiornata, soloCorta: Bool) -> [FormaTestataWidget] {
-        let forme = soloCorta ? nome.formeCorte : nome.forme
+        let forme = soloCorta ? [nome.corto] : formeGiornata(nome)
         return forme.map { FormaTestataWidget(conTitolo: true, giornata: $0) } + forme.map { FormaTestataWidget(conTitolo: false, giornata: $0) }
     }
 
@@ -1004,15 +1007,12 @@ struct TestataFormazioneGrande: Equatable {
 }
 
 extension PuntiGiornata {
-    /// Le forme di una riga della tabella dei punti, dalla più lunga: «Giornata 7» senza Serie A, poi «G7», poi via la fascia, poi
-    /// solo i fatti.
+    /// Le forme di una riga della tabella dei punti, dalla più lunga: «Giornata 7» senza Serie A, poi via la fascia, poi solo i
+    /// fatti. Mai «G7» (#299).
     enum FormaRiga: CaseIterable { case completa, cortaConFascia, corta, soloFatti }
 
     /// «Giornata 7», o «38ª di Serie A · 2025-26» per una giornata di un'altra stagione.
     var cortoConStagione: String { nome.corto + (altraStagione.map { " · \($0)" } ?? "") }
-
-    /// «G7», o «G38 · 2025-26» per una giornata di un'altra stagione (la stagione non si perde mai).
-    var siglaConStagione: String { altraStagione.map { "\(sigla) · \($0)" } ?? sigla }
 
     /// Una disposizione della testata del widget piccolo e medio: «Attesi e fatti» intero o solo il suo simbolo, e la giornata.
     typealias FormaTestata = FormaTestataWidget
@@ -1026,23 +1026,23 @@ extension PuntiGiornata {
         switch forma {
         case .completa: return (titolo, fasciaTesto, suAttesi)
         case .cortaConFascia: return (cortoConStagione, fasciaTesto, suAttesi)
-        case .corta: return (siglaConStagione, nil, suAttesi)
-        case .soloFatti: return (siglaConStagione, nil, Formato.punti(fatti))
+        case .corta: return (cortoConStagione, nil, suAttesi)
+        case .soloFatti: return (cortoConStagione, nil, Formato.punti(fatti))
         }
     }
 
     /// Il titolo del rettangolo della schermata di blocco: «Giornata 7 · 10ª di Serie A: 63,5 punti» → «Giornata 7: 63,5 punti» →
-    /// «G7: 63,5 punti» → «G7: 63,5».
+    /// «Giornata 7: 63,5»; un'altra stagione sempre con la stagione («38ª di Serie A · 2025-26: 71,0 punti»). Mai «G7» (#299).
     var formeTitolo: [String] {
         let f = Formato.punti(fatti)
-        if altraStagione != nil { return ["\(siglaConStagione): \(f) punti", "\(siglaConStagione): \(f)"] }
-        return ["\(nome.intero): \(f) punti", "\(nome.corto): \(f) punti", "\(sigla): \(f) punti", "\(sigla): \(f)"]
+        if altraStagione != nil { return ["\(cortoConStagione): \(f) punti", "\(cortoConStagione): \(f)"] }
+        return ["\(nome.intero): \(f) punti", "\(nome.corto): \(f) punti", "\(nome.corto): \(f)"]
     }
 
-    /// La riga in linea: «G7 63,5 fatti, 66,0 attesi» → «G7 63,5 su 66,0» → «G7 63,5 fatti».
+    /// La riga in linea: «Giornata 7: 63,5 fatti, 66,0 attesi» → «Giornata 7: 63,5 su 66,0» → «Giornata 7: 63,5 fatti».
     var formeInLinea: [String] {
-        let f = Formato.punti(fatti), a = Formato.punti(attesi)
-        return ["\(sigla) \(f) fatti, \(a) attesi", "\(sigla) \(f) su \(a)", "\(sigla) \(f) fatti"]
+        let f = Formato.punti(fatti), a = Formato.punti(attesi), g = cortoConStagione
+        return ["\(g): \(f) fatti, \(a) attesi", "\(g): \(f) su \(a)", "\(g): \(f) fatti"]
     }
 }
 
@@ -1080,11 +1080,11 @@ extension RiassuntoOggi {
     /// la forma intera in testa e i due punti); nil prima della scadenza.
     var titoloFase: String? { formeTitoloFase?.first }
 
-    /// Il titolo della fase dalla forma più lunga: «Giornata 8 · 11ª di Serie A: finita», «Giornata 8: finita», «G8: finita».
+    /// Il titolo della fase dalla forma più lunga: «Giornata 8 · 11ª di Serie A: finita», «Giornata 8: finita»; mai «G8» (#299).
     var formeTitoloFase: [String]? {
         if inCorso { return [ParoleWidget.chiusa] }
         guard finita else { return nil }
-        return nomeGiornataChiusa.map { n in n.forme.map { "\($0): finita" } } ?? ["Giornata finita"]
+        return nomeGiornataChiusa.map { n in ParoleWidget.formeGiornata(n).map { "\($0): finita" } } ?? ["Giornata finita"]
     }
 
     /// Il titolo della fase per VoiceOver: «Giornata 8, 11ª di Serie A: finita».
@@ -1104,23 +1104,31 @@ extension RiassuntoOggi {
         return finita ? "Si ricomincia con la prossima giornata." : nil
     }
 
-    /// La prima riga del rettangolo della schermata di blocco: «G8 · Chiusa» dopo la scadenza, «G8 finita» a giornata finita.
+    /// La giornata di cui parla la fase, nella forma corta: dopo la scadenza quella in corso, a giornata finita quella appena
+    /// chiusa («Giornata 8»); se il server non la dice, «Giornata».
+    private var giornataFaseCorta: String { (inCorso ? nomeGiornata : nomeGiornataChiusa)?.corto ?? "Giornata" }
+
+    /// La prima riga del rettangolo della schermata di blocco: «Giornata 8 · Chiusa» dopo la scadenza, «Giornata 8 finita» a
+    /// giornata finita. Mai «G8» (#299).
     var testaRettangoloFase: String {
-        inCorso ? "\(siglaGiornata) · \(ParoleWidget.chiusa)" : "\(siglaGiornataChiusa) finita"
+        inCorso ? "\(giornataFaseCorta) · \(ParoleWidget.chiusa)" : "\(giornataFaseCorta) finita"
     }
 
-    /// La riga in linea: «G8: 41,5 punti fatti finora» dopo la scadenza, «G8: 69,5 punti fatti» a giornata finita.
-    var rigaInLineaFase: String {
-        inCorso ? "\(siglaGiornata): \(puntiFattiTesto) punti fatti finora" : "\(siglaGiornataChiusa): \(puntiFattiTesto) punti fatti"
-    }
+    /// La riga in linea, la forma intera: «Giornata 8: 41,5 punti fatti finora» dopo la scadenza, «Giornata 8: 69,5 punti fatti»
+    /// a giornata finita.
+    var rigaInLineaFase: String { formeRigaInLineaFase.first ?? giornataFaseCorta }
 
-    /// Le forme della riga in linea, dalla più lunga.
-    var formeRigaInLineaFase: [String] { [rigaInLineaFase] }
+    /// Le forme della riga in linea, dalla più lunga: si perdono parole, mai la giornata intera («Giornata 8: 41,5»).
+    var formeRigaInLineaFase: [String] {
+        let g = giornataFaseCorta, p = puntiFattiTesto
+        return inCorso ? ["\(g): \(p) punti fatti finora", "\(g): \(p) punti fatti", "\(g): \(p)"]
+                       : ["\(g): \(p) punti fatti", "\(g): \(p)"]
+    }
 
     /// Sotto il titolo del rettangolo «Da controllare» quando non ci sono nomi: la giornata, o a giornata finita la prossima.
     var sottotitoloRettangolo: String { formeSottotitoloRettangolo.first ?? etichettaGiornata }
 
-    /// Le forme del sottotitolo, dalla più lunga: «Prossima: Giornata 9 · 12ª di Serie A», «Prossima: Giornata 9», «Prossima: G9».
+    /// Le forme del sottotitolo, dalla più lunga: «Prossima: Giornata 9 · 12ª di Serie A», «Prossima: Giornata 9».
     var formeSottotitoloRettangolo: [String] { finita ? formeGiornata.map { "Prossima: \($0)" } : formeGiornata }
 
     /// Il sottotitolo per VoiceOver, con i due numeri.

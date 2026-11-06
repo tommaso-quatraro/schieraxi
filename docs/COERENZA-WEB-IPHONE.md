@@ -53,9 +53,9 @@ web `nomeGiornata(lega, serieA)` in `fanta/web/app.js`; server `frasi.nome_giorn
 | Forma | Quando | Italiano | Inglese |
 |---|---|---|---|
 | Intera | dove c'è spazio: testata, Oggi, Formazione, Diario, scheda, Confronto, avvisi, Da fare, testo e immagine da condividere | «Giornata 8 · 11ª di Serie A» | «Matchday 8 · Serie A matchday 11» |
-| Corta | dove lo spazio è poco (widget piccoli, righe strette) | «Giornata 8» e sotto, più piccolo, «11ª di Serie A»; solo «Giornata 8» come ultimo ripiego | «Matchday 8» e sotto «Serie A matchday 11» |
+| Corta | dove lo spazio è poco (widget piccoli, righe strette, cerchi della schermata di blocco) | «Giornata 8» e sotto, più piccolo, «11ª di Serie A»; solo «Giornata 8» come ultimo ripiego. Mai «G8» (nei widget: `ParoleWidget.formeGiornata`) | «Matchday 8» e sotto «Serie A matchday 11» |
 | Solo Serie A | `giornata_lega` nullo (stagioni passate, prima che la lega parta) e dove si parla solo di Serie A | «11ª giornata di Serie A» | «Serie A matchday 11» |
-| Colonna stretta | colonne del calendario, sotto un titolo | «G11» | «G11» |
+| Colonna stretta | colonne del calendario e del grafico «Attesi e fatti» dei widget, sotto un titolo | «G11» | «G11» |
 
 - VoiceOver e lettori di schermo leggono **sempre la forma intera** (o «11ª giornata di Serie A» per la colonna «G11»).
 - Lega partita con la Serie A (`prima_giornata_lega` = 1): si scrivono tutti e due anche se uguali, «Giornata 8 · 8ª di Serie A».
