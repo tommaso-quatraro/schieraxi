@@ -39,7 +39,10 @@ struct CartaGiornataInCorso: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             ForEach(Array(aPunteggio.enumerated()), id: \.element.id) { i, g in
-                RigaConFilo(prima: i == 0) { RigaGiocatoreInCorso(g: g, apri: apri) }
+                RigaConFilo(prima: i == 0) {
+                    // sotto il nome, come la web: «entrato dalla panchina» per chi non era titolare
+                    RigaGiocatoreInCorso(g: g, nota: g.titolare ? nil : TestiFase.dallaPanchina, apri: apri)
+                }
             }
             if !cambi.isEmpty {
                 Text(TestiFase.cambiPanchina).titoletto().padding(.top, 6)
@@ -87,6 +90,8 @@ struct CartaGiornataInCorso: View {
 /// «entrato dalla panchina»; a destra il fantavoto, la data della partita o lo stato.
 struct RigaGiocatoreInCorso: View {
     let g: GiocatoreInCorso
+    /// La riga sotto il nome e la squadra (per chi è entrato dalla panchina, «entrato dalla panchina»); nil = niente.
+    let nota: String?
     let apri: (Int) -> Void
 
     /// La sigla sulla riga («GEN»); a voce il nome per esteso, più chiaro di tre lettere.
@@ -99,9 +104,6 @@ struct RigaGiocatoreInCorso: View {
         guard let s = g.squadra, !s.isEmpty else { return nil }
         return s.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "-", with: " ").capitalized
     }
-
-    /// Sotto il nome, come la web: «entrato dalla panchina» per chi non era titolare.
-    private var nota: String? { g.titolare ? nil : TestiFase.dallaPanchina }
 
     var body: some View {
         Button { apri(g.id) } label: {
