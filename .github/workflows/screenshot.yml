@@ -253,7 +253,7 @@ jobs:
           IPHONE: ${{ inputs.iphone == 'piccolo' && 'iphone-piccolo' || inputs.iphone == 'grande' && 'iphone-grande' || 'iphone' }}
           DISPOSITIVI: ${{ inputs.dispositivi || 'iphone' }}
           SCHERMATE: ${{ inputs.schermate || '' }}
-        run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
+        run: bash scripts/diagnosi_notifica.sh x screenshot
       # Widget nello stesso job, dopo l'app e sullo stesso simulatore già acceso: corse veloci e collaudo (uscite del job «quando»)
       - name: Compila l'anteprima dei widget per il simulatore (senza firma)
         if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
@@ -273,7 +273,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: screenshot-app
-          path: ios/screenshot/*.png
+          path: ios/screenshot/*
           retention-days: 14
           if-no-files-found: warn
       - name: Carica le fotografie dei widget
