@@ -7,8 +7,8 @@ from fanta import server
 
 WEB = server.WEB
 CSS = (WEB / "stile.css").read_text(encoding="utf-8")
-SCRITTE = ["--testo", "--testo-2", "--verde", "--rosso", "--arancio", "--blu", "--giallo-testo"]
-FONDI = ["--sfondo", "--solido"]
+SCRITTE = ["--testo", "--testo-2", "--verde", "--rosso", "--arancio", "--blu", "--giallo-testo", "--azione"]
+FONDI = ["--sfondo", "--solido", "--superficie"]           # --superficie: passaggio del mouse, pannello, barra (grafica B)
 
 
 def _blocco(inizio: str) -> dict:

@@ -1,5 +1,48 @@
 [
   {
+    "versione": "1.412",
+    "data": "2026-11-06T01:29:58",
+    "titolo": "Gol attesi: rigori e minuti più vicini a quelli veri (prova interna)",
+    "voci": [
+      "Nessun cambiamento visibile: la prova interna dei gol attesi fatti solo con i voti di Fantacalcio.it ora conta meglio rigori e minuti giocati."
+    ],
+    "tecnico": [
+      "Issue #389, Fase B del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). modello.Parametri ha due interruttori nuovi, spenti di default: rigori_squadra (B1: la parte dei rigori della squadra che va al giocatore viene dai rigori calciati con memoria lunga, DECADIMENTO_RIGORI 0,98 a giornata e PESO_PREC_RIGORI 0,8 per la stagione prima, con qualunque squadra; parte = i suoi / (i suoi + quelli dei compagni di oggi pesati con p_storico), 0 a chi non ne ha mai calciati; funzione modello._rigori_divisi) e minuti_con_voto (B2: le prestazioni si limitano alle presenze con voto, così minuti a presenza, da titolare e da subentro, tassi per 90' e medie del ruolo guardano solo quelle). nostri.parametri li accende; nostri.VERSIONE = \"2\".",
+      "verifica --pacchetti completo,solo_fantacalcio (archivio di sviluppo, lega d'esempio, 300 simulazioni), solo_fantacalcio 2025-26 · 2026-27, prima → dopo: rigori_su_veri 0,417 · 0,251 → 0,656 · 0,765; gol_su_veri 0,857 · 0,694 → 0,934 · 0,764; assist_su_veri 0,863 · 0,805 → 0,917 · 0,862; minuti_attesi 65,3 · 64,9 → 68,2 · 68,0; rmse_vs_completo_pct +0,471 · +0,811 → +0,490 · +0,587; scarto_gol 0,020 · 0,070 → 0,028 · 0,104 (si chiude nella Fase C).",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
+    "versione": "1.411",
+    "data": "2026-11-06T01:09:12",
+    "titolo": "Misura interna dei gol attesi",
+    "voci": [
+      "Nessun cambiamento visibile: una prova interna misura quanto i gol, i rigori e gli assist attesi tornano con quelli veri, per preparare gol attesi calcolati solo con i voti di Fantacalcio.it."
+    ],
+    "tecnico": [
+      "Issue #386, Fase A del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). Nuovo modulo fanta/nostri.py: dati(d) (prestazioni ricostruite dai voti, niente Understat; prima verifica_pacchetti.solo_fantacalcio, stesso corpo), parametri(par) (peso_xg e peso_xa a 0), VERSIONE = \"1\" (si alza a ogni cambio di parametri o formula), gol_attesi(prev, par) = e_gol + conversione_rigori × e_rigori (unica definizione), previsioni(...) = modello.previsioni con dati e parametri dei nostri. verifica_pacchetti tiene gli stessi nomi (solo_fantacalcio, minuti_stimati, MINUTI_STIMATI, FASCE_GOL, FASCE_GOL_NOMI, MIN_CASI_FASCIA) e lo scenario solo_fantacalcio usa nostri.parametri.",
+      "verifica --pacchetti: _con_registro raccoglie anche e_gol, e_rigori, e_assist e minuti; nuovo conti_attesi (solo chi prende voto, una riga per stagione: gol_su_veri, azione_su_veri, rigori_su_veri = rigori calciati attesi / calciati veri, assist_su_veri, minuti_attesi = media di min(minuti, 90), minuti_stimati da entrato e uscito), stampato dopo le fasce; tabella ha in più gol_su_veri, rigori_su_veri e assist_su_veri.",
+      "Archivio di sviluppo, lega d'esempio, 2025-26 · 2026-27: gol_su_veri 1,011 · 0,827 con Understat e 0,857 · 0,694 solo Fantacalcio.it; rigori_su_veri 0,424 · 0,255 e 0,417 · 0,251; assist_su_veri 0,956 · 0,874 e 0,863 · 0,805.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
+    "versione": "1.410",
+    "data": "2026-11-06T01:08:13",
+    "titolo": "Colori più sobri: fondo bianco o grigio scuro",
+    "voci": [
+      "Il fondo è bianco nel tema chiaro e grigio quasi nero nel tema scuro, senza più la tinta verde: i colori restano solo sui dati.",
+      "Nel tema chiaro pulsanti e collegamenti diventano verde bosco.",
+      "La barra in alto, quella in basso e la scheda del giocatore sono piene, senza effetto vetro: il testo sotto non si intravede più."
+    ],
+    "tecnico": [
+      "Grafica B, PR 3 (parte di #354): --sfondo #ffffff / #121513, nuove --superficie (#f4f5f2 / #1a1e1c) e --filo (#dde1dc / #2e3430), --solido scuro #1a1e1c, --testo scuro #e9edea; --vetro e --vetro-carta = var(--sfondo); nessun backdrop-filter.",
+      "--azione chiaro #0b6b3a (6,6:1 sul bianco, bianco sopra 6,6:1), --azione-2 #08552e; solo sulla web (scelta 1b della spec): l'iPhone resta oliva, il test confronta con Aspetto.swift solo lo scuro.",
+      "theme-color in due righe con media (chiaro #ffffff, scuro #121513); applicaAspetto le aggiorna tutte e due quando il tema è scelto a mano; manifest #121513.",
+      "Voce scelta dei controlli segmentati: grigio neutro (testo al 12% sul fondo), perché con il fondo pieno non si distingueva più dalla striscia."
+    ]
+  },
+  {
     "versione": "1.409",
     "data": "2026-11-05T23:03:02",
     "titolo": "Da fare: niente cambi se hai salvato la consigliata",
