@@ -279,16 +279,18 @@ struct DemoGiornataCoerenteTests {
     }
 
     @Test("Probabili in casi noti, anche nel giorno del cambio dell'ora: ora, «8 ore fa» e ore alla scadenza", arguments: [
-        // prima partita alle 12:30, scadenza alle 12:00: 10,5 ore, che il server scrive «10 ore» (round() di Python, metà al pari)
-        CasoProbabili(adesso: "2026-11-10 01:30", ieri: true, ora: "17:30", minuti: 480, oreAllaScadenza: 10),
-        // prima partita alle 18:00, scadenza alle 17:30: 7 ore e 23 minuti
-        CasoProbabili(adesso: "2026-11-10 10:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 7),
-        // a mezzanotte: scadenza alle 12:00, 12 ore
+        // La formazione si chiude 10 minuti prima della prima partita (#417).
+        // prima partita alle 12:30, scadenza alle 12:20: 10,5 ore, che il server scrive «10 ore» (round() di Python, metà al pari)
+        CasoProbabili(adesso: "2026-11-10 01:50", ieri: true, ora: "17:50", minuti: 480, oreAllaScadenza: 10),
+        // prima partita alle 18:00, scadenza alle 17:50: 7 ore e 43 minuti
+        CasoProbabili(adesso: "2026-11-10 10:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 8),
+        // a mezzanotte: scadenza alle 12:20, 12 ore e 20 minuti
         CasoProbabili(adesso: "2026-11-10 00:00", ieri: true, ora: "16:00", minuti: 480, oreAllaScadenza: 12),
-        // fine dell'ora legale (domenica 25 ottobre 2026, alle 3 si torna alle 2): otto ore vere fa erano le 2:05 dell'ora legale
-        CasoProbabili(adesso: "2026-10-25 09:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 8),
+        // fine dell'ora legale (domenica 25 ottobre 2026, alle 3 si torna alle 2): otto ore vere fa erano le 2:05 dell'ora legale;
+        // scadenza alle 17:50, 8 ore e 43 minuti
+        CasoProbabili(adesso: "2026-10-25 09:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 9),
         // inizio dell'ora legale (domenica 28 marzo 2027, alle 2 si passa alle 3): otto ore vere fa era mezzanotte e cinque
-        CasoProbabili(adesso: "2027-03-28 09:07", ieri: false, ora: "00:05", minuti: 482, oreAllaScadenza: 8),
+        CasoProbabili(adesso: "2027-03-28 09:07", ieri: false, ora: "00:05", minuti: 482, oreAllaScadenza: 9),
     ])
     func probabiliCasiNoti(_ caso: CasoProbabili) async throws {
         let frasi = try FrasiDelServer(prefissi: ["probabili.", "tempo."])

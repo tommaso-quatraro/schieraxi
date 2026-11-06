@@ -388,7 +388,7 @@ struct DemoCoerenteTests {
     /// L'ora («20:45») di una data del server («2026-11-07 20:45»).
     private func ora(_ data: String?) -> String { String((data ?? "").suffix(5)) }
 
-    @Test("Ogni calcio d'inizio cade su un orario da partita, a qualunque ora si apra la demo; a giornata in corso chi ha cominciato al quarto d'ora",
+    @Test("Ogni calcio d'inizio cade su un orario da partita, a qualunque ora si apra la demo, anche a giornata in corso (#417)",
           arguments: Array(0..<24))
     func orariDaPartitaVera(dopoOre: Int) throws {
         // anche a minuti dispari: le foto si scattano quando capita
@@ -404,18 +404,18 @@ struct DemoCoerenteTests {
                 #expect(Self.orariDaPartita.contains(ora(g.dataPartita)), "\(fase), dopo \(dopoOre) ore: \(g.nome) gioca alle \(ora(g.dataPartita))")
             }
         }
+        // a giornata in corso la demo vive nel suo momento (l'ora dei risultati in diretta), non nell'ora del telefono (#417)
         let w = try #require(RiassuntoWidget.leggi(LegaDemo.widget(adesso: adesso, fase: .inCorso)), "il widget in corso non si legge")
         let partite = w.live?.partite ?? []
+        let momento = try #require(Quando.data(w.live?.aggiornatoIl), "a giornata in corso i risultati in diretta non dicono l'ora")
         try #require(partite.contains { $0.stato != "da_giocare" }, "a giornata in corso nessuna partita è cominciata")
         for p in partite {
             let quando = try #require(p.quando, "\(p.id) senza orario")
+            #expect(Self.orariDaPartita.contains(ora(p.data)), "in corso, dopo \(dopoOre) ore: \(p.id) \(p.stato ?? "?") alle \(ora(p.data))")
             if p.stato == "da_giocare" {
-                #expect(quando > adesso, "\(p.id) è da giocare ma l'orario è passato")
-                #expect(Self.orariDaPartita.contains(ora(p.data)), "in corso, dopo \(dopoOre) ore: \(p.id) da giocare alle \(ora(p.data))")
+                #expect(quando > momento, "\(p.id) è da giocare ma l'orario è passato")
             } else {
-                #expect(quando < adesso, "\(p.id) è \(p.stato ?? "?") ma comincia dopo")
-                #expect(ora(p.data).hasSuffix(":00") || ora(p.data).hasSuffix(":15") || ora(p.data).hasSuffix(":30") || ora(p.data).hasSuffix(":45"),
-                        "in corso, dopo \(dopoOre) ore: \(p.id) è cominciata alle \(ora(p.data))")
+                #expect(quando < momento, "\(p.id) è \(p.stato ?? "?") ma comincia dopo")
             }
         }
     }
