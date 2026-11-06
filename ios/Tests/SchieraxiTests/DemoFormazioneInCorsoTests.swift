@@ -192,19 +192,43 @@ struct DemoFormazioneInCorsoTests {
         }
     }
 
-    @Test("Oggi e le righe dei giocatori contano «oggi» e «ieri» con l'ora dell'app (`Orologio`), mai con quella del telefono")
-    func conLOrologioDellApp() throws {
-        for percorso in ["Sources/Presentation/Oggi/OggiView.swift", "Sources/Support/RigaGiocatore.swift"] {
-            let righe = try sorgente(percorso).split(whereSeparator: \.isNewline)
-            let date = righe.filter { $0.contains("Quando.leggibile(") }
-            #expect(!date.isEmpty, "\(percorso): nessuna data scritta, il controllo non serve più")
-            for r in date {
-                #expect(r.contains("adesso:"), "\(percorso): «\(r.trimmingCharacters(in: .whitespaces))» conta con l'ora del telefono")
-            }
-            for r in righe where r.contains("adesso") && r.contains("Date()") {
-                Issue.record("\(percorso): «\(r.trimmingCharacters(in: .whitespaces))» usa l'ora del telefono invece di Orologio.adesso()")
-            }
+    @Test("Oggi, le righe dei giocatori, la scheda e «Perché questo numero» contano «oggi» e «ieri» con l'ora dell'app (`Orologio`), mai con quella del telefono",
+          arguments: ["Sources/Presentation/Oggi/OggiView.swift", "Sources/Support/RigaGiocatore.swift",
+                      "Sources/Presentation/Mercato/SchedaGiocatoreView.swift", "Sources/Support/PercheNumeroView.swift"])
+    func conLOrologioDellApp(percorso: String) throws {
+        let codice = try sorgente(percorso)
+        let chiamate = Self.chiamate("Quando.leggibile(", in: codice)
+        #expect(!chiamate.isEmpty, "\(percorso): nessuna data scritta, il controllo non serve più")
+        for c in chiamate {
+            #expect(c.contains("adesso:"), "\(percorso): «\(c)» conta con l'ora del telefono")
         }
+        for r in codice.split(whereSeparator: \.isNewline) where r.contains("adesso") && r.contains("Date()") {
+            Issue.record("\(percorso): «\(r.trimmingCharacters(in: .whitespaces))» usa l'ora del telefono invece di Orologio.adesso()")
+        }
+    }
+
+    @Test("Il controllo vede anche le chiamate che vanno a capo")
+    func chiamateACapo() {
+        let codice = "let a = Quando.leggibile(\n    data,\n    adesso: ora\n)\nlet b = Quando.leggibile(f(x))"
+        #expect(Self.chiamate("Quando.leggibile(", in: codice) == ["Quando.leggibile(\n    data,\n    adesso: ora\n)", "Quando.leggibile(f(x))"])
+    }
+
+    /// Le chiamate che cominciano con `inizio` (che finisce con «(»), intere anche se vanno a capo: fino alla parentesi che chiude
+    /// quella aperta, contando quelle dentro.
+    static func chiamate(_ inizio: String, in codice: String) -> [String] {
+        var trovate: [String] = []
+        var resto = codice[...]
+        while let r = resto.range(of: inizio) {
+            var aperte = 1
+            var i = r.upperBound
+            while i < resto.endIndex, aperte > 0 {
+                if resto[i] == "(" { aperte += 1 } else if resto[i] == ")" { aperte -= 1 }
+                i = resto.index(after: i)
+            }
+            trovate.append(String(resto[r.lowerBound..<i]))
+            resto = resto[i...]
+        }
+        return trovate
     }
 
     /// Un file dell'app (percorso dalla cartella `ios/`), letto come fa `OggiComeLaWebTests`.

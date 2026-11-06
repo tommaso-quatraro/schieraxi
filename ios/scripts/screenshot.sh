@@ -28,7 +28,7 @@ TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recuper
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
-       lega lega-squadre lega-rosa lega-regole lega-regole-fondo lega-stato lega-crediti lega-avvisi lega-diario lega-novita
+       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-crediti lega-avvisi lega-diario lega-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
@@ -80,6 +80,8 @@ scatta() {
   local schermata="$nome" fondo=() cerca=() cosa=()
   case "$nome" in
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
+    # Stato dei dati ha due riquadri lunghi quasi quanto lo schermo: «-fondo» mostra il consiglio di formazione, questa i gol attesi nostri
+    lega-stato-nostri) schermata="lega-stato"; fondo=(-DEMO_FONDO nostri) ;;
   esac
   # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...).
   # Con «-fondo» lo scenario è lo stesso (accesso-account-fondo = scenario «account» con -DEMO_FONDO).
@@ -94,8 +96,6 @@ scatta() {
   # il tema forzato tranne che nella schermata che mostra la scelta del tema (deve restare "Automatico")
   local tema=()
   [ "$nome" != "impostazioni-aspetto" ] && tema=(${TEMA_ARG[@]+"${TEMA_ARG[@]}"})
-  # l'ora nella barra di stato: la demo a giornata in corso vive alle 18:48 («Aggiornato alle 18:48», #424), le altre alle 9:41
-  barra_di_stato "$udid" "$(ora_della_foto "$schermata")"
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
@@ -176,29 +176,13 @@ giro() {
   done
 }
 
-# L'ora della barra di stato di una foto: le 18:48 nelle foto della demo a giornata in corso (il momento in cui vive, l'ora
-# dell'app: LegaDemo.momento e Orologio), le 9:41 nelle altre. Le fotografie dal vero restano alle 9:41.
-ora_della_foto() {
-  if [ "${#ARGOMENTI_SCENARIO[@]}" -eq 0 ]; then
-    case "$1" in
-      oggi-in-corso|formazione-chiusa) echo "18:48"; return ;;
-    esac
-  fi
-  echo "9:41"
-}
-
-# barra_di_stato <udid> <ora>: batteria piena, segnale pieno e l'ora data.
-barra_di_stato() {
-  xcrun simctl status_bar "$1" override --time "$2" --batteryState charged --batteryLevel 100 \
-    --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
-}
-
 avvia_simulatore() {
   local udid="$1"
   xcrun simctl boot "$udid" 2>/dev/null
   xcrun simctl bootstatus "$udid" -b >/dev/null
   avvisi_avvia "$udid"
-  barra_di_stato "$udid" "9:41"
+  xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 \
+    --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
   xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
   xcrun simctl install "$udid" "$APP"
 }
