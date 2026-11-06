@@ -1,6 +1,7 @@
 """Coerenza web-iPhone come dati: `docs/COERENZA-WEB-IPHONE.md` è generato da `docs/coerenza/` (script/coerenza.py)."""
 import importlib.util
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -203,11 +204,12 @@ def test_vocabolario_senza_cosa_da_solo_campo_mancante(copia, capsys):
     assert "ripetut" not in fuori
 
 
-def test_riga_52_ha_ancora_da_fare_la_modifica_a_mano():
+def test_ogni_differenza_aperta_cita_la_sua_issue():
+    """Una riga «da-fare» o «da-decidere» dice chi la segue: un'issue o una PR (#N). Regola generale, non legata a una riga."""
     dati = coerenza.carica(RADICE)
-    riga = next(r for _, r in dati["schermate"] if r["id"] == 52)
-    assert "#463" in riga["chi"]
-    assert riga["stato"] == "da-fare"
+    aperte = [r for _, r in dati["schermate"] if r["stato"] in ("da-fare", "da-decidere")]
+    senza = [r["id"] for r in aperte if not re.search(r"#\d+", r["chi"])]
+    assert not senza, f"righe aperte senza issue: {senza}"
 
 
 def test_la_nota_spiega_come_scegliere_l_id():
