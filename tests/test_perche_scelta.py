@@ -137,6 +137,8 @@ def test_le_percentuali_sono_quelle_di_gioca_n():
     """#452: la web scrive «gioca 35%» per 0,345 (Math.round); le righe del perché dicono lo stesso numero."""
     tit, riserva = G(1, p=0.345), G(2, p=0.92)
     assert "(gioca 35%)" in perche_scelta.motivo(tit, riserva, 60.5, 60.0, riserva=riserva)
+    # la web parte da `p_voto` arrotondato a 3 decimali (la scheda): 0,3447 → 0,345 → «gioca 35%»
+    assert "(gioca 35%)" in perche_scelta.motivo(G(1, p=0.3447), riserva, 60.5, 60.0, riserva=riserva)
     assert perche_scelta.motivo(G(1, p=0.9), G(2, p=0.125), 60.0, 60.3) == (
         "Titolare al posto di Giocatore 2, che quasi certamente non gioca (13% di giocare).")
     assert perche_scelta.motivo(G(1, p=0.905), G(2, p=0.8), 60.0, 60.02) == "A pari punti gioca più sicuro di Giocatore 2 (91% contro 80%)."

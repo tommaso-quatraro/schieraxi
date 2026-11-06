@@ -132,10 +132,12 @@ def test_i_tuoi_migliori_in_ordine_di_fantavoto_atteso():
     assert gestione.migliori_della_giornata([]) == []
 
 
-def test_confronto_le_percentuali_tornano_con_gioca_n(monkeypatch):
-    """#452: accanto al giocatore la web scrive «gioca 85%» (Math.round di 0,845); la frase del Confronto deve dire 15%, non 16%."""
+@pytest.mark.parametrize("p, gioca, non_gioca", [(0.845, 85, 15), (0.3447, 35, 65)])
+def test_confronto_le_percentuali_tornano_con_gioca_n(monkeypatch, p, gioca, non_gioca):
+    """#452: accanto al giocatore la web scrive «gioca 85%» (Math.round di 0,845); la frase del Confronto deve dire 15%, non 16%.
+    La web parte da `p_voto` arrotondato a 3 decimali (scheda): 0,3447 → 0,345 → «gioca 35%», quindi 65%, non 66%."""
     from fanta import consigli
-    righe = [("A1", "A", 0.845, 7.0), ("A2", "A", 0.8, 6.5), ("P1", "P", 0.9, 6.0)] + [(f"D{i}", "D", 0.9, 6.0) for i in range(4)] \
+    righe = [("A1", "A", p, 7.0), ("A2", "A", 0.8, 6.5), ("P1", "P", 0.9, 6.0)] + [(f"D{i}", "D", 0.9, 6.0) for i in range(4)] \
         + [(f"C{i}", "C", 0.9, 6.0) for i in range(3)] + [("A3", "A", 0.9, 6.8), ("A4", "A", 0.5, 6.6)]
     prev = pd.DataFrame([{"nome": n, "ruolo": r, "p_voto": p, "mu": mu, "mu_voto": mu - 0.2} for n, r, p, mu in righe])
     prev.index = range(1, len(righe) + 1)
@@ -145,9 +147,9 @@ def test_confronto_le_percentuali_tornano_con_gioca_n(monkeypatch):
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: f)
     regole = Regole(moduli=["4-3-3"], rosa={"P": 1, "D": 4, "C": 3, "A": 4})
     r = consigli._in_formazione(None, regole, object(), None, None, "4-3-3", 1, 2, prev)
-    assert "Se A1 non prende voto (15% di probabilità)" in r["testo"]
-    s = {"differenza": 1.0, "fattori": [{"chiave": "giocare", "a": 0.845, "b": 0.125, "effetto": 1.0}]}
-    assert "gioca di più (85% contro 13%" in consigli._frase_perche("A1", "A4", s, 1.0)
+    assert f"Se A1 non prende voto ({non_gioca}% di probabilità)" in r["testo"]
+    s = {"differenza": 1.0, "fattori": [{"chiave": "giocare", "a": p, "b": 0.125, "effetto": 1.0}]}
+    assert f"gioca di più ({gioca}% contro 13%" in consigli._frase_perche("A1", "A4", s, 1.0)
 
 
 def _prev_433():
