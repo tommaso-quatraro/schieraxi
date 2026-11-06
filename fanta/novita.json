@@ -1,5 +1,22 @@
 [
   {
+    "versione": "1.432",
+    "data": "2026-11-06T11:24:14",
+    "titolo": "Altro in ordine",
+    "voci": [
+      "Scambi, Diario, Regole e le altre pagine di Altro hanno lo stesso aspetto ordinato delle altre schermate.",
+      "Nel Diario i punti fatti e quelli attesi stanno in colonna, e «Ho schierato la consigliata» sta accanto a «Ho schierato un'altra formazione».",
+      "Su schermi larghi le Regole mostrano il regolamento da incollare accanto ai valori che cambia, e i crediti delle squadre stanno su due colonne."
+    ],
+    "tecnico": [
+      "Grafica B della web, PR 11 del piano docs/superpowers/plans/2026-11-05-grafica-web-b.md (compito 11.1), parte di #354.",
+      "badgeRuolo scrive la lettera grigia .ruolo-l (via i quadratini .ruolo.P/D/C/A); cartaScambio(s, extra, azione) con il secondo pulsante nella riga di «Copia bozza».",
+      "Diario: righePunti in .diario-punti (griglia 1fr | 4.2em | 7.5em), azioni in .azioni-diario, un solo .bottone pieno (primaDaSalvare); comportamento e corpi delle richieste invariati.",
+      "Regole: .regole-colonne (testa | sezioni, 5:7 da 1100 px, 720 px al massimo sotto), evidenziata con --superficie e la linea --azione; Crediti in .crediti-righe; Novità in .novita-pagina (70ch).",
+      "Contrasto elevato: contorno Highlight su misura e moduli scelti e sulla regola evidenziata. Nessuna rotta né testo cambiato."
+    ]
+  },
+  {
     "versione": "1.431",
     "data": "2026-11-06T10:17:38",
     "titolo": "Squadra più veloce",
