@@ -256,13 +256,13 @@ private struct OggiWeb {
 
     /// Dove la web scrive una sezione: il segno che la riconosce nel codice di `mostraOggi`. Nil per le sezioni solo dell'iPhone
     /// (il benvenuto della web è un'altra funzione, `mostraOggiSenzaRose`; la frase senza giornata e il suggerimento non ci sono).
-    /// Le tre schede della giornata in corso dell'iPhone sono, sulla web, la sola `cardInCorso`.
+    /// La carta della giornata in corso è, sui due lati, una sola (`cardInCorso`, #436).
     static func segno(_ sezione: SezioneOggi) -> String? {
         switch sezione {
         case .benvenuto, .senzaGiornata, .suggerimento: return nil
         case .conto: return "class=\"conto-oggi"
         case .riepilogo: return "cardRiepilogo("
-        case .inCorso, .chiGioca, .cambiPanchina: return "cardInCorso("
+        case .inCorso: return "cardInCorso("
         case .formazione: return "class=\"formazione-oggi\""
         case .rinvio: return "cardRinvio("
         case .daFare: return "cardDaFare("

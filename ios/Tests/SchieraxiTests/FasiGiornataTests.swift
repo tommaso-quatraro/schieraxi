@@ -108,7 +108,7 @@ final class FasiGiornataTests: XCTestCase {
         XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "attesa_voti")), "Voto in arrivo")
         XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "rinviata")), "Rinviata")
         XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "senza_voto")), "Senza voto")
-        XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "qualcosa")), "—")
+        XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "qualcosa")), "Da giocare", "come la web: uno stato sconosciuto vale «Da giocare»")
 
         let certo = CambioPanchina(esce: PersonaCambio(id: 1, nome: "Bastrani"), entra: PersonaCambio(id: 2, nome: "Dimarzi"), certa: true, motivo: "senza_voto")
         XCTAssertEqual(TestiFase.cambio(certo), "Bastrani → Dimarzi")

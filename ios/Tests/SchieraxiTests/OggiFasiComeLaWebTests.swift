@@ -136,4 +136,94 @@ struct OggiFasiComeLaWebTests {
         #expect(TestiFase.prossima(ProssimaGiornata(giornata: 12, giornataLega: 9, preparaDa: "2026-11-11 14:30"), adesso: adesso) == nessuna,
                 "senza scadenza la web non scrive la riga")
     }
+
+    // MARK: parole fisse
+
+    @Test("Titoli e frasi fisse della giornata in corso, già iniziata e finita, di Da fare e delle partite: quelle di testi.js", arguments: [
+        ("oggi.punti_finora", TestiFase.puntiFinora),
+        ("oggi.a_fine_giornata", TestiFase.aFineGiornata),
+        ("oggi.dalla_panchina", TestiFase.dallaPanchina),
+        ("oggi.cambi_panchina", TestiFase.cambiPanchina),
+        ("oggi.tutti_giocato", TestiFase.tuttiGiocato),
+        ("oggi.nessun_sostituto", TestiFase.nessunSostituto),
+        ("oggi.gia_iniziata", TestiFase.giaIniziata),
+        ("oggi.gia_iniziata_testo", TestiFase.giaIniziataTesto),
+        ("oggi.prepara_prossima", TestiFase.preparaProssima),
+        ("oggi.la_tua_formazione", TestiFase.formazioneDi(RiepilogoGiornata(formazioneDi: "tua"))),
+        ("oggi.la_consigliata", TestiFase.formazioneDi(RiepilogoGiornata(formazioneDi: "consigliata"))),
+        ("oggi.punti_fatti", TestiFase.puntiFatti),
+        ("oggi.punti_attesi", TestiFase.puntiAttesi),
+        ("oggi.apri_diario", TestiFase.apriDiario),
+        ("df.da_fare", TestiOggi.daFare),
+        ("df.urgente", TestiOggi.urgente),
+        ("df.tutto_posto_mister", TestiOggi.tuttoAPosto),
+        ("df.non_niente_sbrigare", TestiOggi.nienteDaFare),
+        ("live.aggiornamento", TestiOggi.inAggiornamento),
+        ("live.sospesa", TestiOggi.sospesa),
+    ])
+    func paroleComeLaWeb(chiave: String, iPhone: String) throws {
+        let web = try TestiWeb().italiano(chiave)
+        #expect(iPhone == web)
+    }
+
+    @Test("«attesi prima: 65,5» e «≈ 77,7» come la web")
+    func cifreInCorso() throws {
+        let web = try TestiWeb().italiano("oggi.attesi_prima").replacingOccurrences(of: "{n}", with: "65,5")
+        #expect(TestiFase.attesiPrima(65.5) == web)
+        #expect(TestiFase.previsti(77.7) == "≈ 77,7")
+    }
+
+    @Test("Plurali come la web: «Un'altra cosa da fare», «Altre 3 cose da fare», «1 tuo titolare», «2 tuoi titolari»", arguments: [1, 2, 3])
+    func plurali(n: Int) throws {
+        let altre = try Self.plurale("df.altre", n)
+        #expect(TestiOggi.altreCose(n) == altre)
+        let titolari = try Self.plurale("oggi.n_titolari", n)
+        #expect(TestiOggi.tuoiTitolari(n) == titolari)
+    }
+
+    // MARK: entrato a giornata iniziata
+
+    static let prossimaJSON = #""prossima": {"giornata": 12, "giornata_lega": 9, "scadenza": "2026-11-14 14:30", "prepara_da": "2026-11-11 14:30", "con_probabili": false}"#
+
+    @Test("`senza_formazione` con la fase in corso: la carta «Questa giornata è già iniziata» con la prossima giornata")
+    func senzaFormazione() throws {
+        let json = #"{"giornata": 11, "giornata_lega": 8, "fase": "in_corso", "iniziata": true, "senza_formazione": true, "in_corso": null, "# + Self.prossimaJSON + "}"
+        let oggi: Oggi = try Decodifica.decodifica(Data(json.utf8))
+        #expect(oggi.senzaFormazioneInCorso)
+        #expect(oggi.giornataInCorso == nil)
+        let p = try #require(oggi.prossimaGiornata, "la prossima giornata serve alla riga «… la formazione si chiude …»")
+        #expect(p.giornataLega == 9)
+        let adesso = try #require(Quando.data("2026-11-09 10:00"))
+        #expect(TestiFase.prossima(p, adesso: adesso)?.hasPrefix("Giornata 9 · 12ª di Serie A: la formazione si chiude") == true)
+    }
+
+    @Test("Server vecchio, valore strano o fase sbagliata: niente carta «già iniziata» e Oggi si legge lo stesso", arguments: [
+        #"{"giornata": 11, "fase": "in_corso", "in_corso": null, "# + OggiFasiComeLaWebTests.prossimaJSON + "}",
+        #"{"giornata": 11, "fase": "in_corso", "senza_formazione": "sì", "in_corso": null, "# + OggiFasiComeLaWebTests.prossimaJSON + "}",
+        #"{"giornata": 11, "fase": "in_corso", "senza_formazione": false, "in_corso": null}"#,
+        #"{"giornata": 11, "fase": "prima", "senza_formazione": true, "# + OggiFasiComeLaWebTests.prossimaJSON + "}",
+    ])
+    func senzaFormazioneTollerante(json: String) throws {
+        let oggi: Oggi = try Decodifica.decodifica(Data(json.utf8))
+        #expect(oggi.giornata == 11)
+        #expect(!oggi.senzaFormazioneInCorso)
+        #expect(oggi.prossimaGiornata == nil, "la prossima conta solo a giornata finita o per chi è entrato a giornata iniziata")
+    }
+
+    // MARK: partite del turno
+
+    @Test("Partita sospesa: «Sospesa» senza «LIVE», come la web")
+    func sospesa() {
+        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "sospesa", golCasa: 1, golTrasferta: 0)) == .sospesa)
+    }
+
+    @Test("In diretta: LIVE con il minuto; uno stato nuovo con il punteggio e senza minuto dice «In aggiornamento», come la web")
+    func inDiretta() {
+        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "primo_tempo", minuto: "12'")) == .inGioco(minuto: "12'"))
+        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "secondo_tempo")) == .inGioco(minuto: nil))
+        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "supplementari", golCasa: 2, golTrasferta: 2))
+                == .inGioco(minuto: TestiOggi.inAggiornamento))
+        #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "da_giocare")) == nil)
+        #expect(RigaPartitaView.diretta(nil) == nil)
+    }
 }

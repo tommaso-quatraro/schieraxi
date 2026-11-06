@@ -466,6 +466,9 @@ struct Oggi: Decodable {
     let prossima: Tollerante<ProssimaGiornata>?
     /// Partite rinviate della giornata e cosa vale per i loro giocatori (`null` se non ce ne sono). Facoltativo (server vecchio).
     let rinvio: Tollerante<SceltaRinvio>?
+    /// `true` per chi è entrato a giornata iniziata senza una formazione per lei (con la fase `in_corso`; c'è solo se vale `true`).
+    /// Facoltativo e tollerante: un server vecchio non lo manda, un valore strano vale «no».
+    let senzaFormazione: Tollerante<Bool>?
 }
 
 /// Quando sono state lette le probabili formazioni (campo `probabili` di Oggi). Ogni campo è facoltativo.

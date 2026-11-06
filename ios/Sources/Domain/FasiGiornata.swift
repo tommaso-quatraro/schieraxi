@@ -17,50 +17,40 @@ extension Oggi {
     /// «Da controllare», migliori, indisponibili e diffidati: solo finché la formazione si può cambiare.
     var conConsigli: Bool { faseGiornata == .prima }
 
+    /// Entrato in SchieraXI a giornata già iniziata, senza una formazione per lei (`senza_formazione` del server, solo nella fase
+    /// `in_corso`): come la web, «Questa giornata è già iniziata» e la prossima da preparare. Un server vecchio non lo manda.
+    var senzaFormazioneInCorso: Bool { faseGiornata == .inCorso && senzaFormazione?.valore == true }
+
     /// Il blocco della giornata in corso (solo nella sua fase).
     var giornataInCorso: GiornataInCorso? { faseGiornata == .inCorso ? inCorso?.valore : nil }
     /// Il riepilogo della giornata finita (solo nella sua fase).
     var riepilogoGiornata: RiepilogoGiornata? { faseGiornata == .finita ? riepilogo?.valore : nil }
-    /// La prossima giornata da preparare (solo nella fase `finita`).
-    var prossimaGiornata: ProssimaGiornata? { faseGiornata == .finita ? prossima?.valore : nil }
-
-    /// Quante partite in ogni stato: dal blocco `in_corso` se c'è, altrimenti dagli stati delle partite del turno. Nil se non si sa.
-    var contoPartite: ContoPartite? {
-        if let c = giornataInCorso?.partite, c.totale > 0 { return c }
-        let stati = (partite ?? []).compactMap(\.stato)
-        guard !stati.isEmpty else { return nil }
-        func quante(_ s: String) -> Int { stati.filter { $0 == s }.count }
-        let c = ContoPartite(inCorso: quante("in_corso"), finite: quante("finita"), daGiocare: quante("da_giocare"), rinviate: quante("rinviata"))
-        return c.totale > 0 ? c : nil
-    }
+    /// La prossima giornata da preparare: nella fase `finita` e per chi è entrato a giornata iniziata (`senza_formazione`).
+    var prossimaGiornata: ProssimaGiornata? { faseGiornata == .finita || senzaFormazioneInCorso ? prossima?.valore : nil }
 }
 
-/// I testi delle fasi della giornata, in un posto solo (e provati in `FasiGiornataTests`).
+/// I testi delle fasi della giornata, con le parole della web (`cardInCorso`, `valoreLive`, `cardSenzaFormazione` e `cardRiepilogo`
+/// di `fanta/web/app.js`, chiavi `oggi.*` di `fanta/web/testi.js`, #436). La prova è `OggiFasiComeLaWebTests`, che li confronta con
+/// `testi.js`: una parola cambiata su un lato solo fa fallire il test.
 enum TestiFase {
-    /// «1 punto», «2,5 punti» (sempre positivo: il segno lo dice la frase).
-    static func punti(_ valore: Double) -> String {
-        let t = Formato.punti(abs(valore))
-        return t == "1,0" ? "1 punto" : "\(t) punti"
-    }
-
-    // MARK: partite
-
-    /// «2 in corso · 3 finite · 5 da giocare» (le voci a zero non si scrivono). Nil se non c'è nessuna partita.
-    static func partite(_ c: ContoPartite) -> String? {
-        var voci: [String] = []
-        if c.inCorso > 0 { voci.append("\(c.inCorso) in corso") }
-        if c.finite > 0 { voci.append("\(c.finite) \(c.finite == 1 ? "finita" : "finite")") }
-        if c.daGiocare > 0 { voci.append("\(c.daGiocare) da giocare") }
-        if c.rinviate > 0 { voci.append("\(c.rinviate) \(c.rinviate == 1 ? "rinviata" : "rinviate")") }
-        return voci.isEmpty ? nil : voci.joined(separator: " · ")
-    }
-
-    /// La stessa cosa per VoiceOver, in una frase: «Partite: 2 in corso, 3 finite, 5 da giocare».
-    static func partiteVoce(_ c: ContoPartite) -> String? {
-        partite(c).map { "Partite: " + $0.replacingOccurrences(of: " · ", with: ", ") }
-    }
-
     // MARK: giornata in corso
+
+    /// `oggi.punti_finora`
+    static let puntiFinora = "Punti fatti finora"
+    /// `oggi.a_fine_giornata`
+    static let aFineGiornata = "A fine giornata"
+    /// «≈ 77,7», come la web: i punti previsti a fine giornata sono una stima.
+    static func previsti(_ punti: Double?) -> String { "≈ \(Formato.punti(punti))" }
+    /// `oggi.attesi_prima`: «attesi prima: 65,5».
+    static func attesiPrima(_ punti: Double) -> String { "attesi prima: \(Formato.punti(punti))" }
+    /// `oggi.dalla_panchina`, sotto chi va a punteggio entrando dalla panchina.
+    static let dallaPanchina = "entrato dalla panchina"
+    /// `oggi.cambi_panchina`
+    static let cambiPanchina = "Cambi dalla panchina"
+    /// `oggi.tutti_giocato`
+    static let tuttiGiocato = "Hanno giocato tutti: mancano solo i voti ufficiali."
+    /// `oggi.nessun_sostituto`
+    static let nessunSostituto = "nessun sostituto"
 
     /// Il fantavoto: una cifra decimale, due se servono (6,25).
     static func fantavoto(_ v: Double) -> String {
@@ -68,17 +58,19 @@ enum TestiFase {
         return Formato.decimali(v, cifre: abs(decimi - decimi.rounded()) < 0.001 ? 1 : 2)
     }
 
-    /// Cosa scrivere a destra del giocatore: il fantavoto, oppure lo stato con le parole della web app (docs/COERENZA-WEB-IPHONE.md):
-    /// Senza voto · Voto in arrivo · Partita in corso · Rinviata · Da giocare.
-    static func valore(_ g: GiocatoreInCorso) -> String {
+    /// Cosa scrivere a destra del giocatore, come `valoreLive` della web: il fantavoto; per chi deve ancora giocare la data della
+    /// partita («sab 8 18:00», come le partite del turno); altrimenti lo stato con le parole della web (`oggi.st_*`).
+    static func valore(_ g: GiocatoreInCorso, adesso: Date = Orologio.adesso()) -> String {
         switch g.stato {
-        case "fatto": return g.fantavoto.map(fantavoto) ?? "—"
+        case "fatto": return g.fantavoto.map(fantavoto) ?? Formato.punti(nil)
+        case "da_giocare":
+            if let d = Quando.data(g.data) { return Quando.relativa(d, adesso: adesso) }
+            return "Da giocare"
         case "senza_voto": return "Senza voto"
         case "attesa_voti": return "Voto in arrivo"
         case "in_corso": return "Partita in corso"
         case "rinviata": return "Rinviata"
-        case "da_giocare": return "Da giocare"
-        default: return "—"
+        default: return "Da giocare"           // come la web: uno stato sconosciuto vale «Da giocare»
         }
     }
 
@@ -90,52 +82,48 @@ enum TestiFase {
         case "attesa_voti": return "voto in arrivo"
         case "in_corso": return "partita in corso"
         case "rinviata": return "rinviata"
-        case "da_giocare":
+        default:
             if let d = Quando.data(g.data) { return "gioca \(Quando.giorno(d)) alle \(Quando.ora(d))" }
             return "deve ancora giocare"
-        default: return "stato non disponibile"
         }
     }
 
-    /// «Mancano i voti di 4 giocatori»; nil se il numero non c'è.
+    /// Sotto le cifre, come la web: «2 giocatori devono ancora giocare» (`oggi.ancora_da_giocare`) o, a zero, «Hanno giocato
+    /// tutti: mancano solo i voti ufficiali.» (`oggi.tutti_giocato`). `ancora_da_giocare` del server conta chi va a punteggio e
+    /// deve ancora giocare o sta giocando (`docs/API.md`): non i voti che mancano. Nil se il numero non c'è (server vecchio).
     static func ancora(_ n: Int?) -> String? {
         guard let n, n >= 0 else { return nil }
         switch n {
-        case 0: return "Hanno tutti il voto."
-        case 1: return "Manca il voto di 1 giocatore."
-        default: return "Mancano i voti di \(n) giocatori."
+        case 0: return tuttiGiocato
+        case 1: return "1 giocatore deve ancora giocare"
+        default: return "\(n) giocatori devono ancora giocare"
         }
     }
 
-    /// Di chi è la formazione che conta.
-    static func formazioneDi(_ di: String?) -> String {
-        di == "tua" ? "Con la tua formazione" : "Con la formazione consigliata: non avevi salvato una tua scelta"
+    /// Un cambio dalla panchina come la web: «Rossi → Bianchi» o «Rossi → nessun sostituto». Nil senza chi esce (la web lo salta).
+    static func cambio(_ c: CambioPanchina) -> String? {
+        guard let esce = c.esce else { return nil }
+        return "\(esce.nome) → \(c.entra?.nome ?? nessunSostituto)"
     }
 
-    /// «Modificatore della difesa: +1,0, già contato»; nil se non c'è.
-    static func modificatore(_ m: Double?) -> String? {
-        guard let m, m.isFinite else { return nil }
-        return "Modificatore della difesa: \(Formato.conSegno(m)), già contato"
+    /// Lo stesso cambio per VoiceOver, che la freccia non la legge bene: «Esce Rossi, entra Bianchi, già fatto».
+    static func cambioVoce(_ c: CambioPanchina) -> String? {
+        guard let esce = c.esce else { return nil }
+        let entra = c.entra.map { "entra \($0.nome)" } ?? nessunSostituto
+        return "Esce \(esce.nome), \(entra), \(etichettaCambio(c))"
     }
 
-    /// Perché scatta un cambio, in parole semplici.
-    static func motivo(_ m: String?) -> String? {
-        switch m {
-        case "senza_voto": return "Senza voto"
-        case "fuori": return "Infortunato o squalificato"
-        case "rinviata": return "Rinviata"
-        default: return nil
-        }
-    }
+    /// `oggi.cambio_fatto` o `oggi.cambio_probabile`.
+    static func etichettaCambio(_ c: CambioPanchina) -> String { c.certa ? "già fatto" : "probabile" }
 
-    /// «Esce Marténi, entra Lemão» o «Esce Marténi: nessun sostituto in panchina».
-    static func cambio(_ c: CambioPanchina) -> String {
-        let esce = c.esce?.nome ?? "un titolare"
-        guard let entra = c.entra?.nome, !entra.isEmpty else { return "Esce \(esce): nessun sostituto in panchina" }
-        return "Esce \(esce), entra \(entra)"
-    }
+    // MARK: entrato a giornata iniziata (`senza_formazione`)
 
-    static func etichettaCambio(_ c: CambioPanchina) -> String { c.certa ? "Già fatto" : "Probabile" }
+    /// `oggi.gia_iniziata`
+    static let giaIniziata = "Questa giornata è già iniziata"
+    /// `oggi.gia_iniziata_testo`
+    static let giaIniziataTesto = "Sei arrivato a partite cominciate: questa la guardi e basta. Prepara la prossima."
+    /// `oggi.prepara_prossima`
+    static let preparaProssima = "Prepara la prossima"
 
     // MARK: giornata finita
 
@@ -150,49 +138,40 @@ enum TestiFase {
         serieA.map { NomeGiornata(serieA: $0, lega: lega) }.map { "\(voce ? $0.voce : $0.intero): finita" }
     }
 
-    /// «3,5 punti più del previsto», «2,0 punti meno del previsto», «Proprio come previsto».
-    static func scarto(fatti: Double?, attesi: Double?) -> String? {
-        guard let fatti, let attesi, fatti.isFinite, attesi.isFinite else { return nil }
-        let d = fatti - attesi
-        if abs(d) < 0.05 { return "Proprio come previsto" }
-        return "\(punti(d)) \(d > 0 ? "più" : "meno") del previsto"
-    }
+    /// Sopra i punti fatti: di chi è la formazione che ha contato (`oggi.la_tua_formazione` o `oggi.la_consigliata`).
+    static func formazioneDi(_ r: RiepilogoGiornata) -> String { r.formazioneDi == "tua" ? "La tua formazione" : "La consigliata" }
+    /// `oggi.punti_fatti`
+    static let puntiFatti = "punti fatti"
+    /// `oggi.punti_attesi`
+    static let puntiAttesi = "punti attesi"
+    /// `oggi.apri_diario`
+    static let apriDiario = "Apri il Diario"
 
-    /// «Dentro la fascia prevista (tra 63 e 80)» o «Fuori dalla fascia prevista (...)»; nil senza fascia.
-    static func fascia(_ r: RiepilogoGiornata) -> String? {
-        guard let i = r.intervallo, i.valido, let basso = i.basso, let alto = i.alto, let fatti = r.puntiFatti else { return nil }
-        let dentro = basso <= fatti && fatti <= alto
-        return "\(dentro ? "Dentro la" : "Fuori dalla") fascia prevista (tra \(Formato.intero(basso)) e \(Formato.intero(alto)))"
-    }
-
-    /// Il confronto con la consigliata: solo se hai schierato una formazione tua e il Diario ha i punti della consigliata.
+    /// Come la web (`oggi.con_consigliata`): «Con la consigliata: 72,0 punti (66,1 attesi).», solo se hai schierato una formazione
+    /// tua e il server manda i punti della consigliata. Un numero che manca si scrive «–», come la web.
     static func confronto(_ r: RiepilogoGiornata) -> String? {
-        guard r.formazioneDi == "tua", let mia = r.puntiFatti, let cons = r.consigliata?.puntiFatti, mia.isFinite, cons.isFinite else { return nil }
-        let d = cons - mia
-        let base = "Con la consigliata avresti fatto \(Formato.punti(cons)) punti"
-        if abs(d) < 0.05 { return base + ": gli stessi." }
-        return d > 0 ? base + ": \(punti(d)) in più." : base + ": hai fatto meglio tu di \(punti(d))."
+        guard r.formazioneDi == "tua", let c = r.consigliata else { return nil }
+        return "Con la consigliata: \(Formato.punti(c.puntiFatti)) punti (\(Formato.punti(c.puntiAttesi)) attesi)."
     }
 
-    /// Detto quando il Diario non ha ancora calcolato la giornata.
+    /// `oggi.confronto_in_arrivo`, quando il Diario non ha ancora calcolato la giornata.
     static func notaDiario(_ r: RiepilogoGiornata) -> String? {
-        r.nelDiario ? nil : "Il confronto con la formazione consigliata arriva nel Diario quando la giornata è calcolata."
+        r.nelDiario ? nil : "Il confronto con la consigliata arriva nel Diario."
     }
 
     // MARK: prossima giornata
 
-    /// Da quando preparare la prossima formazione.
-    static func prossima(_ p: ProssimaGiornata, adesso: Date = Orologio.adesso()) -> String {
-        if p.conProbabili { return "Le probabili formazioni ci sono già: puoi preparare la formazione." }
-        if let da = Quando.data(p.preparaDa), da > adesso.addingTimeInterval(60) {
-            return "Prepara la formazione da \(Quando.giorno(da)) alle \(Quando.ora(da)): di solito le probabili escono allora."
-        }
-        return "Puoi già preparare la formazione."
-    }
-
-    /// «Si chiude sab 8 nov, 14:30»; nil senza scadenza.
-    static func scadenza(_ p: ProssimaGiornata) -> String? {
-        guard Quando.data(p.scadenza) != nil else { return nil }
-        return "Si chiude \(Quando.leggibile(p.scadenza))"
+    /// La riga della prossima giornata, come la web (`oggi.prossima_chiude` e poi `oggi.prossima_pronta` o `oggi.prossima_da`):
+    /// «Giornata 9 · 12ª di Serie A: la formazione si chiude sab 14 14:30. Puoi già prepararla.» Nil senza scadenza (la web non
+    /// scrive la riga). Si può già preparare se le probabili ci sono o se `prepara_da` manca o è passato.
+    static func prossima(_ p: ProssimaGiornata, adesso: Date = Orologio.adesso()) -> String? {
+        guard let scadenza = Quando.data(p.scadenza) else { return nil }
+        let chiude = "la formazione si chiude \(Quando.relativa(scadenza, adesso: adesso))."
+        let nome = p.giornata.map { NomeGiornata(serieA: $0, lega: p.giornataLega).intero } ?? p.giornataLega.map { "Giornata \($0)" }
+        let testa = nome.map { "\($0): \(chiude)" } ?? chiude.primaMaiuscola
+        let da = Quando.data(p.preparaDa)
+        let gia = p.conProbabili || da.map { $0 <= adesso } ?? true
+        guard !gia, let da else { return "\(testa) Puoi già prepararla." }
+        return "\(testa) Conviene prepararla da \(Quando.relativa(da, adesso: adesso)), quando escono le probabili formazioni."
     }
 }
