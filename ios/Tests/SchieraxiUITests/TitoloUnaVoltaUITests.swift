@@ -3,8 +3,10 @@ import XCTest
 /// Issue #419: VoiceOver legge il titolo di una pagina una volta sola, con ogni dimensione del testo. Con il testo normale lo
 /// legge nella barra (`TitoloInBarra`, #340); con il testo grande nella pagina (`TitoloNellaPagina`, intestazione), e la barra
 /// è nascosta a VoiceOver anche quando mostra il titolo perché ci sta (se no un titolo corto si sentirebbe due volte).
-/// Si contano i testi che vede XCUITest, cioè gli elementi che VoiceOver può leggere: un elemento nascosto a VoiceOver qui
-/// non c'è. Questo controlla la barra vera, che i test unitari non possono disegnare.
+/// Si contano i testi accessibili che si vedono sullo schermo (`isHittable`): XCUITest elenca anche il titolo di sistema
+/// della barra (`navigationTitle`, che resta per il pulsante «indietro»), nascosto sotto il titolo della pagina e invisibile.
+/// Ogni messaggio d'errore descrive tutti i testi trovati (posizione, misura, visibile o no), su una riga sola.
+/// Questo controlla la barra vera, che i test unitari non possono disegnare.
 final class TitoloUnaVoltaUITests: XCTestCase {
     /// Il nome della squadra che apre `-DEMO_SCHERMATA lega-rosa` (inventato, 32 lettere: con il testo grande non ci sta nella barra).
     private static let squadra = "Gli Amici del Bar Sport Centrale"
@@ -12,7 +14,7 @@ final class TitoloUnaVoltaUITests: XCTestCase {
     private static let testoMassimo = "UICTContentSizeCategoryAccessibilityXXXL"
 
     override func setUpWithError() throws {
-        continueAfterFailure = false
+        continueAfterFailure = true
     }
 
     /// Apre la demo su `schermata`, con il testo `testo` (nil = quello normale).
@@ -24,37 +26,56 @@ final class TitoloUnaVoltaUITests: XCTestCase {
         return app
     }
 
-    /// I testi con esattamente questa etichetta in tutta l'app.
-    private func testi(_ etichetta: String, _ app: XCUIApplication) -> XCUIElementQuery {
-        app.staticTexts.matching(NSPredicate(format: "label == %@", etichetta))
+    /// I testi con esattamente questa etichetta, in tutta l'app o solo nelle barre in alto.
+    private func testi(_ etichetta: String, in radice: XCUIElementQuery) -> [XCUIElement] {
+        radice.descendants(matching: .staticText).matching(NSPredicate(format: "label == %@", etichetta)).allElementsBoundByIndex
     }
 
-    /// I testi con esattamente questa etichetta nelle barre in alto.
-    private func testiNellaBarra(_ etichetta: String, _ app: XCUIApplication) -> XCUIElementQuery {
-        app.navigationBars.descendants(matching: .staticText).matching(NSPredicate(format: "label == %@", etichetta))
+    /// Quelli che si vedono sullo schermo.
+    private func visibili(_ elementi: [XCUIElement]) -> Int {
+        elementi.filter { $0.isHittable }.count
+    }
+
+    /// Tutti i testi con quell'etichetta, su una riga: dove stanno, quanto sono grandi, se si vedono.
+    private func descrivi(_ etichetta: String, _ app: XCUIApplication) -> String {
+        let barra = testi(etichetta, in: app.navigationBars).map { "barra " + riga($0) }
+        let tutti = testi(etichetta, in: app.windows).map { "app " + riga($0) }
+        return (barra + tutti).joined(separator: " | ")
+    }
+
+    private func riga(_ e: XCUIElement) -> String {
+        let f = e.frame
+        return "x \(Int(f.minX)) y \(Int(f.minY)) \(Int(f.width))×\(Int(f.height)) visibile \(e.isHittable)"
     }
 
     func testTestoNormaleIlNomeSiLeggeNellaBarraUnaVolta() {
         let app = avvia("lega-rosa", testo: nil)
-        XCTAssertTrue(testiNellaBarra(Self.squadra, app).firstMatch.waitForExistence(timeout: 30),
-                      "testo normale: il nome intero nella barra (#340)")
-        XCTAssertEqual(testi(Self.squadra, app).count, 1, "VoiceOver deve leggere il nome una volta sola")
+        let nellaBarra = app.navigationBars.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label == %@", Self.squadra)).firstMatch
+        XCTAssertTrue(nellaBarra.waitForExistence(timeout: 30), "testo normale: il nome intero nella barra (#340)")
+        let dettagli = descrivi(Self.squadra, app)
+        XCTAssertEqual(visibili(testi(Self.squadra, in: app.navigationBars)), 1, "testo normale: il nome si vede nella barra. \(dettagli)")
+        XCTAssertEqual(visibili(testi(Self.squadra, in: app.windows)), 1, "VoiceOver deve leggere il nome una volta sola. \(dettagli)")
     }
 
     func testTestoMassimoIlNomeLungoSiLeggeNellaPaginaUnaVolta() {
         let app = avvia("lega-rosa", testo: Self.testoMassimo)
-        XCTAssertTrue(testi(Self.squadra, app).firstMatch.waitForExistence(timeout: 30), "testo massimo: il nome intero nella pagina")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", Self.squadra)).firstMatch.waitForExistence(timeout: 30),
+                      "testo massimo: il nome intero nella pagina")
         XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10), "la barra in alto deve esserci")
-        XCTAssertEqual(testiNellaBarra(Self.squadra, app).count, 0, "testo massimo: VoiceOver non legge il nome nella barra")
-        XCTAssertEqual(testi(Self.squadra, app).count, 1, "VoiceOver deve leggere il nome una volta sola")
+        let dettagli = descrivi(Self.squadra, app)
+        XCTAssertEqual(visibili(testi(Self.squadra, in: app.navigationBars)), 0, "testo massimo: il nome non c'è nella barra. \(dettagli)")
+        XCTAssertEqual(visibili(testi(Self.squadra, in: app.windows)), 1, "VoiceOver deve leggere il nome una volta sola. \(dettagli)")
     }
 
     /// «Squadre» ci sta nella barra anche con il testo massimo: si vede lì e nella pagina, ma VoiceOver lo legge una volta.
     func testTestoMassimoIlTitoloCortoSiLeggeUnaVoltaSola() {
         let app = avvia("lega-squadre", testo: Self.testoMassimo)
-        XCTAssertTrue(testi("Squadre", app).firstMatch.waitForExistence(timeout: 30), "testo massimo: il titolo nella pagina")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "Squadre")).firstMatch.waitForExistence(timeout: 30),
+                      "testo massimo: il titolo nella pagina")
         XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10), "la barra in alto deve esserci")
-        XCTAssertEqual(testiNellaBarra("Squadre", app).count, 0, "testo massimo: VoiceOver non legge il titolo nella barra")
-        XCTAssertEqual(testi("Squadre", app).count, 1, "VoiceOver deve leggere il titolo una volta sola")
+        let dettagli = descrivi("Squadre", app)
+        XCTAssertEqual(visibili(testi("Squadre", in: app.navigationBars)), 0, "testo massimo: VoiceOver non legge il titolo nella barra. \(dettagli)")
+        XCTAssertEqual(visibili(testi("Squadre", in: app.windows)), 1, "VoiceOver deve leggere il titolo una volta sola. \(dettagli)")
     }
 }
