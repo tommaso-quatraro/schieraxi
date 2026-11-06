@@ -71,6 +71,9 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
   request iOS unite nel frattempo. Ogni difetto visto diventa un'issue `P1` con la foto.
 - Le pull request che cambiano molto l'aspetto possono chiedere una corsa di foto sul loro ramo prima di uscire dalla bozza,
   nella stessa fila. Le altre non restano in bozza ad aspettare le foto.
+- Prove iOS a metà lavoro: `gh workflow run ios.yml --ref <ramo> -f parte=unitari` prova solo i test unitari (circa 10 minuti Mac
+  invece di 21). Non conta come «verde» per la pull request, che riprova tutto. La prova completa si lascia all'ultima corsa prima
+  della pull request (o alla pull request stessa). Quanto costa ogni corsa: `docs/CI-IOS-COSTI.md`.
 
 ## Cosa non fare
 - Codice senza test, correzioni senza causa, «dovrebbe andare».

@@ -175,3 +175,71 @@ def test_il_job_ios_dei_controlli_puo_leggere_gli_artifact():
     ios = _blocco(_testo("test.yml"), "ios", 2)
     assert "actions: read" in ios and "contents: read" in ios
     assert "write" not in ios
+
+
+# --- Issue #264, seconda parte: compila una volta, unitari prima dell'interfaccia, corsa parziale ----------------------------------
+
+def _passi_test() -> list[str]:
+    """I passi del job «test» di ios.yml che cominciano con «name: Compila ed esegui i test», nell'ordine del file."""
+    passi = _job_ios("test").split("      - ")
+    return [p for p in passi if p.startswith("name: Compila ed esegui i test")]
+
+
+def _passo(parte: str) -> str:
+    trovati = [p for p in _passi_test() if parte in p.splitlines()[0]]
+    assert len(trovati) == 1, f"deve esserci un solo passo «{parte}»: {len(trovati)}"
+    return trovati[0]
+
+
+def test_l_interfaccia_gira_solo_se_gli_unitari_sono_verdi():
+    unitari, interfaccia = _passo("unitari"), _passo("interfaccia")
+    assert "-only-testing:SchieraxiTests" in unitari and "-only-testing:SchieraxiUITests" not in unitari
+    assert "-only-testing:SchieraxiUITests" in interfaccia and "-only-testing:SchieraxiTests" not in interfaccia
+    ordine = [p.splitlines()[0] for p in _passi_test()]
+    assert ordine.index(next(o for o in ordine if "unitari" in o)) < ordine.index(next(o for o in ordine if "interfaccia" in o))
+    # nessun passo di test gira dopo un rosso: niente always() né failure() (un passo senza «if» sull'esito salta se uno prima fallisce)
+    for p in _passi_test():
+        cond = re.search(r"^        if:\s*(.+)$", p, re.M)
+        assert not cond or not re.search(r"always\(\)|failure\(\)|cancelled\(\)", cond.group(1)), p.splitlines()[0]
+    assert "continue-on-error" not in _job_ios("test")
+    assert "set -o pipefail" in unitari and "set -o pipefail" in interfaccia          # il rosso di xcodebuild non si perde nel tee
+
+
+def test_con_parte_unitari_niente_interfaccia_e_niente_segno_verde():
+    on = _blocco(_testo("ios.yml"), "on", 0)
+    assert "parte:" in on and "options: [tutti, unitari]" in on and "default: tutti" in on
+    assert re.search(r"^        if:\s*inputs\.parte != 'unitari'\s*$", _passo("interfaccia"), re.M)
+    passi = _job_ios("test").split("      - ")
+    for nome in ("name: Segna lo stesso codice come verde", "name: Carica il segno «verde»"):
+        passo = next(p for p in passi if p.startswith(nome))
+        cond = re.search(r"^        if:\s*(.+)$", passo, re.M).group(1)
+        assert "inputs.parte != 'unitari'" in cond and "needs.gia-verde.outputs.chiave != ''" in cond, nome
+    # nelle PR (workflow_call) l'ingresso non esiste: «!= 'unitari'» è vero e girano entrambi i gruppi di test
+    assert "parte" not in _blocco(_testo("test.yml"), "ios", 2)
+
+
+def test_si_compila_una_volta_sola_poi_si_prova_senza_ricompilare():
+    test = _job_ios("test")
+    assert test.count("xcodebuild build-for-testing") == 1
+    assert test.count("xcodebuild test-without-building") == 2
+    assert not re.search(r"xcodebuild test\b(?!-)", test), "un «xcodebuild test» compilerebbe di nuovo"
+    for p in _passi_test():
+        assert "-derivedDataPath build/DerivedData" in p, p.splitlines()[0]          # tutti e tre usano gli stessi prodotti
+    assert "build-for-testing" in _passo("1 di 3")
+    # il simulatore si accende subito e si aspetta solo prima dei test, mentre si compila
+    sim = next(p for p in test.split("      - ") if p.startswith("name: Scegli il simulatore"))
+    assert "simctl boot " in sim and "simctl bootstatus" not in sim
+    assert "simctl bootstatus" in _passo("unitari")
+
+
+def test_i_lanci_a_mano_non_si_annullano_mai():
+    # cancel-in-progress è ammesso solo se vale per le sole pull request: workflow_dispatch (lanci degli agenti) non si annulla.
+    # ios.yml non ha un gruppo suo: nelle PR eredita quello di test.yml, a mano non ne ha.
+    assert "concurrency" not in _testo("ios.yml")
+    for file in sorted(CARTELLA.glob("*.yml")):
+        if "workflow_dispatch" not in _blocco(file.read_text(encoding="utf-8"), "on", 0):
+            continue          # solo chiamato da un altro workflow (revisione.yml, dalle sole PR): nessun lancio a mano
+        for m in re.finditer(r"cancel-in-progress:\s*(.+)$", file.read_text(encoding="utf-8"), re.M):
+            valore = m.group(1).split(" #")[0].strip()
+            assert valore != "true", f"{file.name}: annullerebbe anche i lanci a mano"
+            assert valore == "false" or "github.event_name == 'pull_request'" in valore, f"{file.name}: {valore}"
