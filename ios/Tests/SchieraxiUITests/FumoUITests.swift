@@ -50,7 +50,8 @@ final class FumoUITests: XCTestCase {
     }
 
     func testOggiMostraLaGiornataELaFormazione() {
-        attendi("La tua formazione · la tua scelta")   // il titolo della web (oggi.tua_formazione_scelta, #416)
+        // il titolo della web (oggi.tua_formazione, #416): la demo mostra la consigliata non salvata, come la Formazione (#418)
+        attendi("La tua formazione")
         attendi("Da controllare")
         attendi("Apri la formazione")
         attendi("punti attesi", contiene: true)

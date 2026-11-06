@@ -72,6 +72,23 @@ Adattate dal «Floor» di Hallmark. Si controllano a mano prima di ogni PR che t
 | Sito, titolo | «La formazione giusta, *giornata dopo giornata*» con la seconda metà a gradiente | stesso titolo, un colore |
 | Sito, pulsante | «Apri la web app →» | «Apri la web app» |
 
+Grafica B della web (5-6/11/2026, `DESIGN.md`, «Web: grafica B»):
+
+| Dove (web) | Prima | Dopo |
+|---|---|---|
+| Fondo | menta in chiaro, verde scurissimo in scuro | bianco e grigio quasi nero; il verde sta nel campo e nelle azioni |
+| Blocchi | una carta con fondo, bordo e angoli tondi per ogni blocco | sezioni: titolo con il filo spesso sotto, righe con il filo sottile |
+| Testata sul PC | pillola verticale a sinistra con 120 px di margine | una testata in alto con le schede come linguette e la ricerca aperta |
+| Barra al telefono | capsula di vetro con la lente che scorre | barra piena con un filo sopra, linea di 3 px sulla voce attiva |
+| Oggi | nome e slogan in testa, maglia grande inclinata con l'ombra | titolo della schermata, maglia piccola e dritta |
+| Riga del giocatore | quadratino colorato del ruolo, anello dell'indice, pallino della difficoltà, barra della probabilità | lettera grigia, numero neutro, «gioca N%» e fantavoto atteso in colonna |
+| Etichette | pillole con fondo e bordo | testo nel colore del tono |
+| Campo | bagliore, ombre sulle pedine, pedina in dubbio che pulsa | fondo pieno, disco bianco con il numero, anello arancio fermo |
+| Toccare una riga | la riga si rimpicciolisce | cambia solo il fondo |
+| Impostazioni | voce aperta tinta di verde | voce aperta con il fondo del passaggio del mouse e la linea a sinistra, come in Squadra e Altro |
+| Accesso | modulo in una carta, titolo in un carattere arrotondato, modulo che sale e si ingrandisce | modulo senza carta con il nome disegnato della testata, compare con la pagina |
+| Primo avvio | passi come pillole, blocchi in riquadri | passi come controllo segmentato, blocchi come righe con il filo |
+
 ## Come si controlla
 - Foto a 390 e 1440 px, chiaro e scuro, delle schermate toccate (prima e dopo, stessi dati).
 - Cerca nel CSS: `text-transform: uppercase`, `letter-spacing: .0[6-9]em|.1`, `box-shadow: 0 0`, `backdrop-filter`,

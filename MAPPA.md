@@ -75,6 +75,13 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
   `impostazioni.js`, `dafare.js`, `primoavvio.js`, `live.js`, `avatar.js`, `testi.js`, `stile.css`, `sw.js`, icone.
   Dopo una modifica il job `rilascia` alza `VERSIONE` in `fanta/web/sw.js`.
+  Grafica B «Distinta» (in vigore dal 6/11/2026, `docs/DESIGN.md`, «Web: grafica B»; spec e piano in `docs/superpowers/`): una sola
+  testata in `index.html` (nome disegnato, `nav` con le 4 schede come collegamenti `<a href="/?vista=…">`, ricerca, ingranaggio) che
+  al telefono diventa la barra in basso; `pagina(html, opz)` in `app.js` scrive titolo (`h1`) e riga di stato di ogni schermata;
+  `vai()` scrive la cronologia (Indietro del browser). Da 1200 px `apriFoglio(html, { affianco: true })` apre scheda, confronto,
+  sostituzione, «Perché questo numero» e ricerca nel pannello affiancato (non modale); le altre finestre restano il foglio modale.
+  Menu a sinistra: Impostazioni (`montaPannelli` in `impostazioni.js`, da 768 px), Squadra e Altro (`.lega-colonne`, da 1100 px).
+  Test dei controlli sul codice: `tests/test_grafica_b_web.py`; foto e axe: `prove/foto_web/foto.py`.
 - `fanta/web/caratteri/`: `archivo.woff2` (Archivo semi-stretto, cifre tabellari, per numeri e titoli) con la licenza `OFL.txt`
   (SIL OFL 1.1). Pubblico anche con gli account accesi (`STATICI_PREFISSI`), tipo `font/woff2`, nella scocca offline di `sw.js`.
   Si rifà con `script/carattere_web.py` (fontTools e brotli in un ambiente a parte); test `tests/test_carattere_web.py`.

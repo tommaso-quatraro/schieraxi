@@ -84,7 +84,8 @@ struct PercheNumeroSheet: View {
     private var partita: String {
         var t = (g.squadra ?? "").capitalized
         if let a = g.avversario, !a.isEmpty { t += (g.inCasa == true ? " in casa contro " : " in trasferta contro ") + a.capitalized }
-        if let d = g.dataPartita { t += " · " + Quando.leggibile(d) }
+        // «oggi», «ieri» dall'ora dell'app (`Orologio`), come Oggi e le righe: nella demo in corso il momento della demo (#424)
+        if let d = g.dataPartita { t += " · " + Quando.leggibile(d, adesso: Orologio.adesso()) }
         return t
     }
 
