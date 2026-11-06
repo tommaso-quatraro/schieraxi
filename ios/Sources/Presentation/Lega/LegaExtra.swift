@@ -266,8 +266,6 @@ struct RosaView: View {
     @State private var tipoFile = "stemma"
     @State private var chiediIndirizzo = false
     @State private var indirizzoScritto = ""
-    /// La larghezza del campo dei crediti cresce con il testo (una larghezza fissa taglia le cifre con il testo grande).
-    @ScaledMetric private var larghezzaCrediti: CGFloat = 96
 
     init(nome: String, server: any ServerClient, soloImmagini: Bool = false) {
         self.soloImmagini = soloImmagini
@@ -421,42 +419,10 @@ struct RosaView: View {
         }
     }
 
-    /// «Crediti residui» con il campo e «Salva» (`PUT /api/crediti`). Con il testo grande il campo passa sotto il nome.
+    /// «Crediti residui» con il campo e «Salva» (`PUT /api/crediti`). Con il testo molto grande i tre pezzi vanno uno sotto
+    /// l'altro (`DisposizioneCrediti`, #467).
     private var creditiResidui: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                Text(ParoleSquadre.creditiResidui).accessibilityHidden(true)   // il campo ha già questo nome per VoiceOver
-                Spacer(minLength: 8)
-                campoCrediti
-                salvaCrediti
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Text(ParoleSquadre.creditiResidui).accessibilityHidden(true)
-                HStack(spacing: 12) {
-                    campoCrediti
-                    salvaCrediti
-                }
-            }
-        }
-        .frame(minHeight: 44)
-    }
-
-    private var campoCrediti: some View {
-        TextField("—", text: $vm.crediti)
-            .keyboardType(.numberPad)
-            .multilineTextAlignment(.trailing)
-            .frame(width: larghezzaCrediti)
-            .frame(minHeight: 44)
-            .accessibilityLabel(ParoleSquadre.creditiResidui)
-    }
-
-    private var salvaCrediti: some View {
-        Button(ParoleSquadre.salva) { Task { await vm.salvaCrediti() } }
-            // il campo e il pulsante stanno nella stessa riga di una lista: senza questo un tocco li attiva come uno solo
-            .buttonStyle(.borderless)
-            .accessibilityLabel(ParoleSquadre.salvaCreditiResidui)
-            .frame(minHeight: 44)
-            .disabled(vm.inCorso)
+        RigaCreditiResidui(crediti: $vm.crediti, inCorso: vm.inCorso) { Task { await vm.salvaCrediti() } }
     }
 
     /// Stemma e maglia: le due immagini con «Carica/Cambia», da un file, da un indirizzo web e le spiegazioni.
