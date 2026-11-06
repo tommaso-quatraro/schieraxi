@@ -654,6 +654,46 @@ struct StatoDati: Decodable {
         let regge: Regge?
         let perGiornata: [Giornata]?
     }
+    /// Gli indicatori del consiglio di formazione (#366, `indicatori_consiglio.riepilogo` del server), sommati sui Diari di tutti: le
+    /// medie delle ultime `finestra` giornate con le soglie e il verdetto (`regge`, solo con `verdetto`). Un server vecchio non lo manda.
+    struct Consiglio: Decodable {
+        /// «C1», «C2», «C3» restano come sono; «C4_senza_motivo» arriva come `c4SenzaMotivo` (`convertFromSnakeCase`).
+        struct Soglie: Decodable {
+            let c1: Double?
+            let c2: Double?
+            let c3: Double?
+            let c4SenzaMotivo: Double?
+            enum CodingKeys: String, CodingKey { case c1 = "C1", c2 = "C2", c3 = "C3", c4SenzaMotivo }
+        }
+        /// Per ogni indicatore: vero se regge, falso se no, nil finché non c'è il verdetto o manca il numero.
+        struct Regge: Decodable {
+            let c1: Bool?
+            let c2: Bool?
+            let c3: Bool?
+            let c4: Bool?
+            enum CodingKeys: String, CodingKey { case c1 = "C1", c2 = "C2", c3 = "C3", c4 = "C4" }
+        }
+        let finestra: Int?
+        let soglie: Soglie?
+        let giornate: Int?
+        /// Le formazioni misurate (una per utente e giornata).
+        let voci: Int?
+        /// Punti veri a giornata della consigliata mostrata meno la scelta semplice, e meno la schierata quando è diversa.
+        let menoS2: Double?
+        let menoSchierata: Double?
+        /// Cambi a formazione nelle 24 ore prima della scadenza (media) e quanti valevano meno di 1 punto atteso (totale).
+        let cambi: Double?
+        let cambiSottoSoglia: Int?
+        /// Titolari sotto il 20% o fuori, e quanti di loro con un compagno di ruolo al 50% o più tra gli esclusi (totali).
+        let improbabili: Int?
+        let conCompagno: Int?
+        /// Scelte che sembrano strane e quante spiegate (totali); parte dei titolari senza un motivo loro nel «perché».
+        let storte: Int?
+        let spiegate: Int?
+        let senzaMotivo: Double?
+        let verdetto: Bool?
+        let regge: Regge?
+    }
     let stagione: String?
     let aggiornamenti: [AggiornamentoDati]?
     let calciatori: Int?
@@ -664,6 +704,7 @@ struct StatoDati: Decodable {
     let calibrazione: Calibrazione?
     let coppeFino: String?
     let registro: Registro?
+    let consiglio: Consiglio?
 }
 
 struct EsitoImportazione: Decodable {

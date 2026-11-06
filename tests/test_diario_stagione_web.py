@@ -94,6 +94,7 @@ def _esegui(diario: dict, passi: str):
         re.search(r"^const NOMI_RUOLO = .*$", APP, re.M).group(0),
         re.search(r"^const ruoloSigla = .*$", APP, re.M).group(0),
         re.search(r"^const badgeRuolo = .*$", APP, re.M).group(0),
+        re.search(r"^function nomeGiornata\(.*?^\}$", APP, re.M | re.S).group(0),
         DOM,
         f"const ROSA = {json.dumps(ROSA)}; DIARIO = {json.dumps(diario)};",
         _pezzo("// Diario delle giornate: formazione schierata", "// Prova del modello sulle ultime giornate giocate"),
@@ -106,13 +107,14 @@ def _esegui(diario: dict, passi: str):
 
 
 def _carte(html: str) -> dict[str, str]:
-    """Le carte del Diario per «stagione giornata» (la stagione si legge nella testata della carta, il numero da `giornata_lega`)."""
+    """Le carte del Diario per «stagione giornata» (la stagione si legge nella testata della carta; il numero è quello della lega,
+    «Giornata 7 · 10ª di Serie A», oppure per una stagione passata quello di Serie A, «10ª giornata di Serie A»)."""
     pezzi = re.split(r'(?=<div class="carta" id=")', html)[1:]
     carte = {}
     for p in pezzi:
         st = re.search(r'<span class="debole piccolo">(\d{4}-\d{2})</span>', p).group(1)
-        g = re.search(r"Giornata (\d+)", p).group(1)
-        carte[f"{st} {g}"] = p
+        m = re.search(r'<h2 style="margin:0">(?:Giornata (\d+) · \d+ª di Serie A|(\d+)ª giornata di Serie A)</h2>', p)
+        carte[f"{st} {m.group(1) or m.group(2)}"] = p
     return carte
 
 
@@ -157,6 +159,9 @@ def test_stagione_passata_senza_pulsanti_per_cambiare():
                            _voce(PRIMA, 9, schierata_da=21, modificabile=False)]}
     carte = _carte(_esegui(diario, "await apriDiario(); risultato = stato();")["html"])
     assert set(carte) == {f"{ORA} 7", f"{PRIMA} 10", f"{PRIMA} 9"}
+    # i due numeri come su Leghe (#299); la stagione passata non ha la giornata della lega: solo la Serie A
+    assert '<h2 style="margin:0">Giornata 7 · 10ª di Serie A</h2>' in carte[f"{ORA} 7"]
+    assert '<h2 style="margin:0">10ª giornata di Serie A</h2>' in carte[f"{PRIMA} 10"]
     for chiave in (f"{PRIMA} 10", f"{PRIMA} 9"):
         c = carte[chiave]
         assert "data-schierata" not in c and "data-correggi" not in c, chiave

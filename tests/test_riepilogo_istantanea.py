@@ -10,7 +10,7 @@ from types import SimpleNamespace as NS
 import pytest
 
 from fanta import avvisi_utenti, diario, notifiche, scelte
-from fanta.frasi import CATALOGO, F
+from fanta.frasi import CATALOGO, F, nome_giornata
 from fanta.frasi_avvisi import NOTIFICHE
 from fanta.regole import Regole
 from test_da_fare import STAGIONE, mondo, vai  # noqa: F401  (mondo = fixture di «Da fare»)
@@ -61,14 +61,14 @@ def test_riepilogo_usa_la_consigliata_della_scadenza_non_quella_dei_cambi(tmp_pa
     atteso = _riepilogo(tmp_path, db, rose, "a", visti=CONSIGLIATA_8, salvata=salvata)            # i cambi avevano visto proprio quella
     vecchia = _riepilogo(tmp_path, db, rose, "b", visti=ALTRA_8, salvata=salvata)                 # i cambi avevano visto un'altra
     assert atteso and vecchia and _punti(atteso) != _punti(vecchia)                               # la prova distingue le due
-    assert atteso.startswith("Giornata 8: la formazione consigliata ha fatto circa")
+    assert atteso.startswith("Giornata 8 · 8ª di Serie A: la formazione consigliata ha fatto circa")
     assert _riepilogo(tmp_path, db, rose, "c", visti=ALTRA_8, salvata=salvata, file_diario=con_istantanea) == atteso
 
 
 def test_riepilogo_con_la_tua_scelta_valida_non_guarda_l_istantanea(tmp_path, monkeypatch):
     db, rose = _giornata_8_finita(tmp_path, monkeypatch)
     solo_scelta = _riepilogo(tmp_path, db, rose, "a", salvata=ALTRA_8)
-    assert solo_scelta.startswith("Giornata 8: la tua scelta salvata ha fatto circa")
+    assert solo_scelta.startswith("Giornata 8 · 8ª di Serie A: la tua scelta salvata ha fatto circa")
     con_istantanea = _istantanea(tmp_path, CONSIGLIATA_8)
     assert _riepilogo(tmp_path, db, rose, "b", visti=CONSIGLIATA_8, salvata=ALTRA_8, file_diario=con_istantanea) == solo_scelta
 
@@ -131,7 +131,7 @@ def test_promemoria_un_ora_dice_che_la_formazione_salvata_non_vale(tmp_path, mon
     r, mandati = _promemoria(tmp_path, monkeypatch, salvata, datetime(2026, 10, 28, 17, 35))
     testo = mandati[0][1]
     assert len(r) == 1 and mandati[0][0] == "SchieraXI · formazione tra un'ora"
-    assert testo.startswith("La formazione della giornata 9 si chiude tra circa un'ora (scadenza alle 18:30), ma quella che hai salvato "
+    assert testo.startswith("Giornata 9 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30), ma quella che hai salvato "
                             "non è più valida: salvane un'altra.")
     assert "Consigliato: 4-4-2, 71,2 punti attesi." in testo                    # il consiglio resta, serve a sceglierne un'altra
     assert "L'hai inserita" not in testo
@@ -141,15 +141,15 @@ def test_promemoria_un_ora_dice_che_la_formazione_salvata_non_vale(tmp_path, mon
 def test_promemoria_ultimi_minuti_dice_che_la_formazione_salvata_non_vale(tmp_path, monkeypatch, salvata):
     r, mandati = _promemoria(tmp_path, monkeypatch, salvata, datetime(2026, 10, 28, 18, 20))
     assert len(r) == 1 and mandati[0][0] == "SchieraXI · ultimi minuti per la formazione"
-    assert mandati[0][1] == ("Ultimi minuti: la formazione della giornata 9 si chiude alle 18:30 e quella che hai salvato non è più valida. "
+    assert mandati[0][1] == ("Giornata 9 · 9ª di Serie A: la formazione si chiude alle 18:30 e quella che hai salvato non è più valida. "
                              "Salvane un'altra.")
 
 
 def test_promemoria_senza_scelta_resta_come_prima(tmp_path, monkeypatch):
     _, mandati = _promemoria(tmp_path, monkeypatch, None, datetime(2026, 10, 28, 17, 35))
-    assert mandati[0][1].startswith("La formazione della giornata 9 si chiude tra circa un'ora (scadenza alle 18:30).")
+    assert mandati[0][1].startswith("Giornata 9 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30).")
     _, mandati = _promemoria(tmp_path, monkeypatch, None, datetime(2026, 10, 28, 18, 20))
-    assert mandati[0][1] == "Ultimi minuti: la formazione della giornata 9 si chiude alle 18:30. L'hai inserita su Leghe?"
+    assert mandati[0][1] == "Giornata 9 · 9ª di Serie A: la formazione si chiude alle 18:30. L'hai inserita su Leghe?"
 
 
 def test_promemoria_con_scelta_valida_non_cambia(tmp_path, monkeypatch):
@@ -162,8 +162,9 @@ def test_le_frasi_nuove_hanno_italiano_e_inglese():
     for chiave in ("n.non_valida_tra_un_ora", "n.non_valida_ultimi_minuti"):
         it, en = NOTIFICHE[chiave]
         assert "non è più valida" in it and "no longer valid" in en
-        f = F(chiave, giornata=9, ora="18:30")
-        assert "{" not in str(f) and "{" not in f.in_lingua("en") and "matchday 9" in f.in_lingua("en") and "18:30" in f.in_lingua("en")
+        f = F(chiave, giornata=nome_giornata(9, 6, avviso=True), ora="18:30")                  # la giornata con i due numeri (#299)
+        assert str(f).startswith("Giornata 6 · 9ª di Serie A: ") and f.in_lingua("en").startswith("Matchday 6 · Serie A matchday 9: ")
+        assert "{" not in str(f) and "{" not in f.in_lingua("en") and "18:30" in f.in_lingua("en")
     assert "dafare.formazione_non_valida" in CATALOGO
 
 

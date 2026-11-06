@@ -802,7 +802,7 @@ def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_
         estratto.write_bytes(t.extractfile(registro[0]).read())
     nuovo = tmp_path / "rifatto" / "fanta.sqlite"
     assert registro_copia.importa(estratto, nuovo) == \
-        {"registro_giornate": (1, 0), "registro_giocatori": (1, 0)}
+        {"registro_giornate": (1, 0), "registro_giocatori": (1, 0), "registro_nostri": (0, 0), "registro_i4": (0, 0)}
     with contextlib.closing(sqlite3.connect(nuovo)) as db:
         assert db.execute("SELECT stagione, giornata, calciatore_id, ruolo, p_voto, mu FROM registro_giocatori").fetchall() == \
             [("2026-27", 9, 101, "A", 0.873, 6.734)]
