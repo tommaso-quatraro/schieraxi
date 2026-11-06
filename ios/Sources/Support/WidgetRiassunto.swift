@@ -379,7 +379,7 @@ enum MemoriaWidget {
         var base = indirizzo.trimmingCharacters(in: .whitespacesAndNewlines)
         while base.hasSuffix("/") { base.removeLast() }
         let testo = base.lowercased() + "\n" + (token ?? "")
-        return SHA256.hash(data: Data(testo.utf8)).map { String(format: "%02x", $0) }.joined()
+        return SHA256.hash(data: Data(testo.utf8)).map { ($0 < 16 ? "0" : "") + String($0, radix: 16) }.joined()
     }
 
     private static func percorso(_ cartella: URL?) -> URL? { cartella?.appendingPathComponent(nomeFile) }

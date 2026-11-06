@@ -51,7 +51,7 @@ final class CollegaWidgetModello {
 
     /// `demo`: le fotografie del simulatore (nessun token, appunti intatti). `prova`: i dati di esempio.
     init(prova: Bool = ProvaEsempio.attiva, demo: Bool = Demo.daLancio, appunti: (any AppuntiCodice)? = nil,
-         servizi: Servizi? = nil, adesso: @escaping () -> Date = Date.init) {
+         servizi: Servizi? = nil, adesso: @escaping () -> Date = { .now }) {
         stato = prova && !demo ? .prova : .pronto
         self.demo = demo
         self.appunti = appunti ?? AppuntiDiSistema()

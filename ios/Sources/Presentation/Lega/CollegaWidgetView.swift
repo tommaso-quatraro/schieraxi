@@ -77,41 +77,41 @@ struct CollegaWidgetView: View {
     /// Il pulsante dell'azione, se in questo stato ce n'è uno.
     private var azione: (testo: String, simbolo: String)? {
         switch modello.stato {
-        case .pronto, .inCorso: return ("Collega", "link")
-        case .copiato: return ("Copia di nuovo", "doc.on.doc")
-        case .senzaPermesso: return ("Riprova", "arrow.clockwise")
-        case .automatico, .prova: return nil
+        case .pronto, .inCorso: ("Collega", "link")
+        case .copiato: ("Copia di nuovo", "doc.on.doc")
+        case .senzaPermesso: ("Riprova", "arrow.clockwise")
+        case .automatico, .prova: nil
         }
     }
 
     private var icona: String {
         switch modello.stato {
-        case .pronto, .inCorso: return "link"
-        case .automatico, .copiato: return "checkmark.circle.fill"
-        case .senzaPermesso: return "exclamationmark.triangle"
-        case .prova: return "rectangle.on.rectangle"
+        case .pronto, .inCorso: "link"
+        case .automatico, .copiato: "checkmark.circle.fill"
+        case .senzaPermesso: "exclamationmark.triangle"
+        case .prova: "rectangle.on.rectangle"
         }
     }
 
     private var titolo: String {
         switch modello.stato {
-        case .pronto: return "Collega il widget"
-        case .inCorso: return "Collego il widget…"
-        case .automatico: return "Widget collegato"
-        case .copiato: return "Codice copiato"
-        case .senzaPermesso: return "Codice non pronto"
-        case .prova: return "Widget"
+        case .pronto: "Collega il widget"
+        case .inCorso: "Collego il widget…"
+        case .automatico: "Widget collegato"
+        case .copiato: "Codice copiato"
+        case .senzaPermesso: "Codice non pronto"
+        case .prova: "Widget"
         }
     }
 
     private var spiegazione: String {
         switch modello.stato {
-        case .pronto: return "Il widget legge la tua formazione da SchieraXI. Tocca «Collega» per dargli il permesso."
-        case .inCorso: return "Un attimo: chiedo al server il permesso per il widget."
-        case .automatico: return "Il widget si collega da solo e si aggiorna tra poco. Non serve copiare niente."
-        case .copiato: return CollegamentoWidget.istruzione + " " + Self.durataNegliAppunti
-        case .senzaPermesso: return "Il server non ha risposto. Controlla la connessione e riprova."
-        case .prova: return "Con i dati di esempio il widget non si collega: accedi con il tuo account."
+        case .pronto: "Il widget legge la tua formazione da SchieraXI. Tocca «Collega» per dargli il permesso."
+        case .inCorso: "Un attimo: chiedo al server il permesso per il widget."
+        case .automatico: "Il widget si collega da solo e si aggiorna tra poco. Non serve copiare niente."
+        case .copiato: CollegamentoWidget.istruzione + " " + Self.durataNegliAppunti
+        case .senzaPermesso: "Il server non ha risposto. Controlla la connessione e riprova."
+        case .prova: "Con i dati di esempio il widget non si collega: accedi con il tuo account."
         }
     }
 
