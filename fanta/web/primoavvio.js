@@ -61,7 +61,7 @@ function paDisegna() {
   const p = pa.passo;
   if (!p) { paFine(); return; }
   const corpo = PA_SCHERMATE[p]();
-  apriFoglio(`<h2 style="margin:0 0 4px;font-size:22px">${t("pav.primo_avvio")}</h2>${paProgresso()}
+  apriFoglio(`<h2 class="pa-capo">${t("pav.primo_avvio")}</h2>${paProgresso()}
     <h3 class="pa-titolo">${esc(PA_NOMI[p])}</h3>${corpo.html}
     <div id="pa-msg" role="alert"></div>
     <div class="pulsanti">${corpo.principale ? `<button class="bottone" id="pa-avanti">${esc(corpo.principale)}</button>` : ""}
@@ -97,7 +97,7 @@ const paAvvisiPossibili = () => "serviceWorker" in navigator && "PushManager" in
 
 function paFine() {
   const saltati = PA_PASSI.filter(p => !paFatto(p));
-  apriFoglio(`<h2 style="margin:0 0 4px;font-size:22px">${t("pav.tutto_pronto_mister")}</h2>${paProgresso()}
+  apriFoglio(`<h2 class="pa-capo">${t("pav.tutto_pronto_mister")}</h2>${paProgresso()}
     <p class="debole">${saltati.length ? t("pav.hai_saltato", { nomi: saltati.map(p => esc(PA_NOMI[p])).join(", ") }) : t("pav.hai_finito")}</p>
     <p class="debole piccolo">${t("pav.il_resto")}</p>
     <div id="pa-msg" role="alert"></div>

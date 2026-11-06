@@ -7,8 +7,9 @@ Densità e Mercato su iOS: le sta già correggendo l'agente iOS (PR non ancora p
 ## Web: grafica B «Distinta» (decisa il 5/11/2026, issue #354)
 Il proprietario ha scelto per la web la direzione B: niente carte, righe con fili e colonne di numeri, comoda sul PC. Spec:
 `docs/superpowers/specs/2026-11-05-grafica-web-b-design.md`; piano a PR piccole: `docs/superpowers/plans/2026-11-05-grafica-web-b.md`.
-**Stato: in arrivo.** Ogni punto sotto vale per la web dalla PR del piano che lo introduce; fino ad allora sulla web vale il resto
-di questo documento. L'iPhone non cambia: segue il resto del documento (stessi testi e numeri, aspetto nativo).
+**Stato: in vigore** (dal 6/11/2026, con l'ultima delle 12 PR del piano). Per la web le regole di questa sezione valgono al posto
+di quelle delle sezioni qui sotto (scala, spaziature, componenti, «Tablet e PC»), che restano per l'iPhone: stessi testi e numeri,
+aspetto nativo. I valori veri stanno in `fanta/web/stile.css`; i test `tests/test_grafica_b_web.py` li tengono fermi.
 Cosa cambia per la web rispetto alle sezioni qui sotto:
 - **Barra delle schede**: sotto i 900 px barra piena in basso con un filo sopra (niente capsula); da 900 px le schede stanno in
   alto in una testata unica (non più la colonna a sinistra). Indietro del browser torna alla schermata di prima.
@@ -27,6 +28,46 @@ Cosa cambia per la web rispetto alle sezioni qui sotto:
 - **Chip di scelta**: la voce scelta resta lime con scritta scura e ha in più un bordo di 2 px nel colore del testo.
 - **PC**: dettagli dei giocatori in un pannello accanto alla pagina da 1200 px; Squadra e Altro a due colonne da 1100 px; pagina
   larga al massimo 1240 px.
+
+### Web: scala, spaziature e forme
+| Livello | Web (px) | Carattere | Uso |
+|---|---|---|---|
+| Numero eroe (`--t-eroe`) | 56, 72 da 900 px | Archivo 600, cifre tabellari | conto alla rovescia, fantavoto atteso nella scheda |
+| Titolo (`--t-titolo`) | 32 | Archivo 600 | titolo della schermata (`h1`), nome nella scheda, titolo del primo avvio e dell'accesso |
+| Sezione (`--t-card`) | 17 / 650 | sistema | titolo di una sezione, con il filo spesso sotto |
+| Valore (`--t-valore`) | 20 | Archivo 600 | fantavoto atteso nelle righe, cifre affiancate |
+| Corpo (`--t-corpo`) | 15 | sistema | testo, nomi dei giocatori |
+| Secondario (`--t-sec`) | 13, `--testo-2` | sistema | partita, spiegazioni brevi, riga di stato |
+| Etichetta (`--t-eti`) | 12 | sistema | nomi delle colonne, unità |
+Mai sotto 12 px. Numeri e titoli in Archivo semi-stretto (`--font-numeri`, file del nostro server, con il carattere di sistema
+come ripiego); il testo nel carattere di sistema.
+- **Spaziature**: griglia a 4 (4, 8, 12, 16, 24, 32). Margine laterale 16 px al telefono, 24 px tra 768 e 899 px, 32 px da 900 px.
+  Tra una sezione e l'altra 24 px al telefono, 32 px da 900 px. Righe: 48 px (compatta), 56 px con due righe di testo.
+- **Fili e raggi**: filo sottile `1px solid var(--filo)` tra le righe, filo spesso `2px solid var(--testo)` sotto il titolo di
+  una sezione. Raggi `--r-in` 8 px (pulsanti, campi, controlli, voci di menu), `--r-card` 12 px (campo, foto, proposta di scambio),
+  `--r-pill` solo per «⚠ gioca N%» e «Cosa vuol dire» sul campo. Un'ombra sola (`--ombra`) per ciò che galleggia; niente sfocatura.
+
+### Web: componenti
+- **Testata** (da 900 px): ferma in alto, 56 px, nome disegnato, le 4 schede come linguette con la linea sotto quella attiva, campo
+  di ricerca sempre aperto (segno `/`), ingranaggio, «Aggiorna i dati» per chi gestisce. Al telefono la stessa `nav` è la barra in
+  basso e le icone stanno accanto al titolo della schermata.
+- **Titolo della schermata**: `h1` in Archivo 32 con sotto la riga di stato (stemma, giornata, squadra, ora dei dati).
+- **Sezione**: titolo da 17 px con il filo spesso sotto, righe separate dal filo sottile, niente fondo né bordo (classe `.carta`).
+- **Riga del giocatore**: volto, lettera del ruolo grigia, nome, partita (colonna sul PC, riga secondaria al telefono), etichetta
+  come testo colorato, «gioca N%» e fantavoto atteso in colonne allineate a destra, azione («⇄», «✎», «Sostituisci») nella riga.
+- **Pulsanti**: uno pieno per schermata; il secondario da solo con il bordo dei controlli, nelle righe solo testo nel colore delle
+  azioni; mai tre a contorno in fila (oltre il secondo «Altro ▾»).
+- **Controllo segmentato** (lingua, tema, moduli e stili, sezioni di Scambi, ruolo nell'Elenco, passi del primo avvio): bordo dei
+  controlli, voci separate dal filo, la voce scelta lime con il bordo di 2 px del colore del testo e `aria-pressed` o
+  `aria-current`. Con il contrasto elevato di Windows la voce scelta ha un contorno nel colore della selezione.
+- **Menu a sinistra** (Impostazioni da 768 px, Squadra e Altro da 1100 px): righe con il filo; la voce aperta ha il fondo del
+  passaggio del mouse e una linea di 3 px a sinistra nel colore delle azioni.
+- **Avvisi ed errori**: una riga con il filo di 3 px a sinistra nel colore del significato, testo pieno. Il messaggio che passa è
+  pieno, con i colori del testo e della pagina scambiati.
+- **Pannello affiancato** (da 1200 px): colonna a destra sotto la testata, 400-520 px, filo a sinistra, non modale; `Esc` e «✕»
+  lo chiudono e il focus torna a chi l'ha aperto. Sotto i 1200 px resta il foglio modale.
+- **Accesso**: un modulo centrato largo al massimo 420 px, senza carta, con il marchio e il nome disegnato.
+- **Primo avvio**: nel foglio, titolo in Archivo 32, passi come controllo segmentato, ogni blocco una riga con il filo.
 
 ## Principi
 1. **Un dato principale per schermata/card**, visibile a colpo d'occhio (numero grande, tabulare). Il resto è secondario.
@@ -59,7 +100,7 @@ Numeri sempre con cifre tabulari e virgola italiana (`6,9`).
 - **Card**: superficie piena un gradino di tono sopra il fondo piatto, bordo sottile, niente ombra né riflessi (`STILE-SENZA-AI.md`), titolo (18) + eventuale valore a destra; max 1 card «eroe» per schermata (la prima). Le altre sono piatte.
 - **Riga giocatore** (una sola, uguale ovunque): avatar 40 con anello del ruolo | nome (Valore) e sotto UNA riga secondaria («INT @ MIL · sab 31 20:45» o «INT · quot. 19 · svincolato», forme in `docs/COERENZA-WEB-IPHONE.md`) | a destra fantavoto atteso (Valore, colore neutro, mai colorato in base al valore; nella Formazione il tocco sul numero apre «Perché questo numero») e sotto «gioca 90%» (Etichetta). Max 2 righe di testo a sinistra; icone di stato come simbolo accanto al nome, non come righe in più.
 - **Segmenti/tab di sezione** (Mercato: Consigliati, Osservati, Asta, Classifica, Calendario, Cerca; Lega): al massimo 4 voci in un controllo segmentato a tutta larghezza; oltre le 4, voci in una striscia scorrevole con la voce attiva sempre portata in vista e un bordo sfumato che mostra che scorre. Mai voci tagliate o testo a 12 px stretto (oggi web: 6 voci a 12,5 px; iOS: «Osservati» e «Cerca» tagliate).
-- **Barra delle schede principale** (Oggi, Formazione, Mercato, Scambi, Lega): sempre sotto il contenuto in un'area riservata (non sopra). Sull'iPhone è la `TabView` di sistema; nessun accessorio nella stessa zona (vedi incoerenze). Da 900 px su web: colonna a sinistra.
+- **Barra delle schede principale** (Oggi, Formazione, Mercato, Scambi, Lega): sempre sotto il contenuto in un'area riservata (non sopra). Sull'iPhone è la `TabView` di sistema; nessun accessorio nella stessa zona (vedi incoerenze). Da 900 px su web: schede in alto nella testata.
 - **Intestazione pagina**: titolo pagina (28) + al massimo 2 azioni a destra (cerca, aggiorna/condividi); sottotitolo di stato (giornata, ultimo aggiornamento) in Secondario. Uguale su tutte le schermate. Sulla web il nome della squadra e «dati del …» vanno a capo, mai «…»; tra 320 e 360 px utili lo stemma non si mostra nella testata, così il nome ha posto (issue #286).
 - **Campo di testo, menu, casella di testo, contatore**: bordo `--bordo-campo` (`#728379` in chiaro, `#66796e` in scuro), almeno 3:1 sia con il fondo del campo sia con quello intorno, su carta, fondo piatto e foglio della scheda (WCAG 2.2, 1.4.11; prima il filo delle carte, 1,2:1; issue #285). Il filo sottile `--bordo` resta per carte e separatori.
 - **Conto alla rovescia**: ogni numero resta attaccato alla sua unità («1 giorno» / «8 h», mai «h» da sola su una riga). Con la maglia della squadra, sotto i 360 px utili la maglia si rimpicciolisce e lascia al numero almeno 157 px; sotto i 260 px non si mostra (issue #286).
@@ -134,7 +175,11 @@ Rimasti sotto 4,5:1 dopo il primo giro: in scuro il simbolo «○» e le righe �
 WCAG 2.2, 1.4.10: con lo zoom del browser al 200% un telefono vede 160-195 px. Sotto i 320 px utili (`@container pagina` sul body: conta anche il testo «Molto grande» dell'app, che usa `zoom`) tutto va in una colonna e niente scorre di lato: testata su due righe e non fissa, barra con le sole icone (i nomi restano ai lettori di schermo), righe dei giocatori con volto e numeri sopra e nome sotto, partite con l'ora sopra le squadre, moduli e stili a capo, due pedine per fila con il cognome intero. Nella scheda e nel confronto del giocatore il volto va sopra il nome e le statistiche su due colonne. Nei Cambi consigliati volto e guadagno vanno sopra, nome e dettagli sotto a tutta larghezza (issue #287); nelle Regole e nelle Notifiche il «−/+» o il menu va sotto il nome della regola. Fa eccezione solo il calendario, che è una tabella: scorre di lato dentro il suo riquadro. Sopra i 320 px non cambia niente (`tests/test_riflusso_web.py`); a ogni larghezza i pallini della forma vanno a capo.
 
 ## Tablet e PC
-- iPad/web ≥ 900 px: barra a colonna a sinistra, contenuto max 980; ≥ 1100: 2 colonne, ≥ 1700: 3 (già nel CSS). Il campo di formazione ha larghezza massima 620 e sta accanto alle card di controllo, non sopra.
+- Web (grafica B): sotto i 900 px barra in basso; da 900 px schede in alto. Oggi e Formazione su due colonne da 768 px (pari fino a
+  899 px, 5:7 da 900 px; la Formazione 1:2 da 1400 px, così la riga larga dei giocatori ci sta), con il campo a sinistra fermo se ci
+  sta nello schermo. Impostazioni con i gruppi a sinistra da 768 px, Squadra e Altro con il menu a sinistra da 1100 px. Pannello
+  affiancato da 1200 px. Contenuto largo al massimo 1240 px, centrato; sopra i 1800 px l'interfaccia si ingrandisce a gradini (`--z`).
+- iPad (app): il campo di formazione ha larghezza massima 620 e sta accanto alle card di controllo, non sopra.
 - iPad iOS: stesso schema (colonna di controllo a sinistra, campo a destra); oggi è un telefono allargato. Elenchi di righe giocatore a 2 colonne in orizzontale.
 - Numeri e testi non crescono oltre la scala sopra (la web a 2600 px porta il corpo a 18).
 
@@ -158,7 +203,7 @@ Gravità: A = blocca/si legge male, M = fastidio, B = rifinitura. Responsabile: 
 | 12 | W | Scala tipografica con 25 dimensioni (8,5-44 px), 7 raggi, 10+ paddings | M | Variabili CSS `--t-*`, `--r-*`, `--s-*` e sostituzione graduale |
 | 13 | W | Testi secondari (`--testo-2` su vetro, 12-13 px; sotto 11 px) poco evidenti | M | Fatto il 2/11/2026: `--testo-2` unico `#BCCDC2` / `#46564D` come iOS, niente opacità sul testo. Resta: secondario min 13 px, minimo 12 px |
 | 14 | I | Testi secondari iOS `.secondary` sul fondo con sfumatura verde: contrasto basso | M | Usare `Color.secondary` solo su fondo piatto; su gradiente `.primary.opacity(.75)` |
-| 15 | W | Intestazione: titolo = nome squadra, sottotitolo con giornata; iOS: titolo = nome schermata (grande) | M | Scegliere iOS (titolo schermata) anche su web, nome squadra nella riga di stato |
+| 15 | W | Intestazione: titolo = nome squadra, sottotitolo con giornata; iOS: titolo = nome schermata (grande) | M | Fatto (grafica B, 5/11/2026): sulla web il titolo è il nome della schermata, come su iOS; il nome della squadra sta nella riga di stato |
 | 16 | I/W | Pulsante cerca/aggiorna: web 2 icone in cerchio, iOS 1 o 2 in una capsula | B | Capsula con 2 azioni al massimo, stesso ordine |
 | 17 | W vs I | Icona/nome sezioni uguali, ma «Lega» web ha il pallino rosso per novità, iOS no | B | Stesso badge su iOS |
 | 18 | I iPad | Layout telefonico allargato | M | Colonne come da sezione Tablet |

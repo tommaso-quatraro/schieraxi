@@ -2,22 +2,29 @@
 import re
 from pathlib import Path
 
-CSS = (Path(__file__).resolve().parent.parent / "fanta" / "web" / "stile.css").read_text(encoding="utf-8")
+WEB = Path(__file__).resolve().parent.parent / "fanta" / "web"
+CSS = (WEB / "stile.css").read_text(encoding="utf-8")
+HTML = (WEB / "index.html").read_text(encoding="utf-8")
 
 
 def test_fondo_piatto_senza_macchie_che_si_muovono():
-    assert ".sfondo { position: fixed; inset: 0; z-index: -1; background: var(--sfondo); }" in CSS
+    """Il fondo è quello del body, piatto: niente più un elemento a parte dietro la pagina (prima `.sfondo`, con le macchie che si
+    muovevano e poi piatto), niente animazioni del fondo."""
+    assert re.search(r"\nbody \{[^}]*background: var\(--sfondo\);", CSS)
+    assert 'class="sfondo"' not in HTML and "\n.sfondo {" not in CSS
+    # il fondo anche sotto la fine della pagina: il body è un contenitore (`container`) e il suo fondo non passa alla finestra;
+    # senza, nello scuro sotto il contenuto restava il grigio del browser (#121212 invece di #121513, visto nelle foto)
+    assert re.search(r"\nhtml \{ background: var\(--sfondo\); \}", CSS)
     assert "@keyframes deriva" not in CSS
 
 
 def test_superfici_piene_senza_sfocatura():
-    """Grafica B (spec §7.5-7.6): niente vetro sfocato. Le superfici sono piene: il «vetro» e le carte prendono il fondo della
-    pagina nei tre blocchi dei temi, e la testata non torna semitrasparente (senza sfocatura si leggerebbe il testo sotto)."""
+    """Grafica B (spec §7.5-7.6): niente vetro sfocato. Le superfici sono piene: quello che galleggia (foglio, avvisi, calcolo in
+    corso) prende il fondo della pagina e le variabili del vetro trasparente non ci sono più (piano, compito 12.2); la testata non
+    torna semitrasparente (senza sfocatura si leggerebbe il testo sotto)."""
     assert "backdrop-filter" not in CSS
-    temi = [CSS.split(":root {", 1)[1].split("\n}", 1)[0], CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0],
-            CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0]]
-    for blocco in temi:
-        assert "--vetro: var(--sfondo);" in blocco and "--vetro-carta: var(--sfondo);" in blocco
+    assert "--vetro" not in CSS
+    assert re.search(r"\n\.vetro \{[^}]*background: var\(--sfondo\);", CSS)
     testata = re.search(r"\.testata\.vetro \{([^}]*)\}", CSS)
     assert not testata or "transparent" not in testata.group(1)
 
