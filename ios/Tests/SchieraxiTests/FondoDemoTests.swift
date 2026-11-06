@@ -23,4 +23,17 @@ struct FondoDemoTests {
     func laRigaDelFondoSoloInDemo(_ caso: Caso) {
         #expect(FondoDemo.attivo(demo: caso.demo, argomenti: caso.argomenti) == caso.attesa)
     }
+
+    /// La foto `lega-stato-nostri` (#430): Stato dei dati ha due riquadri lunghi quasi quanto lo schermo (gol attesi nostri e consiglio
+    /// di formazione), che in una foto sola non stanno insieme. `-DEMO_FONDO nostri` ferma la lista sul primo; con `1` va in fondo.
+    @Test("«-DEMO_FONDO nostri» ferma Stato dei dati sui gol attesi nostri, solo in demo", arguments: [
+        Caso(demo: true, argomenti: ["-DEMO", "-DEMO_SCHERMATA", "lega-stato", "-DEMO_FONDO", "nostri"], attesa: true),
+        Caso(demo: true, argomenti: ["-DEMO", "-DEMO_SCHERMATA", "lega-stato", "-DEMO_FONDO", "1"], attesa: false),     // fondo vero
+        Caso(demo: true, argomenti: ["-DEMO", "-DEMO_SCHERMATA", "lega-stato"], attesa: false),
+        Caso(demo: false, argomenti: ["-DEMO_FONDO", "nostri"], attesa: false),                                         // app vera
+        Caso(demo: true, argomenti: ["-DEMO", "-DEMO_FONDO"], attesa: false),
+    ])
+    func ilPuntoDelleNostriSoloInDemo(_ caso: Caso) {
+        #expect(FondoDemo.vaAlleNostri(demo: caso.demo, argomenti: caso.argomenti) == caso.attesa)
+    }
 }

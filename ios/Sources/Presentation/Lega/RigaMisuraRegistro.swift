@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Una misura del registro delle giornate: il nome, accanto il verdetto (colorato, ma sempre a parole) e sotto media e soglia.
 /// Se non ci sta in una riga (schermo stretto, testo grande) il verdetto va sotto il nome, come in `RigaValore`.
+/// Nome, verdetto e dettagli vanno a capo interi, mai con i puntini (`RigaMisuraRegistroInteraTests`).
 struct RigaMisuraRegistro: View {
     let nome: String
     let esito: ParoleRegistro.Esito
@@ -32,6 +33,9 @@ struct RigaMisuraRegistro: View {
                     .monospacedDigit()
             }
         }
+        // Mai tagliata con «…» (#430, come le etichette dei giocatori: #227, #254): la riga prende l'altezza che i testi chiedono per
+        // la larghezza che ha, anche quando la lista le propone meno (la VStack stringeva il nome a una riga sola).
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
     }
 

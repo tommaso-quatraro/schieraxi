@@ -102,6 +102,19 @@ final class FotoUITests: XCTestCase {
                        "nella foto lega-stato-fondo la cima di Stato dei dati non deve più essere a video")
     }
 
+    /// `lega-stato-nostri` (#430): i gol attesi nostri (#404) non stanno nella foto del fondo (c'è il consiglio di formazione, lungo
+    /// quasi quanto lo schermo). Con `-DEMO_FONDO nostri` la lista si ferma sul riquadro: le prime misure sono a video, il fondo no.
+    func testLaFotoDelleNostriMostraIGolAttesiNostri() {
+        avvia(["-DEMO_SCHERMATA", "lega-stato", "-DEMO_FONDO", "nostri"])
+        let insieme = elemento(cheComincia: "Le tre misure insieme")
+        XCTAssertTrue(aspetta(30) { insieme.exists && insieme.isHittable },
+                      "nella foto lega-stato-nostri il riquadro dei gol attesi nostri deve essere a video")
+        let errore = elemento(cheComincia: "Errore del fantavoto atteso contro i numeri mostrati")
+        XCTAssertTrue(aspetta(5) { errore.exists && errore.isHittable }, "nella foto lega-stato-nostri deve esserci la prima misura")
+        XCTAssertFalse(elemento(cheComincia: "Scelte strane senza un motivo detto").isHittable,
+                       "nella foto lega-stato-nostri l'ultimo indicatore del consiglio non deve essere a video")
+    }
+
     /// `lega-rosa-fondo` (#425): la rosa di un'altra squadra (#375) arriva fino a «Rose aggiornate il…», in fondo alla lista.
     func testIlFondoDellaRosaMostraLUltimaRiga() {
         avvia(["-DEMO_SCHERMATA", "lega-rosa", "-DEMO_FONDO", "1"])

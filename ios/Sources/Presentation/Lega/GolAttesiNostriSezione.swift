@@ -14,6 +14,7 @@ struct GolAttesiNostriSezione: View {
             }
             .font(.footnote)
             .foregroundStyle(Color.testoSecondario)
+            .id(FondoDemo.idNostri)   // dove si ferma la foto `lega-stato-nostri` (solo demo, #430)
             if (nostri.giornate ?? 0) > 0 {
                 let insieme = ParoleNostri.esitoInsieme(nostri)
                 RigaMisuraRegistro(nome: ParoleNostri.insieme, esito: insieme, verdetto: ParoleNostri.testoInsieme(insieme))

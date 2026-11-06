@@ -435,10 +435,12 @@ struct StatoDatiView: View {
                     RigaFondoDemo()
                 }
                 .scrollContentBackground(.hidden)
-                // fotografia `lega-stato-fondo` (#425): la lista scorsa fino in fondo, dove sono i gol attesi nostri e gli indicatori
-                // del consiglio. Lo stato arriva per primo, la prova delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
+                // fotografie `lega-stato-fondo` (#425: la lista scorsa fino in fondo, agli indicatori del consiglio) e `lega-stato-nostri`
+                // (#430: ferma sul riquadro dei gol attesi nostri, che col consiglio non entra in una foto sola). Lo stato arriva per
+                // primo, la prova delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
                 .demoInFondo()
-                .demoScorriA(FondoDemo.idRiga, proxy: proxy, schermate: ["lega-stato"], inFondo: true, ancora: .bottom,
+                .demoScorriA(FondoDemo.arrivoDiStato.id, proxy: proxy, schermate: ["lega-stato"], inFondo: true,
+                             ancora: FondoDemo.arrivoDiStato.ancora,
                              pronto: caricatore.dato != nil && (affidabilita.dato != nil || affidabilita.errore != nil))
             }
         }
