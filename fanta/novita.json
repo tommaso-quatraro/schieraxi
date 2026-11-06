@@ -1,5 +1,36 @@
 [
   {
+    "versione": "1.425",
+    "data": "2026-11-06T04:39:14",
+    "titolo": "Righe dei giocatori più basse, numeri in colonna",
+    "voci": [
+      "Ogni giocatore sta su una riga più bassa, uguale in tutte le schermate: a sinistra volto, nome, partita ed etichette, a destra «gioca N%» e fantavoto atteso.",
+      "I numeri stanno sempre nella stessa colonna, con il nome della colonna in alto. Sugli schermi larghi la riga sta su una linea sola e nella Formazione titolari e panchina stanno uno sotto l'altro.",
+      "Meno segni: lettera del ruolo grigia, indice come numero piccolo sul volto, una lineetta nei colori della squadra; sotto il 70% «gioca N%» è arancio."
+    ],
+    "tecnico": [
+      "Grafica B, PR 6 (parte di #354): voceGiocatore, valoreRosa, rigaGiocatoreCompatta, le righe dei Seguiti, della rosa, della sostituzione e della scelta del confronto usano .voce-g (grid-template-areas) dentro li.riga-gioc, contenitore «riga»; da 680 px di riga una linea sola con le colonne nome, partita, etichette, --col-gioca (8ch), --col-fv (5ch).",
+      "Nuove: lineetta(slug) (per ogni tema il colore del club che si vede sul fondo, grigia se manca), intestazioneColonne(opz) (aria-hidden, «Partita» e «Fantavoto atteso», opz.ferma e opz.azione), numeriRiga(p, perche), pezziRiga(pezzi). voceGiocatore ha un parametro facoltativo in fondo (extra) per la squadra nei Seguiti.",
+      "Tolti: anello colorato dell'indice (.avatar-anello senza conic-gradient, .badge-indice neutro), .indice e anello(), .barra-p, pallino della difficoltà nelle righe, sottolineatura a puntini del numero, .intestazione-elenco e le chiavi mercato.giocatori e mercato.voto_atteso. ⇄ e ✎ senza cerchio (colore --azione). Formazione da 1400 px senza columns: 2. .campo.non-ferma resta position: relative (le linee del campo non escono più)."
+    ]
+  },
+  {
+    "versione": "1.424",
+    "data": "2026-11-06T04:27:35",
+    "titolo": "Differenze che tornano con i numeri scritti",
+    "voci": [
+      "Nel confronto tra due giocatori la differenza tra parentesi ora è quella dei due numeri scritti accanto: con 72,7 e 72,1 si legge −0,6.",
+      "Lo stesso nella formazione modificata a mano: la differenza dalla consigliata torna sempre con i due punteggi mostrati.",
+      "I numeri negativi nelle frasi dell'app hanno il segno meno giusto, come nel resto delle schermate."
+    ],
+    "tecnico": [
+      "Issue #392. fanta/frasi.py: ConSegno (float da scrivere sempre con il segno) e differenza(a, b) = round(a, 1) − round(b, 1) con il segno; _it scrive i negativi (interi e decimali) con il meno tipografico U+2212 e «0,0» senza segno; nel JSON i negativi restano «-0.4» (ASCII), una ConSegno positiva è «+0.6», da_json la riconosce.",
+      "fanta/consigli.py: confronto.esito_meglio ed esito_peggio passano d = differenza(invertita, attuale); valuta: differenza = differenza(punteggio, consigliata_stesso_modulo) (i due numeri come si scrivono, anche per l'iPhone che usa il campo).",
+      "fanta/web/testi.js: testoParametro scrive con «−» i numeri negativi dei parametri (frasi tradotte in inglese).",
+      "Controllate e già giuste: le righe del Diario «Tu X, consiglio Y (d)», «tua: X (d)» e «Previsti tra A e B (d)» (punti fatti e fascia sono già a una cifra, segno già tipografico)."
+    ]
+  },
+  {
     "versione": "1.423",
     "data": "2026-11-06T04:16:39",
     "titolo": "Diario: quanto ci prendiamo su tutta la Serie A",

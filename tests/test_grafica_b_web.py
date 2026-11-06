@@ -569,3 +569,216 @@ def test_novita_della_versione_una_riga_con_il_filo():
 def test_novita_delle_sezioni():
     voce = _voce_di_novita("sezioni-pulsanti.json", "Meno riquadri: sezioni con un titolo e righe")
     assert len(voce["voci"]) >= 2
+
+
+# ---------------------------------------------------------------- PR 6: riga del giocatore e colonne di numeri
+def _esegui_righe(chiamata, lingua="it"):
+    """Le funzioni delle righe dei giocatori (da «pezzi grafici riusati» a «navigazione» di app.js) girate con node, con i testi veri
+    e pochi sostituti: volto vuoto, una data fissa, nessuna memoria del browser."""
+    testi = (WEB / "testi.js").read_text(encoding="utf-8")
+    pezzo = lambda a, b: APP[APP.index(a):APP.index(b)]
+    codice = "\n".join([
+        testi,
+        f"LINGUA = '{lingua}';",
+        "const stato = {}; globalThis.document = { addEventListener() {} };",
+        "const AvatarSchieraxi = { svg: () => '<svg></svg>' }; const quando = () => 'sab 31 20:45';",
+        "const cognome = x => x.nome;",
+        pezzo("function esc(x)", "const menoMovimento"),
+        re.search(r"^const ruoloSigla = .*$", APP, re.M).group(0),
+        re.search(r"^const SIGLE = \{.*?\};$", APP, re.M | re.S).group(0),
+        re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0),
+        pezzo("// ---------------------------------------------------------------- pezzi grafici riusati",
+              "// ---------------------------------------------------------------- navigazione"),
+        f"console.log(JSON.stringify({chiamata}));",
+    ])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+def _testo_riga(html):
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+
+
+GIOCATORE = {"id": 7, "nome": "Rossi L.", "ruolo": "D", "squadra": "napoli", "avversario": "lazio", "in_casa": True,
+             "data_partita": "2026-10-31 20:45", "p_voto": 0.85, "fv_atteso": 6.8, "indice": 57,
+             "etichetta": {"codice": "titolare", "testo": "Probabile titolare", "tono": "positivo"}}
+
+
+def test_riga_del_giocatore_con_pochi_segni_e_gioca_intero():
+    """Spec §8.4: niente quadratino colorato del ruolo, niente barra della probabilità, niente pallino della difficoltà; la lettera
+    del ruolo grigia, la lineetta del club davanti alla partita e «gioca N%» scritto intero."""
+    corpo = _funzione(APP, "voceGiocatore")
+    assert "badgeRuolo(" not in corpo and "barra-p" not in corpo and 'class="diff' not in corpo
+    assert 'class="ruolo-l"' in corpo and "lineetta(x.squadra)" in corpo and "numeriRiga(x" in corpo
+    assert 't("giocatore.gioca"' in _funzione(APP, "numeriRiga")
+    assert ".barra-p" not in CSS                                # la barra della probabilità non c'è più da nessuna parte
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_riga_del_giocatore_prima_e_dopo_la_partita():
+    g = json.dumps(GIOCATORE)
+    prima, dubbio, fatto, corso = _esegui_righe(f"""[
+      voceGiocatore({g}),
+      voceGiocatore({{...{g}, p_voto: 0.55}}),
+      voceGiocatore({{...{g}, stato_partita: "fatto", fv_preso: 7, etichetta: {{codice: "voto", testo: "Ha giocato", tono: "positivo"}}}}),
+      voceGiocatore({{...{g}, stato_partita: "in_corso", etichetta: {{codice: "in_corso", testo: "Partita in corso", tono: "positivo"}}}})]""")
+    testo = _testo_riga(prima)
+    assert testo.startswith("57 D Rossi L. NAP vs LAZ")                     # indice sul volto, lettera del ruolo, nome, partita
+    assert "sab 31 20:45" in testo and "Probabile titolare" in testo and testo.endswith("gioca 85% Fantavoto atteso 6,8")
+    assert '<span class="pv-g">gioca 85%</span>' in prima                   # grigio sopra il 70%...
+    assert '<span class="pv-g basso">gioca 55%</span>' in dubbio            # ...arancio e in grassetto sotto
+    gioca = re.compile(r"gioca \d")                                          # «data-giocatore» non conta
+    assert "7,0" in _testo_riga(fatto) and not gioca.search(fatto)          # a partita finita il fantavoto preso, mai «gioca N%»
+    assert _testo_riga(fatto).endswith("fantavoto 7,0")
+    assert not gioca.search(corso) and _testo_riga(corso).endswith("Partita in corso –")    # in corso «–», nascosto ai lettori
+    assert '<b class="debole" aria-hidden="true">–</b>' in corso
+    for html in (prima, fatto):
+        assert "conic-gradient" not in html and "avatar-anello alto" not in html and 'class="ruolo ' not in html
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_il_fantavoto_atteso_ha_il_suo_nome_per_i_lettori_di_schermo():
+    """I nomi delle colonne sono nascosti ai lettori di schermo: senza un nome il numero si sentiva da solo («gioca 85%, 6,8»).
+    Dentro la colonna del numero c'è «Fantavoto atteso» per i soli lettori; il fantavoto preso ha già «fantavoto» scritto accanto."""
+    g = json.dumps(GIOCATORE)
+    riga, rosa, scelta = _esegui_righe(f"[voceGiocatore({g}), valoreRosa({g}, {{id: 7}}), numeriRiga({{p_voto: 0.5, fv_atteso: 6}})]")
+    en = _esegui_righe(f"voceGiocatore({g})", "en")
+    for html in (riga, rosa, scelta):
+        assert re.search(r'<span class="valore"><span class="solo-lettori">Fantavoto atteso </span><b[^>]*>\d,\d</b></span>', html), html
+    assert _testo_riga(en).endswith("plays 85% Expected fantasy score 6.8")
+    sostituzione = _funzione(APP, "mostraFormazione")
+    sostituzione = sostituzione[sostituzione.index("function apriSostituzione"):]
+    assert '<span class="valore">${nomeFvAtteso()}<b>' in sostituzione                  # anche la sostituzione
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_partita_rinviata_nella_riga_come_prima_della_partita():
+    """Partita rinviata (#284, #313): nella riga l'etichetta «Rinviata», poi «gioca N%» e il fantavoto atteso, come prima della
+    partita e come `RigaGiocatore.numero`/`sottoNumero` dell'iPhone; mai il «–» delle partite cominciate. Anche con un server
+    vecchio senza `etichetta` (solo `stato_partita`)."""
+    g = dict(GIOCATORE, p_voto=0.5, fv_atteso=6.0)
+    nuova = dict(g, stato_partita="rinviata", etichetta={"codice": "rinviata", "testo": "Rinviata", "tono": "attenzione"})
+    vecchia = {k: v for k, v in dict(g, stato_partita="rinviata", titolarita=None).items() if k != "etichetta"}
+    for x in (nuova, vecchia):
+        testo = _testo_riga(_esegui_righe(f"voceGiocatore({json.dumps(x)})"))
+        assert testo.endswith("Rinviata gioca 50% Fantavoto atteso 6,0"), testo
+        assert "–" not in testo
+
+
+def test_la_griglia_della_riga_e_dell_intestazione_ha_lo_stesso_carattere():
+    """Le colonne dei numeri sono in `ch`, che dipende dal carattere dell'elemento con la griglia: con il 12 px dato alla griglia
+    dell'intestazione le sue colonne erano più strette di quelle delle righe (15 px) e «Partita» stava 6-7 px fuori posto. Nessuna
+    regola dà un carattere alla griglia (`.voce-g`): il 12 px dei nomi delle colonne sta sui loro pezzi."""
+    for selettori, corpo in REGOLE:
+        for s in selettori:
+            if _ha_classe(_soggetto(s), "voce-g"):
+                assert not re.search(r"(?<![\w-])font(?:-size)?\s*:", corpo), f"{s} {{ {corpo} }}"
+    assert "font-size: var(--t-eti)" in _corpo(".intestazione-colonne > .voce-g > span")
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_la_riga_della_partita_va_a_capo_tra_i_pezzi():
+    """A 390 px «INT vs COM · dom 8 18:00 · Real Esempio» andava a capo dentro il nome della squadra («Real» sopra, «Esempio» sotto).
+    Ogni pezzo è un blocco intero, con il «·» attaccato al pezzo prima: si va a capo tra i pezzi."""
+    riga = _esegui_righe(f"voceGiocatore({json.dumps(GIOCATORE)}, null, false, false, 'Real Esempio')")
+    assert '<span class="nb">Real Esempio</span>' in riga
+    assert re.search(r'<span class="nb">NAP <span aria-hidden="true">vs LAZ</span>.*? · sab 31 20:45 ·</span> <span class="nb">', riga)
+    assert re.search(r"\.voce-g \.dettaglio \.nb \{[^}]*display: inline-block; max-width: 100%", CSS)
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_lineetta_nei_colori_sociali_e_grigia_se_il_club_manca():
+    """Il primo colore del club; il secondo nel tema in cui il primo sparisce sul fondo (il bianco della Juventus sul fondo
+    chiaro, il verde scuro del Venezia su quello scuro). `--c` per il tema chiaro, `--c-scuro` per lo scuro."""
+    napoli, juve, venezia, ignoto, finto = _esegui_righe(
+        '[lineetta("napoli"), lineetta("juventus"), lineetta("venezia"), lineetta("nessuno"), lineetta("constructor")]')
+    assert napoli == '<i class="lineetta" style="--c:#3d8fd1;--c-scuro:#3d8fd1" aria-hidden="true"></i>'
+    assert juve == '<i class="lineetta" style="--c:#111827;--c-scuro:#f3f4f6" aria-hidden="true"></i>'
+    assert venezia == '<i class="lineetta" style="--c:#0b3d2e;--c-scuro:#f08a1a" aria-hidden="true"></i>'
+    assert ignoto == finto == '<i class="lineetta" style="--c:#6b7280;--c-scuro:#6b7280" aria-hidden="true"></i>'
+    corpo = _corpo(".lineetta")
+    assert "width: 3px" in corpo and "background: var(--c-scuro)" in corpo
+    assert ':root[data-tema="chiaro"] .lineetta { background: var(--c); }' in CSS
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_intestazione_delle_colonne():
+    con, senza, ferma = _esegui_righe("[intestazioneColonne(), intestazioneColonne({ partita: false }), "
+                                      "intestazioneColonne({ ferma: true, azione: true })]")
+    en = _esegui_righe("intestazioneColonne()", "en")
+    assert 'class="intestazione-colonne" aria-hidden="true"' in con
+    assert _testo_riga(con) == "Partita Fantavoto atteso" and _testo_riga(senza) == "Fantavoto atteso"
+    assert 'class="intestazione-colonne ferma posto-azione"' in ferma
+    assert _testo_riga(en) == "Match Expected fantasy score"
+
+
+def test_intestazione_delle_colonne_nascosta_ai_lettori_e_colonne_pari():
+    assert 'aria-hidden="true"' in _funzione(APP, "intestazioneColonne")
+    assert re.search(r"--col-gioca: \d+(?:\.\d+)?ch", CSS) and re.search(r"--col-fv: \d+(?:\.\d+)?ch", CSS)
+    assert ".avatar-anello.alto" not in CSS and "conic-gradient" not in _corpo(".avatar-anello")   # niente anello colorato per l'indice
+
+
+def test_l_indice_resta_un_numero_neutro_sul_volto():
+    """Spec §8.4: l'indice (0-100) resta come numero piccolo sul volto, nei colori del testo e della pagina (mai sotto i 12 px)."""
+    badge = _corpo(".badge-indice")
+    assert "background: var(--sfondo)" in badge and "color: var(--testo)" in badge and "font-size: var(--t-eti)" in badge
+    assert not re.search(r"\.badge-indice \{[^}]*color: #fff", CSS)          # il bianco serviva sul pallino colorato
+
+
+def test_le_colonne_dei_numeri_stanno_nello_stesso_posto_in_ogni_riga():
+    """Spec C8: «gioca N%» e il fantavoto atteso nelle stesse colonne, larghe uguali, in ogni riga e nell'intestazione; sotto i 680 px
+    di riga i due numeri uno sopra l'altro (come l'iPhone), da 680 px una riga sola con la colonna «Partita»."""
+    base = _corpo(".voce-g")
+    assert "grid-template-areas:" in base and "var(--col-gioca)" in base
+    larga = re.search(r"@container riga \(min-width: 680px\) \{(.*?)\n\}", CSS, re.S)
+    assert larga, "manca la riga larga"
+    assert re.search(r"\.voce-g \{[^}]*var\(--col-gioca\) var\(--col-fv\)", larga.group(1))
+    assert re.search(r"\.voce-g > \.testo-g \{ display: contents; \}", larga.group(1))
+    assert "container: riga / inline-size" in _corpo(".riga-gioc, .intestazione-colonne")
+    assert '<ul class="elenco posto-azione">${fuori.map' in APP         # «Fuori» lascia il posto del ⇄: colonne come Titolari e Panchina
+
+
+def test_formazione_titolari_panchina_e_fuori_in_una_colonna_sul_pc():
+    """A 1440 px Titolari e Panchina stavano in due colonne strette (`columns: 2`): i numeri non si confrontavano e la riga non
+    poteva stare su una linea. Ora stanno uno sotto l'altro nella colonna larga, con le colonne allineate."""
+    assert not re.search(r"\.colonne-campo > \.col:nth-child\(2\)[^{]*\{[^}]*columns: 2", CSS)
+
+
+def test_il_campo_che_scorre_con_la_pagina_tiene_dentro_le_sue_linee():
+    """Tra 768 e 1399 px, con il campo più alto della finestra, `controllaFerme` lo fa scorrere con la pagina (`.non-ferma`,
+    position: static): area, cerchio e metà campo, che stanno in posizione assoluta, si misuravano sulla pagina e attraversavano
+    la colonna accanto (si vedeva nel tema scuro, foto della PR 6 a 1024 px). Il campo resta il loro riferimento."""
+    assert re.search(r"\n\.campo\.non-ferma \{ position: relative !important; \}", CSS)
+
+
+def test_azione_della_riga_scritta_senza_cerchio():
+    """Spec C9 e §8.7: «⇄» e «✎» sono icone da 44 px nel colore delle azioni, nella riga a destra, senza il cerchio a contorno."""
+    mini = _corpo(".confronta-mini")
+    assert "width: 44px; height: 44px" in mini and "border: 0" in mini and "color: var(--azione)" in mini
+    assert "border-radius: 50%" not in mini
+
+
+def test_nome_del_giocatore_nelle_righe_a_15_px_e_numero_a_20():
+    assert "font-size: var(--t-corpo)" in _corpo(".voce-g .nome") and "font-weight: 650" in _corpo(".voce-g .nome")
+    assert "font-size: var(--t-valore)" in _corpo(".voce .valore b")
+
+
+def test_la_frase_sotto_i_titolari_parla_del_numero_sul_volto():
+    """Senza l'anello colorato la frase che spiega l'indice non può più parlare di un anello (in italiano e in inglese)."""
+    testi = (WEB / "testi.js").read_text(encoding="utf-8")
+    frasi = re.findall(r'"formazione\.numero_sulla_maglia": "([^"]+)"', testi)
+    assert len(frasi) == 2 and all("anello" not in f and "ring" not in f for f in frasi), frasi
+    assert "il numero sul volto è l'indice" in frasi[0] and "the number on the face is the index" in frasi[1]
+
+
+def test_differenza_ammessa_della_lineetta_scritta():
+    doc = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
+    ammesse = doc[doc.index("## Differenze ammesse"):doc.index("## Differenze di oggi")]
+    riga = next((r for r in ammesse.splitlines() if "Sigla della squadra nelle righe" in r), "")
+    assert "lineetta" in riga and "colori sociali" in riga, riga
+
+
+def test_novita_della_riga_del_giocatore():
+    voce = _voce_di_novita("riga-giocatore.json", "Righe dei giocatori più basse, numeri in colonna")
+    assert len(voce["voci"]) >= 2
