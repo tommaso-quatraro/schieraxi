@@ -388,6 +388,12 @@ def _misurate(db: sqlite3.Connection, fino_a: tuple[str, int] | None = None, qua
     return list(reversed(_righe(db.execute(sql + " ORDER BY stagione DESC, giornata DESC LIMIT ?", (*par, quante)))))
 
 
+def ultime_misurate(db: sqlite3.Connection, quante: int = FINESTRA) -> list[dict]:
+    """Le ultime `quante` giornate misurate con dei dati, dalla più vecchia, con `fasce` già letta (una lista): per la riga «su
+    tutta la Serie A» del Diario (`precisione.serie_a`, #374). Solo giornate e numeri, nessun giocatore."""
+    return [{**r, "fasce": _lista(r.get("fasce"))} for r in _misurate(db, None, quante)]
+
+
 def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dict | None, adesso: datetime) -> list[str]:
     """Scrive la misura di una giornata (None = nessuna partita utile: la giornata non conta nella finestra) e decide gli avvisi:
     da avvisare = fuori soglia adesso E nella giornata misurata prima, e non già avvisati mentre restavano fuori."""

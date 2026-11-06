@@ -219,6 +219,8 @@ Se non hai detto cosa hai schierato, tocca **Ho schierato la consigliata** o **H
   3. la consigliata contro la tua: in quante giornate ha fatto più punti e quanti punti in più o in meno avresti fatto seguendola sempre;
   4. la squadra: punti previsti e fatti, e in quante giornate i punti fatti sono caduti nella fascia prevista (l'obiettivo è 8 su 10).
 
+  Sotto i quattro numeri, una riga **su tutta la Serie A**: gli stessi conti fatti su tutti i giocatori del campionato (non solo i tuoi), con i numeri che l'app mostrava prima di ogni giornata. Dice di quanto il fantavoto atteso ha sbagliato meno (o più) della fantamedia e quante volte su 10 ha giocato chi davamo quasi sicuro, nelle ultime giornate (al massimo 8). I numeri arrivano dopo 3 giornate registrate; prima la riga dice quante ne servono ancora.
+
   Sotto c'è l'andamento giornata per giornata. Con meno di 8 giornate un avviso dice che i dati sono ancora pochi e i numeri possono cambiare molto. Le giornate passate prima che l'app registrasse i suoi numeri sono ricostruite con i soli dati di allora, e c'è scritto.
 
 ## 6. Impostazioni (l'ingranaggio)

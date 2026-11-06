@@ -2841,7 +2841,7 @@ async function condividiImmagine(f, m) {
 
 // Diario > «Quanto ci abbiamo preso» (campo `precisione` di /api/diario, fanta/precisione.py): quattro numeri con una frase,
 // l'andamento giornata per giornata e l'avviso se i dati sono pochi. Tutto viene dal server; si mostra anche quando va male.
-// Solo numeri dal server (passati da Number), niente testo dell'utente: nessun esc() necessario, ma niente innerHTML con dati liberi.
+// Numeri dal server (passati da Number) e, per la riga su tutta la Serie A, una frase del server passata da esc(); niente innerHTML.
 function cartaPrecisione(p) {
   if (!p || !p.giornate) return "";
   const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
@@ -2893,6 +2893,9 @@ function cartaPrecisione(p) {
   }).join("");
   const primo = pg.length ? nomeG(pg[0]) : null, ultimo = pg.length ? nomeG(pg[pg.length - 1]) : null;
   const ric = n((p.fonti || {}).ricostruiti) || 0;
+  // la riga su tutta la Serie A (registro delle giornate, #374): frase del server, la stessa che mostra l'iPhone
+  const sa = p.serie_a && typeof p.serie_a.testo === "string" && p.serie_a.testo.trim() ? testoDi(p.serie_a) : "";
+  const serieA = sa ? `<div class="qp-frase qp-serie-a">${esc(sa)}</div>` : "";
   return `<div class="carta qp"><h2>${t("diario.af_titolo")}</h2>
     <div class="debole piccolo">${t("diario.qp_intro")} ${elidiOrdinali(tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo }))}</div>
     ${p.pochi_dati ? `<div class="attenzione qp-pochi" role="status">${t("diario.qp_pochi", { n: n(p.giornate_minime) || 8 })}</div>` : ""}
@@ -2902,6 +2905,7 @@ function cartaPrecisione(p) {
       ${voce(cf.giornate ? t("diario.qp_k_su_n", { k: n(cf.meglio_consigliata), n: n(cf.giornate) }) : "–", t("diario.qp_cf_eti"), cfFrase)}
       ${voce(sq ? v(sq.scarto_medio) : "–", t("diario.qp_sq_eti"), sqFrase)}
     </div>
+    ${serieA}
     ${grafico}
     ${righe ? `<details class="qp-dettagli"><summary>${t("diario.qp_andamento")}</summary><ul class="qp-giornate">${righe}</ul></details>` : ""}
     ${ric ? `<div class="debole piccolo qp-nota">${tp("diario.qp_ricostruiti", ric, { t: n(p.giornate) })}</div>` : ""}</div>`;

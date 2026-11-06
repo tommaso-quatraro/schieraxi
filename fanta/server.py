@@ -1160,12 +1160,20 @@ def leggi_diario(ctx: Contesto = Depends(lega_corrente)):
     """Giornata per giornata: la formazione che hai schierato contro quella consigliata, con punti attesi e fatti."""
     r = diario.elenco(ctx.diario, _regole(ctx))
     r["precisione"] = precisione.riassunto(r["giornate"])          # «Quanto ci abbiamo preso» (campo nuovo: i client vecchi lo ignorano)
-    if not r["giornate"]:
+    r["precisione"]["serie_a"] = None
+    try:
         db = _db()
+    except sqlite3.Error:                                          # archivio occupato o assente: il Diario si apre lo stesso, senza la riga
+        return r
+    try:
         try:
+            r["precisione"]["serie_a"] = precisione.serie_a(db)    # la riga su tutta la Serie A, dal registro delle giornate (#374)
+        except sqlite3.Error:
+            r["precisione"]["serie_a"] = None
+        if not r["giornate"]:
             r["motivo_vuoto"] = diario.motivo_vuoto(db, _regole(ctx), _rose(ctx))          # campo facoltativo: i client vecchi lo ignorano
-        finally:
-            db.close()
+    finally:
+        db.close()
     return r
 
 
