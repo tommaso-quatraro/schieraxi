@@ -131,7 +131,7 @@ def test_le_colonne_ferme_restano_ferme_solo_se_ci_stanno_nello_schermo():
     # schermo più alto (o finestra allargata): tornano ferme
     assert r["b"] == [["campo", False], ["colonna", False], ["ingrandita", False], ["ferma no", False]]
     assert re.search(r"\n\.non-ferma \{ position: static !important; \}", SENZA_COMMENTI)
-    for selettore in (".colonne-oggi > .col:first-child", ".colonne-campo .col > .campo", ".imp-elenco"):
+    for selettore in (".colonne-oggi > .col:first-child", ".colonne-campo .campo-fermo", ".imp-elenco"):
         assert selettore in re.search(r'const FERME = "([^"]+)"', APP).group(1), selettore
 
 

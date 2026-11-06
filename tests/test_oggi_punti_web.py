@@ -31,7 +31,6 @@ def test_oggi_mostra_i_punti_attesi_della_formazione_anche_se_i_fotogrammi_non_a
     codice = "\n".join([
         TESTI, "LINGUA = 'it';",
         re.search(r"^const num = .*$", APP, re.M).group(0),
-        _funzione("animaNumero"),
         # pagina finta: il numero nell'HTML è il testo iniziale dell'elemento; un fotogramma solo, 30 ms dopo l'inizio
         """const esc = s => String(s ?? ""); const vuoto = () => ""; let html = "";
 const el = { textContent: "" };

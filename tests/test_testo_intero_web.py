@@ -76,27 +76,23 @@ def test_cognome_e_stato_della_pedina_vanno_a_capo_a_ogni_larghezza():
 
 
 def test_le_pedine_si_stringono_dentro_il_campo_anche_con_cinque_per_fila():
-    """Cinque pedine in una fila (5-4-1, 3-5-2) a 320 px: il campo è largo 288 px, cinque volti da 56 px con gli spazi ne chiedono 308 e
-    l'ultima pedina usciva dal campo, tagliata. La pedina non ha più una larghezza fissa (si stringe fino al volto) e, quando il
-    campo è stretto, il volto passa a 48 px: cinque ci stanno."""
+    """Cinque pedine in una fila (5-4-1, 3-5-2) a 320 px: il campo è largo 288 px; con i volti da 56 px cinque pedine con gli spazi ne
+    chiedevano 308 e l'ultima usciva dal campo, tagliata. La pedina non ha una larghezza fissa (si stringe fino al disco) e il disco
+    della grafica B (44 px, spec §8.10) ci sta cinque volte anche nel campo più stretto, senza rimpicciolirsi: il tocco resta da 44 px."""
     pedina = _regole(GLOBALE, ".pedina")
     assert not re.search(r"(?<![\w-])width\s*:", pedina), "la pedina non ha una larghezza fissa"
     assert re.search(r"(?<![\w-])flex\s*:\s*0 1 \d+px", pedina), "la pedina parte da una larghezza e si stringe"
     assert "container: campo / inline-size" in _regole(GLOBALE, ".campo")
     campo, linea = _regole(GLOBALE, ".campo"), _regole(GLOBALE, ".linea")
     fuori = 2 * _riempimento_x(campo) + 4 * _px(linea, "gap")                 # riempimento del campo e quattro spazi tra cinque pedine
-    volto = _px(_regole(GLOBALE, ".avatar-pedina"), "width")
-    stretti = [m for m in re.finditer(r"@container campo \(max-width: ([\d.]+)px\) \{", SENZA_COMMENTI) if ".avatar-pedina" in _blocco(m.group(0))]
-    assert len(stretti) == 1, "manca il campo stretto (@container campo) con il volto piccolo"
-    stretto = stretti[0]
-    soglia = float(stretto.group(1))
-    assert 5 * volto + fuori > soglia, "sotto la soglia cinque volti normali non ci stanno più"
-    volto_stretto = _px(_regole(_blocco(stretto.group(0)), ".avatar-pedina"), "width")
-    assert 5 * volto_stretto + fuori <= 320 - 2 * 16, "a 320 px (campo largo 288 px) cinque volti piccoli ci stanno"
-    assert volto_stretto >= 44                                                 # il volto resta riconoscibile e il tocco resta da 44 px
-    # in una pedina da 52 px un cognome di una parola («Merondo») va a capo dentro la parola: dove il browser lo sa fare, con il
+    disco = _px(_regole(GLOBALE, ".disco"), "width")
+    assert disco >= 44 and 5 * disco + fuori <= 320 - 2 * 16, "a 320 px (campo largo 288 px) cinque dischi ci stanno"
+    assert not any(".disco" in _blocco(m.group(0)) for m in re.finditer(r"@container campo \(max-width: ([\d.]+)px\) \{", SENZA_COMMENTI))
+    # in una pedina stretta un cognome di una parola («Merondo») va a capo dentro la parola: dove il browser lo sa fare, con il
     # trattino della sillabazione («Meron-do») invece che a una lettera dalla fine («Merond/o»); il testo non si rimpicciolisce
-    sillabe = _regole(_blocco(stretto.group(0)), ".pedina .nome")
+    stretti = [m for m in re.finditer(r"@container campo \(max-width: ([\d.]+)px\) \{", SENZA_COMMENTI) if ".pedina .nome" in _blocco(m.group(0))]
+    assert len(stretti) == 1, "manca il campo stretto (@container campo) con la sillabazione"
+    sillabe = _regole(_blocco(stretti[0].group(0)), ".pedina .nome")
     assert "hyphens: auto" in sillabe and "-webkit-hyphens: auto" in sillabe and "font-size" not in sillabe
     # lo stesso in ogni fila da cinque, anche con il volto normale (390 px con il testo «Grande»: pedine da 58 px, «Rogheceb/e»)
     cinque = _regole(GLOBALE, ".linea:has(> .pedina:nth-child(5)) .nome")
@@ -105,16 +101,15 @@ def test_le_pedine_si_stringono_dentro_il_campo_anche_con_cinque_per_fila():
 
 def test_il_pulsante_della_legenda_non_copre_il_portiere():
     """Chiusa la legenda, il pulsante «ⓘ Cosa vuol dire» (largo circa 145 px) stava in basso a destra sopra il campo e copriva
-    «gioca 92%» e «vs BOL» del portiere a 320 px, e con il testo grande anche a 390, 768 e 1440 px. Nel campo fino a 420 px
-    va in fondo, sotto il portiere, a destra: occupa il suo posto invece di coprire."""
-    blocchi = [m for m in re.finditer(r"@container campo \(max-width: ([\d.]+)px\) \{", SENZA_COMMENTI)
-               if ".info-campo" in _blocco(m.group(0))]
-    assert len(blocchi) == 1, "manca il pulsante della legenda nel campo stretto"
-    soglia = float(blocchi[0].group(1))
-    # il portiere sta al centro (metà del campo più metà delle sue scritte, fino a 45 px); il pulsante a 16 px dal bordo destro
-    assert soglia >= 2 * (16 + 145) + 2 * 45 - 1
-    pulsante = _regole(_blocco(blocchi[0].group(0)), ".info-campo")
-    assert "position: relative" in pulsante and "align-self: flex-end" in pulsante
+    «gioca 92%» e «vs BOL» del portiere a 320 px, e con il testo grande anche a 390, 768 e 1440 px. Dalla grafica B (spec §8.10)
+    «Cosa vuol dire» e la legenda stanno sotto il campo, fuori: a nessuna larghezza possono coprire una pedina."""
+    assert not re.search(r"@container campo[^{]*\{[^@]*\.info-campo", SENZA_COMMENTI)
+    pulsante = _regole(GLOBALE, ".info-campo")
+    assert "position: absolute" not in pulsante and "min-height: 44px" in pulsante
+    formazione = APP[APP.index("function mostraFormazione("):]
+    campo = formazione[formazione.index('<div class="campo">'):]
+    campo = campo[:campo.index("</div>")]
+    assert "legendaCampo()" not in campo and "info-campo" not in campo
 
 
 # ---------------------------------------------------------------- partite del turno
