@@ -104,10 +104,15 @@ def test_diario_punti_fatti_e_attesi_in_due_colonne():
     assert '<div class="diario-punti"><span>La tua (4-4-2)</span><b class="dp-fatti">66,0</b><span class="dp-attesi">attesi 67,5</span></div>' in carta
     assert '<b class="dp-fatti">70,5</b><span class="dp-attesi">attesi 68,0</span>' in carta
     griglia = "".join(_regole(".diario-punti"))
-    assert "display: grid" in griglia and "grid-template-columns: minmax(0, 1fr) 4.2em 7.5em" in griglia
+    # «attesi 100,0» / «expected 100.0» a 12 px stanno in 6,5em della riga (97 px): più stretta di prima (7,5em), il nome ha più posto
+    assert "display: grid" in griglia and "grid-template-columns: minmax(0, 1fr) 4.2em 6.5em" in griglia
     assert "font-family: var(--font-numeri)" in "".join(_regole(".dp-fatti")) and "text-align: right" in "".join(_regole(".dp-fatti"))
-    stretta = _blocco("@container pagina (max-width: 319.98px) {")
-    assert ".diario-punti" in stretta                                      # sotto i 320 px i due numeri vanno sotto il nome
+    # sotto i 360 px di pagina (revisione della #434: tra 320 e 360 px al nome restavano ~77 px, «La tua, la consigliata (4-3-3)» su 3-4
+    # righe) il nome della formazione sta sopra e i due numeri sotto, a destra
+    sotto_360 = _blocco("@container pagina (max-width: 359.98px) {")
+    assert re.search(r"\.diario-punti \{ grid-template-columns: minmax\(0, 1fr\) auto;", sotto_360)
+    assert re.search(r"\.diario-punti > span:first-child \{ grid-column: 1 / -1; \}", sotto_360)
+    assert ".diario-punti" not in _blocco("@container pagina (max-width: 319.98px) {")      # una regola sola, non due soglie
 
 
 def test_diario_giocatori_cambiati_senza_fondo_e_formazione_sola_su_due_colonne():

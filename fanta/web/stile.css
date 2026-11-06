@@ -1371,10 +1371,16 @@ body.senza-accesso .salta { display: none; }
 .diario-lista li { overflow-wrap: anywhere; padding: 2px 6px; border-radius: 8px; border-left: 3px solid transparent; }
 .diario-lista li.diario-diverso { font-weight: 700; border-left-color: var(--arancio); }      /* chi non c'è nell'altra: grassetto e filo arancio, senza tinta */
 /* i punti fatti e «attesi N» di ogni giornata in due colonne della stessa larghezza (spec §9, «numeri in colonna») */
-.diario-punti { display: grid; grid-template-columns: minmax(0, 1fr) 4.2em 7.5em; column-gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--filo); font-size: var(--t-corpo); }
+.diario-punti { display: grid; grid-template-columns: minmax(0, 1fr) 4.2em 6.5em; column-gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--filo); font-size: var(--t-corpo); }
 .dp-fatti { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.1; }
 .dp-attesi { font-size: var(--t-eti); color: var(--testo-2); font-variant-numeric: tabular-nums; text-align: right; }
 .azioni-diario { margin-bottom: 12px; }        /* i pulsanti non toccano il filo della riga dei punti */
+/* pagina sotto i 360 px (telefoni piccoli, zoom): accanto alle due colonne dei numeri il nome della formazione andava su 3-4 righe;
+   il nome sta su una riga sua, i punti fatti e «attesi N» sotto, a destra */
+@container pagina (max-width: 359.98px) {
+  .diario-punti { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+  .diario-punti > span:first-child { grid-column: 1 / -1; }
+}
 .diario-ruolo { display: inline-block; min-width: 1.2em; color: var(--testo-2); font-size: var(--t-eti); }
 .diario-panchina { margin-top: 8px; }
 .elenco-scelte { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
@@ -1513,9 +1519,6 @@ body { container: pagina / inline-size; }
   .stat-fila, .stat-fila.quattro, .statistiche { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .perche-voce { grid-template-columns: 1fr; gap: 2px; }
   .perche-effetto { justify-self: start; }
-  /* Diario: il nome della formazione su una riga sua, i punti fatti e «attesi N» sotto, a destra */
-  .diario-punti { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
-  .diario-punti > span:first-child { grid-column: 1 / -1; }
   /* Scambi, conguaglio: Ricevo | Pago e il campo dei crediti uno sotto l'altro (a 195 px il minimo di 190 px faceva scorrere di lato) */
   .riga-conguaglio .segmenti { min-width: 0; flex: 1 1 100%; }
   .riga-conguaglio .campo-testo { width: 100%; flex: 1 1 100%; }

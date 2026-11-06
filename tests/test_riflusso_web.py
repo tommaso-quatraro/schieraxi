@@ -189,7 +189,8 @@ def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
     senza = _blocco("@container pagina (max-width: 259.98px) {")
     assert "display: none" in _regola(senza, ".maglia-hero")
     assert "grid-template-columns: minmax(0, 1fr)" in _regola(senza, ".conto-oggi.con-maglia")
-    assert "@container pagina (max-width: 359.98px)" not in CSS                            # la regola dei 132 px a destra non serve più
+    sotto_360 = _blocco("@container pagina (max-width: 359.98px) {")                       # la regola dei 132 px a destra non serve più
+    assert ".maglia-hero" not in sotto_360 and ".conto-oggi" not in sotto_360               # (sotto i 360 px resta solo il Diario, PR 11)
 
 
 def test_cambi_consigliati_in_colonna_sotto_i_320_px_e_nomi_mai_tagliati():
