@@ -10,13 +10,16 @@ struct TitoloNellaPagina: View {
 
     var body: some View {
         if let titolo, TitoloPagina.nellaPagina(dimensione) {
+            let voce = TitoloPagina.voceNellaPagina(dimensione)
             Text(titolo)
                 .font(.largeTitle.bold())
                 .dynamicTypeSize(...TitoloPagina.tetto)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                // VoiceOver legge già il titolo nella barra: qui lo ripeterebbe.
-                .accessibilityHidden(true)
+                // VoiceOver legge il titolo una volta sola (#419): qui, come intestazione, quando la barra è senza titolo;
+                // se no lo legge nella barra e qui lo ripeterebbe
+                .accessibilityHidden(!voce)
+                .accessibilityAddTraits(voce ? .isHeader : [])
                 // In una lista: allineato al bordo delle schede, come il titolo grande della barra, senza fondo né riga.
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)

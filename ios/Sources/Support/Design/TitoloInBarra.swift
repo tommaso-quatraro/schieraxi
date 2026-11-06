@@ -5,7 +5,8 @@ import SwiftUI
 /// titolo di sistema, se ci sta; se no va a capo su due righe, un po' più piccolo, e si stringe appena (fino all'80%) solo
 /// se due righe non bastano. Limite: un nome che non sta in due righe nemmeno all'80% (oltre ~40-45 lettere con il testo
 /// grande) si accorcia con «…». iPhone in orizzontale: una riga sola (sotto). `ModificatoreTitoloPagina` lo mette al posto
-/// del titolo di sistema nelle pagine con `piccoloInBarra`, sotto `TitoloPagina.soglia` (`TitoloPagina.interoInBarra`).
+/// del titolo di sistema nelle pagine con `piccoloInBarra`, sotto `TitoloPagina.soglia` (`TitoloPagina.interoInBarra`); da
+/// `soglia` in su la barra resta senza titolo e il titolo intero è nella pagina (`TitoloPagina.barraSenzaTitolo`, #419).
 struct TitoloInBarra: View {
     let titolo: String
     @Environment(\.verticalSizeClass) private var classeVerticale
@@ -35,22 +36,22 @@ struct TitoloInBarra: View {
                 }
             }
         }
-        // VoiceOver lo legge come il titolo della pagina, come quello di sistema che sostituisce
+        // VoiceOver lo legge come il titolo della pagina, come quello di sistema che sostituisce (che resta vuoto)
         .accessibilityAddTraits(.isHeader)
     }
 }
 
 extension View {
-    /// Con un titolo, la barra mostra `TitoloInBarra` al posto del titolo di sistema (che resta per il pulsante «indietro»
-    /// della pagina dopo e per l'elenco delle pagine aperte). Con `nil` la barra resta quella di sistema.
+    /// Con un titolo, la barra mostra quel `TitoloInBarra` al posto del titolo di sistema. Con `nil` la barra resta quella
+    /// di sistema. (`toolbar(removing: .title)` non va: toglie anche questo titolo, provato nelle foto della #419.)
     @ViewBuilder
-    func titoloInteroInBarra(_ titolo: String?) -> some View {
+    func titoloInBarra(_ titolo: TitoloInBarra?) -> some View {
         if #available(iOS 26.0, *) {
             self.toolbar {
                 if let titolo {
                     // su iOS 26 gli elementi della barra stanno su una pillola di vetro: il titolo no, come quello di sistema
                     ToolbarItem(id: "titolo-intero", placement: .principal) {
-                        TitoloInBarra(titolo: titolo)
+                        titolo
                     }
                     .sharedBackgroundVisibility(.hidden)
                 }
@@ -59,7 +60,7 @@ extension View {
             self.toolbar {
                 if let titolo {
                     ToolbarItem(placement: .principal) {
-                        TitoloInBarra(titolo: titolo)
+                        titolo
                     }
                 }
             }
@@ -83,4 +84,15 @@ extension View {
         }
         .titoloPagina("Real Madrink", piccoloInBarra: true)
     }
+}
+
+#Preview("Testo grande: barra senza titolo, nome intero nella pagina") {
+    NavigationStack {
+        List {
+            TitoloNellaPagina()
+            Text("Portieri")
+        }
+        .titoloPagina("Gli Amici del Bar Sport Centrale", piccoloInBarra: true)
+    }
+    .dynamicTypeSize(.accessibility3)
 }
