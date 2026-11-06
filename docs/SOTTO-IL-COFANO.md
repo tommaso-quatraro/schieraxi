@@ -552,7 +552,7 @@ Codice: `fanta/nomi.py:normalizza`, `fanta/fonti/understat.py`, `fanta/controlli
 
 «In ombra» vuol dire: il dato viene raccolto e conservato, ma il modello non lo legge. Serve a capire, con una misura, se varrebbe qualcosa prima di fidarsene. Oggi le fonti in ombra sono due: le colonne in più di football-data.co.uk (xG di squadra, tiri, tiri in porta) e una seconda fonte di probabili formazioni.
 
-Le prove si lanciano con verifica --fonti (due varianti: xG di squadra di football-data al posto di quello di Understat, una media tra xG e tiri in porta; più la seconda fonte di probabili).
+Le prove si lanciano con verifica --fonti (una variante: xG di squadra di football-data al posto di quello di Understat; più la seconda fonte di probabili).
 
 Regola di promozione: una fonte entra nel modello solo se l'errore sui voti scende almeno dello 0,5% e il miglioramento c'è in almeno 2 delle ultime 3 stagioni misurate. Per il piano dati servono anche un miglioramento del Brier delle presenze dell'1% e, sui punti delle formazioni, +0,3 a giornata su almeno 100 giornate. Con una sola stagione di dati il risultato è «solo indicativo», non si promuove. La decisione la prende una persona guardando i numeri: il modello non cambia da solo.
 
