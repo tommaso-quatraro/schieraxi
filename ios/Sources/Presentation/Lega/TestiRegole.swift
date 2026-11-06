@@ -19,6 +19,31 @@ enum TestiRegole {
         return "Media \(Formato.decimali(media, cifre: 2)) bonus \(numero) \(punti)"
     }
 
+    // MARK: nomi per VoiceOver (#460, come la web: #454)
+
+    /// I nomi che VoiceOver legge per i tre controlli di una fascia. Il testo a vista resta «Media almeno», «bonus» e «Togli la
+    /// fascia»: senza il numero, con sei fasce VoiceOver leggeva sei volte lo stesso nome.
+    struct NomiFascia: Equatable, Sendable {
+        /// `regole.fascia_media`: «Fascia 2, media almeno».
+        let media: String
+        /// `regole.fascia_bonus`: «Fascia 2, bonus».
+        let bonus: String
+        /// `regole.togli_fascia`: «Togli la fascia 2».
+        let togli: String
+    }
+
+    /// I nomi dei controlli della fascia al `posto` indicato (da 1: è il posto della riga, quindi dopo «Togli» i numeri si rifanno).
+    static func nomiFascia(posto: Int) -> NomiFascia {
+        NomiFascia(media: "Fascia \(posto), media almeno",
+                   bonus: "Fascia \(posto), bonus",
+                   togli: "Togli la fascia \(posto)")
+    }
+
+    /// Il nome di uno dei quattro voti della prova: 0 è il portiere («regole.voto_portiere»), da 1 i difensori («regole.voto_difensore»).
+    static func nomeVotoProva(indice: Int) -> String {
+        indice == 0 ? "Voto del portiere" : "Voto del difensore \(indice)"
+    }
+
     // MARK: panchina e sostituzioni
 
     static let postiFissi = "Posti fissi per ruolo"
