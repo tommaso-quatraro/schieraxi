@@ -13,10 +13,11 @@ import foto
 import giro
 import annulla_superate
 import attendi
+import pr_pronta
 import pulisci
 import stato
 
-COMANDI = [stato, attendi, annulla_superate, pulisci, brief, foto, giro]
+COMANDI = [stato, attendi, annulla_superate, pulisci, brief, foto, giro, pr_pronta]
 
 
 def parser() -> argparse.ArgumentParser:
