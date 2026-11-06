@@ -12,7 +12,7 @@ struct PartiteDelTurnoView: View {
             let live = vm.risultatiLive
             // La colonna del punteggio c'è in tutte le righe appena una partita ha un punteggio: così avatarini e punteggi restano in colonna.
             let conPunteggio = giorni.contains { g in g.partite.contains { RigaPartitaView.haPunteggio(vm.dalVivo($0)) } }
-            Carta("Partite del turno", simbolo: "soccerball") {
+            Carta(TestiOggi.partiteDelTurno, simbolo: "soccerball") {
                 ForEach(giorni) { giorno in
                     Text(giorno.titolo).titoletto().padding(.top, 4)
                     ForEach(giorno.partite) { p in
