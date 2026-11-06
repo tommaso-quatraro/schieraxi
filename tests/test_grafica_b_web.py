@@ -346,3 +346,78 @@ def test_la_proposta_di_scambio_resta_un_blocco_con_il_filo():
     regola = re.search(r"\n\.carta\.scambio \{([^}]*)\}", CSS).group(1)
     assert "border: 1px solid var(--filo)" in regola and "border-radius: var(--r-card)" in regola and "padding: 16px" in regola
     assert 'class="carta scambio"' in APP
+
+
+# ---------------------------------------------------------------- 5.2 pulsanti, controlli di scelta, focus e passaggio del mouse
+
+def _corpo(selettore):
+    """Il corpo della regola scritta proprio con questo selettore (fuori dalle @media: la prima che si trova)."""
+    m = re.search(r"\n" + re.escape(selettore) + r" \{([^}]*)\}", SENZA_COMMENTI)
+    assert m, f"manca la regola {selettore}"
+    return m.group(1)
+
+
+def test_pulsanti_piatti_scelta_con_bordo_e_niente_pressione():
+    assert re.search(r"\.bottone \{[^}]*border-radius: var\(--r-in\)", CSS) and "--r-in: 8px" in CSS
+    assert re.search(r"\.azione-testo \{[^}]*min-height: 44px;[^}]*min-width: 44px;[^}]*color: var\(--azione\)", CSS)
+    assert re.search(r"\.chip\.attiva \{[^}]*border: 2px solid var\(--testo\)", CSS)    # il lime chiaro da solo è 2,8:1
+    assert "scale(.95)" not in CSS and "scale(.985)" not in CSS
+
+
+def test_focus_nel_colore_del_testo_e_riga_sotto_il_mouse():
+    assert re.search(r"\n:focus-visible \{ outline: 2px solid var\(--testo\); outline-offset: 2px; \}", CSS)
+    assert re.search(r"\.campo :focus-visible \{[^}]*outline-color: #fff", CSS)            # sul campo verde il focus è bianco
+    assert re.search(r"\.voce:hover \{[^}]*background: var\(--superficie\)", CSS)
+
+
+def test_toccare_non_rimpicciolisce_niente():
+    """Spec §7.6 e §11: via la pressione che rimpiccioliva righe e pulsanti. Nessuna regola `:active` sposta o scala, e i pulsanti
+    non animano più `transform` (resta il cambio di colore). Senza pressione non serve nemmeno la sua versione calma."""
+    premuti = [f"{s} {{ transform: {v} }}" for selettori, corpo in REGOLE for s in selettori if ":active" in s
+               for _, v in _proprieta(corpo, "transform") if v != "none"]
+    assert not premuti, premuti
+    assert "transform" not in dict(_proprieta(_corpo("button"), "transition")).get("transition", "")
+    assert not any(":active" in s for selettori, _ in REGOLE for s in selettori if "data-calmo" in s)
+
+
+def test_il_focus_ha_un_colore_solo_e_si_vede_su_ogni_fondo():
+    """Spec §14 e C11: il bordo del focus è sempre del colore del testo (bianco sul campo verde), almeno 3:1 con ogni fondo su cui
+    può stare, in chiaro e in scuro (WCAG 2.2, 1.4.11). Prima c'erano anche un focus blu e uno verde delle azioni: in chiaro il
+    verde bosco intorno al lime della scelta stava sotto 3:1 con il lime."""
+    from tests.test_design_web import _colore, _contrasto_rgb, _temi
+    altri = [f"{s} {{ {n}: {v} }}" for selettori, corpo in REGOLE for s in selettori if "focus" in s
+             for n, v in _proprieta(corpo, "outline", "outline-color", "border-color")
+             if v not in ("none", "0") and "var(--testo)" not in v and "#fff" not in v]
+    assert not altri, altri
+    for tema, v in _temi().items():
+        testo = _colore(v["--testo"])[0]
+        for fondo in ("--sfondo", "--superficie", "--solido"):           # il bordo sta fuori dalla voce (stacco di 2 px): sul fondo
+            assert _contrasto_rgb(testo, _colore(v[fondo])[0]) >= 3, (tema, fondo)
+        assert _contrasto_rgb((255, 255, 255), _colore(v["--campo"])[0]) >= 3, tema
+
+
+def test_la_scelta_si_riconosce_anche_senza_il_colore():
+    """Spec §7.1 e §8.8: il lime chiaro sta a 2,8:1 dal bianco e da solo non dice «scelto» (WCAG 1.4.11). La voce scelta dei moduli,
+    degli stili e dei controlli segmentati ha anche un bordo di 2 px del colore del testo e la scritta in grassetto (più
+    `aria-pressed`). Il bordo in più non sposta le voci vicine: il chip scelto toglie con il margine il pixel che aggiunge."""
+    base, scelto = _corpo(".chip"), _corpo(".chip.attiva")
+    assert "border: 1px solid var(--bordo-campo)" in base and "background: none" in base
+    assert all(x in scelto for x in ("background: var(--capitano)", "border: 2px solid var(--testo)", "margin: -1px",
+                                     "color: var(--capitano-testo)", "font-weight: 650"))
+    segmento = _corpo(".segmenti button.attivo")
+    assert all(x in segmento for x in ("background: var(--capitano)", "box-shadow: inset 0 0 0 2px var(--testo)",
+                                       "color: var(--capitano-testo)", "font-weight: 650"))
+    striscia = _corpo(".segmenti")
+    assert "border: 1px solid var(--bordo-campo)" in striscia and "border-radius: var(--r-in)" in striscia
+    assert re.search(r"\.segmenti button \+ button \{[^}]*border-left: 1px solid var\(--filo\)", SENZA_COMMENTI)   # voci separate da un filo
+
+
+def test_pulsante_secondario_da_solo_con_il_bordo_nella_riga_solo_testo():
+    """Spec §8.7: un pulsante pieno per schermata (fondo `--azione`); il secondario da solo ha il bordo dei controlli e la scritta del
+    testo, quello nella riga (`.azione-testo`) è solo testo del colore delle azioni, con l'area da 44 px. Mai tre contorni in fila."""
+    secondario = _corpo(".bottone.secondario")
+    assert all(x in secondario for x in ("background: none", "border-color: var(--bordo-campo)", "color: var(--testo)"))
+    testo = _corpo(".azione-testo")
+    assert "background: none" in testo and "border: 0" in testo
+    assert re.search(r"\.bottone:hover:not\(:disabled\) \{ background: var\(--azione-2\); \}", SENZA_COMMENTI)
+    assert "filter: brightness" not in SENZA_COMMENTI                                   # il passaggio del mouse cambia il fondo, non la luce

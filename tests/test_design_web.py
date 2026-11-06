@@ -100,6 +100,8 @@ def test_formazione_controlli_compatti_una_riga_e_un_solo_pulsante_primario():
 def test_la_scelta_attiva_e_lime_con_testo_scuro():
     assert re.search(r"\.chip\.attiva \{[^}]*var\(--capitano\)[^}]*var\(--capitano-testo\)", CSS)
     assert "--capitano-testo: #1a2600" in CSS
+    # grafica B (spec §7.1): il lime chiaro da solo sta a 2,8:1 dal bianco, la scelta ha anche il bordo del colore del testo
+    assert re.search(r"\.chip\.attiva \{[^}]*border: 2px solid var\(--testo\)", CSS)
 
 
 def test_proposta_di_mercato_ha_il_guadagno_in_evidenza_e_nomi_protetti():
@@ -232,17 +234,18 @@ def test_contrasti_wcag_aa_sul_fondo_e_sulla_superficie_nuovi():
 
 def test_voce_scelta_dei_controlli_segmentati_si_vede_sul_fondo_pieno():
     """Con le superfici piene `--vetro-carta` è uguale al fondo: la voce scelta di Lingua, Tema e Dimensione del testo, che aveva
-    quel fondo, nello scuro non si distingueva più dalla striscia (visto nelle foto). Ora ha un grigio neutro un gradino sopra la
-    striscia, in chiaro e in scuro; la scelta la dicono anche la scritta piena e `aria-pressed`."""
-    striscia = re.search(r"\n\.segmenti \{[^}]*background: color-mix\(in srgb, var\(--solido\) (\d+)%, transparent\)", CSS)
-    attivo = re.search(r"\n\.segmenti button\.attivo \{[^}]*background: color-mix\(in srgb, var\(--testo\) (\d+)%, var\(--sfondo\)\)", CSS)
-    assert striscia and attivo
+    quel fondo, nello scuro non si distingueva più dalla striscia (visto nelle foto). Grafica B (spec §8.8): la striscia non ha
+    fondo (sta sul fondo della pagina) e la voce scelta è lime, come moduli e stili, con il bordo del colore del testo e la scritta
+    scura; la scelta la dicono anche la scritta in grassetto e `aria-pressed`."""
+    striscia = re.search(r"\n\.segmenti \{([^}]*)\}", CSS).group(1)
+    attivo = re.search(r"\n\.segmenti button\.attivo \{([^}]*)\}", CSS).group(1)
+    assert "background: none" in striscia
+    assert "background: var(--capitano)" in attivo and "color: var(--capitano-testo)" in attivo and "inset 0 0 0 2px var(--testo)" in attivo
     for tema, v in _temi().items():
-        carta = _colore(v["--vetro-carta"])[0]                         # la striscia sta su una carta, che ora ha il fondo pieno
-        fondo_striscia = _sopra(_colore(v["--solido"])[0], int(striscia.group(1)) / 100, carta)
-        fondo_attivo = _sopra(_colore(v["--testo"])[0], int(attivo.group(1)) / 100, _colore(v["--sfondo"])[0])
+        fondo_striscia, fondo_attivo = _colore(v["--sfondo"])[0], _colore(v["--capitano"])[0]
         assert _contrasto_rgb(fondo_attivo, fondo_striscia) >= 1.25, tema
-        assert _contrasto_rgb(_colore(v["--testo"])[0], fondo_attivo) >= 4.5, tema
+        assert _contrasto_rgb(_colore(v["--capitano-testo"])[0], fondo_attivo) >= 4.5, tema
+        assert _contrasto_rgb(_colore(v["--testo"])[0], fondo_striscia) >= 3, tema      # il bordo della scelta si vede sul fondo
 
 
 def test_colore_della_barra_del_browser_segue_il_tema():
@@ -486,7 +489,11 @@ def test_pulsanti_pieni_dell_iphone_passano_tutti_dallo_stesso_stile():
 
 def test_pulsanti_link_e_azioni_usano_la_variabile_azione_non_il_lime():
     assert re.search(r"\.bottone \{[^}]*background: var\(--azione\);[^}]*color: var\(--azione-testo\)", CSS)   # pieno, senza lucido (docs/STILE-SENZA-AI.md)
-    assert re.search(r"\.bottone\.secondario \{[^}]*color: var\(--azione\)", CSS)
+    # grafica B (spec §8.7): l'azione scritta nella riga ha il colore delle azioni; il secondario da solo ha la scritta del testo e
+    # il bordo dei controlli: né l'uno né l'altro usa il lime, che resta la scelta
+    assert re.search(r"\.azione-testo \{[^}]*color: var\(--azione\)", CSS)
+    assert re.search(r"\.bottone\.secondario \{[^}]*border-color: var\(--bordo-campo\)[^}]*color: var\(--testo\)", CSS)
+    assert not re.search(r"\.(?:bottone|azione-testo)[^{]*\{[^}]*var\(--capitano\)", CSS)
     assert re.search(r"\.scheda\.attiva::before \{[^}]*background: var\(--azione\)", CSS)        # la linea della scheda attiva
     assert re.search(r"\.testo-lungo a[^{]*\{ color: var\(--azione\)", CSS)
     assert '"--azione-testo"' not in APP                                # niente colori a scelta: le azioni hanno sempre i colori del marchio
