@@ -13,6 +13,13 @@ enum ModoScambi: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// Chi mette i crediti del conguaglio, come i due pulsanti della web: «Ricevo» (ti danno i crediti) e «Pago» (li dai tu).
+enum VersoConguaglio: CaseIterable, Identifiable {
+    case ricevo, pago
+    var id: Self { self }
+    var nome: String { self == .ricevo ? TestiScambi.ricevoCrediti : TestiScambi.pagoCrediti }
+}
+
 /// Logica della schermata Scambi: proposte del modello, filtro per squadra e per scambi 2 contro 2.
 @MainActor
 final class ScambiViewModel: ViewModelBase {
@@ -149,6 +156,8 @@ final class AnalizzaScambioViewModel: ViewModelBase {
     @Published var inCorso = false
     /// Crediti scambiati, scritti dall'utente: positivo = li ricevi tu, negativo = li paghi tu.
     @Published var conguaglio = ""
+    /// «Ricevo» o «Pago»: decide il segno dei crediti scritti senza segno (come i due pulsanti della web).
+    @Published var verso: VersoConguaglio = .ricevo
 
     static let massimoPerLato = 4
 
