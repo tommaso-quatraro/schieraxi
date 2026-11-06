@@ -10,7 +10,7 @@ const VISTE = ["oggi", "formazione", "squadra", "altro"];
 const SOTTO_VISTE = { mercato: "squadra", scambi: "altro", lega: "altro" };
 // Pulsante «torna indietro»: la freccia è un'icona, non un carattere nel testo (docs/STILE-SENZA-AI.md).
 const ICONA_INDIETRO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>`;
-const SCHEDA_DI = v => VISTE.includes(v) ? v : SOTTO_VISTE[v] || null;
+const SCHEDA_DI = v => VISTE.includes(v) ? v : Object.hasOwn(SOTTO_VISTE, String(v)) ? SOTTO_VISTE[v] : null;   // `v` viene anche dall'indirizzo: solo i nomi veri
 // Le funzioni accese (dieta): una chiave che manca vale «acceso», così con un server vecchio o senza risposta si vede tutto come prima.
 const funz = id => !stato.funzioni || stato.funzioni.funzioni[id] !== false;
 const stato = { vista: "oggi", info: null, squadraVista: null, confronto: null, richiesta: 0, ruoloClassifica: "A",
@@ -204,11 +204,11 @@ function marchio(dim = 48, muove = false) {
   return `<svg class="marchio${muove ? " muove" : ""}" width="${dim}" height="${dim}" viewBox="0 0 120 120" role="img" aria-label="SchieraXI"><g class="punti">${punti}</g><circle class="capitano" cx="60" cy="50" r="9"/></svg>`;
 }
 
-function caricamento(testo = t("comune.calcolo_in_corso")) {
-  contenuto.classList.remove("ridisegna");
-  contenuto.innerHTML = `<div class="caricamento">${marchio(54, true)}${esc(testo)}</div>
+// Il titolo della schermata c'è già mentre carica (opz come pagina(): di norma il nome della scheda).
+function caricamento(testo = t("comune.calcolo_in_corso"), opz = {}) {
+  pagina(`<div class="caricamento">${marchio(54, true)}${esc(testo)}</div>
     <div class="scheletro carta"><i></i><i></i><i class="corta"></i></div>
-    <div class="scheletro carta"><i></i><i class="corta"></i></div>`;
+    <div class="scheletro carta"><i></i><i class="corta"></i></div>`, opz);
 }
 // «1 giornata», «2 giornate»: il plurale giusto per un numero
 const nPl = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
@@ -249,11 +249,33 @@ function svuotaCache() {
   stato.scelta = null;       // e nemmeno la formazione modificata a mano
   try { Object.keys(localStorage).filter(k => k.startsWith("cache:")).forEach(k => localStorage.removeItem(k)); } catch { /* niente memoria */ }
 }
-// Scrive la pagina; se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata a cascata.
+// Scrive la pagina: in cima il titolo della schermata (l'unico h1) e la riga di stato, poi il contenuto (grafica B, spec §8.2 e §10).
+// opz.titolo: il titolo (di norma il nome della scheda accesa); opz.stato === false: niente riga di stato.
+// Se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata.
 function pagina(html, opz = {}) {
+  const conFocus = !!document.activeElement && document.activeElement.id === "titolo-pagina";   // il titolo aveva il focus: lo ritrova ridisegnato
   contenuto.classList.toggle("ridisegna", !!opz.sostituisce);
+  const scheda = SCHEDA_DI(stato.vista);
+  const titolo = opz.titolo || (scheda ? t("nav." + scheda) : "SchieraXI");
+  const riga = opz.stato === false ? "" : `<p class="stato-pagina">${rigaStato()}</p>`;
   const nota = opz.daCache ? `<div class="nota" id="nota-cache">${t("comune.dati_salvati", { quando: fDataOra(new Date(opz.daCache)) })}</div>` : "";
-  contenuto.innerHTML = nota + html;
+  contenuto.innerHTML = `<header class="capo-pagina"><h1 id="titolo-pagina" tabindex="-1">${esc(titolo)}</h1>${riga}</header>` + nota + html;
+  document.title = `${titolo} · SchieraXI`;            // il nome della finestra è il titolo grande (chi usa un lettore di schermo sente dove è)
+  if (conFocus) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }
+}
+// La riga di stato: [stemma] Giornata N · nome della mia squadra · dati del … (i pezzi li prepara caricaInfo, lo stemma caricaSquadre).
+// Ogni pezzo sta intero: se la riga non ci sta si va a capo dopo un « · » (a 390 px la data si tagliava).
+function rigaStato() {
+  const r = stato.rigaStato;
+  if (!r) return "";
+  const mia = r.offline ? null : miaSquadra();
+  const stemma = mia && mia.immagini && mia.immagini.stemma ? `<img class="stemma-stato" src="${esc(urlImg(mia.nome, "stemma"))}" alt="" width="20" height="20">` : "";
+  const pezzi = r.offline ? [t("testata.offline")] : [r.giornata, r.squadra, r.dati].filter(Boolean);
+  return stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
+}
+// Dati nuovi (avvio, «Aggiorna i dati», rose o squadra cambiate): la riga di stato già in pagina si riscrive.
+function aggiornaRigaStato() {
+  document.querySelectorAll(".stato-pagina").forEach(e => { e.innerHTML = rigaStato(); });
 }
 async function caricaConCache(chiave, percorso, mostra, testo) {
   const mia = nuovaRichiesta();
@@ -275,7 +297,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
       if (b) b.textContent = e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: e.message });
       return;
     }
-    contenuto.innerHTML = erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : "");
+    pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : ""));
   }
 }
 
@@ -521,7 +543,17 @@ function valoreRosa(p, x) {
 }
 
 // ---------------------------------------------------------------- navigazione
-document.querySelectorAll(".schede button").forEach(b => b.addEventListener("click", () => vai(b.dataset.vista)));
+// Le schede (e il nome disegnato, che porta a Oggi) sono collegamenti veri (spec grafica B §5 C2). Un clic normale cambia schermata
+// dentro l'app; con Ctrl, ⌘, Maiusc, Alt o il tasto centrale decide il browser: la scheda si apre in un'altra scheda o finestra.
+const clicSemplice = ev => ev.button === 0 && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && !ev.altKey;
+document.querySelectorAll(".schede .scheda, .testata .marchio").forEach(a => a.addEventListener("click", ev => {
+  if (!clicSemplice(ev)) return;
+  ev.preventDefault();
+  vai(a.dataset.vista || "oggi", undefined, { focoTitolo: true });
+}));
+// L'indirizzo di ogni schermata, lo stesso che l'app sa aprire all'avvio: va nella cronologia, così Indietro e Avanti funzionano.
+const indirizzoVista = (vista, gruppo, scheda) => "/?vista=" + encodeURIComponent(vista) + (vista === "impostazioni" && gruppo ? "&gruppo=" + encodeURIComponent(gruppo) : "") + (vista === "mercato" && scheda ? "&scheda=" + encodeURIComponent(scheda) : "");
+let indirizzoMostrato = null;      // l'indirizzo (senza «#…») della schermata in pagina: un popstate che porta qui non ridisegna niente
 let timerConto = null;
 let regoleAC = null;      // gestori della schermata regole: si staccano quando si esce
 
@@ -542,28 +574,41 @@ function lasciaFormazione() {
 // Ricaricare o chiudere la pagina: il browser mostra la sua domanda (il testo lo sceglie lui).
 window.addEventListener("beforeunload", ev => { if (modificaNonSalvata()) { ev.preventDefault(); ev.returnValue = ""; } });
 
-function vai(vista, gruppo) {
-  if (vista !== "formazione" && !lasciaFormazione()) return;             // resta nella Formazione: la modifica a mano non è salvata
+// Chi disegna ogni schermata: una mappa con i soli nomi ammessi. Il nome arriva anche dall'indirizzo (?vista=, Indietro): niente
+// chiamate per nome su un oggetto («__proto__», «constructor»...); un nome che non c'è porta a Oggi.
+const DISEGNO_VISTE = new Map([["oggi", () => vistaOggi()], ["formazione", () => vistaFormazione()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")], ["mercato", () => vistaMercato()], ["scambi", () => vistaScambi()]]);
+// opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
+// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
+// così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
+function vai(vista, gruppo, opz = {}) {
+  if (vista !== "formazione" && !lasciaFormazione()) {                   // resta nella Formazione: la modifica a mano non è salvata
+    if (opz.daCronologia) try { history.pushState({ vista: "formazione" }, "", indirizzoVista("formazione")); } catch { /* niente cronologia */ }   // con Indietro: l'indirizzo torna quello della Formazione
+    indirizzoMostrato = location.pathname + location.search;
+    return;
+  }
   const imp = vista === "impostazioni";                                   // l'ingranaggio in testata: non è una delle schede della barra
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
-  if (!imp && !SCHEDA_DI(vista)) vista = "oggi";
+  if (!imp && !(SCHEDA_DI(vista) && DISEGNO_VISTE.has(vista))) vista = "oggi";
   const scheda = imp ? null : SCHEDA_DI(vista);                           // la scheda della barra che si accende
-  const cambio = vista !== stato.vista;
-  stato.vista = vista;
-  const nomeVista = imp ? { textContent: t("shell.impostazioni") } : document.querySelector(`.schede button[data-vista="${scheda}"] span`);
-  document.title = nomeVista ? `${nomeVista.textContent} · SchieraXI` : "SchieraXI – consigli formazione fantacalcio";          // chi usa un lettore di schermo sente dove è arrivato
-  document.querySelectorAll(".schede button").forEach(b => {
+  stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
+  document.querySelectorAll(".schede .scheda").forEach(b => {
     b.classList.toggle("attiva", b.dataset.vista === scheda);
     if (b.dataset.vista === scheda) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
   const ing = $("#bottone-impostazioni");
   ing.classList.toggle("attiva", imp);
   if (imp) ing.setAttribute("aria-current", "page"); else ing.removeAttribute("aria-current");
-  const barra = $(".schede"), lente = $(".lente");
-  barra.classList.toggle("fuori", imp);
-  if (!imp) barra.style.setProperty("--i", VISTE.indexOf(scheda));
-  if (!imp && cambio && lente) { lente.classList.remove("muove"); void lente.offsetWidth; lente.classList.add("muove"); }
   if (!imp) try { localStorage.setItem("vista", vista); } catch { /* niente memoria: va bene lo stesso */ }
+  if (!opz.daCronologia) {
+    // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
+    const g = imp ? gruppo || stato.impDaUrl || null : null, sm = vista === "mercato" ? stato.mercatoTab || null : null;
+    const indirizzo = indirizzoVista(vista, g, sm), voce = { vista, gruppo: g, scheda: sm };
+    try {
+      if (!history.state || location.pathname + location.search === indirizzo) history.replaceState(voce, "", indirizzo);
+      else history.pushState(voce, "", indirizzo);
+    } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
+  }
+  indirizzoMostrato = location.pathname + location.search;
   window.scrollTo(0, 0);
   contenuto.classList.remove("ridisegna");
   delete contenuto.dataset.gruppo;
@@ -571,9 +616,19 @@ function vai(vista, gruppo) {
   fermaLive();
   if (regoleAC) { regoleAC.abort(); regoleAC = null; }
   stato.punteggioPrec = null;
-  if (imp) { vistaImpostazioni(gruppo); return; }
-  ({ oggi: vistaOggi, formazione: vistaFormazione, squadra: () => vistaLega("squadra"), altro: () => vistaLega("altro"), mercato: vistaMercato, scambi: vistaScambi })[vista]();
+  if (imp) vistaImpostazioni(gruppo);
+  else DISEGNO_VISTE.get(vista)();
+  if (opz.focoTitolo) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }   // pagina() lo tiene anche quando la schermata si ridisegna
 }
+// Indietro e Avanti del browser (e del mouse): la schermata di quella voce, come un clic sulla sua scheda (il foglio si chiude con lei).
+window.addEventListener("popstate", ev => {
+  if (location.pathname + location.search === indirizzoMostrato) return;   // è cambiata solo la parte dopo «#» (link «Vai al contenuto»): niente da ridisegnare
+  let v = ev.state || {};
+  if (!v.vista) { try { const q = new URLSearchParams(location.search); v = { vista: q.get("vista"), gruppo: q.get("gruppo"), scheda: q.get("scheda") }; } catch { v = {}; } }
+  if (v.scheda) stato.mercatoTab = schedaMercato(v.scheda);
+  chiudiFoglio();
+  vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
+});
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
@@ -581,9 +636,7 @@ async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
   if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
   else { try { stato.squadre = await api("/api/squadre"); } catch { stato.squadre = stato.squadre || []; } }
-  const mia = (stato.squadre || []).find(s => s.mia);
-  const img = $("#stemma-testata");
-  if (mia && mia.immagini.stemma) { img.src = urlImg(mia.nome, "stemma"); img.hidden = false; } else img.hidden = true;
+  aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 const miaSquadra = () => (stato.squadre || []).find(s => s.mia);
 
@@ -612,17 +665,18 @@ async function caricaInfo() {
   try {
     stato.info = await api("/api/stato");
     const i = stato.info;
-    $("#titolo").textContent = i.mia_squadra || "SchieraXI";
     const quandoAgg = i.ultimo_aggiornamento ? new Date(i.ultimo_aggiornamento) : null;
-    // giornata e data dei dati in due pezzi: sui telefoni stanno su due righe (stile.css), altrimenti la data si tagliava a 390 px
-    const pezzo = (classe, testo) => { const e = document.createElement("span"); e.className = classe; e.textContent = testo; return e; };
-    const dati = (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, "");
-    $("#sottotitolo").replaceChildren(...(i.prossima_giornata ? [pezzo("sotto-giornata", nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)), pezzo("sotto-sep", " · ")] : []),
-      pezzo("sotto-dati", dati));
+    // giornata, nome della mia squadra e data dei dati: la riga di stato sotto il titolo di ogni schermata (pagina())
+    stato.rigaStato = {
+      giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
+      squadra: i.mia_squadra || null,
+      dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
+    };
     $("#bottone-aggiorna").classList.toggle("gira", i.aggiornamento_in_corso);
   } catch (e) {
-    $("#sottotitolo").textContent = t("testata.offline");
+    stato.rigaStato = { offline: true };
   }
+  aggiornaRigaStato();
 }
 
 // ---------------------------------------------------------------- aggiornamento dati
@@ -731,7 +785,7 @@ function cardRiepilogo(r, p) {
         <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
         ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
       ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(x => `${sigla(x.casa)}–${sigla(x.trasferta)}`).join(", ") })}</p>` : ""}
+      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
       ${r.rinvio && typeof menuRinvio === "function" ? menuRinvio(r.rinvio) : ""}
       ${r.nel_diario ? "" : `<p class="debole piccolo">${t("oggi.confronto_in_arrivo")}</p>`}
       <div class="pulsanti"><button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("oggi.apri_diario")}</button></div>`;
@@ -771,9 +825,12 @@ function menuRinvio(rv) {
       <select class="rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === scelto ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></span></label>
     <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
 }
+// «UDI vs MIL»: le sigle, prima la squadra di casa, come le partite del turno. La usano la carta del rinvio e la riga dei recuperi
+// che mancano nel riepilogo (#310), come `TestiRinvio.partita` dell'iPhone.
+const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
 function cardRinvio(rv) {
   if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
-  const partite = rv.partite.map(p => `<li><b>${sigla(p.casa)} vs ${sigla(p.trasferta)}</b>
+  const partite = rv.partite.map(p => `<li><b>${partitaVs(p)}</b>
     <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
   const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
   return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
@@ -1128,8 +1185,21 @@ function rigaStatoScelta(st, salvata, nonValida = false) {
     ${pulsanti ? `<div class="pulsanti">${pulsanti}</div>` : ""}</div>`;
 }
 
+// Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
+// manca senza anticipi cominciati e con un server vecchio). Il server rifiuta comunque un salvataggio che ne sposta uno.
+const giocatoriFermi = f => new Set((Array.isArray(f && f.bloccati) ? f.bloccati : []).map(Number));
+// Chi può prendere il posto di `base` nella modifica a mano: stesso ruolo, non già fra i titolari (`dentro`) e non fermo, il migliore
+// per punti attesi in cima. Nessuno se `base` stesso è fermo.
+function sostituti(f, base, dentro) {
+  const fermi = giocatoriFermi(f);
+  if (fermi.has(Number(base.id))) return [];
+  return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
+    .sort((a, b) => b.punti_attesi - a.punti_attesi);
+}
+
 function mostraFormazione(f, squadra, opz = {}) {
   const scheda = id => f.schede[String(id)];
+  const fermi = giocatoriFermi(f);
   const sc = stato.scelta || (stato.scelta = {});
   const chiaveSc = `${squadra || "mia"}/${f.giornata}`;
   if (sc.chiave !== chiaveSc) Object.assign(sc, { chiave: chiaveSc, livello: 0, modulo: null, manuale: null, letta: false, salvata: undefined, nonValida: false });
@@ -1218,7 +1288,7 @@ function mostraFormazione(f, squadra, opz = {}) {
     const nota = (sc.manuale || f.iniziata) ? [] : (righePercheScelta(m, scheda) ?? Object.values(inc));
     let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
     const voceTit = x => {
-      const h = voceGiocatore(x, null, true, modificabile);
+      const h = voceGiocatore(x, null, true, modificabile && !fermi.has(x.id));      // fermo (anticipo cominciato): ⇄ al posto di ✎
       const alt = manuale ? "" : alternativeVicine(x, m, f, etichettaAlt);
       if (alt) etichettaAlt = false;
       return h + alt;
@@ -1256,6 +1326,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
+        ${modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""}
         <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
       <div class="carta"><h2>${t("scambi.panchina")}</h2><div class="debole piccolo">${t("formazione.quest_ordine_entra")}</div>
         <ul class="elenco">${panchina.map((x, k) => voceGiocatore(x, k + 1, true)).join("")}</ul></div>
@@ -1291,6 +1362,8 @@ function mostraFormazione(f, squadra, opz = {}) {
       } catch (e) {
         avviso(e.message, 5000);
         if (e.codice === "formazione_chiusa") { if (document.body.contains($("#punti-attesi"))) vistaFormazione(); return; }     // scadenza passata: la scelta resta
+        // la consigliata sposterebbe chi gioca un anticipo già cominciato (#373): vale ancora la tua, e si rimette lei (come «Annulla modifiche»)
+        if (e.codice === "giocatore_bloccato" && sc.salvata && Array.isArray(sc.salvata.titolari)) { valutaManuale([...sc.salvata.titolari], false, true); return; }
       }
       if (document.body.contains($("#punti-attesi"))) disegna(true);
     });
@@ -1308,10 +1381,11 @@ function mostraFormazione(f, squadra, opz = {}) {
   function apriSostituzione(id) {
     const base = scheda(id);
     if (!base || !sc.manuale || f.iniziata) return;
+    if (fermi.has(base.id)) return;                                     // gioca un anticipo già cominciato (#373): resta dov'è
     if (sc.occupato) { avviso(t("formazione.sto_ancora_ricalcolando")); return; }
     ultimaScheda++;
     const dentro = new Set(sc.manuale.titolari);
-    const candidati = Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id)).sort((a, b) => b.punti_attesi - a.punti_attesi);
+    const candidati = sostituti(f, base, dentro);
     const riga = x => `<li><button class="voce" data-entra="${x.id}">${avatarIndice(x)}
       <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
         <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || testoPosto("fuori")}</span></span></span>
@@ -1357,11 +1431,12 @@ function vistaMercato() {
   nuovaRichiesta();
   stato.mercatoTab = schedaMercato(stato.mercatoTab);
   const tabs = tabMercatoVisibili();
-  contenuto.innerHTML = `
+  pagina(`
     <div class="segmenti" id="mercato-tab" ${tabs.length < 2 ? "hidden" : ""}>${tabs.map(([k, nome]) => `<button data-mtab="${k}" class="${k === stato.mercatoTab ? "attivo" : ""}">${t(nome)}</button>`).join("")}</div>
-    <div id="mercato-corpo"></div>`;
+    <div id="mercato-corpo"></div>`);
   document.querySelectorAll("[data-mtab]").forEach(b => b.addEventListener("click", () => {
     stato.mercatoTab = b.dataset.mtab;
+    try { history.replaceState({ vista: "mercato", gruppo: null, scheda: stato.mercatoTab }, "", indirizzoVista("mercato", null, stato.mercatoTab)); indirizzoMostrato = location.pathname + location.search; } catch { /* niente cronologia */ }   // tornando qui con Indietro, la stessa sezione
     document.querySelectorAll("[data-mtab]").forEach(x => x.classList.toggle("attivo", x === b));
     striscia($("#mercato-tab"));
     caricaMercato();
@@ -1850,7 +1925,8 @@ const SFONDO_FOGLIO = () => [document.querySelector(".salta"), document.querySel
 function bloccaSfondo() {
   focusPrima = document.activeElement;
   SFONDO_FOGLIO().forEach(e => { e.inert = true; });
-  setTimeout(() => { const c = document.querySelector(".foglio-chiudi"); if (c && !$("#foglio").hidden) c.focus({ preventScroll: true }); }, 60);
+  // il focus va sulla ✕, a meno che il foglio non l'abbia già preso (la ricerca mette subito il cursore nel suo campo)
+  setTimeout(() => { const c = document.querySelector(".foglio-chiudi"); if (c && !$("#foglio").hidden && !$(".foglio-corpo").contains(document.activeElement)) c.focus({ preventScroll: true }); }, 60);
 }
 function sbloccaSfondo() {
   SFONDO_FOGLIO().forEach(e => { e.inert = false; });
@@ -1933,9 +2009,13 @@ document.addEventListener("keydown", ev => {
   if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
   const bersaglio = ev.target;
   if (bersaglio && (["INPUT", "TEXTAREA", "SELECT"].includes(bersaglio.tagName) || bersaglio.isContentEditable)) return;      // si sta scrivendo
-  if (ev.key === "/") { ev.preventDefault(); apriRicerca(); }                                          // tastiera: / cerca
-  else if (/^[1-4]$/.test(ev.key) && $("#foglio").hidden) vai(VISTE[Number(ev.key) - 1]);             // tastiera: 1-4 cambiano sezione
-  else if (ev.key === "," && $("#foglio").hidden) vai("impostazioni");                                 // tastiera: , apre le impostazioni
+  if (ev.key === "/") {                                                                                // tastiera: / cerca
+    ev.preventDefault();
+    const c = $("#campo-cerca");
+    if (c && c.getClientRects().length && $("#foglio").hidden) c.focus(); else apriRicerca();          // sul PC il campo della testata
+  }
+  else if (/^[1-4]$/.test(ev.key) && $("#foglio").hidden) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
+  else if (ev.key === "," && $("#foglio").hidden) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
 // il riflesso del vetro segue il dito
 document.addEventListener("pointerdown", ev => {
@@ -2077,13 +2157,12 @@ async function vistaScambi() {
   const mia = nuovaRichiesta();
   caricamento(t("scambio.carico_squadre"));
   let squadre;
-  try { squadre = await api("/api/squadre"); } catch (e) { if (ancoraValida(mia)) contenuto.innerHTML = erroreVista(e); return; }
+  try { squadre = await api("/api/squadre"); } catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), { titolo: t("nav.scambi") }); return; }
   if (!ancoraValida(mia)) return;
   const altre = squadre.filter(s => !s.mia);
   if (squadre.length && !altre.length) {              // solo la tua rosa: gli scambi aspettano quelle degli altri (non è un errore)
-    contenuto.classList.remove("ridisegna");
-    contenuto.innerHTML = `<div class="carta"><h2>${t("nav.scambi")}</h2><p class="debole">${t("scambio.servono_altre")}</p>
-      <div class="pulsanti"><button class="bottone" type="button" id="scambi-aggiungi-rose">${t("lega.voce_importa")}</button></div></div>`;
+    pagina(`<div class="carta"><p class="debole">${t("scambio.servono_altre")}</p>
+      <div class="pulsanti"><button class="bottone" type="button" id="scambi-aggiungi-rose">${t("lega.voce_importa")}</button></div></div>`, { titolo: t("nav.scambi") });
     $("#scambi-aggiungi-rose").addEventListener("click", () => vaiLega("importa"));
     return;
   }
@@ -2092,8 +2171,7 @@ async function vistaScambi() {
   const modi = MODI_SCAMBIO.filter(([k]) => !FUNZIONE_MODO[k] || funz(FUNZIONE_MODO[k]));
   const modo0 = modi.some(([k]) => k === stato.scambiModo) ? stato.scambiModo : modi[0][0];
   const nascosto = m => (m === modo0 ? "" : "hidden");
-  contenuto.classList.remove("ridisegna");
-  contenuto.innerHTML = `
+  pagina(`
     <div class="segmenti" id="scambi-modi" role="group" aria-label="${t("scambio.cosa_vuoi_fare")}" ${modi.length < 2 ? "hidden" : ""}>${modi.map(([k, n]) =>
       `<button type="button" data-modo-scambio="${k}" class="${k === modo0 ? "attivo" : ""}" aria-pressed="${k === modo0}">${t(n)}</button>`).join("")}</div>
     <div class="scambi-colonne"><div class="scambi-sinistra">
@@ -2145,7 +2223,7 @@ async function vistaScambi() {
       <div id="esito-scambio" data-esito="costruisci" aria-live="polite" ${nascosto("costruisci")}></div>
       <div id="esito-offerta" data-esito="valuta" aria-live="polite" ${nascosto("valuta")}></div>
     </div></div>
-    <div id="archivio-scambi"></div>`;
+    <div id="archivio-scambi"></div>`, { titolo: t("nav.scambi") });
 
   const scegliModo = m => {
     stato.scambiModo = m;
@@ -2400,8 +2478,7 @@ async function vistaRosa(nome) {
     }).join("");
     pagina(`
       <div class="carta">
-        <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button></div>
-        <h2 style="margin-top:14px">${esc(r.nome)}${r.mia ? t("scambio.la_tua") : ""}</h2>
+        <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button>${r.mia ? `<span class="etichetta">${t("lega.la_tua")}</span>` : ""}</div>
         <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
           <div class="riga" style="gap:8px;margin-top:8px"><label class="solo-lettori" for="nome-squadra">${t("scambio.nuovo_nome")}</label>
             <input class="campo-testo" id="nome-squadra" type="text" maxlength="60" autocomplete="off" value="${esc(r.nome)}" style="flex:1;min-width:0">
@@ -2420,7 +2497,7 @@ async function vistaRosa(nome) {
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
-      </div>`);
+      </div>`, { titolo: r.nome });          // il titolo è il nome della squadra (pagina() lo scrive con esc); «la tua» accanto a «‹ Squadra»
     const vf = $("#vedi-formazione");
     if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione"); });
     $("#salva-nome-squadra").addEventListener("click", async () => {
@@ -2459,7 +2536,7 @@ async function vistaRosa(nome) {
       } catch (e) { avviso(e.message, 6000); }
     }));
   } catch (e) {
-    if (ancoraValida(mia)) contenuto.innerHTML = errore(e);
+    if (ancoraValida(mia)) pagina(errore(e));
   }
 }
 
@@ -2659,13 +2736,16 @@ function collegaAspetto() {
   }));
 }
 
-// Ricerca veloce di un giocatore da qualsiasi schermata (la lente in alto).
-function apriRicerca() {
+// Ricerca veloce di un giocatore da qualsiasi schermata (la lente in alto, il tasto «/», il campo della testata sul PC).
+// `testo`: quello già scritto nel campo della testata; il campo della ricerca prende subito il focus, così le lettere che arrivano
+// mentre il foglio sale finiscono lì (il resto della pagina è bloccato).
+function apriRicerca(testo = "") {
   apriFoglio(`<h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("shell.cerca")}</h2>
     <input class="campo-testo" id="ricerca-veloce" type="search" placeholder="${t("avv.nome_del_giocatore")}" autocomplete="off" autocapitalize="off" spellcheck="false">
     <div class="risultati-ricerca" id="risultati-ricerca"><div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div></div>`);
   const campo = $("#ricerca-veloce");
-  setTimeout(() => campo.focus(), 300);
+  campo.value = testo;
+  campo.focus({ preventScroll: true });
   setTimeout(() => caricaListoneCerca().catch(() => {}), 350);
   let n = 0;
   campo.addEventListener("input", async () => {
@@ -2680,8 +2760,14 @@ function apriRicerca() {
         <span class="debole piccolo">${t("avv.quot", { n: x.quotazione })}</span></button></li>`).join("")}</ul>` : `<div class="debole">${t("avv.nessun_giocatore_trovato")}</div>`;
     } catch (e) { if (e.name !== "AbortError" && mio === n && $("#risultati-ricerca")) $("#risultati-ricerca").innerHTML = errore(e); }
   });
+  if (testo.trim()) campo.dispatchEvent(new Event("input"));            // dalla testata: cerca subito quello che è già scritto
 }
-$("#bottone-cerca").addEventListener("click", apriRicerca);
+$("#bottone-cerca").addEventListener("click", () => apriRicerca());
+// Il campo sempre aperto della testata (da 900 px): al primo tasto, o con Invio, il testo passa alla ricerca e il campo si svuota.
+// Così la ricerca funziona già da qui; i risultati si aprono nel foglio di sempre.
+$("#campo-cerca").placeholder = t("shell.cerca");
+$("#campo-cerca").addEventListener("input", ev => { const q = ev.target.value; if (!q.trim()) return; ev.target.value = ""; apriRicerca(q); });
+$("#campo-cerca").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); const q = ev.target.value; ev.target.value = ""; apriRicerca(q); } });
 
 // La formazione come immagine da mandare nel gruppo (nell'iPhone si apre il menu Condividi).
 const caricaSvg = svg => new Promise(ok => {         // l'SVG diventa un'immagine per il disegno (data: è permesso dalla CSP)
@@ -3235,7 +3321,7 @@ async function vistaLega(ambito = "altro") {
   caricamento(t(ambito === "squadra" ? "lega.carico_squadra" : "comune.carico"));
   let squadre = [];
   try { squadre = await api("/api/squadre"); }
-  catch (e) { if (e.rete) { if (ancoraValida(mia)) contenuto.innerHTML = erroreVista(e); return; } squadre = []; }
+  catch (e) { if (e.rete) { if (ancoraValida(mia)) pagina(erroreVista(e)); return; } squadre = []; }
   if (!ancoraValida(mia)) return;
   const daUrl = stato.legaTorna; stato.legaTorna = null;
   const immagine = (sq, tipo) => sq.immagini && sq.immagini[tipo] ? `<img class="${tipo === "stemma" ? "stemma-lista" : "maglia-lista"}" src="${urlImg(sq.nome, tipo)}" alt="${t("lega.alt_immagine", { tipo: t(NOME_IMMAGINE[tipo]), nome: esc(sq.nome) })}" loading="lazy">` : "";
@@ -3421,7 +3507,8 @@ async function bannerNuovaStagione() {
     c.className = "carta"; c.dataset.g = "lega";
     c.innerHTML = `<button class="voce" id="banner-stagione" type="button" style="grid-template-columns:1fr auto"><span><span class="nome">${t("lega.nuova_stagione_n", { s: esc(s.corrente) })}</span>
       <span class="dettaglio" style="display:block">${t("lega.banner_stagione", { s: esc(s.rose) })}</span></span><span class="debole" aria-hidden="true">›</span></button>`;
-    contenuto.prepend(c);
+    const capo = $(".capo-pagina", contenuto);                // sotto il titolo della schermata, prima del resto
+    if (capo) capo.after(c); else contenuto.prepend(c);
     $("#banner-stagione").addEventListener("click", () => { if (stato.pannelli) apriPannello(stato.pannelli, "stagione"); });
   } catch { /* senza rose o senza rete: niente banner */ }
 }
@@ -3442,7 +3529,7 @@ function dataNovita(d) {
 const NOVITA_VISIBILI = 10;
 async function vistaNovita() {
   const mia = nuovaRichiesta();
-  caricamento(t("novita.carico"));
+  caricamento(t("novita.carico"), { titolo: t("info.novita") });
   try {
     const elenco = await api("/api/novita");
     if (!ancoraValida(mia)) return;
@@ -3454,15 +3541,15 @@ async function vistaNovita() {
         <ul class="novita-voci">${(v.voci || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
     const visibili = Math.max(NOVITA_VISIBILI, nuoveDa), resto = elenco.length - visibili;
     pagina(`<div class="carta"><div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("nav.altro")}</button>
-        <span class="debole">${t("novita.versione", { v: esc(elenco[0] ? elenco[0].versione : "?") })}</span></div><h2 style="margin-top:14px">${t("info.novita")}</h2></div>
+        <span class="debole">${t("novita.versione", { v: esc(elenco[0] ? elenco[0].versione : "?") })}</span></div></div>
       ${elenco.slice(0, visibili).map(carta).join("")}
-      ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}`);
+      ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}`, { titolo: t("info.novita") });
     const altre = $("#novita-altre");
     if (altre) altre.addEventListener("click", () => {
       $("#novita-altre-riga").outerHTML = elenco.slice(visibili).map((v, k) => carta(v, visibili + k)).join("");
     });
     try { if (elenco[0]) localStorage.setItem("novita-vista", elenco[0].versione); } catch { /* niente memoria */ }
-  } catch (e) { if (ancoraValida(mia)) contenuto.innerHTML = errore(e); }
+  } catch (e) { if (ancoraValida(mia)) pagina(errore(e), { titolo: t("info.novita") }); }
 }
 
 // ---------------------------------------------------------------- regole: schermata semplice con − / +
@@ -3496,9 +3583,9 @@ const bonusDifesa = (media, fasce) => fasce.filter(f => media >= f[0]).reduce((b
 
 async function vistaRegole() {
   const mia = nuovaRichiesta();
-  caricamento(t("regole.carico"));
+  caricamento(t("regole.carico"), { titolo: t("lega.voce_regole") });
   let r;
-  try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) contenuto.innerHTML = errore(e); return; }
+  try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) pagina(errore(e), { titolo: t("lega.voce_regole") }); return; }
   if (!ancoraValida(mia)) return;
   if (regoleAC) regoleAC.abort();
   regoleAC = new AbortController();
@@ -3511,8 +3598,7 @@ async function vistaRegole() {
   const fascia = (media, bonus) => `<div class="fascia"><div class="coppia"><span class="debole piccolo">${t("regole.media_almeno")}</span>${stepper("", media, { passo: 0.25, min: 4, max: 9, dec: 2 }).replace('id=""', 'class="f-media"')}</div>
     <div class="coppia"><span class="debole piccolo">${t("regole.bonus")}</span>${stepper("", bonus, { passo: 0.5, min: 0, max: 20, dec: 1 }).replace('id=""', 'class="f-bonus"')}</div>
     <button type="button" class="rimuovi-fascia" aria-label="${t("regole.togli_fascia")}">✕</button></div>`;
-  contenuto.classList.remove("ridisegna");
-  contenuto.innerHTML = `
+  pagina(`
     <div class="carta">
       <div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
         <button class="bottone secondario" id="annulla-regole" style="padding:6px 14px;min-height:44px">${t("regole.annulla_modifiche")}</button></div>
@@ -3591,7 +3677,7 @@ async function vistaRegole() {
       ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, min: 0, max: 20, dec: 0 }))).join("")}
       ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, min: 0, max: 5000, dec: 0 }))}
     </details>
-    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole">${t("regole.salva_regole")}</button></div>`;
+    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole">${t("regole.salva_regole")}</button></div>`, { titolo: t("lega.voce_regole") });
   const mostraSalva = () => { const s = $(".salva-fisso"); if (s) s.hidden = false; };
 
   // --- comportamenti

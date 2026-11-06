@@ -1,5 +1,71 @@
 [
   {
+    "versione": "1.422",
+    "data": "2026-11-06T03:27:06",
+    "titolo": "Formazione: chi ha già cominciato l'anticipo non si sposta più",
+    "voci": [
+      "Se una partita si gioca in anticipo e la formazione è ancora aperta, dopo il fischio d'inizio i suoi giocatori restano dove sono anche nella tua formazione: chi era titolare resta titolare, chi non lo era non entra.",
+      "Nella modifica a mano quei giocatori non si possono sostituire né far entrare, e una riga sotto i titolari lo dice; anche «Da fare» non te lo propone più.",
+      "Se provi a salvare una formazione che li sposta, l'app ti dice quale giocatore e perché."
+    ],
+    "tecnico": [
+      "Issue #373 (sotto #166). Rispetto alla formazione che vale (scelta salvata se `scelte.che_vale`, altrimenti la consigliata di `consigli.formazione`) `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` rispondono 400 `{detail, codice: \"giocatore_bloccato\"}` se spostano un giocatore di un anticipo già cominciato (`scelte.GiocatoreBloccato`, `scelte.controlla_bloccati`, `server._fermi` e `server._non_sposta_i_fermi`, dentro il lucchetto delle scelte). «Cominciato» è la regola della consigliata: `consigli._anticipi_iniziati` (#368).",
+      "`GET /api/formazione`: campo nuovo e facoltativo `bloccati` (id, `server._con_bloccati`, `scelte.bloccati`), solo con la formazione aperta e un anticipo cominciato. Web: `sostituti` e `giocatoriFermi` in app.js, chiavi `formazione.bloccati` e `err.giocatore_bloccato`. iPhone: `Formazione.bloccati`, `FormazioneViewModel.fermi`, `sostituti(di:_:)`, `notaFermi`. Senza anticipi cominciati nulla cambia. Test: tests/test_anticipi_scelta.py, ios/Tests/SchieraxiTests/AnticipiBloccatiTests.swift.",
+      "Revisione: «Torna alla consigliata» rifiutato (400 `giocatore_bloccato`) sulla web rimette la scelta salvata, come l'iPhone; `da_fare._dubbi` salta i bloccati (niente voce su di loro, mai come `alternativa`; come riserva sì, entrano da soli dalla panchina).",
+      "Anche la voce «La consigliata è cambiata» (`da_fare._titolari`) non nomina i bloccati: `_cambi_possibili` toglie i cambi impossibili bilanciando per ruolo; se restano solo loro, niente voce."
+    ]
+  },
+  {
+    "versione": "1.421",
+    "data": "2026-11-06T03:20:23",
+    "titolo": "Meno riquadri: sezioni con un titolo e righe",
+    "voci": [
+      "Le schermate dell'app web non sono più fatte di riquadri: ogni parte ha un titolo con una riga sotto e le sue righe.",
+      "Le etichette dei giocatori, come «Probabile titolare» o «In ballottaggio», sono testo colorato, senza fondo.",
+      "Pulsanti più semplici: uno solo pieno per schermata. La voce scelta di moduli, stili e scelte ha anche un bordo scuro, così si riconosce senza guardare il colore.",
+      "Avvisi ed errori sono una riga con un segno colorato a sinistra; con il mouse la riga sotto il puntatore si colora appena e il segno della tastiera è sempre dello stesso colore."
+    ],
+    "tecnico": [
+      "Grafica B, PR 5 (parte di #354): .carta senza fondo, bordo, raggio e rientro (margin-bottom 24 px, 32 da 900 px); .carta h2 e il summary della sezione che si apre con il filo da 2 px var(--testo); resta un blocco solo .carta.scambio (filo, --r-card). Via la regola compatta della carta, il rientro sotto i 320 px e l'entrata delle .col.",
+      "--r-card 12 px, --r-in 8 px. .bottone.secondario con bordo --bordo-campo e scritta --testo; nuova .azione-testo (44×44, colore --azione); hover con --azione-2 e --superficie al posto di filter: brightness; niente transform su :active.",
+      ".chip con bordo --bordo-campo e raggio --r-in; .chip.attiva lime con bordo 2 px var(--testo) e margine -1 px (niente spostamenti); .segmenti senza fondo, voci separate da filo, voce attiva lime con riquadro interno di 2 px. :focus-visible 2 px var(--testo) ovunque (bianco nel campo), via i focus blu e verdi.",
+      ".etichetta testo da 13 px senza fondo né bordo nei colori --eti-*, separatore « · » in ::after con testo alternativo vuoto; .tono con gli stessi colori. .errore, .attenzione, .verdetto, .nota-incerto con il filo di 3 px a sinistra; .vuoto a sinistra senza riquadro; .banner-novita riga con filo; .avviso pieno con --testo e --sfondo scambiati, senza anelli."
+    ]
+  },
+  {
+    "versione": "1.420",
+    "data": "2026-11-06T03:14:06",
+    "titolo": "Recuperi che mancano scritti come le partite rinviate",
+    "voci": [
+      "A giornata finita, la riga dei recuperi che mancano scrive le partite come la carta delle partite rinviate: «Manca il recupero di ATA vs PAR». Uguale sul telefono e sul computer."
+    ],
+    "tecnico": [
+      "Web: nuova `partitaVs(p)` in app.js, usata da `cardRinvio` e da `oggi.recupero_manca` in `cardRiepilogo` (prima `ATA–PAR` con il trattino). iPhone: `TestiRinvio.recuperoManca` usa `TestiRinvio.partita`. Issue #310, riga 38 di docs/COERENZA-WEB-IPHONE.md."
+    ],
+    "titolo_en": "Missing make-up games written like the postponed matches",
+    "voci_en": [
+      "When a round is over, the line about missing make-up games writes the matches like the postponed matches card: «ATA vs PAR». Same on phone and computer."
+    ]
+  },
+  {
+    "versione": "1.419",
+    "data": "2026-11-06T03:08:49",
+    "titolo": "Nuova testata: schede in alto sugli schermi larghi e titolo in ogni schermata",
+    "voci": [
+      "Su schermi larghi le sezioni stanno in alto, accanto al nome SchieraXI, con la ricerca di un giocatore sempre aperta: basta scrivere.",
+      "Il tasto Indietro del browser torna alla schermata di prima; con Ctrl+clic una sezione si apre in un'altra scheda del browser.",
+      "Ogni schermata ha il suo titolo in cima e, sotto, la giornata, la tua squadra e l'ora dei dati.",
+      "Al telefono la barra in basso è piena e a tutta larghezza; numeri e titoli hanno un carattere nuovo, con le cifre in colonna."
+    ],
+    "tecnico": [
+      "Grafica B, PR 4 (parte di #354): una sola nav dentro header.testata con <a class=\"scheda\" href=\"/?vista=…\">; da 900 px testata sticky da 56 px (nome disegnato #wm-c come il sito, linguette, input#campo-cerca con kbd «/», ingranaggio, aggiorna), sotto i 900 px barra fissa in basso piena (--superficie, filo sopra, linea --azione da 3 px sulla voce attiva) e pulsanti in posizione assoluta accanto al titolo.",
+      "vai(vista, gruppo, opz) scrive history.pushState/replaceState con l'indirizzo della schermata (indirizzoVista: ?vista=, &gruppo= per Impostazioni, &scheda= per Mercato); popstate chiude il foglio e chiama vai(..., { daCronologia: true }); con la Formazione non salvata, se si resta, l'indirizzo torna quello della Formazione. Clic con Ctrl/⌘/Maiusc/Alt o centrale: decide il browser.",
+      "pagina(html, opz) scrive header.capo-pagina con h1#titolo-pagina (opz.titolo, di norma t(\"nav.<scheda>\")) e p.stato-pagina (stato.rigaStato da caricaInfo, stemma da 20 px; opz.stato === false la toglie: Impostazioni). Mercato, Scambi, Regole, caricamento e montaPannelli passano da pagina().",
+      "@font-face Archivo (caratteri/archivo.woff2, font-display: swap, preload), --font-numeri per .grande, .enorme, #titolo-pagina, .voce .valore b, .partita .pt; scala --t-eroe 56 (72 da 900 px), --t-titolo 32, --t-card 17, --t-valore 20. main una colonna larga al massimo 1240 px (via le griglie di main a 1100/1700/3200 px e --lato); --alto-ferma per le colonne ferme.",
+      "Pagine Privacy e Termini con theme-color chiaro e scuro; pagina «Nessuna connessione» del service worker con i colori nuovi."
+    ]
+  },
+  {
     "versione": "1.418",
     "data": "2026-11-06T02:57:12",
     "titolo": "Stato dei dati: quanto è buono il consiglio di formazione",

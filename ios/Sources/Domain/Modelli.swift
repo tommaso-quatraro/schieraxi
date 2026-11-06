@@ -582,6 +582,9 @@ struct Formazione: Decodable {
     /// La tua scelta salvata per la giornata, con la regola del server: "nessuna", "valida" o "non_valida" (non si può più
     /// schierare: vale la consigliata). Solo per la tua squadra. Facoltativo (server vecchio: manca).
     let statoScelta: String?
+    /// Con la formazione ancora aperta, gli id di chi gioca un anticipo già cominciato (#373): nella lega non si spostano più.
+    /// Facoltativo: manca senza anticipi cominciati e con un server vecchio.
+    let bloccati: [Int]?
 }
 
 struct VoceNovita: Decodable, Identifiable {

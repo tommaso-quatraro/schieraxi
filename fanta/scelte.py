@@ -49,6 +49,32 @@ def che_vale(scelta: dict | None, ruoli: dict[int, str], regole) -> dict | None:
     return scelta if stato(scelta, ruoli, regole) == VALIDA else None
 
 
+# ---------------------------------------------------------------- anticipi già cominciati (#373)
+# Un anticipo (turno.py) non fissa la scadenza: la formazione resta aperta, ma nella lega chi gioca una partita già cominciata non si
+# sposta più. Rispetto alla formazione che vale in quel momento (la scelta salvata se vale, altrimenti la consigliata) chi era
+# titolare resta titolare e chi non lo era non entra. «Cominciata» è la regola della consigliata (`consigli._anticipi_iniziati`, #368).
+class GiocatoreBloccato(ValueError):
+    """Un salvataggio sposta un giocatore di una partita già cominciata: 400 con la frase per l'utente e `codice`."""
+    codice = "giocatore_bloccato"
+
+
+def bloccati(schede: dict, squadre) -> list[int]:
+    """Gli id (in ordine) dei giocatori delle `schede` della Formazione ({id: scheda}) che giocano per una delle `squadre` di Serie A
+    con un anticipo già cominciato: il campo `bloccati` di GET /api/formazione. Vuoto senza anticipi cominciati."""
+    if not squadre:
+        return []
+    return sorted(int(x["id"]) for x in schede.values() if isinstance(x, dict) and "id" in x and x.get("squadra") in squadre)
+
+
+def controlla_bloccati(fermi, prima, nuovi, nomi: dict[int, str]) -> None:
+    """GiocatoreBloccato se i titolari `nuovi` spostano uno dei `fermi` (id di `bloccati`) rispetto ai titolari `prima` della
+    formazione che vale adesso: esce un titolare o entra chi non lo era. `nomi`: {id: nome} per la frase."""
+    prima, nuovi = {int(i) for i in prima}, {int(i) for i in nuovi}
+    for i in fermi:
+        if (i in prima) != (i in nuovi):
+            raise GiocatoreBloccato(f"{nomi.get(i) or 'Un giocatore'} gioca in una partita già cominciata: non si può più spostare.")
+
+
 def ruoli_schierabili(rose, prev=None) -> dict[int, str]:
     """{id: ruolo} dei giocatori della tua rosa che si possono schierare, per `motivo_non_valida`. Con le previsioni della giornata
     da giocare (`prev`) come la Formazione: solo chi ne ha una, con il ruolo delle previsioni. Senza (giornata finita) tutta la
