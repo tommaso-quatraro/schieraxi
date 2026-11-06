@@ -44,6 +44,11 @@ enum TitoloPagina {
     static func inBarraSeCiSta(_ dimensione: DynamicTypeSize) -> Bool {
         nellaPagina(dimensione)
     }
+
+    /// Da completare (#419): per ora VoiceOver legge sempre la barra.
+    static func voceNellaPagina(_ dimensione: DynamicTypeSize) -> Bool {
+        false
+    }
 }
 
 extension EnvironmentValues {

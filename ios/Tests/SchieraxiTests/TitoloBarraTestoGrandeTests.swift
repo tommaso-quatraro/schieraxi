@@ -8,7 +8,9 @@ import UIKit
 /// `titoloPagina` avevano nella barra il titolo piccolo di sistema, che sta su una riga e taglia con «…»: nella pagina di una
 /// squadra si leggeva «Gli Amici del B…» nella barra e, subito sotto, lo stesso nome intero (`TitoloNellaPagina`).
 /// Regola: un nome non compare mai tagliato in un punto e intero in un altro. Da XXL in su la barra mostra il titolo solo se
-/// ci sta intero su una riga; se no non mostra niente, perché il nome intero sta già nella pagina.
+/// ci sta intero su una riga; se no non mostra niente, perché il nome intero sta già nella pagina. VoiceOver legge il nome una
+/// volta sola: sotto la soglia nella barra, da XXL in su nella pagina, come intestazione (la barra è nascosta a VoiceOver).
+/// Il conteggio vero di VoiceOver, sull'app, sta in `TitoloUnaVoltaUITests`.
 @Suite("Testo grande: nella barra il titolo intero o niente, mai tagliato")
 struct TitoloBarraTestoGrandeTests {
 
@@ -41,19 +43,38 @@ struct TitoloBarraTestoGrandeTests {
         }
     }
 
+    /// Chi legge VoiceOver: la barra (titolo grande di sistema o `TitoloInBarra`, intestazione) se non è nascosta, cioè
+    /// quando non mostra il titolo «solo se ci sta»; la pagina (`TitoloNellaPagina`, intestazione) se il titolo c'è e non è
+    /// nascosto. Con il testo grande la barra è nascosta a VoiceOver anche quando il titolo ci sta e si vede: se no un nome
+    /// corto si sentirebbe due volte, nella barra e nella pagina.
+    @Test("VoiceOver legge il titolo una volta sola: nella barra con il testo normale, nella pagina come intestazione con il testo grande",
+          arguments: DynamicTypeSize.allCases)
+    func voceUnaVolta(dimensione: DynamicTypeSize) {
+        let testoGrande: [DynamicTypeSize] = [.xxLarge, .xxxLarge, .accessibility1, .accessibility2, .accessibility3, .accessibility4,
+                                              .accessibility5]
+        #expect(TitoloPagina.voceNellaPagina(dimensione) == testoGrande.contains(dimensione))
+        for piccoloInBarra in [false, true] {
+            let barraLetta = !TitoloPagina.inBarraSeCiSta(dimensione)
+                && (TitoloPagina.grandeInBarra(dimensione, piccoloInBarra: piccoloInBarra)
+                    || TitoloPagina.interoInBarra(dimensione, piccoloInBarra: piccoloInBarra))
+            let paginaLetta = TitoloPagina.nellaPagina(dimensione) && TitoloPagina.voceNellaPagina(dimensione)
+            #expect(barraLetta != paginaLetta, "\(dimensione), piccoloInBarra \(piccoloInBarra): barra \(barraLetta), pagina \(paginaLetta)")
+        }
+    }
+
     /// Comportamento vero del disegno: `ImageRenderer` dentro una colonna larga quanto il posto del titolo nella barra.
     /// (La barra stessa `ImageRenderer` non la disegna: lì il controllo sono le foto.)
     @MainActor
-    @Test("Nome lungo con il testo grande su un iPhone: nella barra niente di visibile (il nome intero è nella pagina), ma il posto resta per VoiceOver",
+    @Test("Nome lungo con il testo grande su un iPhone: nella barra niente, nemmeno un riquadro vuoto (il nome intero è nella pagina)",
           arguments: [DynamicTypeSize.xxLarge, .accessibility1, .accessibility5])
     func nomeLungoNienteNellaBarra(dimensione: DynamicTypeSize) throws {
         let intero = try Self.disegna(Text(Self.nomeLungo).font(.headline), larghezza: nil, min(dimensione, .xxxLarge))
         try #require(CGFloat(intero.width) > Self.larghezzaIPhone, "il nome della prova deve essere più largo della barra")
 
-        let titolo = try Self.disegna(Self.verticale(TitoloInBarra(titolo: Self.nomeLungo, soloSeCiSta: true)),
-                                      larghezza: Self.larghezzaIPhone, dimensione)
-        #expect(titolo.height > 0, "il titolo tiene il suo posto nella barra: VoiceOver lo legge lì")
-        #expect(Self.pixelVisibili(titolo) == 0, "un nome che non ci sta non si mostra tagliato con «…»")
+        let titolo = Self.disegnaSeCe(TitoloInBarra(titolo: Self.nomeLungo, soloSeCiSta: true), larghezza: Self.larghezzaIPhone, dimensione)
+        // alto zero: nessun testo trasparente che tiene il posto (VoiceOver ci metterebbe il riquadro su una zona vuota)
+        #expect((titolo?.height ?? 0) == 0, "nella barra resta un riquadro alto \(titolo?.height ?? 0)")
+        #expect((titolo.map(Self.pixelVisibili) ?? 0) == 0, "un nome che non ci sta non si mostra tagliato con «…»")
     }
 
     @MainActor
@@ -65,43 +86,44 @@ struct TitoloBarraTestoGrandeTests {
             let riga = try Self.disegna(Text(nome).font(.headline), larghezza: nil, min(dimensione, .xxxLarge))
             try #require(CGFloat(riga.width) < larghezza, "«\(nome)» deve starci in \(larghezza) punti")
 
-            let titolo = try Self.disegna(Self.verticale(TitoloInBarra(titolo: nome, soloSeCiSta: true)), larghezza: larghezza, dimensione)
+            let titolo = try Self.disegna(TitoloInBarra(titolo: nome, soloSeCiSta: true), larghezza: larghezza, dimensione)
             #expect(Self.pixelVisibili(titolo) > 0, "«\(nome)» ci sta: si vede")
             #expect(abs(CGFloat(titolo.height) - CGFloat(riga.height)) <= 1,
                     "«\(nome)»: titolo alto \(titolo.height), una riga del titolo di sistema \(riga.height)")
         }
     }
 
-    /// iPhone in orizzontale (`verticalSizeClass` compatta): la barra piccola è alta ~32 punti.
+    /// iPhone in orizzontale: la barra piccola è alta ~32 punti. Con il testo grande `TitoloInBarra` non guarda
+    /// l'orientamento: il tetto basta perché una riga ci stia anche lì.
     @MainActor
     @Test("iPhone in orizzontale con il testo massimo: una riga che sta nella barra bassa, o niente se il nome non ci sta")
     func orizzontale() throws {
-        let corto = try Self.disegna(TitoloInBarra(titolo: Self.titoloCorto, soloSeCiSta: true).environment(\.verticalSizeClass, .compact),
+        let corto = try Self.disegna(TitoloInBarra(titolo: Self.titoloCorto, soloSeCiSta: true),
                                      larghezza: Self.larghezzaOrizzontale, .accessibility5)
         #expect(Self.pixelVisibili(corto) > 0)
         #expect(CGFloat(corto.height) <= Self.altezzaBarraOrizzontale + 0.5, "una riga dentro la barra bassa: alta \(corto.height)")
 
         let intero = try Self.disegna(Text(Self.nome50).font(.headline), larghezza: nil, .xxxLarge)
         try #require(CGFloat(intero.width) > Self.larghezzaOrizzontale, "il nome della prova deve essere più largo della barra")
-        let lungo = try Self.disegna(TitoloInBarra(titolo: Self.nome50, soloSeCiSta: true).environment(\.verticalSizeClass, .compact),
-                                     larghezza: Self.larghezzaOrizzontale, .accessibility5)
-        #expect(Self.pixelVisibili(lungo) == 0, "un nome che non ci sta non si mostra tagliato con «…»")
+        let lungo = Self.disegnaSeCe(TitoloInBarra(titolo: Self.nome50, soloSeCiSta: true), larghezza: Self.larghezzaOrizzontale, .accessibility5)
+        #expect((lungo?.height ?? 0) == 0, "nella barra resta un riquadro alto \(lungo?.height ?? 0)")
+        #expect((lungo.map(Self.pixelVisibili) ?? 0) == 0, "un nome che non ci sta non si mostra tagliato con «…»")
     }
 
     // MARK: disegno e misure
 
-    /// iPhone in verticale: la barra piccola alta 44 punti.
-    @MainActor
-    private static func verticale(_ vista: some View) -> some View {
-        vista.environment(\.verticalSizeClass, .regular)
-    }
-
-    /// La vista disegnata (in punti), larga `larghezza` (nil = quanto le serve).
+    /// La vista disegnata (in punti), larga `larghezza` (nil = quanto le serve): deve esserci qualcosa da disegnare.
     @MainActor
     private static func disegna(_ vista: some View, larghezza: CGFloat?, _ dimensione: DynamicTypeSize) throws -> CGImage {
+        try #require(disegnaSeCe(vista, larghezza: larghezza, dimensione), "niente da disegnare")
+    }
+
+    /// Come `disegna`, ma una vista alta zero non si disegna: nil.
+    @MainActor
+    private static func disegnaSeCe(_ vista: some View, larghezza: CGFloat?, _ dimensione: DynamicTypeSize) -> CGImage? {
         let disegno = ImageRenderer(content: vista.frame(width: larghezza).dynamicTypeSize(dimensione))
         disegno.scale = 1
-        return try #require(disegno.cgImage, "niente da disegnare: il titolo non ha più un posto nella barra")
+        return disegno.cgImage
     }
 
     /// Quanti punti dell'immagine non sono trasparenti (il fondo di `ImageRenderer` è trasparente). -1 se non si legge.
