@@ -420,7 +420,7 @@ def _rose_vecchie(db, stagione: str, regole: Regole, file_rose: Path, adesso: da
     if entro is None:
         return None
     giorni = (adesso - aggiornate).days
-    return _voce("rose-vecchie", "rose", F("dafare.rose_mercato", n=serie_a_a_lega(entro, regole)),
+    return _voce("rose-vecchie", "rose", F("dafare.rose_mercato", giornata=frasi.nome_giornata(entro, serie_a_a_lega(entro, regole))),
                  MEDIA, F("dafare.az_aggiorna_rose"), _destinazione("lega", "rose"), giorni=giorni)
 
 
@@ -466,7 +466,7 @@ def _diario(db, stagione: str, rose: Rose, file_scelte: Path | None, file_diario
         return []
     if dal is not None and _chiusa_prima(db, stagione, g, getattr(regole, "scadenza_minuti", 0), dal):
         return []
-    return [_voce(f"diario:{g}", "diario", F("dafare.diario", n=g - prima + 1), BASSA,
+    return [_voce(f"diario:{g}", "diario", F("dafare.diario", giornata=frasi.nome_giornata(g, g - prima + 1)), BASSA,
                   F("dafare.az_schierato"), _destinazione("lega", "diario", giornata=g), giornata=g)][:MAX_DIARIO]
 
 

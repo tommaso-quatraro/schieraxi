@@ -111,65 +111,6 @@ final class RosaViewModel: ViewModelBase {
     }
 }
 
-/// Una riga della rosa: avatar con l'indice, nome, costo e quotazione, titolarità e previsione.
-struct RigaRosa: View {
-    let g: GiocatoreRosa
-    @Environment(\.apriGiocatore) private var apri
-
-    private var sottotitolo: String {
-        var parti: [String] = []
-        let s = ColoriSquadra.sigla(g.squadraSlug ?? g.previsione?.squadra ?? g.squadra)
-        if !s.isEmpty { parti.append(s) }
-        if let c = g.costo { parti.append("costo \(Formato.intero(c))") }
-        if let q = g.quotazione { parti.append("quotazione \(Formato.intero(q))") }
-        if let a = g.previsione?.avversario { parti.append("vs \(ColoriSquadra.sigla(a))") }
-        return parti.joined(separator: " · ")
-    }
-
-    /// La frase letta da VoiceOver per tutta la riga.
-    private var voce: String {
-        var testo = "\(g.nome), \(nomeRuolo(g.ruolo ?? "")), \(sottotitolo)"
-        if let p = g.previsione { testo += ", fantavoto atteso " + Formato.punti(p.fvAtteso) } else { testo += ", non gioca" }
-        return testo
-    }
-
-    var body: some View {
-        let p = g.previsione
-        Button { if let id = g.id { apri(id) } } label: {
-            HStack(spacing: 12) {
-                AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? p?.squadra, indice: p?.indice, dimensione: 44, nome: g.nome, ruolo: g.ruolo)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        BadgeRuolo(ruolo: g.ruolo ?? "?", piccolo: true)
-                        // intero, anche su più righe con il testo grande (#254)
-                        Text(g.nome).font(.headline)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Text(sottotitolo).font(.caption).foregroundStyle(Color.testoSecondario)
-                    if let etichette = p?.etichette, !etichette.isEmpty {
-                        Text(etichette.map(\.testo).joined(separator: " · ")).font(.caption).foregroundStyle(etichette.contains { $0.gravita == .grave } ? Color.malus : Color.testoSecondario)
-                    }
-                }
-                Spacer(minLength: 8)
-                if let p {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(Formato.punti(p.fvAtteso)).font(.headline).monospacedDigit()
-                        Text("gioca \(Formato.percento(p.pVoto))%").font(.caption2).foregroundStyle(Color.testoSecondario)
-                    }
-                } else {
-                    Text(g.id == nil ? "?" : "non gioca").font(.caption).foregroundStyle(Color.testoSecondario)
-                }
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(voce)
-        }
-        .buttonStyle(.plain)
-        .disabled(g.id == nil)
-    }
-}
-
 struct RosaView: View {
     let nome: String
     @StateObject private var vm: RosaViewModel

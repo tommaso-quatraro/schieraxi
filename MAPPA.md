@@ -23,6 +23,11 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `indicatori_consiglio.py` (C1-C4 misurati davvero nel Diario a giornata finita sulla consigliata mostrata, con le funzioni di
     `verifica_consiglio`; totali di tutti i Diari, medie su 8 giornate e avviso al proprietario dopo 2 giornate fuori soglia: comando
     `affidabilita` del cron, file `dati/indicatori-consiglio.json`, campo `consiglio` di `GET /api/stato-dati`),
+    `nostri.py` (gol e assist attesi «nostri», L3b di #165: lo stesso modello con i soli dati di Fantacalcio.it, `dati` e
+    `parametri`; `gol_attesi` è l'unica definizione dei gol attesi con i rigori; `VERSIONE` si alza a ogni cambio di `parametri`
+    o della formula. Oggi serve solo a misurare: la produzione non cambia fino alla Fase G1 del piano
+    `docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md`), `verifica_pacchetti.py` (`-m fanta verifica --pacchetti`: scenari
+    di dati, gol attesi per fasce e conti attesi su veri di gol, rigori e assist),
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi; consigliata stabile, vedi «Contratti delle API»),
     `perche_scelta.py` (il perché delle scelte che sembrano storte in una riga, campo `perche_scelta` dei moduli di `/api/formazione`,
@@ -34,7 +39,12 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     non salvata quando inizia la prima partita = «persa»: riga con il motivo in breve (`persa`) e un avviso solo. Tabelle
     `registro_giocatori` e `registro_giornate` dell'archivio: NON si ricostruiscono. Gira nel thread del pianificatore
     (`pianificatore._registro`); `FANTA_REGISTRO_GIORNATE=0` lo spegne. Campo `registro` di `GET /api/stato-dati`.
-    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le due tabelle in `dati/registro-giornate.json` per la
+    Gol attesi «nostri» dal vivo (I4, Fase D del piano 2026-11-06-gol-attesi-nostri): `registro_nostri.py`, passi a sé del giro
+    del registro, sempre DOPO quelli dei mostrati. Salva i numeri `nostri.previsioni` degli stessi giocatori con `nostri.VERSIONE`,
+    a giornata finita li misura contro i mostrati (errore, punti sulle rose di I3, gol attesi per fasce) e avvisa il proprietario
+    quando 8 giornate della stessa versione reggono; nostri non salvati o misura non riuscita 3 volte = «persa». Tabelle `registro_nostri` e
+    `registro_i4` (tabelle a sé: gli archivi che ci sono le ricevono senza migrazione). Campo `registro_nostri` di `GET /api/stato-dati`.
+    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` in `dati/registro-giornate.json` per la
     copia notturna (`script/server/backup-dati.sh`) e le rimette con `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
@@ -67,10 +77,12 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `fanta/contenuti/sotto-il-cofano.json`: testi di «Sotto il cofano», fonte unica per web e iPhone. Ogni affermazione ha il
   suo punto di codice in `fonte_codice`.
 - `fanta/novita.json`: storia delle versioni (numero, data, titolo, voci). `fanta/novita.d/`: voci in attesa, un file per pull request.
-- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/`, `sw.js`
-  con `VERSIONE`. Niente script né stili dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`).
-  Il nome «SchieraXI» è in tracciati SVG (nessun font da scaricare): simboli `#wm` (grande) e `#wm-c` (compatto) in cima a ogni pagina,
-  nome animato della prima schermata con classi `wm-*`. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
+- `sito/`: il sito di presentazione. Statico: `index.html` (italiano), `en/index.html` (inglese), `stile.css`, `js/` (tema e
+  installazione), `font/` (Archivo semi-stretto in woff2, licenza `OFL.txt` accanto), `sw.js` con `VERSIONE`. Niente script né stili
+  dentro l'HTML (la Content-Security-Policy non ammette `unsafe-inline`). Grafica della web app «direzione B» (#355): fili al posto
+  delle carte, Archivo per titoli e numeri, niente gradienti né ombre; esempi con nomi e numeri inventati che tornano (i test li rifanno).
+  Il nome «SchieraXI» è in tracciati SVG: simboli `#wm` (grande) e `#wm-c` (compatto, l'unico mostrato, nella barra in alto) in cima a
+  ogni pagina. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
   Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
   Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
@@ -85,7 +97,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
   `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
-- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335).
+- `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `tara_forza_gol.py`: taratura della forza delle squadre dei gol attesi «nostri» (memoria, partite fittizie, livello recente del campionato; devianza di Poisson dei gol di squadra sul 2025-26, controllo sul 2026-27) e, con `--ruoli`, gol e assist veri su attesi per ruolo (Fase C del piano `2026-11-06-gol-attesi-nostri`). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 12 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
   `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
   `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`, `superpowers/specs/` e `superpowers/plans/` (spec e piani, in italiano).
@@ -133,7 +145,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Istantanea di tutte le rotte: `docs/openapi.json`, controllata da `tests/test_contratto_api.py`; si rifà con
   `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
 - Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
-- `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate) e `consiglio`
+- `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate), `registro_nostri`
+  (I4 dal vivo: numeri «nostri» contro mostrati; `null` se non si legge) e `consiglio`
   (C1-C4 del consiglio, totali dei Diari): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
 - `GET /api/diario`: ogni voce ha il campo facoltativo `consiglio` (C1-C4 di quella giornata) e `istantanea` ha `misure` (C3-C4);
   forma in `docs/API.md`, «Indicatori del consiglio».
@@ -159,6 +172,7 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Passaggio di stagione: `POST /api/nuova-stagione` risponde `{archivio, squadre, stagione}`; `archivio` è il nome della stagione archiviata (`"2026-27"`), non un percorso.
 - Scambi: `GET /api/scambi/proposte`, `GET /api/scambi/analizza`, `POST /api/scambi/da-testo`, `GET /api/scambi/limite`. `analizza` e `da-testo` passano dallo stesso `limiti.analisi_scambio`.
 - Ogni parametro `giornata` delle rotte ha `ge=1, le=MAX_GIORNATA` (422, mai 500): `tests/test_giornata_limiti.py` trova da solo le rotte nuove.
+- Numero della giornata (dal 5/11/2026, #299): le risposte mandano `giornata` (Serie A) e `giornata_lega` (lega, `null` per le stagioni passate e prima che la lega parta); il testo «Giornata 8 · 11ª di Serie A» lo scrive una funzione sola per lato, `nomeGiornata` in `fanta/web/app.js` e `frasi.nome_giornata` sul server (avvisi, Da fare, testo per i Comandi). Forme in `docs/COERENZA-WEB-IPHONE.md`, «Giornata: le forme»; test `tests/test_giornate_lega_serie_a.py`.
 - Rose a colonne `ruolo;nome;club;prezzo`: formato di testo accettato dal server, nato per la lettura degli screenshot di Leghe
   nell'app iPhone (tolta il 2/11/2026), resta per il testo incollato. Intestazione nella prima riga, una riga con una cella sola =
   fantasquadra, `crediti;N`; a `POST /api/rose/anteprima` e `/api/rose/testo`; `rose._estrai_schermate`. Contratto in `docs/API.md`.

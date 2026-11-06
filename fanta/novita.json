@@ -1,5 +1,91 @@
 [
   {
+    "versione": "1.415",
+    "data": "2026-11-06T02:07:26",
+    "titolo": "La giornata della lega e quella di Serie A, insieme",
+    "voci": [
+      "Come su Leghe, ogni giornata dice tutti e due i numeri: «Giornata 8 · 11ª di Serie A». Vale in alto, in Oggi, in Formazione, nel Diario, nella scheda del giocatore, nel confronto, nel testo e nell'immagine da condividere, nelle cose da fare e negli avvisi sul telefono.",
+      "Per le stagioni passate e nel calendario si legge solo la giornata di Serie A: «11ª giornata di Serie A».",
+      "Gli avvisi dei cambi nelle probabili e del riepilogo hanno il titolo più corto: la giornata è scritta all'inizio del testo."
+    ],
+    "tecnico": [
+      "Una sola funzione per lato: nomeGiornata(lega, serieA) in fanta/web/app.js e frasi.nome_giornata(serie_a, lega) sul server (chiavi giornata.lega e giornata.serie_a; per gli avvisi n.giornata.lega e n.giornata.serie_a, anche in inglese).",
+      "Le frasi con la giornata la mettono in testa con i due punti; dafare.diario e dafare.rose_mercato (il promemoria «aggiorna le rose») hanno il parametro giornata (una frase) al posto di n.",
+      "Nessun campo nuovo nelle API: giornata e giornata_lega c'erano già. Formato e frasi esatte in docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme» (#299, parte web e server)."
+    ]
+  },
+  {
+    "versione": "1.414",
+    "data": "2026-11-06T02:00:03",
+    "titolo": "Gol attesi: forza delle squadre e livello del campionato (prova interna)",
+    "voci": [
+      "Nessun cambiamento visibile: la prova interna dei gol attesi fatti solo con i voti di Fantacalcio.it ora segue anche quanti gol si segnano nelle ultime giornate del campionato."
+    ],
+    "tecnico": [
+      "Issue #395, Fase C del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). modello.Parametri ha due campi nuovi, spenti di default: decadimento_base (C1: forza_squadre calcola il livello recente del campionato, gol a squadra a partita con memoria decadimento_base e peso_stagione_prec_squadre per la stagione prima, diviso per base e limitato tra LIVELLO_MIN 0,8 e LIVELLO_MAX 1,25; Forza.livello moltiplica i gol attesi delle due squadre dopo la stima di attacco e difesa, e da lì arriva ai gol del giocatore, al voto e ai portieri) e medie_ruolo_pesate (C2: le medie del ruolo di gol, assist, xG, xA e minuti usano i pesi dei giocatori). Il Compito C3 (taratura per ruolo) non è servito.",
+      "nostri.parametri accende i due campi e usa nostri.FORZA (decadimento_squadre 0,99, k_squadre 8, decadimento_base 0,85), tarati con prove/tara_forza_gol.py sui gol di squadra del 2025-26 dalla 5ª giornata e controllati sul 2026-27; nostri.VERSIONE = \"3\".",
+      "verifica --pacchetti completo,solo_fantacalcio (archivio di sviluppo, lega d'esempio, 300 simulazioni), solo_fantacalcio 2025-26 · 2026-27, prima → dopo: scarto_gol 0,028 · 0,104 → 0,029 · 0,020; gol_su_veri 0,934 · 0,764 → 0,954 · 0,865; rigori_su_veri 0,656 · 0,765 → 0,671 · 0,849; assist_su_veri 0,917 · 0,862 → 0,937 · 0,977; rmse_vs_completo_pct +0,490 · +0,587 → +0,404 · +0,436; vs_completo 2026-27 −0,004 → −0,082. Con 20 rose sintetiche e 200 simulazioni, vs_completo −0,019 · −0,143 → −0,054 · −0,124.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
+    "versione": "1.413",
+    "data": "2026-11-06T01:59:36",
+    "titolo": "Misura dal vivo dei gol attesi calcolati solo con Fantacalcio.it",
+    "voci": [
+      "Nessun cambiamento visibile: prima di ogni giornata l'app mette da parte anche i numeri calcolati solo con i voti di Fantacalcio.it e, a giornata finita, misura se sono buoni quanto quelli mostrati. I numeri che vedi non cambiano."
+    ],
+    "tecnico": [
+      "Issue #388, Fase D del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (I4 dal vivo, L3b di #165). Nuovo modulo fanta/registro_nostri.py: nel giro del registro delle giornate, ognuno DOPO il passo dei mostrati e in un passo a sé (il modulo si importa dentro il passo: anche se non si carica i mostrati si salvano), salva_se_serve (nostri.previsioni degli stessi giocatori di registro_giocatori, con nostri.VERSIONE ed e_rigori mostrato), segna_perse (nostri non salvati prima della prima partita: riga con il motivo, non conta), chiudi_giornate (dopo la misura dei mostrati: errore del fantavoto, punti sulle stesse 20 rose di I3, gol attesi per fasce con nostri.gol_attesi, nostri e mostrati; una misura in errore non ferma le giornate dopo e, dopo 3 tentativi contati nell'archivio, la giornata diventa persa), avvisa (8 giornate della versione di oggi entro le soglie errore +1%, punti -0,3, scarto 0,03: un avviso per versione) e avvisa_perse (un avviso solo).",
+      "Archivio: tabelle nuove registro_nostri e registro_i4 (CREATE TABLE IF NOT EXISTS: gli archivi con il registro le ricevono senza toccare le tabelle che ci sono). Copia notturna (registro_copia): TABELLE con le due tabelle nuove; le copie di prima si rimettono lo stesso. GET /api/stato-dati: campo nuovo e facoltativo registro_nostri (null se non si legge, con il tipo d'errore nel log).",
+      "Tempo in più, archivio di sviluppo: salvataggio dei nostri 0,12 s e misura 1,7 s, una volta per giornata; un giro senza niente da fare 0,01 s.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
+    "versione": "1.412",
+    "data": "2026-11-06T01:29:58",
+    "titolo": "Gol attesi: rigori e minuti più vicini a quelli veri (prova interna)",
+    "voci": [
+      "Nessun cambiamento visibile: la prova interna dei gol attesi fatti solo con i voti di Fantacalcio.it ora conta meglio rigori e minuti giocati."
+    ],
+    "tecnico": [
+      "Issue #389, Fase B del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). modello.Parametri ha due interruttori nuovi, spenti di default: rigori_squadra (B1: la parte dei rigori della squadra che va al giocatore viene dai rigori calciati con memoria lunga, DECADIMENTO_RIGORI 0,98 a giornata e PESO_PREC_RIGORI 0,8 per la stagione prima, con qualunque squadra; parte = i suoi / (i suoi + quelli dei compagni di oggi pesati con p_storico), 0 a chi non ne ha mai calciati; funzione modello._rigori_divisi) e minuti_con_voto (B2: le prestazioni si limitano alle presenze con voto, così minuti a presenza, da titolare e da subentro, tassi per 90' e medie del ruolo guardano solo quelle). nostri.parametri li accende; nostri.VERSIONE = \"2\".",
+      "verifica --pacchetti completo,solo_fantacalcio (archivio di sviluppo, lega d'esempio, 300 simulazioni), solo_fantacalcio 2025-26 · 2026-27, prima → dopo: rigori_su_veri 0,417 · 0,251 → 0,656 · 0,765; gol_su_veri 0,857 · 0,694 → 0,934 · 0,764; assist_su_veri 0,863 · 0,805 → 0,917 · 0,862; minuti_attesi 65,3 · 64,9 → 68,2 · 68,0; rmse_vs_completo_pct +0,471 · +0,811 → +0,490 · +0,587; scarto_gol 0,020 · 0,070 → 0,028 · 0,104 (si chiude nella Fase C).",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
+    "versione": "1.411",
+    "data": "2026-11-06T01:09:12",
+    "titolo": "Misura interna dei gol attesi",
+    "voci": [
+      "Nessun cambiamento visibile: una prova interna misura quanto i gol, i rigori e gli assist attesi tornano con quelli veri, per preparare gol attesi calcolati solo con i voti di Fantacalcio.it."
+    ],
+    "tecnico": [
+      "Issue #386, Fase A del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). Nuovo modulo fanta/nostri.py: dati(d) (prestazioni ricostruite dai voti, niente Understat; prima verifica_pacchetti.solo_fantacalcio, stesso corpo), parametri(par) (peso_xg e peso_xa a 0), VERSIONE = \"1\" (si alza a ogni cambio di parametri o formula), gol_attesi(prev, par) = e_gol + conversione_rigori × e_rigori (unica definizione), previsioni(...) = modello.previsioni con dati e parametri dei nostri. verifica_pacchetti tiene gli stessi nomi (solo_fantacalcio, minuti_stimati, MINUTI_STIMATI, FASCE_GOL, FASCE_GOL_NOMI, MIN_CASI_FASCIA) e lo scenario solo_fantacalcio usa nostri.parametri.",
+      "verifica --pacchetti: _con_registro raccoglie anche e_gol, e_rigori, e_assist e minuti; nuovo conti_attesi (solo chi prende voto, una riga per stagione: gol_su_veri, azione_su_veri, rigori_su_veri = rigori calciati attesi / calciati veri, assist_su_veri, minuti_attesi = media di min(minuti, 90), minuti_stimati da entrato e uscito), stampato dopo le fasce; tabella ha in più gol_su_veri, rigori_su_veri e assist_su_veri.",
+      "Archivio di sviluppo, lega d'esempio, 2025-26 · 2026-27: gol_su_veri 1,011 · 0,827 con Understat e 0,857 · 0,694 solo Fantacalcio.it; rigori_su_veri 0,424 · 0,255 e 0,417 · 0,251; assist_su_veri 0,956 · 0,874 e 0,863 · 0,805.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
+    "versione": "1.410",
+    "data": "2026-11-06T01:08:13",
+    "titolo": "Colori più sobri: fondo bianco o grigio scuro",
+    "voci": [
+      "Il fondo è bianco nel tema chiaro e grigio quasi nero nel tema scuro, senza più la tinta verde: i colori restano solo sui dati.",
+      "Nel tema chiaro pulsanti e collegamenti diventano verde bosco.",
+      "La barra in alto, quella in basso e la scheda del giocatore sono piene, senza effetto vetro: il testo sotto non si intravede più."
+    ],
+    "tecnico": [
+      "Grafica B, PR 3 (parte di #354): --sfondo #ffffff / #121513, nuove --superficie (#f4f5f2 / #1a1e1c) e --filo (#dde1dc / #2e3430), --solido scuro #1a1e1c, --testo scuro #e9edea; --vetro e --vetro-carta = var(--sfondo); nessun backdrop-filter.",
+      "--azione chiaro #0b6b3a (6,6:1 sul bianco, bianco sopra 6,6:1), --azione-2 #08552e; solo sulla web (scelta 1b della spec): l'iPhone resta oliva, il test confronta con Aspetto.swift solo lo scuro.",
+      "theme-color in due righe con media (chiaro #ffffff, scuro #121513); applicaAspetto le aggiorna tutte e due quando il tema è scelto a mano; manifest #121513.",
+      "Voce scelta dei controlli segmentati: grigio neutro (testo al 12% sul fondo), perché con il fondo pieno non si distingueva più dalla striscia."
+    ]
+  },
+  {
     "versione": "1.409",
     "data": "2026-11-05T23:03:02",
     "titolo": "Da fare: niente cambi se hai salvato la consigliata",

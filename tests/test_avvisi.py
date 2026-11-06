@@ -22,7 +22,7 @@ def test_avvisa_solo_vicino_e_una_volta(tmp_path):
     assert avvisi.da_mandare(db, ST, 9, lontano, f) is None
     vicino = datetime(2026, 10, 27, 20, 0)            # 22 ore prima
     a = avvisi.da_mandare(db, ST, 9, vicino, f)
-    assert a and "Giornata 9" in a["testo"]
+    assert a and a["testo"].startswith("9ª giornata di Serie A: ")     # senza le regole della lega: solo la Serie A
     assert avvisi.da_mandare(db, ST, 9, vicino, f) is None          # già avvisato
     assert avvisi.da_mandare(db, ST, 10, datetime(2026, 11, 3, 18, 0), f)   # la giornata dopo sì
 

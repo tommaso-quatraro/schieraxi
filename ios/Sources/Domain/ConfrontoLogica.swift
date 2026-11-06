@@ -22,6 +22,16 @@ extension Confronto {
         return nil
     }
 
+    /// Il posto di un giocatore nella formazione del sistema, come lo manda il server: `posto_a` per il primo, `posto_b` per il
+    /// secondo («titolare», «panchina N», «fuori»), come `codicePosto` di `apriConfronto` della web. Mai ricalcolato qui. Nil senza
+    /// formazione (i due non sono della stessa rosa) o per un giocatore che non è uno dei due.
+    func codicePosto(di g: Giocatore) -> String? {
+        guard let f = formazione, giocatori.count == 2 else { return nil }
+        if g.id == giocatori[0].id { return f.postoA }
+        if g.id == giocatori[1].id { return f.postoB }
+        return nil
+    }
+
     /// Le cause che contano: quelle con un effetto visibile, più sempre «giocare».
     var fattoriVisibili: [FattoreConfronto] {
         fattori.filter { abs($0.effetto) >= 0.005 || $0.chiave == "giocare" }

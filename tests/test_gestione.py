@@ -187,9 +187,9 @@ def test_la_mia_scelta_si_salva_e_si_cancella(tmp_path):
 
 
 def test_testo_formazione():
-    f = {"giornata": 9, "schede": {"1": {"nome": "Vicario", "ruolo": "P"}, "2": {"nome": "Bastoni", "ruolo": "D"},
-                                   "3": {"nome": "Bonny", "ruolo": "A"}, "4": {"nome": "Bijlow", "ruolo": "P"}}}
-    assert consigli.testo_formazione(f, "1-1-0", [1, 2, 3], [4]) == "Giornata 9 · 1-1-0\nP: Vicario\nD: Bastoni\nC: \nA: Bonny\nPanchina: 1) Bijlow"
+    f = {"giornata": 9, "giornata_lega": 9, "schede": {"1": {"nome": "Vicario", "ruolo": "P"}, "2": {"nome": "Bastoni", "ruolo": "D"},
+                                                       "3": {"nome": "Bonny", "ruolo": "A"}, "4": {"nome": "Bijlow", "ruolo": "P"}}}
+    assert consigli.testo_formazione(f, "1-1-0", [1, 2, 3], [4]) == "Giornata 9 · 9ª di Serie A · 1-1-0\nP: Vicario\nD: Bastoni\nC: \nA: Bonny\nPanchina: 1) Bijlow"
 
 
 def test_oggi_mostra_la_scelta_salvata_dall_utente(monkeypatch, tmp_path):
