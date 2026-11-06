@@ -51,7 +51,10 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 - **iPhone**: prima dell'unione compilazione e test verdi in CI (`ios / test`) e revisione fatta; nella pull request le schermate
   da fotografare e l'elenco di cosa provare sul telefono. Dopo l'unione le foto delle schermate toccate, guardate davvero.
 - **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …»;
-  niente segni da interfaccia generata (`docs/STILE-SENZA-AI.md`).
+  niente segni da interfaccia generata (`docs/STILE-SENZA-AI.md`). Il file della coerenza è generato: si cambiano i dati in
+  `docs/coerenza/` (un file per schermata in `schermate/`) e si lancia `python script/coerenza.py --scrivi`; `--controlla` e
+  `tests/test_coerenza_dati.py` rifiutano un `.md` scritto a mano, un id doppio, una riga ripetuta, un campo mancante o uno stato
+  sconosciuto (`da-fare`, `fatto`, `da-decidere`). Conflitto sul `.md` dopo un'unione: unisci i dati, poi rigenera il file.
 
 ## Contratto delle API
 - `docs/openapi.json` è l'istantanea di tutte le rotte del server (parametri, corpi, risposte). `tests/test_contratto_api.py`
