@@ -39,12 +39,34 @@ struct DemoGiornataCoerenteTests {
     /// L'ora («20:45») di una data del server («2026-11-07 20:45»).
     private func ora(_ data: String?) -> String { String((data ?? "").suffix(5)) }
 
-    // MARK: - Punti attesi
+    // MARK: - Punti attesi e fascia
 
-    @Test("La formazione salvata ha gli stessi punti attesi in Formazione, in Oggi prima, in corso e a giornata finita, e nei widget")
+    /// Punti attesi e fascia letti da una schermata. Si confrontano i numeri, non solo come si scrivono: con una fonte arrotondata
+    /// (72,7) e una no (72,69) la fascia può uscire «tra 64 e 81» da una parte e «tra 65 e 81» dall'altra.
+    private struct Lettura {
+        let dove: String
+        let attesi: Double?
+        var basso: Double? = nil
+        var alto: Double? = nil
+        /// false dove la schermata non ha la fascia (la consigliata della valutazione e del riepilogo)
+        var conFascia = true
+    }
+
+    private func tra(_ l: Lettura) -> String { "tra \(Formato.intero(l.basso)) e \(Formato.intero(l.alto))" }
+
+    @Test("La formazione salvata ha gli stessi punti attesi e la stessa fascia in Formazione, Oggi prima, in corso e a giornata finita, e nei widget")
     func stessiPuntiAttesi() async throws {
         let consigliata = try await leggi("/api/formazione", da: try demo("oggi"), come: Formazione.self)
-        let attesi = Formato.punti(consigliata.punteggioAtteso)
+        let riferimento = Lettura(dove: "Formazione (consigliata)", attesi: consigliata.punteggioAtteso,
+                                  basso: consigliata.intervallo?.basso, alto: consigliata.intervallo?.alto)
+        var letture: [Lettura] = []
+
+        // la Formazione mostra lo stile e il modulo proposti (`livelli`): la stessa formazione
+        let stile = consigliata.stileConsigliato ?? 0
+        let livello = try #require(consigliata.livelli?.first { $0.rischio == stile }, "la Formazione non ha lo stile proposto")
+        let proposta = try #require(livello.moduli.first { $0.modulo == livello.modulo }, "lo stile proposto non ha il suo modulo")
+        letture.append(Lettura(dove: "Formazione (stile e modulo proposti)", attesi: proposta.punteggioAtteso,
+                               basso: proposta.intervallo?.basso, alto: proposta.intervallo?.alto))
 
         // Formazione con la scelta salvata, prima e dopo la scadenza: l'app chiede al server quanto vale (`valuta`)
         for schermata in ["formazione-salvata", "formazione-chiusa"] {
@@ -55,42 +77,56 @@ struct DemoGiornataCoerenteTests {
             #expect(Set(titolari) == Set(consigliata.titolari.map(\.id)), "\(schermata): la scelta salvata non è la consigliata")
             let corpo = try JSONEncoder().encode(RichiestaValutazione(titolari: titolari, salva: false, giornata: consigliata.giornata))
             let v: ValutazioneManuale = try Decodifica.decodifica(try await s.richiesta("POST", "/api/formazione/valuta", corpo: corpo))
-            #expect(Formato.punti(v.punteggioAtteso) == attesi, "\(schermata): \(Formato.punti(v.punteggioAtteso)) punti attesi, la consigliata \(attesi)")
             #expect(v.modulo == consigliata.modulo, "\(schermata): modulo \(v.modulo), la consigliata \(consigliata.modulo)")
             #expect(abs(v.differenza ?? .nan) < 0.05, "\(schermata): \(v.differenza ?? .nan) rispetto alla consigliata con gli stessi undici")
-            #expect(Formato.punti(v.consigliata) == attesi, "\(schermata): la consigliata vale \(v.consigliata ?? .nan)")
-            #expect(Formato.punti(v.consigliataStessoModulo) == attesi)
+            letture.append(Lettura(dove: "\(schermata) (valuta)", attesi: v.punteggioAtteso, basso: v.intervallo?.basso, alto: v.intervallo?.alto))
+            letture.append(Lettura(dove: "\(schermata) (la consigliata per valuta)", attesi: v.consigliata, conFascia: false))
+            letture.append(Lettura(dove: "\(schermata) (la consigliata con lo stesso modulo)", attesi: v.consigliataStessoModulo, conFascia: false))
         }
 
-        // Oggi prima della scadenza: «La tua scelta»
+        // Oggi prima della scadenza («La tua scelta») e a giornata in corso («attesi prima»)
         let oggi = try await leggi("/api/oggi", da: try demo("oggi"), come: Oggi.self)
         #expect(oggi.formazione?.tuaScelta == true, "Oggi non dice che la formazione è la tua scelta")
-        #expect(Formato.punti(oggi.formazione?.punteggioAtteso) == attesi, "Oggi: \(oggi.formazione?.punteggioAtteso ?? .nan), Formazione \(attesi)")
-
-        // Oggi a giornata in corso: «attesi prima» è la stessa formazione
+        letture.append(Lettura(dove: "Oggi", attesi: oggi.formazione?.punteggioAtteso,
+                               basso: oggi.formazione?.intervallo?.basso, alto: oggi.formazione?.intervallo?.alto))
         let inCorso = try await leggi("/api/oggi", da: try demo("oggi-in-corso"), come: Oggi.self)
         #expect(inCorso.faseGiornata == .inCorso)
-        #expect(Formato.punti(inCorso.formazione?.punteggioAtteso) == attesi,
-                "Oggi in corso, attesi prima: \(inCorso.formazione?.punteggioAtteso ?? .nan), Formazione \(attesi)")
+        letture.append(Lettura(dove: "Oggi in corso (attesi prima)", attesi: inCorso.formazione?.punteggioAtteso,
+                               basso: inCorso.formazione?.intervallo?.basso, alto: inCorso.formazione?.intervallo?.alto))
 
         // Oggi a giornata finita (anche con un recupero da giocare): i punti attesi restano quelli, i punti fatti sono un'altra cosa
         for schermata in ["oggi-finita", "oggi-finita-recupero"] {
             let finita = try await leggi("/api/oggi", da: try demo(schermata), come: Oggi.self)
             let r = try #require(finita.riepilogoGiornata, "\(schermata): manca «Com'è andata»")
             #expect(r.formazioneDi == "tua")
-            #expect(Formato.punti(r.puntiAttesi) == attesi, "\(schermata): \(r.puntiAttesi ?? .nan) punti attesi, Formazione \(attesi)")
+            letture.append(Lettura(dove: "\(schermata) (Com'è andata)", attesi: r.puntiAttesi, basso: r.intervallo?.basso, alto: r.intervallo?.alto))
             if let c = r.consigliata {
                 // nel Diario la consigliata è la stessa formazione che hai salvato: stessi punti attesi e stessi punti fatti
-                #expect(Formato.punti(c.puntiAttesi) == attesi, "\(schermata): la consigliata vale \(c.puntiAttesi ?? .nan)")
+                letture.append(Lettura(dove: "\(schermata) (la consigliata nel Diario)", attesi: c.puntiAttesi, conFascia: false))
                 #expect(c.puntiFatti == r.puntiFatti, "\(schermata): con gli stessi undici la consigliata fa \(c.puntiFatti ?? .nan), tu \(r.puntiFatti ?? .nan)")
             }
         }
 
-        // i widget (la galleria `AnteprimaWidget` legge la stessa lega): stessi punti prima, durante e dopo
+        // i widget (la galleria `AnteprimaWidget` legge la stessa lega): prima, durante e dopo
         for fase in [LegaDemo.Fase.prima, .inCorso] {
-            #expect(try Formato.punti(widget(fase).formazione?.puntiAttesi) == attesi, "widget \(fase): punti attesi diversi dall'app")
+            let f = try widget(fase).formazione
+            letture.append(Lettura(dove: "widget \(fase)", attesi: f?.puntiAttesi, basso: f?.intervallo?.basso, alto: f?.intervallo?.alto))
         }
-        #expect(try Formato.punti(widget(.finita).faseGiornata.riepilogo?.puntiAttesi) == attesi, "widget a giornata finita: punti attesi diversi dall'app")
+        let finitaWidget = try widget(.finita).faseGiornata.riepilogo
+        letture.append(Lettura(dove: "widget finita", attesi: finitaWidget?.puntiAttesi,
+                               basso: finitaWidget?.intervallo?.basso, alto: finitaWidget?.intervallo?.alto))
+
+        try #require(riferimento.basso != nil && riferimento.alto != nil, "la Formazione non ha la fascia")
+        for l in letture {
+            #expect(abs((l.attesi ?? .nan) - (riferimento.attesi ?? .nan)) < 0.001,
+                    "\(l.dove): \(l.attesi ?? .nan) punti attesi, \(riferimento.dove) \(riferimento.attesi ?? .nan)")
+            #expect(Formato.punti(l.attesi) == Formato.punti(riferimento.attesi),
+                    "\(l.dove): «\(Formato.punti(l.attesi))», \(riferimento.dove) «\(Formato.punti(riferimento.attesi))»")
+            guard l.conFascia else { continue }
+            #expect(abs((l.basso ?? .nan) - (riferimento.basso ?? .nan)) < 0.001 && abs((l.alto ?? .nan) - (riferimento.alto ?? .nan)) < 0.001,
+                    "\(l.dove): fascia da \(l.basso ?? .nan) a \(l.alto ?? .nan), \(riferimento.dove) da \(riferimento.basso ?? .nan) a \(riferimento.alto ?? .nan)")
+            #expect(tra(l) == tra(riferimento), "\(l.dove): «\(tra(l))», \(riferimento.dove) «\(tra(riferimento))»")
+        }
     }
 
     // MARK: - Confronto nella formazione (#392)
@@ -158,6 +194,32 @@ struct DemoGiornataCoerenteTests {
         }
     }
 
+    /// Un momento della demo (ora italiana) e i recuperi contati a mano: il diciottesimo giorno dopo l'inizio del turno, alle 20:45.
+    struct CasoRecupero: Sendable, CustomTestStringConvertible {
+        let adesso: String
+        /// prima della scadenza (`oggi-rinvio`)
+        let prima: String
+        /// a giornata finita (`oggi-finita-recupero`): il turno della giornata finita era una settimana prima di quello della prossima
+        let finita: String
+        var testDescription: String { "adesso \(adesso)" }
+    }
+
+    @Test("Recupero in casi noti, anche a cavallo del cambio dell'ora: sempre alle 20:45", arguments: [
+        // turno dalle 18:00 del 10 novembre; a giornata finita la prossima parte il 14, quella finita era partita il 7
+        CasoRecupero(adesso: "2026-11-10 10:07", prima: "2026-11-28 20:45", finita: "2026-11-25 20:45"),
+        // il turno parte con l'ora legale, il recupero cade dopo il 25 ottobre 2026, con l'ora solare
+        CasoRecupero(adesso: "2026-10-20 10:07", prima: "2026-11-07 20:45", finita: "2026-11-04 20:45"),
+        // il turno parte con l'ora solare, il recupero cade dopo il 28 marzo 2027, con l'ora legale
+        CasoRecupero(adesso: "2027-03-20 10:07", prima: "2027-04-07 20:45", finita: "2027-04-04 20:45"),
+    ])
+    func recuperoCasiNoti(_ caso: CasoRecupero) async throws {
+        let adesso = try #require(Quando.data(caso.adesso), "«\(caso.adesso)» non è una data")
+        let rinvio = try await leggi("/api/oggi", da: try demo("oggi-rinvio", adesso: adesso), come: Oggi.self)
+        #expect(rinvio.rinvio?.valore?.partite.first?.data == caso.prima)
+        let finita = try await leggi("/api/oggi", da: try demo("oggi-finita-recupero", adesso: adesso), come: Oggi.self)
+        #expect(finita.riepilogoGiornata?.recuperi.first?.data == caso.finita)
+    }
+
     // MARK: - Ora delle probabili
 
     @Test("Probabili: «aggiornate alle HH:MM · N ore fa» torna con l'ora della demo, con le frasi del server; Stato dei dati dice la stessa ora",
@@ -186,16 +248,16 @@ struct DemoGiornataCoerenteTests {
         let testo = try frasi.frase(giorni == 0 ? "probabili.oggi" : "probabili.ieri", ["ora": ora(letto)])
         #expect(p.testo == testo, "dopo \(dopoOre) ore: «\(p.testo ?? "")» invece di «\(testo)»")
 
-        // l'avviso: lette da almeno 6 ore con la formazione che si chiude entro un giorno
+        // l'avviso: lette da almeno 6 ore con la formazione che si chiude entro un giorno, come nella demo a ogni ora (la prima
+        // partita è fra 6 e 24 ore). Le ore alla scadenza scritte nell'avviso si provano con i casi noti, qui sotto.
         let scadenza = try #require(Quando.data(oggi.scadenza), "Oggi non ha la scadenza")
-        let oreMancanti = (scadenza.timeIntervalSince(adesso) / 360).rounded() / 10
-        let vecchie = oreMancanti > 0 && oreMancanti <= 24 && minuti >= 6 * 60
-        #expect(p.vecchie == vecchie, "dopo \(dopoOre) ore: vecchie \(p.vecchie ?? false), lette da \(minuti) minuti e la scadenza fra \(oreMancanti) ore")
-        if vecchie {
-            let n = max(1, Int(oreMancanti.rounded(.toNearestOrEven)))
-            let tempo = try frasi.frase("tempo.ore.\(n == 1 ? "one" : "other")", ["n": "\(n)"])
-            #expect(p.avviso == (try frasi.frase("probabili.vecchie", ["eta": eta, "tempo": tempo])), "dopo \(dopoOre) ore: «\(p.avviso ?? "")»")
-        }
+        try #require(scadenza > adesso && scadenza.timeIntervalSince(adesso) <= 24 * 3600, "dopo \(dopoOre) ore: la scadenza non è entro un giorno")
+        #expect(minuti >= 6 * 60, "dopo \(dopoOre) ore: probabili lette da \(minuti) minuti, la demo mostra quelle vecchie")
+        #expect(p.vecchie == true, "dopo \(dopoOre) ore: probabili lette da \(minuti) minuti con la scadenza entro un giorno, ma non vecchie")
+        let modello = try frasi.modello("probabili.vecchie").replacingOccurrences(of: "{eta}", with: eta).components(separatedBy: "{tempo}")
+        try #require(modello.count == 2, "«probabili.vecchie» non ha il segnaposto {tempo}")
+        let avviso = p.avviso ?? ""
+        #expect(avviso.hasPrefix(modello[0]) && avviso.hasSuffix(modello[1]), "dopo \(dopoOre) ore: «\(avviso)»")
 
         // Stato dei dati: le stesse probabili, lette alla stessa ora
         let stato = try await oggetto("/api/stato-dati", da: s)
@@ -203,5 +265,42 @@ struct DemoGiornataCoerenteTests {
         #expect(Quando.data(raccolta?["rilevato"] as? String) == quando, "Stato dei dati: probabili rilevate «\(raccolta?["rilevato"] ?? "–")», Oggi \(letto)")
         let aggiornamento = ((stato["aggiornamenti"] as? [[String: Any]]) ?? []).first { $0["cosa"] as? String == "probabili formazioni" }
         #expect(Quando.data(aggiornamento?["quando"] as? String) == quando, "Stato dei dati: probabili aggiornate «\(aggiornamento?["quando"] ?? "–")», Oggi \(letto)")
+    }
+
+    /// Un momento della demo (ora italiana) con le probabili come le scriverebbe il server: lette otto ore prima (ai cinque minuti),
+    /// e le ore alla scadenza dell'avviso contate a mano dagli orari da partita.
+    struct CasoProbabili: Sendable, CustomTestStringConvertible {
+        let adesso: String
+        let ieri: Bool
+        let ora: String
+        let minuti: Int
+        let oreAllaScadenza: Int
+        var testDescription: String { "adesso \(adesso)" }
+    }
+
+    @Test("Probabili in casi noti, anche nel giorno del cambio dell'ora: ora, «8 ore fa» e ore alla scadenza", arguments: [
+        // prima partita alle 12:30, scadenza alle 12:00: 10,5 ore, che il server scrive «10 ore» (round() di Python, metà al pari)
+        CasoProbabili(adesso: "2026-11-10 01:30", ieri: true, ora: "17:30", minuti: 480, oreAllaScadenza: 10),
+        // prima partita alle 18:00, scadenza alle 17:30: 7 ore e 23 minuti
+        CasoProbabili(adesso: "2026-11-10 10:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 7),
+        // a mezzanotte: scadenza alle 12:00, 12 ore
+        CasoProbabili(adesso: "2026-11-10 00:00", ieri: true, ora: "16:00", minuti: 480, oreAllaScadenza: 12),
+        // fine dell'ora legale (domenica 25 ottobre 2026, alle 3 si torna alle 2): otto ore vere fa erano le 2:05 dell'ora legale
+        CasoProbabili(adesso: "2026-10-25 09:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 8),
+        // inizio dell'ora legale (domenica 28 marzo 2027, alle 2 si passa alle 3): otto ore vere fa era mezzanotte e cinque
+        CasoProbabili(adesso: "2027-03-28 09:07", ieri: false, ora: "00:05", minuti: 482, oreAllaScadenza: 8),
+    ])
+    func probabiliCasiNoti(_ caso: CasoProbabili) async throws {
+        let frasi = try FrasiDelServer(prefissi: ["probabili.", "tempo."])
+        let adesso = try #require(Quando.data(caso.adesso), "«\(caso.adesso)» non è una data")
+        let oggi = try await leggi("/api/oggi", da: try demo("oggi", adesso: adesso), come: Oggi.self)
+        let p = try #require(oggi.probabili?.valore, "\(caso.adesso): Oggi non dice quando sono uscite le probabili")
+        let eta = try frasi.frase("tempo.ore_fa.other", ["n": "\(caso.minuti / 60)"])
+        #expect(p.minutiFa == caso.minuti)
+        #expect(p.eta == eta)
+        #expect(p.testo == (try frasi.frase(caso.ieri ? "probabili.ieri" : "probabili.oggi", ["ora": caso.ora])))
+        #expect(p.vecchie == true)
+        let tempo = try frasi.frase("tempo.ore.other", ["n": "\(caso.oreAllaScadenza)"])
+        #expect(p.avviso == (try frasi.frase("probabili.vecchie", ["eta": eta, "tempo": tempo])))
     }
 }
