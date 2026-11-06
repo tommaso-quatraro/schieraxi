@@ -1,7 +1,8 @@
 # 0009. «Gioca N%» con le probabili si ritara da solo sul server
 
-Data: 6/11/2026. Stato: proposta (si accetta con la risposta dell'utente alla scelta S1 del piano; fino ad allora si fa solo la
-parte di misura).
+Data: 6/11/2026. Stato: accettata il 6/11/2026 (scelta S1 del piano: «gioca N%» si ritara da solo sul server, con un avviso
+al proprietario a ogni cambio e lo spegnimento a mano con `--spegni`, senza una PR a ogni taratura). La parte di misura è la PR
+#429; il passaggio (PR B del piano) può partire.
 
 ## Contesto e problema
 Le costanti che trasformano le probabili formazioni in «gioca N%» (`modello._p_da_probabili`) sono scelte a mano. Per tararle
