@@ -98,11 +98,10 @@ enum TempiLega {
         testo.replacingOccurrences(of: #"\b(l|all|dall|dell|nell|sull)a (8ª|11ª)"#, with: "$1'$2", options: .regularExpression)
     }
 
-    /// La riga sotto il modulo in Formazione. Se la formazione l'hai già scelta tu non si ripete «la tua scelta»
-    /// (lo dicono già il testo sotto e il pulsante «Torna alla consigliata»): resta solo la giornata.
+    /// La riga sotto il modulo in Formazione, come la web (#437): «Giornata 8 · 11ª di Serie A · la tua scelta» in modifica a mano
+    /// (`formazione.la_tua_scelta`), altrimenti «· modulo consigliato» o «· modulo scelto».
     static func didascalia(giornata: String, scelta: Bool, comeConsigliato: Bool) -> String {
-        if scelta { return giornata }
-        return giornata + " · " + (comeConsigliato ? "modulo consigliato" : "modulo scelto")
+        giornata + " · " + (scelta ? "la tua scelta" : comeConsigliato ? "modulo consigliato" : "modulo scelto")
     }
 
     static let minutiMassimi = 720.0

@@ -476,3 +476,63 @@ def test_l_istantanea_ricorda_i_numeri_mostrati(tmp_path):
     diario.salva_istantanea(form, ST, f)
     t = diario.carica(f)["istantanee"][f"{ST}/1"]["titolari"]
     assert t[0]["p_voto"] == 0.851 and t[0]["fv_atteso"] == 6.79 and "p_voto" not in t[1] and "fv_atteso" not in t[1]
+
+
+# ---- #447: in «Correggi a mano» si può dire di aver schierato il portiere di riserva ----
+def _senza_previsione(monkeypatch, *assenti):
+    """Le previsioni ricostruite non hanno chi non era mai sceso in campo prima di quella giornata (il portiere di riserva)."""
+    tutte = diario.previsioni
+
+    def previsioni(*a, **k):
+        p = tutte(*a, **k)
+        return p[~p["id"].isin(assenti)].reset_index(drop=True)
+    monkeypatch.setattr(diario, "previsioni", previsioni)
+
+
+RISERVA = [2, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]          # 3-4-3 con il portiere 2, che non ha una previsione
+
+
+def test_correggi_a_mano_con_il_portiere_senza_previsione_si_salva(vero, monkeypatch):
+    _senza_previsione(monkeypatch, 2)
+    v = vero.dati.voti
+    v.loc[(v["giornata"] == 2) & (v["calciatore_id"] == 2), "voto_red"] = 7.0      # la prima partita della riserva: 7
+    voce = _salva(vero, 2, "manuale", RISERVA)
+    s = voce["schierata"]
+    assert [t["id"] for t in s["titolari"]] == RISERVA and s["titolari"][0] == {"id": 2, "nome": "G2", "ruolo": "P"}
+    assert s["reale"] == 10 * 6 + 3 + 7                       # il suo voto vero conta
+    assert _LEGGI_VERO(ST, 2, vero.scelte)["titolari"] == RISERVA
+
+
+def test_chi_non_ha_previsione_non_cambia_le_estrazioni_degli_altri():
+    """Revisione di #461: chi non ha previsione sta nelle simulazioni come una colonna che non prende mai voto, DOPO le estrazioni
+    della rosa: la stessa formazione vale lo stesso con o senza di lui (prima un secondo Valutatore spostava le estrazioni)."""
+    from fanta import formazione as fz
+    lista = [fz.Giocatore(i, f"G{i}", RUOLI[i - 1], 0.7, 5.5 + i * 0.05, 6.0) for i in range(1, 26) if i != 2]
+    riserva = fz.Giocatore(2, "G2", "P", 0.0, 0.0, 0.0)
+    per_id = {g.id: g for g in lista}
+    tit, pan = [per_id[i] for i in [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]], [per_id[i] for i in [3, 7, 16, 22]]
+    a, b = fz.Valutatore(lista, Regole(), 50), fz.Valutatore(lista, Regole(), 50, fissi=[riserva])
+    assert b.atteso(tit, pan) == a.atteso(tit, pan)
+    assert b.atteso(tit, pan + [riserva]) == a.atteso(tit, pan)          # in fondo alla panchina non entra mai
+    assert not b.gioca[:, b.indice[2]].any()
+
+
+def test_la_schierata_con_chi_non_ha_previsione_usa_le_stesse_simulazioni(vero, monkeypatch):
+    _senza_previsione(monkeypatch, 2)
+    rosa = {i: (f"G{i}", RUOLI[i - 1]) for i in range(1, 26)}
+    tit = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]
+    calcola = lambda panchina: diario.calcola_giornata(vero.dati, ST, 2, Regole(), None, list(range(1, 26)),  # noqa: E731
+                                                       {"titolari": tit, "panchina": panchina}, simulazioni=50,
+                                                       giocatori_rosa=rosa)["schierata"]
+    senza, con = calcola([3, 7, 16, 22]), calcola([3, 7, 16, 22, 2])       # 2 in fondo alla panchina: non entra mai
+    assert con["atteso"] == senza["atteso"] and con["dev_simulata"] == senza["dev_simulata"] and con["reale"] == senza["reale"]
+
+
+def test_portiere_senza_previsione_e_senza_voto_entra_quello_della_panchina(vero, monkeypatch):
+    _senza_previsione(monkeypatch, 2)
+    v = vero.dati.voti
+    vero.dati.voti = v[~((v["giornata"] == 2) & (v["calciatore_id"] == 2))].copy()     # non ha giocato
+    s = _salva(vero, 2, "manuale", RISERVA)["schierata"]
+    assert s["reale"] == 11 * 6 + 3                           # entra un portiere della panchina, che ha preso 6
+    assert s["atteso"] < diario.calcola_giornata(vero.dati, ST, 2, Regole(), None, list(range(1, 26)),
+                                                 _scelta([1] + RISERVA[1:]), simulazioni=50)["schierata"]["atteso"]

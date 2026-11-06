@@ -46,6 +46,34 @@ def test_ogni_campo_delle_regole_ha_il_nome_della_sua_riga():
     assert "/<[^>]*>/g" not in re.search(r"^const rigaRegola = .*$", APP, re.M).group(0)
 
 
+def _regole_node(chiamata: str, lingua: str = "it"):
+    pezzo = lambda inizio, fine: APP[APP.index(inizio):APP.index(fine, APP.index(inizio))]  # noqa: E731
+    codice = "\n".join([TESTI, f"LINGUA = '{lingua}';", pezzo("function esc(", "\n}\n") + "\n}",
+                        re.search(r"^const num = .*$", APP, re.M).group(0),
+                        pezzo("function stepper(", "\n}\n") + "\n}",
+                        pezzo("// Il nome dei campi delle fasce", "\n\ndocument.addEventListener"),
+                        f"console.log(JSON.stringify({chiamata}));"])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_ogni_campo_delle_fasce_dice_quale_fascia_e_quale_numero():
+    """#454: i campi delle fasce si chiamavano tutti «Fasce di bonus» (il titolo della sezione, messo da sincronizzaAria)."""
+    html = _regole_node("rigaFascia(6.25, 1.5, 2)")
+    assert re.search(r'<input aria-label="Fascia 2, media almeno" [^>]*class="f-media"[^>]*value="6,25"', html)
+    assert re.search(r'<input aria-label="Fascia 2, bonus" [^>]*class="f-bonus"[^>]*value="1,5"', html)
+    assert 'class="rimuovi-fascia" aria-label="Togli la fascia 2"' in html
+    assert re.search(r'<input aria-label="Band 1, average at least" ', _regole_node("rigaFascia(6, 1, 1)", "en"))
+    # anche i quattro voti della prova: prima prendevano lo stesso titolo
+    prova = _regole_node("votiProva([6.5, 6, 6.5, 7])")
+    assert re.findall(r'aria-label="([^"]+)" id="pv\d"', prova) == [
+        "Voto del portiere", "Voto del difensore 1", "Voto del difensore 2", "Voto del difensore 3"]
+    regole = APP[APP.index("async function vistaRegole"):APP.index("async function vistaRegole") + 12000]
+    assert "fascia(s[0], s[1])" not in regole and "numeraFasce()" in regole      # dopo «Togli» i numeri si rifanno
+
+
 def test_la_prova_del_modificatore_non_arrotonda_il_bonus():
     # fascia da 3,5 punti: la prova diceva «bonus +4 punti»
     inizio = APP.index("const aggiornaProva = () => {")
