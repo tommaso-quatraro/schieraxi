@@ -48,7 +48,7 @@ def test_composizione_a_colonne_su_schermi_larghi():
 
 def test_scorciatoia_virgola_per_le_impostazioni():
     app = (server.WEB / "app.js").read_text(encoding="utf-8")
-    assert 'ev.key === ","' in app and 'vai("impostazioni")' in app
+    assert 'ev.key === ","' in app and 'vai("impostazioni", undefined, { focoTitolo: true })' in app
 
 def test_stile_ha_le_parentesi_graffe_in_pari():
     # una } mancante nasconde nel @media tutto quello che viene dopo
@@ -57,8 +57,11 @@ def test_stile_ha_le_parentesi_graffe_in_pari():
 
 
 def test_barra_in_basso_con_fondo_pieno_e_spazio_riservato():
-    # senza la sfocatura (grafica B) un fondo al 90% lascerebbe leggere il testo che scorre sotto la barra: il fondo è pieno
-    assert re.search(r"\.schede\.vetro \{ background: var\(--solido\); \}", CSS)
+    # senza la sfocatura (grafica B) un fondo al 90% lascerebbe leggere il testo che scorre sotto la barra: il fondo è pieno,
+    # a tutta larghezza, con un filo sopra (spec §6), e la barra arriva fino al bordo dello schermo
+    barra = re.search(r"\n\.schede \{([^}]*)\}", CSS).group(1)
+    assert "background: var(--superficie);" in barra and "border-top: 1px solid var(--filo);" in barra
+    assert "left: 0; right: 0; bottom: 0;" in barra and "transparent" not in barra
     corpo = re.search(r"\nbody \{([^}]*)\}", CSS).group(1)
     assert "padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom)" in corpo
 
@@ -103,7 +106,9 @@ def test_proposta_di_mercato_ha_il_guadagno_in_evidenza_e_nomi_protetti():
     consigli = APP[APP.index("async function tabConsigli"):APP.index("async function datiCalendario")]
     assert 'class="pr-num"' in consigli and "esc(p.entra.nome)" in consigli and "esc(p.esce.nome)" in consigli
     assert re.search(r"\.pr-num b \{[^}]*font-size: var\(--t-titolo\)", CSS)
-    assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-valore\)", CSS)
+    # il nome grande quanto quello delle righe dei giocatori (grafica B: --t-valore è passato a 20 px per i numeri)
+    assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-card\)", CSS)
+    assert re.search(r"\.voce \.nome \{[^}]*font-size: var\(--t-card\)", CSS)
 
 
 def test_rimborso_e_costo_dei_cambi_si_vedono_senza_mouse():
@@ -482,6 +487,6 @@ def test_pulsanti_pieni_dell_iphone_passano_tutti_dallo_stesso_stile():
 def test_pulsanti_link_e_azioni_usano_la_variabile_azione_non_il_lime():
     assert re.search(r"\.bottone \{[^}]*background: var\(--azione\);[^}]*color: var\(--azione-testo\)", CSS)   # pieno, senza lucido (docs/STILE-SENZA-AI.md)
     assert re.search(r"\.bottone\.secondario \{[^}]*color: var\(--azione\)", CSS)
-    assert re.search(r"\.schede button\.attiva \{ color: var\(--azione\)", CSS)
+    assert re.search(r"\.scheda\.attiva::before \{[^}]*background: var\(--azione\)", CSS)        # la linea della scheda attiva
     assert re.search(r"\.testo-lungo a[^{]*\{ color: var\(--azione\)", CSS)
     assert '"--azione-testo"' not in APP                                # niente colori a scelta: le azioni hanno sempre i colori del marchio
