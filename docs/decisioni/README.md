@@ -18,3 +18,4 @@ Formato: [MADR](https://github.com/adr/madr) riscritto in italiano, versione bre
 | [0006](0006-foto-ios-su-main.md) | Le foto iOS si fanno su `main` dopo l'unione | accettata |
 | [0007](0007-revisione-ia-in-ci.md) | Revisione IA di ogni pull request in CI | accettata |
 | [0008](0008-controlli-su-main-dopo-l-unione.md) | Dopo ogni unione i controlli girano anche su `main` | accettata |
+| [0009](0009-gioca-probabili-si-ritara-sul-server.md) | «Gioca N%» con le probabili si ritara da solo sul server | proposta |
