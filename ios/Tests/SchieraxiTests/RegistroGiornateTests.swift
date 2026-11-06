@@ -108,7 +108,7 @@ struct RegistroGiornateTests {
         let perse = ParoleRegistro.perse(r)
         #expect(perse.count == 1)
         let g = try #require(perse.first)
-        #expect(ParoleRegistro.giornata(g) == "Serie A 2026-27, giornata 9")
+        #expect(ParoleRegistro.giornata(g) == "9ª giornata di Serie A · 2026-27")
     }
 
     // MARK: - stesse parole della web (testi.js)
@@ -148,7 +148,9 @@ struct RegistroGiornateTests {
         #expect(try riempi(web.italiano("sd.reg_i3_riga"), ["v": "80%", "min": "72%", "max": "88%"])
                 == ParoleRegistro.dettaglio(.fascia, di: r))
         let persa = try #require(ParoleRegistro.perse(r).first)
-        #expect(try riempi(web.italiano("sd.reg_giornata"), ["s": "2026-27", "g": "9"]) == ParoleRegistro.giornata(persa))
+        // la giornata di Serie A come nel resto dell'app (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»), poi la stagione
+        #expect(ParoleRegistro.giornata(persa) == "9ª giornata di Serie A · 2026-27")
+        #expect(try riempi(web.italiano("sd.reg_giornata"), ["s": "2026-27", "g": TempiLega.serieA(9)]) == ParoleRegistro.giornata(persa))
     }
 
     // MARK: - demo (foto e anteprima)

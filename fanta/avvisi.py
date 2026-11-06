@@ -11,8 +11,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from . import turno
-from .frasi import F
+from .frasi import F, nome_giornata
 from .percorsi import RADICE, scrivi_sicuro
+from .regole import Regole, serie_a_a_lega
 
 FILE_STATO = RADICE / "dati" / "avvisi.json"
 ANTICIPO = timedelta(hours=30)       # si avvisa quando mancano meno di 30 ore alla prima partita
@@ -76,8 +77,9 @@ def segna(stagione: str, giornata: int, file_stato: Path = FILE_STATO) -> None:
 
 
 def da_mandare(db: sqlite3.Connection, stagione: str, giornata: int | None, adesso: datetime,
-               file_stato: Path = FILE_STATO, segna: bool = True) -> dict | None:
-    """{"titolo", "testo"} se è il momento di avvisare per la prossima giornata, altrimenti None."""
+               file_stato: Path = FILE_STATO, segna: bool = True, regole: Regole | None = None) -> dict | None:
+    """{"titolo", "testo"} se è il momento di avvisare per la prossima giornata, altrimenti None. Con le `regole` il testo dice
+    anche la giornata della lega («Giornata 6 · 9ª di Serie A: …»); senza, solo quella di Serie A."""
     if giornata is None:
         return None
     inizio = inizio_giornata(db, stagione, giornata)
@@ -90,4 +92,5 @@ def da_mandare(db: sqlite3.Connection, stagione: str, giornata: int | None, ades
     if segna:
         stato["ultimo"] = chiave
         scrivi_sicuro(file_stato, json.dumps(stato))
-    return {"titolo": "SchieraXI", "testo": F("n.pronta", giornata=giornata)}
+    lega = serie_a_a_lega(giornata, regole) if regole is not None else None
+    return {"titolo": "SchieraXI", "testo": F("n.pronta", giornata=nome_giornata(giornata, lega, avviso=True))}

@@ -1,9 +1,10 @@
 """Copia del registro delle giornate (#343): esporta in un file JSON piccolo le sole tabelle `registro_*` dell'archivio e le rimette.
 
-Il registro (`registro_giornate.py`) sta in `dati/fanta.sqlite` ma, a differenza del resto dell'archivio, NON si ricostruisce con
-`aggiorna`: per questo la copia notturna (`script/server/backup-dati.sh`) lo esporta a parte in `dati/registro-giornate.json`.
+Il registro (`registro_giornate.py`, con i numeri «nostri» di `registro_nostri.py`) sta in `dati/fanta.sqlite` ma, a differenza
+del resto dell'archivio, NON si ricostruisce con `aggiorna`: per questo la copia notturna (`script/server/backup-dati.sh`) lo
+esporta a parte in `dati/registro-giornate.json`.
 Perché un file a sé e non l'archivio intero: le statistiche si riscaricano, la copia resta piccola e il ripristino rimette solo
-il registro, senza toccare il resto. L'esportazione apre l'archivio in sola lettura e legge le due tabelle nella stessa
+il registro, senza toccare il resto. L'esportazione apre l'archivio in sola lettura e legge le sue tabelle nella stessa
 transazione: anche con il servizio acceso prende i dati confermati (pure quelli ancora nel file -wal) e mai una scrittura a metà.
 L'importazione aggiunge solo le righe che mancano (quelle che ci sono già restano com'erano: si può ripetere) e tutto o niente.
 
@@ -23,7 +24,9 @@ from pathlib import Path
 from . import archivio
 from .percorsi import scrivi_sicuro
 
-TABELLE = ("registro_giornate", "registro_giocatori")     # le sole tabelle che viaggiano (nomi fissi: mai presi dal file)
+# le sole tabelle che viaggiano (nomi fissi: mai presi dal file). `registro_nostri` e `registro_i4` (gol attesi nostri, I4 dal vivo,
+# `registro_nostri.py`) sono arrivate dopo: le copie di prima non le hanno e si rimettono lo stesso
+TABELLE = ("registro_giornate", "registro_giocatori", "registro_nostri", "registro_i4")
 FORMATO = 1
 TETTO = 100 * 1024 * 1024                                 # una stagione intera sono pochi MB
 
@@ -135,12 +138,15 @@ def main(argv: list[str] | None = None) -> int:
         if a.azione == "esporta":
             n = esporta(a.archivio, a.file)
             print(f"Registro esportato in {a.file}: {n.get('registro_giornate', 0)} giornate, "
-                  f"{n.get('registro_giocatori', 0)} righe di giocatori.")
+                  f"{n.get('registro_giocatori', 0)} righe di giocatori, {n.get('registro_nostri', 0)} righe dei numeri nostri, "
+                  f"{n.get('registro_i4', 0)} righe delle misure dei numeri nostri.")
         else:
             esito = importa(a.file, a.archivio)
-            giornate, giocatori = esito.get("registro_giornate", (0, 0)), esito.get("registro_giocatori", (0, 0))
-            print(f"Registro rimesso in {a.archivio}: {giornate[0]} giornate e {giocatori[0]} righe di giocatori nuove; "
-                  f"{giornate[1] + giocatori[1]} righe c'erano già e sono rimaste com'erano.")
+            nuove = {t: esito.get(t, (0, 0))[0] for t in TABELLE}
+            gia = sum(esito.get(t, (0, 0))[1] for t in TABELLE)
+            print(f"Registro rimesso in {a.archivio}: {nuove['registro_giornate']} giornate, {nuove['registro_giocatori']} righe di "
+                  f"giocatori, {nuove['registro_nostri']} righe dei numeri nostri e {nuove['registro_i4']} righe delle misure "
+                  f"dei numeri nostri nuove; {gia} righe c'erano già e sono rimaste com'erano.")
     except (ValueError, OSError, sqlite3.Error) as e:
         print(f"Errore: {e}", file=sys.stderr)
         return 1
