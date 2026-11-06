@@ -107,7 +107,7 @@ def test_un_numero_negativo_ha_il_meno_tipografico():
     assert f.startswith("La differenza è piccola (−0,4 punti in 3 giornate)") and "-" not in f
     assert f.json()["param"]["punti"] == "-0.4"
     assert F("senso.differenza_piccola", punti=-0.04, giornate="3 giornate").startswith("La differenza è piccola (0,0 punti")
-    assert F("dafare.diario", n=-3) == "La giornata −3 è finita: dimmi se hai schierato la consigliata."
+    assert F("posto.panchina", n=-3) == "panchina −3"                         # un intero negativo, anche lui con il meno tipografico
 
 
 @pytest.mark.parametrize("a, b, testo, nel_json", [
@@ -200,7 +200,7 @@ def test_in_inglese_i_numeri_con_il_segno_hanno_il_meno_tipografico():
     casi = [F("confronto.esito_meglio", titolare="Rossi", attuale=72.66, invertita=72.14, d=frasi.differenza(72.14, 72.66)),
             F("confronto.esito_peggio", invertita=60.56, attuale=60.04, d=frasi.differenza(60.56, 60.04), modulo="3-4-3"),
             F("senso.differenza_piccola", punti=-0.43, giornate=F("tempo.giornate", n=3)),
-            F("dafare.diario", n=-3)]
+            F("posto.panchina", n=-3)]
     assert casi[0] == "Con Rossi titolare la formazione vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)."
     inglese = _in_node("en", [[f.json(), str(f)] for f in casi])
     assert inglese[0] == "With Rossi as a starter the lineup is worth 72.7 expected points; with the two swapped 72.1 (−0.6)."
