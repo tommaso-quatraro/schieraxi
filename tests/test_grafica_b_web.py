@@ -455,6 +455,15 @@ def test_nessuna_regola_rimette_la_pillola_alle_etichette():
         assert f"color: var({colore})" in _corpo(classe), classe
 
 
+def test_differenza_ammessa_delle_etichette_scritta():
+    """Spec §13: le etichette diventano testo colorato sulla web e restano pillole sull'iPhone; la differenza (parole e toni uguali) si
+    scrive in «Differenze ammesse» nella PR che la introduce, questa."""
+    doc = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
+    ammesse = doc[doc.index("## Differenze ammesse"):doc.index("## Differenze di oggi")]
+    riga = next((r for r in ammesse.splitlines() if "Etichette dei giocatori" in r), "")
+    assert "testo colorato" in riga and "pillole" in riga and "toni" in riga, riga
+
+
 def test_piu_etichette_nella_stessa_riga_separate_dal_punto():
     """Spec §8.9: senza la pillola, due etichette vicine («Real Esempio · In ballottaggio») si separano con « · ». Il punto sta in fondo
     all'etichetta prima, attaccato con uno spazio che non va a capo (come i pezzi di un'etichetta lunga), è grigio e i lettori di
