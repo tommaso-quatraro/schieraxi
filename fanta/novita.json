@@ -1,5 +1,38 @@
 [
   {
+    "versione": "1.422",
+    "data": "2026-11-06T03:27:06",
+    "titolo": "Formazione: chi ha già cominciato l'anticipo non si sposta più",
+    "voci": [
+      "Se una partita si gioca in anticipo e la formazione è ancora aperta, dopo il fischio d'inizio i suoi giocatori restano dove sono anche nella tua formazione: chi era titolare resta titolare, chi non lo era non entra.",
+      "Nella modifica a mano quei giocatori non si possono sostituire né far entrare, e una riga sotto i titolari lo dice; anche «Da fare» non te lo propone più.",
+      "Se provi a salvare una formazione che li sposta, l'app ti dice quale giocatore e perché."
+    ],
+    "tecnico": [
+      "Issue #373 (sotto #166). Rispetto alla formazione che vale (scelta salvata se `scelte.che_vale`, altrimenti la consigliata di `consigli.formazione`) `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` rispondono 400 `{detail, codice: \"giocatore_bloccato\"}` se spostano un giocatore di un anticipo già cominciato (`scelte.GiocatoreBloccato`, `scelte.controlla_bloccati`, `server._fermi` e `server._non_sposta_i_fermi`, dentro il lucchetto delle scelte). «Cominciato» è la regola della consigliata: `consigli._anticipi_iniziati` (#368).",
+      "`GET /api/formazione`: campo nuovo e facoltativo `bloccati` (id, `server._con_bloccati`, `scelte.bloccati`), solo con la formazione aperta e un anticipo cominciato. Web: `sostituti` e `giocatoriFermi` in app.js, chiavi `formazione.bloccati` e `err.giocatore_bloccato`. iPhone: `Formazione.bloccati`, `FormazioneViewModel.fermi`, `sostituti(di:_:)`, `notaFermi`. Senza anticipi cominciati nulla cambia. Test: tests/test_anticipi_scelta.py, ios/Tests/SchieraxiTests/AnticipiBloccatiTests.swift.",
+      "Revisione: «Torna alla consigliata» rifiutato (400 `giocatore_bloccato`) sulla web rimette la scelta salvata, come l'iPhone; `da_fare._dubbi` salta i bloccati (niente voce su di loro, mai come `alternativa`; come riserva sì, entrano da soli dalla panchina).",
+      "Anche la voce «La consigliata è cambiata» (`da_fare._titolari`) non nomina i bloccati: `_cambi_possibili` toglie i cambi impossibili bilanciando per ruolo; se restano solo loro, niente voce."
+    ]
+  },
+  {
+    "versione": "1.421",
+    "data": "2026-11-06T03:20:23",
+    "titolo": "Meno riquadri: sezioni con un titolo e righe",
+    "voci": [
+      "Le schermate dell'app web non sono più fatte di riquadri: ogni parte ha un titolo con una riga sotto e le sue righe.",
+      "Le etichette dei giocatori, come «Probabile titolare» o «In ballottaggio», sono testo colorato, senza fondo.",
+      "Pulsanti più semplici: uno solo pieno per schermata. La voce scelta di moduli, stili e scelte ha anche un bordo scuro, così si riconosce senza guardare il colore.",
+      "Avvisi ed errori sono una riga con un segno colorato a sinistra; con il mouse la riga sotto il puntatore si colora appena e il segno della tastiera è sempre dello stesso colore."
+    ],
+    "tecnico": [
+      "Grafica B, PR 5 (parte di #354): .carta senza fondo, bordo, raggio e rientro (margin-bottom 24 px, 32 da 900 px); .carta h2 e il summary della sezione che si apre con il filo da 2 px var(--testo); resta un blocco solo .carta.scambio (filo, --r-card). Via la regola compatta della carta, il rientro sotto i 320 px e l'entrata delle .col.",
+      "--r-card 12 px, --r-in 8 px. .bottone.secondario con bordo --bordo-campo e scritta --testo; nuova .azione-testo (44×44, colore --azione); hover con --azione-2 e --superficie al posto di filter: brightness; niente transform su :active.",
+      ".chip con bordo --bordo-campo e raggio --r-in; .chip.attiva lime con bordo 2 px var(--testo) e margine -1 px (niente spostamenti); .segmenti senza fondo, voci separate da filo, voce attiva lime con riquadro interno di 2 px. :focus-visible 2 px var(--testo) ovunque (bianco nel campo), via i focus blu e verdi.",
+      ".etichetta testo da 13 px senza fondo né bordo nei colori --eti-*, separatore « · » in ::after con testo alternativo vuoto; .tono con gli stessi colori. .errore, .attenzione, .verdetto, .nota-incerto con il filo di 3 px a sinistra; .vuoto a sinistra senza riquadro; .banner-novita riga con filo; .avviso pieno con --testo e --sfondo scambiati, senza anelli."
+    ]
+  },
+  {
     "versione": "1.420",
     "data": "2026-11-06T03:14:06",
     "titolo": "Recuperi che mancano scritti come le partite rinviate",

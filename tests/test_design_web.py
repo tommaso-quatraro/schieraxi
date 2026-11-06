@@ -100,6 +100,8 @@ def test_formazione_controlli_compatti_una_riga_e_un_solo_pulsante_primario():
 def test_la_scelta_attiva_e_lime_con_testo_scuro():
     assert re.search(r"\.chip\.attiva \{[^}]*var\(--capitano\)[^}]*var\(--capitano-testo\)", CSS)
     assert "--capitano-testo: #1a2600" in CSS
+    # grafica B (spec §7.1): il lime chiaro da solo sta a 2,8:1 dal bianco, la scelta ha anche il bordo del colore del testo
+    assert re.search(r"\.chip\.attiva \{[^}]*border: 2px solid var\(--testo\)", CSS)
 
 
 def test_proposta_di_mercato_ha_il_guadagno_in_evidenza_e_nomi_protetti():
@@ -232,17 +234,18 @@ def test_contrasti_wcag_aa_sul_fondo_e_sulla_superficie_nuovi():
 
 def test_voce_scelta_dei_controlli_segmentati_si_vede_sul_fondo_pieno():
     """Con le superfici piene `--vetro-carta` è uguale al fondo: la voce scelta di Lingua, Tema e Dimensione del testo, che aveva
-    quel fondo, nello scuro non si distingueva più dalla striscia (visto nelle foto). Ora ha un grigio neutro un gradino sopra la
-    striscia, in chiaro e in scuro; la scelta la dicono anche la scritta piena e `aria-pressed`."""
-    striscia = re.search(r"\n\.segmenti \{[^}]*background: color-mix\(in srgb, var\(--solido\) (\d+)%, transparent\)", CSS)
-    attivo = re.search(r"\n\.segmenti button\.attivo \{[^}]*background: color-mix\(in srgb, var\(--testo\) (\d+)%, var\(--sfondo\)\)", CSS)
-    assert striscia and attivo
+    quel fondo, nello scuro non si distingueva più dalla striscia (visto nelle foto). Grafica B (spec §8.8): la striscia non ha
+    fondo (sta sul fondo della pagina) e la voce scelta è lime, come moduli e stili, con il bordo del colore del testo e la scritta
+    scura; la scelta la dicono anche la scritta in grassetto e `aria-pressed`."""
+    striscia = re.search(r"\n\.segmenti \{([^}]*)\}", CSS).group(1)
+    attivo = re.search(r"\n\.segmenti button\.attivo \{([^}]*)\}", CSS).group(1)
+    assert "background: none" in striscia
+    assert "background: var(--capitano)" in attivo and "color: var(--capitano-testo)" in attivo and "inset 0 0 0 2px var(--testo)" in attivo
     for tema, v in _temi().items():
-        carta = _colore(v["--vetro-carta"])[0]                         # la striscia sta su una carta, che ora ha il fondo pieno
-        fondo_striscia = _sopra(_colore(v["--solido"])[0], int(striscia.group(1)) / 100, carta)
-        fondo_attivo = _sopra(_colore(v["--testo"])[0], int(attivo.group(1)) / 100, _colore(v["--sfondo"])[0])
+        fondo_striscia, fondo_attivo = _colore(v["--sfondo"])[0], _colore(v["--capitano"])[0]
         assert _contrasto_rgb(fondo_attivo, fondo_striscia) >= 1.25, tema
-        assert _contrasto_rgb(_colore(v["--testo"])[0], fondo_attivo) >= 4.5, tema
+        assert _contrasto_rgb(_colore(v["--capitano-testo"])[0], fondo_attivo) >= 4.5, tema
+        assert _contrasto_rgb(_colore(v["--testo"])[0], fondo_striscia) >= 3, tema      # il bordo della scelta si vede sul fondo
 
 
 def test_colore_della_barra_del_browser_segue_il_tema():
@@ -317,42 +320,36 @@ def _contrasto_rgb(a, b):
 
 
 def _fondi_delle_pillole(v):
-    """I fondi veri sotto le pillole (misurati nel browser, issue #234): la carta sul fondo piatto (Formazione, Rosa, Oggi), il fondo
-    piatto, il foglio della scheda del giocatore (le pillole sotto il nome stanno direttamente sul foglio, sopra il velo scuro) e la
-    carta dentro il foglio. Le misure del foglio si leggono dal CSS: se cambiano, il test segue."""
-    sfondo = _colore(v["--sfondo"])[0]
-    carta, a_carta = _colore(v["--vetro-carta"])
-    vetro, a_vetro = _colore(v["--vetro"])
-    velo = float(re.search(r"\.foglio-sfondo \{[^}]*background: rgba\(0, 0, 0, (\.\d+)\)", CSS).group(1))
-    quota = int(re.search(r"\.foglio-corpo \{[^}]*background: color-mix\(in srgb, var\(--sfondo\) (\d+)%, var\(--vetro\)\)", CSS).group(1)) / 100
-    alfa = quota + (1 - quota) * a_vetro                                 # color-mix con un colore trasparente: alfa e colore premoltiplicati
-    corpo = tuple((quota * s + (1 - quota) * a_vetro * w) / alfa for s, w in zip(sfondo, vetro))
-    foglio = _sopra(corpo, alfa, _sopra((0, 0, 0), velo, sfondo))
-    return {"carta sul fondo": _sopra(carta, a_carta, sfondo), "fondo piatto": sfondo,
-            "foglio della scheda": foglio, "carta nel foglio": _sopra(carta, a_carta, foglio)}
+    """I fondi veri sotto le etichette dei giocatori e i campi (misurati nel browser, issue #234). Dalla grafica B le sezioni non hanno
+    fondo e le superfici sono piene: il fondo della pagina (Formazione, Rosa, Oggi), la riga sotto il mouse (`--superficie`) e il
+    foglio della scheda del giocatore (le etichette sotto il nome stanno direttamente sul foglio). Il fondo del foglio si legge dal
+    CSS: se cambia, il test segue. Non legge più `--vetro` e `--vetro-carta`, che la grafica B toglie."""
+    foglio = re.search(r"\.foglio-corpo \{[^}]*background: var\((--[\w-]+)\)", CSS).group(1)
+    return {"fondo della pagina": _colore(v["--sfondo"])[0], "riga sotto il mouse": _colore(v["--superficie"])[0],
+            "foglio della scheda": _colore(v[foglio])[0]}
 
 
-def _pillole():
-    """Le pillole delle etichette dei giocatori: nome → (variabile della scritta, variabile della tinta, percentuale della tinta)."""
+def _etichette():
+    """Le etichette dei giocatori: nome → variabile della scritta. Dalla grafica B sono testo senza tinta sotto (spec §8.9)."""
     regole = {"verde": r"\n\.etichetta \{([^}]*)\}", "arancio": r"\n\.etichetta\.arancio \{([^}]*)\}",
               "rossa": r"\n\.etichetta\.rossa \{([^}]*)\}", "neutra": r"\n\.etichetta\.neutra \{([^}]*)\}"}
-    pillole = {}
+    etichette = {}
     for nome, regola in regole.items():
         corpo = re.search(regola, CSS).group(1)
-        scritta = re.search(r"(?<![\w-])color: var\((--[\w-]+)\);", corpo).group(1)
-        tinta, quota = re.search(r"background: color-mix\(in srgb, var\((--[\w-]+)\) (\d+)%, transparent\);", corpo).groups()
-        pillole[nome] = (scritta, tinta, int(quota) / 100)
-    return pillole
+        assert "color-mix" not in corpo and "rgba" not in corpo, nome           # nessuna tinta sotto la scritta: la scritta sta sul fondo
+        etichette[nome] = re.search(r"(?<![\w-])color: var\((--[\w-]+)\);", corpo).group(1)
+    return etichette
 
 
-def test_pillole_dei_giocatori_almeno_4_5_su_ogni_fondo_in_chiaro_e_scuro():
+def test_etichette_dei_giocatori_almeno_4_5_su_ogni_fondo_in_chiaro_e_scuro():
     """Issue #234: nel tema chiaro la scritta delle pillole verdi e arancio stava a 4,0:1 e 4,4:1 sulla carta e a 3,5:1 e 3,8:1 sul
-    foglio della scheda. Testo piccolo (12 px): serve 4,5:1 (WCAG 2.2, 1.4.3) su ogni fondo, in chiaro e in scuro."""
+    foglio della scheda. Testo piccolo (13 px): serve 4,5:1 (WCAG 2.2, 1.4.3) su ogni fondo, in chiaro e in scuro. Dalla grafica B
+    l'etichetta è testo colorato senza tinta: la scritta sta direttamente sul fondo, anche nella riga sotto il mouse."""
     sotto = []
     for tema, v in _temi().items():
-        for nome, (scritta, tinta, quota) in _pillole().items():
+        for nome, scritta in _etichette().items():
             for dove, fondo in _fondi_delle_pillole(v).items():
-                c = _contrasto_rgb(_colore(v[scritta])[0], _sopra(_colore(v[tinta])[0], quota, fondo))
+                c = _contrasto_rgb(_colore(v[scritta])[0], fondo)
                 if c < 4.5:
                     sotto.append(f"{tema} {nome} su {dove}: {c:.2f}")
     assert not sotto, sotto
@@ -360,16 +357,15 @@ def test_pillole_dei_giocatori_almeno_4_5_su_ogni_fondo_in_chiaro_e_scuro():
 
 def test_etichetta_del_giocatore_scelto_nel_confronto_almeno_4_5():
     """Rilievo di axe (PR #381): nel Confronto a 390 e 768 px, in chiaro, «Titolare» sotto il giocatore consigliato stava a 4,14:1.
-    La pillola verde sta sopra la tinta verde dello scelto, sul foglio, che era semitrasparente sopra il velo scuro. Con il foglio
-    pieno della grafica B torna sopra 4,5:1. Sotto i due giocatori ci sono solo la pillola verde («Titolare») e la neutra."""
+    L'etichetta verde sta sopra la tinta verde dello scelto, sul foglio. Sotto i due giocatori ci sono solo l'etichetta verde
+    («Titolare») e la neutra."""
     quota = int(re.search(r"\.duello-giocatore\.scelto \{[^}]*background: color-mix\(in srgb, var\(--verde\) (\d+)%, transparent\)",
                           CSS).group(1)) / 100
     sotto = []
     for tema, v in _temi().items():
         scelto = _sopra(_colore(v["--verde"])[0], quota, _fondi_delle_pillole(v)["foglio della scheda"])
         for nome in ("verde", "neutra"):
-            scritta, tinta, q = _pillole()[nome]
-            c = _contrasto_rgb(_colore(v[scritta])[0], _sopra(_colore(v[tinta])[0], q, scelto))
+            c = _contrasto_rgb(_colore(v[_etichette()[nome]])[0], scelto)
             if c < 4.5:
                 sotto.append(f"{tema} {nome}: {c:.2f}")
     assert not sotto, sotto
@@ -486,7 +482,11 @@ def test_pulsanti_pieni_dell_iphone_passano_tutti_dallo_stesso_stile():
 
 def test_pulsanti_link_e_azioni_usano_la_variabile_azione_non_il_lime():
     assert re.search(r"\.bottone \{[^}]*background: var\(--azione\);[^}]*color: var\(--azione-testo\)", CSS)   # pieno, senza lucido (docs/STILE-SENZA-AI.md)
-    assert re.search(r"\.bottone\.secondario \{[^}]*color: var\(--azione\)", CSS)
+    # grafica B (spec §8.7): l'azione scritta nella riga ha il colore delle azioni; il secondario da solo ha la scritta del testo e
+    # il bordo dei controlli: né l'uno né l'altro usa il lime, che resta la scelta
+    assert re.search(r"\.azione-testo \{[^}]*color: var\(--azione\)", CSS)
+    assert re.search(r"\.bottone\.secondario \{[^}]*border-color: var\(--bordo-campo\)[^}]*color: var\(--testo\)", CSS)
+    assert not re.search(r"\.(?:bottone|azione-testo)[^{]*\{[^}]*var\(--capitano\)", CSS)
     assert re.search(r"\.scheda\.attiva::before \{[^}]*background: var\(--azione\)", CSS)        # la linea della scheda attiva
     assert re.search(r"\.testo-lungo a[^{]*\{ color: var\(--azione\)", CSS)
     assert '"--azione-testo"' not in APP                                # niente colori a scelta: le azioni hanno sempre i colori del marchio
