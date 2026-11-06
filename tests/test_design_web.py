@@ -48,7 +48,7 @@ def test_composizione_a_colonne_su_schermi_larghi():
 
 def test_scorciatoia_virgola_per_le_impostazioni():
     app = (server.WEB / "app.js").read_text(encoding="utf-8")
-    assert 'ev.key === ","' in app and 'vai("impostazioni")' in app
+    assert 'ev.key === ","' in app and 'vai("impostazioni", undefined, { focoTitolo: true })' in app
 
 def test_stile_ha_le_parentesi_graffe_in_pari():
     # una } mancante nasconde nel @media tutto quello che viene dopo

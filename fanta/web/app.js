@@ -253,12 +253,15 @@ function svuotaCache() {
 // opz.titolo: il titolo (di norma il nome della scheda accesa); opz.stato === false: niente riga di stato.
 // Se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata.
 function pagina(html, opz = {}) {
+  const conFocus = !!document.activeElement && document.activeElement.id === "titolo-pagina";   // il titolo aveva il focus: lo ritrova ridisegnato
   contenuto.classList.toggle("ridisegna", !!opz.sostituisce);
   const scheda = SCHEDA_DI(stato.vista);
   const titolo = opz.titolo || (scheda ? t("nav." + scheda) : "SchieraXI");
   const riga = opz.stato === false ? "" : `<p class="stato-pagina">${rigaStato()}</p>`;
   const nota = opz.daCache ? `<div class="nota" id="nota-cache">${t("comune.dati_salvati", { quando: fDataOra(new Date(opz.daCache)) })}</div>` : "";
-  contenuto.innerHTML = `<header class="capo-pagina"><h1 id="titolo-pagina">${esc(titolo)}</h1>${riga}</header>` + nota + html;
+  contenuto.innerHTML = `<header class="capo-pagina"><h1 id="titolo-pagina" tabindex="-1">${esc(titolo)}</h1>${riga}</header>` + nota + html;
+  document.title = `${titolo} · SchieraXI`;            // il nome della finestra è il titolo grande (chi usa un lettore di schermo sente dove è)
+  if (conFocus) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }
 }
 // La riga di stato: [stemma] Giornata N · nome della mia squadra · dati del … (i pezzi li prepara caricaInfo, lo stemma caricaSquadre).
 // Ogni pezzo sta intero: se la riga non ci sta si va a capo dopo un « · » (a 390 px la data si tagliava).
@@ -532,10 +535,11 @@ const clicSemplice = ev => ev.button === 0 && !ev.ctrlKey && !ev.metaKey && !ev.
 document.querySelectorAll(".schede .scheda, .testata .marchio").forEach(a => a.addEventListener("click", ev => {
   if (!clicSemplice(ev)) return;
   ev.preventDefault();
-  vai(a.dataset.vista || "oggi");
+  vai(a.dataset.vista || "oggi", undefined, { focoTitolo: true });
 }));
 // L'indirizzo di ogni schermata, lo stesso che l'app sa aprire all'avvio: va nella cronologia, così Indietro e Avanti funzionano.
 const indirizzoVista = (vista, gruppo, scheda) => "/?vista=" + encodeURIComponent(vista) + (vista === "impostazioni" && gruppo ? "&gruppo=" + encodeURIComponent(gruppo) : "") + (vista === "mercato" && scheda ? "&scheda=" + encodeURIComponent(scheda) : "");
+let indirizzoMostrato = null;      // l'indirizzo (senza «#…») della schermata in pagina: un popstate che porta qui non ridisegna niente
 let timerConto = null;
 let regoleAC = null;      // gestori della schermata regole: si staccano quando si esce
 
@@ -557,18 +561,19 @@ function lasciaFormazione() {
 window.addEventListener("beforeunload", ev => { if (modificaNonSalvata()) { ev.preventDefault(); ev.returnValue = ""; } });
 
 // opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
+// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
+// così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
 function vai(vista, gruppo, opz = {}) {
   if (vista !== "formazione" && !lasciaFormazione()) {                   // resta nella Formazione: la modifica a mano non è salvata
     if (opz.daCronologia) try { history.pushState({ vista: "formazione" }, "", indirizzoVista("formazione")); } catch { /* niente cronologia */ }   // con Indietro: l'indirizzo torna quello della Formazione
+    indirizzoMostrato = location.pathname + location.search;
     return;
   }
   const imp = vista === "impostazioni";                                   // l'ingranaggio in testata: non è una delle schede della barra
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
   if (!imp && !SCHEDA_DI(vista)) vista = "oggi";
   const scheda = imp ? null : SCHEDA_DI(vista);                           // la scheda della barra che si accende
-  stato.vista = vista;
-  const nomeVista = imp ? { textContent: t("shell.impostazioni") } : document.querySelector(`.scheda[data-vista="${scheda}"] span`);
-  document.title = nomeVista ? `${nomeVista.textContent} · SchieraXI` : "SchieraXI – consigli formazione fantacalcio";          // chi usa un lettore di schermo sente dove è arrivato
+  stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
   document.querySelectorAll(".schede .scheda").forEach(b => {
     b.classList.toggle("attiva", b.dataset.vista === scheda);
     if (b.dataset.vista === scheda) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
@@ -586,6 +591,7 @@ function vai(vista, gruppo, opz = {}) {
       else history.pushState(voce, "", indirizzo);
     } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
   }
+  indirizzoMostrato = location.pathname + location.search;
   window.scrollTo(0, 0);
   contenuto.classList.remove("ridisegna");
   delete contenuto.dataset.gruppo;
@@ -593,16 +599,18 @@ function vai(vista, gruppo, opz = {}) {
   fermaLive();
   if (regoleAC) { regoleAC.abort(); regoleAC = null; }
   stato.punteggioPrec = null;
-  if (imp) { vistaImpostazioni(gruppo); return; }
-  ({ oggi: vistaOggi, formazione: vistaFormazione, squadra: () => vistaLega("squadra"), altro: () => vistaLega("altro"), mercato: vistaMercato, scambi: vistaScambi })[vista]();
+  if (imp) vistaImpostazioni(gruppo);
+  else ({ oggi: vistaOggi, formazione: vistaFormazione, squadra: () => vistaLega("squadra"), altro: () => vistaLega("altro"), mercato: vistaMercato, scambi: vistaScambi })[vista]();
+  if (opz.focoTitolo) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }   // pagina() lo tiene anche quando la schermata si ridisegna
 }
 // Indietro e Avanti del browser (e del mouse): la schermata di quella voce, come un clic sulla sua scheda (il foglio si chiude con lei).
 window.addEventListener("popstate", ev => {
+  if (location.pathname + location.search === indirizzoMostrato) return;   // è cambiata solo la parte dopo «#» (link «Vai al contenuto»): niente da ridisegnare
   let v = ev.state || {};
   if (!v.vista) { try { const q = new URLSearchParams(location.search); v = { vista: q.get("vista"), gruppo: q.get("gruppo"), scheda: q.get("scheda") }; } catch { v = {}; } }
   if (v.scheda) stato.mercatoTab = schedaMercato(v.scheda);
   chiudiFoglio();
-  vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true });
+  vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
 });
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
@@ -1391,7 +1399,7 @@ function vistaMercato() {
     <div id="mercato-corpo"></div>`);
   document.querySelectorAll("[data-mtab]").forEach(b => b.addEventListener("click", () => {
     stato.mercatoTab = b.dataset.mtab;
-    try { history.replaceState({ vista: "mercato", gruppo: null, scheda: stato.mercatoTab }, "", indirizzoVista("mercato", null, stato.mercatoTab)); } catch { /* niente cronologia */ }   // tornando qui con Indietro, la stessa sezione
+    try { history.replaceState({ vista: "mercato", gruppo: null, scheda: stato.mercatoTab }, "", indirizzoVista("mercato", null, stato.mercatoTab)); indirizzoMostrato = location.pathname + location.search; } catch { /* niente cronologia */ }   // tornando qui con Indietro, la stessa sezione
     document.querySelectorAll("[data-mtab]").forEach(x => x.classList.toggle("attivo", x === b));
     striscia($("#mercato-tab"));
     caricaMercato();
@@ -1969,8 +1977,8 @@ document.addEventListener("keydown", ev => {
     const c = $("#campo-cerca");
     if (c && c.getClientRects().length && $("#foglio").hidden) c.focus(); else apriRicerca();          // sul PC il campo della testata
   }
-  else if (/^[1-4]$/.test(ev.key) && $("#foglio").hidden) vai(VISTE[Number(ev.key) - 1]);             // tastiera: 1-4 cambiano sezione
-  else if (ev.key === "," && $("#foglio").hidden) vai("impostazioni");                                 // tastiera: , apre le impostazioni
+  else if (/^[1-4]$/.test(ev.key) && $("#foglio").hidden) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
+  else if (ev.key === "," && $("#foglio").hidden) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
 // il riflesso del vetro segue il dito
 document.addEventListener("pointerdown", ev => {

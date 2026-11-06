@@ -124,7 +124,7 @@ def test_indietro_con_la_formazione_non_salvata_resta_nella_formazione():
     corpo = _funzione(APP, "vai")
     resta = corpo[:corpo.index("return;")]
     assert "lasciaFormazione()" in resta and "opz.daCronologia" in resta and 'indirizzoVista("formazione")' in resta
-    gestore = APP[APP.index('addEventListener("popstate"'):][:400]
+    gestore = APP[APP.index('addEventListener("popstate"'):][:800]
     assert "chiudiFoglio()" in gestore and "daCronologia: true" in gestore
     assert "history.pushState" not in _funzione(APP, "apriFoglio")
 

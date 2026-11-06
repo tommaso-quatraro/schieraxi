@@ -111,4 +111,4 @@ const COLLEGA_IMP = {
   },
 };
 
-$("#bottone-impostazioni").addEventListener("click", () => vai("impostazioni"));
+$("#bottone-impostazioni").addEventListener("click", () => vai("impostazioni", undefined, { focoTitolo: true }));
