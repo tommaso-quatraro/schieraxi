@@ -96,22 +96,46 @@ struct VistaFormazione: View {
     }
 
     private func contenutoMinimo(_ r: RiassuntoOggi) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            IntestazioneWidget(titolo: "Formazione", icona: "sportscourt", giornata: r.nomeGiornata, soloCorta: true)
-            Spacer(minLength: 0)
+        conTestataPiccola(titolo: "Formazione", giornata: r.nomeGiornata, spazio: 4) {
             Text(r.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold))
             Text("\(Formato.punti(r.punti)) punti attesi").font(.caption).foregroundStyle(TintaWidget.testo2)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// La testata dei widget piccoli della Formazione (#299, #391): la giornata intera, «Giornata 8», mai «G8» (stesse forme del
+    /// grande, `ParoleWidget.giornataFormazione`). Accanto al titolo non entra: prima il titolo con la giornata sulla riga sotto; se
+    /// in altezza non c'è posto (testo grande, iPad), il solo simbolo con la giornata accanto: si perde il titolo, non la giornata.
+    /// VoiceOver legge sempre la giornata intera («Giornata 8, 11ª di Serie A»). `corpo`: il resto del widget, sotto la testata.
+    private func conTestataPiccola<Corpo: View>(titolo: String, giornata: NomeGiornata?, spazio: CGFloat,
+                                                @ViewBuilder corpo: @escaping () -> Corpo) -> some View {
+        let forme = ParoleWidget.giornataFormazione(giornata)
+        let voceGiornata = giornata?.voce ?? forme.first ?? ""
+        return PrimaCheEntra(forme.isEmpty ? 1 : 2, in: .vertical) { i in
+            VStack(alignment: .leading, spacing: spazio) {
+                if forme.isEmpty || i == 0 {
+                    IntestazioneWidget(titolo: titolo, icona: "sportscourt")
+                    if !forme.isEmpty {
+                        GiornataInRiga(forme: forme, voce: voceGiornata).font(.caption2).foregroundStyle(TintaWidget.testo2)
+                    }
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sportscourt").accessibilityLabel(titolo)
+                            .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
+                        Spacer(minLength: 0)
+                        GiornataInRiga(forme: forme, voce: voceGiornata).font(.caption2).foregroundStyle(TintaWidget.testo2).layoutPriority(1)
+                    }
+                }
+                Spacer(minLength: 0)
+                corpo()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: Home
 
     private func piccolo(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            IntestazioneWidget(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", icona: "sportscourt",
-                               giornata: w.nomeGiornata, soloCorta: true)
-            Spacer(minLength: 0)
+        conTestataPiccola(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", giornata: w.nomeGiornata, spazio: 2) {
             Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
             Text(punti(f)).font(.title3.bold()).monospacedDigit()
             Text(f.intervallo?.testo.map { "attesi · \($0)" } ?? "punti attesi")
@@ -123,7 +147,6 @@ struct VistaFormazione: View {
                 PiedeDati(voce: voce)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func medio(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
@@ -153,9 +176,9 @@ struct VistaFormazione: View {
     }
 
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        // Accanto al modulo due righe (#391): sopra i punti, sotto la fascia e la giornata. Ogni riga mostra la prima forma che
-        // entra: «73,7 punti attesi · la tua scelta» → «73,7 attesi», «Giornata 8 · 11ª di Serie A» → «Giornata 8» → «G8».
-        // La giornata non sta più sulla riga dei punti: «G8» solo se «Giornata 8» non entra nemmeno accanto alla fascia.
+        // Accanto al modulo (#391): sopra i punti, sotto la fascia e la giornata. Ogni riga mostra la prima forma che entra:
+        // «73,7 punti attesi · la tua scelta» → «73,7 attesi», «Giornata 8 · 11ª di Serie A» → «Giornata 8». La giornata non sta
+        // sulla riga dei punti e non diventa mai «G8» (#299): se non entra accanto alla fascia scende sotto.
         let testata = TestataFormazioneGrande(puntiAttesi: f.puntiAttesi, tuaScelta: f.tuaScelta == true,
                                               fascia: f.intervallo?.testo, giornata: w.nomeGiornata)
         return VStack(spacing: 8) {
@@ -163,14 +186,7 @@ struct VistaFormazione: View {
                 Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
                 VStack(alignment: .leading, spacing: 0) {
                     TestoCheEntra(testata.formePunti).font(.subheadline).monospacedDigit()
-                    HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        // la fascia sempre intera; alla giornata lo spazio che resta (come la testata dei widget piccoli)
-                        if let fascia = testata.fascia { Text(fascia).font(.caption).lineLimit(1).fixedSize() }
-                        Spacer(minLength: 8)
-                        if !testata.formeGiornata.isEmpty {
-                            TestoCheEntra(testata.formeGiornata).font(.caption2).layoutPriority(1)
-                        }
-                    }
+                    fasciaEGiornata(testata)
                 }
                 .foregroundStyle(TintaWidget.testo2)
             }
@@ -186,6 +202,32 @@ struct VistaFormazione: View {
             }
             .font(.caption)
             PiedeDati(voce: voce)
+        }
+    }
+
+    /// La fascia e la giornata sotto i punti del grande: la prima disposizione di `postiGiornata` che entra intera, con la giornata
+    /// accanto alla fascia (a destra) o sulla riga sotto. Ogni disposizione ha testi interi, così `PrimaCheEntra` misura il vero:
+    /// niente «Giorn…» né una riga che esce dal widget. Senza giornata la sola fascia.
+    @ViewBuilder
+    private func fasciaEGiornata(_ t: TestataFormazioneGrande) -> some View {
+        let posti = t.postiGiornata
+        if posti.isEmpty {
+            if let fascia = t.fascia { Text(fascia).font(.caption).lineLimit(1) }
+        } else {
+            PrimaCheEntra(posti.count) { i in
+                if posti[i].sotto {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if let fascia = t.fascia { Text(fascia).font(.caption).lineLimit(1) }
+                        Text(posti[i].forma).font(.caption2).lineLimit(1)
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        if let fascia = t.fascia { Text(fascia).font(.caption).lineLimit(1) }
+                        Spacer(minLength: 8)
+                        Text(posti[i].forma).font(.caption2).lineLimit(1)
+                    }
+                }
+            }
         }
     }
 
@@ -259,7 +301,9 @@ struct VistaFormazione: View {
             if !w.daControllare.isEmpty {
                 EtichettaDaControllare(n: w.daControllare.count).font(.caption2)
             } else if let g = w.nomeGiornata {
-                GiornataInRiga(g).minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
+                // la stessa giornata del grande e del piccolo: «Giornata 8», mai «G8» (#299); se proprio non entra si rimpicciolisce
+                GiornataInRiga(forme: ParoleWidget.giornataFormazione(g), voce: g.voce)
+                    .minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
