@@ -93,7 +93,7 @@ struct RigaStatoComeWebTests {
         #expect(stato.titolo() == web)
         #expect(stato.simbolo == "lock.fill")
         #expect(stato.tono == .neutro)
-        #expect(!stato.daSalvare && !stato.conSalvaQuesta && !stato.conTornaNellaRiga)
+        #expect(!stato.daSalvare && stato.pulsanti.isEmpty)
     }
 
     @Test("Segno, colore e pulsanti della riga come la web")
@@ -108,10 +108,7 @@ struct RigaStatoComeWebTests {
         #expect(!StatoScelta.nonValida.daSalvare)
         #expect(!StatoScelta.salvata(nil).daSalvare)
         #expect(StatoScelta.modificata(nil).daSalvare)
-        // «Salva questa» per la consigliata e per un altro stile o modulo; «Torna alla consigliata» per un altro stile o modulo
-        // e per la scelta che non vale più (gli altri stati lo hanno già sotto, con la modifica a mano)
-        #expect(tutti.filter(\.conSalvaQuesta) == [.consigliata, .altra])
-        #expect(tutti.filter(\.conTornaNellaRiga) == [.altra, .nonValida])
+        // i pulsanti della riga, stato per stato, li prova `ModificaAManoModuliTests.pulsantiPerStato` (#463)
     }
 
     // MARK: schermata

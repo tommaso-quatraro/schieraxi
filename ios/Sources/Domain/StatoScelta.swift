@@ -35,7 +35,7 @@ enum StatoScelta: Equatable {
     ///     `stato_scelta`; o non è nella rosa).
     ///   - altra: senza modifica a mano si vede un altro stile o un altro modulo.
     /// L'ordine dei titolari non conta.
-    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, chiusa: Bool = false,
+    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, mostrati: [Int]? = nil, chiusa: Bool = false,
                         nonValida: Bool = false, altra: Bool = false) -> StatoScelta {
         if chiusa { return nonValida ? .chiusaNonValida : .chiusa(tua: letta && salvati != nil) }
         guard letta else { return .sconosciuto }
@@ -108,6 +108,12 @@ enum StatoScelta: Equatable {
     /// «Torna alla consigliata» nella riga, come la web, dove non c'è già sotto con la modifica a mano: un altro stile o modulo,
     /// o una scelta salvata che non vale più.
     var conTornaNellaRiga: Bool { self == .altra || self == .nonValida }
+
+    enum Pulsante: Hashable { case salvaQuesta, salva, annulla, torna }
+
+    var pulsanti: [Pulsante] { (conSalvaQuesta ? [.salvaQuesta] : []) + (conTornaNellaRiga ? [.torna] : []) }
+
+    var conModificaAMano: Bool { true }
 
     // MARK: quando
 

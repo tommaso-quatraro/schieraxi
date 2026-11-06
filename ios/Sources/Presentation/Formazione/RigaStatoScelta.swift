@@ -8,6 +8,10 @@ struct RigaStatoScelta: View {
     let salvaQuesta: () -> Void
     let tornaAllaConsigliata: () -> Void
 
+    static let testoSalvaQuesta = "Salva questa"
+    static let testoAnnulla = "Annulla modifiche"
+    static let testoTorna = "Torna alla consigliata"
+
     var body: some View {
         let colore = Self.colore(stato.tono)
         ViewThatFits(in: .horizontal) {

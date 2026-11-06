@@ -32,6 +32,8 @@ struct FormazioneView: View {
     /// ✎ sostituisce un titolare (modifica a mano), ⇄ lo confronta con un altro della rosa: come i due pulsanti della web.
     static let simboloSostituisci = "pencil"
     static let simboloConfronta = "arrow.left.arrow.right"
+    static let testoModificaAMano = "Modifica a mano"
+    static let testoModificataAMano = ""
 
     /// La riga sotto «Titolari» (`formazione.tocca_sostituire` in modifica a mano, altrimenti `formazione.tocca_confronto`).
     static func istruzioneTitolari(modificabile: Bool) -> String {
