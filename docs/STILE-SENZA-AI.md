@@ -8,7 +8,9 @@ Vale per web, sito e iPhone. Le regole di base restano in `DESIGN.md` (scala, co
 ## Cosa resta (è SchieraXI, non è da AI)
 - Il nome e il marchio a 11 punti con il capitano lime (`MARCHIO.md`).
 - Il verde del campo e il lime del capitano come colori di marca. Il lime si usa solo per la selezione e per il capitano.
-- Il campo con le pedine, i volti illustrati e le sigle a tre lettere nei colori sociali: sono le cose che ha solo questa app.
+- Il campo con le pedine, i volti illustrati e le sigle a tre lettere con i colori sociali: sono le cose che ha solo questa app. Sulla web
+  i volti stanno negli elenchi e nella scheda, sul campo il numero (il fantavoto atteso nel disco bianco) e la sigla con la lineetta del
+  colore sociale; sull'iPhone la pedina ha il volto (`docs/COERENZA-WEB-IPHONE.md`, «Differenze ammesse»).
 - Le parole del vocabolario comune: «gioca 92%», «vs PAR» / «@ UDI», «Giornata 7».
 
 ## Principi

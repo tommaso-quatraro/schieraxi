@@ -1,0 +1,20 @@
+{
+  "titolo": "Formazione più comoda",
+  "voci": [
+    "Su schermi larghi il campo resta accanto all'elenco dei titolari.",
+    "La spiegazione dei segni sta sotto il campo e non lo copre più.",
+    "Ctrl+S salva la formazione.",
+    "Sul campo ogni giocatore è un disco bianco con il suo fantavoto atteso; i volti restano negli elenchi e nella scheda.",
+    "Quando c'è qualcosa da salvare, la riga con Salva resta in vista mentre scorri i titolari.",
+    "I punti attesi della Formazione sono subito quelli giusti, gli stessi di Oggi: prima salivano da zero e a volte restavano a metà.",
+    "Nei pannelli che salgono dal basso la maniglia non copre più il testo."
+  ],
+  "tecnico": [
+    "Grafica B della web, PR 8 (issue #354, chiude #382): campo ed elenco affiancati da 768 px (5:7 da 900 px); il blocco del campo (.zona-campo) esce dal flusso della colonna e il suo .campo-fermo resta sticky, in FERME di controllaFerme.",
+    "#382: da 1400 px il campo passava da sticky a relative e teneva top: 72 px, scendendo sopra la nota; ora il campo non ha mai top né sticky. La maniglia del foglio ha il fondo --sfondo.",
+    "Pedina: <span class=\"disco\"> al posto dell'avatar, lineetta(x.avversario) al posto di distintivo() (tolto, con .dist e --campo-bagliore); stessa frase per i lettori (vocePedina).",
+    "Stato della scelta figlio diretto della colonna: sticky con top: var(--alto-ferma) negli stati modificata e mano; scroll-padding-top più alto quando c'è.",
+    "Ctrl+S / ⌘+S nel gestore keydown prima del controllo dei tasti con Ctrl: preme #salva-scelta o #salva-questa se c'è; altrimenti non chiama preventDefault.",
+    "Tolto animaNumero (e stato.punteggioPrec): l'ultimo uso era #punti-attesi della Formazione."
+  ]
+}
