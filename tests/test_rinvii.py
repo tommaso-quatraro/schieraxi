@@ -403,6 +403,7 @@ console.log(JSON.stringify([cardRiepilogo({json.dumps(r)}, null), cardRiepilogo(
     esito = subprocess.run([shutil.which("node"), "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert esito.returncode == 0, esito.stderr
     con, senza = json.loads(esito.stdout)
-    assert "Manca il recupero di ATA–PAR: i punti possono ancora cambiare." in con and "Manca il recupero" not in senza
+    assert "Manca il recupero di ATA vs PAR: i punti possono ancora cambiare." in con and "Manca il recupero" not in senza
+    assert "ATA–PAR" not in con                                     # come la carta del rinvio (#310)
     assert '<select class="rinvio-modo" data-giornata="9"' in con and "rinvio-modo" not in senza       # il menu nel riepilogo
     assert '<span class="menu-scelta-testo" aria-hidden="true">aspettano il recupero (conta il suo voto)</span>' in con   # scelta intera (#265)

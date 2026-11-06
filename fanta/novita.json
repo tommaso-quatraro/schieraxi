@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.420",
+    "data": "2026-11-06T03:14:06",
+    "titolo": "Recuperi che mancano scritti come le partite rinviate",
+    "voci": [
+      "A giornata finita, la riga dei recuperi che mancano scrive le partite come la carta delle partite rinviate: «Manca il recupero di ATA vs PAR». Uguale sul telefono e sul computer."
+    ],
+    "tecnico": [
+      "Web: nuova `partitaVs(p)` in app.js, usata da `cardRinvio` e da `oggi.recupero_manca` in `cardRiepilogo` (prima `ATA–PAR` con il trattino). iPhone: `TestiRinvio.recuperoManca` usa `TestiRinvio.partita`. Issue #310, riga 38 di docs/COERENZA-WEB-IPHONE.md."
+    ],
+    "titolo_en": "Missing make-up games written like the postponed matches",
+    "voci_en": [
+      "When a round is over, the line about missing make-up games writes the matches like the postponed matches card: «ATA vs PAR». Same on phone and computer."
+    ]
+  },
+  {
     "versione": "1.419",
     "data": "2026-11-06T03:08:49",
     "titolo": "Nuova testata: schede in alto sugli schermi larghi e titolo in ogni schermata",
