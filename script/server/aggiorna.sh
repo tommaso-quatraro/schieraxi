@@ -58,5 +58,9 @@ if [ "${FANTA_FOTO:-0}" = "1" ]; then
   nice -n 10 .venv/bin/python -m fanta foto --max 80 --minuti 6 >> "$LOG" 2>&1
 fi
 
+# taratura di «gioca N%» con le probabili (solo misura, lavoro vero al massimo una volta per giornata): ultimo passo, con priorita'
+# bassa e al massimo 5 minuti, cosi' un errore o un blocco non ferma lo script e non ritarda dati, formazione e avvisi
+nice -n 15 timeout 300 .venv/bin/python -m fanta taratura-probabili >> "$LOG" 2>&1 || echo "taratura-probabili: non riuscita (uscita $?)" >> "$LOG"
+
 tail -n 2000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
 exit 0

@@ -802,7 +802,8 @@ def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_
         estratto.write_bytes(t.extractfile(registro[0]).read())
     nuovo = tmp_path / "rifatto" / "fanta.sqlite"
     assert registro_copia.importa(estratto, nuovo) == \
-        {"registro_giornate": (1, 0), "registro_giocatori": (1, 0), "registro_nostri": (0, 0), "registro_i4": (0, 0)}
+        {"registro_giornate": (1, 0), "registro_giocatori": (1, 0), "registro_nostri": (0, 0), "registro_i4": (0, 0),
+         "taratura_probabili": (0, 0)}
     with contextlib.closing(sqlite3.connect(nuovo)) as db:
         assert db.execute("SELECT stagione, giornata, calciatore_id, ruolo, p_voto, mu FROM registro_giocatori").fetchall() == \
             [("2026-27", 9, 101, "A", 0.873, 6.734)]
@@ -1168,3 +1169,49 @@ def test_in_prova_dice_che_rimanderebbe(server):
     r = s.esegui("aggiorna-app.sh", "--prova")
     assert r.returncode == 0, r.stderr
     assert "[prova] rimanderei" in r.stdout and s.riavvii() == 0 and s.ultimo() == s.c1
+
+
+# ---------------------------------------------------------------- aggiorna.sh: la taratura di «gioca N%» (#379) non ferma mai lo script
+def _casa_aggiorna(tmp_path, python):
+    """Una «casa» del server con aggiorna.sh, un finto Python (scrive i suoi argomenti in `chiamate`) e un finto flock."""
+    app = tmp_path / "casa" / "fantacalcio"
+    for nome in ("aggiorna.sh", "leggi-ambiente.sh"):
+        _scrivi(app, f"script/server/{nome}", (SCRIPT / nome).read_text(encoding="utf-8").replace("\r\n", "\n"))
+    (app / ".venv" / "bin").mkdir(parents=True)
+    chiamate = tmp_path / "chiamate.txt"
+    _stub(app / ".venv" / "bin", "python", f'echo "python $*" >> "{_msys(chiamate)}"\n{python}')
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    _stub(bin_, "flock", "exit 0")
+    return app, bin_, chiamate
+
+
+def _lancia_aggiorna(tmp_path, app, bin_):
+    env = {**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "HOME": _msys(tmp_path / "casa"),
+           "SCHIERAXI_CANALE": _msys(tmp_path / "nessun-canale")}
+    return _lancia([BASH, (app / "script" / "server" / "aggiorna.sh").as_posix()], env=env)
+
+
+@con_bash
+def test_aggiorna_non_si_ferma_se_la_taratura_fallisce(tmp_path):
+    app, bin_, chiamate = _casa_aggiorna(tmp_path, 'case "$*" in *taratura-probabili*) echo "Traceback finto" >&2; exit 1;; esac\nexit 0')
+    r = _lancia_aggiorna(tmp_path, app, bin_)
+    assert r.returncode == 0, r.stderr
+    comandi = [c.split(" -m fanta ")[1].split()[0] for c in chiamate.read_text(encoding="utf-8").splitlines()]
+    assert comandi == ["aggiorna", "cambi", "riepilogo", "affidabilita", "avviso", "taratura-probabili"]     # per ultima
+    log = (app / "dati" / "aggiorna.log").read_text(encoding="utf-8")
+    assert "taratura-probabili: non riuscita (uscita 1)" in log
+    assert not (app / "dati" / "aggiorna.log.tmp").exists()                     # lo script è arrivato in fondo (tail del log)
+
+
+@con_bash
+def test_aggiorna_non_si_ferma_se_la_taratura_supera_il_tempo(tmp_path):
+    app, bin_, chiamate = _casa_aggiorna(tmp_path, "exit 0")
+    _stub(bin_, "nice", f'echo "nice $*" >> "{_msys(chiamate)}"\nshift 2\nexec "$@"')
+    _stub(bin_, "timeout", f'echo "timeout $*" >> "{_msys(chiamate)}"\nexit 124')        # come un comando fermato dopo 300 secondi
+    r = _lancia_aggiorna(tmp_path, app, bin_)
+    assert r.returncode == 0, r.stderr
+    assert "nice -n 15 timeout 300 .venv/bin/python -m fanta taratura-probabili" in chiamate.read_text(encoding="utf-8")
+    log = (app / "dati" / "aggiorna.log").read_text(encoding="utf-8")
+    assert "taratura-probabili: non riuscita (uscita 124)" in log
+    assert not (app / "dati" / "aggiorna.log.tmp").exists()

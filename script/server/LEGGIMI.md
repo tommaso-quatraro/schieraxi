@@ -6,7 +6,7 @@ Si lanciano dal crontab dell'utente del server. Il servizio systemd è `fantacal
 |---|---|---|
 | `aggiorna-app.sh` | ogni 10 min | installa `main` se cambiano `fanta`, `tests`, `script`, `requirements*` (mai `lega/`, `dati/`, `fanta/avatar_tratti.json`, `CLAUDE.md`), solo se i commit nuovi sono firmati (vedi sotto) e con le librerie bloccate dagli hash. `--prova`: dice cosa farebbe e non scrive. `--fidati COMMIT`: punto di partenza controllato a mano |
 | `pubblica-sito.sh` | ogni 5 min | tiene la cartella del sito (`/var/www/schieraxi-sito`) uguale a `sito/` di `main` |
-| `aggiorna.sh` | 8, 13, 17, 21 | aggiorna i dati e manda gli avvisi |
+| `aggiorna.sh` | 8, 13, 17, 21 | aggiorna i dati e manda gli avvisi. Ultimo passo: `python -m fanta taratura-probabili` (#379, solo misura: quanto «gioca N%» con le probabili sbaglierebbe ritarato sulle giornate giocate; lavoro vero al massimo una volta per giornata, `nice -n 15`, al massimo 5 minuti, un errore va nel log e non ferma lo script). Prova a mano: `.venv/bin/python -m fanta taratura-probabili --prova` (non scrive niente) |
 | `promemoria.sh` | ogni 10 min | promemoria prima della scadenza e controllo di salute dell'app |
 | `backup-dati.sh` | ogni notte | copia dei dati che non si rigenerano (ultime 14) |
 | `backup-serale.sh` | ogni notte | copia di regole, rose, scelte (ultime 7) |
