@@ -43,8 +43,7 @@
   --ombra: 0 6px 20px rgba(0, 0, 0, .35);             /* solo per ciò che galleggia: barra, foglio, avvisi */
   --solido: #1a1e1c;                        /* dentro campi di testo, anelli e grafici */
   --campo: #146b3a;
-  --campo-bagliore: 80%;
-  --campo-righe: rgba(255, 255, 255, .3);
+  --campo-righe: rgba(255, 255, 255, .4);   /* linee del campo: bianche al 40% (grafica B, spec §8.10) */
   /* scala tipografica: solo questi 7 livelli (docs/DESIGN.md, grafica B spec §7.3); mai sotto 12 px. Da 900 px l'eroe è 72 px */
   --t-eroe: 56px; --t-titolo: 32px; --t-card: 17px; --t-valore: 20px; --t-corpo: 15px; --t-sec: 13px; --t-eti: 12px;
   /* numeri e titoli delle schermate: Archivo con le cifre in colonna; il testo resta nel carattere di sistema */
@@ -86,8 +85,7 @@
     --luce-2: rgba(255, 255, 255, .25);
     --ombra: 0 6px 20px rgba(16, 32, 26, .12);
     --solido: #ffffff;
-    --campo: #187a41;                         /* bianco sopra >= 4,5:1 anche dove il bagliore schiarisce */
-    --campo-bagliore: 92%;
+    --campo: #187a41;                         /* bianco sopra 5,4:1 (fondo pieno, senza bagliore) */
   }
 }
 :root[data-tema="chiaro"] {
@@ -118,8 +116,7 @@
     --luce-2: rgba(255, 255, 255, .25);
     --ombra: 0 6px 20px rgba(16, 32, 26, .12);
     --solido: #ffffff;
-    --campo: #187a41;                         /* bianco sopra >= 4,5:1 anche dove il bagliore schiarisce */
-    --campo-bagliore: 92%;
+    --campo: #187a41;                         /* bianco sopra 5,4:1 (fondo pieno, senza bagliore) */
 }
 
 * { box-sizing: border-box; }
@@ -240,8 +237,6 @@ html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: calc(var(--barra) 
 @keyframes disegna { to { stroke-dashoffset: 0; } }
 @keyframes compare { from { opacity: 0; transform: scale(calc(1 - var(--mov, 1) * .7)); } to { opacity: 1; transform: none; } }
 @keyframes riflesso { 100% { transform: translateX(100%); } }
-@keyframes respira { 0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--arancio) 85%, transparent), 0 3px 8px rgba(0,0,0,.3); }
-  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--arancio) 25%, transparent), 0 3px 8px rgba(0,0,0,.3); } }
 main > * { animation: dissolve .2s ease both; }   /* niente cascata: ogni blocco che sale uno dopo l'altro è movimento di riempitivo */
 main.ridisegna > * { animation: none; }
 
@@ -282,14 +277,20 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 /* valore e stella pieni, non all'80%: sul lime del tema chiaro il numero da 12 px scendeva a 4,1:1 (issue #244); il nome resta più grande e più forte */
 .chip.attiva span, .chip.attiva i { color: var(--capitano-testo); }
 /* moduli e stili della formazione: una riga che scorre di lato (stessa striscia di Mercato) invece di andare a capo */
-/* 5 px intorno alle voci: il focus della voce scelta (che sporge di 1 px) sta 2 + 2 px più in là e la striscia taglia ciò che esce */
-.chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 1px -5px 3px; padding: 5px; scroll-padding-inline: 24px;
+/* 5 px intorno alle voci: il focus della voce scelta (che sporge di 1 px) sta 2 + 2 px più in là e la striscia taglia ciò che esce.
+   `position: relative`: striscia() in app.js porta in vista la voce scelta con il suo offsetLeft, che si misura da qui (senza, da 768 px
+   si misurava dalla griglia del campo e la striscia scorreva fino in fondo, con il 4-4-2 scelto fuori vista) */
+.chips.scorri { position: relative; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 1px -5px 3px; padding: 5px; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent); }
 .chips.scorri::-webkit-scrollbar { display: none; }
 .chips.scorri .chip { flex: none; }
 .etichetta-riga { margin-top: 10px; font-size: var(--t-sec); font-weight: 600; color: var(--testo-2); }
 .nota-riga { font-size: var(--t-sec); margin-top: 2px; }
+/* Formazione: sotto Stile una riga di nota; la descrizione lunga dello stile si apre con «Come si legge» (spec §9) */
+.nota-riga .come > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
+.nota-riga .come[open] > summary { margin-bottom: 0; }
+.nota-riga .come p { margin: 0 0 4px; max-width: 70ch; }
 .altre-azioni { flex: 0 0 auto; }
 .altre-azioni > summary.bottone { display: inline-flex; align-items: center; gap: 8px; justify-content: center; font-size: var(--t-corpo); font-weight: 650; padding: 0 16px; }
 .altre-azioni > summary.bottone::after { margin-right: 0; }
@@ -323,50 +324,48 @@ details[open] > summary::after { transform: rotate(225deg); }
 details[open] > summary { margin-bottom: 8px; }
 
 /* ---------------------------------------------------------------- campo */
-.campo { container: campo / inline-size; position: relative; border-radius: 28px; overflow: hidden; margin-bottom: 14px; padding: 24px 6px; display: flex; flex-direction: column-reverse; gap: 20px;
-  background: repeating-linear-gradient(0deg, transparent 0 46px, rgba(255, 255, 255, .05) 46px 92px), radial-gradient(90% 60% at 50% 40%, color-mix(in srgb, var(--campo) var(--campo-bagliore), #fff), var(--campo));
-  border: 1px solid var(--bordo); }
-.campo::before { content: ""; position: absolute; inset: 9px; border: 2px solid var(--campo-righe); border-radius: var(--r-card); pointer-events: none; }
+/* Grafica B (spec §8.10): fondo pieno del colore del campo, raggio 12, linee bianche al 40%; niente bagliore, strisce né ombre (il
+   bianco sul campo sta a 5,4:1 nel chiaro e 6,6:1 nello scuro). Le file vanno dal portiere, in basso (column-reverse), agli attaccanti.
+   Il campo non si sposta mai: a restare fermo accanto all'elenco è il blocco che lo contiene (.campo-fermo, «Schermi larghi»). */
+.campo { container: campo / inline-size; position: relative; border-radius: var(--r-card); overflow: hidden; padding: 24px 6px; display: flex; flex-direction: column-reverse; gap: 20px;
+  background: var(--campo); }
+.campo::before { content: ""; position: absolute; inset: 9px; border: 2px solid var(--campo-righe); border-radius: var(--r-in); pointer-events: none; }
 .campo::after { content: ""; position: absolute; left: 30%; right: 30%; bottom: 9px; height: 13%; border: 2px solid var(--campo-righe); border-bottom: 0; pointer-events: none; }
 .campo > i { position: absolute; pointer-events: none; border: 2px solid var(--campo-righe); }
 .campo .area-alta { left: 30%; right: 30%; top: 9px; height: 13%; border-top: 0; }
 .campo .cerchio { left: 50%; top: 50%; width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; }
 .campo .meta { left: 9px; right: 9px; top: 50%; border: 0; border-top: 2px solid var(--campo-righe); }
 .linea { display: flex; justify-content: space-evenly; gap: 4px; position: relative; z-index: 1; }
-.pedina { border: 0; background: none; color: #fff; padding: 0; flex: 0 1 88px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; animation: pop .55s var(--molla) both; animation-delay: calc(.12s + var(--k, 0) * .05s); }
+.pedina { border: 0; background: none; color: #fff; padding: 0; flex: 0 1 88px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; animation: pop .55s var(--molla) both; animation-delay: calc(.12s + var(--k, 0) * .05s); }
 .campo .linea:nth-of-type(1) .pedina { animation-delay: calc(.2s + var(--k, 0) * .05s); } .campo .linea:nth-of-type(2) .pedina { animation-delay: calc(.3s + var(--k, 0) * .05s); }
 .campo .linea:nth-of-type(3) .pedina { animation-delay: calc(.4s + var(--k, 0) * .05s); } .campo .linea:nth-of-type(4) .pedina { animation-delay: calc(.5s + var(--k, 0) * .05s); }
 .ridisegna .pedina { animation-duration: .35s; animation-delay: calc(var(--k, 0) * .025s) !important; }
-.pedina .maglia { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: var(--t-corpo); font-variant-numeric: tabular-nums;
-  border: 2px solid rgba(255, 255, 255, .9); background: linear-gradient(160deg, var(--c1, #777), var(--c2, #444)); text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
-  box-shadow: 0 5px 12px rgba(0, 0, 0, .35), inset 0 1.5px 0 rgba(255, 255, 255, .45); position: relative; }
-.maglia.P { --c1: #f0b73a; --c2: #b27712; } .maglia.D { --c1: #3fbf74; --c2: #1d7440; } .maglia.C { --c1: #4b95ec; --c2: #1f5aa3; } .maglia.A { --c1: #ef5f5b; --c2: #a52b2b; }
-.pedina .maglia.dubbio { animation: respira 2.4s ease-in-out infinite; }
-.pedina .nome { font-size: var(--t-eti); font-weight: 650; line-height: 1.1; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); overflow-wrap: anywhere; text-wrap: balance; }
-/* sotto il nome: «gioca 85%» (sotto il 70% pillola arancio «⚠ gioca 45%»), poi «vs NAP» in casa / «@ NAP» fuori con la sigla nei colori sociali */
-.pedina .gioca, .legenda-campo .gioca { font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-variant-numeric: tabular-nums; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
-.pedina .gioca.basso, .legenda-campo .gioca.basso { background: #ffb04a; color: #2a1600; text-shadow: none; border-radius: calc(.7em + 4px); padding: 0 6px; }
-.pedina .avv, .legenda-campo .avv { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 4px; font-size: var(--t-eti); font-weight: 650; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
-.dist { font-style: normal; display: inline-block; min-width: 2.6em; padding: 0 4px; border-radius: 5px; background: var(--c1); color: var(--ct); box-shadow: inset 0 -2.5px 0 var(--c2), 0 0 0 1px rgba(0, 0, 0, .25);
-  font-size: var(--t-eti); font-weight: 800; letter-spacing: .03em; line-height: 1.5; text-align: center; text-shadow: none; }
-/* legenda del campo (una volta, poi dal pulsante ⓘ in basso a destra): prima delle pedine nel DOM (si legge per prima), in cima al campo con `order`
-   (il campo è in column-reverse: l'ordine più alto va in alto) */
-.info-campo { position: absolute; z-index: 2; bottom: 16px; right: 16px; min-height: 44px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid rgba(255, 255, 255, .35);
-  background: rgba(8, 14, 10, .55); color: #fff; font-size: var(--t-eti); font-weight: 650; display: inline-flex; align-items: center; gap: 6px; }
-.info-campo span { font-size: var(--t-corpo); }
+/* La pedina (spec §8.10, scelta 2 dell'utente): il disco bianco da 44 px con il fantavoto atteso in Archivo scuro (16,9:1) è la pedina;
+   niente volto sul campo (i volti stanno negli elenchi e nella scheda). Sotto il 70% un anello arancio fermo di 3 px attorno al disco
+   e «⚠ gioca 57%» nella pillola arancio. Il disco non si rimpicciolisce: cinque in una fila ci stanno anche nel campo da 288 px. */
+.disco { display: grid; place-items: center; flex: none; box-sizing: border-box; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #10201a;
+  font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+.pedina:has(> .gioca.basso) .disco { border: 3px solid #ffb04a; }
+.pedina .nome { margin-top: 2px; font-size: var(--t-eti); font-weight: 650; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
+/* sotto il nome: «gioca 85%» (sotto il 70% pillola arancio «⚠ gioca 45%»), poi «vs NAP» in casa / «@ NAP» fuori, con la lineetta nel
+   colore sociale davanti alla sigla (decorativa: la sigla, bianca, dice già la squadra). Gli stessi segni negli esempi della legenda. */
+.pedina .gioca, .leg-esempio .gioca { font-size: var(--t-eti); font-weight: 650; color: #fff; font-variant-numeric: tabular-nums; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
+.pedina .gioca.basso, .leg-esempio .gioca.basso { background: #ffb04a; color: #2a1600; border-radius: calc(.7em + 4px); padding: 0 6px; }
+.pedina .avv, .leg-esempio .avv { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 4px; font-size: var(--t-eti); font-weight: 650; color: #fff; }
+.pedina .avv .lineetta, .leg-esempio .avv .lineetta { margin-right: 3px; }
+/* Legenda del campo, sotto il campo (spec §8.10: prima stava sopra il campo e lo copriva): «Cosa vuol dire» è un collegamento che apre
+   la spiegazione lì sotto. Gli esempi sono disegnati come sul campo, su un pezzo di verde; le spiegazioni nel colore del testo. */
+.sotto-campo { margin-top: 4px; }
+.info-campo { min-height: 44px; margin-left: -8px; font-size: var(--t-sec); }
 .info-campo[hidden], .legenda-campo[hidden] { display: none; }
-/* campo fino a 420 px (telefono, colonna stretta del PC, testo grande): sopra il campo il pulsante copriva le scritte del portiere
-   («gioca 92%», «vs BOL»); va in fondo, sotto il portiere, a destra (primo nel DOM: con column-reverse sta in basso). Issue #265. */
-@container campo (max-width: 419.98px) {
-  .info-campo { position: relative; bottom: auto; right: auto; align-self: flex-end; margin: -8px 10px 0 0; }
-}
-.legenda-campo { order: 1; position: relative; z-index: 2; margin: 0 8px; padding: 12px 14px; border-radius: var(--r-in); background: rgba(8, 14, 10, .82); color: #fff;
-  border: 1px solid rgba(255, 255, 255, .2); font-size: var(--t-sec); }
-.legenda-campo ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
-.legenda-campo li { display: grid; grid-template-columns: 6.6em 1fr; gap: 8px; align-items: center; line-height: 1.3; }
-.leg-esempio { display: flex; justify-content: center; }
-.fv-esempio { padding: 1px 8px; border-radius: 10px; background: rgba(8, 14, 10, .9); border: 1px solid rgba(255, 255, 255, .35); font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; }
-.legenda-campo .bottone.secondario { width: 100%; background: rgba(255, 255, 255, .14); color: #fff; border-color: rgba(255, 255, 255, .3); box-shadow: none; }
+.legenda-campo { padding: 8px 0 0; font-size: var(--t-sec); line-height: 1.35; }
+.legenda-campo ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.legenda-campo li { display: grid; grid-template-columns: 7.5em 1fr; gap: 12px; align-items: center; }
+.leg-esempio { display: flex; justify-content: center; align-items: center; min-height: 40px; padding: 4px 6px; border-radius: var(--r-in); background: var(--campo); color: #fff; }
+.leg-esempio .disco { width: 34px; height: 34px; font-size: var(--t-sec); }
+/* il blocco del campo (campo, «Cosa vuol dire», spiegazioni): al telefono dopo Modulo e Stile, prima dei Titolari; sul PC nella colonna
+   di sinistra, fermo accanto all'elenco («Schermi larghi») */
+.zona-campo { margin: 16px 0 32px; }
 
 /* ---------------------------------------------------------------- elenchi di giocatori */
 .elenco { list-style: none; margin: 0; padding: 0; }
@@ -434,6 +433,10 @@ details[open] > summary { margin-bottom: 8px; }
 .cifre-oggi > .cifra + .cifra { border-left: 1px solid var(--filo); padding-left: 16px; margin-left: 16px; }
 .cifre-oggi .grande { margin: 2px 0; }
 .riepilogo-giornata > .cifre-oggi { margin-bottom: 8px; }
+/* le cifre della Formazione: modulo | punti attesi con la fascia, due metà uguali (l'etichetta del modulo, con la giornata, va a capo) */
+.cifre-formazione { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin-bottom: 16px; }
+.rispetto { margin: -8px 0 16px; font-size: var(--t-sec); }
+.azioni-formazione { margin-bottom: 24px; }           /* «Altro» (e «Modifica a mano») staccato dai Titolari, come tra due sezioni */
 .formazione-oggi .pulsanti { margin-top: 16px; }
 .formazione-oggi .bottone { width: 100%; min-height: 48px; }
 @media (min-width: 768px) { .formazione-oggi .bottone { width: auto; } }
@@ -454,17 +457,22 @@ details[open] > summary { margin-bottom: 8px; }
 .partita.giocata .sq { color: var(--testo-2); }   /* partita finita: i nomi passano al grigio secondario (niente opacità: spegneva anche il grigio sotto 3:1); il risultato resta pieno */
 .partita.rinviata .ora { color: var(--arancio, var(--testo-2)); font-weight: 650; }   /* «Rinviata» al posto dell'orario */
 .partita.rinviata .sq { color: var(--testo-2); }
-/* Formazione: stato della scelta della giornata (in cima, sempre dal server) */
-.stato-scelta { margin: -2px 0 12px; padding: 0 0 12px; border-bottom: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
+/* Formazione: stato della scelta della giornata (sempre dal server), sotto le cifre. Con qualcosa da salvare resta ferma in alto mentre
+   si scorrono i titolari, con «Salva» in vista (spec C9): è figlia diretta della colonna, alta quanto l'elenco. Solo se è bassa: oltre
+   un terzo della finestra scorre con la pagina (controllaStatoScelta in app.js, `non-ferma`), e nella pagina strettissima non è mai
+   ferma. Il focus non le finisce sotto: la sua altezza vera (--alto-stato, 0 quando non è ferma) si aggiunge a scroll-padding-top. */
+.stato-scelta { margin: 0 0 16px; padding: 12px 0; border-top: 1px solid var(--filo); border-bottom: 1px solid var(--filo); }
+.stato-scelta.modificata, .stato-scelta.mano { position: sticky; top: var(--alto-ferma); z-index: 3; background: var(--sfondo); }
+html:has(.stato-scelta.modificata), html:has(.stato-scelta.mano) { scroll-padding-top: calc(var(--alto-testata, 0px) + var(--alto-stato, 0px) + 8px); }
 .stato-scelta p { margin: 0; display: flex; gap: 8px; align-items: baseline; font-weight: 650; font-size: var(--t-corpo); line-height: 1.35; }
 .stato-scelta .segno { flex: none; width: 1.2em; text-align: center; font-weight: 800; }
-.stato-scelta.consigliata .segno, .stato-scelta.altra .segno { color: var(--testo); }   /* il «○» è un simbolo: sul vetro con l'alone verde il grigio restava a 4,3:1 */
+.stato-scelta.consigliata .segno, .stato-scelta.altra .segno { color: var(--testo); }   /* il «○» è un simbolo: nel colore del testo, come la frase */
 .stato-scelta.salvata .segno, .stato-scelta.salvata p { color: var(--verde); }
 .stato-scelta.modificata .segno, .stato-scelta.mano .segno { color: var(--arancio); }
 .stato-scelta.non_valida .segno { color: var(--rosso); }
 .stato-scelta.chiusa .segno { color: var(--testo-2); }
 /* Titolare incerto con la riserva quasi sicura: la spiegazione sotto il campo e nel «Perché questo numero» */
-.nota-incerti { margin: -4px 4px 14px; font-size: var(--t-sec); line-height: 1.4; color: var(--testo-2); }
+.nota-incerti { margin: 16px 0 0; font-size: var(--t-sec); line-height: 1.4; color: var(--testo-2); }
 .nota-incerti p { margin: 0 0 6px; }
 .nota-incerti b { color: var(--testo); }
 .nota-incerto { margin: 10px 0 0; padding: 4px 0 4px 12px; font-size: var(--t-sec); line-height: 1.4; border-left: 3px solid var(--arancio); }
@@ -659,9 +667,12 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 /* ---------------------------------------------------------------- pannello (scheda) che sale dal basso */
 .foglio { position: fixed; inset: 0; z-index: 20; }
 .foglio-sfondo { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); }
-.foglio-corpo { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(90vh / var(--z)); overflow: auto; overscroll-behavior: contain; border-radius: 30px 30px 0 0; padding: 8px 16px calc(28px + env(safe-area-inset-bottom));
+.foglio-corpo { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(90vh / var(--z)); overflow: auto; overscroll-behavior: contain; border-radius: 30px 30px 0 0; padding: 0 16px calc(28px + env(safe-area-inset-bottom));
   max-width: 720px; margin: 0 auto; background: var(--sfondo); touch-action: pan-y; }      /* pieno, senza vetro (spec §7.6) */
-.maniglia { position: sticky; top: 0; z-index: 3; display: flex; justify-content: center; padding: 6px 0 14px; touch-action: none; }
+/* la maniglia resta ferma in alto mentre il testo scorre (si prende sempre per chiudere): ha il fondo del pannello, così il testo le
+   passa sotto invece di vedersi attraverso, con la barretta sopra le scritte (issue #382). Si ferma sotto il riempimento alto del
+   pannello: per questo il pannello non ne ha e lo spazio sopra la barretta sta dentro la maniglia */
+.maniglia { position: sticky; top: 0; z-index: 3; display: flex; justify-content: center; padding: 14px 0 14px; touch-action: none; background: var(--sfondo); }
 .maniglia i { width: 42px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--testo) 30%, transparent); }
 .foglio-chiudi { position: absolute; top: 14px; right: 14px; z-index: 4; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 50%, transparent); width: 44px; height: 44px; border-radius: 50%; font-size: var(--t-corpo); color: var(--testo-2); }
 .foglio:not([hidden]) .foglio-sfondo { animation: dissolve .28s ease both; }
@@ -705,14 +716,14 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .avatar svg { display: block; width: 100%; height: 100%; }
 .avatar .volto { position: absolute; z-index: 2; left: 50%; bottom: 0; width: 108%; height: 108%; transform: translateX(-50%); object-fit: contain;
   object-position: 50% 100%; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
-/* Entrata breve con molla sulle pedine e sulle schede grandi (nelle liste niente: si ridisegnano spesso). Con «riduci movimento»: solo dissolvenza. */
+/* Entrata breve con molla del volto grande della scheda (nelle liste niente: si ridisegnano spesso). Con «riduci movimento»: solo dissolvenza. */
 @keyframes avatar-entra { from { transform: translateY(10%) scale(.86); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes avatar-dissolvi { from { opacity: 0; } to { opacity: 1; } }
-.avatar-pedina .avatar svg, .avatar-anello.grande-a .avatar svg { animation: avatar-entra .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+.avatar-anello.grande-a .avatar svg { animation: avatar-entra .45s cubic-bezier(.34, 1.56, .64, 1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .avatar-pedina .avatar svg, .avatar-anello.grande-a .avatar svg { animation: avatar-dissolvi .25s ease-out both !important; animation-duration: .25s !important; }
+  .avatar-anello.grande-a .avatar svg { animation: avatar-dissolvi .25s ease-out both !important; animation-duration: .25s !important; }
 }
-html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
+html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
   animation: avatar-dissolvi .25s ease-out both !important; animation-duration: .25s !important; }
 /* Volto con l'indice (grafica B, spec §8.4): niente anello colorato attorno. L'indice (0-100) è un numero piccolo nell'angolo, nei
    colori del testo e della pagina: il numero dice già quanto è buono, il colore da solo non aggiungeva niente. */
@@ -770,22 +781,13 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .intestazione-colonne .ic-partita { display: block; }
   .intestazione-colonne .ic-fv { grid-column: eti-start / fv-end; }
 }
-.avatar-pedina { position: relative; width: 56px; height: 56px; border-radius: 50%; padding: 0; border: 2px solid rgba(255, 255, 255, .85); background: var(--solido);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .25); }
-.avatar-pedina .avatar { border-radius: 50%; --d: 52px; }
-.avatar-pedina .fv { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); padding: 1px 8px; border-radius: 10px; background: rgba(8, 14, 10, .9); color: #fff;
-  font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid rgba(255, 255, 255, .35); white-space: nowrap; }
-.pedina .nome { margin-top: 5px; }
-/* Pedine sempre intere (issue #265): la pedina parte da 88 px e si stringe fino al volto; cognome, stato («Partita in corso»,
+/* Pedine sempre intere (issue #265): la pedina parte da 88 px e si stringe fino al disco; cognome, stato («Partita in corso»,
    «fantavoto 10,0»), «⚠ gioca 19%» e «vs MON» vanno a capo invece di finire con «…» o di uscire dal campo, che le taglierebbe.
-   Campo stretto (cinque pedine in una fila a 320 px, o con il testo grande): cinque volti da 56 px con gli spazi chiedono 308 px,
-   quindi il volto passa a 48 px. Nella pedina da 52 px un cognome di una parola va a capo con la sillabazione, dove il browser
-   la sa fare («Meron-do» invece di «Merond/o»); il carattere resta lo stesso. Lo stesso in ogni fila da cinque, dove le pedine sono
-   strette anche con il volto normale (390 px con il testo «Grande»). */
+   Cinque dischi da 44 px con gli spazi chiedono 248 px: ci stanno anche nel campo da 288 px (320 px di schermo). Nel campo stretto un
+   cognome di una parola va a capo con la sillabazione, dove il browser la sa fare («Meron-do» invece di «Merond/o»); il carattere resta
+   lo stesso. Lo stesso in ogni fila da cinque, dove le pedine sono strette anche nel campo normale (390 px con il testo «Grande»). */
 .linea:has(> .pedina:nth-child(5)) .nome { -webkit-hyphens: auto; hyphens: auto; }
 @container campo (max-width: 307.98px) {
-  .avatar-pedina { width: 48px; height: 48px; }
-  .avatar-pedina .avatar { --d: 44px; }
   .pedina .nome { -webkit-hyphens: auto; hyphens: auto; }
 }
 .elenco li.con-confronto { position: relative; }
@@ -912,10 +914,13 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .salva-fisso { bottom: 24px; }
   main { padding: 28px 32px 0; }
   .carta { margin-bottom: 32px; }
+  .azioni-formazione { margin-bottom: 32px; }
   html { scroll-padding-bottom: 16px; }                                       /* le schede stanno in alto: in basso non copre niente */
   html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: 86px; }
-  /* Oggi: conto, formazione e Da fare nella colonna di sinistra, migliori, avvisi e partite in quella più larga (spec §9, 5:7) */
-  main .colonne-oggi { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  /* Oggi: conto, formazione e Da fare nella colonna di sinistra, migliori, avvisi e partite in quella più larga (spec §9, 5:7).
+     Formazione: il campo a sinistra, cifre, scelta ed elenco nella colonna più larga (spec C6, 5:7) */
+  main .colonne-oggi, main .colonne-campo { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  main .colonne-campo { --quota-campo: calc(5 / 12); }
 }
 
 @media (min-width: 1100px) {
@@ -1183,17 +1188,18 @@ html[data-calmo] main.ridisegna > *, html[data-calmo] .ridisegna .elenco li { an
 /* mentre c'è l'accesso o la procedura guidata il link «Vai al contenuto» non serve: il Tab resta dentro la finestra */
 body.senza-accesso .salta { display: none; }
 @media (min-width: 768px) {
-  .colonne { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; align-items: start; }
-  .colonne-campo { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
-  @media (max-width: 1023px) { .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }   /* iPad verticale: la colonna dei titolari non resta stretta (etichette a capo) */
+  .colonne { --spazio-colonne: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--spazio-colonne); align-items: start; }
   .col { display: block; min-width: 0; }
-  .col > .campo { max-width: 640px; width: 100%; margin-left: auto; margin-right: auto; }
   .colonne-oggi > .col:first-child { position: sticky; top: calc(var(--alto-ferma) + 16px); }
-  /* Formazione: il campo resta fermo a sinistra mentre scorri i dettagli a destra */
-  .colonne-campo > .col { display: contents; }
-  .colonne-campo .col > * { grid-column: 2; }
-  .colonne-campo .col > .campo { grid-column: 1; grid-row: 1 / span 8; align-self: start; position: sticky; top: calc(var(--alto-ferma) + 16px); }
-  .colonne-campo .col > .hero { grid-row: 1; }
+  /* Formazione (spec C6): il campo a sinistra, fermo mentre si scorre se ci sta nello schermo (controllaFerme in app.js); a destra, in
+     una colonna sola, cifre, stato della scelta (con «Salva»: resta ferma in cima alla colonna), modulo, stile, titolari, panchina e
+     fuori. Nel codice il campo sta dopo Stile, nell'ordine del telefono: qui esce dal flusso e prende la colonna di sinistra, alta quanto
+     la destra, dove il suo blocco (campo, «Cosa vuol dire» e spiegazioni) resta fermo sotto la testata. 768-899 px (iPad verticale):
+     due colonne pari, la colonna dei titolari non resta stretta; da 900 px 5:7. */
+  .colonne-campo { --quota-campo: .5; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); position: relative; }
+  .colonne-campo > .col { grid-column: 2; }
+  .colonne-campo .zona-campo { position: absolute; top: 0; bottom: 0; left: 0; width: calc((100% - var(--spazio-colonne)) * var(--quota-campo)); margin: 0; }
+  .colonne-campo .campo-fermo { position: sticky; top: calc(var(--alto-ferma) + 16px); }
   /* Mercato: le carte della scheda si dispongono in colonne */
   #mercato-corpo { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0 20px; align-items: start; }
   #mercato-corpo > .carta:first-child, #mercato-corpo > .caricamento, #mercato-corpo > .vuoto, #mercato-corpo > .segmenti, #mercato-corpo > .chips { grid-column: 1 / -1; }
@@ -1202,9 +1208,7 @@ body.senza-accesso .salta { display: none; }
 /* colonna ferma in alto (sticky) più alta dello schermo: il suo fondo non arrivava mai in vista, né con il Tab né scorrendo. app.js
    (controllaFerme) la fa scorrere con la pagina (issue #280) */
 .non-ferma { position: static !important; }
-/* il campo che scorre resta il riferimento delle sue linee (area, cerchio, metà campo): da «static» attraversavano la colonna accanto */
-.campo.non-ferma { position: relative !important; }
-@media (min-width: 1100px) { .colonne { gap: 0 24px; } }
+@media (min-width: 1100px) { .colonne { --spazio-colonne: 24px; } }
 .proposta button.nome-g { padding: 13px 4px; margin: -13px -4px; }
 .immagine-squadra .campo-testo { width: 100%; min-width: 0; font-size: var(--t-corpo); }
 .sm-pulsante { padding: 6px 14px; min-height: 44px; font-size: var(--t-sec); width: 100%; text-align: center; }
@@ -1287,7 +1291,7 @@ body.senza-accesso .salta { display: none; }
 
 /* =====================================================================================================
    PC e schermi larghi (da 1100 px): più cose in vista, meno scorrimento.
-   - Oggi e Formazione: una colonna stretta + due colonne affiancate (con il campo: campo | titolari | panchina).
+   - Oggi e Formazione: due colonne 5:7 (da 900 px, «Schede in alto»); Formazione: campo | cifre, scelta ed elenco.
    - Impostazioni e Squadra/Altro: le carte si dispongono su due colonne e gli elenchi lunghi a griglia.
    - I dettagli (giocatore, diario, ricerca) si aprono in un pannello a destra e lasciano vedere la pagina.
    Sul telefono e sul tablet fino a 1099 px non cambia niente (le regole sono tutte dentro le @media).
@@ -1304,22 +1308,18 @@ body.senza-accesso .salta { display: none; }
   .foglio-chiudi { width: 44px; height: 44px; top: 12px; right: 12px; }
   .imp-pagina p { max-width: 80ch; }
   /* con il mouse le strisce da far scorrere col dito non servono: moduli e stili vanno a capo e si vedono tutti */
-  .hero .chips.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+  .colonne-campo .chips.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
 }
 @media (min-width: 1400px) {
-  main .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  main .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); --quota-campo: calc(1 / 3); }
+  /* Formazione da 1400 px: 1:2 invece di 5:7, perché con 5:7 a 1440 px la colonna dell'elenco (672 px) resta sotto i 680 px della riga
+     larga dei giocatori (spec §8.4, «PC: una riga» con la colonna «Partita»); con 1:2 è larga 768 px e il campo 384, come al telefono */
   main .colonne-oggi > .col:first-child { position: static; }
-  main .colonne-campo > .col:first-child { display: block; }
-  main .colonne-campo > .col:first-child > * { grid-column: auto; grid-row: auto; position: static; }
-  main .colonne-campo > .col:first-child > .campo { margin-top: 16px; position: relative; }   /* la riga sopra lo rendeva statico: area, cerchio e metà campo uscivano e attraversavano tutta la pagina */
   /* Oggi: la colonna di destra (7/12, ~672 px a 1440) in due: migliori e avvisi | partite del turno. Una colonna sola non darebbe la
      riga larga dei giocatori (scatta da 680 px) e manderebbe le partite sotto il primo schermo; così tutto sta in vista e le due
      colonne di Oggi finiscono quasi insieme (151 px a 1440, PR #415) */
   main .colonne-oggi > .col:nth-child(2) { display: block; columns: 2; column-gap: 24px; }
   main .colonne-oggi > .col:nth-child(2) > * { break-inside: avoid; }
-  /* Formazione: Titolari, Panchina e Fuori uno sotto l'altro nella colonna larga, con le righe su una linea e i numeri nella stessa
-     colonna (spec C8); in due colonne strette i numeri delle due liste non si confrontavano */
-  main .colonne-campo > .col:nth-child(2) { display: block; }
 }
 @media (min-width: 1700px) {
   .imp-pagina:has(> .carta ~ .carta) { columns: 2; column-gap: 22px; }
@@ -1406,7 +1406,8 @@ body { container: pagina / inline-size; }
   .perche-voce { grid-template-columns: 1fr; gap: 2px; }
   .perche-effetto { justify-self: start; }
   .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .legenda-campo { margin: 0 4px; padding: 10px; }
-  .legenda-campo li { grid-template-columns: 1fr; gap: 2px; }
-  .leg-esempio { justify-content: flex-start; }
+  .legenda-campo li { grid-template-columns: 1fr; gap: 4px; }
+  .leg-esempio { justify-self: start; }
+  /* la riga dello stato con «Salva» non resta ferma: qui sarebbe alta mezza finestra (revisione della #420) */
+  .stato-scelta.modificata, .stato-scelta.mano { position: static; }
 }

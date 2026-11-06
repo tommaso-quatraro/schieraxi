@@ -41,9 +41,10 @@ def test_schermi_grandi_ingranditi():
 
 
 def test_composizione_a_colonne_su_schermi_larghi():
-    # Formazione su 3 colonne da 1400 px (Oggi resta 5:7 da 900 px, grafica B: tests/test_grafica_b_web.py), foglio come pannello
-    # laterale da 1100 px, gradino di ingrandimento per i 5120 px
-    assert re.search(r"@media \(min-width: 1400px\) \{\s*main \.colonne-campo \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 2fr\)", CSS)
+    # Formazione 5:7 da 900 px (grafica B, spec C6: tests/test_grafica_b_web.py) e campo | elenco 1:2 da 1400 px, dove l'elenco è
+    # abbastanza largo per le righe su una linea (Oggi resta 5:7), foglio come pannello laterale da 1100 px, gradino di
+    # ingrandimento per i 5120 px
+    assert re.search(r"@media \(min-width: 1400px\) \{\s*main \.colonne-campo \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 2fr\); --quota-campo: calc\(1 / 3\);", CSS)
     assert not re.search(r"@media \(min-width: 1400px\) \{[^@]*main \.colonne-oggi[^{]*\{ grid-template-columns", CSS)
     assert "columns: 2" in CSS and "animation-name: sale-lato" in CSS
     assert "@media (min-width: 4400px) { :root { --z: 1.75; } }" in CSS

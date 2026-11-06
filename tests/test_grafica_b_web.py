@@ -748,8 +748,12 @@ def test_formazione_titolari_panchina_e_fuori_in_una_colonna_sul_pc():
 def test_il_campo_che_scorre_con_la_pagina_tiene_dentro_le_sue_linee():
     """Tra 768 e 1399 px, con il campo più alto della finestra, `controllaFerme` lo fa scorrere con la pagina (`.non-ferma`,
     position: static): area, cerchio e metà campo, che stanno in posizione assoluta, si misuravano sulla pagina e attraversavano
-    la colonna accanto (si vedeva nel tema scuro, foto della PR 6 a 1024 px). Il campo resta il loro riferimento."""
-    assert re.search(r"\n\.campo\.non-ferma \{ position: relative !important; \}", CSS)
+    la colonna accanto (si vedeva nel tema scuro, foto della PR 6 a 1024 px). Il campo resta il loro riferimento. Dalla PR 8 a essere
+    fermo (o a scorrere) è il blocco che contiene il campo: il campo è sempre `relative` e nessuna regola cambia la sua posizione."""
+    assert "position: relative" in _corpo(".campo")
+    for s, corpo in _regole_per(["campo"]):
+        if s != ".campo":
+            assert not _proprieta(corpo, "position"), s
 
 
 def test_azione_della_riga_scritta_senza_cerchio():
@@ -934,3 +938,275 @@ def test_novita_di_oggi():
     for riga in voce.get("tecnico", []):                         # dopo il rilascio in novita.json può non esserci
         for scritto in re.findall(r"(\d+)cqi", riga):
             assert scritto == k, (scritto, k)                    # la nota tecnica dice il numero vero del CSS
+
+
+# ---------------------------------------------------------------- PR 8: Formazione
+def _contrasto(a, b):
+    from tests.test_design_web import _contrasto as contrasto
+    return contrasto(a, b)
+
+
+def test_pedina_con_il_numero_nel_disco_e_la_lineetta_del_club():
+    """Spec §8.10 e scelta 2 dell'utente: sul campo della web la pedina è un disco bianco con il fantavoto atteso (il numero è la
+    pedina), niente volto; l'avversario con la lineetta del colore sociale e la sigla. La frase per i lettori non cambia."""
+    corpo = _funzione(APP, "pedina")
+    assert 'class="disco"' in corpo and "lineetta(x.avversario)" in corpo and "distintivo(" not in corpo
+    assert 'class="solo-lettori"' in corpo and "vocePedina(x, esito)" in corpo
+    assert "avatar(" not in corpo and "avatar-pedina" not in CSS
+
+
+def test_la_legenda_non_copre_il_campo():
+    corpo = _funzione(APP, "mostraFormazione")
+    assert "${legendaCampo()}" in corpo and '<div class="campo">${legendaCampo()}' not in corpo   # oggi sta dentro il campo
+    assert not re.search(r"\.legenda-campo \{[^}]*order: 1", CSS)
+    assert "distintivo(" not in _funzione(APP, "legendaCampo")             # anche la spiegazione usa la lineetta
+
+
+def test_campo_ed_elenco_affiancati_e_salva_sempre_in_vista():
+    assert re.search(r"@media \(min-width: 900px\) \{[^@]*\.colonne-campo[^{]*\{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\)", CSS)
+    assert re.search(r"\.stato-scelta\.modificata, \.stato-scelta\.mano \{[^}]*position: sticky; top: var\(--alto-ferma\)", CSS)
+    assert re.search(r"html:has\(\.stato-scelta\.modificata\)", CSS)       # il focus non finisce sotto la riga ferma
+
+
+def test_testo_sul_campo_leggibile():
+    """Nomi, «gioca N%» e «vs LAG» sono bianchi sul campo: almeno 4,5:1 nei due temi (prende il posto del controllo sui colori
+    sociali della sigla: la lineetta è decorativa e la sigla è scritta in bianco)."""
+    from tests.test_design_web import _temi
+    campi = {v["--campo"] for v in _temi().values()}
+    assert campi == {"#187a41", "#146b3a"}, campi
+    for campo in ("#187a41", "#146b3a"):
+        assert _contrasto("#ffffff", campo) >= 4.5                         # nomi, «gioca N%», «vs LAG»
+    assert _contrasto("#10201a", "#ffffff") >= 4.5                         # il numero scuro sul disco bianco
+
+
+def test_campo_piatto_raggio_12_e_disco_da_44_px():
+    """Spec §8.10 e §11: fondo del campo pieno (niente bagliore né strisce), raggio 12, linee bianche al 40%; disco bianco da 44 px con
+    il fantavoto in Archivo scuro; sotto il 70% un anello arancio fermo di 3 px (la pulsazione non c'è più); nessuna ombra."""
+    campo = _corpo(".campo")
+    assert "background: var(--campo);" in campo and "gradient" not in campo and "border-radius: var(--r-card)" in campo
+    assert "--campo-bagliore" not in CSS and "--campo-righe: rgba(255, 255, 255, .4)" in CSS
+    disco = _corpo(".disco")
+    assert all(x in disco for x in ("width: 44px", "height: 44px", "border-radius: 50%", "background: #fff", "color: #10201a",
+                                    "font-family: var(--font-numeri)"))
+    assert "shadow" not in disco and "shadow" not in _corpo(".pedina")
+    assert re.search(r"\.pedina:has\(> \.gioca\.basso\) \.disco \{[^}]*border: 3px solid", CSS)
+    assert "respira" not in CSS and ".pedina .maglia" not in CSS
+
+
+def test_cosa_vuol_dire_e_un_collegamento_sotto_il_campo():
+    """Spec §8.10: la legenda non sta più sopra il campo; «Cosa vuol dire» è un collegamento (testo nel colore delle azioni) sotto il
+    campo che apre la spiegazione lì sotto. Gli esempi della spiegazione sono disegnati come sul campo (sul verde)."""
+    corpo = _funzione(APP, "mostraFormazione")
+    assert corpo.index('<div class="campo">') < corpo.index("${legendaCampo()}")
+    legenda = _funzione(APP, "legendaCampo")
+    assert 'class="info-campo azione-testo"' in legenda and "ⓘ" not in legenda
+    assert '<span class="disco">${num(6.8)}</span>' in legenda and 'lineetta("napoli")' in legenda
+    assert "position: absolute" not in _corpo(".info-campo")
+    assert "background: var(--campo)" in _corpo(".leg-esempio")
+
+
+def test_il_campo_resta_fermo_accanto_all_elenco_e_non_copre_niente():
+    """Issue #382: a 1440 px il campo copriva le prime righe delle spiegazioni sotto di lui. Causa: da 1400 px il campo passava da
+    `sticky` a `relative` e teneva il suo `top` (72 px): scendeva di 72 px sopra le righe sotto. Lo stesso con `.campo.non-ferma`.
+    Ora il campo non si sposta mai: è fermo il blocco che lo contiene (campo, «Cosa vuol dire» e spiegazioni), nella colonna di
+    sinistra, e quando non ci sta nello schermo scorre con la pagina (`non-ferma`, position: static, che ignora il `top`)."""
+    for s, corpo in _regole_per(["campo"]):
+        assert not _proprieta(corpo, "top"), s
+        assert not any(v == "sticky" for _, v in _proprieta(corpo, "position")), s
+    assert ".campo.non-ferma" not in CSS
+    ferme = re.search(r'const FERME = "([^"]+)"', APP).group(1)
+    assert ".colonne-campo .campo-fermo" in ferme
+    larga = re.search(r"@media \(min-width: 768px\) \{\n  \.colonne \{(.*?)\n\}", CSS, re.S).group(1)
+    assert re.search(r"\.colonne-campo \.zona-campo \{[^}]*position: absolute; top: 0; bottom: 0; left: 0;", larga)
+    assert re.search(r"\.colonne-campo \.campo-fermo \{[^}]*position: sticky; top: calc\(var\(--alto-ferma\) \+ 16px\)", larga)
+    corpo = _funzione(APP, "mostraFormazione")
+    assert '<div class="zona-campo"><div class="campo-fermo">' in corpo
+    # al telefono il campo viene dopo Modulo, Stile e i pulsanti e prima dei Titolari (spec §9); sul PC sta nella colonna di sinistra
+    posti = [corpo.index(x) for x in ('id="punti-attesi"', "rigaStatoScelta(", 't("formazione.modulo")', 't("formazione.stile")',
+                                      'class="zona-campo"', 't("formazione.titolari")', 't("scambi.panchina")')]
+    assert posti == sorted(posti)
+
+
+def test_il_blocco_del_campo_e_largo_quanto_la_prima_colonna_della_griglia():
+    """Il blocco del campo esce dal flusso della colonna (position: absolute) e la sua larghezza si calcola con `--quota-campo`: deve
+    essere la stessa frazione della prima colonna della griglia a ogni soglia (1:1 da 768 px, 5:7 da 900, 1:2 da 1400), se no il campo
+    finisce sotto l'elenco o lascia un buco tra le due colonne."""
+    trovati = {}
+    for larghezza, blocco in re.findall(r"@media \(min-width: (\d+)px\) \{\n(.*?)\n\}", CSS, re.S):
+        f = re.search(r"\.colonne-campo[^{]*\{[^}]*grid-template-columns: minmax\(0, (\d+)fr\) minmax\(0, (\d+)fr\)", blocco)
+        q = re.search(r"\.colonne-campo \{[^}]*--quota-campo: ([^;]+);", blocco)
+        if f or q:
+            assert f and q, larghezza
+            trovati[int(larghezza)] = (int(f.group(1)), int(f.group(2)), q.group(1))
+    assert set(trovati) == {768, 900, 1400}, trovati
+    for larghezza, (a, b, quota) in trovati.items():
+        frazione = re.fullmatch(r"calc\((\d+) / (\d+)\)", quota)
+        valore = int(frazione.group(1)) / int(frazione.group(2)) if frazione else float(quota)
+        assert abs(valore - a / (a + b)) < 1e-9, (larghezza, quota, a, b)
+    assert "width: calc((100% - var(--spazio-colonne)) * var(--quota-campo))" in CSS
+    assert re.search(r"\.colonne \{ --spazio-colonne: 20px; [^}]*gap: 0 var\(--spazio-colonne\)", CSS)
+
+
+def test_la_striscia_di_moduli_e_stili_porta_in_vista_la_voce_scelta_anche_accanto_al_campo():
+    """Foto della PR 8 a 768 px: la voce scelta (4-4-2) era fuori dalla striscia e «Equilibrata» tagliata a metà. `striscia()` centra
+    la voce con `offsetLeft`, che si misura dall'antenato posizionato più vicino: prima era la carta della testa, poi la griglia del
+    campo (`position: relative`), e l'offset contava anche la colonna del campo, quindi la striscia scorreva fino in fondo. Ora la
+    striscia è il riferimento delle sue voci, come il controllo segmentato del Mercato."""
+    assert "att.offsetLeft" in _funzione(APP, "striscia")
+    assert "position: relative" in _corpo(".chips.scorri")
+    assert "position: relative" in _corpo(".segmenti")
+
+
+def test_la_maniglia_dei_pannelli_dal_basso_non_copre_il_testo():
+    """Issue #382: nei pannelli che salgono dal basso (scheda, confronto, diario) la maniglia resta ferma in alto mentre il testo
+    scorre, ma era trasparente: il testo le passava sotto e la barretta stava sopra le scritte. Ora ha il fondo del pannello: il
+    testo scorre sotto una striscia piena, e la maniglia si può sempre prendere per chiudere."""
+    maniglia = _corpo(".maniglia")
+    assert "position: sticky; top: 0;" in maniglia and "background: var(--sfondo)" in maniglia
+    corpo = _corpo(".foglio-corpo")
+    assert "background: var(--sfondo)" in corpo
+    # la maniglia ferma si attacca sotto il riempimento alto del pannello: con 8 px di riempimento una striscia di testo passava sopra
+    # di lei (foto del confronto a 390 px, tema scuro). Il pannello non ha riempimento in alto: lo spazio sta dentro la maniglia
+    assert re.search(r"(?<![\w-])padding: 0 16px calc\(28px", corpo), corpo
+    assert "padding: 14px 0 14px" in maniglia
+
+
+def test_stato_della_scelta_fuori_dalla_testa_cosi_resta_in_vista():
+    """La riga dello stato con «Salva» resta ferma in alto mentre si scorrono i titolari: per questo è figlia diretta della colonna
+    (alta quanto l'elenco), non di un blocco corto che la porterebbe via con sé."""
+    corpo = _funzione(APP, "mostraFormazione")
+    assert 'class="carta hero"' not in corpo
+    assert re.search(r"\.stato-scelta\.modificata, \.stato-scelta\.mano \{[^}]*z-index: \d;[^}]*background: var\(--sfondo\)", CSS)
+
+
+def _blocco_css(apertura):
+    """Il contenuto di un blocco @media / @container di stile.css, dalla graffa che lo apre a quella che lo chiude."""
+    i = SENZA_COMMENTI.index(apertura) + len(apertura)
+    livello, j = 1, i
+    while livello:
+        livello += {"{": 1, "}": -1}.get(SENZA_COMMENTI[j], 0)
+        j += 1
+    return SENZA_COMMENTI[i:j - 1]
+
+
+def test_la_riga_dello_stato_resta_ferma_solo_se_e_bassa():
+    """Revisione della #420 (piano, «Attenzione in revisione» 2): con lo zoom al 200% o il telefono in orizzontale la riga con «Salva»,
+    dopo una sostituzione alta 220-300 px, restava ferma su mezza finestra, e lo spazio per il focus era fisso (176 px), più basso di
+    lei: il titolare con il focus le finiva sotto (WCAG 2.2, 2.4.11). Nella pagina strettissima non è ferma; oltre un terzo della
+    finestra scorre con la pagina (controllaStatoScelta in app.js); la sua altezza vera va in --alto-stato per scroll-padding-top."""
+    stretta = _blocco_css("@container pagina (max-width: 319.98px) {")
+    assert ".stato-scelta.modificata, .stato-scelta.mano { position: static; }" in stretta
+    assert "176px" not in CSS
+    assert re.search(r"html:has\(\.stato-scelta\.modificata\), html:has\(\.stato-scelta\.mano\) \{ scroll-padding-top: "
+                     r"calc\(var\(--alto-testata, 0px\) \+ var\(--alto-stato, 0px\) \+ 8px\); \}", CSS)
+    segui = APP[APP.index("(function seguiFerme()"):]
+    assert "controllaStatoScelta();" in segui[:segui.index("})();")]
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_la_riga_dello_stato_oltre_un_terzo_della_finestra_scorre_con_la_pagina():
+    i = APP.index("const QUOTA_STATO")
+    funzione = APP[i:APP.index("\n}\n", APP.index("function controllaStatoScelta(")) + 3]
+    codice = "\n".join([
+        """let innerHeight = 900; const variabili = {}; let attuale = null;
+function riga(alto, posizione = "sticky") {
+  const r = { alto, posizione, classi: new Set(), tocchi: 0, get offsetHeight() { return this.alto; }, getBoundingClientRect() { return { height: this.alto }; } };
+  r.classList = { contains: c => r.classi.has(c), toggle: (c, si) => { r.tocchi++; if (si) r.classi.add(c); else r.classi.delete(c); } };
+  return r;
+}
+const document = { querySelector: () => attuale, documentElement: { style: { setProperty: (k, v) => { variabili[k] = v; } } } };
+const getComputedStyle = el => ({ position: el.classi.has("non-ferma") ? "static" : el.posizione });""",
+        funzione,
+        """const esiti = [], passo = () => { controllaStatoScelta(); esiti.push([attuale ? attuale.classi.has("non-ferma") : null, variabili["--alto-stato"]]); };
+attuale = riga(120); passo();                         // bassa: ferma, il focus le sta sotto
+attuale.alto = 320; passo();                          // più di un terzo di 900: scorre con la pagina, niente spazio in più
+const tocchi = attuale.tocchi; passo(); esiti.push(attuale.tocchi - tocchi);       // rifatto senza cambiamenti: la classe non si tocca
+innerHeight = 1200; passo();                          // finestra più alta: torna ferma
+attuale = riga(120, "static"); passo();               // pagina strettissima: non è ferma
+attuale = null; passo();                              // niente da salvare: nessuna riga ferma
+console.log(JSON.stringify(esiti));""",
+    ])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout.strip().splitlines()[-1]) == [
+        [False, "120px"], [True, "0px"], [True, "0px"], 0, [False, "320px"], [False, "0px"], [None, "0px"]]
+
+
+def test_descrizione_dello_stile_in_una_riga_con_come_si_legge():
+    """Spec §1 (un paragrafo di 4 righe prima del campo) e §9: sotto Stile una riga di nota; la descrizione lunga si apre con «Come si
+    legge». Dopo «Modifica a mano» la riga dice come tornare alla consigliata, senza niente da aprire."""
+    corpo = _funzione(APP, "mostraFormazione")
+    nota = corpo[corpo.index('id="descrizione-stile"'):corpo.index('<div class="pulsanti')]
+    assert '<details class="come">' in nota and 't("mercato.come_legge")' in nota and "descrizioneStile(l)" in nota
+    assert 't("formazione.modificata_mano")' in nota
+
+
+def test_cifre_della_formazione_affiancate_con_il_filo():
+    corpo = _funzione(APP, "mostraFormazione")
+    assert 'class="cifre-oggi cifre-formazione"' in corpo and 'style="text-align:right"' not in corpo
+
+
+def test_ctrl_s_salva_nella_formazione_solo_se_c_e_da_salvare():
+    i = APP.index('document.addEventListener("keydown"')
+    tasti = APP[i:APP.index("\n});\n", i)]
+    assert '(ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s"' in tasti
+    assert 'stato.vista === "formazione"' in tasti and "#salva-scelta" in tasti and "#salva-questa" in tasti
+    assert tasti.index('ev.key.toLowerCase() === "s"') < tasti.index("if (ev.metaKey || ev.ctrlKey || ev.altKey) return;")
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_ctrl_s_preme_il_salva_che_si_vede_e_altrimenti_lascia_fare_al_browser():
+    """Spec C3: Ctrl+S (⌘+S sul Mac) nella Formazione preme «Salva questa» o «Salva le modifiche»; senza niente da salvare, in
+    un'altra schermata o con un pannello aperto il tasto fa quello che fa di solito il browser (niente preventDefault).
+    Revisione della #420: con i tasti tenuti premuti le ripetizioni non salvano di nuovo e non aprono «Salva pagina con nome»
+    (dopo il primo salvataggio il pulsante non c'è più); con una tastiera non latina (russo: «ы») vale il tasto fisico S."""
+    i = APP.index('document.addEventListener("keydown"')
+    codice = "\n".join([
+        """let premuto = null; const pulsanti = {};
+const $ = s => s === "#foglio" ? { hidden: !globalThis.aperto } : pulsanti[s] || null;
+const pulsante = id => ({ disabled: false, getClientRects: () => [1], click() { premuto = id; } });
+const stato = { vista: "formazione" }; const chiudiFoglio = () => {}; const VISTE = []; const vai = () => {}; const apriRicerca = () => {};
+const document = { addEventListener: (tipo, f) => { globalThis.premi = f; } };""",
+        APP[i:APP.index("\n});\n", i) + 4],
+        """const prova = (tasto, opz = {}) => { premuto = null; let fermato = false;
+  premi({ key: tasto, code: opz.code || "Key" + tasto.toUpperCase(), repeat: !!opz.ripetuto, ctrlKey: !!opz.ctrl, metaKey: !!opz.meta,
+          altKey: false, shiftKey: false, target: { tagName: "BODY" }, preventDefault() { fermato = true; } }); return [premuto, fermato]; };
+const esiti = [];
+pulsanti["#salva-questa"] = pulsante("salva-questa"); esiti.push(prova("s", { ctrl: true }));
+delete pulsanti["#salva-questa"]; pulsanti["#salva-scelta"] = pulsante("salva-scelta"); esiti.push(prova("S", { meta: true }));
+delete pulsanti["#salva-scelta"]; esiti.push(prova("s", { ctrl: true }));
+pulsanti["#salva-scelta"] = pulsante("salva-scelta"); stato.vista = "oggi"; esiti.push(prova("s", { ctrl: true }));
+stato.vista = "formazione"; globalThis.aperto = true; esiti.push(prova("s", { ctrl: true }));
+globalThis.aperto = false; esiti.push(prova("s"));
+esiti.push(prova("ы", { ctrl: true, code: "KeyS" }));                     // tastiera russa: il tasto fisico S
+esiti.push(prova("s", { ctrl: true, ripetuto: true }));                   // tenuto premuto: niente secondo salvataggio
+delete pulsanti["#salva-scelta"]; esiti.push(prova("s", { ctrl: true, ripetuto: true }));   // salvato, pulsante sparito: niente «Salva pagina con nome»
+console.log(JSON.stringify(esiti));""",
+    ])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout.strip().splitlines()[-1]) == [
+        ["salva-questa", True], ["salva-scelta", True], [None, False], [None, False], [None, False], [None, False],
+        ["salva-scelta", True], [None, True], [None, True]]
+
+
+def test_differenza_ammessa_della_pedina_scritta():
+    doc = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
+    ammesse = doc[doc.index("## Differenze ammesse"):doc.index("## Differenze di oggi")]
+    riga = next((r for r in ammesse.splitlines() if r.startswith("- **Pedina sul campo")), "")
+    assert "numero nel disco" in riga and "volto" in riga and "contenuto" in riga, riga
+    stile = (RADICE / "docs" / "STILE-SENZA-AI.md").read_text(encoding="utf-8")
+    resta = stile[stile.index("## Cosa resta"):stile.index("## Principi")]
+    assert "sul campo il numero" in resta and "negli elenchi e nella scheda" in resta, resta
+
+
+def test_guida_ctrl_s_e_campo_della_formazione():
+    guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
+    assert "**Ctrl+S** (⌘+S sul Mac) salva la formazione quando c'è qualcosa da salvare" in guida
+    formazione = guida[guida.index("### Formazione"):]
+    assert "ⓘ" not in formazione and "pillola scura" not in formazione and "Cosa vuol dire" in formazione
+
+
+def test_novita_della_formazione():
+    voce = _voce_di_novita("formazione-b.json", "Formazione più comoda")
+    assert len(voce["voci"]) >= 3 and all("PC" not in v for v in voce["voci"])

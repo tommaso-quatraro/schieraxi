@@ -83,7 +83,7 @@ def test_numeri_negativi_del_confronto_con_il_meno_vero():
 
 
 # ---------------------------------------------------------------- #284: partita rinviata
-STUB_PEDINA = ("const avatar = () => ''; const attrPerche = () => ''; const distintivo = s => s;"
+STUB_PEDINA = ("const attrPerche = () => ''; const lineetta = () => ''; const sigla = s => s;"
                "const cognome = x => x.nome; const nomeClub = s => s; const perc = x => `${Math.round((x || 0) * 100)}%`;")
 PEDINA = "\n".join([re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0),
                     _pezzo("const STATO_PARTITA =", "// Il tocco sul fantavoto atteso"),

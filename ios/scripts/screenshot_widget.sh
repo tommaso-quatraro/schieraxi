@@ -7,6 +7,8 @@ USCITA="${2:-screenshot-widget}"
 ID_APP="it.schieraxi.app.anteprima"
 ERRORI=0
 mkdir -p "$USCITA"
+# Avvisi di sistema («Ready for Apple Intelligence»): si aspetta che compaiano e spariscano PRIMA delle foto (#393).
+source "$(dirname "$0")/avvisi.sh"
 
 scegli() { python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"; }
 
@@ -48,12 +50,14 @@ avvia() {
   local udid="$1"
   xcrun simctl boot "$udid" 2>/dev/null
   xcrun simctl bootstatus "$udid" -b >/dev/null
+  avvisi_avvia "$udid"
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
   xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
   xcrun simctl install "$udid" "$APP"
   xcrun simctl launch "$udid" "$ID_APP" -GALLERIA cruscotto >/dev/null
   sleep 8
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
+  avvisi_attendi "$udid"
 }
 
 TUTTI=(cruscotto cruscotto-blocco live live-blocco osservato osservato-blocco formazione formazione-blocco punti punti-blocco scambio scambio-blocco oggi dubbi rosa crediti crediti-blocco stato-blocco)
@@ -70,6 +74,7 @@ giro "$UDID_IPHONE" iphone_fasi_chiaro light 600 oggi:in_corso oggi:finita
 giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto punti:vuoto formazione-blocco:vuoto punti-blocco:vuoto oggi:vuoto
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione punti oggi crediti dubbi formazione-blocco punti-blocco
 giro "$UDID_IPHONE" iphone_accentato dark 600 cruscotto:pieni+accentato formazione:pieni+accentato oggi:pieni+accentato osservato:pieni+accentato cruscotto-blocco:pieni+vivido
+avvisi_ferma
 xcrun simctl shutdown "$UDID_IPHONE" >/dev/null 2>&1
 
 IFS=$'\t' read -r UDID_IPAD NOME_IPAD IOS_IPAD <<< "$(scegli ipad)"
@@ -89,7 +94,9 @@ osascript -e 'tell application "System Events" to key code 123 using command dow
 sleep 3
 giro "$UDID_IPAD" ipad_scuro_orizzontale dark 800 cruscotto formazione punti
 for f in "$USCITA"/ipad_scuro_orizzontale_*.png; do sips -r 270 "$f" >/dev/null 2>&1; done
+avvisi_ferma
 xcrun simctl shutdown "$UDID_IPAD" >/dev/null 2>&1
 
 echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi: $ERRORI"
+avvisi_riepilogo
 [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]

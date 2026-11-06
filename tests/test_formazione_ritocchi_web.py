@@ -53,13 +53,14 @@ def test_stato_della_scelta_dal_confronto_con_il_server():
 
 def test_rilettura_fallita_e_cambio_giornata_non_falsano_lo_stato():
     """Revisione della PR: rete assente nella rilettura = stato ignoto (nessuna riga, si riprova); la scelta riletta dopo «Salva»
-    non finisce su un'altra giornata; la legenda viene prima delle pedine nel DOM (lettori di schermo) e sta in alto con `order`."""
+    non finisce su un'altra giornata. La legenda (grafica B, spec §8.10) sta subito dopo il campo, fuori dal campo: non copre più
+    le pedine e i lettori di schermo la trovano dopo di loro, dove si vede."""
     corpo = APP[APP.index("const valutaManuale"):APP.index("const annullaRichieste")]
     assert "else if (silenzioso) { if (sc.chiave === chiaveSc) { sc.salvata = undefined; sc.letta = false; }" in corpo
     assert "const ancoraQui = () => n === sc.richiesta && sc.chiave === chiaveSc" in corpo
     assert corpo.index("if (!ancoraQui()) return false;                     // nel frattempo") < corpo.index("sc.salvata = riletta;")
-    assert '<div class="campo">${legendaCampo()}<i class="area-alta">' in APP
-    assert re.search(r"^\.legenda-campo \{ order: 1;", CSS, re.M)
+    assert re.search(r'<div class="campo"><i class="area-alta">.*?\.join\(""\)\}\s*</div>\s*\$\{legendaCampo\(\)\}', APP, re.S)
+    assert "order:" not in re.search(r"^\.legenda-campo \{([^}]*)\}", CSS, re.M).group(1)
 
 
 def test_scelta_non_valida_non_si_cancella_da_sola():
@@ -78,14 +79,15 @@ def test_pedina_per_i_lettori_di_schermo():
             "'formazione.voce_casa':'in casa contro {avv}','formazione.voce_fuori':'in trasferta contro {avv}'};"
             r"const t=(k,v)=>T[k].replace(/\{(\w+)\}/g,(m,x)=>v[x]);")
     prova = ("console.log(JSON.stringify([vocePedina({nome:'Rossi',fv_atteso:6.8,p_voto:.85,avversario:'napoli',in_casa:true}),"
-             "vocePedina({nome:'Bianchi',fv_atteso:6,p_voto:.45,avversario:'juventus',in_casa:false}), distintivo('napoli')]))")
-    casa, fuori, dist = _node(base + funz + prova)
+             "vocePedina({nome:'Bianchi',fv_atteso:6,p_voto:.45,avversario:'juventus',in_casa:false})]))")
+    casa, fuori = _node(base + funz + prova)
     assert casa == "Rossi, fantavoto atteso 6,8, gioca all'85 per cento, in casa contro il Napoli"
     assert fuori == "Bianchi, fantavoto atteso 6, gioca al 45 per cento, in trasferta contro la Juventus"
-    assert 'class="dist"' in dist and "--c1:#3d8fd1" in dist and ">NAP<" in dist          # sigla nei colori sociali, niente stemmi
     pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    # sigla scritta, con la lineetta nel colore sociale davanti (grafica B, spec §8.10): niente stemmi né riquadri colorati
+    assert "${lineetta(x.avversario)}${sigla(x.avversario)}" in pedina and "distintivo(" not in pedina
     assert '${x.in_casa ? "vs" : "@"}' in pedina and "⚠ " in pedina and "dubbio" not in pedina      # niente pulsazione né anello del ruolo
-    assert ".avatar-pedina.P" not in CSS and ".avatar-pedina.dubbio" not in CSS
+    assert ".disco.P" not in CSS and ".disco.dubbio" not in CSS and "respira" not in CSS
     assert 'memScrivi("legenda-campo", "1")' in APP and TESTI.count('"formazione.legenda_ok"') == 2
 
 
@@ -129,7 +131,11 @@ def test_etichette_mai_piu_larghe_della_riga_e_colonne_pari_su_ipad_verticale():
     regola = re.search(r"^\.etichetta \{([^}]*)\}", CSS, re.M).group(1)
     # dal 3/11 (issue #230) l'etichetta che non ci sta va a capo dentro la sua pillola invece di finire con i puntini
     assert "max-width: 100%" in regola and "nowrap" not in regola and "ellipsis" not in regola
-    assert "@media (max-width: 1023px) { .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }" in CSS
+    # iPad verticale (768-899 px): campo e titolari in due colonne pari, la colonna dei titolari non resta stretta (etichette a capo);
+    # da 900 px 5:7 (grafica B, spec C6), dove la colonna dei titolari è più larga di quella del campo
+    larga = re.search(r"@media \(min-width: 768px\) \{\n  \.colonne \{(.*?)\n\}", CSS, re.S).group(1)
+    assert ".colonne-campo { --quota-campo: .5; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in larga
+    assert "1.35fr" not in CSS and "max-width: 1023px" not in CSS
 
 
 def test_controlla_dei_dati_vecchi_apre_stato_dei_dati():

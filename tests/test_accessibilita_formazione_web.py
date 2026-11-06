@@ -59,33 +59,23 @@ def _node(codice):
     return json.loads(r.stdout)
 
 
-def _luminanza(rgb):
-    c = [x / 255 for x in rgb]
-    c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
-    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
-
-
 @pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_sigla_della_squadra_leggibile_su_ogni_colore_sociale_come_su_iphone():
-    """La sigla nei colori sociali (legenda del campo, pedine): bianco o nero, quello con il contrasto più alto, come
-    `LetturaPedina.testoScuro` dell'iPhone. Prima la web sceglieva con la luminosità sopra 0,35: Napoli 3,47:1, Sassuolo 4,38:1."""
-    funz = APP[APP.index("const nomeClub"):APP.index("// Per i lettori di schermo")]
+def test_sigla_della_squadra_sul_campo_scritta_in_bianco_con_la_lineetta():
+    """Prima la sigla stava su un riquadro nei colori sociali (legenda del campo, pedine) e il suo colore doveva bastare a ogni club
+    (#244: Napoli 3,47:1). Grafica B (spec §8.10): la sigla è scritta in bianco sul campo, come il cognome (il contrasto lo controlla
+    `test_testo_sul_campo_leggibile` di test_grafica_b_web.py), e il colore del club sta solo nella lineetta davanti, decorativa e
+    nascosta ai lettori. Qui: pedina e legenda la disegnano così per ogni club, anche uno che non conosciamo."""
+    funz = APP[APP.index("function luminosita("):APP.index("// Per i lettori di schermo")]
     tabella = APP[APP.index("const COLORI_SQUADRA = {"):APP.index("// Avatar: volto illustrato")]
-    codice = ("const SIGLE={}; const sigla=s=>String(s).slice(0,3).toUpperCase();" + tabella + funz
-              + "console.log(JSON.stringify([...Object.keys(COLORI_SQUADRA), 'sconosciuta'].map(s => [s, distintivo(s)])))")
-    sotto, diversi = [], []
+    lineetta = APP[APP.index("const FONDI_LINEETTA"):APP.index("// I nomi delle colonne sopra un elenco")]
+    codice = (tabella + funz + lineetta
+              + "console.log(JSON.stringify([...Object.keys(COLORI_SQUADRA), 'sconosciuta'].map(s => [s, lineetta(s)])))")
     for squadra, html in _node(codice):
-        fondo = re.search(r"--c1:(#[0-9a-f]{6})", html).group(1)
-        testo = re.search(r"--ct:(#[0-9a-f]{6})", html).group(1)
-        c = _contrasto_rgb(_colore(testo)[0], _colore(fondo)[0])
-        if c < 4.5:
-            sotto.append(f"{squadra} {testo} su {fondo}: {c:.2f}")
-        l = _luminanza(_colore(fondo)[0])
-        atteso = "#000000" if (l + 0.05) / 0.05 > 1.05 / (l + 0.05) else "#ffffff"       # la regola dell'iPhone
-        if testo != atteso:
-            diversi.append(f"{squadra}: {testo} invece di {atteso}")
-    assert not sotto, sotto
-    assert not diversi, diversi
+        assert 'class="lineetta"' in html and 'aria-hidden="true"' in html and "--ct" not in html, (squadra, html)
+    assert "distintivo(" not in APP and ".dist " not in CSS and ".dist {" not in CSS
+    pedina = APP[APP.index("function pedina("):APP.index("// Legenda del campo")]
+    assert "${lineetta(x.avversario)}${sigla(x.avversario)}" in pedina
+    assert re.search(r"\.pedina \.avv[^{]*\{[^}]*color: #fff", CSS)
 
 
 def test_pedina_nome_accessibile_dal_contenuto_con_il_testo_che_si_vede():
@@ -96,7 +86,7 @@ def test_pedina_nome_accessibile_dal_contenuto_con_il_testo_che_si_vede():
     apertura = re.search(r'<button class="pedina"[^>]*>', pedina).group(0)
     assert "aria-label" not in apertura
     assert '<span class="solo-lettori">${esc(vocePedina(x, esito))}</span>' in pedina      # esito = esitoPedina(x) (#284)
-    for pezzo in ('<span class="avatar-pedina" aria-hidden="true">', '<span class="nome" aria-hidden="true">',
+    for pezzo in ('<span class="disco" aria-hidden="true"', '<span class="nome" aria-hidden="true">',
                   '<span class="gioca esito" aria-hidden="true">', '<span class="gioca${p < SOGLIA_GIOCA ? " basso" : ""}" aria-hidden="true">',
                   '<span class="avv" aria-hidden="true">'):
         assert pezzo in pedina, pezzo

@@ -82,7 +82,7 @@ Se ti invitano in una lega che gioca già da un po':
 
 Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, accanto al nome SchieraXI, con il campo **Cerca un giocatore** sempre aperto: scrivi e si apre la ricerca. Con Ctrl+clic (⌘+clic sul Mac) una scheda si apre in un'altra scheda del browser, per confrontare due schermate.
 
-Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima.
+Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Nella Formazione **Ctrl+S** (⌘+S sul Mac) salva la formazione quando c'è qualcosa da salvare. Il tasto Indietro del browser torna alla schermata di prima.
 
 Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il testo **Molto grande** su un telefono piccolo, le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
 
@@ -111,7 +111,9 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
 
 ### Formazione
 
-- In cima, **lo stato della tua scelta** per la giornata (lo sa il server, quindi resta uguale anche ricaricando o su un altro dispositivo):
+Sul PC e sul tablet il campo sta a sinistra e resta fermo mentre scorri l'elenco a destra (se ci sta nello schermo); al telefono viene dopo Modulo e Stile, prima dei Titolari. In cima ci sono il modulo e i punti attesi, con la fascia «tra 55 e 76».
+
+- Sotto, **lo stato della tua scelta** per la giornata (lo sa il server, quindi resta uguale anche ricaricando o su un altro dispositivo). Quando c'è qualcosa da salvare la riga resta in alto mentre scorri, con il suo pulsante **Salva** sempre in vista; sul PC **Ctrl+S** (⌘+S sul Mac) fa lo stesso:
   - ○ «Stai vedendo la consigliata: non hai salvato una tua formazione.» Con **Salva questa** la tieni come tua scelta;
   - ○ «Stai vedendo un modulo o uno stile diverso dalla consigliata: non l'hai salvato.» Hai toccato un altro modulo o un altro stile: **Salva questa** lo tiene come tua scelta;
   - ✓ «La tua formazione è salvata (oggi alle 21:40)»: è la tua scelta per la giornata;
@@ -121,9 +123,9 @@ I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una fra
   - ■ «Giornata iniziata: la formazione è chiusa»: è passata la scadenza della tua lega. Non ci sono più **Modifica a mano**, **Salva**, **Torna alla consigliata** né i pulsanti di modulo e stile. Se avevi salvato una tua formazione, la riga dice anche quale vale: «· vale quella che hai salvato» (la vedi sul campo) oppure «· vale la consigliata, la tua non è più valida» (sul campo c'è la consigliata, e la usano anche Oggi, il riepilogo e il Diario). Al posto di «gioca 85%» vedi com'è andata: il fantavoto preso, «Voto in arrivo» o «Senza voto».
   **Torna alla consigliata** toglie la tua scelta e rimette modulo e stile consigliati.
   Se hai cambiato la formazione a mano e non l'hai salvata, prima di cambiare sezione o di ricaricare la pagina SchieraXI te lo chiede.
-- **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto).
+- **Modulo** (la stella ★ è il consigliato) e **Stile** (sotto). Sotto Stile una riga dice quale modulo propone lo stile; **Come si legge** apre la sua descrizione.
 - **Consigliata stabile**: la formazione consigliata già mostrata per la giornata cambia solo se la nuova vale almeno 1 punto atteso in più, o se un suo titolare esce dalla rosa, si infortuna, viene squalificato o non gioca più (meno del 20%). Per questo non cambia a ogni ritocco dei dati. Dopo la scadenza resta com'è.
-- **Titolari** sul campo. Sotto ogni volto (con i colori della sua squadra): il fantavoto atteso nella pillola scura (toccalo per vedere **Perché questo numero**), il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori. La prima volta in cima al campo c'è una legenda: **Ho capito** la chiude, **ⓘ Cosa vuol dire** la riapre. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
+- **Titolari** sul campo. Ogni giocatore è un disco bianco con il suo fantavoto atteso (toccalo per vedere **Perché questo numero**); sotto il disco il nome, «gioca 85%» (la probabilità che giochi; sotto il 70% diventa arancio con ⚠ e il disco ha un anello arancio) e l'avversario: «vs NAP» se gioca in casa, «@ NAP» se gioca fuori, con una lineetta nel colore della squadra. Sull'iPhone al posto del disco c'è il volto. La prima volta sotto il campo c'è la spiegazione dei segni: **Ho capito** la chiude, **Cosa vuol dire** la riapre. ⇄ mostra perché SchieraXI ha scelto un giocatore invece di un altro.
 - **Il perché della scelta, sotto il campo**: a volte la consigliata mette titolare un giocatore che ha meno punti attesi di uno lasciato in panchina o fuori, dello stesso ruolo. Sembra un errore, quindi sotto il campo una riga per ognuno di questi titolari dice il motivo, sulla web e sull'iPhone (gli altri titolari non hanno riga: il loro perché lo vedi toccandoli). I motivi possibili:
   - «Titolare al posto di Gallo, che quasi certamente non gioca (8% di giocare).»
   - **Titolare anche se incerto**: un giocatore che gioca poco (per esempio al 35%) titolare e uno quasi sicuro dello stesso ruolo in panchina. Se il primo non gioca entra il secondo, e insieme valgono di più («Titolare anche se incerto (gioca 35%): se non gioca entra Gallo dalla panchina, e insieme valgono di più.»). Vale quando il titolare gioca meno del 50% e la riserva più dell'80%, e lo ripete il **Perché questo numero** di quel giocatore.
