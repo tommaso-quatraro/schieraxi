@@ -66,7 +66,11 @@ def test_righe_dei_giocatori_impilate_e_partite_su_due_righe():
     assert "grid-row: 2" in _regola(b, ".partita .sq.casa")
     assert "flex-wrap: wrap" in _regola(b, ".riga")
     # Oggi a giornata in corso: il fantavoto preso o lo stato («In dubbio · gioca 40%») va sotto il nome, non fuori dalla carta
-    assert "grid-row: 2" in _regola(b, ".avviso-riga > :nth-child(3):not(.pallino-stato)")
+    assert "grid-row: 2" in _regola(b, ".avviso-riga > :nth-child(3)")
+    # Oggi: le cifre della formazione (modulo | punti attesi, con la fascia) una sotto l'altra, il filo sopra invece che in mezzo
+    assert "grid-template-columns: minmax(0, 1fr)" in _regola(b, ".cifre-oggi")
+    seconda = _regola(b, ".cifre-oggi > .cifra + .cifra")
+    assert "border-left: 0" in seconda and "border-top: 1px solid var(--filo)" in seconda
 
 
 def test_formazione_chip_e_campo_vanno_a_capo():
@@ -167,22 +171,28 @@ def test_il_conto_alla_rovescia_non_lascia_l_unita_da_sola():
 
 
 def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
-    """Con il numero attaccato all'unità, «14 giorni» (157 px a 40 px) non va più a capo: accanto alla maglia, che si tiene 132 px a
-    destra, a 320 px restavano 140 px. Sotto i 360 px utili il margine e la maglia si rimpiccioliscono con la pagina, così il conto ha
-    sempre almeno 157 px; sotto i 260 px la maglia (solo decorazione) non si mostra."""
-    b = _blocco("@container pagina (max-width: 359.98px) {")
-    margine = re.search(r"padding-right: clamp\((\d+)px, 100cqi - (\d+)px, (\d+)px\)",
-                        _regola(b, '.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia'))
-    assert margine and "height: clamp(" in _regola(b, ".maglia-hero")
-    minimo, togli, massimo = (int(x) for x in margine.groups())
-    for pagina in range(260, 360):
-        # margini di main (16 px per lato, 8 sotto i 320 px utili) e a sinistra della carta (14 px, densità compatta)
-        carta = pagina - (32 if pagina >= 320 else 16)
-        assert carta - 14 - min(max(minimo, pagina - togli), massimo) >= 157, pagina
+    """Con il numero attaccato all'unità, «14 giorni» non va mai a capo (#286): accanto alla maglia a 320 px non ci stava e veniva
+    tagliato («20 h 22 mi…», #384). Con la grafica B la maglia (72 px, dritta) ha la sua colonna e il numero si misura sulla colonna
+    che resta (`cqi`): grande quanto l'eroe se c'è posto, più piccolo se no, mai tagliato. Qui: per ogni pagina da 160 a 1440 px,
+    con la maglia, «14 giorni» nel carattere più largo sta nella sua colonna. Sotto i 260 px la maglia (solo decorazione) non si
+    mostra e il numero ha tutta la riga."""
+    eroe = lambda pagina: 72 if pagina >= 900 else 56                                     # --t-eroe, 72 px da 900 px
+    k = float(re.search(r"font-size: min\(var\(--t-eroe\), (\d+(?:\.\d+)?)cqi\)", _regola(CSS, ".conto-testo .enorme")).group(1))
+    maglia = int(re.search(r"height: (\d+)px", _regola(CSS, ".maglia-hero")).group(1))
+    spazio = int(re.search(r"column-gap: (\d+)px", _regola(CSS, ".conto-oggi")).group(1))
+    for pagina in range(160, 1441):
+        # margini di main: 8 px per lato sotto i 320 px utili, 16 al telefono, 24 tra 768 e 899 px, 32 da 900 px (largo al massimo 1240)
+        colonna = min(pagina, 1240) - (16 if pagina < 320 else 32 if pagina < 768 else 48 if pagina < 900 else 64)
+        if pagina >= 768:
+            colonna = (colonna - 20) / 2 if pagina < 900 else (colonna - 24) * 5 / 12   # colonna di sinistra di Oggi (1:1, poi 5:7)
+        testo = colonna - (maglia + spazio if pagina >= 260 else 0)
+        carattere = min(eroe(pagina), k * testo / 100)
+        assert carattere * 3.94 <= testo, pagina                                            # «14 giorni» in Segoe UI a 600 (3,94 em)
+        assert carattere >= 20, pagina
     senza = _blocco("@container pagina (max-width: 259.98px) {")
     assert "display: none" in _regola(senza, ".maglia-hero")
-    # senza maglia il testo torna largo quanto la carta (a 256 px «3 h 10 min» andava a capo accanto a un posto vuoto)
-    assert "padding-right: 14px" in _regola(senza, '.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia')
+    assert "grid-template-columns: minmax(0, 1fr)" in _regola(senza, ".conto-oggi.con-maglia")
+    assert "@container pagina (max-width: 359.98px)" not in CSS                            # la regola dei 132 px a destra non serve più
 
 
 def test_cambi_consigliati_in_colonna_sotto_i_320_px_e_nomi_mai_tagliati():
