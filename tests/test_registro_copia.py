@@ -34,6 +34,7 @@ GIORNATE = [
     ("2026-27", 11, None, 0, 0, None, None, None, None, None, None, None, None, None, None, None, None, "servizio fermo"),
 ]
 ORDINE = {"registro_giocatori": "stagione, giornata, calciatore_id", "registro_giornate": "stagione, giornata"}
+SENZA_NOSTRI = {"registro_nostri": 0, "registro_i4": 0}          # tabelle dei numeri nostri: ci sono anche vuote
 
 
 def _inserisci(db, tabella, righe):
@@ -68,8 +69,9 @@ def _conta(percorso, tabella):
 def test_esporta_e_reimporta_il_registro_identico_in_un_archivio_nuovo(tmp_path):
     vecchio, copia, nuovo = tmp_path / "vecchio.sqlite", tmp_path / "registro-giornate.json", tmp_path / "nuovo" / "fanta.sqlite"
     _archivio_con_registro(vecchio)
-    assert registro_copia.esporta(vecchio, copia) == {"registro_giornate": 3, "registro_giocatori": 3}
-    assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (3, 0), "registro_giocatori": (3, 0)}
+    assert registro_copia.esporta(vecchio, copia) == {"registro_giornate": 3, "registro_giocatori": 3, **SENZA_NOSTRI}
+    assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (3, 0), "registro_giocatori": (3, 0),
+                                                    **{t: (0, 0) for t in SENZA_NOSTRI}}
     assert _righe(nuovo, "registro_giocatori") == GIOCATORI
     assert _righe(nuovo, "registro_giornate") == GIORNATE
     assert _conta(nuovo, "voti") == 0                     # il resto dell'archivio non viaggia con il registro
@@ -93,7 +95,7 @@ def test_esporta_a_server_acceso_prende_i_dati_confermati_e_non_quelli_a_meta(tm
         _riempi(servizio)
         servizio.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) "
                          "VALUES ('2026-27', 12, '2026-11-22T14:50:00', 0, 1)")         # non confermata
-        assert registro_copia.esporta(vecchio, copia) == {"registro_giornate": 3, "registro_giocatori": 3}
+        assert registro_copia.esporta(vecchio, copia) == {"registro_giornate": 3, "registro_giocatori": 3, **SENZA_NOSTRI}
     finally:
         servizio.rollback()
         servizio.close()
@@ -110,11 +112,13 @@ def test_importa_non_tocca_le_righe_che_ci_sono_gia_e_si_puo_ripetere(tmp_path):
                    "VALUES ('2026-27', 9, 'GIÀ QUI', 5, 0)")
         db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome) VALUES ('2026-27', 9, 999, 'Altro Finto')")
         db.commit()
-    assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (2, 1), "registro_giocatori": (3, 0)}
+    assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (2, 1), "registro_giocatori": (3, 0),
+                                                    **{t: (0, 0) for t in SENZA_NOSTRI}}
     giornate = _righe(nuovo, "registro_giornate")
     assert giornate[0][:5] == ("2026-27", 9, "GIÀ QUI", 5, 0) and giornate[1:] == GIORNATE[1:]
     assert _conta(nuovo, "voti") == 1
-    assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (0, 3), "registro_giocatori": (0, 3)}
+    assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (0, 3), "registro_giocatori": (0, 3),
+                                                    **{t: (0, 0) for t in SENZA_NOSTRI}}
     assert _conta(nuovo, "registro_giocatori") == 3 and _conta(nuovo, "registro_giornate") == 3
 
 
@@ -206,6 +210,33 @@ def test_comando_da_terminale_con_la_sola_libreria_standard(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "3 giornate" in r.stdout
     assert _righe(nuovo, "registro_giocatori") == GIOCATORI and _righe(nuovo, "registro_giornate") == GIORNATE
+
+
+NOSTRI = [("2026-27", 9, 101, "1", 0.86, 6.9, 6.1, 0.37, 0.12, 0.11, 81.0, 0.1), ("2026-27", 9, 102, "1", 0.3, 5.1, 6.0, 0.0, 0.0, 0.0,
+                                                                                    90.0, None)]
+I4 = [("2026-27", 9, "1", "2026-10-27T09:05:00", 2, 3.25, 3.5, 20, 1301.5, 1300.0, '[[1, 0.0, 0]]', '[[1, 0.0, 0]]', 1, None, 0),
+      ("2026-27", 10, "1", None, 0, None, None, 0, None, None, None, None, 3, "misura non riuscita 3 volte (KeyError)", 1)]
+
+
+def test_copia_notturna_porta_le_tabelle_nuove(tmp_path):
+    """I numeri nostri e le misure I4 (gol attesi nostri) non si ricostruiscono: viaggiano con il registro, identici."""
+    vecchio, copia, nuovo = tmp_path / "vecchio.sqlite", tmp_path / "registro-giornate.json", tmp_path / "nuovo.sqlite"
+    with contextlib.closing(archivio.apri(vecchio)) as db:
+        _riempi(db)
+        db.executemany(f"INSERT INTO registro_nostri VALUES ({', '.join('?' * 12)})", NOSTRI)
+        db.executemany(f"INSERT INTO registro_i4 VALUES ({', '.join('?' * 15)})", I4)
+        db.commit()
+    assert registro_copia.esporta(vecchio, copia) == {"registro_giornate": 3, "registro_giocatori": 3, "registro_nostri": 2,
+                                                      "registro_i4": 2}
+    assert registro_copia.importa(copia, nuovo) == {"registro_giornate": (3, 0), "registro_giocatori": (3, 0),
+                                                    "registro_nostri": (2, 0), "registro_i4": (2, 0)}
+    with contextlib.closing(sqlite3.connect(nuovo)) as db:
+        assert db.execute("SELECT * FROM registro_nostri ORDER BY calciatore_id").fetchall() == NOSTRI
+        assert db.execute("SELECT * FROM registro_i4 ORDER BY giornata").fetchall() == I4
+    r = _comando("esporta", "--archivio", vecchio, copia)
+    assert r.returncode == 0 and "2 righe dei numeri nostri" in r.stdout
+    r = _comando("importa", "--archivio", tmp_path / "terzo.sqlite", copia)
+    assert r.returncode == 0 and "2 righe dei numeri nostri" in r.stdout
 
 
 def test_comando_da_terminale_errore_in_una_riga_senza_traccia(tmp_path):

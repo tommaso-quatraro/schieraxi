@@ -1,5 +1,48 @@
 [
   {
+    "versione": "1.415",
+    "data": "2026-11-06T02:07:26",
+    "titolo": "La giornata della lega e quella di Serie A, insieme",
+    "voci": [
+      "Come su Leghe, ogni giornata dice tutti e due i numeri: «Giornata 8 · 11ª di Serie A». Vale in alto, in Oggi, in Formazione, nel Diario, nella scheda del giocatore, nel confronto, nel testo e nell'immagine da condividere, nelle cose da fare e negli avvisi sul telefono.",
+      "Per le stagioni passate e nel calendario si legge solo la giornata di Serie A: «11ª giornata di Serie A».",
+      "Gli avvisi dei cambi nelle probabili e del riepilogo hanno il titolo più corto: la giornata è scritta all'inizio del testo."
+    ],
+    "tecnico": [
+      "Una sola funzione per lato: nomeGiornata(lega, serieA) in fanta/web/app.js e frasi.nome_giornata(serie_a, lega) sul server (chiavi giornata.lega e giornata.serie_a; per gli avvisi n.giornata.lega e n.giornata.serie_a, anche in inglese).",
+      "Le frasi con la giornata la mettono in testa con i due punti; dafare.diario e dafare.rose_mercato (il promemoria «aggiorna le rose») hanno il parametro giornata (una frase) al posto di n.",
+      "Nessun campo nuovo nelle API: giornata e giornata_lega c'erano già. Formato e frasi esatte in docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme» (#299, parte web e server)."
+    ]
+  },
+  {
+    "versione": "1.414",
+    "data": "2026-11-06T02:00:03",
+    "titolo": "Gol attesi: forza delle squadre e livello del campionato (prova interna)",
+    "voci": [
+      "Nessun cambiamento visibile: la prova interna dei gol attesi fatti solo con i voti di Fantacalcio.it ora segue anche quanti gol si segnano nelle ultime giornate del campionato."
+    ],
+    "tecnico": [
+      "Issue #395, Fase C del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165). modello.Parametri ha due campi nuovi, spenti di default: decadimento_base (C1: forza_squadre calcola il livello recente del campionato, gol a squadra a partita con memoria decadimento_base e peso_stagione_prec_squadre per la stagione prima, diviso per base e limitato tra LIVELLO_MIN 0,8 e LIVELLO_MAX 1,25; Forza.livello moltiplica i gol attesi delle due squadre dopo la stima di attacco e difesa, e da lì arriva ai gol del giocatore, al voto e ai portieri) e medie_ruolo_pesate (C2: le medie del ruolo di gol, assist, xG, xA e minuti usano i pesi dei giocatori). Il Compito C3 (taratura per ruolo) non è servito.",
+      "nostri.parametri accende i due campi e usa nostri.FORZA (decadimento_squadre 0,99, k_squadre 8, decadimento_base 0,85), tarati con prove/tara_forza_gol.py sui gol di squadra del 2025-26 dalla 5ª giornata e controllati sul 2026-27; nostri.VERSIONE = \"3\".",
+      "verifica --pacchetti completo,solo_fantacalcio (archivio di sviluppo, lega d'esempio, 300 simulazioni), solo_fantacalcio 2025-26 · 2026-27, prima → dopo: scarto_gol 0,028 · 0,104 → 0,029 · 0,020; gol_su_veri 0,934 · 0,764 → 0,954 · 0,865; rigori_su_veri 0,656 · 0,765 → 0,671 · 0,849; assist_su_veri 0,917 · 0,862 → 0,937 · 0,977; rmse_vs_completo_pct +0,490 · +0,587 → +0,404 · +0,436; vs_completo 2026-27 −0,004 → −0,082. Con 20 rose sintetiche e 200 simulazioni, vs_completo −0,019 · −0,143 → −0,054 · −0,124.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
+    "versione": "1.413",
+    "data": "2026-11-06T01:59:36",
+    "titolo": "Misura dal vivo dei gol attesi calcolati solo con Fantacalcio.it",
+    "voci": [
+      "Nessun cambiamento visibile: prima di ogni giornata l'app mette da parte anche i numeri calcolati solo con i voti di Fantacalcio.it e, a giornata finita, misura se sono buoni quanto quelli mostrati. I numeri che vedi non cambiano."
+    ],
+    "tecnico": [
+      "Issue #388, Fase D del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (I4 dal vivo, L3b di #165). Nuovo modulo fanta/registro_nostri.py: nel giro del registro delle giornate, ognuno DOPO il passo dei mostrati e in un passo a sé (il modulo si importa dentro il passo: anche se non si carica i mostrati si salvano), salva_se_serve (nostri.previsioni degli stessi giocatori di registro_giocatori, con nostri.VERSIONE ed e_rigori mostrato), segna_perse (nostri non salvati prima della prima partita: riga con il motivo, non conta), chiudi_giornate (dopo la misura dei mostrati: errore del fantavoto, punti sulle stesse 20 rose di I3, gol attesi per fasce con nostri.gol_attesi, nostri e mostrati; una misura in errore non ferma le giornate dopo e, dopo 3 tentativi contati nell'archivio, la giornata diventa persa), avvisa (8 giornate della versione di oggi entro le soglie errore +1%, punti -0,3, scarto 0,03: un avviso per versione) e avvisa_perse (un avviso solo).",
+      "Archivio: tabelle nuove registro_nostri e registro_i4 (CREATE TABLE IF NOT EXISTS: gli archivi con il registro le ricevono senza toccare le tabelle che ci sono). Copia notturna (registro_copia): TABELLE con le due tabelle nuove; le copie di prima si rimettono lo stesso. GET /api/stato-dati: campo nuovo e facoltativo registro_nostri (null se non si legge, con il tipo d'errore nel log).",
+      "Tempo in più, archivio di sviluppo: salvataggio dei nostri 0,12 s e misura 1,7 s, una volta per giornata; un giro senza niente da fare 0,01 s.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
     "versione": "1.412",
     "data": "2026-11-06T01:29:58",
     "titolo": "Gol attesi: rigori e minuti più vicini a quelli veri (prova interna)",

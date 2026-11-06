@@ -495,6 +495,20 @@ function collegaLegenda() {
   info.addEventListener("click", () => { leg.hidden = false; info.hidden = true; info.setAttribute("aria-expanded", "true"); ok.focus(); });
 }
 
+// Il numero della giornata, uguale in ogni schermata: l'UNICO posto della web che lo scrive (docs/COERENZA-WEB-IPHONE.md, «Giornata: le
+// forme»; sul server frasi.nome_giornata). Come su Leghe i due numeri insieme, «Giornata 8 · 11ª di Serie A» (lega, Serie A); senza il
+// numero della lega (stagioni passate, prima che la lega parta, calendario di Serie A) «11ª giornata di Serie A». Solo numeri: si può
+// mettere nell'HTML senza esc(). In una frase va in testa, seguito dai due punti.
+function nomeGiornata(lega, serieA) {
+  const n = Number(lega) || null, a = Number(serieA) || null;
+  if (n && a) return t("frase.giornata.lega", { n, a });
+  if (a) return t("frase.giornata.serie_a", { a });
+  return n ? t("testata.giornata", { n }) : "";
+}
+// «la 8ª» si dice «l'8ª» («dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una vocale, fra 1 e 38
+// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server.
+const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
 // «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo «UDI fuori».
 const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>`;
@@ -649,9 +663,10 @@ async function caricaInfo() {
     stato.info = await api("/api/stato");
     const i = stato.info;
     const quandoAgg = i.ultimo_aggiornamento ? new Date(i.ultimo_aggiornamento) : null;
-    // giornata, nome della mia squadra e data dei dati: la riga di stato sotto il titolo di ogni schermata (pagina())
+    // giornata (della lega e di Serie A, da nomeGiornata), nome della mia squadra e data dei dati: la riga di stato sotto il titolo di
+    // ogni schermata (pagina()); ogni pezzo va a capo intero (stile.css)
     stato.rigaStato = {
-      giornata: i.prossima_giornata ? t("testata.giornata", { n: i.prossima_giornata_lega || i.prossima_giornata }) : null,
+      giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,
       squadra: i.mia_squadra || null,
       dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
     };
@@ -698,8 +713,8 @@ function testoConto(o) {
   const inizio = parseData(o.scadenza || o.inizio);
   if (!inizio) return { grande: "–", piccolo: t("oggi.calendario_no") };
   const min = Math.round((inizio - new Date()) / 60000);
-  const nGiornata = o.giornata_lega || o.giornata;
-  if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { n: nGiornata, quando: quando(o.scadenza || o.inizio) }) };
+  // la giornata è scritta subito sopra il conto (nomeGiornata): la riga sotto non la ripete
+  if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { quando: quando(o.scadenza || o.inizio) }) };
   const g = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
   // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
   const grande = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
@@ -753,7 +768,7 @@ function cardSenzaFormazione(p) {
   const gia = p && (p.con_probabili || !parseData(p.prepara_da) || parseData(p.prepara_da) <= new Date());
   return `<div class="carta riepilogo-giornata" id="oggi-senza-formazione">
     <h2>${t("oggi.gia_iniziata")}</h2><p>${t("oggi.gia_iniziata_testo")}</p>
-    ${p && p.scadenza ? `<p class="prossima-giornata">${t("oggi.prossima_chiude", { n: p.giornata_lega || p.giornata, quando: esc(quando(p.scadenza)) })}
+    ${p && p.scadenza ? `<p class="prossima-giornata">${t("oggi.prossima_chiude", { g: nomeGiornata(p.giornata_lega, p.giornata), quando: esc(quando(p.scadenza)) })}
       ${gia ? t("oggi.prossima_pronta") : t("oggi.prossima_da", { quando: esc(quando(p.prepara_da)) })}</p>` : ""}
     <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.prepara_prossima")}</button></div></div>`;
 }
@@ -763,7 +778,7 @@ function cardRiepilogo(r, p) {
   let html = "";
   if (r) {
     const tua = r.formazione_di === "tua";
-    html += `<h2>${t("oggi.giornata_finita", { n: r.giornata_lega || r.giornata })}</h2>
+    html += `<h2>${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</h2>
       <div class="riga"><div><div class="debole">${t(tua ? "oggi.la_tua_formazione" : "oggi.la_consigliata")}</div><div class="grande">${num(r.punti_fatti)}</div>
         <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
         ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
@@ -775,7 +790,7 @@ function cardRiepilogo(r, p) {
   }
   if (p && p.scadenza) {
     const gia = p.con_probabili || !parseData(p.prepara_da) || parseData(p.prepara_da) <= new Date();
-    html += `<p class="prossima-giornata">${t("oggi.prossima_chiude", { n: p.giornata_lega || p.giornata, quando: esc(quando(p.scadenza)) })}
+    html += `<p class="prossima-giornata">${t("oggi.prossima_chiude", { g: nomeGiornata(p.giornata_lega, p.giornata), quando: esc(quando(p.scadenza)) })}
       ${gia ? t("oggi.prossima_pronta") : t("oggi.prossima_da", { quando: esc(quando(p.prepara_da)) })}</p>`;
   }
   return `<div class="carta riepilogo-giornata" id="oggi-riepilogo">${html}</div>`;
@@ -889,7 +904,7 @@ function mostraOggi(o, opz = {}) {
     ${marchioOggi()}
     <div class="carta hero conto${miaSquadra() && miaSquadra().immagini.maglia ? " con-maglia" : ""}">
       ${miaSquadra() && miaSquadra().immagini.maglia ? `<img class="maglia-hero" src="${urlImg(miaSquadra().nome, "maglia")}" alt="">` : ""}
-      <div class="debole">${t("testata.giornata", { n: o.giornata_lega || o.giornata })}</div>
+      <div class="debole">${nomeGiornata(o.giornata_lega, o.giornata)}</div>
       <div class="enorme" id="conto">${esc(c.grande)}</div>
       <div class="debole" id="conto-sotto">${esc(c.piccolo)}</div>
     </div>
@@ -1038,7 +1053,7 @@ const cognome = x => String(x.nome).replace(/\s+\S{1,3}\.$/u, "");
 function testoFormazione(f, m) {
   const sch = id => f.schede[String(id)];
   const riga = r => `${ruoloSigla(r)}: ${m.titolari.map(sch).filter(x => x.ruolo === r).map(x => x.nome).join(", ")}`;
-  const righe = [`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
+  const righe = [`${nomeGiornata(f.giornata_lega, f.giornata)} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
   if (m.panchina.length) righe.push(t("scambi.panchina") + ": " + m.panchina.map((id, k) => `${k + 1}) ${sch(id).nome}`).join(", "));
   return righe.join("\n");
 }
@@ -1263,12 +1278,12 @@ function mostraFormazione(f, squadra, opz = {}) {
     pagina(`
       ${squadra ? `<div class="attenzione">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
         <button class="bottone secondario" id="torna-mia" style="margin-left:6px;padding:4px 12px;min-height:0">${t("formazione.torna_alla_tua")}</button></div>` : ""}
-      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${t("formazione.per_la_prossima", { n: f.giornata_saltata_lega || f.giornata_saltata, m: (f.giornata_saltata_lega || f.giornata_saltata) + 1 })}</div>` : ""}
+      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${elidiOrdinali(t("formazione.per_la_prossima", { g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata) }))}</div>` : ""}
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
         ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
-        <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
+        <div class="riga"><div><div class="debole">${nomeGiornata(f.giornata_lega, f.giornata)} · <span style="white-space:nowrap">${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</span></div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
         ${manuale && r.differenza !== null ? `<div class="debole" style="margin-top:6px">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
@@ -1513,7 +1528,7 @@ async function tabCalendario(dove, ok) {
     if (!ok()) return;
     dove.innerHTML = `<div class="carta"><h2>${t("mercato.calendario_difficolta")}</h2>
       <div class="debole piccolo">${tp("mercato.cal_spiega", c.giornate.length)}</div>
-      <div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal"><thead><tr><td></td>${c.giornate.map(g => `<th scope="col">G${g}</th>`).join("")}</tr></thead>
+      <div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal"><thead><tr><td></td>${c.giornate.map(g => `<th scope="col"><span aria-hidden="true">G${Number(g)}</span><span class="solo-lettori">${nomeGiornata(null, g)}</span></th>`).join("")}</tr></thead>
       <tbody>${c.squadre.map(s => `<tr class="${mie.has(s.squadra) ? "mia" : ""}"><th scope="row">${sigla(s.squadra)}</th>${c.giornate.map(g => {
         const p = s.partite.find(x => x.giornata === g);
         return p ? `<td><span class="cella d${p.difficolta}">${vsAt(p)}</span></td>` : `<td></td>`;
@@ -1639,7 +1654,7 @@ function formaGiocatore(voti) {
   const ultimi = voti.slice(-5);
   if (!ultimi.length) return null;
   const colore = v => v == null ? "sv" : v >= 7 ? "alto" : v >= 6 ? "medio" : "basso";
-  const pallini = `<div class="pallini">${ultimi.map(v => `<i class="${colore(v.fv)}" title="${t("mercato.g_n", { n: v.giornata })}">${v.fv == null ? t("mercato.sv") : num(v.fv, 1)}</i>`).join("")}</div>`;
+  const pallini = `<div class="pallini">${ultimi.map(v => `<i class="${colore(v.fv)}" title="${nomeGiornata(null, v.giornata)}">${v.fv == null ? t("mercato.sv") : num(v.fv, 1)}</i>`).join("")}</div>`;
   const con = voti.filter(v => v.fv != null);
   if (con.length < 4) return { pallini, freccia: "→", testo: t("mercato.pochi_dati"), classe: "" };
   const media = a => a.reduce((x, v) => x + v.fv, 0) / a.length;
@@ -1661,7 +1676,7 @@ function graficoVoti(voti, giornate) {
   const linea = (chiave, cl) => {
     const punti = voti.filter(v => v[chiave] != null);
     return `<polyline class="${cl}" pathLength="1" fill="none" points="${punti.map(v => `${x(v.giornata).toFixed(1)},${y(v[chiave]).toFixed(1)}`).join(" ")}"/>` +
-      punti.map(v => `<circle class="${cl}" r="3" cx="${x(v.giornata).toFixed(1)}" cy="${y(v[chiave]).toFixed(1)}"><title>G${v.giornata}: ${num(v[chiave])}</title></circle>`).join("");
+      punti.map(v => `<circle class="${cl}" r="3" cx="${x(v.giornata).toFixed(1)}" cy="${y(v[chiave]).toFixed(1)}"><title>${nomeGiornata(null, v.giornata)}: ${num(v[chiave])}</title></circle>`).join("");
   };
   const sv = voti.filter(v => v.voto == null).map(v => `<text class="sv" x="${x(v.giornata).toFixed(1)}" y="${A - m - 8}" text-anchor="middle">${t("mercato.sv")}</text>`).join("");
   const passo = Math.ceil(voti.length / 12);
@@ -1735,7 +1750,7 @@ async function apriGiocatore(id) {
           <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr && !statoInGrande ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
       </div>
       ${pr ? `<div class="carta">
-        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata_lega || pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
+        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { g: nomeGiornata(pr.giornata_lega, pr.giornata), avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
           ${finitaP ? (votoGiornata && votoGiornata.fv != null
             ? `<div class="grande">${num(votoGiornata.fv)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto")}</span></div>`
             : `<div class="grande stato-partita">${etichettaPronta(pr) ? esc(pr.etichetta.testo) : t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
@@ -1855,7 +1870,7 @@ async function apriConfronto(a, b) {
     }).join("");
     const riga = (etichetta, f) => `<div class="debole">${etichetta}</div><div class="numero"><b>${f(x)}</b></div><div class="numero"><b>${f(y)}</b></div>`;
     apriFoglio(`
-      <h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("mercato.chi_schierare", { n: c.giornata_lega ?? c.giornata })}</h2>
+      <h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("mercato.chi_schierare", { g: nomeGiornata(c.giornata_lega, c.giornata) })}</h2>
       <div class="duello">${intest(x)}<span class="vs-duello">VS</span>${intest(y)}</div>
       <div class="carta hero"><div class="debole">${fo ? t("mercato.nella_formazione", { modulo: esc(fo.modulo) }) : t("mercato.il_sistema_sceglie")}</div>
         <div class="grande">${schierato ? t("mercato.schiera", { nome: esc(schierato.nome) }) : esc(vince.nome)}</div>
@@ -2536,7 +2551,7 @@ function cartaRegistro(reg) {
     <div class="debole piccolo" style="margin:4px 0 8px">${n ? tp("sd.reg_media", n) : t("sd.reg_nessuna")}</div>
     ${misure}
     ${perse.length ? `<h3>${t("sd.reg_perse")}</h3><div class="debole piccolo">${t("sd.reg_perse_spiega")}</div>
-      ${perse.map(g => `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: esc(g.giornata) })}</span></div>
+      ${perse.map(g => `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })}</span></div>
         <div class="piccolo" style="color:var(--rosso)">${esc(g.persa)}</div>`).join("")}` : ""}</div>`;
 }
 // Stato dei dati: da dove arriva tutto, quando è stato aggiornato, errori, foto e confronto tra probabilità previste e giocatori che hanno giocato.
@@ -2571,7 +2586,7 @@ async function apriStatoDati() {
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
         <div class="debole piccolo">${t("sd.coppe_spiega", { d: esc(fData(new Date(s.coppe_fino + "T12:00:00"), {})) })}${new Date(s.coppe_fino) < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
-        ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${t("testata.giornata", { n: p.giornata })}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
+        ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${nomeGiornata(null, p.giornata)}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
         ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(nomeControllo(k.nome))}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
           ${k.esito === "ok" ? "" : `<div class="debole piccolo">${esc(k.dettaglio || "")}</div>`}`).join("") : `<div class="debole">${t("scambio.fanno_ogni_aggiornamento")}</div>`}</div>
@@ -2688,8 +2703,12 @@ async function condividiImmagine(f, m) {
   sfondo.addColorStop(0, "#0d2417"); sfondo.addColorStop(1, "#07100b");
   g.fillStyle = sfondo; g.fillRect(0, 0, L, A);
   g.textAlign = "center";
-  g.fillStyle = "#eef6f0"; g.font = "700 64px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, L / 2, 110);
+  // «Giornata 8 · 11ª di Serie A · 3-4-3»: se a 64 px non ci sta nella larghezza, il carattere si rimpicciolisce (fino a 40 px)
+  const titolo = `${nomeGiornata(f.giornata_lega, f.giornata)} · ${m.modulo}`;
+  let corpo = 64;
+  g.fillStyle = "#eef6f0"; g.font = `700 ${corpo}px -apple-system, Helvetica, Arial, sans-serif`;
+  while (corpo > 40 && g.measureText(titolo).width > L - 100) { corpo -= 2; g.font = `700 ${corpo}px -apple-system, Helvetica, Arial, sans-serif`; }
+  g.fillText(titolo, L / 2, 110);
   g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
   g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: num(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
@@ -2730,7 +2749,7 @@ async function condividiImmagine(f, m) {
   if (!blob) { avviso(t("formazione.non_riesco_creare")); return; }
   const file = new File([blob], `formazione-giornata-${f.giornata_lega || f.giornata}.png`, { type: "image/png" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { n: f.giornata_lega || f.giornata }) }); return; }
+    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { g: nomeGiornata(f.giornata_lega, f.giornata) }) }); return; }
     catch (e) { if (e && e.name === "AbortError") return; }
   }
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("nav.formazione")}</h2>
@@ -2747,7 +2766,9 @@ function cartaPrecisione(p) {
   const v = x => (n(x) == null ? "–" : virgola(n(x).toFixed(1)));
   const suDieci = pct => Math.round((n(pct) || 0) / 10);
   const pg = p.per_giornata || [];
-  const nomeG = g => n(g.giornata_lega) ?? n(g.giornata);
+  const nomeG = g => nomeGiornata(g.giornata_lega, g.giornata);
+  // sotto le barre lo spazio è poco: il numero della lega da solo; per una stagione passata «G11» di Serie A (forma stretta)
+  const sottoBarra = g => (n(g.giornata_lega) != null ? n(g.giornata_lega) : `G${n(g.giornata)}`);
   const voce = (numero, etichetta, frase, cls = "") => `<div class="qp-voce"><b class="qp-num ${cls}">${numero}</b><span class="qp-eti">${etichetta}</span><div class="qp-frase">${frase}</div></div>`;
   // 1. fantavoto atteso dei tuoi giocatori
   const fv = p.fantavoto;
@@ -2778,7 +2799,7 @@ function cartaPrecisione(p) {
       const e = n(g.errore_fantavoto), h = Math.max(2, e / alto * (H - 34)), x = i * passo + (passo - larga) / 2, y = H - 16 - h;
       return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larga.toFixed(1)}" height="${h.toFixed(1)}" rx="3" class="qp-barra"/>
         <text x="${(x + larga / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" class="qp-val">${v(e)}</text>
-        <text x="${(x + larga / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" class="qp-g">${nomeG(g)}</text>`;
+        <text x="${(x + larga / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" class="qp-g">${sottoBarra(g)}</text>`;
     }).join("");
     grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("diario.qp_grafico_aria")}" class="qp-grafico">${barre}</svg>
       <div class="debole piccolo">${t("diario.qp_grafico_leg")}</div>`;
@@ -2786,12 +2807,12 @@ function cartaPrecisione(p) {
   const righe = [...pg].reverse().map(g => {
     const d = n(g.differenza);
     const tua = n(g.tua) != null ? " · " + t("diario.qp_riga_tua", { t: v(g.tua), d: (d > 0 ? "+" : d < 0 ? "−" : "") + v(Math.abs(d ?? 0)) }) : "";
-    return `<li><b>${t("testata.giornata", { n: nomeG(g) })}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}${tua}</span></li>`;
+    return `<li><b>${nomeG(g)}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}${tua}</span></li>`;
   }).join("");
   const primo = pg.length ? nomeG(pg[0]) : null, ultimo = pg.length ? nomeG(pg[pg.length - 1]) : null;
   const ric = n((p.fonti || {}).ricostruiti) || 0;
   return `<div class="carta qp"><h2>${t("diario.af_titolo")}</h2>
-    <div class="debole piccolo">${t("diario.qp_intro")} ${tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo })}</div>
+    <div class="debole piccolo">${t("diario.qp_intro")} ${elidiOrdinali(tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo }))}</div>
     ${p.pochi_dati ? `<div class="attenzione qp-pochi" role="status">${t("diario.qp_pochi", { n: n(p.giornate_minime) || 8 })}</div>` : ""}
     <div class="qp-griglia">
       ${voce(fv ? v(fv.errore_medio) : "–", t("diario.qp_fv_eti"), fvFrase)}
@@ -2810,7 +2831,7 @@ function cartaScelteTue(st, sintesi, v) {
   if (!st.giornate) return `<div class="carta scelte-tue"><h2>${t("avv.tue_scelte")}</h2><div class="debole piccolo">${t("avv.finora_hai_schierato")}</div></div>`;
   const segno = x => (x > 0 ? "+" : x < 0 ? "−" : "") + v(Math.abs(x));
     const dueNomi = l => l.map(esc).join(", ");
-  const riga = g => `<li>${t("avv.riga_scelta", { n: `<b>${t("testata.giornata", { n: Number(g.giornata_lega || g.giornata) })}</b>`, scelto: dueNomi(g.hai_scelto), cons: dueNomi(g.consigliava) })}
+  const riga = g => `<li>${t("avv.riga_scelta", { n: `<b>${nomeGiornata(g.giornata_lega, g.giornata)}</b>`, scelto: dueNomi(g.hai_scelto), cons: dueNomi(g.consigliava) })}
       <span class="debole piccolo">${t("avv.tu_consiglio", { tua: v(g.punti_tua), cons: v(g.punti_consigliata), d: segno(g.differenza) })}</span></li>`;
   const punti = st.punti_differenza;
   const totale = punti === 0 ? t("avv.totale_pari") : punti > 0 ? t("avv.totale_tue", { n: v(punti) }) : t("avv.totale_consiglio", { n: v(-punti) });
@@ -2881,7 +2902,7 @@ async function apriDiario(giornata, stagione) {
         <div class="debole piccolo">${fuori.length ? t("diario.cambiato", { n: fuori.length, nomi: t("diario.cambiato_nomi", { dentro: esc(fuori.join(", ")), fuori: esc(dentro.join(", ")) }) }) : t("diario.uguale")}</div>`;
     };
     // «Ho schierato…» e «Correggi» solo se la voce si può ancora cambiare (stagione in corso; un server vecchio senza il campo: sì)
-    const righe = d.giornate.map(g => `<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2 style="margin:0">${t("testata.giornata", { n: g.giornata_lega || g.giornata })}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
+    const righe = d.giornate.map(g => `<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2 style="margin:0">${nomeGiornata(g.giornata_lega, g.giornata)}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
       ${g.schierata ? "" : `<div class="debole piccolo">${t("diario.non_salvata")}</div>`}
       ${confronto(g)}
       ${g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" data-correggi="${idVoceDiario(g)}">${g.schierata ? t("diario.correggi") : t("diario.ho_schierato_altra")}</button></div>`}
@@ -2931,7 +2952,7 @@ async function correggiDiario(g) {
         <input type="checkbox" data-scelto="${Number(x.id)}" ${iniziali.has(x.id) ? "checked" : ""}></label>`).join("")}` : "";
     }).join("");
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("diario.cosa_hai_schierato_titolo")}</h2>
-      <div class="debole piccolo">${t("diario.correggi_spiega", { giornata: g.giornata_lega || g.giornata })}</div>
+      <div class="debole piccolo">${t("diario.correggi_spiega", { g: nomeGiornata(g.giornata_lega, g.giornata) })}</div>
       <div class="riga" style="margin:10px 0"><b id="diario-conta" role="status" aria-live="polite"></b>
         <span class="riga" style="gap:8px"><button class="bottone secondario" id="diario-annulla" type="button">${t("mercato.annulla")}</button><button class="bottone" id="diario-salva" type="button">${t("scambio.salva")}</button></span></div>
       ${gruppi}`);
@@ -2976,7 +2997,7 @@ async function mostraAffidabilita(numero) {
       const linea = (k, col, tratteggio) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" ${tratteggio ? 'stroke-dasharray="4 4"' : ""} stroke-linecap="round" stroke-linejoin="round" points="${righe.map((r, i) => xy(i, r[k])).join(" ")}"/>`;
       grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("avv.punti_delle_formazioni")}" style="margin-top:10px">
         ${linea("punti_perfetta", "var(--testo-2)", true)}${linea("punti_fantamedia", "var(--arancio)")}${linea("punti_modello", "var(--verde)")}</svg>
-        <div class="debole piccolo"><b style="color:var(--verde)">—</b> ${t("avv.modello_nbsp")} <b style="color:var(--arancio)">—</b> ${t("avv.fantamedia_nbsp")} <b>- -</b> ${t("avv.max_possibile")} · ${t("avv.giornate_da_a", { a: righe[0].giornata, b: righe[righe.length - 1].giornata })}</div>`;
+        <div class="debole piccolo"><b style="color:var(--verde)">—</b> ${t("avv.modello_nbsp")} <b style="color:var(--arancio)">—</b> ${t("avv.fantamedia_nbsp")} <b>- -</b> ${t("avv.max_possibile")} · ${elidiOrdinali(t("avv.giornate_da_a", { a: Number(righe[0].giornata), b: Number(righe[righe.length - 1].giornata) }))}</div>`;
     }
     dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>
       <div class="debole piccolo">${tp("avv.prova_su", s.giornate)}</div>
