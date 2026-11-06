@@ -60,7 +60,7 @@ final class FumoUITests: XCTestCase {
     func testFormazioneConCampoEModificaAMano() {
         vaiA("Formazione")
         attendi("Campo")
-        attendi("Modulo proposto", contiene: true)
+        attendi("Propone il", contiene: true)   // la frase dello stile della web (formazione.propone, #437)
         attendi("Panchina")
         tocca(app.buttons["Modifica a mano"], finchéCompare: app.buttons["Torna alla consigliata"], "«Modifica a mano» apre la modifica")
         attendi("Salva come mia scelta")

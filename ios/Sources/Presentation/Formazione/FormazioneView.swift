@@ -21,6 +21,17 @@ struct FormazioneView: View {
     /// Cosa fa ogni stile, a parole (come il server e la web app): vedi `StileFormazione`.
     static func descrizioneStile(_ rischio: Int) -> String { StileFormazione.descrizione(rischio) }
 
+    // MARK: frasi (provvisorie: passo rosso di #437)
+    static let testoSenzaProbabili = "Probabili formazioni non ancora uscite: uso le presenze recenti."
+    static let testoPanchina = "In quest'ordine: entra il primo che può sostituire chi resta senza voto."
+    static let testoBallottaggio = "Ballottaggio · alternative vicine"
+    static let simboloSostituisci = "arrow.left.arrow.right"
+    static let simboloConfronta = "arrow.left.arrow.right"
+    static func istruzioneTitolari(modificabile: Bool) -> String {
+        modificabile ? "Tocca un titolare per sostituirlo con un altro della rosa: i punti attesi si ricalcolano." : ""
+    }
+    static func fraseStile(proposto: String, attivo: String) -> String { "Modulo proposto: \(proposto)" }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -505,6 +516,9 @@ struct SostituzioneSheet: View {
     let candidati: [Giocatore]
     let scelto: (Int) -> Void
     @Environment(\.dismiss) private var chiudi
+
+    static let testoStessoRuolo = ""
+    static let testoNessunAltro = "Non ci sono altri giocatori di questo ruolo in rosa."
 
     var body: some View {
         NavigationStack {
