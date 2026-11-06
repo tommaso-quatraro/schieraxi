@@ -13,12 +13,9 @@ enum SezioneOggi: Hashable, Sendable, CaseIterable {
     case conto
     /// Giornata finita: com'è andata.
     case riepilogo
-    /// Giornata in corso: punti fatti finora e a fine giornata.
+    /// Giornata in corso, una carta sola come la web (#436): punti fatti finora e a fine giornata, chi va a punteggio, cambi dalla
+    /// panchina. Per chi è entrato a giornata iniziata «Questa giornata è già iniziata»; senza i dati della giornata la formazione.
     case inCorso
-    /// Giornata in corso: chi va a punteggio.
-    case chiGioca
-    /// Giornata in corso: i cambi dalla panchina.
-    case cambiPanchina
     /// Modulo, punti attesi, «Apri la formazione» e probabili (a giornata finita, quella della prossima).
     case formazione
     /// Partita rinviata.
@@ -44,8 +41,8 @@ enum SezioneOggi: Hashable, Sendable, CaseIterable {
             sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .novita])
             sezioni.append(contentsOf: [SezioneOggi.suggerimento, .migliori, .daControllare, .indisponibili, .diffidati])
         case .inCorso:
-            // sulla web è una carta sola: punti, poi chi va a punteggio, poi i cambi dalla panchina
-            sezioni.append(contentsOf: [SezioneOggi.inCorso, .chiGioca, .cambiPanchina, .rinvio, .daFare, .novita])
+            // una carta sola, come la web: punti, poi chi va a punteggio, poi i cambi dalla panchina
+            sezioni.append(contentsOf: [SezioneOggi.inCorso, .rinvio, .daFare, .novita])
         case .finita:
             sezioni.append(.riepilogo)
             if conGiornata { sezioni.append(.formazione) }

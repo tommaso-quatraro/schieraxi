@@ -90,10 +90,28 @@ struct RigaPartitaView: View {
     private var mia: Bool { !titolari.isEmpty }
     /// Con le misure di accessibilità lo stato va sopra le squadre: in colonna non ci starebbe.
     private var impilata: Bool { dimensioneTesto.isAccessibilitySize }
-    private var inGioco: Bool { live?.inGioco ?? false }
     private var finita: Bool { live?.finita ?? (partita.giocata == true || partita.stato == "finita") }
     /// Marcatori, rigori e rossi: solo dalla diretta (il calendario dà soltanto il risultato).
     private var eventi: [EventoLive] { Self.haPunteggio(live) ? EventiPartita.visibili(live?.eventi) : [] }
+
+    /// Cosa scrive la riga con la diretta, come `etichetta` di `fanta/web/live.js`: «LIVE» con il minuto (o «In aggiornamento»
+    /// per uno stato nuovo con il punteggio), «LIVE» e «Intervallo», «Finita», «Rinviata», «Sospesa» senza «LIVE». Nil: niente
+    /// diretta per questa partita (si scrive l'ora, o lo stato che dice Oggi).
+    enum Diretta: Equatable { case inGioco(minuto: String?), intervallo, finita, rinviata, sospesa }
+
+    nonisolated static func diretta(_ l: PartitaLive?) -> Diretta? {
+        guard let l else { return nil }
+        let minuto = l.minuto.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        switch l.stato ?? "" {
+        case "primo_tempo", "secondo_tempo", "in_corso": return .inGioco(minuto: minuto)
+        case "intervallo": return .intervallo
+        case "finita": return .finita
+        case "rinviata": return .rinviata
+        case "sospesa": return .sospesa
+        case "da_giocare", "": return nil
+        default: return l.inGioco ? .inGioco(minuto: minuto ?? TestiOggi.inAggiornamento) : nil
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -101,18 +119,18 @@ struct RigaPartitaView: View {
                 stato
                 HStack(spacing: 8) {
                     squadre.frame(maxWidth: .infinity, alignment: .leading)
-                    if mia { avatar }
                     punteggio
                 }
             } else {
-                // Griglia unica: stato a larghezza fissa, squadre nello spazio che resta, avatarini e punteggio a destra.
+                // Griglia unica: stato a larghezza fissa, squadre nello spazio che resta, punteggio a destra.
                 HStack(spacing: 10) {
                     stato.lineLimit(1).minimumScaleFactor(0.8).frame(width: larghezzaStato, alignment: .leading)
                     squadre.frame(maxWidth: .infinity, alignment: .leading)
-                    if mia { avatar }
                     punteggio
                 }
             }
+            // Sotto, come la web: i volti dei tuoi titolari e «2 tuoi titolari»
+            if mia { miei.padding(.leading, impilata ? 0 : larghezzaStato + 10) }
             if !eventi.isEmpty { elencoEventi.padding(.leading, impilata ? 0 : larghezzaStato + 10) }
         }
         // Stessi margini per tutte le righe: le mie si riconoscono da sfondo e segno, senza spostare il contenuto.
@@ -182,43 +200,50 @@ struct RigaPartitaView: View {
 
     @ViewBuilder
     private var stato: some View {
-        switch live?.stato ?? "" {
-        case "primo_tempo", "secondo_tempo", "in_corso":
+        switch Self.diretta(live) {
+        case .inGioco(let minuto)?:
             VStack(alignment: .leading, spacing: 1) {
                 badgeLive
-                if let m = live?.minuto { Text(m).font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario) }
+                if let minuto {
+                    // «In aggiornamento» è lungo per la colonna: va su due righe invece di tagliarsi
+                    Text(minuto).font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario)
+                        .lineLimit(2)
+                }
             }
-        case "intervallo":
+        case .intervallo?:
             VStack(alignment: .leading, spacing: 1) {
                 badgeLive
                 Text("Intervallo").font(.caption).foregroundStyle(Color.attenzione)
             }
-        case "sospesa":
-            VStack(alignment: .leading, spacing: 1) {
-                badgeLive
-                Text("Sospesa").font(.caption).foregroundStyle(Color.attenzione)
-            }
-        case "finita":
+        case .sospesa?:
+            Text(TestiOggi.sospesa).font(.caption).foregroundStyle(Color.attenzione)
+        case .finita?:
             Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
-        case "rinviata":
+        case .rinviata?:
             Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
-        default:
-            if inGioco {
-                badgeLive
-            } else {
-                // senza la diretta (spenta o non raggiungibile) lo stato arriva da Oggi, come `oraTesto` della web
-                switch Self.statoSenzaDiretta(partita) {
-                case .rinviata:
-                    Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
-                case .inCorso:
-                    Text("In corso").font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
-                case .finita:
-                    Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
-                case .ora:
-                    Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario)
-                }
+        case nil:
+            // senza la diretta (spenta o non raggiungibile) lo stato arriva da Oggi, come `oraTesto` della web
+            switch Self.statoSenzaDiretta(partita) {
+            case .rinviata:
+                Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
+            case .inCorso:
+                Text("In corso").font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
+            case .finita:
+                Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
+            case .ora:
+                Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario)
             }
         }
+    }
+
+    /// I volti dei tuoi titolari (fino a quattro, poi «+N») e, accanto, «2 tuoi titolari», come la web (`oggi.n_titolari`).
+    private var miei: some View {
+        HStack(spacing: 12) {
+            avatar
+            Text(TestiOggi.tuoiTitolari(titolari.count)).font(.caption).foregroundStyle(Color.testoSecondario)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityHidden(true)          // la frase della riga dice già chi gioca
     }
 
     private var badgeLive: some View {

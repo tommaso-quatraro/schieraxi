@@ -1,21 +1,14 @@
 import SwiftUI
 
 /// La carta della formazione di Oggi, con le parole della web («La tua formazione», «punti attesi», «Apri la formazione»):
-/// modulo, punti attesi con la fascia, il pulsante e le probabili. Dopo una giornata finita parla della PROSSIMA: si chiama così
-/// e dice da quando prepararla.
+/// modulo, punti attesi con la fascia, il pulsante e le probabili. Dopo una giornata finita parla già della prossima (il server
+/// manda quella) e si chiama sempre «La tua formazione», come la web: da quando prepararla lo dice la carta del riepilogo (#436).
 struct CartaFormazioneOggi: View {
     let oggi: Oggi
     @Environment(\.vaiASezione) private var vaiASezione
 
     var body: some View {
-        let finita = oggi.faseGiornata == .finita
-        Carta(finita ? "Prossima giornata" : TestiOggi.titoloFormazione(tuaScelta: oggi.formazione?.tuaScelta ?? false),
-              simbolo: finita ? "calendar.badge.clock" : "sportscourt") {
-            if let p = oggi.prossimaGiornata {
-                Label(TestiFase.prossima(p), systemImage: "clock")
-                    .font(.subheadline)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        Carta(TestiOggi.titoloFormazione(tuaScelta: oggi.formazione?.tuaScelta ?? false), simbolo: "sportscourt") {
             let disponibile = oggi.formazione?.disponibile == true
             if let f = oggi.formazione, disponibile {
                 cifre(f)
