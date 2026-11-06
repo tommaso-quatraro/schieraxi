@@ -45,6 +45,9 @@ function arProblemi(s) {
   return fuori;
 }
 
+// Quanti giocatori ha una squadra: «25 giocatori», oppure «1 giocatore su 25» se non sono quelli attesi.
+const arConteggio = s => (s.totale === s.attesi ? tp("sd.n_giocatori", s.totale) : tp("ar.n_su", s.totale, { attesi: s.attesi }));
+
 // La squadra di Serie A per esteso (il listone ha la sigla, «JUV» → «Juventus»); se non la conosciamo, com'è.
 const arClub = c => {
   const intero = Object.keys(typeof SIGLE === "object" ? SIGLE : {}).find(k => SIGLE[k] === String(c || "").toUpperCase());
@@ -120,7 +123,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
       const sicuri = s.giocatori.filter(g => g.stato === "sicuro");
       const indici = dubbi.map(g => st.righe.push({ s, g }) - 1);
       const problemi = arProblemi(s);
-      const conteggio = s.totale === s.attesi ? tp("sd.n_giocatori", s.totale) : t("ar.n_su", { n: s.totale, attesi: s.attesi });
+      const conteggio = arConteggio(s);
       return `<section class="ar-squadra" aria-labelledby="ar-sq-${si}">
         <h4 id="ar-sq-${si}">${esc(s.nome)}${s.nuova ? ` <span class="etichetta neutra">${t("ar.nuova")}</span>` : ""}</h4>
         <div class="debole piccolo">${conteggio}${s.crediti_residui != null ? ` · ${tp("lega.n_crediti", s.crediti_residui)}` : ""}</div>
