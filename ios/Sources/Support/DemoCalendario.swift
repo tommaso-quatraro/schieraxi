@@ -43,6 +43,20 @@ extension LegaDemo {
         }
     }
 
+    /// Il recupero della partita rinviata della giornata di Oggi (l'ultima del turno): all'ultimo orario da partita (20:45) del
+    /// diciottesimo giorno dopo l'inizio del turno (#390). Le giornate del calendario vengono una settimana dopo l'altra e un turno
+    /// dura al massimo tre giorni, quindi il recupero cade tra la seconda e la terza giornata dopo, quando le due squadre non
+    /// giocano. A giornata finita (`fase` `.finita`) i turni di `orari` sono già della prossima giornata: quello della giornata
+    /// finita era una settimana prima.
+    static func dataRecupero(adesso: Date, fase: Fase) -> Date {
+        let roma = oraItaliana
+        var turno = inizio(adesso: adesso, fase: fase)
+        if fase == .finita { turno = roma.date(byAdding: .day, value: -7, to: turno) ?? turno.addingTimeInterval(-7 * 86_400) }
+        let giorno = roma.date(byAdding: .day, value: 18, to: roma.startOfDay(for: turno)) ?? turno.addingTimeInterval(18 * 86_400)
+        let sera = orariDaPartita.last ?? (ora: 20, minuto: 45)
+        return roma.date(bySettingHour: sera.ora, minute: sera.minuto, second: 0, of: giorno) ?? giorno
+    }
+
     /// Il calendario come lo manda il server: per ogni squadra le partite delle prossime giornate (avversario, in casa o fuori,
     /// difficoltà, data), dalla squadra con il calendario più morbido. Le giornate dopo quella di Oggi cadono una settimana dopo
     /// l'altra, agli stessi orari.
