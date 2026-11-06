@@ -581,16 +581,29 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         return "\(c)–\(t)"
     }
 
-    /// Tra le due sigle della riga: il punteggio.
-    var traLeSigle: String { punteggio }
+    /// true se il server manda i gol delle due squadre: la riga è un tabellone («INT 2–1 ROM»).
+    var conPunteggio: Bool { golCasa != nil && golTrasferta != nil }
 
-    /// Le due sigle, prima la squadra di casa, con in mezzo `traLeSigle`.
+    /// Tra le due sigle della riga (#391): il punteggio «2–1» se c'è, altrimenti «vs», come le partite del turno dell'app e della
+    /// web («NAP vs ATA», `docs/COERENZA-WEB-IPHONE.md`). Mai il trattino da solo, che sembrava un punteggio vuoto.
+    var traLeSigle: String { conPunteggio ? punteggio : "vs" }
+
+    /// Le due sigle, prima la squadra di casa: «NAP vs ATA», «INT 2–1 ROM».
     var squadre: String { "\(ColoriSquadra.sigla(casa)) \(traLeSigle) \(ColoriSquadra.sigla(trasferta))" }
 
-    /// La partita in una riga (Partite live, Cruscotto), dalla forma intera alla più corta.
+    /// La partita in una riga (Partite live, Cruscotto), dalla forma intera alla più corta (la vista mostra la prima che entra).
+    /// Senza punteggio come la riga di una partita dell'app e della web: «NAP vs ATA · oggi 18:00», poi «NAP vs ATA · 18:00»;
+    /// senza data solo «NAP vs ATA». Con il punteggio il tabellone: «INT 2–1 ROM 63'», «MIL 0–0 JUV Intervallo».
     func formeRiga(adesso: Date) -> [String] {
-        formeEtichetta(adesso: adesso).map { "\(squadre) \($0)" }
+        let etichette = formeEtichetta(adesso: adesso)
+        guard conPunteggio else {
+            return etichette == [Self.senzaOra] ? [squadre] : etichette.map { "\(squadre) · \($0)" }
+        }
+        return etichette.map { "\(squadre) \($0)" }
     }
+
+    /// L'etichetta di una partita da giocare senza data.
+    static let senzaOra = "—"
 
     /// Cosa scrivere accanto al punteggio: «34'», «Intervallo», «Finita»; per una partita da giocare il giorno e l'ora, come la
     /// web («oggi 18:30», «domani 11:23», «mar 3 18:30»). È la forma intera, quella che legge VoiceOver; le forme corte sono in
@@ -605,7 +618,7 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         case "finita": return ["Finita"]
         case "rinviata": return ["Rinviata"]
         case "sospesa": return ["Sospesa"]
-        case "da_giocare", "": return quando.map { Self.orari($0, adesso: adesso) } ?? ["—"]
+        case "da_giocare", "": return quando.map { Self.orari($0, adesso: adesso) } ?? [Self.senzaOra]
         default: return [minuto ?? "In corso"]
         }
     }
@@ -915,12 +928,6 @@ enum ParoleWidget {
         return ["\(tuaScelta ? "La tua scelta" : "Formazione") \(m)", m]
     }
 
-    /// Due parti che si accorciano insieme: prima tutta la seconda (la meno importante), poi la prima.
-    static func coppie(_ a: [String], _ b: [String]) -> [(String, String)] {
-        guard let primaA = a.first, let ultimaB = b.last else { return [] }
-        return b.map { (primaA, $0) } + a.dropFirst().map { ($0, ultimaB) }
-    }
-
     /// «Sorvani, Bastrani, Dimarzi» → «Sorvani, Bastrani e un altro» → «Sorvani e altri 2» (al più `massimo` nomi).
     static func nomi(_ nomi: [String], massimo: Int = 3) -> [String] {
         let quanti = min(nomi.count, max(massimo, 1))
@@ -937,18 +944,23 @@ enum ParoleWidget {
     }
 }
 
-/// La testata del widget Formazione grande, accanto al modulo: i punti attesi, la fascia e la giornata. Le forme dei punti e
-/// della giornata vanno in coppia (`ParoleWidget.coppie`): la vista prova le coppie in ordine e tiene la prima che entra.
+/// La testata del widget Formazione grande (#391), accanto al modulo, su due righe: sopra i punti attesi, sotto la fascia e la
+/// giornata. La giornata sta sulla riga corta della fascia, non su quella dei punti, e ogni riga sceglie da sola la sua forma (la
+/// prima che entra): «72,7 punti attesi · la tua scelta» non fa più diventare «Giornata 8» «G8», che resta solo se «Giornata 8»
+/// non entra nemmeno accanto alla fascia (la regola della #352 per «Attesi e fatti»). Prima le due parti stavano su una riga sola
+/// e si accorciavano in coppia: «G8» arrivava prima che i punti perdessero una parola.
 struct TestataFormazioneGrande: Equatable {
+    /// «72,7 punti attesi · la tua scelta» → «72,7 attesi · la tua scelta» → «72,7 attesi» (`ParoleWidget.puntiAttesi`).
     let formePunti: [String]
+    /// «tra 65 e 81», se il server manda la fascia.
     let fascia: String?
+    /// «Giornata 8 · 11ª di Serie A» → «Giornata 8» → «G8» (`NomeGiornata.forme`); vuoto se la giornata non si sa.
     let formeGiornata: [String]
 
     init(puntiAttesi: Double?, tuaScelta: Bool, fascia: String?, giornata: NomeGiornata?) {
-        let coppie = ParoleWidget.coppie(ParoleWidget.puntiAttesi(puntiAttesi, tuaScelta: tuaScelta), giornata?.forme ?? [""])
-        formePunti = coppie.map(\.0)
+        formePunti = ParoleWidget.puntiAttesi(puntiAttesi, tuaScelta: tuaScelta)
         self.fascia = fascia
-        formeGiornata = coppie.map(\.1)
+        formeGiornata = giornata?.forme ?? []
     }
 }
 

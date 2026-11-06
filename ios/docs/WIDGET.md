@@ -53,6 +53,10 @@ basta una partita di oggi ripiega sulla sola ora («20:45»); gli altri giorni t
 intera. La usano Partite live e Cruscotto (`PartitaLive.formeEtichetta`), Giocatore seguito e Chi gioca
 (`GiocatoreWidget.formeQuandoGioca`, `formePartita`, #267); le righe sulla schermata di blocco con `RigaInLinea`. A mezzanotte la
 voce della timeline (`VociTimeline.istanti`) cambia «domani 11:23» in «oggi 11:23».
+Una partita senza punteggio si scrive come le partite del turno dell'app e della web, «NAP vs ATA · oggi 18:00», mai con il
+trattino tra le sigle; con il punteggio il tabellone «INT 2–1 ROM 63'» (`PartitaLive.formeRiga`, `traLeSigle`, #391).
+Formazione grande: accanto al modulo due righe, sopra i punti attesi e sotto la fascia con la giornata (`TestataFormazioneGrande`):
+ognuna tiene la sua prima forma che entra, così «G8» compare solo se «Giornata 8» non entra nemmeno accanto alla fascia (#391).
 I widget rotondi della schermata di blocco stanno in `CerchioWidget` (contenuto sempre al centro). Crediti: simbolo «C» nel cerchio
 (`ParoleWidget.simboloCrediti`, come l'app), mai l'euro.
 

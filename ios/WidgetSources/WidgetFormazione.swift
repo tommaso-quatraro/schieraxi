@@ -153,21 +153,26 @@ struct VistaFormazione: View {
     }
 
     private func grande(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
-        // prima «Giornata 8 · 11ª di Serie A» diventa «Giornata 8» e poi «G8», poi «73,7 punti attesi» diventa «73,7 attesi»:
-        // mai «73,7 punti att…»
-        let testate = ParoleWidget.coppie(ParoleWidget.puntiAttesi(f.puntiAttesi, tuaScelta: f.tuaScelta == true),
-                                          w.nomeGiornata?.forme ?? [""])
+        // Accanto al modulo due righe (#391): sopra i punti, sotto la fascia e la giornata. Ogni riga mostra la prima forma che
+        // entra: «73,7 punti attesi · la tua scelta» → «73,7 attesi», «Giornata 8 · 11ª di Serie A» → «Giornata 8» → «G8».
+        // La giornata non sta più sulla riga dei punti: «G8» solo se «Giornata 8» non entra nemmeno accanto alla fascia.
+        let testata = TestataFormazioneGrande(puntiAttesi: f.puntiAttesi, tuaScelta: f.tuaScelta == true,
+                                              fascia: f.intervallo?.testo, giornata: w.nomeGiornata)
         return VStack(spacing: 8) {
-            PrimaCheEntra(testate.count) { i in
-                HStack(alignment: .center) {
-                    Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(testate[i].0).font(.subheadline).monospacedDigit().foregroundStyle(TintaWidget.testo2).lineLimit(1)
-                        if let t = f.intervallo?.testo { Text(t).font(.caption).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+            HStack(alignment: .center, spacing: 8) {
+                Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).lineLimit(1).minimumScaleFactor(0.5)
+                VStack(alignment: .leading, spacing: 0) {
+                    TestoCheEntra(testata.formePunti).font(.subheadline).monospacedDigit()
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        // la fascia sempre intera; alla giornata lo spazio che resta (come la testata dei widget piccoli)
+                        if let fascia = testata.fascia { Text(fascia).font(.caption).lineLimit(1).fixedSize() }
+                        Spacer(minLength: 8)
+                        if !testata.formeGiornata.isEmpty {
+                            TestoCheEntra(testata.formeGiornata).font(.caption2).layoutPriority(1)
+                        }
                     }
-                    Spacer(minLength: 8)
-                    Text(testate[i].1).lineLimit(1).font(.caption).foregroundStyle(TintaWidget.testo2)
                 }
+                .foregroundStyle(TintaWidget.testo2)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(testataParlata(w, f))

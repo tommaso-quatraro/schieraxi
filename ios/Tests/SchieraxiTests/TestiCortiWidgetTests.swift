@@ -51,14 +51,6 @@ struct TestiCortiWidgetTests {
         #expect(ParoleWidget.titoloFormazione(nil, tuaScelta: false) == ["Formazione —", "—"])
     }
 
-    @Test("Due parti che si accorciano insieme: prima tutta la seconda, poi la prima")
-    func coppie() {
-        let c = ParoleWidget.coppie(["73,7 punti attesi", "73,7 attesi"], ["Giornata 8", "G8"])
-        #expect(c.map { $0.0 } == ["73,7 punti attesi", "73,7 punti attesi", "73,7 attesi"])
-        #expect(c.map { $0.1 } == ["Giornata 8", "G8", "G8"])
-        #expect(ParoleWidget.coppie(["a"], []).isEmpty)
-    }
-
     @Test("Un elenco di nomi perde i nomi in fondo e dice quanti mancano")
     func nomi() {
         #expect(ParoleWidget.nomi(["Sorvani", "Bastrani", "Dimarzi"])
