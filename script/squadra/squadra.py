@@ -7,12 +7,12 @@ from __future__ import annotations
 import argparse
 import sys
 
+import annulla_superate
+import attendi
 import brief
 import comune
 import foto
 import giro
-import annulla_superate
-import attendi
 import pr_pronta
 import pulisci
 import stato
