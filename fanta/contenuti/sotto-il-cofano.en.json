@@ -160,7 +160,8 @@
       "titolo": "The probability of playing and the probable line-ups",
       "paragrafi": [
         "This is the most delicate part, because a star who stays on the bench brings zero points. When the probable line-ups of Fantacalcio.it are available (they update several times a day) the model reads them: starter with a percentage, bench with a percentage, injured, suspended, doubtful, at risk of suspension.",
-        "A starter at 90% does not play with probability 0.90: if he does not start he often comes on from the bench anyway, and the rating is missing only if he comes on for a few minutes. An injured or suspended player is worth 0. A doubtful one is worth a quarter less. A player not mentioned is worth 2%."
+        "A starter at 90% does not play with probability 0.90: if he does not start he often comes on from the bench anyway, and the rating is missing only if he comes on for a few minutes. An injured or suspended player is worth 0. A doubtful one is worth a quarter less. A player not mentioned is worth 2%.",
+        "These starting numbers are chosen by hand. From 4 matchdays played with the probable line-ups saved shortly before the first match the server re-tunes them by itself on half of the matchdays and tests them on the other half; it uses them only from 8 matchdays and if they are less wrong; if they then get worse it goes back to the starting numbers."
       ],
       "formula": "starter with percentage q: p = (q + (1 - q) × 0.6) × 0.96\nbench with percentage q: p = q\ndoubtful: p × 0.75 · injured or suspended: 0 · not mentioned: 0.02",
       "esempio": {

@@ -6,6 +6,7 @@ import json
 import logging
 import sqlite3
 import threading
+import time
 from collections.abc import Collection
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
@@ -39,12 +40,35 @@ SENZA_CALENDARIO ="Il calendario della stagione non è ancora disponibile (di so
 def _versione(db: sqlite3.Connection) -> str | None:
     """Cambia a ogni aggiornamento registrato. Non basta l'ora più recente: alla fine dell'ora legale (le 2:00-3:00 si ripetono)
     un aggiornamento nuovo può avere un'ora «più vecchia» di un altro e la versione non cambierebbe. Quindi: l'ora più recente
-    (leggibile) più un'impronta di tutte le righe."""
+    (leggibile) più un'impronta di tutte le righe. Finché le previsioni sono di ripiego (vedi `_ripieghi`) ha in più un pezzo che
+    cambia ogni RIPIEGO_SECONDI: i risultati di ripiego non restano in cache e il calcolo si riprova."""
     righe = db.execute("SELECT cosa, quando FROM aggiornamenti ORDER BY cosa").fetchall()
     if not righe:
         return None
     impronta = hashlib.sha1("\n".join(f"{c}={q}" for c, q in righe).encode()).hexdigest()[:12]
-    return f"{max(str(q or '') for _, q in righe)}|{impronta}"
+    versione = f"{max(str(q or '') for _, q in righe)}|{impronta}"
+    if _ripieghi and _archivio(db) in _ripieghi:
+        versione += f"|ripiego{int(time.monotonic() // RIPIEGO_SECONDI)}"
+    return versione
+
+
+# Previsioni di ripiego: c'è una riga attiva della taratura di «gioca N%» ma il registro non si legge, quindi numeri di partenza
+# (`stato_dati.taratura_e_fattori`). Non devono restare in cache con la versione dei dati di sempre: finché l'archivio sta qui,
+# `_versione` cambia ogni RIPIEGO_SECONDI (i risultati si rifanno, e con loro tutto quello che ne dipende); il primo calcolo
+# riuscito toglie l'archivio e la versione torna quella di sempre.
+RIPIEGO_SECONDI = 300
+_ripieghi: dict[str, bool] = {}
+
+
+def _archivio(db: sqlite3.Connection) -> str:
+    return str(calcolo._percorso_db(db) or ":memory:")
+
+
+def _segna_ripiego(db: sqlite3.Connection, ripiego: bool) -> None:
+    if ripiego:
+        _ripieghi[_archivio(db)] = True
+    elif _ripieghi:
+        _ripieghi.pop(_archivio(db), None)
 
 
 def dati(db: sqlite3.Connection) -> modello.Dati:
@@ -123,8 +147,13 @@ def previsioni(db: sqlite3.Connection, regole: Regole, giornata: int | None = No
 def _calcola_previsioni(db, d, regole, stagione, giornata, chiave):
     prob = pd.read_sql_query("SELECT * FROM probabili WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio'",
                              db, params=(stagione, giornata))
+    # «gioca N%» con le probabili: la riga attiva della taratura sul server, se c'è (None = numeri di partenza), e la correzione
+    # per gruppi fatta con la stessa formula. Quando la riga attiva cambia, cambia anche `_versione` (riga in `aggiornamenti`) e
+    # queste previsioni si rifanno. Se il registro non si legge: numeri di partenza, e `_versione` lo dice (vedi `_ripieghi`)
+    taratura, fattori, ripiego = stato_dati.taratura_e_fattori(db, stagione)
+    _segna_ripiego(db, ripiego)
     p = modello.previsioni(d, stagione, giornata, regole, probabili=None if prob.empty else prob,
-                           giocatori=d.calciatori, fattori_probabili=stato_dati.fattori(db, stagione))
+                           giocatori=d.calciatori, fattori_probabili=fattori, taratura=taratura)
     if p.empty:
         raise ValueError(frasi.elidi_ordinali(f"Non ci sono ancora previsioni per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))}: riprova più tardi."))
     p = p.set_index("id")

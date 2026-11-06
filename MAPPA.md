@@ -47,11 +47,16 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` (e `taratura_probabili`) in
     `dati/registro-giornate.json` per la copia notturna (`script/server/backup-dati.sh`) e le rimette con
     `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
-    Taratura di «gioca N%» con le probabili (#379): `taratura_probabili.py`, comando `python -m fanta taratura-probabili [--prova]`,
-    ultimo passo di `script/server/aggiorna.sh`. Legge solo `registro_giocatori` (probabili di prima della scadenza), tara una
-    regressione logistica sulla metà più vecchia delle giornate e la prova sulla più recente contro la formula di partenza e i numeri
-    mostrati; esito nella tabella `taratura_probabili` (`pronta` o `scartata`). Oggi SOLO misura: il modello non la legge e nessun
-    numero mostrato cambia (piano `docs/superpowers/plans/2026-11-06-gioca-probabili-server.md`, PR B per l'accensione).
+    Taratura di «gioca N%» con le probabili (#379, decisione `docs/decisioni/0009`): `taratura_probabili.py`, comando
+    `python -m fanta taratura-probabili [--prova | --spegni | --accendi]`, ultimo passo di `script/server/aggiorna.sh`. Legge solo
+    `registro_giocatori` (probabili di prima della scadenza), tara una regressione logistica sulla metà più vecchia delle giornate e la
+    prova sulla più recente contro la formula di adesso e i numeri mostrati; esito nella tabella `taratura_probabili`. Con almeno 8
+    giornate (3 di prova) la riga diventa `attiva` e il modello la usa (`taratura_probabili.attiva`, letta da
+    `consigli._calcola_previsioni` e `registro_nostri.previsioni_dal_vivo`): cambia solo «gioca N%» di chi è nelle probabili, non
+    minuti, gol e assist attesi né mu. Torna ai numeri di partenza (`ritirata`) se peggiora nelle 2+ giornate dopo la sua prova; nelle
+    24 ore prima della prima partita solo `rimandata`. Ogni cambio della riga attiva scrive `aggiornamenti` (`taratura-probabili`, le
+    previsioni si ricalcolano) e avvisa il proprietario. `--spegni` vale subito; `--accendi` fa ripartire la prova. Stato in
+    `GET /api/stato-dati`, campo `calibrazione.taratura`.
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
@@ -108,11 +113,12 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
 - `script/ci/`: numero di versione e note di rilascio (`controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`);
   `metriche.py`: metriche della squadra per settimana (versioni, tempo PR→unione, etichette `regressione`, `dall-utente`,
   `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
+- `script/squadra/`: comandi del coordinatore (`stato`, `attendi`, `annulla-superate`, `pulisci`, `brief`, `foto`, `giro`, `pr-pronta`) con `aree.json`, `foto.json`, `modello-brief.md`: `python script/squadra/squadra.py <comando> --help`, guida in `script/squadra/LEGGIMI.md`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
   `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
 - `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `tara_forza_gol.py`: taratura della forza delle squadre dei gol attesi «nostri» (memoria, partite fittizie, livello recente del campionato; devianza di Poisson dei gol di squadra sul 2025-26, controllo sul 2026-27) e, con `--ruoli`, gol e assist veri su attesi per ruolo (Fase C del piano `2026-11-06-gol-attesi-nostri`). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 12 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
-  `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
+  `API-SOTTO-IL-COFANO.md`, `ARCHITETTURA-INFORMAZIONI.md`, `AVATAR.md`, `COERENZA-WEB-IPHONE.md` (web e iPhone uguali; generato da `coerenza/`: dati per schermata, `script/coerenza.py --scrivi`), `DESIGN.md`, `STILE-SENZA-AI.md` (cosa evitare perché non sembri generata), `INCERTEZZA.md`, `LIVE.md`, `METODO.md` (come si lavora), `decisioni/` (decisioni di architettura, una per file, modello MADR in italiano),
   `SOTTO-IL-COFANO.md`, `STEMMA-DIVISA.md`, `STILI.md`, `superpowers/specs/` e `superpowers/plans/` (spec e piani, in italiano).
 - `.claude/settings.json`: divieti fissi per Claude Code (`gh pr merge`, push su `main`, push forzato, `--no-verify`); spiegati in `CLAUDE.md`.
 - Radice: `README.md`, `CLAUDE.md`, `MAPPA.md`, `LICENSE` (AGPL-3.0), `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
@@ -159,8 +165,9 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
 - Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
 - `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate), `registro_nostri`
-  (I4 dal vivo: numeri «nostri» contro mostrati; `null` se non si legge) e `consiglio`
-  (C1-C4 del consiglio, totali dei Diari): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
+  (I4 dal vivo: numeri «nostri» contro mostrati; `null` se non si legge), `consiglio`
+  (C1-C4 del consiglio, totali dei Diari) e `calibrazione.taratura` (taratura di «gioca N%» con le probabili; `null` se non si
+  legge): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
 - `GET /api/diario`: ogni voce ha il campo facoltativo `consiglio` (C1-C4 di quella giornata) e `istantanea` ha `misure` (C3-C4);
   forma in `docs/API.md`, «Indicatori del consiglio».
 - Errori: JSON `{"detail": "testo in italiano"}`.

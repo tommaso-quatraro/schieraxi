@@ -1,0 +1,22 @@
+{
+  "righe": [
+    {
+      "id": 26,
+      "schermata": "Menu Squadra e Altro, pagina Calendario",
+      "web": "«Aggiorna le rose» per ultima, «Calendario» con l'elenco dei giocatori, «Nuova stagione» sempre, riga sotto ogni voce; Calendario «Calendario e difficoltà»",
+      "iphone": "«Aggiorna le rose» per prima, niente «Calendario» né «Nuova stagione», senza righe sotto; «Difficoltà delle prossime partite»",
+      "forma": "web",
+      "chi": "fatto con #304 (test contro `VOCI_LEGA` e `testi.js`)",
+      "stato": "fatto"
+    },
+    {
+      "id": 27,
+      "schermata": "Menu Altro",
+      "web": "niente asta",
+      "iphone": "«Asta e riparazione»",
+      "forma": "come la web",
+      "chi": "fatto (rassegna 6/11): l'iPhone ha tolto la pagina (`LegaPagine.swift`); le voci di Altro sono quelle di `VOCI_LEGA` (`VoceMenuLega`, `MenuLegaComeLaWebTests`). Non serve più una decisione",
+      "stato": "fatto"
+    }
+  ]
+}

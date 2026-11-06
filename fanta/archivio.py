@@ -141,9 +141,11 @@ CREATE TABLE IF NOT EXISTS registro_i4 (
     PRIMARY KEY (stagione, giornata)
 );
 -- taratura di «gioca N%» con le probabili (fanta/taratura_probabili.py, #379): una riga per ogni prova sul registro delle giornate.
--- stato: pronta, scartata (oggi solo misura); coefficienti, taratura, prova, misura in JSON (solo numeri e giornate, nessun
--- giocatore). Tabella a sé: gli archivi che ci sono la ricevono senza migrazione. Viaggia con la copia notturna del registro (la storia
--- delle versioni); senza, il comando la rifà dal registro con gli stessi numeri.
+-- stato: pronta, scartata, attiva (il modello la usa), superata, ritirata, rimandata, spenta, riaccesa, errori (solo la riga con
+-- versione 0: conta i giri falliti di fila, non è una versione e non va nella copia); coefficienti, taratura, prova, misura in JSON
+-- (solo numeri e giornate, nessun giocatore). Tabella a sé: gli archivi che ci sono la ricevono senza
+-- migrazione. Viaggia con la copia notturna del registro (la storia delle versioni); senza, il comando la rifà dal registro con gli
+-- stessi numeri.
 CREATE TABLE IF NOT EXISTS taratura_probabili (
     versione INTEGER PRIMARY KEY, creata TEXT, stato TEXT, coefficienti TEXT, taratura TEXT, prova TEXT, misura TEXT, motivo TEXT,
     avvisato INTEGER

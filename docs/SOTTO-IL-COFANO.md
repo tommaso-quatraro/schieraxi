@@ -258,6 +258,8 @@ Codice: `fanta/modello.py:previsioni`
 
 Un titolare al 90% non gioca con probabilità 0,90: se non parte spesso entra comunque dalla panchina, e il voto manca solo se entra per pochi minuti. Un infortunato o squalificato vale 0. Chi è in dubbio vale un quarto in meno. Un giocatore non citato vale 2%.
 
+Questi numeri di partenza sono scelti a mano. Da 4 giornate giocate con le probabili salvate poco prima della prima partita il server li ritara da solo su metà delle giornate e li prova sull'altra metà; li usa solo da 8 giornate e se sbagliano meno; se poi peggiorano torna ai numeri di partenza.
+
 Formula:
 
 ```
@@ -270,7 +272,7 @@ in dubbio: p × 0,75 · infortunato o squalificato: 0 · non citato: 0,02
 
 Nell'app: Formazione (stato e percentuale accanto a ogni giocatore).
 
-Codice: `fanta/modello.py:_p_da_probabili`, `fanta/modello.py:P_SUBENTRO_TITOLARE`, `fanta/modello.py:P_SENZA_VOTO`, `fanta/fonti/fantacalcio.py:leggi_probabili`
+Codice: `fanta/modello.py:_p_da_probabili`, `fanta/modello.py:P_SUBENTRO_TITOLARE`, `fanta/modello.py:P_SENZA_VOTO`, `fanta/fonti/fantacalcio.py:leggi_probabili`, `fanta/taratura_probabili.py:esegui`
 
 ## 11. Senza probabili: presenze recenti, coppe e calibrazione  [nerd]
 

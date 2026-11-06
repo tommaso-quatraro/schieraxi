@@ -24,7 +24,39 @@ MINIMO_PER_GRUPPO = 20      # sotto questo numero di giocatori il confronto è s
 
 def calibrazione(db: sqlite3.Connection, stagione: str) -> dict:
     """{"giornate": quante giornate hanno probabili e partite giocate, "gruppi": [{gruppo, n, osservato, previsto}]}.
-    "osservato" = quota di giocatori che hanno preso voto; "previsto" = media della probabilità stimata dal modello."""
+    "osservato" = quota di giocatori che hanno preso voto; "previsto" = media della probabilità stimata dal modello.
+    Con una riga attiva della taratura di «gioca N%» (`taratura_probabili.attiva`) i gruppi si fanno sulle probabili salvate prima
+    della scadenza (registro delle giornate) e il «previsto» usa la riga attiva; senza (o se il registro non si legge), sulla
+    tabella `probabili`, come sempre."""
+    return _con_taratura(db, stagione)[1]
+
+
+def taratura_e_fattori(db: sqlite3.Connection, stagione: str) -> tuple[dict | None, dict[str, float], bool]:
+    """Quello che serve a «gioca N%» con le probabili, letto una volta sola: (coefficienti della riga attiva o None, correzione per
+    gruppi fatta con la stessa formula, ripiego). `ripiego` vero = c'è una riga attiva ma il registro non si legge: allora numeri
+    di partenza per tutto (None e la correzione di sempre), mai la formula tarata senza la sua correzione (mai misurata)."""
+    t, c, ripiego = _con_taratura(db, stagione)
+    return t, fattori_da(c), ripiego
+
+
+def _con_taratura(db: sqlite3.Connection, stagione: str) -> tuple[dict | None, dict, bool]:
+    """(taratura, calibrazione, ripiego): vedi `taratura_e_fattori`. Nel log il tipo d'errore e i punti del codice, mai il
+    messaggio. Mai un errore: da qui passano le previsioni."""
+    from . import registro_giornate, taratura_probabili   # qui dentro: importano consigli, che importa questo modulo
+    t = taratura_probabili.attiva(db)
+    if t is None:
+        return None, _calibrazione_probabili(db, stagione), False
+    try:
+        r = taratura_probabili.righe(db)
+        return t, taratura_probabili.calibrazione_su(r[r["stagione"] == stagione], t), False
+    except Exception as e:  # noqa: BLE001 - le previsioni non si fermano: tornano ai numeri di partenza
+        LOG.warning("stato dei dati: registro non letto per la taratura di «gioca N%%» (%s) in %s, valgono i numeri di partenza",
+                    type(e).__name__, registro_giornate._dove(e))
+        return None, _calibrazione_probabili(db, stagione), True
+
+
+def _calibrazione_probabili(db: sqlite3.Connection, stagione: str) -> dict:
+    """La calibrazione di sempre, sulla tabella `probabili` (ultima lettura della giornata) e con i numeri di partenza."""
     righe = db.execute(
         "SELECT p.giornata, p.stato, p.percentuale, p.in_dubbio, v.voto_red IS NOT NULL "
         "FROM probabili p JOIN partite g ON g.id = p.partita_id AND g.giocata = 1 "
@@ -41,6 +73,18 @@ def calibrazione(db: sqlite3.Connection, stagione: str) -> dict:
         gruppi.append({"gruppo": nome, "n": len(scelti), "osservato": round(osservato, 3), "previsto": round(previsto, 3),
                        "indicativo": len(scelti) < MINIMO_PER_GRUPPO})
     return {"giornate": len({r[0] for r in righe}), "gruppi": gruppi}
+
+
+def _taratura(db: sqlite3.Connection) -> dict | None:
+    """La taratura di «gioca N%» (`taratura_probabili.riepilogo`). Campo in più e facoltativo: se va in errore la pagina resta in
+    piedi, il campo vale None e nel log vanno il tipo d'errore e i punti del codice (mai il messaggio)."""
+    from . import registro_giornate
+    try:
+        from . import taratura_probabili
+        return taratura_probabili.riepilogo(db)
+    except Exception as e:  # noqa: BLE001 - un campo in più non deve togliere la pagina
+        LOG.warning("stato dei dati: taratura di «gioca N%%» non letta (%s) in %s", type(e).__name__, registro_giornate._dove(e))
+        return None
 
 
 MIN_GIORNATE = 3          # sotto queste giornate non si corregge niente
@@ -92,7 +136,8 @@ def riepilogo(db: sqlite3.Connection, stagione: str) -> dict:
     """Tutto quello che serve alla pagina "Stato dei dati". `registro`: quanto ci hanno preso i numeri mostrati prima di ogni
     giornata (I1-I3, `registro_giornate.riepilogo`). `registro_nostri`: i numeri «nostri» contro i mostrati (I4 dal vivo,
     `registro_nostri.riepilogo`; None se non si leggono). `consiglio`: gli indicatori del consiglio di formazione C1-C4, sommati sui
-    Diari di tutti (`indicatori_consiglio.riepilogo`)."""
+    Diari di tutti (`indicatori_consiglio.riepilogo`). `calibrazione.taratura`: la taratura di «gioca N%» con le probabili
+    (`taratura_probabili.riepilogo`; None se non si legge)."""
     from . import indicatori_consiglio, registro_giornate      # qui dentro: importano consigli, che importa questo modulo
     agg = []
     for cosa, quando, dettaglio in db.execute("SELECT cosa, quando, dettaglio FROM aggiornamenti ORDER BY cosa"):
@@ -116,7 +161,7 @@ def riepilogo(db: sqlite3.Connection, stagione: str) -> dict:
         "fonti": fonti_attive.stato(),
         "uso": uso.riepilogo(),
         "coppe_fino": coppe.aggiornate_fino().isoformat(),
-        "calibrazione": {**(c := calibrazione(db, stagione)), "fattori": fattori_da(c)},
+        "calibrazione": {**(c := calibrazione(db, stagione)), "fattori": fattori_da(c), "taratura": _taratura(db)},
         "registro": registro_giornate.riepilogo(db),
         "registro_nostri": _registro_nostri(db),
         "consiglio": indicatori_consiglio.riepilogo(),

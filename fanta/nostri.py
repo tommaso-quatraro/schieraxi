@@ -83,7 +83,8 @@ def gol_attesi(prev: pd.DataFrame, par: Parametri) -> pd.Series:
 
 
 def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, probabili: pd.DataFrame | None = None,
-               giocatori: pd.DataFrame | None = None, fattori_probabili: dict[str, float] | None = None) -> pd.DataFrame:
+               giocatori: pd.DataFrame | None = None, fattori_probabili: dict[str, float] | None = None,
+               taratura: dict | None = None) -> pd.DataFrame:
     """`modello.previsioni` con i dati e i parametri dei nostri (gli argomenti hanno lo stesso significato)."""
     return _previsioni_modello(dati(d), stagione, giornata, regole, parametri(), probabili=probabili, giocatori=giocatori,
-                               fattori_probabili=fattori_probabili)
+                               fattori_probabili=fattori_probabili, taratura=taratura)
