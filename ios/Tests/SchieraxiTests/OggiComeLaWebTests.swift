@@ -145,6 +145,44 @@ struct OggiComeLaWebTests {
         }
     }
 
+    // MARK: partite del turno
+
+    /// Decisione dell'utente (6/11/2026): Partite del turno si vede sempre, come sulla web (`mostraOggi` la scrive senza
+    /// condizioni). «Risultati in diretta» spenta toglie solo i risultati in diretta (punteggio, minuto, eventi), non le partite.
+    @Test("Partite del turno c'è sempre: in OggiView la sezione non dipende da «Risultati in diretta»")
+    func partiteSempre() throws {
+        let sorgente = try OggiWeb.sorgenteIPhone("ios/Sources/Presentation/Oggi/OggiView.swift")
+        let caso = try #require(sorgente.range(of: "case .partite:"), "OggiView non ha più la sezione delle partite")
+        // il corpo del caso: fino alla fine della funzione `sezione` (la graffa a 4 spazi)
+        let resto = sorgente[caso.upperBound...]
+        let fine = try #require(resto.range(of: "\n    }"), "non trovo la fine di OggiView.sezione")
+        let corpo = resto[..<fine.lowerBound]
+        #expect(!corpo.contains("Funzione.live"), "Partite del turno nascosta con «Risultati in diretta» spenta: \(corpo)")
+        #expect(!corpo.contains("if "), "Partite del turno sotto una condizione: \(corpo)")
+    }
+
+    @MainActor
+    @Test("«Risultati in diretta» spenta: le partite restano con giorno e ora, senza punteggio né minuto")
+    func partiteSenzaDiretta() async throws {
+        let corpoLive = #"{"fonte": "espn", "in_corso": 1, "partite": [{"casa": "inter", "trasferta": "roma", "stato": "primo_tempo", "minuto": "5'", "gol_casa": 1, "gol_trasferta": 0}]}"#
+        let corpoOggi = #"{"giornata": 9, "partite": [{"casa": "inter", "trasferta": "roma", "data": "2026-10-31 15:00", "giocata": false}]}"#
+        let server = ServerDiProva { _, percorso, _ in
+            Data((percorso.hasPrefix("/api/live") ? corpoLive : corpoOggi).utf8)
+        }
+        let vm = OggiViewModel(server: server, conPromemoria: false)
+        await vm.carica()
+        await vm.live.ricarica()          // risultati rimasti in memoria da quando la funzione era accesa
+        let partita = try #require(vm.oggi?.partite?.first)
+        #expect(vm.dalVivo(partita)?.minuto == "5'", "con la funzione accesa il minuto c'è")
+
+        vm.liveAcceso = false
+        #expect(vm.risultatiLive == nil, "spenta: nessun risultato in diretta")
+        #expect(vm.dalVivo(partita) == nil, "spenta: niente punteggio né minuto sulla riga")
+        let giorni = vm.partitePerGiorno
+        #expect(giorni.flatMap(\.partite).count == 1, "la partita resta")
+        #expect(giorni.first?.titolo != "Data da definire", "con il suo giorno")
+    }
+
     // MARK: parole
 
     @Test("Titoli e frasi di Oggi con le parole della web (testi.js)", arguments: [

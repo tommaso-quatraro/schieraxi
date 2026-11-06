@@ -21,6 +21,8 @@ final class OggiViewModel: ViewModelBase {
     /// Partite rinviate: la scelta «per questa giornata» è in viaggio (il menu si blocca) e l'eventuale errore da mostrare.
     @Published private(set) var rinvioInCorso = false
     @Published var erroreRinvio: String?
+    /// La funzione «Risultati in diretta» (la imposta la schermata dalle funzioni del server).
+    @Published var liveAcceso = true
 
     init(server: any ServerClient, conPromemoria: Bool = true) {
         self.conPromemoria = conPromemoria
