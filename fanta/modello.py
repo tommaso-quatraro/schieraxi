@@ -54,6 +54,9 @@ class Parametri:
     peso_xg_squadre: float = 0.6      # gol attesi di squadra: quanto contano gli xG rispetto ai gol veri
     decadimento_presenze: float = 0.75
     giornate_presenze: int = 6
+    # Correzioni dei gol attesi «nostri» (piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md): spente di default,
+    # le accende `nostri.parametri`. La produzione non cambia fino alla Fase G1.
+    rigori_squadra: bool = False      # quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_quote_rigori`)
 
 
 # ---------------------------------------------------------------- dati
@@ -120,6 +123,28 @@ def carica(db: sqlite3.Connection) -> Dati:
 
 def _pesi(t: pd.Series, stagione_t: pd.Series, t0: int, stagione0: str, par: Parametri) -> np.ndarray:
     return (par.decadimento ** (t0 - t).clip(lower=0)).to_numpy() * np.where(stagione_t == stagione0, 1.0, par.peso_stagione_prec)
+
+
+# Rigori con memoria lunga (Parametri.rigori_squadra). Un rigore è raro (circa 0,14 a squadra a partita): con la memoria dei
+# giocatori (0,92 a giornata) e il «+0,5» della quota di oggi, molte squadre restano senza rigorista. Misura del 6/11/2026
+# (piano 2026-11-06-gol-attesi-nostri, §1): 40 rigori calciati attesi contro 96 veri nel 2025-26.
+DECADIMENTO_RIGORI = 0.98       # peso di un rigore calciato una giornata prima (rispetto all'ultima)
+PESO_PREC_RIGORI = 0.8          # i rigori della stagione scorsa
+
+
+def _quote_rigori(U: pd.DataFrame, g: pd.DataFrame, t0: int, stagione: str, par: Parametri) -> pd.Series:
+    """Quota dei rigori della squadra che va a ogni giocatore di `g`, se gioca (Parametri.rigori_squadra). Si contano i suoi
+    rigori calciati con memoria lunga (con qualunque squadra) e quelli dei compagni di oggi, ognuno pesato con la sua quota di
+    presenze recenti (`p_storico`): quota = i suoi / (i suoi + quelli dei compagni). Chi non ne ha mai calciati ha quota 0.
+    `U`: le presenze prima della giornata (vedi `_pezzi`)."""
+    pr = replace(par, decadimento=DECADIMENTO_RIGORI, peso_stagione_prec=PESO_PREC_RIGORI)
+    calciati = pd.Series(_pesi(U["t"], U["stagione"], t0, stagione, pr) * U["rigori_calciati"].to_numpy(dtype=float),
+                         index=U.index)
+    lungo = calciati.groupby(U["calciatore_id"]).sum().reindex(g.index, fill_value=0.0)
+    presenti = g["p_storico"] * lungo
+    squadra = presenti.groupby(g["squadra_slug"].to_numpy()).transform("sum")
+    compagni = (squadra - presenti).fillna(0.0).clip(lower=0.0)
+    return (lungo / (lungo + compagni)).where(lungo > 0, 0.0)
 
 
 # ---------------------------------------------------------------- squadre
@@ -328,6 +353,8 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
     g["p_storico"], g["p_lungo"], g["p_ultima"], g["p_tit"], _, _ = _presenze_recenti_varie(
         d, V, col_voto, g, data0, [par, replace(par, giornate_presenze=20, decadimento_presenze=0.93),
                                    replace(par, giornate_presenze=1)], titolari=True)
+    if par.rigori_squadra:
+        g["quota_rig"] = _quote_rigori(U, g, t0, stagione, par)
 
     # ---- stima di partenza dalla quotazione iniziale ----
     # La quotazione iniziale (fissata prima del campionato, quindi senza dati dal futuro) riassume quanto gli
@@ -433,7 +460,10 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
         e_gol = gol90 * quota90 * fattore
         e_ass = ass90 * quota90 * fattore
         # rigori: quota del giocatore sui rigori della squadra
-        quota_rig = x["rc_w"] / (x["rs_w"] + 0.5) if x["uw"] > 0 else 0.0
+        if par.rigori_squadra:
+            quota_rig = x["quota_rig"]
+        else:
+            quota_rig = x["rc_w"] / (x["rs_w"] + 0.5) if x["uw"] > 0 else 0.0
         if oracolo and "rigorista" in oracolo:
             quota_rig = float(oracolo["rigorista"].get(cid, 0.0))
         e_rig = quota_rig * forza.rigori_partita * fattore * min(1.0, minuti / 75)
