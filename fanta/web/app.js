@@ -785,7 +785,7 @@ function cardRiepilogo(r, p) {
         <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
         ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
       ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(x => `${sigla(x.casa)}–${sigla(x.trasferta)}`).join(", ") })}</p>` : ""}
+      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
       ${r.rinvio && typeof menuRinvio === "function" ? menuRinvio(r.rinvio) : ""}
       ${r.nel_diario ? "" : `<p class="debole piccolo">${t("oggi.confronto_in_arrivo")}</p>`}
       <div class="pulsanti"><button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("oggi.apri_diario")}</button></div>`;
@@ -825,9 +825,12 @@ function menuRinvio(rv) {
       <select class="rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === scelto ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></span></label>
     <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
 }
+// «UDI vs MIL»: le sigle, prima la squadra di casa, come le partite del turno. La usano la carta del rinvio e la riga dei recuperi
+// che mancano nel riepilogo (#310), come `TestiRinvio.partita` dell'iPhone.
+const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
 function cardRinvio(rv) {
   if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
-  const partite = rv.partite.map(p => `<li><b>${sigla(p.casa)} vs ${sigla(p.trasferta)}</b>
+  const partite = rv.partite.map(p => `<li><b>${partitaVs(p)}</b>
     <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
   const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
   return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
@@ -1182,8 +1185,21 @@ function rigaStatoScelta(st, salvata, nonValida = false) {
     ${pulsanti ? `<div class="pulsanti">${pulsanti}</div>` : ""}</div>`;
 }
 
+// Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
+// manca senza anticipi cominciati e con un server vecchio). Il server rifiuta comunque un salvataggio che ne sposta uno.
+const giocatoriFermi = f => new Set((Array.isArray(f && f.bloccati) ? f.bloccati : []).map(Number));
+// Chi può prendere il posto di `base` nella modifica a mano: stesso ruolo, non già fra i titolari (`dentro`) e non fermo, il migliore
+// per punti attesi in cima. Nessuno se `base` stesso è fermo.
+function sostituti(f, base, dentro) {
+  const fermi = giocatoriFermi(f);
+  if (fermi.has(Number(base.id))) return [];
+  return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
+    .sort((a, b) => b.punti_attesi - a.punti_attesi);
+}
+
 function mostraFormazione(f, squadra, opz = {}) {
   const scheda = id => f.schede[String(id)];
+  const fermi = giocatoriFermi(f);
   const sc = stato.scelta || (stato.scelta = {});
   const chiaveSc = `${squadra || "mia"}/${f.giornata}`;
   if (sc.chiave !== chiaveSc) Object.assign(sc, { chiave: chiaveSc, livello: 0, modulo: null, manuale: null, letta: false, salvata: undefined, nonValida: false });
@@ -1272,7 +1288,7 @@ function mostraFormazione(f, squadra, opz = {}) {
     const nota = (sc.manuale || f.iniziata) ? [] : (righePercheScelta(m, scheda) ?? Object.values(inc));
     let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
     const voceTit = x => {
-      const h = voceGiocatore(x, null, true, modificabile);
+      const h = voceGiocatore(x, null, true, modificabile && !fermi.has(x.id));      // fermo (anticipo cominciato): ⇄ al posto di ✎
       const alt = manuale ? "" : alternativeVicine(x, m, f, etichettaAlt);
       if (alt) etichettaAlt = false;
       return h + alt;
@@ -1310,6 +1326,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
+        ${modificabile && fermi.size ? `<div class="debole piccolo">${t("formazione.bloccati")}</div>` : ""}
         <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
       <div class="carta"><h2>${t("scambi.panchina")}</h2><div class="debole piccolo">${t("formazione.quest_ordine_entra")}</div>
         <ul class="elenco">${panchina.map((x, k) => voceGiocatore(x, k + 1, true)).join("")}</ul></div>
@@ -1345,6 +1362,8 @@ function mostraFormazione(f, squadra, opz = {}) {
       } catch (e) {
         avviso(e.message, 5000);
         if (e.codice === "formazione_chiusa") { if (document.body.contains($("#punti-attesi"))) vistaFormazione(); return; }     // scadenza passata: la scelta resta
+        // la consigliata sposterebbe chi gioca un anticipo già cominciato (#373): vale ancora la tua, e si rimette lei (come «Annulla modifiche»)
+        if (e.codice === "giocatore_bloccato" && sc.salvata && Array.isArray(sc.salvata.titolari)) { valutaManuale([...sc.salvata.titolari], false, true); return; }
       }
       if (document.body.contains($("#punti-attesi"))) disegna(true);
     });
@@ -1362,10 +1381,11 @@ function mostraFormazione(f, squadra, opz = {}) {
   function apriSostituzione(id) {
     const base = scheda(id);
     if (!base || !sc.manuale || f.iniziata) return;
+    if (fermi.has(base.id)) return;                                     // gioca un anticipo già cominciato (#373): resta dov'è
     if (sc.occupato) { avviso(t("formazione.sto_ancora_ricalcolando")); return; }
     ultimaScheda++;
     const dentro = new Set(sc.manuale.titolari);
-    const candidati = Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id)).sort((a, b) => b.punti_attesi - a.punti_attesi);
+    const candidati = sostituti(f, base, dentro);
     const riga = x => `<li><button class="voce" data-entra="${x.id}">${avatarIndice(x)}
       <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span>
         <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || testoPosto("fuori")}</span></span></span>

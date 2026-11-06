@@ -1,7 +1,7 @@
 """Etichette dei giocatori sempre intere nel web (issue #230), come sull'iPhone (PR #228): un'etichetta che non ci sta su una riga
 va a capo invece di finire con i puntini («In dubb…», «Probabile titol…» a 320 px e con il testo grande). Prima si va a capo tra i
 pezzi separati da «·» («In dubbio ·» sopra, «gioca 62%» sotto), poi tra le parole; il testo non si accorcia e non si rimpicciolisce.
-Su una riga resta la capsula di prima; su più righe gli angoli sono meno tondi.
+Dalla grafica B l'etichetta è testo colorato senza capsula (spec §8.9); va a capo allo stesso modo.
 Le funzioni di app.js si provano con node; il CSS si legge da stile.css. La prova nel browser (320-1440 px, chiaro e scuro, testo
 grande) è nel collaudo della pull request."""
 import json
@@ -93,9 +93,8 @@ def test_la_pillola_va_a_capo_dentro_la_riga():
     assert "display: inline-block" in base          # un blocco: non si spezza a metà riga di un testo, va a capo al suo interno
     assert "max-width: 100%" in base                 # mai più larga della riga in cui sta
     assert "overflow-wrap: break-word" in base       # ultima scelta: una parola più larga della riga va a capo anche lei
-    # su una riga è la capsula di prima (raggio pari a metà altezza); su più righe gli angoli restano tondi ma meno
-    raggio = re.search(r"border-radius\s*:\s*([^;]+);", base).group(1)
-    assert "999" not in raggio and "r-pill" not in raggio
+    # grafica B (spec §8.9): l'etichetta è testo colorato, senza capsula né angoli; il testo intero resta la regola
+    assert "border-radius" not in base and "999" not in base and "r-pill" not in base
     pezzo = _regola(".etichetta .pezzo")
     assert "display: inline-block" in pezzo and "max-width: 100%" in pezzo
 

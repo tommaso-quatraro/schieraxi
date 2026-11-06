@@ -3,7 +3,6 @@ import json
 import re
 import shutil
 import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -256,6 +255,317 @@ def test_guida_indietro_del_browser():
     assert "Indietro del browser torna alla schermata di prima" in guida
 
 
+def _voce_di_novita(file, titolo):
+    """La voce delle novità di una PR: prima del rilascio sta in `fanta/novita.d/<file>`, dopo il job `rilascia` la sposta in
+    `fanta/novita.json` (con il numero di versione) e toglie il file. Il test deve passare in tutti e due i momenti: leggendo solo il
+    file, `main` diventava rosso appena la PR era rilasciata (successo con la PR 4, versione 1.419)."""
+    percorso = RADICE / "fanta" / "novita.d" / file
+    if percorso.exists():
+        voce = json.loads(percorso.read_text(encoding="utf-8"))
+        assert voce["titolo"] == titolo, voce["titolo"]
+        return voce
+    rilasciate = json.loads((RADICE / "fanta" / "novita.json").read_text(encoding="utf-8"))
+    voce = next((v for v in rilasciate if v.get("titolo") == titolo), None)
+    assert voce, f"manca la novità «{titolo}» sia in novita.d sia in novita.json"
+    return voce
+
+
 def test_novita_della_testata():
-    voce = json.loads(Path(RADICE / "fanta" / "novita.d" / "testata-schede.json").read_text(encoding="utf-8"))
-    assert voce["titolo"] and len(voce["voci"]) >= 2
+    voce = _voce_di_novita("testata-schede.json", "Nuova testata: schede in alto sugli schermi larghi e titolo in ogni schermata")
+    assert len(voce["voci"]) >= 2
+
+
+# ---------------------------------------------------------------- PR 5: sezioni, pulsanti, etichette, avvisi
+SENZA_COMMENTI = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
+# (selettori, corpo) di ogni regola di stile.css, anche dentro le @media
+REGOLE = [([s.strip() for s in sel.split(",")], corpo) for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", SENZA_COMMENTI)]
+JS_WEB = "\n".join(p.read_text(encoding="utf-8") for p in sorted(WEB.glob("*.js"))) + HTML
+# le classi che stanno insieme a «carta» sugli stessi elementi («carta hero», «imp-elenco carta», «carta vuoto»...); di un
+# attributo scritto con `${…}` si legge la parte fissa
+CON_LA_CARTA = sorted({c for attr in re.findall(r'class="([^"]*)"', JS_WEB) if re.search(r"(?<![\w-])carta(?![\w-])", attr)
+                       for c in attr.split("${")[0].split() if c != "carta"} | {"con-maglia"})
+SEZIONE = ("carta", *CON_LA_CARTA)
+BLOCCHI_AMMESSI = ("scambio", "accesso-corpo")      # spec §8.3: la proposta di uno scambio; piano, PR 5: il modulo d'accesso
+
+
+def _soggetto(selettore):
+    """L'elemento a cui la regola dà lo stile: l'ultimo pezzo del selettore, senza ciò che sta tra parentesi (`:has(...)`, `:not(...)`)."""
+    ultimo = re.split(r"\s+|>|\+|~", selettore.strip())[-1]
+    return re.sub(r"\([^()]*\)", "", ultimo)
+
+
+def _ha_classe(pezzo, nome):
+    return re.search(rf"\.{re.escape(nome)}(?![\w-])", pezzo) is not None
+
+
+def _proprieta(corpo, *nomi):
+    """[(nome, valore)] delle proprietà scritte nel corpo di una regola (solo i nomi dati, così `border` non prende `border-left`)."""
+    return [(n, v.strip()) for n, v in re.findall(r"(?<![\w-])([\w-]+)\s*:\s*([^;]+)", corpo) if n in nomi]
+
+
+def _regole_per(classi, ammesse=()):
+    """(selettore, corpo) delle regole che danno lo stile a un elemento con una delle classi (anche nelle @media), pseudo-elementi esclusi."""
+    for selettori, corpo in REGOLE:
+        for s in selettori:
+            soggetto = _soggetto(s)
+            if "::" not in soggetto and any(_ha_classe(soggetto, c) for c in classi) and not any(_ha_classe(soggetto, a) for a in ammesse):
+                yield s, corpo
+
+
+def _scatole(classi, ammesse=()):
+    """Regole che danno un fondo, un bordo intorno, un'ombra o angoli tondi a un elemento con una delle classi."""
+    return [f"{s} {{ {nome}: {valore} }}" for s, corpo in _regole_per(classi, ammesse)
+            for nome, valore in _proprieta(corpo, "background", "background-color", "border", "border-color", "border-radius", "box-shadow")
+            if valore not in ("none", "0", "transparent")]
+
+
+def test_la_carta_e_una_sezione_senza_scatola():
+    regola = re.search(r"\n\.carta \{([^}]*)\}", CSS).group(1)
+    assert "background: none" in regola and "border: 0" in regola and "border-radius" not in regola
+    assert re.search(r"\.carta h2 \{[^}]*border-bottom: 2px solid var\(--testo\)", CSS)
+    assert "--r-card: 12px" in CSS and ".col > * { animation: entra" not in CSS   # raggio del campo; niente entrata delle colonne
+
+
+def test_nessuna_regola_rimette_il_riquadro_a_una_sezione():
+    """Spec §4.1 e §8.3: niente scatole, lo spazio e i fili fanno i gruppi. In nessuna larghezza, densità o tema una regola dà di
+    nuovo fondo, bordo, ombra o angoli tondi a una sezione, nemmeno con la classe che le sta accanto («carta proposta-r»,
+    «carta vuoto»...). Restano un blocco solo la proposta di uno scambio e il modulo d'accesso."""
+    assert {"hero", "proposta-r", "vuoto", "regola-sez", "imp-elenco"} <= set(CON_LA_CARTA)
+    assert not _scatole(SEZIONE, BLOCCHI_AMMESSI)
+
+
+def test_le_sezioni_stanno_sul_filo_del_titolo_della_pagina():
+    """La distinta ha un bordo sinistro solo: il contenuto delle sezioni parte dove parte il titolo della pagina (nessun rientro a
+    destra o a sinistra), a ogni larghezza e anche con la densità compatta e la pagina strettissima."""
+    rientri = []
+    for s, corpo in _regole_per(SEZIONE, BLOCCHI_AMMESSI):
+        for _, valore in _proprieta(corpo, "padding"):
+            v = valore.split()
+            destra, sinistra = (v[0], v[0]) if len(v) == 1 else (v[1], v[3] if len(v) == 4 else v[1])
+            if destra != "0" or sinistra != "0":
+                rientri.append(f"{s} {{ padding: {valore} }}")
+        rientri += [f"{s} {{ {n}: {v} }}" for n, v in _proprieta(corpo, "padding-left", "padding-inline") if v != "0"]
+    assert not rientri, rientri
+
+
+def test_tra_una_sezione_e_l_altra_lo_spazio():
+    """Spec §7.4: 24 px tra una sezione e l'altra al telefono, 32 px da 900 px."""
+    regola = re.search(r"\n\.carta \{([^}]*)\}", CSS).group(1)
+    assert "margin-bottom: 24px" in regola
+    assert re.search(r"@media \(min-width: 900px\) \{[^@]*\n  \.carta \{ margin-bottom: 32px; \}", CSS)
+
+
+def test_il_filo_del_titolo_sta_sotto_tutta_la_riga_se_il_titolo_ha_qualcosa_accanto():
+    """Nel Diario (la stagione) e nelle Novità («Nuovo») il titolo della sezione sta in una riga con qualcosa a destra: il filo
+    spesso va sotto tutta la riga, non solo sotto le parole del titolo (visto nelle foto del Diario a 390 e 1440 px)."""
+    assert '<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2' in APP
+    assert '<div class="carta"><div class="riga"><h2' in APP
+    assert "border-bottom: 2px solid var(--testo)" in _corpo(".carta > .riga:first-child:has(> h2)")
+    titolo = _corpo(".carta > .riga:first-child > h2")
+    assert "border-bottom: 0" in titolo and "padding-bottom: 0" in titolo
+
+
+def test_dentro_le_sezioni_numeri_e_colonne_senza_riquadri():
+    """Spec §8.6 e §9 (scheda): i numeri stanno senza scatola, separati da un filo. Le cifre affiancate della scheda (probabilità,
+    statistiche), le due colonne del Diario e l'effetto di ogni motivo del «Perché questo numero» erano riquadri o pillole dentro la
+    carta; tolta la carta restavano le sole scatole della pagina."""
+    for selettore in (".stat-fila > div", ".statistiche div", ".diario-col", ".perche-effetto"):
+        corpo = _corpo(selettore)
+        scatola = [f"{n}: {v}" for n, v in _proprieta(corpo, "background", "border", "border-radius", "box-shadow")
+                   if v not in ("none", "0", "transparent")]
+        assert not scatola, (selettore, scatola)
+    for selettore in (".stat-fila > div", ".statistiche div", ".diario-col"):
+        assert "border-top: 1px solid var(--filo)" in _corpo(selettore), selettore
+
+
+def test_la_proposta_di_scambio_resta_un_blocco_con_il_filo():
+    """Spec §8.3: l'unico posto dove un riquadro raggruppa davvero qualcosa che si muove insieme (chi dai, chi ricevi, il verdetto)."""
+    regola = re.search(r"\n\.carta\.scambio \{([^}]*)\}", CSS).group(1)
+    assert "border: 1px solid var(--filo)" in regola and "border-radius: var(--r-card)" in regola and "padding: 16px" in regola
+    assert 'class="carta scambio"' in APP
+
+
+# ---------------------------------------------------------------- 5.2 pulsanti, controlli di scelta, focus e passaggio del mouse
+
+def _corpo(selettore):
+    """Il corpo della regola scritta proprio con questo selettore (fuori dalle @media: la prima che si trova)."""
+    m = re.search(r"\n" + re.escape(selettore) + r" \{([^}]*)\}", SENZA_COMMENTI)
+    assert m, f"manca la regola {selettore}"
+    return m.group(1)
+
+
+def test_pulsanti_piatti_scelta_con_bordo_e_niente_pressione():
+    assert re.search(r"\.bottone \{[^}]*border-radius: var\(--r-in\)", CSS) and "--r-in: 8px" in CSS
+    assert re.search(r"\.azione-testo \{[^}]*min-height: 44px;[^}]*min-width: 44px;[^}]*color: var\(--azione\)", CSS)
+    assert re.search(r"\.chip\.attiva \{[^}]*border: 2px solid var\(--testo\)", CSS)    # il lime chiaro da solo è 2,8:1
+    assert "scale(.95)" not in CSS and "scale(.985)" not in CSS
+
+
+def test_focus_nel_colore_del_testo_e_riga_sotto_il_mouse():
+    assert re.search(r"\n:focus-visible \{ outline: 2px solid var\(--testo\); outline-offset: 2px; \}", CSS)
+    assert re.search(r"\.campo :focus-visible \{[^}]*outline-color: #fff", CSS)            # sul campo verde il focus è bianco
+    assert re.search(r"\.voce:hover \{[^}]*background: var\(--superficie\)", CSS)
+
+
+def test_toccare_non_rimpicciolisce_niente():
+    """Spec §7.6 e §11: via la pressione che rimpiccioliva righe e pulsanti. Nessuna regola `:active` sposta o scala, e i pulsanti
+    non animano più `transform` (resta il cambio di colore). Senza pressione non serve nemmeno la sua versione calma."""
+    premuti = [f"{s} {{ transform: {v} }}" for selettori, corpo in REGOLE for s in selettori if ":active" in s
+               for _, v in _proprieta(corpo, "transform") if v != "none"]
+    assert not premuti, premuti
+    assert "transform" not in dict(_proprieta(_corpo("button"), "transition")).get("transition", "")
+    assert not any(":active" in s for selettori, _ in REGOLE for s in selettori if "data-calmo" in s)
+
+
+def test_il_focus_ha_un_colore_solo_e_si_vede_su_ogni_fondo():
+    """Spec §14 e C11: il bordo del focus è sempre del colore del testo (bianco sul campo verde), almeno 3:1 con ogni fondo su cui
+    può stare, in chiaro e in scuro (WCAG 2.2, 1.4.11). Prima c'erano anche un focus blu e uno verde delle azioni: in chiaro il
+    verde bosco intorno al lime della scelta stava sotto 3:1 con il lime."""
+    from tests.test_design_web import _colore, _contrasto_rgb, _temi
+    altri = [f"{s} {{ {n}: {v} }}" for selettori, corpo in REGOLE for s in selettori if "focus" in s
+             for n, v in _proprieta(corpo, "outline", "outline-color", "border-color")
+             if v not in ("none", "0") and "var(--testo)" not in v and "#fff" not in v]
+    assert not altri, altri
+    for tema, v in _temi().items():
+        testo = _colore(v["--testo"])[0]
+        for fondo in ("--sfondo", "--superficie", "--solido"):           # il bordo sta fuori dalla voce (stacco di 2 px): sul fondo
+            assert _contrasto_rgb(testo, _colore(v[fondo])[0]) >= 3, (tema, fondo)
+        assert _contrasto_rgb((255, 255, 255), _colore(v["--campo"])[0]) >= 3, tema
+
+
+def test_la_scelta_si_riconosce_anche_senza_il_colore():
+    """Spec §7.1 e §8.8: il lime chiaro sta a 2,8:1 dal bianco e da solo non dice «scelto» (WCAG 1.4.11). La voce scelta dei moduli,
+    degli stili e dei controlli segmentati ha anche un bordo di 2 px del colore del testo e la scritta in grassetto (più
+    `aria-pressed`). Il bordo in più non sposta le voci vicine: il chip scelto toglie con il margine il pixel che aggiunge."""
+    base, scelto = _corpo(".chip"), _corpo(".chip.attiva")
+    assert "border: 1px solid var(--bordo-campo)" in base and "background: none" in base
+    assert all(x in scelto for x in ("background: var(--capitano)", "border: 2px solid var(--testo)", "margin: -1px",
+                                     "color: var(--capitano-testo)", "font-weight: 650"))
+    segmento = _corpo(".segmenti button.attivo")
+    assert all(x in segmento for x in ("background: var(--capitano)", "box-shadow: inset 0 0 0 2px var(--testo)",
+                                       "color: var(--capitano-testo)", "font-weight: 650"))
+    striscia = _corpo(".segmenti")
+    assert "border: 1px solid var(--bordo-campo)" in striscia and "border-radius: var(--r-in)" in striscia
+    assert re.search(r"\.segmenti button \+ button \{[^}]*border-left: 1px solid var\(--filo\)", SENZA_COMMENTI)   # voci separate da un filo
+
+
+def test_la_scelta_si_riconosce_anche_con_il_contrasto_elevato_di_windows():
+    """Revisione di accessibilità della #405: con i colori forzati (contrasto elevato di Windows) il browser toglie il fondo lime e le
+    ombre, quindi il bordo della voce scelta di un controllo segmentato (un'ombra interna) spariva e la scelta non si vedeva più. Lì la
+    voce scelta ha un contorno vero nel colore di sistema della selezione. Moduli e stili hanno un bordo vero, che resta."""
+    assert re.search(r"@media \(forced-colors: active\) \{\s*\.segmenti button\.attivo \{ outline: 2px solid Highlight; "
+                     r"outline-offset: -2px; \}\s*\}", SENZA_COMMENTI)
+    assert "border: 2px solid var(--testo)" in _corpo(".chip.attiva")
+
+
+def test_il_focus_della_voce_scelta_sta_dentro_la_striscia_che_scorre():
+    """Revisione di accessibilità della #405: nella striscia dei moduli e degli stili (che scorre di lato e taglia ciò che esce) la voce
+    scelta sporge di 1 px (bordo di 2 px e margine di −1 px) e il focus sta 2 + 2 px più in là: 5 px, con 4 px di spazio il contorno
+    veniva tagliato. Lo spazio intorno alle voci basta per tutto il contorno; il margine negativo uguale tiene le voci allineate."""
+    fuoco = re.search(r"\n:focus-visible \{ outline: (\d+)px solid var\(--testo\); outline-offset: (\d+)px; \}", SENZA_COMMENTI)
+    sporge = -int(re.search(r"margin: (-\d+)px", _corpo(".chip.attiva")).group(1))
+    serve = int(fuoco.group(1)) + int(fuoco.group(2)) + sporge
+    striscia = _corpo(".chips.scorri")
+    spazio = int(re.search(r"(?<![\w-])padding: (\d+)px;", striscia).group(1))
+    assert spazio >= serve, (spazio, serve)
+    assert f"margin: {2 - (spazio - 4)}px -{spazio}px {4 - (spazio - 4)}px" in striscia     # stesso ingombro di prima, voci allineate
+
+
+def test_pulsante_secondario_da_solo_con_il_bordo_nella_riga_solo_testo():
+    """Spec §8.7: un pulsante pieno per schermata (fondo `--azione`); il secondario da solo ha il bordo dei controlli e la scritta del
+    testo, quello nella riga (`.azione-testo`) è solo testo del colore delle azioni, con l'area da 44 px. Mai tre contorni in fila."""
+    secondario = _corpo(".bottone.secondario")
+    assert all(x in secondario for x in ("background: none", "border-color: var(--bordo-campo)", "color: var(--testo)"))
+    testo = _corpo(".azione-testo")
+    assert "background: none" in testo and "border: 0" in testo
+    assert re.search(r"\.bottone:hover:not\(:disabled\) \{ background: var\(--azione-2\); \}", SENZA_COMMENTI)
+    assert "filter: brightness" not in SENZA_COMMENTI                                   # il passaggio del mouse cambia il fondo, non la luce
+
+
+# ---------------------------------------------------------------- 5.3 etichette come testo colorato
+
+def test_etichette_senza_fondo_ne_bordo_tranne_le_due_pillole():
+    regola = re.search(r"\n\.etichetta \{([^}]*)\}", CSS).group(1)
+    assert "background: none" in regola and "border: 0" in regola and "font-size: var(--t-sec)" in regola
+    assert re.search(r"\.pedina \.gioca\.basso[^{]*\{[^}]*border-radius", CSS)        # «⚠ gioca 45%» resta una pillola
+
+
+def test_nessuna_regola_rimette_la_pillola_alle_etichette():
+    """Spec §8.9: le etichette dei giocatori sono testo nel colore del loro tono (verde, arancio, rosso, grigio per il neutro), senza
+    fondo, bordo né angoli, in ogni variante e in ogni posto (righe, scheda, confronto, Oggi in corso). Le parole e i toni restano
+    quelli del server, gli stessi dell'iPhone (che le mostra come pillole: differenza ammessa)."""
+    assert not _scatole(["etichetta"])
+    for classe, colore in ((".etichetta", "--eti-verde"), (".etichetta.arancio", "--eti-arancio"), (".etichetta.rossa", "--eti-rosso"),
+                           (".etichetta.neutra", "--testo-2"), (".tono", "--eti-verde"), (".tono.arancio", "--eti-arancio"),
+                           (".tono.rossa", "--eti-rosso"), (".tono.neutra", "--testo-2")):
+        assert f"color: var({colore})" in _corpo(classe), classe
+
+
+def test_differenza_ammessa_delle_etichette_scritta():
+    """Spec §13: le etichette diventano testo colorato sulla web e restano pillole sull'iPhone; la differenza (parole e toni uguali) si
+    scrive in «Differenze ammesse» nella PR che la introduce, questa."""
+    doc = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
+    ammesse = doc[doc.index("## Differenze ammesse"):doc.index("## Differenze di oggi")]
+    riga = next((r for r in ammesse.splitlines() if "Etichette dei giocatori" in r), "")
+    assert "testo colorato" in riga and "pillole" in riga and "toni" in riga, riga
+
+
+def test_piu_etichette_nella_stessa_riga_separate_dal_punto():
+    """Spec §8.9: senza la pillola, due etichette vicine («Real Esempio · In ballottaggio») si separano con « · ». Il punto sta in fondo
+    all'etichetta prima, attaccato con uno spazio che non va a capo (come i pezzi di un'etichetta lunga), è grigio e i lettori di
+    schermo non lo leggono (testo alternativo vuoto)."""
+    punto = _corpo(".etichette > .etichetta:not(:last-child)::after")
+    assert 'content: "\\a0·" / ""' in punto and "color: var(--testo-2)" in punto
+
+
+# ---------------------------------------------------------------- 5.4 avvisi, errori, stati vuoti, messaggio che passa
+AVVISI = ("errore", "attenzione", "verdetto", "nota-incerto", "banner-novita", "vuoto")
+
+
+def test_avvisi_con_filo_a_sinistra_nel_colore_del_significato():
+    assert re.search(r"\n\.errore \{[^}]*border-left: 3px solid var\(--rosso\)", CSS)
+    assert re.search(r"\n\.attenzione \{[^}]*border-left: 3px solid var\(--arancio\)", CSS)
+
+
+def test_avvisi_ed_errori_senza_riquadro_con_il_testo_pieno():
+    """Spec §8.12-8.13: un avviso è una riga con il filo di 3 px a sinistra nel colore del significato (rosso errore, arancio dubbio,
+    verde per il verdetto buono di uno scambio) e il testo nel colore del testo: l'errore non è più tutto rosso su un fondo rosa.
+    Niente fondo, bordo intorno né angoli, in nessuna variante; lo stato vuoto è una riga grigia allineata a sinistra. Il filo si vede
+    sul fondo della pagina (almeno 3:1) in chiaro e in scuro, ma non è l'unico segno: la frase dice già cosa succede."""
+    from tests.test_design_web import _colore, _contrasto_rgb, _temi
+    assert not _scatole(AVVISI)
+    assert "color: var(--testo)" in _corpo(".errore") and "color: var(--rosso)" not in _corpo(".errore")
+    for classe, colore in ((".verdetto.ok", "--verde"), (".verdetto.attenzione-lieve", "--arancio"), (".verdetto.no", "--rosso"),
+                           (".nota-incerto", "--arancio")):
+        assert f"border-left-color: var({colore})" in _corpo(classe) or f"border-left: 3px solid var({colore})" in _corpo(classe), classe
+    vuoto = _corpo(".vuoto")
+    assert "color: var(--testo-2)" in vuoto and "text-align: center" not in vuoto
+    for tema, v in _temi().items():
+        for colore in ("--rosso", "--arancio", "--verde"):
+            assert _contrasto_rgb(_colore(v[colore])[0], _colore(v["--sfondo"])[0]) >= 3, (tema, colore)
+
+
+def test_il_messaggio_che_passa_e_pieno_e_si_stacca_dalla_pagina():
+    """Spec §8.13: il messaggio che passa resta (in basso a sinistra sul PC), pieno, senza vetro. Con le superfici piene il «vetro» ha
+    il colore della pagina: nello scuro il messaggio non si staccava dal fondo. Ora ha i colori del testo e della pagina scambiati
+    (la scritta almeno 4,5:1), senza ombra né l'anello verde che si allargava; l'errore non ha più l'anello rosso intorno."""
+    from tests.test_design_web import _colore, _contrasto_rgb, _temi
+    corpo = _corpo(".avviso")
+    assert all(x in corpo for x in ("background: var(--testo)", "color: var(--sfondo)", "border: 0", "box-shadow: none",
+                                    "border-radius: var(--r-in)"))
+    for tema, v in _temi().items():
+        assert _contrasto_rgb(_colore(v["--sfondo"])[0], _colore(v["--testo"])[0]) >= 4.5, tema
+    assert "anello" not in _corpo(".avviso:not([hidden])")
+    assert "anello-rosso" not in SENZA_COMMENTI
+
+
+def test_novita_della_versione_una_riga_con_il_filo():
+    """Spec §9 (Oggi): il banner delle novità diventa una riga con il filo sopra e sotto («Novità della versione 1.402»), alta 44 px."""
+    corpo = _corpo(".banner-novita")
+    assert all(x in corpo for x in ("border: 0", "border-top: 1px solid var(--filo)", "border-bottom: 1px solid var(--filo)",
+                                    "min-height: 44px", "background: none"))
+
+
+def test_novita_delle_sezioni():
+    voce = _voce_di_novita("sezioni-pulsanti.json", "Meno riquadri: sezioni con un titolo e righe")
+    assert len(voce["voci"]) >= 2

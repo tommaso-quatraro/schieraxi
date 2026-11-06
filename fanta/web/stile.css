@@ -50,8 +50,9 @@
   --t-eroe: 56px; --t-titolo: 32px; --t-card: 17px; --t-valore: 20px; --t-corpo: 15px; --t-sec: 13px; --t-eti: 12px;
   /* numeri e titoli delle schermate: Archivo con le cifre in colonna; il testo resta nel carattere di sistema */
   --font-numeri: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif;
-  --r-card: 20px; --r-in: 14px; --r-pill: 999px;   /* raggi: card, elementi dentro la card, pillole */
-  --raggio: var(--r-card);
+  /* raggi (spec §7.5): --r-card per il campo, le foto, l'immagine da condividere e la proposta di scambio; --r-in per pulsanti,
+     campi e controlli; --r-pill solo per «⚠ gioca N%» sul campo e il contatore di «Da fare» */
+  --r-card: 12px; --r-in: 8px; --r-pill: 999px;
   --barra: 60px;                            /* barra in basso del telefono, senza lo spazio del sistema sotto */
   --alto-ferma: 0px;                        /* dove si fermano le colonne ferme: sotto i 900 px la testata scorre via con la pagina */
   --molla: cubic-bezier(.2, .95, .25, 1.12);
@@ -132,8 +133,8 @@ body {
   overscroll-behavior-y: none;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
-button { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .22s var(--uscita), background-color .2s, color .2s, box-shadow .25s, opacity .2s; }
-button:active:not(:disabled) { transform: scale(.95); }
+/* toccare un pulsante non lo rimpicciolisce più (spec §7.6): cambiano solo fondo e colore */
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .2s, color .2s, box-shadow .25s, opacity .2s; }
 b, strong { font-weight: 650; }
 
 /* ---------------------------------------------------------------- sfondo: piatto (le macchie colorate che si muovevano sapevano di generato) */
@@ -146,21 +147,30 @@ b, strong { font-weight: 650; }
   border: 1px solid var(--bordo);
   box-shadow: var(--ombra);
 }
-.carta {
-  position: relative; background: var(--vetro-carta);
-  border: 1px solid var(--bordo); border-radius: var(--raggio); padding: 16px; margin-bottom: 14px; overflow: hidden;
-}
-.carta h2 { font-size: var(--t-card); margin: 0 0 10px; letter-spacing: -.01em; }
+/* Sezione (grafica B, spec §4.1 e §8.3): la classe resta `.carta`, ma niente più scatola. Un titolo con il filo spesso sotto, righe
+   separate da un filo sottile, lo spazio tra una sezione e l'altra: il contenuto parte dove parte il titolo della pagina. Nessun
+   `overflow: hidden`: senza rientro avrebbe tagliato il focus delle righe larghe quanto la sezione. Resta un blocco con il filo
+   intorno solo la proposta di uno scambio (`.carta.scambio`), dove un riquadro raggruppa davvero chi dai, chi ricevi e il verdetto. */
+.carta { position: relative; background: none; border: 0; padding: 0; margin-bottom: 24px; }
+.carta h2 { font-size: var(--t-card); font-weight: 650; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 2px solid var(--testo); letter-spacing: -.01em; }
+/* sezione che si apre («Fuori dalla formazione», le regole): il suo titolo è il riassunto. Una domanda che si apre dentro una
+   sezione («Non è la tua squadra?») non è un titolo: niente filo spesso */
+.carta > details:first-child > summary, details.carta > summary { border-bottom: 2px solid var(--testo); }
+/* titolo con qualcosa accanto (la stagione nel Diario, «Nuovo» nelle Novità): il filo spesso sta sotto tutta la riga */
+.carta > .riga:first-child:has(> h2) { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 2px solid var(--testo); }
+.carta > .riga:first-child > h2 { padding-bottom: 0; border-bottom: 0; }
 .carta h3 { font-size: var(--t-sec); color: var(--testo-2); margin: 16px 0 8px; font-weight: 600; }
-.carta.hero { border-color: color-mix(in srgb, var(--verde) 35%, var(--bordo)); }   /* la prima carta si distingue per il numero grande, non per un alone */
+.carta.scambio { border: 1px solid var(--filo); border-radius: var(--r-card); padding: 16px; }
 .riga { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .debole { color: var(--testo-2); font-size: var(--t-sec); }
 .piccolo { font-size: var(--t-eti); }
 .grande { font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .enorme { font-family: var(--font-numeri); font-size: var(--t-eroe); font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
-.vuoto { text-align: center; color: var(--testo-2); padding: 32px 12px; }
-.errore { background: color-mix(in srgb, var(--rosso) 16%, var(--vetro-carta)); color: var(--rosso); border: 1px solid color-mix(in srgb, var(--rosso) 40%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; }
-.attenzione { background: color-mix(in srgb, var(--arancio) 16%, var(--vetro-carta)); border: 1px solid color-mix(in srgb, var(--arancio) 36%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo); }
+.vuoto { color: var(--testo-2); padding: 12px 0; }      /* stato vuoto: una riga grigia che dice cosa manca, niente riquadro (spec §8.12) */
+/* Avvisi ed errori (spec §8.13): una riga con il filo di 3 px a sinistra nel colore del significato (rosso errore, arancio dubbio), il
+   testo nel colore del testo, niente fondo né riquadro. La frase dice già cosa succede: il colore non è l'unico segno */
+.errore { background: none; color: var(--testo); border: 0; border-left: 3px solid var(--rosso); padding: 6px 0 6px 12px; margin-bottom: 16px; }
+.attenzione { background: none; color: var(--testo); border: 0; border-left: 3px solid var(--arancio); padding: 6px 0 6px 12px; margin-bottom: 16px; font-size: var(--t-corpo); }
 .nota { font-size: var(--t-eti); color: var(--testo-2); text-align: center; margin: -6px 0 10px; }
 .positivo { color: var(--verde); } .negativo { color: var(--rosso); }
 
@@ -238,15 +248,20 @@ main > * { animation: dissolve .2s ease both; }   /* niente cascata: ogni blocco
 main.ridisegna > * { animation: none; }
 
 /* ---------------------------------------------------------------- controlli */
-.campo-testo, select, textarea { width: 100%; border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; padding: 12px 14px; font-size: var(--t-card);
+.campo-testo, select, textarea { width: 100%; border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: var(--r-in); padding: 12px 14px; font-size: var(--t-card);
   box-shadow: none; }
 textarea { min-height: 140px; resize: vertical; }
 select { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--testo-2) 50%), linear-gradient(135deg, var(--testo-2) 50%, transparent 50%);
   background-position: calc(100% - 20px) 54%, calc(100% - 14px) 54%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
+/* Pulsanti (spec §8.7): uno pieno per schermata, piatto, nel colore delle azioni. Il secondario da solo ha il bordo dei controlli e la
+   scritta del testo; l'azione dentro una riga («Sostituisci», «Controlla») è solo testo nel colore delle azioni (`.azione-testo`),
+   con l'area da 44 px. Mai tre pulsanti a contorno in fila. */
 .bottone { border: 1px solid transparent; background: var(--azione);
   color: var(--azione-testo); font-weight: 650; border-radius: var(--r-in); padding: 12px 18px; min-height: 46px; }
-.bottone.secondario { background: color-mix(in srgb, var(--azione) 10%, transparent); color: var(--azione); border-color: color-mix(in srgb, var(--azione) 35%, var(--bordo)); }
+.bottone.secondario { background: none; border-color: var(--bordo-campo); color: var(--testo); }
 .bottone:disabled { opacity: .5; }
+.azione-testo { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 8px;
+  border: 0; border-radius: var(--r-in); background: none; color: var(--azione); font-weight: 650; text-decoration: none; }
 .pulsanti { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .bottone.indietro { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px !important; }   /* «‹ Squadra»: icona e parola, niente «←» nel testo */
 .interruttore { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: var(--t-corpo); }
@@ -255,18 +270,22 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
   border: 9px solid transparent; border-radius: 16px; background: color-mix(in srgb, var(--solido) 60%, transparent) center / 18px no-repeat; background-clip: padding-box;
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--testo) 45%, transparent); cursor: pointer; }
 .interruttore input[type="checkbox"]:checked, .scelte input[type="checkbox"]:checked { background-color: var(--azione); background-image: var(--spunta); box-shadow: none; }
-.interruttore input[type="checkbox"]:focus-visible, .scelte input[type="checkbox"]:focus-visible { outline: 2px solid var(--blu); outline-offset: -7px; }
+.interruttore input[type="checkbox"]:focus-visible, .scelte input[type="checkbox"]:focus-visible { outline: 2px solid var(--testo); outline-offset: -7px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 6px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 40px; border-radius: 999px; border: 1px solid var(--bordo);
-  background: var(--vetro-carta); color: var(--testo); font-size: var(--t-corpo); font-weight: 550; }
+/* voci di scelta (moduli, stili, misure): rettangoli con il bordo dei controlli, non più pillole */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 40px; border-radius: var(--r-in); border: 1px solid var(--bordo-campo);
+  background: none; color: var(--testo); font-size: var(--t-corpo); font-weight: 550; }
 .chip span { color: var(--testo-2); font-size: var(--t-eti); font-weight: 450; }
 .chip i { font-style: normal; color: var(--giallo-testo); }
-/* la scelta attiva è lime (--capitano) con testo scuro, uguale su web e iOS */
-.chip.attiva { background: var(--capitano); border-color: transparent; color: var(--capitano-testo); }
+/* la scelta attiva è lime (--capitano) con testo scuro, uguale su web e iOS. Il lime chiaro sta a 2,8:1 dal bianco e da solo non dice
+   «scelto» (WCAG 1.4.11): anche il bordo di 2 px del colore del testo e il grassetto. Il margine toglie il pixel di bordo in più, così
+   le altre voci non si spostano quando si sceglie */
+.chip.attiva { background: var(--capitano); border: 2px solid var(--testo); margin: -1px; color: var(--capitano-testo); font-weight: 650; }
 /* valore e stella pieni, non all'80%: sul lime del tema chiaro il numero da 12 px scendeva a 4,1:1 (issue #244); il nome resta più grande e più forte */
 .chip.attiva span, .chip.attiva i { color: var(--capitano-testo); }
 /* moduli e stili della formazione: una riga che scorre di lato (stessa striscia di Mercato) invece di andare a capo */
-.chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 2px -4px 4px; padding: 4px; scroll-padding-inline: 24px;
+/* 5 px intorno alle voci: il focus della voce scelta (che sporge di 1 px) sta 2 + 2 px più in là e la striscia taglia ciò che esce */
+.chips.scorri { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 1px -5px 3px; padding: 5px; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent); }
 .chips.scorri::-webkit-scrollbar { display: none; }
@@ -277,12 +296,22 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .altre-azioni > summary.bottone { display: inline-flex; align-items: center; gap: 8px; justify-content: center; font-size: var(--t-corpo); font-weight: 650; padding: 0 16px; }
 .altre-azioni > summary.bottone::after { margin-right: 0; }
 .altre-azioni[open] { flex: 1 0 100%; } .altre-azioni[open] > .pulsanti { margin-top: 10px; }
-.segmenti { display: flex; padding: 4px; margin-bottom: 14px; border-radius: 20px; background: color-mix(in srgb, var(--solido) 40%, transparent); border: 1px solid var(--bordo); position: relative; }
-.segmenti button { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; padding: 11px 4px; border-radius: var(--r-in); font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
-/* voce scelta: grigio neutro un gradino sopra la striscia (con le superfici piene il fondo della carta non si distingueva più) */
-.segmenti button.attivo { color: var(--testo); background: color-mix(in srgb, var(--testo) 12%, var(--sfondo)); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
+/* Controllo segmentato (spec §8.8): bordo dei controlli, voci separate da un filo, la voce scelta in lime come moduli e stili, con il
+   bordo di 2 px del colore del testo (dentro la voce: niente spostamenti) e la scritta scura in grassetto. Niente `overflow: hidden`
+   (taglierebbe il focus, che sta fuori dalla voce come ovunque): la prima e l'ultima voce seguono gli angoli della striscia */
+.segmenti { display: flex; padding: 0; margin-bottom: 14px; border-radius: var(--r-in); background: none; border: 1px solid var(--bordo-campo); position: relative; }
+.segmenti button { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; padding: 11px 4px; border-radius: 0; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
+.segmenti button + button { border-left: 1px solid var(--filo); }
+.segmenti button:first-child { border-radius: calc(var(--r-in) - 1px) 0 0 calc(var(--r-in) - 1px); }
+.segmenti button:last-child { border-radius: 0 calc(var(--r-in) - 1px) calc(var(--r-in) - 1px) 0; }
+.segmenti button:only-child { border-radius: calc(var(--r-in) - 1px); }
+.segmenti button.attivo { color: var(--capitano-testo); background: var(--capitano); box-shadow: inset 0 0 0 2px var(--testo); font-weight: 650; }
+/* contrasto elevato di Windows: il browser toglie il fondo lime e l'ombra interna, la voce scelta prende un contorno vero */
+@media (forced-colors: active) {
+  .segmenti button.attivo { outline: 2px solid Highlight; outline-offset: -2px; }
+}
 /* striscia scorrevole (Mercato): le voci hanno la loro larghezza vera e non si tagliano; la scelta resta in vista e un bordo sfumato dice che si scorre */
-.segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 2px; scroll-snap-type: x proximity; scroll-padding-inline: 24px;
+.segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 0; scroll-snap-type: x proximity; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent); }
 .segmenti.scorri::-webkit-scrollbar { display: none; }
@@ -346,8 +375,8 @@ details[open] > summary { margin-bottom: 8px; }
 .elenco li { border-top: 1px solid color-mix(in srgb, var(--testo) 9%, transparent); }
 .elenco li:first-child { border-top: 0; }
 .ridisegna .elenco li { animation: none; }
-.voce { width: 100%; border: 0; background: none; text-align: left; padding: 11px 0; display: grid; grid-template-columns: 46px 1fr auto; gap: 12px; align-items: center; border-radius: 14px; }
-.voce:active { background: color-mix(in srgb, var(--verde) 14%, transparent); transform: scale(.985); }
+.voce { width: 100%; border: 0; background: none; text-align: left; padding: 11px 0; display: grid; grid-template-columns: 46px 1fr auto; gap: 12px; align-items: center; border-radius: var(--r-in); }
+.voce:active { background: var(--superficie); }      /* al tocco la riga prende il fondo del passaggio del mouse; niente pressione */
 .voce .nome { font-weight: 650; font-size: var(--t-card); }
 .voce-link { color: var(--testo); text-decoration: none; min-height: 44px; }      /* privacy, termini e crediti nelle Impostazioni: voci, non link blu */
 .voce .dettaglio { font-size: var(--t-sec); color: var(--testo-2); }
@@ -355,19 +384,22 @@ details[open] > summary { margin-bottom: 8px; }
 .voce .valore b { display: block; font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ruolo { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: var(--t-sec); font-weight: 700; color: #fff; }
 .ruolo.P { background: #9a5f00; } .ruolo.D { background: #237d46; } .ruolo.C { background: #2b66bf; } .ruolo.A { background: #c13b38; }
-.etichette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-/* Pillola mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima tra i pezzi separati da «·»
-   (`.pezzo`, da testoEtichetta in app.js), poi tra le parole. Il raggio supera metà altezza di una riga: su una riga è una capsula,
-   su più righe un rettangolo con gli angoli tondi. */
-.etichetta { display: inline-block; font-size: var(--t-eti); padding: 3px 9px; border-radius: calc(.7em + 4px); background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--eti-verde); font-weight: 550; max-width: 100%; overflow-wrap: break-word; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
+.etichette { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; }
+/* Etichette dei giocatori (grafica B, spec §8.9): testo da 13 px nel colore del tono, senza fondo né bordo (sull'iPhone restano
+   pillole: parole e toni uguali). Mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima
+   tra i pezzi separati da «·» (`.pezzo`, da testoEtichetta in app.js), poi tra le parole. Due etichette vicine si separano con « · »:
+   il punto chiude quella prima, attaccato da uno spazio che non va a capo; i lettori di schermo non lo leggono. Restano pillole solo
+   «⚠ gioca N%» sul campo e il contatore di «Da fare». */
+.etichetta { display: inline-block; font-size: var(--t-sec); padding: 0; background: none; border: 0; color: var(--eti-verde); font-weight: 550; line-height: 1.35; max-width: 100%; overflow-wrap: break-word; }
 .etichetta .pezzo { display: inline-block; max-width: 100%; }
-.etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--eti-rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
-.etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--eti-arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
-.etichetta.neutra { background: color-mix(in srgb, var(--testo) 8%, transparent); color: var(--testo-2); border-color: transparent; }
-/* Oggi in corso: lo stato di chi non ha il voto, colorato dal `tono` dell'etichetta del server */
-.tono { color: var(--verde); font-weight: 600; }
-.tono.arancio { color: var(--arancio); }
-.tono.rossa { color: var(--rosso); }
+.etichetta.rossa { color: var(--eti-rosso); }
+.etichetta.arancio { color: var(--eti-arancio); }
+.etichetta.neutra { color: var(--testo-2); }
+.etichette > .etichetta:not(:last-child)::after { content: "\a0·" / ""; color: var(--testo-2); font-weight: 400; }
+/* Oggi in corso: lo stato di chi non ha il voto, colorato dal `tono` dell'etichetta del server (stessi colori delle etichette) */
+.tono { color: var(--eti-verde); font-weight: 600; }
+.tono.arancio { color: var(--eti-arancio); }
+.tono.rossa { color: var(--eti-rosso); }
 .tono.neutra { color: var(--testo-2); font-weight: 400; }
 /* note lunghe (per esempio l'infortunio): tutta la riga, mai oltre il bordo né sotto il pulsante ⇄ */
 .etichetta.lunga { flex: 1 1 100%; }
@@ -433,8 +465,7 @@ details[open] > summary { margin-bottom: 8px; }
 .nota-incerti { margin: -4px 4px 14px; font-size: var(--t-sec); line-height: 1.4; color: var(--testo-2); }
 .nota-incerti p { margin: 0 0 6px; }
 .nota-incerti b { color: var(--testo); }
-.nota-incerto { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; font-size: var(--t-sec); line-height: 1.4;
-  background: color-mix(in srgb, var(--arancio) 12%, transparent); }
+.nota-incerto { margin: 10px 0 0; padding: 4px 0 4px 12px; font-size: var(--t-sec); line-height: 1.4; border-left: 3px solid var(--arancio); }
 .stato-scelta .pulsanti { margin-top: 10px; gap: 8px; }
 .stato-scelta .bottone { padding-left: 14px; padding-right: 14px; }
 /* Oggi, riquadro «Partita rinviata»: quali partite, i miei coinvolti e cosa vale per questa giornata */
@@ -444,11 +475,11 @@ details[open] > summary { margin-bottom: 8px; }
 /* il menu con la scelta intera: il testo scelto va a capo nel riquadro, accanto al simbolo del menu; il <select> vero sta sopra,
    trasparente (tocco, tastiera e lettore di schermo), e apre il menu del sistema. Un <select> non va a capo (issue #265). */
 .menu-scelta { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 6px; min-height: 46px; padding: 11px 16px 11px 14px;
-  border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; font-size: var(--t-corpo); line-height: 1.3; }
+  border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: var(--r-in); font-size: var(--t-corpo); line-height: 1.3; }
 .menu-scelta-testo { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
 .menu-scelta::after { content: ""; flex: none; width: 7px; height: 7px; margin-top: -4px; border-right: 2px solid var(--testo-2); border-bottom: 2px solid var(--testo-2); transform: rotate(45deg); }
 .menu-scelta select { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; cursor: pointer; font-size: var(--t-corpo); }
-.menu-scelta:has(select:focus-visible) { outline: 2px solid var(--azione); outline-offset: 2px; }
+.menu-scelta:has(select:focus-visible) { outline: 2px solid var(--testo); outline-offset: 2px; }
 .menu-scelta:has(select:disabled) { opacity: .6; }
 .giorno-titolo { font-size: var(--t-sec); color: var(--testo-2); margin: 10px 0 2px; font-weight: 600; }
 .giorno-titolo::first-letter { text-transform: uppercase; }   /* «sab 31» -> «Sab 31», «ieri» -> «Ieri» */
@@ -526,7 +557,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .pallino-stato.rosso { --c: var(--rosso); } .pallino-stato.arancio { --c: var(--arancio); } .pallino-stato.giallo { --c: var(--giallo); }
 .stat-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .stat-fila.quattro { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.stat-fila > div { text-align: center; padding: 10px 6px; border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); }
+.stat-fila > div { text-align: left; padding: 8px 0 2px; border-top: 1px solid var(--filo); }      /* cifre senza riquadro, sopra un filo (spec §8.6) */
 .stat-fila b { display: block; font-size: var(--t-card); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .stat-fila span { font-size: var(--t-eti); color: var(--testo-2); }
 
@@ -547,7 +578,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 
 /* ---------------------------------------------------------------- scheda giocatore e confronto */
 .statistiche { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.statistiche div { background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); border-radius: 14px; padding: 9px 6px; text-align: center; }
+.statistiche div { padding: 8px 0 2px; border-top: 1px solid var(--filo); text-align: left; }      /* statistiche: una griglia di numeri senza riquadri (spec §9) */
 .statistiche b { display: block; font-size: var(--t-card); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .statistiche span { font-size: var(--t-eti); color: var(--testo-2); }
 .intestazione-scheda { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 14px; }
@@ -576,7 +607,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .perche h3 { margin: 0 0 8px; font-size: var(--t-card); }
 .perche-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .perche-voce { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; font-size: var(--t-corpo); }
-.perche-effetto { text-align: center; padding: 3px 0; border-radius: var(--r-pill); font-size: var(--t-sec); font-variant-numeric: tabular-nums; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 45%, transparent); }
+.perche-effetto { text-align: right; padding: 0; font-family: var(--font-numeri); font-size: var(--t-corpo); font-weight: 650; font-variant-numeric: tabular-nums; }   /* l'effetto è un numero nel suo colore, non una pillola */
 .perche-effetto.su { color: var(--verde); } .perche-effetto.giu { color: var(--rosso); } .perche-effetto.dubbio { color: var(--arancio); }      /* non «avviso»: è la classe del messaggio a comparsa (posizione fissa) */
 .perche-definizione { margin-top: 10px; }
 [data-perche] { cursor: pointer; }
@@ -590,15 +621,15 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .proposta button.nome-g { border: 0; background: none; padding: 0; text-align: inherit; font-weight: 650; font-size: var(--t-corpo); display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proposta .freccia { color: var(--verde); font-size: var(--t-card); }
 /* card introduttiva compatta: una riga + «Come si legge» chiuso */
-.intro-c { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; padding: 4px 14px; margin-bottom: 10px; border-radius: 20px; }
+.intro-c { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; padding: 0; margin-bottom: 12px; }
 .intro-c .intro-riga { font-size: var(--t-corpo); }
 .intro-c details.come { margin-left: auto; }
 .intro-c details.come[open] { flex: 1 0 100%; margin-left: 0; }
 .intro-c .come > summary { justify-content: flex-end; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .intro-c .come .debole { font-size: var(--t-sec); padding-bottom: 8px; }
-/* proposta di cambio: una riga da ~80 px; il guadagno in punti è il dato grande a destra */
+/* proposta di cambio: una riga da ~80 px separata dalla successiva da un filo; il guadagno in punti è il dato grande a destra */
 .griglia-proposte { display: contents; }
-.proposta-r { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; margin-bottom: 10px; border-radius: 20px; }
+.proposta-r { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; margin-bottom: 0; border-bottom: 1px solid var(--filo); }
 .proposta-r .avatar-anello { --d: 44px; }
 .pr-testo { min-width: 0; }
 .proposta-r button.nome-g { border: 0; background: none; padding: 0; text-align: left; font-weight: 650; font-size: var(--t-card); max-width: 100%; overflow-wrap: break-word; display: block; }   /* nome lungo a capo, mai «…» (issue #287) */
@@ -620,7 +651,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .foglio { position: fixed; inset: 0; z-index: 20; }
 .foglio-sfondo { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); }
 .foglio-corpo { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(90vh / var(--z)); overflow: auto; overscroll-behavior: contain; border-radius: 30px 30px 0 0; padding: 8px 16px calc(28px + env(safe-area-inset-bottom));
-  max-width: 720px; margin: 0 auto; background: color-mix(in srgb, var(--sfondo) 78%, var(--vetro)); touch-action: pan-y; }
+  max-width: 720px; margin: 0 auto; background: var(--sfondo); touch-action: pan-y; }      /* pieno, senza vetro (spec §7.6) */
 .maniglia { position: sticky; top: 0; z-index: 3; display: flex; justify-content: center; padding: 6px 0 14px; touch-action: none; }
 .maniglia i { width: 42px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--testo) 30%, transparent); }
 .foglio-chiudi { position: absolute; top: 14px; right: 14px; z-index: 4; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 50%, transparent); width: 44px; height: 44px; border-radius: 50%; font-size: var(--t-corpo); color: var(--testo-2); }
@@ -629,12 +660,13 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .foglio.chiude .foglio-sfondo { animation: sfuma .24s ease both; }
 .foglio.chiude .foglio-corpo { animation: scende .24s ease-in both; }
 .foglio-corpo.trascina { animation: none !important; transition: none; }
-.foglio-corpo .carta { box-shadow: none; }
 
 /* avviso (toast) */
 .aggiornamento-pronto { position: fixed; left: 18px; right: 18px; top: calc(env(safe-area-inset-top) + 10px); z-index: 40; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 9px 14px; border-radius: 20px; font-size: var(--t-corpo); max-width: 420px; margin: 0 auto; }
 .aggiornamento-pronto button { border: 0; background: none; color: var(--azione); font: inherit; font-weight: 650; text-decoration: underline; padding: 4px 6px; cursor: pointer; }
-.avviso { position: fixed; left: 18px; right: 18px; bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 26px); z-index: 30; padding: 13px 16px; border-radius: 20px; font-size: var(--t-corpo); max-width: 540px; margin: 0 auto; }
+/* il messaggio che passa: pieno, con i colori del testo e della pagina scambiati, così si stacca dal fondo anche senza ombra (spec §8.13) */
+.avviso { position: fixed; left: 18px; right: 18px; bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 26px); z-index: 30; padding: 13px 16px; border-radius: var(--r-in);
+  background: var(--testo); color: var(--sfondo); border: 0; box-shadow: none; font-size: var(--t-corpo); font-weight: 550; max-width: 540px; margin: 0 auto; }
 
 /* caricamento a scheletro */
 .caricamento { text-align: center; padding: 22px 0 8px; color: var(--testo-2); }
@@ -733,9 +765,9 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .riga-regola > select.scelta-corta { width: auto; flex: none; max-width: 48%; min-height: 44px; padding: 8px 12px; font-size: var(--t-corpo); }
 .riga-regola small, .interruttore-ios small { display: block; color: var(--testo-2); font-size: var(--t-eti); margin-top: 1px; }
 .riga-regola.evidenzia { background: color-mix(in srgb, var(--verde) 20%, transparent); transition: background 1.5s; }
-.stepper { display: inline-flex; align-items: center; border: 1px solid var(--bordo-campo); border-radius: 14px; background: color-mix(in srgb, var(--solido) 50%, transparent); overflow: hidden; flex: none; max-width: 100%; }   /* i −/+ restano da 44 px (#289): se il posto non basta cede il numero */
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--bordo-campo); border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 50%, transparent); overflow: hidden; flex: none; max-width: 100%; }   /* i −/+ restano da 44 px (#289): se il posto non basta cede il numero */
 .stepper button { width: 44px; height: 44px; flex: none; border: 0; background: none; font-size: var(--t-card); font-weight: 500; color: var(--azione); line-height: 1; }
-.stepper button:active { background: color-mix(in srgb, var(--azione) 18%, transparent); transform: none; }
+.stepper button:active { background: color-mix(in srgb, var(--azione) 18%, transparent); }
 .stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-size: var(--t-card); font-weight: 650; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
 .interruttore-ios { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; font-size: var(--t-corpo); }
 .interruttore-ios > span { flex: 1; }
@@ -744,7 +776,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .interruttore-ios i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); transition: transform .35s var(--molla); }
 .interruttore-ios input:checked + i { background: var(--azione); }
 .interruttore-ios input:checked + i::after { transform: translateX(20px); }
-.interruttore-ios input:focus-visible + i { outline: 2px solid var(--blu); outline-offset: 2px; }
+.interruttore-ios input:focus-visible + i { outline: 2px solid var(--testo); outline-offset: 2px; }
 .fascia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 0; border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
 .fascia .coppia { display: flex; align-items: center; gap: 8px; }
 .fascia .rimuovi-fascia { margin-left: auto; }
@@ -784,8 +816,9 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .immagine-squadra .vuota { height: 84px; display: grid; place-items: center; color: var(--testo-2); font-size: var(--t-sec); }
 
 /* ---- novità ---- */
-.banner-novita { width: 100%; text-align: left; border: 1px solid var(--bordo); border-radius: var(--r-card); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo);
-  background: var(--vetro-carta); color: var(--testo); }
+/* «Novità della versione 1.402»: una riga con il filo sopra e sotto, come le altre (spec §9) */
+.banner-novita { display: block; width: 100%; min-height: 44px; text-align: left; border: 0; border-top: 1px solid var(--filo); border-bottom: 1px solid var(--filo); border-radius: 0;
+  padding: 12px 0; margin-bottom: 24px; font-size: var(--t-corpo); font-weight: 650; background: none; color: var(--testo); }
 /* Diario: una riga in testa, la spiegazione lunga dietro «Come si legge» (docs/STILE-SENZA-AI.md) */
 .come-diario > summary { justify-content: flex-start; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .novita-voci { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 8px; font-size: var(--t-corpo); }
@@ -793,8 +826,8 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 
 /* ---- ballottaggi con le alternative vicine ---- */
 .elenco li.alternative-li { border-top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 44px 12px 54px; margin-top: -4px; }
-.alternative-li .alt { display: inline-flex; align-items: baseline; gap: 6px; min-height: 44px; align-items: center; padding: 8px 13px; border-radius: 999px; border: 1px solid var(--bordo); font-size: var(--t-sec);
-  background: color-mix(in srgb, var(--solido) 45%, transparent); color: var(--testo); }
+.alternative-li .alt { display: inline-flex; align-items: baseline; gap: 6px; min-height: 44px; align-items: center; padding: 8px 13px; border-radius: var(--r-in); border: 1px solid var(--filo); font-size: var(--t-sec);
+  background: none; color: var(--testo); }
 .alternative-li .alt small { color: var(--arancio); font-size: var(--t-eti); }
 
 /* ---- ricerca veloce e immagine da condividere ---- */
@@ -831,6 +864,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
   .avviso { left: 24px; right: auto; bottom: 24px; margin: 0; }
   .salva-fisso { bottom: 24px; }
   main { padding: 28px 32px 0; }
+  .carta { margin-bottom: 32px; }
   html { scroll-padding-bottom: 16px; }                                       /* le schede stanno in alto: in basso non copre niente */
   html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: 86px; }
 }
@@ -850,18 +884,23 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 @media (min-width: 2400px) { :root { --z: 1.3; } }
 @media (min-width: 3000px) { :root { --z: 1.5; } }
 
-/* mouse e tastiera (PC, iPad con tastiera) */
+/* mouse e tastiera (PC, iPad con tastiera), spec C11: sotto il mouse la riga e i controlli prendono il fondo `--superficie`, il
+   pulsante pieno si scurisce, l'azione scritta si sottolinea. Niente schiarita con `filter`: sul testo scuro non si vedeva */
 @media (hover: hover) {
-  button:hover:not(:disabled) { filter: brightness(1.1); }
-  .voce:hover { background: color-mix(in srgb, var(--verde) 9%, transparent); }
+  .bottone:hover:not(:disabled) { background: var(--azione-2); }
+  .bottone.secondario:hover:not(:disabled), .bottone-icona:hover, .chip:not(.attiva):not(:disabled):hover, .segmenti button:not(.attivo):hover,
+  .foglio-chiudi:hover, .confronta-mini:hover, .alternative-li .alt:hover { background: var(--superficie); }
+  .azione-testo:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .voce:hover { background: var(--superficie); }
 }
-:focus-visible { outline: 2px solid var(--azione); outline-offset: 2px; }      /* il bordo arrotondato lo decide ogni elemento (cerchi compresi) */
-.accesso :focus-visible, .foglio-corpo :focus-visible { outline-color: var(--testo); }
+/* Focus da tastiera (spec §14): un colore solo, quello del testo, 2 px con 2 px di stacco, su ogni fondo almeno 3:1; bianco sul campo
+   verde. Il bordo arrotondato lo decide ogni elemento (cerchi compresi) */
+:focus-visible { outline: 2px solid var(--testo); outline-offset: 2px; }
+.campo :focus-visible { outline-color: #fff; }
 .suggerimento-tasti { display: none; }
 @media (hover: hover) and (min-width: 900px) { .suggerimento-tasti { display: block; } }
 
 /* ---- personalizzazione: densità e animazioni ---- */
-html[data-densita="compatta"] .carta { padding: 12px 14px; margin-bottom: 10px; }
 html[data-densita="compatta"] .voce { padding-top: 6px; padding-bottom: 6px; min-height: 48px; }
 html[data-densita="compatta"] .chip { min-height: 44px; padding: 5px 12px; }
 .colori { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 14px; }
@@ -878,7 +917,7 @@ main[data-gruppo="dati"] > [data-g]:not([data-g="dati"]):not([data-g="tutti"]) {
 .elenco li.con-confronto .voce { padding-right: 52px; }
 
 /* ---- accessibilità ---- */
-.salta { position: fixed; left: 12px; top: -60px; z-index: 50; padding: 10px 16px; border-radius: 14px; background: var(--solido); color: var(--testo); border: 2px solid var(--azione); }
+.salta { position: fixed; left: 12px; top: -60px; z-index: 50; padding: 10px 16px; border-radius: var(--r-in); background: var(--solido); color: var(--testo); border: 2px solid var(--testo); }
 .salta:focus { top: 12px; }
 main:focus { outline: none; }
 .chip { min-height: 44px; }
@@ -888,7 +927,7 @@ main:focus { outline: none; }
 :root[data-tema="chiaro"] .badge-indice { color: #fff; }
 
 /* ---- dalla revisione: focus nei campi numerici, "Salva" a tutta larghezza nella griglia ---- */
-.stepper:focus-within { outline: 2px solid var(--azione); outline-offset: 2px; }
+.stepper:focus-within { outline: 2px solid var(--testo); outline-offset: 2px; }
 
 /* telefoni stretti (iPhone SE, mini): i segmenti non devono uscire dal loro riquadro; campi dei crediti facili da toccare */
 @media (max-width: 400px) { .segmenti button { font-size: var(--t-eti); padding: 11px 1px; letter-spacing: -.1px; } }
@@ -949,7 +988,7 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
 .ar-attesa .marchio { margin: 0; flex: none; }
 .ar .ar-titolo { font-size: var(--t-card); text-transform: none; letter-spacing: -.01em; color: var(--testo); margin: 16px 0 6px; font-weight: 700; }
 .ar-titolo:focus { outline: none; }
-.ar-titolo:focus-visible { outline: 2px solid var(--blu); outline-offset: 4px; }
+.ar-titolo:focus-visible { outline: 2px solid var(--testo); outline-offset: 4px; }
 .ar-riassunto { margin: 0 0 12px; font-size: var(--t-corpo); }
 .ar-mia { border: 0; margin: 0 0 14px; padding: 0; min-width: 0; }
 .ar-mia legend { font-weight: 650; font-size: var(--t-corpo); padding: 0; margin-bottom: 8px; }
@@ -957,7 +996,7 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
 .ar-mia .chip { min-height: 44px; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; }
 .ar-mia .chip input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--capitano-testo); }
 .ar-mia .chip:not(.attiva) input { accent-color: var(--azione); }
-.ar-mia .chip:has(input:focus-visible) { outline: 2px solid var(--blu); outline-offset: 2px; }
+.ar-mia .chip:has(input:focus-visible) { outline: 2px solid var(--testo); outline-offset: 2px; }
 .ar-squadre { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 @media (min-width: 900px) { .ar-squadre { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; } }
 .ar-squadra { padding: 12px 14px; border-radius: var(--r-in); border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 25%, transparent); min-width: 0; }
@@ -1006,7 +1045,7 @@ body.pagina-testo { padding: 0 0 40px; }
 .conta-scelti { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--testo-2); margin-left: 6px; }
 .conta-scelti.pieno { color: var(--arancio); }
 .scelti { display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px; align-items: center; }
-.scelto-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px 4px 6px; border-radius: 999px; border: 1px solid var(--bordo);
+.scelto-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px 4px 6px; border-radius: var(--r-in); border: 1px solid var(--bordo);
   background: color-mix(in srgb, var(--verde) 14%, var(--vetro-carta)); color: var(--testo); font-size: var(--t-corpo); font-weight: 600; max-width: 100%; }
 .scelto-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scelto-chip i { font-style: normal; color: var(--testo-2); font-size: var(--t-card); line-height: 1; }
@@ -1016,7 +1055,7 @@ body.pagina-testo { padding: 0 0 40px; }
 .voce-scelta.scelta { background: color-mix(in srgb, var(--verde) 12%, transparent); }
 .voce-scelta input:disabled { opacity: .35; }
 .voce-scelta:has(input:disabled) { color: var(--testo-2); cursor: default; }
-.voce-scelta:has(input:focus-visible) { outline: 2px solid var(--azione); outline-offset: -2px; }
+.voce-scelta:has(input:focus-visible) { outline: 2px solid var(--testo); outline-offset: -2px; }
 .nome-scelta { min-width: 0; font-weight: 600; }
 .vuoto-scelte { padding: 14px 4px; }
 .conguaglio h3 { margin-top: 18px; }
@@ -1024,12 +1063,13 @@ body.pagina-testo { padding: 0 0 40px; }
 .riga-conguaglio .segmenti { margin: 0; min-width: 190px; flex: 1 1 190px; }
 .riga-conguaglio .campo-testo { width: 130px; flex: 0 0 130px; min-height: 52px; font-variant-numeric: tabular-nums; }
 .formato-scambio { font-weight: 650; color: var(--verde); }
-.verdetto { border-radius: var(--r-card); padding: 14px 16px; margin-bottom: 14px; border: 1px solid var(--bordo); background: var(--vetro-carta); }
+/* verdetto di un'offerta: come gli avvisi, il filo a sinistra nel colore del giudizio (verde conviene, arancio così così, rosso no) */
+.verdetto { padding: 4px 0 4px 12px; margin-bottom: 16px; border: 0; border-left: 3px solid var(--filo); background: none; }
 .verdetto h3 { margin: 0 0 4px; font-size: var(--t-card); text-transform: none; letter-spacing: -.01em; color: var(--testo); font-weight: 700; }
 .verdetto p { margin: 0; font-size: var(--t-corpo); }
-.verdetto.ok { background: color-mix(in srgb, var(--verde) 16%, var(--vetro-carta)); border-color: color-mix(in srgb, var(--verde) 45%, transparent); }
-.verdetto.attenzione-lieve { background: color-mix(in srgb, var(--arancio) 14%, var(--vetro-carta)); border-color: color-mix(in srgb, var(--arancio) 40%, transparent); }
-.verdetto.no { background: color-mix(in srgb, var(--rosso) 14%, var(--vetro-carta)); border-color: color-mix(in srgb, var(--rosso) 45%, transparent); }
+.verdetto.ok { border-left-color: var(--verde); }
+.verdetto.attenzione-lieve { border-left-color: var(--arancio); }
+.verdetto.no { border-left-color: var(--rosso); }
 .elenco-semplice { margin: 8px 0 0; padding-left: 20px; font-size: var(--t-corpo); }
 .elenco-semplice li { margin: 4px 0; }
 .confronto .riga-confronto { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; padding: 9px 0;
@@ -1066,18 +1106,17 @@ body.pagina-testo { padding: 0 0 40px; }
 .accesso-corpo:not(.primo) > :not(.accesso-marchio):not(.accesso-titolo) { animation: entra-breve .3s var(--uscita) both; }   /* passaggio Accedi / Registrati / Recupera */
 @keyframes errore { 0% { opacity: 0; transform: translateX(0); } 18% { opacity: 1; transform: translateX(calc(var(--mov, 1) * -7px)); } 38% { transform: translateX(calc(var(--mov, 1) * 6px)); }
   58% { transform: translateX(calc(var(--mov, 1) * -4px)); } 78% { transform: translateX(calc(var(--mov, 1) * 2px)); } 100% { opacity: 1; transform: none; } }
-@keyframes anello-rosso { from { box-shadow: 0 0 0 5px color-mix(in srgb, var(--rosso) 45%, transparent); } to { box-shadow: 0 0 0 0 transparent; } }
-.errore, [role="alert"] > .attenzione { animation: errore .42s var(--uscita) both, anello-rosso .8s ease-out both; }
+/* l'errore appena comparso si scuote appena (risponde al gesto); niente più anello rosso intorno: senza riquadro disegnava una scatola */
+.errore, [role="alert"] > .attenzione { animation: errore .42s var(--uscita) both; }
 @keyframes anello-verde { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--verde) 60%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
 button.salvato { animation: anello-verde .7s ease-out both; }
-.avviso:not([hidden]) { animation: entra .35s var(--molla) both, anello-verde .8s ease-out both; }
+.avviso:not([hidden]) { animation: entra .35s var(--molla) both; }
 .bottone[aria-busy="true"] { animation: pulsa 1s ease-in-out infinite; }
 
 /* ---------------------------------------------------------------- «Ridurre movimento» fatto bene (sistema o Lega > Aspetto > Animazioni > Ridotte)
    Non si spegne tutto: restano dissolvenze (>= 120 ms), cambi di colore, pulsazioni leggere e il marchio vivo. Spariscono solo
    spostamenti, zoom e rotazioni ampie (--mov a 0 le toglie da tutte le animazioni d'entrata) e lo sfondo che vaga. */
 html[data-calmo] { --mov: 0; --vela: 0; }
-html[data-calmo] button:active:not(:disabled) { transform: none; opacity: .72; }
 html[data-calmo] .scheda, html[data-calmo] details > summary::after { transition-property: none; }
 html[data-calmo] .bottone-icona.gira svg { animation: pulsa 1s ease-in-out infinite; }
 html[data-calmo] .caricamento::before { animation: pulsa 1.2s ease-in-out infinite; }
@@ -1091,10 +1130,7 @@ html[data-calmo] .pedina, html[data-calmo] .pallini i { animation-duration: .3s;
 html[data-calmo] main > *, html[data-calmo] .elenco li, html[data-calmo] .foglio-corpo .carta { animation-duration: .28s; animation-delay: 0s !important; }
 html[data-calmo] main.ridisegna > *, html[data-calmo] .ridisegna .elenco li { animation: none !important; }
 /* ---- tablet e PC: le sezioni Oggi, Formazione e Scambi si dividono in due colonne (.colonne > .col); sul telefono i contenitori spariscono ---- */
-.colonne, .col { display: contents; }
-.col > * { animation: entra .5s var(--uscita) both; }
-.col + .col > * { animation-delay: .12s; }
-main.ridisegna .col > * { animation: none; }
+.colonne, .col { display: contents; }      /* le colonne non entrano una dopo l'altra: era movimento di riempitivo (spec §7.6) */
 .accesso-legale a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; }
 /* Privacy e Termini dentro la frase della casella «Ho letto»: la riga resta com'è, ma il link misura davvero 44 px di altezza (padding con margine negativo) */
 .accesso-letto a { display: inline-block; padding: 12px 6px; margin: -12px -6px; }
@@ -1134,8 +1170,8 @@ body.senza-accesso .salta { display: none; }
 .bottone-icona.novita { position: relative; }
 .bottone-icona.novita::after { content: ""; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
 .imp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }   /* una colonna `auto` era larga quanto il contenuto più lungo: Notifiche scorreva di lato (issue #288) */
-.imp-elenco { padding: 6px 10px; margin: 0; }
-.imp-voce.attiva { background: color-mix(in srgb, var(--verde) 14%, transparent); border-radius: 14px; }
+.imp-elenco { padding: 0; margin: 0; }
+.imp-voce.attiva { background: color-mix(in srgb, var(--verde) 14%, transparent); border-radius: var(--r-in); }
 .imp-indietro { min-height: 44px; }
 .imp-titolo { font-size: var(--t-card); margin: 14px 0 12px; letter-spacing: -.01em; }
 .imp-titolo:focus { outline: none; }
@@ -1192,7 +1228,7 @@ body.senza-accesso .salta { display: none; }
 .qp-nota { margin-top: 8px; }
 .diario-conf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0; }
 .diario-conf.una { grid-template-columns: minmax(0, 1fr); }
-.diario-col { min-width: 0; padding: 10px; border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); }
+.diario-col { min-width: 0; padding: 8px 0 0; border-top: 1px solid var(--filo); }      /* le due formazioni affiancate: colonne, non riquadri */
 .diario-col h3 { margin: 0 0 4px; font-size: var(--t-sec); }
 .diario-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-size: var(--t-sec); }
 .diario-lista li { overflow-wrap: anywhere; padding: 2px 6px; border-radius: 8px; border-left: 3px solid transparent; }
@@ -1258,7 +1294,6 @@ body { container: pagina / inline-size; }
   .scheda > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .scheda.attiva::before { left: 8px; right: 8px; }
   main { padding: 8px 8px 0; }
-  .carta { padding: 12px; }
   /* due blocchi affiancati (modulo e punti attesi): uno sotto l'altro, il secondo resta a destra */
   .riga { flex-wrap: wrap; }
   .riga > :last-child:not(:first-child) { margin-left: auto; }
@@ -1312,7 +1347,7 @@ body { container: pagina / inline-size; }
   .vs-duello { justify-self: center; }
   .stat-fila, .stat-fila.quattro, .statistiche { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .perche-voce { grid-template-columns: 1fr; gap: 2px; }
-  .perche-effetto { justify-self: start; padding: 3px 12px; }
+  .perche-effetto { justify-self: start; }
   .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .legenda-campo { margin: 0 4px; padding: 10px; }
   .legenda-campo li { grid-template-columns: 1fr; gap: 2px; }
