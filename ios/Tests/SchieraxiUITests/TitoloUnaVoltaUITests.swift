@@ -71,15 +71,15 @@ final class TitoloUnaVoltaUITests: XCTestCase {
         XCTAssertEqual(vuotiNellaBarra(app), 0, "nella barra nessun testo vuoto: VoiceOver si fermerebbe su niente")
     }
 
-    /// Un titolo corto, «Squadre» (una pagina senza `piccoloInBarra`): con il testo massimo anche lui solo nella pagina.
+    /// Un titolo corto, «Squadre e rose» (una pagina senza `piccoloInBarra`): con il testo massimo anche lui solo nella pagina.
     func testTestoMassimoIlTitoloCortoSiLeggeUnaVoltaSola() {
         let app = avvia("lega-squadre", testo: Self.testoMassimo)
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "Squadre")).firstMatch.waitForExistence(timeout: 30),
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "Squadre e rose")).firstMatch.waitForExistence(timeout: 30),
                       "testo massimo: il titolo nella pagina")
         XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10), "la barra in alto deve esserci")
-        let dettagli = descrivi("Squadre", app)
-        XCTAssertEqual(testi("Squadre", in: app.navigationBars).count, 0, "testo massimo: VoiceOver non legge il titolo nella barra. \(dettagli)")
-        XCTAssertEqual(testi("Squadre", in: app.windows).count, 1, "VoiceOver deve leggere il titolo una volta sola. \(dettagli)")
+        let dettagli = descrivi("Squadre e rose", app)
+        XCTAssertEqual(testi("Squadre e rose", in: app.navigationBars).count, 0, "testo massimo: VoiceOver non legge il titolo nella barra. \(dettagli)")
+        XCTAssertEqual(testi("Squadre e rose", in: app.windows).count, 1, "VoiceOver deve leggere il titolo una volta sola. \(dettagli)")
         XCTAssertEqual(vuotiNellaBarra(app), 0, "nella barra nessun testo vuoto: VoiceOver si fermerebbe su niente")
     }
 }
