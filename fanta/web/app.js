@@ -339,7 +339,9 @@ function avatarIndice(x, grande = false) {
   return `<span class="avatar-anello ${grande ? "grande-a" : ""}">${avatar(x)}<b class="badge-indice" title="${esc(t("comune.indice_aria", { n: x.indice }))}" aria-label="${esc(t("comune.indice_aria", { n: x.indice }))}">${x.indice}</b></span>`;
 }
 const diffPill = d => `<span class="diff d${d}"><i></i>${NOMI_DIFF[d]}</span>`;
-const badgeRuolo = (r, piccolo = false) => `<span class="ruolo ${esc(r)}" ${piccolo ? `style="width:21px;height:21px;font-size:var(--t-eti);border-radius:7px;display:inline-grid;vertical-align:-4px;margin-right:6px"` : ""}>${esc(ruoloSigla(r))}</span>`;
+// Il ruolo (Scambi, Diario, ricerca): la lettera grigia delle righe dei giocatori (grafica B, spec §8.4), senza quadratino colorato.
+// `piccolo`: davanti al nome, nella stessa riga di testo.
+const badgeRuolo = (r, piccolo = false) => `<span class="ruolo-l${piccolo ? " ruolo-in" : ""}">${esc(ruoloSigla(r))}</span>`;
 // A parole e senza numero: l'unica percentuale sul giocare è «gioca N%» (p_voto), quella delle probabili non si mostra.
 // A giornata iniziata il server toglie `titolarita` e manda `stato_partita`: lo stato vero della giornata al posto delle probabili.
 const STATO_PARTITA = { fatto: ["tit.st_fatto", ""], senza_voto: ["tit.st_senza_voto", "arancio"], attesa_voti: ["tit.st_attesa_voti", "neutra"],
@@ -2162,20 +2164,22 @@ function squadrePropense(proposte) {
   if (elenco.length < 2) return "";
   return `<div class="carta"><h2>${t("scambio.chi_accetta_piu")}</h2>
     <div class="debole piccolo">${t("scambio.squadre_che_guadagnano")}</div>
-    ${elenco.map(x => `<div class="riga"><span><b>${esc(x.nome)}</b><span class="debole piccolo" style="display:block">${tp("scambio.n_scambi", x.n)}${x.reparto && x.reparto[1] > 0 ? ` · ${t("scambio.migliora", { reparto: NOMI_RUOLO[x.reparto[0]] || x.reparto[0], p: segno(x.reparto[1], 1) })}` : ""}</span></span>
+    ${elenco.map(x => `<div class="riga propensa"><span><b>${esc(x.nome)}</b><span class="debole piccolo" style="display:block">${tp("scambio.n_scambi", x.n)}${x.reparto && x.reparto[1] > 0 ? ` · ${t("scambio.migliora", { reparto: NOMI_RUOLO[x.reparto[0]] || x.reparto[0], p: segno(x.reparto[1], 1) })}` : ""}</span></span>
       <b class="positivo">${segno(x.media, 1)}</b></div>`).join("")}</div>`;
 }
 
-function cartaScambio(s, extra = "") {
-  const lato = lista => lista.map(x => `<div>${badgeRuolo(x.ruolo, true)}<button class="nome-g" data-giocatore="${x.id}" style="display:inline">${esc(x.nome)}</button>
+// La proposta di uno scambio: l'unico blocco con il filo intorno (spec §8.3). `azione`: un secondo pulsante nella stessa riga di
+// «Copia bozza del messaggio» («Vedi il giudizio completo» di Trova per me); `extra` va sotto la riga (il giudizio che si apre).
+function cartaScambio(s, extra = "", azione = "") {
+  const lato = lista => lista.map(x => `<div>${badgeRuolo(x.ruolo, true)}<button class="nome-g" data-giocatore="${x.id}">${esc(x.nome)}</button>
     <div class="debole piccolo">${sigla(x.squadra)} · ${t("scambio.quot", { n: x.quotazione })}</div></div>`).join("");
   return `<div class="carta scambio">
     <div class="debole piccolo">${t("scambio.con")} <b>${esc(s.altra)}</b>${s.n_do > 1 || s.n_ricevo > 1 ? ` · <span class="formato-scambio">${t("scambi.formato", { n: s.n_do, m: s.n_ricevo })}</span>` : ""}</div>
-    <div class="proposta"><div class="lato"><div class="debole piccolo">${t("scambi.dai")}</div>${lato(s.do)}</div><span class="freccia">⇄</span>
+    <div class="proposta"><div class="lato"><div class="debole piccolo">${t("scambi.dai")}</div>${lato(s.do)}</div><span class="freccia" aria-hidden="true">⇄</span>
       <div class="lato dx"><div class="debole piccolo">${t("scambi.ricevi")}</div>${lato(s.ricevo)}</div></div>
     <div class="guadagno-grande">${t("scambio.tu_loro_stagione", { mio: segnoSc(s.guadagno_mio), loro: segnoSc(s.guadagno_loro) })}</div>
-    <div class="debole piccolo" style="text-align:center">${tp("scambio.prossime", s.giornate.length)}: ${t("scambio.tu_loro", { mio: segnoSc(s.breve_mio), loro: segnoSc(s.breve_loro) })} · ${t("scambio.quot", { n: `${s.quotazione_do} → ${s.quotazione_ricevo}` })}</div>
-    <div class="pulsanti" style="justify-content:center"><button class="bottone secondario" data-bozza="${esc(bozzaScambio(s))}">${t("scambio.copia_bozza_del")}</button></div>
+    <div class="debole piccolo guadagno-breve">${tp("scambio.prossime", s.giornate.length)}: ${t("scambio.tu_loro", { mio: segnoSc(s.breve_mio), loro: segnoSc(s.breve_loro) })} · ${t("scambio.quot", { n: `${s.quotazione_do} → ${s.quotazione_ricevo}` })}</div>
+    <div class="pulsanti azioni-scambio"><button class="bottone secondario" data-bozza="${esc(bozzaScambio(s))}">${t("scambio.copia_bozza_del")}</button>${azione}</div>
     ${extra}
   </div>`;
 }
@@ -2189,7 +2193,7 @@ function impattoReparti(s) {
   return `<div class="carta"><h2>${t("scambio.impatto_sulla_tua")}</h2>
     <div class="debole piccolo">${t("scambio.conta_anche_resto")}</div>
     ${["P", "D", "C", "A"].map(riga).join("")}
-    <div class="riga" style="margin-top:8px"><span>${tp("scambio.in_totale", s.giornate.length)}</span>
+    <div class="riga reparto-totale"><span>${tp("scambio.in_totale", s.giornate.length)}</span>
       <b class="${tot > 0.05 ? "positivo" : tot < -0.05 ? "negativo" : ""}">${segno(tot, 1)}%</b></div></div>`;
 }
 
@@ -2468,8 +2472,8 @@ async function vistaScambi() {
       if (!document.body.contains(elenco)) return;
       mostraContatore(r.ricerche);
       proposteTrovate = r.proposte;
-      elenco.innerHTML = r.proposte.length ? squadrePropense(r.proposte) + r.proposte.map((s, i) => cartaScambio(s, `<div class="pulsanti" style="justify-content:center">
-          <button class="bottone secondario" data-dettaglio="${i}" aria-expanded="false">${t("scambio.vedi_giudizio_completo")}</button></div><div class="dettaglio-scambio" id="dettaglio-${i}" aria-live="polite"></div>`)).join("")
+      elenco.innerHTML = r.proposte.length ? squadrePropense(r.proposte) + r.proposte.map((s, i) => cartaScambio(s, `<div class="dettaglio-scambio" id="dettaglio-${i}" aria-live="polite"></div>`,
+          `<button class="bottone secondario" data-dettaglio="${i}" aria-expanded="false">${t("scambio.vedi_giudizio_completo")}</button>`)).join("")
         : `<div class="carta vuoto">${t("scambio.nessuno_scambio_che")}</div>`;
     } catch (e) {
       elenco.innerHTML = errore(e);                                                 // il testo è quello del server, con il tempo che manca
@@ -3165,7 +3169,12 @@ async function apriDiario(giornata, stagione) {
         : r.fatti < r.intervallo.basso ? t("diario.af_sotto_fascia", { a, b, d: meno(r.fatti - r.intervallo.basso) }) : t("diario.af_sopra_fascia", { a, b, d: meno(r.fatti - r.intervallo.alto) });
       return `<div class="debole piccolo af-fascia ${r.nella_fascia ? "dentro" : "fuori"}">${testo}</div>`;
     };
-    const righePunti = (etichetta, r) => `<div class="riga"><span>${etichetta}</span><span><b>${v(r.reale)}</b> <span class="debole piccolo">${t("avv.attesi", { n: v(r.atteso) })}</span></span></div>`;
+    // i punti fatti e «attesi N» in due colonne della stessa larghezza in ogni riga e in ogni giornata (spec grafica B §9)
+    const righePunti = (etichetta, r) => `<div class="diario-punti"><span>${etichetta}</span><b class="dp-fatti">${v(r.reale)}</b><span class="dp-attesi">${t("avv.attesi", { n: v(r.atteso) })}</span></div>`;
+    // un solo pulsante pieno nel Diario (spec §8.7): «Ho schierato la consigliata» della giornata più recente da salvare; nelle altre il bordo
+    const primaDaSalvare = d.giornate.find(g => !g.schierata && g.modificabile !== false);
+    const azioni = g => g.modificabile === false ? "" : `<div class="pulsanti azioni-diario">${g.schierata ? ""
+      : `<button class="${g === primaDaSalvare ? "bottone" : "bottone secondario"}" data-schierata="${idVoceDiario(g)}">${t("diario.ho_schierato_questa")}</button>`}<button class="bottone secondario" data-correggi="${idVoceDiario(g)}">${g.schierata ? t("diario.correggi") : t("diario.ho_schierato_altra")}</button></div>`;
     const confronto = g => {
       const ist = g.istantanea, cons = ist || g.consigliata;                      // la consigliata di allora, o (se non registrata) la ricostruzione di oggi
       const idCons = new Set(cons.titolari.map(p => p.id));
@@ -3173,8 +3182,7 @@ async function apriDiario(giornata, stagione) {
       const titoloCons = ist ? t("diario.consigliava", { modulo: esc(ist.modulo) }) : t("diario.ricostruita", { modulo: esc(cons.modulo) });
       const sotto = ist ? `<div class="debole piccolo">${t("diario.consigliava_il", { quando: esc(quandoCalcolata(ist.calcolata)) })}${ist.stile ? " · " + esc(ist.stile) : ""}</div>` : `<div class="debole piccolo">${t("diario.non_registrata")}</div>`;
       const colCons = `<div class="diario-col"><h3>${titoloCons}</h3>${sotto}${elencoFormazione(cons.titolari, idTue, ist && ist.panchina)}</div>`;
-      if (!g.schierata) return `<div class="diario-conf una">${colCons}</div>
-        ${g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone" data-schierata="${idVoceDiario(g)}">${t("diario.ho_schierato_questa")}</button></div>`}`;
+      if (!g.schierata) return `<div class="diario-conf una">${colCons}</div>`;
       const fuori = g.schierata.titolari.filter(p => !idCons.has(p.id)).map(p => p.nome), dentro = cons.titolari.filter(p => !idTue.has(p.id)).map(p => p.nome);
       const colTue = `<div class="diario-col"><h3>${t("diario.hai_schierato", { modulo: esc(g.schierata.modulo) })}</h3>${elencoFormazione(g.schierata.titolari, idCons)}</div>`;
       return `<div class="diario-conf">${colCons}${colTue}</div>
@@ -3184,7 +3192,7 @@ async function apriDiario(giornata, stagione) {
     const righe = d.giornate.map(g => `<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2 style="margin:0">${nomeGiornata(g.giornata_lega, g.giornata)}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
       ${g.schierata ? "" : `<div class="debole piccolo">${t("diario.non_salvata")}</div>`}
       ${confronto(g)}
-      ${g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" data-correggi="${idVoceDiario(g)}">${g.schierata ? t("diario.correggi") : t("diario.ho_schierato_altra")}</button></div>`}
+      ${azioni(g)}
       ${g.schierata ? righePunti(g.schierata.tipo === "consigliata" ? t("diario.tua_consigliata", { modulo: esc(g.schierata.modulo) }) : t("diario.tua", { modulo: esc(g.schierata.modulo) }), g.schierata)
         : g.automatica ? righePunti(t("diario.automatica", { modulo: esc(g.automatica.modulo) }), g.automatica) : ""}
       ${righePunti(g.istantanea ? t("diario.ricostruita", { modulo: esc(g.consigliata.modulo) }) : t("avv.del_modello", { modulo: esc(g.consigliata.modulo) }), g.consigliata)}
@@ -3618,8 +3626,8 @@ async function vistaLega(ambito = "altro") {
     diario: () => `<div class="carta"><div class="debole piccolo">${t("lega.per_ogni_giornata")}</div>
       <div class="pulsanti"><button class="bottone" id="apri-diario" type="button">${t("lega.apri_diario")}</button></div></div>`,
     crediti: () => squadre.length ? `<div class="carta"><h3 style="margin-top:0">${t("lega.crediti_residui_ogni")}</h3>
-      ${squadre.map((x, i) => `<div class="riga riga-crediti"><label for="cred-${i}">${esc(x.nome)}</label>
-        <input class="campo-testo cred-squadra" id="cred-${i}" data-nome="${esc(x.nome)}" type="number" min="0" max="99999" inputmode="numeric" value="${x.crediti_residui ?? ""}" placeholder="—" style="width:96px;text-align:right"></div>`).join("")}
+      <div class="crediti-righe">${squadre.map((x, i) => `<div class="riga riga-crediti"><label for="cred-${i}">${esc(x.nome)}</label>
+        <input class="campo-testo cred-squadra" id="cred-${i}" data-nome="${esc(x.nome)}" type="number" min="0" max="99999" inputmode="numeric" value="${x.crediti_residui ?? ""}" placeholder="—" style="width:96px;text-align:right"></div>`).join("")}</div>
       <p class="attenzione" id="crediti-non-salvati" role="status" hidden>${t("lega.crediti_non_salvati")}</p>
       <div class="pulsanti"><button class="bottone" id="salva-crediti" type="button">${t("lega.salva_crediti")}</button></div>
       <div class="debole piccolo">${t("lega.servono_per_consigli")}</div></div>`
@@ -3809,10 +3817,11 @@ async function vistaNovita() {
         <div class="debole piccolo">${t("novita.versione", { v: esc(v.versione) })} · ${dataNovita(v.data)}</div>
         <ul class="novita-voci">${(v.voci || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
     const visibili = Math.max(NOVITA_VISIBILI, nuoveDa), resto = elenco.length - visibili;
-    pagina(`<div class="carta"><div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("nav.altro")}</button>
+    // una colonna da leggere: righe di testo al massimo 70 caratteri anche sul PC (spec grafica B, C12)
+    pagina(`<div class="novita-pagina"><div class="carta"><div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("nav.altro")}</button>
         <span class="debole">${t("novita.versione", { v: esc(elenco[0] ? elenco[0].versione : "?") })}</span></div></div>
       ${elenco.slice(0, visibili).map(carta).join("")}
-      ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}`, { titolo: t("info.novita") });
+      ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}</div>`, { titolo: t("info.novita") });
     const altre = $("#novita-altre");
     if (altre) altre.addEventListener("click", () => {
       $("#novita-altre-riga").outerHTML = elenco.slice(visibili).map((v, k) => carta(v, visibili + k)).join("");
@@ -3867,7 +3876,9 @@ async function vistaRegole() {
   const fascia = (media, bonus) => `<div class="fascia"><div class="coppia"><span class="debole piccolo">${t("regole.media_almeno")}</span>${stepper("", media, { passo: 0.25, min: 4, max: 9, dec: 2 }).replace('id=""', 'class="f-media"')}</div>
     <div class="coppia"><span class="debole piccolo">${t("regole.bonus")}</span>${stepper("", bonus, { passo: 0.5, min: 0, max: 20, dec: 1 }).replace('id=""', 'class="f-bonus"')}</div>
     <button type="button" class="rimuovi-fascia" aria-label="${t("regole.togli_fascia")}">✕</button></div>`;
-  pagina(`
+  // Sul PC (da 1100 px) due colonne: a sinistra il nome della lega e «Importa da Leghe», a destra le sezioni con i «−/+», così l'anteprima
+  // del testo riconosciuto sta accanto ai valori che cambia. Sotto, una colonna sola nello stesso ordine (stile.css, «regole»).
+  pagina(`<div class="regole-colonne"><div class="regole-testa">
     <div class="carta">
       <div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
         <button class="bottone secondario" id="annulla-regole" style="padding:6px 14px;min-height:44px">${t("regole.annulla_modifiche")}</button></div>
@@ -3881,8 +3892,9 @@ async function vistaRegole() {
       <textarea id="testo-regole" class="campo-testo" style="margin-top:10px;min-height:96px" placeholder="${t("regole.incolla_qui_testo")}"></textarea>
       <div class="pulsanti"><button class="bottone" id="riconosci-regole">${t("regole.riconosci_regole")}</button></div>
       <div id="anteprima-regole"></div>
-    </div>
+    </div></div>
 
+    <div class="regole-sezioni">
     <details class="carta regola-sez" open><summary>${t("regole.punteggi")}</summary>
       <h3>${t("oggi.ev_gol")}</h3>${["P", "D", "C", "A"].map(rigaGol).join("")}
       <h3>${t("regole.altri_bonus")}</h3>${bonusRighe.map(([k, nome]) => rigaRegola(nome, stepper("b_" + k, r.bonus[k], { passo: 0.5, min: 0, max: 20 }))).join("")}
@@ -3946,7 +3958,7 @@ async function vistaRegole() {
       ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, min: 0, max: 20, dec: 0 }))).join("")}
       ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, min: 0, max: 5000, dec: 0 }))}
     </details>
-    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole">${t("regole.salva_regole")}</button></div>`, { titolo: t("lega.voce_regole") });
+    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole">${t("regole.salva_regole")}</button></div></div></div>`, { titolo: t("lega.voce_regole") });
   const mostraSalva = () => { const s = $(".salva-fisso"); if (s) s.hidden = false; };
 
   // --- comportamenti
