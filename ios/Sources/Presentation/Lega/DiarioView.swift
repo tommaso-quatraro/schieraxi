@@ -122,61 +122,72 @@ struct DiarioView: View {
     static let comeSiLegge = "Come si legge"
     static let perOgniGiornata = "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI ti avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina la sceglie SchieraXI in entrambi i casi. SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la trovi qui, con in evidenza i giocatori che hai cambiato. Si aggiorna da solo dopo ogni giornata."
 
+    /// Il riquadro «Quanto ci abbiamo preso», dove sta la riga su tutta la Serie A (#374): la foto `lega-diario-fondo` scorre fin lì
+    /// (vedi `Demo.demoScorriA`). La riga non è in fondo al Diario ma a metà, sopra le giornate: in fondo non si vedrebbe.
+    static let idPrecisioneDemo = "diario-precisione"
+
     var body: some View {
         ZStack {
             Sfondo()
-            List {
-                if let d = vm.caricatore.dato {
-                    Section {
-                        Text(Self.rigaIntro)
-                            .font(.footnote).foregroundStyle(Color.testoSecondario)
-                        DisclosureGroup {
-                            Text(Self.perOgniGiornata)
+            ScrollViewReader { proxy in
+                List {
+                    if let d = vm.caricatore.dato {
+                        Section {
+                            Text(Self.rigaIntro)
                                 .font(.footnote).foregroundStyle(Color.testoSecondario)
-                        } label: {
-                            Text(Self.comeSiLegge)
-                                .font(.subheadline.weight(.semibold)).foregroundStyle(Color.testoSecondario)
+                            DisclosureGroup {
+                                Text(Self.perOgniGiornata)
+                                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+                            } label: {
+                                Text(Self.comeSiLegge)
+                                    .font(.subheadline.weight(.semibold)).foregroundStyle(Color.testoSecondario)
+                            }
+                            .tint(Color.testoSecondario)
                         }
-                        .tint(Color.testoSecondario)
-                    }
-                    if let p = d.precisione {
-                        // server nuovo: i numeri di «Quanto ci abbiamo preso» (niente sezione se non ci sono giornate)
-                        if let t = TestoPrecisione(p) {
+                        if let p = d.precisione {
+                            // server nuovo: i numeri di «Quanto ci abbiamo preso» (niente sezione se non ci sono giornate)
+                            if let t = TestoPrecisione(p) {
+                                Section {
+                                    PrecisioneView(testo: t)
+                                        .id(Self.idPrecisioneDemo)
+                                } header: {
+                                    Text(TestoPrecisione.titolo).foregroundStyle(Color.testoSecondario)
+                                }
+                            }
+                        } else if let t = TestoAffidabilita(d.affidabilita) {
                             Section {
-                                PrecisioneView(testo: t)
+                                QuantoCiAbbiamoPresoView(testo: t, punti: PuntoAttesoFatto.elenco(d.giornate ?? []))
                             } header: {
-                                Text(TestoPrecisione.titolo).foregroundStyle(Color.testoSecondario)
+                                Text(TestoAffidabilita.titolo).foregroundStyle(Color.testoSecondario)
                             }
                         }
-                    } else if let t = TestoAffidabilita(d.affidabilita) {
-                        Section {
-                            QuantoCiAbbiamoPresoView(testo: t, punti: PuntoAttesoFatto.elenco(d.giornate ?? []))
-                        } header: {
-                            Text(TestoAffidabilita.titolo).foregroundStyle(Color.testoSecondario)
+                        if let s = d.sintesi, (s.giornate ?? 0) > 0 { sintesi(s) }
+                        if let t = ScelteTueTesto(d.scelteTue) {
+                            Section {
+                                SchedaScelteTueView(testo: t)
+                                    .listRowInsets(EdgeInsets(top: 6, leading: Tema.margine, bottom: 6, trailing: Tema.margine))
+                                    .listRowBackground(Color.clear)
+                            }
                         }
-                    }
-                    if let s = d.sintesi, (s.giornate ?? 0) > 0 { sintesi(s) }
-                    if let t = ScelteTueTesto(d.scelteTue) {
-                        Section {
-                            SchedaScelteTueView(testo: t)
-                                .listRowInsets(EdgeInsets(top: 6, leading: Tema.margine, bottom: 6, trailing: Tema.margine))
+                        if (d.giornate ?? []).isEmpty {
+                            VistaVuota(titolo: "Diario ancora vuoto", icona: "book.closed",
+                                       descrizione: "Si riempie dopo la prima giornata finita (serve la tua squadra indicata in Squadra).")
                                 .listRowBackground(Color.clear)
                         }
+                        ForEach(d.giornate ?? []) { voce in giornata(voce) }
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                    if (d.giornate ?? []).isEmpty {
-                        VistaVuota(titolo: "Diario ancora vuoto", icona: "book.closed",
-                                   descrizione: "Si riempie dopo la prima giornata finita (serve la tua squadra indicata in Squadra).")
-                            .listRowBackground(Color.clear)
-                    }
-                    ForEach(d.giornate ?? []) { voce in giornata(voce) }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
+                .scrollContentBackground(.hidden)
+                .avvisoDatiSalvati(vm.caricatore)
+                // fotografia `lega-diario-fondo` (#425): la lista scorre a fine riquadro «Quanto ci abbiamo preso», dove si vede la riga
+                // su tutta la Serie A, appena il Diario è arrivato
+                .demoScorriA(Self.idPrecisioneDemo, proxy: proxy, schermate: ["lega-diario"], inFondo: true, ancora: .bottom,
+                             pronto: vm.caricatore.dato != nil)
             }
-            .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore)
         }
         .navigationTitle("Diario")
         .sheet(item: $daCorreggere) { v in
