@@ -190,9 +190,12 @@ def numeri_giocatori(d: Dati, stagione: str, giornata: int, regole: Regole, par:
 def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, ids_rosa: list[int],
                      scelta: dict | None, simulazioni: int = SIMULAZIONI, automatica: dict | None = None,
                      altri_ids=(), istantanea: dict | None = None, cambi: tuple | None = None,
-                     indicatori: bool = True) -> dict | None:
+                     indicatori: bool = True, giocatori_rosa: dict[int, tuple[str, str | None]] | None = None) -> dict | None:
     """La voce del diario di una giornata finita, o None se mancano i dati (o la rosa è troppo piccola per quella giornata).
     `altri_ids`: chi era nella consigliata di allora (istantanea) ma non è più in rosa, per i numeri per giocatore.
+    `giocatori_rosa`: {id: (nome, ruolo)} di tutta la rosa. Chi non ha una previsione per quella giornata (mai sceso in campo prima,
+    come spesso il portiere di riserva) si può schierare lo stesso (#447, la regola di `scelte.ruoli_schierabili` a giornata finita):
+    entra nella schierata senza voto atteso e con il suo voto vero, se l'ha preso. La consigliata non lo usa.
     `istantanea` (la consigliata mostrata) e `cambi` (C2 già contato, `indicatori_consiglio.conta_cambi`): per gli indicatori del
     consiglio della voce (`consiglio`, vedi `_consiglio`). Gli indicatori non fermano mai la voce: se il loro calcolo non riesce (o
     `indicatori` è falso, perché non si sono potuti preparare) la voce si scrive senza `consiglio`."""
@@ -228,15 +231,34 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             "schierata": None, "automatica": None,
             "giocatori": _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))}
 
-    ruoli = {i: g.ruolo for i, g in rosa.items()}
+    # in rosa ma senza previsione: probabilità di voto 0 e il voto vero, se c'è (prima partita della stagione, per esempio)
+    extra = {}
+    for i, (nome, ruolo) in (giocatori_rosa or {}).items():
+        if i in rosa or ruolo not in RUOLI:
+            continue
+        extra[i] = fz.Giocatore(i, nome, ruolo, 0.0, 0.0, 0.0)
+        ha_voto = i in reali.index and pd.notna(reali.at[i, col])
+        gioca[i] = bool(ha_voto)
+        fv[i] = float(fantavoto(reali.loc[i].to_dict(), ruolo, regole)) if ha_voto else 0.0
+        voto[i] = float(reali.at[i, col]) if ha_voto else 0.0
+    tutti = rosa | extra
+    ruoli = {i: g.ruolo for i, g in tutti.items()}
+    con_extra: list = []          # [lista, Valutatore] con anche chi non ha previsione: si fa solo se una formazione lo usa
 
     def riga_di(sc: dict | None) -> dict | None:
         scelti = list(dict.fromkeys(int(i) for i in (sc or {}).get("titolari", [])))
         if not scelte.motivo_non_valida(scelti, ruoli, regole):        # la regola unica della scelta (anche il modulo)
-            tit = [rosa[i] for i in scelti]
-            propria = [rosa[i] for i in dict.fromkeys(int(i) for i in (sc or {}).get("panchina", []) if i in rosa and i not in scelti)]
-            panchina = propria or fz._panchina(lista, tit, regole)      # la panchina schierata davvero, se la conosciamo (giornate importate)
-            return _riga(tit, val.statistiche(tit, panchina), fz.punteggio(tit, panchina, gioca, fv, voto, regole))
+            tit = [tutti[i] for i in scelti]
+            propria = [tutti[i] for i in dict.fromkeys(int(i) for i in (sc or {}).get("panchina", []) if i in tutti and i not in scelti)]
+            if any(g.id in extra for g in tit + propria):
+                if not con_extra:          # altre simulazioni: la consigliata resta valutata sulle sue, come prima
+                    con_extra.append(lista + list(extra.values()))
+                    con_extra.append(fz.Valutatore(con_extra[0], regole, simulazioni))
+                lista_v, val_v = con_extra
+            else:
+                lista_v, val_v = lista, val
+            panchina = propria or fz._panchina(lista_v, tit, regole)      # la panchina schierata davvero, se la conosciamo (giornate importate)
+            return _riga(tit, val_v.statistiche(tit, panchina), fz.punteggio(tit, panchina, gioca, fv, voto, regole))
         return None
     voce["schierata"] = riga_di(scelta)
     if voce["schierata"]:
@@ -249,6 +271,11 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
         except Exception as e:  # noqa: BLE001 - un di più: la voce del Diario si scrive comunque, senza gli indicatori
             _senza_indicatori(e)
     return voce
+
+
+def _giocatori_rosa(squadra) -> dict[int, tuple[str, str | None]]:
+    """{id: (nome, ruolo)} della rosa, per `calcola_giornata` (chi non ha una previsione si può schierare lo stesso)."""
+    return {int(g.id): (g.nome, g.ruolo) for g in squadra.giocatori if g.id is not None}
 
 
 def _senza_indicatori(e: Exception) -> None:
@@ -355,7 +382,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                         nuove_voci[chiave] = {**vecchia, "giocatori": numeri}
                 continue
         voce = calcola_giornata(consigli.dati(db), stagione, g, regole, Parametri(), ids, scelta, simulazioni, auto, altri,
-                                **per_il_consiglio(db, regole, stagione, g, dati_diario))
+                                giocatori_rosa=_giocatori_rosa(squadra), **per_il_consiglio(db, regole, stagione, g, dati_diario))
         if voce:
             nuove_voci[chiave] = voce
     if nuove_voci:
@@ -435,7 +462,7 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
             raise SchierataNonValida(motivo)
     scelta = {"titolari": scelti, "tipo": tipo}
     voce = calcola_giornata(dati, stagione, giornata, regole, Parametri(), ids, scelta, simulazioni,
-                            **per_il_consiglio(db, regole, stagione, giornata, diario))
+                            giocatori_rosa=_giocatori_rosa(squadra), **per_il_consiglio(db, regole, stagione, giornata, diario))
     if not voce or not voce["schierata"]:
         raise SchierataNonValida("Non riesco a valutare questa formazione per quella giornata")
     return voce, scelti

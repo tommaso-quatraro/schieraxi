@@ -476,3 +476,38 @@ def test_l_istantanea_ricorda_i_numeri_mostrati(tmp_path):
     diario.salva_istantanea(form, ST, f)
     t = diario.carica(f)["istantanee"][f"{ST}/1"]["titolari"]
     assert t[0]["p_voto"] == 0.851 and t[0]["fv_atteso"] == 6.79 and "p_voto" not in t[1] and "fv_atteso" not in t[1]
+
+
+# ---- #447: in «Correggi a mano» si può dire di aver schierato il portiere di riserva ----
+def _senza_previsione(monkeypatch, *assenti):
+    """Le previsioni ricostruite non hanno chi non era mai sceso in campo prima di quella giornata (il portiere di riserva)."""
+    tutte = diario.previsioni
+
+    def previsioni(*a, **k):
+        p = tutte(*a, **k)
+        return p[~p["id"].isin(assenti)].reset_index(drop=True)
+    monkeypatch.setattr(diario, "previsioni", previsioni)
+
+
+RISERVA = [2, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]          # 3-4-3 con il portiere 2, che non ha una previsione
+
+
+def test_correggi_a_mano_con_il_portiere_senza_previsione_si_salva(vero, monkeypatch):
+    _senza_previsione(monkeypatch, 2)
+    v = vero.dati.voti
+    v.loc[(v["giornata"] == 2) & (v["calciatore_id"] == 2), "voto_red"] = 7.0      # la prima partita della riserva: 7
+    voce = _salva(vero, 2, "manuale", RISERVA)
+    s = voce["schierata"]
+    assert [t["id"] for t in s["titolari"]] == RISERVA and s["titolari"][0] == {"id": 2, "nome": "G2", "ruolo": "P"}
+    assert s["reale"] == 10 * 6 + 3 + 7                       # il suo voto vero conta
+    assert _LEGGI_VERO(ST, 2, vero.scelte)["titolari"] == RISERVA
+
+
+def test_portiere_senza_previsione_e_senza_voto_entra_quello_della_panchina(vero, monkeypatch):
+    _senza_previsione(monkeypatch, 2)
+    v = vero.dati.voti
+    vero.dati.voti = v[~((v["giornata"] == 2) & (v["calciatore_id"] == 2))].copy()     # non ha giocato
+    s = _salva(vero, 2, "manuale", RISERVA)["schierata"]
+    assert s["reale"] == 11 * 6 + 3                           # entra un portiere della panchina, che ha preso 6
+    assert s["atteso"] < diario.calcola_giornata(vero.dati, ST, 2, Regole(), None, list(range(1, 26)),
+                                                 _scelta([1] + RISERVA[1:]), simulazioni=50)["schierata"]["atteso"]
