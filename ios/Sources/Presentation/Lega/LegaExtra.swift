@@ -30,19 +30,7 @@ struct SquadreView: View {
                     Section(titolo: funzioni.acceso(Funzione.squadreAltrui) ? "Le squadre" : "La mia squadra e rosa") {
                         ForEach(s.filter { funzioni.acceso(Funzione.squadreAltrui) || $0.mia == true }) { sq in
                             NavigationLink(value: PaginaLega.rosa(sq.nome)) {
-                                HStack(spacing: 12) {
-                                    StemmaSquadra(nome: sq.nome, dimensione: 44)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        HStack {
-                                            Text(sq.nome).font(.headline)
-                                            if sq.mia == true { Text("tua").font(.caption2.bold()).padding(.horizontal, 6).padding(.vertical, 2).background(Color.verde.opacity(0.3), in: Capsule()) }
-                                        }
-                                        Text(Formato.giocatori(sq.giocatori ?? 0) + (sq.creditiResidui.map { " · \(Formato.crediti(Formato.intero($0)))" } ?? ""))
-                                            .font(.caption).foregroundStyle(Color.testoSecondario)
-                                    }
-                                }
-                                .frame(minHeight: 44)
-                                .accessibilityElement(children: .combine)
+                                RigaSquadra(squadra: sq)
                             }
                             .swipeActions {
                                 Button("È la mia") { Task { await vm.impostaMia(sq.nome) } }.tint(Color.verde)
