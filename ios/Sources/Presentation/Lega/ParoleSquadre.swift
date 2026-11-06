@@ -78,6 +78,9 @@ enum ParoleSquadre {
     static let nomeSalvato = "Nome salvato"
     static let creditiResidui = "Crediti residui"
     static let salva = "Salva"
+    /// Cosa legge VoiceOver sui due «Salva» della rosa (sulla web si vede il campo accanto, qui basta il nome del pulsante).
+    static let salvaNome = "Salva il nuovo nome"
+    static let salvaCreditiResidui = "Salva i crediti residui"
     static let creditiSalvati = "Crediti salvati"
     static let scriviCrediti = "Scrivi i crediti come numero intero, anche 0"
     /// Il gruppo dei giocatori che il server non ha saputo collegare a un ruolo.

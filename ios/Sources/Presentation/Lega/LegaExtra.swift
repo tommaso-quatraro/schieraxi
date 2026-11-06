@@ -407,6 +407,7 @@ struct RosaView: View {
                 .onSubmit { Task { await vm.rinomina() } }
                 .frame(minHeight: 44)
             Button(ParoleSquadre.salva) { Task { await vm.rinomina() } }
+                .accessibilityLabel(ParoleSquadre.salvaNome)
                 .frame(minHeight: 44)
                 .disabled(vm.inCorso)
             Text(ParoleSquadre.aiutoNome).font(.footnote).foregroundStyle(Color.testoSecondario)
@@ -446,6 +447,7 @@ struct RosaView: View {
         Button(ParoleSquadre.salva) { Task { await vm.salvaCrediti() } }
             // il campo e il pulsante stanno nella stessa riga di una lista: senza questo un tocco li attiva come uno solo
             .buttonStyle(.borderless)
+            .accessibilityLabel(ParoleSquadre.salvaCreditiResidui)
             .frame(minHeight: 44)
             .disabled(vm.inCorso)
     }
