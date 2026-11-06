@@ -57,22 +57,18 @@ struct AvvisiServerView: View {
                         }
                     }
                     Section {
-                        interruttore("Cambi di formazione e probabili", \.cambi)
+                        interruttore(TestiImpostazioni.cambi, aiuto: TestiImpostazioni.cambiAiuto, \.cambi)
                         if let prima = vm.impostazioni?.avviso_prima { sceltaAvvisoPrima(prima) }
-                        interruttore("Promemoria un'ora prima", \.promemoria_60)
-                        interruttore("Promemoria 15 minuti prima", \.promemoria_15)
-                        interruttore("Riepilogo a giornata finita", \.riepilogo)
+                        interruttore(TestiImpostazioni.promemoria60, aiuto: TestiImpostazioni.promemoria60Aiuto, \.promemoria_60)
+                        interruttore(TestiImpostazioni.promemoria15, \.promemoria_15)   // senza riga d'aiuto, come la web
+                        interruttore(TestiImpostazioni.riepilogo, aiuto: TestiImpostazioni.riepilogoAiuto, \.riepilogo)
                         Toggle(isOn: Binding(
                             get: { vm.impostazioni?.copertura ?? true },
                             set: { nuovo in
                                 vm.impostazioni?.copertura = nuovo
                                 Task { await vm.salva() }
                             })) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Reparto della rosa scoperto")
-                                Text("Ti avvisa se in un reparto hai pochi giocatori disponibili (infortunati, squalificati, diffidati).")
-                                    .font(.caption).foregroundStyle(Color.testoSecondario)
-                            }
+                            NomeConAiuto(TestiImpostazioni.copertura, aiuto: TestiImpostazioni.coperturaAiuto)
                         }
                         .tint(Color.verde)
                         .frame(minHeight: 44)
@@ -94,11 +90,8 @@ struct AvvisiServerView: View {
                                 vm.impostazioni?.app_nativa = nuovo
                                 Task { await vm.salva() }
                             })) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Avvisi anche per l'app nativa")
-                                Text("Arrivano con l'app ntfy e il tocco apre questa app. Se hai attivato anche le notifiche della web app potresti riceverli doppi.")
-                                    .font(.caption).foregroundStyle(Color.testoSecondario)
-                            }
+                            NomeConAiuto(TestiImpostazioni.nativa,
+                                         aiuto: "Arrivano con l'app ntfy e il tocco apre questa app. Se hai attivato anche le notifiche della web app potresti riceverli doppi.")
                         }
                         .tint(Color.verde)
                         .frame(minHeight: 44)
@@ -122,7 +115,7 @@ struct AvvisiServerView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .titoloPagina("Avvisi e promemoria")
+        .titoloPagina(TestiImpostazioni.notifiche)
         .task { await vm.carica() }
         .task { await lega.aggiornaPermesso() }
     }
@@ -145,11 +138,7 @@ struct AvvisiServerView: View {
                     if nuovo, vm.impostazioni?.silenzio_a == nil { vm.impostazioni?.silenzio_a = OreTranquille.predefinite.a }
                     Task { await vm.salva() }
                 })) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Ore tranquille")
-                    Text("Niente avvisi di notte: i promemoria che cadono in quelle ore non partono.")
-                        .font(.caption).foregroundStyle(Color.testoSecondario)
-                }
+                NomeConAiuto(TestiImpostazioni.oreTranquille, aiuto: TestiImpostazioni.oreTranquilleAiuto)
             }
             .tint(Color.verde)
             .frame(minHeight: 44)
@@ -202,13 +191,18 @@ struct AvvisiServerView: View {
         }
     }
 
-    private func interruttore(_ titolo: String, _ chiave: WritableKeyPath<ImpostazioniAvvisi, Bool>) -> some View {
-        Toggle(titolo, isOn: Binding(
+    /// Un interruttore degli avvisi, con sotto la riga d'aiuto della web (se ce l'ha).
+    private func interruttore(_ titolo: String, aiuto: String? = nil, _ chiave: WritableKeyPath<ImpostazioniAvvisi, Bool>) -> some View {
+        Toggle(isOn: Binding(
             get: { vm.impostazioni?[keyPath: chiave] ?? false },
             set: { nuovo in
                 vm.impostazioni?[keyPath: chiave] = nuovo
                 Task { await vm.salva() }
-            })).tint(Color.verde)
+            })) {
+            NomeConAiuto(titolo, aiuto: aiuto)
+        }
+        .tint(Color.verde)
+        .frame(minHeight: 44)
     }
 }
 
