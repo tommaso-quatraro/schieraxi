@@ -8,12 +8,14 @@ reggono le tre soglie (D1, 5/11), un avviso al proprietario, una volta per versi
 
 I numeri mostrati non cambiano e il loro salvataggio non dipende da questo modulo: gira in passi a sé del `giro` del registro,
 DOPO il salvataggio dei mostrati, e un suo errore finisce nel log senza fermare gli altri passi. Se i nostri non si salvano prima
-della prima partita, la giornata dei nostri è «persa» (riga con il motivo in breve, che non conta) e parte un avviso solo.
+della prima partita, o se la loro misura non riesce TENTATIVI_MISURA volte, la giornata dei nostri è «persa» (riga con il motivo
+in breve, che non conta) e parte un avviso solo.
 Tabelle `registro_nostri` e `registro_i4` dell'archivio (NON si ricostruiscono). Regole classiche, solo id e numeri, niente nomi.
 """
 from __future__ import annotations
 
 import bisect
+import contextlib
 import json
 import logging
 import math
@@ -40,6 +42,7 @@ FASCE = len(nostri.FASCE_GOL) - 1
 ESSENZIALI = ("p_voto", "mu")
 FACOLTATIVE = ("mu_voto", "e_gol", "e_rigori", "e_assist", "minuti")
 SENZA_TENTATIVI = "nessun tentativo prima della prima partita (servizio fermo o riavviato)"
+TENTATIVI_MISURA = 3                    # misure non riuscite prima che la giornata diventi persa (il calcolo è pesante)
 TITOLO = "SchieraXI: gol attesi nostri"
 LOG = logging.getLogger(__name__)
 # l'ultimo motivo per cui i nostri di una giornata non si sono salvati, {(stagione, giornata): motivo}, finché non si salvano o la
@@ -291,23 +294,46 @@ def misura_giornata(db: sqlite3.Connection, stagione: str, giornata: int) -> dic
             "fasce_mostrati": fasce([m["e_gol"] for m, _ in coppie], [n["e_rigori_mostrati"] for _, n in coppie], ids, Parametri())}
 
 
+def _misura_non_riuscita(db: sqlite3.Connection, stagione: str, giornata: int, versione: str, e: Exception) -> None:
+    """Conta il tentativo nell'archivio (vale anche dopo un riavvio) e lo scrive nel log (tipo d'errore e punti del codice, mai il
+    messaggio). Al TENTATIVI_MISURA-esimo la giornata diventa «persa» con il motivo: non si rifà più il calcolo pesante e
+    `avvisa_perse` manda un avviso solo."""
+    with contextlib.suppress(sqlite3.Error):
+        db.rollback()
+    prima = db.execute("SELECT tentativi FROM registro_i4 WHERE stagione = ? AND giornata = ?", (stagione, giornata)).fetchone()
+    n = (prima[0] or 0) + 1 if prima else 1
+    persa = f"misura non riuscita {n} volte ({type(e).__name__})" if n >= TENTATIVI_MISURA else None
+    db.execute("INSERT OR REPLACE INTO registro_i4 (stagione, giornata, versione, voti, rose, tentativi, persa, avvisato) "
+               "VALUES (?, ?, ?, 0, 0, ?, ?, 0)", (stagione, giornata, versione, n, persa))
+    db.commit()
+    LOG.warning("registro dei numeri nostri: misura dei numeri nostri della giornata %s (%s) non riuscita (%s), tentativo %s di %s%s "
+                "in %s", giornata, stagione, type(e).__name__, n, TENTATIVI_MISURA, ": giornata persa" if persa else "", rg._dove(e))
+
+
 def chiudi_giornate(db: sqlite3.Connection, adesso: datetime) -> list[tuple[str, int]]:
-    """Misura, dalla più vecchia, le giornate già misurate dal registro dei mostrati che hanno i numeri nostri e non hanno ancora la
-    riga in `registro_i4`. La versione è quella dei numeri salvati. Restituisce quelle misurate."""
+    """Misura, dalla più vecchia, le giornate già misurate dal registro dei mostrati che hanno i numeri nostri e non sono ancora
+    misurate né perse in `registro_i4`. La versione è quella dei numeri salvati. Una misura che va in errore non ferma le giornate
+    dopo: si riprova al giro dopo, al massimo TENTATIVI_MISURA volte (`_misura_non_riuscita`). Restituisce quelle misurate."""
     fatte = []
     for stagione, g in db.execute(
             "SELECT g.stagione, g.giornata FROM registro_giornate g WHERE g.misurato IS NOT NULL "
             "AND EXISTS (SELECT 1 FROM registro_nostri n WHERE n.stagione = g.stagione AND n.giornata = g.giornata) "
-            "AND NOT EXISTS (SELECT 1 FROM registro_i4 i WHERE i.stagione = g.stagione AND i.giornata = g.giornata) "
+            "AND NOT EXISTS (SELECT 1 FROM registro_i4 i WHERE i.stagione = g.stagione AND i.giornata = g.giornata "
+            "AND (i.misurato IS NOT NULL OR i.persa IS NOT NULL)) "
             "ORDER BY g.stagione, g.giornata").fetchall():
-        m = misura_giornata(db, stagione, g) or {"voti": 0, "rose": 0}
         versione = db.execute("SELECT MIN(versione) FROM registro_nostri WHERE stagione = ? AND giornata = ?", (stagione, g)).fetchone()[0]
-        db.execute("INSERT INTO registro_i4 (stagione, giornata, versione, misurato, voti, sq_nostri, sq_mostrati, rose, punti_nostri, "
-                   "punti_mostrati, fasce, fasce_mostrati, avvisato) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+        try:
+            m = misura_giornata(db, stagione, g) or {"voti": 0, "rose": 0}
+        except Exception as e:  # noqa: BLE001 - contata e nel log; le giornate dopo si misurano lo stesso
+            _misura_non_riuscita(db, stagione, int(g), versione, e)
+            continue
+        prima = db.execute("SELECT tentativi FROM registro_i4 WHERE stagione = ? AND giornata = ?", (stagione, g)).fetchone()
+        db.execute("INSERT OR REPLACE INTO registro_i4 (stagione, giornata, versione, misurato, voti, sq_nostri, sq_mostrati, rose, "
+                   "punti_nostri, punti_mostrati, fasce, fasce_mostrati, tentativi, avvisato) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                    (stagione, g, versione, adesso.isoformat(timespec="seconds"), m["voti"], m.get("sq_nostri"), m.get("sq_mostrati"),
                     m["rose"], m.get("punti_nostri"), m.get("punti_mostrati"),
                     json.dumps(m["fasce"]) if "fasce" in m else None,
-                    json.dumps(m["fasce_mostrati"]) if "fasce_mostrati" in m else None))
+                    json.dumps(m["fasce_mostrati"]) if "fasce_mostrati" in m else None, prima[0] if prima else 0))
         db.commit()
         fatte.append((stagione, int(g)))
     return fatte
@@ -418,10 +444,11 @@ def avvisa(db: sqlite3.Connection, manda: Callable[[str, str], bool]) -> bool:
 
 
 def testo_perse(righe: list[dict]) -> tuple[str, str]:
-    """Titolo e testo dell'avviso delle giornate perse dei nostri: giornate e motivi in breve, mai nomi."""
+    """Titolo e testo dell'avviso delle giornate perse dei nostri (non salvati prima della prima partita, o misura non riuscita):
+    giornate e motivi in breve, mai nomi."""
     voci = [f"• giornata {r['giornata']} ({r['stagione']}): {r['persa']}" for r in righe]
-    return (TITOLO, "Numeri nostri non salvati prima della prima partita: quelle giornate non contano nella misura dal vivo (i numeri "
-            "mostrati sono salvi; dettagli in Stato dei dati e nel log del server):\n" + "\n".join(voci))
+    return (TITOLO, "Giornate perse per la misura dal vivo dei numeri nostri: non contano nel verdetto (i numeri mostrati sono salvi; "
+            "dettagli in Stato dei dati e nel log del server):\n" + "\n".join(voci))
 
 
 def avvisa_perse(db: sqlite3.Connection, manda: Callable[[str, str], bool]) -> bool:

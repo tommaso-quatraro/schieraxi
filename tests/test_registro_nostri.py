@@ -107,7 +107,8 @@ def test_archivio_vecchio_col_registro_riceve_le_tabelle_nuove_senza_perdere_nie
     assert colonne["registro_nostri"] == ["stagione", "giornata", "calciatore_id", "versione", "p_voto", "mu", "mu_voto", "e_gol",
                                           "e_rigori", "e_assist", "minuti", "e_rigori_mostrati"]
     assert colonne["registro_i4"] == ["stagione", "giornata", "versione", "misurato", "voti", "sq_nostri", "sq_mostrati", "rose",
-                                      "punti_nostri", "punti_mostrati", "fasce", "fasce_mostrati", "persa", "avvisato"]
+                                      "punti_nostri", "punti_mostrati", "fasce", "fasce_mostrati", "tentativi", "persa",
+                                      "avvisato"]
     db.close()
     db = archivio.apri(percorso)                                               # riaprire non cambia niente
     assert db.execute("SELECT COUNT(*) FROM registro_giocatori").fetchone()[0] == 1
@@ -251,7 +252,45 @@ def test_errore_nella_misura_dei_nostri_non_ferma_la_misura_dei_mostrati(giornat
         rg.giro(ORA(8, 22, 35), db, lambda t, x: True)
     assert db.execute("SELECT misurato FROM registro_giornate WHERE giornata = 10").fetchone()[0] is not None
     assert "misura dei numeri nostri" in caplog.text and "KeyError" in caplog.text
-    assert db.execute("SELECT COUNT(*) FROM registro_i4").fetchone()[0] == 0        # si riprova al giro dopo
+    riga = db.execute("SELECT misurato, persa, tentativi FROM registro_i4 WHERE giornata = 10").fetchone()
+    assert tuple(riga) == (None, None, 1)                                       # si riprova al giro dopo
+
+
+def test_misura_sempre_in_errore_si_ferma_dopo_tre_tentativi(finita, monkeypatch, caplog):
+    """Una giornata la cui misura va sempre in errore non rifà il calcolo pesante ogni minuto per sempre e non tiene ferme le altre:
+    dopo 3 tentativi (contati nell'archivio: valgono anche dopo un riavvio) diventa «persa» con il motivo, e parte un avviso solo."""
+    db = finita
+    rg.chiudi_giornate(db, ORA(8, 22, 35))
+    db.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili, misurato, voti, presenze) "
+               "VALUES (?, 11, '2026-11-14T18:20:00', 1, 1, '2026-11-15T22:35:00', 1, 1)", (ST,))
+    archivio.inserisci(db, "registro_nostri", [{"stagione": ST, "giornata": 11, "calciatore_id": 101, "versione": V, "p_voto": 0.9,
+                                                "mu": 6.0, "mu_voto": 6.0, "e_gol": 0.0, "e_rigori": 0.0, "e_assist": 0.0,
+                                                "minuti": 90.0, "e_rigori_mostrati": 0.0}])
+    db.commit()
+    chiamate, vera = [], rn.misura_giornata
+
+    def misura(db, stagione, giornata):
+        chiamate.append(giornata)
+        if giornata == 10:
+            raise KeyError("dato interno")
+        return vera(db, stagione, giornata)
+
+    monkeypatch.setattr(rn, "misura_giornata", misura)
+    with caplog.at_level("WARNING"):
+        assert rn.chiudi_giornate(db, ORA(16, 12, 0)) == [(ST, 11)]           # la 10 non ferma la 11
+        rn._tentativi.clear()                                                  # riavvio: il conto sta nell'archivio
+        assert rn.chiudi_giornate(db, ORA(16, 12, 1)) == []
+        assert rn.chiudi_giornate(db, ORA(16, 12, 2)) == []
+    assert chiamate == [10, 11, 10, 10]
+    assert caplog.text.count("misura dei numeri nostri") == 3 and "KeyError" in caplog.text and "dato interno" not in caplog.text
+    riga = dict(db.execute("SELECT * FROM registro_i4 WHERE giornata = 10").fetchone())
+    assert riga["misurato"] is None and riga["tentativi"] == 3 and "KeyError" in riga["persa"] and riga["voti"] == 0
+    assert rn.chiudi_giornate(db, ORA(16, 12, 3)) == [] and chiamate == [10, 11, 10, 10]    # niente più calcoli
+    inviati = []
+    assert rn.avvisa_perse(db, lambda t, x: inviati.append((t, x)) or True) is True
+    assert rn.avvisa_perse(db, lambda t, x: inviati.append((t, x)) or True) is False and len(inviati) == 1
+    assert "giornata 10" in inviati[0][1] and "misura" in inviati[0][1] and "dato interno" not in inviati[0][1]
+    assert rn.riepilogo(db)["per_giornata"][1]["persa"] == riga["persa"]
 
 
 # ---------------------------------------------------------------- misura a giornata finita

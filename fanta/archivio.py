@@ -135,7 +135,8 @@ CREATE TABLE IF NOT EXISTS registro_i4 (
     voti INTEGER, sq_nostri REAL, sq_mostrati REAL,                     -- chi ha preso voto: somme dei quadrati degli errori
     rose INTEGER, punti_nostri REAL, punti_mostrati REAL,              -- rose di I3: punti veri della migliore con gli uni e gli altri
     fasce TEXT, fasce_mostrati TEXT,                                    -- gol attesi per fasce: [casi, somma attesi, somma veri] (JSON)
-    persa TEXT,                     -- motivo in breve se i nostri non sono stati salvati prima della prima partita (non conta)
+    tentativi INTEGER,              -- misure non riuscite (qui e non in memoria: contano anche dopo un riavvio)
+    persa TEXT,                     -- motivo in breve se i nostri non si sono salvati prima della prima partita o non si misurano
     avvisato INTEGER,               -- 1 = avviso partito (giornata persa, o 8 giornate entro soglia per la sua versione)
     PRIMARY KEY (stagione, giornata)
 );

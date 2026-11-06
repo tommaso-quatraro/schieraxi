@@ -42,7 +42,7 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     Gol attesi «nostri» dal vivo (I4, Fase D del piano 2026-11-06-gol-attesi-nostri): `registro_nostri.py`, passi a sé del giro
     del registro, sempre DOPO quelli dei mostrati. Salva i numeri `nostri.previsioni` degli stessi giocatori con `nostri.VERSIONE`,
     a giornata finita li misura contro i mostrati (errore, punti sulle rose di I3, gol attesi per fasce) e avvisa il proprietario
-    quando 8 giornate della stessa versione reggono; giornata dei nostri non salvata = «persa». Tabelle `registro_nostri` e
+    quando 8 giornate della stessa versione reggono; nostri non salvati o misura non riuscita 3 volte = «persa». Tabelle `registro_nostri` e
     `registro_i4` (tabelle a sé: gli archivi che ci sono le ricevono senza migrazione). Campo `registro_nostri` di `GET /api/stato-dati`.
     Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` in `dati/registro-giornate.json` per la
     copia notturna (`script/server/backup-dati.sh`) e le rimette con `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).

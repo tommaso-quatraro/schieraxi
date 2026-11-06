@@ -214,8 +214,8 @@ def test_comando_da_terminale_con_la_sola_libreria_standard(tmp_path):
 
 NOSTRI = [("2026-27", 9, 101, "1", 0.86, 6.9, 6.1, 0.37, 0.12, 0.11, 81.0, 0.1), ("2026-27", 9, 102, "1", 0.3, 5.1, 6.0, 0.0, 0.0, 0.0,
                                                                                     90.0, None)]
-I4 = [("2026-27", 9, "1", "2026-10-27T09:05:00", 2, 3.25, 3.5, 20, 1301.5, 1300.0, '[[1, 0.0, 0]]', '[[1, 0.0, 0]]', None, 0),
-      ("2026-27", 10, "1", None, 0, None, None, 0, None, None, None, None, "numeri nostri non calcolati (ValueError)", 1)]
+I4 = [("2026-27", 9, "1", "2026-10-27T09:05:00", 2, 3.25, 3.5, 20, 1301.5, 1300.0, '[[1, 0.0, 0]]', '[[1, 0.0, 0]]', 1, None, 0),
+      ("2026-27", 10, "1", None, 0, None, None, 0, None, None, None, None, 3, "misura non riuscita 3 volte (KeyError)", 1)]
 
 
 def test_copia_notturna_porta_le_tabelle_nuove(tmp_path):
@@ -224,7 +224,7 @@ def test_copia_notturna_porta_le_tabelle_nuove(tmp_path):
     with contextlib.closing(archivio.apri(vecchio)) as db:
         _riempi(db)
         db.executemany(f"INSERT INTO registro_nostri VALUES ({', '.join('?' * 12)})", NOSTRI)
-        db.executemany(f"INSERT INTO registro_i4 VALUES ({', '.join('?' * 14)})", I4)
+        db.executemany(f"INSERT INTO registro_i4 VALUES ({', '.join('?' * 15)})", I4)
         db.commit()
     assert registro_copia.esporta(vecchio, copia) == {"registro_giornate": 3, "registro_giocatori": 3, "registro_nostri": 2,
                                                       "registro_i4": 2}
