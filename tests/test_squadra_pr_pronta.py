@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -144,22 +145,54 @@ def test_controlli_di_t2_o_t3_mancanti_rifiutano(tmp_path, monkeypatch, capsys):
     assert not f.lanciati("gh pr ready")
 
 
-def test_coerenza_vera_usa_lo_script_della_pr(tmp_path, monkeypatch):
+def test_coerenza_usa_sempre_lo_script_di_main_e_mai_quello_della_pr(tmp_path, monkeypatch):
     (tmp_path / "script").mkdir()
     (tmp_path / "script" / "coerenza.py").write_text("# main\n", encoding="utf-8")
     monkeypatch.setattr(pr_pronta.comune, "RADICE", tmp_path)
+    viste = {}
+
+    class Registra(Finto):
+        def __call__(self, argomenti):
+            if argomenti[0] == sys.executable:          # che cosa c'è nella cartella temporanea mentre lo script gira
+                radice = Path(argomenti[argomenti.index("--radice") + 1])
+                viste["file"] = sorted(x.relative_to(radice).as_posix() for x in radice.rglob("*") if x.is_file())
+            return super().__call__(argomenti)
+
     r = {
-        "git ls-tree -r --name-only t1 -- script/coerenza.py docs/coerenza docs/COERENZA-WEB-IPHONE.md":
-            "script/coerenza.py\ndocs/coerenza/vocabolario.json\ndocs/COERENZA-WEB-IPHONE.md\n",
-        "git show t1:script/coerenza.py": "import sys\nsys.exit(0)\n",
+        "git ls-tree -r --name-only t1 -- docs/coerenza docs/COERENZA-WEB-IPHONE.md":
+            "docs/coerenza/vocabolario.json\ndocs/COERENZA-WEB-IPHONE.md\n",
+        "git show t1:script/coerenza.py": "import os\nos.system('qualcosa di brutto')\n",
         "git show t1:docs/coerenza/vocabolario.json": "{}",
         "git show t1:docs/COERENZA-WEB-IPHONE.md": "# x\n",
         sys.executable: comune.Risposta(1, "riga doppia: id 3\n", ""),
     }
-    f = Finto(r)
-    problemi = pr_pronta.coerenza_vera(f, "t1", ["docs/coerenza/vocabolario.json"])
+    f = Registra(r)
+    problemi = pr_pronta.coerenza_vera(f, "t1", ["script/coerenza.py", "docs/coerenza/vocabolario.json"])
     assert problemi and "riga doppia" in problemi[0]
+    assert not f.lanciati("git show t1:script/")                       # lo script della PR non si legge nemmeno
+    [comando] = [c for c in f.chiamate if c[0] == sys.executable]
+    assert comando[1] == str(tmp_path / "script" / "coerenza.py") and comando[2] == "--controlla"
+    assert viste["file"] == ["docs/COERENZA-WEB-IPHONE.md", "docs/coerenza/vocabolario.json"]
     assert pr_pronta.coerenza_vera(f, "t1", ["fanta/server.py"]) == []          # la PR non tocca la coerenza
+
+
+def test_nessun_file_della_pr_viene_eseguito(tmp_path, monkeypatch):
+    """Tutto il comando: i soli programmi lanciati sono gh, git e lo script di coerenza di main."""
+    (tmp_path / "script").mkdir()
+    (tmp_path / "script" / "coerenza.py").write_text("# main\n", encoding="utf-8")
+    monkeypatch.setattr(pr_pronta.comune, "RADICE", tmp_path)
+    file = [{"filename": "script/coerenza.py", "status": "modified"}, {"filename": "tests/test_x.py", "status": "added"},
+            {"filename": "docs/coerenza/vocabolario.json", "status": "modified"}]
+    r = risposte(file=file, **{
+        "git ls-tree -r --name-only t1 -- docs/coerenza docs/COERENZA-WEB-IPHONE.md": "docs/coerenza/vocabolario.json\n",
+        "git show t1:docs/coerenza/vocabolario.json": "{}",
+        "git show t1:tests/test_x.py": "import os\nos.system('x')\n",
+        sys.executable: "",
+    })
+    f = Finto(r)
+    pr_pronta.main(f, 7, controlli_pr=controlli_finti())
+    for c in f.chiamate:
+        assert c[0] in ("gh", "git") or (c[0] == sys.executable and c[1] == str(tmp_path / "script" / "coerenza.py")), c
 
 
 def test_ramo_indietro_secondo_compare(capsys):

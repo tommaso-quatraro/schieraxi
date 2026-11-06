@@ -2,7 +2,7 @@
 testa del suo ramo (è arrivato un push dopo). Di default fa solo la PROVA; annulla solo con --esegui.
 
 Mai: corse `workflow_dispatch` (prove rosse volute, foto), `schedule`, e nessuna corsa del ramo main (c'è il rilascio).
-Un ramo che non c'è più su GitHub non si tocca (non si sa quale sia la testa).
+Un ramo che non c'è più su GitHub non si tocca (non si sa quale sia la testa). Le corse dei fork non si toccano mai.
 Codici di uscita: 0 fatto (anche niente da annullare); 1 errore di gh o git, o un annullamento non riuscito."""
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import json
 import sys
 
 import comune
-import stato
 
 EVENTI = {"push", "pull_request"}
 STATI = ("queued", "in_progress", "waiting", "pending")
@@ -26,8 +25,23 @@ def teste_dei_rami(esegui: comune.Esegui) -> dict[str, str]:
     return teste
 
 
+def corse_del_repository(esegui: comune.Esegui, stato_corsa: str) -> list[dict]:
+    """Le corse in uno stato, dall'API delle Actions: a differenza di `gh run list` dice da quale repository arriva il commit.
+    Le corse dei fork (head_repository diverso dal repository) si scartano: il loro ramo può avere lo stesso nome di uno
+    di origin, e la testa da confrontare sarebbe quella sbagliata."""
+    dati = comune.chiama_json(esegui, ["gh", "api", f"repos/{{owner}}/{{repo}}/actions/runs?status={stato_corsa}&per_page=100"]) or {}
+    uscita = []
+    for c in dati.get("workflow_runs") or []:
+        da = (c.get("head_repository") or {}).get("full_name")
+        if not da or da != (c.get("repository") or {}).get("full_name"):
+            continue
+        uscita.append({"databaseId": c["id"], "workflowName": c.get("name", ""), "status": c.get("status", ""),
+                       "event": c.get("event", ""), "headBranch": c.get("head_branch") or "", "headSha": c.get("head_sha") or ""})
+    return uscita
+
+
 def superate(esegui: comune.Esegui) -> list[dict]:
-    candidate = [c for s in STATI for c in stato.corse(esegui, s)
+    candidate = [c for s in STATI for c in corse_del_repository(esegui, s)
                  if c["event"] in EVENTI and c["headBranch"] != RAMO_PRINCIPALE]
     if not candidate:
         return []

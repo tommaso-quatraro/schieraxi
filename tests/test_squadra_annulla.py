@@ -11,17 +11,30 @@ import comune
 LS_REMOTE = "nuovo\trefs/heads/ramo-a\nmmm\trefs/heads/main\nb2\trefs/heads/ramo-b\n"
 
 
-def corsa(id_, evento, ramo="ramo-a", sha="vecchio", stato="queued", wf="Controlli"):
+def corsa(id_, evento, ramo="ramo-a", sha="vecchio", stato="queued", wf="Controlli", fork=False):
     return {"databaseId": id_, "workflowName": wf, "status": stato, "conclusion": "", "event": evento,
-            "headBranch": ramo, "headSha": sha, "createdAt": "2026-11-06T10:00:00Z"}
+            "headBranch": ramo, "headSha": sha, "createdAt": "2026-11-06T10:00:00Z", "fork": fork}
+
+
+def come_api(corse) -> dict:
+    """Le corse nel formato dell'API delle Actions (che dice da quale repository arriva il commit)."""
+    return {"workflow_runs": [
+        {"id": c["databaseId"], "name": c["workflowName"], "status": c["status"], "event": c["event"],
+         "head_branch": c["headBranch"], "head_sha": c["headSha"],
+         "head_repository": {"full_name": "altro/progetto" if c.get("fork") else "esempio/progetto"},
+         "repository": {"full_name": "esempio/progetto"}} for c in corse]}
+
+
+def chiave_api(stato: str) -> str:
+    return f"gh api repos/{{owner}}/{{repo}}/actions/runs?status={stato}&per_page=100"
 
 
 def risposte(corse_in_coda, corse_in_corso=()):
     return {
-        "gh run list --status queued": list(corse_in_coda),
-        "gh run list --status in_progress": list(corse_in_corso),
-        "gh run list --status waiting": [],
-        "gh run list --status pending": [],
+        chiave_api("queued"): come_api(corse_in_coda),
+        chiave_api("in_progress"): come_api(corse_in_corso),
+        chiave_api("waiting"): come_api([]),
+        chiave_api("pending"): come_api([]),
         "git ls-remote --heads origin": LS_REMOTE,
         "gh run cancel": "",
     }
@@ -38,6 +51,14 @@ def test_superate_solo_push_e_pull_request_su_commit_vecchi():
          corsa(7, "pull_request", ramo="cancellato")],  # ramo sparito: non si sa, resta
         [corsa(8, "pull_request", ramo="ramo-b", sha="b1", stato="in_progress")]))
     assert [c["id"] for c in annulla.superate(finto)] == [1, 2, 8]
+
+
+def test_corse_da_un_fork_con_lo_stesso_nome_di_ramo_non_si_toccano():
+    finto = Finto(risposte([corsa(9, "pull_request", ramo="ramo-a", sha="vecchio", fork=True),
+                            corsa(1, "pull_request")]))
+    assert [c["id"] for c in annulla.superate(finto)] == [1]
+    assert annulla.main(finto, esegui_davvero=True) == 0
+    assert finto.lanciati("gh run cancel") == ["gh run cancel 1"]
 
 
 def test_dispatch_e_schedule_non_si_annullano_mai_neanche_con_esegui():

@@ -38,35 +38,40 @@ def _tocca_coerenza(file: list[str]) -> bool:
     return any(f == p or f.startswith(p + "/") for f in file for p in FILE_COERENZA)
 
 
+def _copia_dal_commit(esegui: comune.Esegui, testa: str, percorso: str, base: Path) -> None:
+    """Scrive in `base` un file del commit della PR, da LEGGERE soltanto (mai eseguire). Percorsi fuori da `base` no."""
+    destinazione = (base / percorso).resolve()
+    if not destinazione.is_relative_to(base.resolve()):
+        raise comune.ErroreComando(f"percorso inatteso nel commit della PR: {percorso}")
+    destinazione.parent.mkdir(parents=True, exist_ok=True)
+    destinazione.write_text(comune.chiama(esegui, ["git", "show", f"{testa}:{percorso}"]), encoding="utf-8")
+
+
 def coerenza_vera(esegui: comune.Esegui, testa: str, file: list[str]) -> list[str]:
-    """`coerenza.py --controlla` sui dati della PR (commit in testa), in una cartella temporanea. [] se va bene o non serve."""
+    """`coerenza.py --controlla` sui DATI della PR (commit in testa), copiati in una cartella temporanea. Lo script è SEMPRE
+    quello di main (comune.RADICE): il codice di una PR, anche da un fork, non si esegue mai. [] se va bene o non serve."""
     if not _tocca_coerenza(file):
         return []
-    elenco = comune.chiama(esegui, ["git", "ls-tree", "-r", "--name-only", testa, "--", *FILE_COERENZA]).splitlines()
+    dati = [p for p in FILE_COERENZA if not p.endswith(".py")]
+    elenco = comune.chiama(esegui, ["git", "ls-tree", "-r", "--name-only", testa, "--", *dati]).splitlines()
     with tempfile.TemporaryDirectory(prefix="pr-pronta-") as cartella:
         base = Path(cartella)
         for percorso in (p.strip() for p in elenco if p.strip()):
-            destinazione = base / percorso
-            destinazione.parent.mkdir(parents=True, exist_ok=True)
-            destinazione.write_text(comune.chiama(esegui, ["git", "show", f"{testa}:{percorso}"]), encoding="utf-8")
-        script = base / "script" / "coerenza.py"
-        if not script.exists():
-            script.parent.mkdir(parents=True, exist_ok=True)
-            script.write_text((comune.RADICE / "script" / "coerenza.py").read_text(encoding="utf-8"), encoding="utf-8")
-        r = esegui([sys.executable, str(script), "--controlla"])
+            _copia_dal_commit(esegui, testa, percorso, base)
+        script = comune.RADICE / "script" / "coerenza.py"
+        r = esegui([sys.executable, str(script), "--controlla", "--radice", str(base)])
     if r.codice == 0:
         return []
     return [f"coerenza web-iPhone: {' '.join((r.uscita + ' ' + r.errore).split())[:400]}"]
 
 
 def _test_della_pr(esegui: comune.Esegui, testa: str, file: list[tuple], cartella: Path) -> None:
-    """Copia nella cartella i file di test aggiunti o cambiati dalla PR (per il controllo «test che leggono una novità per nome»)."""
+    """Copia nella cartella i file di test aggiunti o cambiati dalla PR (per il controllo «test che leggono una novità per nome»,
+    che ne legge solo l'albero sintattico: nessun file della PR si esegue)."""
     for voce in file:
         stato, percorso = voce[0], voce[-1]
         if stato != "removed" and percorso.startswith("tests/") and percorso.endswith(".py"):
-            destinazione = cartella / percorso
-            destinazione.parent.mkdir(parents=True, exist_ok=True)
-            destinazione.write_text(comune.chiama(esegui, ["git", "show", f"{testa}:{percorso}"]), encoding="utf-8")
+            _copia_dal_commit(esegui, testa, percorso, cartella)
 
 
 def _foto_scritte(corpo: str) -> bool:

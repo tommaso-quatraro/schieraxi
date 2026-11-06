@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import json
 
+from test_squadra_annulla import chiave_api, come_api
 from test_squadra_comune import Finto
 from test_squadra_stato import ADESSO, risposte_stato
 
@@ -31,6 +32,8 @@ def risposte(**extra):
     for p in r["gh pr list --state open"]:
         p["headRefOid"] = {20: "testa-a", 21: "testa-b", 22: "testa-c"}[p["number"]]
     r.update(extra)
+    for s in ("queued", "in_progress", "waiting", "pending"):          # le stesse corse viste dall'API delle Actions
+        r[chiave_api(s)] = come_api(r[f"gh run list --status {s}"])
     return r
 
 
