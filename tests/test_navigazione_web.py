@@ -77,7 +77,7 @@ def _esegui(scena: str):
         AMBIENTE,
         APP[APP.index("const VISTE = "):APP.index("const SCHEDA_DI = ")], _riga("const SCHEDA_DI = "),
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
-        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _funzione("vai"),
+        _riga("const modificaNonSalvata = "), _funzione("lasciaFormazione"), _riga("const DISEGNO_VISTE = "), _funzione("vai"),
         _da_a('window.addEventListener("popstate"', "\n});\n"),
         scena,
     ])
@@ -113,6 +113,27 @@ def test_indietro_e_avanti_tornano_alle_schermate_di_prima_con_la_scheda_accesa(
     assert imp["indirizzo"] == "/?vista=impostazioni&gruppo=aspetto" and imp["accesa"] == ["ingranaggio"]
     assert ["disegna", "impostazioni", "aspetto"] in imp["chiamate"]
     assert da_imp["indirizzo"] == "/?vista=formazione" and da_imp["accesa"] == ["formazione"]
+
+
+def test_le_schermate_si_disegnano_da_una_mappa_con_i_soli_nomi_ammessi():
+    """CodeQL (js/unvalidated-dynamic-method-call, #396): il nome della schermata arriva anche dall'indirizzo (?vista=, Indietro);
+    prima si chiamava `oggetto[vista]()`. Ora una Map con i soli nomi ammessi: un nome strano, anche «__proto__» o «constructor»,
+    porta a Oggi e non chiama altro."""
+    assert "[vista]()" not in APP
+    esiti = _esegui("""
+    const esiti = [];
+    for (const nome of ["__proto__", "constructor", "toString", "hasOwnProperty", "valueOf", "mercato", "scambi"]) { vai(nome); esiti.push(foto()); }
+    vai("formazione"); chiamate.splice(0);
+    history.pushState(null, "", "/?vista=constructor"); chiamate.splice(0); indirizzoMostrato = null;
+    window.ascolta.popstate({ state: null }); esiti.push(foto());
+    console.log(JSON.stringify(esiti));
+    """)
+    for esito in esiti[:5]:
+        disegni = [c for c in esito["chiamate"] if c[0] == "disegna"]
+        assert disegni == [["disegna", "oggi"]] and esito["vista"] == "oggi" and esito["accesa"] == ["oggi"], esito
+    assert ["disegna", "mercato"] in esiti[5]["chiamate"] and esiti[5]["accesa"] == ["squadra"]
+    assert ["disegna", "scambi"] in esiti[6]["chiamate"] and esiti[6]["accesa"] == ["altro"]
+    assert [c for c in esiti[7]["chiamate"] if c[0] == "disegna"] == [["disegna", "oggi"]] and esiti[7]["vista"] == "oggi"
 
 
 def test_il_link_vai_al_contenuto_non_ridisegna_la_schermata():
