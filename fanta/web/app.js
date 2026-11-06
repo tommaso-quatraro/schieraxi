@@ -971,7 +971,8 @@ function mostraOggi(o, opz = {}) {
   collegaRinvio();
   const diario = $("[data-apri-diario]");
   if (diario) diario.addEventListener("click", () => apriDiario(Number(diario.dataset.apriDiario) || undefined));
-  if ($("#oggi-punti")) animaNumero($("#oggi-punti"), opz.sostituisce ? (o.formazione.punteggio_atteso ?? 0) : 0, o.formazione.punteggio_atteso ?? 0);
+  // i punti attesi si scrivono una volta, già giusti, come nella Formazione: niente numero che sale da 0 (grafica B, spec §7.6).
+  // Finché i fotogrammi non arrivavano (scheda in secondo piano, telefono lento, foto) restava un numero falso (8,9 invece di 65,5)
   if (funz("live")) avviaLive(miei);                   // con «Risultati in diretta» spenta non si chiede nulla al server
   // il conto alla rovescia si aggiorna da solo finché si resta in questa sezione
   clearInterval(timerConto);
