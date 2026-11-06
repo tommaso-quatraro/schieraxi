@@ -121,3 +121,95 @@ def test_nuova_riga_nei_dati_va_nel_documento(copia):
 def test_il_documento_dice_che_e_generato():
     testo = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
     assert "File generato: si cambiano i dati in docs/coerenza/, poi `python script/coerenza.py --scrivi`" in testo
+
+
+def test_cartella_delle_schermate_mancante(copia):
+    shutil.rmtree(copia / "docs" / "coerenza" / "schermate")
+    assert _lancia(copia, "--controlla") == 2
+    assert _lancia(copia, "--scrivi") == 2
+
+
+def test_cartella_delle_schermate_vuota(copia):
+    for f in (copia / "docs" / "coerenza" / "schermate").glob("*.json"):
+        f.unlink()
+    assert _lancia(copia, "--scrivi") == 2
+
+
+def test_chiave_righe_sbagliata_non_toglie_righe_in_silenzio(copia):
+    percorso = _file_schermata(copia, "oggi")
+    percorso.write_text(percorso.read_text(encoding="utf-8").replace('"righe"', '"rige"'), encoding="utf-8")
+    prima = (copia / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
+    assert _lancia(copia, "--scrivi") == 2
+    assert (copia / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8") == prima
+
+
+def test_chiave_sconosciuta_accanto_a_righe(copia):
+    _modifica_json(_file_schermata(copia, "oggi"), lambda d: d.update(altro=1))
+    assert _lancia(copia, "--controlla") == 2
+
+
+def test_schermata_con_radice_lista(copia):
+    _file_schermata(copia, "oggi").write_text("[]\n", encoding="utf-8")
+    assert _lancia(copia, "--controlla") == 2
+
+
+def test_schermata_con_righe_vuote(copia):
+    _modifica_json(_file_schermata(copia, "oggi"), lambda d: d.update(righe=[]))
+    assert _lancia(copia, "--controlla") == 2
+
+
+def test_riga_che_non_e_un_oggetto(copia):
+    _modifica_json(_file_schermata(copia, "oggi"), lambda d: d["righe"].append("testo"))
+    assert _lancia(copia, "--controlla") == 2
+
+
+@pytest.mark.parametrize("file, chiave", [("vocabolario.json", "righe"), ("ammesse.json", "voci")])
+def test_vocabolario_e_ammesse_senza_la_lista(copia, file, chiave):
+    percorso = copia / "docs" / "coerenza" / file
+    _modifica_json(percorso, lambda d: d.pop(chiave))
+    assert _lancia(copia, "--controlla") == 2
+
+
+def test_ammesse_con_voci_non_lista(copia):
+    percorso = copia / "docs" / "coerenza" / "ammesse.json"
+    _modifica_json(percorso, lambda d: d.update(voci="testo"))
+    assert _lancia(copia, "--controlla") == 2
+
+
+@pytest.mark.parametrize("carattere", ["|", "\n"])
+def test_barra_verticale_e_a_capo_rompono_le_colonne(copia, capsys, carattere):
+    _modifica_json(_file_schermata(copia, "oggi"), lambda d: d["righe"][0].update(web=f"prima {carattere} dopo"))
+    assert _lancia(copia, "--controlla") == 1
+    assert "web" in capsys.readouterr().out
+
+
+def test_barra_verticale_nel_vocabolario(copia):
+    percorso = copia / "docs" / "coerenza" / "vocabolario.json"
+    _modifica_json(percorso, lambda d: d["righe"][0].update(mai="a | b"))
+    assert _lancia(copia, "--controlla") == 1
+
+
+def test_vocabolario_senza_cosa_da_solo_campo_mancante(copia, capsys):
+    percorso = copia / "docs" / "coerenza" / "vocabolario.json"
+
+    def togli(d):
+        d["righe"][0].pop("cosa")
+        d["righe"][1].pop("cosa")
+
+    _modifica_json(percorso, togli)
+    assert _lancia(copia, "--controlla") == 1
+    fuori = capsys.readouterr().out
+    assert "manca il campo" in fuori
+    assert "ripetut" not in fuori
+
+
+def test_riga_52_ha_ancora_da_fare_la_modifica_a_mano():
+    dati = coerenza.carica(RADICE)
+    riga = next(r for _, r in dati["schermate"] if r["id"] == 52)
+    assert "#463" in riga["chi"]
+    assert riga["stato"] == "da-fare"
+
+
+def test_la_nota_spiega_come_scegliere_l_id():
+    testo = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
+    assert "il più alto" in testo.split("\n## ")[0]

@@ -61,7 +61,7 @@
       "iphone": "con la tua scelta solo la giornata; «Probabili formazioni non ancora uscite: uso le presenze recenti.»; «In quest'ordine: entra il primo …»; «Ballottaggio · alternative vicine»; «Modulo proposto: 3-4-3»; «Tocca un titolare per sostituirlo …», ⇄ anche per sostituire (`FormazioneView.swift`, `TempiLega.didascalia`)",
       "forma": "web",
       "chi": "fatto con #437 tranne la frase della modifica a mano («Modificata a mano. Tocca un modulo o uno stile …»): issue #463. A giornata chiusa l'iPhone resta in sola lettura, senza ⇄ né «Tocca ⇄». Prova: `FormazioneComeLaWebTests` (frasi confrontate con `testi.js`)",
-      "stato": "fatto"
+      "stato": "da-fare"
     }
   ]
 }

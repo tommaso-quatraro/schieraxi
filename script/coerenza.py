@@ -11,6 +11,9 @@ Uso:
   python script/coerenza.py --scrivi      rigenera il documento dai dati
   python script/coerenza.py --controlla   controlla i dati e che il documento sia quello generato
 
+Una riga va nel file della sua schermata (il campo «schermata» ripete il raggruppamento, ma non si controlla).
+Id di una riga nuova: il più alto fra tutte le schermate, più 1. Nei campi delle tabelle niente «|» né a capo.
+
 Uscite: 0 tutto a posto; 1 dati sbagliati o documento diverso da quello generato; 2 uso sbagliato o file illeggibili.
 Solo libreria standard. Un conflitto sul documento si risolve unendo i dati e rigenerandolo con --scrivi.
 """
@@ -28,7 +31,9 @@ CAMPI_VOCABOLARIO = ("cosa", "forma", "mai")
 CAMPI_AMMESSE = ("titolo", "testo", "motivo")
 NOTA = (
     "> File generato: si cambiano i dati in docs/coerenza/, poi `python script/coerenza.py --scrivi`. "
-    "Un conflitto su questo file si risolve unendo i dati e rigenerandolo."
+    "Un conflitto su questo file si risolve unendo i dati e rigenerandolo. "
+    "Una riga nuova va nel file della sua schermata in docs/coerenza/schermate/, con l'id più alto fra tutte le schermate più 1 "
+    "(il più alto si legge nell'ultima riga della tabella «Differenze di oggi»)."
 )
 INTESTAZIONE_SCHERMATE = "| # | Schermata | Web | iPhone | Forma giusta | Chi la sistema |\n|---|---|---|---|---|---|"
 INTESTAZIONE_VOCABOLARIO = "| Cosa | Forma giusta | Mai |\n|---|---|---|"
@@ -52,17 +57,36 @@ def _leggi_json(percorso):
         raise ErroreDati(f"{percorso}: JSON non valido ({e})") from e
 
 
+def _leggi_lista(percorso, chiave, ammessi=None, non_vuota=False):
+    """Legge un file `{chiave: [oggetti...]}`; ogni forma diversa è un errore, mai «zero righe» in silenzio."""
+    dati = _leggi_json(percorso)
+    if not isinstance(dati, dict) or not isinstance(dati.get(chiave), list):
+        raise ErroreDati(f"{percorso}: deve essere un oggetto con la lista «{chiave}»")
+    if ammessi is not None:
+        sconosciute = sorted(set(dati) - set(ammessi))
+        if sconosciute:
+            raise ErroreDati(f"{percorso}: chiavi sconosciute {', '.join(sconosciute)} (ammessa solo «{chiave}»)")
+    if non_vuota and not dati[chiave]:
+        raise ErroreDati(f"{percorso}: la lista «{chiave}» è vuota")
+    if not all(isinstance(r, dict) for r in dati[chiave]):
+        raise ErroreDati(f"{percorso}: ogni elemento di «{chiave}» deve essere un oggetto")
+    return dati
+
+
 def carica(radice):
     """Legge tutti i dati. Le schermate sono in ordine di id."""
     d = Path(radice) / DATI
     dati = {
         "parti": {n: _leggi(d / f"{n}.md").rstrip("\n") for n in ("testa", "giornata", "differenze-oggi", "coda")},
-        "vocabolario": _leggi_json(d / "vocabolario.json"),
-        "ammesse": _leggi_json(d / "ammesse.json"),
+        "vocabolario": _leggi_lista(d / "vocabolario.json", "righe"),
+        "ammesse": _leggi_lista(d / "ammesse.json", "voci"),
         "schermate": [],
     }
-    for f in sorted((d / "schermate").glob("*.json")):
-        for riga in _leggi_json(f).get("righe", []):
+    file_schermate = sorted((d / "schermate").glob("*.json"))
+    if not file_schermate:
+        raise ErroreDati(f"{d / 'schermate'}: cartella mancante o senza file .json")
+    for f in file_schermate:
+        for riga in _leggi_lista(f, "righe", ammessi=("righe",), non_vuota=True)["righe"]:
             dati["schermate"].append((f.name, riga))
     return dati
 
@@ -71,25 +95,31 @@ def valida(dati):
     """Elenco dei problemi trovati (vuoto = dati a posto)."""
     errori = []
 
-    def campi_mancanti(dove, riga, campi):
+    def campi_mancanti(dove, riga, campi, tabella=False):
         for c in campi:
             if not isinstance(riga.get(c), str) or not riga[c].strip():
                 errori.append(f"{dove}: manca il campo «{c}»")
+            elif tabella and any(x in riga[c] for x in ("|", chr(10), chr(13))):
+                errori.append(f"{dove}: il campo «{c}» ha «|» o un a capo, che rompono le colonne della tabella")
 
     viste = {}
     for dove, riga in ((f"vocabolario.json riga {i + 1}", r) for i, r in enumerate(dati["vocabolario"].get("righe", []))):
-        campi_mancanti(dove, riga, CAMPI_VOCABOLARIO)
-        if riga.get("cosa") in viste:
-            errori.append(f"{dove}: riga ripetuta (stessa «cosa» di {viste[riga.get('cosa')]})")
-        viste.setdefault(riga.get("cosa"), dove)
+        campi_mancanti(dove, riga, CAMPI_VOCABOLARIO, tabella=True)
+        if not isinstance(riga.get("cosa"), str):
+            continue
+        if riga["cosa"] in viste:
+            errori.append(f"{dove}: riga ripetuta (stessa «cosa» di {viste[riga['cosa']]})")
+        viste.setdefault(riga["cosa"], dove)
 
     viste = {}
     for i, riga in enumerate(dati["ammesse"].get("voci", [])):
         dove = f"ammesse.json voce {i + 1}"
         campi_mancanti(dove, riga, CAMPI_AMMESSE)
-        if riga.get("titolo") in viste:
-            errori.append(f"{dove}: riga ripetuta (stesso titolo di {viste[riga.get('titolo')]})")
-        viste.setdefault(riga.get("titolo"), dove)
+        if not isinstance(riga.get("titolo"), str):
+            continue
+        if riga["titolo"] in viste:
+            errori.append(f"{dove}: riga ripetuta (stesso titolo di {viste[riga['titolo']]})")
+        viste.setdefault(riga["titolo"], dove)
     if not isinstance(dati["ammesse"].get("introduzione"), str):
         errori.append("ammesse.json: manca «introduzione»")
 
@@ -103,7 +133,7 @@ def valida(dati):
             errori.append(f"{dove}: id doppio (c'è già in {ids[riga['id']]})")
         else:
             ids[riga["id"]] = file
-        campi_mancanti(dove, riga, CAMPI_SCHERMATA)
+        campi_mancanti(dove, riga, CAMPI_SCHERMATA, tabella=True)
         if riga.get("stato") not in STATI and isinstance(riga.get("stato"), str) and riga["stato"].strip():
             errori.append(f"{dove}: stato sconosciuto «{riga['stato']}» (ammessi: {', '.join(STATI)})")
         chiave = tuple(riga.get(c) for c in CAMPI_SCHERMATA)

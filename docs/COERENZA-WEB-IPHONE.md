@@ -1,6 +1,6 @@
 # Web e iPhone uguali
 
-> File generato: si cambiano i dati in docs/coerenza/, poi `python script/coerenza.py --scrivi`. Un conflitto su questo file si risolve unendo i dati e rigenerandolo.
+> File generato: si cambiano i dati in docs/coerenza/, poi `python script/coerenza.py --scrivi`. Un conflitto su questo file si risolve unendo i dati e rigenerandolo. Una riga nuova va nel file della sua schermata in docs/coerenza/schermate/, con l'id più alto fra tutte le schermate più 1 (il più alto si legge nell'ultima riga della tabella «Differenze di oggi»).
 
 Scritto il 2/11/2026 dopo un confronto su telefono: la stessa giornata era «Giornata 10» in testa alla web, «Giornata 7» in
 Oggi e «Giornata 7 di lega (Serie A 10)» sull'iPhone. Chi usa le due app non deve mai chiedersi quale numero è giusto.
