@@ -31,6 +31,6 @@ struct DisposizioneCreditiTests {
 
     @Test("Il bersaglio di tocco di «Salva» è alto almeno 44 punti")
     func bersaglioDiTocco() {
-        #expect(DisposizioneCrediti.altezzaMinimaTocco >= 44)
+        #expect(DisposizioneCrediti.latoMinimoTocco >= 44)
     }
 }
