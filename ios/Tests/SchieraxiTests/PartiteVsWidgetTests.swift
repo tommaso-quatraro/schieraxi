@@ -12,16 +12,27 @@ struct PartiteVsWidgetTests {
     /// Sabato 31 ottobre 2026 alle 14:00, ora italiana.
     private func adesso() throws -> Date { try #require(Quando.data("2026-10-31 14:00")) }
 
-    @Test("Da giocare oggi: «NAP vs ATA · oggi 18:00», poi la forma corta «NAP vs ATA · 18:00»")
+    @Test("Da giocare oggi: «NAP vs ATA · oggi 18:00», poi «NAP vs ATA · 18:00», per ultime le sole squadre")
     func daGiocareOggi() throws {
         let p = PartitaLive(casa: "napoli", trasferta: "atalanta", data: "2026-10-31 18:00", stato: "da_giocare")
-        #expect(p.formeRiga(adesso: try adesso()) == ["NAP vs ATA · oggi 18:00", "NAP vs ATA · 18:00"])
+        #expect(p.formeRiga(adesso: try adesso()) == ["NAP vs ATA · oggi 18:00", "NAP vs ATA · 18:00", "NAP vs ATA"])
     }
 
-    @Test("Un altro giorno il giorno non si toglie: «GEN vs COM · domani 12:30»")
+    @Test("Un altro giorno il giorno non si accorcia: «GEN vs COM · domani 12:30», poi le sole squadre (riga della schermata di blocco)")
     func daGiocareDomani() throws {
         let p = PartitaLive(casa: "genoa", trasferta: "como", data: "2026-11-01 12:30", stato: "da_giocare")
-        #expect(p.formeRiga(adesso: try adesso()) == ["GEN vs COM · domani 12:30"])
+        #expect(p.formeRiga(adesso: try adesso()) == ["GEN vs COM · domani 12:30", "GEN vs COM"])
+    }
+
+    @Test("VoiceOver legge il punteggio solo se c'è tutto: un server vecchio con i soli gol di casa non fa leggere «INT 1, ROM 0»")
+    func fraseSenzaPunteggioIntero() throws {
+        let ora = try adesso()
+        let mezzo = PartitaLive(casa: "inter", trasferta: "roma", data: "2026-10-31 12:30", stato: "primo_tempo", minuto: "34'", golCasa: 1)
+        #expect(mezzo.squadre == "INT vs ROM")
+        #expect(mezzo.frase(adesso: ora) == "INT contro ROM, 34'")
+        let intero = PartitaLive(casa: "inter", trasferta: "roma", data: "2026-10-31 12:30", stato: "primo_tempo", minuto: "34'",
+                                 golCasa: 1, golTrasferta: 0)
+        #expect(intero.frase(adesso: ora) == "INT 1, ROM 0, 34'")
     }
 
     @Test("Senza punteggio tra le sigle c'è «vs», mai il trattino", arguments: ["da_giocare", "rinviata", "finita", nil] as [String?])

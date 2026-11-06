@@ -25,23 +25,34 @@ struct AnteprimaComeDemoTests {
     @Test("Giornata in corso: «attesi prima» del widget è il numero di Oggi in corso dell'app")
     func attesiPrimaInCorso() throws {
         let formazione = try #require(try app("/api/oggi", schermata: "oggi-in-corso")["formazione"] as? [String: Any])
+        let nellApp = try #require(formazione["punteggio_atteso"] as? Double, "Oggi in corso: manca «punteggio_atteso»")
         let r = try #require(try widget(.inCorso).comeRiassuntoOggi(scaricatoIl: Self.adesso))
-        #expect(Formato.punti(r.punti) == Formato.punti(formazione["punteggio_atteso"] as? Double))
+        let nelWidget = try #require(r.punti, "il widget in corso non ha i punti attesi")
+        #expect(Formato.punti(nelWidget) == Formato.punti(nellApp))
     }
 
     @Test("Giornata finita: i punti attesi del riepilogo nel widget sono quelli di Oggi a giornata finita")
     func attesiFinita() throws {
         let riepilogo = try #require(try app("/api/oggi", schermata: "oggi-finita")["riepilogo"] as? [String: Any])
-        let w = try widget(.finita)
-        #expect(Formato.punti(w.faseGiornata.riepilogo?.puntiAttesi) == Formato.punti(riepilogo["punti_attesi"] as? Double))
-        #expect(Formato.punti(w.faseGiornata.riepilogo?.puntiFatti) == Formato.punti(riepilogo["punti_fatti"] as? Double))
+        let attesiApp = try #require(riepilogo["punti_attesi"] as? Double, "Oggi finita: mancano i punti attesi")
+        let fattiApp = try #require(riepilogo["punti_fatti"] as? Double, "Oggi finita: mancano i punti fatti")
+        let nelWidget = try #require(try widget(.finita).faseGiornata.riepilogo, "il widget a giornata finita non ha il riepilogo")
+        let attesi = try #require(nelWidget.puntiAttesi, "il riepilogo del widget non ha i punti attesi")
+        let fatti = try #require(nelWidget.puntiFatti, "il riepilogo del widget non ha i punti fatti")
+        #expect(Formato.punti(attesi) == Formato.punti(attesiApp))
+        #expect(Formato.punti(fatti) == Formato.punti(fattiApp))
     }
 
     @Test("Giornata in corso: le partite del widget hanno il giorno e l'ora delle partite in diretta dell'app")
     func orariInCorso() throws {
         let partite = try #require(try app("/api/live", schermata: "oggi-in-corso")["partite"] as? [[String: Any]])
-        let attese = partite.map { "\($0["casa"] as? String ?? "")-\($0["trasferta"] as? String ?? ""): \($0["data"] as? String ?? "")" }
-        let w = try widget(.inCorso)
-        #expect((w.live?.partite ?? []).map { "\($0.id): \($0.data ?? "")" } == attese)
+        let attese = try partite.map { p -> String in
+            let data = try #require(p["data"] as? String, "una partita dell'app senza data")
+            return "\(p["casa"] as? String ?? "")-\(p["trasferta"] as? String ?? ""): \(data)"
+        }
+        #expect(!attese.isEmpty, "l'app in corso non ha partite")
+        let nelWidget = try #require(try widget(.inCorso).live?.partite, "il widget in corso non ha le partite live")
+        #expect(!nelWidget.isEmpty)
+        #expect(nelWidget.map { "\($0.id): \($0.data ?? "")" } == attese)
     }
 }

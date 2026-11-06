@@ -928,6 +928,11 @@ enum ParoleWidget {
         return ["\(tuaScelta ? "La tua scelta" : "Formazione") \(m)", m]
     }
 
+    /// La giornata nei widget della Formazione, dalla forma intera alla più corta.
+    static func giornataFormazione(_ nome: NomeGiornata?) -> [String] {
+        nome?.forme ?? []
+    }
+
     /// «Sorvani, Bastrani, Dimarzi» → «Sorvani, Bastrani e un altro» → «Sorvani e altri 2» (al più `massimo` nomi).
     static func nomi(_ nomi: [String], massimo: Int = 3) -> [String] {
         let quanti = min(nomi.count, max(massimo, 1))
@@ -956,11 +961,20 @@ struct TestataFormazioneGrande: Equatable {
     let fascia: String?
     /// «Giornata 8 · 11ª di Serie A» → «Giornata 8» → «G8» (`NomeGiornata.forme`); vuoto se la giornata non si sa.
     let formeGiornata: [String]
+    /// Dove va la giornata sulla riga della fascia e in che forma, nell'ordine in cui la vista le prova.
+    let postiGiornata: [PostoGiornata]
+
+    /// La giornata accanto alla fascia (`sotto` false) o sulla riga sotto (`sotto` true), in una forma.
+    struct PostoGiornata: Equatable {
+        let forma: String
+        let sotto: Bool
+    }
 
     init(puntiAttesi: Double?, tuaScelta: Bool, fascia: String?, giornata: NomeGiornata?) {
         formePunti = ParoleWidget.puntiAttesi(puntiAttesi, tuaScelta: tuaScelta)
         self.fascia = fascia
-        formeGiornata = giornata?.forme ?? []
+        formeGiornata = ParoleWidget.giornataFormazione(giornata)
+        postiGiornata = formeGiornata.map { PostoGiornata(forma: $0, sotto: false) }
     }
 }
 
