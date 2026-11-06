@@ -64,8 +64,8 @@ def raccogli(esegui: comune.Esegui) -> list[dict]:
             v["gruppo"] = "bloccata"
             continue
         v["modifiche"] = bool(comune.chiama(esegui, ["git", "-C", v["percorso"], "status", "--porcelain"]).strip())
-        unita_uguale = bool(pr and pr["state"] == "MERGED" and pr["headRefOid"] == v["testa"])
-        v["unito"] = unita_uguale or in_main(esegui, v["testa"])
+        v["pr_unita_stessa_testa"] = bool(pr and pr["state"] == "MERGED" and pr["headRefOid"] == v["testa"])
+        v["unito"] = v["pr_unita_stessa_testa"] or in_main(esegui, v["testa"])
         if v["modifiche"]:
             v["gruppo"], v["motivo"] = "con_modifiche", "file cambiati non salvati"
         elif pr and pr["state"] == "OPEN":
