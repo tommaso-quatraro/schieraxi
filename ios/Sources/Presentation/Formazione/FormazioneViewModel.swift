@@ -59,6 +59,7 @@ final class FormazioneViewModel: ViewModelBase {
     @Published private(set) var salvataNonValida = false
     /// Il server sta provando la scelta salvata appena letta: finché non risponde la riga non dice niente (come la web).
     @Published private(set) var provaSalvata = false
+    var salvataggioInCorso: Bool { false }
     /// Il calcolo della modifica a mano non è riuscito: invece dei punti, «Non riesco a calcolare» con «Riprova».
     @Published private(set) var calcoloNonRiuscito = false
     /// I titolari a cui si riferisce `valutazione` (dopo una sostituzione la valutazione vecchia non vale più).

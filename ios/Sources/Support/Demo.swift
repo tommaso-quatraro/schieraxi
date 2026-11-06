@@ -143,6 +143,8 @@ extension Demo {
         }
     }
 
+    static func moduloDaToccare(_ f: Formazione, rischio: Int, salvati: [Int]?) -> String? { nil }
+
     /// Porta l'app sulla schermata chiesta con `-DEMO_SCHERMATA`. Chiamata una volta sola all'avvio.
     static func applica(nav: Navigazione, modello: AppModel) {
         guard attivo, !applicata else { return }
