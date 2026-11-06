@@ -1,0 +1,31 @@
+{
+  "righe": [
+    {
+      "id": 5,
+      "schermata": "Diario",
+      "web": "«Giornata 7»",
+      "iphone": "«Giornata 10» (Serie A)",
+      "forma": "sezione «Giornata: le forme»",
+      "chi": "fatto (rassegna 6/11): il titolo di ogni giornata è `NomeGiornata.intero` (`Domain/Diario.swift`)",
+      "stato": "fatto"
+    },
+    {
+      "id": 24,
+      "schermata": "Diario, pulsante",
+      "web": "«Ho schierato questa»",
+      "iphone": "«Ho schierato la consigliata» (#21)",
+      "forma": "iPhone",
+      "chi": "fatto sulla web (pacchetto 1)",
+      "stato": "fatto"
+    },
+    {
+      "id": 48,
+      "schermata": "Diario, «Quanto ci abbiamo preso», riga su tutta la Serie A",
+      "web": "riga sotto i quattro numeri, testo del server",
+      "iphone": "uguale, stesso testo",
+      "forma": "server (`precisione.serie_a.testo` di `GET /api/diario`)",
+      "chi": "web e iPhone fatti nella stessa PR (#374)",
+      "stato": "fatto"
+    }
+  ]
+}

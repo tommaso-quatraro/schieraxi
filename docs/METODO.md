@@ -43,6 +43,18 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
   e i falsi allarmi della revisione IA. Le regole della revisione si cambiano solo con una pull request su `main`.
 - **Foto iOS** (dopo l'unione): il fotografo, come scritto sotto.
 
+## Controlli della pull request (job `ambito`, bloccante)
+Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dopo la sua unione. Un problema ferma `unisci`.
+- **Aree** (`script/ci/controlla_ambito.py`): la riga «Aree: …» c'è e ogni file cambiato sta in una delle aree. Esenti bot e soli documenti.
+- **Descrizione** (`script/ci/controlla_pr.py`): «Cosa cambia», «Perché», «Come l'ho provato» ci sono e non sono vuote;
+  senza «Closes #N» o «Parte di #N» solo un avviso.
+- **Revisione registrata**: fuori dalla bozza, la sezione «## Revisione» con una riga «- <chi>: <esito>» per ogni revisione
+  (es. «- revisore: nessun rilievo bloccante»). Si scrive in bozza, prima di `gh pr ready`. Esenti bot e soli documenti.
+- **Novità solo della PR**: in `fanta/novita.d/` al massimo un file, solo aggiunto; `fanta/novita.json` non si tocca a mano.
+- **Test e novità**: nessun test legge un file di `fanta/novita.d/` per nome (dopo il rilascio non c'è più): si cerca per titolo.
+- La descrizione corretta dopo l'apertura si rilegge al push successivo o con `gh pr ready --undo` e poi `gh pr ready`
+  («Re-run» rilegge la descrizione di prima).
+
 ## Quando un lavoro è finito
 - **Server**: test verdi; `python -m fanta verifica` prima e dopo se cambia il calcolo; voce in `fanta/novita.d/`;
   `docs/API.md` o `docs/GUIDA-UTENTE.md` aggiornati.
@@ -51,7 +63,12 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
 - **iPhone**: prima dell'unione compilazione e test verdi in CI (`ios / test`) e revisione fatta; nella pull request le schermate
   da fotografare e l'elenco di cosa provare sul telefono. Dopo l'unione le foto delle schermate toccate, guardate davvero.
 - **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …»;
-  niente segni da interfaccia generata (`docs/STILE-SENZA-AI.md`).
+  niente segni da interfaccia generata (`docs/STILE-SENZA-AI.md`). Il file della coerenza è generato: si cambiano i dati in
+  `docs/coerenza/` (un file per schermata in `schermate/`) e si lancia `python script/coerenza.py --scrivi`; `--controlla` e
+  `tests/test_coerenza_dati.py` rifiutano un `.md` scritto a mano, un id doppio, una riga ripetuta, un campo mancante o uno stato
+  sconosciuto (`da-fare`, `fatto`, `da-decidere`). Conflitto sul `.md` dopo un'unione: unisci i dati, poi rigenera il file.
+  Una riga nuova va nel file della sua schermata (il campo `schermata` ripete il raggruppamento, ma non è controllato), con
+  l'id più alto fra tutte le schermate più 1; nei campi delle tabelle niente `|` né a capo.
 
 ## Contratto delle API
 - `docs/openapi.json` è l'istantanea di tutte le rotte del server (parametri, corpi, risposte). `tests/test_contratto_api.py`
