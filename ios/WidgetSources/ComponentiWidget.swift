@@ -136,7 +136,7 @@ struct SenzaDatiWidget: View {
     /// La frase completa per VoiceOver.
     private var etichetta: String {
         voce.daCollegare
-            ? "Widget da collegare. Toccalo: l'app copia il codice, poi tieni premuto il widget, Modifica widget, e incollalo."
+            ? "Widget da collegare. Toccalo: si apre SchieraXI, dove tocchi «Collega»."
             : "Nessun dato. " + suggerimento
     }
 }

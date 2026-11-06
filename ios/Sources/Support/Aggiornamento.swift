@@ -39,9 +39,11 @@ enum Aggiornamento {
         if Demo.attivo || base.isEmpty { return }
         // Nei test unitari l'app che li ospita non deve scaricare niente dal server predefinito (scriverebbe la copia mentre un test la controlla).
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
-        let copia = MemoriaWidget.leggi()
+        // la copia porta l'impronta del collegamento che userà il widget (indirizzo e token del WIDGET): se è un altro, non la mostra
+        let chi = MemoriaWidget.impronta(indirizzo: base, token: TokenWidget.leggi(server: base))
+        let copia = MemoriaWidget.leggi(per: chi)
         if case .dati(_, let grezzo, let etag) = await ScaricoWidget.scarica(base: base, token: Accesso.archivio.leggi(server: base), etag: copia?.etag) {
-            MemoriaWidget.salva(CopiaWidget(dati: grezzo, etag: etag, scaricatoIl: Date()))
+            MemoriaWidget.salva(CopiaWidget(dati: grezzo, etag: etag, scaricatoIl: Date(), chi: chi))
         }
     }
 

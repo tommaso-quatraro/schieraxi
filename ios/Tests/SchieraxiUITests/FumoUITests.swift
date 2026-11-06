@@ -189,6 +189,18 @@ final class FumoUITests: XCTestCase {
         XCTAssertFalse(elemento("Da controllare", contiene: true).exists, "senza avvisi non c'è niente da controllare")
     }
 
+    func testIlCollegamentoDelWidgetAspettaUnTocco() {
+        // `schieraxi://widget/collega` lo può aprire qualsiasi app o pagina e apre questa schermata (`Navigazione.vai`, lo stesso
+        // `collegaWidgetAperto` della demo): si apre solo la schermata, il collegamento e la copia del codice negli appunti partono
+        // dal tocco su «Collega» (#482). La demo apre la schermata dall'argomento di lancio, senza `XCUIApplication.open`, che sul
+        // simulatore a volte non consegna l'indirizzo all'app.
+        apriDemo("collega-widget")
+        attendi("Collega il widget")
+        XCTAssertFalse(elemento("Codice copiato").exists, "senza un tocco il codice non si copia")
+        // in demo il tocco dice «Codice copiato» senza toccare gli appunti veri
+        tocca(app.buttons["Collega"].firstMatch, finchéCompare: elemento("Codice copiato"), "il tocco su «Collega» collega il widget")
+    }
+
     func testLaLenteApreLaRicerca() {
         let lente = app.buttons["Cerca un giocatore"]
         XCTAssertTrue(lente.waitForExistence(timeout: 30), "la lente della ricerca deve esserci in Oggi")

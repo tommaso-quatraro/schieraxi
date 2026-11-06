@@ -329,15 +329,16 @@ enum Condiviso {
     /// true se l'App Group c'è (la condivisione funziona).
     static var disponibile: Bool { cartella() != nil }
 
-    private static func percorso() -> URL? { cartella()?.appendingPathComponent(nomeFile) }
+    private static func percorso(_ cartella: URL?) -> URL? { cartella?.appendingPathComponent(nomeFile) }
 
-    static func leggi() -> DatiCondivisi {
+    /// `cartella`: quella del gruppo (i test ne passano una loro; nil = il gruppo non c'è).
+    static func leggi(cartella: URL? = Condiviso.cartella()) -> DatiCondivisi {
         blocco.lock(); defer { blocco.unlock() }
-        return leggiSenzaBlocco()
+        return leggiSenzaBlocco(percorso(cartella))
     }
 
-    private static func leggiSenzaBlocco() -> DatiCondivisi {
-        guard let url = percorso(), let dati = try? Data(contentsOf: url) else { return DatiCondivisi() }
+    private static func leggiSenzaBlocco(_ url: URL?) -> DatiCondivisi {
+        guard let url, let dati = try? Data(contentsOf: url) else { return DatiCondivisi() }
         let d = JSONDecoder()
         d.dateDecodingStrategy = .iso8601
         return (try? d.decode(DatiCondivisi.self, from: dati)) ?? DatiCondivisi()
@@ -346,10 +347,10 @@ enum Condiviso {
     /// Cambia i dati condivisi (lo fa solo l'app). Scrittura atomica, protetta fino al primo sblocco: il widget e l'aggiornamento
     /// in background leggono anche a telefono bloccato.
     @discardableResult
-    static func aggiorna(_ modifica: (inout DatiCondivisi) -> Void) -> Bool {
+    static func aggiorna(cartella: URL? = Condiviso.cartella(), _ modifica: (inout DatiCondivisi) -> Void) -> Bool {
         blocco.lock(); defer { blocco.unlock() }
-        guard let url = percorso() else { return false }
-        var dati = leggiSenzaBlocco()
+        guard let url = percorso(cartella) else { return false }
+        var dati = leggiSenzaBlocco(url)
         let prima = dati
         modifica(&dati)
         if dati == prima { return true }
@@ -380,14 +381,15 @@ enum Condiviso {
         }
     }
 
-    /// Via il token e il riassunto (uscita da un account): chi entra dopo non deve vedere niente di chi c'era prima.
-    static func dimentica() {
-        aggiorna {
+    /// Via il token e il riassunto (uscita da un account), dal file del gruppo e dal Keychain condiviso: chi entra dopo non deve
+    /// vedere niente di chi c'era prima. `cartella` e `portachiavi`: i test ne passano di loro.
+    static func dimentica(cartella: URL? = Condiviso.cartella(), portachiavi: any ArchivioCollegamento = PortachiaviCondiviso.archivio) {
+        aggiorna(cartella: cartella) {
             $0.token = nil
             $0.tokenPerIndirizzo = nil
             $0.riassunto = nil
         }
-        PortachiaviCondiviso.cancella()
+        portachiavi.cancella()
     }
 
     static func salvaRiassunto(_ r: RiassuntoOggi) {
@@ -613,18 +615,19 @@ enum CodiceWidget {
 }
 
 /// Il collegamento del widget. Di solito è automatico (App Group o Keychain condiviso, vedi in cima al file). Se non lo è, il
-/// widget dice «Tocca per collegare» e apre `schieraxi://widget/collega`; l'app prova di nuovo il collegamento automatico e, solo
-/// se non va, crea il codice e lo mette negli appunti di QUESTO telefono per pochi minuti: l'utente lo incolla una volta in
-/// «Modifica widget» > «Collegamento manuale» > «Codice di collegamento».
+/// widget dice «Tocca per collegare» e apre `schieraxi://widget/collega`. Quell'indirizzo lo può aprire anche un'altra app o una
+/// pagina: l'app mostra solo la schermata «Collega il widget» e aspetta il tocco su «Collega» (#482). Poi prova di nuovo il
+/// collegamento automatico e, solo se non va, crea il codice e lo mette negli appunti di QUESTO telefono per 2 minuti: l'utente lo
+/// incolla una volta in «Modifica widget» > «Collegamento manuale» > «Codice di collegamento».
 enum CollegamentoWidget {
     static let indirizzo = "schieraxi://widget/collega"
     static var url: URL? { URL(string: indirizzo) }
-    /// Quanto resta il codice negli appunti (poi iOS lo toglie da solo).
-    static let durataAppunti: TimeInterval = 5 * 60
+    /// Quanto resta il codice negli appunti (poi iOS lo toglie da solo): poco, il tempo di incollarlo nel widget.
+    static let durataAppunti: TimeInterval = 2 * 60
     /// Il testo grande del widget non collegato.
     static let tocca = "Tocca per collegare"
     /// La riga sotto, nel widget: il resto lo spiega l'app.
-    static let poi = "Si apre SchieraXI e lo collega"
+    static let poi = "Si apre SchieraXI per collegarlo"
     /// L'istruzione in una riga, nell'app (solo quando il collegamento automatico non va).
     static let istruzione = "Tieni premuto il widget, tocca «Modifica widget», attiva «Collegamento manuale» e incolla il codice."
 

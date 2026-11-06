@@ -25,7 +25,9 @@ struct GiocatoreScelto: AppEntity {
 struct QueryGiocatori: EntityQuery {
     /// Prima gli osservati, poi i miei giocatori, senza doppioni.
     private func elenco() -> [GiocatoreScelto] {
-        guard let w = MemoriaWidget.leggi()?.riassunto else { return [] }
+        // solo i giocatori della copia del collegamento di adesso: mai quelli di un account di prima (#482)
+        guard let dove = ScaricaOggi.destinazione(codice: ""),
+              let w = MemoriaWidget.leggi(per: MemoriaWidget.impronta(indirizzo: dove.indirizzo, token: dove.token))?.riassunto else { return [] }
         var visti = Set<Int>()
         return ((w.osservati ?? []) + (w.rosa ?? [])).compactMap { g in
             guard visti.insert(g.id).inserted else { return nil }
