@@ -28,6 +28,10 @@ from .percorsi import scrivi_sicuro
 # `registro_nostri.py`) e `taratura_probabili` (le versioni della taratura di «gioca N%», `taratura_probabili.py`) sono arrivate
 # dopo: le copie di prima non le hanno e si rimettono lo stesso
 TABELLE = ("registro_giornate", "registro_giocatori", "registro_nostri", "registro_i4", "taratura_probabili")
+# riga di `taratura_probabili` che conta i giri falliti di fila (`taratura_probabili.ERRORI`, qui senza importarlo: solo libreria
+# standard): stato del server, non una versione. Non va nella copia e non si rimette, se no il suo «avvisato» zittisce gli errori
+# del server ripristinato
+RIGA_ERRORI = 0
 FORMATO = 1
 TETTO = 100 * 1024 * 1024                                 # una stagione intera sono pochi MB
 
@@ -51,7 +55,8 @@ def esporta(file_archivio: Path, file: Path) -> dict[str, int]:
             if tabella not in presenti:
                 continue
             chiave = [r[1] for r in sorted(db.execute(f"PRAGMA table_info({tabella})"), key=lambda r: r[5]) if r[5]]
-            cur = db.execute(f"SELECT * FROM {tabella} ORDER BY {', '.join(_nome(c) for c in chiave) or 'rowid'}")
+            dove = f" WHERE versione != {RIGA_ERRORI}" if tabella == "taratura_probabili" else ""
+            cur = db.execute(f"SELECT * FROM {tabella}{dove} ORDER BY {', '.join(_nome(c) for c in chiave) or 'rowid'}")
             tabelle[tabella] = {"colonne": [c[0] for c in cur.description], "righe": [list(r) for r in cur]}
         db.execute("ROLLBACK")
     except sqlite3.Error as e:
@@ -71,7 +76,11 @@ def importa(file: Path, file_archivio: Path = archivio.FILE) -> dict[str, tuple[
         for tabella in TABELLE:
             if tabella in dati:
                 colonne = {r[1]: r[5] for r in db.execute(f"PRAGMA table_info({tabella})")}
-                lavoro.append((tabella, *_controlla(tabella, dati[tabella], colonne)))
+                nomi, righe = _controlla(tabella, dati[tabella], colonne)
+                if tabella == "taratura_probabili":         # la riga del contatore degli errori (copie di prima) non si rimette
+                    i = nomi.index("versione")
+                    righe = [r for r in righe if not _zero(r[i])]
+                lavoro.append((tabella, nomi, righe))
         esito = {}
         with db:                                          # tutto o niente
             for tabella, colonne, righe in lavoro:
@@ -80,6 +89,14 @@ def importa(file: Path, file_archivio: Path = archivio.FILE) -> dict[str, tuple[
                 nuove = db.executemany(sql, righe).rowcount if righe else 0
                 esito[tabella] = (nuove, len(righe) - nuove)
     return esito
+
+
+def _zero(valore) -> bool:
+    """Vero se SQLite metterebbe questo valore nella chiave come RIGA_ERRORI (0, 0.0, «0»...)."""
+    try:
+        return float(valore) == RIGA_ERRORI
+    except (TypeError, ValueError):
+        return False
 
 
 def _nome(colonna: str) -> str:

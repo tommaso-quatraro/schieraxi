@@ -65,7 +65,7 @@ def _errore_senza_previsioni(monkeypatch, regole, giornata):
     db = sqlite3.connect(":memory:")
     db.execute("CREATE TABLE probabili (stagione TEXT, giornata INT, fonte TEXT)")
     d = type("D", (), {"calciatori": None})()
-    monkeypatch.setattr(consigli.stato_dati, "fattori", lambda *a, **k: None)
+    monkeypatch.setattr(consigli.stato_dati, "taratura_e_fattori", lambda *a, **k: (None, None, False))
     with pytest.raises(ValueError) as e:
         consigli._calcola_previsioni(db, d, regole, ST, giornata, None)
     return str(e.value)

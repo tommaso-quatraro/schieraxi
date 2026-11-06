@@ -269,6 +269,45 @@ def test_copia_notturna_porta_la_taratura(tmp_path):
     assert r.returncode == 0 and "2 versioni della taratura" in r.stdout
 
 
+def test_copia_notturna_senza_il_contatore_degli_errori_della_taratura(tmp_path):
+    """La riga 0 della taratura (contatore dei giri falliti di fila, con il suo «avvisato») non è una versione: non va nella copia
+    e, se ci arriva da una copia di prima, non si rimette. Così dopo un ripristino una serie di errori nuova avvisa di nuovo."""
+    from datetime import datetime
+    from fanta import taratura_probabili as tp
+    assert registro_copia.RIGA_ERRORI == tp.ERRORI
+    vecchio, copia, nuovo = tmp_path / "vecchio.sqlite", tmp_path / "registro-giornate.json", tmp_path / "nuovo.sqlite"
+    avvisi = []
+
+    def manda(titolo, testo):
+        avvisi.append(testo)
+        return True
+
+    with contextlib.closing(archivio.apri(vecchio)) as db:
+        db.executemany(f"INSERT INTO taratura_probabili VALUES ({', '.join('?' * 9)})", TARATURA)
+        db.commit()
+        for i in range(3):                                            # tre giri falliti: un avviso, «avvisato» = 1 nella riga 0
+            tp._conta_errore(db, datetime(2026, 11, 6, 8 + i), RuntimeError("x"), manda)
+    assert len(avvisi) == 1
+    assert registro_copia.esporta(vecchio, copia)["taratura_probabili"] == 2          # le due versioni, non il contatore
+    dati = json.loads(copia.read_text(encoding="utf-8"))["tabelle"]["taratura_probabili"]
+    i = dati["colonne"].index("versione")
+    assert [r[i] for r in dati["righe"]] == [1, 2]
+    assert registro_copia.importa(copia, nuovo)["taratura_probabili"] == (2, 0)
+    with contextlib.closing(archivio.apri(nuovo)) as db:
+        for k in range(3):                                            # serie nuova dopo il ripristino: avvisa di nuovo
+            tp._conta_errore(db, datetime(2026, 11, 7, 8 + k), KeyError("y"), manda)
+    assert len(avvisi) == 2
+    # una copia di prima, con la riga 0 dentro: l'importazione la salta
+    vecchia_copia = dict(dati, righe=dati["righe"] + [[0 if c == "versione" else "errori" if c == "stato" else 1 if c == "avvisato"
+                                                       else None for c in dati["colonne"]]])
+    copia.write_text(json.dumps({"formato": registro_copia.FORMATO, "tabelle": {"taratura_probabili": vecchia_copia}}),
+                     encoding="utf-8")
+    altro = tmp_path / "altro.sqlite"
+    assert registro_copia.importa(copia, altro)["taratura_probabili"] == (2, 0)
+    with contextlib.closing(sqlite3.connect(altro)) as db:
+        assert db.execute("SELECT versione FROM taratura_probabili ORDER BY versione").fetchall() == [(1,), (2,)]
+
+
 def test_ripristino_con_una_versione_di_prima_toglie_la_taratura_dalla_copia(tmp_path, monkeypatch):
     """Server tornato a una versione di prima della taratura (#379): il suo `registro_copia` rifiuta le copie nuove (tabella che non
     conosce). Il comando scritto in docs/RIPRISTINO-SERVER.md fa una copia senza la taratura, che quella versione accetta; il file

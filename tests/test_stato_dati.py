@@ -77,6 +77,29 @@ def test_stato_dati_resta_in_piedi_se_il_registro_dei_nostri_va_in_errore(tmp_pa
     assert "OperationalError" in caplog.text and "dettaglio interno" not in caplog.text
 
 
+def test_stato_dati_ha_la_taratura_di_gioca(tmp_path):
+    """Campo `calibrazione.taratura`: lo stato della taratura di «gioca N%» con le probabili (`taratura_probabili.riepilogo`)."""
+    db = archivio.apri(tmp_path / "t.sqlite")
+    c = stato_dati.riepilogo(db, ST)["calibrazione"]
+    assert c["taratura"] == {"stato": "in_attesa", "giornate": 0, "minimo": 4, "versione": None, "dal": None, "prova": None,
+                             "motivo": None}
+    assert c["giornate"] == 0 and len(c["gruppi"]) == 7 and c["fattori"] == {}                # il resto come prima
+
+
+def test_stato_dati_resta_in_piedi_se_la_taratura_va_in_errore(tmp_path, monkeypatch, caplog):
+    from fanta import taratura_probabili
+
+    def rotto(db):
+        raise sqlite3.OperationalError("dettaglio interno")
+
+    monkeypatch.setattr(taratura_probabili, "riepilogo", rotto)
+    db = archivio.apri(tmp_path / "t.sqlite")
+    with caplog.at_level("WARNING"):
+        r = stato_dati.riepilogo(db, ST)
+    assert r["calibrazione"]["taratura"] is None and r["calibrazione"]["giornate"] == 0       # il resto della pagina c'è
+    assert "OperationalError" in caplog.text and "dettaglio interno" not in caplog.text
+
+
 def test_fattori_automatici_solo_con_abbastanza_dati():
     base = {"giornate": 3, "gruppi": [{"gruppo": "Titolare 90-100%", "n": 120, "osservato": 0.60, "previsto": 0.95, "indicativo": False},
                                       {"gruppo": "Panchina 20-49%", "n": 10, "osservato": 0.1, "previsto": 0.3, "indicativo": True},
