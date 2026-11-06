@@ -10,8 +10,11 @@ struct PartiteDelTurnoView: View {
         let giorni = vm.partitePerGiorno
         if !giorni.isEmpty {
             let live = vm.risultatiLive
-            // La colonna del punteggio c'è in tutte le righe appena una partita ha un punteggio: così avatarini e punteggi restano in colonna.
-            let conPunteggio = giorni.contains { g in g.partite.contains { RigaPartitaView.haPunteggio(vm.dalVivo($0)) } }
+            // La colonna del punteggio c'è in tutte le righe appena una partita ha un punteggio (in diretta o del calendario): così
+            // avatarini e punteggi restano in colonna.
+            let conPunteggio = giorni.contains { g in
+                g.partite.contains { RigaPartitaView.golMostrati(live: vm.dalVivo($0), partita: $0) != nil }
+            }
             Carta(TestiOggi.partiteDelTurno, simbolo: "soccerball") {
                 ForEach(giorni) { giorno in
                     Text(giorno.titolo).titoletto().padding(.top, 4)
@@ -33,7 +36,8 @@ struct PartiteDelTurnoView: View {
     }
 }
 
-/// Una partita del turno. Con `live` mostra stato e punteggio; senza, solo l'orario.
+/// Una partita del turno. Con `live` mostra stato e punteggio; senza, l'orario (o lo stato che dice Oggi) e, se la partita è
+/// giocata, il risultato del calendario, come la web.
 struct RigaPartitaView: View {
     let partita: Partita
     let live: PartitaLive?
@@ -51,35 +55,45 @@ struct RigaPartitaView: View {
     @State private var lampo = false
 
     private var ora: String? { Quando.data(partita.data).map { Quando.ora($0) } }
-    static func haPunteggio(_ live: PartitaLive?) -> Bool { live?.golCasa != nil && live?.golTrasferta != nil }
-    private var haPunteggio: Bool { Self.haPunteggio(live) }
+    /// La diretta ha il punteggio della partita.
+    nonisolated static func haPunteggio(_ live: PartitaLive?) -> Bool { live?.golCasa != nil && live?.golTrasferta != nil }
 
-    /// Cosa scrive la riga al posto dell'ora senza uno stato in diretta.
+    /// Cosa scrive la riga al posto dell'ora senza uno stato in diretta, come `oraTesto` di `mostraOggi` della web: «Rinviata»,
+    /// «In corso» (lo stato arriva da Oggi), «Finita» per una partita finita per l'orario ma senza il risultato del calendario;
+    /// altrimenti l'ora d'inizio, anche per una partita giocata (accanto c'è il risultato, come sulla web).
     enum SenzaDiretta: Equatable { case ora, inCorso, finita, rinviata }
 
     nonisolated static func statoSenzaDiretta(_ p: Partita) -> SenzaDiretta {
-        if p.giocata == true || p.stato == "finita" { return .finita }
-        if p.stato == "in_corso" { return .inCorso }
         if p.stato == "rinviata" { return .rinviata }
+        if p.stato == "in_corso" { return .inCorso }
+        if p.stato == "finita" && p.giocata != true { return .finita }
         return .ora
     }
 
-    /// I gol da scrivere nella colonna del punteggio.
+    /// I gol da scrivere nella colonna del punteggio: quelli in diretta se ci sono, altrimenti il risultato del calendario
+    /// (`punteggioUfficiale`), che c'è anche con «Risultati in diretta» spenta, come sulla web (`pt || el.dataset.pt`).
     nonisolated static func golMostrati(live: PartitaLive?, partita: Partita) -> (casa: Int, trasferta: Int)? {
-        guard let c = live?.golCasa, let t = live?.golTrasferta else { return nil }
-        return (c, t)
+        if let c = live?.golCasa, let t = live?.golTrasferta { return (c, t) }
+        return partita.punteggioUfficiale
     }
 
-    /// La frase di VoiceOver della riga.
+    /// La frase di VoiceOver della riga: con il risultato del calendario, se non c'è quello in diretta («Inter 2, Roma 1, finita»).
     nonisolated static func voce(partita: Partita, live: PartitaLive?, ora: String?, titolari: [MioTitolare]) -> String {
-        DirettaLogica.frase(casa: partita.casa, trasferta: partita.trasferta, live: live, ora: ora, titolari: titolari)
+        var letta = live
+        if !Self.haPunteggio(live), let u = partita.punteggioUfficiale {
+            letta = PartitaLive(casa: partita.casa, trasferta: partita.trasferta, data: partita.data, stato: "finita",
+                                golCasa: u.casa, golTrasferta: u.trasferta, eventi: live?.eventi)
+        }
+        return DirettaLogica.frase(casa: partita.casa, trasferta: partita.trasferta, live: letta, ora: ora, titolari: titolari)
     }
+
     private var mia: Bool { !titolari.isEmpty }
     /// Con le misure di accessibilità lo stato va sopra le squadre: in colonna non ci starebbe.
     private var impilata: Bool { dimensioneTesto.isAccessibilitySize }
     private var inGioco: Bool { live?.inGioco ?? false }
     private var finita: Bool { live?.finita ?? (partita.giocata == true || partita.stato == "finita") }
-    private var eventi: [EventoLive] { haPunteggio ? EventiPartita.visibili(live?.eventi) : [] }
+    /// Marcatori, rigori e rossi: solo dalla diretta (il calendario dà soltanto il risultato).
+    private var eventi: [EventoLive] { Self.haPunteggio(live) ? EventiPartita.visibili(live?.eventi) : [] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -127,7 +141,7 @@ struct RigaPartitaView: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(DirettaLogica.frase(casa: partita.casa, trasferta: partita.trasferta, live: live, ora: ora, titolari: titolari))
+        .accessibilityLabel(Self.voce(partita: partita, live: live, ora: ora, titolari: titolari))
     }
 
     // MARK: pezzi
@@ -143,17 +157,19 @@ struct RigaPartitaView: View {
 
     /// Il punteggio in tre pezzi a larghezza fissa (gol di casa a destra, trattino, gol in trasferta a sinistra) con cifre tabulari:
     /// i trattini di tutte le righe stanno in colonna. Senza punteggio lo spazio resta, vuoto, se un'altra partita del turno ce l'ha.
+    /// Senza la diretta il risultato del calendario (`golMostrati`).
     @ViewBuilder
     private var punteggio: some View {
-        if haPunteggio || colonnaPunteggio {
+        let mostrati = Self.golMostrati(live: live, partita: partita)
+        if mostrati != nil || colonnaPunteggio {
             HStack(spacing: 3) {
-                gol(live?.golCasa).frame(minWidth: larghezzaGol, alignment: .trailing)
+                gol(mostrati?.casa).frame(minWidth: larghezzaGol, alignment: .trailing)
                 Text("–")
-                gol(live?.golTrasferta).frame(minWidth: larghezzaGol, alignment: .leading)
+                gol(mostrati?.trasferta).frame(minWidth: larghezzaGol, alignment: .leading)
             }
             .font(.title3.weight(.bold))
             .monospacedDigit()
-            .opacity(haPunteggio ? 1 : 0)
+            .opacity(mostrati != nil ? 1 : 0)
             .fixedSize()
             .accessibilityHidden(true)
         }
@@ -189,15 +205,18 @@ struct RigaPartitaView: View {
         default:
             if inGioco {
                 badgeLive
-            } else if (partita.giocata == true || partita.stato == "finita") && !haPunteggio {
-                Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
-            } else if partita.stato == "in_corso" {
-                // senza la diretta (spenta o non raggiungibile) lo stato arriva da Oggi
-                Text("In corso").font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
-            } else if partita.stato == "rinviata" {
-                Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
             } else {
-                Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario)
+                // senza la diretta (spenta o non raggiungibile) lo stato arriva da Oggi, come `oraTesto` della web
+                switch Self.statoSenzaDiretta(partita) {
+                case .rinviata:
+                    Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
+                case .inCorso:
+                    Text("In corso").font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
+                case .finita:
+                    Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
+                case .ora:
+                    Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario)
+                }
             }
         }
     }

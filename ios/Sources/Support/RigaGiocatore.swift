@@ -69,8 +69,9 @@ struct RigaGiocatore: View {
     @ScaledMetric(relativeTo: .body) private var lato: CGFloat = 46
 
     /// Come la web: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR · oggi 20:45» (in casa), con le sigle e prima
-    /// la squadra del giocatore; senza partita solo la sigla.
-    private var sottotitolo: String { Self.sottotitolo(g, adesso: Date()) }
+    /// la squadra del giocatore; senza partita solo la sigla. «oggi», «ieri», «domani» si contano dall'ora dell'app
+    /// (`Orologio`), la stessa di Oggi: nella demo a giornata in corso il momento della demo (#424).
+    private var sottotitolo: String { Self.sottotitolo(g, adesso: Orologio.adesso()) }
 
     /// Il sottotitolo della riga con «oggi», «ieri», «domani» contati da `adesso`.
     nonisolated static func sottotitolo(_ g: Giocatore, adesso: Date) -> String {
@@ -96,7 +97,7 @@ struct RigaGiocatore: View {
         } else if !mia.isEmpty {
             parti.append(mia)
         }
-        if Quando.data(g.dataPartita) != nil { parti.append(Quando.leggibile(g.dataPartita)) }
+        if Quando.data(g.dataPartita) != nil { parti.append(Quando.leggibile(g.dataPartita, adesso: Orologio.adesso())) }
         return parti.joined(separator: ", ")
     }
 

@@ -94,6 +94,8 @@ scatta() {
   # il tema forzato tranne che nella schermata che mostra la scelta del tema (deve restare "Automatico")
   local tema=()
   [ "$nome" != "impostazioni-aspetto" ] && tema=(${TEMA_ARG[@]+"${TEMA_ARG[@]}"})
+  # l'ora nella barra di stato: la demo a giornata in corso vive alle 18:48 («Aggiornato alle 18:48», #424), le altre alle 9:41
+  barra_di_stato "$udid" "$(ora_della_foto "$schermata")"
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
@@ -174,13 +176,29 @@ giro() {
   done
 }
 
+# L'ora della barra di stato di una foto: le 18:48 nelle foto della demo a giornata in corso (il momento in cui vive, l'ora
+# dell'app: LegaDemo.momento e Orologio), le 9:41 nelle altre. Le fotografie dal vero restano alle 9:41.
+ora_della_foto() {
+  if [ "${#ARGOMENTI_SCENARIO[@]}" -eq 0 ]; then
+    case "$1" in
+      oggi-in-corso|formazione-chiusa) echo "18:48"; return ;;
+    esac
+  fi
+  echo "9:41"
+}
+
+# barra_di_stato <udid> <ora>: batteria piena, segnale pieno e l'ora data.
+barra_di_stato() {
+  xcrun simctl status_bar "$1" override --time "$2" --batteryState charged --batteryLevel 100 \
+    --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
+}
+
 avvia_simulatore() {
   local udid="$1"
   xcrun simctl boot "$udid" 2>/dev/null
   xcrun simctl bootstatus "$udid" -b >/dev/null
   avvisi_avvia "$udid"
-  xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 \
-    --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
+  barra_di_stato "$udid" "9:41"
   xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
   xcrun simctl install "$udid" "$APP"
 }
