@@ -27,6 +27,7 @@ import pandas as pd  # noqa: E402
 from fanta import archivio, coppe, modello, regole  # noqa: E402
 from fanta.percorsi import CARTELLA_LEGA  # noqa: E402
 from fanta.punteggio import COLONNA_VOTO  # noqa: E402
+from fanta.taratura_probabili import regressione_logistica  # noqa: E402
 
 VARIABILI = ["p_storico", "p_lungo", "p_titolare", "p_ultima", "portiere", "portiere_x_p_storico"]
 FASCE = np.append(np.arange(0, 1.0, 0.1), 1.0001)
@@ -88,15 +89,9 @@ def tabella(t: pd.DataFrame, titolo: str) -> None:
 
 
 def stima(t: pd.DataFrame) -> np.ndarray:
-    """Regressione logistica (Newton, con un filo di regolarizzazione)."""
+    """Regressione logistica (Newton, con un filo di regolarizzazione: `taratura_probabili.regressione_logistica`)."""
     X = np.column_stack([np.ones(len(t)), t[VARIABILI].to_numpy(float)])
-    y = t["preso"].to_numpy(float)
-    w = np.zeros(X.shape[1])
-    for _ in range(50):
-        p = 1 / (1 + np.exp(-X @ w))
-        H = X.T @ (X * (p * (1 - p))[:, None]) + 1e-3 * np.eye(len(w))
-        w += np.linalg.solve(H, X.T @ (y - p) - 1e-3 * w)
-    return w
+    return regressione_logistica(X, t["preso"].to_numpy(float))
 
 
 def probabili(db, d: modello.Dati, r) -> None:

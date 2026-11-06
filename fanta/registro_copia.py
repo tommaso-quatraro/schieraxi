@@ -25,8 +25,9 @@ from . import archivio
 from .percorsi import scrivi_sicuro
 
 # le sole tabelle che viaggiano (nomi fissi: mai presi dal file). `registro_nostri` e `registro_i4` (gol attesi nostri, I4 dal vivo,
-# `registro_nostri.py`) sono arrivate dopo: le copie di prima non le hanno e si rimettono lo stesso
-TABELLE = ("registro_giornate", "registro_giocatori", "registro_nostri", "registro_i4")
+# `registro_nostri.py`) e `taratura_probabili` (le versioni della taratura di «gioca N%», `taratura_probabili.py`) sono arrivate
+# dopo: le copie di prima non le hanno e si rimettono lo stesso
+TABELLE = ("registro_giornate", "registro_giocatori", "registro_nostri", "registro_i4", "taratura_probabili")
 FORMATO = 1
 TETTO = 100 * 1024 * 1024                                 # una stagione intera sono pochi MB
 
@@ -139,14 +140,16 @@ def main(argv: list[str] | None = None) -> int:
             n = esporta(a.archivio, a.file)
             print(f"Registro esportato in {a.file}: {n.get('registro_giornate', 0)} giornate, "
                   f"{n.get('registro_giocatori', 0)} righe di giocatori, {n.get('registro_nostri', 0)} righe dei numeri nostri, "
-                  f"{n.get('registro_i4', 0)} righe delle misure dei numeri nostri.")
+                  f"{n.get('registro_i4', 0)} righe delle misure dei numeri nostri, "
+                  f"{n.get('taratura_probabili', 0)} versioni della taratura di «gioca N%».")
         else:
             esito = importa(a.file, a.archivio)
             nuove = {t: esito.get(t, (0, 0))[0] for t in TABELLE}
             gia = sum(esito.get(t, (0, 0))[1] for t in TABELLE)
             print(f"Registro rimesso in {a.archivio}: {nuove['registro_giornate']} giornate, {nuove['registro_giocatori']} righe di "
-                  f"giocatori, {nuove['registro_nostri']} righe dei numeri nostri e {nuove['registro_i4']} righe delle misure "
-                  f"dei numeri nostri nuove; {gia} righe c'erano già e sono rimaste com'erano.")
+                  f"giocatori, {nuove['registro_nostri']} righe dei numeri nostri, {nuove['registro_i4']} righe delle misure "
+                  f"dei numeri nostri e {nuove['taratura_probabili']} versioni della taratura di «gioca N%» nuove; {gia} righe "
+                  "c'erano già e sono rimaste com'erano.")
     except (ValueError, OSError, sqlite3.Error) as e:
         print(f"Errore: {e}", file=sys.stderr)
         return 1
