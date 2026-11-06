@@ -14,6 +14,14 @@ name: iOS
 # il Mac non parte e il job risulta riuscito. Succedeva fino a tre volte per modifica: corsa a mano sul ramo, «ios / test»
 # della PR (commit di unione con main) e la corsa su main dopo l'unione. Se main nel frattempo ha cambiato ios/, l'albero è
 # un altro e i test girano. A mano si può forzare la corsa (forza = vero).
+# Il Mac fa le cose in questo ordine (issue #264, misure in docs/CI-IOS-COSTI.md):
+#   1. sceglie il simulatore e lo accende SENZA aspettare (l'accensione dura circa 2 minuti e va avanti mentre si compila);
+#   2. compila app e test una volta sola (build-for-testing, circa 6 minuti);
+#   3. aspetta il simulatore e prova i test unitari (circa 2 minuti);
+#   4. solo se gli unitari sono verdi, prova i test di interfaccia (circa 11 minuti). Prima erano un'unica corsa che, anche con gli
+#      unitari rossi (23 corse a mano rosse su 28 in 48 ore), faceva girare lo stesso tutti gli 11 minuti di interfaccia.
+# Corse a mano intermedie: parte = unitari salta il punto 4 (circa 10 minuti invece di 21). Non scrive il segno «verde»: la PR
+# riprova tutto lo stesso (nessun controllo si perde). Il valore predefinito resta «tutti».
 on:
   workflow_call:
   workflow_dispatch:
@@ -22,6 +30,11 @@ on:
         description: "prova anche se lo stesso codice iOS è già verde"
         type: boolean
         default: false
+      parte:
+        description: "tutti = unitari e interfaccia (come nelle PR); unitari = solo i test unitari, per le prove a metà lavoro (non vale come «verde» per la PR)"
+        type: choice
+        options: [tutti, unitari]
+        default: tutti
 
 permissions:
   contents: read
@@ -108,35 +121,67 @@ jobs:
         run: command -v xcodegen > /dev/null || brew install xcodegen
       - name: Crea il progetto Xcode
         run: xcodegen generate
-      - name: Scegli il simulatore
+      - name: Scegli il simulatore e accendilo
         id: sim
         run: |
           xcodebuild -version
           IFS=$'\t' read -r UDID NOME IOS <<< "$(python3 -I scripts/scegli_simulatore.py iphone)"
           echo "Simulatore: $NOME ($IOS) $UDID"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          # l'accensione continua da sola mentre si compila: si aspetta solo prima dei test (passo 2 di 3)
           xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b > /dev/null
-      - name: Compila ed esegui i test
+      # Tre passi (nome che comincia sempre «Compila ed esegui i test»): compila una volta, poi unitari, poi interfaccia.
+      # Ogni passo si ferma al primo errore e il successivo non parte: un unitario rosso non fa più aspettare gli 11 minuti
+      # dell'interfaccia. Stesso progetto, stesso schema, stesso simulatore e stesse opzioni di prima.
+      - name: Compila ed esegui i test (1 di 3, compila app e test una volta sola)
         env:
           UDID: ${{ steps.sim.outputs.udid }}
         run: |
           set -o pipefail
           mkdir -p build
-          xcodebuild test -project Schieraxi.xcodeproj -scheme Schieraxi \
+          xcodebuild build-for-testing -project Schieraxi.xcodeproj -scheme Schieraxi \
             -destination "platform=iOS Simulator,id=$UDID" \
-            -resultBundlePath build/test.xcresult \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
-            2>&1 | tee build/test.log | tail -n 60
-      # solo a test riusciti (nessun if: un passo fallito prima lo salta): il segno che «gia-verde» cerca nelle corse dopo
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1 | tee build/compila.log | tail -n 60
+      - name: Compila ed esegui i test (2 di 3, unitari)
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          set -o pipefail
+          xcrun simctl bootstatus "$UDID" -b > /dev/null
+          xcodebuild test-without-building -project Schieraxi.xcodeproj -scheme Schieraxi \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath build/DerivedData \
+            -only-testing:SchieraxiTests \
+            -resultBundlePath build/test-unitari.xcresult \
+            2>&1 | tee build/test-unitari.log | tail -n 60
+      - name: Compila ed esegui i test (3 di 3, interfaccia)
+        if: inputs.parte != 'unitari'
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building -project Schieraxi.xcodeproj -scheme Schieraxi \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath build/DerivedData \
+            -only-testing:SchieraxiUITests \
+            -resultBundlePath build/test-interfaccia.xcresult \
+            2>&1 | tee build/test-interfaccia.log | tail -n 60
+      - name: Corsa parziale (solo unitari)
+        if: inputs.parte == 'unitari'
+        run: |
+          echo "Corsa parziale: solo i test unitari. I test di interfaccia non sono girati e il segno «verde» non è stato scritto: la PR riprova tutto." | tee -a "$GITHUB_STEP_SUMMARY"
+      # solo a test riusciti (nessun if sull'esito: un passo fallito prima lo salta) e solo se sono girati tutti: il segno che «gia-verde» cerca nelle corse dopo
       - name: Segna lo stesso codice come verde
-        if: needs.gia-verde.outputs.chiave != ''
+        if: needs.gia-verde.outputs.chiave != '' && inputs.parte != 'unitari'
         env:
           CHIAVE: ${{ needs.gia-verde.outputs.chiave }}
         run: |
           printf 'ios/, ios.yml e file esterni: %s\ncommit: %s\n' "$CHIAVE" "$GITHUB_SHA" > build/ios-verde.txt
       - name: Carica il segno «verde»
-        if: needs.gia-verde.outputs.chiave != ''
+        if: needs.gia-verde.outputs.chiave != '' && inputs.parte != 'unitari'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ios-verde-${{ needs.gia-verde.outputs.chiave }}
@@ -145,4 +190,4 @@ jobs:
           retention-days: 3       # pochi giorni: l'immagine del Mac (Xcode, simulatori) cambia
       - name: Righe con errori
         if: failure()
-        run: grep -E "error:|Test Case .* failed|\*\* TEST FAILED|failed:" build/test.log | head -n 80 || true
+        run: grep -hE "error:|Test Case .* failed|\*\* [A-Z ]*FAILED \*\*|failed:" build/compila.log build/test-unitari.log build/test-interfaccia.log | head -n 80 || true

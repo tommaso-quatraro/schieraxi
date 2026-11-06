@@ -37,7 +37,8 @@ def test_giornata_iniziata_stato_chiusa_senza_pulsanti():
 
 def test_modifica_a_mano_non_salvata_chiede_prima_di_uscire():
     assert 'window.addEventListener("beforeunload"' in APP
-    assert 'if (vista !== "formazione" && !lasciaFormazione()) return;' in APP
+    # anche con Indietro del browser (grafica B): se si resta, l'indirizzo torna quello della Formazione (test_grafica_b_web.py)
+    assert 'if (vista !== "formazione" && !lasciaFormazione()) {' in APP
     assert 'confirm(t("formazione.esci_senza_salvare"))' in APP
     assert 'sc.nonSalvata = !squadra && !chiusa && manuale && (st === "modificata" || (st === "mano" && !sc.manuale.uguale));' in APP
     assert TESTI.count('"formazione.esci_senza_salvare"') == 2
@@ -51,10 +52,12 @@ def test_titolari_incerti_spiegati():
     assert "{p}" in TESTI.split('"formazione.incerto": "')[1].split('"')[0]
 
 
-def test_data_dei_dati_su_due_righe_sui_telefoni():
-    assert 'pezzo("sotto-dati", dati)' in APP and 'pezzo("sotto-sep", " · ")' in APP
-    blocco = re.search(r"@media \(max-width: 480px\) \{(.*?)\n\}", CSS, re.S)
-    assert blocco and ".sottotitolo > span { display: block;" in blocco.group(1) and ".sotto-sep { display: none; }" in blocco.group(1)
+def test_data_dei_dati_intera_sui_telefoni():
+    """In una riga sola la data dei dati si tagliava (390 px, anche in inglese a 430). Ora sta nella riga di stato sotto il titolo,
+    in un pezzo suo che non si spezza a metà («dati del 26 ott 23:55»): se non ci sta va a capo intero, dopo il « · »."""
+    assert "pezzi.map(p => `<span>${esc(p)}</span>`).join(\" · \")" in APP
+    corpo = re.search(r"\n\.stato-pagina > span \{([^}]*)\}", CSS)
+    assert corpo and "display: inline-block" in corpo.group(1) and "max-width: 100%" in corpo.group(1)
 
 
 def test_giornata_chiusa_niente_moduli_ne_stili():

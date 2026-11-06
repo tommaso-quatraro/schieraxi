@@ -555,7 +555,8 @@ def pagina(quale: str, lingua: str = LINGUA) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <title>{html.escape(titolo)} · SchieraXI</title>
-  <meta name="theme-color" content="#07100b">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121513">
   <link rel="icon" href="/icona.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/stile.css">
   <script src="/legale.js"></script>

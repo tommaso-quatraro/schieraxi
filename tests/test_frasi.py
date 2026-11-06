@@ -211,7 +211,7 @@ def test_in_inglese_i_numeri_con_il_segno_hanno_il_meno_tipografico():
 
 @CON_NODE
 def test_in_italiano_si_mostra_il_testo_del_server_e_senza_chiave_si_ripiega():
-    f = F("dafare.diario", n=3)
+    f = F("dafare.diario", giornata=frasi.nome_giornata(10, 3))
     assert _in_node("it", [[f.json(), str(f)], [None, "testo del server"]]) == [str(f), "testo del server"]
     # inglese ma senza frase, o con una chiave che questa versione non conosce: si prova a riconoscere il testo; se non si riconosce resta com'è
     esito = _in_node("en", [[None, "Frase mai vista"], [{"chiave": "non.esiste", "param": {}}, "Altra frase mai vista"], [None, None]])
@@ -332,10 +332,10 @@ def test_ogni_avviso_sul_telefono_ha_italiano_e_inglese_con_gli_stessi_segnapost
 
 
 def test_una_frase_nella_lingua_dell_utente():
-    f = F("n.riepilogo", giornata=9, fonte=F("n.fonte_scelta"), punti=71.34, attesi=70.0, massimo=80.3)
-    assert f.in_lingua("it") == str(f) == ("Giornata 9: la tua scelta salvata ha fatto circa 71,3 punti (il modello ne aspettava 70,0). "
+    f = F("n.riepilogo", giornata=frasi.nome_giornata(9, 6, avviso=True), fonte=F("n.fonte_scelta"), punti=71.34, attesi=70.0, massimo=80.3)
+    assert f.in_lingua("it") == str(f) == ("Giornata 6 · 9ª di Serie A: la tua scelta salvata ha fatto circa 71,3 punti (il modello ne aspettava 70,0). "
                                           "Il massimo possibile con la tua rosa era 80,3.")
-    assert f.in_lingua("en") == ("Matchday 9: your saved choice scored about 71.3 points (the model expected 70.0). "
+    assert f.in_lingua("en") == ("Matchday 6 · Serie A matchday 9: your saved choice scored about 71.3 points (the model expected 70.0). "
                                  "The maximum possible with your roster was 80.3.")
     righe = frasi.elenco([F("n.ora_dubbio", nome="Rossi"), F("n.ora_infortunato", nome="Bianchi")], sep="\n")
     assert righe.in_lingua("en") == "Rossi: now in doubt\nBianchi: now injured" and str(righe) == "Rossi: ora in dubbio\nBianchi: ora infortunato"

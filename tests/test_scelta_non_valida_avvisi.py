@@ -82,7 +82,7 @@ def test_promemoria_parte_anche_con_la_scelta_non_valida(tmp_path, monkeypatch, 
     scelte.salva(ST, 9, salvata, "4-4-2", fs)
     assert len(notifiche.promemoria(_db(CHIUSURA), Regole(), ROSE, ore(17, 35), tmp_path / "b.json", manda, OPZ, fs)) == 1
     assert mandati[0][0] == "SchieraXI · formazione tra un'ora"
-    assert mandati[0][1].startswith("La formazione della giornata 9 si chiude tra circa un'ora (scadenza alle 18:30), ma quella che hai salvato non è più valida")
+    assert mandati[0][1].startswith("Giornata 9 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30), ma quella che hai salvato non è più valida")
 
 
 # ---------------------------------------------------------------- avviso «cambia la formazione»
@@ -168,7 +168,7 @@ def test_riepilogo_della_consigliata(tmp_path, monkeypatch, salvata):
     mandati, manda = _registro()
     adesso, opz = datetime(2026, 10, 21, 8, 0), {"riepilogo": True}
     r = notifiche.riepilogo(db, Regole(), rose, adesso, tmp_path / "r.json", manda, opz, cambi_visti, fs)
-    assert len(r) == 1 and str(r[0]).startswith("Giornata 8: la formazione consigliata ha fatto circa")
+    assert len(r) == 1 and str(r[0]).startswith("Giornata 8 · 8ª di Serie A: la formazione consigliata ha fatto circa")
     # senza sapere quale consigliata c'era non si manda niente: mai il riepilogo di una formazione che non vale
     assert notifiche.riepilogo(db, Regole(), rose, adesso, tmp_path / "r2.json", manda, opz, tmp_path / "nessun-cambio.json", fs) == []
     assert len(mandati) == 1

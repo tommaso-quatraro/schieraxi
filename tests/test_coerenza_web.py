@@ -21,17 +21,10 @@ def _testo(blocco: str, chiave: str) -> str:
 
 
 def test_giornata_della_lega_dappertutto():
-    """Ogni «Giornata N» usa il numero della lega (`giornata_lega`, se manca `giornata`). Eccezioni: lo stato dei dati, che parla
-    delle probabili di Serie A, e il Diario, che sceglie il numero con `nomeG` (giornata_lega prima)."""
-    usi = re.findall(r't\("testata\.giornata", \{ n: ([^}]*?) \}\)', APP)
-    assert usi, "nessun «Giornata N» trovato: il test non guarda più il posto giusto"
-    eccezioni = {"p.giornata", "nomeG(g)"}
-    sbagliati = [u for u in usi if "_lega" not in u and u not in eccezioni]
-    assert sbagliati == [], sbagliati
-    assert "i.prossima_giornata_lega || i.prossima_giornata" in APP          # testata
-    assert "{ n: pr.giornata_lega || pr.giornata, avv:" in APP                # scheda, prossima partita
-    assert "formazione-giornata-${f.giornata_lega || f.giornata}.png" in APP  # immagine da condividere
-    assert 'const nomeG = g => n(g.giornata_lega) ?? n(g.giornata);' in APP
+    """Il numero della giornata: dal 5/11/2026 (#299) lega e Serie A insieme, «Giornata 8 · 11ª di Serie A», sempre da `nomeGiornata`.
+    I controlli di ogni schermata stanno in tests/test_giornate_lega_serie_a.py; qui resta il nome del file dell'immagine."""
+    assert "function nomeGiornata(lega, serieA) {" in APP
+    assert "formazione-giornata-${f.giornata_lega || f.giornata}.png" in APP  # immagine da condividere: nome del file corto
 
 
 def test_partita_nelle_righe_e_nelle_celle():
@@ -46,7 +39,7 @@ def test_partita_nelle_righe_e_nelle_celle():
 
 
 def test_parole_del_vocabolario():
-    assert _testo(IT, "mercato.partita_fuori") == "Giornata {n} · in trasferta contro {avv} · {quando}"
+    assert _testo(IT, "mercato.partita_fuori") == "{g} · in trasferta contro {avv} · {quando}"      # {g} = nomeGiornata
     assert "fuori contro" not in TESTI
     attesi = {"oggi.st_senza_voto": "Senza voto", "oggi.st_attesa_voti": "Voto in arrivo", "oggi.st_in_corso": "Partita in corso",
               "oggi.st_rinviata": "Rinviata", "oggi.st_da_giocare": "Da giocare"}

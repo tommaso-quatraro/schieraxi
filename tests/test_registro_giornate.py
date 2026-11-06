@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pandas as pd
 import pytest
 
-from fanta import archivio, calcolo, consigli, registro_giornate as rg, stato_dati
+from fanta import archivio, calcolo, consigli, registro_giornate as rg, registro_nostri, stato_dati
 from fanta.regole import Regole
 
 ST = "2026-27"
@@ -333,6 +333,7 @@ def test_giro_salva_misura_e_avvisa_il_proprietario(giornata10, ntfy_finto, monk
                    (ST, g, f"2026-09-{g:02d}T12:00:00"))
         rg.registra_misura(db, ST, g, BUONA if g < 9 else CATTIVA, datetime(2026, 9, g, 12))
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata: (_prev(PREV_10), giornata, True))
+    monkeypatch.setattr(registro_nostri, "previsioni_dal_vivo", lambda db, giornata: _prev(PREV_10))   # anche i numeri nostri
     rg.giro(ORA(7, 18, 21), db)                                                 # dieci minuti prima: salva
     assert db.execute("SELECT giocatori FROM registro_giornate WHERE giornata = 10").fetchone()[0] == 2 and ricevuti == []
     _gioca(db, 1, 2)

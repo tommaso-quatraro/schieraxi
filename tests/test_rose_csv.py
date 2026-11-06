@@ -1,6 +1,7 @@
 """Rose da CSV: l'esportazione «rosters» di Leghe (nome squadra, codice calciatore, costo) e i CSV a colonne in tutte le
 codifiche e i separatori che capitano (Excel italiano, iPhone, Mac). Fixture: `tests/dati/rosters_ridotto.csv` (2 squadre)."""
 import codecs
+import time
 from pathlib import Path
 
 import pytest
@@ -233,6 +234,43 @@ def test_testo_incollato_con_virgole(indice):
     assert [(r.esito.calciatore.id, r.ruolo, r.costo) for r in s.righe] == [(2, "P", 10), (3, "D", 15)]
     incollato = "$,$,$\nReal Esempio,2,10\nReal Esempio,3,15\n"
     assert rose.griglia_da_testo(incollato)[1] == ["Real Esempio", "2", "10"]
+
+
+# ---------------------------------------------------------------- celle e righe molto lunghe
+def test_celle_incollate_accorciate_come_nel_csv():
+    lunga = "Sommer" + "x" * 1000
+    for testo in ("Mia\tx\nP\t{}\t10\n", "Mia;x\nP;{};10\n", "Mia\nP  {}  10\n"):     # tabulazione, punto e virgola, spazi
+        assert rose.griglia_da_testo(testo.format(lunga))[1] == ["P", lunga[:rose.MAX_TESTO_CELLA], "10"], repr(testo)
+
+
+def test_testo_incollato_molto_lungo_si_legge_in_poco_tempo(indice):
+    testo = "Mia\tx\nP\tSommer\t10\nD\tBastoni" + " " * 20000 + "x\t5\n"
+    inizio = time.perf_counter()
+    rose.estrai([("testo", rose.griglia_da_testo(testo))], indice)
+    assert time.perf_counter() - inizio < 1                  # soglia larga: di solito qualche millesimo
+
+
+def test_riga_molto_lunga_si_legge_in_poco_tempo():
+    inizio = time.perf_counter()
+    rose.griglie_da_stringa("$" + "\t" * 59000 + "x\n")
+    assert time.perf_counter() - inizio < 1                  # soglia larga: di solito qualche millesimo
+
+
+@pytest.mark.parametrize("testo,atteso", [
+    ("$,$,$\nA,1,2\n", ","),
+    ("$;$;$\nA;1;2\n", ";"),
+    ("$\t$\t$\nA\t1\t2\n", "\t"),
+    ("$|$|$\nA|1|2\n", "|"),
+    ("  $ , $ , $\nA,1,2\n", ","),                            # spazi attorno ai separatori
+    ("\t$ \t $\nA\t1\n", "\t"),
+    ("$\t,\t$\nA,1,2\n", ","),
+    ("A,1,2\r\n$;$;$\r\nB;1;2\r\n", ";"),                     # la riga «$;$;$» vale più delle altre, anche con gli a capo di Windows
+    ("Nome;x$,$;1\nA;B;2\n", ";"),                            # «$» a metà riga non è la riga dei separatori
+    ("$ $\nA\n", None),
+    ("Real Esempio\nSommer\nBastoni\n", None),
+])
+def test_separatore_dei_rosters_come_prima(testo, atteso):
+    assert rose._delimitatore(testo) == atteso
 
 
 # ---------------------------------------------------------------- file che non sono rose

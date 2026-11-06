@@ -62,7 +62,9 @@ def test_movimento_ridotto_e_focus_visibile():
 
 def test_pagina_ha_titolo_lingua_e_pannello_con_nome():
     html = (WEB / "index.html").read_text(encoding="utf-8")
-    assert '<html lang="it">' in html and '<h1 class="titolo"' in html
+    js = (WEB / "app.js").read_text(encoding="utf-8")
+    # un solo titolo di primo livello, quello della schermata: lo scrive pagina() in cima a main (grafica B, spec §8.2)
+    assert '<html lang="it">' in html and "<h1" not in html and '<h1 id="titolo-pagina"' in js
     assert re.search(r'role="dialog"[^>]*aria-label=', html)
     assert 'class="salta"' in html and 'id="contenuto"' in html
 
