@@ -3,11 +3,12 @@
   "voci": [
     "Oggi mostra prima il conto alla rovescia e la formazione consigliata, poi le cose da fare con l'azione sulla stessa riga.",
     "La maglia della tua squadra accanto al conto alla rovescia è piccola e dritta: il tempo che manca si legge sempre intero.",
-    "Sullo schermo largo Oggi sta su due colonne: a sinistra il conto e le cose da fare, a destra i tuoi giocatori e le partite."
+    "I punti attesi in Oggi sono subito quelli giusti, gli stessi della Formazione: prima salivano da zero e a volte restavano a metà."
   ],
   "tecnico": [
-    "Grafica B della web, PR 7 (issue #354, chiude #384): Oggi come distinta, senza nome e slogan; colonne 5:7 da 900 px.",
-    "Conto alla rovescia in --t-eroe con font-size min(var(--t-eroe), 25cqi) sulla sua colonna; maglia alta 72 px nella sua colonna della griglia.",
+    "Grafica B della web, PR 7 (issue #354, chiude #384): Oggi come distinta, senza nome e slogan; colonne 5:7 da 900 px (l'iPhone segue con #416).",
+    "Conto alla rovescia in --t-eroe con font-size min(var(--t-eroe), 22cqi) sulla sua colonna; maglia alta 72 px (larga al massimo 96) nella sua colonna della griglia.",
+    "Punti attesi: tolto animaNumero da mostraOggi; senza fotogrammi (scheda in secondo piano, foto) restava un valore a metà salita.",
     "Da fare: azione con .azione-testo e contatore grigio; righe degli avvisi con la lettera del ruolo e l'etichetta scritta (rigaAvviso), senza pallino.",
     "Tolti marchioOggi, le chiavi marchio.* di testi.js, --font-marchio e le regole della maglia grande."
   ]

@@ -799,6 +799,15 @@ def test_oggi_senza_nome_e_slogan_e_con_due_colonne_5_7():
     assert re.search(r"@media \(min-width: 900px\) \{[^@]*\.colonne-oggi[^{]*\{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\)", CSS)
 
 
+def test_sul_pc_largo_la_colonna_di_destra_di_oggi_in_due():
+    """Scelta della PR 7 (#415): da 1400 px la colonna di destra di Oggi (~672 px) si divide in due, migliori e avvisi | partite del
+    turno, invece della colonna sola disegnata nella spec §9. Una colonna sola non arriva ai 680 px della riga larga dei giocatori e
+    manda le partite sotto il primo schermo; in due tutto sta in vista. Le sezioni non si spezzano tra le due colonne."""
+    blocco = re.search(r"@media \(min-width: 1400px\) \{(.*?)\n\}", CSS, re.S).group(1)
+    assert re.search(r"main \.colonne-oggi > \.col:nth-child\(2\) \{ display: block; columns: 2;", blocco)
+    assert "main .colonne-oggi > .col:nth-child(2) > * { break-inside: avoid; }" in blocco
+
+
 def test_da_fare_con_l_azione_scritta_nella_riga():
     corpo = _funzione(DAFARE, "dfRiga")
     assert 'class="azione-testo df-azione"' in corpo and "bottone secondario" not in corpo
@@ -901,15 +910,27 @@ def test_riga_di_da_controllare_con_le_parole_del_server():
     assert '<span class="etichetta neutra">Diffidato</span>' in _esegui_oggi(f"rigaAvviso({json.dumps(senza | {'tipo': 'diffidato'})})")
 
 
-def test_differenza_ammessa_di_oggi_scritta():
-    """Spec §13: sulla web Oggi parte dal titolo della schermata (il nome disegnato sta nella testata, niente slogan) e mette le cifre
-    della formazione subito sotto il conto alla rovescia; sull'iPhone nome e slogan in cima e la formazione dopo Da fare."""
+def test_differenze_di_oggi_scritte_al_posto_giusto():
+    """Spec §13. Solo l'aspetto è una differenza ammessa (maglia piccola, azioni di Da fare scritte, lettera del ruolo ed etichetta
+    scritta). Nome e slogan in cima e ordine delle sezioni sono contenuto: sulla web non ci sono più e l'ordine è cambiato, l'iPhone
+    deve seguire (issue #416), quindi stanno in «Differenze di oggi» con il numero dell'issue, non tra quelle ammesse."""
     doc = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
     ammesse = doc[doc.index("## Differenze ammesse"):doc.index("## Differenze di oggi")]
     riga = next((r for r in ammesse.splitlines() if r.startswith("- **Oggi")), "")
-    assert "slogan" in riga and "Apri la formazione" in riga and "I tuoi migliori" in riga, riga
+    assert "maglia" in riga and "Da fare" in riga and "lettera grigia del ruolo" in riga, riga
+    assert "slogan" not in riga and "ordine" not in riga, riga
+    di_oggi = doc[doc.index("## Differenze di oggi"):]
+    riga = next((r for r in di_oggi.splitlines() if r.startswith("|") and "slogan" in r), "")
+    assert "Oggi" in riga and "#416" in riga and "I tuoi migliori" in riga and "Apri la formazione" in riga, riga
+    guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
+    oggi = guida[guida.index("### Oggi"):guida.index("### Formazione")]
+    assert "motto" not in oggi and "slogan" not in oggi
 
 
 def test_novita_di_oggi():
     voce = _voce_di_novita("oggi-distinta.json", "Oggi più ordinata")
-    assert voce["voci"] and all("PC" not in v for v in voce["voci"])
+    assert voce["voci"] and all("PC" not in v and "cqi" not in v for v in voce["voci"])
+    k = re.search(r"font-size: min\(var\(--t-eroe\), (\d+)cqi\)", _corpo(".conto-testo .enorme")).group(1)
+    for riga in voce.get("tecnico", []):                         # dopo il rilascio in novita.json può non esserci
+        for scritto in re.findall(r"(\d+)cqi", riga):
+            assert scritto == k, (scritto, k)                    # la nota tecnica dice il numero vero del CSS

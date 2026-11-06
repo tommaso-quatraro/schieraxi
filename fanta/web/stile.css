@@ -1312,6 +1312,9 @@ body.senza-accesso .salta { display: none; }
   main .colonne-campo > .col:first-child { display: block; }
   main .colonne-campo > .col:first-child > * { grid-column: auto; grid-row: auto; position: static; }
   main .colonne-campo > .col:first-child > .campo { margin-top: 16px; position: relative; }   /* la riga sopra lo rendeva statico: area, cerchio e metà campo uscivano e attraversavano tutta la pagina */
+  /* Oggi: la colonna di destra (7/12, ~672 px a 1440) in due: migliori e avvisi | partite del turno. Una colonna sola non darebbe la
+     riga larga dei giocatori (scatta da 680 px) e manderebbe le partite sotto il primo schermo; così tutto sta in vista e le due
+     colonne di Oggi finiscono quasi insieme (151 px a 1440, PR #415) */
   main .colonne-oggi > .col:nth-child(2) { display: block; columns: 2; column-gap: 24px; }
   main .colonne-oggi > .col:nth-child(2) > * { break-inside: avoid; }
   /* Formazione: Titolari, Panchina e Fuori uno sotto l'altro nella colonna larga, con le righe su una linea e i numeri nella stessa

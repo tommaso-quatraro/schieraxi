@@ -171,24 +171,21 @@ def test_il_conto_alla_rovescia_non_lascia_l_unita_da_sola():
 
 
 def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
-    """Con il numero attaccato all'unità, «14 giorni» non va mai a capo (#286): accanto alla maglia a 320 px non ci stava e veniva
-    tagliato («20 h 22 mi…», #384). Con la grafica B la maglia (72 px, dritta) ha la sua colonna e il numero si misura sulla colonna
-    che resta (`cqi`): grande quanto l'eroe se c'è posto, più piccolo se no, mai tagliato. Qui: per ogni pagina da 160 a 1440 px,
-    con la maglia, «14 giorni» nel carattere più largo sta nella sua colonna. Sotto i 260 px la maglia (solo decorazione) non si
-    mostra e il numero ha tutta la riga."""
-    eroe = lambda pagina: 72 if pagina >= 900 else 56                                     # --t-eroe, 72 px da 900 px
+    """«14 giorni» non va mai a capo (#286): accanto alla maglia a 320 px veniva tagliato («20 h 22 mi…», #384). Con la grafica B la
+    maglia ha la sua colonna e il numero si misura sulla colonna che resta (`cqi`), quindi non si taglia mai (lo controlla
+    tests/test_grafica_b_web.py; misurato anche in Chrome da 320 a 1440 px, PR #415). Qui il prezzo: accanto alla maglia più larga
+    che il CSS ammette (`max-width`, una divisa larga), dal telefono più stretto (320 px) al PC il conto resta più grande del titolo
+    della schermata (32 px), così resta la cosa audace della pagina. Sotto i 260 px la maglia (solo decorazione) non si mostra."""
     k = float(re.search(r"font-size: min\(var\(--t-eroe\), (\d+(?:\.\d+)?)cqi\)", _regola(CSS, ".conto-testo .enorme")).group(1))
-    maglia = int(re.search(r"height: (\d+)px", _regola(CSS, ".maglia-hero")).group(1))
+    maglia = _regola(CSS, ".maglia-hero")
+    assert "height: 72px" in maglia
+    larga = int(re.search(r"max-width: (\d+)px", maglia).group(1))
     spazio = int(re.search(r"column-gap: (\d+)px", _regola(CSS, ".conto-oggi")).group(1))
-    for pagina in range(160, 1441):
-        # margini di main: 8 px per lato sotto i 320 px utili, 16 al telefono, 24 tra 768 e 899 px, 32 da 900 px (largo al massimo 1240)
-        colonna = min(pagina, 1240) - (16 if pagina < 320 else 32 if pagina < 768 else 48 if pagina < 900 else 64)
-        if pagina >= 768:
-            colonna = (colonna - 20) / 2 if pagina < 900 else (colonna - 24) * 5 / 12   # colonna di sinistra di Oggi (1:1, poi 5:7)
-        testo = colonna - (maglia + spazio if pagina >= 260 else 0)
-        carattere = min(eroe(pagina), k * testo / 100)
-        assert carattere * 3.94 <= testo, pagina                                            # «14 giorni» in Segoe UI a 600 (3,94 em)
-        assert carattere >= 20, pagina
+    # colonna del conto alle larghezze di main: telefono 320 e 390 px (16 px per lato), iPad 768 px (24 per lato, due colonne
+    # uguali con 20 px in mezzo), PC 900 e 1024 px (32 per lato, colonne 5:7 con 20 px in mezzo)
+    colonne = {320: 320 - 32, 390: 390 - 32, 768: (768 - 48 - 20) / 2, 900: (900 - 64 - 20) * 5 / 12, 1024: (1024 - 64 - 20) * 5 / 12}
+    for pagina, colonna in colonne.items():
+        assert k * (colonna - larga - spazio) / 100 > 32, pagina
     senza = _blocco("@container pagina (max-width: 259.98px) {")
     assert "display: none" in _regola(senza, ".maglia-hero")
     assert "grid-template-columns: minmax(0, 1fr)" in _regola(senza, ".conto-oggi.con-maglia")
