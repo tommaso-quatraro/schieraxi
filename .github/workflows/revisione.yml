@@ -7,7 +7,9 @@ name: Revisione IA
 #   Claude, quindi una PR non può riscriverle.
 # - Il token di Claude (segreto CLAUDE_CODE_OAUTH_TOKEN) non arriva mai alle PR da fork né a quelle di Dependabot: il chiamante
 #   esclude i fork, e senza segreto il job passa senza revisione (lo scrive nel riepilogo).
-# - Claude ha solo strumenti di lettura e i commenti sulle righe: niente Write, Edit, Bash libero; la sintesi la pubblica il job. Permessi: contents read, pull-requests write.
+# - Claude ha solo strumenti di lettura e i commenti sulle righe: niente Write, Edit, Bash; la sintesi la pubblica il job. Permessi: contents read, pull-requests write.
+# - Claude legge il codice della PR e basta: il diff lo prepara il job in .revisione-ia/ (niente gh, quindi niente conversazione
+#   della PR), le letture restano nella cartella del checkout, e la sintesi passa da un filtro che toglie ciò che somiglia a un segreto.
 on:
   workflow_call:
     secrets:
@@ -45,8 +47,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         if: steps.segreto.outputs.presente == 'true'
         with:
-          fetch-depth: 1
+          fetch-depth: 2              # il commit di unione della PR e il suo primo genitore (main): servono al diff
           persist-credentials: false
+
+      # Il diff della PR in file, prima di avviare Claude: così Claude non ha bisogno di gh (che leggerebbe anche commenti e
+      # descrizioni della PR). La cartella si rifà da zero: una cartella con lo stesso nome portata dalla PR si butta.
+      - name: Diff della PR
+        if: steps.segreto.outputs.presente == 'true'
+        run: |
+          rm -rf .revisione-ia
+          mkdir .revisione-ia
+          git diff --no-color --no-ext-diff HEAD^1 HEAD > .revisione-ia/diff.patch
+          git diff --name-status --no-color HEAD^1 HEAD > .revisione-ia/file.txt
+          echo "Diff: $(wc -l < .revisione-ia/diff.patch) righe, $(wc -l < .revisione-ia/file.txt) file"
 
       # Versione fissata per commit (del 26/10/2026): fissa anche Claude Code (2.1.311, scritto nell'azione) e Bun (1.4.4).
       - name: Revisione con Claude Code
@@ -60,10 +73,13 @@ jobs:
           display_report: "false"
           prompt: |
             Repository: ${{ github.repository }}. Pull request numero ${{ github.event.pull_request.number }}.
+            Il diff della pull request è in .revisione-ia/diff.patch, l'elenco dei file cambiati in .revisione-ia/file.txt.
             Segui la skill revisione-pr (.claude/skills/revisione-pr/SKILL.md) e rispondi con lo schema JSON richiesto.
+          # Letture solo nel checkout (Read(./**) vale anche per Grep e Glob); i divieti valgono anche se un permesso li coprisse.
           claude_args: |
             --max-turns 30
-            --allowedTools "Skill,Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --allowedTools "Skill,Read(./**),mcp__github_inline_comment__create_inline_comment"
+            --disallowedTools "Bash,Write,Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task,Read(//proc/**),Read(//sys/**),Read(//etc/**),Read(//tmp/**),Read(//run/**),Read(//var/**),Read(//root/**),Read(//opt/**),Read(//home/runner/work/_temp/**),Read(//home/runner/work/_actions/**),Read(~/.claude/**),Read(~/.config/**),Read(~/.ssh/**),Read(~/.gitconfig),Read(./.git/**)"
             --json-schema '{"type":"object","properties":{"bloccanti":{"type":"integer","minimum":0},"sintesi":{"type":"string"}},"required":["bloccanti","sintesi"],"additionalProperties":false}'
 
       # Il cancello: rosso se Claude non ha dato l'esito (risposta vuota o non valida) o se ha trovato problemi bloccanti.
@@ -75,11 +91,39 @@ jobs:
           COMMIT: ${{ github.event.pull_request.head.sha }}
         run: |
           python3 -I -s - <<'FINE'
-          import json, os, sys
+          import json, os, re, sys
+
+          # Ciò che somiglia a un token o a un segreto non esce dalla sintesi (la PR e il riepilogo sono pubblici).
+          SEGRETI = [
+              r"sk-ant-[A-Za-z0-9_\-]{8,}",
+              r"\bgh[pousr]_[A-Za-z0-9]{20,}",
+              r"\bgithub_pat_[A-Za-z0-9_]{20,}",
+              r"\bfw_[A-Za-z0-9_\-]{8,}",
+              r"\bAKIA[0-9A-Z]{16}\b",
+              r"\bxox[abprs]-[A-Za-z0-9\-]{10,}",
+              r"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+",
+              r"-----BEGIN[A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END[A-Z ]*PRIVATE KEY-----|\Z)",
+              r"(?i)\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=\-]{12,}",
+          ]
+          VARIABILE = re.compile(r"(?i)\b([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY)[A-Z0-9_]*)"
+                                 r"(\s*[=:]\s*)['\"]?[^\s'\"`]{6,}['\"]?")
+          LUNGO = re.compile(r"[A-Za-z0-9_\-+=]{32,}")
+
+          def _casuale(parola):
+              # stringa lunga con un tratto di sole lettere e cifre di almeno 20 caratteri, con lettere e cifre: un token
+              tratto = max((len(t) for t in re.findall(r"[A-Za-z0-9]+", parola)), default=0)
+              cifre = sum(c.isdigit() for c in parola)
+              return tratto >= 20 and cifre >= 2 and len(parola) - cifre >= 2
+
+          def ripulisci(testo):
+              for schema in SEGRETI:
+                  testo = re.sub(schema, "[tolto]", testo)
+              testo = VARIABILE.sub(lambda m: m.group(1) + m.group(2) + "[tolto]", testo)
+              return LUNGO.sub(lambda m: "[tolto]" if _casuale(m.group(0)) else m.group(0), testo)
 
           def chiudi(testa, sintesi, errore=None):
               # «@» seguita da un carattere invisibile: la sintesi non chiama in causa nessuno su GitHub
-              testo = (testa + "\n\n" + sintesi).replace("@", "@\u2060").strip()
+              testo = ripulisci(testa + "\n\n" + sintesi).replace("@", "@\u2060").strip()
               commit = os.environ.get("COMMIT", "")[:7]
               with open(os.path.join(os.environ["RUNNER_TEMP"], "sintesi.md"), "w", encoding="utf-8") as f:
                   f.write("<!-- revisione-ia -->\n**Revisione automatica** (commit " + commit + ")\n\n" + testo + "\n")
