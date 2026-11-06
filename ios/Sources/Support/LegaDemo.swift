@@ -305,6 +305,11 @@ enum LegaDemo {
         ids.reduce(0.0) { $0 + calciatore($1).puntiAttesi }
     }
 
+    /// I punti attesi della formazione della giornata, UNA fonte per tutta la demo (#390). La tua scelta salvata sono gli undici
+    /// della consigliata (`sceltaSalvata`), quindi la valutazione del server (`valuta`, a un decimale) dà gli stessi punti: li
+    /// mostrano Formazione, Oggi prima della scadenza, «attesi prima» a giornata in corso, «Com'è andata» e i widget.
+    static var attesiGiornata: Double { (punteggio(moduli[0].titolari) * 10).rounded() / 10 }
+
     /// La fascia dei punti attesi, come la manda il server: da circa -8 a +8,5 attorno ai punti attesi, 8 volte su 10.
     static func fascia(_ attesi: Double, indicativo: Bool = true) -> [String: Any] {
         ["basso": attesi - 8, "alto": attesi + 8.5, "confidenza": 0.8, "indicativo": indicativo]
@@ -482,11 +487,15 @@ enum LegaDemo {
         ]
     }
 
-    /// Il blocco `riepilogo` a giornata finita: la giornata appena chiusa, la tua formazione contro la consigliata.
+    /// Il blocco `riepilogo` a giornata finita: la giornata appena chiusa con la tua formazione. I punti attesi sono quelli di
+    /// prima della giornata (`attesiGiornata`); la tua scelta è la consigliata salvata così com'era, quindi nel Diario la
+    /// consigliata ha gli stessi punti attesi e fatti (#390).
     static func riepilogoFinita() -> [String: Any] {
-        ["giornata": giornata, "giornata_lega": giornataLega, "formazione_di": "tua", "nel_diario": true,
-         "punti_fatti": 74.5, "punti_attesi": 71.2, "intervallo": fascia(71.2, indicativo: false),
-         "consigliata": ["punti_fatti": 78.0, "punti_attesi": 73.7]]
+        let attesi = attesiGiornata
+        let fatti = 74.5
+        return ["giornata": giornata, "giornata_lega": giornataLega, "formazione_di": "tua", "nel_diario": true,
+                "punti_fatti": fatti, "punti_attesi": attesi, "intervallo": fascia(attesi, indicativo: false),
+                "consigliata": ["punti_fatti": fatti, "punti_attesi": attesi]]
     }
 
     /// Il blocco `prossima` a giornata finita: la prossima giornata si chiude fra quattro giorni, probabili non ancora uscite.

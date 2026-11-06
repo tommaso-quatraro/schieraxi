@@ -272,11 +272,20 @@ private extension LegaDemo {
                      "tipo": "manuale"])
     }
 
-    static func valutazione() -> String {
+    /// La valutazione di una formazione (`POST /api/formazione/valuta`), come `valuta` di fanta/consigli.py. Il server finto non
+    /// legge il corpo della domanda: risponde per gli undici della consigliata, che sono la scelta salvata della demo
+    /// (`sceltaSalvata`) e quelli da cui parte «Modifica a mano». Quindi gli stessi punti attesi della consigliata e differenza zero,
+    /// gli stessi di Oggi (#390).
+    static func valutazione() -> String { json(valutazioneScelta) }
+
+    static var valutazioneScelta: [String: Any] {
         let ids = moduli[0].titolari
-        let punti = punteggio(ids)
-        return json(["modulo": "3-4-3", "punteggio_atteso": punti - 1.2, "dev": 3.1, "intervallo": fascia(punti - 1.2), "panchina": panchina(per: ids),
-                     "differenza": -1.2, "consigliata": punti])
+        let consigliata = punteggio(ids)
+        let attesi = attesiGiornata
+        let f = fascia(attesi)
+        return ["modulo": moduli[0].nome, "giornata": giornata, "giornata_lega": giornataLega, "punteggio_atteso": attesi,
+                "dev": 4.2, "intervallo": f, "brutta_giornata": f["basso"] ?? NSNull(), "giornata_eccezionale": f["alto"] ?? NSNull(),
+                "panchina": panchina(per: ids), "consigliata_stesso_modulo": consigliata, "differenza": 0.0, "consigliata": consigliata]
     }
 
     // MARK: - Oggi
@@ -300,18 +309,68 @@ private extension LegaDemo {
             let c = calciatore(id)
             mieiTitolari[c.squadra, default: []].append(["id": c.id, "nome": c.nome, "ruolo": c.ruolo])
         }
+        // come il server con una scelta salvata: modulo, punti e fascia della sua valutazione, gli stessi della Formazione (#390)
+        let scelta = valutazioneScelta
+        let bloccoFormazione: [String: Any] = ["modulo": moduli[0].nome, "squadra": nomeMia, "tua_scelta": tuaScelta,
+                                               "punteggio_atteso": scelta["punteggio_atteso"] ?? NSNull(), "dev": scelta["dev"] ?? NSNull(),
+                                               "intervallo": scelta["intervallo"] ?? NSNull()]
         return [
             "miei_titolari": mieiTitolari, "fase": "prima",
             "giornata": giornata, "inizio": formatta(primaPartita, "yyyy-MM-dd HH:mm"),
             "scadenza": formatta(scadenza(adesso: adesso), "yyyy-MM-dd HH:mm"), "minuti_scadenza": minutiScadenza, "giornata_lega": giornataLega,
             "iniziata": false, "con_probabili": true,
-            "probabili": ["aggiornate_il": "2026-11-08 09:05", "minuti_fa": 480, "eta": "8 ore fa", "testo": "Probabili aggiornate alle 09:05",
-                          "vecchie": true, "avviso": "Le probabili hanno 8 ore: ricontrolla prima del fischio."],
-            "formazione": ["modulo": "3-4-3", "punteggio_atteso": punteggio(ids), "squadra": nomeMia,
-                           "dev": 4.2, "intervallo": fascia(punteggio(ids)), "tua_scelta": tuaScelta],
+            "probabili": probabili(adesso: adesso, scadenza: scadenza(adesso: adesso)),
+            "formazione": bloccoFormazione,
             "avvisi": avvisi, "migliori": migliori, "partite": partite,
             "da_fare": [voceDubbio, voceSvincolato, voceRoseVecchie, voceDiario, voceBackup],
         ]
+    }
+
+    // MARK: - Probabili
+
+    /// Quando sono state lette le probabili della giornata: otto ore fa, ai cinque minuti. La stessa ora in Oggi e nello Stato dei
+    /// dati (#390); otto ore bastano per l'avviso delle probabili vecchie.
+    static func probabiliLette(adesso: Date) -> Date {
+        let cinqueMinuti = 5.0 * 60
+        let prima = adesso.addingTimeInterval(-8 * 3600).timeIntervalSinceReferenceDate
+        return Date(timeIntervalSinceReferenceDate: (prima / cinqueMinuti).rounded(.down) * cinqueMinuti)
+    }
+
+    /// Il campo `probabili` di Oggi come `freschezza_probabili` di fanta/gestione.py, con le frasi del server (`probabili.*` e
+    /// `tempo.*` di fanta/frasi.py): l'ora della lettura, quanto tempo fa e, se sono lette da almeno 6 ore con la formazione che si
+    /// chiude entro un giorno, l'avviso. Tutto da `adesso`, così «alle 17:05 · 8 ore fa» torna con l'ora del telefono.
+    static func probabili(adesso: Date, scadenza: Date) -> [String: Any] {
+        let lette = probabiliLette(adesso: adesso)
+        let minuti = max(0, Int((adesso.timeIntervalSince(lette) / 60).rounded(.down)))
+        let roma = oraItaliana
+        let giorni = roma.dateComponents([.day], from: roma.startOfDay(for: lette), to: roma.startOfDay(for: adesso)).day ?? 0
+        let ora = formatta(lette, "HH:mm")
+        let testo = switch giorni {
+        case ..<1: "Probabili aggiornate alle \(ora)"
+        case 1: "Probabili aggiornate ieri alle \(ora)"
+        default: "Probabili aggiornate il \(roma.component(.day, from: lette))/\(roma.component(.month, from: lette)) alle \(ora)"
+        }
+        // le ore alla scadenza a un decimale, come `_tempi` del server
+        let oreMancanti = (scadenza.timeIntervalSince(adesso) / 360).rounded() / 10
+        let vecchie = oreMancanti > 0 && oreMancanti <= 24 && minuti >= 6 * 60
+        let eta = tempoFa(minuti)
+        var d: [String: Any] = ["aggiornate_il": formatta(lette, "yyyy-MM-dd HH:mm"), "minuti_fa": minuti, "eta": eta, "testo": testo,
+                                "vecchie": vecchie, "avviso": NSNull()]
+        if vecchie {
+            let n = max(1, Int(oreMancanti.rounded(.toNearestOrEven)))
+            d["avviso"] = "Le ho lette \(eta) e la formazione si chiude tra \(n == 1 ? "1 ora" : "\(n) ore"): potrebbero essere cambiate, ricontrolla prima."
+        }
+        return d
+    }
+
+    /// «8 ore fa», «1 minuto fa», come `_eta_testo` di fanta/gestione.py.
+    static func tempoFa(_ minuti: Int) -> String {
+        if minuti < 1 { return "meno di un minuto fa" }
+        if minuti < 60 { return minuti == 1 ? "1 minuto fa" : "\(minuti) minuti fa" }
+        let ore = minuti / 60
+        if ore < 48 { return ore == 1 ? "1 ora fa" : "\(ore) ore fa" }
+        let giorni = ore / 24
+        return giorni == 1 ? "1 giorno fa" : "\(giorni) giorni fa"
     }
 
     // MARK: - «Da fare» come lo scrive il server
@@ -396,6 +455,8 @@ private extension LegaDemo {
         o["iniziata"] = true
         o["inizio"] = formatta(inizio(adesso: adesso, fase: .inCorso), "yyyy-MM-dd HH:mm")
         o["scadenza"] = formatta(scadenza(adesso: adesso, fase: .inCorso), "yyyy-MM-dd HH:mm")
+        // le stesse probabili, ma la formazione è già chiusa: niente avviso (come il server)
+        o["probabili"] = probabili(adesso: adesso, scadenza: scadenza(adesso: adesso, fase: .inCorso))
         o["da_fare"] = [[String: Any]]()
         o["in_corso"] = bloccoInCorso(adesso: adesso)
         return json(o)
@@ -409,12 +470,13 @@ private extension LegaDemo {
          "eccezione": false, "modi": ["aspetta", "senza_voto", "voto_ufficio"], "voto_ufficio": 6, "partite": partite, "miei": miei]
     }
 
-    /// Oggi prima della scadenza con l'ultima partita del turno rinviata a fine mese: il riquadro «Partita rinviata».
+    /// Oggi prima della scadenza con l'ultima partita del turno rinviata a un recupero fra un paio di settimane, alle 20:45
+    /// (`dataRecupero`): il riquadro «Partita rinviata».
     static func oggiRinvio(adesso: Date) -> String {
         var o = oggiDati(adesso: adesso)
         var partite = (o["partite"] as? [[String: Any]]) ?? []
         guard let ultima = incontri.last, !partite.isEmpty else { return json(o) }
-        let recupero = formatta(adesso.addingTimeInterval(20 * 86_400), "yyyy-MM-dd HH:mm")
+        let recupero = formatta(dataRecupero(adesso: adesso, fase: .prima), "yyyy-MM-dd HH:mm")
         partite[partite.count - 1]["data"] = recupero
         partite[partite.count - 1]["stato"] = "rinviata"
         o["partite"] = partite
@@ -445,7 +507,8 @@ private extension LegaDemo {
         o["riepilogo"] = riepilogoFinita()
         if recupero, let ultima = incontri.last {
             // la giornata è finita ma una partita aspetta il recupero: i punti possono ancora cambiare e si può decidere diversamente
-            let partita: [String: Any] = ["casa": ultima.casa, "trasferta": ultima.trasferta, "data": data(adesso.addingTimeInterval(18 * 86_400))]
+            let partita: [String: Any] = ["casa": ultima.casa, "trasferta": ultima.trasferta,
+                                          "data": data(dataRecupero(adesso: adesso, fase: .finita))]
             o["riepilogo"] = (o["riepilogo"] as? [String: Any] ?? [:]).merging(
                 ["nel_diario": false, "consigliata": NSNull(), "recuperi": [partita], "rinvio": sceltaRinvio(giornata: giornata)]) { _, nuovo in nuovo }
         }
@@ -573,9 +636,13 @@ private extension LegaDemo {
 
     static func statoDati(adesso: Date) -> String {
         func quando(_ ore: Double) -> String { formatta(adesso.addingTimeInterval(-ore * 3600), "yyyy-MM-dd'T'HH:mm:ss") }
+        // le probabili lette alla stessa ora che dice Oggi (#390); una fonte non ha risposto e si è usata la sua copia di prima
+        let lette = probabiliLette(adesso: adesso)
+        let lettura = formatta(lette, "yyyy-MM-dd'T'HH:mm:ss")
+        let copia = formatta(lette.addingTimeInterval(-3 * 3600), "HH:mm")
         return json([
             "stagione": "2026-27", "calciatori": 612, "voti": 2431, "coppe_fino": "2026-12-10", "foto": 8,
-            "probabili": [["giornata": giornata, "giocatori": 539, "rilevato": quando(2)]],
+            "probabili": [["giornata": giornata, "giocatori": 539, "rilevato": lettura]],
             "calibrazione": ["giornate": 3, "gruppi": [
                 ["gruppo": "Titolare 90-100%", "n": 142, "osservato": 0.93, "previsto": 0.95, "indicativo": false],
                 ["gruppo": "Titolare 70-89%", "n": 61, "osservato": 0.78, "previsto": 0.8, "indicativo": false],
@@ -584,7 +651,7 @@ private extension LegaDemo {
             "partite": ["totali": 380, "giocate": 100],
             "aggiornamenti": [
                 ["cosa": "listone e quotazioni", "quando": quando(30), "errori": [String]()],
-                ["cosa": "probabili formazioni", "quando": quando(2), "errori": ["Una fonte non ha risposto: usata la copia delle 08:10"]],
+                ["cosa": "probabili formazioni", "quando": lettura, "errori": ["Una fonte non ha risposto: usata la copia delle \(copia)"]],
                 ["cosa": "voti e statistiche", "quando": quando(52), "errori": [String]()],
                 ["cosa": "calendario e coppe europee", "quando": quando(100), "errori": [String]()],
             ],
