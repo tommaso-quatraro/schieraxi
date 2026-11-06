@@ -18,7 +18,9 @@ from .modello import Dati, Parametri
 from .modello import previsioni as _previsioni_modello
 from .regole import Regole
 
-VERSIONE: str = "2"                 # 2: rigori con memoria lunga divisi nella squadra, minuti dalle presenze con voto (Fase B)
+# 2: rigori con memoria lunga divisi nella squadra, minuti dalle presenze con voto (Fase B)
+# 3: forza delle squadre tarata sui soli gol, livello recente del campionato, medie del ruolo pesate (Fase C)
+VERSIONE: str = "3"
 
 # Minuti giocati per presenza, da «entrato» e «uscito» dei voti di Fantacalcio.it (che non dà i minuti), per
 # (subentrato, sostituito). Medie dei minuti veri di Understat sull'archivio di sviluppo (2025-26 e 2026-27, circa 14.400
@@ -58,10 +60,18 @@ def dati(d: Dati) -> Dati:
     return replace(d, prestazioni=pr.join(rig, on=["understat_partita", "squadra"]), partite=pa)
 
 
+# Forza delle squadre dai soli gol (senza xG): tarata il 6/11/2026 con `prove/tara_forza_gol.py` sul 2025-26 dalla 5ª giornata,
+# controllata sul 2026-27 (pull request della Fase C). Più partite fittizie a forza media perché i gol veri sono più rumorosi
+# degli xG; il livello recente (memoria 0,85) segue i gol del campionato, che nel 2026-27 sono il 24% in più.
+FORZA = {"decadimento_squadre": 0.99, "k_squadre": 8.0, "decadimento_base": 0.85}
+
+
 def parametri(par: Parametri | None = None) -> Parametri:
     """I parametri dei nostri: quelli dati (o i predefiniti) senza xG e xA, perché i nostri non li hanno, e con le correzioni
-    tarate sui gol veri (Fase B del piano): rigori con memoria lunga divisi nella squadra, minuti dalle sole presenze con voto."""
-    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, minuti_con_voto=True)
+    tarate sui gol veri: rigori con memoria lunga divisi nella squadra e minuti dalle sole presenze con voto (Fase B del
+    piano), forza delle squadre di `FORZA` con il livello recente del campionato e medie del ruolo pesate (Fase C)."""
+    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, minuti_con_voto=True,
+                   medie_ruolo_pesate=True, **FORZA)
 
 
 def gol_attesi(prev: pd.DataFrame, par: Parametri) -> pd.Series:
