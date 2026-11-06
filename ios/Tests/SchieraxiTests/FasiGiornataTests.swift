@@ -39,7 +39,7 @@ final class FasiGiornataTests: XCTestCase {
         XCTAssertEqual(b.sostituzioni.count, 2)
         XCTAssertEqual(b.sostituzioni.first?.certa, true)
         XCTAssertNil(b.sostituzioni.last?.entra)
-        XCTAssertEqual(o.contoPartite, ContoPartite(inCorso: 1, finite: 1, daGiocare: 8))
+        XCTAssertEqual(b.partite, ContoPartite(inCorso: 1, finite: 1, daGiocare: 8))
         XCTAssertEqual(o.partite?.map { $0.stato ?? "" }, ["finita", "in_corso"])
         XCTAssertNil(o.riepilogoGiornata, "il riepilogo vale solo nella fase finita")
     }
@@ -58,7 +58,7 @@ final class FasiGiornataTests: XCTestCase {
         let o = try oggi(#"{"giornata": 11, "fase": "in_corso", "in_corso": null, "partite": [{"casa": "a", "trasferta": "b", "stato": "in_corso"}, {"casa": "c", "trasferta": "d", "stato": "da_giocare"}]}"#)
         XCTAssertEqual(o.faseGiornata, .inCorso)
         XCTAssertNil(o.giornataInCorso)
-        XCTAssertEqual(o.contoPartite, ContoPartite(inCorso: 1, daGiocare: 1), "senza il blocco il conto viene dalle partite")
+        XCTAssertEqual(o.partite?.count, 2, "senza il blocco le partite del turno restano")
     }
 
     func testGiornataFinita() throws {
@@ -73,9 +73,7 @@ final class FasiGiornataTests: XCTestCase {
         let r = try XCTUnwrap(o.riepilogoGiornata)
         XCTAssertTrue(r.nelDiario)
         XCTAssertEqual(r.consigliata?.puntiFatti, 78)
-        XCTAssertEqual(TestiFase.scarto(fatti: r.puntiFatti, attesi: r.puntiAttesi), "3,3 punti più del previsto")
-        XCTAssertEqual(TestiFase.fascia(r), "Dentro la fascia prevista (tra 63 e 80)")
-        XCTAssertEqual(TestiFase.confronto(r), "Con la consigliata avresti fatto 78,0 punti: 3,5 punti in più.")
+        XCTAssertEqual(TestiFase.confronto(r), "Con la consigliata: 78,0 punti (73,7 attesi).", "come la web (`oggi.con_consigliata`)")
         XCTAssertNil(TestiFase.notaDiario(r))
         let p = try XCTUnwrap(o.prossimaGiornata)
         XCTAssertEqual(p.preparaDa, "2026-11-11 14:30")
@@ -83,35 +81,26 @@ final class FasiGiornataTests: XCTestCase {
     }
 
     func testTestiDelRiepilogo() {
-        XCTAssertEqual(TestiFase.scarto(fatti: 70, attesi: 71), "1 punto meno del previsto")
-        XCTAssertEqual(TestiFase.scarto(fatti: 70, attesi: 70.02), "Proprio come previsto")
-        XCTAssertNil(TestiFase.scarto(fatti: 70, attesi: nil))
         let meglio = RiepilogoGiornata(formazioneDi: "tua", nelDiario: true, puntiFatti: 74.5, consigliata: PuntiConsigliata(puntiFatti: 70, puntiAttesi: nil))
-        XCTAssertEqual(TestiFase.confronto(meglio), "Con la consigliata avresti fatto 70,0 punti: hai fatto meglio tu di 4,5 punti.")
+        XCTAssertEqual(TestiFase.confronto(meglio), "Con la consigliata: 70,0 punti (– attesi).", "come la web: «–» per un numero che manca")
         let consigliata = RiepilogoGiornata(formazioneDi: "consigliata", nelDiario: true, puntiFatti: 74.5, consigliata: PuntiConsigliata(puntiFatti: 74.5, puntiAttesi: nil))
         XCTAssertNil(TestiFase.confronto(consigliata), "con la consigliata schierata il confronto non serve")
         let fuori = RiepilogoGiornata(nelDiario: false, puntiFatti: 50, intervallo: IntervalloPunti(basso: 60, alto: 80))
-        XCTAssertEqual(TestiFase.fascia(fuori), "Fuori dalla fascia prevista (tra 60 e 80)")
-        XCTAssertNotNil(TestiFase.notaDiario(fuori))
+        XCTAssertEqual(TestiFase.notaDiario(fuori), "Il confronto con la consigliata arriva nel Diario.")
     }
 
     func testTestiDellaGiornataInCorso() {
-        XCTAssertEqual(TestiFase.partite(ContoPartite(inCorso: 2, finite: 1, daGiocare: 7)), "2 in corso · 1 finita · 7 da giocare")
-        XCTAssertEqual(TestiFase.partite(ContoPartite(finite: 3, rinviate: 2)), "3 finite · 2 rinviate")
-        XCTAssertNil(TestiFase.partite(ContoPartite()))
-        XCTAssertEqual(TestiFase.partiteVoce(ContoPartite(inCorso: 1, rinviate: 1)), "Partite: 1 in corso, 1 rinviata")
         XCTAssertEqual(TestiFase.fantavoto(7.5), "7,5")
         XCTAssertEqual(TestiFase.fantavoto(6.25), "6,25")
         XCTAssertEqual(TestiFase.fantavoto(10), "10,0")
-        XCTAssertEqual(TestiFase.ancora(0), "Hanno tutti il voto.")
-        XCTAssertEqual(TestiFase.ancora(1), "Manca il voto di 1 giocatore.")
-        XCTAssertEqual(TestiFase.ancora(4), "Mancano i voti di 4 giocatori.")
+        // `ancora_da_giocare` è chi deve ancora giocare (o sta giocando), non i voti che mancano (#436)
+        XCTAssertEqual(TestiFase.ancora(0), "Hanno giocato tutti: mancano solo i voti ufficiali.")
+        XCTAssertEqual(TestiFase.ancora(1), "1 giocatore deve ancora giocare")
+        XCTAssertEqual(TestiFase.ancora(4), "4 giocatori devono ancora giocare")
         XCTAssertNil(TestiFase.ancora(nil))
-        XCTAssertEqual(TestiFase.modificatore(1), "Modificatore della difesa: +1,0, già contato")
-        XCTAssertNil(TestiFase.modificatore(nil))
 
         let daGiocare = GiocatoreInCorso(id: 1, nome: "Ivo", stato: "da_giocare", data: "2026-11-07 18:00")
-        XCTAssertEqual(TestiFase.valore(daGiocare), "Da giocare", "le parole della web app")
+        XCTAssertEqual(TestiFase.valore(daGiocare), Quando.leggibile("2026-11-07 18:00", adesso: Orologio.adesso()), "la data, come la web")
         XCTAssertEqual(TestiFase.valoreVoce(daGiocare), "gioca sabato 7 novembre alle 18:00")
         XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "fatto", fantavoto: 6.5)), "6,5")
         XCTAssertEqual(TestiFase.valoreVoce(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "fatto", fantavoto: 6.5)), "fantavoto 6,5")
@@ -119,26 +108,22 @@ final class FasiGiornataTests: XCTestCase {
         XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "attesa_voti")), "Voto in arrivo")
         XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "rinviata")), "Rinviata")
         XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "senza_voto")), "Senza voto")
-        XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "qualcosa")), "—")
+        XCTAssertEqual(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo", stato: "qualcosa")), "Da giocare", "come la web: uno stato sconosciuto vale «Da giocare»")
 
         let certo = CambioPanchina(esce: PersonaCambio(id: 1, nome: "Bastrani"), entra: PersonaCambio(id: 2, nome: "Dimarzi"), certa: true, motivo: "senza_voto")
-        XCTAssertEqual(TestiFase.cambio(certo), "Esce Bastrani, entra Dimarzi")
-        XCTAssertEqual(TestiFase.etichettaCambio(certo), "Già fatto")
-        XCTAssertEqual(TestiFase.motivo(certo.motivo), "Senza voto")
+        XCTAssertEqual(TestiFase.cambio(certo), "Bastrani → Dimarzi")
+        XCTAssertEqual(TestiFase.etichettaCambio(certo), "già fatto")
         let senza = CambioPanchina(esce: PersonaCambio(id: 3, nome: "Buonvicini"), entra: nil, certa: false, motivo: "fuori")
-        XCTAssertEqual(TestiFase.cambio(senza), "Esce Buonvicini: nessun sostituto in panchina")
-        XCTAssertEqual(TestiFase.etichettaCambio(senza), "Probabile")
-        XCTAssertEqual(TestiFase.motivo("fuori"), "Infortunato o squalificato")
+        XCTAssertEqual(TestiFase.cambio(senza), "Buonvicini → nessun sostituto")
+        XCTAssertEqual(TestiFase.etichettaCambio(senza), "probabile")
     }
 
     func testProssimaGiornata() throws {
         let adesso = try XCTUnwrap(Quando.data("2026-11-09 10:00"))
-        XCTAssertEqual(TestiFase.prossima(ProssimaGiornata(preparaDa: "2026-11-11 14:30"), adesso: adesso),
-                       "Prepara la formazione da mercoledì 11 novembre alle 14:30: di solito le probabili escono allora.")
-        XCTAssertEqual(TestiFase.prossima(ProssimaGiornata(preparaDa: "2026-11-09 10:00"), adesso: adesso), "Puoi già preparare la formazione.")
-        XCTAssertEqual(TestiFase.prossima(ProssimaGiornata(preparaDa: "2026-11-11 14:30", conProbabili: true), adesso: adesso),
-                       "Le probabili formazioni ci sono già: puoi preparare la formazione.")
-        XCTAssertNil(TestiFase.scadenza(ProssimaGiornata()))
+        XCTAssertEqual(TestiFase.prossima(ProssimaGiornata(giornata: 12, giornataLega: 9, scadenza: "2026-11-14 14:30", preparaDa: "2026-11-11 14:30"), adesso: adesso),
+                       "Giornata 9 · 12ª di Serie A: la formazione si chiude sab 14 14:30. Conviene prepararla da mer 11 14:30, quando escono le probabili formazioni.")
+        XCTAssertEqual(TestiFase.prossima(ProssimaGiornata(giornata: 12, giornataLega: 9, scadenza: "2026-11-14 14:30", preparaDa: "2026-11-09 10:00"), adesso: adesso),
+                       "Giornata 9 · 12ª di Serie A: la formazione si chiude sab 14 14:30. Puoi già prepararla.")
     }
 
     /// I dati delle fotografie (`-DEMO_SCHERMATA oggi-in-corso` e `oggi-finita`) hanno la forma giusta.

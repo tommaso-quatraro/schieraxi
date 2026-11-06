@@ -11,7 +11,6 @@ struct OggiView: View {
     @Environment(\.apriImpostazioni) private var apriImpostazioni
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var sessione: SessioneAccount
-    @Environment(\.apriRosaDi) private var apriRosaDi
     @ObservedObject private var immagini = Immagini.condivise
     /// L'ultima versione delle novità che l'utente ha guardato (la scrive la pagina Novità).
     @AppStorage("novitaVista") private var novitaVista = ""
@@ -99,16 +98,21 @@ struct OggiView: View {
         case .senzaGiornata: senzaGiornata(oggi)
         case .conto: testata(oggi)
         case .riepilogo:
-            CartaRiepilogoGiornata(riepilogo: oggi.riepilogoGiornata, rinvioInCorso: vm.rinvioInCorso) { scelta, modo in
+            CartaRiepilogoGiornata(riepilogo: oggi.riepilogoGiornata, prossima: oggi.prossimaGiornata,
+                                   rinvioInCorso: vm.rinvioInCorso) { scelta, modo in
                 await vm.cambiaRinvio(scelta, modo: modo)
             }
             .id("riepilogo")
         case .inCorso:
-            CartaGiornataInCorso(blocco: oggi.giornataInCorso, attesiPrima: oggi.formazione?.punteggioAtteso, partite: oggi.contoPartite)
-        case .chiGioca:
-            if let b = oggi.giornataInCorso, !b.giocatori.isEmpty { CartaChiGioca(blocco: b) }
-        case .cambiPanchina:
-            if let b = oggi.giornataInCorso, !b.sostituzioni.isEmpty { CartaCambiPanchina(cambi: b.sostituzioni) }
+            // come `mostraOggi` della web: chi è entrato a giornata iniziata vede «Questa giornata è già iniziata»; con i dati della
+            // giornata la carta dei punti; senza (non si sa ancora cosa hai schierato) la carta della formazione
+            if oggi.senzaFormazioneInCorso {
+                CartaSenzaFormazione(prossima: oggi.prossimaGiornata)
+            } else if let b = oggi.giornataInCorso {
+                CartaGiornataInCorso(blocco: b, attesiPrima: oggi.formazione?.punteggioAtteso)
+            } else {
+                CartaFormazioneOggi(oggi: oggi)
+            }
         case .formazione: CartaFormazioneOggi(oggi: oggi)
         case .rinvio: partiteRinviate(oggi)
         case .daFare: daFare(oggi)
@@ -175,19 +179,8 @@ struct OggiView: View {
     /// Il riquadro in alto: sfondo vivo, giornata, conto alla rovescia grande e maglia della squadra.
     private func testata(_ oggi: Oggi) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Giornata e, se manca la divisa, l'invito ad aggiungerla sulla stessa riga; se non ci stanno (testo grande,
-            // finestra stretta) l'invito va sotto. Mai accanto al conto alla rovescia: lì diventava una colonna stretta e altissima.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    CapsulaGiornata(nome: oggi.nomeGiornata)
-                    Spacer(minLength: 8)
-                    aggiungiDivisa(oggi)
-                }
-                VStack(alignment: .leading, spacing: 8) {
-                    CapsulaGiornata(nome: oggi.nomeGiornata)
-                    aggiungiDivisa(oggi)
-                }
-            }
+            // Solo la giornata, come la web: niente invito a caricare la maglia (#436).
+            CapsulaGiornata(nome: oggi.nomeGiornata)
             // Conto alla rovescia e maglia sulla stessa riga: il riquadro è più basso e il resto di Oggi sale.
             // Con le misure di accessibilità grandi la maglia va sotto: il testo della fase resta intero.
             rigaTestata {
@@ -206,22 +199,6 @@ struct OggiView: View {
         .environment(\.colorScheme, .dark)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(oggi.nomeGiornata?.voce ?? "Giornata")
-    }
-
-    /// La divisa è LA TUA: se non c'è non si mostra quella di un'altra squadra, si invita ad aggiungerla.
-    @ViewBuilder
-    private func aggiungiDivisa(_ oggi: Oggi) -> some View {
-        if let squadra = oggi.formazione?.squadra, !immagini.haImmagine(squadra, tipo: "maglia"), let apri = apriRosaDi {
-            Button { apri(squadra) } label: {
-                Label("Aggiungi la tua divisa", systemImage: "tshirt").font(.footnote.weight(.semibold))
-                    .padding(.horizontal, 10).padding(.vertical, 6).vetro(in: Capsule())
-                    .fixedSize()
-                    .frame(minHeight: Tema.areaTocco)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Apre la tua squadra per caricare la divisa")
-        }
     }
 
     /// Riga della testata: orizzontale di norma, verticale con le misure di accessibilità (testo molto grande).
@@ -316,49 +293,84 @@ struct OggiView: View {
 
     // MARK: formazione e avvisi
 
-    /// «Da fare»: le cose che aspettano te, una per riga con il suo pulsante (4 righe, poi «Altre N cose»). Solo se ce n'è almeno una.
+    /// «Da fare», come `cardDaFare` della web (#436): il titolo con il numero delle voci, le prime 4 una per riga con il suo
+    /// pulsante, le altre sotto «Altre N cose da fare». Senza voci, in ogni fase, «✓ Tutto a posto, Mister. Nessuna azione utile
+    /// oggi.»; un server vecchio senza il campo non mostra niente.
     @ViewBuilder
     private func daFare(_ oggi: Oggi) -> some View {
         let cose = oggi.cose(funzioni: funzioni, tecniche: sessione.puoAmministrare)
         if !cose.isEmpty {
-            let visibili = tutteLeCose ? cose : Array(cose.prefix(4))
-            Carta("Da fare", simbolo: "checklist") {
-                ForEach(Array(visibili.enumerated()), id: \.element.id) { i, c in
+            let primi = Array(cose.prefix(TestiOggi.daFareVisibili))
+            let altri = Array(cose.dropFirst(TestiOggi.daFareVisibili))
+            Carta {
+                titoloDaFare(cose.count)
+                ForEach(Array(primi.enumerated()), id: \.element.id) { i, c in
                     RigaConFilo(prima: i == 0) { rigaDaFare(c) }
                 }
-                if cose.count > 4 {
-                    Button {
-                        withAnimation(Tema.morbida) { tutteLeCose.toggle() }
+                if !altri.isEmpty {
+                    DisclosureGroup(isExpanded: $tutteLeCose) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(Array(altri.enumerated()), id: \.element.id) { i, c in
+                                RigaConFilo(prima: i == 0) { rigaDaFare(c) }
+                            }
+                        }
+                        .padding(.top, 6)
                     } label: {
-                        Text(tutteLeCose ? "Meno cose" : "Altre \(cose.count - 4) \(cose.count - 4 == 1 ? "cosa" : "cose")")
-                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                        Text(TestiOggi.altreCose(altri.count))
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: Tema.areaTocco, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.verde)
+                    .tint(Color.verde)
                 }
             }
-        } else if oggi.daFare != nil, oggi.conConsigli {   // durante e dopo la giornata la riga vuota non serve
-            Text("Nessuna azione utile oggi")
-                .font(.footnote).foregroundStyle(Color.testoSecondario)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 4)
+        } else if oggi.daFare != nil {
+            Carta {
+                Label {
+                    Text("\(Text(TestiOggi.tuttoAPosto).bold()) \(TestiOggi.nienteDaFare)")
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "checkmark").foregroundStyle(Color.verde).accessibilityHidden(true)
+                }
+            }
+            .accessibilityElement(children: .combine)
         }
+    }
+
+    /// «Da fare» con accanto, in grigio, quante sono le voci (come la web); VoiceOver lo legge come intestazione: «Da fare, 3».
+    private func titoloDaFare(_ n: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checklist")
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Color.verde)
+            Text(TestiOggi.daFare).font(.headline)
+            Text(String(n)).font(.headline).monospacedDigit().foregroundStyle(Color.testoSecondario)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(TestiOggi.daFareVoce(n))
+        .accessibilityAddTraits(.isHeader)
     }
 
     private func rigaDaFare(_ c: DaFareVoce) -> some View {
         // Con il testo molto grande il pulsante va sotto la frase: affiancati, frase e pulsante andavano a capo a metà parola
         // («Ho schiera-to la consi-gliata»).
         let grande = dimensioneTesto.isAccessibilitySize
+        let urgente = c.priorita == TestiOggi.prioritaUrgente
         return HStack(alignment: grande ? .top : .center, spacing: 10) {
             Image(systemName: Self.iconaDaFare(c.tipo))
-                .font(.body).foregroundStyle((c.priorita ?? 3) == 1 ? Color.attenzione : Color.testoSecondario)
+                .font(.body).foregroundStyle(urgente ? Color.attenzione : Color.testoSecondario)
                 .frame(width: latoIcona)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: grande ? 8 : 2) {
-                Text(c.testo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                if let m = c.motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty {
-                    Text(m).font(.caption).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
+                // solo il testo del server, come la web; la voce urgente lo dice anche a parole («Urgente»), non solo con il colore
+                Group {
+                    if urgente {
+                        Text("\(Text(TestiOggi.urgente).bold().foregroundStyle(Color.malus)) \(c.testo)")
+                    } else {
+                        Text(c.testo)
+                    }
                 }
+                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
                 if grande { pulsanteDaFare(c) }
             }
             if !grande {

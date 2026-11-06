@@ -1,174 +1,96 @@
 import SwiftUI
 
-// Le schede di Oggi durante e dopo la giornata (campo `fase` del server). Testi in `TestiFase` (Domain/FasiGiornata.swift).
+// Le carte di Oggi durante e dopo la giornata (campo `fase` del server), come la web (`cardInCorso`, `cardSenzaFormazione` e
+// `cardRiepilogo` di `fanta/web/app.js`, #436). Testi in `TestiFase` (Domain/FasiGiornata.swift).
 // Durante la giornata non si mostrano consigli su chi schierare: solo punti, chi va a punteggio e cambi dalla panchina.
 
-/// Fase `in_corso`: punti fatti finora (grandi), punti previsti a fine giornata, quanti voti mancano, partite.
+/// Fase `in_corso`: una carta sola, senza titolo, come la web. Le cifre (punti fatti finora | a fine giornata, con gli attesi di
+/// prima), quanti devono ancora giocare, chi va a punteggio (con «entrato dalla panchina» e la data di chi deve ancora giocare) e
+/// i cambi dalla panchina con «già fatto» o «probabile».
 struct CartaGiornataInCorso: View {
-    let blocco: GiornataInCorso?
+    let blocco: GiornataInCorso
     /// I punti attesi della formazione prima della giornata (`formazione.punteggio_atteso`).
     let attesiPrima: Double?
-    let partite: ContoPartite?
+    @Environment(\.apriGiocatore) private var apri
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 46
 
+    /// Solo chi va a punteggio, come la web (titolari e chi entra dalla panchina, nell'ordine del server).
+    private var aPunteggio: [GiocatoreInCorso] { blocco.giocatori.filter(\.aPunteggio) }
+    /// La web salta i cambi senza chi esce.
+    private var cambi: [CambioPanchina] { blocco.sostituzioni.filter { $0.esce != nil } }
+
     var body: some View {
-        Carta("Giornata in corso", simbolo: "dot.radiowaves.left.and.right") {
-            if let b = blocco {
-                Text(TestiFase.formazioneDi(b.formazioneDi))
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        fatti(b)
-                        Spacer(minLength: 0)
-                        previsti(b, allineamento: .trailing)
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        fatti(b)
-                        previsti(b, allineamento: .leading)
-                    }
+        Carta {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 12) {
+                    fatti
+                    Spacer(minLength: 0)
+                    previsti(allineamento: .trailing)
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(voce(b))
-                if let a = TestiFase.ancora(b.ancoraDaGiocare) {
-                    Label(a, systemImage: "hourglass").font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    fatti
+                    previsti(allineamento: .leading)
                 }
-                if let m = TestiFase.modificatore(b.modificatore) {
-                    Label(m, systemImage: "shield.lefthalf.filled").font(.subheadline)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                Text("La giornata è in corso. I punti compariranno qui appena si sa quale formazione hai schierato.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(voce)
+            if let a = TestiFase.ancora(blocco.ancoraDaGiocare) {
+                Text(a).font(.footnote).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let c = partite, let testo = TestiFase.partite(c) {
-                Label(testo, systemImage: "soccerball")
-                    .font(.footnote).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityLabel(TestiFase.partiteVoce(c) ?? testo)
+            ForEach(Array(aPunteggio.enumerated()), id: \.element.id) { i, g in
+                RigaConFilo(prima: i == 0) {
+                    // sotto il nome, come la web: «entrato dalla panchina» per chi non era titolare
+                    RigaGiocatoreInCorso(g: g, nota: g.titolare ? nil : TestiFase.dallaPanchina, apri: apri)
+                }
+            }
+            if !cambi.isEmpty {
+                Text(TestiFase.cambiPanchina).titoletto().padding(.top, 6)
+                ForEach(Array(cambi.enumerated()), id: \.offset) { i, c in
+                    RigaConFilo(prima: i == 0) { RigaCambioPanchina(cambio: c) }
+                }
             }
         }
     }
 
-    private func fatti(_ b: GiornataInCorso) -> some View {
+    private var fatti: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text(TestiFase.puntiFinora).font(.caption).foregroundStyle(Color.testoSecondario)
             // Scritto subito giusto, come la web (#416): un numero che sale da 0 resta a metà in una foto o con l'app lenta.
             // Quando arrivano voti nuovi le cifre scorrono (`numerico`).
-            Text(Formato.punti(b.puntiFatti))
+            Text(Formato.punti(blocco.puntiFatti))
                 .monospacedDigit()
-                .numerico(b.puntiFatti ?? 0)
+                .numerico(blocco.puntiFatti ?? 0)
                 .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text("punti fatti finora").font(.caption).foregroundStyle(.secondary)
         }
     }
 
-    @ViewBuilder
-    private func previsti(_ b: GiornataInCorso, allineamento: HorizontalAlignment) -> some View {
-        let testo: TextAlignment = allineamento == .trailing ? .trailing : .leading
+    private func previsti(allineamento: HorizontalAlignment) -> some View {
         VStack(alignment: allineamento, spacing: 1) {
-            if let p = b.puntiPrevisti {
-                Text(Formato.punti(p)).font(.title2.bold()).monospacedDigit()
-                Text("a fine giornata, circa").font(.caption).foregroundStyle(.secondary)
-            }
+            Text(TestiFase.aFineGiornata).font(.caption).foregroundStyle(Color.testoSecondario)
+            Text(TestiFase.previsti(blocco.puntiPrevisti)).font(.title2.bold()).monospacedDigit()
             if let prima = attesiPrima {
-                Text("attesi prima: \(Formato.punti(prima))").font(.caption2).foregroundStyle(.secondary)
+                Text(TestiFase.attesiPrima(prima)).font(.caption2).foregroundStyle(Color.testoSecondario)
             }
         }
-        .multilineTextAlignment(testo)
+        .multilineTextAlignment(allineamento == .trailing ? .trailing : .leading)
     }
 
-    private func voce(_ b: GiornataInCorso) -> String {
-        var frasi = ["Punti fatti finora: \(Formato.punti(b.puntiFatti))"]
-        if let p = b.puntiPrevisti { frasi.append("a fine giornata, circa \(Formato.punti(p))") }
-        if let prima = attesiPrima { frasi.append("attesi prima della giornata: \(Formato.punti(prima))") }
+    private var voce: String {
+        var frasi = ["\(TestiFase.puntiFinora): \(Formato.punti(blocco.puntiFatti))",
+                     "\(TestiFase.aFineGiornata), circa \(Formato.punti(blocco.puntiPrevisti))"]
+        if let prima = attesiPrima { frasi.append(TestiFase.attesiPrima(prima).primaMaiuscola) }
         return frasi.joined(separator: ". ")
     }
 }
 
-/// Fase `in_corso`: i cambi dalla panchina, già fatti o probabili.
-struct CartaCambiPanchina: View {
-    let cambi: [CambioPanchina]
-    @ScaledMetric(relativeTo: .body) private var latoIcona: CGFloat = 26
-
-    var body: some View {
-        Carta("Cambi dalla panchina", simbolo: "arrow.left.arrow.right") {
-            ForEach(Array(cambi.enumerated()), id: \.offset) { i, c in
-                RigaConFilo(prima: i == 0) { riga(c) }
-            }
-        }
-    }
-
-    private func riga(_ c: CambioPanchina) -> some View {
-        let colore: Color = c.certa ? .verde : .attenzione
-        return HStack(alignment: .center, spacing: 10) {
-            Image(systemName: c.certa ? "checkmark.circle.fill" : "clock")
-                .font(.body).foregroundStyle(colore)
-                .frame(width: latoIcona)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(TestiFase.cambio(c)).font(.subheadline.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                if let m = TestiFase.motivo(c.motivo) {
-                    Text(m).font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            Spacer(minLength: 6)
-            Capsula(testo: TestiFase.etichettaCambio(c), colore: colore)
-        }
-        .frame(minHeight: Tema.areaTocco)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel([TestiFase.etichettaCambio(c), TestiFase.cambio(c), TestiFase.motivo(c.motivo)].compactMap { $0 }.joined(separator: ". "))
-    }
-}
-
-/// Fase `in_corso`: chi va a punteggio (titolari, chi entra dalla panchina) con il fantavoto, l'ora o lo stato della partita.
-struct CartaChiGioca: View {
-    let blocco: GiornataInCorso
-    @Environment(\.apriGiocatore) private var apri
-    @State private var panchinaAperta = false
-
-    private var titolari: [GiocatoreInCorso] { blocco.giocatori.filter(\.titolare) }
-    private var entrano: [GiocatoreInCorso] { blocco.giocatori.filter { !$0.titolare && $0.aPunteggio } }
-    private var panchina: [GiocatoreInCorso] { blocco.giocatori.filter { !$0.titolare && !$0.aPunteggio } }
-
-    var body: some View {
-        Carta(blocco.formazioneDi == "tua" ? "La tua formazione" : "La formazione consigliata", simbolo: "person.3") {
-            ForEach(Array(titolari.enumerated()), id: \.element.id) { i, g in
-                RigaConFilo(prima: i == 0) { RigaGiocatoreInCorso(g: g, nota: g.aPunteggio ? nil : "Sostituito", apri: apri) }
-            }
-            if !entrano.isEmpty {
-                Text("Entrano dalla panchina").titoletto().padding(.top, 6)
-                ForEach(Array(entrano.enumerated()), id: \.element.id) { i, g in
-                    RigaConFilo(prima: i == 0) { RigaGiocatoreInCorso(g: g, nota: "Dalla panchina", apri: apri) }
-                }
-            }
-            if !panchina.isEmpty {
-                DisclosureGroup(isExpanded: $panchinaAperta) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(Array(panchina.enumerated()), id: \.element.id) { i, g in
-                            RigaConFilo(prima: i == 0) { RigaGiocatoreInCorso(g: g, nota: nil, apri: apri) }
-                        }
-                    }
-                    .padding(.top, 6)
-                } label: {
-                    Text("Panchina (\(Formato.giocatori(panchina.count)))").font(.subheadline.weight(.semibold))
-                        .frame(minHeight: Tema.areaTocco, alignment: .leading)
-                }
-                .tint(.secondary)
-                .padding(.top, 4)
-            }
-        }
-    }
-}
-
-/// Una riga di chi gioca: ruolo, nome, sigla della squadra («GEN», come la web app) e a destra il fantavoto o lo stato della partita.
-/// Chi non va più a punteggio (sostituito) è più tenue e lo dice anche a parole.
+/// Una riga di chi va a punteggio: ruolo, nome, sigla della squadra («GEN», come la web) e, per chi è entrato dalla panchina,
+/// «entrato dalla panchina»; a destra il fantavoto, la data della partita o lo stato.
 struct RigaGiocatoreInCorso: View {
     let g: GiocatoreInCorso
+    /// La riga sotto il nome e la squadra (per chi è entrato dalla panchina, «entrato dalla panchina»); nil = niente.
     let nota: String?
     let apri: (Int) -> Void
 
@@ -191,16 +113,17 @@ struct RigaGiocatoreInCorso: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(g.nome).font(.headline)
                         .fixedSize(horizontal: false, vertical: true)
-                    let sotto = [squadra, nota].compactMap { $0 }.joined(separator: " · ")
-                    if !sotto.isEmpty {
-                        Text(sotto).font(.caption).foregroundStyle(.secondary)
+                    if let squadra {
+                        Text(squadra).font(.caption).foregroundStyle(Color.testoSecondario)
+                    }
+                    if let nota {
+                        Text(nota).font(.caption).foregroundStyle(Color.testoSecondario)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 6)
                 valore
             }
-            .opacity(g.aPunteggio || !g.titolare ? 1 : 0.6)
             .frame(minHeight: Tema.areaTocco)
             .contentShape(Rectangle())
         }
@@ -226,7 +149,9 @@ struct RigaGiocatoreInCorso: View {
         case "attesa_voti":
             Capsula(testo: TestiFase.valore(g), colore: .secondary)
         default:
-            Text(TestiFase.valore(g)).font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+            // chi deve ancora giocare: la data della partita («sab 8 18:00»), come la web
+            Text(TestiFase.valore(g)).font(.subheadline).monospacedDigit().foregroundStyle(Color.testoSecondario)
+                .multilineTextAlignment(.trailing)
         }
     }
 
@@ -239,9 +164,12 @@ struct RigaGiocatoreInCorso: View {
     }
 }
 
-/// Fase `finita`: com'è andata la giornata appena chiusa (fatti contro attesi, fascia, confronto con la consigliata) e il Diario.
+/// Fase `finita`: la giornata appena chiusa e la prossima, in una carta sola come `cardRiepilogo` della web. Titolo «Giornata 7 ·
+/// 10ª di Serie A: finita», cifre (la tua formazione o la consigliata | punti attesi), confronto con la consigliata, recuperi e menu
+/// del rinvio, nota del Diario, «Apri il Diario», poi «Giornata 8 · 11ª di Serie A: la formazione si chiude …».
 struct CartaRiepilogoGiornata: View {
     let riepilogo: RiepilogoGiornata?
+    let prossima: ProssimaGiornata?
     /// Partite rinviate ancora da recuperare: il menu «per questa giornata» (nil = niente menu, per esempio nelle anteprime).
     var rinvioInCorso = false
     var cambiaRinvio: (@MainActor (SceltaRinvio, String) async -> Void)? = nil
@@ -249,74 +177,75 @@ struct CartaRiepilogoGiornata: View {
     @EnvironmentObject private var nav: Navigazione
     @ScaledMetric(relativeTo: .largeTitle) private var corpoGrande: CGFloat = 46
 
+    private var rigaProssima: String? { prossima.flatMap { TestiFase.prossima($0) } }
+
     var body: some View {
-        Carta("Com'è andata", simbolo: "flag.checkered") {
-            if let r = riepilogo, let fatti = r.puntiFatti {
-                let chi = r.formazioneDi == "tua" ? "con la tua formazione" : "con la formazione consigliata"
-                Text([TestiFase.giornataFinita(serieA: r.giornata, lega: r.giornataLega), chi].compactMap { $0 }.joined(separator: ", ").primaMaiuscola)
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityLabel([TestiFase.giornataFinita(serieA: r.giornata, lega: r.giornataLega, voce: true), chi]
-                        .compactMap { $0 }.joined(separator: ", ").primaMaiuscola)
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        numeroFatti(fatti)
-                        Spacer(minLength: 0)
-                        attesi(r, allineamento: .trailing)
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        numeroFatti(fatti)
-                        attesi(r, allineamento: .leading)
-                    }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(voce(r, fatti: fatti))
-                if let s = TestiFase.scarto(fatti: fatti, attesi: r.puntiAttesi) {
-                    let sopra = fatti >= (r.puntiAttesi ?? fatti)
-                    Label(s, systemImage: sopra ? "arrow.up.right" : "arrow.down.right")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(sopra ? Color.esitoBuono : Color.malus)
-                }
-                if let f = TestiFase.fascia(r) {
-                    Text(f).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-                if let c = TestiFase.confronto(r) {
-                    Label(c, systemImage: "sportscourt").font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                }
-                if let n = TestiFase.notaDiario(r) {
-                    Text(n).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-                if let m = TestiRinvio.recuperoManca(r.recuperi) {
-                    Label(m, systemImage: "calendar.badge.clock")
-                        .font(.subheadline).foregroundStyle(Color.attenzione)
+        // come la web: senza riepilogo né prossima giornata la carta non c'è
+        if riepilogo != nil || rigaProssima != nil {
+            Carta {
+                if let r = riepilogo { giornata(r) }
+                if let riga = rigaProssima {
+                    Text(riga).font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, riepilogo == nil ? 0 : 4)
                 }
-                if let s = r.rinvio, let cambia = cambiaRinvio {
-                    MenuRinvio(scelta: s, inCorso: rinvioInCorso, cambia: cambia)
-                }
-            } else {
-                Text("La giornata è finita. I punti compariranno qui appena escono i voti.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if funzioni.acceso(Funzione.diario) {
-                Button { nav.vai(a: .pagina(.diario)) } label: {
-                    Label("Apri il Diario", systemImage: "book").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-                }
-                .pulsanteVetro()
-                .accessibilityHint("Mostra tutte le giornate giocate, con la formazione consigliata")
             }
         }
     }
 
-    private func numeroFatti(_ fatti: Double) -> some View {
+    @ViewBuilder
+    private func giornata(_ r: RiepilogoGiornata) -> some View {
+        if let titolo = TestiFase.giornataFinita(serieA: r.giornata, lega: r.giornataLega) {
+            Text(titolo).font(.headline)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(TestiFase.giornataFinita(serieA: r.giornata, lega: r.giornataLega, voce: true) ?? titolo)
+                .accessibilityAddTraits(.isHeader)
+        }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                fatti(r)
+                Spacer(minLength: 0)
+                attesi(r, allineamento: .trailing)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                fatti(r)
+                attesi(r, allineamento: .leading)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(voce(r))
+        if let c = TestiFase.confronto(r) {
+            Text(c).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+        }
+        if let m = TestiRinvio.recuperoManca(r.recuperi) {
+            Label(m, systemImage: "calendar.badge.clock")
+                .font(.subheadline).foregroundStyle(Color.attenzione)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if let s = r.rinvio, let cambia = cambiaRinvio {
+            MenuRinvio(scelta: s, inCorso: rinvioInCorso, cambia: cambia)
+        }
+        if let n = TestiFase.notaDiario(r) {
+            Text(n).font(.footnote).foregroundStyle(Color.testoSecondario).fixedSize(horizontal: false, vertical: true)
+        }
+        if funzioni.acceso(Funzione.diario) {
+            Button { nav.vai(a: .pagina(.diario)) } label: {
+                Label(TestiFase.apriDiario, systemImage: "book").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+            }
+            .pulsanteVetro()
+            .accessibilityHint("Mostra tutte le giornate giocate, con la formazione consigliata")
+        }
+    }
+
+    private func fatti(_ r: RiepilogoGiornata) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(Formato.punti(fatti))   // subito giusto, come la web (#416)
+            Text(TestiFase.formazioneDi(r)).font(.caption).foregroundStyle(Color.testoSecondario)
+            Text(Formato.punti(r.puntiFatti))   // subito giusto, come la web (#416)
                 .monospacedDigit()
                 .font(.system(size: corpoGrande, weight: .bold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text("punti fatti").font(.caption).foregroundStyle(.secondary)
+            Text(TestiFase.puntiFatti).font(.caption2).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -324,15 +253,15 @@ struct CartaRiepilogoGiornata: View {
     private func attesi(_ r: RiepilogoGiornata, allineamento: HorizontalAlignment) -> some View {
         if let a = r.puntiAttesi {
             VStack(alignment: allineamento, spacing: 1) {
+                Text(TestiFase.puntiAttesi).font(.caption).foregroundStyle(Color.testoSecondario)
                 Text(Formato.punti(a)).font(.title2.bold()).monospacedDigit()
-                Text("punti attesi").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
 
-    private func voce(_ r: RiepilogoGiornata, fatti: Double) -> String {
-        var frasi = ["Punti fatti: \(Formato.punti(fatti))"]
-        if let a = r.puntiAttesi { frasi.append("punti attesi: \(Formato.punti(a))") }
+    private func voce(_ r: RiepilogoGiornata) -> String {
+        var frasi = ["\(TestiFase.formazioneDi(r)): \(Formato.punti(r.puntiFatti)) \(TestiFase.puntiFatti)"]
+        if let a = r.puntiAttesi { frasi.append("\(Formato.punti(a)) \(TestiFase.puntiAttesi)") }
         return frasi.joined(separator: ", ")
     }
 }
@@ -342,7 +271,7 @@ struct CartaRiepilogoGiornata: View {
 private enum EsempiFase {
     static let inCorso = GiornataInCorso(
         giornata: 11, giornataLega: 8, formazioneDi: "tua", puntiFatti: 39, puntiAttesiRestanti: 38.7, puntiPrevisti: 77.7,
-        ancoraDaGiocare: 6,
+        ancoraDaGiocare: 2,
         giocatori: [
             GiocatoreInCorso(id: 1, nome: "Ivo Sorvani", ruolo: "P", squadra: "inter", stato: "fatto", fantavoto: 5),
             GiocatoreInCorso(id: 2, nome: "Alvise Bastrani", ruolo: "D", squadra: "inter", aPunteggio: false, stato: "senza_voto"),
@@ -361,22 +290,20 @@ private enum EsempiFase {
     static let riepilogo = RiepilogoGiornata(giornata: 11, giornataLega: 8, formazioneDi: "tua", nelDiario: true, puntiFatti: 74.5, puntiAttesi: 71.2,
                                              intervallo: IntervalloPunti(basso: 63.2, alto: 79.7, confidenza: 0.8),
                                              consigliata: PuntiConsigliata(puntiFatti: 78, puntiAttesi: 73.7))
+
+    static let prossima = ProssimaGiornata(giornata: 12, giornataLega: 9, scadenza: "2026-11-14 14:30", preparaDa: "2026-11-11 14:30")
 }
 
 #Preview("Giornata in corso") {
     ScrollView {
-        VStack(spacing: 14) {
-            CartaGiornataInCorso(blocco: EsempiFase.inCorso, attesiPrima: 73.7, partite: EsempiFase.inCorso.partite)
-            CartaCambiPanchina(cambi: EsempiFase.inCorso.sostituzioni)
-            CartaChiGioca(blocco: EsempiFase.inCorso)
-        }
-        .padding()
+        CartaGiornataInCorso(blocco: EsempiFase.inCorso, attesiPrima: 73.7)
+            .padding()
     }
     .background(Color.sfondoBase)
 }
 
 #Preview("Giornata finita") {
-    CartaRiepilogoGiornata(riepilogo: EsempiFase.riepilogo)
+    CartaRiepilogoGiornata(riepilogo: EsempiFase.riepilogo, prossima: EsempiFase.prossima)
         .padding()
         .background(Color.sfondoBase)
         .environmentObject(Navigazione())
