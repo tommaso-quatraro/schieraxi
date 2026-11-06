@@ -21,6 +21,31 @@ struct FormazioneView: View {
     /// Cosa fa ogni stile, a parole (come il server e la web app): vedi `StileFormazione`.
     static func descrizioneStile(_ rischio: Int) -> String { StileFormazione.descrizione(rischio) }
 
+    // MARK: frasi della web (`formazione.*` di `fanta/web/testi.js`; la prova è `FormazioneComeLaWebTests`)
+
+    /// Probabili formazioni non ancora uscite (`formazione.mancano_probabili_formazioni`).
+    static let testoSenzaProbabili = "Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono."
+    /// Sotto «Panchina» (`formazione.quest_ordine_entra`).
+    static let testoPanchina = "Entra il primo che può sostituire chi resta senza voto."
+    /// Davanti alle alternative vicine, solo sul primo titolare che le ha (`formazione.ballottaggio_alternative_vic`).
+    static let testoBallottaggio = "In ballottaggio con"
+    /// ✎ sostituisce un titolare (modifica a mano), ⇄ lo confronta con un altro della rosa: come i due pulsanti della web.
+    static let simboloSostituisci = "pencil"
+    static let simboloConfronta = "arrow.left.arrow.right"
+
+    /// La riga sotto «Titolari» (`formazione.tocca_sostituire` in modifica a mano, altrimenti `formazione.tocca_confronto`).
+    static func istruzioneTitolari(modificabile: Bool) -> String {
+        modificabile ? "Tocca ✎ per sostituire un titolare: i punti attesi si ricalcolano."
+                     : "Tocca ⇄ per confrontarlo con un altro della rosa."
+    }
+
+    /// Dopo il nome dello stile: il modulo che propone (`formazione.propone`) o, se ne hai toccato un altro, che è fissato a mano
+    /// (`formazione.modulo_fissato`). Toccare lo stile riporta al suo modulo (`scegliStile` azzera il modulo scelto).
+    static func fraseStile(proposto: String, attivo: String) -> String {
+        attivo == proposto ? "Propone il \(proposto)."
+                           : "Modulo fissato a mano (lo stile propone il \(proposto)): tocca lo stile per tornare al suo."
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -30,6 +55,7 @@ struct FormazioneView: View {
                         if let f = vm.formazione {
                             bannerSquadra
                             let v = vm.vista(f)
+                            let primoBallottaggio = primoConBallottaggio(f, v)
                             cardStile(f, v).ingresso(0)
                             if !legendaVista {
                                 Carta("Come si legge il campo", simbolo: "info.circle") {
@@ -46,17 +72,26 @@ struct FormazioneView: View {
                             // Un'unica scheda con i quattro reparti in ordine (Portiere, Difensori, Centrocampisti, Attaccanti):
                             // sull'iPad le colonne si leggono così dall'alto in basso senza saltare da una parte all'altra.
                             Carta("Titolari", simbolo: "person.3.fill") {
+                                // come la web: ✎ sostituisce (modifica a mano), ⇄ confronta. A giornata chiusa l'iPhone non ha né
+                                // l'uno né l'altro (sola lettura), quindi niente riga.
+                                if !vm.chiusa {
+                                    Text(Self.istruzioneTitolari(modificabile: vm.manuale != nil))
+                                        .font(.caption).foregroundStyle(Color.testoSecondario)
+                                }
+                                if let nota = vm.notaFermi {
+                                    Text(nota).font(.caption).foregroundStyle(Color.testoSecondario)
+                                }
                                 ForEach(ruoli, id: \.self) { r in
                                     let gruppo = v.titolari.filter { $0.ruolo == r }
                                     if !gruppo.isEmpty {
                                         Text("\(nomiRuolo[r] ?? r) (\(gruppo.count))").titoletto().padding(.top, 4)
-                                        ForEach(gruppo) { g in rigaTitolare(g, f, v) }
+                                        ForEach(gruppo) { g in rigaTitolare(g, f, v, etichettaBallottaggio: g.id == primoBallottaggio) }
                                     }
                                 }
                             }
                             .ingresso(4)
                             Carta("Panchina", simbolo: "chair.lounge.fill") {
-                                Text("In quest'ordine: entra il primo che può sostituire chi resta senza voto.").font(.caption).foregroundStyle(Color.testoSecondario)
+                                Text(Self.testoPanchina).font(.caption).foregroundStyle(Color.testoSecondario)
                                 ForEach(Array(v.panchina.enumerated()), id: \.element.id) { i, g in
                                     RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true, perche: apriPerche) }
                                 }
@@ -192,17 +227,17 @@ struct FormazioneView: View {
 
     // MARK: righe
 
-    /// In modifica a mano ogni titolare è un bottone che apre la scelta del sostituto (tranne chi gioca un anticipo già cominciato:
-    /// `vm.fermi`); altrimenti un tocco apre la scheda, «⇄» confronta con un altro della rosa e sotto i titolari incerti ci sono le
-    /// alternative vicine (ballottaggio).
+    /// In modifica a mano ogni titolare è un bottone con ✎ che apre la scelta del sostituto (tranne chi gioca un anticipo già
+    /// cominciato: `vm.fermi`); altrimenti un tocco apre la scheda, «⇄» confronta con un altro della rosa e sotto i titolari incerti
+    /// ci sono le alternative vicine (ballottaggio). `etichettaBallottaggio`: solo sul primo che le ha si legge «In ballottaggio con».
     @ViewBuilder
-    private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> some View {
+    private func rigaTitolare(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione, etichettaBallottaggio: Bool) -> some View {
         if vm.chiusa {
             // giornata chiusa: sola lettura (un tocco apre la scheda, niente sostituzioni né confronti per cambiare)
             RigaGiocatore(g: g, apribile: true, perche: apriPerche)
         } else if vm.manuale != nil && !vm.fermi.contains(g.id) {
             Button { daSostituire = g } label: {
-                HStack { RigaGiocatore(g: g); Image(systemName: "arrow.left.arrow.right").foregroundStyle(Color.verde).accessibilityHidden(true) }
+                HStack { RigaGiocatore(g: g); Image(systemName: Self.simboloSostituisci).foregroundStyle(Color.verde).accessibilityHidden(true) }
                     .frame(minHeight: 44)
             }
             .buttonStyle(StilePressione())
@@ -212,24 +247,36 @@ struct FormazioneView: View {
                 HStack(spacing: 4) {
                     RigaGiocatore(g: g, apribile: true, perche: apriPerche)
                     Button { vm.confrontoAperto = .scelta(g.id) } label: {
-                        Image(systemName: "arrow.left.arrow.right").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                        Image(systemName: Self.simboloConfronta).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.verde)
                     .accessibilityLabel("Confronta \(g.nome) con un altro della rosa")
                 }
                 // in modifica a mano qui c'è solo chi è fermo (anticipo già cominciato, #373): come la web, ⇄ e niente ballottaggio
-                if vm.manuale == nil { ballottaggio(g, f, v) }
+                if vm.manuale == nil { ballottaggio(g, f, v, conEtichetta: etichettaBallottaggio) }
             }
         }
     }
 
+    /// Il primo titolare, nell'ordine dello schermo (attacco in alto), con alternative vicine: come la web, «In ballottaggio con» si
+    /// legge una volta sola, lì (prima si ripeteva per ogni titolare). Ogni alternativa ha comunque la sua frase per VoiceOver.
+    private func primoConBallottaggio(_ f: Formazione, _ v: VistaFormazione) -> Int? {
+        guard vm.manuale == nil, !vm.chiusa else { return nil }
+        for r in ruoli {
+            if let g = v.titolari.first(where: { $0.ruolo == r && !vm.ballottaggio(per: $0, f, v).isEmpty }) { return g.id }
+        }
+        return nil
+    }
+
     @ViewBuilder
-    private func ballottaggio(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione) -> some View {
+    private func ballottaggio(_ g: Giocatore, _ f: Formazione, _ v: VistaFormazione, conEtichetta: Bool) -> some View {
         let alternative = vm.ballottaggio(per: g, f, v)
         if !alternative.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Ballottaggio · alternative vicine").font(.caption).foregroundStyle(Color.testoSecondario)
+                if conEtichetta {
+                    Text(Self.testoBallottaggio).font(.caption).foregroundStyle(Color.testoSecondario)
+                }
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
                     VStack(alignment: .leading, spacing: 6) { ForEach(alternative) { a in chipAlternativa(a, rispetto: g) } }
@@ -291,7 +338,8 @@ struct FormazioneView: View {
                     .background(Color.attenzione.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .accessibilityElement(children: .combine)
             } else if !vm.chiusa, f.conProbabili == false {
-                Label("Probabili formazioni non ancora uscite: uso le presenze recenti.", systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
+                Label(Self.testoSenzaProbabili, systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             rigaStato(f)
             if vm.chiusa {
@@ -385,14 +433,25 @@ struct FormazioneView: View {
                 .accessibilityAddTraits(attivo ? .isSelected : [])
             }
         }
-        (Text(livello.nome).bold() + Text(" · " + (livello.descrizione ?? Self.descrizioneStile(livello.rischio))
-                                          + (StileFormazione.stellaNonMassimo(livello).map { " " + $0 } ?? "")))
+        // la descrizione dello stile per intero (sulla web si apre con «Come si legge»: differenza ammessa)
+        Text((livello.descrizione ?? Self.descrizioneStile(livello.rischio))
+             + (StileFormazione.stellaNonMassimo(livello).map { " " + $0 } ?? ""))
             .font(.footnote).foregroundStyle(Color.testoSecondario)
             .fixedSize(horizontal: false, vertical: true)
-        HStack {
-            Text("Modulo proposto: \(livello.modulo)").font(.footnote.weight(.semibold))
-            Spacer()
-            modificaAMano(f)
+        // come la web: «**Equilibrata**: Propone il 3-4-3.» o «Modulo fissato a mano (…)». Accanto a «Modifica a mano» se ci sta
+        // in una riga, altrimenti sopra (la frase lunga o il testo grande non schiacciano il pulsante).
+        let frase = Text("\(Text(livello.nome).bold()): \(Self.fraseStile(proposto: livello.modulo, attivo: vm.moduloAttivo(livello)))")
+            .font(.footnote)
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                frase
+                Spacer(minLength: 8)
+                modificaAMano(f)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                frase.fixedSize(horizontal: false, vertical: true)
+                modificaAMano(f)
+            }
         }
         FilaScorrevole {
             ForEach(livello.moduli) { m in
@@ -426,13 +485,10 @@ struct FormazioneView: View {
         .foregroundStyle(Color.verde)
     }
 
+    /// In modifica a mano: calcolo, confronto con la consigliata e pulsanti. Le frasi su ✎ e sui giocatori fermi stanno sotto
+    /// «Titolari», come la web.
     @ViewBuilder
     private var testoManuale: some View {
-        Text("Tocca un titolare per sostituirlo con un altro della rosa: i punti attesi si ricalcolano.")
-            .font(.footnote).foregroundStyle(Color.testoSecondario)
-        if let nota = vm.notaFermi {
-            Text(nota).font(.footnote).foregroundStyle(Color.testoSecondario)
-        }
         if vm.calcoloNonRiuscito {
             Button { Task { await vm.valuta(salva: false) } } label: {
                 Label("Non riesco a calcolare i punti: riprova", systemImage: "arrow.clockwise").font(.footnote.weight(.semibold))
@@ -506,15 +562,25 @@ struct SostituzioneSheet: View {
     let scelto: (Int) -> Void
     @Environment(\.dismiss) private var chiudi
 
+    /// Sotto il titolo, come la web (`formazione.giocatori_dello_stesso`).
+    static let testoStessoRuolo = "Giocatori dello stesso ruolo della tua rosa. Per cambiare ruolo scegli un altro modulo."
+    /// Nessun candidato (`formazione.nessun_altro_giocatore`).
+    static let testoNessunAltro = "Nessun altro giocatore di questo ruolo in rosa."
+
     var body: some View {
         NavigationStack {
             List {
-                Section("Al posto di \(uscente.nome)") {
+                Section {
                     ForEach(candidati) { g in
                         Button { scelto(g.id) } label: { RigaGiocatore(g: g).frame(minHeight: 44) }.buttonStyle(.plain)
                     }
                     if candidati.isEmpty {
-                        VistaVuota(titolo: "Nessun altro giocatore", icona: "person.slash", descrizione: "Non ci sono altri giocatori di questo ruolo in rosa.")
+                        Text(Self.testoNessunAltro).foregroundStyle(Color.testoSecondario)
+                    }
+                } header: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Al posto di \(uscente.nome)")
+                        Text(Self.testoStessoRuolo).font(.footnote).textCase(nil)
                     }
                 }
             }
