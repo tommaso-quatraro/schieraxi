@@ -60,8 +60,8 @@
       "web": "intestazione «… · la tua scelta»; «Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono.»; «Entra il primo che può sostituire chi resta senza voto.»; «In ballottaggio con»; «Propone il 3-4-3.», «Modulo fissato a mano …», «Modificata a mano …»; «Tocca ✎ per sostituire un titolare …» o «Tocca ⇄ per confrontarlo …»; nella sostituzione «Giocatori dello stesso ruolo della tua rosa …» (testi `formazione.*`)",
       "iphone": "con la tua scelta solo la giornata; «Probabili formazioni non ancora uscite: uso le presenze recenti.»; «In quest'ordine: entra il primo …»; «Ballottaggio · alternative vicine»; «Modulo proposto: 3-4-3»; «Tocca un titolare per sostituirlo …», ⇄ anche per sostituire (`FormazioneView.swift`, `TempiLega.didascalia`)",
       "forma": "web",
-      "chi": "fatto con #437 tranne la frase della modifica a mano («Modificata a mano. Tocca un modulo o uno stile …»): issue #463. A giornata chiusa l'iPhone resta in sola lettura, senza ⇄ né «Tocca ⇄». Prova: `FormazioneComeLaWebTests` (frasi confrontate con `testi.js`)",
-      "stato": "da-fare"
+      "chi": "fatto con #437 e #463 (PR #475): in modifica a mano stili e moduli restano (nessuno acceso) con «Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata.»; un tocco torna alla loro proposta senza cancellare la scelta salvata; Salva, Annulla e Torna nella riga dello stato come `rigaStatoScelta`. A giornata chiusa l'iPhone resta in sola lettura. Prova: `FormazioneComeLaWebTests`, `ModificaAManoModuliTests`",
+      "stato": "fatto"
     }
   ]
 }
