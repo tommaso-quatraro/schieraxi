@@ -135,8 +135,8 @@ struct GolAttesiNostriTests {
     @Test("Senza giornate misurate: la spiegazione con la versione")
     func nessuna() throws {
         let n = try nostri("{\"versione\":\"3\",\"finestra\":8,\"giornate\":0,\"verdetto\":false,\"per_giornata\":[]}")
-        #expect(ParoleNostri.sottotitolo(n) == "Ancora nessuna giornata misurata con la versione 3 del calcolo: i numeri arrivano il "
-                + "giorno dopo la fine della prima giornata salvata.")
+        #expect(ParoleNostri.sottotitolo(n) == "Ancora nessuna giornata misurata: i numeri arrivano il giorno dopo la fine della prima giornata salvata.")
+        #expect(!ParoleNostri.sottotitolo(n).contains("versione"))
     }
 
     @Test("Numeri che mancano: «–», mai «nan»")
@@ -186,7 +186,7 @@ struct GolAttesiNostriTests {
         #expect(try riempi(web.italiano("sd.nos_punti_riga"), ["v": "−0,10", "s": "−0,3"]) == ParoleNostri.dettaglio(.punti, di: n))
         #expect(try riempi(web.italiano("sd.nos_gol_riga"), ["v": "0,050", "s": "0,030", "g": "0,94", "m": "0,98"])
                 == ParoleNostri.dettaglio(.gol, di: n))
-        #expect(try riempi(web.italiano("sd.nos_nessuna"), ["v": "3"]) == ParoleNostri.nessuna(versione: "3"))
+        #expect(try web.italiano("sd.nos_nessuna") == ParoleNostri.nessuna)
         let g = try #require(n.perGiornata)
         #expect(try riempi(web.italiano("sd.reg_giornata"), ["s": "2026-27", "g": TempiLega.serieA(11)]) == ParoleNostri.giornata(g[0]))
         let misurata = try riempi(web.italiano("sd.nos_g_misurata"), ["e": "+0,6%", "p": "−0,10", "g": "0,94"])

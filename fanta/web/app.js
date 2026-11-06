@@ -2579,7 +2579,7 @@ function cartaNostri(n) {
   }).join("");
   return `<div class="carta" id="gol-attesi-nostri"><h2>${t("sd.nos_titolo")}</h2>
     <div class="debole piccolo">${t("sd.nos_spiega")}</div>
-    <div class="debole piccolo" style="margin:4px 0 8px">${k ? tp("sd.nos_media", k, { v }) : t("sd.nos_nessuna", { v })}</div>
+    <div class="debole piccolo" style="margin:4px 0 8px">${k ? tp("sd.nos_media", k, { v }) : t("sd.nos_nessuna")}</div>
     ${misure}
     ${righe ? `<details><summary class="debole piccolo">${t("sd.nos_per_giornata")}</summary>${righe}</details>` : ""}</div>`;
 }

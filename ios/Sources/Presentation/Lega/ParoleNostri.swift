@@ -26,16 +26,14 @@ enum ParoleNostri {
             : "Media delle ultime \(n) giornate misurate, versione \(v) del calcolo."
     }
 
-    static func nessuna(versione v: String) -> String {
-        "Ancora nessuna giornata misurata con la versione \(v) del calcolo: i numeri arrivano il giorno dopo la fine della prima "
-            + "giornata salvata."
-    }
+    /// Come la carta del registro: la versione del calcolo non si scrive (filtra soltanto le giornate che contano).
+    static let nessuna = "Ancora nessuna giornata misurata: i numeri arrivano il giorno dopo la fine della prima giornata salvata."
 
     /// La riga sotto il titolo: su quante giornate (della versione di oggi) è la media, o che non ce n'è ancora nessuna misurata.
     static func sottotitolo(_ n: StatoDati.RegistroNostri) -> String {
         let k = n.giornate ?? 0
         let v = n.versione ?? "–"
-        return k > 0 ? media(giornate: k, versione: v) : nessuna(versione: v)
+        return k > 0 ? media(giornate: k, versione: v) : nessuna
     }
 
     static func nome(_ misura: Misura) -> String {

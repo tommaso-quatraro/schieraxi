@@ -189,8 +189,8 @@ def test_plurali(tmp_path, misurate, riga, stato):
 def test_senza_giornate_misurate_solo_la_spiegazione(tmp_path):
     pezzi = _testi(_carta(_riepilogo(tmp_path, 0)))
     assert pezzi[0] == "Gol attesi nostri (senza Understat)"
-    assert ("Ancora nessuna giornata misurata con la versione 3 del calcolo: i numeri arrivano il giorno dopo la fine della prima "
-            "giornata salvata.") in pezzi
+    assert "Ancora nessuna giornata misurata: i numeri arrivano il giorno dopo la fine della prima giornata salvata." in pezzi
+    assert "versione" not in " ".join(pezzi)                         # un dettaglio interno: non si scrive
     assert INSIEME not in pezzi and ERRORE not in pezzi and "Giornata per giornata" not in pezzi and "–" not in " ".join(pezzi)
     pezzi = _testi(_carta(_riepilogo(tmp_path, 0, salvata=SALVATA)))                  # la prima giornata salvata, da misurare
     assert INSIEME not in pezzi and "Giornata per giornata" in pezzi
