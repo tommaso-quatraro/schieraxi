@@ -50,7 +50,7 @@ struct ScambiView: View {
             .navigationTitle("Scambi")
             .ricercaGlobale()
             .navigationDestination(for: PaginaScambi.self) { _ in
-                AnalizzaScambioView(server: vm.server).navigationTitle("Analizza").navigationBarTitleDisplayMode(.inline).ricercaGlobale()
+                AnalizzaScambioView(server: vm.server).navigationTitle(TestiScambi.costruisciTitolo).navigationBarTitleDisplayMode(.inline).ricercaGlobale()
             }
             .task { await vm.caricaSquadre() }
             .task { if funzioni.acceso(Funzione.scambiTrova) { await vm.caricaLimite() } }
@@ -76,8 +76,9 @@ struct ScambiView: View {
     private var soloLaMiaRosa: some View {
         ScrollView {
             VStack(spacing: 16) {
-                VistaVuota(titolo: "Servono le rose degli altri", icona: "arrow.left.arrow.right",
-                           descrizione: "Per trovare e valutare scambi servono le rose delle altre squadre della lega. Formazione e consigli funzionano già con la tua.")
+                // la frase della web (`scambio.servono_altre`) divisa in titolo e descrizione
+                VistaVuota(titolo: TestiScambi.servonoAltreRoseTitolo, icona: "arrow.left.arrow.right",
+                           descrizione: TestiScambi.servonoAltreRoseCorpo)
                 Button { apriImportazione() } label: {
                     Label("Aggiorna le rose", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
@@ -95,13 +96,13 @@ struct ScambiView: View {
 
     /// Un solo posto per gli scambi: trovare quelli giusti, costruirne uno, valutare un'offerta ricevuta.
     private var selettoreModo: some View {
-        Picker("Cosa vuoi fare", selection: Binding(get: { modoAttivo }, set: { vm.modo = $0 }).animation(Tema.morbida)) {
+        Picker(TestiScambi.cosaVuoiFare, selection: Binding(get: { modoAttivo }, set: { vm.modo = $0 }).animation(Tema.morbida)) {
             ForEach(modi) { Text($0.rawValue).tag($0) }
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 16)
         .sensoryFeedback(.selection, trigger: vm.modo)
-        .accessibilityLabel("Cosa vuoi fare")
+        .accessibilityLabel(TestiScambi.cosaVuoiFare)
     }
 
     private func scorrevole<C: View>(@ViewBuilder _ contenuto: () -> C) -> some View {
@@ -121,7 +122,7 @@ struct ScambiView: View {
                 if let d = vm.proposte.dato {
                     squadrePropense.ingresso(2)
                     if d.proposte.isEmpty {
-                        VistaVuota(titolo: "Nessuno scambio per ora", icona: "arrow.left.arrow.right", descrizione: "Per ora non c'è niente che convenga a tutti e due.")
+                        VistaVuota(titolo: TestiScambi.nessunoScambio, icona: "arrow.left.arrow.right")
                     }
                     ForEach(Array(d.proposte.enumerated()), id: \.element.id) { i, p in
                         Button { vm.giudizioSelezionata = nil; vm.selezionata = p } label: { carta(p) }
@@ -133,7 +134,7 @@ struct ScambiView: View {
                 } else if let e = vm.proposte.errore {
                     ErroreVista(messaggio: e) { Task { await vm.caricaProposte(forza: true) } }
                 } else {
-                    Scheletro(schede: 3, righe: 2, testo: "Guardo gli scambi…")
+                    Scheletro(schede: 3, righe: 2, testo: TestiScambi.cercoGliScambi)
                 }
                 archivio
             }
@@ -149,47 +150,45 @@ struct ScambiView: View {
     // MARK: filtro e offerta ricevuta
 
     private var filtro: some View {
-        Carta {
+        Carta(TestiScambi.trovaPerMe, simbolo: "arrow.left.arrow.right") {
+            Text(TestiScambi.scambiCuiGuadagnate).font(.footnote).foregroundStyle(Color.testoSecondario)
             FilaAdattiva {
-                Label("Con chi", systemImage: "person.2").font(.subheadline)
+                Label(TestiScambi.conQualeSquadra, systemImage: "person.2").font(.subheadline)
                 Spacer(minLength: 8)
                 // Un menu con un'etichetta sua: l'etichetta di un Picker a menu non cresce in altezza e con il testo grandissimo
                 // «Tutte le squadre» andava sopra le righe sotto (foto del collaudo su iPhone SE).
                 Menu {
-                    Picker("Con chi", selection: $vm.con) {
-                        Text("Tutte le squadre").tag("Tutte")
+                    Picker(TestiScambi.conQualeSquadra, selection: $vm.con) {
+                        Text(TestiScambi.tutteLeSquadre).tag("Tutte")
                         ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(vm.con == "Tutte" ? "Tutte le squadre" : vm.con).multilineTextAlignment(.leading)
+                        Text(vm.con == "Tutte" ? TestiScambi.tutteLeSquadre : vm.con).multilineTextAlignment(.leading)
                         Image(systemName: "chevron.up.chevron.down").font(.caption).accessibilityHidden(true)
                     }
                     .foregroundStyle(Color.verde)
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Con chi")
-                .accessibilityValue(vm.con == "Tutte" ? "Tutte le squadre" : vm.con)
+                .accessibilityLabel(TestiScambi.conQualeSquadra)
+                .accessibilityValue(vm.con == "Tutte" ? TestiScambi.tutteLeSquadre : vm.con)
             }
             .frame(minHeight: 44)
-            Picker("Dimensione", selection: $vm.fino) {
-                Text("1 contro 1").tag(1)
-                Text("fino a 2").tag(2)
-                Text("fino a 3").tag(3)
-                Text("fino a 4").tag(4)
+            Text(TestiScambi.quantiGiocatoriPerParte).font(.subheadline).accessibilityHidden(true)
+            Picker(TestiScambi.quantiGiocatoriPerParte, selection: $vm.fino) {
+                Text(TestiScambi.unoControUno).tag(1)
+                Text(TestiScambi.finoA2).tag(2)
+                Text(TestiScambi.finoA3).tag(3)
+                Text(TestiScambi.finoA4).tag(4)
             }
             .pickerStyle(.segmented)
             .disabled(vm.con == "Tutte")
             .onChange(of: vm.con) { _, nuova in if nuova == "Tutte" { vm.fino = 1 } }
-            .accessibilityLabel("Quanti giocatori per lato")
-            if vm.con == "Tutte" {
-                Text("Per gli scambi più grandi (2, 3 o 4 per lato) scegli una squadra. Più giocatori = ricerca più lenta.").font(.caption).foregroundStyle(Color.testoSecondario)
-            } else if vm.fino >= 2 {
-                Text("Più giocatori per lato = ricerca più lenta (può volerci qualche secondo).").font(.caption).foregroundStyle(Color.testoSecondario)
-            }
+            .accessibilityLabel(TestiScambi.quantiGiocatoriPerParte)
+            Text(TestiScambi.perGliScambi).font(.caption).foregroundStyle(Color.testoSecondario)
             Button { Task { await vm.caricaProposte() } } label: {
-                Label(vm.proposte.inCorso ? "Cerco…" : "Cerca scambi", systemImage: "magnifyingglass")
+                Label(vm.proposte.inCorso ? TestiScambi.cercoGliScambi : TestiScambi.cercaScambi, systemImage: "magnifyingglass")
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .pulsanteVetro(prominente: true)
@@ -202,8 +201,8 @@ struct ScambiView: View {
     }
 
     private var offerta: some View {
-        Carta("Ho ricevuto un'offerta", simbolo: "envelope.open") {
-            Text("Incolla il messaggio (basta che ci siano i cognomi): trovo chi dai e chi ricevi e ti dico se conviene.")
+        Carta(TestiScambi.valutaOfferta, simbolo: "envelope.open") {
+            Text(TestiScambi.incollaMessaggio)
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
             TextEditor(text: $vm.testoOfferta)
                 .scrollContentBackground(.hidden)
@@ -216,28 +215,42 @@ struct ScambiView: View {
                             .allowsHitTesting(false).accessibilityHidden(true)
                     }
                 }
-                .accessibilityLabel("Messaggio dell'offerta")
+                .accessibilityLabel(TestiScambi.messaggioOfferta)
             Button { Task { await vm.valutaOfferta() } } label: {
-                if vm.offertaInCorso { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
-                else { Text("Valuta l'offerta").frame(maxWidth: .infinity, minHeight: 44) }
+                if vm.offertaInCorso { ProgressView().accessibilityLabel(TestiScambi.leggoMessaggio).frame(maxWidth: .infinity, minHeight: 44) }
+                else { Text(TestiScambi.valutaOffertaPulsante).frame(maxWidth: .infinity, minHeight: 44) }
             }
             .pulsanteVetro(prominente: true)
             .disabled(vm.offertaInCorso)
             .sensoryFeedback(trigger: vm.esitoOfferta?.analisi?.id) { _, nuovo in nuovo != nil ? .success : nil }
-            if let e = vm.erroreOfferta { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
+            if let e = vm.erroreOfferta {
+                Text(e).font(.footnote).foregroundStyle(Color.attenzione)
+                scegliAMano
+            }
             if let o = vm.esitoOfferta { esitoOfferta(o) }
+        }
+    }
+
+    /// Il pulsante della web che porta in «Costruisci» (`scambio.scegli_mano_costruisci`): solo se quel modo c'è.
+    @ViewBuilder
+    private var scegliAMano: some View {
+        if modi.contains(.costruisci) {
+            Button { vm.modo = .costruisci } label: {
+                Text(TestiScambi.scegliAMano).frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .pulsanteVetro()
         }
     }
 
     @ViewBuilder
     private func esitoOfferta(_ o: OffertaRiconosciuta) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let con = o.con { riga("Con", [con]) }
-            riga("Dai", o.`do`)
-            riga("Ricevi", o.ricevo)
+            if let con = o.con { riga(TestiScambi.rigaCon, [con]) }
+            riga(TestiScambi.dai, o.`do`)
+            riga(TestiScambi.ricevi, o.ricevo)
         }
         if let ambigui = o.ambigui, !ambigui.isEmpty {
-            Label("Più giocatori con lo stesso cognome: \(ambigui.joined(separator: "; ")). Usa «Costruisci» per sceglierli.", systemImage: "exclamationmark.triangle")
+            Label(TestiScambi.ambigui(ambigui), systemImage: "exclamationmark.triangle")
                 .font(.footnote).foregroundStyle(Color.attenzione)
         }
         if let analisi = o.analisi {
@@ -245,10 +258,11 @@ struct ScambiView: View {
             Button {
                 vm.giudizioSelezionata = ScambiLogica.giudizioOfferta(analisi)
                 vm.selezionata = analisi
-            } label: { Label("Vedi il dettaglio", systemImage: "chart.bar").frame(minHeight: 44) }
+            } label: { Label(TestiScambi.vediGiudizioCompleto, systemImage: "chart.bar").frame(minHeight: 44) }
         } else {
-            Label("Non ho trovato giocatori di tutte e due le squadre nel messaggio: controlla i cognomi, oppure usa «Costruisci».", systemImage: "questionmark.circle")
+            Label(TestiScambi.nonTrovatoGiocatori, systemImage: "questionmark.circle")
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
+            scegliAMano
         }
     }
 
@@ -266,14 +280,14 @@ struct ScambiView: View {
     private var squadrePropense: some View {
         let elenco = vm.propense
         if !elenco.isEmpty {
-            Carta("Chi accetta più volentieri", simbolo: "person.2.fill") {
-                Text("Le squadre che guadagnano di più dagli scambi qui sotto, e il reparto che ne beneficia di più.").font(.footnote).foregroundStyle(Color.testoSecondario)
+            Carta(TestiScambi.chiAccettaPiu, simbolo: "person.2.fill") {
+                Text(TestiScambi.squadreCheGuadagnano).font(.footnote).foregroundStyle(Color.testoSecondario)
                 ForEach(elenco) { x in
                     HStack(alignment: .firstTextBaseline) {
                         StemmaSquadra(nome: x.nome, dimensione: 28, nascondiSeMancante: true)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(x.nome).font(.subheadline.bold())
-                            Text("\(x.scambi) \(x.scambi == 1 ? "scambio" : "scambi")\(dettaglioReparto(x))").font(.caption).foregroundStyle(Color.testoSecondario)
+                            Text("\(TestiScambi.nScambi(x.scambi))\(dettaglioReparto(x))").font(.caption).foregroundStyle(Color.testoSecondario)
                         }
                         Spacer()
                         Text(Formato.conSegno(x.media)).font(.headline).monospacedDigit().foregroundStyle(Color.verde)
@@ -286,7 +300,7 @@ struct ScambiView: View {
 
     private func dettaglioReparto(_ x: ScambiLogica.SquadraPropensa) -> String {
         guard let r = x.reparto, let m = x.miglioramento, m > 0 else { return "" }
-        return " · migliora i \(nomeRuoloPlurale(r)) di \(Formato.conSegno(m))%"
+        return " · " + TestiScambi.migliora(reparto: nomeRuoloPlurale(r), p: Formato.conSegno(m))
     }
 
     private func nomeRuoloPlurale(_ r: String) -> String {
@@ -297,7 +311,7 @@ struct ScambiView: View {
         Carta {
             HStack(spacing: 8) {
                 StemmaSquadra(nome: p.altra, dimensione: 26, nascondiSeMancante: true)
-                Text("con \(p.altra)").font(.caption).foregroundStyle(Color.testoSecondario)
+                Text(TestiScambi.conSquadra(p.altra, dai: p.`do`.count, ricevi: p.ricevo.count)).font(.caption).foregroundStyle(Color.testoSecondario)
             }
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -311,7 +325,7 @@ struct ScambiView: View {
                     guadagno("loro", p.guadagnoLoro)
                 }
             }
-            Button { vm.copiaBozza(p) } label: { Label("Copia la bozza del messaggio", systemImage: "doc.on.doc").font(.subheadline).frame(maxWidth: .infinity, minHeight: 44) }
+            Button { vm.copiaBozza(p) } label: { Label(TestiScambi.copiaBozza, systemImage: "doc.on.doc").font(.subheadline).frame(maxWidth: .infinity, minHeight: 44) }
                 .pulsanteVetro()
         }
     }
@@ -330,9 +344,9 @@ struct ScambiView: View {
     private var archivio: some View {
         if !vm.archivio.isEmpty {
             Carta {
-                DisclosureGroup("Archivio (\(vm.archivio.count))") {
+                DisclosureGroup(TestiScambi.archivio(vm.archivio.count)) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Gli ultimi scambi che hai analizzato.").font(.caption).foregroundStyle(Color.testoSecondario)
+                        Text(TestiScambi.ultimiScambi).font(.caption).foregroundStyle(Color.testoSecondario)
                         ForEach(vm.archivio) { v in
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -365,10 +379,10 @@ struct DettaglioScambio: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Carta("Dai") { ForEach(p.`do`) { g in elenco(g) } }
-            Carta("Ricevi") { ForEach(p.ricevo) { g in elenco(g) } }
-            Carta("Punti attesi") {
-                riga("Tu", p.guadagnoMio)
+            Carta(TestiScambi.dai) { ForEach(p.`do`) { g in elenco(g) } }
+            Carta(TestiScambi.ricevi) { ForEach(p.ricevo) { g in elenco(g) } }
+            Carta(TestiScambi.inStagione) {
+                riga(TestiScambi.tu, p.guadagnoMio)
                 riga("\(p.altra)", p.guadagnoLoro)
                 if let q = p.quotazioneDo, let r = p.quotazioneRicevo {
                     Text("Quotazioni: \(Formato.intero(q)) → \(Formato.intero(r))").font(.caption).foregroundStyle(Color.testoSecondario)
@@ -397,24 +411,26 @@ struct DettaglioScambio: View {
     @ViewBuilder
     private var validita: some View {
         if p.completo == true {
-            Carta("Rose dopo lo scambio") {
+            Carta(TestiScambi.roseDopo) {
                 if p.valido == false {
-                    Label("Scambio non valido", systemImage: "xmark.octagon.fill").font(.headline).foregroundStyle(Color.attenzione)
+                    Label(TestiScambi.cosiNonSiPuoFare, systemImage: "xmark.octagon.fill").font(.headline).foregroundStyle(Color.attenzione)
                 } else {
                     Label("Le rose restano valide", systemImage: "checkmark.seal.fill").font(.subheadline).foregroundStyle(Color.verde)
                 }
                 ForEach(p.problemi ?? [], id: \.self) { Text($0).font(.footnote).foregroundStyle(Color.attenzione) }
                 if let v = p.valoreRosa?.mio, let variazione = v.variazione {
-                    HStack {
-                        Text("Tua formazione migliore")
-                        Spacer()
-                        Text("\(Formato.punti(v.prima)) → \(Formato.punti(v.dopo)) (\(Formato.conSegno(variazione)))").monospacedDigit().font(.subheadline)
+                    // la frase della web è lunga («… (prossime 3 giornate)»): va a capo lei, i numeri restano interi
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(TestiScambi.formazioneMigliore(giornate: p.giornate?.count ?? 0))
+                        Spacer(minLength: 8)
+                        Text("\(Formato.punti(v.prima)) → \(Formato.punti(v.dopo)) (\(Formato.conSegno(variazione)))")
+                            .monospacedDigit().font(.subheadline).multilineTextAlignment(.trailing).layoutPriority(1)
                     }
                     .accessibilityElement(children: .combine)
                 }
                 if let v = p.panchina?.mio, let variazione = v.variazione, abs(variazione) >= 0.05 {
                     HStack {
-                        Text("Tua panchina").font(.footnote)
+                        Text(TestiScambi.panchina).font(.footnote)
                         Spacer()
                         Text(Formato.conSegno(variazione)).font(.footnote).monospacedDigit()
                     }
@@ -432,7 +448,7 @@ struct DettaglioScambio: View {
     @ViewBuilder
     private var crediti: some View {
         if let c = p.conguaglio, let n = c.crediti, n != 0 {
-            Carta("Conguaglio in crediti") {
+            Carta(TestiScambi.crediti) {
                 Text(n > 0 ? "Ricevi \(Formato.crediti(n)) da \(p.altra)." : "Paghi \(Formato.crediti(-n)) a \(p.altra).").font(.subheadline)
                 if let d = c.dopo?.mio, let r = c.residui?.mio {
                     Text("I tuoi crediti: \(Formato.intero(r)) → \(Formato.intero(d))").font(.footnote).foregroundStyle(Color.testoSecondario)
@@ -465,8 +481,8 @@ struct DettaglioScambio: View {
     @ViewBuilder
     private var impatto: some View {
         if let mio = p.reparti?.mio, !mio.isEmpty {
-            Carta("Impatto sulla tua rosa") {
-                Text("Conta anche il resto della squadra: se il reparto è già forte, un nuovo arrivato fa meno differenza.").font(.footnote).foregroundStyle(Color.testoSecondario)
+            Carta(TestiScambi.impatto) {
+                Text(TestiScambi.contaAncheResto).font(.footnote).foregroundStyle(Color.testoSecondario)
                 ForEach(["P", "D", "C", "A"], id: \.self) { r in
                     let x = mio[r] ?? 0
                     HStack {
@@ -480,7 +496,7 @@ struct DettaglioScambio: View {
                 }
                 if let tot = p.percentualeMio {
                     HStack {
-                        Text("In totale (prossime \(p.giornate?.count ?? 0) giornate)")
+                        Text(TestiScambi.inTotale(giornate: p.giornate?.count ?? 0))
                         Spacer()
                         Text("\(Formato.conSegno(tot))%").bold().monospacedDigit()
                             .foregroundStyle(tot > 0.05 ? Color.verde : tot < -0.05 ? Color.malus : .primary)
@@ -521,44 +537,63 @@ struct AnalizzaScambioView: View {
         ZStack {
             Sfondo()
             List {
-                Section(titolo: "Con") {
-                    Picker("Squadra", selection: $vm.altra) {
+                Section {
+                    Text(TestiScambi.costruisciSpiega).font(.footnote).foregroundStyle(Color.testoSecondario)
+                    Picker(TestiScambi.scambioCon, selection: $vm.altra) {
                         Text("Scegli…").tag("")
                         ForEach(vm.altre) { Text($0.nome).tag($0.nome) }
                     }
+                } header: {
+                    // dentro Scambi la pagina non ha una barra col titolo: il titolo del riquadro della web sta qui
+                    if incorporata {
+                        Text(TestiScambi.costruisciTitolo).font(.headline).foregroundStyle(.primary).textCase(nil)
+                            .accessibilityAddTraits(.isHeader)
+                    }
                 }
                 if let mia = vm.miaRosa.dato {
-                    Section(titolo: "Tu dai") { elenco(mia.giocatori, scelti: $vm.doIds) }
+                    Section { elenco(mia.giocatori, scelti: $vm.doIds) } header: { testataParte(TestiScambi.dai, scelti: vm.doIds.count) }
                 }
                 if let loro = vm.loro {
-                    Section(titolo: "Tu ricevi") { elenco(loro.giocatori, scelti: $vm.ricevoIds) }
+                    Section { elenco(loro.giocatori, scelti: $vm.ricevoIds) } header: { testataParte(TestiScambi.ricevi, scelti: vm.ricevoIds.count) }
                 }
                 Section {
+                    Picker(TestiScambi.conguaglio, selection: $vm.verso) {
+                        ForEach(VersoConguaglio.allCases) { Text($0.nome).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityLabel(TestiScambi.conguaglio)
                     HStack {
-                        Text("Conguaglio in crediti")
+                        Text(TestiScambi.creditiQuanti)
                         Spacer()
                         TextField("0", text: $vm.conguaglio)
-                            .keyboardType(.numbersAndPunctuation)
+                            .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .frame(minWidth: 70, maxWidth: 110, minHeight: 44)
-                            .accessibilityLabel("Conguaglio in crediti")
+                            .accessibilityLabel(TestiScambi.creditiQuanti)
+                    }
+                    // solo cifre, come il campo numerico della web: «Ricevo» e «Pago» dicono il segno (anche se si incolla un meno)
+                    .onChange(of: vm.conguaglio) { _, nuovo in
+                        let soloCifre = nuovo.filter { ("0"..."9").contains($0) }
+                        if soloCifre != nuovo { vm.conguaglio = soloCifre }
                     }
                     if !vm.conguaglioValido {
-                        Label("Scrivi un numero intero di crediti.", systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(Color.attenzione)
+                        Label(TestiScambi.conguaglioNumero, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(Color.attenzione)
                     }
                 } header: {
-                    Text("Conguaglio").foregroundStyle(Color.testoSecondario)
+                    Text(TestiScambi.conguaglio).foregroundStyle(Color.testoSecondario)
                 } footer: {
-                    Text("Positivo: li ricevi tu (li paga \(vm.altra.isEmpty ? "l'altra squadra" : vm.altra)). Negativo: li paghi tu. Lascia vuoto se non ci sono crediti nello scambio.").foregroundStyle(Color.testoSecondario)
+                    Text(TestiScambi.conguaglioAiuto).foregroundStyle(Color.testoSecondario)
                 }
                 Section {
-                    Text("Dai \(vm.doIds.count) · ricevi \(vm.ricevoIds.count) (da 1 a \(AnalizzaScambioViewModel.massimoPerLato) per lato)")
-                        .font(.footnote).foregroundStyle(Color.testoSecondario)
                     if let t = vm.troppi { Label(t, systemImage: "exclamationmark.triangle").font(.footnote).foregroundStyle(Color.attenzione) }
                     Button {
                         Task { await vm.analizza() }
                     } label: {
-                        if vm.inCorso { ProgressView() } else { Text("Analizza").frame(maxWidth: .infinity, minHeight: 44) }
+                        if vm.inCorso {
+                            HStack(spacing: 8) { ProgressView(); Text(TestiScambi.calcolo) }.frame(maxWidth: .infinity, minHeight: 44)
+                        } else {
+                            Text(TestiScambi.valutaScambio).frame(maxWidth: .infinity, minHeight: 44)
+                        }
                     }
                     .disabled(!vm.puoAnalizzare)
                     if let errore = vm.errore { Text(errore).foregroundStyle(Color.attenzione) }
@@ -571,6 +606,18 @@ struct AnalizzaScambioView: View {
         }
         .task { await vm.carica() }
         .task(id: vm.altra) { await vm.caricaRosaAltra() }
+    }
+
+    /// «Dai   2 su 4»: il titolo della parte e quanti giocatori sono scelti (`scambi.scelti`), letti insieme da VoiceOver.
+    private func testataParte(_ titolo: String, scelti: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(titolo)
+            Spacer(minLength: 8)
+            Text(TestiScambi.scelti(scelti, massimo: AnalizzaScambioViewModel.massimoPerLato)).monospacedDigit()
+        }
+        .foregroundStyle(Color.testoSecondario)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private func elenco(_ giocatori: [GiocatoreRosa], scelti: Binding<Set<Int>>) -> some View {
