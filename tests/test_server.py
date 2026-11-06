@@ -231,6 +231,14 @@ def test_riconosci_regole_non_cambia_nulla(client):
     assert client.get("/api/regole").json() == prima       # solo una proposta: le regole restano com'erano
 
 
+def test_riconosci_regole_oltre_i_tetti_risponde_422(client):
+    from fanta import regole_testo
+    r = client.post("/api/regole/riconosci", json={"testo": "Assist +1\n" * (regole_testo.MAX_TESTO // 10 + 1)})
+    assert r.status_code == 422 and r.json()["detail"].startswith("Il regolamento è troppo lungo (al massimo 30 mila caratteri)")
+    r = client.post("/api/regole/riconosci", json={"testo": "Gol +3\n" + "x" * (regole_testo.MAX_RIGA + 1)})
+    assert r.status_code == 422 and r.json()["detail"].startswith("Una riga del regolamento è troppo lunga (al massimo 2000 caratteri)")
+
+
 def test_stemma_e_maglia_della_squadra(client, tmp_path, monkeypatch):
     from fanta import immagini
     monkeypatch.setattr(immagini, "CARTELLA", tmp_path / "immagini")

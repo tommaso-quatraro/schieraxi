@@ -1,4 +1,10 @@
 """Riconoscimento del regolamento incollato da Leghe (testo di esempio verosimile, il formato vero può differire)."""
+import random
+import re
+import time
+
+import pytest
+
 from fanta import regole_testo
 
 ESEMPIO = """
@@ -100,3 +106,87 @@ def test_modificatore_disattivato_e_testo_vuoto():
 def test_posti_della_panchina_dal_testo():
     v = _per_chiave(regole_testo.interpreta("Panchina: 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti"))
     assert v["panchina.posti"] == {"P": 2, "D": 3, "C": 3, "A": 3} and v["panchina.numero"] == 11
+
+
+# ---------------------------------------------------------------- testi costruiti male: la lettura resta veloce
+N = 10_000
+# Una riga di circa N caratteri per ogni forma che faceva lavorare le espressioni regolari in tempo quadratico (lunghe file di spazi,
+# di cifre o di parole ripetute dopo una parola chiave).
+CATTIVI = {
+    "spazi dopo gol": "gol:" + " " * N + "x",
+    "spazi dopo i ruoli del gol": "gol portieri difensori centrocampisti attaccanti" + " " * N + "x",
+    "spazi dopo un ruolo": "portieri" + " " * N + "x",
+    "spazi nel modificatore": "modificatore difesa\nmedia" + " " * N + "x",
+    "parola rigore ripetuta": "rigor" * (N // 5),
+    "parola portiere ripetuta": "portier" * (N // 7),
+    "parola difensore ripetuta": "modificatore difesa\n" + "difensor" * (N // 8),
+    "parola minimo ripetuta": "modificatore difesa\n" + "minim" * (N // 5),
+    "parola segnato ripetuta": "gol x" + " " * 50 + "segnat" * (N // 6),
+    "parola panchina ripetuta": "panchin" * (N // 7),
+    "parola massimo ripetuta": "sostituzioni " + "massim" * (N // 6),
+    "parola vincolata ripetuta": "panchina " + "vincolat" * (N // 8),
+    "cifre prima delle sostituzioni": "sostituzioni " + "1" * N + "x",
+    "cifre prima della panchina": "panchina x" + "1" * N + "x",
+    "segni e spazi": "assist " + "- " * (N // 2),
+    "lettere che si allungano": "gol: " + "ﷺ" * (N // 2),
+}
+
+
+@pytest.mark.parametrize("nome", sorted(CATTIVI))
+def test_testo_costruito_male_si_legge_in_tempo_lineare(nome, monkeypatch):
+    """Il riconoscimento non deve fermare il server: anche una riga lunga e fatta apposta si legge in pochi millesimi."""
+    monkeypatch.setattr(regole_testo, "MAX_RIGA", 10**6, raising=False)     # senza il tetto per riga: conta solo la velocità
+    inizio = time.perf_counter()
+    regole_testo.interpreta(CATTIVI[nome])
+    assert time.perf_counter() - inizio < 0.2, nome
+
+
+def test_il_testo_piu_lungo_permesso_si_legge_in_fretta():
+    """Con i tetti veri: il testo più lungo che si può mandare, fatto di righe lunghe al massimo e costruite male."""
+    riga = "gol portieri difensori centrocampisti attaccanti" + " " * (regole_testo.MAX_RIGA - 49) + "x"
+    testo = "\n".join([riga] * (regole_testo.MAX_TESTO // (len(riga) + 1)))
+    assert len(testo) <= regole_testo.MAX_TESTO
+    inizio = time.perf_counter()
+    regole_testo.interpreta(testo)
+    assert time.perf_counter() - inizio < 0.6
+
+
+@pytest.mark.parametrize("cifre", [1900, 5000])
+def test_numeri_lunghissimi_non_sono_valori_e_non_fanno_errori(cifre, monkeypatch):
+    monkeypatch.setattr(regole_testo, "MAX_RIGA", 10**6, raising=False)
+    r = regole_testo.interpreta("\n".join(f"{riga} {'9' * cifre}" for riga in (
+        "Panchina:", "Sostituzioni massime", "Crediti iniziali", "Assist +", "Gol: portiere 3, difensore")))
+    assert _per_chiave(r) == {"bonus.gol.P": 3}
+
+
+def test_testo_troppo_lungo_errore_chiaro():
+    regole_testo.interpreta("Assist +1\n" * (regole_testo.MAX_TESTO // 10))            # al limite: si legge
+    with pytest.raises(regole_testo.TestoTroppoLungo, match="regolamento è troppo lungo"):
+        regole_testo.interpreta("Assist +1\n" * (regole_testo.MAX_TESTO // 10 + 1))
+
+
+def test_riga_troppo_lunga_errore_chiaro():
+    regole_testo.interpreta("Assist +1 " + "x" * (regole_testo.MAX_RIGA - 10))          # al limite: si legge
+    with pytest.raises(regole_testo.TestoTroppoLungo, match="riga del regolamento è troppo lunga"):
+        regole_testo.interpreta("Gol +3\nAssist +1 " + "x" * (regole_testo.MAX_RIGA - 9))
+
+
+VECCHIO_NUM = r"[+\-−–]?\s*\d+(?:[.,]\d+)?"          # l'espressione di prima, per confronto: deve trovare gli stessi numeri
+VECCHIO_RUOLO = r"(portier\w*|difensor\w*|centrocamp\w*|attaccant\w*)\s*[:=]?\s*(\d{1,2})\b"
+
+
+def test_stessi_numeri_di_prima_su_testi_brevi_a_caso():
+    """Su testi brevi (dove la vecchia espressione era veloce) i numeri trovati e il loro valore restano identici."""
+    caso = random.Random(480)
+    alfabeto = " \t-+12345.,:=ax"            # il testo arriva già normalizzato: «−» e «–» sono diventati «-»
+    pezzi = ["portieri", "difensore", "centrocampisti", "attaccante", "portier", " ", "  ", "\t", ":", "=", "3", "12", "123", "x", "-", ","]
+    for _ in range(20_000):
+        s = "".join(caso.choice(alfabeto) for _ in range(caso.randint(0, 14)))
+        nuovi = [regole_testo._numero(x) for x in re.findall(regole_testo.NUM, s)]
+        vecchi = [regole_testo._numero(x) for x in re.findall(VECCHIO_NUM, s)]
+        assert nuovi == vecchi, repr(s)
+        s = "".join(caso.choice(pezzi) for _ in range(caso.randint(0, 6)))
+        if max(map(len, re.findall(r"\w+", s)), default=0) > 25:      # parole vere: dopo la radice al massimo 20 lettere
+            continue
+        m_nuovo, m_vecchio = re.search(regole_testo.RUOLO_ROSA, s), re.search(VECCHIO_RUOLO, s)
+        assert (m_nuovo and m_nuovo.groups()) == (m_vecchio and m_vecchio.groups()), repr(s)

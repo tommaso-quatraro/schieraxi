@@ -189,6 +189,10 @@ MESSAGGI_SENZA_TRADUZIONE = {
     "deve essere una lista", "deve essere un elenco di voci", "formato non riconosciuto",                                        # dentro il controllo del backup
     "{x}: atteso un gruppo di valori {...}, trovato {x}", "{x}: atteso un valore di tipo {x}, ricevuto {x}",                      # regole.json a mano
     "calciatore {x} non nel listone", "token non valido",
+    # TEMPORANEI (#480): tetti del regolamento incollato, testo italiano come il regolamento. La chiave err.* in testi.js arriva
+    # con la parte web; allora il test chiede di toglierli da qui.
+    "Il regolamento è troppo lungo (al massimo {x} mila caratteri): incolla solo la parte con bonus, malus, moduli e panchina.",
+    "Una riga del regolamento è troppo lunga (al massimo {x} caratteri): vai a capo tra una regola e l'altra.",
     "Questa funzione serve solo con gli account attivi: accendi FANTA_MULTIUTENTE=1 sul server",
 }
 
