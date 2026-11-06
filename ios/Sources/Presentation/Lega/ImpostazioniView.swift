@@ -116,9 +116,14 @@ struct ImpostazioniView: View {
         Section(titolo: "App") {
             NavigationLink(value: PaginaImpostazioni.aspetto) { Label("Aspetto", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
             NavigationLink(value: PaginaImpostazioni.avvisi) {
-                Label("Avvisi e promemoria", systemImage: "bell.badge").labelStyle(.voce(.red)).frame(minHeight: 44)
+                // Nome e riga sotto come sulla web (`imp.avvisi`, `imp.avvisi_sub`); il permesso di iOS sta dentro la pagina.
+                Label {
+                    NomeConAiuto(TestiImpostazioni.notifiche, aiuto: TestiImpostazioni.notificheSotto)
+                } icon: {
+                    Image(systemName: "bell.badge")
+                }
+                .labelStyle(.voce(.red)).frame(minHeight: 44)
             }
-            RigaValore(titolo: "Notifiche", valore: vm.permesso)
             RigaCollegamentoWidget()
         }
     }
@@ -151,7 +156,7 @@ struct ImpostazioniView: View {
             if !ProvaEsempio.attiva { sezioneCollegamento }
             Section {
                 Toggle(isOn: Binding(get: { funzioni.stato.mostraTutte }, set: { v in Task { await funzioni.impostaMostraTutte(v) } })) {
-                    Text("Mostra tutte le funzioni")
+                    Text(TestiImpostazioni.mostraTutte)
                 }
                 .tint(Color.verde)
                 .frame(minHeight: 44)
@@ -161,7 +166,7 @@ struct ImpostazioniView: View {
                 AggiornaDatiSezione(vm: vm.aggiornamento)
                 if let v = vm.info.dato?.versione { RigaValore(titolo: "Versione del server", valore: v) }
             } footer: {
-                Text("Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche tutto il resto (risultati in diretta, confronto, seguiti, diario e altro). Vale solo per te.").foregroundStyle(Color.testoSecondario)
+                Text(TestiImpostazioni.mostraTutteSpiega).foregroundStyle(Color.testoSecondario)
             }
             DiagnosticaWidgetSezione()
             CertificatoSezione()
