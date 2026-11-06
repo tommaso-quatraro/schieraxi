@@ -164,6 +164,7 @@ Confronto fatto sul codice di `main` del 2/11/2026, sulle PR aperte e sulle foto
 | 44 | Numero della giornata, ovunque (anche widget e avvisi) | «Giornata 8 · 11ª di Serie A» (`nomeGiornata`) | «Giornata 8» | sezione «Giornata: le forme» | web e server fatto (#299, PR #306); iPhone fatto (#312) |
 | 45 | Stato dei dati, consiglio di formazione | carta «Consiglio di formazione» dopo il registro: quattro indicatori a parole (niente sigle C1-C4) con media, soglia e «regge» / «non regge» / «servono ancora N giornate» del server (`cartaConsiglio`, testi `sd.cons_*`) | uguale, sezione dopo il registro (`ConsiglioFormazioneSezione`, `ParoleConsiglio`) | web | fatto con #366 (test contro `testi.js` e sulla stessa risposta del server) |
 | 46 | Formazione aperta con un anticipo già cominciato | in «Modifica a mano» i `bloccati` non si sostituiscono né entrano, riga `formazione.bloccati`; rifiuto del server con la sua frase | uguale alla web | server (`bloccati`, 400 `giocatore_bloccato`) | fatto con #373 (web e iPhone nella stessa PR; test contro `testi.js`) |
+| 47 | Diario, «Quanto ci abbiamo preso», riga su tutta la Serie A | riga sotto i quattro numeri, testo del server | uguale, stesso testo | server (`precisione.serie_a.testo` di `GET /api/diario`) | web e iPhone fatti nella stessa PR (#374) |
 
 ## Etichette pronte dal server?
 Il server potrebbe mandare il testo già scritto, così i due client non possono divergere. Serve davvero in un caso solo.

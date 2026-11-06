@@ -28,6 +28,13 @@ struct PrecisioneView: View {
                     VocePrecisione(voce: voce)
                 }
             }
+            if let riga = testo.serieA {
+                // su tutta la Serie A (registro delle giornate): una riga sotto i quattro numeri, come la web
+                Text(riga)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if testo.barre.count >= 2 {
                 GraficoErroreFantavoto(barre: testo.barre)
                 Text(TestoPrecisione.legendaGrafico)
@@ -151,7 +158,9 @@ struct GraficoErroreFantavoto: View {
         perGiornata: [.init(giornata: 7, erroreFantavoto: 1.6, attesi: 65, fatti: 60.5),
                       .init(giornata: 8, erroreFantavoto: 1.2, attesi: 67, fatti: 64, tua: 59.5, differenza: 4.5),
                       .init(giornata: 9, erroreFantavoto: 1.5, attesi: 68.5, fatti: 71, tua: 63.5, differenza: 7.5),
-                      .init(giornata: 10, erroreFantavoto: 1.3, attesi: 69, fatti: 72.5)])
+                      .init(giornata: 10, erroreFantavoto: 1.3, attesi: 69, fatti: 72.5)],
+        serieA: .init(giornate: 5, giornateMinime: 3, mancano: 0,
+                      testo: "Su tutta la Serie A, nelle ultime 5 giornate: il fantavoto atteso ha sbagliato il 9% in meno della fantamedia; quando diciamo «gioca 96%», ha giocato 9 volte su 10."))
     if let t = TestoPrecisione(p) {
         List { Section(titolo: TestoPrecisione.titolo) { PrecisioneView(testo: t) } }
     }

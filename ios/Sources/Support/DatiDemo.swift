@@ -707,6 +707,8 @@ private extension LegaDemo {
             "dentro_fascia": 4, "con_fascia": 4, "percentuale_dentro": 100, "fascia_dichiarata": 80, "pochi_dati": true,
             "giornate_minime": 8, "giudizio": "pochi_dati",
         ]
+        // la riga su tutta la Serie A (registro delle giornate, #374): testo scritto dal server, numeri inventati
+        let rigaSerieA: String = "Su tutta la Serie A, nelle ultime 5 giornate: il fantavoto atteso ha sbagliato il 9% in meno della fantamedia; quando diciamo «gioca 96%», ha giocato 9 volte su 10."
         // «Quanto ci abbiamo preso» (forma nuova): numeri onesti anche quando vanno male (qui «gioca» è troppo ottimista).
         let precisione: [String: Any] = [
             "giornate": 4, "pochi_dati": true, "giornate_minime": 8, "fonti": ["mostrati": 3, "ricostruiti": 1],
@@ -728,6 +730,7 @@ private extension LegaDemo {
                 ["stagione": "2026-27", "giornata": 10, "giornata_lega": lega(10), "fonte": "mostrati", "errore_fantavoto": 1.3, "voti": 10,
                  "attesi": 69.0, "fatti": 72.5, "tua": NSNull(), "differenza": NSNull()],
             ],
+            "serie_a": ["giornate": 5, "giornate_minime": 3, "mancano": 0, "testo": rigaSerieA],
         ]
         // le giornate finite sono quelle di «Attesi e fatti» dei widget (`LegaDemo.giornateFinite`); qui chi è sceso in campo e
         // quando è stata calcolata la consigliata (Serie A 10, 9, 8: l'istantanea; Serie A 7 no)

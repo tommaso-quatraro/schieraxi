@@ -38,6 +38,27 @@ struct PrecisioneDiario: Decodable, Equatable {
     /// Gli stessi numeri di `affidabilita` (punti della consigliata previsti contro fatti).
     var squadra: AffidabilitaDiario?
     var perGiornata: [Giornata] = []
+    /// La riga su tutta la Serie A (registro delle giornate, #374). Facoltativa: server vecchio o registro vuoto = niente riga.
+    var serieA: SerieA?
+
+    /// Su tutta la Serie A (`serie_a`): il testo lo scrive il server (`fanta/precisione.py`, `serie_a`), uguale a quello della web.
+    struct SerieA: Decodable, Equatable {
+        /// Giornate misurate del registro (al massimo le ultime 8).
+        var giornate: Int?
+        var giornateMinime: Int?
+        /// Giornate che mancano ai numeri: 0 = la riga ha i numeri, altrimenti dice «servono ancora N giornate».
+        var mancano: Int?
+        var testo: String?
+        private enum Chiavi: String, CodingKey { case giornate, giornateMinime, mancano, testo }
+        init(giornate: Int? = nil, giornateMinime: Int? = nil, mancano: Int? = nil, testo: String? = nil) {
+            self.giornate = giornate; self.giornateMinime = giornateMinime; self.mancano = mancano; self.testo = testo
+        }
+        init(from decoder: Decoder) throws {
+            let k = try decoder.container(keyedBy: Chiavi.self)   // non è un oggetto: niente riga
+            giornate = interoQP(k, .giornate); giornateMinime = interoQP(k, .giornateMinime)
+            mancano = interoQP(k, .mancano); testo = testoQP(k, .testo)
+        }
+    }
 
     struct Fonti: Decodable, Equatable {
         var mostrati: Int?
@@ -166,12 +187,16 @@ struct PrecisioneDiario: Decodable, Equatable {
         var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
     }
 
-    private enum Chiavi: String, CodingKey { case giornate, pochiDati, giornateMinime, fonti, fantavoto, gioca, confronto, squadra, perGiornata }
+    private enum Chiavi: String, CodingKey {
+        case giornate, pochiDati, giornateMinime, fonti, fantavoto, gioca, confronto, squadra, perGiornata, serieA
+    }
 
     init(giornate: Int? = nil, pochiDati: Bool? = nil, giornateMinime: Int? = nil, fonti: Fonti? = nil, fantavoto: Fantavoto? = nil,
-         gioca: Gioca? = nil, confronto: Confronto? = nil, squadra: AffidabilitaDiario? = nil, perGiornata: [Giornata] = []) {
+         gioca: Gioca? = nil, confronto: Confronto? = nil, squadra: AffidabilitaDiario? = nil, perGiornata: [Giornata] = [],
+         serieA: SerieA? = nil) {
         self.giornate = giornate; self.pochiDati = pochiDati; self.giornateMinime = giornateMinime; self.fonti = fonti
         self.fantavoto = fantavoto; self.gioca = gioca; self.confronto = confronto; self.squadra = squadra; self.perGiornata = perGiornata
+        self.serieA = serieA
     }
 
     init(from decoder: Decoder) throws {
@@ -185,6 +210,7 @@ struct PrecisioneDiario: Decodable, Equatable {
         confronto = (try? k.decodeIfPresent(Confronto.self, forKey: .confronto)) ?? nil
         squadra = (try? k.decodeIfPresent(AffidabilitaDiario.self, forKey: .squadra)) ?? nil
         perGiornata = elencoQP(k, .perGiornata)
+        serieA = (try? k.decodeIfPresent(SerieA.self, forKey: .serieA)) ?? nil
     }
 }
 
@@ -247,6 +273,8 @@ struct TestoPrecisione: Equatable {
     let righe: [String]
     /// La nota sulle giornate con i numeri ricostruiti (nil se nessuna).
     let notaRicostruiti: String?
+    /// La riga su tutta la Serie A, sotto i quattro numeri: la frase del server così com'è (nil = niente riga).
+    let serieA: String?
 
     // MARK: aiuti uguali alla web
 
@@ -382,6 +410,10 @@ struct TestoPrecisione: Equatable {
             }
             return r
         }
+
+        // Su tutta la Serie A (#374): il testo del server, lo stesso che la web mostra in italiano
+        let riga = p.serieA?.testo?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        serieA = riga.isEmpty ? nil : riga
 
         let ric = p.fonti?.ricostruiti ?? 0
         if ric > 0 {
