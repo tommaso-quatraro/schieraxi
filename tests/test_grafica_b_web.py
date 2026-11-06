@@ -705,6 +705,13 @@ def test_formazione_titolari_panchina_e_fuori_in_una_colonna_sul_pc():
     assert not re.search(r"\.colonne-campo > \.col:nth-child\(2\)[^{]*\{[^}]*columns: 2", CSS)
 
 
+def test_il_campo_che_scorre_con_la_pagina_tiene_dentro_le_sue_linee():
+    """Tra 768 e 1399 px, con il campo più alto della finestra, `controllaFerme` lo fa scorrere con la pagina (`.non-ferma`,
+    position: static): area, cerchio e metà campo, che stanno in posizione assoluta, si misuravano sulla pagina e attraversavano
+    la colonna accanto (si vedeva nel tema scuro, foto della PR 6 a 1024 px). Il campo resta il loro riferimento."""
+    assert re.search(r"\n\.campo\.non-ferma \{ position: relative !important; \}", CSS)
+
+
 def test_azione_della_riga_scritta_senza_cerchio():
     """Spec C9 e §8.7: «⇄» e «✎» sono icone da 44 px nel colore delle azioni, nella riga a destra, senza il cerchio a contorno."""
     mini = _corpo(".confronta-mini")
