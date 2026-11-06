@@ -57,8 +57,10 @@ def test_testata_che_scorre_via_sopra_il_titolo_e_barra_con_le_sole_icone():
 
 def test_righe_dei_giocatori_impilate_e_partite_su_due_righe():
     b = _blocco(STRETTA)
-    assert "grid-column: 1 / -1" in _regola(b, ".voce:has(> .avatar-anello) > :nth-child(2)")           # nome, partita e etichette a tutta larghezza
-    assert "padding-right: 0" in _regola(b, ".elenco li.con-confronto .voce")                          # niente colonna vuota per ⇄
+    # grafica B (spec §8.4): volto e numeri sopra, nome, partita ed etichette sotto a tutta larghezza
+    assert 'grid-template-areas: "volto fv" "volto gioca" "testo testo"' in _regola(b, ".voce-g")
+    assert '"testo testo" "fv gioca"' in _regola(b, ".con-confronto .voce-g")                          # con ⇄ in alto: i numeri sotto il nome
+    assert "padding-right: 0" in _regola(b, ".elenco li.con-confronto .voce-g, .elenco.posto-azione .voce-g")   # niente colonna vuota per ⇄
     assert "top:" in _regola(b, ".elenco li.con-confronto .confronta-mini")
     assert "grid-column: 1 / 3" in _regola(b, ".partita .ora")                                          # ora sopra, squadre sotto
     assert "grid-row: 2" in _regola(b, ".partita .sq.casa")

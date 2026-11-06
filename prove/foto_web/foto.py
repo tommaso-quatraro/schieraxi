@@ -48,6 +48,10 @@ SCENE: dict[str, list[str]] = {
     "squadra": ["vai('squadra')"],
     "elenco": ["vaiMercato('giocatori')"],                          # Squadra > Elenco dei giocatori
     "rosa": ["vistaRosa()"],
+    # Squadra > Seguiti: nella copia dei dati non si segue nessuno; si seguono i primi quattro della rosa (la schermata di attesa
+    # resta finché le richieste non finiscono, così la foto non parte prima)
+    "seguiti": ["vai('formazione')", "caricamento(); Promise.all(Object.keys(stato.formaz.f.schede).slice(0, 4)"
+                ".map(id => api('/api/osservati/' + id, { method: 'PUT' }))).finally(() => vaiMercato('osservati'))"],
     "scheda": ["vai('formazione')", f"apriGiocatore({PRIMO_GIOCATORE})"],          # scheda del primo titolare
     "confronto": ["vai('formazione')", f"apriConfronto(...{DUE_GIOCATORI})"],      # i primi due titolari a confronto
     "altro": ["vai('altro')"],

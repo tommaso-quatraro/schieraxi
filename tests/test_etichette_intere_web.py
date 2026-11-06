@@ -104,13 +104,17 @@ def test_riga_stretta_della_formazione_numeri_sotto_il_nome():
     ai numeri e al pulsante ⇄) restava larga 10-75 px e le etichette si leggevano a pezzi, a volte una lettera per riga. Come l'iPhone
     con il testo molto grande (RigaGiocatore): fantavoto atteso e «gioca N%» vanno sotto il nome, che con le etichette ha tutta la
     larghezza."""
-    assert "container-type: inline-size" in _regola(".elenco li.con-confronto")
-    blocco = re.search(r"@container\s*\(max-width:\s*(\d+)px\)\s*\{\s*(\.con-confronto .voce\b.*?)\n\}", CSS, re.S)
+    # grafica B (spec §8.4): ogni riga di un giocatore è un contenitore («riga»), le righe della Formazione comprese
+    assert "container: riga / inline-size" in _regola(".riga-gioc")
+    assert 'class="riga-gioc${conConfronto ? " con-confronto" : ""}"' in APP
+    blocco = re.search(r"@container riga \(max-width:\s*(\d+)px\)\s*\{\s*(\.con-confronto \.voce-g\b.*?)\n\}", CSS, re.S)
     assert blocco, "manca la riga stretta della Formazione (@container) in stile.css"
     soglia, corpo = int(blocco.group(1)), blocco.group(2)
-    # quando la colonna del nome scenderebbe sotto i 90 px circa: la riga è larga circa 255 px a 320 px (scatta) e circa 294 px a
-    # 360 px con il testo normale (resta com'era)
+    # quando la colonna del nome scenderebbe sotto i 90 px circa: la riga è larga circa 255 px a 320 px con il testo «Grande»
+    # (scatta) e 288 px a 320 px con il testo normale (resta com'è)
     assert 260 <= soglia < 290
-    colonne = re.search(r"\.con-confronto \.voce \{[^}]*grid-template-columns:\s*([^;]+);", corpo).group(1).split()
-    assert len(colonne) == 2                                     # volto e nome: i numeri non hanno più una colonna loro
-    assert re.search(r"\.con-confronto \.voce > \.valore \{[^}]*grid-column:\s*2", corpo)
+    aree = re.search(r"\.con-confronto \.voce-g \{[^}]*grid-template-areas:\s*([^;]+);", corpo).group(1)
+    righe = re.findall(r'"([^"]+)"', aree)
+    assert len(righe) == 2 and righe[0].split()[0] == "volto" and "testo" in righe[0] and "gioca" not in righe[0]
+    assert {"fv", "gioca"} <= set(righe[1].split())              # i numeri sotto il nome: il nome ha tutta la larghezza
+    assert re.search(r"\.con-confronto \.voce-g > \.valore, \.con-confronto \.voce-g > \.pv-g \{[^}]*justify-self: start", corpo)

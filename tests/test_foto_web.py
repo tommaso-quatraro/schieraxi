@@ -62,9 +62,11 @@ def test_da_una_worktree_rifiuta_anche_la_cartella_principale(tmp_path, monkeypa
 
 def test_le_scene_principali_ci_sono_tutte():
     m = _modulo()
-    for scena in ("oggi", "formazione", "squadra", "elenco", "rosa", "scheda", "confronto", "altro", "diario", "regole",
+    for scena in ("oggi", "formazione", "squadra", "elenco", "rosa", "seguiti", "scheda", "confronto", "altro", "diario", "regole",
                   "scambi", "impostazioni"):
         assert scena in m.SCENE
+    # i Seguiti della copia partono vuoti: la scena segue prima quattro giocatori della rosa, così l'elenco ha delle righe
+    assert any("/api/osservati/" in passo and "PUT" in passo for passo in m.SCENE["seguiti"])
 
 
 def test_argomenti_con_e_senza_indirizzo():
