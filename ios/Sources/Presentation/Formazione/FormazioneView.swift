@@ -174,7 +174,7 @@ struct FormazioneView: View {
     static func legenda(conPerche: Bool) -> String {
         "Il numero è il fantavoto atteso: quello che SchieraXI si aspetta dal giocatore se gioca, con le regole della tua lega."
             + (conPerche ? " Toccalo per sapere perché." : "")
-            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Nelle righe, l'anello attorno al volto è l'indice (100 = il migliore del ruolo)."
+            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Negli elenchi il numero sul volto è l'indice: 100 = il migliore del suo ruolo questa giornata."
     }
 
     // MARK: un'altra squadra
