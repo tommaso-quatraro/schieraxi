@@ -374,19 +374,22 @@ details[open] > summary { margin-bottom: 8px; }
 .voce .valore b { display: block; font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ruolo { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: var(--t-sec); font-weight: 700; color: #fff; }
 .ruolo.P { background: #9a5f00; } .ruolo.D { background: #237d46; } .ruolo.C { background: #2b66bf; } .ruolo.A { background: #c13b38; }
-.etichette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-/* Pillola mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima tra i pezzi separati da «·»
-   (`.pezzo`, da testoEtichetta in app.js), poi tra le parole. Il raggio supera metà altezza di una riga: su una riga è una capsula,
-   su più righe un rettangolo con gli angoli tondi. */
-.etichetta { display: inline-block; font-size: var(--t-eti); padding: 3px 9px; border-radius: calc(.7em + 4px); background: color-mix(in srgb, var(--verde) 16%, transparent); color: var(--eti-verde); font-weight: 550; max-width: 100%; overflow-wrap: break-word; border: 1px solid color-mix(in srgb, var(--verde) 25%, transparent); }
+.etichette { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; }
+/* Etichette dei giocatori (grafica B, spec §8.9): testo da 13 px nel colore del tono, senza fondo né bordo (sull'iPhone restano
+   pillole: parole e toni uguali). Mai tagliata (issue #230, come l'iPhone): se non ci sta nella riga va a capo al suo interno, prima
+   tra i pezzi separati da «·» (`.pezzo`, da testoEtichetta in app.js), poi tra le parole. Due etichette vicine si separano con « · »:
+   il punto chiude quella prima, attaccato da uno spazio che non va a capo; i lettori di schermo non lo leggono. Restano pillole solo
+   «⚠ gioca N%» sul campo e il contatore di «Da fare». */
+.etichetta { display: inline-block; font-size: var(--t-sec); padding: 0; background: none; border: 0; color: var(--eti-verde); font-weight: 550; line-height: 1.35; max-width: 100%; overflow-wrap: break-word; }
 .etichetta .pezzo { display: inline-block; max-width: 100%; }
-.etichetta.rossa { background: color-mix(in srgb, var(--rosso) 16%, transparent); color: var(--eti-rosso); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
-.etichetta.arancio { background: color-mix(in srgb, var(--arancio) 16%, transparent); color: var(--eti-arancio); border-color: color-mix(in srgb, var(--arancio) 28%, transparent); }
-.etichetta.neutra { background: color-mix(in srgb, var(--testo) 8%, transparent); color: var(--testo-2); border-color: transparent; }
-/* Oggi in corso: lo stato di chi non ha il voto, colorato dal `tono` dell'etichetta del server */
-.tono { color: var(--verde); font-weight: 600; }
-.tono.arancio { color: var(--arancio); }
-.tono.rossa { color: var(--rosso); }
+.etichetta.rossa { color: var(--eti-rosso); }
+.etichetta.arancio { color: var(--eti-arancio); }
+.etichetta.neutra { color: var(--testo-2); }
+.etichette > .etichetta:not(:last-child)::after { content: "\a0·" / ""; color: var(--testo-2); font-weight: 400; }
+/* Oggi in corso: lo stato di chi non ha il voto, colorato dal `tono` dell'etichetta del server (stessi colori delle etichette) */
+.tono { color: var(--eti-verde); font-weight: 600; }
+.tono.arancio { color: var(--eti-arancio); }
+.tono.rossa { color: var(--eti-rosso); }
 .tono.neutra { color: var(--testo-2); font-weight: 400; }
 /* note lunghe (per esempio l'infortunio): tutta la riga, mai oltre il bordo né sotto il pulsante ⇄ */
 .etichetta.lunga { flex: 1 1 100%; }
@@ -639,7 +642,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .foglio { position: fixed; inset: 0; z-index: 20; }
 .foglio-sfondo { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); }
 .foglio-corpo { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(90vh / var(--z)); overflow: auto; overscroll-behavior: contain; border-radius: 30px 30px 0 0; padding: 8px 16px calc(28px + env(safe-area-inset-bottom));
-  max-width: 720px; margin: 0 auto; background: color-mix(in srgb, var(--sfondo) 78%, var(--vetro)); touch-action: pan-y; }
+  max-width: 720px; margin: 0 auto; background: var(--sfondo); touch-action: pan-y; }      /* pieno, senza vetro (spec §7.6) */
 .maniglia { position: sticky; top: 0; z-index: 3; display: flex; justify-content: center; padding: 6px 0 14px; touch-action: none; }
 .maniglia i { width: 42px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--testo) 30%, transparent); }
 .foglio-chiudi { position: absolute; top: 14px; right: 14px; z-index: 4; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 50%, transparent); width: 44px; height: 44px; border-radius: 50%; font-size: var(--t-corpo); color: var(--testo-2); }
@@ -811,7 +814,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 
 /* ---- ballottaggi con le alternative vicine ---- */
 .elenco li.alternative-li { border-top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 44px 12px 54px; margin-top: -4px; }
-.alternative-li .alt { display: inline-flex; align-items: baseline; gap: 6px; min-height: 44px; align-items: center; padding: 8px 13px; border-radius: var(--r-in); border: 1px solid var(--bordo-campo); font-size: var(--t-sec);
+.alternative-li .alt { display: inline-flex; align-items: baseline; gap: 6px; min-height: 44px; align-items: center; padding: 8px 13px; border-radius: var(--r-in); border: 1px solid var(--filo); font-size: var(--t-sec);
   background: none; color: var(--testo); }
 .alternative-li .alt small { color: var(--arancio); font-size: var(--t-eti); }
 

@@ -421,3 +421,30 @@ def test_pulsante_secondario_da_solo_con_il_bordo_nella_riga_solo_testo():
     assert "background: none" in testo and "border: 0" in testo
     assert re.search(r"\.bottone:hover:not\(:disabled\) \{ background: var\(--azione-2\); \}", SENZA_COMMENTI)
     assert "filter: brightness" not in SENZA_COMMENTI                                   # il passaggio del mouse cambia il fondo, non la luce
+
+
+# ---------------------------------------------------------------- 5.3 etichette come testo colorato
+
+def test_etichette_senza_fondo_ne_bordo_tranne_le_due_pillole():
+    regola = re.search(r"\n\.etichetta \{([^}]*)\}", CSS).group(1)
+    assert "background: none" in regola and "border: 0" in regola and "font-size: var(--t-sec)" in regola
+    assert re.search(r"\.pedina \.gioca\.basso[^{]*\{[^}]*border-radius", CSS)        # «⚠ gioca 45%» resta una pillola
+
+
+def test_nessuna_regola_rimette_la_pillola_alle_etichette():
+    """Spec §8.9: le etichette dei giocatori sono testo nel colore del loro tono (verde, arancio, rosso, grigio per il neutro), senza
+    fondo, bordo né angoli, in ogni variante e in ogni posto (righe, scheda, confronto, Oggi in corso). Le parole e i toni restano
+    quelli del server, gli stessi dell'iPhone (che le mostra come pillole: differenza ammessa)."""
+    assert not _scatole(["etichetta"])
+    for classe, colore in ((".etichetta", "--eti-verde"), (".etichetta.arancio", "--eti-arancio"), (".etichetta.rossa", "--eti-rosso"),
+                           (".etichetta.neutra", "--testo-2"), (".tono", "--eti-verde"), (".tono.arancio", "--eti-arancio"),
+                           (".tono.rossa", "--eti-rosso"), (".tono.neutra", "--testo-2")):
+        assert f"color: var({colore})" in _corpo(classe), classe
+
+
+def test_piu_etichette_nella_stessa_riga_separate_dal_punto():
+    """Spec §8.9: senza la pillola, due etichette vicine («Real Esempio · In ballottaggio») si separano con « · ». Il punto sta in fondo
+    all'etichetta prima, attaccato con uno spazio che non va a capo (come i pezzi di un'etichetta lunga), è grigio e i lettori di
+    schermo non lo leggono (testo alternativo vuoto)."""
+    punto = _corpo(".etichette > .etichetta:not(:last-child)::after")
+    assert 'content: "\\a0·" / ""' in punto and "color: var(--testo-2)" in punto
