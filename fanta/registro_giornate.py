@@ -388,6 +388,12 @@ def _misurate(db: sqlite3.Connection, fino_a: tuple[str, int] | None = None, qua
     return list(reversed(_righe(db.execute(sql + " ORDER BY stagione DESC, giornata DESC LIMIT ?", (*par, quante)))))
 
 
+def ultime_misurate(db: sqlite3.Connection, quante: int = FINESTRA) -> list[dict]:
+    """Le ultime `quante` giornate misurate con dei dati, dalla più vecchia, con `fasce` già letta (una lista): per la riga «su
+    tutta la Serie A» del Diario (`precisione.serie_a`, #374). Solo giornate e numeri, nessun giocatore."""
+    return [{**r, "fasce": _lista(r.get("fasce"))} for r in _misurate(db, None, quante)]
+
+
 def registra_misura(db: sqlite3.Connection, stagione: str, giornata: int, m: dict | None, adesso: datetime) -> list[str]:
     """Scrive la misura di una giornata (None = nessuna partita utile: la giornata non conta nella finestra) e decide gli avvisi:
     da avvisare = fuori soglia adesso E nella giornata misurata prima, e non già avvisati mentre restavano fuori."""
@@ -502,12 +508,24 @@ def _dove(e: BaseException, passi: int = 6) -> str:
 
 def giro(adesso: datetime, db: sqlite3.Connection, manda: Callable[[str, str], bool] | None = None) -> None:
     """Un controllo (dal thread del pianificatore, una volta al minuto): salva, segna le giornate perse, misura, avvisa. Un passo che
-    va in errore non ferma gli altri; nel log vanno il tipo d'errore e i punti del codice (file e righe), mai il messaggio."""
+    va in errore non ferma gli altri; nel log vanno il tipo d'errore e i punti del codice (file e righe), mai il messaggio.
+    I passi dei numeri «nostri» (`registro_nostri.py`, I4 dal vivo) vengono ciascuno DOPO il passo dei mostrati: un loro errore non
+    tocca mai i numeri mostrati (nemmeno se il modulo non si carica: si importa dentro il passo)."""
     from . import sentinella
     invia = manda or sentinella.manda_ntfy
-    passi = (("salvataggio", lambda: salva_se_serve(db, adesso)), ("controllo delle giornate perse", lambda: segna_perse(db, adesso)),
-             ("misura", lambda: chiudi_giornate(db, adesso)), ("avviso", lambda: avvisa(db, invia)),
-             ("avviso delle giornate perse", lambda: avvisa_perse(db, invia)))
+
+    def rn():
+        from . import registro_nostri
+        return registro_nostri
+
+    passi = (("salvataggio", lambda: salva_se_serve(db, adesso)),
+             ("salvataggio dei numeri nostri", lambda: rn().salva_se_serve(db, adesso)),
+             ("controllo delle giornate perse", lambda: segna_perse(db, adesso)),
+             ("controllo delle giornate perse dei numeri nostri", lambda: rn().segna_perse(db, adesso)),
+             ("misura", lambda: chiudi_giornate(db, adesso)), ("misura dei numeri nostri", lambda: rn().chiudi_giornate(db, adesso)),
+             ("avviso", lambda: avvisa(db, invia)), ("avviso delle giornate perse", lambda: avvisa_perse(db, invia)),
+             ("avviso dei numeri nostri", lambda: rn().avvisa(db, invia)),
+             ("avviso delle giornate perse dei numeri nostri", lambda: rn().avvisa_perse(db, invia)))
     for nome, passo in passi:
         try:
             passo()

@@ -53,6 +53,16 @@ basta una partita di oggi ripiega sulla sola ora («20:45»); gli altri giorni t
 intera. La usano Partite live e Cruscotto (`PartitaLive.formeEtichetta`), Giocatore seguito e Chi gioca
 (`GiocatoreWidget.formeQuandoGioca`, `formePartita`, #267); le righe sulla schermata di blocco con `RigaInLinea`. A mezzanotte la
 voce della timeline (`VociTimeline.istanti`) cambia «domani 11:23» in «oggi 11:23».
+Una partita senza punteggio si scrive come le partite del turno dell'app e della web, «NAP vs ATA · oggi 18:00», mai con il
+trattino tra le sigle; dove non entra nemmeno «NAP vs ATA · 18:00» (o «… · domani 12:30») restano le sole squadre «NAP vs ATA».
+Con il punteggio il tabellone «INT 2–1 ROM 63'» (`PartitaLive.formeRiga`, `traLeSigle`, #391); VoiceOver legge il punteggio solo
+se ci sono tutti e due i gol.
+Widget Formazione (tutte le misure): la giornata è «Giornata 8 · 11ª di Serie A» o «Giornata 8», mai «G8» né «G11» (#299; la
+sigla resta solo dove si parla del calendario). Una funzione sola, `ParoleWidget.giornataFormazione`. Grande: accanto al modulo i
+punti attesi e sotto la fascia con la giornata (`TestataFormazioneGrande`); se «Giornata 8» non entra accanto alla fascia scende
+sulla riga sotto (`postiGiornata`). Piccolo: il titolo con la giornata sulla riga sotto; se in altezza non c'è posto, il simbolo
+con la giornata accanto (si perde il titolo, non la giornata). Rettangolo della schermata di blocco: «Giornata 8», al più
+rimpicciolita. VoiceOver legge sempre «Giornata 8, 11ª di Serie A».
 I widget rotondi della schermata di blocco stanno in `CerchioWidget` (contenuto sempre al centro). Crediti: simbolo «C» nel cerchio
 (`ParoleWidget.simboloCrediti`, come l'app), mai l'euro.
 

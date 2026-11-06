@@ -656,7 +656,28 @@ private extension LegaDemo {
                 ["cosa": "calendario e coppe europee", "quando": quando(100), "errori": [String]()],
             ],
             "registro": registroGiornate(),
+            "consiglio": consiglioFormazione(adesso: adesso),
         ])
+    }
+
+    /// Gli indicatori del consiglio di formazione (#366) come li manda il server: 8 giornate (dalla 3 alla 10) su 3 utenti; non regge
+    /// solo «Cambi della consigliata» (2 cambi per meno di 1 punto atteso). Numeri inventati.
+    private static func consiglioFormazione(adesso: Date) -> [String: Any] {
+        let righe: [[String: Any]] = (3...10).reversed().map { g -> [String: Any] in
+            let sotto: Int = g >= 9 ? 1 : 0
+            let fuori: [String] = g == 10 ? ["C2"] : []
+            return ["stagione": "2026-27", "giornata": g, "voci": 3, "meno_s2": 2.1, "meno_schierata": 0.6, "cambi": 1.3,
+                    "cambi_sotto_soglia": sotto, "improbabili": 1, "con_compagno": 0, "storte": 1, "spiegate": 1,
+                    "senza_motivo": 0.061, "fuori": fuori]
+        }
+        return [
+            "finestra": 8, "giornate": 8, "voci": 24, "verdetto": true,
+            "aggiornato": formatta(adesso.addingTimeInterval(-6 * 3600), "yyyy-MM-dd'T'HH:mm:ss"),
+            "soglie": ["C1": 0.0, "C2": 0, "C3": 0, "C4_senza_motivo": 0.1],
+            "meno_s2": 2.14, "meno_schierata": 0.63, "cambi": 1.33, "cambi_sotto_soglia": 2, "improbabili": 7, "con_compagno": 0,
+            "reparti": 81, "storte": 9, "spiegate": 9, "senza_motivo": 0.061,
+            "regge": ["C1": true, "C2": false, "C3": true, "C4": true], "fuori": ["C2"], "avvisati": [String](), "per_giornata": righe,
+        ]
     }
 
     /// Il registro delle giornate (#344) come lo manda il server: 8 giornate di Serie A misurate (dalla 2 alla 10, la 6 persa),
@@ -753,6 +774,8 @@ private extension LegaDemo {
             "dentro_fascia": 4, "con_fascia": 4, "percentuale_dentro": 100, "fascia_dichiarata": 80, "pochi_dati": true,
             "giornate_minime": 8, "giudizio": "pochi_dati",
         ]
+        // la riga su tutta la Serie A (registro delle giornate, #374): testo scritto dal server, numeri inventati
+        let rigaSerieA: String = "Su tutta la Serie A, nelle ultime 5 giornate: il fantavoto atteso ha sbagliato il 9% in meno della fantamedia; quando diciamo «gioca 96%», ha giocato 9 volte su 10."
         // «Quanto ci abbiamo preso» (forma nuova): numeri onesti anche quando vanno male (qui «gioca» è troppo ottimista).
         let precisione: [String: Any] = [
             "giornate": 4, "pochi_dati": true, "giornate_minime": 8, "fonti": ["mostrati": 3, "ricostruiti": 1],
@@ -774,6 +797,7 @@ private extension LegaDemo {
                 ["stagione": "2026-27", "giornata": 10, "giornata_lega": lega(10), "fonte": "mostrati", "errore_fantavoto": 1.3, "voti": 10,
                  "attesi": 69.0, "fatti": 72.5, "tua": NSNull(), "differenza": NSNull()],
             ],
+            "serie_a": ["giornate": 5, "giornate_minime": 3, "mancano": 0, "testo": rigaSerieA],
         ]
         // le giornate finite sono quelle di «Attesi e fatti» dei widget (`LegaDemo.giornateFinite`); qui chi è sceso in campo e
         // quando è stata calcolata la consigliata (Serie A 10, 9, 8: l'istantanea; Serie A 7 no)

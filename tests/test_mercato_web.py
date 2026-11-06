@@ -35,7 +35,10 @@ def test_giocatori_unisce_classifica_e_cerca_con_filtri():
 def test_la_riga_del_giocatore_protegge_i_dati_del_server():
     corpo = APP[APP.index("function rigaGiocatoreCompatta"):APP.index("function tabGiocatori")]
     assert "esc(x.nome)" in corpo and "esc(x.proprietario)" in corpo
-    assert "num(x.fv_atteso)" in corpo                    # un solo voto atteso, quello che arriva dal server
+    # un solo voto atteso, quello che arriva dal server, con le stesse colonne delle altre righe dei giocatori (grafica B, spec C8)
+    assert "numeriRiga(x)" in corpo
+    numeri = APP[APP.index("\nfunction numeriRiga("):APP.index("// ---------------------------------------------------------------- navigazione")]
+    assert "num(p.fv_atteso)" in numeri
 
 
 def test_filtri_con_bersagli_da_44_px():

@@ -1,7 +1,7 @@
 """Etichette dei giocatori sempre intere nel web (issue #230), come sull'iPhone (PR #228): un'etichetta che non ci sta su una riga
 va a capo invece di finire con i puntini («In dubb…», «Probabile titol…» a 320 px e con il testo grande). Prima si va a capo tra i
 pezzi separati da «·» («In dubbio ·» sopra, «gioca 62%» sotto), poi tra le parole; il testo non si accorcia e non si rimpicciolisce.
-Su una riga resta la capsula di prima; su più righe gli angoli sono meno tondi.
+Dalla grafica B l'etichetta è testo colorato senza capsula (spec §8.9); va a capo allo stesso modo.
 Le funzioni di app.js si provano con node; il CSS si legge da stile.css. La prova nel browser (320-1440 px, chiaro e scuro, testo
 grande) è nel collaudo della pull request."""
 import json
@@ -93,9 +93,8 @@ def test_la_pillola_va_a_capo_dentro_la_riga():
     assert "display: inline-block" in base          # un blocco: non si spezza a metà riga di un testo, va a capo al suo interno
     assert "max-width: 100%" in base                 # mai più larga della riga in cui sta
     assert "overflow-wrap: break-word" in base       # ultima scelta: una parola più larga della riga va a capo anche lei
-    # su una riga è la capsula di prima (raggio pari a metà altezza); su più righe gli angoli restano tondi ma meno
-    raggio = re.search(r"border-radius\s*:\s*([^;]+);", base).group(1)
-    assert "999" not in raggio and "r-pill" not in raggio
+    # grafica B (spec §8.9): l'etichetta è testo colorato, senza capsula né angoli; il testo intero resta la regola
+    assert "border-radius" not in base and "999" not in base and "r-pill" not in base
     pezzo = _regola(".etichetta .pezzo")
     assert "display: inline-block" in pezzo and "max-width: 100%" in pezzo
 
@@ -105,13 +104,17 @@ def test_riga_stretta_della_formazione_numeri_sotto_il_nome():
     ai numeri e al pulsante ⇄) restava larga 10-75 px e le etichette si leggevano a pezzi, a volte una lettera per riga. Come l'iPhone
     con il testo molto grande (RigaGiocatore): fantavoto atteso e «gioca N%» vanno sotto il nome, che con le etichette ha tutta la
     larghezza."""
-    assert "container-type: inline-size" in _regola(".elenco li.con-confronto")
-    blocco = re.search(r"@container\s*\(max-width:\s*(\d+)px\)\s*\{\s*(\.con-confronto .voce\b.*?)\n\}", CSS, re.S)
+    # grafica B (spec §8.4): ogni riga di un giocatore è un contenitore («riga»), le righe della Formazione comprese
+    assert "container: riga / inline-size" in _regola(".riga-gioc")
+    assert 'class="riga-gioc${conConfronto ? " con-confronto" : ""}"' in APP
+    blocco = re.search(r"@container riga \(max-width:\s*(\d+)px\)\s*\{\s*(\.con-confronto \.voce-g\b.*?)\n\}", CSS, re.S)
     assert blocco, "manca la riga stretta della Formazione (@container) in stile.css"
     soglia, corpo = int(blocco.group(1)), blocco.group(2)
-    # quando la colonna del nome scenderebbe sotto i 90 px circa: la riga è larga circa 255 px a 320 px (scatta) e circa 294 px a
-    # 360 px con il testo normale (resta com'era)
+    # quando la colonna del nome scenderebbe sotto i 90 px circa: la riga è larga circa 255 px a 320 px con il testo «Grande»
+    # (scatta) e 288 px a 320 px con il testo normale (resta com'è)
     assert 260 <= soglia < 290
-    colonne = re.search(r"\.con-confronto \.voce \{[^}]*grid-template-columns:\s*([^;]+);", corpo).group(1).split()
-    assert len(colonne) == 2                                     # volto e nome: i numeri non hanno più una colonna loro
-    assert re.search(r"\.con-confronto \.voce > \.valore \{[^}]*grid-column:\s*2", corpo)
+    aree = re.search(r"\.con-confronto \.voce-g \{[^}]*grid-template-areas:\s*([^;]+);", corpo).group(1)
+    righe = re.findall(r'"([^"]+)"', aree)
+    assert len(righe) == 2 and righe[0].split()[0] == "volto" and "testo" in righe[0] and "gioca" not in righe[0]
+    assert {"fv", "gioca"} <= set(righe[1].split())              # i numeri sotto il nome: il nome ha tutta la larghezza
+    assert re.search(r"\.con-confronto \.voce-g > \.valore, \.con-confronto \.voce-g > \.pv-g \{[^}]*justify-self: start", corpo)

@@ -41,19 +41,26 @@ def test_il_body_e_il_contenitore_della_pagina():
     assert CSS.count(STRETTA) == 1
 
 
-def test_testata_su_due_righe_che_scorre_via_e_barra_con_le_sole_icone():
+def test_testata_che_scorre_via_sopra_il_titolo_e_barra_con_le_sole_icone():
+    """Grafica B: al telefono i pulsanti della testata stanno nell'angolo, accanto al titolo della schermata. Sotto i 320 px non
+    c'è posto per tutti e due: i pulsanti vanno su una riga loro, sopra il titolo, e scorrono via con la pagina (con lo zoom una
+    testata fissa copriva un quarto dello schermo); il titolo prende tutta la riga."""
     b = _blocco(STRETTA)
     testata = _regola(b, ".testata")
-    assert "flex-wrap: wrap" in testata and "position: relative" in testata        # con lo zoom una testata fissa copriva un quarto dello schermo
-    assert "white-space: normal" in _regola(b, ".testo-testata .titolo, .testo-testata .sottotitolo, .sottotitolo > span")
-    etichette = _regola(b, ".schede button > span")                                 # il nome della scheda resta ai lettori di schermo
+    assert "position: relative" in testata and "justify-content: flex-end" in testata
+    posto = " ".join(_corpi(".capo-pagina", b) + _corpi("body:has(#bottone-aggiorna:not([hidden])) .capo-pagina", b))
+    assert posto.count("--posto-bottoni: 0px") >= 1 and len(_corpi("body:has(#bottone-aggiorna:not([hidden])) .capo-pagina", b)) == 1
+    assert "padding-right: var(--posto-bottoni)" in " ".join(_corpi("#titolo-pagina"))   # niente posto lasciato ai pulsanti accanto al titolo
+    etichette = _regola(b, ".scheda > span")                                       # il nome della scheda resta ai lettori di schermo
     assert "clip: rect(0 0 0 0)" in etichette and "width: 1px" in etichette and "display: none" not in etichette
 
 
 def test_righe_dei_giocatori_impilate_e_partite_su_due_righe():
     b = _blocco(STRETTA)
-    assert "grid-column: 1 / -1" in _regola(b, ".voce:has(> .avatar-anello) > :nth-child(2)")           # nome, partita e etichette a tutta larghezza
-    assert "padding-right: 0" in _regola(b, ".elenco li.con-confronto .voce")                          # niente colonna vuota per ⇄
+    # grafica B (spec §8.4): volto e numeri sopra, nome, partita ed etichette sotto a tutta larghezza
+    assert 'grid-template-areas: "volto fv" "volto gioca" "testo testo"' in _regola(b, ".voce-g")
+    assert '"testo testo" "fv gioca"' in _regola(b, ".con-confronto .voce-g")                          # con ⇄ in alto: i numeri sotto il nome
+    assert "padding-right: 0" in _regola(b, ".elenco li.con-confronto .voce-g, .elenco.posto-azione .voce-g")   # niente colonna vuota per ⇄
     assert "top:" in _regola(b, ".elenco li.con-confronto .confronta-mini")
     assert "grid-column: 1 / 3" in _regola(b, ".partita .ora")                                          # ora sopra, squadre sotto
     assert "grid-row: 2" in _regola(b, ".partita .sq.casa")
@@ -115,23 +122,24 @@ def _corpi(selettore, testo=SENZA_COMMENTI):
     return [corpo for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", testo) if selettore in [s.strip() for s in sel.split(",")]]
 
 
-def test_nome_della_squadra_e_data_dei_dati_vanno_a_capo_nella_testata():
+def test_titolo_nome_della_squadra_e_data_dei_dati_vanno_a_capo():
     """Issue #286: nella testata «Real Es…» a 320 px, «Real Esempi…» a 390 px con il testo «Grande» e un nome di 25 caratteri
-    tagliato anche a 390 px; «dati del 26 …» lo stesso. Mai «…» (CLAUDE.md): il nome e la data vanno a capo, a ogni larghezza, e
-    una parola più lunga della riga si spezza invece di uscire."""
-    for selettore in (".testo-testata .titolo", ".testo-testata .sottotitolo", ".sottotitolo > span"):
+    tagliato anche a 390 px; «dati del 26 …» lo stesso. Con la grafica B nome e data stanno nella riga di stato sotto il titolo
+    della schermata (il titolo della rosa è il nome di una squadra). Mai «…» (CLAUDE.md): vanno a capo, a ogni larghezza, e una
+    parola più lunga della riga si spezza invece di uscire."""
+    for selettore in ("#titolo-pagina", ".stato-pagina"):
         corpi = " ".join(_corpi(selettore))
         assert corpi, selettore
         assert "ellipsis" not in corpi and "nowrap" not in corpi, selettore
-    assert "overflow-wrap: break-word" in " ".join(_corpi(".testo-testata .titolo"))
+        assert "overflow-wrap: anywhere" in corpi, selettore
 
 
-def test_lo_stemma_della_testata_lascia_posto_al_nome_sui_telefoni_stretti():
-    """A 320 px lo stemma (42 px più lo spazio) lasciava al nome della squadra 74 px: «Real Esempio» e «dati del 26 ott 23:55» su
-    due righe ciascuno e la testata, ferma in alto, alta 117 px invece di 77 (un quinto di un telefono da 568 px). Tra 320 e 360 px
-    utili lo stemma non si mostra nella testata; sotto i 320 px la testata va su due righe e lo stemma resta."""
-    b = _blocco("@container pagina (min-width: 320px) and (max-width: 359.98px) {")
-    assert "display: none" in _regola(b, ".stemma-testata")
+def test_lo_stemma_nella_riga_di_stato_lascia_posto_al_nome():
+    """A 320 px lo stemma della testata (42 px più lo spazio) lasciava al nome della squadra 74 px e la testata, ferma in alto,
+    cresceva a 117 px. Ora lo stemma sta nella riga di stato, alto quanto il testo (20 px), e la riga va a capo intorno a lui."""
+    corpo = " ".join(_corpi(".stemma-stato"))
+    assert "height: 20px" in corpo and "width: 20px" in corpo and "vertical-align" in corpo
+    assert ".stemma-testata" not in CSS
 
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")

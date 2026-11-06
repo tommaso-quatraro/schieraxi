@@ -785,9 +785,20 @@ def formazione(request: Request, squadra: str | None = None, giornata: int | Non
                 f = f | {"stato_scelta": stato_scelta}          # una copia: la formazione in cache non cambia
         # dopo la scadenza: niente etichette delle probabili, lo stato vero della giornata (fasi.py; f resta intatta nella cache)
         f = fasi.formazione_a_giornata_iniziata(f, db, r, consigli.stagione_corrente(), datetime.now(), _stati_live())
-        return _json_diretto(f)
+        return _json_diretto(_con_bloccati(db, f))
     finally:
         db.close()
+
+
+def _con_bloccati(db, f: dict) -> dict:
+    """Campo facoltativo `bloccati` (#373): con la formazione ancora aperta, gli id dei giocatori di un anticipo già cominciato, che
+    nella lega non si spostano più (web e iPhone non li fanno sostituire; il salvataggio lo controlla con `_non_sposta_i_fermi`).
+    Senza anticipi cominciati, o dopo la scadenza (`iniziata`), la risposta non cambia. Una copia: `f` può venire dalla cache."""
+    if f.get("iniziata"):
+        return f
+    squadre = consigli._anticipi_iniziati(db, consigli.stagione_corrente(), f.get("giornata"))
+    ids = scelte.bloccati(f.get("schede") or {}, squadre)
+    return f | {"bloccati": ids} if ids else f
 
 
 def _giornata_saltata(db, r, ctx: Contesto, request: Request) -> int | None:
@@ -865,6 +876,34 @@ def _formazione_chiusa(db, ctx: Contesto, giornata: int | None) -> JSONResponse 
                         headers={"Cache-Control": "no-store"})
 
 
+def _fermi(db, ctx: Contesto, giornata: int | None) -> tuple[int, dict, list[int]] | None:
+    """Anticipi già cominciati (#373): (giornata, consigliata mostrata, id dei giocatori della tua rosa che non si spostano più), o None
+    se nessuno della rosa gioca una partita già cominciata. «Cominciata» è la regola della consigliata (`consigli._anticipi_iniziati`,
+    #368, calendario e orario). La consigliata è quella di `consigli.formazione`, già in cache dopo `consigli.valuta`."""
+    squadre = consigli._anticipi_iniziati(db, consigli.stagione_corrente(), giornata) if giornata else ()
+    if not squadre:
+        return None
+    f = consigli.formazione(db, _regole(ctx), _rose(ctx), None, giornata)
+    ids = scelte.bloccati(f.get("schede") or {}, squadre)
+    return (giornata, f, ids) if ids else None
+
+
+def _non_sposta_i_fermi(ctx: Contesto, regole_: regole.Regole, fermi: tuple[int, dict, list[int]] | None,
+                        nuovi: list[int] | None = None) -> None:
+    """400 `giocatore_bloccato` (`scelte.GiocatoreBloccato`) se i titolari `nuovi` (None = la consigliata: si torna a lei) spostano un
+    giocatore fermo (`_fermi`) rispetto alla formazione che vale adesso: la scelta salvata se vale (regola unica della scelta),
+    altrimenti la consigliata. Si chiama dentro il lucchetto delle scelte: la scelta letta qui è quella che si sovrascrive."""
+    if fermi is None:
+        return
+    giornata, f, ids = fermi
+    schede = {int(k): x for k, x in (f.get("schede") or {}).items() if isinstance(x, dict)}
+    consigliata = [int(g["id"]) for g in f.get("titolari") or []]
+    valida = scelte.che_vale(scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte),
+                             {i: x.get("ruolo") for i, x in schede.items()}, regole_)
+    scelte.controlla_bloccati(ids, valida["titolari"] if valida else consigliata, consigliata if nuovi is None else nuovi,
+                              {i: x.get("nome") for i, x in schede.items()})
+
+
 @app.post("/api/formazione/valuta")
 def valuta_formazione(dati: FormazioneScelta, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
     """Punti attesi di una formazione scelta a mano. Con salva=true la ricorda come "la mia scelta" della giornata
@@ -872,6 +911,8 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
     # Se gli 11 sono quelli della consigliata («Salva questa») la scelta ha anche `era_consigliata`: «Da fare» poi non propone
     # cambi (da_fare.py, #333). Conta anche la consigliata che GET /api/formazione ti ha mostrato (istantanea del Diario), se nel
     # frattempo i dati si sono aggiornati. Qui un commento e non nella docstring, che finisce nel contratto docs/openapi.json.
+    # Dopo l'inizio di un anticipo i suoi giocatori non si spostano più: un salvataggio che lo fa risponde 400 `giocatore_bloccato`
+    # (#373, `_fermi` e `_non_sposta_i_fermi`).
     db = _db()
     try:
         regole_, rose_ = _regole(ctx), _rose(ctx)
@@ -881,8 +922,10 @@ def valuta_formazione(dati: FormazioneScelta, request: Request, response: Respon
             if chiusa is not None:
                 return chiusa
             era = da_fare.era_consigliata(db, regole_, rose_, dati.titolari, r["giornata"], ctx.diario)     # anche quella mostrata
+            fermi = _fermi(db, ctx, r["giornata"])
             with versioni.blocco("scelte"):
                 versioni.controlla(request, _etag_scelta(ctx, r["giornata"]))
+                _non_sposta_i_fermi(ctx, regole_, fermi, dati.titolari)
                 scelte.salva(consigli.stagione_corrente(), r["giornata"], dati.titolari, r["modulo"], ctx.scelte, era_consigliata=era)
                 response.headers["ETag"] = _etag_scelta(ctx, r["giornata"])
         return r
@@ -904,12 +947,16 @@ def cancella_scelta(request: Request, response: Response, giornata: int = Query(
         # dopo la scadenza la scelta non si toglie più da qui (409). Unica eccezione voluta: POST /api/diario/schierata riscrive
         # la scelta di una giornata FINITA (l'utente dice cosa ha schierato davvero nella lega)
         chiusa = _formazione_chiusa(db, ctx, giornata)
+        # tornare alla consigliata non sposta chi gioca un anticipo già cominciato (#373); senza una tua scelta non cambia niente
+        fermi = None if chiusa is not None or scelte.leggi(consigli.stagione_corrente(), giornata, ctx.scelte) is None \
+            else _fermi(db, ctx, giornata)
     finally:
         db.close()
     if chiusa is not None:
         return chiusa
     with versioni.blocco("scelte"):
         versioni.controlla(request, _etag_scelta(ctx, giornata))
+        _non_sposta_i_fermi(ctx, _regole(ctx), fermi)
         scelte.cancella(consigli.stagione_corrente(), giornata, ctx.scelte)
         response.headers["ETag"] = _etag_scelta(ctx, giornata)
     return {"ok": True}
@@ -1113,12 +1160,20 @@ def leggi_diario(ctx: Contesto = Depends(lega_corrente)):
     """Giornata per giornata: la formazione che hai schierato contro quella consigliata, con punti attesi e fatti."""
     r = diario.elenco(ctx.diario, _regole(ctx))
     r["precisione"] = precisione.riassunto(r["giornate"])          # «Quanto ci abbiamo preso» (campo nuovo: i client vecchi lo ignorano)
-    if not r["giornate"]:
+    r["precisione"]["serie_a"] = None
+    try:
         db = _db()
+    except sqlite3.Error:                                          # archivio occupato o assente: il Diario si apre lo stesso, senza la riga
+        return r
+    try:
         try:
+            r["precisione"]["serie_a"] = precisione.serie_a(db)    # la riga su tutta la Serie A, dal registro delle giornate (#374)
+        except sqlite3.Error:
+            r["precisione"]["serie_a"] = None
+        if not r["giornate"]:
             r["motivo_vuoto"] = diario.motivo_vuoto(db, _regole(ctx), _rose(ctx))          # campo facoltativo: i client vecchi lo ignorano
-        finally:
-            db.close()
+    finally:
+        db.close()
     return r
 
 

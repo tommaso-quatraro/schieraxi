@@ -91,7 +91,7 @@ def test_i_cambi_arrivano_a_ciascuno_con_il_suo_stato(mondo, registro):
     mondo.prev.loc[1, ["stato", "percentuale"]] = ["panchina", 30.0]  # cambia solo Castro, che è di amico1
     esiti, errori = avvisi_utenti.esegui("cambi", mondo.db, ADESSO)
     assert errori == {} and len(esiti["amico1"]) >= 1 and esiti["amico2"] == []
-    assert [(chi, testo) for chi, _, testo in registro.web] == [(a.cartella.name, "Castro: dalla formazione titolare alla panchina")]
+    assert [(chi, testo) for chi, _, testo in registro.web] == [(a.cartella.name, "Giornata 9 · 9ª di Serie A\nCastro: dalla formazione titolare alla panchina")]
     assert registro.ntfy == []
     assert json.loads(a.stato_cambi.read_text())["cambi"] and json.loads(b.stato_cambi.read_text())["cambi"]    # ognuno ha il suo stato
     assert a.stato_cambi.parent != b.stato_cambi.parent
@@ -192,7 +192,7 @@ def test_formazione_pronta_una_volta_per_giornata_e_per_utente(mondo, registro):
     a, b = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
     esiti, _ = avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
     assert [chi for chi, _, _ in registro.web] == [a.cartella.name, b.cartella.name]
-    assert all("Giornata 9: la formazione è pronta" in testo for _, _, testo in registro.web)
+    assert all("Giornata 9 · 9ª di Serie A: la formazione è pronta" in testo for _, _, testo in registro.web)
     assert json.loads(a.stato_avvisi.read_text()) == {"ultimo": f"{ST}/9"}
     avvisi_utenti.esegui("pronta", mondo.db, PRONTA)
     assert len(registro.web) == 2

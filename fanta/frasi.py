@@ -15,7 +15,10 @@ riduce a `str` semplice (la chiave si perde): per le frasi composte si usa un'al
 a loro volta `Frase`, come in `dafare.svincolato_motivo`).
 
 Parametri: testi (nomi, squadre), interi, numeri decimali (nel JSON sono testo con il punto e UNA cifra, «1.5»; nel testo italiano
-la virgola), altre `Frase`. Plurali: le chiavi `x.one` e `x.other` con il parametro `n` (uno solo = `one`).
+la virgola), altre `Frase`. Nel testo un numero negativo ha il meno tipografico («−0,4», mai «-0,4»); nel JSON resta il trattino
+(«-0.4»), che ogni linguaggio legge come numero. Una differenza tra due numeri scritti nella stessa frase si passa con
+`differenza(a, b)`: è la differenza dei due numeri come si leggono e ha sempre il segno («+0,6», «−0,6»; nel JSON «+0.6», «-0.6»).
+Plurali: le chiavi `x.one` e `x.other` con il parametro `n` (uno solo = `one`).
 Il modello italiano di ogni chiave sta in `CATALOGO`; `tests/test_frasi.py` controlla che `fanta/web/testi.js` abbia la stessa
 chiave, gli stessi segnaposto e la traduzione inglese.
 """
@@ -40,6 +43,9 @@ CATALOGO: dict[str, str] = {
     "tempo.giorni_fa.other": "{n} giorni fa",
     "tempo.giornate.one": "giornata",
     "tempo.giornate.other": "{n} giornate",
+    # il numero della giornata, lega e Serie A insieme (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»): si usa con nome_giornata
+    "giornata.lega": "Giornata {n} · {a}ª di Serie A",
+    "giornata.serie_a": "{a}ª giornata di Serie A",
     "elenco.e": " e ",
     "dafare.dubbio_squalificato": "{nome} non può giocare.",
     "dafare.dubbio_squalificato_alt": "{nome} non può giocare. Meglio {alt}.",
@@ -65,12 +71,12 @@ CATALOGO: dict[str, str] = {
     "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
     "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
-    "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della giornata {n}.",
+    "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
     "dafare.cert.one": "L'app sul telefono scade tra {n} giorno: rinnovala.",
     "dafare.cert.other": "L'app sul telefono scade tra {n} giorni: rinnovala.",
-    "dafare.diario": "La giornata {n} è finita: dimmi se hai schierato la consigliata.",
+    "dafare.diario": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
     "dafare.dati_vecchi": "I dati delle partite non si aggiornano da {giorni} giorni.",
     "dafare.primo_avvio.one": "Hai saltato {n} passo della configurazione iniziale.",
     "dafare.primo_avvio.other": "Hai saltato {n} passi della configurazione iniziale.",
@@ -257,20 +263,52 @@ CATALOGO: dict[str, str] = {
     "rose.potrebbe_essere": "potrebbe essere: {elenco}",
     "nomi.ruolo_diverso": "ruolo diverso: indicato {indicato}, nel listone {listone}",
     "nomi.squadra_diversa": "squadra diversa: indicata {indicata}, nel listone {listone}",
+    # Diario, «Quanto ci abbiamo preso»: la riga su tutta la Serie A dal registro delle giornate (precisione.serie_a, #374)
+    "diario.serie_a": "Su tutta la Serie A, nelle ultime {n} giornate: {fv}; {gioca}.",
+    "diario.serie_a_solo": "Su tutta la Serie A, nelle ultime {n} giornate: {parte}.",
+    "diario.serie_a_fv_meno": "il fantavoto atteso ha sbagliato il {pct}% in meno della fantamedia",
+    "diario.serie_a_fv_piu": "il fantavoto atteso ha sbagliato il {pct}% in più della fantamedia",
+    "diario.serie_a_fv_pari": "il fantavoto atteso ha sbagliato quanto la fantamedia",
+    "diario.serie_a_gioca": "quando diciamo «gioca {p}%», ha giocato {k} volte su 10",
+    "diario.serie_a_attesa.one": "Su tutta la Serie A serve ancora {n} giornata per dire quanto ci prendiamo.",
+    "diario.serie_a_attesa.other": "Su tutta la Serie A servono ancora {n} giornate per dire quanto ci prendiamo.",
 }
 
 
 E_ELENCO = {"it": " e ", "en": " and "}
+MENO = "−"          # «−», il meno tipografico: come `segno` e `numMeno` della web e `Formato.conSegno` dell'iPhone
+
+
+class ConSegno(float):
+    """Un numero che si scrive sempre con il segno, «+0,6» o «−0,6» («0,0» senza segno se arrotondato vale zero): la regola di
+    `segno` della web. Si crea con `differenza`."""
+
+
+def differenza(a, b) -> ConSegno:
+    """`a − b` come la legge l'utente: la differenza dei due numeri ARROTONDATI come si scrivono (una cifra), con il segno.
+    Così «vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)» torna sempre: la differenza vera (72,66 − 72,14 = 0,52)
+    arrotondata da sola darebbe «0,5»."""
+    return ConSegno(round(round(float(a), 1) - round(float(b), 1), 1))
+
+
+def _segno_e_cifre(valore: numbers.Real) -> tuple[str, str]:
+    """(segno, cifre senza segno) di un numero: gli interi come sono, i decimali con UNA cifra e il punto. Segno «-» per i negativi,
+    «+» per i positivi `ConSegno`, nessuno se le cifre valgono zero («0.0», mai «-0.0»)."""
+    cifre = str(abs(int(valore))) if isinstance(valore, numbers.Integral) else f"{abs(float(valore)):.1f}"
+    if not re.search(r"[1-9]", cifre):
+        return "", cifre
+    return ("-" if valore < 0 else "+" if isinstance(valore, ConSegno) else ""), cifre
 
 
 def _it(valore, lingua: str = "it") -> str:
-    """Un parametro nel testo: i decimali con una cifra (la virgola in italiano, il punto in inglese); le frasi nella stessa lingua."""
+    """Un parametro nel testo: i decimali con una cifra (la virgola in italiano, il punto in inglese), il meno tipografico davanti ai
+    negativi; le frasi nella stessa lingua."""
     if isinstance(valore, Frase):
         return valore.in_lingua(lingua)
-    if isinstance(valore, bool) or not isinstance(valore, numbers.Real) or isinstance(valore, numbers.Integral):
+    if isinstance(valore, bool) or not isinstance(valore, numbers.Real):
         return str(valore)
-    testo = f"{float(valore):.1f}"
-    return testo.replace(".", ",") if lingua == "it" else testo
+    segno, cifre = _segno_e_cifre(valore)
+    return segno.replace("-", MENO) + (cifre.replace(".", ",") if lingua == "it" else cifre)
 
 
 def _modello(chiave: str, param: dict, lingua: str) -> str:
@@ -303,7 +341,17 @@ _DAVANTI_A_VOCALE = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:11|1|8\d?)(?:,\d+
 
 
 def _apostrofo(testo: str) -> str:
-    return _DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
+    return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo))
+
+
+# «la 8ª» si dice «l'8ª» (e «dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una
+# vocale, fra 1 e 38 l'8ª (ottava) e l'11ª (undicesima); «la 1ª» (prima) e «la Giornata 8» restano. Uguale a `elidiOrdinali` in app.js.
+_DAVANTI_A_ORDINALE = re.compile(r"\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)")
+
+
+def elidi_ordinali(testo: str) -> str:
+    """Il testo italiano con l'apostrofo davanti all'8ª e all'11ª («per la 11ª giornata di Serie A» → «per l'11ª giornata di Serie A»)."""
+    return _DAVANTI_A_ORDINALE.sub(lambda m: m.group(1)[:-1] + "'" + m.group(2), testo)
 
 
 def _json(valore):
@@ -315,8 +363,8 @@ def _json(valore):
         return valore
     if isinstance(valore, numbers.Integral):
         return int(valore)
-    if isinstance(valore, numbers.Real):
-        return f"{float(valore):.1f}"                # decimali: testo con il punto e una cifra («1.5»), uguale in ogni lingua inglese
+    if isinstance(valore, numbers.Real):             # decimali: testo con il punto e una cifra («1.5», «-0.4»; «+0.6» per `ConSegno`)
+        return "".join(_segno_e_cifre(valore))
     return str(valore)
 
 
@@ -365,6 +413,17 @@ def lista(valori) -> list[dict | None]:
     return [di(v) for v in valori]
 
 
+def nome_giornata(serie_a: int, lega: int | None, avviso: bool = False) -> Frase:
+    """La giornata con i due numeri, come su Leghe: «Giornata 8 · 11ª di Serie A» (`lega` = giornata della lega, `serie_a` = giornata
+    di Serie A); senza il numero della lega (stagioni passate, prima che la lega parta) «11ª giornata di Serie A». Stesse forme di
+    `nomeGiornata` in fanta/web/app.js (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»). In una frase va in testa, con i due punti.
+    `avviso`: le chiavi degli avvisi sul telefono (`n.giornata.*`, in italiano e in inglese); le altre le traduce la web da testi.js."""
+    prima = "n." if avviso else ""
+    if lega is None:
+        return F(prima + "giornata.serie_a", a=int(serie_a))
+    return F(prima + "giornata.lega", n=int(lega), a=int(serie_a))
+
+
 def elenco(parti: list, sep: str = ", ", con_e: bool = False):
     """Più frasi in fila: «a, b e c» (con_e) o «a; b; c» (sep). Una sola parte resta com'è; nessuna parte: testo vuoto."""
     parti = list(parti)
@@ -385,7 +444,9 @@ def da_json(valore) -> Frase | None:
                 return da_json(v) or v
             if isinstance(v, list):
                 return [pezzo(x) for x in v]
-            return float(v) if isinstance(v, str) and re.fullmatch(r"-?\d+\.\d", v) else v     # un decimale torna decimale (virgola in italiano)
+            if isinstance(v, str) and re.fullmatch(r"[+-]?\d+\.\d", v):        # un decimale torna decimale (virgola in italiano)
+                return ConSegno(v) if v.startswith("+") else float(v)          # «+0.6» è una differenza: resta con il segno
+            return v
         param = {k: pezzo(v) for k, v in (valore.get("param") or {}).items()}
         return Frase(valore["chiave"], param)
     except (KeyError, IndexError, ValueError, TypeError):

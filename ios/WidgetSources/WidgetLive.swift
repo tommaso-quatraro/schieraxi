@@ -17,8 +17,9 @@ struct WidgetLive: Widget {
     }
 }
 
-/// Una partita su una riga: squadre, punteggio, minuto (o il giorno e l'ora come la web, «oggi 18:30»; se non c'è posto, oggi
-/// la sola ora); sotto (se ci sono) i tuoi titolari. VoiceOver legge sempre la forma intera (`PartitaLive.frase`).
+/// Una partita su una riga: squadre con in mezzo il punteggio («INT 2–1 ROM») o, senza punteggio, «vs» come le partite del turno
+/// dell'app («NAP vs ATA», #391), poi il minuto (o il giorno e l'ora come la web, «oggi 18:30»; se non c'è posto, oggi la sola
+/// ora); sotto (se ci sono) i tuoi titolari. VoiceOver legge sempre la forma intera (`PartitaLive.frase`).
 struct RigaPartitaLive: View {
     let p: PartitaLive
     let miei: [GiocatoreWidget]
@@ -37,7 +38,10 @@ struct RigaPartitaLive: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(ColoriSquadra.sigla(p.casa)).font(.footnote.weight(.semibold)).frame(width: 34, alignment: .trailing)
-                    Text(p.punteggio).font(.system(.body, design: .rounded).weight(.bold)).monospacedDigit()
+                    // il punteggio grande; «vs» con il carattere delle sigle, così la riga si legge «NAP vs ATA»
+                    Text(p.traLeSigle)
+                        .font(p.conPunteggio ? Font.system(.body, design: .rounded).weight(.bold) : Font.footnote.weight(.semibold))
+                        .monospacedDigit()
                         .foregroundStyle(p.inGioco ? TintaWidget.accento(modo) : .white).widgetAccentable(p.inGioco)
                     Text(ColoriSquadra.sigla(p.trasferta)).font(.footnote.weight(.semibold)).frame(width: 34, alignment: .leading)
                     if compatto {
@@ -122,8 +126,8 @@ struct VistaLive: View {
             if let p = scelte(w, massimo: 1).first {
                 let miei = w.mieiTitolari(in: p)
                 VStack(alignment: .leading, spacing: 1) {
-                    // «GEN – COM oggi 18:30», se non entra «GEN – COM 18:30»; rimpicciolito solo come ultima scelta
-                    TestoCheEntra(rigaPartita(p)).font(.headline).minimumScaleFactor(0.7)
+                    // «GEN vs COM · oggi 18:30», se non entra «GEN vs COM · 18:30»; rimpicciolito solo come ultima scelta
+                    TestoCheEntra(p.formeRiga(adesso: voce.date)).font(.headline).minimumScaleFactor(0.7)
                     // i nomi che entrano e «e altri N»: mai «Dima…»
                     TestoCheEntra(miei.isEmpty ? [titolo(w)] : ParoleWidget.nomi(miei.map(\.cognome)).map { "Tuoi: " + $0 }).font(.caption)
                     if let e = EventiPartita.visibili(p.eventi).last {
@@ -134,16 +138,10 @@ struct VistaLive: View {
             }
         case .accessoryInline:
             if let p = scelte(w, massimo: 1).first {
-                RigaInLinea(rigaPartita(p), icona: "soccerball")
+                RigaInLinea(p.formeRiga(adesso: voce.date), icona: "soccerball")
             }
         default: elenco(w, massimo: 3, eventi: false)
         }
-    }
-
-    /// La partita in una riga, dalla forma intera alla più corta: «GEN – COM oggi 18:30», «GEN – COM 18:30»; «INT 2–0 ROM 63'».
-    private func rigaPartita(_ p: PartitaLive) -> [String] {
-        let squadre = "\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta))"
-        return p.formeEtichetta(adesso: voce.date).map { "\(squadre) \($0)" }
     }
 
     /// Con gli eventi in colonna ogni partita occupa piu' righe: se non entrano tutte se ne mostrano meno (almeno una), mai eventi tagliati.

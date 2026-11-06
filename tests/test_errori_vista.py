@@ -9,8 +9,9 @@ JS = (server.WEB / "app.js").read_text(encoding="utf-8")
 def test_errore_a_tutta_pagina_ha_il_pulsante_riprova():
     assert "const erroreVista" in JS and "data-riprova" in JS
     assert 'ev.target.closest("[data-riprova]")' in JS                       # un solo gestore globale: ricarica la sezione aperta
-    # le sezioni che si caricano per intero usano la versione col pulsante
-    assert len(re.findall(r"contenuto\.innerHTML = erroreVista\(e\)", JS)) >= 3
+    # le sezioni che si caricano per intero usano la versione col pulsante (scritta da pagina(), sotto il titolo della schermata)
+    assert len(re.findall(r"pagina\(erroreVista\(e\)", JS)) >= 3
+    assert "contenuto.innerHTML = erroreVista(e)" not in JS
 
 
 def test_errore_429_dice_quanto_aspettare():
