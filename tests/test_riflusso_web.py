@@ -227,3 +227,5 @@ def test_accesso_e_primo_avvio_nella_pagina_strettissima():
     stretta = _blocco(STRETTA)
     assert "flex-direction: column" in _regola(stretta, ".pa-passi")
     assert "border-top: 1px solid var(--filo)" in _regola(stretta, ".pa-passi li + li")
+    # la casella da 44 px con il margine di −9 px usciva di 1 px dalla pagina (riempimento di 8 px): Impostazioni > Avanzate a 195 px
+    assert "margin-right: -8px" in _regola(stretta, ".interruttore input[type=\"checkbox\"]")

@@ -1548,4 +1548,6 @@ body { container: pagina / inline-size; }
   .pa-passi li + li { border-left: 0; border-top: 1px solid var(--filo); }
   .pa-passi li:first-child .pa-passo { border-radius: calc(var(--r-in) - 1px) calc(var(--r-in) - 1px) 0 0; }
   .pa-passi li:last-child .pa-passo { border-radius: 0 0 calc(var(--r-in) - 1px) calc(var(--r-in) - 1px); }
+  /* la casella da 44 px (margine di −9 px) usciva di 1 px dal riempimento di 8 px della pagina (Impostazioni > Avanzate) */
+  .interruttore input[type="checkbox"] { margin-right: -8px; }
 }
