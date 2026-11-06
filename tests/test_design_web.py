@@ -27,8 +27,10 @@ def test_aree_di_tocco_da_44px_anche_in_densita_compatta():
     assert re.search(r'\.interruttore input\[type="checkbox"\], \.scelte input\[type="checkbox"\] \{[^}]*width: 44px; height: 44px; margin: -9px', CSS)
 
 def test_accesso_e_primo_avvio_centrati():
-    # il margine di .carta (e quello della densità compatta) spingeva la scheda d'accesso in basso: serve un selettore più forte, con auto su tutti i lati
-    assert re.search(r"\.accesso > \.accesso-corpo\.carta \{[^}]*margin: auto;", CSS)
+    # il margine di .carta spingeva la scheda d'accesso in basso. Grafica B (spec §9): il modulo non è più una carta, ha auto su
+    # tutti i lati (al centro, in verticale e in orizzontale) e nessuna regola di .carta gli toglie il margine
+    assert re.search(r"\n\.accesso-corpo \{[^}]*margin: auto;", CSS)
+    assert "carta accesso-corpo" not in (server.WEB / "app.js").read_text(encoding="utf-8")
     assert ".onb-griglia" not in CSS and ".onb-blocco" in CSS
 
 def test_schermi_grandi_ingranditi():

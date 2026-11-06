@@ -218,3 +218,14 @@ def test_le_righe_delle_regole_vanno_a_capo_sotto_i_320_px():
     b = _blocco(STRETTA)
     assert "flex-wrap: wrap" in _regola(b, ".riga-regola")
     assert "max-width: 100%" in _regola(b, ".riga-regola > select.scelta-corta")
+
+
+def test_accesso_e_primo_avvio_nella_pagina_strettissima():
+    """PR 12 della grafica B: con lo zoom al 200% il nome disegnato dell'accesso (192 px) si stringe invece di far scorrere la
+    pagina di lato, e i tre passi del primo avvio vanno uno sotto l'altro (affiancati erano larghi 60 px l'uno)."""
+    assert "max-width: 100%" in _regola(CSS, ".accesso-titolo .wm")
+    stretta = _blocco(STRETTA)
+    assert "flex-direction: column" in _regola(stretta, ".pa-passi")
+    assert "border-top: 1px solid var(--filo)" in _regola(stretta, ".pa-passi li + li")
+    # la casella da 44 px con il margine di −9 px usciva di 1 px dalla pagina (riempimento di 8 px): Impostazioni > Avanzate a 195 px
+    assert "margin-right: -8px" in _regola(stretta, ".interruttore input[type=\"checkbox\"]")
