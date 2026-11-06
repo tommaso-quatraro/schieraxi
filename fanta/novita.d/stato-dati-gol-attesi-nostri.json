@@ -1,0 +1,13 @@
+{
+  "titolo": "Stato dei dati: i gol attesi calcolati solo con Fantacalcio.it",
+  "voci": [
+    "In Stato dei dati, per chi gestisce l'app, c'è la sezione «Gol attesi nostri (senza Understat)»: quanto sono buoni i numeri calcolati solo con i voti di Fantacalcio.it rispetto a quelli mostrati.",
+    "Tre misure: errore del fantavoto atteso, punti veri della formazione migliore, gol attesi contro gol veri. Per ognuna la media, la soglia e se regge; in cima se reggono tutte e tre insieme, oppure quante giornate servono ancora.",
+    "Sotto, giornata per giornata: da misurare, misurata con i suoi numeri, o persa con il motivo. Uguale sul sito e sull'app per iPhone. I numeri che vedi nelle altre schermate non cambiano."
+  ],
+  "tecnico": [
+    "Issue #401, Fase E del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (I4 dal vivo, L3b di #165). La web mostra il campo facoltativo registro_nostri di GET /api/stato-dati (Fase D, PR #398) con cartaNostri in app.js (righe come il registro: statoRegistro, regPerc, regCifra) e i testi sd.nos_* in testi.js (italiano e inglese); l'iPhone con StatoDati.RegistroNostri, ParoleNostri e GolAttesiNostriSezione (righe RigaMisuraRegistro, che ora accetta un verdetto al plurale e il dettaglio facoltativo).",
+    "Verdetto e soglie dal server (regge, regge_tutto, verdetto), mai ricalcolati sui client. Errore in percentuale con il segno, punti con due cifre e il segno, scarto per fasce con tre cifre, gol attesi su veri con due. Le giornate di un'altra versione del calcolo dicono che non contano.",
+    "Test: tests/test_stato_dati_nostri_web.py (la funzione vera di app.js in node, sui dati di registro_nostri.riepilogo) e GolAttesiNostriTests (stesse frasi di testi.js, stessa risposta del server nella fixture stato-dati-nostri.json, controllata dal test Python)."
+  ]
+}

@@ -2454,6 +2454,44 @@ const NOMI_CONTROLLI = { partite_per_giornata: t("sd.ctl_partite"), voti_per_gio
 // righe della sentinella (fanta/sentinella.py): «sentinella_<invariante>», il nome dell'invariante con gli spazi; quelle a posto
 // non si mostrano (le riassume la riga «sentinella»)
 const nomeControllo = n => NOMI_CONTROLLI[n] || (n.startsWith("sentinella_") ? t("sd.ctl_sentinella_una", { nome: n.slice(11).replaceAll("_", " ") }) : n);
+// Gol attesi nostri, senza Understat (I4 dal vivo, #401): i numeri calcolati solo con i voti di Fantacalcio.it contro quelli mostrati
+// (campo `registro_nostri`), dopo il registro delle giornate e con le sue righe. Verdetto e soglie dal server (`regge`, `regge_tutto`),
+// non si ricalcolano qui. Errore in percentuale come il registro, punti con due cifre e il segno, scarto con tre cifre, gol attesi su
+// veri con due. Uguale sull'iPhone (`ParoleNostri`).
+const statoNostri = n => !n.verdetto ? statoRegistro(n)
+  : n.regge_tutto === true ? { testo: t("sd.nos_reggono"), colore: "var(--verde)" } : { testo: t("sd.nos_non_reggono"), colore: "var(--rosso)" };
+function rigaNostri(st, nome, dettaglio) {
+  return `<div class="riga"><span>${nome}</span><span class="piccolo${st.colore ? "" : " debole"}"${st.colore ? ` style="color:${st.colore}"` : ""}>${st.testo}</span></div>
+      ${dettaglio ? `<div class="debole piccolo">${dettaglio}</div>` : ""}`;
+}
+// Una giornata: il motivo se è persa, quanti giocatori sono salvati se non è ancora misurata, altrimenti i suoi tre numeri; quelle di
+// un'altra versione del calcolo non contano nel verdetto e lo dicono.
+function statoGiornataNostri(g, versione) {
+  if (g.persa) return { testo: esc(g.persa), colore: "var(--rosso)" };
+  const altra = g.versione != null && versione != null && String(g.versione) !== String(versione) ? ` · ${t("sd.nos_g_versione", { v: esc(g.versione) })}` : "";
+  const testo = !g.misurato ? tp("sd.nos_g_da_misurare", g.giocatori || 0)
+    : (g.voti || 0) > 0 ? t("sd.nos_g_misurata", { e: regPerc(g.errore_pct, true), p: segno(g.punti, 2), g: num(g.gol_su_veri, 2) }) : t("sd.nos_g_vuota");
+  return { testo: testo + altra, colore: "" };
+}
+function cartaNostri(n) {
+  if (!n) return "";
+  const s = n.soglie || {}, k = n.giornate || 0, v = esc(n.versione ?? "–");
+  const misure = k ? rigaNostri(statoNostri(n), t("sd.nos_insieme"), "")
+    + rigaNostri(statoRegistro(n, "errore"), t("sd.nos_errore"), t("sd.nos_errore_riga", { v: regPerc(n.errore_pct, true), s: regPerc(s.errore, true) }))
+    + rigaNostri(statoRegistro(n, "punti"), t("sd.nos_punti"), t("sd.nos_punti_riga", { v: segno(n.punti, 2), s: regCifra(s.punti, 1, true) }))
+    + rigaNostri(statoRegistro(n, "gol"), t("sd.nos_gol"), t("sd.nos_gol_riga", { v: num(n.scarto_gol, 3), s: num(s.scarto_gol, 3), g: num(n.gol_su_veri, 2), m: num(n.gol_su_veri_mostrati, 2) })) : "";
+  const giornate = (n.per_giornata || []).filter(g => g);
+  const righe = giornate.map(g => {
+    const st = statoGiornataNostri(g, n.versione);
+    return `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: esc(g.giornata) })}</span></div>
+        <div class="piccolo${st.colore ? "" : " debole"}"${st.colore ? ` style="color:${st.colore}"` : ""}>${st.testo}</div>`;
+  }).join("");
+  return `<div class="carta" id="gol-attesi-nostri"><h2>${t("sd.nos_titolo")}</h2>
+    <div class="debole piccolo">${t("sd.nos_spiega")}</div>
+    <div class="debole piccolo" style="margin:4px 0 8px">${k ? tp("sd.nos_media", k, { v }) : t("sd.nos_nessuna", { v })}</div>
+    ${misure}
+    ${righe ? `<details><summary class="debole piccolo">${t("sd.nos_per_giornata")}</summary>${righe}</details>` : ""}</div>`;
+}
 // Registro delle giornate (#344): le medie delle ultime giornate misurate, ognuna con la sua soglia e il verdetto del server
 // (`regge`, che non si ricalcola qui), e le giornate perse con il motivo. Percentuali e punti con una cifra decimale, senza «,0»
 // («−3%», «−5,7%»), come sull'iPhone (`ParoleRegistro`).
@@ -2523,6 +2561,7 @@ async function apriStatoDati() {
           ${k.esito === "ok" ? "" : `<div class="debole piccolo">${esc(k.dettaglio || "")}</div>`}`).join("") : `<div class="debole">${t("scambio.fanno_ogni_aggiornamento")}</div>`}</div>
       <div class="carta" id="affidabilita"><h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>
       ${cartaRegistro(s.registro)}
+      ${cartaNostri(s.registro_nostri)}
       <div class="carta"><h2>${t("scambio.quanto_azzecca_modello")}</h2>
         <div class="debole piccolo">${c.giornate ? t("sd.giornate_giocate", { n: c.giornate }) : t("sd.appena_finisce")}
           ${t("sd.corregge")}</div>

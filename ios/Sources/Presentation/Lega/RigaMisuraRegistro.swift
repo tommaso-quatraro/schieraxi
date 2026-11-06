@@ -5,27 +5,32 @@ import SwiftUI
 struct RigaMisuraRegistro: View {
     let nome: String
     let esito: ParoleRegistro.Esito
-    let dettaglio: String
+    /// Media e soglia sotto il nome; nil per una riga senza numeri (il verdetto delle misure insieme dei gol attesi nostri).
+    var dettaglio: String? = nil
+    /// Le parole accanto al nome quando non sono quelle di `esito` (il colore resta quello di `esito`): «reggono» al plurale.
+    var verdetto: String? = nil
 
     var body: some View {
-        let verdetto = Text(esito.testo).font(.subheadline).foregroundStyle(colore)
+        let parole = Text(verdetto ?? esito.testo).font(.subheadline).foregroundStyle(colore)
         VStack(alignment: .leading, spacing: 2) {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text(nome).fixedSize()
                     Spacer(minLength: 8)
-                    verdetto.fixedSize()
+                    parole.fixedSize()
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(nome)
-                    verdetto
+                    parole
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Text(dettaglio)
-                .font(.footnote)
-                .foregroundStyle(Color.testoSecondario)
-                .monospacedDigit()
+            if let dettaglio {
+                Text(dettaglio)
+                    .font(.footnote)
+                    .foregroundStyle(Color.testoSecondario)
+                    .monospacedDigit()
+            }
         }
         .accessibilityElement(children: .combine)
     }

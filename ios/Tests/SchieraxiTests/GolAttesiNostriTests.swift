@@ -50,7 +50,7 @@ struct GolAttesiNostriTests {
         #expect(regge.punti == true)
         #expect(regge.gol == false)
         let giornate = try #require(n.perGiornata)
-        #expect(giornate.map(\.giornata) == Array((1...11).reversed()))
+        #expect(giornate.map { $0.giornata ?? -1 } == Array((1...11).reversed()))
         #expect(giornate[0].giocatori == 3)
         #expect(giornate[0].misurato == nil)
         #expect(giornate[1].persa?.hasPrefix("nessun tentativo") == true)
