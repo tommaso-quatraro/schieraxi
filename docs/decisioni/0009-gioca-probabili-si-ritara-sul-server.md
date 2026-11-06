@@ -1,6 +1,7 @@
 # 0009. «Gioca N%» con le probabili si ritara da solo sul server
 
-Data: 6/11/2026. Stato: proposta.
+Data: 6/11/2026. Stato: proposta (si accetta con la risposta dell'utente alla scelta S1 del piano; fino ad allora si fa solo la
+parte di misura).
 
 ## Contesto e problema
 Le costanti che trasformano le probabili formazioni in «gioca N%» (`modello._p_da_probabili`) sono scelte a mano. Per tararle
@@ -16,8 +17,8 @@ Resta da decidere dove gira, come il risultato arriva all'app e chi decide di us
 - Niente cambi di numeri a ridosso della scadenza della formazione.
 
 ## Opzioni considerate
-- **A.** Comando `python -m fanta taratura-probabili` in fondo a `script/server/aggiorna.sh`; coefficienti in una tabella
-  dell'archivio; si accende e si spegne da solo secondo la prova, con avviso al proprietario.
+- **A.** Comando `python -m fanta taratura-probabili` come ultimo passo di `script/server/aggiorna.sh` (dopo l'avviso «Formazione
+  pronta»); coefficienti in una tabella dell'archivio; si accende e si spegne da solo secondo la prova, con avviso al proprietario.
 - **B.** Stesso calcolo nel thread del registro delle giornate, dentro il servizio web, subito dopo la misura della giornata.
 - **C.** Il server calcola e mostra i numeri; i coefficienti entrano in `modello.py` con una PR a ogni nuova taratura.
 - **D.** Una riga nuova nel crontab del server, di notte.
@@ -27,16 +28,20 @@ Resta da decidere dove gira, come il risultato arriva all'app e chi decide di us
 Scelta: «A». Lo script si aggiorna da solo con l'app, ha già il blocco degli aggiornamenti e la priorità bassa, e un errore non
 tocca il servizio web (contro B). Non serve un passo a mano a ogni giornata e nessuno dovrebbe copiare in una PR numeri che sul PC
 non si possono rifare (contro C). Non serve cambiare la configurazione del server (contro D).
-Il risultato arriva all'app dalla tabella `taratura_probabili` dell'archivio: il modello usa la riga `attiva`, e ogni cambio scrive
-una riga in `aggiornamenti`, così le previsioni si ricalcolano come dopo un aggiornamento dei dati.
+Il risultato arriva all'app dalla tabella `taratura_probabili` dell'archivio: il modello usa la riga `attiva`, e ogni cambio scrive,
+nella stessa transazione, una riga in `aggiornamenti`, così le previsioni si ricalcolano come dopo un aggiornamento dei dati.
+La taratura cambia solo «gioca N%»: i minuti attesi restano quelli della formula di partenza finché anche il fantavoto atteso non si
+misura con la taratura accesa.
 Piano: `docs/superpowers/plans/2026-11-06-gioca-probabili-server.md`.
 
 ## Conseguenze
 - Bene: «gioca N%» migliora da solo man mano che arrivano giornate; ogni versione resta nella tabella con coefficienti, giornate
   e misura, ed è nella copia notturna.
 - Male: i numeri mostrati possono cambiare senza una PR; la taratura non si rifà sul PC.
-- Freni: prova sulla metà più recente delle giornate (Brier almeno lo 0,5% più basso, calibrazione ≤ 5 punti, Brier ≤ 0,15);
-  ritorno ai numeri di partenza se peggiora; niente cambi nelle 24 ore prima della prima partita; avviso al proprietario a ogni
-  cambio; `python -m fanta taratura-probabili --spegni` vale subito.
+- Freni: prova sulla metà più recente delle giornate; si accende solo con almeno 8 giornate (D1) e almeno 3 di prova, con un
+  Brier almeno lo 0,5% più basso sia della formula di adesso sia dei numeri mostrati, migliore in almeno due terzi delle giornate di
+  prova, calibrazione ≤ 5 punti e Brier ≤ 0,15; prima, solo misura. Ritorno ai numeri di partenza se peggiora. Nelle 24 ore prima
+  della prima partita il comando scrive solo `rimandata`, senza consumare la prova. Avviso al proprietario a ogni cambio;
+  `python -m fanta taratura-probabili --spegni` vale subito.
 - Controlli: test in `tests/test_taratura_probabili.py`; `python -m fanta verifica` identica in ogni PR (non usa le probabili);
   il registro delle giornate continua a misurare I2 sui numeri mostrati e avvisa se esce dalle soglie.
