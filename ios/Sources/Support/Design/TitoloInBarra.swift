@@ -64,10 +64,14 @@ struct TitoloInBarra: View {
 }
 
 extension View {
-    /// Con un titolo, la barra mostra quel `TitoloInBarra` al posto del titolo di sistema (che resta per il pulsante
-    /// «indietro» della pagina dopo e per l'elenco delle pagine aperte). Con `nil` la barra resta quella di sistema.
+    /// Con un titolo, la barra mostra quel `TitoloInBarra` al posto del titolo di sistema. Con `nil` la barra resta quella
+    /// di sistema. Il titolo di sistema (`navigationTitle`) resta impostato per il pulsante «indietro» della pagina dopo e
+    /// per l'elenco delle pagine aperte, ma esce dalla barra (`toolbar(removing: .title)`): sotto `TitoloInBarra` non si
+    /// vede, però VoiceOver lo trovava lo stesso (#419), tagliato in un riquadro su una zona vuota con il testo grande e
+    /// come secondo titolo con il testo normale.
     @ViewBuilder
     func titoloInBarra(_ titolo: TitoloInBarra?) -> some View {
+        let titoloDiSistema: ToolbarDefaultItemKind? = titolo == nil ? nil : .title
         if #available(iOS 26.0, *) {
             self.toolbar {
                 if let titolo {
@@ -78,6 +82,7 @@ extension View {
                     .sharedBackgroundVisibility(.hidden)
                 }
             }
+            .toolbar(removing: titoloDiSistema)
         } else {
             self.toolbar {
                 if let titolo {
@@ -86,6 +91,7 @@ extension View {
                     }
                 }
             }
+            .toolbar(removing: titoloDiSistema)
         }
     }
 }
