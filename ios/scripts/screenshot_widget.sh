@@ -7,12 +7,15 @@ USCITA="${2:-screenshot-widget}"
 ID_APP="it.schieraxi.app.anteprima"
 ERRORI=0
 mkdir -p "$USCITA"
+# Avvisi di sistema (es. «Ready for Apple Intelligence»): si ascoltano e le foto prese con un avviso sopra si rifanno (#393).
+source "$(dirname "$0")/avvisi.sh"
 
 scegli() { python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"; }
 
 scatta() {
   local udid="$1" etichetta="$2" nome="$3" dati="${4:-pieni}" larghezza="$5"
-  local render="pieno" suffisso=""
+  local render="pieno" suffisso="" inizio
+  inizio=$(date +%s)
   if [[ "$dati" == *+* ]]; then render="${dati##*+}"; dati="${dati%%+*}"; suffisso="_$render"; fi
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
@@ -28,6 +31,12 @@ scatta() {
     echo "ERRORE: scatto non riuscito ($etichetta / $nome)"; ERRORI=$((ERRORI + 1)); return
   fi
   if [ "$(stat -f%z "$file" 2>/dev/null || echo 999999)" -lt 30000 ]; then sleep 5; xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1; fi
+  if avvisi_comparsi "$inizio"; then
+    echo "  ($etichetta / $nome: avviso di sistema sullo schermo durante lo scatto: aspetto che sparisca e rifaccio la foto)"
+    AVVISI_RIFATTE=$((AVVISI_RIFATTE + 1))
+    avvisi_aspetta
+    xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
+  fi
   sips --resampleWidth "$larghezza" "$file" >/dev/null 2>&1
   echo "  $etichetta / $nome / $dati"
 }
@@ -48,6 +57,7 @@ avvia() {
   local udid="$1"
   xcrun simctl boot "$udid" 2>/dev/null
   xcrun simctl bootstatus "$udid" -b >/dev/null
+  avvisi_avvia "$udid"
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
   xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
   xcrun simctl install "$udid" "$APP"
@@ -70,6 +80,7 @@ giro "$UDID_IPHONE" iphone_fasi_chiaro light 600 oggi:in_corso oggi:finita
 giro "$UDID_IPHONE" iphone_vuoto dark 600 formazione:vuoto punti:vuoto formazione-blocco:vuoto punti-blocco:vuoto oggi:vuoto
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione punti oggi crediti dubbi formazione-blocco punti-blocco
 giro "$UDID_IPHONE" iphone_accentato dark 600 cruscotto:pieni+accentato formazione:pieni+accentato oggi:pieni+accentato osservato:pieni+accentato cruscotto-blocco:pieni+vivido
+avvisi_ferma
 xcrun simctl shutdown "$UDID_IPHONE" >/dev/null 2>&1
 
 IFS=$'\t' read -r UDID_IPAD NOME_IPAD IOS_IPAD <<< "$(scegli ipad)"
@@ -89,7 +100,9 @@ osascript -e 'tell application "System Events" to key code 123 using command dow
 sleep 3
 giro "$UDID_IPAD" ipad_scuro_orizzontale dark 800 cruscotto formazione punti
 for f in "$USCITA"/ipad_scuro_orizzontale_*.png; do sips -r 270 "$f" >/dev/null 2>&1; done
+avvisi_ferma
 xcrun simctl shutdown "$UDID_IPAD" >/dev/null 2>&1
 
 echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi: $ERRORI"
+avvisi_riepilogo
 [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]

@@ -64,4 +64,14 @@ final class FotoUITests: XCTestCase {
         XCTAssertTrue(aspetta(20) { esci.exists && esci.isHittable }, "nella foto accesso-account-fondo «Esci» deve essere a video")
         XCTAssertEqual(esci.label, "Esci")
     }
+
+    /// `confronto-fondo` (#393): la foto era uguale a `formazione-confronto` perché il foglio del Confronto non scorreva.
+    /// Con -DEMO_FONDO l'ultima scheda («Perché» di ognuno) deve essere a video, sotto la piega.
+    func testIlFondoDelConfrontoMostraUltimaScheda() {
+        avvia(["-DEMO_SCHERMATA", "confronto", "-DEMO_FONDO", "1"])
+        let ultima = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'confronto-motivi-'")).firstMatch
+        XCTAssertTrue(aspetta(30) { ultima.exists && ultima.isHittable },
+                      "nella foto confronto-fondo l'ultima scheda del Confronto deve essere a video")
+    }
 }

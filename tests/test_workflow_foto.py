@@ -105,7 +105,7 @@ def test_i_file_dei_widget_coprono_tutto_quello_che_compila_l_anteprima():
     for p in percorsi:
         esempio = f"ios/{p}" if p.endswith(".swift") else f"ios/{p}/Esempio.swift"
         assert schema.search(esempio), f"{esempio} non fa ripartire le foto dei widget"
-    for altro in ("ios/project.yml", "ios/scripts/screenshot_widget.sh", ".github/workflows/screenshot.yml"):
+    for altro in ("ios/project.yml", "ios/scripts/screenshot_widget.sh", "ios/scripts/avvisi.sh", ".github/workflows/screenshot.yml"):
         assert schema.search(altro), altro
     for no in ("ios/Sources/Views/OggiView.swift", "ios/Sources/Domain/Modelli2.swift", "fanta/web/app.js", "ios/scripts/screenshot.sh"):
         assert not schema.search(no), no

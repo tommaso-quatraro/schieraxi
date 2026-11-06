@@ -19,6 +19,8 @@ TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qua
 STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
 RADDRIZZA=0
 mkdir -p "$USCITA"
+# Avvisi di sistema (es. «Ready for Apple Intelligence»): si ascoltano e le foto prese con un avviso sopra si rifanno (#393).
+source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
 TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
@@ -76,6 +78,8 @@ scegli() {
 scatta() {
   local udid="$1" etichetta="$2" nome="$3"
   local schermata="$nome" fondo=() cerca=() cosa=()
+  local inizio
+  inizio=$(date +%s)
   case "$nome" in
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
   esac
@@ -116,6 +120,14 @@ scatta() {
   # Prima bastavano i secondi fissi qui sopra, e la Formazione in orizzontale usciva con lo scheletro del caricamento.
   python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
   esito=$?
+  # Un avviso di sistema comparso durante lo scatto (o da poco) è sulla foto: si aspetta che sparisca e si rifà (#393).
+  if avvisi_comparsi "$inizio"; then
+    echo "  ($etichetta / $nome: avviso di sistema sullo schermo durante lo scatto: aspetto che sparisca e rifaccio la foto)"
+    AVVISI_RIFATTE=$((AVVISI_RIFATTE + 1))
+    avvisi_aspetta
+    python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
+    esito=$?
+  fi
   if [ "$esito" -eq 3 ]; then
     echo "  ($etichetta / $nome: lo schermo si muoveva ancora dopo l'attesa, foto scattata lo stesso)"
     IN_MOVIMENTO=$((IN_MOVIMENTO + 1))
@@ -176,6 +188,7 @@ avvia_simulatore() {
   local udid="$1"
   xcrun simctl boot "$udid" 2>/dev/null
   xcrun simctl bootstatus "$udid" -b >/dev/null
+  avvisi_avvia "$udid"
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 \
     --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
   xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
@@ -183,6 +196,7 @@ avvia_simulatore() {
 }
 
 spegni_simulatore() {
+  avvisi_ferma
   xcrun simctl shutdown "$1" >/dev/null 2>&1
 }
 
@@ -213,6 +227,7 @@ prova_url() {
 # In fondo al registro della corsa: quante foto, quanti problemi (con il nome delle foto rimaste a metà attesa), quante in movimento.
 riepilogo() {
   echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
+  avvisi_riepilogo
   if [ "${#NON_RIUSCITI[@]}" -gt 0 ]; then
     echo "Tra i problemi, foto con uno scatto non riuscito durante l'attesa (resta la foto di prima):"
     printf '  %s\n' "${NON_RIUSCITI[@]}"

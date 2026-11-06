@@ -4,6 +4,9 @@ import SwiftUI
 struct ConfrontoView: View {
     @StateObject private var vm: ConfrontoViewModel
 
+    /// L'ultima scheda del foglio: dove scorre la foto `confronto-fondo` (vedi `Demo.demoScorriA`) e dove la guardano i test.
+    static let idFondoDemo = "confronto-fondo"
+
     init(a: Int, b: Int, contesto: ContestoConfronto?, server: any ServerClient) {
         _vm = StateObject(wrappedValue: ConfrontoViewModel(a: a, b: b, contesto: contesto, server: server))
     }
@@ -11,25 +14,32 @@ struct ConfrontoView: View {
     var body: some View {
         ZStack {
             Sfondo()
-            ScrollView {
-                Colonne(spazio: 14) {
-                    if let c = vm.confronto, c.giocatori.count == 2 {
-                        duello(c).ingresso(0)
-                        verdetto(c).ingresso(1)
-                        cause(c).ingresso(2)
-                        numeri(c).ingresso(3)
-                        motivi(c).ingresso(4)
-                    } else if let e = vm.errore {
-                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                    } else {
-                        Scheletro(schede: 2, righe: 2, testo: "Metto a confronto i due…")
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Colonne(spazio: 14) {
+                        if let c = vm.confronto, c.giocatori.count == 2 {
+                            duello(c).ingresso(0)
+                            verdetto(c).ingresso(1)
+                            cause(c).ingresso(2)
+                            numeri(c).ingresso(3)
+                            motivi(c).ingresso(4).id(Self.idFondoDemo)
+                        } else if let e = vm.errore {
+                            ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                        } else {
+                            Scheletro(schede: 2, righe: 2, testo: "Metto a confronto i due…")
+                        }
                     }
+                    .padding(16)
+                    .animation(Tema.morbida, value: vm.confronto != nil)
                 }
-                .padding(16)
-                .animation(Tema.morbida, value: vm.confronto != nil)
+                .demoInFondo()
+                // fotografia `confronto-fondo`: l'ultima scheda («Perché» di ognuno) in fondo allo schermo. Il foglio si apre già
+                // scorso in fondo (demoInFondo), ma il confronto arriva dopo: a dati arrivati si scorre di nuovo, a mano.
+                .demoScorriA(Self.idFondoDemo, proxy: proxy, schermate: ["confronto", "formazione-confronto"], inFondo: true,
+                             ancora: .bottom, pronto: vm.confronto != nil)
+                .refreshable { await vm.carica() }
+                .bordiMorbidi()
             }
-            .refreshable { await vm.carica() }
-            .bordiMorbidi()
         }
         .navigationTitle("Chi schierare?")
         .navigationBarTitleDisplayMode(.inline)
@@ -120,6 +130,7 @@ struct ConfrontoView: View {
                     Text((g.motivi ?? []).isEmpty ? "–" : (g.motivi ?? []).joined(separator: " · ")).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("confronto-motivi-\(g.id)")
             }
         }
     }

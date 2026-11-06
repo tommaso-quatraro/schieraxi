@@ -121,7 +121,7 @@ jobs:
           ETICHETTA_NUOVA: ${{ github.event.label.name }}
           # i file che cambiano le foto dei widget: quelli che compila il target AnteprimaWidget (ios/project.yml), il progetto,
           # lo script delle foto dei widget e questo workflow (tests/test_workflow_foto.py controlla che l'elenco sia completo)
-          FILE_WIDGET: '^(ios/(AnteprimaWidget/|WidgetSources/|project\.yml$|scripts/(screenshot_widget\.sh|scegli_simulatore\.py)$|Sources/Domain/(Modelli|Quando|TempiLega|Formato|LinguaServer|ColoriSquadra|GeneratoreVolto)\.swift$|Sources/Support/(Condiviso|WidgetRiassunto|EventiPartita|AvatarVolto|LegaDemo)\.swift$|Sources/Support/Design/PercorsoSVG\.swift$)|\.github/workflows/screenshot\.yml$)'
+          FILE_WIDGET: '^(ios/(AnteprimaWidget/|WidgetSources/|project\.yml$|scripts/(screenshot_widget\.sh|scegli_simulatore\.py|avvisi\.sh)$|Sources/Domain/(Modelli|Quando|TempiLega|Formato|LinguaServer|ColoriSquadra|GeneratoreVolto)\.swift$|Sources/Support/(Condiviso|WidgetRiassunto|EventiPartita|AvatarVolto|LegaDemo)\.swift$|Sources/Support/Design/PercorsoSVG\.swift$)|\.github/workflows/screenshot\.yml$)'
         run: |
           widget=false
           if [ "$SCATTI" = vero ] || [ "$ETICHETTA_NUOVA" = screenshot-vero ] || [ "$DISPOSITIVI" = ipad ]; then
@@ -253,7 +253,7 @@ jobs:
           IPHONE: ${{ inputs.iphone == 'piccolo' && 'iphone-piccolo' || inputs.iphone == 'grande' && 'iphone-grande' || 'iphone' }}
           DISPOSITIVI: ${{ inputs.dispositivi || 'iphone' }}
           SCHERMATE: ${{ inputs.schermate || '' }}
-        run: bash scripts/diagnosi_notifica.sh x screenshot
+        run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
       # Widget nello stesso job, dopo l'app e sullo stesso simulatore già acceso: corse veloci e collaudo (uscite del job «quando»)
       - name: Compila l'anteprima dei widget per il simulatore (senza firma)
         if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
@@ -273,7 +273,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: screenshot-app
-          path: ios/screenshot/*
+          path: ios/screenshot/*.png
           retention-days: 14
           if-no-files-found: warn
       - name: Carica le fotografie dei widget
