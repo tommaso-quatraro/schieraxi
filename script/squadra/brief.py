@@ -20,6 +20,9 @@ import comune
 MODELLO = "modello-brief.md"
 # Chi può scrivere i requisiti di un agente (valori di author_association dell'API di GitHub, maiuscoli come li dà l'API)
 AUTORI_FIDATI = ("OWNER", "MEMBER", "COLLABORATOR")
+# Le automazioni di questo repository (per esempio «CI: main rosso») aprono issue come github-actions[bot]:
+# solo questo login esatto, con qualsiasi author_association
+AUTOMAZIONI = ("github-actions[bot]",)
 ESTERNA = "issue di un autore esterno: requisiti da verificare"
 
 
@@ -71,7 +74,7 @@ def main(esegui: comune.Esegui, numero: int, agente: str | None = None, modello:
         return 1
     autore = ((i.get("user") or {}).get("login")) or "sconosciuto"
     associazione = i.get("author_association") or "assente"
-    esterna = associazione not in AUTORI_FIDATI
+    esterna = associazione not in AUTORI_FIDATI and autore not in AUTOMAZIONI
     if esterna and not accetta_esterna:
         print(f"brief: l'issue #{numero} è di un autore esterno ({autore}, {associazione}): niente brief. "
               "Se va fatta lo stesso, rileggi l'issue e rilancia con --accetta-esterna.", file=sys.stderr)

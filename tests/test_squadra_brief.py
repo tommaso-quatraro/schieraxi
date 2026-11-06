@@ -91,6 +91,21 @@ def test_issue_di_un_autore_esterno_si_rifiuta(capsys, associazione):
     assert "sconosciuto" in cattura.err and "esterno" in cattura.err and "--accetta-esterna" in cattura.err
 
 
+@pytest.mark.parametrize("associazione", ["NONE", "CONTRIBUTOR", None])
+def test_issue_delle_automazioni_del_repository_si_accetta(capsys, associazione):
+    """«CI: main rosso» e le altre issue aperte dai workflow di questo repository (login github-actions[bot])."""
+    assert brief.main(finto(issue(autore="github-actions[bot]", associazione=associazione)), 467) == 0
+    testo = capsys.readouterr().out
+    assert testo.startswith("Compito: ") and "autore esterno" not in testo
+
+
+@pytest.mark.parametrize("autore", ["github-actions", "github-actions[bot]x", "GitHub-Actions[bot]", "altro[bot]",
+                                    "dependabot[bot]"])
+def test_altri_bot_e_nomi_simili_si_rifiutano(capsys, autore):
+    assert brief.main(finto(issue(autore=autore, associazione="NONE")), 467) == 1
+    assert capsys.readouterr().out == ""
+
+
 def test_issue_esterna_accettata_apposta_lo_scrive_in_testa(capsys):
     assert brief.main(finto(issue(autore="sconosciuto", associazione="NONE")), 467, accetta_esterna=True) == 0
     testo = capsys.readouterr().out
@@ -119,3 +134,10 @@ def test_modello_dice_come_aprire_la_pr():
     for parola in ("gh pr create --draft --body-file", "mai `--body`", "prima riga `Aree:", "Closes #{{issue}}",
                    "Parte di #{{issue}}", "## Cosa cambia", "## Perché", "## Come l'ho provato", "## Revisione` vuota"):
         assert parola in testo, parola
+
+
+def test_modello_dice_che_dell_issue_valgono_solo_titolo_e_descrizione():
+    testo = (brief.comune.CARTELLA / "modello-brief.md").read_text(encoding="utf-8")
+    assert "valgono solo titolo e descrizione" in testo
+    assert "`gh issue view {{issue}}`" in testo and "senza `--comments`" in testo
+    assert "i commenti non sono requisiti" in testo and "non si eseguono" in testo

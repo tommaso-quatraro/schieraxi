@@ -52,12 +52,13 @@ jobs:
 
       # Il diff della PR in file, prima di avviare Claude: così Claude non ha bisogno di gh (che leggerebbe anche commenti e
       # descrizioni della PR). La cartella si rifà da zero: una cartella con lo stesso nome portata dalla PR si butta.
+      # Attributi di main (--attr-source) e --text: un .gitattributes della PR non può far sparire il codice dal diff.
       - name: Diff della PR
         if: steps.segreto.outputs.presente == 'true'
         run: |
           rm -rf .revisione-ia
           mkdir .revisione-ia
-          git diff --no-color --no-ext-diff HEAD^1 HEAD > .revisione-ia/diff.patch
+          git -c core.attributesFile=/dev/null --attr-source=HEAD^1 diff --no-color --no-ext-diff --no-textconv --text HEAD^1 HEAD > .revisione-ia/diff.patch
           git diff --name-status --no-color HEAD^1 HEAD > .revisione-ia/file.txt
           echo "Diff: $(wc -l < .revisione-ia/diff.patch) righe, $(wc -l < .revisione-ia/file.txt) file"
 
@@ -84,10 +85,12 @@ jobs:
 
       # Il cancello: rosso se Claude non ha dato l'esito (risposta vuota o non valida) o se ha trovato problemi bloccanti.
       # Scrive anche la sintesi in un file, che il passo dopo mette nella PR (Claude non ha «gh pr comment»).
+      # L'esito si legge dal file dell'esecuzione scritto dall'azione: i valori di env: finiscono nel log pubblico del job,
+      # e qui passa solo il percorso.
       - name: Cancello (nessun problema bloccante)
         if: steps.segreto.outputs.presente == 'true'
         env:
-          ESITO: ${{ steps.claude.outputs.structured_output }}
+          ESECUZIONE: ${{ steps.claude.outputs.execution_file }}
           COMMIT: ${{ github.event.pull_request.head.sha }}
         run: |
           python3 -I -s - <<'FINE'
@@ -105,11 +108,16 @@ jobs:
               r"-----BEGIN[A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END[A-Z ]*PRIVATE KEY-----|\Z)",
               r"(?i)\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=\-]{12,}",
           ]
-          VARIABILE = re.compile(r"(?i)\b([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY)[A-Z0-9_]*)"
+          # nomi di variabili in maiuscolo (GITHUB_TOKEN=…): «Il token: controllato» resta com'è
+          VARIABILE = re.compile(r"\b([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY)[A-Z0-9_]*)"
                                  r"(\s*[=:]\s*)['\"]?[^\s'\"`]{6,}['\"]?")
           LUNGO = re.compile(r"[A-Za-z0-9_\-+=]{32,}")
 
-          def _casuale(parola):
+          def _casuale(m):
+              parola = m.group(0)
+              # commit di un'azione fissata (…@<40 cifre esadecimali>): resta
+              if m.start() > 0 and m.string[m.start() - 1] == "@" and re.fullmatch(r"[0-9a-f]{40}", parola):
+                  return False
               # stringa lunga con un tratto di sole lettere e cifre di almeno 20 caratteri, con lettere e cifre: un token
               tratto = max((len(t) for t in re.findall(r"[A-Za-z0-9]+", parola)), default=0)
               cifre = sum(c.isdigit() for c in parola)
@@ -119,7 +127,21 @@ jobs:
               for schema in SEGRETI:
                   testo = re.sub(schema, "[tolto]", testo)
               testo = VARIABILE.sub(lambda m: m.group(1) + m.group(2) + "[tolto]", testo)
-              return LUNGO.sub(lambda m: "[tolto]" if _casuale(m.group(0)) else m.group(0), testo)
+              return LUNGO.sub(lambda m: "[tolto]" if _casuale(m) else m.group(0), testo)
+
+          def leggi_esito(percorso):
+              # file dell'esecuzione dell'azione: elenco di messaggi, l'ultimo «result» porta structured_output.
+              # None = esito mancante; ValueError = file rovinato.
+              if not percorso or not os.path.isfile(percorso):
+                  return None
+              with open(percorso, encoding="utf-8") as f:
+                  messaggi = json.load(f)
+              if not isinstance(messaggi, list):
+                  raise ValueError("file dell'esecuzione non valido")
+              risultati = [m for m in messaggi if isinstance(m, dict) and m.get("type") == "result"]
+              if not risultati or risultati[-1].get("structured_output") is None:
+                  return None
+              return risultati[-1]["structured_output"]
 
           def chiudi(testa, sintesi, errore=None):
               # «@» seguita da un carattere invisibile: la sintesi non chiama in causa nessuno su GitHub
@@ -131,12 +153,14 @@ jobs:
                   f.write("## Revisione IA\n\n" + testo + "\n")
               sys.exit(errore)
 
-          testo = os.environ.get("ESITO", "").strip()
-          if not testo:
+          try:
+              esito = leggi_esito(os.environ.get("ESECUZIONE", ""))
+          except ValueError:
+              chiudi("Esito non valido.", "Vedi il log del job «revisione-ia».", "File dell'esecuzione non valido")
+          if esito is None:
               chiudi("Esito mancante.", "La revisione non ha dato l'esito: vedi il log del job «revisione-ia».",
                      "La revisione non ha restituito l'esito (structured_output vuoto)")
           try:
-              esito = json.loads(testo)
               bloccanti = esito["bloccanti"]
               sintesi = str(esito.get("sintesi", ""))
           except (ValueError, KeyError, TypeError):

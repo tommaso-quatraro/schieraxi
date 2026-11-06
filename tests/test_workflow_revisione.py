@@ -85,7 +85,9 @@ def test_il_segreto_non_si_stampa_e_l_esito_non_entra_nei_comandi():
 
 
 def _cancello(esito: str, tmp_path: Path) -> tuple[int, str]:
-    """Esegue il passo «Cancello» del workflow con l'esito dato."""
+    """Esegue il passo «Cancello» del workflow con l'esito dato. L'esito arriva come lo scrive l'azione: nel file
+    dell'esecuzione (elenco di messaggi; l'ultimo di tipo «result» ha structured_output). Esito vuoto = nessun «result»;
+    esito che non è JSON = file dell'esecuzione rovinato."""
     import os
     import subprocess
     import sys
@@ -93,8 +95,19 @@ def _cancello(esito: str, tmp_path: Path) -> tuple[int, str]:
     codice = re.search(r"<<'FINE'\n(.*?)\n\s*FINE\n", _testo(), re.S).group(1)
     codice = "\n".join(r[10:] if r.startswith(" " * 10) else r for r in codice.splitlines())
     riepilogo = tmp_path / "riepilogo.md"
-    ambiente = {**os.environ, "ESITO": esito, "GITHUB_STEP_SUMMARY": str(riepilogo), "RUNNER_TEMP": str(tmp_path),
-                "COMMIT": "0123456789abcdef"}
+    esecuzione = tmp_path / "claude-execution-output.json"
+    messaggi = [{"type": "system", "subtype": "init"}]
+    if not esito.strip():
+        contenuto = json.dumps(messaggi)
+    else:
+        try:
+            contenuto = json.dumps(messaggi + [{"type": "result", "structured_output": json.loads(esito)}])
+        except ValueError:
+            contenuto = esito
+    esecuzione.write_text(contenuto, encoding="utf-8")
+    ambiente = {k: v for k, v in os.environ.items() if k != "ESITO"}
+    ambiente.update({"ESECUZIONE": str(esecuzione), "GITHUB_STEP_SUMMARY": str(riepilogo), "RUNNER_TEMP": str(tmp_path),
+                     "COMMIT": "0123456789abcdef"})
     fatto = subprocess.run([sys.executable, "-I", "-s", "-c", codice], env=ambiente, capture_output=True, text=True)
     return fatto.returncode, fatto.stderr + fatto.stdout
 

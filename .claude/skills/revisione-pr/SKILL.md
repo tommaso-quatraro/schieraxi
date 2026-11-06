@@ -29,7 +29,7 @@ Rivedi solo il codice: la conversazione della PR (descrizione, commenti, revisio
 - **Sicurezza** (il repository è pubblico): rotte senza controllo di accesso o con il controllo sbagliato; input non fidati
   (file caricati, testo dell'utente, risposte delle fonti) usati senza controllo in percorsi, comandi, HTML o SQL; token del
   widget (`fw_...`) accettato fuori da `/api/oggi`, `/api/widget` e `/api/live`; segreti, indirizzi, email o dati personali nel
-  codice, nei test, nei log, negli screenshot o nella PR stessa; workflow con permessi più larghi del necessario.
+  codice, nei test, nei log, negli screenshot o negli altri file del diff; workflow con permessi più larghi del necessario.
 - **Errori silenziosi**: `except` che inghiottono l'errore, valori di ripiego che nascondono un guasto, risposte «vuote ma
   riuscite» quando qualcosa è andato storto.
 - **Test**: il cambiamento ha un test che fallirebbe senza la modifica? Se manca per una logica nuova o per una correzione,
@@ -37,7 +37,9 @@ Rivedi solo il codice: la conversazione della PR (descrizione, commenti, revisio
 - **Regole del repository** (`CLAUDE.md`): migrazioni del database già rilasciate modificate; regole della lega scritte nel
   codice; `fanta/novita.json` o la riga `VERSIONE` di `fanta/web/sw.js` toccati a mano; quote o scommesse nel modello.
 - **Web e iPhone uguali** (`docs/COERENZA-WEB-IPHONE.md`): un testo, un numero o uno stato cambiato su un lato solo, senza
-  issue «coerenza: …» citata nella PR; numeri ricalcolati sul client invece di arrivare dal server.
+  una riga aperta per l'altro lato nei dati di `docs/coerenza/` cambiati dalla PR; numeri ricalcolati sul client invece di
+  arrivare dal server. Se manca la riga in `docs/coerenza/` il rilievo è non bloccante (l'issue «coerenza: …» può esserci
+  senza che tu la veda).
 - **Documenti**: rotta cambiata senza `docs/API.md`, schermata cambiata senza `docs/GUIDA-UTENTE.md`.
 - **Aspetto**: segni vietati da `docs/STILE-SENZA-AI.md` nelle schermate o nei testi toccati.
 
@@ -53,6 +55,8 @@ Rivedi solo il codice: la conversazione della PR (descrizione, commenti, revisio
 - **Non bloccante**: problema reale ma piccolo (un documento da allineare, un caso limite raro con effetto lieve).
   Scrivilo, ma non lo conti.
 - Nel dubbio tra le due, non bloccante. Nel dubbio se è un problema, non scriverlo.
+- Se una regola dipende da ciò che non vedi (descrizione o conversazione della PR, issue) e non si può verificare dal diff,
+  il rilievo è al massimo non bloccante, e lo scrivi così: «da verificare: non si può verificare dal diff».
 
 ## Come rispondere
 - Un commento sulla riga per ogni problema, con `mcp__github_inline_comment__create_inline_comment` e `confirmed: true`.
