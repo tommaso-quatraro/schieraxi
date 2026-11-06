@@ -1,7 +1,7 @@
 r"""Taratura della forza delle squadre per i gol attesi «nostri» (Fase C del piano 2026-11-06-gol-attesi-nostri).
 
 Con i soli dati di Fantacalcio.it (`nostri.dati`: niente xG di squadra) prova memoria, peso della stagione prima, partite
-fittizie e livello recente del campionato (`Parametri.decadimento_base`, «-» = senza livello). Misura i gol di ogni squadra in
+fittizie e livello recente del campionato (`Parametri.decadimento_base`, NaN = senza livello). Misura i gol di ogni squadra in
 ogni partita: devianza di Poisson media (più bassa = meglio) e gol attesi / veri (1 = tarati). Si sceglie sul 2025-26 dalla 5ª
 giornata e si controlla sul 2026-27 dalla 2ª. Le prime due righe: «oggi» (i valori di `Parametri()`, usati dai nostri fino
 alla Fase B) e «nostri» (quelli di `nostri.parametri`). `k_squadre` va oltre il 5 del piano: con 5 la migliore stava al bordo.
