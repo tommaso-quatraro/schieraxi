@@ -599,6 +599,7 @@ function vai(vista, gruppo, opz = {}) {
     indirizzoMostrato = location.pathname + location.search;
     return;
   }
+  chiudiPannelloAffiancato();                                             // schede e tasti restano attivi con il pannello accanto (da 1200 px)
   const imp = vista === "impostazioni";                                   // l'ingranaggio in testata: non è una delle schede della barra
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
   if (!imp && !(SCHEDA_DI(vista) && DISEGNO_VISTE.has(vista))) vista = "oggi";
@@ -1213,6 +1214,12 @@ function sostituti(f, base, dentro) {
   return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
     .sort((a, b) => b.punti_attesi - a.punti_attesi);
 }
+// La Formazione si ridisegna (modulo, stile, «Torna alla consigliata», un calcolo arrivato): la sostituzione di un titolare aperta
+// (`data-sostituzione`) si chiude, perché i suoi candidati erano quelli della formazione di prima. Le schede dei giocatori restano.
+function chiudiSostituzione() {
+  const foglio = $("#foglio");
+  if (foglio && !foglio.hidden && $("#foglio-contenuto [data-sostituzione]")) chiudiFoglio();
+}
 
 function mostraFormazione(f, squadra, opz = {}) {
   const scheda = id => f.schede[String(id)];
@@ -1281,6 +1288,7 @@ function mostraFormazione(f, squadra, opz = {}) {
   const annullaRichieste = () => { sc.richiesta = (sc.richiesta || 0) + 1; sc.occupato = false; };
 
   const disegna = (mantieniScroll = false) => {
+    chiudiSostituzione();                                               // i candidati aperti erano quelli della formazione di prima
     const y0 = window.scrollY;
     const l = livello(), m = corrente(), manuale = !!sc.manuale;
     stato.formaz = { f, modulo: m, livello: sc.livello, manuale };      // serve al confronto: chi è titolare, in panchina o fuori in questa formazione
@@ -1407,8 +1415,11 @@ function mostraFormazione(f, squadra, opz = {}) {
       <span class="pv-g largo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span><span class="valore">${nomeFvAtteso()}<b>${num(x.fv_atteso)}</b></span></button></li>`;
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
       <div class="debole piccolo">${t("formazione.giocatori_dello_stesso")}</div>
-      <div class="carta" style="margin-top:12px">${candidati.length ? `<ul class="elenco">${candidati.map(riga).join("")}</ul>` : `<div class="debole">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`);
+      <div class="carta" style="margin-top:12px" data-sostituzione>${candidati.length ? `<ul class="elenco">${candidati.map(riga).join("")}</ul>` : `<div class="debole">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });   // accanto al campo, da 1200 px
     document.querySelectorAll("[data-entra]").forEach(b => b.addEventListener("click", () => {
+      // con il pannello affiancato la pagina resta attiva: nel frattempo un modulo, uno stile o «Torna alla consigliata» possono aver
+      // tolto la modifica a mano, o il titolare non c'è più (revisione della #426). Allora si chiude e non si cambia niente.
+      if (!sc.manuale || !sc.manuale.titolari.includes(id)) { chiudiFoglio(); return; }
       const ids = sc.manuale.titolari.map(t => t === id ? Number(b.dataset.entra) : t);
       chiudiFoglio();
       valutaManuale(ids);
@@ -1737,7 +1748,7 @@ function bloccoPerche(x) {
   if (!x.perche_numero.length && medio == null) return "";
   const effetto = e => e == null ? `<b class="perche-effetto dubbio" aria-hidden="true">!</b>`
     : `<b class="perche-effetto ${e > 0 ? "su" : "giu"}">${e > 0 ? "+" : "−"}${num(Math.abs(e))}</b>`;
-  const righe = x.perche_numero.map(m => `<li class="perche-voce">${effetto(m.effetto)}<span>${esc(testoDi(m))}</span></li>`).join("");
+  const righe = x.perche_numero.map(m => `<li class="perche-voce"><span>${esc(testoDi(m))}</span>${effetto(m.effetto)}</li>`).join("");   // l'effetto a destra, in colonna (spec §9)
   return `<div class="perche"><h3>${t("perche.titolo")}</h3>${righe ? `<ul class="perche-lista">${righe}</ul>` : ""}
     <div class="debole piccolo">${t(righe ? "perche.rispetto" : "perche.nessuno", { n: num(medio) })}</div></div>`;
 }
@@ -1747,11 +1758,12 @@ const cartaPerche = x => { const b = bloccoPerche(x); return b ? `<div class="ca
 function apriPerche(x, incerto = "") {
   apriFoglio(`<div class="intestazione-scheda">${avatarIndice(x, true)}
       <div><h2>${esc(x.nome)}</h2><div class="debole">${partitaBreve(x)}</div></div></div>
-    <div class="carta"><div class="riga"><div><div class="debole">${t("mercato.fantavoto_atteso")}</div><div class="grande">${num(x.fv_atteso)}</div></div>
-      <div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(x.p_voto)}</div></div></div>
+    <div class="carta"><div class="cifre-oggi cifre-scheda">
+        <div class="cifra"><div class="debole">${t("mercato.fantavoto_atteso")}</div><div class="enorme">${num(x.fv_atteso)}</div></div>
+        <div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(x.p_voto)}</div></div></div>
       ${incerto ? `<p class="nota-incerto" id="perche-incerto">${incerto}</p>` : ""}
       ${bloccoPerche(x)}<div class="debole piccolo perche-definizione">${t("perche.definizione")}</div></div>
-    <div class="pulsanti"><button class="bottone secondario" data-giocatore="${Number(x.id)}">${t("perche.apri_scheda")}</button></div>`);
+    <div class="pulsanti"><button class="bottone secondario" data-giocatore="${Number(x.id)}">${t("perche.apri_scheda")}</button></div>`, { affianco: true });
 }
 
 let ultimaScheda = 0;
@@ -1762,7 +1774,7 @@ async function apriGiocatore(id) {
     if (stato.vista === "mercato" && stato.mercatoTab === "giocatori") caricaMercato();
     return apriConfronto(primo.id, id);
   }
-  apriFoglio(`<div class="caricamento">${t("mercato.carico_scheda")}</div>`);
+  apriFoglio(`<div class="caricamento">${t("mercato.carico_scheda")}</div>`, { affianco: true });
   const numero = ++ultimaScheda;
   try {
     const [s, cal] = await Promise.all([api(`/api/giocatore/${id}`), datiCalendario().catch(() => null)]);
@@ -1792,12 +1804,13 @@ async function apriGiocatore(id) {
           <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr && !statoInGrande ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
       </div>
       ${pr ? `<div class="carta">
-        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { g: nomeGiornata(pr.giornata_lega, pr.giornata), avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
+        <div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { g: nomeGiornata(pr.giornata_lega, pr.giornata), avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
+        <div class="cifre-oggi cifre-scheda">
           ${finitaP ? (votoGiornata && votoGiornata.fv != null
-            ? `<div class="grande">${num(votoGiornata.fv)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto")}</span></div>`
-            : `<div class="grande stato-partita">${etichettaPronta(pr) ? esc(pr.etichetta.testo) : t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
-          : `<div class="grande">${num(pr.fv_atteso)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto_atteso")}</span></div>`}</div>
-          ${iniziataP ? "" : `<div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>`}</div>
+            ? `<div class="cifra"><div class="debole">${t("mercato.fantavoto")}</div><div class="enorme">${num(votoGiornata.fv)}</div></div>`
+            : `<div class="cifra"><div class="grande stato-partita">${etichettaPronta(pr) ? esc(pr.etichetta.testo) : t(STATO_PARTITA[pr.stato_partita][0])}</div></div>`)
+          : `<div class="cifra"><div class="debole">${t("mercato.fantavoto_atteso")}</div><div class="enorme">${num(pr.fv_atteso)}</div></div>`}
+          ${iniziataP ? "" : `<div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>`}</div>
         ${nonGioca || iniziataP ? "" : `<div class="riga" style="margin-top:8px"><span>${diffPill(pr.difficolta)}</span><span class="debole piccolo">${t("mercato.gol_attesi", { a: num(pr.gol_squadra, 1), b: num(pr.gol_avversario, 1) })}</span></div>`}
         ${!finitaP && motiviUtili(pr).filter(senzaPercentuale).length ? `<div class="etichette">${motiviUtili(pr).filter(senzaPercentuale).map(m => `<span class="etichetta neutra">${testoEtichetta(traduciFrase(m.frase, m.testo))}</span>`).join("")}</div>` : ""}
         ${nonGioca || iniziataP ? "" : `<div class="stat-fila ${c.ruolo === "P" ? "" : "quattro"}" style="margin-top:12px">${probabilita}</div>`}</div>${finitaP ? "" : cartaPerche(prSenzaGioca)}` : `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`}
@@ -1822,7 +1835,7 @@ async function apriGiocatore(id) {
           ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}` : ""}
       </details></div>
       <div class="pulsanti">${funz("seguiti") ? `<button class="bottone secondario" id="osserva">${t(osservato ? "mercato.osservato" : "mercato.osserva")}</button>` : ""}${funz("confronto") && funz("elenco_giocatori") ? `<button class="bottone" id="confronta">${t("mercato.confronta_con_altro")}</button>` : ""}
-        ${funz("confronto") && stato.formaz && stato.formaz.f.schede[String(c.id)] ? `<button class="bottone secondario" data-confronta="${c.id}">${t("mercato.confronta_con_mia")}</button>` : ""}</div>`);
+        ${funz("confronto") && stato.formaz && stato.formaz.f.schede[String(c.id)] ? `<button class="bottone secondario" data-confronta="${c.id}">${t("mercato.confronta_con_mia")}</button>` : ""}</div>`, { affianco: true });
     if ($("#osserva")) $("#osserva").addEventListener("click", async () => {
       const b = $("#osserva"), era = b.textContent.startsWith("★");
       try {
@@ -1839,7 +1852,7 @@ async function apriGiocatore(id) {
       vai("mercato");
     });
   } catch (e) {
-    if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e));
+    if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e), { affianco: true });
   }
 }
 
@@ -1879,12 +1892,12 @@ function apriScelta(id) {
     ${numeriRiga({ p_voto: x.p_voto, fv_atteso: x.fv_atteso })}</button></li>`;      // sempre il fantavoto atteso: si sceglie con chi confrontarlo
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("mercato.confronta_nome", { nome: esc(base.nome) })}</h2>
     <div class="debole piccolo">${t("mercato.con_chi_vuoi")}</div>
-    <div class="carta" style="margin-top:12px"><ul class="elenco">${altri.map(riga).join("")}</ul></div>`);
+    <div class="carta" style="margin-top:12px"><ul class="elenco">${altri.map(riga).join("")}</ul></div>`, { affianco: true });
   document.querySelectorAll("[data-scegli-confronto]").forEach(b => b.addEventListener("click", () => apriConfronto(id, Number(b.dataset.scegliConfronto))));
 }
 
 async function apriConfronto(a, b) {
-  apriFoglio(`<div class="caricamento">${t("mercato.confronto")}</div>`);
+  apriFoglio(`<div class="caricamento">${t("mercato.confronto")}</div>`, { affianco: true });
   const numero = ++ultimaScheda;
   try {
     const contesto = stato.formaz ? `&giornata=${Number(stato.formaz.f.giornata)}&livello=${stato.formaz.livello || 0}&modulo=${encodeURIComponent(stato.formaz.modulo.modulo)}${stato.squadraVista ? `&squadra=${encodeURIComponent(stato.squadraVista)}` : ""}` : "";
@@ -1933,49 +1946,109 @@ async function apriConfronto(a, b) {
         ${riga(t("mercato.assist"), g => perc(g.p_assist))}
         ${riga(t("mercato.giallo"), g => perc(g.p_giallo))}
       </div></details></div>
-      ${c.giocatori.map(g => `<div class="debole piccolo"><b>${esc(g.nome)}</b>: ${testiDi(g, "motivi").map(esc).join(" · ") || "–"}</div>`).join("")}`);
+      ${c.giocatori.map(g => `<div class="debole piccolo"><b>${esc(g.nome)}</b>: ${testiDi(g, "motivi").map(esc).join(" · ") || "–"}</div>`).join("")}`, { affianco: true });
   } catch (e) {
-    if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e));
+    if (numero === ultimaScheda && !$("#foglio").hidden) apriFoglio(errore(e), { affianco: true });
   }
 }
 
-// ---------------------------------------------------------------- pannello: apre, chiude, si trascina verso il basso
-let chiusura = null, focusPrima = null;
+// ---------------------------------------------------------------- pannello e foglio: apre, chiude, si trascina verso il basso
+// Il foglio è modale (la pagina sotto è inerte): dal basso al telefono, di lato tra 1100 e 1199 px, e sempre per primo avvio,
+// immagine da condividere, diario, novità. Da 1200 px i dettagli dei giocatori (`opz.affianco`: scheda, confronto, scelta per il
+// confronto, sostituzione di un titolare, «Perché questo numero», risultati della ricerca) si aprono in un pannello accanto alla
+// pagina (grafica B, spec §5 C5 e §8.11): la pagina si stringe e resta attiva, un clic su un altro giocatore cambia il pannello,
+// Esc o ✕ lo chiudono e il focus torna a chi l'ha aperto. Stesso elemento (#foglio), stesso contenuto: cambia solo il modo.
+let chiusura = null, focusPrima = null, chiedeAffianco = false, sfondoBloccato = false;
+const PANNELLO_LARGO = matchMedia("(min-width: 1200px)");
+const affiancato = () => chiedeAffianco && PANNELLO_LARGO.matches;
+// Un foglio modale è aperto: i tasti dell'app (1-4, «,», Ctrl+S) non toccano la pagina sotto. Con il pannello affiancato sì.
+const foglioModale = () => !$("#foglio").hidden && !document.body.classList.contains("con-pannello");
 const SFONDO_FOGLIO = () => [document.querySelector(".salta"), document.querySelector(".testata"), contenuto, document.querySelector(".schede")].filter(Boolean);   // anche il link «Vai al contenuto»: il fuoco non esce dal pannello
 function bloccaSfondo() {
-  focusPrima = document.activeElement;
   SFONDO_FOGLIO().forEach(e => { e.inert = true; });
+  sfondoBloccato = true;
   // il focus va sulla ✕, a meno che il foglio non l'abbia già preso (la ricerca mette subito il cursore nel suo campo)
   setTimeout(() => { const c = document.querySelector(".foglio-chiudi"); if (c && !$("#foglio").hidden && !$(".foglio-corpo").contains(document.activeElement)) c.focus({ preventScroll: true }); }, 60);
 }
-function sbloccaSfondo() {
+function liberaSfondo() {
   SFONDO_FOGLIO().forEach(e => { e.inert = false; });
+  sfondoBloccato = false;
+}
+function sbloccaSfondo() {
+  liberaSfondo();
   if (focusPrima && document.body.contains(focusPrima) && focusPrima.focus) focusPrima.focus({ preventScroll: true });
   focusPrima = null;
 }
-function apriFoglio(html) {
+// Il foglio aperto come pannello affiancato o come foglio modale: all'apertura e quando la finestra passa i 1200 px (rischio 5 della
+// spec: sotto i 1200 px il pannello diventa il foglio modale, sopra torna affiancato; il focus resta dov'è, o va sulla ✕ se era fuori).
+function modoFoglio() {
+  const corpo = $(".foglio-corpo"), lato = affiancato();
+  document.body.classList.toggle("con-pannello", lato);
+  document.body.style.overflow = lato ? "" : "hidden";                   // affiancato: la pagina accanto si scorre
+  if (lato) { corpo.removeAttribute("aria-modal"); liberaSfondo(); }     // finestra non modale (spec §8.11): niente aria-modal, niente inert
+  else { corpo.setAttribute("aria-modal", "true"); if (!sfondoBloccato) bloccaSfondo(); }
+}
+// opz.affianco: da 1200 px nel pannello accanto alla pagina (sotto non cambia niente).
+// opz.focusResta: il focus non va sul titolo del pannello (la ricerca della testata: si continua a scrivere nel campo).
+function apriFoglio(html, opz = {}) {
   clearTimeout(chiusura);
   const foglio = $("#foglio");
-  const eraAperto = !foglio.hidden;
-  foglio.classList.remove("chiude");
   const corpo = $(".foglio-corpo");
+  const eraAperto = !foglio.hidden, eraModale = eraAperto && !document.body.classList.contains("con-pannello");
+  const attivo = document.activeElement;
+  // chi l'ha aperto, dove torna il focus: alla prima apertura, o un clic nella pagina con il pannello affiancato già aperto (un altro
+  // giocatore della lista); un clic dentro il pannello (risultato della ricerca, «Apri la scheda») non lo cambia
+  if (!eraAperto || (!eraModale && attivo && attivo !== document.body && !corpo.contains(attivo))) focusPrima = attivo;
+  chiedeAffianco = !!opz.affianco;
+  foglio.classList.remove("chiude");
   corpo.classList.remove("trascina");
   corpo.style.transform = ""; corpo.style.transition = "";
   $("#foglio-contenuto").innerHTML = html;
+  const statoRicerca = $("#stato-ricerca");                              // «12 risultati» vale per la ricerca: un contenuto nuovo la svuota
+  if (statoRicerca) statoRicerca.textContent = "";
   const titoloFoglio = $("#foglio-contenuto").querySelector("h1, h2, h3");          // il pannello prende il nome dal suo primo titolo
   if (titoloFoglio && titoloFoglio.textContent.trim()) { titoloFoglio.id = "foglio-titolo"; corpo.setAttribute("aria-labelledby", "foglio-titolo"); corpo.removeAttribute("aria-label"); }
   else { corpo.removeAttribute("aria-labelledby"); corpo.setAttribute("aria-label", t("shell.dettagli")); }
   foglio.hidden = false;
-  if (!eraAperto) { corpo.scrollTop = 0; bloccaSfondo(); }
-  document.body.style.overflow = "hidden";
+  const lato = affiancato();
+  if (!eraAperto || lato) corpo.scrollTop = 0;                           // un giocatore nuovo nel pannello: si legge dall'inizio
+  if (!eraAperto || eraModale === lato) modoFoglio();                     // prima apertura, o da foglio modale a pannello e viceversa
+  if (lato) {
+    // il titolo del contenuto prende il focus (spec §14), se il focus è ancora su chi l'ha aperto o è andato perso con il contenuto
+    // di prima; non se nel frattempo si è andati altrove nella pagina
+    const ora = document.activeElement;
+    if (!opz.focusResta && titoloFoglio && (!ora || ora === focusPrima || ora === document.body || corpo.contains(ora))) {
+      titoloFoglio.tabIndex = -1;
+      titoloFoglio.focus({ preventScroll: true });
+    }
+  }
 }
+PANNELLO_LARGO.addEventListener("change", () => {
+  if ($("#foglio").hidden || !chiedeAffianco) return;
+  // la ricerca della testata non ha un campo suo e sotto i 1200 px la testata diventa inerte: riparte la ricerca del foglio, con il
+  // suo campo e il testo già scritto, che lascia la testata (revisione della #426)
+  if (!PANNELLO_LARGO.matches && $("#risultati-ricerca") && !$("#ricerca-veloce")) {
+    const campo = $("#campo-cerca"), testo = campo.value;
+    campo.value = "";
+    apriRicerca(testo);
+    return;
+  }
+  modoFoglio();
+});
 function chiudiFoglio() {
   const foglio = $("#foglio");
   if (foglio.hidden) return;
-  const fine = () => { foglio.hidden = true; foglio.classList.remove("chiude"); document.body.style.overflow = ""; sbloccaSfondo(); };
+  const fine = () => { foglio.hidden = true; foglio.classList.remove("chiude"); document.body.style.overflow = ""; document.body.classList.remove("con-pannello"); sbloccaSfondo(); };
   foglio.classList.add("chiude");
   clearTimeout(chiusura);
   chiusura = setTimeout(fine, 240);
+}
+// Cambio di schermata (vai): il pannello affiancato si chiude con la pagina da cui è nato (la sostituzione di un titolare non resta
+// aperta su una Formazione che non c'è più). Il focus non torna indietro: va sul titolo della schermata nuova.
+function chiudiPannelloAffiancato() {
+  if ($("#foglio").hidden || !document.body.classList.contains("con-pannello")) return;
+  focusPrima = null;
+  chiudiFoglio();
 }
 (function trascinamento() {
   const corpo = $(".foglio-corpo"), maniglia = $("#maniglia");
@@ -1994,7 +2067,7 @@ function chiudiFoglio() {
     if (dy > 120 || (veloce && dy > 40)) {
       corpo.style.transition = "transform .22s ease-in";
       corpo.style.transform = "translateY(100%)";
-      setTimeout(() => { const f = $("#foglio"); f.hidden = true; document.body.style.overflow = ""; corpo.style.transform = ""; corpo.style.transition = ""; sbloccaSfondo(); }, 230);
+      setTimeout(() => { const f = $("#foglio"); f.hidden = true; document.body.style.overflow = ""; document.body.classList.remove("con-pannello"); corpo.style.transform = ""; corpo.style.transition = ""; sbloccaSfondo(); }, 230);
     } else {
       corpo.style.transition = "transform .4s var(--molla)";
       corpo.style.transform = "translateY(0)";
@@ -2027,11 +2100,12 @@ document.addEventListener("click", ev => {
 document.addEventListener("keydown", ev => {
   if (ev.key === "Escape") { chiudiFoglio(); return; }
   // Ctrl+S (⌘+S sul Mac) nella Formazione preme il «Salva» che si vede in quel momento (spec C3); senza niente da salvare, in un'altra
-  // schermata o con un pannello aperto non si ferma: fa quello che fa di solito il browser. Anche mentre si scrive nella ricerca.
+  // schermata o con un foglio modale aperto non si ferma: fa quello che fa di solito il browser. Anche mentre si scrive nella ricerca.
+  // Con il pannello affiancato (da 1200 px) la pagina resta attiva: Ctrl+S, `/`, 1-4 e «,» funzionano come a pannello chiuso.
   // Con una tastiera non latina vale il tasto fisico S (`code`); tenuto premuto, le ripetizioni non salvano di nuovo e non aprono
   // «Salva pagina con nome» (dopo il primo salvataggio il pulsante non c'è più).
   const ctrlS = (typeof ev.key === "string" && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") || ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyS");
-  if (ctrlS && !ev.altKey && !ev.shiftKey && stato.vista === "formazione" && $("#foglio").hidden) {
+  if (ctrlS && !ev.altKey && !ev.shiftKey && stato.vista === "formazione" && !foglioModale()) {
     if (ev.repeat) { ev.preventDefault(); return; }
     const salva = $("#salva-scelta") || $("#salva-questa");
     if (salva && !salva.disabled && salva.getClientRects().length) { ev.preventDefault(); salva.click(); return; }
@@ -2042,10 +2116,10 @@ document.addEventListener("keydown", ev => {
   if (ev.key === "/") {                                                                                // tastiera: / cerca
     ev.preventDefault();
     const c = $("#campo-cerca");
-    if (c && c.getClientRects().length && $("#foglio").hidden) c.focus(); else apriRicerca();          // sul PC il campo della testata
+    if (c && c.getClientRects().length && !foglioModale()) c.focus(); else apriRicerca();              // sul PC il campo della testata
   }
-  else if (/^[1-4]$/.test(ev.key) && $("#foglio").hidden) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
-  else if (ev.key === "," && $("#foglio").hidden) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
+  else if (/^[1-4]$/.test(ev.key) && !foglioModale()) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
+  else if (ev.key === "," && !foglioModale()) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
 // il riflesso del vetro segue il dito
 document.addEventListener("pointerdown", ev => {
@@ -2772,37 +2846,110 @@ function collegaAspetto() {
 }
 
 // Ricerca veloce di un giocatore da qualsiasi schermata (la lente in alto, il tasto «/», il campo della testata sul PC).
-// `testo`: quello già scritto nel campo della testata; il campo della ricerca prende subito il focus, così le lettere che arrivano
-// mentre il foglio sale finiscono lì (il resto della pagina è bloccato).
+// Da 1200 px si scrive nel campo della testata e i risultati stanno nel pannello accanto alla pagina (spec C4 e C5): il pannello non ha
+// un campo suo e il cursore resta nella testata. Più stretto, il foglio con il suo campo, che prende subito il focus: le lettere che
+// arrivano mentre il foglio sale finiscono lì (il resto della pagina è bloccato). `testo`: quello già scritto nel campo della testata.
 function apriRicerca(testo = "") {
+  if (ricercaInTestata()) {
+    const f = $("#foglio");
+    if (!$("#risultati-ricerca") || $("#ricerca-veloce") || f.hidden || f.classList.contains("chiude"))
+      apriFoglio(`<h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("shell.cerca")}</h2>
+        <div class="risultati-ricerca" id="risultati-ricerca"></div>`, { affianco: true, focusResta: true });
+    scriviRisultati(testo);
+    return;
+  }
   apriFoglio(`<h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("shell.cerca")}</h2>
-    <input class="campo-testo" id="ricerca-veloce" type="search" placeholder="${t("avv.nome_del_giocatore")}" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <div class="risultati-ricerca" id="risultati-ricerca"><div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div></div>`);
+    <input class="campo-testo" id="ricerca-veloce" type="search" placeholder="${t("avv.nome_del_giocatore")}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <div class="risultati-ricerca" id="risultati-ricerca"><div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div></div>`, { affianco: true });
   const campo = $("#ricerca-veloce");
   campo.value = testo;
   campo.focus({ preventScroll: true });
   setTimeout(() => caricaListoneCerca().catch(() => {}), 350);
-  let n = 0;
-  campo.addEventListener("input", async () => {
-    const q = campo.value.trim(), mio = ++n, dove = $("#risultati-ricerca");
-    if (!dove) return;
-    if (q.length < 2) { dove.innerHTML = `<div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div>`; return; }
-    try {
-      const r = await cercaGiocatori(q, 12);
-      if (mio !== n || !$("#risultati-ricerca")) return;
-      dove.innerHTML = r.length ? `<ul class="elenco">${r.map(x => `<li><button class="voce" data-giocatore="${x.id}" style="grid-template-columns:1fr auto">
-        <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span><span class="dettaglio" style="display:block">${esc(x.squadra)}</span></span>
-        <span class="debole piccolo">${t("avv.quot", { n: x.quotazione })}</span></button></li>`).join("")}</ul>` : `<div class="debole">${t("avv.nessun_giocatore_trovato")}</div>`;
-    } catch (e) { if (e.name !== "AbortError" && mio === n && $("#risultati-ricerca")) $("#risultati-ricerca").innerHTML = errore(e); }
+  campo.addEventListener("input", () => scriviRisultati(campo.value));
+  campo.addEventListener("keydown", ev => {                             // Invio: il primo risultato; ↓ i risultati
+    frecceRicerca(ev);
+    if (ev.key !== "Enter" || ev.isComposing) return;
+    ev.preventDefault();
+    if (!ev.repeat) apriPrimoRisultato(campo);
   });
-  if (testo.trim()) campo.dispatchEvent(new Event("input"));            // dalla testata: cerca subito quello che è già scritto
+  if (testo.trim()) scriviRisultati(testo);                            // dalla testata: cerca subito quello che è già scritto
+}
+// I risultati (al massimo 12) nel posto della ricerca aperta; vale solo l'ultima ricerca partita. Nomi e squadre passano da esc().
+// Quanti sono lo dice la riga `role="status"` del foglio (#stato-ricerca, fissa in index.html: un annuncio si sente solo se la riga
+// c'era già), per chi usa un lettore di schermo: i risultati arrivano mentre si scrive, in un posto dove il cursore non c'è.
+let giroRicerca = 0;
+async function scriviRisultati(testo) {
+  const q = String(testo).trim(), mio = ++giroRicerca, dove = $("#risultati-ricerca"), conta = $("#stato-ricerca");
+  const annuncia = frase => { if (conta && conta.textContent !== frase) conta.textContent = frase; };
+  if (!dove) return;
+  if (q.length < 2) { dove.innerHTML = `<div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div>`; annuncia(""); return; }
+  try {
+    const r = await cercaGiocatori(q, 12), qui = $("#risultati-ricerca");
+    if (mio !== giroRicerca || !qui) return;
+    qui.innerHTML = r.length ? `<ul class="elenco">${r.map(x => `<li><button class="voce" data-giocatore="${x.id}" style="grid-template-columns:1fr auto">
+      <span><span class="nome">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</span><span class="dettaglio" style="display:block">${esc(x.squadra)}</span></span>
+      <span class="debole piccolo">${t("avv.quot", { n: x.quotazione })}</span></button></li>`).join("")}</ul>` : `<div class="debole">${t("avv.nessun_giocatore_trovato")}</div>`;
+    annuncia(r.length ? tp("avv.n_risultati", r.length) : t("avv.nessun_giocatore_trovato"));
+  } catch (e) { if (e.name !== "AbortError" && mio === giroRicerca && $("#risultati-ricerca")) { $("#risultati-ricerca").innerHTML = errore(e); annuncia(""); } }
+}
+// Frecce nella ricerca (revisione della #426): i risultati stanno nel pannello, dopo la pagina, e con il solo Tab non si arrivava.
+// ↓ nel campo porta al primo risultato, ↓ e ↑ passano dall'uno all'altro, ↑ sul primo torna al campo (quello della testata o del
+// foglio). Senza risultati, a foglio chiuso o oltre l'ultimo le frecce fanno quello di sempre.
+function frecceRicerca(ev) {
+  if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return;
+  const elenco = [...document.querySelectorAll("#risultati-ricerca [data-giocatore]")];
+  if (!elenco.length || $("#foglio").hidden) return;
+  const campo = $("#ricerca-veloce") || $("#campo-cerca"), k = elenco.indexOf(ev.target);
+  let dove = null;
+  if (ev.target === campo) dove = ev.key === "ArrowDown" ? elenco[0] : null;
+  else if (k >= 0) dove = ev.key === "ArrowDown" ? elenco[k + 1] || null : k === 0 ? campo : elenco[k - 1];
+  if (!dove) return;
+  ev.preventDefault();
+  dove.focus();
+}
+$("#foglio-contenuto").addEventListener("keydown", ev => { if (ev.target.closest("#risultati-ricerca")) frecceRicerca(ev); });
+// Campo della testata svuotato: il pannello si chiude se mostra la ricerca (non una scheda aperta da lì).
+function chiudiRicercaAffiancata() {
+  if (!$("#foglio").hidden && $("#risultati-ricerca") && !$("#ricerca-veloce")) chiudiFoglio();
 }
 $("#bottone-cerca").addEventListener("click", () => apriRicerca());
-// Il campo sempre aperto della testata (da 900 px): al primo tasto, o con Invio, il testo passa alla ricerca e il campo si svuota.
-// Così la ricerca funziona già da qui; i risultati si aprono nel foglio di sempre.
+// Il campo sempre aperto della testata (da 900 px). Da 1200 px il testo resta qui e i risultati si scrivono nel pannello accanto
+// mentre si scrive, 150 ms dopo l'ultimo tasto (una ricerca sola anche scrivendo veloce); Invio apre il primo risultato; campo
+// svuotato: il pannello della ricerca si chiude. Tra 900 e 1199 px al primo tasto il testo passa al foglio della ricerca, come prima.
+const ricercaInTestata = () => PANNELLO_LARGO.matches && $("#campo-cerca").getClientRects().length > 0;
+let attesaRicerca = null;
+// Invio: si apre il primo risultato, nello stesso pannello; senza risultati, nella testata si vedono quelli («Nessun giocatore trovato»).
+// Campo vuoto o una lettera sola: niente da aprire, il pannello della ricerca si chiude (revisione della #426).
+async function apriPrimoRisultato(campo) {
+  const q = campo.value;
+  if (q.trim().length < 2) { if (campo === $("#campo-cerca")) chiudiRicercaAffiancata(); return; }
+  let primo = null;
+  try { primo = (await cercaGiocatori(q.trim(), 12))[0] || null; } catch { /* rete: restano i risultati con l'errore */ }
+  if (campo.value !== q) return;                                      // nel frattempo si è scritto altro: vale l'ultima ricerca
+  if (primo) apriGiocatore(primo.id);
+  else if (campo === $("#campo-cerca")) apriRicerca(q);
+}
 $("#campo-cerca").placeholder = t("shell.cerca");
-$("#campo-cerca").addEventListener("input", ev => { const q = ev.target.value; if (!q.trim()) return; ev.target.value = ""; apriRicerca(q); });
-$("#campo-cerca").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); const q = ev.target.value; ev.target.value = ""; apriRicerca(q); } });
+$("#campo-cerca").addEventListener("focus", () => { if (ricercaInTestata()) caricaListoneCerca().catch(() => {}); });   // l'elenco arriva prima del primo tasto
+$("#campo-cerca").addEventListener("input", ev => {
+  if (ricercaInTestata()) {
+    clearTimeout(attesaRicerca);
+    attesaRicerca = setTimeout(() => { const q = $("#campo-cerca").value; if (q.trim()) apriRicerca(q); else chiudiRicercaAffiancata(); }, 150);
+    return;
+  }
+  const q = ev.target.value;
+  if (!q.trim()) return;
+  ev.target.value = "";
+  apriRicerca(q);
+});
+$("#campo-cerca").addEventListener("keydown", ev => {
+  frecceRicerca(ev);                                                  // ↓ porta ai risultati nel pannello
+  if (ev.key !== "Enter" || ev.isComposing) return;
+  ev.preventDefault();
+  if (!ricercaInTestata()) { const q = ev.target.value; ev.target.value = ""; apriRicerca(q); return; }
+  clearTimeout(attesaRicerca);
+  if (!ev.repeat) return apriPrimoRisultato(ev.target);
+});
 
 // La formazione come immagine da mandare nel gruppo (nell'iPhone si apre il menu Condividi).
 const caricaSvg = svg => new Promise(ok => {         // l'SVG diventa un'immagine per il disegno (data: è permesso dalla CSP)

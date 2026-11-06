@@ -16,7 +16,8 @@ def test_stati_iniziati_e_finiti_sono_quelli_del_server():
 
 
 def test_a_partita_iniziata_spariscono_gioca_e_probabilita():
-    assert '${iniziataP ? "" : `<div style="text-align:right"><div class="debole">${t("mercato.gioca")}</div>' in SCHEDA
+    # «gioca N%» è la seconda cifra accanto al fantavoto atteso (grafica B, spec §9): a partita iniziata la cifra sparisce
+    assert '${iniziataP ? "" : `<div class="cifra"><div class="debole">${t("mercato.gioca")}</div>' in SCHEDA
     assert '${nonGioca || iniziataP ? "" : `<div class="stat-fila' in SCHEDA
     assert 'perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca")' in SCHEDA     # «gioca l'1%: improbabile»
     assert '${finitaP ? "" : cartaPerche(prSenzaGioca)}' in SCHEDA

@@ -1029,8 +1029,8 @@ def test_il_campo_resta_fermo_accanto_all_elenco_e_non_copre_niente():
 
 def test_il_blocco_del_campo_e_largo_quanto_la_prima_colonna_della_griglia():
     """Il blocco del campo esce dal flusso della colonna (position: absolute) e la sua larghezza si calcola con `--quota-campo`: deve
-    essere la stessa frazione della prima colonna della griglia a ogni soglia (1:1 da 768 px, 5:7 da 900, 1:2 da 1400), se no il campo
-    finisce sotto l'elenco o lascia un buco tra le due colonne."""
+    essere la stessa frazione della prima colonna della griglia a ogni soglia (1:1 da 768 px, 5:7 da 900, 1:2 da 1400, 5:7 di nuovo
+    con il pannello affiancato aperto, da 1200 px), se no il campo finisce sotto l'elenco o lascia un buco tra le due colonne."""
     trovati = {}
     for larghezza, blocco in re.findall(r"@media \(min-width: (\d+)px\) \{\n(.*?)\n\}", CSS, re.S):
         f = re.search(r"\.colonne-campo[^{]*\{[^}]*grid-template-columns: minmax\(0, (\d+)fr\) minmax\(0, (\d+)fr\)", blocco)
@@ -1038,7 +1038,7 @@ def test_il_blocco_del_campo_e_largo_quanto_la_prima_colonna_della_griglia():
         if f or q:
             assert f and q, larghezza
             trovati[int(larghezza)] = (int(f.group(1)), int(f.group(2)), q.group(1))
-    assert set(trovati) == {768, 900, 1400}, trovati
+    assert set(trovati) == {768, 900, 1200, 1400}, trovati
     for larghezza, (a, b, quota) in trovati.items():
         frazione = re.fullmatch(r"calc\((\d+) / (\d+)\)", quota)
         valore = int(frazione.group(1)) / int(frazione.group(2)) if frazione else float(quota)
@@ -1157,13 +1157,15 @@ def test_ctrl_s_salva_nella_formazione_solo_se_c_e_da_salvare():
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_ctrl_s_preme_il_salva_che_si_vede_e_altrimenti_lascia_fare_al_browser():
     """Spec C3: Ctrl+S (⌘+S sul Mac) nella Formazione preme «Salva questa» o «Salva le modifiche»; senza niente da salvare, in
-    un'altra schermata o con un pannello aperto il tasto fa quello che fa di solito il browser (niente preventDefault).
+    un'altra schermata o con un foglio modale aperto il tasto fa quello che fa di solito il browser (niente preventDefault); con il
+    pannello affiancato (PR 9) la pagina resta attiva e «Salva» si vede, quindi salva.
     Revisione della #420: con i tasti tenuti premuti le ripetizioni non salvano di nuovo e non aprono «Salva pagina con nome»
     (dopo il primo salvataggio il pulsante non c'è più); con una tastiera non latina (russo: «ы») vale il tasto fisico S."""
     i = APP.index('document.addEventListener("keydown"')
     codice = "\n".join([
         """let premuto = null; const pulsanti = {};
 const $ = s => s === "#foglio" ? { hidden: !globalThis.aperto } : pulsanti[s] || null;
+const foglioModale = () => !!globalThis.aperto && !globalThis.affiancato;      // il pannello affiancato (PR 9) lascia usare la pagina
 const pulsante = id => ({ disabled: false, getClientRects: () => [1], click() { premuto = id; } });
 const stato = { vista: "formazione" }; const chiudiFoglio = () => {}; const VISTE = []; const vai = () => {}; const apriRicerca = () => {};
 const document = { addEventListener: (tipo, f) => { globalThis.premi = f; } };""",
@@ -1177,6 +1179,7 @@ delete pulsanti["#salva-questa"]; pulsanti["#salva-scelta"] = pulsante("salva-sc
 delete pulsanti["#salva-scelta"]; esiti.push(prova("s", { ctrl: true }));
 pulsanti["#salva-scelta"] = pulsante("salva-scelta"); stato.vista = "oggi"; esiti.push(prova("s", { ctrl: true }));
 stato.vista = "formazione"; globalThis.aperto = true; esiti.push(prova("s", { ctrl: true }));
+globalThis.affiancato = true; esiti.push(prova("s", { ctrl: true })); globalThis.affiancato = false;   // pannello accanto: «Salva» si vede
 globalThis.aperto = false; esiti.push(prova("s"));
 esiti.push(prova("ы", { ctrl: true, code: "KeyS" }));                     // tastiera russa: il tasto fisico S
 esiti.push(prova("s", { ctrl: true, ripetuto: true }));                   // tenuto premuto: niente secondo salvataggio
@@ -1186,8 +1189,8 @@ console.log(JSON.stringify(esiti));""",
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout.strip().splitlines()[-1]) == [
-        ["salva-questa", True], ["salva-scelta", True], [None, False], [None, False], [None, False], [None, False],
-        ["salva-scelta", True], [None, True], [None, True]]
+        ["salva-questa", True], ["salva-scelta", True], [None, False], [None, False], [None, False], ["salva-scelta", True],
+        [None, False], ["salva-scelta", True], [None, True], [None, True]]
 
 
 def test_differenza_ammessa_della_pedina_scritta():
@@ -1210,3 +1213,341 @@ def test_guida_ctrl_s_e_campo_della_formazione():
 def test_novita_della_formazione():
     voce = _voce_di_novita("formazione-b.json", "Formazione più comoda")
     assert len(voce["voci"]) >= 3 and all("PC" not in v for v in voce["voci"])
+
+
+# ---------------------------------------------------------------- PR 9: pannello affiancato, scheda del giocatore, ricerca
+def test_pannello_affiancato_solo_per_i_dettagli_dei_giocatori():
+    """Spec C5 e §10: scheda, confronto, scelta per il confronto, sostituzione di un titolare, «Perché questo numero» e ricerca
+    chiedono il pannello affiancato; da 1200 px la pagina si stringe di quanto è largo il pannello (400-520 px)."""
+    for nome in ("apriGiocatore", "apriScelta", "apriConfronto", "apriPerche", "apriRicerca"):
+        assert "affianco: true" in _funzione(APP, nome), nome
+    assert "affianco: true" in _funzione(APP, "mostraFormazione")          # la sostituzione di un titolare
+    apri = _funzione(APP, "apriFoglio") + _funzione(APP, "modoFoglio")
+    assert 'matchMedia("(min-width: 1200px)")' in APP and "bloccaSfondo()" in apri and "con-pannello" in apri
+    assert re.search(r"@media \(min-width: 1200px\) \{[^@]*body\.con-pannello main \{[^}]*margin-right: var\(--pannello\)", CSS)
+    assert "--pannello: clamp(400px, 32vw, 520px)" in CSS
+
+
+def test_le_altre_finestre_restano_modali():
+    """Primo avvio, immagine da condividere, diario e novità restano fogli modali anche sul PC (spec C5)."""
+    assert "affianco" not in _funzione(APP, "condividiImmagine")
+    assert "affianco" not in (WEB / "primoavvio.js").read_text(encoding="utf-8")
+    assert "affianco" not in _funzione(APP, "apriDiario")
+
+
+def test_il_pannello_sta_sotto_la_testata_senza_velo_e_con_il_filo_a_sinistra():
+    """Spec §8.11: a destra, sotto la testata, fino al fondo della finestra, fondo --sfondo, filo a sinistra, «✕» da 44 px sempre
+    in vista; niente velo scuro sulla pagina, che resta attiva."""
+    b = _blocco_css("@media (min-width: 1200px) {")
+    assert re.search(r"body\.con-pannello \.foglio \{[^}]*top: var\(--alto-testata, 56px\);[^}]*width: var\(--pannello\)", b)
+    assert re.search(r"body\.con-pannello \.foglio-sfondo \{ display: none; \}", b)
+    corpo = re.search(r"body\.con-pannello \.foglio-corpo \{([^}]*)\}", b).group(1)
+    assert "border-left: 1px solid var(--filo)" in corpo and "border-radius: 0" in corpo
+    chiudi = re.search(r"body\.con-pannello \.foglio-chiudi \{([^}]*)\}", b).group(1)
+    assert "position: sticky" in chiudi
+    # la ✕ ferma non copre il focus (WCAG 2.2, 2.4.11): il contenuto dopo il titolo parte sotto di lei, e un elemento che prende il
+    # focus scorrendo il pannello si ferma sotto di lei (il primo risultato della ricerca ci finiva sotto per 4 px). Niente margine
+    # negativo in alto: ferma, la ✕ sta più in basso di dove la mette l'impaginazione, e il contenuto la evitava solo lì; 6 px sotto
+    # lasciano posto al contorno del focus (2 + 2 px)
+    assert "margin: 0 -10px 6px 8px" in chiudi
+    assert "scroll-padding-top: 72px" in corpo                            # ✕ da 44 px + 16 di margine del pannello + stacco
+    assert re.search(r"body\.con-pannello #foglio-contenuto > :not\(:first-child\) \{ clear: right; \}", b)
+    # con il pannello la pagina è più stretta: Formazione 5:7 e Oggi senza la colonna di destra divisa in due (sopra i 1400 px)
+    assert re.search(r"body\.con-pannello main \.colonne-campo \{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\); --quota-campo: calc\(5 / 12\); \}", b)
+    assert re.search(r"body\.con-pannello main \.colonne-oggi > \.col:nth-child\(2\) \{ columns: auto; \}", b)
+
+
+def _codice_pannello():
+    return APP[APP.index("let chiusura = null"):APP.index("(function trascinamento()")]
+
+
+AMBIENTE_PANNELLO = r"""
+const timers = new Map(); let nt = 0;
+const setTimeout = f => { timers.set(++nt, f); return nt; }, clearTimeout = id => { timers.delete(id); };
+const scorri = () => { for (const [id, f] of [...timers]) { timers.delete(id); f(); } };
+const classi = () => { const s = new Set(); return { add: c => s.add(c), remove: c => s.delete(c), contains: c => s.has(c),
+  toggle(c, si) { if (si === undefined ? !s.has(c) : si) s.add(c); else s.delete(c); return s.has(c); } }; };
+const el = (nome, extra = {}) => ({ nome, inert: false, classList: classi(), style: {}, attr: {},
+  setAttribute(k, v) { this.attr[k] = String(v); }, removeAttribute(k) { delete this.attr[k]; },
+  getAttribute(k) { return k in this.attr ? this.attr[k] : null; }, focus() { document.activeElement = this; }, ...extra });
+const corpoPagina = el("body", { contains: x => !!x && x.vivo !== false });
+const contenuto = el("main"), salta = el("salta"), testata = el("testata"), schedeEl = el("schede"), chiudi = el("chiudi");
+const document = { activeElement: corpoPagina, body: corpoPagina,
+  querySelector: s => ({ ".salta": salta, ".testata": testata, ".schede": schedeEl, ".foglio-chiudi": chiudi }[s] || null) };
+const foglio = el("foglio", { hidden: true });
+let titolo = null;
+const corpo = el("corpo", { scrollTop: 0, contains: x => !!x && (x === chiudi || x === titolo || x.dentro === true) });
+const contenitore = { html: "", set innerHTML(h) { this.html = h; if (titolo) titolo.vivo = false; const m = /<h2>(.*?)<\/h2>/.exec(h);
+  titolo = m ? el("titolo:" + m[1], { textContent: m[1], tabIndex: 0, id: "" }) : null; }, querySelector: () => titolo };
+const campoTestata = el("campo-cerca", { value: "" });
+const nel = id => (contenitore.html.includes(`id="${id}"`) ? {} : null);
+const $ = s => ({ "#foglio": foglio, ".foglio-corpo": corpo, "#foglio-contenuto": contenitore, "#campo-cerca": campoTestata,
+  "#risultati-ricerca": nel("risultati-ricerca"), "#ricerca-veloce": nel("ricerca-veloce") }[s] || null);
+const ricerche = [];
+const apriRicerca = v => ricerche.push(v);
+const t = k => k;
+let largo = true; const ascoltatori = [];
+const matchMedia = q => ({ media: q, get matches() { return q === "(min-width: 1200px)" && largo; }, addEventListener: (n, f) => ascoltatori.push(f) });
+const finestra = l => { largo = l; ascoltatori.forEach(f => f({ matches: l })); };
+"""
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_pannello_affiancato_da_1200_px_e_foglio_modale_sotto():
+    """Il codice vero di apriFoglio/chiudiFoglio con una pagina finta. Da 1200 px (matchMedia vero): niente `inert` né
+    `aria-modal`, la pagina non si blocca, il titolo prende il focus, un clic su un altro giocatore cambia il pannello, Esc lo
+    chiude e il focus torna all'ultimo che l'ha aperto. Finestra ristretta con il pannello aperto: foglio modale, poi di nuovo
+    affiancato, con il focus sempre nel pannello. Sotto i 1200 px e per le altre finestre: il foglio modale di oggi."""
+    codice = "\n".join([AMBIENTE_PANNELLO, _codice_pannello(), r"""
+const foto = () => ({ main_inerte: contenuto.inert, testata_inerte: testata.inert, pannello: corpoPagina.classList.contains("con-pannello"),
+  modale: corpo.getAttribute("aria-modal"), blocco: corpoPagina.style.overflow || "", aperto: !foglio.hidden,
+  focus: document.activeElement && document.activeElement.nome, solo_modale: foglioModale(), scorre: corpo.scrollTop });
+const esiti = {};
+const riga1 = el("riga1"), riga2 = el("riga2"), campo = el("campo"), titoloPagina = el("titolo-pagina");
+riga1.focus(); apriFoglio("<h2>Rossi</h2>", { affianco: true }); scorri(); esiti.apre = foto();
+corpo.scrollTop = 300;
+riga2.focus(); apriFoglio("<div>carico</div>", { affianco: true }); apriFoglio("<h2>Bianchi</h2>", { affianco: true }); scorri(); esiti.cambia = foto();
+chiudiFoglio(); scorri(); esiti.chiude = foto();
+riga1.focus(); apriFoglio("<h2>Rossi</h2>", { affianco: true }); scorri();
+finestra(false); scorri(); esiti.stretta = foto();
+finestra(true); scorri(); esiti.larga = foto();
+chiudiFoglio(); scorri();
+largo = false; riga1.focus(); apriFoglio("<h2>Rossi</h2>", { affianco: true }); scorri(); esiti.modale = foto();
+chiudiPannelloAffiancato(); scorri(); esiti.modale_resta = foto();
+chiudiFoglio(); scorri(); esiti.modale_chiuso = foto();
+largo = true; riga1.focus(); apriFoglio("<h2>Primo avvio</h2>"); scorri(); esiti.altre = foto(); chiudiFoglio(); scorri();
+campo.focus(); apriFoglio("<h2>Cerca</h2>", { affianco: true, focusResta: true }); scorri(); esiti.ricerca = foto();
+titoloPagina.focus(); chiudiPannelloAffiancato(); scorri(); esiti.cambio_schermata = foto();
+// revisione della #426: la ricerca della testata aperta e la finestra sotto i 1200 px (testata inerte): riparte la ricerca del
+// foglio, con il suo campo e il testo già scritto, che lascia la testata
+campoTestata.focus(); campoTestata.value = "mar";
+apriFoglio('<h2>Cerca</h2><div id="risultati-ricerca"></div>', { affianco: true, focusResta: true }); scorri();
+finestra(false); scorri(); esiti.ricerca_stretta = { ricerche: ricerche.splice(0), campo: campoTestata.value };
+finestra(true); chiudiFoglio(); scorri();
+riga1.focus(); apriFoglio("<h2>Rossi</h2>", { affianco: true }); scorri(); finestra(false); scorri();
+esiti.scheda_stretta = { ricerche: ricerche.splice(0), modale: corpo.getAttribute("aria-modal") };   // le altre: solo il modo cambia
+console.log(JSON.stringify(esiti));
+"""])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    e = json.loads(r.stdout.strip().splitlines()[-1])
+    lato = {"main_inerte": False, "testata_inerte": False, "pannello": True, "modale": None, "blocco": "", "aperto": True, "solo_modale": False}
+    assert e["apre"] == {**lato, "focus": "titolo:Rossi", "scorre": 0}
+    assert e["cambia"] == {**lato, "focus": "titolo:Bianchi", "scorre": 0}             # un altro giocatore: il pannello cambia
+    assert e["chiude"]["aperto"] is False and e["chiude"]["pannello"] is False and e["chiude"]["focus"] == "riga2"
+    modale = {"main_inerte": True, "testata_inerte": True, "pannello": False, "modale": "true", "blocco": "hidden", "aperto": True, "solo_modale": True}
+    assert {k: e["stretta"][k] for k in modale} == modale and e["stretta"]["focus"] == "titolo:Rossi"   # il focus non si perde
+    assert {k: e["larga"][k] for k in lato} == lato and e["larga"]["focus"] == "titolo:Rossi"
+    assert {k: e["modale"][k] for k in modale} == modale and e["modale"]["focus"] == "chiudi"        # sotto i 1200 px: come oggi
+    assert e["modale_resta"]["aperto"] is True                                                      # cambio di schermata: solo il pannello
+    assert e["modale_chiuso"]["focus"] == "riga1" and e["modale_chiuso"]["main_inerte"] is False
+    assert {k: e["altre"][k] for k in modale} == modale
+    assert e["ricerca"]["focus"] == "campo" and e["ricerca"]["pannello"] is True                   # il cursore resta dove si scrive
+    assert e["cambio_schermata"]["aperto"] is False and e["cambio_schermata"]["focus"] == "titolo-pagina"
+    assert e["ricerca_stretta"] == {"ricerche": ["mar"], "campo": ""}
+    assert e["scheda_stretta"] == {"ricerche": [], "modale": "true"}
+
+
+def test_la_ricerca_della_testata_scrive_nel_pannello_e_scheda_senza_riquadri():
+    corpo = _funzione(APP, "apriRicerca")
+    assert "affianco: true" in corpo and "focusResta: true" in corpo
+    assert not re.search(r"\.statistiche div \{[^}]*background", CSS)       # numeri senza riquadri
+    assert not re.search(r"\.stat-fila > div \{[^}]*background", CSS)
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_ricerca_della_testata_mentre_si_scrive_e_invio_apre_il_primo():
+    """Da 1200 px il testo resta nel campo della testata e i risultati arrivano nel pannello 150 ms dopo l'ultimo tasto; Invio
+    apre il primo risultato (o i risultati, se non ce n'è uno); campo svuotato: il pannello della ricerca si chiude. Tra 900 e
+    1199 px al primo tasto il testo passa alla ricerca nel foglio, come nella PR 4."""
+    i = APP.index("// Il campo sempre aperto della testata")
+    pezzo = APP[i:APP.index("\n\n", i)]
+    codice = "\n".join([r"""
+let ora = 0; const timers = [];
+const setTimeout = (f, ms) => { timers.push({ f, quando: ora + ms, id: timers.length + 1 }); return timers.length; };
+const clearTimeout = id => { const x = timers.find(x => x.id === id); if (x) x.f = null; };
+const avanza = ms => { ora += ms; for (const x of timers) if (x.f && x.quando <= ora) { const f = x.f; x.f = null; f(); } };
+const chiamate = []; let largo = true;
+const PANNELLO_LARGO = { get matches() { return largo; } };
+const campo = { value: "", placeholder: "", ascolta: {}, addEventListener(n, f) { this.ascolta[n] = f; }, getClientRects: () => [1] };
+const $ = s => (s === "#campo-cerca" ? campo : null);
+const t = k => k;
+const apriRicerca = q => chiamate.push(["ricerca", q]);
+const apriGiocatore = id => chiamate.push(["giocatore", id]);
+const chiudiRicercaAffiancata = () => chiamate.push(["chiudi-ricerca"]);
+const frecceRicerca = ev => { if (ev.key === "ArrowDown") chiamate.push(["frecce"]); };
+const caricaListoneCerca = () => Promise.resolve([]);
+const cercaGiocatori = async q => (q === "zz" ? [] : [{ id: 7 }, { id: 9 }]);
+const scrivi = testo => { campo.value = testo; campo.ascolta.input({ target: campo }); };
+const invio = async (extra = {}) => { let fermato = false;
+  await campo.ascolta.keydown({ key: "Enter", target: campo, preventDefault() { fermato = true; }, ...extra });
+  await new Promise(r => setImmediate(r)); return fermato; };
+""", pezzo, r"""
+(async () => {
+  const e = {};
+  scrivi("ba"); e.subito = chiamate.splice(0); avanza(149); e.a_149 = chiamate.splice(0); avanza(1); e.a_150 = chiamate.splice(0);
+  e.resta = campo.value;
+  scrivi("bar"); avanza(100); scrivi("bart"); avanza(100); e.di_corsa = chiamate.splice(0); avanza(50); e.dopo = chiamate.splice(0);
+  e.invio_fermato = await invio(); e.invio = chiamate.splice(0);
+  e.ripetuto = [await invio({ repeat: true }), chiamate.splice(0)];
+  campo.value = "zz"; await invio(); e.niente = chiamate.splice(0);
+  campo.value = ""; await invio(); campo.value = "b"; await invio(); e.invio_corto = chiamate.splice(0);   // revisione della #426
+  await campo.ascolta.keydown({ key: "ArrowDown", target: campo, preventDefault() {} }); e.freccia = chiamate.splice(0);
+  scrivi(""); avanza(150); e.vuoto = chiamate.splice(0);
+  largo = false; scrivi("r"); e.stretto = [chiamate.splice(0), campo.value];
+  console.log(JSON.stringify(e));
+})();
+"""])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    e = json.loads(r.stdout.strip().splitlines()[-1])
+    assert e["subito"] == [] and e["a_149"] == [] and e["a_150"] == [["ricerca", "ba"]] and e["resta"] == "ba"
+    assert e["di_corsa"] == [] and e["dopo"] == [["ricerca", "bart"]]       # si cerca una volta sola, dopo l'ultimo tasto
+    assert e["invio_fermato"] is True and e["invio"] == [["giocatore", 7]]
+    assert e["ripetuto"] == [True, []]                                      # Invio tenuto premuto: non riapre la scheda
+    assert e["niente"] == [["ricerca", "zz"]]                               # nessun risultato: si vede «Nessun giocatore trovato»
+    assert e["invio_corto"] == [["chiudi-ricerca"], ["chiudi-ricerca"]]       # vuoto o una lettera: niente da aprire
+    assert e["freccia"] == [["frecce"]]                                     # ↓ porta ai risultati (test_frecce_dal_campo_…)
+    assert e["vuoto"] == [["chiudi-ricerca"]]
+    assert e["stretto"] == [[["ricerca", "r"]], ""]
+
+
+def test_scheda_del_giocatore_come_distinta():
+    """Spec §9: volto 56 px e nome in Archivo 32; sotto il fantavoto atteso come numero eroe e «gioca N%» affiancati come cifre,
+    separati da un filo (le cifre di Oggi); la partita in una riga; «Perché questo numero» come righe con l'effetto a destra."""
+    scheda = _funzione(APP, "apriGiocatore")
+    assert '<div class="cifre-oggi cifre-scheda">' in scheda and '<div class="enorme">${num(pr.fv_atteso)}</div>' in scheda
+    assert '<div class="cifra"><div class="debole">${t("mercato.gioca")}</div><div class="grande">${perc(pr.p_voto)}</div></div>' in scheda
+    perche = _funzione(APP, "apriPerche")
+    assert '<div class="cifre-oggi cifre-scheda">' in perche and '<div class="enorme">${num(x.fv_atteso)}</div>' in perche
+    assert '<li class="perche-voce"><span>${esc(testoDi(m))}</span>${effetto(m.effetto)}</li>' in _funzione(APP, "bloccoPerche")
+    assert re.search(r"\n\.perche-voce \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto", CSS)
+    assert re.search(r"\n\.intestazione-scheda \.avatar-anello\.grande-a \{ --d: 56px; \}", CSS)
+    assert re.search(r"\n\.intestazione-scheda h2 \{[^}]*font-family: var\(--font-numeri\);[^}]*font-size: var\(--t-titolo\)", CSS)
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_la_sostituzione_aperta_non_vale_piu_se_la_modifica_a_mano_e_finita():
+    """Revisione della #426: con il pannello affiancato la pagina resta attiva. Con «Al posto di X» aperto, un clic su un modulo, su
+    uno stile o su «Torna alla consigliata» toglie la modifica a mano (`sc.manuale = null`): poi un clic su un candidato dava un
+    TypeError. Ora il candidato chiude il pannello e non cambia niente se la modifica a mano non c'è più o X non è più titolare;
+    e la Formazione che si ridisegna chiude la sostituzione aperta (i candidati erano quelli di prima)."""
+    i = APP.index("  function apriSostituzione(id) {")
+    sostituzione = APP[i:APP.index("\n  }\n", i) + 4]
+    codice = "\n".join([r"""
+const chiamate = [];
+const t = k => k, esc = x => String(x), avviso = m => chiamate.push(["avviso", m]);
+const f = { iniziata: false }, fermi = new Set(), sc = { occupato: false };
+const scheda = id => ({ id, nome: "Rossi" + id, ruolo: "C" });
+let ultimaScheda = 0;
+const sostituti = () => [];
+const apriFoglio = (html, o) => chiamate.push(["apri", !!(o && o.affianco), html.includes("data-sostituzione")]);
+const bottoni = [];
+const document = { querySelectorAll: s => (s === "[data-entra]" ? bottoni : []) };
+const candidato = entra => { bottoni.length = 0; bottoni.push({ dataset: { entra: String(entra) }, ascolta: {}, addEventListener(n, fn) { this.ascolta[n] = fn; } }); };
+const chiudiFoglio = () => chiamate.push(["chiudi"]), valutaManuale = ids => chiamate.push(["valuta", ids]);
+""", sostituzione, _funzione(APP, "chiudiSostituzione").replace("$(", "trova(") + "\n}", r"""
+let aperto = false, conSostituzione = false;
+const trova = s => (s === "#foglio" ? { hidden: !aperto } : s === "#foglio-contenuto [data-sostituzione]" ? (conSostituzione ? {} : null) : null);
+const e = {};
+const prova = (dopo) => { sc.manuale = { titolari: [1, 2, 3] }; candidato(9); apriSostituzione(2); chiamate.splice(0); dopo(); bottoni[0].ascolta.click(); return chiamate.splice(0); };
+e.apre = (() => { sc.manuale = { titolari: [1, 2, 3] }; candidato(9); apriSostituzione(2); return chiamate.splice(0); })();
+e.modulo = prova(() => { sc.manuale = null; });                       // modulo, stile o «Torna alla consigliata»
+e.altro = prova(() => { sc.manuale = { titolari: [1, 5, 3] }; });       // X non è più titolare
+e.giusto = prova(() => {});
+aperto = true; conSostituzione = true; chiudiSostituzione(); e.ridisegno = chiamate.splice(0);
+conSostituzione = false; chiudiSostituzione(); e.altro_pannello = chiamate.splice(0);
+aperto = false; conSostituzione = true; chiudiSostituzione(); e.chiuso = chiamate.splice(0);
+console.log(JSON.stringify(e));
+"""])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    e = json.loads(r.stdout.strip().splitlines()[-1])
+    assert e["apre"] == [["apri", True, True]]                             # accanto al campo, con il segno della sostituzione
+    assert e["modulo"] == [["chiudi"]] and e["altro"] == [["chiudi"]]       # niente TypeError, niente cambio
+    assert e["giusto"] == [["chiudi"], ["valuta", [1, 9, 3]]]
+    assert e["ridisegno"] == [["chiudi"]] and e["altro_pannello"] == [] and e["chiuso"] == []
+    disegna = APP[APP.index("  const disegna = (mantieniScroll = false) => {"):]
+    assert "chiudiSostituzione();" in disegna[:disegna.index("\n  };\n")]
+
+
+def _testi_node(lingua="it"):
+    return (WEB / "testi.js").read_text(encoding="utf-8") + f"\nLINGUA = {json.dumps(lingua)};\n"
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_risultati_della_ricerca_solo_l_ultima_e_quanti_sono_per_i_lettori():
+    """Revisione della #426: due ricerche con le risposte in ordine inverso (la prima arriva dopo): vale solo l'ultima. Il numero
+    dei risultati sta in una riga `role="status"` («12 risultati», «12 results»), così chi usa un lettore di schermo sa che sono
+    arrivati; con meno di due lettere la riga è vuota. Il codice vero di `scriviRisultati`, con una ricerca finta che risponde a
+    comando."""
+    codice = "\n".join([_testi_node(), r"""
+const esc = x => String(x ?? ""), badgeRuolo = r => `[${r}]`, errore = e => `<div class="errore">${e.message}</div>`;
+const posto = { innerHTML: "" }, contatore = { textContent: "" };
+const $ = s => ({ "#risultati-ricerca": posto, "#stato-ricerca": contatore }[s] || null);
+const attese = [];
+const cercaGiocatori = q => new Promise(ok => attese.push({ q, ok }));
+const giocatori = n => Array.from({ length: n }, (_, i) => ({ id: i + 1, nome: "Rossi " + i, squadra: "Esempio", ruolo: "C", quotazione: 10 }));
+const passo = () => new Promise(r => setImmediate(r));
+const foto = () => [(posto.innerHTML.match(/data-giocatore=/g) || []).length, contatore.textContent];
+""", APP[APP.index("let giroRicerca = 0;"):APP.index("// Frecce nella ricerca")], r"""
+(async () => {
+  const e = {};
+  scriviRisultati("ab"); scriviRisultati("abc");
+  attese[1].ok(giocatori(1)); await passo(); attese[0].ok(giocatori(3)); await passo(); e.inverso = foto();
+  scriviRisultati("abcd"); attese[2].ok(giocatori(12)); await passo(); e.dodici = foto();
+  scriviRisultati("zz"); attese[3].ok([]); await passo(); e.nessuno = foto();
+  scriviRisultati("a"); e.corto = foto();
+  LINGUA = "en"; scriviRisultati("abcd"); attese[4].ok(giocatori(12)); await passo(); e.inglese = foto();
+  console.log(JSON.stringify(e));
+})();
+"""])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    e = json.loads(r.stdout.strip().splitlines()[-1])
+    assert e["inverso"] == [1, "1 risultato"]                              # la risposta vecchia, arrivata dopo, non conta
+    assert e["dodici"] == [12, "12 risultati"] and e["inglese"] == [12, "12 results"]
+    assert e["nessuno"] == [0, "Nessun giocatore trovato."] and e["corto"] == [0, ""]
+    corpo = HTML[HTML.index('<div class="foglio-corpo'):HTML.index("</div>\n  </div>", HTML.index('<div class="foglio-corpo'))]
+    assert re.search(r'<p class="solo-lettori" id="stato-ricerca" role="status"></p>', corpo)   # fuori dal contenuto che si riscrive
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_frecce_dal_campo_ai_risultati_e_ritorno():
+    """Revisione della #426: i risultati stanno nel pannello, dopo la pagina, e con il Tab non si raggiungevano. ↓ nel campo porta al
+    primo risultato, ↓ e ↑ passano dall'uno all'altro, ↑ sul primo torna al campo; senza risultati o a pannello chiuso le frecce fanno
+    quello di sempre."""
+    codice = "\n".join([r"""
+let attivo = null; const voce = nome => ({ nome, focus() { attivo = nome; } });
+const campo = voce("campo"), risultati = [voce("r1"), voce("r2"), voce("r3")];
+let aperto = true, mostrati = risultati;
+const $ = s => (s === "#campo-cerca" ? campo : s === "#foglio" ? { hidden: !aperto } : null);
+const document = { querySelectorAll: s => (s === "#risultati-ricerca [data-giocatore]" ? mostrati : []) };
+""", _funzione(APP, "frecceRicerca") + "\n}", r"""
+const premi = (key, target) => { let fermato = false; attivo = null; frecceRicerca({ key, target, preventDefault() { fermato = true; } }); return [attivo, fermato]; };
+const e = { giu_campo: premi("ArrowDown", campo), giu_1: premi("ArrowDown", risultati[0]), su_2: premi("ArrowUp", risultati[1]),
+  su_1: premi("ArrowUp", risultati[0]), giu_ultimo: premi("ArrowDown", risultati[2]), su_campo: premi("ArrowUp", campo), invio: premi("Enter", campo) };
+mostrati = []; e.senza = premi("ArrowDown", campo);
+mostrati = risultati; aperto = false; e.chiuso = premi("ArrowDown", campo);
+console.log(JSON.stringify(e));
+"""])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    e = json.loads(r.stdout.strip().splitlines()[-1])
+    assert e["giu_campo"] == ["r1", True] and e["giu_1"] == ["r2", True] and e["su_2"] == ["r1", True] and e["su_1"] == ["campo", True]
+    for chiave in ("giu_ultimo", "su_campo", "invio", "senza", "chiuso"):
+        assert e[chiave] == [None, False], chiave
+    i = APP.index("// Il campo sempre aperto della testata")
+    testata = APP[i:APP.index("\n\n", i)]
+    assert "frecceRicerca(ev)" in testata and "frecceRicerca(ev)" in _funzione(APP, "apriRicerca")
+    assert re.search(r'\$\("#foglio-contenuto"\)\.addEventListener\("keydown", ev => \{ if \(ev\.target\.closest\("#risultati-ricerca"\)\) frecceRicerca\(ev\); \}\);', APP)
+
+
+def test_guida_pannello_e_ricerca_della_testata():
+    guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
+    assert "accanto alla pagina" in guida and "mentre scrivi" in guida
+
+
+def test_novita_del_pannello_affiancato():
+    voce = _voce_di_novita("pannello-affiancato.json", "Dettagli accanto alla pagina")
+    assert len(voce["voci"]) >= 2 and all("PC" not in v for v in voce["voci"])
