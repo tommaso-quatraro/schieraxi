@@ -17,8 +17,8 @@ struct SquadreComeLaWebTests {
 
     @Test("Titolo della pagina: «Squadre e rose»; senza le rose degli altri «La mia squadra e rosa», come il menu")
     func titolo() throws {
-        #expect(ParoleSquadre.titoloPagina(squadreAltrui: true) == (try Self.pezzo("lega.voce_squadre")))
-        #expect(ParoleSquadre.titoloPagina(squadreAltrui: false) == (try Self.pezzo("lega.voce_miasquadra")))
+        #expect(ParoleSquadre.titolo(squadreAltrui: true) == (try Self.pezzo("lega.voce_squadre")))
+        #expect(ParoleSquadre.titolo(squadreAltrui: false) == (try Self.pezzo("lega.voce_miasquadra")))
     }
 
     @Test("La carta «La mia squadra» e l'elenco: stesse frasi della web")

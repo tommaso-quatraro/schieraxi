@@ -53,7 +53,7 @@ struct SquadreView: View {
             .scrollContentBackground(.hidden)
             .avvisoDatiSalvati(vm.caricatore)
         }
-        .titoloPagina(ParoleSquadre.titoloPagina(squadreAltrui: funzioni.acceso(Funzione.squadreAltrui)))
+        .titoloPagina(ParoleSquadre.titolo(squadreAltrui: funzioni.acceso(Funzione.squadreAltrui)))
         .ricercaGlobale()
         .task { await vm.carica() }
         .sheet(isPresented: $apriImmagini) {

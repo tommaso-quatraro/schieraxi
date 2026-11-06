@@ -7,7 +7,7 @@ enum ParoleSquadre {
     // MARK: pagina Squadre e rose
 
     /// Il titolo della pagina: come la voce del menu (`lega.voce_squadre`), che senza le rose degli altri diventa `lega.voce_miasquadra`.
-    static func titoloPagina(squadreAltrui: Bool) -> String {
+    static func titolo(squadreAltrui: Bool) -> String {
         squadreAltrui ? "Squadre e rose" : "La mia squadra e rosa"
     }
 
