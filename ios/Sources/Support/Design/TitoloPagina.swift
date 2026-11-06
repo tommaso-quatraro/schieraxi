@@ -32,6 +32,11 @@ enum TitoloPagina {
     static func interoInBarra(_ dimensione: DynamicTypeSize, piccoloInBarra: Bool) -> Bool {
         piccoloInBarra && !nellaPagina(dimensione)
     }
+
+    /// Da completare (#419): per ora la barra con il testo grande resta quella di sistema.
+    static func inBarraSeCiSta(_ dimensione: DynamicTypeSize) -> Bool {
+        false
+    }
 }
 
 extension EnvironmentValues {

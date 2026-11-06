@@ -8,6 +8,8 @@ import SwiftUI
 /// del titolo di sistema nelle pagine con `piccoloInBarra`, sotto `TitoloPagina.soglia` (`TitoloPagina.interoInBarra`).
 struct TitoloInBarra: View {
     let titolo: String
+    /// Da completare (#419): per ora non cambia niente.
+    var soloSeCiSta = false
     @Environment(\.verticalSizeClass) private var classeVerticale
 
     var body: some View {
