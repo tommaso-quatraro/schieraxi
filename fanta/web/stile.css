@@ -34,12 +34,8 @@
   /* scritta delle pillole dei giocatori (.etichetta): sopra la tinta della pillola il colore pieno non arrivava a 4,5:1 (issue #234).
      Uguali all'iPhone (Tema.pillolaAttenzione*, Tema.pillolaMalus*): in scuro il rosso un filo più chiaro, in chiaro tutte più scure */
   --eti-verde: var(--verde); --eti-arancio: var(--arancio); --eti-rosso: #ff867b;
-  --vetro: var(--sfondo);                   /* superfici piene: niente più vetro trasparente (si tolgono quando nessuna regola li usa) */
-  --vetro-carta: var(--sfondo);
   --bordo: rgba(255, 255, 255, .13);
   --bordo-campo: #66796e;                   /* bordo di campi, menu e caselle di testo: almeno 3:1 con il fondo del campo e con quello intorno (issue #285) */
-  --luce: rgba(255, 255, 255, .34);         /* riflesso sul bordo alto */
-  --luce-2: rgba(255, 255, 255, .06);
   --ombra: 0 6px 20px rgba(0, 0, 0, .35);             /* solo per ciò che galleggia: barra, foglio, avvisi */
   --solido: #1a1e1c;                        /* dentro campi di testo, anelli e grafici */
   --campo: #146b3a;
@@ -77,12 +73,8 @@
     --giallo-testo: #7d6000;
     --blu: #1a5bb5;
     --eti-verde: #08643d; --eti-arancio: #834700; --eti-rosso: #a1221b;   /* scritta delle pillole: >= 4,5:1 anche sul foglio della scheda */
-    --vetro: var(--sfondo);
-    --vetro-carta: var(--sfondo);
     --bordo: rgba(16, 32, 26, .1);
     --bordo-campo: #728379;                 /* almeno 3:1 anche sul fondo piatto e sul foglio della scheda */
-    --luce: rgba(255, 255, 255, .95);
-    --luce-2: rgba(255, 255, 255, .25);
     --ombra: 0 6px 20px rgba(16, 32, 26, .12);
     --solido: #ffffff;
     --campo: #187a41;                         /* bianco sopra 5,4:1 (fondo pieno, senza bagliore) */
@@ -108,12 +100,8 @@
     --giallo-testo: #7d6000;
     --blu: #1a5bb5;
     --eti-verde: #08643d; --eti-arancio: #834700; --eti-rosso: #a1221b;   /* scritta delle pillole: >= 4,5:1 anche sul foglio della scheda */
-    --vetro: var(--sfondo);
-    --vetro-carta: var(--sfondo);
     --bordo: rgba(16, 32, 26, .1);
     --bordo-campo: #728379;                 /* almeno 3:1 anche sul fondo piatto e sul foglio della scheda */
-    --luce: rgba(255, 255, 255, .95);
-    --luce-2: rgba(255, 255, 255, .25);
     --ombra: 0 6px 20px rgba(16, 32, 26, .12);
     --solido: #ffffff;
     --campo: #187a41;                         /* bianco sopra 5,4:1 (fondo pieno, senza bagliore) */
@@ -133,13 +121,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .2s, color .2s, box-shadow .25s, opacity .2s; }
 b, strong { font-weight: 650; }
 
-/* ---------------------------------------------------------------- sfondo: piatto (le macchie colorate che si muovevano sapevano di generato) */
-.sfondo { position: fixed; inset: 0; z-index: -1; background: var(--sfondo); }
+/* Il fondo è quello del body, piatto (le macchie colorate che si muovevano sapevano di generato): niente elementi dietro la pagina. */
 .sprite { display: none; }                                  /* i disegni da riusare con <use> (il nome SchieraXI della testata) */
 
-/* ---------------------------------------------------------------- vetro */
+/* ---------------------------------------------------------------- ciò che galleggia sopra la pagina (calcolo in corso, versione nuova pronta) */
+/* La classe resta `.vetro`, ma la superficie è piena: il fondo della pagina, un bordo e l'ombra (spec §7.5-7.6) */
 .vetro {
-  background: var(--vetro);
+  background: var(--sfondo);
   border: 1px solid var(--bordo);
   box-shadow: var(--ombra);
 }
@@ -311,6 +299,8 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
   .chips.filtri .chip.attiva, .lega-voce[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }   /* ruolo dell'Elenco, voce aperta del menu */
   /* misura degli Scambi e moduli delle Regole scelti; regola appena cambiata da «Applica ai campi» (il fondo e la linea spariscono) */
   .chips.misure .chip.attiva, #moduli .chip.attiva, .riga-regola.evidenzia { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* gruppo aperto delle Impostazioni e passo attuale del primo avvio */
+  .imp-voce.attiva, .pa-passo.attuale { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 /* striscia scorrevole (Mercato): le voci hanno la loro larghezza vera e non si tagliano; la scelta resta in vista e un bordo sfumato dice che si scorre */
 .segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 0; scroll-snap-type: x proximity; scroll-padding-inline: 24px;
@@ -318,8 +308,6 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
   mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent); }
 .segmenti.scorri::-webkit-scrollbar { display: none; }
 .segmenti.scorri button { flex: 0 0 auto; padding: 11px 14px; font-size: var(--t-corpo); white-space: nowrap; scroll-snap-align: center; }
-.moduli { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.moduli label { display: flex; align-items: center; gap: 6px; font-size: var(--t-corpo); }
 details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 650; font-size: var(--t-card); padding: 4px 0; min-height: 44px; }
 details > summary::-webkit-details-marker { display: none; }
 details > summary::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--testo-2); border-bottom: 2px solid var(--testo-2); transform: rotate(45deg); transition: transform .3s var(--molla); margin-right: 4px; }
@@ -568,11 +556,22 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
   .df-azione { justify-self: end; }
 }
 .df-vuoto { font-size: var(--t-corpo); }
-.pa-passi { list-style: none; display: flex; gap: 8px; overflow-x: auto; margin: 8px 0 12px; padding: 0 0 4px; }
-.pa-passo { min-height: 44px; border: 1px solid var(--bordo); border-radius: 999px; padding: 0 14px; background: none; color: var(--testo-2); font-size: var(--t-sec); white-space: nowrap; }
+/* Primo avvio (primoavvio.js), nel foglio: il titolo nel carattere dei titoli; i passi come controllo segmentato (spec §8.8: bordo dei
+   controlli, voci separate da un filo, il passo attuale lime con il bordo del testo, come moduli e stili; non più pillole). «Fatto» e
+   «saltato» li dicono anche le parole tra parentesi. Un nome lungo va a capo invece di far scorrere la striscia. Il titolo del passo
+   è il titolo di una sezione (filo spesso sotto). */
+.pa-capo { margin: 0 0 4px; padding-right: 52px; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1;
+  overflow-wrap: anywhere; }                                        /* padding: il titolo lungo va a capo prima della ✕ del foglio */
+.pa-passo { flex: 1; min-width: 0; min-height: 44px; border: 0; border-radius: 0; padding: 6px 8px; background: none; color: var(--testo-2); font-size: var(--t-sec); font-weight: 550;
+  overflow-wrap: anywhere; }
+.pa-passi { list-style: none; display: flex; margin: 12px 0 16px; padding: 0; border: 1px solid var(--bordo-campo); border-radius: var(--r-in); }
+.pa-passi li { flex: 1 1 0; min-width: 0; display: flex; }
+.pa-passi li + li { border-left: 1px solid var(--filo); }
+.pa-passi li:first-child .pa-passo { border-radius: calc(var(--r-in) - 1px) 0 0 calc(var(--r-in) - 1px); }
+.pa-passi li:last-child .pa-passo { border-radius: 0 calc(var(--r-in) - 1px) calc(var(--r-in) - 1px) 0; }
 .pa-passo.fatto { color: var(--verde); } .pa-passo.saltato { color: var(--arancio); }
-.pa-passo.attuale { background: var(--capitano); color: #1b2a00; border-color: transparent; font-weight: 600; }
-.pa-titolo { font-size: var(--t-card); margin: 8px 0 4px; }
+.pa-passo.attuale { background: var(--capitano); color: var(--capitano-testo); box-shadow: inset 0 0 0 2px var(--testo); font-weight: 650; }
+.pa-titolo { font-size: var(--t-card); font-weight: 650; margin: 16px 0 8px; padding-bottom: 8px; border-bottom: 2px solid var(--testo); }
 #pa-file { display: block; min-height: 44px; width: 100%; }      /* bersaglio di tocco da 44px (era alto 23px) */
 .stat-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .stat-fila.quattro { grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -863,6 +862,7 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 .stepper button:active { background: color-mix(in srgb, var(--azione) 18%, transparent); }
 .stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
 .interruttore-ios { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; font-size: var(--t-corpo); }
+.interruttore-ios + .interruttore-ios, .riga-regola + .interruttore-ios { border-top: 1px solid var(--filo); }   /* righe separate dal filo, come le regole */
 .interruttore-ios > span { flex: 1; }
 .interruttore-ios input { appearance: none; -webkit-appearance: none; position: absolute; opacity: 0; width: 1px; height: 1px; }
 .interruttore-ios i { position: relative; flex: none; width: 52px; height: 32px; border-radius: var(--r-in); background: color-mix(in srgb, var(--testo) 22%, transparent); transition: background .3s var(--uscita); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .25); }
@@ -870,6 +870,16 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 .interruttore-ios input:checked + i { background: var(--azione); }
 .interruttore-ios input:checked + i::after { transform: translateX(20px); }
 .interruttore-ios input:focus-visible + i { outline: 2px solid var(--testo); outline-offset: 2px; }
+/* contrasto elevato di Windows: il browser toglie fondi e ombre e l'interruttore spariva (pista e cursore). Qui i colori li decide la
+   pagina, solo con i colori di sistema: bordo e cursore nel colore del testo, la pista accesa nel colore della selezione. Dopo le
+   regole sopra, che altrimenti vincerebbero */
+@media (forced-colors: active) {
+  .interruttore-ios i { forced-color-adjust: none; background: Canvas; border: 1px solid CanvasText; box-shadow: none; }
+  .interruttore-ios i::after { background: CanvasText; box-shadow: none; }
+  .interruttore-ios input:checked + i { background: Highlight; border-color: Highlight; }
+  .interruttore-ios input:checked + i::after { background: HighlightText; }
+  .interruttore-ios input:focus-visible + i { outline-color: CanvasText; }
+}
 .fascia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 0; border-top: 1px solid var(--filo); }
 .fascia .coppia { display: flex; align-items: center; gap: 8px; }
 .fascia .rimuovi-fascia { margin-left: auto; }
@@ -977,7 +987,7 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
    pulsante pieno si scurisce, l'azione scritta si sottolinea. Niente schiarita con `filter`: sul testo scuro non si vedeva */
 @media (hover: hover) {
   .bottone:hover:not(:disabled) { background: var(--azione-2); }
-  .bottone.secondario:hover:not(:disabled), .bottone-icona:hover, .chip:not(.attiva):not(:disabled):hover, .segmenti button:not(.attivo):hover,
+  .bottone.secondario:hover:not(:disabled), .bottone-icona:hover, .chip:not(.attiva):not(:disabled):hover, .segmenti button:not(.attivo):hover, .pa-passo:not(.attuale):hover,
   .foglio-chiudi:hover, .confronta-mini:hover, .alternative-li .alt:hover { background: var(--superficie); }
   .azione-testo:hover { text-decoration: underline; text-underline-offset: 3px; }
   .voce:hover { background: var(--superficie); }
@@ -987,22 +997,11 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
    verde. Il bordo arrotondato lo decide ogni elemento (cerchi compresi) */
 :focus-visible { outline: 2px solid var(--testo); outline-offset: 2px; }
 .campo :focus-visible { outline-color: #fff; }
-.suggerimento-tasti { display: none; }
-@media (hover: hover) and (min-width: 900px) { .suggerimento-tasti { display: block; } }
 
-/* ---- personalizzazione: densità e animazioni ---- */
+/* ---- densità: sempre compatta (app.js, applicaAspetto) ---- */
 html[data-densita="compatta"] .voce { padding-top: 6px; padding-bottom: 6px; min-height: 48px; }
 html[data-densita="compatta"] .chip { min-height: 44px; padding: 5px 12px; }
-.colori { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 14px; }
-.colore { width: 44px; height: 44px; border-radius: 50%; border: 3px solid transparent; padding: 0; background: linear-gradient(135deg, var(--c1), var(--c2));
-  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .45), 0 3px 10px rgba(0, 0, 0, .25); }
-.colore.attivo { border-color: var(--testo); transform: scale(1.1); }
 
-/* ---- Lega a gruppi ---- */
-main[data-gruppo="lega"] > [data-g]:not([data-g="lega"]):not([data-g="tutti"]),
-main[data-gruppo="aspetto"] > [data-g]:not([data-g="aspetto"]):not([data-g="tutti"]),
-main[data-gruppo="avvisi"] > [data-g]:not([data-g="avvisi"]):not([data-g="tutti"]),
-main[data-gruppo="dati"] > [data-g]:not([data-g="dati"]):not([data-g="tutti"]) { display: none; }
 /* il tasto ⇄ non copre i numeri; «Fuori dalla formazione» (senza ⇄) e i nomi delle colonne lasciano lo stesso posto, così i numeri
    di Titolari, Panchina e Fuori stanno nella stessa colonna */
 .elenco li.con-confronto .voce, .elenco.posto-azione .voce-g, .intestazione-colonne.posto-azione > .voce-g { padding-right: 52px; }
@@ -1025,8 +1024,14 @@ input[data-crediti] { min-height: 44px; }
 body.senza-accesso .testata, body.senza-accesso main, body.senza-accesso .schede, body.senza-accesso .foglio { display: none; }
 .accesso { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-start; justify-content: center; overflow: auto;
   padding: calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); }
-.accesso > .accesso-corpo.carta { width: 100%; max-width: 420px; margin: auto; }      /* auto in tutti i lati: al centro, in verticale e in orizzontale (batte il margine di .carta) */
-.accesso-titolo { font-family: ui-rounded, "SF Pro Rounded", "Segoe UI Variable Display", "Nunito", system-ui, sans-serif; font-size: var(--t-titolo); font-weight: 700; margin: 0 0 16px; letter-spacing: -.01em; text-align: center; }
+/* Grafica B (spec §9): un modulo largo al massimo 420 px, senza carta; auto in tutti i lati: al centro, in verticale e in orizzontale.
+   Il titolo è il nome disegnato della testata (lo stesso del sito); nelle altre pagine dell'accesso («Account creato», «Scegli il
+   nome») è scritto nel carattere dei titoli. Sotto, i titoli di sezione con il filo spesso, come nell'app. */
+.accesso-corpo { width: 100%; max-width: 420px; margin: auto; }
+.accesso-titolo { font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; margin: 0 0 16px; letter-spacing: -.01em; line-height: 1.1; text-align: center;
+  overflow-wrap: anywhere; }
+.accesso-titolo .wm { height: 40px; margin: 0 auto; }
+.accesso-corpo h2 { font-size: var(--t-card); font-weight: 650; margin: 16px 0 8px; padding-bottom: 8px; border-bottom: 2px solid var(--testo); letter-spacing: -.01em; }
 /* «Continua con Google»: grafica di Google (fondo bianco, G a colori, testo scuro), largo quanto il modulo, mai meno evidente degli altri pulsanti */
 .bottone-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 46px; padding: 10px 16px; border-radius: var(--r-in);
   background: #fff; color: #1f1f1f; border: 1px solid #dadce0; font: inherit; font-weight: 600; cursor: pointer; }
@@ -1035,7 +1040,7 @@ body.senza-accesso .testata, body.senza-accesso main, body.senza-accesso .schede
 .bottone-google .google-g { flex: none; }
 .accesso-social { margin: 0 0 4px; }
 .accesso-oppure { display: flex; align-items: center; gap: 12px; margin: 14px 0 0; }
-.accesso-oppure::before, .accesso-oppure::after { content: ""; flex: 1; height: 1px; background: var(--bordo); }
+.accesso-oppure::before, .accesso-oppure::after { content: ""; flex: 1; height: 1px; background: var(--filo); }
 .accesso-campo { display: block; margin: 12px 0 0; }
 .accesso-campo .campo-testo { margin-top: 4px; }
 .accesso-aiuto { margin: 4px 0 0; }
@@ -1064,8 +1069,8 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
 .calcolo[hidden] { display: none; }
 .calcolo .marchio { margin: 0; flex: none; }
 
-/* ---------------------------------------------------------------- primo avvio (primoavvio.js): riquadri dentro il foglio */
-.onb-blocco { margin: 14px 0; padding: 14px 16px; border-radius: var(--r-card); border: 1px solid var(--bordo); }
+/* ---------------------------------------------------------------- primo avvio (primoavvio.js): righe con il filo dentro il foglio, niente riquadri */
+.onb-blocco { margin: 16px 0 0; padding: 12px 0 0; border-top: 1px solid var(--filo); }
 .onb-blocco .bottone { margin-top: 6px; }
 .pa-sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .onb-verde { color: var(--verde); font-weight: 600; margin: 10px 0; }
@@ -1195,8 +1200,7 @@ body.pagina-testo { padding: 0 0 40px; }
 /* Dai e Ricevi affiancati solo da 1100 px (colonna intera): a 768-1024 px due colonne da 150 px tagliavano i nomi */
 @media (min-width: 1100px) { .analizzatore .parti { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* ---------------------------------------------------------------- movimento che manca: accesso, errori, conferme, pulsanti occupati */
-.accesso { animation: dissolve .35s ease both; }
-.accesso-corpo.primo { animation: entra .5s var(--uscita) both; }
+.accesso { animation: dissolve .35s ease both; }             /* la prima volta il modulo compare con la pagina, senza salire (spec §7.6) */
 .accesso-corpo:not(.primo) > :not(.accesso-marchio):not(.accesso-titolo) { animation: entra-breve .3s var(--uscita) both; }   /* passaggio Accedi / Registrati / Recupera */
 @keyframes errore { 0% { opacity: 0; transform: translateX(0); } 18% { opacity: 1; transform: translateX(calc(var(--mov, 1) * -7px)); } 38% { transform: translateX(calc(var(--mov, 1) * 6px)); }
   58% { transform: translateX(calc(var(--mov, 1) * -4px)); } 78% { transform: translateX(calc(var(--mov, 1) * 2px)); } 100% { opacity: 1; transform: none; } }
@@ -1264,14 +1268,27 @@ body.senza-accesso .salta { display: none; }
 .bottone-icona.novita::after { content: ""; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
 .imp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }   /* una colonna `auto` era larga quanto il contenuto più lungo: Notifiche scorreva di lato (issue #288) */
 .imp-elenco { padding: 0; margin: 0; }
-.imp-voce.attiva { background: color-mix(in srgb, var(--verde) 14%, transparent); border-radius: var(--r-in); }
+/* il gruppo aperto come la voce aperta del menu di Squadra e Altro (spec §9): il fondo del passaggio del mouse e una linea di 3 px a
+   sinistra nel colore delle azioni, non una tinta verde; con il contrasto elevato un contorno vero (in «controlli») */
+.imp-voce { padding-left: 12px; padding-right: 8px; border-radius: 0 var(--r-in) var(--r-in) 0; }
+.imp-voce.attiva { background: var(--superficie); box-shadow: inset 3px 0 0 var(--azione); }
 .imp-indietro { min-height: 44px; }
 .imp-titolo { font-size: var(--t-card); margin: 14px 0 12px; letter-spacing: -.01em; }
 .imp-titolo:focus { outline: none; }
-.imp-pagina .indirizzo-nascosto { font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; text-align: right; }
+/* Dentro un gruppo, sezioni e righe al posto delle carte (spec §4.1 e §9): il titolo che apre una sezione (Lingua, Tema, Dimensione
+   del testo, Funzioni, Stato dei dati...) ha il filo spesso sotto, come le sezioni delle altre schermate; gli altri titoli dentro la
+   stessa sezione (gli strumenti dell'amministratore) restano piccoli. Le voci di Informazioni, la versione e le parti dell'account
+   sono righe con il filo sottile. Sul PC i controlli segmentati non si stendono su tutta la pagina (come i modi degli Scambi). */
+.imp-pagina .carta > h3:first-child, #aspetto .carta > h3 { font-size: var(--t-card); font-weight: 650; color: var(--testo); margin: 0 0 8px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--testo); letter-spacing: -.01em; }
+#aspetto .carta > h3:not(:first-child) { margin-top: 24px; }
+.imp-pagina .elenco + .riga { min-height: 44px; border-top: 1px solid var(--filo); }
+.imp-pagina .carta > details { border-top: 1px solid var(--filo); }
+.imp-pagina .segmenti { max-width: 520px; }
 @media (max-width: 767px) {
   .imp[data-aperto="1"] .imp-elenco { display: none; }
   .imp[data-aperto="0"] .imp-pagina { display: none; }
+  .imp-voce { padding-left: 0; }                                    /* al telefono il menu è la pagina: le voci partono dal bordo */
 }
 @media (min-width: 768px) {
   .imp { grid-template-columns: 280px minmax(0, 1fr); gap: 22px; align-items: start; }
@@ -1389,7 +1406,7 @@ body.senza-accesso .salta { display: none; }
 /* =====================================================================================================
    PC e schermi larghi (da 1100 px): più cose in vista, meno scorrimento.
    - Oggi e Formazione: due colonne 5:7 (da 900 px, «Schede in alto»); Formazione: campo | cifre, scelta ed elenco.
-   - Impostazioni e Squadra/Altro: le carte si dispongono su due colonne e gli elenchi lunghi a griglia.
+   - Impostazioni (da 768 px) e Squadra/Altro: il menu a sinistra e la pagina scelta a destra, in una colonna sola.
    - I dettagli (giocatore, diario, ricerca) si aprono in un foglio a destra, modale; da 1200 px quelli dei giocatori stanno nel
      pannello affiancato, che non copre la pagina (sotto, «Pannello affiancato»).
    Sul telefono e sul tablet fino a 1099 px non cambia niente (le regole sono tutte dentro le @media).
@@ -1404,7 +1421,7 @@ body.senza-accesso .salta { display: none; }
   .foglio:not([hidden]) .foglio-corpo { animation-name: sale-lato; }
   .foglio.chiude .foglio-corpo { animation-name: scende-lato; }
   .foglio-chiudi { width: 44px; height: 44px; top: 12px; right: 12px; }
-  .imp-pagina p { max-width: 80ch; }
+  .imp-pagina p, .imp-pagina div.debole { max-width: 70ch; }     /* righe di testo al massimo 70 caratteri (spec C12), come in Squadra e Altro */
   /* con il mouse le strisce da far scorrere col dito non servono: moduli e stili vanno a capo e si vedono tutti */
   .colonne-campo .chips.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
 }
@@ -1434,12 +1451,6 @@ body.senza-accesso .salta { display: none; }
      colonne di Oggi finiscono quasi insieme (151 px a 1440, PR #415) */
   main .colonne-oggi > .col:nth-child(2) { display: block; columns: 2; column-gap: 24px; }
   main .colonne-oggi > .col:nth-child(2) > * { break-inside: avoid; }
-}
-@media (min-width: 1700px) {
-  .imp-pagina:has(> .carta ~ .carta) { columns: 2; column-gap: 22px; }
-  .imp-pagina:has(> .carta ~ .carta) > * { break-inside: avoid; }
-  .imp-pagina:has(> .carta ~ .carta) > .imp-titolo { column-span: all; }
-  .imp-pagina ul.elenco:has(> li:nth-child(8)) { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); column-gap: 24px; }
 }
 /* monitor da 5120 px: un gradino in più, così testo e bersagli restano della stessa misura che su un 4K */
 @media (min-width: 4400px) { :root { --z: 1.75; } }

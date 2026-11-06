@@ -285,7 +285,7 @@ JS_WEB = "\n".join(p.read_text(encoding="utf-8") for p in sorted(WEB.glob("*.js"
 CON_LA_CARTA = sorted({c for attr in re.findall(r'class="([^"]*)"', JS_WEB) if re.search(r"(?<![\w-])carta(?![\w-])", attr)
                        for c in attr.split("${")[0].split() if c != "carta"} | {"con-maglia"})
 SEZIONE = ("carta", *CON_LA_CARTA)
-BLOCCHI_AMMESSI = ("scambio", "accesso-corpo")      # spec §8.3: la proposta di uno scambio; piano, PR 5: il modulo d'accesso
+BLOCCHI_AMMESSI = ("scambio",)      # spec §8.3: la proposta di uno scambio (il modulo d'accesso dalla PR 12 non è più una carta)
 
 
 def _soggetto(selettore):
@@ -329,7 +329,7 @@ def test_la_carta_e_una_sezione_senza_scatola():
 def test_nessuna_regola_rimette_il_riquadro_a_una_sezione():
     """Spec §4.1 e §8.3: niente scatole, lo spazio e i fili fanno i gruppi. In nessuna larghezza, densità o tema una regola dà di
     nuovo fondo, bordo, ombra o angoli tondi a una sezione, nemmeno con la classe che le sta accanto («carta proposta-r»,
-    «carta vuoto»...). Restano un blocco solo la proposta di uno scambio e il modulo d'accesso."""
+    «carta vuoto»...). Resta un blocco solo la proposta di uno scambio."""
     assert {"hero", "proposta-r", "vuoto", "regola-sez", "imp-elenco"} <= set(CON_LA_CARTA)
     assert not _scatole(SEZIONE, BLOCCHI_AMMESSI)
 
@@ -424,7 +424,8 @@ def test_il_focus_ha_un_colore_solo_e_si_vede_su_ogni_fondo():
     from tests.test_design_web import _colore, _contrasto_rgb, _temi
     altri = [f"{s} {{ {n}: {v} }}" for selettori, corpo in REGOLE for s in selettori if "focus" in s
              for n, v in _proprieta(corpo, "outline", "outline-color", "border-color")
-             if v not in ("none", "0") and "var(--testo)" not in v and "#fff" not in v]
+             if v not in ("none", "0") and "var(--testo)" not in v and "#fff" not in v
+             and v != "CanvasText"]          # colore di sistema del testo: solo con il contrasto elevato (interruttori, PR 12)
     assert not altri, altri
     for tema, v in _temi().items():
         testo = _colore(v["--testo"])[0]
@@ -1552,3 +1553,85 @@ def test_guida_pannello_e_ricerca_della_testata():
 def test_novita_del_pannello_affiancato():
     voce = _voce_di_novita("pannello-affiancato.json", "Dettagli accanto alla pagina")
     assert len(voce["voci"]) >= 2 and all("PC" not in v for v in voce["voci"])
+
+
+# ---------------------------------------------------------------- PR 12: Impostazioni, accesso, primo avvio, pulizia
+PRIMO = (WEB / "primoavvio.js").read_text(encoding="utf-8")
+
+
+def _colori_forzati():
+    """Le regole dentro `@media (forced-colors: active)` (contrasto elevato di Windows)."""
+    return re.search(r"@media \(forced-colors: active\) \{(.*?)\n\}", SENZA_COMMENTI, re.S).group(1)
+
+
+def test_accesso_un_modulo_centrato_senza_carta_con_il_nome_disegnato():
+    """Spec §9: la pagina d'accesso resta un modulo centrato largo al massimo 420 px, senza carta. Il nome è quello disegnato della
+    testata (lo stesso del sito), il titolo per i lettori resta «SchieraXI»; il filo di «oppure» è quello delle righe."""
+    assert re.search(r"\n\.accesso-corpo \{[^}]*max-width: 420px[^}]*margin: auto;", SENZA_COMMENTI)
+    for nome in ("mostraAccesso", "mostraCodiceAccesso", "mostraNuovoGoogle"):
+        corpo = _funzione(APP, nome)
+        assert '<div class="accesso-corpo' in corpo and "carta accesso-corpo" not in corpo, nome
+    accesso = _funzione(APP, "mostraAccesso")
+    assert '<h1 class="accesso-titolo"><svg class="wm" aria-hidden="true" focusable="false"><use href="#wm-c"/></svg>' in accesso
+    assert '<span class="solo-lettori">SchieraXI</span></h1>' in accesso
+    assert "ui-rounded" not in _corpo(".accesso-titolo")
+    assert "var(--filo)" in _corpo(".accesso-oppure::before, .accesso-oppure::after")
+    assert re.search(r"\n\.accesso-corpo h2 \{[^}]*border-bottom: 2px solid var\(--testo\)", SENZA_COMMENTI)   # «Salva il codice»
+    assert "accesso-corpo" not in BLOCCHI_AMMESSI
+
+
+def test_accesso_senza_entrata_che_non_risponde_a_un_gesto():
+    """Spec §7.6: restano solo i movimenti che rispondono a un gesto. Il passaggio fra Accedi, Registrati e Recupera resta; la prima
+    comparsa del modulo è solo la dissolvenza della pagina d'accesso, senza il modulo che sale e si ingrandisce."""
+    assert ".accesso-corpo.primo { animation" not in SENZA_COMMENTI
+    assert "animation: entra-breve" in _corpo(".accesso-corpo:not(.primo) > :not(.accesso-marchio):not(.accesso-titolo)")
+
+
+def test_impostazioni_con_sezioni_e_righe():
+    """Spec §9: stessa struttura di oggi (gruppi a sinistra da 768 px) con sezioni e righe al posto delle carte. Il gruppo aperto
+    come la voce aperta di Squadra e Altro: il fondo del passaggio del mouse e la linea di 3 px nel colore delle azioni, non una tinta
+    verde; con il contrasto elevato un contorno vero. Dentro un gruppo i titoli sono titoli di sezione (filo spesso sotto) e gli
+    interruttori righe separate dal filo sottile."""
+    voce = _corpo(".imp-voce.attiva")
+    assert "background: var(--superficie)" in voce and "box-shadow: inset 3px 0 0 var(--azione)" in voce and "color-mix" not in voce
+    assert ".imp-voce.attiva" in _colori_forzati()
+    assert re.search(r"\n\.imp-pagina \.carta > h3:first-child, #aspetto \.carta > h3 \{[^}]*border-bottom: 2px solid var\(--testo\)",
+                     SENZA_COMMENTI)
+    assert re.search(r"\n\.interruttore-ios \+ \.interruttore-ios[^{]*\{[^}]*border-top: 1px solid var\(--filo\)", SENZA_COMMENTI)
+    # con il contrasto elevato gli interruttori spariti (pista e cursore senza fondo): colori di sistema, in un blocco che sta DOPO
+    # le regole normali (a parità di selettore vincerebbero loro; visto nelle foto con i colori forzati)
+    forzati = SENZA_COMMENTI.index("@media (forced-colors: active) {\n  .interruttore-ios i { forced-color-adjust: none;")
+    assert forzati > SENZA_COMMENTI.index(".interruttore-ios input:checked + i { background: var(--azione); }")
+    assert ".interruttore-ios input:checked + i { background: Highlight;" in SENZA_COMMENTI[forzati:]
+    # sul PC la scelta di lingua, tema e testo non si stende su tutta la pagina (come i modi degli Scambi)
+    assert re.search(r"\n\.imp-pagina \.segmenti \{[^}]*max-width: \d+px", SENZA_COMMENTI)
+
+
+def test_primo_avvio_come_distinta():
+    """Il primo avvio nel foglio: titolo nel carattere dei titoli e nella scala (non 22 px scritti a mano), i passi come controllo
+    segmentato (il passo attuale lime con il bordo del testo, come moduli e stili; non pillole), i blocchi come righe con il filo."""
+    assert "font-size:22px" not in PRIMO and PRIMO.count('<h2 class="pa-capo">') == 2
+    capo = _corpo(".pa-capo")
+    assert "font-family: var(--font-numeri)" in capo and "font-size: var(--t-titolo)" in capo
+    passo = _corpo(".pa-passo")
+    assert "999px" not in passo and "min-height: 44px" in passo
+    attuale = _corpo(".pa-passo.attuale")
+    assert "background: var(--capitano)" in attuale and "inset 0 0 0 2px var(--testo)" in attuale
+    assert ".pa-passo.attuale" in _colori_forzati()
+    blocco = _corpo(".onb-blocco")
+    assert "border-top: 1px solid var(--filo)" in blocco and "border-radius" not in blocco and "var(--bordo)" not in blocco
+
+
+def test_niente_resti_della_grafica_di_prima():
+    for resto in ("--vetro", "--luce", ".lente", "backdrop-filter", "@keyframes respira", ".marchio-oggi"):
+        assert resto not in CSS, resto
+
+
+def test_niente_regole_che_nessuno_usa_piu():
+    """Pulizia (piano, compito 12.2): via le regole che nessun file della web usa più (controllato con grep su app.js,
+    impostazioni.js, primoavvio.js, anteprima.js, dafare.js, index.html e i test), e il fondo disegnato a parte, che il body fa già."""
+    for resto in (".suggerimento-tasti", ".indirizzo-nascosto", ".colori {", ".colore {", "main[data-gruppo=", "\n.moduli {",
+                  "@media (min-width: 1700px)", "\n.sfondo {"):
+        assert resto not in SENZA_COMMENTI, resto
+    assert 'class="sfondo"' not in HTML
+    assert 'classList.add("luce")' not in APP                  # il «riflesso del vetro che segue il dito»: nessuna regola lo disegnava
