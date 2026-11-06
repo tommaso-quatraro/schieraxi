@@ -135,8 +135,34 @@ def test_nessun_rigore_nella_storia_niente_nan():
 
 
 def test_rigori_e_minuti_senza_dati_dal_futuro():
-    base = _rigori(1, (2, 4, 6)) | _rigori(2, (8,))
-    # nella giornata da prevedere: due rigori della Spalla
-    futuro = {(2, *PROSSIMA): presenza(rig_segnati=1, rig_sbagliati=1)}
-    a, b = _p(_dati(base), _par(rigori_squadra=True)), _p(_dati(base | futuro), _par(rigori_squadra=True))
+    base = _rigori(1, (2, 4, 6)) | _rigori(2, (8,)) | _riserva_a_meta()
+    # nella giornata da prevedere: due rigori della Spalla, il Rigorista 10' con voto, la Riserva 90' senza voto
+    futuro = {(2, *PROSSIMA): presenza(rig_segnati=1, rig_sbagliati=1), (1, *PROSSIMA): presenza(minuti=10),
+              (6, *PROSSIMA): presenza(voto=None, minuti=90)}
+    tutti = _par(rigori_squadra=True, minuti_con_voto=True)
+    a, b = _p(_dati(base), tutti), _p(_dati(base | futuro), tutti)
     pd.testing.assert_frame_equal(a, b)
+
+
+# ---------------------------------------------------------------- B2: minuti attesi «se prende voto»
+def _riserva_a_meta() -> dict:
+    """La Riserva nelle giornate 3-10 della nuova stagione: 4 presenze con voto a 90' (un gol nella 5ª) e 4 senza voto a 10',
+    alternate."""
+    return {(6, S2, g): presenza(minuti=90, gol=int(g == 5)) if g % 2 else presenza(voto=None, minuti=10)
+            for g in range(3, 11)}
+
+
+def test_minuti_attesi_solo_dalle_presenze_con_voto():
+    d = _dati(_riserva_a_meta())
+    acceso, spento = _p(d, _par(minuti_con_voto=True)), _p(d, NOSTRI)
+    assert acceso.at[6, "minuti"] > spento.at[6, "minuti"]
+    assert acceso.at[6, "minuti"] > 80
+    assert acceso.at[6, "e_gol"] > spento.at[6, "e_gol"]
+
+
+def test_solo_presenze_senza_voto_minuti_di_partenza():
+    # la Riserva è entrata 3 volte per pochi minuti, sempre senza voto: è come chi non ha presenze
+    d = _dati({(6, S2, g): presenza(voto=None, minuti=10) for g in (8, 9, 10)})
+    p = _p(d, _par(rigori_squadra=True, minuti_con_voto=True))
+    assert p.at[6, "minuti"] == pytest.approx(82 * 0.7 + 25 * 0.3)     # 64,9: la formula di chi non ha presenze
+    assert not p.loc[6, ["e_gol", "e_assist", "e_rigori", "mu", "p_gol", "minuti"]].isna().any()

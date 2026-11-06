@@ -18,7 +18,7 @@ from .modello import Dati, Parametri
 from .modello import previsioni as _previsioni_modello
 from .regole import Regole
 
-VERSIONE: str = "1"
+VERSIONE: str = "2"                 # 2: rigori con memoria lunga divisi nella squadra, minuti dalle presenze con voto (Fase B)
 
 # Minuti giocati per presenza, da «entrato» e «uscito» dei voti di Fantacalcio.it (che non dà i minuti), per
 # (subentrato, sostituito). Medie dei minuti veri di Understat sull'archivio di sviluppo (2025-26 e 2026-27, circa 14.400
@@ -59,8 +59,9 @@ def dati(d: Dati) -> Dati:
 
 
 def parametri(par: Parametri | None = None) -> Parametri:
-    """I parametri dei nostri: quelli dati (o i predefiniti) senza xG e xA, perché i nostri non li hanno."""
-    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0)
+    """I parametri dei nostri: quelli dati (o i predefiniti) senza xG e xA, perché i nostri non li hanno, e con le correzioni
+    tarate sui gol veri (Fase B del piano): rigori con memoria lunga divisi nella squadra, minuti dalle sole presenze con voto."""
+    return replace(par or Parametri(), peso_xg=0.0, peso_xa=0.0, rigori_squadra=True, minuti_con_voto=True)
 
 
 def gol_attesi(prev: pd.DataFrame, par: Parametri) -> pd.Series:

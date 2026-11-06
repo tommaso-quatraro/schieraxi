@@ -57,6 +57,7 @@ class Parametri:
     # Correzioni dei gol attesi «nostri» (piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md): spente di default,
     # le accende `nostri.parametri`. La produzione non cambia fino alla Fase G1.
     rigori_squadra: bool = False      # quota dei rigori con memoria lunga, divisa tra i rigoristi della squadra (vedi `_quote_rigori`)
+    minuti_con_voto: bool = False     # minuti, tassi per 90' e medie del ruolo dalle sole presenze con voto (vedi `_pezzi`)
 
 
 # ---------------------------------------------------------------- dati
@@ -300,6 +301,9 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
     U = d.prestazioni[prima_di(d.prestazioni, data0) & d.prestazioni["calciatore_id"].notna()].copy()
     U["w"] = _pesi(U["t"], U["stagione"], t0, stagione, par)
     U["calciatore_id"] = U["calciatore_id"].astype(int)
+    if par.minuti_con_voto:     # solo le presenze con voto: i minuti attesi sono quelli di chi prende voto
+        chiave = ["calciatore_id", "stagione", "giornata"]
+        U = U[pd.MultiIndex.from_frame(U[chiave]).isin(pd.MultiIndex.from_frame(Vv[chiave]))].copy()
 
     if giocatori is None:
         if probabili is not None:
