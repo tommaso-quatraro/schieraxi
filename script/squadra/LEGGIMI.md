@@ -1,0 +1,104 @@
+# Comandi della squadra
+
+I passi che il coordinatore ripeteva a mano, come comandi con parametri e test (`tests/test_squadra_*.py`).
+Entrata unica, dalla radice del repository:
+
+```
+python script/squadra/squadra.py <comando> [opzioni]
+python script/squadra/squadra.py <comando> --help      # opzioni e codici di uscita
+```
+
+Regole comuni:
+- Un comando che cambia qualcosa (annulla corse, toglie worktree, toglie la bozza, rilancia controlli) di default fa solo la
+  **prova** e stampa cosa farebbe. Agisce solo con `--esegui` (per `foto`: `--lancia`).
+- Nessun comando unisce una PR né scrive su `main`.
+- `gh` e `git` passano da una sola funzione (`comune.esegui_vero`); i test le danno risposte finte e non toccano GitHub.
+- Ogni comando ha `--json` per gli altri script. I codici di uscita stanno nel `--help` di ogni comando; argomenti sbagliati
+  escono sempre con 64 (mai con un codice che un comando usa per altro).
+- Niente dati privati: l'indirizzo del server arriva solo dalla variabile d'ambiente `SCHIERAXI_URL`, se c'è.
+- Lo stato fra due giri sta in `.superpowers/squadra/` (fuori da git: la cartella ha un suo `.gitignore`).
+- Serve `gh` autenticato. Python della sola libreria standard.
+
+## Dati
+- `aree.json`: aree del repository (percorsi, primo che corrisponde vince), gruppi con il tetto delle PR aperte
+  (`server-web` 4, `ios` 3), aree neutre (documenti e test: non contano nel tetto), workflow con job sui Mac,
+  etichetta degli obiettivi. Una PR che tocca `ios/` e un'altra area conta nel gruppo `ios`.
+- `foto.json`: dai file iOS alle schermate di `ios/scripts/screenshot.sh`. Un test controlla che i nomi esistano e che ogni
+  file Swift di oggi abbia una regola.
+- `modello-brief.md`: modello pubblico del brief per un agente.
+
+## stato
+Una tabella: PR aperte (numero, titolo, bozza, unibile, controlli, gruppo, età), tetti per gruppo, corse dei workflow con job
+sui Mac in corso o in coda (i test iOS dentro «Controlli» non si vedono qui), issue aperte per obiettivo (sotto-issue delle issue
+con l'etichetta `obiettivo`), worktree degli agenti. Sola lettura.
+
+```
+python script/squadra/squadra.py stato
+```
+
+## attendi
+Aspetta una PR guardando solo l'ultima corsa di ogni workflow sul commit in testa; stampa una riga solo quando cambia qualcosa.
+Esce con 0 unita, 2 conflitto, 3 rosso vero, 4 guasto d'infrastruttura (da rilanciare), 5 tempo scaduto, 6 verde ma in bozza,
+1 errore o PR chiusa. Va lanciato in background, una sola attesa per volta.
+
+```
+python script/squadra/squadra.py attendi 123 --intervallo 60 --massimo 3600
+```
+
+## annulla-superate
+Annulla le corse in coda o in corso partite da `push` o `pull_request` su un commit che non è più la testa del suo ramo.
+Mai `workflow_dispatch` né `schedule`, mai il ramo `main`. Limite: per le PR da un fork il ramo si riconosce solo dal nome.
+
+```
+python script/squadra/squadra.py annulla-superate            # prova
+python script/squadra/squadra.py annulla-superate --esegui   # annulla davvero
+```
+
+## pulisci
+Le worktree di `.claude/worktrees/` in gruppi: da togliere (ramo unito e niente modifiche), con modifiche, senza PR, con PR
+aperta, bloccate da un agente, cartelle sparite (cancellate a mano: si tolgono dall'elenco con `git worktree prune`). Con `--esegui` toglie solo il primo gruppo: `git worktree remove` senza `--force`, poi il ramo
+locale. «Unito» = PR `MERGED` con la stessa testa, oppure testa già dentro `origin/main` (dell'ultimo `git fetch`).
+
+```
+python script/squadra/squadra.py pulisci
+```
+
+## brief
+Stampa il brief di un agente per un'issue: titolo, «Fatto quando», agente e «Puoi toccare / NON toccare» dalle etichette di
+area dell'issue (`aree.json`). Esce con 3 se restano parti `<da scrivere…>`.
+
+```
+python script/squadra/squadra.py brief 123 --modello sonnet --tocca "fanta/web/app.js, tests/test_x.py"
+```
+
+## foto
+Dai file iOS di una PR (o di `main` dopo un commit, con `--da`) ricava le schermate da fotografare e stampa il comando di
+`screenshot.yml`. Un file iOS senza schermata in `foto.json` dà un avviso (uscita 3). Le foto le lancia solo il fotografo,
+su `main`, con `--lancia`.
+
+```
+python script/squadra/squadra.py foto 123
+python script/squadra/squadra.py foto --da abc1234 --lancia
+```
+
+## giro
+La procedura del coordinatore in un comando: `stato`, PR in conflitto, guasti d'infrastruttura, corse superate, worktree da
+pulire (sempre solo prova) e versione in produzione se c'è `SCHIERAXI_URL` (letta dal file pubblico `/sw.js`). Stampa solo
+ciò che è cambiato dal giro prima (`+` nuovo, `~` cambiato, `-` finito); `--tutto` stampa anche il resto. Con `--esegui`
+rilancia una volta sola i guasti, e solo le corse al primo tentativo (`gh run rerun <id> --failed`) e annulla le corse superate. Esce con 10 se c'è qualcosa da
+guardare.
+
+```
+python script/squadra/squadra.py giro
+```
+
+## pr-pronta
+Toglie la bozza solo se tutto torna: PR aperta, `mergeable` esattamente `MERGEABLE`, ramo non indietro (`compare/main...<testa>`, `behind_by` uguale a 0), controlli verdi sul
+commit in testa, descrizione, revisione e novità (`script/ci/controlla_pr.py`), coerenza web-iPhone (`script/coerenza.py
+--controlla` sui file della PR, se li tocca), «Foto da fare» se la PR tocca `ios/`. Altrimenti stampa ogni motivo ed esce con 1.
+Se `controlla_pr.py` o `coerenza.py` non ci sono su questo `main`, rifiuta («controllo non disponibile su questo main").
+
+```
+python script/squadra/squadra.py pr-pronta 123            # prova
+python script/squadra/squadra.py pr-pronta 123 --esegui   # gh pr ready
+```
