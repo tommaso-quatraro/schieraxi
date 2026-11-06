@@ -118,8 +118,13 @@ jobs:
 
   # Contro il lavoro fuori piano: la descrizione della PR dichiara le aree («Aree: fanta/web, tests, docs») e i file cambiati
   # devono stare lì dentro (script/ci/controlla_ambito.py, preso da main). Esenti: PR dei bot e PR di soli documenti.
-  # Per ora SEGNALA SOLTANTO: passo con continue-on-error e job fuori dai «needs» di «unisci». La descrizione arriva solo
-  # come variabile d'ambiente. Se si cambia la riga «Aree:» dopo l'apertura, il controllo si rifà al push successivo.
+  # Poi i controlli della PR (script/ci/controlla_pr.py, preso da main): sezioni della descrizione, «## Revisione» fuori dalla
+  # bozza, in fanta/novita.d solo il file della PR, nessun test che legge una novità per nome.
+  # BLOCCANTE: il job sta nei «needs» di «unisci». Gli script si prendono da main: un controllo nuovo vale dalla PR dopo la sua
+  # unione, e se manca su main il passo lo dice e salta. La descrizione arriva solo come variabile d'ambiente.
+  # Niente evento «edited» (scelta del 6/11): la revisione si scrive in bozza e «gh pr ready» rifà i controlli con la descrizione
+  # nuova; con «edited» un ritocco del testo annullerebbe la corsa in corso. Descrizione corretta dopo: push, oppure
+  # «gh pr ready --undo» e «gh pr ready» (un «Re-run» rilegge la descrizione di prima).
   ambito:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -138,14 +143,23 @@ jobs:
           path: _ci-main
           sparse-checkout: script/ci
           persist-credentials: false
-      - name: File della PR dentro le aree dichiarate (per ora solo avvisi)
-        continue-on-error: true
+      - name: File della PR dentro le aree dichiarate
         env:
           AUTORE: ${{ github.event.pull_request.user.login }}
           CORPO: ${{ github.event.pull_request.body }}
         run: |
           if [ ! -f _ci-main/script/ci/controlla_ambito.py ]; then echo "controlla_ambito.py non è ancora su main: salto"; exit 0; fi
           git diff --name-only HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_ambito.py
+      # anche se l'ambito è rosso: così si vedono tutti i problemi in una corsa sola
+      - name: Descrizione, revisione, novità e test della PR
+        if: ${{ !cancelled() }}
+        env:
+          AUTORE: ${{ github.event.pull_request.user.login }}
+          CORPO: ${{ github.event.pull_request.body }}
+          BOZZA: ${{ github.event.pull_request.draft }}
+        run: |
+          if [ ! -f _ci-main/script/ci/controlla_pr.py ]; then echo "controlla_pr.py non è ancora su main: salto"; exit 0; fi
+          git diff --name-status HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_pr.py tests
 
   # Ogni modifica al codice dell'app dice cosa cambia: un file fanta/novita.d/<nome>.json (il numero lo dà il bot all'unione)
   # Gli script di controllo si prendono da main, mai dal ramo della PR. Le PR di Dependabot non lo richiedono (e non si uniscono da sole).
@@ -263,9 +277,9 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
   # Unione automatica (squash, ramo cancellato) solo per le PR del proprietario, non in bozza, con i controlli verdi
-  # (iOS: verde, oppure saltato perché la PR non tocca ios/; revisione IA verde). Mai per Dependabot e mai per le PR da fork.
+  # (iOS: verde, oppure saltato perché la PR non tocca ios/; revisione IA e ambito verdi). Mai per Dependabot e mai per le PR da fork.
   unisci:
-    needs: [test, script-server, versione, cambi, ios, revisione-ia]
+    needs: [test, script-server, versione, cambi, ios, revisione-ia, ambito]
     if: >-
       !cancelled() &&
       github.event_name == 'pull_request' && !github.event.pull_request.draft &&
@@ -274,7 +288,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.test.result == 'success' && needs.script-server.result == 'success' &&
       needs.versione.result == 'success' && needs.cambi.result == 'success' &&
-      needs.revisione-ia.result == 'success' &&
+      needs.revisione-ia.result == 'success' && needs.ambito.result == 'success' &&
       (needs.ios.result == 'success' || (needs.ios.result == 'skipped' && needs.cambi.outputs.ios == 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 10

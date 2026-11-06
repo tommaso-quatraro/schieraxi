@@ -5,7 +5,8 @@ con le variabili d'ambiente AUTORE (login di chi ha aperto la PR) e CORPO (descr
 - La descrizione ha una riga «Aree: fanta/web, tests, docs» (cartelle o file, separati da virgole; `*` ammesso).
 - Ogni file cambiato deve stare in una delle aree. `fanta/novita.d/` è sempre ammessa (la chiede il job «versione»).
 - Esenti: le PR dei bot (nome che finisce con «[bot]») e quelle di soli documenti (file .md o cartella docs/).
-Esce con 1 e scrive gli avvisi (formato di GitHub Actions) se la riga manca o un file sta fuori. Il testo della PR arriva
+Bloccante: se esce con 1 il job «ambito» è rosso e «unisci» non parte.
+Esce con 1 e scrive gli errori (formato di GitHub Actions) se la riga manca o un file sta fuori. Il testo della PR arriva
 solo come variabile d'ambiente: non passa mai dentro un comando."""
 from __future__ import annotations
 
@@ -51,13 +52,13 @@ def main(autore: str, corpo: str, file: list[str]) -> int:
         return 0
     elenco = aree(corpo)
     if not elenco:
-        print("::warning title=Ambito::Manca la riga «Aree: …» nella descrizione della PR "
+        print("::error title=Ambito::Manca la riga «Aree: …» nella descrizione della PR "
               "(esempio: «Aree: fanta/web, tests, docs»).")
         return 1
     usciti = fuori(file, elenco)
     if usciti:
         for f in usciti:
-            print(f"::warning file={f},title=Ambito::{f} è fuori dalle aree dichiarate ({', '.join(elenco)}).")
+            print(f"::error file={f},title=Ambito::{f} è fuori dalle aree dichiarate ({', '.join(elenco)}).")
         print(f"Ambito: {len(usciti)} file fuori da «Aree: {', '.join(elenco)}». Aggiungi l'area o sposta il lavoro in un'altra PR.")
         return 1
     print(f"Ambito: tutti i {len(file)} file stanno in «Aree: {', '.join(elenco)}».")
