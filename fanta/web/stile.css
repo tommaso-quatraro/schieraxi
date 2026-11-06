@@ -109,6 +109,9 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+/* il fondo della finestra: il body è un contenitore (in fondo, «Pagina strettissima») e il suo fondo non passa alla finestra; senza,
+   sotto la fine della pagina restava il grigio del browser */
+html { background: var(--sfondo); }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
   background: var(--sfondo); color: var(--testo); font-size: var(--t-corpo); line-height: 1.35;

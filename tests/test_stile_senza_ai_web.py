@@ -12,6 +12,9 @@ def test_fondo_piatto_senza_macchie_che_si_muovono():
     muovevano e poi piatto), niente animazioni del fondo."""
     assert re.search(r"\nbody \{[^}]*background: var\(--sfondo\);", CSS)
     assert 'class="sfondo"' not in HTML and "\n.sfondo {" not in CSS
+    # il fondo anche sotto la fine della pagina: il body è un contenitore (`container`) e il suo fondo non passa alla finestra;
+    # senza, nello scuro sotto il contenuto restava il grigio del browser (#121212 invece di #121513, visto nelle foto)
+    assert re.search(r"\nhtml \{ background: var\(--sfondo\); \}", CSS)
     assert "@keyframes deriva" not in CSS
 
 
