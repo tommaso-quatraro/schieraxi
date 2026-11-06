@@ -23,6 +23,11 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     `indicatori_consiglio.py` (C1-C4 misurati davvero nel Diario a giornata finita sulla consigliata mostrata, con le funzioni di
     `verifica_consiglio`; totali di tutti i Diari, medie su 8 giornate e avviso al proprietario dopo 2 giornate fuori soglia: comando
     `affidabilita` del cron, file `dati/indicatori-consiglio.json`, campo `consiglio` di `GET /api/stato-dati`),
+    `nostri.py` (gol e assist attesi «nostri», L3b di #165: lo stesso modello con i soli dati di Fantacalcio.it, `dati` e
+    `parametri`; `gol_attesi` è l'unica definizione dei gol attesi con i rigori; `VERSIONE` si alza a ogni cambio di `parametri`
+    o della formula. Oggi serve solo a misurare: la produzione non cambia fino alla Fase G1 del piano
+    `docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md`), `verifica_pacchetti.py` (`-m fanta verifica --pacchetti`: scenari
+    di dati, gol attesi per fasce e conti attesi su veri di gol, rigori e assist),
     `incertezza.py` (fascia «tra X e Y»), `affidabilita.py`, `diario.py` (giornate finite: schierata contro consigliata),
     `consigli.py` (formazione e spiegazioni, usato da app e comandi; consigliata stabile, vedi «Contratti delle API»),
     `perche_scelta.py` (il perché delle scelte che sembrano storte in una riga, campo `perche_scelta` dei moduli di `/api/formazione`,
