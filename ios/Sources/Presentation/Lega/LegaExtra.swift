@@ -437,7 +437,8 @@ struct RosaView: View {
         TextField("—", text: $vm.crediti)
             .keyboardType(.numberPad)
             .multilineTextAlignment(.trailing)
-            .frame(width: 96, minHeight: 44)
+            .frame(width: 96)
+            .frame(minHeight: 44)
             .accessibilityLabel(ParoleSquadre.creditiResidui)
     }
 
