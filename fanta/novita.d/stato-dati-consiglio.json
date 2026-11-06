@@ -1,0 +1,12 @@
+{
+  "titolo": "Stato dei dati: quanto è buono il consiglio di formazione",
+  "voci": [
+    "In Stato dei dati, per chi gestisce l'app, c'è la sezione «Consiglio di formazione»: quanto è buona la formazione consigliata.",
+    "Quattro misure: punti in più rispetto alla scelta semplice, cambi nelle 24 ore prima della scadenza, titolari che rischiano di non giocare, scelte strane senza un motivo detto.",
+    "Per ognuna si vedono la media delle ultime giornate, la soglia e se regge o no; finché le giornate sono meno di 8 c'è scritto quante ne servono ancora. Uguale sul sito e sull'app per iPhone."
+  ],
+  "tecnico": [
+    "Issue #366, sotto #166. La web mostra il campo facoltativo `consiglio` di GET /api/stato-dati (PR #362) con `cartaConsiglio` in app.js (le righe con `rigaMisura`, la stessa del registro) e i testi `sd.cons_*` in testi.js (italiano e inglese); l'iPhone con `StatoDati.Consiglio`, `ParoleConsiglio` e `ConsiglioFormazioneSezione` (righe `RigaMisuraRegistro`). Soglie e verdetto (`regge`, `verdetto`) vengono dal server e non si ricalcolano.",
+    "Punti a giornata con due cifre e il segno (+1,00, −0,25), totali interi, frazioni in percentuale. Test: tests/test_stato_dati_consiglio_web.py (la funzione vera di app.js in node, sui dati di indicatori_consiglio.giro e riepilogo) e ConsiglioFormazioneTests (stesse frasi di testi.js, stessa risposta del server nella fixture stato-dati-consiglio.json, controllata dal test Python)."
+  ]
+}
