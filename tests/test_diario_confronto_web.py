@@ -24,7 +24,8 @@ def _funzione(nome):
 
 
 def test_confronto_titolo_con_la_giornata_della_lega():
-    assert 't("mercato.chi_schierare", { n: c.giornata_lega ?? c.giornata })' in APP
+    # dal 5/11/2026 (#299) lega e Serie A insieme: «Chi schierare? Giornata 7 · 10ª di Serie A»
+    assert 't("mercato.chi_schierare", { g: nomeGiornata(c.giornata_lega, c.giornata) })' in APP
     assert 't("mercato.chi_schierare", { n: c.giornata })' not in APP
 
 

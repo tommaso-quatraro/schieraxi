@@ -145,7 +145,7 @@ def test_ogni_schermata_ha_il_suo_titolo_h1_e_la_riga_di_stato():
     corpo = _funzione(APP, "pagina")
     assert 'class="capo-pagina"' in corpo and '<h1 id="titolo-pagina"' in corpo and 'class="stato-pagina"' in corpo
     assert 't("nav." + ' in corpo and "opz.titolo" in corpo
-    assert 'testata.giornata", { n: ' in APP and "_lega" in APP[APP.index('testata.giornata", { n: '):][:120]
+    assert "nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)" in _funzione(APP, "caricaInfo")   # giornata della lega (#306)
     for nome in ("vistaNovita", "vistaRosa"):                  # pagine dentro Altro e Squadra: il loro titolo, non quello della scheda
         assert "titolo:" in _funzione(APP, nome), nome
 

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from fanta import verifica, verifica_pacchetti as vp
+from fanta import nostri, verifica, verifica_pacchetti as vp
 from fanta.modello import Parametri
 from fanta.regole import Regole
 
@@ -67,13 +67,54 @@ def test_scenario_sconosciuto_rifiutato():
         vp.prepara("magia", _dati(), Regole(), Parametri())
 
 
+@pytest.mark.parametrize("nome", ["voto_stat", "pacchetto_b", "pacchetto_b_xg", "pacchetto_c", "sportmonks_starter"])
+def test_scenari_con_le_statistiche_di_understat_tolti(nome):
+    # usavano tiri, passaggi chiave o xG dei giocatori come fatti (Fase F del piano dei gol attesi nostri)
+    assert nome not in vp.SCENARI
+    with pytest.raises(ValueError, match="scenario sconosciuto"):
+        vp.prepara(nome, _dati(), Regole(), Parametri())
+
+
+def test_tabella_fatti_non_legge_le_prestazioni_di_understat():
+    # giornata 3: il Mediano (3) esce prima; giornata 4: la Riserva (4) entra
+    d = _dati([_riga(4, cid=4, nome="Riserva", subentrato=1)])
+    d.voti.loc[(d.voti["calciatore_id"] == 3) & (d.voti["giornata"] == 3), "sostituito"] = 1
+    a = vp.tabella_fatti(d)
+    d.prestazioni = pd.DataFrame()                 # come quando non ci sono più le statistiche dei giocatori di Understat
+    b = vp.tabella_fatti(d)
+    pd.testing.assert_frame_equal(a, b)
+    chiave = list(zip(b["giornata"], b["calciatore_id"]))
+    min90 = dict(zip(chiave, b["min90"]))
+    # minuti da entrato e uscito (`nostri.minuti_stimati`), in novantesimi
+    assert min90[(3, 3)] == pytest.approx(71 / 90) and min90[(4, 4)] == pytest.approx(19 / 90)
+    assert min90[(3, 1)] == pytest.approx(1.0)
+    assert not {"tiri", "passaggi_chiave", "xg", "xa", "ha_stat"} & set(b.columns)
+
+
+def test_scenari_rimasti_girano_con_le_prestazioni_dai_voti():
+    # come dopo la Fase G1: prestazioni ricostruite dai voti di Fantacalcio.it, senza tiri, passaggi chiave né xG
+    d = nostri.dati(_dati())
+    t, note = vp.confronto(d, Regole(), Parametri(), [(ST, 3), (ST, 4)], None, 20, vp.SCENARI, scrivi=None)
+    assert set(t["scenario"]) == set(vp.SCENARI)
+    assert np.isfinite(t["rmse"].astype(float)).all()
+    assert "errore_voto_stimato" in note["voto_eventi"]
+
+
 def test_confronto_una_riga_per_scenario_e_stagione():
-    scenari = ("completo", "senza_xg", "voto_stat", "pacchetto_a", "sportmonks_starter", "attuale_probabili_90")
+    scenari = ("completo", "senza_xg", "voto_eventi", "pacchetto_a", "solo_indisponibili", "attuale_probabili_90")
     t, note = vp.confronto(_dati(), Regole(), Parametri(), [(ST, 3), (ST, 4)], None, 20, scenari, scrivi=None)
     assert set(t["scenario"]) == set(scenari)
     base = t[(t["scenario"] == "completo") & (t["stagione"] == "tutte")].iloc[0]
     assert base["rmse_vs_completo"] == pytest.approx(0.0) and np.isfinite(base["rmse"])
-    assert "errore_voto_stimato" in note["voto_stat"]
+    assert "errore_voto_stimato" in note["voto_eventi"]
+
+
+def test_aiuto_della_verifica_senza_gli_esperimenti_tolti(capsys):
+    from fanta.__main__ import main
+    with pytest.raises(SystemExit):
+        main(["verifica", "--help"])
+    aiuto = capsys.readouterr().out
+    assert "xg_fd" in aiuto and "probabili_fonte2" in aiuto and "tiri_porta" not in aiuto
 
 
 def test_rose_sintetiche_rispettano_la_composizione():

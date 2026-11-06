@@ -304,7 +304,7 @@ def test_rose_da_aggiornare_solo_dopo_la_sosta(mondo):
     mondo.db.execute("UPDATE partite SET data = ? WHERE giornata = 9", ((ADESSO + timedelta(days=9)).isoformat(sep=" ")[:16],))
     r = [x for x in vai(mondo) if x["tipo"] == "rose"]                       # 11 giorni fra la 8 e la 9: sosta
     assert len(r) == 1 and r[0]["giorni"] == 6 and r[0]["destinazione"]["link"] == "schieraxi://lega/rose"
-    assert r[0]["frase"] == {"chiave": "dafare.rose_mercato", "param": {"n": 9}}
+    assert r[0]["frase"] == {"chiave": "dafare.rose_mercato", "param": {"giornata": {"chiave": "giornata.lega", "param": {"n": 9, "a": 9}}}}
     fresco = (ADESSO - timedelta(days=1)).timestamp()
     os.utime(mondo.ctx.rose, (fresco, fresco))
     assert not [x for x in vai(mondo) if x["tipo"] == "rose"]

@@ -234,7 +234,8 @@ def test_calendario_senza_intestazione_vuota():
     tabella = _pezzo('<table class="tabella-cal">', "</table>")
     assert "<th></th>" not in tabella
     assert "<thead><tr><td></td>" in tabella
-    assert '<th scope="col">G${g}</th>' in tabella
+    # «G11» a vista, «11ª giornata di Serie A» per il lettore di schermo (#299)
+    assert '<th scope="col"><span aria-hidden="true">G${Number(g)}</span><span class="solo-lettori">${nomeGiornata(null, g)}</span></th>' in tabella
     assert '<th scope="row">${sigla(s.squadra)}</th>' in tabella
     # lo stile della prima colonna segue le celle nuove
     assert ".tabella-cal td:first-child" not in SENZA_COMMENTI

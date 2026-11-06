@@ -98,9 +98,9 @@ enum ParoleRegistro {
         (r.perGiornata ?? []).filter { !($0.persa ?? "").isEmpty }
     }
 
-    /// «Serie A 2026-27, giornata 9»: il numero è quello della Serie A, non della lega.
+    /// «9ª giornata di Serie A · 2026-27» (`sd.reg_giornata` della web): il numero è quello della Serie A, non della lega.
     static func giornata(_ g: StatoDati.Registro.Giornata) -> String {
-        "Serie A \(g.stagione ?? ""), giornata \(g.giornata.map(String.init) ?? "")"
+        "\(g.giornata.map(TempiLega.serieA) ?? "") · \(g.stagione ?? "")"
     }
 
     /// Un numero (moltiplicato per `per`) con una cifra decimale e senza «,0», come `regCifra` della web: «10», «3,4», «−3».
