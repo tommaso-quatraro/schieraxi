@@ -259,3 +259,90 @@ def test_guida_indietro_del_browser():
 def test_novita_della_testata():
     voce = json.loads(Path(RADICE / "fanta" / "novita.d" / "testata-schede.json").read_text(encoding="utf-8"))
     assert voce["titolo"] and len(voce["voci"]) >= 2
+
+
+# ---------------------------------------------------------------- PR 5: sezioni, pulsanti, etichette, avvisi
+SENZA_COMMENTI = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
+# (selettori, corpo) di ogni regola di stile.css, anche dentro le @media
+REGOLE = [([s.strip() for s in sel.split(",")], corpo) for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", SENZA_COMMENTI)]
+JS_WEB = "\n".join(p.read_text(encoding="utf-8") for p in sorted(WEB.glob("*.js"))) + HTML
+# le classi che stanno insieme a «carta» sugli stessi elementi («carta hero», «imp-elenco carta», «carta vuoto»...); di un
+# attributo scritto con `${…}` si legge la parte fissa
+CON_LA_CARTA = sorted({c for attr in re.findall(r'class="([^"]*)"', JS_WEB) if re.search(r"(?<![\w-])carta(?![\w-])", attr)
+                       for c in attr.split("${")[0].split() if c != "carta"} | {"con-maglia"})
+SEZIONE = ("carta", *CON_LA_CARTA)
+BLOCCHI_AMMESSI = ("scambio", "accesso-corpo")      # spec §8.3: la proposta di uno scambio; piano, PR 5: il modulo d'accesso
+
+
+def _soggetto(selettore):
+    """L'elemento a cui la regola dà lo stile: l'ultimo pezzo del selettore, senza ciò che sta tra parentesi (`:has(...)`, `:not(...)`)."""
+    ultimo = re.split(r"\s+|>|\+|~", selettore.strip())[-1]
+    return re.sub(r"\([^()]*\)", "", ultimo)
+
+
+def _ha_classe(pezzo, nome):
+    return re.search(rf"\.{re.escape(nome)}(?![\w-])", pezzo) is not None
+
+
+def _proprieta(corpo, *nomi):
+    """[(nome, valore)] delle proprietà scritte nel corpo di una regola (solo i nomi dati, così `border` non prende `border-left`)."""
+    return [(n, v.strip()) for n, v in re.findall(r"(?<![\w-])([\w-]+)\s*:\s*([^;]+)", corpo) if n in nomi]
+
+
+def _regole_per(classi, ammesse=()):
+    """(selettore, corpo) delle regole che danno lo stile a un elemento con una delle classi (anche nelle @media), pseudo-elementi esclusi."""
+    for selettori, corpo in REGOLE:
+        for s in selettori:
+            soggetto = _soggetto(s)
+            if "::" not in soggetto and any(_ha_classe(soggetto, c) for c in classi) and not any(_ha_classe(soggetto, a) for a in ammesse):
+                yield s, corpo
+
+
+def _scatole(classi, ammesse=()):
+    """Regole che danno un fondo, un bordo intorno, un'ombra o angoli tondi a un elemento con una delle classi."""
+    return [f"{s} {{ {nome}: {valore} }}" for s, corpo in _regole_per(classi, ammesse)
+            for nome, valore in _proprieta(corpo, "background", "background-color", "border", "border-color", "border-radius", "box-shadow")
+            if valore not in ("none", "0", "transparent")]
+
+
+def test_la_carta_e_una_sezione_senza_scatola():
+    regola = re.search(r"\n\.carta \{([^}]*)\}", CSS).group(1)
+    assert "background: none" in regola and "border: 0" in regola and "border-radius" not in regola
+    assert re.search(r"\.carta h2 \{[^}]*border-bottom: 2px solid var\(--testo\)", CSS)
+    assert "--r-card: 12px" in CSS and ".col > * { animation: entra" not in CSS   # raggio del campo; niente entrata delle colonne
+
+
+def test_nessuna_regola_rimette_il_riquadro_a_una_sezione():
+    """Spec §4.1 e §8.3: niente scatole, lo spazio e i fili fanno i gruppi. In nessuna larghezza, densità o tema una regola dà di
+    nuovo fondo, bordo, ombra o angoli tondi a una sezione, nemmeno con la classe che le sta accanto («carta proposta-r»,
+    «carta vuoto»...). Restano un blocco solo la proposta di uno scambio e il modulo d'accesso."""
+    assert {"hero", "proposta-r", "vuoto", "regola-sez", "imp-elenco"} <= set(CON_LA_CARTA)
+    assert not _scatole(SEZIONE, BLOCCHI_AMMESSI)
+
+
+def test_le_sezioni_stanno_sul_filo_del_titolo_della_pagina():
+    """La distinta ha un bordo sinistro solo: il contenuto delle sezioni parte dove parte il titolo della pagina (nessun rientro a
+    destra o a sinistra), a ogni larghezza e anche con la densità compatta e la pagina strettissima."""
+    rientri = []
+    for s, corpo in _regole_per(SEZIONE, BLOCCHI_AMMESSI):
+        for _, valore in _proprieta(corpo, "padding"):
+            v = valore.split()
+            destra, sinistra = (v[0], v[0]) if len(v) == 1 else (v[1], v[3] if len(v) == 4 else v[1])
+            if destra != "0" or sinistra != "0":
+                rientri.append(f"{s} {{ padding: {valore} }}")
+        rientri += [f"{s} {{ {n}: {v} }}" for n, v in _proprieta(corpo, "padding-left", "padding-inline") if v != "0"]
+    assert not rientri, rientri
+
+
+def test_tra_una_sezione_e_l_altra_lo_spazio():
+    """Spec §7.4: 24 px tra una sezione e l'altra al telefono, 32 px da 900 px."""
+    regola = re.search(r"\n\.carta \{([^}]*)\}", CSS).group(1)
+    assert "margin-bottom: 24px" in regola
+    assert re.search(r"@media \(min-width: 900px\) \{[^@]*\n  \.carta \{ margin-bottom: 32px; \}", CSS)
+
+
+def test_la_proposta_di_scambio_resta_un_blocco_con_il_filo():
+    """Spec §8.3: l'unico posto dove un riquadro raggruppa davvero qualcosa che si muove insieme (chi dai, chi ricevi, il verdetto)."""
+    regola = re.search(r"\n\.carta\.scambio \{([^}]*)\}", CSS).group(1)
+    assert "border: 1px solid var(--filo)" in regola and "border-radius: var(--r-card)" in regola and "padding: 16px" in regola
+    assert 'class="carta scambio"' in APP

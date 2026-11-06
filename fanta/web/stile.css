@@ -50,8 +50,9 @@
   --t-eroe: 56px; --t-titolo: 32px; --t-card: 17px; --t-valore: 20px; --t-corpo: 15px; --t-sec: 13px; --t-eti: 12px;
   /* numeri e titoli delle schermate: Archivo con le cifre in colonna; il testo resta nel carattere di sistema */
   --font-numeri: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif;
-  --r-card: 20px; --r-in: 14px; --r-pill: 999px;   /* raggi: card, elementi dentro la card, pillole */
-  --raggio: var(--r-card);
+  /* raggi (spec §7.5): --r-card per il campo, le foto, l'immagine da condividere e la proposta di scambio; --r-in per pulsanti,
+     campi e controlli; --r-pill solo per «⚠ gioca N%» sul campo e il contatore di «Da fare» */
+  --r-card: 12px; --r-in: 14px; --r-pill: 999px;
   --barra: 60px;                            /* barra in basso del telefono, senza lo spazio del sistema sotto */
   --alto-ferma: 0px;                        /* dove si fermano le colonne ferme: sotto i 900 px la testata scorre via con la pagina */
   --molla: cubic-bezier(.2, .95, .25, 1.12);
@@ -146,19 +147,23 @@ b, strong { font-weight: 650; }
   border: 1px solid var(--bordo);
   box-shadow: var(--ombra);
 }
-.carta {
-  position: relative; background: var(--vetro-carta);
-  border: 1px solid var(--bordo); border-radius: var(--raggio); padding: 16px; margin-bottom: 14px; overflow: hidden;
-}
-.carta h2 { font-size: var(--t-card); margin: 0 0 10px; letter-spacing: -.01em; }
+/* Sezione (grafica B, spec §4.1 e §8.3): la classe resta `.carta`, ma niente più scatola. Un titolo con il filo spesso sotto, righe
+   separate da un filo sottile, lo spazio tra una sezione e l'altra: il contenuto parte dove parte il titolo della pagina. Nessun
+   `overflow: hidden`: senza rientro avrebbe tagliato il focus delle righe larghe quanto la sezione. Resta un blocco con il filo
+   intorno solo la proposta di uno scambio (`.carta.scambio`), dove un riquadro raggruppa davvero chi dai, chi ricevi e il verdetto. */
+.carta { position: relative; background: none; border: 0; padding: 0; margin-bottom: 24px; }
+.carta h2 { font-size: var(--t-card); font-weight: 650; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 2px solid var(--testo); letter-spacing: -.01em; }
+/* sezione che si apre («Fuori dalla formazione», le regole): il suo titolo è il riassunto. Una domanda che si apre dentro una
+   sezione («Non è la tua squadra?») non è un titolo: niente filo spesso */
+.carta > details:first-child > summary, details.carta > summary { border-bottom: 2px solid var(--testo); }
 .carta h3 { font-size: var(--t-sec); color: var(--testo-2); margin: 16px 0 8px; font-weight: 600; }
-.carta.hero { border-color: color-mix(in srgb, var(--verde) 35%, var(--bordo)); }   /* la prima carta si distingue per il numero grande, non per un alone */
+.carta.scambio { border: 1px solid var(--filo); border-radius: var(--r-card); padding: 16px; }
 .riga { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .debole { color: var(--testo-2); font-size: var(--t-sec); }
 .piccolo { font-size: var(--t-eti); }
 .grande { font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .enorme { font-family: var(--font-numeri); font-size: var(--t-eroe); font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
-.vuoto { text-align: center; color: var(--testo-2); padding: 32px 12px; }
+.vuoto { color: var(--testo-2); padding: 12px 0; }      /* stato vuoto: una riga grigia che dice cosa manca, niente riquadro (spec §8.12) */
 .errore { background: color-mix(in srgb, var(--rosso) 16%, var(--vetro-carta)); color: var(--rosso); border: 1px solid color-mix(in srgb, var(--rosso) 40%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; }
 .attenzione { background: color-mix(in srgb, var(--arancio) 16%, var(--vetro-carta)); border: 1px solid color-mix(in srgb, var(--arancio) 36%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo); }
 .nota { font-size: var(--t-eti); color: var(--testo-2); text-align: center; margin: -6px 0 10px; }
@@ -590,15 +595,15 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .proposta button.nome-g { border: 0; background: none; padding: 0; text-align: inherit; font-weight: 650; font-size: var(--t-corpo); display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proposta .freccia { color: var(--verde); font-size: var(--t-card); }
 /* card introduttiva compatta: una riga + «Come si legge» chiuso */
-.intro-c { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; padding: 4px 14px; margin-bottom: 10px; border-radius: 20px; }
+.intro-c { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; padding: 0; margin-bottom: 12px; }
 .intro-c .intro-riga { font-size: var(--t-corpo); }
 .intro-c details.come { margin-left: auto; }
 .intro-c details.come[open] { flex: 1 0 100%; margin-left: 0; }
 .intro-c .come > summary { justify-content: flex-end; gap: 8px; font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
 .intro-c .come .debole { font-size: var(--t-sec); padding-bottom: 8px; }
-/* proposta di cambio: una riga da ~80 px; il guadagno in punti è il dato grande a destra */
+/* proposta di cambio: una riga da ~80 px separata dalla successiva da un filo; il guadagno in punti è il dato grande a destra */
 .griglia-proposte { display: contents; }
-.proposta-r { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; margin-bottom: 10px; border-radius: 20px; }
+.proposta-r { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; margin-bottom: 0; border-bottom: 1px solid var(--filo); }
 .proposta-r .avatar-anello { --d: 44px; }
 .pr-testo { min-width: 0; }
 .proposta-r button.nome-g { border: 0; background: none; padding: 0; text-align: left; font-weight: 650; font-size: var(--t-card); max-width: 100%; overflow-wrap: break-word; display: block; }   /* nome lungo a capo, mai «…» (issue #287) */
@@ -629,7 +634,6 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .foglio.chiude .foglio-sfondo { animation: sfuma .24s ease both; }
 .foglio.chiude .foglio-corpo { animation: scende .24s ease-in both; }
 .foglio-corpo.trascina { animation: none !important; transition: none; }
-.foglio-corpo .carta { box-shadow: none; }
 
 /* avviso (toast) */
 .aggiornamento-pronto { position: fixed; left: 18px; right: 18px; top: calc(env(safe-area-inset-top) + 10px); z-index: 40; display: flex; gap: 10px; align-items: center; justify-content: center; padding: 9px 14px; border-radius: 20px; font-size: var(--t-corpo); max-width: 420px; margin: 0 auto; }
@@ -831,6 +835,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
   .avviso { left: 24px; right: auto; bottom: 24px; margin: 0; }
   .salva-fisso { bottom: 24px; }
   main { padding: 28px 32px 0; }
+  .carta { margin-bottom: 32px; }
   html { scroll-padding-bottom: 16px; }                                       /* le schede stanno in alto: in basso non copre niente */
   html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: 86px; }
 }
@@ -861,7 +866,6 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 @media (hover: hover) and (min-width: 900px) { .suggerimento-tasti { display: block; } }
 
 /* ---- personalizzazione: densità e animazioni ---- */
-html[data-densita="compatta"] .carta { padding: 12px 14px; margin-bottom: 10px; }
 html[data-densita="compatta"] .voce { padding-top: 6px; padding-bottom: 6px; min-height: 48px; }
 html[data-densita="compatta"] .chip { min-height: 44px; padding: 5px 12px; }
 .colori { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 14px; }
@@ -1091,10 +1095,7 @@ html[data-calmo] .pedina, html[data-calmo] .pallini i { animation-duration: .3s;
 html[data-calmo] main > *, html[data-calmo] .elenco li, html[data-calmo] .foglio-corpo .carta { animation-duration: .28s; animation-delay: 0s !important; }
 html[data-calmo] main.ridisegna > *, html[data-calmo] .ridisegna .elenco li { animation: none !important; }
 /* ---- tablet e PC: le sezioni Oggi, Formazione e Scambi si dividono in due colonne (.colonne > .col); sul telefono i contenitori spariscono ---- */
-.colonne, .col { display: contents; }
-.col > * { animation: entra .5s var(--uscita) both; }
-.col + .col > * { animation-delay: .12s; }
-main.ridisegna .col > * { animation: none; }
+.colonne, .col { display: contents; }      /* le colonne non entrano una dopo l'altra: era movimento di riempitivo (spec §7.6) */
 .accesso-legale a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; }
 /* Privacy e Termini dentro la frase della casella «Ho letto»: la riga resta com'è, ma il link misura davvero 44 px di altezza (padding con margine negativo) */
 .accesso-letto a { display: inline-block; padding: 12px 6px; margin: -12px -6px; }
@@ -1134,7 +1135,7 @@ body.senza-accesso .salta { display: none; }
 .bottone-icona.novita { position: relative; }
 .bottone-icona.novita::after { content: ""; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
 .imp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }   /* una colonna `auto` era larga quanto il contenuto più lungo: Notifiche scorreva di lato (issue #288) */
-.imp-elenco { padding: 6px 10px; margin: 0; }
+.imp-elenco { padding: 0; margin: 0; }
 .imp-voce.attiva { background: color-mix(in srgb, var(--verde) 14%, transparent); border-radius: 14px; }
 .imp-indietro { min-height: 44px; }
 .imp-titolo { font-size: var(--t-card); margin: 14px 0 12px; letter-spacing: -.01em; }
@@ -1258,7 +1259,6 @@ body { container: pagina / inline-size; }
   .scheda > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .scheda.attiva::before { left: 8px; right: 8px; }
   main { padding: 8px 8px 0; }
-  .carta { padding: 12px; }
   /* due blocchi affiancati (modulo e punti attesi): uno sotto l'altro, il secondo resta a destra */
   .riga { flex-wrap: wrap; }
   .riga > :last-child:not(:first-child) { margin-left: auto; }
