@@ -73,8 +73,10 @@ def _riepilogo(tmp_path, misurate: int, riga: dict = RIGA, vecchia: bool = False
 
 
 def _codice() -> str:
-    """Le funzioni vere di app.js: `esc`, `num`, `segno` e i blocchi dei gol attesi nostri e del registro (fino a «Stato dei dati»)."""
+    """Le funzioni vere di app.js: `esc`, `nomeGiornata`, `num`, `segno` e i blocchi dei gol attesi nostri e del registro (fino a
+    «Stato dei dati»)."""
     esc = APP[APP.index("function esc(x)"):APP.index("\n}\n", APP.index("function esc(x)")) + 3]
+    esc += APP[APP.index("function nomeGiornata("):APP.index("\n}\n", APP.index("function nomeGiornata(")) + 3]
     righe = [re.search(rf"^const {n} = .*$", APP, re.M).group(0) for n in ("num", "segno")]
     inizio = APP.index("// Gol attesi nostri")
     blocco = APP[inizio:APP.index("// Stato dei dati: da dove arriva tutto", inizio)]
@@ -147,13 +149,13 @@ def test_le_giornate_una_per_una(tmp_path):
     html = _carta(_riepilogo(tmp_path, 8, vecchia=True, persa=PERSA, salvata=SALVATA))
     pezzi = _testi(html)
     assert "<details>" in html and "Giornata per giornata" in pezzi                       # ripiegate: sono fino a 38
-    giornate = [p for p in pezzi if p.startswith("Serie A 2026-27, giornata ")]
-    assert giornate == [f"Serie A 2026-27, giornata {g}" for g in range(11, 0, -1)]     # dalla più recente
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 11") == "salvati i numeri di 3 giocatori, da misurare a giornata finita"
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 10") == registro_nostri.SENZA_TENTATIVI
+    giornate = [p for p in pezzi if p.endswith("giornata di Serie A · 2026-27")]
+    assert giornate == [f"{g}ª giornata di Serie A · 2026-27" for g in range(11, 0, -1)]   # dalla più recente, come il registro
+    assert _dopo(pezzi, "11ª giornata di Serie A · 2026-27") == "salvati i numeri di 3 giocatori, da misurare a giornata finita"
+    assert _dopo(pezzi, "10ª giornata di Serie A · 2026-27") == registro_nostri.SENZA_TENTATIVI
     assert re.search(r'style="color:var\(--rosso\)">' + re.escape(registro_nostri.SENZA_TENTATIVI), html)
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 9") == "errore +0,6% · punti −0,10 · gol attesi su veri 0,94"
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 1") == "errore +0,6% · punti −0,10 · gol attesi su veri 0,94 · versione 2, non conta"
+    assert _dopo(pezzi, "9ª giornata di Serie A · 2026-27") == "errore +0,6% · punti −0,10 · gol attesi su veri 0,94"
+    assert _dopo(pezzi, "1ª giornata di Serie A · 2026-27") == "errore +0,6% · punti −0,10 · gol attesi su veri 0,94 · versione 2, non conta"
 
 
 def test_giornata_misurata_senza_giocatori_e_motivo_protetto(tmp_path):
@@ -169,8 +171,8 @@ def test_giornata_misurata_senza_giocatori_e_motivo_protetto(tmp_path):
         db.close()
     html = _carta(reg)
     pezzi = _testi(html)
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 4") == "misurata, ma senza giocatori da confrontare"
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 5") == "misura non riuscita &lt;b&gt;x&lt;/b&gt;"
+    assert _dopo(pezzi, "4ª giornata di Serie A · 2026-27") == "misurata, ma senza giocatori da confrontare"
+    assert _dopo(pezzi, "5ª giornata di Serie A · 2026-27") == "misura non riuscita &lt;b&gt;x&lt;/b&gt;"
     assert "<b>x</b>" not in html
 
 
@@ -181,7 +183,7 @@ def test_giornata_misurata_senza_giocatori_e_motivo_protetto(tmp_path):
 def test_plurali(tmp_path, misurate, riga, stato):
     pezzi = _testi(_carta(_riepilogo(tmp_path, misurate, salvata=(12, 1))))
     assert riga in pezzi and _dopo(pezzi, INSIEME) == stato and _dopo(pezzi, ERRORE) == stato
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 12") == "salvati i numeri di 1 giocatore, da misurare a giornata finita"
+    assert _dopo(pezzi, "12ª giornata di Serie A · 2026-27") == "salvati i numeri di 1 giocatore, da misurare a giornata finita"
 
 
 def test_senza_giornate_misurate_solo_la_spiegazione(tmp_path):

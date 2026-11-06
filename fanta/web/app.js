@@ -2497,7 +2497,7 @@ function cartaNostri(n) {
   const giornate = (n.per_giornata || []).filter(g => g);
   const righe = giornate.map(g => {
     const st = statoGiornataNostri(g, n.versione);
-    return `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: esc(g.giornata) })}</span></div>
+    return `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })}</span></div>
         <div class="piccolo${st.colore ? "" : " debole"}"${st.colore ? ` style="color:${st.colore}"` : ""}>${st.testo}</div>`;
   }).join("");
   return `<div class="carta" id="gol-attesi-nostri"><h2>${t("sd.nos_titolo")}</h2>

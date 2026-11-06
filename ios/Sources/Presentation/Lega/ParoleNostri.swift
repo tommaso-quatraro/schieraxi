@@ -90,9 +90,10 @@ enum ParoleNostri {
         }
     }
 
-    /// «Serie A 2026-27, giornata 9»: il numero è quello della Serie A, non della lega (come il registro delle giornate).
+    /// «9ª giornata di Serie A · 2026-27» (`sd.reg_giornata` della web): il numero è quello della Serie A, non della lega, come il
+    /// registro delle giornate (`ParoleRegistro.giornata`).
     static func giornata(_ g: StatoDati.RegistroNostri.Giornata) -> String {
-        "Serie A \(g.stagione ?? ""), giornata \(g.giornata.map(String.init) ?? "")"
+        "\(g.giornata.map(TempiLega.serieA) ?? "") · \(g.stagione ?? "")"
     }
 
     /// Vero se la giornata è persa: i numeri nostri non salvati in tempo, o la misura non riuscita (il motivo lo scrive il server).
