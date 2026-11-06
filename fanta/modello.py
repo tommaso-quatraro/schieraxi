@@ -585,11 +585,22 @@ def _titolare_atteso(qi: float) -> float:
     return 0.5 if qi is None or np.isnan(qi) else float(np.clip(0.3 + qi / 40, 0.3, 0.95))
 
 
-def _p_da_probabili(stato: str | None, perc: float | None, in_dubbio: bool) -> float:
+def _p_da_probabili(stato: str | None, perc: float | None, in_dubbio: bool, taratura: dict | None = None) -> float:
+    """Probabilità di prendere voto dalle probabili. Senza `taratura`: i numeri di partenza scelti a mano. Con `taratura` (i
+    coefficienti di `taratura_probabili.stima`): titolare e panchina sulla curva logistica σ(a + b·q + c·in dubbio), con q la
+    percentuale (80 per i titolari e 20 in panchina se manca); chi non è citato `non_citato`; gli altri stati come senza."""
     if perc is not None and math.isnan(perc):          # percentuale mancante (NULL nel database, NaN per pandas): vale il predefinito
         perc = None
     if stato in ("infortunato", "squalificato"):
         return 0.0
+    if taratura is not None:
+        if stato in ("titolare", "panchina"):
+            a, b = taratura[stato]
+            q = (perc if perc is not None else (80 if stato == "titolare" else 20)) / 100
+            z = a + b * q + (taratura["dubbio"] if in_dubbio else 0.0)
+            return 1.0 / (1.0 + math.exp(-z)) if z >= 0 else math.exp(z) / (1.0 + math.exp(z))     # senza traboccare
+        if stato == "non_citato":
+            return float(taratura["non_citato"])
     if stato == "titolare":
         q = (perc if perc is not None else 80) / 100
         p = (q + (1 - q) * P_SUBENTRO_TITOLARE) * (1 - P_SENZA_VOTO)
