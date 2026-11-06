@@ -78,10 +78,11 @@ struct VistaPunti: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(g.descrizione)
         case .accessoryRectangular:
-            // «Giornata 7: 63,5 punti» → «Giornata 7: 63,5»; un'altra stagione sempre con la stagione; mai «G7» (#299)
+            // «Giornata 7: 63,5 punti» → «Giornata 7: 63,5»; mai «G7» (#299). Un'altra stagione: la stagione sulla riga sotto
+            // («2025-26 · attesi 70,0 · +1,0»), che nel titolo non entrava; rimpicciolito solo come ultima scelta
             VStack(alignment: .leading, spacing: 2) {
-                TestoCheEntra(g.formeTitolo).font(.headline)
-                Text("attesi \(Formato.punti(g.attesi)) · \(scartoTesto(g))").font(.caption).monospacedDigit()
+                TestoCheEntra(g.formeTitolo).font(.headline).minimumScaleFactor(0.8)
+                TestoCheEntra(g.formeSottoTitolo).font(.caption).monospacedDigit().minimumScaleFactor(0.8)
                 GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,7 +115,8 @@ struct VistaPunti: View {
                 }
                 .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
                 Spacer(minLength: 0)
-                Text(forme[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                // senza il numero della lega «38ª di Serie A» con il testo grande è al limite: si rimpicciolisce, non si taglia
+                Text(forme[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1).minimumScaleFactor(0.7)
             }
         }
     }

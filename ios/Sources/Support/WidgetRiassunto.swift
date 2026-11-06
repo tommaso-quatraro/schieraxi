@@ -1032,21 +1032,30 @@ extension PuntiGiornata {
     }
 
     /// Il titolo del rettangolo della schermata di blocco: «Giornata 7 · 10ª di Serie A: 63,5 punti» → «Giornata 7: 63,5 punti» →
-    /// «Giornata 7: 63,5»; un'altra stagione sempre con la stagione («38ª di Serie A · 2025-26: 71,0 punti»). Mai «G7» (#299).
+    /// «Giornata 7: 63,5». Mai «G7» (#299). La stagione di una giornata passata non sta qui ma sulla riga sotto (`formeSottoTitolo`):
+    /// «38ª di Serie A · 2025-26: 71,0» in `.headline` non entrava nel rettangolo.
     var formeTitolo: [String] {
         let f = Formato.punti(fatti)
-        if altraStagione != nil { return ["\(cortoConStagione): \(f) punti", "\(cortoConStagione): \(f)"] }
         return ["\(nome.intero): \(f) punti", "\(nome.corto): \(f) punti", "\(nome.corto): \(f)"]
     }
 
-    /// La riga in linea: «Giornata 7: 63,5 fatti, 66,0 attesi» → «Giornata 7: 63,5 su 66,0» → «Giornata 7: 63,5 fatti».
-    var formeInLinea: [String] {
-        let f = Formato.punti(fatti), a = Formato.punti(attesi), g = cortoConStagione
-        return ["\(g): \(f) fatti, \(a) attesi", "\(g): \(f) su \(a)", "\(g): \(f) fatti"]
+    /// La seconda riga del rettangolo: «attesi 66,0 · −2,5»; per una giornata di un'altra stagione la stagione davanti, che non si
+    /// perde mai: «2025-26 · attesi 70,0 · +1,0», poi «2025-26 · +1,0».
+    var formeSottoTitolo: [String] {
+        let s = scarto.map { Formato.conSegno($0) } ?? "—", riga = "attesi \(Formato.punti(attesi)) · \(s)"
+        guard let stagione = altraStagione else { return [riga] }
+        return ["\(stagione) · \(riga)", "\(stagione) · \(s)"]
     }
 
-    /// La seconda riga del rettangolo della schermata di blocco.
-    var formeSottoTitolo: [String] { ["attesi \(Formato.punti(attesi)) · \(scarto.map { Formato.conSegno($0) } ?? "—")"] }
+    /// La riga in linea, dalla più lunga: «Giornata 7: 63,5 fatti, 66,0 attesi» → «Giornata 7: 63,5 su 66,0» → «Giornata 7: 63,5
+    /// fatti» → «Giornata 7: 63,5». Una giornata di un'altra stagione prima con la stagione («38ª di Serie A · 2025-26: 71,0 su
+    /// 70,0»), poi senza: la riga in linea tiene circa 25 caratteri, e VoiceOver dice comunque la stagione (`descrizione`).
+    var formeInLinea: [String] {
+        let f = Formato.punti(fatti), a = Formato.punti(attesi), g = nome.corto
+        let senzaStagione = ["\(g): \(f) fatti, \(a) attesi", "\(g): \(f) su \(a)", "\(g): \(f) fatti", "\(g): \(f)"]
+        guard let stagione = altraStagione else { return senzaStagione }
+        return ["\(g) · \(stagione): \(f) su \(a)", "\(g) · \(stagione): \(f) fatti"] + senzaStagione.suffix(2)
+    }
 }
 
 extension DubbioRiassunto {

@@ -63,7 +63,10 @@ Giornata, in tutti i widget (#299): «Giornata 8 · 11ª di Serie A» o «Giorna
 Testate con titolo (`IntestazioneWidget`, Attesi e fatti): la prima disposizione di `ParoleWidget.testata` che entra intera, il
 titolo con la giornata intera, poi con «Giornata 8», poi il solo simbolo: si perde il titolo, mai la giornata. Righe delle fasi
 (Prossima giornata, Da controllare): «Giornata 8 · Chiusa», «Giornata 8: finita», e in linea «Giornata 8: 41,5 punti fatti finora»
-che perde parole fino a «Giornata 8: 41,5». La sigla resta solo nelle colonne strette sotto un titolo, come le colonne del
+che perde parole fino a «Giornata 8: 41,5». Attesi e fatti di una stagione passata (agosto, «38ª di Serie A»): nel rettangolo
+la stagione sta sulla riga sotto («2025-26 · attesi 70,0 · +1,0»); la riga in linea la perde per ultima («38ª di Serie A: 71,0»),
+VoiceOver la dice sempre. Le ultime forme hanno un tetto di lunghezza provato dai test (`GiornataInteraWidgetTests`); senza il
+numero della lega le testate piccole si rimpiccioliscono invece di tagliarsi. La sigla resta solo nelle colonne strette sotto un titolo, come le colonne del
 calendario: le colonne del grafico «Attesi e fatti» («G4 G5 G6 G7»), con VoiceOver che legge la giornata intera.
 Widget Formazione: grande, accanto al modulo i
 punti attesi e sotto la fascia con la giornata (`TestataFormazioneGrande`); se «Giornata 8» non entra accanto alla fascia scende

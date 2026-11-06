@@ -45,8 +45,9 @@ struct IntestazioneWidget: View {
                 HStack(spacing: 4) {
                     titoloOSimbolo(disposizioni[i].conTitolo)
                     Spacer(minLength: 4)
+                    // senza il numero della lega («11ª di Serie A») con il testo grande è al limite: si rimpicciolisce, non si taglia
                     Text(disposizioni[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
-                        .accessibilityLabel(giornata.voce)
+                        .minimumScaleFactor(0.7).accessibilityLabel(giornata.voce)
                 }
             }
         } else {
