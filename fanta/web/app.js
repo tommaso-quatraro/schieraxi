@@ -604,6 +604,7 @@ function vai(vista, gruppo, opz = {}) {
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
   if (!imp && !(SCHEDA_DI(vista) && DISEGNO_VISTE.has(vista))) vista = "oggi";
   const scheda = imp ? null : SCHEDA_DI(vista);                           // la scheda della barra che si accende
+  const prima = stato.vista;
   stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
   document.querySelectorAll(".schede .scheda").forEach(b => {
     b.classList.toggle("attiva", b.dataset.vista === scheda);
@@ -617,8 +618,11 @@ function vai(vista, gruppo, opz = {}) {
     // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
     const g = imp ? gruppo || stato.impDaUrl || null : null, sm = vista === "mercato" ? stato.mercatoTab || null : null;
     const indirizzo = indirizzoVista(vista, g, sm), voce = { vista, gruppo: g, scheda: sm };
+    // da 1100 px Squadra e le sue pagine di Mercato sono una schermata sola (menu e pagina affiancati): la scheda «Squadra» o il tasto 3
+    // con il Calendario aperto non aggiungono una voce che la pagina riporta subito al Calendario (Indietro non farebbe niente)
+    const stessa = [prima, vista].every(v => v === "squadra" || v === "mercato") && legaLarga();
     try {
-      if (!history.state || location.pathname + location.search === indirizzo) history.replaceState(voce, "", indirizzo);
+      if (!history.state || location.pathname + location.search === indirizzo || stessa) history.replaceState(voce, "", indirizzo);
       else history.pushState(voce, "", indirizzo);
     } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
   }
@@ -639,6 +643,7 @@ window.addEventListener("popstate", ev => {
   let v = ev.state || {};
   if (!v.vista) { try { const q = new URLSearchParams(location.search); v = { vista: q.get("vista"), gruppo: q.get("gruppo"), scheda: q.get("scheda") }; } catch { v = {}; } }
   if (v.scheda) stato.mercatoTab = schedaMercato(v.scheda);
+  if (typeof v.voce === "string") stato.legaTorna = v.voce;               // la voce di Squadra o di Altro aperta lì (indirizzoLega)
   chiudiFoglio();
   vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
 });
@@ -1456,6 +1461,7 @@ function schedaMercato(nome) {
 function vistaMercato() {
   nuovaRichiesta();
   stato.mercatoTab = schedaMercato(stato.mercatoTab);
+  if (legaLarga()) { stato.legaTorna = stato.mercatoTab; return vistaLega("squadra"); }   // da 1100 px la pagina sta accanto al menu di Squadra (C10)
   const tabs = tabMercatoVisibili();
   pagina(`
     <div class="segmenti" id="mercato-tab" ${tabs.length < 2 ? "hidden" : ""}>${tabs.map(([k, nome]) => `<button data-mtab="${k}" class="${k === stato.mercatoTab ? "attivo" : ""}">${t(nome)}</button>`).join("")}</div>
@@ -1658,7 +1664,7 @@ function tabGiocatori(dove, ok) {
       ${stato.confronto ? `<div class="attenzione" style="margin-top:12px">${t("mercato.scegli_giocatore_confrontare")} <b>${esc(stato.confronto.nome)}</b>
         <button class="bottone secondario" id="annulla-confronto" style="padding:4px 12px;min-height:44px;margin-left:6px">${t("mercato.annulla")}</button></div>` : ""}
     </div>
-    <div class="carta">${intestazioneColonne({ partita: false })}<ul class="elenco" id="risultati"><li class="caricamento">${t("comune.carico")}</li></ul></div></div>`;
+    <div class="carta">${intestazioneColonne({ partita: false, ferma: true })}<ul class="elenco" id="risultati"><li class="caricamento">${t("comune.carico")}</li></ul></div></div>`;
   const campo = $("#cerca"), lista = $("#risultati");
   let righe = null, errore_ = null;
   const disegna = async () => {
@@ -2566,11 +2572,11 @@ async function vistaRosa(nome) {
     const r = await api("/api/rosa" + (nome ? `?squadra=${encodeURIComponent(nome)}` : ""));
     if (!ancoraValida(mia)) return;
     const senzaRuolo = r.giocatori.filter(x => !NOMI_RUOLO[x.ruolo]);
-    let conIntestazione = false;                    // i nomi delle colonne una volta sola, sotto il titolo del primo ruolo
+    let conIntestazione = false;                    // i nomi delle colonne una volta sola, sotto il titolo del primo ruolo; fermi scorrendo
     const gruppi = ["P", "D", "C", "A", "?"].map(ruolo => {
       const g = ruolo === "?" ? senzaRuolo : r.giocatori.filter(x => x.ruolo === ruolo);
       if (ruolo === "?" && !g.length) return "";
-      const intestazione = g.length && !conIntestazione ? (conIntestazione = true, intestazioneColonne()) : "";
+      const intestazione = g.length && !conIntestazione ? (conIntestazione = true, intestazioneColonne({ partita: true, ferma: true })) : "";
       // la riga di ogni giocatore come nelle altre schermate (grafica B): la partita con la lineetta del club, poi costo e quotazione
       return `<h3>${NOMI_RUOLO[ruolo] || t("scambio.senza_ruolo")} (${g.length})</h3>${intestazione}<ul class="elenco">${g.map(x => {
         const p = x.previsione, slug = slugQualunque((p && p.squadra) || x.squadra);
@@ -2585,7 +2591,8 @@ async function vistaRosa(nome) {
         </button></li>`;
       }).join("")}</ul>`;
     }).join("");
-    pagina(`
+    // sul PC il menu di Squadra resta a sinistra, con «Squadre e rose» aperta: dalla rosa al Calendario con un clic (spec C10)
+    pagina(`<div class="lega-colonne" data-aperto="1">${menuLega(vociLega("squadra"), "squadre", t("lega.aria_squadra"))}<div class="lega-pagina">
       <div class="carta">
         <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button>${r.mia ? `<span class="etichetta">${t("lega.la_tua")}</span>` : ""}</div>
         <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
@@ -2606,7 +2613,11 @@ async function vistaRosa(nome) {
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
-      </div>`, { titolo: r.nome });          // il titolo è il nome della squadra (pagina() lo scrive con esc); «la tua» accanto a «‹ Squadra»
+      </div></div></div>`, { titolo: r.nome });          // il titolo è il nome della squadra (pagina() lo scrive con esc); «la tua» accanto a «‹ Squadra»
+    contenuto.querySelectorAll(".lega-menu [data-lega]").forEach(b => b.addEventListener("click", () => {
+      const v = vociLega("squadra").find(x => x.id === b.dataset.lega);
+      if (v) vaiVoceLega(v);
+    }));
     const vf = $("#vedi-formazione");
     if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione"); });
     $("#salva-nome-squadra").addEventListener("click", async () => {
@@ -3502,6 +3513,58 @@ function vaiMercato(scheda) { stato.mercatoTab = schedaMercato(scheda); vai("mer
 // Apre Squadra o Altro già su una voce (anche tornando da una pagina come la rosa di una squadra o le regole).
 function vaiLega(voce) { stato.legaTorna = voce; vai("lega"); }
 
+// Squadra e Altro sugli schermi larghi (spec grafica B §5 C10): da 1100 px il menu delle voci resta a sinistra e la voce scelta si apre
+// a destra, comprese le pagine di Mercato (Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario): da una all'altra con un clic,
+// senza tornare al menu. Sotto i 1100 px una cosa alla volta, come oggi: il menu, oppure la pagina con «‹ Squadra».
+const LEGA_LARGA = matchMedia("(min-width: 1100px)");
+const legaLarga = () => LEGA_LARGA.matches;
+// Le voci accese per questo utente, nell'ordine di VOCI_LEGA (lo stesso dell'iPhone). Senza le rose degli altri «La mia squadra».
+function vociLega(ambito) {
+  return VOCI_LEGA.filter(v => v.ambito === ambito && (!v.f || funz(v.f)))
+    .map(v => v.id === "squadre" && !funz("squadre_altrui") ? { ...v, nome: t("lega.voce_miasquadra"), sub: t("lega.voce_miasquadra_sub") } : v);
+}
+// Una voce si apre accanto al menu se non porta altrove (`vai`); da 1100 px anche le pagine di Mercato. Scambi, Regole e Novità di Altro
+// restano pagine loro.
+const nellaPagina = (v, largo = legaLarga()) => !v.vai || (largo && TAB_MERCATO.some(([k]) => k === v.id));
+// Da una pagina con il menu che non è la pagina della scheda (la rosa di una squadra): una voce porta alla sua pagina.
+const vaiVoceLega = v => (v.vai ? v.vai() : vaiLega(v.id));
+// Il menu delle voci: la voce aperta ha aria-current="page" (il lettore di schermo la dice; a vista il fondo e la linea a sinistra).
+// Nomi e sottotitoli vengono da testi.js, non dall'utente.
+function menuLega(voci, aperta, aria) {
+  return `<nav class="lega-menu" aria-label="${aria}"><ul class="elenco">${voci.map(v => `<li><button class="voce lega-voce" type="button" data-lega="${v.id}"${v.id === aperta ? ' aria-current="page"' : ""}>
+    <span><span class="nome">${v.nome}</span><span class="dettaglio">${v.sub}</span></span><span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></nav>`;
+}
+// L'indirizzo della voce aperta accanto al menu (spec C2): una pagina di Mercato scrive ?vista=mercato&scheda=…, le altre voci
+// ?vista=squadra o ?vista=altro. Così Indietro torna alla voce di prima e un ricaricamento riapre questa. `nuova` (un clic): una voce
+// nuova nella cronologia; senza (prima apertura) si corregge quella di adesso. La voce aperta (`id`) sta nello stato della cronologia,
+// perché l'indirizzo di Squadra non la dice: tornando con Indietro si riapre quella, non l'ultima vista. Con lo stesso indirizzo si
+// corregge la voce di adesso (una nuova uguale non cambierebbe niente con Indietro).
+function indirizzoLega(vista, scheda, nuova, id) {
+  stato.vista = vista;
+  const indirizzo = indirizzoVista(vista, null, scheda), voce = { vista, gruppo: null, scheda, voce: id };
+  try {
+    if (nuova && location.pathname + location.search !== indirizzo) history.pushState(voce, "", indirizzo);
+    else history.replaceState(voce, "", indirizzo);
+  } catch { /* niente cronologia */ }
+  indirizzoMostrato = location.pathname + location.search;
+}
+// Finestra allargata oltre i 1100 px con il solo menu in pagina: a destra si apre la voce dell'ultima volta (o la prima), invece di
+// lasciare una colonna vuota. La prepara vistaLega a ogni disegno.
+let legaQuandoLarga = null;
+// Il focus non si perde quando la finestra passa i 1100 px: stringendo sparisce il menu (con la voce che aveva il focus), allargando
+// sparisce «‹ Squadra». Il focus va sul titolo della voce aperta (o della pagina, nella rosa) stringendo, sulla voce aperta del menu
+// allargando. Se il browser l'ha già tolto all'elemento nascosto (focus sul body) vale l'ultimo elemento di Squadra o Altro che l'aveva.
+let focusLega = null;
+document.addEventListener("focusin", ev => { focusLega = ev.target && ev.target.closest && ev.target.closest(".lega-colonne") ? ev.target : null; });
+function focusLegaVisibile() {
+  const ora = document.activeElement, prima = ora && ora !== document.body ? ora : focusLega;
+  const radice = prima && prima.isConnected && prima.closest(".lega-colonne");
+  if (!radice || prima.getClientRects().length) return;                  // non è di Squadra o Altro, oppure si vede ancora
+  const dove = LEGA_LARGA.matches ? radice.querySelector('.lega-menu [aria-current="page"]') : $("#lega-titolo", radice) || $("#titolo-pagina");
+  if (dove) dove.focus({ preventScroll: true });
+}
+LEGA_LARGA.addEventListener("change", () => { if (LEGA_LARGA.matches && legaQuandoLarga) legaQuandoLarga(); focusLegaVisibile(); });
+
 async function vistaLega(ambito = "altro") {
   const mia = nuovaRichiesta();
   caricamento(t(ambito === "squadra" ? "lega.carico_squadra" : "comune.carico"));
@@ -3565,11 +3628,11 @@ async function vistaLega(ambito = "altro") {
   };
 
   const aggiornaSquadre = () => { caricaInfo(); caricaSquadre(); };
-  // I pannelli disegnano `squadre`, lette all'apertura: dopo un salvataggio si rileggono (con `voce`, quel pannello si ridisegna),
-  // così «La mia squadra», i crediti e l'elenco delle squadre non restano quelli di prima finché non si cambia scheda.
+  // Le pagine disegnano `squadre`, lette all'apertura: dopo un salvataggio si rileggono (con `voce`, quella pagina si ridisegna se è
+  // ancora aperta), così «La mia squadra», i crediti e l'elenco delle squadre non restano quelli di prima finché non si cambia scheda.
   const rileggiSquadre = async (voce) => {
     try { squadre = await api("/api/squadre"); } catch { return; }
-    if (voce && stato.pannelli === cfg && $("#imp-pagina")) apriPannello(cfg, voce, false);
+    if (voce && stato.legaVoce[ambito] === voce) apri(voce, false);
   };
   const collega = {
     importa: () => {
@@ -3639,20 +3702,40 @@ async function vistaLega(ambito = "altro") {
     stagione: () => nuovaStagione($("#stagione-corpo")),
   };
 
-  const voci = VOCI_LEGA.filter(v => v.ambito === ambito && (!v.f || funz(v.f)))
-    .map(v => v.id === "squadre" && !funz("squadre_altrui") ? { ...v, nome: t("lega.voce_miasquadra"), sub: t("lega.voce_miasquadra_sub") } : v);
-  const apribili = voci.filter(v => !v.vai);                      // le voci con `vai` portano altrove: non si aprono come pannello
-  const diretta = voci.find(v => v.vai && v.id === daUrl);        // «apri le regole» da Da fare o da un collegamento: subito lì
+  const voci = vociLega(ambito);
+  const diretta = voci.find(v => v.id === daUrl && !nellaPagina(v));      // «apri le regole» da Da fare o da un collegamento: subito lì
   if (diretta) { diretta.vai(); return; }
   stato.legaVoce = stato.legaVoce || {};
-  const cfg = {
-    voci, corpi, collega, aria: t(ambito === "squadra" ? "lega.aria_squadra" : "lega.aria_altro"), indietro: NOME_AMBITO[ambito],
-    scelto: (apribili.find(v => v.id === daUrl) || (impLargo() ? apribili.find(v => v.id === stato.legaVoce[ambito]) || apribili[0] : null) || {}).id,
-    ricorda: id => { stato.legaVoce[ambito] = id; },
+  // a destra la voce chiesta (un collegamento, «‹ Squadra» dalla rosa) e, da 1100 px, quella dell'ultima volta in questa scheda o la prima
+  const daAprire = () => { const accanto = voci.filter(v => nellaPagina(v)); return (accanto.find(v => v.id === stato.legaVoce[ambito]) || accanto[0] || {}).id; };
+  const scelta = (voci.find(v => v.id === daUrl && nellaPagina(v)) || {}).id || (legaLarga() ? daAprire() : null);
+  const nome = NOME_AMBITO[ambito];
+  pagina(`<div class="lega-colonne" data-aperto="${scelta ? 1 : 0}">${menuLega(voci, scelta, t(ambito === "squadra" ? "lega.aria_squadra" : "lega.aria_altro"))}
+    <section class="lega-pagina" id="lega-pagina" aria-label="${nome}"></section></div>`);
+  const radice = $(".lega-colonne", contenuto);
+  // Apre una voce nella pagina accanto al menu, che resta com'è (con il focus sulla voce cliccata). `sposta`: chiesta da chi usa l'app.
+  const apri = (id, sposta = true) => {
+    const v = voci.find(x => x.id === id), dove = $("#lega-pagina", radice);
+    if (!v || !dove || !document.body.contains(radice)) return;
+    if (sposta) chiudiPannelloAffiancato();                       // il pannello di un giocatore si chiude con la pagina da cui è nato
+    stato.legaVoce[ambito] = id;
+    radice.dataset.aperto = "1";
+    radice.querySelectorAll("[data-lega]").forEach(b => { if (b.dataset.lega === id) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+    const mercato = !!v.vai;                                      // da 1100 px: Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario
+    dove.innerHTML = `<button class="bottone secondario lega-indietro" id="lega-indietro" type="button">${ICONA_INDIETRO}${nome}</button>
+      <h2 class="lega-titolo" id="lega-titolo" tabindex="-1">${v.nome}</h2>${mercato ? '<div id="mercato-corpo"></div>' : `<div id="lega-corpo">${corpi[id]()}</div>`}`;
+    $("#lega-indietro", dove).addEventListener("click", () => { radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-lega="${id}"]`, radice); if (b) b.focus(); });
+    indirizzoLega(mercato ? "mercato" : ambito, mercato ? id : null, sposta, id);
+    if (mercato) { stato.mercatoTab = id; caricaMercato(); } else collega[id]();
+    if (sposta) { window.scrollTo(0, 0); if (!legaLarga()) $("#lega-titolo", dove).focus({ preventScroll: true }); }
   };
-  stato.pannelli = cfg;
-  montaPannelli(cfg);
-  bannerNuovaStagione();
+  radice.querySelectorAll("[data-lega]").forEach(b => b.addEventListener("click", () => {
+    const v = voci.find(x => x.id === b.dataset.lega);
+    if (v && nellaPagina(v)) apri(v.id); else if (v) v.vai();      // una voce con `vai` porta a un'altra pagina (Scambi, Regole; Mercato sotto i 1100 px)
+  }));
+  legaQuandoLarga = () => { if (document.body.contains(radice) && radice.dataset.aperto === "0") { const id = daAprire(); if (id) apri(id, false); } };
+  if (scelta) apri(scelta, false);
+  bannerNuovaStagione(apri);
 }
 
 // Nuova stagione: se le rose sono ancora quelle dell'anno prima compare il pulsante per archiviarle.
@@ -3684,18 +3767,18 @@ async function nuovaStagione(dove) {
   });
 }
 
-// In cima alla Lega, solo quando serve: porta alla voce «Nuova stagione».
-async function bannerNuovaStagione() {
+// In cima ad Altro, solo quando serve: porta alla voce «Nuova stagione» (`apri`: la apre accanto al menu, come un clic sulla voce).
+async function bannerNuovaStagione(apri) {
   try {
     const s = await api("/api/stagione");
-    if (!s.nuova || stato.vista !== "altro" || !$(".imp")) return;
+    if (!s.nuova || stato.vista !== "altro" || !$(".lega-colonne")) return;
     const c = document.createElement("div");
     c.className = "carta"; c.dataset.g = "lega";
     c.innerHTML = `<button class="voce" id="banner-stagione" type="button" style="grid-template-columns:1fr auto"><span><span class="nome">${t("lega.nuova_stagione_n", { s: esc(s.corrente) })}</span>
       <span class="dettaglio" style="display:block">${t("lega.banner_stagione", { s: esc(s.rose) })}</span></span><span class="debole" aria-hidden="true">›</span></button>`;
     const capo = $(".capo-pagina", contenuto);                // sotto il titolo della schermata, prima del resto
     if (capo) capo.after(c); else contenuto.prepend(c);
-    $("#banner-stagione").addEventListener("click", () => { if (stato.pannelli) apriPannello(stato.pannelli, "stagione"); });
+    $("#banner-stagione").addEventListener("click", () => apri("stagione"));
   } catch { /* senza rose o senza rete: niente banner */ }
 }
 
@@ -4687,10 +4770,10 @@ try { matchMedia("(prefers-color-scheme: light)").addEventListener("change", app
   misura();
 })();
 
-// Colonne ferme in alto su tablet e PC (la prima di Oggi, il campo della Formazione, l'elenco di Impostazioni, i filtri dei giocatori):
+// Colonne ferme in alto su tablet e PC (la prima di Oggi, il campo della Formazione, l'elenco di Impostazioni, il menu di Squadra e Altro):
 // restano ferme solo se ci stanno nello schermo. Più alte, il loro fondo (il portiere, «Apri la formazione») restava sotto la barra o
 // fuori dallo schermo, con il Tab e anche scorrendo: iPad con il testo grande, telefono in orizzontale, PC con la finestra bassa (#280).
-const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .campo-fermo, .imp-elenco, .giocatori-pagina .filtri-giocatori";
+const FERME = ".colonne-oggi > .col:first-child, .colonne-campo .campo-fermo, .imp-elenco, .lega-menu";
 const SOPRA_FERME = new WeakMap();        // il `top` di quando la colonna era ferma: da `static` qualche browser (Safari) dà «auto»
 function controllaFerme() {
   const sotto = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0;      // la barra in basso, se c'è
@@ -4719,9 +4802,21 @@ function controllaStatoScelta() {
   }
   document.documentElement.style.setProperty("--alto-stato", `${alto}px`);
 }
+// I nomi delle colonne fermi sotto la testata negli elenchi lunghi (Elenco dei giocatori, rosa di una squadra; spec C7): stessa regola
+// della riga dello stato. Oltre un terzo della finestra (zoom, testo grande, finestra bassa) scorrono con la pagina; la loro altezza
+// vera, quando sono fermi, va in --alto-colonne per scroll-padding-top: la riga con il focus (Maiusc+Tab) non finisce sotto di loro.
+function controllaColonneFerme() {
+  let alto = 0;
+  document.querySelectorAll(".intestazione-colonne.ferma").forEach(el => {
+    const era = el.classList.contains("non-ferma"), troppo = el.getBoundingClientRect().height > innerHeight * QUOTA_STATO;
+    if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria)
+    if (getComputedStyle(el).position === "sticky") alto = Math.max(alto, el.offsetHeight);
+  });
+  document.documentElement.style.setProperty("--alto-colonne", `${alto}px`);
+}
 (function seguiFerme() {
   let atteso = false;
-  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); controllaStatoScelta(); }); } };
+  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); controllaStatoScelta(); controllaColonneFerme(); }); } };
   new MutationObserver(pianifica).observe(contenuto, { subtree: true, childList: true });
   if (typeof ResizeObserver === "function") new ResizeObserver(pianifica).observe(contenuto);          // anche quando una carta cresce dopo
   addEventListener("resize", pianifica);

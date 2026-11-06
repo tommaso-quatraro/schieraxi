@@ -12,6 +12,10 @@ struct DemoFotoTests {
 
     @Test("Il nome della foto viene da -DEMO_SCHERMATA o, per l'accesso, da -DEMO_ACCESSO come nello script", arguments: [
         Caso(argomenti: ["-DEMO", "-DEMO_SCHERMATA", "lega-regole", "-DEMO_FONDO", "1"], foto: "lega-regole"),
+        // le tre foto «-fondo» della Lega (#425): lo script toglie «-fondo» e manda -DEMO_FONDO 1; la demo ritrova il nome della pagina
+        Caso(argomenti: ["-DEMO", "-DEMO_SCHERMATA", "lega-diario", "-DEMO_FONDO", "1"], foto: "lega-diario"),
+        Caso(argomenti: ["-DEMO", "-DEMO_SCHERMATA", "lega-stato", "-DEMO_FONDO", "1"], foto: "lega-stato"),
+        Caso(argomenti: ["-DEMO", "-DEMO_SCHERMATA", "lega-rosa", "-DEMO_FONDO", "1"], foto: "lega-rosa"),
         Caso(argomenti: ["-DEMO", "-DEMO_ACCESSO", "account", "-DEMO_FONDO", "1"], foto: "accesso-account"),
         Caso(argomenti: ["-DEMO", "-DEMO_ACCESSO", "accedi", "-DEMO_ORIENTAMENTO", "orizzontale"], foto: "accesso-accedi"),
         Caso(argomenti: ["-DEMO"], foto: nil),

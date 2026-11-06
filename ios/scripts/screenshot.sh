@@ -28,7 +28,7 @@ TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recuper
        mercato-cerca giocatore giocatore-fondo ricerca
        scambi scambi-fondo scambi-offerta scambi-dettaglio scambi-analizza
        squadra squadra-fondo guida confronto-fondo marchio lega-diario-fondo
-       lega lega-squadre lega-rosa lega-regole lega-regole-fondo lega-stato lega-crediti lega-avvisi lega-diario lega-novita
+       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-crediti lega-avvisi lega-diario lega-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-movimenti lega-stagione impostazioni-aspetto
        impostazioni impostazioni-fondo impostazioni-crediti impostazioni-avanzate primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
@@ -80,6 +80,8 @@ scatta() {
   local schermata="$nome" fondo=() cerca=() cosa=()
   case "$nome" in
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
+    # Stato dei dati ha due riquadri lunghi quasi quanto lo schermo: «-fondo» mostra il consiglio di formazione, questa i gol attesi nostri
+    lega-stato-nostri) schermata="lega-stato"; fondo=(-DEMO_FONDO nostri) ;;
   esac
   # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...).
   # Con «-fondo» lo scenario è lo stesso (accesso-account-fondo = scenario «account» con -DEMO_FONDO).

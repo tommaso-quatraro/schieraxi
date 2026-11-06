@@ -36,6 +36,7 @@ const stato = { vista: "oggi", scelta: null, mercatoTab: "consigli", impDaUrl: n
 const t = k => ({ "shell.impostazioni": "Impostazioni", "nav.oggi": "Oggi", "nav.formazione": "Formazione", "nav.squadra": "Squadra", "nav.altro": "Altro" }[k] || k);
 const esc = x => String(x ?? "");
 const ambitoVoce = () => "altro";
+let largo = false; const legaLarga = () => largo;                // finestra da 1100 px (Squadra con menu e pagina affiancati)
 const schedaMercato = s => s;
 const classi = () => { const s = new Set(); return { toggle(c, si) { if (si === undefined ? !s.has(c) : si) s.add(c); else s.delete(c); }, contains: c => s.has(c), add: c => s.add(c), remove: c => s.delete(c) }; };
 const elemento = (vista, id = "") => { const attr = {}; return { id, dataset: { vista }, classList: classi(), attr, setAttribute(k, v) { attr[k] = String(v); }, removeAttribute(k) { delete attr[k]; } }; };
@@ -135,6 +136,25 @@ def test_le_schermate_si_disegnano_da_una_mappa_con_i_soli_nomi_ammessi():
     assert ["disegna", "mercato"] in esiti[5]["chiamate"] and esiti[5]["accesa"] == ["squadra"]
     assert ["disegna", "scambi"] in esiti[6]["chiamate"] and esiti[6]["accesa"] == ["altro"]
     assert [c for c in esiti[7]["chiamate"] if c[0] == "disegna"] == [["disegna", "oggi"]] and esiti[7]["vista"] == "oggi"
+
+
+def test_da_1100_px_squadra_e_le_sue_pagine_di_mercato_sono_una_schermata_sola():
+    """Revisione della #431: a 1440 px con il Calendario aperto accanto al menu (?vista=mercato&scheda=calendario), la scheda
+    «Squadra» o il tasto 3 aggiungevano una voce ?vista=squadra, che la pagina riportava subito al Calendario: due voci uguali, e
+    Indietro non faceva niente. Da 1100 px Squadra e Mercato sono la stessa schermata: si corregge la voce, non se ne aggiunge una.
+    Sotto i 1100 px sono due pagine, come prima."""
+    larga, stretta, da_formazione = _esegui("""
+    const esiti = [];
+    largo = true; vai("oggi"); vai("mercato"); chiamate.splice(0);
+    vai("squadra"); esiti.push(foto());
+    largo = false; vai("mercato"); chiamate.splice(0); vai("squadra"); esiti.push(foto());
+    largo = true; vai("formazione"); chiamate.splice(0); vai("squadra"); esiti.push(foto());
+    console.log(JSON.stringify(esiti));
+    """)
+    assert ["replace", "/?vista=squadra"] in larga["chiamate"] and not any(c[0] == "push" for c in larga["chiamate"])
+    assert larga["voci"] == 2 and larga["accesa"] == ["squadra"]                       # oggi, poi Squadra (prima mercato)
+    assert ["push", "/?vista=squadra"] in stretta["chiamate"]
+    assert ["push", "/?vista=squadra"] in da_formazione["chiamate"]                    # da un'altra schermata: una voce nuova
 
 
 def test_il_link_vai_al_contenuto_non_ridisegna_la_schermata():
