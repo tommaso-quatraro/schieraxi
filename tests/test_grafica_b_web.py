@@ -1635,3 +1635,21 @@ def test_niente_regole_che_nessuno_usa_piu():
         assert resto not in SENZA_COMMENTI, resto
     assert 'class="sfondo"' not in HTML
     assert 'classList.add("luce")' not in APP                  # il «riflesso del vetro che segue il dito»: nessuna regola lo disegnava
+
+
+def test_documenti_della_grafica_b_in_vigore():
+    design = (RADICE / "docs" / "DESIGN.md").read_text(encoding="utf-8")
+    sezione = design[design.index("## Web: grafica B"):design.index("## Principi")]
+    assert "**Stato: in vigore**" in sezione and "in arrivo" not in sezione
+    assert "### Web: scala, spaziature e forme" in sezione and "### Web: componenti" in sezione
+    quindici = next(r for r in design.splitlines() if r.startswith("| 15 |"))
+    assert "Fatto" in quindici, quindici
+    stile = (RADICE / "docs" / "STILE-SENZA-AI.md").read_text(encoding="utf-8")
+    assert "Grafica B della web" in stile[stile.index("## Prima e dopo"):stile.index("## Come si controlla")]
+    mappa = (RADICE / "MAPPA.md").read_text(encoding="utf-8")
+    assert "Grafica B «Distinta» (in vigore" in mappa and "affianco: true" in mappa
+
+
+def test_novita_della_grafica_finita():
+    voce = _voce_di_novita("grafica-b-finita.json", "Grafica nuova anche in Impostazioni e accesso")
+    assert len(voce["voci"]) >= 2 and all("PC" not in v and ".css" not in v and ".js" not in v for v in voce["voci"])

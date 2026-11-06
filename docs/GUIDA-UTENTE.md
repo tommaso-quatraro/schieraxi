@@ -232,7 +232,8 @@ Sotto le formazioni, a destra, i punti fatti e quelli attesi, sempre in colonna.
 
 ## 6. Impostazioni (l'ingranaggio)
 
-Tocca un gruppo per aprirlo; **← Impostazioni** torna all'elenco.
+Al telefono tocca un gruppo per aprirlo; **Impostazioni** (con la freccia, in alto) torna all'elenco. Su uno schermo più largo
+(tablet, computer) i gruppi stanno a sinistra e quello aperto si vede a destra; il gruppo aperto ha una linea colorata a sinistra.
 
 | Gruppo | Cosa contiene |
 |---|---|
