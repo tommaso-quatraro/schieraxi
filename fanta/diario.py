@@ -187,6 +187,36 @@ def numeri_giocatori(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     return None if pv is None else _numeri_giocatori(pv[0], pv[2], ids)
 
 
+def _senza_previsione(d: Dati, giocatori_rosa, rosa: dict, reali: pd.DataFrame, col: str, regole: Regole, rinviate, r_rinvio: dict,
+                      gioca: dict, fv: dict, voto: dict) -> tuple[dict, list[int]]:
+    """Chi è in rosa ma non ha una previsione ricostruita per la giornata (mai sceso in campo prima, #447): {id: Giocatore} che non
+    prende mai voto nelle simulazioni, con il voto vero se l'ha preso (scritto in `gioca`, `fv`, `voto`), e gli id di chi giocava
+    una partita rinviata, trovata dal suo club (`d.calciatori` e `d.partite`), per la regola della lega (`rinvii.voti_lega`). Con il
+    voto d'ufficio la lega glielo dà di sicuro: allora prende voto sempre, con quel voto (come `rinvii.applica` per gli altri)."""
+    extra, rinviati = {}, []
+    club, club_rinviati = {}, set()
+    if r_rinvio["modo"] != "aspetta" and rinviate:
+        cal, partite = getattr(d, "calciatori", None), d.partite
+        if cal is not None and {"id", "squadra_slug"} <= set(cal.columns) and {"casa", "trasferta"} <= set(partite.columns):
+            club = dict(zip(cal["id"].astype(int), cal["squadra_slug"]))
+            righe = partite[partite["id"].isin(rinviate)]
+            club_rinviati = set(righe["casa"]) | set(righe["trasferta"])
+    for i, (nome, ruolo) in (giocatori_rosa or {}).items():
+        if i in rosa or ruolo not in RUOLI:
+            continue
+        ha_voto = i in reali.index and pd.notna(reali.at[i, col])
+        gioca[i] = bool(ha_voto)
+        fv[i] = float(fantavoto(reali.loc[i].to_dict(), ruolo, regole)) if ha_voto else 0.0
+        voto[i] = float(reali.at[i, col]) if ha_voto else 0.0
+        p = mu = 0.0
+        if club.get(i) in club_rinviati:
+            rinviati.append(i)
+            if r_rinvio["modo"] == "voto_ufficio":
+                p, mu = 1.0, float(r_rinvio["valore"] if r_rinvio["valore"] is not None else 6.0)
+        extra[i] = fz.Giocatore(i, nome, ruolo, p, mu, mu)
+    return extra, rinviati
+
+
 def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, ids_rosa: list[int],
                      scelta: dict | None, simulazioni: int = SIMULAZIONI, automatica: dict | None = None,
                      altri_ids=(), istantanea: dict | None = None, cambi: tuple | None = None,
@@ -218,8 +248,11 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     gioca = {i: i in fv_vero for i in rosa}
     fv = {i: fv_vero.get(i, 0.0) for i in rosa}
     voto = {i: float(reali.at[i, col]) if i in fv_vero else 0.0 for i in rosa}
-    rinvii.voti_lega(gioca, fv, voto, [i for i in rosa if prev.at[i, "rinvio"] is not None], r_rinvio)
-    val = fz.Valutatore(lista, regole, simulazioni)
+    extra, extra_rinviati = _senza_previsione(d, giocatori_rosa, rosa, reali, col, regole, rinviate, r_rinvio, gioca, fv, voto)
+    rinvii.voti_lega(gioca, fv, voto, [i for i in rosa if prev.at[i, "rinvio"] is not None] + extra_rinviati, r_rinvio)
+    # chi non ha previsione sta in colonne fisse DOPO le estrazioni della rosa: la consigliata vale come prima, e la stessa
+    # formazione vale lo stesso con o senza di lui (revisione di #461)
+    val = fz.Valutatore(lista, regole, simulazioni, fissi=list(extra.values()))
     try:
         migliore = fz.migliore(lista, regole, simulazioni, valutatore=val)
     except ValueError:
@@ -231,34 +264,18 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             "schierata": None, "automatica": None,
             "giocatori": _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))}
 
-    # in rosa ma senza previsione: probabilità di voto 0 e il voto vero, se c'è (prima partita della stagione, per esempio)
-    extra = {}
-    for i, (nome, ruolo) in (giocatori_rosa or {}).items():
-        if i in rosa or ruolo not in RUOLI:
-            continue
-        extra[i] = fz.Giocatore(i, nome, ruolo, 0.0, 0.0, 0.0)
-        ha_voto = i in reali.index and pd.notna(reali.at[i, col])
-        gioca[i] = bool(ha_voto)
-        fv[i] = float(fantavoto(reali.loc[i].to_dict(), ruolo, regole)) if ha_voto else 0.0
-        voto[i] = float(reali.at[i, col]) if ha_voto else 0.0
     tutti = rosa | extra
     ruoli = {i: g.ruolo for i, g in tutti.items()}
-    con_extra: list = []          # [lista, Valutatore] con anche chi non ha previsione: si fa solo se una formazione lo usa
 
     def riga_di(sc: dict | None) -> dict | None:
         scelti = list(dict.fromkeys(int(i) for i in (sc or {}).get("titolari", [])))
         if not scelte.motivo_non_valida(scelti, ruoli, regole):        # la regola unica della scelta (anche il modulo)
             tit = [tutti[i] for i in scelti]
             propria = [tutti[i] for i in dict.fromkeys(int(i) for i in (sc or {}).get("panchina", []) if i in tutti and i not in scelti)]
-            if any(g.id in extra for g in tit + propria):
-                if not con_extra:          # altre simulazioni: la consigliata resta valutata sulle sue, come prima
-                    con_extra.append(lista + list(extra.values()))
-                    con_extra.append(fz.Valutatore(con_extra[0], regole, simulazioni))
-                lista_v, val_v = con_extra
-            else:
-                lista_v, val_v = lista, val
+            # la panchina del sistema pesca anche chi non ha previsione solo se la formazione ne usa qualcuno: le altre restano come prima
+            lista_v = lista + list(extra.values()) if any(g.id in extra for g in tit + propria) else lista
             panchina = propria or fz._panchina(lista_v, tit, regole)      # la panchina schierata davvero, se la conosciamo (giornate importate)
-            return _riga(tit, val_v.statistiche(tit, panchina), fz.punteggio(tit, panchina, gioca, fv, voto, regole))
+            return _riga(tit, val.statistiche(tit, panchina), fz.punteggio(tit, panchina, gioca, fv, voto, regole))
         return None
     voce["schierata"] = riga_di(scelta)
     if voce["schierata"]:

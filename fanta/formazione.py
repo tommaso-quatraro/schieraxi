@@ -147,7 +147,9 @@ def _candidati(ordinati: list[Giocatore], ids: set[int], peso: tuple[float, floa
 class Valutatore:
     """Punteggio atteso di una formazione, con simulazioni comuni a tutte le formazioni a confronto."""
 
-    def __init__(self, rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, seme: int = 7):
+    def __init__(self, rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, seme: int = 7, fissi: list[Giocatore] = ()):
+        """`fissi` (facoltativo, Diario #447): giocatori senza estrazioni, che prendono voto sempre (p ≥ 1) o mai, con fantavoto e voto
+        fissi. Stanno in colonne dopo quelle della rosa: le estrazioni della rosa restano identiche a quelle senza di loro."""
         rng = np.random.default_rng(seme)
         self.regole = regole
         self.indice = {g.id: i for i, g in enumerate(rosa)}
@@ -156,6 +158,11 @@ class Valutatore:
         # il modificatore difesa va a soglie: serve la variabilità del voto, non solo la media
         rumore = rng.normal(0, SCARTO_VOTO, (simulazioni, len(rosa)))
         self.voti = np.array([g.mu_voto for g in rosa], dtype=float) + rumore
+        if fissi:
+            self.indice |= {g.id: len(rosa) + k for k, g in enumerate(fissi)}
+            self.gioca = np.hstack([self.gioca, np.tile(np.array([g.p >= 1 for g in fissi]), (simulazioni, 1))])
+            self.fv = np.append(self.fv, [g.mu for g in fissi])
+            self.voti = np.hstack([self.voti, np.tile(np.array([g.mu_voto for g in fissi], dtype=float), (simulazioni, 1))])
         self._ammessi = _tabella_moduli(regole)
         self._cache: dict = {}
         # Le stesse estrazioni in altre due forme, solo per fare prima: una riga per giocatore e, per ogni giocatore, un intero
