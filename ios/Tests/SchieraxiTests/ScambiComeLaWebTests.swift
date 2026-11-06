@@ -13,7 +13,6 @@ struct ScambiComeLaWebTests {
         // i tre modi e «Trova per me»
         ("scambio.cosa_vuoi_fare", TestiScambi.cosaVuoiFare),
         ("scambio.trova_per", TestiScambi.trovaPerMe),
-        ("scambio.costruisci", TestiScambi.costruisci),
         ("scambio.valuta_offerta", TestiScambi.valutaOfferta),
         ("scambio.scambi_cui_guadagnate", TestiScambi.scambiCuiGuadagnate),
         ("scambio.con_quale_squadra", TestiScambi.conQualeSquadra),

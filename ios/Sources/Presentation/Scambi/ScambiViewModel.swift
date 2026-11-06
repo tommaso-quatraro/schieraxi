@@ -13,13 +13,6 @@ enum ModoScambi: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-/// Chi mette i crediti del conguaglio, come i due pulsanti della web: «Ricevo» (ti danno i crediti) e «Pago» (li dai tu).
-enum VersoConguaglio: CaseIterable, Identifiable {
-    case ricevo, pago
-    var id: Self { self }
-    var nome: String { self == .ricevo ? TestiScambi.ricevoCrediti : TestiScambi.pagoCrediti }
-}
-
 /// Logica della schermata Scambi: proposte del modello, filtro per squadra e per scambi 2 contro 2.
 @MainActor
 final class ScambiViewModel: ViewModelBase {
@@ -114,7 +107,7 @@ final class ScambiViewModel: ViewModelBase {
     /// Copia negli appunti la bozza del messaggio per l'altro allenatore.
     func copiaBozza(_ p: PropostaScambio) {
         UIPasteboard.general.string = ScambiLogica.bozza(p)
-        messaggio = "Bozza copiata: incollala nel gruppo o in privato."
+        messaggio = TestiScambi.bozzaCopiata
         Haptics.esito(riuscito: true)
     }
 
@@ -122,7 +115,7 @@ final class ScambiViewModel: ViewModelBase {
     func valutaOfferta() async {
         let testo = testoOfferta.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty else {
-            erroreOfferta = "Incolla prima il messaggio."
+            erroreOfferta = TestiScambi.incollaPrima
             return
         }
         offertaInCorso = true
@@ -179,15 +172,20 @@ final class AnalizzaScambioViewModel: ViewModelBase {
     /// Più di 4 giocatori per lato il server non li analizza: lo si dice prima.
     var troppi: String? {
         if doIds.count > Self.massimoPerLato || ricevoIds.count > Self.massimoPerLato {
-            return "Al massimo \(Self.massimoPerLato) giocatori per lato."
+            return TestiScambi.alMassimo(Self.massimoPerLato)
         }
         return nil
     }
 
-    /// Il conguaglio: vuoto = nessuno; altrimenti un intero (anche negativo).
+    /// Il conguaglio: vuoto = nessuno; altrimenti un intero. Scritto senza segno vale quello che dice `verso` («Ricevo» più,
+    /// «Pago» meno, come i due pulsanti della web); con un segno davanti (incollato) vale com'è.
     var creditiConguaglio: Int? {
         let t = conguaglio.trimmingCharacters(in: .whitespaces)
-        return t.isEmpty ? 0 : Int(t.replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "+", with: ""))
+        if t.isEmpty { return 0 }
+        let conSegno = t.hasPrefix("-") || t.hasPrefix("−") || t.hasPrefix("+")
+        guard let n = Int(t.replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "+", with: "")) else { return nil }
+        // senza segno `n` non è negativo: il meno non può uscire dai limiti (niente `abs()` né negazione di Int.min)
+        return conSegno || verso == .ricevo ? n : -n
     }
 
     /// Niente `abs()`: sul numero più piccolo possibile (−9223372036854775808, incollabile a mano) va in crash.
