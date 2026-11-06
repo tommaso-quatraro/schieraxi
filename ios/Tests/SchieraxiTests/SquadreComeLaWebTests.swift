@@ -111,10 +111,12 @@ struct SquadreComeLaWebTests {
     // MARK: Cambia il nome
 
     /// Un server che risponde come quello vero: la rosa (fixture), e `PUT /api/squadre/nome` con il nome nuovo.
-    private static func serverRosa(rispostaNome: @escaping @Sendable () throws -> Data = {
+    /// `ritardo` (nanosecondi) fa durare le scritture: serve a provare cosa succede se si preme di nuovo durante il salvataggio.
+    private static func serverRosa(ritardo: UInt64 = 0, rispostaNome: @escaping @Sendable () throws -> Data = {
         Data(#"{"nome":"Nuvola Est","prima":"Nuvola Ovest","mia_squadra":"Nuvola Est"}"#.utf8)
     }) -> ServerDiProva {
         ServerDiProva { metodo, percorso, _ in
+            if metodo == "PUT", ritardo > 0 { try await Task.sleep(nanoseconds: ritardo) }
             if metodo == "PUT", percorso == "/api/squadre/nome" { return try rispostaNome() }
             if metodo == "GET", percorso.hasPrefix("/api/rosa") { return try Fixture.dati("rosa") }
             return Data("{}".utf8)
@@ -139,6 +141,20 @@ struct SquadreComeLaWebTests {
         #expect(vm.nome == "Nuvola Est")
         #expect(vm.messaggio == (try Self.pezzo("scambio.nome_salvato")))
         #expect(server.quante("GET /api/rosa?squadra=" + IndirizzoServer.codifica("Nuvola Est")) == 1, "la rosa si rilegge con il nome nuovo")
+    }
+
+    @Test("Invio sulla tastiera mentre il salvataggio è in corso: una richiesta sola, niente 412 finto")
+    func rinominaDueVolteDiSeguito() async throws {
+        let server = Self.serverRosa(ritardo: 300_000_000)
+        let vm = Self.vm(server)
+        await vm.carica()
+        vm.nuovoNome = "Nuvola Est"
+        async let primo: Void = vm.rinomina()
+        async let secondo: Void = vm.rinomina()
+        _ = await (primo, secondo)
+        #expect(server.quante("PUT /api/squadre/nome") == 1, "il secondo invio, a salvataggio in corso, non parte")
+        #expect(vm.messaggio == (try Self.pezzo("scambio.nome_salvato")))
+        #expect(!vm.inCorso)
     }
 
     @Test("Nome vuoto o più lungo di 60 caratteri: la frase della web e niente richiesta")
@@ -208,6 +224,19 @@ struct SquadreComeLaWebTests {
         await vm.salvaCrediti()
         #expect(vm.messaggio == (try Self.pezzo("scambio.scrivi_crediti_come")))
         #expect(server.quante("PUT /api/crediti") == 0)
+    }
+
+    @Test("Salva premuto due volte di seguito sui crediti: una richiesta sola")
+    func creditiDueVolteDiSeguito() async throws {
+        let server = Self.serverRosa(ritardo: 300_000_000)
+        let vm = Self.vm(server)
+        await vm.carica()
+        vm.crediti = "40"
+        async let primo: Void = vm.salvaCrediti()
+        async let secondo: Void = vm.salvaCrediti()
+        _ = await (primo, secondo)
+        #expect(server.quante("PUT /api/crediti") == 1, "il secondo «Salva», a salvataggio in corso, non parte")
+        #expect(vm.messaggio == (try Self.pezzo("scambio.crediti_salvati")))
     }
 
     @Test("Zero è un numero buono (la web dice «anche 0»)")
