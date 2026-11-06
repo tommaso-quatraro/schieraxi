@@ -74,4 +74,41 @@ final class FotoUITests: XCTestCase {
         XCTAssertTrue(aspetta(30) { ultima.exists && ultima.isHittable },
                       "nella foto confronto-fondo l'ultima scheda del Confronto deve essere a video")
     }
+
+    /// Un elemento qualunque (testo, riga, pulsante) con l'etichetta che comincia così.
+    private func elemento(cheComincia testo: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", testo)).firstMatch
+    }
+
+    /// `lega-diario-fondo` (#425): la riga «Su tutta la Serie A…» (#378) sta dentro «Quanto ci abbiamo preso», a metà del Diario,
+    /// sopra le giornate. La foto scorre fin dove finisce quel riquadro, così la riga è a video; la cima del Diario no.
+    func testIlFondoDelDiarioMostraLaRigaSuTuttaLaSerieA() {
+        avvia(["-DEMO_SCHERMATA", "lega-diario", "-DEMO_FONDO", "1"])
+        let riga = elemento(cheComincia: "Su tutta la Serie A")
+        XCTAssertTrue(aspetta(30) { riga.exists && riga.isHittable },
+                      "nella foto lega-diario-fondo la riga su tutta la Serie A deve essere a video")
+        XCTAssertFalse(elemento(cheComincia: "Giornata per giornata: la formazione").isHittable,
+                       "nella foto lega-diario-fondo la cima del Diario non deve più essere a video")
+    }
+
+    /// `lega-stato-fondo` (#425): in fondo a Stato dei dati ci sono i gol attesi nostri (#404) e, per ultimi, gli indicatori del
+    /// consiglio di formazione (#371). L'ultimo indicatore deve essere a video, la cima della pagina no.
+    func testIlFondoDelloStatoMostraGliIndicatoriDelConsiglio() {
+        avvia(["-DEMO_SCHERMATA", "lega-stato", "-DEMO_FONDO", "1"])
+        let ultimo = elemento(cheComincia: "Scelte strane senza un motivo detto")
+        XCTAssertTrue(aspetta(30) { ultimo.exists && ultimo.isHittable },
+                      "nella foto lega-stato-fondo l'ultimo indicatore del consiglio di formazione deve essere a video")
+        XCTAssertFalse(elemento(cheComincia: "Coppe europee fino al").isHittable,
+                       "nella foto lega-stato-fondo la cima di Stato dei dati non deve più essere a video")
+    }
+
+    /// `lega-rosa-fondo` (#425): la rosa di un'altra squadra (#375) arriva fino a «Rose aggiornate il…», in fondo alla lista.
+    func testIlFondoDellaRosaMostraLUltimaRiga() {
+        avvia(["-DEMO_SCHERMATA", "lega-rosa", "-DEMO_FONDO", "1"])
+        let ultima = elemento(cheComincia: "Rose aggiornate il")
+        XCTAssertTrue(aspetta(30) { ultima.exists && ultima.isHittable },
+                      "nella foto lega-rosa-fondo l'ultima riga della rosa deve essere a video")
+        XCTAssertFalse(elemento(cheComincia: "Crediti residui").isHittable,
+                       "nella foto lega-rosa-fondo la cima della rosa non deve più essere a video")
+    }
 }

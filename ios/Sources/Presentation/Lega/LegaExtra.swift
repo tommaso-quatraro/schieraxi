@@ -135,35 +135,42 @@ struct RosaView: View {
     var body: some View {
         ZStack {
             Sfondo()
-            List {
-                // con il testo grande il nome della squadra intero, a capo: nella barra si taglierebbe (#276)
-                TitoloNellaPagina()
-                if let r = vm.caricatore.dato {
-                    intestazione(r)
-                    ForEach(reparti, id: \.0) { reparto in
-                        let giocatori = r.giocatori.filter { $0.ruolo == reparto.0 }
-                        Section(titolo: "\(reparto.1) (\(giocatori.count))") {
-                            ForEach(giocatori, id: \.ident) { RigaRosa(g: $0) }
+            ScrollViewReader { proxy in
+                List {
+                    // con il testo grande il nome della squadra intero, a capo: nella barra si taglierebbe (#276)
+                    TitoloNellaPagina()
+                    if let r = vm.caricatore.dato {
+                        intestazione(r)
+                        ForEach(reparti, id: \.0) { reparto in
+                            let giocatori = r.giocatori.filter { $0.ruolo == reparto.0 }
+                            Section(titolo: "\(reparto.1) (\(giocatori.count))") {
+                                ForEach(giocatori, id: \.ident) { RigaRosa(g: $0) }
+                            }
                         }
-                    }
-                    // Giocatori che il server non ha saputo collegare a un ruolo (non presenti nel listone).
-                    let sconosciuti = r.giocatori.filter { !["P", "D", "C", "A"].contains($0.ruolo ?? "") }
-                    if !sconosciuti.isEmpty {
-                        Section(titolo: "Non riconosciuti (da controllare)") {
-                            ForEach(sconosciuti, id: \.ident) { RigaRosa(g: $0) }
+                        // Giocatori che il server non ha saputo collegare a un ruolo (non presenti nel listone).
+                        let sconosciuti = r.giocatori.filter { !["P", "D", "C", "A"].contains($0.ruolo ?? "") }
+                        if !sconosciuti.isEmpty {
+                            Section(titolo: "Non riconosciuti (da controllare)") {
+                                ForEach(sconosciuti, id: \.ident) { RigaRosa(g: $0) }
+                            }
                         }
+                        if let agg = r.aggiornato {
+                            Text("Rose aggiornate il \(Quando.dataVersione(String(agg.prefix(10))))").font(.caption).foregroundStyle(Color.testoSecondario)
+                        }
+                        RigaFondoDemo()
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                    if let agg = r.aggiornato {
-                        Text("Rose aggiornate il \(Quando.dataVersione(String(agg.prefix(10))))").font(.caption).foregroundStyle(Color.testoSecondario)
-                    }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
+                .scrollContentBackground(.hidden)
+                .avvisoDatiSalvati(vm.caricatore)
+                // fotografia `lega-rosa-fondo` (#425): la lista scorsa fino all'ultima riga, a dati arrivati
+                .demoInFondo()
+                .demoScorriA(FondoDemo.idRiga, proxy: proxy, schermate: ["lega-rosa"], inFondo: true, ancora: .bottom,
+                             pronto: vm.caricatore.dato != nil)
             }
-            .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore)
         }
         .titoloPagina(nome, piccoloInBarra: true)
         .ricercaGlobale()
@@ -358,74 +365,82 @@ struct StatoDatiView: View {
     var body: some View {
         ZStack {
             Sfondo()
-            List {
-                TitoloNellaPagina()
-                Section {
-                    AggiornaDatiSezione(vm: aggiornamento)
-                }
-                if let s = caricatore.dato {
-                    Section(titolo: "Dati") {
-                        riga("Stagione", s.stagione ?? "—")
-                        riga("Calciatori", "\(s.calciatori ?? 0)")
-                        riga("Partite giocate", "\(s.partite?.giocate ?? 0) / \(s.partite?.totali ?? 0)")
-                        riga("Voti", "\(s.voti ?? 0)")
-                        riga("Coppe europee fino al", s.coppeFino.map { Quando.dataVersione($0) } ?? "—")
+            ScrollViewReader { proxy in
+                List {
+                    TitoloNellaPagina()
+                    Section {
+                        AggiornaDatiSezione(vm: aggiornamento)
                     }
-                    Section(titolo: "Avanzate") {
-                        // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata
-                        DisclosureGroup("Ultimi aggiornamenti dei dati") {
-                            ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(NomiDati.leggibile(a.cosa))
-                                    Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(Color.testoSecondario)
-                                    ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
+                    if let s = caricatore.dato {
+                        Section(titolo: "Dati") {
+                            riga("Stagione", s.stagione ?? "—")
+                            riga("Calciatori", "\(s.calciatori ?? 0)")
+                            riga("Partite giocate", "\(s.partite?.giocate ?? 0) / \(s.partite?.totali ?? 0)")
+                            riga("Voti", "\(s.voti ?? 0)")
+                            riga("Coppe europee fino al", s.coppeFino.map { Quando.dataVersione($0) } ?? "—")
+                        }
+                        Section(titolo: "Avanzate") {
+                            // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata
+                            DisclosureGroup("Ultimi aggiornamenti dei dati") {
+                                ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(NomiDati.leggibile(a.cosa))
+                                        Text(Quando.leggibile((a.quando ?? "").replacingOccurrences(of: "T", with: " "))).font(.caption).foregroundStyle(Color.testoSecondario)
+                                        ForEach(a.errori ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(Color.attenzione) }
+                                    }
+                                    .accessibilityElement(children: .combine)
                                 }
-                                .accessibilityElement(children: .combine)
                             }
                         }
-                    }
-                    if let probabili = s.probabili, !probabili.isEmpty {
-                        Section(titolo: "Probabili formazioni raccolte") {
-                            ForEach(probabili) { p in
-                                riga(TempiLega.serieA(p.giornata), Formato.plurale(p.giocatori ?? 0, "giocatore", "giocatori"))
-                            }
-                        }
-                    }
-                    if let c = s.calibrazione, let gruppi = c.gruppi {
-                        Section {
-                            ForEach(gruppi) { g in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(g.gruppo)
-                                    Text((g.n ?? 0) > 0
-                                         ? "\(Formato.plurale(g.n ?? 0, "giocatore", "giocatori")) · \((g.n ?? 0) == 1 ? "ha" : "hanno") giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
-                                         : "ancora nessun dato")
-                                        .font(.caption).foregroundStyle(Color.testoSecondario)
+                        if let probabili = s.probabili, !probabili.isEmpty {
+                            Section(titolo: "Probabili formazioni raccolte") {
+                                ForEach(probabili) { p in
+                                    riga(TempiLega.serieA(p.giornata), Formato.plurale(p.giocatori ?? 0, "giocatore", "giocatori"))
                                 }
-                                .accessibilityElement(children: .combine)
                             }
-                        } header: { Text("Quanto sono giuste le previsioni").foregroundStyle(Color.testoSecondario) } footer: {
-                            Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.").foregroundStyle(Color.testoSecondario)
                         }
+                        if let c = s.calibrazione, let gruppi = c.gruppi {
+                            Section {
+                                ForEach(gruppi) { g in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(g.gruppo)
+                                        Text((g.n ?? 0) > 0
+                                             ? "\(Formato.plurale(g.n ?? 0, "giocatore", "giocatori")) · \((g.n ?? 0) == 1 ? "ha" : "hanno") giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
+                                             : "ancora nessun dato")
+                                            .font(.caption).foregroundStyle(Color.testoSecondario)
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                }
+                            } header: { Text("Quanto sono giuste le previsioni").foregroundStyle(Color.testoSecondario) } footer: {
+                                Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.").foregroundStyle(Color.testoSecondario)
+                            }
+                        }
+                    } else if let e = caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
+                    } else {
+                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                } else if let e = caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await caricatore.ricarica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
+                    Section(titolo: "Quanto sono affidabili le previsioni") {
+                        affidabilitaContenuto
+                    }
+                    if let registro = caricatore.dato?.registro {
+                        RegistroGiornateSezione(registro: registro)
+                    }
+                    if let nostri = caricatore.dato?.registroNostri {
+                        GolAttesiNostriSezione(nostri: nostri)
+                    }
+                    if let consiglio = caricatore.dato?.consiglio {
+                        ConsiglioFormazioneSezione(consiglio: consiglio)
+                    }
+                    RigaFondoDemo()
                 }
-                Section(titolo: "Quanto sono affidabili le previsioni") {
-                    affidabilitaContenuto
-                }
-                if let registro = caricatore.dato?.registro {
-                    RegistroGiornateSezione(registro: registro)
-                }
-                if let nostri = caricatore.dato?.registroNostri {
-                    GolAttesiNostriSezione(nostri: nostri)
-                }
-                if let consiglio = caricatore.dato?.consiglio {
-                    ConsiglioFormazioneSezione(consiglio: consiglio)
-                }
+                .scrollContentBackground(.hidden)
+                // fotografia `lega-stato-fondo` (#425): la lista scorsa fino in fondo, dove sono i gol attesi nostri e gli indicatori
+                // del consiglio. Lo stato arriva per primo, la prova delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
+                .demoInFondo()
+                .demoScorriA(FondoDemo.idRiga, proxy: proxy, schermate: ["lega-stato"], inFondo: true, ancora: .bottom,
+                             pronto: caricatore.dato != nil && (affidabilita.dato != nil || affidabilita.errore != nil))
             }
-            .scrollContentBackground(.hidden)
         }
         .titoloPagina("Stato dei dati")
         .refreshable { await caricatore.ricarica(); await affidabilita.ricarica() }
