@@ -128,7 +128,7 @@ final class FumoUITests: XCTestCase {
         vaiA("Altro")
         // l'ingranaggio sta accanto alla lente
         tocca(app.buttons["Impostazioni"], finchéCompare: elemento("Aspetto"), "l'ingranaggio apre le Impostazioni")
-        attendi("Avvisi e promemoria")
+        attendi("Notifiche", contiene: true)
         // le voci tolte non ci sono più
         for tolta in ["Icona dell'app", "Sotto il cofano", "Copia di sicurezza", "Configurazione guidata", "Copia il codice per il widget"] {
             XCTAssertFalse(elemento(tolta, contiene: true).exists, "«\(tolta)» non deve stare nelle Impostazioni")
