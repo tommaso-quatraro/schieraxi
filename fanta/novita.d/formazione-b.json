@@ -1,13 +1,9 @@
 {
   "titolo": "Formazione più comoda",
   "voci": [
-    "Su schermi larghi il campo resta accanto all'elenco dei titolari.",
-    "La spiegazione dei segni sta sotto il campo e non lo copre più.",
-    "Ctrl+S salva la formazione.",
-    "Sul campo ogni giocatore è un disco bianco con il suo fantavoto atteso; i volti restano negli elenchi e nella scheda.",
-    "Quando c'è qualcosa da salvare, la riga con Salva resta in vista mentre scorri i titolari.",
-    "I punti attesi della Formazione sono subito quelli giusti, gli stessi di Oggi: prima salivano da zero e a volte restavano a metà.",
-    "Nei pannelli che salgono dal basso la maniglia non copre più il testo."
+    "Su schermi larghi il campo resta accanto all'elenco dei titolari e la riga con Salva resta in vista mentre scorri; Ctrl+S salva la formazione.",
+    "Sul campo ogni giocatore è un disco bianco con il suo fantavoto atteso, e la spiegazione dei segni sta sotto il campo: non lo copre più.",
+    "I punti attesi della Formazione sono subito quelli giusti, gli stessi di Oggi, e nei pannelli che salgono dal basso la maniglia non copre più il testo."
   ],
   "tecnico": [
     "Grafica B della web, PR 8 (issue #354, chiude #382): campo ed elenco affiancati da 768 px (5:7 da 900 px); il blocco del campo (.zona-campo) esce dal flusso della colonna e il suo .campo-fermo resta sticky, in FERME di controllaFerme.",
