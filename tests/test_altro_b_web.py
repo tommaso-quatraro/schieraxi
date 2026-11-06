@@ -161,7 +161,18 @@ def test_chi_accetta_e_impatto_sui_reparti_come_righe_con_i_numeri_in_colonna():
     assert "border-top: 1px solid var(--filo)" in "".join(_regole(".propensa"))
     assert "font-family: var(--font-numeri)" in "".join(_regole(".reparto > b"))
     assert "border-top: 1px solid var(--filo)" in "".join(_regole(".reparto + .reparto"))
+    assert 'class="riga reparto-totale"' in _funzione("impattoReparti")       # il totale come le righe sopra
+    assert "font-family: var(--font-numeri)" in "".join(_regole(".reparto-totale > b"))
     assert "font-family: var(--font-numeri)" in "".join(_regole(".confronto .riga-confronto > b"))
+
+
+def test_conguaglio_e_fasce_non_escono_dalla_pagina_strettissima():
+    """Zoom al 200% su un telefono da 390 px (195 px): il conguaglio di Costruisci (Ricevo | Pago, minimo 190 px, e il campo da
+    130 px) faceva scorrere la pagina di lato; le fasce del modificatore uscivano di 2 px. Sotto i 320 px vanno a capo."""
+    stretta = _blocco("@container pagina (max-width: 319.98px) {")
+    assert re.search(r"\.riga-conguaglio \.segmenti \{[^}]*min-width: 0;[^}]*flex: 1 1 100%", stretta)
+    assert re.search(r"\.riga-conguaglio \.campo-testo \{[^}]*flex: 1 1 100%", stretta)
+    assert re.search(r"\.fascia \.coppia \{[^}]*flex-wrap: wrap", stretta)
 
 
 def test_scelte_degli_scambi_senza_fondi_colorati():
@@ -220,7 +231,7 @@ def test_movimenti_con_il_segno_colorato_senza_quadratino():
 def test_crediti_in_colonne_di_righe_con_il_numero_a_destra():
     lega = _funzione("vistaLega")
     assert '<div class="crediti-righe">${squadre.map(' in lega
-    assert re.search(r"\.crediti-righe \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(300px, 1fr\)\)", CSS)
+    assert re.search(r"\.crediti-righe \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(min\(300px, 100%\), 1fr\)\)", CSS)   # mai più larga della pagina (zoom al 200%)
     assert "border-top: 1px solid var(--filo)" in "".join(_regole(".crediti-righe .riga-crediti"))
     assert "font-family: var(--font-numeri)" in "".join(_regole(".cred-squadra"))
 

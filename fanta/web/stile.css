@@ -626,6 +626,8 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .reparto { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; }
 .reparto + .reparto { border-top: 1px solid var(--filo); }
 .reparto > b { font-family: var(--font-numeri); font-weight: 600; font-variant-numeric: tabular-nums; }
+.reparto-totale { padding: 9px 0 0; border-top: 1px solid var(--filo); }      /* il totale, una riga come le altre */
+.reparto-totale > b { font-family: var(--font-numeri); font-weight: 650; font-variant-numeric: tabular-nums; }
 .voce-archivio { display: flex; justify-content: space-between; gap: 10px; padding: 11px 0; }
 .scambio .freccia { color: var(--testo-2); font-size: var(--t-card); }     /* il ⇄ è un segno, non un esito: niente verde */
 .guadagno { font-family: var(--font-numeri); font-weight: 650; font-variant-numeric: tabular-nums; }
@@ -766,7 +768,9 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 .voce-g .nome { display: flex; align-items: baseline; gap: 6px; font-size: var(--t-corpo); font-weight: 650; line-height: 1.35; }
 .voce-g .nome-t { min-width: 0; overflow-wrap: break-word; }
 .ruolo-l { flex: none; width: 1.2em; font-size: var(--t-sec); font-weight: 650; color: var(--testo-2); }
-.ruolo-l.ruolo-in { display: inline-block; margin-right: 2px; }        /* davanti al nome in una riga di testo (Scambi, Diario, ricerca) */
+/* davanti al nome in una riga di testo (Scambi, Diario, ricerca); allineata a sinistra anche dove la riga va a destra (chi ricevi):
+   lo spazio prima del nome resta lo stesso */
+.ruolo-l.ruolo-in { display: inline-block; margin-right: 2px; text-align: left; }
 .voce-g .dettaglio { display: block; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
 .voce-g .dettaglio .nb { display: inline-block; max-width: 100%; }        /* a capo tra i pezzi («… 20:45 ·» / «Real Esempio»), non dentro */
 .voce-g .etichette { margin-top: 1px; }
@@ -1326,7 +1330,7 @@ body.senza-accesso .salta { display: none; }
 .maglia-lista { height: 56px; width: auto; max-width: 64px; object-fit: contain; flex: none; }
 .riga-crediti { margin: 10px 0 4px; }
 /* Altro > Crediti delle squadre: righe con il filo, il nome a sinistra e i crediti a destra; sul PC in due colonne (da 632 px utili) */
-.crediti-righe { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); column-gap: 32px; margin: 4px 0 8px; }
+.crediti-righe { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); column-gap: 32px; margin: 4px 0 8px; }
 .crediti-righe .riga-crediti { margin: 0; padding: 6px 0; border-top: 1px solid var(--filo); min-width: 0; }
 .crediti-righe .riga-crediti label { min-width: 0; overflow-wrap: anywhere; }
 .cred-squadra { font-family: var(--font-numeri); font-variant-numeric: tabular-nums; }
@@ -1369,7 +1373,8 @@ body.senza-accesso .salta { display: none; }
 /* i punti fatti e «attesi N» di ogni giornata in due colonne della stessa larghezza (spec §9, «numeri in colonna») */
 .diario-punti { display: grid; grid-template-columns: minmax(0, 1fr) 4.2em 7.5em; column-gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--filo); font-size: var(--t-corpo); }
 .dp-fatti { font-family: var(--font-numeri); font-size: var(--t-valore); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; line-height: 1.1; }
-.dp-attesi { font-size: var(--t-eti); color: var(--testo-2); font-variant-numeric: tabular-nums; }
+.dp-attesi { font-size: var(--t-eti); color: var(--testo-2); font-variant-numeric: tabular-nums; text-align: right; }
+.azioni-diario { margin-bottom: 12px; }        /* i pulsanti non toccano il filo della riga dei punti */
 .diario-ruolo { display: inline-block; min-width: 1.2em; color: var(--testo-2); font-size: var(--t-eti); }
 .diario-panchina { margin-top: 8px; }
 .elenco-scelte { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
@@ -1511,6 +1516,11 @@ body { container: pagina / inline-size; }
   /* Diario: il nome della formazione su una riga sua, i punti fatti e «attesi N» sotto, a destra */
   .diario-punti { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
   .diario-punti > span:first-child { grid-column: 1 / -1; }
+  /* Scambi, conguaglio: Ricevo | Pago e il campo dei crediti uno sotto l'altro (a 195 px il minimo di 190 px faceva scorrere di lato) */
+  .riga-conguaglio .segmenti { min-width: 0; flex: 1 1 100%; }
+  .riga-conguaglio .campo-testo { width: 100%; flex: 1 1 100%; }
+  /* Regole, fasce del modificatore: «media almeno» e il suo «−/+» vanno a capo invece di uscire dalla pagina */
+  .fascia .coppia { flex-wrap: wrap; min-width: 0; max-width: 100%; }
   .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .legenda-campo li { grid-template-columns: 1fr; gap: 4px; }
   .leg-esempio { justify-self: start; }

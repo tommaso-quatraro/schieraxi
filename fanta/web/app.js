@@ -2193,7 +2193,7 @@ function impattoReparti(s) {
   return `<div class="carta"><h2>${t("scambio.impatto_sulla_tua")}</h2>
     <div class="debole piccolo">${t("scambio.conta_anche_resto")}</div>
     ${["P", "D", "C", "A"].map(riga).join("")}
-    <div class="riga" style="margin-top:8px"><span>${tp("scambio.in_totale", s.giornate.length)}</span>
+    <div class="riga reparto-totale"><span>${tp("scambio.in_totale", s.giornate.length)}</span>
       <b class="${tot > 0.05 ? "positivo" : tot < -0.05 ? "negativo" : ""}">${segno(tot, 1)}%</b></div></div>`;
 }
 
