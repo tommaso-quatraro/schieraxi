@@ -491,8 +491,9 @@ function nomeGiornata(lega, serieA) {
 const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
 
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
-// «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo «UDI fuori».
-const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>`;
+// «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo
+// la frase con il nome intero, come VoiceOver sull'iPhone: «in casa contro Parma», «in trasferta contro Udinese» (mai «UDI fuori», #453).
+const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${esc(t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv: nomeClub(x.avversario) }))}</span>`;
 const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;
 const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;
 
