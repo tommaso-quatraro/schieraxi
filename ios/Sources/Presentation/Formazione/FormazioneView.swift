@@ -32,8 +32,11 @@ struct FormazioneView: View {
     /// ✎ sostituisce un titolare (modifica a mano), ⇄ lo confronta con un altro della rosa: come i due pulsanti della web.
     static let simboloSostituisci = "pencil"
     static let simboloConfronta = "arrow.left.arrow.right"
+    /// Il pulsante accanto alla frase dello stile (`formazione.modifica_mano`).
     static let testoModificaAMano = "Modifica a mano"
-    static let testoModificataAMano = ""
+    /// In modifica a mano, al posto della frase dello stile (`formazione.modificata_mano`): moduli e stili restano sullo schermo e
+    /// un tocco torna alla loro proposta (#463).
+    static let testoModificataAMano = "Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata."
 
     /// La riga sotto «Titolari» (`formazione.tocca_sostituire` in modifica a mano, altrimenti `formazione.tocca_confronto`).
     static func istruzioneTitolari(modificabile: Bool) -> String {
@@ -325,8 +328,8 @@ struct FormazioneView: View {
 
     // MARK: stile, modulo e punti (una sola card)
 
-    /// Giornata, punti, stile con la sua descrizione, modulo proposto e «Modifica a mano» in una card compatta:
-    /// il campo parte subito sotto.
+    /// Giornata, punti, stato della scelta, stile con la sua descrizione, modulo proposto e «Modifica a mano» in una card compatta:
+    /// il campo parte subito sotto. Come la web, stili e moduli restano anche in modifica a mano (#463).
     private func cardStile(_ f: Formazione, _ v: VistaFormazione) -> some View {
         Carta {
             intestazione(f, v)
@@ -343,13 +346,12 @@ struct FormazioneView: View {
                 Label(Self.testoSenzaProbabili, systemImage: "clock").font(.footnote).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // come la web: il confronto con la consigliata sotto i punti, poi la riga dello stato con i suoi pulsanti
+            if vm.manuale != nil { calcoloManuale }
             rigaStato(f)
-            if vm.chiusa {
-                if let r = vm.valutazioneAttuale, let d = r.differenza { rigaDifferenza(r, d) }
-            } else if vm.manuale == nil {
+            if !vm.chiusa {
                 if let livelli = f.livelli, !livelli.isEmpty { sceltaStile(f, livelli) }
-            } else {
-                testoManuale
+                pulsantiSenzaRiga(f)
             }
             if let messaggio = vm.messaggio { Text(messaggio).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
@@ -400,7 +402,8 @@ struct FormazioneView: View {
         let stato = vm.statoScelta
         if stato != .sconosciuto {
             RigaStatoScelta(stato: stato,
-                            salvaQuesta: { salvaQuesta(f) },
+                            salva: { salvaQuesta(f) },
+                            annulla: { vm.annullaModifiche() },
                             tornaAllaConsigliata: { tornaAllaConsigliata(f) })
         }
     }
@@ -413,16 +416,19 @@ struct FormazioneView: View {
         Task { await vm.tornaAllaConsigliata(f) }
     }
 
-    /// Gli stili come scelte in fila, la loro descrizione, il modulo proposto e i moduli.
+    /// Gli stili come scelte in fila, la loro descrizione, il modulo proposto e i moduli. In modifica a mano, come la web, nessuno
+    /// stile né modulo è acceso, la descrizione non c'è e al posto della frase dello stile c'è «Modificata a mano. Tocca un modulo
+    /// o uno stile per tornare alla consigliata.»: un tocco esce dalla modifica a mano (la scelta salvata resta).
     @ViewBuilder
     private func sceltaStile(_ f: Formazione, _ livelli: [LivelloRischio]) -> some View {
         let livello = livelli.first(where: { $0.rischio == vm.rischio }) ?? livelli[0]
         let consigliato = f.stileConsigliato ?? 0
+        let aMano = vm.manuale != nil
         // «Stili a 3 livelli» spenta (di norma): più sicura, equilibrata, più rischiosa (e lo stile in uso, se è un altro). Accesa: tutti e 5.
         let visibili = funzioni.acceso(Funzione.stiliRidotti) ? livelli : livelli.filter { $0.rischio == livello.rischio || abs($0.rischio) < 2 }
         FilaScorrevole {
             ForEach(visibili) { l in
-                let attivo = l.rischio == livello.rischio
+                let attivo = !aMano && l.rischio == livello.rischio
                 Button { withAnimation(Tema.molla) { vm.scegliStile(l.rischio) } } label: {
                     Text(l.nome + (l.rischio == consigliato ? " ★" : ""))
                         .font(.subheadline.bold())
@@ -435,29 +441,20 @@ struct FormazioneView: View {
                 .accessibilityAddTraits(attivo ? .isSelected : [])
             }
         }
-        // la descrizione dello stile per intero (sulla web si apre con «Come si legge»: differenza ammessa)
-        Text((livello.descrizione ?? Self.descrizioneStile(livello.rischio))
-             + (StileFormazione.stellaNonMassimo(livello).map { " " + $0 } ?? ""))
-            .font(.footnote).foregroundStyle(Color.testoSecondario)
-            .fixedSize(horizontal: false, vertical: true)
-        // come la web: «**Equilibrata**: Propone il 3-4-3.» o «Modulo fissato a mano (…)». Accanto a «Modifica a mano» se ci sta
-        // in una riga, altrimenti sopra (la frase lunga o il testo grande non schiacciano il pulsante).
-        let frase = Text("\(Text(livello.nome).bold()): \(Self.fraseStile(proposto: livello.modulo, attivo: vm.moduloAttivo(livello)))")
-            .font(.footnote)
-        ViewThatFits(in: .horizontal) {
-            HStack {
-                frase
-                Spacer(minLength: 8)
-                modificaAMano(f)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                frase.fixedSize(horizontal: false, vertical: true)
-                modificaAMano(f)
-            }
+        if aMano {
+            Text(Self.testoModificataAMano).font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            // la descrizione dello stile per intero (sulla web si apre con «Come si legge»: differenza ammessa)
+            Text((livello.descrizione ?? Self.descrizioneStile(livello.rischio))
+                 + (StileFormazione.stellaNonMassimo(livello).map { " " + $0 } ?? ""))
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
+                .fixedSize(horizontal: false, vertical: true)
+            rigaStile(f, livello)
         }
         FilaScorrevole {
             ForEach(livello.moduli) { m in
-                let attivo = vm.moduloAttivo(livello) == m.modulo
+                let attivo = !aMano && vm.moduloAttivo(livello) == m.modulo
                 Button { withAnimation(Tema.molla) { vm.scegliModulo(m.modulo) } } label: {
                     VStack(spacing: 0) {
                         Text(m.modulo + (m.modulo == livello.modulo ? " ★" : "")).font(.subheadline.bold())
@@ -474,10 +471,34 @@ struct FormazioneView: View {
         }
     }
 
+    /// Come la web: «**Equilibrata**: Propone il 3-4-3.» o «Modulo fissato a mano (…)». Accanto a «Modifica a mano» se ci sta in
+    /// una riga, altrimenti sopra (la frase lunga o il testo grande non schiacciano il pulsante). «Modifica a mano» solo dove la web
+    /// la offre (`StatoScelta.conModificaAMano`): con una scelta salvata e un altro modulo sullo schermo ci sono Salva e Annulla.
+    @ViewBuilder
+    private func rigaStile(_ f: Formazione, _ livello: LivelloRischio) -> some View {
+        let frase = Text("\(Text(livello.nome).bold()): \(Self.fraseStile(proposto: livello.modulo, attivo: vm.moduloAttivo(livello)))")
+            .font(.footnote)
+        if vm.statoScelta.conModificaAMano {
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    frase
+                    Spacer(minLength: 8)
+                    modificaAMano(f)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    frase.fixedSize(horizontal: false, vertical: true)
+                    modificaAMano(f)
+                }
+            }
+        } else {
+            frase.fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     /// Pulsante piccolo (l'area di tocco resta da 44 pt).
     private func modificaAMano(_ f: Formazione) -> some View {
         Button { vm.iniziaModificaManuale(f) } label: {
-            Label("Modifica a mano", systemImage: "hand.tap").font(.footnote.weight(.semibold))
+            Label(Self.testoModificaAMano, systemImage: "hand.tap").font(.footnote.weight(.semibold))
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .background(Color.sfondoIncavo, in: Capsule())
                 .frame(minHeight: 44)
@@ -487,11 +508,11 @@ struct FormazioneView: View {
         .foregroundStyle(Color.verde)
     }
 
-    /// In modifica a mano: calcolo, confronto con la consigliata e pulsanti. Le frasi su ✎ e sui giocatori fermi stanno sotto
-    /// «Titolari», come la web.
+    /// In modifica a mano, sotto i punti: «Non riesco a calcolare i punti: riprova» e il confronto con la consigliata. I pulsanti
+    /// stanno nella riga dello stato; le frasi su ✎ e sui giocatori fermi sotto «Titolari», come la web.
     @ViewBuilder
-    private var testoManuale: some View {
-        if vm.calcoloNonRiuscito {
+    private var calcoloManuale: some View {
+        if vm.calcoloNonRiuscito, !vm.chiusa {
             Button { Task { await vm.valuta(salva: false) } } label: {
                 Label("Non riesco a calcolare i punti: riprova", systemImage: "arrow.clockwise").font(.footnote.weight(.semibold))
                     .frame(minHeight: 44).contentShape(Rectangle())
@@ -500,14 +521,6 @@ struct FormazioneView: View {
             .foregroundStyle(Color.attenzione)
         }
         if let r = vm.valutazioneAttuale, let d = r.differenza { rigaDifferenza(r, d) }
-        // Affiancati se ci stanno; con il testo grande uno sotto l'altro (invece di spezzarsi su tre righe).
-        if let f = vm.formazione {
-            ViewThatFits(in: .horizontal) {
-                HStack { salva; annulla; Spacer(); torna(f) }
-                VStack(alignment: .leading, spacing: 0) { salva; annulla; torna(f) }
-            }
-            .font(.subheadline)
-        }
     }
 
     /// Quanto vale la formazione a mano rispetto alla consigliata. La fascia dei punti sta già nell'intestazione: qui non si ripete
@@ -521,40 +534,41 @@ struct FormazioneView: View {
             .foregroundStyle(abs(d) < 0.5 ? Color.testoSecondario : d > 0 ? Color.verde : Color.attenzione)
     }
 
-    /// «Salva come mia scelta» (o «Salva le modifiche»): solo se c'è qualcosa da salvare e per la propria squadra.
+    /// In modifica a mano senza la riga dello stato (la formazione di un'altra squadra, o la tua scelta non ancora letta): i
+    /// pulsanti stanno qui, come quelli della web fuori dalla riga. «Salva come mia scelta» solo per la tua squadra, e non mentre
+    /// il server prova la scelta salvata appena letta.
     @ViewBuilder
-    private var salva: some View {
-        let stato = vm.statoScelta
-        // non mentre il server prova la scelta salvata appena letta (lo stato non si sa ancora)
-        if vm.squadraVista == nil, stato.daSalvare, !vm.provaSalvata {
-            Button { Task { await vm.valuta(salva: true) } } label: {
-                Label(Self.etichettaSalva(stato), systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
+    private func pulsantiSenzaRiga(_ f: Formazione) -> some View {
+        if vm.manuale != nil, vm.statoScelta == .sconosciuto {
+            let conSalva = vm.squadraVista == nil && !vm.provaSalvata
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    if conSalva { salva(f) }
+                    torna(f)
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    if conSalva { salva(f) }
+                    torna(f)
+                }
             }
-            .keyboardShortcut("s", modifiers: .command)
         }
     }
 
+    private func salva(_ f: Formazione) -> some View {
+        PulsanteRigaStato(testo: Self.etichettaSalva(vm.statoScelta), simbolo: "tray.and.arrow.down", colore: .verde) { salvaQuesta(f) }
+            .keyboardShortcut("s", modifiers: .command)
+    }
+
+    private func torna(_ f: Formazione) -> some View {
+        PulsanteRigaStato(testo: RigaStatoScelta.testoTorna, simbolo: "arrow.uturn.backward", colore: .primary) { tornaAllaConsigliata(f) }
+    }
+
+    /// «Salva le modifiche» con una scelta salvata e modifiche (`formazione.salva_modifiche`), altrimenti «Salva come mia scelta»
+    /// (`formazione.salva_come_mia`).
     static func etichettaSalva(_ stato: StatoScelta) -> String {
         if case .modificata = stato { return "Salva le modifiche" }
         return "Salva come mia scelta"
     }
-
-    /// «Annulla modifiche»: si torna agli undici salvati.
-    @ViewBuilder
-    private var annulla: some View {
-        if case .modificata = vm.statoScelta, vm.salvati != nil {
-            Button { vm.annullaModifiche() } label: {
-                Text("Annulla modifiche").fixedSize().frame(minHeight: 44)
-            }
-        }
-    }
-
-    private func torna(_ f: Formazione) -> some View {
-        Button(role: .destructive) { Task { await vm.tornaAllaConsigliata(f) } } label: {
-            Text("Torna alla consigliata").fixedSize().frame(minHeight: 44)
-        }
-    }
-
 }
 
 /// Scelta del sostituto: giocatori della stessa categoria che non sono già titolari né fermi (`FormazioneViewModel.sostituti`).
