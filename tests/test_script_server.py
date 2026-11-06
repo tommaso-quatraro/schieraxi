@@ -88,12 +88,13 @@ def test_tutti_gli_script_hanno_sintassi_corretta():
 
 # ---------------------------------------------------------------- _lancia: bash che si pianta
 
-def test_lancia_riprova_se_il_comando_si_pianta_e_ripristina(tmp_path):
+def test_lancia_riprova_se_il_comando_si_pianta_e_ripristina(tmp_path, monkeypatch):
     """Il primo tentativo si pianta (resta a dormire), viene fermato, si ripristina e il secondo riesce."""
+    monkeypatch.setattr(sys.modules[__name__], "TIMEOUT_PRIMO_TENTATIVO", 3)       # il secondo ha il tempo normale: Python sotto carico parte piano
     segno, registro = tmp_path / "segno", tmp_path / "ripristini"
     codice = ("import pathlib,sys,time\ns=pathlib.Path(sys.argv[1])\n"
               "if not s.exists():\n    s.write_text('x'); time.sleep(60)\nprint('ok')")
-    r = _lancia([sys.executable, "-c", codice, str(segno)], timeout=3, ripristina=lambda: registro.write_text("fatto"))
+    r = _lancia([sys.executable, "-c", codice, str(segno)], ripristina=lambda: registro.write_text("fatto"))
     assert r.returncode == 0 and r.stdout.strip() == "ok"
     assert registro.read_text() == "fatto"
 
@@ -158,6 +159,9 @@ def _uccidi_albero(p):
 
 
 TIMEOUT_SCRIPT = 90          # secondi: oltre, uno script che di solito ne dura 1-5 e' bloccato
+# Solo per le prove che vogliono un PRIMO giro piantato apposta: il suo tempo, piu' corto per non aspettare 90 secondi. I giri dopo
+# sono normali e hanno sempre TIMEOUT_SCRIPT: con 20 secondi anche per loro, sul PC carico bash non arrivava in fondo (5/11/2026).
+TIMEOUT_PRIMO_TENTATIVO = None
 
 
 def _lancia(comando, env=None, timeout=None, tentativi=2, ripristina=None):
@@ -168,12 +172,13 @@ def _lancia(comando, env=None, timeout=None, tentativi=2, ripristina=None):
     rapporto = []
     timeout = timeout or TIMEOUT_SCRIPT
     for n in range(1, tentativi + 1):
+        limite = TIMEOUT_PRIMO_TENTATIVO if n == 1 and TIMEOUT_PRIMO_TENTATIVO else timeout
         p = subprocess.Popen(comando, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
         try:
-            out, err = p.communicate(timeout=timeout)
+            out, err = p.communicate(timeout=limite)
             return subprocess.CompletedProcess(comando, p.returncode, out, err)
         except subprocess.TimeoutExpired:
-            rapporto.append(f"tentativo {n}: nessuna fine dopo {timeout}s. Processi vivi:\n{_processi_vivi()}")
+            rapporto.append(f"tentativo {n}: nessuna fine dopo {limite}s. Processi vivi:\n{_processi_vivi()}")
             _uccidi_albero(p)
             if ripristina:
                 ripristina()
@@ -391,7 +396,7 @@ def test_se_bash_si_pianta_la_prova_riparte_da_zero_e_riesce(server, monkeypatch
     """Il primo giro si pianta a meta' (finto `flock` che dorme dopo aver sporcato dati/): viene fermato, tutto torna com'era, il secondo giro
     fa l'installazione normale come se il primo non ci fosse stato."""
     s = server
-    monkeypatch.setattr(sys.modules[__name__], "TIMEOUT_SCRIPT", 20)
+    monkeypatch.setattr(sys.modules[__name__], "TIMEOUT_PRIMO_TENTATIVO", 20)      # solo il giro che si pianta; il secondo ha i 90 di sempre
     segno = s.chiamate.parent / "primo-giro-fatto"          # fuori da casa: il ripristino non deve cancellarlo
     _stub(s.bin, "flock", f'[ -e "{segno.as_posix()}" ] && exit 0\n: > "{segno.as_posix()}"; : > "{(s.app / "dati" / "sporco").as_posix()}"; echo "sudo blocco" >> "{s.chiamate.as_posix()}"; sleep 60')
     c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
@@ -749,6 +754,70 @@ def test_backup_dati_copia_lega_e_dati_senza_chiavi_e_non_modifica_l_originale(t
         nomi = t.getnames()
     assert any(n.endswith("lega/rose.json") for n in nomi) and any(n.endswith("dati/scelte.json") for n in nomi)
     assert not any(n.endswith("push.json") or n.endswith("vapid.json") for n in nomi)
+
+
+def _lancia_backup_dati(tmp_path, app):
+    """backup-dati.sh su una cartella finta. PYTHONPATH: il pacchetto `fanta` viene da questo repository (sul server sta nella
+    cartella dell'app, da cui lo script parte)."""
+    bin_ = tmp_path / "bin"
+    bin_.mkdir(exist_ok=True)
+    _stub(bin_, "flock", "exit 0")
+    dest, cache = tmp_path / "copie", tmp_path / "cache"
+    r = _lancia([BASH, (SCRIPT / "backup-dati.sh").as_posix()],
+                env={**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "FANTA_RADICE": _msys(app),
+                     "FANTA_BACKUP_DIR": _msys(dest), "FANTA_CACHE": _msys(cache), "FANTA_PYTHON": sys.executable,
+                     "PYTHONPATH": str(RADICE)},
+                ripristina=lambda: [shutil.rmtree(d, ignore_errors=True) for d in (dest, cache)])
+    return r, dest, cache
+
+
+@con_bash
+def test_backup_dati_salva_il_registro_delle_giornate_a_servizio_acceso_e_non_l_archivio(tmp_path):
+    """Il registro delle giornate (#343) non si ricostruisce: va nella copia, preso in modo coerente mentre il servizio tiene aperto
+    l'archivio (dati confermati ancora nel file -wal). L'archivio intero invece resta fuori (si rifà con `aggiorna`)."""
+    import contextlib
+    import sqlite3
+    from fanta import archivio, registro_copia
+    app = tmp_path / "app"
+    _scrivi(app, "dati/scelte.json", "SCELTE")
+    servizio = archivio.apri(app / "dati" / "fanta.sqlite")
+    try:
+        servizio.execute("INSERT INTO registro_giornate (stagione, giornata, salvato, giocatori, con_probabili) "
+                         "VALUES ('2026-27', 9, '2026-10-25T14:50:00', 1, 1)")
+        servizio.execute("INSERT INTO registro_giocatori (stagione, giornata, calciatore_id, ruolo, p_voto, mu) "
+                         "VALUES ('2026-27', 9, 101, 'A', 0.873, 6.734)")
+        servizio.commit()
+        r, dest, _ = _lancia_backup_dati(tmp_path, app)
+    finally:
+        servizio.close()
+    assert r.returncode == 0, r.stderr
+    pacchetti = list(dest.glob("dati-*.tar.gz"))
+    assert len(pacchetti) == 1
+    with tarfile.open(pacchetti[0]) as t:
+        nomi = t.getnames()
+        assert not any("fanta.sqlite" in n for n in nomi)
+        registro = [n for n in nomi if n.endswith("dati/registro-giornate.json")]
+        assert len(registro) == 1, nomi
+        estratto = tmp_path / "registro-giornate.json"
+        estratto.write_bytes(t.extractfile(registro[0]).read())
+    nuovo = tmp_path / "rifatto" / "fanta.sqlite"
+    assert registro_copia.importa(estratto, nuovo) == \
+        {"registro_giornate": (1, 0), "registro_giocatori": (1, 0)}
+    with contextlib.closing(sqlite3.connect(nuovo)) as db:
+        assert db.execute("SELECT stagione, giornata, calciatore_id, ruolo, p_voto, mu FROM registro_giocatori").fetchall() == \
+            [("2026-27", 9, 101, "A", 0.873, 6.734)]
+
+
+@con_bash
+def test_backup_dati_senza_registro_leggibile_non_salva_la_copia_e_lo_scrive_nel_log(tmp_path):
+    """Archivio illeggibile: niente copia di quella notte (e niente rotazione, così restano le copie vecchie con il registro buono)."""
+    app = tmp_path / "app"
+    _scrivi(app, "dati/scelte.json", "SCELTE")
+    (app / "dati" / "fanta.sqlite").write_bytes(b"non sono un database " * 300)
+    r, dest, cache = _lancia_backup_dati(tmp_path, app)
+    assert r.returncode == 1
+    assert not list(dest.glob("dati-*.tar.gz"))
+    assert "registro delle giornate" in (cache / "backup-dati.log").read_text(encoding="utf-8")
 
 
 @con_bash

@@ -122,7 +122,7 @@ struct GraficoErroreFantavoto: View {
                 .annotation(position: .top, spacing: 2) {
                     Text(b.valore).font(.caption2).monospacedDigit().foregroundStyle(Color.testoSecondario)
                 }
-                .accessibilityLabel("Giornata \(b.etichetta)")
+                .accessibilityLabel(b.voceGiornata)
                 .accessibilityValue("errore medio \(b.valore) punti")
         }
         .chartYScale(domain: 0...massimo)

@@ -430,6 +430,21 @@ def cmd_affidabilita(a) -> None:
               + (f", {saltati} rimandati al prossimo giro (tempo finito)" if saltati else ""))
         for uid, tipo in errori:                # solo il numero dell'utente e il tipo di errore: niente nomi né contenuti
             print(f"diario dell'utente {uid}: errore {tipo}")
+    _indicatori_consiglio()
+
+
+def _indicatori_consiglio() -> None:
+    """Dopo il Diario di tutti: i totali degli indicatori del consiglio per «Stato dei dati» e, se una media resta fuori soglia,
+    l'avviso al proprietario (`indicatori_consiglio.giro`). Un errore non ferma il comando: nel log solo il tipo."""
+    from . import indicatori_consiglio, sentinella
+    try:
+        esito = indicatori_consiglio.giro(sentinella.manda_ntfy)
+    except Exception as e:  # noqa: BLE001 - si rifà al prossimo giro del cron
+        print(f"indicatori del consiglio: non aggiornati (errore {type(e).__name__})")
+        return
+    print(f"indicatori del consiglio: {esito['giornate']} giornate"
+          + (f", fuori soglia {', '.join(esito['fuori'])}" if esito["fuori"] else "")
+          + (f", avviso mandato ({', '.join(esito['avvisato'])})" if esito["avvisato"] else ""))
 
 
 def _diario_per_utente(db, scadenza: float | None = None) -> tuple[int, int, int, list[tuple[int, str]]]:
@@ -604,6 +619,12 @@ def cmd_verifica(a) -> None:
             if len(esito["tabella"]):
                 print(esito["tabella"].round(3).to_string(index=False))
             print(f"  {vf2.NOME}: {esito['verdetto']}")
+    if a.consiglio is not None:
+        from . import consigli, verifica_consiglio
+        print()
+        if not r_ose or not r_ose.squadre:
+            sys.exit("Errore: per misurare il consiglio servono le rose della lega.")
+        verifica_consiglio.rapporto(verifica_consiglio.misura(d, db, r, r_ose, consigli.stagione_corrente(), a.consiglio or None))
 
 
 def cmd_oracolo(a) -> None:
@@ -830,6 +851,10 @@ def main(argv: list[str] | None = None) -> None:
                    help="con --pacchetti: invece delle rose della lega, tante rose estratte a sorte per stagione")
     x.add_argument("--incertezza", action="store_true",
                    help="in più, misura lo scarto vero tra punti attesi e fatti e la copertura della fascia mostrata (circa 2 minuti)")
+    x.add_argument("--consiglio", nargs="?", type=int, const=0, default=None, metavar="GIORNATA",
+                   help="in più, misura il consiglio di formazione in laboratorio (C1-C4: confronto con una scelta semplice, "
+                        "titolari che non giocano, scelte storte, perché, stabilità; 600 simulazioni come l'app, semi fissi, "
+                        "circa mezzo minuto). Con un numero, la giornata con le probabili da usare (senza: l'ultima che le ha)")
     x.set_defaults(f=cmd_verifica)
     x = sub.add_parser("oracolo", help="misura il guadagno massimo di sapere in anticipo presenze, gol, rigorista")
     x.add_argument("--dalla", type=int, default=5, help="prima giornata della stagione più vecchia")

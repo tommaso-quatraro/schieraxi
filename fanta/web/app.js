@@ -1052,6 +1052,14 @@ function stellaNonMassimo(l) {
   return " " + t("formazione.stella_non_massimo", { modulo: esc(top.modulo), stile: esc(nomeStile(l)), consigliato: esc(l.modulo) });
 }
 const stessiIds = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+// Il perché della scelta in una riga (campo `perche_scelta` del modulo, fanta/perche_scelta.py): una riga per ogni titolare che
+// sembra una scelta storta (meno punti attesi di un escluso dello stesso ruolo) o è incerto con la riserva sicura.
+// [{id, nome, riga}] nell'ordine del server (riga già pronta per l'HTML); null = il server non manda il campo.
+function righePercheScelta(m, scheda) {
+  if (!Array.isArray(m.perche_scelta)) return null;
+  return m.perche_scelta.map(x => [x, scheda(x && x.titolare)]).filter(([x, a]) => a && x.testo)
+    .map(([x, a]) => ({ id: a.id, nome: a.nome, riga: esc(testoDi(x)) }));
+}
 
 // Stato della scelta della giornata, dal confronto fra gli 11 mostrati e quelli salvati sul server (l'ordine non conta).
 // `salvata`: risposta di GET /api/scelta (null = nessuna scelta; undefined = non ancora letta o lettura fallita: nessuna riga).
@@ -1078,7 +1086,10 @@ function quandoSalvata(s, breve = false) {
   return t("formazione.giorno_alle", { giorno: diff === -1 ? t("tempo.ieri") : `${t("tempo.giorno_" + d.getDay())} ${d.getDate()}`, ora });
 }
 const SEGNI_SCELTA = { consigliata: "○", altra: "○", salvata: "✓", modificata: "●", mano: "●", non_valida: "!", chiusa: "■" };
-function rigaStatoScelta(st, salvata) {
+// A giornata chiusa la frase dice quale formazione vale. `nonValida`: la scelta salvata non si può schierare (regola unica del
+// server: `stato_scelta: "non_valida"` di GET /api/formazione, o `formazione_non_valida` rileggendola): vale la consigliata, che è
+// anche quella mostrata.
+function rigaStatoScelta(st, salvata, nonValida = false) {
   const quando = salvata ? quandoSalvata(salvata.salvata) : "", breve = salvata ? quandoSalvata(salvata.salvata, true) : "";
   const testo = {
     consigliata: t("formazione.stato_consigliata"),
@@ -1087,7 +1098,7 @@ function rigaStatoScelta(st, salvata) {
     modificata: breve ? t("formazione.stato_modificata_quando", { quando: breve }) : t("formazione.stato_modificata"),
     mano: t("formazione.stato_mano"),
     non_valida: t("formazione.stato_non_valida"),
-    chiusa: t(salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
+    chiusa: t(nonValida ? "formazione.stato_chiusa_non_valida" : salvata ? "formazione.stato_chiusa_tua" : "formazione.stato_chiusa"),
   }[st];
   const b = (id, chiave, secondario = true) => `<button class="bottone${secondario ? " secondario" : ""}" type="button" id="${id}">${t(chiave)}</button>`;
   const pulsanti = {
@@ -1189,6 +1200,8 @@ function mostraFormazione(f, squadra, opz = {}) {
     sc.nonSalvata = !squadra && !chiusa && manuale && (st === "modificata" || (st === "mano" && !sc.manuale.uguale));
     const modificabile = manuale && !chiusa;
     const inc = incerti(m);
+    // la nota sotto il campo: il perché delle scelte che sembrano storte, solo per la proposta del server (server senza il campo: gli incerti)
+    const nota = (sc.manuale || f.iniziata) ? [] : (righePercheScelta(m, scheda) ?? Object.values(inc));
     let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
     const voceTit = x => {
       const h = voceGiocatore(x, null, true, modificabile);
@@ -1203,7 +1216,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
-        ${st ? rigaStatoScelta(st, sc.salvata) : ""}
+        ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
         <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
@@ -1226,7 +1239,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       <div class="campo">${legendaCampo()}<i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
         ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
       </div>
-      ${Object.keys(inc).length ? `<div class="nota-incerti" id="nota-incerti">${Object.values(inc).map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
+      ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
         <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
@@ -2441,6 +2454,37 @@ const NOMI_CONTROLLI = { partite_per_giornata: t("sd.ctl_partite"), voti_per_gio
 // righe della sentinella (fanta/sentinella.py): «sentinella_<invariante>», il nome dell'invariante con gli spazi; quelle a posto
 // non si mostrano (le riassume la riga «sentinella»)
 const nomeControllo = n => NOMI_CONTROLLI[n] || (n.startsWith("sentinella_") ? t("sd.ctl_sentinella_una", { nome: n.slice(11).replaceAll("_", " ") }) : n);
+// Registro delle giornate (#344): le medie delle ultime giornate misurate, ognuna con la sua soglia e il verdetto del server
+// (`regge`, che non si ricalcola qui), e le giornate perse con il motivo. Percentuali e punti con una cifra decimale, senza «,0»
+// («−3%», «−5,7%»), come sull'iPhone (`ParoleRegistro`).
+const regCifra = (x, per = 1, segnato = false) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : (segnato ? segno(x * per, 1) : num(x * per, 1)).replace(/[,.]0$/, "");
+const regPerc = (x, segnato = false) => { const v = regCifra(x, 100, segnato); return v === "–" ? v : `${v}%`; };
+function statoRegistro(reg, k) {
+  if (!reg.verdetto) return { testo: tp("sd.reg_servono", Math.max(1, (reg.finestra || 8) - (reg.giornate || 0))), colore: "" };
+  const ok = (reg.regge || {})[k];
+  if (ok === true) return { testo: t("sd.reg_regge"), colore: "var(--verde)" };
+  return ok === false ? { testo: t("sd.reg_non_regge"), colore: "var(--rosso)" } : { testo: t("sd.nessun_dato"), colore: "" };
+}
+function cartaRegistro(reg) {
+  if (!reg) return "";
+  const s = reg.soglie || {}, n = reg.giornate || 0;
+  const misura = (k, nome, dettaglio) => {
+    const st = statoRegistro(reg, k);
+    return `<div class="riga"><span>${t(nome)}</span><span class="piccolo${st.colore ? "" : " debole"}"${st.colore ? ` style="color:${st.colore}"` : ""}>${st.testo}</span></div>
+      <div class="debole piccolo">${dettaglio}</div>`;
+  };
+  const misure = n ? misura("I1", "sd.reg_i1", t("sd.reg_i1_riga", { v: regPerc(reg.i1, true), s: regPerc(s.I1, true), m: num(reg.errore_modello, 2), f: num(reg.errore_fantamedia, 2) }))
+    + misura("I2", "sd.reg_i2", t("sd.reg_i2_riga", { c: regCifra(reg.calibrazione, 100), sc: regCifra(s.I2_calibrazione, 100), b: num(reg.brier, 3), sb: num(s.I2_brier, 3) }))
+    + misura("I3", "sd.reg_i3", t("sd.reg_i3_riga", { v: regPerc(reg.copertura), min: regPerc(s.I3_minimo), max: regPerc(s.I3_massimo) })) : "";
+  const perse = (reg.per_giornata || []).filter(g => g && g.persa);
+  return `<div class="carta" id="registro-giornate"><h2>${t("sd.reg_titolo")}</h2>
+    <div class="debole piccolo">${t("sd.reg_spiega")}</div>
+    <div class="debole piccolo" style="margin:4px 0 8px">${n ? tp("sd.reg_media", n) : t("sd.reg_nessuna")}</div>
+    ${misure}
+    ${perse.length ? `<h3>${t("sd.reg_perse")}</h3><div class="debole piccolo">${t("sd.reg_perse_spiega")}</div>
+      ${perse.map(g => `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: esc(g.giornata) })}</span></div>
+        <div class="piccolo" style="color:var(--rosso)">${esc(g.persa)}</div>`).join("")}` : ""}</div>`;
+}
 // Stato dei dati: da dove arriva tutto, quando è stato aggiornato, errori, foto e confronto tra probabilità previste e giocatori che hanno giocato.
 async function apriStatoDati() {
   apriFoglio(`<div class="caricamento">${t("scambio.controllo_dati")}</div>`);
@@ -2478,6 +2522,7 @@ async function apriStatoDati() {
         ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(nomeControllo(k.nome))}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
           ${k.esito === "ok" ? "" : `<div class="debole piccolo">${esc(k.dettaglio || "")}</div>`}`).join("") : `<div class="debole">${t("scambio.fanno_ogni_aggiornamento")}</div>`}</div>
       <div class="carta" id="affidabilita"><h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>
+      ${cartaRegistro(s.registro)}
       <div class="carta"><h2>${t("scambio.quanto_azzecca_modello")}</h2>
         <div class="debole piccolo">${c.giornate ? t("sd.giornate_giocate", { n: c.giornate }) : t("sd.appena_finisce")}
           ${t("sd.corregge")}</div>
@@ -2508,9 +2553,10 @@ function togliPrefVecchie() { try { PREF_TOLTE.forEach(k => localStorage.removeI
 function applicaAspetto() {
   const a = leggiAspetto(), radice = document.documentElement;
   if (a.tema === "auto") delete radice.dataset.tema; else radice.dataset.tema = a.tema;
-  const scuro = a.tema === "scuro" || (a.tema === "auto" && !matchMedia("(prefers-color-scheme: light)").matches);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = scuro ? "#07100b" : "#eaf3ee";
+  // colore della barra del browser (le due righe di index.html): col tema automatico ognuna tiene il suo e sceglie il sistema
+  // (attributo media); con un tema scelto a mano tutte e due prendono il fondo di quel tema
+  const fondo = scuro => (scuro ? "#121513" : "#ffffff");
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.content = fondo(a.tema === "auto" ? m.media.includes("dark") : a.tema === "scuro"); });
   document.documentElement.style.zoom = a.testo === "1" ? "" : a.testo;      // vale per tutta l'app: testata, barra e pannelli compresi
   radice.dataset.densita = "compatta";
   segnaMovimento();
@@ -2582,7 +2628,7 @@ async function condividiImmagine(f, m) {
   g.fillStyle = "#eef6f0"; g.font = "700 64px -apple-system, Helvetica, Arial, sans-serif";
   g.fillText(`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, L / 2, 110);
   g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: virgola(m.punteggio_atteso) })}`, L / 2, 168);
+  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: num(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
   g.fillStyle = "#1f8a4b"; g.beginPath(); g.roundRect(x0, y0, w, h, 36); g.fill();
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 4;
@@ -2605,7 +2651,7 @@ async function condividiImmagine(f, m) {
       g.restore();
       g.fillStyle = "rgba(8,14,10,.92)"; g.beginPath(); g.roundRect(cx - 42, y + 34, 84, 38, 19); g.fill();   // fantavoto atteso
       g.fillStyle = "#ffffff"; g.font = "700 28px -apple-system, Helvetica, Arial, sans-serif";
-      g.fillText(virgola(x.fv_atteso), cx, y + 62);
+      g.fillText(num(x.fv_atteso), cx, y + 62);
       g.font = "650 30px -apple-system, Helvetica, Arial, sans-serif";
       g.fillText(cognome(x), cx, y + 104);
     });

@@ -10,9 +10,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import calcolo, da_fare, notifiche, scelte, server, stato_utente
+from fanta.regole import Regole
 
 ADESSO = datetime(2026, 11, 3, 12, 0)
 STAGIONE = "2026-27"
+# i ruoli della rosa del `mondo`: i titolari 1-11 sono un 3-5-2 che si può schierare, in panchina tre centrocampisti
+RUOLI = {1: "P", 2: "D", 3: "D", 4: "D", 5: "C", 6: "C", 7: "C", 8: "C", 9: "C", 10: "A", 11: "A", 12: "C", 13: "C", 14: "C"}
 
 
 def _x(i, nome, ruolo="C", stato=None, dubbio=False, p_voto=0.9, atteso=6.0):
@@ -23,20 +26,21 @@ def _x(i, nome, ruolo="C", stato=None, dubbio=False, p_voto=0.9, atteso=6.0):
 def mondo(tmp_path, monkeypatch):
     """Una rosa di 14, titolari 1-11 (il 5 in dubbio, il 6 infortunato), panchina 12-14, tutto in cache finta.
     `sistema` è la formazione consigliata (titolari e panchina, in ordine): un test la cambia per dire cosa farebbe il sistema."""
-    schede = {i: _x(i, f"g{i}") for i in range(1, 15)}
+    schede = {i: _x(i, f"g{i}", RUOLI[i]) for i in range(1, 15)}
     schede[5] = _x(5, "Rossi", dubbio=True, p_voto=0.55)
     schede[6] = _x(6, "Bianchi", stato="infortunato", p_voto=0.0)
     schede[12] = _x(12, "Riserva", atteso=4.5)
     schede[13] = _x(13, "Fuori", stato="squalificato", atteso=9.0)
     sistema = NS(titolari=list(range(1, 12)), panchina=[12, 13, 14])
+    prev = pd.DataFrame({"ruolo": [RUOLI[i] for i in range(1, 15)]}, index=list(range(1, 15)))
     monkeypatch.setattr(da_fare.consigli, "stagione_corrente", lambda: STAGIONE)
-    monkeypatch.setattr(da_fare.consigli, "previsioni", lambda db, r: (pd.DataFrame(index=list(range(1, 15))), 9, True))
+    monkeypatch.setattr(da_fare.consigli, "previsioni", lambda db, r, giornata=None: (prev, 9, True))
     monkeypatch.setattr(da_fare.consigli, "scheda_previsione", lambda i, x: schede[i])
     monkeypatch.setattr(da_fare.consigli, "formazione", lambda db, r, ro: {"titolari": [{"id": i} for i in sistema.titolari],
                                                                           "panchina": [{"id": i} for i in sistema.panchina]})
     monkeypatch.setattr(da_fare.consigli, "mercato", lambda *a, **k: {"proposte": []})
     monkeypatch.setattr(da_fare.consigli, "proposte_scambi", lambda *a, **k: (None, []))
-    rose = NS(mia_squadra="Mia", squadra=lambda n: NS(giocatori=[NS(id=i) for i in range(1, 15)]))
+    rose = NS(mia_squadra="Mia", squadra=lambda n: NS(giocatori=[NS(id=i, ruolo=RUOLI[i]) for i in range(1, 15)]))
     db = sqlite3.connect(":memory:")
     db.execute("CREATE TABLE partite (stagione TEXT, giornata INTEGER, data TEXT, giocata INTEGER)")
     db.execute("CREATE TABLE aggiornamenti (cosa TEXT, quando TEXT, dettaglio TEXT)")
@@ -50,7 +54,7 @@ def mondo(tmp_path, monkeypatch):
 
 
 def vai(m, **k):
-    return da_fare.costruisci(m.db, k.pop("regole", object()), m.rose, k.pop("oggi", m.oggi), k.pop("ctx", m.ctx), adesso=ADESSO, **k)
+    return da_fare.costruisci(m.db, k.pop("regole", Regole()), m.rose, k.pop("oggi", m.oggi), k.pop("ctx", m.ctx), adesso=ADESSO, **k)
 
 
 def la_consigliata_cambia(m, *cambi):
@@ -289,13 +293,18 @@ def test_niente_calcoli_nuovi_se_la_cache_e_vuota(mondo, monkeypatch):
     assert not [x for x in vai(mondo) if x["tipo"] in ("svincolato", "scambio")]
 
 
-def test_rose_vecchie_solo_dopo_una_giornata(mondo):
+def test_rose_da_aggiornare_solo_dopo_la_sosta(mondo):
+    """#334: una giornata giocata con le rose ferme da giorni non basta più (era rumore ogni settimana): serve un momento di
+    mercato della lega, qui la sosta fra la 8 e la 9. Le altre prove in tests/test_promemoria_rose.py."""
     vecchio = (ADESSO - timedelta(days=6)).timestamp()
     os.utime(mondo.ctx.rose, (vecchio, vecchio))
-    assert not [x for x in vai(mondo) if x["tipo"] == "rose"]                # nessuna giornata giocata: va bene così
     mondo.db.execute("INSERT INTO partite VALUES (?, 8, ?, 1)", (STAGIONE, (ADESSO - timedelta(days=2)).isoformat(sep=" ")[:16]))
-    r = [x for x in vai(mondo) if x["tipo"] == "rose"]
+    mondo.db.execute("INSERT INTO partite VALUES (?, 9, ?, 0)", (STAGIONE, (ADESSO + timedelta(days=3)).isoformat(sep=" ")[:16]))
+    assert not [x for x in vai(mondo) if x["tipo"] == "rose"]                # nessuna sosta: niente promemoria
+    mondo.db.execute("UPDATE partite SET data = ? WHERE giornata = 9", ((ADESSO + timedelta(days=9)).isoformat(sep=" ")[:16],))
+    r = [x for x in vai(mondo) if x["tipo"] == "rose"]                       # 11 giorni fra la 8 e la 9: sosta
     assert len(r) == 1 and r[0]["giorni"] == 6 and r[0]["destinazione"]["link"] == "schieraxi://lega/rose"
+    assert r[0]["frase"] == {"chiave": "dafare.rose_mercato", "param": {"n": 9}}
     fresco = (ADESSO - timedelta(days=1)).timestamp()
     os.utime(mondo.ctx.rose, (fresco, fresco))
     assert not [x for x in vai(mondo) if x["tipo"] == "rose"]
