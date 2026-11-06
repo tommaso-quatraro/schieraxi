@@ -83,16 +83,17 @@ extension DemoDaFareTests {
     }
 }
 
-/// Le frasi italiane del server: i modelli `dafare.*` del `CATALOGO` di `fanta/frasi.py` (chiave → testo con segnaposto `{nome}`).
-/// Il file si legge dal repository (il test gira nel checkout di GitHub); se non c'è, il test fallisce e lo dice.
-private struct FrasiDelServer {
+/// Le frasi italiane del server: i modelli del `CATALOGO` di `fanta/frasi.py` delle famiglie in `prefissi` («dafare.»,
+/// «probabili.»...), chiave → testo con segnaposto `{nome}`. Servono ai test che confrontano i testi della demo con quelli che
+/// scriverebbe il server. Il file si legge dal repository (il test gira nel checkout di GitHub); se non c'è, il test fallisce e lo dice.
+struct FrasiDelServer {
     let modelli: [String: String]
 
     struct Errore: Error, CustomStringConvertible {
         let description: String
     }
 
-    init(file: String = #filePath) throws {
+    init(prefissi: [String] = ["dafare."], file: String = #filePath) throws {
         var url = URL(fileURLWithPath: file)
         for _ in 0..<4 { url.deleteLastPathComponent() }          // SchieraxiTests, Tests, ios, radice del repository
         url.appendPathComponent("fanta/frasi.py")
@@ -103,12 +104,14 @@ private struct FrasiDelServer {
         for riga in sorgente.split(whereSeparator: \.isNewline) {
             // una riga del catalogo:    "dafare.diario": "La giornata {n} è finita: ...",
             let t = riga.trimmingCharacters(in: .whitespaces)
-            guard t.hasPrefix("\"dafare."), t.hasSuffix("\","), let separatore = t.range(of: "\": \"") else { continue }
+            guard prefissi.contains(where: { t.hasPrefix("\"" + $0) }), t.hasSuffix("\","), let separatore = t.range(of: "\": \"") else { continue }
             let fine = t.index(t.endIndex, offsetBy: -2)
             guard separatore.upperBound <= fine else { continue }
             trovati[String(t[t.index(after: t.startIndex)..<separatore.lowerBound])] = String(t[separatore.upperBound..<fine])
         }
-        guard !trovati.isEmpty else { throw Errore(description: "in fanta/frasi.py non trovo nessuna frase «dafare.*»") }
+        guard !trovati.isEmpty else {
+            throw Errore(description: "in fanta/frasi.py non trovo nessuna frase \(prefissi.map { "«\($0)*»" }.joined(separator: " "))")
+        }
         modelli = trovati
     }
 

@@ -162,11 +162,15 @@ extension LegaDemo {
         } else {
             entrata = "Se \(titolare.nome) non prende voto (\(percento(1 - pt))% di probabilità), al suo posto può entrare \(altro.nome) (\(postoAltro))."
         }
+        // tra parentesi la differenza dei due numeri come si scrivono, con il segno («72,7 … 72,1 (−0,6)»), come `differenza` di
+        // fanta/frasi.py (#392): arrotondata da sola, la differenza vera (0,52) darebbe 0,5 e non tornerebbe con i numeri scritti
+        func scritto(_ x: Double) -> Double { (x * 10).rounded() / 10 }
+        let differenzaScritta = Formato.conSegno(scritto(invertita) - scritto(attuale))
         let esito: String
         if guadagno > 0.04 {
-            esito = "Con \(titolare.nome) titolare la formazione vale \(Formato.punti(attuale)) punti attesi; con i due invertiti \(Formato.punti(invertita)) (\(Formato.punti(-guadagno)))."
+            esito = "Con \(titolare.nome) titolare la formazione vale \(Formato.punti(attuale)) punti attesi; con i due invertiti \(Formato.punti(invertita)) (\(differenzaScritta))."
         } else if guadagno < -0.04 {
-            esito = "Invertendoli la formazione varrebbe \(Formato.punti(invertita)) invece di \(Formato.punti(attuale)) (\(Formato.punti(-guadagno))): con il modulo \(m.nome) (non il migliore) la scelta non è la più conveniente."
+            esito = "Invertendoli la formazione varrebbe \(Formato.punti(invertita)) invece di \(Formato.punti(attuale)) (\(differenzaScritta)): con il modulo \(m.nome) (non il migliore) la scelta non è la più conveniente."
         } else {
             esito = "Le due soluzioni valgono praticamente lo stesso (\(Formato.punti(attuale)) contro \(Formato.punti(invertita)))."
         }
