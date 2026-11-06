@@ -19,6 +19,8 @@ TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qua
 STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
 RADDRIZZA=0
 mkdir -p "$USCITA"
+# Avvisi di sistema («Ready for Apple Intelligence»): si aspetta che compaiano e spariscano PRIMA delle foto (#393).
+source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
 TUTTE=(oggi oggi-fondo oggi-in-corso oggi-finita oggi-rinvio oggi-finita-recupero formazione formazione-fondo formazione-salvata formazione-chiusa formazione-manuale formazione-confronto formazione-perche formazione-immagine
@@ -176,6 +178,7 @@ avvia_simulatore() {
   local udid="$1"
   xcrun simctl boot "$udid" 2>/dev/null
   xcrun simctl bootstatus "$udid" -b >/dev/null
+  avvisi_avvia "$udid"
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 \
     --cellularMode active --cellularBars 4 --wifiBars 3 >/dev/null 2>&1
   xcrun simctl uninstall "$udid" "$ID_APP" >/dev/null 2>&1
@@ -183,6 +186,7 @@ avvia_simulatore() {
 }
 
 spegni_simulatore() {
+  avvisi_ferma
   xcrun simctl shutdown "$1" >/dev/null 2>&1
 }
 
@@ -213,6 +217,7 @@ prova_url() {
 # In fondo al registro della corsa: quante foto, quanti problemi (con il nome delle foto rimaste a metà attesa), quante in movimento.
 riepilogo() {
   echo "Scatti fatti: $(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' '). Problemi segnalati: $ERRORI. Foto con lo schermo ancora in movimento: $IN_MOVIMENTO"
+  avvisi_riepilogo
   if [ "${#NON_RIUSCITI[@]}" -gt 0 ]; then
     echo "Tra i problemi, foto con uno scatto non riuscito durante l'attesa (resta la foto di prima):"
     printf '  %s\n' "${NON_RIUSCITI[@]}"
@@ -275,6 +280,7 @@ if [ "$SCATTI" = "vero" ]; then
   xcrun simctl launch "$UDID_VERO" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
   sleep 10
   xcrun simctl terminate "$UDID_VERO" "$ID_APP" >/dev/null 2>&1
+  avvisi_attendi "$UDID_VERO"
   copia_fotografie "$UDID_VERO" || exit 1
   giro_vero "$UDID_VERO" "${QUALE}_scuro" scuro large
   giro_vero "$UDID_VERO" "${QUALE}_chiaro" chiaro large
@@ -308,6 +314,7 @@ avvia_simulatore "$UDID_IPHONE"
 xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
 sleep 10
 xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
+avvisi_attendi "$UDID_IPHONE"
 
 giro "$UDID_IPHONE" iphone_scuro scuro large "${TUTTE[@]}"
 giro "$UDID_IPHONE" iphone_chiaro chiaro large "${PER_CHIARO[@]}"
@@ -362,6 +369,7 @@ avvia_simulatore "$UDID_IPAD"
 xcrun simctl launch "$UDID_IPAD" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
 sleep 10
 xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
+avvisi_attendi "$UDID_IPAD"
 
 giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
 if [ "$SCATTI" = "veloce" ]; then

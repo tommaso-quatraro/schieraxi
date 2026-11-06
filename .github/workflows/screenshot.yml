@@ -48,8 +48,10 @@ on:
 
 # Al massimo DUE corse di foto insieme in tutto il repository, in fila, e mai più di 5 job Mac (il limite del piano gratuito:
 # oltre, i job aspettano e i test iOS restano dietro alle foto). Il job Linux «quando» aspetta che le corse Screenshot partite
-# prima di questa, non ancora finite, siano meno di 2 (ordine del numero di corsa) e che i job Mac già in corso o in coda nel
-# repository, più quelli di questa corsa, non passino 5; poi lascia partire i Mac. Se non riesce a contarli aspetta.
+# prima di questa, non ancora finite, siano meno di 2 (ordine del numero di corsa) e che i job Mac già IN CORSO nel
+# repository (non quelli in coda), più quelli di questa corsa, non passino 5; poi lascia partire i Mac. Se non riesce a contarli
+# aspetta. Se aspetta solo i Mac, dopo 45 minuti parte comunque (con una riga nel registro): senza limite, i test iOS delle
+# altre corse la tenevano ferma per ore (#403). Le altre attese (2 corse al massimo, corsa davanti che non ha deciso) non hanno limite.
 # La fila non usa i gruppi di concorrenza: GitHub ne terrebbe in attesa una sola e annullerebbe le altre.
 # Gruppo di concorrenza della PR solo per le foto a ogni push (etichetta «screenshot»): un push nuovo annulla la corsa vecchia
 # della stessa PR. Tutto il resto ha un gruppo suo (run_id) e non annulla né è annullato: corse a mano e su main, le foto dal
@@ -121,7 +123,7 @@ jobs:
           ETICHETTA_NUOVA: ${{ github.event.label.name }}
           # i file che cambiano le foto dei widget: quelli che compila il target AnteprimaWidget (ios/project.yml), il progetto,
           # lo script delle foto dei widget e questo workflow (tests/test_workflow_foto.py controlla che l'elenco sia completo)
-          FILE_WIDGET: '^(ios/(AnteprimaWidget/|WidgetSources/|project\.yml$|scripts/(screenshot_widget\.sh|scegli_simulatore\.py)$|Sources/Domain/(Modelli|Quando|TempiLega|Formato|LinguaServer|ColoriSquadra|GeneratoreVolto)\.swift$|Sources/Support/(Condiviso|WidgetRiassunto|EventiPartita|AvatarVolto|LegaDemo)\.swift$|Sources/Support/Design/PercorsoSVG\.swift$)|\.github/workflows/screenshot\.yml$)'
+          FILE_WIDGET: '^(ios/(AnteprimaWidget/|WidgetSources/|project\.yml$|scripts/(screenshot_widget\.sh|scegli_simulatore\.py|avvisi\.sh)$|Sources/Domain/(Modelli|Quando|TempiLega|Formato|LinguaServer|ColoriSquadra|GeneratoreVolto)\.swift$|Sources/Support/(Condiviso|WidgetRiassunto|EventiPartita|AvatarVolto|LegaDemo)\.swift$|Sources/Support/Design/PercorsoSVG\.swift$)|\.github/workflows/screenshot\.yml$)'
         run: |
           widget=false
           if [ "$SCATTI" = vero ] || [ "$ETICHETTA_NUOVA" = screenshot-vero ] || [ "$DISPOSITIVI" = ipad ]; then
@@ -184,8 +186,15 @@ jobs:
         run: |
           POSTI=2
           MAC_TOTALI=5
+          # Il limite di 45 minuti vale SOLO per l'attesa dei Mac: la corsa parte lo stesso (con una riga nel registro), perché
+          # i test iOS delle altre corse possono occupare i Mac uno dopo l'altro senza mai finire; GitHub tiene comunque in
+          # ordine i job che aspettano un Mac. «Al massimo 2 corse di foto» e «la corsa davanti non ha ancora deciso» finiscono
+          # da sole quando finiscono le corse davanti: nessuno stallo, e il limite li farebbe saltare (più di 2 corse, 6 Mac).
+          ATTESA_MASSIMA=2700
+          inizio=$(date +%s)
           while :; do
             attendi=""
+            per_mac=false
             if ! davanti=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/screenshot.yml/runs?per_page=100" \
               --jq "[.workflow_runs[] | select(.status != \"completed\" and .id < $QUESTA) | .id] | .[]"); then
               attendi="l'elenco delle corse Screenshot non risponde"
@@ -204,19 +213,24 @@ jobs:
               fi
             fi
             if [ -z "$attendi" ]; then
-              # job Mac non finiti nelle altre corse del repository (in corso o in coda); se una domanda fallisce si aspetta
+              # job Mac IN CORSO nelle altre corse del repository (quelli in coda non contano: aspettano un Mac e GitHub li serve
+              # in ordine; contarli faceva restare ferme le foto per ore dietro ai test iOS, #403); se una domanda fallisce si aspetta
               ok=true
               occupati=0
               corse=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?status=in_progress&per_page=100" --jq '.workflow_runs[].id') || ok=false
-              coda=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?status=queued&per_page=100" --jq '.workflow_runs[].id') || ok=false
-              for corsa in $corse $coda; do
+              for corsa in $corse; do
                 if [ "$ok" != true ] || [ "$corsa" = "$QUESTA" ]; then continue; fi
                 n=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$corsa/jobs?per_page=100" \
-                  --jq '[.jobs[] | select(.status != "completed" and any(.labels[]; startswith("macos")))] | length') || n=""
+                  --jq '[.jobs[] | select(.status == "in_progress" and any(.labels[]; startswith("macos")))] | length') || n=""
                 if printf '%s\n' "$n" | grep -qxE '[0-9]+'; then occupati=$((occupati + n)); else ok=false; fi
               done
               if [ "$ok" = true ] && [ $((occupati + MAC)) -le "$MAC_TOTALI" ]; then break; fi
               attendi="job Mac occupati: $occupati (conteggio riuscito: $ok), ne servono $MAC, al massimo $MAC_TOTALI"
+              per_mac=true
+            fi
+            if [ "$per_mac" = true ] && [ $(( $(date +%s) - inizio )) -ge "$ATTESA_MASSIMA" ]; then
+              echo "$(date -u +%H:%M) In fila da più di $((ATTESA_MASSIMA / 60)) minuti: la corsa parte lo stesso ($attendi)"
+              break
             fi
             echo "$(date -u +%H:%M) $attendi"
             sleep 90
