@@ -11,20 +11,20 @@ Scenari (vedi `SCENARI`):
   entrato e uscito, rigori calciati = segnati + sbagliati, tutto dai voti di Fantacalcio.it: i numeri «nostri» di
   `nostri.py` (dati e parametri);
 - `voto_fisso`: ogni voto dello storico vale la media del ruolo (nessun giudizio della redazione, nessun fatto);
-- `voto_eventi` / `voto_stat`: il voto in pagella dello storico sostituito da un voto STIMATO con una regressione per ruolo
-  (gol, assist, rigori, cartellini, autogol, minuti, entrato/uscito, risultato, gol subiti; `voto_stat` anche tiri e
-  passaggi chiave, al posto del «rating» del fornitore che non abbiamo), tarata su `STAGIONE_TARATURA`;
+- `voto_eventi`: il voto in pagella dello storico sostituito da un voto STIMATO con una regressione per ruolo (gol, assist,
+  rigori, cartellini, autogol, minuti stimati da entrato e uscito, risultato, gol subiti), tarata su `STAGIONE_TARATURA`;
 - `pacchetto_a`: solo calendario e risultati (+ ruolo e quotazione iniziale dalle rose dell'utente);
-- `pacchetto_b` (senza xG e voto stimato), `pacchetto_b_xg` (voto stimato, xG tenuti);
-- `sportmonks_starter`: pacchetto B + squalifiche (dai cartellini) + indisponibili (simulati) + formazioni ufficiali per
-  le partite che iniziano entro 50 minuti dalla prima (escono circa 1 ora prima; scadenza 10 minuti prima della prima);
+- `solo_indisponibili`: completo + squalifiche (dai cartellini) + indisponibili (simulati);
 - `attuale_probabili_90` / `_80`: stima del modello di OGGI dal vivo = completo + probabili SIMULATE che indovinano il
   90% (80%) dei titolari, con indisponibili e squalificati segnati (le probabili vere del passato non le abbiamo);
-- `pacchetto_c`: B+xG + indisponibili + formazioni previste simulate all'87% (quanto dichiara il fornitore);
 - `oracolo_presenze`: limite superiore (si sa già chi prende voto).
 Per ogni scenario che dà i gol attesi si misura anche se sono tarati, per fasce (`gol_per_fasce`, `scarto_gol`).
 Le parti «simulate» usano il futuro di proposito (chi non gioca per 3 giornate di fila = indisponibile noto): sono una
 stima favorevole, scritta nel documento dei risultati (docs/FONTI-DATI-MISURE.md).
+I fatti del voto stimato vengono dai soli voti di Fantacalcio.it e dalle partite: niente statistiche dei giocatori di
+Understat (Fase F del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md). Gli scenari che usavano tiri,
+passaggi chiave o xG dei giocatori come fatti (`voto_stat`, `pacchetto_b`, `pacchetto_b_xg`, `pacchetto_c`,
+`sportmonks_starter`) sono stati tolti.
 """
 from __future__ import annotations
 
@@ -41,14 +41,10 @@ from .regole import RUOLI, Regole
 STAGIONE_TARATURA = "2025-26"      # stagione su cui si tarano le regressioni (voto stimato, pacchetto A)
 RIDGE = 1.0                         # piccola penalità: coefficienti stabili anche con pochi portieri
 SEME = 11
-SCADENZA_MINUTI = 10               # la formazione si chiude 10 minuti prima della prima partita (lega dell'utente)
-ANTICIPO_UFFICIALI = 60            # le formazioni ufficiali escono circa 60 minuti prima del calcio d'inizio
 GIORNATE_INDISPONIBILE = 3         # assente in questa giornata e nelle 2 dopo = indisponibile noto (infortunio, squalifica)
 SOGLIE_GIALLI = (5, 10, 14, 17)    # ammonizioni che fanno scattare una giornata di squalifica (poi una ogni ammonizione)
 P_TITOLARE_PROB = _p_da_probabili("titolare", 85, False)   # titolare nelle probabili, 85%
 P_PANCHINA_MAX = 0.35              # chi le probabili danno in panchina: al massimo così (come la percentuale delle panchine)
-P_TITOLARE_UFFICIALE = 0.97
-P_PANCHINA_UFFICIALE = 0.30
 
 
 def stagione_taratura(d: Dati) -> str:
@@ -171,12 +167,11 @@ def _previsioni(dm: Dati, stagione: str, giornata: int, regole: Regole, par: Par
 # ---------------------------------------------------------------- voto stimato
 EVENTI = ["gol", "rig_segnati", "rig_sbagliati", "assist", "ammonizioni", "espulsioni", "autogol", "subentrato",
           "sostituito", "min90", "diff", "vittoria", "sconfitta", "subiti", "imbattuto", "gol_subiti", "rig_parati"]
-STATISTICHE = ["tiri", "passaggi_chiave", "ha_stat"]
-XG = ["xg", "xa", "xg_chain", "xg_buildup"]
 
 
 def tabella_fatti(d: Dati) -> pd.DataFrame:
-    """Le righe dei voti con accanto i fatti oggettivi della partita (stesso indice di `d.voti`)."""
+    """Le righe dei voti con accanto i fatti oggettivi della partita (stesso indice di `d.voti`): solo voti e partite, le
+    prestazioni non si leggono. I minuti sono quelli stimati da entrato e uscito (`nostri.minuti_stimati`)."""
     v = d.voti.copy()
     p = d.partite[d.partite["giocata"] == 1]
     sq = pd.concat([
@@ -184,23 +179,17 @@ def tabella_fatti(d: Dati) -> pd.DataFrame:
                       "gf": p["gol_casa"], "gs": p["gol_trasferta"]}),
         pd.DataFrame({"stagione": p["stagione"], "giornata": p["giornata"], "squadra": p["trasferta"],
                       "gf": p["gol_trasferta"], "gs": p["gol_casa"]})]).drop_duplicates(["stagione", "giornata", "squadra"])
-    u = d.prestazioni[d.prestazioni["calciatore_id"].notna()]
-    u = u.groupby(["stagione", "giornata", "calciatore_id"])[["minuti", "tiri", "passaggi_chiave", "xg", "xa", "xg_chain",
-                                                              "xg_buildup"]].sum(min_count=1).reset_index()
-    u["calciatore_id"] = u["calciatore_id"].astype(int)
     idx = v.index
-    v = v.merge(sq, on=["stagione", "giornata", "squadra"], how="left").merge(
-        u, on=["stagione", "giornata", "calciatore_id"], how="left")
+    v = v.merge(sq, on=["stagione", "giornata", "squadra"], how="left")
     v.index = idx
-    v["ha_stat"] = v["minuti"].notna().astype(float)
-    v["min90"] = (v["minuti"].fillna(pd.Series(np.where(v["subentrato"] == 1, 25, 85), index=v.index)) / 90).clip(upper=1.0)
+    v["min90"] = nostri.minuti_stimati(v) / 90
     diff = (v["gf"] - v["gs"]).fillna(0)
     v["diff"] = diff.clip(-3, 3)
     v["vittoria"] = (diff > 0).astype(float)
     v["sconfitta"] = (diff < 0).astype(float)
     v["subiti"] = v["gs"].fillna(1).clip(upper=5)
     v["imbattuto"] = (v["gs"] == 0).astype(float)
-    for c in EVENTI + STATISTICHE + XG:
+    for c in EVENTI:
         v[c] = pd.to_numeric(v[c], errors="coerce").fillna(0.0).astype(float)
     return v
 
@@ -349,18 +338,7 @@ def _assente(cid: int, insieme: set) -> bool:
     return cid in insieme
 
 
-def partite_con_ufficiali(d: Dati, stagione: str, giornata: int) -> set:
-    """Partite le cui formazioni ufficiali escono prima della scadenza della lega."""
-    p = d.partite[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata) & d.partite["data"].notna()]
-    if p.empty:
-        return set()
-    t = pd.to_datetime(p["data"])
-    limite = t.min() - pd.Timedelta(minutes=SCADENZA_MINUTI) + pd.Timedelta(minutes=ANTICIPO_UFFICIALI)
-    return set(p.loc[(t <= limite).to_numpy(), "id"].astype(int))
-
-
-def ritocca(regole: Regole, sidelined: bool = False, ufficiali: bool = False, probabili: float | None = None,
-            seme: int = SEME):
+def ritocca(regole: Regole, sidelined: bool = False, probabili: float | None = None, seme: int = SEME):
     """Funzione `ritocca` per `verifica`: nuove probabilità di giocare con i dati di presenza di uno scenario."""
     col = COLONNA_VOTO[regole.fonte_voto]
 
@@ -391,19 +369,13 @@ def ritocca(regole: Regole, sidelined: bool = False, ufficiali: bool = False, pr
                     if fuori[k]:
                         continue
                     p[k] = P_TITOLARE_PROB if k in tit else min(p[k], P_PANCHINA_MAX)
-        if ufficiali:
-            con = partite_con_ufficiali(d, stagione, giornata)
-            for k, part in enumerate(prev["partita"].to_numpy()):
-                if int(part) in con:
-                    p[k] = P_TITOLARE_UFFICIALE if ids[k] in titolari else (0.0 if fuori[k] else min(p[k], P_PANCHINA_UFFICIALE))
         return p
     return f
 
 
 # ---------------------------------------------------------------- scenari
-SCENARI = ("completo", "senza_xg", "solo_fantacalcio", "voto_fisso", "voto_eventi", "voto_stat", "pacchetto_a", "pacchetto_b",
-           "pacchetto_b_xg", "solo_indisponibili", "sportmonks_starter", "attuale_probabili_90", "attuale_probabili_80",
-           "pacchetto_c", "oracolo_presenze")
+SCENARI = ("completo", "senza_xg", "solo_fantacalcio", "voto_fisso", "voto_eventi", "pacchetto_a", "solo_indisponibili",
+           "attuale_probabili_90", "attuale_probabili_80", "oracolo_presenze")
 
 
 def prepara(nome: str, d: Dati, regole: Regole, par: Parametri) -> tuple[dict, dict]:
@@ -412,7 +384,6 @@ def prepara(nome: str, d: Dati, regole: Regole, par: Parametri) -> tuple[dict, d
         raise ValueError(f"scenario sconosciuto: {nome} (validi: {', '.join(SCENARI)})")
     kw: dict = {"par": par}
     note: dict = {}
-    ev, st = list(EVENTI), list(EVENTI) + STATISTICHE
 
     def voto(dati, colonne):
         dv, tar = con_voto_stimato(dati, regole, colonne)
@@ -425,19 +396,9 @@ def prepara(nome: str, d: Dati, regole: Regole, par: Parametri) -> tuple[dict, d
     elif nome == "voto_fisso":
         kw["dati_modello"] = voto(d, [])
     elif nome == "voto_eventi":
-        kw["dati_modello"] = voto(d, ev)
-    elif nome == "voto_stat":
-        kw["dati_modello"] = voto(d, st)
+        kw["dati_modello"] = voto(d, list(EVENTI))
     elif nome == "pacchetto_a":
         kw["prevedi"] = prevedi_pacchetto_a(tara_pacchetto_a(d, regole))
-    elif nome in ("pacchetto_b", "sportmonks_starter"):
-        kw |= {"dati_modello": voto(senza_xg(d), st), "par": par_senza_xg(par)}
-        if nome == "sportmonks_starter":
-            kw["ritocca"] = ritocca(regole, sidelined=True, ufficiali=True)
-    elif nome in ("pacchetto_b_xg", "pacchetto_c"):
-        kw["dati_modello"] = voto(d, st + XG)
-        if nome == "pacchetto_c":
-            kw["ritocca"] = ritocca(regole, probabili=0.87, ufficiali=True)
     elif nome == "solo_indisponibili":
         kw["ritocca"] = ritocca(regole, sidelined=True)
     elif nome.startswith("attuale_probabili_"):

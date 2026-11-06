@@ -65,13 +65,15 @@ def test_varianti_cambiano_solo_le_partite_con_il_dato_e_non_toccano_l_originale
     prima = d.partite.copy()
     x, n = verifica_fonti.dati_con_variante(d, "xg_fd")
     assert n == 1 and x.partite.loc[0, "xg_casa"] == 2.1 and x.partite.loc[1, "xg_casa"] == 1.0
-    t, n = verifica_fonti.dati_con_variante(d, "tiri_porta")
-    k = 3 / 9                                                              # gol / tiri in porta della sola partita con dati
-    assert n == 1 and t.partite.loc[0, "xg_casa"] == pytest.approx(0.5 * 1.5 + 0.5 * k * 6)
-    assert t.partite.loc[1, "xg_casa"] == 1.0
     pd.testing.assert_frame_equal(d.partite, prima)                        # l'originale è intatto
     with pytest.raises(ValueError):
         verifica_fonti.dati_con_variante(d, "inventata")
+
+
+def test_tiri_porta_tolta_perche_mescola_gli_xg_di_understat():
+    assert verifica_fonti.VARIANTI == ("xg_fd",)
+    with pytest.raises(ValueError, match="fonte sconosciuta"):
+        verifica_fonti.dati_con_variante(_dati(EXTRA), "tiri_porta")
 
 
 def test_senza_dati_extra_le_varianti_non_cambiano_niente():
@@ -93,8 +95,8 @@ def test_regola_di_promozione():
     assert verifica_fonti.giudizio(poco)["xg_fd"].startswith("non promossa")
     una = _tabella([("xg_fd", "tutte", -3.0, 50), ("xg_fd", "2026-27", -3.0, 50)])
     assert "solo indicativo" in verifica_fonti.giudizio(una)["xg_fd"]
-    niente = _tabella([("tiri_porta", "tutte", 0.0, 0), ("tiri_porta", "2025-26", 0.0, 0), ("tiri_porta", "2026-27", 0.0, 0)])
-    assert "niente da misurare" in verifica_fonti.giudizio(niente)["tiri_porta"]
+    niente = _tabella([("xg_fd", "tutte", 0.0, 0), ("xg_fd", "2025-26", 0.0, 0), ("xg_fd", "2026-27", 0.0, 0)])
+    assert "niente da misurare" in verifica_fonti.giudizio(niente)["xg_fd"]
 
 
 def test_confronto_riporta_prima_e_dopo(monkeypatch):
