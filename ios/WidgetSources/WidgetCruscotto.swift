@@ -74,7 +74,8 @@ struct VistaCruscotto: View {
                 TestoCheEntra(ParoleWidget.moduloEPunti(f.modulo, punti: f.puntiAttesi, fascia: f.intervallo?.testo))
                     .font(.caption).monospacedDigit()
                 if let p = w.partiteInGioco.first {
-                    Text("\(ColoriSquadra.sigla(p.casa)) \(p.punteggio) \(ColoriSquadra.sigla(p.trasferta)) \(p.etichetta(adesso: voce.date))")
+                    // la stessa riga del widget Partite live: «INT 2–1 ROM 63'», senza punteggio «INT vs ROM · …» (#391)
+                    Text(p.formeRiga(adesso: voce.date).first ?? p.squadre)
                         .font(.caption2).lineLimit(1)
                 } else if dubbi > 0 {
                     EtichettaDaControllare(n: dubbi).font(.caption2)
