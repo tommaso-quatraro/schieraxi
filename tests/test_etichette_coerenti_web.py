@@ -120,7 +120,8 @@ def test_recuperi_che_mancano_scritti_come_la_carta_del_rinvio():
     r = {"giornata": 10, "giornata_lega": 7, "formazione_di": "tua", "nel_diario": True, "punti_fatti": 61,
          "recuperi": [{"casa": "udinese", "trasferta": "milan", "data": None}, {"casa": "atalanta", "trasferta": "parma", "data": "2026-11-25 20:45"}]}
     blocco = "\n".join([_pezzo("const SIGLE =", "const NOMI_DIFF"), _riga("sigla"), _pezzo("function parseData(s)", "// ETag e If-Match"),
-                        _pezzo("const MODI_RINVIO", "function collegaRinvio"), _pezzo("function cardRiepilogo(", "// Nome e slogan in cima a Oggi")])
+                        _pezzo("const MODI_RINVIO", "function collegaRinvio"), _pezzo("function nomeGiornata(", "// «la 8ª»"),
+                        _pezzo("function cardRiepilogo(", "// Nome e slogan in cima a Oggi")])
     html = _esegui(f"cardRiepilogo({json.dumps(r)}, null)", blocco)
     assert "Manca il recupero di UDI vs MIL, ATA vs PAR: i punti possono ancora cambiare." in _testo(html)
     assert "–" not in _testo(html)
