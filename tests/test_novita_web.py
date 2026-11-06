@@ -10,7 +10,7 @@ TESTI = (WEB / "testi.js").read_text(encoding="utf-8")
 
 
 def _vista():
-    inizio = APP.index("async function vistaNovita()")
+    inizio = APP.index("async function vistaNovita(")
     return APP[inizio:APP.index("\n}\n", inizio)]
 
 

@@ -22,9 +22,22 @@ function vistaImpostazioni(gruppo) {
   if (!scelto && impLargo()) scelto = visibili.find(g => g.id === stato.impGruppo) || visibili[0];
   // titolo della schermata «Impostazioni», senza la riga della giornata: qui si parla di te e dell'app, non della lega
   const cfg = { voci: visibili, corpi: CORPI_IMP, collega: COLLEGA_IMP, aria: t("imp.gruppi_aria"), indietro: t("shell.impostazioni"), scelto: scelto && scelto.id, ricorda: id => { stato.impGruppo = id; },
-    titolo: t("shell.impostazioni"), stato: false };
+    titolo: t("shell.impostazioni"), stato: false, indirizzo: indirizzoImp, lista: listaImp };
   stato.pannelli = cfg;
   montaPannelli(cfg);
+}
+
+// Il gruppo aperto ha il suo indirizzo (?vista=impostazioni&gruppo=…, #449): aperto con un clic (`nuova`) è una voce nuova nella
+// cronologia, così Indietro torna all'elenco (sotto i 768 px) o al gruppo di prima; aperto da solo (da 768 px il primo, un indirizzo,
+// Indietro) corregge la voce di adesso.
+function indirizzoImp(id, nuova) {
+  scriviIndirizzo({ vista: "impostazioni", gruppo: id, scheda: null }, nuova);
+}
+// «‹ Impostazioni» (sotto i 768 px): l'elenco è già in pagina. Se la voce di prima nella cronologia è l'elenco è Indietro (niente voce
+// morta), altrimenti l'elenco prende il posto del gruppo.
+function listaImp() {
+  const lista = indirizzoVista("impostazioni");
+  if (!tornaIndietro(da => da === lista, lista)) scriviIndirizzo({ vista: "impostazioni", gruppo: null, scheda: null }, false);
 }
 
 // Il componente a due pannelli (elenco di voci + pagina), usato da Impostazioni e da Lega.
@@ -54,7 +67,11 @@ function apriPannello(cfg, id, sposta = true) {
   });
   pagina.innerHTML = `<button class="bottone secondario imp-indietro" id="imp-indietro" type="button">${ICONA_INDIETRO}${cfg.indietro}</button>
     <h2 class="imp-titolo" id="imp-titolo" tabindex="-1">${g.nome}</h2><div id="imp-corpo">${cfg.corpi[id]()}</div>`;
-  $("#imp-indietro").addEventListener("click", () => { radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-imp="${id}"]`); if (b) b.focus(); });
+  $("#imp-indietro").addEventListener("click", () => {
+    radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-imp="${id}"]`); if (b) b.focus();
+    if (cfg.lista) cfg.lista();
+  });
+  if (cfg.indirizzo) cfg.indirizzo(id, sposta);
   cfg.collega[id]();
   if (sposta) { window.scrollTo(0, 0); if (!impLargo()) $("#imp-titolo").focus({ preventScroll: true }); }
 }

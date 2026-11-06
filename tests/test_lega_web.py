@@ -67,7 +67,7 @@ def test_plurali_corretti_nelle_squadre():
 
 
 def test_regole_a_sezioni_ripiegabili_con_il_nome_vero_della_lega():
-    inizio = APP.index("async function vistaRegole()")
+    inizio = APP.index("async function vistaRegole(")
     regole = APP[inizio:APP.index('<div class="salva-fisso" hidden><button class="bottone" id="salva-regole">')]
     assert len(re.findall(r'<details class="carta regola-sez"', regole)) == 7 and regole.count("</details>") >= 7          # 7 = con «Partite rinviate»
     assert "<h2 style=\"margin-top:14px\">${esc(r.nome_lega)}</h2>" in regole

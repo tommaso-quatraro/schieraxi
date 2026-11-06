@@ -67,8 +67,8 @@ def test_seguiti_un_solo_nome():
         valori = re.findall(r'"(?:mercato|lega)\.[a-z_.]*osserv[a-z_.]*": "([^"]*)"', blocco)
         assert valori and not [v for v in valori if re.search(r"(?i)osserv|watch", v)], valori
     assert _testo(IT, "mercato.osserva") == "☆ Segui" and _testo(IT, "mercato.osservato") == "★ Seguito"
-    assert _testo(IT, "mercato.tab_osservati") == _testo(IT, "lega.voce_osservati") == "Seguiti"
-    assert _testo(EN, "mercato.osserva") == "☆ Follow" and _testo(EN, "mercato.tab_osservati") == _testo(EN, "lega.voce_osservati") == "Following"
+    assert _testo(IT, "lega.voce_osservati") == "Seguiti"                   # menu e sezioni di Squadra (#458: stessa chiave)
+    assert _testo(EN, "mercato.osserva") == "☆ Follow" and _testo(EN, "lega.voce_osservati") == "Following"
 
 
 def test_plurale_del_bonus_nelle_regole():
