@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.417",
+    "data": "2026-11-06T02:45:44",
+    "titolo": "Rose incollate o caricate: lettura più rapida delle celle lunghe",
+    "voci": [
+      "Le rose incollate o caricate si leggono più in fretta anche con celle molto lunghe."
+    ],
+    "tecnico": [
+      "rose.griglia_da_testo accorcia ogni cella a MAX_TESTO_CELLA (200 caratteri), come già facevano _righe_csv per il CSV e leggi_griglie per l'Excel.",
+      "rose._delimitatore: la riga «$,$,$» dell'esportazione «rosters» si legge una riga alla volta con le funzioni delle stringhe (_separatore_rosters) invece che con un'espressione regolare; riconosce gli stessi separatori di prima.",
+      "nomi.Indice.cerca e _interpretazioni leggono al massimo MAX_TESTO (200) caratteri della cella.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
     "versione": "1.416",
     "data": "2026-11-06T02:15:55",
     "titolo": "Prove interne del modello senza le statistiche dei giocatori di Understat",
