@@ -249,9 +249,11 @@ struct CartaRiepilogoGiornata: View {
         Carta("Com'è andata", simbolo: "flag.checkered") {
             if let r = riepilogo, let fatti = r.puntiFatti {
                 let chi = r.formazioneDi == "tua" ? "con la tua formazione" : "con la formazione consigliata"
-                Text([TestiFase.giornata(serieA: r.giornata, lega: r.giornataLega), chi].compactMap { $0 }.joined(separator: ", ").primaMaiuscola)
+                Text([TestiFase.giornataFinita(serieA: r.giornata, lega: r.giornataLega), chi].compactMap { $0 }.joined(separator: ", ").primaMaiuscola)
                     .font(.subheadline).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel([TestiFase.giornataFinita(serieA: r.giornata, lega: r.giornataLega, voce: true), chi]
+                        .compactMap { $0 }.joined(separator: ", ").primaMaiuscola)
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
                         numeroFatti(fatti)

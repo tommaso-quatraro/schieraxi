@@ -39,6 +39,7 @@ struct FormazioneView: View {
                             }
                             Carta("Campo", simbolo: "sportscourt") {
                                 CampoFormazione(titolari: v.titolari, apribile: true)
+                                notaScelta(vm.righeScelta(f))
                                 if legendaVista { pulsanteLegenda }
                             }
                             .ingresso(3)
@@ -144,6 +145,23 @@ struct FormazioneView: View {
             }
             .frame(minWidth: 320, idealWidth: 380)
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    /// Sotto il campo, come la nota della web: per i titolari che sembrano una scelta storta, il nome e il perché (righe del server).
+    @ViewBuilder
+    private func notaScelta(_ righe: [RigaScelta]) -> some View {
+        if !righe.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(righe) { r in
+                    (Text(r.nome).bold() + Text(" · " + r.testo))
+                        .font(.footnote).foregroundStyle(Color.testoSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel(r.voce)
+                }
+            }
+            .padding(.top, 2)
         }
     }
 
@@ -324,49 +342,23 @@ struct FormazioneView: View {
 
     // MARK: riga di stato della scelta
 
-    /// Sempre visibile (per la propria squadra): consigliata non salvata, salvata (con l'ora), modifiche non salvate.
+    /// Sempre visibile per la propria squadra (`RigaStatoScelta`), con gli stati, le frasi e i pulsanti della web.
     @ViewBuilder
     private func rigaStato(_ f: Formazione) -> some View {
         let stato = vm.statoScelta
         if stato != .sconosciuto {
-            let colore: Color = stato.tono == .bene ? .verde : stato.tono == .attenzione ? .attenzione : Color.testoSecondario
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 8) {
-                    testoStato(stato, colore)
-                    Spacer(minLength: 4)
-                    if stato == .consigliata, !vm.chiusa { salvaQuesta(f) }
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    testoStato(stato, colore)
-                    if stato == .consigliata, !vm.chiusa { salvaQuesta(f) }
-                }
-            }
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(colore.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .animation(Tema.morbida, value: stato)
+            RigaStatoScelta(stato: stato,
+                            salvaQuesta: { salvaQuesta(f) },
+                            tornaAllaConsigliata: { tornaAllaConsigliata(f) })
         }
     }
 
-    private func testoStato(_ stato: StatoScelta, _ colore: Color) -> some View {
-        Label {
-            Text(stato.titolo()).font(.footnote.weight(.semibold)).foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: stato.simbolo).foregroundStyle(colore).accessibilityHidden(true)
-        }
-        .accessibilityElement(children: .combine)
+    private func salvaQuesta(_ f: Formazione) {
+        Task { await vm.salvaQuesta(f) }
     }
 
-    /// «Salva questa»: salva come tua scelta la formazione che stai guardando.
-    private func salvaQuesta(_ f: Formazione) -> some View {
-        Button { Task { await vm.salvaQuesta(f) } } label: {
-            Label("Salva questa", systemImage: "tray.and.arrow.down").font(.footnote.weight(.semibold))
-                .fixedSize().frame(minHeight: 44).contentShape(Rectangle())
-        }
-        .buttonStyle(StilePressione())
-        .foregroundStyle(Color.verde)
-        .accessibilityHint("Salva come tua scelta per questa giornata la formazione che stai guardando")
+    private func tornaAllaConsigliata(_ f: Formazione) {
+        Task { await vm.tornaAllaConsigliata(f) }
     }
 
     /// Gli stili come scelte in fila, la loro descrizione, il modulo proposto e i moduli.
@@ -470,7 +462,8 @@ struct FormazioneView: View {
     @ViewBuilder
     private var salva: some View {
         let stato = vm.statoScelta
-        if vm.squadraVista == nil, stato.daSalvare {
+        // non mentre il server prova la scelta salvata appena letta (lo stato non si sa ancora)
+        if vm.squadraVista == nil, stato.daSalvare, !vm.provaSalvata {
             Button { Task { await vm.valuta(salva: true) } } label: {
                 Label(Self.etichettaSalva(stato), systemImage: "tray.and.arrow.down").fixedSize().frame(minHeight: 44)
             }

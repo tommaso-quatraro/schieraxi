@@ -1,6 +1,6 @@
 /* =====================================================================================================
-   SchieraXI: superfici piene e piatte, un gradino di tono sopra il fondo; il colore solo sui dati (docs/STILE-SENZA-AI.md).
-   Il vetro sfocato resta solo su testata, barra e foglio, che scorrono sopra il contenuto. Niente riflessi, aloni né macchie.
+   SchieraXI: superfici piene e piatte su un fondo neutro (bianco / grigio quasi nero); il colore solo sui dati (docs/STILE-SENZA-AI.md).
+   Niente vetro sfocato, nemmeno su testata, barra e foglio (grafica B, spec §7.5-7.6). Niente riflessi, aloni né macchie.
    ===================================================================================================== */
 /* Un elemento con l'attributo `hidden` resta nascosto anche se la sua classe ha un `display` (prima `.riga` mostrava «Dalle/Alle»
    delle ore tranquille con l'interruttore spento). */
@@ -9,8 +9,10 @@
 :root {
   color-scheme: dark;
   --z: 1;                                   /* ingrandimento su schermi grandi (vedi in fondo a «Schermi larghi»): serve a dividere le misure in vh */
-  --sfondo: #07100b;
-  --testo: #eef6f0;
+  --sfondo: #121513;                        /* grigio quasi nero, neutro (prima un verde scurissimo) */
+  --superficie: #1a1e1c;                    /* passaggio del mouse, pannello, barra, intestazioni ferme */
+  --filo: #2e3430;                          /* separatori tra le righe (decorativi) */
+  --testo: #e9edea;
   --testo-2: #bccdc2;                       /* IL grigio dei testi secondari (uguale a iOS Tema.secondarioScuro): 4,5:1 anche sul fondo sfumato. Niente altri grigi e niente opacità sul testo */
   --verde: #3ddc97;
   --capitano: #d4f34a;
@@ -29,14 +31,14 @@
   /* scritta delle pillole dei giocatori (.etichetta): sopra la tinta della pillola il colore pieno non arrivava a 4,5:1 (issue #234).
      Uguali all'iPhone (Tema.pillolaAttenzione*, Tema.pillolaMalus*): in scuro il rosso un filo più chiaro, in chiaro tutte più scure */
   --eti-verde: var(--verde); --eti-arancio: var(--arancio); --eti-rosso: #ff867b;
-  --vetro: rgba(24, 40, 31, .52);           /* colore del vetro (sopra lo sfondo sfocato) */
-  --vetro-carta: rgba(26, 42, 33, .62);     /* carte: vetro leggero */
+  --vetro: var(--sfondo);                   /* superfici piene: niente più vetro trasparente (si tolgono quando nessuna regola li usa) */
+  --vetro-carta: var(--sfondo);
   --bordo: rgba(255, 255, 255, .13);
   --bordo-campo: #66796e;                   /* bordo di campi, menu e caselle di testo: almeno 3:1 con il fondo del campo e con quello intorno (issue #285) */
   --luce: rgba(255, 255, 255, .34);         /* riflesso sul bordo alto */
   --luce-2: rgba(255, 255, 255, .06);
   --ombra: 0 6px 20px rgba(0, 0, 0, .35);             /* solo per ciò che galleggia: barra, foglio, avvisi */
-  --solido: #101a14;                        /* dentro agli anelli e ai grafici */
+  --solido: #1a1e1c;                        /* dentro campi di testo, anelli e grafici */
   --campo: #146b3a;
   --campo-bagliore: 80%;
   --campo-righe: rgba(255, 255, 255, .3);
@@ -51,14 +53,16 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-tema="scuro"]) {
     color-scheme: light;
-    --sfondo: #eaf3ee;
+    --sfondo: #ffffff;
+    --superficie: #f4f5f2;
+    --filo: #dde1dc;
     --testo: #10201a;
     --testo-2: #46564d;                     /* uguale a iOS Tema.secondarioChiaro */
     --verde: #0a7d4c;
     --capitano: #86a800;
     --verde-2: #075f38;
     --verde-testo: #ffffff;
-    --azione: #526600; --azione-2: #3f4f00; --azione-testo: #ffffff;   /* oliva scuro: pulsanti, link, testi di azione; il lime resta decorazione e capitano */
+    --azione: #0b6b3a; --azione-2: #08552e; --azione-testo: #ffffff;   /* verde bosco, solo sulla web (l'iPhone resta oliva): pulsanti, link, testi di azione; il lime resta decorazione e capitano */
     --xi: var(--azione);
     --spunta: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --rosso: #b3261e;
@@ -67,8 +71,8 @@
     --giallo-testo: #7d6000;
     --blu: #1a5bb5;
     --eti-verde: #08643d; --eti-arancio: #834700; --eti-rosso: #a1221b;   /* scritta delle pillole: >= 4,5:1 anche sul foglio della scheda */
-    --vetro: rgba(255, 255, 255, .55);
-    --vetro-carta: rgba(255, 255, 255, .72);
+    --vetro: var(--sfondo);
+    --vetro-carta: var(--sfondo);
     --bordo: rgba(16, 32, 26, .1);
     --bordo-campo: #728379;                 /* almeno 3:1 anche sul fondo piatto e sul foglio della scheda */
     --luce: rgba(255, 255, 255, .95);
@@ -81,14 +85,16 @@
 }
 :root[data-tema="chiaro"] {
     color-scheme: light;
-    --sfondo: #eaf3ee;
+    --sfondo: #ffffff;
+    --superficie: #f4f5f2;
+    --filo: #dde1dc;
     --testo: #10201a;
     --testo-2: #46564d;                     /* uguale a iOS Tema.secondarioChiaro */
     --verde: #0a7d4c;
     --capitano: #86a800;
     --verde-2: #075f38;
     --verde-testo: #ffffff;
-    --azione: #526600; --azione-2: #3f4f00; --azione-testo: #ffffff;   /* oliva scuro: pulsanti, link, testi di azione; il lime resta decorazione e capitano */
+    --azione: #0b6b3a; --azione-2: #08552e; --azione-testo: #ffffff;   /* verde bosco, solo sulla web (l'iPhone resta oliva): pulsanti, link, testi di azione; il lime resta decorazione e capitano */
     --xi: var(--azione);
     --spunta: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --rosso: #b3261e;
@@ -97,8 +103,8 @@
     --giallo-testo: #7d6000;
     --blu: #1a5bb5;
     --eti-verde: #08643d; --eti-arancio: #834700; --eti-rosso: #a1221b;   /* scritta delle pillole: >= 4,5:1 anche sul foglio della scheda */
-    --vetro: rgba(255, 255, 255, .55);
-    --vetro-carta: rgba(255, 255, 255, .72);
+    --vetro: var(--sfondo);
+    --vetro-carta: var(--sfondo);
     --bordo: rgba(16, 32, 26, .1);
     --bordo-campo: #728379;                 /* almeno 3:1 anche sul fondo piatto e sul foglio della scheda */
     --luce: rgba(255, 255, 255, .95);
@@ -130,7 +136,6 @@ b, strong { font-weight: 650; }
 /* ---------------------------------------------------------------- vetro */
 .vetro {
   background: var(--vetro);
-  -webkit-backdrop-filter: blur(26px) saturate(1.7); backdrop-filter: blur(26px) saturate(1.7);
   border: 1px solid var(--bordo);
   box-shadow: var(--ombra);
 }
@@ -153,8 +158,6 @@ b, strong { font-weight: 650; }
 .positivo { color: var(--verde); } .negativo { color: var(--rosso); }
 
 /* ---------------------------------------------------------------- testata */
-/* più opaca delle altre superfici di vetro: scorrendo, il campo verde passa sotto e il grigio secondario del sottotitolo restava sotto 4,5:1 */
-.testata.vetro { --vetro: color-mix(in srgb, var(--solido) 80%, transparent); }
 .testata { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: calc(env(safe-area-inset-top) + 10px) 18px 12px; border-width: 0 0 1px 0; border-radius: 0; box-shadow: none; }
 .titolo { margin: 0; font-weight: 750; font-size: var(--t-card); letter-spacing: -.02em; }
@@ -175,8 +178,8 @@ main { padding: 14px 16px 0; max-width: 720px; margin: 0 auto; }
   background: color-mix(in srgb, var(--azione) 18%, transparent); }
 .lente.muove i { animation: allunga .55s var(--uscita); }
 @keyframes allunga { 0% { transform: scale(1, 1); } 35% { transform: scale(calc(1 + var(--mov, 1) * .22), calc(1 - var(--mov, 1) * .1)); } 100% { transform: scale(1, 1); } }
-/* fondo quasi opaco: il testo che scorre sotto la barra non si legge attraverso il vetro */
-.schede.vetro { background: color-mix(in srgb, var(--solido) 90%, transparent); }
+/* fondo pieno: il testo che scorre sotto la barra non si legge attraverso */
+.schede.vetro { background: var(--solido); }
 .schede button { border: 0; background: none; color: var(--testo-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: var(--t-eti); font-weight: 550; border-radius: 30px; letter-spacing: .01em; }
 .schede svg { width: 25px; height: 25px; transition: transform .4s var(--molla); }
 .schede button.attiva { color: var(--azione); }
@@ -190,7 +193,9 @@ html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: calc(var(--barra) 
 /* --mov: 1 = movimento pieno, 0 = versione calma (solo dissolvenze). Lo imposta html[data-calmo]. */
 @keyframes entra { from { opacity: 0; transform: translateY(calc(var(--mov, 1) * 16px)) scale(calc(1 - var(--mov, 1) * .015)); } to { opacity: 1; transform: none; } }
 @keyframes entra-breve { from { opacity: 0; transform: translateY(calc(var(--mov, 1) * 8px)); } to { opacity: 1; transform: none; } }
-@keyframes pop { 0% { opacity: 0; transform: scale(calc(1 - var(--mov, 1) * .6)) translateY(calc(var(--mov, 1) * 10px)); } 70% { transform: scale(calc(1 + var(--mov, 1) * .08)); } 100% { opacity: 1; transform: none; } }
+/* Pedina: compare di colpo (1%: --vela vale 1) e poi si muove. A metà dissolvenza il testo delle pillole («⚠ gioca 45%», sigla della squadra)
+   perde contrasto e axe lo segnala (issue #307). Con il movimento ridotto (--vela: 0) la dissolvenza resta, come per le altre entrate. */
+@keyframes pop { 0% { opacity: 0; transform: scale(calc(1 - var(--mov, 1) * .6)) translateY(calc(var(--mov, 1) * 10px)); } 1% { opacity: var(--vela, 1); } 70% { transform: scale(calc(1 + var(--mov, 1) * .08)); } 100% { opacity: 1; transform: none; } }
 @keyframes dissolve { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sfuma { from { opacity: 1; } to { opacity: 0; } }
 @keyframes sale { from { opacity: var(--vela, 1); transform: translateY(calc(var(--mov, 1) * 100%)); } to { opacity: 1; transform: none; } }
@@ -247,7 +252,8 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .altre-azioni[open] { flex: 1 0 100%; } .altre-azioni[open] > .pulsanti { margin-top: 10px; }
 .segmenti { display: flex; padding: 4px; margin-bottom: 14px; border-radius: 20px; background: color-mix(in srgb, var(--solido) 40%, transparent); border: 1px solid var(--bordo); position: relative; }
 .segmenti button { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; padding: 11px 4px; border-radius: var(--r-in); font-size: var(--t-sec); font-weight: 550; color: var(--testo-2); }
-.segmenti button.attivo { color: var(--testo); background: var(--vetro-carta); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
+/* voce scelta: grigio neutro un gradino sopra la striscia (con le superfici piene il fondo della carta non si distingueva più) */
+.segmenti button.attivo { color: var(--testo); background: color-mix(in srgb, var(--testo) 12%, var(--sfondo)); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
 /* striscia scorrevole (Mercato): le voci hanno la loro larghezza vera e non si tagliano; la scelta resta in vista e un bordo sfumato dice che si scorre */
 .segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 2px; scroll-snap-type: x proximity; scroll-padding-inline: 24px;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fs, 0px), #000 calc(100% - var(--fd, 0px)), transparent);
@@ -591,7 +597,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .maniglia { position: sticky; top: 0; z-index: 3; display: flex; justify-content: center; padding: 6px 0 14px; touch-action: none; }
 .maniglia i { width: 42px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--testo) 30%, transparent); }
 .foglio-chiudi { position: absolute; top: 14px; right: 14px; z-index: 4; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 50%, transparent); width: 44px; height: 44px; border-radius: 50%; font-size: var(--t-corpo); color: var(--testo-2); }
-.foglio:not([hidden]) .foglio-sfondo { animation: dissolve .28s ease both; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.foglio:not([hidden]) .foglio-sfondo { animation: dissolve .28s ease both; }
 .foglio:not([hidden]) .foglio-corpo { animation: sale .45s var(--uscita) both; }
 .foglio.chiude .foglio-sfondo { animation: sfuma .24s ease both; }
 .foglio.chiude .foglio-corpo { animation: scende .24s ease-in both; }
@@ -1206,7 +1212,6 @@ main > .imp { grid-column: 1 / -1; }
 @keyframes scende-lato { from { opacity: 1; transform: none; } to { opacity: var(--vela, 1); transform: translateX(calc(var(--mov, 1) * 100%)); } }
 @media (min-width: 1100px) {
   .foglio-sfondo { background: rgba(0, 0, 0, .3); }
-  .foglio:not([hidden]) .foglio-sfondo { -webkit-backdrop-filter: none; backdrop-filter: none; }
   .foglio-corpo { left: auto; right: 0; top: 0; bottom: 0; max-height: none; width: min(640px, 100%); max-width: none; margin: 0; border-radius: 28px 0 0 28px; padding: 22px 22px 28px; }
   .foglio-corpo:has(.ar-squadre) { width: min(1180px, 100%); }      /* anteprima delle rose: più squadre affiancate */
   .maniglia { display: none; }

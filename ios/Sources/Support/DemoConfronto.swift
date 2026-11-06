@@ -31,17 +31,25 @@ extension LegaDemo {
         let effetto: Double
     }
 
+    /// Chi schierare tra due giocatori, come `da_schierare` di fanta/consigli.py: se la formazione del sistema (`titolari`; nil = non
+    /// si sa) ne schiera uno solo è lui, anche con meno punti attesi da solo; altrimenti chi ha più punti attesi. La stessa regola
+    /// per «consigliato» del confronto e per il cambio di «Da fare» (#305).
+    static func daSchierare(_ a: CalciatoreDemo, _ b: CalciatoreDemo, titolari: [Int]?) -> CalciatoreDemo {
+        if let titolari {
+            let dentro = [a, b].filter { titolari.contains($0.id) }
+            if dentro.count == 1, let solo = dentro.first { return solo }
+        }
+        return a.puntiAttesi >= b.puntiAttesi ? a : b
+    }
+
     /// Scelta, cause, frase e posto nella formazione del confronto tra `a` e `b` (senza i due giocatori, che aggiunge chi chiama).
     static func confrontoCalcolato(_ a: CalciatoreDemo, _ b: CalciatoreDemo, modulo: String?) -> [String: Any] {
         let fattori = spiega(a, b)
         let differenza = a.puntiAttesi - b.puntiAttesi
         let formazione = inFormazione(a, b, modulo: modulo)
-        // come il server: il più atteso, ma se nella formazione uno solo dei due è titolare si schiera lui
-        var consigliato = differenza >= 0 ? a : b
-        if let f = formazione {
-            let titolari = [(a, f["posto_a"] as? String), (b, f["posto_b"] as? String)].filter { $0.1 == "titolare" }.map { $0.0 }
-            if titolari.count == 1, let solo = titolari.first { consigliato = solo }
-        }
+        // come il server: il più atteso, ma se nella formazione del modulo uno solo dei due è titolare si schiera lui
+        let titolari: [Int]? = formazione == nil ? nil : (moduli.first(where: { $0.nome == modulo }) ?? moduli[0]).titolari
+        let consigliato = daSchierare(a, b, titolari: titolari)
         let arrotonda: (Double) -> Double = { ($0 * 1000).rounded() / 1000 }
         return [
             "consigliato": consigliato.id,

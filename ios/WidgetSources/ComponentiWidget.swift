@@ -30,17 +30,28 @@ struct IntestazioneWidget: View {
     let icona: String
     var destra: String? = nil
     var colore: Color = .white.opacity(0.85)
+    /// La giornata a destra (#299), al posto di `destra`: la prima forma che entra, letta da VoiceOver con i due numeri.
+    /// Nil: niente giornata.
+    var giornata: NomeGiornata? = nil
+    /// Nei widget piccoli la giornata parte dalla forma corta («Giornata 8», poi «G8»), senza «11ª di Serie A».
+    var soloCorta = false
 
     var body: some View {
         HStack(spacing: 4) {
-            // Con il testo grande il titolo non entra: resta il simbolo (mai «Formazi…»).
+            // Con il testo grande il titolo non entra: resta il simbolo (mai «Formazi…»). Il titolo ha la precedenza sulla giornata,
+            // che si accorcia per prima.
             ViewThatFits(in: .horizontal) {
                 Label(titolo, systemImage: icona).lineLimit(1)
                 Image(systemName: icona).accessibilityLabel(titolo)
             }
             .font(.caption.weight(.semibold)).foregroundStyle(colore)
+            .layoutPriority(giornata == nil ? 0 : 1)
             Spacer(minLength: 0)
-            if let destra { Text(destra).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1) }
+            if let giornata {
+                GiornataInRiga(giornata, soloCorta: soloCorta).font(.caption2).foregroundStyle(TintaWidget.testo2)
+            } else if let destra {
+                Text(destra).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+            }
         }
     }
 }
