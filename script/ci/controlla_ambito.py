@@ -4,7 +4,8 @@ con le variabili d'ambiente AUTORE (login di chi ha aperto la PR) e CORPO (descr
 
 - La descrizione ha una riga «Aree: fanta/web, tests, docs» (cartelle o file, separati da virgole; `*` ammesso).
 - Ogni file cambiato deve stare in una delle aree. `fanta/novita.d/` è sempre ammessa (la chiede il job «versione»).
-- Esenti: le PR dei bot (nome che finisce con «[bot]») e quelle di soli documenti (file .md o cartella docs/).
+- Esenti: le PR dei bot (nome che finisce con «[bot]») e quelle di soli documenti (file .md o cartella docs/;
+  NON sono documenti `.claude/`, `.github/` e i `CLAUDE.md`: funzione `solo_documenti`, usata anche da controlla_pr.py).
 Bloccante: se esce con 1 il job «ambito» è rosso e «unisci» non parte.
 Esce con 1 e scrive gli errori (formato di GitHub Actions) se la riga manca o un file sta fuori. Il testo della PR arriva
 solo come variabile d'ambiente: non passa mai dentro un comando."""
@@ -39,10 +40,26 @@ def fuori(file: list[str], elenco: list[str]) -> list[str]:
     return [f for f in file if not any(_dentro(f, a) for a in ammesse)]
 
 
+NON_DOCUMENTI = (".claude/", ".github/")      # regole della revisione IA (skill, agenti) e CI: anche se sono file .md
+
+
+def documento(file: str) -> bool:
+    """Un file di soli documenti: in docs/ o un .md, ma non in .claude/ o .github/ e non un CLAUDE.md (regole del lavoro)."""
+    if file.startswith(NON_DOCUMENTI) or file.rsplit("/", 1)[-1] == "CLAUDE.md":
+        return False
+    return file.startswith("docs/") or file.lower().endswith(".md")
+
+
+def solo_documenti(file) -> bool:
+    """Definizione unica di «PR di soli documenti»: la usa anche controlla_pr.py (per percorso, dalla stessa cartella)."""
+    file = list(file)
+    return bool(file) and all(documento(f) for f in file)
+
+
 def esente(autore: str, file: list[str]) -> bool:
     if (autore or "").endswith("[bot]"):
         return True
-    return bool(file) and all(f.startswith("docs/") or f.lower().endswith(".md") for f in file)
+    return solo_documenti(file)
 
 
 def main(autore: str, corpo: str, file: list[str]) -> int:

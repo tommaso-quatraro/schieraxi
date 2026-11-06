@@ -59,6 +59,18 @@ def test_titoli_scritti_in_modo_diverso_valgono():
     assert pr.descrizione(corpo) == ([], [])
 
 
+def test_una_sezione_comprende_i_suoi_sottotitoli():
+    """«## Cosa cambia» con dei «###» sotto non è vuota: finisce al primo titolo di livello uguale o più alto."""
+    corpo = BUONO.replace("## Cosa cambia\n- La riga del giocatore dice «gioca» come sull'iPhone.\n",
+                          "## Cosa cambia\n### Web\n- riga nuova\n### iPhone\n- riga nuova\n")
+    assert pr.descrizione(corpo) == ([], [])
+    corpo = BUONO.replace("## Revisione\n", "## Revisione\n### Revisore\n")
+    assert pr.revisione(corpo, bozza=False, autore="persona", file=["fanta/server.py"]) == ([], [])
+    # un titolo più alto chiude la sezione: «# Altro» dopo «## Perché» vuoto la lascia vuota
+    corpo = BUONO.replace("Le due app dicevano due cose diverse.\n", "# Altro\ntesto fuori\n")
+    assert any("Perché" in p for p in pr.descrizione(corpo)[0])
+
+
 def test_un_commento_dentro_un_blocco_di_codice_non_e_un_titolo():
     corpo = BUONO.replace("## Revisione", "```sh\n# Revisione\npytest -q\n```\n\n## Revisione")
     assert pr.descrizione(corpo) == ([], [])
@@ -118,6 +130,20 @@ def test_revisione_esenti_bot_e_soli_documenti():
     assert pr.revisione(senza, bozza=False, autore="dependabot[bot]", file=["requirements.txt"]) == ([], [])
     assert pr.revisione(senza, bozza=False, autore="persona", file=["docs/A.md", "MAPPA.md"]) == ([], [])
     assert pr.revisione(senza, bozza=False, autore="persona", file=["docs/A.md", "fanta/server.py"])[0]
+
+
+@pytest.mark.parametrize("file", [".claude/skills/revisione-pr/SKILL.md", ".claude/agents/revisore.md",
+                                  ".github/PULL_REQUEST_TEMPLATE.md", "CLAUDE.md", "ios/CLAUDE.md"])
+def test_regole_della_revisione_e_della_ci_non_sono_soli_documenti(file):
+    senza = BUONO.split("## Revisione")[0]
+    assert pr.revisione(senza, bozza=False, autore="persona", file=["docs/A.md", file])[0]
+
+
+def test_soli_documenti_ha_una_definizione_sola():
+    """La definizione sta in controlla_ambito.py; controlla_pr.py la prende da lì (in CI tutti e due da _ci-main)."""
+    sorgente = (RADICE / "script" / "ci" / "controlla_pr.py").read_text(encoding="utf-8")
+    assert "def _soli_documenti" not in sorgente and "def solo_documenti" not in sorgente
+    assert "controlla_ambito.py" in sorgente
 
 
 def test_revisione_con_un_altra_sezione_dopo():
@@ -184,6 +210,10 @@ def _scrivi(cartella, nome, testo):
     f'percorso = RADICE / "fanta" / "{ND}" / nome_del_file',
     f'voce = open("fanta/{ND}/riga-nuova.json").read()',
     f'voce = Path("fanta/{ND}/riga-nuova.json").read_text()',
+    f'voce = (RADICE / "fanta/{ND}" / nome).read_text()',
+    f'voce = (RADICE / f"fanta/{ND}/riga-nuova.json").read_text()',
+    f'voce = (RADICE / f"fanta/{ND}/{{nome}}.json").read_text()',
+    f'voce = json.loads((tmp_path / "fanta" / "{ND}" / "x.json").read_text())',
 ])
 def test_per_nome_trova_le_letture(tmp_path, riga):
     _scrivi(tmp_path, "test_x.py", f"from pathlib import Path\n\n\ndef test_a():\n    {riga}\n")
@@ -197,6 +227,15 @@ def test_per_nome_trova_le_letture(tmp_path, riga):
     f'file = ["fanta/web/app.js", "fanta/{ND}/x.json"]',
     'voce = json.loads((RADICE / "fanta" / "novita.json").read_text())',
     'voce = json.loads((RADICE / "tests" / "dati" / "novita-finta.json").read_text())',
+    # il rimedio consigliato: una novità finta in una cartella di prova, anche se la cartella si chiama novita.d
+    f'voce = json.loads((DATI / "{ND}" / "finta.json").read_text())',
+    f'voce = json.loads((RADICE / "tests" / "dati" / "{ND}" / "finta.json").read_text())',
+    # scritture e cancellazioni non sono letture
+    f'(RADICE / "fanta" / "{ND}" / "finta.json").write_text("{{}}")',
+    f'(repo / "fanta" / "{ND}" / "finta.json").write_bytes(b"{{}}")',
+    f'(repo / "fanta/{ND}/finta.json").unlink()',
+    f'open(RADICE / "fanta" / "{ND}" / "finta.json", "w")',
+    f'open("fanta/{ND}/finta.json", mode="a")',
 ])
 def test_per_nome_lascia_stare_il_resto(tmp_path, riga):
     _scrivi(tmp_path, "test_x.py", f"from pathlib import Path\n\n\ndef test_a(tmp_path):\n    {riga}\n")

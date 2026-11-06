@@ -256,16 +256,52 @@ def test_guida_indietro_del_browser():
     assert "Indietro del browser torna alla schermata di prima" in guida
 
 
-def _voce_di_novita(titolo):
+def _voce_di_novita(titolo, radice=RADICE):
     """La voce delle novità di una PR, cercata per titolo: prima del rilascio sta in un file di `fanta/novita.d/`, dopo il job
     `rilascia` la sposta in `fanta/novita.json` (con il numero di versione) e toglie il file. Il test deve passare in tutti e
     due i momenti: leggendo solo il file, `main` diventava rosso appena la PR era rilasciata (successo con la PR 4, versione
-    1.419). Per titolo e non per nome del file: lo controlla `script/ci/controlla_pr.py`."""
-    in_attesa = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((RADICE / "fanta" / "novita.d").glob("*.json"))]
-    rilasciate = json.loads((RADICE / "fanta" / "novita.json").read_text(encoding="utf-8"))
-    voce = next((v for v in in_attesa + rilasciate if v.get("titolo") == titolo), None)
-    assert voce, f"manca la novità «{titolo}» sia in novita.d sia in novita.json"
-    return voce
+    1.419). Per titolo e non per nome del file: lo controlla `script/ci/controlla_pr.py`.
+    Un file di novita.d che non è un JSON valido (di un'altra PR: lo segnala il suo controllo «versione») si salta, e se la
+    voce manca il messaggio lo nomina. Due voci con lo stesso titolo: il test lo dice invece di sceglierne una."""
+    trovate, saltati = [], []
+    for p in sorted((radice / "fanta" / "novita.d").glob("*.json")):
+        try:
+            dati = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            saltati.append(f"{p.name} ({e.__class__.__name__})")
+            continue
+        if isinstance(dati, dict) and dati.get("titolo") == titolo:
+            trovate.append(dati)
+    rilasciate = json.loads((radice / "fanta" / "novita.json").read_text(encoding="utf-8"))
+    trovate += [v for v in rilasciate if isinstance(v, dict) and v.get("titolo") == titolo]
+    assert trovate, (f"manca la novità «{titolo}» sia in novita.d sia in novita.json"
+                     + (f"; saltati perché non sono JSON validi: {', '.join(saltati)}" if saltati else ""))
+    assert len(trovate) == 1, f"{len(trovate)} novità con il titolo «{titolo}»: il titolo deve essere unico"
+    return trovate[0]
+
+
+def _radice_finta(tmp_path, in_attesa: dict[str, str], rilasciate: list[dict]):
+    (tmp_path / "fanta" / "novita.d").mkdir(parents=True)
+    for nome, testo in in_attesa.items():
+        (tmp_path / "fanta" / "novita.d" / nome).write_text(testo, encoding="utf-8")
+    (tmp_path / "fanta" / "novita.json").write_text(json.dumps(rilasciate), encoding="utf-8")
+    return tmp_path
+
+
+def test_voce_di_novita_non_cade_per_il_json_rotto_di_un_altra_pr(tmp_path):
+    radice = _radice_finta(tmp_path, {"rotta.json": '{"titolo": ', "mia.json": '{"titolo": "Mia", "voci": ["a"]}'},
+                           [{"versione": "1.1", "titolo": "Vecchia", "voci": ["b"]}])
+    assert _voce_di_novita("Mia", radice)["voci"] == ["a"]
+    assert _voce_di_novita("Vecchia", radice)["voci"] == ["b"]
+    with pytest.raises(AssertionError, match="rotta.json"):          # se manca, il messaggio dice quale file è saltato
+        _voce_di_novita("Nessuna", radice)
+
+
+def test_voce_di_novita_con_lo_stesso_titolo_due_volte(tmp_path):
+    radice = _radice_finta(tmp_path, {"mia.json": '{"titolo": "Doppia", "voci": ["a"]}'},
+                           [{"versione": "1.1", "titolo": "Doppia", "voci": ["b"]}])
+    with pytest.raises(AssertionError, match="2 novità"):
+        _voce_di_novita("Doppia", radice)
 
 
 def test_novita_della_testata():

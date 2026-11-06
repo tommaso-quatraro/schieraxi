@@ -20,13 +20,20 @@ una coppia `(problemi, avvisi)`: due liste di frasi in italiano; i problemi bloc
 - `test_per_nome(cartella_tests) -> (problemi, avvisi)`: nessun file .py della cartella (anche nelle sottocartelle) apre
   un file `fanta/novita.d/<nome>.json` per nome: il job «rilascia» lo sposta in novita.json e il test diventa rosso su
   `main`. Si cerca la novità per titolo in novita.d e in novita.json, o si usa una novità finta in tests/dati/.
-  Le cartelle temporanee (un percorso che parte da `tmp_path`, `tmpdir`, …) sono ammesse. File illeggibile: avviso.
+  Si guarda il codice senza eseguirlo (`ast`). Conta: un percorso `… / "fanta" / "novita.d" / <qualcosa>` o
+  `… / "fanta/novita.d" / <qualcosa>`, la stringa (anche f-string) "fanta/novita.d/<nome>.json" in una catena `/` o in
+  `open(…)`/`Path(…)`. Solo le letture: scritture e cancellazioni (write_text, mkdir, unlink, `open(…, "w")`…) no.
+  Non conta una cartella novita.d di prova (`DATI / "novita.d" / "finta.json"`) né un `glob`. File illeggibile: avviso.
+  Limiti noti (non li trova): `os.path.join(…)`, `.joinpath(…)`, la cartella messa prima in una variabile
+  (`D = RADICE / "fanta" / "novita.d"` e poi `D / "x.json"`), nomi costruiti con `+`, `%` o `.format`, letture fatte
+  da una funzione che riceve il nome come argomento.
 - `controlla(corpo, bozza, autore, file_con_stato, cartella_tests) -> (problemi, avvisi)`: i quattro insieme; le PR dei bot
   sono esenti anche dalla descrizione.
 - `leggi_name_status(testo) -> list[tuple]` e `percorsi(file_con_stato) -> list[str]`: aiuti per l'uscita di git."""
 from __future__ import annotations
 
 import ast
+import importlib.util
 import os
 import re
 import sys
@@ -36,7 +43,9 @@ SEZIONI = ("Cosa cambia", "Perché", "Come l'ho provato")
 CARTELLA_D = "fanta/novita.d/"
 REGISTRO = "fanta/novita.json"
 _PAROLE_GITHUB = {"added": "A", "modified": "M", "changed": "M", "removed": "D", "renamed": "R", "copied": "C"}
-_LETTURE = {"open", "Path", "PurePath", "PosixPath", "WindowsPath", "read_text", "read_bytes"}
+_PERCORSI = {"open", "Path", "PurePath", "PosixPath", "WindowsPath"}
+_SCRITTURE = {"write_text", "write_bytes", "mkdir", "touch", "unlink", "rmdir", "rename", "replace", "symlink_to",
+              "hardlink_to"}
 
 Esito = tuple[list[str], list[str]]
 
@@ -55,14 +64,16 @@ def _semplice(titolo: str) -> str:
 
 def _sezioni(corpo: str | None) -> dict[str, str]:
     """{titolo semplificato: testo} per ogni titolo Markdown («#» … «######») fuori dai commenti HTML.
-    Il testo di una sezione va fino al titolo successivo, di qualunque livello. Titoli ripetuti: vale il primo.
+    Il testo di una sezione va fino al primo titolo di livello uguale o più alto: i sottotitoli («###» sotto un «##») ne
+    fanno parte. Titoli ripetuti: vale il primo.
     Un blocco di codice (```) conta come testo, e un «# commento» lì dentro non è un titolo."""
     testo = re.sub(r"^[ \t]*(```|~~~).*?(?:^[ \t]*\1[ \t]*\r?$|\Z)", "[codice]", _senza_commenti(corpo), flags=re.S | re.M)
-    teste = list(re.finditer(r"^[ \t]{0,3}#{1,6}[ \t]+(.+?)[ \t#]*\r?$", testo, re.M))
+    teste = list(re.finditer(r"^[ \t]{0,3}(#{1,6})[ \t]+(.+?)[ \t#]*\r?$", testo, re.M))
     sezioni: dict[str, str] = {}
     for i, m in enumerate(teste):
-        fine = teste[i + 1].start() if i + 1 < len(teste) else len(testo)
-        sezioni.setdefault(_semplice(m.group(1)), testo[m.end():fine])
+        livello = len(m.group(1))
+        fine = next((t.start() for t in teste[i + 1:] if len(t.group(1)) <= livello), len(testo))
+        sezioni.setdefault(_semplice(m.group(2)), testo[m.end():fine])
     return sezioni
 
 
@@ -70,9 +81,16 @@ def _bot(autore: str) -> bool:
     return (autore or "").endswith("[bot]")
 
 
-def _soli_documenti(file) -> bool:
-    file = list(file)
-    return bool(file) and all(f.startswith("docs/") or f.lower().endswith(".md") for f in file)
+def _carica(nome: str):
+    """Un altro script di questa cartella, per percorso (in CI tutti e due vengono da _ci-main/script/ci; `python -I` non
+    mette la cartella dello script fra quelle degli import)."""
+    spec = importlib.util.spec_from_file_location(Path(nome).stem, Path(__file__).with_name(nome))
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+_soli_documenti = _carica("controlla_ambito.py").solo_documenti      # definizione unica di «soli documenti»
 
 
 def leggi_name_status(testo: str) -> list[tuple[str, ...]]:
@@ -148,36 +166,71 @@ def _pezzi_div(nodo: ast.AST) -> list[ast.AST]:
 
 
 def _testo(nodo: ast.AST) -> str | None:
-    return nodo.value if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str) else None
+    """Il testo di una stringa costante; di una f-string, le parti fisse con «{}» al posto di ogni valore."""
+    if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str):
+        return nodo.value
+    if isinstance(nodo, ast.JoinedStr):
+        return "".join(v.value if isinstance(v, ast.Constant) else "{}" for v in nodo.values)
+    return None
 
 
 def _nome_novita(testo: str | None) -> bool:
-    return bool(testo) and re.search(r"(?:^|/)novita\.d/[^/*?\[]+\.json$", testo) is not None
+    """«fanta/novita.d/<nome>.json» (anche con «{}» di una f-string nel nome), non un glob."""
+    return bool(testo) and re.search(r"(?:^|/)fanta/novita\.d/[^/*?\[]+\.json$", testo) is not None
 
 
-def _temporaneo(nodo: ast.AST) -> bool:
-    while isinstance(nodo, (ast.Attribute, ast.Call)):
-        nodo = nodo.value if isinstance(nodo, ast.Attribute) else nodo.func
-    return isinstance(nodo, ast.Name) and "tmp" in nodo.id.lower()
+def _cartella_novita(pezzi: list[ast.AST], i: int) -> bool:
+    """Il pezzo i della catena è la cartella fanta/novita.d del repository: «fanta/novita.d», oppure «novita.d» subito dopo
+    «fanta». Una cartella novita.d di prova (tests/dati/novita.d) non conta."""
+    t = _testo(pezzi[i])
+    if t is None:
+        return False
+    if re.search(r"(?:^|/)fanta/novita\.d/?$", t):
+        return True
+    prima = _testo(pezzi[i - 1]) if i > 0 else None
+    return t.strip("/") == "novita.d" and prima is not None and re.search(r"(?:^|/)fanta/?$", prima) is not None
+
+
+def _modo_scrittura(chiamata: ast.Call) -> bool:
+    """open(…, "w"/"a"/"x"/"+"): il modo è il secondo argomento o «mode=»."""
+    modo = chiamata.args[1] if len(chiamata.args) > 1 else next((k.value for k in chiamata.keywords if k.arg == "mode"), None)
+    t = _testo(modo) if modo is not None else None
+    return bool(t) and any(c in t for c in "wax+")
+
+
+def _scritto(nodo: ast.AST, genitori: dict) -> bool:
+    """Il percorso si usa per scrivere o togliere (write_text, mkdir, unlink, open in scrittura…), non per leggere."""
+    su = genitori.get(nodo)
+    if isinstance(su, ast.Attribute) and su.value is nodo:
+        return su.attr in _SCRITTURE
+    if isinstance(su, ast.Call) and nodo in su.args and _nome_funzione(su) == "open":
+        return _modo_scrittura(su)
+    return False
+
+
+def _nome_funzione(chiamata: ast.Call) -> str:
+    f = chiamata.func
+    return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else ""
 
 
 def _letture_per_nome(albero: ast.AST) -> list[int]:
+    genitori = {figlio: nodo for nodo in ast.walk(albero) for figlio in ast.iter_child_nodes(nodo)}
     righe = set()
     for nodo in ast.walk(albero):
         if isinstance(nodo, ast.BinOp) and isinstance(nodo.op, ast.Div):
+            su = genitori.get(nodo)
+            if isinstance(su, ast.BinOp) and isinstance(su.op, ast.Div) and su.left is nodo:
+                continue                     # solo la catena intera «a / b / c», non i suoi pezzi
             pezzi = _pezzi_div(nodo)
-            if _temporaneo(pezzi[0]):
-                continue
-            for i, p in enumerate(pezzi):
-                t = _testo(p)
-                if _nome_novita(t) or (t is not None and re.search(r"(?:^|/)novita\.d$", t) and i < len(pezzi) - 1):
-                    righe.add(nodo.lineno)
-        elif isinstance(nodo, ast.Call):
-            f = nodo.func
-            nome = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else ""
-            if nome in _LETTURE and any(_nome_novita(_testo(a)) for a in nodo.args):
+            per_nome = any(_nome_novita(_testo(p)) or (_cartella_novita(pezzi, i) and i < len(pezzi) - 1)
+                           for i, p in enumerate(pezzi))
+            if per_nome and not _scritto(nodo, genitori):
                 righe.add(nodo.lineno)
-    # una catena «a / b / c» è anche fatta di catene più corte: una riga sola per lettura
+        elif isinstance(nodo, ast.Call) and _nome_funzione(nodo) in _PERCORSI:
+            if any(_nome_novita(_testo(a)) for a in nodo.args):
+                scrive = _modo_scrittura(nodo) if _nome_funzione(nodo) == "open" else _scritto(nodo, genitori)
+                if not scrive:
+                    righe.add(nodo.lineno)
     return sorted(righe)
 
 

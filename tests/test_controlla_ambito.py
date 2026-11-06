@@ -31,6 +31,15 @@ def test_esenti_bot_e_soli_documenti():
     assert not ambito.esente("persona", [])
 
 
+def test_regole_di_revisione_ci_e_claude_non_sono_documenti():
+    """Skill e agenti in .claude/ sono le regole della revisione IA, .github/ è la CI, CLAUDE.md le regole del lavoro."""
+    for file in (".claude/skills/revisione-pr/SKILL.md", ".claude/agents/revisore.md", ".github/PULL_REQUEST_TEMPLATE.md",
+                 "CLAUDE.md", "ios/CLAUDE.md"):
+        assert not ambito.solo_documenti(["docs/A.md", file]), file
+        assert not ambito.esente("persona", [file]), file
+    assert ambito.solo_documenti(["docs/A.md", "README.md", "ios/README.md", "docs/immagini/schema.svg"])
+
+
 def test_main_esito_e_messaggi(capsys):
     assert ambito.main("persona", "Aree: fanta/web", ["fanta/web/app.js"]) == 0
     assert ambito.main("persona", "Aree: fanta/web", ["fanta/server.py"]) == 1
@@ -75,6 +84,10 @@ def test_controlla_pr_salta_se_non_e_ancora_su_main():
     """Gli script si prendono da main: finché controlla_pr.py non c'è, il passo lo dice e non blocca."""
     blocco = _blocco_ambito()
     assert "if [ ! -f _ci-main/script/ci/controlla_pr.py ]" in blocco
+    # il salto si vede fra gli avvisi della corsa (una rinomina futura non passa in silenzio), e non blocca
+    for script in ("controlla_ambito.py", "controlla_pr.py"):
+        riga = next(r for r in blocco.splitlines() if f"if [ ! -f _ci-main/script/ci/{script} ]" in r)
+        assert 'echo "::warning title=' in riga and "exit 0" in riga, riga
     assert "git diff --name-status HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_pr.py" in blocco
 
 

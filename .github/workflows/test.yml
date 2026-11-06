@@ -148,7 +148,7 @@ jobs:
           AUTORE: ${{ github.event.pull_request.user.login }}
           CORPO: ${{ github.event.pull_request.body }}
         run: |
-          if [ ! -f _ci-main/script/ci/controlla_ambito.py ]; then echo "controlla_ambito.py non è ancora su main: salto"; exit 0; fi
+          if [ ! -f _ci-main/script/ci/controlla_ambito.py ]; then echo "::warning title=Ambito::controlla_ambito.py non è su main: controllo saltato"; exit 0; fi
           git diff --name-only HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_ambito.py
       # anche se l'ambito è rosso: così si vedono tutti i problemi in una corsa sola
       - name: Descrizione, revisione, novità e test della PR
@@ -158,7 +158,7 @@ jobs:
           CORPO: ${{ github.event.pull_request.body }}
           BOZZA: ${{ github.event.pull_request.draft }}
         run: |
-          if [ ! -f _ci-main/script/ci/controlla_pr.py ]; then echo "controlla_pr.py non è ancora su main: salto"; exit 0; fi
+          if [ ! -f _ci-main/script/ci/controlla_pr.py ]; then echo "::warning title=Controlli della PR::controlla_pr.py non è su main: controllo saltato"; exit 0; fi
           git diff --name-status HEAD^1 HEAD | python3 -I -s _ci-main/script/ci/controlla_pr.py tests
 
   # Ogni modifica al codice dell'app dice cosa cambia: un file fanta/novita.d/<nome>.json (il numero lo dà il bot all'unione)
