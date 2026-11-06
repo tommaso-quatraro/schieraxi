@@ -7,6 +7,3 @@ android/gradlew text eol=lf
 
 # axe-core: byte per byte come nel pacchetto (l hash scritto nel LEGGIMI deve restare vero su ogni sistema)
 tests/strumenti/axe/* -text
-
-# Tabella delle differenze: nei merge locali tiene le righe aggiunte da tutti e due i rami (i numeri doppi si sistemano a mano)
-docs/COERENZA-WEB-IPHONE.md merge=union

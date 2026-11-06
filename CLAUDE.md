@@ -24,7 +24,8 @@ Lo stato del lavoro sta su GitHub, non nella chat. All'inizio:
 - Passi piccoli: ogni passo va provato davvero prima del commit. Non dire che una cosa funziona se non l'hai eseguita.
 - Commit in italiano. Un ramo per ogni lavoro.
 - Ogni modifica a una schermata vale per web e iPhone, con gli stessi testi e numeri: `docs/COERENZA-WEB-IPHONE.md`
-  (la web è il riferimento). Se un lato resta indietro, si apre un'issue «coerenza: …».
+  (la web è il riferimento). Se un lato resta indietro, si apre un'issue «coerenza: …». Quel file è generato: si cambiano i
+  dati in `docs/coerenza/`, poi `python script/coerenza.py --scrivi` (non si modifica a mano il `.md`).
 - Mai testo tagliato con «…» per l'utente: si va a capo (anche con il testo grande).
 - Decisioni di architettura in `docs/decisioni/` (una per file, modello in `docs/decisioni/modello.md`).
 

@@ -1,0 +1,134 @@
+{
+  "righe": [
+    {
+      "cosa": "Numero della giornata",
+      "forma": "**Tutti e due i numeri, come su Leghe** (dal 5/11/2026, #299): «**Giornata 8 · 11ª di Serie A**» = giornata 8 della lega (`giornata_lega`) e 11ª di Serie A (`giornata`). Forme e frasi esatte nella sezione «Giornata: le forme» qui sotto.",
+      "mai": "«Giornata 8» da sola dove c'è spazio; «Giornata 7 di lega (Serie A 10)»; «Giornata 11» per un numero di Serie A"
+    },
+    {
+      "cosa": "Numero di Serie A",
+      "forma": "Dove si parla solo della Serie A (calendario, grafico dei voti, stato dei dati, prova del modello) e quando la lega non c'è (stagioni passate, prima che la lega parta): «11ª giornata di Serie A». Nelle colonne strette «G11» sotto un titolo, con «11ª giornata di Serie A» per i lettori di schermo.",
+      "mai": "«Giornata 11» senza dire che è di Serie A"
+    },
+    {
+      "cosa": "Probabilità di giocare",
+      "forma": "«gioca 92%», l'unica percentuale sul giocare. Sul campo, sotto il 70%, «⚠ gioca 45%» in una pillola arancio. A partita iniziata non si mostra più. Partita rinviata: sulla pedina «Rinviata» al posto di «gioca N%», prima e dopo la scadenza.",
+      "mai": "«92%» da solo, «Titolare 85%», «Dubbio (55%)», «⚠ gioca 50%» per una partita rinviata"
+    },
+    {
+      "cosa": "Avversario sul campo",
+      "forma": "«vs PAR» in casa, «@ UDI» in trasferta, con la sigla del club (sulla web scritta in bianco con la lineetta nel colore sociale davanti, sull'iPhone nei colori sociali: «Differenze ammesse»)",
+      "mai": "«PAR (f)», «UDI fuori»"
+    },
+    {
+      "cosa": "Partita in una riga",
+      "forma": "«ATA vs PAR · oggi 20:45» (in casa), «INT @ MIL · sab 31 20:45» (in trasferta). Prima la squadra del giocatore.",
+      "mai": "«INT – MIL fuori», «GEN – COM casa», «GENOA vs COMO»"
+    },
+    {
+      "cosa": "Partita nella scheda",
+      "forma": "«Giornata 7 · 10ª di Serie A · in casa contro Como · sab 31 20:45», «… · in trasferta contro Milan · …»",
+      "mai": "«fuori contro»"
+    },
+    {
+      "cosa": "Partite del turno (Oggi)",
+      "forma": "«MIL vs INT», con la squadra di casa prima e le sigle. Uguale nella carta delle partite rinviate («UDI vs MIL») e nel riepilogo della giornata finita («Manca il recupero di ATA vs PAR»)",
+      "mai": "«Milan – Inter», «UDI–MIL»"
+    },
+    {
+      "cosa": "Sigle delle squadre",
+      "forma": "Tre lettere maiuscole, dalla tabella `SIGLE` (web) = `ColoriSquadra.sigle` (iOS): devono restare uguali. Il nome intero («Como») solo in frase: scheda, VoiceOver, lettori di schermo.",
+      "mai": "Nome intero in maiuscolo («GENOA»); nome intero in una riga di elenco"
+    },
+    {
+      "cosa": "Titolarità (prima della scadenza)",
+      "forma": "Probabile titolare · In ballottaggio · Probabile panchina · Improbabile · Fuori; dubbio: «In dubbio · gioca 55%». Sempre l'`etichetta` del server, la stessa in Formazione, campo, scheda, Oggi («Da controllare»), scelta del confronto e widget. «In dubbio» solo se lo dicono le probabili; in una frase la stessa parola in minuscolo («Lerri: improbabile, gioca 2%.»)",
+      "mai": "numeri dentro l'etichetta; «In dubbio» per chi gioca al 2% senza dubbio delle probabili"
+    },
+    {
+      "cosa": "Posto in formazione (Confronto, scelta del confronto, sostituzione)",
+      "forma": "«Titolare», «Panchina 2», «Non schierato» (fuori dai titolari e dalla panchina)",
+      "mai": "«Probabile titolare», «Fuori»: sono parole della titolarità"
+    },
+    {
+      "cosa": "Stato della partita (dopo la scadenza)",
+      "forma": "Da giocare · Partita in corso · Ha giocato (o il fantavoto) · Voto in arrivo · Senza voto · Rinviata. Stesse parole in Oggi, Formazione e scheda.",
+      "mai": "«In campo», «in campo ora», «Aspetta il voto», «partita rinviata»"
+    },
+    {
+      "cosa": "Stato della scelta (Formazione)",
+      "forma": "Le frasi di `formazione.stato_*` di `testi.js`: «Stai vedendo la consigliata: non hai salvato una tua formazione.», «La tua formazione è salvata (oggi alle 13:09)», «Modifiche non salvate · salvata …», «Modifica a mano non ancora salvata», «La formazione salvata non è più valida: …»",
+      "mai": "frasi diverse per lo stesso stato"
+    },
+    {
+      "cosa": "Da fare (Oggi)",
+      "forma": "Le frasi e i pulsanti sono il `testo` e l'`azione` del server, uguali sui due lati (la web traduce da `frase.*`). Hai salvato la consigliata e poi è cambiata: una riga sola, «La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera Y al posto di X.» (oltre 3 cambi «… Cambiano N titolari.»; se esce un titolare fuori, «X è infortunato e la consigliata è cambiata…», urgente), pulsante «Apri la formazione», icona della formazione sull'iPhone (tipo `formazione`, #333). Con la consigliata salvata e ancora uguale nessun «Meglio…» né «Sostituisci».",
+      "mai": "frasi riscritte su un lato; «Sostituisci» su una consigliata appena salvata"
+    },
+    {
+      "cosa": "Formazione chiusa",
+      "forma": "Formazione in sola lettura. Per la tua squadra una frase sola, nella riga dello stato della scelta: «Giornata iniziata: la formazione è chiusa», con «· vale quella che hai salvato» se hai salvato una scelta (`formazione.stato_chiusa`, `formazione.stato_chiusa_tua`); se la scelta salvata non si può più schierare (`stato_scelta: \"non_valida\"` di `GET /api/formazione`, o `formazione_non_valida` rileggendola) «Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida» (`formazione.stato_chiusa_non_valida`) e si vede la consigliata, come in Oggi (#319). La fascia «La formazione di questa giornata è chiusa: le partite sono cominciate.» (`formazione.chiusa`) solo per la formazione di un'altra squadra, che non ha la riga di stato. Se la scadenza passa mentre salvi: «La giornata è già iniziata: la formazione non si può più cambiare.» (`err.formazione_chiusa`).",
+      "mai": "fascia e riga di stato insieme per la tua squadra (due frasi per lo stesso stato); nessuna fascia"
+    },
+    {
+      "cosa": "Anticipo già cominciato (Formazione aperta, #373)",
+      "forma": "I giocatori in `bloccati` di `GET /api/formazione` in «Modifica a mano» non si sostituiscono e non entrano dalla rosa (al posto del pulsante per sostituire c'è ⇄); sotto i titolari «Chi gioca in una partita già cominciata non si può più spostare.» (`formazione.bloccati`). Salvataggio rifiutato dal server: la sua frase, «Rossi gioca in una partita già cominciata: non si può più spostare.» (`err.giocatore_bloccato`)",
+      "mai": "lucchetti o pillole nuove; una frase diversa per lo stesso rifiuto"
+    },
+    {
+      "cosa": "Nota sotto il campo (Formazione)",
+      "forma": "Il perché delle scelte che sembrano storte (#356): una riga per titolare, «**Nome** · riga», con il testo del server (`perche_scelta` del modulo sullo schermo, chiavi `scelta.*`), per esempio «Preferito a Gallo: con lui la formazione fa più punti attesi (64,1 contro 63,9).» o «Titolare anche se incerto (gioca 35%): se non gioca entra Gallo dalla panchina, e insieme valgono di più.». Solo per la proposta del server: niente righe dopo «Modifica a mano» né a giornata iniziata.",
+      "mai": "frasi scritte dal client; righe per i titolari che non sembrano storti; la nota anche sulla formazione modificata a mano"
+    },
+    {
+      "cosa": "Stato della giornata (Oggi)",
+      "forma": "Prima: conto alla rovescia («2 giorni 3 h», «3 h 20 min», «12 min») e sotto «La formazione si chiude sab 31 14:50 (10 min prima della prima partita)». Dopo la scadenza: «**Chiusa**» e «La formazione si è chiusa sab 31 14:50» (la giornata è scritta subito sopra il conto, non si ripete). Finita: «Giornata 7 · 10ª di Serie A: finita». Senza data: «Data da definire».",
+      "mai": "«In corso» al posto di «Chiusa»"
+    },
+    {
+      "cosa": "Fantavoto atteso",
+      "forma": "Numero **neutro** (colore del testo), una cifra decimale, uguale in campo, elenchi, scheda e widget. Sul campo della web è il numero nel disco bianco della pedina, sull'iPhone sta in una pillola scura sotto il volto («Differenze ammesse»).",
+      "mai": "colorato in base al valore (pallino rosso, blu, verde)"
+    },
+    {
+      "cosa": "Voti veri (giornata in corso)",
+      "forma": "Numero neutro, come sopra",
+      "mai": "verde da 7, rosso sotto 6"
+    },
+    {
+      "cosa": "Colori",
+      "forma": "Solo per gli esiti: bonus e malus, «+» verde e «−» rosso, avvisi arancio (`docs/DESIGN.md`, «Colori semantici»)",
+      "mai": "colore come unica informazione"
+    },
+    {
+      "cosa": "Numeri",
+      "forma": "Virgola italiana; punti con un decimale; «+1,2» e «−0,4» con il meno tipografico; 0,0 senza segno; «–» se manca",
+      "mai": "«-0,4» con il trattino"
+    },
+    {
+      "cosa": "Plurali",
+      "forma": "«1 tuo titolare / 3 tuoi titolari», «1 giocatore deve ancora giocare», «1 credito»",
+      "mai": "«1 giocatori», «(i)»"
+    },
+    {
+      "cosa": "Date e ore",
+      "forma": "Ora italiana. «oggi 20:45», «ieri 20:45», «domani 18:30»; entro la settimana «sab 31 20:45»; oltre, con il mese. Salvataggi: «oggi alle 13:09», «sab 31 alle 13:09». In una frase del server (motivi, «perché»): «mer 18 nov», sempre con il mese, perché la frase resta in memoria e «domani» invecchierebbe.",
+      "mai": "«sab 8 nov, 18:30» per le partite della settimana; «18/11»"
+    },
+    {
+      "cosa": "Nomi dei giocatori",
+      "forma": "Negli elenchi come li manda il server («Rossi L.»). **Sul campo** solo il cognome, senza l'iniziale, come sull'iPhone («Rossi»): lo spazio è poco. Il cognome è sempre intero e va a capo, con il trattino dove l'italiano lo mette, e il carattere non si rimpicciolisce mai (al minimo 12 pt sull'iPhone, 12 px sulla web); anche «⚠ gioca N%» e «vs MON» vanno a capo invece di rimpicciolirsi.",
+      "mai": "«Carlos Au…» tagliato per colpa dell'iniziale, «Zosaba Nd…»"
+    },
+    {
+      "cosa": "Sezioni e menu",
+      "forma": "Nomi e ordine di `VOCI_LEGA` (`fanta/web/app.js`). Squadra: Squadre e rose, Cambi consigliati, Seguiti, Elenco dei giocatori, Calendario, Aggiorna le rose. Altro: Scambi, Diario delle giornate, Regole, Movimenti e storico, Crediti delle squadre, Nuova stagione, Novità.",
+      "mai": "voci in un altro ordine, voci in più su un lato solo"
+    },
+    {
+      "cosa": "Giocatori seguiti",
+      "forma": "Un solo nome: «**Seguiti**» (menu, scheda del mercato, avvisi). Nella scheda il pulsante «☆ Segui», che diventa «★ Seguito»; «Lo segui: ti avviso se cambia qualcosa», «Non lo segui più». In inglese «Following» / «☆ Follow».",
+      "mai": "«Osservati», «☆ Osserva», «Osservato», «Watched»"
+    }
+  ]
+}
