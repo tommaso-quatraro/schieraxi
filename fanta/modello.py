@@ -13,6 +13,7 @@ Usa solo dati PRECEDENTI alla giornata: così la stessa funzione serve per la ve
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import pickle
 import sqlite3
@@ -229,7 +230,7 @@ def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazi
 def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri | None = None,
                probabili: pd.DataFrame | None = None, giocatori: pd.DataFrame | None = None,
                fattori_probabili: dict[str, float] | None = None,
-               oracolo: dict | None = None) -> pd.DataFrame:
+               oracolo: dict | None = None, taratura: dict | None = None) -> pd.DataFrame:
     """Una riga per giocatore: p_voto, mu (fantavoto atteso se gioca), mu_voto e i pezzi del calcolo.
 
     probabili: righe della tabella probabili per la giornata (live); se None, p_voto dalle presenze recenti.
@@ -238,6 +239,8 @@ def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, par: Param
     oracolo: SOLO per misurare quanto vale un dato in più (comando `oracolo`), mai nell'uso normale. Chiavi facoltative:
              "gol_squadra" {partita: (gol casa, gol trasferta) veri} e "rigorista" {giocatore: quota vera dei rigori
              della squadra} (chi non c'è vale 0).
+    taratura: i coefficienti della riga attiva di `taratura_probabili` (None = numeri di partenza). Cambia solo «gioca N%» di chi
+              è nelle probabili (e i punti attesi p × mu); minuti, gol e assist attesi e mu restano quelli della formula di partenza.
 
     Delle regole contano solo la fonte del voto e i bonus/malus, e i bonus entrano solo nell'ultimo passo (mu). Tutto il resto
     (forza delle squadre, medie, presenze, gol e assist attesi...) si calcola una volta e vale per tutte le leghe con la stessa
@@ -245,7 +248,7 @@ def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, par: Param
     """
     par = par or Parametri()
     pezzi, rigori_partita = _pezzi_condivisi(d, stagione, giornata, COLONNA_VOTO[regole.fonte_voto], par, probabili, giocatori,
-                                             fattori_probabili, oracolo)
+                                             fattori_probabili, oracolo, taratura)
     return _con_bonus(pezzi, rigori_partita, regole.bonus, par)
 
 
@@ -273,26 +276,27 @@ MAX_PEZZI = 16            # giornate (con fonte del voto e parametri) ricordate 
 
 
 def _pezzi_condivisi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri, probabili, giocatori,
-                     fattori_probabili, oracolo) -> tuple[list, float]:
+                     fattori_probabili, oracolo, taratura=None) -> tuple[list, float]:
     """`_pezzi`, ricordati dentro `d` (i dati di una versione dell'archivio, che non cambiano): con molte leghe con bonus
     diversi le previsioni di una giornata si calcolano una volta sola, non una per lega. Si ricordano solo i casi d'uso
     normali (niente oracolo, giocatori = tutti o il listone); la chiave contiene tutto ciò da cui dipende il risultato,
-    anche il contenuto delle probabili."""
+    anche il contenuto delle probabili e la taratura di «gioca N%»."""
     if oracolo is not None or not (giocatori is None or giocatori is d.calciatori):
-        return _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo)
+        return _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo, taratura)
     try:
         firma_probabili = None if probabili is None else hashlib.sha1(pickle.dumps(probabili.to_dict("split"))).hexdigest()
         chiave = (stagione, giornata, col_voto, repr(par), firma_probabili, giocatori is None,
-                  None if fattori_probabili is None else tuple(sorted(fattori_probabili.items())))
+                  None if fattori_probabili is None else tuple(sorted(fattori_probabili.items())),
+                  None if taratura is None else json.dumps(taratura, sort_keys=True))
         hash(chiave)
     except Exception:  # noqa: BLE001 - qualcosa che non si sa firmare: si calcola e basta
-        return _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo)
+        return _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo, taratura)
     with _blocco_pezzi:
         memoria = d.__dict__.setdefault("_pezzi", OrderedDict())
         if chiave in memoria:
             memoria.move_to_end(chiave)
             return memoria[chiave]
-    risultato = _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo)
+    risultato = _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo, taratura)
     with _blocco_pezzi:
         memoria[chiave] = risultato
         while len(memoria) > MAX_PEZZI:
@@ -304,7 +308,7 @@ _blocco_pezzi = threading.Lock()
 
 
 def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri, probabili, giocatori, fattori_probabili,
-           oracolo) -> tuple[list, float]:
+           oracolo, taratura=None) -> tuple[list, float]:
     """Tutto `previsioni` tranne i bonus/malus: per ogni giocatore (campi della riga prima di mu, campi dopo, numeri per mu),
     e i rigori a partita (servono a mu dei portieri). Chi lo riceve lo legge soltanto."""
     t0 = d.t(stagione, giornata)
@@ -455,20 +459,23 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
                 stato, nota, perc = pr["stato"], pr["nota"], pr["percentuale"]
                 dubbio = bool(pr["in_dubbio"])
                 diffidato = bool(pr["diffidato"]) if "diffidato" in pr and pd.notna(pr["diffidato"]) else False
-                p_voto = _p_da_probabili(stato, perc, bool(pr["in_dubbio"]))
+                p_voto = _p_da_probabili(stato, perc, dubbio, taratura)
                 if fattori_probabili and pd.notna(perc):          # correzione imparata dalle giornate già giocate (stato_dati.fattori)
                     f = fattori_probabili.get(gruppo_probabili(stato, float(perc)) or "")
                     if f:
                         p_voto = min(0.99, p_voto * f)
             else:
-                stato, p_voto = "non_citato", 0.02
+                stato, p_voto = "non_citato", _p_da_probabili("non_citato", None, False, taratura)
         else:
             # senza probabili: chi gioca in coppa a ridosso della partita ha più probabilità di essere riposato
             p_voto = p_senza_probabili(x["p_storico"], x["p_lungo"], x["p_tit"], x["p_ultima"], r == "P")
             p_voto *= coppe.fattore_turnover(x["squadra_slug"], data_partita.get(partita))
-        # se le probabili dicono che parte titolare, i minuti sono quelli da titolare (anche se finora è entrato dalla panchina)
-        if stato == "titolare" and perc is not None and not np.isnan(perc) and p_voto > 0:
-            parte = min(1.0, float(perc) / 100 / p_voto)
+        # se le probabili dicono che parte titolare, i minuti sono quelli da titolare (anche se finora è entrato dalla panchina).
+        # Con la taratura i minuti restano quelli della formula di partenza, senza correzione per gruppi: la taratura cambia
+        # solo «gioca N%», non minuti, gol e assist attesi e mu (finché il fantavoto atteso non si misura con la taratura accesa)
+        p_minuti = p_voto if taratura is None else _p_da_probabili(stato, perc, dubbio)
+        if stato == "titolare" and perc is not None and not np.isnan(perc) and p_minuti > 0:
+            parte = min(1.0, float(perc) / 100 / p_minuti)
             minuti = max(minuti, parte * minuti_titolare + (1 - parte) * minuti_subentro)
         # gol (senza rigori) e assist ogni 90', tirati verso la media del ruolo
         min90 = x["minuti_w"] / 90 if x["uw"] > 0 else x["w"] * minuti / 90

@@ -121,10 +121,14 @@ def previsioni(db: sqlite3.Connection, regole: Regole, giornata: int | None = No
 
 
 def _calcola_previsioni(db, d, regole, stagione, giornata, chiave):
+    from . import taratura_probabili           # qui dentro: importa il registro delle giornate, che importa questo modulo
     prob = pd.read_sql_query("SELECT * FROM probabili WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio'",
                              db, params=(stagione, giornata))
+    # «gioca N%» con le probabili: la riga attiva della taratura sul server, se c'è (None = numeri di partenza). Quando cambia,
+    # cambia anche `_versione` (riga in `aggiornamenti`) e queste previsioni si rifanno
     p = modello.previsioni(d, stagione, giornata, regole, probabili=None if prob.empty else prob,
-                           giocatori=d.calciatori, fattori_probabili=stato_dati.fattori(db, stagione))
+                           giocatori=d.calciatori, fattori_probabili=stato_dati.fattori(db, stagione),
+                           taratura=taratura_probabili.attiva(db))
     if p.empty:
         raise ValueError(frasi.elidi_ordinali(f"Non ci sono ancora previsioni per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))}: riprova più tardi."))
     p = p.set_index("id")

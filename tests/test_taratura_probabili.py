@@ -419,34 +419,49 @@ def _istantanea(db):
     return {t: [tuple(r) for r in db.execute(f"SELECT * FROM {t} ORDER BY rowid")] for t in tabelle}
 
 
-def test_esegui_non_cambia_le_previsioni(db, monkeypatch):
-    """Solo misura: le previsioni della giornata dopo sono identiche, nessuna tabella che il modello legge cambia, nemmeno
-    `aggiornamenti` (la versione dei dati di `consigli._versione`, che fa ricalcolare le previsioni), e la correzione per gruppi
-    resta quella."""
-    from fanta import consigli, stato_dati
-    from fanta.regole import Regole
+def _con_giornata_sette(db, monkeypatch):
+    """6 giornate finte giocate e la 7 da giocare, con le probabili della sola Squadra00: titolari al 90% (il primo al 70%, di solito
+    entra dalla panchina: i suoi minuti vengono dalle probabili), uno in dubbio, panchinari al 20%, due giocatori non citati."""
+    from fanta import consigli
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     _genera(db, range(1, 7))
     db.execute("UPDATE partite SET gol_casa = 1 + id % 2, gol_trasferta = 1 + id % 3 WHERE giocata = 1")
-    for s, nome in enumerate(SQUADRE):                                 # giornata 7 da giocare, con le probabili di due squadre
+    db.execute("UPDATE voti SET gol = calciatore_id % 3 = 0, autogol = 0, assist = calciatore_id % 4 = 1, mvp = 0, "
+               "ammonizioni = calciatore_id % 5 = 2, espulsioni = 0, subentrato = 0, sostituito = 0")   # mu finito per tutti
+    db.execute("DELETE FROM voti WHERE calciatore_id = 0")
+    for g in range(1, 7):
+        db.execute("INSERT INTO voti (stagione, giornata, calciatore_id, nome, squadra, ruolo, voto_red, gol, autogol, assist, mvp, "
+                   "ammonizioni, espulsioni, subentrato, sostituito) VALUES (?, ?, 0, 'finto0', 'Squadra00', 'P', 6.0, 0, 0, 0, 0, 0, "
+                   "0, 1, 0)", (ST, g))
+    for s, nome in enumerate(SQUADRE):                                 # giornata 7 da giocare, con le probabili di una squadra
         for j in range(24):
             db.execute("INSERT INTO calciatori (id, nome, ruolo, squadra, squadra_slug, quotazione) VALUES (?, ?, ?, ?, ?, 10)",
                        (100 * s + j, f"Finto {s} {j}", "PDCA"[j % 4], nome, nome))
         if s % 2 == 0:
             _partita(db, 7000 + s // 2, 7, nome, SQUADRE[s + 1], giocata=0)
-    for j in range(24):
+    for j in range(22):
         db.execute("INSERT INTO probabili (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, in_dubbio, "
-                   "diffidato) VALUES (?, 7, 'fantacalcio', ?, 'Squadra00', 7000, ?, ?, 0, 0)",
-                   (ST, j, "titolare" if j < 11 else "panchina", 90.0 if j < 11 else 20.0))
+                   "diffidato) VALUES (?, 7, 'fantacalcio', ?, 'Squadra00', 7000, ?, ?, ?, 0)",
+                   (ST, j, "titolare" if j < 11 else "panchina", 70.0 if j == 0 else 90.0 if j < 11 else 20.0, int(j == 5)))
     archivio.segna(db, "voti", "2026-11-30T21:00:00")
     db.commit()
 
-    def previsioni():
-        return consigli._calcola_previsioni(db, modello.carica(db), Regole(), ST, 7, None)[0]
 
-    prev, tabelle, versione, fattori = previsioni(), _istantanea(db), consigli._versione(db), stato_dati.fattori(db, ST)
+def _previsioni(db):
+    from fanta import consigli
+    from fanta.regole import Regole
+    return consigli._calcola_previsioni(db, modello.carica(db), Regole(), ST, 7, None)[0]
+
+
+def test_esegui_non_cambia_le_previsioni(db, monkeypatch):
+    """Una riga «pronta» non cambia niente: le previsioni della giornata dopo sono identiche, nessuna tabella che il modello legge
+    cambia, nemmeno `aggiornamenti` (la versione dei dati di `consigli._versione`, che fa ricalcolare le previsioni), e la
+    correzione per gruppi resta quella."""
+    from fanta import consigli, stato_dati
+    _con_giornata_sette(db, monkeypatch)
+    prev, tabelle, versione, fattori = _previsioni(db), _istantanea(db), consigli._versione(db), stato_dati.fattori(db, ST)
     assert "pronta" in tp.esegui(db, ADESSO)
-    pd.testing.assert_frame_equal(previsioni(), prev)
+    pd.testing.assert_frame_equal(_previsioni(db), prev)
     assert _istantanea(db) == tabelle
     assert consigli._versione(db) == versione and stato_dati.fattori(db, ST) == fattori
 
@@ -859,3 +874,182 @@ def test_comando_una_opzione_alla_volta(tmp_path, monkeypatch, opzioni):
     with pytest.raises(SystemExit) as uscita:
         _comando(monkeypatch, tmp_path / "fanta.sqlite", *opzioni)
     assert uscita.value.code == 2
+
+
+# ---------------------------------------------------------------- B2: il modello usa la riga attiva
+def _metti_attiva(db, t=TARATURA, coefficienti=None):
+    """Una riga attiva scritta come la scrive il comando: la riga e, nella stessa volta, `aggiornamenti`."""
+    db.execute("INSERT INTO taratura_probabili (creata, stato, coefficienti, prova, motivo, avvisato) "
+               "VALUES ('2026-11-30T08:00:00', 'attiva', ?, ?, 'migliora', 1)",
+               (coefficienti if coefficienti is not None else json.dumps(t), json.dumps([[ST, 5], [ST, 6]])))
+    archivio.segna(db, tp.CHIAVE, "2026-11-30T08:00:00")
+    db.commit()
+
+
+def _probabili_sette(db):
+    return pd.read_sql_query("SELECT * FROM probabili WHERE stagione = ? AND giornata = 7 AND fonte = 'fantacalcio'", db, params=(ST,))
+
+
+def test_previsioni_con_la_attiva_cambiano_solo_chi_e_nelle_probabili(db, monkeypatch):
+    from fanta import stato_dati
+    _con_giornata_sette(db, monkeypatch)
+    prima = _previsioni(db)
+    _metti_attiva(db)
+    dopo = _previsioni(db)
+    coperti = prima["stato"].notna()
+    assert int(coperti.sum()) == 24 and (prima.loc[coperti, "stato"] == "non_citato").sum() == 2 and (~coperti).sum() > 400
+    stessi = ["p_voto", "mu", "minuti", "e_gol", "e_assist", "atteso"]
+    pd.testing.assert_frame_equal(dopo.loc[~coperti, stessi], prima.loc[~coperti, stessi])   # senza probabili: identici
+    assert (dopo.loc[coperti, "p_voto"] != prima.loc[coperti, "p_voto"]).all()
+    for c in ("mu", "minuti", "e_gol", "e_assist"):                                          # cambia solo «gioca N%»
+        pd.testing.assert_series_equal(dopo.loc[coperti, c], prima.loc[coperti, c])
+    f = stato_dati.fattori(db, ST)                                  # con la attiva: correzione per gruppi sul registro
+    for cid, x in dopo.loc[coperti].iterrows():
+        p = modello._p_da_probabili(x["stato"], x["percentuale"], bool(x["dubbio"]), TARATURA)
+        if f.get(modello.gruppo_probabili(x["stato"], x["percentuale"]) or ""):
+            p = min(0.99, p * f[modello.gruppo_probabili(x["stato"], x["percentuale"])])
+        assert x["p_voto"] == round(p, 3), cid
+    assert dopo.loc[(dopo["stato"] == "non_citato"), "p_voto"].tolist() == [0.03, 0.03]
+
+
+def test_minuti_con_la_formula_di_partenza(db, monkeypatch):
+    """Titolare al 70% che di solito entra dalla panchina: i suoi minuti vengono dalla formula di partenza anche con la taratura,
+    quindi minuti, gol e assist attesi e fantavoto atteso restano gli stessi; cambia solo «gioca N%»."""
+    from fanta.regole import Regole
+    _con_giornata_sette(db, monkeypatch)
+    d = modello.carica(db)
+    prob = _probabili_sette(db)
+    senza = modello.previsioni(d, ST, 7, Regole(), probabili=prob, giocatori=d.calciatori).set_index("id")
+    con = modello.previsioni(d, ST, 7, Regole(), probabili=prob, giocatori=d.calciatori, taratura=TARATURA).set_index("id")
+    assert senza.loc[0, "percentuale"] == 70 and 60 < senza.loc[0, "minuti"] < 75      # i minuti vengono dalle probabili
+    assert senza.loc[0, "p_voto"] == round(modello._p_da_probabili("titolare", 70.0, False), 3)
+    assert con.loc[0, "p_voto"] == round(_sigma(-1 + 4 * 0.7), 3)
+    for c in ("minuti", "e_gol", "e_assist", "mu"):
+        assert con.loc[0, c] == senza.loc[0, c], c
+
+
+def test_senza_attiva_previsioni_identiche(db, monkeypatch):
+    """Righe di ogni altro stato, e una «attiva» con i coefficienti rovinati: previsioni e correzione per gruppi come senza
+    tabella, e il modello con `taratura=None` come senza l'argomento."""
+    from fanta import stato_dati
+    from fanta.regole import Regole
+    _con_giornata_sette(db, monkeypatch)
+    prima, fattori = _previsioni(db), stato_dati.fattori(db, ST)
+    for stato in ("pronta", "scartata", "superata", "ritirata", "rimandata", "spenta", "riaccesa"):
+        db.execute("INSERT INTO taratura_probabili (creata, stato, coefficienti) VALUES ('2026-11-29T08:00:00', ?, ?)",
+                   (stato, json.dumps(TARATURA)))
+    _metti_attiva(db, coefficienti="{rotto")
+    pd.testing.assert_frame_equal(_previsioni(db), prima)
+    assert stato_dati.fattori(db, ST) == fattori
+    d = modello.carica(db)
+    prob = _probabili_sette(db)
+    pd.testing.assert_frame_equal(modello.previsioni(d, ST, 7, Regole(), probabili=prob, giocatori=d.calciatori, taratura=None),
+                                  modello.previsioni(d, ST, 7, Regole(), probabili=prob, giocatori=d.calciatori))
+
+
+def test_memoria_distingue_le_tarature(db, monkeypatch):
+    from fanta.regole import Regole
+    _con_giornata_sette(db, monkeypatch)
+    d = modello.carica(db)
+    prob = _probabili_sette(db)
+
+    def p(t):
+        return modello.previsioni(d, ST, 7, Regole(), probabili=prob, giocatori=d.calciatori, taratura=t).set_index("id")["p_voto"]
+
+    senza, t1, t2 = p(None), p(TARATURA), p({**TARATURA, "titolare": [-0.5, 4.0]})
+    assert not senza.equals(t1) and not t1.equals(t2) and not senza.equals(t2)
+    pd.testing.assert_series_equal(p(dict(reversed(list(TARATURA.items())))), t1)     # stessa taratura, chiavi in altro ordine
+    pd.testing.assert_series_equal(p(None), senza)
+    assert len(d.__dict__["_pezzi"]) == 3                                              # una voce per taratura
+
+
+def test_nostri_dal_vivo_con_lo_stesso_gioca(db, monkeypatch):
+    """I numeri «nostri» dal vivo (I4) usano la stessa riga attiva dei mostrati: stesso «gioca N%» per chi è nelle probabili."""
+    from fanta import calcolo, registro_nostri
+    _con_giornata_sette(db, monkeypatch)
+    _metti_attiva(db)
+    calcolo.cache.clear()
+    try:
+        mostrati = _previsioni(db)
+        nostri = registro_nostri.previsioni_dal_vivo(db, 7)
+    finally:
+        calcolo.cache.clear()
+    coperti = mostrati.index[mostrati["stato"].notna()]
+    pd.testing.assert_series_equal(nostri.loc[coperti, "p_voto"], mostrati.loc[coperti, "p_voto"])
+
+
+def test_calibrazione_con_la_attiva_legge_il_registro(db):
+    """Con una riga attiva la correzione per gruppi si fa sulle probabili salvate prima della scadenza (registro) e con il «gioca N%»
+    della riga attiva; le letture di dopo la scadenza nella tabella `probabili` non contano più. Senza, com'è oggi."""
+    from fanta import stato_dati
+    _genera(db, range(1, 7))
+    for g in range(1, 7):                    # letture di dopo la scadenza che dicono altro: tutti i titolari della Squadra00 al 10%
+        for cid in range(11):
+            db.execute("INSERT INTO probabili (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
+                       "in_dubbio, diffidato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'panchina', 10, 0, 0)",
+                       (ST, g, cid, 1000 * g))
+    db.commit()
+    senza = stato_dati.calibrazione(db, ST)
+    assert next(x for x in senza["gruppi"] if x["gruppo"] == "Panchina sotto 20%")["n"] == 66       # oggi: legge `probabili`
+    _metti_attiva(db)
+    con = stato_dati.calibrazione(db, ST)
+    r = tp.righe(db)
+    assert con["giornate"] == 6
+    for nome, stato, da, a in modello.GRUPPI_PROBABILI:
+        x = next(x for x in con["gruppi"] if x["gruppo"] == nome)
+        sel = r[(r["stato"] == stato) & (r["percentuale"] >= da) & (r["percentuale"] < a)]
+        assert x["n"] == len(sel), nome
+        if len(sel):
+            previsto = np.mean([modello._p_da_probabili(stato, q, bool(dub), TARATURA) for q, dub in zip(sel["percentuale"], sel["dubbio"])])
+            assert x["previsto"] == round(float(previsto), 3) and x["osservato"] == round(float(sel["preso"].mean()), 3), nome
+    assert stato_dati.fattori(db, ST) == stato_dati.fattori_da(con)
+
+
+def test_calibrazione_con_la_attiva_e_il_registro_illeggibile(db, monkeypatch, caplog):
+    """Riga attiva ma registro che non si legge: nessuna correzione per gruppi (quella imparata sui numeri di partenza non vale per
+    la formula tarata) e nessun errore per le previsioni."""
+    from fanta import stato_dati
+    _genera(db, range(1, 7))
+    _metti_attiva(db)
+
+    def rotte(db):
+        raise sqlite3.OperationalError("dettaglio interno")
+
+    monkeypatch.setattr(tp, "righe", rotte)
+    with caplog.at_level("WARNING"):
+        c = stato_dati.calibrazione(db, ST)
+    assert c["giornate"] == 0 and stato_dati.fattori(db, ST) == {}
+    assert "OperationalError" in caplog.text and "dettaglio interno" not in caplog.text
+
+
+def test_riepilogo_senza_nomi(db):
+    vuoto = {"stato": "in_attesa", "giornate": 0, "minimo": 4, "versione": None, "dal": None, "prova": None, "motivo": None}
+    assert tp.riepilogo(db) == vuoto
+    _genera(db, range(1, 7))
+    tp.esegui(db, PRIMA)
+    r = tp.riepilogo(db)
+    assert (r["stato"], r["giornate"], r["versione"], r["dal"], r["motivo"]) == ("non_attiva", 6, 1, None, "poche_giornate")
+    m = json.loads(_tabella(db)[0]["misura"])
+    assert r["prova"] == {"giornate": 3, "brier": m["nuova"]["brier"], "brier_prima": m["attuale"]["brier"],
+                          "brier_mostrati": m["mostrati"]["brier"], "calibrazione": m["nuova"]["calibrazione"]}
+    _genera(db, [7, 8], seme=3)
+    _prossima(db, 9, ADESSO + timedelta(hours=20))
+    tp.esegui(db, ADESSO)
+    assert (tp.riepilogo(db)["stato"], tp.riepilogo(db)["motivo"]) == ("non_attiva", "scadenza_vicina")
+    tp.esegui(db, ADESSO + timedelta(hours=21))
+    r = tp.riepilogo(db)
+    assert (r["stato"], r["giornate"], r["versione"], r["dal"], r["motivo"]) == ("attiva", 8, 3, "2026-12-02T10:00:00", None)
+    assert r["prova"]["giornate"] == 4 and r["prova"]["brier"] < r["prova"]["brier_prima"]
+    testo = json.dumps(r).lower()
+    assert "finto" not in testo and "squadra" not in testo and "calciatore" not in testo
+    tp.spegni(db, ADESSO + timedelta(hours=22))
+    assert tp.riepilogo(db) == {**vuoto, "stato": "spenta", "giornate": 8, "motivo": "spenta_a_mano"}
+    tp.accendi(db, ADESSO + timedelta(hours=22))
+    assert tp.riepilogo(db) == {**vuoto, "giornate": 8}                       # riaccesa: aspetta il giro dopo
+
+
+def test_riepilogo_con_la_tabella_rovinata(db):
+    db.execute("INSERT INTO taratura_probabili (creata, stato, prova, misura) VALUES ('2026-11-30T08:00:00', 'scartata', '{x', '[')")
+    db.commit()
+    r = tp.riepilogo(db)
+    assert (r["stato"], r["prova"], r["motivo"]) == ("non_attiva", None, None)

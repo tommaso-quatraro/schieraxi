@@ -159,22 +159,29 @@ def _p(r: pd.DataFrame, taratura: dict | None) -> np.ndarray:
                      for s, q, d in zip(r["stato"], r["percentuale"].to_numpy(float), r["dubbio"])], dtype=float)
 
 
-def fattori_su(r: pd.DataFrame, taratura: dict | None) -> dict[str, float]:
-    """La correzione per gruppi (±15%, `stato_dati.fattori_da`) calcolata su queste righe invece che sulla tabella `probabili`:
-    gruppi di `modello.GRUPPI_PROBABILI`, nella forma di `stato_dati.calibrazione`, con il «previsto» della formula indicata."""
+def calibrazione_su(r: pd.DataFrame, taratura: dict | None) -> dict:
+    """La calibrazione per gruppi sulle righe del registro invece che sulla tabella `probabili`: gruppi di
+    `modello.GRUPPI_PROBABILI` nella forma di `stato_dati.calibrazione` ({giornate, gruppi}), con il «previsto» della formula
+    indicata (None = numeri di partenza). Con una riga attiva `stato_dati.calibrazione` la prende da qui."""
     from . import stato_dati                          # qui dentro: stato_dati importa modello e il registro importa consigli
     previsto = _p(r, taratura)
     perc = r["percentuale"].to_numpy(float)
     gruppi = []
     for nome, stato, da, a in modello.GRUPPI_PROBABILI:
-        scelti = ((r["stato"] == stato).to_numpy() & ~np.isnan(perc) & (perc >= da) & (perc < a))
+        scelti = ((r["stato"] == stato).to_numpy(bool) & ~np.isnan(perc) & (perc >= da) & (perc < a))
         n = int(scelti.sum())
         if not n:
             gruppi.append({"gruppo": nome, "n": 0, "osservato": None, "previsto": None, "indicativo": True})
             continue
-        gruppi.append({"gruppo": nome, "n": n, "osservato": round(float(r["preso"].to_numpy()[scelti].mean()), 3),
+        gruppi.append({"gruppo": nome, "n": n, "osservato": round(float(r["preso"].to_numpy(float)[scelti].mean()), 3),
                        "previsto": round(float(previsto[scelti].mean()), 3), "indicativo": n < stato_dati.MINIMO_PER_GRUPPO})
-    return stato_dati.fattori_da({"giornate": len(giornate(r)), "gruppi": gruppi})
+    return {"giornate": len(giornate(r)), "gruppi": gruppi}
+
+
+def fattori_su(r: pd.DataFrame, taratura: dict | None) -> dict[str, float]:
+    """La correzione per gruppi (±15%, `stato_dati.fattori_da`) calcolata su queste righe (`calibrazione_su`)."""
+    from . import stato_dati
+    return stato_dati.fattori_da(calibrazione_su(r, taratura))
 
 
 def _misura_p(r: pd.DataFrame, p: np.ndarray) -> dict:
@@ -583,6 +590,51 @@ def accendi(db: sqlite3.Connection, adesso: datetime) -> str:
         if db.in_transaction:
             db.rollback()
     return f"{NOME}: riaccesa: al prossimo giro la prova riparte da capo"
+
+
+# ---------------------------------------------------------------- per «Stato dei dati»
+MOTIVI = ("poche_giornate", "non_migliora", "fuori_soglia", "incoerente", "peggiorata", "scadenza_vicina", "spenta_a_mano")
+VERDETTI = ("pronta", "scartata", "attiva", "superata", "ritirata", "rimandata")
+
+
+def _numeri_prova(t: dict) -> dict | None:
+    """I numeri della prova di una riga: giornate di prova, Brier della formula provata, di quella di prima e dei mostrati,
+    calibrazione della formula provata (quota: 0,02 = 2 punti). None se la riga non ha una prova leggibile."""
+    m = _json(t["misura"], {})
+    prova = _giornate_da(t["prova"])
+    if prova is None or not isinstance(m.get("attuale"), dict):
+        return None
+    n = m["nuova"] if isinstance(m.get("nuova"), dict) else {}
+    mo = m["mostrati"] if isinstance(m.get("mostrati"), dict) else {}
+    return {"giornate": len(prova), "brier": n.get("brier"), "brier_prima": m["attuale"].get("brier"),
+            "brier_mostrati": mo.get("brier"), "calibrazione": n.get("calibrazione")}
+
+
+def riepilogo(db: sqlite3.Connection) -> dict:
+    """Per «Stato dei dati» (campo `calibrazione.taratura`): {stato, giornate, minimo, versione, dal, prova, motivo}. `stato`:
+    `in_attesa` (nessun verdetto ancora, o riaccesa da poco), `attiva`, `non_attiva`, `spenta`. `giornate`: giornate del registro
+    buone per la taratura; `minimo`: quante ne servono per la prima prova. `versione` e `prova`: la riga attiva o, se non c'è,
+    l'ultimo verdetto; `dal`: da quando è attiva. `motivo`: un codice di `MOTIVI` o None. Solo numeri, nessun giocatore."""
+    base = {"stato": "in_attesa", "giornate": len(giornate(righe(db))), "minimo": MIN_GIORNATE, "versione": None, "dal": None,
+            "prova": None, "motivo": None}
+    tutte = _tabella(db, "ORDER BY versione")
+    if not tutte:
+        return base
+    ultima = tutte[-1]
+    if ultima["stato"] == "spenta":
+        return {**base, "stato": "spenta", "motivo": "spenta_a_mano"}
+    att = next((t for t in reversed(tutte) if t["stato"] == "attiva"), None)
+    if att is not None and _coefficienti(att["coefficienti"]) is not None:
+        return {**base, "stato": "attiva", "versione": att["versione"], "dal": att["creata"], "prova": _numeri_prova(att),
+                "motivo": "scadenza_vicina" if ultima["stato"] == "rimandata" else None}
+    if ultima["stato"] == "riaccesa":
+        return base
+    v = next((t for t in reversed(tutte) if t["stato"] in VERDETTI), None)
+    if v is None:
+        return base
+    motivo = {"pronta": "poche_giornate", "rimandata": "scadenza_vicina"}.get(v["stato"], v["motivo"])
+    return {**base, "stato": "non_attiva", "versione": v["versione"], "prova": _numeri_prova(v),
+            "motivo": motivo if motivo in MOTIVI else None}
 
 
 def rapporto(db: sqlite3.Connection) -> list[str]:
