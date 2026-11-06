@@ -1,20 +1,39 @@
 import SwiftUI
 
-/// Il titolo piccolo della barra, intero (#293). Il titolo di sistema della barra piccola sta su una riga: con il testo
-/// normale tagliava un nome di squadra oltre ~22 lettere («Gli Amici del Bar Spo…»). Qui il nome sta su una riga, come il
-/// titolo di sistema, se ci sta; se no va a capo su due righe, un po' più piccolo, e si stringe appena (fino all'80%) solo
-/// se due righe non bastano. Limite: un nome che non sta in due righe nemmeno all'80% (oltre ~40-45 lettere con il testo
-/// grande) si accorcia con «…». iPhone in orizzontale: una riga sola (sotto). `ModificatoreTitoloPagina` lo mette al posto
-/// del titolo di sistema nelle pagine con `piccoloInBarra`, sotto `TitoloPagina.soglia` (`TitoloPagina.interoInBarra`).
+/// Il titolo piccolo della barra, sempre intero: mai tagliato con «…» mentre lo stesso titolo è intero nella pagina.
+/// `ModificatoreTitoloPagina` lo mette al posto del titolo di sistema, che sta su una riga e taglia.
+///
+/// - Testo normale (`TitoloPagina.interoInBarra`, pagine con `piccoloInBarra`, #293): il nome sta su una riga, come il
+///   titolo di sistema, se ci sta; se no va a capo su due righe, un po' più piccolo, e si stringe appena (fino all'80%) solo
+///   se due righe non bastano. Limite: un nome che non sta in due righe nemmeno all'80% (oltre ~40-45 lettere con il testo
+///   grande) si accorcia con «…». iPhone in orizzontale: una riga sola.
+/// - Testo grande (`soloSeCiSta`, `TitoloPagina.inBarraSeCiSta`, tutte le pagine, #419): il titolo intero sta già nella
+///   pagina (`TitoloNellaPagina`), quindi la barra lo mostra solo se ci sta intero su una riga; se no non mostra niente.
 struct TitoloInBarra: View {
     let titolo: String
-    /// Da completare (#419): per ora non cambia niente.
+    /// Testo grande: una riga se il titolo ci sta intero, se no niente (il titolo intero è nella pagina).
     var soloSeCiSta = false
     @Environment(\.verticalSizeClass) private var classeVerticale
 
     var body: some View {
         Group {
-            if classeVerticale == .compact {
+            if soloSeCiSta {
+                // Testo grande: il titolo su una riga, intero, oppure niente. `ViewThatFits` prende la prima vista che ci sta in
+                // larghezza; se nessuna ci sta prende l'ultima: lo stesso testo trasparente, che non si vede ma tiene il posto,
+                // così VoiceOver legge il titolo intero nella barra, dove lo cerca (il titolo nella pagina VoiceOver lo salta).
+                // In orizzontale vale lo stesso: con il tetto una riga sta anche nella barra bassa.
+                ViewThatFits(in: .horizontal) {
+                    Text(titolo)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(titolo)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .foregroundStyle(.clear)
+                }
+                // cresce come il titolo piccolo di sistema, non oltre: la barra resta alta come nelle altre pagine
+                .dynamicTypeSize(...TitoloPagina.tettoBarra)
+            } else if classeVerticale == .compact {
                 // iPhone in orizzontale: la barra piccola è alta ~32 punti e due righe non ci stanno; in larghezza c'è molto
                 // più posto, quindi una riga sola che si stringe appena (fino all'80%) solo se serve
                 Text(titolo)
@@ -43,16 +62,16 @@ struct TitoloInBarra: View {
 }
 
 extension View {
-    /// Con un titolo, la barra mostra `TitoloInBarra` al posto del titolo di sistema (che resta per il pulsante «indietro»
-    /// della pagina dopo e per l'elenco delle pagine aperte). Con `nil` la barra resta quella di sistema.
+    /// Con un titolo, la barra mostra quel `TitoloInBarra` al posto del titolo di sistema (che resta per il pulsante
+    /// «indietro» della pagina dopo e per l'elenco delle pagine aperte). Con `nil` la barra resta quella di sistema.
     @ViewBuilder
-    func titoloInteroInBarra(_ titolo: String?) -> some View {
+    func titoloInBarra(_ titolo: TitoloInBarra?) -> some View {
         if #available(iOS 26.0, *) {
             self.toolbar {
                 if let titolo {
                     // su iOS 26 gli elementi della barra stanno su una pillola di vetro: il titolo no, come quello di sistema
                     ToolbarItem(id: "titolo-intero", placement: .principal) {
-                        TitoloInBarra(titolo: titolo)
+                        titolo
                     }
                     .sharedBackgroundVisibility(.hidden)
                 }
@@ -61,7 +80,7 @@ extension View {
             self.toolbar {
                 if let titolo {
                     ToolbarItem(placement: .principal) {
-                        TitoloInBarra(titolo: titolo)
+                        titolo
                     }
                 }
             }
@@ -85,4 +104,15 @@ extension View {
         }
         .titoloPagina("Real Madrink", piccoloInBarra: true)
     }
+}
+
+#Preview("Testo grande, nome lungo: niente nella barra, intero nella pagina") {
+    NavigationStack {
+        List {
+            TitoloNellaPagina()
+            Text("Portieri")
+        }
+        .titoloPagina("Gli Amici del Bar Sport Centrale", piccoloInBarra: true)
+    }
+    .dynamicTypeSize(.accessibility3)
 }
