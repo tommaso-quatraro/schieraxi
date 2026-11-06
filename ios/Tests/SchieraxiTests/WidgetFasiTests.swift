@@ -66,9 +66,9 @@ final class WidgetFasiTests: XCTestCase {
         XCTAssertEqual(r.puntiFineTesto, "73,7 attesi")
         XCTAssertEqual(r.giornataChiusa, 10)
         XCTAssertEqual(r.etichettaGiornataChiusa, "Giornata 8 · 10ª di Serie A")
-        XCTAssertEqual(r.siglaGiornataChiusa, "G8")
+        XCTAssertEqual(ParoleWidget.giornataNelCerchio(r.nomeGiornataChiusa), "Giornata 8")
         XCTAssertEqual(r.giornata, 11, "giornata e scadenza sono già quelle della prossima")
-        XCTAssertEqual(r.siglaGiornata, "G9")
+        XCTAssertEqual(ParoleWidget.giornataNelCerchio(r.nomeGiornata), "Giornata 9")
         XCTAssertNil(r.ancoraDaGiocareTesto)
         XCTAssertTrue(r.descrizioneFase?.hasPrefix("Giornata 8, 10ª di Serie A: finita, 69,5 punti fatti su 73,7 attesi. Prossima: Giornata 9, 11ª di Serie A") == true,
                       r.descrizioneFase ?? "nil")

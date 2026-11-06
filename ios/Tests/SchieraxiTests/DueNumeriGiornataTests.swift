@@ -82,11 +82,11 @@ struct DueNumeriGiornataTests {
         #expect(TestiFase.giornata(serieA: nil, lega: 8) == nil, "senza Serie A non si inventa niente")
     }
 
-    @Test("Widget: la forma intera dove c'è spazio, «G8» negli spazi strettissimi")
+    @Test("Widget: la forma intera dove c'è spazio, «Giornata 8» nei cerchi, mai «G8» (#299)")
     func widget() throws {
         let w = try #require(RiassuntoWidget.leggi(Data(#"{"giornata": 11, "giornata_lega": 8}"#.utf8)))
         #expect(w.etichettaGiornata == "Giornata 8 · 11ª di Serie A")
-        #expect(w.siglaGiornata == "G8")
+        #expect(ParoleWidget.giornataNelCerchio(w.nomeGiornata) == "Giornata 8")
         #expect(w.comeRiassuntoOggi()?.etichettaGiornata == "Giornata 8 · 11ª di Serie A")
     }
 
@@ -112,7 +112,7 @@ struct DueNumeriGiornataTests {
         #expect(n.sigla == "G8")
         #expect(n.voce == "Giornata 8, 11ª di Serie A", "VoiceOver: la virgola al posto di «·»")
         #expect(n.forme == ["Giornata 8 · 11ª di Serie A", "Giornata 8", "G8"])
-        #expect(n.formeCorte == ["Giornata 8", "G8"], "nel widget piccolo solo «Giornata 8»")
+        #expect(n.formeCorte == ["Giornata 8", "G8"], "le forme del calendario; i widget usano ParoleWidget.formeGiornata, senza «G8»")
         #expect(n.intero.unicodeScalars.contains("\u{00AA}"), "«ª» è l'ordinale femminile, non una «a»")
         let s = NomeGiornata(serieA: 11, lega: nil)
         #expect(s.corto == "11ª di Serie A")
@@ -232,7 +232,7 @@ struct DueNumeriGiornataTests {
     @Test("Widget «Attesi e fatti» piccolo e medio: la testata parte da «Giornata 7»; VoiceOver legge una frase con i due numeri")
     func widgetAttesiEFatti() {
         let g = PuntiGiornata(giornata: 10, giornataLega: 7, attesi: 66, fatti: 63.5)
-        #expect(g.nome.formeCorte == ["Giornata 7", "G7"], "prima «Giornata 7», «G7» solo se non entra")
+        #expect(g.formeTestata.map(\.giornata) == ["Giornata 7", "Giornata 7"], "sempre «Giornata 7», mai «G7» (#299)")
         #expect(g.voceWidget == "Attesi e fatti. Giornata 7, 10ª di Serie A: 63,5 punti fatti, 66,0 attesi. −2,5 sul previsto.")
         let senzaAttesi = PuntiGiornata(giornata: 10, giornataLega: 7, fatti: 63.5)
         #expect(senzaAttesi.voceWidget == "Attesi e fatti. Giornata 7, 10ª di Serie A: 63,5 punti fatti.")

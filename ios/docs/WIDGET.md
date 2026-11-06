@@ -58,7 +58,7 @@ trattino tra le sigle; dove non entra nemmeno «NAP vs ATA · 18:00» (o «… �
 Con il punteggio il tabellone «INT 2–1 ROM 63'» (`PartitaLive.formeRiga`, `traLeSigle`, #391); VoiceOver legge il punteggio solo
 se ci sono tutti e due i gol.
 Widget Formazione (tutte le misure): la giornata è «Giornata 8 · 11ª di Serie A» o «Giornata 8», mai «G8» né «G11» (#299; la
-sigla resta solo dove si parla del calendario). Una funzione sola, `ParoleWidget.giornataFormazione`. Grande: accanto al modulo i
+sigla resta solo dove si parla del calendario). Una funzione sola, `ParoleWidget.formeGiornata`. Grande: accanto al modulo i
 punti attesi e sotto la fascia con la giornata (`TestataFormazioneGrande`); se «Giornata 8» non entra accanto alla fascia scende
 sulla riga sotto (`postiGiornata`). Piccolo: il titolo con la giornata sulla riga sotto; se in altezza non c'è posto, il simbolo
 con la giornata accanto (si perde il titolo, non la giornata). Rettangolo della schermata di blocco: «Giornata 8», al più

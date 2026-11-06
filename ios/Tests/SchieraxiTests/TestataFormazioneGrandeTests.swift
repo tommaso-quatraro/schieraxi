@@ -6,7 +6,7 @@ import Testing
 /// scelta» la giornata diventava «G8» prima ancora che i punti perdessero una parola. Ora la giornata sta sulla riga corta della
 /// fascia («tra 65 e 81»), non su quella dei punti: le due righe scelgono ognuna la sua forma, dalla più lunga alla più corta.
 /// E come vuole la #299, nei widget della Formazione mai «G8»: dove lo spazio è poco «Giornata 8» (VoiceOver legge sempre la forma
-/// intera); la stessa funzione (`ParoleWidget.giornataFormazione`) per il grande, il piccolo e la schermata di blocco. Numeri inventati.
+/// intera); la stessa funzione (`ParoleWidget.formeGiornata`) per il grande, il piccolo e la schermata di blocco. Numeri inventati.
 @Suite("Widget Formazione: «Giornata 8», mai «G8» (#391, #299)")
 struct TestataFormazioneGrandeTests {
     private let giornata = NomeGiornata(serieA: 11, lega: 8)
@@ -20,7 +20,7 @@ struct TestataFormazioneGrandeTests {
 
     @Test("Mai «G8»: la forma più corta è «Giornata 8», la stessa nel widget grande e nel piccolo (#299)")
     func maiLaSigla() {
-        let forme = ParoleWidget.giornataFormazione(giornata)
+        let forme = ParoleWidget.formeGiornata(giornata)
         #expect(forme == ["Giornata 8 · 11ª di Serie A", "Giornata 8"])
         #expect(!forme.contains(giornata.sigla), "«\(giornata.sigla)» tra le forme: \(forme)")
         #expect(forme.last == giornata.corto)
@@ -66,6 +66,6 @@ struct TestataFormazioneGrandeTests {
         let t = TestataFormazioneGrande(puntiAttesi: 72.7, tuaScelta: false, fascia: nil, giornata: NomeGiornata(serieA: 11, lega: nil))
         #expect(t.formeGiornata == ["11ª giornata di Serie A", "11ª di Serie A"])
         #expect(TestataFormazioneGrande(puntiAttesi: 72.7, tuaScelta: false, fascia: nil, giornata: nil).formeGiornata.isEmpty)
-        #expect(ParoleWidget.giornataFormazione(nil).isEmpty)
+        #expect(ParoleWidget.formeGiornata(nil).isEmpty)
     }
 }
