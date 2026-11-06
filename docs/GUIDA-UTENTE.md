@@ -107,7 +107,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il test
 
 Se una partita della giornata è **anticipata** di qualche giorno, la scadenza resta quella del resto della giornata: puoi ancora cambiare la formazione, e i giocatori dell'anticipo mostrano già com'è andata la loro partita. Quando l'anticipo è cominciato, la formazione consigliata lascia dove sono i suoi giocatori (titolari, panchina o fuori): gli altri si spostano come al solito.
 
-Se una partita della giornata è **rinviata**, in Oggi compare il riquadro **Partita rinviata**: quali partite (come nelle Partite del turno, «UDI vs MIL»), la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sul campo della Formazione i loro giocatori dicono **Rinviata** al posto di «gioca N%». Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Impostazioni › Regole › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
+Se una partita della giornata è **rinviata**, in Oggi compare la sezione **Partita rinviata**: quali partite (come nelle Partite del turno, «UDI vs MIL»), la data del recupero (se c'è già) e i tuoi giocatori coinvolti. Sul campo della Formazione i loro giocatori dicono **Rinviata** al posto di «gioca N%». Sotto, il menu **Per questa giornata i loro giocatori**: *aspettano il recupero* (conta il voto del recupero, restano schierabili), *restano senza voto* (entra la riserva) o *prendono il voto d'ufficio*. Di solito vale la regola della tua lega (Impostazioni › Regole › Partite rinviate); se per una giornata la lega decide diversamente, cambiala qui: vale solo per quella giornata e i consigli si aggiornano subito. Nella scheda del giocatore il primo motivo spiega cosa succede.
 
 I consigli sui giocatori sono al massimo tre e ognuno dice il perché in una frase. SchieraXI non propone cambi per differenze minime né ti fa svincolare un titolare utile.
 
@@ -196,11 +196,11 @@ Una formazione salvata non più valida (per esempio con un giocatore ceduto) per
 
 Gli avvisi dicono le cose a parole (per esempio «ora probabile titolare», senza percentuali) e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
 
-Attivazione: nella web app, riquadro **Notifiche di questa app**, tocca **Attiva**; **Manda un avviso di prova** controlla che funzioni. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente). **Ore tranquille**: scegli una fascia (per esempio dalle 23 alle 7) in cui non arriva niente; ciò che cade lì arriva dopo.
+Attivazione: nella web app, sezione **Notifiche di questa app**, tocca **Attiva**; **Manda un avviso di prova** controlla che funzioni. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente). **Ore tranquille**: scegli una fascia (per esempio dalle 23 alle 7) in cui non arriva niente; ciò che cade lì arriva dopo.
 
 Nell'app per iPhone e iPad (Impostazioni > Avvisi e promemoria) arrivano i promemoria di **un'ora e un quarto d'ora prima** della scadenza, solo quelli che hai lasciato accesi, e l'avviso quando cambia la formazione consigliata (è iOS a decidere quando controllare, di solito poche volte al giorno); gli altri avvisi arrivano dalla web app installata sulla schermata Home.
 
-Se le notifiche smettono di arrivare dopo un cambio di chiave del server: **Disattiva**, poi **Attiva** nello stesso riquadro.
+Se le notifiche smettono di arrivare dopo un cambio di chiave del server: **Disattiva**, poi **Attiva** nella stessa sezione.
 
 ### Widget sull'iPhone
 
@@ -257,7 +257,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 **Perché la formazione è diversa da ieri?** Sono cambiate probabili, infortuni o squalifiche.
 
-**Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e, per una sola giornata, dal riquadro in Oggi. Anche il Diario conta i punti di quella giornata con la stessa regola.
+**Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e, per una sola giornata, dalla sezione **Partita rinviata** in Oggi. Anche il Diario conta i punti di quella giornata con la stessa regola.
 
 **Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica.
 
