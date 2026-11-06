@@ -10,6 +10,18 @@ def test_fondo_piatto_senza_macchie_che_si_muovono():
     assert "@keyframes deriva" not in CSS
 
 
+def test_superfici_piene_senza_sfocatura():
+    """Grafica B (spec §7.5-7.6): niente vetro sfocato. Le superfici sono piene: il «vetro» e le carte prendono il fondo della
+    pagina nei tre blocchi dei temi, e la testata non torna semitrasparente (senza sfocatura si leggerebbe il testo sotto)."""
+    assert "backdrop-filter" not in CSS
+    temi = [CSS.split(":root {", 1)[1].split("\n}", 1)[0], CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0],
+            CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0]]
+    for blocco in temi:
+        assert "--vetro: var(--sfondo);" in blocco and "--vetro-carta: var(--sfondo);" in blocco
+    testata = re.search(r"\.testata\.vetro \{([^}]*)\}", CSS)
+    assert not testata or "transparent" not in testata.group(1)
+
+
 def test_niente_riflessi_lucidi_sulle_superfici():
     assert "inset 0 1.5px 0 var(--luce)" not in CSS                      # il bordo luminoso in alto di ogni carta
     assert not re.search(r"linear-gradient\(1[5-7]0deg, (?:var\(--luce-2\)|rgba\(255, 255, 255)", CSS)   # il lucido obliquo

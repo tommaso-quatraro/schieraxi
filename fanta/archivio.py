@@ -120,6 +120,26 @@ CREATE TABLE IF NOT EXISTS registro_giornate (
     persa TEXT,                     -- motivo in breve se la giornata non è stata salvata prima della prima partita (salvato NULL)
     PRIMARY KEY (stagione, giornata)
 );
+-- numeri «nostri» (solo Fantacalcio.it, fanta/registro_nostri.py) degli stessi giocatori di registro_giocatori, salvati subito dopo i
+-- mostrati, con la versione dei nostri (`nostri.VERSIONE`). Tabelle a sé (e non colonne in più nel registro): gli archivi che hanno
+-- già il registro le ricevono con CREATE TABLE IF NOT EXISTS, senza toccare le tabelle che ci sono. NON si ricostruiscono.
+CREATE TABLE IF NOT EXISTS registro_nostri (
+    stagione TEXT, giornata INTEGER, calciatore_id INTEGER, versione TEXT,
+    p_voto REAL, mu REAL, mu_voto REAL, e_gol REAL, e_rigori REAL, e_assist REAL, minuti REAL,
+    e_rigori_mostrati REAL,                           -- rigori attesi MOSTRATI (registro_giocatori non li ha), per le fasce dei mostrati
+    PRIMARY KEY (stagione, giornata, calciatore_id)
+);
+-- I4 dal vivo, una riga per giornata: nostri contro mostrati sugli stessi giocatori (somme, sommate poi sulla finestra)
+CREATE TABLE IF NOT EXISTS registro_i4 (
+    stagione TEXT, giornata INTEGER, versione TEXT, misurato TEXT,
+    voti INTEGER, sq_nostri REAL, sq_mostrati REAL,                     -- chi ha preso voto: somme dei quadrati degli errori
+    rose INTEGER, punti_nostri REAL, punti_mostrati REAL,              -- rose di I3: punti veri della migliore con gli uni e gli altri
+    fasce TEXT, fasce_mostrati TEXT,                                    -- gol attesi per fasce: [casi, somma attesi, somma veri] (JSON)
+    tentativi INTEGER,              -- misure non riuscite (qui e non in memoria: contano anche dopo un riavvio)
+    persa TEXT,                     -- motivo in breve se i nostri non si sono salvati prima della prima partita o non si misurano
+    avvisato INTEGER,               -- 1 = avviso partito (giornata persa, o 8 giornate entro soglia per la sua versione)
+    PRIMARY KEY (stagione, giornata)
+);
 """
 
 

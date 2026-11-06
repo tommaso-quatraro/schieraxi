@@ -589,7 +589,28 @@ private extension LegaDemo {
                 ["cosa": "calendario e coppe europee", "quando": quando(100), "errori": [String]()],
             ],
             "registro": registroGiornate(),
+            "consiglio": consiglioFormazione(adesso: adesso),
         ])
+    }
+
+    /// Gli indicatori del consiglio di formazione (#366) come li manda il server: 8 giornate (dalla 3 alla 10) su 3 utenti; non regge
+    /// solo «Cambi della consigliata» (2 cambi per meno di 1 punto atteso). Numeri inventati.
+    private static func consiglioFormazione(adesso: Date) -> [String: Any] {
+        let righe: [[String: Any]] = (3...10).reversed().map { g -> [String: Any] in
+            let sotto: Int = g >= 9 ? 1 : 0
+            let fuori: [String] = g == 10 ? ["C2"] : []
+            return ["stagione": "2026-27", "giornata": g, "voci": 3, "meno_s2": 2.1, "meno_schierata": 0.6, "cambi": 1.3,
+                    "cambi_sotto_soglia": sotto, "improbabili": 1, "con_compagno": 0, "storte": 1, "spiegate": 1,
+                    "senza_motivo": 0.061, "fuori": fuori]
+        }
+        return [
+            "finestra": 8, "giornate": 8, "voci": 24, "verdetto": true,
+            "aggiornato": formatta(adesso.addingTimeInterval(-6 * 3600), "yyyy-MM-dd'T'HH:mm:ss"),
+            "soglie": ["C1": 0.0, "C2": 0, "C3": 0, "C4_senza_motivo": 0.1],
+            "meno_s2": 2.14, "meno_schierata": 0.63, "cambi": 1.33, "cambi_sotto_soglia": 2, "improbabili": 7, "con_compagno": 0,
+            "reparti": 81, "storte": 9, "spiegate": 9, "senza_motivo": 0.061,
+            "regge": ["C1": true, "C2": false, "C3": true, "C4": true], "fuori": ["C2"], "avvisati": [String](), "per_giornata": righe,
+        ]
     }
 
     /// Il registro delle giornate (#344) come lo manda il server: 8 giornate di Serie A misurate (dalla 2 alla 10, la 6 persa),

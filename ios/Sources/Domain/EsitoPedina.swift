@@ -14,14 +14,10 @@ enum EsitoPedina {
 
     /// Il testo sotto la pedina; nil se la partita non è cominciata e non è rinviata (allora «gioca N%»).
     static func testo(etichetta: Avviso.EtichettaPronta?, statoPartita: String?, fvPreso: Double?, rinvio: String?) -> String? {
+        // a partita cominciata come `esitoPartita` (anche le righe dei giocatori); poi il rinvio, solo per la pedina
+        if let partita = EsitoPartita(etichetta: etichetta, statoPartita: statoPartita, fvPreso: fvPreso) { return partita.testo }
         let pronta = etichetta?.testoPronto
         let codice = pronta == nil ? nil : etichetta?.codice
-        if statiIniziata.contains(statoPartita ?? "") || codiciIniziata.contains(codice ?? "") {
-            if let fvPreso, fvPreso.isFinite, codice == "voto" || statoPartita == "fatto" {
-                return "fantavoto \(Formato.punti(fvPreso))"
-            }
-            return pronta ?? statoPartita.flatMap { Giocatore.nomiStatoPartita[$0]?.0 }
-        }
         // con l'etichetta decide il suo codice; con un server vecchio lo stato della partita o il modo del rinvio
         let rinviata = pronta == nil ? statoPartita == "rinviata" || rinvio != nil : codice == "rinviata"
         guard rinviata else { return nil }

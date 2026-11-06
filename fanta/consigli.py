@@ -126,7 +126,7 @@ def _calcola_previsioni(db, d, regole, stagione, giornata, chiave):
     p = modello.previsioni(d, stagione, giornata, regole, probabili=None if prob.empty else prob,
                            giocatori=d.calciatori, fattori_probabili=stato_dati.fattori(db, stagione))
     if p.empty:
-        raise ValueError(f"Non ci sono ancora previsioni per la giornata {giornata}: riprova più tardi.")
+        raise ValueError(frasi.elidi_ordinali(f"Non ci sono ancora previsioni per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))}: riprova più tardi."))
     p = p.set_index("id")
     p["difficolta"] = (p["gol_squadra"] - p["gol_avversario"]).map(difficolta)
     # «perché questo numero» (perche.py): spiega mu con i suoi pezzi veri, non cambia nessun numero
@@ -678,7 +678,7 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
 def testo_formazione(f: dict, modulo: str, titolari: list[int], panchina: list[int]) -> str:
     """La formazione come testo semplice: modulo, nomi per ruolo e panchina in ordine (per leggerla, mandarla o per i Comandi di Apple)."""
     sch = f["schede"]
-    righe = [f"Giornata {f['giornata']} · {modulo}"]
+    righe = [f"{frasi.nome_giornata(f['giornata'], f.get('giornata_lega'))} · {modulo}"]
     for r in "PDCA":
         righe.append(f"{r}: " + ", ".join(sch[str(i)]["nome"] for i in titolari if sch[str(i)]["ruolo"] == r))
     if panchina:
@@ -895,7 +895,7 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
     risultato = []
     for i in (id_a, id_b):
         if i not in prev.index:
-            raise ValueError(f"Giocatore {i} senza previsione per la giornata {giornata} (la sua squadra non gioca?)")
+            raise ValueError(frasi.elidi_ordinali(f"Giocatore {i} senza previsione per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))} (la sua squadra non gioca?)"))
         risultato.append(scheda_previsione(i, prev.loc[i]))
     a, b = risultato
     spiegazione = spiega(prev.loc[id_a], prev.loc[id_b], regole)

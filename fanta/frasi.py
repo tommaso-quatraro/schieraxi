@@ -40,6 +40,9 @@ CATALOGO: dict[str, str] = {
     "tempo.giorni_fa.other": "{n} giorni fa",
     "tempo.giornate.one": "giornata",
     "tempo.giornate.other": "{n} giornate",
+    # il numero della giornata, lega e Serie A insieme (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»): si usa con nome_giornata
+    "giornata.lega": "Giornata {n} · {a}ª di Serie A",
+    "giornata.serie_a": "{a}ª giornata di Serie A",
     "elenco.e": " e ",
     "dafare.dubbio_squalificato": "{nome} non può giocare.",
     "dafare.dubbio_squalificato_alt": "{nome} non può giocare. Meglio {alt}.",
@@ -65,12 +68,12 @@ CATALOGO: dict[str, str] = {
     "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # il server non la scrive più (#334, ora `dafare.rose_mercato`): resta finché la demo dell'app iPhone la usa
     "dafare.rose_vecchie": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
-    "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della giornata {n}.",
+    "dafare.rose_mercato": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
     "dafare.cert.one": "L'app sul telefono scade tra {n} giorno: rinnovala.",
     "dafare.cert.other": "L'app sul telefono scade tra {n} giorni: rinnovala.",
-    "dafare.diario": "La giornata {n} è finita: dimmi se hai schierato la consigliata.",
+    "dafare.diario": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
     "dafare.dati_vecchi": "I dati delle partite non si aggiornano da {giorni} giorni.",
     "dafare.primo_avvio.one": "Hai saltato {n} passo della configurazione iniziale.",
     "dafare.primo_avvio.other": "Hai saltato {n} passi della configurazione iniziale.",
@@ -312,7 +315,17 @@ _DAVANTI_A_VOCALE = re.compile(r"\b(il|al|dal|del|nel|sul) ((?:11|1|8\d?)(?:,\d+
 
 
 def _apostrofo(testo: str) -> str:
-    return _DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo)
+    return elidi_ordinali(_DAVANTI_A_VOCALE.sub(lambda m: _ELISIONE[m.group(1)] + m.group(2), testo))
+
+
+# «la 8ª» si dice «l'8ª» (e «dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una
+# vocale, fra 1 e 38 l'8ª (ottava) e l'11ª (undicesima); «la 1ª» (prima) e «la Giornata 8» restano. Uguale a `elidiOrdinali` in app.js.
+_DAVANTI_A_ORDINALE = re.compile(r"\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)")
+
+
+def elidi_ordinali(testo: str) -> str:
+    """Il testo italiano con l'apostrofo davanti all'8ª e all'11ª («per la 11ª giornata di Serie A» → «per l'11ª giornata di Serie A»)."""
+    return _DAVANTI_A_ORDINALE.sub(lambda m: m.group(1)[:-1] + "'" + m.group(2), testo)
 
 
 def _json(valore):
@@ -372,6 +385,17 @@ def di(valore) -> dict | None:
 def lista(valori) -> list[dict | None]:
     """Per un elenco di testi: un oggetto (o None) per ogni voce, nello stesso ordine."""
     return [di(v) for v in valori]
+
+
+def nome_giornata(serie_a: int, lega: int | None, avviso: bool = False) -> Frase:
+    """La giornata con i due numeri, come su Leghe: «Giornata 8 · 11ª di Serie A» (`lega` = giornata della lega, `serie_a` = giornata
+    di Serie A); senza il numero della lega (stagioni passate, prima che la lega parta) «11ª giornata di Serie A». Stesse forme di
+    `nomeGiornata` in fanta/web/app.js (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»). In una frase va in testa, con i due punti.
+    `avviso`: le chiavi degli avvisi sul telefono (`n.giornata.*`, in italiano e in inglese); le altre le traduce la web da testi.js."""
+    prima = "n." if avviso else ""
+    if lega is None:
+        return F(prima + "giornata.serie_a", a=int(serie_a))
+    return F(prima + "giornata.lega", n=int(lega), a=int(serie_a))
 
 
 def elenco(parti: list, sep: str = ", ", con_e: bool = False):
