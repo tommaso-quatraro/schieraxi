@@ -155,6 +155,9 @@ Gli stili vanno dal più prudente al più rischioso: **Molto sicura**, **Sicura*
 - **Elenco dei giocatori** (filtri per ruolo, solo svincolati, ricerca per nome) e **Calendario** con la difficoltà: in ogni casella «vs MIL» (in casa) o «@ MIL» (in trasferta).
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
 
+Su uno schermo largo (computer con la finestra ampia) le voci di Squadra restano a sinistra e la voce scelta si apre a destra: da **Seguiti** al **Calendario** basta un clic, senza tornare indietro. Riaprendo Squadra trovi la voce dell'ultima volta. Il menu resta accanto anche nella rosa di una squadra. Con la finestra più stretta si vede una cosa alla volta e **‹ Squadra** riporta alle voci. Lo stesso vale per le voci di **Altro**.
+Nell'**Elenco dei giocatori** e nella rosa di una squadra i nomi delle colonne («Partita», «Fantavoto atteso») restano in vista in alto mentre scorri.
+
 ### Scambi (Altro > Scambi)
 
 - **Trova per me**: SchieraXI cerca scambi che convengono a tutte e due le squadre. La ricerca parte solo quando tocchi il pulsante. Restano per oggi un certo numero di ricerche («Ne restano N oggi»); si azzerano a mezzanotte.

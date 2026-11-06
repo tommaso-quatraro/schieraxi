@@ -653,6 +653,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .intro-c .come .debole { font-size: var(--t-sec); padding-bottom: 8px; }
 /* proposta di cambio: una riga da ~80 px separata dalla successiva da un filo; il guadagno in punti è il dato grande a destra */
 .griglia-proposte { display: contents; }
+.griglia-proposte > .proposta-r { margin-bottom: 0; }      /* righe, non sezioni: niente spazio da sezione (32 px da 900 px) tra l'una e l'altra */
 .proposta-r { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; margin-bottom: 0; border-bottom: 1px solid var(--filo); }
 .proposta-r .avatar-anello { --d: 44px; }
 .pr-testo { min-width: 0; }
@@ -776,7 +777,8 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 .intestazione-colonne .ic-partita { grid-area: partita; display: none; }
 .intestazione-colonne .ic-fv { grid-row: 1; grid-column: testo-start / fv-end; text-align: right; }
 .intestazione-colonne.ferma { position: sticky; top: var(--alto-ferma); z-index: 2; background: var(--sfondo); }
-html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-testata, 0px) + 32px); }   /* il focus non finisce sotto i nomi fermi */
+/* il focus non finisce sotto i nomi fermi: la loro altezza vera, 0 quando scorrono con la pagina (controllaColonneFerme in app.js) */
+html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-testata, 0px) + var(--alto-colonne, 0px) + 8px); }
 @container riga (min-width: 680px) {
   .voce-g { grid-template-columns: var(--volto-g) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) var(--col-gioca) var(--col-fv);
     grid-template-areas: "volto nome partita eti gioca fv"; }
@@ -863,13 +865,14 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .maglia-hero { display: none; }
   .conto-oggi.con-maglia { grid-template-columns: minmax(0, 1fr); }
 }
-.stemma-lista { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .3)); }
+.stemma-lista { width: 42px; height: 42px; object-fit: contain; }
 .iniziale-squadra { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: var(--t-valore); color: var(--verde-testo);
   background: var(--verde); }
-.immagini-squadra { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0 6px; }
-.immagine-squadra { display: grid; justify-items: center; gap: 8px; padding: 12px 8px; border-radius: var(--r-card); background: color-mix(in srgb, var(--solido) 40%, transparent); border: 1px solid var(--bordo); }
-.immagine-squadra img { height: 84px; width: auto; max-width: 100%; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .35)); }
-.immagine-squadra .vuota { height: 84px; display: grid; place-items: center; color: var(--testo-2); font-size: var(--t-sec); }
+/* stemma e maglia nella rosa di una squadra: l'immagine dritta con il pulsante sotto, senza riquadro né ombra (grafica B, spec §11) */
+.immagini-squadra { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 12px 40px; margin: 16px 0 8px; }
+.immagine-squadra { display: grid; justify-items: start; gap: 8px; min-width: 0; }
+.immagine-squadra img { height: 84px; width: auto; max-width: 100%; object-fit: contain; }
+.immagine-squadra .vuota { height: 84px; display: grid; align-items: center; color: var(--testo-2); font-size: var(--t-sec); }
 
 /* ---- novità ---- */
 /* «Novità della versione 1.402»: una riga con il filo sopra e sotto, come le altre (spec §9) */
@@ -1057,15 +1060,17 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
 .ar-mia .chip input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--capitano-testo); }
 .ar-mia .chip:not(.attiva) input { accent-color: var(--azione); }
 .ar-mia .chip:has(input:focus-visible) { outline: 2px solid var(--testo); outline-offset: 2px; }
-.ar-squadre { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-@media (min-width: 900px) { .ar-squadre { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; } }
-.ar-squadra { padding: 12px 14px; border-radius: var(--r-in); border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 25%, transparent); min-width: 0; }
-.ar-squadra h4 { margin: 0 0 2px; font-size: var(--t-card); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+/* ogni rosa letta è una sezione (titolo con il filo spesso sotto, niente riquadro); i dubbi sono righe con il filo a sinistra nel colore
+   del significato, come gli avvisi (spec grafica B §8.3 e §8.13): arancio da controllare, rosso non trovato */
+.ar-squadre { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+@media (min-width: 900px) { .ar-squadre { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; align-items: start; } }
+.ar-squadra { padding: 0; min-width: 0; }
+.ar-squadra h4 { margin: 0 0 6px; padding-bottom: 8px; border-bottom: 2px solid var(--testo); font-size: var(--t-card); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow-wrap: anywhere; }
 .ar-problemi { color: var(--arancio); font-size: var(--t-sec); font-weight: 550; margin-top: 4px; }
 .ar-ok { color: var(--verde); font-size: var(--t-sec); font-weight: 550; margin-top: 4px; }
 .ar-dubbi { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
-.ar-dubbio { padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--arancio) 10%, transparent); border: 1px solid color-mix(in srgb, var(--arancio) 30%, transparent); }
-.ar-dubbio:has(.etichetta.rossa) { background: color-mix(in srgb, var(--rosso) 8%, transparent); border-color: color-mix(in srgb, var(--rosso) 28%, transparent); }
+.ar-dubbio { padding: 4px 0 6px 12px; border-left: 3px solid var(--arancio); }
+.ar-dubbio:has(.etichetta.rossa) { border-left-color: var(--rosso); }
 .ar-dubbio.tolto .ar-dubbio-testa b { text-decoration: line-through; color: var(--testo-2); }
 .ar-dubbio-testa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; overflow-wrap: anywhere; }
 .ar-dubbio select { margin-top: 6px; min-height: 46px; font-size: var(--t-corpo); }
@@ -1207,9 +1212,9 @@ body.senza-accesso .salta { display: none; }
   .colonne-campo > .col { grid-column: 2; }
   .colonne-campo .zona-campo { position: absolute; top: 0; bottom: 0; left: 0; width: calc((100% - var(--spazio-colonne)) * var(--quota-campo)); margin: 0; }
   .colonne-campo .campo-fermo { position: sticky; top: calc(var(--alto-ferma) + 16px); }
-  /* Mercato: le carte della scheda si dispongono in colonne */
+  /* Mercato: i Cambi consigliati si dispongono in colonne; il resto (introduzione, elenchi, calendario, avvisi) prende tutta la riga */
   #mercato-corpo { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0 20px; align-items: start; }
-  #mercato-corpo > .carta:first-child, #mercato-corpo > .caricamento, #mercato-corpo > .vuoto, #mercato-corpo > .segmenti, #mercato-corpo > .chips { grid-column: 1 / -1; }
+  #mercato-corpo > :not(.griglia-proposte) { grid-column: 1 / -1; }
 }
 @media (min-width: 768px) and (max-width: 899px) { main { padding-left: 24px; padding-right: 24px; } .testata { padding-right: 24px; } }
 /* colonna ferma in alto (sticky) più alta dello schermo: il suo fondo non arrivava mai in vista, né con il Tab né scorrendo. app.js
@@ -1245,15 +1250,50 @@ body.senza-accesso .salta { display: none; }
   .imp-indietro { display: none; }
   .imp-titolo { margin-top: 0; }
 }
+/* ---- Squadra e Altro (spec grafica B §5 C10): il menu delle voci e la pagina scelta. Sotto i 1100 px una cosa alla volta (il menu,
+   oppure la pagina con «‹ Squadra»); da 1100 px il menu a sinistra, largo 280 px e fermo sotto la testata se ci sta nello schermo
+   (controllaFerme in app.js), e la pagina a destra. La voce aperta ha aria-current="page": il fondo del passaggio del mouse e una
+   linea di 3 px a sinistra nel colore delle azioni, come la linea sotto la scheda accesa in testata (non solo un colore). ---- */
+.lega-colonne { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.lega-menu, .lega-pagina { min-width: 0; }
+.lega-voce { grid-template-columns: minmax(0, 1fr) auto; padding-left: 12px; padding-right: 8px; border-radius: 0 var(--r-in) var(--r-in) 0; }   /* la linea a sinistra resta dritta */
+.lega-voce .dettaglio { display: block; }
+.lega-voce[aria-current="page"] { background: var(--superficie); box-shadow: inset 3px 0 0 var(--azione); }
+.lega-indietro { min-height: 44px; }
+.lega-titolo { font-size: var(--t-card); margin: 14px 0 12px; letter-spacing: -.01em; }
+.lega-titolo:focus { outline: none; }
+@media (max-width: 1099.98px) {
+  .lega-colonne[data-aperto="1"] > .lega-menu { display: none; }
+  .lega-colonne[data-aperto="0"] > .lega-pagina { display: none; }
+  .lega-voce { padding-left: 0; }                                   /* al telefono il menu è la pagina: le voci partono dal bordo */
+}
+@media (min-width: 1100px) {
+  .lega-colonne { grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .lega-menu { position: sticky; top: calc(var(--alto-ferma) + 16px); }
+  .lega-indietro { display: none; }
+  .lega-titolo { margin-top: 0; }
+  .lega-pagina p, .lega-pagina div.debole { max-width: 70ch; }      /* righe di testo al massimo 70 caratteri (spec C12) */
+}
 /* ---- Mercato: scheda Giocatori (ricerca, ruolo, solo svincolati e un elenco compatto) ---- */
 .chips.filtri { margin: 10px 0 2px; }
 .chips.filtri .chip { min-height: 44px; min-width: 44px; justify-content: center; flex: 1 1 0; }
 .filtri-giocatori .interruttore { min-height: 44px; }
 .voce.riga-g { min-height: 48px; }
 .voce.riga-g .nome { overflow-wrap: anywhere; }
+/* il ruolo come controllo segmentato (spec §8.8): un bordo solo, le voci separate da un filo, la scelta in lime con il bordo scuro */
+.chips.filtri { gap: 0; padding: 0; border: 1px solid var(--bordo-campo); border-radius: var(--r-in); }
+.chips.filtri .chip { border: 0; border-radius: 0; margin: 0; background: none; }
+.chips.filtri .chip + .chip { border-left: 1px solid var(--filo); }
+.chips.filtri .chip:first-child { border-radius: calc(var(--r-in) - 1px) 0 0 calc(var(--r-in) - 1px); }
+.chips.filtri .chip:last-child { border-radius: 0 calc(var(--r-in) - 1px) calc(var(--r-in) - 1px) 0; }
+.chips.filtri .chip.attiva { background: var(--capitano); box-shadow: inset 0 0 0 2px var(--testo); }
+/* da 900 px i filtri in una riga sopra l'elenco (spec §9), che prende tutta la larghezza: la riga larga dei giocatori scatta da 680 px */
 @media (min-width: 900px) {
-  .giocatori-pagina { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 0 20px; align-items: start; grid-column: 1 / -1; }
-  .giocatori-pagina .filtri-giocatori { position: sticky; top: calc(var(--alto-ferma) + 16px); }
+  .filtri-giocatori { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
+  .filtri-giocatori > #cerca { flex: 1 1 240px; width: auto; min-width: 0; }
+  .filtri-giocatori > .chips.filtri { flex: 0 1 320px; margin: 0; }
+  .filtri-giocatori > .interruttore { flex: 0 0 auto; padding: 0; gap: 16px; }
+  .filtri-giocatori > .attenzione { flex: 1 0 100%; margin: 0; }
 }
 /* ---- Lega: la mia squadra e regole a sezioni ---- */
 .mia-riga { display: flex; align-items: center; gap: 14px; margin: 4px 0 6px; }
