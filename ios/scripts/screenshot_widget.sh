@@ -7,15 +7,14 @@ USCITA="${2:-screenshot-widget}"
 ID_APP="it.schieraxi.app.anteprima"
 ERRORI=0
 mkdir -p "$USCITA"
-# Avvisi di sistema (es. «Ready for Apple Intelligence»): si ascoltano e le foto prese con un avviso sopra si rifanno (#393).
+# Avvisi di sistema («Ready for Apple Intelligence»): si aspetta che compaiano e spariscano PRIMA delle foto (#393).
 source "$(dirname "$0")/avvisi.sh"
 
 scegli() { python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"; }
 
 scatta() {
   local udid="$1" etichetta="$2" nome="$3" dati="${4:-pieni}" larghezza="$5"
-  local render="pieno" suffisso="" inizio
-  inizio=$(date +%s)
+  local render="pieno" suffisso=""
   if [[ "$dati" == *+* ]]; then render="${dati##*+}"; dati="${dati%%+*}"; suffisso="_$render"; fi
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
@@ -31,12 +30,6 @@ scatta() {
     echo "ERRORE: scatto non riuscito ($etichetta / $nome)"; ERRORI=$((ERRORI + 1)); return
   fi
   if [ "$(stat -f%z "$file" 2>/dev/null || echo 999999)" -lt 30000 ]; then sleep 5; xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1; fi
-  if avvisi_comparsi "$inizio"; then
-    echo "  ($etichetta / $nome: avviso di sistema sullo schermo durante lo scatto: aspetto che sparisca e rifaccio la foto)"
-    AVVISI_RIFATTE=$((AVVISI_RIFATTE + 1))
-    avvisi_aspetta
-    xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
-  fi
   sips --resampleWidth "$larghezza" "$file" >/dev/null 2>&1
   echo "  $etichetta / $nome / $dati"
 }
@@ -64,6 +57,7 @@ avvia() {
   xcrun simctl launch "$udid" "$ID_APP" -GALLERIA cruscotto >/dev/null
   sleep 8
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
+  avvisi_attendi "$udid"
 }
 
 TUTTI=(cruscotto cruscotto-blocco live live-blocco osservato osservato-blocco formazione formazione-blocco punti punti-blocco scambio scambio-blocco oggi dubbi rosa crediti crediti-blocco stato-blocco)

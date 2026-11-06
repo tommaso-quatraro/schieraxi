@@ -1,9 +1,10 @@
 """Avvisi di sistema nelle foto dell'app iOS (`ios/scripts/avvisi.sh`, issue #393).
 
 Il simulatore, due o tre minuti dopo l'accensione, mostra per pochi secondi «Ready for Apple Intelligence» (un avviso di
-sistema, non dell'app) e una foto scattata in quel momento lo porta dentro. Lo manda il servizio di Apple, lo si vede nel
-registro del simulatore: gli script delle foto ascoltano quel registro, e se un avviso è comparso durante lo scatto aspettano
-che sparisca e rifanno la foto. Qui si provano le funzioni di bash con un orologio finto.
+sistema, non dell'app) e una foto scattata in quel momento lo porta dentro. Lo manda il servizio di Apple e si vede nel
+registro del simulatore. Gli script delle foto, dopo l'accensione, aspettano che l'avviso compaia e sparisca PRIMA di fotografare
+(il registro in tempo reale, «log stream», arrivava con 40 secondi di ritardo: non serviva). Qui si provano le funzioni di bash
+con un simulatore e un orologio finti.
 """
 import os
 import re
@@ -29,113 +30,116 @@ def _trova_bash():
 BASH = _trova_bash()
 serve_bash = pytest.mark.skipif(not BASH, reason="serve bash (c'è su GitHub e con Git per Windows)")
 
+RIGA_AVVISO = ("2026-11-06 05:18:34.770 Df generativeexperiencesd[5393:bdb3] [com.apple.GenerativeModels:cfu] "
+               "Posted new Readiness CFU with item: <FLFollowUpItem")
 
-def _bash(tmp_path, corpo, stdin=""):
-    """Esegue `corpo` dopo aver caricato avvisi.sh, con `date +%s` e `sleep` finti: l'ora sta in $ORA, le attese in $ATTESE."""
-    flag = tmp_path / "flag.txt"
+
+def _bash(tmp_path, corpo, avviso_dopo=None):
+    """Esegue `corpo` dopo aver caricato avvisi.sh con `xcrun`, `date +%s` e `sleep` finti.
+
+    Ogni sleep fa passare i secondi che chiede. «log show» risponde con la riga d'avviso solo da `avviso_dopo` secondi
+    dall'inizio in poi (None = mai). Torna (processo, chiamate a xcrun, secondi dormiti)."""
+    chiamate = tmp_path / "chiamate.txt"
     ora = tmp_path / "ora.txt"
-    attese = tmp_path / "attese.txt"
     ora.write_text("1000\n", encoding="utf-8")
+    soglia = "-1" if avviso_dopo is None else str(1000 + avviso_dopo)
     righe = [
         f'source "{SCRIPT.as_posix()}"',
-        f'AVVISI_FLAG="{flag.as_posix()}"',
-        f'date() {{ cat "{ora.as_posix()}"; }}',
-        f'sleep() {{ echo "$1" >> "{attese.as_posix()}"; }}',
+        f'ORA="{ora.as_posix()}"; CHIAMATE="{chiamate.as_posix()}"; SOGLIA={soglia}',
+        'date() { cat "$ORA"; }',
+        'sleep() { echo "sleep $1" >> "$CHIAMATE"; echo $(( $(cat "$ORA") + $1 )) > "$ORA"; }',
+        'xcrun() {',
+        '  echo "xcrun $*" >> "$CHIAMATE"',
+        f'  case "$*" in *"log show"*) [ "$SOGLIA" -ge 0 ] && [ "$(cat "$ORA")" -ge "$SOGLIA" ] && echo "{RIGA_AVVISO}"; return 0 ;; esac',
+        '}',
         corpo,
     ]
     prova = tmp_path / "prova.sh"
     prova.write_text("\n".join(righe) + "\n", encoding="utf-8", newline="\n")
     ambiente = {**os.environ, "PATH": str(Path(BASH).parent) + os.pathsep + os.environ.get("PATH", "")}
-    r = subprocess.run([BASH, prova.as_posix()], input=stdin, capture_output=True, text=True, encoding="utf-8",
-                       timeout=60, env=ambiente)
-    return r, flag, attese
+    r = subprocess.run([BASH, prova.as_posix()], capture_output=True, text=True, encoding="utf-8", timeout=60, env=ambiente)
+    righe_chiamate = chiamate.read_text(encoding="utf-8").splitlines() if chiamate.exists() else []
+    dormiti = sum(float(c.split()[1]) for c in righe_chiamate if c.startswith("sleep "))
+    return r, [c for c in righe_chiamate if c.startswith("xcrun ")], dormiti
 
 
-def _attese(percorso):
-    return [float(x) for x in percorso.read_text(encoding="utf-8").split()] if percorso.exists() else []
-
-
-def test_gli_script_delle_foto_usano_gli_avvisi():
+def test_gli_script_delle_foto_aspettano_gli_avvisi_prima_di_fotografare():
     assert SCRIPT.exists(), "manca ios/scripts/avvisi.sh"
     for script in (FOTO, WIDGET):
         testo = script.read_text(encoding="utf-8")
-        assert "avvisi.sh" in testo, f"{script.name} non carica avvisi.sh"
-        assert "avvisi_avvia" in testo and "avvisi_comparsi" in testo, f"{script.name} non controlla gli avvisi"
+        assert 'source "$(dirname "$0")/avvisi.sh"' in testo, f"{script.name} non carica avvisi.sh"
+        assert "avvisi_avvia" in testo and "avvisi_attendi" in testo and "avvisi_ferma" in testo, script.name
+    # screenshot.sh: l'attesa viene dopo il lancio di prova e prima del primo giro di foto, per iPhone, iPad e foto dal vero
+    foto = FOTO.read_text(encoding="utf-8")
+    for udid, primo_giro in (("UDID_IPHONE", 'giro "$UDID_IPHONE" iphone_scuro'), ("UDID_IPAD", 'giro "$UDID_IPAD" ipad_scuro_verticale'),
+                             ("UDID_VERO", 'giro_vero "$UDID_VERO" "${QUALE}_scuro"')):
+        attesa = f'avvisi_attendi "${udid}"'
+        assert attesa in foto, attesa
+        assert foto.index(attesa) < foto.index(primo_giro), f"{udid}: l'attesa va prima delle foto"
+    avvia = re.search(r"^avvia_simulatore\(\) \{\n.*?^\}\n", foto, re.S | re.M)
+    spegni = re.search(r"^spegni_simulatore\(\) \{\n.*?^\}\n", foto, re.S | re.M)
+    assert avvia and "avvisi_avvia" in avvia.group(0)
+    assert spegni and "avvisi_ferma" in spegni.group(0) and spegni.group(0).index("avvisi_ferma") < spegni.group(0).index("shutdown")
+    assert "avvisi_riepilogo" in foto
 
 
-def test_il_registro_ascoltato_e_quello_dell_avviso_di_apple_intelligence():
+def test_il_registro_interrogato_e_quello_dell_avviso_di_apple_intelligence():
     """Il filtro deve prendere sia l'invito di Apple Intelligence sia la creazione di una notifica del sistema."""
     testo = SCRIPT.read_text(encoding="utf-8")
     assert "Posted new Readiness CFU" in testo
     assert "com.apple.usernotificationsd" in testo and "NotificationsPipeline" in testo
+    assert "log show" in testo and "log stream" not in testo.replace("«log stream»", ""), "il registro in diretta arriva in ritardo"
 
 
 @serve_bash
-def test_senza_avvisi_niente_da_rifare(tmp_path):
-    r, _, attese = _bash(tmp_path, 'echo 0 > "$AVVISI_FLAG"; avvisi_comparsi 990 && echo SI || echo NO; avvisi_aspetta')
-    assert r.stdout.split() == ["NO"], r.stderr
-    assert _attese(attese) == []
-
-
-@serve_bash
-def test_il_registro_annota_l_ora_solo_per_le_righe_con_la_data(tmp_path):
-    righe = (
-        "Filtering the log data using \"subsystem == ...\"\n"
-        "getpwuid_r did not find a match for uid 501\n"
-        "Timestamp               Ty Process[PID:TID]\n"
-    )
-    r, flag, _ = _bash(tmp_path, 'echo 0 > "$AVVISI_FLAG"; avvisi_registra; cat "$AVVISI_FLAG"', stdin=righe)
-    assert r.stdout.split() == ["0"], "le righe di intestazione non sono avvisi"
-    riga = "2026-11-06 00:35:12.002 Df generativeexperiencesd[3906:bcac] [com.apple.GenerativeModels:cfu] Posted new Readiness CFU\n"
-    r, _, _ = _bash(tmp_path, 'echo 0 > "$AVVISI_FLAG"; avvisi_registra; cat "$AVVISI_FLAG"', stdin=righe + riga)
-    assert r.stdout.split() == ["1000"], r.stderr
-
-
-@serve_bash
-@pytest.mark.parametrize("inizio, atteso", [
-    (1000, "SI"),   # l'avviso è comparso durante lo scatto
-    (1005, "SI"),   # comparso 5 secondi prima dell'inizio: sullo schermo c'è ancora
-    (1009, "SI"),
-    (1011, "NO"),   # sparito da un pezzo
-])
-def test_la_foto_e_da_rifare_se_l_avviso_era_ancora_sullo_schermo(tmp_path, inizio, atteso):
-    r, _, _ = _bash(tmp_path, f'echo 1000 > "$AVVISI_FLAG"; avvisi_comparsi {inizio} && echo SI || echo NO')
-    assert r.stdout.split() == [atteso], r.stderr
-
-
-@serve_bash
-def test_si_aspetta_che_l_avviso_sparisca(tmp_path):
-    # avviso alle 1000, ora 1003, l'avviso resta 10 secondi: mancano 7 secondi
-    (tmp_path / "ora.txt").write_text("1003\n", encoding="utf-8")
-    r, _, attese = _bash(tmp_path, 'echo 1000 > "$AVVISI_FLAG"; date() { echo 1003; }; avvisi_aspetta')
+def test_se_l_avviso_compare_si_aspetta_che_sparisca_e_poi_si_va(tmp_path):
+    # l'avviso compare dopo 170 secondi dall'accensione: ogni giro di attesa dura 5 secondi
+    r, chiamate, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 400; echo "VISTO=$AVVISI_VISTO"', avviso_dopo=170)
     assert r.returncode == 0, r.stderr
-    assert _attese(attese) == [7.0]
+    assert "VISTO=si" in r.stdout and "avviso visto" in r.stdout
+    assert 170 <= dormiti <= 170 + 5 + 12, f"ha dormito {dormiti} secondi"
+    # alla fine ha lasciato passare la pausa dell'avviso (12 secondi), non ha aspettato oltre
+    assert dormiti >= 170 + 12 - 5
+    assert all("UDID1" in c for c in chiamate if "log show" in c)
+    assert any("log show" in c and "Posted new Readiness CFU" in c for c in chiamate)
 
 
 @serve_bash
-def test_se_l_avviso_e_gia_sparito_non_si_aspetta(tmp_path):
-    r, _, attese = _bash(tmp_path, 'echo 900 > "$AVVISI_FLAG"; avvisi_aspetta')
+def test_se_l_avviso_e_gia_passato_quando_si_comincia_a_aspettare_basta_la_pausa(tmp_path):
+    r, _, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; sleep 200; avvisi_attendi UDID1 400', avviso_dopo=100)
     assert r.returncode == 0, r.stderr
-    assert _attese(attese) == []
+    assert dormiti == 200 + 12, "la riga d'avviso c'è già: si aspetta solo che sparisca"
 
 
 @serve_bash
-def test_un_file_di_stato_rovinato_vale_come_nessun_avviso(tmp_path):
-    r, _, attese = _bash(tmp_path, 'printf "" > "$AVVISI_FLAG"; avvisi_comparsi 0 && echo SI || echo NO; avvisi_aspetta')
-    assert r.stdout.split() == ["NO"], r.stderr
-    assert _attese(attese) == []
+def test_se_l_avviso_non_compare_si_va_avanti_dopo_il_massimo(tmp_path):
+    r, _, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 60; echo "VISTO=$AVVISI_VISTO"', avviso_dopo=None)
+    assert r.returncode == 0, r.stderr
+    assert "VISTO=no" in r.stdout and "ATTENZIONE" in r.stdout
+    assert 60 <= dormiti <= 70, "l'attesa ha un tetto"
 
 
-def test_lo_script_delle_foto_rifa_la_foto_se_l_avviso_e_comparso():
-    testo = FOTO.read_text(encoding="utf-8")
-    scatta = re.search(r"^scatta\(\) \{\n.*?^\}\n", testo, re.S | re.M)
-    assert scatta, "funzione scatta non trovata in screenshot.sh"
-    corpo = scatta.group(0)
-    assert corpo.count("schermo_fermo.py") == 2, "la foto va rifatta (due scatti nel codice) se compare un avviso"
-    assert "avvisi_comparsi" in corpo and "avvisi_aspetta" in corpo
-    assert corpo.index("avvisi_comparsi") < corpo.rindex("schermo_fermo.py")
-    # il simulatore ascolta gli avvisi appena acceso e smette quando si spegne
-    avvia = re.search(r"^avvia_simulatore\(\) \{\n.*?^\}\n", testo, re.S | re.M)
-    spegni = re.search(r"^spegni_simulatore\(\) \{\n.*?^\}\n", testo, re.S | re.M)
-    assert avvia and "avvisi_avvia" in avvia.group(0)
-    assert spegni and "avvisi_ferma" in spegni.group(0)
+@serve_bash
+def test_l_attesa_guarda_il_registro_dall_accensione_non_solo_gli_ultimi_secondi(tmp_path):
+    # un avviso comparso mentre si installava l'app (prima dell'attesa) non si deve perdere: la finestra parte dall'accensione
+    r, chiamate, _ = _bash(tmp_path, 'avvisi_avvia UDID1; sleep 90; avvisi_attendi UDID1 400', avviso_dopo=50)
+    assert r.returncode == 0, r.stderr
+    finestre = [int(m.group(1)) for c in chiamate if (m := re.search(r"log show --last (\d+)s", c))]
+    assert finestre and finestre[0] >= 90, f"finestra troppo corta: {finestre}"
+
+
+@serve_bash
+def test_prima_di_spegnere_si_controlla_se_l_avviso_e_comparso_dopo_l_attesa(tmp_path):
+    # attesa di 30 secondi senza avviso; l'avviso compare a 100 secondi, quando le foto sono già cominciate
+    r, _, _ = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 30; sleep 120; avvisi_ferma; avvisi_riepilogo', avviso_dopo=100)
+    assert r.returncode == 0, r.stderr
+    assert "comparso DOPO l'attesa" in r.stdout
+    assert "comparsi dopo l'attesa: 1" in r.stdout and "controllare le foto" in r.stdout
+
+
+@serve_bash
+def test_senza_avvisi_tardivi_il_riepilogo_e_pulito(tmp_path):
+    r, _, _ = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 400; avvisi_ferma; avvisi_riepilogo', avviso_dopo=20)
+    assert r.returncode == 0, r.stderr
+    assert "aspettati prima delle foto: 1; comparsi dopo l'attesa: 0" in r.stdout
+    assert "controllare" not in r.stdout

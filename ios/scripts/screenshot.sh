@@ -19,7 +19,7 @@ TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qua
 STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
 RADDRIZZA=0
 mkdir -p "$USCITA"
-# Avvisi di sistema (es. «Ready for Apple Intelligence»): si ascoltano e le foto prese con un avviso sopra si rifanno (#393).
+# Avvisi di sistema («Ready for Apple Intelligence»): si aspetta che compaiano e spariscano PRIMA delle foto (#393).
 source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
@@ -78,8 +78,6 @@ scegli() {
 scatta() {
   local udid="$1" etichetta="$2" nome="$3"
   local schermata="$nome" fondo=() cerca=() cosa=()
-  local inizio
-  inizio=$(date +%s)
   case "$nome" in
     *-fondo) schermata="${nome%-fondo}"; fondo=(-DEMO_FONDO 1) ;;
   esac
@@ -120,14 +118,6 @@ scatta() {
   # Prima bastavano i secondi fissi qui sopra, e la Formazione in orizzontale usciva con lo scheletro del caricamento.
   python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
   esito=$?
-  # Un avviso di sistema comparso durante lo scatto (o da poco) è sulla foto: si aspetta che sparisca e si rifà (#393).
-  if avvisi_comparsi "$inizio"; then
-    echo "  ($etichetta / $nome: avviso di sistema sullo schermo durante lo scatto: aspetto che sparisca e rifaccio la foto)"
-    AVVISI_RIFATTE=$((AVVISI_RIFATTE + 1))
-    avvisi_aspetta
-    python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
-    esito=$?
-  fi
   if [ "$esito" -eq 3 ]; then
     echo "  ($etichetta / $nome: lo schermo si muoveva ancora dopo l'attesa, foto scattata lo stesso)"
     IN_MOVIMENTO=$((IN_MOVIMENTO + 1))
@@ -290,6 +280,7 @@ if [ "$SCATTI" = "vero" ]; then
   xcrun simctl launch "$UDID_VERO" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
   sleep 10
   xcrun simctl terminate "$UDID_VERO" "$ID_APP" >/dev/null 2>&1
+  avvisi_attendi "$UDID_VERO"
   copia_fotografie "$UDID_VERO" || exit 1
   giro_vero "$UDID_VERO" "${QUALE}_scuro" scuro large
   giro_vero "$UDID_VERO" "${QUALE}_chiaro" chiaro large
@@ -323,6 +314,7 @@ avvia_simulatore "$UDID_IPHONE"
 xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
 sleep 10
 xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
+avvisi_attendi "$UDID_IPHONE"
 
 giro "$UDID_IPHONE" iphone_scuro scuro large "${TUTTE[@]}"
 giro "$UDID_IPHONE" iphone_chiaro chiaro large "${PER_CHIARO[@]}"
@@ -377,6 +369,7 @@ avvia_simulatore "$UDID_IPAD"
 xcrun simctl launch "$UDID_IPAD" "$ID_APP" -DEMO -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null
 sleep 10
 xcrun simctl terminate "$UDID_IPAD" "$ID_APP" >/dev/null 2>&1
+avvisi_attendi "$UDID_IPAD"
 
 giro "$UDID_IPAD" ipad_scuro_verticale scuro large "${PER_IPAD[@]}"
 if [ "$SCATTI" = "veloce" ]; then

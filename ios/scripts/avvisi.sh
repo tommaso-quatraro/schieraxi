@@ -1,92 +1,82 @@
 #!/bin/bash
 # Avvisi di sistema nelle foto del simulatore (issue #393). Si carica con `source` da screenshot.sh e screenshot_widget.sh.
 #
-# Cosa succede: due o tre minuti dopo l'accensione, il simulatore mostra per circa 5 secondi «Ready for Apple Intelligence»
-# (non è dell'app: lo posta il servizio di Apple generativeexperiencesd, come invito di «Follow Up»), e una foto scattata
-# in quel momento lo porta dentro. Si vede nel registro del simulatore: «Posted new Readiness CFU» e, subito dopo, la creazione
-# della notifica (SpringBoard, com.apple.usernotificationsd, NotificationsPipeline).
+# Cosa succede: dopo l'accensione, il simulatore mostra per circa 5 secondi «Ready for Apple Intelligence» (non è dell'app:
+# lo posta il servizio di Apple generativeexperiencesd, come invito «Follow Up»), una volta sola, di solito dopo 2-3 minuti
+# (misurato in tre corse: 2:00, 2:50 e circa 3:30 dalla fine dell'accensione). Una foto scattata in quel momento lo porta dentro.
+# Nel registro del simulatore si legge «Posted new Readiness CFU» e, subito dopo, la creazione della notifica di Impostazioni
+# (SpringBoard, com.apple.usernotificationsd, NotificationsPipeline).
 #
-# Perché si fa così (e non spegnendo l'avviso): non c'è un'impostazione documentata che lo tolga (il simulatore non ha un
-# pulsante per Apple Intelligence, e un «defaults write» su un servizio di Apple cambia da una versione di iOS all'altra);
-# dal simulatore da riga di comando non si può toccare lo schermo per chiuderlo. Il registro invece dice con certezza QUANDO
-# un avviso compare: lo script lo ascolta, e se un avviso è comparso durante (o poco prima) di uno scatto aspetta che sparisca e
-# rifà la foto. Vale per qualunque notifica di sistema che passi da lì, non solo per questa.
+# Perché si fa così: non c'è un'impostazione documentata che lo tolga (il simulatore non ha un pulsante per Apple Intelligence,
+# e un «defaults write» su un servizio di Apple cambia da una versione di iOS all'altra); dal simulatore da riga di comando non
+# si può toccare lo schermo per chiudere il banner. Si fa invece in modo che sia già passato PRIMA delle foto: dopo
+# l'accensione si interroga il registro («log show») finché l'avviso compare, si aspetta che sparisca, e solo allora si comincia.
+# Il registro con «log stream» non va bene: arriva con 40 secondi di ritardo, a avviso già sparito (provato il 6/11).
 #
-#   avvisi_avvia <udid>       comincia ad ascoltare il registro di quel simulatore (dopo l'accensione)
-#   avvisi_ferma              smette di ascoltare
-#   avvisi_comparsi <ora>     vero se un avviso è comparso da (ora - pausa) in poi; <ora> = secondi di date +%s a inizio scatto
-#   avvisi_aspetta            aspetta che l'ultimo avviso sia sparito dallo schermo
+#   avvisi_avvia <udid>       da chiamare appena il simulatore è acceso: segna l'ora
+#   avvisi_attendi <udid> [s] aspetta l'avviso (al massimo s secondi, predefinito 400) e che sparisca
+#   avvisi_ferma              da chiamare prima di spegnere: se l'avviso non è comparso durante l'attesa guarda se è comparso dopo
 #   avvisi_riepilogo          una riga per il registro della corsa
 
-AVVISI_FLAG="${AVVISI_FLAG:-${TMPDIR:-/tmp}/schieraxi-avvisi-$$}"
-AVVISI_PAUSA="${AVVISI_PAUSA:-10}"   # secondi in cui un avviso sta sullo schermo (visti 5), con margine
+AVVISI_PAUSA="${AVVISI_PAUSA:-12}"   # secondi in cui un avviso sta sullo schermo (visti 5), con margine
 AVVISI_FILTRO='(subsystem == "com.apple.usernotificationsd" AND category == "NotificationsPipeline" AND eventMessage CONTAINS "[create,") OR (eventMessage CONTAINS "Posted new Readiness CFU")'
 AVVISI_UDID=""
-AVVISI_PID=""
-AVVISI_RIFATTE=0   # foto rifatte perché un avviso era sullo schermo
+AVVISI_AVVIATO=0     # ora (secondi) dell'accensione
+AVVISI_VISTO=""      # "" = non si è aspettato; "si" = visto durante l'attesa; "no" = non visto in tempo
+AVVISI_TARDI=0       # righe di avviso viste dopo l'attesa (sono nelle foto fatte dopo)
+AVVISI_ASPETTATI=0   # avvisi visti durante l'attesa e lasciati passare prima delle foto
 
-# Legge il registro da stdin: ogni riga che comincia con una data è un avviso; ne annota l'ora (secondi) in $AVVISI_FLAG
-# e la riga in $AVVISI_FLAG.log. Le righe d'intestazione di «log stream» non cominciano con una data.
-avvisi_registra() {
-  local riga
-  while IFS= read -r riga; do
-    case "$riga" in
-      [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\ *)
-        date +%s > "$AVVISI_FLAG"
-        echo "${riga:0:200}" >> "$AVVISI_FLAG.log"
-        ;;
-    esac
-  done
+# Quante righe di avviso ci sono nel registro del simulatore dall'accensione a oggi.
+avvisi_contati() {
+  local passati
+  passati=$(( $(date +%s) - AVVISI_AVVIATO + 10 ))
+  xcrun simctl spawn "$1" log show --last "${passati}s" --style compact --predicate "$AVVISI_FILTRO" 2>/dev/null \
+    | grep -c '^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] '
 }
 
 avvisi_avvia() {
-  avvisi_ferma
   AVVISI_UDID="$1"
-  echo 0 > "$AVVISI_FLAG"
-  touch "$AVVISI_FLAG.log"   # il registro resta tra un simulatore e l'altro (iPhone, poi iPad): il riepilogo li conta tutti
-  # «log stream» scrive a blocchi quando l'uscita è un tubo, e un avviso (poche righe) arriverebbe in ritardo: `script` gli dà
-  # un terminale finto e l'uscita esce riga per riga. Senza `script` si prova lo stesso, col tubo.
-  local comando=(xcrun simctl spawn "$AVVISI_UDID" log stream --level debug --style compact --predicate "$AVVISI_FILTRO")
-  if command -v script >/dev/null 2>&1; then comando=(script -q /dev/null "${comando[@]}"); fi
-  ( "${comando[@]}" 2>/dev/null | avvisi_registra ) &
-  AVVISI_PID=$!
-  disown "$AVVISI_PID" 2>/dev/null   # niente «Terminated» nel registro quando si ferma
+  AVVISI_AVVIATO=$(date +%s)
+  AVVISI_VISTO=""
+}
+
+avvisi_attendi() {
+  local udid="$1" massimo="${2:-${AVVISI_ATTESA_MAX:-400}}" inizio passati visti
+  inizio=$(date +%s)
+  echo "Aspetto l'avviso di Apple Intelligence (al massimo $massimo s): compare una sola volta dopo l'accensione e coprirebbe le foto"
+  while :; do
+    visti=$(avvisi_contati "$udid")
+    passati=$(( $(date +%s) - inizio ))
+    if [ "${visti:-0}" -gt 0 ]; then
+      echo "  avviso visto ($((passati)) s di attesa, $(( $(date +%s) - AVVISI_AVVIATO )) s dall'accensione): aspetto $AVVISI_PAUSA s che sparisca"
+      sleep "$AVVISI_PAUSA"
+      AVVISI_VISTO=si
+      AVVISI_ASPETTATI=$((AVVISI_ASPETTATI + 1))
+      return 0
+    fi
+    if [ "$passati" -ge "$massimo" ]; then
+      echo "  ATTENZIONE: nessun avviso in $massimo s: si va avanti (se comparirà più tardi, lo dirà il riepilogo)"
+      AVVISI_VISTO=no
+      return 0
+    fi
+    sleep 5
+  done
 }
 
 avvisi_ferma() {
-  if [ -n "$AVVISI_PID" ]; then kill "$AVVISI_PID" 2>/dev/null; fi
-  if [ -n "$AVVISI_UDID" ]; then pkill -f "simctl spawn $AVVISI_UDID log stream" 2>/dev/null; fi
-  AVVISI_PID=""
+  local visti
+  if [ -n "$AVVISI_UDID" ] && [ "$AVVISI_VISTO" = no ]; then
+    visti=$(avvisi_contati "$AVVISI_UDID")
+    if [ "${visti:-0}" -gt 0 ]; then
+      AVVISI_TARDI=$((AVVISI_TARDI + visti))
+      echo "ATTENZIONE: l'avviso di sistema è comparso DOPO l'attesa: le foto fatte in quel momento possono averlo sopra"
+    fi
+  fi
   AVVISI_UDID=""
   return 0
 }
 
-# L'ora dell'ultimo avviso, 0 se non ce ne sono (o se il file è illeggibile).
-avvisi_ultimo() {
-  local t
-  t=$(cat "$AVVISI_FLAG" 2>/dev/null)
-  case "$t" in ''|*[!0-9]*) t=0 ;; esac
-  echo "$t"
-}
-
-avvisi_comparsi() {
-  local ultimo
-  ultimo=$(avvisi_ultimo)
-  [ "$ultimo" -gt 0 ] && [ "$ultimo" -ge $(( $1 - AVVISI_PAUSA )) ]
-}
-
-avvisi_aspetta() {
-  local ultimo resto
-  ultimo=$(avvisi_ultimo)
-  [ "$ultimo" -gt 0 ] || return 0
-  resto=$(( ultimo + AVVISI_PAUSA - $(date +%s) ))
-  if [ "$resto" -gt 0 ]; then sleep "$resto"; fi
-  return 0
-}
-
 avvisi_riepilogo() {
-  local visti=0
-  [ -f "$AVVISI_FLAG.log" ] && visti=$(wc -l < "$AVVISI_FLAG.log" | tr -d ' ')
-  echo "Avvisi di sistema visti nel registro: $visti. Foto rifatte per un avviso: $AVVISI_RIFATTE"
-  if [ "$visti" -gt 0 ]; then cut -c1-160 "$AVVISI_FLAG.log" | head -5; fi
+  echo "Avvisi di sistema: aspettati prima delle foto: $AVVISI_ASPETTATI; comparsi dopo l'attesa: $AVVISI_TARDI"
+  if [ "$AVVISI_TARDI" -gt 0 ]; then echo "  (controllare le foto: l'avviso può essere sopra quelle fatte dopo l'attesa)"; fi
 }

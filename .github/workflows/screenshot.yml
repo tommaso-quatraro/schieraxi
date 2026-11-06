@@ -263,7 +263,7 @@ jobs:
           IPHONE: ${{ inputs.iphone == 'piccolo' && 'iphone-piccolo' || inputs.iphone == 'grande' && 'iphone-grande' || 'iphone' }}
           DISPOSITIVI: ${{ inputs.dispositivi || 'iphone' }}
           SCHERMATE: ${{ inputs.schermate || '' }}
-        run: bash scripts/prova_avvisi.sh x screenshot
+        run: bash scripts/screenshot.sh build/Build/Products/Debug-iphonesimulator/Schieraxi.app screenshot
       # Widget nello stesso job, dopo l'app e sullo stesso simulatore già acceso: corse veloci e collaudo (uscite del job «quando»)
       - name: Compila l'anteprima dei widget per il simulatore (senza firma)
         if: ${{ !cancelled() && needs.quando.outputs.widget == 'true' && needs.quando.outputs.parallelo != 'true' }}
