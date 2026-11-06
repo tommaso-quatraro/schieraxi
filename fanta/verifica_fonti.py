@@ -1,10 +1,10 @@
 """Esperimenti «fonti in ombra» di `verifica --fonti` (spenti di default).
 
-Le colonne in più di football-data.co.uk (tabella `partite_extra`) NON sono lette dal modello. Qui si prova, una cosa alla
-volta, a dargliele al posto di quelle di oggi e si confronta il risultato con la verifica normale:
-- `xg_fd`: forza delle squadre dall'xG di squadra di football-data (disponibile solo dal 2026-27) al posto di quello di Understat;
-- `tiri_porta`: forza delle squadre da una media tra l'xG di Understat e i tiri in porta (convertiti in gol con il rapporto
-  gol/tiri in porta del campionato).
+Le colonne in più di football-data.co.uk (tabella `partite_extra`) NON sono lette dal modello. Qui si prova a dargliele al
+posto di quelle di oggi e si confronta il risultato con la verifica normale:
+- `xg_fd`: forza delle squadre dall'xG di squadra di football-data (disponibile solo dal 2026-27) al posto di quello di Understat.
+La variante `tiri_porta` (media tra l'xG di Understat e i tiri in porta) è stata tolta perché mescolava gli xG di Understat
+(Fase F del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md).
 
 Regola di promozione (da docs/archivio/PIANO-DATI.md): errore sui voti almeno 0,5% più basso e miglioramento nello stesso senso in almeno
 2 stagioni su 3. Il modello non cambia da solo: la promozione è una decisione da prendere guardando questi numeri.
@@ -19,10 +19,9 @@ import pandas as pd
 from . import verifica
 from .modello import Dati
 
-VARIANTI = ("xg_fd", "tiri_porta")
+VARIANTI = ("xg_fd",)
 SOGLIA_ERRORE = -0.5          # per cento: serve una riduzione dell'errore di almeno così
 STAGIONI_MIN_MIGLIORI = 2     # su (al massimo) le ultime 3 stagioni misurate
-PESO_TIRI = 0.5               # tiri_porta: quanto pesa la parte dei tiri in porta (il resto è l'xG di Understat)
 
 
 def _unisci_extra(d: Dati) -> pd.DataFrame:
@@ -41,26 +40,14 @@ def dati_con_variante(d: Dati, nome: str) -> tuple[Dati, int]:
     if nome not in VARIANTI:
         raise ValueError(f"fonte sconosciuta: {nome} (valide: {', '.join(VARIANTI)})")
     p = _unisci_extra(d)
-    cambiate = 0
 
     def col(n: str) -> pd.Series:
         return p[n] if n in p.columns else pd.Series(np.nan, index=p.index)
-    if nome == "xg_fd":
-        usa = col("fd_xg_casa").notna() & col("fd_xg_trasferta").notna()
-        p.loc[usa, "xg_casa"] = col("fd_xg_casa")[usa]
-        p.loc[usa, "xg_trasferta"] = col("fd_xg_trasferta")[usa]
-        cambiate = int(usa.sum())
-    else:   # tiri_porta
-        usa = col("fd_in_porta_casa").notna() & col("fd_in_porta_trasferta").notna()
-        gol = (p["gol_casa"] + p["gol_trasferta"])[usa].sum()
-        tiri = (col("fd_in_porta_casa") + col("fd_in_porta_trasferta"))[usa].sum()
-        k = float(gol / tiri) if tiri > 0 else 0.0
-        for xg, tp in (("xg_casa", "fd_in_porta_casa"), ("xg_trasferta", "fd_in_porta_trasferta")):
-            da_tiri = k * col(tp)
-            mescolato = np.where(p[xg].notna(), (1 - PESO_TIRI) * p[xg] + PESO_TIRI * da_tiri, da_tiri)
-            p.loc[usa, xg] = mescolato[usa.to_numpy()]
-        cambiate = int(usa.sum())
-    return replace(d, partite=p), cambiate
+    # xg_fd, l'unica variante
+    usa = col("fd_xg_casa").notna() & col("fd_xg_trasferta").notna()
+    p.loc[usa, "xg_casa"] = col("fd_xg_casa")[usa]
+    p.loc[usa, "xg_trasferta"] = col("fd_xg_trasferta")[usa]
+    return replace(d, partite=p), int(usa.sum())
 
 
 def _riassunto(t: pd.DataFrame) -> dict:

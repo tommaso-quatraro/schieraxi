@@ -20,6 +20,7 @@ def _senza_pianificatore(monkeypatch):
     """Nei test il pianificatore (aggiornamenti schedulati dentro il servizio) resta spento: niente rete per sbaglio."""
     monkeypatch.setenv("FANTA_PIANIFICATORE", "0")
     monkeypatch.setenv("FANTA_COPIA_SCADENZA", "0")          # e niente copie alla scadenza nei file veri della lega
+    monkeypatch.setenv("FANTA_REGISTRO_GIORNATE", "0")       # né registro delle giornate (lo accendono le sue prove)
 
 
 @pytest.fixture(autouse=True)
@@ -126,13 +127,22 @@ def _dati_personali_in_cartella_finta(request, tmp_path, monkeypatch):
     un test che non indica il file esplicito userebbe i dati dell'utente e darebbe esiti diversi da PC a PC."""
     if request.node.get_closest_marker("percorsi_veri"):      # solo per chi controlla i percorsi di sempre (nessun file viene letto)
         return
-    from fanta import affidabilita, diario, osservati, scelte
+    from fanta import affidabilita, diario, indicatori_consiglio, osservati, scelte
     d = tmp_path / "dati-personali-finti"
     for modulo, nome, file in ((scelte, "FILE_SCELTE", "scelte.json"), (osservati, "FILE_OSSERVATI", "osservati.json"),
-                               (diario, "FILE", "diario.json"), (affidabilita, "FILE", "affidabilita.json")):
+                               (diario, "FILE", "diario.json"), (affidabilita, "FILE", "affidabilita.json"),
+                               (indicatori_consiglio, "FILE", "indicatori-consiglio.json")):
         monkeypatch.setattr(modulo, nome, d / file)
     from fanta import immagini                                # stemmi e maglie: mai nella cartella della lega (anche quella di esempio)
     monkeypatch.setattr(immagini, "CARTELLA", d / "immagini")
+
+
+@pytest.fixture(autouse=True)
+def _consigliate_in_cartella_finta(tmp_path, monkeypatch):
+    """Le consigliate già mostrate (`consigli.FILE_CONSIGLIATE`) mai nel file vero di `dati/`: ogni test parte senza, e quella
+    ricordata da un test non cambia la consigliata di un altro."""
+    from fanta import consigli
+    monkeypatch.setattr(consigli, "FILE_CONSIGLIATE", tmp_path / "consigliate-finte.json")
 
 
 @pytest.fixture

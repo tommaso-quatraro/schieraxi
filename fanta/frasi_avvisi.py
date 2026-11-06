@@ -7,11 +7,14 @@ Le chiavi cominciano per `n.`; i plurali sono `chiave.one` e `chiave.other` con 
 from __future__ import annotations
 
 NOTIFICHE: dict[str, tuple[str, str]] = {
+    # ---- il numero della giornata (frasi.nome_giornata con avviso=True): lo stesso testo di «giornata.*» di frasi.CATALOGO
+    "n.giornata.lega": ("Giornata {n} · {a}ª di Serie A", "Matchday {n} · Serie A matchday {a}"),
+    "n.giornata.serie_a": ("{a}ª giornata di Serie A", "Serie A matchday {a}"),
     # ---- giocatori seguiti
     "n.t_osservato_libero": ("SchieraXI · un osservato è libero", "SchieraXI · a player you follow is free"),
     "n.osservato_libero": ("{nome} ({ruolo}): lasciato libero da {squadra}", "{nome} ({ruolo}): released by {squadra}"),
     # ---- cambi nelle probabili
-    "n.t_cambi": ("SchieraXI · giornata {giornata}: cambi nelle probabili", "SchieraXI · matchday {giornata}: changes in the probable lineups"),
+    "n.t_cambi": ("SchieraXI · cambi nelle probabili", "SchieraXI · changes in the probable lineups"),
     "n.ora_infortunato": ("{nome}: ora infortunato", "{nome}: now injured"),
     "n.ora_squalificato": ("{nome}: ora squalificato", "{nome}: now suspended"),
     "n.torna_titolare": ("{nome}: torna disponibile (titolare)", "{nome}: back and available (starter)"),
@@ -42,18 +45,22 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.t_reparto_rischio": ("SchieraXI · un reparto della rosa è a rischio", "SchieraXI · a position in your roster is at risk"),
     # ---- promemoria prima della scadenza
     "n.t_titolare_rischio": ("SchieraXI · un tuo titolare è a rischio", "SchieraXI · one of your starters is at risk"),
-    "n.rischio.one": ("Hai già schierato, ma {nomi} non è più sicuro come titolare. La formazione della giornata {giornata} si chiude alle {ora}: controlla.",
-                      "You have already fielded a lineup, but {nomi} is no longer a sure starter. The lineup for matchday {giornata} closes at {ora}: check it."),
-    "n.rischio.other": ("Hai già schierato, ma {nomi} non sono più sicuri come titolare. La formazione della giornata {giornata} si chiude alle {ora}: controlla.",
-                        "You have already fielded a lineup, but {nomi} are no longer sure starters. The lineup for matchday {giornata} closes at {ora}: check it."),
+    "n.rischio.one": ("Hai già schierato, ma {nomi} non è più sicuro come titolare. {giornata}: la formazione si chiude alle {ora}, controlla.",
+                      "You have already fielded a lineup, but {nomi} is no longer a sure starter. {giornata}: the lineup closes at {ora}, check it."),
+    "n.rischio.other": ("Hai già schierato, ma {nomi} non sono più sicuri come titolare. {giornata}: la formazione si chiude alle {ora}, controlla.",
+                        "You have already fielded a lineup, but {nomi} are no longer sure starters. {giornata}: the lineup closes at {ora}, check it."),
     "n.t_un_ora": ("SchieraXI · formazione tra un'ora", "SchieraXI · lineup in one hour"),
-    "n.tra_un_ora": ("La formazione della giornata {giornata} si chiude tra circa un'ora (scadenza alle {ora}).",
-                     "The lineup for matchday {giornata} closes in about an hour (deadline at {ora})."),
+    "n.tra_un_ora": ("{giornata}: la formazione si chiude tra circa un'ora (scadenza alle {ora}).",
+                     "{giornata}: the lineup closes in about an hour (deadline at {ora})."),
+    "n.non_valida_tra_un_ora": ("{giornata}: la formazione si chiude tra circa un'ora (scadenza alle {ora}), ma quella che hai salvato non è più valida: salvane un'altra.",
+                                "{giornata}: the lineup closes in about an hour (deadline at {ora}), but the one you saved is no longer valid: save another one."),
     "n.consigliato": ("Consigliato: {modulo}, {punti} punti attesi.", "Recommended: {modulo}, {punti} expected points."),
     "n.da_controllare": ("Da controllare: {nomi}.", "To check: {nomi}."),
     "n.t_ultimi_minuti": ("SchieraXI · ultimi minuti per la formazione", "SchieraXI · last minutes for the lineup"),
-    "n.ultimi_minuti": ("Ultimi minuti: la formazione della giornata {giornata} si chiude alle {ora}. L'hai inserita su Leghe?",
-                        "Last minutes: the lineup for matchday {giornata} closes at {ora}. Have you entered it on Leghe?"),
+    "n.ultimi_minuti": ("{giornata}: la formazione si chiude alle {ora}. L'hai inserita su Leghe?",
+                        "{giornata}: the lineup closes at {ora}. Have you entered it on Leghe?"),
+    "n.non_valida_ultimi_minuti": ("{giornata}: la formazione si chiude alle {ora} e quella che hai salvato non è più valida. Salvane un'altra.",
+                                   "{giornata}: the lineup closes at {ora} and the one you saved is no longer valid. Save another one."),
     # ---- «cambia la formazione»
     "n.t_cambia": ("SchieraXI · cambia la formazione", "SchieraXI · change your lineup"),
     "n.t_cambia_consigliata": ("SchieraXI · cambia la formazione consigliata", "SchieraXI · the recommended lineup has changed"),
@@ -73,19 +80,19 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
     "n.testo_scadenza": ("{frase} (+{punti} punti attesi). La formazione si chiude alle {ora}.",
                          "{frase} (+{punti} expected points). The lineup closes at {ora}."),
     # ---- riepilogo di giornata
-    "n.t_riepilogo": ("SchieraXI · riepilogo giornata {giornata}", "SchieraXI · matchday {giornata} recap"),
-    "n.riepilogo": ("Giornata {giornata}: {fonte} ha fatto circa {punti} punti (il modello ne aspettava {attesi}). Il massimo possibile con la tua rosa era {massimo}.",
-                    "Matchday {giornata}: {fonte} scored about {punti} points (the model expected {attesi}). The maximum possible with your roster was {massimo}."),
+    "n.t_riepilogo": ("SchieraXI · riepilogo della giornata", "SchieraXI · matchday recap"),
+    "n.riepilogo": ("{giornata}: {fonte} ha fatto circa {punti} punti (il modello ne aspettava {attesi}). Il massimo possibile con la tua rosa era {massimo}.",
+                    "{giornata}: {fonte} scored about {punti} points (the model expected {attesi}). The maximum possible with your roster was {massimo}."),
     "n.fonte_scelta": ("la tua scelta salvata", "your saved choice"),
     "n.fonte_consigliata": ("la formazione consigliata", "the recommended lineup"),
     "n.migliori": ("Migliori: {elenco}.", "Best: {elenco}."),
     "n.nome_voto": ("{nome} {voto}", "{nome} {voto}"),
     "n.senza_voto": ("Senza voto: {nomi}.", "No rating: {nomi}."),
-    "n.prossima": ("Prossima: giornata {giornata}, la formazione si chiude {data} alle {ora}.",
-                   "Next: matchday {giornata}, the lineup closes {data} at {ora}."),
+    "n.prossima": ("Prossima: {giornata}. La formazione si chiude {data} alle {ora}.",
+                   "Next: {giornata}. The lineup closes {data} at {ora}."),
     # ---- formazione pronta e prova
-    "n.pronta": ("Giornata {giornata}: la formazione è pronta. Apri l'app e controlla le probabili.",
-                 "Matchday {giornata}: the lineup is ready. Open the app and check the probable lineups."),
+    "n.pronta": ("{giornata}: la formazione è pronta. Apri l'app e controlla le probabili.",
+                 "{giornata}: the lineup is ready. Open the app and check the probable lineups."),
     "n.t_prova": ("SchieraXI · prova", "SchieraXI · test"),
     "n.prova": ("Se leggi questo, gli avvisi funzionano.", "If you can read this, the alerts work."),
 }

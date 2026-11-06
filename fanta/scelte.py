@@ -43,6 +43,29 @@ def stato(scelta: dict | None, ruoli: dict[int, str], regole) -> str:
     return NON_VALIDA if motivo_non_valida(scelta["titolari"], ruoli, regole) else VALIDA
 
 
+def che_vale(scelta: dict | None, ruoli: dict[int, str], regole) -> dict | None:
+    """La scelta (quella di `leggi`) se si può schierare, altrimenti None: una scelta che non vale più conta come nessuna scelta e
+    vale la consigliata. La usano gli avvisi (promemoria, «cambia la formazione», «cambio pronto», riepilogo) e «Da fare»."""
+    return scelta if stato(scelta, ruoli, regole) == VALIDA else None
+
+
+def ruoli_schierabili(rose, prev=None) -> dict[int, str]:
+    """{id: ruolo} dei giocatori della tua rosa che si possono schierare, per `motivo_non_valida`. Con le previsioni della giornata
+    da giocare (`prev`) come la Formazione: solo chi ne ha una, con il ruolo delle previsioni. Senza (giornata finita) tutta la
+    rosa con il suo ruolo, come il Diario e il riepilogo di Oggi."""
+    s = rose.squadra(rose.mia_squadra or "") if rose is not None else None
+    ruoli = {}
+    for g in (s.giocatori if s else []):
+        if g.id is None:
+            continue
+        i = int(g.id)
+        if prev is None:
+            ruoli[i] = g.ruolo
+        elif i in prev.index:
+            ruoli[i] = str(prev.at[i, "ruolo"])
+    return ruoli
+
+
 def _tutte(percorso: Path | None = None) -> dict:
     try:
         d = json.loads((percorso or FILE_SCELTE).read_text(encoding="utf-8"))
@@ -61,14 +84,18 @@ def leggi(stagione: str, giornata: int, percorso: Path | None = None, anche_auto
 
 
 def salva(stagione: str, giornata: int, titolari: list[int], modulo: str, percorso: Path | None = None, tipo: str = "manuale",
-          panchina: list[int] | None = None) -> dict:
+          panchina: list[int] | None = None, era_consigliata: bool = False) -> dict:
     """Salva la scelta dell'utente. `tipo`: «manuale» (scelta a mano, anche quando non c'è il campo: file vecchi) o «consigliata»
     (ha detto «ho schierato la consigliata»). `panchina` (facoltativa, per le giornate importate): gli id della panchina nell'ordine
-    in cui l'hai schierata; senza, il Diario sceglie la panchina da solo."""
+    in cui l'hai schierata; senza, il Diario sceglie la panchina da solo. `era_consigliata`: gli 11 erano quelli della consigliata nel
+    momento in cui li hai salvati («Salva questa»): «Da fare» allora non propone cambi (#333). Il campo si scrive solo se è vero e il
+    `tipo` resta «manuale», così il Diario e i client di prima non vedono differenze."""
     with _blocco:
         tutte = _tutte(percorso)
         voce = {"titolari": [int(i) for i in titolari], "modulo": modulo, "salvata": datetime.now().isoformat(timespec="seconds"),
                 "tipo": tipo}
+        if era_consigliata:
+            voce["era_consigliata"] = True
         if panchina:
             voce["panchina"] = [int(i) for i in panchina][:20]
         tutte[f"{stagione}/{giornata}"] = voce

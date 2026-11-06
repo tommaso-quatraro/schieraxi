@@ -101,7 +101,7 @@ struct GraficoAttesoFatto: View {
             PointMark(x: .value("Giornata", Double(p.giornata)), y: .value("Fatti", p.fatti))
                 .foregroundStyle(p.dentro == false ? Color.attenzione : Color.verde)
                 .symbolSize(70)
-                .accessibilityLabel("Giornata \(p.giornata)")
+                .accessibilityLabel(p.voceGiornata)
                 .accessibilityValue(p.voce)
         }
         .chartXScale(domain: dominioX)

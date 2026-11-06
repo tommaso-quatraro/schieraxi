@@ -91,7 +91,8 @@ def _promemoria(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: dat
 def _riepilogo(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
     if not a.opzioni["riepilogo"]:
         return []
-    return notifiche.riepilogo(db, r, a.rose, adesso, a.ctx.stato_riepilogo, a.manda, a.opzioni, a.ctx.stato_cambi, a.ctx.scelte)
+    return notifiche.riepilogo(db, r, a.rose, adesso, a.ctx.stato_riepilogo, a.manda, a.opzioni, a.ctx.stato_cambi, a.ctx.scelte,
+                               a.ctx.diario)
 
 
 def _pronta(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetime) -> list[str]:
@@ -100,7 +101,7 @@ def _pronta(a: Attivo, db: sqlite3.Connection, r: regole.Regole, adesso: datetim
         return []
     stagione = consigli.stagione_corrente()
     giornata = consigli.giornata_da_giocare(db, stagione, r)
-    avviso = avvisi.da_mandare(db, stagione, giornata, adesso, a.ctx.stato_avvisi, segna=False)
+    avviso = avvisi.da_mandare(db, stagione, giornata, adesso, a.ctx.stato_avvisi, segna=False, regole=r)
     if avviso and a.manda(avviso["titolo"], avviso["testo"], 3, "soccer"):
         avvisi.segna(stagione, giornata, a.ctx.stato_avvisi)
         return [avviso["testo"]]

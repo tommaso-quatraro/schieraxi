@@ -62,6 +62,19 @@ struct Giocatore: Decodable, Identifiable {
     private let percheNumero: Tollerante<[Tollerante<MotivoNumero>]>?
     /// Il fantavoto atteso del giocatore medio del suo ruolo (il riferimento dei motivi). Facoltativo.
     private let fvAttesoMedioRuolo: Tollerante<Double>?
+    /// A giornata iniziata, il fantavoto preso con le regole della lega (`stato_partita` `fatto`; server dal 2/11/2026). Facoltativo.
+    private let fvPreso: Tollerante<Double>?
+    /// Il modo del rinvio se la sua partita è rinviata (`aspetta`, `senza_voto`, `voto_ufficio`), assente se si gioca. Facoltativo.
+    private let rinvio: Tollerante<String>?
+
+    /// Il fantavoto preso, se il server lo manda ed è un numero vero.
+    var fantavotoPreso: Double? {
+        guard let v = fvPreso?.valore, v.isFinite else { return nil }
+        return v
+    }
+
+    /// Il modo del rinvio della sua partita (`rinvio` del server); nil se la partita si gioca o il server non lo dice.
+    var modoRinvio: String? { rinvio?.valore }
 
     /// I motivi del fantavoto atteso, dal più pesante; nil se il server non li manda (server vecchio), vuoto se nessuno spicca.
     var motiviNumero: [MotivoNumero]? {
@@ -518,7 +531,19 @@ struct OpzioneModulo: Decodable, Identifiable {
     let panchina: [Int]
     /// La fascia dei punti (8 volte su 10). Facoltativa (server vecchio).
     let intervallo: IntervalloPunti?
+    /// Il perché delle scelte che sembrano storte, una riga per titolare (#356). Facoltativo (server vecchio).
+    let percheScelta: [PercheScelta]?
     var id: String { modulo }
+}
+
+/// Una riga del perché della scelta (`perche_scelta` del modulo, `fanta/perche_scelta.py`): un titolare con meno punti attesi di
+/// un escluso dello stesso ruolo (o incerto con la riserva sicura) e il motivo, già scritto dal server. Campi facoltativi: una riga
+/// incompleta si salta, non fa fallire la Formazione.
+struct PercheScelta: Decodable {
+    let titolare: Int?
+    /// Il giocatore che la riga nomina (l'escluso o la riserva).
+    let altro: Int?
+    let testo: String?
 }
 
 struct LivelloRischio: Decodable, Identifiable {
@@ -554,6 +579,9 @@ struct Formazione: Decodable {
     let intervallo: IntervalloPunti?
     /// `true` dopo la scadenza della giornata (le partite sono cominciate): la formazione non si può più cambiare. Facoltativo.
     let iniziata: Bool?
+    /// La tua scelta salvata per la giornata, con la regola del server: "nessuna", "valida" o "non_valida" (non si può più
+    /// schierare: vale la consigliata). Solo per la tua squadra. Facoltativo (server vecchio: manca).
+    let statoScelta: String?
 }
 
 struct VoceNovita: Decodable, Identifiable {
@@ -584,6 +612,85 @@ struct StatoDati: Decodable {
         var id: String { gruppo }
     }
     struct Calibrazione: Decodable { let giornate: Int?; let gruppi: [GruppoCalibrazione]? }
+    /// Il registro delle giornate (#344, `registro_giornate.riepilogo` del server): le medie delle ultime `finestra` giornate misurate
+    /// con le soglie e il verdetto (`regge`, solo con `verdetto`), e una riga per giornata. Un server vecchio non lo manda.
+    struct Registro: Decodable {
+        /// Le chiavi «I2_calibrazione»... arrivano come `i2Calibrazione` (`convertFromSnakeCase`); «I1» resta com'è.
+        struct Soglie: Decodable {
+            let i1: Double?
+            let i2Calibrazione: Double?
+            let i2Brier: Double?
+            let i3Minimo: Double?
+            let i3Massimo: Double?
+            enum CodingKeys: String, CodingKey { case i1 = "I1", i2Calibrazione, i2Brier, i3Minimo, i3Massimo }
+        }
+        /// Per ogni misura: vero se regge, falso se no, nil finché non c'è il verdetto o manca il numero.
+        struct Regge: Decodable {
+            let i1: Bool?
+            let i2: Bool?
+            let i3: Bool?
+            enum CodingKeys: String, CodingKey { case i1 = "I1", i2 = "I2", i3 = "I3" }
+        }
+        /// Una giornata salvata o persa (`persa`: il motivo in breve, scritto dal server).
+        struct Giornata: Decodable, Identifiable {
+            let stagione: String?
+            let giornata: Int?
+            let persa: String?
+            var id: String { "\(stagione ?? "")-\(giornata ?? -1)" }
+        }
+        let finestra: Int?
+        let soglie: Soglie?
+        let giornate: Int?
+        let erroreModello: Double?
+        let erroreFantamedia: Double?
+        let i1: Double?
+        let brier: Double?
+        let calibrazione: Double?
+        let copertura: Double?
+        let verdetto: Bool?
+        let regge: Regge?
+        let perGiornata: [Giornata]?
+    }
+    /// Gli indicatori del consiglio di formazione (#366, `indicatori_consiglio.riepilogo` del server), sommati sui Diari di tutti: le
+    /// medie delle ultime `finestra` giornate con le soglie e il verdetto (`regge`, solo con `verdetto`). Un server vecchio non lo manda.
+    struct Consiglio: Decodable {
+        /// «C1», «C2», «C3» restano come sono; «C4_senza_motivo» arriva come `c4SenzaMotivo` (`convertFromSnakeCase`).
+        struct Soglie: Decodable {
+            let c1: Double?
+            let c2: Double?
+            let c3: Double?
+            let c4SenzaMotivo: Double?
+            enum CodingKeys: String, CodingKey { case c1 = "C1", c2 = "C2", c3 = "C3", c4SenzaMotivo }
+        }
+        /// Per ogni indicatore: vero se regge, falso se no, nil finché non c'è il verdetto o manca il numero.
+        struct Regge: Decodable {
+            let c1: Bool?
+            let c2: Bool?
+            let c3: Bool?
+            let c4: Bool?
+            enum CodingKeys: String, CodingKey { case c1 = "C1", c2 = "C2", c3 = "C3", c4 = "C4" }
+        }
+        let finestra: Int?
+        let soglie: Soglie?
+        let giornate: Int?
+        /// Le formazioni misurate (una per utente e giornata).
+        let voci: Int?
+        /// Punti veri a giornata della consigliata mostrata meno la scelta semplice, e meno la schierata quando è diversa.
+        let menoS2: Double?
+        let menoSchierata: Double?
+        /// Cambi a formazione nelle 24 ore prima della scadenza (media) e quanti valevano meno di 1 punto atteso (totale).
+        let cambi: Double?
+        let cambiSottoSoglia: Int?
+        /// Titolari sotto il 20% o fuori, e quanti di loro con un compagno di ruolo al 50% o più tra gli esclusi (totali).
+        let improbabili: Int?
+        let conCompagno: Int?
+        /// Scelte che sembrano strane e quante spiegate (totali); parte dei titolari senza un motivo loro nel «perché».
+        let storte: Int?
+        let spiegate: Int?
+        let senzaMotivo: Double?
+        let verdetto: Bool?
+        let regge: Regge?
+    }
     let stagione: String?
     let aggiornamenti: [AggiornamentoDati]?
     let calciatori: Int?
@@ -593,6 +700,8 @@ struct StatoDati: Decodable {
     let probabili: [Probabili]?
     let calibrazione: Calibrazione?
     let coppeFino: String?
+    let registro: Registro?
+    let consiglio: Consiglio?
 }
 
 struct EsitoImportazione: Decodable {

@@ -1,9 +1,15 @@
 """Linee guida di design della web app (docs/DESIGN.md): controlli statici su stile.css e app.js.
 La prova visiva si fa a mano a 390, 768 e 1280 px, tema chiaro e scuro."""
+import json
 import re
+import shutil
+import subprocess
+
+import pytest
 
 from fanta import server
 
+NODE = shutil.which("node")
 APP = (server.WEB / "app.js").read_text(encoding="utf-8")
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 IMP_JS = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
@@ -42,7 +48,7 @@ def test_composizione_a_colonne_su_schermi_larghi():
 
 def test_scorciatoia_virgola_per_le_impostazioni():
     app = (server.WEB / "app.js").read_text(encoding="utf-8")
-    assert 'ev.key === ","' in app and 'vai("impostazioni")' in app
+    assert 'ev.key === ","' in app and 'vai("impostazioni", undefined, { focoTitolo: true })' in app
 
 def test_stile_ha_le_parentesi_graffe_in_pari():
     # una } mancante nasconde nel @media tutto quello che viene dopo
@@ -50,8 +56,12 @@ def test_stile_ha_le_parentesi_graffe_in_pari():
     assert re.search(r"\n\}\n/\* ---- Lega: la mia squadra", CSS)
 
 
-def test_barra_in_basso_con_fondo_quasi_opaco_e_spazio_riservato():
-    assert re.search(r"\.schede\.vetro \{[^}]*color-mix\(in srgb, var\(--solido\) 90%", CSS)
+def test_barra_in_basso_con_fondo_pieno_e_spazio_riservato():
+    # senza la sfocatura (grafica B) un fondo al 90% lascerebbe leggere il testo che scorre sotto la barra: il fondo è pieno,
+    # a tutta larghezza, con un filo sopra (spec §6), e la barra arriva fino al bordo dello schermo
+    barra = re.search(r"\n\.schede \{([^}]*)\}", CSS).group(1)
+    assert "background: var(--superficie);" in barra and "border-top: 1px solid var(--filo);" in barra
+    assert "left: 0; right: 0; bottom: 0;" in barra and "transparent" not in barra
     corpo = re.search(r"\nbody \{([^}]*)\}", CSS).group(1)
     assert "padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom)" in corpo
 
@@ -96,7 +106,9 @@ def test_proposta_di_mercato_ha_il_guadagno_in_evidenza_e_nomi_protetti():
     consigli = APP[APP.index("async function tabConsigli"):APP.index("async function datiCalendario")]
     assert 'class="pr-num"' in consigli and "esc(p.entra.nome)" in consigli and "esc(p.esce.nome)" in consigli
     assert re.search(r"\.pr-num b \{[^}]*font-size: var\(--t-titolo\)", CSS)
-    assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-valore\)", CSS)
+    # il nome grande quanto quello delle righe dei giocatori (grafica B: --t-valore è passato a 20 px per i numeri)
+    assert re.search(r"\.proposta-r button\.nome-g \{[^}]*font-size: var\(--t-card\)", CSS)
+    assert re.search(r"\.voce \.nome \{[^}]*font-size: var\(--t-card\)", CSS)
 
 
 def test_rimborso_e_costo_dei_cambi_si_vedono_senza_mouse():
@@ -135,9 +147,12 @@ def test_bersagli_di_tocco_44_px_e_date_di_stato_dati_come_altrove():
 def test_colori_semantici_come_su_ios():
     scuro, chiaro = CSS.split("@media (prefers-color-scheme: light)")[0], CSS.split(':root[data-tema="chiaro"] {')[1]
     for nome, s, c in (("verde", "#3ddc97", "#0a7d4c"), ("rosso", "#ff6b5e", "#b3261e"), ("arancio", "#ffb04a", "#9c5400"),
-                       ("capitano", "#d4f34a", "#86a800"), ("azione", "#3ddc97", "#526600"),("blu", "#62a9ff", "#1a5bb5")):
+                       ("capitano", "#d4f34a", "#86a800"), ("blu", "#62a9ff", "#1a5bb5")):
         assert f"--{nome}: {s}" in scuro and f"--{nome}: {c}" in chiaro, nome
     assert "--testo-2: #bccdc2" in scuro and "--testo-2: #46564d" in chiaro      # il grigio secondario unico, uguale a iOS (Tema.secondarioScuro / secondarioChiaro)
+    # colore delle azioni: nello scuro uguale all'iPhone; nel chiaro verde bosco solo sulla web (spec grafica B §18, scelta 1b),
+    # l'iPhone resta oliva #526600
+    assert "--azione: #3ddc97" in scuro and "--azione: #0b6b3a" in chiaro and "#526600" not in CSS
 
 
 def test_grigio_secondario_unico_niente_opacita_sul_testo_e_stessi_valori_di_ios():
@@ -169,24 +184,99 @@ def _contrasto(a, b):
     return (la + 0.05) / (lb + 0.05)
 
 
-def _misto(sopra, alfa, sotto):
-    s, t = (tuple(int(x[i:i + 2], 16) for i in (1, 3, 5)) for x in (sopra, sotto))
-    return "#%02x%02x%02x" % tuple(round(a * alfa + b * (1 - alfa)) for a, b in zip(s, t))
-
-
-def test_tema_chiaro_azioni_in_oliva_con_contrasto_sufficiente_su_ogni_superficie():
+def test_tema_chiaro_azioni_in_verde_bosco_con_contrasto_sufficiente_su_ogni_superficie():
     chiaro = CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0]
-    assert "--azione: #526600" in chiaro and "--azione-testo: #ffffff" in chiaro
-    sfondo, bianco = "#eaf3ee", "#ffffff"
-    superfici = [sfondo, bianco, _misto(bianco, .72, sfondo), _misto(bianco, .55, sfondo)]
+    assert "--azione: #0b6b3a; --azione-2: #08552e; --azione-testo: #ffffff;" in chiaro
+    superfici = ["#ffffff", "#f4f5f2"]                                  # fondo e superficie della grafica B (spec §7.1)
     for s in superfici:
-        assert _contrasto("#526600", s) >= 4.5, s                       # testo e link di azione
+        assert _contrasto("#0b6b3a", s) >= 6, s                         # testo e link di azione: 6,6:1 sul bianco, 6,0:1 sulla superficie
         assert _contrasto("#1f8a4b", s) >= 3, s                         # il verde del campo si distingue dal fondo
-    assert _contrasto("#ffffff", "#526600") >= 4.5                      # testo bianco sul pulsante pieno
-    assert _contrasto("#ffffff", "#3f4f00") >= 4.5                      # fine sfumatura del pulsante
+    assert _contrasto("#ffffff", "#0b6b3a") >= 6.5                      # testo bianco sul pulsante pieno (6,6:1)
+    assert _contrasto("#ffffff", "#08552e") >= 4.5                      # la variante più scura
     assert _contrasto("#1a2600", "#86a800") >= 4.5                      # testo scuro sulla scelta lime
-    assert _contrasto("#86a800", bianco) < 4.5                          # per questo il lime non e' mai testo
+    assert _contrasto("#86a800", "#ffffff") < 4.5                       # per questo il lime non e' mai testo
     assert _contrasto("#ffffff", "#1f8a4b") >= 3                        # nomi e numeri sul campo
+
+
+def test_fondo_neutro_superficie_e_filo_della_grafica_b():
+    """Grafica B (spec §7.1): fondo bianco nel chiaro e grigio quasi nero nello scuro, al posto del menta #eaf3ee e del verde
+    scurissimo #07100b; `--superficie` (passaggio del mouse, pannello, barra) e `--filo` (separatori) nei tre blocchi dei temi."""
+    t = _temi()
+    assert (t["chiaro"]["--sfondo"], t["scuro"]["--sfondo"]) == ("#ffffff", "#121513")
+    assert (t["chiaro"]["--superficie"], t["scuro"]["--superficie"]) == ("#f4f5f2", "#1a1e1c")
+    assert (t["chiaro"]["--filo"], t["scuro"]["--filo"]) == ("#dde1dc", "#2e3430")
+    assert t["scuro"]["--testo"] == "#e9edea" and "#eaf3ee" not in CSS and "#07100b" not in CSS      # niente fondo menta né verde scurissimo
+    assert t["scuro"]["--solido"] == "#1a1e1c"
+    sistema = _variabili(CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0])
+    for nome in ("--sfondo", "--superficie", "--filo", "--solido", "--azione", "--azione-2"):
+        assert sistema[nome] == t["chiaro"][nome], nome
+
+
+def test_contrasti_wcag_aa_sul_fondo_e_sulla_superficie_nuovi():
+    """WCAG 2.2 AA sui fondi della grafica B: scritte almeno 4,5:1 (1.4.3) e bordo dei campi almeno 3:1 (1.4.11), sia sul fondo
+    della pagina sia sulla superficie, in chiaro e in scuro. Il filo dei separatori è decorativo: nessun minimo."""
+    sotto = []
+    for tema, v in _temi().items():
+        for fondo in ("--sfondo", "--superficie", "--solido"):
+            for scritta, minimo in (("--testo", 4.5), ("--testo-2", 4.5), ("--azione", 4.5), ("--verde", 4.5), ("--rosso", 4.5),
+                                    ("--arancio", 4.5), ("--blu", 4.5), ("--giallo-testo", 4.5), ("--eti-verde", 4.5),
+                                    ("--eti-arancio", 4.5), ("--eti-rosso", 4.5), ("--bordo-campo", 3)):
+                c = _contrasto(v[scritta], v[fondo])
+                if c < minimo:
+                    sotto.append(f"{tema} {scritta} su {fondo}: {c:.2f}")
+        for scritta, fondo in (("--azione-testo", "--azione"), ("--capitano-testo", "--capitano")):
+            if _contrasto(v[scritta], v[fondo]) < 4.5:
+                sotto.append(f"{tema} {scritta} su {fondo}")
+    assert not sotto, sotto
+
+
+def test_voce_scelta_dei_controlli_segmentati_si_vede_sul_fondo_pieno():
+    """Con le superfici piene `--vetro-carta` è uguale al fondo: la voce scelta di Lingua, Tema e Dimensione del testo, che aveva
+    quel fondo, nello scuro non si distingueva più dalla striscia (visto nelle foto). Ora ha un grigio neutro un gradino sopra la
+    striscia, in chiaro e in scuro; la scelta la dicono anche la scritta piena e `aria-pressed`."""
+    striscia = re.search(r"\n\.segmenti \{[^}]*background: color-mix\(in srgb, var\(--solido\) (\d+)%, transparent\)", CSS)
+    attivo = re.search(r"\n\.segmenti button\.attivo \{[^}]*background: color-mix\(in srgb, var\(--testo\) (\d+)%, var\(--sfondo\)\)", CSS)
+    assert striscia and attivo
+    for tema, v in _temi().items():
+        carta = _colore(v["--vetro-carta"])[0]                         # la striscia sta su una carta, che ora ha il fondo pieno
+        fondo_striscia = _sopra(_colore(v["--solido"])[0], int(striscia.group(1)) / 100, carta)
+        fondo_attivo = _sopra(_colore(v["--testo"])[0], int(attivo.group(1)) / 100, _colore(v["--sfondo"])[0])
+        assert _contrasto_rgb(fondo_attivo, fondo_striscia) >= 1.25, tema
+        assert _contrasto_rgb(_colore(v["--testo"])[0], fondo_attivo) >= 4.5, tema
+
+
+def test_colore_della_barra_del_browser_segue_il_tema():
+    html = (server.WEB / "index.html").read_text(encoding="utf-8")
+    assert '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">' in html
+    assert '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121513">' in html
+    man = json.loads((server.WEB / "manifest.webmanifest").read_text(encoding="utf-8"))
+    assert man["background_color"] == man["theme_color"] == "#121513"
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_colore_della_barra_del_browser_segue_il_tema_scelto_a_mano():
+    """Con il tema automatico le due righe `theme-color` tengono i loro colori (le sceglie il sistema con `media`); con un tema
+    scelto a mano tutte e due prendono il fondo di quel tema. Prima l'app scriveva il menta #eaf3ee nella prima riga sola."""
+    corpo = re.search(r"\nfunction applicaAspetto\(\) \{.*?\n\}", APP, re.S).group(0)
+    codice = """
+    const metas = [{ media: "(prefers-color-scheme: light)", content: "?" }, { media: "(prefers-color-scheme: dark)", content: "?" }];
+    const document = { documentElement: { dataset: {}, style: {} }, querySelectorAll: () => metas, querySelector: () => metas[0] };
+    let tema = "auto", sistemaChiaro = true;
+    const leggiAspetto = () => ({ tema, testo: "1" });
+    const matchMedia = () => ({ matches: sistemaChiaro });
+    const segnaMovimento = () => {};
+    """ + corpo + """
+    const esiti = {};
+    for (const [t, s] of [["auto", true], ["auto", false], ["chiaro", false], ["scuro", true]]) {
+      tema = t; sistemaChiaro = s; applicaAspetto(); esiti[t + "-" + (s ? "sistema-chiaro" : "sistema-scuro")] = metas.map(m => m.content);
+    }
+    console.log(JSON.stringify(esiti));
+    """
+    r = subprocess.run([NODE, "-e", codice], capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout) == {
+        "auto-sistema-chiaro": ["#ffffff", "#121513"], "auto-sistema-scuro": ["#ffffff", "#121513"],
+        "chiaro-sistema-scuro": ["#ffffff", "#ffffff"], "scuro-sistema-chiaro": ["#121513", "#121513"]}
 
 
 def _variabili(blocco):
@@ -268,6 +358,23 @@ def test_pillole_dei_giocatori_almeno_4_5_su_ogni_fondo_in_chiaro_e_scuro():
     assert not sotto, sotto
 
 
+def test_etichetta_del_giocatore_scelto_nel_confronto_almeno_4_5():
+    """Rilievo di axe (PR #381): nel Confronto a 390 e 768 px, in chiaro, «Titolare» sotto il giocatore consigliato stava a 4,14:1.
+    La pillola verde sta sopra la tinta verde dello scelto, sul foglio, che era semitrasparente sopra il velo scuro. Con il foglio
+    pieno della grafica B torna sopra 4,5:1. Sotto i due giocatori ci sono solo la pillola verde («Titolare») e la neutra."""
+    quota = int(re.search(r"\.duello-giocatore\.scelto \{[^}]*background: color-mix\(in srgb, var\(--verde\) (\d+)%, transparent\)",
+                          CSS).group(1)) / 100
+    sotto = []
+    for tema, v in _temi().items():
+        scelto = _sopra(_colore(v["--verde"])[0], quota, _fondi_delle_pillole(v)["foglio della scheda"])
+        for nome in ("verde", "neutra"):
+            scritta, tinta, q = _pillole()[nome]
+            c = _contrasto_rgb(_colore(v[scritta])[0], _sopra(_colore(v[tinta])[0], q, scelto))
+            if c < 4.5:
+                sotto.append(f"{tema} {nome}: {c:.2f}")
+    assert not sotto, sotto
+
+
 def test_scritta_delle_pillole_uguale_nei_due_temi_chiari_e_su_ios():
     """Il tema chiaro sta due volte nel CSS (sistema e scelta a mano): le scritte delle pillole devono essere le stesse. L'arancio e il
     rosso delle pillole dell'iPhone (`Tema` in Tema.swift) sono gli stessi della web, in chiaro e in scuro."""
@@ -336,7 +443,8 @@ def test_bordo_dei_campi_almeno_3_a_1_in_chiaro_e_scuro():
 def test_pulsanti_pieni_almeno_4_5_e_uguali_su_web_e_ios():
     """Issue #248: sull'iPhone, nel tema scuro, la scritta dei pulsanti pieni era bianca sul verde chiaro (1,77:1). La web scrive con
     --azione-testo (verde quasi nero nello scuro, bianco nel chiaro) sopra --azione: almeno 4,5:1 in tutti e due i temi. L'iPhone usa
-    gli stessi colori: fondo `Accento.verde` (Aspetto.swift), scritta `Tema.scrittaPulsante*`."""
+    gli stessi colori: fondo `Accento.verde` (Aspetto.swift), scritta `Tema.scrittaPulsante*`. Dalla grafica B il fondo del tema
+    chiaro è il verde bosco solo sulla web (spec §18, scelta 1b): nel chiaro si confronta solo la scritta, nello scuro tutti e due."""
     sistema = _variabili(CSS.split("@media (prefers-color-scheme: light) {")[1].split("}")[0])
     a_mano = _variabili(CSS.split(':root[data-tema="chiaro"] {')[1].split("}")[0])
     for nome in ("--azione", "--azione-testo"):
@@ -353,7 +461,10 @@ def test_pulsanti_pieni_almeno_4_5_e_uguali_su_web_e_ios():
         scritta, fondo = (temi[nome_tema][x].lstrip("#") for x in ("--azione-testo", "--azione"))
         assert re.search(rf"\bscrittapulsante{nome_tema}: uint32 = 0x{scritta}\b", tema), nome_tema
         verde = re.search(rf"var {nome_tema}: uicolor \{{.*?case \.verde: return self\.da\(0x(\w{{6}})\)", aspetto, re.S).group(1)
-        assert verde == fondo, nome_tema
+        if nome_tema == "scuro":
+            assert verde == fondo, nome_tema
+        else:                                                           # l'iPhone resta oliva: la sua scritta bianca regge anche lì
+            assert _contrasto_rgb(_colore("#" + scritta)[0], _colore("#" + verde)[0]) >= 4.5, verde
 
 
 def test_pulsanti_pieni_dell_iphone_passano_tutti_dallo_stesso_stile():
@@ -376,6 +487,6 @@ def test_pulsanti_pieni_dell_iphone_passano_tutti_dallo_stesso_stile():
 def test_pulsanti_link_e_azioni_usano_la_variabile_azione_non_il_lime():
     assert re.search(r"\.bottone \{[^}]*background: var\(--azione\);[^}]*color: var\(--azione-testo\)", CSS)   # pieno, senza lucido (docs/STILE-SENZA-AI.md)
     assert re.search(r"\.bottone\.secondario \{[^}]*color: var\(--azione\)", CSS)
-    assert re.search(r"\.schede button\.attiva \{ color: var\(--azione\)", CSS)
+    assert re.search(r"\.scheda\.attiva::before \{[^}]*background: var\(--azione\)", CSS)        # la linea della scheda attiva
     assert re.search(r"\.testo-lungo a[^{]*\{ color: var\(--azione\)", CSS)
     assert '"--azione-testo"' not in APP                                # niente colori a scelta: le azioni hanno sempre i colori del marchio

@@ -10,7 +10,7 @@ const VISTE = ["oggi", "formazione", "squadra", "altro"];
 const SOTTO_VISTE = { mercato: "squadra", scambi: "altro", lega: "altro" };
 // Pulsante «torna indietro»: la freccia è un'icona, non un carattere nel testo (docs/STILE-SENZA-AI.md).
 const ICONA_INDIETRO = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>`;
-const SCHEDA_DI = v => VISTE.includes(v) ? v : SOTTO_VISTE[v] || null;
+const SCHEDA_DI = v => VISTE.includes(v) ? v : Object.hasOwn(SOTTO_VISTE, String(v)) ? SOTTO_VISTE[v] : null;   // `v` viene anche dall'indirizzo: solo i nomi veri
 // Le funzioni accese (dieta): una chiave che manca vale «acceso», così con un server vecchio o senza risposta si vede tutto come prima.
 const funz = id => !stato.funzioni || stato.funzioni.funzioni[id] !== false;
 const stato = { vista: "oggi", info: null, squadraVista: null, confronto: null, richiesta: 0, ruoloClassifica: "A",
@@ -204,11 +204,11 @@ function marchio(dim = 48, muove = false) {
   return `<svg class="marchio${muove ? " muove" : ""}" width="${dim}" height="${dim}" viewBox="0 0 120 120" role="img" aria-label="SchieraXI"><g class="punti">${punti}</g><circle class="capitano" cx="60" cy="50" r="9"/></svg>`;
 }
 
-function caricamento(testo = t("comune.calcolo_in_corso")) {
-  contenuto.classList.remove("ridisegna");
-  contenuto.innerHTML = `<div class="caricamento">${marchio(54, true)}${esc(testo)}</div>
+// Il titolo della schermata c'è già mentre carica (opz come pagina(): di norma il nome della scheda).
+function caricamento(testo = t("comune.calcolo_in_corso"), opz = {}) {
+  pagina(`<div class="caricamento">${marchio(54, true)}${esc(testo)}</div>
     <div class="scheletro carta"><i></i><i></i><i class="corta"></i></div>
-    <div class="scheletro carta"><i></i><i class="corta"></i></div>`;
+    <div class="scheletro carta"><i></i><i class="corta"></i></div>`, opz);
 }
 // «1 giornata», «2 giornate»: il plurale giusto per un numero
 const nPl = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
@@ -249,11 +249,33 @@ function svuotaCache() {
   stato.scelta = null;       // e nemmeno la formazione modificata a mano
   try { Object.keys(localStorage).filter(k => k.startsWith("cache:")).forEach(k => localStorage.removeItem(k)); } catch { /* niente memoria */ }
 }
-// Scrive la pagina; se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata a cascata.
+// Scrive la pagina: in cima il titolo della schermata (l'unico h1) e la riga di stato, poi il contenuto (grafica B, spec §8.2 e §10).
+// opz.titolo: il titolo (di norma il nome della scheda accesa); opz.stato === false: niente riga di stato.
+// Se i dati arrivano da copia salvata aggiunge la nota, se sostituisce non rifà l'entrata.
 function pagina(html, opz = {}) {
+  const conFocus = !!document.activeElement && document.activeElement.id === "titolo-pagina";   // il titolo aveva il focus: lo ritrova ridisegnato
   contenuto.classList.toggle("ridisegna", !!opz.sostituisce);
+  const scheda = SCHEDA_DI(stato.vista);
+  const titolo = opz.titolo || (scheda ? t("nav." + scheda) : "SchieraXI");
+  const riga = opz.stato === false ? "" : `<p class="stato-pagina">${rigaStato()}</p>`;
   const nota = opz.daCache ? `<div class="nota" id="nota-cache">${t("comune.dati_salvati", { quando: fDataOra(new Date(opz.daCache)) })}</div>` : "";
-  contenuto.innerHTML = nota + html;
+  contenuto.innerHTML = `<header class="capo-pagina"><h1 id="titolo-pagina" tabindex="-1">${esc(titolo)}</h1>${riga}</header>` + nota + html;
+  document.title = `${titolo} · SchieraXI`;            // il nome della finestra è il titolo grande (chi usa un lettore di schermo sente dove è)
+  if (conFocus) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }
+}
+// La riga di stato: [stemma] Giornata N · nome della mia squadra · dati del … (i pezzi li prepara caricaInfo, lo stemma caricaSquadre).
+// Ogni pezzo sta intero: se la riga non ci sta si va a capo dopo un « · » (a 390 px la data si tagliava).
+function rigaStato() {
+  const r = stato.rigaStato;
+  if (!r) return "";
+  const mia = r.offline ? null : miaSquadra();
+  const stemma = mia && mia.immagini && mia.immagini.stemma ? `<img class="stemma-stato" src="${esc(urlImg(mia.nome, "stemma"))}" alt="" width="20" height="20">` : "";
+  const pezzi = r.offline ? [t("testata.offline")] : [r.giornata, r.squadra, r.dati].filter(Boolean);
+  return stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
+}
+// Dati nuovi (avvio, «Aggiorna i dati», rose o squadra cambiate): la riga di stato già in pagina si riscrive.
+function aggiornaRigaStato() {
+  document.querySelectorAll(".stato-pagina").forEach(e => { e.innerHTML = rigaStato(); });
 }
 async function caricaConCache(chiave, percorso, mostra, testo) {
   const mia = nuovaRichiesta();
@@ -275,7 +297,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
       if (b) b.textContent = e.rete ? t("comune.cache_offline") : t("comune.cache_errore", { errore: e.message });
       return;
     }
-    contenuto.innerHTML = erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : "");
+    pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" data-vai="squadra">${t("comune.vai_lega")}</button>` : ""));
   }
 }
 
@@ -473,6 +495,20 @@ function collegaLegenda() {
   info.addEventListener("click", () => { leg.hidden = false; info.hidden = true; info.setAttribute("aria-expanded", "true"); ok.focus(); });
 }
 
+// Il numero della giornata, uguale in ogni schermata: l'UNICO posto della web che lo scrive (docs/COERENZA-WEB-IPHONE.md, «Giornata: le
+// forme»; sul server frasi.nome_giornata). Come su Leghe i due numeri insieme, «Giornata 8 · 11ª di Serie A» (lega, Serie A); senza il
+// numero della lega (stagioni passate, prima che la lega parta, calendario di Serie A) «11ª giornata di Serie A». Solo numeri: si può
+// mettere nell'HTML senza esc(). In una frase va in testa, seguito dai due punti.
+function nomeGiornata(lega, serieA) {
+  const n = Number(lega) || null, a = Number(serieA) || null;
+  if (n && a) return t("frase.giornata.lega", { n, a });
+  if (a) return t("frase.giornata.serie_a", { a });
+  return n ? t("testata.giornata", { n }) : "";
+}
+// «la 8ª» si dice «l'8ª» («dall'8ª», «all'11ª»): l'articolo femminile perde la vocale davanti agli ordinali che si leggono con una vocale, fra 1 e 38
+// l'8ª (ottava) e l'11ª (undicesima); «la 1ª» e «la Giornata 8» restano. Solo in italiano; uguale a frasi.elidi_ordinali sul server.
+const elidiOrdinali = testo => (LINGUA === "it" ? String(testo).replace(/\b(la|alla|dalla|della|nella|sulla) ((?:8|11)ª)/g, (x, art, num) => `${art.slice(0, -1)}'${num}`) : testo);
+
 // La partita in una riga, nella stessa forma del campo: «@ MIL · sab 31 20:45» (fuori) o «vs PAR · oggi 18:30» (in casa).
 // «vs PAR» (in casa) / «@ UDI» (in trasferta): nelle celle del calendario e, con la squadra davanti, nelle righe. Per i lettori di schermo «UDI fuori».
 const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span><span class="solo-lettori">${sigla(x.avversario)} ${t(x.in_casa ? "giocatore.casa" : "giocatore.fuori")}</span>`;
@@ -507,7 +543,17 @@ function valoreRosa(p, x) {
 }
 
 // ---------------------------------------------------------------- navigazione
-document.querySelectorAll(".schede button").forEach(b => b.addEventListener("click", () => vai(b.dataset.vista)));
+// Le schede (e il nome disegnato, che porta a Oggi) sono collegamenti veri (spec grafica B §5 C2). Un clic normale cambia schermata
+// dentro l'app; con Ctrl, ⌘, Maiusc, Alt o il tasto centrale decide il browser: la scheda si apre in un'altra scheda o finestra.
+const clicSemplice = ev => ev.button === 0 && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && !ev.altKey;
+document.querySelectorAll(".schede .scheda, .testata .marchio").forEach(a => a.addEventListener("click", ev => {
+  if (!clicSemplice(ev)) return;
+  ev.preventDefault();
+  vai(a.dataset.vista || "oggi", undefined, { focoTitolo: true });
+}));
+// L'indirizzo di ogni schermata, lo stesso che l'app sa aprire all'avvio: va nella cronologia, così Indietro e Avanti funzionano.
+const indirizzoVista = (vista, gruppo, scheda) => "/?vista=" + encodeURIComponent(vista) + (vista === "impostazioni" && gruppo ? "&gruppo=" + encodeURIComponent(gruppo) : "") + (vista === "mercato" && scheda ? "&scheda=" + encodeURIComponent(scheda) : "");
+let indirizzoMostrato = null;      // l'indirizzo (senza «#…») della schermata in pagina: un popstate che porta qui non ridisegna niente
 let timerConto = null;
 let regoleAC = null;      // gestori della schermata regole: si staccano quando si esce
 
@@ -528,28 +574,41 @@ function lasciaFormazione() {
 // Ricaricare o chiudere la pagina: il browser mostra la sua domanda (il testo lo sceglie lui).
 window.addEventListener("beforeunload", ev => { if (modificaNonSalvata()) { ev.preventDefault(); ev.returnValue = ""; } });
 
-function vai(vista, gruppo) {
-  if (vista !== "formazione" && !lasciaFormazione()) return;             // resta nella Formazione: la modifica a mano non è salvata
+// Chi disegna ogni schermata: una mappa con i soli nomi ammessi. Il nome arriva anche dall'indirizzo (?vista=, Indietro): niente
+// chiamate per nome su un oggetto («__proto__», «constructor»...); un nome che non c'è porta a Oggi.
+const DISEGNO_VISTE = new Map([["oggi", () => vistaOggi()], ["formazione", () => vistaFormazione()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")], ["mercato", () => vistaMercato()], ["scambi", () => vistaScambi()]]);
+// opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
+// opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
+// così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
+function vai(vista, gruppo, opz = {}) {
+  if (vista !== "formazione" && !lasciaFormazione()) {                   // resta nella Formazione: la modifica a mano non è salvata
+    if (opz.daCronologia) try { history.pushState({ vista: "formazione" }, "", indirizzoVista("formazione")); } catch { /* niente cronologia */ }   // con Indietro: l'indirizzo torna quello della Formazione
+    indirizzoMostrato = location.pathname + location.search;
+    return;
+  }
   const imp = vista === "impostazioni";                                   // l'ingranaggio in testata: non è una delle schede della barra
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
-  if (!imp && !SCHEDA_DI(vista)) vista = "oggi";
+  if (!imp && !(SCHEDA_DI(vista) && DISEGNO_VISTE.has(vista))) vista = "oggi";
   const scheda = imp ? null : SCHEDA_DI(vista);                           // la scheda della barra che si accende
-  const cambio = vista !== stato.vista;
-  stato.vista = vista;
-  const nomeVista = imp ? { textContent: t("shell.impostazioni") } : document.querySelector(`.schede button[data-vista="${scheda}"] span`);
-  document.title = nomeVista ? `${nomeVista.textContent} · SchieraXI` : "SchieraXI – consigli formazione fantacalcio";          // chi usa un lettore di schermo sente dove è arrivato
-  document.querySelectorAll(".schede button").forEach(b => {
+  stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
+  document.querySelectorAll(".schede .scheda").forEach(b => {
     b.classList.toggle("attiva", b.dataset.vista === scheda);
     if (b.dataset.vista === scheda) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
   const ing = $("#bottone-impostazioni");
   ing.classList.toggle("attiva", imp);
   if (imp) ing.setAttribute("aria-current", "page"); else ing.removeAttribute("aria-current");
-  const barra = $(".schede"), lente = $(".lente");
-  barra.classList.toggle("fuori", imp);
-  if (!imp) barra.style.setProperty("--i", VISTE.indexOf(scheda));
-  if (!imp && cambio && lente) { lente.classList.remove("muove"); void lente.offsetWidth; lente.classList.add("muove"); }
   if (!imp) try { localStorage.setItem("vista", vista); } catch { /* niente memoria: va bene lo stesso */ }
+  if (!opz.daCronologia) {
+    // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
+    const g = imp ? gruppo || stato.impDaUrl || null : null, sm = vista === "mercato" ? stato.mercatoTab || null : null;
+    const indirizzo = indirizzoVista(vista, g, sm), voce = { vista, gruppo: g, scheda: sm };
+    try {
+      if (!history.state || location.pathname + location.search === indirizzo) history.replaceState(voce, "", indirizzo);
+      else history.pushState(voce, "", indirizzo);
+    } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
+  }
+  indirizzoMostrato = location.pathname + location.search;
   window.scrollTo(0, 0);
   contenuto.classList.remove("ridisegna");
   delete contenuto.dataset.gruppo;
@@ -557,9 +616,19 @@ function vai(vista, gruppo) {
   fermaLive();
   if (regoleAC) { regoleAC.abort(); regoleAC = null; }
   stato.punteggioPrec = null;
-  if (imp) { vistaImpostazioni(gruppo); return; }
-  ({ oggi: vistaOggi, formazione: vistaFormazione, squadra: () => vistaLega("squadra"), altro: () => vistaLega("altro"), mercato: vistaMercato, scambi: vistaScambi })[vista]();
+  if (imp) vistaImpostazioni(gruppo);
+  else DISEGNO_VISTE.get(vista)();
+  if (opz.focoTitolo) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }   // pagina() lo tiene anche quando la schermata si ridisegna
 }
+// Indietro e Avanti del browser (e del mouse): la schermata di quella voce, come un clic sulla sua scheda (il foglio si chiude con lei).
+window.addEventListener("popstate", ev => {
+  if (location.pathname + location.search === indirizzoMostrato) return;   // è cambiata solo la parte dopo «#» (link «Vai al contenuto»): niente da ridisegnare
+  let v = ev.state || {};
+  if (!v.vista) { try { const q = new URLSearchParams(location.search); v = { vista: q.get("vista"), gruppo: q.get("gruppo"), scheda: q.get("scheda") }; } catch { v = {}; } }
+  if (v.scheda) stato.mercatoTab = schedaMercato(v.scheda);
+  chiudiFoglio();
+  vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
+});
 
 // Stemma e maglia delle squadre (caricati dall'utente nella Lega).
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
@@ -567,9 +636,7 @@ async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
   if (seServono && stato.info && stato.info.rose_importate === false) stato.squadre = [];
   else { try { stato.squadre = await api("/api/squadre"); } catch { stato.squadre = stato.squadre || []; } }
-  const mia = (stato.squadre || []).find(s => s.mia);
-  const img = $("#stemma-testata");
-  if (mia && mia.immagini.stemma) { img.src = urlImg(mia.nome, "stemma"); img.hidden = false; } else img.hidden = true;
+  aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 const miaSquadra = () => (stato.squadre || []).find(s => s.mia);
 
@@ -598,17 +665,18 @@ async function caricaInfo() {
   try {
     stato.info = await api("/api/stato");
     const i = stato.info;
-    $("#titolo").textContent = i.mia_squadra || "SchieraXI";
     const quandoAgg = i.ultimo_aggiornamento ? new Date(i.ultimo_aggiornamento) : null;
-    // giornata e data dei dati in due pezzi: sui telefoni stanno su due righe (stile.css), altrimenti la data si tagliava a 390 px
-    const pezzo = (classe, testo) => { const e = document.createElement("span"); e.className = classe; e.textContent = testo; return e; };
-    const dati = (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, "");
-    $("#sottotitolo").replaceChildren(...(i.prossima_giornata ? [pezzo("sotto-giornata", t("testata.giornata", { n: i.prossima_giornata_lega || i.prossima_giornata })), pezzo("sotto-sep", " · ")] : []),
-      pezzo("sotto-dati", dati));
+    // giornata, nome della mia squadra e data dei dati: la riga di stato sotto il titolo di ogni schermata (pagina())
+    stato.rigaStato = {
+      giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
+      squadra: i.mia_squadra || null,
+      dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
+    };
     $("#bottone-aggiorna").classList.toggle("gira", i.aggiornamento_in_corso);
   } catch (e) {
-    $("#sottotitolo").textContent = t("testata.offline");
+    stato.rigaStato = { offline: true };
   }
+  aggiornaRigaStato();
 }
 
 // ---------------------------------------------------------------- aggiornamento dati
@@ -647,8 +715,8 @@ function testoConto(o) {
   const inizio = parseData(o.scadenza || o.inizio);
   if (!inizio) return { grande: "–", piccolo: t("oggi.calendario_no") };
   const min = Math.round((inizio - new Date()) / 60000);
-  const nGiornata = o.giornata_lega || o.giornata;
-  if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { n: nGiornata, quando: quando(o.scadenza || o.inizio) }) };
+  // la giornata è scritta subito sopra il conto (nomeGiornata): la riga sotto non la ripete
+  if (min <= 0) return { grande: t("oggi.chiusa"), piccolo: t("oggi.chiusa_dettaglio", { quando: quando(o.scadenza || o.inizio) }) };
   const g = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
   // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
   const grande = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
@@ -702,7 +770,7 @@ function cardSenzaFormazione(p) {
   const gia = p && (p.con_probabili || !parseData(p.prepara_da) || parseData(p.prepara_da) <= new Date());
   return `<div class="carta riepilogo-giornata" id="oggi-senza-formazione">
     <h2>${t("oggi.gia_iniziata")}</h2><p>${t("oggi.gia_iniziata_testo")}</p>
-    ${p && p.scadenza ? `<p class="prossima-giornata">${t("oggi.prossima_chiude", { n: p.giornata_lega || p.giornata, quando: esc(quando(p.scadenza)) })}
+    ${p && p.scadenza ? `<p class="prossima-giornata">${t("oggi.prossima_chiude", { g: nomeGiornata(p.giornata_lega, p.giornata), quando: esc(quando(p.scadenza)) })}
       ${gia ? t("oggi.prossima_pronta") : t("oggi.prossima_da", { quando: esc(quando(p.prepara_da)) })}</p>` : ""}
     <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.prepara_prossima")}</button></div></div>`;
 }
@@ -712,19 +780,19 @@ function cardRiepilogo(r, p) {
   let html = "";
   if (r) {
     const tua = r.formazione_di === "tua";
-    html += `<h2>${t("oggi.giornata_finita", { n: r.giornata_lega || r.giornata })}</h2>
+    html += `<h2>${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</h2>
       <div class="riga"><div><div class="debole">${t(tua ? "oggi.la_tua_formazione" : "oggi.la_consigliata")}</div><div class="grande">${num(r.punti_fatti)}</div>
         <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
         ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
       ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
-      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(x => `${sigla(x.casa)}–${sigla(x.trasferta)}`).join(", ") })}</p>` : ""}
+      ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
       ${r.rinvio && typeof menuRinvio === "function" ? menuRinvio(r.rinvio) : ""}
       ${r.nel_diario ? "" : `<p class="debole piccolo">${t("oggi.confronto_in_arrivo")}</p>`}
       <div class="pulsanti"><button class="bottone secondario" type="button" data-apri-diario="${Number(r.giornata)}">${t("oggi.apri_diario")}</button></div>`;
   }
   if (p && p.scadenza) {
     const gia = p.con_probabili || !parseData(p.prepara_da) || parseData(p.prepara_da) <= new Date();
-    html += `<p class="prossima-giornata">${t("oggi.prossima_chiude", { n: p.giornata_lega || p.giornata, quando: esc(quando(p.scadenza)) })}
+    html += `<p class="prossima-giornata">${t("oggi.prossima_chiude", { g: nomeGiornata(p.giornata_lega, p.giornata), quando: esc(quando(p.scadenza)) })}
       ${gia ? t("oggi.prossima_pronta") : t("oggi.prossima_da", { quando: esc(quando(p.prepara_da)) })}</p>`;
   }
   return `<div class="carta riepilogo-giornata" id="oggi-riepilogo">${html}</div>`;
@@ -757,9 +825,12 @@ function menuRinvio(rv) {
       <select class="rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === scelto ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></span></label>
     <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
 }
+// «UDI vs MIL»: le sigle, prima la squadra di casa, come le partite del turno. La usano la carta del rinvio e la riga dei recuperi
+// che mancano nel riepilogo (#310), come `TestiRinvio.partita` dell'iPhone.
+const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
 function cardRinvio(rv) {
   if (!rv || !Array.isArray(rv.partite) || !rv.partite.length) return "";
-  const partite = rv.partite.map(p => `<li><b>${sigla(p.casa)} vs ${sigla(p.trasferta)}</b>
+  const partite = rv.partite.map(p => `<li><b>${partitaVs(p)}</b>
     <span class="debole piccolo">${parseData(p.data) ? t("oggi.rinvio_recupero", { quando: esc(quando(p.data)) }) : t("oggi.rinvio_da_definire")}</span></li>`).join("");
   const miei = (rv.miei || []).map(g => esc(g.nome)).join(", ");
   return `<div class="carta rinvio" id="oggi-rinvio"><h2>${t(rv.partite.length > 1 ? "oggi.rinvio_titolo_n" : "oggi.rinvio_titolo_1")}</h2>
@@ -838,7 +909,7 @@ function mostraOggi(o, opz = {}) {
     ${marchioOggi()}
     <div class="carta hero conto${miaSquadra() && miaSquadra().immagini.maglia ? " con-maglia" : ""}">
       ${miaSquadra() && miaSquadra().immagini.maglia ? `<img class="maglia-hero" src="${urlImg(miaSquadra().nome, "maglia")}" alt="">` : ""}
-      <div class="debole">${t("testata.giornata", { n: o.giornata_lega || o.giornata })}</div>
+      <div class="debole">${nomeGiornata(o.giornata_lega, o.giornata)}</div>
       <div class="enorme" id="conto">${esc(c.grande)}</div>
       <div class="debole" id="conto-sotto">${esc(c.piccolo)}</div>
     </div>
@@ -987,7 +1058,7 @@ const cognome = x => String(x.nome).replace(/\s+\S{1,3}\.$/u, "");
 function testoFormazione(f, m) {
   const sch = id => f.schede[String(id)];
   const riga = r => `${ruoloSigla(r)}: ${m.titolari.map(sch).filter(x => x.ruolo === r).map(x => x.nome).join(", ")}`;
-  const righe = [`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
+  const righe = [`${nomeGiornata(f.giornata_lega, f.giornata)} · ${m.modulo}`, ...["P", "D", "C", "A"].map(riga)];
   if (m.panchina.length) righe.push(t("scambi.panchina") + ": " + m.panchina.map((id, k) => `${k + 1}) ${sch(id).nome}`).join(", "));
   return righe.join("\n");
 }
@@ -1052,6 +1123,14 @@ function stellaNonMassimo(l) {
   return " " + t("formazione.stella_non_massimo", { modulo: esc(top.modulo), stile: esc(nomeStile(l)), consigliato: esc(l.modulo) });
 }
 const stessiIds = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+// Il perché della scelta in una riga (campo `perche_scelta` del modulo, fanta/perche_scelta.py): una riga per ogni titolare che
+// sembra una scelta storta (meno punti attesi di un escluso dello stesso ruolo) o è incerto con la riserva sicura.
+// [{id, nome, riga}] nell'ordine del server (riga già pronta per l'HTML); null = il server non manda il campo.
+function righePercheScelta(m, scheda) {
+  if (!Array.isArray(m.perche_scelta)) return null;
+  return m.perche_scelta.map(x => [x, scheda(x && x.titolare)]).filter(([x, a]) => a && x.testo)
+    .map(([x, a]) => ({ id: a.id, nome: a.nome, riga: esc(testoDi(x)) }));
+}
 
 // Stato della scelta della giornata, dal confronto fra gli 11 mostrati e quelli salvati sul server (l'ordine non conta).
 // `salvata`: risposta di GET /api/scelta (null = nessuna scelta; undefined = non ancora letta o lettura fallita: nessuna riga).
@@ -1192,6 +1271,8 @@ function mostraFormazione(f, squadra, opz = {}) {
     sc.nonSalvata = !squadra && !chiusa && manuale && (st === "modificata" || (st === "mano" && !sc.manuale.uguale));
     const modificabile = manuale && !chiusa;
     const inc = incerti(m);
+    // la nota sotto il campo: il perché delle scelte che sembrano storte, solo per la proposta del server (server senza il campo: gli incerti)
+    const nota = (sc.manuale || f.iniziata) ? [] : (righePercheScelta(m, scheda) ?? Object.values(inc));
     let etichettaAlt = true;                                          // «In ballottaggio con» scritto una volta sola
     const voceTit = x => {
       const h = voceGiocatore(x, null, true, modificabile);
@@ -1202,12 +1283,12 @@ function mostraFormazione(f, squadra, opz = {}) {
     pagina(`
       ${squadra ? `<div class="attenzione">${t("formazione.stai_guardando_formazione")} <b>${esc(f.squadra)}</b>.
         <button class="bottone secondario" id="torna-mia" style="margin-left:6px;padding:4px 12px;min-height:0">${t("formazione.torna_alla_tua")}</button></div>` : ""}
-      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${t("formazione.per_la_prossima", { n: f.giornata_saltata_lega || f.giornata_saltata, m: (f.giornata_saltata_lega || f.giornata_saltata) + 1 })}</div>` : ""}
+      ${f.giornata_saltata ? `<div class="attenzione" id="formazione-prossima">${elidiOrdinali(t("formazione.per_la_prossima", { g: nomeGiornata(f.giornata_saltata_lega, f.giornata_saltata), m: nomeGiornata(f.giornata_lega, f.giornata) }))}</div>` : ""}
       ${f.iniziata ? (st ? "" : `<div class="attenzione" id="formazione-chiusa">${t("formazione.chiusa")}</div>`) : f.con_probabili ? "" : `<div class="attenzione">${t("formazione.mancano_probabili_formazioni")}</div>`}
       <div class="colonne colonne-campo"><div class="col">
       <div class="carta hero">
         ${st ? rigaStatoScelta(st, sc.salvata, f.stato_scelta === "non_valida" || sc.nonValida) : ""}
-        <div class="riga"><div><div class="debole">${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</div><div class="grande">${esc(m.modulo)}</div></div>
+        <div class="riga"><div><div class="debole">${nomeGiornata(f.giornata_lega, f.giornata)} · <span style="white-space:nowrap">${t(manuale ? "formazione.la_tua_scelta" : m.modulo === l.modulo && l.rischio === 0 ? "formazione.modulo_consigliato" : "formazione.modulo_scelto")}</span></div><div class="grande">${esc(m.modulo)}</div></div>
           <div style="text-align:right"><div class="debole">${t("formazione.punti_attesi")}</div><div class="grande" id="punti-attesi">${num(m.punteggio_atteso)}</div>
             ${fascia(m)}</div></div>
         ${manuale && r.differenza !== null ? `<div class="debole" style="margin-top:6px">${t("formazione.rispetto", { d: segno(r.differenza, 1), n: num(r.consigliata_stesso_modulo) })}</div>` : ""}
@@ -1229,7 +1310,7 @@ function mostraFormazione(f, squadra, opz = {}) {
       <div class="campo">${legendaCampo()}<i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>
         ${["P", "D", "C", "A"].map(rr => `<div class="linea">${linee[rr].map(pedina).join("")}</div>`).join("")}
       </div>
-      ${Object.keys(inc).length ? `<div class="nota-incerti" id="nota-incerti">${Object.values(inc).map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
+      ${nota.length ? `<div class="nota-incerti" id="nota-incerti">${nota.map(i => `<p><b>${esc(i.nome)}</b> · ${i.riga}</p>`).join("")}</div>` : ""}
       </div><div class="col">
       <div class="carta"><h2>${t("formazione.titolari")}</h2><div class="debole piccolo">${t(modificabile ? "formazione.tocca_sostituire" : "formazione.tocca_confronto")}</div>
         <ul class="elenco">${titolari.map(voceTit).join("")}</ul></div>
@@ -1333,11 +1414,12 @@ function vistaMercato() {
   nuovaRichiesta();
   stato.mercatoTab = schedaMercato(stato.mercatoTab);
   const tabs = tabMercatoVisibili();
-  contenuto.innerHTML = `
+  pagina(`
     <div class="segmenti" id="mercato-tab" ${tabs.length < 2 ? "hidden" : ""}>${tabs.map(([k, nome]) => `<button data-mtab="${k}" class="${k === stato.mercatoTab ? "attivo" : ""}">${t(nome)}</button>`).join("")}</div>
-    <div id="mercato-corpo"></div>`;
+    <div id="mercato-corpo"></div>`);
   document.querySelectorAll("[data-mtab]").forEach(b => b.addEventListener("click", () => {
     stato.mercatoTab = b.dataset.mtab;
+    try { history.replaceState({ vista: "mercato", gruppo: null, scheda: stato.mercatoTab }, "", indirizzoVista("mercato", null, stato.mercatoTab)); indirizzoMostrato = location.pathname + location.search; } catch { /* niente cronologia */ }   // tornando qui con Indietro, la stessa sezione
     document.querySelectorAll("[data-mtab]").forEach(x => x.classList.toggle("attivo", x === b));
     striscia($("#mercato-tab"));
     caricaMercato();
@@ -1451,7 +1533,7 @@ async function tabCalendario(dove, ok) {
     if (!ok()) return;
     dove.innerHTML = `<div class="carta"><h2>${t("mercato.calendario_difficolta")}</h2>
       <div class="debole piccolo">${tp("mercato.cal_spiega", c.giornate.length)}</div>
-      <div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal"><thead><tr><td></td>${c.giornate.map(g => `<th scope="col">G${g}</th>`).join("")}</tr></thead>
+      <div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal"><thead><tr><td></td>${c.giornate.map(g => `<th scope="col"><span aria-hidden="true">G${Number(g)}</span><span class="solo-lettori">${nomeGiornata(null, g)}</span></th>`).join("")}</tr></thead>
       <tbody>${c.squadre.map(s => `<tr class="${mie.has(s.squadra) ? "mia" : ""}"><th scope="row">${sigla(s.squadra)}</th>${c.giornate.map(g => {
         const p = s.partite.find(x => x.giornata === g);
         return p ? `<td><span class="cella d${p.difficolta}">${vsAt(p)}</span></td>` : `<td></td>`;
@@ -1577,7 +1659,7 @@ function formaGiocatore(voti) {
   const ultimi = voti.slice(-5);
   if (!ultimi.length) return null;
   const colore = v => v == null ? "sv" : v >= 7 ? "alto" : v >= 6 ? "medio" : "basso";
-  const pallini = `<div class="pallini">${ultimi.map(v => `<i class="${colore(v.fv)}" title="${t("mercato.g_n", { n: v.giornata })}">${v.fv == null ? t("mercato.sv") : num(v.fv, 1)}</i>`).join("")}</div>`;
+  const pallini = `<div class="pallini">${ultimi.map(v => `<i class="${colore(v.fv)}" title="${nomeGiornata(null, v.giornata)}">${v.fv == null ? t("mercato.sv") : num(v.fv, 1)}</i>`).join("")}</div>`;
   const con = voti.filter(v => v.fv != null);
   if (con.length < 4) return { pallini, freccia: "→", testo: t("mercato.pochi_dati"), classe: "" };
   const media = a => a.reduce((x, v) => x + v.fv, 0) / a.length;
@@ -1599,7 +1681,7 @@ function graficoVoti(voti, giornate) {
   const linea = (chiave, cl) => {
     const punti = voti.filter(v => v[chiave] != null);
     return `<polyline class="${cl}" pathLength="1" fill="none" points="${punti.map(v => `${x(v.giornata).toFixed(1)},${y(v[chiave]).toFixed(1)}`).join(" ")}"/>` +
-      punti.map(v => `<circle class="${cl}" r="3" cx="${x(v.giornata).toFixed(1)}" cy="${y(v[chiave]).toFixed(1)}"><title>G${v.giornata}: ${num(v[chiave])}</title></circle>`).join("");
+      punti.map(v => `<circle class="${cl}" r="3" cx="${x(v.giornata).toFixed(1)}" cy="${y(v[chiave]).toFixed(1)}"><title>${nomeGiornata(null, v.giornata)}: ${num(v[chiave])}</title></circle>`).join("");
   };
   const sv = voti.filter(v => v.voto == null).map(v => `<text class="sv" x="${x(v.giornata).toFixed(1)}" y="${A - m - 8}" text-anchor="middle">${t("mercato.sv")}</text>`).join("");
   const passo = Math.ceil(voti.length / 12);
@@ -1673,7 +1755,7 @@ async function apriGiocatore(id) {
           <div class="etichette"><span class="etichetta ${s.proprietario ? "" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span>${pr && !statoInGrande ? pillTitolarita(pr) : ""}${pr && pr.diffidato ? `<span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div></div>
       </div>
       ${pr ? `<div class="carta">
-        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { n: pr.giornata_lega || pr.giornata, avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
+        <div class="riga"><div><div class="debole">${t(pr.in_casa ? "mercato.partita_casa" : "mercato.partita_fuori", { g: nomeGiornata(pr.giornata_lega, pr.giornata), avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) })}</div>
           ${finitaP ? (votoGiornata && votoGiornata.fv != null
             ? `<div class="grande">${num(votoGiornata.fv)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.fantavoto")}</span></div>`
             : `<div class="grande stato-partita">${etichettaPronta(pr) ? esc(pr.etichetta.testo) : t(STATO_PARTITA[pr.stato_partita][0])}</div>`)
@@ -1793,7 +1875,7 @@ async function apriConfronto(a, b) {
     }).join("");
     const riga = (etichetta, f) => `<div class="debole">${etichetta}</div><div class="numero"><b>${f(x)}</b></div><div class="numero"><b>${f(y)}</b></div>`;
     apriFoglio(`
-      <h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("mercato.chi_schierare", { n: c.giornata_lega ?? c.giornata })}</h2>
+      <h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("mercato.chi_schierare", { g: nomeGiornata(c.giornata_lega, c.giornata) })}</h2>
       <div class="duello">${intest(x)}<span class="vs-duello">VS</span>${intest(y)}</div>
       <div class="carta hero"><div class="debole">${fo ? t("mercato.nella_formazione", { modulo: esc(fo.modulo) }) : t("mercato.il_sistema_sceglie")}</div>
         <div class="grande">${schierato ? t("mercato.schiera", { nome: esc(schierato.nome) }) : esc(vince.nome)}</div>
@@ -1826,7 +1908,8 @@ const SFONDO_FOGLIO = () => [document.querySelector(".salta"), document.querySel
 function bloccaSfondo() {
   focusPrima = document.activeElement;
   SFONDO_FOGLIO().forEach(e => { e.inert = true; });
-  setTimeout(() => { const c = document.querySelector(".foglio-chiudi"); if (c && !$("#foglio").hidden) c.focus({ preventScroll: true }); }, 60);
+  // il focus va sulla ✕, a meno che il foglio non l'abbia già preso (la ricerca mette subito il cursore nel suo campo)
+  setTimeout(() => { const c = document.querySelector(".foglio-chiudi"); if (c && !$("#foglio").hidden && !$(".foglio-corpo").contains(document.activeElement)) c.focus({ preventScroll: true }); }, 60);
 }
 function sbloccaSfondo() {
   SFONDO_FOGLIO().forEach(e => { e.inert = false; });
@@ -1909,9 +1992,13 @@ document.addEventListener("keydown", ev => {
   if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
   const bersaglio = ev.target;
   if (bersaglio && (["INPUT", "TEXTAREA", "SELECT"].includes(bersaglio.tagName) || bersaglio.isContentEditable)) return;      // si sta scrivendo
-  if (ev.key === "/") { ev.preventDefault(); apriRicerca(); }                                          // tastiera: / cerca
-  else if (/^[1-4]$/.test(ev.key) && $("#foglio").hidden) vai(VISTE[Number(ev.key) - 1]);             // tastiera: 1-4 cambiano sezione
-  else if (ev.key === "," && $("#foglio").hidden) vai("impostazioni");                                 // tastiera: , apre le impostazioni
+  if (ev.key === "/") {                                                                                // tastiera: / cerca
+    ev.preventDefault();
+    const c = $("#campo-cerca");
+    if (c && c.getClientRects().length && $("#foglio").hidden) c.focus(); else apriRicerca();          // sul PC il campo della testata
+  }
+  else if (/^[1-4]$/.test(ev.key) && $("#foglio").hidden) vai(VISTE[Number(ev.key) - 1], undefined, { focoTitolo: true });   // tastiera: 1-4 cambiano sezione
+  else if (ev.key === "," && $("#foglio").hidden) vai("impostazioni", undefined, { focoTitolo: true });   // tastiera: , apre le impostazioni
 });
 // il riflesso del vetro segue il dito
 document.addEventListener("pointerdown", ev => {
@@ -2053,13 +2140,12 @@ async function vistaScambi() {
   const mia = nuovaRichiesta();
   caricamento(t("scambio.carico_squadre"));
   let squadre;
-  try { squadre = await api("/api/squadre"); } catch (e) { if (ancoraValida(mia)) contenuto.innerHTML = erroreVista(e); return; }
+  try { squadre = await api("/api/squadre"); } catch (e) { if (ancoraValida(mia)) pagina(erroreVista(e), { titolo: t("nav.scambi") }); return; }
   if (!ancoraValida(mia)) return;
   const altre = squadre.filter(s => !s.mia);
   if (squadre.length && !altre.length) {              // solo la tua rosa: gli scambi aspettano quelle degli altri (non è un errore)
-    contenuto.classList.remove("ridisegna");
-    contenuto.innerHTML = `<div class="carta"><h2>${t("nav.scambi")}</h2><p class="debole">${t("scambio.servono_altre")}</p>
-      <div class="pulsanti"><button class="bottone" type="button" id="scambi-aggiungi-rose">${t("lega.voce_importa")}</button></div></div>`;
+    pagina(`<div class="carta"><p class="debole">${t("scambio.servono_altre")}</p>
+      <div class="pulsanti"><button class="bottone" type="button" id="scambi-aggiungi-rose">${t("lega.voce_importa")}</button></div></div>`, { titolo: t("nav.scambi") });
     $("#scambi-aggiungi-rose").addEventListener("click", () => vaiLega("importa"));
     return;
   }
@@ -2068,8 +2154,7 @@ async function vistaScambi() {
   const modi = MODI_SCAMBIO.filter(([k]) => !FUNZIONE_MODO[k] || funz(FUNZIONE_MODO[k]));
   const modo0 = modi.some(([k]) => k === stato.scambiModo) ? stato.scambiModo : modi[0][0];
   const nascosto = m => (m === modo0 ? "" : "hidden");
-  contenuto.classList.remove("ridisegna");
-  contenuto.innerHTML = `
+  pagina(`
     <div class="segmenti" id="scambi-modi" role="group" aria-label="${t("scambio.cosa_vuoi_fare")}" ${modi.length < 2 ? "hidden" : ""}>${modi.map(([k, n]) =>
       `<button type="button" data-modo-scambio="${k}" class="${k === modo0 ? "attivo" : ""}" aria-pressed="${k === modo0}">${t(n)}</button>`).join("")}</div>
     <div class="scambi-colonne"><div class="scambi-sinistra">
@@ -2121,7 +2206,7 @@ async function vistaScambi() {
       <div id="esito-scambio" data-esito="costruisci" aria-live="polite" ${nascosto("costruisci")}></div>
       <div id="esito-offerta" data-esito="valuta" aria-live="polite" ${nascosto("valuta")}></div>
     </div></div>
-    <div id="archivio-scambi"></div>`;
+    <div id="archivio-scambi"></div>`, { titolo: t("nav.scambi") });
 
   const scegliModo = m => {
     stato.scambiModo = m;
@@ -2376,8 +2461,7 @@ async function vistaRosa(nome) {
     }).join("");
     pagina(`
       <div class="carta">
-        <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button></div>
-        <h2 style="margin-top:14px">${esc(r.nome)}${r.mia ? t("scambio.la_tua") : ""}</h2>
+        <div class="riga"><button class="bottone secondario indietro" data-vai="squadra" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("scambio.squadra")}</button>${r.mia ? `<span class="etichetta">${t("lega.la_tua")}</span>` : ""}</div>
         <details class="rinomina-squadra"><summary>${t("scambio.cambia_nome")}</summary>
           <div class="riga" style="gap:8px;margin-top:8px"><label class="solo-lettori" for="nome-squadra">${t("scambio.nuovo_nome")}</label>
             <input class="campo-testo" id="nome-squadra" type="text" maxlength="60" autocomplete="off" value="${esc(r.nome)}" style="flex:1;min-width:0">
@@ -2396,7 +2480,7 @@ async function vistaRosa(nome) {
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" })}</div>
-      </div>`);
+      </div>`, { titolo: r.nome });          // il titolo è il nome della squadra (pagina() lo scrive con esc); «la tua» accanto a «‹ Squadra»
     const vf = $("#vedi-formazione");
     if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione"); });
     $("#salva-nome-squadra").addEventListener("click", async () => {
@@ -2435,7 +2519,7 @@ async function vistaRosa(nome) {
       } catch (e) { avviso(e.message, 6000); }
     }));
   } catch (e) {
-    if (ancoraValida(mia)) contenuto.innerHTML = errore(e);
+    if (ancoraValida(mia)) pagina(errore(e));
   }
 }
 
@@ -2444,6 +2528,57 @@ const NOMI_CONTROLLI = { partite_per_giornata: t("sd.ctl_partite"), voti_per_gio
 // righe della sentinella (fanta/sentinella.py): «sentinella_<invariante>», il nome dell'invariante con gli spazi; quelle a posto
 // non si mostrano (le riassume la riga «sentinella»)
 const nomeControllo = n => NOMI_CONTROLLI[n] || (n.startsWith("sentinella_") ? t("sd.ctl_sentinella_una", { nome: n.slice(11).replaceAll("_", " ") }) : n);
+// Registro delle giornate (#344): le medie delle ultime giornate misurate, ognuna con la sua soglia e il verdetto del server
+// (`regge`, che non si ricalcola qui), e le giornate perse con il motivo. Percentuali e punti con una cifra decimale, senza «,0»
+// («−3%», «−5,7%»), come sull'iPhone (`ParoleRegistro`).
+const regCifra = (x, per = 1, segnato = false) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : (segnato ? segno(x * per, 1) : num(x * per, 1)).replace(/[,.]0$/, "");
+const regPerc = (x, segnato = false) => { const v = regCifra(x, 100, segnato); return v === "–" ? v : `${v}%`; };
+function statoRegistro(reg, k) {
+  if (!reg.verdetto) return { testo: tp("sd.reg_servono", Math.max(1, (reg.finestra || 8) - (reg.giornate || 0))), colore: "" };
+  const ok = (reg.regge || {})[k];
+  if (ok === true) return { testo: t("sd.reg_regge"), colore: "var(--verde)" };
+  return ok === false ? { testo: t("sd.reg_non_regge"), colore: "var(--rosso)" } : { testo: t("sd.nessun_dato"), colore: "" };
+}
+// Una misura (del registro o del consiglio): il nome, accanto il verdetto colorato ma sempre a parole, sotto media e soglia.
+function rigaMisura(reg, k, nome, dettaglio) {
+  const st = statoRegistro(reg, k);
+  return `<div class="riga"><span>${t(nome)}</span><span class="piccolo${st.colore ? "" : " debole"}"${st.colore ? ` style="color:${st.colore}"` : ""}>${st.testo}</span></div>
+      <div class="debole piccolo">${dettaglio}</div>`;
+}
+function cartaRegistro(reg) {
+  if (!reg) return "";
+  const s = reg.soglie || {}, n = reg.giornate || 0;
+  const misura = (k, nome, dettaglio) => rigaMisura(reg, k, nome, dettaglio);
+  const misure = n ? misura("I1", "sd.reg_i1", t("sd.reg_i1_riga", { v: regPerc(reg.i1, true), s: regPerc(s.I1, true), m: num(reg.errore_modello, 2), f: num(reg.errore_fantamedia, 2) }))
+    + misura("I2", "sd.reg_i2", t("sd.reg_i2_riga", { c: regCifra(reg.calibrazione, 100), sc: regCifra(s.I2_calibrazione, 100), b: num(reg.brier, 3), sb: num(s.I2_brier, 3) }))
+    + misura("I3", "sd.reg_i3", t("sd.reg_i3_riga", { v: regPerc(reg.copertura), min: regPerc(s.I3_minimo), max: regPerc(s.I3_massimo) })) : "";
+  const perse = (reg.per_giornata || []).filter(g => g && g.persa);
+  return `<div class="carta" id="registro-giornate"><h2>${t("sd.reg_titolo")}</h2>
+    <div class="debole piccolo">${t("sd.reg_spiega")}</div>
+    <div class="debole piccolo" style="margin:4px 0 8px">${n ? tp("sd.reg_media", n) : t("sd.reg_nessuna")}</div>
+    ${misure}
+    ${perse.length ? `<h3>${t("sd.reg_perse")}</h3><div class="debole piccolo">${t("sd.reg_perse_spiega")}</div>
+      ${perse.map(g => `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })}</span></div>
+        <div class="piccolo" style="color:var(--rosso)">${esc(g.persa)}</div>`).join("")}` : ""}</div>`;
+}
+// Consiglio di formazione (#366): gli indicatori del consiglio sommati sui Diari di tutti (campo `consiglio`, PR #362), resi come il
+// registro: per ognuno la media delle ultime giornate, la soglia e il verdetto del server (`regge`, non si ricalcola qui). Punti con
+// due cifre e il segno («+1,00», «−0,25»), totali interi, frazioni come percentuali; «–» se manca. Uguale sull'iPhone (`ParoleConsiglio`).
+const consIntero = x => (typeof x === "number" && Number.isFinite(x)) ? String(x) : "–";
+function cartaConsiglio(c) {
+  if (!c) return "";
+  const s = c.soglie || {}, n = c.giornate || 0;
+  const valore = t("sd.cons_c1_riga", { v: segno(c.meno_s2, 2), s: regCifra(s.C1) })
+    + (typeof c.meno_schierata === "number" ? ` · ${t("sd.cons_c1_schierata", { w: segno(c.meno_schierata, 2) })}` : "");
+  const misure = n ? rigaMisura(c, "C1", "sd.cons_c1", valore)
+    + rigaMisura(c, "C2", "sd.cons_c2", t("sd.cons_c2_riga", { c: regCifra(c.cambi), n: consIntero(c.cambi_sotto_soglia), s: regCifra(s.C2) }))
+    + rigaMisura(c, "C3", "sd.cons_c3", t("sd.cons_c3_riga", { i: consIntero(c.improbabili), n: consIntero(c.con_compagno), s: regCifra(s.C3) }))
+    + rigaMisura(c, "C4", "sd.cons_c4", t("sd.cons_c4_riga", { sp: consIntero(c.spiegate), st: consIntero(c.storte), v: regPerc(c.senza_motivo), s: regPerc(s.C4_senza_motivo) })) : "";
+  return `<div class="carta" id="consiglio-formazione"><h2>${t("sd.cons_titolo")}</h2>
+    <div class="debole piccolo">${t("sd.cons_spiega")}</div>
+    <div class="debole piccolo" style="margin:4px 0 8px">${n ? tp("sd.cons_media", n, { f: tp("sd.cons_formazioni", c.voci || 0) }) : t("sd.cons_nessuna")}</div>
+    ${misure}</div>`;
+}
 // Stato dei dati: da dove arriva tutto, quando è stato aggiornato, errori, foto e confronto tra probabilità previste e giocatori che hanno giocato.
 async function apriStatoDati() {
   apriFoglio(`<div class="caricamento">${t("scambio.controllo_dati")}</div>`);
@@ -2476,11 +2611,13 @@ async function apriStatoDati() {
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
         <div class="debole piccolo">${t("sd.coppe_spiega", { d: esc(fData(new Date(s.coppe_fino + "T12:00:00"), {})) })}${new Date(s.coppe_fino) < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
-        ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${t("testata.giornata", { n: p.giornata })}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
+        ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${nomeGiornata(null, p.giornata)}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
         ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(nomeControllo(k.nome))}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
           ${k.esito === "ok" ? "" : `<div class="debole piccolo">${esc(k.dettaglio || "")}</div>`}`).join("") : `<div class="debole">${t("scambio.fanno_ogni_aggiornamento")}</div>`}</div>
       <div class="carta" id="affidabilita"><h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>
+      ${cartaRegistro(s.registro)}
+      ${cartaConsiglio(s.consiglio)}
       <div class="carta"><h2>${t("scambio.quanto_azzecca_modello")}</h2>
         <div class="debole piccolo">${c.giornate ? t("sd.giornate_giocate", { n: c.giornate }) : t("sd.appena_finisce")}
           ${t("sd.corregge")}</div>
@@ -2511,9 +2648,10 @@ function togliPrefVecchie() { try { PREF_TOLTE.forEach(k => localStorage.removeI
 function applicaAspetto() {
   const a = leggiAspetto(), radice = document.documentElement;
   if (a.tema === "auto") delete radice.dataset.tema; else radice.dataset.tema = a.tema;
-  const scuro = a.tema === "scuro" || (a.tema === "auto" && !matchMedia("(prefers-color-scheme: light)").matches);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = scuro ? "#07100b" : "#eaf3ee";
+  // colore della barra del browser (le due righe di index.html): col tema automatico ognuna tiene il suo e sceglie il sistema
+  // (attributo media); con un tema scelto a mano tutte e due prendono il fondo di quel tema
+  const fondo = scuro => (scuro ? "#121513" : "#ffffff");
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.content = fondo(a.tema === "auto" ? m.media.includes("dark") : a.tema === "scuro"); });
   document.documentElement.style.zoom = a.testo === "1" ? "" : a.testo;      // vale per tutta l'app: testata, barra e pannelli compresi
   radice.dataset.densita = "compatta";
   segnaMovimento();
@@ -2542,13 +2680,16 @@ function collegaAspetto() {
   }));
 }
 
-// Ricerca veloce di un giocatore da qualsiasi schermata (la lente in alto).
-function apriRicerca() {
+// Ricerca veloce di un giocatore da qualsiasi schermata (la lente in alto, il tasto «/», il campo della testata sul PC).
+// `testo`: quello già scritto nel campo della testata; il campo della ricerca prende subito il focus, così le lettere che arrivano
+// mentre il foglio sale finiscono lì (il resto della pagina è bloccato).
+function apriRicerca(testo = "") {
   apriFoglio(`<h2 style="margin:0 0 10px;font-size:var(--t-card)">${t("shell.cerca")}</h2>
     <input class="campo-testo" id="ricerca-veloce" type="search" placeholder="${t("avv.nome_del_giocatore")}" autocomplete="off" autocapitalize="off" spellcheck="false">
     <div class="risultati-ricerca" id="risultati-ricerca"><div class="debole piccolo">${t("avv.scrivi_almeno_due")}</div></div>`);
   const campo = $("#ricerca-veloce");
-  setTimeout(() => campo.focus(), 300);
+  campo.value = testo;
+  campo.focus({ preventScroll: true });
   setTimeout(() => caricaListoneCerca().catch(() => {}), 350);
   let n = 0;
   campo.addEventListener("input", async () => {
@@ -2563,8 +2704,14 @@ function apriRicerca() {
         <span class="debole piccolo">${t("avv.quot", { n: x.quotazione })}</span></button></li>`).join("")}</ul>` : `<div class="debole">${t("avv.nessun_giocatore_trovato")}</div>`;
     } catch (e) { if (e.name !== "AbortError" && mio === n && $("#risultati-ricerca")) $("#risultati-ricerca").innerHTML = errore(e); }
   });
+  if (testo.trim()) campo.dispatchEvent(new Event("input"));            // dalla testata: cerca subito quello che è già scritto
 }
-$("#bottone-cerca").addEventListener("click", apriRicerca);
+$("#bottone-cerca").addEventListener("click", () => apriRicerca());
+// Il campo sempre aperto della testata (da 900 px): al primo tasto, o con Invio, il testo passa alla ricerca e il campo si svuota.
+// Così la ricerca funziona già da qui; i risultati si aprono nel foglio di sempre.
+$("#campo-cerca").placeholder = t("shell.cerca");
+$("#campo-cerca").addEventListener("input", ev => { const q = ev.target.value; if (!q.trim()) return; ev.target.value = ""; apriRicerca(q); });
+$("#campo-cerca").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); const q = ev.target.value; ev.target.value = ""; apriRicerca(q); } });
 
 // La formazione come immagine da mandare nel gruppo (nell'iPhone si apre il menu Condividi).
 const caricaSvg = svg => new Promise(ok => {         // l'SVG diventa un'immagine per il disegno (data: è permesso dalla CSP)
@@ -2582,10 +2729,14 @@ async function condividiImmagine(f, m) {
   sfondo.addColorStop(0, "#0d2417"); sfondo.addColorStop(1, "#07100b");
   g.fillStyle = sfondo; g.fillRect(0, 0, L, A);
   g.textAlign = "center";
-  g.fillStyle = "#eef6f0"; g.font = "700 64px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${t("testata.giornata", { n: f.giornata_lega || f.giornata })} · ${m.modulo}`, L / 2, 110);
+  // «Giornata 8 · 11ª di Serie A · 3-4-3»: se a 64 px non ci sta nella larghezza, il carattere si rimpicciolisce (fino a 40 px)
+  const titolo = `${nomeGiornata(f.giornata_lega, f.giornata)} · ${m.modulo}`;
+  let corpo = 64;
+  g.fillStyle = "#eef6f0"; g.font = `700 ${corpo}px -apple-system, Helvetica, Arial, sans-serif`;
+  while (corpo > 40 && g.measureText(titolo).width > L - 100) { corpo -= 2; g.font = `700 ${corpo}px -apple-system, Helvetica, Arial, sans-serif`; }
+  g.fillText(titolo, L / 2, 110);
   g.fillStyle = "#bccdc2"; g.font = "500 36px -apple-system, Helvetica, Arial, sans-serif";
-  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: virgola(m.punteggio_atteso) })}`, L / 2, 168);
+  g.fillText(`${f.squadra} · ${t("avv.img_punti", { n: num(m.punteggio_atteso) })}`, L / 2, 168);
   const x0 = 50, y0 = 220, w = L - 100, h = 880;
   g.fillStyle = "#1f8a4b"; g.beginPath(); g.roundRect(x0, y0, w, h, 36); g.fill();
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 4;
@@ -2608,7 +2759,7 @@ async function condividiImmagine(f, m) {
       g.restore();
       g.fillStyle = "rgba(8,14,10,.92)"; g.beginPath(); g.roundRect(cx - 42, y + 34, 84, 38, 19); g.fill();   // fantavoto atteso
       g.fillStyle = "#ffffff"; g.font = "700 28px -apple-system, Helvetica, Arial, sans-serif";
-      g.fillText(virgola(x.fv_atteso), cx, y + 62);
+      g.fillText(num(x.fv_atteso), cx, y + 62);
       g.font = "650 30px -apple-system, Helvetica, Arial, sans-serif";
       g.fillText(cognome(x), cx, y + 104);
     });
@@ -2624,7 +2775,7 @@ async function condividiImmagine(f, m) {
   if (!blob) { avviso(t("formazione.non_riesco_creare")); return; }
   const file = new File([blob], `formazione-giornata-${f.giornata_lega || f.giornata}.png`, { type: "image/png" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { n: f.giornata_lega || f.giornata }) }); return; }
+    try { await navigator.share({ files: [file], title: t("avv.img_titolo", { g: nomeGiornata(f.giornata_lega, f.giornata) }) }); return; }
     catch (e) { if (e && e.name === "AbortError") return; }
   }
   apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("nav.formazione")}</h2>
@@ -2641,7 +2792,9 @@ function cartaPrecisione(p) {
   const v = x => (n(x) == null ? "–" : virgola(n(x).toFixed(1)));
   const suDieci = pct => Math.round((n(pct) || 0) / 10);
   const pg = p.per_giornata || [];
-  const nomeG = g => n(g.giornata_lega) ?? n(g.giornata);
+  const nomeG = g => nomeGiornata(g.giornata_lega, g.giornata);
+  // sotto le barre lo spazio è poco: il numero della lega da solo; per una stagione passata «G11» di Serie A (forma stretta)
+  const sottoBarra = g => (n(g.giornata_lega) != null ? n(g.giornata_lega) : `G${n(g.giornata)}`);
   const voce = (numero, etichetta, frase, cls = "") => `<div class="qp-voce"><b class="qp-num ${cls}">${numero}</b><span class="qp-eti">${etichetta}</span><div class="qp-frase">${frase}</div></div>`;
   // 1. fantavoto atteso dei tuoi giocatori
   const fv = p.fantavoto;
@@ -2672,7 +2825,7 @@ function cartaPrecisione(p) {
       const e = n(g.errore_fantavoto), h = Math.max(2, e / alto * (H - 34)), x = i * passo + (passo - larga) / 2, y = H - 16 - h;
       return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larga.toFixed(1)}" height="${h.toFixed(1)}" rx="3" class="qp-barra"/>
         <text x="${(x + larga / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" class="qp-val">${v(e)}</text>
-        <text x="${(x + larga / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" class="qp-g">${nomeG(g)}</text>`;
+        <text x="${(x + larga / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" class="qp-g">${sottoBarra(g)}</text>`;
     }).join("");
     grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("diario.qp_grafico_aria")}" class="qp-grafico">${barre}</svg>
       <div class="debole piccolo">${t("diario.qp_grafico_leg")}</div>`;
@@ -2680,12 +2833,12 @@ function cartaPrecisione(p) {
   const righe = [...pg].reverse().map(g => {
     const d = n(g.differenza);
     const tua = n(g.tua) != null ? " · " + t("diario.qp_riga_tua", { t: v(g.tua), d: (d > 0 ? "+" : d < 0 ? "−" : "") + v(Math.abs(d ?? 0)) }) : "";
-    return `<li><b>${t("testata.giornata", { n: nomeG(g) })}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}${tua}</span></li>`;
+    return `<li><b>${nomeG(g)}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}${tua}</span></li>`;
   }).join("");
   const primo = pg.length ? nomeG(pg[0]) : null, ultimo = pg.length ? nomeG(pg[pg.length - 1]) : null;
   const ric = n((p.fonti || {}).ricostruiti) || 0;
   return `<div class="carta qp"><h2>${t("diario.af_titolo")}</h2>
-    <div class="debole piccolo">${t("diario.qp_intro")} ${tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo })}</div>
+    <div class="debole piccolo">${t("diario.qp_intro")} ${elidiOrdinali(tp("diario.qp_su", n(p.giornate), { da: primo, a: ultimo }))}</div>
     ${p.pochi_dati ? `<div class="attenzione qp-pochi" role="status">${t("diario.qp_pochi", { n: n(p.giornate_minime) || 8 })}</div>` : ""}
     <div class="qp-griglia">
       ${voce(fv ? v(fv.errore_medio) : "–", t("diario.qp_fv_eti"), fvFrase)}
@@ -2704,7 +2857,7 @@ function cartaScelteTue(st, sintesi, v) {
   if (!st.giornate) return `<div class="carta scelte-tue"><h2>${t("avv.tue_scelte")}</h2><div class="debole piccolo">${t("avv.finora_hai_schierato")}</div></div>`;
   const segno = x => (x > 0 ? "+" : x < 0 ? "−" : "") + v(Math.abs(x));
     const dueNomi = l => l.map(esc).join(", ");
-  const riga = g => `<li>${t("avv.riga_scelta", { n: `<b>${t("testata.giornata", { n: Number(g.giornata_lega || g.giornata) })}</b>`, scelto: dueNomi(g.hai_scelto), cons: dueNomi(g.consigliava) })}
+  const riga = g => `<li>${t("avv.riga_scelta", { n: `<b>${nomeGiornata(g.giornata_lega, g.giornata)}</b>`, scelto: dueNomi(g.hai_scelto), cons: dueNomi(g.consigliava) })}
       <span class="debole piccolo">${t("avv.tu_consiglio", { tua: v(g.punti_tua), cons: v(g.punti_consigliata), d: segno(g.differenza) })}</span></li>`;
   const punti = st.punti_differenza;
   const totale = punti === 0 ? t("avv.totale_pari") : punti > 0 ? t("avv.totale_tue", { n: v(punti) }) : t("avv.totale_consiglio", { n: v(-punti) });
@@ -2775,7 +2928,7 @@ async function apriDiario(giornata, stagione) {
         <div class="debole piccolo">${fuori.length ? t("diario.cambiato", { n: fuori.length, nomi: t("diario.cambiato_nomi", { dentro: esc(fuori.join(", ")), fuori: esc(dentro.join(", ")) }) }) : t("diario.uguale")}</div>`;
     };
     // «Ho schierato…» e «Correggi» solo se la voce si può ancora cambiare (stagione in corso; un server vecchio senza il campo: sì)
-    const righe = d.giornate.map(g => `<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2 style="margin:0">${t("testata.giornata", { n: g.giornata_lega || g.giornata })}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
+    const righe = d.giornate.map(g => `<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2 style="margin:0">${nomeGiornata(g.giornata_lega, g.giornata)}</h2><span class="debole piccolo">${esc(g.stagione)}</span></div>
       ${g.schierata ? "" : `<div class="debole piccolo">${t("diario.non_salvata")}</div>`}
       ${confronto(g)}
       ${g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" data-correggi="${idVoceDiario(g)}">${g.schierata ? t("diario.correggi") : t("diario.ho_schierato_altra")}</button></div>`}
@@ -2825,7 +2978,7 @@ async function correggiDiario(g) {
         <input type="checkbox" data-scelto="${Number(x.id)}" ${iniziali.has(x.id) ? "checked" : ""}></label>`).join("")}` : "";
     }).join("");
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("diario.cosa_hai_schierato_titolo")}</h2>
-      <div class="debole piccolo">${t("diario.correggi_spiega", { giornata: g.giornata_lega || g.giornata })}</div>
+      <div class="debole piccolo">${t("diario.correggi_spiega", { g: nomeGiornata(g.giornata_lega, g.giornata) })}</div>
       <div class="riga" style="margin:10px 0"><b id="diario-conta" role="status" aria-live="polite"></b>
         <span class="riga" style="gap:8px"><button class="bottone secondario" id="diario-annulla" type="button">${t("mercato.annulla")}</button><button class="bottone" id="diario-salva" type="button">${t("scambio.salva")}</button></span></div>
       ${gruppi}`);
@@ -2870,7 +3023,7 @@ async function mostraAffidabilita(numero) {
       const linea = (k, col, tratteggio) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" ${tratteggio ? 'stroke-dasharray="4 4"' : ""} stroke-linecap="round" stroke-linejoin="round" points="${righe.map((r, i) => xy(i, r[k])).join(" ")}"/>`;
       grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("avv.punti_delle_formazioni")}" style="margin-top:10px">
         ${linea("punti_perfetta", "var(--testo-2)", true)}${linea("punti_fantamedia", "var(--arancio)")}${linea("punti_modello", "var(--verde)")}</svg>
-        <div class="debole piccolo"><b style="color:var(--verde)">—</b> ${t("avv.modello_nbsp")} <b style="color:var(--arancio)">—</b> ${t("avv.fantamedia_nbsp")} <b>- -</b> ${t("avv.max_possibile")} · ${t("avv.giornate_da_a", { a: righe[0].giornata, b: righe[righe.length - 1].giornata })}</div>`;
+        <div class="debole piccolo"><b style="color:var(--verde)">—</b> ${t("avv.modello_nbsp")} <b style="color:var(--arancio)">—</b> ${t("avv.fantamedia_nbsp")} <b>- -</b> ${t("avv.max_possibile")} · ${elidiOrdinali(t("avv.giornate_da_a", { a: Number(righe[0].giornata), b: Number(righe[righe.length - 1].giornata) }))}</div>`;
     }
     dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>
       <div class="debole piccolo">${tp("avv.prova_su", s.giornate)}</div>
@@ -3112,7 +3265,7 @@ async function vistaLega(ambito = "altro") {
   caricamento(t(ambito === "squadra" ? "lega.carico_squadra" : "comune.carico"));
   let squadre = [];
   try { squadre = await api("/api/squadre"); }
-  catch (e) { if (e.rete) { if (ancoraValida(mia)) contenuto.innerHTML = erroreVista(e); return; } squadre = []; }
+  catch (e) { if (e.rete) { if (ancoraValida(mia)) pagina(erroreVista(e)); return; } squadre = []; }
   if (!ancoraValida(mia)) return;
   const daUrl = stato.legaTorna; stato.legaTorna = null;
   const immagine = (sq, tipo) => sq.immagini && sq.immagini[tipo] ? `<img class="${tipo === "stemma" ? "stemma-lista" : "maglia-lista"}" src="${urlImg(sq.nome, tipo)}" alt="${t("lega.alt_immagine", { tipo: t(NOME_IMMAGINE[tipo]), nome: esc(sq.nome) })}" loading="lazy">` : "";
@@ -3298,7 +3451,8 @@ async function bannerNuovaStagione() {
     c.className = "carta"; c.dataset.g = "lega";
     c.innerHTML = `<button class="voce" id="banner-stagione" type="button" style="grid-template-columns:1fr auto"><span><span class="nome">${t("lega.nuova_stagione_n", { s: esc(s.corrente) })}</span>
       <span class="dettaglio" style="display:block">${t("lega.banner_stagione", { s: esc(s.rose) })}</span></span><span class="debole" aria-hidden="true">›</span></button>`;
-    contenuto.prepend(c);
+    const capo = $(".capo-pagina", contenuto);                // sotto il titolo della schermata, prima del resto
+    if (capo) capo.after(c); else contenuto.prepend(c);
     $("#banner-stagione").addEventListener("click", () => { if (stato.pannelli) apriPannello(stato.pannelli, "stagione"); });
   } catch { /* senza rose o senza rete: niente banner */ }
 }
@@ -3319,7 +3473,7 @@ function dataNovita(d) {
 const NOVITA_VISIBILI = 10;
 async function vistaNovita() {
   const mia = nuovaRichiesta();
-  caricamento(t("novita.carico"));
+  caricamento(t("novita.carico"), { titolo: t("info.novita") });
   try {
     const elenco = await api("/api/novita");
     if (!ancoraValida(mia)) return;
@@ -3331,15 +3485,15 @@ async function vistaNovita() {
         <ul class="novita-voci">${(v.voci || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
     const visibili = Math.max(NOVITA_VISIBILI, nuoveDa), resto = elenco.length - visibili;
     pagina(`<div class="carta"><div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("nav.altro")}</button>
-        <span class="debole">${t("novita.versione", { v: esc(elenco[0] ? elenco[0].versione : "?") })}</span></div><h2 style="margin-top:14px">${t("info.novita")}</h2></div>
+        <span class="debole">${t("novita.versione", { v: esc(elenco[0] ? elenco[0].versione : "?") })}</span></div></div>
       ${elenco.slice(0, visibili).map(carta).join("")}
-      ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}`);
+      ${resto > 0 ? `<div class="pulsanti" id="novita-altre-riga"><button class="bottone secondario" id="novita-altre">${tp("novita.precedenti", resto)}</button></div>` : ""}`, { titolo: t("info.novita") });
     const altre = $("#novita-altre");
     if (altre) altre.addEventListener("click", () => {
       $("#novita-altre-riga").outerHTML = elenco.slice(visibili).map((v, k) => carta(v, visibili + k)).join("");
     });
     try { if (elenco[0]) localStorage.setItem("novita-vista", elenco[0].versione); } catch { /* niente memoria */ }
-  } catch (e) { if (ancoraValida(mia)) contenuto.innerHTML = errore(e); }
+  } catch (e) { if (ancoraValida(mia)) pagina(errore(e), { titolo: t("info.novita") }); }
 }
 
 // ---------------------------------------------------------------- regole: schermata semplice con − / +
@@ -3373,9 +3527,9 @@ const bonusDifesa = (media, fasce) => fasce.filter(f => media >= f[0]).reduce((b
 
 async function vistaRegole() {
   const mia = nuovaRichiesta();
-  caricamento(t("regole.carico"));
+  caricamento(t("regole.carico"), { titolo: t("lega.voce_regole") });
   let r;
-  try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) contenuto.innerHTML = errore(e); return; }
+  try { r = await api("/api/regole"); } catch (e) { if (ancoraValida(mia)) pagina(errore(e), { titolo: t("lega.voce_regole") }); return; }
   if (!ancoraValida(mia)) return;
   if (regoleAC) regoleAC.abort();
   regoleAC = new AbortController();
@@ -3388,8 +3542,7 @@ async function vistaRegole() {
   const fascia = (media, bonus) => `<div class="fascia"><div class="coppia"><span class="debole piccolo">${t("regole.media_almeno")}</span>${stepper("", media, { passo: 0.25, min: 4, max: 9, dec: 2 }).replace('id=""', 'class="f-media"')}</div>
     <div class="coppia"><span class="debole piccolo">${t("regole.bonus")}</span>${stepper("", bonus, { passo: 0.5, min: 0, max: 20, dec: 1 }).replace('id=""', 'class="f-bonus"')}</div>
     <button type="button" class="rimuovi-fascia" aria-label="${t("regole.togli_fascia")}">✕</button></div>`;
-  contenuto.classList.remove("ridisegna");
-  contenuto.innerHTML = `
+  pagina(`
     <div class="carta">
       <div class="riga"><button class="bottone secondario indietro" data-vai="altro" style="padding:6px 14px;min-height:44px">${ICONA_INDIETRO}${t("regole.altro")}</button>
         <button class="bottone secondario" id="annulla-regole" style="padding:6px 14px;min-height:44px">${t("regole.annulla_modifiche")}</button></div>
@@ -3468,7 +3621,7 @@ async function vistaRegole() {
       ${["P", "D", "C", "A"].map(x => rigaRegola(NOMI_RUOLO[x], stepper("rosa_" + x, r.rosa[x], { passo: 1, min: 0, max: 20, dec: 0 }))).join("")}
       ${rigaRegola(t("regole.crediti_iniziali"), stepper("crediti", r.crediti_iniziali, { passo: 10, min: 0, max: 5000, dec: 0 }))}
     </details>
-    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole">${t("regole.salva_regole")}</button></div>`;
+    <div class="salva-fisso" hidden><button class="bottone" id="salva-regole">${t("regole.salva_regole")}</button></div>`, { titolo: t("lega.voce_regole") });
   const mostraSalva = () => { const s = $(".salva-fisso"); if (s) s.hidden = false; };
 
   // --- comportamenti

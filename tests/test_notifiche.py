@@ -193,7 +193,9 @@ def test_riepilogo_a_giornata_finita(tmp_path, monkeypatch):
     opz = {"riepilogo": True}
     f = tmp_path / "r.json"
     r = notifiche.riepilogo(db, Regole(), rose, adesso, f, manda, opz, tmp_path / "nessun-cambi.json", tmp_path / "scelte.json")
-    assert len(r) == 1 and "Giornata 8: la tua scelta salvata ha fatto circa" in r[0] and "A0 " in r[0] and "Prossima: giornata 9" in r[0]
+    assert len(r) == 1 and "Giornata 8 · 8ª di Serie A: la tua scelta salvata ha fatto circa" in r[0] and "A0 " in r[0]
+    assert "Prossima: Giornata 9 · 9ª di Serie A. La formazione si chiude" in r[0]
+    assert mandati[0][0] == "SchieraXI · riepilogo della giornata"
     assert notifiche.riepilogo(db, Regole(), rose, adesso, f, manda, opz, tmp_path / "nessun-cambi.json", tmp_path / "scelte.json") == []   # una volta sola
     assert len(mandati) == 1
     # senza sapere cosa avevi schierato non si manda niente; e se l'opzione è spenta nemmeno

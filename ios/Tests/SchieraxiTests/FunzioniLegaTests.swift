@@ -7,12 +7,8 @@ final class FunzioniLegaTests: XCTestCase {
         try Decodifica.decodifica(Data(#"{"giornata": 11, "inizio": "2026-10-31 18:30", "da_fare": \#(daFare)}"#.utf8))
     }
 
-    func testIlCalendarioSiVedeSoloSeNominatoOConMostraTutte() {
-        XCTAssertFalse(StatoFunzioni.tutteAccese.vedeCalendario, "una chiave che manca vale spenta")
-        XCTAssertFalse(StatoFunzioni(scelte: ["elenco_giocatori": true]).vedeCalendario, "non dipende più dall'elenco dei giocatori")
-        XCTAssertTrue(StatoFunzioni(scelte: ["calendario": true]).vedeCalendario)
-        XCTAssertTrue(StatoFunzioni(scelte: [:], mostraTutte: true).vedeCalendario)
-    }
+    // Le voci dei menu (calendario con l'elenco dei giocatori, crediti, nuova stagione...) le prova MenuLegaComeLaWebTests
+    // contro VOCI_LEGA della web.
 
     func testLeImmaginiWebConMostraTutteRestanoSpenteSeIlServerLeBlocca() {
         let bloccate = StatoFunzioni(scelte: ["immagini_web": false], mostraTutte: true)
@@ -59,9 +55,7 @@ final class FunzioniLegaTests: XCTestCase {
         XCTAssertEqual(o.cose(funzioni: .tutteAccese, tecniche: false).first?.id, "diario:5")
     }
 
-    func testCreditiSoloSeIlServerLiAccendeMovimentiSeNonSpenti() {
-        XCTAssertFalse(StatoFunzioni.tutteAccese.accesoSoloSeNominato(Funzione.crediti))
-        XCTAssertTrue(StatoFunzioni(scelte: ["crediti": true]).accesoSoloSeNominato(Funzione.crediti))
+    func testMovimentiAccesiSeNonSpenti() {
         XCTAssertTrue(StatoFunzioni.tutteAccese.acceso(Funzione.movimenti), "server senza la chiave: acceso")
         XCTAssertFalse(StatoFunzioni(scelte: ["movimenti": false]).acceso(Funzione.movimenti))
     }

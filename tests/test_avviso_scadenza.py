@@ -16,8 +16,9 @@ from test_notifiche import ST, _db
 
 NOMI = {1: "Ferraglia", 2: "Lunardi", 3: "Spadoni", 4: "Moretto", 5: "Calvani", 6: "Brugnoli", 7: "Pellizza", 8: "Sartano",
         9: "Lombrici", 10: "Kerani", 11: "Castoldi", 12: "Bonvicini", 13: "Attanasi", 14: "Rovelli"}
-BASE = list(range(1, 12))                         # gli 11 consigliati all'inizio
-ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, n, "A", "ROM", 10) for i, n in NOMI.items()])], "Mia")
+BASE = list(range(1, 12))                         # gli 11 consigliati all'inizio: un 4-3-3 che si può schierare
+RUOLI = {1: "P", 2: "D", 3: "D", 4: "D", 5: "D", 6: "C", 7: "C", 8: "C", 9: "A", 10: "A", 11: "A", 12: "A", 13: "A", 14: "A"}
+ROSE = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, n, RUOLI[i], "ROM", 10) for i, n in NOMI.items()])], "Mia")
 GIORNO = (2026, 10, 28)
 
 
@@ -32,7 +33,8 @@ class Finto:
         self.db, self.titolari, self.modulo, self.calcoli = db, list(BASE), "4-3-3", 0
         self.bonus: dict[int, float] = {}
         self.moduli: dict[frozenset, str] = {}
-        self.prev = pd.DataFrame({"nome": list(NOMI.values()), "stato": "titolare", "percentuale": 80.0, "dubbio": False}, index=list(NOMI))
+        self.prev = pd.DataFrame({"nome": list(NOMI.values()), "ruolo": [RUOLI[i] for i in NOMI], "stato": "titolare",
+                                  "percentuale": 80.0, "dubbio": False}, index=list(NOMI))
         db.execute("CREATE TABLE aggiornamenti (cosa TEXT PRIMARY KEY, quando TEXT, dettaglio TEXT)")   # come in archivio.py
         db.execute("INSERT INTO aggiornamenti (cosa, quando) VALUES ('probabili', 'v0')")
         monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
@@ -212,7 +214,7 @@ def test_con_l_avviso_spento_i_cambi_restano_come_prima(m, tmp_path):
     _cambi(m, tmp_path, ore(16, 0), opz, mandati)
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})
     righe = _cambi(m, tmp_path, ore(17, 45), opz, mandati)
-    assert "Castoldi: ora infortunato" in righe and mandati[0][0] == "SchieraXI · giornata 9: cambi nelle probabili"
+    assert "Castoldi: ora infortunato" in righe and mandati[0][0] == "SchieraXI · cambi nelle probabili"
 
 
 def test_se_i_cambi_sono_appena_partiti_l_avviso_nuovo_non_ripete(m, tmp_path):
@@ -223,7 +225,7 @@ def test_se_i_cambi_sono_appena_partiti_l_avviso_nuovo_non_ripete(m, tmp_path):
     assert "Castoldi: ora infortunato" in _cambi(m, tmp_path, ore(17, 28), opz, mandati)   # 62 minuti: finestra non ancora aperta
     assert _avviso(m, tmp_path, ore(17, 31), opz, mandati) == []           # 3 minuti dopo, stessa notizia: non si ripete
     assert _avviso(m, tmp_path, ore(17, 50), opz, mandati) == []           # né più tardi
-    assert [t for t, _ in mandati] == ["SchieraXI · giornata 9: cambi nelle probabili"]
+    assert [t for t, _ in mandati] == ["SchieraXI · cambi nelle probabili"]
     m.cambia("v2", esce=10, entra=14, stato={10: "squalificato"}, bonus={10: -3.0})       # una notizia nuova sì
     assert len(_cambi(m, tmp_path, ore(18, 0), opz, mandati)) == 1        # nella finestra parla l'avviso nuovo, il vecchio tace
     assert [t for t, _ in mandati][-1] == "SchieraXI · cambia la formazione" and len(mandati) == 2
@@ -244,7 +246,7 @@ def test_se_l_avviso_nuovo_non_parte_i_cambi_si_dicono(m, tmp_path):
     m.cambia("v3", esce=9, entra=13, stato={9: "infortunato"}, bonus={9: -4.0})
     righe = _cambi(m, tmp_path, ore(17, 55), opz, mandati)
     assert "Lombrici: ora infortunato" in righe
-    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"] * 2 + ["SchieraXI · giornata 9: cambi nelle probabili"]
+    assert [t for t, _ in mandati] == ["SchieraXI · cambia la formazione consigliata"] * 2 + ["SchieraXI · cambi nelle probabili"]
     # un cambio piccolo (sotto un punto) che l'avviso nuovo non dice: lo dice il vecchio
     m.cambia("v4", stato={8: "panchina"}, bonus={8: -0.3})
     assert "Sartano: dalla formazione titolare alla panchina" in " ".join(_cambi(m, tmp_path, ore(18, 0), opz, mandati))

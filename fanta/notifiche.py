@@ -28,7 +28,7 @@ from . import avvisi, frasi, osservati
 from .frasi import F
 from .lega import Rose
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
-from .regole import Regole
+from .regole import Regole, serie_a_a_lega
 
 LOG = logging.getLogger(__name__)
 FILE_STATO = RADICE / "dati" / "notifiche.json"
@@ -254,12 +254,15 @@ def _mia_rosa_ids(rose: Rose) -> list[int]:
 
 def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.DataFrame, ora: dict, titolari: list[int], giornata: int,
                   gia: set[str], chiave: str, file_scelte: Path | None, formazione: dict | None = None) -> list[dict]:
-    """«Cambio pronto»: per ogni tuo titolare (quello della tua scelta salvata, altrimenti il consigliato) che ora è infortunato,
-    squalificato o in panchina, chi mettere al suo posto (lo stesso calcolo di «Da fare» in Oggi: solo se la consigliata lo toglie).
+    """«Cambio pronto»: per ogni tuo titolare (quello della tua scelta salvata, se si può ancora schierare, altrimenti il consigliato)
+    che ora è infortunato, squalificato o in panchina, chi mettere al suo posto (lo stesso calcolo di «Da fare» in Oggi: solo se la
+    consigliata lo toglie).
     Ogni cambio una volta sola: la chiave è giornata, giocatore e motivo. Senza un sostituto non c'è niente da proporre.
     `formazione`: la consigliata già calcolata da `cambi` (None = la legge «Da fare», dalla cache)."""
     from . import da_fare, scelte
     scelta = scelte.leggi(chiave.split("/")[0], giornata, file_scelte)
+    if scelta:                                     # conta solo se si può ancora schierare (regola unica): se no vale la consigliata
+        scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
     schierati = [int(i) for i in scelta["titolari"]] if scelta else list(titolari)
     motivi = ("infortunato", "squalificato", "panchina")
     nuovi = {}
@@ -366,7 +369,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         visibili = righe[:MAX_RIGHE]
         if len(righe) > MAX_RIGHE:
             visibili.append(F("n.altre_novita", n=len(righe) - MAX_RIGHE))
-        if not manda(F("n.t_cambi", giornata=giornata), frasi.elenco(visibili, sep="\n"), 4, "rotating_light"):
+        if not manda(F("n.t_cambi"), frasi.elenco([_giornata(giornata, regole)] + visibili, sep="\n"), 4, "rotating_light"):
             return righe                           # invio fallito: lo stato resta quello vecchio e al prossimo giro si riprova
         cambi_mandato = True
     if singoli:
@@ -423,17 +426,32 @@ def copertura(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
 
 
 # ---------------------------------------------------------------- promemoria prima della scadenza
-def _gia_schierato(db: sqlite3.Connection, regole: Regole, stagione: str, giornata: int, file_scelte: Path | None) -> list[str] | None:
-    """None se non hai ancora schierato (nessuna scelta salvata, né «ho schierato la consigliata»). Altrimenti la lista, anche vuota,
-    dei titolari che hai schierato e che ora risultano fuori, in panchina o non citati nelle probabili."""
+NON_VALIDA = "non_valida"          # `_gia_schierato`: c'è una scelta salvata, ma non si può più schierare
+
+
+def _giornata(giornata: int, regole: Regole) -> frasi.Frase:
+    """La giornata negli avvisi con i due numeri, «Giornata 6 · 9ª di Serie A» (frasi.nome_giornata): `giornata` è quella di Serie A."""
+    return frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole), avviso=True)
+
+
+def _gia_schierato(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int,
+                   file_scelte: Path | None) -> list[str] | str | None:
+    """None se non hai ancora schierato (nessuna scelta salvata, né «ho schierato la consigliata»). `NON_VALIDA` se la scelta salvata
+    non si può più schierare (regola unica della scelta, come la Formazione: vale la consigliata, come senza scelta, ma il promemoria
+    lo dice con una frase sua). Altrimenti la lista, anche vuota, dei titolari che hai schierato e che ora risultano fuori, in
+    panchina o non citati nelle probabili."""
     from . import consigli, scelte
     scelta = scelte.leggi(stagione, giornata, file_scelte)
     if not scelta:
         return None
     try:
         prev, _, _ = consigli.previsioni(db, regole, giornata)
-    except Exception:                              # senza previsioni non so dire se è cambiato qualcosa: lo considero a posto
-        return []
+    except Exception:                              # noqa: BLE001  (senza previsioni la regola si controlla con la rosa)
+        prev = None
+    if not scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole):
+        return NON_VALIDA                          # giocatore ceduto, modulo non ammesso...: vale la consigliata
+    if prev is None:
+        return []                                  # senza previsioni non so dire se è cambiato qualcosa: lo considero a posto
     problemi = []
     for i in scelta["titolari"]:
         if i in prev.index and prev.at[i, "stato"] in FUORI + ("panchina", "non_citato"):
@@ -445,8 +463,8 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
                manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None) -> list[str]:
     """Un avviso un'ora prima e uno un quarto d'ora prima della scadenza della formazione (la prima partita della giornata meno i
     minuti della regola della lega; una volta sola ciascuno).
-    Se hai già schierato (scelta salvata) e nessuno dei tuoi titolari è diventato indisponibile, non ti disturba; se qualcuno lo è
-    diventato, l'avviso parte e lo dice. Quando tace non segna niente come mandato: se più tardi cambia qualcosa, parte ancora."""
+    Se hai già schierato (scelta salvata che si può ancora schierare) e nessuno dei tuoi titolari è diventato indisponibile, non ti
+    disturba; se qualcuno lo è diventato, l'avviso parte e lo dice. Quando tace non segna niente come mandato: se più tardi cambia qualcosa, parte ancora."""
     from . import consigli
     adesso = adesso or datetime.now()
     opzioni = opzioni if opzioni is not None else impostazioni()
@@ -471,14 +489,15 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
             saltati = True
             continue
         ora_chiusura = inizio.strftime("%H:%M")
-        problemi = _gia_schierato(db, regole, stagione, giornata, file_scelte)
-        if problemi is not None and not problemi:
+        problemi = _gia_schierato(db, regole, rose, stagione, giornata, file_scelte)
+        non_valida = problemi == NON_VALIDA
+        if problemi is not None and not non_valida and not problemi:
             continue                               # hai già schierato e va ancora bene: niente disturbo
-        if problemi:
-            testo = F("n.rischio", n=len(problemi[:4]), nomi=", ".join(problemi[:4]), giornata=giornata, ora=ora_chiusura)
+        if problemi and not non_valida:
+            testo = F("n.rischio", n=len(problemi[:4]), nomi=", ".join(problemi[:4]), giornata=_giornata(giornata, regole), ora=ora_chiusura)
             titolo = F("n.t_titolare_rischio")
         elif nome == "60":
-            parti = [F("n.tra_un_ora", giornata=giornata, ora=ora_chiusura)]
+            parti = [F("n.non_valida_tra_un_ora" if non_valida else "n.tra_un_ora", giornata=_giornata(giornata, regole), ora=ora_chiusura)]
             try:
                 f = consigli.formazione(db, regole, rose)
                 dubbi = [x["nome"] for x in f["titolari"] if x["titolarita"] != "titolare" or x["dubbio"]][:4]
@@ -490,7 +509,7 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
             testo = frasi.elenco(parti, sep=" ")
             titolo = F("n.t_un_ora")
         else:
-            testo = F("n.ultimi_minuti", giornata=giornata, ora=ora_chiusura)
+            testo = F("n.non_valida_ultimi_minuti" if non_valida else "n.ultimi_minuti", giornata=_giornata(giornata, regole), ora=ora_chiusura)
             titolo = F("n.t_ultimi_minuti")
         if manda(titolo, testo, priorita, "alarm_clock"):      # se l'invio fallisce si riprova al giro dopo, finché dura la finestra
             mandati.append(chiave)
@@ -585,7 +604,8 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     """Avviso intelligente: da `avviso_prima` minuti (30, 60 o 90; 0 = spento) prima della scadenza della formazione, se le ultime
     probabili cambiano il consiglio rispetto a quello di riferimento, un avviso con il motivo in una frase (il tocco apre la Formazione).
 
-    Riferimento: la formazione che hai salvato per la giornata (scelta o «ho schierato la consigliata»); senza, la consigliata com'era
+    Riferimento: la formazione che hai salvato per la giornata (scelta o «ho schierato la consigliata»), se si può ancora schierare
+    (regola unica della scelta, come la Formazione); senza, o se non vale più, la consigliata com'era
     prima che si aprisse la finestra (l'ultima calcolata dall'avviso dei cambi, `file_cambi`). Avvisa solo se la consigliata di adesso
     vale almeno SOGLIA_AVVISO_PUNTI punti attesi più del riferimento ricalcolato con i dati nuovi; al massimo MAX_AVVISI_SCADENZA per
     giornata, mai due volte lo stesso consiglio. Ricalcola solo quando i dati (o la tua scelta) sono cambiati dall'ultima volta.
@@ -626,6 +646,12 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
     if minuti < MINUTI_MINIMI or int(mio.get("mandati", 0)) >= MAX_AVVISI_SCADENZA or in_silenzio(adesso, opzioni):
         return []
     scelta = scelte.leggi(stagione, giornata, file_scelte)
+    if scelta:                                     # conta solo se si può ancora schierare: se no è come non averla salvata
+        try:
+            prev, _, _ = consigli.previsioni(db, regole)
+        except ValueError:                         # senza previsioni non c'è nessun consiglio da confrontare
+            return []
+        scelta = scelte.che_vale(scelta, scelte.ruoli_schierabili(rose, prev), regole)
     rif = sorted(int(i) for i in (scelta["titolari"] if scelta else mio.get("rif") or []))
     versione = _versione_dati(db)
     firma_giro = f"{versione}|{','.join(map(str, rif))}"
@@ -681,11 +707,14 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
 # ---------------------------------------------------------------- riepilogo a giornata finita
 def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_RIEPILOGO,
               manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_cambi: Path = FILE_STATO,
-              file_scelte: Path | None = None) -> list[str]:
-    """Quando una giornata è finita e i voti sono arrivati: quanti punti ha fatto la formazione che avevi (la tua scelta salvata,
-    altrimenti la consigliata), quanti se ne aspettava il modello e il massimo possibile con la tua rosa. Una volta per giornata."""
+              file_scelte: Path | None = None, file_diario: Path | None = None) -> list[str]:
+    """Quando una giornata è finita e i voti sono arrivati: quanti punti ha fatto la formazione che avevi, quanti se ne aspettava il
+    modello e il massimo possibile con la tua rosa. Una volta per giornata.
+    La formazione che avevi è quella di Oggi e del Diario (`fasi.schierata`): la tua scelta salvata, se si può schierare con la rosa;
+    altrimenti la consigliata fissata alla scadenza (istantanea del Diario) o la sua copia automatica, con la sua panchina. Solo se
+    mancano entrambe resta l'ultima consigliata vista dall'avviso dei cambi (`file_cambi`), che può essere più vecchia."""
     from datetime import timedelta
-    from . import consigli, scelte, verifica
+    from . import consigli, diario, fasi, scelte, verifica
     from . import formazione as fz
     from .punteggio import COLONNA_VOTO, fantavoto
     adesso = adesso or datetime.now()
@@ -710,12 +739,16 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     righe_voti = [dict(x) for x in db.execute("SELECT * FROM voti WHERE stagione = ? AND giornata = ?", (stagione, giornata))]
     if len(righe_voti) < 60:
         return []                                  # i voti non sono ancora arrivati
-    scelta = scelte.leggi(stagione, giornata, file_scelte)
+    # la stessa formazione di Oggi e del Diario (fasi.schierata): la regola unica della scelta con i ruoli della rosa (una scelta che
+    # non vale non conta), poi la consigliata congelata alla scadenza e la copia automatica. Senza file indicati, quelli dell'utente unico
+    sch = fasi.schierata(stagione, giornata, file_scelte or scelte.FILE_SCELTE, file_diario or diario.FILE,
+                         ruoli=scelte.ruoli_schierabili(rose), regole=regole)
     snap = _json(file_cambi).get("cambi", {}).get(chiave)
-    if scelta:
-        ids, fonte = scelta["titolari"], F("n.fonte_scelta")
-    elif snap and snap.get("titolari"):
-        ids, fonte = snap["titolari"], F("n.fonte_consigliata")
+    if sch:
+        ids, panchina_ids, di = sch
+        fonte = F("n.fonte_scelta") if di == "tua" else F("n.fonte_consigliata")
+    elif snap and snap.get("titolari"):            # ripiego: l'ultima consigliata vista dall'avviso dei cambi
+        ids, panchina_ids, fonte = snap["titolari"], None, F("n.fonte_consigliata")
     else:
         return []                                  # non so cosa avevi schierato
     prev, _, _ = consigli.previsioni(db, regole, giornata)
@@ -735,11 +768,12 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
             fv_vero[i], voto_vero[i] = fv, v[COLONNA_VOTO[regole.fonte_voto]]
     gioca = {g.id: g.id in fv_vero for g in lista}
     tit = [per_id[i] for i in ids]
-    pan = fz._panchina(lista, tit, regole)
+    # la panchina che si conosce (congelata alla scadenza o schierata davvero), come il Diario; senza, la migliore possibile
+    pan = [per_id[i] for i in dict.fromkeys(panchina_ids or []) if i in per_id and i not in ids] or fz._panchina(lista, tit, regole)
     punti = fz.punteggio(tit, pan, gioca, {g.id: fv_vero.get(g.id, 0.0) for g in lista}, {g.id: voto_vero.get(g.id, 0.0) for g in lista}, regole)
     attesi = fz.Valutatore(lista, regole, 600).atteso(tit, pan)
     massimo = verifica._perfetta(lista, fv_vero, regole)
-    parti = [F("n.riepilogo", giornata=giornata, fonte=fonte, punti=float(punti), attesi=float(attesi), massimo=float(massimo))]
+    parti = [F("n.riepilogo", giornata=_giornata(giornata, regole), fonte=fonte, punti=float(punti), attesi=float(attesi), massimo=float(massimo))]
     migliori = sorted((t for t in tit if gioca[t.id]), key=lambda t: -fv_vero[t.id])[:3]
     if migliori:
         parti.append(F("n.migliori", elenco=frasi.elenco([F("n.nome_voto", nome=t.nome, voto=float(fv_vero[t.id])) for t in migliori])))
@@ -749,9 +783,9 @@ def riepilogo(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: dateti
     prossima = consigli.giornata_da_giocare(db, stagione, regole)
     inizio = avvisi.scadenza(avvisi.prima_partita(db, stagione, prossima), regole) if prossima else None
     if inizio:
-        parti.append(F("n.prossima", giornata=prossima, data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
+        parti.append(F("n.prossima", giornata=_giornata(prossima, regole), data=f"{inizio:%d/%m}", ora=f"{inizio:%H:%M}"))
     testo = frasi.elenco(parti, sep=" ")
-    if manda(F("n.t_riepilogo", giornata=giornata), testo, 3, "bar_chart"):
+    if manda(F("n.t_riepilogo"), testo, 3, "bar_chart"):
         fatti.append(chiave)
         stato["riepilogo"] = fatti[-20:]
         scrivi_sicuro(file_stato, json.dumps(stato))

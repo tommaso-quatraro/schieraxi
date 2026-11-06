@@ -2,7 +2,8 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Il Diario e il widget «Attesi e fatti» usano il numero della giornata della lega, come Oggi e la web («Giornata 8»).
+/// Il Diario e il widget «Attesi e fatti» usano il numero della giornata della lega accanto a quello di Serie A, come Oggi e la
+/// web («Giornata 8 · 11ª di Serie A», #299).
 struct GiornataLegaDiarioTests {
     private func voce(_ json: String) throws -> VoceDiario {
         try Decodifica.decodifica(Data(json.utf8))
@@ -15,7 +16,7 @@ struct GiornataLegaDiarioTests {
     @Test("Il Diario mostra il numero della lega e al server manda quello di Serie A")
     func ilDiarioMostraIlNumeroDellaLega() throws {
         let v = try voce(#"{"giornata": 11, "giornata_lega": 8, "stagione": "2026-27"}"#)
-        #expect(v.titolo == "Giornata 8", "come la web: il numero della lega, senza quello di Serie A")
+        #expect(v.titolo == "Giornata 8 · 11ª di Serie A", "come la web: i due numeri (#299)")
         #expect(v.numero == 8)
         #expect(v.giornata == 11, "al server si manda sempre il numero di Serie A")
     }
@@ -23,7 +24,7 @@ struct GiornataLegaDiarioTests {
     @Test("Senza numero di lega resta quello di Serie A, mai «Giornata 0»")
     func senzaNumeroDiLegaRestaQuelloDiSerieA() throws {
         let v = try voce(#"{"giornata": 11}"#)
-        #expect(v.titolo == "Giornata 11")
+        #expect(v.titolo == "11ª giornata di Serie A")
         #expect(v.numero == 11)
         #expect(try voce(#"{"giornata": 11, "giornata_lega": null}"#).numero == 11)
         #expect(try voce("{}").titolo == "Giornata", "mai «Giornata 0»")
@@ -44,10 +45,12 @@ struct GiornataLegaDiarioTests {
           {"giornata": 9, "attesi": 67, "fatti": 70},
           {"giornata": 4, "attesi": 62, "fatti": 58}]}
         """#)
-        #expect(w.giornateGiocate.map(\.giornata) == [7, 6, 1])
+        #expect(w.giornateGiocate.map(\.numero) == [7, 6, 1])
+        #expect(w.giornateGiocate.map(\.giornata) == [10, 9, 4], "la giornata di Serie A resta, per «10ª di Serie A»")
         #expect(w.numeroDiLega(11) == 8)
         let senza = try widget(#"{"giornata": 11, "diario": [{"giornata": 10, "attesi": 66, "fatti": 63.5}]}"#)
-        #expect(senza.giornateGiocate.map(\.giornata) == [10], "senza numero di lega resta quello di Serie A")
+        #expect(senza.giornateGiocate.map(\.numero) == [10], "senza numero di lega resta quello di Serie A")
+        #expect(senza.giornateGiocate.map(\.titolo) == ["10ª giornata di Serie A"])
     }
 
     @Test("Widget: una giornata giocata prima che la lega partisse non diventa una giornata della lega")
@@ -59,7 +62,7 @@ struct GiornataLegaDiarioTests {
           {"giornata": 6, "attesi": 67, "fatti": 70},
           {"giornata": 3, "attesi": 60, "fatti": 61}]}
         """#)
-        #expect(w.giornateGiocate.map(\.giornata) == [7, 3])
+        #expect(w.giornateGiocate.map(\.numero) == [7, 3])
         #expect(w.numeroDiLega(3) == nil)
     }
 
@@ -74,7 +77,8 @@ struct GiornataLegaDiarioTests {
           {"giornata": 35, "attesi": 71, "fatti": 66},
           {"giornata": 34, "attesi": 70, "fatti": 70}]}
         """#)
-        #expect(w.giornateGiocate.map(\.giornata) == [38, 37, 36, 35, 34], "non «Giornata 35» al posto della 38")
+        #expect(w.giornateGiocate.map(\.numero) == [38, 37, 36, 35, 34], "non «Giornata 35» al posto della 38")
+        #expect(w.giornateGiocate.first?.titolo == "38ª giornata di Serie A", "la stagione prima: solo Serie A")
     }
 
     @Test("Widget: la stagione in corso viene prima delle giornate dell'anno prima")
@@ -88,7 +92,7 @@ struct GiornataLegaDiarioTests {
           {"giornata": 37, "attesi": 68, "fatti": 60},
           {"giornata": 36, "attesi": 69, "fatti": 75}]}
         """#)
-        #expect(w.giornateGiocate.map(\.giornata) == [2, 1, 38, 37, 36],
+        #expect(w.giornateGiocate.map(\.numero) == [2, 1, 38, 37, 36],
                 "la più recente è la giornata 2 della lega, non la 38 dell'anno prima")
     }
 

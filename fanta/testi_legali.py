@@ -194,6 +194,7 @@ TESTI: dict[str, dict] = {
                 "requests, cryptography (Apache-2.0 o BSD), python-multipart: licenza Apache-2.0.",
                 "pywebpush e py-vapid: licenza MPL-2.0 (il loro sorgente resta disponibile su PyPI).",
                 "openpyxl, Beautiful Soup, http-ece: licenza MIT. Pillow: licenza MIT-CMU.",
+                "Il carattere Archivo per numeri e titoli: licenza SIL Open Font License 1.1.",
             ]),
             ("h", "Codice sorgente"),
             ("sorgente",),
@@ -394,6 +395,7 @@ TESTI: dict[str, dict] = {
                 "requests, cryptography (Apache-2.0 or BSD), python-multipart: Apache-2.0 licence.",
                 "pywebpush and py-vapid: MPL-2.0 licence (their source remains available on PyPI).",
                 "openpyxl, Beautiful Soup, http-ece: MIT licence. Pillow: MIT-CMU licence.",
+                "The Archivo typeface for numbers and titles: SIL Open Font License 1.1.",
             ]),
             ("h", "Source code"),
             ("sorgente",),
@@ -553,7 +555,8 @@ def pagina(quale: str, lingua: str = LINGUA) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <title>{html.escape(titolo)} · SchieraXI</title>
-  <meta name="theme-color" content="#07100b">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121513">
   <link rel="icon" href="/icona.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/stile.css">
   <script src="/legale.js"></script>
