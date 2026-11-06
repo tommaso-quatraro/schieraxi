@@ -122,26 +122,37 @@ def test_mercato_da_1100_px_si_apre_dentro_squadra():
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_la_voce_aperta_accanto_al_menu_scrive_il_suo_indirizzo():
     """Da Seguiti a Calendario con un clic: l'indirizzo diventa quello del Calendario (Indietro torna a Seguiti, un ricaricamento
-    riapre il Calendario); la stessa voce non aggiunge voci alla cronologia; tornare a «Squadre e rose» riporta ?vista=squadra."""
+    riapre il Calendario); la stessa voce non aggiunge voci alla cronologia; tornare a «Squadre e rose» riporta ?vista=squadra.
+    La voce di Squadra o di Altro sta nello stato della cronologia (l'indirizzo non la dice): con Indietro dal Calendario si torna a
+    «Squadre e rose», non alla voce dell'ultima volta. Due voci con lo stesso indirizzo non aggiungono voci alla cronologia
+    (Indietro non cambierebbe niente): si corregge quella di adesso."""
     codice = "\n".join([
         "const stato = { vista: \"squadra\" }; const chiamate = [];",
         "const location = { pathname: \"/\", search: \"?vista=squadra\" };",
         "const vaiA = u => { const x = new URL(u, \"http://x\"); location.pathname = x.pathname; location.search = x.search; };",
-        "const history = { pushState(s, _, u) { chiamate.push([\"push\", u, s.vista, s.scheda]); vaiA(u); },"
-        " replaceState(s, _, u) { chiamate.push([\"replace\", u, s.vista, s.scheda]); vaiA(u); } };",
+        "const history = { pushState(s, _, u) { chiamate.push([\"push\", u, s.vista, s.scheda, s.voce]); vaiA(u); },"
+        " replaceState(s, _, u) { chiamate.push([\"replace\", u, s.vista, s.scheda, s.voce]); vaiA(u); } };",
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
         _funzione("indirizzoLega"),
-        """indirizzoLega("mercato", "osservati", false);
-indirizzoLega("mercato", "calendario", true);
-indirizzoLega("mercato", "calendario", true);
-indirizzoLega("squadra", null, true);
+        """indirizzoLega("squadra", null, false, "squadre");
+indirizzoLega("mercato", "osservati", true, "osservati");
+indirizzoLega("mercato", "calendario", true, "calendario");
+indirizzoLega("mercato", "calendario", true, "calendario");
+indirizzoLega("squadra", null, true, "squadre");
+indirizzoLega("squadra", null, true, "importa");
 console.log(JSON.stringify({ chiamate, vista: stato.vista, mostrato: indirizzoMostrato }));""",
     ])
     r = _node(codice)
-    assert r["chiamate"] == [["replace", "/?vista=mercato&scheda=osservati", "mercato", "osservati"],
-                             ["push", "/?vista=mercato&scheda=calendario", "mercato", "calendario"],
-                             ["push", "/?vista=squadra", "squadra", None]]
+    assert r["chiamate"] == [["replace", "/?vista=squadra", "squadra", None, "squadre"],
+                             ["push", "/?vista=mercato&scheda=osservati", "mercato", "osservati", "osservati"],
+                             ["push", "/?vista=mercato&scheda=calendario", "mercato", "calendario", "calendario"],
+                             ["replace", "/?vista=mercato&scheda=calendario", "mercato", "calendario", "calendario"],
+                             ["push", "/?vista=squadra", "squadra", None, "squadre"],
+                             ["replace", "/?vista=squadra", "squadra", None, "importa"]]
     assert r["vista"] == "squadra" and r["mostrato"] == "/?vista=squadra"
+    popstate = APP[APP.index('window.addEventListener("popstate"'):]
+    assert "if (typeof v.voce === \"string\") stato.legaTorna = v.voce;" in popstate[:popstate.index("\n});\n")]
+    assert "indirizzoLega(mercato ? \"mercato\" : ambito, mercato ? id : null, sposta, id);" in _funzione("vistaLega")
 
 
 def test_la_rosa_di_una_squadra_ha_il_menu_di_squadra_accanto():

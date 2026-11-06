@@ -639,6 +639,7 @@ window.addEventListener("popstate", ev => {
   let v = ev.state || {};
   if (!v.vista) { try { const q = new URLSearchParams(location.search); v = { vista: q.get("vista"), gruppo: q.get("gruppo"), scheda: q.get("scheda") }; } catch { v = {}; } }
   if (v.scheda) stato.mercatoTab = schedaMercato(v.scheda);
+  if (typeof v.voce === "string") stato.legaTorna = v.voce;               // la voce di Squadra o di Altro aperta lì (indirizzoLega)
   chiudiFoglio();
   vai(v.vista || "oggi", v.gruppo || undefined, { daCronologia: true, focoTitolo: true });
 });
@@ -3531,13 +3532,16 @@ function menuLega(voci, aperta, aria) {
 }
 // L'indirizzo della voce aperta accanto al menu (spec C2): una pagina di Mercato scrive ?vista=mercato&scheda=…, le altre voci
 // ?vista=squadra o ?vista=altro. Così Indietro torna alla voce di prima e un ricaricamento riapre questa. `nuova` (un clic): una voce
-// nuova nella cronologia; senza (prima apertura) si corregge quella di adesso. Lo stesso indirizzo non si riscrive.
-function indirizzoLega(vista, scheda, nuova) {
+// nuova nella cronologia; senza (prima apertura) si corregge quella di adesso. La voce aperta (`id`) sta nello stato della cronologia,
+// perché l'indirizzo di Squadra non la dice: tornando con Indietro si riapre quella, non l'ultima vista. Con lo stesso indirizzo si
+// corregge la voce di adesso (una nuova uguale non cambierebbe niente con Indietro).
+function indirizzoLega(vista, scheda, nuova, id) {
   stato.vista = vista;
-  const indirizzo = indirizzoVista(vista, null, scheda), voce = { vista, gruppo: null, scheda };
-  if (location.pathname + location.search !== indirizzo) {
-    try { if (nuova) history.pushState(voce, "", indirizzo); else history.replaceState(voce, "", indirizzo); } catch { /* niente cronologia */ }
-  }
+  const indirizzo = indirizzoVista(vista, null, scheda), voce = { vista, gruppo: null, scheda, voce: id };
+  try {
+    if (nuova && location.pathname + location.search !== indirizzo) history.pushState(voce, "", indirizzo);
+    else history.replaceState(voce, "", indirizzo);
+  } catch { /* niente cronologia */ }
   indirizzoMostrato = location.pathname + location.search;
 }
 // Finestra allargata oltre i 1100 px con il solo menu in pagina: a destra si apre la voce dell'ultima volta (o la prima), invece di
@@ -3705,7 +3709,7 @@ async function vistaLega(ambito = "altro") {
     dove.innerHTML = `<button class="bottone secondario lega-indietro" id="lega-indietro" type="button">${ICONA_INDIETRO}${nome}</button>
       <h2 class="lega-titolo" id="lega-titolo" tabindex="-1">${v.nome}</h2>${mercato ? '<div id="mercato-corpo"></div>' : `<div id="lega-corpo">${corpi[id]()}</div>`}`;
     $("#lega-indietro", dove).addEventListener("click", () => { radice.dataset.aperto = "0"; window.scrollTo(0, 0); const b = $(`[data-lega="${id}"]`, radice); if (b) b.focus(); });
-    indirizzoLega(mercato ? "mercato" : ambito, mercato ? id : null, sposta);
+    indirizzoLega(mercato ? "mercato" : ambito, mercato ? id : null, sposta, id);
     if (mercato) { stato.mercatoTab = id; caricaMercato(); } else collega[id]();
     if (sposta) { window.scrollTo(0, 0); if (!legaLarga()) $("#lega-titolo", dove).focus({ preventScroll: true }); }
   };
