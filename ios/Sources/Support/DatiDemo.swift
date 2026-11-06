@@ -24,22 +24,21 @@ extension FinteServer {
         let adesso = fissato ?? Date()
         var server = fissato.map { demoFissata(adesso: $0) } ?? FinteServer.demo
         switch schermata ?? "" {
-        case "oggi-in-corso":
-            server.risposte["/api/oggi"] = DatiDemo.oggiInCorso(adesso: adesso)
-            server.risposte["/api/live"] = DatiDemo.live(adesso: adesso, giornataInCorso: true)
-            server.indirizzoFinto = "https://finto-giornata-in-corso.invalid"
+        case "oggi-in-corso", "formazione-chiusa":
+            // la giornata in corso nel momento della demo (#417, #424): Oggi, Formazione chiusa, Rosa e schede raccontano la stessa
+            // giornata, con le stesse partite agli stessi orari e la tua scelta salvata
+            server.risposte.merge(DatiDemo.risposteInCorso(adesso: adesso)) { _, nuova in nuova }
+            server.indirizzoFinto = schermata == "oggi-in-corso" ? "https://finto-giornata-in-corso.invalid"
+                                                                  : "https://finto-formazione-chiusa.invalid"
         case "oggi-finita":
             server.risposte["/api/oggi"] = DatiDemo.oggiFinita(adesso: adesso)
             server.risposte["/api/live"] = "{\"in_corso\": 0, \"partite\": []}"
             server.indirizzoFinto = "https://finto-giornata-finita.invalid"
-        case "formazione-chiusa":
-            // la giornata chiusa (dopo la scadenza): la formazione salvata in sola lettura
-            server.risposte["/api/formazione"] = DatiDemo.formazione(iniziata: true, adesso: adesso)
-            server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
-            server.indirizzoFinto = "https://finto-formazione-chiusa.invalid"
         case "formazione-salvata":
-            // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»)
+            // la Formazione con la tua scelta già salvata (riga «La tua formazione è salvata (oggi alle …)»); Oggi dice lo stesso
+            // («La tua formazione · la tua scelta», #418)
             server.risposte["/api/scelta"] = DatiDemo.sceltaSalvata(adesso: adesso)
+            server.risposte["/api/oggi"] = DatiDemo.json(DatiDemo.oggiDati(adesso: adesso, tuaScelta: true))
             server.indirizzoFinto = "https://finto-scelta-salvata.invalid"
         case "oggi-rinvio":
             server.risposte["/api/oggi"] = DatiDemo.oggiRinvio(adesso: adesso)
@@ -52,6 +51,17 @@ extension FinteServer {
             return nil
         }
         return server
+    }
+
+    /// La fase della giornata in cui vive la demo di una fotografia (`-DEMO_SCHERMATA`): in corso `oggi-in-corso` e
+    /// `formazione-chiusa`, finita `oggi-finita` e `oggi-finita-recupero`, prima della scadenza le altre e la «Prova con dati di
+    /// esempio». Serve all'ora dell'app (`Orologio`): a giornata in corso è il momento della demo.
+    static func faseDemo(_ schermata: String?) -> LegaDemo.Fase {
+        switch schermata ?? "" {
+        case "oggi-in-corso", "formazione-chiusa": return .inCorso
+        case "oggi-finita", "oggi-finita-recupero": return .finita
+        default: return .prima
+        }
     }
 }
 
@@ -77,8 +87,10 @@ private extension LegaDemo {
     // MARK: - Partite
 
     /// Un giocatore come lo manda il server per formazioni, classifiche e avvisi. `adesso`: l'istante della demo, da cui viene
-    /// l'ora della sua partita (la stessa delle partite di Oggi).
-    static func giocatore(_ p: Calciatore, adesso: Date, conAvversario: Bool = true, conProprietario: Bool = false) -> [String: Any] {
+    /// l'ora della sua partita (la stessa delle partite di Oggi). A giornata in corso (`fase`) la partita e lo stato sono quelli del
+    /// momento della demo (`aGiornataIniziata`).
+    static func giocatore(_ p: Calciatore, adesso: Date, fase: Fase = .prima, conAvversario: Bool = true,
+                          conProprietario: Bool = false) -> [String: Any] {
         var d: [String: Any] = [
             "id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra,
             "p_voto": p.assente ? 0.0 : p.pVoto,
@@ -98,7 +110,7 @@ private extension LegaDemo {
         d["difficolta"] = difficolta(di: p.squadra)
         d["gol_squadra"] = 1.8
         d["gol_avversario"] = 1.2
-        if let data = dataPartita(di: p.squadra, adesso: adesso) { d["data_partita"] = data }
+        if let data = dataPartita(di: p.squadra, adesso: adesso, fase: fase) { d["data_partita"] = data }
         // titolarità: come nelle probabili formazioni (stato e percentuale come nel riassunto dei widget, `CalciatoreDemo`)
         d["stato"] = p.statoProbabili
         d["percentuale"] = p.percentualeProbabili
@@ -124,7 +136,41 @@ private extension LegaDemo {
         if p.assente { d["assente"] = true }
         if conProprietario, let o = fantasquadra(di: p.id) { d["proprietario"] = o }
         if !p.assente { perche(p, in: &d) }
+        if fase == .inCorso { aGiornataIniziata(p, in: &d) }
         return d
+    }
+
+    /// Dopo la scadenza, come `schede_a_giornata_iniziata` di fanta/fasi.py (#424): niente più titolarità delle probabili (resta
+    /// «fuori» chi è indisponibile, finché i voti non dicono com'è andata) né i loro motivi; lo stato vero della sua giornata
+    /// (`stato_partita`), il fantavoto preso solo con «fatto» (`fv_preso`) e l'etichetta che ne viene, come `fanta/etichette.py`.
+    static func aGiornataIniziata(_ p: Calciatore, in d: inout [String: Any]) {
+        let s = statoInCorso(p)
+        let fuori = p.assente && s.stato != "fatto" && s.stato != "senza_voto"
+        d["titolarita"] = fuori ? "fuori" as Any : NSNull() as Any
+        let probabili = ["titolare", "parte dalla panchina", "non tra i convocati previsti"]   // _MOTIVI_PROBABILI del server
+        d["motivi"] = ((d["motivi"] as? [String]) ?? []).filter { m in !probabili.contains { m.hasPrefix($0) } }
+        d["stato_partita"] = s.stato
+        d["fv_preso"] = s.fv.map { $0 as Any } ?? NSNull()
+        d["etichetta"] = etichettaIniziata(stato: s.stato, fuori: fuori, statoProbabili: p.statoProbabili)
+    }
+
+    /// L'etichetta a giornata iniziata (`codice` e `CODICI` di fanta/etichette.py): lo stato della partita; chi è fuori e non ha
+    /// ancora un esito resta «Infortunato» (o «Squalificato», «Fuori»).
+    static func etichettaIniziata(stato: String, fuori: Bool, statoProbabili: String) -> [String: Any] {
+        let codici: [String: (codice: String, testo: String, tono: String)] = [
+            "fatto": ("voto", "Ha giocato", "positivo"), "senza_voto": ("senza_voto", "Senza voto", "attenzione"),
+            "attesa_voti": ("voto_in_arrivo", "Voto in arrivo", "neutro"), "in_corso": ("in_corso", "Partita in corso", "positivo"),
+            "da_giocare": ("da_giocare", "Da giocare", "neutro"),
+        ]
+        if fuori {
+            switch statoProbabili {
+            case "infortunato": return ["codice": "infortunato", "testo": "Infortunato", "tono": "negativo"]
+            case "squalificato": return ["codice": "squalificato", "testo": "Squalificato", "tono": "negativo"]
+            default: return ["codice": "fuori", "testo": "Fuori", "tono": "negativo"]
+            }
+        }
+        let e = codici[stato] ?? ("da_giocare", "Da giocare", "neutro")
+        return ["codice": e.codice, "testo": e.testo, "tono": e.tono]
     }
 
     /// «Perché questo numero» come lo manda il server (`perche_numero`, `fv_atteso_medio_ruolo`): stesse frasi del server,
@@ -170,12 +216,12 @@ private extension LegaDemo {
         return ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "quotazione": quotazione(p)]
     }
 
-    static func rigaRosa(_ p: Calciatore, adesso: Date) -> [String: Any] {
+    static func rigaRosa(_ p: Calciatore, adesso: Date, fase: Fase = .prima) -> [String: Any] {
         ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra, "squadra_slug": p.squadra,
-         "costo": costo(p), "quotazione": quotazione(p), "previsione": giocatore(p, adesso: adesso)]
+         "costo": costo(p), "quotazione": quotazione(p), "previsione": giocatore(p, adesso: adesso, fase: fase)]
     }
 
-    static func schedaGiocatore(_ p: Calciatore, adesso: Date) -> [String: Any] {
+    static func schedaGiocatore(_ p: Calciatore, adesso: Date, fase: Fase = .prima) -> [String: Any] {
         let presenze: Int = 7 + p.id % 4
         let media: Double = 5.7 + p.punti / 12.0
         let q: Int = quotazione(p)
@@ -202,7 +248,7 @@ private extension LegaDemo {
         var d: [String: Any] = [:]
         d["calciatore"] = anagrafica
         d["stagione"] = stagione
-        var previsione = giocatore(p, adesso: adesso)
+        var previsione = giocatore(p, adesso: adesso, fase: fase)
         // come il server: la giornata di Serie A e, accanto, quella della lega (la scheda mostra «Giornata 8», come Oggi)
         previsione["giornata"] = giornata
         previsione["giornata_lega"] = giornataLega   // come il server: la scheda dice «Giornata 8 · 11ª di Serie A»
@@ -231,12 +277,15 @@ private extension LegaDemo {
 
     // MARK: - Formazione
 
-    static func formazione(iniziata: Bool = false, adesso: Date) -> String {
+    /// La Formazione (`GET /api/formazione`). A giornata in corso (`fase`) è chiusa (`iniziata`), nel momento della demo: ogni
+    /// giocatore con la sua partita e il suo stato, come Oggi in corso (#424), e la tua scelta che vale.
+    static func formazione(fase: Fase = .prima, adesso: Date) -> String {
+        let iniziata = fase == .inCorso
         let base = moduli[0]
         let ids = base.titolari
         let bench = panchina(per: ids)
-        let titolari = ids.map { giocatore(calciatore($0), adesso: adesso) }
-        let panchinaJSON = bench.map { giocatore(calciatore($0), adesso: adesso) }
+        let titolari = ids.map { giocatore(calciatore($0), adesso: adesso, fase: fase) }
+        let panchinaJSON = bench.map { giocatore(calciatore($0), adesso: adesso, fase: fase) }
         // i punti della consigliata: la stessa fonte di Oggi, della valutazione e dei widget (#390)
         let attesi = attesiGiornata
         // gli stili come li manda il server (nomi e descrizioni di LIVELLI_RISCHIO): Sicura, Equilibrata (consigliata), Rischiosa
@@ -255,16 +304,20 @@ private extension LegaDemo {
                             "intervallo": fascia(attesi + extra)])
         }
         var schede: [String: Any] = [:]
-        for p in miaRosa { schede[String(p.id)] = giocatore(p, adesso: adesso) }
+        for p in miaRosa { schede[String(p.id)] = giocatore(p, adesso: adesso, fase: fase) }
         // probabili uscite, come in Oggi, nel widget e nello Stato dei dati (prima diceva «non ancora uscite», #303)
-        return json([
+        var f: [String: Any] = [
             "squadra": nomeMia, "giornata": giornata, "giornata_lega": giornataLega, "modulo": base.nome, "punteggio_atteso": attesi,
             "con_probabili": true, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede, "stile_consigliato": 0,
             "dev": 4.2, "intervallo": fascia(attesi), "iniziata": iniziata,
-        ])
+        ]
+        // a giornata chiusa il server dice se la tua scelta salvata si può schierare: sì (gli undici della consigliata)
+        if iniziata { f["stato_scelta"] = tuaScelta(fase) ? "valida" : "nessuna" }
+        return json(f)
     }
 
-    /// La scelta salvata della giornata (gli undici del primo modulo), salvata un'ora fa (ora italiana, come il server).
+    /// La scelta salvata della giornata (gli undici del primo modulo), salvata un'ora prima di `adesso` (ora italiana, come il
+    /// server). A giornata in corso `adesso` è la scadenza: la scelta è di prima che la formazione si chiudesse.
     static func sceltaSalvata(adesso: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -293,7 +346,8 @@ private extension LegaDemo {
 
     static func oggi(adesso: Date) -> String { json(oggiDati(adesso: adesso)) }
 
-    static func oggiDati(adesso: Date) -> [String: Any] {
+    /// Oggi prima della scadenza. `tuaScelta`: c'è la tua formazione salvata (di norma no, come la Formazione: #418).
+    static func oggiDati(adesso: Date, tuaScelta: Bool = LegaDemo.tuaScelta(.prima)) -> [String: Any] {
         let primaPartita = inizio(adesso: adesso)
         let ids = moduli[0].titolari
         // gli orari delle partite e gli avvisi: gli stessi del widget (`LegaDemo`)
@@ -310,8 +364,10 @@ private extension LegaDemo {
             let c = calciatore(id)
             mieiTitolari[c.squadra, default: []].append(["id": c.id, "nome": c.nome, "ruolo": c.ruolo])
         }
-        // come il server con una scelta salvata: modulo, punti e fascia della sua valutazione, gli stessi della Formazione (#390)
-        let scelta = valutazioneScelta
+        // come il server: con una scelta salvata modulo, punti e fascia della sua valutazione (`valutazioneScelta`), altrimenti
+        // quelli della consigliata. Sono gli stessi undici: lo stesso numero della Formazione in tutti e due i casi (#390)
+        let consigliata: [String: Any] = ["punteggio_atteso": attesiGiornata, "dev": 4.2, "intervallo": fascia(attesiGiornata)]
+        let scelta = tuaScelta ? valutazioneScelta : consigliata
         let bloccoFormazione: [String: Any] = ["modulo": moduli[0].nome, "squadra": nomeMia, "tua_scelta": tuaScelta,
                                                "punteggio_atteso": scelta["punteggio_atteso"] ?? NSNull(), "dev": scelta["dev"] ?? NSNull(),
                                                "intervallo": scelta["intervallo"] ?? NSNull()]
@@ -448,11 +504,18 @@ private extension LegaDemo {
     /// (`LegaDemo.bloccoInCorso`).
     static func oggiInCorso(adesso: Date) -> String {
         let adesso = momento(adesso: adesso, fase: .inCorso)
-        var o = oggiDati(adesso: adesso)
+        var o = oggiDati(adesso: adesso, tuaScelta: tuaScelta(.inCorso))
         let stati = ["finita", "in_corso", "da_giocare", "in_corso", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare"]
-        o["partite"] = orari(adesso: adesso, fase: .inCorso).enumerated().map { i, ora in
-            ["data": formatta(ora, "yyyy-MM-dd HH:mm"), "casa": incontri[i].casa, "trasferta": incontri[i].trasferta, "giocata": i == 0,
-             "stato": stati[i]] as [String: Any]
+        // Inter-Roma è finita la sera prima: il calendario ha già il risultato (2-1, lo stesso della diretta), che si vede anche con
+        // «Risultati in diretta» spenta, come sulla web; le altre senza (`gol_casa` e `gol_trasferta` null, come il server)
+        o["partite"] = orari(adesso: adesso, fase: .inCorso).enumerated().map { i, ora -> [String: Any] in
+            var p: [String: Any] = ["data": formatta(ora, "yyyy-MM-dd HH:mm"), "casa": incontri[i].casa, "trasferta": incontri[i].trasferta,
+                                    "giocata": i == 0, "stato": stati[i], "gol_casa": NSNull(), "gol_trasferta": NSNull()]
+            if i == 0 {
+                p["gol_casa"] = 2
+                p["gol_trasferta"] = 1
+            }
+            return p
         }
         o["fase"] = "in_corso"
         o["iniziata"] = true
@@ -463,6 +526,28 @@ private extension LegaDemo {
         o["da_fare"] = [[String: Any]]()
         o["in_corso"] = bloccoInCorso(adesso: adesso)
         return json(o)
+    }
+
+    /// Le risposte della giornata in corso, nel momento della demo, per le fotografie `oggi-in-corso` e `formazione-chiusa` (#424):
+    /// Oggi e risultati in diretta, la Formazione chiusa con la tua scelta salvata un'ora prima della scadenza, le rose e le schede.
+    /// Ogni giocatore ha la partita e lo stato della sua giornata come in Oggi (`LegaDemo.statoInCorso`).
+    static func risposteInCorso(adesso: Date) -> [String: String] {
+        let m = momento(adesso: adesso, fase: .inCorso)
+        let mia = rosa(nomeMia, mia: true, adesso: m, fase: .inCorso)
+        var r: [String: String] = [
+            "/api/oggi": oggiInCorso(adesso: m),
+            "/api/live": live(adesso: m, giornataInCorso: true),
+            "/api/formazione": formazione(fase: .inCorso, adesso: m),
+            "/api/scelta": sceltaSalvata(adesso: scadenza(adesso: m, fase: .inCorso)),
+            "/api/rosa": mia,
+        ]
+        r["/api/rosa?squadra=" + IndirizzoServer.codifica(nomeMia)] = mia
+        for nome in altreSquadre {
+            r["/api/rosa?squadra=" + IndirizzoServer.codifica(nome)] = rosa(nome, mia: false, adesso: m, fase: .inCorso)
+        }
+        for p in tutti { r["/api/giocatore/\(p.id)"] = json(schedaGiocatore(p, adesso: m, fase: .inCorso)) }
+        r["/api/giocatore/"] = json(schedaGiocatore(calciatore(203), adesso: m, fase: .inCorso))
+        return r
     }
 
     // MARK: - Partite rinviate (fotografie `oggi-rinvio` e `oggi-finita-recupero`)
@@ -493,7 +578,7 @@ private extension LegaDemo {
     /// Fase `finita`: la giornata 11 è finita, Oggi parla già della 12 (si chiude fra 4 giorni, probabili non ancora uscite).
     /// Riepilogo e prossima giornata sono quelli del widget (`LegaDemo.riepilogoFinita`, `prossimaDopoFinita`).
     static func oggiFinita(adesso: Date, recupero: Bool = false) -> String {
-        var o = oggiDati(adesso: adesso)
+        var o = oggiDati(adesso: adesso, tuaScelta: tuaScelta(.finita))
         func data(_ d: Date) -> String { formatta(d, "yyyy-MM-dd HH:mm") }
         o["partite"] = orari(adesso: adesso, fase: .finita).enumerated().map { i, ora in
             ["data": data(ora), "casa": incontri[i].casa, "trasferta": incontri[i].trasferta, "giocata": false,
@@ -626,9 +711,9 @@ private extension LegaDemo {
         return json(elenco)
     }
 
-    static func rosa(_ nome: String, mia: Bool, adesso: Date) -> String {
+    static func rosa(_ nome: String, mia: Bool, adesso: Date, fase: Fase = .prima) -> String {
         json(["nome": nome, "mia": mia, "crediti_residui": creditiSquadre[nome] ?? 0, "aggiornato": "2026-10-26T19:19:33",
-              "giocatori": giocatoriDi(nome).map { rigaRosa($0, adesso: adesso) },
+              "giocatori": giocatoriDi(nome).map { rigaRosa($0, adesso: adesso, fase: fase) },
               "avvisi": mia ? ["Schiera FC: Rolf Gostein e Nereo Fagiani sono indisponibili"] : [String]()])
     }
 

@@ -39,9 +39,7 @@ def test_valore_e_stella_dei_chip_almeno_4_5_in_chiaro_e_scuro():
     sulla carta dei chip non scelti. Prima, nel chiaro, il colore all'80% sul lime #86a800 dava 4,09:1."""
     sotto = []
     for tema, v in _temi().items():
-        sfondo = _colore(v["--sfondo"])[0]
-        carta, a_carta = _colore(v["--vetro-carta"])
-        chip = _sopra(carta, a_carta, _sopra(carta, a_carta, sfondo))              # chip (vetro-carta) dentro la carta della Formazione
+        chip = _colore(v["--sfondo"])[0]       # grafica B: la carta della Formazione e i chip non scelti non hanno fondo, sotto c'è la pagina
         lime = _colore(v["--capitano"])[0]
         for selettore, fondo in ((".chip span", chip), (".chip i", chip), (".chip.attiva span, .chip.attiva i", lime)):
             c = _contrasto_rgb(_colore_della_regola(selettore, v, fondo), fondo)

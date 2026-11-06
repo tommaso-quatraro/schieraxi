@@ -84,9 +84,10 @@ struct DemoGiornataCoerenteTests {
             letture.append(Lettura(dove: "\(schermata) (la consigliata con lo stesso modulo)", attesi: v.consigliataStessoModulo, conFascia: false))
         }
 
-        // Oggi prima della scadenza («La tua scelta») e a giornata in corso («attesi prima»)
+        // Oggi prima della scadenza («La tua formazione»: la consigliata non ancora salvata, come dice la Formazione, #418) e a
+        // giornata in corso («attesi prima»)
         let oggi = try await leggi("/api/oggi", da: try demo("oggi"), come: Oggi.self)
-        #expect(oggi.formazione?.tuaScelta == true, "Oggi non dice che la formazione è la tua scelta")
+        #expect(oggi.formazione?.tuaScelta == false, "Oggi dice «la tua scelta», la Formazione «non hai salvato una tua formazione»")
         letture.append(Lettura(dove: "Oggi", attesi: oggi.formazione?.punteggioAtteso,
                                basso: oggi.formazione?.intervallo?.basso, alto: oggi.formazione?.intervallo?.alto))
         let inCorso = try await leggi("/api/oggi", da: try demo("oggi-in-corso"), come: Oggi.self)

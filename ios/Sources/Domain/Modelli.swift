@@ -400,12 +400,25 @@ struct Partita: Decodable, Identifiable {
     let giocata: Bool?
     /// `da_giocare`, `in_corso`, `finita`, `rinviata` (facoltativo: server vecchio; un valore strano si ignora).
     let stato: String?
+    /// I gol del risultato del calendario (`gol_casa`, `gol_trasferta`): il server li manda solo per una partita `giocata`.
+    /// Facoltativi: un server vecchio non li manda, un valore strano si ignora.
+    let golCasa: Int?
+    let golTrasferta: Int?
     var id: String { (data ?? "") + casa + trasferta }
 
-    private enum CodingKeys: String, CodingKey { case data, casa, trasferta, giocata, stato }
+    /// Il risultato ufficiale, come `punteggioUfficiale` di `fanta/web/live.js`: solo per una partita giocata con i due gol.
+    /// C'è anche senza i risultati in diretta.
+    var punteggioUfficiale: (casa: Int, trasferta: Int)? {
+        guard giocata == true, let c = golCasa, let t = golTrasferta else { return nil }
+        return (c, t)
+    }
 
-    init(data: String?, casa: String, trasferta: String, giocata: Bool?, stato: String? = nil) {
+    private enum CodingKeys: String, CodingKey { case data, casa, trasferta, giocata, stato, golCasa, golTrasferta }
+
+    init(data: String?, casa: String, trasferta: String, giocata: Bool?, stato: String? = nil, golCasa: Int? = nil,
+         golTrasferta: Int? = nil) {
         self.data = data; self.casa = casa; self.trasferta = trasferta; self.giocata = giocata; self.stato = stato
+        self.golCasa = golCasa; self.golTrasferta = golTrasferta
     }
 
     init(from decoder: Decoder) throws {
@@ -415,6 +428,8 @@ struct Partita: Decodable, Identifiable {
         trasferta = try k.decode(String.self, forKey: .trasferta)
         giocata = try k.decodeIfPresent(Bool.self, forKey: .giocata)
         stato = (try? k.decodeIfPresent(String.self, forKey: .stato)) ?? nil
+        golCasa = (try? k.decodeIfPresent(Int.self, forKey: .golCasa)) ?? nil
+        golTrasferta = (try? k.decodeIfPresent(Int.self, forKey: .golTrasferta)) ?? nil
     }
 }
 
