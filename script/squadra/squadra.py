@@ -7,13 +7,14 @@ from __future__ import annotations
 import argparse
 import sys
 
+import brief
 import comune
 import annulla_superate
 import attendi
 import pulisci
 import stato
 
-COMANDI = [stato, attendi, annulla_superate, pulisci]
+COMANDI = [stato, attendi, annulla_superate, pulisci, brief]
 
 
 def parser() -> argparse.ArgumentParser:
