@@ -728,7 +728,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .voce-g > .pv-g.largo { white-space: normal; }                    /* «+0,4 punti da solo» nella sostituzione: va a capo nella sua colonna */
 .voce-g > .valore { grid-area: fv; align-self: end; }
 /* i nomi delle colonne: una riga grigia da 12 px, nascosta ai lettori di schermo; «Partita» solo quando la riga è larga */
-.intestazione-colonne > .voce-g { padding: 0 0 4px; font-size: var(--t-eti); font-weight: 550; color: var(--testo-2); line-height: 1.3; }
+.intestazione-colonne > .voce-g { padding: 8px 0 4px; font-size: var(--t-eti); font-weight: 550; color: var(--testo-2); line-height: 1.3; }
 .intestazione-colonne .ic-partita { grid-area: partita; display: none; }
 .intestazione-colonne .ic-fv { grid-row: 1; grid-column: testo-start / fv-end; text-align: right; }
 .intestazione-colonne.ferma { position: sticky; top: var(--alto-ferma); z-index: 2; background: var(--sfondo); }
