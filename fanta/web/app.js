@@ -562,14 +562,16 @@ function valoreRosa(p, x) {
 
 // Le due colonne dei numeri di ogni riga: «gioca N%» (grigio; sotto il 70% arancio e in grassetto) e il fantavoto atteso. A partita
 // iniziata il fantavoto preso con accanto «fantavoto», oppure «–» (lo stato è già nell'etichetta): mai «gioca N%».
-// `perche`: gli attributi che fanno aprire «Perché questo numero» dal numero (attrPerche, nella Formazione).
+// `perche`: gli attributi che fanno aprire «Perché questo numero» dal numero (attrPerche, nella Formazione). I nomi delle colonne sono
+// nascosti ai lettori di schermo: il numero ha il suo nome accanto, solo per loro («gioca 85%, Fantavoto atteso 6,8»).
+const nomeFvAtteso = () => `<span class="solo-lettori">${t("mercato.fantavoto_atteso")} </span>`;
 function numeriRiga(p, perche = "") {
   const esito = esitoPartita(p);
   if (esito) return esito.fv != null
     ? `<span class="pv-g">${t("mercato.fantavoto")}</span><span class="valore esito"><b>${num(esito.fv)}</b></span>`
     : `<span class="pv-g"></span><span class="valore esito"><b class="debole" aria-hidden="true">–</b></span>`;
   const basso = Math.round((p.p_voto ?? 0) * 100) / 100 < SOGLIA_GIOCA;        // sul numero che si legge, come la pedina
-  return `<span class="pv-g${basso ? " basso" : ""}">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span><span class="valore"><b${perche}>${num(p.fv_atteso)}</b></span>`;
+  return `<span class="pv-g${basso ? " basso" : ""}">${t("giocatore.gioca", { p: perc(p.p_voto) })}</span><span class="valore">${nomeFvAtteso()}<b${perche}>${num(p.fv_atteso)}</b></span>`;
 }
 
 // ---------------------------------------------------------------- navigazione
@@ -1419,7 +1421,7 @@ function mostraFormazione(f, squadra, opz = {}) {
     const riga = x => `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${avatarIndice(x)}
       <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
         <span class="etichette">${pillTitolarita(x)}<span class="etichetta neutra">${postoInFormazione(x.id) || testoPosto("fuori")}</span></span></span>
-      <span class="pv-g largo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span><span class="valore"><b>${num(x.fv_atteso)}</b></span></button></li>`;
+      <span class="pv-g largo">${t("formazione.punti_da_solo", { d: segno(x.punti_attesi - base.punti_attesi, 1) })}</span><span class="valore">${nomeFvAtteso()}<b>${num(x.fv_atteso)}</b></span></button></li>`;
     apriFoglio(`<h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
       <div class="debole piccolo">${t("formazione.giocatori_dello_stesso")}</div>
       <div class="carta" style="margin-top:12px">${candidati.length ? `<ul class="elenco">${candidati.map(riga).join("")}</ul>` : `<div class="debole">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`);

@@ -63,7 +63,7 @@ def test_valore_della_rosa_prima_e_dopo_la_partita():
       valoreRosa({fv_atteso: 5.7, p_voto: 0.9, stato_partita: "fatto", fv_preso: 7.5, etichetta: {codice: "voto", testo: "Ha giocato", tono: "positivo"}}, {id: 1}),
       valoreRosa(null, {id: 1})]""")
     # grafica B (spec §8.4, C8): «gioca N%» e il fantavoto atteso in due colonne, nello stesso ordine di ogni riga dei giocatori
-    assert _testo(prima) == "gioca 24% 5,7"
+    assert _testo(prima) == "gioca 24% Fantavoto atteso 5,7"             # il nome del numero per i soli lettori di schermo
     assert '<span class="pv-g basso">gioca 24%</span>' in prima           # sotto il 70% arancio e in grassetto
     assert _testo(attesa) == "–" and "gioca" not in attesa                  # a partita iniziata mai «gioca N%»
     assert _testo(fatto) == "fantavoto 7,5"

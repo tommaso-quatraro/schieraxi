@@ -625,7 +625,7 @@ def test_riga_del_giocatore_prima_e_dopo_la_partita():
       voceGiocatore({{...{g}, stato_partita: "in_corso", etichetta: {{codice: "in_corso", testo: "Partita in corso", tono: "positivo"}}}})]""")
     testo = _testo_riga(prima)
     assert testo.startswith("57 D Rossi L. NAP vs LAZ")                     # indice sul volto, lettera del ruolo, nome, partita
-    assert "sab 31 20:45" in testo and "Probabile titolare" in testo and testo.endswith("gioca 85% 6,8")
+    assert "sab 31 20:45" in testo and "Probabile titolare" in testo and testo.endswith("gioca 85% Fantavoto atteso 6,8")
     assert '<span class="pv-g">gioca 85%</span>' in prima                   # grigio sopra il 70%...
     assert '<span class="pv-g basso">gioca 55%</span>' in dubbio            # ...arancio e in grassetto sotto
     gioca = re.compile(r"gioca \d")                                          # «data-giocatore» non conta
@@ -635,6 +635,46 @@ def test_riga_del_giocatore_prima_e_dopo_la_partita():
     assert '<b class="debole" aria-hidden="true">–</b>' in corso
     for html in (prima, fatto):
         assert "conic-gradient" not in html and "avatar-anello alto" not in html and 'class="ruolo ' not in html
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_il_fantavoto_atteso_ha_il_suo_nome_per_i_lettori_di_schermo():
+    """I nomi delle colonne sono nascosti ai lettori di schermo: senza un nome il numero si sentiva da solo («gioca 85%, 6,8»).
+    Dentro la colonna del numero c'è «Fantavoto atteso» per i soli lettori; il fantavoto preso ha già «fantavoto» scritto accanto."""
+    g = json.dumps(GIOCATORE)
+    riga, rosa, scelta = _esegui_righe(f"[voceGiocatore({g}), valoreRosa({g}, {{id: 7}}), numeriRiga({{p_voto: 0.5, fv_atteso: 6}})]")
+    en = _esegui_righe(f"voceGiocatore({g})", "en")
+    for html in (riga, rosa, scelta):
+        assert re.search(r'<span class="valore"><span class="solo-lettori">Fantavoto atteso </span><b[^>]*>\d,\d</b></span>', html), html
+    assert _testo_riga(en).endswith("plays 85% Expected fantasy score 6.8")
+    sostituzione = _funzione(APP, "mostraFormazione")
+    sostituzione = sostituzione[sostituzione.index("function apriSostituzione"):]
+    assert '<span class="valore">${nomeFvAtteso()}<b>' in sostituzione                  # anche la sostituzione
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_partita_rinviata_nella_riga_come_prima_della_partita():
+    """Partita rinviata (#284, #313): nella riga l'etichetta «Rinviata», poi «gioca N%» e il fantavoto atteso, come prima della
+    partita e come `RigaGiocatore.numero`/`sottoNumero` dell'iPhone; mai il «–» delle partite cominciate. Anche con un server
+    vecchio senza `etichetta` (solo `stato_partita`)."""
+    g = dict(GIOCATORE, p_voto=0.5, fv_atteso=6.0)
+    nuova = dict(g, stato_partita="rinviata", etichetta={"codice": "rinviata", "testo": "Rinviata", "tono": "attenzione"})
+    vecchia = {k: v for k, v in dict(g, stato_partita="rinviata", titolarita=None).items() if k != "etichetta"}
+    for x in (nuova, vecchia):
+        testo = _testo_riga(_esegui_righe(f"voceGiocatore({json.dumps(x)})"))
+        assert testo.endswith("Rinviata gioca 50% Fantavoto atteso 6,0"), testo
+        assert "–" not in testo
+
+
+def test_la_griglia_della_riga_e_dell_intestazione_ha_lo_stesso_carattere():
+    """Le colonne dei numeri sono in `ch`, che dipende dal carattere dell'elemento con la griglia: con il 12 px dato alla griglia
+    dell'intestazione le sue colonne erano più strette di quelle delle righe (15 px) e «Partita» stava 6-7 px fuori posto. Nessuna
+    regola dà un carattere alla griglia (`.voce-g`): il 12 px dei nomi delle colonne sta sui loro pezzi."""
+    for selettori, corpo in REGOLE:
+        for s in selettori:
+            if _ha_classe(_soggetto(s), "voce-g"):
+                assert not re.search(r"(?<![\w-])font(?:-size)?\s*:", corpo), f"{s} {{ {corpo} }}"
+    assert "font-size: var(--t-eti)" in _corpo(".intestazione-colonne > .voce-g > span")
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
