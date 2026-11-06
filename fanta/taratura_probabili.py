@@ -202,8 +202,8 @@ def verdetto(nuova: dict, attuale: dict, mostrati: dict, t: dict) -> tuple[bool,
     """(passa, motivo). Passa solo se i coefficienti sono coerenti, il Brier della nuova è almeno lo 0,5% più basso sia della
     formula di adesso sia dei numeri mostrati, è più basso di tutti e due in almeno due terzi delle giornate di prova (per eccesso:
     3 → 2, 4 → 3) e la nuova sta nelle soglie di I2 (calibrazione ≤ 5 punti, Brier ≤ 0,15). Motivi: `migliora`, `incoerente`,
-    `non_migliora`, `fuori_soglia`."""
-    if not coerente(t):
+    `non_migliora`, `fuori_soglia`. `nuova` None = coefficienti non misurati perché non finiti: `incoerente`."""
+    if nuova is None or not coerente(t):
         return False, "incoerente"
     b, ba, bm = nuova.get("brier"), attuale.get("brier"), mostrati.get("brier")
     if b is None or ba is None or bm is None or b > min(ba, bm) * (1 - SOGLIA_BRIER):
@@ -232,9 +232,19 @@ def _prova(r: pd.DataFrame, attuale: dict | None) -> dict | None:
     if min(*_conta(rt), *_conta(rp)) < MIN_RIGHE_STATO:
         return None
     t = stima(rt)
-    return {"giornate": len(gg), "taratura": tar, "prova": pro, "coefficienti": t,
-            "nuova": misura(rp, t, fattori_su(rt, t)), "attuale": misura(rp, attuale, fattori_su(rt, attuale)),
-            "mostrati": misura_mostrati(rp)}
+    # coefficienti non finiti (sistema singolare, numeri infiniti): non si misurano, il verdetto è subito «incoerente»
+    nuova = misura(rp, t, fattori_su(rt, t)) if _finiti(t) else None
+    return {"giornate": len(gg), "taratura": tar, "prova": pro, "coefficienti": t, "nuova": nuova,
+            "attuale": misura(rp, attuale, fattori_su(rt, attuale)), "mostrati": misura_mostrati(rp)}
+
+
+def _finiti(t: dict) -> bool:
+    """Tutti i coefficienti sono numeri finiti."""
+    try:
+        valori = [*t["titolare"], *t["panchina"], t["dubbio"], t["non_citato"]]
+        return all(math.isfinite(float(v)) for v in valori)
+    except (TypeError, KeyError, ValueError):
+        return False
 
 
 def prova(db: sqlite3.Connection, attuale: dict | None) -> dict | None:
@@ -294,18 +304,31 @@ def esegui(db: sqlite3.Connection, adesso: datetime) -> str:
     gg = giornate(r)
     if len(gg) < MIN_GIORNATE:
         return _in_attesa(r, gg)
-    ultima = db.execute("SELECT versione, stato, prova FROM taratura_probabili ORDER BY versione DESC LIMIT 1").fetchone()
-    if ultima is not None and _giornate_da(ultima[2]) == dividi(gg)[1]:
-        return f"{NOME}: niente di nuovo (versione {ultima[0]}, {ultima[1]})"
-    esito = _prova(r, None)                           # la formula di adesso: i numeri di partenza (nessuna riga attiva)
-    if esito is None:
-        return _in_attesa(r, gg)
-    passa, motivo = verdetto(esito["nuova"], esito["attuale"], esito["mostrati"], esito["coefficienti"])
-    stato = "pronta" if passa else "scartata"
-    versione = _scrivi(db, adesso, stato, esito, motivo)
+    if db.in_transaction:
+        db.commit()
+    # il controllo «niente di nuovo» e la scrittura in una sola transazione con il blocco di scrittura preso subito: un secondo
+    # giro (il comando lanciato a mano mentre gira quello di aggiorna.sh) aspetta il primo e poi trova la sua riga, senza doppioni
+    db.execute("BEGIN IMMEDIATE")
+    try:
+        ultima = db.execute("SELECT versione, stato, prova FROM taratura_probabili ORDER BY versione DESC LIMIT 1").fetchone()
+        if ultima is not None and _giornate_da(ultima[2]) == dividi(gg)[1]:
+            return f"{NOME}: niente di nuovo (versione {ultima[0]}, {ultima[1]})"
+        esito = _prova(r, None)                       # la formula di adesso: i numeri di partenza (nessuna riga attiva)
+        if esito is None:
+            return _in_attesa(r, gg)
+        passa, motivo = verdetto(esito["nuova"], esito["attuale"], esito["mostrati"], esito["coefficienti"])
+        stato = "pronta" if passa else "scartata"
+        versione = _scrivi(db, adesso, stato, esito, motivo)       # con il commit che chiude la transazione
+    finally:
+        if db.in_transaction:
+            db.rollback()
     n, a, m = esito["nuova"], esito["attuale"], esito["mostrati"]
+    giro = f"{len(esito['prova'])} giornate di prova"
+    if n is None:
+        return (f"{NOME}: versione {versione} {stato} ({motivo}): coefficienti non finiti, non misurati; Brier {a['brier']:.4f} dei "
+                f"numeri di partenza e {m['brier']:.4f} dei mostrati, {giro}")
     return (f"{NOME}: versione {versione} {stato} ({motivo}): Brier {n['brier']:.4f} contro {a['brier']:.4f} dei numeri di partenza "
-            f"e {m['brier']:.4f} dei mostrati, calibrazione {100 * n['calibrazione']:.1f} punti, {len(esito['prova'])} giornate di prova")
+            f"e {m['brier']:.4f} dei mostrati, calibrazione {100 * n['calibrazione']:.1f} punti, {giro}")
 
 
 def rapporto(db: sqlite3.Connection) -> list[str]:
@@ -321,7 +344,8 @@ def rapporto(db: sqlite3.Connection) -> list[str]:
     righe_ = [f"Giornate: {len(gg)}; taratura {fmt(esito['taratura'])}; prova {fmt(esito['prova'])}"]
     for nome, chiave in (("adesso (numeri di partenza)", "attuale"), ("nuova", "nuova"), ("mostrati", "mostrati")):
         m = esito[chiave]
-        righe_.append(f"{nome}: {m['casi']} casi, Brier {m['brier']:.4f}, calibrazione {100 * m['calibrazione']:.1f} punti")
+        righe_.append(f"{nome}: coefficienti non finiti, non misurata" if m is None else
+                      f"{nome}: {m['casi']} casi, Brier {m['brier']:.4f}, calibrazione {100 * m['calibrazione']:.1f} punti")
     righe_.append(f"Coefficienti: {json.dumps(esito['coefficienti'])}")
     righe_.append(f"Verdetto: {'passa' if passa else 'non passa'} ({motivo}); nessuna riga scritta")
     return righe_

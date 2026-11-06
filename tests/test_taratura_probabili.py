@@ -513,6 +513,77 @@ def test_comando_errore_imprevisto_senza_dati_nel_log(tmp_path, monkeypatch, cap
     assert err == "taratura-probabili: non riuscita (RuntimeError)\n" and "Finto" not in err      # mai il messaggio: può avere dati
 
 
+def test_comando_prova_mostra_la_traccia_intera(tmp_path, monkeypatch, capsys):
+    """Con --prova lo lancia una persona a mano: un errore mostra tutta la traccia (anche per ValueError, che il comando di solito
+    riduce a una riga)."""
+    def rotto(db):
+        raise ValueError("numeri strani nella prova")
+
+    monkeypatch.setattr(tp, "rapporto", rotto)
+    with pytest.raises(SystemExit) as uscita:
+        _comando(monkeypatch, tmp_path / "fanta.sqlite", "--prova")
+    assert uscita.value.code == 1
+    err = capsys.readouterr().err
+    assert "Traceback" in err and "in rotto" in err and "ValueError: numeri strani nella prova" in err
+
+
+def _singolare(X, y):
+    raise np.linalg.LinAlgError("sistema singolare")
+
+
+def _stima_infinita(r):
+    return {"titolare": [math.inf, -math.inf], "panchina": [-2.0, 3.0], "dubbio": -0.5, "non_citato": 0.03}
+
+
+@pytest.mark.parametrize("dove, finta", [("regressione_logistica", _singolare), ("stima", _stima_infinita)])
+def test_coefficienti_non_finiti_scartata_incoerente(db, monkeypatch, dove, finta):
+    """Coefficienti non finiti (sistema singolare, numeri infiniti): riga «scartata» per «incoerente» subito, senza misurarli
+    (prima la misura si fermava con un errore a ogni giro)."""
+    _genera(db, range(1, 5))
+    monkeypatch.setattr(tp, dove, finta)
+    riga = tp.esegui(db, ADESSO)
+    [t] = _tabella(db)
+    assert t["stato"] == "scartata" and t["motivo"] == "incoerente"
+    assert riga.startswith("taratura-probabili: versione 1 scartata (incoerente): coefficienti non finiti"), riga
+    m = json.loads(t["misura"])
+    assert m["nuova"] is None and m["attuale"]["brier"] > 0 and m["mostrati"]["brier"] > 0
+    json.loads(t["coefficienti"])                                       # JSON valido anche con NaN e infiniti
+    assert "Verdetto: non passa (incoerente); nessuna riga scritta" in tp.rapporto(db)
+
+
+def test_due_giri_insieme_una_riga_sola(tmp_path, monkeypatch):
+    """Il comando lanciato a mano mentre gira quello di aggiorna.sh: il controllo «niente di nuovo» e la scrittura stanno nella
+    stessa transazione, quindi il secondo giro aspetta il primo e non scrive un doppione."""
+    import threading
+    file = _archivio_con(tmp_path, range(1, 5))
+    vera, esiti, secondo = tp._prova, {}, []
+
+    def altro_giro():
+        d = archivio.apri(file)
+        try:
+            esiti["secondo"] = tp.esegui(d, ADESSO)
+        finally:
+            d.close()
+
+    def prova_lenta(r, attuale):
+        if not secondo:                                  # il primo giro, a metà del lavoro, fa partire il secondo
+            secondo.append(threading.Thread(target=altro_giro))
+            secondo[0].start()
+            secondo[0].join(2)                           # con il blocco il secondo resta fermo ad aspettare: si va avanti
+        return vera(r, attuale)
+
+    monkeypatch.setattr(tp, "_prova", prova_lenta)
+    d = archivio.apri(file)
+    try:
+        esiti["primo"] = tp.esegui(d, ADESSO)
+    finally:
+        d.close()
+    secondo[0].join(60)
+    assert esiti["primo"].startswith("taratura-probabili: versione 1 pronta")
+    assert esiti["secondo"] == "taratura-probabili: niente di nuovo (versione 1, pronta)"
+    assert len(_versioni(file)) == 1
+
+
 # ---------------------------------------------------------------- aggiorna.sh: ultimo passo, non ferma mai lo script
 AGGIORNA = RADICE / "script" / "server" / "aggiorna.sh"
 

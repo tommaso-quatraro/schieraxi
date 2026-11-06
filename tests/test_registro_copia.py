@@ -267,3 +267,32 @@ def test_copia_notturna_porta_la_taratura(tmp_path):
         assert db.execute("SELECT * FROM taratura_probabili ORDER BY versione").fetchall() == TARATURA
     r = _comando("esporta", "--archivio", vecchio, copia)
     assert r.returncode == 0 and "2 versioni della taratura" in r.stdout
+
+
+def test_ripristino_con_una_versione_di_prima_toglie_la_taratura_dalla_copia(tmp_path, monkeypatch):
+    """Server tornato a una versione di prima della taratura (#379): il suo `registro_copia` rifiuta le copie nuove (tabella che non
+    conosce). Il comando scritto in docs/RIPRISTINO-SERVER.md fa una copia senza la taratura, che quella versione accetta; il file
+    originale resta com'era."""
+    import re
+    testo = (RADICE / "docs" / "RIPRISTINO-SERVER.md").read_text(encoding="utf-8")
+    [comando] = re.findall(r'`python3 -c "([^"`]+)" dati/registro-giornate\.json`', testo)
+    assert "taratura_probabili" in comando
+    assert "`.venv/bin/python -m fanta.registro_copia importa dati/registro-giornate.json.senza-taratura`" in testo
+    vecchio = tmp_path / "vecchio.sqlite"
+    with contextlib.closing(archivio.apri(vecchio)) as db:
+        _riempi(db)
+        db.executemany(f"INSERT INTO taratura_probabili VALUES ({', '.join('?' * 9)})", TARATURA)
+        db.commit()
+    copia = tmp_path / "dati" / "registro-giornate.json"
+    copia.parent.mkdir()
+    registro_copia.esporta(vecchio, copia)
+    prima = copia.read_bytes()
+    r = subprocess.run([sys.executable, "-S", "-c", comando, "dati/registro-giornate.json"], cwd=tmp_path, capture_output=True,
+                       text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert copia.read_bytes() == prima
+    monkeypatch.setattr(registro_copia, "TABELLE", ("registro_giornate", "registro_giocatori", "registro_nostri", "registro_i4"))
+    with pytest.raises(ValueError, match="taratura_probabili"):                  # come la versione di prima: la copia intera no
+        registro_copia.importa(copia, tmp_path / "a.sqlite")
+    esito = registro_copia.importa(tmp_path / "dati" / "registro-giornate.json.senza-taratura", tmp_path / "b.sqlite")
+    assert esito == {"registro_giornate": (3, 0), "registro_giocatori": (3, 0), "registro_nostri": (0, 0), "registro_i4": (0, 0)}
