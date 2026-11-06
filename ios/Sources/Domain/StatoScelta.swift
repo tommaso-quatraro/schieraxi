@@ -30,19 +30,21 @@ enum StatoScelta: Equatable {
     ///   - letta: la scelta della giornata è stata letta dal server (anche «nessuna»).
     ///   - salvati: i titolari salvati (nil = nessuna scelta salvata).
     ///   - manuale: i titolari della modifica a mano (nil = si vede la consigliata, o uno stile o un modulo).
+    ///   - mostrati: senza modifica a mano, i titolari dello stile e del modulo sullo schermo (nil = non si sa). Con una scelta
+    ///     salvata dicono se è «salvata» o se ci sono modifiche, come la web che confronta gli undici mostrati.
     ///   - chiusa: la giornata è chiusa (viene prima di tutto il resto, come sulla web).
     ///   - nonValida: la scelta salvata non vale più (lo dice il server con `formazione_non_valida` o, a giornata chiusa, con
     ///     `stato_scelta`; o non è nella rosa).
     ///   - altra: senza modifica a mano si vede un altro stile o un altro modulo.
     /// L'ordine dei titolari non conta.
-    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, chiusa: Bool = false,
+    static func calcola(letta: Bool, salvati: [Int]?, salvataIl: Date?, manuale: [Int]?, mostrati: [Int]? = nil, chiusa: Bool = false,
                         nonValida: Bool = false, altra: Bool = false) -> StatoScelta {
         if chiusa { return nonValida ? .chiusaNonValida : .chiusa(tua: letta && salvati != nil) }
         guard letta else { return .sconosciuto }
         guard let salvati else { return manuale != nil ? .bozza : altra ? .altra : .consigliata }
         // dopo «Modifica a mano» si può salvare la nuova («modificata»); gli undici che non valgono più non sono «salvata»
         if nonValida, manuale.map({ Set($0) == Set(salvati) }) ?? true { return .nonValida }
-        guard let manuale, Set(manuale) == Set(salvati) else { return .modificata(salvataIl) }
+        guard let visti = manuale ?? mostrati, Set(visti) == Set(salvati) else { return .modificata(salvataIl) }
         return .salvata(salvataIl)
     }
 
@@ -102,12 +104,34 @@ enum StatoScelta: Equatable {
         }
     }
 
-    /// «Salva questa» nella riga, come la web: si vede una formazione che non hai salvato (la consigliata, un altro stile o modulo).
-    var conSalvaQuesta: Bool { self == .consigliata || self == .altra }
+    /// Un pulsante della riga di stato: «Salva questa», «Salva le modifiche» o «Salva come mia scelta», «Annulla modifiche»,
+    /// «Torna alla consigliata».
+    enum Pulsante: Hashable { case salvaQuesta, salva, annulla, torna }
 
-    /// «Torna alla consigliata» nella riga, come la web, dove non c'è già sotto con la modifica a mano: un altro stile o modulo,
-    /// o una scelta salvata che non vale più.
-    var conTornaNellaRiga: Bool { self == .altra || self == .nonValida }
+    /// I pulsanti della riga, nell'ordine di `rigaStatoScelta` della web (#463): dipendono dallo stato, non dalla modifica a mano,
+    /// così con una scelta salvata e un altro modulo sullo schermo ci sono «Salva le modifiche» e «Annulla modifiche».
+    /// «Modifica a mano» sull'iPhone sta accanto alla frase dello stile: vedi `conModificaAMano`.
+    var pulsanti: [Pulsante] {
+        switch self {
+        case .consigliata: return [.salvaQuesta]
+        case .altra: return [.salvaQuesta, .torna]
+        case .salvata: return [.torna]
+        case .modificata: return [.salva, .annulla, .torna]
+        case .bozza: return [.salva, .torna]
+        case .nonValida: return [.torna]
+        case .sconosciuto, .chiusa, .chiusaNonValida: return []
+        }
+    }
+
+    /// «Modifica a mano» dove la web la offre: nella riga con la consigliata, un altro stile o modulo e la scelta che non vale più,
+    /// e quando la riga non c'è (un'altra squadra, scelta non ancora letta). Con una scelta salvata no: la si cambia dal modulo,
+    /// dallo stile o, in modifica a mano, dai titolari.
+    var conModificaAMano: Bool {
+        switch self {
+        case .sconosciuto, .consigliata, .altra, .nonValida: return true
+        case .salvata, .modificata, .bozza, .chiusa, .chiusaNonValida: return false
+        }
+    }
 
     // MARK: quando
 
