@@ -418,6 +418,9 @@ struct StatoDatiView: View {
                 if let registro = caricatore.dato?.registro {
                     RegistroGiornateSezione(registro: registro)
                 }
+                if let consiglio = caricatore.dato?.consiglio {
+                    ConsiglioFormazioneSezione(consiglio: consiglio)
+                }
             }
             .scrollContentBackground(.hidden)
         }

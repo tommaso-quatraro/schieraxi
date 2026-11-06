@@ -3,7 +3,6 @@ import json
 import re
 import shutil
 import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -256,9 +255,24 @@ def test_guida_indietro_del_browser():
     assert "Indietro del browser torna alla schermata di prima" in guida
 
 
+def _voce_di_novita(file, titolo):
+    """La voce delle novità di una PR: prima del rilascio sta in `fanta/novita.d/<file>`, dopo il job `rilascia` la sposta in
+    `fanta/novita.json` (con il numero di versione) e toglie il file. Il test deve passare in tutti e due i momenti: leggendo solo il
+    file, `main` diventava rosso appena la PR era rilasciata (successo con la PR 4, versione 1.419)."""
+    percorso = RADICE / "fanta" / "novita.d" / file
+    if percorso.exists():
+        voce = json.loads(percorso.read_text(encoding="utf-8"))
+        assert voce["titolo"] == titolo, voce["titolo"]
+        return voce
+    rilasciate = json.loads((RADICE / "fanta" / "novita.json").read_text(encoding="utf-8"))
+    voce = next((v for v in rilasciate if v.get("titolo") == titolo), None)
+    assert voce, f"manca la novità «{titolo}» sia in novita.d sia in novita.json"
+    return voce
+
+
 def test_novita_della_testata():
-    voce = json.loads(Path(RADICE / "fanta" / "novita.d" / "testata-schede.json").read_text(encoding="utf-8"))
-    assert voce["titolo"] and len(voce["voci"]) >= 2
+    voce = _voce_di_novita("testata-schede.json", "Nuova testata: schede in alto sugli schermi larghi e titolo in ogni schermata")
+    assert len(voce["voci"]) >= 2
 
 
 # ---------------------------------------------------------------- PR 5: sezioni, pulsanti, etichette, avvisi
@@ -553,8 +567,8 @@ def test_novita_della_versione_una_riga_con_il_filo():
 
 
 def test_novita_delle_sezioni():
-    voce = json.loads(Path(RADICE / "fanta" / "novita.d" / "sezioni-pulsanti.json").read_text(encoding="utf-8"))
-    assert voce["titolo"] and len(voce["voci"]) >= 2
+    voce = _voce_di_novita("sezioni-pulsanti.json", "Meno riquadri: sezioni con un titolo e righe")
+    assert len(voce["voci"]) >= 2
 
 
 # ---------------------------------------------------------------- PR 6: riga del giocatore e colonne di numeri
@@ -719,5 +733,5 @@ def test_differenza_ammessa_della_lineetta_scritta():
 
 
 def test_novita_della_riga_del_giocatore():
-    voce = json.loads(Path(RADICE / "fanta" / "novita.d" / "riga-giocatore.json").read_text(encoding="utf-8"))
-    assert voce["titolo"] and voce["voci"]
+    voce = _voce_di_novita("riga-giocatore.json", "Righe dei giocatori più basse, numeri in colonna")
+    assert len(voce["voci"]) >= 2
