@@ -604,6 +604,7 @@ function vai(vista, gruppo, opz = {}) {
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
   if (!imp && !(SCHEDA_DI(vista) && DISEGNO_VISTE.has(vista))) vista = "oggi";
   const scheda = imp ? null : SCHEDA_DI(vista);                           // la scheda della barra che si accende
+  const prima = stato.vista;
   stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
   document.querySelectorAll(".schede .scheda").forEach(b => {
     b.classList.toggle("attiva", b.dataset.vista === scheda);
@@ -617,8 +618,11 @@ function vai(vista, gruppo, opz = {}) {
     // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
     const g = imp ? gruppo || stato.impDaUrl || null : null, sm = vista === "mercato" ? stato.mercatoTab || null : null;
     const indirizzo = indirizzoVista(vista, g, sm), voce = { vista, gruppo: g, scheda: sm };
+    // da 1100 px Squadra e le sue pagine di Mercato sono una schermata sola (menu e pagina affiancati): la scheda «Squadra» o il tasto 3
+    // con il Calendario aperto non aggiungono una voce che la pagina riporta subito al Calendario (Indietro non farebbe niente)
+    const stessa = [prima, vista].every(v => v === "squadra" || v === "mercato") && legaLarga();
     try {
-      if (!history.state || location.pathname + location.search === indirizzo) history.replaceState(voce, "", indirizzo);
+      if (!history.state || location.pathname + location.search === indirizzo || stessa) history.replaceState(voce, "", indirizzo);
       else history.pushState(voce, "", indirizzo);
     } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
   }
@@ -3547,7 +3551,19 @@ function indirizzoLega(vista, scheda, nuova, id) {
 // Finestra allargata oltre i 1100 px con il solo menu in pagina: a destra si apre la voce dell'ultima volta (o la prima), invece di
 // lasciare una colonna vuota. La prepara vistaLega a ogni disegno.
 let legaQuandoLarga = null;
-LEGA_LARGA.addEventListener("change", () => { if (LEGA_LARGA.matches && legaQuandoLarga) legaQuandoLarga(); });
+// Il focus non si perde quando la finestra passa i 1100 px: stringendo sparisce il menu (con la voce che aveva il focus), allargando
+// sparisce «‹ Squadra». Il focus va sul titolo della voce aperta (o della pagina, nella rosa) stringendo, sulla voce aperta del menu
+// allargando. Se il browser l'ha già tolto all'elemento nascosto (focus sul body) vale l'ultimo elemento di Squadra o Altro che l'aveva.
+let focusLega = null;
+document.addEventListener("focusin", ev => { focusLega = ev.target && ev.target.closest && ev.target.closest(".lega-colonne") ? ev.target : null; });
+function focusLegaVisibile() {
+  const ora = document.activeElement, prima = ora && ora !== document.body ? ora : focusLega;
+  const radice = prima && prima.isConnected && prima.closest(".lega-colonne");
+  if (!radice || prima.getClientRects().length) return;                  // non è di Squadra o Altro, oppure si vede ancora
+  const dove = LEGA_LARGA.matches ? radice.querySelector('.lega-menu [aria-current="page"]') : $("#lega-titolo", radice) || $("#titolo-pagina");
+  if (dove) dove.focus({ preventScroll: true });
+}
+LEGA_LARGA.addEventListener("change", () => { if (LEGA_LARGA.matches && legaQuandoLarga) legaQuandoLarga(); focusLegaVisibile(); });
 
 async function vistaLega(ambito = "altro") {
   const mia = nuovaRichiesta();

@@ -308,6 +308,7 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 /* contrasto elevato di Windows: il browser toglie il fondo lime e l'ombra interna, la voce scelta prende un contorno vero */
 @media (forced-colors: active) {
   .segmenti button.attivo { outline: 2px solid Highlight; outline-offset: -2px; }
+  .chips.filtri .chip.attiva, .lega-voce[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }   /* ruolo dell'Elenco, voce aperta del menu */
 }
 /* striscia scorrevole (Mercato): le voci hanno la loro larghezza vera e non si tagliano; la scelta resta in vista e un bordo sfumato dice che si scorre */
 .segmenti.scorri { overflow-x: auto; scrollbar-width: none; gap: 0; scroll-snap-type: x proximity; scroll-padding-inline: 24px;

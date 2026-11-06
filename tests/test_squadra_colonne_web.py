@@ -75,6 +75,43 @@ def test_la_voce_aperta_si_riconosce_anche_senza_il_colore():
     assert ".imp-voce.attiva" in CSS                                   # le Impostazioni restano come sono (PR 12)
 
 
+def test_con_il_contrasto_elevato_la_scelta_resta_visibile():
+    """Revisione della #431: con il contrasto elevato di Windows il browser toglie fondi e ombre interne; il ruolo scelto nell'Elenco
+    (bordo 0) e la voce aperta del menu non avevano più nessun segno. Prendono un contorno vero, come `.segmenti button.attivo`."""
+    blocco = _blocco("@media (forced-colors: active) {")
+    assert '.chips.filtri .chip.attiva, .lega-voce[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }' in blocco
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_il_focus_non_si_perde_quando_la_finestra_passa_i_1100_px():
+    """Revisione della #431: stringendo la finestra sotto i 1100 px il menu sparisce, e con lui la voce che aveva il focus; allargandola
+    sparisce «‹ Squadra». Il focus va sul titolo della pagina aperta (stringendo) o sulla voce aperta del menu (allargando). Se il
+    browser ha già tolto il focus all'elemento nascosto (focus sul body), vale l'ultimo elemento di Squadra che lo aveva."""
+    codice = "\n".join([
+        """let largo = false; const LEGA_LARGA = { get matches() { return largo; } }; const focati = [];
+const el = (nome, visibile, radice) => ({ nome, visibile, radice, isConnected: true, getClientRects() { return this.visibile ? [1] : []; },
+  closest(s) { return s === ".lega-colonne" ? this.radice : null; }, focus(o) { focati.push([nome, !!(o && o.preventScroll)]); document.activeElement = this; } });
+const radice = { querySelector: s => (s === '.lega-menu [aria-current="page"]' ? voceAperta : s === "#lega-titolo" ? titoloLega : null) };
+const voceAperta = el("voce aperta", true, radice), titoloLega = el("titolo della voce", true, radice), titoloPagina = el("titolo della pagina", true, null);
+const body = { closest: () => null, getClientRects: () => [1] };
+const document = { body, activeElement: body };
+const $ = (s, r = document) => (r === document ? (s === "#titolo-pagina" ? titoloPagina : null) : r.querySelector(s));""",
+        _riga("let focusLega = "),
+        _funzione("focusLegaVisibile"),
+        """const esiti = [];
+let voce = el("Calendario", false, radice); document.activeElement = voce; largo = false; focusLegaVisibile(); esiti.push(focati.splice(0));
+let indietro = el("Squadra indietro", false, radice); document.activeElement = indietro; largo = true; focusLegaVisibile(); esiti.push(focati.splice(0));
+const visibile = el("Seguiti", true, radice); document.activeElement = visibile; largo = false; focusLegaVisibile(); esiti.push(focati.splice(0));
+focusLega = el("voce della rosa", false, { querySelector: () => null }); document.activeElement = body; largo = false; focusLegaVisibile(); esiti.push(focati.splice(0));
+focusLega = null; document.activeElement = body; focusLegaVisibile(); esiti.push(focati.splice(0));
+console.log(JSON.stringify(esiti));""",
+    ])
+    assert _node(codice) == [[["titolo della voce", True]], [["voce aperta", True]], [], [["titolo della pagina", True]], []]
+    ascolta = re.search(r'LEGA_LARGA\.addEventListener\("change", \(\) => \{([^\n]*)\}\);', APP)
+    assert ascolta and "focusLegaVisibile();" in ascolta.group(1)
+    assert 'document.addEventListener("focusin", ' in APP and "focusLega = " in APP
+
+
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_il_menu_segna_solo_la_voce_aperta():
     codice = "\n".join([
