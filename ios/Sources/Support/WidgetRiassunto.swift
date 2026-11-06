@@ -581,6 +581,17 @@ struct PartitaLive: Decodable, Equatable, Identifiable {
         return "\(c)–\(t)"
     }
 
+    /// Tra le due sigle della riga: il punteggio.
+    var traLeSigle: String { punteggio }
+
+    /// Le due sigle, prima la squadra di casa, con in mezzo `traLeSigle`.
+    var squadre: String { "\(ColoriSquadra.sigla(casa)) \(traLeSigle) \(ColoriSquadra.sigla(trasferta))" }
+
+    /// La partita in una riga (Partite live, Cruscotto), dalla forma intera alla più corta.
+    func formeRiga(adesso: Date) -> [String] {
+        formeEtichetta(adesso: adesso).map { "\(squadre) \($0)" }
+    }
+
     /// Cosa scrivere accanto al punteggio: «34'», «Intervallo», «Finita»; per una partita da giocare il giorno e l'ora, come la
     /// web («oggi 18:30», «domani 11:23», «mar 3 18:30»). È la forma intera, quella che legge VoiceOver; le forme corte sono in
     /// `formeEtichetta(adesso:)`. `adesso` è l'istante della voce del widget.
@@ -923,6 +934,21 @@ enum ParoleWidget {
     /// Lo stato dei dati in una riga: «Dati delle 14:32 · probabili uscite» → «14:32 · probabili uscite» → «Dati delle 14:32».
     static func statoDati(ora: String, probabili: String) -> [String] {
         ["Dati delle \(ora) · \(probabili)", "\(ora) · \(probabili)", "Dati delle \(ora)"]
+    }
+}
+
+/// La testata del widget Formazione grande, accanto al modulo: i punti attesi, la fascia e la giornata. Le forme dei punti e
+/// della giornata vanno in coppia (`ParoleWidget.coppie`): la vista prova le coppie in ordine e tiene la prima che entra.
+struct TestataFormazioneGrande: Equatable {
+    let formePunti: [String]
+    let fascia: String?
+    let formeGiornata: [String]
+
+    init(puntiAttesi: Double?, tuaScelta: Bool, fascia: String?, giornata: NomeGiornata?) {
+        let coppie = ParoleWidget.coppie(ParoleWidget.puntiAttesi(puntiAttesi, tuaScelta: tuaScelta), giornata?.forme ?? [""])
+        formePunti = coppie.map(\.0)
+        self.fascia = fascia
+        formeGiornata = coppie.map(\.1)
     }
 }
 
