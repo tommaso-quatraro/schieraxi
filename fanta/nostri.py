@@ -63,6 +63,8 @@ def dati(d: Dati) -> Dati:
 # Forza delle squadre dai soli gol (senza xG): tarata il 6/11/2026 con `prove/tara_forza_gol.py` sul 2025-26 dalla 5ª giornata,
 # controllata sul 2026-27 (pull request della Fase C). Più partite fittizie a forza media perché i gol veri sono più rumorosi
 # degli xG; il livello recente (memoria 0,85) segue i gol del campionato, che nel 2026-27 sono il 24% in più.
+# Onestà sulla taratura: k_squadre 8 (invece di 12, pari sul 2025-26) è stato preferito guardando anche il controllo 2026-27, e la
+# memoria 0,85 è stata scelta con i gol attesi/veri del 2025-26: i miglioramenti misurati non sono del tutto «fuori campione».
 FORZA = {"decadimento_squadre": 0.99, "k_squadre": 8.0, "decadimento_base": 0.85}
 
 
