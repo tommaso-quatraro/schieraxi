@@ -802,7 +802,7 @@ def _frase_perche(nome_a: str, nome_b: str, spiegazione: dict, margine: float) -
         peso = abs(f["effetto"])
         if f["chiave"] == "giocare":
             pa, pb = (f["a"], f["b"]) if segno > 0 else (f["b"], f["a"])
-            parti.append(F("confronto.gioca_di_piu", pa=round(pa * 100), pb=round(pb * 100), peso=peso))
+            parti.append(F("confronto.gioca_di_piu", pa=etichette.percento(pa), pb=etichette.percento(pb), peso=peso))
         else:
             parti.append(F("confronto.alto_" + f["chiave"], peso=peso))
     return F("confronto.avanti", primo=primo, secondo=secondo, punti=abs(totale), motivi=frasi.elenco(parti, sep="; "))
@@ -863,14 +863,14 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
     elif regole.panchina.max_sostituzioni <= 0:
         entrata = F("confronto.senza_sostituzioni", altro=altro.nome, posto=posto_frase(posto_altro), titolare=titolare.nome)
     else:
-        entrata = F("confronto.entra_se", titolare=titolare.nome, p=round((1 - titolare.p) * 100), altro=altro.nome, posto=posto_frase(posto_altro))
+        entrata = F("confronto.entra_se", titolare=titolare.nome, p=100 - etichette.percento(titolare.p), altro=altro.nome, posto=posto_frase(posto_altro))
     scritta = frasi.differenza(invertita, attuale)          # tra parentesi: la differenza dei due numeri scritti, «72,1 (−0,6)» (#392)
     if diff > 0.04:
         esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=scritta)
     elif diff < -0.04 and titolare.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
         # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341)
-        return scrivi(F("confronto.titolare_che_gioca", altro=altro.nome, p=round(altro.p * 100), titolare=titolare.nome,
-                        pt=round(titolare.p * 100), d=-diff, entrata=entrata))
+        return scrivi(F("confronto.titolare_che_gioca", altro=altro.nome, p=etichette.percento(altro.p), titolare=titolare.nome,
+                        pt=etichette.percento(titolare.p), d=-diff, entrata=entrata))
     elif diff < -0.04:
         esito = F("confronto.esito_peggio", invertita=invertita, attuale=attuale, d=scritta, modulo=m["modulo"])
     else:

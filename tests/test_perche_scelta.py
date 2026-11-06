@@ -133,6 +133,15 @@ def test_le_righe_in_italiano():
         "Con Giocatore 2 al suo posto la formazione farebbe 60,4 invece di 60,0: per meno di 1 punto la consigliata già mostrata non cambia.")
 
 
+def test_le_percentuali_sono_quelle_di_gioca_n():
+    """#452: la web scrive «gioca 35%» per 0,345 (Math.round); le righe del perché dicono lo stesso numero."""
+    tit, riserva = G(1, p=0.345), G(2, p=0.92)
+    assert "(gioca 35%)" in perche_scelta.motivo(tit, riserva, 60.5, 60.0, riserva=riserva)
+    assert perche_scelta.motivo(G(1, p=0.9), G(2, p=0.125), 60.0, 60.3) == (
+        "Titolare al posto di Giocatore 2, che quasi certamente non gioca (13% di giocare).")
+    assert perche_scelta.motivo(G(1, p=0.905), G(2, p=0.8), 60.0, 60.02) == "A pari punti gioca più sicuro di Giocatore 2 (91% contro 80%)."
+
+
 def test_la_consigliata_tenuta_cambia_da_un_punto():
     # il testo dice «per meno di 1 punto»: è la soglia della consigliata stabile
     assert consigli.SOGLIA_CAMBIO_PUNTI == perche_scelta.SOGLIA_TENUTA == 1
