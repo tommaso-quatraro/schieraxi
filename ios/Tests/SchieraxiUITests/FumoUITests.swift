@@ -61,7 +61,7 @@ final class FumoUITests: XCTestCase {
     func testFormazioneConCampoEModificaAMano() {
         vaiA("Formazione")
         attendi("Campo")
-        attendi("Modulo proposto", contiene: true)
+        attendi("Propone il", contiene: true)   // la frase dello stile della web (formazione.propone, #437)
         attendi("Panchina")
         tocca(app.buttons["Modifica a mano"], finchéCompare: app.buttons["Torna alla consigliata"], "«Modifica a mano» apre la modifica")
         attendi("Salva come mia scelta")
@@ -93,9 +93,10 @@ final class FumoUITests: XCTestCase {
             XCTAssertTrue(app.buttons[modo].waitForExistence(timeout: 10), "manca il modo «\(modo)»")
         }
         attendi("Chi accetta più volentieri")
-        tocca(app.buttons["Valuta un'offerta"], finchéCompare: elemento("Ho ricevuto un'offerta"), "«Valuta un'offerta» mostra il riquadro dell'offerta")
-        // «Costruisci»: le due rose da cui scegliere (prima si aspettava «Squadra», che c'è sempre nella barra in basso)
-        tocca(app.buttons["Costruisci"], finchéCompare: elemento("Tu dai", contiene: true), "«Costruisci» mostra la tua rosa da cui scegliere")
+        // il titolo del riquadro («Valuta un'offerta») è anche il nome del pulsante del modo: si aspetta la frase che lo spiega (testi.js)
+        tocca(app.buttons["Valuta un'offerta"], finchéCompare: elemento("Incolla il messaggio che hai ricevuto", contiene: true), "«Valuta un'offerta» mostra il riquadro dell'offerta")
+        // «Costruisci»: le due rose da cui scegliere («Dai   0 su 4»; prima si aspettava «Squadra», che c'è sempre nella barra in basso)
+        tocca(app.buttons["Costruisci"], finchéCompare: elemento("0 su 4", contiene: true), "«Costruisci» mostra la tua rosa da cui scegliere")
     }
 
     /// Il rimedio di #212 funziona davvero: il primo tocco su «Scambi» si perde (non lo si manda all'app) e `tocca` deve

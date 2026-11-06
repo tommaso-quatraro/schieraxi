@@ -122,10 +122,10 @@ struct DueNumeriGiornataTests {
         #expect(s.forme == ["11ª giornata di Serie A", "11ª di Serie A", "G11"])
     }
 
-    @Test("La didascalia della Formazione: «Giornata 8 · 11ª di Serie A · modulo consigliato»; con la tua scelta solo la giornata")
+    @Test("La didascalia della Formazione: «Giornata 8 · 11ª di Serie A · modulo consigliato»; con la tua scelta «· la tua scelta», come la web (#437)")
     func didascaliaFormazione() {
         let g = TempiLega.etichetta(serieA: 11, lega: 8)
-        #expect(TempiLega.didascalia(giornata: g, scelta: true, comeConsigliato: false) == "Giornata 8 · 11ª di Serie A")
+        #expect(TempiLega.didascalia(giornata: g, scelta: true, comeConsigliato: false) == "Giornata 8 · 11ª di Serie A · la tua scelta")
         #expect(TempiLega.didascalia(giornata: g, scelta: false, comeConsigliato: true) == "Giornata 8 · 11ª di Serie A · modulo consigliato")
         #expect(TempiLega.didascalia(giornata: g, scelta: false, comeConsigliato: false) == "Giornata 8 · 11ª di Serie A · modulo scelto")
     }
