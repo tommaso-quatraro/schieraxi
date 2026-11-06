@@ -120,12 +120,13 @@ def test_se_l_avviso_non_compare_si_va_avanti_dopo_il_massimo(tmp_path):
 
 
 @serve_bash
-def test_l_attesa_guarda_il_registro_dall_accensione_non_solo_gli_ultimi_secondi(tmp_path):
-    # un avviso comparso mentre si installava l'app (prima dell'attesa) non si deve perdere: la finestra parte dall'accensione
-    r, chiamate, _ = _bash(tmp_path, 'avvisi_avvia UDID1; sleep 90; avvisi_attendi UDID1 400', avviso_dopo=50)
+def test_l_attesa_guarda_indietro_nel_registro_non_solo_gli_ultimi_secondi(tmp_path):
+    # lo stesso simulatore riacceso non ripete l'avviso: se è già nel registro non si aspettano 400 secondi per niente
+    r, chiamate, dormiti = _bash(tmp_path, 'avvisi_avvia UDID1; avvisi_attendi UDID1 400', avviso_dopo=0)
     assert r.returncode == 0, r.stderr
     finestre = [int(m.group(1)) for c in chiamate if (m := re.search(r"log show --last (\d+)s", c))]
-    assert finestre and finestre[0] >= 90, f"finestra troppo corta: {finestre}"
+    assert finestre and finestre[0] >= 3 * 3600, f"finestra troppo corta: {finestre}"
+    assert dormiti == 12, "avviso già nel registro: basta la pausa"
 
 
 @serve_bash

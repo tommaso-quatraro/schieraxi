@@ -26,11 +26,9 @@ AVVISI_VISTO=""      # "" = non si è aspettato; "si" = visto durante l'attesa; 
 AVVISI_TARDI=0       # righe di avviso viste dopo l'attesa (sono nelle foto fatte dopo)
 AVVISI_ASPETTATI=0   # avvisi visti durante l'attesa e lasciati passare prima delle foto
 
-# Quante righe di avviso ci sono nel registro del simulatore dall'accensione a oggi.
+# Quante righe di avviso ci sono nel registro del simulatore negli ultimi <secondi>.
 avvisi_contati() {
-  local passati
-  passati=$(( $(date +%s) - AVVISI_AVVIATO + 10 ))
-  xcrun simctl spawn "$1" log show --last "${passati}s" --style compact --predicate "$AVVISI_FILTRO" 2>/dev/null \
+  xcrun simctl spawn "$1" log show --last "${2}s" --style compact --predicate "$AVVISI_FILTRO" 2>/dev/null \
     | grep -c '^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] '
 }
 
@@ -45,7 +43,9 @@ avvisi_attendi() {
   inizio=$(date +%s)
   echo "Aspetto l'avviso di Apple Intelligence (al massimo $massimo s): compare una sola volta dopo l'accensione e coprirebbe le foto"
   while :; do
-    visti=$(avvisi_contati "$udid")
+    # finestra larga (3 ore): lo stesso simulatore riacceso (le foto dei widget dopo quelle dell'app) non ripete l'avviso,
+    # che resta nel registro; senza guardare indietro si aspetterebbero 400 secondi per niente
+    visti=$(avvisi_contati "$udid" "${AVVISI_FINESTRA:-10800}")
     passati=$(( $(date +%s) - inizio ))
     if [ "${visti:-0}" -gt 0 ]; then
       echo "  avviso visto ($((passati)) s di attesa, $(( $(date +%s) - AVVISI_AVVIATO )) s dall'accensione): aspetto $AVVISI_PAUSA s che sparisca"
@@ -66,7 +66,7 @@ avvisi_attendi() {
 avvisi_ferma() {
   local visti
   if [ -n "$AVVISI_UDID" ] && [ "$AVVISI_VISTO" = no ]; then
-    visti=$(avvisi_contati "$AVVISI_UDID")
+    visti=$(avvisi_contati "$AVVISI_UDID" $(( $(date +%s) - AVVISI_AVVIATO + 10 )))   # solo da questa accensione
     if [ "${visti:-0}" -gt 0 ]; then
       AVVISI_TARDI=$((AVVISI_TARDI + visti))
       echo "ATTENZIONE: l'avviso di sistema è comparso DOPO l'attesa: le foto fatte in quel momento possono averlo sopra"
