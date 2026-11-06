@@ -16,32 +16,35 @@ struct CartaFormazioneOggi: View {
                     .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let f = oggi.formazione, f.disponibile {
+            let disponibile = oggi.formazione?.disponibile == true
+            if let f = oggi.formazione, disponibile {
                 cifre(f)
                 Button { vaiASezione(.formazione) } label: {
                     Label(TestiOggi.apriFormazione, systemImage: "sportscourt").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
-                if SezioneOggi.avvisoProbabili(fase: oggi.faseGiornata, conProbabili: oggi.conProbabili) {
-                    Label(TestiOggi.mancanoProbabili, systemImage: "clock")
-                        .font(.footnote)
-                        .foregroundStyle(Color.attenzione)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let p = oggi.probabili?.valore {
-                    if let avviso = p.avvisoVisibile {
-                        Label(avviso, systemImage: "exclamationmark.triangle.fill")
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let riga = p.riga {
-                        Text(riga).font(.footnote).foregroundStyle(Color.testoSecondario)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityLabel(riga)
-                    }
-                }
             } else {
                 Text("Formazione non disponibile.").foregroundStyle(Color.testoSecondario)
+            }
+            // Fuori dal controllo «formazione disponibile», come la web (#416): le probabili possono mancare anche quando i punti
+            // attesi non ci sono ancora, ed è proprio allora che serve saperlo.
+            if SezioneOggi.avvisoProbabili(fase: oggi.faseGiornata, conProbabili: oggi.conProbabili) {
+                Label(TestiOggi.mancanoProbabili, systemImage: "clock")
+                    .font(.footnote)
+                    .foregroundStyle(Color.attenzione)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if disponibile, let p = oggi.probabili?.valore {
+                if let avviso = p.avvisoVisibile {
+                    Label(avviso, systemImage: "exclamationmark.triangle.fill")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let riga = p.riga {
+                    Text(riga).font(.footnote).foregroundStyle(Color.testoSecondario)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(riga)
+                }
             }
         }
     }

@@ -49,7 +49,7 @@ enum SezioneOggi: Hashable, Sendable, CaseIterable {
         case .finita:
             sezioni.append(.riepilogo)
             if conGiornata { sezioni.append(.formazione) }
-            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .novita, .diffidati])
+            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .novita, .indisponibili, .diffidati])
         }
         sezioni.append(.partite)
         return sezioni
