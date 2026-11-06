@@ -10,7 +10,7 @@ _spec = importlib.util.spec_from_file_location("controlla_pr", RADICE / "script"
 pr = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(pr)
 
-MODELLO = (RADICE / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
+MODELLO = (RADICE / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text(encoding="utf-8")
 
 BUONO = """Closes #440. Parte di #167.
 
