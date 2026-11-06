@@ -48,7 +48,11 @@ def test_scenario_solo_fantacalcio_misura_i_numeri_nostri():
 def test_parametri_nostri_senza_xg():
     p = nostri.parametri()
     assert p.peso_xg == 0.0 and p.peso_xa == 0.0
-    altri = [f.name for f in fields(Parametri) if f.name not in ("peso_xg", "peso_xa")]
+    # Fase B: rigori con memoria lunga e minuti dalle presenze con voto, accesi solo per i nostri (la produzione non cambia)
+    assert p.rigori_squadra and p.minuti_con_voto
+    assert not Parametri().rigori_squadra and not Parametri().minuti_con_voto
+    cambiati = ("peso_xg", "peso_xa", "rigori_squadra", "minuti_con_voto")
+    altri = [f.name for f in fields(Parametri) if f.name not in cambiati]
     assert {c: getattr(p, c) for c in altri} == {c: getattr(Parametri(), c) for c in altri}
     # partendo da altri parametri, tiene i loro valori e spegne solo gli xG
     q = nostri.parametri(Parametri(k_90=5.0, peso_xg=0.7))
