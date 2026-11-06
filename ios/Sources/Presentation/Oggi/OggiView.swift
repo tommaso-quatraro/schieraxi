@@ -292,7 +292,8 @@ struct OggiView: View {
                 HStack(spacing: 10) {
                     // Come la web: «Novità della versione X» in grassetto, senza stelline né «tocca per vedere» (STILE-SENZA-AI.md).
                     Text(TestiOggi.novita(versione))
-                        .font(.subheadline.weight(.semibold))
+                        .font(.subheadline)
+                        .bold()
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
