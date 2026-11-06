@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.433",
+    "data": "2026-11-06T12:32:30",
+    "titolo": "Grafica nuova anche in Impostazioni e accesso",
+    "voci": [
+      "Impostazioni, pagina d'accesso e primo avvio hanno lo stesso aspetto ordinato delle altre schermate: titoli con una linea sotto e righe separate da un filo.",
+      "Nelle Impostazioni il gruppo aperto si riconosce dalla linea colorata a sinistra, come in Squadra e Altro.",
+      "Con il contrasto elevato del sistema si vedono il gruppo aperto, il passo del primo avvio e gli interruttori accesi o spenti."
+    ],
+    "tecnico": [
+      "Ultima PR della grafica B (parte di #354): .imp-voce.attiva come .lega-voce[aria-current], titoli di sezione nei gruppi, interruttori e parti dell'account come righe con il filo, controlli segmentati larghi al massimo 520 px.",
+      "Accesso: .accesso-corpo senza .carta (max 420 px, margin auto), nome disegnato #wm-c nell'h1, niente entrata .primo; primo avvio con .pa-capo e i passi come controllo segmentato.",
+      "Pulizia di stile.css: via --vetro, --vetro-carta, --luce, --luce-2, .sfondo (fondo su html e body), .suggerimento-tasti, .indirizzo-nascosto, .colori/.colore, main[data-gruppo], .moduli, le colonne delle Impostazioni da 1700 px; via in app.js il gestore pointerdown del riflesso che nessuna regola disegnava.",
+      "Colori forzati: contorno Highlight su .imp-voce.attiva e .pa-passo.attuale; interruttori con forced-color-adjust: none e colori di sistema, in un blocco dopo le regole normali."
+    ]
+  },
+  {
     "versione": "1.432",
     "data": "2026-11-06T11:24:14",
     "titolo": "Altro in ordine",
