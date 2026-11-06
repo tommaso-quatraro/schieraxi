@@ -65,10 +65,10 @@ struct DemoScadenzaPossibileTests {
         #expect(scadenza < adesso, "\(dove): la giornata è in corso ma la formazione si chiude alle \(oggi.scadenza ?? "")")
         // l'app confronta la scadenza con la sua ora (`Orologio`: nella demo in corso il momento della demo, #424) e scrive
         // «Chiusa» e sotto quando si è chiusa (`OggiView.siEChiusa`), contando «ieri» da quell'ora come il widget
-        let ora = oraApp(telefono)
-        #expect(scadenza <= ora, "\(dove): per l'app la formazione non è ancora chiusa (\(oggi.scadenza ?? ""))")
+        let oraDellApp = oraApp(telefono)
+        #expect(scadenza <= oraDellApp, "\(dove): per l'app la formazione non è ancora chiusa (\(oggi.scadenza ?? ""))")
         #expect(scadenza <= telefono, "\(dove): sul telefono la formazione non è ancora chiusa (\(oggi.scadenza ?? ""))")
-        let frase = "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: ora))"
+        let frase = "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: oraDellApp))"
         #expect(Self.orariScadenza.contains(String(frase.suffix(5))), "\(dove): «\(frase)»")
         #expect(frase == "La formazione si è chiusa ieri 20:35", "\(dove): «\(frase)»")
 

@@ -194,7 +194,7 @@ struct DemoFormazioneInCorsoTests {
 
     @Test("Oggi e le righe dei giocatori contano «oggi» e «ieri» con l'ora dell'app (`Orologio`), mai con quella del telefono")
     func conLOrologioDellApp() throws {
-        for percorso in ["ios/Sources/Presentation/Oggi/OggiView.swift", "ios/Sources/Support/RigaGiocatore.swift"] {
+        for percorso in ["Sources/Presentation/Oggi/OggiView.swift", "Sources/Support/RigaGiocatore.swift"] {
             let righe = try sorgente(percorso).split(whereSeparator: \.isNewline)
             let date = righe.filter { $0.contains("Quando.leggibile(") }
             #expect(!date.isEmpty, "\(percorso): nessuna data scritta, il controllo non serve più")
@@ -207,11 +207,11 @@ struct DemoFormazioneInCorsoTests {
         }
     }
 
-    /// Un file dell'app (percorso dalla radice del repository), letto come fa `OggiComeLaWebTests`.
+    /// Un file dell'app (percorso dalla cartella `ios/`), letto come fa `OggiComeLaWebTests`.
     private func sorgente(_ percorso: String, file: String = #filePath) throws -> String {
-        var radice = URL(fileURLWithPath: file)
-        for _ in 0..<4 { radice.deleteLastPathComponent() }          // questo file, SchieraxiTests, Tests, ios
-        return try #require(try? String(contentsOf: radice.appendingPathComponent(percorso), encoding: .utf8),
-                            "non riesco a leggere \(percorso) dal repository")
+        var cartella = URL(fileURLWithPath: file)
+        for _ in 0..<3 { cartella.deleteLastPathComponent() }          // questo file, SchieraxiTests, Tests
+        return try #require(try? String(contentsOf: cartella.appendingPathComponent(percorso), encoding: .utf8),
+                            "non riesco a leggere ios/\(percorso)")
     }
 }
