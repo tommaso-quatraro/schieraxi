@@ -47,11 +47,16 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` (e `taratura_probabili`) in
     `dati/registro-giornate.json` per la copia notturna (`script/server/backup-dati.sh`) e le rimette con
     `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
-    Taratura di «gioca N%» con le probabili (#379): `taratura_probabili.py`, comando `python -m fanta taratura-probabili [--prova]`,
-    ultimo passo di `script/server/aggiorna.sh`. Legge solo `registro_giocatori` (probabili di prima della scadenza), tara una
-    regressione logistica sulla metà più vecchia delle giornate e la prova sulla più recente contro la formula di partenza e i numeri
-    mostrati; esito nella tabella `taratura_probabili` (`pronta` o `scartata`). Oggi SOLO misura: il modello non la legge e nessun
-    numero mostrato cambia (piano `docs/superpowers/plans/2026-11-06-gioca-probabili-server.md`, PR B per l'accensione).
+    Taratura di «gioca N%» con le probabili (#379, decisione `docs/decisioni/0009`): `taratura_probabili.py`, comando
+    `python -m fanta taratura-probabili [--prova | --spegni | --accendi]`, ultimo passo di `script/server/aggiorna.sh`. Legge solo
+    `registro_giocatori` (probabili di prima della scadenza), tara una regressione logistica sulla metà più vecchia delle giornate e la
+    prova sulla più recente contro la formula di adesso e i numeri mostrati; esito nella tabella `taratura_probabili`. Con almeno 8
+    giornate (3 di prova) la riga diventa `attiva` e il modello la usa (`taratura_probabili.attiva`, letta da
+    `consigli._calcola_previsioni` e `registro_nostri.previsioni_dal_vivo`): cambia solo «gioca N%» di chi è nelle probabili, non
+    minuti, gol e assist attesi né mu. Torna ai numeri di partenza (`ritirata`) se peggiora nelle 2+ giornate dopo la sua prova; nelle
+    24 ore prima della prima partita solo `rimandata`. Ogni cambio della riga attiva scrive `aggiornamenti` (`taratura-probabili`, le
+    previsioni si ricalcolano) e avvisa il proprietario. `--spegni` vale subito; `--accendi` fa ripartire la prova. Stato in
+    `GET /api/stato-dati`, campo `calibrazione.taratura`.
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
     Si applica in `consigli._calcola_previsioni` DOPO il modello e il «perché» (`modello.py` non cambia), in `fasi.andamento`
@@ -159,8 +164,9 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
 - Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
 - `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate), `registro_nostri`
-  (I4 dal vivo: numeri «nostri» contro mostrati; `null` se non si legge) e `consiglio`
-  (C1-C4 del consiglio, totali dei Diari): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
+  (I4 dal vivo: numeri «nostri» contro mostrati; `null` se non si legge), `consiglio`
+  (C1-C4 del consiglio, totali dei Diari) e `calibrazione.taratura` (taratura di «gioca N%» con le probabili; `null` se non si
+  legge): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
 - `GET /api/diario`: ogni voce ha il campo facoltativo `consiglio` (C1-C4 di quella giornata) e `istantanea` ha `misure` (C3-C4);
   forma in `docs/API.md`, «Indicatori del consiglio».
 - Errori: JSON `{"detail": "testo in italiano"}`.

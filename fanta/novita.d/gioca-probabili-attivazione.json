@@ -1,0 +1,13 @@
+{
+  "titolo": "«Gioca N%» si tara da solo",
+  "voci": [
+    "Quando ci sono abbastanza giornate giocate, «gioca N%» con le probabili formazioni si tara da solo, e solo se così sbaglia meno."
+  ],
+  "tecnico": [
+    "Issue #379, PR B del piano 2026-11-06-gioca-probabili-server (decisione 0009). taratura_probabili.ATTIVAZIONE = True: la prova che supera il verdetto con almeno 8 giornate e 3 di prova diventa la riga «attiva» (la vecchia «superata»); con meno resta «pronta» (poche_giornate). Ritorno ai numeri di partenza («ritirata», peggiorata o fuori_soglia) se la attiva sbaglia almeno lo 0,5% in più o esce dalle soglie di I2 nelle 2+ giornate dopo la sua prova.",
+    "Nelle 24 ore prima della prima partita (della giornata in corso o da giocare e di quella dopo) un cambio della riga attiva diventa solo una riga «rimandata», rifatta al primo giro fuori. Ogni cambio scrive archivio.segna(\"taratura-probabili\") nella stessa transazione: consigli._versione cambia e le previsioni si ricalcolano. Avviso al proprietario (canale della sentinella), riprovato al giro dopo se non parte.",
+    "Comando: python -m fanta taratura-probabili [--prova | --spegni | --accendi]; --spegni vale subito (riga attiva «ritirata» spenta_a_mano, riga «spenta»), --accendi scrive «riaccesa» e la prova riparte al giro dopo.",
+    "modello.previsioni(…, taratura=None) e nostri.previsioni: con la riga attiva cambia solo p_voto di chi è nelle probabili (non citati compresi); minuti, gol e assist attesi e mu restano quelli della formula di partenza. consigli._calcola_previsioni e registro_nostri.previsioni_dal_vivo passano taratura_probabili.attiva(db) (None con tabella assente o coefficienti rovinati). Con la riga attiva stato_dati.calibrazione fa i gruppi sul registro con la formula tarata.",
+    "GET /api/stato-dati: campo nuovo e facoltativo calibrazione.taratura {stato, giornate, minimo, versione, dal, prova, motivo}. Senza riga attiva previsioni e verifica identiche."
+  ]
+}
