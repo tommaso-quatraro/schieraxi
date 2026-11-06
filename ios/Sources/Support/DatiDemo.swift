@@ -582,6 +582,7 @@ private extension LegaDemo {
                 ["gruppo": "Panchina 20-49%", "n": 12, "osservato": 0.25, "previsto": 0.31, "indicativo": true],
             ]],
             "partite": ["totali": 380, "giocate": 100],
+            "registro_nostri": registroNostri(),
             "aggiornamenti": [
                 ["cosa": "listone e quotazioni", "quando": quando(30), "errori": [String]()],
                 ["cosa": "probabili formazioni", "quando": quando(2), "errori": ["Una fonte non ha risposto: usata la copia delle 08:10"]],
@@ -627,6 +628,39 @@ private extension LegaDemo {
             "soglie": ["I1": -0.03, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.72, "I3_massimo": 0.88],
             "errore_modello": 2.38, "errore_fantamedia": 2.52, "i1": -0.056, "brier": 0.128, "calibrazione": 0.034, "copertura": 0.69,
             "regge": ["I1": true, "I2": true, "I3": false], "fuori": ["I3"], "per_giornata": righe,
+        ]
+    }
+
+    /// I gol attesi nostri senza Understat (#401) come li manda il server: la 11 salvata e da misurare, la 7 persa, 8 giornate misurate
+    /// della versione 3 (dalla 2 alla 10) e la 1 della versione 2, che non conta. Lo scarto per fasce resta sopra la soglia. Numeri inventati.
+    private static func registroNostri() -> [String: Any] {
+        let righe: [[String: Any]] = (1...11).reversed().map { g -> [String: Any] in
+            var riga: [String: Any] = ["stagione": "2026-27", "giornata": g, "versione": g == 1 ? "2" : "3", "persa": NSNull(),
+                                       "giocatori": 0, "misurato": NSNull(), "voti": 0]
+            if g == 11 {
+                riga["giocatori"] = 598
+            } else if g == 7 {
+                riga["persa"] = "nessun tentativo prima della prima partita (servizio fermo o riavviato)"
+            } else {
+                let errore: Double = 0.004 + Double(g % 3) / 1000
+                let punti: Double = -0.05 * Double(g % 4)
+                let golSuVeri: Double = 0.9 + Double(g % 5) / 100
+                riga["misurato"] = "2026-10-" + (g < 10 ? "0\(g)" : "\(g)") + "T12:00:00"
+                riga["voti"] = 287
+                riga["rose"] = 20
+                riga["errore_pct"] = errore
+                riga["punti"] = punti
+                riga["scarto_gol"] = 0.012
+                riga["gol_su_veri"] = golSuVeri
+            }
+            return riga
+        }
+        return [
+            "versione": "3", "finestra": 8, "giornate": 8, "verdetto": true, "voti": 2296, "rose": 160,
+            "soglie": ["errore": 0.01, "punti": -0.3, "scarto_gol": 0.03],
+            "errore_pct": 0.005, "punti": -0.08, "scarto_gol": 0.041, "gol_su_veri": 0.93,
+            "scarto_gol_mostrati": 0.018, "gol_su_veri_mostrati": 0.99,
+            "regge": ["errore": true, "punti": true, "gol": false], "regge_tutto": false, "per_giornata": righe,
         ]
     }
 

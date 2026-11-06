@@ -615,6 +615,57 @@ struct StatoDati: Decodable {
         var id: String { gruppo }
     }
     struct Calibrazione: Decodable { let giornate: Int?; let gruppi: [GruppoCalibrazione]? }
+    /// I gol attesi «nostri» (solo Fantacalcio.it, senza Understat) contro i numeri mostrati: I4 dal vivo (#401,
+    /// `registro_nostri.riepilogo` del server). Le medie delle ultime `finestra` giornate misurate della `versione` di oggi del calcolo
+    /// (le altre non contano), con le soglie e il verdetto (`regge` e `reggeTutto`, solo con `verdetto`), e una riga per giornata.
+    /// Un server vecchio non lo manda; vale `null` se il server non riesce a leggerlo.
+    struct RegistroNostri: Decodable {
+        /// Errore del fantavoto al massimo +1% (0,01), punti almeno −0,3 a rosa e giornata, scarto per fasce al massimo 0,03 gol.
+        struct Soglie: Decodable {
+            let errore: Double?
+            let punti: Double?
+            let scartoGol: Double?
+        }
+        /// Per ogni misura: vero se regge, falso se no, nil finché non c'è il verdetto o manca il numero.
+        struct Regge: Decodable {
+            let errore: Bool?
+            let punti: Bool?
+            let gol: Bool?
+        }
+        /// Una giornata con i numeri nostri salvati, misurati (`misurato`) o persi (`persa`: il motivo in breve, scritto dal server).
+        struct Giornata: Decodable, Identifiable {
+            let stagione: String?
+            let giornata: Int?
+            let versione: String?
+            /// I giocatori con i numeri nostri salvati prima della prima partita.
+            let giocatori: Int?
+            let misurato: String?
+            /// I giocatori confrontati (con il voto): 0 se la misura non ne ha trovati.
+            let voti: Int?
+            let errorePct: Double?
+            let punti: Double?
+            let golSuVeri: Double?
+            let persa: String?
+            var id: String { "\(stagione ?? "")-\(giornata ?? -1)" }
+        }
+        let versione: String?
+        let finestra: Int?
+        let soglie: Soglie?
+        let giornate: Int?
+        /// Errore quadratico del fantavoto atteso dei nostri diviso quello dei mostrati, meno 1 (0,006 = +0,6%).
+        let errorePct: Double?
+        /// Punti veri in più della formazione migliore con i numeri nostri, a rosa e giornata (negativo: ne fa meno).
+        let punti: Double?
+        /// Scarto più grande tra gol attesi e veri a giocatore, nelle fasce di gol attesi con abbastanza casi.
+        let scartoGol: Double?
+        /// Gol attesi diviso gol veri, con i numeri nostri e con quelli mostrati.
+        let golSuVeri: Double?
+        let golSuVeriMostrati: Double?
+        let verdetto: Bool?
+        let regge: Regge?
+        let reggeTutto: Bool?
+        let perGiornata: [Giornata]?
+    }
     /// Il registro delle giornate (#344, `registro_giornate.riepilogo` del server): le medie delle ultime `finestra` giornate misurate
     /// con le soglie e il verdetto (`regge`, solo con `verdetto`), e una riga per giornata. Un server vecchio non lo manda.
     struct Registro: Decodable {
@@ -700,6 +751,7 @@ struct StatoDati: Decodable {
     let partite: Partite?
     let voti: Int?
     let foto: Int?
+    let registroNostri: RegistroNostri?
     let probabili: [Probabili]?
     let calibrazione: Calibrazione?
     let coppeFino: String?
