@@ -44,9 +44,13 @@ avvisi_avvia() {
   AVVISI_UDID="$1"
   echo 0 > "$AVVISI_FLAG"
   touch "$AVVISI_FLAG.log"   # il registro resta tra un simulatore e l'altro (iPhone, poi iPad): il riepilogo li conta tutti
-  ( xcrun simctl spawn "$AVVISI_UDID" log stream --level debug --style compact --predicate "$AVVISI_FILTRO" 2>/dev/null \
-      | avvisi_registra ) &
+  # «log stream» scrive a blocchi quando l'uscita è un tubo, e un avviso (poche righe) arriverebbe in ritardo: `script` gli dà
+  # un terminale finto e l'uscita esce riga per riga. Senza `script` si prova lo stesso, col tubo.
+  local comando=(xcrun simctl spawn "$AVVISI_UDID" log stream --level debug --style compact --predicate "$AVVISI_FILTRO")
+  if command -v script >/dev/null 2>&1; then comando=(script -q /dev/null "${comando[@]}"); fi
+  ( "${comando[@]}" 2>/dev/null | avvisi_registra ) &
   AVVISI_PID=$!
+  disown "$AVVISI_PID" 2>/dev/null   # niente «Terminated» nel registro quando si ferma
 }
 
 avvisi_ferma() {
