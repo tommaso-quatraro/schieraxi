@@ -156,6 +156,20 @@ def test_valuta_formazione_scelta_a_mano(monkeypatch):
         consigli.valuta(None, regole, rose, migliori[:10] + [999])    # uno non è in rosa
 
 
+def test_valuta_la_differenza_torna_con_i_numeri_scritti(monkeypatch):
+    """#392: sotto «60,0 punti attesi» la riga «−4,1 rispetto alla consigliata con lo stesso modulo (64,1)»: la differenza è quella
+    dei due numeri scritti (60,05 − 64,1 = −4,05 darebbe «−4,0», che con 60,0 e 64,1 non torna)."""
+    from fanta import formazione as fz
+    prev = _prev_433()
+    monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {"punteggio_atteso": 64.1, "moduli": [{"modulo": "4-3-3", "punteggio_atteso": 64.1}]})
+    monkeypatch.setattr(fz.Valutatore, "statistiche", lambda self, *a, **k: (60.05, 8.0))
+    regole = Regole(moduli=["4-3-3"], rosa={"P": 2, "D": 6, "C": 5, "A": 5})
+    rose = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], "X", 1) for i in prev.index])], "Mia")
+    r = consigli.valuta(None, regole, rose, [1, 5, 6, 7, 8, 11, 12, 13, 16, 17, 18])
+    assert (r["punteggio_atteso"], r["consigliata_stesso_modulo"], r["differenza"]) == (60.0, 64.1, -4.1)
+
+
 def test_oggi_dice_quali_squadre_hanno_miei_titolari(monkeypatch):
     """Campo nuovo e facoltativo `miei_titolari` {squadra: [giocatori]}: serve a evidenziare le partite nei risultati in diretta."""
     import sqlite3

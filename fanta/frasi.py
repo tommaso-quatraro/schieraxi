@@ -15,7 +15,10 @@ riduce a `str` semplice (la chiave si perde): per le frasi composte si usa un'al
 a loro volta `Frase`, come in `dafare.svincolato_motivo`).
 
 Parametri: testi (nomi, squadre), interi, numeri decimali (nel JSON sono testo con il punto e UNA cifra, «1.5»; nel testo italiano
-la virgola), altre `Frase`. Plurali: le chiavi `x.one` e `x.other` con il parametro `n` (uno solo = `one`).
+la virgola), altre `Frase`. Nel testo un numero negativo ha il meno tipografico («−0,4», mai «-0,4»); nel JSON resta il trattino
+(«-0.4»), che ogni linguaggio legge come numero. Una differenza tra due numeri scritti nella stessa frase si passa con
+`differenza(a, b)`: è la differenza dei due numeri come si leggono e ha sempre il segno («+0,6», «−0,6»; nel JSON «+0.6», «-0.6»).
+Plurali: le chiavi `x.one` e `x.other` con il parametro `n` (uno solo = `one`).
 Il modello italiano di ogni chiave sta in `CATALOGO`; `tests/test_frasi.py` controlla che `fanta/web/testi.js` abbia la stessa
 chiave, gli stessi segnaposto e la traduzione inglese.
 """
@@ -261,16 +264,39 @@ CATALOGO: dict[str, str] = {
 
 
 E_ELENCO = {"it": " e ", "en": " and "}
+MENO = "−"          # «−», il meno tipografico: come `segno` e `numMeno` della web e `Formato.conSegno` dell'iPhone
+
+
+class ConSegno(float):
+    """Un numero che si scrive sempre con il segno, «+0,6» o «−0,6» («0,0» senza segno se arrotondato vale zero): la regola di
+    `segno` della web. Si crea con `differenza`."""
+
+
+def differenza(a, b) -> ConSegno:
+    """`a − b` come la legge l'utente: la differenza dei due numeri ARROTONDATI come si scrivono (una cifra), con il segno.
+    Così «vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)» torna sempre: la differenza vera (72,66 − 72,14 = 0,52)
+    arrotondata da sola darebbe «0,5»."""
+    return ConSegno(round(round(float(a), 1) - round(float(b), 1), 1))
+
+
+def _segno_e_cifre(valore: numbers.Real) -> tuple[str, str]:
+    """(segno, cifre senza segno) di un numero: gli interi come sono, i decimali con UNA cifra e il punto. Segno «-» per i negativi,
+    «+» per i positivi `ConSegno`, nessuno se le cifre valgono zero («0.0», mai «-0.0»)."""
+    cifre = str(abs(int(valore))) if isinstance(valore, numbers.Integral) else f"{abs(float(valore)):.1f}"
+    if not re.search(r"[1-9]", cifre):
+        return "", cifre
+    return ("-" if valore < 0 else "+" if isinstance(valore, ConSegno) else ""), cifre
 
 
 def _it(valore, lingua: str = "it") -> str:
-    """Un parametro nel testo: i decimali con una cifra (la virgola in italiano, il punto in inglese); le frasi nella stessa lingua."""
+    """Un parametro nel testo: i decimali con una cifra (la virgola in italiano, il punto in inglese), il meno tipografico davanti ai
+    negativi; le frasi nella stessa lingua."""
     if isinstance(valore, Frase):
         return valore.in_lingua(lingua)
-    if isinstance(valore, bool) or not isinstance(valore, numbers.Real) or isinstance(valore, numbers.Integral):
+    if isinstance(valore, bool) or not isinstance(valore, numbers.Real):
         return str(valore)
-    testo = f"{float(valore):.1f}"
-    return testo.replace(".", ",") if lingua == "it" else testo
+    segno, cifre = _segno_e_cifre(valore)
+    return segno.replace("-", MENO) + (cifre.replace(".", ",") if lingua == "it" else cifre)
 
 
 def _modello(chiave: str, param: dict, lingua: str) -> str:
@@ -315,8 +341,8 @@ def _json(valore):
         return valore
     if isinstance(valore, numbers.Integral):
         return int(valore)
-    if isinstance(valore, numbers.Real):
-        return f"{float(valore):.1f}"                # decimali: testo con il punto e una cifra («1.5»), uguale in ogni lingua inglese
+    if isinstance(valore, numbers.Real):             # decimali: testo con il punto e una cifra («1.5», «-0.4»; «+0.6» per `ConSegno`)
+        return "".join(_segno_e_cifre(valore))
     return str(valore)
 
 
@@ -385,7 +411,9 @@ def da_json(valore) -> Frase | None:
                 return da_json(v) or v
             if isinstance(v, list):
                 return [pezzo(x) for x in v]
-            return float(v) if isinstance(v, str) and re.fullmatch(r"-?\d+\.\d", v) else v     # un decimale torna decimale (virgola in italiano)
+            if isinstance(v, str) and re.fullmatch(r"[+-]?\d+\.\d", v):        # un decimale torna decimale (virgola in italiano)
+                return ConSegno(v) if v.startswith("+") else float(v)          # «+0.6» è una differenza: resta con il segno
+            return v
         param = {k: pezzo(v) for k, v in (valore.get("param") or {}).items()}
         return Frase(valore["chiave"], param)
     except (KeyError, IndexError, ValueError, TypeError):

@@ -671,7 +671,8 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
             "punteggio_atteso": round(media, 1), **fascia,
             "brutta_giornata": fascia["intervallo"]["basso"], "giornata_eccezionale": fascia["intervallo"]["alto"],
             "panchina": [g.id for g in panchina],
-            "consigliata_stesso_modulo": stesso, "differenza": round(media - stesso, 1) if stesso is not None else None,
+            # la differenza dei due numeri scritti (questo e quello della consigliata), così «60,0 … −4,1 (64,1)» torna (#392)
+            "consigliata_stesso_modulo": stesso, "differenza": float(frasi.differenza(media, stesso)) if stesso is not None else None,
             "consigliata": consigliata["punteggio_atteso"]}
 
 
@@ -863,14 +864,15 @@ def _in_formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squa
         entrata = F("confronto.senza_sostituzioni", altro=altro.nome, posto=posto_frase(posto_altro), titolare=titolare.nome)
     else:
         entrata = F("confronto.entra_se", titolare=titolare.nome, p=round((1 - titolare.p) * 100), altro=altro.nome, posto=posto_frase(posto_altro))
+    scritta = frasi.differenza(invertita, attuale)          # tra parentesi: la differenza dei due numeri scritti, «72,1 (−0,6)» (#392)
     if diff > 0.04:
-        esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=-diff)
+        esito = F("confronto.esito_meglio", titolare=titolare.nome, attuale=attuale, invertita=invertita, d=scritta)
     elif diff < -0.04 and titolare.p >= fz.COMPAGNO_ALMENO and altro.p < fz.IMPROBABILE_SOTTO:
         # invertirli varrebbe di più, ma l'altro quasi certamente non gioca: è la regola dei titolari che giocano (#329, #341)
         return scrivi(F("confronto.titolare_che_gioca", altro=altro.nome, p=round(altro.p * 100), titolare=titolare.nome,
                         pt=round(titolare.p * 100), d=-diff, entrata=entrata))
     elif diff < -0.04:
-        esito = F("confronto.esito_peggio", invertita=invertita, attuale=attuale, d=-diff, modulo=m["modulo"])
+        esito = F("confronto.esito_peggio", invertita=invertita, attuale=attuale, d=scritta, modulo=m["modulo"])
     else:
         esito = F("confronto.esito_pari", attuale=attuale, invertita=invertita)
     return scrivi(F("confronto.principale", titolare=titolare.nome, entrata=entrata, esito=esito, mu_t=titolare.mu, altro=altro.nome, mu_a=altro.mu))
