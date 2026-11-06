@@ -39,7 +39,12 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     non salvata quando inizia la prima partita = «persa»: riga con il motivo in breve (`persa`) e un avviso solo. Tabelle
     `registro_giocatori` e `registro_giornate` dell'archivio: NON si ricostruiscono. Gira nel thread del pianificatore
     (`pianificatore._registro`); `FANTA_REGISTRO_GIORNATE=0` lo spegne. Campo `registro` di `GET /api/stato-dati`.
-    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le due tabelle in `dati/registro-giornate.json` per la
+    Gol attesi «nostri» dal vivo (I4, Fase D del piano 2026-11-06-gol-attesi-nostri): `registro_nostri.py`, passi a sé del giro
+    del registro, sempre DOPO quelli dei mostrati. Salva i numeri `nostri.previsioni` degli stessi giocatori con `nostri.VERSIONE`,
+    a giornata finita li misura contro i mostrati (errore, punti sulle rose di I3, gol attesi per fasce) e avvisa il proprietario
+    quando 8 giornate della stessa versione reggono; giornata dei nostri non salvata = «persa». Tabelle `registro_nostri` e
+    `registro_i4` (tabelle a sé: gli archivi che ci sono le ricevono senza migrazione). Campo `registro_nostri` di `GET /api/stato-dati`.
+    Copia (#343): `registro_copia.py` (solo libreria standard) esporta le tabelle `registro_*` in `dati/registro-giornate.json` per la
     copia notturna (`script/server/backup-dati.sh`) e le rimette con `python -m fanta.registro_copia importa` (`docs/RIPRISTINO-SERVER.md`).
   - Partite rinviate: `rinvii.py` (partita rinviata = non giocata e fuori dal turno di `turno.py`, anticipi esclusi: `turno.della_giornata`; anticipi = da 36 ore a 7 giorni prima del gruppo principale, al massimo 2, non fissano la scadenza: `turno.conta_per_scadenza`; regola della lega
     `partite_rinviate` aspetta/senza_voto/voto_ufficio, `voto_ufficio_rinviate`, eccezioni per giornata `rinvii_giornate`).
@@ -140,7 +145,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
 - Istantanea di tutte le rotte: `docs/openapi.json`, controllata da `tests/test_contratto_api.py`; si rifà con
   `python script/ci/aggiorna_openapi.py` quando l'API cambia apposta (poi si controllano web e iPhone, `docs/METODO.md`).
 - Ogni richiesta diversa da GET e HEAD deve avere l'intestazione `X-Fanta: 1`, altrimenti 403. Corpo troppo grande: 413.
-- `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate) e `consiglio`
+- `GET /api/stato-dati` (solo amministratore) ha i campi facoltativi `registro` (I1-I3 del registro delle giornate), `registro_nostri`
+  (I4 dal vivo: numeri «nostri» contro mostrati; `null` se non si legge) e `consiglio`
   (C1-C4 del consiglio, totali dei Diari): i client che non li conoscono li ignorano. Forma in `docs/API.md`.
 - `GET /api/diario`: ogni voce ha il campo facoltativo `consiglio` (C1-C4 di quella giornata) e `istantanea` ha `misure` (C3-C4);
   forma in `docs/API.md`, «Indicatori del consiglio».
