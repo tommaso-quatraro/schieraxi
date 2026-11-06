@@ -549,7 +549,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .pallino-stato.rosso { --c: var(--rosso); } .pallino-stato.arancio { --c: var(--arancio); } .pallino-stato.giallo { --c: var(--giallo); }
 .stat-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .stat-fila.quattro { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.stat-fila > div { text-align: center; padding: 10px 6px; border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); }
+.stat-fila > div { text-align: left; padding: 8px 0 2px; border-top: 1px solid var(--filo); }      /* cifre senza riquadro, sopra un filo (spec §8.6) */
 .stat-fila b { display: block; font-size: var(--t-card); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .stat-fila span { font-size: var(--t-eti); color: var(--testo-2); }
 
@@ -570,7 +570,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 
 /* ---------------------------------------------------------------- scheda giocatore e confronto */
 .statistiche { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.statistiche div { background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); border-radius: 14px; padding: 9px 6px; text-align: center; }
+.statistiche div { padding: 8px 0 2px; border-top: 1px solid var(--filo); text-align: left; }      /* statistiche: una griglia di numeri senza riquadri (spec §9) */
 .statistiche b { display: block; font-size: var(--t-card); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .statistiche span { font-size: var(--t-eti); color: var(--testo-2); }
 .intestazione-scheda { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 14px; }
@@ -599,7 +599,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .perche h3 { margin: 0 0 8px; font-size: var(--t-card); }
 .perche-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .perche-voce { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; font-size: var(--t-corpo); }
-.perche-effetto { text-align: center; padding: 3px 0; border-radius: var(--r-pill); font-size: var(--t-sec); font-variant-numeric: tabular-nums; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 45%, transparent); }
+.perche-effetto { text-align: right; padding: 0; font-family: var(--font-numeri); font-size: var(--t-corpo); font-weight: 650; font-variant-numeric: tabular-nums; }   /* l'effetto è un numero nel suo colore, non una pillola */
 .perche-effetto.su { color: var(--verde); } .perche-effetto.giu { color: var(--rosso); } .perche-effetto.dubbio { color: var(--arancio); }      /* non «avviso»: è la classe del messaggio a comparsa (posizione fissa) */
 .perche-definizione { margin-top: 10px; }
 [data-perche] { cursor: pointer; }
@@ -1220,7 +1220,7 @@ body.senza-accesso .salta { display: none; }
 .qp-nota { margin-top: 8px; }
 .diario-conf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0; }
 .diario-conf.una { grid-template-columns: minmax(0, 1fr); }
-.diario-col { min-width: 0; padding: 10px; border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 45%, transparent); border: 1px solid var(--bordo); }
+.diario-col { min-width: 0; padding: 8px 0 0; border-top: 1px solid var(--filo); }      /* le due formazioni affiancate: colonne, non riquadri */
 .diario-col h3 { margin: 0 0 4px; font-size: var(--t-sec); }
 .diario-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-size: var(--t-sec); }
 .diario-lista li { overflow-wrap: anywhere; padding: 2px 6px; border-radius: 8px; border-left: 3px solid transparent; }
@@ -1339,7 +1339,7 @@ body { container: pagina / inline-size; }
   .vs-duello { justify-self: center; }
   .stat-fila, .stat-fila.quattro, .statistiche { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .perche-voce { grid-template-columns: 1fr; gap: 2px; }
-  .perche-effetto { justify-self: start; padding: 3px 12px; }
+  .perche-effetto { justify-self: start; }
   .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .legenda-campo { margin: 0 4px; padding: 10px; }
   .legenda-campo li { grid-template-columns: 1fr; gap: 2px; }

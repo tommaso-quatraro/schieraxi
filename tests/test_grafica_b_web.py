@@ -341,6 +341,19 @@ def test_tra_una_sezione_e_l_altra_lo_spazio():
     assert re.search(r"@media \(min-width: 900px\) \{[^@]*\n  \.carta \{ margin-bottom: 32px; \}", CSS)
 
 
+def test_dentro_le_sezioni_numeri_e_colonne_senza_riquadri():
+    """Spec §8.6 e §9 (scheda): i numeri stanno senza scatola, separati da un filo. Le cifre affiancate della scheda (probabilità,
+    statistiche), le due colonne del Diario e l'effetto di ogni motivo del «Perché questo numero» erano riquadri o pillole dentro la
+    carta; tolta la carta restavano le sole scatole della pagina."""
+    for selettore in (".stat-fila > div", ".statistiche div", ".diario-col", ".perche-effetto"):
+        corpo = _corpo(selettore)
+        scatola = [f"{n}: {v}" for n, v in _proprieta(corpo, "background", "border", "border-radius", "box-shadow")
+                   if v not in ("none", "0", "transparent")]
+        assert not scatola, (selettore, scatola)
+    for selettore in (".stat-fila > div", ".statistiche div", ".diario-col"):
+        assert "border-top: 1px solid var(--filo)" in _corpo(selettore), selettore
+
+
 def test_la_proposta_di_scambio_resta_un_blocco_con_il_filo():
     """Spec §8.3: l'unico posto dove un riquadro raggruppa davvero qualcosa che si muove insieme (chi dai, chi ricevi, il verdetto)."""
     regola = re.search(r"\n\.carta\.scambio \{([^}]*)\}", CSS).group(1)
