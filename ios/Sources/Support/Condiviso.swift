@@ -134,11 +134,10 @@ struct RiassuntoOggi: Codable, Equatable {
     var nomeGiornata: NomeGiornata? { giornata.map { NomeGiornata(serieA: $0, lega: giornataLega) } }
     /// «Giornata 8 · 11ª di Serie A» (dove c'è spazio), o «Nessuna giornata».
     var etichettaGiornata: String { nomeGiornata?.intero ?? "Nessuna giornata" }
-    /// Le forme di una riga, dalla più lunga: «Giornata 8 · 11ª di Serie A», «Giornata 8», «G8».
-    var formeGiornata: [String] { nomeGiornata?.forme ?? ["Nessuna giornata"] }
+    /// Le forme di una riga, dalla più lunga: «Giornata 8 · 11ª di Serie A», «Giornata 8»; mai «G8» (`ParoleWidget.formeGiornata`, #299).
+    var formeGiornata: [String] { nomeGiornata.map { ParoleWidget.formeGiornata($0) } ?? ["Nessuna giornata"] }
     /// Per VoiceOver, sempre intera: «Giornata 8, 11ª di Serie A».
     var voceGiornata: String { nomeGiornata?.voce ?? "Nessuna giornata" }
-    var siglaGiornata: String { nomeGiornata?.sigla ?? "G–" }
 
     static let esempio = RiassuntoOggi(giornata: 9, inizio: Date().addingTimeInterval(3 * 3600 + 25 * 60), modulo: "3-4-3", punti: 64.5,
                                        daControllare: 2, probabili: true, scaricatoIl: Date())
@@ -227,11 +226,8 @@ extension RiassuntoOggi {
 
     /// «Giornata 7 · 10ª di Serie A» della giornata appena chiusa, o «Giornata appena finita».
     var etichettaGiornataChiusa: String { nomeGiornataChiusa?.intero ?? "Giornata appena finita" }
-    var formeGiornataChiusa: [String] { nomeGiornataChiusa?.forme ?? ["Giornata appena finita"] }
+    var formeGiornataChiusa: [String] { nomeGiornataChiusa.map { ParoleWidget.formeGiornata($0) } ?? ["Giornata appena finita"] }
     var voceGiornataChiusa: String { nomeGiornataChiusa?.voce ?? "Giornata appena finita" }
-
-    /// «G7» o «G10» della giornata appena chiusa.
-    var siglaGiornataChiusa: String { nomeGiornataChiusa?.sigla ?? "G–" }
 
     /// true se i widget mostrano la fase (punti fatti) invece del conto alla rovescia. Senza i numeri (server senza
     /// `in_corso`/`riepilogo`) restano come prima, ma comunque senza «Da controllare».

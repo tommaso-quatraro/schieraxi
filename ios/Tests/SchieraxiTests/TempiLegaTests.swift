@@ -119,7 +119,7 @@ final class OggiSenzaGiornataTests: XCTestCase {
         let r = RiassuntoOggi(oggi: o)
         XCTAssertNil(r.giornata)
         XCTAssertEqual(r.etichettaGiornata, "Nessuna giornata")
-        XCTAssertEqual(r.siglaGiornata, "G–")
+        XCTAssertEqual(ParoleWidget.giornataNelCerchio(r.nomeGiornata), "Giornata –")
         // salvato e riletto (come fa il file condiviso)
         let dati = try JSONEncoder().encode(r)
         XCTAssertEqual(try JSONDecoder().decode(RiassuntoOggi.self, from: dati), r)

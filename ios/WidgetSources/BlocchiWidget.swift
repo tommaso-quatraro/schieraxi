@@ -104,6 +104,8 @@ struct GraficoPunti: View {
                     if conEtichette {
                         Text(Self.scarto(g).map { Formato.conSegno($0) } ?? "—")
                             .monospacedDigit().fontWidget(10, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
+                        // le colonne del grafico sono colonne strette sotto il titolo «Attesi e fatti»: «G7» come le colonne del
+                        // calendario (`docs/COERENZA-WEB-IPHONE.md`, «Colonna stretta»); VoiceOver legge la giornata intera
                         Text(g.sigla).fontWidget(9).foregroundStyle(TintaWidget.testo2)
                     }
                 }

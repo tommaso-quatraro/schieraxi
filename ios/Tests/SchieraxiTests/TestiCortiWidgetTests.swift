@@ -130,20 +130,20 @@ struct TestiCortiWidgetTests {
 
     // MARK: tabella e righe del widget «Punti attesi e fatti»
 
-    @Test("Riga della tabella: prima via «10ª di Serie A», poi «G7» al posto di «Giornata 7», poi via la fascia, poi solo i fatti")
+    @Test("Riga della tabella: prima via «10ª di Serie A», poi via la fascia, poi solo i fatti; sempre «Giornata 7», mai «G7» (#299)")
     func rigaTabella() {
         let g = PuntiGiornata(giornata: 10, giornataLega: 7, attesi: 66.0, fatti: 63.5, intervallo: IntervalloWidget(basso: 55, alto: 77))
-        #expect(PuntiGiornata.FormaRiga.allCases == [.completa, .cortaConFascia, .siglaConFascia, .sigla, .soloFatti])
+        #expect(PuntiGiornata.FormaRiga.allCases == [.completa, .cortaConFascia, .corta, .soloFatti])
         let completa = g.riga(.completa)
         #expect(completa.titolo == "Giornata 7 · 10ª di Serie A")
         #expect(completa.fascia == "dentro la fascia")
         #expect(completa.punti == "63,5 su 66,0")
         #expect(g.riga(.cortaConFascia).titolo == "Giornata 7")
         #expect(g.riga(.cortaConFascia).fascia == "dentro la fascia")
-        #expect(g.riga(.siglaConFascia).titolo == "G7")
-        #expect(g.riga(.siglaConFascia).fascia == "dentro la fascia")
-        #expect(g.riga(.sigla).fascia == nil)
-        #expect(g.riga(.sigla).punti == "63,5 su 66,0")
+        #expect(g.riga(.corta).titolo == "Giornata 7")
+        #expect(g.riga(.corta).fascia == nil)
+        #expect(g.riga(.corta).punti == "63,5 su 66,0")
+        #expect(g.riga(.soloFatti).titolo == "Giornata 7")
         #expect(g.riga(.soloFatti).punti == "63,5")
     }
 
@@ -152,15 +152,16 @@ struct TestiCortiWidgetTests {
         let g = PuntiGiornata(giornata: 38, stagione: "2025-26", attesi: 70, fatti: 71)
         #expect(g.riga(.completa).titolo == "38ª giornata di Serie A · 2025-26")
         #expect(g.riga(.cortaConFascia).titolo == "38ª di Serie A · 2025-26")
-        #expect(g.riga(.sigla).titolo == "G38 · 2025-26")
-        #expect(g.formeTitolo == ["G38 · 2025-26: 71,0 punti", "G38 · 2025-26: 71,0"])
+        #expect(g.riga(.corta).titolo == "38ª di Serie A · 2025-26")
+        #expect(g.formeTitolo == ["38ª giornata di Serie A: 71,0 punti", "38ª di Serie A: 71,0 punti", "38ª di Serie A: 71,0"])
+        #expect(g.formeSottoTitolo.first?.hasPrefix("2025-26 · ") == true, "la stagione sulla seconda riga")
     }
 
     @Test("Rettangolo e riga in linea del widget «Punti»")
     func formeRettangoloERiga() {
         let g = PuntiGiornata(giornata: 10, giornataLega: 7, attesi: 66.0, fatti: 63.5)
-        #expect(g.formeTitolo == ["Giornata 7 · 10ª di Serie A: 63,5 punti", "Giornata 7: 63,5 punti", "G7: 63,5 punti", "G7: 63,5"])
-        #expect(g.formeInLinea == ["G7 63,5 fatti, 66,0 attesi", "G7 63,5 su 66,0", "G7 63,5 fatti"])
+        #expect(g.formeTitolo == ["Giornata 7 · 10ª di Serie A: 63,5 punti", "Giornata 7: 63,5 punti", "Giornata 7: 63,5"])
+        #expect(g.formeInLinea == ["Giornata 7: 63,5 fatti, 66,0 attesi", "Giornata 7: 63,5 su 66,0", "Giornata 7: 63,5 fatti", "Giornata 7: 63,5"])
     }
 
     @Test("Scambio in linea: se i nomi non entrano resta il guadagno")
@@ -226,9 +227,8 @@ struct TestiCortiWidgetTests {
         let r = try riassunto("in_corso")
         #expect(r.titoloFase == "Chiusa")
         #expect(r.etichettaTestata == "Giornata 8 · 11ª di Serie A")
-        #expect(r.nomeTestata?.formeCorte == ["Giornata 8", "G8"], "nel widget piccolo solo «Giornata 8»")
-        #expect(r.testaRettangoloFase == "G8 · Chiusa")
-        #expect(r.rigaInLineaFase == "G8: 41,5 punti fatti finora")
+        #expect(r.testaRettangoloFase == "Giornata 8 · Chiusa")
+        #expect(r.rigaInLineaFase == "Giornata 8: 41,5 punti fatti finora")
     }
 
     @Test("Dopo la scadenza la frase è quella della web (`oggi.chiusa_dettaglio`), senza ripetere la giornata, e dice dove sono i punti")
@@ -250,11 +250,11 @@ struct TestiCortiWidgetTests {
         let attesa = "Giornata 8 · 11ª di Serie A: finita"
         #expect(r.titoloFase == attesa)
         if let web = try TestiWeb().italianoDopo299("oggi.giornata_finita", "Giornata 8 · 11ª di Serie A") { #expect(web == attesa) }
-        #expect(r.formeTitoloFase == [attesa, "Giornata 8: finita", "G8: finita"])
+        #expect(r.formeTitoloFase == [attesa, "Giornata 8: finita"])
         #expect(r.voceTitoloFase == "Giornata 8, 11ª di Serie A: finita")
-        #expect(r.testaRettangoloFase == "G8 finita")
-        #expect(r.rigaInLineaFase == "G8: 69,5 punti fatti")
-        #expect(r.formeSottotitoloRettangolo == ["Prossima: Giornata 9 · 12ª di Serie A", "Prossima: Giornata 9", "Prossima: G9"])
+        #expect(r.testaRettangoloFase == "Giornata 8 finita")
+        #expect(r.rigaInLineaFase == "Giornata 8: 69,5 punti fatti")
+        #expect(r.formeSottotitoloRettangolo == ["Prossima: Giornata 9 · 12ª di Serie A", "Prossima: Giornata 9"])
         #expect(r.voceSottotitoloRettangolo == "Prossima: Giornata 9, 12ª di Serie A")
         #expect(r.fraseFase(adesso: Date()) == "Si ricomincia con la prossima giornata.")
     }
@@ -266,7 +266,7 @@ struct TestiCortiWidgetTests {
         #expect(r.fraseFase(adesso: Date()) == nil)
         #expect(r.etichettaTestata == "Giornata 8 · 11ª di Serie A")
         #expect(r.sottotitoloRettangolo == "Giornata 8 · 11ª di Serie A")
-        #expect(r.formeGiornata == ["Giornata 8 · 11ª di Serie A", "Giornata 8", "G8"])
+        #expect(r.formeGiornata == ["Giornata 8 · 11ª di Serie A", "Giornata 8"])
         #expect(r.voceGiornata == "Giornata 8, 11ª di Serie A")
     }
 

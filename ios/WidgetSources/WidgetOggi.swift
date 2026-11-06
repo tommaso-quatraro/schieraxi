@@ -93,11 +93,11 @@ struct VistaWidget: View {
     }
 
     /// «Giornata 8 · 11ª di Serie A» (in corso) o «Giornata 7 · 10ª di Serie A» (appena finita), con il simbolo della fase; se non
-    /// entra «Giornata 8». Nel widget piccolo (`corta`) solo «Giornata 8» (#299).
+    /// entra «Giornata 8», mai «G8». Nel widget piccolo (`corta`) solo «Giornata 8» (#299).
     private func titoloFase(_ r: RiassuntoOggi, corta: Bool = false) -> some View {
         let nome = r.inCorso ? r.nomeGiornata : r.nomeGiornataChiusa
         let ripiego = r.inCorso ? r.etichettaGiornata : r.etichettaGiornataChiusa
-        return GiornataInRiga(forme: nome.map { corta ? $0.formeCorte : $0.forme } ?? [ripiego], voce: nome?.voce ?? ripiego,
+        return GiornataInRiga(forme: nome.map { corta ? [$0.corto] : ParoleWidget.formeGiornata($0) } ?? [ripiego], voce: nome?.voce ?? ripiego,
                               simbolo: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
             .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
     }
@@ -193,7 +193,10 @@ struct VistaWidget: View {
 
     private func faseCircolare(_ r: RiassuntoOggi) -> some View {
         CerchioWidget {
-            Text(r.inCorso ? r.siglaGiornata : r.siglaGiornataChiusa).font(.caption2)
+            // «Giornata 8», rimpicciolita se serve, mai «G8» (#299)
+            Text(ParoleWidget.giornataNelCerchio(r.inCorso ? r.nomeGiornata : r.nomeGiornataChiusa))
+                .font(.caption2).lineLimit(1).minimumScaleFactor(0.5)
+                .accessibilityLabel(r.inCorso ? r.voceGiornata : r.voceGiornataChiusa)
             Text(r.puntiFattiTesto).font(.caption.bold()).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1).widgetAccentable()
             Text("fatti").font(.caption2)
         }
@@ -201,7 +204,7 @@ struct VistaWidget: View {
 
     private func faseRettangolare(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(r.testaRettangoloFase).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            Text(r.testaRettangoloFase).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.7)
             Text("\(r.puntiFattiTesto) punti fatti").font(.headline).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).widgetAccentable()
             if r.finita, r.inizio != nil {
                 prossimaBreve(r).font(.caption2)
@@ -213,7 +216,8 @@ struct VistaWidget: View {
     }
 
     private func faseRiga(_ r: RiassuntoOggi) -> some View {
-        Label(r.rigaInLineaFase, systemImage: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
+        // si accorcia di parole intere, mai la giornata: «Giornata 8: 41,5 punti fatti finora» → … → «Giornata 8: 41,5»
+        RigaInLinea(r.formeRigaInLineaFase, icona: r.inCorso ? "dot.radiowaves.left.and.right" : "flag.checkered")
     }
 
     // MARK: pezzi comuni
@@ -247,7 +251,7 @@ struct VistaWidget: View {
     private func piccolo(_ r: RiassuntoOggi) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             // nel widget piccolo solo «Giornata 8»; VoiceOver legge anche «11ª di Serie A» (#299)
-            GiornataInRiga(forme: r.nomeGiornata?.formeCorte ?? r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")
+            GiornataInRiga(forme: r.nomeGiornata.map { [$0.corto] } ?? r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")
                 .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.8)).minimumScaleFactor(0.7)
             conto(r)
                 .font(.system(.title, design: .rounded).weight(.bold))
@@ -335,7 +339,8 @@ struct VistaWidget: View {
 
     private func circolare(_ r: RiassuntoOggi) -> some View {
         CerchioWidget {
-            Text(r.siglaGiornata).font(.caption2).accessibilityLabel(r.voceGiornata)
+            Text(ParoleWidget.giornataNelCerchio(r.nomeGiornata)).font(.caption2).lineLimit(1).minimumScaleFactor(0.5)
+                .accessibilityLabel(r.voceGiornata)
             Text(r.modulo ?? "—").font(.caption.bold()).minimumScaleFactor(0.6).lineLimit(1)
             Text(puntiTesto(r)).font(.caption2).monospacedDigit()
         }

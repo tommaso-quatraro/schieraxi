@@ -40,8 +40,9 @@ diagnostica sta nell'app (Impostazioni > Avanzate > Diagnostica widget).
 Un widget ha misure fisse: con il testo grande, su iPad o sulla schermata di blocco un testo può non entrare. Mai tagliarlo a metà
 parola («4 da contr…»): ogni testo ha più forme, dalla più lunga alla più corta, scritte in `ParoleWidget` (`Sources/Support/WidgetRiassunto.swift`,
 provate in `TestiCortiWidgetTests`), e la vista mostra la prima che entra (`TestoCheEntra`, `PrimaCheEntra`, cioè `ViewThatFits`).
-Esempi: «4 da controllare» → «4»; «In dubbio · gioca 70%» → prima senza volti, poi «gioca 70%»; «Giornata 7» → «G7»; tabella dei punti:
-«G7» al posto di «Giornata 7», poi via la fascia; elenchi di nomi: «Sorvani e altri 2». VoiceOver legge sempre la forma intera.
+Esempi: «4 da controllare» → «4»; «In dubbio · gioca 70%» → prima senza volti, poi «gioca 70%»; «Giornata 7 · 10ª di Serie A» →
+«Giornata 7»; tabella dei punti: prima via «10ª di Serie A», poi via la fascia; elenchi di nomi: «Sorvani e altri 2». VoiceOver
+legge sempre la forma intera.
 Lo stesso vale per i blocchi interi (#249). Il Cruscotto grande è alto da circa 270 punti (iPad mini, iPhone SE) a 350 (iPhone
 grandi) e tiene la prima prova che entra (`DisposizioneWidget.proveCruscotto`, provate in `DisposizioneWidgetTests`): prima della
 scadenza va via la prossima partita, poi la forma compatta (senza fascia e senza la squadra dello scambio, «Scambio +2,4»), poi il
@@ -57,8 +58,17 @@ Una partita senza punteggio si scrive come le partite del turno dell'app e della
 trattino tra le sigle; dove non entra nemmeno «NAP vs ATA · 18:00» (o «… · domani 12:30») restano le sole squadre «NAP vs ATA».
 Con il punteggio il tabellone «INT 2–1 ROM 63'» (`PartitaLive.formeRiga`, `traLeSigle`, #391); VoiceOver legge il punteggio solo
 se ci sono tutti e due i gol.
-Widget Formazione (tutte le misure): la giornata è «Giornata 8 · 11ª di Serie A» o «Giornata 8», mai «G8» né «G11» (#299; la
-sigla resta solo dove si parla del calendario). Una funzione sola, `ParoleWidget.giornataFormazione`. Grande: accanto al modulo i
+Giornata, in tutti i widget (#299): «Giornata 8 · 11ª di Serie A» o «Giornata 8», mai «G8» né «G11». Una funzione sola,
+`ParoleWidget.formeGiornata` (e `giornataNelCerchio` per i cerchi della schermata di blocco, dove «Giornata 8» si rimpicciolisce).
+Testate con titolo (`IntestazioneWidget`, Attesi e fatti): la prima disposizione di `ParoleWidget.testata` che entra intera, il
+titolo con la giornata intera, poi con «Giornata 8», poi il solo simbolo: si perde il titolo, mai la giornata. Righe delle fasi
+(Prossima giornata, Da controllare): «Giornata 8 · Chiusa», «Giornata 8: finita», e in linea «Giornata 8: 41,5 punti fatti finora»
+che perde parole fino a «Giornata 8: 41,5». Attesi e fatti di una stagione passata (agosto, «38ª di Serie A»): nel rettangolo
+la stagione sta sulla riga sotto («2025-26 · attesi 70,0 · +1,0»); la riga in linea la perde per ultima («38ª di Serie A: 71,0»),
+VoiceOver la dice sempre. Le ultime forme hanno un tetto di lunghezza provato dai test (`GiornataInteraWidgetTests`); senza il
+numero della lega le testate piccole si rimpiccioliscono invece di tagliarsi. La sigla resta solo nelle colonne strette sotto un titolo, come le colonne del
+calendario: le colonne del grafico «Attesi e fatti» («G4 G5 G6 G7»), con VoiceOver che legge la giornata intera.
+Widget Formazione: grande, accanto al modulo i
 punti attesi e sotto la fascia con la giornata (`TestataFormazioneGrande`); se «Giornata 8» non entra accanto alla fascia scende
 sulla riga sotto (`postiGiornata`). Piccolo: il titolo con la giornata sulla riga sotto; se in altezza non c'è posto, il simbolo
 con la giornata accanto (si perde il titolo, non la giornata). Rettangolo della schermata di blocco: «Giornata 8», al più

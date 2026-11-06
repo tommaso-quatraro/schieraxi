@@ -69,7 +69,8 @@ struct VistaPunti: View {
         case .systemLarge: grande(w, g)
         case .accessoryCircular:
             CerchioWidget {
-                Text(g.sigla).fontWidget(10)
+                // «Giornata 7», rimpicciolita se serve, mai «G7» (#299)
+                Text(ParoleWidget.giornataNelCerchio(g.nome)).fontWidget(10).lineLimit(1).minimumScaleFactor(0.5)
                 Text(scartoTesto(g)).font(.headline.bold()).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
                 // con il testo grande si rimpicciolisce invece di uscire dal cerchio
                 Text("sul previsto").fontWidget(8).lineLimit(1).minimumScaleFactor(0.6)
@@ -77,10 +78,11 @@ struct VistaPunti: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(g.descrizione)
         case .accessoryRectangular:
-            // «Giornata 7: 63,5 punti» → «G7: 63,5 punti» → «G7: 63,5»; un'altra stagione sempre con la stagione («G38 · 2025-26»)
+            // «Giornata 7: 63,5 punti» → «Giornata 7: 63,5»; mai «G7» (#299). Un'altra stagione: la stagione sulla riga sotto
+            // («2025-26 · attesi 70,0 · +1,0»), che nel titolo non entrava; rimpicciolito solo come ultima scelta
             VStack(alignment: .leading, spacing: 2) {
-                TestoCheEntra(g.formeTitolo).font(.headline)
-                Text("attesi \(Formato.punti(g.attesi)) · \(scartoTesto(g))").font(.caption).monospacedDigit()
+                TestoCheEntra(g.formeTitolo).font(.headline).minimumScaleFactor(0.8)
+                TestoCheEntra(g.formeSottoTitolo).font(.caption).monospacedDigit().minimumScaleFactor(0.8)
                 GraficoPunti(giornate: w.giornateGiocate, altezza: 14, conEtichette: false)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -97,9 +99,9 @@ struct VistaPunti: View {
         }
     }
 
-    /// «Attesi e fatti» e a destra la giornata nella forma corta che entra («Giornata 7», poi «G7»; #299). Si tiene la prima
-    /// disposizione di `formeTestata` che entra INTERA (#352): se con il testo grande il titolo e «G7» non stanno insieme (widget
-    /// piccolo), resta il solo simbolo e la giornata; mai una scritta tagliata. VoiceOver: la legge `voceWidget` (vedi sotto).
+    /// «Attesi e fatti» e a destra «Giornata 7» (#299, mai «G7»). Si tiene la prima disposizione di `formeTestata` che entra
+    /// INTERA (#352): se con il testo grande il titolo e la giornata non stanno insieme (widget piccolo), resta il solo simbolo e la
+    /// giornata; mai una scritta tagliata. VoiceOver: la legge `voceWidget` (vedi sotto).
     private func intestazione(_ g: PuntiGiornata) -> some View {
         let forme = g.formeTestata
         return PrimaCheEntra(forme.count) { i in
@@ -113,7 +115,8 @@ struct VistaPunti: View {
                 }
                 .font(.caption.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
                 Spacer(minLength: 0)
-                Text(forme[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                // senza il numero della lega «38ª di Serie A» con il testo grande è al limite: si rimpicciolisce, non si taglia
+                Text(forme[i].giornata).font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1).minimumScaleFactor(0.7)
             }
         }
     }
@@ -216,8 +219,8 @@ struct VistaPunti: View {
         }
     }
 
-    /// La tabella delle ultime giornate, con la stessa forma per tutte le righe: prima «G7» al posto di «Giornata 7», poi via la
-    /// fascia, poi solo i fatti (mai «dentro la fa…» né «63,5 su 6…»); VoiceOver legge ogni riga intera.
+    /// La tabella delle ultime giornate, con la stessa forma per tutte le righe: prima via «10ª di Serie A», poi via la fascia, poi
+    /// solo i fatti (mai «dentro la fa…» né «63,5 su 6…», mai «G7»); VoiceOver legge ogni riga intera.
     private func tabella(_ giornate: [PuntiGiornata]) -> some View {
         PrimaCheEntra(PuntiGiornata.FormaRiga.allCases.count) { i in
             VStack(spacing: 3) {

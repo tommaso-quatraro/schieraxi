@@ -103,12 +103,12 @@ struct VistaFormazione: View {
     }
 
     /// La testata dei widget piccoli della Formazione (#299, #391): la giornata intera, «Giornata 8», mai «G8» (stesse forme del
-    /// grande, `ParoleWidget.giornataFormazione`). Accanto al titolo non entra: prima il titolo con la giornata sulla riga sotto; se
+    /// grande, `ParoleWidget.formeGiornata`). Accanto al titolo non entra: prima il titolo con la giornata sulla riga sotto; se
     /// in altezza non c'è posto (testo grande, iPad), il solo simbolo con la giornata accanto: si perde il titolo, non la giornata.
     /// VoiceOver legge sempre la giornata intera («Giornata 8, 11ª di Serie A»). `corpo`: il resto del widget, sotto la testata.
     private func conTestataPiccola<Corpo: View>(titolo: String, giornata: NomeGiornata?, spazio: CGFloat,
                                                 @ViewBuilder corpo: @escaping () -> Corpo) -> some View {
-        let forme = ParoleWidget.giornataFormazione(giornata)
+        let forme = ParoleWidget.formeGiornata(giornata)
         let voceGiornata = giornata?.voce ?? forme.first ?? ""
         return PrimaCheEntra(forme.isEmpty ? 1 : 2, in: .vertical) { i in
             VStack(alignment: .leading, spacing: spazio) {
@@ -302,7 +302,7 @@ struct VistaFormazione: View {
                 EtichettaDaControllare(n: w.daControllare.count).font(.caption2)
             } else if let g = w.nomeGiornata {
                 // la stessa giornata del grande e del piccolo: «Giornata 8», mai «G8» (#299); se proprio non entra si rimpicciolisce
-                GiornataInRiga(forme: ParoleWidget.giornataFormazione(g), voce: g.voce)
+                GiornataInRiga(forme: ParoleWidget.formeGiornata(g), voce: g.voce)
                     .minimumScaleFactor(0.7).font(.caption2).foregroundStyle(.secondary)
             }
         }

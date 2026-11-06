@@ -69,7 +69,7 @@ struct VistaStato: View {
                 Text("Dati delle \(oraDati)").font(.headline)
                 Text(probabili).font(.caption)
                 if let g = voce.completo?.nomeGiornata ?? voce.riassunto?.nomeGiornata {
-                    GiornataInRiga(g).font(.caption2).foregroundStyle(.secondary)
+                    GiornataInRiga(g).font(.caption2).foregroundStyle(.secondary).minimumScaleFactor(0.7)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
