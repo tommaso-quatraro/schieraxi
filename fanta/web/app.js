@@ -2028,8 +2028,11 @@ document.addEventListener("keydown", ev => {
   if (ev.key === "Escape") { chiudiFoglio(); return; }
   // Ctrl+S (⌘+S sul Mac) nella Formazione preme il «Salva» che si vede in quel momento (spec C3); senza niente da salvare, in un'altra
   // schermata o con un pannello aperto non si ferma: fa quello che fa di solito il browser. Anche mentre si scrive nella ricerca.
-  if (typeof ev.key === "string" && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s" && !ev.altKey && !ev.shiftKey
-      && stato.vista === "formazione" && $("#foglio").hidden) {
+  // Con una tastiera non latina vale il tasto fisico S (`code`); tenuto premuto, le ripetizioni non salvano di nuovo e non aprono
+  // «Salva pagina con nome» (dopo il primo salvataggio il pulsante non c'è più).
+  const ctrlS = (typeof ev.key === "string" && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") || ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyS");
+  if (ctrlS && !ev.altKey && !ev.shiftKey && stato.vista === "formazione" && $("#foglio").hidden) {
+    if (ev.repeat) { ev.preventDefault(); return; }
     const salva = $("#salva-scelta") || $("#salva-questa");
     if (salva && !salva.disabled && salva.getClientRects().length) { ev.preventDefault(); salva.click(); return; }
   }
@@ -4553,9 +4556,25 @@ function controllaFerme() {
     if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria osserva le classi)
   });
 }
+// La riga dello stato della scelta con «Salva» (Formazione, stati «modificata» e «mano») resta ferma in alto mentre si scorrono i
+// titolari, ma solo se è bassa: oltre un terzo della finestra (zoom al 200%, telefono in orizzontale, testo grande) coprirebbe mezzo
+// schermo, quindi scorre con la pagina (`non-ferma`). Fuori o dentro non cambia altezza: niente oscillazioni. La sua altezza vera va in
+// --alto-stato, che stile.css aggiunge a scroll-padding-top: il titolare con il focus non le finisce sotto (WCAG 2.2, 2.4.11). Non
+// ferma (anche nella pagina strettissima) o assente: 0. La misura si rifà con il ResizeObserver e gli altri segnali di seguiFerme.
+const QUOTA_STATO = 1 / 3;
+function controllaStatoScelta() {
+  const el = document.querySelector(".stato-scelta.modificata, .stato-scelta.mano");
+  let alto = 0;
+  if (el) {
+    const era = el.classList.contains("non-ferma"), troppo = el.getBoundingClientRect().height > innerHeight * QUOTA_STATO;
+    if (troppo !== era) el.classList.toggle("non-ferma", troppo);        // la classe si tocca solo quando cambia (sincronizzaAria)
+    if (getComputedStyle(el).position === "sticky") alto = el.offsetHeight;
+  }
+  document.documentElement.style.setProperty("--alto-stato", `${alto}px`);
+}
 (function seguiFerme() {
   let atteso = false;
-  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); }); } };
+  const pianifica = () => { if (!atteso) { atteso = true; requestAnimationFrame(() => { atteso = false; controllaFerme(); controllaStatoScelta(); }); } };
   new MutationObserver(pianifica).observe(contenuto, { subtree: true, childList: true });
   if (typeof ResizeObserver === "function") new ResizeObserver(pianifica).observe(contenuto);          // anche quando una carta cresce dopo
   addEventListener("resize", pianifica);

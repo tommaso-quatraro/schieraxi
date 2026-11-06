@@ -458,11 +458,12 @@ details[open] > summary { margin-bottom: 8px; }
 .partita.rinviata .ora { color: var(--arancio, var(--testo-2)); font-weight: 650; }   /* «Rinviata» al posto dell'orario */
 .partita.rinviata .sq { color: var(--testo-2); }
 /* Formazione: stato della scelta della giornata (sempre dal server), sotto le cifre. Con qualcosa da salvare resta ferma in alto mentre
-   si scorrono i titolari, con «Salva» in vista (spec C9): è figlia diretta della colonna, alta quanto l'elenco. Il focus non le finisce
-   sotto: scroll-padding-top più alto della riga (due righe di pulsanti al telefono). */
+   si scorrono i titolari, con «Salva» in vista (spec C9): è figlia diretta della colonna, alta quanto l'elenco. Solo se è bassa: oltre
+   un terzo della finestra scorre con la pagina (controllaStatoScelta in app.js, `non-ferma`), e nella pagina strettissima non è mai
+   ferma. Il focus non le finisce sotto: la sua altezza vera (--alto-stato, 0 quando non è ferma) si aggiunge a scroll-padding-top. */
 .stato-scelta { margin: 0 0 16px; padding: 12px 0; border-top: 1px solid var(--filo); border-bottom: 1px solid var(--filo); }
 .stato-scelta.modificata, .stato-scelta.mano { position: sticky; top: var(--alto-ferma); z-index: 3; background: var(--sfondo); }
-html:has(.stato-scelta.modificata), html:has(.stato-scelta.mano) { scroll-padding-top: calc(var(--alto-testata, 0px) + 176px); }
+html:has(.stato-scelta.modificata), html:has(.stato-scelta.mano) { scroll-padding-top: calc(var(--alto-testata, 0px) + var(--alto-stato, 0px) + 8px); }
 .stato-scelta p { margin: 0; display: flex; gap: 8px; align-items: baseline; font-weight: 650; font-size: var(--t-corpo); line-height: 1.35; }
 .stato-scelta .segno { flex: none; width: 1.2em; text-align: center; font-weight: 800; }
 .stato-scelta.consigliata .segno, .stato-scelta.altra .segno { color: var(--testo); }   /* il «○» è un simbolo: nel colore del testo, come la frase */
@@ -1407,4 +1408,6 @@ body { container: pagina / inline-size; }
   .prossime { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .legenda-campo li { grid-template-columns: 1fr; gap: 4px; }
   .leg-esempio { justify-self: start; }
+  /* la riga dello stato con «Salva» non resta ferma: qui sarebbe alta mezza finestra (revisione della #420) */
+  .stato-scelta.modificata, .stato-scelta.mano { position: static; }
 }

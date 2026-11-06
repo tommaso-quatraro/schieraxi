@@ -1079,6 +1079,59 @@ def test_stato_della_scelta_fuori_dalla_testa_cosi_resta_in_vista():
     assert re.search(r"\.stato-scelta\.modificata, \.stato-scelta\.mano \{[^}]*z-index: \d;[^}]*background: var\(--sfondo\)", CSS)
 
 
+def _blocco_css(apertura):
+    """Il contenuto di un blocco @media / @container di stile.css, dalla graffa che lo apre a quella che lo chiude."""
+    i = SENZA_COMMENTI.index(apertura) + len(apertura)
+    livello, j = 1, i
+    while livello:
+        livello += {"{": 1, "}": -1}.get(SENZA_COMMENTI[j], 0)
+        j += 1
+    return SENZA_COMMENTI[i:j - 1]
+
+
+def test_la_riga_dello_stato_resta_ferma_solo_se_e_bassa():
+    """Revisione della #420 (piano, «Attenzione in revisione» 2): con lo zoom al 200% o il telefono in orizzontale la riga con «Salva»,
+    dopo una sostituzione alta 220-300 px, restava ferma su mezza finestra, e lo spazio per il focus era fisso (176 px), più basso di
+    lei: il titolare con il focus le finiva sotto (WCAG 2.2, 2.4.11). Nella pagina strettissima non è ferma; oltre un terzo della
+    finestra scorre con la pagina (controllaStatoScelta in app.js); la sua altezza vera va in --alto-stato per scroll-padding-top."""
+    stretta = _blocco_css("@container pagina (max-width: 319.98px) {")
+    assert ".stato-scelta.modificata, .stato-scelta.mano { position: static; }" in stretta
+    assert "176px" not in CSS
+    assert re.search(r"html:has\(\.stato-scelta\.modificata\), html:has\(\.stato-scelta\.mano\) \{ scroll-padding-top: "
+                     r"calc\(var\(--alto-testata, 0px\) \+ var\(--alto-stato, 0px\) \+ 8px\); \}", CSS)
+    segui = APP[APP.index("(function seguiFerme()"):]
+    assert "controllaStatoScelta();" in segui[:segui.index("})();")]
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_la_riga_dello_stato_oltre_un_terzo_della_finestra_scorre_con_la_pagina():
+    i = APP.index("const QUOTA_STATO")
+    funzione = APP[i:APP.index("\n}\n", APP.index("function controllaStatoScelta(")) + 3]
+    codice = "\n".join([
+        """let innerHeight = 900; const variabili = {}; let attuale = null;
+function riga(alto, posizione = "sticky") {
+  const r = { alto, posizione, classi: new Set(), tocchi: 0, get offsetHeight() { return this.alto; }, getBoundingClientRect() { return { height: this.alto }; } };
+  r.classList = { contains: c => r.classi.has(c), toggle: (c, si) => { r.tocchi++; if (si) r.classi.add(c); else r.classi.delete(c); } };
+  return r;
+}
+const document = { querySelector: () => attuale, documentElement: { style: { setProperty: (k, v) => { variabili[k] = v; } } } };
+const getComputedStyle = el => ({ position: el.classi.has("non-ferma") ? "static" : el.posizione });""",
+        funzione,
+        """const esiti = [], passo = () => { controllaStatoScelta(); esiti.push([attuale ? attuale.classi.has("non-ferma") : null, variabili["--alto-stato"]]); };
+attuale = riga(120); passo();                         // bassa: ferma, il focus le sta sotto
+attuale.alto = 320; passo();                          // più di un terzo di 900: scorre con la pagina, niente spazio in più
+const tocchi = attuale.tocchi; passo(); esiti.push(attuale.tocchi - tocchi);       // rifatto senza cambiamenti: la classe non si tocca
+innerHeight = 1200; passo();                          // finestra più alta: torna ferma
+attuale = riga(120, "static"); passo();               // pagina strettissima: non è ferma
+attuale = null; passo();                              // niente da salvare: nessuna riga ferma
+console.log(JSON.stringify(esiti));""",
+    ])
+    r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout.strip().splitlines()[-1]) == [
+        [False, "120px"], [True, "0px"], [True, "0px"], 0, [False, "320px"], [False, "0px"], [None, "0px"]]
+
+
 def test_descrizione_dello_stile_in_una_riga_con_come_si_legge():
     """Spec §1 (un paragrafo di 4 righe prima del campo) e §9: sotto Stile una riga di nota; la descrizione lunga si apre con «Come si
     legge». Dopo «Modifica a mano» la riga dice come tornare alla consigliata, senza niente da aprire."""
@@ -1104,7 +1157,9 @@ def test_ctrl_s_salva_nella_formazione_solo_se_c_e_da_salvare():
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_ctrl_s_preme_il_salva_che_si_vede_e_altrimenti_lascia_fare_al_browser():
     """Spec C3: Ctrl+S (⌘+S sul Mac) nella Formazione preme «Salva questa» o «Salva le modifiche»; senza niente da salvare, in
-    un'altra schermata o con un pannello aperto il tasto fa quello che fa di solito il browser (niente preventDefault)."""
+    un'altra schermata o con un pannello aperto il tasto fa quello che fa di solito il browser (niente preventDefault).
+    Revisione della #420: con i tasti tenuti premuti le ripetizioni non salvano di nuovo e non aprono «Salva pagina con nome»
+    (dopo il primo salvataggio il pulsante non c'è più); con una tastiera non latina (russo: «ы») vale il tasto fisico S."""
     i = APP.index('document.addEventListener("keydown"')
     codice = "\n".join([
         """let premuto = null; const pulsanti = {};
@@ -1114,8 +1169,8 @@ const stato = { vista: "formazione" }; const chiudiFoglio = () => {}; const VIST
 const document = { addEventListener: (tipo, f) => { globalThis.premi = f; } };""",
         APP[i:APP.index("\n});\n", i) + 4],
         """const prova = (tasto, opz = {}) => { premuto = null; let fermato = false;
-  premi({ key: tasto, ctrlKey: !!opz.ctrl, metaKey: !!opz.meta, altKey: false, shiftKey: false, target: { tagName: "BODY" },
-          preventDefault() { fermato = true; } }); return [premuto, fermato]; };
+  premi({ key: tasto, code: opz.code || "Key" + tasto.toUpperCase(), repeat: !!opz.ripetuto, ctrlKey: !!opz.ctrl, metaKey: !!opz.meta,
+          altKey: false, shiftKey: false, target: { tagName: "BODY" }, preventDefault() { fermato = true; } }); return [premuto, fermato]; };
 const esiti = [];
 pulsanti["#salva-questa"] = pulsante("salva-questa"); esiti.push(prova("s", { ctrl: true }));
 delete pulsanti["#salva-questa"]; pulsanti["#salva-scelta"] = pulsante("salva-scelta"); esiti.push(prova("S", { meta: true }));
@@ -1123,12 +1178,16 @@ delete pulsanti["#salva-scelta"]; esiti.push(prova("s", { ctrl: true }));
 pulsanti["#salva-scelta"] = pulsante("salva-scelta"); stato.vista = "oggi"; esiti.push(prova("s", { ctrl: true }));
 stato.vista = "formazione"; globalThis.aperto = true; esiti.push(prova("s", { ctrl: true }));
 globalThis.aperto = false; esiti.push(prova("s"));
+esiti.push(prova("ы", { ctrl: true, code: "KeyS" }));                     // tastiera russa: il tasto fisico S
+esiti.push(prova("s", { ctrl: true, ripetuto: true }));                   // tenuto premuto: niente secondo salvataggio
+delete pulsanti["#salva-scelta"]; esiti.push(prova("s", { ctrl: true, ripetuto: true }));   // salvato, pulsante sparito: niente «Salva pagina con nome»
 console.log(JSON.stringify(esiti));""",
     ])
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout.strip().splitlines()[-1]) == [
-        ["salva-questa", True], ["salva-scelta", True], [None, False], [None, False], [None, False], [None, False]]
+        ["salva-questa", True], ["salva-scelta", True], [None, False], [None, False], [None, False], [None, False],
+        ["salva-scelta", True], [None, True], [None, True]]
 
 
 def test_differenza_ammessa_della_pedina_scritta():
