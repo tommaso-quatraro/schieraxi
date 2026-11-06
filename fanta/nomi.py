@@ -104,6 +104,7 @@ _PARENTESI = re.compile(r"\(([^()]*)\)|\[([^\[\]]*)\]")
 _SEPARATORI = re.compile(r"\s+[-–—|/]\s+|\s*[|\t]\s*|\s+[–—]|[–—]\s+")
 _INIZIALI_DAVANTI = re.compile(r"((?:[^\W\d_]{1,2}\.\s*)+)\S")
 _CON_INIZIALI = re.compile(r"(.+?)\s+((?:[^\W\d_]{1,2}\.)+)")
+MAX_TESTO = 200                  # come MAX_TESTO_CELLA delle rose: una cella con un nome vero è molto più corta
 
 
 @dataclass
@@ -215,7 +216,7 @@ class Indice:
         «A Martinez L. (INT) 45» -> ("martinez l", "int", "A"); «L. Martinez» -> ("martinez l", None, None).
         Una lettera sola davanti senza punto («C Rossi») può essere il ruolo o l'iniziale: si tengono le due letture."""
         pezzi: dict = {}
-        t = _PARENTESI.sub(lambda m: " " + self._campo(m.group(1) or m.group(2) or "", pezzi) + " ", str(testo))
+        t = _PARENTESI.sub(lambda m: " " + self._campo(m.group(1) or m.group(2) or "", pezzi) + " ", str(testo)[:MAX_TESTO])
         t = " ".join(self._campo(c, pezzi) for c in _SEPARATORI.split(t))
         m = _INIZIALI_DAVANTI.match(t.strip())            # iniziali puntate davanti: «F.P. Esposito», «Jo. Martinez»
         puntate = normalizza(m.group(1)).split() if m else []
@@ -318,6 +319,7 @@ class Indice:
         return [c for k in dict.fromkeys(chiavi) if not _iniziali_diverse(n, k) for c in self._per_nome[k]]
 
     def cerca(self, nome: str, squadra: str | None = None, ruolo: str | None = None) -> Esito:
+        nome = str(nome)[:MAX_TESTO]                       # si legge solo l'inizio di una cella lunghissima
         n = normalizza(nome)
         if not n:
             return Esito(None, "non trovato")

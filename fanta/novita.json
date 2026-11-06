@@ -1,5 +1,51 @@
 [
   {
+    "versione": "1.419",
+    "data": "2026-11-06T03:08:49",
+    "titolo": "Nuova testata: schede in alto sugli schermi larghi e titolo in ogni schermata",
+    "voci": [
+      "Su schermi larghi le sezioni stanno in alto, accanto al nome SchieraXI, con la ricerca di un giocatore sempre aperta: basta scrivere.",
+      "Il tasto Indietro del browser torna alla schermata di prima; con Ctrl+clic una sezione si apre in un'altra scheda del browser.",
+      "Ogni schermata ha il suo titolo in cima e, sotto, la giornata, la tua squadra e l'ora dei dati.",
+      "Al telefono la barra in basso è piena e a tutta larghezza; numeri e titoli hanno un carattere nuovo, con le cifre in colonna."
+    ],
+    "tecnico": [
+      "Grafica B, PR 4 (parte di #354): una sola nav dentro header.testata con <a class=\"scheda\" href=\"/?vista=…\">; da 900 px testata sticky da 56 px (nome disegnato #wm-c come il sito, linguette, input#campo-cerca con kbd «/», ingranaggio, aggiorna), sotto i 900 px barra fissa in basso piena (--superficie, filo sopra, linea --azione da 3 px sulla voce attiva) e pulsanti in posizione assoluta accanto al titolo.",
+      "vai(vista, gruppo, opz) scrive history.pushState/replaceState con l'indirizzo della schermata (indirizzoVista: ?vista=, &gruppo= per Impostazioni, &scheda= per Mercato); popstate chiude il foglio e chiama vai(..., { daCronologia: true }); con la Formazione non salvata, se si resta, l'indirizzo torna quello della Formazione. Clic con Ctrl/⌘/Maiusc/Alt o centrale: decide il browser.",
+      "pagina(html, opz) scrive header.capo-pagina con h1#titolo-pagina (opz.titolo, di norma t(\"nav.<scheda>\")) e p.stato-pagina (stato.rigaStato da caricaInfo, stemma da 20 px; opz.stato === false la toglie: Impostazioni). Mercato, Scambi, Regole, caricamento e montaPannelli passano da pagina().",
+      "@font-face Archivo (caratteri/archivo.woff2, font-display: swap, preload), --font-numeri per .grande, .enorme, #titolo-pagina, .voce .valore b, .partita .pt; scala --t-eroe 56 (72 da 900 px), --t-titolo 32, --t-card 17, --t-valore 20. main una colonna larga al massimo 1240 px (via le griglie di main a 1100/1700/3200 px e --lato); --alto-ferma per le colonne ferme.",
+      "Pagine Privacy e Termini con theme-color chiaro e scuro; pagina «Nessuna connessione» del service worker con i colori nuovi."
+    ]
+  },
+  {
+    "versione": "1.418",
+    "data": "2026-11-06T02:57:12",
+    "titolo": "Stato dei dati: quanto è buono il consiglio di formazione",
+    "voci": [
+      "In Stato dei dati, per chi gestisce l'app, c'è la sezione «Consiglio di formazione»: quanto è buona la formazione consigliata.",
+      "Quattro misure: punti in più rispetto alla scelta semplice, cambi nelle 24 ore prima della scadenza, titolari che rischiano di non giocare, scelte strane senza un motivo detto.",
+      "Per ognuna si vedono la media delle ultime giornate, la soglia e se regge o no; finché le giornate sono meno di 8 c'è scritto quante ne servono ancora. Uguale sul sito e sull'app per iPhone."
+    ],
+    "tecnico": [
+      "Issue #366, sotto #166. La web mostra il campo facoltativo `consiglio` di GET /api/stato-dati (PR #362) con `cartaConsiglio` in app.js (le righe con `rigaMisura`, la stessa del registro) e i testi `sd.cons_*` in testi.js (italiano e inglese); l'iPhone con `StatoDati.Consiglio`, `ParoleConsiglio` e `ConsiglioFormazioneSezione` (righe `RigaMisuraRegistro`). Soglie e verdetto (`regge`, `verdetto`) vengono dal server e non si ricalcolano.",
+      "Punti a giornata con due cifre e il segno (+1,00, −0,25), totali interi, frazioni in percentuale. Test: tests/test_stato_dati_consiglio_web.py (la funzione vera di app.js in node, sui dati di indicatori_consiglio.giro e riepilogo) e ConsiglioFormazioneTests (stesse frasi di testi.js, stessa risposta del server nella fixture stato-dati-consiglio.json, controllata dal test Python)."
+    ]
+  },
+  {
+    "versione": "1.417",
+    "data": "2026-11-06T02:45:44",
+    "titolo": "Rose incollate o caricate: lettura più rapida delle celle lunghe",
+    "voci": [
+      "Le rose incollate o caricate si leggono più in fretta anche con celle molto lunghe."
+    ],
+    "tecnico": [
+      "rose.griglia_da_testo accorcia ogni cella a MAX_TESTO_CELLA (200 caratteri), come già facevano _righe_csv per il CSV e leggi_griglie per l'Excel.",
+      "rose._delimitatore: la riga «$,$,$» dell'esportazione «rosters» si legge una riga alla volta con le funzioni delle stringhe (_separatore_rosters) invece che con un'espressione regolare; riconosce gli stessi separatori di prima.",
+      "nomi.Indice.cerca e _interpretazioni leggono al massimo MAX_TESTO (200) caratteri della cella.",
+      "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+    ]
+  },
+  {
     "versione": "1.416",
     "data": "2026-11-06T02:15:55",
     "titolo": "Prove interne del modello senza le statistiche dei giocatori di Understat",

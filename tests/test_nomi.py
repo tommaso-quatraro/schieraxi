@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from corpus_nomi import genera, genera_ocr, listone_inventato, misura
@@ -199,3 +201,10 @@ def test_non_trovato_con_suggerimenti(indice):
         assert e.metodo == "non trovato" and not e.trovato, testo
         assert {c.id for c in e.alternative} == attesi, testo
     assert not indice.cerca("Pinco Pallino").alternative
+
+
+def test_nome_molto_lungo_si_cerca_in_poco_tempo(indice):
+    inizio = time.perf_counter()
+    e = indice.cerca("Sommer" + " " * 20000)
+    assert time.perf_counter() - inizio < 1                  # soglia larga: di solito qualche millesimo
+    assert e.metodo == "esatto" and e.calciatore.id == 2
