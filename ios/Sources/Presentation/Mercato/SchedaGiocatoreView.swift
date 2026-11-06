@@ -177,7 +177,8 @@ struct GiocatoreCorpo: View {
         let nome = p.giornata.map { NomeGiornata(serieA: $0, lega: p.giornataLega) }
         var pezzi = [nome.map { voce ? $0.voce : $0.intero }].compactMap { $0 }
         pezzi.append((p.inCasa == true ? "in casa" : "in trasferta") + " contro " + (p.avversario ?? "").capitalized)
-        if let data = p.dataPartita { pezzi.append(Quando.leggibile(data)) }
+        // «oggi», «ieri» dall'ora dell'app (`Orologio`), come Oggi e le righe: nella demo in corso il momento della demo (#424)
+        if let data = p.dataPartita { pezzi.append(Quando.leggibile(data, adesso: Orologio.adesso())) }
         return pezzi.joined(separator: voce ? ", " : " · ")
     }
 
