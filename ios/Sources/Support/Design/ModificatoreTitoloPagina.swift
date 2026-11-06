@@ -10,10 +10,14 @@ struct ModificatoreTitoloPagina: ViewModifier {
     @Environment(\.dynamicTypeSize) private var dimensione
 
     func body(content: Content) -> some View {
+        let piccolo = titoloPiccolo
         content
-            .navigationTitle(titolo)
+            // Con `TitoloInBarra` il titolo di sistema resta vuoto: sotto il nostro non si vede, ma VoiceOver lo trovava lo
+            // stesso (#419), in un riquadro largo quanto lo spazio del titolo: con il testo massimo su una zona vuota, con il
+            // testo normale come secondo titolo. Così il pulsante «indietro» della pagina dopo non ha il nome di questa.
+            .navigationTitle(piccolo == nil ? titolo : "")
             .toolbarTitleDisplayMode(TitoloPagina.grandeInBarra(dimensione, piccoloInBarra: piccoloInBarra) ? .large : .inline)
-            .titoloInBarra(titoloPiccolo)
+            .titoloInBarra(piccolo)
             .environment(\.titoloPagina, titolo)
     }
 
