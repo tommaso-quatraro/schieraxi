@@ -93,6 +93,13 @@ def test_revisione_vuota_o_senza_righe_chi_esito():
         assert problemi, sezione
 
 
+def test_il_modello_ha_la_sezione_revisione_con_un_esempio_che_vale():
+    assert "## Revisione" in MODELLO
+    esempio = MODELLO.split("## Revisione", 1)[1].split("-->", 1)[0].split("Esempio:", 1)[1]
+    corpo = BUONO.split("## Revisione")[0] + "## Revisione\n" + esempio
+    assert pr.revisione(corpo, bozza=False, autore="persona", file=["fanta/server.py"]) == ([], [])
+
+
 def test_revisione_dal_modello_vuoto_non_basta():
     problemi, _ = pr.revisione(MODELLO, bozza=False, autore="persona", file=["fanta/server.py"])
     assert problemi
