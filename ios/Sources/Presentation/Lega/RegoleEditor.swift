@@ -200,7 +200,10 @@ struct RigaStepper: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(titolo)
-                    if let aiuto { Text(aiuto).font(.caption).foregroundStyle(Color.testoSecondario) }
+                    if let aiuto {
+                        Text(aiuto).font(.caption).foregroundStyle(Color.testoSecondario)
+                            .fixedSize(horizontal: false, vertical: true)   // le righe d'aiuto lunghe vanno a capo, mai tagliate
+                    }
                 }
                 Spacer(minLength: 8)
                 Text(Formato.decimali(valore, cifre: cifre)).monospacedDigit().foregroundStyle(Color.testoSecondario)
@@ -208,6 +211,24 @@ struct RigaStepper: View {
         }
         .frame(minHeight: 44)
         .accessibilityValue(Formato.decimali(valore, cifre: cifre))
+    }
+}
+
+/// Un interruttore con la sua riga d'aiuto sotto, come `interruttore(...)` della web.
+struct RigaInterruttore: View {
+    let titolo: String
+    let aiuto: String
+    @Binding var acceso: Bool
+
+    var body: some View {
+        Toggle(isOn: $acceso) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titolo)
+                Text(aiuto).font(.caption).foregroundStyle(Color.testoSecondario)
+            }
+        }
+        .tint(Color.verde)
+        .frame(minHeight: 44)
     }
 }
 
@@ -406,7 +427,7 @@ struct RegoleEditorView: View {
                         Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").labelStyle(.distruttiva).frame(minHeight: 44) }
                     }
                 }
-                Button { vm.aggiungiFascia() } label: { Label("Aggiungi una fascia", systemImage: "plus.circle").frame(minHeight: 44) }
+                Button { vm.aggiungiFascia() } label: { Label(TestiRegole.aggiungiFascia, systemImage: "plus.circle").frame(minHeight: 44) }
                 prova
             }
         } header: { Text("Modificatore difesa").foregroundStyle(Color.testoSecondario) } footer: { Text("Un bonus se la difesa prende voti alti.").foregroundStyle(Color.testoSecondario) }
@@ -414,11 +435,12 @@ struct RegoleEditorView: View {
 
     private var prova: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Prova: voti di portiere e 3 difensori").font(.subheadline.bold())
+            Text(TestiRegole.prova).font(.subheadline.bold()).accessibilityAddTraits(.isHeader)
+            Text(TestiRegole.provaVoti).font(.footnote).foregroundStyle(Color.testoSecondario)
             ForEach(vm.votiProva.indices, id: \.self) { i in
                 RigaStepper(titolo: i == 0 ? "Portiere" : "Difensore \(i)", valore: $vm.votiProva[i], minimo: 3, massimo: 10)
             }
-            Text("Media \(Formato.decimali(vm.mediaProva, cifre: 2)) → bonus \(Formato.conSegno(vm.bonusProva, cifre: 0)) punti").font(.headline)
+            Text(TestiRegole.esitoProva(media: vm.mediaProva, bonus: vm.bonusProva)).font(.headline)
                 .accessibilityElement(children: .combine)
         }
     }
@@ -445,7 +467,7 @@ struct RegoleEditorView: View {
 
     private var panchina: some View {
         Section {
-            Toggle("Posti fissi per ruolo", isOn: vm.postiFissi).tint(Color.verde).frame(minHeight: 44)
+            RigaInterruttore(titolo: TestiRegole.postiFissi, aiuto: TestiRegole.postiFissiAiuto, acceso: vm.postiFissi)
             if case .oggetto? = vm.valore.valore("panchina.posti") {
                 ForEach(["P", "D", "C", "A"], id: \.self) { r in
                     RigaStepper(titolo: nomiRuolo[r] ?? r, valore: vm.numero("panchina.posti.\(r)"), passo: 1, minimo: 0, massimo: 8, cifre: 0)
@@ -463,7 +485,8 @@ struct RegoleEditorView: View {
                  ? "Libera: entra il primo della panchina che può sostituirlo, anche di un ruolo diverso se il modulo resta valido."
                  : "Per ruolo: se un titolare non gioca, entra il primo della panchina dello stesso ruolo.")
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
-            Toggle("Cambio modulo nelle sostituzioni", isOn: vm.booleano("panchina.cambio_modulo")).tint(Color.verde).frame(minHeight: 44)
+            RigaInterruttore(titolo: TestiRegole.cambioModulo, aiuto: TestiRegole.cambioModuloAiuto,
+                             acceso: vm.booleano("panchina.cambio_modulo"))
             Toggle("Voto d'ufficio se manca il sostituto", isOn: vm.votoUfficioAttivo).tint(Color.verde).frame(minHeight: 44)
             if vm.votoUfficioAttivo.wrappedValue {
                 RigaStepper(titolo: "Voto d'ufficio", valore: vm.numero("voto_senza_sostituto", 4), minimo: 0, massimo: 10)
@@ -483,22 +506,16 @@ struct RegoleEditorView: View {
     /// Scadenza della formazione e prima giornata della lega. Se il server non manda i valori valgono 0 minuti e giornata 1.
     private var tempiLega: some View {
         Section {
-            RigaStepper(titolo: "Scadenza (minuti prima)", valore: vm.numero("scadenza_minuti"), passo: 5, minimo: 0,
-                        massimo: TempiLega.minutiMassimi, cifre: 0)
-            Text(TempiLega.spiegaScadenza(vm.numero("scadenza_minuti").wrappedValue)).font(.footnote).foregroundStyle(Color.testoSecondario)
-            RigaStepper(titolo: "Prima giornata della lega", valore: vm.numero("prima_giornata_lega", 1), passo: 1, minimo: 1,
-                        massimo: TempiLega.primaGiornataMassima, cifre: 0)
-            Text(TempiLega.spiegaPartenza(vm.numero("prima_giornata_lega", 1).wrappedValue)).font(.footnote).foregroundStyle(Color.testoSecondario)
-            Toggle(isOn: vm.booleano("aggiornamenti_vicino_scadenza", predefinito: true)) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Aggiornamenti più fitti vicino alla scadenza")
-                    Text("Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza, con avviso se cambia qualcosa.")
-                        .font(.caption).foregroundStyle(Color.testoSecondario)
-                }
-            }
-            .tint(Color.verde)
-            .frame(minHeight: 44)
-        } header: { Text("Tempi della lega").foregroundStyle(Color.testoSecondario) }
+            RigaStepper(titolo: TestiRegole.scadenza, valore: vm.numero("scadenza_minuti"), passo: 5, minimo: 0,
+                        massimo: TempiLega.minutiMassimi, cifre: 0, aiuto: TestiRegole.scadenzaAiuto)
+            RigaStepper(titolo: TestiRegole.primaGiornata, valore: vm.numero("prima_giornata_lega", 1), passo: 1, minimo: 1,
+                        massimo: TempiLega.primaGiornataMassima, cifre: 0, aiuto: TestiRegole.primaGiornataAiuto)
+            RigaInterruttore(titolo: "Aggiornamenti più fitti vicino alla scadenza",
+                             aiuto: "Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza, con avviso se cambia qualcosa.",
+                             acceso: vm.booleano("aggiornamenti_vicino_scadenza", predefinito: true))
+        } header: { Text("Tempi della lega").foregroundStyle(Color.testoSecondario) } footer: {
+            Text(TestiRegole.conPrimaGiornata).foregroundStyle(Color.testoSecondario)
+        }
     }
 
     /// Partite rinviate: cosa fa di solito la lega (solo se il server conosce la regola: con un server vecchio la sezione non c'è).
