@@ -844,7 +844,7 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--dalla", type=int, default=5, help="prima giornata della stagione più vecchia")
     x.add_argument("--simulazioni", type=int, default=300)
     x.add_argument("--fonti", nargs="?", const="tutte", default=None,
-                   help="in più, prova le fonti in ombra (xg_fd, tiri_porta, probabili_fonte2; senza valore tutte): lento, spento di default")
+                   help="in più, prova le fonti in ombra (xg_fd, probabili_fonte2; senza valore tutte): lento, spento di default")
     x.add_argument("--pacchetti", nargs="?", const="tutti", default=None,
                    help="in più, misura quanto si perde con i dati di un solo fornitore (scenari separati da virgola; "
                         "senza valore tutti): lento, spento di default")

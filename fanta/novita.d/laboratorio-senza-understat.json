@@ -1,0 +1,14 @@
+{
+  "titolo": "Prove interne del modello senza le statistiche dei giocatori di Understat",
+  "voci": [
+    "Nessun cambiamento nei consigli: le prove interne del modello non usano più tiri, passaggi chiave e gol attesi dei singoli giocatori presi da Understat.",
+    "In «Sotto il cofano», la parte sulle fonti raccolte ma non usate elenca solo le prove che restano."
+  ],
+  "tecnico": [
+    "Issue #400, Fase F del piano docs/superpowers/plans/2026-11-06-gol-attesi-nostri.md (L3b di #165): serve prima della Fase G1, quando modello.carica non leggerà più le prestazioni di Understat.",
+    "verifica_pacchetti: tolti gli scenari voto_stat, pacchetto_b, pacchetto_b_xg, pacchetto_c e sportmonks_starter (usavano tiri, passaggi chiave o xG dei giocatori come fatti) e il codice delle formazioni ufficiali simulate che serviva solo a loro (partite_con_ufficiali, ritocca(ufficiali=...)). tabella_fatti legge solo voti e partite; min90 = nostri.minuti_stimati / 90. senza_xg e solo_fantacalcio restano fino alla Fase H1.",
+    "verifica_fonti: tolta la variante tiri_porta (mescolava gli xG di Understat), resta xg_fd. Aiuto di verifica --fonti e frase di Sotto il cofano (italiano, inglese, docs/SOTTO-IL-COFANO.md) aggiornati.",
+    "Numeri (archivio di sviluppo, lega d'esempio, 300 simulazioni), prima → dopo: voto_eventi punti 63,026 → 63,058 (vs_completo −0,215 → −0,183), rmse 1,455 invariato, rmse_vs_completo_pct 0,077 · 0,022 → 0,076 · 0,028 (2025-26 · 2026-27), errore del voto stimato 0,392 · 0,412 → 0,393 · 0,412. voto_fisso e pacchetto_a identici (non usano i minuti delle prestazioni).",
+    "Produzione invariata: python -m fanta verifica identica prima e dopo (rmse 1,424 e 1,592; punti 63,241 / fantamedia 62,762 / perfetta 66,654)."
+  ]
+}
