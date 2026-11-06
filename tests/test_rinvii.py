@@ -314,6 +314,29 @@ def test_diario_con_la_partita_rinviata(monkeypatch, modo, reale):
     assert diario.impronta_regole(Regole(), ST, 1, True) == base       # predefinito: le voci di prima restano
 
 
+def test_diario_chi_non_ha_previsione_e_ha_la_partita_rinviata_prende_il_voto_d_ufficio(monkeypatch):
+    """Revisione di #461: il portiere di riserva senza previsione (#447) gioca con la Roma, partita rinviata e recuperata dopo;
+    con la regola «voto d'ufficio» la lega gli dà il voto fisso, come agli altri della stessa partita. La partita si trova dal club."""
+    from fanta import diario
+    partite = pd.DataFrame([{"id": 1, "stagione": ST, "giornata": 1, "data": "2026-09-01 18:00", "giocata": 1, "casa": "inter", "trasferta": "milan"},
+                            {"id": 3, "stagione": ST, "giornata": 1, "data": "2026-09-01 20:45", "giocata": 1, "casa": "napoli", "trasferta": "como"},
+                            {"id": 4, "stagione": ST, "giornata": 1, "data": "2026-09-02 18:00", "giocata": 1, "casa": "genoa", "trasferta": "parma"},
+                            {"id": 2, "stagione": ST, "giornata": 1, "data": "2026-10-20 20:45", "giocata": 1, "casa": "roma", "trasferta": "lazio"}])
+    voti = pd.DataFrame([{"stagione": ST, "giornata": 1, "calciatore_id": i, "voto_red": 6.0} for i in range(1, 26)])
+    calciatori = pd.DataFrame([{"id": i, "squadra_slug": "roma" if i == 2 or i > 20 else "inter"} for i in range(1, 26)])
+    dati = NS(partite=partite, voti=voti, calciatori=calciatori)
+    monkeypatch.setattr(diario, "previsioni", lambda d, stagione, giornata, regole, par: pd.DataFrame([
+        {"id": i, "nome": f"G{i}", "ruolo": RUOLI_D[i - 1], "p_voto": 0.9, "mu": 5.5 + i * 0.05, "mu_voto": 6.0, "atteso": 5.0,
+         "partita": 2 if i > 20 else 1} for i in range(1, 26) if i != 2]))             # il portiere 2 non ha una previsione
+    monkeypatch.setattr(diario, "fantavoto", lambda r, ruolo, regole: float(r["voto_red"]))
+    regole = replace(Regole(), partite_rinviate="voto_ufficio", voto_ufficio_rinviate=6.5)
+    rosa = {i: (f"G{i}", RUOLI_D[i - 1]) for i in range(1, 26)}
+    scelti = [2, 4, 5, 6, 12, 13, 14, 15, 20, 21, 25]               # il portiere 2 e due attaccanti della stessa partita
+    v = diario.calcola_giornata(dati, ST, 1, regole, None, list(range(1, 26)), {"titolari": scelti}, simulazioni=50,
+                                giocatori_rosa=rosa)
+    assert v["schierata"]["reale"] == 8 * 6 + 3 * 6.5               # 2, 21 e 25: il voto d'ufficio, non il 6 del recupero
+
+
 # ---------------------------------------------------------------- rotte (account finti, cartelle temporanee)
 from test_etag import mondo  # noqa: E402,F401 (fixture: account e dati isolati)
 from test_limiti import ambiente, nuovo_utente  # noqa: E402,F401

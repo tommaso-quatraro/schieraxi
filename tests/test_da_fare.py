@@ -209,6 +209,15 @@ def test_chi_e_davvero_in_dubbio_resta_in_dubbio(mondo, monkeypatch):
     assert d["testo"] == "Rossi è in dubbio (55% di giocare)." and d["frase"]["chiave"] == "dafare.dubbio_incerto"
 
 
+def test_la_percentuale_e_quella_di_gioca_n(mondo, monkeypatch):
+    """#452: la riga del giocatore dice «gioca 35%» per 0,345 (Math.round della web); Da fare dice lo stesso numero."""
+    _etichettati(monkeypatch, g5=_x(5, "Merlo", p_voto=0.345) | {"titolarita": "panchina"},
+                 g7=_x(7, "Rossi", dubbio=True, p_voto=0.545) | {"titolarita": "ballottaggio"})
+    d = {x["id"]: x["testo"] for x in vai(mondo, regole=NS(panchina=NS(max_sostituzioni=0))) if x["tipo"] == "dubbio"}
+    assert d["dubbio:5"] == "Merlo: probabile panchina, gioca 35%."
+    assert d["dubbio:7"] == "Rossi è in dubbio (55% di giocare)."
+
+
 def test_dopo_la_scadenza_niente_dubbi_ne_formazione(mondo):
     assert vai(mondo, oggi={"giornata": 9, "ore_mancanti": -1.0, "iniziata": True}) == []
 

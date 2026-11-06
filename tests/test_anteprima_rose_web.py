@@ -69,6 +69,15 @@ def test_i_problemi_della_rosa_in_parole_senza_sigle():
         "2 squadre: 1 giocatore riconosciuto, 1 da controllare. Sistema i dubbi qui sotto, poi conferma."
 
 
+@pytest.mark.skipif(NODE is None, reason="node non installato")
+def test_il_conteggio_della_squadra_con_il_plurale_giusto():
+    """#451: una squadra nuova con un solo giocatore è «1 giocatore su 25», non «1 giocatori su 25» (come l'iPhone)."""
+    assert _node('arConteggio({"totale": 1, "attesi": 25})') == "1 giocatore su 25"
+    assert _node('arConteggio({"totale": 23, "attesi": 25})') == "23 giocatori su 25"
+    assert _node('arConteggio({"totale": 25, "attesi": 25})') == "25 giocatori"
+    assert "t(\"ar.n_su\"" not in ANTEPRIMA
+
+
 def test_il_file_e_caricato_prima_dei_suoi_utenti_ed_e_pubblico():
     html = (WEB / "index.html").read_text(encoding="utf-8")
     assert html.index("anteprima.js") < html.index("primoavvio.js") < html.index("app.js")

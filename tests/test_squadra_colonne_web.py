@@ -159,18 +159,18 @@ def test_mercato_da_1100_px_si_apre_dentro_squadra():
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_la_voce_aperta_accanto_al_menu_scrive_il_suo_indirizzo():
     """Da Seguiti a Calendario con un clic: l'indirizzo diventa quello del Calendario (Indietro torna a Seguiti, un ricaricamento
-    riapre il Calendario); la stessa voce non aggiunge voci alla cronologia; tornare a «Squadre e rose» riporta ?vista=squadra.
-    La voce di Squadra o di Altro sta nello stato della cronologia (l'indirizzo non la dice): con Indietro dal Calendario si torna a
-    «Squadre e rose», non alla voce dell'ultima volta. Due voci con lo stesso indirizzo non aggiungono voci alla cronologia
-    (Indietro non cambierebbe niente): si corregge quella di adesso."""
+    riapre il Calendario); la stessa voce non aggiunge voci alla cronologia; tornare a «Squadre e rose» riporta
+    ?vista=squadra&voce=squadre. Dal collaudo #449 anche le voci di Squadra e Altro hanno la voce nell'indirizzo (prima
+    ?vista=squadra per tutte, e Indietro da «Aggiorna le rose» usciva da Squadra): da «Squadre e rose» ad «Aggiorna le rose» è
+    una voce nuova. La voce sta anche nello stato della cronologia."""
     codice = "\n".join([
         "const stato = { vista: \"squadra\" }; const chiamate = [];",
         "const location = { pathname: \"/\", search: \"?vista=squadra\" };",
         "const vaiA = u => { const x = new URL(u, \"http://x\"); location.pathname = x.pathname; location.search = x.search; };",
-        "const history = { pushState(s, _, u) { chiamate.push([\"push\", u, s.vista, s.scheda, s.voce]); vaiA(u); },"
-        " replaceState(s, _, u) { chiamate.push([\"replace\", u, s.vista, s.scheda, s.voce]); vaiA(u); } };",
+        "const history = { state: null, pushState(s, _, u) { chiamate.push([\"push\", u, s.vista, s.scheda, s.voce]); vaiA(u); this.state = s; },"
+        " replaceState(s, _, u) { chiamate.push([\"replace\", u, s.vista, s.scheda, s.voce]); vaiA(u); this.state = s; } };",
         _riga("const indirizzoVista = "), _riga("let indirizzoMostrato = "),
-        _funzione("indirizzoLega"),
+        _funzione("scriviIndirizzo"), _funzione("indirizzoLega"),
         """indirizzoLega("squadra", null, false, "squadre");
 indirizzoLega("mercato", "osservati", true, "osservati");
 indirizzoLega("mercato", "calendario", true, "calendario");
@@ -180,15 +180,15 @@ indirizzoLega("squadra", null, true, "importa");
 console.log(JSON.stringify({ chiamate, vista: stato.vista, mostrato: indirizzoMostrato }));""",
     ])
     r = _node(codice)
-    assert r["chiamate"] == [["replace", "/?vista=squadra", "squadra", None, "squadre"],
+    assert r["chiamate"] == [["replace", "/?vista=squadra&voce=squadre", "squadra", None, "squadre"],
                              ["push", "/?vista=mercato&scheda=osservati", "mercato", "osservati", "osservati"],
                              ["push", "/?vista=mercato&scheda=calendario", "mercato", "calendario", "calendario"],
                              ["replace", "/?vista=mercato&scheda=calendario", "mercato", "calendario", "calendario"],
-                             ["push", "/?vista=squadra", "squadra", None, "squadre"],
-                             ["replace", "/?vista=squadra", "squadra", None, "importa"]]
-    assert r["vista"] == "squadra" and r["mostrato"] == "/?vista=squadra"
+                             ["push", "/?vista=squadra&voce=squadre", "squadra", None, "squadre"],
+                             ["push", "/?vista=squadra&voce=importa", "squadra", None, "importa"]]
+    assert r["vista"] == "squadra" and r["mostrato"] == "/?vista=squadra&voce=importa"
     popstate = APP[APP.index('window.addEventListener("popstate"'):]
-    assert "if (typeof v.voce === \"string\") stato.legaTorna = v.voce;" in popstate[:popstate.index("\n});\n")]
+    assert 'stato.legaTorna = typeof v.voce === "string" ? v.voce : null;' in popstate[:popstate.index("\n});\n")]
     assert "indirizzoLega(mercato ? \"mercato\" : ambito, mercato ? id : null, sposta, id);" in _funzione("vistaLega")
 
 

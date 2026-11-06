@@ -19,7 +19,7 @@ def test_la_barra_ha_quattro_voci_oggi_formazione_squadra_altro():
 
 def test_mercato_scambi_e_lega_di_prima_restano_raggiungibili_sotto_squadra_e_altro():
     assert 'const SOTTO_VISTE = { mercato: "squadra", scambi: "altro", lega: "altro" }' in APP
-    assert 'vai("scambi")' in APP and "function vaiMercato(" in APP
+    assert 'vai("scambi", undefined, o)' in APP and "function vaiMercato(" in APP           # la voce Scambi di Altro
 
 
 def test_le_funzioni_si_leggono_all_avvio_e_una_chiave_che_manca_vale_acceso():

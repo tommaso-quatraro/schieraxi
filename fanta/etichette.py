@@ -45,10 +45,11 @@ _DA_PARTITA = {"fatto": "voto", "senza_voto": "senza_voto", "attesa_voti": "voto
 _FUORI = ("infortunato", "squalificato")
 
 
-def _percento(p_voto) -> int:
-    """«gioca N%» come lo scrive la web (Math.round): mezzo punto in su, mai l'arrotondamento al pari di Python."""
+def percento(p_voto) -> int:
+    """«gioca N%» come lo scrive la web: `p_voto` arrotondato a 3 decimali, come nelle schede (`consigli.py`), e poi Math.round,
+    mezzo punto in su, mai l'arrotondamento al pari di Python. Così 0,3447 è 35% anche nelle frasi che ricevono la probabilità intera."""
     try:
-        return max(0, min(100, int(float(p_voto) * 100 + 0.5)))
+        return max(0, min(100, int(round(float(p_voto), 3) * 100 + 0.5)))
     except (TypeError, ValueError):
         return 0
 
@@ -56,7 +57,7 @@ def _percento(p_voto) -> int:
 def crea(codice: str, p_voto=None, lingua: str = "it") -> dict:
     """L'etichetta di un codice: {codice, testo, tono}. `p_voto` serve solo a «In dubbio · gioca N%»."""
     it, en, tono = CODICI[codice]
-    testo = (en if lingua == "en" else it).format(p=_percento(p_voto))
+    testo = (en if lingua == "en" else it).format(p=percento(p_voto))
     return {"codice": codice, "testo": testo, "tono": tono}
 
 

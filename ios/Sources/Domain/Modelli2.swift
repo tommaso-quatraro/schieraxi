@@ -94,7 +94,7 @@ extension ImpostazioniAvvisi {
 /// Le scelte di «Avviso se il consiglio cambia» (stessi testi della web).
 enum AvvisoPrima {
     static let titolo = "Avviso se il consiglio cambia"
-    static let aiuto = "Prima della scadenza, solo se le ultime notizie cambiano la formazione da schierare (per esempio un titolare non gioca): ti dice chi mettere. Al massimo due per giornata."
+    static let aiuto = "Prima della scadenza, solo se le ultime notizie cambiano la formazione da schierare (per esempio un titolare non gioca): ti dice chi mettere. Al massimo due per giornata"
     static let predefinito = 60
     static let valori = [0, 30, 60, 90]
 

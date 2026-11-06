@@ -413,7 +413,7 @@ final class ScambiViewModelTests: XCTestCase {
         let s = ServerDiProva.conFixture(["/api/scambi/da-testo": "da-testo"])
         let vm = ScambiViewModel(server: s)
         await vm.valutaOfferta()
-        XCTAssertEqual(vm.erroreOfferta, "Incolla prima il messaggio.", "senza testo non si chiede niente")
+        XCTAssertEqual(vm.erroreOfferta, "Incolla prima il messaggio", "senza testo non si chiede niente (la frase della web, `scambio.incolla_prima_messaggio`)")
         XCTAssertEqual(s.quante("da-testo"), 0)
         vm.testoOfferta = "Ti do Barucci e tu mi dai Mangoni, ci stai?"
         await vm.valutaOfferta()
@@ -438,7 +438,7 @@ final class ScambiViewModelTests: XCTestCase {
         let p: ProposteScambi = try Fixture.decodifica("proposte")
         vm.copiaBozza(p.proposte[0])
         XCTAssertEqual(UIPasteboard.general.string, ScambiLogica.bozza(p.proposte[0]))
-        XCTAssertEqual(vm.messaggio, "Bozza copiata: incollala nel gruppo o in privato.")
+        XCTAssertEqual(vm.messaggio, "Bozza copiata: incollala nel gruppo o in privato", "la frase della web, `mercato.bozza_copiata`")
     }
 
     func testAnalisiDiUnoScambioEArchivio() async throws {

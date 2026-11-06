@@ -13,7 +13,7 @@ Barra: **Oggi · Formazione · Mercato · Scambi · Lega** (uguale su web e iOS;
 | Oggi | timer + maglia, La tua formazione, Da controllare, Indisponibili in rosa, Diffidati, I tuoi migliori, Partite del turno |
 | Formazione | Stile + moduli, Giornata (modulo, punti), Modifica a mano, Campo, Titolari, Panchina, Fuori dalla formazione |
 | Mercato | 6 schede: Consigliati, Osservati, Asta (agosto/riparazione), Classifica (filtri ruolo + «solo svincolati»), Calendario, Cerca |
-| Scambi | squadra + «1 contro 1 … fino a 4», Cerca scambi, Analizza a mano, Ho ricevuto un'offerta, Chi accetta più volentieri |
+| Scambi | Trova per me (con quale squadra + «1 contro 1 … Fino a 4», Cerca scambi), Costruisci uno scambio, Valuta un'offerta, Chi accetta più volentieri |
 | Lega (iOS) | marchio, **Il tuo account** (7 voci), Server (indirizzo, prova, squadra, stagione, versione, aggiorna dati), **Lega** (Aggiorna rose, Squadre e rose, Movimenti, Diario, Asta e riparazione, Regole, Crediti, Nuova stagione), **App e dati** (Aspetto, Icona, Backup, Avvisi del server, Stato dei dati, Novità), Promemoria, Widget (+ diagnostica), Certificato, Rinnovo SideStore, Notifiche ntfy, Versione |
 | Lega (web) | account, Aggiorna rose (+ guida Comandi con indirizzi `/api/...`), squadre, incolla testo, movimenti, Diario, Stato dati, Crediti, Aspetto, Comandi di Apple, Icona, Avvisi, Backup, Regole, Novità, fonti, privacy |
 
