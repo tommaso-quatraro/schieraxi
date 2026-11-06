@@ -64,15 +64,16 @@ def _testo(v) -> str:
 
 
 def griglia_da_testo(testo: str) -> list[list[str]]:
+    """Le celle di un testo incollato. Ogni cella si accorcia a MAX_TESTO_CELLA caratteri, come nel CSV e nell'Excel."""
     righe = testo.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     if any("\t" in r for r in righe):
-        return [[c.strip() for c in r.split("\t")] for r in righe]
+        return [[c.strip()[:MAX_TESTO_CELLA] for c in r.split("\t")] for r in righe]
     if any(";" in r for r in righe):
-        return [[c.strip() for c in r.split(";")] for r in righe]
+        return [[c.strip()[:MAX_TESTO_CELLA] for c in r.split(";")] for r in righe]
     d = _delimitatore(testo)                       # CSV con la virgola (o la barra verticale), anche con le virgolette
     if d:
         return _righe_csv(testo, d)
-    return [[c.strip() for c in re.split(r"\s{2,}", r.strip())] for r in righe]
+    return [[c.strip()[:MAX_TESTO_CELLA] for c in re.split(r"\s{2,}", r.strip())] for r in righe]
 
 
 MAX_FOGLI, MAX_RIGHE, MAX_COLONNE, MAX_TESTO_CELLA = 10, 1500, 60, 200      # un Excel normale delle rose sta largamente dentro
@@ -135,12 +136,29 @@ def _righe_csv(testo: str, delimitatore: str) -> list[list[str]]:
                          "Riesportalo da Excel come «CSV UTF-8».") from None
 
 
+def _separatore_rosters(testo: str) -> str | None:
+    """Il separatore scritto nella riga «$,$,$» dell'esportazione «rosters» (anche «$;$;$», «$|$|$», «$<tab>$<tab>$»), con
+    spazi e tabulazioni attorno. Conta la prima riga che comincia con «$», un separatore e un altro «$»; il resto della riga
+    non importa. Si guarda una riga alla volta, con le funzioni delle stringhe."""
+    for riga in testo[:60000].split("\n"):
+        riga = riga.lstrip(" \t")
+        if not riga.startswith("$"):
+            continue
+        dopo = riga[1:]
+        resto = dopo.lstrip(" \t")                   # quello che c'è dopo gli spazi e le tabulazioni che seguono il «$»
+        if resto[:1] in (",", ";", "|") and resto[1:].lstrip(" \t").startswith("$"):
+            return resto[0]
+        if resto.startswith("$") and "\t" in dopo[:len(dopo) - len(resto)]:      # «$<tab>$»: la tabulazione è il separatore
+            return "\t"
+    return None
+
+
 def _delimitatore(testo: str) -> str | None:
     """Il separatore di colonne di un CSV: quello che dà righe con lo stesso numero di colonne (almeno due).
     None se il testo è a una colonna sola (una squadra per blocco) o non è tabellare."""
-    separatore = re.search(r"^[ \t]*\$[ \t]*([,;\t|])[ \t]*\$", testo[:60000], re.MULTILINE)
+    separatore = _separatore_rosters(testo)
     if separatore:                                   # esportazione «rosters»: la riga «$,$,$» dice il separatore
-        return separatore.group(1)
+        return separatore
     migliore, punteggio = None, 0
     for d in ("\t", ";", ",", "|"):
         if d not in testo:

@@ -120,12 +120,15 @@ def test_il_pulsante_della_legenda_non_copre_il_portiere():
 # ---------------------------------------------------------------- partite del turno
 
 def test_sigle_delle_partite_intere_a_320_px():
-    """A 320 px la riga di una partita è larga 258 px (320 − 2 × 16 di pagina − 2 × 1 di bordo − 2 × 14 di carta). Le colonne fisse
-    (ora, «vs», risultato e gli spazi) lasciavano 36 px a ogni sigla: «MON» ne chiede 38 (Segoe UI, 15 px seminero). Ora la colonna
-    di «vs» è larga quanto la parola (uguale in ogni riga, quindi le colonne restano allineate) e la sigla ha almeno 2,8 em."""
+    """A 320 px la riga di una partita è larga quanto la sua sezione: 320 − 2 × 16 di pagina − bordo e rientro della sezione (con la
+    carta di prima 2 × 1 e 2 × 14: 258 px; dalla grafica B la sezione non ha né bordo né rientro). Le colonne fisse (ora, «vs»,
+    risultato e gli spazi) lasciavano 36 px a ogni sigla: «MON» ne chiede 38 (Segoe UI, 15 px seminero). Ora la colonna di «vs» è
+    larga quanto la parola (uguale in ogni riga, quindi le colonne restano allineate) e la sigla ha almeno 2,8 em."""
     em = 15                                                                    # --t-corpo, il carattere della riga
-    larga = 320 - 2 * _riempimento_x(_regole(GLOBALE, "main")) - 2 * 1 - 2 * _riempimento_x(_regole(GLOBALE, 'html[data-densita="compatta"] .carta'))
-    assert larga == 258
+    sezione = _regole(GLOBALE, ".carta")
+    bordo = float(re.search(r"(?<![\w-])border\s*:\s*([\d.]+)(?:px)?[\s;]", sezione).group(1))
+    larga = 320 - 2 * _riempimento_x(_regole(GLOBALE, "main")) - 2 * bordo - 2 * _riempimento_x(sezione)
+    assert larga >= 258
     turno, partita = _regole(GLOBALE, ".partite-turno"), _regole(GLOBALE, ".partita")
     variabili = dict(re.findall(r"(--col-[\w-]+)\s*:\s*([\d.]+)em", turno))
     colonne = re.search(r"grid-template-columns\s*:\s*(.+?);", partita).group(1)
@@ -234,7 +237,8 @@ def test_calendario_senza_intestazione_vuota():
     tabella = _pezzo('<table class="tabella-cal">', "</table>")
     assert "<th></th>" not in tabella
     assert "<thead><tr><td></td>" in tabella
-    assert '<th scope="col">G${g}</th>' in tabella
+    # «G11» a vista, «11ª giornata di Serie A» per il lettore di schermo (#299)
+    assert '<th scope="col"><span aria-hidden="true">G${Number(g)}</span><span class="solo-lettori">${nomeGiornata(null, g)}</span></th>' in tabella
     assert '<th scope="row">${sigla(s.squadra)}</th>' in tabella
     # lo stile della prima colonna segue le celle nuove
     assert ".tabella-cal td:first-child" not in SENZA_COMMENTI

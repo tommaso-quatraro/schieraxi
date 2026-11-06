@@ -78,6 +78,12 @@ def _consigliata(db, regole: Regole, rose: Rose, f: dict | None = None) -> tuple
     return [int(g["id"]) for g in f["titolari"]], [int(g["id"]) for g in f.get("panchina") or []]
 
 
+def _bloccati(db, giornata: int, schede: dict) -> set[int]:
+    """Anticipi già cominciati (#373): gli id delle `schede` ({id: scheda}) di chi gioca una partita già cominciata. Non si spostano
+    più (il server rifiuta il salvataggio), quindi «Da fare» non propone cambi su di loro. Regola della consigliata (#368)."""
+    return set(scelte.bloccati(schede, consigli._anticipi_iniziati(db, consigli.stagione_corrente(), giornata)))
+
+
 def _sostituzioni_ammesse(regole: Regole) -> bool:
     return getattr(getattr(regole, "panchina", None), "max_sostituzioni", 1) > 0
 
@@ -102,9 +108,12 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         return []
     sistema, panchina = consigliata or (None, [])
     schede = {g.id: consigli.scheda_previsione(g.id, prev.loc[g.id]) for g in s.giocatori if g.id is not None and g.id in prev.index}
+    # anticipi già cominciati (#373): niente voce su chi è bloccato e non entra al posto di un altro; resta solo come riserva che
+    # entra da sola dalla panchina
+    fermi = _bloccati(db, giornata, schede)
     voci = []
     # un sostituto per volta: prima chi è fuori, poi chi rischia di più; chi è già nominato (proposto o riserva) non torna una seconda volta
-    in_dubbio = [i for i in titolari if (x := schede.get(i)) and (x["stato"] in FUORI or x["dubbio"] or x["p_voto"] < 0.75)]
+    in_dubbio = [i for i in titolari if i not in fermi and (x := schede.get(i)) and (x["stato"] in FUORI or x["dubbio"] or x["p_voto"] < 0.75)]
     in_dubbio.sort(key=lambda i: (schede[i]["stato"] not in FUORI, schede[i]["p_voto"]))
     usati: set[int] = set()
 
@@ -116,7 +125,7 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         x = schede[i]
         fuori = x["stato"] in FUORI
         # il candidato: chi la consigliata schiera al suo posto, se c'è; altrimenti il libero con più punti attesi
-        alt = max((y for j, y in schede.items() if libero(j, x["ruolo"])),
+        alt = max((y for j, y in schede.items() if libero(j, x["ruolo"]) and j not in fermi),
                   key=lambda y: (bool(sistema) and y["id"] in sistema, y["punti_attesi"]), default=None)
         codice = etichette.codice(x)
         if fuori:
@@ -199,6 +208,25 @@ def _consigliata_cambiata(prev, salvati: list[int], adesso: list[int], giornata:
                  escono=[{"id": i, "nome": schede[i]["nome"]} for i in escono])
 
 
+def _cambi_possibili(salvati: list[int], adesso: list[int], fermi: set[int], schede: dict) -> tuple[list[int], list[int]]:
+    """(chi entra, chi esce) per passare dai titolari `salvati` a quelli della consigliata `adesso`, senza i cambi che non si
+    possono più fare (#373): chi è in `fermi` resta dov'è. Un titolare fermo che la consigliata toglie resta, quindi entra uno in
+    meno del suo ruolo (il meno utile per punti attesi); uno fermo che la consigliata fa entrare non entra, quindi esce uno in meno
+    del suo ruolo (resta il più utile). `schede`: {id: scheda} di chi cambia, con `ruolo` e `punti_attesi`."""
+    entrano = [i for i in adesso if i not in salvati]
+    escono = [i for i in salvati if i not in adesso]
+    ruolo = lambda i: (schede.get(i) or {}).get("ruolo")
+    punti = lambda i: (schede.get(i) or {}).get("punti_attesi") or 0.0
+    for r in {ruolo(i) for i in fermi & {*entrano, *escono}}:
+        k = sum(1 for i in escono if i in fermi and ruolo(i) == r) - sum(1 for i in entrano if i in fermi and ruolo(i) == r)
+        if k > 0:
+            tolti = sorted((i for i in entrano if i not in fermi and ruolo(i) == r), key=punti)[:k]
+        else:
+            tolti = sorted((i for i in escono if i not in fermi and ruolo(i) == r), key=punti, reverse=True)[:-k]
+        entrano, escono = [i for i in entrano if i not in tolti], [i for i in escono if i not in tolti]
+    return [i for i in entrano if i not in fermi], [i for i in escono if i not in fermi]
+
+
 def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | None) -> list[dict]:
     """Le voci sui tuoi titolari. Con una formazione fatta a mano, o niente di salvato, i dubbi di sempre (`_dubbi`). Se hai salvato
     la consigliata (#333) nessun cambio proposto: era già la scelta migliore. Se intanto la consigliata ha titolari diversi, UNA voce
@@ -212,7 +240,12 @@ def _titolari(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path |
     salvati = [int(i) for i in scelta["titolari"]]
     consigliata = _consigliata(db, regole, rose)
     if consigliata and set(consigliata[0]) != set(salvati):
-        return [_consigliata_cambiata(prev, salvati, consigliata[0], giornata)]
+        # chi gioca un anticipo già cominciato non si sposta più (#373): non si nomina come cambio; se cambiano solo loro, niente voce
+        schede = {i: consigli.scheda_previsione(i, prev.loc[i]) for i in set(consigliata[0]) ^ set(salvati) if i in prev.index}
+        entrano, escono = _cambi_possibili(salvati, consigliata[0], _bloccati(db, giornata, schede), schede)
+        if entrano or escono:
+            adesso = [i for i in consigliata[0] if i in entrano] + [i for i in salvati if i not in escono]
+            return [_consigliata_cambiata(prev, salvati, adesso, giornata)]
     # la stessa consigliata (o non si riesce a calcolarla): restano solo le voci che non chiedono un cambio
     return [v for v in _dubbi(db, regole, rose, giornata, file_scelte) if "alternativa" not in v]
 
@@ -420,7 +453,7 @@ def _rose_vecchie(db, stagione: str, regole: Regole, file_rose: Path, adesso: da
     if entro is None:
         return None
     giorni = (adesso - aggiornate).days
-    return _voce("rose-vecchie", "rose", F("dafare.rose_mercato", n=serie_a_a_lega(entro, regole)),
+    return _voce("rose-vecchie", "rose", F("dafare.rose_mercato", giornata=frasi.nome_giornata(entro, serie_a_a_lega(entro, regole))),
                  MEDIA, F("dafare.az_aggiorna_rose"), _destinazione("lega", "rose"), giorni=giorni)
 
 
@@ -466,7 +499,7 @@ def _diario(db, stagione: str, rose: Rose, file_scelte: Path | None, file_diario
         return []
     if dal is not None and _chiusa_prima(db, stagione, g, getattr(regole, "scadenza_minuti", 0), dal):
         return []
-    return [_voce(f"diario:{g}", "diario", F("dafare.diario", n=g - prima + 1), BASSA,
+    return [_voce(f"diario:{g}", "diario", F("dafare.diario", giornata=frasi.nome_giornata(g, g - prima + 1)), BASSA,
                   F("dafare.az_schierato"), _destinazione("lega", "diario", giornata=g), giornata=g)][:MAX_DIARIO]
 
 

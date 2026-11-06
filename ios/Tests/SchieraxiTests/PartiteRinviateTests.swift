@@ -51,7 +51,10 @@ final class PartiteRinviateTests: XCTestCase {
         let r = try XCTUnwrap(o.riepilogoGiornata)
         XCTAssertEqual(r.recuperi.map(\.id), ["atalanta-parma"])
         XCTAssertEqual(r.rinvio?.giornata, 10)
-        XCTAssertEqual(TestiRinvio.recuperoManca(r.recuperi), "Manca il recupero di ATA–PAR: i punti possono ancora cambiare.")
+        // come la web (`oggi.recupero_manca` con `partitaVs`) e la carta del rinvio: «ATA vs PAR», non «ATA–PAR» (#310)
+        XCTAssertEqual(TestiRinvio.recuperoManca(r.recuperi), "Manca il recupero di ATA vs PAR: i punti possono ancora cambiare.")
+        let due = [PartitaRinviata(casa: "udinese", trasferta: "milan", data: nil), PartitaRinviata(casa: "atalanta", trasferta: "parma", data: nil)]
+        XCTAssertEqual(TestiRinvio.recuperoManca(due), "Manca il recupero di UDI vs MIL, ATA vs PAR: i punti possono ancora cambiare.")
         let vecchio = try oggi(#"{"giornata": 11, "fase": "finita", "riepilogo": {"giornata": 10, "punti_fatti": 61, "recuperi": 3, "rinvio": []}}"#)
         XCTAssertEqual(vecchio.riepilogoGiornata?.recuperi, [])
         XCTAssertNil(vecchio.riepilogoGiornata?.rinvio)

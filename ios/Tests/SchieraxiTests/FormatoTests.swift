@@ -72,12 +72,5 @@ final class FormatoTests: XCTestCase {
         XCTAssertEqual(Formato.intero(1e20), 0)
     }
 
-    func testDifficoltaAParole() {
-        XCTAssertEqual(Formato.difficolta(1), "molto facile")
-        XCTAssertEqual(Formato.difficolta(2), "facile")
-        XCTAssertEqual(Formato.difficolta(nil), "difficoltà media")
-        XCTAssertEqual(Formato.difficolta(4), "difficile")
-        XCTAssertEqual(Formato.difficolta(5), "molto difficile")
-        XCTAssertEqual(Formato.difficolta(0), "molto facile")
-    }
+    // La difficoltà a parole (una scala sola, quella della web) si prova in DifficoltaPartitaTests.
 }
