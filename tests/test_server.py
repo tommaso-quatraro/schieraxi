@@ -61,7 +61,7 @@ def test_regole_rifiutano_valori_esagerati_e_infiniti(client):
             dove[ultima] = valore
         return client.put("/api/regole", json=r)
     assert prova(moduli=["4-4-2", "4-4-2"]).status_code == 400
-    assert prova(moduli=["4-4-2"] * 31).status_code == 400
+    assert prova(moduli=["4-4-2"] * 31).status_code == 422          # oltre i tetti di misura (#480)
     assert prova(rosa__D=31).status_code == 400
     assert prova(panchina__max_sostituzioni=11).status_code == 400
     # Infinity e NaN: prima davano OverflowError (errore 500)
@@ -229,6 +229,18 @@ def test_riconosci_regole_non_cambia_nulla(client):
     r = client.post("/api/regole/riconosci", json={"testo": "Assist +2\nAmmonizione -1"}).json()
     assert {m["chiave"]: m["valore"] for m in r["modifiche"]} == {"bonus.assist": 2.0, "bonus.ammonizione": -1.0}
     assert client.get("/api/regole").json() == prima       # solo una proposta: le regole restano com'erano
+
+
+def test_regole_salvate_oltre_i_tetti_rispondono_422(client):
+    regole = client.get("/api/regole").json()
+    regole["modificatore_difesa"]["soglie"] = [[6 + i / 100, 1] for i in range(21)]
+    r = client.put("/api/regole", json=regole)
+    assert r.status_code == 422 and "al massimo 20 fasce" in r.json()["detail"]
+    r = client.put("/api/regole", json=client.get("/api/regole").json() | {"nome_lega": "L" * 101})
+    assert r.status_code == 422 and "il nome della lega può avere al massimo 100 caratteri" in r.json()["detail"]
+    r = client.put("/api/regole", json=client.get("/api/regole").json() | {"fonte_voto": "inventata"})
+    assert r.status_code == 400                                     # gli altri errori delle regole restano come prima
+    assert client.get("/api/regole").json()["nome_lega"] == Regole().nome_lega
 
 
 def test_riconosci_regole_oltre_i_tetti_risponde_422(client):
