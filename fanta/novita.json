@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.425",
+    "data": "2026-11-06T04:39:14",
+    "titolo": "Righe dei giocatori più basse, numeri in colonna",
+    "voci": [
+      "Ogni giocatore sta su una riga più bassa, uguale in tutte le schermate: a sinistra volto, nome, partita ed etichette, a destra «gioca N%» e fantavoto atteso.",
+      "I numeri stanno sempre nella stessa colonna, con il nome della colonna in alto. Sugli schermi larghi la riga sta su una linea sola e nella Formazione titolari e panchina stanno uno sotto l'altro.",
+      "Meno segni: lettera del ruolo grigia, indice come numero piccolo sul volto, una lineetta nei colori della squadra; sotto il 70% «gioca N%» è arancio."
+    ],
+    "tecnico": [
+      "Grafica B, PR 6 (parte di #354): voceGiocatore, valoreRosa, rigaGiocatoreCompatta, le righe dei Seguiti, della rosa, della sostituzione e della scelta del confronto usano .voce-g (grid-template-areas) dentro li.riga-gioc, contenitore «riga»; da 680 px di riga una linea sola con le colonne nome, partita, etichette, --col-gioca (8ch), --col-fv (5ch).",
+      "Nuove: lineetta(slug) (per ogni tema il colore del club che si vede sul fondo, grigia se manca), intestazioneColonne(opz) (aria-hidden, «Partita» e «Fantavoto atteso», opz.ferma e opz.azione), numeriRiga(p, perche), pezziRiga(pezzi). voceGiocatore ha un parametro facoltativo in fondo (extra) per la squadra nei Seguiti.",
+      "Tolti: anello colorato dell'indice (.avatar-anello senza conic-gradient, .badge-indice neutro), .indice e anello(), .barra-p, pallino della difficoltà nelle righe, sottolineatura a puntini del numero, .intestazione-elenco e le chiavi mercato.giocatori e mercato.voto_atteso. ⇄ e ✎ senza cerchio (colore --azione). Formazione da 1400 px senza columns: 2. .campo.non-ferma resta position: relative (le linee del campo non escono più)."
+    ]
+  },
+  {
     "versione": "1.424",
     "data": "2026-11-06T04:27:35",
     "titolo": "Differenze che tornano con i numeri scritti",
