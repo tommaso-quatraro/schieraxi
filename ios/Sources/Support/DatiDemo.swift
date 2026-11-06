@@ -442,10 +442,12 @@ private extension LegaDemo {
 
     // MARK: - Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
 
-    /// Fase `in_corso`: scadenza passata da più di due ore; Inter-Roma finita con i voti, Milan-Juventus e Lazio-Fiorentina in
-    /// corso, il resto da giocare. Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili. Orari e numeri sono
-    /// quelli del widget (`LegaDemo.bloccoInCorso`).
+    /// Fase `in_corso`, nel momento della demo (`LegaDemo.momento`, alle 18:48 ora italiana, #417): la formazione si è chiusa la
+    /// sera prima, 10 minuti prima di Inter-Roma, finita con i voti; Milan-Juventus e Lazio-Fiorentina in corso, il resto da giocare.
+    /// Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili. Orari e numeri sono quelli del widget
+    /// (`LegaDemo.bloccoInCorso`).
     static func oggiInCorso(adesso: Date) -> String {
+        let adesso = momento(adesso: adesso, fase: .inCorso)
         var o = oggiDati(adesso: adesso)
         let stati = ["finita", "in_corso", "da_giocare", "in_corso", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare", "da_giocare"]
         o["partite"] = orari(adesso: adesso, fase: .inCorso).enumerated().map { i, ora in
@@ -741,7 +743,7 @@ private extension LegaDemo {
                       "gol_subito_portiere": bonus.golSubito, "portiere_imbattuto": bonus.imbattuto,
                       "ammonizione": -0.5, "espulsione": -1.0, "mvp": 0.0],
             "rosa": postiRosa, "crediti_iniziali": 500, "rimborso_svincolo": rimborsoSvincolo,
-            "scadenza_minuti": 30, "prima_giornata_lega": 4, "aggiornamenti_vicino_scadenza": true,
+            "scadenza_minuti": minutiScadenza, "prima_giornata_lega": 4, "aggiornamenti_vicino_scadenza": true,
             "partite_rinviate": "aspetta", "voto_ufficio_rinviate": 6, "rinvii_giornate": [String: Any](),
             "moduli": ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"],
             "panchina": ["numero": 11, "tipo": "per_ruolo", "max_sostituzioni": maxSostituzioni, "cambio_modulo": false,
