@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.429",
+    "data": "2026-11-06T08:57:49",
+    "titolo": "Dettagli accanto alla pagina",
+    "voci": [
+      "Su schermi larghi la scheda di un giocatore si apre accanto alla pagina, senza coprirla: un clic su un altro giocatore la cambia.",
+      "La ricerca in alto mostra i risultati mentre scrivi.",
+      "Nella scheda il fantavoto atteso è il numero grande, con accanto quanto è probabile che giochi; nel «Perché questo numero» l'effetto di ogni motivo sta a destra, in colonna."
+    ],
+    "tecnico": [
+      "apriFoglio(html, { affianco: true }): da 1200 px (matchMedia) pannello non modale a destra (body.con-pannello, --pannello: clamp(400px, 32vw, 520px)), senza inert né aria-modal; il titolo prende il focus, Esc e ✕ lo riportano a chi l'ha aperto. Sotto i 1200 px e per le altre finestre resta il foglio modale; con la finestra che passa i 1200 px il pannello cambia modo da solo.",
+      "Lo usano scheda, confronto, scelta per il confronto, sostituzione di un titolare, «Perché questo numero» e la ricerca della testata (risultati 150 ms dopo l'ultimo tasto, Invio apre il primo). Un cambio di schermata (vai) chiude il pannello; con il pannello aperto Ctrl+S, /, 1-4 e la virgola funzionano come a pannello chiuso.",
+      "Ricerca: frecce dal campo ai risultati e ritorno, numero dei risultati in #stato-ricerca (role=status, chiavi avv.n_risultati); sotto i 1200 px con la ricerca aperta riparte il foglio della ricerca con il testo. Sostituzione di un titolare: si chiude quando la Formazione si ridisegna e non cambia niente se la modifica a mano non c'è più."
+    ]
+  },
+  {
     "versione": "1.428",
     "data": "2026-11-06T07:32:26",
     "titolo": "Formazione più comoda",

@@ -53,6 +53,7 @@ const disegna = nome => () => chiamate.push(["disegna", nome]);
 const vistaOggi = disegna("oggi"), vistaFormazione = disegna("formazione"), vistaMercato = disegna("mercato"), vistaScambi = disegna("scambi");
 const vistaLega = a => chiamate.push(["disegna", a]), vistaImpostazioni = g => chiamate.push(["disegna", "impostazioni", g || null]);
 const chiudiFoglio = () => chiamate.push(["chiudi-foglio"]);
+const chiudiPannelloAffiancato = () => chiamate.push(["chiudi-pannello"]);
 let risposta = true; const confirm = () => { chiamate.push(["domanda"]); return risposta; };
 // cronologia del browser, finta ma con le sue regole
 const location = { pathname: "/", search: "", hash: "" };
@@ -167,11 +168,32 @@ def test_indietro_con_la_formazione_non_salvata_chiede_e_se_si_resta_l_indirizzo
     assert esce["vista"] == "oggi" and esce["indirizzo"] == "/?vista=oggi" and ["disegna", "oggi"] in esce["chiamate"]
 
 
+def test_cambiare_schermata_chiude_il_pannello_affiancato():
+    """Con il pannello affiancato (PR 9) schede, tasti e ingranaggio restano attivi: la schermata nuova chiude il pannello (la
+    sostituzione di un titolare non deve restare aperta su una Formazione che non c'è più), prima di disegnarsi. Se si resta nella
+    Formazione con le modifiche non salvate il pannello resta."""
+    squadra, imp, resta = _esegui("""
+    const esiti = [];
+    vai("formazione"); chiamate.splice(0);
+    vai("squadra"); esiti.push(foto());
+    vai("impostazioni", "aspetto"); esiti.push(foto());
+    vai("formazione"); chiamate.splice(0); stato.scelta = { nonSalvata: true }; risposta = false;
+    vai("oggi"); esiti.push(foto());
+    console.log(JSON.stringify(esiti));
+    """)
+    for esito in (squadra, imp):
+        c = esito["chiamate"]
+        assert ["chiudi-pannello"] in c and c.index(["chiudi-pannello"]) < next(i for i, x in enumerate(c) if x[0] == "disegna"), c
+    assert ["chiudi-pannello"] not in resta["chiamate"] and resta["vista"] == "formazione"
+
+
 def test_tasti_slash_e_numeri_non_scattano_mentre_si_scrive():
     """`/` porta nel campo della testata (o apre la ricerca dove il campo non si vede); 1-4 cambiano scheda e portano il focus sul
-    titolo; dentro un campo di testo, con Ctrl/⌘/Alt o con il foglio aperto non succede niente."""
+    titolo; dentro un campo di testo, con Ctrl/⌘/Alt o con il foglio modale aperto non succede niente. Con il pannello affiancato
+    (PR 9) la pagina resta attiva: 1-4, «,» e `/` funzionano come a pannello chiuso."""
     codice = "\n".join([
-        "const chiamate = []; let campoVisibile = true; const foglio = { hidden: true };",
+        "const chiamate = []; let campoVisibile = true; const foglio = { hidden: true }; let affiancato = false;",
+        "const foglioModale = () => !foglio.hidden && !affiancato;",
         "const campo = { getClientRects: () => (campoVisibile ? [1] : []), focus() { chiamate.push(['focus-campo']); } };",
         "const $ = s => ({ '#campo-cerca': campo, '#foglio': foglio }[s] || null);",
         "const document = { addEventListener(n, f) { document['su_' + n] = f; } };",
@@ -187,7 +209,9 @@ def test_tasti_slash_e_numeri_non_scattano_mentre_si_scrive():
           slash_scrivibile: tasto("/", { tagName: "DIV", isContentEditable: true }),
           due: tasto("2"), due_campo: tasto("2", { tagName: "INPUT" }), due_ctrl: tasto("2", undefined, { ctrlKey: true }),
         };
-        foglio.hidden = false; esiti.due_foglio = tasto("2");
+        foglio.hidden = false; esiti.due_foglio = tasto("2"); esiti.virgola_foglio = tasto(","); esiti.slash_foglio = tasto("/");
+        affiancato = true; esiti.due_pannello = tasto("2"); esiti.virgola_pannello = tasto(","); esiti.slash_pannello = tasto("/");
+        affiancato = false;
         foglio.hidden = true; campoVisibile = false; esiti.slash_telefono = tasto("/");
         esiti.esc = tasto("Escape", { tagName: "INPUT" });
         console.log(JSON.stringify(esiti));
@@ -197,9 +221,12 @@ def test_tasti_slash_e_numeri_non_scattano_mentre_si_scrive():
     assert r.returncode == 0, r.stderr
     e = json.loads(r.stdout.strip().splitlines()[-1])
     assert e["slash"] == [[["focus-campo"]], True]                      # PC: il cursore nel campo della testata, «/» non si scrive
-    for chiave in ("slash_campo", "slash_area", "slash_scrivibile", "due_campo", "due_ctrl", "due_foglio"):
+    for chiave in ("slash_campo", "slash_area", "slash_scrivibile", "due_campo", "due_ctrl", "due_foglio", "virgola_foglio"):
         assert e[chiave] == [[], False], chiave
+    assert e["slash_foglio"] == [[["ricerca", ""]], True]                 # foglio modale: la ricerca prende il suo posto
     assert e["due"] == [[["vai", "formazione", True]], False]
+    assert e["due_pannello"] == e["due"] and e["virgola_pannello"] == [[["vai", "impostazioni", True]], False]
+    assert e["slash_pannello"] == [[["focus-campo"]], True]
     assert e["slash_telefono"] == [[["ricerca", ""]], True]
     assert e["esc"][0] == [["chiudi-foglio"]]
 
