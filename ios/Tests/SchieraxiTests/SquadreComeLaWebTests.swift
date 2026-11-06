@@ -123,8 +123,19 @@ struct SquadreComeLaWebTests {
         }
     }
 
-    private static func vm(_ server: ServerDiProva) -> RosaViewModel {
-        RosaViewModel(nome: "Nuvola Ovest", server: server, immagini: Immagini(server: server))
+    /// Ogni prova ha il suo centro delle notifiche: l'avviso «aggiornaTutto» non sveglia le schermate delle altre prove.
+    private static func vm(_ server: ServerDiProva, centro: NotificationCenter = NotificationCenter()) -> RosaViewModel {
+        RosaViewModel(nome: "Nuvola Ovest", server: server, immagini: Immagini(server: server), centro: centro)
+    }
+
+    /// Conta gli avvisi «aggiornaTutto» arrivati su un centro.
+    private static func contaAvvisi(su centro: NotificationCenter) -> (conteggio: Scatola<Int>, osservatore: NSObjectProtocol) {
+        let conteggio = Scatola<Int>()
+        conteggio.valore = 0
+        let osservatore = centro.addObserver(forName: .aggiornaTutto, object: nil, queue: nil) { _ in
+            conteggio.valore = (conteggio.valore ?? 0) + 1
+        }
+        return (conteggio, osservatore)
     }
 
     @Test("Rinomina: PUT con il nome di adesso e il nuovo senza spazi in più, poi la rosa si rilegge con il nome nuovo")
@@ -183,6 +194,37 @@ struct SquadreComeLaWebTests {
         await vm.rinomina()
         #expect(server.quante("PUT /api/squadre/nome") == 0)
         #expect(vm.nome == "Nuvola Ovest")
+    }
+
+    @Test("Dopo «Cambia il nome» tutta l'app si ricarica (aggiornaTutto): Squadre e Oggi non restano con il nome vecchio")
+    func rinominaAvvisaTutta() async throws {
+        let centro = NotificationCenter()
+        let (arrivi, osservatore) = Self.contaAvvisi(su: centro)
+        defer { centro.removeObserver(osservatore) }
+        let server = Self.serverRosa()
+        let vm = Self.vm(server, centro: centro)
+        await vm.carica()
+        vm.nuovoNome = "Nuvola Est"
+        await vm.rinomina()
+        #expect(vm.nome == "Nuvola Est")
+        #expect(arrivi.valore == 1, "un solo avviso, a nome salvato")
+    }
+
+    @Test("Nessun avviso se il nome non cambia davvero: vuoto, uguale, o rifiutato dal server")
+    func nessunAvvisoSenzaCambio() async throws {
+        let centro = NotificationCenter()
+        let (arrivi, osservatore) = Self.contaAvvisi(su: centro)
+        defer { centro.removeObserver(osservatore) }
+        let rifiuta = Self.serverRosa(rispostaNome: { throw ErroreApi.server("C'è già una squadra con questo nome: scegline un altro.") })
+        let vm = Self.vm(rifiuta, centro: centro)
+        await vm.carica()
+        vm.nuovoNome = ""
+        await vm.rinomina()
+        vm.nuovoNome = "Nuvola Ovest"
+        await vm.rinomina()
+        vm.nuovoNome = "Borgo Alto"
+        await vm.rinomina()
+        #expect(arrivi.valore == 0)
     }
 
     @Test("Il server rifiuta (nome già preso): si vede la sua frase e il nome resta quello di prima")

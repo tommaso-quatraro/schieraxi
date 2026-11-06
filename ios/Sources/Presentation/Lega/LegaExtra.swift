@@ -119,6 +119,8 @@ private struct EsitoNuovoNome: Decodable {
 final class RosaViewModel: ViewModelBase {
     private let server: any ServerClient
     private let immagini: Immagini
+    /// Dove si avvisa l'app che il nome è cambiato (i test ne danno uno loro, per non svegliare le schermate di altre prove).
+    private let centro: NotificationCenter
     /// Il nome della squadra: cambia quando la si rinomina («Cambia il nome»).
     @Published private(set) var nome: String
     let caricatore: Caricatore<Rosa>
@@ -130,9 +132,10 @@ final class RosaViewModel: ViewModelBase {
     private var nomeDelServer: String
     private var creditiDelServer = ""
 
-    init(nome: String, server: any ServerClient, immagini: Immagini) {
+    init(nome: String, server: any ServerClient, immagini: Immagini, centro: NotificationCenter = .default) {
         self.server = server
         self.immagini = immagini
+        self.centro = centro
         self.nome = nome
         nuovoNome = nome
         nomeDelServer = nome
@@ -161,6 +164,7 @@ final class RosaViewModel: ViewModelBase {
     /// «Cambia il nome» (`PUT /api/squadre/nome`, come la web): il nome nuovo senza spazi in più, da 1 a 60 caratteri. Il server
     /// sposta con il nome rose, «la mia squadra», stemma e maglia; poi la rosa si rilegge con il nome nuovo.
     func rinomina() async {
+        guard !inCorso else { return }   // Invio sulla tastiera durante il salvataggio: un secondo invio avrebbe un ETag vecchio (412)
         let nuovo = nuovoNome.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         guard !nuovo.isEmpty, nuovo.count <= 60 else {
             messaggio = ParoleSquadre.nomeNonValido
@@ -185,6 +189,7 @@ final class RosaViewModel: ViewModelBase {
             await immagini.caricaElenchi()          // stemma e maglia hanno seguito il nome
             await caricatore.ricarica(Self.percorso(scelto))
             if let r = caricatore.dato { allinea(a: r, forza: false) }
+            centro.post(name: .aggiornaTutto, object: nil)   // Squadre, Oggi e le altre schermate ripartono dal nome nuovo
         } catch {
             let conflitto = (error as? ErroreApi)?.eConflitto == true
             messaggio = error.localizedDescription
@@ -195,6 +200,7 @@ final class RosaViewModel: ViewModelBase {
 
     /// «Salva» accanto ai crediti residui (`PUT /api/crediti`, come la web): un numero intero da 0 a 99999.
     func salvaCrediti() async {
+        guard !inCorso else { return }   // «Salva» premuto due volte: il secondo avrebbe un ETag vecchio (412)
         let testo = crediti.trimmingCharacters(in: .whitespaces)
         guard testo.range(of: "^[0-9]{1,5}$", options: .regularExpression) != nil, let numero = Int(testo) else {
             messaggio = ParoleSquadre.scriviCrediti
@@ -247,7 +253,6 @@ final class RosaViewModel: ViewModelBase {
 }
 
 struct RosaView: View {
-    let nome: String
     /// Nel foglio «Stemma e maglia» di Squadre: solo le immagini della squadra, senza i giocatori.
     let soloImmagini: Bool
     @StateObject private var vm: RosaViewModel
@@ -261,9 +266,10 @@ struct RosaView: View {
     @State private var tipoFile = "stemma"
     @State private var chiediIndirizzo = false
     @State private var indirizzoScritto = ""
+    /// La larghezza del campo dei crediti cresce con il testo (una larghezza fissa taglia le cifre con il testo grande).
+    @ScaledMetric private var larghezzaCrediti: CGFloat = 96
 
     init(nome: String, server: any ServerClient, soloImmagini: Bool = false) {
-        self.nome = nome
         self.soloImmagini = soloImmagini
         _vm = StateObject(wrappedValue: RosaViewModel(nome: nome, server: server, immagini: Immagini.condivise))
     }
@@ -406,6 +412,7 @@ struct RosaView: View {
                 .submitLabel(.done)
                 .onSubmit { Task { await vm.rinomina() } }
                 .frame(minHeight: 44)
+                .disabled(vm.inCorso)
             Button(ParoleSquadre.salva) { Task { await vm.rinomina() } }
                 .accessibilityLabel(ParoleSquadre.salvaNome)
                 .frame(minHeight: 44)
@@ -418,13 +425,13 @@ struct RosaView: View {
     private var creditiResidui: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 12) {
-                Text(ParoleSquadre.creditiResidui)
+                Text(ParoleSquadre.creditiResidui).accessibilityHidden(true)   // il campo ha già questo nome per VoiceOver
                 Spacer(minLength: 8)
                 campoCrediti
                 salvaCrediti
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text(ParoleSquadre.creditiResidui)
+                Text(ParoleSquadre.creditiResidui).accessibilityHidden(true)
                 HStack(spacing: 12) {
                     campoCrediti
                     salvaCrediti
@@ -438,7 +445,7 @@ struct RosaView: View {
         TextField("—", text: $vm.crediti)
             .keyboardType(.numberPad)
             .multilineTextAlignment(.trailing)
-            .frame(width: 96)
+            .frame(width: larghezzaCrediti)
             .frame(minHeight: 44)
             .accessibilityLabel(ParoleSquadre.creditiResidui)
     }
