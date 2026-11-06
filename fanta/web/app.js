@@ -2517,14 +2517,16 @@ function statoRegistro(reg, k) {
   if (ok === true) return { testo: t("sd.reg_regge"), colore: "var(--verde)" };
   return ok === false ? { testo: t("sd.reg_non_regge"), colore: "var(--rosso)" } : { testo: t("sd.nessun_dato"), colore: "" };
 }
+// Una misura (del registro o del consiglio): il nome, accanto il verdetto colorato ma sempre a parole, sotto media e soglia.
+function rigaMisura(reg, k, nome, dettaglio) {
+  const st = statoRegistro(reg, k);
+  return `<div class="riga"><span>${t(nome)}</span><span class="piccolo${st.colore ? "" : " debole"}"${st.colore ? ` style="color:${st.colore}"` : ""}>${st.testo}</span></div>
+      <div class="debole piccolo">${dettaglio}</div>`;
+}
 function cartaRegistro(reg) {
   if (!reg) return "";
   const s = reg.soglie || {}, n = reg.giornate || 0;
-  const misura = (k, nome, dettaglio) => {
-    const st = statoRegistro(reg, k);
-    return `<div class="riga"><span>${t(nome)}</span><span class="piccolo${st.colore ? "" : " debole"}"${st.colore ? ` style="color:${st.colore}"` : ""}>${st.testo}</span></div>
-      <div class="debole piccolo">${dettaglio}</div>`;
-  };
+  const misura = (k, nome, dettaglio) => rigaMisura(reg, k, nome, dettaglio);
   const misure = n ? misura("I1", "sd.reg_i1", t("sd.reg_i1_riga", { v: regPerc(reg.i1, true), s: regPerc(s.I1, true), m: num(reg.errore_modello, 2), f: num(reg.errore_fantamedia, 2) }))
     + misura("I2", "sd.reg_i2", t("sd.reg_i2_riga", { c: regCifra(reg.calibrazione, 100), sc: regCifra(s.I2_calibrazione, 100), b: num(reg.brier, 3), sb: num(s.I2_brier, 3) }))
     + misura("I3", "sd.reg_i3", t("sd.reg_i3_riga", { v: regPerc(reg.copertura), min: regPerc(s.I3_minimo), max: regPerc(s.I3_massimo) })) : "";
@@ -2536,6 +2538,24 @@ function cartaRegistro(reg) {
     ${perse.length ? `<h3>${t("sd.reg_perse")}</h3><div class="debole piccolo">${t("sd.reg_perse_spiega")}</div>
       ${perse.map(g => `<div class="riga"><span>${t("sd.reg_giornata", { s: esc(g.stagione), g: nomeGiornata(null, g.giornata) })}</span></div>
         <div class="piccolo" style="color:var(--rosso)">${esc(g.persa)}</div>`).join("")}` : ""}</div>`;
+}
+// Consiglio di formazione (#366): gli indicatori del consiglio sommati sui Diari di tutti (campo `consiglio`, PR #362), resi come il
+// registro: per ognuno la media delle ultime giornate, la soglia e il verdetto del server (`regge`, non si ricalcola qui). Punti con
+// due cifre e il segno («+1,00», «−0,25»), totali interi, frazioni come percentuali; «–» se manca. Uguale sull'iPhone (`ParoleConsiglio`).
+const consIntero = x => (typeof x === "number" && Number.isFinite(x)) ? String(x) : "–";
+function cartaConsiglio(c) {
+  if (!c) return "";
+  const s = c.soglie || {}, n = c.giornate || 0;
+  const valore = t("sd.cons_c1_riga", { v: segno(c.meno_s2, 2), s: regCifra(s.C1) })
+    + (typeof c.meno_schierata === "number" ? ` · ${t("sd.cons_c1_schierata", { w: segno(c.meno_schierata, 2) })}` : "");
+  const misure = n ? rigaMisura(c, "C1", "sd.cons_c1", valore)
+    + rigaMisura(c, "C2", "sd.cons_c2", t("sd.cons_c2_riga", { c: regCifra(c.cambi), n: consIntero(c.cambi_sotto_soglia), s: regCifra(s.C2) }))
+    + rigaMisura(c, "C3", "sd.cons_c3", t("sd.cons_c3_riga", { i: consIntero(c.improbabili), n: consIntero(c.con_compagno), s: regCifra(s.C3) }))
+    + rigaMisura(c, "C4", "sd.cons_c4", t("sd.cons_c4_riga", { sp: consIntero(c.spiegate), st: consIntero(c.storte), v: regPerc(c.senza_motivo), s: regPerc(s.C4_senza_motivo) })) : "";
+  return `<div class="carta" id="consiglio-formazione"><h2>${t("sd.cons_titolo")}</h2>
+    <div class="debole piccolo">${t("sd.cons_spiega")}</div>
+    <div class="debole piccolo" style="margin:4px 0 8px">${n ? tp("sd.cons_media", n, { f: tp("sd.cons_formazioni", c.voci || 0) }) : t("sd.cons_nessuna")}</div>
+    ${misure}</div>`;
 }
 // Stato dei dati: da dove arriva tutto, quando è stato aggiornato, errori, foto e confronto tra probabilità previste e giocatori che hanno giocato.
 async function apriStatoDati() {
@@ -2576,6 +2596,7 @@ async function apriStatoDati() {
       <div class="carta" id="affidabilita"><h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>
       ${cartaRegistro(s.registro)}
       ${cartaNostri(s.registro_nostri)}
+      ${cartaConsiglio(s.consiglio)}
       <div class="carta"><h2>${t("scambio.quanto_azzecca_modello")}</h2>
         <div class="debole piccolo">${c.giornate ? t("sd.giornate_giocate", { n: c.giornate }) : t("sd.appena_finisce")}
           ${t("sd.corregge")}</div>
