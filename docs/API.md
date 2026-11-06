@@ -26,7 +26,8 @@ Sigle usate qui:
    Il campo `registrazione` vale `invito`, `email` o `aperta` (come ci si registra, vedi `account_email.py`).
    Le uniche rotte senza sessione sono: `POST /api/account/accedi`, `POST /api/account/registra`, `POST /api/account/registra/conferma`, `POST /api/account/recupero`, `POST /api/account/recupero-email`, `POST /api/account/recupero-email/conferma`, e i file statici della pagina (`/`, `/app.js`, `/stile.css`, `/sw.js`, `/manifest.webmanifest`, `/privacy`, `/termini`, `/crediti`, `/elimina-account`, icone e schermate del manifest `/screenshot-*.png`).
    Con gli account spenti non si fa nessun login: c'è un utente locale implicito (con i poteri dell'amministratore), quindi il server
-   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1) e senza intestazioni di proxy (`X-Forwarded-*`,
+   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1), aperte con l'indirizzo `127.0.0.1`, `localhost`
+   o `[::1]` (intestazione `Host`, con o senza porta), e senza intestazioni di proxy (`X-Forwarded-*`,
    `Forwarded`, `X-Real-IP`). Tutte le altre, anche i file della pagina, ricevono `403` con
    `{"detail": "Questo server non ha gli account accesi: risponde solo dal computer su cui gira"}`. Un server raggiungibile dai client
    deve avere `FANTA_MULTIUTENTE=1`.
