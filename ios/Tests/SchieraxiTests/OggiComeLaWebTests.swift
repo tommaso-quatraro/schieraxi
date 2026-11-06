@@ -1,5 +1,7 @@
 import Foundation
+import SwiftUI
 import Testing
+import UIKit
 @testable import Schieraxi
 
 /// Oggi come la web (#416, parte di #167). Con la grafica B (#415) la web parte dalla giornata con il conto alla rovescia, senza il
@@ -53,6 +55,25 @@ struct OggiComeLaWebTests {
         #expect(posizioni == posizioni.sorted(), "ordine dell'iPhone \(sezioni) diverso da quello della web")
     }
 
+    /// L'ordine da solo non basta: una sezione tolta su un lato solo lascerebbe giusto l'ordine delle altre. Qui l'insieme delle
+    /// sezioni di ogni fase si confronta con quello che la web mostra, letto dalle condizioni di `mostraOggi`.
+    @Test("Ogni segno delle sezioni della web c'è davvero in mostraOggi")
+    func segniNellaWeb() throws {
+        let web = try OggiWeb()
+        let segni = SezioneOggi.allCases.compactMap(OggiWeb.segno)
+        #expect(!segni.isEmpty)
+        let mancanti = segni.filter { web.mostraOggi.range(of: $0) == nil }
+        #expect(mancanti.isEmpty, "in mostraOggi di fanta/web/app.js mancano \(mancanti): aggiorna OggiWeb.segno")
+    }
+
+    @Test("Ogni fase ha le stesse sezioni della web, né una in più né una in meno", arguments: [FaseGiornata.prima, .inCorso, .finita])
+    func stesseSezioniDellaWeb(fase: FaseGiornata) throws {
+        let web = try OggiWeb()
+        let attese = try web.sezioni(fase: fase)
+        let iPhone = Set(SezioneOggi.ordine(fase: fase, conGiornata: true).compactMap(OggiWeb.comeSullaWeb))
+        #expect(iPhone == attese, "in più sull'iPhone: \(iPhone.subtracting(attese)); mancano sull'iPhone: \(attese.subtracting(iPhone))")
+    }
+
     @Test("Giornata in corso: prima chi va a punteggio, poi i cambi dalla panchina, come la carta della web")
     func inCorsoComeLaWeb() throws {
         let web = try OggiWeb()
@@ -91,6 +112,37 @@ struct OggiComeLaWebTests {
     func nienteNumeriCheSalgono(file: String) throws {
         let sorgente = try OggiWeb.sorgenteIPhone(file)
         #expect(!sorgente.contains("NumeroCheSale"))
+    }
+
+    // MARK: carta della formazione
+
+    /// La web scrive «Mancano le probabili…» nella formazione anche quando i punti attesi non ci sono (`num(null)` = «–»):
+    /// sull'iPhone l'avviso stava dentro il controllo «formazione disponibile» e con `punteggio_atteso: null` spariva.
+    /// Si disegna la carta (`ImageRenderer`, larga come un iPhone stretto) con e senza probabili: con l'avviso è più alta.
+    @MainActor
+    @Test("«Mancano le probabili» c'è anche con la formazione non disponibile (punti attesi assenti), come la web")
+    func avvisoProbabiliSenzaFormazione() throws {
+        func altezza(conProbabili: Bool) throws -> CGFloat {
+            let json = #"{"giornata": 11, "fase": "prima", "con_probabili": \#(conProbabili), "formazione": {"modulo": "4-3-3", "punteggio_atteso": null}}"#
+            let oggi: Oggi = try Decodifica.decodifica(Data(json.utf8))
+            #expect(oggi.formazione?.disponibile == false, "il caso da provare è la formazione senza punti attesi")
+            let disegno = ImageRenderer(content: CartaFormazioneOggi(oggi: oggi).frame(width: 320))
+            disegno.scale = 1
+            return disegno.uiImage?.size.height ?? 0
+        }
+        let conLeProbabili = try altezza(conProbabili: true)
+        let senzaProbabili = try altezza(conProbabili: false)
+        #expect(conLeProbabili > 0)
+        #expect(senzaProbabili > conLeProbabili, "con con_probabili false l'avviso deve comparire anche senza punti attesi")
+    }
+
+    @Test("VoiceOver sulle cifre dice modulo e punti attesi, senza ripetere il titolo appena letto")
+    func voceCifreSenzaTitolo() {
+        let voce = TestiOggi.voceCifre(modulo: "4-3-3", punti: 65.5)
+        #expect(voce == "Modulo 4-3-3, 65,5 punti attesi")
+        for titolo in [TestiOggi.titoloFormazione(tuaScelta: false), TestiOggi.titoloFormazione(tuaScelta: true), "Prossima giornata"] {
+            #expect(!voce.contains(titolo), "«\(titolo)» è già il titolo della carta")
+        }
     }
 
     // MARK: parole
@@ -182,6 +234,53 @@ private struct OggiWeb {
         case .diffidati: return "\"oggi.diffidati\""
         case .partite: return "\"oggi.partite_del_turno\""
         }
+    }
+
+    /// La sezione come la conta la web: nil per quelle solo dell'iPhone; le tre della giornata in corso sono una sola.
+    static func comeSullaWeb(_ sezione: SezioneOggi) -> SezioneOggi? {
+        guard let s = segno(sezione) else { return nil }
+        return s == segno(.inCorso) ? .inCorso : sezione
+    }
+
+    /// Le sezioni che la web mostra in una fase (con una giornata in calendario e i dati della giornata in corso).
+    /// Le quattro liste di consigli e avvisi le svuota il codice di `mostraOggi` (`const migliori = inCorso || finita ? [] : …`):
+    /// le loro fasi si leggono da lì. Le altre condizioni stanno nel markup: riepilogo solo a giornata finita (`finita ? cardRiepilogo`),
+    /// giornata in corso solo nella sua fase (`inCorso ? … cardInCorso`), formazione tranne a giornata in corso con i suoi dati
+    /// (`inCorso && (o.in_corso || o.senza_formazione) ? ""`); conto, rinvio, Da fare, novità e partite sempre.
+    func sezioni(fase: FaseGiornata) throws -> Set<SezioneOggi> {
+        var sezioni: Set<SezioneOggi> = [.conto, .rinvio, .daFare, .novita, .partite]
+        switch fase {
+        case .prima: sezioni.insert(.formazione)
+        case .inCorso: sezioni.insert(.inCorso)
+        case .finita: sezioni.formUnion([SezioneOggi.riepilogo, .formazione])
+        }
+        let liste: [(String, SezioneOggi)] = [("inFormazione", .daControllare), ("migliori", .migliori),
+                                              ("indisponibili", .indisponibili), ("altri", .diffidati)]
+        for (variabile, sezione) in liste {
+            let vuote = try fasiVuote(variabile)
+            if !vuote.contains(fase) { sezioni.insert(sezione) }
+        }
+        return sezioni
+    }
+
+    /// Le fasi in cui `mostraOggi` svuota una lista: `const migliori = inCorso || finita ? [] : o.migliori;` → in corso e finita.
+    func fasiVuote(_ variabile: String) throws -> Set<FaseGiornata> {
+        guard let inizio = mostraOggi.range(of: "const \(variabile) = ") else {
+            throw Errore(description: "in mostraOggi non trovo «const \(variabile) = …»: aggiorna OggiWeb.sezioni")
+        }
+        let riga = String(mostraOggi[inizio.upperBound...].prefix { $0 != "\n" })
+        guard let fine = riga.range(of: " ? [] :") else {
+            throw Errore(description: "la riga di «\(variabile)» non ha più la forma «condizione ? [] : …»: \(riga)")
+        }
+        var fasi: Set<FaseGiornata> = []
+        for parola in riga[..<fine.lowerBound].components(separatedBy: "||") {
+            switch parola.trimmingCharacters(in: .whitespaces) {
+            case "inCorso": fasi.insert(.inCorso)
+            case "finita": fasi.insert(.finita)
+            default: throw Errore(description: "condizione di «\(variabile)» che il test non sa leggere: \(riga)")
+            }
+        }
+        return fasi
     }
 
     /// La posizione (in caratteri) del primo segno nel codice di `mostraOggi`.

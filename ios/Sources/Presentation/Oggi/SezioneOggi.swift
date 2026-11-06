@@ -4,7 +4,7 @@
 /// Niente nome né slogan in cima. Ogni sezione si nasconde da sola se non ha niente da mostrare.
 /// Sull'iPad le sezioni vanno in colonne (`Colonne`) sempre in quest'ordine di lettura.
 /// La prova è `OggiComeLaWebTests`, che confronta quest'ordine con il codice della web.
-enum SezioneOggi: Hashable, Sendable {
+enum SezioneOggi: Hashable, Sendable, CaseIterable {
     /// Lega senza rose: il benvenuto con «Importa le rose» (sulla web è una pagina a parte).
     case benvenuto
     /// Il server non manda una giornata: una frase al posto del conto alla rovescia.
@@ -49,7 +49,7 @@ enum SezioneOggi: Hashable, Sendable {
         case .finita:
             sezioni.append(.riepilogo)
             if conGiornata { sezioni.append(.formazione) }
-            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .novita, .indisponibili, .diffidati])
+            sezioni.append(contentsOf: [SezioneOggi.rinvio, .daFare, .novita, .diffidati])
         }
         sezioni.append(.partite)
         return sezioni

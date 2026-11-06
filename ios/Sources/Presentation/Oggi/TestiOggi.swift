@@ -6,6 +6,10 @@ enum TestiOggi {
         tuaScelta ? "La tua formazione · la tua scelta" : "La tua formazione"
     }
     static let puntiAttesi = "punti attesi"
+    /// Cosa legge VoiceOver sulle cifre della formazione.
+    static func voceCifre(modulo: String?, punti: Double?) -> String {
+        "\(titoloFormazione(tuaScelta: false)): modulo \(modulo ?? "non disponibile"), \(Formato.punti(punti)) \(puntiAttesi)"
+    }
     static let apriFormazione = "Apri la formazione"
     static let mancanoProbabili = "Mancano le probabili formazioni di questa giornata: i consigli usano le presenze recenti."
     static let migliori = "I tuoi migliori della giornata"

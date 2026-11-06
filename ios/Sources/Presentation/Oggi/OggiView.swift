@@ -107,7 +107,7 @@ struct OggiView: View {
             if let b = oggi.giornataInCorso, !b.giocatori.isEmpty { CartaChiGioca(blocco: b) }
         case .cambiPanchina:
             if let b = oggi.giornataInCorso, !b.sostituzioni.isEmpty { CartaCambiPanchina(cambi: b.sostituzioni) }
-        case .formazione: formazione(oggi)
+        case .formazione: CartaFormazioneOggi(oggi: oggi)
         case .rinvio: partiteRinviate(oggi)
         case .daFare: daFare(oggi)
         case .novita: novita
@@ -311,64 +311,6 @@ struct OggiView: View {
     }
 
     // MARK: formazione e avvisi
-
-    /// La formazione della giornata da giocare, con le parole della web («La tua formazione», «punti attesi», «Apri la formazione»).
-    /// Dopo una giornata finita parla della PROSSIMA: si chiama così e dice da quando prepararla.
-    private func formazione(_ oggi: Oggi) -> some View {
-        let finita = oggi.faseGiornata == .finita
-        let titolo = TestiOggi.titoloFormazione(tuaScelta: oggi.formazione?.tuaScelta ?? false)
-        return Carta(finita ? "Prossima giornata" : titolo, simbolo: finita ? "calendar.badge.clock" : "sportscourt") {
-            if let p = oggi.prossimaGiornata {
-                Label(TestiFase.prossima(p), systemImage: "clock")
-                    .font(.subheadline)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if let f = oggi.formazione, f.disponibile {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold))
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 0) {
-                        // Lo stesso numero della Formazione, scritto subito giusto (#416): un numero che sale da 0 restava a metà
-                        // in una foto o con l'app lenta. Se cambia dopo (dati nuovi) le cifre scorrono, come nella Formazione.
-                        Text(Formato.punti(f.punteggioAtteso))
-                            .font(.title2.bold())
-                            .monospacedDigit()
-                            .numerico(f.punteggioAtteso ?? 0)
-                        Text(TestiOggi.puntiAttesi).font(.caption).foregroundStyle(Color.testoSecondario)
-                        if let fascia = IntervalloPunti.frase(f.intervallo, dev: f.dev) {
-                            Text(fascia).font(.caption2).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
-                        }
-                    }
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(titolo): modulo \(f.modulo ?? "non disponibile"), \(Formato.punti(f.punteggioAtteso)) \(TestiOggi.puntiAttesi)")
-                Button { vaiASezione(.formazione) } label: {
-                    Label(TestiOggi.apriFormazione, systemImage: "sportscourt").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
-                }
-                .pulsanteVetro(prominente: true)
-                if SezioneOggi.avvisoProbabili(fase: oggi.faseGiornata, conProbabili: oggi.conProbabili) {
-                    Label(TestiOggi.mancanoProbabili, systemImage: "clock")
-                        .font(.footnote)
-                        .foregroundStyle(Color.attenzione)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let p = oggi.probabili?.valore {
-                    if let avviso = p.avvisoVisibile {
-                        Label(avviso, systemImage: "exclamationmark.triangle.fill")
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let riga = p.riga {
-                        Text(riga).font(.footnote).foregroundStyle(Color.testoSecondario)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityLabel(riga)
-                    }
-                }
-            } else {
-                Text("Formazione non disponibile.").foregroundStyle(Color.testoSecondario)
-            }
-        }
-    }
 
     /// «Da fare»: le cose che aspettano te, una per riga con il suo pulsante (4 righe, poi «Altre N cose»). Solo se ce n'è almeno una.
     @ViewBuilder
