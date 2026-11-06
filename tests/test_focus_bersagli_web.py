@@ -43,18 +43,20 @@ def _blocco(apertura: str) -> str:
 
 def test_il_browser_porta_il_focus_tra_la_testata_e_la_barra():
     """`scroll-padding` sulla radice: il browser porta l'elemento con il focus dentro la finestra lasciando fuori la testata (in
-    alto, sticky, con la sua altezza vera) e la barra in basso (fissa, più lo spazio tra lei e il bordo). Da 900 px la barra è una
-    colonna a sinistra: in basso basta poco."""
+    alto, ferma da 900 px, con la sua altezza vera) e la barra in basso (fissa sul bordo, alta `--barra` più lo spazio del
+    sistema). Da 900 px le schede stanno nella testata: in basso basta poco."""
     radice = re.search(r"\nhtml \{([^}]*scroll-padding[^}]*)\}", SENZA_COMMENTI)
     assert radice, "manca scroll-padding su html"
     alto = re.search(r"scroll-padding-top: calc\(var\(--alto-testata, (\d+)px\) \+ (\d+)px\)", radice.group(1))
     basso = re.search(r"scroll-padding-bottom: calc\(var\(--barra\) \+ env\(safe-area-inset-bottom\) \+ (\d+)px\)", radice.group(1))
     assert alto and basso, radice.group(1)
-    distanza = int(re.search(r"\n\.schede \{[^}]*bottom: calc\(env\(safe-area-inset-bottom\) \+ (\d+)px\)", SENZA_COMMENTI).group(1))
-    assert int(basso.group(1)) >= distanza + 8                                  # sopra la barra resta almeno un filo di pagina
+    barra = re.search(r"\n\.schede \{([^}]*)\}", SENZA_COMMENTI).group(1)
+    assert "bottom: 0;" in barra and "height: calc(var(--barra) + env(safe-area-inset-bottom));" in barra   # la barra è alta così, dal bordo
+    assert int(basso.group(1)) >= 8                                             # sopra la barra resta almeno un filo di pagina
     assert int(alto.group(2)) >= 8
     largo = _blocco("@media (min-width: 900px) {")
     assert re.search(r"(?:^|\n)\s*html \{ scroll-padding-bottom: \d+px; \}", largo)
+    assert re.search(r"(?:^|\n)\s*\.testata \{[^}]*position: sticky; top: 0;", largo)    # la testata ferma: --alto-testata la misura
 
 
 def test_con_salva_in_basso_il_focus_resta_sopra_il_pulsante():

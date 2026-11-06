@@ -20,19 +20,21 @@ function vistaImpostazioni(gruppo) {
   gruppo = gruppo || daUrl;
   let scelto = visibili.find(g => g.id === gruppo);
   if (!scelto && impLargo()) scelto = visibili.find(g => g.id === stato.impGruppo) || visibili[0];
-  const cfg = { voci: visibili, corpi: CORPI_IMP, collega: COLLEGA_IMP, aria: t("imp.gruppi_aria"), indietro: t("shell.impostazioni"), scelto: scelto && scelto.id, ricorda: id => { stato.impGruppo = id; } };
+  // titolo della schermata «Impostazioni», senza la riga della giornata: qui si parla di te e dell'app, non della lega
+  const cfg = { voci: visibili, corpi: CORPI_IMP, collega: COLLEGA_IMP, aria: t("imp.gruppi_aria"), indietro: t("shell.impostazioni"), scelto: scelto && scelto.id, ricorda: id => { stato.impGruppo = id; },
+    titolo: t("shell.impostazioni"), stato: false };
   stato.pannelli = cfg;
   montaPannelli(cfg);
 }
 
 // Il componente a due pannelli (elenco di voci + pagina), usato da Impostazioni e da Lega.
-// cfg: voci [{id, nome, sub}], corpi {id: () => html}, collega {id: () => void}, aria, indietro (nome della pagina madre), scelto (id o nulla), ricorda(id).
+// cfg: voci [{id, nome, sub}], corpi {id: () => html}, collega {id: () => void}, aria, indietro (nome della pagina madre), scelto (id o nulla), ricorda(id);
+// titolo e stato (facoltativi) vanno a pagina(): senza, il titolo è il nome della scheda (Squadra, Altro).
 function montaPannelli(cfg) {
-  contenuto.classList.remove("ridisegna");
-  contenuto.innerHTML = `<div class="imp" data-aperto="${cfg.scelto ? 1 : 0}">
+  pagina(`<div class="imp" data-aperto="${cfg.scelto ? 1 : 0}">
     <nav class="imp-elenco carta" aria-label="${cfg.aria}"><ul class="elenco">${cfg.voci.map(g => `<li><button class="voce imp-voce" data-imp="${g.id}" style="grid-template-columns:1fr auto">
       <span><span class="nome">${g.nome}</span><span class="dettaglio" style="display:block">${g.sub}</span></span><span class="debole" aria-hidden="true">›</span></button></li>`).join("")}</ul></nav>
-    <section class="imp-pagina" id="imp-pagina" aria-label="${cfg.indietro}"></section></div>`;
+    <section class="imp-pagina" id="imp-pagina" aria-label="${cfg.indietro}"></section></div>`, { titolo: cfg.titolo, stato: cfg.stato });
   contenuto.querySelectorAll("[data-imp]").forEach(b => b.addEventListener("click", () => {
     const g = cfg.voci.find(x => x.id === b.dataset.imp);
     if (g && g.vai) g.vai(); else apriPannello(cfg, b.dataset.imp);          // una voce con `vai` porta a un'altra pagina (Squadra e Altro)

@@ -6,6 +6,10 @@
    delle ore tranquille con l'interruttore spento). */
 [hidden] { display: none !important; }
 
+/* Archivo semi-stretto (SIL Open Font License 1.1, caratteri/OFL.txt), dal nostro server: numeri e titoli delle schermate.
+   Se il file non arriva (prima visita senza rete) resta il carattere di sistema con le cifre in colonna: cambia solo il disegno. */
+@font-face { font-family: "Archivo"; src: url("caratteri/archivo.woff2") format("woff2"); font-weight: 400 700; font-style: normal; font-display: swap; }
+
 :root {
   color-scheme: dark;
   --z: 1;                                   /* ingrandimento su schermi grandi (vedi in fondo a «Schermi larghi»): serve a dividere le misure in vh */
@@ -42,11 +46,14 @@
   --campo: #146b3a;
   --campo-bagliore: 80%;
   --campo-righe: rgba(255, 255, 255, .3);
-  /* scala tipografica: solo questi 7 livelli (docs/DESIGN.md); mai sotto 12 px */
-  --t-eroe: 40px; --t-titolo: 28px; --t-card: 18px; --t-valore: 17px; --t-corpo: 15px; --t-sec: 13px; --t-eti: 12px;
+  /* scala tipografica: solo questi 7 livelli (docs/DESIGN.md, grafica B spec §7.3); mai sotto 12 px. Da 900 px l'eroe è 72 px */
+  --t-eroe: 56px; --t-titolo: 32px; --t-card: 17px; --t-valore: 20px; --t-corpo: 15px; --t-sec: 13px; --t-eti: 12px;
+  /* numeri e titoli delle schermate: Archivo con le cifre in colonna; il testo resta nel carattere di sistema */
+  --font-numeri: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif;
   --r-card: 20px; --r-in: 14px; --r-pill: 999px;   /* raggi: card, elementi dentro la card, pillole */
   --raggio: var(--r-card);
-  --barra: 72px;
+  --barra: 60px;                            /* barra in basso del telefono, senza lo spazio del sistema sotto */
+  --alto-ferma: 0px;                        /* dove si fermano le colonne ferme: sotto i 900 px la testata scorre via con la pagina */
   --molla: cubic-bezier(.2, .95, .25, 1.12);
   --uscita: cubic-bezier(.2, .8, .2, 1);
 }
@@ -131,7 +138,7 @@ b, strong { font-weight: 650; }
 
 /* ---------------------------------------------------------------- sfondo: piatto (le macchie colorate che si muovevano sapevano di generato) */
 .sfondo { position: fixed; inset: 0; z-index: -1; background: var(--sfondo); }
-.sfondo i { display: none; }
+.sprite { display: none; }                                  /* i disegni da riusare con <use> (il nome SchieraXI della testata) */
 
 /* ---------------------------------------------------------------- vetro */
 .vetro {
@@ -149,8 +156,8 @@ b, strong { font-weight: 650; }
 .riga { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .debole { color: var(--testo-2); font-size: var(--t-sec); }
 .piccolo { font-size: var(--t-eti); }
-.grande { font-size: var(--t-titolo); font-weight: 700; letter-spacing: -.025em; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.enorme { font-size: var(--t-eroe); font-weight: 750; letter-spacing: -.035em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.grande { font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.enorme { font-family: var(--font-numeri); font-size: var(--t-eroe); font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .vuoto { text-align: center; color: var(--testo-2); padding: 32px 12px; }
 .errore { background: color-mix(in srgb, var(--rosso) 16%, var(--vetro-carta)); color: var(--rosso); border: 1px solid color-mix(in srgb, var(--rosso) 40%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; }
 .attenzione { background: color-mix(in srgb, var(--arancio) 16%, var(--vetro-carta)); border: 1px solid color-mix(in srgb, var(--arancio) 36%, transparent); border-radius: var(--r-in); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo); }
@@ -158,35 +165,55 @@ b, strong { font-weight: 650; }
 .positivo { color: var(--verde); } .negativo { color: var(--rosso); }
 
 /* ---------------------------------------------------------------- testata */
-.testata { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: calc(env(safe-area-inset-top) + 10px) 18px 12px; border-width: 0 0 1px 0; border-radius: 0; box-shadow: none; }
-.titolo { margin: 0; font-weight: 750; font-size: var(--t-card); letter-spacing: -.02em; }
-.sottotitolo { font-size: var(--t-sec); color: var(--testo-2); }
-.bottone-icona { border: 0; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--azione); }
-.vetro-bottone { background: color-mix(in srgb, var(--azione) 16%, var(--vetro)); border: 1px solid var(--bordo); }
+/* Una testata sola (grafica B, spec §8.1). Al telefono non è ferma: nome disegnato e ricerca non si vedono, le schede sono la barra
+   in basso e i pulsanti (cerca, ingranaggio, aggiorna) stanno nell'angolo in alto a destra, sulla riga del titolo della schermata,
+   e scorrono via con la pagina. Da 900 px è la barra ferma in alto con tutto dentro («Schermi larghi»). */
+.testata { position: absolute; top: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px 0 0; }
+/* «.marchio» da solo è il marchio animato dei caricamenti: qui sempre «.testata .marchio» */
+.testata .marchio, .cerca-testata { display: none; }
+.testata .marchio { color: var(--testo); text-decoration: none; }
+.wm { display: block; height: 22px; width: auto; aspect-ratio: 4.8081; overflow: visible; }
+.xi-f { fill: var(--xi); }
+.bottoni-testata { display: flex; gap: 4px; align-items: center; }
+.bottone-icona { border: 0; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; background: none; color: var(--testo-2); }
 .bottone-icona.gira svg { animation: gira 1s linear infinite; }
 @keyframes gira { to { transform: rotate(360deg); } }
 @keyframes pulsa { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
-main { padding: 14px 16px 0; max-width: 720px; margin: 0 auto; }
+main { padding: 8px 16px 0; padding-top: calc(env(safe-area-inset-top) + 8px); max-width: 1240px; margin: 0 auto; }
 
-/* ---------------------------------------------------------------- barra in basso: capsula di vetro con la "lente" che scorre */
-.schede { position: fixed; z-index: 6; left: 14px; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 10px); max-width: 560px; margin: 0 auto;
-  height: var(--barra); border-radius: 36px; padding: 6px; display: grid; grid-template-columns: repeat(4, 1fr); isolation: isolate; }
-.lente { position: absolute; z-index: -1; top: 6px; bottom: 6px; left: 6px; width: calc((100% - 12px) / 4); transform: translateX(calc(var(--i, 0) * 100%));
-  transition: transform .55s var(--molla); pointer-events: none; }
-.lente i { position: absolute; inset: 0; border-radius: 30px; display: block;
-  background: color-mix(in srgb, var(--azione) 18%, transparent); }
-.lente.muove i { animation: allunga .55s var(--uscita); }
-@keyframes allunga { 0% { transform: scale(1, 1); } 35% { transform: scale(calc(1 + var(--mov, 1) * .22), calc(1 - var(--mov, 1) * .1)); } 100% { transform: scale(1, 1); } }
-/* fondo pieno: il testo che scorre sotto la barra non si legge attraverso */
-.schede.vetro { background: var(--solido); }
-.schede button { border: 0; background: none; color: var(--testo-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: var(--t-eti); font-weight: 550; border-radius: 30px; letter-spacing: .01em; }
-.schede svg { width: 25px; height: 25px; transition: transform .4s var(--molla); }
-.schede button.attiva { color: var(--azione); }
+/* ---------------------------------------------------------------- titolo della schermata e riga di stato (pagina() in app.js) */
+/* Un solo h1 per pagina: il nome della schermata, in Archivo. Al telefono accanto al titolo c'è il posto per i pulsanti della
+   testata (due, o tre per chi gestisce SchieraXI); sotto, la riga di stato: stemma, giornata, squadra, data dei dati. */
+.capo-pagina { --posto-bottoni: 100px; margin: 0 0 18px; }
+body:has(#bottone-aggiorna:not([hidden])) .capo-pagina { --posto-bottoni: 148px; }
+main > .capo-pagina { animation: none; }                    /* il titolo resta fermo quando la schermata si ridisegna */
+#titolo-pagina { margin: 0; min-height: 44px; display: flex; align-items: center; padding-right: var(--posto-bottoni);
+  font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1;
+  overflow-wrap: anywhere; text-wrap: balance; }
+#titolo-pagina:focus { outline: none; }
+.stato-pagina { margin: 2px 0 0; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.45; overflow-wrap: anywhere; }
+.stato-pagina:empty { display: none; }
+.stato-pagina > span { display: inline-block; max-width: 100%; }   /* un pezzo («dati del 26 ott 23:55») va a capo intero */
+.stemma-stato { width: 20px; height: 20px; object-fit: contain; vertical-align: -5px; margin-right: 6px; }
+
+/* ---------------------------------------------------------------- barra in basso (telefono e tablet in verticale) */
+/* Piena, a tutta larghezza, con un filo sopra; la voce attiva ha il testo pieno e una linea di 3 px in alto nel colore delle azioni
+   (spec §6). Niente capsula né lente che scorre. Il contenuto finisce sempre sopra la barra (padding del body). */
+.schede { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; height: calc(var(--barra) + env(safe-area-inset-bottom));
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--superficie); border-top: 1px solid var(--filo); }
+.scheda { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 44px;
+  color: var(--testo-2); text-decoration: none; font-size: var(--t-eti); font-weight: 550; -webkit-tap-highlight-color: transparent; transition: color .2s; }
+.scheda svg { width: 24px; height: 24px; flex: none; }
+.scheda > span { max-width: 100%; text-align: center; line-height: 1.2; overflow-wrap: anywhere; }
+.scheda.attiva { color: var(--testo); font-weight: 650; }
+.scheda.attiva::before { content: ""; position: absolute; left: 16px; right: 16px; top: -1px; height: 3px; border-radius: 0 0 3px 3px; background: var(--azione); }
+@media (hover: hover) { .scheda:hover { color: var(--testo); } }
 /* Il focus non finisce sotto la testata né sotto la barra (WCAG 2.2, 2.4.11; issue #280): il browser porta l'elemento che prende il
-   focus (Tab, Maiusc+Tab) dentro la finestra lasciando fuori, in alto, l'altezza vera della testata (la scrive app.js in
-   --alto-testata) e, in basso, la barra con lo spazio sotto di lei. Con «Salva» che galleggia sopra la barra (Regole), di più. */
-html { scroll-padding-top: calc(var(--alto-testata, 80px) + 8px); scroll-padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 22px); }
+   focus (Tab, Maiusc+Tab) dentro la finestra lasciando fuori, in alto, l'altezza vera della testata quando è ferma (la scrive app.js
+   in --alto-testata) e, in basso, la barra. Con «Salva» che galleggia sopra la barra (Regole), di più. */
+html { scroll-padding-top: calc(var(--alto-testata, 0px) + 8px); scroll-padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 22px); }
 html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 84px); }
 
 /* ---------------------------------------------------------------- entrata delle sezioni */
@@ -211,7 +238,7 @@ main > * { animation: dissolve .2s ease both; }   /* niente cascata: ogni blocco
 main.ridisegna > * { animation: none; }
 
 /* ---------------------------------------------------------------- controlli */
-.campo-testo, select, textarea { width: 100%; border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; padding: 12px 14px; font-size: var(--t-valore);
+.campo-testo, select, textarea { width: 100%; border: 1px solid var(--bordo-campo); background: color-mix(in srgb, var(--solido) 55%, transparent); border-radius: 14px; padding: 12px 14px; font-size: var(--t-card);
   box-shadow: none; }
 textarea { min-height: 140px; resize: vertical; }
 select { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--testo-2) 50%), linear-gradient(135deg, var(--testo-2) 50%, transparent 50%);
@@ -262,7 +289,7 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
 .segmenti.scorri button { flex: 0 0 auto; padding: 11px 14px; font-size: var(--t-corpo); white-space: nowrap; scroll-snap-align: center; }
 .moduli { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .moduli label { display: flex; align-items: center; gap: 6px; font-size: var(--t-corpo); }
-details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 650; font-size: var(--t-valore); padding: 4px 0; min-height: 44px; }
+details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 650; font-size: var(--t-card); padding: 4px 0; min-height: 44px; }
 details > summary::-webkit-details-marker { display: none; }
 details > summary::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--testo-2); border-bottom: 2px solid var(--testo-2); transform: rotate(45deg); transition: transform .3s var(--molla); margin-right: 4px; }
 details[open] > summary::after { transform: rotate(225deg); }
@@ -321,11 +348,11 @@ details[open] > summary { margin-bottom: 8px; }
 .ridisegna .elenco li { animation: none; }
 .voce { width: 100%; border: 0; background: none; text-align: left; padding: 11px 0; display: grid; grid-template-columns: 46px 1fr auto; gap: 12px; align-items: center; border-radius: 14px; }
 .voce:active { background: color-mix(in srgb, var(--verde) 14%, transparent); transform: scale(.985); }
-.voce .nome { font-weight: 650; font-size: var(--t-valore); }
+.voce .nome { font-weight: 650; font-size: var(--t-card); }
 .voce-link { color: var(--testo); text-decoration: none; min-height: 44px; }      /* privacy, termini e crediti nelle Impostazioni: voci, non link blu */
 .voce .dettaglio { font-size: var(--t-sec); color: var(--testo-2); }
 .voce .valore { text-align: right; font-variant-numeric: tabular-nums; }
-.voce .valore b { display: block; font-size: var(--t-card); letter-spacing: -.01em; }
+.voce .valore b { display: block; font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ruolo { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; font-size: var(--t-sec); font-weight: 700; color: #fff; }
 .ruolo.P { background: #9a5f00; } .ruolo.D { background: #237d46; } .ruolo.C { background: #2b66bf; } .ruolo.A { background: #c13b38; }
 .etichette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
@@ -384,7 +411,7 @@ details[open] > summary { margin-bottom: 8px; }
 .partita .sq { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .partita .sq.casa { text-align: right; } .partita .sq.trasf { text-align: left; }
 .partita .vs { color: var(--testo-2); font-size: var(--t-eti); text-align: center; }
-.partita .pt { text-align: right; font-weight: 750; color: var(--testo); white-space: nowrap; letter-spacing: .02em; border-radius: 8px; padding: 1px 0; }
+.partita .pt { text-align: right; font-family: var(--font-numeri); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--testo); white-space: nowrap; letter-spacing: .02em; border-radius: 8px; padding: 1px 0; }
 .partita.giocata .sq { color: var(--testo-2); }   /* partita finita: i nomi passano al grigio secondario (niente opacità: spegneva anche il grigio sotto 3:1); il risultato resta pieno */
 .partita.rinviata .ora { color: var(--arancio, var(--testo-2)); font-weight: 650; }   /* «Rinviata» al posto dell'orario */
 .partita.rinviata .sq { color: var(--testo-2); }
@@ -546,7 +573,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .guadagno.su { color: var(--verde); } .guadagno.giu { color: var(--rosso); }
 /* Perché questo numero (scheda del giocatore e foglio che si apre dal numero nella Formazione) */
 .perche { margin-top: 12px; }
-.perche h3 { margin: 0 0 8px; font-size: var(--t-valore); }
+.perche h3 { margin: 0 0 8px; font-size: var(--t-card); }
 .perche-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .perche-voce { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; font-size: var(--t-corpo); }
 .perche-effetto { text-align: center; padding: 3px 0; border-radius: var(--r-pill); font-size: var(--t-sec); font-variant-numeric: tabular-nums; border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 45%, transparent); }
@@ -574,7 +601,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .proposta-r { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; margin-bottom: 10px; border-radius: 20px; }
 .proposta-r .avatar-anello { --d: 44px; }
 .pr-testo { min-width: 0; }
-.proposta-r button.nome-g { border: 0; background: none; padding: 0; text-align: left; font-weight: 650; font-size: var(--t-valore); max-width: 100%; overflow-wrap: break-word; display: block; }   /* nome lungo a capo, mai «…» (issue #287) */
+.proposta-r button.nome-g { border: 0; background: none; padding: 0; text-align: left; font-weight: 650; font-size: var(--t-card); max-width: 100%; overflow-wrap: break-word; display: block; }   /* nome lungo a capo, mai «…» (issue #287) */
 .proposta-r button.nome-g { padding: 13px 4px; margin: -13px -4px; }   /* area di tocco da 44 px senza cambiare l'altezza */
 .proposta-r button.nome-g.piccolo { display: inline; font-size: var(--t-sec); font-weight: 600; color: var(--testo); padding: 13px 10px; margin: -13px -10px; min-width: 44px; }   /* anche i nomi corti arrivano a 44 px di larghezza, senza spostare le righe */
 .proposta-r button.nome-g { padding: 13px 4px; margin: -13px -4px; }       /* area di tocco da 44px senza cambiare l'altezza delle righe */
@@ -691,7 +718,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .duello { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: start; margin-bottom: 14px; }
 .duello-giocatore { display: grid; justify-items: center; gap: 4px; text-align: center; padding: 8px 4px; border-radius: 20px; border: 1px solid transparent; }
 .duello-giocatore.scelto { background: color-mix(in srgb, var(--verde) 14%, transparent); border-color: color-mix(in srgb, var(--verde) 40%, transparent); }
-.duello-giocatore .nome { font-size: var(--t-valore); }
+.duello-giocatore .nome { font-size: var(--t-card); }
 .vs-duello { align-self: center; font-weight: 800; color: var(--testo-2); font-size: var(--t-sec); letter-spacing: .1em; }
 .fattori { display: grid; gap: 12px; margin-top: 12px; }
 .barra-div { position: relative; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--testo) 10%, transparent); margin: 5px 0 3px; overflow: hidden; }
@@ -709,7 +736,7 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--bordo-campo); border-radius: 14px; background: color-mix(in srgb, var(--solido) 50%, transparent); overflow: hidden; flex: none; max-width: 100%; }   /* i −/+ restano da 44 px (#289): se il posto non basta cede il numero */
 .stepper button { width: 44px; height: 44px; flex: none; border: 0; background: none; font-size: var(--t-card); font-weight: 500; color: var(--azione); line-height: 1; }
 .stepper button:active { background: color-mix(in srgb, var(--azione) 18%, transparent); transform: none; }
-.stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-size: var(--t-valore); font-weight: 650; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
+.stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-size: var(--t-card); font-weight: 650; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
 .interruttore-ios { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; font-size: var(--t-corpo); }
 .interruttore-ios > span { flex: 1; }
 .interruttore-ios input { appearance: none; -webkit-appearance: none; position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -731,21 +758,6 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .salva-fisso .bottone { pointer-events: auto; min-width: 70%; box-shadow: var(--ombra); }   /* galleggia: l'ombra dice che sta sopra */
 
 /* ---- stemma e maglia ---- */
-.identita-testata { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.stemma-testata { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .35)); flex: none; animation: compare .6s var(--molla) both; }
-.stemma-testata[hidden] { display: none; }
-.testo-testata { min-width: 0; }
-/* telefoni da 320 a 360 px utili: lo stemma lasciava al nome 74 px e la testata, ferma in alto, saliva da 77 a 117 px; qui il nome
-   ha la precedenza (sotto i 320 px la testata va su due righe e lo stemma torna) */
-@container pagina (min-width: 320px) and (max-width: 359.98px) { .stemma-testata { display: none; } }
-.testo-testata .titolo, .testo-testata .sottotitolo { overflow-wrap: break-word; }   /* nome della squadra e data dei dati interi: vanno a capo, mai «…» (issue #286) */
-@media (max-width: 400px) { .testo-testata .titolo { font-size: var(--t-card); } .sottotitolo { font-size: var(--t-eti); } .testata { gap: 8px; } .bottone-icona { width: 40px; height: 40px; } }
-/* sui telefoni la giornata e la data dei dati vanno su due righe: in una sola la data si tagliava (390 px, anche in inglese a 430) */
-@media (max-width: 480px) {
-  .testo-testata .sottotitolo { line-height: 1.25; }
-  .sottotitolo > span { display: block; }
-  .sottotitolo > .sotto-sep { display: none; }
-}
 .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: 132px; min-height: 150px; }   /* il testo va a capo prima della maglia (la densità compatta non lo deve azzerare) */
 .maglia-hero { position: absolute; right: -6px; bottom: -10px; height: 150px; width: auto; transform: rotate(7deg); transform-origin: 70% 80%; pointer-events: none;
   filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .45)); animation: entra .8s var(--molla) .15s both; }
@@ -756,6 +768,9 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
   .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: clamp(12px, 100cqi - 210px, 132px); }
   .maglia-hero { height: clamp(48px, 100cqi - 210px, 150px); }             /* alta quanto il posto che le si lascia: non copre il testo */
 }
+/* accanto alla maglia grande il conto alla rovescia resta alla misura dei titoli: a 56-72 px «1 giorno» non ci stava e la carta lo
+   tagliava (la maglia diventa piccola e dritta con la nuova Oggi) */
+.carta.con-maglia .enorme { font-size: var(--t-titolo); }
 @container pagina (max-width: 259.98px) {
   .maglia-hero { display: none; }
   .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: 14px; }
@@ -769,8 +784,6 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .immagine-squadra .vuota { height: 84px; display: grid; place-items: center; color: var(--testo-2); font-size: var(--t-sec); }
 
 /* ---- novità ---- */
-.schede button.novita { position: relative; }
-.schede button.novita::after { content: ""; position: absolute; top: 9px; right: calc(50% - 20px); width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
 .banner-novita { width: 100%; text-align: left; border: 1px solid var(--bordo); border-radius: var(--r-card); padding: 12px 14px; margin-bottom: 14px; font-size: var(--t-corpo);
   background: var(--vetro-carta); color: var(--testo); }
 /* Diario: una riga in testa, la spiegazione lunga dietro «Come si legge» (docs/STILE-SENZA-AI.md) */
@@ -785,55 +798,57 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 .alternative-li .alt small { color: var(--arancio); font-size: var(--t-eti); }
 
 /* ---- ricerca veloce e immagine da condividere ---- */
-.bottoni-testata { display: flex; gap: 8px; align-items: center; }
+/* il campo della testata (da 900 px): sempre aperto, con il segno «/» del tasto che lo apre; al primo tasto passa alla ricerca */
+.cerca-testata { position: relative; }
+.cerca-testata input { display: block; width: 100%; height: 44px; padding: 0 40px 0 14px; border: 1px solid var(--bordo-campo); border-radius: var(--r-in);
+  background: var(--sfondo); color: var(--testo); font-size: var(--t-corpo); }
+.cerca-testata input::placeholder { color: var(--testo-2); opacity: 1; }
+.cerca-testata kbd { position: absolute; right: 10px; top: 11px; min-width: 22px; height: 22px; padding: 0 5px; border: 1px solid var(--bordo-campo); border-radius: 5px;
+  font-family: var(--font-numeri); font-size: var(--t-eti); line-height: 20px; text-align: center; color: var(--testo-2); pointer-events: none; }
+.cerca-testata:focus-within kbd { display: none; }
 .risultati-ricerca { margin-top: 12px; }
 .immagine-condivisa { width: 100%; border-radius: var(--r-card); display: block; margin-top: 10px; }
 
 /* =====================================================================================================
-   Schermi larghi (iPad in orizzontale, PC, ultrawide): la barra diventa una colonna a sinistra e il contenuto si dispone
-   su più colonne. Su iPhone non cambia niente.
+   Schermi larghi (iPad in orizzontale, PC, ultrawide), da 900 px: una testata sola ferma in alto, alta 56 px, con il nome
+   disegnato (porta a Oggi), le quattro schede come linguette con una linea sotto quella attiva, la ricerca sempre aperta, l'ingranaggio
+   e «Aggiorna i dati» (grafica B, spec §5 C1 e §8.1). La pagina è una colonna larga al massimo 1240 px, centrata; le schermate che
+   ne hanno bisogno si dividono da sole (.colonne di Oggi e Formazione, Impostazioni, Mercato, Scambi). Su iPhone non cambia niente.
    ===================================================================================================== */
 @media (min-width: 900px) {
-  :root { --lato: 120px; }
-  body { padding-left: var(--lato); padding-bottom: 40px; }
-  .testata { padding-left: 28px; padding-right: 28px; }
-  .schede { left: 18px; right: auto; top: 50%; bottom: auto; transform: translateY(-50%); width: 84px; height: auto; max-width: none; margin: 0;
-    grid-template-columns: 1fr; grid-template-rows: repeat(4, 72px); }
-  .lente { top: 6px; left: 6px; right: 6px; bottom: auto; width: auto; height: calc((100% - 12px) / 4); transform: translateY(calc(var(--i, 0) * 100%)); }
-  .lente.muove i { animation-name: allunga-v; }
-  .avviso { left: var(--lato); right: 24px; bottom: 24px; }
+  :root { --t-eroe: 72px; --alto-ferma: var(--alto-testata, 56px); }
+  body { padding-bottom: 40px; }
+  .testata { position: sticky; top: 0; right: auto; z-index: 5; gap: 8px; height: calc(56px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) max(32px, calc((100% - 1240px) / 2 + 32px)) 0; background: var(--sfondo); border-bottom: 1px solid var(--filo); }
+  .testata .marchio { display: flex; align-items: center; min-height: 44px; padding: 0 4px; margin: 0 20px 0 0; }
+  .schede { position: static; height: 100%; display: flex; gap: 4px; padding: 0; background: none; border: 0; }
+  .scheda { flex-direction: row; padding: 0 12px; font-size: var(--t-corpo); }
+  .scheda svg { display: none; }
+  .scheda.attiva::before { top: auto; bottom: -1px; left: 12px; right: 12px; border-radius: 3px 3px 0 0; }
+  .cerca-testata { display: block; width: 280px; margin-left: auto; }
+  #bottone-cerca { display: none; }
+  .capo-pagina, body:has(#bottone-aggiorna:not([hidden])) .capo-pagina { --posto-bottoni: 0px; }
+  .avviso { left: 24px; right: auto; bottom: 24px; margin: 0; }
   .salva-fisso { bottom: 24px; }
-  main { padding: 20px 28px 0; max-width: 980px; }
-  html { scroll-padding-bottom: 16px; }                                       /* la barra sta a sinistra: in basso non copre niente */
+  main { padding: 28px 32px 0; }
+  html { scroll-padding-bottom: 16px; }                                       /* le schede stanno in alto: in basso non copre niente */
   html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: 86px; }
 }
-@keyframes allunga-v { 0% { transform: scale(1, 1); } 35% { transform: scale(calc(1 - var(--mov, 1) * .1), calc(1 + var(--mov, 1) * .2)); } 100% { transform: scale(1, 1); } }
 
 @media (min-width: 1100px) {
-  main { max-width: 1280px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 22px; align-items: start; }
-  main > * { margin-bottom: 0; }
-  main > .hero, main > .attenzione, main > .segmenti, main > .banner-novita, main > .caricamento, main > .errore, main > .campo, main > p, main > .vuoto,
-  main > #mercato-corpo, main > #elenco-scambi, main > #archivio-scambi, main > #esito-scambio, main > .colonne { grid-column: 1 / -1; }
-  main > .benvenuto, #mercato-corpo > .benvenuto, #elenco-scambi > .benvenuto { grid-column: 1 / -1; max-width: 620px; justify-self: center; width: 100%; }
-  main > .campo { max-width: 620px; width: 100%; justify-self: center; }
+  main > .benvenuto { max-width: 620px; margin-left: auto; margin-right: auto; }
   /* le sezioni che contengono tante carte (Mercato, Scambi) le dispongono da sole in colonne */
   main > #mercato-corpo, main > #elenco-scambi { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 18px 22px; align-items: start; }
   #mercato-corpo > *, #elenco-scambi > * { margin-bottom: 0; }
   #mercato-corpo > .carta:first-child, #mercato-corpo > .caricamento, #mercato-corpo > .vuoto, #elenco-scambi > .caricamento, #elenco-scambi > .vuoto,
   #elenco-scambi > .carta:first-child { grid-column: 1 / -1; }
-}
-@media (min-width: 1700px) {
-  main { max-width: 1900px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #mercato-corpo > .benvenuto, #elenco-scambi > .benvenuto { grid-column: 1 / -1; max-width: 620px; justify-self: center; width: 100%; }
 }
 /* Schermi grandi (PC, ultrawide): tutta l'interfaccia si ingrandisce, così testo e bersagli restano leggibili a zoom 100% del browser.
-   Larghezza utile in px di interfaccia: 1920 -> 1670, 2560 -> 1970, 3440 -> 2290 (3 colonne; la quarta solo da 3200). L'iPad (fino a 1366) non cambia. */
+   La pagina resta di 1240 px di interfaccia, centrata. L'iPad (fino a 1366) non cambia. */
 @media (min-width: 1800px) { :root { --z: 1.15; } html { zoom: var(--z); } }
 @media (min-width: 2400px) { :root { --z: 1.3; } }
 @media (min-width: 3000px) { :root { --z: 1.5; } }
-@media (min-width: 3200px) {
-  main { max-width: 2700px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  main > .campo { max-width: 760px; }
-}
 
 /* mouse e tastiera (PC, iPad con tastiera) */
 @media (hover: hover) {
@@ -848,7 +863,6 @@ html[data-animazioni="ridotte"] .avatar-pedina .avatar svg, html[data-animazioni
 /* ---- personalizzazione: densità e animazioni ---- */
 html[data-densita="compatta"] .carta { padding: 12px 14px; margin-bottom: 10px; }
 html[data-densita="compatta"] .voce { padding-top: 6px; padding-bottom: 6px; min-height: 48px; }
-html[data-densita="compatta"] main { padding-top: 8px; }
 html[data-densita="compatta"] .chip { min-height: 44px; padding: 5px 12px; }
 .colori { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 14px; }
 .colore { width: 44px; height: 44px; border-radius: 50%; border: 3px solid transparent; padding: 0; background: linear-gradient(135deg, var(--c1), var(--c2));
@@ -875,7 +889,6 @@ main:focus { outline: none; }
 
 /* ---- dalla revisione: focus nei campi numerici, "Salva" a tutta larghezza nella griglia ---- */
 .stepper:focus-within { outline: 2px solid var(--azione); outline-offset: 2px; }
-@media (min-width: 1100px) { main > .salva-fisso { grid-column: 1 / -1; } }
 
 /* telefoni stretti (iPhone SE, mini): i segmenti non devono uscire dal loro riquadro; campi dei crediti facili da toccare */
 @media (max-width: 400px) { .segmenti button { font-size: var(--t-eti); padding: 11px 1px; letter-spacing: -.1px; } }
@@ -948,7 +961,7 @@ html[data-calmo] .marchio.muove .capitano { animation: capitano-calmo 2.2s ease-
 .ar-squadre { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 @media (min-width: 900px) { .ar-squadre { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; } }
 .ar-squadra { padding: 12px 14px; border-radius: var(--r-in); border: 1px solid var(--bordo); background: color-mix(in srgb, var(--solido) 25%, transparent); min-width: 0; }
-.ar-squadra h4 { margin: 0 0 2px; font-size: var(--t-valore); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.ar-squadra h4 { margin: 0 0 2px; font-size: var(--t-card); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow-wrap: anywhere; }
 .ar-problemi { color: var(--arancio); font-size: var(--t-sec); font-weight: 550; margin-top: 4px; }
 .ar-ok { color: var(--verde); font-size: var(--t-sec); font-weight: 550; margin-top: 4px; }
 .ar-dubbi { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
@@ -1031,7 +1044,6 @@ body.pagina-testo { padding: 0 0 40px; }
 @media (min-width: 700px) {
   .esito-scambio-colonne { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
-@media (min-width: 1100px) { main > .carta.analizzatore { grid-column: 1 / -1; } }
 /* ---- Scambi: tre modi (Trova per me, Costruisci, Valuta un'offerta); da 900 px le scelte stanno a sinistra e il risultato a destra ---- */
 .scambi-pannello[hidden], [data-esito][hidden], .contatore-scambi[hidden], .segmenti[hidden] { display: none !important; }
 #scambi-modi { max-width: 640px; }
@@ -1046,7 +1058,6 @@ body.pagina-testo { padding: 0 0 40px; }
   .scambi-destra .esito-scambio-colonne { grid-template-columns: minmax(0, 1fr); }
   .scambi-destra #elenco-scambi > * { margin-bottom: 14px; }
 }
-@media (min-width: 1100px) { main > .scambi-colonne { grid-column: 1 / -1; } }     /* con due colonne di carte, l'analizzatore usa tutta la larghezza */
 /* Dai e Ricevi affiancati solo da 1100 px (colonna intera): a 768-1024 px due colonne da 150 px tagliavano i nomi */
 @media (min-width: 1100px) { .analizzatore .parti { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* ---------------------------------------------------------------- movimento che manca: accesso, errori, conferme, pulsanti occupati */
@@ -1061,18 +1072,13 @@ body.pagina-testo { padding: 0 0 40px; }
 button.salvato { animation: anello-verde .7s ease-out both; }
 .avviso:not([hidden]) { animation: entra .35s var(--molla) both, anello-verde .8s ease-out both; }
 .bottone[aria-busy="true"] { animation: pulsa 1s ease-in-out infinite; }
-@keyframes respira-sfondo { from { opacity: .38; } to { opacity: .6; } }
 
 /* ---------------------------------------------------------------- «Ridurre movimento» fatto bene (sistema o Lega > Aspetto > Animazioni > Ridotte)
    Non si spegne tutto: restano dissolvenze (>= 120 ms), cambi di colore, pulsazioni leggere e il marchio vivo. Spariscono solo
    spostamenti, zoom e rotazioni ampie (--mov a 0 le toglie da tutte le animazioni d'entrata) e lo sfondo che vaga. */
 html[data-calmo] { --mov: 0; --vela: 0; }
-html[data-calmo] .sfondo i { animation: respira-sfondo 16s ease-in-out infinite alternate; }
-html[data-calmo] .sfondo i:nth-child(2) { animation-duration: 21s; } html[data-calmo] .sfondo i:nth-child(3) { animation-duration: 27s; }
 html[data-calmo] button:active:not(:disabled) { transform: none; opacity: .72; }
-html[data-calmo] .lente { transition: none; }
-html[data-calmo] .lente.muove i { animation-name: dissolve; animation-duration: .3s; }
-html[data-calmo] .schede svg, html[data-calmo] details > summary::after { transition-property: none; }
+html[data-calmo] .scheda, html[data-calmo] details > summary::after { transition-property: none; }
 html[data-calmo] .bottone-icona.gira svg { animation: pulsa 1s ease-in-out infinite; }
 html[data-calmo] .caricamento::before { animation: pulsa 1.2s ease-in-out infinite; }
 html[data-calmo] .scheletro::after { transform: none; background: color-mix(in srgb, var(--testo) 8%, transparent); animation: pulsa 1.6s ease-in-out infinite; }
@@ -1100,23 +1106,21 @@ body.senza-accesso .salta { display: none; }
   @media (max-width: 1023px) { .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }   /* iPad verticale: la colonna dei titolari non resta stretta (etichette a capo) */
   .col { display: block; min-width: 0; }
   .col > .campo { max-width: 640px; width: 100%; margin-left: auto; margin-right: auto; }
-  .colonne-oggi > .col:first-child { position: sticky; top: 76px; }
+  .colonne-oggi > .col:first-child { position: sticky; top: calc(var(--alto-ferma) + 16px); }
   /* Formazione: il campo resta fermo a sinistra mentre scorri i dettagli a destra */
   .colonne-campo > .col { display: contents; }
   .colonne-campo .col > * { grid-column: 2; }
-  .colonne-campo .col > .campo { grid-column: 1; grid-row: 1 / span 8; align-self: start; position: sticky; top: 76px; }
+  .colonne-campo .col > .campo { grid-column: 1; grid-row: 1 / span 8; align-self: start; position: sticky; top: calc(var(--alto-ferma) + 16px); }
   .colonne-campo .col > .hero { grid-row: 1; }
   /* Mercato: le carte della scheda si dispongono in colonne */
   #mercato-corpo { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0 20px; align-items: start; }
   #mercato-corpo > .carta:first-child, #mercato-corpo > .caricamento, #mercato-corpo > .vuoto, #mercato-corpo > .segmenti, #mercato-corpo > .chips { grid-column: 1 / -1; }
 }
-@media (min-width: 768px) and (max-width: 899px) { main { max-width: 1000px; padding-left: 24px; padding-right: 24px; } }
+@media (min-width: 768px) and (max-width: 899px) { main { padding-left: 24px; padding-right: 24px; } .testata { padding-right: 24px; } }
 /* colonna ferma in alto (sticky) più alta dello schermo: il suo fondo non arrivava mai in vista, né con il Tab né scorrendo. app.js
    (controllaFerme) la fa scorrere con la pagina (issue #280) */
 .non-ferma { position: static !important; }
 @media (min-width: 1100px) { .colonne { gap: 0 24px; } }
-@media (min-width: 1700px) { .colonne { max-width: 1500px; margin: 0 auto; } }
-@media (min-width: 2400px) { .colonne { max-width: 1800px; } }
 .proposta button.nome-g { padding: 13px 4px; margin: -13px -4px; }
 .immagine-squadra .campo-testo { width: 100%; min-width: 0; font-size: var(--t-corpo); }
 .sm-pulsante { padding: 6px 14px; min-height: 44px; font-size: var(--t-sec); width: 100%; text-align: center; }
@@ -1129,7 +1133,6 @@ body.senza-accesso .salta { display: none; }
 .bottone-icona.attiva { color: var(--testo); box-shadow: inset 0 0 0 2px var(--azione); }
 .bottone-icona.novita { position: relative; }
 .bottone-icona.novita::after { content: ""; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--rosso); border: 2px solid var(--solido); }
-.schede.fuori .lente { opacity: 0; }
 .imp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }   /* una colonna `auto` era larga quanto il contenuto più lungo: Notifiche scorreva di lato (issue #288) */
 .imp-elenco { padding: 6px 10px; margin: 0; }
 .imp-voce.attiva { background: color-mix(in srgb, var(--verde) 14%, transparent); border-radius: 14px; }
@@ -1143,12 +1146,10 @@ body.senza-accesso .salta { display: none; }
 }
 @media (min-width: 768px) {
   .imp { grid-template-columns: 280px minmax(0, 1fr); gap: 22px; align-items: start; }
-  .imp-elenco { position: sticky; top: 76px; }
+  .imp-elenco { position: sticky; top: calc(var(--alto-ferma) + 16px); }
   .imp-indietro { display: none; }
   .imp-titolo { margin-top: 0; }
 }
-main > .imp { grid-column: 1 / -1; }
-@media (min-width: 1700px) { main > .imp { max-width: 1400px; justify-self: center; width: 100%; } }     /* campi e righe non si allungano su tutto lo schermo */
 /* ---- Mercato: scheda Giocatori (ricerca, ruolo, solo svincolati e un elenco compatto) ---- */
 .chips.filtri { margin: 10px 0 2px; }
 .chips.filtri .chip { min-height: 44px; min-width: 44px; justify-content: center; flex: 1 1 0; }
@@ -1158,7 +1159,7 @@ main > .imp { grid-column: 1 / -1; }
 .voce.riga-g .nome { overflow-wrap: anywhere; }
 @media (min-width: 900px) {
   .giocatori-pagina { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 0 20px; align-items: start; grid-column: 1 / -1; }
-  .giocatori-pagina .filtri-giocatori { position: sticky; top: 76px; }
+  .giocatori-pagina .filtri-giocatori { position: sticky; top: calc(var(--alto-ferma) + 16px); }
 }
 /* ---- Lega: la mia squadra e regole a sezioni ---- */
 .mia-riga { display: flex; align-items: center; gap: 14px; margin: 4px 0 6px; }
@@ -1232,15 +1233,10 @@ main > .imp { grid-column: 1 / -1; }
   main .colonne-oggi > .col:nth-child(2) > *, main .colonne-campo > .col:nth-child(2) > * { break-inside: avoid; }
 }
 @media (min-width: 1700px) {
-  main > .scambi-colonne { max-width: 1500px; width: 100%; justify-self: center; }
   .imp-pagina:has(> .carta ~ .carta) { columns: 2; column-gap: 22px; }
   .imp-pagina:has(> .carta ~ .carta) > * { break-inside: avoid; }
   .imp-pagina:has(> .carta ~ .carta) > .imp-titolo { column-span: all; }
   .imp-pagina ul.elenco:has(> li:nth-child(8)) { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); column-gap: 24px; }
-}
-@media (min-width: 3000px) {
-  .colonne, main > .scambi-colonne { max-width: 2100px; }
-  main > .imp { max-width: 2000px; }
 }
 /* monitor da 5120 px: un gradino in più, così testo e bersagli restano della stessa misura che su un 4K */
 @media (min-width: 4400px) { :root { --z: 1.75; } }
@@ -1253,14 +1249,14 @@ main > .imp { grid-column: 1 / -1; }
    ===================================================================================================== */
 body { container: pagina / inline-size; }
 @container pagina (max-width: 319.98px) {
-  /* testata: nome e giornata sopra, i tre pulsanti sotto; scorre via con la pagina (fissa, con lo zoom, copriva un quarto dello schermo) */
-  .testata { position: relative; flex-wrap: wrap; row-gap: 6px; padding: calc(env(safe-area-inset-top) + 8px) 8px 8px; }
-  .bottoni-testata { margin-left: auto; gap: 6px; }
-  .testo-testata .titolo, .testo-testata .sottotitolo, .sottotitolo > span { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  /* testata: i pulsanti su una riga loro, sopra il titolo della schermata (accanto non c'era posto), e scorrono via con la pagina
+     (fissa, con lo zoom, copriva un quarto dello schermo); il titolo prende tutta la riga */
+  .testata { position: relative; justify-content: flex-end; padding: calc(env(safe-area-inset-top) + 4px) 8px 0; }
+  .capo-pagina, body:has(#bottone-aggiorna:not([hidden])) .capo-pagina { --posto-bottoni: 0px; }
   /* barra in basso: solo le icone, più bassa; il nome della scheda resta ai lettori di schermo («Formazione» non ci stava in 40 px) */
-  .schede { left: 6px; right: 6px; bottom: calc(env(safe-area-inset-bottom) + 6px); height: 56px; padding: 4px; }
-  .lente { top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 4); }
-  .schede button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .schede { height: calc(48px + env(safe-area-inset-bottom)); }
+  .scheda > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .scheda.attiva::before { left: 8px; right: 8px; }
   main { padding: 8px 8px 0; }
   .carta { padding: 12px; }
   /* due blocchi affiancati (modulo e punti attesi): uno sotto l'altro, il secondo resta a destra */

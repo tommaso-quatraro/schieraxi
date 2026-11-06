@@ -78,9 +78,11 @@ Se ti invitano in una lega che gioca già da un po':
 
 ### Le schede in basso
 
-**Oggi**, **Formazione**, **Squadra**, **Altro**. In alto: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda: previsione, forma recente, statistiche, **☆ Segui** per seguirlo (diventa **★ Seguito**; lo trovi in **Seguiti**).
+**Oggi**, **Formazione**, **Squadra**, **Altro**. In cima a ogni schermata c'è il suo titolo e, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra: la **lente** (cerca un giocatore), l'**ingranaggio** (Impostazioni) e le **frecce** (ricaricano i dati). Toccando un giocatore si apre la sua scheda: previsione, forma recente, statistiche, **☆ Segui** per seguirlo (diventa **★ Seguito**; lo trovi in **Seguiti**).
 
-Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello.
+Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, accanto al nome SchieraXI, con il campo **Cerca un giocatore** sempre aperto: scrivi e si apre la ricerca. Con Ctrl+clic (⌘+clic sul Mac) una scheda si apre in un'altra scheda del browser, per confrontare due schermate.
+
+Da tastiera: **1**-**4** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima.
 
 Con lo zoom del browser molto alto (per esempio 200% sul telefono) o con il testo **Molto grande** su un telefono piccolo, le schermate si dispongono in una colonna: la testata scorre via con la pagina, la barra in basso mostra solo le icone, le righe dei giocatori mettono il nome sotto il volto e il campo ha due giocatori per fila.
 

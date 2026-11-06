@@ -10,9 +10,11 @@ CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 
 
 def test_la_barra_ha_quattro_voci_oggi_formazione_squadra_altro():
-    assert re.findall(r'<button data-vista="(\w+)"', HTML) == ["oggi", "formazione", "squadra", "altro"]
-    assert re.findall(r'<span data-t="nav\.\w+">(\w+)</span>\s*</button>', HTML) == ["Oggi", "Formazione", "Squadra", "Altro"]
-    assert CSS.count("repeat(4, 1fr)") >= 1 and "repeat(4, 72px)" in CSS and "repeat(5, 72px)" not in CSS
+    # grafica B: le voci sono collegamenti (Indietro del browser, Ctrl+clic); al telefono la barra in basso ha 4 colonne
+    assert re.findall(r'<a class="scheda" data-vista="(\w+)"', HTML) == ["oggi", "formazione", "squadra", "altro"]
+    assert re.findall(r'<span data-t="nav\.\w+">(\w+)</span>\s*</a>', HTML) == ["Oggi", "Formazione", "Squadra", "Altro"]
+    barra = re.search(r"\n\.schede \{([^}]*)\}", CSS).group(1)
+    assert "grid-template-columns: repeat(4, 1fr)" in barra
 
 
 def test_mercato_scambi_e_lega_di_prima_restano_raggiungibili_sotto_squadra_e_altro():
