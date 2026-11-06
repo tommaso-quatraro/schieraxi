@@ -1,0 +1,14 @@
+{
+  "titolo": "Colori più sobri: fondo bianco o grigio scuro",
+  "voci": [
+    "Il fondo è bianco nel tema chiaro e grigio quasi nero nel tema scuro, senza più la tinta verde: i colori restano solo sui dati.",
+    "Nel tema chiaro pulsanti e collegamenti diventano verde bosco.",
+    "La barra in alto, quella in basso e la scheda del giocatore sono piene, senza effetto vetro: il testo sotto non si intravede più."
+  ],
+  "tecnico": [
+    "Grafica B, PR 3 (parte di #354): --sfondo #ffffff / #121513, nuove --superficie (#f4f5f2 / #1a1e1c) e --filo (#dde1dc / #2e3430), --solido scuro #1a1e1c, --testo scuro #e9edea; --vetro e --vetro-carta = var(--sfondo); nessun backdrop-filter.",
+    "--azione chiaro #0b6b3a (6,6:1 sul bianco, bianco sopra 6,6:1), --azione-2 #08552e; solo sulla web (scelta 1b della spec): l'iPhone resta oliva, il test confronta con Aspetto.swift solo lo scuro.",
+    "theme-color in due righe con media (chiaro #ffffff, scuro #121513); applicaAspetto le aggiorna tutte e due quando il tema è scelto a mano; manifest #121513.",
+    "Voce scelta dei controlli segmentati: grigio neutro (testo al 12% sul fondo), perché con il fondo pieno non si distingueva più dalla striscia."
+  ]
+}
