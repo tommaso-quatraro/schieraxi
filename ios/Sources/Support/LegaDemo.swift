@@ -306,9 +306,10 @@ enum LegaDemo {
     }
 
     /// I punti attesi della formazione della giornata, UNA fonte per tutta la demo (#390). La tua scelta salvata sono gli undici
-    /// della consigliata (`sceltaSalvata`), quindi la valutazione del server (`valuta`, a un decimale) dà gli stessi punti: li
-    /// mostrano Formazione, Oggi prima della scadenza, «attesi prima» a giornata in corso, «Com'è andata» e i widget.
-    static var attesiGiornata: Double { (punteggio(moduli[0].titolari) * 10).rounded() / 10 }
+    /// della consigliata (`sceltaSalvata`), quindi la valutazione (`valuta`) dà gli stessi punti: li mostrano Formazione, Oggi prima
+    /// della scadenza, «attesi prima» a giornata in corso, «Com'è andata» e i widget. Non arrotondati: arrotonda chi li scrive
+    /// (`Formato.punti`, `Formato.intero` per la fascia), così punti e fascia escono uguali ovunque.
+    static var attesiGiornata: Double { punteggio(moduli[0].titolari) }
 
     /// La fascia dei punti attesi, come la manda il server: da circa -8 a +8,5 attorno ai punti attesi, 8 volte su 10.
     static func fascia(_ attesi: Double, indicativo: Bool = true) -> [String: Any] {
@@ -586,7 +587,7 @@ enum LegaDemo {
     /// dell'app. `parziali`: un server che non ha ancora scambio, svincolo e Diario (li elenca in `mancano`).
     static func widget(adesso: Date, fase: Fase = .prima, parziali: Bool = false) -> Data {
         let ids = moduli[0].titolari
-        let attesi = punteggio(ids)
+        let attesi = attesiGiornata   // la stessa fonte dell'app (#390)
         func breve(_ p: CalciatoreDemo) -> [String: Any] { ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra] }
         func conQuotazione(_ id: Int) -> [String: Any] {
             let p = calciatore(id)

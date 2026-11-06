@@ -237,6 +237,8 @@ private extension LegaDemo {
         let bench = panchina(per: ids)
         let titolari = ids.map { giocatore(calciatore($0), adesso: adesso) }
         let panchinaJSON = bench.map { giocatore(calciatore($0), adesso: adesso) }
+        // i punti della consigliata: la stessa fonte di Oggi, della valutazione e dei widget (#390)
+        let attesi = attesiGiornata
         // gli stili come li manda il server (nomi e descrizioni di LIVELLI_RISCHIO): Sicura, Equilibrata (consigliata), Rischiosa
         var livelli: [[String: Any]] = []
         for r in [-1, 0, 1] {
@@ -244,21 +246,21 @@ private extension LegaDemo {
             let extra = Double(r) * 0.6
             var elenco: [[String: Any]] = []
             for m in moduli {
-                elenco.append(["modulo": m.nome, "punteggio_atteso": punteggio(m.titolari) + extra,
-                               "titolari": m.titolari, "panchina": panchina(per: m.titolari),
-                               "dev": 4.2, "intervallo": fascia(punteggio(m.titolari) + extra)])
+                let punti = (m.nome == base.nome ? attesi : punteggio(m.titolari)) + extra
+                elenco.append(["modulo": m.nome, "punteggio_atteso": punti, "titolari": m.titolari, "panchina": panchina(per: m.titolari),
+                               "dev": 4.2, "intervallo": fascia(punti)])
             }
             livelli.append(["rischio": r, "stile": r, "nome": nome, "descrizione": StileFormazione.descrizione(r),
-                            "modulo": base.nome, "punteggio_atteso": punteggio(ids) + extra, "moduli": elenco,
-                            "intervallo": fascia(punteggio(ids) + extra)])
+                            "modulo": base.nome, "punteggio_atteso": attesi + extra, "moduli": elenco,
+                            "intervallo": fascia(attesi + extra)])
         }
         var schede: [String: Any] = [:]
         for p in miaRosa { schede[String(p.id)] = giocatore(p, adesso: adesso) }
         // probabili uscite, come in Oggi, nel widget e nello Stato dei dati (prima diceva «non ancora uscite», #303)
         return json([
-            "squadra": nomeMia, "giornata": giornata, "giornata_lega": giornataLega, "modulo": base.nome, "punteggio_atteso": punteggio(ids),
+            "squadra": nomeMia, "giornata": giornata, "giornata_lega": giornataLega, "modulo": base.nome, "punteggio_atteso": attesi,
             "con_probabili": true, "titolari": titolari, "panchina": panchinaJSON, "livelli": livelli, "schede": schede, "stile_consigliato": 0,
-            "dev": 4.2, "intervallo": fascia(punteggio(ids)), "iniziata": iniziata,
+            "dev": 4.2, "intervallo": fascia(attesi), "iniziata": iniziata,
         ])
     }
 
@@ -279,13 +281,12 @@ private extension LegaDemo {
     static func valutazione() -> String { json(valutazioneScelta) }
 
     static var valutazioneScelta: [String: Any] {
-        let ids = moduli[0].titolari
-        let consigliata = punteggio(ids)
+        // la valutazione e la consigliata sono gli stessi undici: un numero solo, `attesiGiornata`
         let attesi = attesiGiornata
         let f = fascia(attesi)
         return ["modulo": moduli[0].nome, "giornata": giornata, "giornata_lega": giornataLega, "punteggio_atteso": attesi,
                 "dev": 4.2, "intervallo": f, "brutta_giornata": f["basso"] ?? NSNull(), "giornata_eccezionale": f["alto"] ?? NSNull(),
-                "panchina": panchina(per: ids), "consigliata_stesso_modulo": consigliata, "differenza": 0.0, "consigliata": consigliata]
+                "panchina": panchina(per: moduli[0].titolari), "consigliata_stesso_modulo": attesi, "differenza": 0.0, "consigliata": attesi]
     }
 
     // MARK: - Oggi
