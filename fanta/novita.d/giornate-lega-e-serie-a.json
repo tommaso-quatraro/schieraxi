@@ -1,0 +1,13 @@
+{
+  "titolo": "La giornata della lega e quella di Serie A, insieme",
+  "voci": [
+    "Come su Leghe, ogni giornata dice tutti e due i numeri: «Giornata 8 · 11ª di Serie A». Vale in alto, in Oggi, in Formazione, nel Diario, nella scheda del giocatore, nel confronto, nel testo e nell'immagine da condividere, nelle cose da fare e negli avvisi sul telefono.",
+    "Per le stagioni passate e nel calendario si legge solo la giornata di Serie A: «11ª giornata di Serie A».",
+    "Gli avvisi dei cambi nelle probabili e del riepilogo hanno il titolo più corto: la giornata è scritta all'inizio del testo."
+  ],
+  "tecnico": [
+    "Una sola funzione per lato: nomeGiornata(lega, serieA) in fanta/web/app.js e frasi.nome_giornata(serie_a, lega) sul server (chiavi giornata.lega e giornata.serie_a; per gli avvisi n.giornata.lega e n.giornata.serie_a, anche in inglese).",
+    "Le frasi con la giornata la mettono in testa con i due punti; dafare.diario e dafare.rose_mercato (il promemoria «aggiorna le rose») hanno il parametro giornata (una frase) al posto di n.",
+    "Nessun campo nuovo nelle API: giornata e giornata_lega c'erano già. Formato e frasi esatte in docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme» (#299, parte web e server)."
+  ]
+}

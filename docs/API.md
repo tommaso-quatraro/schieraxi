@@ -464,11 +464,41 @@ Valori fuori dai limiti: `400`/`422` con il testo del problema.
 Dove si vedono (tutti campi aggiunti, i client vecchi li ignorano):
 - `GET /api/oggi` (e `/api/widget`): `inizio` resta l'inizio della prima partita del turno (anche se già giocata; una partita rinviata rimasta in calendario con la data vecchia non conta: regola unica di `fanta/turno.py`, la stessa di promemoria e copia automatica; anche `prima_partita` del widget); nuovi `scadenza` (testo `AAAA-MM-GG HH:MM`, inizio meno i minuti) e `minuti_scadenza`. `ore_mancanti` e `iniziata` ora contano dalla scadenza (senza regola coincide con l'inizio, come prima): `iniziata: true` = la formazione non si può più cambiare. Nuovo `giornata_lega` (numero nella lega, `null` se la regola manca o la giornata è prima della lega). `giornata` resta quella di Serie A. In `/api/widget`, `scadenza` è la scadenza vera. `giornata_lega` (facoltativo, `null` se non applicabile) è anche in `GET /api/widget` e, accanto a `giornata`, in `GET /api/formazione` e `POST /api/formazione/valuta`: i client che non lo conoscono lo ignorano e continuano a mostrare `giornata`.
 - `GET /api/stato`: `prossima_giornata` non è mai prima della prima giornata della lega; nuovi `prima_giornata_lega` e `prossima_giornata_lega`.
-- `GET /api/giocatore/{id}` (in `previsione`, accanto a `giornata`) e `GET /api/confronto` (accanto a `giornata`), dal 2/11/2026: nuovo `giornata_lega`, stesso calcolo e stesso significato delle altre rotte (`null` se la giornata è prima della lega). Facoltativo: i client vecchi lo ignorano. La scheda mostra «Giornata 7 · in trasferta contro …» con `giornata_lega ?? giornata`.
+- `GET /api/giocatore/{id}` (in `previsione`, accanto a `giornata`) e `GET /api/confronto` (accanto a `giornata`), dal 2/11/2026: nuovo `giornata_lega`, stesso calcolo e stesso significato delle altre rotte (`null` se la giornata è prima della lega). Facoltativo: i client vecchi lo ignorano. La scheda mostra «Giornata 7 · 10ª di Serie A · in trasferta contro …» (vedi «Numero della giornata» qui sotto).
 - `GET /api/diario`: la stagione in corso conta solo dalla prima giornata della lega; ogni voce ha `giornata_lega`. `POST /api/diario/schierata` rifiuta (`400`) le giornate precedenti alla lega.
 - Promemoria, «cambio pronto», copia automatica della formazione e riepilogo usano la scadenza (non l'inizio della partita).
 Aggiornamenti più fitti: il servizio rilegge le probabili (e avvisa dei cambi) anche a 60, 30 e 15 minuti prima della scadenza, oltre ai giri di sempre del server. Nessuna rotta nuova; per spegnerli: `FANTA_PIANIFICATORE=0` nel servizio, oppure `aggiornamenti_vicino_scadenza: false` nelle regole. Le probabili hanno quindi un'ora di rilevazione (`probabili.aggiornate_il` in `/api/oggi`) più recente vicino alla scadenza.
-Le app mostrano il numero della lega (`giornata_lega`) quando c'è, altrimenti `giornata`. Cosa devono fare iOS e Android: mostrare il conto alla rovescia verso `scadenza` (se manca, `inizio`) e, nel pannello delle regole, i due valori; se non li conoscono non cambia nulla.
+Le app mostrano tutti e due i numeri (sezione «Numero della giornata» qui sotto). Cosa devono fare iOS e Android: mostrare il conto alla rovescia verso `scadenza` (se manca, `inizio`) e, nel pannello delle regole, i due valori; se non li conoscono non cambia nulla.
+
+## Numero della giornata: `giornata` e `giornata_lega` (dal 5/11/2026, #299)
+
+Come su Leghe Fantacalcio i client mostrano **tutti e due i numeri**: quello della lega e quello di Serie A. Ogni risposta che
+parla di una giornata manda `giornata` (Serie A, 1-38) e, accanto, `giornata_lega` (la giornata della lega; `null` per le stagioni
+passate e per le giornate di Serie A prima che la lega parta). Rotte: `GET /api/stato` (`prossima_giornata`,
+`prossima_giornata_lega`), `GET /api/oggi` e `GET /api/widget` (in cima e in `in_corso`, `riepilogo`, `prossima`, `rinvio`,
+`diario[]`), `GET /api/formazione` (anche `giornata_saltata` e `giornata_saltata_lega`), `POST /api/formazione/valuta`,
+`GET /api/giocatore/{id}` (`previsione`), `GET /api/confronto`, `GET /api/diario` (voci, `scelte_tue.per_giornata[]`,
+`precisione.per_giornata[]`). Nessun campo nuovo: c'erano già tutti. Restano col solo numero di Serie A le rotte che parlano solo
+di Serie A: `GET /api/calendario`, i `voti` della scheda, le probabili dello stato dei dati, `GET /api/affidabilita`.
+
+Il testo si costruisce con una funzione sola per piattaforma (web `nomeGiornata`, server `frasi.nome_giornata`), con queste forme
+(frasi esatte per ogni schermata in `docs/COERENZA-WEB-IPHONE.md`, «Giornata: le forme»):
+
+| Forma | Italiano | Inglese | Quando |
+|---|---|---|---|
+| intera | «Giornata 8 · 11ª di Serie A» | «Matchday 8 · Serie A matchday 11» | dove c'è spazio; in una frase va in testa, seguita dai due punti |
+| corta | «Giornata 8» e sotto «11ª di Serie A» (ultimo ripiego: solo «Giornata 8») | «Matchday 8» e sotto «Serie A matchday 11» | widget piccoli, righe strette; lettori di schermo sempre la forma intera |
+| solo Serie A | «11ª giornata di Serie A» | «Serie A matchday 11» | `giornata_lega` nullo, calendario di Serie A |
+
+Testi del server con la forma intera (frasi con chiave, `fanta/frasi.py`): la chiave `giornata.lega` (`{n}` lega, `{a}` Serie A)
+e `giornata.serie_a` (`{a}`), dentro il parametro `giornata` di `dafare.diario` («Giornata 7 · 10ª di Serie A: è finita, dimmi se
+hai schierato la consigliata.») e di `dafare.rose_mercato` («… aggiornale prima della Giornata 12 · 15ª di Serie A.»); negli avvisi le stesse forme con le chiavi `n.giornata.lega` e `n.giornata.serie_a`, in italiano e
+in inglese. I titoli degli avvisi «cambi nelle probabili» e «riepilogo» non hanno più il numero: la forma intera sta in testa al
+testo. `GET /api/formazione/testo` comincia con «Giornata 8 · 11ª di Serie A · 3-4-3». I messaggi d'errore «Non ci sono ancora
+previsioni per la Giornata 8 · 11ª di Serie A: riprova più tardi.» e «Giocatore … senza previsione per la Giornata 8 · 11ª di Serie A
+(la sua squadra non gioca?)» usano la stessa forma, con l'articolo davanti all'8ª e all'11ª eliso («per l'11ª giornata di Serie A»,
+`frasi.elidi_ordinali`); la web riconosce la giornata (articolo compreso) e la traduce («for Serie A matchday 11»). Chi legge `testo`
+riceve la frase nuova senza fare niente; chi ne tiene una copia scritta a mano (dati di prova e test dell'iPhone) la allinea.
 
 ## Momenti di mercato della lega: aste e finestre di scambio
 
@@ -648,7 +678,8 @@ Quando compaiono (al massimo 8 voci in tutto; la card di Oggi ne mostra 4):
   delle aste e le soste del campionato (sezione «Momenti di mercato della lega»). Compare dall'inizio del momento e resta fino
   all'aggiornamento delle rose o fino alla scadenza (della lega) della prima giornata della lega dopo la FINE del momento, così
   copre anche un'asta che cade alla fine del periodo. Testo: «È il momento di aste e scambi nella lega: se le
-  rose sono cambiate, aggiornale prima della giornata 12.» (chiave `dafare.rose_mercato`, parametro `n` = giornata della lega). Campi,
+  rose sono cambiate, aggiornale prima della Giornata 12 · 15ª di Serie A.» (chiave `dafare.rose_mercato`, parametro `giornata` = la
+  frase della giornata con i due numeri, `giornata.lega`, come `dafare.diario`; fino alla #306 era `n` = giornata della lega). Campi,
   `id` (`rose-vecchie`), azione e destinazione non cambiano; `giorni` = giorni dall'ultimo aggiornamento delle rose. Prima compariva
   dopo ogni giornata giocata con le rose ferme da 4 giorni (chiave `dafare.rose_vecchie`, che il server non scrive più).
 - `svincolato` e `scambio` (3): solo se già in cache e solo se superano il buon senso (`fanta/buon_senso.py`): guadagno di almeno 2-3 punti (secondo il ruolo) sulle prossime 5 giornate e positivo nella maggior parte di esse, chi entra gioca davvero (titolare fisso, non in dubbio), chi esce non è un titolare utile né costoso, crediti sufficienti, nessun giocatore preso o lasciato libero negli ultimi 21 giorni. Campo in più facoltativo `motivo` (una frase: perché conviene), anche dentro il `testo`. Mai calcolati qui. Dubbi, coperture, svincolati e scambi insieme sono al massimo 3 consigli, e nessun giocatore compare in due consigli. Se non c'è niente di utile `da_fare` può essere vuota (i client scrivono «Nessuna azione utile oggi»).

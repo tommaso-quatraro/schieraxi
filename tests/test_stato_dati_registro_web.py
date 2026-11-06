@@ -46,8 +46,9 @@ def _registro(tmp_path, misurate: int, perse: dict | None = None) -> dict:
 
 
 def _codice_registro() -> str:
-    """Le funzioni vere di app.js: `esc`, `num`, `segno` e il blocco del registro (fino a «Stato dei dati»)."""
+    """Le funzioni vere di app.js: `esc`, `nomeGiornata`, `num`, `segno` e il blocco del registro (fino a «Stato dei dati»)."""
     esc = APP[APP.index("function esc(x)"):APP.index("\n}\n", APP.index("function esc(x)")) + 3]
+    esc += APP[APP.index("function nomeGiornata("):APP.index("\n}\n", APP.index("function nomeGiornata(")) + 3]
     righe = [re.search(rf"^const {n} = .*$", APP, re.M).group(0) for n in ("num", "segno")]
     inizio = APP.index("// Registro delle giornate")
     blocco = APP[inizio:APP.index("// Stato dei dati: da dove arriva tutto", inizio)]
@@ -127,8 +128,8 @@ def test_giornate_perse_con_il_motivo_protetto(tmp_path):
     pezzi = _testi(html)
     assert "Giornate perse" in pezzi
     assert "Non salvate prima della prima partita: non si possono più misurare." in pezzi
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 9") == "previsioni non pronte &lt;b&gt;x&lt;/b&gt;"
-    assert _dopo(pezzi, "Serie A 2026-27, giornata 5") == registro_giornate.SENZA_TENTATIVI
+    assert _dopo(pezzi, "9ª giornata di Serie A · 2026-27") == "previsioni non pronte &lt;b&gt;x&lt;/b&gt;"      # #299: come il Diario
+    assert _dopo(pezzi, "5ª giornata di Serie A · 2026-27") == registro_giornate.SENZA_TENTATIVI
     assert "<b>x</b>" not in html
 
 

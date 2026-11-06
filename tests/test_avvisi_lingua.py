@@ -62,20 +62,21 @@ def test_promemoria_e_cambi_in_inglese(telefono, tmp_path, monkeypatch):
     notifiche.promemoria(_db("2026-10-28 18:30"), Regole(), ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "n.json", telefono.manda, opz)
     notifiche.promemoria(_db("2026-10-28 18:30"), Regole(), ROSE, datetime(2026, 10, 28, 18, 20), tmp_path / "n.json", telefono.manda, opz)
     (t1, c1), (t2, c2) = telefono.arrivati
-    assert t1 == "SchieraXI · lineup in one hour" and c1.startswith("The lineup for matchday 9 closes in about an hour (deadline at 18:30). Recommended: 4-3-3, 71.2 expected points.")
+    assert t1 == "SchieraXI · lineup in one hour" and c1.startswith("Matchday 9 · Serie A matchday 9: the lineup closes in about an hour (deadline at 18:30). Recommended: 4-3-3, 71.2 expected points.")
     assert "To check: Castro." in c1
-    assert t2 == "SchieraXI · last minutes for the lineup" and c2 == "Last minutes: the lineup for matchday 9 closes at 18:30. Have you entered it on Leghe?"
+    assert t2 == "SchieraXI · last minutes for the lineup" and c2 == "Matchday 9 · Serie A matchday 9: the lineup closes at 18:30. Have you entered it on Leghe?"
     righe = notifiche.confronta({"1": _stato("Castro", "titolare", 80), "2": _stato("Vicario", "titolare", 90)},
                                 {"1": _stato("Castro", "panchina", 40), "2": _stato("Vicario", "infortunato")})
-    assert telefono.manda(frasi.F("n.t_cambi", giornata=9), frasi.elenco(righe, sep="\n"), 4, "rotating_light")
-    assert telefono.arrivati[-1] == ("SchieraXI · matchday 9: changes in the probable lineups",
-                                     "Castro: from the starting lineup to the bench\nVicario: now injured")
+    giornata = frasi.nome_giornata(9, 6, avviso=True)
+    assert telefono.manda(frasi.F("n.t_cambi"), frasi.elenco([giornata] + righe, sep="\n"), 4, "rotating_light")
+    assert telefono.arrivati[-1] == ("SchieraXI · changes in the probable lineups",
+                                     "Matchday 6 · Serie A matchday 9\nCastro: from the starting lineup to the bench\nVicario: now injured")
 
 
 def test_formazione_pronta_e_avviso_di_prova_in_inglese(telefono):
     telefono.impostazioni.write_text(json.dumps({"lingua": "en"}), encoding="utf-8")
-    pronta = {"titolo": "SchieraXI", "testo": frasi.F("n.pronta", giornata=12)}
-    assert telefono.manda(pronta["titolo"], pronta["testo"]) and "Matchday 12: the lineup is ready." in telefono.arrivati[-1][1]
+    pronta = {"titolo": "SchieraXI", "testo": frasi.F("n.pronta", giornata=frasi.nome_giornata(12, 9, avviso=True))}
+    assert telefono.manda(pronta["titolo"], pronta["testo"]) and "Matchday 9 · Serie A matchday 12: the lineup is ready." in telefono.arrivati[-1][1]
     assert telefono.manda(frasi.F("n.t_prova"), frasi.F("n.prova"), ignora_silenzio=True)
     assert telefono.arrivati[-1] == ("SchieraXI · test", "If you can read this, the alerts work.")
     assert avvisi.F is frasi.F                                                   # il testo di avvisi.py è una frase con chiave
