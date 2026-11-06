@@ -306,12 +306,16 @@ def _json(testo, predefinito):
 
 
 COLONNE_TABELLA = ("versione", "creata", "stato", "coefficienti", "taratura", "prova", "misura", "motivo", "avvisato")
+ERRORI = 0                       # riga della tabella che conta i giri falliti di fila (stato «errori»): non è una versione
+MAX_ERRORI = 3                   # giri falliti di fila prima dell'avviso al proprietario
 
 
 def _tabella(db: sqlite3.Connection, dove: str = "", parametri: tuple = ()) -> list[dict]:
-    """Le righe della tabella `taratura_probabili` come dizionari (`dove`: solo testo fisso del codice, mai un dato)."""
+    """Le versioni della tabella `taratura_probabili` come dizionari, senza la riga del contatore degli errori (`dove`: «AND …» o
+    «ORDER BY …», solo testo fisso del codice, mai un dato)."""
     return [dict(zip(COLONNE_TABELLA, r))
-            for r in db.execute(f"SELECT {', '.join(COLONNE_TABELLA)} FROM taratura_probabili {dove}", parametri)]
+            for r in db.execute(f"SELECT {', '.join(COLONNE_TABELLA)} FROM taratura_probabili WHERE versione > {ERRORI} {dove}",
+                                parametri)]
 
 
 def _inserisci(db: sqlite3.Connection, adesso: datetime, stato: str, motivo: str | None, esito: dict | None = None,
@@ -411,19 +415,47 @@ def _riga_esito(versione: int, stato: str, motivo: str, esito: dict, contro: str
             f"e {m['brier']:.4f} dei mostrati, calibrazione {100 * n['calibrazione']:.1f} punti, {giro}")
 
 
+def _unisci(parti: list[str]) -> str:
+    """Più pezzi in una riga sola del log, con il nome del comando una volta sola."""
+    return "; ".join(p if i == 0 else p.removeprefix(f"{NOME}: ") for i, p in enumerate(parti))
+
+
+def _ritira(db: sqlite3.Connection, t: dict, motivo: str, quando: str, ritorno: dict | None = None) -> None:
+    """La riga attiva `t` torna ai numeri di partenza (`ritirata`, con il motivo e l'ora in `misura.ritirata`), da avvisare."""
+    misura_ = {**_json(t["misura"], {}), "ritirata": {"quando": quando}, **({"ritorno": ritorno} if ritorno else {})}
+    db.execute("UPDATE taratura_probabili SET stato = 'ritirata', motivo = ?, misura = ?, avvisato = 0 WHERE versione = ?",
+               (motivo, _testo(misura_), t["versione"]))
+
+
 def _giro(db: sqlite3.Connection, r: pd.DataFrame, gg: list, adesso: datetime) -> tuple[str, bool]:
     """I passi di `esegui` dentro la transazione: (riga per il log, se la riga attiva è cambiata)."""
     tutte = _tabella(db, "ORDER BY versione")
     ultima = tutte[-1] if tutte else None
     if ultima and ultima["stato"] == "spenta":
         return f"{NOME}: spenta a mano (versione {ultima['versione']}): non fa niente finché non si riaccende", False
+    parti = []
+    att = next((t for t in reversed(tutte) if t["stato"] == "attiva"), None)
+    if att is not None and _coefficienti(att["coefficienti"]) is None:
+        # coefficienti rovinati: il modello usa già i numeri di partenza (`attiva` dà None), quindi nessun numero cambia e non serve
+        # ricalcolare; la riga lo dice e parte l'avviso. Una prova nuova solo con giornate nuove, come sempre
+        _ritira(db, att, "incoerente", adesso.isoformat(timespec="seconds"))
+        att["stato"] = "ritirata"                      # (anche `ultima`, se è la stessa riga)
+        parti.append(f"{NOME}: versione {att['versione']} ritirata (incoerente): coefficienti non validi, valgono i numeri di "
+                     "partenza")
+        att = None
+    riga, cambia = _passi(db, r, gg, adesso, ultima, att)
+    return _unisci(parti + [riga]), cambia
+
+
+def _passi(db: sqlite3.Connection, r: pd.DataFrame, gg: list, adesso: datetime, ultima: dict | None,
+           att: dict | None) -> tuple[str, bool]:
+    """Ritorno indietro, prova nuova, vigilia e scritture (vedi `esegui`). `att`: la riga attiva con coefficienti validi, o None."""
     if len(gg) < MIN_GIORNATE:
         return _in_attesa(r, gg), False
     prova_ora = dividi(gg)[1]
     if ultima and ultima["stato"] not in RIFAI and _giornate_da(ultima["prova"]) == prova_ora:
         return f"{NOME}: niente di nuovo (versione {ultima['versione']}, {ultima['stato']})", False
-    att = next((t for t in reversed(tutte) if t["stato"] == "attiva"), None)
-    c_att = _coefficienti(att["coefficienti"]) if att else None       # rovinati: il modello usa già i numeri di partenza
+    c_att = _coefficienti(att["coefficienti"]) if att else None
 
     # ritorno indietro: bastano MIN_RITORNO giornate dopo la prova della riga attiva
     ritiro, ritorno = None, None
@@ -469,9 +501,7 @@ def _giro(db: sqlite3.Connection, r: pd.DataFrame, gg: list, adesso: datetime) -
 
     parti = []
     if ritiro:
-        misura_att = {**_json(att["misura"], {}), "ritorno": ritorno}
-        db.execute("UPDATE taratura_probabili SET stato = 'ritirata', motivo = ?, misura = ?, avvisato = 0 WHERE versione = ?",
-                   (ritiro, _testo(misura_att), att["versione"]))
+        _ritira(db, att, ritiro, adesso.isoformat(timespec="seconds"), ritorno)
         parti.append(f"{NOME}: versione {att['versione']} ritirata ({ritiro}): Brier {ritorno['attiva']['brier']:.4f} contro "
                      f"{ritorno['partenza']['brier']:.4f} dei numeri di partenza nelle {len(ritorno['giornate'])} giornate dopo "
                      "la sua prova")
@@ -481,18 +511,23 @@ def _giro(db: sqlite3.Connection, r: pd.DataFrame, gg: list, adesso: datetime) -
         v = _inserisci(db, adesso, stato, motivo, esito)
         contro = "dei numeri di partenza" if attuale is None else f"della versione {att['versione']}"
         parti.append(_riga_esito(v, stato, motivo, esito, contro))
-    return "; ".join(p if i == 0 else p.removeprefix(f"{NOME}: ") for i, p in enumerate(parti)), cambia
+    return _unisci(parti), cambia
 
 
 def testo_avviso(t: dict) -> str:
-    """Il testo dell'avviso al proprietario per una riga `attiva` o `ritirata`: solo versione e numeri, mai nomi."""
+    """Il testo dell'avviso al proprietario per una riga `attiva` (anche se nel frattempo `superata`) o `ritirata`: solo versione e
+    numeri, mai nomi."""
     m = _json(t["misura"], {})
-    if t["stato"] == "attiva":
-        n, a = m.get("nuova") or {}, m.get("attuale") or {}
+    if t["stato"] in ("attiva", "superata"):
+        n = m["nuova"] if isinstance(m.get("nuova"), dict) else {}
+        a = m["attuale"] if isinstance(m.get("attuale"), dict) else {}
         return (f"Versione {t['versione']} attiva: Brier {_cifre(n.get('brier'), 3)} invece di {_cifre(a.get('brier'), 3)}, "
                 f"calibrazione {_cifre(n.get('calibrazione'), 1, 100)} punti, su {len(_giornate_da(t['prova']) or [])} giornate "
                 "di prova.")
-    k = len((m.get("ritorno") or {}).get("giornate") or [])
+    if t["motivo"] == "incoerente":
+        return f"Tornato ai valori di partenza: i coefficienti della versione {t['versione']} non sono validi."
+    ritorno = m["ritorno"] if isinstance(m.get("ritorno"), dict) else {}
+    k = len(ritorno.get("giornate") or [])
     return f"Tornato ai valori di partenza: la versione {t['versione']} sbagliava di più nelle ultime {k} giornate."
 
 
@@ -504,46 +539,96 @@ def _cifre(x, cifre: int, per: float = 1) -> str:
         return "?"
 
 
-def _avvisa(db: sqlite3.Connection, manda: Callable[[str, str], bool] | None) -> str:
-    """Un avviso al proprietario per ogni riga `attiva` o `ritirata` non ancora avvisata (`manda(titolo, testo)`, vero se è
-    partito; di base il canale della sentinella). Se non parte, si riprova al giro dopo. Il pezzo da aggiungere alla riga del log."""
+def _manda_una_volta(db: sqlite3.Connection, versione: int, testo: str, invia: Callable[[str, str], bool]) -> bool | None:
+    """Un avviso legato a una riga, una volta sola anche con due giri insieme (il cron e uno lanciato a mano): prima si prende la
+    riga (`avvisato` da 0 a 1, solo se era 0), poi si manda; se non parte (falso o un errore qualunque del canale: nel log il tipo,
+    mai il messaggio) `avvisato` torna 0 e si riprova al giro dopo. None se la riga l'aveva già presa un altro giro."""
+    cur = db.execute("UPDATE taratura_probabili SET avvisato = 1 WHERE versione = ? AND COALESCE(avvisato, 0) = 0", (versione,))
+    db.commit()
+    if cur.rowcount != 1:
+        return None
+    try:
+        partito = bool(invia(TITOLO_AVVISO, testo))
+    except Exception as e:  # noqa: BLE001 - un canale rotto non deve far dire «non riuscita» a un giro che ha già scritto
+        LOG.warning("taratura di «gioca N%%»: avviso non partito (%s)", type(e).__name__)
+        partito = False
+    if not partito:
+        db.execute("UPDATE taratura_probabili SET avvisato = 0 WHERE versione = ?", (versione,))
+        db.commit()
+    return partito
+
+
+def _invia(manda: Callable[[str, str], bool] | None) -> Callable[[str, str], bool]:
     from . import sentinella
-    invia = manda or sentinella.manda_ntfy
-    da_fare = _tabella(db, "WHERE stato IN ('attiva', 'ritirata') AND COALESCE(avvisato, 0) = 0 ORDER BY versione")
-    partiti = 0
-    for t in da_fare:
-        if invia(TITOLO_AVVISO, testo_avviso(t)):
-            db.execute("UPDATE taratura_probabili SET avvisato = 1 WHERE versione = ?", (t["versione"],))
-            db.commit()
-            partiti += 1
-    if not da_fare:
+    return manda or sentinella.manda_ntfy
+
+
+def _avvisa(db: sqlite3.Connection, manda: Callable[[str, str], bool] | None) -> str:
+    """Un avviso al proprietario per ogni riga `attiva` o `ritirata` non ancora avvisata, e per le `attiva` diventate `superata`
+    prima del loro avviso (`manda(titolo, testo)`, vero se è partito; di base il canale della sentinella). Se non parte, si
+    riprova al giro dopo. Il pezzo da aggiungere alla riga del log."""
+    invia = _invia(manda)
+    da_fare = _tabella(db, "AND stato IN ('attiva', 'ritirata', 'superata') AND COALESCE(avvisato, 0) = 0 ORDER BY versione")
+    esiti = [e for t in da_fare if (e := _manda_una_volta(db, t["versione"], testo_avviso(t), invia)) is not None]
+    if not esiti:
         return ""
-    return "; avviso mandato" if partiti == len(da_fare) else "; avviso non partito, si riprova al giro dopo"
+    return "; avviso mandato" if all(esiti) else "; avviso non partito, si riprova al giro dopo"
+
+
+def _conta_errore(db: sqlite3.Connection, adesso: datetime, e: BaseException, manda: Callable[[str, str], bool] | None) -> None:
+    """Un giro fallito in più nella riga del contatore (`ERRORI`: `misura` = {"giri": n}, `motivo` = tipo dell'ultimo errore,
+    `creata` = primo errore della serie). Al MAX_ERRORI-esimo giro fallito di fila un avviso al proprietario con il solo tipo
+    d'errore, una volta per serie (il giro che riesce toglie la riga). Mai un errore in più: se non riesce, resta quello del giro."""
+    try:
+        if db.in_transaction:
+            db.rollback()
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            prima = db.execute("SELECT creata, misura, avvisato FROM taratura_probabili WHERE versione = ?", (ERRORI,)).fetchone()
+            giri = int(_json(prima[1], {}).get("giri") or 0) + 1 if prima else 1
+            db.execute("INSERT OR REPLACE INTO taratura_probabili (versione, creata, stato, motivo, misura, avvisato) "
+                       "VALUES (?, ?, 'errori', ?, ?, ?)",
+                       (ERRORI, prima[0] if prima else adesso.isoformat(timespec="seconds"), type(e).__name__,
+                        json.dumps({"giri": giri}), (prima[2] or 0) if prima else 0))
+            db.commit()
+        finally:
+            if db.in_transaction:
+                db.rollback()
+        if giri >= MAX_ERRORI:
+            _manda_una_volta(db, ERRORI, f"La taratura di «gioca N%» non riesce da {giri} giri di fila ({type(e).__name__}): "
+                                         "restano i numeri di adesso, dettagli nel log del server.", _invia(manda))
+    except Exception as e2:  # noqa: BLE001 - il contatore non deve nascondere l'errore vero del giro
+        LOG.warning("taratura di «gioca N%%»: contatore degli errori non aggiornato (%s)", type(e2).__name__)
 
 
 def esegui(db: sqlite3.Connection, adesso: datetime, manda: Callable[[str, str], bool] | None = None) -> str:
-    """Un giro del comando, per il log. In ordine: spenta a mano → niente; giornate o righe che non bastano → «in attesa»; stessa
-    prova dell'ultima riga → «niente di nuovo» (tranne dopo una `pronta`, `rimandata` o `riaccesa`: si rifà tutto); ritorno
-    indietro se la riga attiva sbaglia di più nelle giornate dopo la sua prova; nuova prova contro la formula di adesso (`attiva` con
-    almeno 8 giornate e 3 di prova, `pronta` con meno, `scartata` se non supera il verdetto). Nelle 24 ore prima della prima partita
-    un cambio della riga attiva diventa solo una riga `rimandata`. Le righe e la riga di `aggiornamenti` (solo quando la riga
-    attiva cambia) stanno nella stessa transazione, con un solo commit: se qualcosa va storto non resta niente a metà. Poi gli
-    avvisi al proprietario."""
-    r = righe(db)
-    gg = giornate(r)
+    """Un giro del comando, per il log. In ordine: spenta a mano → niente; coefficienti rovinati nella riga attiva → `ritirata`
+    (`incoerente`); giornate o righe che non bastano → «in attesa»; stessa prova dell'ultima riga → «niente di nuovo» (tranne dopo
+    una `pronta`, `rimandata` o `riaccesa`: si rifà tutto); ritorno indietro se la riga attiva sbaglia di più nelle giornate dopo
+    la sua prova; nuova prova contro la formula di adesso (`attiva` con almeno 8 giornate e 3 di prova, `pronta` con meno,
+    `scartata` se non supera il verdetto). Nelle 24 ore prima della prima partita un cambio della riga attiva diventa solo una riga
+    `rimandata`. Il registro si legge e le righe si scrivono, con la riga di `aggiornamenti` (solo quando la riga attiva cambia),
+    in una sola transazione con il blocco di scrittura e un solo commit: se qualcosa va storto non resta niente a metà, e un giro
+    che fallisce MAX_ERRORI volte di fila avvisa il proprietario. Poi gli avvisi delle righe."""
     if db.in_transaction:
         db.commit()
-    # controlli e scritture in una sola transazione con il blocco di scrittura preso subito: un secondo giro (il comando lanciato
-    # a mano mentre gira quello di aggiorna.sh) aspetta il primo e poi trova la sua riga, senza doppioni
-    db.execute("BEGIN IMMEDIATE")
     try:
-        riga, cambia = _giro(db, r, gg, adesso)
-        if cambia:
-            archivio.segna(db, CHIAVE, adesso.isoformat(timespec="seconds"))
-        db.commit()
-    finally:
-        if db.in_transaction:
-            db.rollback()
+        # blocco di scrittura preso subito: un secondo giro (il comando lanciato a mano mentre gira quello di aggiorna.sh) aspetta
+        # il primo e poi trova la sua riga, senza doppioni; il registro letto qui dentro è quello su cui si decide
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            r = righe(db)
+            riga, cambia = _giro(db, r, giornate(r), adesso)
+            if cambia:
+                archivio.segna(db, CHIAVE, adesso.isoformat(timespec="seconds"))
+            db.execute("DELETE FROM taratura_probabili WHERE versione = ?", (ERRORI,))     # giro riuscito: la serie di errori finisce
+            db.commit()
+        finally:
+            if db.in_transaction:
+                db.rollback()
+    except Exception as e:
+        _conta_errore(db, adesso, e, manda)
+        raise
     return riga + _avvisa(db, manda)
 
 
@@ -610,6 +695,19 @@ def _numeri_prova(t: dict) -> dict | None:
             "brier_mostrati": mo.get("brier"), "calibrazione": n.get("calibrazione")}
 
 
+def _numeri_ritorno(t: dict) -> dict | None:
+    """I numeri del ritorno indietro di una riga `ritirata`, nella forma di `_numeri_prova`: giornate dopo la sua prova, Brier e
+    calibrazione della versione ritirata, Brier dei numeri di partenza (`brier_prima`); niente mostrati. None se non c'è una misura
+    (coefficienti rovinati)."""
+    ri = _json(t["misura"], {}).get("ritorno")
+    if not isinstance(ri, dict):
+        return None
+    a = ri["attiva"] if isinstance(ri.get("attiva"), dict) else {}
+    p = ri["partenza"] if isinstance(ri.get("partenza"), dict) else {}
+    return {"giornate": len(ri.get("giornate") or []), "brier": a.get("brier"), "brier_prima": p.get("brier"),
+            "brier_mostrati": None, "calibrazione": a.get("calibrazione")}
+
+
 def riepilogo(db: sqlite3.Connection) -> dict:
     """Per «Stato dei dati» (campo `calibrazione.taratura`): {stato, giornate, minimo, versione, dal, prova, motivo}. `stato`:
     `in_attesa` (nessun verdetto ancora, o riaccesa da poco), `attiva`, `non_attiva`, `spenta`. `giornate`: giornate del registro
@@ -632,6 +730,14 @@ def riepilogo(db: sqlite3.Connection) -> dict:
     v = next((t for t in reversed(tutte) if t["stato"] in VERDETTI), None)
     if v is None:
         return base
+    # una riga tornata ai numeri di partenza dopo l'ultimo verdetto (anche nello stesso giro di una prova nuova): conta lei
+    ritirate = [(q, t) for t in tutte if t["stato"] == "ritirata"
+                and isinstance(q := (_json(t["misura"], {}).get("ritirata") or {}).get("quando"), str)]
+    if ritirate:
+        quando, rit = max(ritirate, key=lambda x: (x[0], x[1]["versione"]))
+        if quando >= str(v["creata"] or ""):
+            return {**base, "stato": "non_attiva", "versione": rit["versione"], "prova": _numeri_ritorno(rit),
+                    "motivo": rit["motivo"] if rit["motivo"] in MOTIVI else None}
     motivo = {"pronta": "poche_giornate", "rimandata": "scadenza_vicina"}.get(v["stato"], v["motivo"])
     return {**base, "stato": "non_attiva", "versione": v["versione"], "prova": _numeri_prova(v),
             "motivo": motivo if motivo in MOTIVI else None}

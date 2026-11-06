@@ -72,13 +72,13 @@ def previsioni_dal_vivo(db: sqlite3.Connection, giornata: int) -> pd.DataFrame:
     """I numeri nostri della giornata (indice = id), come `consigli._calcola_previsioni` fa per i mostrati: stessi dati
     (`consigli.dati`, già in memoria), stesse probabili formazioni, stesse correzioni di «gioca N%» (correzione per gruppi e riga
     attiva della taratura: così I4 confronta numeri con lo stesso «gioca N%»)."""
-    from . import taratura_probabili
     stagione = consigli.stagione_corrente()
     d = consigli.dati(db)
     prob = pd.read_sql_query("SELECT * FROM probabili WHERE stagione = ? AND giornata = ? AND fonte = 'fantacalcio'",
                              db, params=(stagione, giornata))
+    taratura, fattori, _ = stato_dati.taratura_e_fattori(db, stagione)
     p = nostri.previsioni(d, stagione, giornata, REGOLE, probabili=None if prob.empty else prob, giocatori=d.calciatori,
-                          fattori_probabili=stato_dati.fattori(db, stagione), taratura=taratura_probabili.attiva(db))
+                          fattori_probabili=fattori, taratura=taratura)
     return p.set_index("id") if "id" in p.columns else p
 
 

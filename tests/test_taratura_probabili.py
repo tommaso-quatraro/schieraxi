@@ -764,7 +764,8 @@ def test_attiva_e_segna_nella_stessa_transazione(db, monkeypatch):
     monkeypatch.setattr(archivio, "segna", rotta)
     with pytest.raises(sqlite3.OperationalError):
         tp.esegui(db, ADESSO)
-    assert _tabella(db) == [] and tp.attiva(db) is None and _segnato(db) is None    # niente a metà
+    assert tp.attiva(db) is None and _segnato(db) is None                          # niente a metà
+    assert [(t["versione"], t["stato"]) for t in _tabella(db)] == [(tp.ERRORI, "errori")]   # solo il giro fallito, contato
     monkeypatch.setattr(archivio, "segna", vera)
     adesso = datetime(2026, 12, 1, 13, 0, 7, 654321)
     assert " attiva " in tp.esegui(db, adesso)
@@ -1005,21 +1006,63 @@ def test_calibrazione_con_la_attiva_legge_il_registro(db):
     assert stato_dati.fattori(db, ST) == stato_dati.fattori_da(con)
 
 
+def _registro_rotto(db):
+    raise sqlite3.OperationalError("dettaglio interno")
+
+
 def test_calibrazione_con_la_attiva_e_il_registro_illeggibile(db, monkeypatch, caplog):
-    """Riga attiva ma registro che non si legge: nessuna correzione per gruppi (quella imparata sui numeri di partenza non vale per
-    la formula tarata) e nessun errore per le previsioni."""
+    """Riga attiva ma registro che non si legge: numeri di partenza per tutto, cioè niente taratura e la calibrazione di sempre
+    (tabella `probabili`), mai la formula tarata senza la sua correzione per gruppi (combinazione mai misurata). Nel log il tipo
+    d'errore, mai il messaggio."""
     from fanta import stato_dati
     _genera(db, range(1, 7))
+    for g in range(1, 7):
+        for cid in range(11):
+            db.execute("INSERT INTO probabili (stagione, giornata, fonte, calciatore_id, squadra, partita_id, stato, percentuale, "
+                       "in_dubbio, diffidato) VALUES (?, ?, 'fantacalcio', ?, 'squadra00', ?, 'titolare', 95, 0, 0)",
+                       (ST, g, cid, 1000 * g))
+    db.commit()
+    classica = stato_dati.calibrazione(db, ST)
+    assert classica["giornate"] == 6
     _metti_attiva(db)
-
-    def rotte(db):
-        raise sqlite3.OperationalError("dettaglio interno")
-
-    monkeypatch.setattr(tp, "righe", rotte)
+    monkeypatch.setattr(tp, "righe", _registro_rotto)
     with caplog.at_level("WARNING"):
-        c = stato_dati.calibrazione(db, ST)
-    assert c["giornate"] == 0 and stato_dati.fattori(db, ST) == {}
+        assert stato_dati.calibrazione(db, ST) == classica
+        assert stato_dati.fattori(db, ST) == stato_dati.fattori_da(classica)
+        assert stato_dati.taratura_e_fattori(db, ST) == (None, stato_dati.fattori_da(classica), True)
     assert "OperationalError" in caplog.text and "dettaglio interno" not in caplog.text
+
+
+def test_registro_illeggibile_previsioni_di_partenza_e_non_in_cache(db, monkeypatch, caplog):
+    """Con la riga attiva e il registro che non si legge le previsioni sono quelle dei numeri di partenza, e non restano in cache:
+    appena il registro si legge di nuovo tornano quelle tarate, senza aspettare un aggiornamento dei dati."""
+    from fanta import calcolo, consigli
+    from fanta.regole import Regole
+    _con_giornata_sette(db, monkeypatch)
+    partenza = _previsioni(db)
+    _metti_attiva(db)
+    tarate = _previsioni(db)
+    vera = tp.righe
+    calcolo.cache.clear()
+    try:
+        monkeypatch.setattr(tp, "righe", _registro_rotto)
+        with caplog.at_level("WARNING"):
+            pd.testing.assert_frame_equal(consigli.previsioni(db, Regole(), 7)[0], partenza)
+        monkeypatch.setattr(tp, "righe", vera)                      # il registro torna a leggersi
+        pd.testing.assert_frame_equal(consigli.previsioni(db, Regole(), 7)[0], tarate)
+        assert "ripiego" not in (consigli._versione(db) or "")      # tornato tutto normale
+    finally:
+        calcolo.cache.clear()
+    assert "OperationalError" in caplog.text and "dettaglio interno" not in caplog.text
+
+
+def test_previsioni_leggono_la_attiva_una_volta(db, monkeypatch):
+    _con_giornata_sette(db, monkeypatch)
+    _metti_attiva(db)
+    vera, letture = tp.attiva, []
+    monkeypatch.setattr(tp, "attiva", lambda d: letture.append(1) or vera(d))
+    _previsioni(db)
+    assert len(letture) == 1
 
 
 def test_riepilogo_senza_nomi(db):
@@ -1046,6 +1089,159 @@ def test_riepilogo_senza_nomi(db):
     assert tp.riepilogo(db) == {**vuoto, "stato": "spenta", "giornate": 8, "motivo": "spenta_a_mano"}
     tp.accendi(db, ADESSO + timedelta(hours=22))
     assert tp.riepilogo(db) == {**vuoto, "giornate": 8}                       # riaccesa: aspetta il giro dopo
+
+
+def test_riepilogo_dopo_il_ritorno_indietro_dice_peggiorata(db):
+    """Ritorno indietro e prova nuova nello stesso giro: il riepilogo dice perché è tornato ai numeri di partenza, non il verdetto
+    della prova nuova."""
+    _genera(db, range(1, 9))
+    tp.esegui(db, PRIMA)
+    _genera(db, [9, 10], gioca=_gioca_partenza, seme=21)
+    riga = tp.esegui(db, ADESSO)
+    assert "versione 1 ritirata (peggiorata)" in riga and "versione 2 scartata" in riga, riga
+    r = tp.riepilogo(db)
+    rit = json.loads(_tabella(db)[0]["misura"])["ritorno"]
+    assert (r["stato"], r["versione"], r["motivo"], r["dal"]) == ("non_attiva", 1, "peggiorata", None)
+    assert r["prova"] == {"giornate": 2, "brier": rit["attiva"]["brier"], "brier_prima": rit["partenza"]["brier"],
+                          "brier_mostrati": None, "calibrazione": rit["attiva"]["calibrazione"]}
+    _genera(db, [11], gioca=_gioca_partenza, seme=23)
+    tp.esegui(db, ADESSO + timedelta(days=1))                      # un verdetto più nuovo prende il suo posto
+    assert (tp.riepilogo(db)["versione"], tp.riepilogo(db)["motivo"]) == (3, "non_migliora")
+
+
+def test_avviso_che_si_rompe_non_ferma_il_comando(db, caplog):
+    """Un errore del canale che non è OSError (per esempio la connessione chiusa a metà): la riga resta scritta, il comando non dice
+    «non riuscita», l'avviso si riprova al giro dopo. Nel log il tipo d'errore, mai il messaggio."""
+    import http.client
+    _genera(db, range(1, 9))
+
+    def rotta(titolo, testo):
+        raise http.client.RemoteDisconnected("canale segreto")
+
+    with caplog.at_level("WARNING"):
+        riga = tp.esegui(db, ADESSO, rotta)
+    assert riga.startswith("taratura-probabili: versione 1 attiva") and riga.endswith("; avviso non partito, si riprova al giro dopo")
+    assert _tabella(db)[0]["avvisato"] == 0 and tp.attiva(db) is not None
+    assert "RemoteDisconnected" in caplog.text and "segreto" not in caplog.text
+    mandati = []
+    tp.esegui(db, ADESSO + timedelta(hours=4), lambda titolo, testo: mandati.append(testo) or True)
+    assert len(mandati) == 1 and _tabella(db)[0]["avvisato"] == 1
+
+
+def test_due_giri_insieme_un_avviso_solo(tmp_path):
+    """Il cron e un giro lanciato a mano insieme: l'avviso parte una volta sola."""
+    file = _archivio_con(tmp_path, range(1, 9))
+    d1, d2 = archivio.apri(file), archivio.apri(file)
+    mandati = []
+    try:
+        def secondo(titolo, testo):
+            mandati.append("secondo")
+            return True
+
+        def primo(titolo, testo):
+            mandati.append("primo")
+            tp.esegui(d2, ADESSO, secondo)          # l'altro giro parte mentre il primo sta mandando l'avviso
+            return True
+
+        tp.esegui(d1, ADESSO, primo)
+    finally:
+        d1.close()
+        d2.close()
+    assert mandati == ["primo"]
+
+
+def test_attiva_rovinata_diventa_ritirata_e_avvisa(db, avvisi):
+    """Coefficienti rovinati nella riga attiva: il modello usa già i numeri di partenza, e il giro dopo lo scrive (`ritirata`,
+    `incoerente`) e avvisa, anche senza giornate nuove. Nessun ricalcolo: i numeri mostrati erano già quelli di partenza."""
+    _genera(db, range(1, 9))
+    tp.esegui(db, PRIMA)
+    db.execute("UPDATE taratura_probabili SET coefficienti = '{rotto' WHERE versione = 1")
+    db.commit()
+    n = len(avvisi)
+    riga = tp.esegui(db, ADESSO)
+    assert riga.startswith("taratura-probabili: versione 1 ritirata (incoerente)"), riga
+    assert _stati(db) == [(1, "ritirata", "incoerente")] and _segnato(db) == PRIMA.isoformat(timespec="seconds")
+    assert avvisi[n:] == [("SchieraXI: «gioca N%»", "Tornato ai valori di partenza: i coefficienti della versione 1 non sono validi.")]
+    assert (tp.riepilogo(db)["stato"], tp.riepilogo(db)["motivo"]) == ("non_attiva", "incoerente")
+
+
+def test_avvisa_anche_la_attiva_superata_prima_dell_avviso(db):
+    _genera(db, range(1, 9))
+    tp.esegui(db, PRIMA, lambda titolo, testo: False)                    # avviso della versione 1 non partito
+    db.execute("UPDATE taratura_probabili SET stato = 'superata' WHERE versione = 1")
+    db.execute("INSERT INTO taratura_probabili (creata, stato, coefficienti, prova, motivo, avvisato) "
+               "SELECT creata, 'attiva', coefficienti, prova, motivo, 1 FROM taratura_probabili WHERE versione = 1")
+    db.commit()
+    mandati = []
+    tp.esegui(db, ADESSO, lambda titolo, testo: mandati.append(testo) or True)
+    assert len(mandati) == 1 and mandati[0].startswith("Versione 1 attiva: Brier ")
+    assert [t["avvisato"] for t in _tabella(db)] == [1, 1]
+
+
+def test_tre_giri_falliti_di_fila_un_avviso(db, monkeypatch, avvisi):
+    """Un errore che si ripete: al terzo giro fallito di fila un avviso al proprietario con il solo tipo d'errore; il contatore
+    riparte da zero quando un giro riesce."""
+    _genera(db, range(1, 5))
+    vera = tp._prova
+
+    def rotta(r, attuale):
+        raise RuntimeError("giocatore 123 Mario Finto")
+
+    monkeypatch.setattr(tp, "_prova", rotta)
+    for i in range(3):
+        with pytest.raises(RuntimeError):
+            tp.esegui(db, ADESSO + timedelta(hours=i))
+    atteso = ("SchieraXI: «gioca N%»", "La taratura di «gioca N%» non riesce da 3 giri di fila (RuntimeError): restano i numeri "
+              "di adesso, dettagli nel log del server.")
+    assert avvisi == [atteso]
+    with pytest.raises(RuntimeError):
+        tp.esegui(db, ADESSO + timedelta(hours=3))
+    assert avvisi == [atteso]                                             # una volta sola per la stessa serie di errori
+    monkeypatch.setattr(tp, "_prova", vera)
+    assert "versione 1 pronta" in tp.esegui(db, ADESSO + timedelta(hours=4))
+    assert [t["versione"] for t in _tabella(db)] == [1]                     # giro riuscito: il contatore se ne va
+    monkeypatch.setattr(tp, "_prova", rotta)
+    for i in range(2):
+        with pytest.raises(RuntimeError):
+            tp.esegui(db, ADESSO + timedelta(hours=5 + i))
+    assert avvisi == [atteso] and tp.riepilogo(db)["versione"] == 1         # la riga del contatore non è una versione
+
+
+def test_esegui_legge_il_registro_nel_blocco(db, monkeypatch):
+    """Le righe del registro si leggono dentro la transazione con il blocco di scrittura, non prima."""
+    _genera(db, range(1, 5))
+    vera, dentro = tp.righe, []
+    monkeypatch.setattr(tp, "righe", lambda d: dentro.append(d.in_transaction) or vera(d))
+    tp.esegui(db, ADESSO)
+    assert dentro == [True]
+
+
+@pytest.mark.parametrize("opzione, funzione", [("--spegni", "spegni"), ("--accendi", "accendi")])
+def test_comando_a_mano_mostra_la_traccia(tmp_path, monkeypatch, capsys, opzione, funzione):
+    def rotto(db, adesso):
+        raise ValueError("qualcosa di strano")
+
+    monkeypatch.setattr(tp, funzione, rotto)
+    with pytest.raises(SystemExit) as uscita:
+        _comando(monkeypatch, tmp_path / "fanta.sqlite", opzione)
+    assert uscita.value.code == 1
+    err = capsys.readouterr().err
+    assert "Traceback" in err and "ValueError: qualcosa di strano" in err
+
+
+def test_testi_dicono_da_4_e_da_8_giornate():
+    it = json.loads((RADICE / "fanta" / "contenuti" / "sotto-il-cofano.json").read_text(encoding="utf-8"))
+    frase = next(s for s in it["sezioni"] if s["id"] == "probabilita-giocare")["paragrafi"][-1]
+    assert f"Da {tp.MIN_GIORNATE} giornate" in frase and f"li usa solo da {tp.MIN_GIORNATE_ACCENSIONE} giornate" in frase
+    assert frase in (RADICE / "docs" / "SOTTO-IL-COFANO.md").read_text(encoding="utf-8")
+    en = json.loads((RADICE / "fanta" / "contenuti" / "sotto-il-cofano.en.json").read_text(encoding="utf-8"))
+    frase_en = en["sezioni"]["probabilita-giocare"]["paragrafi"][-1]
+    assert f"From {tp.MIN_GIORNATE} matchdays" in frase_en and f"only from {tp.MIN_GIORNATE_ACCENSIONE} matchdays" in frase_en
+    riga = next(r for r in (RADICE / "script" / "server" / "LEGGIMI.md").read_text(encoding="utf-8").splitlines()
+                if "taratura-probabili" in r)
+    assert "--spegni" in riga and "--accendi" in riga and "solo misura" not in riga
+    sh = AGGIORNA.read_text(encoding="utf-8")
+    assert "solo misura" not in sh and "dopo una riga pronta, rimandata o riaccesa" in sh
 
 
 def test_riepilogo_con_la_tabella_rovinata(db):

@@ -562,9 +562,9 @@ def cmd_avviso(a) -> None:
 
 def cmd_taratura_probabili(a) -> None:
     """Un giro della taratura di «gioca N%» con le probabili (una riga per il log di aggiorna.sh), o con --prova i numeri senza
-    scrivere niente; --spegni e --accendi a mano. Senza --prova un errore dà una riga sola con il tipo d'errore (mai il messaggio, che
-    può contenere dati) e l'uscita 1: aggiorna.sh lo scrive nel log e va avanti. Con --prova lo lancia una persona a mano: tutta la
-    traccia e l'uscita 1."""
+    scrivere niente; --spegni e --accendi a mano. Il giro di aggiorna.sh in errore dà una riga sola con il tipo d'errore (mai il
+    messaggio, che può contenere dati) e l'uscita 1: aggiorna.sh lo scrive nel log e va avanti. Con --prova, --spegni e --accendi lo
+    lancia una persona a mano: tutta la traccia e l'uscita 1."""
     import time
     import traceback
     from datetime import datetime
@@ -584,7 +584,7 @@ def cmd_taratura_probabili(a) -> None:
         finally:
             db.close()
     except Exception as e:  # noqa: BLE001 - qualunque errore: una riga nel log, mai la traccia con i dati
-        if a.prova:
+        if a.prova or a.spegni or a.accendi:
             traceback.print_exc()          # a mano: la traccia intera (anche per ValueError, che `main` ridurrebbe a una riga)
         else:
             print(f"{taratura_probabili.NOME}: non riuscita ({type(e).__name__})", file=sys.stderr)

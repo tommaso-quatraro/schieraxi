@@ -26,11 +26,37 @@ def calibrazione(db: sqlite3.Connection, stagione: str) -> dict:
     """{"giornate": quante giornate hanno probabili e partite giocate, "gruppi": [{gruppo, n, osservato, previsto}]}.
     "osservato" = quota di giocatori che hanno preso voto; "previsto" = media della probabilità stimata dal modello.
     Con una riga attiva della taratura di «gioca N%» (`taratura_probabili.attiva`) i gruppi si fanno sulle probabili salvate prima
-    della scadenza (registro delle giornate) e il «previsto» usa la riga attiva; senza, sulla tabella `probabili`, come sempre."""
-    from . import taratura_probabili          # qui dentro: importa il registro delle giornate, che importa consigli e questo modulo
+    della scadenza (registro delle giornate) e il «previsto» usa la riga attiva; senza (o se il registro non si legge), sulla
+    tabella `probabili`, come sempre."""
+    return _con_taratura(db, stagione)[1]
+
+
+def taratura_e_fattori(db: sqlite3.Connection, stagione: str) -> tuple[dict | None, dict[str, float], bool]:
+    """Quello che serve a «gioca N%» con le probabili, letto una volta sola: (coefficienti della riga attiva o None, correzione per
+    gruppi fatta con la stessa formula, ripiego). `ripiego` vero = c'è una riga attiva ma il registro non si legge: allora numeri
+    di partenza per tutto (None e la correzione di sempre), mai la formula tarata senza la sua correzione (mai misurata)."""
+    t, c, ripiego = _con_taratura(db, stagione)
+    return t, fattori_da(c), ripiego
+
+
+def _con_taratura(db: sqlite3.Connection, stagione: str) -> tuple[dict | None, dict, bool]:
+    """(taratura, calibrazione, ripiego): vedi `taratura_e_fattori`. Nel log il tipo d'errore e i punti del codice, mai il
+    messaggio. Mai un errore: da qui passano le previsioni."""
+    from . import registro_giornate, taratura_probabili   # qui dentro: importano consigli, che importa questo modulo
     t = taratura_probabili.attiva(db)
-    if t is not None:
-        return _calibrazione_tarata(db, stagione, t)
+    if t is None:
+        return None, _calibrazione_probabili(db, stagione), False
+    try:
+        r = taratura_probabili.righe(db)
+        return t, taratura_probabili.calibrazione_su(r[r["stagione"] == stagione], t), False
+    except Exception as e:  # noqa: BLE001 - le previsioni non si fermano: tornano ai numeri di partenza
+        LOG.warning("stato dei dati: registro non letto per la taratura di «gioca N%%» (%s) in %s, valgono i numeri di partenza",
+                    type(e).__name__, registro_giornate._dove(e))
+        return None, _calibrazione_probabili(db, stagione), True
+
+
+def _calibrazione_probabili(db: sqlite3.Connection, stagione: str) -> dict:
+    """La calibrazione di sempre, sulla tabella `probabili` (ultima lettura della giornata) e con i numeri di partenza."""
     righe = db.execute(
         "SELECT p.giornata, p.stato, p.percentuale, p.in_dubbio, v.voto_red IS NOT NULL "
         "FROM probabili p JOIN partite g ON g.id = p.partita_id AND g.giocata = 1 "
@@ -47,20 +73,6 @@ def calibrazione(db: sqlite3.Connection, stagione: str) -> dict:
         gruppi.append({"gruppo": nome, "n": len(scelti), "osservato": round(osservato, 3), "previsto": round(previsto, 3),
                        "indicativo": len(scelti) < MINIMO_PER_GRUPPO})
     return {"giornate": len({r[0] for r in righe}), "gruppi": gruppi}
-
-
-def _calibrazione_tarata(db: sqlite3.Connection, stagione: str, t: dict) -> dict:
-    """La calibrazione con la riga attiva: righe del registro della stagione, «previsto» con i coefficienti `t`. Se il registro non
-    si legge, gruppi vuoti (quindi nessuna correzione: quella imparata sui numeri di partenza non vale per la formula tarata) e nel
-    log il tipo d'errore e i punti del codice, mai il messaggio. Mai un errore: da qui passano le previsioni."""
-    import pandas as pd
-    from . import registro_giornate, taratura_probabili
-    try:
-        r = taratura_probabili.righe(db)
-        return taratura_probabili.calibrazione_su(r[r["stagione"] == stagione], t)
-    except Exception as e:  # noqa: BLE001 - le previsioni non si fermano per la calibrazione
-        LOG.warning("stato dei dati: calibrazione con la taratura non letta (%s) in %s", type(e).__name__, registro_giornate._dove(e))
-        return taratura_probabili.calibrazione_su(pd.DataFrame(columns=taratura_probabili.COLONNE), t)
 
 
 def _taratura(db: sqlite3.Connection) -> dict | None:
