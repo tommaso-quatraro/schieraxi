@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.422",
+    "data": "2026-11-06T03:27:06",
+    "titolo": "Formazione: chi ha già cominciato l'anticipo non si sposta più",
+    "voci": [
+      "Se una partita si gioca in anticipo e la formazione è ancora aperta, dopo il fischio d'inizio i suoi giocatori restano dove sono anche nella tua formazione: chi era titolare resta titolare, chi non lo era non entra.",
+      "Nella modifica a mano quei giocatori non si possono sostituire né far entrare, e una riga sotto i titolari lo dice; anche «Da fare» non te lo propone più.",
+      "Se provi a salvare una formazione che li sposta, l'app ti dice quale giocatore e perché."
+    ],
+    "tecnico": [
+      "Issue #373 (sotto #166). Rispetto alla formazione che vale (scelta salvata se `scelte.che_vale`, altrimenti la consigliata di `consigli.formazione`) `POST /api/formazione/valuta` con `salva` e `DELETE /api/scelta` rispondono 400 `{detail, codice: \"giocatore_bloccato\"}` se spostano un giocatore di un anticipo già cominciato (`scelte.GiocatoreBloccato`, `scelte.controlla_bloccati`, `server._fermi` e `server._non_sposta_i_fermi`, dentro il lucchetto delle scelte). «Cominciato» è la regola della consigliata: `consigli._anticipi_iniziati` (#368).",
+      "`GET /api/formazione`: campo nuovo e facoltativo `bloccati` (id, `server._con_bloccati`, `scelte.bloccati`), solo con la formazione aperta e un anticipo cominciato. Web: `sostituti` e `giocatoriFermi` in app.js, chiavi `formazione.bloccati` e `err.giocatore_bloccato`. iPhone: `Formazione.bloccati`, `FormazioneViewModel.fermi`, `sostituti(di:_:)`, `notaFermi`. Senza anticipi cominciati nulla cambia. Test: tests/test_anticipi_scelta.py, ios/Tests/SchieraxiTests/AnticipiBloccatiTests.swift.",
+      "Revisione: «Torna alla consigliata» rifiutato (400 `giocatore_bloccato`) sulla web rimette la scelta salvata, come l'iPhone; `da_fare._dubbi` salta i bloccati (niente voce su di loro, mai come `alternativa`; come riserva sì, entrano da soli dalla panchina).",
+      "Anche la voce «La consigliata è cambiata» (`da_fare._titolari`) non nomina i bloccati: `_cambi_possibili` toglie i cambi impossibili bilanciando per ruolo; se restano solo loro, niente voce."
+    ]
+  },
+  {
     "versione": "1.421",
     "data": "2026-11-06T03:20:23",
     "titolo": "Meno riquadri: sezioni con un titolo e righe",
