@@ -782,3 +782,155 @@ def test_differenza_ammessa_della_lineetta_scritta():
 def test_novita_della_riga_del_giocatore():
     voce = _voce_di_novita("riga-giocatore.json", "Righe dei giocatori più basse, numeri in colonna")
     assert len(voce["voci"]) >= 2
+
+
+# ---------------------------------------------------------------- PR 7: Oggi come distinta
+DAFARE = (WEB / "dafare.js").read_text(encoding="utf-8")
+# «14 giorni», il pezzo più largo del conto alla rovescia (numero e unità non vanno a capo, #286), in em del carattere: misurato il
+# 6/11/2026 in Chrome a 600 di peso (senza la spaziatura stretta delle lettere, quindi con margine). Il carattere di sistema (Segoe UI)
+# è il più largo dei due: se Archivo non arriva vale lui. E le forme più lunghe di una riga, «1 giorno 8 h» e «23 h 59 min», in
+# Archivo con la spaziatura delle lettere (-0,02 em): 4,49 em.
+LARGHEZZA_14_GIORNI = {"archivo": 3.56, "sistema": 3.94}
+LARGHEZZA_RIGA_ARCHIVO = 4.49
+
+
+def test_oggi_senza_nome_e_slogan_e_con_due_colonne_5_7():
+    assert "marchioOggi(" not in APP and ".slogan-oggi" not in CSS
+    assert re.search(r"@media \(min-width: 900px\) \{[^@]*\.colonne-oggi[^{]*\{ grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\)", CSS)
+
+
+def test_sul_pc_largo_la_colonna_di_destra_di_oggi_in_due():
+    """Scelta della PR 7 (#415): da 1400 px la colonna di destra di Oggi (~672 px) si divide in due, migliori e avvisi | partite del
+    turno, invece della colonna sola disegnata nella spec §9. Una colonna sola non arriva ai 680 px della riga larga dei giocatori e
+    manda le partite sotto il primo schermo; in due tutto sta in vista. Le sezioni non si spezzano tra le due colonne."""
+    blocco = re.search(r"@media \(min-width: 1400px\) \{(.*?)\n\}", CSS, re.S).group(1)
+    assert re.search(r"main \.colonne-oggi > \.col:nth-child\(2\) \{ display: block; columns: 2;", blocco)
+    assert "main .colonne-oggi > .col:nth-child(2) > * { break-inside: avoid; }" in blocco
+
+
+def test_da_fare_con_l_azione_scritta_nella_riga():
+    corpo = _funzione(DAFARE, "dfRiga")
+    assert 'class="azione-testo df-azione"' in corpo and "bottone secondario" not in corpo
+
+
+def test_maglia_piccola_dritta_senza_ombra():
+    regola = re.search(r"\.maglia-hero \{([^}]*)\}", CSS).group(1)
+    assert "height: 72px" in regola and "rotate" not in regola and "drop-shadow" not in regola
+
+
+def test_conto_alla_rovescia_grande_senza_riquadro_e_sempre_intero():
+    """Spec §9 e issue #384: il conto alla rovescia è il numero eroe (56 px, 72 px da 900 px) senza riquadro, e non si taglia mai.
+    La maglia sta nella sua colonna accanto (niente posizione assoluta sopra il testo) e il numero si rimpicciolisce con la colonna
+    che gli resta: con il pezzo più largo («14 giorni») e il carattere più largo ci sta sempre, con o senza maglia, a ogni larghezza.
+    Prima accanto alla maglia il numero scendeva alla misura dei titoli e la maglia, larga 150 px, copriva il testo."""
+    corpo = _funzione(APP, "mostraOggi")
+    assert 'class="conto-oggi${' in corpo and "carta hero conto" not in APP and 'class="enorme" id="conto"' in corpo
+    assert not _scatole(["conto-oggi", "conto-testo"])
+    assert "container-type: inline-size" in _corpo(".conto-testo")
+    k = float(re.search(r"font-size: min\(var\(--t-eroe\), (\d+(?:\.\d+)?)cqi\)", _corpo(".conto-testo .enorme")).group(1))
+    assert k * max(LARGHEZZA_14_GIORNI.values()) <= 100, k             # mai tagliato
+    assert k * LARGHEZZA_RIGA_ARCHIVO <= 100, k                         # «15 h 41 min» su una riga sola, non «15 h» sopra e «41 min» sotto
+    assert "grid-template-columns: minmax(0, 1fr) auto" in _corpo(".conto-oggi.con-maglia")
+    maglia = _corpo(".maglia-hero")
+    assert "position: absolute" not in maglia and "animation" not in maglia      # dritta e ferma: si muove solo ciò che risponde a un gesto
+    assert ".con-maglia .enorme" not in CSS and "padding-right: 132px" not in CSS
+
+
+def test_oggi_nell_ordine_della_distinta():
+    """Spec §9 e piano, PR 7: a sinistra (al telefono prima) il conto alla rovescia, le cifre della formazione con «Apri la formazione»
+    subito sotto (nel primo schermo), poi Partita rinviata e Da fare; a destra I tuoi migliori, Da controllare, Indisponibili (chiuso),
+    Diffidati e Partite del turno. Le probabili stanno con la formazione, come sull'iPhone."""
+    corpo = _funzione(APP, "mostraOggi")
+    sinistra, destra = corpo.split('</div><div class="col">')
+    ordine = ['id="conto"', 'id="oggi-punti"', 't("oggi.apri_formazione")', 'id="probabili-fresche"', "${cardRinvio(o.rinvio)}",
+              "${cardDaFare(o.da_fare)}"]
+    posti = [sinistra.index(x) for x in ordine]
+    assert posti == sorted(posti), ordine
+    ordine = ['t("oggi.tuoi_migliori_della")', 't("oggi.da_controllare")', 't("oggi.indisponibili"', 't("oggi.diffidati")',
+              't("oggi.partite_del_turno")']
+    posti = [destra.index(x) for x in ordine]
+    assert posti == sorted(posti), ordine
+    assert '<details><summary>${t("oggi.indisponibili"' in destra and "<details open" not in destra      # Indisponibili chiuso
+
+
+def test_cifre_affiancate_separate_da_un_filo():
+    """Spec §8.6: le cifre stanno senza scatola, affiancate e separate da un filo verticale («La tua formazione 4-4-2 | Punti attesi
+    65,5»); lo stesso a giornata in corso (punti finora | a fine giornata) e a giornata finita (punti fatti | attesi)."""
+    for nome in ("mostraOggi", "cardInCorso", "cardRiepilogo"):
+        assert 'class="cifre-oggi"' in _funzione(APP, nome), nome
+    assert "display: grid" in _corpo(".cifre-oggi")
+    assert "border-left: 1px solid var(--filo)" in _corpo(".cifre-oggi > .cifra + .cifra")
+    assert not _scatole(["cifre-oggi", "cifra"])
+    assert 'style="text-align:right"' not in _funzione(APP, "mostraOggi")
+
+
+def test_un_solo_pulsante_pieno_in_oggi():
+    """Spec §4.5 e §8.7: un solo pulsante pieno per schermata («Apri la formazione»); le azioni di Da fare sono testo nella riga, anche
+    quella urgente (lo dice la parola «Urgente»), mai tre «Sostituisci» a contorno in fila."""
+    assert _funzione(APP, "mostraOggi").count('class="bottone') == 1
+    assert 'class="bottone' not in DAFARE
+
+
+def test_contatore_di_da_fare_un_numero_grigio():
+    """Piano, PR 7: il contatore di «Da fare» è un numero grigio accanto al titolo, non più il pallino lime."""
+    assert '<h2>${t("df.da_fare")} <span class="df-conto">${valide.length}</span></h2>' in DAFARE
+    conto = _corpo(".df-conto")
+    assert "color: var(--testo-2)" in conto and "font-family: var(--font-numeri)" in conto
+    assert not _scatole(["df-conto"]) and "--capitano" not in conto
+
+
+def test_azione_di_da_fare_a_destra_e_sotto_il_testo_se_stretta():
+    """Spec C9: l'azione sta nella riga, a destra. Nella colonna stretta (telefono, sinistra del PC) va sotto il testo, sempre a destra."""
+    stretta = re.search(r"@container \(max-width: 520px\) \{(.*?)\n\}", CSS, re.S).group(1)
+    assert ".df-azione { justify-self: end; }" in stretta
+    assert "min-height: 44px" in _corpo(".df-azione")
+
+
+def test_righe_degli_avvisi_con_la_lettera_del_ruolo_e_l_etichetta_scritta():
+    """Spec §8.4, §8.9 e §11: in Da controllare, Indisponibili, Diffidati e nella giornata in corso niente quadratino colorato del
+    ruolo né pallino della gravità: la lettera grigia del ruolo, come nelle righe dei giocatori, e la gravità nel colore
+    dell'etichetta scritta (le parole dicono già tutto)."""
+    corpo = _funzione(APP, "rigaAvviso") + _funzione(APP, "cardInCorso") + _funzione(APP, "mostraOggi")
+    assert "badgeRuolo(" not in corpo and "pallino-stato" not in corpo and ".pallino-stato" not in CSS
+    assert 'class="ruolo-l"' in _funzione(APP, "rigaAvviso") and 'class="ruolo-l"' in _funzione(APP, "cardInCorso")
+    assert "inFormazione.map(rigaAvviso)" in corpo and "indisponibili.map(rigaAvviso)" in corpo and "altri.map(rigaAvviso)" in corpo
+
+
+@pytest.mark.skipif(not NODE, reason="serve node")
+def test_riga_di_da_controllare_con_le_parole_del_server():
+    from tests.test_oggi_fasi_web import _esegui as _esegui_oggi
+    a = {"id": 3, "nome": "Rossi <b>", "ruolo": "D", "squadra": "inter", "tipo": "dubbio", "p_voto": 0.55, "nota": "affaticato",
+         "in_formazione": True, "etichetta": {"codice": "dubbio", "testo": "In dubbio · gioca 55%", "tono": "attenzione"}}
+    h = _esegui_oggi(f"rigaAvviso({json.dumps(a)})")
+    assert '<span class="ruolo-l">D</span>' in h and "Rossi &lt;b&gt;" in h and 'data-giocatore="3"' in h
+    assert '<span class="etichetta arancio">In dubbio · gioca 55%</span>' in h and "affaticato" in h
+    senza = {k: v for k, v in a.items() if k != "etichetta"}
+    assert '<span class="etichetta rossa">Infortunato</span>' in _esegui_oggi(f"rigaAvviso({json.dumps(senza | {'tipo': 'infortunato'})})")
+    assert '<span class="etichetta arancio">In dubbio · gioca 55%</span>' in _esegui_oggi(f"rigaAvviso({json.dumps(senza)})")
+    assert '<span class="etichetta neutra">Diffidato</span>' in _esegui_oggi(f"rigaAvviso({json.dumps(senza | {'tipo': 'diffidato'})})")
+
+
+def test_differenze_di_oggi_scritte_al_posto_giusto():
+    """Spec §13. Solo l'aspetto è una differenza ammessa (maglia piccola, azioni di Da fare scritte, lettera del ruolo ed etichetta
+    scritta). Nome e slogan in cima e ordine delle sezioni sono contenuto: sulla web non ci sono più e l'ordine è cambiato, l'iPhone
+    deve seguire (issue #416), quindi stanno in «Differenze di oggi» con il numero dell'issue, non tra quelle ammesse."""
+    doc = (RADICE / "docs" / "COERENZA-WEB-IPHONE.md").read_text(encoding="utf-8")
+    ammesse = doc[doc.index("## Differenze ammesse"):doc.index("## Differenze di oggi")]
+    riga = next((r for r in ammesse.splitlines() if r.startswith("- **Oggi")), "")
+    assert "maglia" in riga and "Da fare" in riga and "lettera grigia del ruolo" in riga, riga
+    assert "slogan" not in riga and "ordine" not in riga, riga
+    di_oggi = doc[doc.index("## Differenze di oggi"):]
+    riga = next((r for r in di_oggi.splitlines() if r.startswith("|") and "slogan" in r), "")
+    assert "Oggi" in riga and "#416" in riga and "I tuoi migliori" in riga and "Apri la formazione" in riga, riga
+    guida = (RADICE / "docs" / "GUIDA-UTENTE.md").read_text(encoding="utf-8")
+    oggi = guida[guida.index("### Oggi"):guida.index("### Formazione")]
+    assert "motto" not in oggi and "slogan" not in oggi
+
+
+def test_novita_di_oggi():
+    voce = _voce_di_novita("oggi-distinta.json", "Oggi più ordinata")
+    assert voce["voci"] and all("PC" not in v and "cqi" not in v for v in voce["voci"])
+    k = re.search(r"font-size: min\(var\(--t-eroe\), (\d+)cqi\)", _corpo(".conto-testo .enorme")).group(1)
+    for riga in voce.get("tecnico", []):                         # dopo il rilascio in novita.json può non esserci
+        for scritto in re.findall(r"(\d+)cqi", riga):
+            assert scritto == k, (scritto, k)                    # la nota tecnica dice il numero vero del CSS

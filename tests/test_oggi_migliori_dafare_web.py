@@ -22,7 +22,9 @@ def test_migliori_senza_numero_sul_volto_e_numero_altrove_con_etichetta():
 
 
 def test_da_fare_pulsante_sotto_il_testo_nei_riquadri_stretti():
+    """Nella colonna stretta l'azione va sotto il testo (accanto il testo andava su 4-5 righe); con la grafica B è testo nel colore
+    delle azioni e resta a destra, dove sta nelle righe larghe (spec C9)."""
     assert ".df-carta { container-type: inline-size; }" in CSS
     blocco = re.search(r"@container \(max-width: 520px\) \{(.*?)\n\}", CSS, re.S)
-    assert blocco and "grid-template-columns: minmax(0, 1fr);" in blocco.group(1) and ".df-azione { justify-self: start; }" in blocco.group(1)
+    assert blocco and "grid-template-columns: minmax(0, 1fr);" in blocco.group(1) and ".df-azione { justify-self: end; }" in blocco.group(1)
     assert re.search(r"\.df-testo \{[^}]*max-width: 60ch", CSS)

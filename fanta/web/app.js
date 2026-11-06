@@ -780,16 +780,18 @@ function valoreLive(g) {
   return `<span class="debole piccolo">${t(STATO_LIVE[g.stato] || "oggi.st_da_giocare")}</span>`;
 }
 
+// A giornata in corso: le cifre (punti finora | a fine giornata, separate da un filo come in Oggi prima della scadenza), poi chi va
+// a punteggio con la lettera grigia del ruolo (come le righe dei giocatori, grafica B) e i cambi dalla panchina.
 function cardInCorso(c, f) {
   if (!c || !Array.isArray(c.giocatori)) return "";
-  const righe = c.giocatori.filter(g => g.a_punteggio).map(g => `<button class="avviso-riga" data-giocatore="${Number(g.id)}">${badgeRuolo(g.ruolo)}
+  const righe = c.giocatori.filter(g => g.a_punteggio).map(g => `<button class="avviso-riga" data-giocatore="${Number(g.id)}"><span class="ruolo-l">${esc(ruoloSigla(g.ruolo))}</span>
     <span><span class="nome">${esc(g.nome)}</span> <span class="dettaglio">${sigla(g.squadra)}</span>
       ${g.titolare ? "" : `<div class="dettaglio nota">${t("oggi.dalla_panchina")}</div>`}</span>${valoreLive(g)}</button>`).join("");
   const cambi = (c.sostituzioni || []).filter(s => s && s.esce).map(s => `<li><span>${esc(s.esce.nome)} → ${s.entra ? esc(s.entra.nome) : t("oggi.nessun_sostituto")}</span>
     <span class="etichetta ${s.certa ? "" : "arancio"}">${t(s.certa ? "oggi.cambio_fatto" : "oggi.cambio_probabile")}</span></li>`).join("");
   return `<div class="carta in-corso" id="oggi-in-corso">
-    <div class="riga"><div><div class="debole">${t("oggi.punti_finora")}</div><div class="grande" id="oggi-fatti">${num(c.punti_fatti)}</div></div>
-      <div class="a-destra"><div class="debole">${t("oggi.a_fine_giornata")}</div><div class="grande">≈ ${num(c.punti_previsti)}</div>
+    <div class="cifre-oggi"><div class="cifra"><div class="debole">${t("oggi.punti_finora")}</div><div class="grande" id="oggi-fatti">${num(c.punti_fatti)}</div></div>
+      <div class="cifra"><div class="debole">${t("oggi.a_fine_giornata")}</div><div class="grande">≈ ${num(c.punti_previsti)}</div>
         ${f && f.punteggio_atteso != null ? `<div class="debole piccolo">${t("oggi.attesi_prima", { n: num(f.punteggio_atteso) })}</div>` : ""}</div></div>
     <div class="debole piccolo">${c.ancora_da_giocare ? tp("oggi.ancora_da_giocare", c.ancora_da_giocare) : t("oggi.tutti_giocato")}</div>
     ${righe}
@@ -813,9 +815,9 @@ function cardRiepilogo(r, p) {
   if (r) {
     const tua = r.formazione_di === "tua";
     html += `<h2>${t("oggi.giornata_finita", { g: nomeGiornata(r.giornata_lega, r.giornata) })}</h2>
-      <div class="riga"><div><div class="debole">${t(tua ? "oggi.la_tua_formazione" : "oggi.la_consigliata")}</div><div class="grande">${num(r.punti_fatti)}</div>
+      <div class="cifre-oggi"><div class="cifra"><div class="debole">${t(tua ? "oggi.la_tua_formazione" : "oggi.la_consigliata")}</div><div class="grande">${num(r.punti_fatti)}</div>
         <div class="debole piccolo">${t("oggi.punti_fatti")}</div></div>
-        ${r.punti_attesi != null ? `<div class="a-destra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
+        ${r.punti_attesi != null ? `<div class="cifra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande">${num(r.punti_attesi)}</div></div>` : ""}</div>
       ${tua && r.consigliata ? `<p class="piccolo">${t("oggi.con_consigliata", { fatti: num(r.consigliata.punti_fatti), attesi: num(r.consigliata.punti_attesi) })}</p>` : ""}
       ${Array.isArray(r.recuperi) && r.recuperi.length ? `<p class="attenzione piccolo" id="oggi-recuperi">${t("oggi.recupero_manca", { partite: r.recuperi.map(partitaVs).join(", ") })}</p>` : ""}
       ${r.rinvio && typeof menuRinvio === "function" ? menuRinvio(r.rinvio) : ""}
@@ -830,14 +832,19 @@ function cardRiepilogo(r, p) {
   return `<div class="carta riepilogo-giornata" id="oggi-riepilogo">${html}</div>`;
 }
 
-// Nome e slogan in cima a Oggi (MARCHIO.md). Il carattere sta nella variabile CSS --font-marchio; a voce si legge «Schiera undici».
-function marchioOggi() {
-  const xi = `<span class="xi">XI</span>`;
-  return `<div class="marchio-oggi">
-    <p class="wordmark"><span aria-hidden="true">Schiera${xi}</span><span class="solo-lettori">${t("marchio.nome_voce")}</span></p>
-    <p class="slogan-oggi"><span aria-hidden="true">${t("marchio.slogan", { xi })}</span><span class="solo-lettori">${t("marchio.slogan_voce")}</span></p>
-  </div>`;
+// Una riga di Da controllare, Indisponibili e Diffidati (`avvisi` di /api/oggi): la lettera grigia del ruolo, nome e squadra, sotto
+// l'etichetta del server nel colore del suo tono e la nota (grafica B, spec §8.4 e §8.9: niente quadratino colorato né pallino, le
+// parole dicono già la gravità). Server vecchio senza `etichetta`: le parole del vocabolario dal tipo.
+function rigaAvviso(a) {
+  const pronta = etichettaPronta(a);
+  const classe = pronta ? classeTono(a.etichetta) : ({ infortunato: "rossa", squalificato: "rossa", dubbio: "arancio" }[a.tipo] || "neutra");
+  const testo = pronta ? esc(a.etichetta.testo)
+    : { infortunato: t("oggi.infortunato"), squalificato: t("oggi.squalificato"), dubbio: t("oggi.dubbio", { p: perc(a.p_voto) }), diffidato: t("oggi.diffidato_tipo") }[a.tipo];
+  return `<button class="avviso-riga" data-giocatore="${Number(a.id)}"><span class="ruolo-l">${esc(ruoloSigla(a.ruolo))}</span>
+    <span><span class="nome">${esc(a.nome)}</span> <span class="dettaglio">${sigla(a.squadra)}</span>
+      <span class="avviso-nota">${testo ? `<span class="etichetta ${classe}">${testo}</span>` : ""}${a.nota ? `<span class="debole"> · ${esc(a.nota)}</span>` : ""}</span></span></button>`;
 }
+
 // Partite rinviate della giornata (campo `rinvio` di /api/oggi, docs/API.md): quali, i miei giocatori coinvolti e cosa vale per
 // questa giornata, cambiabile solo per lei (PUT /api/regole/rinvio). Server vecchio senza il campo: niente riquadro.
 const MODI_RINVIO = ["aspetta", "senza_voto", "voto_ufficio"];
@@ -892,6 +899,9 @@ function collegaRinvio() {
   });
 }
 
+// Oggi come una distinta (grafica B, spec §9): a sinistra (al telefono prima) il conto alla rovescia, le cifre della formazione con
+// l'unico pulsante pieno «Apri la formazione» e le probabili, poi Partita rinviata, Da fare e le novità; a destra I tuoi migliori,
+// Da controllare, Indisponibili (chiuso), Diffidati e Partite del turno. Da 900 px le due colonne stanno 5:7 (stile.css).
 function mostraOggi(o, opz = {}) {
   if (o.senza_rose) { mostraOggiSenzaRose(o, opz); return; }
   const fase = o.fase || "prima";
@@ -902,16 +912,7 @@ function mostraOggi(o, opz = {}) {
   const migliori = inCorso || finita ? [] : o.migliori;
   const indisponibili = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && (a.tipo === "infortunato" || a.tipo === "squalificato"));
   const altri = inCorso ? [] : o.avvisi.filter(a => !a.in_formazione && a.tipo === "diffidato");
-  const riga = a => {
-    const pronta = etichettaPronta(a);
-    const colore = pronta ? ({ negativo: "rosso", attenzione: "arancio" }[a.etichetta.tono] || "giallo")
-      : a.tipo === "infortunato" || a.tipo === "squalificato" ? "rosso" : a.tipo === "dubbio" ? "arancio" : "giallo";
-    const testo = pronta ? esc(a.etichetta.testo)
-      : { infortunato: t("oggi.infortunato"), squalificato: t("oggi.squalificato"), dubbio: t("oggi.dubbio", { p: perc(a.p_voto) }), diffidato: t("oggi.diffidato_tipo") }[a.tipo];
-    return `<button class="avviso-riga" data-giocatore="${a.id}">${badgeRuolo(a.ruolo)}
-      <span><span class="nome">${esc(a.nome)}</span> <span class="dettaglio">${sigla(a.squadra)}</span>
-        <div class="dettaglio nota">${testo}${a.nota ? ` · ${esc(a.nota)}` : ""}</div></span><span class="pallino-stato ${colore}"></span></button>`;
-  };
+  const mia = miaSquadra(), maglia = !!(mia && mia.immagini && mia.immagini.maglia);
   // partite del turno, divise per giorno
   const miei = o.miei_titolari || {};
   const perGiorno = {};
@@ -938,30 +939,31 @@ function mostraOggi(o, opz = {}) {
   }).join("");
   pagina(`
     <div class="colonne colonne-oggi"><div class="col">
-    ${marchioOggi()}
-    <div class="carta hero conto${miaSquadra() && miaSquadra().immagini.maglia ? " con-maglia" : ""}">
-      ${miaSquadra() && miaSquadra().immagini.maglia ? `<img class="maglia-hero" src="${urlImg(miaSquadra().nome, "maglia")}" alt="">` : ""}
-      <div class="debole">${nomeGiornata(o.giornata_lega, o.giornata)}</div>
-      <div class="enorme" id="conto">${esc(c.grande)}</div>
-      <div class="debole" id="conto-sotto">${esc(c.piccolo)}</div>
+    <div class="conto-oggi${maglia ? " con-maglia" : ""}">
+      <div class="conto-testo">
+        <div class="debole">${nomeGiornata(o.giornata_lega, o.giornata)}</div>
+        <div class="enorme" id="conto">${esc(c.grande)}</div>
+        <div class="debole" id="conto-sotto">${esc(c.piccolo)}</div>
+      </div>
+      ${maglia ? `<img class="maglia-hero" src="${esc(urlImg(mia.nome, "maglia"))}" alt="">` : ""}
     </div>
     ${finita ? cardRiepilogo(o.riepilogo, o.prossima) : ""}
     ${inCorso ? (o.senza_formazione ? cardSenzaFormazione(o.prossima) : cardInCorso(o.in_corso, o.formazione)) : ""}
+    ${inCorso && (o.in_corso || o.senza_formazione) ? "" : `<div class="formazione-oggi">
+      <div class="cifre-oggi"><div class="cifra"><div class="debole">${t(o.formazione.tua_scelta ? "oggi.tua_formazione_scelta" : "oggi.tua_formazione")}</div><div class="grande">${esc(o.formazione.modulo)}</div></div>
+        <div class="cifra"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande" id="oggi-punti">${num(o.formazione.punteggio_atteso)}</div>${fraseFascia(o.formazione) ? `<div class="debole piccolo" id="oggi-fascia">${esc(fraseFascia(o.formazione))}</div>` : ""}</div></div>
+      <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.apri_formazione")}</button></div>
+      ${o.con_probabili || inCorso || finita ? "" : `<div class="attenzione">${t("oggi.mancano_probabili_formazioni")}</div>`}
+      ${o.probabili && !inCorso ? `<div class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</div>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : ""}
+    </div>`}
     ${cardRinvio(o.rinvio)}
     ${cardDaFare(o.da_fare)}
     ${novitaDaVedere() ? `<button class="banner-novita" data-vai-novita>${t("oggi.novita_banner", { versione: esc(stato.info.versione) })}</button>` : ""}
-    ${o.con_probabili || inCorso || finita ? "" : `<div class="attenzione">${t("oggi.mancano_probabili_formazioni")}</div>`}
-    ${o.probabili && !inCorso ? `<div class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</div>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : ""}
-    ${inCorso && (o.in_corso || o.senza_formazione) ? "" : `<div class="carta">
-      <div class="riga"><div><div class="debole">${t(o.formazione.tua_scelta ? "oggi.tua_formazione_scelta" : "oggi.tua_formazione")}</div><div class="grande">${esc(o.formazione.modulo)}</div></div>
-        <div style="text-align:right"><div class="debole">${t("oggi.punti_attesi")}</div><div class="grande" id="oggi-punti">${num(o.formazione.punteggio_atteso)}</div>${fraseFascia(o.formazione) ? `<div class="debole piccolo" id="oggi-fascia">${esc(fraseFascia(o.formazione))}</div>` : ""}</div></div>
-      <div class="pulsanti"><button class="bottone" data-vai="formazione">${t("oggi.apri_formazione")}</button></div>
-    </div>`}
     </div><div class="col">
-    ${inFormazione.length ? `<div class="carta"><h2>${t("oggi.da_controllare")}</h2><div class="debole piccolo">${t("oggi.giocatori_formazione_con")}</div>${inFormazione.map(riga).join("")}</div>` : ""}
     ${migliori.length ? `<div class="carta"><h2>${t("oggi.tuoi_migliori_della")}</h2>${intestazioneColonne()}<ul class="elenco">${migliori.map(x => voceGiocatore({ ...x, indice: null })).join("")}</ul></div>` : ""}
-    ${indisponibili.length ? `<div class="carta"><details><summary>${t("oggi.indisponibili", { n: indisponibili.length })}</summary>${indisponibili.map(riga).join("")}</details></div>` : ""}
-    ${altri.length ? `<div class="carta"><h2>${t("oggi.diffidati")}</h2>${altri.map(riga).join("")}</div>` : ""}
+    ${inFormazione.length ? `<div class="carta"><h2>${t("oggi.da_controllare")}</h2><div class="debole piccolo">${t("oggi.giocatori_formazione_con")}</div>${inFormazione.map(rigaAvviso).join("")}</div>` : ""}
+    ${indisponibili.length ? `<div class="carta"><details><summary>${t("oggi.indisponibili", { n: indisponibili.length })}</summary>${indisponibili.map(rigaAvviso).join("")}</details></div>` : ""}
+    ${altri.length ? `<div class="carta"><h2>${t("oggi.diffidati")}</h2>${altri.map(rigaAvviso).join("")}</div>` : ""}
     <div class="carta"><h2>${t("oggi.partite_del_turno")}</h2><div class="partite-turno">${partite || `<div class="vuoto">${t("oggi.nessuna_partita_calendario")}</div>`}</div>
       <div class="debole piccolo live-agg" id="live-agg" hidden></div><div class="solo-lettori" id="live-annuncio" role="status" aria-live="polite"></div></div>
     </div></div>`, opz);
@@ -969,7 +971,8 @@ function mostraOggi(o, opz = {}) {
   collegaRinvio();
   const diario = $("[data-apri-diario]");
   if (diario) diario.addEventListener("click", () => apriDiario(Number(diario.dataset.apriDiario) || undefined));
-  if ($("#oggi-punti")) animaNumero($("#oggi-punti"), opz.sostituisce ? (o.formazione.punteggio_atteso ?? 0) : 0, o.formazione.punteggio_atteso ?? 0);
+  // i punti attesi si scrivono una volta, già giusti, come nella Formazione: niente numero che sale da 0 (grafica B, spec §7.6).
+  // Finché i fotogrammi non arrivavano (scheda in secondo piano, telefono lento, foto) restava un numero falso (8,9 invece di 65,5)
   if (funz("live")) avviaLive(miei);                   // con «Risultati in diretta» spenta non si chiede nulla al server
   // il conto alla rovescia si aggiorna da solo finché si resta in questa sezione
   clearInterval(timerConto);

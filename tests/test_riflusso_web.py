@@ -66,7 +66,11 @@ def test_righe_dei_giocatori_impilate_e_partite_su_due_righe():
     assert "grid-row: 2" in _regola(b, ".partita .sq.casa")
     assert "flex-wrap: wrap" in _regola(b, ".riga")
     # Oggi a giornata in corso: il fantavoto preso o lo stato («In dubbio · gioca 40%») va sotto il nome, non fuori dalla carta
-    assert "grid-row: 2" in _regola(b, ".avviso-riga > :nth-child(3):not(.pallino-stato)")
+    assert "grid-row: 2" in _regola(b, ".avviso-riga > :nth-child(3)")
+    # Oggi: le cifre della formazione (modulo | punti attesi, con la fascia) una sotto l'altra, il filo sopra invece che in mezzo
+    assert "grid-template-columns: minmax(0, 1fr)" in _regola(b, ".cifre-oggi")
+    seconda = _regola(b, ".cifre-oggi > .cifra + .cifra")
+    assert "border-left: 0" in seconda and "border-top: 1px solid var(--filo)" in seconda
 
 
 def test_formazione_chip_e_campo_vanno_a_capo():
@@ -167,22 +171,25 @@ def test_il_conto_alla_rovescia_non_lascia_l_unita_da_sola():
 
 
 def test_la_maglia_lascia_posto_al_conto_alla_rovescia_sui_telefoni_stretti():
-    """Con il numero attaccato all'unità, «14 giorni» (157 px a 40 px) non va più a capo: accanto alla maglia, che si tiene 132 px a
-    destra, a 320 px restavano 140 px. Sotto i 360 px utili il margine e la maglia si rimpiccioliscono con la pagina, così il conto ha
-    sempre almeno 157 px; sotto i 260 px la maglia (solo decorazione) non si mostra."""
-    b = _blocco("@container pagina (max-width: 359.98px) {")
-    margine = re.search(r"padding-right: clamp\((\d+)px, 100cqi - (\d+)px, (\d+)px\)",
-                        _regola(b, '.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia'))
-    assert margine and "height: clamp(" in _regola(b, ".maglia-hero")
-    minimo, togli, massimo = (int(x) for x in margine.groups())
-    for pagina in range(260, 360):
-        # margini di main (16 px per lato, 8 sotto i 320 px utili) e a sinistra della carta (14 px, densità compatta)
-        carta = pagina - (32 if pagina >= 320 else 16)
-        assert carta - 14 - min(max(minimo, pagina - togli), massimo) >= 157, pagina
+    """«14 giorni» non va mai a capo (#286): accanto alla maglia a 320 px veniva tagliato («20 h 22 mi…», #384). Con la grafica B la
+    maglia ha la sua colonna e il numero si misura sulla colonna che resta (`cqi`), quindi non si taglia mai (lo controlla
+    tests/test_grafica_b_web.py; misurato anche in Chrome da 320 a 1440 px, PR #415). Qui il prezzo: accanto alla maglia più larga
+    che il CSS ammette (`max-width`, una divisa larga), dal telefono più stretto (320 px) al PC il conto resta più grande del titolo
+    della schermata (32 px), così resta la cosa audace della pagina. Sotto i 260 px la maglia (solo decorazione) non si mostra."""
+    k = float(re.search(r"font-size: min\(var\(--t-eroe\), (\d+(?:\.\d+)?)cqi\)", _regola(CSS, ".conto-testo .enorme")).group(1))
+    maglia = _regola(CSS, ".maglia-hero")
+    assert "height: 72px" in maglia
+    larga = int(re.search(r"max-width: (\d+)px", maglia).group(1))
+    spazio = int(re.search(r"column-gap: (\d+)px", _regola(CSS, ".conto-oggi")).group(1))
+    # colonna del conto alle larghezze di main: telefono 320 e 390 px (16 px per lato), iPad 768 px (24 per lato, due colonne
+    # uguali con 20 px in mezzo), PC 900 e 1024 px (32 per lato, colonne 5:7 con 20 px in mezzo)
+    colonne = {320: 320 - 32, 390: 390 - 32, 768: (768 - 48 - 20) / 2, 900: (900 - 64 - 20) * 5 / 12, 1024: (1024 - 64 - 20) * 5 / 12}
+    for pagina, colonna in colonne.items():
+        assert k * (colonna - larga - spazio) / 100 > 32, pagina
     senza = _blocco("@container pagina (max-width: 259.98px) {")
     assert "display: none" in _regola(senza, ".maglia-hero")
-    # senza maglia il testo torna largo quanto la carta (a 256 px «3 h 10 min» andava a capo accanto a un posto vuoto)
-    assert "padding-right: 14px" in _regola(senza, '.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia')
+    assert "grid-template-columns: minmax(0, 1fr)" in _regola(senza, ".conto-oggi.con-maglia")
+    assert "@container pagina (max-width: 359.98px)" not in CSS                            # la regola dei 132 px a destra non serve più
 
 
 def test_cambi_consigliati_in_colonna_sotto_i_320_px_e_nomi_mai_tagliati():

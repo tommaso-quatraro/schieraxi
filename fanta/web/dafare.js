@@ -1,7 +1,8 @@
 "use strict";
 // «Da fare» in Oggi: le cose da sbrigare, calcolate dal server (campo da_fare di /api/oggi, vedi docs/API.md).
-// Ogni riga ha UN pulsante che porta alla schermata giusta. Usa le funzioni di app.js (esc, vai, apriGiocatore...), caricato dopo
-// questo file: si chiamano solo a pagina pronta. Tutti i testi del server passano da esc().
+// Ogni riga ha UNA azione che porta alla schermata giusta: testo nel colore delle azioni, a destra nella riga (grafica B, spec C9:
+// niente pulsanti a contorno in fila; quella urgente la dice la parola «Urgente»). Usa le funzioni di app.js (esc, vai,
+// apriGiocatore...), caricato dopo questo file: si chiamano solo a pagina pronta. Tutti i testi del server passano da esc().
 const DF_VISIBILI = 4;                                   // le altre stanno in «Altre cose da fare»
 const DF_URGENTE = 1;
 
@@ -9,7 +10,7 @@ function dfRiga(v, i) {
   const urgente = v.priorita === DF_URGENTE;
   return `<li class="df-riga${urgente ? " urgente" : ""}">
     <span class="df-testo">${urgente ? `<span class="df-etichetta">${t("df.urgente")}</span> ` : ""}${esc(testoDi(v))}</span>
-    <button class="bottone ${urgente ? "" : "secondario"} df-azione" data-df="${i}">${esc(v.azione ? testoDi(v, "azione") : t("df.apri"))}</button></li>`;
+    <button class="azione-testo df-azione" type="button" data-df="${i}">${esc(v.azione ? testoDi(v, "azione") : t("df.apri"))}</button></li>`;
 }
 
 function cardDaFare(voci) {

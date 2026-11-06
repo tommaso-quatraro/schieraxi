@@ -27,9 +27,10 @@ def _esegui(chiamata: str) -> str:
     num = re.search(r"^const num = .*$", APP, re.M).group(0)
     testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
     stub = """const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const sigla = s => esc((s || "").slice(0, 3).toUpperCase()); const badgeRuolo = r => `<i>${r}</i>`;
+const sigla = s => esc((s || "").slice(0, 3).toUpperCase());
 const parseData = s => s ? new Date(String(s).replace(" ", "T")) : null; const quando = s => s ? "QUANDO(" + s + ")" : "–";"""
-    etichette = "\n".join(re.search(rf"^const {n} = .*$", APP, re.M).group(0) for n in ("CLASSE_TONO", "etichettaPronta", "classeTono"))
+    etichette = "\n".join(re.search(rf"^const {n} = .*$", APP, re.M).group(0)
+                          for n in ("CLASSE_TONO", "etichettaPronta", "classeTono", "ruoloSigla", "perc"))
     giornata = re.search(r"^function nomeGiornata\(.*?^\}$", APP, re.M | re.S).group(0)
     codice = f"{testi}\n{num}\n{stub}\n{etichette}\n{giornata}\n{APP[inizio:fine]}\nconsole.log(JSON.stringify({chiamata}));"
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)

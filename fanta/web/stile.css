@@ -22,7 +22,6 @@
   --capitano: #d4f34a;
   --capitano-testo: #1a2600;                /* testo scuro sopra il lime */
   --xi: var(--capitano);                    /* «XI» del nome: lime in scuro, oliva in chiaro (il lime non va mai come testo) */
-  --font-marchio: ui-rounded, "SF Pro Rounded", "Segoe UI Variable Display", "Nunito", system-ui, sans-serif;   /* carattere del nome SchieraXI: si cambia solo qui */
   --verde-2: #1fb574;
   --verde-testo: #04301c;
   --azione: #3ddc97; --azione-2: #1fb574; --azione-testo: #04301c;   /* pulsanti, link e testi di azione: in scuro come il verde */
@@ -51,7 +50,7 @@
   /* numeri e titoli delle schermate: Archivo con le cifre in colonna; il testo resta nel carattere di sistema */
   --font-numeri: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif;
   /* raggi (spec §7.5): --r-card per il campo, le foto, l'immagine da condividere e la proposta di scambio; --r-in per pulsanti,
-     campi e controlli; --r-pill solo per «⚠ gioca N%» sul campo e il contatore di «Da fare» */
+     campi e controlli; --r-pill solo sul campo («⚠ gioca N%», «Cosa vuol dire»; il contatore di «Da fare» ora è un numero grigio) */
   --r-card: 12px; --r-in: 8px; --r-pill: 999px;
   --barra: 60px;                            /* barra in basso del telefono, senza lo spazio del sistema sotto */
   --alto-ferma: 0px;                        /* dove si fermano le colonne ferme: sotto i 900 px la testata scorre via con la pagina */
@@ -415,16 +414,38 @@ details[open] > summary { margin-bottom: 8px; }
 :root[data-tema="chiaro"] .diff { color: color-mix(in srgb, var(--c) 35%, var(--testo)); }
 
 /* ---------------------------------------------------------------- Oggi */
-.conto { text-align: left; }
-.conto .grande { margin: 2px 0 4px; }
+/* Il conto alla rovescia (grafica B, spec §9): il numero eroe senza riquadro, con sopra la giornata e sotto quando si chiude la
+   formazione. La maglia della mia squadra, se c'è, sta nella sua colonna accanto, dritta e alta 72 px: non copre mai il testo
+   (issue #384). Il numero si misura sulla colonna che gli resta (`cqi`): 56 px (72 da 900 px) se c'è posto, più piccolo se no.
+   Con 22cqi «23 h 59 min» e «1 giorno 8 h» (4,5 em in Archivo) stanno su una riga, e «14 giorni», che non va a capo (#286), ci
+   sta sempre, anche nel carattere di sistema (3,94 em) se Archivo non arriva. */
+.conto-oggi { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 16px; align-items: center; margin-bottom: 20px; }
+.conto-oggi.con-maglia { grid-template-columns: minmax(0, 1fr) auto; }
+.conto-testo { container-type: inline-size; min-width: 0; }
+.conto-testo .enorme { font-size: min(var(--t-eroe), 22cqi); margin: 2px 0 4px; }
+.maglia-hero { display: block; height: 72px; width: auto; max-width: 96px; object-fit: contain; pointer-events: none; }
+/* Le cifre della formazione (spec §8.6): numeri senza scatola, affiancati e separati da un filo verticale; un filo sottile le stacca dal
+   conto. Sotto, l'unico pulsante pieno della schermata (48 px e largo quanto la colonna al telefono) e le probabili, come sull'iPhone.
+   Le stesse cifre a giornata in corso (punti finora | a fine giornata) e finita (punti fatti | attesi). */
+.formazione-oggi { margin-bottom: 24px; }
+.cifre-oggi { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+.formazione-oggi > .cifre-oggi, .in-corso > .cifre-oggi { padding-top: 12px; border-top: 1px solid var(--filo); }
+.cifre-oggi > .cifra { min-width: 0; }
+.cifre-oggi > .cifra + .cifra { border-left: 1px solid var(--filo); padding-left: 16px; margin-left: 16px; }
+.cifre-oggi .grande { margin: 2px 0; }
+.riepilogo-giornata > .cifre-oggi { margin-bottom: 8px; }
+.formazione-oggi .pulsanti { margin-top: 16px; }
+.formazione-oggi .bottone { width: 100%; min-height: 48px; }
+@media (min-width: 768px) { .formazione-oggi .bottone { width: auto; } }
+.formazione-oggi > .attenzione { margin: 12px 0 0; }
 /* Partite del turno: una griglia sola per tutte le righe (colonne fisse: stato/ora, casa, «vs», trasferta, punteggio),
    così ora, squadre e punteggi stanno in colonna anche quando una riga è evidenziata. Tutte le righe hanno lo stesso rientro:
    l'evidenziazione delle partite con i tuoi titolari (fondo e barretta nel rientro) non sposta niente. La colonna di «vs» è larga
    quanto la parola, uguale in ogni riga: a 320 px una colonna fissa lasciava alle sigle 36 px e «MON» ne chiede 38 (issue #265). */
 .partite-turno { display: grid; gap: 2px; --col-ora: 4.75em; --col-pt: 3.6em; }
 .partita { display: grid; grid-template-columns: var(--col-ora) minmax(0, 1fr) auto minmax(0, 1fr) var(--col-pt); column-gap: 8px; row-gap: 4px; align-items: center;
-  position: relative; padding: 9px 10px; margin: 0 -10px; border-radius: 12px; font-size: var(--t-corpo); font-variant-numeric: tabular-nums; }
-.partita + .partita { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
+  position: relative; padding: 9px 10px; margin: 0 -10px; border-radius: 0; font-size: var(--t-corpo); font-variant-numeric: tabular-nums; }
+.partita + .partita { border-top: 1px solid var(--filo); }        /* righe dritte, come le altre della distinta (grafica B) */
 .partita .ora { color: var(--testo-2); font-size: var(--t-sec); min-width: 0; }
 .partita .sq { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .partita .sq.casa { text-align: right; } .partita .sq.trasf { text-align: left; }
@@ -433,11 +454,6 @@ details[open] > summary { margin-bottom: 8px; }
 .partita.giocata .sq { color: var(--testo-2); }   /* partita finita: i nomi passano al grigio secondario (niente opacità: spegneva anche il grigio sotto 3:1); il risultato resta pieno */
 .partita.rinviata .ora { color: var(--arancio, var(--testo-2)); font-weight: 650; }   /* «Rinviata» al posto dell'orario */
 .partita.rinviata .sq { color: var(--testo-2); }
-/* nome e slogan in cima a Oggi */
-.marchio-oggi { margin: 2px 2px 12px; }
-.wordmark { margin: 0; font-family: var(--font-marchio); font-size: var(--t-titolo); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
-.wordmark .xi, .slogan-oggi .xi { color: var(--xi); letter-spacing: .03em; }
-.slogan-oggi { margin: 3px 0 0; font-size: var(--t-eti); font-weight: 650; color: var(--testo-2); letter-spacing: .01em; }
 /* Formazione: stato della scelta della giornata (in cima, sempre dal server) */
 .stato-scelta { margin: -2px 0 12px; padding: 0 0 12px; border-bottom: 1px solid color-mix(in srgb, var(--testo) 10%, transparent); }
 .stato-scelta p { margin: 0; display: flex; gap: 8px; align-items: baseline; font-weight: 650; font-size: var(--t-corpo); line-height: 1.35; }
@@ -506,31 +522,41 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .ev.rigore_sbagliato { background: transparent; box-shadow: inset 0 0 0 1.5px var(--testo); }
 .live-agg { margin-top: 6px; }
 .solo-lettori { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.avviso-riga { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; width: 100%; border: 0; background: none; text-align: left; padding: 10px 0; }
-.avviso-riga + .avviso-riga { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
+/* Righe di Da controllare, Indisponibili, Diffidati e della giornata in corso: la lettera grigia del ruolo (come nelle righe dei
+   giocatori), nome e squadra, sotto l'etichetta scritta nel colore del suo tono e la nota; a giornata in corso il fantavoto a destra */
+.avviso-riga { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: baseline; width: 100%; min-height: 48px; border: 0;
+  border-radius: 0; background: none; text-align: left; padding: 10px 0; }        /* angoli dritti: il filo tra le righe resta dritto */
+.avviso-riga + .avviso-riga { border-top: 1px solid var(--filo); }
 .avviso-riga .nome { font-weight: 650; }
+.avviso-riga .dettaglio { font-size: var(--t-sec); color: var(--testo-2); }
+.avviso-riga .avviso-nota { display: block; margin-top: 2px; }
 .avviso-riga .nota { text-align: left; margin: 2px 0 0; }
 /* Oggi a giornata in corso e finita (fasi della giornata) */
-.a-destra { text-align: right; }
 .fv-fatto { font-size: var(--t-valore); font-variant-numeric: tabular-nums; }
 .cambi-live { list-style: none; margin: 6px 0 0; padding: 0; }
 .cambi-live li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; flex-wrap: wrap; }
 .cambi-live li + li { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
 .prossima-giornata { margin: 12px 0 0; }
-/* Da fare (Oggi) e primo avvio guidato */
-.df-carta h2 { display: flex; align-items: center; gap: 8px; }
-.df-conto { font-size: var(--t-sec); font-weight: 600; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--capitano) 85%, transparent); color: #1b2a00; }
+/* Da fare (Oggi) e primo avvio guidato. Il conto delle cose è un numero grigio accanto al titolo (non più il pallino lime); ogni riga
+   ha la sua azione scritta a destra, nel colore delle azioni (spec C9: niente pulsanti a contorno in fila). Il margine negativo porta
+   la scritta sul filo destro della sezione: l'area di tocco resta di 44 px. */
+.df-carta h2 { display: flex; align-items: baseline; gap: 8px; }
+.df-conto { font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; color: var(--testo-2); font-variant-numeric: tabular-nums; }
 .df-elenco { list-style: none; margin: 0; padding: 0; }
 .df-carta { container-type: inline-size; }
-.df-riga { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; min-height: 56px; }
-.df-riga + .df-riga { border-top: 1px solid color-mix(in srgb, var(--testo) 8%, transparent); }
+.df-riga { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 8px 0; min-height: 56px; }
+.df-riga + .df-riga { border-top: 1px solid var(--filo); }
 .df-testo { font-size: var(--t-corpo); max-width: 60ch; }
 .df-etichetta { font-size: var(--t-sec); font-weight: 650; color: var(--rosso); }
-.df-azione { min-height: 44px; padding-inline: 14px; }
-/* riquadro stretto (telefono, colonna di sinistra su tablet e PC): pulsante sotto il testo, non accanto (il testo andava su 4-5 righe) */
+.df-azione { min-height: 44px; margin-right: -8px; text-align: right; }
+/* «Altre 2 cose da fare»: una riga che si apre, nel colore delle azioni (non un altro titolo di sezione) */
+.df-carta > details { border-top: 1px solid var(--filo); }
+.df-carta > details > summary { font-size: var(--t-corpo); font-weight: 600; color: var(--azione); }
+/* riquadro stretto (telefono, colonna di sinistra su tablet e PC): l'azione sotto il testo, non accanto (il testo andava su 4-5
+   righe), sempre a destra */
 @container (max-width: 520px) {
-  .df-riga { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .df-azione { justify-self: start; }
+  .df-riga { grid-template-columns: minmax(0, 1fr); gap: 0; padding-bottom: 2px; }
+  .df-azione { justify-self: end; }
 }
 .df-vuoto { font-size: var(--t-corpo); }
 .pa-passi { list-style: none; display: flex; gap: 8px; overflow-x: auto; margin: 8px 0 12px; padding: 0 0 4px; }
@@ -539,8 +565,6 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .pa-passo.attuale { background: var(--capitano); color: #1b2a00; border-color: transparent; font-weight: 600; }
 .pa-titolo { font-size: var(--t-card); margin: 8px 0 4px; }
 #pa-file { display: block; min-height: 44px; width: 100%; }      /* bersaglio di tocco da 44px (era alto 23px) */
-.pallino-stato { width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-left: 4px; }
-.pallino-stato.rosso { --c: var(--rosso); } .pallino-stato.arancio { --c: var(--arancio); } .pallino-stato.giallo { --c: var(--giallo); }
 .stat-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .stat-fila.quattro { grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .stat-fila > div { text-align: left; padding: 8px 0 2px; border-top: 1px solid var(--filo); }      /* cifre senza riquadro, sopra un filo (spec §8.6) */
@@ -824,22 +848,11 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 .salva-fisso .bottone { pointer-events: auto; min-width: 70%; box-shadow: var(--ombra); }   /* galleggia: l'ombra dice che sta sopra */
 
 /* ---- stemma e maglia ---- */
-.carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: 132px; min-height: 150px; }   /* il testo va a capo prima della maglia (la densità compatta non lo deve azzerare) */
-.maglia-hero { position: absolute; right: -6px; bottom: -10px; height: 150px; width: auto; transform: rotate(7deg); transform-origin: 70% 80%; pointer-events: none;
-  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .45)); animation: entra .8s var(--molla) .15s both; }
-/* telefoni stretti (sotto i 360 px utili: 320 px, o 390 px con il testo grande): la maglia e il posto che le si lascia si
-   rimpiccioliscono con la pagina, così il conto alla rovescia ha sempre almeno 157 px («14 giorni» a 40 px, che non va a capo);
-   sotto i 260 px non c'è posto e la maglia, che è solo decorazione, non si mostra (issue #286) */
-@container pagina (max-width: 359.98px) {
-  .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: clamp(12px, 100cqi - 210px, 132px); }
-  .maglia-hero { height: clamp(48px, 100cqi - 210px, 150px); }             /* alta quanto il posto che le si lascia: non copre il testo */
-}
-/* accanto alla maglia grande il conto alla rovescia resta alla misura dei titoli: a 56-72 px «1 giorno» non ci stava e la carta lo
-   tagliava (la maglia diventa piccola e dritta con la nuova Oggi) */
-.carta.con-maglia .enorme { font-size: var(--t-titolo); }
+/* sotto i 260 px utili (zoom al 200%) la maglia accanto al conto alla rovescia, che è solo decorazione, non si mostra: il numero ha
+   tutta la riga (issue #286) */
 @container pagina (max-width: 259.98px) {
   .maglia-hero { display: none; }
-  .carta.con-maglia, html[data-densita="compatta"] .carta.con-maglia { padding-right: 14px; }
+  .conto-oggi.con-maglia { grid-template-columns: minmax(0, 1fr); }
 }
 .stemma-lista { width: 42px; height: 42px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .3)); }
 .iniziale-squadra { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: var(--t-valore); color: var(--verde-testo);
@@ -901,6 +914,8 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .carta { margin-bottom: 32px; }
   html { scroll-padding-bottom: 16px; }                                       /* le schede stanno in alto: in basso non copre niente */
   html:has(.salva-fisso:not([hidden])) { scroll-padding-bottom: 86px; }
+  /* Oggi: conto, formazione e Da fare nella colonna di sinistra, migliori, avvisi e partite in quella più larga (spec §9, 5:7) */
+  main .colonne-oggi { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
 }
 
 @media (min-width: 1100px) {
@@ -926,6 +941,7 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
   .foglio-chiudi:hover, .confronta-mini:hover, .alternative-li .alt:hover { background: var(--superficie); }
   .azione-testo:hover { text-decoration: underline; text-underline-offset: 3px; }
   .voce:hover { background: var(--superficie); }
+  .avviso-riga:hover { background: var(--superficie); }
 }
 /* Focus da tastiera (spec §14): un colore solo, quello del testo, 2 px con 2 px di stacco, su ogni fondo almeno 3:1; bianco sul campo
    verde. Il bordo arrotondato lo decide ogni elemento (cerchi compresi) */
@@ -1155,7 +1171,6 @@ html[data-calmo] .caricamento::before { animation: pulsa 1.2s ease-in-out infini
 html[data-calmo] .scheletro::after { transform: none; background: color-mix(in srgb, var(--testo) 8%, transparent); animation: pulsa 1.6s ease-in-out infinite; }
 html[data-calmo] .barra-div i { animation-name: dissolve; }
 html[data-calmo] .grafico polyline { stroke-dashoffset: 0; animation: dissolve .6s ease .1s both; }
-html[data-calmo] .maglia-hero { animation-delay: 0s; }
 html[data-calmo] .foglio:not([hidden]) .foglio-corpo { animation-duration: .24s; }
 html[data-calmo] .pedina, html[data-calmo] .pallini i { animation-duration: .3s; animation-delay: 0s !important; }
 html[data-calmo] main > *, html[data-calmo] .elenco li, html[data-calmo] .foglio-corpo .carta { animation-duration: .28s; animation-delay: 0s !important; }
@@ -1237,7 +1252,7 @@ body.senza-accesso .salta { display: none; }
 .regola-sez { padding-top: 6px; padding-bottom: 6px; }
 .regola-sez[open] > summary { margin-bottom: 8px; }
 
-.probabili-fresche { margin: -4px 2px 12px; }
+.probabili-fresche { margin: 10px 0 0; }        /* sotto «Apri la formazione», con la formazione che consigliano (come l'iPhone) */
 
 .scelte-tue { margin-top: 12px; }
 .scelte-tue .stat-fila { margin: 10px 0; }
@@ -1292,11 +1307,14 @@ body.senza-accesso .salta { display: none; }
   .hero .chips.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
 }
 @media (min-width: 1400px) {
-  main .colonne-oggi, main .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  main .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   main .colonne-oggi > .col:first-child { position: static; }
   main .colonne-campo > .col:first-child { display: block; }
   main .colonne-campo > .col:first-child > * { grid-column: auto; grid-row: auto; position: static; }
   main .colonne-campo > .col:first-child > .campo { margin-top: 16px; position: relative; }   /* la riga sopra lo rendeva statico: area, cerchio e metà campo uscivano e attraversavano tutta la pagina */
+  /* Oggi: la colonna di destra (7/12, ~672 px a 1440) in due: migliori e avvisi | partite del turno. Una colonna sola non darebbe la
+     riga larga dei giocatori (scatta da 680 px) e manderebbe le partite sotto il primo schermo; così tutto sta in vista e le due
+     colonne di Oggi finiscono quasi insieme (151 px a 1440, PR #415) */
   main .colonne-oggi > .col:nth-child(2) { display: block; columns: 2; column-gap: 24px; }
   main .colonne-oggi > .col:nth-child(2) > * { break-inside: avoid; }
   /* Formazione: Titolari, Panchina e Fuori uno sotto l'altro nella colonna larga, con le righe su una linea e i numeri nella stessa
@@ -1356,7 +1374,10 @@ body { container: pagina / inline-size; }
   .riga-regola > select.scelta-corta { max-width: 100%; }
   /* Oggi a giornata in corso e «Indisponibili in rosa»: il fantavoto preso o lo stato va sotto il nome; il pallino resta a destra */
   .avviso-riga { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; }
-  .avviso-riga > :nth-child(3):not(.pallino-stato) { grid-row: 2; grid-column: 2 / -1; justify-self: start; }
+  .avviso-riga > :nth-child(3) { grid-row: 2; grid-column: 2 / -1; justify-self: start; }
+  /* Oggi: le cifre della formazione (modulo | punti attesi con la fascia) una sotto l'altra, il filo sopra invece che in mezzo */
+  .cifre-oggi { grid-template-columns: minmax(0, 1fr); }
+  .cifre-oggi > .cifra + .cifra { border-left: 0; padding-left: 0; margin-left: 0; border-top: 1px solid var(--filo); padding-top: 8px; margin-top: 8px; }
   .voce .nome, .voce .dettaglio { overflow-wrap: anywhere; }          /* «Lokomotiv Demo» nelle squadre: la parola lunga non allarga la pagina */
   /* sezioni di Squadra (Consigliati, Giocatori, Seguiti, Calendario) e di Lega: le voci vanno su due righe invece di sovrapporsi */
   .segmenti, .segmenti.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }

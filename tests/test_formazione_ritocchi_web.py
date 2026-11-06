@@ -99,9 +99,14 @@ def test_partite_del_turno_in_una_griglia_sola():
     assert re.search(r"^\.partita \.pt \{[^}]*text-align: right", CSS, re.M)
 
 
-def test_nome_e_slogan_in_oggi():
-    assert "${marchioOggi()}" in APP and "--font-marchio:" in CSS and "font-family: var(--font-marchio)" in CSS
-    assert '"marchio.slogan": "Schierali. Schiera gli {xi}."' in TESTI and '"marchio.nome_voce": "Schiera undici"' in TESTI
+def test_il_nome_sta_nella_testata_non_dentro_oggi():
+    """Grafica B (spec §9 e §11): Oggi parte dal suo titolo, come ogni schermata; il nome SchieraXI è quello disegnato della testata
+    (letto «SchieraXI» dai lettori di schermo, come il nome della finestra). Il nome con lo slogan dentro Oggi, il suo carattere e i
+    suoi testi non ci sono più."""
+    assert "marchioOggi" not in APP and "--font-marchio" not in CSS and ".wordmark" not in CSS
+    assert '"marchio.slogan"' not in TESTI and '"marchio.nome_voce"' not in TESTI and '"marchio.slogan_voce"' not in TESTI
+    html = (WEB / "index.html").read_text(encoding="utf-8")
+    assert '<use href="#wm-c"/>' in html[html.index("<header"):html.index("</header>")]
 
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
