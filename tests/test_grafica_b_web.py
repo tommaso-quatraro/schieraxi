@@ -341,6 +341,16 @@ def test_tra_una_sezione_e_l_altra_lo_spazio():
     assert re.search(r"@media \(min-width: 900px\) \{[^@]*\n  \.carta \{ margin-bottom: 32px; \}", CSS)
 
 
+def test_il_filo_del_titolo_sta_sotto_tutta_la_riga_se_il_titolo_ha_qualcosa_accanto():
+    """Nel Diario (la stagione) e nelle Novità («Nuovo») il titolo della sezione sta in una riga con qualcosa a destra: il filo
+    spesso va sotto tutta la riga, non solo sotto le parole del titolo (visto nelle foto del Diario a 390 e 1440 px)."""
+    assert '<div class="carta" id="${idVoceDiario(g)}"><div class="riga"><h2' in APP
+    assert '<div class="carta"><div class="riga"><h2' in APP
+    assert "border-bottom: 2px solid var(--testo)" in _corpo(".carta > .riga:first-child:has(> h2)")
+    titolo = _corpo(".carta > .riga:first-child > h2")
+    assert "border-bottom: 0" in titolo and "padding-bottom: 0" in titolo
+
+
 def test_dentro_le_sezioni_numeri_e_colonne_senza_riquadri():
     """Spec §8.6 e §9 (scheda): i numeri stanno senza scatola, separati da un filo. Le cifre affiancate della scheda (probabilità,
     statistiche), le due colonne del Diario e l'effetto di ogni motivo del «Perché questo numero» erano riquadri o pillole dentro la

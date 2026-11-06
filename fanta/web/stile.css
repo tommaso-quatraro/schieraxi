@@ -156,6 +156,9 @@ b, strong { font-weight: 650; }
 /* sezione che si apre («Fuori dalla formazione», le regole): il suo titolo è il riassunto. Una domanda che si apre dentro una
    sezione («Non è la tua squadra?») non è un titolo: niente filo spesso */
 .carta > details:first-child > summary, details.carta > summary { border-bottom: 2px solid var(--testo); }
+/* titolo con qualcosa accanto (la stagione nel Diario, «Nuovo» nelle Novità): il filo spesso sta sotto tutta la riga */
+.carta > .riga:first-child:has(> h2) { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 2px solid var(--testo); }
+.carta > .riga:first-child > h2 { padding-bottom: 0; border-bottom: 0; }
 .carta h3 { font-size: var(--t-sec); color: var(--testo-2); margin: 16px 0 8px; font-weight: 600; }
 .carta.scambio { border: 1px solid var(--filo); border-radius: var(--r-card); padding: 16px; }
 .riga { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
