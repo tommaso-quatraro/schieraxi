@@ -148,6 +148,13 @@ gh() {
   esac
 }
 sleep() { echo "sleep $*" >> "$CHIAMATE"; [ "$(grep -c '^sleep' "$CHIAMATE")" -ge 4 ] && { echo "TROPPA ATTESA"; exit 7; }; return 0; }
+# orologio finto: ogni attesa fatta (sleep) fa passare PASSO secondi (90 come nel workflow, o di più per provare il limite di attesa)
+date() {
+  case "$*" in
+    +%s) echo $(( ${ORA0:-1000} + $(grep -c '^sleep' "$CHIAMATE" || true) * ${PASSO:-90} )) ;;
+    *) command date "$@" ;;
+  esac
+}
 '''
 
 
@@ -304,11 +311,44 @@ def test_fila_aspetta_che_la_corsa_davanti_abbia_deciso_i_suoi_mac(tmp_path):
 
 @serve_bash
 def test_fila_aspetta_se_i_mac_liberi_non_bastano(tmp_path):
-    # 4 job Mac occupati (3 in corso, 1 in coda) + 2 di questa corsa = 6 > 5: si aspetta, senza scadenza propria
-    _, _, testo, codice = _fila(tmp_path, IN_CORSO="400", IN_CODA="401", MAC_400="3", MAC_401="1")
+    # 4 job Mac in corso + 2 di questa corsa = 6 > 5: si aspetta
+    _, _, testo, codice = _fila(tmp_path, IN_CORSO="400 401", MAC_400="3", MAC_401="1")
     assert codice == 7 and "TROPPA ATTESA" in testo and "Tocca a questa corsa" not in testo
     _, _, testo, codice = _fila(tmp_path, IN_CORSO="400", MAC_400="3")
     assert codice == 0 and "Tocca a questa corsa" in testo
+
+
+@serve_bash
+def test_fila_non_conta_i_job_mac_in_coda_delle_altre_corse(tmp_path):
+    # #403: i job che aspettano un Mac li serve GitHub in ordine; contarli teneva ferme le foto per ore dietro ai test iOS
+    _, chiamate, testo, codice = _fila(tmp_path, IN_CODA="401 402", MAC_401="4", MAC_402="4")
+    assert codice == 0 and "Tocca a questa corsa" in testo
+    assert "status=queued" not in chiamate and "runs/401/jobs" not in chiamate
+
+
+def test_fila_conta_solo_i_job_mac_in_corso():
+    comandi = _comandi(_passo(_job("quando"), "In fila, al massimo 2 corse di foto e mai più di 5 job Mac"))
+    assert 'select(.status == "in_progress" and any(.labels[]; startswith("macos")))' in comandi
+    assert 'select(.status != "completed" and any(' not in comandi
+
+
+@serve_bash
+def test_fila_dopo_45_minuti_parte_lo_stesso(tmp_path):
+    # i Mac restano occupati (5 in corso + 2 di questa corsa): con le attese vere da 90 secondi si aspetta
+    occupati = dict(IN_CORSO="400", MAC_400="5")
+    _, _, testo, codice = _fila(tmp_path, **occupati)
+    assert codice == 7 and "Tocca a questa corsa" not in testo
+    # passati 45 minuti (2700 secondi) parte comunque, e lo dice nel registro
+    _, chiamate, testo, codice = _fila(tmp_path, PASSO="1000", **occupati)
+    assert codice == 0 and "Tocca a questa corsa" in testo
+    assert "In fila da più di 45 minuti: la corsa parte lo stesso" in testo
+    assert chiamate.count("sleep") == 3          # 3 attese da 1000 secondi, poi via (non resta ad aspettare)
+
+
+@serve_bash
+def test_fila_il_limite_vale_anche_se_le_corse_davanti_non_finiscono(tmp_path):
+    _, _, testo, codice = _fila(tmp_path, PRIMA="400,401", PASSO="1000")
+    assert codice == 0 and "parte lo stesso" in testo and "(in fila: 2 corse Screenshot prima di questa" in testo
 
 
 @serve_bash
