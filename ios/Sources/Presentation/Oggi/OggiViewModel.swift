@@ -21,7 +21,8 @@ final class OggiViewModel: ViewModelBase {
     /// Partite rinviate: la scelta «per questa giornata» è in viaggio (il menu si blocca) e l'eventuale errore da mostrare.
     @Published private(set) var rinvioInCorso = false
     @Published var erroreRinvio: String?
-    /// La funzione «Risultati in diretta» (la imposta la schermata dalle funzioni del server).
+    /// La funzione «Risultati in diretta» (la imposta la schermata dalle funzioni del server). Spenta, Partite del turno resta
+    /// con giorno e ora e senza risultati in diretta, anche se ne è rimasto uno in memoria da quando era accesa.
     @Published var liveAcceso = true
 
     init(server: any ServerClient, conPromemoria: Bool = true) {
@@ -55,8 +56,9 @@ final class OggiViewModel: ViewModelBase {
     /// Le partite del turno divise per giorno, in ordine di data.
     var partitePerGiorno: [PartiteDelGiorno] { Self.raggruppa(DirettaLogica.conRecuperi(oggi?.partite ?? [], live: risultatiLive)) }
 
-    /// I risultati in diretta, solo se l'ultima lettura è riuscita: con la rete assente si tornano a vedere i dati del turno.
-    var risultatiLive: LiveWidget? { live.errore == nil ? live.dato : nil }
+    /// I risultati in diretta, solo con «Risultati in diretta» accesa e se l'ultima lettura è riuscita: con la funzione spenta o
+    /// la rete assente si vedono i dati del turno (giorno e ora), senza punteggio né minuto in diretta.
+    var risultatiLive: LiveWidget? { liveAcceso && live.errore == nil ? live.dato : nil }
 
     func dalVivo(_ p: Partita) -> PartitaLive? { DirettaLogica.dalVivo(risultatiLive, per: p) }
 

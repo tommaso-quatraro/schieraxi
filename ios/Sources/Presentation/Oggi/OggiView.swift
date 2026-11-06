@@ -65,6 +65,8 @@ struct OggiView: View {
             .onChange(of: vm.info.dato?.versione, initial: true) { _, v in
                 if novitaVista.isEmpty, let v, !v.isEmpty, v != "?" { novitaVista = v }
             }
+            // «Risultati in diretta» spenta: Partite del turno resta, senza punteggio né minuto in diretta.
+            .onChange(of: funzioni.acceso(Funzione.live), initial: true) { _, acceso in vm.liveAcceso = acceso }
             // Risultati in diretta: solo con la schermata visibile e l'app in primo piano (il lavoro si annulla da solo quando
             // la schermata sparisce) e riparte quando arriva la giornata o cambia.
             .task(id: "\(fase == .active)-\(vm.oggi?.giornata ?? 0)-\(funzioni.acceso(Funzione.live))") {
@@ -117,8 +119,8 @@ struct OggiView: View {
         case .indisponibili: indisponibili
         case .diffidati: diffidati
         case .partite:
-            // «Risultati in diretta» spenta: la scheda resta nascosta, come prima di #416
-            if funzioni.acceso(Funzione.live) { partite }
+            // sempre, come la web (decisione del 6/11): con «Risultati in diretta» spenta senza i risultati in diretta (vm.liveAcceso)
+            partite
         }
     }
 
