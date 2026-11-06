@@ -599,8 +599,15 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .statistiche div { padding: 8px 0 2px; border-top: 1px solid var(--filo); text-align: left; }      /* statistiche: una griglia di numeri senza riquadri (spec §9) */
 .statistiche b { display: block; font-size: var(--t-card); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .statistiche span { font-size: var(--t-eti); color: var(--testo-2); }
+/* scheda (pannello o foglio, spec §9): volto da 56 px, nome in Archivo 32; sotto il fantavoto atteso come numero eroe e «gioca N%»
+   come seconda cifra, separate da un filo (le cifre di Oggi, .cifre-oggi) */
 .intestazione-scheda { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 14px; }
-.intestazione-scheda h2 { margin: 0 0 2px; font-size: var(--t-titolo); letter-spacing: -.025em; }
+.intestazione-scheda h2 { margin: 0 0 2px; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; line-height: 1.1; overflow-wrap: anywhere; }
+.intestazione-scheda .avatar-anello.grande-a { --d: 56px; }
+.intestazione-scheda .avatar-anello.grande-a .badge-indice { min-width: 24px; height: 20px; padding: 0 4px; font-size: var(--t-eti); right: -6px; bottom: -4px; }
+.cifre-scheda { margin: 10px 0 4px; align-items: last baseline; }   /* i due numeri sulla stessa riga di base */
+.cifre-scheda .enorme { margin: 2px 0 0; }
+#foglio-titolo:focus { outline: none; }        /* prende il focus all'apertura del pannello (spec §14): come il titolo della pagina */
 .pallini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }      /* a 320 px i cinque pallini e «Andamento» non stavano in una riga */
 .pallini i { font-style: normal; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: var(--t-eti); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--testo);
   background: color-mix(in srgb, var(--testo) 8%, transparent); border: 1px solid var(--bordo); }
@@ -623,9 +630,9 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 /* Perché questo numero (scheda del giocatore e foglio che si apre dal numero nella Formazione) */
 .perche { margin-top: 12px; }
 .perche h3 { margin: 0 0 8px; font-size: var(--t-card); }
-.perche-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
-.perche-voce { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; font-size: var(--t-corpo); }
-.perche-effetto { text-align: right; padding: 0; font-family: var(--font-numeri); font-size: var(--t-corpo); font-weight: 650; font-variant-numeric: tabular-nums; }   /* l'effetto è un numero nel suo colore, non una pillola */
+.perche-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 0; }
+.perche-voce { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--filo); font-size: var(--t-corpo); }   /* l'effetto a destra, in colonna come i numeri delle righe (spec §9) */
+.perche-effetto { min-width: 3.2em; text-align: right; padding: 0; font-family: var(--font-numeri); font-size: var(--t-corpo); font-weight: 650; font-variant-numeric: tabular-nums; }   /* l'effetto è un numero nel suo colore, non una pillola */
 .perche-effetto.su { color: var(--verde); } .perche-effetto.giu { color: var(--rosso); } .perche-effetto.dubbio { color: var(--arancio); }      /* non «avviso»: è la classe del messaggio a comparsa (posizione fissa) */
 .perche-definizione { margin-top: 10px; }
 [data-perche] { cursor: pointer; }      /* il numero apre «Perché questo numero»: lo dicono la manina e il nome; niente sottolineatura a puntini (spec §8.4) */
@@ -664,7 +671,7 @@ html[data-animazioni="ridotte"] .partita .pt.gol { animation-name: gol-calmo; }
 .guadagno-grande { text-align: center; margin-top: 8px; font-size: var(--t-sec); color: var(--testo-2); }
 .guadagno-grande b { color: var(--verde); font-size: var(--t-titolo); letter-spacing: -.02em; }
 
-/* ---------------------------------------------------------------- pannello (scheda) che sale dal basso */
+/* ---------------------------------------------------------------- foglio che sale dal basso (pannello affiancato: «PC e schermi larghi») */
 .foglio { position: fixed; inset: 0; z-index: 20; }
 .foglio-sfondo { position: absolute; inset: 0; background: rgba(0, 0, 0, .42); }
 .foglio-corpo { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(90vh / var(--z)); overflow: auto; overscroll-behavior: contain; border-radius: 30px 30px 0 0; padding: 0 16px calc(28px + env(safe-area-inset-bottom));
@@ -1293,7 +1300,8 @@ body.senza-accesso .salta { display: none; }
    PC e schermi larghi (da 1100 px): più cose in vista, meno scorrimento.
    - Oggi e Formazione: due colonne 5:7 (da 900 px, «Schede in alto»); Formazione: campo | cifre, scelta ed elenco.
    - Impostazioni e Squadra/Altro: le carte si dispongono su due colonne e gli elenchi lunghi a griglia.
-   - I dettagli (giocatore, diario, ricerca) si aprono in un pannello a destra e lasciano vedere la pagina.
+   - I dettagli (giocatore, diario, ricerca) si aprono in un foglio a destra, modale; da 1200 px quelli dei giocatori stanno nel
+     pannello affiancato, che non copre la pagina (sotto, «Pannello affiancato»).
    Sul telefono e sul tablet fino a 1099 px non cambia niente (le regole sono tutte dentro le @media).
    ===================================================================================================== */
 @keyframes sale-lato { from { opacity: var(--vela, 1); transform: translateX(calc(var(--mov, 1) * 100%)); } to { opacity: 1; transform: none; } }
@@ -1309,6 +1317,21 @@ body.senza-accesso .salta { display: none; }
   .imp-pagina p { max-width: 80ch; }
   /* con il mouse le strisce da far scorrere col dito non servono: moduli e stili vanno a capo e si vedono tutti */
   .colonne-campo .chips.scorri { flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+}
+/* Pannello affiancato, da 1200 px (spec §5 C5 e §8.11): scheda, confronto, scelta per il confronto, sostituzione, «Perché questo
+   numero» e risultati della ricerca (body.con-pannello, lo scrive apriFoglio in app.js) stanno in una colonna a destra, sotto la
+   testata e fino al fondo della finestra, larga tra 400 e 520 px, con il filo a sinistra e senza velo sulla pagina. La pagina si
+   stringe di quanto è largo il pannello (centrata nello spazio che resta) e resta attiva; la ✕ resta in vista mentre il pannello
+   scorre. Le griglie pensate per la pagina larga (da 1400 px) tornano quelle da 900 px, perché la pagina è più stretta. */
+@media (min-width: 1200px) {
+  :root { --pannello: clamp(400px, 32vw, 520px); }
+  body.con-pannello main { margin-right: var(--pannello); margin-left: max(0px, (100% - var(--pannello) - 1240px) / 2); }
+  body.con-pannello .foglio { left: auto; top: var(--alto-testata, 56px); width: var(--pannello); }
+  body.con-pannello .foglio-sfondo { display: none; }
+  body.con-pannello .foglio-corpo { inset: 0; width: auto; border-radius: 0; border-left: 1px solid var(--filo); padding: 16px 24px 28px; }
+  body.con-pannello .foglio-chiudi { position: sticky; top: 0; right: auto; float: right; margin: -4px -10px 0 8px; background: var(--sfondo); }
+  body.con-pannello main .colonne-campo { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); --quota-campo: calc(5 / 12); }
+  body.con-pannello main .colonne-oggi > .col:nth-child(2) { columns: auto; }
 }
 @media (min-width: 1400px) {
   main .colonne-campo { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); --quota-campo: calc(1 / 3); }
