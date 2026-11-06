@@ -22,9 +22,16 @@ La revisione fatta dagli agenti prima della pull request a volte manca o è parz
   le PR di Dependabot e degli altri bot non partono (`user.type != 'Bot'`) e comunque non vedono i segreti di Actions.
 - Solo server di GitHub (`ubuntu-latest`). Permessi: `contents: read`, `pull-requests: write`. Niente `id-token`: l'azione usa
   il token del job (`github_token`) e non l'app di Claude.
-- Strumenti di Claude: lettura (`Read`, `Grep`, `Glob`, `Skill`), `gh pr diff/view/comment` e i commenti sulle righe.
-  Niente `Write`, `Edit`, Bash libero o rete. `--max-turns 30`, `timeout-minutes: 25`, una corsa per pull request (le vecchie
-  si annullano).
+- Claude rivede il codice della PR e basta (dal 6/11, #479): il job prepara il diff in `.revisione-ia/diff.patch` e l'elenco
+  dei file in `.revisione-ia/file.txt` con `git diff` sul commit di unione, prima di avviare Claude. Claude non ha `gh`:
+  descrizione, commenti e revisioni della PR non gli arrivano.
+- Strumenti di Claude: `Skill`, `Read(./**)` (letture solo nella cartella del checkout; la regola vale anche per `Grep` e
+  `Glob`) e i commenti sulle righe. Divieti espliciti (`--disallowedTools`): Bash, scrittura, rete, sotto-agenti e le letture
+  fuori dal checkout (file di sistema, cartella temporanea del job, configurazione dell'utente del runner, `.git`).
+  `--max-turns 30`, `timeout-minutes: 25`, una corsa per pull request (le vecchie si annullano).
+- La sintesi pubblicata passa da un filtro (passo «Cancello») che toglie ciò che somiglia a un token o a un segreto (forme
+  note di token, valori di variabili con TOKEN, SECRET, PASSWORD o KEY nel nome, chiavi private, stringhe lunghe casuali) e
+  le menzioni. Il filtro non cambia l'esito del cancello. I commenti sulle righe li pubblica l'azione: non passano dal filtro.
 - Mai `allowed_non_write_users`, mai `allowed_bots`, `show_full_output` spento (i log sono pubblici). Il segreto passa per
   nome (niente `secrets: inherit`) e solo tramite `env`.
 
@@ -52,3 +59,6 @@ non parte (anche `unisci`): vanno aggiunte PRIMA di unire questa decisione, e ag
 - 2/11/2026: alla prima corsa Claude non è riuscito a pubblicare la sintesi con `gh pr comment` (permesso negato). Ora la
   sintesi sta solo nell'esito e la pubblica il job, in un unico commento aggiornato a ogni giro; a Claude resta
   `gh pr diff/view` e i commenti sulle righe.
+- 6/11/2026 (#479, irrobustimento): niente più `gh pr diff/view` (il diff lo prepara il job), letture limitate al checkout,
+  filtro dei segreti sulla sintesi. Da guardare alla prima corsa vera: che `Grep` e `Glob` funzionino nel checkout con la sola
+  regola `Read(./**)`; se no si aggiungono con un percorso, mai senza.
