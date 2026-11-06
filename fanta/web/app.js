@@ -574,6 +574,9 @@ function lasciaFormazione() {
 // Ricaricare o chiudere la pagina: il browser mostra la sua domanda (il testo lo sceglie lui).
 window.addEventListener("beforeunload", ev => { if (modificaNonSalvata()) { ev.preventDefault(); ev.returnValue = ""; } });
 
+// Chi disegna ogni schermata: una mappa con i soli nomi ammessi. Il nome arriva anche dall'indirizzo (?vista=, Indietro): niente
+// chiamate per nome su un oggetto («__proto__», «constructor»...); un nome che non c'è porta a Oggi.
+const DISEGNO_VISTE = new Map([["oggi", () => vistaOggi()], ["formazione", () => vistaFormazione()], ["squadra", () => vistaLega("squadra")], ["altro", () => vistaLega("altro")], ["mercato", () => vistaMercato()], ["scambi", () => vistaScambi()]]);
 // opz.daCronologia: si arriva da Indietro o Avanti del browser (l'indirizzo è già quello giusto: non si scrive di nuovo).
 // opz.focoTitolo: cambio di scheda chiesto da chi usa l'app (clic, tasti 1-4, Indietro): il focus va sul titolo della schermata,
 // così il lettore di schermo dice dove si è arrivati e il Tab riparte dal contenuto.
@@ -585,7 +588,7 @@ function vai(vista, gruppo, opz = {}) {
   }
   const imp = vista === "impostazioni";                                   // l'ingranaggio in testata: non è una delle schede della barra
   if (vista === "lega") vista = ambitoVoce(stato.legaTorna);              // le voci della vecchia Lega stanno in Squadra o in Altro
-  if (!imp && !SCHEDA_DI(vista)) vista = "oggi";
+  if (!imp && !(SCHEDA_DI(vista) && DISEGNO_VISTE.has(vista))) vista = "oggi";
   const scheda = imp ? null : SCHEDA_DI(vista);                           // la scheda della barra che si accende
   stato.vista = vista;                                                    // il nome della finestra lo scrive pagina(), con il titolo grande
   document.querySelectorAll(".schede .scheda").forEach(b => {
@@ -614,7 +617,7 @@ function vai(vista, gruppo, opz = {}) {
   if (regoleAC) { regoleAC.abort(); regoleAC = null; }
   stato.punteggioPrec = null;
   if (imp) vistaImpostazioni(gruppo);
-  else ({ oggi: vistaOggi, formazione: vistaFormazione, squadra: () => vistaLega("squadra"), altro: () => vistaLega("altro"), mercato: vistaMercato, scambi: vistaScambi })[vista]();
+  else DISEGNO_VISTE.get(vista)();
   if (opz.focoTitolo) { const h = $("#titolo-pagina"); if (h) h.focus({ preventScroll: true }); }   // pagina() lo tiene anche quando la schermata si ridisegna
 }
 // Indietro e Avanti del browser (e del mouse): la schermata di quella voce, come un clic sulla sua scheda (il foglio si chiude con lei).
@@ -663,10 +666,9 @@ async function caricaInfo() {
     stato.info = await api("/api/stato");
     const i = stato.info;
     const quandoAgg = i.ultimo_aggiornamento ? new Date(i.ultimo_aggiornamento) : null;
-    // giornata (della lega e di Serie A, da nomeGiornata), nome della mia squadra e data dei dati: la riga di stato sotto il titolo di
-    // ogni schermata (pagina()); ogni pezzo va a capo intero (stile.css)
+    // giornata, nome della mia squadra e data dei dati: la riga di stato sotto il titolo di ogni schermata (pagina())
     stato.rigaStato = {
-      giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,
+      giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
       squadra: i.mia_squadra || null,
       dati: (quandoAgg ? t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) }) : t("testata.mai")).replace(/^\s*·\s*/, ""),
     };
