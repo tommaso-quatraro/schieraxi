@@ -473,3 +473,22 @@ def test_modello_delle_pr_ha_la_riga_aspetto(aw):
     modello = MODELLO_PR.read_text(encoding="utf-8")
     assert re.search(r"^Aspetto:", modello, re.M)
     assert aw.aspetto_dichiarato(modello) is None                # il segnaposto del modello non dichiara niente
+
+
+def test_server_finto_tipo_solo_dall_elenco(aw, tmp_path):
+    """Il tipo del file viene solo da TIPI: un'estensione sconosciuta è application/octet-stream (CodeQL, #503)."""
+    web = _web(tmp_path)
+    (web / "nota.md").write_text("ciao", encoding="utf-8")                  # mimetypes direbbe text/markdown
+    with aw.ServerFinto(web, _scenario(tmp_path), porta=0) as s:
+        stato, tipo, _ = _chiedi(s.indirizzo, "/nota.md")
+        assert stato == 200 and tipo == "application/octet-stream"
+
+
+def test_server_finto_solo_indirizzi_locali(aw, tmp_path):
+    """Né il server finto né la ricerca della porta ascoltano su tutte le interfacce."""
+    web, scenario = _web(tmp_path), _scenario(tmp_path)
+    for host in ("", "0.0.0.0", "192.168.1.10"):
+        with pytest.raises(ValueError):
+            aw.porta_libera(host)
+        with pytest.raises(ValueError):
+            aw.ServerFinto(web, scenario, porta=0, host=host)

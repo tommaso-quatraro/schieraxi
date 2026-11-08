@@ -24,7 +24,6 @@ from __future__ import annotations
 import argparse
 import http.server
 import json
-import mimetypes
 import os
 import re
 import shutil
@@ -286,7 +285,7 @@ class ServerFinto:
         self.adesso = dati["adesso"]
         self.risposte = {urllib.parse.unquote(k): v if isinstance(v, str) else json.dumps(v)
                          for k, v in dati["risposte"].items()}
-        self.host, self.porta = host, porta
+        self.host, self.porta = solo_locale(host), porta
         self._mancanti: set[str] = set()
         self._blocco = threading.Lock()
         self._server: _ServerSenzaNome | None = None
@@ -314,13 +313,15 @@ class ServerFinto:
         relativo = urllib.parse.unquote(percorso).lstrip("/\\") or "index.html"
         if "\x00" in relativo:
             return None
+        # realpath + startswith: la forma che anche CodeQL riconosce come controllo del percorso
+        radice = os.path.realpath(self.radice)
         try:
-            destinazione = (self.radice / relativo).resolve()
+            destinazione = os.path.realpath(os.path.join(radice, relativo))
         except (OSError, ValueError):
             return None
-        if not destinazione.is_relative_to(self.radice) or not destinazione.is_file():
+        if not destinazione.startswith(radice + os.sep) or not os.path.isfile(destinazione):
             return None
-        return destinazione
+        return Path(destinazione)
 
     def __enter__(self):
         finto = self
@@ -357,7 +358,7 @@ class ServerFinto:
                 file = finto.file_statico(percorso) if self.command in ("GET", "HEAD") else None
                 if file is None:
                     return self._invia(404, "text/plain; charset=utf-8", "non trovato".encode())
-                tipo = TIPI.get(file.suffix.lower()) or mimetypes.guess_type(file.name)[0] or "application/octet-stream"
+                tipo = TIPI.get(file.suffix.lower(), "application/octet-stream")   # mai dal nome del file
                 return self._invia(200, tipo, file.read_bytes())
 
             do_GET = do_HEAD = do_POST = do_PUT = do_DELETE = do_PATCH = _rispondi
@@ -380,7 +381,15 @@ def host_per(porta: int) -> str:
     return f"127.0.0.{20 + porta % 200}"
 
 
+def solo_locale(host: str) -> str:
+    """Il server finto e la ricerca della porta ascoltano solo su 127.x: mai su tutte le interfacce né sulla rete."""
+    if not re.fullmatch(r"127\.\d{1,3}\.\d{1,3}\.\d{1,3}", host or ""):
+        raise ValueError(f"indirizzo non locale: {host!r}")
+    return host
+
+
 def porta_libera(host: str) -> int:
+    host = solo_locale(host)
     with socket.socket() as s:
         s.bind((host, 0))
         return s.getsockname()[1]
