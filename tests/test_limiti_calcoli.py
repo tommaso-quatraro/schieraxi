@@ -7,6 +7,7 @@
 - R5: la memoria delle consigliate già mostrate ha una parte per ciascuno (`limiti.MAX_CONSIGLIATE_UTENTE`).
 Senza account (un solo utente) nessuno di questi tetti per utente vale. Cartelle temporanee e dati inventati."""
 import contextlib
+import random
 import threading
 import time
 from datetime import datetime, timedelta
@@ -91,50 +92,68 @@ def fino_al_risultato(c, **params):
 
 
 # ---------------------------------------------------------------- R1: calcoli in coda per utente
-def test_quinto_calcolo_dello_stesso_utente_429_con_retry_after(lenta):
+def test_quinto_calcolo_dello_stesso_utente_aspetta_fuori_dalla_coda(lenta):
+    """Oltre il tetto il calcolo non entra in coda ma la risposta è la solita attesa (202, l'app riprova da sola): appena uno dei
+    suoi calcoli finisce, entra."""
     a, _ = nuovo_utente("utentea")
     prepara(a)
-    for giornata in (None, 10, 11, 12):                         # quattro calcoli diversi in coda insieme: si può
-        assert a.get("/api/formazione", params={"giornata": giornata} if giornata else {}).status_code == 202
-    r = a.get("/api/formazione", params={"giornata": 13})
-    assert r.status_code == 429
-    assert r.json()["detail"] == str(calcolo.Occupato())        # messaggio dei limiti di oggi, già tradotto da web e iPhone
-    assert int(r.headers["retry-after"]) > 0 and r.headers["cache-control"] == "no-store"
-    assert a.get("/api/formazione").status_code == 202            # riprovare un calcolo già in coda non è un calcolo nuovo
+    for squadra in (None, *AVVERSARIE[:3]):                     # quattro calcoli diversi in coda insieme: si può
+        assert a.get("/api/formazione", params={"squadra": squadra} if squadra else {}).status_code == 202
+    r = a.get("/api/formazione", params={"squadra": AVVERSARIE[3]})
+    assert r.status_code == 202 and r.json()["calcolo"] == "in_corso" and r.json()["detail"] == str(calcolo.InCalcolo())
+    assert int(r.headers["retry-after"]) == r.json()["riprova_tra"] > 0 and r.headers["cache-control"] == "no-store"
+    assert calcolo.in_corso() == limiti.MAX_CALCOLI_UTENTE        # il quinto aspetta fuori dalla coda
+    assert a.get("/api/formazione", params={"squadra": AVVERSARIE[3]}).status_code == 202   # riprovando, ancora fuori
+    assert calcolo.in_corso() == limiti.MAX_CALCOLI_UTENTE
     lenta["via"].set()
     attendi_fine()
-    assert fino_al_risultato(a, giornata=13).status_code == 200   # finiti i suoi calcoli, il quinto parte
+    assert fino_al_risultato(a, squadra=AVVERSARIE[3]).status_code == 200   # finiti i suoi calcoli, il quinto parte
 
 
 def test_un_altro_utente_non_aspetta(lenta):
     (a, _), (b, _) = nuovo_utente("utentea"), nuovo_utente("utenteb")
     prepara(a)
     prepara(b, "Sua\nA\tKean\t30\n", "Sua")
-    for giornata in (9, 10, 11, 12):
-        assert a.get("/api/formazione", params={"giornata": giornata}).status_code == 202
-    assert a.get("/api/formazione", params={"giornata": 13}).status_code == 429     # A è al tetto
-    assert b.get("/api/formazione").status_code == 202                              # B no: il suo calcolo entra
+    for squadra in ("Mia", *AVVERSARIE):
+        assert a.get("/api/formazione", params={"squadra": squadra}).status_code == 202
+    assert calcolo.in_corso() == limiti.MAX_CALCOLI_UTENTE        # A è al tetto: il suo quinto aspetta fuori
+    assert b.get("/api/formazione").status_code == 202
+    assert calcolo.in_corso() == limiti.MAX_CALCOLI_UTENTE + 1    # quello di B invece entra subito
     lenta["via"].set()
     r = fino_al_risultato(b)
     assert r.status_code == 200 and r.json()["squadra"] == "Sua"
 
 
+def test_la_propria_formazione_e_quattro_avversarie_senza_errori(lenta):
+    """Dopo un aggiornamento la propria Formazione è ancora in calcolo e si aprono le quattro avversarie, senza aspettare (i
+    client non mandano la giornata): solo attese e risultati, mai un errore, e al massimo 4 calcoli in coda per l'utente."""
+    a, _ = nuovo_utente("utentea")
+    prepara(a)
+    codici = [a.get("/api/formazione").status_code]
+    codici += [a.get("/api/formazione", params={"squadra": s}).status_code for s in AVVERSARIE]
+    assert codici == [202] * 5 and calcolo.in_corso() == limiti.MAX_CALCOLI_UTENTE
+    lenta["via"].set()
+    assert fino_al_risultato(a).status_code == 200
+    assert [fino_al_risultato(a, squadra=s).status_code for s in AVVERSARIE] == [200] * 4
+
+
 def test_uso_normale_non_incontra_limiti(lenta):
-    """La propria formazione, tre giornate, quattro squadre avversarie e qualche ricarica, anche toccate in fretta (i calcoli
-    partono prima che finiscano quelli di prima): mai «troppe richieste»."""
+    """La propria formazione, quattro squadre avversarie, tre giornate e qualche ricarica, anche toccate in fretta (i calcoli
+    partono prima che finiscano quelli di prima): solo attese e risultati, mai un errore."""
     a, _ = nuovo_utente("utentea")
     prepara(a)
     risposte = []
-    # apre Formazione e passa subito alle tre giornate dopo, poi ricarica mentre calcola
-    risposte += [a.get("/api/formazione", params=p) for p in ({}, {"giornata": 10}, {"giornata": 11}, {"giornata": 12}, {})]
-    lenta["via"].set()
-    risposte += [fino_al_risultato(a, **p) for p in ({}, {"giornata": 10}, {"giornata": 11}, {"giornata": 12})]
-    # guarda le quattro squadre avversarie una dopo l'altra, senza aspettare
-    lenta["via"] = threading.Event()
+    # apre Formazione e, mentre calcola, guarda le quattro squadre avversarie una dopo l'altra; poi ricarica la prima
+    risposte.append(a.get("/api/formazione"))
     risposte += [a.get("/api/formazione", params={"squadra": s}) for s in AVVERSARIE]
     risposte.append(a.get("/api/formazione", params={"squadra": AVVERSARIE[0]}))
     lenta["via"].set()
-    risposte += [fino_al_risultato(a, squadra=s) for s in AVVERSARIE]
+    risposte += [fino_al_risultato(a)] + [fino_al_risultato(a, squadra=s) for s in AVVERSARIE]
+    # passa subito alle tre giornate dopo, ricaricando mentre calcola
+    lenta["via"] = threading.Event()
+    risposte += [a.get("/api/formazione", params={"giornata": g}) for g in (10, 11, 12, 10)]
+    lenta["via"].set()
+    risposte += [fino_al_risultato(a, giornata=g) for g in (10, 11, 12)]
     # e torna alla sua, due volte
     risposte += [fino_al_risultato(a), fino_al_risultato(a)]
     assert len(risposte) >= 12
@@ -151,8 +170,9 @@ def test_i_calcoli_in_coda_si_contano_per_utente(db_file):
             for i in range(limiti.MAX_CALCOLI_UTENTE):
                 with pytest.raises(calcolo.InCalcolo):
                     calcolo.ottieni(("a", i), lento, db_file)
-            with pytest.raises(calcolo.Occupato):
+            with pytest.raises(calcolo.InCalcolo):                   # uno di troppo: aspetta, senza entrare in coda
                 calcolo.ottieni(("a", "uno di troppo"), lento, db_file)
+            assert calcolo.in_corso() == limiti.MAX_CALCOLI_UTENTE
         with da_utente(2):
             with pytest.raises(calcolo.InCalcolo):
                 calcolo.ottieni(("b", 0), lento, db_file)
@@ -162,6 +182,38 @@ def test_i_calcoli_in_coda_si_contano_per_utente(db_file):
     finally:
         via.set()
         attendi_fine()
+
+
+def test_solo_la_coda_piena_di_tutto_il_server_risponde_occupato(monkeypatch, db_file):
+    monkeypatch.setattr(calcolo, "MAX_IN_CODA", 3)
+    calcolo.in_coda.set(True)
+    via = threading.Event()
+    lento = lambda d: via.wait(10)  # noqa: E731
+    try:
+        for utente, chiave in ((1, "a"), (2, "b"), (3, "c")):
+            with da_utente(utente), pytest.raises(calcolo.InCalcolo):
+                calcolo.ottieni(chiave, lento, db_file)
+        with da_utente(4), pytest.raises(calcolo.Occupato):          # sotto il suo tetto, ma il server è pieno: 429
+            calcolo.ottieni("d", lento, db_file)
+    finally:
+        via.set()
+        attendi_fine()
+
+
+def test_i_calcoli_finiti_male_liberano_il_posto(db_file):
+    calcolo.in_coda.set(True)
+    partiti = []
+
+    def rotto(_):
+        partiti.append(1)
+        raise RuntimeError("calcolo non riuscito")
+    with da_utente(1):
+        for giro in range(3):
+            for i in range(limiti.MAX_CALCOLI_UTENTE):
+                with pytest.raises(calcolo.InCalcolo):
+                    calcolo.ottieni(("rotto", giro, i), rotto, db_file)
+            attendi_fine()
+    assert len(partiti) == 3 * limiti.MAX_CALCOLI_UTENTE          # ogni giro è partito tutto: i posti si sono liberati
 
 
 def test_i_numeri_dei_limiti_si_cambiano_con_una_variabile_d_ambiente(monkeypatch, db_file):
@@ -179,8 +231,9 @@ def test_i_numeri_dei_limiti_si_cambiano_con_una_variabile_d_ambiente(monkeypatc
             for i in range(2):
                 with pytest.raises(calcolo.InCalcolo):
                     calcolo.ottieni(("a", i), lambda d: via.wait(10), db_file)
-            with pytest.raises(calcolo.Occupato):
+            with pytest.raises(calcolo.InCalcolo):
                 calcolo.ottieni(("a", 2), lambda d: via.wait(10), db_file)
+            assert calcolo.in_corso() == 2
     finally:
         via.set()
         attendi_fine()
@@ -210,6 +263,28 @@ def test_una_voce_usata_anche_da_un_altro_utente_e_di_tutti():
         for i in range(3):
             c.metti(f"a{i}", i)
     assert "comune" in c and "a0" not in c and "a1" in c and "a2" in c
+
+
+def test_i_conti_della_memoria_restano_giusti_con_usi_a_caso():
+    """Voci messe, rilette e svuotate a caso da tre utenti e senza account: totale, parte di ciascuno e tetto tornano sempre."""
+    rnd = random.Random(7)
+    for _ in range(20):
+        c = calcolo.Cache(massimo=rnd.choice([4, 8, 16]))
+        for _ in range(400):
+            with da_utente(rnd.choice([None, 1, 2, 3])):
+                k, mossa = rnd.randrange(40), rnd.random()
+                if mossa < 0.55:
+                    c.metti(k, k, fissa=rnd.random() < 0.05, peso=rnd.choice([1.0, calcolo.PESO_LEGGERO]))
+                elif mossa < 0.97:
+                    c.get(k)
+                else:
+                    c.clear()
+            per_utente: dict = {}
+            for chiave, utente in c._padroni.items():
+                assert chiave in c._voci and chiave in c._pesi
+                per_utente[utente] = per_utente.get(utente, 0.0) + c._pesi[chiave]
+            assert per_utente == c._per_utente and c._totale == sum(c._pesi.values()) <= c.massimo
+            assert all(v <= c.massimo * limiti.QUOTA_RISULTATI_UTENTE for v in c._per_utente.values())
 
 
 def test_i_risultati_calcolati_in_coda_contano_per_chi_li_ha_chiesti(monkeypatch, db_file):

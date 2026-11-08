@@ -60,9 +60,10 @@ Sigle usate qui:
     - analisi di scambi (`GET /api/scambi/analizza`): al massimo 20 analisi diverse al minuto per utente (ripetere la stessa
       non conta) e poche alla volta (2 per utente, 3 in tutto il server): oltre, `429` con `Retry-After`;
     - calcoli e memorie condivise (dal 8/11/2026, solo con gli account): un utente ha al massimo 4 calcoli pesanti in coda o in
-      corso insieme. Un calcolo nuovo oltre il tetto risponde `429` con `Retry-After` solo a lui, con lo stesso `detail` di quando
-      la coda di tutto il server è piena («Il server ha molti calcoli in coda: riprova fra qualche secondo»); riprovare un calcolo
-      già in coda (`202`) non conta. I risultati di un utente occupano al massimo un quarto della memoria comune dei risultati
+      corso insieme. Un calcolo nuovo oltre il tetto non entra in coda: la risposta è la solita attesa `202` («sto calcolando», con
+      `riprova_tra` e `Retry-After`), il client riprova da solo e il calcolo entra appena uno dei suoi finisce. Riprovare un calcolo
+      già in coda non conta. Il `429` «Il server ha molti calcoli in coda: riprova fra qualche secondo» resta solo per la coda piena
+      di tutto il server. I risultati di un utente occupano al massimo un quarto della memoria comune dei risultati
       (oltre escono prima i suoi usati meno di recente) e le consigliate già mostrate ricordate per lui sono al massimo 100
       (una consigliata che serve anche ad altri utenti resta per loro). Nessuna azione di un utente svuota i risultati già
       calcolati per gli altri. Creare e togliere la lega di prova (`POST` e `DELETE /api/onboarding/demo`) vale al massimo

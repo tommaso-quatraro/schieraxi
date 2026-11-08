@@ -31,7 +31,7 @@ MAX_SQUADRE = 20
 MAX_GIOCATORI_SQUADRA = 40
 
 # Calcoli e memorie condivise (#513): un utente non occupa più della sua parte del server.
-MAX_CALCOLI_UTENTE = 4               # calcoli pesanti in coda o in corso insieme per utente (vedi calcolo.py): oltre, 429
+MAX_CALCOLI_UTENTE = 4               # calcoli pesanti in coda o in corso insieme per utente (vedi calcolo.py): oltre si aspetta (202)
 QUOTA_RISULTATI_UTENTE = 0.25        # parte della memoria dei risultati (calcolo.MAX_RISULTATI) che le voci di un utente possono occupare
 MAX_AZIONI_PESANTI_ORA = 20          # azioni ripetibili che costano calcoli (lega di prova creata o tolta), all'ora per utente
 MAX_CONSIGLIATE_UTENTE = 100         # consigliate già mostrate ricordate per utente (vedi consigli.py)

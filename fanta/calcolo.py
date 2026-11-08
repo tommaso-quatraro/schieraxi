@@ -11,7 +11,8 @@
   «sto calcolando». L'app riprova da sola e al secondo giro trova il risultato. Se il calcolo fallisce, l'errore arriva al
   primo tentativo successivo. Fuori da quella modalità (comandi, app senza account) si calcola subito, come sempre.
 - Parte di ciascuno (#513; numeri in limiti.py): con gli account il server dice chi chiede (`utente_richiesta`). Un utente ha al
-  massimo `limiti.MAX_CALCOLI_UTENTE` calcoli in coda o in corso (oltre: Occupato, 429 solo a lui) e le sue voci occupano al
+  massimo `limiti.MAX_CALCOLI_UTENTE` calcoli in coda o in corso (oltre, il calcolo aspetta fuori dalla coda e lui riceve InCalcolo,
+  cioè 202: entra appena uno dei suoi finisce; Occupato, 429, resta solo per la coda piena di tutto il server) e le sue voci occupano al
   massimo `limiti.QUOTA_RISULTATI_UTENTE` della cache: oltre, escono prima le sue voci usate meno di recente. Una voce letta da un
   altro utente diventa di tutti (non conta più per nessuno). Senza account (`utente_richiesta` None) nessun tetto per utente.
 """
@@ -244,9 +245,11 @@ def _in_coda(chiave, calcola, percorso: Path, fissa, peso=1.0):
             if len(_accodati) >= MAX_IN_CODA:
                 raise Occupato()
             utente = utente_richiesta.get()
-            # una richiesta uguale a un calcolo già in coda (anche di un altro) non è un calcolo nuovo: il tetto vale solo qui
+            # Tetto per utente: oltre, il calcolo NON entra in coda ma la risposta resta «sto calcolando» (202): l'app riprova da
+            # sola e il calcolo entra appena uno dei suoi finisce (nell'uso normale succede: Formazione più quattro avversarie).
+            # Una richiesta uguale a un calcolo già in coda (anche di un altro) non è un calcolo nuovo: il tetto vale solo qui.
             if utente is not None and sum(1 for u in _accodati.values() if u == utente) >= limiti.valore("MAX_CALCOLI_UTENTE"):
-                raise Occupato(_riprova())
+                raise InCalcolo(_riprova())
             _accodati[chiave] = utente
             _coda.submit(_lavoro, chiave, calcola, percorso, fissa, peso, utente)
         riprova = _riprova()
