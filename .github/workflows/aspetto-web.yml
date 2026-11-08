@@ -45,21 +45,23 @@ jobs:
     permissions:
       contents: read
     steps:
-      # il commit di prova della PR (la PR unita a main), solo le cartelle che servono
+      # il commit di prova della PR (la PR unita a main) e il suo primo genitore, come in test.yml e revisione.yml
       - name: Codice della PR
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           path: pr
-          sparse-checkout: |
-            fanta/web
-            script/ci
-            ios/fotografie
-            .github
+          fetch-depth: 2
           persist-credentials: false
-      - name: Codice di riferimento (la base della PR)
+      # Nelle PR la base è HEAD^1 del commit di prova: proprio il main su cui la PR si unisce. Il base.sha dell'evento può
+      # essere più vecchio, e allora le scene cambiate su main nel frattempo sembrerebbero cambiate dalla PR.
+      - name: Codice di riferimento (main su cui la PR si unisce)
+        if: github.event_name == 'pull_request'
+        run: git -C pr worktree add --detach "$GITHUB_WORKSPACE/base" HEAD^1
+      - name: Codice di riferimento (scelto a mano)
+        if: github.event_name != 'pull_request'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.base.sha || inputs.base || github.sha }}
+          ref: ${{ inputs.base || github.sha }}
           path: base
           sparse-checkout: fanta/web
           persist-credentials: false

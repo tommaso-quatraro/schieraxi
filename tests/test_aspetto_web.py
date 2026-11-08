@@ -144,6 +144,16 @@ def test_riga_aspetto(aw):
     assert aw.aspetto_dichiarato("Aspetto: tutte\n") == set(aw.SCENE)
 
 
+def test_riga_aspetto_piu_righe(aw):
+    """Conta ogni riga «Aspetto:» non vuota, non solo la prima: la riga del modello lasciata col solo commento non nasconde
+    quella scritta più sotto."""
+    modello_e_vera = "Aree: fanta/web\n\nAspetto: <!-- scene che cambiano -->\n\n## Cosa cambia\nAspetto: oggi\n"
+    assert aw.aspetto_dichiarato(modello_e_vera) == {"oggi"}
+    assert aw.aspetto_dichiarato("Aspetto: oggi\n\nAspetto: rosa, scheda\n") == {"oggi", "rosa", "scheda"}
+    assert aw.aspetto_dichiarato("Aspetto: nessuno\nAspetto: oggi\n") == {"oggi"}
+    assert aw.aspetto_dichiarato("Aspetto: <!-- a -->\nAspetto:\n") is None
+
+
 def test_esito_dichiarate_0_non_dichiarate_1(aw):
     assert aw.esito(diverse=set(), dichiarate=None, problemi=set()) == 0
     assert aw.esito(diverse={"oggi"}, dichiarate={"oggi", "rosa"}, problemi=set()) == 0
@@ -163,6 +173,19 @@ def test_il_riassunto_dice_cosa_fare(aw):
     assert "scheda" in testo and "Timeout" in testo
     pulito = aw.riassunto(diverse={}, dichiarate=None, problemi={}, mancanti=[], instabili={})
     assert "Nessuna scena diversa" in pulito
+
+
+def test_il_riassunto_scrive_i_pixel_di_ogni_scena_anche_sotto_soglia(aw):
+    """Con lo 0,1% della pagina un numero o una parola cambiati passano: i pixel di ogni scena servono a scegliere la soglia
+    giusta prima che il controllo diventi bloccante."""
+    pixel = {"oggi": aw.Differenza(1234, 0.0005, False), "rosa": aw.Differenza(0, 0.0, False),
+             "scheda": aw.Differenza(7, 0.00002, True)}
+    testo = aw.riassunto(diverse={}, dichiarate=None, problemi={}, mancanti=[], instabili={}, pixel=pixel)
+    righe = {r.split("|")[1].strip(" `"): r for r in testo.splitlines() if r.startswith("| `")}
+    assert set(righe) == {"oggi", "rosa", "scheda"}
+    assert "1234" in righe["oggi"] and "0,050%" in righe["oggi"]
+    assert "| 0 |" in righe["rosa"]
+    assert "misura" in righe["scheda"]
 
 
 # ------------------------------------------------------------------ server finto
@@ -218,6 +241,17 @@ def test_server_finto_non_esce_dalla_cartella(aw, tmp_path):
                          "/%2e%2e%5csegreto.txt", "//segreto.txt", "/web/../../segreto.txt"):
             stato, _, corpo = _chiedi(s.indirizzo, percorso)
             assert stato == 404 and "non uscire" not in corpo, percorso
+
+
+def test_server_finto_non_cerca_il_nome_dell_indirizzo(aw, tmp_path, monkeypatch):
+    """HTTPServer chiede il nome di 127.0.0.NN (getfqdn): su Windows sono secondi di attesa per ogni server."""
+    import socket
+
+    def vietata(*argomenti):
+        raise AssertionError("getfqdn non serve")
+    monkeypatch.setattr(socket, "getfqdn", vietata)
+    with aw.ServerFinto(_web(tmp_path), _scenario(tmp_path), porta=0) as s:
+        assert _chiedi(s.indirizzo, "/api/stato")[0] == 200
 
 
 def test_server_finto_scenario_senza_risposte_e_errore(aw, tmp_path):
@@ -279,6 +313,106 @@ def test_preparazione_sbagliata_esce_con_3(aw, tmp_path, capsys):
     assert "non-esiste" in capsys.readouterr().out
 
 
+# ------------------------------------------------------------------ flusso di main() con foto finte (senza browser)
+GRANDE = (0, 0, 30, 30, (0, 0, 0))       # 900 pixel su 10.000: scena diversa
+PICCOLA = (0, 0, 3, 1, (0, 0, 0))        # 3 pixel: sotto la soglia dello 0,1%
+
+
+def _scatta_finta(macchie: dict, errori: dict | None = None, chiamate: list | None = None):
+    """Al posto di `scatta`: una foto bianca 100x100 per scena, larghezza e tema nella cartella del lato (base, pr, base-2),
+    con la macchia di `macchie[(lato, scena)]` se c'è; `errori[(lato, scena)]` = la scena non si apre."""
+    def scatta(indirizzo, cartella, scene, larghezze, temi, adesso):
+        cartella = Path(cartella)
+        cartella.mkdir(parents=True, exist_ok=True)
+        if chiamate is not None:
+            chiamate.append((cartella.name, list(scene)))
+        mancate = {}
+        for tema in temi:
+            for larghezza in larghezze:
+                for scena in scene:
+                    nome = f"{scena}-{larghezza}-{tema}"
+                    if (errori or {}).get((cartella.name, scena)):
+                        mancate[nome] = errori[(cartella.name, scena)]
+                        continue
+                    _png(cartella / f"{nome}.png", macchia=macchie.get((cartella.name, scena)))
+        return mancate
+    return scatta
+
+
+def _copia(tmp_path: Path) -> Path:
+    """Una copia finta del repository: solo fanta/web/index.html (le foto le fa `_scatta_finta`)."""
+    web = tmp_path / "copia" / "fanta" / "web"
+    web.mkdir(parents=True)
+    (web / "index.html").write_text("<!doctype html><title>prova</title>", encoding="utf-8")
+    return tmp_path / "copia"
+
+
+def _lancia(aw, tmp_path, monkeypatch, corpo: str | None, scene="oggi,rosa"):
+    copia = _copia(tmp_path)
+    if corpo is None:
+        monkeypatch.delenv("CORPO", raising=False)
+    else:
+        monkeypatch.setenv("CORPO", corpo)
+    riassunto_corsa = tmp_path / "riassunto-corsa.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(riassunto_corsa))
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    uscita = tmp_path / "uscita"
+    codice = aw.main(["--base", str(copia), "--pr", str(copia), "--uscita", str(uscita),
+                      "--scenario", str(_scenario(tmp_path)), "--larghezze", "390", "--temi", "chiaro", "--scene", scene])
+    return codice, uscita, riassunto_corsa
+
+
+def test_flusso_scena_cambiata_non_dichiarata(aw, tmp_path, monkeypatch, capsys):
+    chiamate = []
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "oggi"): GRANDE}, chiamate=chiamate))
+    codice, uscita, riassunto_corsa = _lancia(aw, tmp_path, monkeypatch, "Aree: fanta/web\nAspetto: nessuno\n")
+    assert codice == 1
+    assert chiamate == [("base", ["oggi", "rosa"]), ("pr", ["oggi", "rosa"]), ("base-2", ["oggi"])]   # rifatta su main
+    assert sorted(p.name for p in (uscita / "diverse").iterdir()) == [
+        "oggi-390-chiaro-differenza.png", "oggi-390-chiaro-main.png", "oggi-390-chiaro-pr.png"]
+    testo = (uscita / "riassunto.md").read_text(encoding="utf-8")
+    assert "`oggi`: diversa da main, **non dichiarata**" in testo and "`Aspetto: oggi`" in testo
+    assert riassunto_corsa.read_text(encoding="utf-8") == testo                  # anche nel riassunto della corsa
+    assert "::warning title=Aspetto della web::scene diverse da main non dichiarate" in capsys.readouterr().out
+
+
+def test_flusso_scena_dichiarata_anche_su_una_riga_piu_sotto(aw, tmp_path, monkeypatch):
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "oggi"): GRANDE}))
+    corpo = "Aree: fanta/web\n\nAspetto: <!-- commento del modello -->\n\n## Cosa cambia\nAspetto: oggi\n"
+    codice, uscita, _ = _lancia(aw, tmp_path, monkeypatch, corpo)
+    assert codice == 0
+    assert "`oggi`: diversa da main, dichiarata" in (uscita / "riassunto.md").read_text(encoding="utf-8")
+
+
+def test_flusso_main_che_cambia_da_sola_e_instabile(aw, tmp_path, monkeypatch):
+    """La seconda foto di main è diversa dalla prima (e uguale alla PR): non è colpa della PR, la scena è instabile."""
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "rosa"): GRANDE, ("base-2", "rosa"): GRANDE}))
+    codice, uscita, _ = _lancia(aw, tmp_path, monkeypatch, None)
+    assert codice == 2
+    assert not (uscita / "diverse").exists()                                    # niente immagini: non è una differenza
+    testo = (uscita / "riassunto.md").read_text(encoding="utf-8")
+    assert "cambia da sola anche su main" in testo and "`rosa`" in testo and "non dichiarata" not in testo
+
+
+def test_flusso_scena_che_non_si_apre(aw, tmp_path, monkeypatch):
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({}, errori={("pr", "rosa"): "TimeoutError: attesa finita"}))
+    codice, uscita, _ = _lancia(aw, tmp_path, monkeypatch, "Aspetto: nessuno\n")
+    assert codice == 2
+    assert "rosa-390-chiaro non si apre nella PR: TimeoutError" in (uscita / "riassunto.md").read_text(encoding="utf-8")
+
+
+def test_flusso_pochi_pixel_passano_ma_si_vedono(aw, tmp_path, monkeypatch):
+    chiamate = []
+    monkeypatch.setattr(aw, "scatta", _scatta_finta({("pr", "oggi"): PICCOLA}, chiamate=chiamate))
+    codice, uscita, _ = _lancia(aw, tmp_path, monkeypatch, None)
+    assert codice == 0 and [c[0] for c in chiamate] == ["base", "pr"]           # niente seconda foto su main
+    assert not (uscita / "diverse").exists()
+    testo = (uscita / "riassunto.md").read_text(encoding="utf-8")
+    assert "Nessuna scena diversa da main" in testo
+    righe = {r.split("|")[1].strip(" `"): r for r in testo.splitlines() if r.startswith("| `")}
+    assert "| 3 |" in righe["oggi"] and "| 0 |" in righe["rosa"]
+
+
 # ------------------------------------------------------------------ workflow, requisiti, modello delle PR
 def _testo_workflow() -> str:
     return WORKFLOW.read_text(encoding="utf-8")
@@ -303,7 +437,10 @@ def test_workflow_parte_sulle_pr_che_toccano_la_web():
 def test_workflow_due_copie_senza_credenziali_e_corpo_solo_in_env():
     testo = _testo_workflow()
     assert testo.count("actions/checkout@") == 2 == testo.count("persist-credentials: false")
-    assert "github.event.pull_request.base.sha" in testo
+    # nelle PR la base è il primo genitore del commit di prova (il main su cui la PR si unisce), come in test.yml e
+    # revisione.yml: base.sha dell'evento può essere più vecchio e mostrerebbe come «diverse» le scene cambiate su main
+    assert "fetch-depth: 2" in testo and 'worktree add --detach "$GITHUB_WORKSPACE/base" HEAD^1' in testo
+    assert "pull_request.base.sha" not in testo
     # il testo della PR (e ogni dato della PR o dell'ingresso a mano) arriva solo come variabile d'ambiente, mai dentro un comando
     for riga in testo.splitlines():
         if "${{" in riga and re.search(r"github\.event\.|inputs\.|head_ref", riga):

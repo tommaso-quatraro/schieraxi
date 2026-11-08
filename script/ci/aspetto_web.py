@@ -29,6 +29,7 @@ import os
 import re
 import shutil
 import socket
+import socketserver
 import sys
 import threading
 import urllib.parse
@@ -176,13 +177,13 @@ def confronta_scatti(base: Path, pr: Path, nomi: list[str]) -> dict[str, Differe
 
 # =========================== descrizione della PR ed esito ===========================
 def aspetto_dichiarato(corpo: str | None) -> set[str] | None:
-    """Le scene della riga «Aspetto: oggi, formazione» fuori dai commenti HTML (quelli del modello di PR). «nessuno» = nessuna,
-    «tutte» = tutte; senza riga (o con il solo commento del modello) None."""
+    """Le scene delle righe «Aspetto: oggi, formazione» fuori dai commenti HTML (quelli del modello di PR), unite: la riga del
+    modello lasciata col solo commento non nasconde quella scritta più sotto. «nessuno» = nessuna, «tutte» = tutte; senza
+    righe non vuote None."""
     testo = re.sub(r"<!--.*?-->", "", corpo or "", flags=re.S)
-    m = re.search(r"^[ \t]*[*_]*aspetto[*_]*[ \t]*:[ \t]*[*_]*(.*?)[ \t\r]*$", testo, re.I | re.M)
-    if not m:
-        return None
-    voci = {v.strip("`*_.").lower() for v in re.split(r"[,\s]+", m.group(1)) if v.strip("`*_.")}
+    voci: set[str] = set()
+    for m in re.finditer(r"^[ \t]*[*_]*aspetto[*_]*[ \t]*:[ \t]*[*_]*(.*?)[ \t\r]*$", testo, re.I | re.M):
+        voci |= {v.strip("`*_.").lower() for v in re.split(r"[,\s]+", m.group(1)) if v.strip("`*_.")}
     if not voci:
         return None
     if "tutte" in voci:
@@ -196,9 +197,32 @@ def esito(diverse: set[str], dichiarate: set[str] | None, problemi: set[str]) ->
     return 1 if set(diverse) - (dichiarate or set()) else 0
 
 
+def pixel_per_scena(diff: dict[str, Differenza]) -> dict[str, Differenza]:
+    """Per ogni scena la variante (larghezza e tema) con più pixel cambiati; misura diversa se cambia in una qualsiasi."""
+    scene: dict[str, Differenza] = {}
+    for nome, d in diff.items():
+        prima = scene.get(nome.split("-")[0], Differenza(0, 0.0, False))
+        peggiore = d if d.pixel > prima.pixel else prima
+        scene[nome.split("-")[0]] = Differenza(peggiore.pixel, peggiore.quota, prima.misura_diversa or d.misura_diversa)
+    return scene
+
+
+def _tabella_pixel(pixel: dict[str, Differenza]) -> list[str]:
+    """Pixel cambiati di ogni scena, anche sotto la soglia: servono a scegliere la soglia prima che il controllo blocchi."""
+    soglia = f"{SOGLIA * 100:.1f}".replace(".", ",")
+    righe = ["", f"Pixel cambiati per scena, anche sotto la soglia (la variante peggiore; una scena è diversa oltre lo {soglia}% "
+             "della pagina o con una misura diversa):", "", "| scena | pixel | quota | misura |", "|---|---:|---:|---|"]
+    for scena in [s for s in SCENE if s in pixel]:
+        d = pixel[scena]
+        quota = f"{d.quota * 100:.3f}%".replace(".", ",")
+        righe.append(f"| `{scena}` | {d.pixel} | {quota} | {'misura diversa' if d.misura_diversa else 'uguale'} |")
+    return righe
+
+
 def riassunto(diverse: dict[str, list[str]], dichiarate: set[str] | None, problemi: dict[str, str], mancanti: list[str],
-              instabili: dict[str, list[str]]) -> str:
-    """Il testo per il riassunto della corsa (Markdown): cosa è cambiato, cosa non è dichiarato e come si dichiara."""
+              instabili: dict[str, list[str]], pixel: dict[str, Differenza] | None = None) -> str:
+    """Il testo per il riassunto della corsa (Markdown): cosa è cambiato, cosa non è dichiarato e come si dichiara; con
+    `pixel` (scena -> differenza peggiore) anche la tabella dei pixel cambiati di ogni scena."""
     righe = ["## Aspetto della web (solo avviso)", ""]
     non_dichiarate = sorted(set(diverse) - (dichiarate or set()))
     if not diverse and not problemi:
@@ -222,6 +246,8 @@ def riassunto(diverse: dict[str, list[str]], dichiarate: set[str] | None, proble
     if mancanti:
         righe += ["", "Rotte senza risposta registrata (la pagina le mostra vuote o con l'errore, uguale per main e PR): "
                   + ", ".join(f"`{m}`" for m in mancanti[:30]) + (" e altre" if len(mancanti) > 30 else "") + "."]
+    if pixel:
+        righe += _tabella_pixel(pixel)
     return "\n".join(righe) + "\n"
 
 
@@ -235,6 +261,16 @@ def leggi_scenario(percorso: Path) -> dict:
     if not isinstance(dati.get("adesso"), str) or not dati["adesso"]:
         raise ValueError(f"scenario senza «adesso»: {percorso}")
     return dati
+
+
+class _ServerSenzaNome(http.server.ThreadingHTTPServer):
+    """HTTPServer chiede il nome dell'indirizzo (getfqdn) all'avvio: per 127.0.0.NN su Windows sono secondi di attesa, e il
+    nome non serve a niente."""
+    daemon_threads = True
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = str(self.server_address[0]), self.server_address[1]
 
 
 class ServerFinto:
@@ -253,7 +289,7 @@ class ServerFinto:
         self.host, self.porta = host, porta
         self._mancanti: set[str] = set()
         self._blocco = threading.Lock()
-        self._server: http.server.ThreadingHTTPServer | None = None
+        self._server: _ServerSenzaNome | None = None
         self._filo: threading.Thread | None = None
 
     @property
@@ -326,8 +362,7 @@ class ServerFinto:
 
             do_GET = do_HEAD = do_POST = do_PUT = do_DELETE = do_PATCH = _rispondi
 
-        self._server = http.server.ThreadingHTTPServer((self.host, self.porta), Gestore)
-        self._server.daemon_threads = True
+        self._server = _ServerSenzaNome((self.host, self.porta), Gestore)
         self.porta = self._server.server_address[1]
         self._filo = threading.Thread(target=self._server.serve_forever, name="server-finto", daemon=True)
         self._filo.start()
@@ -535,7 +570,7 @@ def main(argv=None) -> int:
     for scena, variazioni in instabili.items():
         if scena not in INSTABILI:
             problemi.setdefault(scena, f"cambia da sola anche su main ({', '.join(variazioni)}): instabile")
-    testo = riassunto(diverse, dichiarate, problemi, mancanti, instabili)
+    testo = riassunto(diverse, dichiarate, problemi, mancanti, instabili, pixel_per_scena(diff))
     (uscita / "riassunto.md").write_text(testo, encoding="utf-8")
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
