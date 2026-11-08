@@ -47,11 +47,12 @@ né dalla Lega Serie A.** I nomi citati appartengono ai rispettivi proprietari e
 Il progetto non include né ridistribuisce dati di terzi: le rose di prova sono inventate.
 
 ## Dove va il progetto
-Quattro obiettivi, in quest'ordine di lavoro: 3, 1, 2, 4.
-- [#167](https://github.com/tommaso-quatraro/schieraxi/issues/167) **App semplice, uguale su iPhone e web**: poche schermate, stesse parole e stessi numeri (`docs/COERENZA-WEB-IPHONE.md`).
-- [#165](https://github.com/tommaso-quatraro/schieraxi/issues/165) **Statistiche nostre, affidabili**: gol e assist attesi, minuti e probabilità di giocare calcolati dal progetto, con una misura a ogni giornata.
-- [#166](https://github.com/tommaso-quatraro/schieraxi/issues/166) **Consiglio di formazione giusto, e spiegato**: la formazione consigliata deve valere almeno quella schierata, senza cambi insensati.
-- [#168](https://github.com/tommaso-quatraro/schieraxi/issues/168) **Aperta agli altri**: prima pochi amici, poi il pubblico.
+La direzione è scritta in [`docs/superpowers/specs/2026-11-08-prodotto-design.md`](docs/superpowers/specs/2026-11-08-prodotto-design.md):
+per questa stagione l'app è per pochi amici su invito, con poche funzioni al servizio della formazione.
+Il numero che dice se funziona è la precisione del fantavoto atteso, misurata a ogni giornata. Quattro obiettivi, in quest'ordine:
+- [#167](https://github.com/tommaso-quatraro/schieraxi/issues/167) **App semplice, uguale su iPhone e web**: stesse parole e stessi numeri, una giornata intera senza errori, un ambiente di prova online.
+- [#168](https://github.com/tommaso-quatraro/schieraxi/issues/168) **Aperta agli amici**: un amico entra da solo dalla web e carica la sua lega. Il pubblico dalla prossima stagione.
+- [#165](https://github.com/tommaso-quatraro/schieraxi/issues/165) **Statistiche nostre, affidabili** e [#166](https://github.com/tommaso-quatraro/schieraxi/issues/166) **consiglio giusto e spiegato**: vanno avanti a ogni giornata con le misure, e si cambia il modello solo quando una misura lo chiede.
 
 ## Limiti
 - Sono stime: il voto vero può cadere lontano dalla previsione, per questo la formazione mostra una fascia.
