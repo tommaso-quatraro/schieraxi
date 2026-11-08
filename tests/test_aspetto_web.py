@@ -487,7 +487,7 @@ def test_server_finto_tipo_solo_dall_elenco(aw, tmp_path):
 def test_server_finto_solo_indirizzi_locali(aw, tmp_path):
     """Né il server finto né la ricerca della porta ascoltano su tutte le interfacce."""
     web, scenario = _web(tmp_path), _scenario(tmp_path)
-    for host in ("", "0.0.0.0", "192.168.1.10"):
+    for host in ("", "0.0.0.0", "203.0.113.10"):
         with pytest.raises(ValueError):
             aw.porta_libera(host)
         with pytest.raises(ValueError):
