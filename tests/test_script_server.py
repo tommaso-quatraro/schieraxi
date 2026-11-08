@@ -528,6 +528,138 @@ def test_fidati_senza_commit_spiega_l_uso(server):
     assert r.returncode == 2 and "uso:" in r.stdout
 
 
+# ---------------------------------------------------------------- il ramo main letto per nome intero (parte di #481)
+# Il commit da installare e' la punta del ramo main di origin, letta con `git show-ref --verify refs/remotes/origin/main`, che non cerca
+# altri nomi: un tag o un ramo che si chiamano "origin/main" (o "refs/remotes/origin/main") non prendono il suo posto. Con il nome corto,
+# o anche con quello intero passato a rev-parse, git prova piu' posti e un tag puo' vincere.
+
+def _commit_fuori_da_main(s, testo="FUORI DA MAIN", **file):
+    """Un commit firmato con la chiave fidata ma che NON sta su main (un ramo a parte, poi tolto): resta raggiungibile solo dal tag."""
+    _git(s.lavoro, "switch", "-q", "-c", "a-parte")
+    x = _commit(s.lavoro, "fuori da main", **(file or {"fanta/__init__.py": testo}))
+    _git(s.lavoro, "switch", "-q", "main")
+    return x
+
+
+def _clone_senza_ramo_main_con_tag_dal_nome_intero(s, commit):
+    """Il clone del server senza il ramo refs/remotes/origin/main (e senza la regola che lo ricrea col fetch), con un tag che si chiama
+    proprio "refs/remotes/origin/main" e punta a `commit`."""
+    clone = s.casa / "schieraxi-src"
+    _git(clone, "fetch", "-q", "origin", "a-parte")                    # porta gli oggetti del commit nel clone
+    _git(clone, "config", "--unset-all", "remote.origin.fetch")
+    _git(clone, "update-ref", "-d", "refs/remotes/origin/main")
+    _git(clone, "tag", "refs/remotes/origin/main", commit)
+    return clone
+
+
+@con_bash
+def test_clone_nuovo_con_un_tag_chiamato_origin_main_installa_la_punta_di_main(server):
+    s = server
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    x = _commit_fuori_da_main(s, "FUORI DA MAIN")
+    _git(s.lavoro, "tag", "origin/main", x)
+    _git(s.lavoro, "branch", "-q", "-D", "a-parte")
+    _rimuovi(s.casa / "schieraxi-src")                         # il clone si rifà da zero (porta con sé tutti i tag)
+    r = s.esegui("aggiorna-app.sh", SCHIERAXI_REPO=s.lavoro.as_posix())
+    assert r.returncode == 0, r.stderr + s.log()
+    assert s.ultimo() == c2 and s.riavvii() == 1
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+    assert x[:7] not in s.log()
+    _lega_e_dati_intatti(s)
+
+
+@con_bash
+def test_un_tag_chiamato_origin_main_su_github_non_ferma_gli_aggiornamenti(server):
+    """Guardia: il git fetch di ogni giro prende solo il ramo main (i tag non arrivano), quindi la versione nuova si installa."""
+    s = server
+    _git(s.lavoro, "tag", "origin/main", s.c1)
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode == 0, r.stderr + s.log()
+    assert s.ultimo() == c2 and s.riavvii() == 1
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+
+
+@con_bash
+def test_un_tag_chiamato_origin_main_nel_clone_non_ferma_gli_aggiornamenti(server):
+    """Il tag c'e' gia' nel clone del server (come dopo un clone fatto quando su GitHub c'era) e punta alla versione installata."""
+    s = server
+    _git(s.casa / "schieraxi-src", "tag", "origin/main", s.c1)
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode == 0, r.stderr + s.log()
+    assert s.ultimo() == c2 and s.riavvii() == 1
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V2"
+
+
+@con_bash
+def test_fidati_origin_main_prende_il_ramo_anche_con_un_tag_omonimo(server):
+    s = server
+    _git(s.casa / "schieraxi-src", "tag", "origin/main", s.c1)
+    c2 = _commit(s.lavoro, "spinto a mano, controllato", _firma=False, **{"fanta/__init__.py": "V2"})
+    assert s.esegui("aggiorna-app.sh").returncode == 1                        # senza firma: rifiutato
+    r = s.esegui("aggiorna-app.sh", "--fidati", "origin/main")
+    assert r.returncode == 0 and "fidato a mano" in r.stdout, r.stdout + r.stderr
+    assert (s.stato / "verificato").read_text(encoding="utf-8").strip() == c2
+    assert s.esegui("aggiorna-app.sh").returncode == 0
+    assert s.ultimo() == c2 and s.riavvii() == 1
+
+
+@con_bash
+def test_verifica_catena_rifiuta_un_commit_firmato_che_non_e_su_main(server):
+    """Protegge la funzione verifica_catena, per chi la usa con un commit qualunque: anche con tutte le firme a posto, un commit fuori
+    dalla storia di main non passa. Non protegge il giro di oggi di aggiorna-app.sh, dove il commit e' sempre la punta del ramo."""
+    s = server
+    x = _commit_fuori_da_main(s, "FUORI DA MAIN")
+    c2 = _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    clone = s.casa / "schieraxi-src"
+    _git(clone, "fetch", "-q", "origin", "a-parte")
+    _git(clone, "fetch", "-q", "origin", "main")
+    prova = ('. "$1" && verifica_catena "$2" "$3" "$4"; echo "esito=$? $MOTIVO_FIRMA"')
+    r = _lancia([BASH, "-c", f'cd "{_msys(clone)}" && {prova}', "verifica", (SCRIPT / "verifica-firme.sh").as_posix(),
+                 s.c1, x, _msys(s.chiave)], env=s.env)
+    assert "esito=1 " in r.stdout and "non e' nella storia di main" in r.stdout, r.stdout + r.stderr
+    # la punta di main, con le stesse firme, passa come sempre
+    r = _lancia([BASH, "-c", f'cd "{_msys(clone)}" && {prova}', "verifica", (SCRIPT / "verifica-firme.sh").as_posix(),
+                 s.c1, c2, _msys(s.chiave)], env=s.env)
+    assert "esito=0" in r.stdout, r.stdout + r.stderr
+
+
+@con_bash
+def test_senza_il_ramo_main_un_tag_dal_nome_intero_non_si_installa(server):
+    s = server
+    x = _commit_fuori_da_main(s)
+    _clone_senza_ramo_main_con_tag_dal_nome_intero(s, x)
+    r = s.esegui("aggiorna-app.sh")
+    assert r.returncode == 1, r.stderr + s.log()
+    assert "il ramo origin/main non esiste nel clone" in s.log()
+    assert s.riavvii() == 0 and s.ultimo() == s.c1
+    assert (s.app / "fanta" / "__init__.py").read_text(encoding="utf-8") == "V1"
+    _lega_e_dati_intatti(s)
+
+
+@con_bash
+def test_verifica_catena_senza_il_ramo_main_rifiuta_anche_con_un_tag_dal_nome_intero(server):
+    s = server
+    x = _commit_fuori_da_main(s)
+    clone = _clone_senza_ramo_main_con_tag_dal_nome_intero(s, x)
+    r = _lancia([BASH, "-c", f'cd "{_msys(clone)}" && . "$1" && verifica_catena "$2" "$3" "$4"; echo "esito=$? $MOTIVO_FIRMA"',
+                 "verifica", (SCRIPT / "verifica-firme.sh").as_posix(), s.c1, x, _msys(s.chiave)], env=s.env)
+    assert "esito=1 " in r.stdout and "il ramo origin/main non esiste nel clone" in r.stdout, r.stdout + r.stderr
+
+
+@con_bash
+def test_pubblica_sito_con_un_tag_chiamato_origin_main_pubblica_il_sito_di_main(server, tmp_path):
+    s = server
+    x = _commit_fuori_da_main(s, **{"sito/index.html": "<html>FUORI DA MAIN"})
+    _git(s.casa / "schieraxi-src", "fetch", "-q", "origin", "a-parte")
+    _git(s.casa / "schieraxi-src", "tag", "origin/main", x)
+    sito = tmp_path / "www"
+    r = s.esegui("pubblica-sito.sh", SCHIERAXI_SITO_DIR=sito.as_posix(), FANTA_CACHE=(tmp_path / "c").as_posix())
+    assert r.returncode == 0, r.stderr
+    assert (sito / "index.html").read_text(encoding="utf-8") == "<html>1"
+
+
 @con_bash
 def test_senza_chiave_fidata_non_installa_e_avvisa_una_volta(server):
     """Se la chiave sparisce la verifica NON si spegne: niente installazione, una riga nel log e un solo avviso; torna la chiave, si installa."""
