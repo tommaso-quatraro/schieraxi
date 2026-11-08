@@ -2,8 +2,17 @@
 
 L'OpenAPI non descrive le risposte (le rotte restituiscono dizionari), quindi i modelli Swift non si possono generare da lì.
 Al loro posto questo controllo: ogni campo dei modelli `Decodable` dell'iPhone, tradotto nel nome JSON, deve comparire come
-chiave nel codice del server (`fanta/`). Prende le rinomine e i campi tolti nella stessa pull request. I tipi sbagliati li
-prende l'altro controllo, sul Mac (test Swift sulle risposte vere di `ios/fotografie/vero-*.json`).
+chiave in un punto qualsiasi del codice del server (`fanta/`). I tipi sbagliati li prende l'altro controllo, sul Mac (test
+Swift sulle risposte vere di `ios/fotografie/vero-*.json`).
+
+Cosa NON prende (limiti voluti, da sapere in revisione):
+- trova una chiave sparita da TUTTO `fanta/`, non un campo tolto da UNA rotta: se la chiave resta in un altro file (un'altra
+  rotta, un calcolo, un controllo) il test resta verde. Molte chiavi sono comuni: circa 3 su 10 di quelle lette dall'iPhone
+  (28%, ricerca nel testo dell'8/11) compaiono in 5 o più file di `fanta/`. Per quelle una rinomina in una sola rotta passa;
+  la prende solo il test sul Mac con le risposte vere;
+- non sa quali tipi l'app legge con `convertFromSnakeCase` e quali senza: accetta la chiave in tutti e due i modi;
+- non controlla i valori delle enum (per esempio `stato` = `in_corso`), solo i nomi dei campi;
+- le chiavi costruite mentre il server gira (colonne di un `SELECT *`, chiavi in variabili) non le vede: vanno in eccezione.
 
 Usato da `tests/test_contratto_ios.py`:
 - `campi_swift(cartelle)`: i campi letti dall'iPhone (`Campo`);
@@ -139,13 +148,48 @@ _TIPO = re.compile(
     r"\s*(?:\bwhere\b[^{]*)?$"
 )
 _INIT_DECODER = re.compile(r"\binit\s*\(\s*from\s+decoder\s*:\s*(?:any\s+)?Decoder\s*\)[^{]*$")
-_PROPRIETA = re.compile(
+_DICHIARAZIONE = re.compile(
     r"^\s*(?:@[\w.]+(?:\([^)]*\))?\s+)*"
     r"(?P<mod>(?:(?:private|fileprivate|public|internal|open)(?:\(set\))?\s+|static\s+|class\s+|lazy\s+|weak\s+"
     r"|unowned\s+|final\s+|nonisolated\s+|override\s+)*)"
-    r"(?P<decl>let|var)\s+(?P<nome>[A-Za-z_]\w*)\s*(?::\s*(?P<tipo>[^={]+?))?\s*(?P<valore>=[^{]*?)?\s*"
-    r"(?P<corpo>\{\w*\}.*)?$"
+    r"(?P<decl>let|var)\s+(?P<resto>.*)$"
 )
+# un pezzo di `let a: Int = 1, b: String`: nome, tipo, valore, e il corpo «{parola}» delle calcolate e degli osservatori
+_PEZZO = re.compile(r"^\s*(?P<nome>[A-Za-z_]\w*)\s*(?::\s*(?P<tipo>[^={]+?))?\s*(?P<valore>=[^{]*?)?\s*(?P<corpo>\{\w*\}.*)?$")
+
+
+def _dividi_virgole(testo: str) -> list[str]:
+    """Divide sulle virgole fuori da parentesi tonde, quadre e angolari (`->` non chiude niente)."""
+    pezzi, profondita, inizio = [], 0, 0
+    for k, ch in enumerate(testo):
+        if ch in "([<":
+            profondita += 1
+        elif ch in ")]" or (ch == ">" and testo[k - 1:k] != "-"):
+            profondita -= 1
+        elif ch == "," and profondita == 0:
+            pezzi.append(testo[inizio:k])
+            inizio = k + 1
+    return pezzi + [testo[inizio:]]
+
+
+def _proprieta_di(frase: str) -> list[tuple[str, str, bool]]:
+    """Le proprietà memorizzate dichiarate in una riga: (nome, tipo, è un `let` con il valore già scritto).
+    Legge anche `let x, y: Int` e `var a: Int, b: String?`; salta `static`, `class`, `lazy` e le calcolate."""
+    m = _DICHIARAZIONE.match(frase)
+    if not m or re.search(r"\b(static|class|lazy)\b", m.group("mod")):
+        return []
+    pezzi = [_PEZZO.match(p) for p in _dividi_virgole(m.group("resto"))]
+    if not all(pezzi):
+        return []
+    fuori, tipo_dopo = [], ""
+    for p in reversed(pezzi):  # in `let x, y: Int` anche x è Int: il tipo arriva dal pezzo dopo
+        corpo = p.group("corpo") or ""
+        if corpo and not p.group("valore") and not re.match(r"\{(willSet|didSet)\b", corpo):
+            continue  # proprietà calcolata
+        tipo = (p.group("tipo") or "").strip() or (tipo_dopo if not p.group("valore") else "")
+        tipo_dopo = tipo
+        fuori.append((p.group("nome"), tipo, m.group("decl") == "let" and bool(p.group("valore"))))
+    return fuori[::-1]
 _CASO = re.compile(r"^\s*(?:indirect\s+)?case\s+(.+)$")
 _DECODABLE = re.compile(r"\b(Codable|Decodable)\b")
 _TIPI_CON_CAMPI = ("struct", "class", "actor")
@@ -232,16 +276,8 @@ def _leggi_file(percorso: Path, relativo: str, lettura: _Lettura) -> None:
             info["chiavi"] += amb.chiavi
             info["inits"] += amb.inits
             return
-        proprieta = []
-        for frase, p in istruzioni:
-            m = _PROPRIETA.match(frase)
-            if not m or re.search(r"\b(static|class|lazy)\b", m.group("mod")):
-                continue
-            corpo = m.group("corpo") or ""
-            if corpo and not m.group("valore") and not re.match(r"\{(willSet|didSet)\b", corpo):
-                continue  # proprietà calcolata
-            let_con_valore = m.group("decl") == "let" and bool(m.group("valore"))
-            proprieta.append((m.group("nome"), (m.group("tipo") or "").strip(), let_con_valore, riga(p)))
+        proprieta = [(nome, tipo, con_valore, riga(p)) for frase, p in istruzioni
+                     for nome, tipo, con_valore in _proprieta_di(frase)]
         lettura.tipi.append(_Tipo(amb.nome, amb.tipo, bool(_DECODABLE.search(amb.eredita)), relativo, proprieta,
                                   amb.chiavi, amb.inits))
 
@@ -265,17 +301,22 @@ def _leggi_file(percorso: Path, relativo: str, lettura: _Lettura) -> None:
             pila.append(nuovo)
             confine = pos + 1
         elif c == "}":
-            if len(pila) > 1:
-                chiuso = pila.pop()
-                chiudi(chiuso, pos)
-                pila[-1].testo.append("}")
-                pila[-1].posizioni.append(pos)
+            if len(pila) == 1:
+                raise ValueError(f"{relativo}:{riga(pos)}: graffa chiusa senza una aperta: il lettore del contratto "
+                                 "iPhone-server non sa leggere questo file (stringa o commento di forma nuova?)")
+            chiuso = pila.pop()
+            chiudi(chiuso, pos)
+            pila[-1].testo.append("}")
+            pila[-1].posizioni.append(pos)
             confine = pos + 1
         else:
             if c == ";":
                 confine = pos + 1
             corrente.testo.append(c)
             corrente.posizioni.append(pos)
+    if len(pila) > 1:
+        raise ValueError(f"{relativo}: {len(pila) - 1} graffe aperte e mai chiuse (la prima alla riga {riga(pila[1].inizio)}): "
+                         "il lettore del contratto iPhone-server non sa leggere questo file (stringa o commento di forma nuova?)")
 
 
 def _leggi_tutto(cartelle: list[Path], radice: Path | None) -> _Lettura:
@@ -285,6 +326,14 @@ def _leggi_tutto(cartelle: list[Path], radice: Path | None) -> _Lettura:
         for percorso in sorted(Path(cartella).rglob("*.swift")):
             _leggi_file(percorso, percorso.resolve().relative_to(radice).as_posix(), lettura)
     return lettura
+
+
+def tipi_decodable(cartelle: list[Path], radice: Path | None = None) -> list[str]:
+    """I nomi completi dei tipi `Decodable`/`Codable` trovati dal lettore (struct, class ed enum), per controllare che non
+    ne perda nessuno."""
+    lettura = _leggi_tutto(cartelle, radice)
+    return sorted(t.nome for t in lettura.tipi
+                  if t.tipo != "protocol" and (t.decodable or lettura.estensioni.get(t.nome, {}).get("decodable")))
 
 
 def campi_swift(cartelle: list[Path], radice: Path | None = None) -> list[Campo]:
@@ -450,13 +499,15 @@ def campi_mancanti(campi: list[Campo], indice: set[str], eccezioni: dict[str, st
 
 
 def eccezioni_vecchie(campi: list[Campo], indice: set[str], eccezioni: dict[str, str]) -> list[str]:
-    """Eccezioni senza motivo, per strutture o campi che non ci sono più, doppie, o per campi che il server ormai manda."""
+    """Eccezioni senza motivo, per strutture o campi che non ci sono più, doppie, o per un campo che il server ormai manda.
+
+    Per una struttura intera (dati del telefono) contano solo il motivo e che la struttura ci sia ancora: se il server
+    aggiunge per caso una chiave con lo stesso nome (per esempio «dai»), l'eccezione resta giusta e il test resta verde."""
     problemi = []
     per_voce: dict[str, list[Campo]] = {}
-    per_struttura: dict[str, list[Campo]] = {}
+    strutture = {c.struttura for c in campi}
     for c in campi:
         per_voce.setdefault(c.voce, []).append(c)
-        per_struttura.setdefault(c.struttura, []).append(c)
     for voce, motivo in eccezioni.items():
         if not isinstance(motivo, str) or len(motivo.strip()) < 15:
             problemi.append(f"«{voce}»: manca il motivo (una frase che dica perché il server non manda il campo)")
@@ -465,10 +516,7 @@ def eccezioni_vecchie(campi: list[Campo], indice: set[str], eccezioni: dict[str,
                 problemi.append(f"«{voce}»: il server ora manda «{per_voce[voce][0].nome_json}», togli l'eccezione")
             elif per_voce[voce][0].struttura in eccezioni:
                 problemi.append(f"«{voce}»: c'è già l'eccezione per tutta «{per_voce[voce][0].struttura}», togli questa")
-        elif voce in per_struttura:
-            if all(trovato(c, indice) for c in per_struttura[voce]):
-                problemi.append(f"«{voce}»: tutti i suoi campi ora ci sono nel server, togli l'eccezione")
-        else:
+        elif voce not in strutture:
             problemi.append(f"«{voce}»: non c'è più tra i modelli Decodable dell'iPhone, togli l'eccezione")
     return problemi
 

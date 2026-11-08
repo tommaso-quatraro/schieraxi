@@ -5,6 +5,7 @@ riga dell'iPhone e come rimediare. Il lettore sta in `tests/contratto_ios.py`; l
 `tests/dati/contratto_ios_eccezioni.json`.
 """
 import json
+import re
 import textwrap
 from pathlib import Path
 
@@ -174,6 +175,37 @@ def test_stringhe_con_graffe_e_commenti_non_confondono(tmp_path):
     assert set(_per_nome(ci.campi_swift([cartella], radice=tmp_path))) == {"A.uno", "A.due", "A.tre", "B.quattro"}
 
 
+def test_casi_e_dichiarazioni_su_una_riga(tmp_path):
+    cartella = _swift(tmp_path, """\
+        struct Due: Decodable {
+            let x, y: Int
+            var a: Int, b: String?
+            let fissoA = 1, fissoB = 2
+            var calcolata: Int { x + y }
+        }
+        struct ConChiavi: Decodable {
+            let uno: Int
+            let due: Int
+            enum CodingKeys: String, CodingKey {
+                case uno, due
+            }
+        }
+        """)
+    campi = _per_nome(ci.campi_swift([cartella], radice=tmp_path))
+    assert set(campi) == {"Due.x", "Due.y", "Due.a", "Due.b", "ConChiavi.uno", "ConChiavi.due"}
+    assert campi["Due.y"].riga == 2 and campi["ConChiavi.due"].riga == 11
+
+
+@pytest.mark.parametrize("testo", [
+    "struct Aperta: Decodable {\n    let x: Int\n",
+    "struct Chiusa: Decodable {\n    let x: Int\n}\n}\n",
+])
+def test_graffe_non_bilanciate_errore_chiaro(tmp_path, testo):
+    cartella = _swift(tmp_path, testo, nome="Rotto.swift")
+    with pytest.raises(ValueError, match=r"Rotto\.swift.*graff"):
+        ci.campi_swift([cartella], radice=tmp_path)
+
+
 # ---- chiavi del server ----
 
 def test_chiavi_server_da_dizionari_dataclass_e_dict(tmp_path):
@@ -250,7 +282,7 @@ def test_eccezioni_vecchie_trovate():
     problemi = ci.eccezioni_vecchie(campi, indice, {
         "A.x": motivo,          # il server ora manda «x»
         "A.y": "",              # senza motivo
-        "B": motivo,            # tutti i campi di B ora ci sono
+        "B": motivo,            # struttura intera: resta anche se ora tutti i campi di B ci sono (vedi sotto)
         "C": motivo,            # giusta: «z» manca davvero
         "C.z": motivo,          # doppia: c'è già quella per tutta C
         "Sparita.campo": motivo,
@@ -258,11 +290,20 @@ def test_eccezioni_vecchie_trovate():
     testo = "\n".join(problemi)
     assert "«A.x»: il server ora manda" in testo
     assert "«A.y»: manca il motivo" in testo
-    assert "«B»: tutti i suoi campi" in testo
     assert "«C.z»: c'è già l'eccezione" in testo
     assert "«Sparita.campo»: non c'è più" in testo
-    assert not any(p.startswith("«C»") for p in problemi)
-    assert len(problemi) == 5
+    assert not any(p.startswith(("«B»", "«C»")) for p in problemi)
+    assert len(problemi) == 4
+
+
+def test_eccezione_di_struttura_non_diventa_rossa_per_una_chiave_nuova_del_server():
+    """Una struttura salvata sul telefono resta un'eccezione giusta anche se una PR del server aggiunge per caso le sue chiavi
+    (per esempio «dai» per `VoceArchivioScambi`): il test non deve diventare rosso né chiedere di toglierla."""
+    campi = [ci.Campo("VoceArchivioScambi", "dai", "dai", "f", 1), ci.Campo("VoceArchivioScambi", "ricevo", "ricevo", "f", 2)]
+    eccezioni = {"VoceArchivioScambi": "archivio degli scambi salvato sul telefono"}
+    assert ci.eccezioni_vecchie(campi, ci.indice_chiavi({"dai", "ricevo"}), eccezioni) == []
+    assert ci.eccezioni_vecchie(campi, ci.indice_chiavi(set()), {"VoceArchivioScambi": "corto"})  # il motivo serve sempre
+    assert ci.eccezioni_vecchie([], ci.indice_chiavi(set()), eccezioni)  # struttura sparita: va tolta
 
 
 def test_rotte_probabili_seguono_i_tipi(tmp_path):
@@ -297,7 +338,29 @@ def test_il_lettore_trova_i_modelli_veri(vero):
     for atteso in ("Giocatore.id", "StatoAvvisi.oreTranquilleSpente", "ImpostazioniAvvisi.promemoria_60",
                    "StatoDati.Partite.totali", "RispostaAccount.emailAttiva"):
         assert atteso in nomi, atteso
-    assert len(campi) > 400
+
+
+def _decodable_con_ricerca_semplice() -> set[str]:
+    """I tipi con Codable o Decodable nella riga della dichiarazione (tolti i vincoli dei generici), cercati riga per riga."""
+    nomi = set()
+    dichiarazione = re.compile(r"\s*(?:(?:public|private|fileprivate|internal|final|indirect)\s+)*(?:struct|class|enum)\s+(\w+)([^{]*)")
+    for cartella in ci.CARTELLE_SWIFT:
+        for percorso in cartella.rglob("*.swift"):
+            for riga in percorso.read_text(encoding="utf-8").splitlines():
+                m = dichiarazione.match(riga)
+                if m and re.search(r"\b(Codable|Decodable)\b", re.sub(r"<[^>]*>", "", m.group(2))):
+                    nomi.add(m.group(1))
+    return nomi
+
+
+def test_il_lettore_trova_tutti_i_tipi_decodable():
+    """Se il lettore perde dei tipi, il contratto controlla meno senza dirlo: confronto con una ricerca riga per riga
+    (oggi 166 struct e 1 enum), con un margine piccolo per le dichiarazioni su più righe."""
+    semplice = _decodable_con_ricerca_semplice()
+    letti = {nome.rsplit(".", 1)[-1] for nome in ci.tipi_decodable(ci.CARTELLE_SWIFT)}
+    assert len(semplice) > 100
+    assert semplice <= letti, f"Tipi persi dal lettore: {sorted(semplice - letti)}"
+    assert len(letti) - len(semplice) <= 3, f"Tipi in più rispetto alla ricerca semplice: {sorted(letti - semplice)}"
 
 
 def test_ogni_campo_letto_dall_iphone_esiste_nel_server(vero):
