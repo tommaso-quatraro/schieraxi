@@ -1,0 +1,10 @@
+{
+  "titolo": "Stato dei dati: a che punto è la taratura di «gioca N%»",
+  "voci": [
+    "Web, iPhone e iPad, per chi gestisce il server: in Stato dei dati una riga dice se la taratura di «gioca N%» con le probabili è in attesa, attiva (da quando e con che numeri), non attiva (e perché) o spenta. Per gli altri non cambia niente."
+  ],
+  "tecnico": [
+    "Parte di #379 (PR C del piano 2026-11-06-gioca-probabili-server). app.js: rigaTaratura(c.taratura) legge calibrazione.taratura di GET /api/stato-dati (taratura_probabili.riepilogo) e la scrive com'è, una frase per ogni motivo; in «Ultimi aggiornamenti dei dati» la riga taratura-probabili si legge «Taratura di «gioca N%»». Testi sd.tar_* e sd.f_taratura in italiano e inglese.",
+    "iPhone: StatoDati.Taratura (in Modelli.swift, che compila anche il widget; campi che non si leggono valgono nil) in Calibrazione.taratura; ParoleRegistro.taratura (ParoleRegistro+Taratura.swift) scrive la frase nel piè della sezione della calibrazione; NomiDati ha «taratura-probabili». Brier con quattro decimali; ParoleRegistro.punti scrive «1 punto» al singolare, anche nella riga I2 del registro. La demo ha una taratura attiva. Test TaraturaProbabiliTests con la fixture stato-dati-taratura.json, controllata contro la risposta vera del server."
+  ]
+}

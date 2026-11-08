@@ -26,6 +26,15 @@
       "forma": "web",
       "chi": "fatto con #401 (test contro `testi.js` e sulla stessa risposta del server)",
       "stato": "fatto"
+    },
+    {
+      "id": 59,
+      "schermata": "Stato dei dati, taratura di «gioca N%»",
+      "web": "sotto i gruppi di «Quanto ci azzecca il modello» una frase «Taratura con le probabili: …» dal campo `calibrazione.taratura` del server: «in attesa · 2 giornate su 4», «attiva dal 15/1 (versione 1) · nelle ultime 4 giornate Brier 0,0912 invece di 0,0968, scarto 2,1 punti» (Brier con quattro decimali, «1 punto» al singolare anche nella riga di «gioca N%» del registro), «non attiva · » e il motivo (per esempio «non sbaglia meno dei numeri di partenza»), «spenta a mano»; negli aggiornamenti «Taratura di «gioca N%»» (`rigaTaratura`, testi `sd.tar_*`, `sd.reg_punti`, `sd.f_taratura`)",
+      "iphone": "uguale, nel piè della sezione «Quanto sono giuste le previsioni» (`ParoleRegistro.taratura`), e lo stesso nome negli aggiornamenti; Brier con quattro decimali e «1 punto» al singolare (anche nella riga di «gioca N%» del registro), decisi in revisione e uguali sulla web",
+      "forma": "web",
+      "chi": "fatto con #379 (test contro `testi.js` e sulla stessa risposta del server)",
+      "stato": "fatto"
     }
   ]
 }
