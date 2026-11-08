@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from . import calcolo, etichette, frasi, incertezza, perche
+from . import calcolo, etichette, frasi, incertezza, limiti, perche
 from . import formazione as fz
 from . import modello, perche_scelta, rinvii, scelte, stato_dati, turno
 from .aggiorna import Stagione
@@ -413,6 +413,9 @@ NON_GIOCA = ("fuori", "improbabile")      # `titolarita`: infortunato, squalific
 # {impronta: {stagione, giornata, modulo, titolari, panchina, non_giocano, quando}} (`da_ricordare`).
 # Comune a tutti come la cache dei calcoli (stessa squadra, rosa e regole: stessa consigliata), ma sopravvive ai riavvii e vale
 # anche per i comandi lanciati a parte (avvisi, sentinella). Solo id di giocatori: la chiave è un'impronta, niente nomi.
+# Parte di ciascuno (#513): con gli account ogni voce ha anche `utenti` (id di chi l'ha vista); un utente ne tiene al massimo
+# `limiti.MAX_CONSIGLIATE_UTENTE`, oltre perde le sue più vecchie (una voce che serve anche ad altri resta per loro). Le voci
+# senza `utenti` (senza account, comandi) contano solo nel tetto di tutto il file.
 FILE_CONSIGLIATE = RADICE / "dati" / "consigliate.json"
 MAX_CONSIGLIATE = 1000                    # oltre, esce la più vecchia: ~250 byte l'una
 _blocco_consigliate = threading.Lock()
@@ -486,14 +489,22 @@ def _consigliate() -> dict:
     return d
 
 
+def _utenti(voce) -> list[int]:
+    """Gli id di chi ha visto la consigliata ricordata `voce` ([] senza account, o se il campo è rovinato)."""
+    return _ids(voce, "utenti") or []
+
+
 def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict | None) -> None:
-    """Ricorda la consigliata mostrata (`da_ricordare`), solo se è cambiata. Rilegge il file subito prima di scrivere, con il
-    blocco valido anche fra processi. Un errore non ferma la risposta: si riprova alla prossima."""
+    """Ricorda la consigliata mostrata (`da_ricordare`), solo se è cambiata o se chi chiede (`calcolo.utente_richiesta`, con gli
+    account) non l'aveva ancora vista. Rilegge il file subito prima di scrivere, con il blocco valido anche fra processi.
+    Un errore non ferma la risposta: si riprova alla prossima."""
     voce = da_ricordare(f, prima)
     if voce is None:
         return
+    utente = calcolo.utente_richiesta.get()
     if (prima is not None and set(_ids(prima, "titolari") or []) == set(voce["titolari"]) and _ids(prima, "panchina") == voce["panchina"]
-            and prima.get("modulo") == voce["modulo"] and _ids(prima, "non_giocano") == voce["non_giocano"]):
+            and prima.get("modulo") == voce["modulo"] and _ids(prima, "non_giocano") == voce["non_giocano"]
+            and (utente is None or utente in _utenti(prima))):
         return
     nuova = {"stagione": str(stagione), "giornata": int(giornata), **voce, "quando": _adesso().isoformat(timespec="seconds")}
     file = FILE_CONSIGLIATE
@@ -504,8 +515,21 @@ def _ricorda(impronta: str, f: dict, stagione: str, giornata: int, prima: dict |
             except (OSError, ValueError):
                 tutte = {}
             tutte = tutte if isinstance(tutte, dict) else {}
-            tutte[impronta] = nuova
-            per_eta = sorted(tutte, key=lambda k: str(tutte[k].get("quando", "")) if isinstance(tutte[k], dict) else "")
+            utenti = _utenti(tutte.get(impronta))
+            if utente is not None and utente not in utenti:
+                utenti.append(utente)
+            tutte[impronta] = nuova | ({"utenti": utenti} if utenti else {})
+            per_eta = sorted((k for k in tutte if k != impronta),
+                             key=lambda k: str(tutte[k].get("quando", "")) if isinstance(tutte[k], dict) else "")
+            if utente is not None:                       # la parte di chi chiede: oltre, perde le sue più vecchie
+                mie = [k for k in per_eta if utente in _utenti(tutte[k])]
+                for vecchia in mie[:max(0, len(mie) + 1 - limiti.valore("MAX_CONSIGLIATE_UTENTE"))]:
+                    altri = [u for u in _utenti(tutte[vecchia]) if u != utente]
+                    if altri:
+                        tutte[vecchia]["utenti"] = altri         # serve ancora ad altri utenti: resta per loro
+                    else:
+                        tutte.pop(vecchia)
+                per_eta = [k for k in per_eta if k in tutte]
             for vecchia in per_eta[:max(0, len(tutte) - MAX_CONSIGLIATE)]:
                 tutte.pop(vecchia, None)
             scrivi_sicuro(file, json.dumps(tutte, ensure_ascii=False))
