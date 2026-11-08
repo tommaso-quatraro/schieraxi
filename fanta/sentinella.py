@@ -11,7 +11,10 @@ sensate (le «invarianti»). Così i difetti li trova il server, non chi usa l'a
 - Avviso sul canale del proprietario (`~/.config/schieraxi/canale`, come gli script del server) quando un'invariante si rompe per la
   prima volta: deve risultare rotta in CONFERME giri di fila (un aggiornamento dei dati a metà non fa partire niente), un solo
   messaggio per giro, e la stessa rottura non si riavvisa finché non è rimasta a posto per RICORDA_RISOLTE.
-Comando: `python -m fanta sentinella [--minuti N] [--senza-invio]` (script del server: `script/server/sentinella.sh`).
+- Storia dei giri nel file di stato (`giri`, ultimi TIENI_GIRI): una voce {quando, rotte, inviato} per ogni giro del server, anche
+  senza rotture; i giri a mano (`--senza-invio`) non entrano. La legge la «giornata senza errori» (`giri_sentinella`).
+Comando: `python -m fanta sentinella [--minuti N] [--senza-invio]` (script del server: `script/server/sentinella.sh`);
+`python -m fanta sentinella --giri --dal ISO --al ISO` stampa i giri fra due date con il fuso, senza fare il giro.
 """
 from __future__ import annotations
 
@@ -41,6 +44,7 @@ TOLLERANZA_ORE = 0.25                                     # ore_mancanti è calc
 MAX_BYTE_WIDGET = 20 * 1024                               # docs/API.md: il widget resta sotto i 20 kB
 CONFERME = 2                                              # giri di fila con la stessa rottura prima di avvisare
 RICORDA_RISOLTE = timedelta(hours=24)                     # una rottura già avvisata non si riavvisa prima che sia a posto da tanto
+TIENI_GIRI = timedelta(days=60)                           # storia dei giri nel file di stato (la legge la «giornata senza errori»)
 MAX_RIGHE_AVVISO = 6
 MAX_DETTAGLIO = 600                                       # caratteri del dettaglio in «Stato dei dati»
 FILE_STATO = percorsi.RADICE / "dati" / "sentinella.json"
@@ -803,6 +807,47 @@ def testo_avviso(rotture: list[Rottura]) -> tuple[str, str]:
             "(dettagli in Stato dei dati):\n" + "\n".join(righe))
 
 
+# ---------------------------------------------------------------- storia dei giri (la «giornata senza errori», #532)
+def _quando(voce) -> datetime | None:
+    """L'ora di una voce della storia, con il fuso; None se la voce è rovinata o senza fuso."""
+    try:
+        q = datetime.fromisoformat(voce["quando"])
+    except (TypeError, KeyError, ValueError):
+        return None
+    return q if q.utcoffset() is not None else None
+
+
+def rotte_confermate(stato: dict, esito: dict) -> list[str]:
+    """Le invarianti rotte in questo giro e confermate (viste CONFERME giri di fila, come per l'avviso), anche se già avvisate:
+    una rottura vista in un giro solo non è un allarme. `stato` è quello appena aggiornato da `aggiorna_stato`."""
+    aperte = stato.get("aperte") or {}
+    return sorted({r.invariante for r in esito["rotture"] if int((aperte.get(r.chiave) or {}).get("volte") or 0) >= CONFERME})
+
+
+def aggiungi_giro(giri, voce: dict) -> list[dict]:
+    """La storia con la voce nuova in fondo, senza le voci più vecchie di TIENI_GIRI (né quelle che non si leggono)."""
+    limite = _quando(voce) - TIENI_GIRI
+    tenute = [v for v in (giri if isinstance(giri, list) else []) if (q := _quando(v)) is not None and q >= limite]
+    return tenute + [voce]
+
+
+def giri_sentinella(dal: datetime, al: datetime, file: Path = FILE_STATO) -> list[dict]:
+    """I giri del server con `dal <= quando <= al`, dal più vecchio: [{quando, rotte, inviato}] (solo ore e nomi di invarianti).
+    `dal` e `al` vogliono il fuso: la storia ha l'ora con il fuso, e un confronto con un'ora senza fuso sarebbe sbagliato."""
+    if dal.utcoffset() is None or al.utcoffset() is None:
+        raise ValueError("dal e al vogliono data e ora col fuso (esempio: 2026-11-15T20:00:00+01:00 o 2026-11-15T19:00:00Z)")
+    giri = leggi_stato(file).get("giri")
+    scelti = []
+    for v in giri if isinstance(giri, list) else []:
+        q = _quando(v)
+        if q is None or not dal <= q <= al:
+            continue
+        rotte = v.get("rotte") or []
+        rotte = [str(x) for x in rotte] if isinstance(rotte, list) else [str(rotte)]   # rovinata: resta un allarme, mai verde
+        scelti.append((q, {"quando": v["quando"], "rotte": rotte, "inviato": v.get("inviato") is True}))
+    return [v for _, v in sorted(scelti, key=lambda x: x[0])]
+
+
 def canale() -> str | None:
     """Il canale del proprietario, come gli script del server: il file in SCHIERAXI_CANALE o ~/.config/schieraxi/canale."""
     file = Path(os.environ.get("SCHIERAXI_CANALE") or Path.home() / ".config" / "schieraxi" / "canale")
@@ -830,8 +875,9 @@ def manda_ntfy(titolo: str, testo: str) -> bool:
 
 def giro(minuti: float = 15, manda: Callable[[str, str], bool] | None = manda_ntfy, file_stato: Path = FILE_STATO,
          adesso: datetime | None = None, scrivi: Callable[[str], None] = print, db_percorso: Path | None = None) -> dict:
-    """Il comando del cron: controlla, scrive la tabella `controlli`, avvisa le rotture nuove. Con `manda=None` (--senza-invio)
-    stampa l'avviso invece di mandarlo e non tocca il file di stato (le prove a mano non consumano gli avvisi)."""
+    """Il comando del cron: controlla, scrive la tabella `controlli`, avvisa le rotture nuove e aggiunge il giro alla storia
+    (`giri`). Con `manda=None` (--senza-invio) stampa l'avviso invece di mandarlo e non tocca il file di stato: le prove a mano non
+    consumano gli avvisi e non entrano nella storia (non coprono il buco di un cron fermo)."""
     from . import archivio
     adesso = adesso or datetime.now()
     stato = leggi_stato(file_stato)
@@ -846,15 +892,20 @@ def giro(minuti: float = 15, manda: Callable[[str, str], bool] | None = manda_nt
            + (f", {esito['rimandati']} rimandati al prossimo giro" if esito["rimandati"] else ""))
     for r in esito["rotture"]:
         scrivi(f"  [{INVARIANTI[r.invariante][0]}] {r.invariante} · {r.utente or 'tutti'} · g{r.giornata}: {r.dettaglio}")
+    inviato = False
     if da_avvisare:
         titolo, testo = testo_avviso(da_avvisare)
         if manda is None:
             scrivi(f"[prova, non inviato] {titolo}: {testo}")
         elif manda(titolo, testo):
             segna_avvisate(nuovo, da_avvisare)
+            inviato = True
             scrivi(f"avviso mandato: {len(da_avvisare)} rotture nuove")
         else:
             scrivi("avviso NON mandato (canale mancante o rete): si riprova al prossimo giro")
     if manda is not None:
+        voce = {"quando": adesso.astimezone().isoformat(timespec="seconds"), "rotte": rotte_confermate(nuovo, esito),
+                "inviato": inviato}
+        nuovo["giri"] = aggiungi_giro(stato.get("giri"), voce)
         percorsi.scrivi_sicuro(file_stato, json.dumps(nuovo, ensure_ascii=False))
     return esito | {"da_avvisare": da_avvisare}

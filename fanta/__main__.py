@@ -23,6 +23,7 @@
   backup [--tieni N]              copia dei dati della lega in dati/backup, ne tiene le ultime N (usato sul server, di sera)
   salute                          controlla che l'app risponda e che i dati siano freschi (usato sul server)
   sentinella [--minuti N] [--senza-invio]   rifà in sola lettura le risposte dell'app per ogni utente e controlla che tornino (usato sul server, ogni ora)
+  sentinella --giri --dal ISO --al ISO   stampa in JSON i giri della sentinella fra due date con il fuso, senza fare il giro
   riepilogo                       riepilogo a giornata finita: punti fatti, attesi e massimo possibile (usato sul server)
   avviso [--prova]                testo dell'avviso "formazione pronta", se è il momento (usato sul server)
   taratura-probabili [--prova | --spegni | --accendi]   ritara «gioca N%» con le probabili sulle giornate giocate e lo usa solo se
@@ -535,8 +536,22 @@ def cmd_salute(a) -> None:
         db.close()
 
 
+def _ora_con_fuso(opzione: str, testo: str):
+    from datetime import datetime
+    try:
+        return datetime.fromisoformat(testo)
+    except ValueError:
+        raise ValueError(f"{opzione}: data e ora non valida, serve per esempio 2026-11-15T20:00:00+01:00") from None
+
+
 def cmd_sentinella(a) -> None:
     from . import sentinella
+    if a.giri or a.dal or a.al:            # la storia dei giri, per la «giornata senza errori»: niente giro
+        if not (a.giri and a.dal and a.al):
+            raise ValueError("--giri vuole --dal e --al (data e ora con il fuso), e --dal e --al valgono solo con --giri")
+        giri = sentinella.giri_sentinella(_ora_con_fuso("--dal", a.dal), _ora_con_fuso("--al", a.al), sentinella.FILE_STATO)
+        print(json.dumps(giri, ensure_ascii=False, indent=1))
+        return
     esito = sentinella.giro(minuti=a.minuti, manda=None if a.senza_invio else sentinella.manda_ntfy)
     if any(sentinella.INVARIANTI[r.invariante][0] == "errore" for r in esito["rotture"]):
         sys.exit(2)                       # per chi la lancia a mano: qualcosa che l'utente vede sbagliato
@@ -869,6 +884,9 @@ def main(argv: list[str] | None = None) -> None:
     x = sub.add_parser("sentinella", help="controlla in sola lettura che le risposte dell'app tornino, per ogni utente")
     x.add_argument("--minuti", type=float, default=15, help="tempo massimo (di norma 15): gli utenti rimasti al giro dopo")
     x.add_argument("--senza-invio", action="store_true", help="stampa l'avviso invece di mandarlo e non segna niente")
+    x.add_argument("--giri", action="store_true", help="stampa in JSON i giri registrati fra --dal e --al, senza fare il giro")
+    x.add_argument("--dal", help="con --giri: data e ora ISO con il fuso (per esempio 2026-11-15T20:00:00+01:00)")
+    x.add_argument("--al", help="con --giri: data e ora ISO con il fuso (per esempio 2026-11-16T22:45:00Z)")
     x.set_defaults(f=cmd_sentinella)
     x = sub.add_parser("riepilogo", help="riepilogo a giornata finita")
     x.set_defaults(f=cmd_riepilogo)
