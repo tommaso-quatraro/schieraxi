@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.438",
+    "data": "2026-11-08T14:15:19",
+    "titolo": "Regole: limiti più chiari sulla lunghezza dei testi",
+    "voci": [
+      "Regole, «Riconosci le regole» (web e iPhone): se il testo incollato è troppo lungo, o ha una riga lunghissima, l'app lo dice con una frase chiara invece di leggerne solo una parte.",
+      "Regole (web e iPhone): il nome della lega può avere al massimo cento caratteri e il modificatore difesa al massimo venti fasce; oltre, al salvataggio l'app spiega cosa accorciare."
+    ],
+    "tecnico": [
+      "Issue #480, irrobustimento. regole_testo: espressioni in tempo lineare con qualsiasi testo (numero con il segno senza spazi facoltativi davanti, parole dopo la radice al massimo 20 lettere, cifre non precedute da cifre, spazi intorno a «:» o «=» in una parte sola); numeri con più di 9 cifre ignorati. Su 5000 testi verosimili il risultato è identico a prima.",
+      "Tetti del testo: MAX_TESTO 30000 caratteri, MAX_RIGA 2000; oltre, TestoTroppoLungo (422) da POST /api/regole/riconosci e POST /api/onboarding/regole (prima il testo oltre 30000 caratteri si tagliava senza dirlo).",
+      "regole: Regole.problemi_di_misura (nome_lega 100 caratteri, modulo 20, modificatore_difesa.soglie 20, chiavi di rinvii_giornate 20 caratteri, un valore per ruolo in bonus.gol, rosa, panchina.posti) ed errore RegoleTroppoGrandi (422); i tetti che c'erano già (moduli, eccezioni, finestre) ora rispondono 422. regole.carica e il ripristino del backup leggono senza i tetti di misura le regole salvate prima (il ripristino scrive un avviso nel registro). Il gestore dei ValueError usa l'attributo di classe `stato` (400 o 422).",
+      "Account spenti: rotte_account.richiesta_locale controlla anche l'intestazione Host (un indirizzo della rete 127.0.0.0/8, localhost o [::1], con o senza porta). Con FANTA_MULTIUTENTE=1 nessun cambio.",
+      "consigli.formazione: la chiave della memoria dei calcoli contiene id e nome di ogni giocatore della rosa."
+    ]
+  },
+  {
     "versione": "1.437",
     "data": "2026-11-08T13:52:05",
     "titolo": "Aggiornamenti del server: il ramo da installare si legge in modo più sicuro",

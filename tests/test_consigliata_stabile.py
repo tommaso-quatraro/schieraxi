@@ -290,3 +290,15 @@ def test_una_voce_per_squadra_e_un_tetto_al_file(mondo, monkeypatch):
         consigli.formazione(mondo["db"], SOLO_442, lega.Rose(squadre, s.nome))
         voci.append(len(json.loads(consigli.FILE_CONSIGLIATE.read_text(encoding="utf-8"))))
     assert voci == [1, 2, 2]                                  # stessa rosa ma squadre diverse: voci diverse; poi esce la più vecchia
+
+
+def test_giocatori_non_riconosciuti_diversi_non_si_mescolano_fra_utenti(mondo):
+    """La memoria dei calcoli è di tutti: due utenti con la stessa squadra e gli stessi giocatori riconosciuti, ma un giocatore
+    non riconosciuto scritto in modo diverso, vedono ognuno il proprio nome tra quelli senza dati (#480)."""
+    def rose_con(nome_scritto: str) -> lega.Rose:
+        s = _squadra()
+        s.giocatori.append(lega.GiocatoreRosa(None, nome_scritto, "A", "", 1))
+        return lega.Rose([s], s.nome)
+    prima = consigli.formazione(mondo["db"], SOLO_442, rose_con("Nome Inventato Uno"))
+    seconda = consigli.formazione(mondo["db"], SOLO_442, rose_con("Nome Inventato Due"))
+    assert prima["senza_dati"] == ["Nome Inventato Uno"] and seconda["senza_dati"] == ["Nome Inventato Due"]
