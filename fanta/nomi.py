@@ -19,6 +19,7 @@ import difflib
 import re
 import unicodedata
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from .frasi import F, elenco
@@ -123,12 +124,20 @@ def _senza_doppi(calciatori: list[Calciatore]) -> list[Calciatore]:
     return list({id(c): c for c in calciatori}.values())
 
 
+class TempoScaduto(Exception):
+    """Il riconoscimento ha superato il suo tempo massimo (vedi `Indice(scaduto=...)`): si ferma al nome che stava cercando."""
+
+
 class Indice:
     """Cerca i giocatori del listone per nome, aiutandosi con squadra e ruolo quando servono."""
 
-    def __init__(self, calciatori: list[Calciatore], completi: dict[int, str] | None = None):
+    def __init__(self, calciatori: list[Calciatore], completi: dict[int, str] | None = None, *,
+                 scaduto: Callable[[], bool] | None = None):
         """`completi` (facoltativo): nome e cognome per esteso di alcuni giocatori, {codice: "Lautaro Martínez"},
-        da un'altra fonte già abbinata al listone (`listone.nomi_completi`). Servono solo a proporre, mai a dare per sicuro."""
+        da un'altra fonte già abbinata al listone (`listone.nomi_completi`). Servono solo a proporre, mai a dare per sicuro.
+        `scaduto` (facoltativo): guardato prima di ogni nome cercato; se è vero `cerca` alza TempoScaduto (vedi
+        `limiti.tempo_riconoscimento`: un'importazione di rose non riconosce giocatori all'infinito)."""
+        self.scaduto = scaduto
         self.calciatori = calciatori
         self._per_nome: dict[str, list[Calciatore]] = defaultdict(list)
         for c in calciatori:
@@ -319,6 +328,8 @@ class Indice:
         return [c for k in dict.fromkeys(chiavi) if not _iniziali_diverse(n, k) for c in self._per_nome[k]]
 
     def cerca(self, nome: str, squadra: str | None = None, ruolo: str | None = None) -> Esito:
+        if self.scaduto is not None and self.scaduto():
+            raise TempoScaduto
         nome = str(nome)[:MAX_TESTO]                       # si legge solo l'inizio di una cella lunghissima
         n = normalizza(nome)
         if not n:
