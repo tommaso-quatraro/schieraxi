@@ -25,7 +25,7 @@ from urllib.parse import urlsplit
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi import Path as FPath
@@ -1801,25 +1801,45 @@ def imposta_mia_squadra(dati: MiaSquadra, request: Request, response: Response, 
         return {"mia_squadra": s.nome}
 
 
-def _leggi_rose(griglie, r, correzioni: list[dict] | None = None, prima: lega.Rose | None = None):
-    """Le squadre lette (con le scelte dell'utente sui dubbi già applicate), gli avvisi della lettura e il listone.
-    `prima` (le rose salvate): le squadre rinominate nell'app prendono il nome dell'app (lega.nomi_rinominati)."""
+class _Riconosciute(NamedTuple):
+    squadre: list                    # rose.SquadraLetta
+    avvisi: list[str]
+    calciatori: list                 # il listone usato
+
+
+def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
+    """I giocatori delle celle cercati nel listone: la parte lenta dell'importazione (e dell'anteprima). Si fa PRIMA di prendere
+    il blocco delle rose, così le scritture degli altri non la aspettano. Con gli account ha un tempo massimo
+    (`limiti.MAX_SECONDI_RICONOSCIMENTO`): oltre si ferma, con il messaggio dei contenuti troppo pesanti (`excel`: quello dell'Excel)."""
     calciatori, _ = listone.carica()
     avvisi: list[str] = []
-    lette = rose.estrai(griglie, nomi.Indice(calciatori, listone.nomi_completi()), r.rosa, avvisi)
+    indice = nomi.Indice(calciatori, listone.nomi_completi(), scaduto=limiti.tempo_riconoscimento(ctx))
+    try:
+        lette = rose.estrai(griglie, indice, _regole(ctx).rosa, avvisi)
+    except nomi.TempoScaduto:
+        raise ValueError(importa_sicuro.troppo_pesante(excel)) from None
     if not lette:
         raise ValueError(rose.NESSUNA_ROSA)
-    lega.nomi_rinominati(lette, prima)
-    anteprima_rose.applica_correzioni(lette, correzioni, calciatori)
-    rose.togli_doppioni(lette, avvisi)                 # una correzione può indicare chi c'è già nella stessa rosa
-    return lette, avvisi
+    return _Riconosciute(lette, avvisi, calciatori)
 
 
-def _importa(griglie, sostituisci_tutto: bool, ctx: Contesto, correzioni: list[dict] | None = None,
+def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prima: lega.Rose | None = None):
+    """Le squadre lette (con le scelte dell'utente sui dubbi già applicate) e gli avvisi della lettura. Veloce: si fa dentro il
+    blocco delle rose, dopo `_riconosci`. `prima` (le rose salvate): le squadre rinominate nell'app prendono il nome dell'app
+    (lega.nomi_rinominati)."""
+    squadre, avvisi = lette.squadre, list(lette.avvisi)
+    lega.nomi_rinominati(squadre, prima)
+    anteprima_rose.applica_correzioni(squadre, correzioni, lette.calciatori)
+    rose.togli_doppioni(squadre, avvisi)               # una correzione può indicare chi c'è già nella stessa rosa
+    return squadre, avvisi
+
+
+def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto, correzioni: list[dict] | None = None,
              mia_squadra: str | None = None) -> dict:
+    """Salva le rose già riconosciute (`_riconosci`). Da chiamare con il blocco delle rose preso."""
     r = _regole(ctx)
     prima = lega.carica(ctx.rose)
-    lette, avvisi = _leggi_rose(griglie, r, correzioni, prima)
+    lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
     limiti.controlla_rose(ctx, nuove)                          # con gli account: al massimo 20 squadre da 40 giocatori
@@ -1875,19 +1895,20 @@ def _scelte(correzioni: list[CorrezioneRosa] | None) -> list[dict] | None:
 
 @app.post("/api/rose/testo")
 def importa_testo(dati: TestoRose, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
-    with _scrittura_rose:                            # due importazioni insieme (o con l'importazione per conto di) una alla volta
-        versioni.controlla(request, versioni.etag_file(ctx.rose))
-        if ctx.utente_id is not None:
-            importa_sicuro.controlla_testo(dati.testo)
-        griglie = [("testo", rose.griglia_da_testo(dati.testo))]
-        if ctx.utente_id is not None:
-            importa_sicuro.controlla_griglie(griglie)
-        # i testi rifiutati per dimensione o righe non consumano un'importazione; dopo l'anteprima dello stesso testo non conta
-        impronta = _impronta(dati.testo)
-        with _buono_dell_anteprima(ctx, impronta):
-            risposta = _importa(griglie, dati.sostituisci_tutto, ctx, _scelte(dati.correzioni), dati.mia_squadra)
-        response.headers["ETag"] = versioni.etag_file(ctx.rose)
-        return risposta
+    versioni.controlla(request, versioni.etag_file(ctx.rose))        # rose già cambiate: 412 prima di contare
+    if ctx.utente_id is not None:
+        importa_sicuro.controlla_testo(dati.testo)
+    griglie = [("testo", rose.griglia_da_testo(dati.testo))]
+    if ctx.utente_id is not None:
+        importa_sicuro.controlla_griglie(griglie)
+    # i testi rifiutati per dimensione o righe non consumano un'importazione; dopo l'anteprima dello stesso testo non conta
+    with _buono_dell_anteprima(ctx, _impronta(dati.testo)):
+        riconosciute = _riconosci(griglie, ctx)           # fuori dal blocco: le scritture degli altri non aspettano
+        with _scrittura_rose:                            # due importazioni insieme (o con l'importazione per conto di) una alla volta
+            versioni.controlla(request, versioni.etag_file(ctx.rose))
+            risposta = _importa(riconosciute, dati.sostituisci_tutto, ctx, _scelte(dati.correzioni), dati.mia_squadra)
+            response.headers["ETag"] = versioni.etag_file(ctx.rose)
+            return risposta
 
 
 @contextlib.contextmanager
@@ -1920,12 +1941,13 @@ class AnteprimaRose(BaseModel):
     correzioni: list[CorrezioneRosa] | None = Field(None, max_length=MAX_CORREZIONI)
 
 
-def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, response: Response, ctx: Contesto) -> dict:
+def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, response: Response, ctx: Contesto,
+               excel: bool = False) -> dict:
     """Come l'importazione ma senza scrivere niente: legge le rose salvate (per dire cosa cambierebbe) e basta."""
     etag = versioni.etag_file(ctx.rose)          # PRIMA di leggere le rose: se cambiano subito dopo, l'importazione darà 412
     r = _regole(ctx)
     prima = lega.carica(ctx.rose)
-    lette, avvisi = _leggi_rose(griglie, r, correzioni, prima)
+    lette, avvisi = _leggi_rose(_riconosci(griglie, ctx, excel), correzioni, prima)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     limiti.controlla_rose(ctx, nuove)                              # stessi tetti dell'importazione
     risposta = anteprima_rose.anteprima(lette, avvisi, r, prima, nuove)
@@ -1978,10 +2000,11 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
         account.limite.consuma(db, account._chiave("importa-per-conto-di"), *IMPORTAZIONI_PER_CONTO_DI)
     importa_sicuro.controlla_griglie(griglie)
     ctx = Contesto.per_utente(utente_id)
+    riconosciute = _riconosci(griglie, ctx)               # fuori dal blocco, come le importazioni dall'app
     with _scrittura_rose:
         if sostituisci_tutto:
             _copia_datata_delle_rose(ctx)
-        risposta = _importa(griglie, sostituisci_tutto, ctx)
+        risposta = _importa(riconosciute, sostituisci_tutto, ctx)
     account.evento("importazione_per_conto_di", admin=da_chi if da_chi is not None else "riga-di-comando", utente=utente_id,
                    squadre=len(risposta["squadre_importate"]), sostituisci=int(bool(sostituisci_tutto)))
     return risposta
@@ -2069,12 +2092,14 @@ def importa_file(file: UploadFile, request: Request, response: Response, sostitu
     # da qui il file costa lavoro (zip, processo separato, lettura): conta come un'importazione anche se poi viene rifiutato,
     # così non si possono mandare file sbagliati all'infinito. I rifiuti immediati (vuoto, troppo grande, .xlsm) non contano.
     # Dopo l'anteprima dello stesso file non conta di nuovo.
-    # Il file si legge PRIMA di prendere il lucchetto delle rose (un Excel può richiedere fino a 30 s: gli altri non aspettano).
+    # Il file si legge e i giocatori si riconoscono PRIMA di prendere il lucchetto delle rose (un Excel può richiedere fino a
+    # 30 s, il riconoscimento fino a 20: gli altri non aspettano).
     with _buono_dell_anteprima(ctx, _impronta(contenuto)):
         griglie = _griglie_del_file(contenuto, estensione, ctx)
+        riconosciute = _riconosci(griglie, ctx, _e_excel(contenuto))
         with _scrittura_rose:                                     # una importazione alla volta (anche per conto di)
             versioni.controlla(request, versioni.etag_file(ctx.rose))
-            risposta = _importa(griglie, sostituisci_tutto, ctx, scelte, mia_squadra)
+            risposta = _importa(riconosciute, sostituisci_tutto, ctx, scelte, mia_squadra)
             response.headers["ETag"] = versioni.etag_file(ctx.rose)
             return risposta
 
@@ -2092,12 +2117,17 @@ def anteprima_file(file: UploadFile, response: Response, sostituisci_tutto: bool
         for p in presi:
             p.annulla()
         raise
-    return _anteprima(griglie, sostituisci_tutto, scelte, response, ctx)
+    return _anteprima(griglie, sostituisci_tutto, scelte, response, ctx, _e_excel(contenuto))
+
+
+def _e_excel(contenuto: bytes) -> bool:
+    """Un Excel è un archivio zip: si riconosce dall'inizio del file."""
+    return contenuto[:4] == b"PK"
 
 
 def _griglie_del_file(contenuto: bytes, estensione: str, ctx: Contesto):
     """Le celle del file: Excel (riconosciuto dall'inizio «PK») oppure testo. Con gli account, i controlli di importa_sicuro."""
-    if contenuto[:4] == b"PK":
+    if _e_excel(contenuto):
         return _griglie_dell_excel(contenuto, ".xlsm" if estensione == ".xlsm" else ".xlsx", ctx)
     testo = rose.decodifica(contenuto)
     if ctx.utente_id is not None:

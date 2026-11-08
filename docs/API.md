@@ -71,6 +71,15 @@ Sigle usate qui:
       I numeri stanno in `fanta/limiti.py` e si cambiano sul server con `FANTA_MAX_CALCOLI_UTENTE`, `FANTA_QUOTA_RISULTATI_UTENTE`,
       `FANTA_MAX_CONSIGLIATE_UTENTE` e `FANTA_MAX_AZIONI_PESANTI_ORA` (un valore non valido vale il numero di sempre). I client
       mostrano `detail` come per gli altri `429`.
+    - importazione delle rose (dal 8/11/2026, solo con gli account; vale per importazioni e anteprime, da testo, CSV ed Excel):
+      lo stesso tetto di lavoro per ogni formato. Un Excel si legge al massimo per 90.000 celle in tutto, tutti i fogli insieme
+      (come il testo: 1500 righe × 60 colonne; in ogni riga contano le celle fino all'ultima piena): oltre, `400` «Il file Excel
+      è troppo grande una volta aperto: carica solo il foglio con le rose». Il riconoscimento dei giocatori dura al massimo
+      20 secondi: oltre si ferma con `400` e il messaggio di sempre per i contenuti troppo pesanti («Il file Excel è troppo
+      pesante da leggere: carica solo il foglio con le rose» per un Excel, «Il testo è troppo lungo (massimo 200 mila
+      caratteri): incolla solo le rose» per testo e CSV); l'importazione resta contata come gli altri rifiuti dopo la lettura.
+      Mentre un'importazione legge e riconosce, le scritture degli altri utenti non la aspettano. I numeri si cambiano sul
+      server con `FANTA_MAX_CELLE_IMPORTAZIONE` e `FANTA_MAX_SECONDI_RICONOSCIMENTO`. Nessun campo nuovo nelle risposte.
 
 11. **Lingua dei testi del server**: italiano se non dici nulla. Per l'inglese manda `?lingua=en` oppure `Accept-Language: en` (vince il parametro). Vale per i testi scritti dal server dove la rotta lo dice (per esempio `GET /api/novita`, `GET /api/sotto-il-cofano`, gli avvisi di copertura in `da_fare`, i giudizi degli scambi, le note sugli infortuni). Le note sugli infortuni delle fonti (campo `nota`, e la stessa nota dentro `motivi`) in qualunque risposta `GET /api/` si traducono con un vocabolario; una nota che non si riconosce tutta resta in italiano. Le risposte che cambiano con la lingua hanno `Vary: Accept-Language`. Attenzione: URLSession e OkHttp mandano da soli `Accept-Language` con la lingua del telefono; un client che vuole sempre l'italiano deve mandare `?lingua=it`. I messaggi d'errore (`detail`) restano in italiano; le frasi che cambiano con i dati hanno anche la chiave per tradurle (vedi «Frasi con chiave» più sotto).
 
@@ -279,7 +288,7 @@ Gli scambi usano gli id dei giocatori, separati da virgola (per esempio `do=101,
 | `POST /api/rose/anteprima` | `{testo, sostituisci_tutto?, correzioni?}` (X-Fanta) | come l'importazione ma **non salva niente**: cosa capirebbe, giocatore per giocatore (vedi «Anteprima delle rose» qui sotto). Risponde con l'`ETag` delle rose da rimandare in `If-Match` all'importazione |
 | `POST /api/rose/anteprima/file` | file multipart `file`; `sostituisci_tutto?` (query); campo `correzioni?` (testo JSON) (X-Fanta) | la stessa anteprima per un file (gli stessi formati di `/api/rose/file`) |
 | `POST /api/rose/testo` | `{testo, sostituisci_tutto?, correzioni?, mia_squadra?}` (X-Fanta, If-Match) | importa le rose da testo incollato (anche CSV «rosters»). `correzioni` e `mia_squadra` sono facoltativi (dal piano «Ingresso facile»): senza, risponde come sempre |
-| `POST /api/rose/file` | file multipart `file`; `sostituisci_tutto?` (query); campi del modulo facoltativi `correzioni` (testo JSON) e `mia_squadra` (X-Fanta, If-Match) | importa da Excel (`.xlsx`) o da testo (CSV, TSV, TXT). Risposta con `riepilogo` (cosa è cambiato). File oltre 5 MB o vuoto: `400`. Con gli account accesi: `.xlsm` (macro) rifiutato e massimo 1500 righe e 60 colonne, con `400` e il motivo in italiano |
+| `POST /api/rose/file` | file multipart `file`; `sostituisci_tutto?` (query); campi del modulo facoltativi `correzioni` (testo JSON) e `mia_squadra` (X-Fanta, If-Match) | importa da Excel (`.xlsx`) o da testo (CSV, TSV, TXT). Risposta con `riepilogo` (cosa è cambiato). File oltre 5 MB o vuoto: `400`. Con gli account accesi: `.xlsm` (macro) rifiutato e massimo 1500 righe e 60 colonne (un Excel: 90.000 celle in tutto, e 20 secondi per riconoscere i giocatori, vedi «Limiti»), con `400` e il motivo in italiano |
 | `POST /api/rose/correggi` | `{squadra, nome, id}` (X-Fanta, If-Match) | abbina a mano un giocatore non riconosciuto |
 | `GET /api/movimenti` | `limite?` (massimo 300) | storico di scambi, svincoli e tagli, dal più recente |
 | `GET /api/regole` | — | regole della lega (ETag) |
