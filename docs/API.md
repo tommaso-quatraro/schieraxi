@@ -58,7 +58,19 @@ Sigle usate qui:
     - rotte degli account: tentativi limitati (`429` con `Retry-After`). Il conteggio globale dei tentativi sbagliati (per tipo:
       accesso, recupero, iscrizione) non blocca: oltre la soglia le risposte a chi non è noto arrivano fino a 3 secondi più lente;
     - analisi di scambi (`GET /api/scambi/analizza`): al massimo 20 analisi diverse al minuto per utente (ripetere la stessa
-      non conta) e poche alla volta (2 per utente, 3 in tutto il server): oltre, `429` con `Retry-After`.
+      non conta) e poche alla volta (2 per utente, 3 in tutto il server): oltre, `429` con `Retry-After`;
+    - calcoli e memorie condivise (dal 8/11/2026, solo con gli account): un utente ha al massimo 4 calcoli pesanti in coda o in
+      corso insieme. Un calcolo nuovo oltre il tetto non entra in coda: la risposta è la solita attesa `202` («sto calcolando», con
+      `riprova_tra` e `Retry-After`), il client riprova da solo e il calcolo entra appena uno dei suoi finisce. Riprovare un calcolo
+      già in coda non conta. Il `429` «Il server ha molti calcoli in coda: riprova fra qualche secondo» resta solo per la coda piena
+      di tutto il server. I risultati di un utente occupano al massimo un quarto della memoria comune dei risultati
+      (oltre escono prima i suoi usati meno di recente) e le consigliate già mostrate ricordate per lui sono al massimo 100
+      (una consigliata che serve anche ad altri utenti resta per loro). Nessuna azione di un utente svuota i risultati già
+      calcolati per gli altri. Creare e togliere la lega di prova (`POST` e `DELETE /api/onboarding/demo`) vale al massimo
+      20 volte all'ora per utente: oltre, `429` «Hai fatto troppe richieste in quest'ora. Riprova tra …» con `Retry-After`.
+      I numeri stanno in `fanta/limiti.py` e si cambiano sul server con `FANTA_MAX_CALCOLI_UTENTE`, `FANTA_QUOTA_RISULTATI_UTENTE`,
+      `FANTA_MAX_CONSIGLIATE_UTENTE` e `FANTA_MAX_AZIONI_PESANTI_ORA` (un valore non valido vale il numero di sempre). I client
+      mostrano `detail` come per gli altri `429`.
 
 11. **Lingua dei testi del server**: italiano se non dici nulla. Per l'inglese manda `?lingua=en` oppure `Accept-Language: en` (vince il parametro). Vale per i testi scritti dal server dove la rotta lo dice (per esempio `GET /api/novita`, `GET /api/sotto-il-cofano`, gli avvisi di copertura in `da_fare`, i giudizi degli scambi, le note sugli infortuni). Le note sugli infortuni delle fonti (campo `nota`, e la stessa nota dentro `motivi`) in qualunque risposta `GET /api/` si traducono con un vocabolario; una nota che non si riconosce tutta resta in italiano. Le risposte che cambiano con la lingua hanno `Vary: Accept-Language`. Attenzione: URLSession e OkHttp mandano da soli `Accept-Language` con la lingua del telefono; un client che vuole sempre l'italiano deve mandare `?lingua=it`. I messaggi d'errore (`detail`) restano in italiano; le frasi che cambiano con i dati hanno anche la chiave per tradurle (vedi «Frasi con chiave» più sotto).
 
@@ -388,8 +400,8 @@ un'anteprima rifiutata per il tetto (`429`) non paga niente; in più al massimo 
 | `PUT /api/onboarding` | `{passo?, stato?, tipo?}` (X-Fanta) | aggiorna il passo |
 | `POST /api/onboarding/regole` | `{testo}` (X-Fanta) | propone le regole da un regolamento incollato, senza salvare. Stessi tetti del testo di `POST /api/regole/riconosci` (`422`) |
 | `GET /api/onboarding/controlli` | — | le spunte prima della prima formazione: `[{id, titolo, ok, obbligatorio, dettaglio}]`. Dal 2/11/2026 `rose` (obbligatoria) basta con **una** squadra; voce nuova `altre_squadre` (non obbligatoria: un avviso, `dettaglio` = il testo di una squadra sola). I client che mostrano solo le obbligatorie non cambiano niente |
-| `POST /api/onboarding/demo` | (X-Fanta) | crea una lega di prova. `409` se hai già rose vere |
-| `DELETE /api/onboarding/demo` | (X-Fanta) | toglie la lega di prova (solo se è davvero quella di prova) |
+| `POST /api/onboarding/demo` | (X-Fanta) | crea una lega di prova. `409` se hai già rose vere. Insieme a `DELETE` al massimo 20 volte all'ora per utente (`429` con `Retry-After`, vedi «Limiti») |
+| `DELETE /api/onboarding/demo` | (X-Fanta) | toglie la lega di prova (solo se è davvero quella di prova). Conta nello stesso tetto all'ora di `POST` |
 
 **Avviso "cambia la formazione"** (dal 1/11/2026). Campo `avviso_prima` nelle impostazioni di `GET/PUT /api/avvisi`: da quanti minuti prima della scadenza della formazione il server guarda se il consiglio è cambiato (`0` = spento, `30`, `60`, `90`; di base `60`). Da quel momento, se le ultime probabili cambiano la formazione consigliata rispetto al riferimento (la scelta salvata della giornata, anche «ho schierato la consigliata», se si può ancora schierare; senza scelta valida, la consigliata com'era prima che si aprisse la finestra) e la nuova vale almeno 1 punto atteso in più (`notifiche.SOGLIA_AVVISO_PUNTI`), parte un avviso: titolo «SchieraXI · cambia la formazione» (con scelta salvata) o «SchieraXI · cambia la formazione consigliata», testo con il motivo in una frase, priorità 4, tag `rotating_light` (come i cambi). Al massimo 2 per giornata, mai lo stesso consiglio due volte, mai nelle ore tranquille (riprova dopo, finché la formazione è aperta); il promemoria della stessa finestra non riparte se l'avviso è arrivato da meno di 20 minuti. Lo manda il giro dei promemoria del server (ogni 10 minuti). Testi in italiano, come gli altri avvisi.
 Niente doppioni con l'avviso dei cambi (opzione `cambi`): dentro la finestra il giro dei cambi prova prima l'avviso nuovo; «cambi nelle probabili» e «cambio pronto» sui tuoi giocatori tacciono solo se l'avviso nuovo è partito negli ultimi 15 minuti con i dati di adesso (campo `versione_inviato` nello stato dell'avviso), e lo stato si salva lo stesso, quindi non ripartono dopo; le righe degli osservati sì. Se l'avviso nuovo non parte (già due invii, guadagno sotto un punto, dati più nuovi) i cambi si dicono come sempre; se uno dei due è partito da meno di 15 minuti (`notifiche.DOPPIONE_CAMBI`, campo `inviato` nello stato dei cambi), l'avviso nuovo non ripete la stessa notizia. Con `avviso_prima: 0` i cambi restano come prima.
