@@ -1,0 +1,178 @@
+{
+  "account.email": {
+    "it": "Email",
+    "en": "Email"
+  },
+  "account.email_spiega": {
+    "it": "Facoltativa. Serve a recuperare la password senza il codice di recupero e a ricevere un avviso se qualcuno entra da un dispositivo nuovo. Non la usiamo per altro.",
+    "en": "Optional. It lets you recover your password without the recovery code and get a warning if someone signs in from a new device. We use it for nothing else."
+  },
+  "account.email_verificata": {
+    "it": "Email confermata: {email}",
+    "en": "Email confirmed: {email}"
+  },
+  "account.email_nessuna": {
+    "it": "Nessuna email collegata.",
+    "en": "No email linked."
+  },
+  "account.email_google": {
+    "it": "Email da Google: {email}",
+    "en": "Email from Google: {email}"
+  },
+  "account.email_google_nota": {
+    "it": "Non serve per recuperare la password: per quello aggiungi qui sotto un'email e confermala.",
+    "en": "It can't be used to recover your password: for that, add an email below and confirm it."
+  },
+  "account.email_attesa": {
+    "it": "In attesa di conferma: {email}. Scrivi qui sotto il codice a 6 cifre che ti abbiamo mandato.",
+    "en": "Waiting for confirmation: {email}. Enter below the 6-digit code we sent you."
+  },
+  "account.email_nuova": {
+    "it": "Nuovo indirizzo email",
+    "en": "New email address"
+  },
+  "account.email_invia": {
+    "it": "Mandami il codice",
+    "en": "Send me the code"
+  },
+  "account.email_inviato": {
+    "it": "Se l'indirizzo è valido, il codice sta arrivando.",
+    "en": "If the address is valid, the code is on its way."
+  },
+  "account.email_codice": {
+    "it": "Codice a 6 cifre",
+    "en": "6-digit code"
+  },
+  "account.email_conferma": {
+    "it": "Conferma l'email",
+    "en": "Confirm the email"
+  },
+  "account.email_confermata_ok": {
+    "it": "Email confermata",
+    "en": "Email confirmed"
+  },
+  "account.email_togli": {
+    "it": "Togli l'email",
+    "en": "Remove the email"
+  },
+  "account.email_tolta_ok": {
+    "it": "Email tolta",
+    "en": "Email removed"
+  },
+  "account.email_no": {
+    "it": "Non riesco a gestire l'email",
+    "en": "I cannot manage the email"
+  },
+  "account.email_serve_password": {
+    "it": "Scrivi la tua password per confermare",
+    "en": "Enter your password to confirm"
+  },
+  "account.email_spenta": {
+    "it": "Su questo server l'invio delle email è spento: per ora non puoi collegare un'email. Se dimentichi la password ti serve il codice di recupero.",
+    "en": "Sending emails is turned off on this server: for now you cannot link an email. If you forget your password you need the recovery code."
+  },
+  "account.ruolo_admin": {
+    "it": "Amministratore",
+    "en": "Administrator"
+  },
+  "account.ruolo_utente": {
+    "it": "Utente",
+    "en": "User"
+  },
+  "account.dal": {
+    "it": "{ruolo} · dal {data}",
+    "en": "{ruolo} · since {data}"
+  },
+  "account.esci": {
+    "it": "Esci",
+    "en": "Sign out"
+  },
+  "account.cambia_password": {
+    "it": "Cambia la password",
+    "en": "Change the password"
+  },
+  "account.password_attuale": {
+    "it": "Password attuale",
+    "en": "Current password"
+  },
+  "account.ripeti_password": {
+    "it": "Ripeti la nuova password",
+    "en": "Repeat the new password"
+  },
+  "account.password_diverse": {
+    "it": "Le due password non coincidono.",
+    "en": "The two passwords do not match."
+  },
+  "account.altri_scollegati": {
+    "it": "Gli altri dispositivi vengono scollegati.",
+    "en": "The other devices will be signed out."
+  },
+  "account.password_cambiata_ok": {
+    "it": "Password cambiata. Gli altri dispositivi sono stati scollegati.",
+    "en": "Password changed. The other devices have been signed out."
+  },
+  "account.password_cambiata_no": {
+    "it": "Non riesco a cambiare la password",
+    "en": "I cannot change the password"
+  },
+  "account.recupero": {
+    "it": "Codice di recupero",
+    "en": "Recovery code"
+  },
+  "account.recupero_spiega": {
+    "it": "Serve se dimentichi la password. Il vecchio codice smette di valere appena ne generi uno nuovo.",
+    "en": "You need it if you forget your password. The old code stops working as soon as you generate a new one."
+  },
+  "account.la_tua_password": {
+    "it": "La tua password",
+    "en": "Your password"
+  },
+  "account.nuovo_codice": {
+    "it": "Genera un nuovo codice",
+    "en": "Generate a new code"
+  },
+  "account.nuovo_codice_no": {
+    "it": "Non riesco a generare il codice",
+    "en": "I cannot generate the code"
+  },
+  "account.dati_titolo": {
+    "it": "Scarica i tuoi dati",
+    "en": "Download your data"
+  },
+  "account.dati_spiega": {
+    "it": "Un file con i dati del tuo account (nome, email, accessi collegati, termini accettati) e della tua lega: regole, rose, scelte, giocatori seguiti e notifiche. Contiene solo i tuoi dati, mai la password.",
+    "en": "A file with your account data (name, email, linked sign-ins, accepted terms) and your league: rules, squads, choices, followed players and notifications. It contains only your data, never the password."
+  },
+  "account.dati_scarica": {
+    "it": "Scarica il file",
+    "en": "Download the file"
+  },
+  "account.dati_no": {
+    "it": "Non riesco a scaricare i tuoi dati. Riprova tra poco.",
+    "en": "I cannot download your data. Try again shortly."
+  },
+  "account.elimina_titolo": {
+    "it": "Elimina l'account",
+    "en": "Delete the account"
+  },
+  "account.elimina_avviso": {
+    "it": "Cancella l'account e <b>tutti</b> i tuoi dati dal server. Non si può annullare: prima scarica i tuoi dati se ti servono.",
+    "en": "Deletes the account and <b>all</b> your data from the server. It cannot be undone: download your data first if you need it."
+  },
+  "account.elimina": {
+    "it": "Elimina il mio account",
+    "en": "Delete my account"
+  },
+  "account.elimina_no": {
+    "it": "Non riesco a eliminare l'account",
+    "en": "I cannot delete the account"
+  },
+  "account.elimina_serve_password": {
+    "it": "Scrivi la tua password per confermare",
+    "en": "Enter your password to confirm"
+  },
+  "account.elimina_conferma": {
+    "it": "Elimino il tuo account e TUTTI i tuoi dati? Non si può annullare.",
+    "en": "Delete your account and ALL your data? This cannot be undone."
+  }
+}

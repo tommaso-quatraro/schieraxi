@@ -1,0 +1,34 @@
+{
+  "nav.sezioni": {
+    "it": "Sezioni",
+    "en": "Sections"
+  },
+  "nav.oggi": {
+    "it": "Oggi",
+    "en": "Today"
+  },
+  "nav.formazione": {
+    "it": "Formazione",
+    "en": "Lineup"
+  },
+  "nav.mercato": {
+    "it": "Mercato",
+    "en": "Market"
+  },
+  "nav.scambi": {
+    "it": "Scambi",
+    "en": "Trades"
+  },
+  "nav.lega": {
+    "it": "Lega",
+    "en": "League"
+  },
+  "nav.squadra": {
+    "it": "Squadra",
+    "en": "Team"
+  },
+  "nav.altro": {
+    "it": "Altro",
+    "en": "More"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "titolo": "Testi dell'app da una fonte sola",
+  "voci": [
+    "Dietro le quinte i testi dell'app ora nascono da un elenco unico, che servirà anche all'app per iPhone. Per chi usa l'app non cambia niente."
+  ],
+  "tecnico": [
+    "Issue #493, lavoro A1 del piano 2026-11-08-ondata-2 (decisione 0010). Catalogo in fanta/testi/<prefisso>.json (47 file, 1840 chiavi, it/en/nota); script/testi.py --scrivi genera l'oggetto TESTI di fanta/web/testi.js fra le righe-segno «// <catalogo>» e «// </catalogo>» e i file Swift di ios/Sources/Support/Catalogo/ per le chiavi elencate in ios/testi/<prefisso>.txt (oggi nessuna); --controlla esce con 1 se un file generato non è aggiornato o il catalogo ha errori.",
+    "Dizionari it ed en di testi.js uguali prima e dopo: cambia solo l'ordine delle righe (prefissi in ordine alfabetico, l'inglese nell'ordine dell'italiano). Test: tests/test_catalogo_testi.py."
+  ]
+}

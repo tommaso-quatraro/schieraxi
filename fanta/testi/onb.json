@@ -1,0 +1,51 @@
+{
+  "onb.prova_con_una": {
+    "it": "Prova con gli esempi",
+    "en": "Try the examples",
+    "nota": "---- [onboarding] ----"
+  },
+  "onb.quattro_squadre_inventate": {
+    "it": "Quattro squadre inventate per vedere l'app al lavoro, senza importare niente.",
+    "en": "Four invented teams to see the app at work, without importing anything."
+  },
+  "onb.valori_piu_comuni": {
+    "it": "I valori più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5...). Li puoi cambiare quando vuoi in Altro, alla voce Regole.",
+    "en": "The most common values of classic leagues (goal 3, assist 1, yellow card −0.5...). You can change them whenever you like in More, under Rules."
+  },
+  "onb.avvisi_attivi_questo": {
+    "it": "✓ Avvisi attivi su questo dispositivo.",
+    "en": "✓ Alerts on for this device."
+  },
+  "onb.avanti": {
+    "it": "Avanti",
+    "en": "Next"
+  },
+  "onb.attiva_gli_avvisi_b": {
+    "it": "Attiva gli avvisi",
+    "en": "Turn on alerts"
+  },
+  "onb.non_trovati_nel": {
+    "it": "Non li ho trovati nel listone (magari ceduti o con un altro nome). Cerca quello giusto e toccalo; se non c'è, lascia stare: potrai farlo dopo.",
+    "en": "I did not find them in the player list (maybe transferred or under another name). Search for the right one and tap it; if it is not there, leave it: you can do it later."
+  },
+  "onb.cerca_giocatore_giusto": {
+    "it": "Cerca il giocatore giusto",
+    "en": "Search for the right player"
+  },
+  "onb.nessun_risultato": {
+    "it": "Nessun risultato",
+    "en": "No results"
+  },
+  "onb.sistemato": {
+    "it": "Sistemato",
+    "en": "Fixed"
+  },
+  "onb.tutti_giocatori_sono": {
+    "it": "✓ Tutti i giocatori sono riconosciuti.",
+    "en": "✓ All players are recognised."
+  },
+  "onb.cerca_per": {
+    "it": "Cerca il giocatore giusto per {nome}",
+    "en": "Search for the right player for {nome}"
+  }
+}

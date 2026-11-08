@@ -1,0 +1,110 @@
+{
+  "comune.calcolo_attesa": {
+    "it": "Un attimo, mister: ci sto lavorando.",
+    "en": "One moment, coach: I'm working on it."
+  },
+  "comune.rete_timeout": {
+    "it": "La connessione è lenta o assente: controlla internet e riprova",
+    "en": "The connection is slow or missing: check your internet and try again"
+  },
+  "comune.rete_no": {
+    "it": "Non riesco a collegarmi: controlla internet e riprova",
+    "en": "I cannot connect: check your internet and try again"
+  },
+  "comune.calcolo_lungo": {
+    "it": "Il calcolo sta durando più del previsto: riprova tra poco.",
+    "en": "The calculation is taking longer than expected: try again shortly."
+  },
+  "comune.cambiato_altrove": {
+    "it": "Questi dati sono stati cambiati da un altro dispositivo.",
+    "en": "This data was changed from another device."
+  },
+  "comune.errore_server": {
+    "it": "Qualcosa non ha funzionato da parte nostra: riprova tra poco",
+    "en": "Something went wrong on our side: try again shortly"
+  },
+  "comune.errore_n": {
+    "it": "Qualcosa non ha funzionato: riprova",
+    "en": "Something went wrong: try again"
+  },
+  "comune.calcolo_in_corso": {
+    "it": "Calcolo in corso…",
+    "en": "Calculating…"
+  },
+  "comune.indice_aria": {
+    "it": "Indice {n} su 100: 100 = il migliore del ruolo questa giornata",
+    "en": "Index {n} of 100: 100 = the best in the role this matchday"
+  },
+  "comune.aggiornamento_pronto": {
+    "it": "Aggiornamento pronto",
+    "en": "Update ready"
+  },
+  "comune.ricarica": {
+    "it": "Ricarica",
+    "en": "Reload"
+  },
+  "comune.carico": {
+    "it": "Carico…",
+    "en": "Loading…"
+  },
+  "comune.prima_rose": {
+    "it": "Prima le tue rose",
+    "en": "Rosters first"
+  },
+  "comune.importa_spiega": {
+    "it": "Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto.",
+    "en": "Import your league's rosters: then you will find advice for your team here. It takes a minute."
+  },
+  "comune.importa_rose": {
+    "it": "Importa le rose",
+    "en": "Import the rosters"
+  },
+  "comune.riprova": {
+    "it": "Riprova",
+    "en": "Try again"
+  },
+  "comune.dati_salvati": {
+    "it": "Dati salvati {quando}: aggiorno…",
+    "en": "Saved data from {quando}: refreshing…"
+  },
+  "comune.cache_offline": {
+    "it": "Non riesco a collegarmi: questi sono gli ultimi dati salvati.",
+    "en": "I cannot connect: these are the last saved data."
+  },
+  "comune.cache_errore": {
+    "it": "{errore} (dati salvati, potrebbero non essere aggiornati)",
+    "en": "{errore} (saved data, may be out of date)"
+  },
+  "comune.vai_lega": {
+    "it": "Vai alla sezione Squadra",
+    "en": "Go to the Team section"
+  },
+  "comune.giocatore": {
+    "it": "Giocatore",
+    "en": "Player"
+  },
+  "comune.riprova_tra": {
+    "it": " (riprova tra {attesa})",
+    "en": " (try again in {attesa})"
+  },
+  "comune.attesa_secondi": {
+    "it": "{n} secondi",
+    "en": "{n} seconds"
+  },
+  "comune.attesa_minuti": {
+    "it": "{n} minuti",
+    "en": "{n} minutes"
+  },
+  "comune.attesa_ora": {
+    "it": "circa {n} ora",
+    "en": "about {n} hour"
+  },
+  "comune.attesa_ore": {
+    "it": "circa {n} ore",
+    "en": "about {n} hours"
+  },
+  "comune.non_copio": {
+    "it": "Non riesco a copiare",
+    "en": "I cannot copy"
+  }
+}

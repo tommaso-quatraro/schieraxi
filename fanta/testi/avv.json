@@ -1,0 +1,375 @@
+{
+  "avv.alle": {
+    "it": "Alle",
+    "en": "To",
+    "nota": "---- [avvisi] ----"
+  },
+  "avv.avevi_scelto_ore": {
+    "it": "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7).",
+    "en": "You had chosen quiet hours starting and ending at the same hour: they are not valid, so I turned them off. Turn them on again choosing two different hours (for example from 23 to 7)."
+  },
+  "avv.carico_diario": {
+    "it": "Carico il diario…",
+    "en": "Loading the journal…"
+  },
+  "avv.dalle": {
+    "it": "Dalle",
+    "en": "From"
+  },
+  "avv.diario_delle_giornate": {
+    "it": "Diario delle giornate",
+    "en": "Matchday journal"
+  },
+  "avv.errore_fantamedia": {
+    "it": "errore (da fantamedia)",
+    "en": "error (fantasy-average pick)"
+  },
+  "avv.errore_sui_fantavoti": {
+    "it": "errore sui fantavoti (modello)",
+    "en": "error on fantasy scores (model)"
+  },
+  "avv.fantamedia_nbsp": {
+    "it": "da fantamedia &nbsp;",
+    "en": "fantasy-average pick &nbsp;"
+  },
+  "avv.fine_delle_ore": {
+    "it": "Fine delle ore tranquille",
+    "en": "End of quiet hours"
+  },
+  "avv.finora_hai_schierato": {
+    "it": "Finora hai schierato gli stessi undici del consiglio.",
+    "en": "So far you have fielded the same eleven as recommended."
+  },
+  "avv.formazione_della_giornata": {
+    "it": "Formazione della giornata",
+    "en": "Matchday lineup"
+  },
+  "avv.inizio_delle_ore": {
+    "it": "Inizio delle ore tranquille",
+    "en": "Start of quiet hours"
+  },
+  "avv.manda_avviso_prova": {
+    "it": "Manda un avviso di prova",
+    "en": "Send a test alert"
+  },
+  "avv.meglio_consiglio": {
+    "it": "meglio il consiglio",
+    "en": "recommendation better"
+  },
+  "avv.meglio_tue": {
+    "it": "meglio le tue",
+    "en": "yours better"
+  },
+  "avv.modello_nbsp": {
+    "it": "modello &nbsp;",
+    "en": "model &nbsp;"
+  },
+  "avv.nessun_giocatore_trovato": {
+    "it": "Nessun giocatore trovato.",
+    "en": "No players found."
+  },
+  "avv.n_risultati.one": {
+    "it": "{n} risultato",
+    "en": "{n} result"
+  },
+  "avv.n_risultati.other": {
+    "it": "{n} risultati",
+    "en": "{n} results"
+  },
+  "avv.nome_del_giocatore": {
+    "it": "Nome del giocatore",
+    "en": "Player name"
+  },
+  "avv.notifiche_dell_app": {
+    "it": "Le notifiche dell'app non sono disponibili su questo dispositivo: su iPhone aggiungi prima l'app alla schermata Home (serve iOS 16.4 o più); su Android usa Chrome.",
+    "en": "The app's notifications are not available on this device: on iPhone first add the app to the Home Screen (iOS 16.4 or later is needed); on Android use Chrome."
+  },
+  "avv.notifiche_disattivate_questo": {
+    "it": "Notifiche disattivate su questo dispositivo",
+    "en": "Notifications turned off on this device"
+  },
+  "avv.notifiche_questa_app": {
+    "it": "Notifiche di questa app",
+    "en": "Notifications from this app"
+  },
+  "avv.ore_tranquille_non": {
+    "it": "Le ore tranquille non possono iniziare e finire alla stessa ora: scegli due ore diverse (per esempio dalle 23 alle 7). Non ho salvato la fascia.",
+    "en": "Quiet hours cannot start and end at the same hour: choose two different hours (for example from 23 to 7). I did not save the range."
+  },
+  "avv.diario_riga": {
+    "it": "Giornata per giornata: la formazione che hai schierato contro la consigliata.",
+    "en": "Matchday by matchday: the lineup you fielded against the recommended one."
+  },
+  "avv.per_ogni_giornata": {
+    "it": "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI ti avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina la sceglie SchieraXI in entrambi i casi. SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la trovi qui, con in evidenza i giocatori che hai cambiato. Si aggiorna da solo dopo ogni giornata.",
+    "en": "For every finished matchday: the points scored (and those forecast beforehand) by the lineup you fielded and by the one SchieraXI would have recommended with the data of the time and today's roster. SchieraXI picks the bench in both cases. SchieraXI also remembers the lineup it recommended before each matchday: you find it here, with the players you changed highlighted. It updates by itself after every matchday."
+  },
+  "avv.permesso_negato_abilita": {
+    "it": "Permesso negato: abilita le notifiche per l'app nelle impostazioni del telefono",
+    "en": "Permission denied: turn on notifications for the app in your phone's settings"
+  },
+  "avv.prova_sola_dopo": {
+    "it": "La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.",
+    "en": "The test runs by itself after the updates, as soon as there is at least one finished matchday."
+  },
+  "avv.punti_delle_formazioni": {
+    "it": "Punti delle formazioni giornata per giornata: modello, fantamedia e massimo possibile",
+    "en": "Lineup points matchday by matchday: model, fantasy average and maximum possible"
+  },
+  "avv.punti_formazione_modello": {
+    "it": "punti formazione (modello)",
+    "en": "lineup points (model)"
+  },
+  "avv.scrivi_almeno_due": {
+    "it": "Scrivi almeno due lettere.",
+    "en": "Type at least two letters."
+  },
+  "avv.segno_tua_formazione": {
+    "it": "Segno la tua formazione…",
+    "en": "Noting your lineup…"
+  },
+  "avv.tieni_premuto_sull": {
+    "it": "Tieni premuto sull'immagine per salvarla o condividerla.",
+    "en": "Press and hold the image to save or share it."
+  },
+  "avv.tue_scelte": {
+    "it": "Le tue scelte",
+    "en": "Your choices"
+  },
+  "avv.quot": {
+    "it": "quotazione {n}",
+    "en": "price {n}"
+  },
+  "avv.img_punti": {
+    "it": "{n} punti attesi",
+    "en": "{n} expected points"
+  },
+  "avv.img_numero": {
+    "it": "Il numero sotto il volto è il fantavoto atteso",
+    "en": "The number under the face is the expected fantasy score"
+  },
+  "avv.img_titolo": {
+    "it": "Formazione · {g}",
+    "en": "Lineup · {g}"
+  },
+  "avv.riga_scelta": {
+    "it": "{n}: {scelto} invece di {cons}",
+    "en": "{n}: {scelto} instead of {cons}"
+  },
+  "avv.tu_consiglio": {
+    "it": "Tu {tua}, consiglio {cons} ({d}).",
+    "en": "You {tua}, recommendation {cons} ({d})."
+  },
+  "avv.totale_pari": {
+    "it": "In totale i punti sono pari.",
+    "en": "In total the points are level."
+  },
+  "avv.totale_tue": {
+    "it": "In totale le tue scelte hanno fatto {n} punti in più del consiglio.",
+    "en": "In total your choices scored {n} points more than the recommendation."
+  },
+  "avv.totale_consiglio": {
+    "it": "In totale il consiglio ha fatto {n} punti in più delle tue scelte.",
+    "en": "In total the recommendation scored {n} points more than your choices."
+  },
+  "avv.n_diverse.one": {
+    "it": "In 1 giornata hai scelto undici diversi dal consiglio.",
+    "en": "In 1 matchday you chose an eleven different from the recommendation."
+  },
+  "avv.n_diverse.other": {
+    "it": "In {n} giornate hai scelto undici diversi dal consiglio.",
+    "en": "In {n} matchdays you chose an eleven different from the recommendation."
+  },
+  "avv.pochi_dati": {
+    "it": "Ancora pochi dati: servono almeno 8 giornate per dire qualcosa di solido.",
+    "en": "Still little data: at least 8 matchdays are needed to say anything solid."
+  },
+  "avv.piu_punti_tu": {
+    "it": "Hai avuto più punti tu nel {p}% di queste giornate.",
+    "en": "You scored more in {p}% of these matchdays."
+  },
+  "avv.altre_giornate.one": {
+    "it": "Altra 1 giornata",
+    "en": "1 more matchday"
+  },
+  "avv.altre_giornate.other": {
+    "it": "Altre {n} giornate",
+    "en": "{n} more matchdays"
+  },
+  "avv.attesi": {
+    "it": "attesi {n}",
+    "en": "expected {n}"
+  },
+  "avv.del_modello": {
+    "it": "Del modello ({modulo})",
+    "en": "The model's ({modulo})"
+  },
+  "avv.n_di_11": {
+    "it": "{n} di 11",
+    "en": "{n} of 11"
+  },
+  "avv.max_possibile": {
+    "it": "massimo possibile",
+    "en": "maximum possible"
+  },
+  "avv.giornate_da_a": {
+    "it": "dalla {a}ª alla {b}ª giornata di Serie A",
+    "en": "Serie A matchdays {a}–{b}"
+  },
+  "avv.prova_su.one": {
+    "it": "Prova sull'ultima giornata giocata, usando solo i dati che c'erano prima. «Da fantamedia» è la scelta più semplice: chi ha la media più alta.",
+    "en": "Test on the last matchday played, using only the data available beforehand. «Fantasy-average pick» is the simplest choice: whoever has the highest average."
+  },
+  "avv.prova_su.other": {
+    "it": "Prova sulle ultime {n} giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la scelta più semplice: chi ha la media più alta.",
+    "en": "Test on the last {n} matchdays played, using for each only the data available beforehand. «Fantasy-average pick» is the simplest choice: whoever has the highest average."
+  },
+  "avv.punti_medi": {
+    "it": "Punti medi per giornata: modello {m}, da fantamedia {f}, massimo possibile {p}. Errore più basso e punti più alti sono meglio.",
+    "en": "Average points per matchday: model {m}, fantasy-average pick {f}, maximum possible {p}. Lower error and higher points are better."
+  },
+  "avv.mancano_probabili": {
+    "it": "Nelle giornate passate mancano le probabili formazioni, quindi dal vivo il modello va un po' meglio.",
+    "en": "The probable lineups are missing for past matchdays, so live the model does a little better."
+  },
+  "avv.attive_qui": {
+    "it": "Attive su questo dispositivo",
+    "en": "On for this device"
+  },
+  "avv.in_tutto": {
+    "it": " ({n} in tutto)",
+    "en": " ({n} in all)"
+  },
+  "avv.non_piu_ntfy": {
+    "it": ": gli avvisi arrivano qui e non più su ntfy.",
+    "en": ": alerts arrive here and no longer on ntfy."
+  },
+  "avv.attivale": {
+    "it": "Attivale per ricevere gli avvisi su questo dispositivo.",
+    "en": "Turn them on to receive alerts on this device."
+  },
+  "avv.direttamente_qui": {
+    "it": "Gli avvisi arrivano direttamente qui, senza l'app ntfy. Se non le attivi continuano a funzionare con ntfy.",
+    "en": "Alerts arrive directly here, without the ntfy app. If you do not turn them on they keep working with ntfy."
+  },
+  "avv.disattiva": {
+    "it": "Disattiva",
+    "en": "Turn off"
+  },
+  "avv.attiva": {
+    "it": "Attiva",
+    "en": "Turn on"
+  },
+  "avv.notifiche_attivate": {
+    "it": "Notifiche attivate: prova con «Manda un avviso di prova»",
+    "en": "Notifications on: try «Send a test alert»"
+  },
+  "avv.non_attivo": {
+    "it": "Non riesco ad attivare le notifiche",
+    "en": "I cannot turn on the notifications"
+  },
+  "avv.non_disattivo": {
+    "it": "Non riesco a disattivarle",
+    "en": "I cannot turn them off"
+  },
+  "avv.arrivano_account": {
+    "it": "Arrivano come notifiche (dell'app, da attivare qui sotto). Ti dicono quando cambiano le probabili dei tuoi giocatori (infortuni, squalifiche, diffide), ti ricordano la scadenza della formazione e, a giornata finita, come è andata.",
+    "en": "They arrive as notifications (from the app, to be turned on below). They tell you when the probable lineups of your players change (injuries, suspensions, bookings), remind you of the lineup deadline and, when the matchday is over, how it went."
+  },
+  "avv.arrivano_ntfy": {
+    "it": "Arrivano come notifiche (dell'app, se le attivi qui sotto, oppure con ntfy). Ti dicono quando cambiano le probabili dei tuoi giocatori (infortuni, squalifiche, diffide), ti ricordano la scadenza della formazione e, a giornata finita, come è andata.",
+    "en": "They arrive as notifications (from the app, if you turn them on below, or with ntfy). They tell you when the probable lineups of your players change (injuries, suspensions, bookings), remind you of the lineup deadline and, when the matchday is over, how it went."
+  },
+  "avv.cambi": {
+    "it": "Cambi di formazione e probabili",
+    "en": "Lineup and probable-lineup changes"
+  },
+  "avv.cambi_aiuto": {
+    "it": "Infortunati, squalificati, titolari in panchina, forti cali",
+    "en": "Injured, suspended, starters on the bench, big drops"
+  },
+  "avv.prima": {
+    "it": "Avviso se il consiglio cambia",
+    "en": "Alert if the advice changes"
+  },
+  "avv.prima_aiuto": {
+    "it": "Prima della scadenza, solo se le ultime notizie cambiano la formazione da schierare (per esempio un titolare non gioca): ti dice chi mettere. Al massimo due per giornata",
+    "en": "Before the deadline, only if the latest news changes the lineup to field (for example a starter is out): it tells you who to put in. At most two per matchday"
+  },
+  "avv.prima_0": {
+    "it": "Spento",
+    "en": "Off"
+  },
+  "avv.prima_30": {
+    "it": "30 minuti prima",
+    "en": "30 minutes before"
+  },
+  "avv.prima_60": {
+    "it": "1 ora prima",
+    "en": "1 hour before"
+  },
+  "avv.prima_90": {
+    "it": "1 ora e mezza prima",
+    "en": "90 minutes before"
+  },
+  "avv.prom_60": {
+    "it": "Promemoria un'ora prima",
+    "en": "Reminder one hour before"
+  },
+  "avv.prom_60_aiuto": {
+    "it": "Con la formazione consigliata e i giocatori da controllare",
+    "en": "With the recommended lineup and the players to check"
+  },
+  "avv.prom_15": {
+    "it": "Promemoria 15 minuti prima",
+    "en": "Reminder 15 minutes before"
+  },
+  "avv.riepilogo": {
+    "it": "Riepilogo a giornata finita",
+    "en": "Summary when the matchday is over"
+  },
+  "avv.riepilogo_aiuto": {
+    "it": "Punti fatti, attesi e massimo possibile con la tua rosa",
+    "en": "Points scored, expected and maximum possible with your roster"
+  },
+  "avv.copertura": {
+    "it": "Reparto della rosa scoperto",
+    "en": "Uncovered position in the roster"
+  },
+  "avv.copertura_aiuto": {
+    "it": "Ti avvisa se in un reparto hai pochi giocatori disponibili (infortunati, squalificati, diffidati)",
+    "en": "Warns you if you have few players available in a position (injured, suspended, on a booking)"
+  },
+  "avv.nativa": {
+    "it": "Avvisi anche per l'app nativa",
+    "en": "Alerts for the native app too"
+  },
+  "avv.nativa_aiuto": {
+    "it": "Arrivano con l'app ntfy e il tocco apre l'app iOS nativa. Con le notifiche dell'app attive qui sotto potresti riceverli doppi",
+    "en": "They arrive with the ntfy app and tapping opens the native iOS app. With the app's notifications turned on below you may get them twice"
+  },
+  "avv.ore_tranq": {
+    "it": "Ore tranquille",
+    "en": "Quiet hours"
+  },
+  "avv.ore_tranq_aiuto": {
+    "it": "Niente avvisi nella fascia scelta: cambi e riepilogo arrivano appena finisce. Un promemoria che cade lì non viene mandato",
+    "en": "No alerts in the chosen range: changes and summary arrive as soon as it ends. A reminder that falls in it is not sent"
+  },
+  "avv.attiva_sopra": {
+    "it": "Gli avvisi arrivano solo sui dispositivi dove hai attivato le notifiche di questa app.",
+    "en": "Alerts only arrive on devices where you have turned on this app's notifications."
+  },
+  "avv.non_attivi": {
+    "it": "Su questo server gli avvisi non sono attivi.",
+    "en": "Alerts are not turned on on this server."
+  },
+  "avv.prova_ok": {
+    "it": "Avviso di prova mandato: controlla il telefono",
+    "en": "Test alert sent: check your phone"
+  },
+  "avv.prova_no": {
+    "it": "Non sono riuscito a mandarlo",
+    "en": "I could not send it"
+  }
+}

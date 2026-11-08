@@ -1,0 +1,523 @@
+{
+  "mercato.carico_gli_osservati": {
+    "it": "Carico i seguiti…",
+    "en": "Loading the players you follow…",
+    "nota": "---- [mercato] ----"
+  },
+  "mercato.non_gioca_questa": {
+    "it": "Non gioca questa giornata",
+    "en": "Not playing this matchday"
+  },
+  "mercato.nessun_giocatore_osservato": {
+    "it": "Nessun giocatore seguito.",
+    "en": "You are not following any player."
+  },
+  "mercato.come_legge": {
+    "it": "Come si legge",
+    "en": "How to read this"
+  },
+  "mercato.punti_stagione": {
+    "it": "punti in stagione",
+    "en": "points over the season"
+  },
+  "mercato.cerco_gli_svincolati": {
+    "it": "Cerco gli svincolati migliori…",
+    "en": "Looking for the best free agents…"
+  },
+  "mercato.carico_calendario": {
+    "it": "Carico il calendario…",
+    "en": "Loading the calendar…"
+  },
+  "mercato.calendario_difficolta": {
+    "it": "Calendario e difficoltà",
+    "en": "Calendar and difficulty"
+  },
+  "mercato.cerca_giocatore_lautaro": {
+    "it": "Cerca un giocatore (es. Lautaro)",
+    "en": "Search for a player (e.g. Lautaro)"
+  },
+  "mercato.ruolo": {
+    "it": "Ruolo",
+    "en": "Position"
+  },
+  "mercato.solo_svincolati": {
+    "it": "Solo svincolati",
+    "en": "Free agents only"
+  },
+  "mercato.scegli_giocatore_confrontare": {
+    "it": "Scegli il giocatore da confrontare con",
+    "en": "Choose the player to compare with"
+  },
+  "mercato.annulla": {
+    "it": "Annulla",
+    "en": "Cancel"
+  },
+  "mercato.nessun_giocatore_trovato": {
+    "it": "Nessun giocatore trovato",
+    "en": "No players found"
+  },
+  "mercato.voto_fantavoto_per": {
+    "it": "Voto e fantavoto per giornata",
+    "en": "Grade and fantasy score by matchday"
+  },
+  "mercato.voti_giornata_per": {
+    "it": "Voti giornata per giornata",
+    "en": "Grades matchday by matchday"
+  },
+  "mercato.fantavoto": {
+    "it": "fantavoto",
+    "en": "fantasy score"
+  },
+  "mercato.voto_linea_tratteggiata": {
+    "it": "voto · la linea tratteggiata è il 6",
+    "en": "grade · the dashed line is 6"
+  },
+  "mercato.carico_scheda": {
+    "it": "Carico la scheda…",
+    "en": "Loading the player card…"
+  },
+  "mercato.fantavoto_atteso": {
+    "it": "Fantavoto atteso",
+    "en": "Expected fantasy score"
+  },
+  "mercato.gioca": {
+    "it": "gioca",
+    "en": "plays"
+  },
+  "mercato.nessuna_previsione_per": {
+    "it": "Nessuna previsione per la prossima giornata.",
+    "en": "No forecast for the next matchday."
+  },
+  "mercato.prossime_partite": {
+    "it": "Prossime partite",
+    "en": "Next matches"
+  },
+  "mercato.colori_verde_partita": {
+    "it": "Colori: verde partita facile, rosso partita dura.",
+    "en": "Colours: green = easy match, red = tough match."
+  },
+  "mercato.forma": {
+    "it": "Forma",
+    "en": "Form"
+  },
+  "mercato.andamento": {
+    "it": "Andamento",
+    "en": "Trend"
+  },
+  "mercato.nessuna_presenza_questa": {
+    "it": "Nessuna presenza in questa stagione.",
+    "en": "No appearances this season."
+  },
+  "mercato.rende_sopra_sotto": {
+    "it": "Gol e assist rispetto alle occasioni",
+    "en": "Goals and assists against chances"
+  },
+  "mercato.punti_partita": {
+    "it": "punti a partita",
+    "en": "points per match"
+  },
+  "mercato.tutte_statistiche": {
+    "it": "Tutte le statistiche",
+    "en": "All statistics"
+  },
+  "mercato.stagione": {
+    "it": "Stagione",
+    "en": "Season"
+  },
+  "mercato.statistiche_avanzate": {
+    "it": "Statistiche avanzate",
+    "en": "Advanced statistics"
+  },
+  "mercato.confronta_con_altro": {
+    "it": "Confronta con un altro",
+    "en": "Compare with another"
+  },
+  "mercato.confronta_con_mia": {
+    "it": "Confronta con la mia rosa",
+    "en": "Compare with my roster"
+  },
+  "mercato.apri_prima_formazione": {
+    "it": "Apri prima la formazione",
+    "en": "Open the lineup first"
+  },
+  "mercato.questo_giocatore_non": {
+    "it": "Questo giocatore non è nella tua rosa di questa giornata",
+    "en": "This player is not in your roster for this matchday"
+  },
+  "mercato.con_chi_vuoi": {
+    "it": "Con chi vuoi confrontarlo? Prima i giocatori dello stesso ruolo della tua rosa.",
+    "en": "Who do you want to compare him with? Players of the same position in your roster come first."
+  },
+  "mercato.confronto": {
+    "it": "Confronto…",
+    "en": "Comparing…"
+  },
+  "mercato.tutti_numeri": {
+    "it": "Tutti i numeri",
+    "en": "All the numbers"
+  },
+  "mercato.quot": {
+    "it": "quotazione {n}",
+    "en": "price {n}"
+  },
+  "mercato.n_osservati.one": {
+    "it": "{n} giocatore seguito",
+    "en": "{n} player followed"
+  },
+  "mercato.n_osservati.other": {
+    "it": "{n} giocatori seguiti",
+    "en": "{n} players followed"
+  },
+  "mercato.osservati_spiega": {
+    "it": "Aggiungi un giocatore dalla sua scheda (tasto ☆ Segui). Ti avvisiamo sul telefono se si infortuna, torna disponibile o cambia titolarità.",
+    "en": "Add a player from his card (the ☆ Follow button). We alert you on your phone if he gets injured, comes back or changes his starting status."
+  },
+  "mercato.svincolato": {
+    "it": "Svincolato",
+    "en": "Free agent"
+  },
+  "mercato.svincolato_riga": {
+    "it": " · svincolato",
+    "en": " · free agent"
+  },
+  "mercato.svincolati_in_lega": {
+    "it": "{n} svincolati in lega",
+    "en": "{n} free agents in the league"
+  },
+  "mercato.senza_altre": {
+    "it": "Mancano le rose delle altre squadre: qualcuno di questi giocatori potrebbe non essere libero.",
+    "en": "The other teams' rosters are missing: some of these players may not be free."
+  },
+  "mercato.crediti_riga": {
+    "it": " · crediti {n}",
+    "en": " · credits {n}"
+  },
+  "mercato.consigli_spiega": {
+    "it": "Ogni proposta è un cambio: esce uno dei tuoi, entra uno svincolato dello stesso ruolo. Il numero grande sono i punti attesi in più in stagione; sotto, quelli delle prossime giornate.",
+    "en": "Each proposal is a swap: one of yours goes out, a free agent in the same position comes in. The big number is the extra expected points over the season; below, those over the next matchdays."
+  },
+  "mercato.rimborso": {
+    "it": "Lo svincolo ti restituisce il {p}% del prezzo pagato.",
+    "en": "Releasing a player gives you back {p}% of the price paid."
+  },
+  "mercato.inserisci_crediti": {
+    "it": "Inserisci i tuoi crediti in Squadra > Squadre e rose (tocca la tua squadra) per vedere se i cambi sono fattibili.",
+    "en": "Enter your credits in Team > Teams and rosters (tap your team) to see whether the swaps are possible."
+  },
+  "mercato.al_posto_di": {
+    "it": "al posto di {nome}",
+    "en": "for {nome}"
+  },
+  "mercato.punti_prossime.one": {
+    "it": "{d} punti nella prossima giornata",
+    "en": "{d} points next matchday"
+  },
+  "mercato.punti_prossime.other": {
+    "it": "{d} punti nelle prossime {n} giornate",
+    "en": "{d} points over the next {n} matchdays"
+  },
+  "mercato.crediti_dopo": {
+    "it": "crediti dopo {dopo}{no}",
+    "en": "credits after {dopo}{no}"
+  },
+  "mercato.rimborso_n": {
+    "it": "rimborso {r}",
+    "en": "refund {r}"
+  },
+  "mercato.costo_n": {
+    "it": "costo {c}",
+    "en": "cost {c}"
+  },
+  "mercato.non_bastano": {
+    "it": " (non bastano)",
+    "en": " (not enough)"
+  },
+  "mercato.nessuno_coi_crediti": {
+    "it": "Con i tuoi crediti ({n}) nessuno svincolato migliora la squadra.",
+    "en": "With your credits ({n}) no free agent improves the team."
+  },
+  "mercato.nessuno_migliora": {
+    "it": "Nessuno svincolato migliora la tua squadra: la rosa è a posto.",
+    "en": "No free agent improves your team: your roster is fine."
+  },
+  "mercato.non_aggiorno": {
+    "it": "Non riesco ad aggiornare: ti mostro i dati salvati",
+    "en": "I cannot refresh: showing the saved data"
+  },
+  "mercato.cal_spiega.one": {
+    "it": "Dalla più facile alla più difficile nella prossima giornata · pallino verde = tue squadre.",
+    "en": "From easiest to toughest in the next matchday · green dot = your teams."
+  },
+  "mercato.cal_spiega.other": {
+    "it": "Dalla più facile alla più difficile nelle prossime {n} giornate · pallino verde = tue squadre.",
+    "en": "From easiest to toughest over the next {n} matchdays · green dot = your teams."
+  },
+  "mercato.non_gioca": {
+    "it": "non gioca",
+    "en": "not playing"
+  },
+  "mercato.tutti": {
+    "it": "Tutti",
+    "en": "All"
+  },
+  "mercato.tutti_ruoli": {
+    "it": "Tutti i ruoli",
+    "en": "All positions"
+  },
+  "mercato.pochi_dati": {
+    "it": "pochi dati",
+    "en": "little data"
+  },
+  "mercato.in_crescita": {
+    "it": "in crescita",
+    "en": "improving"
+  },
+  "mercato.in_calo": {
+    "it": "in calo",
+    "en": "declining"
+  },
+  "mercato.stabile": {
+    "it": "stabile",
+    "en": "steady"
+  },
+  "mercato.sv": {
+    "it": "sv",
+    "en": "nr"
+  },
+  "mercato.porta_inviolata": {
+    "it": "non subisce gol",
+    "en": "clean sheet"
+  },
+  "mercato.gol_subiti_attesi": {
+    "it": "gol che può subire",
+    "en": "goals he may concede"
+  },
+  "mercato.giallo": {
+    "it": "giallo",
+    "en": "yellow"
+  },
+  "mercato.segna": {
+    "it": "segna",
+    "en": "scores"
+  },
+  "mercato.assist": {
+    "it": "assist",
+    "en": "assist"
+  },
+  "mercato.n_assist.one": {
+    "it": "assist",
+    "en": "assist"
+  },
+  "mercato.n_assist.other": {
+    "it": "assist",
+    "en": "assists"
+  },
+  "mercato.rosso": {
+    "it": "rosso",
+    "en": "red"
+  },
+  "mercato.partita_casa": {
+    "it": "{g} · in casa contro {avv} · {quando}",
+    "en": "{g} · at home against {avv} · {quando}"
+  },
+  "mercato.partita_fuori": {
+    "it": "{g} · in trasferta contro {avv} · {quando}",
+    "en": "{g} · away against {avv} · {quando}"
+  },
+  "mercato.gol_attesi": {
+    "it": "risultato atteso {a}–{b}",
+    "en": "expected result {a}–{b}"
+  },
+  "mercato.rendimento_riga": {
+    "it": "Gol {g} rispetto ai gol attesi · assist {a} rispetto agli assist attesi.",
+    "en": "Goals {g} compared with expected goals · assists {a} compared with expected assists."
+  },
+  "mercato.rend_cala": {
+    "it": "Sta segnando più di quanto crea: è probabile che cali.",
+    "en": "He is scoring more than he creates: he is likely to cool off."
+  },
+  "mercato.rend_sblocca": {
+    "it": "Crea più di quanto segna: è probabile che si sblocchi.",
+    "en": "He creates more than he scores: he is likely to break through."
+  },
+  "mercato.rend_linea": {
+    "it": "In linea con le occasioni che ha.",
+    "en": "In line with the chances he gets."
+  },
+  "mercato.presenze": {
+    "it": "presenze",
+    "en": "appearances"
+  },
+  "mercato.media_voto": {
+    "it": "media voto",
+    "en": "average grade"
+  },
+  "mercato.fantamedia": {
+    "it": "fantamedia",
+    "en": "fantasy average"
+  },
+  "mercato.gol_rig": {
+    "it": "gol ({n} rig.)",
+    "en": "goals ({n} pen.)"
+  },
+  "mercato.gialli_rossi": {
+    "it": "gialli/rossi",
+    "en": "yellows/reds"
+  },
+  "mercato.gol_subiti": {
+    "it": "gol subiti",
+    "en": "goals conceded"
+  },
+  "mercato.rigori_parati": {
+    "it": "rigori parati",
+    "en": "penalties saved"
+  },
+  "mercato.minuti": {
+    "it": "minuti",
+    "en": "minutes"
+  },
+  "mercato.xg_90": {
+    "it": "gol attesi ogni 90'",
+    "en": "expected goals per 90'"
+  },
+  "mercato.gol_attesi_tot": {
+    "it": "gol attesi",
+    "en": "expected goals"
+  },
+  "mercato.assist_attesi_tot": {
+    "it": "assist attesi",
+    "en": "expected assists"
+  },
+  "mercato.xa_90": {
+    "it": "assist attesi ogni 90'",
+    "en": "expected assists per 90'"
+  },
+  "mercato.tiri_90": {
+    "it": "tiri ogni 90'",
+    "en": "shots per 90'"
+  },
+  "mercato.rigori_calciati": {
+    "it": "rigori calciati",
+    "en": "penalties taken"
+  },
+  "mercato.passaggi_chiave": {
+    "it": "passaggi chiave",
+    "en": "key passes"
+  },
+  "mercato.punizioni": {
+    "it": "punizioni tirate",
+    "en": "free kicks taken"
+  },
+  "mercato.stagione_prec": {
+    "it": "Stagione {s}: {m}' · {g} gol ({xg} attesi) · {a} assist ({xa} attesi)",
+    "en": "Season {s}: {m}' · {g} goals ({xg} expected) · {a} assists ({xa} expected)"
+  },
+  "mercato.osservato": {
+    "it": "★ Seguito",
+    "en": "★ Following"
+  },
+  "mercato.osserva": {
+    "it": "☆ Segui",
+    "en": "☆ Follow"
+  },
+  "mercato.non_osservi": {
+    "it": "Non lo segui più",
+    "en": "You no longer follow him"
+  },
+  "mercato.osservi_avviso": {
+    "it": "Lo segui: ti avviso se cambia qualcosa",
+    "en": "You follow him: I will tell you if anything changes"
+  },
+  "mercato.panchina_n": {
+    "it": "Panchina {n}",
+    "en": "Bench {n}"
+  },
+  "mercato.posto_titolare": {
+    "it": "Titolare",
+    "en": "Starter"
+  },
+  "mercato.posto_fuori": {
+    "it": "Non schierato",
+    "en": "Not picked"
+  },
+  "mercato.confronta_nome": {
+    "it": "Confronta {nome}",
+    "en": "Compare {nome}"
+  },
+  "mercato.pari": {
+    "it": "pari",
+    "en": "level"
+  },
+  "mercato.chi_schierare": {
+    "it": "Chi schierare? {g}",
+    "en": "Who to field? {g}"
+  },
+  "mercato.nella_formazione": {
+    "it": "Nella formazione ({modulo})",
+    "en": "In the lineup ({modulo})"
+  },
+  "mercato.il_sistema_sceglie": {
+    "it": "Il sistema sceglie",
+    "en": "The system picks"
+  },
+  "mercato.schiera": {
+    "it": "Schiera {nome}",
+    "en": "Field {nome}"
+  },
+  "mercato.se_giocassero": {
+    "it": "Se giocassero da soli",
+    "en": "If they played on their own"
+  },
+  "mercato.cosa_pesa": {
+    "it": "Cosa pesa nella scelta",
+    "en": "What weighs on the choice"
+  },
+  "mercato.barra_spiega": {
+    "it": "Punti attesi in più: la barra va verso {x} (sinistra) o verso {y} (destra). Le cause sommate danno la differenza totale: {d} per {x}.",
+    "en": "Extra expected points: the bar goes towards {x} (left) or {y} (right). The causes added up give the total difference: {d} for {x}."
+  },
+  "mercato.indice": {
+    "it": "Indice",
+    "en": "Index"
+  },
+  "mercato.avversario": {
+    "it": "Avversario",
+    "en": "Opponent"
+  },
+  "mercato.partita": {
+    "it": "Partita",
+    "en": "Match"
+  },
+  "mercato.gioca_riga": {
+    "it": "Gioca",
+    "en": "Plays"
+  },
+  "mercato.fantavoto_atteso_riga": {
+    "it": "Fantavoto atteso",
+    "en": "Expected fantasy score"
+  },
+  "mercato.atteso_ponderato": {
+    "it": "Atteso ponderato (con la probabilità di giocare)",
+    "en": "Weighted expectation (with the chance of playing)"
+  },
+  "mercato.parte_titolare": {
+    "it": "Quando gioca",
+    "en": "When he plays"
+  },
+  "mercato.parte_quasi_sempre": {
+    "it": "quasi sempre titolare",
+    "en": "almost always starts"
+  },
+  "mercato.parte_a_volte": {
+    "it": "a volte titolare",
+    "en": "sometimes starts"
+  },
+  "mercato.parte_di_rado": {
+    "it": "di solito entra dopo",
+    "en": "usually comes on later"
+  },
+  "mercato.bozza_copiata": {
+    "it": "Bozza copiata: incollala nel gruppo o in privato",
+    "en": "Draft copied: paste it in the group or privately"
+  }
+}

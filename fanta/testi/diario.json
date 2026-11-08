@@ -1,0 +1,278 @@
+{
+  "diario.non_salvata": {
+    "it": "Non avevi salvato la tua formazione per questa giornata.",
+    "en": "You had not saved your lineup for this matchday."
+  },
+  "diario.automatica": {
+    "it": "Copia salvata in automatico prima della scadenza ({modulo})",
+    "en": "Copy saved automatically before the deadline ({modulo})"
+  },
+  "diario.tua": {
+    "it": "La tua ({modulo})",
+    "en": "Yours ({modulo})"
+  },
+  "diario.tua_consigliata": {
+    "it": "La tua, la consigliata ({modulo})",
+    "en": "Yours, the recommended one ({modulo})"
+  },
+  "diario.salvata": {
+    "it": "Salvato: ho segnato che hai schierato la consigliata",
+    "en": "Saved: I noted that you fielded the recommended lineup"
+  },
+  "diario.consigliava": {
+    "it": "Cosa consigliava SchieraXI ({modulo})",
+    "en": "What SchieraXI recommended ({modulo})"
+  },
+  "diario.consigliava_il": {
+    "it": "Calcolata il {quando}",
+    "en": "Calculated on {quando}"
+  },
+  "diario.non_registrata": {
+    "it": "Consigliata non registrata: qui sotto c'è quella che il modello rifà oggi con i dati di allora.",
+    "en": "Recommendation not recorded: below is the one the model rebuilds today with the data of the time."
+  },
+  "diario.ricostruita": {
+    "it": "Ricostruita oggi ({modulo})",
+    "en": "Rebuilt today ({modulo})"
+  },
+  "diario.hai_schierato": {
+    "it": "Cosa hai schierato ({modulo})",
+    "en": "What you fielded ({modulo})"
+  },
+  "diario.panchina": {
+    "it": "Panchina",
+    "en": "Bench"
+  },
+  "diario.ho_schierato_questa": {
+    "it": "Ho schierato la consigliata",
+    "en": "I fielded the recommended one"
+  },
+  "diario.ho_schierato_altra": {
+    "it": "Ho schierato un'altra formazione",
+    "en": "I fielded a different lineup"
+  },
+  "diario.correggi": {
+    "it": "Correggi a mano",
+    "en": "Correct by hand"
+  },
+  "diario.cosa_hai_schierato_titolo": {
+    "it": "Cosa hai schierato",
+    "en": "What you fielded"
+  },
+  "diario.correggi_spiega": {
+    "it": "{g}: tocca i giocatori che hai schierato. Servono 11 titolari.",
+    "en": "{g}: tap the players you fielded. You need 11 starters."
+  },
+  "diario.salvata_manuale": {
+    "it": "Salvato: ho segnato i tuoi undici della giornata",
+    "en": "Saved: I noted your eleven for the matchday"
+  },
+  "diario.cambiato": {
+    "it": "Hai cambiato {n}: {nomi}",
+    "en": "You changed {n}: {nomi}"
+  },
+  "diario.cambiato_nomi": {
+    "it": "{dentro} al posto di {fuori}",
+    "en": "{dentro} instead of {fuori}"
+  },
+  "diario.uguale": {
+    "it": "Hai schierato gli stessi 11 consigliati.",
+    "en": "You fielded the same 11 as recommended."
+  },
+  "diario.af_titolo": {
+    "it": "Quanto ci abbiamo preso",
+    "en": "How close we got"
+  },
+  "diario.qp_intro": {
+    "it": "Le giornate finite confrontate con quello che SchieraXI si aspettava. Lo mostriamo anche quando va male.",
+    "en": "Finished matchdays compared with what SchieraXI expected. We show it even when it goes badly."
+  },
+  "diario.qp_su.one": {
+    "it": "Calcolato su 1 giornata (la {da}).",
+    "en": "Based on 1 matchday ({da})."
+  },
+  "diario.qp_su.other": {
+    "it": "Calcolato su {n} giornate, dalla {da} alla {a}.",
+    "en": "Based on {n} matchdays, from {da} to {a}."
+  },
+  "diario.qp_pochi": {
+    "it": "Ancora pochi dati: servono almeno {n} giornate perché questi numeri siano affidabili. Per ora possono cambiare molto.",
+    "en": "Still little data: we need at least {n} matchdays before these numbers are reliable. For now they can change a lot."
+  },
+  "diario.qp_fv_eti": {
+    "it": "punti di errore medio del fantavoto atteso",
+    "en": "points of average error of the expected fantasy score"
+  },
+  "diario.qp_fv": {
+    "it": "In media il fantavoto atteso dei tuoi giocatori sbaglia di {e} punti; {k} voti su 10 sono entro un punto.",
+    "en": "On average the expected fantasy score of your players is off by {e} points; {k} scores out of 10 are within one point."
+  },
+  "diario.qp_fv_voti.one": {
+    "it": "Su 1 voto.",
+    "en": "Over 1 score."
+  },
+  "diario.qp_fv_voti.other": {
+    "it": "Su {n} voti.",
+    "en": "Over {n} scores."
+  },
+  "diario.qp_fv_piu": {
+    "it": "In media hanno fatto {e} in più del previsto.",
+    "en": "On average they scored {e} more than expected."
+  },
+  "diario.qp_fv_meno": {
+    "it": "In media hanno fatto {e} in meno del previsto.",
+    "en": "On average they scored {e} less than expected."
+  },
+  "diario.qp_fv_vuoto": {
+    "it": "Ancora niente da confrontare.",
+    "en": "Nothing to compare yet."
+  },
+  "diario.qp_gioca_eti": {
+    "it": "hanno giocato davvero, quando diciamo che giocano",
+    "en": "really played, when we say they play"
+  },
+  "diario.qp_su_dieci": {
+    "it": "{k} su 10",
+    "en": "{k} of 10"
+  },
+  "diario.qp_gioca": {
+    "it": "Quando diciamo «gioca {p}%», ha giocato {k} volte su 10.",
+    "en": "When we say “plays {p}%”, they played {k} times out of 10."
+  },
+  "diario.qp_gioca_ric": {
+    "it": "Con i dati disponibili prima di ogni giornata (senza le probabili formazioni), chi davamo {al} ha giocato {k} volte su 10.",
+    "en": "With the data available before each matchday (without the predicted lineups), players we gave {al} played {k} times out of 10."
+  },
+  "diario.qp_gioca_ottimisti": {
+    "it": "Qui siamo stati troppo ottimisti.",
+    "en": "Here we were too optimistic."
+  },
+  "diario.qp_gioca_prudenti": {
+    "it": "Qui siamo stati troppo prudenti.",
+    "en": "Here we were too cautious."
+  },
+  "diario.qp_gioca_tutte": {
+    "it": "Tutte le fasce",
+    "en": "All ranges"
+  },
+  "diario.qp_gioca_fascia": {
+    "it": "Gioca {da}-{a}%: dicevamo {d}%, hanno giocato nel {g}% dei casi",
+    "en": "Plays {da}-{a}%: we said {d}%, they played in {g}% of cases"
+  },
+  "diario.qp_giocatori.one": {
+    "it": "1 caso",
+    "en": "1 case"
+  },
+  "diario.qp_giocatori.other": {
+    "it": "{n} casi",
+    "en": "{n} cases"
+  },
+  "diario.qp_pochi_casi": {
+    "it": "pochi per dirlo",
+    "en": "too few to tell"
+  },
+  "diario.qp_cf_eti": {
+    "it": "giornate in cui la consigliata ha fatto meglio della tua",
+    "en": "matchdays in which the recommended lineup beat yours"
+  },
+  "diario.qp_k_su_n": {
+    "it": "{k} su {n}",
+    "en": "{k} of {n}"
+  },
+  "diario.qp_cf": {
+    "it": "Giornate in cui la consigliata ha fatto meglio della tua: {k} su {n}. Meglio la tua: {tua}. Pari: {pari}.",
+    "en": "Matchdays in which the recommended lineup beat yours: {k} of {n}. Yours was better: {tua}. Tied: {pari}."
+  },
+  "diario.qp_cf_piu.one": {
+    "it": "Seguendo sempre la consigliata avresti fatto {e} punto in più.",
+    "en": "Always following the recommended lineup you would have scored {e} more point."
+  },
+  "diario.qp_cf_piu.other": {
+    "it": "Seguendo sempre la consigliata avresti fatto {e} punti in più.",
+    "en": "Always following the recommended lineup you would have scored {e} more points."
+  },
+  "diario.qp_cf_meno.one": {
+    "it": "Con le tue scelte hai fatto {e} punto in più della consigliata.",
+    "en": "Your own choices scored {e} more point than the recommended lineup."
+  },
+  "diario.qp_cf_meno.other": {
+    "it": "Con le tue scelte hai fatto {e} punti in più della consigliata.",
+    "en": "Your own choices scored {e} more points than the recommended lineup."
+  },
+  "diario.qp_cf_pari": {
+    "it": "In tutto, gli stessi punti.",
+    "en": "Overall, the same points."
+  },
+  "diario.qp_cf_vuoto": {
+    "it": "Non sappiamo ancora cosa hai schierato: dillo qui sotto in ogni giornata, con «Ho schierato…».",
+    "en": "We don't know yet what you fielded: tell us below for each matchday, with “I fielded…”."
+  },
+  "diario.qp_sq_eti": {
+    "it": "punti di scarto medio sulla squadra",
+    "en": "points of average gap on the team"
+  },
+  "diario.qp_sq": {
+    "it": "Punti della consigliata: {a} previsti e {f} fatti, in media. Giornate dentro la fascia prevista: {k} su {n} (puntiamo a {d} su 10).",
+    "en": "Recommended lineup: {a} points expected and {f} scored, on average. Matchdays inside the forecast range: {k} of {n} (we aim for {d} out of 10)."
+  },
+  "diario.qp_grafico_aria": {
+    "it": "Errore medio del fantavoto atteso, giornata per giornata",
+    "en": "Average error of the expected fantasy score, matchday by matchday"
+  },
+  "diario.qp_grafico_leg": {
+    "it": "Di quanto ha sbagliato in media il fantavoto atteso in ogni giornata: più bassa è la barra, meglio è.",
+    "en": "How far off the expected fantasy score was on average each matchday: the lower the bar, the better."
+  },
+  "diario.qp_andamento": {
+    "it": "Giornata per giornata",
+    "en": "Matchday by matchday"
+  },
+  "diario.qp_riga_fv": {
+    "it": "fantavoto: errore {e}",
+    "en": "fantasy score: error {e}"
+  },
+  "diario.qp_riga_sq": {
+    "it": "squadra: {a} previsti, {f} fatti",
+    "en": "team: {a} expected, {f} scored"
+  },
+  "diario.qp_riga_tua": {
+    "it": "tua: {t} ({d})",
+    "en": "yours: {t} ({d})"
+  },
+  "diario.qp_ricostruiti.one": {
+    "it": "In 1 giornata su {t} i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati.",
+    "en": "In 1 matchday out of {t} the player numbers are rebuilt from the data available beforehand: the ones shown back then were not saved."
+  },
+  "diario.qp_ricostruiti.other": {
+    "it": "In {n} giornate su {t} i numeri dei giocatori sono ricostruiti con i dati che c'erano prima: quelli mostrati allora non erano stati salvati.",
+    "en": "In {n} matchdays out of {t} the player numbers are rebuilt from the data available beforehand: the ones shown back then were not saved."
+  },
+  "diario.af_dentro": {
+    "it": "Previsti tra {a} e {b}: azzeccata",
+    "en": "Forecast between {a} and {b}: on target"
+  },
+  "diario.af_sotto_fascia": {
+    "it": "Previsti tra {a} e {b}: meno del previsto ({d})",
+    "en": "Forecast between {a} and {b}: fewer than forecast ({d})"
+  },
+  "diario.af_sopra_fascia": {
+    "it": "Previsti tra {a} e {b}: più del previsto ({d})",
+    "en": "Forecast between {a} and {b}: more than forecast ({d})"
+  },
+  "diario.vuoto": {
+    "it": "Ancora vuoto: il diario si riempie dopo la prima giornata finita.",
+    "en": "Still empty: the journal fills up after the first finished matchday."
+  },
+  "diario.vuoto_squadra": {
+    "it": "Ancora vuoto: manca la tua squadra. Indicala in Squadra, alla voce Squadre e rose, e il diario si riempie.",
+    "en": "Still empty: your team is missing. Choose it in League, in your roster, and the journal fills up."
+  },
+  "diario.vuoto_giornate": {
+    "it": "Ancora vuoto: nella tua lega non è ancora finita nessuna giornata.",
+    "en": "Still empty: no matchday has finished yet in your league."
+  },
+  "diario.vuoto_calcolo": {
+    "it": "Ancora vuoto: la tua squadra c'è, ma le giornate finite non sono ancora state calcolate. Succede da solo al prossimo aggiornamento dei dati.",
+    "en": "Still empty: your team is there, but the finished matchdays have not been calculated yet. It happens by itself at the next data update."
+  }
+}

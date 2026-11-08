@@ -1,0 +1,326 @@
+{
+  "oggi.benvenuto_schieraxi": {
+    "it": "Benvenuto in SchieraXI",
+    "en": "Welcome to SchieraXI"
+  },
+  "oggi.per_cominciare_importa": {
+    "it": "Per cominciare importa le rose della tua lega: poi ti dico ogni giornata chi schierare.",
+    "en": "To begin, import your league's rosters: then I will tell you every matchday who to field."
+  },
+  "oggi.calendario_no": {
+    "it": "Calendario non disponibile",
+    "en": "Calendar not available"
+  },
+  "oggi.chiusa": {
+    "it": "Chiusa",
+    "en": "Closed"
+  },
+  "oggi.chiusa_dettaglio": {
+    "it": "La formazione si è chiusa {quando}",
+    "en": "The lineup closed {quando}"
+  },
+  "oggi.giorni_ore.one": {
+    "it": "{n} giorno {h} h",
+    "en": "{n} day {h} h"
+  },
+  "oggi.giorni_ore.other": {
+    "it": "{n} giorni {h} h",
+    "en": "{n} days {h} h"
+  },
+  "oggi.si_chiude": {
+    "it": "La formazione si chiude {quando} ({min} min prima della prima partita)",
+    "en": "The lineup closes {quando} ({min} min before the first match)"
+  },
+  "oggi.prima_partita": {
+    "it": "Prima partita {quando}: la formazione va inserita prima",
+    "en": "First match {quando}: set your lineup before then"
+  },
+  "oggi.preparo": {
+    "it": "Preparo la giornata…",
+    "en": "Getting the matchday ready…"
+  },
+  "oggi.infortunato": {
+    "it": "Infortunato",
+    "en": "Injured"
+  },
+  "oggi.squalificato": {
+    "it": "Squalificato",
+    "en": "Suspended"
+  },
+  "oggi.dubbio": {
+    "it": "In dubbio · gioca {p}",
+    "en": "Doubtful · plays {p}"
+  },
+  "oggi.diffidato_tipo": {
+    "it": "Diffidato",
+    "en": "One yellow from a ban"
+  },
+  "oggi.data_da_definire": {
+    "it": "Data da definire",
+    "en": "Date to be confirmed"
+  },
+  "oggi.partita_in_corso": {
+    "it": "In corso",
+    "en": "In progress"
+  },
+  "oggi.tuoi_titolari": {
+    "it": "I tuoi titolari: {nomi}",
+    "en": "Your starters: {nomi}"
+  },
+  "oggi.n_titolari.one": {
+    "it": "{n} tuo titolare",
+    "en": "{n} of your starters"
+  },
+  "oggi.n_titolari.other": {
+    "it": "{n} tuoi titolari",
+    "en": "{n} of your starters"
+  },
+  "oggi.novita_banner": {
+    "it": "<b>Novità della versione {versione}</b>",
+    "en": "<b>What's new in version {versione}</b>"
+  },
+  "oggi.mancano_probabili_formazioni": {
+    "it": "Mancano le probabili formazioni di questa giornata: i consigli usano le presenze recenti.",
+    "en": "The probable lineups for this matchday are missing: the advice uses recent appearances."
+  },
+  "oggi.tua_formazione_scelta": {
+    "it": "La tua formazione · la tua scelta",
+    "en": "Your lineup · your choice"
+  },
+  "oggi.tua_formazione": {
+    "it": "La tua formazione",
+    "en": "Your lineup"
+  },
+  "oggi.punti_attesi": {
+    "it": "punti attesi",
+    "en": "expected points"
+  },
+  "oggi.apri_formazione": {
+    "it": "Apri la formazione",
+    "en": "Open the lineup"
+  },
+  "oggi.da_controllare": {
+    "it": "Da controllare",
+    "en": "To check"
+  },
+  "oggi.giocatori_formazione_con": {
+    "it": "Giocatori in formazione con qualche dubbio: riguarda le probabili prima della partita.",
+    "en": "Players in the lineup with some doubt: check the probable lineups before the match."
+  },
+  "oggi.tuoi_migliori_della": {
+    "it": "I tuoi migliori della giornata",
+    "en": "Your best of the matchday"
+  },
+  "oggi.indisponibili": {
+    "it": "Indisponibili in rosa ({n})",
+    "en": "Unavailable in your roster ({n})"
+  },
+  "oggi.diffidati": {
+    "it": "Diffidati",
+    "en": "Booking risk"
+  },
+  "oggi.partite_del_turno": {
+    "it": "Partite del turno",
+    "en": "Matches of the round"
+  },
+  "oggi.nessuna_partita_calendario": {
+    "it": "Nessuna partita in calendario",
+    "en": "No matches on the calendar"
+  },
+  "oggi.annuncio_gol": {
+    "it": "Gol: {casa} {gc}, {trasf} {gt}.",
+    "en": "Goal: {casa} {gc}, {trasf} {gt}."
+  },
+  "oggi.risultati_agg": {
+    "it": "Risultati aggiornati alle {ora}",
+    "en": "Results updated at {ora}"
+  },
+  "oggi.ev_gol": {
+    "it": "Gol",
+    "en": "Goal"
+  },
+  "oggi.ev_rigore": {
+    "it": "Rigore",
+    "en": "Penalty"
+  },
+  "oggi.ev_autogol": {
+    "it": "Autogol",
+    "en": "Own goal"
+  },
+  "oggi.ev_rigore_sbagliato": {
+    "it": "Rigore sbagliato",
+    "en": "Missed penalty"
+  },
+  "oggi.ev_rosso": {
+    "it": "Espulso",
+    "en": "Sent off"
+  },
+  "oggi.punti_finora": {
+    "it": "Punti fatti finora",
+    "en": "Points so far"
+  },
+  "oggi.a_fine_giornata": {
+    "it": "A fine giornata",
+    "en": "At full time"
+  },
+  "oggi.attesi_prima": {
+    "it": "attesi prima: {n}",
+    "en": "expected before: {n}"
+  },
+  "oggi.ancora_da_giocare.one": {
+    "it": "{n} giocatore deve ancora giocare",
+    "en": "{n} player still to play"
+  },
+  "oggi.ancora_da_giocare.other": {
+    "it": "{n} giocatori devono ancora giocare",
+    "en": "{n} players still to play"
+  },
+  "oggi.tutti_giocato": {
+    "it": "Hanno giocato tutti: mancano solo i voti ufficiali.",
+    "en": "Everyone has played: only the official grades are missing."
+  },
+  "oggi.dalla_panchina": {
+    "it": "entrato dalla panchina",
+    "en": "came in from the bench"
+  },
+  "oggi.st_senza_voto": {
+    "it": "Senza voto",
+    "en": "No grade"
+  },
+  "oggi.st_attesa_voti": {
+    "it": "Voto in arrivo",
+    "en": "Grade coming"
+  },
+  "oggi.st_in_corso": {
+    "it": "Partita in corso",
+    "en": "Match on"
+  },
+  "oggi.st_rinviata": {
+    "it": "Rinviata",
+    "en": "Postponed"
+  },
+  "oggi.rinvio_titolo_1": {
+    "it": "Partita rinviata",
+    "en": "Postponed match"
+  },
+  "oggi.rinvio_titolo_n": {
+    "it": "Partite rinviate",
+    "en": "Postponed matches"
+  },
+  "oggi.rinvio_recupero": {
+    "it": "recupero {quando}",
+    "en": "make-up game {quando}"
+  },
+  "oggi.rinvio_da_definire": {
+    "it": "recupero da definire",
+    "en": "make-up date to be set"
+  },
+  "oggi.rinvio_miei": {
+    "it": "I tuoi giocatori coinvolti: {nomi}",
+    "en": "Your players involved: {nomi}"
+  },
+  "oggi.rinvio_domanda": {
+    "it": "Per questa giornata i loro giocatori",
+    "en": "For this round their players"
+  },
+  "oggi.rinvio_aspetta": {
+    "it": "aspettano il recupero (conta il suo voto)",
+    "en": "wait for the make-up game (its grade counts)"
+  },
+  "oggi.rinvio_senza_voto": {
+    "it": "restano senza voto (entra la riserva)",
+    "en": "get no grade (a substitute comes in)"
+  },
+  "oggi.rinvio_ufficio": {
+    "it": "prendono il voto d'ufficio ({v})",
+    "en": "get the official grade ({v})"
+  },
+  "oggi.rinvio_regola_lega": {
+    "it": "È la regola della tua lega (Impostazioni › Regole). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata.",
+    "en": "This is your league's rule (Settings › Rules). If your league decides otherwise for this round, change it here: it only applies to this round."
+  },
+  "oggi.rinvio_eccezione": {
+    "it": "Scelta solo per questa giornata. Di solito la tua lega: {regola}.",
+    "en": "Chosen for this round only. Your league usually: {regola}."
+  },
+  "oggi.rinvio_salvato": {
+    "it": "Fatto: consigli aggiornati per questa giornata",
+    "en": "Done: advice updated for this round"
+  },
+  "oggi.recupero_manca": {
+    "it": "Manca il recupero di {partite}: i punti possono ancora cambiare.",
+    "en": "The make-up game {partite} is still to be played: the points may still change."
+  },
+  "oggi.st_da_giocare": {
+    "it": "Da giocare",
+    "en": "Still to play"
+  },
+  "oggi.cambi_panchina": {
+    "it": "Cambi dalla panchina",
+    "en": "Bench substitutions"
+  },
+  "oggi.cambio_fatto": {
+    "it": "già fatto",
+    "en": "done"
+  },
+  "oggi.cambio_probabile": {
+    "it": "probabile",
+    "en": "likely"
+  },
+  "oggi.nessun_sostituto": {
+    "it": "nessun sostituto",
+    "en": "no substitute"
+  },
+  "oggi.giornata_finita": {
+    "it": "{g}: finita",
+    "en": "{g}: over"
+  },
+  "oggi.la_tua_formazione": {
+    "it": "La tua formazione",
+    "en": "Your lineup"
+  },
+  "oggi.la_consigliata": {
+    "it": "La consigliata",
+    "en": "The suggested lineup"
+  },
+  "oggi.punti_fatti": {
+    "it": "punti fatti",
+    "en": "points scored"
+  },
+  "oggi.con_consigliata": {
+    "it": "Con la consigliata: {fatti} punti ({attesi} attesi).",
+    "en": "With the suggested lineup: {fatti} points ({attesi} expected)."
+  },
+  "oggi.confronto_in_arrivo": {
+    "it": "Il confronto con la consigliata arriva nel Diario.",
+    "en": "The comparison with the suggested lineup will appear in the Diary."
+  },
+  "oggi.apri_diario": {
+    "it": "Apri il Diario",
+    "en": "Open the Diary"
+  },
+  "oggi.prossima_chiude": {
+    "it": "{g}: la formazione si chiude {quando}.",
+    "en": "{g}: the lineup closes {quando}."
+  },
+  "oggi.prossima_pronta": {
+    "it": "Puoi già prepararla.",
+    "en": "You can already prepare it."
+  },
+  "oggi.prossima_da": {
+    "it": "Conviene prepararla da {quando}, quando escono le probabili formazioni.",
+    "en": "Best to prepare it from {quando}, when the probable lineups come out."
+  },
+  "oggi.gia_iniziata": {
+    "it": "Questa giornata è già iniziata",
+    "en": "This matchday has already started"
+  },
+  "oggi.gia_iniziata_testo": {
+    "it": "Sei arrivato a partite cominciate: questa la guardi e basta. Prepara la prossima.",
+    "en": "You joined after kick-off: just follow this one. Prepare the next one."
+  },
+  "oggi.prepara_prossima": {
+    "it": "Prepara la prossima",
+    "en": "Prepare the next one"
+  }
+}

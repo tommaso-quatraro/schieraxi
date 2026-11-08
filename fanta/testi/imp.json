@@ -1,0 +1,46 @@
+{
+  "imp.account": {
+    "it": "Il tuo account",
+    "en": "Your account"
+  },
+  "imp.account_sub": {
+    "it": "Nome, email, Google, password, uscita",
+    "en": "Name, email, Google, password, sign out"
+  },
+  "imp.aspetto": {
+    "it": "Aspetto",
+    "en": "Appearance"
+  },
+  "imp.aspetto_sub": {
+    "it": "Lingua, tema e dimensione del testo",
+    "en": "Language, theme and text size"
+  },
+  "imp.avvisi": {
+    "it": "Notifiche",
+    "en": "Notifications"
+  },
+  "imp.avvisi_sub": {
+    "it": "Cosa ricevere sul telefono e quando",
+    "en": "What to receive on your phone and when"
+  },
+  "imp.informazioni": {
+    "it": "Informazioni",
+    "en": "About"
+  },
+  "imp.informazioni_sub": {
+    "it": "Privacy, termini, crediti e versione",
+    "en": "Privacy, terms, credits and version"
+  },
+  "imp.avanzate": {
+    "it": "Avanzate",
+    "en": "Advanced"
+  },
+  "imp.avanzate_sub": {
+    "it": "Solo per chi gestisce SchieraXI",
+    "en": "Only for whoever runs SchieraXI"
+  },
+  "imp.gruppi_aria": {
+    "it": "Gruppi di impostazioni",
+    "en": "Settings groups"
+  }
+}

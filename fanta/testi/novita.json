@@ -1,0 +1,18 @@
+{
+  "novita.carico": {
+    "it": "Carico le novità…",
+    "en": "Loading what's new…"
+  },
+  "novita.versione": {
+    "it": "Versione {v}",
+    "en": "Version {v}"
+  },
+  "novita.precedenti.one": {
+    "it": "Mostra {n} versione precedente",
+    "en": "Show {n} earlier version"
+  },
+  "novita.precedenti.other": {
+    "it": "Mostra le {n} versioni precedenti",
+    "en": "Show the {n} earlier versions"
+  }
+}
