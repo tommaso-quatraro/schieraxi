@@ -3,6 +3,7 @@ r"""Foto e axe della web app, senza finestra: per vedere le schermate prima e do
 Uso (dalla radice del repository; il Python è quello di un venv con Playwright, vedi LEGGIMI.md):
     <venv-playwright>\Scripts\python.exe prove\foto_web\foto.py [indirizzo] <cartella>
         [--scene oggi,formazione] [--larghezze 390,768,1024,1440] [--temi chiaro,scuro] [--lingua it|en]
+        [--accesso] [--solo-misure]
 
 Senza indirizzo avvia da solo un server di prova: copia di `fanta/` di questa cartella, lega d'esempio, copia
 dell'archivio dei dati di calcio (`dati/fanta.sqlite`, mai l'originale), su un indirizzo di loopback suo e una porta libera.
@@ -13,6 +14,10 @@ Per ogni scena, larghezza e tema scrive nella cartella (che deve stare FUORI dal
 - `axe-<scena>-<larghezza>-<tema>.json`, le violazioni di axe (regole WCAG 2.0, 2.1 e 2.2, livelli A e AA);
 - una riga in `riepilogo.txt`: `<scena> <larghezza> <tema> gravi=<n> scorrimento-di-lato=<sì|no> errori-console=<n>`
   (gravi = violazioni `critical` e `serious`). Esce con 1 se una scena ha violazioni gravi, con 2 se una scena non si apre.
+
+`--accesso`: prima delle scene entra nel server con l'account dato dalle variabili d'ambiente `SCHIERAXI_UTENTE` e
+`SCHIERAXI_PASSWORD` (mai sulla riga di comando, mai stampate). `--solo-misure`: niente PNG, solo riepilogo, axe e console
+(il collaudo dell'ambiente di prova, `.github/workflows/collaudo-prova.yml`).
 """
 from __future__ import annotations
 
@@ -68,6 +73,10 @@ MISURA_FOGLIO = "() => { const c = document.querySelector('#foglio .foglio-corpo
 PEZZI_FOGLIO = 8                 # tetto alle foto di un foglio lungo
 SOVRAPPOSIZIONE = 80             # px ripetuti tra un pezzo e il successivo: si vede dove si attacca
 SCORRE_DI_LATO = "() => document.documentElement.scrollWidth > document.documentElement.clientWidth"
+# Le schermate entrano sfumando (opacity): a metà animazione axe misura un contrasto più basso del vero, e diverso a ogni giro.
+# Prima delle misure le animazioni con una fine si portano alla fine (quelle senza fine, come le rotelle, restano: finish() darebbe errore).
+FINISCI_ANIMAZIONI = """() => document.getAnimations().forEach(a => {
+  try { if (a.effect && a.effect.getComputedTiming().endTime !== Infinity) a.finish(); } catch (e) {} })"""
 LANCIA_AXE = """(regole) => axe.run(document, {runOnly: {type: 'tag', values: regole}, resultTypes: ['violations']})
   .then(r => r.violations.map(v => ({id: v.id, impact: v.impact, help: v.help, n: v.nodes.length,
     nodi: v.nodes.slice(0, 5).map(n => ({target: n.target.join(' '), sommario: n.failureSummary}))})))"""
@@ -111,11 +120,33 @@ def leggi_argomenti(argv=None) -> argparse.Namespace:
     p.add_argument("--lingua", choices=["it", "en"], default="it")
     p.add_argument("--dati", default=None, help="cartella con fanta.sqlite (di norma dati/ del repository o della cartella principale)")
     p.add_argument("--python-server", default=None, help="Python con i pacchetti del server (di norma il .venv del repository)")
+    p.add_argument("--accesso", action="store_true",
+                   help="entra prima con l'account delle variabili SCHIERAXI_UTENTE e SCHIERAXI_PASSWORD (mai stampate)")
+    p.add_argument("--solo-misure", action="store_true", help="niente PNG: solo riepilogo.txt, axe e console")
     a = p.parse_args(argv)
     if len(a.posizionali) > 2:
         p.error("al massimo due argomenti: indirizzo e cartella")
     a.indirizzo, a.cartella = (None, a.posizionali[0]) if len(a.posizionali) == 1 else a.posizionali
     return a
+
+
+def credenziali(ambiente=None) -> tuple[str, str]:
+    """Utente e password per `--accesso`, solo dalle variabili d'ambiente. Se ne manca una esce dicendo quali servono
+    (mai i valori)."""
+    ambiente = os.environ if ambiente is None else ambiente
+    utente, password = ambiente.get("SCHIERAXI_UTENTE", ""), ambiente.get("SCHIERAXI_PASSWORD", "")
+    if not utente or not password:
+        sys.exit("--accesso: servono le variabili d'ambiente SCHIERAXI_UTENTE e SCHIERAXI_PASSWORD")
+    return utente, password
+
+
+def accedi(richieste, base: str, utente: str, password: str) -> None:
+    """Entra nel server con l'API di accesso; il cookie della sessione resta nel contesto del browser (`richieste` è il
+    `request` del contesto di Playwright). Accesso rifiutato: esce con il solo codice della risposta."""
+    # X-Fanta: il server rifiuta (403) le richieste che cambiano qualcosa senza questa intestazione, come fa l'app
+    r = richieste.post(base + "/api/account/accedi", data={"nome_utente": utente, "password": password}, headers={"X-Fanta": "1"})
+    if r.status != 200:
+        sys.exit(f"Accesso non riuscito (risposta {r.status}): controlla SCHIERAXI_UTENTE e SCHIERAXI_PASSWORD")
 
 
 def gravi(violazioni: list[dict]) -> int:
@@ -200,7 +231,9 @@ def ambiente_server(copia: Path) -> dict:
     """Ambiente del server di prova: nessuna variabile FANTA_ di chi lancia (fonti, account, lega vera), niente lavori di sfondo."""
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith("FANTA_")}
     env.update({"FANTA_LEGA": str(copia / "lega"), "FANTA_PIANIFICATORE": "0", "FANTA_COPIA_SCADENZA": "0",
-                "FANTA_REGISTRO_GIORNATE": "0", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8"})
+                "FANTA_REGISTRO_GIORNATE": "0", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8",
+                # tutte le funzioni accese, come l'ambiente di prova: col profilo pubblico «confronto» risponde 404
+                "FANTA_PROFILO_FUNZIONI": "completo"})
     return env
 
 
@@ -290,8 +323,10 @@ def _foto(pagina, uscita: Path, nome: str) -> None:
     pagina.evaluate("() => { document.querySelector('#foglio .foglio-corpo').scrollTop = 0; }")
 
 
-def fotografa(base: str, uscita: Path, scene: list[str], larghezze: list[int], temi: list[str], lingua: str) -> tuple[list[str], int]:
-    """Le foto e axe di ogni scena. Torna le righe del riepilogo e quante scene non si sono aperte."""
+def fotografa(base: str, uscita: Path, scene: list[str], larghezze: list[int], temi: list[str], lingua: str,
+              accesso: tuple[str, str] | None = None, foto: bool = True) -> tuple[list[str], int]:
+    """Le foto e axe di ogni scena (con `foto=False` solo le misure). Torna le righe del riepilogo e quante scene non si
+    sono aperte. Con `accesso` (utente, password) entra prima nel server."""
     from playwright.sync_api import sync_playwright          # solo qui: i test dello strumento girano senza Playwright
 
     axe = AXE.read_text(encoding="utf-8")
@@ -300,6 +335,8 @@ def fotografa(base: str, uscita: Path, scene: list[str], larghezze: list[int], t
         ctx = p.chromium.launch_persistent_context(profilo, channel="chrome", headless=True,
                                                    viewport={"width": larghezze[0], "height": 844}, locale="it-IT")
         try:
+            if accesso:
+                accedi(ctx.request, base, *accesso)
             ctx.add_init_script(f"try {{ localStorage.setItem('lingua', '{lingua}'); localStorage.removeItem('tema'); }} catch (e) {{}}")
             pagina = ctx.pages[0] if ctx.pages else ctx.new_page()
             errori: list[str] = []
@@ -321,7 +358,9 @@ def fotografa(base: str, uscita: Path, scene: list[str], larghezze: list[int], t
                             for passo in SCENE[scena]:
                                 pagina.evaluate(f"() => {{ {passo}; }}")
                                 _aspetta_pronta(pagina)
-                            _foto(pagina, uscita, nome)
+                            if foto:
+                                _foto(pagina, uscita, nome)
+                            pagina.evaluate(FINISCI_ANIMAZIONI)
                             scorre = pagina.evaluate(SCORRE_DI_LATO)
                             pagina.evaluate(axe)          # come testo: un tag <script> lo bloccherebbe la CSP dell'app
                             violazioni = pagina.evaluate(LANCIA_AXE, REGOLE_AXE)
@@ -342,6 +381,7 @@ def fotografa(base: str, uscita: Path, scene: list[str], larghezze: list[int], t
 
 def main(argv=None) -> int:
     a = leggi_argomenti(argv)
+    accesso = credenziali() if a.accesso else None           # prima di tutto: se mancano, ci si ferma subito
     uscita = fuori_dal_repository(a.cartella)
     uscita.mkdir(parents=True, exist_ok=True)
     with ExitStack() as pila:
@@ -365,10 +405,10 @@ def main(argv=None) -> int:
                                                       env=ambiente_server(copia), log=uscita / "server.log"))
             print(f"Server di prova su http://{host}:{porta} (PID {server.processo.pid})", flush=True)
             base = server.base
-        righe, fallite = fotografa(base, uscita, a.scene, a.larghezze, a.temi, a.lingua)
+        righe, fallite = fotografa(base, uscita, a.scene, a.larghezze, a.temi, a.lingua, accesso=accesso, foto=not a.solo_misure)
     (uscita / "riepilogo.txt").write_text("\n".join(righe) + "\n", encoding="utf-8")
     n_gravi = sum(1 for r in righe if "gravi=" in r and "gravi=0 " not in r)
-    print(f"Foto e riepilogo in {uscita}: {len(righe)} foto, {n_gravi} con violazioni gravi, {fallite} scene non aperte.")
+    print(f"{'Misure' if a.solo_misure else 'Foto'} e riepilogo in {uscita}: {len(righe)} scene, {n_gravi} con violazioni gravi, {fallite} scene non aperte.")
     return 2 if fallite else 1 if n_gravi else 0
 
 
