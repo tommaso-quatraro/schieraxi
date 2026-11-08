@@ -12,9 +12,10 @@ import pytest
 from fanta import frasi, server
 from fanta.frasi import CATALOGO, F
 from fanta.frasi_avvisi import NOTIFICHE
+import codice_web
 
 PACCHETTO = server.WEB.parent
-TESTI_JS = (server.WEB / "testi.js").read_text(encoding="utf-8")
+TESTI_JS = codice_web.leggi("testi.js")
 CON_NODE = pytest.mark.skipif(shutil.which("node") is None, reason="node non installato")
 
 
@@ -254,7 +255,7 @@ def test_la_card_da_fare_in_inglese_e_in_italiano():
         {"id": "copertura:A", "tipo": "copertura", "priorita": 2, "testo": "Testo già nella lingua della richiesta", "azione": "Cerca un rimpiazzo",
          "destinazione": {"scheda": "mercato"}},                                                                                    # voce senza frase (server vecchio)
     ]
-    codice = (server.WEB / "dafare.js").read_text(encoding="utf-8")
+    codice = codice_web.leggi("dafare.js")
     prova = TESTI_JS + 'const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");\n' + codice + f"""
     const voci = JSON.parse(String.raw`{json.dumps(voci, ensure_ascii=False)}`);
     const esito = {{}};
@@ -272,9 +273,9 @@ def test_la_card_da_fare_in_inglese_e_in_italiano():
 
 def test_il_web_mostra_le_frasi_tradotte_nei_punti_giusti():
     """I testi del server che cambiano con i dati passano da `traduciFrase`/`testoDi`/`testiDi` (sempre dentro esc()), non da `traduciErrore`."""
-    app = (server.WEB / "app.js").read_text(encoding="utf-8")
-    anteprima = (server.WEB / "anteprima.js").read_text(encoding="utf-8")
-    dafare = (server.WEB / "dafare.js").read_text(encoding="utf-8")
+    app = codice_web.app()
+    anteprima = codice_web.leggi("anteprima.js")
+    dafare = codice_web.leggi("dafare.js")
     for pezzo in ('testoEtichetta(traduciFrase(m.frase, m.testo))',                  # motivi sotto il nome (etichette e scheda): esc dentro testoEtichetta
                   'esc(testoDi(o.probabili))', 'esc(testoDi(o.probabili, "avviso"))',     # probabili di Oggi
                   'esc(testoDi(p, "motivo"))',                                          # consigli di mercato

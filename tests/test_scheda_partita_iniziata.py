@@ -4,10 +4,11 @@ import re
 from pathlib import Path
 
 from fanta import server
+import codice_web
 
 WEB = Path(server.__file__).parent / "web"
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 SCHEDA = APP[APP.index("async function apriGiocatore"):APP.index("async function osservatiIds")]
 
 

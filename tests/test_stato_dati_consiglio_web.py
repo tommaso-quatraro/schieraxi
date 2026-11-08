@@ -11,10 +11,11 @@ import pytest
 
 from fanta import indicatori_consiglio as ic
 from fanta import server
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-TESTI_JS = (WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI_JS = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 ST = "2026-27"
 C1 = "Punti in più della consigliata rispetto alla scelta semplice"

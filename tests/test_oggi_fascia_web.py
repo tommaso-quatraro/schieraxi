@@ -6,9 +6,9 @@ import subprocess
 
 import pytest
 
-from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 NODE = shutil.which("node")
 
 
@@ -16,7 +16,7 @@ def _frase(m: dict) -> str:
     inizio = APP.index("function fraseFascia(m) {")
     fine = APP.index("\n}\n", inizio) + 3
     num = re.search(r"^const num = .*$", APP, re.M).group(0)
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     codice = f"{testi}\n{num}\n{APP[inizio:fine]}\nconsole.log(JSON.stringify(fraseFascia({json.dumps(m)})));"
     r = subprocess.run([NODE, "-"], input=codice, capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr

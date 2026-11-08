@@ -10,10 +10,11 @@ import subprocess
 import pytest
 
 from fanta import archivio, nostri, registro_nostri, server
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-TESTI_JS = (WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI_JS = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 ST = "2026-27"
 V = "3"                                     # la versione dei nostri nei test (fissa: la fixture dell'iPhone non cambia con il calcolo)

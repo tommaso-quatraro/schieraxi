@@ -5,9 +5,10 @@ import subprocess
 
 import pytest
 
-from fanta import limiti, server
+from fanta import limiti
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 
 
 def test_la_durata_sopra_l_ora_e_in_ore():
@@ -23,7 +24,7 @@ def test_il_contatore_non_dice_finite_per_l_attesa_breve():
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="serve node")
 def test_attesa_testo():
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     codice = testi + APP[APP.index("const attesaTesto"):APP.index("const errore =")] + """
 const e = (riprova, message) => ({ status: 429, riprova, message });
 console.log(JSON.stringify([attesaDa(e(2, "Aspetta")), attesaDa(e(300, "Aspetta")), attesaDa(e(5 * 3600, "Aspetta")),

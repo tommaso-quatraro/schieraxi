@@ -12,10 +12,11 @@ import subprocess
 import pytest
 
 from fanta import server
+import codice_web
 
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 STRETTA = "@container pagina (max-width: 319.98px) {"
 SENZA_COMMENTI = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
@@ -91,7 +92,7 @@ def test_squadra_rose_e_calendario_non_si_tagliano():
     assert "flex-wrap: wrap" in _regola(b, ".mia-riga")
     assert "grid-template-columns: 1fr" in _regola(b, ".immagini-squadra")
     assert "flex-wrap: wrap" in _regola(b, ".segmenti, .segmenti.scorri")
-    app = (server.WEB / "app.js").read_text(encoding="utf-8")
+    app = codice_web.app()
     assert '<div class="scorri-tabella" role="region" tabindex="0" aria-label="${t("mercato.calendario_difficolta")}"><table class="tabella-cal">' in app
     assert re.search(r"\n\.scorri-tabella \{[^}]*overflow-x: auto", CSS)
 

@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+import codice_web
 
 RADICE = Path(__file__).resolve().parent.parent
 SPEC = (RADICE / "docs" / "AVATAR.md").read_text(encoding="utf-8")
@@ -301,7 +302,7 @@ def test_svg_versione_3_numero_e_dimensioni():
 
 
 def test_nessuna_regola_per_nome_e_dati_validi_se_ci_sono():
-    js = AVATAR_JS.read_text(encoding="utf-8")
+    js = codice_web.leggi("avatar.js")
     # nessuna regola per nome o nazionalità; i tratti del giocatore sono solo p, c, a, b, f (docs/AVATAR-DIRITTI.md)
     assert not re.search(r"\.nome\b", js) and "nazionalit" not in js.lower()
     # senza tratti la pelle è neutra e fissa: nel generatore la pelle non si sceglie mai dal seme

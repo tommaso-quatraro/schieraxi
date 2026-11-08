@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import codice_web
 
 RADICE = Path(__file__).resolve().parent.parent
 WEB = RADICE / "fanta" / "web"
@@ -85,9 +86,9 @@ def test_eventi_e_miei_giocatori():
 def test_collegamenti_con_l_app():
     html = (WEB / "index.html").read_text(encoding="utf-8")
     assert html.index('src="live.js"') < html.index('src="app.js"')                 # app.js usa LiveSchieraxi all'avvio
-    assert '"/live.js"' in (WEB / "sw.js").read_text(encoding="utf-8")                 # anche senza rete
+    assert '"/live.js"' in codice_web.leggi("sw.js")                 # anche senza rete
     assert '"/live.js"' in (RADICE / "fanta" / "rotte_account.py").read_text(encoding="utf-8")
-    app = (WEB / "app.js").read_text(encoding="utf-8")
+    app = codice_web.app()
     assert "innerHTML" not in app[app.index("function disegnaLive"):app.index("// ---------------------------------------------------------------- formazione")]     # solo textContent con dati di fuori
     assert "document.hidden" in app and "visibilitychange" in app                    # mai richieste con la scheda nascosta
 

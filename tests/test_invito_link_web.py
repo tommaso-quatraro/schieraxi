@@ -7,9 +7,10 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import codice_web
 
 RADICE = Path(__file__).resolve().parent.parent
-APP_JS = (RADICE / "fanta" / "web" / "app.js").read_text(encoding="utf-8")
+APP_JS = codice_web.app()
 NODE = shutil.which("node")
 
 

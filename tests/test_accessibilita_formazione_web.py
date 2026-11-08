@@ -12,8 +12,9 @@ import pytest
 
 from fanta import server
 from tests.test_design_web import _colore, _contrasto_rgb, _sopra, _temi
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 NODE = shutil.which("node")
 

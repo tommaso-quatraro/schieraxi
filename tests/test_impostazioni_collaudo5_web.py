@@ -12,13 +12,14 @@ import subprocess
 import pytest
 
 from fanta import server
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (WEB / "stile.css").read_text(encoding="utf-8")
-IMP = (WEB / "impostazioni.js").read_text(encoding="utf-8")
-PRIMO = (WEB / "primoavvio.js").read_text(encoding="utf-8")
-TESTI = (WEB / "testi.js").read_text(encoding="utf-8")
+IMP = codice_web.leggi("impostazioni.js")
+PRIMO = codice_web.leggi("primoavvio.js")
+TESTI = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 
 
