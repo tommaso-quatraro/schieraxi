@@ -32,6 +32,20 @@ Regole del repository: `CLAUDE.md`. Dove sta ogni cosa: `MAPPA.md`.
    (iOS compreso se `ios/` è cambiata). Se uno è rosso si apre l'issue `P1` «CI: main rosso» con il link alla corsa: si vede nel
    giro del coordinatore (`gh issue list --label P1`) e si corregge con una pull request. L'issue la chiude chi ha corretto.
 
+## Passaggio di consegne
+Chi riprende un lavoro parte da ciò che è scritto, non dalla memoria della chat.
+- **Lavoro fermo a metà** (sessione finita, agente bloccato, in attesa di foto o di una risposta): commento sull'issue che inizia
+  con `## Consegne`, con quattro voci brevi:
+  - **Fatto**: cosa c'è già, con ramo, commit o pull request;
+  - **Resta**: cosa manca per il «fatto quando»;
+  - **Trappole**: cose scoperte lavorando che il codice non dice (un test lento, un file da non toccare, una prova che inganna);
+  - **Prossimo passo**: il primo comando o il primo file da cui ripartire.
+- **Lavoro finito**: la descrizione della pull request fa da consegna. Una trappola che vale per tutti va anche in `CLAUDE.md`,
+  «Trappole note».
+- **Chi riparte** legge l'ultimo commento «Consegne» (`gh issue view <N> --comments`) prima di toccare i file.
+- Una sessione lunga non si compatta per abitudine: si scrive la consegna e si riparte con una sessione nuova.
+- Il repository è pubblico: nei commenti niente dati veri, come nel codice.
+
 ## Chi rivede cosa
 - **Chi scrive** non rivede il proprio lavoro: apre la pull request in bozza con le prove fatte; la revisione la fa chi coordina (agente revisore e `/code-review`), poi la pull request esce dalla bozza.
 - **Revisione IA in CI** (job `revisione-ia`, `docs/decisioni/0007-revisione-ia-in-ci.md`): ogni pull request non in bozza

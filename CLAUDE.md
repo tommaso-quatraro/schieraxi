@@ -12,6 +12,8 @@ Lo stato del lavoro sta su GitHub, non nella chat. All'inizio:
 - Urgenze: `gh issue list --label P1` (compresa «CI: main rosso», aperta da sola se i controlli su `main` falliscono).
 - Lavori aperti: `gh pr list` (le bozze sono in attesa di revisione o di foto).
 - La copia locale: `git status`, `git worktree list` (le copie di lavoro con ramo già unito si tolgono).
+- Issue da riprendere: `gh issue view <N> --comments`, si riparte dall'ultimo commento «Consegne». Chi si ferma a metà lo scrive
+  (fatto, resta, trappole, prossimo passo: `docs/METODO.md`, «Passaggio di consegne»).
 
 ## Regole
 - Testi e commenti per l'utente: italiano semplice.
