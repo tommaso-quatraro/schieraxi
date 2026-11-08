@@ -241,7 +241,18 @@ jobs:
             if elenco=$(gh api -H "Accept: application/vnd.github.raw+json" "repos/$GITHUB_REPOSITORY/contents/ios/Tests/file-esterni.txt?ref=$DOPO"); then
               voci=$(printf '%s\n' "$elenco" | grep -vE '^[[:space:]]*(#|$)' || true)
               if [ -n "$voci" ] && ! printf '%s\n' "$voci" | grep -qvE '^[A-Za-z0-9_./-]+$'; then
-                if printf '%s\n' "$file" | grep -qxF -f <(printf '%s\n' "$voci"); then ios=true; else ios=false; fi
+                # Voce file: nome intero. Voce che finisce con «/» (cartella, issue #499): ogni file che comincia così.
+                ios=false
+                nomi=$(printf '%s\n' "$voci" | grep -v '/$' || true)
+                cartelle=$(printf '%s\n' "$voci" | grep '/$' || true)
+                if [ -n "$nomi" ] && printf '%s\n' "$file" | grep -qxF -f <(printf '%s\n' "$nomi"); then ios=true; fi
+                if [ -n "$cartelle" ]; then
+                  while IFS= read -r cartella; do
+                    while IFS= read -r f; do
+                      case "$f" in "$cartella"*) ios=true ;; esac       # tra virgolette: confronto letterale, mai un'espressione
+                    done <<< "$file"
+                  done <<< "$cartelle"
+                fi
               fi
             fi
           fi
