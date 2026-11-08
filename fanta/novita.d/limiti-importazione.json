@@ -1,7 +1,7 @@
 {
   "titolo": "Importazione delle rose: lo stesso limite di lavoro per ogni formato",
   "voci": [
-    "Squadra, aggiornamento delle rose (web e iPhone): un file Excel si legge al massimo quanto un testo incollato. Se un file o un testo richiede troppo lavoro, l'importazione si ferma con il messaggio di sempre per i contenuti troppo pesanti, invece di occupare il server.",
+    "Squadra, aggiornamento delle rose (web e iPhone): un file Excel non costa più lavoro di un testo incollato. Un contenuto troppo pesante si ferma con il messaggio di sempre, senza occupare il server.",
     "Mentre qualcuno importa le sue rose, chi cambia la propria squadra non aspetta più che l'importazione finisca."
   ],
   "tecnico": [
