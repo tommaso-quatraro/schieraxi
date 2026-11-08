@@ -24,7 +24,9 @@ Regole comuni:
   (`server-web` 4, `ios` 3), aree neutre (documenti e test: non contano nel tetto), workflow con job sui Mac,
   etichetta degli obiettivi. Una PR che tocca `ios/` e un'altra area conta nel gruppo `ios`.
 - `foto.json`: dai file iOS alle schermate di `ios/scripts/screenshot.sh`. Un test controlla che i nomi esistano e che ogni
-  file Swift di oggi abbia una regola.
+  file Swift di oggi abbia una regola. Le regole larghe hanno `"ripiego": true`: un file di `ios/Sources/Presentation/` ci
+  finisce solo se è scritto in `ripiego_dichiarato` (parti usate da più schermate); per gli altri una regola per file o per
+  cartella stretta (anche questo lo controlla un test).
 - `modello-brief.md`: modello pubblico del brief per un agente.
 
 ## stato
@@ -57,7 +59,12 @@ python script/squadra/squadra.py annulla-superate --esegui   # annulla davvero
 ## pulisci
 Le worktree di `.claude/worktrees/` in gruppi: da togliere (ramo unito e niente modifiche), con modifiche, senza PR, con PR
 aperta, bloccate da un agente, cartelle sparite (cancellate a mano: si tolgono dall'elenco con `git worktree prune`). Con `--esegui` toglie solo il primo gruppo: `git worktree remove` senza `--force`, poi il ramo
-locale. «Unito» = PR `MERGED` con la stessa testa, oppure testa già dentro `origin/main` (dell'ultimo `git fetch`).
+locale. «Unito» = PR `MERGED` con la stessa testa; oppure testa già dentro `origin/main` (dell'ultimo `git fetch`); oppure
+PR `MERGED` portata in pari con main da GitHub («Update branch»): la testa locale è un antenato di quella della PR
+(`compare/<testa PR>...<testa locale>` con `status` uguale a `behind` o `identical`; un errore vale «non unito»).
+
+Poi i rami locali senza worktree (mai `main`, mai il ramo corrente): da togliere (PR unita e lavoro su main, come sopra), da
+chiedere (senza PR, PR chiusa, commit non uniti: non si toccano mai), con PR aperta. Con `--esegui` toglie solo i primi.
 
 ```
 python script/squadra/squadra.py pulisci
@@ -97,6 +104,11 @@ Toglie la bozza solo se tutto torna: PR aperta, `mergeable` esattamente `MERGEAB
 commit in testa, descrizione, revisione e novità (`script/ci/controlla_pr.py`), coerenza web-iPhone (`script/coerenza.py
 --controlla` sui file della PR, se li tocca), «Foto da fare» se la PR tocca `ios/`. Altrimenti stampa ogni motivo ed esce con 1.
 Se `controlla_pr.py` o `coerenza.py` non ci sono su questo `main`, rifiuta («controllo non disponibile su questo main").
+
+Caso a parte: è rosso solo il job «ambito» ma la descrizione attuale va bene (`controlla_pr.py` senza problemi, aree di
+`controlla_ambito.py` che coprono i file). Il job ha letto la descrizione di prima e un «Re-run» la rilegge uguale: il comando
+lo dice e suggerisce update-branch (ramo indietro) o un push. Con `--esegui`, se l'unico altro motivo è il ramo indietro, fa
+l'update-branch su GitHub ed esce con 4: controlli ripartiti, riprova fra qualche minuto.
 
 ```
 python script/squadra/squadra.py pr-pronta 123            # prova
