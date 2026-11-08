@@ -89,3 +89,26 @@ def test_json(capsys):
     foto.main(f, pr=7, json_=True)
     dati = json.loads(capsys.readouterr().out)
     assert dati["schermate"][0] == "scambi" and dati["comando"][:4] == ["gh", "workflow", "run", "screenshot.yml"]
+
+
+def test_righe_dei_crediti_portano_solo_la_rosa():
+    """#476: per RigaCreditiResidui.swift serviva solo «lega-rosa», non tutte le schermate «lega*»."""
+    esito = foto.schermate(["ios/Sources/Presentation/Lega/RigaCreditiResidui.swift"])
+    assert esito["schermate"] == ["lega-rosa"]
+
+
+def test_ogni_file_di_presentation_ha_una_voce_o_un_ripiego_dichiarato():
+    """Le regole «ripiego» (larghe) valgono per un file di ios/Sources/Presentation solo se è scritto in «ripiego_dichiarato»:
+    un file nuovo chiede di scegliere le sue schermate invece di prendere tutte quelle di una sezione."""
+    dati = comune.leggi_json("foto.json")
+    dichiarati = set(dati["ripiego_dichiarato"])
+    file = sorted(str(p.relative_to(RADICE)).replace("\\", "/")
+                  for p in (RADICE / "ios" / "Sources" / "Presentation").rglob("*.swift"))
+    assert file
+    senza_voce = []
+    for f in file:
+        regola = next(r for r in dati["regole"] if any(foto.aree.corrisponde(f, p) for p in r["percorsi"]))
+        if regola.get("ripiego") and f not in dichiarati:
+            senza_voce.append(f)
+    assert senza_voce == [], "aggiungi una regola in foto.json o il file in «ripiego_dichiarato»"
+    assert dichiarati - set(file) == set(), "in «ripiego_dichiarato» ci sono file che non esistono più"
