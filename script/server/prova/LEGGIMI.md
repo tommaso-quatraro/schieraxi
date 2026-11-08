@@ -5,7 +5,9 @@ così un collaudo automatico (lavoro C2 del piano) la prova con un account finto
 Piano: `docs/superpowers/plans/2026-11-08-ondata-2.md` (lavori C1-C3, §4). Issue #510.
 
 **Nessun comando di questa pagina si esegue senza l'ok del proprietario.** Si lavora nella sessione `casa`, come utente della
-produzione (`<utente>`, quello che ha `sudo`), un passo alla volta. Ogni passo ha la sua **Prova**: se non torna ci si ferma. Ogni passo
+produzione (`<utente>`, quello che ha `sudo`), un passo alla volta. Se `sudo -l` (passo 4.1) dice che l'utente della produzione può
+solo riavviare `fantacalcio`, i comandi con `sudo` si lanciano da root (`ssh root@…`, senza `sudo` davanti) scrivendo `/home/<utente>`
+al posto di `~`; quelli senza `sudo` (esportazione, `crontab -l`, `crontab -e`) restano dell'utente della produzione. Ogni passo ha la sua **Prova**: se non torna ci si ferma. Ogni passo
 ha il suo **Indietro**; il ritorno indietro completo è il passo 4.11. Nei comandi `<dominio>`, `<utente>` e `<proprietario>` si scrivono
 al momento: non vanno nel repository.
 **Comandi con `--prova` e controlli a mano**: si lanciano ai minuti che finiscono per 2 o per 7 (12, 17, 22…), lontano dai giri
@@ -230,7 +232,7 @@ Prova:
   ps -o user= -p "$pid"                                              # schieraxi-prova
   sudo ls -A /proc/$pid/root/home                                   # niente: /home per lui è vuota
   sudo cat /proc/$pid/environ | tr '\0' '\n' | grep -E '^FANTA_(MAIL|PIANIFICATORE|FONTE_)'    # spento / 0
-  systemd-analyze security schieraxi-prova | tail -n 1               # il punteggio di esposizione, da annotare
+  systemd-analyze security schieraxi-prova | tail -n 1               # il punteggio di esposizione: circa 3 o meno, come fantacalcio
   ```
 - `systemctl status fantacalcio --no-pager` è uguale a prima.
 
