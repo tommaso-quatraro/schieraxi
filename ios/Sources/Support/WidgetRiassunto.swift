@@ -372,8 +372,10 @@ struct CopiaWidget: Codable, Equatable {
 enum MemoriaWidget {
     private static let chiave = "copiaWidget"
     private static let nomeFile = "widget-cache.json"
-    /// Il riassunto che il widget tiene per sé nelle sue UserDefaults (solo con un server senza `/api/widget`, `ScaricaOggi`).
+    /// Il riassunto che il widget tiene per sé nelle sue UserDefaults (solo con un server senza `/api/widget`, `ScaricaOggi`) e
+    /// l'impronta del collegamento con cui l'ha scaricato.
     static let chiaveRiassunto = "ultimoRiassunto"
+    static let chiaveRiassuntoChi = "ultimoRiassunto.chi"
 
     /// L'impronta (SHA-256) dell'indirizzo del server e del token con cui il widget scarica: dall'impronta non si risale al token.
     /// Cambia con l'uscita dall'account, con un altro account, con un altro codice incollato e con il rinnovo del token.
@@ -462,6 +464,7 @@ enum MemoriaWidget {
     static func accessoNegato(cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {
         dimentica(cartella: cartella, memoria: memoria)
         memoria.removeObject(forKey: chiaveRiassunto)
+        memoria.removeObject(forKey: chiaveRiassuntoChi)
     }
 
     static func salva(_ copia: CopiaWidget, cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {

@@ -84,18 +84,14 @@ enum ScaricaOggi {
         return t
     }
 
-    /// Il riassunto che il widget salva per sé (solo con un server senza `/api/widget`), con l'impronta del collegamento.
-    private struct RiassuntoDelWidget: Codable {
-        var riassunto: RiassuntoOggi
-        var chi: String
-    }
-
-    /// L'ultimo riassunto dello stesso collegamento (`chi`): quello salvato dal widget o quello che l'app ha messo nel file condiviso,
-    /// il più recente. Mai quello di un altro collegamento: di prima dell'uscita dall'account o di un altro account.
+    /// L'ultimo riassunto dello stesso collegamento (`chi`): quello salvato dal widget (solo con un server senza `/api/widget`, con
+    /// l'impronta in `MemoriaWidget.chiaveRiassuntoChi`) o quello che l'app ha messo nel file condiviso, il più recente. Mai quello
+    /// di un altro collegamento: di prima dell'uscita dall'account o di un altro account.
     private static func ultimoSalvato(chi: String) -> RiassuntoOggi? {
-        let suo = UserDefaults.standard.data(forKey: chiave)
-            .flatMap { try? JSONDecoder().decode(RiassuntoDelWidget.self, from: $0) }
-            .flatMap { $0.chi == chi ? $0.riassunto : nil }
+        let memoria = UserDefaults.standard
+        let suo = memoria.string(forKey: MemoriaWidget.chiaveRiassuntoChi) == chi
+            ? memoria.data(forKey: chiave).flatMap { try? JSONDecoder().decode(RiassuntoOggi.self, from: $0) }
+            : nil
         let dellApp = MemoriaWidget.riassuntoDellApp(Condiviso.leggi(), per: chi)
         switch (suo, dellApp) {
         case let (a?, b?): return a.scaricatoIl >= b.scaricatoIl ? a : b
@@ -155,7 +151,10 @@ enum ScaricaOggi {
     static func leggi(indirizzo: String, token: String?, chi: String) async -> (riassunto: RiassuntoOggi?, salvato: Bool, accessoRichiesto: Bool) {
         switch await scarica(indirizzo: indirizzo, token: token) {
         case .dati(let nuovo):
-            if let dati = try? JSONEncoder().encode(RiassuntoDelWidget(riassunto: nuovo, chi: chi)) { UserDefaults.standard.set(dati, forKey: chiave) }
+            if let dati = try? JSONEncoder().encode(nuovo) {
+                UserDefaults.standard.set(dati, forKey: chiave)
+                UserDefaults.standard.set(chi, forKey: MemoriaWidget.chiaveRiassuntoChi)
+            }
             return (nuovo, false, false)
         case .accessoRichiesto:
             MemoriaWidget.accessoNegato()

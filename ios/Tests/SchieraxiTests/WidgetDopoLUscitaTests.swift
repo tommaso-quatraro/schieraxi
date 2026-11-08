@@ -207,6 +207,7 @@ struct WidgetDopoLUscitaTests {
         let chi = impronta(tokenUno)
         MemoriaWidget.salva(copiaProva(chi), cartella: cartella, memoria: p.widget)
         p.widget.set(Data("riassunto di prima".utf8), forKey: MemoriaWidget.chiaveRiassunto)
+        p.widget.set(chi, forKey: MemoriaWidget.chiaveRiassuntoChi)
         let salvata = try #require(MemoriaWidget.leggi(per: chi, cartella: cartella, memoria: p.widget))
 
         let esito = MemoriaWidget.applica(.accessoRichiesto, copia: salvata, chi: chi, adesso: Date(timeIntervalSince1970: 1_800_000_600),
@@ -216,6 +217,7 @@ struct WidgetDopoLUscitaTests {
         #expect(esito.copia == nil, "con un 401 la copia non si mostra")
         #expect(MemoriaWidget.leggi(per: chi, cartella: cartella, memoria: p.widget) == nil)
         #expect(p.widget.data(forKey: MemoriaWidget.chiaveRiassunto) == nil, "anche il riassunto che il widget tiene per sé")
+        #expect(p.widget.string(forKey: MemoriaWidget.chiaveRiassuntoChi) == nil)
     }
 
     @Test("Senza rete la copia dello stesso collegamento con la sua ora; i dati nuovi si salvano con l'impronta")
