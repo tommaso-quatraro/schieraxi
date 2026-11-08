@@ -8,13 +8,15 @@
 Dati inventati, cartelle temporanee, niente orologio vero.
 """
 import contextlib
+import json
 import logging
 import os
+import sqlite3
 from pathlib import Path
 
 import pytest
 
-from fanta import account, contesto, percorsi, registro
+from fanta import account, contesto, percorsi, push, registro
 from fanta.__main__ import main
 
 from test_account_http import PASSWORD, cliente, registra
@@ -60,7 +62,21 @@ def test_scrittura_dopo_la_cancellazione_non_ricrea_la_cartella(ambiente):
     assert not ctx.cartella.exists()
 
 
-def test_scrittura_a_meta_quando_arriva_la_cancellazione_non_ricrea_la_cartella(ambiente, monkeypatch):
+def test_push_non_ricrea_la_cartella_cancellata(ambiente):
+    """Il giro degli avvisi ha già in memoria i dispositivi dell'utente quando lui elimina l'account: riscrivere le iscrizioni
+    (dopo un invio, o togliendone una scaduta) non fa rinascere la cartella con i suoi dispositivi."""
+    c, uid = nuovo_utente("marco")
+    ctx = contesto.Contesto.per_utente(uid)
+    dispositivi = [{"endpoint": "https://web.push.example/marco", "keys": {"p256dh": "P" * 40, "auth": "A" * 20}}]
+    push.scrivi_sicuro(ctx.iscrizioni_push, json.dumps(dispositivi))
+    elimina(c)
+    push.scrivi_sicuro(ctx.iscrizioni_push, json.dumps(dispositivi))
+    push.togli("https://web.push.example/scaduto", ctx.iscrizioni_push)
+    assert not ctx.cartella.exists()
+
+
+@pytest.mark.parametrize("scrivi", [percorsi.scrivi_sicuro, push.scrivi_sicuro], ids=["percorsi", "push"])
+def test_scrittura_a_meta_quando_arriva_la_cancellazione_non_ricrea_la_cartella(ambiente, monkeypatch, scrivi):
     """La scrittura ha già guardato se l'account c'è e sta creando le cartelle quando l'account viene eliminato e la sua cartella
     tolta: alla fine la cartella non c'è lo stesso."""
     _, uid = nuovo_utente("marco")
@@ -77,7 +93,7 @@ def test_scrittura_a_meta_quando_arriva_la_cancellazione_non_ricrea_la_cartella(
         return vero_mkdir(self, *a, **k)
 
     monkeypatch.setattr(Path, "mkdir", mkdir_con_cancellazione)
-    percorsi.scrivi_sicuro(ctx.cartella / "archivio" / "2025-26" / "scelte.json", "{}")
+    scrivi(ctx.cartella / "archivio" / "2025-26" / "scelte.json", "{}")
     monkeypatch.setattr(Path, "mkdir", vero_mkdir)
     assert fatto
     assert not contesto.cartella_utente(uid).exists()
@@ -193,12 +209,32 @@ def test_segno_rimasto_da_prima_non_blocca_un_account_con_lo_stesso_numero(ambie
     assert f.read_text(encoding="utf-8") == "{}"
 
 
-def test_database_illeggibile_vale_il_segno(ambiente):
+def test_database_illeggibile_la_scrittura_non_va_avanti(ambiente):
     c, uid = nuovo_utente("marco")
     elimina(c)
     (percorsi.cartella_account() / "account.sqlite").write_bytes(b"non sono un database" * 10)
     percorsi.scrivi_sicuro(contesto.Contesto.per_utente(uid).scelte, "{}")
     assert not contesto.cartella_utente(uid).exists()
+
+
+def test_errore_del_database_non_cancella_la_cartella(ambiente, monkeypatch, caplog):
+    """Segno rimasto da prima di un ripristino del database e database che per un momento non si apre: la scrittura non va
+    avanti, ma la cartella (forse di un utente vivo) resta com'è e l'errore resta nel registro del servizio, con il tipo."""
+    _, uid = nuovo_utente("marco")
+    cartella = contesto.cartella_utente(uid)
+    assert percorsi.segna_cancellato(uid)
+    prima = albero(cartella)
+
+    def non_si_apre(*a, **k):
+        raise sqlite3.OperationalError("unable to open database file")
+
+    with monkeypatch.context() as m, caplog.at_level(logging.ERROR):
+        m.setattr(sqlite3, "connect", non_si_apre)
+        percorsi.scrivi_sicuro(cartella / "scelte.json", "{}")
+        push.scrivi_sicuro(cartella / "push.json", "[]")
+    assert albero(cartella) == prima
+    assert any(r.levelno >= logging.ERROR and "OperationalError" in r.getMessage() and str(uid) in r.getMessage()
+               for r in caplog.records)
 
 
 def test_segno_non_scritto_registrato(ambiente):

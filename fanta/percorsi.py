@@ -64,26 +64,30 @@ def segna_cancellato(utente_id: int) -> bool:
         return False
 
 
-def account_cancellato(utente_id: int) -> bool:
-    """Vero se l'account è stato eliminato: c'è il suo segno e nel database degli account non c'è più un account con quel numero.
-    Il database (in sola lettura) si guarda solo se il segno c'è: per gli altri utenti basta un controllo sul disco. Serve per un
-    segno rimasto da prima di un ripristino del database, quando lo stesso numero può tornare a un account nuovo. Se il database
-    non si legge, vale il segno."""
-    if not _segno(utente_id).exists():
-        return False
+def scrittura_permessa(percorso: Path) -> bool:
+    """Da chiamare prima e dopo aver scritto `percorso`: vero se si può scrivere. Fuori dalle cartelle degli utenti, o per un
+    account senza segno di cancellazione, sempre (per loro basta un controllo sul disco: il database si guarda solo se il segno c'è).
+    - Il database degli account (in sola lettura) conferma che l'account non c'è più: falso, e la sua cartella, se è rinata per
+      una scrittura partita prima, si toglie. Quello che non si riesce a togliere lo trova `python -m fanta cartelle-senza-account`.
+    - C'è un account con quel numero: vero (segno rimasto da prima di un ripristino del database, numero tornato a un account nuovo).
+    - Il database non risponde: falso, ma non si cancella niente (potrebbe essere un utente vivo) e resta un errore con il tipo
+      nel registro del servizio."""
+    utente = utente_della_cartella(percorso)
+    if utente is None or not _segno(utente).exists():
+        return True
     file = cartella_account() / "account.sqlite"
     try:
         with contextlib.closing(sqlite3.connect(f"{file.resolve().as_uri()}?mode=ro", uri=True, timeout=5)) as db:
-            return db.execute("SELECT 1 FROM utenti WHERE id = ?", (int(utente_id),)).fetchone() is None
-    except sqlite3.Error:
+            vivo = db.execute("SELECT 1 FROM utenti WHERE id = ?", (utente,)).fetchone() is not None
+    except sqlite3.Error as e:
+        logging.getLogger(__name__).error("Account %s con il segno di cancellazione, ma il database degli account non risponde (%s): "
+                                          "%s non scritto o lasciato com'è, niente cancellato", utente, type(e).__name__, percorso.name)
+        return False
+    if vivo:
         return True
-
-
-def _togli_cartella_cancellata(utente_id: int, percorso: Path) -> None:
-    """Una scrittura per un account eliminato: non si fa, e se la cartella dell'utente è rinata (scritture partite prima) si toglie.
-    Quello che non si riesce a togliere lo trova `python -m fanta cartelle-senza-account`."""
-    logging.getLogger(__name__).warning("Account %s eliminato: %s non salvato", utente_id, percorso.name)
-    shutil.rmtree(cartella_utenti() / str(utente_id), ignore_errors=True)
+    logging.getLogger(__name__).warning("Account %s eliminato: %s non salvato, la sua cartella si toglie", utente, percorso.name)
+    shutil.rmtree(cartella_utenti() / str(utente), ignore_errors=True)
+    return False
 
 
 def cartella_privata(cartella: Path) -> Path:
@@ -118,9 +122,7 @@ def scrivi_sicuro(percorso: Path, testo: str) -> None:
     """Scrive su un file temporaneo e poi lo rinomina: se qualcosa va storto, il file vecchio resta intatto.
     Nella cartella di un account eliminato non scrive (anche se il lavoro era partito prima dell'eliminazione): il segno si guarda
     prima e di nuovo dopo, così la cartella non rinasce nemmeno se l'eliminazione arriva a metà scrittura."""
-    utente = utente_della_cartella(percorso)
-    if utente is not None and account_cancellato(utente):
-        _togli_cartella_cancellata(utente, percorso)
+    if not scrittura_permessa(percorso):
         return
     percorso.parent.mkdir(parents=True, exist_ok=True)
     tmp = percorso.with_name(f"{percorso.name}.{uuid.uuid4().hex[:8]}.tmp")   # nome unico: salvataggi in parallelo
@@ -130,5 +132,4 @@ def scrivi_sicuro(percorso: Path, testo: str) -> None:
     except BaseException:
         tmp.unlink(missing_ok=True)       # disco pieno o altro: niente file a metà che occupano altro spazio
         raise
-    if utente is not None and account_cancellato(utente):      # eliminato mentre scrivevamo: si toglie quello che è rinato
-        _togli_cartella_cancellata(utente, percorso)
+    scrittura_permessa(percorso)      # eliminato mentre scrivevamo: si toglie quello che è rinato
