@@ -40,7 +40,9 @@ Stato dei dati, Novità.
 giocatori, Movimenti e storico, Crediti delle squadre, Nuova stagione, la lingua inglese della web.
 
 «Congelata» vuol dire: resta com'è, si correggono i difetti e resta uguale su web e iPhone, ma niente funzioni, rifiniture o
-schermate nuove. Si può proporre di nasconderla o toglierla; non di allargarla.
+schermate nuove. Si può proporre di nasconderla o toglierla; non di allargarla. I lavori che cambiano tutta l'app senza
+cambiare quello che si vede (per esempio i testi nel catalogo unico, #493-#497) comprendono anche le funzioni congelate,
+così la fonte dei testi resta una sola *[scelta del coordinatore]*.
 
 ## 5. Cosa SchieraXI non fa
 - Niente asta né riparazione, niente quote o scommesse, niente classifica o calendario della lega, niente amministrazione
@@ -73,14 +75,20 @@ I `P1` (rotto o sicurezza, per esempio #481) passano sempre davanti.
 
 1. **#167 ridotto**: solo ciò che serve a una giornata senza errori e alla prova prima degli amici.
    - testi da una fonte sola per web e iPhone: #493, #494, #495, #496, #497;
-   - ambiente di prova e collaudo automatico dopo il rilascio: #510, #511, #512;
+   - ambiente di prova e collaudo automatico dopo il rilascio: #510, #511, #512. La prova è già accesa sul server con l'ok
+     del proprietario dell'8/11; restano l'account di collaudo e i segreti su GitHub, che crea il proprietario;
    - limiti per utente e cancellazione dell'account: #483, #514, #515, #516;
    - l'iPhone legge le risposte vere del server con i suoi modelli: #507.
-2. **#168 con gli amici**: ingresso da solo dalla web installata, poi un amico vero che prova. Prima di aprire: audit di
-   sicurezza completo (decisione del 6/11).
+2. **#168 con gli amici**: ingresso da solo dalla web installata, poi un amico vero che prova. Il primo lavoro è un collaudo
+   da «amico nuovo» sull'ambiente di prova (invito, installazione sulla Home, rose, regole e tempi della lega), che elenca cosa
+   manca: le sotto-issue nascono da lì. Prima di aprire: audit di sicurezza completo con la skill `security-audit`, sulla
+   parte che vedono gli amici (account, inviti, importazione, avvisi, widget, token); il rapporto resta privato e i problemi
+   gravi o critici bloccano l'apertura *[scelta del coordinatore]*. Nessuna data fissa: #168 parte appena il #167 ridotto è
+   chiuso *[scelta del coordinatore]*.
 3. **#165 e #166 vanno avanti a ogni giornata, in parallelo**, con le misure del registro e del Diario (prima misura di «gioca
    N%» con le probabili verso il 9/12, #379). Un lavoro sul modello o sul consiglio parte solo se una misura lo chiede: «misura,
-   poi accendi».
+   poi accendi». «Lo chiede» vuol dire: un indicatore fuori soglia sulla finestra di 8 giornate. Il registro manda già un
+   avviso al proprietario quando I1, I2 o I3 escono dalla soglia; il coordinatore ne fa un'issue sotto #165 o #166.
 
 **Rimandati a dopo #168** (restano issue `P3`): web divisa in moduli (#500, #501, #502), regressione visiva bloccante (#504),
 foto iOS mirate (#505), corpi delle richieste iPhone dall'OpenAPI (#509), avviso sulle fotografie vecchie (#508)
