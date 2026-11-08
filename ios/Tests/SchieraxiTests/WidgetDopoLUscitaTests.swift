@@ -161,4 +161,111 @@ struct WidgetDopoLUscitaTests {
         #expect(MemoriaWidget.riassuntoDellApp(condiviso, per: impronta(nil)) == nil)
         #expect(MemoriaWidget.riassuntoDellApp(DatiCondivisi(), per: impronta(nil)) == nil, "dopo l'uscita il file condiviso è vuoto")
     }
+
+    // MARK: revisione della #486
+
+    @Test("Scelta del giocatore con il collegamento manuale: vale la copia del codice incollato, non quella di un altro account")
+    func sceltaConCodiceIncollato() throws {
+        let p = try PostiWidgetDiProva()
+        defer { p.togli() }
+        // né gruppo né Keychain condiviso: il widget scarica con il codice incollato, e la sua copia ha quell'impronta
+        let codice = CodiceWidget.crea(indirizzo: indirizzoProva, token: tokenUno)
+        MemoriaWidget.salva(copiaProva(impronta(tokenUno)), cartella: nil, memoria: p.widget)
+        let candidati = MemoriaWidget.impronteCandidate(condiviso: DatiCondivisi(), portachiavi: nil, codice: codice,
+                                                        predefinito: pubblicoProva, pulisci: { $0 })
+        #expect(candidati.contains(impronta(tokenUno)))
+        #expect(MemoriaWidget.leggi(perUnaDi: candidati, cartella: nil, memoria: p.widget)?.riassunto?.giornata == 11)
+        // senza codice (o con il codice di un altro account) la copia non si usa
+        let senzaCodice = MemoriaWidget.impronteCandidate(condiviso: DatiCondivisi(), portachiavi: nil, codice: nil,
+                                                          predefinito: pubblicoProva, pulisci: { $0 })
+        #expect(MemoriaWidget.leggi(perUnaDi: senzaCodice, cartella: nil, memoria: p.widget) == nil)
+        let altroAccount = MemoriaWidget.impronteCandidate(condiviso: DatiCondivisi(), portachiavi: nil,
+                                                           codice: CodiceWidget.crea(indirizzo: indirizzoProva, token: tokenDue),
+                                                           predefinito: pubblicoProva, pulisci: { $0 })
+        #expect(MemoriaWidget.leggi(perUnaDi: altroAccount, cartella: nil, memoria: p.widget) == nil)
+    }
+
+    @Test("Scelta del giocatore con il collegamento automatico: vale la copia dell'app anche con un codice vecchio incollato")
+    func sceltaConCollegamentoAutomatico() throws {
+        let p = try PostiWidgetDiProva()
+        defer { p.togli() }
+        let condiviso = DatiCondivisi(indirizzo: indirizzoProva, token: tokenUno, tokenPerIndirizzo: indirizzoProva)
+        MemoriaWidget.salva(copiaProva(impronta(tokenUno)), cartella: p.cartella, memoria: p.widget)
+        for codice in [nil, "", CodiceWidget.crea(indirizzo: indirizzoProva, token: tokenDue)] {
+            let candidati = MemoriaWidget.impronteCandidate(condiviso: condiviso, portachiavi: nil, codice: codice,
+                                                            predefinito: pubblicoProva, pulisci: { $0 })
+            #expect(candidati == [impronta(tokenUno)], "il token dell'app vince sul codice incollato")
+            #expect(MemoriaWidget.leggi(perUnaDi: candidati, cartella: p.cartella, memoria: p.widget) != nil)
+        }
+    }
+
+    @Test("Il 401 nel widget: tutte le copie cancellate e niente da mostrare", arguments: [true, false])
+    func accessoNegatoNelWidget(conGruppo: Bool) throws {
+        let p = try PostiWidgetDiProva()
+        defer { p.togli() }
+        let cartella: URL? = conGruppo ? p.cartella : nil
+        let chi = impronta(tokenUno)
+        MemoriaWidget.salva(copiaProva(chi), cartella: cartella, memoria: p.widget)
+        p.widget.set(Data("riassunto di prima".utf8), forKey: MemoriaWidget.chiaveRiassunto)
+        let salvata = try #require(MemoriaWidget.leggi(per: chi, cartella: cartella, memoria: p.widget))
+
+        let esito = MemoriaWidget.applica(.accessoRichiesto, copia: salvata, chi: chi, adesso: Date(timeIntervalSince1970: 1_800_000_600),
+                                          cartella: cartella, memoria: p.widget)
+
+        #expect(esito.accessoRichiesto)
+        #expect(esito.copia == nil, "con un 401 la copia non si mostra")
+        #expect(MemoriaWidget.leggi(per: chi, cartella: cartella, memoria: p.widget) == nil)
+        #expect(p.widget.data(forKey: MemoriaWidget.chiaveRiassunto) == nil, "anche il riassunto che il widget tiene per sé")
+    }
+
+    @Test("Senza rete la copia dello stesso collegamento con la sua ora; i dati nuovi si salvano con l'impronta")
+    func copiaDopoLoScarico() throws {
+        let p = try PostiWidgetDiProva()
+        defer { p.togli() }
+        let chi = impronta(tokenUno)
+        let dopo = Date(timeIntervalSince1970: 1_800_000_600)
+        let nuovo = try #require(RiassuntoWidget.leggi(Data(WidgetRiassuntoTests.corpo.utf8)))
+
+        let scaricata = MemoriaWidget.applica(.dati(nuovo, Data(WidgetRiassuntoTests.corpo.utf8), "\"e2\""), copia: nil, chi: chi,
+                                              adesso: dopo, cartella: p.cartella, memoria: p.widget)
+        #expect(scaricata.fresca)
+        #expect(scaricata.copia?.chi == chi)
+        #expect(MemoriaWidget.leggi(per: chi, cartella: p.cartella, memoria: p.widget)?.etag == "\"e2\"")
+
+        let salvata = MemoriaWidget.leggi(per: chi, cartella: p.cartella, memoria: p.widget)
+        let senzaRete = MemoriaWidget.applica(.errore, copia: salvata, chi: chi, adesso: dopo, cartella: p.cartella, memoria: p.widget)
+        #expect(senzaRete.copia == salvata)
+        #expect(!senzaRete.fresca, "si mostra con l'ora dello scarico")
+        #expect(!senzaRete.accessoRichiesto)
+
+        // una copia di un altro collegamento non si mostra nemmeno se arriva fin qui
+        let diUnAltro = MemoriaWidget.applica(.errore, copia: copiaProva(impronta(tokenDue)), chi: chi, adesso: dopo,
+                                              cartella: p.cartella, memoria: p.widget)
+        #expect(diUnAltro.copia == nil)
+        #expect(MemoriaWidget.applica(.nonDisponibile, copia: salvata, chi: chi, adesso: dopo, cartella: p.cartella, memoria: p.widget).nonDisponibile)
+    }
+
+    @Test("Uscita con la scrittura del file condiviso che non riesce: il file se ne va, niente token né riassunto leggibili")
+    func uscitaConScritturaNonRiuscita() throws {
+        struct ScritturaNegata: Error {}
+        let p = try PostiWidgetDiProva()
+        defer { p.togli() }
+        Condiviso.aggiorna(cartella: p.cartella) {
+            $0.indirizzo = indirizzoProva
+            $0.token = tokenUno
+            $0.tokenPerIndirizzo = indirizzoProva
+            $0.riassunto = riassuntoProva
+        }
+        MemoriaWidget.salva(copiaProva(impronta(tokenUno)), cartella: p.cartella, memoria: p.app)
+        try #require(Condiviso.leggi(cartella: p.cartella).token == tokenUno)
+
+        DatiLocali.dimenticaIlWidget(cartella: p.cartella, memoria: p.app, portachiavi: p.portachiavi,
+                                     scrivi: { _, _ in throw ScritturaNegata() }, ricarica: {})
+
+        let condiviso = Condiviso.leggi(cartella: p.cartella)
+        #expect(condiviso.token == nil)
+        #expect(condiviso.riassunto == nil)
+        #expect(!FileManager.default.fileExists(atPath: p.cartella.appendingPathComponent("condiviso.json").path))
+        #expect(MemoriaWidget.leggi(per: impronta(tokenUno), cartella: p.cartella, memoria: p.app) == nil, "la copia locale")
+    }
 }
