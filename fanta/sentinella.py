@@ -833,12 +833,22 @@ def aggiungi_giro(giri, voce: dict) -> list[dict]:
 
 def giri_sentinella(dal: datetime, al: datetime, file: Path = FILE_STATO) -> list[dict]:
     """I giri del server con `dal <= quando <= al`, dal più vecchio: [{quando, rotte, inviato}] (solo ore e nomi di invarianti).
-    `dal` e `al` vogliono il fuso: la storia ha l'ora con il fuso, e un confronto con un'ora senza fuso sarebbe sbagliato."""
+    `dal` e `al` vogliono il fuso: la storia ha l'ora con il fuso, e un confronto con un'ora senza fuso sarebbe sbagliato.
+    Il file che manca vale «nessun giro»; un file che c'è ma non si legge è un errore (ValueError), mai una lista vuota: la
+    «giornata senza errori» non deve risultare verde per omissione. Il file di stato di prima, senza `giri`, vale lista vuota."""
     if dal.utcoffset() is None or al.utcoffset() is None:
         raise ValueError("dal e al vogliono data e ora col fuso (esempio: 2026-11-15T20:00:00+01:00 o 2026-11-15T19:00:00Z)")
-    giri = leggi_stato(file).get("giri")
+    try:
+        stato = json.loads(file.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError) as e:                      # UnicodeDecodeError e JSONDecodeError sono ValueError
+        raise ValueError(f"stato della sentinella illeggibile ({type(e).__name__})") from None
+    giri = stato.get("giri", []) if isinstance(stato, dict) else None
+    if not isinstance(giri, list):
+        raise ValueError("stato della sentinella rovinato: giri sbagliati")
     scelti = []
-    for v in giri if isinstance(giri, list) else []:
+    for v in giri:
         q = _quando(v)
         if q is None or not dal <= q <= al:
             continue

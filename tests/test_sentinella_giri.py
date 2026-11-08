@@ -192,6 +192,34 @@ def test_stato_dati_ha_sentinella_giri(tmp_path, monkeypatch):
     assert r["sentinella_giri"] == [voce(6 * 24, "punti_diversi"), voce(1)]   # ultimi 7 giorni: solo ore e invarianti
 
 
+def test_file_rovinato_non_vale_nessun_giro(tmp_path, monkeypatch, capsys):
+    """Un file che non si legge non è «nessun giro» (sarebbe verde per omissione): errore per il comando, null in Stato dei dati.
+    Solo il file che manca vale lista vuota."""
+    f = tmp_path / "sentinella.json"
+    monkeypatch.setattr(sentinella, "FILE_STATO", f)
+    monkeypatch.setattr(sentinella, "giro", lambda *a, **k: pytest.fail("con --giri il giro non parte"))
+    dal, al = datetime(2026, 11, 1, tzinfo=timezone.utc), datetime(2026, 12, 1, tzinfo=timezone.utc)
+    cartella = tmp_path / "cartella.json"
+    cartella.mkdir()
+    with pytest.raises(ValueError):                                 # c'è ma non si legge
+        sentinella.giri_sentinella(dal, al, cartella)
+    db = archivio.apri(tmp_path / "t.sqlite")
+    try:
+        for rovinato in ('{"aperte": {}, "giri": [', "[1, 2]", '{"giri": "tanti"}'):
+            f.write_text(rovinato, encoding="utf-8")
+            with pytest.raises(ValueError):
+                sentinella.giri_sentinella(dal, al, f)
+            with pytest.raises(SystemExit) as uscita:
+                main(["sentinella", "--giri", "--dal", "2026-11-01T00:00:00Z", "--al", "2026-12-01T00:00:00Z"])
+            assert uscita.value.code not in (0, None)
+            assert stato_dati.riepilogo(db, ST, adesso=ADESSO)["sentinella_giri"] is None
+    finally:
+        db.close()
+    assert capsys.readouterr().out == ""                            # nessuna lista vuota stampata
+    f.unlink()
+    assert sentinella.giri_sentinella(dal, al, f) == []             # file che manca: ancora nessun giro
+
+
 def test_file_di_stato_vecchio_senza_giri_si_legge(server):
     prima = "2026-11-15T19:00:00"
     _scrivi_stato(server.file, aperte={UN.chiave: {"volte": 1, "avvisata": False, "ultima": prima}},
