@@ -1,0 +1,206 @@
+name: Collaudo della prova
+
+# Collaudo automatico dell'ambiente di prova dopo ogni rilascio (issue #511, piano dell'ondata 2, lavoro C2).
+# Ogni 20 minuti guarda se la prova (prova.<dominio>) ha l'ultima release del server v<N> non ancora collaudata; se sì entra con
+# l'account di collaudo, apre le schermate principali a 390 e 1440 px, chiaro e scuro, e controlla errori della console (comprese
+# le risposte 4xx e 5xx), scorrimento di lato e accessibilità (axe), con prove/foto_web/foto.py --solo-misure: nessuna foto.
+# - Una versione collaudata (bene o male) lascia l'artifact «collaudo-v<N>» (solo riepilogo.txt ed esito.txt, 30 giorni): le
+#   corse dopo la saltano. A mano (Actions > Collaudo della prova > Run workflow) si collauda subito, anche se già collaudata.
+# - Collaudo che non passa: issue P1 «Collaudo della prova: v<N> non passa» (o un commento, se c'è già) e corsa ROSSA.
+#   Collaudo che passa: chiude le issue del collaudo ancora aperte.
+# - La prova senza la versione nuova oltre 40 minuti dopo la release: issue «La prova non si aggiorna» e corsa rossa; si chiude
+#   da sola quando la prova ha la versione nuova.
+# - Senza i segreti PROVA_URL, PROVA_UTENTE e PROVA_PASSWORD non fa niente e resta verde.
+# Sicurezza: i segreti solo come variabili d'ambiente, solo nei due job che parlano con la prova; mai sulla riga di comando né
+# stampati (GitHub li maschera comunque nel registro). Nessun evento pull_request: i segreti non arrivano a codice di altri.
+# Permessi di sola lettura; il permesso sulle issue solo nel job che segnala, che non vede i segreti. I testi delle issue sono senza
+# indirizzi (il repository è pubblico).
+on:
+  schedule:
+    - cron: "4,24,44 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+# un giro alla volta: una corsa lenta non si sovrappone alla successiva e non si aprono issue doppie
+concurrency:
+  group: collaudo-prova
+  cancel-in-progress: false
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  decidi:
+    name: Serve un collaudo?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read   # elenco delle release
+      actions: read    # artifact «collaudo-v<N>» delle corse precedenti
+    outputs:
+      esito: ${{ steps.decidi.outputs.esito }}
+      versione: ${{ steps.decidi.outputs.versione }}
+      prova: ${{ steps.decidi.outputs.prova }}
+      minuti: ${{ steps.decidi.outputs.minuti }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          sparse-checkout: script/ci
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      - id: decidi
+        env:
+          PROVA_URL: ${{ secrets.PROVA_URL }}
+          PROVA_UTENTE: ${{ secrets.PROVA_UTENTE }}
+          PROVA_PASSWORD: ${{ secrets.PROVA_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENTO: ${{ github.event_name }}
+        run: |
+          if [ "$EVENTO" = "workflow_dispatch" ]; then
+            python -I script/ci/collaudo_prova.py decidi --forza
+          else
+            python -I script/ci/collaudo_prova.py decidi
+          fi
+
+  collauda:
+    name: Collaudo delle schermate
+    needs: decidi
+    if: needs.decidi.outputs.esito == 'collauda'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      ok: ${{ steps.esito.outputs.ok }}
+      dettaglio: ${{ steps.esito.outputs.dettaglio }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          sparse-checkout: |
+            prove/foto_web
+            script/ci
+            tests/strumenti/axe
+            .github/playwright-requisiti.txt
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      # ambiente a parte, come «Aspetto della web»; Chrome è quello già installato sui computer di GitHub
+      - name: Playwright (versioni e hash fissati)
+        run: |
+          python -m venv "$RUNNER_TEMP/pw"
+          "$RUNNER_TEMP/pw/bin/python" -m pip install -q --require-hashes --only-binary=:all: -r .github/playwright-requisiti.txt
+      # esce con 1 o 2 se trova difetti: decide il passo dopo, dal riepilogo
+      - name: Schermate della prova (solo misure, nessuna foto)
+        continue-on-error: true
+        env:
+          PROVA_URL: ${{ secrets.PROVA_URL }}
+          SCHIERAXI_UTENTE: ${{ secrets.PROVA_UTENTE }}
+          SCHIERAXI_PASSWORD: ${{ secrets.PROVA_PASSWORD }}
+        run: >-
+          "$RUNNER_TEMP/pw/bin/python" -I -s prove/foto_web/foto.py "$PROVA_URL" "$RUNNER_TEMP/collaudo"
+          --accesso --solo-misure --larghezze 390,1440 --temi chiaro,scuro
+          --scene oggi,formazione,squadra,elenco,rosa,scheda,confronto,altro,diario,regole,scambi,impostazioni
+      - id: esito
+        name: Esito dal riepilogo
+        if: ${{ !cancelled() }}
+        env:
+          PROVA_URL: ${{ secrets.PROVA_URL }}
+        run: python -I script/ci/collaudo_prova.py esito "$RUNNER_TEMP/collaudo"
+      # il segno «versione collaudata»: solo il riepilogo (scena, larghezza, tema, numeri) e l'esito, nessuna immagine
+      - name: Segno della versione collaudata
+        if: ${{ !cancelled() && steps.esito.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: collaudo-v${{ needs.decidi.outputs.versione }}
+          path: |
+            ${{ runner.temp }}/collaudo/riepilogo.txt
+            ${{ runner.temp }}/collaudo/esito.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  segnala:
+    name: Apre o chiude le issue
+    needs: [decidi, collauda]
+    # se la decisione stessa si rompe non si accusa nessuno: il job «decidi» resta rosso e si vede in Actions
+    if: >-
+      ${{ always() && needs.decidi.result == 'success'
+      && needs.decidi.outputs.esito != 'spento' && needs.decidi.outputs.esito != 'aspetta' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write   # solo per aprire, commentare e chiudere le issue del collaudo e del ritardo
+    env:
+      DECISIONE: ${{ needs.decidi.outputs.esito }}
+      VERSIONE: ${{ needs.decidi.outputs.versione }}
+      PROVA: ${{ needs.decidi.outputs.prova }}
+      MINUTI: ${{ needs.decidi.outputs.minuti }}
+      OK: ${{ needs.collauda.outputs.ok }}
+      DETTAGLIO: ${{ needs.collauda.outputs.dettaglio }}
+    steps:
+      - name: Apre, aggiorna o chiude le issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CORSA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -eu
+          # numeri delle issue aperte il cui titolo comincia con $1
+          aperte() {
+            gh issue list --state open --limit 100 --json number,title \
+              | jq -r --arg t "$1" '.[] | select(.title | startswith($t)) | .number'
+          }
+
+          ritardo="La prova non si aggiorna"
+          if [ "$DECISIONE" = "in-ritardo" ]; then
+            if [ -z "$(aperte "$ritardo")" ]; then
+              gh issue create --title "$ritardo" --label P2 --label ci --body "La prova ha la versione $PROVA, ma l'ultima release del server è v$VERSIONE, uscita $MINUTI minuti fa (soglia 40 minuti).
+          Da guardare: l'aggiornamento della prova sul server (aggiorna-app.sh con SCHIERAXI_ISTANZA=prova) o l'account di collaudo.
+          Corsa: $CORSA
+          L'issue si chiude da sola quando la prova ha la versione nuova."
+            else
+              echo "Issue «$ritardo» già aperta: nessun commento nuovo."
+            fi
+          else
+            for n in $(aperte "$ritardo"); do
+              gh issue comment "$n" --body "La prova ha di nuovo la versione nuova (v$VERSIONE). Corsa: $CORSA"
+              gh issue close "$n" --reason completed
+            done
+          fi
+
+          prefisso="Collaudo della prova: v"
+          if [ "$DECISIONE" = "collauda" ] && [ "$OK" = "false" ]; then
+            titolo="${prefisso}${VERSIONE} non passa"
+            problemi=$(printf '%s' "$DETTAGLIO" | sed 's/; /\n- /g')
+            numero=$(gh issue list --state open --limit 100 --json number,title \
+              | jq -r --arg t "$titolo" '[.[] | select(.title == $t)] | first | .number // empty')
+            if [ -n "$numero" ]; then
+              gh issue comment "$numero" --body "Ancora non passa:
+          - $problemi
+          Corsa: $CORSA"
+            else
+              gh issue create --title "$titolo" --label P1 --label ci --body "Il collaudo automatico della prova (workflow «Collaudo della prova») ha trovato:
+          - $problemi
+          Corsa: $CORSA
+          Si chiude da sola al primo collaudo che passa. Per riprovare subito: Actions > Collaudo della prova > Run workflow."
+            fi
+          elif [ "$DECISIONE" = "collauda" ] && [ "$OK" = "true" ]; then
+            for n in $(aperte "$prefisso"); do
+              gh issue comment "$n" --body "Il collaudo della prova passa con v$VERSIONE. Corsa: $CORSA"
+              gh issue close "$n" --reason completed
+            done
+          elif [ "$DECISIONE" = "collauda" ]; then
+            echo "Il collaudo non si è concluso (job «collauda» rotto): nessuna issue, la corsa è già rossa."
+          fi
+      # il comando «giornata» del coordinatore conta come fallita ogni corsa che non finisce con success, skipped o cancelled
+      - name: Corsa rossa se il collaudo non passa o la prova non si aggiorna
+        run: |
+          if [ "$OK" = "false" ] || [ "$DECISIONE" = "in-ritardo" ]; then
+            echo "Collaudo della prova: esito «$DECISIONE», collaudo ok=${OK:-non fatto}. Dettagli nell'issue aperta o commentata."
+            exit 1
+          fi

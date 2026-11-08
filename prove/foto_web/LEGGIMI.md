@@ -34,7 +34,8 @@ Senza indirizzo lo strumento avvia da solo un server di prova e lo ferma alla fi
 
 Con un server già acceso: `foto.py http://127.0.0.NN:80NN <cartella-delle-foto>`.
 
-Opzioni: `--scene oggi,formazione` (di norma tutte), `--larghezze 390,768,1024,1440`, `--temi chiaro,scuro`, `--lingua it|en`.
+Opzioni: `--scene oggi,formazione` (di norma tutte), `--larghezze 390,768,1024,1440`, `--temi chiaro,scuro`, `--lingua it|en`,
+`--accesso`, `--solo-misure` (sotto).
 Scene: `oggi`, `formazione`, `squadra`, `elenco` (Squadra > Elenco dei giocatori), `rosa`, `seguiti` (Squadra > Seguiti, dopo
 aver seguito i primi quattro giocatori della rosa nella copia dei dati), `scheda` (scheda del primo titolare), `confronto` (i
 primi due titolari), `altro`, `diario`, `regole`, `scambi`, `impostazioni`. Tutte le scene, a 4 larghezze e 2 temi, sono 104
@@ -58,6 +59,29 @@ Per ogni scena, larghezza e tema:
 `gravi` = regole violate di gravità `critical` o `serious` (l'obiettivo della nuova grafica è zero ovunque);
 `scorrimento-di-lato=sì` = la pagina è più larga dello schermo. Una scena che non si apre scrive `errore=…` al posto dei numeri.
 Esce con 0 se è tutto a posto, 1 se ci sono violazioni gravi, 2 se una scena non si è aperta.
+
+Gli errori della console comprendono le risposte 4xx e 5xx del server: Chrome le scrive nella console («Failed to load
+resource: the server responded with a status of 500»). Prima di axe e dello scorrimento di lato le animazioni si portano alla
+fine: le schermate entrano sfumando, e a metà animazione axe misurerebbe contrasti più bassi del vero.
+
+## Server con gli account: `--accesso` e `--solo-misure`
+Con gli account accesi (`FANTA_MULTIUTENTE=1`, come sull'ambiente di prova) le schermate si vedono solo dopo l'accesso.
+`--accesso` entra prima delle scene con l'API di accesso; il cookie della sessione resta nel profilo temporaneo del browser.
+Utente e password arrivano **solo** dalle variabili d'ambiente `SCHIERAXI_UTENTE` e `SCHIERAXI_PASSWORD`: non c'è un'opzione
+sulla riga di comando e lo strumento non li stampa mai. Se mancano si ferma subito; se l'accesso è rifiutato esce dicendo solo
+il codice della risposta.
+
+`--solo-misure` non scrive nessun PNG: solo `riepilogo.txt`, i risultati di axe e gli errori della console. Lo usa il collaudo
+automatico dell'ambiente di prova (`.github/workflows/collaudo-prova.yml`, con `script/ci/collaudo_prova.py`), che apre le
+schermate principali a 390 e 1440 px e apre un'issue se qualcosa non va.
+
+Esempio contro un server locale con gli account accesi (account inventato, mai credenziali vere in un file):
+
+```
+set SCHIERAXI_UTENTE=collaudo
+set /p SCHIERAXI_PASSWORD=Password: 
+<cartella-temporanea>\pw-foto\Scripts\python.exe prove\foto_web\foto.py http://127.0.0.NN:80NN <cartella> --accesso --solo-misure --larghezze 390,1440
+```
 
 ## Perché le foto non vanno nel repository
 Il repository è pubblico e le schermate mostrano nomi di calciatori veri: le foto restano fuori. Lo strumento si rifiuta di
