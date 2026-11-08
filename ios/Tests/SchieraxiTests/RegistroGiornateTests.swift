@@ -102,6 +102,23 @@ struct RegistroGiornateTests {
         #expect(ParoleRegistro.cifra(nil, per: 100) == "–")
     }
 
+    /// «1 punto» al singolare (dalla revisione della taratura, #379: la web scriveva «1 punti» e si allinea nello stesso ramo).
+    @Test("Scarto in punti: «1 punto» al singolare, «N punti» altrimenti, anche nella riga di «gioca N%»")
+    func unPunto() throws {
+        #expect(ParoleRegistro.punti(0.01, per: 100) == "1 punto")
+        #expect(ParoleRegistro.punti(0.0104, per: 100) == "1 punto")
+        #expect(ParoleRegistro.punti(0.014, per: 100) == "1,4 punti")
+        #expect(ParoleRegistro.punti(0.0213, per: 100) == "2,1 punti")
+        #expect(ParoleRegistro.punti(0.1, per: 100) == "10 punti")
+        #expect(ParoleRegistro.punti(0, per: 100) == "0 punti")
+        #expect(ParoleRegistro.punti(nil, per: 100) == "– punti")
+        let json = "{\"stagione\":\"2026-27\",\"registro\":{\"finestra\":8,\"giornate\":8,\"verdetto\":true,"
+            + "\"soglie\":{\"I2_calibrazione\":0.05,\"I2_brier\":0.15},\"brier\":0.1,\"calibrazione\":0.01}}"
+        let s: StatoDati = try Decodifica.decodifica(Data(json.utf8))
+        let r = try #require(s.registro)
+        #expect(ParoleRegistro.dettaglio(.gioca, di: r) == "scarto 1 punto (al massimo 5) · punteggio di Brier 0,100 (al massimo 0,150)")
+    }
+
     @Test("Le giornate perse con il motivo del server")
     func perse() throws {
         let r = try registro()

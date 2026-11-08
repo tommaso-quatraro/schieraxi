@@ -28,6 +28,9 @@ RITORNO = {**MISURA, "ritirata": {"quando": "2027-02-01T10:00:00"},
            "ritorno": {"giornate": [[ST, 13], [ST, 14]], "attiva": {"brier": 0.1041, "calibrazione": 0.061},
                        "partenza": {"brier": 0.0972}}}
 TITOLO = "Taratura con le probabili"
+# la stessa risposta per i test dell'iPhone (TaraturaProbabiliTests): la versione 1 attiva dal 15/1, con la prova sulle ultime
+# 4 giornate e un cambio rimandato perché la prima partita è vicina
+FIXTURE_IOS = server.WEB.parent.parent / "ios" / "Tests" / "Fixtures" / "stato-dati-taratura.json"
 
 
 def _riga(versione, creata, stato, motivo, misura=MISURA, prova=PROVA, coefficienti=COEFFICIENTI):
@@ -192,6 +195,14 @@ def test_niente_chiavi_mancanti_ne_numeri_rotti(tmp_path, monkeypatch, lingua):
         assert "undefined" not in testo and "NaN" not in testo and "null" not in testo and "[object" not in testo
     if lingua == "en":
         assert _frase(stati[1], "en").startswith("Calibration with the probable lineups: active since 15/1 (version 1)")
+
+
+def test_la_fixture_dell_iphone_e_la_risposta_vera_del_server(tmp_path, monkeypatch):
+    """Se il server cambia il campo `calibrazione.taratura`, la fixture dei test iOS va rifatta: dentro va
+    {"stagione", "calibrazione": {"taratura"}}."""
+    rimandata = _riga(2, "2027-02-06T10:00:00", "rimandata", "scadenza_vicina")
+    salvata = json.loads(FIXTURE_IOS.read_text(encoding="utf-8"))
+    assert salvata == {"stagione": ST, "calibrazione": {"taratura": _riepilogo(tmp_path, monkeypatch, 10, ATTIVA, rimandata)}}
 
 
 def test_la_pagina_mostra_la_riga_sotto_i_gruppi_della_calibrazione():
