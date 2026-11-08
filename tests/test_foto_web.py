@@ -134,6 +134,8 @@ def test_ambiente_del_server_senza_azioni_vere(tmp_path, monkeypatch):
     assert "FANTA_MULTIUTENTE" not in env and "FANTA_FONTE_VOTI" not in env      # fonti spente: nessuna richiesta fuori
     for spento in ("FANTA_PIANIFICATORE", "FANTA_COPIA_SCADENZA", "FANTA_REGISTRO_GIORNATE"):
         assert env[spento] == "0"
+    # tutte le funzioni accese, come sull'ambiente di prova: col profilo pubblico «confronto» risponde 404 (errore della console)
+    assert env["FANTA_PROFILO_FUNZIONI"] == "completo"
 
 
 def test_porta_libera_e_indirizzo_di_loopback_proprio():

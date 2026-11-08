@@ -4,8 +4,10 @@ name: Collaudo della prova
 # Ogni 20 minuti guarda se la prova (prova.<dominio>) ha l'ultima release del server v<N> non ancora collaudata; se sì entra con
 # l'account di collaudo, apre le schermate principali a 390 e 1440 px, chiaro e scuro, e controlla errori della console (comprese
 # le risposte 4xx e 5xx), scorrimento di lato e accessibilità (axe), con prove/foto_web/foto.py --solo-misure: nessuna foto.
-# - Una versione collaudata (bene o male) lascia l'artifact «collaudo-v<N>» (solo riepilogo.txt ed esito.txt, 30 giorni): le
-#   corse dopo la saltano. A mano (Actions > Collaudo della prova > Run workflow) si collauda subito, anche se già collaudata.
+# - Una versione collaudata (bene o male, purché le misure siano partite) lascia l'artifact «collaudo-v<N>» (solo esito.txt,
+#   senza indirizzi, 30 giorni): le corse dopo la saltano. Se le misure non partono (prova spenta, Playwright che non si
+#   installa) l'artifact non c'è e la corsa dopo riprova. A mano (Actions > Collaudo della prova > Run workflow) si collauda
+#   subito, anche se già collaudata.
 # - Collaudo che non passa: issue P1 «Collaudo della prova: v<N> non passa» (o un commento, se c'è già) e corsa ROSSA.
 #   Collaudo che passa: chiude le issue del collaudo ancora aperte.
 # - La prova senza la versione nuova oltre 40 minuti dopo la release: issue «La prova non si aggiorna» e corsa rossa; si chiude
@@ -112,14 +114,15 @@ jobs:
         env:
           PROVA_URL: ${{ secrets.PROVA_URL }}
         run: python -I script/ci/collaudo_prova.py esito "$RUNNER_TEMP/collaudo"
-      # il segno «versione collaudata»: solo il riepilogo (scena, larghezza, tema, numeri) e l'esito, nessuna immagine
+      # il segno «versione collaudata», solo se le misure sono partite (c'è riepilogo.txt): altrimenti la corsa dopo riprova.
+      # Dentro solo esito.txt, già senza indirizzi: riepilogo.txt può avere l'indirizzo della prova negli errori di Playwright,
+      # e gli artifact di un repository pubblico li scarica chiunque. Nessuna immagine.
       - name: Segno della versione collaudata
-        if: ${{ !cancelled() && steps.esito.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.esito.outputs.fatto == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: collaudo-v${{ needs.decidi.outputs.versione }}
           path: |
-            ${{ runner.temp }}/collaudo/riepilogo.txt
             ${{ runner.temp }}/collaudo/esito.txt
           if-no-files-found: warn
           retention-days: 30

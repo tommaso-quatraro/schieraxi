@@ -231,7 +231,9 @@ def ambiente_server(copia: Path) -> dict:
     """Ambiente del server di prova: nessuna variabile FANTA_ di chi lancia (fonti, account, lega vera), niente lavori di sfondo."""
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith("FANTA_")}
     env.update({"FANTA_LEGA": str(copia / "lega"), "FANTA_PIANIFICATORE": "0", "FANTA_COPIA_SCADENZA": "0",
-                "FANTA_REGISTRO_GIORNATE": "0", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8"})
+                "FANTA_REGISTRO_GIORNATE": "0", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8",
+                # tutte le funzioni accese, come l'ambiente di prova: col profilo pubblico «confronto» risponde 404
+                "FANTA_PROFILO_FUNZIONI": "completo"})
     return env
 
 

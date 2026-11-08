@@ -30,6 +30,9 @@ from urllib.parse import urlsplit
 
 RITARDO_MINUTI = 40          # oltre questo tempo dalla release, una prova senza la versione nuova è «in ritardo»
 ESITI = ("spento", "aspetta", "collauda", "salta", "in-ritardo")
+MISURE = ("gravi", "scorrimento-di-lato", "errori-console")      # le chiavi di ogni riga di riepilogo.txt (foto.riga_riepilogo)
+# I testi che passano fra i job (uscite `dettaglio` ed `esito`) non contengono mai la parola «collaudo»: è il nome
+# dell'account di prova (segreto PROVA_UTENTE) e GitHub scarta le uscite che contengono un segreto.
 _VERSIONE = re.compile(r"v?(\d+(?:\.\d+)*)")
 _INDIRIZZO = re.compile(r"https?://\S+")
 
@@ -82,7 +85,8 @@ def esito(riepilogo: str) -> tuple[bool, list[str]]:
             problemi.append(f"{chi}: la schermata non si apre ({riga.split('errore=', 1)[1].strip()})")
             continue
         valori = dict(p.split("=", 1) for p in riga.split()[3:] if "=" in p)
-        difetti = []
+        mancanti = [k for k in MISURE if k not in valori]
+        difetti = [f"misura assente nel riepilogo ({', '.join(mancanti)})"] if mancanti else []
         n_gravi, n_console = (_numero(valori.get(k, "0")) for k in ("gravi", "errori-console"))
         if n_gravi:
             difetti.append(_quanti(n_gravi, "violazione grave di accessibilità", "violazioni gravi di accessibilità"))
@@ -238,18 +242,19 @@ def comando_decidi(forza: bool) -> int:
 
 def comando_esito(cartella: Path) -> int:
     riepilogo = cartella / "riepilogo.txt"
-    if riepilogo.is_file():
+    fatto = riepilogo.is_file()          # senza riepilogo le misure non sono partite: niente artifact, la corsa dopo riprova
+    if fatto:
         ok, problemi = esito(riepilogo.read_text(encoding="utf-8", errors="replace"))
     else:
-        ok, problemi = False, ["nessun riepilogo: il collaudo non è partito (prova irraggiungibile o accesso rifiutato; "
-                               "il perché è nel registro della corsa)"]
+        ok, problemi = False, ["nessun riepilogo: le misure non sono partite (prova irraggiungibile, accesso rifiutato o "
+                               "Playwright non installato; il perché è nel registro della corsa)"]
     problemi = [maschera(p, os.environ.get("PROVA_URL")) for p in problemi]
     cartella.mkdir(parents=True, exist_ok=True)
     (cartella / "esito.txt").write_text(("ok\n" if ok else "non passa\n") + "".join(f"- {p}\n" for p in problemi), encoding="utf-8")
     dettaglio = "; ".join(problemi)
     if len(dettaglio) > 1500:
         dettaglio = dettaglio[:1500] + f" (e altro: {len(problemi)} problemi in tutto)"
-    _scrivi_uscite({"ok": "true" if ok else "false", "dettaglio": dettaglio})
+    _scrivi_uscite({"ok": "true" if ok else "false", "fatto": "true" if fatto else "false", "dettaglio": dettaglio})
     return 0
 
 
