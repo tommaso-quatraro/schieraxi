@@ -185,6 +185,18 @@ def test_plurale_incompleto(tmp_path):
     assert "oggi.titolari" in messaggio and "oggi.panchina" not in messaggio
 
 
+def test_prefissi_con_lo_stesso_nome_swift(tmp_path):
+    """`a_b` e `aB` darebbero tutti e due `Catalogo+AB.swift` (e il secondo coprirebbe il primo): il prefisso, cioè il nome del
+    file del catalogo, ha solo lettere minuscole e cifre."""
+    cartella = _scrivi_catalogo(tmp_path / "testi", {
+        "a_b": {"a_b.x": {"it": "Ics", "en": "Ex"}},
+        "aB": {"aB.y": {"it": "Ipsilon", "en": "Why"}},
+        "ab2": {"ab2.z": {"it": "Zeta", "en": "Zed"}},
+    })
+    messaggio = _errore(cartella)
+    assert "a_b.json" in messaggio and "aB.json" in messaggio and "ab2.json" not in messaggio
+
+
 def test_campo_sconosciuto_in_una_voce(tmp_path):
     cartella = _scrivi_catalogo(tmp_path / "testi", {"oggi": {"oggi.a": {"it": "A", "en": "A", "fr": "A"}}})
     messaggio = _errore(cartella)
@@ -388,6 +400,33 @@ def test_plurale_segnaposto_solo_dentro_ogni_testo(tmp_path):
     oggi = testi.swift(catalogo, {"oggi": ["oggi.graffe"]})["Catalogo+Oggi.swift"]
     assert "static func graffe(_ n: Int) -> String {" in oggi
     assert 'n == 1 ? "uno {" : "x} \\(n)"' in oggi
+
+
+@pytest.mark.parametrize("elenco", [["oggi.x", "oggi.x.one"], ["oggi.x.other", "oggi.x"]], ids=["prima-la-chiave", "prima-il-plurale"])
+def test_chiave_e_plurale_con_lo_stesso_nome(tmp_path, elenco):
+    """`oggi.x` e la coppia `oggi.x.one` / `oggi.x.other` darebbero tutte e due `x`: se l'iPhone le elenca entrambe è un errore,
+    non una delle due scartata in silenzio."""
+    catalogo = testi.carica_catalogo(_scrivi_catalogo(tmp_path / "testi", {"oggi": {
+        "oggi.x": {"it": "Ics", "en": "Ex"},
+        "oggi.x.one": {"it": "{n} ics", "en": "{n} ex"},
+        "oggi.x.other": {"it": "{n} ics", "en": "{n} exes"},
+    }}))
+    with pytest.raises(testi.ErroreCatalogo) as e:
+        testi.swift(catalogo, {"oggi": elenco})
+    assert "oggi.x" in str(e.value)
+
+
+def test_plurale_sul_prefisso_nudo(tmp_path, capsys):
+    """`oggi.one` / `oggi.other` è un plurale senza nome dopo il prefisso: in Swift non ha un nome, e lo si dice in italiano."""
+    voci = {"oggi.one": {"it": "{n} cosa", "en": "{n} thing"}, "oggi.other": {"it": "{n} cose", "en": "{n} things"}}
+    catalogo = testi.carica_catalogo(_scrivi_catalogo(tmp_path / "testi", {"oggi": voci}))
+    for elenco in (["oggi.one"], ["oggi"]):
+        with pytest.raises(testi.ErroreCatalogo) as e:
+            testi.swift(catalogo, {"oggi": elenco})
+        assert "oggi.one" in str(e.value)
+    radice = _radice(tmp_path / "repo", {"oggi": voci}, ios={"oggi": "oggi.one\n"})
+    assert testi.main(["--controlla", "--radice", str(radice)]) == 1
+    assert "oggi.one" in capsys.readouterr().out
 
 
 def test_nomi_swift_uguali_sono_un_errore(tmp_path):

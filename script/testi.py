@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Catalogo unico dei testi dell'interfaccia: da qui nascono i testi della web e dell'iPhone.
 
-La fonte è `fanta/testi/<prefisso>.json`, un file per prefisso della chiave (`oggi.json` ha solo chiavi `oggi.*`):
+La fonte è `fanta/testi/<prefisso>.json`, un file per prefisso della chiave (`oggi.json` ha solo chiavi `oggi.*`; il prefisso ha
+solo lettere minuscole e cifre):
 
   {"oggi.tua_formazione": {"it": "La tua formazione", "en": "Your line-up", "nota": "facoltativa, per chi scrive"}}
 
@@ -40,6 +41,7 @@ TESTA_SWIFT = "// Generato da script/testi.py: non modificare a mano."
 RIFAI = "Lancia: python script/testi.py --scrivi"
 
 _CHIAVE = re.compile(r"[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+")
+_PREFISSO = re.compile(r"[a-z0-9]+")
 _SEGNAPOSTO = re.compile(r"\{(\w+)\}")
 _CAMPI = ("it", "en", "nota")
 _PLURALE = (".one", ".other")
@@ -128,6 +130,9 @@ def carica_catalogo(cartella: Path) -> dict[str, dict[str, Voce]]:
     dove: dict[str, str] = {}
     for percorso in file:
         prefisso = percorso.stem
+        if not _PREFISSO.fullmatch(prefisso):            # «a_b» e «aB» darebbero lo stesso nome Swift (Catalogo+AB.swift)
+            errori.append(f"{percorso.name}: nome del file non valido, il prefisso usa solo lettere minuscole e cifre (a-z, 0-9)")
+            continue
         voci: dict[str, Voce] = {}
         for chiave, dati in _leggi_file(percorso, errori):
             if not _CHIAVE.fullmatch(chiave):
@@ -263,7 +268,7 @@ def nome_file_swift(prefisso: str) -> str:
 
 
 def _nome_membro(chiave: str) -> str:
-    return _identificatore(_cammello(re.split(r"[._]", chiave.split(".", 1)[1]), maiuscola=False))
+    return _identificatore(_cammello(re.split(r"[._]", chiave.partition(".")[2]), maiuscola=False))
 
 
 def _stringa_swift(testo: str, parametri: dict[str, str]) -> str:
@@ -323,12 +328,19 @@ def swift(catalogo: dict[str, dict[str, Voce]], chiavi: dict[str, list[str]]) ->
     for prefisso, elenco in sorted(chiavi.items()):
         voci = catalogo[prefisso] if elenco else {}
         membri: dict[str, tuple[str, str]] = {}            # nome Swift → (chiave, dichiarazione)
-        viste = set()
+        viste: dict[str, bool] = {}                         # chiave o base del plurale → è un plurale
         for chiave in elenco:
             unica, plurale = _voce_ios(chiave, voci)
             if unica in viste:
+                if viste[unica] != plurale:                 # «oggi.x» e la coppia «oggi.x.one» / «oggi.x.other»
+                    errori.append(f"ios/testi/{prefisso}.txt: «{unica}» e il plurale «{unica}.one» / «{unica}.other» darebbero "
+                                  "lo stesso nome Swift: l'iPhone ne può elencare uno solo")
+                continue                                    # la stessa voce scritta due volte (o la coppia del plurale)
+            viste[unica] = plurale
+            if plurale and "." not in unica:
+                errori.append(f"ios/testi/{prefisso}.txt: «{unica}.one» / «{unica}.other» è un plurale senza nome dopo il "
+                              f"prefisso e in Swift non ha un nome: rinomina la coppia nel catalogo (per esempio «{unica}.cose.one»)")
                 continue
-            viste.add(unica)
             nome, dichiarazione = _membro(unica, plurale, voci)
             if nome.strip("`") in ("", "_"):
                 errori.append(f"ios/testi/{prefisso}.txt: «{unica}» non dà un nome Swift valido")
