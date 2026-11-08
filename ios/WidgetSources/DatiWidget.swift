@@ -65,7 +65,7 @@ struct ConfigurazioneWidget: WidgetConfigurationIntent {
 }
 
 enum ScaricaOggi {
-    private static let chiave = "ultimoRiassunto"
+    private static let chiave = MemoriaWidget.chiaveRiassunto
 
     /// L'indirizzo dell'API «oggi» dall'indirizzo scritto nelle impostazioni del widget; `nil` se manca o non è ammesso
     /// (solo https; http solo verso questo stesso computer; niente nome utente e password dentro l'indirizzo).
@@ -127,44 +127,26 @@ enum ScaricaOggi {
         // un codice di prima) non si mostra, nemmeno quando il gruppo condiviso manca e l'app non la può cancellare (#482).
         let chi = MemoriaWidget.impronta(indirizzo: base, token: token)
         let copia = MemoriaWidget.leggi(per: chi)
-        func daCopia() -> Risultato {
-            if let copia, let w = copia.riassunto {
-                return Risultato(widget: w, riassunto: w.comeRiassuntoOggi(scaricatoIl: copia.scaricatoIl), scaricatoIl: copia.scaricatoIl, salvato: true, accessoRichiesto: false)
-            }
-            if let ultimo = ultimoSalvato(chi: chi) {
-                return Risultato(widget: nil, riassunto: ultimo, scaricatoIl: ultimo.scaricatoIl, salvato: true, accessoRichiesto: false)
-            }
-            return Risultato(widget: nil, riassunto: nil, scaricatoIl: nil, salvato: false, accessoRichiesto: false)
+        let esito = await ScaricoWidget.scarica(base: base, token: token, etag: copia?.etag)
+        // salva, rinfresca o cancella le copie (con un 401 tutte, anche quelle che l'app non raggiunge): logica provata nei test
+        let r = MemoriaWidget.applica(esito, copia: copia, chi: chi)
+        if r.nonDisponibile {
+            let vecchio = await leggi(indirizzo: base + "/api/oggi", token: token, chi: chi)
+            return Risultato(widget: nil, riassunto: vecchio.riassunto, scaricatoIl: vecchio.riassunto?.scaricatoIl, salvato: vecchio.salvato,
+                             accessoRichiesto: vecchio.accessoRichiesto)
         }
-        switch await ScaricoWidget.scarica(base: base, token: token, etag: copia?.etag) {
-        case .dati(let w, let grezzo, let etag):
-            let adesso = Date()
-            MemoriaWidget.salva(CopiaWidget(dati: grezzo, etag: etag, scaricatoIl: adesso, chi: chi))
-            return Risultato(widget: w, riassunto: w.comeRiassuntoOggi(scaricatoIl: adesso), scaricatoIl: adesso, salvato: false, accessoRichiesto: false)
-        case .nonCambiato:
-            if let copia, let w = copia.riassunto {
-                let adesso = Date()
-                MemoriaWidget.salva(CopiaWidget(dati: copia.dati, etag: copia.etag, scaricatoIl: adesso, chi: chi))
-                return Risultato(widget: w, riassunto: w.comeRiassuntoOggi(scaricatoIl: adesso), scaricatoIl: adesso, salvato: false, accessoRichiesto: false)
-            }
-            return daCopia()
-        case .inCalcolo, .errore:
-            return daCopia()
-        case .accessoRichiesto:
-            // 401: token del widget revocato all'uscita dall'account, scaduto o rinnovato. I dati di prima non valgono più: via tutte
-            // le copie del widget, anche quelle che l'app non raggiunge, e «Tocca per collegare». Mai dati vecchi.
-            dimenticaLeCopie()
+        // 401: «Tocca per collegare», mai dati vecchi
+        if r.accessoRichiesto {
             return Risultato(widget: nil, riassunto: nil, scaricatoIl: nil, salvato: false, accessoRichiesto: true)
-        case .nonDisponibile:
-            let r = await leggi(indirizzo: base + "/api/oggi", token: token, chi: chi)
-            return Risultato(widget: nil, riassunto: r.riassunto, scaricatoIl: r.riassunto?.scaricatoIl, salvato: r.salvato, accessoRichiesto: r.accessoRichiesto)
         }
-    }
-
-    /// Le copie del widget, ovunque stiano: nel gruppo condiviso e nelle UserDefaults del widget (che l'app non raggiunge).
-    private static func dimenticaLeCopie() {
-        MemoriaWidget.dimentica()
-        UserDefaults.standard.removeObject(forKey: chiave)
+        if let c = r.copia, let w = c.riassunto {
+            return Risultato(widget: w, riassunto: w.comeRiassuntoOggi(scaricatoIl: c.scaricatoIl), scaricatoIl: c.scaricatoIl, salvato: !r.fresca,
+                             accessoRichiesto: false)
+        }
+        if let ultimo = ultimoSalvato(chi: chi) {
+            return Risultato(widget: nil, riassunto: ultimo, scaricatoIl: ultimo.scaricatoIl, salvato: true, accessoRichiesto: false)
+        }
+        return Risultato(widget: nil, riassunto: nil, scaricatoIl: nil, salvato: false, accessoRichiesto: false)
     }
 
     /// Scarica la giornata; se non riesce restituisce l'ultimo riassunto salvato dello stesso collegamento (con `salvato` true).
@@ -176,7 +158,7 @@ enum ScaricaOggi {
             if let dati = try? JSONEncoder().encode(RiassuntoDelWidget(riassunto: nuovo, chi: chi)) { UserDefaults.standard.set(dati, forKey: chiave) }
             return (nuovo, false, false)
         case .accessoRichiesto:
-            dimenticaLeCopie()
+            MemoriaWidget.accessoNegato()
             return (nil, false, true)
         case .errore:
             return (ultimoSalvato(chi: chi), true, false)

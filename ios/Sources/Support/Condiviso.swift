@@ -348,6 +348,15 @@ enum Condiviso {
     /// in background leggono anche a telefono bloccato.
     @discardableResult
     static func aggiorna(cartella: URL? = Condiviso.cartella(), _ modifica: (inout DatiCondivisi) -> Void) -> Bool {
+        scriviCambio(cartella: cartella, scrivi: scriviFile, modifica: modifica)
+    }
+
+    /// La scrittura vera del file condiviso (i test ne passano una che non riesce).
+    static func scriviFile(_ dati: Data, in url: URL) throws {
+        try dati.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    private static func scriviCambio(cartella: URL?, scrivi: (Data, URL) throws -> Void, modifica: (inout DatiCondivisi) -> Void) -> Bool {
         blocco.lock(); defer { blocco.unlock() }
         guard let url = percorso(cartella) else { return false }
         var dati = leggiSenzaBlocco(url)
@@ -359,7 +368,7 @@ enum Condiviso {
         e.dateEncodingStrategy = .iso8601
         guard let fuori = try? e.encode(dati) else { return false }
         do {
-            try fuori.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            try scrivi(fuori, url)
             return true
         } catch {
             return false
@@ -382,12 +391,19 @@ enum Condiviso {
     }
 
     /// Via il token e il riassunto (uscita da un account), dal file del gruppo e dal Keychain condiviso: chi entra dopo non deve
-    /// vedere niente di chi c'era prima. `cartella` e `portachiavi`: i test ne passano di loro.
-    static func dimentica(cartella: URL? = Condiviso.cartella(), portachiavi: any ArchivioCollegamento = PortachiaviCondiviso.archivio) {
-        aggiorna(cartella: cartella) {
+    /// vedere niente di chi c'era prima. Se il file non si riesce a riscrivere (disco pieno, file protetto) si cancella tutto: token
+    /// e riassunto non devono restare leggibili; l'indirizzo l'app lo ripassa alla prossima sincronizzazione.
+    /// `cartella`, `portachiavi` e `scrivi`: i test ne passano di loro.
+    static func dimentica(cartella: URL? = Condiviso.cartella(), portachiavi: any ArchivioCollegamento = PortachiaviCondiviso.archivio,
+                          scrivi: (Data, URL) throws -> Void = Condiviso.scriviFile) {
+        let scritto = scriviCambio(cartella: cartella, scrivi: scrivi) {
             $0.token = nil
             $0.tokenPerIndirizzo = nil
             $0.riassunto = nil
+        }
+        if !scritto, let url = percorso(cartella) {
+            blocco.lock(); defer { blocco.unlock() }
+            try? FileManager.default.removeItem(at: url)
         }
         portachiavi.cancella()
     }
