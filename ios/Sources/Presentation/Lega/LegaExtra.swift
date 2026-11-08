@@ -640,7 +640,7 @@ struct StatoDatiView: View {
                                 VStack(alignment: .leading) {
                                     Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.")
                                     // la taratura di «gioca N%» con le probabili (#379): frase e numeri del server, come la web
-                                    if let taratura = ParoleTaratura.frase(c.taratura) {
+                                    if let taratura = ParoleRegistro.taratura(c.taratura) {
                                         Text(taratura)
                                     }
                                 }

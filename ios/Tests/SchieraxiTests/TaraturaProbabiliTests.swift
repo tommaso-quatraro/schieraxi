@@ -20,7 +20,7 @@ struct TaraturaProbabiliTests {
     }
 
     private func frase(_ json: String) throws -> String? {
-        ParoleTaratura.frase(try taratura(json))
+        ParoleRegistro.taratura(try taratura(json))
     }
 
     /// Un modello di testi.js con i segnaposto riempiti, come fa `t()` della web.
@@ -54,7 +54,7 @@ struct TaraturaProbabiliTests {
     @Test("La frase della risposta vera: attiva, la prova e il cambio rimandato")
     func fraseDellaFixture() throws {
         let s: StatoDati = try Fixture.decodifica("stato-dati-taratura")
-        #expect(ParoleTaratura.frase(s.calibrazione?.taratura)
+        #expect(ParoleRegistro.taratura(s.calibrazione?.taratura)
                 == "\(Self.titolo): attiva dal 15/1 (versione 1) · nelle ultime 4 giornate Brier 0,0912 invece di 0,0968, scarto 2,1 punti"
                 + " · cambio rimandato: la prima partita è tra meno di 24 ore")
     }
@@ -65,7 +65,7 @@ struct TaraturaProbabiliTests {
         #expect(vecchio.calibrazione?.gruppi?.isEmpty == false)
         #expect(vecchio.calibrazione?.taratura == nil)
         #expect(try taratura("null") == nil)
-        #expect(ParoleTaratura.frase(nil) == nil)
+        #expect(ParoleRegistro.taratura(nil) == nil)
         #expect(try frase("\"attiva\"") == nil)
         #expect(try frase("{\"stato\":\"sconosciuto\",\"giornate\":1,\"minimo\":4}") == nil)
         #expect(try frase("{\"stato\":3,\"giornate\":\"x\"}") == nil)
@@ -211,7 +211,7 @@ struct TaraturaProbabiliTests {
         let s: StatoDati = try Decodifica.decodifica(try await demo.richiesta("GET", "/api/stato-dati", corpo: nil))
         let t = try #require(s.calibrazione?.taratura)
         #expect(t.stato == "attiva")
-        let testo = try #require(ParoleTaratura.frase(t))
+        let testo = try #require(ParoleRegistro.taratura(t))
         #expect(testo.hasPrefix("\(Self.titolo): attiva dal "))
         #expect(testo.contains("· nelle ultime 4 giornate Brier "))
         #expect(!testo.contains("–"))

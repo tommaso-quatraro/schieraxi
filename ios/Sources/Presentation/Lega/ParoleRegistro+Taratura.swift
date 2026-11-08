@@ -3,9 +3,10 @@ import Foundation
 /// La riga della taratura di «gioca N%» con le probabili in Stato dei dati (#379), uguale alla web: `rigaTaratura` di
 /// `fanta/web/app.js` e i testi `sd.tar_*` di `fanta/web/testi.js` (`TaraturaProbabiliTests` li confronta). Stato, versione, numeri
 /// della prova e motivo arrivano dal server: qui si scrivono e basta, Brier con quattro cifre e scarto in punti come il registro.
-enum ParoleTaratura {
+/// Sta con le parole del registro: la taratura si fa sulle giornate del registro e ne usa i numeri (`cifra`, `punti`).
+extension ParoleRegistro {
     /// La frase sotto i gruppi della calibrazione; nil senza il campo o con uno stato che l'app non conosce (nessuna riga).
-    static func frase(_ t: StatoDati.Taratura?) -> String? {
+    static func taratura(_ t: StatoDati.Taratura?) -> String? {
         guard let t else { return nil }
         let giornate = t.giornate ?? 0
         let parti: [String?]
@@ -17,10 +18,10 @@ enum ParoleTaratura {
         case "attiva":
             let versione = t.versione ?? "–"
             let accesa = giornoMese(t.dal).map { "attiva dal \($0) (versione \(versione))" } ?? "attiva (versione \(versione))"
-            let rimandato = t.motivo == "scadenza_vicina" ? motivo(t.motivo, giornate: giornate) : nil
-            parti = [accesa, t.prova.map(numeri), rimandato]
+            let rimandato = t.motivo == "scadenza_vicina" ? motivoTaratura(t.motivo, giornate: giornate) : nil
+            parti = [accesa, t.prova.map(provaTaratura), rimandato]
         case "non_attiva":
-            parti = ["non attiva", motivo(t.motivo, giornate: giornate)]
+            parti = ["non attiva", motivoTaratura(t.motivo, giornate: giornate)]
         case "spenta":
             parti = ["spenta a mano"]
         default:
@@ -30,7 +31,7 @@ enum ParoleTaratura {
     }
 
     /// La frase di un motivo del server (`sd.tar_m_*`); nil per un codice che l'app non conosce (niente codici per l'utente).
-    static func motivo(_ codice: String?, giornate: Int) -> String? {
+    static func motivoTaratura(_ codice: String?, giornate: Int) -> String? {
         switch codice ?? "" {
         case "non_migliora": return "non sbaglia meno dei numeri di partenza"
         case "poche_giornate": return "la prova passa, si accende con 8 giornate (ora \(giornate))"
@@ -44,11 +45,11 @@ enum ParoleTaratura {
     }
 
     /// I numeri della prova (`sd.tar_prova`): Brier con quattro cifre, scarto in punti con una cifra e senza «,0»; «–» se mancano.
-    static func numeri(_ p: StatoDati.Taratura.Prova) -> String {
+    static func provaTaratura(_ p: StatoDati.Taratura.Prova) -> String {
         let n = p.giornate ?? 0
         let dove = n == 1 ? "nell'ultima giornata" : "nelle ultime \(n) giornate"
         return "\(dove) Brier \(Formato.decimali(p.brier, cifre: 4)) invece di \(Formato.decimali(p.brierPrima, cifre: 4)), "
-            + "scarto \(ParoleRegistro.punti(p.calibrazione, per: 100))"
+            + "scarto \(punti(p.calibrazione, per: 100))"
     }
 
     /// «15/1» dalla data del server («2027-01-15T10:00:00»), senza passare dal fuso orario; nil se non è una data.
