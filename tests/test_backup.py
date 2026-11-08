@@ -67,6 +67,22 @@ def test_un_backup_sbagliato_non_cambia_niente(radice, brutto):
     assert not (radice / backup.COPIA_PRIMA).exists()
 
 
+def test_backup_con_regole_salvate_prima_dei_tetti_si_ripristina(radice, caplog):
+    """Le regole di un backup fatto prima dei tetti di misura (#480) si rimettono come sono: un ripristino rifiutato è peggio.
+    I tetti valgono solo per le regole scritte di nuovo dalle rotte; qui basta un avviso nel registro."""
+    from dataclasses import asdict
+    from fanta import regole
+    vecchie = asdict(Regole()) | {"nome_lega": "L" * 150}
+    vecchie["modificatore_difesa"]["soglie"] = [[6 + i / 100, 1] for i in range(25)]
+    b = {"formato": backup.FORMATO, "versione": 1, "file": {"lega/regole.json": vecchie}}
+    with caplog.at_level("WARNING"):
+        assert backup.ripristina(b, radice) == ["lega/regole.json"]
+    r = regole.carica(radice / "lega" / "regole.json")
+    assert r.nome_lega == "L" * 150 and len(r.modificatore_difesa.soglie) == 25
+    assert any("tetti" in x.getMessage() for x in caplog.records)
+    assert "L" * 150 not in caplog.text                          # l'avviso non ripete i valori
+
+
 def test_un_file_alla_volta_il_resto_resta(radice):
     parziale = {"formato": backup.FORMATO, "versione": 1, "file": {"dati/osservati.json": [9]}}
     backup.ripristina(parziale, radice)

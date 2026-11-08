@@ -491,7 +491,9 @@ def _messaggio_per_l_utente(e: ValueError) -> bool:
 def _errore_valore(request: Request, e: ValueError):
     if _messaggio_per_l_utente(e):
         codice = getattr(type(e), "codice", None)           # nome breve dell'errore per i client (es. «formazione_non_valida»), facoltativo
-        return JSONResponse(status_code=400, content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
+        stato = getattr(type(e), "stato", 400)              # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi)
+        return JSONResponse(status_code=stato if stato in (400, 422) else 400,
+                            content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
     codice = secrets.token_hex(4)               # lo stesso codice nel log del servizio: chi gestisce l'app ritrova il caso
     passi = traceback.extract_tb(e.__traceback__)
     dove = f"{Path(passi[-1].filename).name}:{passi[-1].lineno}" if passi else "?"
@@ -2215,8 +2217,9 @@ class TestoRegole(BaseModel):
 
 @app.post("/api/regole/riconosci")
 def riconosci_regole(dati: TestoRegole):
-    """Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola)."""
-    return regole_testo.interpreta(dati.testo[:30000])
+    """Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).
+    Oltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara."""
+    return regole_testo.interpreta(dati.testo)
 
 
 @app.get("/api/regole")
@@ -2369,6 +2372,7 @@ def scrivi_onboarding(dati: PassoOnboarding, ctx: Contesto = Depends(lega_corren
 @app.post("/api/onboarding/regole", dependencies=[Depends(_con_account)])
 def proponi_regole(dati: TestoRegole, ctx: Contesto = Depends(lega_corrente)):
     """Il regolamento incollato diventa una proposta di regole (non salva niente): righe riconosciute e righe «da confermare»."""
+    regole_testo.controlla_lunghezza(dati.testo)            # gli stessi tetti di /api/regole/riconosci (422)
     return onboarding.proponi_regole(_regole(ctx), dati.testo)
 
 
