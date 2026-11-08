@@ -8,9 +8,10 @@ import subprocess
 import pandas as pd
 import pytest
 
-from fanta import consigli, lega, perche_scelta, server
+from fanta import consigli, lega, perche_scelta
 from fanta import formazione as fz
 from fanta.regole import Regole
+import codice_web
 
 SOLO_442 = Regole(moduli=["4-4-2"])
 GIORNATA = 9
@@ -261,8 +262,8 @@ def test_la_consigliata_tenuta_ha_le_sue_righe():
 
 
 # ------------------------------------------------------------------ web: la nota sotto il campo
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 
 
 @CON_NODE

@@ -2,9 +2,10 @@
 import re
 
 from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-IMP = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+IMP = codice_web.leggi("impostazioni.js")
 HTML = (server.WEB / "index.html").read_text(encoding="utf-8")
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 

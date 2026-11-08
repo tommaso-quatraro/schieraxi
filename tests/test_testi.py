@@ -8,10 +8,11 @@ import subprocess
 import pytest
 
 from fanta import server, testi_legali
+import codice_web
 
-TESTI_JS = (server.WEB / "testi.js").read_text(encoding="utf-8")
-FILE_WEB = [server.WEB / n for n in ("app.js", "impostazioni.js", "primoavvio.js", "anteprima.js", "dafare.js", "live.js", "avatar.js")]
-CODICE_JS = "\n".join(f.read_text(encoding="utf-8") for f in FILE_WEB) + TESTI_JS[TESTI_JS.index("const LINGUE"):]
+TESTI_JS = codice_web.leggi("testi.js")
+FILE_WEB = ["app.js", "impostazioni.js", "primoavvio.js", "anteprima.js", "dafare.js", "live.js", "avatar.js"]
+CODICE_JS = "\n".join(codice_web.leggi(n) for n in FILE_WEB) + TESTI_JS[TESTI_JS.index("const LINGUE"):]
 # Chiavi scelte al volo (t("prefisso." + qualcosa)): il prefisso basta a tenerle vive.
 PREFISSI_DINAMICI = ("err.", "srv.", "frase.", "confronto.fattore_", "regola.et.", "formazione.stile_", "tempo.giorno_", "lingua.", "asp.col_", "asp.testo_", "asp.tema_", "nav.")
 
@@ -124,7 +125,7 @@ def test_script_caricati_prima_dell_app_e_pubblici():
     assert html.index("testi.js") < html.index("primoavvio.js") < html.index("app.js")
     from fanta import rotte_account
     assert "/testi.js" in rotte_account.STATICI          # la pagina di accesso la carica prima di entrare
-    assert '"/testi.js"' in (server.WEB / "sw.js").read_text(encoding="utf-8")
+    assert '"/testi.js"' in codice_web.leggi("sw.js")
 
 
 def test_index_ha_le_parti_fisse_traducibili():

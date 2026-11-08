@@ -1,0 +1,9 @@
+{
+  "CodiceWidget.Contenuto": "Codice di collegamento del widget creato e letto sul telefono (indirizzo e token in base64): non arriva dal server.",
+  "CopiaWidget": "Copia dell'ultima risposta di /api/widget salvata dal widget con ETag e ora di scaricamento: dati del telefono, non del server.",
+  "DatiCondivisi": "Contenuto del file condiviso fra app e widget (App Group): lo scrive l'app, non il server.",
+  "RiassuntoOggi": "Riassunto compatto per il widget calcolato dall'app e salvato sul telefono: le sue chiavi non sono quelle di una risposta del server.",
+  "ScenarioVero.FileScenario": "File delle fotografie dal vero (ios/fotografie/vero-*.json) letto solo nelle foto automatiche: lo scrive prove/fotografie_dal_vero.py, non il server.",
+  "ScenarioVero.Scelte": "Scelte della demo dentro i file delle fotografie dal vero (giocatore, squadra, testo da aprire): non arrivano dal server.",
+  "VoceArchivioScambi": "Archivio degli scambi analizzati salvato in UserDefaults sul telefono (gli ultimi 20): non arriva dal server."
+}

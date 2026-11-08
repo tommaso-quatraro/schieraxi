@@ -3,7 +3,6 @@
 import gzip
 import json
 import re
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -11,8 +10,9 @@ from fastapi.testclient import TestClient
 
 from fanta import archivio, consigli, etichette, fasi, scheda, server
 from fanta.regole import Regole
+import codice_web
 
-TESTI = (Path(server.__file__).parent / "web" / "testi.js").read_text(encoding="utf-8")
+TESTI = codice_web.leggi("testi.js")
 
 # codice -> (italiano, inglese, tono) attesi: è il contratto per i client
 ATTESI = {

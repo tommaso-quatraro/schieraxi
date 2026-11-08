@@ -7,9 +7,10 @@ from fanta import posta, server
 
 from test_account_http import PASSWORD, cliente, invito, registra
 from test_registrazione_modi import utenti
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 
 
 @pytest.fixture

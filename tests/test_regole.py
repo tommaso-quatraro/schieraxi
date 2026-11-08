@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 
 import pytest
 
@@ -98,3 +99,48 @@ def test_rimborso_allo_svincolo_controllato(valore):
         regole.da_dict({"rimborso_svincolo": valore})
     for buono in (0, 0.5, 1):
         assert regole.da_dict({"rimborso_svincolo": buono}).rimborso_svincolo == buono
+
+
+# ---------------------------------------------------------------- tetti di misura (#480)
+LUNGO = "x" * 5000
+TROPPO = {
+    "nome della lega": ({"nome_lega": "L" * 101}, "nome della lega"),
+    "troppi moduli": ({"moduli": ["3-4-3"] * 31}, "al massimo 30 moduli"),
+    "modulo lunghissimo": ({"moduli": [" " * 5000 + "3-4-3"]}, "ogni modulo si scrive come 3-4-3"),
+    "troppe fasce": ({"modificatore_difesa": {"soglie": [[6 + i / 100, 1] for i in range(21)]}}, "al massimo 20 fasce"),
+    "troppe eccezioni": ({"rinvii_giornate": {f"20{a}-{a + 1}/{g}": "aspetta" for a in range(10, 13) for g in range(1, 39)}},
+                         "al massimo 76 eccezioni"),
+    "giornata lunghissima": ({"rinvii_giornate": {LUNGO: "aspetta"}}, "2026-27/12"),
+    "troppe finestre": ({"finestre_scambio": [{"dal": "2026-11-14"}] * 21}, "al massimo 20 finestre"),
+    "gol con troppi ruoli": ({"bonus": {"gol": {"P": 3, "D": 3, "C": 3, "A": 3} | {f"{LUNGO}{i}": 1 for i in range(50)}}}, "bonus.gol"),
+    "rosa con troppi ruoli": ({"rosa": {"P": 3, "D": 8, "C": 8, "A": 6} | {f"{LUNGO}{i}": 1 for i in range(50)}}, "rosa"),
+    "posti con troppi ruoli": ({"panchina": {"posti": {"P": 2, "D": 3, "C": 3, "A": 3} | {f"{LUNGO}{i}": 0 for i in range(50)},
+                                             "numero": 11}}, "panchina.posti"),
+}
+
+
+@pytest.mark.parametrize("nome", sorted(TROPPO))
+def test_regole_oltre_i_tetti_errore_chiaro_senza_ripetere_i_dati(nome):
+    """Liste e testi oltre i tetti: errore apposta (il server risponde 422) con una frase che non ripete il valore ricevuto."""
+    campi, frase = TROPPO[nome]
+    with pytest.raises(regole.RegoleTroppoGrandi, match=frase) as e:
+        regole.da_dict(campi)
+    assert LUNGO[:50] not in str(e.value) and len(str(e.value)) < 500
+
+
+def test_regole_al_limite_dei_tetti_vanno_bene():
+    r = regole.da_dict({"nome_lega": "L" * regole.MAX_NOME_LEGA, "moduli": [" 3 - 4 - 3 ", "4-4-2"],
+                        "modificatore_difesa": {"soglie": [[6 + i / 100, 1] for i in range(regole.MAX_SOGLIE)]}})
+    assert len(r.modificatore_difesa.soglie) == regole.MAX_SOGLIE
+
+
+def test_un_file_salvato_prima_dei_tetti_si_legge_ancora(tmp_path):
+    """Regole salvate quando i tetti non c'erano (nome lungo, tante fasce): si leggono come prima; per salvarle di nuovo vanno accorciate."""
+    f = tmp_path / "regole.json"
+    vecchio = asdict(Regole()) | {"nome_lega": "L" * 150}
+    vecchio["modificatore_difesa"]["soglie"] = [[6 + i / 100, 1] for i in range(25)]
+    f.write_text(json.dumps(vecchio), encoding="utf-8")
+    r = regole.carica(f)
+    assert r.nome_lega == "L" * 150 and len(r.modificatore_difesa.soglie) == 25
+    with pytest.raises(regole.RegoleTroppoGrandi, match="nome della lega"):
+        regole.salva(r, f)

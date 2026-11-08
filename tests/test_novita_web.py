@@ -3,10 +3,11 @@ Collaudo del 1/11/2026: la pagina disegnava tutte le 260 e più versioni, tutte 
 import re
 
 from fanta import server
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 
 
 def _vista():

@@ -327,6 +327,9 @@ async def _risposta(request: Request, chiama):
     # Con gli account i calcoli pesanti non bloccano la richiesta: partono in coda e la richiesta riceve 202 «sto calcolando» (vedi calcolo.py)
     calcolo.in_coda.set(account.multiutente() and request.url.path.startswith("/api/"))
     calcolo.solo_cache.set(bool(getattr(request.state, "solo_widget", False)))     # il token del widget non fa partire calcoli
+    # chi chiede, per la parte di ciascuno di calcoli e memorie condivise (limiti.MAX_CALCOLI_UTENTE...); senza account nessuno
+    utente = getattr(request.state, "utente", None)
+    calcolo.utente_richiesta.set(utente.id if utente is not None and account.multiutente() else None)
     if_none_match = None
     if request.method == "GET" and request.url.path.startswith("/api/") and lingua_testi.della_richiesta(request) == lingua_testi.EN:
         # In inglese l'ETag italiano non vale: la richiesta va avanti senza If-None-Match e il confronto si fa dopo la traduzione
@@ -491,7 +494,9 @@ def _messaggio_per_l_utente(e: ValueError) -> bool:
 def _errore_valore(request: Request, e: ValueError):
     if _messaggio_per_l_utente(e):
         codice = getattr(type(e), "codice", None)           # nome breve dell'errore per i client (es. «formazione_non_valida»), facoltativo
-        return JSONResponse(status_code=400, content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
+        stato = getattr(type(e), "stato", 400)              # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi)
+        return JSONResponse(status_code=stato if stato in (400, 422) else 400,
+                            content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
     codice = secrets.token_hex(4)               # lo stesso codice nel log del servizio: chi gestisce l'app ritrova il caso
     passi = traceback.extract_tb(e.__traceback__)
     dove = f"{Path(passi[-1].filename).name}:{passi[-1].lineno}" if passi else "?"
@@ -2215,8 +2220,9 @@ class TestoRegole(BaseModel):
 
 @app.post("/api/regole/riconosci")
 def riconosci_regole(dati: TestoRegole):
-    """Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola)."""
-    return regole_testo.interpreta(dati.testo[:30000])
+    """Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).
+    Oltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara."""
+    return regole_testo.interpreta(dati.testo)
 
 
 @app.get("/api/regole")
@@ -2369,6 +2375,7 @@ def scrivi_onboarding(dati: PassoOnboarding, ctx: Contesto = Depends(lega_corren
 @app.post("/api/onboarding/regole", dependencies=[Depends(_con_account)])
 def proponi_regole(dati: TestoRegole, ctx: Contesto = Depends(lega_corrente)):
     """Il regolamento incollato diventa una proposta di regole (non salva niente): righe riconosciute e righe «da confermare»."""
+    regole_testo.controlla_lunghezza(dati.testo)            # gli stessi tetti di /api/regole/riconosci (422)
     return onboarding.proponi_regole(_regole(ctx), dati.testo)
 
 
@@ -2385,6 +2392,7 @@ def crea_demo(ctx: Contesto = Depends(lega_corrente)):
         onboarding.leggi(db, ctx.utente_id, _ha_rose(ctx))
         if _ha_rose(ctx) and not onboarding.e_demo(lega.carica(ctx.rose)):
             raise HTTPException(409, "Hai già le tue rose: la lega demo le sostituirebbe, quindi non la creo.")
+        limiti.azione_pesante(ctx)                      # creare e togliere la demo si ripete: tetto all'ora (429)
         calciatori, _ = listone.carica()
         r = _regole(ctx)
         rose_demo = onboarding.crea_demo(calciatori, r)
@@ -2402,10 +2410,11 @@ def togli_demo(ctx: Contesto = Depends(lega_corrente)):
         if not onboarding.leggi(db, ctx.utente_id, _ha_rose(ctx))["demo"]:
             raise HTTPException(409, "Non c'è nessuna lega demo da togliere.")
         if onboarding.e_demo(lega.carica(ctx.rose)):          # solo se sono ancora le rose della demo: quelle vere non si toccano mai
+            limiti.azione_pesante(ctx)
             with _scrittura_rose:
                 for f in (ctx.rose, ctx.regole, ctx.movimenti, ctx.scelte, ctx.osservati):
                     f.unlink(missing_ok=True)
-            calcolo.cache.clear()
+            # niente da svuotare nella memoria dei calcoli: le chiavi contengono rose e regole, e quella memoria è di tutti
         return onboarding.aggiorna(db, ctx.utente_id, passo="tipo", stato="in_corso", demo=False)
 
 

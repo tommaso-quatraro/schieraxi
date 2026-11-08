@@ -61,6 +61,8 @@ def risposte_worktree():
         "gh pr list --state all": PR_TUTTE,
         "git merge-base --is-ancestor": comune.Risposta(1, "", ""),     # nessuna testa già in main...
         "git merge-base --is-ancestor h5 origin/main": comune.Risposta(0, "", ""),   # ...tranne la staccata
+        # agent-7: la PR unita ha una testa più vecchia e il ramo ha commit in più (#476)
+        "gh api repos/{owner}/{repo}/compare/prima...h7": "ahead\n",
     }
     for i in range(1, 8):
         r[f"git -C {WT}/agent-{i} status --porcelain"] = " M fanta/x.py\n" if i == 2 else ""

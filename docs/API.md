@@ -26,7 +26,8 @@ Sigle usate qui:
    Il campo `registrazione` vale `invito`, `email` o `aperta` (come ci si registra, vedi `account_email.py`).
    Le uniche rotte senza sessione sono: `POST /api/account/accedi`, `POST /api/account/registra`, `POST /api/account/registra/conferma`, `POST /api/account/recupero`, `POST /api/account/recupero-email`, `POST /api/account/recupero-email/conferma`, e i file statici della pagina (`/`, `/app.js`, `/stile.css`, `/sw.js`, `/manifest.webmanifest`, `/privacy`, `/termini`, `/crediti`, `/elimina-account`, icone e schermate del manifest `/screenshot-*.png`).
    Con gli account spenti non si fa nessun login: c'è un utente locale implicito (con i poteri dell'amministratore), quindi il server
-   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1) e senza intestazioni di proxy (`X-Forwarded-*`,
+   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1), aperte con un indirizzo della rete
+   `127.0.0.0/8` (per esempio `127.0.0.1` o `127.0.0.23`, come i collaudi), `localhost` o `[::1]` (intestazione `Host`, con o senza porta), e senza intestazioni di proxy (`X-Forwarded-*`,
    `Forwarded`, `X-Real-IP`). Tutte le altre, anche i file della pagina, ricevono `403` con
    `{"detail": "Questo server non ha gli account accesi: risponde solo dal computer su cui gira"}`. Un server raggiungibile dai client
    deve avere `FANTA_MULTIUTENTE=1`.
@@ -57,7 +58,19 @@ Sigle usate qui:
     - rotte degli account: tentativi limitati (`429` con `Retry-After`). Il conteggio globale dei tentativi sbagliati (per tipo:
       accesso, recupero, iscrizione) non blocca: oltre la soglia le risposte a chi non è noto arrivano fino a 3 secondi più lente;
     - analisi di scambi (`GET /api/scambi/analizza`): al massimo 20 analisi diverse al minuto per utente (ripetere la stessa
-      non conta) e poche alla volta (2 per utente, 3 in tutto il server): oltre, `429` con `Retry-After`.
+      non conta) e poche alla volta (2 per utente, 3 in tutto il server): oltre, `429` con `Retry-After`;
+    - calcoli e memorie condivise (dal 8/11/2026, solo con gli account): un utente ha al massimo 4 calcoli pesanti in coda o in
+      corso insieme. Un calcolo nuovo oltre il tetto non entra in coda: la risposta è la solita attesa `202` («sto calcolando», con
+      `riprova_tra` e `Retry-After`), il client riprova da solo e il calcolo entra appena uno dei suoi finisce. Riprovare un calcolo
+      già in coda non conta. Il `429` «Il server ha molti calcoli in coda: riprova fra qualche secondo» resta solo per la coda piena
+      di tutto il server. I risultati di un utente occupano al massimo un quarto della memoria comune dei risultati
+      (oltre escono prima i suoi usati meno di recente) e le consigliate già mostrate ricordate per lui sono al massimo 100
+      (una consigliata che serve anche ad altri utenti resta per loro). Nessuna azione di un utente svuota i risultati già
+      calcolati per gli altri. Creare e togliere la lega di prova (`POST` e `DELETE /api/onboarding/demo`) vale al massimo
+      20 volte all'ora per utente: oltre, `429` «Hai fatto troppe richieste in quest'ora. Riprova tra …» con `Retry-After`.
+      I numeri stanno in `fanta/limiti.py` e si cambiano sul server con `FANTA_MAX_CALCOLI_UTENTE`, `FANTA_QUOTA_RISULTATI_UTENTE`,
+      `FANTA_MAX_CONSIGLIATE_UTENTE` e `FANTA_MAX_AZIONI_PESANTI_ORA` (un valore non valido vale il numero di sempre). I client
+      mostrano `detail` come per gli altri `429`.
 
 11. **Lingua dei testi del server**: italiano se non dici nulla. Per l'inglese manda `?lingua=en` oppure `Accept-Language: en` (vince il parametro). Vale per i testi scritti dal server dove la rotta lo dice (per esempio `GET /api/novita`, `GET /api/sotto-il-cofano`, gli avvisi di copertura in `da_fare`, i giudizi degli scambi, le note sugli infortuni). Le note sugli infortuni delle fonti (campo `nota`, e la stessa nota dentro `motivi`) in qualunque risposta `GET /api/` si traducono con un vocabolario; una nota che non si riconosce tutta resta in italiano. Le risposte che cambiano con la lingua hanno `Vary: Accept-Language`. Attenzione: URLSession e OkHttp mandano da soli `Accept-Language` con la lingua del telefono; un client che vuole sempre l'italiano deve mandare `?lingua=it`. I messaggi d'errore (`detail`) restano in italiano; le frasi che cambiano con i dati hanno anche la chiave per tradurle (vedi «Frasi con chiave» più sotto).
 
@@ -270,8 +283,8 @@ Gli scambi usano gli id dei giocatori, separati da virgola (per esempio `do=101,
 | `POST /api/rose/correggi` | `{squadra, nome, id}` (X-Fanta, If-Match) | abbina a mano un giocatore non riconosciuto |
 | `GET /api/movimenti` | `limite?` (massimo 300) | storico di scambi, svincoli e tagli, dal più recente |
 | `GET /api/regole` | — | regole della lega (ETag) |
-| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict` |
-| `POST /api/regole/riconosci` | `{testo}` (massimo 30000 caratteri) | propone i valori letti dal regolamento incollato. Non salva niente |
+| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict`. Valori non validi: `400`. Oltre i tetti di misura (vedi «Tetti delle regole» qui sotto): `422` con `detail` «Regole non valide:» e una riga per ogni tetto superato, senza ripetere i valori mandati |
+| `POST /api/regole/riconosci` | `{testo}` (massimo 30000 caratteri, ogni riga al massimo 2000) | propone i valori letti dal regolamento incollato. Non salva niente. Testo o riga oltre il tetto: `422` con una frase in italiano in `detail` (dal 6/11/2026; prima il testo oltre 30000 caratteri si tagliava senza dirlo) |
 | `PUT /api/regole/rinvio` | `{giornata, modo, stagione?}` (X-Fanta, If-Match facoltativo, stesso ETag delle regole) | partite rinviate: decisione per UNA giornata, che vince sulla regola della lega (vedi «Partite rinviate» qui sotto) |
 
 ### Anteprima delle rose (`fanta/anteprima_rose.py`)
@@ -385,10 +398,10 @@ un'anteprima rifiutata per il tetto (`429`) non paga niente; in più al massimo 
 | `PUT /api/icona` | (X-Fanta) | sceglie il colore dell'icona |
 | `GET /api/onboarding` | — (solo con gli account) | a che punto è la procedura guidata di chi chiede |
 | `PUT /api/onboarding` | `{passo?, stato?, tipo?}` (X-Fanta) | aggiorna il passo |
-| `POST /api/onboarding/regole` | `{testo}` (X-Fanta) | propone le regole da un regolamento incollato, senza salvare |
+| `POST /api/onboarding/regole` | `{testo}` (X-Fanta) | propone le regole da un regolamento incollato, senza salvare. Stessi tetti del testo di `POST /api/regole/riconosci` (`422`) |
 | `GET /api/onboarding/controlli` | — | le spunte prima della prima formazione: `[{id, titolo, ok, obbligatorio, dettaglio}]`. Dal 2/11/2026 `rose` (obbligatoria) basta con **una** squadra; voce nuova `altre_squadre` (non obbligatoria: un avviso, `dettaglio` = il testo di una squadra sola). I client che mostrano solo le obbligatorie non cambiano niente |
-| `POST /api/onboarding/demo` | (X-Fanta) | crea una lega di prova. `409` se hai già rose vere |
-| `DELETE /api/onboarding/demo` | (X-Fanta) | toglie la lega di prova (solo se è davvero quella di prova) |
+| `POST /api/onboarding/demo` | (X-Fanta) | crea una lega di prova. `409` se hai già rose vere. Insieme a `DELETE` al massimo 20 volte all'ora per utente (`429` con `Retry-After`, vedi «Limiti») |
+| `DELETE /api/onboarding/demo` | (X-Fanta) | toglie la lega di prova (solo se è davvero quella di prova). Conta nello stesso tetto all'ora di `POST` |
 
 **Avviso "cambia la formazione"** (dal 1/11/2026). Campo `avviso_prima` nelle impostazioni di `GET/PUT /api/avvisi`: da quanti minuti prima della scadenza della formazione il server guarda se il consiglio è cambiato (`0` = spento, `30`, `60`, `90`; di base `60`). Da quel momento, se le ultime probabili cambiano la formazione consigliata rispetto al riferimento (la scelta salvata della giornata, anche «ho schierato la consigliata», se si può ancora schierare; senza scelta valida, la consigliata com'era prima che si aprisse la finestra) e la nuova vale almeno 1 punto atteso in più (`notifiche.SOGLIA_AVVISO_PUNTI`), parte un avviso: titolo «SchieraXI · cambia la formazione» (con scelta salvata) o «SchieraXI · cambia la formazione consigliata», testo con il motivo in una frase, priorità 4, tag `rotating_light` (come i cambi). Al massimo 2 per giornata, mai lo stesso consiglio due volte, mai nelle ore tranquille (riprova dopo, finché la formazione è aperta); il promemoria della stessa finestra non riparte se l'avviso è arrivato da meno di 20 minuti. Lo manda il giro dei promemoria del server (ogni 10 minuti). Testi in italiano, come gli altri avvisi.
 Niente doppioni con l'avviso dei cambi (opzione `cambi`): dentro la finestra il giro dei cambi prova prima l'avviso nuovo; «cambi nelle probabili» e «cambio pronto» sui tuoi giocatori tacciono solo se l'avviso nuovo è partito negli ultimi 15 minuti con i dati di adesso (campo `versione_inviato` nello stato dell'avviso), e lo stato si salva lo stesso, quindi non ripartono dopo; le righe degli osservati sì. Se l'avviso nuovo non parte (già due invii, guadagno sotto un punto, dati più nuovi) i cambi si dicono come sempre; se uno dei due è partito da meno di 15 minuti (`notifiche.DOPPIONE_CAMBI`, campo `inviato` nello stato dei cambi), l'avviso nuovo non ripete la stessa notizia. Con `avviso_prima: 0` i cambi restano come prima.
@@ -408,7 +421,7 @@ Cosa devono fare gli altri client: **app iPhone** aggiungere `avviso_prima: Int?
 | `304` | `GET /api/widget` con lo stesso ETag | nessun corpo |
 | `400` | valore non valido (per esempio elenco di giocatori sbagliato, o dati non accettati) | `{"detail"}`, a volte con `codice` (`formazione_non_valida` e `giocatore_bloccato`, vedi `POST /api/formazione/valuta`). Se il motivo non è un messaggio pensato per l'utente: `{"detail": "La richiesta non è valida: controlla i dati e riprova.", "id_errore"}` (`id_errore`, 8 caratteri, ritrova il caso nel registro del server; i client possono ignorarlo) |
 | `401` | nessuna sessione (con gli account accesi), token del widget scaduto o revocato, password sbagliata | `{"detail": "Accesso richiesto", "multiutente", "registrazione"}` o il messaggio dell'errore |
-| `403` | manca `X-Fanta`; richiesta da un altro sito; account spenti e richiesta non diretta dal computer del server; token del widget su una rotta che non è sua; funzione solo per l'amministratore; invito non valido; registrazioni chiuse; password attuale sbagliata | `{"detail"}` |
+| `403` | manca `X-Fanta`; richiesta da un altro sito; account spenti e richiesta non diretta dal computer del server (o con `Host` diverso da un indirizzo `127.x.x.x`, `localhost`, `[::1]`); token del widget su una rotta che non è sua; funzione solo per l'amministratore; invito non valido; registrazioni chiuse; password attuale sbagliata | `{"detail"}` |
 | `404` | cose che non ci sono (immagine, squadra, giocatore, foto) o account non attivi | `{"detail"}` |
 | `409` | azione non possibile adesso (nessuna rosa importata, nessun canale per gli avvisi, lega di prova da togliere o sostituire, formazione già chiusa) | `{"detail"}`; per la formazione chiusa anche `codice: "formazione_chiusa"` (salvare o togliere la scelta dopo la scadenza) |
 | `411` | richiesta «chunked» senza lunghezza su rotte degli account | `{"detail"}` |
@@ -470,6 +483,24 @@ Dove si vedono (tutti campi aggiunti, i client vecchi li ignorano):
 - Promemoria, «cambio pronto», copia automatica della formazione e riepilogo usano la scadenza (non l'inizio della partita).
 Aggiornamenti più fitti: il servizio rilegge le probabili (e avvisa dei cambi) anche a 60, 30 e 15 minuti prima della scadenza, oltre ai giri di sempre del server. Nessuna rotta nuova; per spegnerli: `FANTA_PIANIFICATORE=0` nel servizio, oppure `aggiornamenti_vicino_scadenza: false` nelle regole. Le probabili hanno quindi un'ora di rilevazione (`probabili.aggiornate_il` in `/api/oggi`) più recente vicino alla scadenza.
 Le app mostrano tutti e due i numeri (sezione «Numero della giornata» qui sotto). Cosa devono fare iOS e Android: mostrare il conto alla rovescia verso `scadenza` (se manca, `inizio`) e, nel pannello delle regole, i due valori; se non li conoscono non cambia nulla.
+
+## Tetti delle regole (dal 6/11/2026, #480)
+
+Tetti di misura di `PUT /api/regole` (e di ogni salvataggio delle regole, anche `PUT /api/regole/rinvio`), larghi rispetto alle
+leghe vere. Oltre un tetto la risposta è `422` con `detail` «Regole non valide:» e una riga per tetto, senza ripetere i valori mandati:
+
+| Campo | Tetto |
+|---|---|
+| `nome_lega` | 100 caratteri |
+| `moduli` | 30 moduli, ognuno al massimo 20 caratteri (`"3-4-3"`, anche con qualche spazio) |
+| `modificatore_difesa.soglie` | 20 fasce |
+| `rinvii_giornate` | 76 eccezioni, chiavi al massimo 20 caratteri (`"2026-27/12"`) |
+| `finestre_scambio` | 20 finestre |
+| `bonus.gol`, `rosa`, `panchina.posti` | un valore per ruolo (P, D, C, A), non di più |
+
+I tetti su moduli, eccezioni e finestre c'erano già (prima rispondevano `400`). Gli altri errori delle regole restano `400`.
+Le regole salvate prima dei tetti si leggono come prima (`GET /api/regole`, calcoli); per salvarle di nuovo vanno riportate dentro
+i tetti. I client mostrano `detail` come per ogni errore: nessun cambio richiesto.
 
 ## Numero della giornata: `giornata` e `giornata_lega` (dal 5/11/2026, #299)
 

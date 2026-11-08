@@ -212,36 +212,7 @@ final class FormazioneViewModelTests: XCTestCase {
         XCTAssertEqual(s.quante("DELETE /api/scelta?giornata=9"), 1)
     }
 
-    func testSeUnAltroDispositivoHaCambiatoLaSceltaSiRicarica() async throws {
-        let s = ServerDiProva { metodo, percorso, corpo in
-            if percorso.hasPrefix("/api/formazione/valuta") {
-                if let corpo, String(decoding: corpo, as: UTF8.self).contains("\"salva\":true") { throw ErroreApi.conflitto }
-                return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
-            }
-            if percorso.hasPrefix("/api/scelta") { throw ErroreApi.server("nessuna scelta salvata") }
-            return try Fixture.dati("formazione")
-        }
-        let (vm, f) = try await caricata(s)
-        vm.iniziaModificaManuale(f)
-        await attendi("valutazione", finche: { vm.valutazione != nil })
-        await vm.valuta(salva: true)
-        XCTAssertEqual(vm.messaggio, FormazioneViewModel.sceltaCambiata)
-        XCTAssertNil(vm.manuale, "la modifica di questo telefono non si salva sopra quella dell'altro: si riparte da quella salvata")
-        XCTAssertEqual(s.quante("GET /api/formazione"), 2, "si ricarica la formazione")
-        XCTAssertEqual(s.quante("GET /api/scelta"), 2, "e si rilegge la scelta (con il suo ETag)")
-        // anche «Torna alla consigliata» con un 412 ricarica e lo dice
-        let s2 = ServerDiProva { metodo, percorso, _ in
-            if metodo == "DELETE" { throw ErroreApi.conflitto }
-            if percorso.hasPrefix("/api/formazione/valuta") { return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8) }
-            if percorso.hasPrefix("/api/scelta") { throw ErroreApi.server("nessuna scelta salvata") }
-            return try Fixture.dati("formazione")
-        }
-        let (vm2, f2) = try await caricata(s2)
-        vm2.iniziaModificaManuale(f2)
-        await vm2.tornaAllaConsigliata(f2)
-        XCTAssertEqual(vm2.messaggio, FormazioneViewModel.sceltaCambiata)
-        XCTAssertEqual(s2.quante("GET /api/formazione"), 2)
-    }
+    // Il 412 (scelta cambiata da un altro dispositivo) sta in `SceltaCambiataAltroveTests` (Swift Testing, #477).
 
     func testSeIlServerNonCancellaLaSceltaRestaDovEra() async throws {
         let s = ServerDiProva { metodo, percorso, _ in

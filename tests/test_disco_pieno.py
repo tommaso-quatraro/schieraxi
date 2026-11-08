@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import consigli, percorsi, server
+import codice_web
 
 
 def test_scrittura_fallita_non_lascia_file_temporanei(tmp_path, monkeypatch):
@@ -47,8 +48,7 @@ def test_disco_pieno_messaggio_chiaro(tmp_path, monkeypatch, errore):
 
 
 def test_messaggio_disco_pieno_tradotto_nell_app():
-    from pathlib import Path
-    testi = (Path(server.__file__).parent / "web" / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     assert f'"err.disco_pieno": "{server.DISCO_PIENO}"' in testi
 
 

@@ -151,9 +151,13 @@ def test_segreti_di_formato_sbagliato_si_ignorano(web, attese):
 
 
 # ================================================================ 2) senza account: solo da questo computer
-def _richiesta(host, intestazioni=()):
+def _richiesta(host, intestazioni=(), destinazione="127.0.0.1:8000"):
+    """Una richiesta da `host` (l'indirizzo della connessione) verso `destinazione` (l'intestazione Host; None = senza Host)."""
+    voci = [(k.lower().encode(), v.encode()) for k, v in intestazioni]
+    if destinazione is not None:
+        voci.append((b"host", destinazione.encode()))
     return Request({"type": "http", "method": "GET", "path": "/api/stato", "query_string": b"", "client": (host, 1) if host else None,
-                    "headers": [(k.lower().encode(), v.encode()) for k, v in intestazioni]})
+                    "headers": voci})
 
 
 @pytest.mark.parametrize("host,intestazioni,locale", [
@@ -168,6 +172,50 @@ def test_richiesta_locale(host, intestazioni, locale):
     assert rotte_account.richiesta_locale(_richiesta(host, intestazioni)) is locale
 
 
+@pytest.mark.parametrize("destinazione,locale", [
+    ("127.0.0.1", True), ("127.0.0.1:8000", True), ("localhost", True), ("localhost:8000", True), ("LocalHost:8000", True),
+    ("[::1]", True), ("[::1]:8000", True),
+    (None, False), ("", False), ("rebind.example", False), ("rebind.example:8000", False), ("127.0.0.1.nip.io:8000", False),
+    ("localhost.rebind.example", False), ("0.0.0.0:8000", False), ("127.0.0.1:8000@evil", False), ("127.0.0.1:abc", False),
+    ("127.0.0.1:8000, evil", False), ("::1", False), ("testserver", False),
+    # tutta la rete 127.0.0.0/8: foto e collaudi avviano il server su 127.0.0.{20+…} (prove/foto_web/foto.py)
+    ("127.0.0.23:8023", True), ("127.0.0.23", True), ("127.1.2.3:80", True), ("127.255.255.255", True), ("127.0.0.0", True),
+    ("127.0.0.256", False), ("127.00.0.1", False), ("127.0.0.01:8000", False), ("127.0.0", False), ("127.0.0.1.2", False),
+    ("128.0.0.1", False), ("127.0.0.23.esempio.it", False), ("esempio.it:8023", False), ("127.0.0.-1", False),
+])
+def test_senza_account_conta_anche_l_indirizzo_scritto_nella_richiesta(destinazione, locale):
+    """Attacco «DNS rebinding»: una pagina di un altro sito fa puntare il suo nome a 127.0.0.1 e chiama il server locale dal browser.
+    La connessione arriva da questo computer, ma l'intestazione Host porta il nome dell'altro sito: si rifiuta."""
+    assert rotte_account.richiesta_locale(_richiesta("127.0.0.1", (), destinazione)) is locale
+
+
+def test_il_client_di_prova_resta_locale():
+    """Il client di prova di Starlette («testclient» verso «testserver») non esiste in un server vero: resta locale come prima."""
+    assert rotte_account.richiesta_locale(_richiesta("testclient", (), "testserver")) is True
+    assert rotte_account.richiesta_locale(_richiesta("127.0.0.1", (), "testserver")) is False
+
+
+def test_senza_account_un_nome_di_un_altro_sito_riceve_403(monkeypatch, dati_isolati):
+    monkeypatch.delenv("FANTA_MULTIUTENTE", raising=False)
+    altro = TestClient(server.app, headers={"X-Fanta": "1", "Sec-Fetch-Site": "same-origin"}, client=("127.0.0.1", 4000),
+                       base_url="http://rebind.example:8000")
+    for metodo, percorso in (("GET", "/api/regole"), ("GET", "/api/backup"), ("PUT", "/api/regole"), ("GET", "/")):
+        r = altro.request(metodo, percorso, json={} if metodo == "PUT" else None)
+        assert r.status_code == 403 and r.json()["detail"] == rotte_account.SOLO_LOCALE, (metodo, percorso)
+    for indirizzo in ("http://127.0.0.1:8000", "http://localhost:8000", "http://[::1]:8000"):
+        qui = TestClient(server.app, headers={"X-Fanta": "1"}, client=("127.0.0.1", 4000), base_url=indirizzo)
+        assert qui.get("/api/regole").status_code == 200, indirizzo
+    collaudo = TestClient(server.app, headers={"X-Fanta": "1"}, client=("127.0.0.23", 4000), base_url="http://127.0.0.23:8023")
+    assert collaudo.get("/api/regole").status_code == 200                # server dei collaudi su 127.0.0.23
+
+
+def test_con_gli_account_l_indirizzo_scritto_non_cambia_niente(web):
+    """Con FANTA_MULTIUTENTE=1 il server sta dietro il proxy con il suo nome pubblico: il controllo dell'Host non si applica."""
+    altro = TestClient(server.app, headers={"X-Fanta": "1"}, base_url="https://app.esempio.it")
+    r = altro.get("/api/regole")
+    assert r.status_code == 401 and r.json()["detail"] == "Accesso richiesto"
+
+
 def test_senza_account_da_fuori_403_da_qui_si(monkeypatch, dati_isolati):
     """Attacco: raggiungere un server lasciato senza account (FANTA_MULTIUTENTE spento) da un'altra macchina o attraverso un
     proxy (Funnel, Caddy...). Lì chiunque sarebbe amministratore: si risponde 403 a tutto ciò che non è diretto da qui."""
@@ -178,7 +226,7 @@ def test_senza_account_da_fuori_403_da_qui_si(monkeypatch, dati_isolati):
         assert r.status_code == 403 and r.json()["detail"] == rotte_account.SOLO_LOCALE, percorso
     via_proxy = TestClient(server.app, headers={"X-Fanta": "1", "X-Forwarded-For": "203.0.113.5"}, client=("127.0.0.1", 4000))
     assert via_proxy.get("/api/account/me").status_code == 403
-    qui = TestClient(server.app, headers={"X-Fanta": "1"}, client=("127.0.0.1", 4000))
+    qui = TestClient(server.app, headers={"X-Fanta": "1"}, client=("127.0.0.1", 4000), base_url="http://127.0.0.1:8000")
     assert qui.get("/api/account/me").status_code == 200
 
 

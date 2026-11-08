@@ -11,10 +11,11 @@ from fanta import calcolo, consigli, lega, onboarding, server
 from fanta.regole import Regole
 
 from test_scambi import REGOLE, _rose, _valori, TAB
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-PRIMO = (WEB / "primoavvio.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+PRIMO = codice_web.leggi("primoavvio.js")
 
 
 def _sola(rose: lega.Rose) -> lega.Rose:

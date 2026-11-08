@@ -8,18 +8,19 @@ import subprocess
 import pytest
 
 from fanta import server
+import codice_web
 
 NODE = shutil.which("node")
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
-IMP_JS = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
+IMP_JS = codice_web.leggi("impostazioni.js")
 IOS = server.WEB.parent.parent / "ios/Sources"                              # l'app iPhone, nella copia pubblica del repository
 
 
 def test_aree_di_tocco_da_44px_anche_in_densita_compatta():
     assert not re.search(r'data-densita="compatta"\] \.chip \{[^}]*min-height: (?:[0-3]\d|4[0-3])px', CSS)
     assert re.search(r"\.proposta-r button\.nome-g \{ padding: 13px 4px; margin: -13px -4px; \}", CSS)
-    imp = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
+    imp = codice_web.leggi("impostazioni.js")
     assert 'class="voce voce-link"' in imp                                   # privacy, termini e crediti sono voci intere da toccare
     # ✕ dei fogli, ⇄ della formazione e caselle: 44 px veri, senza aree invisibili intorno
     assert re.search(r"\.foglio-chiudi \{[^}]*width: 44px; height: 44px", CSS) and "foglio-chiudi::after" not in CSS
@@ -30,7 +31,7 @@ def test_accesso_e_primo_avvio_centrati():
     # il margine di .carta spingeva la scheda d'accesso in basso. Grafica B (spec §9): il modulo non è più una carta, ha auto su
     # tutti i lati (al centro, in verticale e in orizzontale) e nessuna regola di .carta gli toglie il margine
     assert re.search(r"\n\.accesso-corpo \{[^}]*margin: auto;", CSS)
-    assert "carta accesso-corpo" not in (server.WEB / "app.js").read_text(encoding="utf-8")
+    assert "carta accesso-corpo" not in codice_web.app()
     assert ".onb-griglia" not in CSS and ".onb-blocco" in CSS
 
 def test_schermi_grandi_ingranditi():
@@ -52,7 +53,7 @@ def test_composizione_a_colonne_su_schermi_larghi():
     assert "@media (min-width: 4400px) { :root { --z: 1.75; } }" in CSS
 
 def test_scorciatoia_virgola_per_le_impostazioni():
-    app = (server.WEB / "app.js").read_text(encoding="utf-8")
+    app = codice_web.app()
     assert 'ev.key === ","' in app and 'vai("impostazioni", undefined, { focoTitolo: true })' in app
 
 def test_stile_ha_le_parentesi_graffe_in_pari():
@@ -127,7 +128,7 @@ def test_rimborso_e_costo_dei_cambi_si_vedono_senza_mouse():
         assert f't("mercato.{chiave}"' in consigli, chiave
     assert "r: p.rimborso" in consigli and "c: p.entra.quotazione" in consigli
     assert re.search(r"\.pr-sec \.nb \{[^}]*display: inline-block; max-width: 100%", CSS)    # intero se ci sta, a capo dentro solo se è più largo della riga
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     it, en = testi.split("\n  en: {", 1)
     for blocco, voci in ((it, ("crediti dopo {dopo}{no}", "rimborso {r}", "costo {c}")), (en, ("credits after {dopo}{no}", "refund {r}", "cost {c}"))):
         for chiave, testo in zip(("crediti_dopo", "rimborso_n", "costo_n"), voci):

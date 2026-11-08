@@ -7,6 +7,7 @@ import pytest
 
 from fanta import archivio, consigli, diario, precisione, server
 from fanta.regole import Regole
+import codice_web
 
 ST = "2026-27"
 
@@ -138,8 +139,8 @@ def test_la_rotta_del_diario_ha_la_precisione():
     assert "precisione.riassunto" in inspect.getsource(rotta.endpoint)
 
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 
 
 def _funzione(nome: str) -> str:

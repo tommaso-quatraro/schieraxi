@@ -3,10 +3,11 @@ etichetta sul volto; «Da fare» con il pulsante sotto il testo quando il riquad
 import re
 
 from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+TESTI = codice_web.leggi("testi.js")
 
 
 def test_una_sola_percentuale_nelle_righe_dei_giocatori():

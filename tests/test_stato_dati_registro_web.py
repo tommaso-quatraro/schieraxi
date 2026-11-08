@@ -10,10 +10,11 @@ from datetime import datetime
 import pytest
 
 from fanta import archivio, registro_giornate, server
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-TESTI_JS = (WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI_JS = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 ST = "2026-27"
 # una giornata misurata (come in test_stato_dati): errore del fantavoto atteso 1,00 contro 1,06 della fantamedia (−5,7%), Brier 0,100,

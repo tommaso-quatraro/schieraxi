@@ -12,8 +12,9 @@ import subprocess
 import pytest
 
 from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 NODE = shutil.which("node")
 # la classe .etichetta delle pillole, non .etichetta-riga, .etichetta-campo o .df-etichetta
@@ -25,7 +26,7 @@ def _pezzo(inizio: str, fine: str) -> str:
 
 
 def _esegui(chiamata: str):
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     codice = "\n".join([
         testi,
         "LINGUA = 'it';",
