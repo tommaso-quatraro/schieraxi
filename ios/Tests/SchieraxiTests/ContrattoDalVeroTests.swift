@@ -128,6 +128,13 @@ struct ContrattoDalVeroTests {
         #expect(problema.contains(atteso), "problema: \(problema)")
     }
 
+    @Test("Nel messaggio i campi hanno il nome del server")
+    func nomiDelServer() {
+        #expect(Self.nomeDelServer("creditiResidui") == "crediti_residui")
+        #expect(Self.nomeDelServer("fvAtteso") == "fv_atteso")
+        #expect(Self.nomeDelServer("nome") == "nome")
+    }
+
     @Test("Anche la lettura del widget sa fallire")
     func widgetRotto() throws {
         let problema = try #require(Lettura.widget.problema(Data("[1]".utf8)))
@@ -170,13 +177,13 @@ struct ContrattoDalVeroTests {
         } catch let errore as DecodingError {
             switch errore {
             case .keyNotFound(let chiave, let c):
-                return "manca il campo «\(percorso(c.codingPath + [chiave]))»"
+                return "manca il campo «\(percorso(c.codingPath + [chiave], snake: snake))»"
             case .typeMismatch(let atteso, let c):
-                return "campo «\(percorso(c.codingPath))»: l'app vuole \(atteso). \(c.debugDescription)"
+                return "campo «\(percorso(c.codingPath, snake: snake))»: l'app vuole \(atteso). \(c.debugDescription)"
             case .valueNotFound(let atteso, let c):
-                return "campo «\(percorso(c.codingPath))»: è null, l'app vuole \(atteso)"
+                return "campo «\(percorso(c.codingPath, snake: snake))»: è null, l'app vuole \(atteso)"
             case .dataCorrupted(let c):
-                return "campo «\(percorso(c.codingPath))»: \(c.debugDescription)"
+                return "campo «\(percorso(c.codingPath, snake: snake))»: \(c.debugDescription)"
             @unknown default:
                 return "\(errore)"
             }
@@ -185,15 +192,28 @@ struct ContrattoDalVeroTests {
         }
     }
 
-    /// Il percorso di un campo: «giocatori[0].nome»; «(radice)» per la risposta intera.
-    static func percorso(_ chiavi: [any CodingKey]) -> String {
+    /// Il percorso di un campo: «giocatori[0].nome»; «(radice)» per la risposta intera. Con `snake` i nomi tornano quelli del
+    /// server («creditiResidui» → «crediti_residui»), così si ritrovano nel JSON.
+    static func percorso(_ chiavi: [any CodingKey], snake: Bool = false) -> String {
         let testo = chiavi.reduce(into: "") { testo, chiave in
             if let indice = chiave.intValue {
                 testo += "[\(indice)]"
             } else {
-                testo += (testo.isEmpty ? "" : ".") + chiave.stringValue
+                let nome = snake ? nomeDelServer(chiave.stringValue) : chiave.stringValue
+                testo += (testo.isEmpty ? "" : ".") + nome
             }
         }
         return testo.isEmpty ? "(radice)" : testo
+    }
+
+    /// Da camelCase a snake_case, al contrario di `.convertFromSnakeCase`.
+    static func nomeDelServer(_ nome: String) -> String {
+        nome.reduce(into: "") { testo, lettera in
+            if lettera.isUppercase {
+                testo += "_" + lettera.lowercased()
+            } else {
+                testo.append(lettera)
+            }
+        }
     }
 }
