@@ -11,7 +11,8 @@
 #      (lega/esempio, squadre inventate). Mai la lega vera, mai i dati della produzione (la prova non li puo' leggere);
 #   3. ambiente Python nuovo con SCHIERAXI_PYTHON (lo stesso Python della produzione) e solo le versioni e gli hash di
 #      requirements.txt (pip --require-hashes);
-#   4. cartella dati (700) e dati/ambiente.env (600) da ambiente-prova.env.esempio: posta, lavori periodici e fonti spenti;
+#   4. cartella dati (700). Le variabili del servizio (posta, lavori periodici e fonti spenti) stanno nel file del servizio,
+#      schieraxi-prova.service, non in un file di questa cartella: systemd lo leggerebbe come root;
 #   5. prima copia dell'archivio delle statistiche dalla cartella di scambio (copia-archivio-prova.sh): la produzione ce la mette con
 #      esporta-archivio-prova.sh (passo 4.4). Se manca si ferma qui;
 #   6. stato degli aggiornamenti della prova (~/.cache/schieraxi-prova): ultimo-rilascio e verificato = COMMIT, cosi' aggiorna-app.sh
@@ -43,7 +44,7 @@ nel_clone() { (cd "$SRC" && git "$@"); }
   || ferma "manca la versione da installare. Uso: prepara-prova.sh [--prova] COMMIT, con COMMIT = cat ~/.cache/fantacalcio/verificato della produzione"
 python_base=$(command -v "$PY") || ferma "non trovo il Python $PY (SCHIERAXI_PYTHON)"
 python_base=$(readlink -f "$python_base")
-for f in "$DEST/dati/ambiente.env" "$DEST/dati/copia-archivio.log" "$DEST/dati/copia-archivio.log.tmp" "$DEST/dati/fanta.sqlite"; do
+for f in "$DEST/dati" "$DEST/dati/copia-archivio.log" "$DEST/dati/copia-archivio.log.tmp" "$DEST/dati/fanta.sqlite"; do
   [ -L "$f" ] && ferma "$f e' un collegamento simbolico"
 done
 commit="$VERSIONE"
@@ -106,20 +107,14 @@ else
   fi
 fi
 
-# 4. dati e variabili d'ambiente
-if [ "$PROVA" = 1 ]; then
-  [ -d "$DEST/dati" ] || dico "creerei $DEST/dati (permessi 700)"
-  if [ -f "$DEST/dati/ambiente.env" ]; then dico "ambiente.env: c'e' gia', resta com'e'"
-  else dico "creerei $DEST/dati/ambiente.env da ambiente-prova.env.esempio (permessi 600)"; fi
+# 4. cartella dei dati (le variabili del servizio stanno nel file del servizio, non qui: questa cartella la scrive anche la prova)
+if [ -d "$DEST/dati" ]; then
+  dico "cartella dei dati: c'e' gia' ($DEST/dati)"
+elif [ "$PROVA" = 1 ]; then
+  dico "creerei $DEST/dati (permessi 700)"
 else
-  mkdir -p "$DEST/dati" && chmod 700 "$DEST/dati"
-  if [ -f "$DEST/dati/ambiente.env" ]; then
-    dico "ambiente.env: c'e' gia', resta com'e'"
-  else
-    (umask 077 && cp "$DEST/script/server/prova/ambiente-prova.env.esempio" "$DEST/dati/ambiente.env") \
-      || ferma "non riesco a creare $DEST/dati/ambiente.env"
-    dico "creato $DEST/dati/ambiente.env (posta, lavori periodici e fonti spenti)"
-  fi
+  mkdir -p "$DEST/dati" && chmod 700 "$DEST/dati" || ferma "non riesco a creare $DEST/dati"
+  dico "creata $DEST/dati (permessi 700)"
 fi
 
 # 5. archivio delle statistiche, dalla cartella di scambio

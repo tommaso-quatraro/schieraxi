@@ -25,9 +25,10 @@
 # (predefinito: https://github.com/tommaso-quatraro/schieraxi.git).
 # SCHIERAXI_ISTANZA: vuota (o assente) = la produzione, come sempre. "prova" = l'ambiente di prova (script/server/prova/LEGGIMI.md),
 #   che gira con il SUO utente (schieraxi-prova) e la sua casa: cartella ~/app, stato ~/.cache/schieraxi-prova, clone ~/schieraxi-src e
-#   blocco suoi, servizio schieraxi-prova, porta 8001, nessuna attesa della fine delle partite, nessun avviso. Nella casa della
-#   produzione (dove c'e' ~/fantacalcio) la prova non parte. Ogni altro valore: esce con 2 senza fare niente.
-# Opzione --configurazione: stampa cartella, stato, servizio, porta, attesa delle partite, clone e blocco dell'istanza ed esce
+#   blocco suoi, chiave delle firme /etc/schieraxi-prova/chiavi-firma.asc (di root), servizio schieraxi-prova, porta 8001, nessuna
+#   attesa della fine delle partite, nessun avviso. Nella casa della produzione (dove c'e' ~/fantacalcio) la prova non parte.
+#   Ogni altro valore: esce con 2 senza fare niente.
+# Opzione --configurazione: stampa cartella, stato, servizio, porta, attesa delle partite, clone, blocco e chiave dell'istanza ed esce
 #   (non scrive niente).
 #   Dal crontab dell'utente del server:  */10 * * * * /bin/bash $HOME/fantacalcio/script/server/aggiorna-app.sh >/dev/null 2>&1
 set -u
@@ -44,8 +45,10 @@ esac
 SRC="${SCHIERAXI_SRC:-$HOME/schieraxi-src}"     # cartella della copia di GitHub (per le prove si puo cambiare)
 ISTANZA="${SCHIERAXI_ISTANZA:-}"
 case "$ISTANZA" in
-  "")    DEST="$HOME/fantacalcio"; STATO="$HOME/.cache/fantacalcio";    SERVIZIO=fantacalcio;     PORTA=8000; ATTENDE_PARTITE=1 ;;
+  "")    DEST="$HOME/fantacalcio"; STATO="$HOME/.cache/fantacalcio";    SERVIZIO=fantacalcio;     PORTA=8000; ATTENDE_PARTITE=1
+         CHIAVI_DI_SOLITO="$HOME/.config/schieraxi/chiavi-firma.asc" ;;
   prova) DEST="$HOME/app";         STATO="$HOME/.cache/schieraxi-prova"; SERVIZIO=schieraxi-prova; PORTA=8001; ATTENDE_PARTITE=0
+         CHIAVI_DI_SOLITO=/etc/schieraxi-prova/chiavi-firma.asc     # di root: nella sua casa la prova la potrebbe cambiare
          if [ -e "$HOME/fantacalcio" ]; then      # qui userebbe il clone della produzione con un altro blocco
            echo "Questa e' la casa della produzione: l'ambiente di prova gira con il suo utente, schieraxi-prova. Non faccio niente." >&2
            exit 2
@@ -57,9 +60,10 @@ esac
 # delle firme, che lavora in .git/verifica-firme, alla volta). Produzione: ~/.cache/fantacalcio/blocco-pubblicazione, lo stesso di
 # pubblica-sito.sh, promemoria.sh e sentinella.sh. La prova ha la sua casa, quindi clone suo e blocco suo: niente in comune.
 BLOCCO="$STATO/blocco-pubblicazione"
+CHIAVI="${SCHIERAXI_CHIAVI:-$CHIAVI_DI_SOLITO}"     # chiavi fidate per le firme: FUORI dal repository (e, per la prova, fuori dalla sua casa)
 if [ "$CONFIGURAZIONE" = 1 ]; then
-  printf 'DEST=%s\nSTATO=%s\nSERVIZIO=%s\nPORTA=%s\nATTENDE_PARTITE=%s\nSRC=%s\nBLOCCO=%s\n' \
-    "$DEST" "$STATO" "$SERVIZIO" "$PORTA" "$ATTENDE_PARTITE" "$SRC" "$BLOCCO"
+  printf 'DEST=%s\nSTATO=%s\nSERVIZIO=%s\nPORTA=%s\nATTENDE_PARTITE=%s\nSRC=%s\nBLOCCO=%s\nCHIAVI=%s\n' \
+    "$DEST" "$STATO" "$SERVIZIO" "$PORTA" "$ATTENDE_PARTITE" "$SRC" "$BLOCCO" "$CHIAVI"
   exit 0
 fi
 if [ "$ISTANZA" = prova ]; then
@@ -77,7 +81,6 @@ LOG="$DEST/dati/pubblicazione.log"
 ERR="$LOG"; [ "${1:-}" = "--prova" ] && ERR=/dev/null
 REPO="${SCHIERAXI_REPO:-https://github.com/tommaso-quatraro/schieraxi.git}"
 CARTELLE="fanta tests script requirements.txt requirements-dev.txt"     # le sole cose che finiscono sul server
-CHIAVI="${SCHIERAXI_CHIAVI:-$HOME/.config/schieraxi/chiavi-firma.asc}"     # chiavi fidate per le firme: FUORI dal repository
 QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di ogni cd)
 . "$QUI/verifica-firme.sh"
 

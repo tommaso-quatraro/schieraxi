@@ -29,6 +29,7 @@ AGGIORNA = SERVER / "aggiorna-app.sh"
 UTENTE_PROVA = "schieraxi-prova"
 CASA_PROVA = "/srv/schieraxi-prova"
 SCAMBIO = "/srv/schieraxi-scambio"
+CHIAVE_PROVA = "/etc/schieraxi-prova/chiavi-firma.asc"          # di root: la prova non la può cambiare
 
 
 def _trova_bash():
@@ -252,7 +253,7 @@ exit 0''')
         """La prova come la lascia prepara-prova.sh: clone suo, codice di `commit`, ambiente Python, dati suoi, stato suo."""
         _git(s.casa_prova, "clone", "-q", s.github.as_posix(), "schieraxi-src")
         for rel, t in {"fanta/__init__.py": "V1", "tests/t.py": "T1", "script/server/x.sh": "S1", "requirements.txt": "r1",
-                       "requirements-dev.txt": "d1", "dati/ambiente.env": "FANTA_MULTIUTENTE=1\n"}.items():
+                       "requirements-dev.txt": "d1", "dati/LEGGIMI": "dati della prova"}.items():
             _scrivi(s.prova, rel, t)
         (s.prova / ".venv" / "bin").mkdir(parents=True)
         shutil.copy(s.python, s.prova / ".venv" / "bin" / "python")
@@ -280,7 +281,8 @@ def test_senza_istanza_tutto_come_oggi(tmp_path, istanza):
     c = _configurazione(casa, **({} if istanza is None else {"SCHIERAXI_ISTANZA": istanza}))
     h = _casa_per_bash(casa)
     assert c == {"DEST": f"{h}/fantacalcio", "STATO": f"{h}/.cache/fantacalcio", "SERVIZIO": "fantacalcio", "PORTA": "8000",
-                 "ATTENDE_PARTITE": "1", "SRC": f"{h}/schieraxi-src", "BLOCCO": f"{h}/.cache/fantacalcio/blocco-pubblicazione"}
+                 "ATTENDE_PARTITE": "1", "SRC": f"{h}/schieraxi-src", "BLOCCO": f"{h}/.cache/fantacalcio/blocco-pubblicazione",
+                 "CHIAVI": f"{h}/.config/schieraxi/chiavi-firma.asc"}
     assert not any(casa.iterdir())                                  # --configurazione non crea niente
 
 
@@ -291,8 +293,20 @@ def test_prova_tutto_nelle_sue_cartelle(tmp_path):
     c = _configurazione(casa, SCHIERAXI_ISTANZA="prova")
     h = _casa_per_bash(casa)
     assert c == {"DEST": f"{h}/app", "STATO": f"{h}/.cache/schieraxi-prova", "SERVIZIO": "schieraxi-prova", "PORTA": "8001",
-                 "ATTENDE_PARTITE": "0", "SRC": f"{h}/schieraxi-src", "BLOCCO": f"{h}/.cache/schieraxi-prova/blocco-pubblicazione"}
+                 "ATTENDE_PARTITE": "0", "SRC": f"{h}/schieraxi-src", "BLOCCO": f"{h}/.cache/schieraxi-prova/blocco-pubblicazione",
+                 "CHIAVI": CHIAVE_PROVA}
     assert not any(casa.iterdir())
+
+
+@con_bash
+def test_la_chiave_delle_firme_della_prova_sta_fuori_dalla_sua_casa(tmp_path):
+    """La prova possiede la sua casa: una chiave lì dentro la potrebbe cambiare (e installarsi codice senza firma). La sua chiave
+    sta in /etc/schieraxi-prova, di root; si cambia solo con SCHIERAXI_CHIAVI, come per la produzione."""
+    casa = tmp_path / "casa-prova"
+    casa.mkdir()
+    c = _configurazione(casa, SCHIERAXI_ISTANZA="prova")
+    assert c["CHIAVI"] == CHIAVE_PROVA and not c["CHIAVI"].startswith(_casa_per_bash(casa))
+    assert _configurazione(casa, SCHIERAXI_ISTANZA="prova", SCHIERAXI_CHIAVI="/altra/chiave.asc")["CHIAVI"] == "/altra/chiave.asc"
 
 
 @con_bash
@@ -423,15 +437,14 @@ def test_unita_della_prova_gira_con_il_suo_utente_e_non_vede_la_produzione():
     assert "<utente>" not in testo and "/home/" not in testo
     assert s["WorkingDirectory"] == [app]
     assert s["ExecStart"] == [f"{app}/.venv/bin/python -m fanta server --host 127.0.0.1 --porta 8001"]
-    assert s["EnvironmentFile"] == [f"{app}/dati/ambiente.env"]          # senza '-': se manca, il servizio non parte
-    for v in ("FANTA_MULTIUTENTE=1", "PYTHONDONTWRITEBYTECODE=1"):
-        assert v in s["Environment"]
+    assert "EnvironmentFile" not in s                              # le variabili stanno qui, in righe Environment=
+    assert "PYTHONDONTWRITEBYTECODE=1" in s["Environment"]
     # recinto: niente /home (la produzione), sola lettura dappertutto tranne i suoi dati, niente chiave, clone, stato e scambio
     assert s["ProtectSystem"] == ["strict"]
     assert s["ProtectHome"] == ["tmpfs"]
     assert _percorsi(s["ReadWritePaths"]) == [f"{app}/dati"]
     invisibili = _percorsi(s["InaccessiblePaths"])
-    for p in (f"{CASA_PROVA}/.config", f"{CASA_PROVA}/.cache", f"{CASA_PROVA}/schieraxi-src", SCAMBIO):
+    for p in (CHIAVE_PROVA.rsplit("/", 1)[0], f"{CASA_PROVA}/.cache", f"{CASA_PROVA}/schieraxi-src", SCAMBIO):
         assert p in invisibili, p
     assert s["ProtectProc"] == ["invisible"]                       # i processi degli altri utenti non si vedono
     assert s["PrivateTmp"] == ["yes"] and s["NoNewPrivileges"] == ["yes"]
@@ -443,12 +456,25 @@ def test_unita_della_prova_gira_con_il_suo_utente_e_non_vede_la_produzione():
     assert u["Install"]["WantedBy"] == ["multi-user.target"]
 
 
-def test_ambiente_della_prova_spegne_lavori_posta_e_fonti():
-    testo = (PROVA / "ambiente-prova.env.esempio").read_text(encoding="utf-8")
-    righe = [r for r in testo.splitlines() if r.strip() and not r.lstrip().startswith("#")]
-    for r in righe:                      # le legge anche leggi-ambiente.sh: solo FANTA_* (o MAX_UTENTI), una per riga
-        assert re.fullmatch(r"(FANTA_[A-Z0-9_]+|MAX_UTENTI)=[^\s'\"$`;]*", r), r
+def test_nessun_file_di_variabili_dove_scrive_la_prova():
+    """systemd legge un EnvironmentFile come root, PRIMA del recinto, e segue i collegamenti simbolici: un file nella casa della prova
+    (che la prova possiede) o nella cartella di scambio lo potrebbe far puntare al file delle variabili della produzione, con i suoi
+    segreti, e poi leggerlo dal proprio ambiente. Nessun EnvironmentFile lì, oggi o domani."""
+    for f in PROVA.glob("*.service"):
+        for riga in f.read_text(encoding="utf-8").splitlines():
+            chiave, _, valore = riga.strip().partition("=")
+            if chiave.strip() == "EnvironmentFile":
+                for p in _percorsi([valore]):
+                    assert not p.startswith((CASA_PROVA, SCAMBIO, "/home")), f"{f.name}: {riga.strip()}"
+    assert not (PROVA / "ambiente-prova.env.esempio").exists()     # le variabili stanno solo nel file del servizio
+
+
+def test_variabili_della_prova_spengono_lavori_posta_e_fonti():
+    righe = _unita((PROVA / "schieraxi-prova.service").read_text(encoding="utf-8"))["Service"]["Environment"]
+    for r in righe:                      # una variabile per riga, senza virgolette né spazi (nessun dubbio su come le legge systemd)
+        assert re.fullmatch(r"[A-Z][A-Z0-9_]*=[^\s'\"$`;\\]*", r), r
     valori = dict(r.split("=", 1) for r in righe)
+    assert len(valori) == len(righe), "una variabile scritta due volte"
     attesi = {"FANTA_MULTIUTENTE": "1", "FANTA_REGISTRAZIONE": "invito", "FANTA_MAIL": "spento", "FANTA_PIANIFICATORE": "0",
               "FANTA_REGISTRO_GIORNATE": "0", "FANTA_COPIA_SCADENZA": "0", "FANTA_RISCALDA": "0", "FANTA_LIVE": "0"}
     for k, v in attesi.items():
@@ -718,7 +744,7 @@ def test_prepara_prova_con_prova_non_scrive_niente(server):
     r = _prepara(server, "--prova", server.c1)
     assert r.returncode == 0, r.stdout + r.stderr
     assert (_istantanea(server.casa_prova), server.foto_produzione()) == prima
-    for parola in (server.c1[:7], "schieraxi-src", "--require-hashes", "ambiente.env", "fanta.sqlite", "lega/esempio"):
+    for parola in (server.c1[:7], "schieraxi-src", "--require-hashes", "dati", "fanta.sqlite", "lega/esempio"):
         assert parola in r.stdout, parola
     assert server.registro() == ""
 
@@ -740,15 +766,13 @@ def test_prepara_prova_mette_codice_verificato_dati_inventati_e_non_tocca_la_pro
     assert not (p / "ios").exists() and not (p / "sito").exists() and not (p / "docs").exists()
     assert (p / ".venv" / "bin" / "python").exists()
     assert "--require-hashes" in s.registro()
-    assert (p / "dati" / "ambiente.env").read_text(encoding="utf-8") == \
-        (PROVA / "ambiente-prova.env.esempio").read_text(encoding="utf-8")
+    assert not (p / "dati" / "ambiente.env").exists()                               # le variabili stanno nel file del servizio
     assert _conta(p / "dati" / "fanta.sqlite", "calciatori") == 80                 # dalla cartella di scambio
     assert _conta(p / "dati" / "fanta.sqlite", "controlli") == 0
     assert not (p / "dati" / "account.sqlite").exists()                             # nessun utente della produzione
     assert (s.stato_prova / "ultimo-rilascio").read_text(encoding="utf-8").strip() == s.c1
     assert (s.stato_prova / "verificato").read_text(encoding="utf-8").strip() == s.c1
     if os.name != "nt":
-        assert (p / "dati" / "ambiente.env").stat().st_mode & 0o077 == 0
         assert (p / "dati").stat().st_mode & 0o077 == 0
     assert s.foto_produzione() == produzione
     assert "restart" not in s.registro()                                            # il servizio lo accende un passo a mano
@@ -881,6 +905,41 @@ def test_leggimi_della_prova_ha_tutti_i_passi_in_ordine_con_prova_e_ritorno():
                  f"{UTENTE_PROVA} ALL=(root) NOPASSWD: /usr/bin/systemctl restart {UTENTE_PROVA}",
                  "certbot --nginx -d prova.<dominio>", "minuti che finiscono per 2 o per 7"):
         assert riga in t, riga
+    # chiave delle firme di root, fuori dalla casa della prova (che la prova possiede)
+    assert f"sudo install -D -o root -g root -m 644 ~/.config/schieraxi/chiavi-firma.asc {CHIAVE_PROVA}" in utente
+    assert f"{CASA_PROVA}/.config" not in t
+    # il crontab della produzione: copia prima di cambiarlo, e il ritorno la rimette
+    crontab = passi[9]
+    assert crontab.index("crontab -l > ~/crontab-prima-prova.txt") < crontab.index("crontab -e")
+    assert "crontab ~/crontab-prima-prova.txt" in crontab and "crontab ~/crontab-prima-prova.txt" in passi[10]
+
+
+def test_root_non_installa_file_della_prova():
+    """La prova possiede /srv/schieraxi-prova: un file di systemd, di nginx o uno script preso da lì e installato da root lo
+    sceglierebbe lei. Root copia solo dalla copia installata in produzione (~/fantacalcio/script/server/prova/) o da file suoi."""
+    t = (PROVA / "LEGGIMI.md").read_text(encoding="utf-8")
+    copiati = 0
+    for riga in t.splitlines():
+        parole = riga.split("#", 1)[0].split()
+        if parole[:2] != ["sudo", "install"]:
+            continue
+        posizionali, i = [], 2
+        while i < len(parole):
+            if parole[i] in ("-o", "-g", "-m"):
+                i += 2                                            # opzione con il suo valore
+            elif parole[i].startswith("-"):
+                i += 1                                            # -d, -D
+            else:
+                posizionali.append(parole[i])
+                i += 1
+        if "-d" in parole:
+            continue                                              # crea solo una cartella: niente da copiare
+        assert len(posizionali) == 2, riga.strip()
+        copiati += 1
+        assert not posizionali[0].startswith(CASA_PROVA), riga.strip()
+    assert copiati >= 4              # servizio, nginx, script di preparazione, chiave delle firme
+    for nome in ("schieraxi-prova.service", "nginx-prova.conf.esempio", "prepara-prova.sh"):
+        assert f"~/fantacalcio/script/server/prova/{nome}" in t, nome
 
 
 def test_leggimi_del_server_rimanda_alla_prova():
