@@ -15,11 +15,12 @@ import subprocess
 import pytest
 
 from fanta import server, testi_legali
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 SENZA_COMMENTI = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
-ANTEPRIMA = (server.WEB / "anteprima.js").read_text(encoding="utf-8")
+ANTEPRIMA = codice_web.leggi("anteprima.js")
 NODE = shutil.which("node")
 
 

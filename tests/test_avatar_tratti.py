@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 
 from fanta import archivio, avatar, server
+import codice_web
 
 RADICE = Path(__file__).resolve().parent.parent
 
@@ -71,7 +72,7 @@ def test_api_avatar_e_campo_avatar_nei_giocatori(client):
 
 
 def test_il_web_usa_i_tratti_e_senza_di_loro_va_di_seme():
-    js = (RADICE / "fanta" / "web" / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     assert "stato.tratti[idAvatar(x)]" in js and 'api("/api/avatar")' in js and "x.avatar ||" in js
     assert "catch { stato.tratti = null; }" in js                              # se non arrivano: tutto dal seme
 

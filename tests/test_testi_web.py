@@ -1,10 +1,11 @@
 """Testi dell'app: niente richieste obsolete come «Serve Tailscale acceso» (l'indirizzo pubblico c'è)."""
 from fanta import server
+import codice_web
 
 
 def test_nessun_testo_dell_app_chiede_tailscale():
-    for f in sorted(server.WEB.glob("*.js")):
-        assert "tailscale" not in f.read_text(encoding="utf-8").lower(), f.name
+    for nome, testo in codice_web.tutti_i_file().items():
+        assert "tailscale" not in testo.lower(), nome
 
 
 def test_i_numeri_con_una_sola_unita_hanno_il_singolare():
@@ -13,7 +14,7 @@ def test_i_numeri_con_una_sola_unita_hanno_il_singolare():
     sbagliati = re.compile(r"\$\{[^}`]*(giornate\.length|giornate|totale_squadre|\.giocatori|g\.n|totalePosti\(\))\}\s+(giornate|squadre|giocatori)\b"
                            r"|(prossime|ultime) \$\{[^}`]*\} giornate")
     for nome in ("app.js", "primoavvio.js"):
-        testo = (server.WEB / nome).read_text(encoding="utf-8")
+        testo = codice_web.leggi(nome)
         trovati = []
         for riga in testo.splitlines():
             for m in sbagliati.finditer(riga):

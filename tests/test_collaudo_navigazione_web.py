@@ -14,9 +14,10 @@ from test_grafica_b_web import AMBIENTE_PANNELLO, _codice_pannello
 from test_navigazione_web import AMBIENTE, _da_a, _funzione, _riga
 
 from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-IMP = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+IMP = codice_web.leggi("impostazioni.js")
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 NODE = shutil.which("node")
 serve_node = pytest.mark.skipif(not NODE, reason="serve node")

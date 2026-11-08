@@ -12,14 +12,15 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from fanta import avvisi, consigli, da_fare, frasi, lega, notifiche, rinvii, server
+from fanta import avvisi, consigli, da_fare, frasi, lega, notifiche, rinvii
 from fanta.frasi_avvisi import NOTIFICHE
 from fanta.regole import Regole
+import codice_web
 
 ST = "2026-27"
 LEGA_DA_4 = Regole(prima_giornata_lega=4)
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 IT, EN = TESTI.split("\n  en: {", 1)
 NODE = shutil.which("node")
 

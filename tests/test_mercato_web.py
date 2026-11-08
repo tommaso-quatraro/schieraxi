@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 
 from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 
 
@@ -49,7 +50,7 @@ def test_filtri_con_bersagli_da_44_px():
 
 
 def test_scheda_giocatore_dice_difficolta_media_e_un_solo_fantavoto_atteso():
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     assert '"diff.3": "Normale"' in testi and "Difficoltà media" not in testi       # parola semplice (1/11/2026)
     assert 'riga(t("mercato.fantavoto_atteso_riga")' in APP and '"mercato.atteso_ponderato": "Atteso ponderato' in testi
     assert "FV atteso" not in APP
@@ -73,9 +74,8 @@ def test_errori_delle_schede_del_mercato_hanno_il_riprova():
 
 def test_osservati_col_plurale_giusto():
     """Collaudo 2/11: «1 giocatori osservati» (dal 2/11 il nome è «Seguiti»)."""
-    from fanta import server
-    app = (server.WEB / "app.js").read_text(encoding="utf-8")
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    app = codice_web.app()
+    testi = codice_web.leggi("testi.js")
     assert 'tp("mercato.n_osservati", r.giocatori.length' in app
     assert '"mercato.n_osservati.one": "{n} giocatore seguito"' in testi and '"mercato.n_osservati.one": "{n} player followed"' in testi    # un solo nome: Seguiti
     assert "prossime 5 giornate una per una" not in testi                  # il testo dei Consigliati diceva «giornata per giornata», la riga mostra il totale

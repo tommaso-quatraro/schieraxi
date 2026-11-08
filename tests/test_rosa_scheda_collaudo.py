@@ -9,10 +9,11 @@ from fastapi.testclient import TestClient
 
 from fanta import archivio, consigli, osservati, server
 from fanta.frasi import F
+import codice_web
 
 WEB = Path(server.__file__).parent / "web"
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 
 
 @pytest.fixture

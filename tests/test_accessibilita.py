@@ -4,6 +4,7 @@ import re
 import pytest
 
 from fanta import server
+import codice_web
 
 WEB = server.WEB
 CSS = (WEB / "stile.css").read_text(encoding="utf-8")
@@ -53,7 +54,7 @@ def test_tema_chiaro_automatico_uguale_a_quello_scelto():
 
 
 def test_movimento_ridotto_e_focus_visibile():
-    js = (WEB / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     assert "html[data-calmo]" in CSS                                       # versione calma (vedi test_movimento_calmo.py)
     assert "prefers-reduced-motion: reduce" in js and '"ridotte"' in js    # sistema e impostazione dell'app la attivano
     assert ":focus-visible" in CSS
@@ -62,7 +63,7 @@ def test_movimento_ridotto_e_focus_visibile():
 
 def test_pagina_ha_titolo_lingua_e_pannello_con_nome():
     html = (WEB / "index.html").read_text(encoding="utf-8")
-    js = (WEB / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     # un solo titolo di primo livello, quello della schermata: lo scrive pagina() in cima a main (grafica B, spec §8.2)
     assert '<html lang="it">' in html and "<h1" not in html and '<h1 id="titolo-pagina"' in js
     assert re.search(r'role="dialog"[^>]*aria-label=', html)
@@ -71,7 +72,7 @@ def test_pagina_ha_titolo_lingua_e_pannello_con_nome():
 
 def test_pannello_aperto_blocca_anche_il_link_salta_e_le_alternative_sono_da_44px():
     """Con il pannello aperto il fuoco non esce dal pannello (neanche sul link «Vai al contenuto»); le alternative sono bersagli da 44 px."""
-    js = (WEB / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     riga = next(r for r in js.splitlines() if r.startswith("const SFONDO_FOGLIO"))
     assert '".salta"' in riga and '".testata"' in riga and '".schede"' in riga
     alt = next(r for r in CSS.splitlines() if r.startswith(".alternative-li .alt {"))
@@ -79,5 +80,5 @@ def test_pannello_aperto_blocca_anche_il_link_salta_e_le_alternative_sono_da_44p
 
 
 def test_script_collega_nomi_ai_campi_e_titolo_per_sezione():
-    js = (WEB / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     assert "document.title" in js and "aria-labelledby" in js and 'setAttribute("aria-label", nome.trim())' in js

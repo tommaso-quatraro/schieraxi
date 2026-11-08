@@ -2,8 +2,11 @@
 
 - importazioni di rose e proposte di scambi: un tetto al giorno (contatori in account.sqlite, azzerati a mezzanotte);
 - spazio: i dati personali di ciascuno (regole, rose, immagini, archivio...) stanno in 5 MB;
-- dimensione della lega: al massimo 20 squadre da 40 giocatori.
+- dimensione della lega: al massimo 20 squadre da 40 giocatori;
+- calcoli e memorie condivise: calcoli in coda insieme, parte della memoria dei risultati (li applica calcolo.py), consigliate
+  ricordate (consigli.py) e azioni ripetibili che costano calcoli all'ora (`azione_pesante`).
 Con l'interruttore spento (`ctx.utente_id` è None) nessuno di questi controlli fa niente: l'app resta quella di sempre.
+Ogni tetto nuovo è una costante qui sotto che si può cambiare sul server con FANTA_<nome della costante> (vedi `valore`).
 I messaggi sono pensati per chi li legge: dicono cosa è successo e come rimediare.
 """
 from __future__ import annotations
@@ -27,6 +30,12 @@ MAX_BYTE_UTENTE = 5 * 1024 * 1024
 MAX_SQUADRE = 20
 MAX_GIOCATORI_SQUADRA = 40
 
+# Calcoli e memorie condivise (#513): un utente non occupa più della sua parte del server.
+MAX_CALCOLI_UTENTE = 4               # calcoli pesanti in coda o in corso insieme per utente (vedi calcolo.py): oltre si aspetta (202)
+QUOTA_RISULTATI_UTENTE = 0.25        # parte della memoria dei risultati (calcolo.MAX_RISULTATI) che le voci di un utente possono occupare
+MAX_AZIONI_PESANTI_ORA = 20          # azioni ripetibili che costano calcoli (lega di prova creata o tolta), all'ora per utente
+MAX_CONSIGLIATE_UTENTE = 100         # consigliate già mostrate ricordate per utente (vedi consigli.py)
+
 # cosa si conta al giorno: (tetto, come si dice nel messaggio)
 AL_GIORNO = {"importazioni": (MAX_IMPORTAZIONI_AL_GIORNO, "importazioni di rose"),
              "scambi": (MAX_SCAMBI_AL_GIORNO, "ricerche di scambi"),
@@ -48,6 +57,24 @@ def tetto(ctx, cosa: str) -> int:
     if cosa == "scambi":
         return _intero_da_ambiente("FANTA_MAX_SCAMBI", MAX_SCAMBI_AL_GIORNO)
     return AL_GIORNO[cosa][0]
+
+
+def valore(nome: str) -> int | float:
+    """Il tetto `nome`, una costante di questo modulo (per esempio "MAX_CALCOLI_UTENTE"): la variabile d'ambiente FANTA_<nome>
+    se c'è ed è un numero maggiore di zero dello stesso tipo della costante (intero o decimale), altrimenti la costante.
+    Così un tetto si cambia sul server senza toccare il codice; un valore sbagliato non lo spegne."""
+    predefinito = globals()[nome]
+    try:
+        v = type(predefinito)(os.environ.get(f"FANTA_{nome}", "").strip())
+    except ValueError:
+        return predefinito
+    return v if v > 0 else predefinito
+
+
+def azione_pesante(ctx) -> Prenotazione | None:
+    """Un'azione ripetibile che costa calcoli o scritture (creare o togliere la lega di prova): al massimo
+    MAX_AZIONI_PESANTI_ORA all'ora per utente, poi 429 con Retry-After. Senza account non conta niente."""
+    return prenota_ora(ctx, "azioni_pesanti", massimo=valore("MAX_AZIONI_PESANTI_ORA"))
 
 
 def _intero_da_ambiente(nome: str, predefinito: int) -> int:

@@ -67,24 +67,27 @@ struct RigaStatoScelta: View {
     }
 
     /// I pulsanti dello stato, nell'ordine della web. Il salvataggio è verde; ⌘S salva le modifiche (come Ctrl+S sulla web).
+    /// Durante un salvataggio si spengono gli stessi della web (`spentoSalvando`): «Torna alla consigliata» resta attivo.
     private var pulsanti: some View {
         ForEach(stato.pulsanti, id: \.self) { pulsante in
+            let spento = salvando && pulsante.spentoSalvando
             switch pulsante {
             case .salvaQuesta:
                 PulsanteRigaStato(testo: Self.testoSalvaQuesta, simbolo: "tray.and.arrow.down", colore: .verde, azione: salva)
-                    .disabled(salvando)
+                    .disabled(spento)
                     .accessibilityHint(Self.suggerimentoSalva)
             case .salva:
                 PulsanteRigaStato(testo: FormazioneView.etichettaSalva(stato), simbolo: "tray.and.arrow.down", colore: .verde, azione: salva)
                     .keyboardShortcut("s", modifiers: .command)
-                    .disabled(salvando)
+                    .disabled(spento)
                     .accessibilityHint(Self.suggerimentoSalva)
             case .annulla:
                 PulsanteRigaStato(testo: Self.testoAnnulla, simbolo: "arrow.counterclockwise", colore: .primary, azione: annulla)
-                    .disabled(salvando)
+                    .disabled(spento)
                     .accessibilityHint("Rimette la formazione che hai salvato")
             case .torna:
                 PulsanteRigaStato(testo: Self.testoTorna, simbolo: "arrow.uturn.backward", colore: .primary, azione: tornaAllaConsigliata)
+                    .disabled(spento)
                     .accessibilityHint(suggerimentoTorna)
             }
         }

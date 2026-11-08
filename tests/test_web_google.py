@@ -1,9 +1,9 @@
 """Accesso con Google nella web app: controlli statici (il giro vero è provato con un browser e un server di prova)."""
-from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
-SW = (server.WEB / "sw.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
+SW = codice_web.leggi("sw.js")
 
 
 def test_il_pulsante_compare_solo_se_il_server_ha_google():

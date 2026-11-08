@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from fanta import server
 from fanta.regole import Regole
+import codice_web
 
 
 @pytest.fixture
@@ -23,8 +24,7 @@ def test_richiesta_interrotta_dal_browser_non_e_un_errore(client, monkeypatch, c
 
 
 def test_messaggio_senza_rose_dice_dove_importarle():
-    from pathlib import Path
-    testi = (Path(server.__file__).parent / "web" / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     assert "sezione Lega" not in testi
     assert "Squadra > Aggiorna le rose" in testi
 
