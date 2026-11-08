@@ -10,14 +10,14 @@ import shutil
 import subprocess
 from datetime import timedelta
 
+import codice_web
 import pytest
 
 from fanta import archivio, server
 from fanta import taratura_probabili as tp
 
-WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-TESTI_JS = (WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI_JS = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 ST = "2026-27"
 COEFFICIENTI = {"titolare": [-1.0, 4.0], "panchina": [-2.5, 3.0], "dubbio": -0.5, "non_citato": 0.03}   # coerenti (`tp.coerente`)
