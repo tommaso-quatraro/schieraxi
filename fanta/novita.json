@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.437",
+    "data": "2026-11-08T13:52:05",
+    "titolo": "Aggiornamenti del server: il ramo da installare si legge in modo più sicuro",
+    "voci": [
+      "Il server legge in modo più sicuro quale versione dell'app installare. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "Parte di #481. aggiorna-app.sh e pubblica-sito.sh leggono il ramo con git show-ref --verify refs/remotes/origin/main, che non cerca altri nomi: un tag o un ramo locale con un nome simile non prendono più il suo posto; se il ramo manca non installano né pubblicano niente. Anche --fidati origin/main usa il ramo.",
+      "verifica_catena (verifica-firme.sh) controlla anche che il commit stia nella storia del ramo: serve a chi la usa con un commit diverso dalla punta. Gli aggiornamenti normali non cambiano."
+    ]
+  },
+  {
     "versione": "1.436",
     "data": "2026-11-06T19:44:32",
     "titolo": "«Gioca N%» si tara da solo",
