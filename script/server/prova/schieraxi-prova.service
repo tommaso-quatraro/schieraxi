@@ -1,41 +1,52 @@
-# Servizio systemd dell'AMBIENTE DI PROVA di SchieraXI (script/server/prova/LEGGIMI.md, passo 4.4): una seconda copia dell'app,
-# con dati inventati, accanto alla produzione. Da copiare in /etc/systemd/system/schieraxi-prova.service sostituendo <utente>.
+# Servizio systemd dell'AMBIENTE DI PROVA di SchieraXI (script/server/prova/LEGGIMI.md, passo 4.6): una seconda copia dell'app,
+# con dati inventati, accanto alla produzione. Da copiare cosi' com'e' in /etc/systemd/system/schieraxi-prova.service.
 # Ascolta solo su 127.0.0.1:8001: dall'esterno ci si arriva da nginx (nginx-prova.conf.esempio).
 #
-# Chiuso nella sua cartella. ProtectHome=tmpfs mette al posto di /home una cartella vuota: il servizio vede solo ~/schieraxi-prova
-# (in sola lettura) e ci scrive solo in ~/schieraxi-prova/dati. Non vede i dati, la lega e le copie della produzione, la chiave delle
-# firme, il canale degli avvisi, le chiavi ssh. InaccessiblePaths ripete i posti piu' delicati: e' la seconda rete se un giorno
-# ProtectHome torna "read-only" (il '-' davanti vuol dire "se c'e'"). Memoria e processore limitati: la produzione ha la precedenza.
-# Serve un Python fuori da /home per l'ambiente (passo 4.1: readlink -f ~/fantacalcio/.venv/bin/python) e systemd 238 o piu' nuovo.
+# Cosa protegge (il dettaglio, con i limiti, e' nel LEGGIMI, «Cosa protegge il recinto e cosa no»):
+# - gira con il suo utente di sistema, schieraxi-prova (passo 4.3), che non ha permessi sui file della produzione: il kernel non gli
+#   lascia aprire /proc/<processo della produzione>/cwd, root, environ, fd (serve lo stesso utente o root);
+# - ProtectHome=tmpfs: al posto di /home una cartella vuota, quindi niente casa della produzione (codice, dati, lega vera, copie,
+#   chiavi), nemmeno i file leggibili da tutti;
+# - ProtectSystem=strict: tutto in sola lettura tranne /srv/schieraxi-prova/app/dati e la sua /tmp privata;
+# - InaccessiblePaths: non vede la chiave delle firme, il clone, lo stato degli aggiornamenti e la cartella di scambio (il '-' davanti
+#   vuol dire "se c'e'"); ProtectProc=invisible: non vede i processi degli altri utenti (dove il kernel lo permette);
+# - NoNewPrivileges: niente sudo ne' programmi setuid; IPAddressDeny/IPAddressAllow: parla solo con questo computer (127.0.0.1, ::1),
+#   niente collegamenti verso internet;
+# - memoria e processore limitati: la produzione ha la precedenza.
+# Non protegge: kernel, memoria e processore in comune; le richieste all'app della produzione su 127.0.0.1:8000 (come un visitatore,
+# ma senza passare da nginx).
 [Unit]
 Description=SchieraXI - ambiente di prova (dati inventati)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=<utente>
-WorkingDirectory=/home/<utente>/schieraxi-prova
+User=schieraxi-prova
+Group=schieraxi-prova
+WorkingDirectory=/srv/schieraxi-prova/app
 # senza '-' davanti: se il file manca il servizio non parte (senza, posta e lavori periodici sarebbero accesi)
-EnvironmentFile=/home/<utente>/schieraxi-prova/dati/ambiente.env
-ExecStart=/home/<utente>/schieraxi-prova/.venv/bin/python -m fanta server --host 127.0.0.1 --porta 8001
+EnvironmentFile=/srv/schieraxi-prova/app/dati/ambiente.env
+ExecStart=/srv/schieraxi-prova/app/.venv/bin/python -m fanta server --host 127.0.0.1 --porta 8001
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=FANTA_MULTIUTENTE=1
+UMask=0077
 # risorse: la prova cede sempre il passo alla produzione
 Nice=19
 CPUWeight=20
 MemoryMax=500M
-# isolamento
+# recinto
 ProtectSystem=strict
 ProtectHome=tmpfs
-BindReadOnlyPaths=/home/<utente>/schieraxi-prova
-BindPaths=/home/<utente>/schieraxi-prova/dati
-ReadWritePaths=-/home/<utente>/schieraxi-prova/dati
-InaccessiblePaths=-/home/<utente>/fantacalcio -/home/<utente>/backup-dati -/home/<utente>/.config -/home/<utente>/.ssh
+ReadWritePaths=/srv/schieraxi-prova/app/dati
+InaccessiblePaths=-/srv/schieraxi-prova/.config -/srv/schieraxi-prova/.cache -/srv/schieraxi-prova/schieraxi-src -/srv/schieraxi-scambio
+ProtectProc=invisible
 PrivateTmp=yes
 NoNewPrivileges=yes
+IPAddressAllow=localhost
+IPAddressDeny=any
 
 [Install]
 WantedBy=multi-user.target

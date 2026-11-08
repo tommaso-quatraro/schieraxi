@@ -23,10 +23,12 @@
 #   avvio, dopo il passaggio a un repository nuovo o dopo un rifiuto controllato a mano). Non installa: lo fa il giro dopo.
 # Il clone ~/schieraxi-src segue il suo "origin", qualunque sia; se manca lo crea da SCHIERAXI_REPO
 # (predefinito: https://github.com/tommaso-quatraro/schieraxi.git).
-# SCHIERAXI_ISTANZA: vuota (o assente) = la produzione, come sempre. "prova" = l'ambiente di prova (script/server/prova/LEGGIMI.md):
-#   cartella ~/schieraxi-prova, stato ~/.cache/schieraxi-prova, servizio schieraxi-prova, porta 8001, nessuna attesa della fine delle
-#   partite, nessun avviso; stesso clone e stesso blocco del git fetch della produzione. Ogni altro valore: esce con 2 senza fare niente.
-# Opzione --configurazione: stampa cartella, stato, servizio, porta e attesa delle partite dell'istanza ed esce (non scrive niente).
+# SCHIERAXI_ISTANZA: vuota (o assente) = la produzione, come sempre. "prova" = l'ambiente di prova (script/server/prova/LEGGIMI.md),
+#   che gira con il SUO utente (schieraxi-prova) e la sua casa: cartella ~/app, stato ~/.cache/schieraxi-prova, clone ~/schieraxi-src e
+#   blocco suoi, servizio schieraxi-prova, porta 8001, nessuna attesa della fine delle partite, nessun avviso. Nella casa della
+#   produzione (dove c'e' ~/fantacalcio) la prova non parte. Ogni altro valore: esce con 2 senza fare niente.
+# Opzione --configurazione: stampa cartella, stato, servizio, porta, attesa delle partite, clone e blocco dell'istanza ed esce
+#   (non scrive niente).
 #   Dal crontab dell'utente del server:  */10 * * * * /bin/bash $HOME/fantacalcio/script/server/aggiorna-app.sh >/dev/null 2>&1
 set -u
 export PYTHONUTF8=1     # il server può avere la lingua it_IT (Latin-1): senza questo Python legge male gli accenti passati dallo script
@@ -42,19 +44,34 @@ esac
 SRC="${SCHIERAXI_SRC:-$HOME/schieraxi-src}"     # cartella della copia di GitHub (per le prove si puo cambiare)
 ISTANZA="${SCHIERAXI_ISTANZA:-}"
 case "$ISTANZA" in
-  "")    DEST="$HOME/fantacalcio";    STATO="$HOME/.cache/fantacalcio";    SERVIZIO=fantacalcio;     PORTA=8000; ATTENDE_PARTITE=1 ;;
-  prova) DEST="$HOME/schieraxi-prova"; STATO="$HOME/.cache/schieraxi-prova"; SERVIZIO=schieraxi-prova; PORTA=8001; ATTENDE_PARTITE=0 ;;
+  "")    DEST="$HOME/fantacalcio"; STATO="$HOME/.cache/fantacalcio";    SERVIZIO=fantacalcio;     PORTA=8000; ATTENDE_PARTITE=1 ;;
+  prova) DEST="$HOME/app";         STATO="$HOME/.cache/schieraxi-prova"; SERVIZIO=schieraxi-prova; PORTA=8001; ATTENDE_PARTITE=0
+         if [ -e "$HOME/fantacalcio" ]; then      # qui userebbe il clone della produzione con un altro blocco
+           echo "Questa e' la casa della produzione: l'ambiente di prova gira con il suo utente, schieraxi-prova. Non faccio niente." >&2
+           exit 2
+         fi ;;
   *) echo "SCHIERAXI_ISTANZA sconosciuta: vuota per la produzione oppure prova (script/server/prova/LEGGIMI.md). Non faccio niente." >&2
      exit 2 ;;
 esac
-BLOCCO_CLONE="$HOME/.cache/fantacalcio/blocco-pubblicazione"     # uno solo per tutte le istanze: il clone e' uno solo
+# Il blocco della pubblicazione va con il clone: chi usa lo stesso clone usa lo stesso blocco (un solo git fetch e una sola verifica
+# delle firme, che lavora in .git/verifica-firme, alla volta). Produzione: ~/.cache/fantacalcio/blocco-pubblicazione, lo stesso di
+# pubblica-sito.sh, promemoria.sh e sentinella.sh. La prova ha la sua casa, quindi clone suo e blocco suo: niente in comune.
+BLOCCO="$STATO/blocco-pubblicazione"
 if [ "$CONFIGURAZIONE" = 1 ]; then
-  printf 'DEST=%s\nSTATO=%s\nSERVIZIO=%s\nPORTA=%s\nATTENDE_PARTITE=%s\n' "$DEST" "$STATO" "$SERVIZIO" "$PORTA" "$ATTENDE_PARTITE"
+  printf 'DEST=%s\nSTATO=%s\nSERVIZIO=%s\nPORTA=%s\nATTENDE_PARTITE=%s\nSRC=%s\nBLOCCO=%s\n' \
+    "$DEST" "$STATO" "$SERVIZIO" "$PORTA" "$ATTENDE_PARTITE" "$SRC" "$BLOCCO"
   exit 0
 fi
-if [ "$ISTANZA" = prova ] && [ ! -x "$DEST/.venv/bin/python" ]; then
-  echo "ambiente di prova non preparato ($DEST/.venv/bin/python manca): prima script/server/prova/prepara-prova.sh" >&2
-  exit 0
+if [ "$ISTANZA" = prova ]; then
+  if [ ! -x "$DEST/.venv/bin/python" ]; then
+    echo "ambiente di prova non preparato ($DEST/.venv/bin/python manca): prima script/server/prova/prepara-prova.sh" >&2
+    exit 0
+  fi
+  # la cartella dati la scrive anche il servizio della prova: un collegamento simbolico al posto del log farebbe scrivere questo
+  # script (che gira fuori dal recinto del servizio) da un'altra parte, per esempio sul codice
+  for f in "$DEST/dati/pubblicazione.log" "$DEST/dati/pubblicazione.log.tmp"; do
+    if [ -L "$f" ]; then echo "$f e' un collegamento simbolico: non scrivo e non installo niente" >&2; exit 1; fi
+  done
 fi
 LOG="$DEST/dati/pubblicazione.log"
 ERR="$LOG"; [ "${1:-}" = "--prova" ] && ERR=/dev/null
@@ -65,11 +82,10 @@ QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di 
 . "$QUI/verifica-firme.sh"
 
 if [ "$PROVA" = 0 ]; then
-  mkdir -p "$STATO" "$DEST/dati" "${BLOCCO_CLONE%/*}"
+  mkdir -p "$STATO" "$DEST/dati"
   # blocco-pubblicazione e' condiviso: pubblica-sito.sh lo prende per il suo git fetch sullo stesso clone e promemoria.sh (controllo di
   # salute) lo aspetta, cosi' non vede l'app "spenta" mentre questo script la riavvia. Si aspetta al massimo un minuto chi lo tiene.
-  # L'ambiente di prova prende lo stesso (stesso clone) e lo lascia appena ha finito con il clone, prima di riavviare il suo servizio.
-  exec 7>"$BLOCCO_CLONE"
+  exec 7>"$BLOCCO"
   flock -w "${SCHIERAXI_ATTESA_BLOCCO:-60}" 7 || { [ -n "$FIDATI" ] && echo "c'e' un aggiornamento in corso: riprova fra un minuto"; exit 0; }
   exec 9>"$STATO/blocco"
   flock -n 9 || { [ -n "$FIDATI" ] && echo "c'e' un aggiornamento in corso: riprova fra un minuto"; exit 0; }
@@ -82,7 +98,7 @@ log() {
   return 0
 }
 avvisa() {   # titolo, testo, priorita (usa il canale delle notifiche dell'app: web o ntfy)
-  [ "$ISTANZA" = prova ] && return 0     # la prova non avvisa: il canale che troverebbe (~/.config/schieraxi) e' quello della produzione
+  [ "$ISTANZA" = prova ] && return 0     # la prova non avvisa: gli avvisi vanno al canale della produzione (se resta indietro, lo vede il collaudo)
   ( cd "$DEST" && nice -n 10 .venv/bin/python -c "
 import sys
 from fanta import notifiche
@@ -220,7 +236,6 @@ prova=$(mktemp -d)
 if ! git archive "$nuovo" $CARTELLE | tar -x -C "$prova"; then
   log "copia dei file non riuscita"; rm -rf "$prova"; fine; exit 1
 fi
-[ "$ISTANZA" = prova ] && exec 7>&-     # la prova ha finito con il clone: il riavvio del suo servizio non ferma i controlli della produzione
 # Il file dei tratti dei volti vive solo sul server: se c'e' gia', resta quello (anche se il repository non lo ha piu')
 if [ -f "$DEST/fanta/avatar_tratti.json" ]; then
   cp -p "$DEST/fanta/avatar_tratti.json" "$prova/fanta/avatar_tratti.json"

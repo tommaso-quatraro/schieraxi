@@ -438,7 +438,8 @@ def test_unita_della_prova_gira_con_il_suo_utente_e_non_vede_la_produzione():
     assert s["IPAddressDeny"] == ["any"] and s["IPAddressAllow"] == ["localhost"]     # niente collegamenti verso internet
     assert s["UMask"] == ["0077"]
     assert s["MemoryMax"] == ["500M"] and s["CPUWeight"] == ["20"] and s["Nice"] == ["19"]
-    assert "0.0.0.0" not in testo and "8000" not in testo
+    codice = "\n".join(r for r in testo.splitlines() if not r.lstrip().startswith("#"))     # i commenti possono citare la produzione
+    assert "0.0.0.0" not in codice and "8000" not in codice
     assert u["Install"]["WantedBy"] == ["multi-user.target"]
 
 

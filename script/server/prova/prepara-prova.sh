@@ -1,28 +1,35 @@
 #!/bin/bash
-# prepara-prova.sh - Una volta, a mano, come utente del server (script/server/prova/LEGGIMI.md, passo 4.3): prepara l'ambiente di prova
-# in ~/schieraxi-prova, una seconda copia dell'app con dati inventati. Cosa fa, in ordine (ogni passo solo se manca: rilanciato riprende
-# da dove si era fermato e non cambia quello che c'e' gia'):
-#   1. controlla che ci siano la produzione (~/fantacalcio con il suo ambiente Python), il clone ~/schieraxi-src e una versione verificata
-#      dalla produzione (~/.cache/fantacalcio/verificato, altrimenti ultimo-rilascio). Se manca qualcosa non scrive niente;
-#   2. codice di quella versione (fanta, tests, script, requirements*: le stesse cose che installa aggiorna-app.sh) e la lega d'esempio
-#      (lega/esempio, squadre inventate). Mai la lega vera, mai i dati della produzione;
-#   3. ambiente Python nuovo con lo stesso Python della produzione e solo le versioni e gli hash di requirements.txt (pip --require-hashes);
+# prepara-prova.sh - Una volta, a mano, con l'utente della PROVA (schieraxi-prova, casa /srv/schieraxi-prova; script/server/prova/LEGGIMI.md,
+# passo 4.5): prepara l'ambiente di prova in ~/app, una seconda copia dell'app con dati inventati.
+#   Uso:  prepara-prova.sh [--prova] COMMIT        (COMMIT = l'ultima versione verificata dalla produzione: cat ~/.cache/fantacalcio/verificato,
+#                                                  letta da chi lancia lo script con l'utente della produzione)
+# Cosa fa, in ordine (ogni passo solo se manca: rilanciato riprende da dove si era fermato e non cambia quello che c'e' gia'):
+#   1. controlli: non e' la casa della produzione, COMMIT ha la forma giusta, il Python c'e', nessun collegamento simbolico al posto dei
+#      file che scrive. Clone del codice SUO (~/schieraxi-src, dal repository pubblico): se manca lo crea. COMMIT deve stare nella storia
+#      di main. Se qualcosa non torna non scrive niente (al massimo il clone);
+#   2. codice di COMMIT (fanta, tests, script, requirements*: le stesse cose che installa aggiorna-app.sh) e la lega d'esempio
+#      (lega/esempio, squadre inventate). Mai la lega vera, mai i dati della produzione (la prova non li puo' leggere);
+#   3. ambiente Python nuovo con SCHIERAXI_PYTHON (lo stesso Python della produzione) e solo le versioni e gli hash di
+#      requirements.txt (pip --require-hashes);
 #   4. cartella dati (700) e dati/ambiente.env (600) da ambiente-prova.env.esempio: posta, lavori periodici e fonti spenti;
-#   5. prima copia dell'archivio delle statistiche (copia-archivio-prova.sh: produzione solo letta, senza gli esiti della sentinella);
-#   6. stato degli aggiornamenti della prova (~/.cache/schieraxi-prova): ultimo-rilascio e verificato = la versione del passo 2, cosi'
-#      aggiorna-app.sh con SCHIERAXI_ISTANZA=prova controlla le firme da li' in avanti.
-# Non tocca mai ~/fantacalcio, ~/.cache/fantacalcio, servizi, nginx, sudo e crontab: quelli sono i passi 4.4-4.8, a mano.
+#   5. prima copia dell'archivio delle statistiche dalla cartella di scambio (copia-archivio-prova.sh): la produzione ce la mette con
+#      esporta-archivio-prova.sh (passo 4.4). Se manca si ferma qui;
+#   6. stato degli aggiornamenti della prova (~/.cache/schieraxi-prova): ultimo-rilascio e verificato = COMMIT, cosi' aggiorna-app.sh
+#      con SCHIERAXI_ISTANZA=prova controlla le firme da li' in avanti.
+# Non tocca mai servizi, nginx, sudo e crontab: quelli sono passi a mano.
 # Opzione --prova: dice cosa farebbe e non scrive niente.
-# Variabile per le prove: SCHIERAXI_SRC (cartella del clone).
+# Variabili: SCHIERAXI_PYTHON (Python per l'ambiente, predefinito python3), SCHIERAXI_SCAMBIO, SCHIERAXI_REPO, SCHIERAXI_SRC (per le prove).
 set -u
 export PYTHONUTF8=1     # il server può avere la lingua it_IT (Latin-1): i messaggi con accenti restano giusti
 export GIT_TERMINAL_PROMPT=0
 PROVA=0
-[ "${1:-}" = --prova ] && PROVA=1
-PRODUZIONE="$HOME/fantacalcio"                       # solo letta
-STATO_PRODUZIONE="$HOME/.cache/fantacalcio"          # solo letta
+if [ "${1:-}" = --prova ]; then PROVA=1; shift; fi
+VERSIONE="${1:-}"
 SRC="${SCHIERAXI_SRC:-$HOME/schieraxi-src}"
-DEST="$HOME/schieraxi-prova"
+REPO="${SCHIERAXI_REPO:-https://github.com/tommaso-quatraro/schieraxi.git}"
+PY="${SCHIERAXI_PYTHON:-python3}"
+SCAMBIO="${SCHIERAXI_SCAMBIO:-/srv/schieraxi-scambio}"
+DEST="$HOME/app"
 STATO="$HOME/.cache/schieraxi-prova"
 PEZZI="fanta tests script requirements.txt requirements-dev.txt lega/esempio"
 
@@ -30,17 +37,34 @@ dico() { if [ "$PROVA" = 1 ]; then echo "[prova] $*"; else echo "$*"; fi; }
 ferma() { echo "NON preparo: $*" >&2; exit 1; }
 nel_clone() { (cd "$SRC" && git "$@"); }
 
-# 1. controlli (solo letture)
-[ -x "$PRODUZIONE/.venv/bin/python" ] || ferma "manca l'ambiente Python della produzione ($PRODUZIONE/.venv/bin/python)"
-python_base=$(readlink -f "$PRODUZIONE/.venv/bin/python") || ferma "non trovo il Python della produzione"
-[ -d "$SRC/.git" ] || ferma "manca il clone $SRC (lo crea aggiorna-app.sh della produzione)"
-commit=$(cat "$STATO_PRODUZIONE/verificato" 2>/dev/null)
-[ -n "$commit" ] || commit=$(cat "$STATO_PRODUZIONE/ultimo-rilascio" 2>/dev/null)
-[ -n "$commit" ] || ferma "la produzione non ha ancora una versione verificata ($STATO_PRODUZIONE/verificato)"
-commit=$(nel_clone rev-parse -q --verify "$commit^{commit}") || ferma "la versione verificata dalla produzione non c'e' nel clone $SRC"
-for p in $PEZZI script/server/prova; do
-  nel_clone cat-file -e "$commit:$p" 2>/dev/null || ferma "la versione ${commit:0:7} non contiene $p"
+# 1. controlli
+[ -e "$HOME/fantacalcio" ] && ferma "questa e' la casa della produzione: lo script gira con l'utente della prova, schieraxi-prova"
+[[ $VERSIONE =~ ^[0-9a-f]{7,40}$ ]] \
+  || ferma "manca la versione da installare. Uso: prepara-prova.sh [--prova] COMMIT, con COMMIT = cat ~/.cache/fantacalcio/verificato della produzione"
+python_base=$(command -v "$PY") || ferma "non trovo il Python $PY (SCHIERAXI_PYTHON)"
+python_base=$(readlink -f "$python_base")
+for f in "$DEST/dati/ambiente.env" "$DEST/dati/copia-archivio.log" "$DEST/dati/copia-archivio.log.tmp" "$DEST/dati/fanta.sqlite"; do
+  [ -L "$f" ] && ferma "$f e' un collegamento simbolico"
 done
+commit="$VERSIONE"
+if [ ! -d "$SRC/.git" ]; then
+  if [ "$PROVA" = 1 ]; then
+    dico "creerei il clone $SRC da $REPO e controllerei che ${VERSIONE:0:7} sia nella storia di main"
+  else
+    timeout -k 5 "${SCHIERAXI_TIMEOUT_GIT:-300}" git clone -q "$REPO" "$SRC" || ferma "clone di $REPO non riuscito (rete?)"
+  fi
+fi
+if [ -d "$SRC/.git" ]; then
+  if ! commit=$(nel_clone rev-parse -q --verify "$VERSIONE^{commit}"); then
+    [ "$PROVA" = 1 ] || timeout -k 5 "${SCHIERAXI_TIMEOUT_GIT:-300}" bash -c 'cd "$1" && git fetch -q origin main' _ "$SRC"
+    commit=$(nel_clone rev-parse -q --verify "$VERSIONE^{commit}") || ferma "la versione ${VERSIONE:0:7} non c'e' nel clone $SRC"
+  fi
+  main=$(nel_clone show-ref --verify -s refs/remotes/origin/main) || ferma "il ramo origin/main non c'e' nel clone $SRC"
+  nel_clone merge-base --is-ancestor "$commit" "$main" || ferma "la versione ${commit:0:7} non e' nella storia di main"
+  for p in $PEZZI script/server/prova; do
+    nel_clone cat-file -e "$commit:$p" 2>/dev/null || ferma "la versione ${commit:0:7} non contiene $p"
+  done
+fi
 dico "ambiente di prova in $DEST, versione ${commit:0:7} (l'ultima verificata dalla produzione), Python $python_base"
 
 # 2. codice e lega d'esempio
@@ -98,11 +122,13 @@ else
   fi
 fi
 
-# 5. archivio delle statistiche
+# 5. archivio delle statistiche, dalla cartella di scambio
 if [ -f "$DEST/dati/fanta.sqlite" ]; then
   dico "archivio delle statistiche: c'e' gia' (lo rifa' ogni notte copia-archivio-prova.sh)"
 elif [ "$PROVA" = 1 ]; then
-  dico "copierei $PRODUZIONE/dati/fanta.sqlite in $DEST/dati/fanta.sqlite (produzione solo letta, senza gli esiti della sentinella)"
+  dico "copierei $SCAMBIO/fanta.sqlite (la copia della produzione, senza gli esiti della sentinella) in $DEST/dati/fanta.sqlite"
+elif [ ! -f "$SCAMBIO/fanta.sqlite" ]; then
+  ferma "manca la copia della produzione in $SCAMBIO: prima esporta-archivio-prova.sh con l'utente della produzione (passo 4.4), poi rilancia"
 else
   bash "$DEST/script/server/prova/copia-archivio-prova.sh" \
     || ferma "prima copia dell'archivio non riuscita (motivo qui sopra): rilancia lo script, riprende da qui"
@@ -116,6 +142,6 @@ else
   for f in ultimo-rilascio verificato; do
     [ -s "$STATO/$f" ] || echo "$commit" > "$STATO/$f"
   done
-  dico "fatto. Prossimo passo: il servizio (script/server/prova/LEGGIMI.md, passo 4.4)"
+  dico "fatto. Prossimo passo: il servizio (script/server/prova/LEGGIMI.md, passo 4.6)"
 fi
 exit 0

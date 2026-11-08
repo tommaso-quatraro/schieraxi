@@ -21,11 +21,14 @@ La configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) non è nel
 
 ## Ambiente di prova
 
-Una seconda copia dell'app sullo stesso server (`~/schieraxi-prova`, servizio `schieraxi-prova` su `127.0.0.1:8001`, dati inventati),
-che riceve ogni versione prima della produzione: script, servizio, nginx e tutti i comandi (con la prova di ogni passo e il ritorno
-indietro) stanno in [`prova/LEGGIMI.md`](prova/LEGGIMI.md). Si accende solo con l'ok del proprietario.
-`aggiorna-app.sh` la aggiorna con `SCHIERAXI_ISTANZA=prova`; senza la variabile fa quello di sempre (`--configurazione` stampa
-cartella, stato, servizio e porta che userebbe, senza scrivere niente; un valore sconosciuto esce con 2 senza fare niente).
+Una seconda copia dell'app sullo stesso server, con dati inventati, che riceve ogni versione prima della produzione. Gira con un
+utente di sistema suo, `schieraxi-prova` (casa `/srv/schieraxi-prova`, servizio `schieraxi-prova` su `127.0.0.1:8001`), senza nessun
+permesso sui file della produzione: clone del codice suo, dati di calcio da una copia che la produzione lascia ogni notte in
+`/srv/schieraxi-scambio`. Script, servizio, nginx e tutti i comandi (con la prova di ogni passo e il ritorno indietro) stanno in
+[`prova/LEGGIMI.md`](prova/LEGGIMI.md). Si accende solo con l'ok del proprietario.
+`aggiorna-app.sh` la aggiorna con `SCHIERAXI_ISTANZA=prova` e l'utente della prova; senza la variabile fa quello di sempre
+(`--configurazione` stampa cartella, stato, servizio, porta, clone e blocco che userebbe, senza scrivere niente; un valore sconosciuto,
+o la prova nella casa della produzione, esce con 2 senza fare niente).
 
 Crontab proposto (percorsi con `$HOME`, utente del server):
 
