@@ -60,7 +60,8 @@ final class FormazioneViewModel: ViewModelBase {
     /// Il server sta provando la scelta salvata appena letta: finché non risponde la riga non dice niente (come la web).
     @Published private(set) var provaSalvata = false
     /// Un salvataggio è partito e il server non ha ancora risposto: un secondo tocco su Salva (o ⌘S) non ne manda un altro, come
-    /// `sc.occupato` della web. Finché dura, i pulsanti di salvataggio e «Annulla modifiche» sono spenti.
+    /// `sc.occupato` della web. Finché dura, i pulsanti di salvataggio e «Annulla modifiche» sono spenti; «Torna alla consigliata»,
+    /// moduli e stili restano attivi, come sulla web (`StatoScelta.Pulsante.spentoSalvando`, #477).
     @Published private(set) var salvataggioInCorso = false
     /// Il calcolo della modifica a mano non è riuscito: invece dei punti, «Non riesco a calcolare» con «Riprova».
     @Published private(set) var calcoloNonRiuscito = false
@@ -169,13 +170,22 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     func carica() async {
+        await ricaricaConScelta()
+    }
+
+    /// Rilegge la formazione e, per la tua squadra, la scelta della giornata. true se il server ha dato la scelta (anche
+    /// «nessuna»): solo allora lo stato della scelta è quello del server.
+    @discardableResult
+    private func ricaricaConScelta() async -> Bool {
         await caricatore.ricarica(percorso)
-        if let f = caricatore.dato { await caricaScelta(f) }
+        guard let f = caricatore.dato else { return false }
+        return await caricaScelta(f)
     }
 
     /// Legge dal server la scelta salvata per questa giornata (solo per la propria squadra): tiene lo stato «salvata» e, se non
     /// c'è una modifica in corso, riparte da lì. Se la lettura non riesce lo stato resta com'era (all'inizio: non si sa).
-    private func caricaScelta(_ f: Formazione) async {
+    /// true se il server ha dato la scelta (anche «nessuna»).
+    private func caricaScelta(_ f: Formazione) async -> Bool {
         // Un'altra giornata: la modifica a mano e la scelta della vecchia non valgono più.
         if giornata != f.giornata {
             azzeraManuale()
@@ -185,14 +195,14 @@ final class FormazioneViewModel: ViewModelBase {
             salvataNonValida = false
             giornata = f.giornata
         }
-        guard squadraVista == nil else { return }
+        guard squadraVista == nil else { return false }
         let salvata: SceltaSalvata?
         do {
             salvata = try await server.get("/api/scelta?giornata=\(f.giornata)")
         } catch {
-            return
+            return false
         }
-        guard squadraVista == nil, giornata == f.giornata else { return }
+        guard squadraVista == nil, giornata == f.giornata else { return false }
         // Nessuna modifica di questo telefono: la formazione mostrata è quella salvata di prima (o la consigliata).
         // A giornata chiusa le modifiche non salvate di questo telefono non contano più: vale quella salvata (o la consigliata).
         let senzaModifiche = f.iniziata == true || (manuale == nil && !modificaSenzaMano)
@@ -203,7 +213,7 @@ final class FormazioneViewModel: ViewModelBase {
             salvataIl = nil
             salvataNonValida = false
             if senzaModifiche { azzeraManuale() }   // cancellata da un altro dispositivo: si torna alla consigliata
-            return
+            return true
         }
         // Già giudicata non valida (anche dal server) e intanto non è cambiata: resta così senza riprovarla, come la web che
         // tiene `nonValida` per la giornata. Altrimenti a ogni ritorno sulla Formazione tornerebbe in campo con errore e vibrazione.
@@ -216,12 +226,12 @@ final class FormazioneViewModel: ViewModelBase {
         // A giornata chiusa con `stato_scelta: "non_valida"` lo sa già il server: si vede la consigliata, senza riprovarla.
         salvataNonValida = giaNonValida || (f.iniziata == true && f.statoScelta == "non_valida")
             || ValiditaScelta.controlla(titolari: salvata.titolari, rosa: f.schede) == .nonValida
-        guard senzaModifiche else { return }   // c'è una modifica in corso: non si sovrascrive (la riga dice «Modifiche non salvate»)
+        guard senzaModifiche else { return true }   // c'è una modifica in corso: non si sovrascrive (la riga dice «Modifiche non salvate»)
         if salvataNonValida {
             if manuale != nil { azzeraManuale() }
-            return
+            return true
         }
-        if manuale.map({ Set($0) == Set(salvata.titolari) }) == true, valutati == manuale { return }   // già lei, già calcolata
+        if manuale.map({ Set($0) == Set(salvata.titolari) }) == true, valutati == manuale { return true }   // già lei, già calcolata
         manuale = salvata.titolari
         // Mentre il server la prova la riga non dice niente (come la web, che la mostra solo dopo): niente «salvata» per un
         // attimo se poi non vale.
@@ -234,6 +244,7 @@ final class FormazioneViewModel: ViewModelBase {
             salvataNonValida = true
             azzeraManuale()
         }
+        return true
     }
 
     private func azzeraManuale() {
@@ -485,13 +496,30 @@ final class FormazioneViewModel: ViewModelBase {
     static let annuncioSalvata: String = "Formazione salvata"
 
     static let sceltaCambiata = "La scelta di questa giornata è stata cambiata da un altro dispositivo: ho ricaricato quella salvata. Controlla e, se serve, rifai la modifica."
+    /// Dopo un 412 la rilettura della scelta non è riuscita (rete, server): «ho ricaricato» sarebbe falso (#477).
+    static let sceltaCambiataSenzaRicarica = "La scelta di questa giornata è stata cambiata da un altro dispositivo, ma non riesco a ricaricarla: tira giù per aggiornare e, se serve, rifai la modifica."
 
     /// 412 sulla scelta salvata: un altro dispositivo l'ha cambiata (o cancellata) dopo l'ultima lettura. Come per le altre risorse
-    /// si rilegge tutto (formazione e scelta, con l'ETag nuovo) e lo si dice: la modifica a mano di questo telefono non si salva sopra.
+    /// si rilegge tutto (formazione e scelta, con l'ETag nuovo) e lo si dice: la modifica di questo telefono non si salva sopra.
+    /// Come la web, che dopo un 412 ricarica la pagina, anche stile e modulo ripartono da quelli consigliati (#477): se l'altro
+    /// dispositivo ha cancellato la scelta, non resta in vista il modulo toccato. Lo stile è quello consigliato dalla formazione
+    /// riletta (se la rilettura non riesce, da quella che c'era).
     private func sceltaCambiataAltrove() async {
         azzeraManuale()
-        await carica()
-        messaggio = Self.sceltaCambiata
+        let riletta = await ricaricaConScelta()
+        rischio = formazione?.stileConsigliato ?? 0
+        moduloScelto = nil
+        if riletta {
+            messaggio = Self.sceltaCambiata
+        } else {
+            // La scelta che si conosceva non è più quella del server, e quella nuova non si è potuta leggere: la riga non dice
+            // niente (come la web quando la rilettura non riesce, niente «salvata» falso) e la prossima lettura la rimette a posto.
+            sceltaLetta = false
+            salvati = nil
+            salvataIl = nil
+            salvataNonValida = false
+            messaggio = Self.sceltaCambiataSenzaRicarica
+        }
         Haptics.esito(riuscito: false)
     }
 
