@@ -97,10 +97,7 @@ struct VistaDubbi: View {
                 Text("Apri SchieraXI per i nomi.").font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
             }
-            if voce.accessoRichiesto {
-                Label("Tocca per ricollegare", systemImage: "link")
-                    .font(.caption2.bold()).foregroundStyle(.white.opacity(0.7))
-            } else if voce.datiSalvati {
+            if voce.datiSalvati {
                 Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
                     .font(.caption2).foregroundStyle(.white.opacity(0.7))
             }

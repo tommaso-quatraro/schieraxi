@@ -23,9 +23,17 @@ struct GiocatoreScelto: AppEntity {
 }
 
 struct QueryGiocatori: EntityQuery {
+    /// Il codice incollato nel widget che si sta configurando (collegamento manuale): serve a trovare la copia di quel collegamento.
+    @IntentParameterDependency<ConfigurazioneOsservato>(\.$codice)
+    var configurazione
+
     /// Prima gli osservati, poi i miei giocatori, senza doppioni.
     private func elenco() -> [GiocatoreScelto] {
-        guard let w = MemoriaWidget.leggi()?.riassunto else { return [] }
+        // solo i giocatori della copia di uno dei collegamenti di questo widget (codice incollato o automatico): mai quelli di un
+        // account di prima (#482)
+        let candidati = MemoriaWidget.impronteCandidate(condiviso: Condiviso.leggi(), portachiavi: PortachiaviCondiviso.leggi(),
+                                                        codice: configurazione?.codice, pulisci: ScaricaOggi.indirizzoBase)
+        guard let w = MemoriaWidget.leggi(perUnaDi: candidati)?.riassunto else { return [] }
         var visti = Set<Int>()
         return ((w.osservati ?? []) + (w.rosa ?? [])).compactMap { g in
             guard visti.insert(g.id).inserted else { return nil }

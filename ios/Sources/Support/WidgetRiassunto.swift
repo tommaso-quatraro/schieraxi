@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import SwiftUI
 
@@ -357,40 +358,137 @@ struct CopiaWidget: Codable, Equatable {
     var dati: Data
     var etag: String?
     var scaricatoIl: Date
+    /// Di chi è: l'impronta del collegamento con cui è stata scaricata (`MemoriaWidget.impronta`). Le copie di prima non ce l'hanno
+    /// e non si mostrano più.
+    var chi: String? = nil
 
     var riassunto: RiassuntoWidget? { RiassuntoWidget.leggi(dati) }
 }
 
+/// La copia del widget. La scrive il widget (e l'app, per riempirla in anticipo, in un file a parte da quello condiviso): nel
+/// contenitore del gruppo se c'è, altrimenti nelle UserDefaults del programma che scrive. Senza gruppo l'app non raggiunge quella
+/// del widget, nemmeno all'uscita dall'account: per questo ogni copia porta l'impronta del collegamento e si mostra solo con lo
+/// stesso collegamento (#482). `cartella` e `memoria`: il gruppo e le UserDefaults (i test ne passano di loro).
 enum MemoriaWidget {
     private static let chiave = "copiaWidget"
     private static let nomeFile = "widget-cache.json"
+    /// Il riassunto che il widget tiene per sé nelle sue UserDefaults (solo con un server senza `/api/widget`, `ScaricaOggi`) e
+    /// l'impronta del collegamento con cui l'ha scaricato.
+    static let chiaveRiassunto = "ultimoRiassunto"
+    static let chiaveRiassuntoChi = "ultimoRiassunto.chi"
 
-    /// Scritta SOLO dal widget (e dall'app per riempirla in anticipo, in un file a parte da quello condiviso): nel contenitore del
-    /// gruppo se c'è, altrimenti nelle UserDefaults del programma che scrive.
-    private static func percorso() -> URL? { Condiviso.cartella()?.appendingPathComponent(nomeFile) }
-
-    static func leggi() -> CopiaWidget? {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        if let url = percorso(), let dati = try? Data(contentsOf: url), let c = try? d.decode(CopiaWidget.self, from: dati) { return c }
-        if let dati = UserDefaults.standard.data(forKey: chiave) { return try? d.decode(CopiaWidget.self, from: dati) }
-        return nil
+    /// L'impronta (SHA-256) dell'indirizzo del server e del token con cui il widget scarica: dall'impronta non si risale al token.
+    /// Cambia con l'uscita dall'account, con un altro account, con un altro codice incollato e con il rinnovo del token.
+    static func impronta(indirizzo: String, token: String?) -> String {
+        var base = indirizzo.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") { base.removeLast() }
+        let testo = base.lowercased() + "\n" + (token ?? "")
+        return SHA256.hash(data: Data(testo.utf8)).map { ($0 < 16 ? "0" : "") + String($0, radix: 16) }.joined()
     }
 
-    static func salva(_ copia: CopiaWidget) {
-        let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
-        guard let fuori = try? e.encode(copia) else { return }
-        if let url = percorso() {
-            try? fuori.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-        } else {
-            UserDefaults.standard.set(fuori, forKey: chiave)
+    private static func percorso(_ cartella: URL?) -> URL? { cartella?.appendingPathComponent(nomeFile) }
+
+    private static func decodifica(_ dati: Data) -> CopiaWidget? {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return try? d.decode(CopiaWidget.self, from: dati)
+    }
+
+    /// La copia di `chi` (stesso indirizzo e stesso token), o nil: mai quella di un altro collegamento, di un altro account o di
+    /// prima dell'uscita.
+    static func leggi(per chi: String, cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) -> CopiaWidget? {
+        leggi(perUnaDi: [chi], cartella: cartella, memoria: memoria)
+    }
+
+    /// La copia di uno dei collegamenti `impronte` (vedi `impronteCandidate`), o nil.
+    static func leggi(perUnaDi impronte: [String], cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) -> CopiaWidget? {
+        let nelGruppo = percorso(cartella).flatMap { try? Data(contentsOf: $0) }.flatMap(decodifica)
+        let inMemoria = memoria.data(forKey: chiave).flatMap(decodifica)
+        return [nelGruppo, inMemoria].compactMap { $0 }.first { copia in copia.chi.map { impronte.contains($0) } ?? false }
+    }
+
+    /// Le impronte dei collegamenti che un widget può avere: quello con il codice incollato (se c'è) e quello automatico, senza
+    /// doppioni. Servono dove non si sa quale dei due usa il widget, come nella scelta del giocatore nelle sue impostazioni.
+    static func impronteCandidate(condiviso: DatiCondivisi, portachiavi: CodiceWidget.Contenuto?, codice: String?,
+                                  predefinito: String = ServerPubblico.indirizzo, pulisci: (String) -> String?) -> [String] {
+        var elenco: [String] = []
+        for testo in [codice ?? "", ""] {
+            guard let dove = CodiceWidget.destinazione(condiviso: condiviso, portachiavi: portachiavi, codice: testo,
+                                                       predefinito: predefinito, pulisci: pulisci) else { continue }
+            let chi = impronta(indirizzo: dove.indirizzo, token: dove.token)
+            if !elenco.contains(chi) { elenco.append(chi) }
+        }
+        return elenco
+    }
+
+    /// Cosa resta da mostrare dopo lo scarico di `/api/widget` (lo usa `ScaricaOggi.leggiTutto` nel widget).
+    struct EsitoCopia: Equatable {
+        /// La copia da mostrare (nuova o salvata), sempre di questo collegamento; nil = niente.
+        var copia: CopiaWidget?
+        /// true = dati appena scaricati o confermati dal server (304); false = copia salvata, da mostrare con la sua ora.
+        var fresca = false
+        /// 401: il widget va ricollegato («Tocca per collegare»).
+        var accessoRichiesto = false
+        /// Il server non ha `/api/widget`: si ricade su `/api/oggi`.
+        var nonDisponibile = false
+    }
+
+    /// Applica la risposta del server alla copia del collegamento `chi`: i dati nuovi si salvano con l'impronta, il 304 rinfresca
+    /// l'ora, senza rete resta la copia. Con il 401 (token del widget revocato all'uscita dall'account, scaduto o rinnovato) le copie
+    /// si cancellano tutte (`accessoNegato`) e non si mostra niente.
+    static func applica(_ esito: ScaricoWidget.Esito, copia: CopiaWidget?, chi: String, adesso: Date = .now,
+                        cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) -> EsitoCopia {
+        let salvata = copia.flatMap { $0.chi == chi && $0.riassunto != nil ? $0 : nil }
+        switch esito {
+        case .dati(_, let grezzo, let etag):
+            let nuova = CopiaWidget(dati: grezzo, etag: etag, scaricatoIl: adesso, chi: chi)
+            salva(nuova, cartella: cartella, memoria: memoria)
+            return EsitoCopia(copia: nuova, fresca: true)
+        case .nonCambiato:
+            guard var confermata = salvata else { return EsitoCopia() }
+            confermata.scaricatoIl = adesso
+            salva(confermata, cartella: cartella, memoria: memoria)
+            return EsitoCopia(copia: confermata, fresca: true)
+        case .inCalcolo, .errore:
+            return EsitoCopia(copia: salvata)
+        case .accessoRichiesto:
+            accessoNegato(cartella: cartella, memoria: memoria)
+            return EsitoCopia(accessoRichiesto: true)
+        case .nonDisponibile:
+            return EsitoCopia(nonDisponibile: true)
         }
     }
 
-    static func dimentica() {
-        if let url = percorso() { try? FileManager.default.removeItem(at: url) }
-        UserDefaults.standard.removeObject(forKey: chiave)
+    /// Il server ha rifiutato il token del widget: via tutte le copie del widget, nel gruppo e nelle UserDefaults di chi la chiama
+    /// (anche quelle che l'app non raggiunge quando il gruppo manca).
+    static func accessoNegato(cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {
+        dimentica(cartella: cartella, memoria: memoria)
+        memoria.removeObject(forKey: chiaveRiassunto)
+        memoria.removeObject(forKey: chiaveRiassuntoChi)
+    }
+
+    static func salva(_ copia: CopiaWidget, cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        guard let fuori = try? e.encode(copia) else { return }
+        if let url = percorso(cartella) {
+            try? fuori.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            memoria.removeObject(forKey: chiave)   // una copia sola: quella fuori dal gruppo è di prima
+        } else {
+            memoria.set(fuori, forKey: chiave)
+        }
+    }
+
+    static func dimentica(cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {
+        if let url = percorso(cartella) { try? FileManager.default.removeItem(at: url) }
+        memoria.removeObject(forKey: chiave)
+    }
+
+    /// L'ultimo riassunto che l'app ha messo nel file condiviso, solo al widget collegato come l'app (stessa impronta): a un widget
+    /// collegato a un altro account (per esempio con un codice incollato) non si mostra.
+    static func riassuntoDellApp(_ condiviso: DatiCondivisi, per chi: String) -> RiassuntoOggi? {
+        guard let indirizzo = condiviso.indirizzo, impronta(indirizzo: indirizzo, token: condiviso.token(per: indirizzo)) == chi else { return nil }
+        return condiviso.riassunto
     }
 }
 

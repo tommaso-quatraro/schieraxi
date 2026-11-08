@@ -1,6 +1,7 @@
 import SwiftUI
 import UserNotifications
 import CoreSpotlight
+import WidgetKit
 
 // Account del server con più utenti (modalità «multiutente»). Con il server di sempre (un solo utente) `/api/account/me`
 // dice multiutente=false: l'app non chiede nessun accesso e funziona come prima.
@@ -227,8 +228,7 @@ enum DatiLocali {
         URLCache.shared.removeAllCachedResponses()   // copie delle risposte tenute da iOS, anche loro dell'account che esce
         Immagini.condivise.azzera()
         VersioniRisorse.condivise.azzera()
-        Condiviso.dimentica()
-        MemoriaWidget.dimentica()
+        dimenticaIlWidget()
         let memoria = UserDefaults.standard
         for chiave in ["bg.giornata", "bg.modulo", "bg.probabili", "novitaVista", "ultimoRiassunto"] { memoria.removeObject(forKey: chiave) }
         ArchivioScambi.svuota(memoria)
@@ -238,6 +238,21 @@ enum DatiLocali {
             centro.removeAllPendingNotificationRequests()
             centro.removeAllDeliveredNotifications()
         }
+    }
+
+    /// I dati del widget in tutti i posti che l'app raggiunge: token e riassunto nel file del gruppo condiviso, Keychain condiviso,
+    /// copia di `/api/widget` (nel gruppo e nelle UserDefaults dell'app). Poi i widget si ricaricano subito: senza dati validi dicono
+    /// «Tocca per collegare». La copia che il widget tiene per sé quando il gruppo manca da qui non si raggiunge: il widget non la
+    /// mostra più perché il collegamento è cambiato (`MemoriaWidget.impronta`) e la cancella al primo 401 (#482).
+    /// Se il file condiviso non si riesce a riscrivere, `Condiviso.dimentica` lo cancella: nessun dato resta leggibile.
+    /// I parametri servono ai test.
+    static func dimenticaIlWidget(cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard,
+                                  portachiavi: any ArchivioCollegamento = PortachiaviCondiviso.archivio,
+                                  scrivi: (Data, URL) throws -> Void = Condiviso.scriviFile,
+                                  ricarica: () -> Void = { WidgetCenter.shared.reloadAllTimelines() }) {
+        Condiviso.dimentica(cartella: cartella, portachiavi: portachiavi, scrivi: scrivi)
+        MemoriaWidget.dimentica(cartella: cartella, memoria: memoria)
+        ricarica()
     }
 }
 

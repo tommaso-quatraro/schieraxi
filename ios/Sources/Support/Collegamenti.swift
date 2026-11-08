@@ -8,7 +8,8 @@ enum Destinazione: Equatable {
     case pagina(PaginaLega)
     /// Il foglio delle Impostazioni (`schieraxi://impostazioni`).
     case impostazioni
-    /// «Collega il widget» (`schieraxi://widget/collega`, il tocco sul widget non collegato): copia il codice di collegamento.
+    /// «Collega il widget» (`schieraxi://widget/collega`, il tocco sul widget non collegato): apre solo la schermata, che aspetta il
+    /// tocco su «Collega» prima di collegare o di copiare il codice (l'indirizzo lo può aprire anche un'altra app, #482).
     case collegaWidget
 }
 

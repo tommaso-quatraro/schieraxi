@@ -313,17 +313,5 @@ final class ScaricoWidgetTests: XCTestCase {
         XCTAssertEqual("\(e)", "errore")
     }
 
-    func testLaCopiaSiRicordaEPoiSiDimentica() throws {
-        let cartella = FileManager.default.temporaryDirectory.appendingPathComponent("copia-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
-        Condiviso.cartellaDiProva = cartella
-        defer { Condiviso.cartellaDiProva = nil; try? FileManager.default.removeItem(at: cartella); MemoriaWidget.dimentica() }
-        XCTAssertNil(MemoriaWidget.leggi())
-        MemoriaWidget.salva(CopiaWidget(dati: Data(WidgetRiassuntoTests.corpo.utf8), etag: "\"e1\"", scaricatoIl: Date()))
-        let c = try XCTUnwrap(MemoriaWidget.leggi())
-        XCTAssertEqual(c.etag, "\"e1\"")
-        XCTAssertEqual(c.riassunto?.giornata, 11)
-        MemoriaWidget.dimentica()
-        XCTAssertNil(MemoriaWidget.leggi())
-    }
+    // La copia che si ricorda e si dimentica: ora in `WidgetDopoLUscitaTests` (Swift Testing), con l'impronta del collegamento (#482).
 }
