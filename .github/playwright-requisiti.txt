@@ -1,0 +1,29 @@
+# Playwright e Pillow per il workflow «Aspetto della web» (aspetto-web.yml, script/ci/aspetto_web.py), con tutte le dipendenze.
+# Ambiente a parte: non entra nelle librerie dell'app. Nessun browser da scaricare: si usa Chrome di sistema.
+# Versioni e hash fissati, solo file binari da PyPI, per Linux x86_64 (la CI, Python 3.12) e Windows 64 bit (prova in locale),
+# Python 3.12 e 3.13. Pillow ha la stessa versione di requirements-dev.txt (lo controlla tests/test_aspetto_web.py).
+# Risolte con:
+#   python -m pip install --dry-run --ignore-installed --report report.json --platform manylinux_2_28_x86_64 \
+#       --platform manylinux_2_17_x86_64 --platform manylinux1_x86_64 --python-version 3.12 --implementation cp --abi cp312 \
+#       --only-binary=:all: --target ./x playwright==<versione> pillow==<versione di requirements-dev.txt>
+# poi per ogni libreria del rapporto gli hash dei file binari da https://pypi.org/pypi/<nome>/<versione>/json (digests.sha256),
+# solo quelli per cp312/cp313 (o py3) su manylinux x86_64 e win_amd64.
+# In locale: python -m venv <cartella-temporanea>\pw && <cartella-temporanea>\pw\Scripts\python.exe -m pip install
+#   --require-hashes --only-binary=:all: -r .github\playwright-requisiti.txt
+greenlet==3.5.6 \
+    --hash=sha256:975736b002ed080d124cf81a79cb7e05cb26d6b3f5c7a7b651c0fcce70353aa1 \
+    --hash=sha256:7ac4abb3877c43af320392c664774eef6fa2cc063c79a55fc02d844a3cbe7395 \
+    --hash=sha256:f98e8215e172f567ce80eeaed9107fb4d32b6c44f26983d9b8334658136a205a \
+    --hash=sha256:5b602b4201b965a8354d74e232364a66ff243dd142e350d035f46169bb36e13d
+pillow==13.0.0 \
+    --hash=sha256:42d63be3af4f9b951b199b0a9d23365d37ab14687e6d77b74940432c8515c4ca \
+    --hash=sha256:ff3fe9eb621fbb9db4c4be33ab946f6bac5f98ab50ca8d3260503653656c961b \
+    --hash=sha256:5f56499c1a74d2b862beb0c33b8016f99d095858455df9d21583bbbc1c15b582 \
+    --hash=sha256:9dda0788a9932776a75d8bcc020076edc308ce2508b51f6739a45e3158b3fc42
+playwright==1.64.1 \
+    --hash=sha256:577b8d88778c245cfbd145ae17cf53044f084b1b46c55c69081d4069d56057e2 \
+    --hash=sha256:5e240a79464434c9260957b9ef59a5808e02e96e3fcabdc717fd7485260b9730
+pyee==14.0.0 \
+    --hash=sha256:3ac2d3229a9677f7de2c33d7f52fe25b638a46b19c413fea2edc8c6d0a644e4d
+typing_extensions==4.16.0 \
+    --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8

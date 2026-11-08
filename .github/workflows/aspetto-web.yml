@@ -1,0 +1,89 @@
+name: Aspetto della web
+
+# Regressione visiva della web (issue #503, piano dell'ondata 2, lavoro D1). Per ora SOLO AVVISO: non blocca nessuna unione.
+# Le scene della web (11 scene a 390 e 1440 px, chiaro e scuro) si fotografano due volte nella stessa corsa, con lo stesso Chrome:
+# con il codice della PR e con quello di main (la base della PR). Niente immagini nel repository: il riferimento si aggiorna da
+# solo quando la PR si unisce. I dati sono le risposte registrate di ios/fotografie/vero-prima.json (nomi inventati), servite da
+# un server finto: nessun server vero, nessun segreto, nessuna rete oltre a PyPI per Playwright e Pillow.
+# La PR dichiara le scene che cambiano con la riga «Aspetto: oggi, formazione» (o «Aspetto: nessuno») nella descrizione.
+# Esito nel riassunto della corsa e in un avviso; le immagini delle scene diverse (main, PR, differenza) nell'artifact
+# «aspetto-web» (7 giorni). Il passo del confronto ha continue-on-error: la corsa resta verde anche con differenze non
+# dichiarate, così non ferma «pr-pronta» né l'unione. Diventa bloccante dopo una decina di corse senza falsi allarmi (D2).
+# A mano: Actions > Aspetto della web > Run workflow (base vuota = lo stesso commit due volte, prova di stabilità).
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "fanta/web/**"
+      - "script/ci/aspetto_web.py"
+      - "ios/fotografie/**"
+      - ".github/workflows/aspetto-web.yml"
+      - ".github/playwright-requisiti.txt"
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "riferimento da confrontare (ramo, tag o commit); vuoto = lo stesso commit della corsa (prova di stabilità)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# un push nuovo sulla stessa PR annulla la corsa vecchia; le corse a mano hanno un gruppo loro e non si annullano
+concurrency:
+  group: aspetto-web-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  aspetto:
+    name: confronto con main
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      # il commit di prova della PR (la PR unita a main) e il suo primo genitore, come in test.yml e revisione.yml
+      - name: Codice della PR
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          path: pr
+          fetch-depth: 2
+          persist-credentials: false
+      # Nelle PR la base è HEAD^1 del commit di prova: proprio il main su cui la PR si unisce. Il base.sha dell'evento può
+      # essere più vecchio, e allora le scene cambiate su main nel frattempo sembrerebbero cambiate dalla PR.
+      - name: Codice di riferimento (main su cui la PR si unisce)
+        if: github.event_name == 'pull_request'
+        run: git -C pr worktree add --detach "$GITHUB_WORKSPACE/base" HEAD^1
+      - name: Codice di riferimento (scelto a mano)
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.base || github.sha }}
+          path: base
+          sparse-checkout: fanta/web
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      # ambiente a parte (non entra nelle librerie dell'app); Chrome è quello già installato sui server di GitHub
+      - name: Playwright e Pillow (versioni e hash fissati)
+        run: |
+          python -m venv "$RUNNER_TEMP/aspetto"
+          "$RUNNER_TEMP/aspetto/bin/python" -m pip install -q --require-hashes --only-binary=:all: -r pr/.github/playwright-requisiti.txt
+      # la descrizione della PR arriva solo come variabile d'ambiente (riga «Aspetto:»), mai dentro il comando
+      - name: Scene della PR contro main (solo avviso)
+        continue-on-error: true
+        env:
+          CORPO: ${{ github.event.pull_request.body }}
+        run: '"$RUNNER_TEMP/aspetto/bin/python" -I -s pr/script/ci/aspetto_web.py --base base --pr pr --uscita "$RUNNER_TEMP/aspetto-web"'
+      - name: Immagini delle scene diverse
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: aspetto-web
+          path: ${{ runner.temp }}/aspetto-web/diverse/
+          if-no-files-found: ignore
+          retention-days: 7
