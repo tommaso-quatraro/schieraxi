@@ -60,20 +60,23 @@ Fallimenti anche se «funziona»:
 ## 6. Come si misura che funziona
 **Numero principale: la precisione del fantavoto atteso.** È l'indicatore I1 del registro delle giornate
 (`fanta/registro_giornate.py`, mostrato in Stato dei dati): errore del fantavoto atteso mostrato prima della scadenza, contro
-quello della fantamedia, su tutta la Serie A, in media sulle ultime 8 giornate registrate. Regge se è **almeno il 3% sotto**.
+quello della fantamedia, su tutta la Serie A, in media sulle ultime 8 giornate misurate (le giornate perse non contano). Regge se è **almeno il 3% sotto**.
 Accanto, con le soglie già decise il 5/11: I2 (calibrazione di «gioca N%») e I3 (fascia «8 volte su 10»).
 
 Numeri secondari:
 - **Consiglio** (#166): nel Diario la consigliata fa almeno i punti della schierata, in media sulle ultime 8 giornate (C1),
   e nessun titolare improbabile con un compagno di ruolo che gioca (C3).
-- **App** (#167): una giornata intera senza errori e senza differenze tra web e iPhone.
+- **App** (#167): una giornata intera senza errori e senza differenze tra web e iPhone. *[scelta del coordinatore]* Vuol
+  dire, dalla scadenza a due giorni dopo l'ultima partita: nessun allarme della sentinella, nessuna issue `P1` o `dall-utente`
+  nuova, controlli di coerenza web-iPhone verdi su `main`, collaudo automatico dell'ambiente di prova verde.
 - **Amici** (#168): un amico entra da solo dalla web e carica la sua lega in meno di 10 minuti *[scelta del coordinatore:
   «pochi minuti» diventa 10]*.
 
 ## 7. Ordine degli obiettivi
 I `P1` (rotto o sicurezza, per esempio #481) passano sempre davanti.
 
-1. **#167 ridotto**: solo ciò che serve a una giornata senza errori e alla prova prima degli amici.
+1. **#167 ridotto**: solo ciò che serve a una giornata senza errori e alla prova prima degli amici. Su GitHub oggi alcune di
+   queste issue stanno sotto #168 e altre sotto nessun obiettivo: vanno agganciate a #167 (§10).
    - testi da una fonte sola per web e iPhone: #493, #494, #495, #496, #497;
    - ambiente di prova e collaudo automatico dopo il rilascio: #510, #511, #512. La prova è già accesa sul server con l'ok
      del proprietario dell'8/11; restano l'account di collaudo e i segreti su GitHub, che crea il proprietario;
@@ -85,12 +88,15 @@ I `P1` (rotto o sicurezza, per esempio #481) passano sempre davanti.
    parte che vedono gli amici (account, inviti, importazione, avvisi, widget, token); il rapporto resta privato e i problemi
    gravi o critici bloccano l'apertura *[scelta del coordinatore]*. Nessuna data fissa: #168 parte appena il #167 ridotto è
    chiuso *[scelta del coordinatore]*.
-3. **#165 e #166 vanno avanti a ogni giornata, in parallelo**, con le misure del registro e del Diario (prima misura di «gioca
+3. **#165 e #166 vanno avanti a ogni giornata, in parallelo**. È un'eccezione esplicita alla regola «un macro obiettivo alla
+   volta» (`CLAUDE.md`, `docs/METODO.md`): non sono l'obiettivo in corso, si guardano le misure e si lavora solo su segnale, le misure del registro e del Diario (prima misura di «gioca
    N%» con le probabili verso il 9/12, #379). Un lavoro sul modello o sul consiglio parte solo se una misura lo chiede: «misura,
-   poi accendi». «Lo chiede» vuol dire: un indicatore fuori soglia sulla finestra di 8 giornate. Il registro manda già un
-   avviso al proprietario quando I1, I2 o I3 escono dalla soglia; il coordinatore ne fa un'issue sotto #165 o #166.
+   poi accendi». «Lo chiede» vuol dire: un indicatore fuori soglia sulla finestra di 8 giornate misurate. Gli avvisi al
+   proprietario esistono già: per #165 il registro delle giornate (I1, I2, I3; parte dopo due giornate di fila fuori soglia
+   e con la finestra piena), per #166 `fanta/indicatori_consiglio.py` (C1-C4). Il coordinatore ne fa un'issue sotto
+   l'obiettivo giusto.
 
-**Rimandati a dopo #168** (restano issue `P3`): web divisa in moduli (#500, #501, #502), regressione visiva bloccante (#504),
+**Rimandati a dopo #168** (passano o restano a `P3`): web divisa in moduli (#500, #501, #502), regressione visiva bloccante (#504),
 foto iOS mirate (#505), corpi delle richieste iPhone dall'OpenAPI (#509), avviso sulle fotografie vecchie (#508)
 *[scelta del coordinatore per #508: fa parte dello stesso lavoro di #509]*.
 
@@ -107,9 +113,12 @@ foto iOS mirate (#505), corpi delle richieste iPhone dall'OpenAPI (#509), avviso
 - Nessuna spesa (fonte con licenza, account Apple) prima della chiusura di #168.
 
 ## 10. Cosa resta a chi pianifica
-- Il piano rivisto: riallineare `docs/superpowers/plans/2026-11-08-ondata-2.md` a §7 (escono B1-B6, D2, E1, F3) e
+- Il piano rivisto: riallineare `docs/superpowers/plans/2026-11-08-ondata-2.md` a §7 (escono B1-B7, D2, E1, F3, F4) e
   ordinare i lavori del #167 ridotto per area di file, nei tetti di PR.
-- La pulizia dell'arretrato: chiudere o portare a `P3` le issue che non stanno in §7, aggiornare il testo dei quattro obiettivi
+- La pulizia dell'arretrato: agganciare a #167 le issue del #167 ridotto (#483 e #510-#512 oggi sono sotto #168, #493-#497 e
+  #507 sotto nessun obiettivo; #167 ha già 100 sotto-issue, il massimo di GitHub, quindi dove non si può si scrive «Parte di
+  #167» nel testo), chiudere o portare a `P3` le issue che non stanno in §7, aggiornare il testo dei quattro obiettivi
   (#165-#168) con l'ordine e le misure di questa spec.
-- Le misure di §6 esistono già nel registro e nel Diario; manca solo il controllo di «10 minuti» per #168, da scrivere quando
-  si arriva lì.
+- Le misure di #165 e #166 esistono già (registro, Diario, indicatori del consiglio). Mancano: il controllo della «giornata
+  senza errori» di #167 (§6), da scrivere prima di chiudere #167, e quello dei «10 minuti» di #168, da scrivere quando si
+  arriva lì.
