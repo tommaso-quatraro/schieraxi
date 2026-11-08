@@ -38,6 +38,18 @@ ASTA_INVERNALE_PREDEFINITA = ((2, 1), (2, 21))
 MAX_FINESTRE_SCAMBIO = 20
 MAX_GIORNI_PERIODO = 60
 _GIORNO = re.compile(r"\d{4}-\d{2}-\d{2}")
+# Tetti di misura (liste e testi): larghi rispetto alle leghe vere, servono solo contro regole enormi che rallenterebbero i calcoli
+# di tutti. Oltre i tetti l'errore è RegoleTroppoGrandi (il server risponde 422). Le regole salvate prima dei tetti si leggono
+# ancora (carica); per salvarle di nuovo vanno riportate dentro i tetti.
+MAX_NOME_LEGA = 100                # caratteri del nome della lega
+MAX_TESTO_MODULO = 20              # caratteri di un modulo («3-4-3», anche con qualche spazio)
+MAX_SOGLIE = 20                    # fasce del modificatore difesa
+MAX_CHIAVE_RINVIO = 20             # caratteri di una giornata delle eccezioni («2026-27/12»)
+
+
+class RegoleTroppoGrandi(ValueError):
+    """Regole oltre i tetti di misura: il messaggio è per chi usa l'app e non ripete i valori ricevuti (il server risponde 422)."""
+    stato = 422
 
 
 @dataclass
@@ -112,7 +124,39 @@ class Regole:
     finestre_scambio: list[dict[str, str | None]] | None = None
 
     # ---- controlli ----
-    def problemi(self) -> list[str]:
+    def problemi_di_misura(self) -> list[str]:
+        """Liste e testi oltre i tetti (MAX_*). Controlla solo le misure, con qualunque tipo: si fa prima di tutto il resto,
+        così gli altri controlli lavorano su poche voci corte. I messaggi non ripetono i valori ricevuti."""
+        p = []
+        if isinstance(self.nome_lega, str) and len(self.nome_lega) > MAX_NOME_LEGA:
+            p.append(f"il nome della lega può avere al massimo {MAX_NOME_LEGA} caratteri")
+        if isinstance(self.moduli, list):
+            if len(self.moduli) > MAX_MODULI:
+                p.append(f"al massimo {MAX_MODULI} moduli")
+            elif any(isinstance(m, str) and len(m) > MAX_TESTO_MODULO for m in self.moduli):
+                p.append(f"ogni modulo si scrive come 3-4-3 (al massimo {MAX_TESTO_MODULO} caratteri)")
+        soglie = self.modificatore_difesa.soglie if isinstance(self.modificatore_difesa, ModificatoreDifesa) else None
+        if isinstance(soglie, list) and len(soglie) > MAX_SOGLIE:
+            p.append(f"il modificatore difesa può avere al massimo {MAX_SOGLIE} fasce")
+        if isinstance(self.rinvii_giornate, dict):
+            if len(self.rinvii_giornate) > MAX_ECCEZIONI_RINVII:
+                p.append(f"rinvii_giornate: al massimo {MAX_ECCEZIONI_RINVII} eccezioni")
+            elif any(not isinstance(k, str) or len(k) > MAX_CHIAVE_RINVIO for k in self.rinvii_giornate):
+                p.append('rinvii_giornate: le giornate si scrivono come "2026-27/12" (stagione/giornata di Serie A)')
+        if isinstance(self.finestre_scambio, list) and len(self.finestre_scambio) > MAX_FINESTRE_SCAMBIO:
+            p.append(f"finestre_scambio: al massimo {MAX_FINESTRE_SCAMBIO} finestre")
+        gol = self.bonus.gol if isinstance(self.bonus, Bonus) else None
+        posti = self.panchina.posti if isinstance(self.panchina, Panchina) else None
+        for nome, per_ruolo in (("bonus.gol", gol), ("rosa", self.rosa), ("panchina.posti", posti)):
+            if isinstance(per_ruolo, dict) and len(per_ruolo) > len(RUOLI):
+                p.append(f"{nome}: un valore per ogni ruolo P, D, C, A, non di più")
+        return p
+
+    def problemi(self, misure: bool = True) -> list[str]:
+        """Tutto ciò che non va. `misure=False` salta i tetti di misura (per leggere le regole salvate prima dei tetti)."""
+        p = self.problemi_di_misura() if misure else []
+        if p:
+            return p
         p = self._problemi_di_tipo()
         if p:  # con tipi sbagliati gli altri controlli non hanno senso
             return p
@@ -312,24 +356,30 @@ def _da_dict(classe, dati: dict[str, Any]):
     return classe(**argomenti)
 
 
-def da_dict(dati: dict[str, Any]) -> Regole:
-    regole = _da_dict(Regole, dati)
-    problemi = regole.problemi()
+def _controlla(regole: Regole, misure: bool = True) -> Regole:
+    """Errore se le regole non vanno: RegoleTroppoGrandi oltre i tetti di misura (se `misure`), ValueError per il resto."""
+    troppo = regole.problemi_di_misura() if misure else []
+    if troppo:
+        raise RegoleTroppoGrandi("Regole non valide:\n- " + "\n- ".join(troppo))
+    problemi = regole.problemi(misure=False)
     if problemi:
         raise ValueError("Regole non valide:\n- " + "\n- ".join(problemi))
     return regole
 
 
+def da_dict(dati: dict[str, Any], misure: bool = True) -> Regole:
+    return _controlla(_da_dict(Regole, dati), misure)
+
+
 def carica(percorso: Path) -> Regole:
+    """Le regole salvate (o quelle di partenza se il file non c'è). Senza i tetti di misura: un file salvato prima dei tetti si legge ancora."""
     if not percorso.exists():
         return Regole()
-    return da_dict(json.loads(percorso.read_text(encoding="utf-8")))
+    return da_dict(json.loads(percorso.read_text(encoding="utf-8")), misure=False)
 
 
 def salva(regole: Regole, percorso: Path) -> None:
-    problemi = regole.problemi()
-    if problemi:
-        raise ValueError("Regole non valide:\n- " + "\n- ".join(problemi))
+    _controlla(regole)
     scrivi_sicuro(percorso, json.dumps(asdict(regole), ensure_ascii=False, indent=2))
 
 

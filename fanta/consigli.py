@@ -327,8 +327,9 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     # Anticipi già cominciati (#368): con la formazione ancora aperta i loro giocatori restano dove sono nella consigliata di prima.
     # Dopo la scadenza resta già tutta; senza una consigliata di prima non c'è niente da tenere.
     iniziate = () if chiusa or prima is None else _anticipi_iniziati(db, stagione, giornata)
-    # stessa squadra, rosa, giornata, regole e dati: stesso risultato (svuotata quando i dati cambiano)
-    chiave = ("formazione", _versione(db), s.nome, tuple(g.id for g in s.giocatori), giornata, repr(regole),
+    # stessa squadra, rosa, giornata, regole e dati: stesso risultato (svuotata quando i dati cambiano). Anche i nomi della rosa:
+    # quelli dei giocatori non riconosciuti (o senza previsione) finiscono nella risposta (`senza_dati`), e la memoria è di tutti.
+    chiave = ("formazione", _versione(db), s.nome, tuple((g.id, g.nome) for g in s.giocatori), giornata, repr(regole),
               simulazioni)
     chiave_stabile = chiave + ("stabile", _firma(prima, chiusa or bool(iniziate)), chiusa, iniziate)
 

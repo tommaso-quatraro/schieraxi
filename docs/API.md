@@ -26,7 +26,8 @@ Sigle usate qui:
    Il campo `registrazione` vale `invito`, `email` o `aperta` (come ci si registra, vedi `account_email.py`).
    Le uniche rotte senza sessione sono: `POST /api/account/accedi`, `POST /api/account/registra`, `POST /api/account/registra/conferma`, `POST /api/account/recupero`, `POST /api/account/recupero-email`, `POST /api/account/recupero-email/conferma`, e i file statici della pagina (`/`, `/app.js`, `/stile.css`, `/sw.js`, `/manifest.webmanifest`, `/privacy`, `/termini`, `/crediti`, `/elimina-account`, icone e schermate del manifest `/screenshot-*.png`).
    Con gli account spenti non si fa nessun login: c'è un utente locale implicito (con i poteri dell'amministratore), quindi il server
-   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1) e senza intestazioni di proxy (`X-Forwarded-*`,
+   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1), aperte con un indirizzo della rete
+   `127.0.0.0/8` (per esempio `127.0.0.1` o `127.0.0.23`, come i collaudi), `localhost` o `[::1]` (intestazione `Host`, con o senza porta), e senza intestazioni di proxy (`X-Forwarded-*`,
    `Forwarded`, `X-Real-IP`). Tutte le altre, anche i file della pagina, ricevono `403` con
    `{"detail": "Questo server non ha gli account accesi: risponde solo dal computer su cui gira"}`. Un server raggiungibile dai client
    deve avere `FANTA_MULTIUTENTE=1`.
@@ -270,8 +271,8 @@ Gli scambi usano gli id dei giocatori, separati da virgola (per esempio `do=101,
 | `POST /api/rose/correggi` | `{squadra, nome, id}` (X-Fanta, If-Match) | abbina a mano un giocatore non riconosciuto |
 | `GET /api/movimenti` | `limite?` (massimo 300) | storico di scambi, svincoli e tagli, dal più recente |
 | `GET /api/regole` | — | regole della lega (ETag) |
-| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict` |
-| `POST /api/regole/riconosci` | `{testo}` (massimo 30000 caratteri) | propone i valori letti dal regolamento incollato. Non salva niente |
+| `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict`. Valori non validi: `400`. Oltre i tetti di misura (vedi «Tetti delle regole» qui sotto): `422` con `detail` «Regole non valide:» e una riga per ogni tetto superato, senza ripetere i valori mandati |
+| `POST /api/regole/riconosci` | `{testo}` (massimo 30000 caratteri, ogni riga al massimo 2000) | propone i valori letti dal regolamento incollato. Non salva niente. Testo o riga oltre il tetto: `422` con una frase in italiano in `detail` (dal 6/11/2026; prima il testo oltre 30000 caratteri si tagliava senza dirlo) |
 | `PUT /api/regole/rinvio` | `{giornata, modo, stagione?}` (X-Fanta, If-Match facoltativo, stesso ETag delle regole) | partite rinviate: decisione per UNA giornata, che vince sulla regola della lega (vedi «Partite rinviate» qui sotto) |
 
 ### Anteprima delle rose (`fanta/anteprima_rose.py`)
@@ -385,7 +386,7 @@ un'anteprima rifiutata per il tetto (`429`) non paga niente; in più al massimo 
 | `PUT /api/icona` | (X-Fanta) | sceglie il colore dell'icona |
 | `GET /api/onboarding` | — (solo con gli account) | a che punto è la procedura guidata di chi chiede |
 | `PUT /api/onboarding` | `{passo?, stato?, tipo?}` (X-Fanta) | aggiorna il passo |
-| `POST /api/onboarding/regole` | `{testo}` (X-Fanta) | propone le regole da un regolamento incollato, senza salvare |
+| `POST /api/onboarding/regole` | `{testo}` (X-Fanta) | propone le regole da un regolamento incollato, senza salvare. Stessi tetti del testo di `POST /api/regole/riconosci` (`422`) |
 | `GET /api/onboarding/controlli` | — | le spunte prima della prima formazione: `[{id, titolo, ok, obbligatorio, dettaglio}]`. Dal 2/11/2026 `rose` (obbligatoria) basta con **una** squadra; voce nuova `altre_squadre` (non obbligatoria: un avviso, `dettaglio` = il testo di una squadra sola). I client che mostrano solo le obbligatorie non cambiano niente |
 | `POST /api/onboarding/demo` | (X-Fanta) | crea una lega di prova. `409` se hai già rose vere |
 | `DELETE /api/onboarding/demo` | (X-Fanta) | toglie la lega di prova (solo se è davvero quella di prova) |
@@ -408,7 +409,7 @@ Cosa devono fare gli altri client: **app iPhone** aggiungere `avviso_prima: Int?
 | `304` | `GET /api/widget` con lo stesso ETag | nessun corpo |
 | `400` | valore non valido (per esempio elenco di giocatori sbagliato, o dati non accettati) | `{"detail"}`, a volte con `codice` (`formazione_non_valida` e `giocatore_bloccato`, vedi `POST /api/formazione/valuta`). Se il motivo non è un messaggio pensato per l'utente: `{"detail": "La richiesta non è valida: controlla i dati e riprova.", "id_errore"}` (`id_errore`, 8 caratteri, ritrova il caso nel registro del server; i client possono ignorarlo) |
 | `401` | nessuna sessione (con gli account accesi), token del widget scaduto o revocato, password sbagliata | `{"detail": "Accesso richiesto", "multiutente", "registrazione"}` o il messaggio dell'errore |
-| `403` | manca `X-Fanta`; richiesta da un altro sito; account spenti e richiesta non diretta dal computer del server; token del widget su una rotta che non è sua; funzione solo per l'amministratore; invito non valido; registrazioni chiuse; password attuale sbagliata | `{"detail"}` |
+| `403` | manca `X-Fanta`; richiesta da un altro sito; account spenti e richiesta non diretta dal computer del server (o con `Host` diverso da un indirizzo `127.x.x.x`, `localhost`, `[::1]`); token del widget su una rotta che non è sua; funzione solo per l'amministratore; invito non valido; registrazioni chiuse; password attuale sbagliata | `{"detail"}` |
 | `404` | cose che non ci sono (immagine, squadra, giocatore, foto) o account non attivi | `{"detail"}` |
 | `409` | azione non possibile adesso (nessuna rosa importata, nessun canale per gli avvisi, lega di prova da togliere o sostituire, formazione già chiusa) | `{"detail"}`; per la formazione chiusa anche `codice: "formazione_chiusa"` (salvare o togliere la scelta dopo la scadenza) |
 | `411` | richiesta «chunked» senza lunghezza su rotte degli account | `{"detail"}` |
@@ -470,6 +471,24 @@ Dove si vedono (tutti campi aggiunti, i client vecchi li ignorano):
 - Promemoria, «cambio pronto», copia automatica della formazione e riepilogo usano la scadenza (non l'inizio della partita).
 Aggiornamenti più fitti: il servizio rilegge le probabili (e avvisa dei cambi) anche a 60, 30 e 15 minuti prima della scadenza, oltre ai giri di sempre del server. Nessuna rotta nuova; per spegnerli: `FANTA_PIANIFICATORE=0` nel servizio, oppure `aggiornamenti_vicino_scadenza: false` nelle regole. Le probabili hanno quindi un'ora di rilevazione (`probabili.aggiornate_il` in `/api/oggi`) più recente vicino alla scadenza.
 Le app mostrano tutti e due i numeri (sezione «Numero della giornata» qui sotto). Cosa devono fare iOS e Android: mostrare il conto alla rovescia verso `scadenza` (se manca, `inizio`) e, nel pannello delle regole, i due valori; se non li conoscono non cambia nulla.
+
+## Tetti delle regole (dal 6/11/2026, #480)
+
+Tetti di misura di `PUT /api/regole` (e di ogni salvataggio delle regole, anche `PUT /api/regole/rinvio`), larghi rispetto alle
+leghe vere. Oltre un tetto la risposta è `422` con `detail` «Regole non valide:» e una riga per tetto, senza ripetere i valori mandati:
+
+| Campo | Tetto |
+|---|---|
+| `nome_lega` | 100 caratteri |
+| `moduli` | 30 moduli, ognuno al massimo 20 caratteri (`"3-4-3"`, anche con qualche spazio) |
+| `modificatore_difesa.soglie` | 20 fasce |
+| `rinvii_giornate` | 76 eccezioni, chiavi al massimo 20 caratteri (`"2026-27/12"`) |
+| `finestre_scambio` | 20 finestre |
+| `bonus.gol`, `rosa`, `panchina.posti` | un valore per ruolo (P, D, C, A), non di più |
+
+I tetti su moduli, eccezioni e finestre c'erano già (prima rispondevano `400`). Gli altri errori delle regole restano `400`.
+Le regole salvate prima dei tetti si leggono come prima (`GET /api/regole`, calcoli); per salvarle di nuovo vanno riportate dentro
+i tetti. I client mostrano `detail` come per ogni errore: nessun cambio richiesto.
 
 ## Numero della giornata: `giornata` e `giornata_lega` (dal 5/11/2026, #299)
 

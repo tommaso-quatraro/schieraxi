@@ -109,6 +109,16 @@ def test_il_regolamento_diventa_una_proposta_senza_salvare(ambiente):
     assert a.get("/api/regole").json()["bonus"]["assist"] == 1.5
 
 
+def test_regolamento_troppo_lungo_errore_chiaro(ambiente):
+    """Oltre i tetti del testo incollato la procedura risponde 422 con una frase chiara (prima tagliava il testo in silenzio)."""
+    from fanta import regole_testo
+    a, _ = nuovo_utente("utentea")
+    r = a.post("/api/onboarding/regole", json={"testo": "Assist +1\n" * (regole_testo.MAX_TESTO // 10 + 1)})
+    assert r.status_code == 422 and "regolamento è troppo lungo" in r.json()["detail"]
+    r = a.post("/api/onboarding/regole", json={"testo": "Assist +1 " + "x" * regole_testo.MAX_RIGA})
+    assert r.status_code == 422 and "riga del regolamento è troppo lunga" in r.json()["detail"]
+
+
 def test_un_testo_senza_regole_e_regole_che_non_stanno_in_piedi():
     r = onboarding.proponi_regole(Regole(), "Benvenuti nella nostra lega, buon divertimento")
     assert r["riconosciute"] == [] and r["regole"] == asdict(Regole())
