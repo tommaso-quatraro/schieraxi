@@ -18,6 +18,7 @@ from fanta.regole import Regole
 from test_fasi import REGOLE, ROSA, ST, TITOLARI, _giornata_finita, _oggi, ambiente  # noqa: F401  (ambiente = fixture)
 from test_diario import _formazione_finta, finto, vero  # noqa: F401  (fixture del Diario con dati finti)
 from test_server import client  # noqa: F401  (fixture del server)
+import codice_web
 
 CEDUTO = 99                                                   # era in rosa quando l'utente ha salvato, poi è stato ceduto
 CON_CEDUTO = TITOLARI[:10] + [CEDUTO]
@@ -25,8 +26,8 @@ DUE_PORTIERI = [1, 14, 2, 3, 4, 6, 7, 8, 9, 10, 11]           # Portiere e Port1
 CONSIGLIATA_ALLA_SCADENZA = [1, 2, 3, 4, 5, 6, 7, 8, 12, 10, 11]   # 5-3-2: Dif12 al posto di Cen9 (infortunato)
 RUOLI = {i: r for i, (_, r, _, _, _) in ROSA.items()}
 NON_VALIDE = pytest.mark.parametrize("salvata", [CON_CEDUTO, DUE_PORTIERI], ids=["giocatore-ceduto", "modulo-non-ammesso"])
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 
 

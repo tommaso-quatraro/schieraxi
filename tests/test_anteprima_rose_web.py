@@ -8,12 +8,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import rotte_account, server
+import codice_web
 
 WEB = server.WEB
-ANTEPRIMA = (WEB / "anteprima.js").read_text(encoding="utf-8")
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-PRIMO = (WEB / "primoavvio.js").read_text(encoding="utf-8")
-TESTI = (WEB / "testi.js").read_text(encoding="utf-8")
+ANTEPRIMA = codice_web.leggi("anteprima.js")
+APP = codice_web.app()
+PRIMO = codice_web.leggi("primoavvio.js")
+TESTI = codice_web.leggi("testi.js")
 NODE = shutil.which("node")
 
 SQUADRE = [
@@ -81,7 +82,7 @@ def test_il_conteggio_della_squadra_con_il_plurale_giusto():
 def test_il_file_e_caricato_prima_dei_suoi_utenti_ed_e_pubblico():
     html = (WEB / "index.html").read_text(encoding="utf-8")
     assert html.index("anteprima.js") < html.index("primoavvio.js") < html.index("app.js")
-    assert '"/anteprima.js"' in (WEB / "sw.js").read_text(encoding="utf-8")
+    assert '"/anteprima.js"' in codice_web.leggi("sw.js")
     assert "/anteprima.js" in rotte_account.STATICI
     assert TestClient(server.app).get("/anteprima.js").status_code == 200
 

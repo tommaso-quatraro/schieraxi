@@ -8,6 +8,7 @@ from test_modello import ST, _dati, _p
 
 from fanta import consigli, diario, modello, perche, server
 from fanta.regole import Regole
+import codice_web
 
 WEB = server.WEB
 RADICE = WEB.parent.parent
@@ -224,7 +225,7 @@ def test_la_definizione_unica_e_nella_guida():
 
 
 # ---------------------------------------------------------------- web app
-APP = (WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 
 
 def test_la_scheda_e_la_formazione_mostrano_il_perche():

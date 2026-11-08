@@ -7,14 +7,15 @@ import subprocess
 import pytest
 
 from fanta import server, testi_legali
+import codice_web
 
 WEB = server.WEB
 RADICE = WEB.parent.parent
 HTML = (WEB / "index.html").read_text(encoding="utf-8")
 CSS = (WEB / "stile.css").read_text(encoding="utf-8")
-APP = (WEB / "app.js").read_text(encoding="utf-8")
-IMP = (WEB / "impostazioni.js").read_text(encoding="utf-8")
-SW = (WEB / "sw.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+IMP = codice_web.leggi("impostazioni.js")
+SW = codice_web.leggi("sw.js")
 NODE = shutil.which("node")
 
 
@@ -313,7 +314,7 @@ def test_novita_della_testata():
 SENZA_COMMENTI = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
 # (selettori, corpo) di ogni regola di stile.css, anche dentro le @media
 REGOLE = [([s.strip() for s in sel.split(",")], corpo) for sel, corpo in re.findall(r"([^{}]+)\{([^{}]*)\}", SENZA_COMMENTI)]
-JS_WEB = "\n".join(p.read_text(encoding="utf-8") for p in sorted(WEB.glob("*.js"))) + HTML
+JS_WEB = "\n".join(codice_web.tutti_i_file().values()) + HTML
 # le classi che stanno insieme a «carta» sugli stessi elementi («carta hero», «imp-elenco carta», «carta vuoto»...); di un
 # attributo scritto con `${…}` si legge la parte fissa
 CON_LA_CARTA = sorted({c for attr in re.findall(r'class="([^"]*)"', JS_WEB) if re.search(r"(?<![\w-])carta(?![\w-])", attr)
@@ -611,7 +612,7 @@ def test_novita_delle_sezioni():
 def _esegui_righe(chiamata, lingua="it"):
     """Le funzioni delle righe dei giocatori (da «pezzi grafici riusati» a «navigazione» di app.js) girate con node, con i testi veri
     e pochi sostituti: volto vuoto, una data fissa, nessuna memoria del browser."""
-    testi = (WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     pezzo = lambda a, b: APP[APP.index(a):APP.index(b)]
     codice = "\n".join([
         testi,
@@ -806,7 +807,7 @@ def test_nome_del_giocatore_nelle_righe_a_15_px_e_numero_a_20():
 
 def test_la_frase_sotto_i_titolari_parla_del_numero_sul_volto():
     """Senza l'anello colorato la frase che spiega l'indice non può più parlare di un anello (in italiano e in inglese)."""
-    testi = (WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     frasi = re.findall(r'"formazione\.numero_sulla_maglia": "([^"]+)"', testi)
     assert len(frasi) == 2 and all("anello" not in f and "ring" not in f for f in frasi), frasi
     assert "il numero sul volto è l'indice" in frasi[0] and "the number on the face is the index" in frasi[1]
@@ -825,7 +826,7 @@ def test_novita_della_riga_del_giocatore():
 
 
 # ---------------------------------------------------------------- PR 7: Oggi come distinta
-DAFARE = (WEB / "dafare.js").read_text(encoding="utf-8")
+DAFARE = codice_web.leggi("dafare.js")
 # «14 giorni», il pezzo più largo del conto alla rovescia (numero e unità non vanno a capo, #286), in em del carattere: misurato il
 # 6/11/2026 in Chrome a 600 di peso (senza la spaziatura stretta delle lettere, quindi con margine). Il carattere di sistema (Segoe UI)
 # è il più largo dei due: se Archivo non arriva vale lui. E le forme più lunghe di una riga, «1 giorno 8 h» e «23 h 59 min», in
@@ -1267,7 +1268,7 @@ def test_pannello_affiancato_solo_per_i_dettagli_dei_giocatori():
 def test_le_altre_finestre_restano_modali():
     """Primo avvio, immagine da condividere, diario e novità restano fogli modali anche sul PC (spec C5)."""
     assert "affianco" not in _funzione(APP, "condividiImmagine")
-    assert "affianco" not in (WEB / "primoavvio.js").read_text(encoding="utf-8")
+    assert "affianco" not in codice_web.leggi("primoavvio.js")
     assert "affianco" not in _funzione(APP, "apriDiario")
 
 
@@ -1508,7 +1509,7 @@ console.log(JSON.stringify(e));
 
 
 def _testi_node(lingua="it"):
-    return (WEB / "testi.js").read_text(encoding="utf-8") + f"\nLINGUA = {json.dumps(lingua)};\n"
+    return codice_web.leggi("testi.js") + f"\nLINGUA = {json.dumps(lingua)};\n"
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
@@ -1590,7 +1591,7 @@ def test_novita_del_pannello_affiancato():
 
 
 # ---------------------------------------------------------------- PR 12: Impostazioni, accesso, primo avvio, pulizia
-PRIMO = (WEB / "primoavvio.js").read_text(encoding="utf-8")
+PRIMO = codice_web.leggi("primoavvio.js")
 
 
 def _colori_forzati():

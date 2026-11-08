@@ -9,6 +9,7 @@ from fanta import avvisi, frasi, notifiche, push, server
 from fanta.regole import Regole
 
 from test_notifiche import ROSE, _db, _finto, _stato
+import codice_web
 
 
 @pytest.fixture
@@ -83,8 +84,8 @@ def test_formazione_pronta_e_avviso_di_prova_in_inglese(telefono):
 
 
 def test_il_web_manda_la_lingua_agli_avvisi_quando_cambia():
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
-    app = (server.WEB / "app.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
+    app = codice_web.app()
     cambia = testi[testi.index("function scegliLingua"):testi.index("// Link alle pagine Privacy")]
     assert cambia.count("linguaAgliAvvisi(") >= 2 and cambia.index("linguaAgliAvvisi(lingua);") < cambia.index("location.reload()")
     assert "keepalive: true" in app and '"/api/avvisi"' in app and "JSON.stringify({ lingua })" in app

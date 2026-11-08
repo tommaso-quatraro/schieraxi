@@ -7,18 +7,19 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import server
+import codice_web
 
 WEB = server.WEB
-APP = (WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (WEB / "stile.css").read_text(encoding="utf-8")
-DAFARE = (WEB / "dafare.js").read_text(encoding="utf-8")
-PRIMO = (WEB / "primoavvio.js").read_text(encoding="utf-8")
+DAFARE = codice_web.leggi("dafare.js")
+PRIMO = codice_web.leggi("primoavvio.js")
 
 
 def test_i_file_sono_caricati_prima_di_app_e_serviti_anche_senza_accesso():
     html = (WEB / "index.html").read_text(encoding="utf-8")
     assert html.index("dafare.js") < html.index("primoavvio.js") < html.index("app.js")
-    sw = (WEB / "sw.js").read_text(encoding="utf-8")
+    sw = codice_web.leggi("sw.js")
     assert '"/dafare.js"' in sw and '"/primoavvio.js"' in sw
     c = TestClient(server.app)
     assert c.get("/dafare.js").status_code == 200 and c.get("/primoavvio.js").status_code == 200
@@ -34,7 +35,7 @@ def test_la_sintassi_e_valida(nome):
 def test_oggi_mostra_la_card_e_ne_collega_i_pulsanti():
     assert "${cardDaFare(o.da_fare)}" in APP and "collegaDaFare(o.da_fare)" in APP
     # dal 1/11/2026 la configurazione guidata si riprende solo dalla riga di «Da fare» (niente voce in Impostazioni)
-    IMP = (WEB / "impostazioni.js").read_text(encoding="utf-8")
+    IMP = codice_web.leggi("impostazioni.js")
     assert "primoAvvioSeServe()" in APP and "apri-primo-avvio" not in APP and "apri-primo-avvio" not in IMP
     assert 'v.tipo === "primo_avvio"' in DAFARE and "apriPrimoAvvio()" in DAFARE
 

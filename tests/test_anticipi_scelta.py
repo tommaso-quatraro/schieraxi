@@ -20,6 +20,7 @@ from test_da_fare import mondo as mondo_da_fare  # noqa: F401  (fixture di «Da 
 from test_da_fare import vai as vai_da_fare
 from test_da_fare_consigliata_salvata import _cambia, _salva_la_consigliata
 from test_server import client  # noqa: F401  (fixture del server)
+import codice_web
 
 ST = "2026-27"
 GIORNATA = 10
@@ -193,7 +194,7 @@ def test_a_formazione_chiusa_niente_campo(mondo):
 
 
 # ---------------------------------------------------------------- web: i bloccati non si sostituiscono
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 NODE = shutil.which("node")
 
 
