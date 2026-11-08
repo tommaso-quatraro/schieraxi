@@ -62,6 +62,11 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
     (vale solo se la chiave manca: se c'è, le firme si controllano sempre).
   - Stato in `~/.cache/fantacalcio/`: `verificato` (ultimo commit con le firme a posto), `rifiutato` (versione da non riprovare).
   - Se una firma manca o non è fidata: non installa, scrive `rifiutato`, avviso «SchieraXI: aggiornamento bloccato» sul canale degli avvisi.
+- **Il ramo da installare** (dal 6/11/2026, parte di #481): è la punta del ramo `main` di origin, letta con
+  `git show-ref --verify refs/remotes/origin/main`, che non cerca altri nomi: un tag o un ramo locale con un nome simile non prendono il
+  suo posto. Se il ramo manca nel clone non installa niente («il ramo origin/main non esiste nel clone»). `pubblica-sito.sh` legge il
+  ramo nello stesso modo. `verifica_catena` controlla anche che il commit stia nella storia di quel ramo: serve a chi la usa con un
+  commit diverso dalla punta (nel giro di `aggiorna-app.sh` il commit è già la punta). Gli aggiornamenti normali non cambiano.
 - **Librerie**: quando cambia `requirements.txt` prepara un ambiente Python **nuovo** accanto a quello in uso (`~/fantacalcio/.venv.nuova`)
   con `pip install --require-hashes`: solo le versioni e i file con l'hash scritto lì. Solo se l'installazione riesce tutta scambia le
   cartelle (`.venv` diventa `.venv.precedente`, la nuova diventa `.venv`): l'ambiente in uso non resta mai a metà. Funziona perché
@@ -74,11 +79,13 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
     non cambia nessuna libreria, crea solo l'ambiente nuovo.
 
 ### Cosa protegge e cosa no
-- Protegge da: commit spinti su `main` con `git push` (token o chiave rubati, chiave di deploy con scrittura, un errore), anche se nascosti
-  sotto un commit firmato; force-push che riporta `main` a una versione vecchia o diversa (firmata ma che non discende dall'ultima verificata);
-  una libreria nuova o modificata su PyPI (entra solo con una PR che cambia `requirements.txt`).
+- Protegge da: commit senza firma, o firmati da un'altra chiave, spinti su `main` con `git push` (per esempio per errore), anche se
+  nascosti sotto un commit firmato; force-push che riporta `main` a una versione vecchia o diversa (firmata ma che non discende
+  dall'ultima verificata); una libreria nuova o modificata su PyPI (entra solo con una PR che cambia `requirements.txt`).
 - NON protegge da: chi entra nell'account GitHub del proprietario (dal sito può unire PR o creare commit, e GitHub li firma lo stesso:
-  **serve la verifica in due passaggi, 2FA**); il `GITHUB_TOKEN` dei job che scrivono (`unisci`, `rilascia`) può creare commit firmati
+  **serve la verifica in due passaggi, 2FA**); chi ha un accesso in scrittura al repository (token o chiave rubati, chiave di deploy
+  con scrittura): i suoi commit senza firma si fermano, ma la verifica da sola non basta, servono pochi accessi e la 2FA;
+  il `GITHUB_TOKEN` dei job che scrivono (`unisci`, `rilascia`) può creare commit firmati
   via API (per questo quei job non eseguono codice delle PR); una PR maligna unita senza leggerla.
   In breve: la firma dice «è passato da GitHub», non «l'ha scritto il proprietario».
 - **`http-ece` si compila dal sorgente**: su PyPI c'è solo il sorgente (l'hash di quello è controllato), ma per costruirlo pip scarica in
@@ -90,6 +97,7 @@ file si cancella da solo) oppure `SCHIERAXI_INSTALLA_SUBITO=1 bash ~/fantacalcio
 ### Casi limite
 - **Commit spinto a mano su `main`** (anche dal proprietario): rifiutato. Si guarda cosa contiene e, se va bene:
   `bash ~/fantacalcio/script/server/aggiorna-app.sh --fidati origin/main` (installa al giro dopo). Meglio: sempre PR, mai push diretti.
+  `--fidati origin/main` vuol dire sempre il ramo `main` di origin, anche se nel clone c'è un tag con lo stesso nome.
 - **PR aperte prima di questa modifica e unite dopo**: il loro giro di controlli usa ancora il vecchio `rilascia` (con `git push`), quindi il
   commit «Versione X» esce senza firma e il server lo rifiuta. Per questo la chiave si copia sul server solo quando quelle PR sono
   unite o ribasate (vedi «Accendere»). Se capita: controllare e `--fidati origin/main`.

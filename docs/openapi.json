@@ -3801,7 +3801,7 @@
   },
   "/api/regole/riconosci": {
    "post": {
-    "description": "Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).",
+    "description": "Legge il regolamento incollato da Leghe e propone i valori (l'app li mostra per controllo, non cambia nulla da sola).\nOltre i tetti (regole_testo.MAX_TESTO caratteri, MAX_RIGA per riga): 422 con una frase chiara.",
     "requestBody": {
      "content": {
       "application/json": {

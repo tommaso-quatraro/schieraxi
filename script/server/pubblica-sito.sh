@@ -35,12 +35,14 @@ if [ "${SCHIERAXI_SENZA_FETCH:-0}" != 1 ]; then
   [ "$rc" = 124 ] && { log "git fetch interrotto dopo ${TG}s (due volte): la rete e' bloccata"; exit 0; }
   [ "$rc" = 0 ] || { log "git fetch non riuscito due volte (rete?)"; exit 0; }
 fi
-albero=$(git rev-parse -q --verify "origin/main:sito") || { log "in origin/main non c'e' la cartella sito/"; exit 0; }
+# il ramo per nome intero con show-ref --verify, che non cerca altri nomi (un tag con un nome simile non prende il suo posto)
+main=$(git show-ref --verify -s refs/remotes/origin/main 2>/dev/null) || { log "il ramo origin/main non esiste nel clone: non pubblico"; exit 0; }
+albero=$(git rev-parse -q --verify "$main:sito") || { log "in origin/main non c'e' la cartella sito/"; exit 0; }
 [ "$albero" = "$(cat "$STATO/ultimo-sito" 2>/dev/null)" ] && [ -e "$SITO" ] && exit 0
 
 nuovo=$(mktemp -d "$STATO/sito.XXXXXX") || exit 1
 trap 'rm -rf "$nuovo"' EXIT
-git archive origin/main sito | tar -x -C "$nuovo" --strip-components=1 || { log "estrazione di sito/ non riuscita"; exit 1; }
+git archive "$main" sito | tar -x -C "$nuovo" --strip-components=1 || { log "estrazione di sito/ non riuscita"; exit 1; }
 exec 6>&-     # i file sono estratti: il clone non serve piu', aggiorna-app.sh puo' partire
 [ -f "$nuovo/index.html" ] || { log "sito/ senza index.html: non pubblico"; exit 1; }
 find "$nuovo" -name CNAME -delete

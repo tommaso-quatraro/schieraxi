@@ -1,17 +1,31 @@
-"""Le worktree degli agenti (.claude/worktrees/): ramo, PR, unito o no, modifiche, bloccata. Usato da `stato` e `pulisci`.
+"""Le worktree degli agenti (.claude/worktrees/) e i rami locali senza worktree: ramo, PR, unito o no, modifiche, bloccata.
+Usato da `stato` e `pulisci`.
 
-Gruppi:
+Gruppi delle worktree:
 - bloccata: un agente la sta usando (`git worktree lock`): non si guarda e non si tocca.
 - sparita: la cartella non c'è più (`prunable`): non si guarda; si sistema con `git worktree prune`.
 - con_modifiche: file cambiati non salvati in un commit, o commit fatti dopo l'unione della PR. Si chiede all'utente.
 - in_corso: la PR del ramo è aperta.
-- da_togliere: ramo unito (PR MERGED con la stessa testa, o testa già dentro origin/main) e niente modifiche.
-- senza_pr: niente PR aperta né unita, e la testa non è in origin/main."""
+- da_togliere: ramo unito e niente modifiche.
+- senza_pr: niente PR aperta né unita, e la testa non è in origin/main.
+
+«Unito» (funzione `unione`): PR MERGED con la stessa testa; oppure testa già dentro origin/main (dell'ultimo `git fetch`);
+oppure PR MERGED con una testa che discende da quella locale (PR portata in pari con main da GitHub, «Update branch»):
+`compare/<testa della PR>...<testa locale>` con `status` uguale a `behind` o `identical`.
+
+Gruppi dei rami locali (`rami_locali`): da_togliere (PR MERGED e unito come sopra), in_corso (PR aperta), da_chiedere (tutto
+il resto: senza PR, anche se la testa è in main; PR chiusa senza unione; commit non uniti). Mai `main`, mai il ramo corrente, mai un ramo aperto in una worktree."""
 from __future__ import annotations
 
 import comune
 
 CARTELLA_WORKTREE = "/.claude/worktrees/"
+DISCENDENTE = ("behind", "identical")
+SQUASH = ("stessa_testa", "antenata")      # unione squash: il ramo si toglie con «git branch -D»
+UNITE = ("stessa_testa", "in_main", "antenata")
+NON_VERIFICATO = "non_verificato"          # il confronto su GitHub non ha risposto
+MOTIVO_NON_VERIFICATO = "GitHub non ha risposto: riprova"
+MOTIVO_DOPO = "commit fatti dopo l'unione della PR"
 
 
 def _leggi_porcelain(testo: str) -> list[dict]:
@@ -56,13 +70,43 @@ def in_main(esegui: comune.Esegui, testa: str) -> bool:
     raise comune.ErroreComando(f"git merge-base è uscito con {r.codice}: {r.errore.strip()[:200]}")
 
 
-def raccogli(esegui: comune.Esegui) -> list[dict]:
+def antenata_della_pr(esegui: comune.Esegui, testa: str, testa_pr: str) -> str:
+    """La testa locale è un antenato della testa della PR (o la stessa)? Lo chiede a GitHub, che ha la testa della PR anche
+    quando la copia locale non ce l'ha. Tre esiti: «si», «no», «errore».
+    «no» anche con HTTP 404 o 422 (il commit locale non è su GitHub, quindi non è nella PR); «errore» per tutto il resto
+    (rete, limite dell'API, 5xx): nel dubbio non si toglie niente."""
+    r = esegui(["gh", "api", f"repos/{{owner}}/{{repo}}/compare/{testa_pr}...{testa}", "--jq", ".status"])
+    if r.codice != 0:
+        return "no" if any(c in (r.errore or r.uscita) for c in ("HTTP 404", "HTTP 422")) else "errore"
+    return "si" if r.uscita.strip() in DISCENDENTE else "no"
+
+
+def unione(esegui: comune.Esegui, pr: dict | None, testa: str) -> str | None:
+    """Come il lavoro è arrivato su main: «stessa_testa», «in_main», «antenata»; NON_VERIFICATO se GitHub non ha risposto al
+    confronto; None se non è unito. Solo i valori di UNITE contano come unito."""
+    unita = bool(pr and pr["state"] == "MERGED")
+    if unita and pr["headRefOid"] == testa:
+        return "stessa_testa"
+    if in_main(esegui, testa):
+        return "in_main"
+    if unita:
+        esito = antenata_della_pr(esegui, testa, pr["headRefOid"])
+        if esito == "si":
+            return "antenata"
+        if esito == "errore":
+            return NON_VERIFICATO
+    return None
+
+
+def raccogli(esegui: comune.Esegui, prs: dict[str, dict] | None = None) -> list[dict]:
     voci = [v for v in _leggi_porcelain(comune.chiama(esegui, ["git", "worktree", "list", "--porcelain"]))
             if CARTELLA_WORKTREE in v["percorso"]]
-    prs = pr_per_ramo(esegui) if voci else {}
+    if prs is None:
+        prs = pr_per_ramo(esegui) if voci else {}
     for v in voci:
         pr = prs.get(v["ramo"]) if v["ramo"] else None
-        v.update(pr=pr["number"] if pr else None, stato_pr=pr["state"] if pr else None, modifiche=False, unito=False)
+        v.update(pr=pr["number"] if pr else None, stato_pr=pr["state"] if pr else None, modifiche=False, unito=False,
+                 unione=None)
         if v["bloccata"]:
             v["gruppo"] = "bloccata"
             continue
@@ -70,8 +114,8 @@ def raccogli(esegui: comune.Esegui) -> list[dict]:
             v["gruppo"], v["motivo"] = "sparita", "cartella cancellata a mano"
             continue
         v["modifiche"] = bool(comune.chiama(esegui, ["git", "-C", v["percorso"], "status", "--porcelain"]).strip())
-        v["pr_unita_stessa_testa"] = bool(pr and pr["state"] == "MERGED" and pr["headRefOid"] == v["testa"])
-        v["unito"] = v["pr_unita_stessa_testa"] or in_main(esegui, v["testa"])
+        v["unione"] = unione(esegui, pr, v["testa"])
+        v["unito"] = v["unione"] in UNITE
         if v["modifiche"]:
             v["gruppo"], v["motivo"] = "con_modifiche", "file cambiati non salvati"
         elif pr and pr["state"] == "OPEN":
@@ -79,7 +123,39 @@ def raccogli(esegui: comune.Esegui) -> list[dict]:
         elif v["unito"]:
             v["gruppo"] = "da_togliere"
         elif pr and pr["state"] == "MERGED":
-            v["gruppo"], v["motivo"] = "con_modifiche", "commit fatti dopo l'unione della PR"
+            v["gruppo"] = "con_modifiche"
+            v["motivo"] = MOTIVO_NON_VERIFICATO if v["unione"] == NON_VERIFICATO else MOTIVO_DOPO
         else:
             v["gruppo"] = "senza_pr"
     return voci
+
+
+def rami_locali(esegui: comune.Esegui, prs: dict[str, dict]) -> list[dict]:
+    """I rami locali che non sono aperti in nessuna worktree (né nella cartella principale), tranne main e il ramo corrente."""
+    aperti = {v["ramo"] for v in _leggi_porcelain(comune.chiama(esegui, ["git", "worktree", "list", "--porcelain"]))
+              if v["ramo"]}
+    corrente = comune.chiama(esegui, ["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
+    esclusi = aperti | {"main", corrente}
+    rami = []
+    for riga in comune.chiama(esegui, ["git", "for-each-ref", "--format=%(refname:short) %(objectname)",
+                                       "refs/heads"]).splitlines():
+        nome, _, testa = riga.strip().partition(" ")
+        if not nome or not testa or nome in esclusi:
+            continue
+        pr = prs.get(nome)
+        voce = {"ramo": nome, "testa": testa, "pr": pr["number"] if pr else None, "stato_pr": pr["state"] if pr else None,
+                "unione": unione(esegui, pr, testa), "motivo": ""}
+        if pr and pr["state"] == "OPEN":
+            voce["gruppo"] = "in_corso"
+        elif voce["unione"] in UNITE and voce["stato_pr"] == "MERGED":
+            voce["gruppo"] = "da_togliere"
+        else:
+            # Anche un ramo senza PR con la testa già in main (appena creato, non ancora usato) si chiede: può servire a qualcuno.
+            voce["gruppo"] = "da_chiedere"
+            if voce["unione"] == NON_VERIFICATO:
+                voce["motivo"] = MOTIVO_NON_VERIFICATO
+            else:
+                voce["motivo"] = {"MERGED": MOTIVO_DOPO,
+                                  "CLOSED": "PR chiusa senza unione"}.get(voce["stato_pr"], "niente PR")
+        rami.append(voce)
+    return rami
