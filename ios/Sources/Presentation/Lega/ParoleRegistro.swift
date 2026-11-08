@@ -86,7 +86,7 @@ enum ParoleRegistro {
             return "\(percento(r.i1, segno: true)) (deve stare a \(percento(s?.i1, segno: true)) o meno) · errore "
                 + "\(Formato.decimali(r.erroreModello, cifre: 2)) contro \(Formato.decimali(r.erroreFantamedia, cifre: 2))"
         case .gioca:
-            return "scarto \(cifra(r.calibrazione, per: 100)) punti (al massimo \(cifra(s?.i2Calibrazione, per: 100))) · punteggio di Brier "
+            return "scarto \(punti(r.calibrazione, per: 100)) (al massimo \(cifra(s?.i2Calibrazione, per: 100))) · punteggio di Brier "
                 + "\(Formato.decimali(r.brier, cifre: 3)) (al massimo \(Formato.decimali(s?.i2Brier, cifre: 3)))"
         case .fascia:
             return "\(percento(r.copertura)) (deve stare tra \(percento(s?.i3Minimo)) e \(percento(s?.i3Massimo)))"
@@ -108,6 +108,12 @@ enum ParoleRegistro {
         guard let x, x.isFinite else { return "–" }
         let testo = segno ? Formato.conSegno(x * per, cifre: 1) : Formato.decimali(x * per, cifre: 1)
         return testo.hasSuffix(",0") ? String(testo.dropLast(2)) : testo
+    }
+
+    /// Un numero di punti scritto come `cifra`, con «punto» al singolare: «1 punto», «2,1 punti», «– punti».
+    static func punti(_ x: Double?, per: Double = 1) -> String {
+        let testo = cifra(x, per: per)
+        return testo == "1" ? "1 punto" : testo + " punti"
     }
 
     /// Una quota come percentuale, come `regPerc` della web: 0,057 → «5,7%», −0,03 con il segno → «−3%».

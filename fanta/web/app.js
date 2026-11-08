@@ -2758,6 +2758,8 @@ function cartaNostri(n) {
 // («−3%», «−5,7%»), come sull'iPhone (`ParoleRegistro`).
 const regCifra = (x, per = 1, segnato = false) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : (segnato ? segno(x * per, 1) : num(x * per, 1)).replace(/[,.]0$/, "");
 const regPerc = (x, segnato = false) => { const v = regCifra(x, 100, segnato); return v === "–" ? v : `${v}%`; };
+// punti scritti come `regCifra`, al singolare quando il numero scritto è «1»: «1 punto», «2,1 punti», «– punti» (`ParoleRegistro.punti`)
+const regPunti = (x, per = 1) => { const v = regCifra(x, per); return t(v === "1" ? "sd.reg_punti.one" : "sd.reg_punti.other", { n: v }); };
 function statoRegistro(reg, k) {
   if (!reg.verdetto) return { testo: tp("sd.reg_servono", Math.max(1, (reg.finestra || 8) - (reg.giornate || 0))), colore: "" };
   const ok = (reg.regge || {})[k];
@@ -2775,7 +2777,7 @@ function cartaRegistro(reg) {
   const s = reg.soglie || {}, n = reg.giornate || 0;
   const misura = (k, nome, dettaglio) => rigaMisura(reg, k, nome, dettaglio);
   const misure = n ? misura("I1", "sd.reg_i1", t("sd.reg_i1_riga", { v: regPerc(reg.i1, true), s: regPerc(s.I1, true), m: num(reg.errore_modello, 2), f: num(reg.errore_fantamedia, 2) }))
-    + misura("I2", "sd.reg_i2", t("sd.reg_i2_riga", { c: regCifra(reg.calibrazione, 100), sc: regCifra(s.I2_calibrazione, 100), b: num(reg.brier, 3), sb: num(s.I2_brier, 3) }))
+    + misura("I2", "sd.reg_i2", t("sd.reg_i2_riga", { c: regPunti(reg.calibrazione, 100), sc: regCifra(s.I2_calibrazione, 100), b: num(reg.brier, 3), sb: num(s.I2_brier, 3) }))
     + misura("I3", "sd.reg_i3", t("sd.reg_i3_riga", { v: regPerc(reg.copertura), min: regPerc(s.I3_minimo), max: regPerc(s.I3_massimo) })) : "";
   const perse = (reg.per_giornata || []).filter(g => g && g.persa);
   return `<div class="carta" id="registro-giornate"><h2>${t("sd.reg_titolo")}</h2>
@@ -2804,6 +2806,33 @@ function cartaConsiglio(c) {
     <div class="debole piccolo" style="margin:4px 0 8px">${n ? tp("sd.cons_media", n, { f: tp("sd.cons_formazioni", c.voci || 0) }) : t("sd.cons_nessuna")}</div>
     ${misure}</div>`;
 }
+// Taratura di «gioca N%» con le probabili (#379, campo `calibrazione.taratura`): una frase sola sotto i gruppi della calibrazione.
+// Stato, versione, numeri della prova e motivo sono quelli del server (`taratura_probabili.riepilogo`): qui si scrivono e basta,
+// Brier con quattro cifre (con tre si leggeva «0,096 invece di 0,096»), scarto in punti come il registro («1 punto»). Un motivo
+// che la web non conosce non si scrive (niente codici). Uguale sull'iPhone (`ParoleRegistro.taratura`).
+const MOTIVI_TARATURA = { non_migliora: "sd.tar_m_non_migliora", poche_giornate: "sd.tar_m_poche_giornate", fuori_soglia: "sd.tar_m_fuori_soglia",
+  incoerente: "sd.tar_m_incoerente", peggiorata: "sd.tar_m_peggiorata", scadenza_vicina: "sd.tar_m_scadenza_vicina", spenta_a_mano: "sd.tar_m_spenta_a_mano" };
+// «15/1» dalla data del server («2027-01-15T10:00:00»), senza passare dal fuso orario; null se non è una data
+const giornoMese = s => { const m = /^\d{4}-(\d{2})-(\d{2})/.exec(typeof s === "string" ? s : ""); return m ? `${Number(m[2])}/${Number(m[1])}` : null; };
+function rigaTaratura(tar) {
+  if (!tar) return "";
+  const motivo = tar.motivo && Object.hasOwn(MOTIVI_TARATURA, tar.motivo) ? t(MOTIVI_TARATURA[tar.motivo], { n: Number(tar.giornate) || 0 }) : "";
+  const v = esc(tar.versione ?? "–"), dal = giornoMese(tar.dal), p = tar.prova;
+  let parti;
+  if (tar.stato === "in_attesa") {
+    const n = Number(tar.giornate) || 0, minimo = Number(tar.minimo) || 0;
+    parti = [n < minimo ? tp("sd.tar_in_attesa_su", n, { m: minimo }) : tp("sd.tar_in_attesa", n)];
+  } else if (tar.stato === "attiva") {
+    parti = [dal ? t("sd.tar_attiva_dal", { d: dal, v }) : t("sd.tar_attiva", { v })];
+    if (p) parti.push(tp("sd.tar_prova", Number(p.giornate) || 0, { b: num(p.brier, 4), p: num(p.brier_prima, 4), c: regPunti(p.calibrazione, 100) }));
+    if (tar.motivo === "scadenza_vicina") parti.push(motivo);
+  } else if (tar.stato === "non_attiva") {
+    parti = [t("sd.tar_non_attiva"), motivo];
+  } else if (tar.stato === "spenta") {
+    parti = [t("sd.tar_spenta")];
+  } else return "";
+  return `<div class="debole piccolo" id="taratura-probabili" style="margin-top:8px">${t("sd.tar_riga", { s: parti.filter(Boolean).join(" · ") })}</div>`;
+}
 // Stato dei dati: da dove arriva tutto, quando è stato aggiornato, errori, foto e confronto tra probabilità previste e giocatori che hanno giocato.
 async function apriStatoDati() {
   apriFoglio(`<div class="caricamento">${t("scambio.controllo_dati")}</div>`);
@@ -2812,7 +2841,7 @@ async function apriStatoDati() {
     const s = await api("/api/stato-dati");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
     const nomiFonte = { aggiornamento: t("sd.f_aggiornamento"), listone: t("sd.f_listone"), voti: t("sd.f_voti"), probabili: t("sd.f_probabili"),
-      calendario: t("sd.f_calendario"), understat: t("sd.f_understat") };
+      calendario: t("sd.f_calendario"), understat: t("sd.f_understat"), "taratura-probabili": t("sd.f_taratura") };
     const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(nomiFonte[a.cosa] || nomiFonte[a.cosa.split(" ")[0]] || a.cosa)}</span>
       <span class="debole piccolo">${a.quando ? esc(quando(a.quando)) : t("sd.mai")}</span></div>
       ${a.errori.map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
@@ -2847,7 +2876,8 @@ async function apriStatoDati() {
       <div class="carta"><h2>${t("scambio.quanto_azzecca_modello")}</h2>
         <div class="debole piccolo">${c.giornate ? t("sd.giornate_giocate", { n: c.giornate }) : t("sd.appena_finisce")}
           ${t("sd.corregge")}</div>
-        ${gruppi}</div>`);
+        ${gruppi}
+        ${rigaTaratura(c.taratura)}</div>`);
     document.querySelectorAll("#fonti-dati button[data-fonte]").forEach(bt => bt.addEventListener("click", async () => {
       try {
         await api("/api/admin/fonti", { method: "PUT", body: JSON.stringify({ fonte: bt.dataset.fonte, acceso: bt.dataset.acceso !== "1" }) });

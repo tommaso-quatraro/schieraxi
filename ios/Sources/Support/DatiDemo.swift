@@ -737,7 +737,7 @@ private extension LegaDemo {
                 ["gruppo": "Titolare 90-100%", "n": 142, "osservato": 0.93, "previsto": 0.95, "indicativo": false],
                 ["gruppo": "Titolare 70-89%", "n": 61, "osservato": 0.78, "previsto": 0.8, "indicativo": false],
                 ["gruppo": "Panchina 20-49%", "n": 12, "osservato": 0.25, "previsto": 0.31, "indicativo": true],
-            ]],
+            ], "taratura": taraturaProbabili(adesso: adesso)],
             "partite": ["totali": 380, "giocate": 100],
             "registro_nostri": registroNostri(),
             "aggiornamenti": [
@@ -749,6 +749,15 @@ private extension LegaDemo {
             "registro": registroGiornate(),
             "consiglio": consiglioFormazione(adesso: adesso),
         ])
+    }
+
+    /// La taratura di «gioca N%» con le probabili (#379) come la manda il server: accesa da due giorni, dopo le 8 giornate del
+    /// registro (4 per tarare, 4 per provare). Prima si mostravano i numeri misurati dal registro, con lo stesso Brier (0,128).
+    /// Numeri inventati.
+    private static func taraturaProbabili(adesso: Date) -> [String: Any] {
+        ["stato": "attiva", "giornate": 8, "minimo": 4, "versione": 1, "motivo": NSNull(),
+         "dal": formatta(adesso.addingTimeInterval(-2 * 86_400), "yyyy-MM-dd'T'HH:mm:ss"),
+         "prova": ["giornate": 4, "brier": 0.1194, "brier_prima": 0.1307, "brier_mostrati": 0.128, "calibrazione": 0.021]]
     }
 
     /// Gli indicatori del consiglio di formazione (#366) come li manda il server: 8 giornate (dalla 3 alla 10) su 3 utenti; non regge

@@ -10,6 +10,8 @@ enum NomiDati {
         "listone": "Elenco dei calciatori",
         "probabili": "Probabili formazioni",
         "understat": "Statistiche delle partite",
+        // la riga scritta a ogni cambio della taratura di «gioca N%» (#379), come `sd.f_taratura` della web
+        "taratura-probabili": "Taratura di «gioca N%»",
     ]
 
     /// Voci di server vecchi che l'app non mostra più (fonti di dati non più usate).

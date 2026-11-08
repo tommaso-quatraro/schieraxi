@@ -23,24 +23,64 @@
 #   avvio, dopo il passaggio a un repository nuovo o dopo un rifiuto controllato a mano). Non installa: lo fa il giro dopo.
 # Il clone ~/schieraxi-src segue il suo "origin", qualunque sia; se manca lo crea da SCHIERAXI_REPO
 # (predefinito: https://github.com/tommaso-quatraro/schieraxi.git).
+# SCHIERAXI_ISTANZA: vuota (o assente) = la produzione, come sempre. "prova" = l'ambiente di prova (script/server/prova/LEGGIMI.md),
+#   che gira con il SUO utente (schieraxi-prova) e la sua casa: cartella ~/app, stato ~/.cache/schieraxi-prova, clone ~/schieraxi-src e
+#   blocco suoi, chiave delle firme /etc/schieraxi-prova/chiavi-firma.asc (di root), servizio schieraxi-prova, porta 8001, nessuna
+#   attesa della fine delle partite, nessun avviso. Nella casa della produzione (dove c'e' ~/fantacalcio) la prova non parte.
+#   Ogni altro valore: esce con 2 senza fare niente.
+# Opzione --configurazione: stampa cartella, stato, servizio, porta, attesa delle partite, clone, blocco e chiave dell'istanza ed esce
+#   (non scrive niente).
 #   Dal crontab dell'utente del server:  */10 * * * * /bin/bash $HOME/fantacalcio/script/server/aggiorna-app.sh >/dev/null 2>&1
 set -u
 export PYTHONUTF8=1     # il server può avere la lingua it_IT (Latin-1): senza questo Python legge male gli accenti passati dallo script
 export GIT_TERMINAL_PROMPT=0     # mai domande di password: il repository e' pubblico
 PROVA=0
 FIDATI=""
+CONFIGURAZIONE=0
 case "${1:-}" in
   --prova) PROVA=1 ;;
   --fidati) FIDATI="${2:-}"; [ -n "$FIDATI" ] || { echo "uso: $0 --fidati COMMIT (di solito: origin/main dopo averlo controllato)"; exit 2; } ;;
+  --configurazione) CONFIGURAZIONE=1 ;;
 esac
 SRC="${SCHIERAXI_SRC:-$HOME/schieraxi-src}"     # cartella della copia di GitHub (per le prove si puo cambiare)
-DEST="$HOME/fantacalcio"
-STATO="$HOME/.cache/fantacalcio"
+ISTANZA="${SCHIERAXI_ISTANZA:-}"
+case "$ISTANZA" in
+  "")    DEST="$HOME/fantacalcio"; STATO="$HOME/.cache/fantacalcio";    SERVIZIO=fantacalcio;     PORTA=8000; ATTENDE_PARTITE=1
+         CHIAVI_DI_SOLITO="$HOME/.config/schieraxi/chiavi-firma.asc" ;;
+  prova) DEST="$HOME/app";         STATO="$HOME/.cache/schieraxi-prova"; SERVIZIO=schieraxi-prova; PORTA=8001; ATTENDE_PARTITE=0
+         CHIAVI_DI_SOLITO=/etc/schieraxi-prova/chiavi-firma.asc     # di root: nella sua casa la prova la potrebbe cambiare
+         if [ -e "$HOME/fantacalcio" ]; then      # qui userebbe il clone della produzione con un altro blocco
+           echo "Questa e' la casa della produzione: l'ambiente di prova gira con il suo utente, schieraxi-prova. Non faccio niente." >&2
+           exit 2
+         fi ;;
+  *) echo "SCHIERAXI_ISTANZA sconosciuta: vuota per la produzione oppure prova (script/server/prova/LEGGIMI.md). Non faccio niente." >&2
+     exit 2 ;;
+esac
+# Il blocco della pubblicazione va con il clone: chi usa lo stesso clone usa lo stesso blocco (un solo git fetch e una sola verifica
+# delle firme, che lavora in .git/verifica-firme, alla volta). Produzione: ~/.cache/fantacalcio/blocco-pubblicazione, lo stesso di
+# pubblica-sito.sh, promemoria.sh e sentinella.sh. La prova ha la sua casa, quindi clone suo e blocco suo: niente in comune.
+BLOCCO="$STATO/blocco-pubblicazione"
+CHIAVI="${SCHIERAXI_CHIAVI:-$CHIAVI_DI_SOLITO}"     # chiavi fidate per le firme: FUORI dal repository (e, per la prova, fuori dalla sua casa)
+if [ "$CONFIGURAZIONE" = 1 ]; then
+  printf 'DEST=%s\nSTATO=%s\nSERVIZIO=%s\nPORTA=%s\nATTENDE_PARTITE=%s\nSRC=%s\nBLOCCO=%s\nCHIAVI=%s\n' \
+    "$DEST" "$STATO" "$SERVIZIO" "$PORTA" "$ATTENDE_PARTITE" "$SRC" "$BLOCCO" "$CHIAVI"
+  exit 0
+fi
+if [ "$ISTANZA" = prova ]; then
+  if [ ! -x "$DEST/.venv/bin/python" ]; then
+    echo "ambiente di prova non preparato ($DEST/.venv/bin/python manca): prima script/server/prova/prepara-prova.sh" >&2
+    exit 0
+  fi
+  # la cartella dati la scrive anche il servizio della prova: un collegamento simbolico al posto del log farebbe scrivere questo
+  # script (che gira fuori dal recinto del servizio) da un'altra parte, per esempio sul codice
+  for f in "$DEST/dati/pubblicazione.log" "$DEST/dati/pubblicazione.log.tmp"; do
+    if [ -L "$f" ]; then echo "$f e' un collegamento simbolico: non scrivo e non installo niente" >&2; exit 1; fi
+  done
+fi
 LOG="$DEST/dati/pubblicazione.log"
 ERR="$LOG"; [ "${1:-}" = "--prova" ] && ERR=/dev/null
 REPO="${SCHIERAXI_REPO:-https://github.com/tommaso-quatraro/schieraxi.git}"
 CARTELLE="fanta tests script requirements.txt requirements-dev.txt"     # le sole cose che finiscono sul server
-CHIAVI="${SCHIERAXI_CHIAVI:-$HOME/.config/schieraxi/chiavi-firma.asc}"     # chiavi fidate per le firme: FUORI dal repository
 QUI=$(cd "$(dirname "$0")" && pwd)     # la cartella di questo script (prima di ogni cd)
 . "$QUI/verifica-firme.sh"
 
@@ -48,7 +88,7 @@ if [ "$PROVA" = 0 ]; then
   mkdir -p "$STATO" "$DEST/dati"
   # blocco-pubblicazione e' condiviso: pubblica-sito.sh lo prende per il suo git fetch sullo stesso clone e promemoria.sh (controllo di
   # salute) lo aspetta, cosi' non vede l'app "spenta" mentre questo script la riavvia. Si aspetta al massimo un minuto chi lo tiene.
-  exec 7>"$STATO/blocco-pubblicazione"
+  exec 7>"$BLOCCO"
   flock -w "${SCHIERAXI_ATTESA_BLOCCO:-60}" 7 || { [ -n "$FIDATI" ] && echo "c'e' un aggiornamento in corso: riprova fra un minuto"; exit 0; }
   exec 9>"$STATO/blocco"
   flock -n 9 || { [ -n "$FIDATI" ] && echo "c'e' un aggiornamento in corso: riprova fra un minuto"; exit 0; }
@@ -61,6 +101,7 @@ log() {
   return 0
 }
 avvisa() {   # titolo, testo, priorita (usa il canale delle notifiche dell'app: web o ntfy)
+  [ "$ISTANZA" = prova ] && return 0     # la prova non avvisa: gli avvisi vanno al canale della produzione (se resta indietro, lo vede il collaudo)
   ( cd "$DEST" && nice -n 10 .venv/bin/python -c "
 import sys
 from fanta import notifiche
@@ -151,7 +192,10 @@ fi
 # 3 = occupato (si rimanda al primo giro libero, una riga nel log per versione); qualunque altro esito (0, comando che non c'e'
 # ancora, errore, tempo scaduto) = si installa: un controllo guasto non deve fermare gli aggiornamenti.
 # Emergenza: SCHIERAXI_INSTALLA_SUBITO=1 oppure il file ~/.cache/fantacalcio/installa-subito (si cancella da solo dopo l'uso).
-if [ "${SCHIERAXI_INSTALLA_SUBITO:-0}" = 1 ] || [ -e "$STATO/installa-subito" ]; then
+# L'ambiente di prova non aspetta (ATTENDE_PARTITE=0): nessun utente vero lo usa e deve avere ogni versione prima della produzione.
+if [ "$ATTENDE_PARTITE" = 0 ]; then
+  :
+elif [ "${SCHIERAXI_INSTALLA_SUBITO:-0}" = 1 ] || [ -e "$STATO/installa-subito" ]; then
   log "installazione forzata di ${nuovo:0:7}: non controllo partite e scadenze"
   [ "$PROVA" = 1 ] || rm -f "$STATO/installa-subito" "$STATO/rimandata"
 else
@@ -243,11 +287,11 @@ if [ "$vecchi_req" != "$(md5sum "$DEST/requirements.txt" | cut -d' ' -f1)" ]; th
   fi
 fi
 
-sudo systemctl restart fantacalcio
+sudo systemctl restart "$SERVIZIO"
 risponde=0
 for i in $(seq 1 "${SCHIERAXI_ATTESE_AVVIO:-25}"); do
   # 200 con un solo utente; 401 con gli account accesi: in entrambi i casi il servizio risponde
-  codice=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "X-Fanta: 1" http://127.0.0.1:8000/api/account/me)
+  codice=$(curl -s -m 5 -o /dev/null -w '%{http_code}' -H "X-Fanta: 1" "http://127.0.0.1:$PORTA/api/account/me")
   if [ "$codice" = 200 ] || [ "$codice" = 401 ]; then risponde=1; break; fi
   sleep 1
 done
@@ -264,7 +308,7 @@ else
     rm -rf "$DEST/.venv.scartata"
     mv "$DEST/.venv" "$DEST/.venv.scartata" && mv "$DEST/.venv.precedente" "$DEST/.venv" && rm -rf "$DEST/.venv.scartata"
   fi
-  sudo systemctl restart fantacalcio
+  sudo systemctl restart "$SERVIZIO"
   echo "$nuovo" > "$STATO/rifiutato"
   sleep "${SCHIERAXI_PAUSA_DOPO_RITORNO:-5}"
   avvisa "SchieraXI: aggiornamento annullato" "La versione nuova non partiva: sono tornato a quella di prima. Dettagli in dati/pubblicazione.log." 4
