@@ -2000,7 +2000,8 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
         account.limite.consuma(db, account._chiave("importa-per-conto-di"), *IMPORTAZIONI_PER_CONTO_DI)
     importa_sicuro.controlla_griglie(griglie)
     ctx = Contesto.per_utente(utente_id)
-    riconosciute = _riconosci(griglie, ctx)               # fuori dal blocco, come le importazioni dall'app
+    # fuori dal blocco, come le importazioni dall'app; il comando da riga di comando passa anche gli Excel letti da leggi_excel
+    riconosciute = _riconosci(griglie, ctx, excel=isinstance(griglie, importa_sicuro.FogliExcel))
     with _scrittura_rose:
         if sostituisci_tutto:
             _copia_datata_delle_rose(ctx)

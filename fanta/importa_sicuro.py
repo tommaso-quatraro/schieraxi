@@ -116,7 +116,12 @@ def _controlla_testa(testa: bytes) -> None:
         raise ValueError("Il file Excel usa una codifica non ammessa: salvalo di nuovo da Excel come .xlsx normale")
 
 
-def leggi_excel(percorso: Path) -> list[tuple[str, list[list[str]]]]:
+class FogliExcel(list):
+    """Le griglie lette da un Excel (`leggi_excel`): una lista come le altre, ma chi la riceve sa che viene da un Excel
+    (per esempio per scegliere il messaggio giusto quando il riconoscimento va oltre il tempo massimo)."""
+
+
+def leggi_excel(percorso: Path) -> FogliExcel:
     """[(nome foglio, griglia)] di un .xlsx, dopo i controlli e in un processo separato con tempo (e su Linux memoria) limitati."""
     controlla_zip(percorso)
     try:
@@ -133,7 +138,7 @@ def leggi_excel(percorso: Path) -> list[tuple[str, list[list[str]]]]:
     if codice != 0 or uscita is None:
         raise ValueError(ERRORE_FILE if codice == 3 else PESANTE)
     try:
-        return [(titolo, griglia) for titolo, griglia in json.loads(uscita)]
+        return FogliExcel((titolo, griglia) for titolo, griglia in json.loads(uscita))
     except (ValueError, TypeError):
         raise ValueError(ERRORE_FILE) from None
 

@@ -141,6 +141,66 @@ def test_riconoscimento_oltre_il_tempo_si_ferma_con_messaggio(ambiente, tmp_path
     assert a.get("/api/squadre").status_code == 409                       # niente salvato
 
 
+def test_per_conto_di_un_excel_oltre_il_tempo_ha_il_messaggio_dell_excel(ambiente, tmp_path, monkeypatch):  # noqa: F811
+    """Il comando `importa-per-conto-di` legge l'Excel con leggi_excel e passa le griglie: il messaggio è quello dell'Excel."""
+    _, id_a = nuovo_utente("utentea")
+    griglie = importa_sicuro.leggi_excel(excel(tmp_path, {"Rose": [["Mia"]] + [["D", "Bastoni", 5]] * 60}))
+    secondi = itertools.count()
+    monkeypatch.setattr(limiti, "_orologio", lambda: float(next(secondi)))
+    with pytest.raises(ValueError) as e:
+        server.importa_per_conto_di(id_a, griglie, False, None)
+    assert str(e.value) == importa_sicuro.PESANTE
+    with pytest.raises(ValueError) as e:                                  # il testo resta col messaggio del testo
+        server.importa_per_conto_di(id_a, [("testo", rose.griglia_da_testo(rose_lunghe()))], False, None)
+    assert str(e.value) == TESTO_LUNGO
+
+
+def test_senza_account_nessun_tempo_massimo(monkeypatch):
+    class Ctx:
+        utente_id = None
+    assert limiti.tempo_riconoscimento(Ctx()) is None                     # l'app di sempre non ha un tempo massimo
+    Ctx.utente_id = 7
+    adesso = [100.0]
+    monkeypatch.setattr(limiti, "_orologio", lambda: adesso[0])
+    scaduto = limiti.tempo_riconoscimento(Ctx())
+    assert scaduto() is False
+    adesso[0] += limiti.MAX_SECONDI_RICONOSCIMENTO
+    assert scaduto() is False
+    adesso[0] += 0.5
+    assert scaduto() is True
+
+
+# ---------------------------------------------------------------- uso normale: nessun limite
+def listone_di(quanti: int) -> list:
+    """Calciatori inventati con nomi distinti (solo lettere), ruoli a rotazione, codici di 4 cifre come quelli veri."""
+    from fanta.listone import Calciatore
+    sillabe = ["ba", "ce", "di", "fo", "gu", "la", "me", "ni", "po", "ru"]
+    return [Calciatore(1000 + i, "".join(sillabe[int(c)] for c in f"{i:03d}").capitalize() + "ni", "PDCA"[i % 4], "", "ROM",
+                       "roma", 10, 10, 100) for i in range(quanti)]
+
+
+def test_uso_normale_excel_passa(ambiente, tmp_path, monkeypatch):  # noqa: F811
+    """Un Excel grande ma normale: 20 squadre da 40 giocatori, più due fogli che non sono rose (regolamento e punteggi di
+    ogni giornata). Con i limiti di sempre e gli account accesi entra: nessun tetto di celle né di tempo lo tocca.
+    (Un foglio col listone qui non va: il lettore di sempre legge ogni foglio e ne farebbe una squadra da 800 giocatori.)"""
+    calciatori = listone_di(800)
+    monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
+    rose_foglio = []
+    for s in range(20):
+        rose_foglio.append([f"Squadra {s + 1}"])
+        rose_foglio += [[c.ruolo, c.nome, "ROM", 5] for c in calciatori[s * 40:(s + 1) * 40]]
+    regolamento = [[f"Regola {k + 1}: bonus e malus come da regolamento della lega, panchina lunga e modificatore spento"]
+                   for k in range(60)]
+    punteggi = [["Giornata"] + [f"Squadra {k + 1}" for k in range(20)]] + [[g] + [66.5 + k for k in range(20)] for g in range(1, 39)]
+    p = excel(tmp_path, {"Rose": rose_foglio, "Regolamento": regolamento, "Punteggi": punteggi})
+    a, _ = nuovo_utente("utentea")
+    r = a.post("/api/rose/file", files={"file": ("lega.xlsx", p.read_bytes(), "application/octet-stream")})
+    assert r.status_code == 200, r.text
+    assert r.json()["totale_squadre"] == 20
+    squadre = a.get("/api/squadre").json()
+    assert len(squadre) == 20 and all(len(a.get("/api/rosa", params={"squadra": s["nome"]}).json()["giocatori"]) == 40 for s in squadre[:3])
+
+
 # ---------------------------------------------------------------- scritture degli altri: non aspettano
 @pytest.mark.parametrize("come", ["testo", "file", "per_conto_di"])
 def test_le_scritture_degli_altri_non_aspettano_il_riconoscimento(ambiente, monkeypatch, come):  # noqa: F811
