@@ -5,7 +5,15 @@ così un collaudo automatico (lavoro C2 del piano) la prova con un account finto
 Piano: `docs/superpowers/plans/2026-11-08-ondata-2.md` (lavori C1-C3, §4). Issue #510.
 
 **Nessun comando di questa pagina si esegue senza l'ok del proprietario.** Si lavora nella sessione `casa`, come utente della
-produzione (`<utente>`, quello che ha `sudo`), un passo alla volta. Ogni passo ha la sua **Prova**: se non torna ci si ferma. Ogni passo
+produzione (`<utente>`, quello che ha `sudo`), un passo alla volta. Se `sudo -l` (passo 4.1) dice che l'utente della produzione può
+solo riavviare `fantacalcio`, i comandi con `sudo` si lanciano in una sessione di root (`ssh root@…`):
+- si toglie `sudo` solo quando sta subito prima del comando (`sudo install …` → `install …`); `sudo -u <utente> …` resta com'è (lo usa
+  anche root);
+- `~` diventa `/home/<utente>` (la casa della produzione), tranne dentro i comandi lanciati con `sudo -u schieraxi-prova -H`, dove `~` è
+  già la casa della prova e resta com'è;
+- le righe che preparano una variabile per i comandi seguenti (`v=…`, `py=…`, `pid=…`) vanno nella stessa sessione di root dei comandi
+  che la usano, altrimenti lì la variabile è vuota;
+- restano dell'utente della produzione, nella sua sessione, solo l'esportazione (4.4) e il suo crontab (`crontab -l`, `crontab -e`, 4.10). Ogni passo ha la sua **Prova**: se non torna ci si ferma. Ogni passo
 ha il suo **Indietro**; il ritorno indietro completo è il passo 4.11. Nei comandi `<dominio>`, `<utente>` e `<proprietario>` si scrivono
 al momento: non vanno nel repository.
 **Comandi con `--prova` e controlli a mano**: si lanciano ai minuti che finiscono per 2 o per 7 (12, 17, 22…), lontano dai giri
@@ -40,7 +48,9 @@ Protegge:
   `/srv/schieraxi-prova/app/dati` e una `/tmp` privata (`ProtectSystem=strict`), invisibili chiave delle firme, clone, stato e cartella di
   scambio (`InaccessiblePaths`), processi degli altri utenti nascosti dove il kernel lo permette (`ProtectProc=invisible`), niente `sudo`
   né programmi setuid (`NoNewPrivileges`), collegamenti solo con questo computer e mai verso internet (`IPAddressAllow=localhost`,
-  `IPAddressDeny=any`), memoria e processore limitati.
+  `IPAddressDeny=any`), memoria e processore limitati; in più le stesse righe del recinto della produzione (niente privilegi,
+  kernel, moduli, orologio, dispositivi, spazi dei nomi: `CapabilityBoundingSet=` vuoto, `ProtectKernel…`, `PrivateDevices`,
+  `RestrictNamespaces`…).
 - **Collegamenti simbolici rifiutati.** La cartella `app/dati` la scrive anche il servizio; gli script della prova (che girano fuori
   dal recinto del servizio, con lo stesso utente) non scrivono mai attraverso un collegamento simbolico messo lì al posto di un log o
   dell'archivio: si fermano.
@@ -230,7 +240,7 @@ Prova:
   ps -o user= -p "$pid"                                              # schieraxi-prova
   sudo ls -A /proc/$pid/root/home                                   # niente: /home per lui è vuota
   sudo cat /proc/$pid/environ | tr '\0' '\n' | grep -E '^FANTA_(MAIL|PIANIFICATORE|FONTE_)'    # spento / 0
-  systemd-analyze security schieraxi-prova | tail -n 1               # il punteggio di esposizione, da annotare
+  systemd-analyze security schieraxi-prova | tail -n 1               # il punteggio di esposizione: circa 3 o meno, come fantacalcio
   ```
 - `systemctl status fantacalcio --no-pager` è uguale a prima.
 

@@ -456,6 +456,22 @@ def test_unita_della_prova_gira_con_il_suo_utente_e_non_vede_la_produzione():
     assert u["Install"]["WantedBy"] == ["multi-user.target"]
 
 
+def test_unita_della_prova_ha_almeno_le_protezioni_della_produzione():
+    """Sul server (8/11/2026) `systemd-analyze security` dava 8.0 alla prova e 3.0 alla produzione: alla prova mancavano le righe che
+    la produzione ha in /etc/systemd/system/fantacalcio.service.d/sicurezza.conf. La prova, con codice non ancora in produzione,
+    non deve avere meno recinto della produzione."""
+    s = _unita((PROVA / "schieraxi-prova.service").read_text(encoding="utf-8"))["Service"]
+    attese = {
+        "ProtectKernelTunables": "true", "ProtectKernelModules": "true", "ProtectKernelLogs": "true",
+        "ProtectControlGroups": "true", "ProtectClock": "true", "ProtectHostname": "true",
+        "PrivateDevices": "true", "RestrictSUIDSGID": "true", "RestrictNamespaces": "true", "RestrictRealtime": "true",
+        "LockPersonality": "true", "SystemCallArchitectures": "native", "ProcSubset": "pid",
+        "CapabilityBoundingSet": "", "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+    }
+    for chiave, valore in attese.items():
+        assert s.get(chiave) == [valore], f"{chiave}={valore} (come la produzione)"
+
+
 def test_nessun_file_di_variabili_dove_scrive_la_prova():
     """systemd legge un EnvironmentFile come root, PRIMA del recinto, e segue i collegamenti simbolici: un file nella casa della prova
     (che la prova possiede) o nella cartella di scambio lo potrebbe far puntare al file delle variabili della produzione, con i suoi

@@ -68,6 +68,24 @@ PrivateTmp=yes
 NoNewPrivileges=yes
 IPAddressAllow=localhost
 IPAddressDeny=any
+# le stesse righe del recinto della produzione (sicurezza.conf del servizio fantacalcio): niente kernel, moduli, log del kernel,
+# orologio, dispositivi, cgroup; niente privilegi (CapabilityBoundingSet vuoto), setuid, spazi dei nomi, tempo reale; solo IPv4, IPv6
+# e socket locali; in /proc solo i processi
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+PrivateDevices=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+ProcSubset=pid
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
 WantedBy=multi-user.target
