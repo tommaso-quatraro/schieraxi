@@ -139,7 +139,7 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
     for c, esito in non_verdi:
         motivi.append(f"controlli: {c['workflowName']} è «{esito}» sul commit in testa {testa[:7]}"
                       + (" (guasto d'infrastruttura: da rilanciare)" if esito == "infrastruttura" else ""))
-    file =[(f["status"], f["previous_filename"], f["filename"]) if f.get("previous_filename") else (f["status"], f["filename"])
+    file = [(f["status"], f["previous_filename"], f["filename"]) if f.get("previous_filename") else (f["status"], f["filename"])
             for f in comune.chiama_json(esegui, ["gh", "api", f"repos/{{owner}}/{{repo}}/pulls/{numero}/files", "--paginate"]) or []]
     percorsi = [p for voce in file for p in voce[1:]]
     serve_commit = _tocca_coerenza(percorsi) or any(p.startswith("tests/") for p in percorsi)
