@@ -1,0 +1,26 @@
+{
+  "shell.salta": {
+    "it": "Vai al contenuto",
+    "en": "Skip to content"
+  },
+  "shell.cerca": {
+    "it": "Cerca un giocatore",
+    "en": "Search for a player"
+  },
+  "shell.impostazioni": {
+    "it": "Impostazioni",
+    "en": "Settings"
+  },
+  "shell.aggiorna": {
+    "it": "Aggiorna i dati",
+    "en": "Refresh the data"
+  },
+  "shell.dettagli": {
+    "it": "Dettagli",
+    "en": "Details"
+  },
+  "shell.chiudi": {
+    "it": "Chiudi",
+    "en": "Close"
+  }
+}

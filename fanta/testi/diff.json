@@ -1,0 +1,22 @@
+{
+  "diff.1": {
+    "it": "Facile",
+    "en": "Easy"
+  },
+  "diff.2": {
+    "it": "Abbordabile",
+    "en": "Manageable"
+  },
+  "diff.3": {
+    "it": "Normale",
+    "en": "Average"
+  },
+  "diff.4": {
+    "it": "Dura",
+    "en": "Tough"
+  },
+  "diff.5": {
+    "it": "Molto dura",
+    "en": "Very tough"
+  }
+}

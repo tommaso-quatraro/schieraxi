@@ -1,0 +1,46 @@
+{
+  "tit.titolare": {
+    "it": "Probabile titolare",
+    "en": "Likely starter"
+  },
+  "tit.ballottaggio": {
+    "it": "In ballottaggio",
+    "en": "Contested"
+  },
+  "tit.panchina": {
+    "it": "Probabile panchina",
+    "en": "Likely bench"
+  },
+  "tit.improbabile": {
+    "it": "Improbabile",
+    "en": "Unlikely"
+  },
+  "tit.fuori": {
+    "it": "Fuori",
+    "en": "Out"
+  },
+  "tit.st_fatto": {
+    "it": "Ha giocato",
+    "en": "Played"
+  },
+  "tit.st_senza_voto": {
+    "it": "Senza voto",
+    "en": "No grade"
+  },
+  "tit.st_attesa_voti": {
+    "it": "Voto in arrivo",
+    "en": "Grade coming"
+  },
+  "tit.st_in_corso": {
+    "it": "Partita in corso",
+    "en": "Match on"
+  },
+  "tit.st_da_giocare": {
+    "it": "Da giocare",
+    "en": "Still to play"
+  },
+  "tit.st_rinviata": {
+    "it": "Rinviata",
+    "en": "Postponed"
+  }
+}

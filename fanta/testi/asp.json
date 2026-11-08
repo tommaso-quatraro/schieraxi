@@ -1,0 +1,70 @@
+{
+  "asp.avvisi_titolo": {
+    "it": "Quali avvisi",
+    "en": "Which alerts"
+  },
+  "asp.lingua": {
+    "it": "Lingua",
+    "en": "Language"
+  },
+  "asp.tema": {
+    "it": "Tema",
+    "en": "Theme"
+  },
+  "asp.tema_auto": {
+    "it": "Automatico",
+    "en": "Automatic"
+  },
+  "asp.tema_chiaro": {
+    "it": "Chiaro",
+    "en": "Light"
+  },
+  "asp.tema_scuro": {
+    "it": "Scuro",
+    "en": "Dark"
+  },
+  "asp.col_verde": {
+    "it": "Verde",
+    "en": "Green"
+  },
+  "asp.col_blu": {
+    "it": "Blu",
+    "en": "Blue"
+  },
+  "asp.col_viola": {
+    "it": "Viola",
+    "en": "Purple"
+  },
+  "asp.col_arancio": {
+    "it": "Arancio",
+    "en": "Orange"
+  },
+  "asp.col_rosso": {
+    "it": "Rosso",
+    "en": "Red"
+  },
+  "asp.col_argento": {
+    "it": "Argento",
+    "en": "Silver"
+  },
+  "asp.testo": {
+    "it": "Dimensione del testo",
+    "en": "Text size"
+  },
+  "asp.testo_normale": {
+    "it": "Normale",
+    "en": "Normal"
+  },
+  "asp.testo_grande": {
+    "it": "Grande",
+    "en": "Large"
+  },
+  "asp.testo_molto": {
+    "it": "Molto grande",
+    "en": "Extra large"
+  },
+  "asp.auto_spiega": {
+    "it": "Automatico segue il chiaro e lo scuro del dispositivo.",
+    "en": "Automatic follows the light and dark mode of your device."
+  }
+}

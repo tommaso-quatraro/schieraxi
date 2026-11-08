@@ -1,0 +1,146 @@
+{
+  "pav.non_sono_riuscito": {
+    "it": "Non sono riuscito a ricordare a che punto sei: puoi continuare lo stesso",
+    "en": "I could not remember where you are: you can continue anyway"
+  },
+  "pav.passi_del_primo": {
+    "it": "Passi del primo avvio",
+    "en": "First-run steps"
+  },
+  "pav.primo_avvio": {
+    "it": "Primo avvio",
+    "en": "First run"
+  },
+  "pav.tutto_pronto_mister": {
+    "it": "Tutto pronto, Mister",
+    "en": "All set, coach"
+  },
+  "pav.vai_oggi": {
+    "it": "Vai a Oggi",
+    "en": "Go to Today"
+  },
+  "pav.incolla_testo_delle": {
+    "it": "Incolla il testo delle rose o scegli il file Excel che scarichi da Leghe.",
+    "en": "Paste the roster text or choose the Excel file you download from Leghe."
+  },
+  "pav.testo_delle_rose": {
+    "it": "Testo delle rose",
+    "en": "Roster text"
+  },
+  "pav.oppure_file": {
+    "it": "Oppure un file",
+    "en": "Or a file"
+  },
+  "pav.file_scelto": {
+    "it": "File scelto: {nome}",
+    "en": "Chosen file: {nome}"
+  },
+  "pav.incolla_testo_delle_2": {
+    "it": "Incolla il testo delle rose o scegli un file",
+    "en": "Paste the roster text or choose a file"
+  },
+  "pav.prima_servono_rose": {
+    "it": "Prima servono le rose: torna al passo «Le rose».",
+    "en": "The rosters come first: go back to the «Rosters» step."
+  },
+  "pav.quale_squadra_tua": {
+    "it": "Quale squadra è la tua?",
+    "en": "Which team is yours?"
+  },
+  "pav.permesso_negato_abilita": {
+    "it": "Permesso negato: abilita gli avvisi per l'app nelle impostazioni del telefono",
+    "en": "Permission denied: turn on alerts for the app in your phone's settings"
+  },
+  "pav.n_rose": {
+    "it": "Le rose",
+    "en": "The rosters"
+  },
+  "pav.da_sistemare": {
+    "it": "Giocatori da sistemare ({n})",
+    "en": "Players to fix ({n})"
+  },
+  "pav.n_squadra": {
+    "it": "La tua squadra",
+    "en": "Your team"
+  },
+  "pav.n_tempi": {
+    "it": "I tempi della lega",
+    "en": "League timing"
+  },
+  "pav.tempi_spiega": {
+    "it": "Due domande, così i promemoria arrivano in tempo e le giornate hanno il numero giusto. Le risposte le trovi nelle impostazioni della tua lega su Leghe.",
+    "en": "Two questions, so reminders arrive on time and matchdays have the right number. You find the answers in your league settings on Leghe."
+  },
+  "pav.scad_domanda": {
+    "it": "Quando si chiude la formazione?",
+    "en": "When does the lineup lock?"
+  },
+  "pav.scad_inizio": {
+    "it": "All'inizio della prima partita",
+    "en": "When the first match starts"
+  },
+  "pav.scad_minuti.one": {
+    "it": "{n} minuto prima della prima partita",
+    "en": "{n} minute before the first match"
+  },
+  "pav.scad_minuti.other": {
+    "it": "{n} minuti prima della prima partita",
+    "en": "{n} minutes before the first match"
+  },
+  "pav.prima_domanda": {
+    "it": "Da quale giornata di Serie A è partita la lega?",
+    "en": "From which Serie A matchday did the league start?"
+  },
+  "pav.prima_uno": {
+    "it": "Dalla 1ª, con il campionato",
+    "en": "From the 1st, with the championship"
+  },
+  "pav.prima_n": {
+    "it": "Dalla {n}ª",
+    "en": "From the {n}th"
+  },
+  "pav.tempi_dove": {
+    "it": "Puoi cambiarle quando vuoi in Altro > Regole, sezione «Tempi della lega».",
+    "en": "You can change them any time in More > Rules, section «League timing»."
+  },
+  "pav.tempi_salva": {
+    "it": "Salva",
+    "en": "Save"
+  },
+  "pav.usa_esempi": {
+    "it": "Usa le squadre di esempio",
+    "en": "Use the example teams"
+  },
+  "pav.il_resto": {
+    "it": "Il resto (installare l'app, lo stemma, i widget) lo trovi in Impostazioni.",
+    "en": "The rest (installing the app, the crest, widgets) is in Settings."
+  },
+  "pav.fatto_par": {
+    "it": " (fatto)",
+    "en": " (done)"
+  },
+  "pav.saltato_par": {
+    "it": " (saltato)",
+    "en": " (skipped)"
+  },
+  "pav.salta": {
+    "it": "Salta",
+    "en": "Skip"
+  },
+  "pav.hai_saltato": {
+    "it": "Hai saltato {nomi}: li trovi in «Da fare» in Oggi e puoi riprenderli quando vuoi da Impostazioni, sotto Informazioni.",
+    "en": "You skipped {nomi}: you find them in «To do» in Today and you can pick them up whenever you like from Settings, under About."
+  },
+  "pav.hai_finito": {
+    "it": "Hai finito la configurazione.",
+    "en": "You have finished the setup."
+  },
+  "pav.controlla": {
+    "it": "Controlla le rose",
+    "en": "Check the rosters"
+  },
+  "pav.questa_mia": {
+    "it": "Questa è la mia",
+    "en": "This is mine"
+  }
+}

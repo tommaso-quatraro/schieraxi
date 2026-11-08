@@ -1,0 +1,391 @@
+{
+  "regole.aggiungi_fascia": {
+    "it": "+ Aggiungi fascia",
+    "en": "+ Add a band"
+  },
+  "regole.altri_bonus": {
+    "it": "Altri bonus",
+    "en": "Other bonuses"
+  },
+  "regole.altro": {
+    "it": "Altro",
+    "en": "More"
+  },
+  "regole.annulla_modifiche": {
+    "it": "Annulla le modifiche",
+    "en": "Undo the changes"
+  },
+  "regole.applica_campi": {
+    "it": "Applica ai campi",
+    "en": "Apply to the fields"
+  },
+  "regole.come_entrano_riserve": {
+    "it": "Come entrano le riserve",
+    "en": "How substitutes come on"
+  },
+  "regole.con_prima_giornata": {
+    "it": "Con la prima giornata a 4, la giornata 1 della lega è la 4ª di Serie A: calendario, Diario e promemoria contano da lì.",
+    "en": "With the first matchday set to 4, league matchday 1 is Serie A matchday 4: calendar, Journal and reminders count from there."
+  },
+  "regole.controlla_valori_qui": {
+    "it": "Controlla i valori qui sotto e tocca «Salva le regole» in fondo.",
+    "en": "Check the values below and tap «Save the rules» at the bottom."
+  },
+  "regole.divisa_per_per": {
+    "it": "divisa per 4. Per ogni fascia raggiunta si prende il bonus più alto raggiunto.",
+    "en": "divided by 4. For each band reached, the highest bonus reached is used."
+  },
+  "regole.due_fasce_hanno": {
+    "it": "Due fasce hanno la stessa media: toglierne una",
+    "en": "Two bands have the same average: remove one"
+  },
+  "regole.fasce_bonus": {
+    "it": "Fasce di bonus",
+    "en": "Bonus bands"
+  },
+  "regole.importa_leghe": {
+    "it": "Importa da Leghe",
+    "en": "Import from Leghe"
+  },
+  "regole.incolla_prima_testo": {
+    "it": "Incolla prima il testo del regolamento",
+    "en": "First paste the rules text"
+  },
+  "regole.incolla_qui_testo": {
+    "it": "Incolla qui il testo del regolamento",
+    "en": "Paste the rules text here"
+  },
+  "regole.leggo_testo": {
+    "it": "Leggo il testo…",
+    "en": "Reading the text…"
+  },
+  "regole.leghe_apri_regolamento": {
+    "it": "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli.\n        Non cambia nulla finché non tocchi «Salva».",
+    "en": "On Leghe open the competition rules, copy the text and paste it here: the app recognises the values and shows them before applying them.\n        Nothing changes until you confirm."
+  },
+  "regole.malus": {
+    "it": "Malus",
+    "en": "Maluses"
+  },
+  "regole.media_almeno": {
+    "it": "Media almeno",
+    "en": "Average at least"
+  },
+  "regole.media_somma": {
+    "it": "La media è la somma di",
+    "en": "The average is the sum of"
+  },
+  "regole.modificatore_difesa": {
+    "it": "Modificatore difesa",
+    "en": "Defence modifier"
+  },
+  "regole.moduli_ammessi": {
+    "it": "Moduli ammessi",
+    "en": "Allowed formations"
+  },
+  "regole.nome_della_lega": {
+    "it": "Nome della lega",
+    "en": "League name"
+  },
+  "regole.non_riconosciuto_nessuna": {
+    "it": "Non ho riconosciuto nessuna regola in questo testo. Controlla di aver copiato la pagina del regolamento, oppure imposta i valori a mano qui sotto.",
+    "en": "I did not recognise any rule in this text. Check that you copied the rules page, or set the values by hand below."
+  },
+  "regole.nuovo": {
+    "it": "Nuovo",
+    "en": "New"
+  },
+  "regole.panchina_sostituzioni": {
+    "it": "Panchina e sostituzioni",
+    "en": "Bench and substitutions"
+  },
+  "regole.portiere_migliori_difensori": {
+    "it": "portiere + i 3 migliori difensori",
+    "en": "goalkeeper + the 3 best defenders"
+  },
+  "regole.prova": {
+    "it": "Prova",
+    "en": "Try it"
+  },
+  "regole.punteggi": {
+    "it": "Punteggi",
+    "en": "Scoring"
+  },
+  "regole.quale_voto_somma": {
+    "it": "Quale voto si somma a bonus e malus: quello che usa la tua lega su Leghe.",
+    "en": "Which grade bonuses and maluses are added to: the one your league uses on Leghe."
+  },
+  "regole.quelli_che_puoi": {
+    "it": "Quelli che puoi schierare nella tua lega.",
+    "en": "The ones you can field in your league."
+  },
+  "regole.regole_della_lega": {
+    "it": "Regole della lega: tocca una sezione per aprirla. Il nome si può cambiare qui sotto.",
+    "en": "League rules: tap a section to open it. The name can be changed below."
+  },
+  "regole.regole_salvate_consigli": {
+    "it": "Regole salvate: i consigli ora le usano",
+    "en": "Rules saved: the advice now uses them"
+  },
+  "regole.riconosci_regole": {
+    "it": "Riconosci le regole",
+    "en": "Recognise the rules"
+  },
+  "regole.riconosciuto": {
+    "it": "Riconosciuto",
+    "en": "Recognised"
+  },
+  "regole.rosa_crediti": {
+    "it": "Rosa e crediti",
+    "en": "Roster and credits"
+  },
+  "regole.salva_regole": {
+    "it": "Salva le regole",
+    "en": "Save the rules"
+  },
+  "regole.scegli_almeno_modulo": {
+    "it": "Scegli almeno un modulo",
+    "en": "Choose at least one formation"
+  },
+  "regole.sono_valori_non": {
+    "it": "Ci sono valori non numerici: correggili prima di salvare",
+    "en": "Some values are not numbers: fix them before saving"
+  },
+  "regole.tempi_della_lega": {
+    "it": "Tempi della lega",
+    "en": "League timing"
+  },
+  "regole.togli_fascia": {
+    "it": "Togli la fascia {n}",
+    "en": "Remove band {n}"
+  },
+  "regole.fascia_media": {
+    "it": "Fascia {n}, media almeno",
+    "en": "Band {n}, average at least"
+  },
+  "regole.fascia_bonus": {
+    "it": "Fascia {n}, bonus",
+    "en": "Band {n}, bonus"
+  },
+  "regole.voto_portiere": {
+    "it": "Voto del portiere",
+    "en": "Goalkeeper grade"
+  },
+  "regole.voto_difensore": {
+    "it": "Voto del difensore {n}",
+    "en": "Defender {n} grade"
+  },
+  "regole.valori_applicati_controlla": {
+    "it": "Valori applicati: controlla e salva",
+    "en": "Values applied: check and save"
+  },
+  "regole.voti_portiere_difensori": {
+    "it": "Voti: portiere e 3 difensori",
+    "en": "Grades: goalkeeper and 3 defenders"
+  },
+  "regole.voto_partenza": {
+    "it": "Voto di partenza",
+    "en": "Starting grade"
+  },
+  "regole.bonus": {
+    "it": "bonus",
+    "en": "bonus"
+  },
+  "regole.aumenta": {
+    "it": "Aumenta",
+    "en": "Increase"
+  },
+  "regole.diminuisci": {
+    "it": "Diminuisci",
+    "en": "Decrease"
+  },
+  "regole.carico": {
+    "it": "Carico le regole…",
+    "en": "Loading the rules…",
+    "nota": "---- [regole] ----"
+  },
+  "regole.gol_di": {
+    "it": "Gol di un {ruolo}",
+    "en": "Goal by a {ruolo}"
+  },
+  "regole.rigore_parato_p": {
+    "it": "Rigore parato (portiere)",
+    "en": "Penalty saved (goalkeeper)"
+  },
+  "regole.per_ogni_gol": {
+    "it": "per ogni gol",
+    "en": "per goal"
+  },
+  "regole.v_redazione": {
+    "it": "Redazione",
+    "en": "Editorial"
+  },
+  "regole.v_statistico": {
+    "it": "Statistico",
+    "en": "Statistical"
+  },
+  "regole.v_italia": {
+    "it": "Italia",
+    "en": "Italia"
+  },
+  "regole.md_attivo": {
+    "it": "Attivo nella mia lega",
+    "en": "Active in my league"
+  },
+  "regole.md_attivo_aiuto": {
+    "it": "Un bonus se la difesa prende voti alti",
+    "en": "A bonus when the defence gets high grades"
+  },
+  "regole.md_min": {
+    "it": "Difensori minimi in campo",
+    "en": "Minimum defenders on the pitch"
+  },
+  "regole.md_min_aiuto": {
+    "it": "sotto questo numero non si applica",
+    "en": "below this number it does not apply"
+  },
+  "regole.posti_fissi": {
+    "it": "Posti fissi per ruolo",
+    "en": "Fixed spots per position"
+  },
+  "regole.posti_fissi_aiuto": {
+    "it": "La panchina ha un numero preciso di posti per ogni ruolo",
+    "en": "The bench has an exact number of spots for each position"
+  },
+  "regole.giocatori_panchina": {
+    "it": "Giocatori in panchina",
+    "en": "Players on the bench"
+  },
+  "regole.cambi_massimi": {
+    "it": "Cambi massimi",
+    "en": "Maximum substitutions"
+  },
+  "regole.per_ruolo": {
+    "it": "Per ruolo",
+    "en": "By position"
+  },
+  "regole.libera": {
+    "it": "Libera",
+    "en": "Free"
+  },
+  "regole.cambio_modulo": {
+    "it": "Cambio modulo nelle sostituzioni",
+    "en": "Formation change in substitutions"
+  },
+  "regole.cambio_modulo_aiuto": {
+    "it": "Una riserva di un altro ruolo può entrare se il modulo resta valido",
+    "en": "A substitute of another position can come on if the formation stays valid"
+  },
+  "regole.vu_se_manca": {
+    "it": "Voto d'ufficio se manca il sostituto",
+    "en": "Default grade if there is no substitute"
+  },
+  "regole.vu": {
+    "it": "Voto d'ufficio",
+    "en": "Default grade"
+  },
+  "regole.scadenza": {
+    "it": "Scadenza della formazione",
+    "en": "Lineup deadline"
+  },
+  "regole.scadenza_aiuto": {
+    "it": "minuti prima della prima partita della giornata (0 = all'inizio)",
+    "en": "minutes before the first match of the matchday (0 = at kick-off)"
+  },
+  "regole.prima_giornata": {
+    "it": "Prima giornata della lega",
+    "en": "First league matchday"
+  },
+  "regole.prima_giornata_aiuto": {
+    "it": "la giornata di Serie A da cui parte la lega (1 se è partita con il campionato)",
+    "en": "the Serie A matchday the league starts from (1 if it started with the championship)"
+  },
+  "regole.agg_vicini": {
+    "it": "Aggiornamenti più fitti vicino alla scadenza",
+    "en": "More frequent updates near the deadline"
+  },
+  "regole.agg_vicini_aiuto": {
+    "it": "Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza, con avviso se cambia qualcosa",
+    "en": "Probable lineups and injuries re-read 60, 30 and 15 minutes before the deadline, with an alert if anything changes"
+  },
+  "regole.rinviate": {
+    "it": "Partite rinviate",
+    "en": "Postponed matches"
+  },
+  "regole.rinviate_aiuto": {
+    "it": "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo da Oggi.",
+    "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single round from Today."
+  },
+  "regole.rv_aspetta": {
+    "it": "Aspetta il recupero",
+    "en": "Wait for make-up"
+  },
+  "regole.rv_senza_voto": {
+    "it": "Senza voto",
+    "en": "No grade"
+  },
+  "regole.rv_ufficio": {
+    "it": "Voto d'ufficio",
+    "en": "Official grade"
+  },
+  "regole.rv_aiuto_aspetta": {
+    "it": "Si aspetta il recupero e conta il voto preso lì: i giocatori restano schierabili.",
+    "en": "The league waits for the make-up game and its grade counts: the players can still be fielded."
+  },
+  "regole.rv_aiuto_senza_voto": {
+    "it": "I giocatori restano senza voto: entra la riserva.",
+    "en": "The players get no grade: a substitute comes in."
+  },
+  "regole.rv_aiuto_voto_ufficio": {
+    "it": "Tutti prendono lo stesso voto, senza bonus né malus.",
+    "en": "Everyone gets the same grade, with no bonus or malus."
+  },
+  "regole.rv_voto": {
+    "it": "Voto d'ufficio",
+    "en": "Official grade"
+  },
+  "regole.crediti_iniziali": {
+    "it": "Crediti iniziali",
+    "en": "Starting credits"
+  },
+  "regole.media_bonus.one": {
+    "it": "Media {m} bonus {b} punto",
+    "en": "Average {m} bonus {b} point"
+  },
+  "regole.media_bonus.other": {
+    "it": "Media {m} bonus {b} punti",
+    "en": "Average {m} bonus {b} points"
+  },
+  "regole.aiuto_per_ruolo": {
+    "it": "Per ruolo: se un titolare non gioca, entra il primo della panchina dello stesso ruolo.",
+    "en": "By position: if a starter does not play, the first bench player of the same position comes on."
+  },
+  "regole.aiuto_libera": {
+    "it": "Libera: entra il primo della panchina che può sostituirlo, anche di un ruolo diverso se il modulo resta valido.",
+    "en": "Free: the first bench player who can replace him comes on, even of another position if the formation stays valid."
+  },
+  "regole.totale_panchina": {
+    "it": "Totale in panchina: {n}",
+    "en": "Total on the bench: {n}"
+  },
+  "regole.si": {
+    "it": "sì",
+    "en": "yes"
+  },
+  "regole.no": {
+    "it": "no",
+    "en": "no"
+  },
+  "regole.non_riconosciute": {
+    "it": "Righe con numeri non riconosciute ({n})",
+    "en": "Lines with numbers not recognised ({n})"
+  },
+  "regole.da_riga": {
+    "it": "da: «{r}»",
+    "en": "from: «{r}»"
+  },
+  "regole.mia_lega": {
+    "it": "La mia lega",
+    "en": "My league"
+  }
+}

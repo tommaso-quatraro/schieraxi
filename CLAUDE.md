@@ -18,6 +18,7 @@ Lo stato del lavoro sta su GitHub, non nella chat. All'inizio:
 
 ## Regole
 - Testi e commenti per l'utente: italiano semplice.
+- Testi dell'interfaccia: nel catalogo `fanta/testi/`, poi `python script/testi.py --scrivi`; `testi.js` e i file Swift del catalogo sono generati.
 - Niente dati veri nel repository (è pubblico): né chiavi, password, token, file `.env`, né indirizzi di server o di reti private,
   né email personali, né nomi di persone o di squadre reali.
 - Nei documenti usa il segnaposto `<indirizzo-del-server>`. Nei test e negli esempi usa dati inventati (`lega/esempio/`, `tests/dati/`).

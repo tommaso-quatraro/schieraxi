@@ -1,0 +1,419 @@
+{
+  "scambio.quot": {
+    "it": "quotazione {n}",
+    "en": "price {n}",
+    "nota": "---- [scambi] ----"
+  },
+  "scambio.non_gioca": {
+    "it": "non gioca",
+    "en": "not playing"
+  },
+  "scambio.chi_accetta_piu": {
+    "it": "Chi accetta più volentieri",
+    "en": "Who is more likely to accept"
+  },
+  "scambio.squadre_che_guadagnano": {
+    "it": "Le squadre che guadagnano di più dagli scambi qui sotto, e il reparto che ne beneficia di più.",
+    "en": "The teams that gain most from the trades below, and the position that benefits most."
+  },
+  "scambio.con": {
+    "it": "con",
+    "en": "with"
+  },
+  "scambio.copia_bozza_del": {
+    "it": "Copia bozza del messaggio",
+    "en": "Copy the draft message"
+  },
+  "scambio.impatto_sulla_tua": {
+    "it": "Impatto sulla tua rosa",
+    "en": "Impact on your roster"
+  },
+  "scambio.conta_anche_resto": {
+    "it": "Conta anche il resto della squadra: se il reparto è già forte, un nuovo arrivato fa meno differenza.",
+    "en": "The rest of the team counts too: if the position is already strong, a new arrival makes less difference."
+  },
+  "scambio.gli_ultimi_scambi": {
+    "it": "Gli ultimi scambi che hai analizzato.",
+    "en": "The latest trades you analysed."
+  },
+  "scambio.cosa_vuoi_fare": {
+    "it": "Cosa vuoi fare",
+    "en": "What do you want to do"
+  },
+  "scambio.trova_per": {
+    "it": "Trova per me",
+    "en": "Find for me"
+  },
+  "scambio.scambi_cui_guadagnate": {
+    "it": "Scambi in cui guadagnate punti tutti e due: l'altro li può accettare.",
+    "en": "Trades where you both gain points: the other manager can accept them."
+  },
+  "scambio.con_quale_squadra": {
+    "it": "Con quale squadra",
+    "en": "With which team"
+  },
+  "scambio.tutte_squadre": {
+    "it": "Tutte le squadre",
+    "en": "All teams"
+  },
+  "scambio.servono_altre": {
+    "it": "Per gli scambi servono le rose delle altre squadre. Aggiungile quando vuoi: formazione e consigli funzionano già.",
+    "en": "Trades need the other teams' rosters. Add them whenever you like: the line-up and the advice already work."
+  },
+  "scambio.quanti_giocatori_per": {
+    "it": "Quanti giocatori per parte",
+    "en": "How many players per side"
+  },
+  "scambio.per_gli_scambi": {
+    "it": "Per gli scambi più grandi scegli una squadra: si cercano una alla volta e ci vogliono alcuni secondi.",
+    "en": "For bigger trades choose a team: they are searched one at a time and take a few seconds."
+  },
+  "scambio.cerca_scambi": {
+    "it": "Cerca scambi",
+    "en": "Search for trades"
+  },
+  "scambio.valuta_offerta": {
+    "it": "Valuta un'offerta",
+    "en": "Evaluate an offer"
+  },
+  "scambio.incolla_messaggio_che": {
+    "it": "Incolla il messaggio che hai ricevuto (basta che ci siano i cognomi): trovo chi dai e chi ricevi e ti dico se conviene.",
+    "en": "Paste the message you received (surnames are enough): I find who you give and who you receive and tell you whether it is worth it."
+  },
+  "scambio.messaggio_dell_offerta": {
+    "it": "Messaggio dell'offerta",
+    "en": "Offer message"
+  },
+  "scambio.rowe_politano_dai": {
+    "it": "Es. Ti do Rowe e Politano, mi dai De Bruyne?",
+    "en": "E.g. I give you Rowe and Politano, you give me De Bruyne?"
+  },
+  "scambio.valuta_offerta_2": {
+    "it": "Valuta l'offerta",
+    "en": "Evaluate the offer"
+  },
+  "scambio.cerco_gli_scambi": {
+    "it": "Cerco gli scambi…",
+    "en": "Looking for trades…"
+  },
+  "scambio.vedi_giudizio_completo": {
+    "it": "Vedi il giudizio completo",
+    "en": "See the full verdict"
+  },
+  "scambio.nessuno_scambio_che": {
+    "it": "Nessuno scambio che convenga a tutti e due.",
+    "en": "No trade that suits both of you."
+  },
+  "scambio.nascondi_giudizio": {
+    "it": "Nascondi il giudizio",
+    "en": "Hide the verdict"
+  },
+  "scambio.incolla_prima_messaggio": {
+    "it": "Incolla prima il messaggio",
+    "en": "Paste the message first"
+  },
+  "scambio.leggo_messaggio": {
+    "it": "Leggo il messaggio…",
+    "en": "Reading the message…"
+  },
+  "scambio.scegli_mano_costruisci": {
+    "it": "Scegli a mano in Costruisci",
+    "en": "Choose by hand in Build"
+  },
+  "scambio.non_trovato_giocatori": {
+    "it": "Non ho trovato giocatori di tutte e due le squadre nel messaggio: controlla i cognomi, oppure scegli a mano in Costruisci.",
+    "en": "I did not find players of both teams in the message: check the surnames, or choose by hand in Build."
+  },
+  "scambio.nessuna_differenza_rispetto": {
+    "it": "Nessuna differenza rispetto a prima.",
+    "en": "No difference from before."
+  },
+  "scambio.contro": {
+    "it": "contro",
+    "en": "for"
+  },
+  "scambio.squadra": {
+    "it": "Squadra",
+    "en": "Team"
+  },
+  "scambio.crediti_residui": {
+    "it": "Crediti residui",
+    "en": "Credits left"
+  },
+  "scambio.salva": {
+    "it": "Salva",
+    "en": "Save"
+  },
+  "scambio.cambia_nome": {
+    "it": "Cambia il nome",
+    "en": "Change the name"
+  },
+  "scambio.nuovo_nome": {
+    "it": "Nuovo nome della squadra",
+    "en": "New team name"
+  },
+  "scambio.nome_aiuto": {
+    "it": "Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra.",
+    "en": "Leghe can keep the old name: when you import the rosters again, SchieraXI updates this team."
+  },
+  "scambio.nome_non_valido": {
+    "it": "Scrivi un nome da 1 a 60 caratteri.",
+    "en": "Write a name from 1 to 60 characters."
+  },
+  "scambio.nome_salvato": {
+    "it": "Nome salvato",
+    "en": "Name saved"
+  },
+  "scambio.formazione_consigliata_per": {
+    "it": "Formazione consigliata per loro",
+    "en": "Recommended lineup for them"
+  },
+  "scambio.scrivi_crediti_come": {
+    "it": "Scrivi i crediti come numero intero, anche 0",
+    "en": "Enter the credits as a whole number, even 0"
+  },
+  "scambio.crediti_salvati": {
+    "it": "Crediti salvati",
+    "en": "Credits saved"
+  },
+  "scambio.controllo_dati": {
+    "it": "Controllo i dati…",
+    "en": "Checking the data…"
+  },
+  "scambio.nessun_aggiornamento_registr": {
+    "it": "Nessun aggiornamento registrato.",
+    "en": "No updates recorded."
+  },
+  "scambio.ultimi_aggiornamenti": {
+    "it": "Ultimi aggiornamenti",
+    "en": "Latest updates"
+  },
+  "scambio.fonti_dei_dati": {
+    "it": "Fonti dei dati",
+    "en": "Data sources"
+  },
+  "scambio.accendere_una_fonte": {
+    "it": "Accendere una fonte vuol dire assumersi il rispetto delle condizioni d'uso del sito da cui arrivano i dati.",
+    "en": "Turning a source on means taking on the terms of use of the site the data comes from."
+  },
+  "scambio.quanto_usa_app": {
+    "it": "Quanto si usa l'app",
+    "en": "How much the app is used"
+  },
+  "scambio.ancora_nessuna_funzione": {
+    "it": "Ancora nessuna funzione da misurare.",
+    "en": "No feature to measure yet."
+  },
+  "scambio.schermate_piu_usate": {
+    "it": "Le schermate più usate",
+    "en": "The most used screens"
+  },
+  "scambio.date_delle_coppe": {
+    "it": "Date delle coppe europee",
+    "en": "European cup dates"
+  },
+  "scambio.scadute_vanno_inserite": {
+    "it": "scadute: vanno inserite le nuove",
+    "en": "expired: enter the new ones"
+  },
+  "scambio.probabili_formazioni_raccolt": {
+    "it": "Probabili formazioni raccolte",
+    "en": "Probable lineups collected"
+  },
+  "scambio.ancora_nessuna": {
+    "it": "Ancora nessuna.",
+    "en": "None yet."
+  },
+  "scambio.controlli_sui_dati": {
+    "it": "Controlli sui dati",
+    "en": "Data checks"
+  },
+  "scambio.fanno_ogni_aggiornamento": {
+    "it": "Si fanno a ogni aggiornamento dei dati: ancora nessuno.",
+    "en": "They run at every data update: none yet."
+  },
+  "scambio.quanto_affidabile_modello": {
+    "it": "Quanto è affidabile il modello",
+    "en": "How reliable the model is"
+  },
+  "scambio.quanto_azzecca_modello": {
+    "it": "Quanto ci azzecca il modello",
+    "en": "How often the model gets it right"
+  },
+  "scambio.non_sono_riuscito": {
+    "it": "Non sono riuscito a cambiare la fonte",
+    "en": "I could not change the source"
+  },
+  "scambio.bozza_e": {
+    "it": " e ",
+    "en": " and "
+  },
+  "scambio.bozza": {
+    "it": "Ciao! Ti propongo uno scambio: io ti do {do}, tu mi dai {ricevo}. Secondo i miei calcoli conviene a tutti e due ({quanto}). Che ne dici?",
+    "en": "Hi! I would like to propose a trade: I give you {do}, you give me {ricevo}. By my calculations it works for both of us ({quanto}). What do you think?"
+  },
+  "scambio.bozza_uguale": {
+    "it": "più o meno uguale",
+    "en": "about equal"
+  },
+  "scambio.bozza_punti": {
+    "it": "tu {loro} punti attesi in stagione, io {mio}",
+    "en": "you {loro} expected points over the season, me {mio}"
+  },
+  "scambio.n_scambi.one": {
+    "it": "{n} scambio",
+    "en": "{n} trade"
+  },
+  "scambio.n_scambi.other": {
+    "it": "{n} scambi",
+    "en": "{n} trades"
+  },
+  "scambio.migliora": {
+    "it": "migliora i {reparto} di {p}%",
+    "en": "improves the {reparto} by {p}%"
+  },
+  "scambio.tu_loro_stagione": {
+    "it": "Tu {mio} · loro {loro} punti in stagione",
+    "en": "You {mio} · them {loro} points over the season"
+  },
+  "scambio.prossime.one": {
+    "it": "Prossima giornata",
+    "en": "Next matchday"
+  },
+  "scambio.prossime.other": {
+    "it": "Prossime {n} giornate",
+    "en": "Next {n} matchdays"
+  },
+  "scambio.tu_loro": {
+    "it": "tu {mio} · loro {loro}",
+    "en": "you {mio} · them {loro}"
+  },
+  "scambio.in_totale.one": {
+    "it": "In totale (prossima giornata)",
+    "en": "In total (next matchday)"
+  },
+  "scambio.in_totale.other": {
+    "it": "In totale (prossime {n} giornate)",
+    "en": "In total (next {n} matchdays)"
+  },
+  "scambio.archivio": {
+    "it": "Archivio ({n})",
+    "en": "Archive ({n})"
+  },
+  "scambio.con_minuscolo": {
+    "it": "con",
+    "en": "with"
+  },
+  "scambio.costruisci": {
+    "it": "Costruisci",
+    "en": "Build"
+  },
+  "scambio.uno_contro_uno": {
+    "it": "1 contro 1",
+    "en": "1 for 1"
+  },
+  "scambio.fino_a_2": {
+    "it": "Fino a 2",
+    "en": "Up to 2"
+  },
+  "scambio.fino_a_3": {
+    "it": "Fino a 3",
+    "en": "Up to 3"
+  },
+  "scambio.fino_a_4": {
+    "it": "Fino a 4",
+    "en": "Up to 4"
+  },
+  "scambio.carico_squadre": {
+    "it": "Carico le squadre…",
+    "en": "Loading the teams…"
+  },
+  "scambio.ricerche_finite": {
+    "it": "Le ricerche di oggi sono finite: si azzerano a mezzanotte.",
+    "en": "Today's searches are used up: they reset at midnight."
+  },
+  "scambio.ricerche_restano.one": {
+    "it": "Ne resta 1 oggi.",
+    "en": "1 left today."
+  },
+  "scambio.ricerche_restano.other": {
+    "it": "Ne restano {n} oggi.",
+    "en": "{n} left today."
+  },
+  "scambio.riga_con": {
+    "it": "Con",
+    "en": "With"
+  },
+  "scambio.ambigui": {
+    "it": "Più giocatori con lo stesso cognome: {nomi}. Scegli a mano in Costruisci.",
+    "en": "Several players share the same surname: {nomi}. Choose by hand in Build."
+  },
+  "scambio.scambio_b": {
+    "it": "Scambio",
+    "en": "Trade"
+  },
+  "scambio.passaggio_b": {
+    "it": "Passaggio",
+    "en": "Transfer"
+  },
+  "scambio.prende_svincolati": {
+    "it": "{squadra} prende dagli svincolati: {nomi}",
+    "en": "{squadra} signs from the free agents: {nomi}"
+  },
+  "scambio.lascia_liberi": {
+    "it": "{squadra} lascia liberi: {nomi}",
+    "en": "{squadra} releases: {nomi}"
+  },
+  "scambio.squadre_aggiunte": {
+    "it": "Squadre aggiunte: {nomi}",
+    "en": "Teams added: {nomi}"
+  },
+  "scambio.squadre_tolte": {
+    "it": "Squadre tolte: {nomi}",
+    "en": "Teams removed: {nomi}"
+  },
+  "scambio.carico_rosa": {
+    "it": "Carico la rosa…",
+    "en": "Loading the roster…"
+  },
+  "scambio.senza_ruolo": {
+    "it": "Senza ruolo (da controllare)",
+    "en": "No position (to check)"
+  },
+  "scambio.costo_quot": {
+    "it": "costo {c} · quotazione {q}",
+    "en": "cost {c} · price {q}"
+  },
+  "scambio.stemma": {
+    "it": "Stemma",
+    "en": "Crest"
+  },
+  "scambio.maglia": {
+    "it": "Maglia",
+    "en": "Shirt"
+  },
+  "scambio.cambia_tipo": {
+    "it": "Cambia {tipo}",
+    "en": "Change {tipo}"
+  },
+  "scambio.carica_tipo": {
+    "it": "Carica {tipo}",
+    "en": "Upload {tipo}"
+  },
+  "scambio.rose_aggiornate": {
+    "it": "Rose aggiornate il {data}",
+    "en": "Rosters updated on {data}"
+  },
+  "scambio.caricamento_no": {
+    "it": "Caricamento non riuscito",
+    "en": "Upload failed"
+  },
+  "scambio.stemma_aggiornato": {
+    "it": "Stemma aggiornato",
+    "en": "Crest updated"
+  },
+  "scambio.maglia_aggiornata": {
+    "it": "Maglia aggiornata",
+    "en": "Shirt updated"
+  }
+}
