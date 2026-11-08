@@ -22,6 +22,10 @@ import comune
 CARTELLA_WORKTREE = "/.claude/worktrees/"
 DISCENDENTE = ("behind", "identical")
 SQUASH = ("stessa_testa", "antenata")      # unione squash: il ramo si toglie con «git branch -D»
+UNITE = ("stessa_testa", "in_main", "antenata")
+NON_VERIFICATO = "non_verificato"          # il confronto su GitHub non ha risposto
+MOTIVO_NON_VERIFICATO = "GitHub non ha risposto: riprova"
+MOTIVO_DOPO = "commit fatti dopo l'unione della PR"
 
 
 def _leggi_porcelain(testo: str) -> list[dict]:
@@ -66,22 +70,31 @@ def in_main(esegui: comune.Esegui, testa: str) -> bool:
     raise comune.ErroreComando(f"git merge-base è uscito con {r.codice}: {r.errore.strip()[:200]}")
 
 
-def antenata_della_pr(esegui: comune.Esegui, testa: str, testa_pr: str) -> bool:
+def antenata_della_pr(esegui: comune.Esegui, testa: str, testa_pr: str) -> str:
     """La testa locale è un antenato della testa della PR (o la stessa)? Lo chiede a GitHub, che ha la testa della PR anche
-    quando la copia locale non ce l'ha. Un errore (commit mai mandato su GitHub, rete) vale «no»: nel dubbio non si toglie."""
+    quando la copia locale non ce l'ha. Tre esiti: «si», «no», «errore».
+    «no» anche con HTTP 404 o 422 (il commit locale non è su GitHub, quindi non è nella PR); «errore» per tutto il resto
+    (rete, limite dell'API, 5xx): nel dubbio non si toglie niente."""
     r = esegui(["gh", "api", f"repos/{{owner}}/{{repo}}/compare/{testa_pr}...{testa}", "--jq", ".status"])
-    return r.codice == 0 and r.uscita.strip() in DISCENDENTE
+    if r.codice != 0:
+        return "no" if any(c in (r.errore or r.uscita) for c in ("HTTP 404", "HTTP 422")) else "errore"
+    return "si" if r.uscita.strip() in DISCENDENTE else "no"
 
 
 def unione(esegui: comune.Esegui, pr: dict | None, testa: str) -> str | None:
-    """Come il lavoro è arrivato su main: «stessa_testa», «in_main», «antenata», oppure None (non unito)."""
+    """Come il lavoro è arrivato su main: «stessa_testa», «in_main», «antenata»; NON_VERIFICATO se GitHub non ha risposto al
+    confronto; None se non è unito. Solo i valori di UNITE contano come unito."""
     unita = bool(pr and pr["state"] == "MERGED")
     if unita and pr["headRefOid"] == testa:
         return "stessa_testa"
     if in_main(esegui, testa):
         return "in_main"
-    if unita and antenata_della_pr(esegui, testa, pr["headRefOid"]):
-        return "antenata"
+    if unita:
+        esito = antenata_della_pr(esegui, testa, pr["headRefOid"])
+        if esito == "si":
+            return "antenata"
+        if esito == "errore":
+            return NON_VERIFICATO
     return None
 
 
@@ -102,7 +115,7 @@ def raccogli(esegui: comune.Esegui, prs: dict[str, dict] | None = None) -> list[
             continue
         v["modifiche"] = bool(comune.chiama(esegui, ["git", "-C", v["percorso"], "status", "--porcelain"]).strip())
         v["unione"] = unione(esegui, pr, v["testa"])
-        v["unito"] = v["unione"] is not None
+        v["unito"] = v["unione"] in UNITE
         if v["modifiche"]:
             v["gruppo"], v["motivo"] = "con_modifiche", "file cambiati non salvati"
         elif pr and pr["state"] == "OPEN":
@@ -110,7 +123,8 @@ def raccogli(esegui: comune.Esegui, prs: dict[str, dict] | None = None) -> list[
         elif v["unito"]:
             v["gruppo"] = "da_togliere"
         elif pr and pr["state"] == "MERGED":
-            v["gruppo"], v["motivo"] = "con_modifiche", "commit fatti dopo l'unione della PR"
+            v["gruppo"] = "con_modifiche"
+            v["motivo"] = MOTIVO_NON_VERIFICATO if v["unione"] == NON_VERIFICATO else MOTIVO_DOPO
         else:
             v["gruppo"] = "senza_pr"
     return voci
@@ -133,12 +147,15 @@ def rami_locali(esegui: comune.Esegui, prs: dict[str, dict]) -> list[dict]:
                 "unione": unione(esegui, pr, testa), "motivo": ""}
         if pr and pr["state"] == "OPEN":
             voce["gruppo"] = "in_corso"
-        elif voce["unione"] and voce["stato_pr"] == "MERGED":
+        elif voce["unione"] in UNITE and voce["stato_pr"] == "MERGED":
             voce["gruppo"] = "da_togliere"
         else:
             # Anche un ramo senza PR con la testa già in main (appena creato, non ancora usato) si chiede: può servire a qualcuno.
             voce["gruppo"] = "da_chiedere"
-            voce["motivo"] = {"MERGED": "commit fatti dopo l'unione della PR",
-                              "CLOSED": "PR chiusa senza unione"}.get(voce["stato_pr"], "niente PR")
+            if voce["unione"] == NON_VERIFICATO:
+                voce["motivo"] = MOTIVO_NON_VERIFICATO
+            else:
+                voce["motivo"] = {"MERGED": MOTIVO_DOPO,
+                                  "CLOSED": "PR chiusa senza unione"}.get(voce["stato_pr"], "niente PR")
         rami.append(voce)
     return rami

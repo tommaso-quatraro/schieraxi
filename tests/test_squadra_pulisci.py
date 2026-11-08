@@ -103,6 +103,28 @@ def test_worktree_con_commit_dopo_la_pr_aggiornata_non_si_toglie(capsys):
     assert "Con modifiche (1)" in capsys.readouterr().out
 
 
+def test_worktree_compare_senza_risposta_non_si_toglie_e_lo_dice(capsys):
+    for errore in ("HTTP 502: Bad Gateway", "API rate limit exceeded (HTTP 403)", "error connecting to api.github.com"):
+        f = _aggiornata(comune.Risposta(1, "", errore))
+        assert pulisci.main(f, esegui_davvero=True) == 0
+        assert not f.lanciati("git worktree remove") and not f.lanciati("git branch")
+        testo = capsys.readouterr().out
+        assert "GitHub non ha risposto: riprova" in testo and "commit fatti dopo" not in testo
+
+
+def test_ramo_locale_compare_senza_risposta_resta_da_chiedere_col_motivo_giusto(capsys):
+    f = finto_rami()
+    f.risposte["gh api repos/{owner}/{repo}/compare/g3...l3"] = comune.Risposta(1, "", "HTTP 503: Service Unavailable")
+    f.risposte["gh api repos/{owner}/{repo}/compare/g6...l6"] = comune.Risposta(1, "", "HTTP 404: No common ancestor")
+    assert pulisci.main(f, esegui_davvero=True) == 0
+    assert not [c for c in f.lanciati("git branch") if c.endswith(" locale-aggiornato")]
+    righe = capsys.readouterr().out.splitlines()
+    [aggiornato] = [r for r in righe if "locale-aggiornato" in r]
+    [dopo] = [r for r in righe if "locale-dopo" in r]
+    assert "GitHub non ha risposto: riprova" in aggiornato
+    assert "commit fatti dopo l'unione" in dopo           # 404: il commit non è su GitHub, quindi non è nella PR
+
+
 # #476 punto 4: i rami locali senza worktree.
 RAMI = "\n".join([
     "main aaa", "corrente c0", "unito-pulito h1",                      # main, ramo corrente, ramo di una worktree: mai

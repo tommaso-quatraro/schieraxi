@@ -110,5 +110,7 @@ def test_ogni_file_di_presentation_ha_una_voce_o_un_ripiego_dichiarato():
         regola = next(r for r in dati["regole"] if any(foto.aree.corrisponde(f, p) for p in r["percorsi"]))
         if regola.get("ripiego") and f not in dichiarati:
             senza_voce.append(f)
-    assert senza_voce == [], "aggiungi una regola in foto.json o il file in «ripiego_dichiarato»"
-    assert dichiarati - set(file) == set(), "in «ripiego_dichiarato» ci sono file che non esistono più"
+    assert senza_voce == [], ("aggiungi una regola in script/squadra/foto.json o il file in «ripiego_dichiarato», "
+                              "e script/squadra nella riga «Aree:» della PR")
+    assert dichiarati - set(file) == set(), ("in «ripiego_dichiarato» di script/squadra/foto.json ci sono file che non "
+                                             "esistono più (e script/squadra va nella riga «Aree:» della PR)")
