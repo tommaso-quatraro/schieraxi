@@ -502,12 +502,14 @@ final class FormazioneViewModel: ViewModelBase {
     /// 412 sulla scelta salvata: un altro dispositivo l'ha cambiata (o cancellata) dopo l'ultima lettura. Come per le altre risorse
     /// si rilegge tutto (formazione e scelta, con l'ETag nuovo) e lo si dice: la modifica di questo telefono non si salva sopra.
     /// Come la web, che dopo un 412 ricarica la pagina, anche stile e modulo ripartono da quelli consigliati (#477): se l'altro
-    /// dispositivo ha cancellato la scelta, non resta in vista il modulo toccato.
+    /// dispositivo ha cancellato la scelta, non resta in vista il modulo toccato. Lo stile è quello consigliato dalla formazione
+    /// riletta (se la rilettura non riesce, da quella che c'era).
     private func sceltaCambiataAltrove() async {
         azzeraManuale()
+        let riletta = await ricaricaConScelta()
         rischio = formazione?.stileConsigliato ?? 0
         moduloScelto = nil
-        if await ricaricaConScelta() {
+        if riletta {
             messaggio = Self.sceltaCambiata
         } else {
             // La scelta che si conosceva non è più quella del server, e quella nuova non si è potuta leggere: la riga non dice

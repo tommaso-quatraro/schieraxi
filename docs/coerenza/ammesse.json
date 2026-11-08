@@ -89,6 +89,12 @@
       "titolo": "Altro, aspetto",
       "testo": "sulla web il ruolo negli Scambi, nel Diario («Correggi a mano») e nei risultati della ricerca è la lettera grigia delle righe (sull'iPhone il quadratino colorato); nel Diario «Ho schierato la consigliata» è un pulsante pieno solo nella giornata più recente da segnare (nelle altre ha il bordo) e sta sulla stessa riga di «Ho schierato un'altra formazione», i punti fatti e «attesi N» stanno in due colonne a destra, i giocatori cambiati sono in grassetto con il filo arancio senza tinta; negli Scambi «Copia bozza del messaggio» e «Vedi il giudizio completo» stanno sulla stessa riga; sul PC le Regole hanno «Importa da Leghe» a sinistra e le sezioni a destra, i Crediti delle squadre due colonne di righe, le Novità una colonna da leggere.",
       "motivo": "grafica B della web (spec del 5/11/2026, §4, §8.7 e §9), un solo pulsante pieno e meno riquadri. Testi, numeri e ordine delle sezioni sono gli stessi."
+    },
+    {
+      "titolo": "Formazione, scelta cambiata da un altro dispositivo",
+      "precisazione": "(salvataggio o «Torna alla consigliata» rifiutati dal server)",
+      "testo": "se dopo il rifiuto l'iPhone non riesce a rileggere la scelta, scrive «La scelta di questa giornata è stata cambiata da un altro dispositivo, ma non riesco a ricaricarla: tira giù per aggiornare e, se serve, rifai la modifica.» e la riga dello stato non dice niente; la web non ha questo messaggio.",
+      "motivo": "la web ricarica da sola la pagina intera, l'iPhone rilegge solo formazione e scelta: se la rilettura non riesce, «ho ricaricato quella salvata» sarebbe falso (#477)."
     }
   ]
 }

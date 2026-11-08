@@ -113,6 +113,37 @@ struct SceltaCambiataAltroveTests {
         }
     }
 
+    @Test("412 e rilettura che cambia lo stile consigliato: si accende quello nuovo, non quello di prima della rilettura")
+    func stileConsigliatoDellaRilettura() async throws {
+        let (s, s2) = try dueScelte()
+        var json = try #require(try JSONSerialization.jsonObject(with: try Fixture.dati("formazione")) as? [String: Any])
+        json["stile_consigliato"] = 1
+        let nuova = try JSONSerialization.data(withJSONObject: json)
+        let vecchia = try Fixture.dati("formazione")
+        let salvata = Scatola<String>()
+        salvata.valore = scelta(s, "2026-11-02T21:40:00")
+        let dopo412 = Scatola<Bool>()
+        let srv = ServerDiProva { metodo, percorso, corpo in
+            if metodo == "DELETE" || chiedeDiSalvare(corpo) {
+                dopo412.valore = true
+                throw ErroreApi.conflitto
+            }
+            if percorso.hasPrefix("/api/formazione/valuta") { return valutazioneFinta }
+            if percorso.hasPrefix("/api/scelta") { return Data((salvata.valore ?? "null").utf8) }
+            return dopo412.valore == true ? nuova : vecchia
+        }
+        let (vm, f) = try await caricata(srv)
+        try #require(f.stileConsigliato == nil, "prima della rilettura lo stile consigliato è lo 0 (campo assente)")
+        vm.scegliModulo(try moduloDaToccare(f, evitando: [s, s2]).modulo)
+        salvata.valore = nil                                   // l'altro dispositivo cancella la scelta
+        await vm.salvaQuesta(f)
+        #expect(vm.formazione?.stileConsigliato == 1, "la formazione riletta")
+        #expect(vm.rischio == 1, "lo stile consigliato della formazione riletta")
+        #expect(vm.moduloScelto == nil)
+        #expect(vm.statoScelta == .consigliata)
+        #expect(vm.messaggio == FormazioneViewModel.sceltaCambiata)
+    }
+
     // MARK: punto 4: i pulsanti dopo un errore
 
     @Test("Dopo un salvataggio non riuscito i pulsanti tornano attivi e un altro tocco su Salva manda un altro salvataggio",
