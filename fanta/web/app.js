@@ -2804,6 +2804,33 @@ function cartaConsiglio(c) {
     <div class="debole piccolo" style="margin:4px 0 8px">${n ? tp("sd.cons_media", n, { f: tp("sd.cons_formazioni", c.voci || 0) }) : t("sd.cons_nessuna")}</div>
     ${misure}</div>`;
 }
+// Taratura di «gioca N%» con le probabili (#379, campo `calibrazione.taratura`): una frase sola sotto i gruppi della calibrazione.
+// Stato, versione, numeri della prova e motivo sono quelli del server (`taratura_probabili.riepilogo`): qui si scrivono e basta,
+// Brier con tre cifre, scarto in punti come il registro. Un motivo che la web non conosce non si scrive (niente codici). Uguale
+// sull'iPhone.
+const MOTIVI_TARATURA = { non_migliora: "sd.tar_m_non_migliora", poche_giornate: "sd.tar_m_poche_giornate", fuori_soglia: "sd.tar_m_fuori_soglia",
+  incoerente: "sd.tar_m_incoerente", peggiorata: "sd.tar_m_peggiorata", scadenza_vicina: "sd.tar_m_scadenza_vicina", spenta_a_mano: "sd.tar_m_spenta_a_mano" };
+// «15/1» dalla data del server («2027-01-15T10:00:00»), senza passare dal fuso orario; null se non è una data
+const giornoMese = s => { const m = /^\d{4}-(\d{2})-(\d{2})/.exec(typeof s === "string" ? s : ""); return m ? `${Number(m[2])}/${Number(m[1])}` : null; };
+function rigaTaratura(tar) {
+  if (!tar) return "";
+  const motivo = tar.motivo && Object.hasOwn(MOTIVI_TARATURA, tar.motivo) ? t(MOTIVI_TARATURA[tar.motivo], { n: Number(tar.giornate) || 0 }) : "";
+  const v = esc(tar.versione ?? "–"), dal = giornoMese(tar.dal), p = tar.prova;
+  let parti;
+  if (tar.stato === "in_attesa") {
+    const n = Number(tar.giornate) || 0, minimo = Number(tar.minimo) || 0;
+    parti = [n < minimo ? tp("sd.tar_in_attesa_su", n, { m: minimo }) : tp("sd.tar_in_attesa", n)];
+  } else if (tar.stato === "attiva") {
+    parti = [dal ? t("sd.tar_attiva_dal", { d: dal, v }) : t("sd.tar_attiva", { v })];
+    if (p) parti.push(tp("sd.tar_prova", Number(p.giornate) || 0, { b: num(p.brier, 3), p: num(p.brier_prima, 3), c: regCifra(p.calibrazione, 100) }));
+    if (tar.motivo === "scadenza_vicina") parti.push(motivo);
+  } else if (tar.stato === "non_attiva") {
+    parti = [t("sd.tar_non_attiva"), motivo];
+  } else if (tar.stato === "spenta") {
+    parti = [t("sd.tar_spenta")];
+  } else return "";
+  return `<div class="debole piccolo" id="taratura-probabili" style="margin-top:8px">${t("sd.tar_riga", { s: parti.filter(Boolean).join(" · ") })}</div>`;
+}
 // Stato dei dati: da dove arriva tutto, quando è stato aggiornato, errori, foto e confronto tra probabilità previste e giocatori che hanno giocato.
 async function apriStatoDati() {
   apriFoglio(`<div class="caricamento">${t("scambio.controllo_dati")}</div>`);
@@ -2812,7 +2839,7 @@ async function apriStatoDati() {
     const s = await api("/api/stato-dati");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
     const nomiFonte = { aggiornamento: t("sd.f_aggiornamento"), listone: t("sd.f_listone"), voti: t("sd.f_voti"), probabili: t("sd.f_probabili"),
-      calendario: t("sd.f_calendario"), understat: t("sd.f_understat") };
+      calendario: t("sd.f_calendario"), understat: t("sd.f_understat"), "taratura-probabili": t("sd.f_taratura") };
     const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(nomiFonte[a.cosa] || nomiFonte[a.cosa.split(" ")[0]] || a.cosa)}</span>
       <span class="debole piccolo">${a.quando ? esc(quando(a.quando)) : t("sd.mai")}</span></div>
       ${a.errori.map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
@@ -2847,7 +2874,8 @@ async function apriStatoDati() {
       <div class="carta"><h2>${t("scambio.quanto_azzecca_modello")}</h2>
         <div class="debole piccolo">${c.giornate ? t("sd.giornate_giocate", { n: c.giornate }) : t("sd.appena_finisce")}
           ${t("sd.corregge")}</div>
-        ${gruppi}</div>`);
+        ${gruppi}
+        ${rigaTaratura(c.taratura)}</div>`);
     document.querySelectorAll("#fonti-dati button[data-fonte]").forEach(bt => bt.addEventListener("click", async () => {
       try {
         await api("/api/admin/fonti", { method: "PUT", body: JSON.stringify({ fonte: bt.dataset.fonte, acceso: bt.dataset.acceso !== "1" }) });
