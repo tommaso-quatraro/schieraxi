@@ -1,0 +1,807 @@
+{
+  "err.troppi": {
+    "it": "Troppi tentativi: riprova più tardi",
+    "en": "Too many attempts: try again later"
+  },
+  "err.troppi_sbagliati": {
+    "it": "Troppi tentativi sbagliati: aspetta prima di riprovare",
+    "en": "Too many wrong attempts: wait before trying again"
+  },
+  "err.utente_codice": {
+    "it": "Nome utente o codice non validi",
+    "en": "Invalid username or code"
+  },
+  "err.accesso_sbagliato": {
+    "it": "Nome utente o password sbagliati",
+    "en": "Wrong username or password"
+  },
+  "err.password_attuale": {
+    "it": "La password attuale non è giusta",
+    "en": "The current password is wrong"
+  },
+  "err.posta_spenta": {
+    "it": "Su questo server l'invio delle email è spento: il codice non può arrivare. Per la password usa il codice di recupero.",
+    "en": "Sending emails is turned off on this server: the code cannot arrive. For your password use the recovery code."
+  },
+  "err.iscrizione_posta_spenta": {
+    "it": "Su questo server l'iscrizione con l'email non è disponibile: l'invio delle email è spento e il codice non potrebbe arrivare. Chiedi un invito a chi gestisce il server.",
+    "en": "Signing up with an email is not available on this server: sending emails is turned off, so the code could not arrive. Ask whoever runs the server for an invite."
+  },
+  "err.registrazioni_chiuse": {
+    "it": "Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti",
+    "en": "Sign-ups are closed: the maximum number of users has been reached"
+  },
+  "err.chiuse_oggi": {
+    "it": "Per oggi le iscrizioni sono chiuse: riprova domani",
+    "en": "Sign-ups are closed for today: try again tomorrow"
+  },
+  "err.invito": {
+    "it": "Invito non valido o scaduto",
+    "en": "Invitation invalid or expired"
+  },
+  "err.codice_scaduto": {
+    "it": "Codice non valido o scaduto",
+    "en": "Code invalid or expired"
+  },
+  "err.email_non_valida": {
+    "it": "Indirizzo email non valido",
+    "en": "Invalid email address"
+  },
+  "err.email_codice": {
+    "it": "Email o codice non validi",
+    "en": "Invalid email or code"
+  },
+  "err.email_temporanea": {
+    "it": "Questo servizio di email temporanee non è accettato: usa il tuo indirizzo vero",
+    "en": "This disposable email service is not accepted: use your real address"
+  },
+  "err.nome_preso": {
+    "it": "Questo nome utente è già preso: scegline un altro",
+    "en": "This username is already taken: choose another one"
+  },
+  "err.password_corta": {
+    "it": "La password deve avere almeno {1} caratteri",
+    "en": "The password must be at least {1} characters long"
+  },
+  "err.password_lunga": {
+    "it": "La password può avere al massimo {1} caratteri",
+    "en": "The password can be at most {1} characters long"
+  },
+  "err.password_banale": {
+    "it": "Password troppo banale: scegline una meno prevedibile (per esempio tre parole a caso)",
+    "en": "Password too easy to guess: choose a less predictable one (for example three random words)"
+  },
+  "err.utente_non_trovato": {
+    "it": "Utente non trovato",
+    "en": "User not found"
+  },
+  "err.account_non_trovato": {
+    "it": "Account non trovato",
+    "en": "Account not found"
+  },
+  "err.occupato": {
+    "it": "Il server è molto occupato: riprova fra qualche secondo",
+    "en": "The server is very busy: try again in a few seconds"
+  },
+  "err.disco_pieno": {
+    "it": "Il server ha finito lo spazio e non è riuscito a salvare: riprova più tardi. Quello che avevi salvato prima è al sicuro.",
+    "en": "The server ran out of space and could not save: try again later. What you saved before is safe."
+  },
+  "err.una_alla_volta": {
+    "it": "Una richiesta alla volta: aspetta la risposta della precedente",
+    "en": "One request at a time: wait for the reply to the previous one"
+  },
+  "err.troppo_grande": {
+    "it": "Richiesta troppo grande",
+    "en": "Request too large"
+  },
+  "err.non_permessa": {
+    "it": "Richiesta non permessa",
+    "en": "Request not allowed"
+  },
+  "err.interno": {
+    "it": "Errore interno del server: riprova. Se succede ancora, avvisa chi gestisce l'app.",
+    "en": "Internal server error: try again. If it keeps happening, tell whoever runs the app."
+  },
+  "err.dati_non_validi": {
+    "it": "Alcuni dati non sono validi: controlla quello che hai scritto e riprova.",
+    "en": "Some data is not valid: check what you entered and try again."
+  },
+  "err.funzione_spenta": {
+    "it": "«{1}» non è disponibile in questa versione dell'app.",
+    "en": "«{1}» is not available in this version of the app."
+  },
+  "err.rinvio_non_valido": {
+    "it": "Scelta non valida per le partite rinviate.",
+    "en": "Invalid choice for postponed matches."
+  },
+  "err.rinvio_stagione": {
+    "it": "Si può decidere solo per la stagione in corso.",
+    "en": "You can only decide for the current season."
+  },
+  "err.nessuna_previsione": {
+    "it": "Non ci sono ancora previsioni per {1}: riprova più tardi.",
+    "en": "There are no forecasts yet for {1}: try again later."
+  },
+  "err.nessuna_rosa": {
+    "it": "Nessuna rosa importata: importale in Squadra > Aggiorna le rose",
+    "en": "No roster imported: import them in Team > Update the rosters"
+  },
+  "err.limite_oggi": {
+    "it": "Hai raggiunto il limite di {1} di oggi ({2}). Si azzera tra {3}.",
+    "en": "You have reached today's limit for {1} ({2}). It resets in {3}."
+  },
+  "err.troppe_ora": {
+    "it": "Hai fatto troppe richieste in quest'ora. Riprova tra {1}.",
+    "en": "You have made too many requests this hour. Try again in {1}."
+  },
+  "err.conflitto": {
+    "it": "Questi dati sono stati cambiati da un altro dispositivo. Ho ricaricato la versione nuova: controlla e rifai la modifica.",
+    "en": "This data was changed from another device. I have reloaded the new version: check it and make your change again."
+  },
+  "err.mantra": {
+    "it": "Per ora SchieraXI funziona solo con le leghe classic: la Mantra non è ancora supportata.",
+    "en": "For now SchieraXI only works with classic leagues: Mantra is not supported yet."
+  },
+  "err.scelte_rose": {
+    "it": "Alcune scelte non corrispondono più alle rose caricate: rifai il controllo delle rose e scegli di nuovo.",
+    "en": "Some choices no longer match the uploaded rosters: check the rosters again and choose once more."
+  },
+  "err.giocatore_listone": {
+    "it": "Uno dei giocatori scelti non è nel listone: rifai il controllo delle rose e scegli di nuovo.",
+    "en": "One of the chosen players is not in the player list: check the rosters again and choose once more."
+  },
+  "err.mia_non_trovata": {
+    "it": "La squadra scelta come tua non è tra le rose: scegline un'altra.",
+    "en": "The team chosen as yours is not among the rosters: pick another one."
+  },
+  "err.p_lim_rose": {
+    "it": "importazioni di rose",
+    "en": "roster imports",
+    "nota": "---- [messaggi d'errore del server] ----"
+  },
+  "err.p_lim_scambi": {
+    "it": "ricerche di scambi",
+    "en": "trade searches"
+  },
+  "err.p_lim_immagini": {
+    "it": "immagini scaricate da un indirizzo web",
+    "en": "images downloaded from a web address"
+  },
+  "err.p_fn_live": {
+    "it": "Risultati in diretta",
+    "en": "Live results"
+  },
+  "err.p_fn_asta": {
+    "it": "Asta e riparazione",
+    "en": "Auction and repair"
+  },
+  "err.p_fn_scambi_trova": {
+    "it": "Scambi: trova per me",
+    "en": "Trades: find for me"
+  },
+  "err.p_fn_immagini_web": {
+    "it": "Immagini da indirizzo web",
+    "en": "Images from a web address"
+  },
+  "err.p_fn_confronto": {
+    "it": "Confronto tra due giocatori",
+    "en": "Comparison between two players"
+  },
+  "err.p_dare": {
+    "it": "dare",
+    "en": "give"
+  },
+  "err.p_ricevere": {
+    "it": "ricevere",
+    "en": "receive"
+  },
+  "err.maiuscole": {
+    "it": "Puoi cambiare solo le maiuscole e le minuscole: le lettere devono restare le stesse",
+    "en": "You can only change upper and lower case: the letters must stay the same"
+  },
+  "err.nome_utente_forma": {
+    "it": "Il nome utente deve avere da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o trattino basso, e cominciare con una lettera o un numero",
+    "en": "The username must be 3 to 32 characters: letters without accents, numbers, dot, hyphen or underscore, and start with a letter or a number"
+  },
+  "err.password_invisibili": {
+    "it": "La password contiene caratteri invisibili o di controllo: usa solo caratteri che si vedono",
+    "en": "The password contains invisible or control characters: use only visible characters"
+  },
+  "err.invito_usi": {
+    "it": "Gli usi dell'invito vanno da 1 a {1}",
+    "en": "An invitation can be used from 1 to {1} times"
+  },
+  "err.invito_admin_una_volta": {
+    "it": "Un invito da amministratore si può usare una volta sola",
+    "en": "An administrator invitation can be used only once"
+  },
+  "err.invito_etichetta": {
+    "it": "Serve un'etichetta di al massimo 60 caratteri (per ricordare per chi è l'invito)",
+    "en": "A label of at most 60 characters is needed (to remember who the invitation is for)"
+  },
+  "err.invito_non_trovato": {
+    "it": "Invito non trovato",
+    "en": "Invitation not found"
+  },
+  "err.conferma_google": {
+    "it": "Conferma prima con Google",
+    "en": "Confirm with Google first"
+  },
+  "err.troppi_tentativi_ora": {
+    "it": "Troppi tentativi in questo momento: riprova tra qualche secondo",
+    "en": "Too many attempts right now: try again in a few seconds"
+  },
+  "err.ultimo_admin_elimina": {
+    "it": "Non posso eliminare l'ultimo amministratore: prima promuovi un altro account",
+    "en": "I cannot delete the last administrator: promote another account first"
+  },
+  "err.ultimo_admin_declassa": {
+    "it": "Non posso declassare l'ultimo amministratore: prima promuovi un altro account",
+    "en": "I cannot demote the last administrator: promote another account first"
+  },
+  "err.problema_file": {
+    "it": "Il server ha un problema con i suoi file: riprova più tardi. Se succede ancora, avvisa chi gestisce l'app.",
+    "en": "The server has a problem with its files: try again later. If it keeps happening, tell whoever runs the app."
+  },
+  "err.serve_email": {
+    "it": "Per iscriverti serve un indirizzo email: ti mandiamo un codice per confermarlo",
+    "en": "To sign up you need an email address: we will send you a code to confirm it"
+  },
+  "err.nome_preso_ricomincia": {
+    "it": "Questo nome utente è già preso: ricomincia l'iscrizione con un altro nome",
+    "en": "This username is already taken: start the sign-up again with another name"
+  },
+  "err.nome_o_email_in_uso": {
+    "it": "Questo nome utente o questo indirizzo sono già in uso: ricomincia l'iscrizione",
+    "en": "This username or this address is already in use: start the sign-up again"
+  },
+  "err.account_spenti": {
+    "it": "Gli account non sono attivi",
+    "en": "Accounts are not active"
+  },
+  "err.solo_admin": {
+    "it": "Solo per l'amministratore",
+    "en": "Administrator only"
+  },
+  "err.non_trovato": {
+    "it": "Non trovato",
+    "en": "Not found"
+  },
+  "err.calendario": {
+    "it": "Il calendario della stagione non è ancora disponibile (di solito esce a luglio): previsioni e asta partono appena arriva. Aggiorna i dati più avanti.",
+    "en": "The season calendar is not available yet (it usually comes out in July): forecasts and auction start as soon as it arrives. Update the data later."
+  },
+  "err.squadra_non_trovata_indica": {
+    "it": "Squadra non trovata: indica la tua squadra in Squadra > Squadre e rose",
+    "en": "Team not found: choose your team in Team > Teams and rosters"
+  },
+  "err.indica_prima_squadra": {
+    "it": "Indica prima la tua squadra in Squadra > Squadre e rose",
+    "en": "First choose your team in Team > Teams and rosters"
+  },
+  "err.indica_squadra": {
+    "it": "Indica la tua squadra in Squadra > Squadre e rose",
+    "en": "Choose your team in Team > Teams and rosters"
+  },
+  "err.squadra_non_trovata": {
+    "it": "Squadra non trovata",
+    "en": "Team not found"
+  },
+  "err.nome_squadra": {
+    "it": "Scrivi un nome da 1 a 60 caratteri.",
+    "en": "Write a name from 1 to 60 characters."
+  },
+  "err.nome_squadra_doppio": {
+    "it": "C'è già una squadra con questo nome: scegline un altro.",
+    "en": "There is already a team with this name: choose another one."
+  },
+  "err.nome_squadra_simile": {
+    "it": "Questo nome si confonde con «{1}»: aggiungi o cambia una lettera o un numero.",
+    "en": "This name gets mixed up with «{1}»: add or change a letter or a number."
+  },
+  "err.squadra_non_trovata_nome": {
+    "it": "Squadra non trovata: {1}",
+    "en": "Team not found: {1}"
+  },
+  "err.servono_11_titolari": {
+    "it": "Servono 11 titolari diversi, tutti della rosa",
+    "en": "11 different starters are needed, all from the roster"
+  },
+  "err.formazione_chiusa": {
+    "it": "La giornata è già iniziata: la formazione non si può più cambiare.",
+    "en": "The matchday has already started: the lineup can no longer be changed."
+  },
+  "err.giocatore_bloccato": {
+    "it": "{1} gioca in una partita già cominciata: non si può più spostare.",
+    "en": "{1} is playing in a match that has already started: they can no longer be moved."
+  },
+  "err.modulo_non_ammesso": {
+    "it": "Il modulo {1}-{2}-{3} con {4} portieri non è ammesso nella tua lega",
+    "en": "The {1}-{2}-{3} formation with {4} goalkeepers is not allowed in your league"
+  },
+  "err.nessuno_gioca": {
+    "it": "Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata",
+    "en": "A team cannot be formed: in some role nobody plays this matchday"
+  },
+  "err.nessun_modulo": {
+    "it": "Nessun modulo ammesso è compatibile con la rosa",
+    "en": "No allowed formation fits the roster"
+  },
+  "err.senza_previsione": {
+    "it": "Giocatore {1} senza previsione per {2} (la sua squadra non gioca?)",
+    "en": "Player {1} has no forecast for {2} (is their team not playing?)"
+  },
+  "err.elenco_giocatori": {
+    "it": "Elenco di giocatori non valido",
+    "en": "Invalid list of players"
+  },
+  "err.crediti_non_validi": {
+    "it": "Crediti non validi per {1}",
+    "en": "Invalid credits for {1}"
+  },
+  "err.giocatore_non_nel_listone": {
+    "it": "Giocatore non trovato nel listone",
+    "en": "Player not found in the player list"
+  },
+  "err.giocatore_non_piu_nella_rosa": {
+    "it": "Quel giocatore non c'è più nella rosa: ricarica la pagina",
+    "en": "That player is no longer in the roster: reload the page"
+  },
+  "err.rose_cambiate_calcolo": {
+    "it": "Le regole o la rosa sono cambiate mentre calcolavo: riprova",
+    "en": "The rules or the roster changed while I was calculating: try again"
+  },
+  "err.lega_rovinata": {
+    "it": "Il file {1} è rovinato: ripristina la copia {2}.bak o importa di nuovo le rose",
+    "en": "The file {1} is damaged: restore the copy {2}.bak or import the rosters again"
+  },
+  "err.rose_forma": {
+    "it": "Il file rose.json non ha la forma giusta: ripristina la copia rose.json.bak o un backup, oppure importa di nuovo le rose",
+    "en": "The file rose.json is not in the right format: restore the copy rose.json.bak or a backup, or import the rosters again"
+  },
+  "err.rosa_occupata": {
+    "it": "Un'altra operazione sulle rose è ancora in corso: riprova fra qualche secondo",
+    "en": "Another operation on the rosters is still running: try again in a few seconds"
+  },
+  "err.scambio_altra_squadra": {
+    "it": "Scegli un'altra squadra: non puoi scambiare con te stesso",
+    "en": "Choose another team: you cannot trade with yourself"
+  },
+  "err.scambio_stesso_numero": {
+    "it": "Lo scambio deve essere tra lo stesso numero di giocatori, senza ripetizioni",
+    "en": "The trade must be between the same number of players, without repeats"
+  },
+  "err.scambio_non_nel_listone": {
+    "it": "Uno dei giocatori non è nel listone di Serie A: non si può valutare",
+    "en": "One of the players is not in the Serie A player list: it cannot be assessed"
+  },
+  "err.scambio_da_dare": {
+    "it": "Non tutti i giocatori da dare sono in {1}",
+    "en": "Not all the players to give are in {1}"
+  },
+  "err.scambio_da_ricevere": {
+    "it": "Non tutti i giocatori da ricevere sono in {1}",
+    "en": "Not all the players to receive are in {1}"
+  },
+  "err.scambio_ruoli": {
+    "it": "Lo scambio cambia il numero di giocatori per ruolo: le rose non resterebbero valide",
+    "en": "The trade changes the number of players per role: the rosters would no longer be valid"
+  },
+  "err.scambio_non_fattibile": {
+    "it": "Così com'è lo scambio non si può fare: {1}",
+    "en": "As it stands the trade cannot be made: {1}"
+  },
+  "err.scambio_almeno_uno": {
+    "it": "Scegli almeno un giocatore da {1}",
+    "en": "Choose at least one player to {1}"
+  },
+  "err.scambio_massimo": {
+    "it": "Al massimo {1} giocatori per parte",
+    "en": "At most {1} players per side"
+  },
+  "err.scambio_ripetuto": {
+    "it": "Un giocatore è ripetuto: ogni giocatore può comparire una volta sola",
+    "en": "A player is repeated: each player can appear only once"
+  },
+  "err.scambio_non_tutti": {
+    "it": "Non tutti i giocatori da {1} sono in {2}",
+    "en": "Not all the players to {1} are in {2}"
+  },
+  "err.conguaglio_intero": {
+    "it": "Il conguaglio deve essere un numero intero di crediti",
+    "en": "The balancing payment must be a whole number of credits"
+  },
+  "err.conguaglio_massimo": {
+    "it": "Il conguaglio non può superare {1} crediti",
+    "en": "The balancing payment cannot exceed {1} credits"
+  },
+  "err.fino_a": {
+    "it": "fino_a deve essere un numero da 2 a {1}",
+    "en": "fino_a must be a number from 2 to {1}"
+  },
+  "err.scambi_grandi": {
+    "it": "Gli scambi più grandi dell'1 contro 1 si cercano con una squadra alla volta: scegline una",
+    "en": "Trades bigger than 1 for 1 are searched one team at a time: choose one"
+  },
+  "err.diario_tipo": {
+    "it": "Il tipo deve essere «consigliata» o «manuale»",
+    "en": "The type must be “recommended” or “manual”"
+  },
+  "err.diario_prima_inizio": {
+    "it": "Quella giornata è precedente all'inizio della tua lega",
+    "en": "That matchday is before the start of your league"
+  },
+  "err.diario_solo_finite": {
+    "it": "Si può dire cosa hai schierato solo per le giornate già finite",
+    "en": "You can only say what you fielded for matchdays that are already over"
+  },
+  "err.diario_non_valuto": {
+    "it": "Non riesco a valutare questa formazione per quella giornata",
+    "en": "I cannot assess this lineup for that matchday"
+  },
+  "err.diario_senza_dati": {
+    "it": "Per questa giornata non ho i dati per ricostruire la formazione consigliata",
+    "en": "For this matchday I do not have the data to rebuild the recommended lineup"
+  },
+  "err.diario_non_in_rosa": {
+    "it": "Tra i titolari ci sono giocatori che non sono nella tua rosa",
+    "en": "Some of the starters are not in your roster"
+  },
+  "err.excel_codifica": {
+    "it": "Il file Excel usa una codifica non ammessa: salvalo di nuovo da Excel come .xlsx normale",
+    "en": "The Excel file uses a disallowed encoding: save it again from Excel as a normal .xlsx"
+  },
+  "err.testo_lungo": {
+    "it": "Il testo è troppo lungo (massimo {1} mila caratteri): incolla solo le rose",
+    "en": "The text is too long (at most {1} thousand characters): paste only the rosters"
+  },
+  "err.regolamento_lungo": {
+    "it": "Il regolamento è troppo lungo (al massimo {1} mila caratteri): incolla solo la parte con bonus, malus, moduli e panchina.",
+    "en": "The rules text is too long (at most {1} thousand characters): paste only the part with bonuses, maluses, formations and bench."
+  },
+  "err.regolamento_riga_lunga": {
+    "it": "Una riga del regolamento è troppo lunga (al massimo {1} caratteri): vai a capo tra una regola e l'altra.",
+    "en": "A line of the rules text is too long (at most {1} characters): start a new line for each rule."
+  },
+  "err.excel_illeggibile": {
+    "it": "File Excel non leggibile: è rovinato, protetto da password o non è un vero file .xlsx",
+    "en": "The Excel file cannot be read: it is damaged, password-protected or not a real .xlsx file"
+  },
+  "err.excel_struttura": {
+    "it": "Il file Excel ha una struttura strana: salvalo di nuovo da Excel come .xlsx normale",
+    "en": "The Excel file has an odd structure: save it again from Excel as a normal .xlsx"
+  },
+  "err.excel_grande_aperto": {
+    "it": "Il file Excel è troppo grande una volta aperto: carica solo il foglio con le rose",
+    "en": "The Excel file is too big once opened: upload only the sheet with the rosters"
+  },
+  "err.file_macro": {
+    "it": "Il file contiene macro: salvalo come .xlsx normale, senza macro",
+    "en": "The file contains macros: save it as a normal .xlsx, without macros"
+  },
+  "err.excel_pesante": {
+    "it": "Il file Excel è troppo pesante da leggere: carica solo il foglio con le rose",
+    "en": "The Excel file is too heavy to read: upload only the sheet with the rosters"
+  },
+  "err.file_righe": {
+    "it": "Il file ha troppe righe (massimo {1}): carica solo le rose",
+    "en": "The file has too many rows (at most {1}): upload only the rosters"
+  },
+  "err.file_colonne": {
+    "it": "Il file ha troppe colonne (massimo {1}): carica solo le rose",
+    "en": "The file has too many columns (at most {1}): upload only the rosters"
+  },
+  "err.excel_password": {
+    "it": "Il file Excel è protetto da password: toglila e riprova",
+    "en": "The Excel file is password-protected: remove the password and try again"
+  },
+  "err.excel_parti": {
+    "it": "Il file Excel contiene nomi di parti non ammessi",
+    "en": "The Excel file contains disallowed part names"
+  },
+  "err.file_oggetti": {
+    "it": "Il file contiene macro, oggetti incorporati o collegamenti esterni: salvalo come .xlsx normale, senza macro",
+    "en": "The file contains macros, embedded objects or external links: save it as a normal .xlsx, without macros"
+  },
+  "err.excel_sospetto": {
+    "it": "Il file Excel è fatto in modo sospetto (si gonfia troppo quando lo apro)",
+    "en": "The Excel file looks suspicious (it swells too much when I open it)"
+  },
+  "err.excel_xml": {
+    "it": "Il file Excel contiene dichiarazioni XML non ammesse: salvalo di nuovo da Excel",
+    "en": "The Excel file contains disallowed XML declarations: save it again from Excel"
+  },
+  "err.excel_vecchio": {
+    "it": "Questo è un vecchio file Excel (.xls): aprilo, salvalo come «Cartella di lavoro Excel (.xlsx)» oppure come CSV, e riprova.",
+    "en": "This is an old Excel file (.xls): open it, save it as “Excel Workbook (.xlsx)” or as CSV, and try again."
+  },
+  "err.file_senza_tabella": {
+    "it": "Questo file non contiene una tabella di rose (è un PDF, un'immagine o un documento): esporta le rose in Excel (.xlsx) o in CSV e riprova.",
+    "en": "This file does not contain a table of rosters (it is a PDF, an image or a document): export the rosters to Excel (.xlsx) or CSV and try again."
+  },
+  "err.file_non_testo": {
+    "it": "Il file non sembra testo né Excel: esporta le rose come .xlsx oppure come CSV (UTF-8) e riprova.",
+    "en": "The file does not look like text or Excel: export the rosters as .xlsx or as CSV (UTF-8) and try again."
+  },
+  "err.csv_illeggibile": {
+    "it": "Il CSV non è leggibile: ci sono virgolette aperte e mai chiuse oppure una cella enorme. Riesportalo da Excel come «CSV UTF-8».",
+    "en": "The CSV cannot be read: there are quotation marks opened and never closed, or a huge cell. Export it again from Excel as “CSV UTF-8”."
+  },
+  "err.excel_rovinato": {
+    "it": "File Excel non leggibile: è rovinato o protetto da password",
+    "en": "The Excel file cannot be read: it is damaged or password-protected"
+  },
+  "err.file_troppo_grande_5": {
+    "it": "File troppo grande (massimo 5 MB): carica solo le rose",
+    "en": "File too large (at most 5 MB): upload only the rosters"
+  },
+  "err.file_vuoto": {
+    "it": "Il file è vuoto",
+    "en": "The file is empty"
+  },
+  "err.file_xlsm": {
+    "it": "I file con macro (.xlsm) non sono ammessi: salvalo come Excel normale (.xlsx)",
+    "en": "Files with macros (.xlsm) are not allowed: save it as a normal Excel file (.xlsx)"
+  },
+  "err.excel_gia_in_lettura": {
+    "it": "Sto già leggendo un altro file Excel: riprova tra poco.",
+    "en": "I am already reading another Excel file: try again shortly."
+  },
+  "err.immagini_gia_scarico": {
+    "it": "Il server sta già scaricando altre immagini: riprova tra poco.",
+    "en": "The server is already downloading other images: try again shortly."
+  },
+  "err.spazio_finito": {
+    "it": "Hai finito lo spazio per i tuoi dati ({1} MB). {2}",
+    "en": "You have run out of space for your data ({1} MB). {2}"
+  },
+  "err.p_consiglio_immagini": {
+    "it": "Prova con immagini più leggere, poi riprova.",
+    "en": "Try lighter images, then try again."
+  },
+  "err.troppe_squadre": {
+    "it": "La lega ha {1} squadre: il massimo è {2}. Controlla il file: forse ci sono righe che non sono squadre.",
+    "en": "The league has {1} teams: the maximum is {2}. Check the file: maybe some rows are not teams."
+  },
+  "err.una_immagine": {
+    "it": "Un'immagine alla volta: aspetta qualche secondo e riprova.",
+    "en": "One image at a time: wait a few seconds and try again."
+  },
+  "err.analisi_molte": {
+    "it": "Hai chiesto molte analisi di scambi in poco tempo: aspetta un minuto e riprova.",
+    "en": "You asked for many trade analyses in a short time: wait a minute and try again."
+  },
+  "err.analisi_tue": {
+    "it": "Sto già analizzando i tuoi scambi: aspetta la risposta e riprova.",
+    "en": "I am already analysing your trades: wait for the reply and try again."
+  },
+  "err.analisi_altri": {
+    "it": "Il server sta analizzando altri scambi: riprova tra qualche secondo.",
+    "en": "The server is analysing other trades: try again in a few seconds."
+  },
+  "err.squadra_troppi_giocatori": {
+    "it": "«{1}» ha {2} giocatori: il massimo è {3}. Controlla il file: forse due squadre sono finite insieme.",
+    "en": "“{1}” has {2} players: the maximum is {3}. Check the file: maybe two teams ended up together."
+  },
+  "err.calcoli_in_coda": {
+    "it": "Il server ha molti calcoli in coda: riprova fra qualche secondo",
+    "en": "The server has many calculations queued: try again in a few seconds"
+  },
+  "err.immagine_tipo": {
+    "it": "Tipo di immagine non valido: stemma o maglia",
+    "en": "Invalid image type: crest or kit"
+  },
+  "err.immagine_formato": {
+    "it": "Formato non supportato: usa PNG, JPEG o WebP",
+    "en": "Unsupported format: use PNG, JPEG or WebP"
+  },
+  "err.indirizzo_completo": {
+    "it": "Indirizzo non valido: incolla un indirizzo web completo che inizia con https://",
+    "en": "Invalid address: paste a complete web address starting with https://"
+  },
+  "err.indirizzo_https": {
+    "it": "Per sicurezza accetto solo indirizzi che iniziano con https://",
+    "en": "For safety I only accept addresses that start with https://"
+  },
+  "err.indirizzo_credenziali": {
+    "it": "L'indirizzo non può contenere nome utente o password",
+    "en": "The address cannot contain a username or password"
+  },
+  "err.indirizzo_senza_sito": {
+    "it": "Indirizzo non valido: manca il nome del sito",
+    "en": "Invalid address: the site name is missing"
+  },
+  "err.indirizzo_porta": {
+    "it": "Accetto solo indirizzi sulla porta normale di https",
+    "en": "I only accept addresses on the normal https port"
+  },
+  "err.indirizzo_sito_ignoto": {
+    "it": "Indirizzo non valido: nome del sito non riconosciuto",
+    "en": "Invalid address: site name not recognised"
+  },
+  "err.sito_non_trovato": {
+    "it": "Non trovo il sito di quell'indirizzo: controlla di averlo scritto bene",
+    "en": "I cannot find the site of that address: check you typed it correctly"
+  },
+  "err.sito_lento": {
+    "it": "Il sito è troppo lento: riprova più tardi",
+    "en": "The site is too slow: try again later"
+  },
+  "err.indirizzo_privato": {
+    "it": "Quell'indirizzo porta a una rete privata o interna: non lo scarico",
+    "en": "That address leads to a private or internal network: I will not download it"
+  },
+  "err.sito_non_collega": {
+    "it": "Non riesco a collegarmi al sito (o il suo certificato non è valido): riprova più tardi",
+    "en": "I cannot connect to the site (or its certificate is not valid): try again later"
+  },
+  "err.sito_errore": {
+    "it": "Il sito ha risposto con un errore ({1}): controlla che l'immagine sia pubblica",
+    "en": "The site replied with an error ({1}): check that the image is public"
+  },
+  "err.non_immagine": {
+    "it": "Quell'indirizzo non porta a un'immagine PNG, JPEG o WebP (forse è una pagina web: apri l'immagine da sola e copia quell'indirizzo)",
+    "en": "That address does not lead to a PNG, JPEG or WebP image (maybe it is a web page: open the image on its own and copy that address)"
+  },
+  "err.sito_reindirizzamento": {
+    "it": "Il sito ha mandato un reindirizzamento senza destinazione",
+    "en": "The site sent a redirect without a destination"
+  },
+  "err.sito_interrotto": {
+    "it": "Il sito ha interrotto il trasferimento: riprova più tardi",
+    "en": "The site interrupted the transfer: try again later"
+  },
+  "err.icona": {
+    "it": "Icona non valida",
+    "en": "Invalid icon"
+  },
+  "err.dimensione": {
+    "it": "Dimensione non disponibile",
+    "en": "Size not available"
+  },
+  "err.backup_non_nostro": {
+    "it": "Questo non è un backup di SchieraXI",
+    "en": "This is not a SchieraXI backup"
+  },
+  "err.backup_piu_nuovo": {
+    "it": "Il backup viene da una versione più nuova dell'app: aggiorna l'app e riprova",
+    "en": "The backup comes from a newer version of the app: update the app and try again"
+  },
+  "err.backup_vuoto": {
+    "it": "Il backup è vuoto",
+    "en": "The backup is empty"
+  },
+  "err.backup_file_ignoto": {
+    "it": "Il backup contiene un file che non conosco: {1}",
+    "en": "The backup contains a file I do not know: {1}"
+  },
+  "err.backup_non_valido": {
+    "it": "{1} non è valido: controlla di aver scelto il file di backup giusto",
+    "en": "{1} is not valid: check you chose the right backup file"
+  },
+  "err.p_backup_grande": {
+    "it": "Questo backup è troppo grande: controlla di aver scelto il file giusto.",
+    "en": "This backup is too big: check you chose the right file."
+  },
+  "err.ore_tranquille": {
+    "it": "Le ore tranquille non possono iniziare e finire alla stessa ora: scegli due ore diverse (per esempio dalle 23 alle 7) oppure spegni l'interruttore",
+    "en": "Quiet hours cannot start and end at the same hour: choose two different hours (for example from 11 pm to 7 am) or turn the switch off"
+  },
+  "err.demo_ho_rose": {
+    "it": "Hai già le tue rose: la lega demo le sostituirebbe, quindi non la creo.",
+    "en": "You already have your rosters: the demo league would replace them, so I am not creating it."
+  },
+  "err.demo_nessuna": {
+    "it": "Non c'è nessuna lega demo da togliere.",
+    "en": "There is no demo league to remove."
+  },
+  "err.passo_sconosciuto_guida": {
+    "it": "Passo sconosciuto della procedura guidata",
+    "en": "Unknown step of the guided setup"
+  },
+  "err.stato_sconosciuto_guida": {
+    "it": "Stato sconosciuto della procedura guidata",
+    "en": "Unknown state of the guided setup"
+  },
+  "err.passi_non_validi": {
+    "it": "Elenco dei passi non valido",
+    "en": "Invalid list of steps"
+  },
+  "err.potrebbe_essere": {
+    "it": "potrebbe essere: {1}",
+    "en": "could be: {1}"
+  },
+  "err.nomi_ruolo_diverso": {
+    "it": "ruolo diverso: indicato {1}, nel listone {2}",
+    "en": "different role: given {1}, in the player list {2}"
+  },
+  "err.nomi_squadra_diversa": {
+    "it": "squadra diversa: indicata {1}, nel listone {2}",
+    "en": "different team: given {1}, in the player list {2}"
+  },
+  "err.google_non_attivo": {
+    "it": "L'accesso con Google non è attivo",
+    "en": "Sign-in with Google is not active"
+  },
+  "err.richiesta_non_valida": {
+    "it": "Richiesta non valida",
+    "en": "Invalid request"
+  },
+  "err.google_scaduto": {
+    "it": "Il collegamento con Google è scaduto: riprova",
+    "en": "The link with Google has expired: try again"
+  },
+  "err.google_indirizzo_ha_account": {
+    "it": "Questo indirizzo ha già un account: entra come fai di solito e poi, in Impostazioni > Il tuo account, collega Google.",
+    "en": "This address already has an account: sign in as usual and then, in Settings > Your account, link Google."
+  },
+  "err.google_usa_modulo": {
+    "it": "Per iscriverti usa il modulo con la tua email.",
+    "en": "To sign up use the form with your email."
+  },
+  "err.google_altro_account": {
+    "it": "Hai scelto un altro account Google: scegli quello collegato a SchieraXI.",
+    "en": "You chose a different Google account: choose the one linked to SchieraXI."
+  },
+  "err.accetta_privacy": {
+    "it": "Per iscriverti devi accettare Privacy e Termini",
+    "en": "To sign up you must accept the Privacy policy and the Terms of use"
+  },
+  "err.hai_gia_password": {
+    "it": "Hai già una password: usa «Cambia password»",
+    "en": "You already have a password: use “Change password”"
+  },
+  "err.google_dispositivo": {
+    "it": "Questa operazione va fatta dal dispositivo in cui hai cominciato",
+    "en": "This must be done on the device where you started"
+  },
+  "err.google_gia_collegato": {
+    "it": "Questo Google è già collegato a un account (forse questo): scollegalo da lì per usarlo qui.",
+    "en": "This Google account is already linked to an account (maybe this one): unlink it there to use it here."
+  },
+  "err.accesso_non_collegato": {
+    "it": "Questo accesso non è collegato",
+    "en": "This sign-in is not linked"
+  },
+  "err.prima_password": {
+    "it": "Prima aggiungi una password o un altro accesso.",
+    "en": "First add a password or another sign-in."
+  },
+  "err.nome_o_google_in_uso": {
+    "it": "Questo nome utente (o questo Google) è già in uso: riprova con un altro nome",
+    "en": "This username (or this Google account) is already in use: try another name"
+  },
+  "err.iscrizione": {
+    "it": "Iscrizione non valida",
+    "en": "Invalid subscription"
+  },
+  "err.indirizzo_non_pubblico": {
+    "it": "Indirizzo non pubblico",
+    "en": "Address is not public"
+  },
+  "err.servizio_notifica": {
+    "it": "Servizio di notifica non raggiungibile",
+    "en": "Notification service not reachable"
+  },
+  "err.nome_non_risolto": {
+    "it": "Nome non risolto",
+    "en": "Name not resolved"
+  },
+  "err.nome_non_risolto_tempo": {
+    "it": "Nome non risolto in tempo",
+    "en": "Name not resolved in time"
+  },
+  "err.modulo_forma": {
+    "it": "modulo non valido: {1} (formato atteso tipo 3-4-3)",
+    "en": "invalid formation: {1} (expected format like 3-4-3)"
+  },
+  "err.modulo_somma": {
+    "it": "il modulo {1} non somma a 10 giocatori di movimento",
+    "en": "the formation {1} does not add up to 10 outfield players"
+  },
+  "err.passo_sconosciuto": {
+    "it": "Passo sconosciuto della configurazione",
+    "en": "Unknown setup step"
+  }
+}

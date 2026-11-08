@@ -1,0 +1,14 @@
+{
+  "lingua.locale": {
+    "it": "it-IT",
+    "en": "en-GB"
+  },
+  "lingua.it": {
+    "it": "Italiano",
+    "en": "Italiano"
+  },
+  "lingua.en": {
+    "it": "English",
+    "en": "English"
+  }
+}

@@ -1,0 +1,923 @@
+{
+  "frase.tempo.meno_di_un_ora": {
+    "it": "meno di un'ora",
+    "en": "less than an hour",
+    "nota": "---- [frasi del server] ----"
+  },
+  "frase.tempo.ore.one": {
+    "it": "{n} ora",
+    "en": "{n} hour"
+  },
+  "frase.tempo.ore.other": {
+    "it": "{n} ore",
+    "en": "{n} hours"
+  },
+  "frase.tempo.fa_meno_di_un_minuto": {
+    "it": "meno di un minuto fa",
+    "en": "less than a minute ago"
+  },
+  "frase.tempo.minuti_fa.one": {
+    "it": "{n} minuto fa",
+    "en": "{n} minute ago"
+  },
+  "frase.tempo.minuti_fa.other": {
+    "it": "{n} minuti fa",
+    "en": "{n} minutes ago"
+  },
+  "frase.tempo.ore_fa.one": {
+    "it": "{n} ora fa",
+    "en": "{n} hour ago"
+  },
+  "frase.tempo.ore_fa.other": {
+    "it": "{n} ore fa",
+    "en": "{n} hours ago"
+  },
+  "frase.tempo.giorni_fa.one": {
+    "it": "{n} giorno fa",
+    "en": "{n} day ago"
+  },
+  "frase.tempo.giorni_fa.other": {
+    "it": "{n} giorni fa",
+    "en": "{n} days ago"
+  },
+  "frase.tempo.giornate.one": {
+    "it": "giornata",
+    "en": "one matchday"
+  },
+  "frase.tempo.giornate.other": {
+    "it": "{n} giornate",
+    "en": "{n} matchdays"
+  },
+  "frase.giornata.lega": {
+    "it": "Giornata {n} · {a}ª di Serie A",
+    "en": "Matchday {n} · Serie A matchday {a}"
+  },
+  "frase.giornata.serie_a": {
+    "it": "{a}ª giornata di Serie A",
+    "en": "Serie A matchday {a}"
+  },
+  "frase.elenco.e": {
+    "it": " e ",
+    "en": " and "
+  },
+  "frase.dafare.dubbio_squalificato": {
+    "it": "{nome} non può giocare.",
+    "en": "{nome} cannot play."
+  },
+  "frase.dafare.dubbio_squalificato_alt": {
+    "it": "{nome} non può giocare. Meglio {alt}.",
+    "en": "{nome} cannot play. Better {alt}."
+  },
+  "frase.dafare.dubbio_infortunato": {
+    "it": "{nome} è infortunato.",
+    "en": "{nome} is injured."
+  },
+  "frase.dafare.dubbio_infortunato_alt": {
+    "it": "{nome} è infortunato. Meglio {alt}.",
+    "en": "{nome} is injured. Better {alt}."
+  },
+  "frase.dafare.dubbio_incerto": {
+    "it": "{nome} è in dubbio ({p}% di giocare).",
+    "en": "{nome} is in doubt ({p}% chance of playing)."
+  },
+  "frase.dafare.dubbio_incerto_alt": {
+    "it": "{nome} è in dubbio ({p}% di giocare). Meglio {alt}.",
+    "en": "{nome} is in doubt ({p}% chance of playing). Better {alt}."
+  },
+  "frase.dafare.dubbio_incerto_tiene": {
+    "it": "{nome} è in dubbio ({p}% di giocare) ma resta titolare: se non gioca entra {riserva} dalla panchina.",
+    "en": "{nome} is in doubt ({p}% chance of playing) but stays in the starting eleven: if he doesn't play, {riserva} comes on from the bench."
+  },
+  "frase.dafare.incerto": {
+    "it": "{nome}: {stato}, gioca {p}%.",
+    "en": "{nome}: {stato}, plays {p}%."
+  },
+  "frase.dafare.incerto_alt": {
+    "it": "{nome}: {stato}, gioca {p}%. Meglio {alt}.",
+    "en": "{nome}: {stato}, plays {p}%. Better {alt}."
+  },
+  "frase.dafare.incerto_tiene": {
+    "it": "{nome} ({stato}, gioca {p}%) resta titolare: se non gioca entra {riserva} dalla panchina.",
+    "en": "{nome} ({stato}, plays {p}%) stays in the starting eleven: if he doesn't play, {riserva} comes on from the bench."
+  },
+  "frase.dafare.formazione_chiude": {
+    "it": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    "en": "The lineup closes in {tempo} and you have not saved it yet."
+  },
+  "frase.dafare.consigliata_cambiata": {
+    "it": "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
+    "en": "The recommended lineup has changed since you saved it: review it. It now starts {entrano} instead of {escono}."
+  },
+  "frase.dafare.consigliata_cambiata_molti": {
+    "it": "La consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    "en": "The recommended lineup has changed since you saved it: review it. {n} starters are different."
+  },
+  "frase.dafare.consigliata_cambiata_fuori": {
+    "it": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
+    "en": "{fuori} and the recommended lineup has changed since you saved it: review it. It now starts {entrano} instead of {escono}."
+  },
+  "frase.dafare.consigliata_cambiata_fuori_molti": {
+    "it": "{fuori} e la consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
+    "en": "{fuori} and the recommended lineup has changed since you saved it: review it. {n} starters are different."
+  },
+  "frase.dafare.fuori_infortunato": {
+    "it": "{nome} è infortunato",
+    "en": "{nome} is injured"
+  },
+  "frase.dafare.fuori_squalificato": {
+    "it": "{nome} è squalificato",
+    "en": "{nome} is suspended"
+  },
+  "frase.dafare.formazione_non_valida": {
+    "it": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
+    "en": "The lineup closes in {tempo} and the one you saved is no longer valid: save another one."
+  },
+  "frase.dafare.rose_vecchie": {
+    "it": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
+    "en": "The rosters have not been updated for {giorni} days and a matchday has been played in the meantime."
+  },
+  "frase.dafare.rose_mercato": {
+    "it": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
+    "en": "It's time for auctions and trades in the league: if the rosters have changed, update them before {giornata}."
+  },
+  "frase.dafare.cert_scaduto": {
+    "it": "L'app sul telefono è scaduta: va reinstallata.",
+    "en": "The app on your phone has expired: it must be reinstalled."
+  },
+  "frase.dafare.cert_oggi": {
+    "it": "L'app sul telefono scade oggi: rinnovala adesso.",
+    "en": "The app on your phone expires today: renew it now."
+  },
+  "frase.dafare.cert.one": {
+    "it": "L'app sul telefono scade tra {n} giorno: rinnovala.",
+    "en": "The app on your phone expires in {n} day: renew it."
+  },
+  "frase.dafare.cert.other": {
+    "it": "L'app sul telefono scade tra {n} giorni: rinnovala.",
+    "en": "The app on your phone expires in {n} days: renew it."
+  },
+  "frase.dafare.diario": {
+    "it": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
+    "en": "{giornata}: it is over, tell me whether you fielded the recommended lineup."
+  },
+  "frase.dafare.dati_vecchi": {
+    "it": "I dati delle partite non si aggiornano da {giorni} giorni.",
+    "en": "The match data has not been updated for {giorni} days."
+  },
+  "frase.dafare.primo_avvio.one": {
+    "it": "Hai saltato {n} passo della configurazione iniziale.",
+    "en": "You skipped {n} step of the initial setup."
+  },
+  "frase.dafare.primo_avvio.other": {
+    "it": "Hai saltato {n} passi della configurazione iniziale.",
+    "en": "You skipped {n} steps of the initial setup."
+  },
+  "frase.dafare.benvenuto": {
+    "it": "Benvenuto! Per cominciare importa le rose della tua lega.",
+    "en": "Welcome! To begin, import your league's rosters."
+  },
+  "frase.dafare.ti_guido": {
+    "it": "Ti guido io: sono pochi passi, tutti facoltativi.",
+    "en": "I will guide you: a few steps, all optional."
+  },
+  "frase.dafare.svincolato": {
+    "it": "{entra} (libero) al posto di {esce}: {guadagno}.",
+    "en": "{entra} (free agent) instead of {esce}: {guadagno}."
+  },
+  "frase.dafare.svincolato_motivo": {
+    "it": "{entra} (libero) al posto di {esce}: {motivo}, {guadagno}.",
+    "en": "{entra} (free agent) instead of {esce}: {motivo}, {guadagno}."
+  },
+  "frase.dafare.guadagno_breve.one": {
+    "it": "circa {punti} punti in più nella prossima giornata",
+    "en": "about {punti} more points in the next matchday"
+  },
+  "frase.dafare.guadagno_breve.other": {
+    "it": "circa {punti} punti in più nelle prossime {n} giornate",
+    "en": "about {punti} more points over the next {n} matchdays"
+  },
+  "frase.dafare.guadagno_stagione": {
+    "it": "circa {punti} punti in più",
+    "en": "about {punti} more points"
+  },
+  "frase.dafare.scambio": {
+    "it": "Con {altra} ti conviene scambiare: dai {do}, ricevi {ricevo}, {guadagno}.",
+    "en": "With {altra} a trade is worth it: you give {do}, you receive {ricevo}, {guadagno}."
+  },
+  "frase.dafare.scambio_motivo": {
+    "it": "Con {altra} ti conviene scambiare: dai {do}, ricevi {ricevo} ({motivo}), {guadagno}.",
+    "en": "With {altra} a trade is worth it: you give {do}, you receive {ricevo} ({motivo}), {guadagno}."
+  },
+  "frase.dafare.az_sostituisci": {
+    "it": "Sostituisci",
+    "en": "Replace"
+  },
+  "frase.dafare.az_rimpiazzo": {
+    "it": "Cerca un rimpiazzo",
+    "en": "Find a replacement"
+  },
+  "frase.dafare.az_formazione": {
+    "it": "Apri la formazione",
+    "en": "Open the lineup"
+  },
+  "frase.dafare.az_vedi": {
+    "it": "Vedi",
+    "en": "See"
+  },
+  "frase.dafare.az_scambio": {
+    "it": "Vedi lo scambio",
+    "en": "See the trade"
+  },
+  "frase.dafare.az_aggiorna_rose": {
+    "it": "Aggiorna le rose",
+    "en": "Update the rosters"
+  },
+  "frase.dafare.az_rinnova": {
+    "it": "Rinnova",
+    "en": "Renew"
+  },
+  "frase.dafare.az_schierato": {
+    "it": "Ho schierato la consigliata",
+    "en": "I fielded the recommended lineup"
+  },
+  "frase.dafare.az_controlla": {
+    "it": "Controlla",
+    "en": "Check"
+  },
+  "frase.dafare.az_riprendi": {
+    "it": "Riprendi",
+    "en": "Resume"
+  },
+  "frase.dafare.az_importa": {
+    "it": "Importa le rose",
+    "en": "Import the rosters"
+  },
+  "frase.dafare.az_inizia": {
+    "it": "Inizia",
+    "en": "Start"
+  },
+  "frase.senso.nessuna_giornata": {
+    "it": "Non ci sono giornate su cui misurare il guadagno.",
+    "en": "There are no matchdays to measure the gain on."
+  },
+  "frase.senso.differenza_piccola": {
+    "it": "La differenza è piccola ({punti} punti in {giornate}): meno del normale su e giù del fantavoto.",
+    "en": "The difference is small ({punti} points over {giornate}): less than the usual ups and downs of the fantasy score."
+  },
+  "frase.senso.entra_infortunato": {
+    "it": "{nome} è infortunato.",
+    "en": "{nome} is injured."
+  },
+  "frase.senso.entra_squalificato": {
+    "it": "{nome} è squalificato.",
+    "en": "{nome} is suspended."
+  },
+  "frase.senso.entra_dubbio": {
+    "it": "{nome} è in dubbio per la prossima giornata.",
+    "en": "{nome} is in doubt for the next matchday."
+  },
+  "frase.senso.entra_non_sicuro": {
+    "it": "{nome} non è sicuro di giocare ({p}% di prendere voto).",
+    "en": "{nome} is not sure to play ({p}% chance of getting a rating)."
+  },
+  "frase.senso.entra_non_titolare": {
+    "it": "{nome} non è un titolare fisso: parte dall'inizio {p}% delle volte.",
+    "en": "{nome} is not a regular starter: starts {p}% of the time."
+  },
+  "frase.senso.entra_non_titolare_sq": {
+    "it": "{nome} non è un titolare fisso ({squadra}): parte dall'inizio {p}% delle volte.",
+    "en": "{nome} is not a regular starter ({squadra}): starts {p}% of the time."
+  },
+  "frase.senso.entra_discontinuo": {
+    "it": "{nome} non gioca con continuità ({p}% di presenze nell'ultimo periodo).",
+    "en": "{nome} has not been playing regularly ({p}% of appearances recently)."
+  },
+  "frase.senso.entra_discontinuo_sq": {
+    "it": "{nome} non gioca con continuità ({squadra}) ({p}% di presenze nell'ultimo periodo).",
+    "en": "{nome} has not been playing regularly ({squadra}) ({p}% of appearances recently)."
+  },
+  "frase.senso.esce_fuori_poco": {
+    "it": "{nome} è fuori per poco: non si svincola un titolare per un'assenza breve.",
+    "en": "{nome} is out for a short time: you do not drop a starter for a short absence."
+  },
+  "frase.senso.esce_titolare": {
+    "it": "{nome}, quando c'è, è titolare e vale almeno quanto chi entra: la sua assenza di oggi passa.",
+    "en": "{nome}, when available, is a starter and is worth at least as much as the incoming player: today's absence will pass."
+  },
+  "frase.senso.esce_pagato": {
+    "it": "Hai pagato {nome} {costo} crediti: svincolarlo ne restituisce solo il {p}%.",
+    "en": "You paid {costo} credits for {nome}: dropping the player gives back only {p}%."
+  },
+  "frase.senso.preso_da_poco": {
+    "it": "L'hai preso da poco: dagli il tempo di dimostrare quanto vale.",
+    "en": "You signed this player recently: give them time to show what they are worth."
+  },
+  "frase.senso.lasciato_da_poco": {
+    "it": "L'hai lasciato libero da poco: riprenderlo adesso sarebbe un ripensamento.",
+    "en": "You released this player recently: taking them back now would be second-guessing."
+  },
+  "frase.senso.crediti": {
+    "it": "Non bastano i crediti.",
+    "en": "You do not have enough credits."
+  },
+  "frase.senso.si_titolare_fisso": {
+    "it": "{nome} è titolare fisso",
+    "en": "{nome} is a regular starter"
+  },
+  "frase.senso.si_titolare_fisso_sq": {
+    "it": "{nome} è titolare fisso ({squadra})",
+    "en": "{nome} is a regular starter ({squadra})"
+  },
+  "frase.senso.si_fuori_a_lungo": {
+    "it": "{nome} resta fuori a lungo",
+    "en": "{nome} stays out for a long time"
+  },
+  "frase.senso.si_squalificato": {
+    "it": "{nome} è squalificato",
+    "en": "{nome} is suspended"
+  },
+  "frase.senso.si_gioca_poco": {
+    "it": "{nome} gioca poco",
+    "en": "{nome} plays little"
+  },
+  "frase.senso.nessuno_accetta": {
+    "it": "Nessuno accetta {nome} ({perche}) in cambio di un titolare.",
+    "en": "Nobody will take {nome} ({perche}) in exchange for a starter."
+  },
+  "frase.senso.stato_infortunato": {
+    "it": "infortunato",
+    "en": "injured"
+  },
+  "frase.senso.stato_squalificato": {
+    "it": "squalificato",
+    "en": "suspended"
+  },
+  "frase.senso.gioca_poco_perc": {
+    "it": "gioca poco, {p}% di presenze",
+    "en": "plays little, {p}% of appearances"
+  },
+  "frase.motivo.titolare": {
+    "it": "titolare",
+    "en": "starter"
+  },
+  "frase.motivo.titolare_ballottaggio": {
+    "it": "titolare in ballottaggio",
+    "en": "contested starter"
+  },
+  "frase.motivo.panchina": {
+    "it": "parte dalla panchina",
+    "en": "starts on the bench"
+  },
+  "frase.motivo.infortunato": {
+    "it": "infortunato",
+    "en": "injured"
+  },
+  "frase.motivo.squalificato": {
+    "it": "squalificato",
+    "en": "suspended"
+  },
+  "frase.motivo.non_convocato": {
+    "it": "non tra i convocati previsti",
+    "en": "not among the expected squad"
+  },
+  "frase.motivo.rigorista": {
+    "it": "rigorista",
+    "en": "penalty taker"
+  },
+  "frase.motivo.porta_inviolata": {
+    "it": "{p}% di non subire gol",
+    "en": "clean sheet {p}%"
+  },
+  "frase.motivo.gol_atteso": {
+    "it": "{p}% di segnare",
+    "en": "{p}% to score"
+  },
+  "frase.motivo.favorevole": {
+    "it": "partita favorevole",
+    "en": "favourable match"
+  },
+  "frase.motivo.difficile": {
+    "it": "partita difficile",
+    "en": "difficult match"
+  },
+  "frase.perche.voti_su": {
+    "it": "voti sopra la media del ruolo",
+    "en": "ratings above the role average"
+  },
+  "frase.perche.voti_giu": {
+    "it": "voti sotto la media del ruolo",
+    "en": "ratings below the role average"
+  },
+  "frase.perche.partita_su_casa": {
+    "it": "partita favorevole in casa",
+    "en": "favourable home match"
+  },
+  "frase.perche.partita_su_fuori": {
+    "it": "partita favorevole in trasferta",
+    "en": "favourable away match"
+  },
+  "frase.perche.partita_giu_casa": {
+    "it": "partita difficile in casa",
+    "en": "difficult home match"
+  },
+  "frase.perche.partita_giu_fuori": {
+    "it": "partita difficile in trasferta",
+    "en": "difficult away match"
+  },
+  "frase.perche.gol_su": {
+    "it": "segna più della media del ruolo ({p}% di segnare)",
+    "en": "scores more than the role average ({p}% to score)"
+  },
+  "frase.perche.gol_giu": {
+    "it": "segna meno della media del ruolo",
+    "en": "scores less than the role average"
+  },
+  "frase.perche.assist_su": {
+    "it": "fa più assist della media del ruolo",
+    "en": "more assists than the role average"
+  },
+  "frase.perche.assist_giu": {
+    "it": "fa meno assist della media del ruolo",
+    "en": "fewer assists than the role average"
+  },
+  "frase.perche.rigori_su": {
+    "it": "rigorista",
+    "en": "penalty taker"
+  },
+  "frase.perche.rigori_giu": {
+    "it": "tira pochi rigori",
+    "en": "takes few penalties"
+  },
+  "frase.perche.porta_su": {
+    "it": "buone chance di non subire gol ({p}%)",
+    "en": "good chance of a clean sheet ({p}%)"
+  },
+  "frase.perche.porta_giu": {
+    "it": "poche chance di non subire gol ({p}%)",
+    "en": "little chance of a clean sheet ({p}%)"
+  },
+  "frase.perche.altro_su": {
+    "it": "bonus extra (per esempio migliore in campo)",
+    "en": "extra bonuses (for example best on the pitch)"
+  },
+  "frase.perche.altro_giu": {
+    "it": "cartellini e altri malus",
+    "en": "cards and other maluses"
+  },
+  "frase.perche.gioca_dubbio": {
+    "it": "gioca il {p}%: dubbio",
+    "en": "{p}% chance to play: doubtful"
+  },
+  "frase.perche.gioca_panchina": {
+    "it": "gioca il {p}%: probabile panchina",
+    "en": "{p}% chance to play: likely on the bench"
+  },
+  "frase.perche.gioca_improbabile": {
+    "it": "gioca solo il {p}%: improbabile",
+    "en": "only a {p}% chance to play: unlikely"
+  },
+  "frase.perche.infortunato": {
+    "it": "infortunato: non gioca",
+    "en": "injured: will not play"
+  },
+  "frase.perche.squalificato": {
+    "it": "squalificato: non gioca",
+    "en": "suspended: will not play"
+  },
+  "frase.perche.non_convocato": {
+    "it": "non tra i convocati previsti",
+    "en": "not among the expected squad"
+  },
+  "frase.rinvio.aspetta": {
+    "it": "partita rinviata: conta il voto del recupero ({data})",
+    "en": "postponed match: the grade from the make-up game counts ({data})"
+  },
+  "frase.rinvio.aspetta_senza_data": {
+    "it": "partita rinviata: conta il voto del recupero (data da definire)",
+    "en": "postponed match: the grade from the make-up game counts (date to be set)"
+  },
+  "frase.rinvio.senza_voto": {
+    "it": "partita rinviata: in questa giornata non prende voto",
+    "en": "postponed match: no grade in this round"
+  },
+  "frase.rinvio.voto_ufficio": {
+    "it": "partita rinviata: voto d'ufficio {voto}",
+    "en": "postponed match: official grade {voto}"
+  },
+  "frase.probabili.oggi": {
+    "it": "Probabili aggiornate alle {ora}",
+    "en": "Probable lineups updated at {ora}"
+  },
+  "frase.probabili.ieri": {
+    "it": "Probabili aggiornate ieri alle {ora}",
+    "en": "Probable lineups updated yesterday at {ora}"
+  },
+  "frase.probabili.data": {
+    "it": "Probabili aggiornate il {giorno}/{mese} alle {ora}",
+    "en": "Probable lineups updated on {giorno}/{mese} at {ora}"
+  },
+  "frase.probabili.vecchie": {
+    "it": "Le ho lette {eta} e la formazione si chiude tra {tempo}: potrebbero essere cambiate, ricontrolla prima.",
+    "en": "I read them {eta} and the lineup closes in {tempo}: they may have changed, check again first."
+  },
+  "frase.confronto.pari": {
+    "it": "{a} e {b} sono quasi alla pari: la differenza è sotto 0,2 punti attesi.",
+    "en": "{a} and {b} are almost level: the difference is under 0.2 expected points."
+  },
+  "frase.confronto.avanti_sparsi": {
+    "it": "{primo} è avanti di {punti} punti attesi, con piccoli vantaggi sparsi.",
+    "en": "{primo} is ahead by {punti} expected points, with small scattered advantages."
+  },
+  "frase.confronto.avanti": {
+    "it": "{primo} è avanti di {punti} punti attesi su {secondo}: {motivi}.",
+    "en": "{primo} is ahead of {secondo} by {punti} expected points: {motivi}."
+  },
+  "frase.confronto.gioca_di_piu": {
+    "it": "gioca di più ({pa}% contro {pb}%: +{peso})",
+    "en": "plays more often ({pa}% vs {pb}%: +{peso})"
+  },
+  "frase.confronto.alto_voto": {
+    "it": "voto in pagella atteso più alto (+{peso})",
+    "en": "higher expected match rating (+{peso})"
+  },
+  "frase.confronto.alto_gol": {
+    "it": "gol attesi più alto (+{peso})",
+    "en": "more expected goals (+{peso})"
+  },
+  "frase.confronto.alto_assist": {
+    "it": "assist attesi più alto (+{peso})",
+    "en": "more expected assists (+{peso})"
+  },
+  "frase.confronto.alto_rigori": {
+    "it": "rigori più alto (+{peso})",
+    "en": "more penalties (+{peso})"
+  },
+  "frase.confronto.alto_porta": {
+    "it": "porta (gol subiti, imbattibilità) più alto (+{peso})",
+    "en": "better goalkeeping record (goals conceded, clean sheets) (+{peso})"
+  },
+  "frase.confronto.alto_altro": {
+    "it": "cartellini e altro più alto (+{peso})",
+    "en": "better cards and other (+{peso})"
+  },
+  "frase.confronto.tutti_titolari": {
+    "it": "{a} e {b} sono tutti e due titolari nel {modulo}: giocano insieme, non si tolgono il posto.",
+    "en": "{a} and {b} are both starters in the {modulo}: they play together, they do not take each other's place."
+  },
+  "frase.confronto.non_titolari_ordine": {
+    "it": "{a} e {b} non sono titolari nel {modulo} ({pa} e {pb}): entra per primo chi sta più in alto in panchina, se il ruolo serve.",
+    "en": "{a} and {b} are not starters in the {modulo} ({pa} and {pb}): whoever is higher on the bench comes on first, if the role is needed."
+  },
+  "frase.confronto.non_titolari_fuori": {
+    "it": "{a} e {b} non sono titolari nel {modulo} ({pa} e {pb}): chi è fuori non entra.",
+    "en": "{a} and {b} are not starters in the {modulo} ({pa} and {pb}): whoever is out does not come on."
+  },
+  "frase.confronto.ruoli_diversi": {
+    "it": "{titolare} è titolare, {altro} è {posto}, ma sono di ruoli diversi: non si sostituiscono tra loro (a meno di un cambio di modulo durante le sostituzioni).",
+    "en": "{titolare} is a starter, {altro} is {posto}, but they play different roles: they do not replace each other (unless the formation changes during the substitutions)."
+  },
+  "frase.confronto.principale": {
+    "it": "Il sistema schiera {titolare} come titolare. {entrata} {esito} Conta quanto vale ciascuno quando gioca ({titolare} {mu_t} contro {altro} {mu_a}), non solo se gioca.",
+    "en": "The system fields {titolare} as a starter. {entrata} {esito} What counts is how much each is worth when playing ({titolare} {mu_t} vs {altro} {mu_a}), not only whether they play."
+  },
+  "frase.confronto.entra_fuori": {
+    "it": "{altro} resta fuori: in panchina ci sono giocatori più utili al punteggio.",
+    "en": "{altro} stays out: there are more useful players on the bench for the score."
+  },
+  "frase.confronto.senza_sostituzioni": {
+    "it": "Nella tua lega non sono ammesse sostituzioni: {altro} ({posto}) non può entrare al posto di {titolare}.",
+    "en": "Substitutions are not allowed in your league: {altro} ({posto}) cannot come on in place of {titolare}."
+  },
+  "frase.confronto.entra_se": {
+    "it": "Se {titolare} non prende voto ({p}% di probabilità), al suo posto può entrare {altro} ({posto}).",
+    "en": "If {titolare} gets no rating ({p}% chance), {altro} ({posto}) can come on in their place."
+  },
+  "frase.confronto.esito_meglio": {
+    "it": "Con {titolare} titolare la formazione vale {attuale} punti attesi; con i due invertiti {invertita} ({d}).",
+    "en": "With {titolare} as a starter the lineup is worth {attuale} expected points; with the two swapped {invertita} ({d})."
+  },
+  "frase.confronto.esito_peggio": {
+    "it": "Invertendoli la formazione varrebbe {invertita} invece di {attuale} ({d}): con il modulo {modulo} (non il migliore) la scelta non è la più conveniente.",
+    "en": "Swapping them the lineup would be worth {invertita} instead of {attuale} ({d}): with the {modulo} formation (not the best one) the choice is not the most convenient."
+  },
+  "frase.confronto.esito_pari": {
+    "it": "Le due soluzioni valgono praticamente lo stesso ({attuale} contro {invertita}).",
+    "en": "The two options are worth practically the same ({attuale} vs {invertita})."
+  },
+  "frase.confronto.titolare_che_gioca": {
+    "it": "{altro} quasi certamente non gioca ({p}% di giocare): il sistema schiera titolare {titolare}, che gioca {pt}%, anche se costa {d} punti attesi. {entrata}",
+    "en": "{altro} will almost certainly not play ({p}% chance of playing): the system starts {titolare}, who plays {pt}%, even though it costs {d} expected points. {entrata}"
+  },
+  "frase.scelta.titolare_che_gioca": {
+    "it": "Titolare al posto di {altro}, che quasi certamente non gioca ({p}% di giocare).",
+    "en": "Starting instead of {altro}, who will almost certainly not play ({p}% chance of playing)."
+  },
+  "frase.scelta.incerto": {
+    "it": "Titolare anche se incerto (gioca {p}%): se non gioca entra {riserva} dalla panchina, e insieme valgono di più.",
+    "en": "Starting even though uncertain (plays {p}%): if he doesn't play, {riserva} comes on from the bench, and together they are worth more."
+  },
+  "frase.scelta.piu_punti": {
+    "it": "Preferito a {altro}: con lui la formazione fa più punti attesi ({attuale} contro {invertita}).",
+    "en": "Preferred to {altro}: with him the team gets more expected points ({attuale} vs {invertita})."
+  },
+  "frase.scelta.piu_sicuro": {
+    "it": "A pari punti gioca più sicuro di {altro} ({pt}% contro {pa}%).",
+    "en": "Same points, but more likely to play than {altro} ({pt}% vs {pa}%)."
+  },
+  "frase.scelta.fantavoto_piu_alto": {
+    "it": "A pari punti ha il fantavoto atteso più alto di {altro} ({mu_t} contro {mu_a}).",
+    "en": "Same points, but a higher expected fantasy score than {altro} ({mu_t} vs {mu_a})."
+  },
+  "frase.scelta.motivo": {
+    "it": "Preferito a {altro}: {motivo}.",
+    "en": "Preferred to {altro}: {motivo}."
+  },
+  "frase.scelta.pari": {
+    "it": "Alla pari con {altro}: con l'uno o con l'altro la formazione vale quasi lo stesso ({attuale} contro {invertita}).",
+    "en": "Level with {altro}: the team is worth almost the same with either one ({attuale} vs {invertita})."
+  },
+  "frase.scelta.stabile": {
+    "it": "Con {altro} al suo posto la formazione farebbe {invertita} invece di {attuale}: per meno di 1 punto la consigliata già mostrata non cambia.",
+    "en": "With {altro} in his place the team would get {invertita} instead of {attuale}: for less than 1 point the recommended lineup already shown does not change."
+  },
+  "frase.posto.titolare": {
+    "it": "titolare",
+    "en": "starter"
+  },
+  "frase.posto.panchina": {
+    "it": "panchina {n}",
+    "en": "bench {n}"
+  },
+  "frase.posto.fuori": {
+    "it": "fuori",
+    "en": "out"
+  },
+  "frase.etichetta.ballottaggio": {
+    "it": "in ballottaggio",
+    "en": "contested"
+  },
+  "frase.etichetta.panchina": {
+    "it": "probabile panchina",
+    "en": "likely bench"
+  },
+  "frase.etichetta.improbabile": {
+    "it": "improbabile",
+    "en": "unlikely"
+  },
+  "frase.etichetta.rinviata": {
+    "it": "partita rinviata",
+    "en": "postponed match"
+  },
+  "frase.data.giorno_mese": {
+    "it": "{giorno} {n} {mese}",
+    "en": "{giorno} {n} {mese}"
+  },
+  "frase.giorno.lun": {
+    "it": "lun",
+    "en": "Mon"
+  },
+  "frase.giorno.mar": {
+    "it": "mar",
+    "en": "Tue"
+  },
+  "frase.giorno.mer": {
+    "it": "mer",
+    "en": "Wed"
+  },
+  "frase.giorno.gio": {
+    "it": "gio",
+    "en": "Thu"
+  },
+  "frase.giorno.ven": {
+    "it": "ven",
+    "en": "Fri"
+  },
+  "frase.giorno.sab": {
+    "it": "sab",
+    "en": "Sat"
+  },
+  "frase.giorno.dom": {
+    "it": "dom",
+    "en": "Sun"
+  },
+  "frase.mese.gen": {
+    "it": "gen",
+    "en": "Jan"
+  },
+  "frase.mese.feb": {
+    "it": "feb",
+    "en": "Feb"
+  },
+  "frase.mese.mar": {
+    "it": "mar",
+    "en": "Mar"
+  },
+  "frase.mese.apr": {
+    "it": "apr",
+    "en": "Apr"
+  },
+  "frase.mese.mag": {
+    "it": "mag",
+    "en": "May"
+  },
+  "frase.mese.giu": {
+    "it": "giu",
+    "en": "Jun"
+  },
+  "frase.mese.lug": {
+    "it": "lug",
+    "en": "Jul"
+  },
+  "frase.mese.ago": {
+    "it": "ago",
+    "en": "Aug"
+  },
+  "frase.mese.set": {
+    "it": "set",
+    "en": "Sep"
+  },
+  "frase.mese.ott": {
+    "it": "ott",
+    "en": "Oct"
+  },
+  "frase.mese.nov": {
+    "it": "nov",
+    "en": "Nov"
+  },
+  "frase.mese.dic": {
+    "it": "dic",
+    "en": "Dec"
+  },
+  "frase.rose.riga_ignorata": {
+    "it": "Riga {riga}: ignorata ({celle}): mi aspettavo «nome squadra, codice calciatore, costo».",
+    "en": "Row {riga}: ignored ({celle}): I expected “team name, player code, cost”."
+  },
+  "frase.rose.riga_schermate_ignorata": {
+    "it": "Riga {riga}: ignorata ({celle}): mi aspettavo «ruolo;nome;club;prezzo» con il ruolo P, D, C o A.",
+    "en": "Row {riga}: ignored ({celle}): I expected “role;name;club;price” with role P, D, C or A."
+  },
+  "frase.rose.codice_sconosciuto": {
+    "it": "{squadra}: il codice {codice} non è nel listone, quindi non so chi sia: correggilo a mano.",
+    "en": "{squadra}: code {codice} is not in the player list, so I do not know who it is: fix it by hand."
+  },
+  "frase.rose.codice_doppio": {
+    "it": "{squadra}: {nome} (codice {codice}) compare due volte, l'ho tenuto una volta sola.",
+    "en": "{squadra}: {nome} (code {codice}) appears twice, I kept it only once."
+  },
+  "frase.rose.piu_giocatori_riga": {
+    "it": "Riga {riga}: più giocatori sulla stessa riga ({nomi}). Se sono squadre affiancate, lascia una colonna vuota tra una squadra e l'altra.",
+    "en": "Row {riga}: several players on the same row ({nomi}). If these are teams side by side, leave an empty column between one team and the next."
+  },
+  "frase.rose.riga_non_chiara": {
+    "it": "Riga {riga}: ignorata ({celle}): non è chiaro se sia un'intestazione o il nome di più squadre.",
+    "en": "Row {riga}: ignored ({celle}): it is not clear whether it is a heading or the name of several teams."
+  },
+  "frase.rose.nome_doppio": {
+    "it": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
+    "en": "{squadra}: {nome} appears twice, I kept it only once."
+  },
+  "frase.rose.codice_assente": {
+    "it": "codice {codice} non presente nel listone",
+    "en": "code {codice} is not in the player list"
+  },
+  "frase.rose.diversa": {
+    "it": "{squadra}: rosa diversa dalle regole ({dettaglio})",
+    "en": "{squadra}: roster differs from the rules ({dettaglio})"
+  },
+  "frase.rose.doppione": {
+    "it": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",
+    "en": "{squadra}: {nome} appears {volte} times in the roster: remove the extra rows"
+  },
+  "frase.rose.non_riconosciuto": {
+    "it": "{squadra}: '{nome}' non riconosciuto con certezza ({motivo})",
+    "en": "{squadra}: '{nome}' not recognised with certainty ({motivo})"
+  },
+  "frase.rose.motivo_ceduto": {
+    "it": "ceduto o nome diverso?",
+    "en": "transferred or different name?"
+  },
+  "frase.rose.somiglianza": {
+    "it": "{squadra}: '{nome}' riconosciuto per somiglianza ({come}), controlla che sia lui",
+    "en": "{squadra}: '{nome}' recognised by similarity ({come}), check it is the right player"
+  },
+  "frase.rose.come_abbreviato": {
+    "it": "abbreviato",
+    "en": "abbreviated"
+  },
+  "frase.rose.come_simile": {
+    "it": "simile",
+    "en": "similar"
+  },
+  "frase.rose.avviso_giocatore": {
+    "it": "{squadra}: {nome}: {avviso}",
+    "en": "{squadra}: {nome}: {avviso}"
+  },
+  "frase.rose.in_piu_squadre": {
+    "it": "{nome} è in più squadre: {squadre}",
+    "en": "{nome} is in more than one team: {squadre}"
+  },
+  "frase.rose.squadra_avviso": {
+    "it": "{squadra}: {avviso}",
+    "en": "{squadra}: {avviso}"
+  },
+  "frase.rose.n_giocatori_su.one": {
+    "it": "{n} giocatore su {attesi}",
+    "en": "{n} player out of {attesi}"
+  },
+  "frase.rose.n_giocatori_su.other": {
+    "it": "{n} giocatori su {attesi}",
+    "en": "{n} players out of {attesi}"
+  },
+  "frase.rose.mancano": {
+    "it": "mancano {elenco}",
+    "en": "missing {elenco}"
+  },
+  "frase.rose.in_piu": {
+    "it": "in più: {elenco}",
+    "en": "extra: {elenco}"
+  },
+  "frase.rose.senza_ruolo.one": {
+    "it": "{n} giocatore senza ruolo",
+    "en": "{n} player without a role"
+  },
+  "frase.rose.senza_ruolo.other": {
+    "it": "{n} giocatori senza ruolo",
+    "en": "{n} players without a role"
+  },
+  "frase.rose.portieri.one": {
+    "it": "{n} portiere",
+    "en": "{n} goalkeeper"
+  },
+  "frase.rose.portieri.other": {
+    "it": "{n} portieri",
+    "en": "{n} goalkeepers"
+  },
+  "frase.rose.difensori.one": {
+    "it": "{n} difensore",
+    "en": "{n} defender"
+  },
+  "frase.rose.difensori.other": {
+    "it": "{n} difensori",
+    "en": "{n} defenders"
+  },
+  "frase.rose.centrocampisti.one": {
+    "it": "{n} centrocampista",
+    "en": "{n} midfielder"
+  },
+  "frase.rose.centrocampisti.other": {
+    "it": "{n} centrocampisti",
+    "en": "{n} midfielders"
+  },
+  "frase.rose.attaccanti.one": {
+    "it": "{n} attaccante",
+    "en": "{n} forward"
+  },
+  "frase.rose.attaccanti.other": {
+    "it": "{n} attaccanti",
+    "en": "{n} forwards"
+  },
+  "frase.rose.potrebbe_essere": {
+    "it": "potrebbe essere: {elenco}",
+    "en": "could be: {elenco}"
+  },
+  "frase.nomi.ruolo_diverso": {
+    "it": "ruolo diverso: indicato {indicato}, nel listone {listone}",
+    "en": "different role: given {indicato}, in the player list {listone}"
+  },
+  "frase.nomi.squadra_diversa": {
+    "it": "squadra diversa: indicata {indicata}, nel listone {listone}",
+    "en": "different team: given {indicata}, in the player list {listone}"
+  },
+  "frase.diario.serie_a": {
+    "it": "Su tutta la Serie A, nelle ultime {n} giornate: {fv}; {gioca}.",
+    "en": "Across the whole Serie A, over the last {n} matchdays: {fv}; {gioca}."
+  },
+  "frase.diario.serie_a_solo": {
+    "it": "Su tutta la Serie A, nelle ultime {n} giornate: {parte}.",
+    "en": "Across the whole Serie A, over the last {n} matchdays: {parte}."
+  },
+  "frase.diario.serie_a_fv_meno": {
+    "it": "il fantavoto atteso ha sbagliato il {pct}% in meno della fantamedia",
+    "en": "the expected fantasy score erred {pct}% less than the fantasy average"
+  },
+  "frase.diario.serie_a_fv_piu": {
+    "it": "il fantavoto atteso ha sbagliato il {pct}% in più della fantamedia",
+    "en": "the expected fantasy score erred {pct}% more than the fantasy average"
+  },
+  "frase.diario.serie_a_fv_pari": {
+    "it": "il fantavoto atteso ha sbagliato quanto la fantamedia",
+    "en": "the expected fantasy score erred as much as the fantasy average"
+  },
+  "frase.diario.serie_a_gioca": {
+    "it": "quando diciamo «gioca {p}%», ha giocato {k} volte su 10",
+    "en": "when we say “plays {p}%”, they played {k} times out of 10"
+  },
+  "frase.diario.serie_a_attesa.one": {
+    "it": "Su tutta la Serie A serve ancora {n} giornata per dire quanto ci prendiamo.",
+    "en": "Across the whole Serie A we need {n} more matchday to tell how accurate we are."
+  },
+  "frase.diario.serie_a_attesa.other": {
+    "it": "Su tutta la Serie A servono ancora {n} giornate per dire quanto ci prendiamo.",
+    "en": "Across the whole Serie A we need {n} more matchdays to tell how accurate we are."
+  }
+}

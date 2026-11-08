@@ -1,0 +1,42 @@
+{
+  "tempo.oggi": {
+    "it": "oggi",
+    "en": "today"
+  },
+  "tempo.domani": {
+    "it": "domani",
+    "en": "tomorrow"
+  },
+  "tempo.ieri": {
+    "it": "ieri",
+    "en": "yesterday"
+  },
+  "tempo.giorno_0": {
+    "it": "dom",
+    "en": "Sun"
+  },
+  "tempo.giorno_1": {
+    "it": "lun",
+    "en": "Mon"
+  },
+  "tempo.giorno_2": {
+    "it": "mar",
+    "en": "Tue"
+  },
+  "tempo.giorno_3": {
+    "it": "mer",
+    "en": "Wed"
+  },
+  "tempo.giorno_4": {
+    "it": "gio",
+    "en": "Thu"
+  },
+  "tempo.giorno_5": {
+    "it": "ven",
+    "en": "Fri"
+  },
+  "tempo.giorno_6": {
+    "it": "sab",
+    "en": "Sat"
+  }
+}

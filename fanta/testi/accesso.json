@@ -1,0 +1,178 @@
+{
+  "accesso.nome_aria": {
+    "it": "Accesso a SchieraXI",
+    "en": "Sign in to SchieraXI"
+  },
+  "accesso.sessione_finita": {
+    "it": "La sessione è finita: accedi di nuovo.",
+    "en": "Your session has ended: please sign in again."
+  },
+  "accesso.nome_utente": {
+    "it": "Nome utente",
+    "en": "Username"
+  },
+  "accesso.password": {
+    "it": "Password",
+    "en": "Password"
+  },
+  "accesso.password_10": {
+    "it": "Password (almeno 10 caratteri)",
+    "en": "Password (at least 10 characters)"
+  },
+  "accesso.password_nuova_10": {
+    "it": "Nuova password (almeno 10 caratteri)",
+    "en": "New password (at least 10 characters)"
+  },
+  "accesso.codice_invito": {
+    "it": "Codice d'invito",
+    "en": "Invitation code"
+  },
+  "accesso.codice": {
+    "it": "Codice",
+    "en": "Code"
+  },
+  "accesso.scheda_accedi": {
+    "it": "Accedi",
+    "en": "Sign in"
+  },
+  "accesso.scheda_registra": {
+    "it": "Registrati",
+    "en": "Sign up"
+  },
+  "accesso.scheda_recupero": {
+    "it": "Password dimenticata",
+    "en": "Forgot password"
+  },
+  "accesso.invio_accedi": {
+    "it": "Accedi",
+    "en": "Sign in"
+  },
+  "accesso.invio_registra": {
+    "it": "Crea l'account",
+    "en": "Create the account"
+  },
+  "accesso.invio_recupero": {
+    "it": "Scegli la nuova password",
+    "en": "Choose the new password"
+  },
+  "accesso.serve_invito": {
+    "it": "Ti serve un codice d'invito: chiedilo a chi ti ha invitato.",
+    "en": "You need an invitation code: ask the person who invited you."
+  },
+  "accesso.torna": {
+    "it": "Torna all'accesso",
+    "en": "Back to sign in"
+  },
+  "accesso.letto": {
+    "it": "Ho letto {privacy} e {termini} e ho almeno {eta} anni",
+    "en": "I have read the {privacy} and the {termini} and I am at least {eta} years old"
+  },
+  "accesso.spunta_letto": {
+    "it": "Per registrarti spunta la casella: hai letto Privacy e Termini d'uso e hai almeno {eta} anni",
+    "en": "To sign up, tick the box: you have read the Privacy policy and the Terms of use and you are at least {eta} years old"
+  },
+  "accesso.recupero_spiega": {
+    "it": "Usa il codice di recupero che hai ricevuto quando ti sei registrato, oppure il codice che ti ha dato chi ti ha invitato.",
+    "en": "Use the recovery code you received when you signed up, or the code given to you by the person who invited you."
+  },
+  "accesso.risposta_incompleta_accedi": {
+    "it": "Qualcosa non ha funzionato: riprova ad accedere",
+    "en": "Something went wrong: try signing in again"
+  },
+  "accesso.risposta_incompleta": {
+    "it": "Qualcosa non ha funzionato: riprova",
+    "en": "Something went wrong: try again"
+  },
+  "accesso.account_creato": {
+    "it": "Account creato",
+    "en": "Account created"
+  },
+  "accesso.entra": {
+    "it": "Entra nell'app",
+    "en": "Open the app"
+  },
+  "accesso.password_cambiata": {
+    "it": "Password cambiata",
+    "en": "Password changed"
+  },
+  "accesso.vai_accesso": {
+    "it": "Vai all'accesso",
+    "en": "Go to sign in"
+  },
+  "accesso.password_cambiata_accedi": {
+    "it": "Password cambiata: accedi con quella nuova.",
+    "en": "Password changed: sign in with the new one."
+  },
+  "accesso.riprova_secondi": {
+    "it": " (riprova tra {n} secondi)",
+    "en": " (try again in {n} seconds)"
+  },
+  "accesso.riprova_minuti": {
+    "it": " (riprova tra {n} minuti)",
+    "en": " (try again in {n} minutes)"
+  },
+  "accesso.riprova_ore": {
+    "it": " (riprova tra circa {n} ore)",
+    "en": " (try again in about {n} hours)"
+  },
+  "accesso.errore_generico": {
+    "it": "Qualcosa non ha funzionato: riprova",
+    "en": "Something went wrong: try again"
+  },
+  "accesso.email": {
+    "it": "Email",
+    "en": "Email"
+  },
+  "accesso.email_facoltativa": {
+    "it": "Email (facoltativa)",
+    "en": "Email (optional)"
+  },
+  "accesso.email_facoltativa_aiuto": {
+    "it": "Serve a recuperare la password.",
+    "en": "Used to recover your password."
+  },
+  "accesso.codice_email": {
+    "it": "Codice a 6 cifre ricevuto per email",
+    "en": "6-digit code received by email"
+  },
+  "accesso.serve_invito_email": {
+    "it": "Serve un codice d'invito e un indirizzo email: ti mandiamo un codice per confermarlo.",
+    "en": "You need an invitation code and an email address: we will send you a code to confirm it."
+  },
+  "accesso.serve_email": {
+    "it": "Scrivi la tua email: ti mandiamo un codice per confermarla e creare l'account.",
+    "en": "Enter your email: we will send you a code to confirm it and create the account."
+  },
+  "accesso.verifica_spiega": {
+    "it": "Ti abbiamo scritto a {email}. Inserisci il codice a 6 cifre (vale 15 minuti). Se non arriva, controlla la posta indesiderata.",
+    "en": "We have written to {email}. Enter the 6-digit code (valid for 15 minutes). If it does not arrive, check your spam folder."
+  },
+  "accesso.invio_verifica": {
+    "it": "Conferma e crea l'account",
+    "en": "Confirm and create the account"
+  },
+  "accesso.recupero_con_email": {
+    "it": "Con l'email",
+    "en": "With email"
+  },
+  "accesso.recupero_con_codice": {
+    "it": "Con il codice di recupero",
+    "en": "With the recovery code"
+  },
+  "accesso.recupero_email_spiega": {
+    "it": "Scrivi l'email del tuo account: se è registrata, ti mandiamo un codice per scegliere una nuova password. Per sicurezza la risposta è sempre la stessa.",
+    "en": "Enter the email of your account: if it is registered, we will send you a code to choose a new password. For safety the reply is always the same."
+  },
+  "accesso.invio_recupero_email": {
+    "it": "Mandami il codice",
+    "en": "Send me the code"
+  },
+  "accesso.codice_inviato": {
+    "it": "Se l'indirizzo è registrato, il codice sta arrivando (vale 15 minuti).",
+    "en": "If the address is registered, the code is on its way (valid for 15 minutes)."
+  },
+  "accesso.recupero_codice_email_spiega": {
+    "it": "Scrivi il codice arrivato a {email} e scegli la nuova password.",
+    "en": "Enter the code sent to {email} and choose the new password."
+  }
+}

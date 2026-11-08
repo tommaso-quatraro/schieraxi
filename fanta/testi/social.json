@@ -1,0 +1,142 @@
+{
+  "social.continua": {
+    "it": "Continua con Google",
+    "en": "Continue with Google"
+  },
+  "social.oppure": {
+    "it": "oppure",
+    "en": "or"
+  },
+  "social.errore": {
+    "it": "Non sono riuscito a entrare con Google. Riprova.",
+    "en": "I couldn't sign you in with Google. Please try again."
+  },
+  "social.altro_browser": {
+    "it": "Per entrare con Google usa lo stesso browser da cui hai cominciato.",
+    "en": "To sign in with Google, use the same browser you started from."
+  },
+  "social.browser_vecchio": {
+    "it": "Questo browser non permette l'accesso con Google. Usa un browser più recente.",
+    "en": "This browser doesn't allow signing in with Google. Please use a newer browser."
+  },
+  "social.scegli_nome": {
+    "it": "Scegli il tuo nome utente",
+    "en": "Choose your username"
+  },
+  "social.scegli_spiega": {
+    "it": "Hai scelto Google: non ti serve nessuna password. Scegli solo come vuoi chiamarti nell'app.",
+    "en": "You chose Google, so you don't need a password. Just pick the name you want in the app."
+  },
+  "social.crea": {
+    "it": "Crea l'account",
+    "en": "Create account"
+  },
+  "social.email_gia_usata": {
+    "it": "Questo indirizzo ha già un account SchieraXI. Entra come fai di solito e poi, in Impostazioni > Il tuo account > Accessi, collega Google.",
+    "en": "This address already has a SchieraXI account. Sign in the usual way, then link Google in Settings > Your account > Sign-in methods."
+  },
+  "social.email_non_affidabile": {
+    "it": "Con questo account Google non posso iscriverti. Usa il modulo con la tua email.",
+    "en": "I can't sign you up with this Google account. Use the form with your email."
+  },
+  "social.google_gia_collegato": {
+    "it": "Questo account Google è già collegato a un altro account SchieraXI.",
+    "en": "This Google account is already linked to another SchieraXI account."
+  },
+  "social.google_diverso": {
+    "it": "Hai scelto un altro account Google: scegli quello già collegato a SchieraXI.",
+    "en": "You picked a different Google account: choose the one already linked to SchieraXI."
+  },
+  "social.ultimo_accesso": {
+    "it": "Prima aggiungi una password: non puoi togliere l'unico modo che hai per entrare.",
+    "en": "Add a password first: you can't remove your only way to sign in."
+  },
+  "social.serve_riconferma": {
+    "it": "Prima conferma con Google: tocca «Conferma con Google» in Accessi.",
+    "en": "Confirm with Google first: tap \"Confirm with Google\" in Sign-in methods."
+  },
+  "social.accessi": {
+    "it": "Accessi",
+    "en": "Sign-in methods"
+  },
+  "social.password_si": {
+    "it": "Password: impostata",
+    "en": "Password: set"
+  },
+  "social.password_no": {
+    "it": "Password: non impostata",
+    "en": "Password: not set"
+  },
+  "social.google_collegato": {
+    "it": "Account Google collegato: {email}",
+    "en": "Linked Google account: {email}"
+  },
+  "social.google_account": {
+    "it": "account collegato",
+    "en": "linked account"
+  },
+  "social.google_non_collegato": {
+    "it": "Google: non collegato",
+    "en": "Google: not linked"
+  },
+  "social.collega": {
+    "it": "Collega Google",
+    "en": "Link Google"
+  },
+  "social.scollega": {
+    "it": "Scollega Google",
+    "en": "Unlink Google"
+  },
+  "social.scollega_conferma": {
+    "it": "Scollegare Google? Potrai entrare solo con la tua password.",
+    "en": "Unlink Google? You will only be able to sign in with your password."
+  },
+  "social.scollegato_ok": {
+    "it": "Google scollegato.",
+    "en": "Google unlinked."
+  },
+  "social.collegato_ok": {
+    "it": "Google collegato: ora puoi entrare anche con Google.",
+    "en": "Google linked: you can now sign in with Google too."
+  },
+  "social.conferma": {
+    "it": "Conferma con Google",
+    "en": "Confirm with Google"
+  },
+  "social.conferma_spiega": {
+    "it": "Entri solo con Google. Per aggiungere una password, cambiare l'email o eliminare l'account, conferma prima con Google: vale 5 minuti.",
+    "en": "You sign in with Google only. To add a password, change the email or delete the account, confirm with Google first: it is valid for 5 minutes."
+  },
+  "social.riconfermato_ok": {
+    "it": "Confermato. Per 5 minuti puoi aggiungere una password, cambiare l'email o eliminare l'account.",
+    "en": "Confirmed. For 5 minutes you can add a password, change the email or delete the account."
+  },
+  "social.aggiungi_password": {
+    "it": "Aggiungi una password",
+    "en": "Add a password"
+  },
+  "social.aggiungi_spiega": {
+    "it": "Dopo averla aggiunta potrai entrare anche con nome utente e password. Prima conferma con Google (in Accessi).",
+    "en": "Once added, you can also sign in with username and password. Confirm with Google first (in Sign-in methods)."
+  },
+  "social.password_aggiunta": {
+    "it": "Password aggiunta. Salva il codice di recupero.",
+    "en": "Password added. Save the recovery code."
+  },
+  "social.fatto": {
+    "it": "Ho salvato il codice",
+    "en": "I saved the code"
+  },
+  "social.elimina_spiega": {
+    "it": "Prima conferma con Google (in Accessi): al posto della password.",
+    "en": "Confirm with Google first (in Sign-in methods): it replaces the password."
+  },
+  "social.serve_password": {
+    "it": "Scrivi la tua password per collegare Google.",
+    "en": "Enter your password to link Google."
+  },
+  "social.password_collega": {
+    "it": "La tua password (serve per collegare Google)",
+    "en": "Your password (needed to link Google)"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "ruolo.P_pl": {
+    "it": "Portieri",
+    "en": "Goalkeepers",
+    "nota": "---- [oggi] ----"
+  },
+  "ruolo.D_pl": {
+    "it": "Difensori",
+    "en": "Defenders"
+  },
+  "ruolo.C_pl": {
+    "it": "Centrocampisti",
+    "en": "Midfielders"
+  },
+  "ruolo.A_pl": {
+    "it": "Attaccanti",
+    "en": "Forwards"
+  },
+  "ruolo.P_1": {
+    "it": "Portiere",
+    "en": "Goalkeeper"
+  },
+  "ruolo.D_1": {
+    "it": "Difensore",
+    "en": "Defender"
+  },
+  "ruolo.C_1": {
+    "it": "Centrocampista",
+    "en": "Midfielder"
+  },
+  "ruolo.A_1": {
+    "it": "Attaccante",
+    "en": "Forward"
+  }
+}

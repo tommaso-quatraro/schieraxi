@@ -1,0 +1,18 @@
+{
+  "testata.giornata": {
+    "it": "Giornata {n}",
+    "en": "Matchday {n}"
+  },
+  "testata.dati_del": {
+    "it": " · dati del {data} {ora}",
+    "en": " · data as of {data} {ora}"
+  },
+  "testata.mai": {
+    "it": " · dati mai aggiornati",
+    "en": " · data never updated"
+  },
+  "testata.offline": {
+    "it": "Server non raggiungibile",
+    "en": "Server unreachable"
+  }
+}

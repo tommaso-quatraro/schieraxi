@@ -1,0 +1,46 @@
+{
+  "errori.titolo": {
+    "it": "Errori recenti",
+    "en": "Recent errors"
+  },
+  "errori.spiega": {
+    "it": "Gli errori del server (risposte 5xx) e gli ultimi eventi di sicurezza. Nessuna password, nessun dato delle richieste: solo quando, dove e che tipo di errore.",
+    "en": "Server errors (5xx replies) and the latest security events. No passwords, no request data: only when, where and what kind of error."
+  },
+  "errori.aggiorna": {
+    "it": "Aggiorna",
+    "en": "Refresh"
+  },
+  "errori.riepilogo": {
+    "it": "<b>{richieste}</b> richieste dall'ultimo riavvio ({rifiutate} rifiutate, <b>{errori}</b> errori del server). Tempo medio {medio} ms, il 5% più lento oltre {p95} ms, massimo {max} ms.",
+    "en": "<b>{richieste}</b> requests since the last restart ({rifiutate} refused, <b>{errori}</b> server errors). Average time {medio} ms, the slowest 5% over {p95} ms, maximum {max} ms."
+  },
+  "errori.del_server": {
+    "it": "Errori del server",
+    "en": "Server errors"
+  },
+  "errori.nessun_errore": {
+    "it": "Nessun errore registrato.",
+    "en": "No errors recorded."
+  },
+  "errori.sicurezza": {
+    "it": "Eventi di sicurezza",
+    "en": "Security events"
+  },
+  "errori.nessun_evento": {
+    "it": "Nessun evento.",
+    "en": "No events."
+  },
+  "errori.lente": {
+    "it": "Le richieste più lente",
+    "en": "The slowest requests"
+  },
+  "errori.ancora_niente": {
+    "it": "Ancora niente.",
+    "en": "Nothing yet."
+  },
+  "errori.lenta_riga": {
+    "it": "{rotta} · {richieste} richieste, medio {medio} ms",
+    "en": "{rotta} · {richieste} requests, average {medio} ms"
+  }
+}

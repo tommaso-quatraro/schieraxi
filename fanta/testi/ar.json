@@ -1,0 +1,151 @@
+{
+  "ar.leggo": {
+    "it": "Leggo le rose…",
+    "en": "Reading the rosters…",
+    "nota": "---- [anteprima delle rose] ----"
+  },
+  "ar.indietro": {
+    "it": "Torna indietro",
+    "en": "Go back"
+  },
+  "ar.controlla": {
+    "it": "Controlla prima di salvare",
+    "en": "Check before saving"
+  },
+  "ar.r_squadre.one": {
+    "it": "{n} squadra",
+    "en": "{n} team"
+  },
+  "ar.r_squadre.other": {
+    "it": "{n} squadre",
+    "en": "{n} teams"
+  },
+  "ar.riconosciuti.one": {
+    "it": "{n} giocatore riconosciuto",
+    "en": "{n} player recognised"
+  },
+  "ar.riconosciuti.other": {
+    "it": "{n} giocatori riconosciuti",
+    "en": "{n} players recognised"
+  },
+  "ar.r_da_controllare.one": {
+    "it": "{n} da controllare",
+    "en": "{n} to check"
+  },
+  "ar.r_da_controllare.other": {
+    "it": "{n} da controllare",
+    "en": "{n} to check"
+  },
+  "ar.r_non_trovati.one": {
+    "it": "{n} non trovato",
+    "en": "{n} not found"
+  },
+  "ar.r_non_trovati.other": {
+    "it": "{n} non trovati",
+    "en": "{n} not found"
+  },
+  "ar.r_guarda": {
+    "it": "Sistema i dubbi qui sotto, poi conferma.",
+    "en": "Sort out the doubts below, then confirm."
+  },
+  "ar.qual_e_tua": {
+    "it": "Qual è la tua squadra?",
+    "en": "Which team is yours?"
+  },
+  "ar.nuova": {
+    "it": "Nuova",
+    "en": "New"
+  },
+  "ar.n_su.one": {
+    "it": "{n} giocatore su {attesi}",
+    "en": "{n} player out of {attesi}"
+  },
+  "ar.n_su.other": {
+    "it": "{n} giocatori su {attesi}",
+    "en": "{n} players out of {attesi}"
+  },
+  "ar.rosa_completa": {
+    "it": "Rosa completa",
+    "en": "Full squad"
+  },
+  "ar.manca": {
+    "it": "Manca {n} {ruolo}",
+    "en": "{n} {ruolo} missing"
+  },
+  "ar.mancano": {
+    "it": "Mancano {n} {ruolo}",
+    "en": "{n} {ruolo} missing"
+  },
+  "ar.in_piu": {
+    "it": "{n} {ruolo} in più",
+    "en": "{n} {ruolo} too many"
+  },
+  "ar.senza_ruolo.one": {
+    "it": "{n} giocatore senza ruolo",
+    "en": "{n} player without a role"
+  },
+  "ar.senza_ruolo.other": {
+    "it": "{n} giocatori senza ruolo",
+    "en": "{n} players without a role"
+  },
+  "ar.da_controllare": {
+    "it": "Da controllare",
+    "en": "To check"
+  },
+  "ar.non_trovato": {
+    "it": "Non trovato",
+    "en": "Not found"
+  },
+  "ar.chi_e": {
+    "it": "Chi è «{nome}» ({squadra})?",
+    "en": "Who is «{nome}» ({squadra})?"
+  },
+  "ar.scegli_chi": {
+    "it": "Scegli chi è",
+    "en": "Choose who it is"
+  },
+  "ar.lascia_cosi": {
+    "it": "Lascialo così per ora",
+    "en": "Leave it like this for now"
+  },
+  "ar.cerco_io": {
+    "it": "Un altro: lo cerco io",
+    "en": "Someone else: I will search"
+  },
+  "ar.togli": {
+    "it": "Toglilo dalla rosa",
+    "en": "Remove from the squad"
+  },
+  "ar.cerca_per": {
+    "it": "Cerca il giocatore giusto per «{nome}»",
+    "en": "Search for the right player for «{nome}»"
+  },
+  "ar.cerca_segnaposto": {
+    "it": "Scrivi il cognome",
+    "en": "Type the surname"
+  },
+  "ar.cosa_cambia": {
+    "it": "Cosa cambia rispetto a ora",
+    "en": "What changes compared to now"
+  },
+  "ar.conferma": {
+    "it": "Conferma e salva",
+    "en": "Confirm and save"
+  },
+  "ar.annulla": {
+    "it": "Annulla",
+    "en": "Cancel"
+  },
+  "ar.cambiate": {
+    "it": "Nel frattempo le rose sono cambiate, forse da un altro dispositivo: le ho rilette. Ricontrolla e conferma di nuovo.",
+    "en": "Meanwhile the rosters changed, maybe from another device: I read them again. Check and confirm once more."
+  },
+  "ar.salvate": {
+    "it": "Rose salvate",
+    "en": "Rosters saved"
+  },
+  "ar.cerca_incompleta": {
+    "it": "Per «{nome}» non hai ancora scelto il giocatore: tocca uno dei risultati oppure cambia la scelta nel menu.",
+    "en": "For «{nome}» you have not picked the player yet: tap one of the results or change the choice in the menu."
+  }
+}

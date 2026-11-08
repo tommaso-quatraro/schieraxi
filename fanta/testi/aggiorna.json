@@ -1,0 +1,18 @@
+{
+  "aggiorna.avviato": {
+    "it": "Aggiornamento dei dati avviato: ci vuole circa un minuto",
+    "en": "Data refresh started: it takes about a minute"
+  },
+  "aggiorna.non_so": {
+    "it": "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco",
+    "en": "I cannot tell how the refresh went: reopen the app shortly"
+  },
+  "aggiorna.problemi": {
+    "it": "Aggiornato, ma con problemi: {errori}",
+    "en": "Updated, but with problems: {errori}"
+  },
+  "aggiorna.ok": {
+    "it": "Dati aggiornati",
+    "en": "Data updated"
+  }
+}

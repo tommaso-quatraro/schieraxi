@@ -1,0 +1,34 @@
+{
+  "codice.salva": {
+    "it": "Salva questo codice.",
+    "en": "Save this code."
+  },
+  "codice.a_cosa_serve": {
+    "it": "Ti serve per rientrare se dimentichi la password: salvalo.",
+    "en": "You need it to get back in if you forget your password: save it."
+  },
+  "codice.spiega": {
+    "it": "Non viene mostrato di nuovo: copialo in un posto sicuro (per esempio nel gestore di password).",
+    "en": "It will not be shown again: copy it somewhere safe (for example in your password manager)."
+  },
+  "codice.copia": {
+    "it": "Copia il codice",
+    "en": "Copy the code"
+  },
+  "codice.copiato": {
+    "it": "Codice copiato",
+    "en": "Code copied"
+  },
+  "codice.non_copio": {
+    "it": "Non riesco a copiare: tieni premuto sul codice",
+    "en": "I cannot copy it: press and hold on the code"
+  },
+  "codice.titolo": {
+    "it": "Il tuo codice di recupero",
+    "en": "Your recovery code"
+  },
+  "codice.salvato": {
+    "it": "Ho salvato il codice",
+    "en": "I have saved the code"
+  }
+}
