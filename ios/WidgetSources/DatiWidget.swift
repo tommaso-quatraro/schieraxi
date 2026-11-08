@@ -22,7 +22,7 @@ struct Voce: TimelineEntry {
     /// Il riassunto completo di `/api/widget` (per i widget nuovi); nil con un server che non lo ha ancora.
     var widget: RiassuntoWidget? = nil
 
-    /// Il widget va (ri)collegato: senza dati dice «Tocca per collegare», con una copia vecchia «Tocca per ricollegare».
+    /// Il widget va (ri)collegato: dice «Tocca per collegare» (con un 401 le copie sono già cancellate, quindi niente dati vecchi).
     var daCollegare: Bool {
         CollegamentoWidget.daCollegare(haDati: riassunto != nil || widget != nil, indirizzoMancante: indirizzoMancante, accessoRichiesto: accessoRichiesto)
     }

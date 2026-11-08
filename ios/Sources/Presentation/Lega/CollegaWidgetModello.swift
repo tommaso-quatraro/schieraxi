@@ -61,6 +61,7 @@ final class CollegaWidgetModello {
 
     /// Il tocco su «Collega» (e su «Copia di nuovo» o «Riprova»). Con un account si assicura il token del widget, poi prova il
     /// collegamento automatico; solo se non va mette il codice negli appunti di QUESTO telefono per `CollegamentoWidget.durataAppunti`.
+    /// Se il lavoro viene annullato («Annulla» o foglio chiuso) mentre si aspetta il token, non collega e non copia niente.
     func collega(conAccount: Bool) async {
         guard stato != .inCorso, stato != .prova else { return }
         if demo {
@@ -71,6 +72,11 @@ final class CollegaWidgetModello {
         stato = .inCorso
         let indirizzo = servizi.indirizzo()
         let token = await servizi.token(indirizzo, conAccount)
+        // annullato mentre il server rispondeva: niente collegamento e niente appunti
+        if Task.isCancelled {
+            stato = .pronto
+            return
+        }
         // con gli account serve il token: un codice senza farebbe dire al widget di nuovo «Tocca per collegare»
         if conAccount, token == nil {
             stato = .senzaPermesso

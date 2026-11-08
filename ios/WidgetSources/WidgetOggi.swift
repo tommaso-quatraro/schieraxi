@@ -109,12 +109,10 @@ struct VistaWidget: View {
             .widgetAccentable()
     }
 
-    /// Sotto i numeri: copia vecchia o widget da ricollegare.
+    /// Sotto i numeri: l'ora della copia salvata.
     @ViewBuilder
     private func statoDati(_ r: RiassuntoOggi) -> some View {
-        if voce.accessoRichiesto {
-            Label("Tocca per ricollegare", systemImage: "link").font(.caption2.bold()).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
-        } else if voce.datiSalvati {
+        if voce.datiSalvati {
             Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
                 .font(.caption2).foregroundStyle(.white.opacity(0.75)).lineLimit(1)
         }
@@ -264,7 +262,7 @@ struct VistaWidget: View {
                 Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
             if voce.datiSalvati || (r.daControllare == 0 && r.probabili != false) {
-                Text(voce.accessoRichiesto ? "Tocca per ricollegare" : voce.datiSalvati ? "dati delle \(Quando.ora(r.scaricatoIl))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
+                Text(voce.datiSalvati ? "dati delle \(Quando.ora(r.scaricatoIl))" : "punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
             }
             if r.daControllare > 0 {
                 EtichettaDaControllare(n: r.daControllare).font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
@@ -294,9 +292,7 @@ struct VistaWidget: View {
                 Text(r.inizio.map(allaScadenza) ?? "")
                     .font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
-                if voce.accessoRichiesto {
-                    Label("Tocca per ricollegare", systemImage: "link").font(.caption2.bold()).foregroundStyle(.secondary)
-                } else if voce.datiSalvati {
+                if voce.datiSalvati {
                     Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash").font(.caption2).foregroundStyle(.secondary)
                 }
             }

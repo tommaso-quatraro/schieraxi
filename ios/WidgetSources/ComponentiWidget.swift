@@ -79,16 +79,13 @@ struct IntestazioneWidget: View {
     }
 }
 
-/// «dati delle 14:32» quando il widget mostra una copia, niente quando i dati sono freschi;
-/// «Tocca per ricollegare» quando il codice del widget non vale più (la copia resta sotto).
+/// «dati delle 14:32» quando il widget mostra una copia, niente quando i dati sono freschi. Quando il codice del widget non vale
+/// più (401) non c'è copia: il widget dice «Tocca per collegare» (`SenzaDatiWidget`).
 struct PiedeDati: View {
     let voce: Voce
 
     var body: some View {
-        if voce.accessoRichiesto {
-            Label("Tocca per ricollegare", systemImage: "link")
-                .font(.caption2.bold()).foregroundStyle(TintaWidget.testo2)
-        } else if voce.datiSalvati, let r = voce.riassunto {
+        if voce.datiSalvati, let r = voce.riassunto {
             Label("dati delle \(Quando.ora(r.scaricatoIl))", systemImage: "icloud.slash")
                 .font(.caption2).foregroundStyle(TintaWidget.testo2)
         }

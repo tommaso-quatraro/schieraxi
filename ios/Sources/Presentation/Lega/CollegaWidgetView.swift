@@ -11,6 +11,8 @@ struct CollegaWidgetView: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.dismiss) private var chiudi
     @State private var modello = CollegaWidgetModello()
+    /// Il collegamento in corso: «Annulla» o il foglio chiuso lo fermano (niente codice negli appunti dopo).
+    @State private var lavoro: Task<Void, Never>?
     /// Il simbolo in alto segue la dimensione del testo.
     @ScaledMetric(relativeTo: .largeTitle) private var dimensioneSimbolo: CGFloat = 44
 
@@ -57,16 +59,24 @@ struct CollegaWidgetView: View {
         // a tutta altezza: a metà, su iPad e con il testo grande, «Fatto» restava sotto la piega
         .presentationDragIndicator(.visible)
         .sensoryFeedback(.success, trigger: modello.riuscite)
+        // chiuso trascinando in basso: si ferma anche il collegamento in corso
+        .onDisappear(perform: fermaIlLavoro)
     }
 
     /// Il tocco su «Collega» (o «Copia di nuovo», «Riprova»): solo da qui partono collegamento e copia del codice.
     private func collega() {
         let conAccount = sessione.utente != nil
-        Task { await modello.collega(conAccount: conAccount) }
+        lavoro = Task { await modello.collega(conAccount: conAccount) }
     }
 
     private func chiudiFoglio() {
+        fermaIlLavoro()
         chiudi()
+    }
+
+    private func fermaIlLavoro() {
+        lavoro?.cancel()
+        lavoro = nil
     }
 
     /// La schermata aspetta ancora il tocco su «Collega» (o lo sta eseguendo).
