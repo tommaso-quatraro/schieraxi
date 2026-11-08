@@ -1332,6 +1332,7 @@ def esporta(db: sqlite3.Connection, utente_id: int, mostra_tutte: bool | None = 
 
 def elimina(db: sqlite3.Connection, utente_id: int) -> None:
     """Toglie l'utente e, a cascata, sessioni e codici di reset. (La sua cartella di dati si cancella a parte.)
+    Subito dopo lascia il segno di cancellazione (percorsi.segna_cancellato): da lì in poi nella sua cartella non si scrive più.
     Non si elimina l'ultimo amministratore: resterebbe il server senza nessuno che lo gestisca."""
     _transazione(db)                                 # il controllo e la cancellazione stanno in una transazione sola
     try:
@@ -1345,6 +1346,9 @@ def elimina(db: sqlite3.Connection, utente_id: int) -> None:
         if db.in_transaction:
             db.rollback()
         raise
+    # il segno dopo la conferma (mai per un account che resta) e solo per un account che c'era (un numero mai usato resta libero)
+    if riga and not percorsi.segna_cancellato(utente_id):
+        evento("segno_cancellazione_non_riuscito", utente=int(utente_id))
     evento("account_eliminato", nome=riga["nome_utente"] if riga else None)
 
 

@@ -7,11 +7,15 @@ I dati comuni a tutti (`dati/fanta.sqlite`: calendario, voti, probabili, quotazi
 """
 from __future__ import annotations
 
+import logging
 import shutil
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import percorsi
+from . import account, percorsi
+
+LOG = logging.getLogger(__name__)
 
 # nome del file nella cartella dell'utente per ogni cosa personale; in `lega/` e `dati/` si chiamano allo stesso modo
 FILE_UTENTE = {"regole": "regole.json", "rose": "rose.json", "movimenti": "movimenti.json", "scelte": "scelte.json",
@@ -67,12 +71,41 @@ class Contesto:
 
 
 def cartella_utente(utente_id: int) -> Path:
-    return percorsi.cartella_account() / "utenti" / str(int(utente_id))
+    return percorsi.cartella_utenti() / str(int(utente_id))
 
 
-def elimina_cartella(utente_id: int) -> None:
-    """Cancella tutti i dati dell'utente (account eliminato)."""
-    shutil.rmtree(cartella_utente(utente_id), ignore_errors=True)
+def elimina_cartella(utente_id: int) -> bool:
+    """Cancella tutti i dati dell'utente (account eliminato). Vero se non è rimasto niente.
+    Se qualcosa resta (un file in uso, i permessi) l'errore non è muto: una riga nel registro di sicurezza, che l'amministratore
+    vede in Amministrazione, e un errore nel registro del servizio. Quello che resta non si riempie più (il segno di
+    cancellazione di account.elimina, letto da percorsi.scrivi_sicuro) e si toglie con `python -m fanta cartelle-senza-account --esegui`."""
+    errori: list[BaseException] = []
+
+    def _errore(_funzione, _percorso, e: BaseException) -> None:
+        if not isinstance(e, FileNotFoundError):        # già tolto (da una scrittura che pulisce, o la cartella non c'era): va bene
+            errori.append(e)
+
+    shutil.rmtree(cartella_utente(utente_id), onexc=_errore)
+    if not errori:
+        return True
+    tipo = type(errori[0]).__name__
+    account.evento("cancellazione_dati_non_riuscita", utente=int(utente_id), errore=tipo)
+    LOG.error("Account %s eliminato, ma la sua cartella non si è cancellata tutta (%s, %d errori): "
+              "python -m fanta cartelle-senza-account --esegui", int(utente_id), tipo, len(errori))
+    return False
+
+
+def cartelle_senza_account(db: sqlite3.Connection) -> list[int]:
+    """I numeri delle cartelle `utenti/<numero>` il cui account non c'è più (per esempio una cancellazione rimasta a metà).
+    Prima si guarda il disco e poi il database: un account che si iscrive nel frattempo non finisce nell'elenco.
+    Le cartelle con un nome che non è un numero scritto come lo scrive l'app non sono di un utente: non si guardano."""
+    try:
+        numeri = sorted(int(c.name) for c in percorsi.cartella_utenti().iterdir()
+                        if c.is_dir() and c.name.isascii() and c.name.isdecimal() and str(int(c.name)) == c.name)
+    except FileNotFoundError:
+        return []
+    vivi = {r[0] for r in db.execute("SELECT id FROM utenti")}
+    return [n for n in numeri if n not in vivi]
 
 
 def migra(utente_id: int, radice: Path = percorsi.RADICE, forza: bool = False) -> list[str]:

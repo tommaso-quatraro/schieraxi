@@ -1,5 +1,9 @@
 """Cartelle usate dal programma e scrittura sicura dei file."""
+import contextlib
+import logging
 import os
+import shutil
+import sqlite3
 import uuid
 from pathlib import Path
 
@@ -25,6 +29,65 @@ def cartella_account() -> Path:
     """Dove stanno account.sqlite e le cartelle degli utenti (solo con FANTA_MULTIUTENTE=1).
     Di norma è `dati/`; FANTA_DATI_UTENTI la sposta (per provare l'app su una cartella temporanea) senza toccare gli altri dati."""
     return Path(os.environ.get("FANTA_DATI_UTENTI") or RADICE / "dati")
+
+
+def cartella_utenti() -> Path:
+    """Dove stanno le cartelle degli utenti, una per account: `utenti/<numero dell'account>/`."""
+    return cartella_account() / "utenti"
+
+
+def utente_della_cartella(percorso: Path) -> int | None:
+    """Il numero dell'account se `percorso` sta nella cartella di un utente (`utenti/<numero>/...`), altrimenti None.
+    Il percorso si risolve prima («..» e collegamenti), e il numero deve essere scritto come lo scrive l'app («7», non «07»)."""
+    try:
+        parti = Path(percorso).resolve().relative_to(cartella_utenti().resolve()).parts
+    except (OSError, ValueError, RuntimeError):
+        return None
+    if not parti or not (parti[0].isascii() and parti[0].isdecimal()) or str(int(parti[0])) != parti[0]:
+        return None
+    return int(parti[0])
+
+
+def _segno(utente_id: int) -> Path:
+    return cartella_account() / "cancellati" / str(int(utente_id))
+
+
+def segna_cancellato(utente_id: int) -> bool:
+    """Il segno di cancellazione di un account: un file vuoto `cancellati/<numero>` accanto al database degli account, fuori
+    dalla cartella dell'utente (che sta per sparire). Lo scrive account.elimina subito dopo aver tolto l'account. Falso se non si scrive."""
+    try:
+        file = _segno(utente_id)
+        cartella_privata(file.parent)
+        os.close(os.open(file, os.O_WRONLY | os.O_CREAT, 0o600))
+        return True
+    except OSError:
+        return False
+
+
+def scrittura_permessa(percorso: Path) -> bool:
+    """Da chiamare prima e dopo aver scritto `percorso`: vero se si può scrivere. Fuori dalle cartelle degli utenti, o per un
+    account senza segno di cancellazione, sempre (per loro basta un controllo sul disco: il database si guarda solo se il segno c'è).
+    - Il database degli account (in sola lettura) conferma che l'account non c'è più: falso, e la sua cartella, se è rinata per
+      una scrittura partita prima, si toglie. Quello che non si riesce a togliere lo trova `python -m fanta cartelle-senza-account`.
+    - C'è un account con quel numero: vero (segno rimasto da prima di un ripristino del database, numero tornato a un account nuovo).
+    - Il database non risponde: falso, ma non si cancella niente (potrebbe essere un utente vivo) e resta un errore con il tipo
+      nel registro del servizio."""
+    utente = utente_della_cartella(percorso)
+    if utente is None or not _segno(utente).exists():
+        return True
+    file = cartella_account() / "account.sqlite"
+    try:
+        with contextlib.closing(sqlite3.connect(f"{file.resolve().as_uri()}?mode=ro", uri=True, timeout=5)) as db:
+            vivo = db.execute("SELECT 1 FROM utenti WHERE id = ?", (utente,)).fetchone() is not None
+    except sqlite3.Error as e:
+        logging.getLogger(__name__).error("Account %s con il segno di cancellazione, ma il database degli account non risponde (%s): "
+                                          "%s non scritto o lasciato com'è, niente cancellato", utente, type(e).__name__, percorso.name)
+        return False
+    if vivo:
+        return True
+    logging.getLogger(__name__).warning("Account %s eliminato: %s non salvato, la sua cartella si toglie", utente, percorso.name)
+    shutil.rmtree(cartella_utenti() / str(utente), ignore_errors=True)
+    return False
 
 
 def cartella_privata(cartella: Path) -> Path:
@@ -56,7 +119,11 @@ def dentro(cartella: Path, percorso: Path) -> bool:
 
 
 def scrivi_sicuro(percorso: Path, testo: str) -> None:
-    """Scrive su un file temporaneo e poi lo rinomina: se qualcosa va storto, il file vecchio resta intatto."""
+    """Scrive su un file temporaneo e poi lo rinomina: se qualcosa va storto, il file vecchio resta intatto.
+    Nella cartella di un account eliminato non scrive (anche se il lavoro era partito prima dell'eliminazione): il segno si guarda
+    prima e di nuovo dopo, così la cartella non rinasce nemmeno se l'eliminazione arriva a metà scrittura."""
+    if not scrittura_permessa(percorso):
+        return
     percorso.parent.mkdir(parents=True, exist_ok=True)
     tmp = percorso.with_name(f"{percorso.name}.{uuid.uuid4().hex[:8]}.tmp")   # nome unico: salvataggi in parallelo
     try:
@@ -65,3 +132,4 @@ def scrivi_sicuro(percorso: Path, testo: str) -> None:
     except BaseException:
         tmp.unlink(missing_ok=True)       # disco pieno o altro: niente file a metà che occupano altro spazio
         raise
+    scrittura_permessa(percorso)      # eliminato mentre scrivevamo: si toglie quello che è rinato
