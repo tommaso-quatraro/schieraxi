@@ -138,17 +138,20 @@ def _pubblico(percorso: str) -> bool:
 # chiunque lo raggiunga). Per usarlo da altri dispositivi si accendono gli account.
 SOLO_LOCALE = "Questo server non ha gli account accesi: risponde solo dal computer su cui gira"
 AVVISO_SOLO_LOCALE = ("Account spenti (FANTA_MULTIUTENTE non è 1): il server risponde solo alle richieste dirette da questo computer "
-                      "(127.0.0.1 o ::1), aperte con http://127.0.0.1, localhost o [::1], e senza proxy; tutte le altre ricevono 403. "
+                      "(127.0.0.1 o ::1), aperte con un indirizzo 127.x.x.x, localhost o [::1], e senza proxy; tutte le altre "
+                      "ricevono 403. "
                       "Per usarlo da altri dispositivi o dietro un "
                       "proxy imposta FANTA_MULTIUTENTE=1 nelle variabili del servizio.")
 _INTESTAZIONI_PROXY = ("forwarded", "via", "x-real-ip", "x-client-ip", "true-client-ip", "cf-connecting-ip")
 # L'indirizzo scritto nella richiesta (intestazione Host) deve essere questo computer: una pagina di un altro sito che fa puntare il
-# suo nome a 127.0.0.1 («DNS rebinding») arriva da qui, ma con il suo nome nell'Host.
-_HOST_LOCALE = re.compile(r"(?:127\.0\.0\.1|localhost|\[::1\])(?::\d{1,5})?")
+# suo nome a 127.0.0.1 («DNS rebinding») arriva da qui, ma con il suo nome nell'Host. Vale tutta la rete 127.0.0.0/8 (foto e
+# collaudi avviano il server su 127.0.0.{20+…}): ogni numero da 0 a 255, senza zeri davanti.
+_OTTETTO = r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+_HOST_LOCALE = re.compile(rf"(?:127(?:\.{_OTTETTO}){{3}}|localhost|\[::1\])(?::\d{{1,5}})?")
 
 
 def richiesta_locale(request: Request) -> bool:
-    """Vero solo per una connessione diretta da loopback, verso 127.0.0.1, localhost o [::1] (con o senza porta), senza
+    """Vero solo per una connessione diretta da loopback, verso 127.x.x.x, localhost o [::1] (con o senza porta), senza
     intestazioni di proxy. `testclient` è il nome che il client di prova di Starlette dà a sé stesso, e `testserver` quello che dà
     al server: un server vero mette sempre l'indirizzo della connessione (mai un nome)."""
     host = request.client.host if request.client else None

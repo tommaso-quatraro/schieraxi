@@ -26,8 +26,8 @@ Sigle usate qui:
    Il campo `registrazione` vale `invito`, `email` o `aperta` (come ci si registra, vedi `account_email.py`).
    Le uniche rotte senza sessione sono: `POST /api/account/accedi`, `POST /api/account/registra`, `POST /api/account/registra/conferma`, `POST /api/account/recupero`, `POST /api/account/recupero-email`, `POST /api/account/recupero-email/conferma`, e i file statici della pagina (`/`, `/app.js`, `/stile.css`, `/sw.js`, `/manifest.webmanifest`, `/privacy`, `/termini`, `/crediti`, `/elimina-account`, icone e schermate del manifest `/screenshot-*.png`).
    Con gli account spenti non si fa nessun login: c'è un utente locale implicito (con i poteri dell'amministratore), quindi il server
-   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1), aperte con l'indirizzo `127.0.0.1`, `localhost`
-   o `[::1]` (intestazione `Host`, con o senza porta), e senza intestazioni di proxy (`X-Forwarded-*`,
+   risponde SOLO alle richieste dirette dal computer su cui gira (127.0.0.1 o ::1), aperte con un indirizzo della rete
+   `127.0.0.0/8` (per esempio `127.0.0.1` o `127.0.0.23`, come i collaudi), `localhost` o `[::1]` (intestazione `Host`, con o senza porta), e senza intestazioni di proxy (`X-Forwarded-*`,
    `Forwarded`, `X-Real-IP`). Tutte le altre, anche i file della pagina, ricevono `403` con
    `{"detail": "Questo server non ha gli account accesi: risponde solo dal computer su cui gira"}`. Un server raggiungibile dai client
    deve avere `FANTA_MULTIUTENTE=1`.
@@ -409,7 +409,7 @@ Cosa devono fare gli altri client: **app iPhone** aggiungere `avviso_prima: Int?
 | `304` | `GET /api/widget` con lo stesso ETag | nessun corpo |
 | `400` | valore non valido (per esempio elenco di giocatori sbagliato, o dati non accettati) | `{"detail"}`, a volte con `codice` (`formazione_non_valida` e `giocatore_bloccato`, vedi `POST /api/formazione/valuta`). Se il motivo non è un messaggio pensato per l'utente: `{"detail": "La richiesta non è valida: controlla i dati e riprova.", "id_errore"}` (`id_errore`, 8 caratteri, ritrova il caso nel registro del server; i client possono ignorarlo) |
 | `401` | nessuna sessione (con gli account accesi), token del widget scaduto o revocato, password sbagliata | `{"detail": "Accesso richiesto", "multiutente", "registrazione"}` o il messaggio dell'errore |
-| `403` | manca `X-Fanta`; richiesta da un altro sito; account spenti e richiesta non diretta dal computer del server (o con `Host` diverso da `127.0.0.1`, `localhost`, `[::1]`); token del widget su una rotta che non è sua; funzione solo per l'amministratore; invito non valido; registrazioni chiuse; password attuale sbagliata | `{"detail"}` |
+| `403` | manca `X-Fanta`; richiesta da un altro sito; account spenti e richiesta non diretta dal computer del server (o con `Host` diverso da un indirizzo `127.x.x.x`, `localhost`, `[::1]`); token del widget su una rotta che non è sua; funzione solo per l'amministratore; invito non valido; registrazioni chiuse; password attuale sbagliata | `{"detail"}` |
 | `404` | cose che non ci sono (immagine, squadra, giocatore, foto) o account non attivi | `{"detail"}` |
 | `409` | azione non possibile adesso (nessuna rosa importata, nessun canale per gli avvisi, lega di prova da togliere o sostituire, formazione già chiusa) | `{"detail"}`; per la formazione chiusa anche `codice: "formazione_chiusa"` (salvare o togliere la scelta dopo la scadenza) |
 | `411` | richiesta «chunked» senza lunghezza su rotte degli account | `{"detail"}` |

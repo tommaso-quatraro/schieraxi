@@ -178,6 +178,10 @@ def test_richiesta_locale(host, intestazioni, locale):
     (None, False), ("", False), ("rebind.example", False), ("rebind.example:8000", False), ("127.0.0.1.nip.io:8000", False),
     ("localhost.rebind.example", False), ("0.0.0.0:8000", False), ("127.0.0.1:8000@evil", False), ("127.0.0.1:abc", False),
     ("127.0.0.1:8000, evil", False), ("::1", False), ("testserver", False),
+    # tutta la rete 127.0.0.0/8: foto e collaudi avviano il server su 127.0.0.{20+…} (prove/foto_web/foto.py)
+    ("127.0.0.23:8023", True), ("127.0.0.23", True), ("127.1.2.3:80", True), ("127.255.255.255", True), ("127.0.0.0", True),
+    ("127.0.0.256", False), ("127.00.0.1", False), ("127.0.0.01:8000", False), ("127.0.0", False), ("127.0.0.1.2", False),
+    ("128.0.0.1", False), ("127.0.0.23.esempio.it", False), ("esempio.it:8023", False), ("127.0.0.-1", False),
 ])
 def test_senza_account_conta_anche_l_indirizzo_scritto_nella_richiesta(destinazione, locale):
     """Attacco «DNS rebinding»: una pagina di un altro sito fa puntare il suo nome a 127.0.0.1 e chiama il server locale dal browser.
@@ -201,6 +205,8 @@ def test_senza_account_un_nome_di_un_altro_sito_riceve_403(monkeypatch, dati_iso
     for indirizzo in ("http://127.0.0.1:8000", "http://localhost:8000", "http://[::1]:8000"):
         qui = TestClient(server.app, headers={"X-Fanta": "1"}, client=("127.0.0.1", 4000), base_url=indirizzo)
         assert qui.get("/api/regole").status_code == 200, indirizzo
+    collaudo = TestClient(server.app, headers={"X-Fanta": "1"}, client=("127.0.0.23", 4000), base_url="http://127.0.0.23:8023")
+    assert collaudo.get("/api/regole").status_code == 200                # server dei collaudi su 127.0.0.23
 
 
 def test_con_gli_account_l_indirizzo_scritto_non_cambia_niente(web):
