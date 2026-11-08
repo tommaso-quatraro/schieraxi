@@ -31,10 +31,10 @@
       "id": 59,
       "schermata": "Stato dei dati, taratura di «gioca N%»",
       "web": "sotto i gruppi di «Quanto ci azzecca il modello» una frase «Taratura con le probabili: …» dal campo `calibrazione.taratura` del server: «in attesa · 2 giornate su 4», «attiva dal 15/1 (versione 1) · nelle ultime 4 giornate Brier 0,091 invece di 0,097, scarto 2,1 punti», «non attiva · » e il motivo (per esempio «non sbaglia meno dei numeri di partenza»), «spenta a mano»; negli aggiornamenti «Taratura di «gioca N%»» (`rigaTaratura`, testi `sd.tar_*`, `sd.f_taratura`)",
-      "iphone": "manca: la stessa frase nel piè della sezione «Quanto sono giuste le previsioni», e il nome della riga negli aggiornamenti",
+      "iphone": "uguale, nel piè della sezione «Quanto sono giuste le previsioni» (`ParoleTaratura`), e lo stesso nome negli aggiornamenti; Brier con quattro decimali e «1 punto» al singolare (anche nella riga di «gioca N%» del registro), decisi in revisione: la web si allinea nello stesso ramo",
       "forma": "web",
-      "chi": "#379, parte iPhone nello stesso ramo della parte web",
-      "stato": "da-fare"
+      "chi": "fatto con #379 (test contro `testi.js` e sulla stessa risposta del server)",
+      "stato": "fatto"
     }
   ]
 }

@@ -637,7 +637,14 @@ struct StatoDatiView: View {
                                     .accessibilityElement(children: .combine)
                                 }
                             } header: { Text("Quanto sono giuste le previsioni").foregroundStyle(Color.testoSecondario) } footer: {
-                                Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.").foregroundStyle(Color.testoSecondario)
+                                VStack(alignment: .leading) {
+                                    Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.")
+                                    // la taratura di «gioca N%» con le probabili (#379): frase e numeri del server, come la web
+                                    if let taratura = ParoleTaratura.frase(c.taratura) {
+                                        Text(taratura)
+                                    }
+                                }
+                                .foregroundStyle(Color.testoSecondario)
                             }
                         }
                     } else if let e = caricatore.errore {

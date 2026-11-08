@@ -632,7 +632,8 @@ struct StatoDati: Decodable {
         let indicativo: Bool?
         var id: String { gruppo }
     }
-    struct Calibrazione: Decodable { let giornate: Int?; let gruppi: [GruppoCalibrazione]? }
+    /// `taratura`: la taratura di «gioca N%» con le probabili (#379, `TaraturaProbabili.swift`); un server vecchio non la manda.
+    struct Calibrazione: Decodable { let giornate: Int?; let gruppi: [GruppoCalibrazione]?; let taratura: Taratura? }
     /// I gol attesi «nostri» (solo Fantacalcio.it, senza Understat) contro i numeri mostrati: I4 dal vivo (#401,
     /// `registro_nostri.riepilogo` del server). Le medie delle ultime `finestra` giornate misurate della `versione` di oggi del calcolo
     /// (le altre non contano), con le soglie e il verdetto (`regge` e `reggeTutto`, solo con `verdetto`), e una riga per giornata.
