@@ -4,6 +4,7 @@ Serve quando si cambia server o si vuole una copia al sicuro. Non contiene chiav
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -38,11 +39,19 @@ def _lista_o_dizionario(d: Any) -> None:
         raise ValueError("formato non riconosciuto")
 
 
+def _regole(d: Any) -> None:
+    """Le regole del backup si controllano come quelle già salvate (regole.carica): senza i tetti di misura, che valgono solo per
+    le regole scritte di nuovo dalle rotte (#480). Un backup fatto prima dei tetti si rimette com'è, con un avviso nel registro."""
+    r = regole.da_dict(d, misure=False)
+    if r.problemi_di_misura():
+        logging.getLogger("uvicorn.error").warning("Ripristino: regole del backup oltre i tetti di misura, rimesse come sono")
+
+
 FILE_SCELTE_BACKUP = "dati/scelte.json"     # le formazioni scelte, una voce per «stagione/giornata»
 
 # file salvati (percorso dentro il progetto) -> controllo del contenuto
 CONTROLLI: dict[str, Callable[[Any], None]] = {
-    "lega/regole.json": regole.da_dict,
+    "lega/regole.json": _regole,
     "lega/rose.json": lega.da_dict,
     "lega/movimenti.json": _lista_o_dizionario,
     "dati/scelte.json": _dizionario,
