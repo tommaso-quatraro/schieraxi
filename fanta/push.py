@@ -20,7 +20,7 @@ import time
 import uuid
 from pathlib import Path
 
-from .percorsi import RADICE
+from .percorsi import RADICE, scrittura_permessa
 
 FILE_VAPID = RADICE / "dati" / "vapid.json"
 FILE_ISCRIZIONI = RADICE / "dati" / "push.json"
@@ -39,13 +39,17 @@ def _riservato(percorso: Path) -> None:
 
 def scrivi_sicuro(percorso: Path, testo: str) -> None:
     """Come `percorsi.scrivi_sicuro` (file temporaneo e poi rinomina), ma il file nasce già leggibile solo dal proprietario (600):
-    dentro ci sono la chiave privata VAPID e gli indirizzi di notifica dei dispositivi."""
+    dentro ci sono la chiave privata VAPID e gli indirizzi di notifica dei dispositivi.
+    Come lì, nella cartella di un account eliminato non scrive: il segno di cancellazione si guarda prima e dopo."""
+    if not scrittura_permessa(percorso):
+        return
     percorso.parent.mkdir(parents=True, exist_ok=True)
     tmp = percorso.with_name(f"{percorso.name}.{uuid.uuid4().hex[:8]}.tmp")
     descrittore = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descrittore, "w", encoding="utf-8") as f:
         f.write(testo)
     os.replace(tmp, percorso)
+    scrittura_permessa(percorso)      # eliminato mentre scrivevamo: si toglie quello che è rinato
 
 
 def _b64(dati: bytes) -> str:
