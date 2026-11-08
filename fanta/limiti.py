@@ -4,7 +4,9 @@
 - spazio: i dati personali di ciascuno (regole, rose, immagini, archivio...) stanno in 5 MB;
 - dimensione della lega: al massimo 20 squadre da 40 giocatori;
 - calcoli e memorie condivise: calcoli in coda insieme, parte della memoria dei risultati (li applica calcolo.py), consigliate
-  ricordate (consigli.py) e azioni ripetibili che costano calcoli all'ora (`azione_pesante`).
+  ricordate (consigli.py) e azioni ripetibili che costano calcoli all'ora (`azione_pesante`);
+- importazione delle rose: lo stesso tetto di celle per ogni formato (lo applica importa_sicuro.py) e un tempo massimo per
+  riconoscere i giocatori (`tempo_riconoscimento`, lo applica nomi.Indice).
 Con l'interruttore spento (`ctx.utente_id` è None) nessuno di questi controlli fa niente: l'app resta quella di sempre.
 Ogni tetto nuovo è una costante qui sotto che si può cambiare sul server con FANTA_<nome della costante> (vedi `valore`).
 I messaggi sono pensati per chi li legge: dicono cosa è successo e come rimediare.
@@ -15,6 +17,7 @@ import contextlib
 import os
 import threading
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -35,6 +38,10 @@ MAX_CALCOLI_UTENTE = 4               # calcoli pesanti in coda o in corso insiem
 QUOTA_RISULTATI_UTENTE = 0.25        # parte della memoria dei risultati (calcolo.MAX_RISULTATI) che le voci di un utente possono occupare
 MAX_AZIONI_PESANTI_ORA = 20          # azioni ripetibili che costano calcoli (lega di prova creata o tolta), all'ora per utente
 MAX_CONSIGLIATE_UTENTE = 100         # consigliate già mostrate ricordate per utente (vedi consigli.py)
+
+# Importazione delle rose (#514): lo stesso tetto di lavoro per ogni formato.
+MAX_CELLE_IMPORTAZIONE = 1500 * 60   # celle lette in tutto (tutti i fogli di un Excel insieme): come il testo, 1500 righe × 60 colonne
+MAX_SECONDI_RICONOSCIMENTO = 20      # secondi per riconoscere i giocatori di un'importazione (o di un'anteprima): oltre si ferma
 
 # cosa si conta al giorno: (tetto, come si dice nel messaggio)
 AL_GIORNO = {"importazioni": (MAX_IMPORTAZIONI_AL_GIORNO, "importazioni di rose"),
@@ -75,6 +82,20 @@ def azione_pesante(ctx) -> Prenotazione | None:
     """Un'azione ripetibile che costa calcoli o scritture (creare o togliere la lega di prova): al massimo
     MAX_AZIONI_PESANTI_ORA all'ora per utente, poi 429 con Retry-After. Senza account non conta niente."""
     return prenota_ora(ctx, "azioni_pesanti", massimo=valore("MAX_AZIONI_PESANTI_ORA"))
+
+
+def _orologio() -> float:
+    return time.monotonic()
+
+
+def tempo_riconoscimento(ctx) -> Callable[[], bool] | None:
+    """Il controllo «tempo finito?» del riconoscimento dei giocatori di un'importazione di rose (si passa a `nomi.Indice`, che
+    lo guarda a ogni nome cercato): vero dopo MAX_SECONDI_RICONOSCIMENTO secondi da adesso. Senza account None: l'app di
+    sempre non ha un tempo massimo."""
+    if ctx.utente_id is None:
+        return None
+    fine = _orologio() + valore("MAX_SECONDI_RICONOSCIMENTO")
+    return lambda: _orologio() > fine
 
 
 def _intero_da_ambiente(nome: str, predefinito: int) -> int:
