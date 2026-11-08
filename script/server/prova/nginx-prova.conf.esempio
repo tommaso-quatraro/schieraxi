@@ -1,0 +1,27 @@
+# Blocco nginx dell'AMBIENTE DI PROVA di SchieraXI (script/server/prova/LEGGIMI.md, passo 4.6).
+# Da copiare in /etc/nginx/sites-available/schieraxi-prova sostituendo <dominio> (al momento, sul server: il dominio non va nel
+# repository). Il certificato lo aggiunge certbot (sudo certbot --nginx -d prova.<dominio>), che scrive da solo le righe per https
+# e il passaggio da http a https.
+# Le intestazioni di sicurezza (Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
+# Permissions-Policy, Cross-Origin-Opener-Policy, Strict-Transport-Security) le mette l'app stessa, uguali alla produzione
+# (fanta/server.py, SICUREZZA): qui non si ripetono, per non mandarle doppie. Se il blocco di app.<dominio> ne aggiunge altre, si
+# copiano qui identiche. Qui solo X-Robots-Tag, anche sulle pagine d'errore di nginx (per esempio con la prova spenta): la prova
+# non deve finire nei motori di ricerca.
+server {
+    listen 80;
+    listen [::]:80;            # come app.<dominio>: senza, chi arriva in IPv6 finirebbe sul blocco predefinito
+    server_name prova.<dominio>;
+
+    client_max_body_size 12m;  # come il tetto delle richieste dell'app (fanta/server.py, LIMITE_RICHIESTA)
+    add_header X-Robots-Tag "noindex, nofollow" always;
+
+    location / {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # l'app legge l'ultimo valore (quello che aggiunge nginx) solo con FANTA_PROXY=1 (ambiente-prova.env.esempio)
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+}

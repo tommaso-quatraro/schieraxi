@@ -19,6 +19,14 @@ I controlli di salute (`fanta/salute.py`, `controllo-salute.sh`) provano 3 volte
 
 La configurazione di sistema (nginx, systemd, fail2ban, ufw, crontab) non è nel repository: va preparata per il proprio server.
 
+## Ambiente di prova
+
+Una seconda copia dell'app sullo stesso server (`~/schieraxi-prova`, servizio `schieraxi-prova` su `127.0.0.1:8001`, dati inventati),
+che riceve ogni versione prima della produzione: script, servizio, nginx e tutti i comandi (con la prova di ogni passo e il ritorno
+indietro) stanno in [`prova/LEGGIMI.md`](prova/LEGGIMI.md). Si accende solo con l'ok del proprietario.
+`aggiorna-app.sh` la aggiorna con `SCHIERAXI_ISTANZA=prova`; senza la variabile fa quello di sempre (`--configurazione` stampa
+cartella, stato, servizio e porta che userebbe, senza scrivere niente; un valore sconosciuto esce con 2 senza fare niente).
+
 Crontab proposto (percorsi con `$HOME`, utente del server):
 
 ```
