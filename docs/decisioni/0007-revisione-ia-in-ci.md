@@ -62,4 +62,5 @@ non parte (anche `unisci`): vanno aggiunte PRIMA di unire questa decisione, e ag
   sintesi sta solo nell'esito e la pubblica il job, in un unico commento aggiornato a ogni giro; a Claude resta
   `gh pr diff/view` e i commenti sulle righe.
 - 6/11/2026 (#479, irrobustimento): niente più `gh pr diff/view` (il diff lo prepara il job), letture limitate al checkout,
-  filtro dei segreti sulla sintesi. Comportamento dell'azione verificato alla prima corsa in CI.
+  filtro dei segreti sulla sintesi. Comportamento dell'azione da verificare alla prima corsa in CI (la prima volta che la PR
+  esce dalla bozza). Da controllare: che `Grep` e `Glob` funzionino nel checkout con la sola regola `Read(./**)`.
