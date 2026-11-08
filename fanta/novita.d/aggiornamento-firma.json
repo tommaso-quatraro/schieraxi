@@ -1,10 +1,10 @@
 {
-  "titolo": "Aggiornamenti del server ancora più controllati",
+  "titolo": "Aggiornamenti del server: il ramo da installare si legge in modo più sicuro",
   "voci": [
-    "Gli aggiornamenti automatici del server installano solo le versioni pubblicate dell'app, con un controllo in più. Per chi usa l'app non cambia niente."
+    "Il server legge in modo più sicuro quale versione dell'app installare. Per chi usa l'app non cambia niente."
   ],
   "tecnico": [
-    "Issue #481. aggiorna-app.sh legge il commit da installare con il nome intero refs/remotes/origin/main: un tag o un ramo locale con lo stesso nome non prendono più il suo posto. Anche --fidati origin/main usa il ramo.",
-    "verifica_catena (verifica-firme.sh) rifiuta anche un commit che non sta nella storia di refs/remotes/origin/main, con il motivo nel log. Gli aggiornamenti normali non cambiano."
+    "Parte di #481. aggiorna-app.sh e pubblica-sito.sh leggono il ramo con git show-ref --verify refs/remotes/origin/main, che non cerca altri nomi: un tag o un ramo locale con un nome simile non prendono più il suo posto; se il ramo manca non installano né pubblicano niente. Anche --fidati origin/main usa il ramo.",
+    "verifica_catena (verifica-firme.sh) controlla anche che il commit stia nella storia del ramo: serve a chi la usa con un commit diverso dalla punta. Gli aggiornamenti normali non cambiano."
   ]
 }

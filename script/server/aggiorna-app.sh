@@ -6,8 +6,8 @@
 #      ~/.config/schieraxi/chiavi-firma.asc (fuori dal repository; oggi la chiave con cui GitHub firma le unioni delle PR e il commit
 #      di versione del bot). Se una firma manca: non installa, segna "rifiutato" e manda un avviso. Se manca quel file NON installa
 #      niente (riga nel log e un avviso la prima volta); per installare senza firme serve l'interruttore SCHIERAXI_SENZA_FIRME=1.
-#      Il commit da installare e' sempre la punta di refs/remotes/origin/main (nome intero: mai un tag con lo stesso nome) e deve
-#      stare nella storia di quel ramo. Dettagli e casi limite in script/server/LEGGIMI.md;
+#      Il commit da installare e' la punta del ramo refs/remotes/origin/main, letta con git show-ref --verify (mai un tag con un nome
+#      simile). Dettagli e casi limite in script/server/LEGGIMI.md;
 #   2. se NON sono cambiate le cartelle del server (fanta, tests, script, requirements*) segna la versione come vista e si ferma:
 #      le modifiche a ios/, sito/, docs/ non riavviano l'app e non mandano avvisi;
 #   3. altrimenti salva una copia della versione attuale (per tornare indietro) e copia la nuova in ~/fantacalcio
@@ -78,11 +78,12 @@ cd "$SRC" || { log "manca la copia di GitHub in $SRC"; exit 1; }
 timeout -k 5 "${SCHIERAXI_TIMEOUT_GIT:-120}" git fetch -q origin main 2>>"$ERR"; rc=$?
 [ "$rc" = 124 ] && { log "git fetch interrotto dopo ${SCHIERAXI_TIMEOUT_GIT:-120}s: la rete e' bloccata, riprovo al prossimo giro"; fine; exit 0; }
 [ "$rc" = 0 ] || { log "git fetch non riuscito (rete?)"; fine; exit 0; }
-# Il ramo con il nome intero: con "origin/main" scritto corto git sceglierebbe prima un tag o un ramo locale con lo stesso nome
-MAIN=refs/remotes/origin/main
-nuovo=$(git rev-parse -q --verify "$MAIN^{commit}") || { log "il ramo origin/main non esiste nel clone $SRC: non installo"; fine; exit 1; }
+# Il ramo con il nome intero, letto con show-ref --verify che non cerca altri nomi: con rev-parse (anche col nome intero, se il ramo
+# manca) git proverebbe altri posti e un tag con lo stesso nome prenderebbe il suo posto
+nuovo=$(git show-ref --verify -s refs/remotes/origin/main 2>/dev/null) && nuovo=$(git rev-parse -q --verify "$nuovo^{commit}") \
+  || { log "il ramo origin/main non esiste nel clone $SRC: non installo"; fine; exit 1; }
 if [ -n "$FIDATI" ]; then
-  quale="$FIDATI"; [ "$FIDATI" = origin/main ] && quale="$MAIN"     # "--fidati origin/main" vuol dire il ramo, anche qui
+  quale="$FIDATI"; [ "$FIDATI" = origin/main ] && quale="$nuovo"     # "--fidati origin/main" vuol dire il ramo, anche qui
   fidato=$(git rev-parse -q --verify "$quale^{commit}") && git merge-base --is-ancestor "$fidato" "$nuovo" \
     || { log "--fidati: '$FIDATI' non e' un commit di origin/main"; fine; exit 1; }
   echo "$fidato" > "$STATO/verificato"

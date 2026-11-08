@@ -5,13 +5,14 @@
 # e il commit di versione del job rilascia, creato via API): copia di riferimento in script/server/chiavi/github-web-flow.asc.
 #
 # verifica_catena BASE NUOVO CHIAVI
-#   0 se BASE e' un antenato di NUOVO, NUOVO sta nella storia del ramo main di origin (refs/remotes/origin/main, nome intero) e ogni
+#   0 se BASE e' un antenato di NUOVO, NUOVO sta nella storia del ramo main di origin (refs/remotes/origin/main, letto con
+#   git show-ref --verify; con aggiorna-app.sh NUOVO e' gia' la punta del ramo, il controllo serve a chi la usa con altri commit) e ogni
 #   commit della linea principale (--first-parent) dopo BASE, fino a NUOVO compreso, ha una firma valida di una chiave del file CHIAVI;
 #   altrimenti 1 e il motivo in MOTIVO_FIRMA. Si lancia dalla radice del clone.
 #   Una firma scaduta, revocata, di un'altra chiave, o un commit senza firma: rifiutato. Anche un commit firmato che non sta su main.
 
 verifica_catena() {
-  local base="$1" nuovo="$2" chiavi="$3" casa=".git/verifica-firme" c out
+  local base="$1" nuovo="$2" chiavi="$3" casa=".git/verifica-firme" c out main
   MOTIVO_FIRMA=""
   if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
     MOTIVO_FIRMA="non trovo la versione di partenza '${base:0:7}' (repository nuovo?): controlla e poi usa --fidati"
@@ -21,7 +22,12 @@ verifica_catena() {
     MOTIVO_FIRMA="main non discende piu' da ${base:0:7}: storia riscritta (force-push?)"
     return 1
   fi
-  if ! git merge-base --is-ancestor "$nuovo" refs/remotes/origin/main 2>/dev/null; then
+  # il ramo per nome intero con show-ref --verify, che non cerca altri nomi (un tag con un nome simile non prende il suo posto)
+  if ! main=$(git show-ref --verify -s refs/remotes/origin/main 2>/dev/null); then
+    MOTIVO_FIRMA="il ramo origin/main non esiste nel clone: non installo"
+    return 1
+  fi
+  if ! git merge-base --is-ancestor "$nuovo" "$main" 2>/dev/null; then
     MOTIVO_FIRMA="il commit ${nuovo:0:7} non e' nella storia di main (refs/remotes/origin/main): non lo installo"
     return 1
   fi
