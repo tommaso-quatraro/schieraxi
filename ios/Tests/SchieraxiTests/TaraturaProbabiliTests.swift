@@ -177,7 +177,8 @@ struct TaraturaProbabiliTests {
         #expect(try frase("{\"stato\":\"in_attesa\",\"giornate\":\(n),\"minimo\":0}") == soloQuante)
         let prova = "{\"giornate\":\(n),\"brier\":0.0912,\"brier_prima\":0.0968,\"calibrazione\":0.0213}"
         let attiva = try riempi(web.italiano("sd.tar_attiva_dal"), ["d": "15/1", "v": "1"])
-        let numeri = try riempi(web.italiano("sd.tar_prova.\(forma)"), ["n": "\(n)", "b": "0,0912", "p": "0,0968", "c": "2,1"])
+        let scarto = try riempi(web.italiano("sd.reg_punti.other"), ["n": "2,1"])
+        let numeri = try riempi(web.italiano("sd.tar_prova.\(forma)"), ["n": "\(n)", "b": "0,0912", "p": "0,0968", "c": scarto])
         let conProva = try riga(web, attiva + " · " + numeri)
         #expect(try frase("{\"stato\":\"attiva\",\"versione\":1,\"dal\":\"2027-01-15T10:00:00\",\"prova\":\(prova)}") == conProva)
     }
