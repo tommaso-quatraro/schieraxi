@@ -23,13 +23,16 @@ final class AppuntiFinti: AppuntiCodice {
 final class ServiziCollegamentoFinti {
     let token: String?
     let canale: Bool
+    /// Se c'è, il token risponde solo quando il test apre il cancello (rete lenta, `Cancello.swift`).
+    let cancello: Cancello?
     private(set) var richiesteToken = 0
     private(set) var collegamenti = 0
     private(set) var ricariche = 0
 
-    init(token: String? = "fw_tokenDiProva123456", canale: Bool = false) {
+    init(token: String? = "fw_tokenDiProva123456", canale: Bool = false, cancello: Cancello? = nil) {
         self.token = token
         self.canale = canale
+        self.cancello = cancello
     }
 
     var servizi: CollegaWidgetModello.Servizi {
@@ -37,6 +40,7 @@ final class ServiziCollegamentoFinti {
             indirizzo: { "https://esempio.invalid" },
             token: { [self] _, _ in
                 richiesteToken += 1
+                if let cancello { await cancello.passa() }
                 return token
             },
             canale: { [self] in
@@ -130,6 +134,24 @@ struct CollegaWidgetSenzaToccoTests {
         #expect(m.stato == .copiato)
         #expect(appunti.copie.isEmpty)
         #expect(servizi.richiesteToken == 0)
+    }
+
+    @Test("«Annulla» durante il collegamento: quando il token arriva, niente collegamento e niente appunti", arguments: [false, true])
+    func annullaDuranteIlCollegamento(canale: Bool) async {
+        let cancello = Cancello()
+        let servizi = ServiziCollegamentoFinti(canale: canale, cancello: cancello)
+        let appunti = AppuntiFinti()
+        let m = modello(servizi, appunti)
+        let lavoro = Task { await m.collega(conAccount: true) }
+        await cancello.richiestaArrivata()   // il token è stato chiesto e la rete è lenta
+        lavoro.cancel()                      // «Annulla» (o il foglio chiuso)
+        await cancello.apri()                // poi il token arriva
+        await lavoro.value
+        #expect(appunti.copie.isEmpty, "niente codice negli appunti dopo l'annullamento")
+        #expect(servizi.collegamenti == 0, "niente collegamento automatico dopo l'annullamento")
+        #expect(servizi.ricariche == 0)
+        #expect(m.stato == .pronto)
+        #expect(m.riuscite == 0)
     }
 
     @Test("Gli appunti veri: solo su questo telefono (niente Appunti universali) e con la scadenza")
