@@ -12,13 +12,17 @@ from pathlib import Path
 
 WEB = Path(__file__).resolve().parent.parent / "fanta" / "web"
 
-# `import { a, b } from "./x.js";` (anche su più righe) e `import "./x.js";`, all'inizio della riga e al primo livello.
+# Fine di un import o di un export: `;` facoltativo e un commento facoltativo (`// …` o `/* … */`) sulla stessa riga.
+_FINE = r"[ \t]*;?[ \t]*(?://[^\n]*|/\*[^\n]*?\*/[ \t]*)?(?:\r?\n|$)"
+# `import { a, b } from "./x.js";` (anche su più righe o rientrato) e `import "./x.js";`, all'inizio della riga.
 # `import(` (import dinamico) e parole come `importa` non c'entrano.
-_IMPORT = re.compile(r'^import(?:\s+[^;"\']*?\s+from)?\s*["\']([^"\']+)["\']\s*;?[ \t]*(?:\r?\n|$)', re.M)
+_IMPORT = re.compile(r'^[ \t]*import(?:\s+[^;"\'()]*?\s+from)?\s*["\']([^"\']+)["\']' + _FINE, re.M)
 # `export function`, `export async function`, `export const`, `export let`, `export var`, `export class`
-_EXPORT_DICHIARAZIONE = re.compile(r"^export\s+(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)", re.M)
+_EXPORT_DICHIARAZIONE = re.compile(r"^([ \t]*)export\s+(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)", re.M)
 # `export { a, b };` (anche su più righe): i nomi sono già dichiarati sopra, la riga se ne va
-_EXPORT_ELENCO = re.compile(r"^export\s*\{[^}]*\}\s*;?[ \t]*(?:\r?\n|$)", re.M)
+_EXPORT_ELENCO = re.compile(r"^[ \t]*export\s*\{[^}]*\}" + _FINE, re.M)
+# quello che resta dopo il taglio e il lettore non sa togliere: `export default`, `export … from`, import con `with {…}`…
+_RESTO = re.compile(r"^[ \t]*(?:import\b(?!\s*[(.])|export\b).*$", re.M)
 _SCRIPT = re.compile(r"<script\b([^>]*)>", re.I)
 
 
@@ -42,7 +46,7 @@ def _importati(file: Path, web: Path) -> list[Path]:
 
 def moduli(web: Path = WEB) -> list[Path]:
     """I file importati da `app.js`, seguendo anche gli import dei moduli: ognuno una volta, prima quelli da cui dipende
-    (l'ordine in cui il browser li esegue). Oggi la lista è vuota."""
+    (l'ordine in cui il browser li esegue). Vuota finché `app.js` non importa niente."""
     web = Path(web)
     visti: set[Path] = set()
     ordine: list[Path] = []
@@ -60,10 +64,14 @@ def moduli(web: Path = WEB) -> list[Path]:
     return [web / p.relative_to(web.resolve()) for p in ordine]
 
 
-def _senza_import_ed_export(testo: str) -> str:
-    testo = _IMPORT.sub("", testo)
+def _senza_import_ed_export(file: Path) -> str:
+    testo = _IMPORT.sub("", _testo(file))
     testo = _EXPORT_ELENCO.sub("", testo)
-    return _EXPORT_DICHIARAZIONE.sub("", testo)
+    testo = _EXPORT_DICHIARAZIONE.sub(r"\1", testo)
+    resto = _RESTO.search(testo)
+    if resto:
+        raise ValueError(f"{file.name}: il lettore non sa togliere questa riga: {resto.group(0).strip()!r}")
+    return testo
 
 
 def app(web: Path = WEB) -> str:
@@ -71,7 +79,7 @@ def app(web: Path = WEB) -> str:
     `export ` in testa alle dichiarazioni. Oggi è esattamente il testo di `app.js`."""
     web = Path(web)
     pezzi = [*moduli(web), web / "app.js"]
-    return "\n".join(_senza_import_ed_export(_testo(p)) for p in pezzi)
+    return "\n".join(_senza_import_ed_export(p) for p in pezzi)
 
 
 def script_classici(web: Path = WEB) -> list[Path]:

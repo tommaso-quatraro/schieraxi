@@ -3,13 +3,10 @@ import json
 import re
 import shutil
 import subprocess
-from pathlib import Path
 
 import pytest
 import codice_web
 
-RADICE = Path(__file__).resolve().parent.parent
-PRIMOAVVIO_JS = RADICE / "fanta" / "web" / "primoavvio.js"
 NODE = shutil.which("node")
 
 pytestmark = pytest.mark.skipif(NODE is None, reason="node non installato")
