@@ -1,5 +1,18 @@
 [
   {
+    "versione": "1.443",
+    "data": "2026-11-08T22:06:54",
+    "titolo": "Account eliminato: i dati non tornano",
+    "voci": [
+      "Web, iPhone e iPad: quando elimini l'account, i tuoi dati se ne vanno per sempre, anche se in quel momento l'app stava ancora salvando qualcosa."
+    ],
+    "tecnico": [
+      "Issue #516 (R6 dell'ondata 2). Segno di cancellazione: file vuoto dati/cancellati/<id> (fuori dalla cartella dell'utente), scritto da account.elimina subito dopo la conferma e solo per un account che c'era. percorsi.scrittura_permessa, chiamata da percorsi.scrivi_sicuro e push.scrivi_sicuro prima e dopo la scrittura per i percorsi sotto utenti/<id>/: se il database degli account (in sola lettura, letto solo quando il segno c'è) conferma che l'account non c'è più, non scrive e toglie la cartella se è rinata; se c'è un account con quel numero (segno rimasto da prima di un ripristino) scrive; se il database non risponde non scrive, non cancella niente e lascia un errore con il tipo nel registro del servizio.",
+      "contesto.elimina_cartella non tace più gli errori: riga cancellazione_dati_non_riuscita nel registro di sicurezza (Amministrazione) ed errore nel registro del servizio; torna vero o falso. Nuovo comando python -m fanta cartelle-senza-account [--esegui]: senza --esegui elenca e basta; con --esegui cancella, ma non se il database degli account manca o non ha account.",
+      "Non coperte dal segno (scrivono senza scrivi_sicuro): immagini caricate (immagini.py), i file .lock di blocco.BloccoFile, l'archivio di stagione (stagione.py). Una cartella rinata da lì la trova il comando."
+    ]
+  },
+  {
     "versione": "1.442",
     "data": "2026-11-08T17:50:23",
     "titolo": "Server: ambiente di prova più protetto",
