@@ -106,7 +106,13 @@ enum StatoScelta: Equatable {
 
     /// Un pulsante della riga di stato: «Salva questa», «Salva le modifiche» o «Salva come mia scelta», «Annulla modifiche»,
     /// «Torna alla consigliata».
-    enum Pulsante: Hashable { case salvaQuesta, salva, annulla, torna }
+    enum Pulsante: Hashable {
+        case salvaQuesta, salva, annulla, torna
+
+        /// Spento mentre un salvataggio è in corso, come i pulsanti della web che guardano `sc.occupato`: quelli che salvano e
+        /// «Annulla modifiche». «Torna alla consigliata» resta attivo, come sulla web (#477).
+        var spentoSalvando: Bool { self != .torna }
+    }
 
     /// I pulsanti della riga, nell'ordine di `rigaStatoScelta` della web (#463): dipendono dallo stato, non dalla modifica a mano,
     /// così con una scelta salvata e un altro modulo sullo schermo ci sono «Salva le modifiche» e «Annulla modifiche».
