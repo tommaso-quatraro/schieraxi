@@ -13,7 +13,14 @@ exec 8>"$HOME/.cache/fantacalcio/blocco-promemoria"
 flock -n 8 || exit 0
 umask 077     # i log e i file nuovi di dati/ (indirizzi, iscrizioni) sono leggibili solo dall'utente del server
 chmod 600 dati/*.log 2>/dev/null
-out=$(nice -n 10 .venv/bin/python -m fanta promemoria 2>&1)
+# giro dei promemoria: al massimo 8 minuti (meno dei 10 fra un giro e l'altro), cosi' un servizio di notifica lento non lo tiene
+# fermo fino al giro dopo. Si cambia con FANTA_MAX_SECONDI_GIRO_PROMEMORIA in dati/ambiente.env (secondi; un valore non valido vale 480).
+giro=${FANTA_MAX_SECONDI_GIRO_PROMEMORIA:-480}; [[ $giro =~ ^[1-9][0-9]{0,4}$ ]] || giro=480
+out=$(nice -n 10 timeout "$giro" .venv/bin/python -m fanta promemoria 2>&1)
+if [ $? -eq 124 ]; then
+  [ -n "$out" ] && out="$out"$'\n'
+  out="${out}promemoria: fermato dopo $giro secondi (tempo massimo del giro)"
+fi
 # controllo di salute dell'app: avvisa sul telefono se non risponde o se i dati non si aggiornano. Prima aspetta che aggiorna-app.sh
 # abbia finito (blocco condiviso): mentre installa riavvia l'app e per qualche secondo non risponde (falsi allarmi del 1/11).
 # Se l'installazione dura piu' di 3 minuti il controllo salta questo giro. Il controllo stesso riprova 3 volte (fanta/salute.py).

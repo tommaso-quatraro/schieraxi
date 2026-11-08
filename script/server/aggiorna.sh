@@ -41,14 +41,22 @@ fi
 # (la formazione e il mercato in memoria li prepara il servizio da solo: controlla i dati ogni minuto e,
 # appena sono cambiati, li calcola in anticipo. Funziona anche con gli account e non serve nessuna richiesta da qui.)
 
+# giri degli avvisi (cambi, riepilogo, «formazione pronta»): ognuno al massimo 10 minuti, cosi' un servizio di notifica lento non
+# ferma il resto dello script. Si cambia con FANTA_MAX_SECONDI_GIRO_AVVISI in dati/ambiente.env (secondi; un valore non valido vale 600).
+giro=${FANTA_MAX_SECONDI_GIRO_AVVISI:-600}; [[ $giro =~ ^[1-9][0-9]{0,4}$ ]] || giro=600
+fermato() {   # comando, uscita: con 124 (tempo finito, vedi timeout) lo scrive nel log
+  [ "$2" -eq 124 ] && echo "$1: fermato dopo $giro secondi (tempo massimo del giro)" >> "$LOG"
+  return 0
+}
+
 # avvisi sul telefono se sono cambiate le probabili dei miei giocatori
-nice -n 10 .venv/bin/python -m fanta cambi >> "$LOG" 2>&1
+nice -n 10 timeout "$giro" .venv/bin/python -m fanta cambi >> "$LOG" 2>&1 || fermato cambi $?
 # riepilogo di giornata (una volta per giornata, quando sono arrivati i voti)
-nice -n 10 .venv/bin/python -m fanta riepilogo >> "$LOG" 2>&1
+nice -n 10 timeout "$giro" .venv/bin/python -m fanta riepilogo >> "$LOG" 2>&1 || fermato riepilogo $?
 # prova del modello sulle ultime giornate (si rifà solo se è finita una giornata nuova)
 nice -n 15 .venv/bin/python -m fanta affidabilita >> "$LOG" 2>&1
 
-testo=$(nice -n 10 .venv/bin/python -m fanta avviso 2>>"$LOG")
+testo=$(nice -n 10 timeout "$giro" .venv/bin/python -m fanta avviso 2>>"$LOG") || fermato avviso $?
 [ -n "$testo" ] && avvisa "Fantacalcio" "$testo"
 
 # ritagli dei volti dei calciatori: fino a 80 per giro e al massimo 6 minuti, sempre sotto le 30 richieste al minuto del servizio

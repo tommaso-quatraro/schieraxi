@@ -2,15 +2,18 @@
 
 - chiavi VAPID (l'identità del server): generate la prima volta e tenute in dati/vapid.json (mai in git);
 - iscrizioni: ogni dispositivo che le attiva (iPhone con l'app sulla Home, PC, iPad) lascia la sua in dati/push.json;
-- invio: a tutti i dispositivi iscritti; quelle scadute (404/410) si tolgono da sole.
+- invio: a tutti i dispositivi iscritti, insieme, con un tempo massimo totale (`limiti.MAX_SECONDI_INVIO`): un servizio lento non
+  ritarda gli altri dispositivi né il giro degli avvisi; quelle scadute (404/410) si tolgono da sole.
 Su iPhone servono iOS 16.4 o più e l'app aggiunta alla schermata Home.
 """
 from __future__ import annotations
 
 import base64
 import concurrent.futures
+import functools
 import hashlib
 import http.client
+import io
 import ipaddress
 import json
 import os
@@ -168,14 +171,77 @@ def indirizzo_consentito(ep: str) -> bool:
 
 
 class _Risposta:
-    def __init__(self, stato: int, testo: str, intestazioni):
-        self.status_code, self.text, self.headers = stato, testo, intestazioni
-        self.ok = 200 <= stato < 400
+    def __init__(self, stato: int, motivo: str, testo: str, intestazioni):
+        self.status_code, self.reason, self.text, self.headers = stato, motivo, testo, intestazioni     # `reason`: pywebpush lo
+        self.ok = 200 <= stato < 400                                                                   # legge negli errori (404/410)
+
+
+def _orologio() -> float:
+    return time.monotonic()
+
+
+class _LetturaEntro(io.RawIOBase):
+    """Le letture della risposta di un servizio di notifica con una scadenza totale (`fine`, sull'orologio `_orologio`): prima di
+    ognuna il tempo che resta diventa il tempo massimo del socket, e a tempo finito si ferma. Serve con un servizio che risponde
+    un byte alla volta: lì il tempo massimo di ogni singola lettura, da solo, non finisce mai."""
+
+    def __init__(self, file, sock, fine: float):
+        super().__init__()
+        self._file, self._sock, self._fine = file, sock, fine
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, b) -> int:
+        resta = self._fine - _orologio()
+        if resta <= 0:
+            raise TimeoutError("Tempo dell'invio finito")
+        self._sock.settimeout(resta)
+        return self._file.readinto1(b)          # una lettura sola: il tempo si ricontrolla prima della successiva
+
+    def close(self) -> None:
+        if not self.closed:
+            self._file.close()
+        super().close()
+
+
+class _RispostaEntro(http.client.HTTPResponse):
+    """La risposta del servizio di notifica, letta tutta (riga di stato, intestazioni e corpo) entro la scadenza `fine`."""
+
+    def __init__(self, sock, *args, fine: float, **kwargs):
+        super().__init__(sock, *args, **kwargs)
+        self.fp = io.BufferedReader(_LetturaEntro(self.fp, sock, fine))
 
 
 class SessioneFissata:
     """Al posto di `requests.Session` per pywebpush: invia il POST all'indirizzo IP GIA' controllato (verificando il certificato del nome),
-    senza seguire reindirizzamenti, senza proxy dell'ambiente e senza una seconda risoluzione del nome."""
+    senza seguire reindirizzamenti, senza proxy dell'ambiente e senza una seconda risoluzione del nome.
+    Con `fine` (sull'orologio `_orologio`) l'invio sta entro quel momento: collegamento e stretta di mano TLS (il tempo massimo del
+    socket vale per tutta la stretta di mano), richiesta e risposta, anche goccia a goccia. `chiudi()` interrompe le connessioni
+    ancora aperte: chi manda l'avviso non le aspetta oltre."""
+
+    def __init__(self, fine: float | None = None):
+        self.fine = fine
+        self._aperte: set = set()
+        self._blocco = threading.Lock()
+        self._chiusa = False
+
+    def _tempo(self, timeout: float) -> float:
+        """Il tempo massimo del prossimo collegamento: `timeout`, ma mai oltre la scadenza (passata: TimeoutError)."""
+        if self.fine is None:
+            return timeout
+        resta = self.fine - _orologio()
+        if resta <= 0:
+            raise TimeoutError("Tempo dell'invio finito")
+        return min(timeout, resta)
+
+    def chiudi(self) -> None:
+        from .scarica_immagine import _tronca
+        with self._blocco:
+            self._chiusa = True
+            aperte = list(self._aperte)
+        for conn in aperte:
+            _tronca(conn)
 
     def post(self, url: str, data=None, headers=None, timeout: float = 15, **_ignorati) -> _Risposta:
         from urllib.parse import urlsplit
@@ -185,15 +251,25 @@ class SessioneFissata:
         percorso = (parti.path or "/") + (f"?{parti.query}" if parti.query else "")
         ultimo: Exception | None = None
         for ip in indirizzi_verificati(host)[:3]:
-            conn = _Connessione(host, ip, 443, timeout)
+            conn = _Connessione(host, ip, 443, self._tempo(timeout))
+            if self.fine is not None:
+                conn.response_class = functools.partial(_RispostaEntro, fine=self.fine)
+            with self._blocco:
+                if self._chiusa:
+                    raise TimeoutError("Tempo dell'invio finito")
+                self._aperte.add(conn)
             try:
                 conn.request("POST", percorso, body=data, headers={**(headers or {}), "Connection": "close"})
                 r = conn.getresponse()
-                return _Risposta(r.status, r.read(65536).decode("utf-8", "replace"), r.headers)
+                return _Risposta(r.status, getattr(r, "reason", ""), r.read(65536).decode("utf-8", "replace"), r.headers)
             except (OSError, http.client.HTTPException) as e:
                 ultimo = e
             finally:
+                with self._blocco:
+                    self._aperte.discard(conn)
                 conn.close()
+        if self.fine is not None and _orologio() >= self.fine:
+            raise TimeoutError("Tempo dell'invio finito") from ultimo
         raise ConnectionError("Servizio di notifica non raggiungibile") from ultimo
 
 
@@ -251,11 +327,14 @@ def _annota(testo: str) -> None:
 
 
 def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", percorso: Path | None = None, file_chiavi: Path | None = None) -> int:
-    """Manda la notifica a tutti i dispositivi iscritti. Restituisce quanti l'hanno ricevuta."""
+    """Manda la notifica a tutti i dispositivi iscritti, tutti insieme, e restituisce quanti l'hanno ricevuta.
+    Tempo massimo in tutto: `limiti.MAX_SECONDI_INVIO` (variabile FANTA_MAX_SECONDI_INVIO). Un dispositivo con un servizio lento non
+    fa aspettare gli altri; chi non ha risposto a tempo finito si lascia (una riga in push.log) e il giro degli avvisi va avanti."""
     lista = iscrizioni(percorso)
     if not lista:
         return 0
     from pywebpush import WebPushException, webpush
+    from . import limiti
     from .notifiche import SEZIONE_PER_TAG
     privata = chiavi(file_chiavi)["privata"]
     # `sezione` e `priorita` li usa l'app Android (ricevuta con UnifiedPush): il tocco apre la schermata giusta. Il web usa `url`:
@@ -263,22 +342,39 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
     sezione = SEZIONE_PER_TAG.get(tag, "lega")
     payload = json.dumps({"title": titolo, "body": testo, "tag": tag, "url": "/?vista=formazione" if sezione == "formazione" else "/",
                           "sezione": sezione, "priorita": priorita})
-    consegnate, scadute = 0, []
-    sessione = SessioneFissata()
-    for s in lista:
-        if not indirizzo_consentito(s["endpoint"]):
-            _annota(f"Iscrizione ignorata (indirizzo non pubblico o non valido): {maschera(s['endpoint'])}")
-            continue
+    sessione = SessioneFissata(fine=_orologio() + limiti.valore("MAX_SECONDI_INVIO"))
+
+    def a_uno(s: dict) -> tuple[str, str]:
+        """Un dispositivo: ("consegnata" | "scaduta" | "rifiutata" | "ignorata" | "errore", tipo dell'errore). Mai eccezioni."""
         try:
+            if not indirizzo_consentito(s["endpoint"]):
+                return "ignorata", ""
             webpush(subscription_info=s, data=payload, vapid_private_key=privata, vapid_claims={"sub": CONTATTO},
                     ttl=3600, headers={"Urgency": "high" if priorita >= 4 else "normal"}, timeout=15, requests_session=sessione)
-            consegnate += 1
+            return "consegnata", ""
         except WebPushException as e:
-            if getattr(e.response, "status_code", None) in (404, 410):
-                scadute.append(s["endpoint"])
+            return ("scaduta" if getattr(e.response, "status_code", None) in (404, 410) else "rifiutata"), ""
         except Exception as e:  # noqa: BLE001 - un dispositivo che non risponde non deve fermare gli altri
-            _annota(f"{type(e).__name__} ({maschera(s['endpoint'])})")      # mai il testo dell'errore: puo' contenere il percorso segreto
-            continue
+            return "errore", type(e).__name__          # mai il testo dell'errore: puo' contenere il percorso segreto
+
+    esecutore = concurrent.futures.ThreadPoolExecutor(max_workers=min(len(lista), MASSIMO_DISPOSITIVI), thread_name_prefix="avviso")
+    try:
+        futuri = [esecutore.submit(a_uno, s) for s in lista]
+        concurrent.futures.wait(futuri, timeout=max(0.0, sessione.fine - _orologio()))
+    finally:
+        sessione.chiudi()                              # a tempo finito chi e' ancora collegato si ferma: non lo aspetta nessuno
+        esecutore.shutdown(wait=False, cancel_futures=True)
+    consegnate, scadute = 0, []
+    for s, futuro in zip(lista, futuri):              # registro e iscrizioni si scrivono da qui, uno alla volta
+        esito, errore = futuro.result() if futuro.done() and not futuro.cancelled() else ("errore", "TimeoutError")
+        if esito == "consegnata":
+            consegnate += 1
+        elif esito == "scaduta":
+            scadute.append(s["endpoint"])
+        elif esito == "ignorata":
+            _annota(f"Iscrizione ignorata (indirizzo non pubblico o non valido): {maschera(s['endpoint'])}")
+        elif esito == "errore":
+            _annota(f"{errore} ({maschera(s['endpoint'])})")
     for ep in scadute:
         togli(ep, percorso)
     return consegnate
