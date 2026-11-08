@@ -7,15 +7,15 @@ import subprocess
 
 import pytest
 
-from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 NODE = shutil.which("node")
 pytestmark = pytest.mark.skipif(not NODE, reason="serve node")
 
 
 def _esegui(chiamata: str):
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     pezzi = [re.search(r"^const TITOLARITA = \{.*?\};$", APP, re.M | re.S).group(0)]
     inizio = APP.index("// A parole e senza numero")
     pezzi.append(APP[inizio:APP.index("// Il tocco sul fantavoto atteso")])

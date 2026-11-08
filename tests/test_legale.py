@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from fanta import server
 from fanta import testi_legali as tl
+import codice_web
 
 
 def cliente() -> TestClient:
@@ -50,10 +51,10 @@ def test_pagina_sconosciuta():
 
 def test_l_app_collega_le_pagine():
     # i link stanno in testi.js (linkLegale/linkLegali); accesso, Lega e Impostazioni li usano
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     assert 'href="/${pagina}${queryLingua()}"' in testi and 'linkLegale("privacy", "legale.privacy")' in testi and 'linkLegale("termini", "legale.termini")' in testi
-    app = (server.WEB / "app.js").read_text(encoding="utf-8")
-    imp = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")   # dentro l'app: voci di Impostazioni > Informazioni, un posto solo
+    app = codice_web.app()
+    imp = codice_web.leggi("impostazioni.js")   # dentro l'app: voci di Impostazioni > Informazioni, un posto solo
     assert app.count("linkLegali()") >= 2 and 'id="ac-letto"' in app        # accesso e registrazione
     assert all(f'voceLegale("{p}"' in imp for p in ("privacy", "termini", "crediti")) and "queryLingua()" in imp
     assert 'linkLegale("privacy"' in app                                  # la casella «Ho letto» usa i singoli link

@@ -1,8 +1,8 @@
 """Diario sul web: «Ho schierato un'altra formazione» / «Correggi a mano» come sull'iPhone (controlli statici su app.js e testi.js)."""
-from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 
 
 def test_ogni_giornata_ha_il_pulsante_per_correggere_a_mano():

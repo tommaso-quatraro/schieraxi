@@ -327,6 +327,9 @@ async def _risposta(request: Request, chiama):
     # Con gli account i calcoli pesanti non bloccano la richiesta: partono in coda e la richiesta riceve 202 «sto calcolando» (vedi calcolo.py)
     calcolo.in_coda.set(account.multiutente() and request.url.path.startswith("/api/"))
     calcolo.solo_cache.set(bool(getattr(request.state, "solo_widget", False)))     # il token del widget non fa partire calcoli
+    # chi chiede, per la parte di ciascuno di calcoli e memorie condivise (limiti.MAX_CALCOLI_UTENTE...); senza account nessuno
+    utente = getattr(request.state, "utente", None)
+    calcolo.utente_richiesta.set(utente.id if utente is not None and account.multiutente() else None)
     if_none_match = None
     if request.method == "GET" and request.url.path.startswith("/api/") and lingua_testi.della_richiesta(request) == lingua_testi.EN:
         # In inglese l'ETag italiano non vale: la richiesta va avanti senza If-None-Match e il confronto si fa dopo la traduzione
@@ -2389,6 +2392,7 @@ def crea_demo(ctx: Contesto = Depends(lega_corrente)):
         onboarding.leggi(db, ctx.utente_id, _ha_rose(ctx))
         if _ha_rose(ctx) and not onboarding.e_demo(lega.carica(ctx.rose)):
             raise HTTPException(409, "Hai già le tue rose: la lega demo le sostituirebbe, quindi non la creo.")
+        limiti.azione_pesante(ctx)                      # creare e togliere la demo si ripete: tetto all'ora (429)
         calciatori, _ = listone.carica()
         r = _regole(ctx)
         rose_demo = onboarding.crea_demo(calciatori, r)
@@ -2406,10 +2410,11 @@ def togli_demo(ctx: Contesto = Depends(lega_corrente)):
         if not onboarding.leggi(db, ctx.utente_id, _ha_rose(ctx))["demo"]:
             raise HTTPException(409, "Non c'è nessuna lega demo da togliere.")
         if onboarding.e_demo(lega.carica(ctx.rose)):          # solo se sono ancora le rose della demo: quelle vere non si toccano mai
+            limiti.azione_pesante(ctx)
             with _scrittura_rose:
                 for f in (ctx.rose, ctx.regole, ctx.movimenti, ctx.scelte, ctx.osservati):
                     f.unlink(missing_ok=True)
-            calcolo.cache.clear()
+            # niente da svuotare nella memoria dei calcoli: le chiavi contengono rose e regole, e quella memoria è di tutti
         return onboarding.aggiorna(db, ctx.utente_id, passo="tipo", stato="in_corso", demo=False)
 
 

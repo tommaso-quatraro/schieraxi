@@ -6,6 +6,7 @@ import pytest
 from fanta import account, posta
 
 from test_social import PASSWORD, cliente, giro, invito, iscrivi_con_google, scena, utente_con_password  # noqa: F401  (scena è una fixture)
+import codice_web
 
 # Il dominio di Google si scrive a pezzi. Le prove ne hanno bisogno davvero (fanta/social.py considera verificate solo le email
 # di quel dominio, e solo allora l'email di Google diventa quella dell'account), ma nel repository pubblico non devono comparire
@@ -107,9 +108,8 @@ def test_gli_inviti_non_guardano_l_email(scena):
 
 
 def test_la_web_app_distingue_l_email_da_google():
-    from fanta import server
-    app = (server.WEB / "app.js").read_text(encoding="utf-8")
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    app = codice_web.app()
+    testi = codice_web.leggi("testi.js")
     assert 'e.email_origine === "google"' in app and "email_origine: me.email_origine" in app
     assert '(propria ? `<button class="bottone secondario" id="acc-email-togli">' in app     # «Togli» solo per l'email dell'account
     assert testi.count('"account.email_google":') == 2 and testi.count('"account.email_google_nota":') == 2      # italiano e inglese

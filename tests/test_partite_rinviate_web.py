@@ -1,9 +1,10 @@
 """Oggi, «Partite del turno»: una partita rinviata ha l'etichetta «Rinviata» al posto dell'orario (collaudo del 2/11/2026)."""
 from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+TESTI = codice_web.leggi("testi.js")
 
 
 def test_etichetta_rinviata_nella_riga_della_partita():

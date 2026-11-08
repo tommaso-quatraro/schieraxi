@@ -1,9 +1,9 @@
 """Errori a tutta pagina nella web app: pulsante «Riprova» e attesa indicata quando il server dice «troppe richieste» (429)."""
 import re
 
-from fanta import server
+import codice_web
 
-JS = (server.WEB / "app.js").read_text(encoding="utf-8")
+JS = codice_web.app()
 
 
 def test_errore_a_tutta_pagina_ha_il_pulsante_riprova():

@@ -11,12 +11,13 @@ from types import SimpleNamespace as NS
 import pandas as pd
 import pytest
 
-from fanta import archivio, consigli, da_fare, etichette, frasi, gestione, lega, rinvii, server, widget
+from fanta import archivio, consigli, da_fare, etichette, frasi, gestione, lega, rinvii, widget
 from fanta.regole import Regole
+import codice_web
 
 ST = "2026-27"
 NODE = shutil.which("node")
-TESTI_JS = (server.WEB / "testi.js").read_text(encoding="utf-8")
+TESTI_JS = codice_web.leggi("testi.js")
 
 
 def _riga(i, nome, ruolo, squadra, p_voto, stato="titolare", dubbio=False, quota=0.9):

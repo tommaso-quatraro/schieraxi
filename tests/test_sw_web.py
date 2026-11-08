@@ -8,8 +8,9 @@ import subprocess
 import pytest
 
 from fanta import rotte_account, server
+import codice_web
 
-SW = (server.WEB / "sw.js").read_text(encoding="utf-8")
+SW = codice_web.leggi("sw.js")
 
 
 def _scocca():

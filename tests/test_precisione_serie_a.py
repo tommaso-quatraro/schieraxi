@@ -12,6 +12,7 @@ import pytest
 
 from fanta import archivio, diario, precisione, registro_giornate as rg, server
 from fanta.frasi import F
+import codice_web
 
 ST = "2026-27"
 
@@ -161,8 +162,8 @@ def test_la_rotta_del_diario_ha_la_riga_della_serie_a(dati_isolati, tmp_path):
 
 
 # ---------------------------------------------------------------- web: la riga nella carta, stesse parole del server
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
-TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+APP = codice_web.app()
+TESTI = codice_web.leggi("testi.js")
 
 
 def _funzione(nome: str) -> str:

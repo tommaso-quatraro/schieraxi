@@ -1,7 +1,7 @@
 """Account nella web app: controlli statici (la prova nel browser si fa a mano)."""
-from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 
 
 def test_la_password_resta_dopo_un_errore_di_compilazione():
@@ -21,6 +21,6 @@ def test_la_prima_schermata_ha_solo_accedi_e_registrati():
 
 
 def test_gli_errori_generici_non_mostrano_codici():
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     assert "{n})" not in testi.split('"comune.errore_server"')[1].split("\n")[0]
     assert '"comune.errore_n": "Errore {n}"' not in testi
