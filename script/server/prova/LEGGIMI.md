@@ -184,26 +184,30 @@ Indietro: `mv /srv/schieraxi-scambio/fanta.sqlite /srv/schieraxi-scambio/fanta.s
 cd /
 v=$(cat ~/.cache/fantacalcio/verificato); echo "$v"
 py=$(readlink -f ~/fantacalcio/.venv/bin/python); echo "$py"
-sudo install -o root -g root -m 755 ~/fantacalcio/script/server/prova/prepara-prova.sh /srv/schieraxi-prova/prepara-prova.sh
-sudo -u schieraxi-prova -H env SCHIERAXI_PYTHON="$py" bash /srv/schieraxi-prova/prepara-prova.sh --prova "$v"
-sudo -u schieraxi-prova -H env SCHIERAXI_PYTHON="$py" bash /srv/schieraxi-prova/prepara-prova.sh "$v"
+sudo install -D -o root -g root -m 755 ~/fantacalcio/script/server/prova/prepara-prova.sh /usr/local/lib/schieraxi-prova/prepara-prova.sh
+sudo -u schieraxi-prova -H env SCHIERAXI_PYTHON="$py" bash /usr/local/lib/schieraxi-prova/prepara-prova.sh --prova "$v"
+sudo -u schieraxi-prova -H env SCHIERAXI_PYTHON="$py" bash /usr/local/lib/schieraxi-prova/prepara-prova.sh "$v"
 ```
 
-`v` è l'ultima versione verificata dalla produzione, `py` il suo Python; lo script (copiato da root dalla copia installata in
-produzione, che la prova non può leggere) gira con l'utente della prova. Il comando con `--prova` dice cosa farà e non scrive niente;
+`v` è l'ultima versione verificata dalla produzione, `py` il suo Python. Lo script lo copia root dalla copia installata in produzione
+(che la prova non può leggere) in `/usr/local/lib/schieraxi-prova`, una cartella di root: non nella casa della prova, dove lei potrebbe
+mettere un collegamento al suo posto. Poi gira con l'utente della prova. Il comando con `--prova` dice cosa farà e non scrive niente;
 il secondo crea il clone suo (`/srv/schieraxi-prova/schieraxi-src`), mette in `/srv/schieraxi-prova/app` il codice di `v`, la lega
 d'esempio, l'ambiente Python con le librerie bloccate dagli hash, la cartella `dati` e la prima copia dell'archivio presa dalla
-cartella di scambio (qualche minuto, per le librerie). Le variabili del servizio non stanno lì: sono nel file del servizio (passo 4.6). Se si ferma a metà (per esempio la rete) si rilancia: riprende da dove era
-arrivato e non cambia quello che c'è già.
+cartella di scambio (qualche minuto, per le librerie). Le variabili del servizio non stanno lì: sono nel file del servizio (passo 4.6).
+Se si ferma a metà (per esempio la rete) si rilancia: riprende da dove era arrivato e non cambia quello che c'è già.
+Da qui in avanti i comandi su file dentro `/srv/schieraxi-prova` girano con l'utente della prova (`sudo -u schieraxi-prova …`), mai
+come root: root seguirebbe un collegamento simbolico messo lì dalla prova.
 
 Prova:
-- `sudo ls -a /srv/schieraxi-prova/app` mostra `.venv`, `fanta`, `lega`, `script`, `tests`, `requirements.txt`, `dati`;
-- `sudo ls -l /srv/schieraxi-prova/app/dati` mostra `fanta.sqlite` e `copia-archivio.log`, di `schieraxi-prova` (cartella `drwx------`);
-- `sudo cat /srv/schieraxi-prova/.cache/schieraxi-prova/ultimo-rilascio` è uguale a `$v`;
+- `sudo -u schieraxi-prova ls -a /srv/schieraxi-prova/app` mostra `.venv`, `fanta`, `lega`, `script`, `tests`, `requirements.txt`, `dati`;
+- `sudo -u schieraxi-prova ls -l /srv/schieraxi-prova/app/dati` mostra `fanta.sqlite` e `copia-archivio.log`, di `schieraxi-prova` (cartella `drwx------`);
+- `sudo -u schieraxi-prova cat /srv/schieraxi-prova/.cache/schieraxi-prova/ultimo-rilascio` è uguale a `$v`;
 - `systemctl status fantacalcio --no-pager` è uguale a prima (stesso «Active: … since»).
 
-Indietro: `sudo mv /srv/schieraxi-prova/app /srv/schieraxi-prova/app.da-togliere && sudo mv /srv/schieraxi-prova/.cache /srv/schieraxi-prova/.cache.da-togliere`
-(si cancellano dopo una settimana, con l'ok del proprietario).
+Indietro: `sudo -u schieraxi-prova mv /srv/schieraxi-prova/app /srv/schieraxi-prova/app.da-togliere`,
+`sudo -u schieraxi-prova mv /srv/schieraxi-prova/.cache /srv/schieraxi-prova/.cache.da-togliere` (si cancellano dopo una settimana, con
+l'ok del proprietario) e `sudo rm /usr/local/lib/schieraxi-prova/prepara-prova.sh`, poi `sudo rmdir /usr/local/lib/schieraxi-prova`.
 
 ## 4.6 Servizio
 
@@ -337,8 +341,8 @@ crontab -l | diff ~/crontab-prima-prova.txt -    # una sola riga in più: quella
 sudo crontab -u schieraxi-prova -l           # le due righe della prova
 ```
 Il primo mostra `/srv/schieraxi-prova/app`, `schieraxi-prova`, `8001`, clone e blocco suoi e la chiave in `/etc/schieraxi-prova`; il secondo «niente di nuovo» o «firme a
-posto». Dopo il primo rilascio `sudo tail /srv/schieraxi-prova/app/dati/pubblicazione.log` dice «installata»; la mattina dopo
-`sudo tail /srv/schieraxi-prova/app/dati/copia-archivio.log` dice «archivio aggiornato». Quando c'è il collaudo (lavoro C2): GitHub,
+posto». Dopo il primo rilascio `sudo -u schieraxi-prova tail /srv/schieraxi-prova/app/dati/pubblicazione.log` dice «installata»; la
+mattina dopo `sudo -u schieraxi-prova tail /srv/schieraxi-prova/app/dati/copia-archivio.log` dice «archivio aggiornato». Quando c'è il collaudo (lavoro C2): GitHub,
 Actions → «Collaudo della prova» → «Run workflow» → verde.
 
 Indietro: `sudo crontab -u schieraxi-prova -r` (toglie tutto il crontab della prova) e `crontab ~/crontab-prima-prova.txt` (rimette il
@@ -360,7 +364,11 @@ sudo userdel schieraxi-prova
 sudo mv /srv/schieraxi-prova /srv/schieraxi-prova.da-togliere      # si cancellano dopo una settimana, con l'ok del proprietario
 sudo mv /srv/schieraxi-scambio /srv/schieraxi-scambio.da-togliere
 sudo rm /etc/schieraxi-prova/chiavi-firma.asc && sudo rmdir /etc/schieraxi-prova
+sudo rm /usr/local/lib/schieraxi-prova/prepara-prova.sh && sudo rmdir /usr/local/lib/schieraxi-prova
 ```
+
+Root sposta la casa della prova tutta intera (`/srv/schieraxi-prova` è una voce di `/srv`, che è di root: la prova non la può
+sostituire con un collegamento) e non entra mai dentro.
 
 Sul PC, dalla cartella del repository:
 
@@ -379,10 +387,10 @@ rimetterlo com'era). `aggiorna-app.sh` resta com'è: senza `SCHIERAXI_ISTANZA` f
 - servizio: `systemctl status schieraxi-prova --no-pager`, `journalctl -u schieraxi-prova -n 50 --no-pager`;
 - memoria: `systemctl show schieraxi-prova -p MemoryCurrent -p MemoryPeak` (il tetto è 500 MB: oltre, systemd ferma la prova e la
   riavvia, la produzione non se ne accorge);
-- aggiornamenti: `sudo tail /srv/schieraxi-prova/app/dati/pubblicazione.log`; copia dell'archivio: `~/.cache/fantacalcio/esporta-archivio-prova.log`
-  (produzione) e `sudo tail /srv/schieraxi-prova/app/dati/copia-archivio.log` (prova);
+- aggiornamenti: `sudo -u schieraxi-prova tail /srv/schieraxi-prova/app/dati/pubblicazione.log`; copia dell'archivio:
+  `~/.cache/fantacalcio/esporta-archivio-prova.log` (produzione) e `sudo -u schieraxi-prova tail /srv/schieraxi-prova/app/dati/copia-archivio.log` (prova);
 - uno script della prova che dice «collegamento simbolico» si è fermato apposta: al posto di un log o dell'archivio in `app/dati` c'è
-  un collegamento. Si guarda chi l'ha messo prima di toglierlo (`sudo ls -l /srv/schieraxi-prova/app/dati`);
+  un collegamento. Si guarda chi l'ha messo prima di toglierlo (`sudo -u schieraxi-prova ls -l /srv/schieraxi-prova/app/dati`);
 - versione rifiutata per le firme: la prova non avvisa, ma la stessa versione la rifiuta anche la produzione, che avvisa. Se dopo il
   controllo si usa `--fidati` per la produzione (`../LEGGIMI.md`, «Casi limite»), lo stesso va fatto per la prova:
   `sudo -u schieraxi-prova -H env SCHIERAXI_ISTANZA=prova bash /srv/schieraxi-prova/app/script/server/aggiorna-app.sh --fidati origin/main`.
@@ -404,4 +412,5 @@ rimetterlo com'era). `aggiorna-app.sh` resta com'è: senza `SCHIERAXI_ISTANZA` f
   una cartella della prova sarebbe letto da systemd come root. Per cambiarne una si cambia il file in `/etc/systemd/system` (o, meglio,
   la copia nel repository) e poi `sudo systemctl daemon-reload` e `sudo systemctl restart schieraxi-prova`.
 - La lega d'esempio la mette `prepara-prova.sh`; `aggiorna-app.sh` non la rinnova (installa le stesse cartelle della produzione).
-  Per rinnovarla: `sudo mv /srv/schieraxi-prova/app/lega /srv/schieraxi-prova/app/lega.vecchia` e di nuovo il passo 4.5.
+  Per rinnovarla: `sudo -u schieraxi-prova mv /srv/schieraxi-prova/app/lega /srv/schieraxi-prova/app/lega.vecchia` (con l'utente della
+  prova: come root seguirebbe un eventuale collegamento al posto di `app`) e di nuovo il passo 4.5.

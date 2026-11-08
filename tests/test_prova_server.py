@@ -942,6 +942,23 @@ def test_root_non_installa_file_della_prova():
         assert f"~/fantacalcio/script/server/prova/{nome}" in t, nome
 
 
+def test_root_non_lavora_dentro_la_casa_della_prova():
+    """Dentro /srv/schieraxi-prova la prova può mettere collegamenti simbolici al posto di cartelle e file (per esempio `app` o una
+    destinazione `….da-togliere` che punta alla produzione): un `mv`, `cp`, `rm`, `install` o anche una lettura fatti da root li
+    seguirebbero. Ogni comando del LEGGIMI che tocca un percorso DENTRO la casa della prova gira con il suo utente
+    (`sudo -u schieraxi-prova …`). Root tocca solo la casa intera: la crea e, nel ritorno indietro, la sposta in
+    /srv/schieraxi-prova.da-togliere (una voce di /srv, che è di root: la prova non la può sostituire)."""
+    t = (PROVA / "LEGGIMI.md").read_text(encoding="utf-8")
+    comandi = [m.group(0).strip() for m in re.finditer(r"\bsudo\b[^`;&|\n]*", t)]
+    assert len(comandi) > 20
+    dentro = re.compile(re.escape(CASA_PROVA) + r"/")
+    di_root = [c for c in comandi if not c.startswith(f"sudo -u {UTENTE_PROVA}") and dentro.search(c)]
+    assert di_root == [], di_root
+    casa_intera = [c for c in comandi if c.split()[:2] == ["sudo", "mv"] and CASA_PROVA in c]
+    assert casa_intera and all(c.split()[2:4] == [CASA_PROVA, f"{CASA_PROVA}.da-togliere"] for c in casa_intera), casa_intera
+    assert f"sudo -u {UTENTE_PROVA} mv {CASA_PROVA}/app/lega {CASA_PROVA}/app/lega.vecchia" in t
+
+
 def test_leggimi_del_server_rimanda_alla_prova():
     t = (SERVER / "LEGGIMI.md").read_text(encoding="utf-8")
     assert "prova/LEGGIMI.md" in t and "SCHIERAXI_ISTANZA" in t and UTENTE_PROVA in t
