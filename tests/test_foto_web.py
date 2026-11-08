@@ -134,6 +134,8 @@ def test_ambiente_del_server_senza_azioni_vere(tmp_path, monkeypatch):
     assert "FANTA_MULTIUTENTE" not in env and "FANTA_FONTE_VOTI" not in env      # fonti spente: nessuna richiesta fuori
     for spento in ("FANTA_PIANIFICATORE", "FANTA_COPIA_SCADENZA", "FANTA_REGISTRO_GIORNATE"):
         assert env[spento] == "0"
+    # tutte le funzioni accese, come sull'ambiente di prova: col profilo pubblico «confronto» risponde 404 (errore della console)
+    assert env["FANTA_PROFILO_FUNZIONI"] == "completo"
 
 
 def test_porta_libera_e_indirizzo_di_loopback_proprio():
@@ -232,3 +234,143 @@ def test_il_comando_unico_prepara_il_diario_e_chiude_il_server_anche_dopo_un_err
 def test_si_lancia_come_script_e_spiega_l_uso():
     r = subprocess.run([sys.executable, str(PERCORSO), "--help"], capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0 and "--scene" in r.stdout and "riepilogo" in r.stdout
+
+
+# =========================== collaudo della prova: --accesso e --solo-misure ===========================
+class _Risposta:
+    def __init__(self, status):
+        self.status = status
+
+
+class _Richieste:
+    """Il `request` del contesto di Playwright: i cookie della risposta restano nel contesto del browser."""
+    def __init__(self, status=200):
+        self.status, self.chiamate = status, []
+
+    def post(self, indirizzo, data=None, headers=None, **k):
+        self.chiamate.append((indirizzo, data))
+        # come il server vero: senza X-Fanta una richiesta che cambia qualcosa ha 403
+        return _Risposta(self.status if (headers or {}).get("X-Fanta") == "1" else 403)
+
+
+class _Pagina:
+    def __init__(self, m):
+        self.m, self.codici = m, []
+
+    def on(self, *a):
+        pass
+
+    def emulate_media(self, **k):
+        pass
+
+    def set_viewport_size(self, *a):
+        pass
+
+    def goto(self, *a, **k):
+        pass
+
+    def wait_for_function(self, *a, **k):
+        pass
+
+    def wait_for_load_state(self, *a, **k):
+        pass
+
+    def wait_for_timeout(self, *a):
+        pass
+
+    def evaluate(self, codice, *a):
+        self.codici.append(codice)
+        return [] if codice == self.m.LANCIA_AXE else False
+
+    def screenshot(self, path, **k):
+        Path(path).write_bytes(b"\x89PNG finta")
+
+
+def _playwright_finto(monkeypatch, m, richieste):
+    """Un Playwright finto (niente browser): `fotografa` gira davvero, le pagine rispondono «tutto a posto».
+    Torna la pagina finta, che ricorda il codice lanciato."""
+    import types
+    pagina = _Pagina(m)
+
+    class Contesto:
+        request = richieste
+        pages: list = []
+
+        def add_init_script(self, *a):
+            pass
+
+        def new_page(self):
+            return pagina
+
+        def close(self):
+            pass
+
+    class Gestore:
+        chromium = type("C", (), {"launch_persistent_context": staticmethod(lambda *a, **k: Contesto())})()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *e):
+            return False
+
+    sync_api = types.ModuleType("playwright.sync_api")
+    sync_api.sync_playwright = Gestore
+    monkeypatch.setitem(sys.modules, "playwright", types.ModuleType("playwright"))
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+    return pagina
+
+
+def test_axe_misura_ad_animazioni_finite(tmp_path, monkeypatch):
+    """Le schermate entrano sfumando (opacity): axe lanciato a metà misura un contrasto più basso del vero, e diverso a ogni
+    giro (collaudo con falsi allarmi). Prima di axe e dello scorrimento di lato le animazioni finite si portano alla fine."""
+    m = _modulo()
+    assert "getAnimations()" in m.FINISCI_ANIMAZIONI and "finish()" in m.FINISCI_ANIMAZIONI
+    assert "Infinity" in m.FINISCI_ANIMAZIONI                 # quelle senza fine (rotelle) no: finish() darebbe errore
+    pagina = _playwright_finto(monkeypatch, m, _Richieste())
+    m.main(["http://127.0.0.31:8031", str(tmp_path / "foto"), "--solo-misure", "--scene", "oggi", "--larghezze", "390", "--temi", "chiaro"])
+    assert m.FINISCI_ANIMAZIONI in pagina.codici
+    assert pagina.codici.index(m.FINISCI_ANIMAZIONI) < pagina.codici.index(m.LANCIA_AXE)
+    assert pagina.codici.index(m.FINISCI_ANIMAZIONI) < pagina.codici.index(m.SCORRE_DI_LATO)
+
+
+def test_accesso_dalle_variabili_mai_stampato(tmp_path, monkeypatch, capsys):
+    m = _modulo()
+    aiuto = subprocess.run([sys.executable, str(PERCORSO), "--help"], capture_output=True, text=True, encoding="utf-8", timeout=60).stdout
+    assert "--accesso" in aiuto and "--password" not in aiuto and "SCHIERAXI_PASSWORD" in aiuto     # mai sulla riga di comando
+    richieste = _Richieste()
+    _playwright_finto(monkeypatch, m, richieste)
+    monkeypatch.setenv("SCHIERAXI_UTENTE", "collaudo-finto")
+    monkeypatch.setenv("SCHIERAXI_PASSWORD", "password-finta-123")
+    uscita = tmp_path / "foto"
+    m.main(["http://127.0.0.31:8031", str(uscita), "--accesso", "--scene", "oggi", "--larghezze", "390", "--temi", "chiaro"])
+    assert richieste.chiamate == [("http://127.0.0.31:8031/api/account/accedi",
+                                   {"nome_utente": "collaudo-finto", "password": "password-finta-123"})]
+    scritto = capsys.readouterr()
+    assert "password-finta-123" not in scritto.out + scritto.err
+    assert all("password-finta-123" not in f.read_text(encoding="utf-8", errors="replace") for f in uscita.iterdir())
+    # accesso rifiutato: si ferma, e nemmeno l'errore dice la password
+    _playwright_finto(monkeypatch, m, _Richieste(status=401))
+    with pytest.raises(SystemExit) as e:
+        m.main(["http://127.0.0.31:8031", str(tmp_path / "foto2"), "--accesso", "--scene", "oggi", "--larghezze", "390"])
+    assert "401" in str(e.value) and "password-finta-123" not in str(e.value)
+    # variabili mancanti: si ferma prima di aprire il browser e dice quali servono
+    monkeypatch.delenv("SCHIERAXI_PASSWORD")
+    with pytest.raises(SystemExit) as e:
+        m.main(["http://127.0.0.31:8031", str(tmp_path / "foto3"), "--accesso"])
+    assert "SCHIERAXI_PASSWORD" in str(e.value)
+
+
+def test_solo_misure_senza_png(tmp_path, monkeypatch):
+    m = _modulo()
+    _playwright_finto(monkeypatch, m, _Richieste())
+    uscita = tmp_path / "foto"
+    codice = m.main(["http://127.0.0.31:8031", str(uscita), "--solo-misure", "--scene", "oggi,altro", "--larghezze", "390,1440",
+                     "--temi", "chiaro"])
+    assert codice == 0
+    assert not list(uscita.glob("*.png"))
+    assert (uscita / "riepilogo.txt").read_text(encoding="utf-8").count("gravi=0") == 4
+    assert len(list(uscita.glob("axe-*.json"))) == 4
+    # senza l'opzione le foto ci sono (il finto le scrive davvero)
+    m.main(["http://127.0.0.31:8031", str(tmp_path / "con"), "--scene", "oggi", "--larghezze", "390", "--temi", "chiaro"])
+    assert [p.name for p in (tmp_path / "con").glob("*.png")] == ["oggi-390-chiaro.png"]
