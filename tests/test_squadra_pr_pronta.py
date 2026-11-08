@@ -200,3 +200,77 @@ def test_ramo_indietro_secondo_compare(capsys):
     assert lancia(r)[0] == 1
     uscita = capsys.readouterr().out
     assert "3 commit" in uscita and "git merge origin/main" in uscita
+
+
+# #476: il job «ambito» resta rosso sulla descrizione vecchia (un «Re-run» la rilegge uguale).
+CORPO_AREE = "Aree: fanta\n" + CORPO
+CORSA_ROSSA = [{"databaseId": 1, "workflowName": "Controlli", "status": "completed", "conclusion": "failure",
+                "event": "pull_request", "createdAt": "2026-11-06T10:00:00Z"}]
+UPDATE = "gh api -X PUT repos/{owner}/{repo}/pulls/7/update-branch"
+
+
+def _jobs(*falliti):
+    jobs = [{"name": n, "conclusion": "failure", "steps": [{"conclusion": "failure"}]} for n in falliti]
+    return {"jobs": jobs + [{"name": "test", "conclusion": "success", "steps": []},
+                            {"name": "unisci", "conclusion": "skipped", "steps": []}]}
+
+
+def risposte_ambito(corpo=CORPO_AREE, falliti=("ambito",), dietro="0\n"):
+    return risposte(p=pr(corpo=corpo), corse=CORSA_ROSSA, **{
+        "gh run view 1": _jobs(*falliti), "gh api repos/{owner}/{repo}/compare/main...t1": dietro, UPDATE: ""})
+
+
+def test_solo_ambito_rosso_con_descrizione_attuale_buona_suggerisce_un_push(capsys):
+    codice, f, _ = lancia(risposte_ambito(), esegui_davvero=True)
+    assert codice == 1 and not f.lanciati("gh pr ready") and not f.lanciati("gh api -X PUT")
+    uscita = capsys.readouterr().out
+    assert "ambito" in uscita and "descrizione attuale" in uscita and "push" in uscita
+
+
+def test_solo_ambito_rosso_e_ramo_indietro_suggerisce_update_branch_in_prova(capsys):
+    codice, f, _ = lancia(risposte_ambito(dietro="2\n"))
+    assert codice == 1 and not f.lanciati("gh api -X PUT")
+    assert "update-branch" in capsys.readouterr().out
+
+
+def test_solo_ambito_rosso_e_ramo_indietro_con_esegui_fa_update_branch_ed_esce_con_4(capsys):
+    codice, f, _ = lancia(risposte_ambito(dietro="2\n"), esegui_davvero=True)
+    assert codice == pr_pronta.RIPARTITI == 4
+    assert f.lanciati("gh api -X PUT") == [UPDATE] and not f.lanciati("gh pr ready")
+    assert "riprova fra qualche minuto" in capsys.readouterr().out
+
+
+def test_update_branch_rifiutato_esce_con_3(capsys):
+    r = risposte_ambito(dietro="2\n")
+    r[UPDATE] = comune.Risposta(1, "", "HTTP 422")
+    codice, _, _ = lancia(r, esegui_davvero=True)
+    assert codice == 3 and "HTTP 422" in capsys.readouterr().err
+
+
+def test_ambito_rosso_ma_descrizione_attuale_con_problemi_resta_rosso_normale(capsys):
+    codice, f, _ = lancia(risposte_ambito(dietro="2\n"), problemi=["manca la sezione «## Perché»"], esegui_davvero=True)
+    assert codice == 1 and not f.lanciati("gh api -X PUT")
+    assert "descrizione attuale" not in capsys.readouterr().out
+
+
+def test_ambito_rosso_e_file_fuori_dalle_aree_attuali_resta_rosso_normale(capsys):
+    codice, f, _ = lancia(risposte_ambito(corpo="Aree: docs\n" + CORPO, dietro="2\n"), esegui_davvero=True)
+    assert codice == 1 and not f.lanciati("gh api -X PUT")
+    assert "descrizione attuale" not in capsys.readouterr().out
+
+
+def test_ambito_e_un_altro_job_rossi_resta_rosso_normale(capsys):
+    codice, f, _ = lancia(risposte_ambito(falliti=("ambito", "test"), dietro="2\n"), esegui_davvero=True)
+    assert codice == 1 and not f.lanciati("gh api -X PUT")
+    assert "descrizione attuale" not in capsys.readouterr().out
+
+
+def test_ambito_vecchio_con_altri_motivi_non_fa_update_branch():
+    r = risposte_ambito(dietro="2\n")
+    r["gh pr view 7"] = pr(corpo=CORPO_AREE, mergeable="UNKNOWN")
+    codice, f, _ = lancia(r, esegui_davvero=True)
+    assert codice == 1 and not f.lanciati("gh api -X PUT")
+
+
+def test_il_codice_4_e_scritto_nell_aiuto():
+    assert "4" in pr_pronta.USCITE and "riprova" in pr_pronta.USCITE

@@ -5,8 +5,12 @@ rispetto a main; ultima corsa di ogni workflow sul commit in testa verde; descri
 script/ci/controlla_pr.py (la revisione come se la PR fosse già pronta); coerenza web-iPhone con script/coerenza.py
 --controlla sui file della PR (se la PR tocca i dati della coerenza); «Foto da fare: …» nella descrizione se la PR tocca ios/.
 Se uno dei due controlli non c'è su questo main, rifiuta: «controllo non disponibile su questo main».
+Caso a parte (#476): è rosso solo il job «ambito» e la descrizione ATTUALE va bene (controlla_pr.py senza problemi, aree di
+controlla_ambito.py che coprono i file). Il job ha letto la descrizione di prima e un «Re-run» la rilegge uguale: lo dice e
+suggerisce update-branch (ramo indietro) o un push; con --esegui, se l'unico altro motivo è il ramo indietro, fa da solo
+l'update-branch su GitHub ed esce con 4.
 Codici di uscita: 0 tutto torna (con --esegui: bozza tolta; PR già pronta: niente da fare); 1 almeno un motivo di rifiuto
-(stampati tutti); 3 errore di gh o git."""
+(stampati tutti); 3 errore di gh o git; 4 controlli ripartiti con l'update-branch, riprova fra qualche minuto."""
 from __future__ import annotations
 
 import importlib.util
@@ -24,14 +28,23 @@ FILE_COERENZA = ("script/coerenza.py", "docs/coerenza", "docs/COERENZA-WEB-IPHON
 NON_DISPONIBILE = "controllo non disponibile su questo main"
 
 
-def carica_controlli_pr():
-    percorso = comune.RADICE / "script" / "ci" / "controlla_pr.py"
+def _carica_da_ci(nome: str):
+    """Uno script di script/ci di main come modulo, o None se su questo main non c'è."""
+    percorso = comune.RADICE / "script" / "ci" / f"{nome}.py"
     if not percorso.exists():
         return None
-    spec = importlib.util.spec_from_file_location("controlla_pr", percorso)
+    spec = importlib.util.spec_from_file_location(nome, percorso)
     modulo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modulo)
     return modulo
+
+
+def carica_controlli_pr():
+    return _carica_da_ci("controlla_pr")
+
+
+def carica_controlli_ambito():
+    return _carica_da_ci("controlla_ambito")
 
 
 def _tocca_coerenza(file: list[str]) -> bool:
@@ -79,11 +92,31 @@ def _foto_scritte(corpo: str) -> bool:
     return bool(re.search(r"^\W*foto (da fare|prima dell'unione)\s*:", corpo, re.I | re.M))
 
 
-def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza: Callable | None) -> tuple[dict, list[str], list[str]]:
+def _solo_ambito_vecchio(esegui: comune.Esegui, non_verdi: list[tuple], pr: dict, file: list[str], controlli_ambito) -> bool:
+    """Il solo controllo rosso è il job «ambito» e le aree della descrizione ATTUALE coprono i file della PR?
+    (Il job legge la descrizione al momento della corsa: corretta dopo, resta rosso finché i controlli non ripartono.)"""
+    if controlli_ambito is None or len(non_verdi) != 1 or non_verdi[0][1] != "rosso":
+        return False
+    lavori = (comune.chiama_json(esegui, ["gh", "run", "view", str(non_verdi[0][0]["databaseId"]), "--json", "jobs"])
+              or {}).get("jobs", [])
+    falliti = {j.get("name") for j in lavori if (j.get("conclusion") or "").lower() not in attendi.OK}
+    if falliti != {"ambito"}:
+        return False
+    autore = (pr.get("author") or {}).get("login", "")
+    if controlli_ambito.esente(autore, file):
+        return True
+    aree = controlli_ambito.aree(pr.get("body") or "")
+    return bool(aree) and not controlli_ambito.fuori(file, aree)
+
+
+def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza: Callable | None,
+           controlli_ambito=None) -> tuple[dict, list[str], list[str], dict | None]:
+    """(pr, motivi, avvisi, ripartenza): `ripartenza` non è None quando è rosso solo l'«ambito» della descrizione vecchia."""
     pr = comune.chiama_json(esegui, ["gh", "pr", "view", str(numero), "--json",
                                      "number,state,isDraft,mergeable,mergeStateStatus,headRefOid,body,author"])
     motivi: list[str] = []
     avvisi: list[str] = []
+    ambito_vecchio = False
     if pr["state"] != "OPEN":
         motivi.append(f"la PR non è aperta (stato {pr['state']})")
     mergeable = pr.get("mergeable")
@@ -102,12 +135,11 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
     corse = attendi.ultime_corse(esegui, testa)
     if not corse:
         motivi.append(f"nessuna corsa dei controlli sul commit in testa {testa[:7]}")
-    for c in corse:
-        esito = attendi.esito_corsa(esegui, c)
-        if esito != "verde":
-            motivi.append(f"controlli: {c['workflowName']} è «{esito}» sul commit in testa {testa[:7]}"
-                          + (" (guasto d'infrastruttura: da rilanciare)" if esito == "infrastruttura" else ""))
-    file = [(f["status"], f["previous_filename"], f["filename"]) if f.get("previous_filename") else (f["status"], f["filename"])
+    non_verdi = [(c, e) for c, e in ((c, attendi.esito_corsa(esegui, c)) for c in corse) if e != "verde"]
+    for c, esito in non_verdi:
+        motivi.append(f"controlli: {c['workflowName']} è «{esito}» sul commit in testa {testa[:7]}"
+                      + (" (guasto d'infrastruttura: da rilanciare)" if esito == "infrastruttura" else ""))
+    file =[(f["status"], f["previous_filename"], f["filename"]) if f.get("previous_filename") else (f["status"], f["filename"])
             for f in comune.chiama_json(esegui, ["gh", "api", f"repos/{{owner}}/{{repo}}/pulls/{numero}/files", "--paginate"]) or []]
     percorsi = [p for voce in file for p in voce[1:]]
     serve_commit = _tocca_coerenza(percorsi) or any(p.startswith("tests/") for p in percorsi)
@@ -122,6 +154,9 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
                                                          file, str(Path(cartella) / "tests"))
         motivi += problemi
         avvisi += avvisi_pr
+        if not problemi and _solo_ambito_vecchio(esegui, non_verdi, pr, [voce[-1] for voce in file], controlli_ambito):
+            motivi.remove(next(m for m in motivi if m.startswith("controlli: ")))
+            ambito_vecchio = True
     if controlla_coerenza is None:
         if _tocca_coerenza(percorsi) or not (comune.RADICE / "script" / "coerenza.py").exists():
             motivi.append(f"coerenza web-iPhone: {NON_DISPONIBILE} (manca script/coerenza.py)")
@@ -130,23 +165,41 @@ def valuta(esegui: comune.Esegui, numero: int, controlli_pr, controlla_coerenza:
     if any(p.startswith("ios/") for p in percorsi) and not _foto_scritte(pr.get("body") or ""):
         motivi.append("la PR tocca ios/ ma la descrizione non ha «Foto da fare: <schermate>» "
                       "(le ricava «squadra.py foto <PR>»)")
-    return pr, motivi, avvisi
+    ripartenza = None
+    if ambito_vecchio:
+        indietro = dietro.isdigit() and int(dietro) > 0
+        come = ("porta il ramo in pari con main da GitHub (update-branch: «pr-pronta --esegui» lo fa da solo)" if indietro
+                else "un push nel ramo, anche un commit vuoto («git commit --allow-empty» e «git push»)")
+        motivi.insert(0, f"controlli: è rosso solo il job «ambito», che ha letto la descrizione di prima; la descrizione attuale "
+                         f"va bene. Un «Re-run» rilegge quella vecchia: per rifare i controlli {come}")
+        # update-branch da solo solo se i motivi sono esattamente due: questo e il ramo indietro.
+        ripartenza = {"update_branch": indietro and len(motivi) == 2}
+    return pr, motivi, avvisi, ripartenza
 
 
 def main(esegui: comune.Esegui, numero: int, esegui_davvero: bool = False, json_: bool = False, controlli_pr=None,
-         controlla_coerenza: Callable | None = None) -> int:
+         controlla_coerenza: Callable | None = None, controlli_ambito=None) -> int:
     if controlli_pr is None:
         controlli_pr = carica_controlli_pr()
+    if controlli_ambito is None:
+        controlli_ambito = carica_controlli_ambito()
     if controlla_coerenza is None and (comune.RADICE / "script" / "coerenza.py").exists():
         controlla_coerenza = coerenza_vera
     try:
-        pr, motivi, avvisi = valuta(esegui, numero, controlli_pr, controlla_coerenza)
+        pr, motivi, avvisi, ripartenza = valuta(esegui, numero, controlli_pr, controlla_coerenza, controlli_ambito)
     except comune.ErroreComando as e:
         print(f"pr-pronta: {e}", file=sys.stderr)
         return 3
-    tolta = False
+    tolta = ripartiti = False
     nota = ""
-    if not motivi:
+    if ripartenza and ripartenza["update_branch"] and esegui_davvero:
+        r = esegui(["gh", "api", "-X", "PUT", f"repos/{{owner}}/{{repo}}/pulls/{numero}/update-branch"])
+        if r.codice != 0:
+            print(f"pr-pronta: update-branch non riuscito: {(r.errore or r.uscita).strip()[:300]}", file=sys.stderr)
+            return 3
+        ripartiti, nota = True, ("ramo portato in pari con main da GitHub: i controlli ripartono con la descrizione attuale, "
+                                 "riprova fra qualche minuto")
+    elif not motivi:
         if not pr["isDraft"]:
             nota = "la PR è già fuori dalla bozza: niente da fare"
         elif esegui_davvero:
@@ -159,9 +212,12 @@ def main(esegui: comune.Esegui, numero: int, esegui_davvero: bool = False, json_
             nota = "PROVA: tutto torna. Per togliere la bozza: aggiungi --esegui"
     if json_:
         print(json.dumps({"pr": numero, "pronta": not motivi, "motivi": motivi, "avvisi": avvisi, "prova": not esegui_davvero,
-                          "bozza_tolta": tolta, "nota": nota}, ensure_ascii=False, indent=2))
+                          "bozza_tolta": tolta, "controlli_ripartiti": ripartiti, "nota": nota},
+                         ensure_ascii=False, indent=2))
     else:
-        if motivi:
+        if ripartiti:
+            print(f"PR #{numero}: {nota}.")
+        elif motivi:
             print(f"PR #{numero}: NON pronta. Motivi ({len(motivi)}):")
             for m in motivi:
                 print(f"  - {m}")
@@ -169,17 +225,24 @@ def main(esegui: comune.Esegui, numero: int, esegui_davvero: bool = False, json_
             print(f"PR #{numero}: {nota}.")
         for a in avvisi:
             print(f"  avviso: {a}")
+    if ripartiti:
+        return RIPARTITI
     return 1 if motivi else 0
 
 
+RIPARTITI = 4
 NOME = "pr-pronta"
 AIUTO = "Toglie la bozza a una PR solo se tutto torna (prova senza --esegui); se no stampa ogni motivo."
-USCITE = "0 tutto torna (con --esegui: bozza tolta); 1 almeno un motivo di rifiuto; 3 errore di gh o git."
+USCITE = ("0 tutto torna (con --esegui: bozza tolta); 1 almeno un motivo di rifiuto; 3 errore di gh o git; "
+          "4 controlli ripartiti, riprova fra qualche minuto (con --esegui, quando era rosso solo il job «ambito» sulla "
+          "descrizione vecchia e il ramo era indietro: fatto l'update-branch su GitHub).")
 
 
 def opzioni(p) -> None:
     p.add_argument("pr", type=int, help="numero della PR")
-    p.add_argument("--esegui", action="store_true", help="toglie davvero la bozza con «gh pr ready» (senza: solo prova)")
+    p.add_argument("--esegui", action="store_true",
+                   help="toglie davvero la bozza con «gh pr ready», oppure fa l'update-branch nel caso dell'«ambito» "
+                        "vecchio (senza: solo prova)")
     p.add_argument("--json", action="store_true", help="uscita in JSON per altri script")
 
 
