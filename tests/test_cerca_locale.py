@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import archivio, listone, nomi, server
+import codice_web
 
 RADICE = Path(__file__).resolve().parent.parent
 NODE = shutil.which("node")
@@ -43,7 +44,7 @@ def test_la_ricerca_sul_server_resta_come_prima(client):
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_la_normalizzazione_del_browser_e_quella_del_server():
-    js = (RADICE / "fanta" / "web" / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     riga = re.search(r"^const LETTERE_SPECIALI = .*?\n.*?\n.*?(?=\nlet listoneCerca)", js, re.S | re.M).group(0)
     codice = riga + f"\nconsole.log(JSON.stringify({json.dumps(NOMI, ensure_ascii=False)}.map(normNome)));"
     out = subprocess.run([NODE, "-e", codice], capture_output=True, text=True, encoding="utf-8", timeout=30)
@@ -52,7 +53,7 @@ def test_la_normalizzazione_del_browser_e_quella_del_server():
 
 
 def test_app_non_fa_una_richiesta_per_tasto():
-    js = (RADICE / "fanta" / "web" / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     assert js.count("/api/giocatori?q=") == 1                 # solo il ripiego, con annullamento della richiesta precedente
     assert "abortoCerca.abort()" in js and "api/giocatori?tutti=1" in js
 
@@ -82,7 +83,7 @@ def test_nomi_completi_dall_archivio(tmp_path):
 
 @pytest.mark.skipif(NODE is None, reason="node non installato")
 def test_la_ricerca_sul_dispositivo_usa_il_nome_completo():
-    js = (RADICE / "fanta" / "web" / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     pezzo = re.search(r"^const LETTERE_SPECIALI = .*?\n.*?\n.*?(?=\nlet listoneCerca)", js, re.S | re.M).group(0)
     filtra = re.search(r"^function filtraListone\(.*?^}", js, re.S | re.M).group(0)
     lista = [{"id": 1, "nome": "Martinez L.", "nome_completo": "Lautaro Martínez", "quotazione": 30},

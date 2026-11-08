@@ -100,6 +100,10 @@ Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dop
   `docs/openapi.json` e verifica che la web app e l'app per iPhone (e il widget) reggano il cambio. Aggiungere campi si può;
   togliere o cambiare un campo che un client legge rompe le app già installate: prima si adeguano i client, oppure si apre
   un'issue «coerenza: …» per il lato che resta indietro.
+- **Contratto iPhone-server** (`tests/test_contratto_ios.py`, eccezioni con il motivo in `tests/dati/contratto_ios_eccezioni.json`):
+  ogni campo dei modelli `Decodable` dell'iPhone deve comparire come chiave da qualche parte in `fanta/`. Trova una chiave sparita
+  da tutto il server, NON un campo tolto da una sola rotta (circa 3 chiavi su 10 lette dall'iPhone stanno in 5 o più file): chi
+  rivede una PR che toglie o rinomina una chiave controlla lo stesso le rotte lette dall'iPhone.
 
 ## App per iPhone
 - Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.

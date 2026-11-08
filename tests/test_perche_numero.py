@@ -8,6 +8,7 @@ from test_modello import ST, _dati, _p
 
 from fanta import consigli, diario, modello, perche, server
 from fanta.regole import Regole
+import codice_web
 
 WEB = server.WEB
 RADICE = WEB.parent.parent
@@ -197,20 +198,19 @@ def test_l_elenco_del_diario_porta_atteso_contro_fatto_e_affidabilita(tmp_path):
 
 
 # ---------------------------------------------------------------- un solo nome: «Fantavoto atteso»
-FILE_UTENTE = [WEB / "testi.js", RADICE / "docs" / "GUIDA-UTENTE.md", RADICE / "docs" / "SOTTO-IL-COFANO.md",
+FILE_UTENTE = [RADICE / "docs" / "GUIDA-UTENTE.md", RADICE / "docs" / "SOTTO-IL-COFANO.md",
                RADICE / "fanta" / "contenuti" / "sotto-il-cofano.json", RADICE / "docs" / "ARCHITETTURA-INFORMAZIONI.md"]
 
 
 def test_il_numero_firma_ha_un_solo_nome_nei_testi_per_l_utente():
     """«Voto atteso» e «FV atteso» per il giocatore non compaiono più: il numero si chiama «Fantavoto atteso» (in inglese «Expected fantasy
     score»). Il voto in pagella senza bonus si chiama «voto in pagella atteso»."""
-    for f in FILE_UTENTE:
-        testo = f.read_text(encoding="utf-8")
-        if f.name == "ARCHITETTURA-INFORMAZIONI.md":                   # la tabella del glossario cita il vecchio nome come «Oggi»
+    for nome, testo in [("testi.js", codice_web.leggi("testi.js")), *((f.name, f.read_text(encoding="utf-8")) for f in FILE_UTENTE)]:
+        if nome == "ARCHITETTURA-INFORMAZIONI.md":                   # la tabella del glossario cita il vecchio nome come «Oggi»
             testo = re.sub(r"^\| «voto atteso».*$", "", testo, flags=re.M)
-        assert not re.search(r"(?<!fanta)voto atteso", testo, flags=re.I), f.name
-        assert not re.search(r"\bFV atteso\b|fantamedia attesa", testo, flags=re.I), f.name
-        assert not re.search(r"expected score", testo, flags=re.I), f.name
+        assert not re.search(r"(?<!fanta)voto atteso", testo, flags=re.I), nome
+        assert not re.search(r"\bFV atteso\b|fantamedia attesa", testo, flags=re.I), nome
+        assert not re.search(r"expected score", testo, flags=re.I), nome
 
 
 def test_il_confronto_non_chiama_voto_atteso_il_voto_in_pagella():
@@ -224,7 +224,7 @@ def test_la_definizione_unica_e_nella_guida():
 
 
 # ---------------------------------------------------------------- web app
-APP = (WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 
 
 def test_la_scheda_e_la_formazione_mostrano_il_perche():

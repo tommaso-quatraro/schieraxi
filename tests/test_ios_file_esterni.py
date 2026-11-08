@@ -9,6 +9,9 @@ test iOS rotto. Ora c'è un elenco unico, `ios/Tests/file-esterni.txt`, letto da
 - `gia-verde`: la chiave del segno «verde» comprende anche l'hash di quei file;
 - questo file: un test iOS non può leggere un file del repository che non sta nell'elenco.
 
+Una voce che finisce con `/` è una cartella (issue #499): vale ogni file sotto. In `cambi` conta come prefisso; nel `gia-verde`
+entra nella chiave con lo sha dell'albero della cartella, quindi cambia se cambia un file qualsiasi lì sotto.
+
 I workflow si leggono come testo (niente PyYAML) e i due passi di shell si provano davvero con un finto `gh`."""
 import os
 import re
@@ -33,6 +36,16 @@ def _voci(testo: str) -> list[str]:
     return [r.strip() for r in testo.splitlines() if r.strip() and not r.lstrip().startswith("#")]
 
 
+def voce_esiste(voce: str, radice: Path = RADICE) -> bool:
+    """Una voce con `/` finale è una cartella, le altre sono file."""
+    return (radice / voce).is_dir() if voce.endswith("/") else (radice / voce).is_file()
+
+
+def coperto(percorso: str, voci: set[str]) -> bool:
+    """Il percorso è nell'elenco: come voce, o sotto una voce cartella."""
+    return percorso in voci or any(v.endswith("/") and percorso.startswith(v) for v in voci)
+
+
 def test_l_elenco_esiste_ed_e_scritto_bene():
     voci = _voci(ELENCO.read_text(encoding="utf-8"))
     assert voci, "l'elenco non può essere vuoto: i workflow lo leggerebbero come un errore e farebbero girare sempre il Mac"
@@ -41,13 +54,34 @@ def test_l_elenco_esiste_ed_e_scritto_bene():
         # caratteri semplici: i workflow le usano in un indirizzo e in un confronto a parola intera, mai come espressione
         assert CARATTERI_VALIDI.match(voce), f"{voce}: solo lettere, cifre, _ . / -"
         assert not voce.startswith(("/", "ios/")) and ".." not in voce.split("/"), f"{voce}: percorso dalla radice del repository, fuori da ios/"
-        assert (RADICE / voce).is_file(), f"{voce}: il file non c'è (l'API dei workflow darebbe errore e i test girerebbero sempre)"
+        assert voce_esiste(voce), (
+            f"{voce}: il file (o la cartella, con / finale) non c'è (l'API dei workflow darebbe errore e i test girerebbero sempre)")
+
+
+def test_voce_cartella_valida_se_esiste(tmp_path):
+    (tmp_path / "fanta" / "web" / "moduli").mkdir(parents=True)
+    (tmp_path / "fanta" / "web" / "app.js").write_text("", encoding="utf-8")
+    assert voce_esiste("fanta/web/moduli/", tmp_path)
+    assert not voce_esiste("fanta/web/moduli", tmp_path)        # senza / finale è un file: lì c'è una cartella
+    assert voce_esiste("fanta/web/app.js", tmp_path)
+    assert not voce_esiste("fanta/web/app.js/", tmp_path)       # con / finale è una cartella: lì c'è un file
+    assert not voce_esiste("fanta/web/manca/", tmp_path)
+
+
+def test_un_file_sotto_una_voce_cartella_e_coperto():
+    voci = {"fanta/frasi.py", "fanta/web/moduli/"}
+    assert coperto("fanta/frasi.py", voci)
+    assert coperto("fanta/web/moduli/oggi.js", voci)
+    assert coperto("fanta/web/moduli/", voci)
+    assert not coperto("fanta/web/moduli", voci)                # il nome della cartella senza / non è un file sotto
+    assert not coperto("fanta/web/modulix/a.js", voci)
+    assert not coperto("fanta/web/stile.css", voci)
 
 
 # --- Cosa leggono i test iOS --------------------------------------------------------------------------------------------------
 
 _LETTERALE = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
-_PERCORSO = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$")
+_PERCORSO = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+/?$")
 _SALE_DI_QUATTRO = re.compile(r"0\s*\.\.<\s*[4-9]\s*\)?\s*\{[^}\n]*deleteLastPathComponent|(?:\.deletingLastPathComponent\(\)\s*){4,}")
 
 
@@ -63,14 +97,15 @@ def percorsi_esterni(testo: str) -> set[str]:
     """I percorsi del repository FUORI da `ios/` che un file di test Swift nomina fra virgolette (commenti esclusi).
 
     Un file che non usa `#filePath` non può raggiungere il repository: non conta. Un percorso conta solo se esiste dalla radice del
-    repository e non sotto `ios/` (così `docs/...` di `ios/docs` e le parole come `lega/diario` non sono scambiate per file)."""
+    repository e non sotto `ios/` (così `docs/...` di `ios/docs` e le parole come `lega/diario` non sono scambiate per file).
+    Una cartella nominata (con o senza `/` finale) torna con la `/` finale, come le voci cartella dell'elenco."""
     if "#filePath" not in testo:
         return set()
     trovati = set()
     for riga in testo.splitlines():
         for lett in _LETTERALE.findall(_senza_commento(riga)):
             if _PERCORSO.match(lett) and not lett.startswith("ios/") and (RADICE / lett).exists() and not (IOS / lett).exists():
-                trovati.add(lett)
+                trovati.add(lett.rstrip("/") + "/" if (RADICE / lett).is_dir() else lett)
     return trovati
 
 
@@ -80,7 +115,8 @@ def _test_swift() -> dict[Path, str]:
 
 def test_ogni_file_esterno_letto_dai_test_ios_e_nell_elenco():
     voci = set(_voci(ELENCO.read_text(encoding="utf-8")))
-    mancanti = {f.name: sorted(percorsi_esterni(t) - voci) for f, t in _test_swift().items() if percorsi_esterni(t) - voci}
+    mancanti = {f.name: sorted(p for p in percorsi_esterni(t) if not coperto(p, voci)) for f, t in _test_swift().items()}
+    mancanti = {nome: m for nome, m in mancanti.items() if m}
     assert not mancanti, (
         f"questi test iOS leggono file fuori da ios/ che non stanno in {ELENCO_NEL_REPO}: {mancanti}. "
         "Aggiungili all'elenco (uno per riga): così una PR che li cambia fa partire i test iOS e cambia la chiave del «già verde»."
@@ -109,7 +145,7 @@ def test_chi_sale_alla_radice_del_repository_nomina_almeno_un_file_dell_elenco()
     sale = {f.name: t for f, t in _test_swift().items() if "#filePath" in t and _SALE_DI_QUATTRO.search(t)}
     assert sale, "il controllo non trova più nessun test che sale alla radice: va aggiornato (o l'elenco non serve più)"
     for nome, testo in sale.items():
-        assert any(v in testo for v in voci), f"{nome} sale alla radice del repository ma non nomina nessun file dell'elenco"
+        assert any(v.rstrip("/") in testo for v in voci), f"{nome} sale alla radice del repository ma non nomina nessun file dell'elenco"
 
 
 def test_ogni_voce_dell_elenco_e_letta_da_un_test_ios():
@@ -117,6 +153,18 @@ def test_ogni_voce_dell_elenco_e_letta_da_un_test_ios():
     voci = _voci(ELENCO.read_text(encoding="utf-8"))
     usate = set().union(*(percorsi_esterni(t) for t in _test_swift().values()))
     assert not [v for v in voci if v not in usate], "voci che nessun test iOS legge: toglile dall'elenco"
+
+
+@pytest.mark.parametrize("nome", ['"fanta/web"', '"fanta/web/"'])
+def test_una_voce_cartella_e_letta(nome):
+    # un test Swift che nomina la cartella (con o senza / finale) la legge: la voce «fanta/web/» conta come usata
+    swift = f'''
+        init(file: String = #filePath) throws {{
+            var url = URL(fileURLWithPath: file)
+            for _ in 0..<4 {{ url.deleteLastPathComponent() }}
+            let cartella = url.appendingPathComponent({nome})
+        }}'''
+    assert percorsi_esterni(swift) == {"fanta/web/"}
 
 
 # --- I workflow ---------------------------------------------------------------------------------------------------------------
@@ -162,6 +210,7 @@ def test_la_chiave_del_gia_verde_comprende_i_file_dell_elenco():
     gia = _comando("ios.yml", "gia-verde")
     assert re.search(r"\[0-9a-f\]\{40\}-\[0-9a-f\]\{40\}-\[0-9a-f\]\{40\}", gia), "la chiave ha tre hash: ios/, ios.yml, file esterni"
     assert "contents/$voce?ref=$COMMIT" in gia
+    assert 'select(.path == env.CARTELLA and .type == "dir")' in gia               # la voce cartella non entra nell'espressione
     assert "${{" not in gia
     assert "write" not in _blocco(_blocco(_testo("ios.yml"), "jobs", 0), "gia-verde", 2)      # resta di sola lettura
 
@@ -191,6 +240,15 @@ case "$args" in
     if grep -qxF "$nome" "$FAKE_ARTEFATTI"; then echo 4242; else echo ""; fi ;;
   *"contents/"*)
     percorso=${args#*contents/}; percorso=${percorso%%\?*}
+    if [ -n "$CARTELLA" ]; then
+      # elenco della cartella madre, filtrato da --jq: lo sha dell'albero della sottocartella $CARTELLA (vuoto se non c'è)
+      madre=${CARTELLA%/*}; [ "$madre" != "$CARTELLA" ] || madre=""
+      if [ "$percorso" != "$madre" ]; then echo "finto gh: madre $percorso, attesa $madre" >&2; exit 1; fi
+      awk -v p="$CARTELLA/" '$1 == p { print $2; exit }' "$FAKE_SHAS"
+      exit 0
+    fi
+    # una cartella risponde con una lista: «--jq .sha» dà errore, come nell'API vera
+    if awk -v p="${percorso%/}/" '$1 == p { t = 1 } END { exit !t }' "$FAKE_SHAS"; then echo "finto gh: .sha su una cartella" >&2; exit 1; fi
     riga=$(grep -F "$percorso " "$FAKE_SHAS" | head -n 1) || exit 1
     [ -n "$riga" ] || exit 1
     echo "${riga##* }" ;;
@@ -224,7 +282,7 @@ class Banco:
 
     def esegui(self, file: str, job: str, **extra: str) -> dict[str, str]:
         script = self._scrivi("passo.sh", _comando(file, job))
-        env = {k: v for k, v in os.environ.items() if not k.startswith(("GITHUB_", "FAKE_"))}
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("GITHUB_", "FAKE_")) and k != "CARTELLA"}
         env.update(
             PATH=str(self.tmp / "bin") + os.pathsep + os.environ["PATH"],
             GH_TOKEN="finto", GITHUB_REPOSITORY="o/r", GITHUB_SERVER_URL="https://esempio.invalid",
@@ -330,3 +388,45 @@ def test_ogni_errore_nel_gia_verde_fa_girare_i_test(banco, guasto):
         del banco.shas["fanta/web/testi.js"]
     gia = banco.gia_verde()
     assert gia["verde"] == "false" and gia["chiave"] == ""
+
+
+# --- Voci cartella (issue #499) -----------------------------------------------------------------------------------------------
+
+@pytestmark_bash
+@pytest.mark.parametrize("elenco, files, atteso", [
+    (ELENCO_DI_PROVA + "fanta/web/moduli/\n", ["fanta/web/moduli/oggi.js"], "true"),
+    (ELENCO_DI_PROVA + "fanta/web/moduli/\n", ["docs/API.md", "fanta/web/moduli/sotto/a.js"], "true"),
+    (ELENCO_DI_PROVA + "fanta/web/moduli/\n", ["fanta/web/stile.css"], "false"),
+    (ELENCO_DI_PROVA + "fanta/web/moduli/\n", ["fanta/web/moduli"], "false"),       # un file con il nome della cartella
+    (ELENCO_DI_PROVA + "fanta/web/moduli/\n", ["fanta/web/modulix/a.js", "xfanta/web/moduli/a.js"], "false"),  # solo prefisso intero
+    (ELENCO_DI_PROVA + "fanta/web/moduli/\n", ["fanta/frasi.py"], "true"),          # le voci file valgono come prima
+    ("fanta/web/moduli/\n", ["fanta/web/moduli/oggi.js"], "true"),                  # elenco di sole cartelle
+    ("fanta/web/moduli/\n", ["docs/API.md"], "false"),
+])
+def test_cambi_con_una_cartella_nell_elenco(banco, elenco, files, atteso):
+    banco.elenco = elenco
+    assert banco.cambi(files) == atteso
+
+
+@pytestmark_bash
+@pytest.mark.parametrize("cartella", ["fanta/web/moduli/", "prove/"])     # sotto un'altra cartella e nella radice
+def test_la_chiave_cambia_se_cambia_un_file_della_cartella(banco, cartella):
+    banco.elenco = ELENCO_DI_PROVA + cartella + "\n"
+    banco.shas[cartella] = "1" * 40                                       # sha dell'albero della cartella
+    prima = banco.gia_verde()
+    assert re.fullmatch(r"[0-9a-f]{40}-[0-9a-f]{40}-[0-9a-f]{40}", prima["chiave"]), prima["chiave"]
+    assert cartella in prima["_riepilogo"]
+    assert banco.gia_verde()["chiave"] == prima["chiave"]                 # stessa roba, stessa chiave
+
+    banco.shas[cartella] = "2" * 40                                       # cambia un file lì sotto: cambia l'albero
+    assert banco.gia_verde()["chiave"] != prima["chiave"]
+
+    banco.shas[cartella] = "1" * 40
+    assert banco.gia_verde()["chiave"] == prima["chiave"]
+
+
+@pytestmark_bash
+def test_una_cartella_che_manca_nel_gia_verde_fa_girare_i_test(banco):
+    banco.elenco = ELENCO_DI_PROVA + "fanta/web/moduli/\n"                 # nessuno sha: la cartella non c'è
+    chiave_senza = banco.gia_verde()
+    assert chiave_senza["verde"] == "false" and chiave_senza["chiave"] == ""

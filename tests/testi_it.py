@@ -7,9 +7,9 @@ altrove tra virgolette. Così i controlli sui testi restano scritti in italiano 
 import json
 import re
 
-from fanta import server
+import codice_web
 
-_TESTI = (server.WEB / "testi.js").read_text(encoding="utf-8")
+_TESTI = codice_web.leggi("testi.js")
 
 
 def _italiano() -> dict:

@@ -10,9 +10,9 @@ import subprocess
 
 import pytest
 
-from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 NODE = shutil.which("node")
 
 
@@ -21,7 +21,7 @@ def _pezzo(inizio: str, fine: str) -> str:
 
 
 def _esegui(chiamata: str, lingua: str = "it"):
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     codice = "\n".join([
         testi,
         f"LINGUA = '{lingua}';",

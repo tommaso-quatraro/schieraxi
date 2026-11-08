@@ -68,14 +68,23 @@ jobs:
           file=$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/ios.yml?ref=$COMMIT" --jq '.sha') || file=""
           # I file fuori da ios/ che i test iOS leggono (elenco ios/Tests/file-esterni.txt, issue #308) entrano nella chiave con il
           # loro hash: se ne cambia uno, la chiave è un'altra e i test ripartono. Elenco illeggibile, vuoto, con una riga che non è
-          # un nome di file, o un file che non si trova: nessuna chiave, quindi i test girano.
+          # un nome di file, o un file (o una cartella) che non si trova: nessuna chiave, quindi i test girano.
           esterni=""
           impronta=""
           elenco=$(gh api -H "Accept: application/vnd.github.raw+json" "repos/$GITHUB_REPOSITORY/contents/ios/Tests/file-esterni.txt?ref=$COMMIT") || elenco=""
           voci=$(printf '%s\n' "$elenco" | grep -vE '^[[:space:]]*(#|$)' || true)
           if [ -n "$voci" ] && ! printf '%s\n' "$voci" | grep -qvE '^[A-Za-z0-9_./-]+$'; then
             while IFS= read -r voce; do
-              sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/$voce?ref=$COMMIT" --jq '.sha') || sha=""
+              if [ "${voce%/}" != "$voce" ]; then
+                # Voce cartella (finisce con «/», issue #499): lo sha del suo albero, letto dall'elenco della cartella madre.
+                # Cambia se cambia un file qualsiasi lì sotto. Il nome passa per una variabile, mai dentro l'espressione di --jq.
+                cartella=${voce%/}
+                madre=${cartella%/*}; [ "$madre" != "$cartella" ] || madre=""
+                sha=$(CARTELLA="$cartella" gh api "repos/$GITHUB_REPOSITORY/contents/$madre?ref=$COMMIT" \
+                  --jq '.[] | select(.path == env.CARTELLA and .type == "dir") | .sha') || sha=""
+              else
+                sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/$voce?ref=$COMMIT" --jq '.sha') || sha=""
+              fi
               if ! printf '%s\n' "$sha" | grep -qxE '[0-9a-f]{40}'; then esterni=""; break; fi
               esterni="$esterni$voce $sha"$'\n'
             done <<< "$voci"

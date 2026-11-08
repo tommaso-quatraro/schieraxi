@@ -10,6 +10,7 @@ import pytest
 
 from fanta import archivio, consigli, fasi, perche, regole as R, rinvii
 from fanta.regole import Regole
+import codice_web
 
 ST = "2026-27"
 
@@ -374,9 +375,8 @@ import re  # noqa: E402
 import shutil  # noqa: E402
 import subprocess  # noqa: E402
 
-from fanta import server  # noqa: E402
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 
 
 def test_web_regole_e_risorsa():
@@ -390,7 +390,7 @@ def test_web_regole_e_risorsa():
 def test_web_riquadro_di_oggi():
     inizio, fine = APP.index("const MODI_RINVIO"), APP.index("function mostraOggi(")
     num = re.search(r"^const num = .*$", APP, re.M).group(0)
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     stub = """const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const sigla = s => esc((s || "").slice(0, 3).toUpperCase());
 const parseData = s => s ? new Date(String(s).replace(" ", "T")) : null; const quando = s => "QUANDO(" + s + ")";"""

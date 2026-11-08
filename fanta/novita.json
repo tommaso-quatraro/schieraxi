@@ -1,5 +1,21 @@
 [
   {
+    "versione": "1.439",
+    "data": "2026-11-08T15:26:36",
+    "titolo": "Calcoli più regolari quando l'app la usano in tanti",
+    "voci": [
+      "Formazione, Oggi e Mercato (web e iPhone): ogni persona ha la sua parte dei calcoli e della memoria dei risultati, così i consigli arrivano con tempi regolari anche quando molti usano l'app insieme.",
+      "Lega di prova (web e iPhone): crearla e toglierla si può fare fino a venti volte all'ora; oltre, l'app dice fra quanto riprovare."
+    ],
+    "tecnico": [
+      "Issue #513 (lavoro G1 dell'ondata 2, requisiti R1, R2 e R5 di #483). Numeri in fanta/limiti.py, cambiabili con FANTA_<nome> (limiti.valore): MAX_CALCOLI_UTENTE 4, QUOTA_RISULTATI_UTENTE 0.25, MAX_AZIONI_PESANTI_ORA 20, MAX_CONSIGLIATE_UTENTE 100. Senza account nessun tetto per utente.",
+      "calcolo: il server mette chi chiede in calcolo.utente_richiesta. In coda al massimo MAX_CALCOLI_UTENTE calcoli nuovi per utente: oltre, il calcolo aspetta fuori dalla coda e la risposta è InCalcolo (202, l'app riprova e il calcolo entra appena uno dei suoi finisce); Occupato (429) resta solo per la coda piena di tutto il server; la Cache ricorda di chi è ogni voce non fissa, oltre la sua parte escono prima le voci dello stesso utente, e una voce letta da un altro utente diventa di tutti.",
+      "DELETE /api/onboarding/demo non svuota più la memoria dei calcoli di tutto il server (le chiavi contengono già rose e regole); POST e DELETE della demo contano in limiti.azione_pesante (tetto orario).",
+      "consigli: le voci di dati/consigliate.json hanno il campo facoltativo `utenti` (id); ogni utente ne tiene al massimo MAX_CONSIGLIATE_UTENTE, una voce che serve anche ad altri resta per loro; senza account il file è quello di prima.",
+      "Test tests/test_limiti_calcoli.py; docs/API.md, «Limiti»."
+    ]
+  },
+  {
     "versione": "1.438",
     "data": "2026-11-08T14:15:19",
     "titolo": "Regole: limiti più chiari sulla lunghezza dei testi",

@@ -7,9 +7,9 @@ import subprocess
 
 import pytest
 
-from fanta import server
+import codice_web
 
-APP = (server.WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 NODE = shutil.which("node")
 
 IN_CORSO = {"punti_fatti": 34.5, "punti_previsti": 66.0, "ancora_da_giocare": 2, "giocatori": [
@@ -25,7 +25,7 @@ IN_CORSO = {"punti_fatti": 34.5, "punti_previsti": 66.0, "ancora_da_giocare": 2,
 def _esegui(chiamata: str) -> str:
     inizio, fine = APP.index("const STATO_LIVE"), APP.index("function mostraOggi(")
     num = re.search(r"^const num = .*$", APP, re.M).group(0)
-    testi = (server.WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     stub = """const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const sigla = s => esc((s || "").slice(0, 3).toUpperCase());
 const parseData = s => s ? new Date(String(s).replace(" ", "T")) : null; const quando = s => s ? "QUANDO(" + s + ")" : "–";"""

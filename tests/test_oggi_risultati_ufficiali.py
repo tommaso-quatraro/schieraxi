@@ -10,9 +10,10 @@ import pytest
 from test_fasi import ambiente, _oggi  # noqa: F401 - ambiente è una fixture
 
 from fanta import gestione
+import codice_web
 
 WEB = Path(__file__).resolve().parent.parent / "fanta" / "web"
-APP = (WEB / "app.js").read_text(encoding="utf-8")
+APP = codice_web.app()
 NODE = shutil.which("node")
 
 

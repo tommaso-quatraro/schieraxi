@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import server
+import codice_web
 
 RADICE = Path(__file__).resolve().parent.parent
 WEB = RADICE / "fanta" / "web"
@@ -57,12 +58,12 @@ def test_l_app_parte_anche_senza_il_modulo_delle_foto():
 def test_il_generatore_e_caricato_prima_di_app_e_dal_service_worker():
     html = (WEB / "index.html").read_text(encoding="utf-8")
     assert html.index('src="avatar.js"') < html.index('src="app.js"')
-    assert '"/avatar.js"' in (WEB / "sw.js").read_text(encoding="utf-8")
+    assert '"/avatar.js"' in codice_web.leggi("sw.js")
     assert "/avatar.js" in (RADICE / "fanta" / "rotte_account.py").read_text(encoding="utf-8")      # visibile anche prima dell'accesso
 
 
 def test_l_interfaccia_usa_i_volti_e_niente_interruttore_foto():
-    js = (WEB / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     assert "AvatarSchieraxi.svg(" in js
     assert 'role="img" aria-label="${esc(x.nome' in js                      # nome del giocatore, sempre escapato
     assert "Foto dei giocatori" not in js and 'seg("foto"' not in js

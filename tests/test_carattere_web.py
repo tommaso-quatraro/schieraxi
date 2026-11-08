@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import rotte_account, server
+import codice_web
 
 WEB = server.WEB
 RADICE = WEB.parent.parent
@@ -42,7 +43,7 @@ def test_con_gli_account_accesi_risponde_senza_sessione(multiutente, dati_isolat
 
 
 def test_il_carattere_sta_nella_scocca_offline():
-    sw = (WEB / "sw.js").read_text(encoding="utf-8")
+    sw = codice_web.leggi("sw.js")
     assert "/caratteri/archivo.woff2" in json.loads(re.search(r"const FILE = (\[.*?\]);", sw).group(1))
 
 

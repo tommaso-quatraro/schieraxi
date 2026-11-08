@@ -3,8 +3,9 @@ import re
 
 from fanta import server
 from testi_it import espandi
+import codice_web
 
-APP = espandi((server.WEB / "app.js").read_text(encoding="utf-8"))
+APP = espandi(codice_web.app())
 CSS = (server.WEB / "stile.css").read_text(encoding="utf-8")
 
 
@@ -46,7 +47,7 @@ def test_le_voci_nascoste_dalla_dieta_hanno_la_loro_funzione():
 def test_squadra_e_altro_hanno_il_menu_e_la_pagina_le_impostazioni_i_loro_pannelli():
     """Grafica B, PR 10 (spec C10): Squadra e Altro hanno il loro menu con la pagina accanto (da 1100 px, anche le pagine di Mercato),
     le Impostazioni restano con il componente a due pannelli (da 768 px). Le voci e i loro contenuti sono quelli di prima."""
-    imp = (server.WEB / "impostazioni.js").read_text(encoding="utf-8")
+    imp = codice_web.leggi("impostazioni.js")
     assert "function montaPannelli(cfg)" in imp and "function apriPannello(cfg, id" in imp
     assert "montaPannelli(cfg)" in imp[: imp.index("function montaPannelli")] and "montaPannelli(" not in _lega()
     assert 'class="lega-colonne"' in _lega() and "menuLega(voci, scelta," in _lega()
@@ -89,5 +90,5 @@ def test_primo_avvio_non_chiede_le_squadre_se_le_rose_non_ci_sono():
     assert "async function caricaSquadre(seServono = false)" in APP
     assert "seServono && stato.info && stato.info.rose_importate === false" in APP
     assert "caricaInfo().then(() => caricaSquadre(true))" in APP
-    pa = (server.WEB / "primoavvio.js").read_text(encoding="utf-8")
+    pa = codice_web.leggi("primoavvio.js")
     assert "await caricaSquadre(true);" in pa

@@ -1,5 +1,6 @@
 """«Ridurre movimento» non deve spegnere tutte le animazioni (MARCHIO.md): resta la versione calma."""
 from pathlib import Path
+import codice_web
 
 WEB = Path(__file__).resolve().parent.parent / "fanta" / "web"
 
@@ -13,6 +14,6 @@ def test_niente_blocco_totale_delle_animazioni():
 
 
 def test_app_imposta_la_versione_calma():
-    js = (WEB / "app.js").read_text(encoding="utf-8")
+    js = codice_web.app()
     assert "function segnaMovimento" in js and 'dataset.calmo' in js
     assert "if (menoMovimento()) { fine(); return; }" not in js, "il foglio deve chiudersi con la dissolvenza anche in versione calma"

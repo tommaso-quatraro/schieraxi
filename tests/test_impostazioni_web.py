@@ -4,13 +4,14 @@ import re
 
 from fanta import server
 from testi_it import espandi
+import codice_web
 
 WEB = server.WEB
-APP = espandi((WEB / "app.js").read_text(encoding="utf-8"))
-IMP = espandi((WEB / "impostazioni.js").read_text(encoding="utf-8"))
+APP = espandi(codice_web.app())
+IMP = espandi(codice_web.leggi("impostazioni.js"))
 HTML = (WEB / "index.html").read_text(encoding="utf-8")
 CSS = (WEB / "stile.css").read_text(encoding="utf-8")
-SW = (WEB / "sw.js").read_text(encoding="utf-8")
+SW = codice_web.leggi("sw.js")
 
 
 def _gruppi():
@@ -56,7 +57,7 @@ def test_scarica_i_tuoi_dati_nell_account_solo_scarico():
     f = APP[APP.index("async function scaricaIMieiDati()"):APP.index("function schedaAmministratore()")]
     assert 'api("/api/backup")' in f and "ripristina" not in f and 'type="file"' not in f
     assert "schieraxi-i-miei-dati-" in f
-    testi = (WEB / "testi.js").read_text(encoding="utf-8")
+    testi = codice_web.leggi("testi.js")
     assert '"account.dati_titolo": "Scarica i tuoi dati"' in testi and '"account.dati_titolo": "Download your data"' in testi
 
 
