@@ -171,32 +171,35 @@ struct TaraturaProbabiliTests {
     func pluraliComeLaWeb(n: Int) throws {
         let web = try TestiWeb()
         let forma = n == 1 ? "one" : "other"
-        #expect(try frase("{\"stato\":\"in_attesa\",\"giornate\":\(n),\"minimo\":4}")
-                == riga(web, riempi(web.italiano("sd.tar_in_attesa_su.\(forma)"), ["n": "\(n)", "m": "4"])))
-        #expect(try frase("{\"stato\":\"in_attesa\",\"giornate\":\(n),\"minimo\":0}")
-                == riga(web, riempi(web.italiano("sd.tar_in_attesa.\(forma)"), ["n": "\(n)"])))
+        let suQuante = try riga(web, riempi(web.italiano("sd.tar_in_attesa_su.\(forma)"), ["n": "\(n)", "m": "4"]))
+        #expect(try frase("{\"stato\":\"in_attesa\",\"giornate\":\(n),\"minimo\":4}") == suQuante)
+        let soloQuante = try riga(web, riempi(web.italiano("sd.tar_in_attesa.\(forma)"), ["n": "\(n)"]))
+        #expect(try frase("{\"stato\":\"in_attesa\",\"giornate\":\(n),\"minimo\":0}") == soloQuante)
         let prova = "{\"giornate\":\(n),\"brier\":0.0912,\"brier_prima\":0.0968,\"calibrazione\":0.0213}"
         let attiva = try riempi(web.italiano("sd.tar_attiva_dal"), ["d": "15/1", "v": "1"])
         let numeri = try riempi(web.italiano("sd.tar_prova.\(forma)"), ["n": "\(n)", "b": "0,0912", "p": "0,0968", "c": "2,1"])
-        #expect(try frase("{\"stato\":\"attiva\",\"versione\":1,\"dal\":\"2027-01-15T10:00:00\",\"prova\":\(prova)}")
-                == riga(web, attiva + " · " + numeri))
+        let conProva = try riga(web, attiva + " · " + numeri)
+        #expect(try frase("{\"stato\":\"attiva\",\"versione\":1,\"dal\":\"2027-01-15T10:00:00\",\"prova\":\(prova)}") == conProva)
     }
 
     @Test("Attiva, non attiva con ogni motivo, spenta e il nome negli aggiornamenti: i testi della web")
     func statiComeLaWeb() throws {
         let web = try TestiWeb()
-        #expect(try frase("{\"stato\":\"attiva\",\"versione\":3}") == riga(web, riempi(web.italiano("sd.tar_attiva"), ["v": "3"])))
-        #expect(try frase("{\"stato\":\"spenta\"}") == riga(web, web.italiano("sd.tar_spenta")))
-        #expect(try frase("{\"stato\":\"non_attiva\"}") == riga(web, web.italiano("sd.tar_non_attiva")))
+        let nonAttiva = try web.italiano("sd.tar_non_attiva")
+        let attiva = try riga(web, riempi(web.italiano("sd.tar_attiva"), ["v": "3"]))
+        #expect(try frase("{\"stato\":\"attiva\",\"versione\":3}") == attiva)
+        let spenta = try riga(web, web.italiano("sd.tar_spenta"))
+        #expect(try frase("{\"stato\":\"spenta\"}") == spenta)
+        let senzaMotivo = try riga(web, nonAttiva)
+        #expect(try frase("{\"stato\":\"non_attiva\"}") == senzaMotivo)
         for caso in Self.motivi {
             let motivo = try riempi(web.italiano("sd.tar_m_\(caso.codice)"), ["n": "7"])
             #expect(motivo == caso.frase, "\(caso.codice)")
-            #expect(try frase("{\"stato\":\"non_attiva\",\"giornate\":7,\"motivo\":\"\(caso.codice)\"}")
-                    == riga(web, web.italiano("sd.tar_non_attiva") + " · " + motivo), "\(caso.codice)")
+            let conMotivo = try riga(web, nonAttiva + " · " + motivo)
+            #expect(try frase("{\"stato\":\"non_attiva\",\"giornate\":7,\"motivo\":\"\(caso.codice)\"}") == conMotivo, "\(caso.codice)")
         }
-        let rimandato = try web.italiano("sd.tar_m_scadenza_vicina")
-        #expect(try frase("{\"stato\":\"attiva\",\"versione\":1,\"motivo\":\"scadenza_vicina\"}")
-                == riga(web, riempi(web.italiano("sd.tar_attiva"), ["v": "1"]) + " · " + rimandato))
+        let rimandato = try riga(web, riempi(web.italiano("sd.tar_attiva"), ["v": "1"]) + " · " + web.italiano("sd.tar_m_scadenza_vicina"))
+        #expect(try frase("{\"stato\":\"attiva\",\"versione\":1,\"motivo\":\"scadenza_vicina\"}") == rimandato)
         #expect(try web.italiano("sd.f_taratura") == NomiDati.leggibile("taratura-probabili"))
     }
 
