@@ -1,5 +1,16 @@
 [
   {
+    "versione": "1.442",
+    "data": "2026-11-08T17:50:23",
+    "titolo": "Server: ambiente di prova più protetto",
+    "voci": [
+      "Server: l'ambiente di prova ha le stesse protezioni della produzione. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "Issue #510. schieraxi-prova.service: aggiunte le righe del recinto di fantacalcio (sicurezza.conf): ProtectKernel*, ProtectControlGroups, ProtectClock, ProtectHostname, PrivateDevices, RestrictSUIDSGID, RestrictNamespaces, RestrictRealtime, LockPersonality, SystemCallArchitectures=native, ProcSubset=pid, CapabilityBoundingSet vuoto, RestrictAddressFamilies. systemd-analyze security: da 8.0 a 2.7 (produzione 3.0). LEGGIMI della prova: cosa fare se l'utente della produzione non ha sudo generale."
+    ]
+  },
+  {
     "versione": "1.441",
     "data": "2026-11-08T16:31:47",
     "titolo": "Stato dei dati: a che punto è la taratura di «gioca N%»",
