@@ -132,8 +132,20 @@ struct RestiDalCatalogoTests {
     func usaIlCatalogo(caso: Caso) throws {
         let codice = try Self.codice(caso.file)
         for costante in caso.usa {
-            #expect(codice.contains(costante), "\(caso.file) non usa \(costante)")
+            #expect(Self.usa(codice, costante), "\(caso.file) non usa \(costante)")
         }
+    }
+
+    @Test("Il controllo «usa» vuole il nome intero: «Catalogo.Avv.prima» non vale dentro «Catalogo.Avv.primaAiuto»")
+    func usaVuoleIlNomeIntero() {
+        #expect(!Self.usa("static let aiuto = Catalogo.Avv.primaAiuto", "Catalogo.Avv.prima"))
+        #expect(!Self.usa("case 0: return Catalogo.Avv.prima0", "Catalogo.Avv.prima"), "nemmeno con una cifra dopo")
+        #expect(!Self.usa("Catalogo.Avv.prima_vecchia", "Catalogo.Avv.prima"))
+        #expect(Self.usa("let a = Catalogo.Avv.primaAiuto\nlet t = Catalogo.Avv.prima", "Catalogo.Avv.prima"), "trovato dopo un falso inizio")
+        #expect(Self.usa("Picker(Catalogo.Asp.tema, selection: $tema)", "Catalogo.Asp.tema"))
+        #expect(Self.usa("nota = Catalogo.Perche.rispetto(n: Formato.punti(media))", "Catalogo.Perche.rispetto("),
+                "un nome che finisce con «(» è una funzione: dopo può venire il nome del parametro")
+        #expect(!Self.usa("nota = Catalogo.Perche.rispettoVecchio(n: m)", "Catalogo.Perche.rispetto("))
     }
 
     /// Il controllo deve trovare davvero un testo del catalogo scritto a mano: qui con un codice finto.
@@ -159,6 +171,20 @@ struct RestiDalCatalogoTests {
     }
 
     // MARK: lettura del sorgente
+
+    /// Il codice usa la costante: il nome c'è e non continua con una lettera, una cifra o «_» («Catalogo.Avv.prima» non vale
+    /// dentro «Catalogo.Avv.primaAiuto»). Un nome che finisce con «(» è una funzione e si cerca così com'è.
+    static func usa(_ codice: String, _ costante: String) -> Bool {
+        let parteDelNome: (Character) -> Bool = { $0.isLetter || $0.isNumber || $0 == "_" }
+        guard let ultimo = costante.last, parteDelNome(ultimo) else { return codice.contains(costante) }
+        var resto = codice[...]
+        while let trovato = resto.range(of: costante) {
+            let dopo = resto[trovato.upperBound...]
+            if !(dopo.first.map(parteDelNome) ?? false) { return true }
+            resto = dopo
+        }
+        return false
+    }
 
     /// Un file di `ios/` (percorso dalla cartella `ios/`) senza commenti né anteprime.
     private static func codice(_ percorso: String, file: String = #filePath) throws -> String {
