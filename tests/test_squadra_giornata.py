@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from test_squadra_comune import Finto
@@ -82,10 +83,47 @@ def test_main_rosso_aperto_prima_e_ancora_aperto_rende_rossa():
 
 
 def test_collaudo_rosso_aperto_prima_rende_rossa():
-    v = giudica([issue(60, "Collaudo della prova: la formazione non si apre", "2026-11-10T08:00:00Z")])
+    v = giudica([issue(60, "Collaudo della prova: v1.450 non passa", "2026-11-10T08:00:00Z")])
     assert v.ok is False and any("#60" in m for m in v.motivi)
     v = giudica([issue(61, "La prova non si aggiorna", "2026-11-17T19:00:00Z")])
     assert v.ok is False and any("#61" in m for m in v.motivi)
+
+
+def test_issue_di_lavoro_col_titolo_simile_non_conta():
+    # I titoli rossi sono quelli esatti dei workflow: un'issue di lavoro che comincia allo stesso modo non è un allarme
+    # (#549 «Collaudo della prova: almeno una volta al giorno…» era aperta il 9/11).
+    simili = [issue(549, "Collaudo della prova: almeno una volta al giorno anche senza versione nuova", "2026-11-14T08:00:00Z"),
+              issue(70, "CI: main rosso, idea per avvisare prima", "2026-11-14T08:00:00Z"),
+              issue(71, "La prova non si aggiorna da sola: script nuovo", "2026-11-14T08:00:00Z"),
+              issue(72, "Collaudo della prova: v1.450 non passa (vecchia)", "2026-11-14T08:00:00Z")]
+    v = giudica(simili)
+    assert v.ok is True, v.motivi
+    assert giornata.titolo_rosso("Collaudo della prova: v1.450.2 non passa")
+    assert not giornata.titolo_rosso("Collaudo della prova: vecchio non passa")
+
+
+def test_titoli_rossi_sono_quelli_dei_workflow():
+    # Se un workflow cambia il titolo del suo allarme, questo test se ne accorge (la giornata non diventa verde in silenzio).
+    import importlib.util
+    import re as _re
+    radice = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location("collaudo_prova_per_giornata", radice / "script" / "ci" / "collaudo_prova.py")
+    cp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cp)
+    assert giornata.titolo_rosso(cp.RITARDO)
+    assert giornata.titolo_rosso(f"{cp.PREFISSO}1.450 non passa")
+    assert cp._TITOLO_COLLAUDO.fullmatch(f"{cp.PREFISSO}1.450 non passa")
+    for nome in ("test.yml", "salute.yml"):
+        testo = (radice / ".github" / "workflows" / nome).read_text(encoding="utf-8")
+        titoli = _re.findall(r'titolo="([^"$]+)"', testo)
+        assert titoli, nome
+        for titolo in titoli:
+            assert giornata.titolo_rosso(titolo), f"{nome}: {titolo}"
+
+
+def test_server_irraggiungibile_aperto_prima_rende_rossa():
+    v = giudica([issue(80, "Server non raggiungibile", "2026-11-14T08:00:00Z", etichette=["P1"])])
+    assert v.ok is False and any("#80" in m for m in v.motivi)
 
 
 def test_corsa_annullata_non_conta():
@@ -164,7 +202,7 @@ def test_raccolta_usa_limit_e_created():
         assert "--limit 1000" in c and "--branch main" in c
         assert "--created 2026-11-15T12:50:00Z..2026-11-17T19:45:00Z" in c
     ricerche = finto.lanciati("gh issue list")
-    assert len(ricerche) == 4                        # le issue nuove e una ricerca per ciascuno dei tre titoli
+    assert len(ricerche) == 1 + len(giornata.TITOLI_ROSSI)   # le issue nuove e una ricerca per ciascun titolo
     for r in ricerche:
         assert "--limit 1000" in r and "--state all" in r
     assert any("created:2026-11-15T12:50:00Z..2026-11-17T19:45:00Z" in r for r in ricerche)
