@@ -9,7 +9,7 @@ import test_squadra_comune  # noqa: F401
 
 import squadra
 
-ATTESI = {"stato", "attendi", "annulla-superate", "pulisci", "brief", "foto", "giro", "pr-pronta"}
+ATTESI = {"stato", "attendi", "annulla-superate", "pulisci", "brief", "foto", "giro", "pr-pronta", "giornata"}
 
 
 def test_ci_sono_tutti_i_comandi_del_piano():

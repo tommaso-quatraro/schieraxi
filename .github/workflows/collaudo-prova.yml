@@ -5,11 +5,14 @@ name: Collaudo della prova
 # l'account di collaudo, apre le schermate principali a 390 e 1440 px, chiaro e scuro, e controlla errori della console (comprese
 # le risposte 4xx e 5xx), scorrimento di lato e accessibilità (axe), con prove/foto_web/foto.py --solo-misure: nessuna foto.
 # - Una versione collaudata (bene o male, purché le misure siano partite) lascia l'artifact «collaudo-v<N>» (solo esito.txt,
-#   senza indirizzi, 30 giorni): le corse dopo la saltano. Se le misure non partono (prova spenta, Playwright che non si
-#   installa) l'artifact non c'è e la corsa dopo riprova. A mano (Actions > Collaudo della prova > Run workflow) si collauda
-#   subito, anche se già collaudata.
-# - Collaudo che non passa: issue P1 «Collaudo della prova: v<N> non passa» (o un commento, se c'è già) e corsa ROSSA.
-#   Collaudo che passa: chiude le issue del collaudo ancora aperte.
+#   senza indirizzi, 30 giorni): le corse ogni 20 minuti la saltano per 20 ore, poi la collaudano di nuovo. Se le misure non
+#   partono (prova spenta, Playwright che non si installa) l'artifact non c'è e la corsa dopo riprova. A mano (Actions >
+#   Collaudo della prova > Run workflow) si collauda subito, anche se già collaudata.
+# - GitHub fa partire di rado le corse «ogni 20 minuti»: la corsa fissa delle 5:17 UTC (poco affollata) collauda sempre la
+#   versione in vigore sulla prova, anche se collaudata da poco (decidi --quotidiano): almeno un collaudo al giorno anche
+#   senza versione nuova (issue #549).
+# - Collaudo che non passa: issue P1 «Collaudo della prova: v<N> non passa», una sola per versione (un collaudo ripetuto la
+#   commenta) e corsa ROSSA. Collaudo che passa: chiude le issue del collaudo ancora aperte.
 # - La prova senza la versione nuova oltre 40 minuti dopo la release: issue «La prova non si aggiorna» e corsa rossa; si chiude
 #   da sola quando la prova ha la versione nuova.
 # - Senza i segreti PROVA_URL, PROVA_UTENTE e PROVA_PASSWORD non fa niente e resta verde.
@@ -20,6 +23,7 @@ name: Collaudo della prova
 on:
   schedule:
     - cron: "4,24,44 * * * *"
+    - cron: "17 5 * * *"
   workflow_dispatch:
 
 permissions: {}
@@ -61,9 +65,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           EVENTO: ${{ github.event_name }}
+          PIANO: ${{ github.event.schedule }}
         run: |
           if [ "$EVENTO" = "workflow_dispatch" ]; then
             python -I script/ci/collaudo_prova.py decidi --forza
+          elif [ "$PIANO" = "17 5 * * *" ]; then
+            python -I script/ci/collaudo_prova.py decidi --quotidiano
           else
             python -I script/ci/collaudo_prova.py decidi
           fi
@@ -137,6 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      contents: read  # solo per lo script che scrive le issue
       issues: write   # solo per aprire, commentare e chiudere le issue del collaudo e del ritardo
     env:
       DECISIONE: ${{ needs.decidi.outputs.esito }}
@@ -146,60 +154,21 @@ jobs:
       OK: ${{ needs.collauda.outputs.ok }}
       DETTAGLIO: ${{ needs.collauda.outputs.dettaglio }}
     steps:
+      # solo lo script (nessun segreto in questo job): i testi delle issue e la regola «una sola issue per versione» stanno
+      # in script/ci/collaudo_prova.py, comando «segnala», con i loro test
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          sparse-checkout: script/ci
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
       - name: Apre, aggiorna o chiude le issue
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           CORSA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -eu
-          # numeri delle issue aperte il cui titolo comincia con $1
-          aperte() {
-            gh issue list --state open --limit 100 --json number,title \
-              | jq -r --arg t "$1" '.[] | select(.title | startswith($t)) | .number'
-          }
-
-          ritardo="La prova non si aggiorna"
-          if [ "$DECISIONE" = "in-ritardo" ]; then
-            if [ -z "$(aperte "$ritardo")" ]; then
-              gh issue create --title "$ritardo" --label P2 --label ci --body "La prova ha la versione $PROVA, ma l'ultima release del server è v$VERSIONE, uscita $MINUTI minuti fa (soglia 40 minuti).
-          Da guardare: l'aggiornamento della prova sul server (aggiorna-app.sh con SCHIERAXI_ISTANZA=prova) o l'account di collaudo.
-          Corsa: $CORSA
-          L'issue si chiude da sola quando la prova ha la versione nuova."
-            else
-              echo "Issue «$ritardo» già aperta: nessun commento nuovo."
-            fi
-          else
-            for n in $(aperte "$ritardo"); do
-              gh issue comment "$n" --body "La prova ha di nuovo la versione nuova (v$VERSIONE). Corsa: $CORSA"
-              gh issue close "$n" --reason completed
-            done
-          fi
-
-          prefisso="Collaudo della prova: v"
-          if [ "$DECISIONE" = "collauda" ] && [ "$OK" = "false" ]; then
-            titolo="${prefisso}${VERSIONE} non passa"
-            problemi=$(printf '%s' "$DETTAGLIO" | sed 's/; /\n- /g')
-            numero=$(gh issue list --state open --limit 100 --json number,title \
-              | jq -r --arg t "$titolo" '[.[] | select(.title == $t)] | first | .number // empty')
-            if [ -n "$numero" ]; then
-              gh issue comment "$numero" --body "Ancora non passa:
-          - $problemi
-          Corsa: $CORSA"
-            else
-              gh issue create --title "$titolo" --label P1 --label ci --body "Il collaudo automatico della prova (workflow «Collaudo della prova») ha trovato:
-          - $problemi
-          Corsa: $CORSA
-          Si chiude da sola al primo collaudo che passa. Per riprovare subito: Actions > Collaudo della prova > Run workflow."
-            fi
-          elif [ "$DECISIONE" = "collauda" ] && [ "$OK" = "true" ]; then
-            for n in $(aperte "$prefisso"); do
-              gh issue comment "$n" --body "Il collaudo della prova passa con v$VERSIONE. Corsa: $CORSA"
-              gh issue close "$n" --reason completed
-            done
-          elif [ "$DECISIONE" = "collauda" ]; then
-            echo "Il collaudo non si è concluso (job «collauda» rotto): nessuna issue, la corsa è già rossa."
-          fi
+        run: python -I script/ci/collaudo_prova.py segnala
       # il comando «giornata» del coordinatore conta come fallita ogni corsa che non finisce con success, skipped o cancelled
       - name: Corsa rossa se il collaudo non passa o la prova non si aggiorna
         run: |
