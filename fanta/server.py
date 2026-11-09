@@ -2211,6 +2211,7 @@ def avviso_di_prova(ctx: Contesto = Depends(lega_corrente)):
     if not ((ctx.ntfy and notifiche.canale() is not None) or notifiche_web.iscrizioni(ctx.iscrizioni_push)):
         raise HTTPException(409, "Nessun canale per gli avvisi: attiva le notifiche su questo dispositivo"
                             + (", oppure imposta il canale ntfy sul server." if ctx.ntfy else "."))
+    limiti.prova_avvisi(ctx)                        # ogni prova manda davvero una notifica: tetto all'ora per utente (429)
     return {"inviato": _manda(ctx)(frasi.F("n.t_prova"), frasi.F("n.prova"), 3, "white_check_mark", ignora_silenzio=True)}
 
 
