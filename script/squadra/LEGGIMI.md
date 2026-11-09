@@ -121,7 +121,7 @@ Dice se una giornata è passata senza errori: è la misura che chiude #167 (deci
 `--dal` e `--al` sono date ISO con il fuso (`2026-11-15T13:50:00+01:00` o `…Z`) e il comando si lancia a finestra finita.
 
 Raccoglie con `gh` le corse di `test.yml` su `main` e di `collaudo-prova.yml`, le issue nuove della finestra e quelle con i titoli
-«CI: main rosso», «Collaudo della prova» e «La prova non si aggiorna». Rosso se: la sentinella ha un allarme o non gira per più di
+«CI: main rosso», «Collaudo della prova: v<N> non passa» e «La prova non si aggiorna». Rosso se: la sentinella ha un allarme o non gira per più di
 2 ore; nasce un'issue `P1` o `dall-utente`; una di quelle tre issue è aperta in qualche momento della finestra; una corsa è rossa
 («annullato» non conta); nessun collaudo riuscito davvero nella finestra (job «Collaudo delle schermate»); manca il file della
 sentinella. Ogni motivo stampato dice cosa, quando e il link.
@@ -131,7 +131,8 @@ fuso> --al <ISO con fuso>` stampa i giri in JSON; si salva in un file sul PC e s
 stato intero della sentinella (`dati/sentinella.json`, campo `giri`). Senza `--sentinella` la giornata non è mai verde.
 
 Uscite: 0 senza errori; 1 non ok (stampa i motivi); 2 date rifiutate (senza fuso, rovesciate o `--al` nel futuro); 3 errore di `gh`
-o file della sentinella illeggibile.
+o file della sentinella illeggibile. Eccezione alla regola comune del 64: le date sbagliate escono con 2, perché le controlla il
+comando dopo la lettura degli argomenti; con 64 escono solo gli argomenti che mancano o non si leggono (per esempio senza `--dal`).
 
 ```
 python script/squadra/squadra.py giornata --dal 2026-11-15T13:50:00+01:00 --al 2026-11-19T20:45:00+01:00 --sentinella giri.json

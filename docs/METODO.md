@@ -73,10 +73,10 @@ Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dop
   (es. «- revisore: nessun rilievo bloccante»). Si scrive in bozza, prima di `gh pr ready`. Esenti bot e soli documenti.
 - **Novità solo della PR**: in `fanta/novita.d/` al massimo un file, solo aggiunto; `fanta/novita.json` non si tocca a mano.
 - **Test e novità**: nessun test legge un file di `fanta/novita.d/` per nome (dopo il rilascio non c'è più): si cerca per titolo.
-- La descrizione corretta dopo l'apertura si rilegge al push successivo o con `gh pr ready --undo` e poi `gh pr ready`
-  («Re-run» rilegge la descrizione di prima).
-- Trappola: il job «ambito» legge la descrizione solo quando parte una corsa. Dopo un `gh pr edit` della descrizione serve un push
-  nuovo, anche un commit vuoto (`git commit --allow-empty -m "rilegge la descrizione"`, poi `git push`).
+- Trappola: il job «ambito» legge la descrizione solo quando parte una corsa nuova; «Re-run» rilegge la descrizione di prima.
+  Dopo un `gh pr edit` della descrizione serve quindi una corsa nuova: un push (anche un commit vuoto,
+  `git commit --allow-empty -m "rilegge la descrizione"`, poi `git push`), oppure `gh pr ready --undo` e poi `gh pr ready`,
+  oppure un update-branch su GitHub con il ramo indietro.
 - Trappola: la riga `Aree:` vuole cartelle o file (`fanta/web, tests, docs`), non i nomi delle aree di `script/squadra/aree.json`.
 
 ## Quando un lavoro è finito
@@ -132,7 +132,7 @@ Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dop
 - Una giornata è senza errori se, dalla scadenza della lega a due giorni dopo l'inizio dell'ultima partita: la sentinella non ha
   allarmi e ha girato almeno ogni 2 ore, non nasce nessuna issue `P1` o `dall-utente`, le corse dei controlli su `main` e del collaudo
   non sono rosse, la prova è stata collaudata davvero almeno una volta (job «Collaudo delle schermate» riuscito) e nessuna issue
-  «CI: main rosso», «Collaudo della prova» o «La prova non si aggiorna» è rimasta aperta in qualche momento della finestra, anche se
+  «CI: main rosso», «Collaudo della prova: v<N> non passa» o «La prova non si aggiorna» è rimasta aperta in qualche momento della finestra, anche se
   nata prima.
   Una parte che manca rende la giornata rossa: mai verde per omissione (decisione 0013).
 - Si misura a finestra finita, con i giri della sentinella presi dal server in sola lettura

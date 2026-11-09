@@ -21,7 +21,7 @@ collaudo) sembrerebbe «nessun errore». Serve una misura ripetibile. Piano: `do
 ## Decisione
 Scelta: il comando `python script/squadra/squadra.py giornata --dal … --al … --sentinella <file>` (`script/squadra/giornata.py`).
 La finestra va dalla scadenza della lega a due giorni dopo l'inizio dell'ultima partita. Rosso se: la sentinella ha un allarme o
-resta più di 2 ore senza girare; nasce un'issue `P1` o `dall-utente`; un'issue «CI: main rosso», «Collaudo della prova» o «La prova
+resta più di 2 ore senza girare; nasce un'issue `P1` o `dall-utente`; un'issue «CI: main rosso», «Collaudo della prova: v<N> non passa» o «La prova
 non si aggiorna» è aperta in qualche momento della finestra; una corsa dei controlli su `main` o del collaudo è rossa; la prova non è
 stata collaudata davvero; manca il file della sentinella. Per questo la sentinella ricorda ogni giro (`giri` in
 `dati/sentinella.json`, 60 giorni). Il giudizio a occhio non è ripetibile; contare solo gli errori nuovi lascerebbe verde una
