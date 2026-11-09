@@ -9,6 +9,7 @@ Codici di uscita: 0 senza errori; 1 non ok (stampa i motivi); 2 date rifiutate; 
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -17,7 +18,17 @@ from pathlib import Path
 import comune
 
 ETICHETTE = ("P1", "dall-utente")
-TITOLI_ROSSI = ("CI: main rosso", "Collaudo della prova", "La prova non si aggiorna")
+TITOLI_ROSSI = ("CI: main rosso", "Collaudo della prova", "La prova non si aggiorna")   # parole per cercarle con gh
+# I titoli esatti scritti dai workflow (test.yml e script/ci/collaudo_prova.py): un'issue di lavoro che comincia allo
+# stesso modo (per esempio «Collaudo della prova: almeno una volta al giorno…») non è un allarme.
+_TITOLI_ESATTI = re.compile(r"CI: main rosso|La prova non si aggiorna|Collaudo della prova: v\d+(?:\.\d+)* non passa")
+
+
+def titolo_rosso(titolo: str) -> bool:
+    """Il titolo è quello di un allarme scritto da un workflow (rosso su main, collaudo che non passa, prova ferma)?"""
+    return _TITOLI_ESATTI.fullmatch(titolo or "") is not None
+
+
 ESITI_BUONI = {"success", "skipped", "cancelled"}      # «annullato» non è «fallito» (CLAUDE.md)
 # Il nome del job che collauda davvero (`name:` del job `collauda` in .github/workflows/collaudo-prova.yml): una corsa
 # «success» senza questo job riuscito (segreti mancanti = «spento», versione già collaudata = «salta») non è un collaudo.
@@ -59,7 +70,7 @@ def _motivi_issue(dal: datetime, al: datetime, issue: list[dict]) -> list[str]:
             motivi.append(f"issue #{i['number']} con data di apertura illeggibile{_dove(i)}")
             continue
         titolo = i.get("title") or ""
-        rossa = next((t for t in TITOLI_ROSSI if titolo.startswith(t)), None)
+        rossa = titolo_rosso(titolo)
         if rossa and creata <= al and (chiusa is None or chiusa >= dal):
             stato = "ancora aperta" if chiusa is None else f"chiusa {_ora(chiusa, dal.tzinfo)}"
             motivi.append(f"issue #{i['number']} «{titolo}» aperta durante la finestra ({stato}){_dove(i)}")

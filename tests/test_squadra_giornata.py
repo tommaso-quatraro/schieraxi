@@ -82,10 +82,23 @@ def test_main_rosso_aperto_prima_e_ancora_aperto_rende_rossa():
 
 
 def test_collaudo_rosso_aperto_prima_rende_rossa():
-    v = giudica([issue(60, "Collaudo della prova: la formazione non si apre", "2026-11-10T08:00:00Z")])
+    v = giudica([issue(60, "Collaudo della prova: v1.450 non passa", "2026-11-10T08:00:00Z")])
     assert v.ok is False and any("#60" in m for m in v.motivi)
     v = giudica([issue(61, "La prova non si aggiorna", "2026-11-17T19:00:00Z")])
     assert v.ok is False and any("#61" in m for m in v.motivi)
+
+
+def test_issue_di_lavoro_col_titolo_simile_non_conta():
+    # I titoli rossi sono quelli esatti dei workflow: un'issue di lavoro che comincia allo stesso modo non è un allarme
+    # (#549 «Collaudo della prova: almeno una volta al giorno…» era aperta il 9/11).
+    simili = [issue(549, "Collaudo della prova: almeno una volta al giorno anche senza versione nuova", "2026-11-14T08:00:00Z"),
+              issue(70, "CI: main rosso, idea per avvisare prima", "2026-11-14T08:00:00Z"),
+              issue(71, "La prova non si aggiorna da sola: script nuovo", "2026-11-14T08:00:00Z"),
+              issue(72, "Collaudo della prova: v1.450 non passa (vecchia)", "2026-11-14T08:00:00Z")]
+    v = giudica(simili)
+    assert v.ok is True, v.motivi
+    assert giornata.titolo_rosso("Collaudo della prova: v1.450.2 non passa")
+    assert not giornata.titolo_rosso("Collaudo della prova: vecchio non passa")
 
 
 def test_corsa_annullata_non_conta():
