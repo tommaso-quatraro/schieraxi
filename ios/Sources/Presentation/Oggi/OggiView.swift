@@ -38,7 +38,7 @@ struct OggiView: View {
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
-                            Scheletro(schede: 3, righe: 2, testo: "Preparo la giornata…")
+                            Scheletro(schede: 3, righe: 2, testo: Catalogo.Oggi.preparo)
                         }
                     }
                     .padding(.horizontal, Tema.margine)
@@ -57,7 +57,7 @@ struct OggiView: View {
                 .avvisoDatiSalvati(vm.caricatore)
                 .bordiMorbidi()
             }
-            .navigationTitle("Oggi")
+            .navigationTitle(Catalogo.Nav.oggi)
             .ricercaGlobale()
             .task { await vm.carica() }
             // Prima installazione (o dopo l'uscita dall'account): non c'è niente di «nuovo» da vedere, si segna la versione attuale senza riga.
@@ -137,15 +137,17 @@ struct OggiView: View {
         }
     }
 
-    /// Lega senza rose: un benvenuto con un solo passo chiaro, che apre la configurazione guidata.
+    /// Lega senza rose: un benvenuto con un solo passo chiaro, che apre la configurazione guidata. Titolo, frase e pulsante come
+    /// `mostraOggiSenzaRose` della web.
     @ViewBuilder
     private func benvenuto(_ oggi: Oggi) -> some View {
         if oggi.senzaRose == true {
-            Carta("Benvenuto in SchieraXI", simbolo: "hand.wave") {
-                Text("Importa la tua rosa per cominciare: per darti i consigli servono le rose della tua lega, poi ti guido nei passi successivi.")
+            Carta(Catalogo.Oggi.benvenutoSchieraxi, simbolo: "hand.wave") {
+                Text(Catalogo.Oggi.perCominciareImporta)
                     .font(.subheadline).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button { nav.guidaAperta = true } label: {
-                    Label("Importa le rose", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Label(Catalogo.Comune.importaRose, systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
             }
@@ -157,7 +159,7 @@ struct OggiView: View {
     @ViewBuilder
     private func senzaGiornata(_ oggi: Oggi) -> some View {
         if oggi.senzaGiornata, oggi.senzaRose != true {
-            Carta("Oggi", simbolo: "calendar") {
+            Carta(Catalogo.Nav.oggi, simbolo: "calendar") {
                 Text("Nessuna giornata in programma per ora.")
                     .font(.subheadline).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
@@ -223,7 +225,7 @@ struct OggiView: View {
                             .lineLimit(1)
                         Text(Self.quandoSiChiude(oggi, adesso: ora)).font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     } else {
-                        Text("Chiusa")
+                        Text(Catalogo.Oggi.chiusa)
                             .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)   // testo molto grande: si rimpicciolisce invece di andare a capo a metà parola
@@ -235,12 +237,13 @@ struct OggiView: View {
                 .accessibilityElement(children: .combine)
             }
         } else {
-            // Senza scadenza: «Chiusa» se la giornata è cominciata, altrimenti una frase al posto di un trattino enorme.
+            // Senza scadenza: «Chiusa» se la giornata è cominciata, altrimenti una frase al posto di un trattino enorme
+            // («Data da definire», come dice il vocabolario di docs/COERENZA-WEB-IPHONE.md).
             if oggi.iniziata == true {
-                Text("Chiusa").lineLimit(1).minimumScaleFactor(0.5)
+                Text(Catalogo.Oggi.chiusa).lineLimit(1).minimumScaleFactor(0.5)
                     .font(.system(size: corpoGrande * 0.87, weight: .bold, design: .rounded)).foregroundStyle(.white)
             } else {
-                Text("Data da definire")
+                Text(Catalogo.Oggi.dataDaDefinire)
                     .font(.system(.title2, design: .rounded, weight: .bold)).foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -252,16 +255,16 @@ struct OggiView: View {
     /// contano dall'ora dell'app (`Orologio`), la stessa del conto alla rovescia.
     static func quandoSiChiude(_ oggi: Oggi, adesso: Date = Orologio.adesso()) -> String {
         if let s = oggi.scadenza, !s.trimmingCharacters(in: .whitespaces).isEmpty, s != oggi.inizio, let m = oggi.minutiScadenza {
-            return "La formazione si chiude \(Quando.leggibile(s, adesso: adesso)) (\(m) min prima della prima partita)"
+            return Catalogo.Oggi.siChiude(min: String(m), quando: Quando.leggibile(s, adesso: adesso))
         }
-        return "Prima partita \(Quando.leggibile(oggi.chiusura, adesso: adesso)): la formazione va inserita prima"
+        return Catalogo.Oggi.primaPartita(quando: Quando.leggibile(oggi.chiusura, adesso: adesso))
     }
 
     /// A scadenza passata, come la web: «La formazione si è chiusa sab 31 14:50». La giornata è scritta subito sopra il conto,
     /// con i due numeri, e non si ripete (#299). «ieri» si conta dall'ora dell'app (`Orologio`), come il conto alla rovescia e il
     /// widget: nella demo a giornata in corso «si è chiusa ieri 20:35» anche con la foto scattata di notte (#424).
     static func siEChiusa(_ oggi: Oggi, adesso: Date = Orologio.adesso()) -> String {
-        "La formazione si è chiusa \(Quando.leggibile(oggi.chiusura, adesso: adesso))"
+        Catalogo.Oggi.chiusaDettaglio(quando: Quando.leggibile(oggi.chiusura, adesso: adesso))
     }
 
     // MARK: novità
@@ -316,7 +319,7 @@ struct OggiView: View {
                         }
                         .padding(.top, 6)
                     } label: {
-                        Text(TestiOggi.altreCose(altri.count))
+                        Text(Catalogo.Df.altre(altri.count))
                             .font(.subheadline.weight(.semibold))
                             .frame(minHeight: Tema.areaTocco, alignment: .leading)
                     }
@@ -326,7 +329,7 @@ struct OggiView: View {
         } else if oggi.daFare != nil {
             Carta {
                 Label {
-                    Text("\(Text(TestiOggi.tuttoAPosto).bold()) \(TestiOggi.nienteDaFare)")
+                    Text("\(Text(Catalogo.Df.tuttoPostoMister).bold()) \(Catalogo.Df.nonNienteSbrigare)")
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
@@ -343,7 +346,7 @@ struct OggiView: View {
             Image(systemName: "checklist")
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Color.verde)
-            Text(TestiOggi.daFare).font(.headline)
+            Text(Catalogo.Df.daFare).font(.headline)
             Text(String(n)).font(.headline).monospacedDigit().foregroundStyle(Color.testoSecondario)
         }
         .accessibilityElement(children: .ignore)
@@ -365,7 +368,7 @@ struct OggiView: View {
                 // solo il testo del server, come la web; la voce urgente lo dice anche a parole («Urgente»), non solo con il colore
                 Group {
                     if urgente {
-                        Text("\(Text(TestiOggi.urgente).bold().foregroundStyle(Color.malus)) \(c.testo)")
+                        Text("\(Text(Catalogo.Df.urgente).bold().foregroundStyle(Color.malus)) \(c.testo)")
                     } else {
                         Text(c.testo)
                     }
@@ -385,7 +388,7 @@ struct OggiView: View {
     @ViewBuilder
     private func pulsanteDaFare(_ c: DaFareVoce) -> some View {
         if let d = c.destinazione?.destinazione {
-            Button(c.azione ?? "Apri") { vaiA(d, tipo: c.tipo) }
+            Button(c.azione ?? Catalogo.Df.apri) { vaiA(d, tipo: c.tipo) }
                 .font(.subheadline.weight(.semibold))
                 .buttonStyle(.bordered)
                 .tint(Color.verde)
@@ -424,8 +427,8 @@ struct OggiView: View {
     @ViewBuilder
     private var daControllare: some View {
         if !vm.daControllare.isEmpty {
-            Carta(TestiOggi.daControllare, simbolo: "exclamationmark.triangle") {
-                Text(TestiOggi.daControllareSotto).font(.caption).foregroundStyle(Color.testoSecondario)
+            Carta(Catalogo.Oggi.daControllare, simbolo: "exclamationmark.triangle") {
+                Text(Catalogo.Oggi.giocatoriFormazioneCon).font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
                 ForEach(Array(vm.daControllare.enumerated()), id: \.element.ident) { i, a in
                     RigaConFilo(prima: i == 0) { riga(a) }
@@ -438,7 +441,7 @@ struct OggiView: View {
     private var indisponibili: some View {
         if !vm.indisponibili.isEmpty {
             Carta {
-                DisclosureGroup(TestiOggi.indisponibili(vm.indisponibili.count)) {
+                DisclosureGroup(Catalogo.Oggi.indisponibili(n: String(vm.indisponibili.count))) {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(Array(vm.indisponibili.enumerated()), id: \.element.ident) { i, a in
                             RigaConFilo(prima: i == 0) { riga(a) }
@@ -454,7 +457,7 @@ struct OggiView: View {
     @ViewBuilder
     private var diffidati: some View {
         if !vm.diffidati.isEmpty {
-            Carta(TestiOggi.diffidati, simbolo: "rectangle.portrait.fill") {
+            Carta(Catalogo.Oggi.diffidati, simbolo: "rectangle.portrait.fill") {
                 ForEach(Array(vm.diffidati.enumerated()), id: \.element.ident) { i, a in
                     RigaConFilo(prima: i == 0) { riga(a) }
                 }
@@ -502,7 +505,7 @@ struct OggiView: View {
     @ViewBuilder
     private func migliori(_ oggi: Oggi) -> some View {
         if let lista = oggi.migliori, !lista.isEmpty {
-            Carta(TestiOggi.migliori, simbolo: "star.fill") {
+            Carta(Catalogo.Oggi.tuoiMiglioriDella, simbolo: "star.fill") {
                 ForEach(Array(lista.enumerated()), id: \.element.id) { i, g in
                     RigaConFilo(prima: i == 0) { RigaGiocatore(g: g, apribile: true) }
                 }

@@ -49,11 +49,9 @@ struct ContoAllaRovesciaTests {
         }
     }
 
-    @Test("Giorni e ore con le parole della web (`oggi.giorni_ore` di testi.js)", arguments: [1, 3])
+    @Test("Giorni e ore con le parole della web (`oggi.giorni_ore` del catalogo)", arguments: [1, 3])
     func giorniOreDellaWeb(giorni: Int) throws {
-        let web = try TestiWeb()
-        let chiave = giorni == 1 ? "oggi.giorni_ore.one" : "oggi.giorni_ore.other"
-        let atteso = try web.italiano(chiave).replacingOccurrences(of: "{n}", with: "\(giorni)").replacingOccurrences(of: "{h}", with: "5")
+        let atteso = Catalogo.Oggi.giorniOre(giorni, h: "5")
         let fine = try scadenza()
         let secondi = Double(giorni) * 86400 + 5 * 3600 + 10 * 60
         #expect(Quando.contoAllaRovescia(fino: fine, adesso: fine.addingTimeInterval(-secondi)) == atteso)

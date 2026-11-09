@@ -338,7 +338,8 @@ def test_ogni_20_minuti_scene_a_390_e_1440_con_accesso_e_solo_misure():
     assert "SCHIERAXI_UTENTE: ${{ secrets.PROVA_UTENTE }}" in testo
     assert "SCHIERAXI_PASSWORD: ${{ secrets.PROVA_PASSWORD }}" in testo
     assert "--require-hashes" in testo and ".github/playwright-requisiti.txt" in testo
-    assert "Collaudo della prova: v" in testo and "La prova non si aggiorna" in testo and "--label P1" in testo
+    script = PERCORSO.read_text(encoding="utf-8")                   # i testi delle issue li scrive «segnala» (#549)
+    assert "Collaudo della prova: v" in script and "La prova non si aggiorna" in script and '"--label", "P1"' in script
 
 
 def test_nessuna_foto_negli_artifact():
@@ -366,3 +367,225 @@ def test_collaudo_rosso_rende_rossa_la_corsa():
     assert condizione, "manca il passo che esce con errore"
     assert '"$OK" = "false"' in condizione.group(1) and '"$DECISIONE" = "in-ritardo"' in condizione.group(1)
     assert "salta" not in condizione.group(1)
+
+
+# =========================== collaudo quotidiano (issue #549) ===========================
+# La misura «giornata senza errori» chiede almeno un collaudo vero al giorno: una versione già collaudata si collauda di nuovo
+# quando l'ultimo collaudo ha più di 20 ore, e un collaudo ripetuto che non passa commenta l'issue già aperta.
+ADESSO = datetime(2026, 11, 9, 5, 4, tzinfo=timezone.utc)
+
+
+def _iso(quando: datetime) -> str:
+    return quando.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_decidi_salta_una_versione_appena_collaudata(cp):
+    assert cp.decidi("v1.442", "1.442", 90, {"1.442"}, ore_dal_collaudo=1) == "salta"
+    assert cp.decidi("v1.442", "1.442", 90, {"1.442"}, ore_dal_collaudo=19.9) == "salta"
+
+
+def test_decidi_collauda_di_nuovo_dopo_20_ore(cp):
+    assert cp.decidi("v1.442", "1.442", 2000, {"1.442"}, ore_dal_collaudo=21) == "collauda"
+    assert cp.decidi("v1.442", "1.442", 2000, {"1.442"}, ore_dal_collaudo=20.1) == "collauda"
+
+
+def test_decidi_collauda_una_versione_mai_collaudata(cp):
+    assert cp.decidi("v1.442", "1.442", 2000, set(), ore_dal_collaudo=None) == "collauda"
+
+
+def test_decidi_dopo_20_ore_non_collauda_una_prova_senza_la_versione_nuova(cp):
+    """Il collaudo quotidiano vale per la versione in vigore sulla prova: una prova indietro resta «in ritardo»."""
+    assert cp.decidi("v1.442", "1.441", 2000, {"1.442"}, ore_dal_collaudo=30) == "in-ritardo"
+
+
+def _artifact(quando: datetime, scaduto=False) -> dict:
+    return {"name": "collaudo-v1.442", "created_at": _iso(quando), "expired": scaduto}
+
+
+def test_ore_dall_ultimo_collaudo_dal_segno_piu_recente(cp, monkeypatch):
+    chiesti = []
+    segni = {"total_count": 3, "artifacts": [_artifact(ADESSO - timedelta(hours=30)), _artifact(ADESSO - timedelta(hours=2)),
+                                             _artifact(ADESSO - timedelta(minutes=30), scaduto=True)]}
+    monkeypatch.setattr(cp, "_gh", lambda *a: chiesti.append(a) or json.dumps(segni))
+    assert cp.ore_dall_ultimo_collaudo("1.442", ADESSO) == pytest.approx(2)
+    assert "name=collaudo-v1.442" in " ".join(chiesti[0])
+
+
+def test_ore_dall_ultimo_collaudo_senza_segni_e_none(cp, monkeypatch):
+    soli_scaduti = {"total_count": 1, "artifacts": [_artifact(ADESSO - timedelta(hours=1), scaduto=True)]}
+    for risposta in ({"total_count": 0, "artifacts": []}, soli_scaduti):
+        monkeypatch.setattr(cp, "_gh", lambda *a, r=risposta: json.dumps(r))
+        assert cp.ore_dall_ultimo_collaudo("1.442", ADESSO) is None
+
+
+@pytest.mark.parametrize("ore_fa, atteso", [(1, "salta"), (21, "collauda"), (None, "collauda")])
+def test_comando_decidi_ripete_il_collaudo_dopo_20_ore(cp, tmp_path, monkeypatch, ore_fa, atteso):
+    uscita = tmp_path / "uscita.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(uscita))
+    monkeypatch.setenv("PROVA_URL", "https://prova.esempio.invalid")
+    monkeypatch.setenv("PROVA_UTENTE", "utente-finto")
+    monkeypatch.setenv("PROVA_PASSWORD", "segreto-finto")
+    monkeypatch.setattr(cp, "_adesso", lambda: ADESSO)
+    release = [{"tagName": "v1.442", "createdAt": _iso(ADESSO - timedelta(hours=40)), "isDraft": False}]
+    segni = [] if ore_fa is None else [_artifact(ADESSO - timedelta(hours=ore_fa))]
+    monkeypatch.setattr(cp, "_gh", lambda *a: json.dumps(release) if a[0] == "release"
+                        else json.dumps({"total_count": len(segni), "artifacts": segni}))
+    monkeypatch.setattr(cp, "versione_della_prova", lambda url, utente, password: "1.442")
+    assert cp.main(["decidi"]) == 0
+    righe = uscita.read_text(encoding="utf-8").splitlines()
+    assert f"esito={atteso}" in righe and "versione=1.442" in righe
+
+
+def _decidi_con(cp, tmp_path, monkeypatch, argomenti, prova, ore_fa):
+    uscita = tmp_path / "uscita.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(uscita))
+    monkeypatch.setenv("PROVA_URL", "https://prova.esempio.invalid")
+    monkeypatch.setenv("PROVA_UTENTE", "utente-finto")
+    monkeypatch.setenv("PROVA_PASSWORD", "segreto-finto")
+    monkeypatch.setattr(cp, "_adesso", lambda: ADESSO)
+    release = [{"tagName": "v1.442", "createdAt": _iso(ADESSO - timedelta(hours=40)), "isDraft": False}]
+    segni = [_artifact(ADESSO - timedelta(hours=ore_fa))]
+    monkeypatch.setattr(cp, "_gh", lambda *a: json.dumps(release) if a[0] == "release"
+                        else json.dumps({"total_count": len(segni), "artifacts": segni}))
+    monkeypatch.setattr(cp, "versione_della_prova", lambda url, utente, password: prova)
+    assert cp.main(argomenti) == 0
+    return uscita.read_text(encoding="utf-8").splitlines()
+
+
+def test_corsa_quotidiana_collauda_anche_se_recente(cp, tmp_path, monkeypatch):
+    """La corsa fissa delle 5:17 è l'unica sicura: collauda la versione in vigore anche se l'ultimo collaudo ha poche ore
+    (una corsa saltuaria della sera prima non deve lasciare il giorno dopo senza collaudo)."""
+    assert "esito=collauda" in _decidi_con(cp, tmp_path, monkeypatch, ["decidi", "--quotidiano"], "1.442", 10.6)
+    assert "esito=salta" in _decidi_con(cp, tmp_path, monkeypatch, ["decidi"], "1.442", 10.6)
+    # una prova senza l'ultima versione resta «in ritardo» anche nella corsa quotidiana
+    assert "esito=in-ritardo" in _decidi_con(cp, tmp_path, monkeypatch, ["decidi", "--quotidiano"], "1.441", 10.6)
+
+
+def test_il_workflow_passa_quotidiano_solo_alla_corsa_delle_5_17():
+    testo = _testo()
+    blocco = _job(testo)["decidi"]
+    assert "PIANO: ${{ github.event.schedule }}" in blocco
+    assert re.search(r'if \[ "\$PIANO" = "17 5 \* \* \*" \]; then\s*\n\s*python -I script/ci/collaudo_prova.py decidi --quotidiano',
+                     blocco)
+    assert 'cron: "17 5 * * *"' in testo
+
+
+def test_l_errore_di_gh_resta_nel_registro(cp, monkeypatch, capsys):
+    """Con l'uscita catturata, il messaggio di un `gh issue create` che fallisce si perdeva: deve finire nel registro."""
+    import subprocess
+
+    def gh_che_fallisce(comando, **k):
+        raise subprocess.CalledProcessError(1, comando, output="", stderr="HTTP 422: etichetta P1 non trovata\n")
+
+    monkeypatch.setattr(cp.subprocess, "run", gh_che_fallisce)
+    with pytest.raises(subprocess.CalledProcessError):
+        cp._gh("issue", "create", "--title", "x", "--body", "y")
+    errori = capsys.readouterr().err
+    assert "HTTP 422: etichetta P1 non trovata" in errori and "gh issue create" in errori
+
+
+# --------------------------- issue del collaudo (job «segnala») ---------------------------
+class _GitHubFinto:
+    """Le issue aperte e le chiamate a `gh issue ...`, come le farebbe il job «segnala»."""
+
+    def __init__(self, aperte):
+        self.aperte = list(aperte)
+        self.chiamate = []
+
+    def __call__(self, *argomenti):
+        self.chiamate.append(argomenti)
+        if argomenti[:2] == ("issue", "list"):
+            return json.dumps(self.aperte)
+        return ""
+
+    def fatte(self, azione):
+        return [c for c in self.chiamate if c[:2] == ("issue", azione)]
+
+
+def _segnala(cp, monkeypatch, aperte, **ambiente):
+    gh = _GitHubFinto(aperte)
+    monkeypatch.setattr(cp, "_gh", gh)
+    valori = {"DECISIONE": "collauda", "VERSIONE": "1.442", "PROVA": "1.442", "MINUTI": "30", "OK": "false",
+              "DETTAGLIO": "oggi 390 chiaro: 2 errori della console; rosa 390 scuro: la pagina scorre di lato",
+              "CORSA": "https://github.invalid/corsa/1"}
+    valori.update(ambiente)
+    for nome, valore in valori.items():
+        monkeypatch.setenv(nome, valore)
+    assert cp.main(["segnala"]) == 0
+    return gh
+
+
+def test_segnala_collaudo_rosso_apre_una_issue_p1(cp, monkeypatch):
+    gh = _segnala(cp, monkeypatch, [{"number": 7, "title": "Collaudo della prova: v1.441 non passa"}])
+    (crea,) = gh.fatte("create")
+    assert crea[crea.index("--title") + 1] == "Collaudo della prova: v1.442 non passa"
+    assert "P1" in crea and "ci" in crea
+    corpo = crea[crea.index("--body") + 1]
+    assert "- oggi 390 chiaro: 2 errori della console\n- rosa 390 scuro" in corpo and "https://github.invalid/corsa/1" in corpo
+    assert not gh.fatte("comment") and not gh.fatte("close")        # l'issue di un'altra versione resta com'è
+
+
+def test_segnala_collaudo_ripetuto_rosso_commenta_l_issue_della_versione(cp, monkeypatch):
+    """Il collaudo quotidiano rifà la stessa versione: una sola issue per versione, i giri dopo la commentano."""
+    gh = _segnala(cp, monkeypatch, [{"number": 3, "title": "La prova non si aggiorna"},
+                                    {"number": 12, "title": "Collaudo della prova: v1.442 non passa"}])
+    assert not gh.fatte("create")
+    (commento,) = [c for c in gh.fatte("comment") if c[2] == "12"]
+    assert "Ancora non passa" in commento[commento.index("--body") + 1]
+
+
+def test_segnala_collaudo_che_passa_chiude_le_issue_del_collaudo(cp, monkeypatch):
+    gh = _segnala(cp, monkeypatch, [{"number": 7, "title": "Collaudo della prova: v1.441 non passa"},
+                                    {"number": 12, "title": "Collaudo della prova: v1.442 non passa"},
+                                    {"number": 549, "title": "Collaudo della prova: almeno una volta al giorno"}], OK="true")
+    assert sorted(c[2] for c in gh.fatte("close")) == ["12", "7"]
+    assert not gh.fatte("create")
+
+
+def test_segnala_collaudo_non_concluso_non_tocca_le_issue(cp, monkeypatch):
+    gh = _segnala(cp, monkeypatch, [{"number": 12, "title": "Collaudo della prova: v1.442 non passa"}], OK="", DETTAGLIO="")
+    assert not gh.fatte("create") and not gh.fatte("comment") and not gh.fatte("close")
+
+
+def test_segnala_prova_in_ritardo_una_sola_issue(cp, monkeypatch):
+    gh = _segnala(cp, monkeypatch, [], DECISIONE="in-ritardo", PROVA="1.441", OK="", DETTAGLIO="", MINUTI="55")
+    (crea,) = gh.fatte("create")
+    assert crea[crea.index("--title") + 1] == "La prova non si aggiorna" and "P2" in crea
+    assert "1.441" in crea[crea.index("--body") + 1] and "55 minuti" in crea[crea.index("--body") + 1]
+    gh = _segnala(cp, monkeypatch, [{"number": 3, "title": "La prova non si aggiorna"}],
+                  DECISIONE="in-ritardo", PROVA="1.441", OK="", DETTAGLIO="")
+    assert not gh.fatte("create") and not gh.fatte("comment")
+
+
+def test_segnala_prova_aggiornata_chiude_il_ritardo(cp, monkeypatch):
+    gh = _segnala(cp, monkeypatch, [{"number": 3, "title": "La prova non si aggiorna"}], DECISIONE="salta", OK="", DETTAGLIO="")
+    assert [c[2] for c in gh.fatte("close")] == ["3"]
+
+
+def test_segnala_versione_strana_non_finisce_nei_titoli(cp, monkeypatch):
+    gh = _GitHubFinto([])
+    monkeypatch.setattr(cp, "_gh", gh)
+    for nome, valore in {"DECISIONE": "collauda", "VERSIONE": "1.442; rm -rf", "OK": "false", "DETTAGLIO": "x"}.items():
+        monkeypatch.setenv(nome, valore)
+    assert cp.main(["segnala"]) == 1
+    assert not gh.fatte("create")
+
+
+# --------------------------- workflow ---------------------------
+def test_un_orario_fisso_al_giorno_oltre_a_quello_frequente():
+    """GitHub fa partire di rado le corse «ogni 20 minuti»: un orario fisso quotidiano, poco affollato (4-6 UTC), in più."""
+    testo = _testo()
+    eventi = testo[:re.search(r"^permissions:", testo, re.M).start()]
+    crons = re.findall(r"cron: \"([^\"]+)\"", eventi)
+    assert any(re.fullmatch(r"[0-9,]+ \* \* \* \*", c) for c in crons), crons
+    quotidiani = [c for c in crons if re.fullmatch(r"\d{1,2} \d{1,2} \* \* \*", c)]
+    assert quotidiani, crons
+    minuto, ora = (int(x) for x in quotidiani[0].split()[:2])
+    assert 4 <= ora <= 6 and minuto not in (0, 30)                  # all'ora tonda GitHub è più affollato
+
+
+def test_segnala_usa_lo_script_senza_segreti():
+    blocco = _job(_testo())["segnala"]
+    assert "collaudo_prova.py segnala" in blocco
+    assert "secrets." not in blocco and "persist-credentials: false" in blocco
+    assert "contents: read" in blocco and "issues: write" in blocco

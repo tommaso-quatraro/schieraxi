@@ -3,22 +3,18 @@ import Testing
 @testable import Schieraxi
 
 /// Oggi a giornata in corso e finita con le frasi della web (#436, parte di #167): `cardInCorso`, `valoreLive` e `cardRiepilogo`
-/// di `fanta/web/app.js`, testi `oggi.*` di `fanta/web/testi.js`. Le frasi si confrontano con `testi.js` (`TestiWeb`), i numeri
-/// con la stessa risposta del server: una parola cambiata su un lato solo fa fallire il test.
+/// di `fanta/web/app.js`, testi `oggi.*` del catalogo comune (`fanta/testi/oggi.json`, in Swift `Catalogo.Oggi`, #494). Le frasi
+/// di `TestiFase` si confrontano con `Catalogo`, i numeri con la stessa risposta del server: una parola cambiata su un lato solo
+/// fa fallire il test.
 @Suite("Oggi in corso e finita con le frasi della web (#436)")
 struct OggiFasiComeLaWebTests {
-    /// `tp(chiave, n)` della web: la forma `.one` per 1, `.other` per gli altri numeri, con `{n}` al posto del numero.
-    static func plurale(_ chiave: String, _ n: Int) throws -> String {
-        try TestiWeb().italiano("\(chiave).\(n == 1 ? "one" : "other")").replacingOccurrences(of: "{n}", with: String(n))
-    }
-
     // MARK: il difetto dei voti
 
     /// `ancora_da_giocare` conta chi va a punteggio e deve ancora giocare o sta giocando (`docs/API.md`, «fasi della giornata»):
     /// chi ha già giocato e aspetta il voto non c'è. L'iPhone scriveva «Mancano i voti di 2 giocatori», che è falso.
     @Test("«2 giocatori devono ancora giocare», non «Mancano i voti»: il numero è di chi deve ancora giocare", arguments: [1, 2, 6])
     func ancoraDaGiocare(n: Int) throws {
-        let web = try Self.plurale("oggi.ancora_da_giocare", n)
+        let web = Catalogo.Oggi.ancoraDaGiocare(n)
         let frase = try #require(TestiFase.ancora(n))
         #expect(frase == web)
         #expect(!frase.contains("voti"), "il numero non è quello dei voti che mancano: \(frase)")
@@ -45,15 +41,14 @@ struct OggiFasiComeLaWebTests {
         let senzaVoto = b.giocatori.filter { $0.aPunteggio && $0.stato != "fatto" }.count
         #expect(b.ancoraDaGiocare == daGiocare, "il conto del server è quello di chi deve ancora giocare")
         #expect(senzaVoto == 3, "i voti che mancano sono di più: non è lo stesso numero")
-        let web = try Self.plurale("oggi.ancora_da_giocare", 2)
+        let web = Catalogo.Oggi.ancoraDaGiocare(2)
         #expect(TestiFase.ancora(b.ancoraDaGiocare) == web)
         #expect(web == "2 giocatori devono ancora giocare")
     }
 
     @Test("Hanno giocato tutti: «Hanno giocato tutti: mancano solo i voti ufficiali.»; senza il numero niente riga")
-    func tuttiGiocato() throws {
-        let web = try TestiWeb().italiano("oggi.tutti_giocato")
-        #expect(TestiFase.ancora(0) == web)
+    func tuttiGiocato() {
+        #expect(TestiFase.ancora(0) == Catalogo.Oggi.tuttiGiocato)
         let nessuna: String? = nil
         #expect(TestiFase.ancora(nil) == nessuna, "server senza il numero: la riga non si inventa")
     }
@@ -61,31 +56,28 @@ struct OggiFasiComeLaWebTests {
     // MARK: chi va a punteggio
 
     @Test("Chi deve ancora giocare ha la data della sua partita («sab 8 18:00»), come la web, non «Da giocare»")
-    func dataDiChiDeveGiocare() throws {
+    func dataDiChiDeveGiocare() {
         let g = GiocatoreInCorso(id: 1, nome: "Ivo Sorvani", stato: "da_giocare", data: "2026-11-08 18:00")
         #expect(TestiFase.valore(g) == Quando.leggibile("2026-11-08 18:00", adesso: Orologio.adesso()))
         let senzaData = GiocatoreInCorso(id: 1, nome: "Ivo Sorvani", stato: "da_giocare")
-        let web = try TestiWeb().italiano("oggi.st_da_giocare")
-        #expect(TestiFase.valore(senzaData) == web, "senza la data, come la web: «Da giocare»")
+        #expect(TestiFase.valore(senzaData) == Catalogo.Oggi.stDaGiocare, "senza la data, come la web: «Da giocare»")
     }
 
     @Test("Lo stato della partita con le parole della web", arguments: [
-        ("senza_voto", "oggi.st_senza_voto"), ("attesa_voti", "oggi.st_attesa_voti"),
-        ("in_corso", "oggi.st_in_corso"), ("rinviata", "oggi.st_rinviata"),
+        ("senza_voto", Catalogo.Oggi.stSenzaVoto), ("attesa_voti", Catalogo.Oggi.stAttesaVoti),
+        ("in_corso", Catalogo.Oggi.stInCorso), ("rinviata", Catalogo.Oggi.stRinviata),
     ])
-    func statoComeLaWeb(stato: String, chiave: String) throws {
-        let web = try TestiWeb().italiano(chiave)
-        #expect(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo Sorvani", stato: stato)) == web)
+    func statoComeLaWeb(stato: String, testo: String) {
+        #expect(TestiFase.valore(GiocatoreInCorso(id: 1, nome: "Ivo Sorvani", stato: stato)) == testo)
     }
 
     // MARK: cambi dalla panchina
 
     @Test("Cambi dalla panchina: «Bastrani → Dimarzi», «Buonvicini → nessun sostituto», «già fatto» o «probabile»")
-    func cambi() throws {
-        let web = try TestiWeb()
-        let fatto = try web.italiano("oggi.cambio_fatto")
-        let probabile = try web.italiano("oggi.cambio_probabile")
-        let nessuno = try web.italiano("oggi.nessun_sostituto")
+    func cambi() {
+        let fatto = Catalogo.Oggi.cambioFatto
+        let probabile = Catalogo.Oggi.cambioProbabile
+        let nessuno = Catalogo.Oggi.nessunSostituto
         let certo = CambioPanchina(esce: PersonaCambio(id: 1, nome: "Bastrani"), entra: PersonaCambio(id: 2, nome: "Dimarzi"),
                                    certa: true, motivo: "senza_voto")
         #expect(TestiFase.cambio(certo) == "Bastrani → Dimarzi")
@@ -98,10 +90,8 @@ struct OggiFasiComeLaWebTests {
     // MARK: giornata finita
 
     @Test("Giornata finita: «Con la consigliata: 72,0 punti (66,1 attesi).» e «Il confronto con la consigliata arriva nel Diario.»")
-    func riepilogo() throws {
-        let web = try TestiWeb()
-        let conConsigliata = try web.italiano("oggi.con_consigliata")
-            .replacingOccurrences(of: "{fatti}", with: "72,0").replacingOccurrences(of: "{attesi}", with: "66,1")
+    func riepilogo() {
+        let conConsigliata = Catalogo.Oggi.conConsigliata(attesi: "66,1", fatti: "72,0")
         let r = RiepilogoGiornata(giornata: 10, giornataLega: 7, formazioneDi: "tua", nelDiario: true, puntiFatti: 70.5, puntiAttesi: 66.1,
                                   consigliata: PuntiConsigliata(puntiFatti: 72, puntiAttesi: 66.1))
         #expect(TestiFase.confronto(r) == conConsigliata)
@@ -109,20 +99,18 @@ struct OggiFasiComeLaWebTests {
         let consigliata = RiepilogoGiornata(formazioneDi: "consigliata", nelDiario: true, puntiFatti: 72,
                                             consigliata: PuntiConsigliata(puntiFatti: 72, puntiAttesi: 66.1))
         #expect(TestiFase.confronto(consigliata) == nessuna, "con la consigliata schierata la web non scrive il confronto")
-        let nota = try web.italiano("oggi.confronto_in_arrivo")
+        let nota = Catalogo.Oggi.confrontoInArrivo
         #expect(TestiFase.notaDiario(RiepilogoGiornata(nelDiario: false, puntiFatti: 50)) == nota)
         #expect(TestiFase.notaDiario(r) == nessuna)
     }
 
     @Test("Prossima giornata nella carta della giornata finita: «Giornata 9 · 12ª di Serie A: la formazione si chiude …» e da quando prepararla")
     func prossima() throws {
-        let web = try TestiWeb()
         let adesso = try #require(Quando.data("2026-11-09 10:00"))
-        let chiude = try web.italiano("oggi.prossima_chiude")
-            .replacingOccurrences(of: "{g}", with: "Giornata 9 · 12ª di Serie A")
-            .replacingOccurrences(of: "{quando}", with: Quando.leggibile("2026-11-14 14:30", adesso: adesso))
-        let da = try web.italiano("oggi.prossima_da").replacingOccurrences(of: "{quando}", with: Quando.leggibile("2026-11-11 14:30", adesso: adesso))
-        let pronta = try web.italiano("oggi.prossima_pronta")
+        let chiude = Catalogo.Oggi.prossimaChiude(g: "Giornata 9 · 12ª di Serie A",
+                                                  quando: Quando.leggibile("2026-11-14 14:30", adesso: adesso))
+        let da = Catalogo.Oggi.prossimaDa(quando: Quando.leggibile("2026-11-11 14:30", adesso: adesso))
+        let pronta = Catalogo.Oggi.prossimaPronta
 
         let presto = ProssimaGiornata(giornata: 12, giornataLega: 9, scadenza: "2026-11-14 14:30", preparaDa: "2026-11-11 14:30")
         #expect(TestiFase.prossima(presto, adesso: adesso) == "\(chiude) \(da)")
@@ -139,46 +127,32 @@ struct OggiFasiComeLaWebTests {
 
     // MARK: parole fisse
 
-    @Test("Titoli e frasi fisse della giornata in corso, già iniziata e finita, di Da fare e delle partite: quelle di testi.js", arguments: [
-        ("oggi.punti_finora", TestiFase.puntiFinora),
-        ("oggi.a_fine_giornata", TestiFase.aFineGiornata),
-        ("oggi.dalla_panchina", TestiFase.dallaPanchina),
-        ("oggi.cambi_panchina", TestiFase.cambiPanchina),
-        ("oggi.tutti_giocato", TestiFase.tuttiGiocato),
-        ("oggi.nessun_sostituto", TestiFase.nessunSostituto),
-        ("oggi.gia_iniziata", TestiFase.giaIniziata),
-        ("oggi.gia_iniziata_testo", TestiFase.giaIniziataTesto),
-        ("oggi.prepara_prossima", TestiFase.preparaProssima),
-        ("oggi.la_tua_formazione", TestiFase.formazioneDi(RiepilogoGiornata(formazioneDi: "tua"))),
-        ("oggi.la_consigliata", TestiFase.formazioneDi(RiepilogoGiornata(formazioneDi: "consigliata"))),
-        ("oggi.punti_fatti", TestiFase.puntiFatti),
-        ("oggi.punti_attesi", TestiFase.puntiAttesi),
-        ("oggi.apri_diario", TestiFase.apriDiario),
-        ("df.da_fare", TestiOggi.daFare),
-        ("df.urgente", TestiOggi.urgente),
-        ("df.tutto_posto_mister", TestiOggi.tuttoAPosto),
-        ("df.non_niente_sbrigare", TestiOggi.nienteDaFare),
-        ("live.aggiornamento", TestiOggi.inAggiornamento),
-        ("live.sospesa", TestiOggi.sospesa),
+    /// `TestiFase` (in `Domain/FasiGiornata.swift`) ha ancora i testi scritti a mano: qui si confrontano con il catalogo.
+    /// Da fare e le partite del turno usano direttamente `Catalogo.Df` e `Catalogo.Live` (prova in `OggiDalCatalogoTests`).
+    @Test("Titoli e frasi fisse della giornata in corso, già iniziata e finita: quelle del catalogo", arguments: [
+        (TestiFase.puntiFinora, Catalogo.Oggi.puntiFinora),
+        (TestiFase.aFineGiornata, Catalogo.Oggi.aFineGiornata),
+        (TestiFase.dallaPanchina, Catalogo.Oggi.dallaPanchina),
+        (TestiFase.cambiPanchina, Catalogo.Oggi.cambiPanchina),
+        (TestiFase.tuttiGiocato, Catalogo.Oggi.tuttiGiocato),
+        (TestiFase.nessunSostituto, Catalogo.Oggi.nessunSostituto),
+        (TestiFase.giaIniziata, Catalogo.Oggi.giaIniziata),
+        (TestiFase.giaIniziataTesto, Catalogo.Oggi.giaIniziataTesto),
+        (TestiFase.preparaProssima, Catalogo.Oggi.preparaProssima),
+        (TestiFase.formazioneDi(RiepilogoGiornata(formazioneDi: "tua")), Catalogo.Oggi.laTuaFormazione),
+        (TestiFase.formazioneDi(RiepilogoGiornata(formazioneDi: "consigliata")), Catalogo.Oggi.laConsigliata),
+        (TestiFase.puntiFatti, Catalogo.Oggi.puntiFatti),
+        (TestiFase.puntiAttesi, Catalogo.Oggi.puntiAttesi),
+        (TestiFase.apriDiario, Catalogo.Oggi.apriDiario),
     ])
-    func paroleComeLaWeb(chiave: String, iPhone: String) throws {
-        let web = try TestiWeb().italiano(chiave)
-        #expect(iPhone == web)
+    func paroleComeLaWeb(iPhone: String, catalogo: String) {
+        #expect(iPhone == catalogo)
     }
 
     @Test("«attesi prima: 65,5» e «≈ 77,7» come la web")
-    func cifreInCorso() throws {
-        let web = try TestiWeb().italiano("oggi.attesi_prima").replacingOccurrences(of: "{n}", with: "65,5")
-        #expect(TestiFase.attesiPrima(65.5) == web)
+    func cifreInCorso() {
+        #expect(TestiFase.attesiPrima(65.5) == Catalogo.Oggi.attesiPrima(n: "65,5"))
         #expect(TestiFase.previsti(77.7) == "≈ 77,7")
-    }
-
-    @Test("Plurali come la web: «Un'altra cosa da fare», «Altre 3 cose da fare», «1 tuo titolare», «2 tuoi titolari»", arguments: [1, 2, 3])
-    func plurali(n: Int) throws {
-        let altre = try Self.plurale("df.altre", n)
-        #expect(TestiOggi.altreCose(n) == altre)
-        let titolari = try Self.plurale("oggi.n_titolari", n)
-        #expect(TestiOggi.tuoiTitolari(n) == titolari)
     }
 
     // MARK: entrato a giornata iniziata
@@ -222,7 +196,7 @@ struct OggiFasiComeLaWebTests {
         #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "primo_tempo", minuto: "12'")) == .inGioco(minuto: "12'"))
         #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "secondo_tempo")) == .inGioco(minuto: nil))
         #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "supplementari", golCasa: 2, golTrasferta: 2))
-                == .inGioco(minuto: TestiOggi.inAggiornamento))
+                == .inGioco(minuto: Catalogo.Live.aggiornamento))
         #expect(RigaPartitaView.diretta(PartitaLive(casa: "inter", trasferta: "roma", stato: "da_giocare")) == nil)
         #expect(RigaPartitaView.diretta(nil) == nil)
     }

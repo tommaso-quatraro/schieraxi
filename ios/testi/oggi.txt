@@ -1,0 +1,69 @@
+# Oggi: le chiavi della web che la schermata Oggi mostra. Poi: python script/testi.py --scrivi
+# (crea ios/Sources/Support/Catalogo/Catalogo+Oggi.swift, per esempio Catalogo.Oggi.tuaFormazione).
+
+# Testata, conto alla rovescia e benvenuto (OggiView)
+oggi.benvenuto_schieraxi
+oggi.per_cominciare_importa
+oggi.chiusa
+oggi.chiusa_dettaglio
+oggi.giorni_ore
+oggi.si_chiude
+oggi.prima_partita
+oggi.preparo
+
+# Carte di Oggi (TestiOggi, OggiView, CartaFormazioneOggi)
+oggi.tua_formazione
+oggi.tua_formazione_scelta
+oggi.punti_attesi
+oggi.apri_formazione
+oggi.mancano_probabili_formazioni
+oggi.novita_banner
+oggi.tuoi_migliori_della
+oggi.da_controllare
+oggi.giocatori_formazione_con
+oggi.indisponibili
+oggi.diffidati
+
+# Partite del turno (PartiteDelTurnoView, OggiViewModel)
+oggi.partite_del_turno
+oggi.data_da_definire
+oggi.partita_in_corso
+oggi.n_titolari
+
+# Giornata in corso, finita e «già iniziata» (TestiFase in Domain/FasiGiornata.swift: lì i testi sono ancora scritti a mano,
+# i test li confrontano con queste costanti)
+oggi.punti_finora
+oggi.a_fine_giornata
+oggi.attesi_prima
+oggi.ancora_da_giocare
+oggi.tutti_giocato
+oggi.dalla_panchina
+oggi.st_da_giocare
+oggi.st_senza_voto
+oggi.st_attesa_voti
+oggi.st_in_corso
+oggi.st_rinviata
+oggi.cambi_panchina
+oggi.cambio_fatto
+oggi.cambio_probabile
+oggi.nessun_sostituto
+oggi.giornata_finita
+oggi.la_tua_formazione
+oggi.la_consigliata
+oggi.punti_fatti
+oggi.con_consigliata
+oggi.confronto_in_arrivo
+oggi.apri_diario
+oggi.prossima_chiude
+oggi.prossima_pronta
+oggi.prossima_da
+oggi.gia_iniziata
+oggi.gia_iniziata_testo
+oggi.prepara_prossima
+
+# Partita rinviata (TestiRinvio in Domain/PartiteRinviate.swift, come sopra)
+oggi.rinvio_titolo_1
+oggi.rinvio_titolo_n
+oggi.rinvio_recupero
+oggi.rinvio_da_definire
+oggi.rinvio_miei
