@@ -3,8 +3,8 @@ import Testing
 @testable import Schieraxi
 
 /// Stato dei dati: il registro delle giornate (#344) con le parole della web (`cartaRegistro` di `fanta/web/app.js`, testi `sd.reg_*`
-/// di `fanta/web/testi.js`). La fixture `stato-dati-registro.json` è la risposta vera del server con 8 giornate misurate e la 9 persa
-/// (la controlla `tests/test_stato_dati_registro_web.py`, che prova la web sugli stessi numeri).
+/// del catalogo comune; `sd.reg_punti` si confronta ancora con `fanta/web/testi.js`). La fixture `stato-dati-registro.json` è la
+/// risposta vera del server con 8 giornate misurate e la 9 persa (la controlla `tests/test_stato_dati_registro_web.py`, che prova la web sugli stessi numeri).
 @Suite("Registro delle giornate in Stato dei dati")
 struct RegistroGiornateTests {
     private func registro() throws -> StatoDati.Registro {
@@ -128,49 +128,44 @@ struct RegistroGiornateTests {
         #expect(ParoleRegistro.giornata(g) == "9ª giornata di Serie A · 2026-27")
     }
 
-    // MARK: - stesse parole della web (testi.js)
+    // MARK: - stesse parole della web (catalogo)
 
     @Test("Titoli, spiegazioni, nomi delle misure e verdetti come la web")
-    func frasiComeLaWeb() throws {
-        let web = try TestiWeb()
-        #expect(try web.italiano("sd.reg_titolo") == ParoleRegistro.titolo)
-        #expect(try web.italiano("sd.reg_spiega") == ParoleRegistro.spiega)
-        #expect(try web.italiano("sd.reg_nessuna") == ParoleRegistro.nessuna)
-        #expect(try web.italiano("sd.reg_perse") == ParoleRegistro.titoloPerse)
-        #expect(try web.italiano("sd.reg_perse_spiega") == ParoleRegistro.spiegaPerse)
-        #expect(try web.italiano("sd.reg_i1") == ParoleRegistro.nome(.fantavoto))
-        #expect(try web.italiano("sd.reg_i2") == ParoleRegistro.nome(.gioca))
-        #expect(try web.italiano("sd.reg_i3") == ParoleRegistro.nome(.fascia))
-        #expect(try web.italiano("sd.reg_regge") == ParoleRegistro.Esito.regge.testo)
-        #expect(try web.italiano("sd.reg_non_regge") == ParoleRegistro.Esito.nonRegge.testo)
-        #expect(try web.italiano("sd.nessun_dato") == ParoleRegistro.Esito.senzaDati.testo)
+    func frasiComeLaWeb() {
+        #expect(Catalogo.Sd.regTitolo == ParoleRegistro.titolo)
+        #expect(Catalogo.Sd.regSpiega == ParoleRegistro.spiega)
+        #expect(Catalogo.Sd.regNessuna == ParoleRegistro.nessuna)
+        #expect(Catalogo.Sd.regPerse == ParoleRegistro.titoloPerse)
+        #expect(Catalogo.Sd.regPerseSpiega == ParoleRegistro.spiegaPerse)
+        #expect(Catalogo.Sd.regI1 == ParoleRegistro.nome(.fantavoto))
+        #expect(Catalogo.Sd.regI2 == ParoleRegistro.nome(.gioca))
+        #expect(Catalogo.Sd.regI3 == ParoleRegistro.nome(.fascia))
+        #expect(Catalogo.Sd.regRegge == ParoleRegistro.Esito.regge.testo)
+        #expect(Catalogo.Sd.regNonRegge == ParoleRegistro.Esito.nonRegge.testo)
+        #expect(Catalogo.Sd.nessunDato == ParoleRegistro.Esito.senzaDati.testo)
     }
 
     @Test("Plurali con i modelli della web", arguments: [1, 3])
-    func pluraliComeLaWeb(n: Int) throws {
-        let web = try TestiWeb()
-        let forma = n == 1 ? "one" : "other"
-        #expect(try riempi(web.italiano("sd.reg_servono.\(forma)"), ["n": "\(n)"]) == ParoleRegistro.Esito.servono(n).testo)
-        #expect(try riempi(web.italiano("sd.reg_media.\(forma)"), ["n": "\(n)"]) == ParoleRegistro.media(giornate: n))
+    func pluraliComeLaWeb(n: Int) {
+        #expect(Catalogo.Sd.regServono(n) == ParoleRegistro.Esito.servono(n).testo)
+        #expect(Catalogo.Sd.regMedia(n) == ParoleRegistro.media(giornate: n))
+        #expect(ParoleRegistro.Esito.servono(n).testo == (n == 1 ? "serve ancora 1 giornata" : "servono ancora \(n) giornate"))
     }
 
     @Test("Righe con i numeri: i modelli della web riempiti")
     func righeComeLaWeb() throws {
         let web = try TestiWeb()
         let r = try registro()
-        #expect(try riempi(web.italiano("sd.reg_i1_riga"), ["v": "−5,7%", "s": "−3%", "m": "1,00", "f": "1,06"])
-                == ParoleRegistro.dettaglio(.fantavoto, di: r))
+        #expect(Catalogo.Sd.regI1Riga(f: "1,06", m: "1,00", s: "−3%", v: "−5,7%") == ParoleRegistro.dettaglio(.fantavoto, di: r))
         let dieci = try riempi(web.italiano("sd.reg_punti.other"), ["n": "10"])
-        #expect(try riempi(web.italiano("sd.reg_i2_riga"), ["c": dieci, "sc": "5", "b": "0,100", "sb": "0,150"])
-                == ParoleRegistro.dettaglio(.gioca, di: r))
+        #expect(Catalogo.Sd.regI2Riga(b: "0,100", c: dieci, sb: "0,150", sc: "5") == ParoleRegistro.dettaglio(.gioca, di: r))
         let unPunto = try riempi(web.italiano("sd.reg_punti.one"), ["n": "1"])
         #expect(unPunto == ParoleRegistro.punti(0.01, per: 100))
-        #expect(try riempi(web.italiano("sd.reg_i3_riga"), ["v": "80%", "min": "72%", "max": "88%"])
-                == ParoleRegistro.dettaglio(.fascia, di: r))
+        #expect(Catalogo.Sd.regI3Riga(max: "88%", min: "72%", v: "80%") == ParoleRegistro.dettaglio(.fascia, di: r))
         let persa = try #require(ParoleRegistro.perse(r).first)
         // la giornata di Serie A come nel resto dell'app (docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»), poi la stagione
         #expect(ParoleRegistro.giornata(persa) == "9ª giornata di Serie A · 2026-27")
-        #expect(try riempi(web.italiano("sd.reg_giornata"), ["s": "2026-27", "g": TempiLega.serieA(9)]) == ParoleRegistro.giornata(persa))
+        #expect(Catalogo.Sd.regGiornata(g: TempiLega.serieA(9), s: "2026-27") == ParoleRegistro.giornata(persa))
     }
 
     // MARK: - demo (foto e anteprima)

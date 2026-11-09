@@ -285,7 +285,7 @@ final class CreditiViewModel: ViewModelBase {
         do {
             _ = try await server.corpoJSON("PUT", "/api/crediti", CreditiSquadre(crediti: crediti))
             for (nome, testo) in valori where originali[nome] != nil { originali[nome] = testo }
-            messaggio = "Crediti salvati."
+            messaggio = Catalogo.Lega.creditiSalvati
             Haptics.esito(riuscito: true)
         } catch {
             let conflitto = (error as? ErroreApi)?.eConflitto == true

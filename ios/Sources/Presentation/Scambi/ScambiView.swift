@@ -47,7 +47,7 @@ struct ScambiView: View {
                     }
                 }
             }
-            .navigationTitle("Scambi")
+            .navigationTitle(Catalogo.Lega.voceScambi)
             .ricercaGlobale()
             .navigationDestination(for: PaginaScambi.self) { _ in
                 AnalizzaScambioView(server: vm.server).navigationTitle(TestiScambi.costruisciTitolo).navigationBarTitleDisplayMode(.inline).ricercaGlobale()
@@ -80,7 +80,7 @@ struct ScambiView: View {
                 VistaVuota(titolo: TestiScambi.servonoAltreRoseTitolo, icona: "arrow.left.arrow.right",
                            descrizione: TestiScambi.servonoAltreRoseCorpo)
                 Button { apriImportazione() } label: {
-                    Label("Aggiorna le rose", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Label(Catalogo.Lega.voceImporta, systemImage: "square.and.arrow.down").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
                 .accessibilityHint("Apre l'importazione delle rose")

@@ -6,7 +6,7 @@
       "web": "titolo della carta = titolo della versione, sotto «Versione 1.432 · data»; «Nuovo» sulle versioni non ancora viste; prime 10, poi «Mostra le 42 versioni precedenti» (`vistaNovita`)",
       "iphone": "come la web: titolo della versione, sotto «Versione 1.432 · data», «Nuovo», prime 10, poi «Mostra le 42 versioni precedenti» (`NovitaView` in `LegaExtra.swift`, regole in `ParoleNovita`)",
       "forma": "web",
-      "chi": "fatto sull'iPhone (#441): `NovitaComeLaWebTests` confronta le frasi con `testi.js` e la regola con `app.js`",
+      "chi": "fatto sull'iPhone (#441): frasi dal catalogo dei testi (`Catalogo.Novita`, #496), `NovitaComeLaWebTests` confronta la regola con `app.js`",
       "stato": "fatto"
     }
   ]

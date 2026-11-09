@@ -1,7 +1,7 @@
 import Foundation
 
 /// Le parole degli indicatori del consiglio di formazione in Stato dei dati (#366), uguali alla web: `cartaConsiglio` di
-/// `fanta/web/app.js` e i testi `sd.cons_*` di `fanta/web/testi.js` (`ConsiglioFormazioneTests` li confronta). Soglie e verdetto
+/// `fanta/web/app.js` e i testi `sd.cons_*` del catalogo comune (`Catalogo+Sd.swift`; `ConsiglioFormazioneTests` prova le frasi composte). Soglie e verdetto
 /// («regge») arrivano dal server: qui si scrivono e basta, non si ricalcolano. Per chi legge ci sono le parole, mai le sigle C1-C4.
 enum ParoleConsiglio {
     /// I quattro indicatori, nell'ordine della web (sul server C1, C2, C3, C4).
@@ -16,18 +16,13 @@ enum ParoleConsiglio {
         case perche
     }
 
-    static let titolo = "Consiglio di formazione"
-    static let spiega = "Dopo ogni giornata l'app misura la consigliata mostrata prima della scadenza, nei Diari di tutti. "
-        + "La scelta semplice è quella di chi non ha l'app: schiera chi ha preso voto la giornata prima e ha la fantamedia più alta."
-    static let nessuna = "Ancora nessuna giornata misurata: i numeri arrivano dopo la fine della prima giornata."
+    static let titolo = Catalogo.Sd.consTitolo
+    static let spiega = Catalogo.Sd.consSpiega
+    static let nessuna = Catalogo.Sd.consNessuna
 
-    static func formazioni(_ n: Int) -> String {
-        Formato.plurale(n, "formazione", "formazioni")
-    }
+    static func formazioni(_ n: Int) -> String { Catalogo.Sd.consFormazioni(n) }
 
-    static func media(giornate n: Int, formazioni f: Int) -> String {
-        n == 1 ? "Media di 1 giornata, su \(formazioni(f))." : "Media delle ultime \(n) giornate, su \(formazioni(f))."
-    }
+    static func media(giornate n: Int, formazioni f: Int) -> String { Catalogo.Sd.consMedia(n, f: formazioni(f)) }
 
     /// La riga sotto il titolo: su quante giornate e formazioni è la media, o che non c'è ancora nessuna giornata misurata.
     static func sottotitolo(_ c: StatoDati.Consiglio) -> String {
@@ -37,10 +32,10 @@ enum ParoleConsiglio {
 
     static func nome(_ indicatore: Indicatore) -> String {
         switch indicatore {
-        case .valore: return "Punti in più della consigliata rispetto alla scelta semplice"
-        case .stabilita: return "Cambi della consigliata nelle 24 ore prima della scadenza"
-        case .chiGioca: return "Titolari che rischiano di non giocare"
-        case .perche: return "Scelte strane senza un motivo detto"
+        case .valore: return Catalogo.Sd.consC1
+        case .stabilita: return Catalogo.Sd.consC2
+        case .chiGioca: return Catalogo.Sd.consC3
+        case .perche: return Catalogo.Sd.consC4
         }
     }
 
@@ -61,18 +56,16 @@ enum ParoleConsiglio {
         let s = c.soglie
         switch indicatore {
         case .valore:
-            let semplice = "\(punti(c.menoS2)) punti a giornata (deve stare a \(ParoleRegistro.cifra(s?.c1)) o più)"
+            let semplice = Catalogo.Sd.consC1Riga(s: ParoleRegistro.cifra(s?.c1), v: punti(c.menoS2))
             guard let schierata = c.menoSchierata else { return semplice }
-            return semplice + " · \(punti(schierata)) rispetto alla formazione schierata, quando è diversa"
+            return semplice + " · " + Catalogo.Sd.consC1Schierata(w: punti(schierata))
         case .stabilita:
-            return "\(ParoleRegistro.cifra(c.cambi)) a formazione, in media · per meno di 1 punto atteso, senza un titolare diventato "
-                + "fuori o improbabile: \(intero(c.cambiSottoSoglia)) (devono essere \(ParoleRegistro.cifra(s?.c2)))"
+            return Catalogo.Sd.consC2Riga(c: ParoleRegistro.cifra(c.cambi), n: intero(c.cambiSottoSoglia), s: ParoleRegistro.cifra(s?.c2))
         case .chiGioca:
-            return "sotto il 20% o fuori: \(intero(c.improbabili)) · con un compagno di ruolo al 50% o più tra gli esclusi: "
-                + "\(intero(c.conCompagno)) (devono essere \(ParoleRegistro.cifra(s?.c3)))"
+            return Catalogo.Sd.consC3Riga(i: intero(c.improbabili), n: intero(c.conCompagno), s: ParoleRegistro.cifra(s?.c3))
         case .perche:
-            return "spiegate \(intero(c.spiegate)) su \(intero(c.storte)) (devono essere tutte) · titolari senza un motivo loro in "
-                + "«Perché questo numero»: \(ParoleRegistro.percento(c.senzaMotivo)) (al massimo \(ParoleRegistro.percento(s?.c4SenzaMotivo)))"
+            return Catalogo.Sd.consC4Riga(s: ParoleRegistro.percento(s?.c4SenzaMotivo), sp: intero(c.spiegate), st: intero(c.storte),
+                                          v: ParoleRegistro.percento(c.senzaMotivo))
         }
     }
 

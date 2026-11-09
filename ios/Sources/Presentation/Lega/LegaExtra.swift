@@ -286,7 +286,7 @@ struct RosaView: View {
             Task { await caricaDaFile(risultato, tipo: tipoFile) }
         }
         .alert(ParoleSquadre.indirizzoDellImmagine, isPresented: $chiediIndirizzo) {
-            TextField("https://…", text: $indirizzoScritto)
+            TextField(Catalogo.Lega.https, text: $indirizzoScritto)
                 .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
             Button(ParoleSquadre.usaCome(tipo: "stemma")) { Task { await vm.inviaDaIndirizzo(indirizzoScritto, tipo: "stemma") } }
             Button(ParoleSquadre.usaCome(tipo: "maglia")) { Task { await vm.inviaDaIndirizzo(indirizzoScritto, tipo: "maglia") } }
@@ -545,7 +545,7 @@ struct NovitaView: View {
             .refreshable { await caricatore.ricarica() }
             .avvisoDatiSalvati(caricatore)
         }
-        .titoloPagina("Novità")
+        .titoloPagina(Catalogo.Lega.voceNovita)
         .task {
             if vistaPrima == nil { vistaPrima = novitaVista }
             await caricatore.ricarica()
@@ -606,7 +606,7 @@ struct StatoDatiView: View {
                         }
                         Section(titolo: "Avanzate") {
                             // i nomi grezzi dei dati («dati-extra») si leggono meglio tradotti; la lista sta ripiegata
-                            DisclosureGroup("Ultimi aggiornamenti dei dati") {
+                            DisclosureGroup(Catalogo.Scambio.ultimiAggiornamenti) {
                                 ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(NomiDati.leggibile(a.cosa))
@@ -618,7 +618,7 @@ struct StatoDatiView: View {
                             }
                         }
                         if let probabili = s.probabili, !probabili.isEmpty {
-                            Section(titolo: "Probabili formazioni raccolte") {
+                            Section(titolo: Catalogo.Scambio.probabiliFormazioniRaccolt) {
                                 ForEach(probabili) { p in
                                     riga(TempiLega.serieA(p.giornata), Formato.plurale(p.giocatori ?? 0, "giocatore", "giocatori"))
                                 }
@@ -630,15 +630,15 @@ struct StatoDatiView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(g.gruppo)
                                         Text((g.n ?? 0) > 0
-                                             ? "\(Formato.plurale(g.n ?? 0, "giocatore", "giocatori")) · \((g.n ?? 0) == 1 ? "ha" : "hanno") giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? " (pochi dati)" : "")"
-                                             : "ancora nessun dato")
+                                             ? "\(Formato.plurale(g.n ?? 0, "giocatore", "giocatori")) · \((g.n ?? 0) == 1 ? "ha" : "hanno") giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? Catalogo.Sd.pochiDati : "")"
+                                             : Catalogo.Sd.nessunDato)
                                             .font(.caption).foregroundStyle(Color.testoSecondario)
                                     }
                                     .accessibilityElement(children: .combine)
                                 }
                             } header: { Text("Quanto sono giuste le previsioni").foregroundStyle(Color.testoSecondario) } footer: {
                                 VStack(alignment: .leading) {
-                                    Text((c.giornate ?? 0) > 0 ? "Giornate già giocate con le probabili raccolte: \(c.giornate ?? 0)." : "Appena finisce una giornata, qui si confronta chi era dato titolare con chi ha davvero preso voto.")
+                                    Text((c.giornate ?? 0) > 0 ? Catalogo.Sd.giornateGiocate(n: String(c.giornate ?? 0)) : Catalogo.Sd.appenaFinisce)
                                     // la taratura di «gioca N%» con le probabili (#379): frase e numeri del server, come la web
                                     if let taratura = ParoleRegistro.taratura(c.taratura) {
                                         Text(taratura)
@@ -676,7 +676,7 @@ struct StatoDatiView: View {
                              pronto: caricatore.dato != nil && (affidabilita.dato != nil || affidabilita.errore != nil))
             }
         }
-        .titoloPagina("Stato dei dati")
+        .titoloPagina(Catalogo.Av.stato)
         .refreshable { await caricatore.ricarica(); await affidabilita.ricarica() }
         .task { await caricatore.ricarica(); await affidabilita.ricarica() }
     }
@@ -721,7 +721,7 @@ struct CercaGiocatoreGiustoView: View {
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
                     .frame(minHeight: 44)
-                    .accessibilityLabel("Cerca il giocatore giusto per \(dubbio.nome)")
+                    .accessibilityLabel(Catalogo.Ar.cercaPer(nome: dubbio.nome))
             } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.nome)».").foregroundStyle(Color.testoSecondario) }
             if let errore = vm.errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {

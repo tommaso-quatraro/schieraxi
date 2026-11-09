@@ -1,0 +1,79 @@
+# Testi della web (fanta/testi/sd.json) che l'iPhone mostra in Stato dei dati: una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+# Registro delle giornate (ParoleRegistro)
+sd.reg_titolo
+sd.reg_spiega
+sd.reg_nessuna
+sd.reg_media
+sd.reg_perse
+sd.reg_perse_spiega
+sd.reg_i1
+sd.reg_i2
+sd.reg_i3
+sd.reg_i1_riga
+sd.reg_i2_riga
+sd.reg_i3_riga
+sd.reg_regge
+sd.reg_non_regge
+sd.reg_servono
+sd.reg_giornata
+sd.nessun_dato
+
+# Gol attesi nostri (ParoleNostri)
+sd.nos_titolo
+sd.nos_spiega
+sd.nos_insieme
+sd.nos_per_giornata
+sd.nos_media
+sd.nos_nessuna
+sd.nos_errore
+sd.nos_punti
+sd.nos_gol
+sd.nos_reggono
+sd.nos_non_reggono
+sd.nos_errore_riga
+sd.nos_punti_riga
+sd.nos_gol_riga
+sd.nos_g_misurata
+sd.nos_g_versione
+sd.nos_g_vuota
+sd.nos_g_da_misurare
+
+# Consiglio di formazione (ParoleConsiglio)
+sd.cons_titolo
+sd.cons_spiega
+sd.cons_nessuna
+sd.cons_formazioni
+sd.cons_media
+sd.cons_c1
+sd.cons_c2
+sd.cons_c3
+sd.cons_c4
+sd.cons_c1_riga
+sd.cons_c1_schierata
+sd.cons_c2_riga
+sd.cons_c3_riga
+sd.cons_c4_riga
+
+# Taratura di «gioca N%» con le probabili (ParoleRegistro+Taratura)
+sd.tar_riga
+sd.tar_in_attesa
+sd.tar_in_attesa_su
+sd.tar_attiva_dal
+sd.tar_attiva
+sd.tar_prova
+sd.tar_non_attiva
+sd.tar_spenta
+sd.tar_m_non_migliora
+sd.tar_m_poche_giornate
+sd.tar_m_fuori_soglia
+sd.tar_m_incoerente
+sd.tar_m_peggiorata
+sd.tar_m_scadenza_vicina
+sd.tar_m_spenta_a_mano
+
+# Quanto sono giuste le previsioni
+sd.giornate_giocate
+sd.appena_finisce
+sd.pochi_dati

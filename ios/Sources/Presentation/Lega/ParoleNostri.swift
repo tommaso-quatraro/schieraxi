@@ -1,7 +1,7 @@
 import Foundation
 
 /// Le parole dei gol attesi «nostri» (senza Understat) in Stato dei dati (#401), uguali alla web: `cartaNostri` di `fanta/web/app.js`
-/// e i testi `sd.nos_*` di `fanta/web/testi.js` (`GolAttesiNostriTests` li confronta). Soglie e verdetto (`regge`, `regge_tutto`)
+/// e i testi `sd.nos_*` del catalogo comune (`Catalogo+Sd.swift`; `GolAttesiNostriTests` prova le frasi composte). Soglie e verdetto (`regge`, `regge_tutto`)
 /// arrivano dal server: qui si scrivono e basta, non si ricalcolano. Per chi legge ci sono le parole, mai la sigla I4.
 enum ParoleNostri {
     /// Le tre misure, nell'ordine della web.
@@ -14,20 +14,16 @@ enum ParoleNostri {
         case gol
     }
 
-    static let titolo = "Gol attesi nostri (senza Understat)"
-    static let spiega = "Prima di ogni giornata l'app salva anche i numeri calcolati solo con i voti di Fantacalcio.it e, a giornata "
-        + "finita, li confronta con quelli mostrati. Se le tre misure reggono per 8 giornate, si può fare a meno di Understat."
-    static let insieme = "Le tre misure insieme"
-    static let perGiornata = "Giornata per giornata"
-    static let vuota = "misurata, ma senza giocatori da confrontare"
+    static let titolo = Catalogo.Sd.nosTitolo
+    static let spiega = Catalogo.Sd.nosSpiega
+    static let insieme = Catalogo.Sd.nosInsieme
+    static let perGiornata = Catalogo.Sd.nosPerGiornata
+    static let vuota = Catalogo.Sd.nosGVuota
 
-    static func media(giornate n: Int, versione v: String) -> String {
-        n == 1 ? "Media di 1 giornata misurata, versione \(v) del calcolo."
-            : "Media delle ultime \(n) giornate misurate, versione \(v) del calcolo."
-    }
+    static func media(giornate n: Int, versione v: String) -> String { Catalogo.Sd.nosMedia(n, v: v) }
 
     /// Come la carta del registro: la versione del calcolo non si scrive (filtra soltanto le giornate che contano).
-    static let nessuna = "Ancora nessuna giornata misurata: i numeri arrivano il giorno dopo la fine della prima giornata salvata."
+    static let nessuna = Catalogo.Sd.nosNessuna
 
     /// La riga sotto il titolo: su quante giornate (della versione di oggi) è la media, o che non ce n'è ancora nessuna misurata.
     static func sottotitolo(_ n: StatoDati.RegistroNostri) -> String {
@@ -38,9 +34,9 @@ enum ParoleNostri {
 
     static func nome(_ misura: Misura) -> String {
         switch misura {
-        case .errore: return "Errore del fantavoto atteso contro i numeri mostrati"
-        case .punti: return "Punti veri della formazione migliore contro i numeri mostrati"
-        case .gol: return "Gol attesi contro gol veri, per fasce"
+        case .errore: return Catalogo.Sd.nosErrore
+        case .punti: return Catalogo.Sd.nosPunti
+        case .gol: return Catalogo.Sd.nosGol
         }
     }
 
@@ -56,8 +52,8 @@ enum ParoleNostri {
     /// Il verdetto delle tre misure insieme a parole, al plurale: «reggono», «non reggono», «servono ancora N giornate».
     static func testoInsieme(_ esito: ParoleRegistro.Esito) -> String {
         switch esito {
-        case .regge: return "reggono"
-        case .nonRegge: return "non reggono"
+        case .regge: return Catalogo.Sd.nosReggono
+        case .nonRegge: return Catalogo.Sd.nosNonReggono
         case .servono, .senzaDati: return esito.testo
         }
     }
@@ -78,20 +74,19 @@ enum ParoleNostri {
         let s = n.soglie
         switch misura {
         case .errore:
-            return "\(ParoleRegistro.percento(n.errorePct, segno: true)) (deve stare a \(ParoleRegistro.percento(s?.errore, segno: true)) o meno)"
+            return Catalogo.Sd.nosErroreRiga(s: ParoleRegistro.percento(s?.errore, segno: true), v: ParoleRegistro.percento(n.errorePct, segno: true))
         case .punti:
-            return "\(punti(n.punti)) punti a rosa e giornata (deve stare a \(ParoleRegistro.cifra(s?.punti, segno: true)) o più)"
+            return Catalogo.Sd.nosPuntiRiga(s: ParoleRegistro.cifra(s?.punti, segno: true), v: punti(n.punti))
         case .gol:
-            return "scarto più grande \(Formato.decimali(n.scartoGol, cifre: 3)) gol a giocatore (al massimo "
-                + "\(Formato.decimali(s?.scartoGol, cifre: 3))) · gol attesi su veri \(Formato.decimali(n.golSuVeri, cifre: 2)), "
-                + "con i numeri mostrati \(Formato.decimali(n.golSuVeriMostrati, cifre: 2))"
+            return Catalogo.Sd.nosGolRiga(g: Formato.decimali(n.golSuVeri, cifre: 2), m: Formato.decimali(n.golSuVeriMostrati, cifre: 2),
+                                          s: Formato.decimali(s?.scartoGol, cifre: 3), v: Formato.decimali(n.scartoGol, cifre: 3))
         }
     }
 
     /// «9ª giornata di Serie A · 2026-27» (`sd.reg_giornata` della web): il numero è quello della Serie A, non della lega, come il
     /// registro delle giornate (`ParoleRegistro.giornata`).
     static func giornata(_ g: StatoDati.RegistroNostri.Giornata) -> String {
-        "\(g.giornata.map(TempiLega.serieA) ?? "") · \(g.stagione ?? "")"
+        Catalogo.Sd.regGiornata(g: g.giornata.map(TempiLega.serieA) ?? "", s: g.stagione ?? "")
     }
 
     /// Vero se la giornata è persa: i numeri nostri non salvati in tempo, o la misura non riuscita (il motivo lo scrive il server).
@@ -99,9 +94,7 @@ enum ParoleNostri {
         !(g.persa ?? "").isEmpty
     }
 
-    static func daMisurare(giocatori n: Int) -> String {
-        "salvati i numeri di \(Formato.plurale(n, "giocatore", "giocatori")), da misurare a giornata finita"
-    }
+    static func daMisurare(giocatori n: Int) -> String { Catalogo.Sd.nosGDaMisurare(n) }
 
     /// Sotto una giornata: il motivo se è persa, quanti giocatori sono salvati se non è ancora misurata, altrimenti i suoi tre numeri.
     /// Una giornata di un'altra versione del calcolo non conta nel verdetto, e lo dice.
@@ -111,13 +104,13 @@ enum ParoleNostri {
         if g.misurato == nil {
             testo = daMisurare(giocatori: g.giocatori ?? 0)
         } else if (g.voti ?? 0) > 0 {
-            testo = "errore \(ParoleRegistro.percento(g.errorePct, segno: true)) · punti \(punti(g.punti)) · gol attesi su veri "
-                + Formato.decimali(g.golSuVeri, cifre: 2)
+            testo = Catalogo.Sd.nosGMisurata(e: ParoleRegistro.percento(g.errorePct, segno: true), g: Formato.decimali(g.golSuVeri, cifre: 2),
+                                             p: punti(g.punti))
         } else {
             testo = vuota
         }
         guard let sua = g.versione, let oggi = versione, sua != oggi else { return testo }
-        return testo + " · versione \(sua), non conta"
+        return testo + " · " + Catalogo.Sd.nosGVersione(v: sua)
     }
 
     /// Punti con due cifre e il segno, come `segno(x, 2)` della web: «+0,25», «−0,10», «0,00»; «–» se manca.

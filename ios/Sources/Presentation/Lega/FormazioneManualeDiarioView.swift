@@ -33,7 +33,7 @@ struct FormazioneManualeDiarioView: View {
             List {
                 if let r = rosa.dato {
                     Section {
-                        Text("\(voce.titolo): tocca i giocatori che hai schierato. Servono 11 titolari.")
+                        Text(Catalogo.Diario.correggiSpiega(g: voce.titolo))
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                     ForEach(reparti, id: \.0) { reparto in
@@ -50,10 +50,10 @@ struct FormazioneManualeDiarioView: View {
                     ScheletroRighe(righe: 6).listRowBackground(Color.clear)
                 }
             }
-            .navigationTitle("Cosa hai schierato")
+            .navigationTitle(Catalogo.Diario.cosaHaiSchieratoTitolo)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } }
+                ToolbarItem(placement: .cancellationAction) { Button(Catalogo.Mercato.annulla) { chiudi() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task {
@@ -63,7 +63,7 @@ struct FormazioneManualeDiarioView: View {
                             inCorso = false
                             if errore == nil { chiudi() }
                         }
-                    } label: { if inCorso { ProgressView() } else { Text("Salva") } }
+                    } label: { if inCorso { ProgressView() } else { Text(Catalogo.Scambio.salva) } }
                     .disabled(scelti.count != 11 || inCorso)
                 }
             }

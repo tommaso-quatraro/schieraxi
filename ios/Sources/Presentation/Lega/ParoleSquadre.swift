@@ -1,25 +1,25 @@
 import Foundation
 
-/// Le parole di «Squadre e rose» e della rosa di una squadra, uguali alla web (issue #441): chiavi `lega.*` e `scambio.*` di
-/// `fanta/web/testi.js`, `SquadreComeLaWebTests` le confronta. Si dice «maglia», mai «divisa». I testi che la web non ha
-/// (le spiegazioni per caricare un'immagine dal telefono) usano le stesse parole.
+/// Le parole di «Squadre e rose» e della rosa di una squadra, uguali alla web (issue #441): vengono dal catalogo comune (chiavi
+/// `lega.*` e `scambio.*`, file generati `Catalogo+Lega.swift` e `Catalogo+Scambio.swift`). Si dice «maglia», mai «divisa». I testi
+/// che la web non ha (le spiegazioni per caricare un'immagine dal telefono) restano qui e usano le stesse parole.
 enum ParoleSquadre {
     // MARK: pagina Squadre e rose
 
     /// Il titolo della pagina: come la voce del menu (`lega.voce_squadre`), che senza le rose degli altri diventa `lega.voce_miasquadra`.
     static func titolo(squadreAltrui: Bool) -> String {
-        squadreAltrui ? "Squadre e rose" : "La mia squadra e rosa"
+        squadreAltrui ? Catalogo.Lega.voceSquadre : Catalogo.Lega.voceMiasquadra
     }
 
-    static let miaSquadra = "La mia squadra"
-    static let stemmaEMaglia = "Stemma e maglia"
-    static let vediLaRosa = "Vedi la rosa"
-    static let nonLaTua = "Non è la tua squadra?"
-    static let scegliLaTua = "Scegli quale delle squadre è la tua."
+    static let miaSquadra = Catalogo.Lega.miaSquadra
+    static let stemmaEMaglia = Catalogo.Lega.stemmaMaglia
+    static let vediLaRosa = Catalogo.Lega.vediRosa
+    static let nonLaTua = Catalogo.Lega.nonTuaSquadra
+    static let scegliLaTua = Catalogo.Lega.scegliQualeDelle
     /// Il nome del selettore per VoiceOver (`lega.tua_squadra`).
-    static let tuaSquadra = "La tua squadra"
-    static let toccaUnaSquadra = "Tocca una squadra per vedere la rosa."
-    static let importaPrima = "Importa prima le rose da «Aggiorna le rose»."
+    static let tuaSquadra = Catalogo.Lega.tuaSquadra
+    static let toccaUnaSquadra = Catalogo.Lega.toccaUnaSquadra
+    static let importaPrima = Catalogo.Lega.importaPrimaRose
     static let chiudi = "Chiudi"
 
     /// «24 giocatori · 12 crediti»; senza crediti (il server non li ha) solo i giocatori.
@@ -32,28 +32,28 @@ enum ParoleSquadre {
     // MARK: stemma e maglia
 
     /// «Stemma» o «Maglia» (`scambio.stemma`, `scambio.maglia`); `tipo` è «stemma» o «maglia» come per il server.
-    static func nome(tipo: String) -> String { tipo == "stemma" ? "Stemma" : "Maglia" }
+    static func nome(tipo: String) -> String { tipo == "stemma" ? Catalogo.Scambio.stemma : Catalogo.Scambio.maglia }
 
-    /// «Stemma aggiornato» o «Maglia aggiornata».
-    static func aggiornata(tipo: String) -> String { tipo == "stemma" ? "Stemma aggiornato" : "Maglia aggiornata" }
+    /// «Stemma aggiornato» o «Maglia aggiornata» (`scambio.stemma_aggiornato`, `scambio.maglia_aggiornata`).
+    static func aggiornata(tipo: String) -> String { tipo == "stemma" ? Catalogo.Scambio.stemmaAggiornato : Catalogo.Scambio.magliaAggiornata }
 
-    /// «Usa come stemma» o «Usa come maglia».
-    static func usaCome(tipo: String) -> String { "Usa come \(nome(tipo: tipo).lowercased())" }
+    /// «Usa come stemma» o «Usa come maglia» (`lega.usa_come_stemma`, `lega.usa_come_maglia`).
+    static func usaCome(tipo: String) -> String { tipo == "stemma" ? Catalogo.Lega.usaComeStemma : Catalogo.Lega.usaComeMaglia }
 
     /// «Cambia stemma» o «Cambia maglia» (`scambio.cambia_tipo`).
-    static func cambia(tipo: String) -> String { "Cambia \(nome(tipo: tipo).lowercased())" }
+    static func cambia(tipo: String) -> String { Catalogo.Scambio.cambiaTipo(tipo: nome(tipo: tipo).lowercased()) }
 
     /// «Carica stemma» o «Carica maglia» (`scambio.carica_tipo`).
-    static func carica(tipo: String) -> String { "Carica \(nome(tipo: tipo).lowercased())" }
+    static func carica(tipo: String) -> String { Catalogo.Scambio.caricaTipo(tipo: nome(tipo: tipo).lowercased()) }
 
     /// «Stemma da un file» o «Maglia da un file».
     static func daUnFile(tipo: String) -> String { "\(nome(tipo: tipo)) da un file" }
 
     static let daUnFileMenu = "Da un file"
-    static let daUnIndirizzoWeb = "Da un indirizzo web"
+    static let daUnIndirizzoWeb = Catalogo.Lega.indirizzoWeb
     static let indirizzoDellImmagine = "Indirizzo dell'immagine"
-    static let annulla = "Annulla"
-    static let formazioneConsigliataPerLoro = "Formazione consigliata per loro"
+    static let annulla = Catalogo.Mercato.annulla
+    static let formazioneConsigliataPerLoro = Catalogo.Scambio.formazioneConsigliataPer
 
     /// Sotto il campo dell'indirizzo web.
     static let indirizzoImmagine = "Solo indirizzi https di un'immagine (stemma o maglia della tua squadra)."
@@ -71,24 +71,24 @@ enum ParoleSquadre {
 
     // MARK: la rosa
 
-    static let cambiaIlNome = "Cambia il nome"
-    static let nuovoNome = "Nuovo nome della squadra"
-    static let aiutoNome = "Su Leghe può restare il nome vecchio: quando reimporti le rose, SchieraXI aggiorna questa squadra."
-    static let nomeNonValido = "Scrivi un nome da 1 a 60 caratteri."
-    static let nomeSalvato = "Nome salvato"
-    static let creditiResidui = "Crediti residui"
-    static let salva = "Salva"
+    static let cambiaIlNome = Catalogo.Scambio.cambiaNome
+    static let nuovoNome = Catalogo.Scambio.nuovoNome
+    static let aiutoNome = Catalogo.Scambio.nomeAiuto
+    static let nomeNonValido = Catalogo.Scambio.nomeNonValido
+    static let nomeSalvato = Catalogo.Scambio.nomeSalvato
+    static let creditiResidui = Catalogo.Scambio.creditiResidui
+    static let salva = Catalogo.Scambio.salva
     /// Cosa legge VoiceOver sui due «Salva» della rosa (sulla web si vede il campo accanto, qui basta il nome del pulsante).
     static let salvaNome = "Salva il nuovo nome"
     static let salvaCreditiResidui = "Salva i crediti residui"
-    static let creditiSalvati = "Crediti salvati"
-    static let scriviCrediti = "Scrivi i crediti come numero intero, anche 0"
+    static let creditiSalvati = Catalogo.Scambio.creditiSalvati
+    static let scriviCrediti = Catalogo.Scambio.scriviCreditiCome
     /// Il gruppo dei giocatori che il server non ha saputo collegare a un ruolo.
-    static let senzaRuolo = "Senza ruolo (da controllare)"
+    static let senzaRuolo = Catalogo.Scambio.senzaRuolo
 
     /// «Rose aggiornate il 6 novembre 2026» (mese per intero, ora italiana); se la data manca o non si capisce, «–» come la web.
     static func roseAggiornate(_ aggiornato: String?) -> String {
-        "Rose aggiornate il \(dataEstesa(aggiornato))"
+        Catalogo.Scambio.roseAggiornate(data: dataEstesa(aggiornato))
     }
 
     private static let giornoLettura: DateFormatter = {

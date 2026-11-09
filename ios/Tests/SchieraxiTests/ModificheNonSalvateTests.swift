@@ -52,7 +52,7 @@ final class ModificheNonSalvateTests: XCTestCase {
         XCTAssertTrue(vm.modificati)
 
         await vm.salva()
-        XCTAssertEqual(vm.messaggio, "Crediti salvati.")
+        XCTAssertEqual(vm.messaggio, Catalogo.Lega.creditiSalvati)
         XCTAssertFalse(vm.modificati, "salvato: non è più una modifica in sospeso")
     }
 }

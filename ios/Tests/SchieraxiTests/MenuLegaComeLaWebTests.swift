@@ -3,9 +3,29 @@ import Testing
 @testable import Schieraxi
 
 // Issue #304. I menu Squadra e Altro dell'iPhone sono quelli della web: stesse voci, stesso ordine, stessi testi e stesse
-// condizioni di `VOCI_LEGA` in `fanta/web/app.js` (nomi e righe sotto da `fanta/web/testi.js`). La pagina Calendario ha il
-// titolo e la spiegazione della web (`tabCalendario`: `mercato.calendario_difficolta`, `mercato.cal_spiega`, legenda `diff.1`
-// e `diff.4`, pallino verde sulle squadre dei tuoi giocatori). I file della web si leggono dal repository.
+// condizioni di `VOCI_LEGA` in `fanta/web/app.js` (nomi e righe sotto dal catalogo comune, #496). La pagina Calendario ha il
+// titolo e la spiegazione della web (`tabCalendario`: `mercato.calendario_difficolta`, `mercato.cal_spiega` dal catalogo,
+// legenda `diff.1` e `diff.4` da `fanta/web/testi.js`, pallino verde sulle squadre dei tuoi giocatori). I file della web si
+// leggono dal repository.
+
+/// Le chiavi che `VOCI_LEGA` usa per nomi e righe sotto, con il loro testo nel catalogo (`ios/testi/lega.txt`). Una voce nuova
+/// della web con una chiave che non è qui fa fallire il test: va aggiunta qui e in `ios/testi/lega.txt`.
+private let testiDelleVoci: [String: String] = [
+    "lega.voce_squadre": Catalogo.Lega.voceSquadre, "lega.voce_squadre_sub": Catalogo.Lega.voceSquadreSub,
+    "lega.voce_miasquadra": Catalogo.Lega.voceMiasquadra, "lega.voce_miasquadra_sub": Catalogo.Lega.voceMiasquadraSub,
+    "lega.voce_consigli": Catalogo.Lega.voceConsigli, "lega.voce_consigli_sub": Catalogo.Lega.voceConsigliSub,
+    "lega.voce_osservati": Catalogo.Lega.voceOsservati, "lega.voce_osservati_sub": Catalogo.Lega.voceOsservatiSub,
+    "lega.voce_giocatori": Catalogo.Lega.voceGiocatori, "lega.voce_giocatori_sub": Catalogo.Lega.voceGiocatoriSub,
+    "lega.voce_calendario": Catalogo.Lega.voceCalendario, "lega.voce_calendario_sub": Catalogo.Lega.voceCalendarioSub,
+    "lega.voce_importa": Catalogo.Lega.voceImporta, "lega.voce_importa_sub": Catalogo.Lega.voceImportaSub,
+    "lega.voce_scambi": Catalogo.Lega.voceScambi, "lega.voce_scambi_sub": Catalogo.Lega.voceScambiSub,
+    "lega.voce_diario": Catalogo.Lega.voceDiario, "lega.voce_diario_sub": Catalogo.Lega.voceDiarioSub,
+    "lega.voce_regole": Catalogo.Lega.voceRegole, "lega.voce_regole_sub": Catalogo.Lega.voceRegoleSub,
+    "lega.voce_movimenti": Catalogo.Lega.voceMovimenti, "lega.voce_movimenti_sub": Catalogo.Lega.voceMovimentiSub,
+    "lega.voce_crediti": Catalogo.Lega.voceCrediti, "lega.voce_crediti_sub": Catalogo.Lega.voceCreditiSub,
+    "lega.voce_stagione": Catalogo.Lega.voceStagione, "lega.voce_stagione_sub": Catalogo.Lega.voceStagioneSub,
+    "lega.voce_novita": Catalogo.Lega.voceNovita, "lega.voce_novita_sub": Catalogo.Lega.voceNovitaSub,
+]
 
 /// Tutte le funzioni del server accese, o tutte spente, tranne quelle di `eccezioni` (che hanno il valore opposto).
 private func funzioni(_ web: VociLegaWeb, accese: Bool, tranne eccezioni: [String] = []) -> StatoFunzioni {
@@ -23,12 +43,12 @@ struct MenuLegaComeLaWebTests {
         #expect(ios == web.voci(scheda.rawValue).map(\.id))
     }
 
-    @Test("Nomi e righe sotto sono quelli di testi.js, nello stesso ordine", arguments: [Sezione.squadra, .altro])
+    @Test("Nomi e righe sotto sono quelli delle chiavi di VOCI_LEGA nel catalogo, nello stesso ordine", arguments: [Sezione.squadra, .altro])
     func testiComeLaWeb(scheda: Sezione) throws {
         let web = try VociLegaWeb()
-        let testi = try TestiWeb()
         let attese = try web.voci(scheda.rawValue).map { v in
-            [v.id, try testi.italiano(v.chiaveNome), try testi.italiano(v.chiaveDettaglio)]
+            [v.id, try #require(testiDelleVoci[v.chiaveNome], "\(v.chiaveNome) manca in testiDelleVoci"),
+             try #require(testiDelleVoci[v.chiaveDettaglio], "\(v.chiaveDettaglio) manca in testiDelleVoci")]
         }
         #expect(VoceMenuLega.tutte(scheda).map { [$0.id, $0.nome, $0.dettaglio] } == attese)
     }
@@ -52,9 +72,8 @@ struct MenuLegaComeLaWebTests {
     @Test("Senza «Squadre della lega» la prima voce di Squadra è «La mia squadra e rosa», come la web")
     func laMiaSquadra() throws {
         let web = try VociLegaWeb()
-        let testi = try TestiWeb()
-        let nome = try testi.italiano("lega.voce_miasquadra")
-        let sotto = try testi.italiano("lega.voce_miasquadra_sub")
+        let nome = Catalogo.Lega.voceMiasquadra
+        let sotto = Catalogo.Lega.voceMiasquadraSub
         let prima = try #require(VoceMenuLega.voci(.squadra, funzioni: funzioni(web, accese: true, tranne: [Funzione.squadreAltrui])).first)
         #expect(prima.id == "squadre")
         #expect(prima.nome == nome)
@@ -66,18 +85,15 @@ struct MenuLegaComeLaWebTests {
 @Suite("Pagina Calendario come la web (#304)")
 struct CalendarioComeLaWebTests {
     @Test("Il titolo è quello della web (`mercato.calendario_difficolta`)")
-    func titolo() throws {
-        let web = try TestiWeb().italiano("mercato.calendario_difficolta")
-        #expect(CalendarioView.titolo == web)
+    func titolo() {
+        #expect(CalendarioView.titolo == Catalogo.Mercato.calendarioDifficolta)
     }
 
     @Test("La spiegazione dice quante giornate, con il plurale della web (`mercato.cal_spiega`)", arguments: [1, 2, 5])
-    func spiegazione(giornate: Int) throws {
-        let testi = try TestiWeb()
-        let attesa = giornate == 1
-            ? try testi.italiano("mercato.cal_spiega.one")
-            : try testi.italiano("mercato.cal_spiega.other").replacingOccurrences(of: "{n}", with: String(giornate))
-        #expect(CalendarioView.spiegazione(giornate: giornate) == attesa)
+    func spiegazione(giornate: Int) {
+        #expect(CalendarioView.spiegazione(giornate: giornate) == Catalogo.Mercato.calSpiega(giornate))
+        let dove = giornate == 1 ? "nella prossima giornata" : "nelle prossime \(giornate) giornate"
+        #expect(CalendarioView.spiegazione(giornate: giornate).contains(dove))
     }
 
     @Test("La legenda dei colori va da «Facile» a «Dura», come la web (`diff.1` e `diff.4`)")

@@ -3,7 +3,7 @@ import Testing
 @testable import Schieraxi
 
 /// Stato dei dati: i gol attesi «nostri» senza Understat (I4 dal vivo, #401) con le parole della web (`cartaNostri` di
-/// `fanta/web/app.js`, testi `sd.nos_*` di `fanta/web/testi.js`). La fixture `stato-dati-nostri.json` è la risposta vera del server
+/// `fanta/web/app.js`, testi `sd.nos_*` del catalogo comune). La fixture `stato-dati-nostri.json` è la risposta vera del server
 /// (`registro_nostri.riepilogo`): 8 giornate misurate della versione 3 (dalla 2 alla 9), la 1 di un'altra versione, la 10 persa e la
 /// 11 salvata e non ancora misurata. La controlla `tests/test_stato_dati_nostri_web.py`, che prova la web sugli stessi numeri.
 @Suite("Gol attesi nostri in Stato dei dati")
@@ -21,11 +21,6 @@ struct GolAttesiNostriTests {
 
     private func giornata(_ json: String) throws -> StatoDati.RegistroNostri.Giornata {
         try #require(try nostri("{\"per_giornata\":[\(json)]}").perGiornata?.first)
-    }
-
-    /// Un modello di testi.js con i segnaposto riempiti, come fa `t()` della web.
-    private func riempi(_ modello: String, _ valori: [String: String]) -> String {
-        valori.reduce(modello) { $0.replacingOccurrences(of: "{\($1.key)}", with: $1.value) }
     }
 
     @Test("Si legge la risposta vera del server")
@@ -149,51 +144,45 @@ struct GolAttesiNostriTests {
         }
     }
 
-    // MARK: - stesse parole della web (testi.js)
+    // MARK: - stesse parole della web (catalogo)
 
     @Test("Titolo, spiegazione, nomi delle misure e verdetti come la web")
-    func frasiComeLaWeb() throws {
-        let web = try TestiWeb()
-        #expect(try web.italiano("sd.nos_titolo") == ParoleNostri.titolo)
-        #expect(try web.italiano("sd.nos_spiega") == ParoleNostri.spiega)
-        #expect(try web.italiano("sd.nos_insieme") == ParoleNostri.insieme)
-        #expect(try web.italiano("sd.nos_reggono") == ParoleNostri.testoInsieme(.regge))
-        #expect(try web.italiano("sd.nos_non_reggono") == ParoleNostri.testoInsieme(.nonRegge))
-        #expect(try web.italiano("sd.nos_errore") == ParoleNostri.nome(.errore))
-        #expect(try web.italiano("sd.nos_punti") == ParoleNostri.nome(.punti))
-        #expect(try web.italiano("sd.nos_gol") == ParoleNostri.nome(.gol))
-        #expect(try web.italiano("sd.nos_per_giornata") == ParoleNostri.perGiornata)
-        #expect(try web.italiano("sd.nos_g_vuota") == ParoleNostri.vuota)
+    func frasiComeLaWeb() {
+        #expect(Catalogo.Sd.nosTitolo == ParoleNostri.titolo)
+        #expect(Catalogo.Sd.nosSpiega == ParoleNostri.spiega)
+        #expect(Catalogo.Sd.nosInsieme == ParoleNostri.insieme)
+        #expect(Catalogo.Sd.nosReggono == ParoleNostri.testoInsieme(.regge))
+        #expect(Catalogo.Sd.nosNonReggono == ParoleNostri.testoInsieme(.nonRegge))
+        #expect(Catalogo.Sd.nosErrore == ParoleNostri.nome(.errore))
+        #expect(Catalogo.Sd.nosPunti == ParoleNostri.nome(.punti))
+        #expect(Catalogo.Sd.nosGol == ParoleNostri.nome(.gol))
+        #expect(Catalogo.Sd.nosPerGiornata == ParoleNostri.perGiornata)
+        #expect(Catalogo.Sd.nosGVuota == ParoleNostri.vuota)
         // le misure usano le parole del registro delle giornate
-        #expect(try web.italiano("sd.reg_regge") == ParoleRegistro.Esito.regge.testo)
-        #expect(try web.italiano("sd.reg_non_regge") == ParoleRegistro.Esito.nonRegge.testo)
+        #expect(Catalogo.Sd.regRegge == ParoleRegistro.Esito.regge.testo)
+        #expect(Catalogo.Sd.regNonRegge == ParoleRegistro.Esito.nonRegge.testo)
     }
 
     @Test("Plurali con i modelli della web", arguments: [1, 3])
-    func pluraliComeLaWeb(n: Int) throws {
-        let web = try TestiWeb()
-        let forma = n == 1 ? "one" : "other"
-        #expect(try riempi(web.italiano("sd.nos_media.\(forma)"), ["n": "\(n)", "v": "3"]) == ParoleNostri.media(giornate: n, versione: "3"))
-        #expect(try riempi(web.italiano("sd.nos_g_da_misurare.\(forma)"), ["n": "\(n)"]) == ParoleNostri.daMisurare(giocatori: n))
-        #expect(try riempi(web.italiano("sd.reg_servono.\(forma)"), ["n": "\(n)"]) == ParoleNostri.testoInsieme(.servono(n)))
+    func pluraliComeLaWeb(n: Int) {
+        #expect(Catalogo.Sd.nosMedia(n, v: "3") == ParoleNostri.media(giornate: n, versione: "3"))
+        #expect(Catalogo.Sd.nosGDaMisurare(n) == ParoleNostri.daMisurare(giocatori: n))
+        #expect(Catalogo.Sd.regServono(n) == ParoleNostri.testoInsieme(.servono(n)))
     }
 
     @Test("Righe con i numeri: i modelli della web riempiti")
     func righeComeLaWeb() throws {
-        let web = try TestiWeb()
         let n = try nostri()
-        #expect(try riempi(web.italiano("sd.nos_errore_riga"), ["v": "+0,6%", "s": "+1%"]) == ParoleNostri.dettaglio(.errore, di: n))
-        #expect(try riempi(web.italiano("sd.nos_punti_riga"), ["v": "−0,10", "s": "−0,3"]) == ParoleNostri.dettaglio(.punti, di: n))
-        #expect(try riempi(web.italiano("sd.nos_gol_riga"), ["v": "0,050", "s": "0,030", "g": "0,94", "m": "0,98"])
-                == ParoleNostri.dettaglio(.gol, di: n))
-        #expect(try web.italiano("sd.nos_nessuna") == ParoleNostri.nessuna)
+        #expect(Catalogo.Sd.nosErroreRiga(s: "+1%", v: "+0,6%") == ParoleNostri.dettaglio(.errore, di: n))
+        #expect(Catalogo.Sd.nosPuntiRiga(s: "−0,3", v: "−0,10") == ParoleNostri.dettaglio(.punti, di: n))
+        #expect(Catalogo.Sd.nosGolRiga(g: "0,94", m: "0,98", s: "0,030", v: "0,050") == ParoleNostri.dettaglio(.gol, di: n))
+        #expect(Catalogo.Sd.nosNessuna == ParoleNostri.nessuna)
         let g = try #require(n.perGiornata)
-        #expect(try riempi(web.italiano("sd.reg_giornata"), ["s": "2026-27", "g": TempiLega.serieA(11)]) == ParoleNostri.giornata(g[0]))
-        let misurata = try riempi(web.italiano("sd.nos_g_misurata"), ["e": "+0,6%", "p": "−0,10", "g": "0,94"])
+        #expect(Catalogo.Sd.regGiornata(g: TempiLega.serieA(11), s: "2026-27") == ParoleNostri.giornata(g[0]))
+        let misurata = Catalogo.Sd.nosGMisurata(e: "+0,6%", g: "0,94", p: "−0,10")
         #expect(misurata == ParoleNostri.stato(g[2], versione: n.versione))
         let vecchia = try #require(g.last)
-        #expect(try misurata + " · " + riempi(web.italiano("sd.nos_g_versione"), ["v": "2"])
-                == ParoleNostri.stato(vecchia, versione: n.versione))
+        #expect(misurata + " · " + Catalogo.Sd.nosGVersione(v: "2") == ParoleNostri.stato(vecchia, versione: n.versione))
     }
 
     // MARK: - demo (foto e anteprima)

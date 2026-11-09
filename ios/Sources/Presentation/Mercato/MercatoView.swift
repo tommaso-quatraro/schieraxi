@@ -32,7 +32,7 @@ struct ConsigliatiView: View {
                     } else if let e = vm.consigliati.errore {
                         ErroreVista(messaggio: e) { Task { await vm.consigliati.ricarica() } }
                     } else {
-                        Scheletro(schede: 3, righe: 2, testo: "Cerco gli svincolati…")
+                        Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.cercoGliSvincolati)
                     }
                 }
             }
@@ -79,7 +79,7 @@ struct ConsigliatiView: View {
                 : "Aggiorna le rose in Squadra: i crediti arrivano con il file"
             return base + " \(dove) per vedere se i cambi sono fattibili."
         }
-        return base + " Lo svincolo ti restituisce il \(Formato.percento(m.rimborsoIpotizzato ?? 0.5))% del prezzo pagato."
+        return base + " " + Catalogo.Mercato.rimborso(p: String(Formato.percento(m.rimborsoIpotizzato ?? 0.5)))
     }
 
     private func riassunto(_ m: Mercato) -> String {
@@ -101,11 +101,11 @@ struct ClassificaView: View {
         ScrollView {
             VStack(spacing: 12) {
                 TitoloNellaPagina()
-                Picker("Ruolo", selection: $vm.ruolo) {
+                Picker(Catalogo.Mercato.ruolo, selection: $vm.ruolo) {
                     ForEach(["Tutti", "P", "D", "C", "A"], id: \.self) { Text($0).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                Toggle("Solo svincolati", isOn: $vm.soloLiberi).tint(Color.verde)
+                Toggle(Catalogo.Mercato.soloSvincolati, isOn: $vm.soloLiberi).tint(Color.verde)
                 LegendaElenco(aperta: $legendaAperta)
                 if let e = vm.classifica.errore, vm.classifica.dato == nil {
                     ErroreVista(messaggio: e) { Task { await vm.caricaClassifica() } }
@@ -237,9 +237,9 @@ struct DatiRigaElenco: Equatable {
         indice = nil
         dettaglio = Self.testoDettaglio(squadra: b.squadra, quotazione: b.quotazione, proprietario: nil)
         numero = "–"
-        sotto = nonGioca ? "non gioca" : nil
+        sotto = nonGioca ? Catalogo.Mercato.nonGioca : nil
         voce = [b.nome, nomeRuolo(b.ruolo), (b.squadra ?? "").capitalized, "quotazione \(b.quotazione.map { String(Formato.intero($0)) } ?? "–")",
-                nonGioca ? "non gioca" : ""].filter { !$0.isEmpty }.joined(separator: ", ")
+                nonGioca ? Catalogo.Mercato.nonGioca : ""].filter { !$0.isEmpty }.joined(separator: ", ")
     }
 }
 
@@ -305,15 +305,11 @@ struct CalendarioView: View {
         _rosa = StateObject(wrappedValue: Caricatore<Rosa>("/api/rosa", server: vm.server))
     }
 
-    /// `mercato.calendario_difficolta` di `testi.js`.
-    static let titolo = "Calendario e difficoltà"
+    /// `mercato.calendario_difficolta` del catalogo.
+    static let titolo = Catalogo.Mercato.calendarioDifficolta
 
-    /// `mercato.cal_spiega` di `testi.js`, al singolare con una giornata sola.
-    static func spiegazione(giornate: Int) -> String {
-        giornate == 1
-            ? "Dalla più facile alla più difficile nella prossima giornata · pallino verde = tue squadre."
-            : "Dalla più facile alla più difficile nelle prossime \(giornate) giornate · pallino verde = tue squadre."
-    }
+    /// `mercato.cal_spiega` del catalogo, al singolare con una giornata sola.
+    static func spiegazione(giornate: Int) -> String { Catalogo.Mercato.calSpiega(giornate) }
 
     /// Le parole ai due lati della legenda dei colori: `diff.1` e `diff.4` di `testi.js`, come la web.
     static let legenda = (facile: "Facile", difficile: "Dura")
@@ -365,7 +361,7 @@ struct CalendarioView: View {
                 } else if let e = vm.calendario.errore {
                     ErroreVista(messaggio: e) { Task { await vm.calendario.ricarica() } }
                 } else {
-                    Scheletro(schede: 1, righe: 5, testo: "Guardo il calendario…")
+                    Scheletro(schede: 1, righe: 5, testo: Catalogo.Mercato.caricoCalendario)
                 }
             }
             .padding(.horizontal, 16).padding(.bottom, 24)
@@ -402,7 +398,7 @@ struct OsservatiView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             RigaGiocatore(g: g)
                             if let p = g.proprietario { Text("Di: \(p)").font(.caption).foregroundStyle(Color.testoSecondario) }
-                            else { Text("Svincolato").font(.caption).foregroundStyle(Color.verde) }
+                            else { Text(Catalogo.Mercato.svincolato).font(.caption).foregroundStyle(Color.verde) }
                         }
                         .frame(minHeight: Tema.areaTocco)
                         .contentShape(Rectangle())

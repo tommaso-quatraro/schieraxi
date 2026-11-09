@@ -2,25 +2,25 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-// Regole uguali alla web (`vistaRegole` in `fanta/web/app.js`, testi `regole.*` in `fanta/web/testi.js`), #440: prova del
+// Regole uguali alla web (`vistaRegole` in `fanta/web/app.js`, testi `regole.*` del catalogo comune, #440 e #496): prova del
 // modificatore («Prova», «Voti: portiere e 3 difensori», «Media 6,50 bonus +1 punto»), «Aggiungi fascia», «Scadenza della
 // formazione» e «Prima giornata della lega» con la loro riga d'aiuto, la frase in fondo ai tempi della lega e le righe d'aiuto
-// di «Posti fissi per ruolo» e «Cambio modulo nelle sostituzioni». Ogni testo si confronta con `testi.js` (`TestiWeb`): una
-// frase cambiata su un lato solo fa fallire il test. Valori inventati, nessun dato vero.
+// di «Posti fissi per ruolo» e «Cambio modulo nelle sostituzioni». I testi vengono da `Catalogo.Regole`: qui si prova che ogni
+// nome usato dalla vista è il testo giusto e le frasi con un numero. Valori inventati, nessun dato vero.
 
-/// Chiave di `testi.js` e testo che l'app mostra.
+/// Testo del catalogo e nome che usa la vista.
 private let testiFissi: [(String, String)] = [
-    ("regole.prova", TestiRegole.prova),
-    ("regole.voti_portiere_difensori", TestiRegole.provaVoti),
-    ("regole.posti_fissi", TestiRegole.postiFissi),
-    ("regole.posti_fissi_aiuto", TestiRegole.postiFissiAiuto),
-    ("regole.cambio_modulo", TestiRegole.cambioModulo),
-    ("regole.cambio_modulo_aiuto", TestiRegole.cambioModuloAiuto),
-    ("regole.scadenza", TestiRegole.scadenza),
-    ("regole.scadenza_aiuto", TestiRegole.scadenzaAiuto),
-    ("regole.prima_giornata", TestiRegole.primaGiornata),
-    ("regole.prima_giornata_aiuto", TestiRegole.primaGiornataAiuto),
-    ("regole.con_prima_giornata", TestiRegole.conPrimaGiornata),
+    (Catalogo.Regole.prova, TestiRegole.prova),
+    (Catalogo.Regole.votiPortiereDifensori, TestiRegole.provaVoti),
+    (Catalogo.Regole.postiFissi, TestiRegole.postiFissi),
+    (Catalogo.Regole.postiFissiAiuto, TestiRegole.postiFissiAiuto),
+    (Catalogo.Regole.cambioModulo, TestiRegole.cambioModulo),
+    (Catalogo.Regole.cambioModuloAiuto, TestiRegole.cambioModuloAiuto),
+    (Catalogo.Regole.scadenza, TestiRegole.scadenza),
+    (Catalogo.Regole.scadenzaAiuto, TestiRegole.scadenzaAiuto),
+    (Catalogo.Regole.primaGiornata, TestiRegole.primaGiornata),
+    (Catalogo.Regole.primaGiornataAiuto, TestiRegole.primaGiornataAiuto),
+    (Catalogo.Regole.conPrimaGiornata, TestiRegole.conPrimaGiornata),
 ]
 
 /// Un esito della prova del modificatore: `m` e `b` sono i numeri come li scrive la web (segnaposto `{m}` e `{b}`).
@@ -45,24 +45,20 @@ private let casiProva: [CasoProvaRegole] = [
 
 @Suite("Regole: i testi della web")
 struct RegoleComeLaWebTests {
-    @Test("Il testo dell'app è quello di `testi.js`", arguments: testiFissi)
-    func comeLaWeb(chiave: String, app: String) throws {
-        let web = try TestiWeb().italiano(chiave)
-        #expect(app == web, "chiave \(chiave)")
+    @Test("Ogni nome usato dalla vista è il testo giusto del catalogo", arguments: testiFissi)
+    func comeIlCatalogo(catalogo: String, app: String) {
+        #expect(app == catalogo)
     }
 
     @Test("«+ Aggiungi fascia»: le parole sono quelle della web, il «+» è l'icona del pulsante")
-    func aggiungiFascia() throws {
-        let web = try TestiWeb().italiano("regole.aggiungi_fascia")
-        #expect(web == "+ " + TestiRegole.aggiungiFascia)
+    func aggiungiFascia() {
+        #expect(Catalogo.Regole.aggiungiFascia == "+ " + TestiRegole.aggiungiFascia)
+        #expect(TestiRegole.aggiungiFascia == "Aggiungi fascia")
     }
 
     @Test("Prova: l'esito è la frase di `regole.media_bonus`, «punto» solo con 1", arguments: casiProva)
-    func esitoProva(caso: CasoProvaRegole) throws {
-        let modello = try TestiWeb().italiano(caso.singolare ? "regole.media_bonus.one" : "regole.media_bonus.other")
-        let atteso = modello
-            .replacingOccurrences(of: "{m}", with: caso.m)
-            .replacingOccurrences(of: "{b}", with: caso.b)
+    func esitoProva(caso: CasoProvaRegole) {
+        let atteso = Catalogo.Regole.mediaBonus(caso.singolare ? 1 : 2, b: caso.b, m: caso.m)
         #expect(TestiRegole.esitoProva(media: caso.media, bonus: caso.bonus) == atteso)
     }
 

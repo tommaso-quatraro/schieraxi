@@ -2,13 +2,15 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Squadre e rose come la web (issue #441, parte di #167). Le parole sono quelle di `fanta/web/testi.js` (chiavi `lega.*` e
-/// `scambio.*`): «maglia» e mai «divisa», «Cambia il nome» e «Crediti residui» nella rosa, «Senza ruolo (da controllare)»,
-/// «Rose aggiornate il 6 novembre 2026». Qui si prova il testo; le schermate le fotografa il fotografo su `main`.
+/// Squadre e rose come la web (issue #441, parte di #167). Le parole vengono dal catalogo comune (chiavi `lega.*` e `scambio.*`,
+/// #496): «maglia» e mai «divisa», «Cambia il nome» e «Crediti residui» nella rosa, «Senza ruolo (da controllare)»,
+/// «Rose aggiornate il 6 novembre 2026». Le parole che l'iPhone non prende ancora dal catalogo (`shell.chiudi`, i plurali di
+/// `Formato`) si confrontano con `testi.js`. Qui si prova il testo; le schermate le fotografa il fotografo su `main`.
 @MainActor
 @Suite("Squadre e rose come la web: parole, maglia, Cambia il nome e crediti (#441)")
 struct SquadreComeLaWebTests {
 
+    /// Il testo italiano di `testi.js` con i segnaposto riempiti: solo per le chiavi che l'iPhone non prende dal catalogo.
     private static func pezzo(_ chiave: String, _ valori: [String: String] = [:]) throws -> String {
         try valori.reduce(try TestiWeb().italiano(chiave)) { $0.replacingOccurrences(of: "{\($1.key)}", with: $1.value) }
     }
@@ -17,20 +19,20 @@ struct SquadreComeLaWebTests {
 
     @Test("Titolo della pagina: «Squadre e rose»; senza le rose degli altri «La mia squadra e rosa», come il menu")
     func titolo() throws {
-        #expect(ParoleSquadre.titolo(squadreAltrui: true) == (try Self.pezzo("lega.voce_squadre")))
-        #expect(ParoleSquadre.titolo(squadreAltrui: false) == (try Self.pezzo("lega.voce_miasquadra")))
+        #expect(ParoleSquadre.titolo(squadreAltrui: true) == Catalogo.Lega.voceSquadre)
+        #expect(ParoleSquadre.titolo(squadreAltrui: false) == Catalogo.Lega.voceMiasquadra)
     }
 
     @Test("La carta «La mia squadra» e l'elenco: stesse frasi della web")
     func carta() throws {
-        #expect(ParoleSquadre.miaSquadra == (try Self.pezzo("lega.mia_squadra")))
-        #expect(ParoleSquadre.stemmaEMaglia == (try Self.pezzo("lega.stemma_maglia")))
-        #expect(ParoleSquadre.vediLaRosa == (try Self.pezzo("lega.vedi_rosa")))
-        #expect(ParoleSquadre.nonLaTua == (try Self.pezzo("lega.non_tua_squadra")))
-        #expect(ParoleSquadre.scegliLaTua == (try Self.pezzo("lega.scegli_quale_delle")))
-        #expect(ParoleSquadre.tuaSquadra == (try Self.pezzo("lega.tua_squadra")))
-        #expect(ParoleSquadre.toccaUnaSquadra == (try Self.pezzo("lega.tocca_una_squadra")))
-        #expect(ParoleSquadre.importaPrima == (try Self.pezzo("lega.importa_prima_rose")))
+        #expect(ParoleSquadre.miaSquadra == Catalogo.Lega.miaSquadra)
+        #expect(ParoleSquadre.stemmaEMaglia == Catalogo.Lega.stemmaMaglia)
+        #expect(ParoleSquadre.vediLaRosa == Catalogo.Lega.vediRosa)
+        #expect(ParoleSquadre.nonLaTua == Catalogo.Lega.nonTuaSquadra)
+        #expect(ParoleSquadre.scegliLaTua == Catalogo.Lega.scegliQualeDelle)
+        #expect(ParoleSquadre.tuaSquadra == Catalogo.Lega.tuaSquadra)
+        #expect(ParoleSquadre.toccaUnaSquadra == Catalogo.Lega.toccaUnaSquadra)
+        #expect(ParoleSquadre.importaPrima == Catalogo.Lega.importaPrimaRose)
         #expect(ParoleSquadre.chiudi == (try Self.pezzo("shell.chiudi")))
     }
 
@@ -51,15 +53,17 @@ struct SquadreComeLaWebTests {
     // MARK: maglia, mai divisa
 
     @Test("Stemma e maglia: i nomi, i messaggi e i pulsanti sono quelli della web")
-    func stemmaEMaglia() throws {
-        #expect(ParoleSquadre.nome(tipo: "stemma") == (try Self.pezzo("scambio.stemma")))
-        #expect(ParoleSquadre.nome(tipo: "maglia") == (try Self.pezzo("scambio.maglia")))
-        #expect(ParoleSquadre.aggiornata(tipo: "stemma") == (try Self.pezzo("scambio.stemma_aggiornato")))
-        #expect(ParoleSquadre.aggiornata(tipo: "maglia") == (try Self.pezzo("scambio.maglia_aggiornata")))
-        #expect(ParoleSquadre.usaCome(tipo: "stemma") == (try Self.pezzo("lega.usa_come_stemma")))
-        #expect(ParoleSquadre.usaCome(tipo: "maglia") == (try Self.pezzo("lega.usa_come_maglia")))
-        #expect(ParoleSquadre.cambia(tipo: "maglia") == (try Self.pezzo("scambio.cambia_tipo", ["tipo": "maglia"])))
-        #expect(ParoleSquadre.carica(tipo: "stemma") == (try Self.pezzo("scambio.carica_tipo", ["tipo": "stemma"])))
+    func stemmaEMaglia() {
+        #expect(ParoleSquadre.nome(tipo: "stemma") == Catalogo.Scambio.stemma)
+        #expect(ParoleSquadre.nome(tipo: "maglia") == Catalogo.Scambio.maglia)
+        #expect(ParoleSquadre.aggiornata(tipo: "stemma") == Catalogo.Scambio.stemmaAggiornato)
+        #expect(ParoleSquadre.aggiornata(tipo: "maglia") == Catalogo.Scambio.magliaAggiornata)
+        #expect(ParoleSquadre.usaCome(tipo: "stemma") == Catalogo.Lega.usaComeStemma)
+        #expect(ParoleSquadre.usaCome(tipo: "maglia") == Catalogo.Lega.usaComeMaglia)
+        #expect(ParoleSquadre.cambia(tipo: "maglia") == Catalogo.Scambio.cambiaTipo(tipo: "maglia"))
+        #expect(ParoleSquadre.cambia(tipo: "maglia") == "Cambia maglia")
+        #expect(ParoleSquadre.carica(tipo: "stemma") == Catalogo.Scambio.caricaTipo(tipo: "stemma"))
+        #expect(ParoleSquadre.carica(tipo: "stemma") == "Carica stemma")
     }
 
     @Test("In nessuna parola della pagina e della rosa c'è «divisa»", arguments: ["stemma", "maglia"])
@@ -83,23 +87,23 @@ struct SquadreComeLaWebTests {
     // MARK: la rosa
 
     @Test("La rosa: Cambia il nome, Crediti residui, Salva e Senza ruolo con le parole della web")
-    func rosa() throws {
-        #expect(ParoleSquadre.cambiaIlNome == (try Self.pezzo("scambio.cambia_nome")))
-        #expect(ParoleSquadre.nuovoNome == (try Self.pezzo("scambio.nuovo_nome")))
-        #expect(ParoleSquadre.aiutoNome == (try Self.pezzo("scambio.nome_aiuto")))
-        #expect(ParoleSquadre.nomeNonValido == (try Self.pezzo("scambio.nome_non_valido")))
-        #expect(ParoleSquadre.nomeSalvato == (try Self.pezzo("scambio.nome_salvato")))
-        #expect(ParoleSquadre.creditiResidui == (try Self.pezzo("scambio.crediti_residui")))
-        #expect(ParoleSquadre.salva == (try Self.pezzo("scambio.salva")))
-        #expect(ParoleSquadre.creditiSalvati == (try Self.pezzo("scambio.crediti_salvati")))
-        #expect(ParoleSquadre.scriviCrediti == (try Self.pezzo("scambio.scrivi_crediti_come")))
-        #expect(ParoleSquadre.senzaRuolo == (try Self.pezzo("scambio.senza_ruolo")))
+    func rosa() {
+        #expect(ParoleSquadre.cambiaIlNome == Catalogo.Scambio.cambiaNome)
+        #expect(ParoleSquadre.nuovoNome == Catalogo.Scambio.nuovoNome)
+        #expect(ParoleSquadre.aiutoNome == Catalogo.Scambio.nomeAiuto)
+        #expect(ParoleSquadre.nomeNonValido == Catalogo.Scambio.nomeNonValido)
+        #expect(ParoleSquadre.nomeSalvato == Catalogo.Scambio.nomeSalvato)
+        #expect(ParoleSquadre.creditiResidui == Catalogo.Scambio.creditiResidui)
+        #expect(ParoleSquadre.salva == Catalogo.Scambio.salva)
+        #expect(ParoleSquadre.creditiSalvati == Catalogo.Scambio.creditiSalvati)
+        #expect(ParoleSquadre.scriviCrediti == Catalogo.Scambio.scriviCreditiCome)
+        #expect(ParoleSquadre.senzaRuolo == Catalogo.Scambio.senzaRuolo)
     }
 
     @Test("«Rose aggiornate il 6 novembre 2026»: il mese per intero, ora italiana; senza data «–»")
-    func roseAggiornate() throws {
-        let modello = try Self.pezzo("scambio.rose_aggiornate")
-        func web(_ data: String) -> String { modello.replacingOccurrences(of: "{data}", with: data) }
+    func roseAggiornate() {
+        func web(_ data: String) -> String { Catalogo.Scambio.roseAggiornate(data: data) }
+        #expect(ParoleSquadre.roseAggiornate("2026-11-06T10:12:00") == "Rose aggiornate il 6 novembre 2026")
         #expect(ParoleSquadre.roseAggiornate("2026-11-06T10:12:00") == web("6 novembre 2026"))
         #expect(ParoleSquadre.roseAggiornate("2026-03-01 08:00") == web("1 marzo 2026"))
         #expect(ParoleSquadre.roseAggiornate("2026-12-31") == web("31 dicembre 2026"))
@@ -150,7 +154,7 @@ struct SquadreComeLaWebTests {
         let json = try #require(try JSONSerialization.jsonObject(with: corpo) as? [String: String])
         #expect(json == ["nome": "Nuvola Ovest", "nuovo": "Nuvola Est"])
         #expect(vm.nome == "Nuvola Est")
-        #expect(vm.messaggio == (try Self.pezzo("scambio.nome_salvato")))
+        #expect(vm.messaggio == Catalogo.Scambio.nomeSalvato)
         #expect(server.quante("GET /api/rosa?squadra=" + IndirizzoServer.codifica("Nuvola Est")) == 1, "la rosa si rilegge con il nome nuovo")
     }
 
@@ -164,7 +168,7 @@ struct SquadreComeLaWebTests {
         async let secondo: Void = vm.rinomina()
         _ = await (primo, secondo)
         #expect(server.quante("PUT /api/squadre/nome") == 1, "il secondo invio, a salvataggio in corso, non parte")
-        #expect(vm.messaggio == (try Self.pezzo("scambio.nome_salvato")))
+        #expect(vm.messaggio == Catalogo.Scambio.nomeSalvato)
         #expect(!vm.inCorso)
     }
 
@@ -177,7 +181,7 @@ struct SquadreComeLaWebTests {
             vm.messaggio = nil
             vm.nuovoNome = scritto
             await vm.rinomina()
-            #expect(vm.messaggio == (try Self.pezzo("scambio.nome_non_valido")), "«\(scritto)»")
+            #expect(vm.messaggio == Catalogo.Scambio.nomeNonValido, "«\(scritto)»")
         }
         #expect(server.quante("PUT /api/squadre/nome") == 0)
         vm.nuovoNome = String(repeating: "a", count: 60)
@@ -253,7 +257,7 @@ struct SquadreComeLaWebTests {
         let corpo = try #require(server.corpiInviati(a: "PUT /api/crediti").last)
         let json = try #require(try JSONSerialization.jsonObject(with: corpo) as? [String: [String: Int]])
         #expect(json == ["crediti": ["Nuvola Ovest": 125]])
-        #expect(vm.messaggio == (try Self.pezzo("scambio.crediti_salvati")))
+        #expect(vm.messaggio == Catalogo.Scambio.creditiSalvati)
     }
 
     @Test("Crediti scritti male (lettere, negativi, decimali, più di 5 cifre, vuoto): la frase della web e niente richiesta",
@@ -264,7 +268,7 @@ struct SquadreComeLaWebTests {
         await vm.carica()
         vm.crediti = scritto
         await vm.salvaCrediti()
-        #expect(vm.messaggio == (try Self.pezzo("scambio.scrivi_crediti_come")))
+        #expect(vm.messaggio == Catalogo.Scambio.scriviCreditiCome)
         #expect(server.quante("PUT /api/crediti") == 0)
     }
 
@@ -278,7 +282,7 @@ struct SquadreComeLaWebTests {
         async let secondo: Void = vm.salvaCrediti()
         _ = await (primo, secondo)
         #expect(server.quante("PUT /api/crediti") == 1, "il secondo «Salva», a salvataggio in corso, non parte")
-        #expect(vm.messaggio == (try Self.pezzo("scambio.crediti_salvati")))
+        #expect(vm.messaggio == Catalogo.Scambio.creditiSalvati)
     }
 
     @Test("Zero è un numero buono (la web dice «anche 0»)")

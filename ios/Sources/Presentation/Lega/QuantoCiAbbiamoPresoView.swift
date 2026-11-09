@@ -31,7 +31,7 @@ struct QuantoCiAbbiamoPresoView: View {
                 Text("Barra: fascia prevista. Trattino: punti attesi. Pallino: punti fatti, arancio se fuori dalla fascia.")
                     .font(.caption).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
-                DisclosureGroup("Giornata per giornata") {
+                DisclosureGroup(Catalogo.Diario.qpAndamento) {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(punti.reversed()) { p in rigaGiornata(p) }
                     }
