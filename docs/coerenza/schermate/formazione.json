@@ -62,6 +62,15 @@
       "forma": "web",
       "chi": "fatto con #437 e #463 (PR #475): in modifica a mano stili e moduli restano (nessuno acceso) con «Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata.»; un tocco torna alla loro proposta senza cancellare la scelta salvata; Salva, Annulla e Torna nella riga dello stato come `rigaStatoScelta`. A giornata chiusa l'iPhone resta in sola lettura. Prova: `FormazioneComeLaWebTests`, `ModificaAManoModuliTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 61,
+      "schermata": "Formazione, frasi piccole e VoiceOver",
+      "web": "mentre carica «Calcolo la formazione migliore…»; «Formazione copiata: incollala dove vuoi» e «Non riesco a creare l'immagine» senza punto finale; «Stai guardando la formazione di Gli Amici.»; ⇄ letto «Confronta Rossi con un altro»; dopo il salvataggio «Salvata come tua scelta» (testi `formazione.*`)",
+      "iphone": "«Scelgo gli undici…»; le due frasi con il punto finale; «Stai guardando la formazione di Gli Amici» senza punto; VoiceOver «Confronta Rossi con un altro della rosa» e «Formazione salvata»",
+      "forma": "web (catalogo `fanta/testi/formazione.json`)",
+      "chi": "fatto con #495: l'iPhone prende queste frasi, e le altre della Formazione elencate in `ios/testi/formazione.txt`, da `Catalogo.Formazione` (generato da `script/testi.py`). Prova: `FormazioneDalCatalogoTests`",
+      "stato": "fatto"
     }
   ]
 }

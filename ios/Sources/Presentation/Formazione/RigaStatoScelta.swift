@@ -12,11 +12,11 @@ struct RigaStatoScelta: View {
     let annulla: () -> Void
     let tornaAllaConsigliata: () -> Void
 
-    /// Le parole dei pulsanti, quelle di `testi.js` (`formazione.salva_questa`, `formazione.annulla_modifiche`,
+    /// Le parole dei pulsanti, quelle della web dal catalogo comune (`formazione.salva_questa`, `formazione.annulla_modifiche`,
     /// `formazione.torna_alla_consigliata`): la prova è `ModificaAManoModuliTests`.
-    static let testoSalvaQuesta = "Salva questa"
-    static let testoAnnulla = "Annulla modifiche"
-    static let testoTorna = "Torna alla consigliata"
+    static let testoSalvaQuesta = Catalogo.Formazione.salvaQuesta
+    static let testoAnnulla = Catalogo.Formazione.annullaModifiche
+    static let testoTorna = Catalogo.Formazione.tornaAllaConsigliata
 
     private static let suggerimentoSalva = "Salva come tua scelta per questa giornata la formazione che stai guardando"
 
