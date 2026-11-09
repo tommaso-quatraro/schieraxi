@@ -73,14 +73,21 @@ Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dop
   (es. «- revisore: nessun rilievo bloccante»). Si scrive in bozza, prima di `gh pr ready`. Esenti bot e soli documenti.
 - **Novità solo della PR**: in `fanta/novita.d/` al massimo un file, solo aggiunto; `fanta/novita.json` non si tocca a mano.
 - **Test e novità**: nessun test legge un file di `fanta/novita.d/` per nome (dopo il rilascio non c'è più): si cerca per titolo.
-- La descrizione corretta dopo l'apertura si rilegge al push successivo o con `gh pr ready --undo` e poi `gh pr ready`
-  («Re-run» rilegge la descrizione di prima).
+- Trappola: il job «ambito» legge la descrizione solo quando parte una corsa nuova; «Re-run» rilegge la descrizione di prima.
+  Dopo un `gh pr edit` della descrizione serve quindi una corsa nuova: un push (anche un commit vuoto,
+  `git commit --allow-empty -m "rilegge la descrizione"`, poi `git push`), oppure `gh pr ready --undo` e poi `gh pr ready`,
+  oppure un update-branch su GitHub con il ramo indietro.
+- Trappola: la riga `Aree:` vuole cartelle o file (`fanta/web, tests, docs`), non i nomi delle aree di `script/squadra/aree.json`.
 
 ## Quando un lavoro è finito
 - **Server**: test verdi; `python -m fanta verifica` prima e dopo se cambia il calcolo; voce in `fanta/novita.d/`;
   `docs/API.md` o `docs/GUIDA-UTENTE.md` aggiornati.
 - **Web**: come il server, più la prova nel browser a 390, 768, 1024 e 1440 px, tema chiaro e scuro, con dati verosimili e
-  le schermate guardate davvero.
+  le schermate guardate davvero. Nella descrizione la riga `Aspetto:` con le scene che cambiano aspetto (`oggi`, `formazione`,
+  `squadra`, `rosa`, `scheda`, `confronto`, `altro`, `diario`, `regole`, `scambi`, `impostazioni`), oppure `nessuno` o `tutte`.
+  Il workflow «Aspetto della web» (`script/ci/aspetto_web.py`, decisione 0011) fotografa le scene con il codice della PR e con
+  quello di `main` nella stessa corsa e avvisa se cambia una scena non scritta lì: per ora solo avviso, la corsa resta verde.
+  Le immagini delle scene diverse (`main`, PR e differenza in rosso) sono nell'artifact `aspetto-web`: si guardano.
 - **iPhone**: prima dell'unione compilazione e test verdi in CI (`ios / test`) e revisione fatta; nella pull request le schermate
   da fotografare e l'elenco di cosa provare sul telefono. Dopo l'unione le foto delle schermate toccate, guardate davvero.
 - **Ogni schermata**: stessi testi, numeri e stati su web e iPhone (`docs/COERENZA-WEB-IPHONE.md`), oppure un'issue «coerenza: …»;
@@ -104,6 +111,34 @@ Gli script si prendono da `main`: un controllo nuovo vale dalla pull request dop
   ogni campo dei modelli `Decodable` dell'iPhone deve comparire come chiave da qualche parte in `fanta/`. Trova una chiave sparita
   da tutto il server, NON un campo tolto da una sola rotta (circa 3 chiavi su 10 lette dall'iPhone stanno in 5 o più file): chi
   rivede una PR che toglie o rinomina una chiave controlla lo stesso le rotte lette dall'iPhone.
+  Il secondo controllo, sul Mac (`ios/Tests/SchieraxiTests/ContrattoDalVeroTests.swift`, dentro `ios / test`): le risposte vere
+  di `ios/fotografie/vero-*.json` si leggono con i tipi e il decodificatore dell'app; un errore dice indirizzo e percorso del campo.
+  Prende i tipi sbagliati, ma solo sui dati dell'ultima registrazione (`prove/fotografie_dal_vero.py`). Perché due controlli e non
+  modelli generati: decisione 0014.
+
+## Ambiente di prova e collaudo automatico
+- Una seconda copia dell'app sullo stesso server, `https://prova.<dominio>`, con un utente di sistema suo e un account di collaudo
+  (decisione 0012). Riceve ogni versione **prima** della produzione, senza aspettare la fine delle partite. Comandi, prove e ritorno
+  indietro: `script/server/prova/LEGGIMI.md`.
+- Il collaudo (`.github/workflows/collaudo-prova.yml`, `script/ci/collaudo_prova.py`) gira ogni 20 minuti e collauda la versione
+  nuova appena la prova ce l'ha; in più ogni giorno alle 5:17 UTC collauda la versione in vigore, anche senza versione nuova
+  (GitHub fa partire di rado le corse ogni 20 minuti). Entra con l'account di collaudo e misura errori della console, scorrimento
+  di lato e accessibilità a 390 e 1440 px, senza foto.
+- Se non passa: issue `P1` «Collaudo della prova: v<N> non passa» e corsa rossa. Se la prova non ha la versione nuova 40 minuti
+  dopo la release: issue «La prova non si aggiorna» e corsa rossa. Un collaudo che passa chiude le issue del collaudo.
+- A mano: Actions > «Collaudo della prova» > «Run workflow» (collauda subito, anche una versione già collaudata).
+
+## Giornata senza errori (la misura di #167)
+- Una giornata è senza errori se, dalla scadenza della lega a due giorni dopo l'inizio dell'ultima partita: la sentinella non ha
+  allarmi e ha girato almeno ogni 2 ore, non nasce nessuna issue `P1` o `dall-utente`, le corse dei controlli su `main` e del collaudo
+  non sono rosse, la prova è stata collaudata davvero almeno una volta (job «Collaudo delle schermate» riuscito) e nessuna issue
+  «CI: main rosso», «Collaudo della prova: v<N> non passa» o «La prova non si aggiorna» è rimasta aperta in qualche momento della finestra, anche se
+  nata prima.
+  Una parte che manca rende la giornata rossa: mai verde per omissione (decisione 0013).
+- Si misura a finestra finita, con i giri della sentinella presi dal server in sola lettura
+  (`python -m fanta sentinella --giri --dal <ISO con fuso> --al <ISO con fuso>`, salvati in un file):
+  `python script/squadra/squadra.py giornata --dal <ISO con fuso> --al <ISO con fuso> --sentinella <file>`.
+  Uso e codici di uscita: `script/squadra/LEGGIMI.md`, «giornata».
 
 ## App per iPhone
 - Al massimo tre pull request iOS aperte insieme, su schermate diverse; i file comuni li cambia una pull request alla volta.
