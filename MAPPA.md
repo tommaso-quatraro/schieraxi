@@ -74,7 +74,10 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
     con Google), `onboarding.py`, `limiti.py`, `importa_sicuro.py`, `gestione.py`.
   - Varie: `backup.py`, `controlli.py` (coerenza dei dati), `sentinella.py` (ogni ora: rifà in sola lettura le risposte di Oggi,
     Formazione, Scelta, Diario, widget e Live per ogni utente e controlla le invarianti di `INVARIANTI`; esito nella tabella
-    `controlli`, avviso al proprietario alla prima rottura confermata; `script/server/sentinella.sh`), `registro.py` (file di registro con rotazione), `testi_legali.py`
+    `controlli`, avviso al proprietario alla prima rottura confermata; `script/server/sentinella.sh`; storia dei giri nel campo
+    `giri` di `dati/sentinella.json`, una voce `{quando, rotte, inviato}` per ogni giro del server tenuta 60 giorni, i giri a mano
+    `--senza-invio` esclusi: `python -m fanta sentinella --giri --dal <ISO con fuso> --al <ISO con fuso>` la stampa, campo
+    `sentinella_giri` di `GET /api/stato-dati`; la legge il comando `giornata` della squadra), `registro.py` (file di registro con rotazione), `testi_legali.py`
     (pagine privacy, termini, crediti), `sotto_il_cofano.py`, `widget.py`, `da_fare.py`, `stato_utente.py`, `copertura.py`,
     `avatar.py` (`GET /api/avatar`).
 - `fanta/web/`: la web app, HTML, CSS e JavaScript senza librerie né compilazione. File principali: `index.html`, `app.js`,
@@ -110,6 +113,10 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   ogni pagina. Si rigenera con `assets/marchio/wordmark/genera.py` (font Archivo, SIL OFL 1.1).
   Test: `tests/test_sito.py`, `tests/test_sito_html.py`.
 - `ios/`: l'app per iPhone e iPad (SwiftUI). Ha i suoi test e il suo `README.md`.
+  Testi dal catalogo: `ios/testi/<prefisso>.txt` elenca le chiavi del catalogo che l'iPhone usa; `ios/Sources/Support/Catalogo/`
+  è generato da `python script/testi.py --scrivi` e non si scrive a mano (vedi `fanta/testi/` sopra).
+  Contratto dal vero: `ios/Tests/SchieraxiTests/ContrattoDalVeroTests.swift` legge le risposte di `ios/fotografie/vero-*.json` con i
+  modelli dell'app (sul Mac, in `ios / test`).
   Mac di GitHub solo se servono: il job `ios` di `test.yml` parte se la pull request tocca `ios/` o uno dei file fuori da `ios/` che i test leggono (`ios/Tests/file-esterni.txt`, `tests/test_ios_file_esterni.py`) e non è in bozza (riparte quando la bozza diventa pronta); un push nuovo annulla le corse vecchie della stessa pull request, mai quelle su `main` (`tests/test_workflow_ios.py`). Dopo ogni unione `test.yml` si rilancia su `main` (job `prova-main`) e un rosso apre l'issue «CI: main rosso» (job `main-rosso`, `docs/decisioni/0008`, `tests/test_workflow_main.py`).
   Screenshot: workflow `screenshot.yml` (a mano o etichetta `screenshot` sulla pull request non in bozza). «Fotografie dal vero»: `gh workflow run screenshot.yml -f scatti=vero` (o etichetta `screenshot-vero`), tre Mac in parallelo (iPhone piccolo, iPhone grande, iPad) con gli scenari `ios/fotografie/vero-*.json`: risposte vere del server con rose e nomi INVENTATI, prima della scadenza, a giornata in corso e a giornata finita. Si rifanno con `prove/fotografie_dal_vero.py` (copia dei dati, orologio fermo, niente rete, controllo dei nomi veri con le parole vietate private).
   iPhone da provare nel browser: workflow `ios-simulatore.yml` (solo a mano), app per il simulatore in demo come artifact `.zip` e, con il segreto `APPETIZE_TOKEN`, caricata su Appetize.io (variabile `APPETIZE_APP`). Istruzioni: `docs/PROVA-IPHONE-BROWSER.md`.
@@ -117,11 +124,28 @@ Leggi prima `CLAUDE.md` (regole e flusso). Qui: dove sta cosa. Per usare l'app: 
   con la variabile `FANTA_LEGA=<cartella>`.
 - `dati/`: database, cache e chiavi locali. Non va in git.
 - `script/server/`: script del server (aggiornamento automatico, copie dei dati, promemoria, controllo di salute, sentinella).
+  `script/server/prova/`: l'ambiente di prova sullo stesso server (decisione 0012): servizio `schieraxi-prova.service`, esempio di
+  nginx con `prova.<dominio>` non indicizzato, preparazione (`prepara-prova.sh`), copia dell'archivio dei dati di calcio
+  (`copia_archivio.py`, `copia-archivio-prova.sh`, `esporta-archivio-prova.sh`). Passi, prove e ritorno indietro in
+  `script/server/prova/LEGGIMI.md`; `aggiorna-app.sh` la aggiorna con `SCHIERAXI_ISTANZA=prova`. Test `tests/test_prova_server.py`.
 - `script/ci/`: numero di versione e note di rilascio (`controlla_versione.py`, `assegna_versione.py`, `note_rilascio.py`);
   `metriche.py`: metriche della squadra per settimana (versioni, tempo PR→unione, etichette `regressione`, `dall-utente`,
   `fuori-piano`, coda iOS), solo lettura con `gh`: `python script/ci/metriche.py --settimane 4`.
-- `script/squadra/`: comandi del coordinatore (`stato`, `attendi`, `annulla-superate`, `pulisci`, `brief`, `foto`, `giro`, `pr-pronta`) con `aree.json`, `foto.json`, `modello-brief.md`: `python script/squadra/squadra.py <comando> --help`, guida in `script/squadra/LEGGIMI.md`.
+  `aspetto_web.py`: regressione visiva della web (decisione 0011), workflow `.github/workflows/aspetto-web.yml` sulle PR che toccano
+  `fanta/web/`, `ios/fotografie/` o lo script stesso: 11 scene a 390 e 1440 px, chiaro e scuro, scattate con il codice della PR e con quello di `main` nella stessa corsa,
+  dati da `ios/fotografie/vero-prima.json`; avvisa se cambia una scena non scritta nella riga `Aspetto:` della PR. Solo avviso. Test
+  `tests/test_aspetto_web.py`.
+  `collaudo_prova.py` con `.github/workflows/collaudo-prova.yml`: collaudo automatico dell'ambiente di prova (decisione 0012), ogni
+  20 minuti dopo un rilascio e ogni giorno alle 5:17 UTC; se non passa apre l'issue `P1` «Collaudo della prova: v<N> non passa» e la
+  corsa è rossa; se la prova resta indietro di oltre 40 minuti, issue «La prova non si aggiorna». Segreti `PROVA_URL`, `PROVA_UTENTE`,
+  `PROVA_PASSWORD` (senza: non fa niente). Test `tests/test_collaudo_prova.py`.
+- `script/squadra/`: comandi del coordinatore (`stato`, `attendi`, `annulla-superate`, `pulisci`, `brief`, `foto`, `giro`, `pr-pronta`,
+  `giornata`: dice se una giornata è passata senza errori, in `giornata.py`, decisione 0013) con `aree.json`, `foto.json`, `modello-brief.md`: `python script/squadra/squadra.py <comando> --help`, guida in `script/squadra/LEGGIMI.md`.
 - `tests/`: test pytest, un file per modulo. `conftest.py` e dati inventati in `tests/dati/`.
+  `tests/codice_web.py`: il lettore unico del codice della web (`fanta/web/*.js`) per i test Python; nessun test legge da solo i file
+  `.js` di `fanta/web/` (`tests/test_codice_web.py` lo controlla).
+  `tests/contratto_ios.py`: il contratto iPhone-server senza Mac (decisione 0014): ogni campo dei modelli `Decodable` dell'iPhone deve
+  comparire come chiave in `fanta/`; test `tests/test_contratto_ios.py`, eccezioni con il motivo in `tests/dati/contratto_ios_eccezioni.json`.
   `tests/strumenti/axe/`: axe-core (Deque, MPL-2.0) a versione fissa con hash, per i collaudi di accessibilità nel browser; mai dentro `fanta/web/` (`tests/test_strumenti_axe.py`).
 - `prove/`: prove e strumenti di servizio (crea icone e marchio, misure di tempi, carico, `fotografie_dal_vero.py` per gli screenshot dell'app). `calibra_p_voto.py`: calibrazione di «gioca N%» senza probabili (misura prima/dopo, ristima i pesi di `modello.CALIBRAZIONE_SENZA_PROBABILI` con `--stima <stagioni passate>`). `misura_stabilita.py`: quanto cambia la consigliata con piccoli ritocchi dei dati, sempre la migliore contro il consiglio stabile (#335). `tara_forza_gol.py`: taratura della forza delle squadre dei gol attesi «nostri» (memoria, partite fittizie, livello recente del campionato; devianza di Poisson dei gol di squadra sul 2025-26, controllo sul 2026-27) e, con `--ruoli`, gol e assist veri su attesi per ruolo (Fase C del piano `2026-11-06-gol-attesi-nostri`). `foto_web/foto.py`: foto e axe della web senza finestra (Chrome di sistema, server di prova con la lega d'esempio avviato e fermato da solo, 12 scene a 390/768/1024/1440 px in chiaro e scuro, `riepilogo.txt` con violazioni gravi, scorrimento di lato ed errori della console; foto sempre fuori dal repository), istruzioni in `prove/foto_web/LEGGIMI.md`, test `tests/test_foto_web.py`.
 - `docs/`: guide e contratti. Per chi usa l'app: `GUIDA-UTENTE.md`, `INSTALLAZIONE-IPHONE.md`. Per chi sviluppa: `API.md`,
@@ -212,7 +236,11 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   `dati/utenti/<id>/`, database `dati/account.sqlite`.
 - L'id utente viene solo dalla sessione, mai da un parametro. Ogni rotta personale usa `contesto.py` e va coperta da
   `tests/test_isolamento.py`.
-- Tetti per utente in `fanta/limiti.py`: importazioni di rose, ricerche di scambi (`FANTA_MAX_SCAMBI`), immagini da indirizzo web.
+- Tetti per utente in `fanta/limiti.py`: importazioni di rose, ricerche di scambi (`FANTA_MAX_SCAMBI`), immagini da indirizzo web;
+  calcoli in coda e memoria dei risultati per utente, consigliate ricordate, azioni pesanti all'ora; importazione delle rose con lo
+  stesso tetto di celle per ogni formato (`MAX_CELLE_IMPORTAZIONE`) e un tempo massimo per riconoscere i giocatori
+  (`MAX_SECONDI_RICONOSCIMENTO`); avvisi con un tempo massimo per ogni invio (`MAX_SECONDI_INVIO`, vale sempre) e un tetto di prove
+  all'ora (`MAX_PROVE_AVVISI_ORA`). Ogni tetto nuovo si cambia sul server con `FANTA_<nome della costante>`.
 - Registrazione: `FANTA_REGISTRAZIONE=invito|email|aperta` (predefinito `invito`).
 - Posta: `FANTA_MAIL=spento|log|smtp|resend` (predefinito `spento`: nessun invio; `log` scrive in `dati/posta.log` solo che un
   messaggio sarebbe partito, mai il codice). Con registrazione `aperta` o `email` servono `smtp` o `resend`.
