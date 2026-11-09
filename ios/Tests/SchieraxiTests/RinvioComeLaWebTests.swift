@@ -4,13 +4,10 @@ import Testing
 
 /// Oggi, riquadro «Partita rinviata», come la web (`cardRinvio` di app.js, #284): la partita come quelle del turno («UDI vs MIL»,
 /// prima la squadra di casa, mai «UDI–MIL») e la data del recupero come `quando` della web («recupero mer 18 nov 20:45»).
-/// Le frasi vengono da `testi.js`. Dati inventati.
+/// Le frasi sono quelle del catalogo comune con la web (`Catalogo.Oggi`, #494): `TestiRinvio` le ha ancora scritte a mano e qui
+/// si confrontano. Dati inventati.
 @Suite("Carta del rinvio come la web")
 struct RinvioComeLaWebTests {
-    private let web: TestiWeb
-
-    init() throws { web = try TestiWeb() }
-
     /// Un momento fisso, ora italiana: giovedì 5 novembre 2026.
     private func adesso() throws -> Date { try #require(Quando.data("2026-11-05 10:00")) }
 
@@ -34,9 +31,9 @@ struct RinvioComeLaWebTests {
         ("2026-11-05 20:45", "oggi 20:45"),
     ]
 
-    @Test("La data del recupero come la web (`oggi.rinvio_recupero` con `quando`)", arguments: RinvioComeLaWebTests.recuperi)
+    @Test("La data del recupero come la web (`oggi.rinvio_recupero` con `quando`, dal catalogo)", arguments: RinvioComeLaWebTests.recuperi)
     func dataDelRecupero(data: String, quando: String) throws {
-        let atteso = try web.italiano("oggi.rinvio_recupero").replacingOccurrences(of: "{quando}", with: quando)
+        let atteso = Catalogo.Oggi.rinvioRecupero(quando: quando)
         let p = PartitaRinviata(casa: "udinese", trasferta: "milan", data: data)
         let ora = try adesso()
         #expect(TestiRinvio.recupero(p, adesso: ora) == atteso)
@@ -44,19 +41,18 @@ struct RinvioComeLaWebTests {
 
     @Test("Senza data: «recupero da definire» (`oggi.rinvio_da_definire`)", arguments: [nil, "", "data strana"] as [String?])
     func senzaData(data: String?) throws {
-        let atteso = try web.italiano("oggi.rinvio_da_definire")
+        let atteso = Catalogo.Oggi.rinvioDaDefinire
         let p = PartitaRinviata(casa: "udinese", trasferta: "milan", data: data)
         let ora = try adesso()
         #expect(TestiRinvio.recupero(p, adesso: ora) == atteso)
     }
 
     @Test("Titolo e giocatori coinvolti con le frasi della web")
-    func titoloEGiocatori() throws {
-        let uno = try web.italiano("oggi.rinvio_titolo_1"), due = try web.italiano("oggi.rinvio_titolo_n")
-        #expect(TestiRinvio.titolo(1) == uno)
-        #expect(TestiRinvio.titolo(2) == due)
+    func titoloEGiocatori() {
+        #expect(TestiRinvio.titolo(1) == Catalogo.Oggi.rinvioTitolo1)
+        #expect(TestiRinvio.titolo(2) == Catalogo.Oggi.rinvioTitoloN)
         let s = SceltaRinvio(giornata: 10, modo: ModoRinvio.aspetta, miei: [GiocatoreRinviato(id: 1, nome: "Ruben Tescari")])
-        let miei = try web.italiano("oggi.rinvio_miei").replacingOccurrences(of: "{nomi}", with: "Ruben Tescari")
+        let miei = Catalogo.Oggi.rinvioMiei(nomi: "Ruben Tescari")
         #expect(TestiRinvio.miei(s) == miei)
     }
 }

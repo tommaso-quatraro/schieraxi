@@ -1,0 +1,2 @@
+# Nomi delle sezioni. Poi: python script/testi.py --scrivi
+nav.oggi

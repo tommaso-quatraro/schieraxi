@@ -95,7 +95,7 @@ final class OggiViewModel: ViewModelBase {
         var ordine: [String] = []
         let ordinate = partite.sorted { ($0.data ?? "") < ($1.data ?? "") }
         for p in ordinate {
-            let titolo = Quando.data(p.data).map { Quando.giorno($0).primaMaiuscola } ?? "Data da definire"
+            let titolo = Quando.data(p.data).map { Quando.giorno($0).primaMaiuscola } ?? Catalogo.Oggi.dataDaDefinire
             if perGiorno[titolo] == nil { ordine.append(titolo) }
             perGiorno[titolo, default: []].append(p)
         }

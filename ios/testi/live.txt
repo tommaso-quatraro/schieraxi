@@ -1,0 +1,6 @@
+# Stato delle partite del turno in Oggi (`fanta/web/live.js`). Poi: python script/testi.py --scrivi
+live.aggiornamento
+live.intervallo
+live.finita
+live.rinviata
+live.sospesa

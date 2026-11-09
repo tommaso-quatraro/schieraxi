@@ -13,7 +13,7 @@ struct CartaFormazioneOggi: View {
             if let f = oggi.formazione, disponibile {
                 cifre(f)
                 Button { vaiASezione(.formazione) } label: {
-                    Label(TestiOggi.apriFormazione, systemImage: "sportscourt").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Label(Catalogo.Oggi.apriFormazione, systemImage: "sportscourt").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
             } else {
@@ -22,7 +22,7 @@ struct CartaFormazioneOggi: View {
             // Fuori dal controllo «formazione disponibile», come la web (#416): le probabili possono mancare anche quando i punti
             // attesi non ci sono ancora, ed è proprio allora che serve saperlo.
             if SezioneOggi.avvisoProbabili(fase: oggi.faseGiornata, conProbabili: oggi.conProbabili) {
-                Label(TestiOggi.mancanoProbabili, systemImage: "clock")
+                Label(Catalogo.Oggi.mancanoProbabiliFormazioni, systemImage: "clock")
                     .font(.footnote)
                     .foregroundStyle(Color.attenzione)
                     .fixedSize(horizontal: false, vertical: true)
@@ -54,7 +54,7 @@ struct CartaFormazioneOggi: View {
                     .font(.title2.bold())
                     .monospacedDigit()
                     .numerico(f.punteggioAtteso ?? 0)
-                Text(TestiOggi.puntiAttesi).font(.caption).foregroundStyle(Color.testoSecondario)
+                Text(Catalogo.Oggi.puntiAttesi).font(.caption).foregroundStyle(Color.testoSecondario)
                 if let fascia = IntervalloPunti.frase(f.intervallo, dev: f.dev) {
                     Text(fascia).font(.caption2).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
                 }
