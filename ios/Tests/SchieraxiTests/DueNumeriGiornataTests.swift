@@ -138,16 +138,16 @@ struct DueNumeriGiornataTests {
         let o: Oggi = try Decodifica.decodifica(Data(#"{"giornata": 11, "giornata_lega": 8, "scadenza": "2026-10-31 14:50"}"#.utf8))
         let quando = Quando.leggibile("2026-10-31 14:50")
         #expect(OggiView.siEChiusa(o) == "La formazione si è chiusa \(quando)")
-        if let web = try TestiWeb().italianoDopo299("oggi.chiusa_dettaglio", quando) { #expect(OggiView.siEChiusa(o) == web) }
+        #expect(OggiView.siEChiusa(o) == Catalogo.Oggi.chiusaDettaglio(quando: quando))
     }
 
     @Test("Oggi a giornata finita: «Giornata 8 · 11ª di Serie A: finita», come la web")
-    func oggiFinita() throws {
+    func oggiFinita() {
         let attesa = "Giornata 8 · 11ª di Serie A: finita"
         #expect(TestiFase.giornataFinita(serieA: 11, lega: 8) == attesa)
         #expect(TestiFase.giornataFinita(serieA: 11, lega: 8, voce: true) == "Giornata 8, 11ª di Serie A: finita")
         #expect(TestiFase.giornataFinita(serieA: nil, lega: 8) == nil)
-        if let web = try TestiWeb().italianoDopo299("oggi.giornata_finita", "Giornata 8 · 11ª di Serie A") { #expect(web == attesa) }
+        #expect(Catalogo.Oggi.giornataFinita(g: "Giornata 8 · 11ª di Serie A") == attesa)
     }
 
     private func giocatore(_ extra: String) throws -> Giocatore {

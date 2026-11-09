@@ -160,7 +160,7 @@ struct ErroreVista: View {
         } actions: {
             if let apri = apriImpostazioni {
                 Button { apri() } label: {
-                    Label("Impostazioni", systemImage: "gearshape").frame(minHeight: Tema.areaTocco)
+                    Label(Catalogo.Shell.impostazioni, systemImage: "gearshape").frame(minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
                 .accessibilityHint("Apre le Impostazioni, dove si accende Mostra tutte le funzioni")
@@ -204,7 +204,7 @@ struct ErroreVista: View {
                     tentativi += 1
                     riprova()
                 } label: {
-                    Label("Riprova", systemImage: "arrow.clockwise").frame(minHeight: Tema.areaTocco)
+                    Label(Catalogo.Comune.riprova, systemImage: "arrow.clockwise").frame(minHeight: Tema.areaTocco)
                 }
                 .pulsanteVetro(prominente: true)
                 .sensoryFeedback(.impact(weight: .light), trigger: tentativi)

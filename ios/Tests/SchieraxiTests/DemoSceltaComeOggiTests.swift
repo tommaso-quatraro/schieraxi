@@ -51,9 +51,8 @@ struct DemoSceltaComeOggiTests {
 
     @Test("Prima della scadenza la demo mostra la consigliata non salvata, con le parole della web in Oggi e in Formazione")
     func consigliataNonSalvata() async throws {
-        let web = try TestiWeb()
-        let titoloWeb = try web.italiano("oggi.tua_formazione")
-        let rigaWeb = try web.italiano("formazione.stato_consigliata")
+        let titoloWeb = Catalogo.Oggi.tuaFormazione
+        let rigaWeb = Catalogo.Formazione.statoConsigliata
         let s = try demo("oggi")
         let tua = try await oggi(s).formazione?.tuaScelta ?? false
         #expect(TestiOggi.titoloFormazione(tuaScelta: tua) == titoloWeb)
@@ -65,7 +64,7 @@ struct DemoSceltaComeOggiTests {
     @Test("Con la scelta salvata Oggi dice «la tua scelta» con le parole della web",
           arguments: ["formazione-salvata", "formazione-chiusa"])
     func sceltaSalvata(schermata: String) async throws {
-        let titoloWeb = try TestiWeb().italiano("oggi.tua_formazione_scelta")
+        let titoloWeb = Catalogo.Oggi.tuaFormazioneScelta
         let tua = try await oggi(try demo(schermata)).formazione?.tuaScelta ?? false
         #expect(TestiOggi.titoloFormazione(tuaScelta: tua) == titoloWeb, "\(schermata)")
     }

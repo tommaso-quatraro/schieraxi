@@ -3,7 +3,7 @@ import Testing
 @testable import Schieraxi
 
 /// In modifica a mano moduli e stili restano sullo schermo, come la web (#463): al posto della frase dello stile c'è
-/// `formazione.modificata_mano` di `fanta/web/testi.js`, e un tocco su un modulo o uno stile esce dalla modifica a mano e torna alla
+/// `formazione.modificata_mano` del catalogo comune con la web (`Catalogo.Formazione`), e un tocco su un modulo o uno stile esce dalla modifica a mano e torna alla
 /// proposta del server SENZA cancellare la scelta salvata (`data-modulo` e `data-stile` di `mostraFormazione` in `fanta/web/app.js`).
 /// I pulsanti dipendono dallo stato della scelta, come `rigaStatoScelta` della web: con una scelta salvata e un'altra formazione
 /// sullo schermo la riga dice «Modifiche non salvate» con «Salva le modifiche», «Annulla modifiche» e «Torna alla consigliata».
@@ -15,16 +15,21 @@ struct ModificaAManoModuliTests {
     // MARK: frasi e pulsanti
 
     @Test("In modifica a mano, al posto della frase dello stile, «Modificata a mano. Tocca un modulo o uno stile …» della web")
-    func fraseModificataAMano() throws {
-        #expect(FormazioneView.testoModificataAMano == (try web("formazione.modificata_mano")))
+    func fraseModificataAMano() {
+        #expect(FormazioneView.testoModificataAMano == Catalogo.Formazione.modificataMano)
     }
 
-    @Test("I pulsanti hanno le parole della web",
-          arguments: ["formazione.salva_questa", "formazione.salva_modifiche", "formazione.salva_come_mia",
-                      "formazione.annulla_modifiche", "formazione.torna_alla_consigliata", "formazione.modifica_mano"])
-    func paroleDeiPulsanti(chiave: String) throws {
+    @Test("I pulsanti hanno le parole della web (catalogo comune)", arguments: [
+        ("formazione.salva_questa", Catalogo.Formazione.salvaQuesta),
+        ("formazione.salva_modifiche", Catalogo.Formazione.salvaModifiche),
+        ("formazione.salva_come_mia", Catalogo.Formazione.salvaComeMia),
+        ("formazione.annulla_modifiche", Catalogo.Formazione.annullaModifiche),
+        ("formazione.torna_alla_consigliata", Catalogo.Formazione.tornaAllaConsigliata),
+        ("formazione.modifica_mano", Catalogo.Formazione.modificaMano),
+    ])
+    func paroleDeiPulsanti(chiave: String, catalogo: String) throws {
         let iPhone = try #require(paroleIPhone(chiave), "manca il pulsante dell'iPhone per \(chiave)")
-        #expect(iPhone == (try web(chiave)))
+        #expect(iPhone == catalogo)
     }
 
     @Test("I pulsanti di ogni stato sono quelli di `rigaStatoScelta` in app.js, nello stesso ordine; «Modifica a mano» dove la web la mette")
@@ -276,9 +281,7 @@ struct ModificaAManoModuliTests {
 
     // MARK: aiuti
 
-    private func web(_ chiave: String) throws -> String { try TestiWeb().italiano(chiave) }
-
-    /// La parola dell'iPhone per una chiave di `testi.js` (nil = chiave che questo test non conosce).
+    /// La parola dell'iPhone per una chiave del catalogo (nil = chiave che questo test non conosce).
     private func paroleIPhone(_ chiave: String) -> String? {
         switch chiave {
         case "formazione.salva_questa": return RigaStatoScelta.testoSalvaQuesta
