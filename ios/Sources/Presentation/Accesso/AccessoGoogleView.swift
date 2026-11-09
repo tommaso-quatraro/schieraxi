@@ -54,7 +54,7 @@ struct ScegliNomeGoogleView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Nome utente", text: $nome)
+                TextField(Catalogo.Accesso.nomeUtente, text: $nome)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.asciiCapable)
@@ -63,14 +63,14 @@ struct ScegliNomeGoogleView: View {
                     .onSubmit { Task { await crea() } }
                     .frame(minHeight: Tema.areaTocco)
             } header: {
-                Text("Scegli il tuo nome utente").foregroundStyle(Color.testoSecondario)
+                Text(Catalogo.Social.scegliNome).foregroundStyle(Color.testoSecondario)
             } footer: { Group {
                 if let problemaNome { Text(problemaNome).foregroundStyle(Color.attenzione) }
                 else { Text("È il nome con cui ti vedono gli altri. Da 3 a 32 caratteri: lettere, numeri, punto, trattino.") }
             }.foregroundStyle(Color.testoSecondario) }
             if nuovo.serveInvito {
                 Section {
-                    TextField("Codice d'invito", text: $invito)
+                    TextField(Catalogo.Accesso.codiceInvito, text: $invito)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .frame(minHeight: Tema.areaTocco)
@@ -92,7 +92,7 @@ struct ScegliNomeGoogleView: View {
             }
             Section {
                 Button { Task { await crea() } } label: {
-                    Text(sessione.inCorso ? "Un attimo…" : "Crea l'account").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Text(sessione.inCorso ? "Un attimo…" : Catalogo.Social.crea).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled(!pronto || sessione.inCorso)
             }
@@ -130,34 +130,33 @@ struct AccessiSezione: View {
         if sessione.multiutente, sessione.utente != nil, ServiziSociali.googleAcceso(socialTesto) {
             Section {
                 if let a = sessione.accessi {
-                    RigaValore(titolo: "Password", valore: a.password == true ? "Impostata" : (a.password == false ? "Non impostata" : "Non so"))
+                    // le righe della web: «Password: impostata», «Account Google collegato: …» o «Google: non collegato»
+                    if let password = TestiAccount.rigaPassword(a) { Text(password) }
+                    Text(TestiAccount.rigaGoogle(a))
                     if a.google != nil {
-                        // l'email di Google sta già in «Il tuo account»: qui basta dire che è collegato
-                        RigaValore(titolo: "Google", valore: "Collegato")
                         if a.puoScollegareGoogle {
                             Button(role: .destructive) { chiediScollega = true } label: {
-                                Label("Scollega Google", systemImage: "minus.circle").frame(minHeight: Tema.areaTocco)
+                                Label(Catalogo.Social.scollega, systemImage: "minus.circle").frame(minHeight: Tema.areaTocco)
                             }
                             .disabled(sessione.inCorso)
-                            // sul pulsante (una riga sola), non sulla Section: lì finirebbe su ogni riga
-                            .confirmationDialog("Scollegare Google?", isPresented: $chiediScollega, titleVisibility: .visible) {
-                                Button("Scollega Google", role: .destructive) { Task { await fogli.scollegaGoogle(sessione) } }
-                            } message: {
-                                Text("Potrai entrare solo con nome utente e password. Se vuoi, puoi ricollegare Google quando vuoi.")
+                            // sul pulsante (una riga sola), non sulla Section: lì finirebbe su ogni riga. La domanda è quella
+                            // della web, intera nel titolo.
+                            .confirmationDialog(Catalogo.Social.scollegaConferma, isPresented: $chiediScollega, titleVisibility: .visible) {
+                                Button(Catalogo.Social.scollega, role: .destructive) { Task { await fogli.scollegaGoogle(sessione) } }
                             }
                         }
                     } else {
                         Button {
                             if sessione.senzaPassword { Task { await fogli.collegaGoogle(password: "", sessione) } } else { fogli.apri(.passwordPerGoogle) }
                         } label: {
-                            Label("Collega Google", systemImage: "link.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
+                            Label(Catalogo.Social.collega, systemImage: "link.badge.plus").labelStyle(.voce(.blue)).frame(minHeight: Tema.areaTocco)
                         }
                         .disabled(sessione.inCorso)
                         .accessibilityHint("Si apre una finestra di Google")
                     }
                     if a.soloGoogle {
                         Button { fogli.apri(.passwordDaGoogle) } label: {
-                            Label("Aggiungi una password", systemImage: "key").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
+                            Label(Catalogo.Social.aggiungiPassword, systemImage: "key").labelStyle(.voce(.mint)).frame(minHeight: Tema.areaTocco)
                         }
                     }
                 } else {
@@ -166,7 +165,7 @@ struct AccessiSezione: View {
                 if let messaggio = fogli.messaggioAccessi { Text(messaggio).font(.footnote).foregroundStyle(Color.verde) }
                 if let errore = fogli.erroreAccessi { Text(errore).font(.footnote).foregroundStyle(Color.attenzione) }
             } header: {
-                Text("Accessi").foregroundStyle(Color.testoSecondario)
+                Text(Catalogo.Social.accessi).foregroundStyle(Color.testoSecondario)
             } footer: {
                 Text(piede).foregroundStyle(Color.testoSecondario)
             }
@@ -193,18 +192,18 @@ struct FoglioPasswordPerCollegare: View {
     var body: some View {
         Form {
             Section {
-                SecureField("Password attuale", text: $password).textContentType(.password).frame(minHeight: Tema.areaTocco)
+                SecureField(Catalogo.Account.passwordAttuale, text: $password).textContentType(.password).frame(minHeight: Tema.areaTocco)
             } footer: {
-                Text("Per sicurezza, prima di collegare Google scrivi la tua password. Poi si apre la finestra di Google.").foregroundStyle(Color.testoSecondario)
+                Text(Catalogo.Social.servePassword).foregroundStyle(Color.testoSecondario)
             }
             Section {
                 Button { procedi(password) } label: {
-                    Text("Continua con Google").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Text(Catalogo.Social.continua).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled(password.isEmpty)
             }
         }
-        .navigationTitle("Collega Google")
+        .navigationTitle(Catalogo.Social.collega)
         .navigationBarTitleDisplayMode(.inline)
         .schermoProtetto()
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
@@ -212,6 +211,7 @@ struct FoglioPasswordPerCollegare: View {
 }
 
 /// «Conferma con Google»: per chi non ha una password, le azioni delicate chiedono prima questo passaggio (vale 5 minuti).
+/// Le frasi sono quelle della web: la spiegazione sotto il pulsante e, dopo, «Confermato. Per 5 minuti puoi…».
 struct RigaRiconferma: View {
     @Binding var confermato: Bool
     @EnvironmentObject private var sessione: SessioneAccount
@@ -220,10 +220,10 @@ struct RigaRiconferma: View {
     var body: some View {
         Section {
             if confermato {
-                Label("Confermato con Google", systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde).frame(minHeight: Tema.areaTocco)
+                Label(Catalogo.Social.riconfermatoOk, systemImage: "checkmark.circle.fill").foregroundStyle(Color.verde).frame(minHeight: Tema.areaTocco)
             } else {
                 Button { Task { await conferma() } } label: {
-                    Text(sessione.inCorso ? "Un attimo…" : "Conferma con Google").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Text(sessione.inCorso ? "Un attimo…" : Catalogo.Social.conferma).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled(sessione.inCorso)
                 .accessibilityHint("Si apre una finestra di Google")
@@ -232,7 +232,7 @@ struct RigaRiconferma: View {
         } header: {
             Text("Conferma").foregroundStyle(Color.testoSecondario)
         } footer: {
-            Text(confermato ? "Hai cinque minuti per finire." : "Non hai una password: per sicurezza confermi che sei tu con Google.").foregroundStyle(Color.testoSecondario)
+            if !confermato { Text(Catalogo.Social.confermaSpiega).foregroundStyle(Color.testoSecondario) }
         }
     }
 
@@ -267,27 +267,27 @@ struct FoglioPasswordDaGoogle: View {
             RigaRiconferma(confermato: $confermato)
             if confermato {
                 Section {
-                    SecureField("Nuova password", text: $nuova).textContentType(.newPassword).frame(minHeight: Tema.areaTocco)
-                    SecureField("Ripeti la nuova password", text: $ripeti).textContentType(.newPassword).frame(minHeight: Tema.areaTocco)
+                    SecureField(TestiAccount.nuovaPassword, text: $nuova).textContentType(.newPassword).frame(minHeight: Tema.areaTocco)
+                    SecureField(TestiAccount.ripetiPassword, text: $ripeti).textContentType(.newPassword).frame(minHeight: Tema.areaTocco)
                 } header: {
                     Text("Password nuova").foregroundStyle(Color.testoSecondario)
                 } footer: { Group {
                     VStack(alignment: .leading, spacing: 4) {
                         if let problema { Text(problema).foregroundStyle(Color.attenzione) }
-                        if !ripeti.isEmpty && nuova != ripeti { Text("Le due password non coincidono.").foregroundStyle(Color.attenzione) }
+                        if !ripeti.isEmpty && nuova != ripeti { Text(TestiAccount.passwordDiverse).foregroundStyle(Color.attenzione) }
                         Text("Almeno \(RegoleAccount.passwordMinima) caratteri, non solo numeri e non troppo facile.")
                     }
                 }.foregroundStyle(Color.testoSecondario) }
                 if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
                 Section {
                     Button { Task { await salva() } } label: {
-                        Text(sessione.inCorso ? "Un attimo…" : "Salva la password").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                        Text(sessione.inCorso ? "Un attimo…" : Catalogo.Social.aggiungiPassword).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                     }
                     .disabled(!pronto || sessione.inCorso)
                 }
             }
         }
-        .navigationTitle("Aggiungi una password")
+        .navigationTitle(Catalogo.Social.aggiungiPassword)
         .navigationBarTitleDisplayMode(.inline)
         .schermoProtetto()
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }

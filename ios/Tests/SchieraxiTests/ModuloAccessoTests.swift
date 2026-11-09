@@ -108,9 +108,9 @@ final class ModuloAccessoTests: XCTestCase {
         m.vai(.recupera, modo: .email)
         XCTAssertEqual(m.metodo, .email)
         XCTAssertEqual(MetodoRecupero.iniziale(.aperta), .email)
-        XCTAssertEqual(MetodoRecupero.email.titolo, "Con l'email")
-        XCTAssertEqual(MetodoRecupero.codice.titolo, "Con il codice di recupero")
-        XCTAssertEqual(SchermataAccesso.Scheda.recupera.rawValue, "Password dimenticata")
+        XCTAssertEqual(MetodoRecupero.email.titolo, Catalogo.Accesso.recuperoConEmail)
+        XCTAssertEqual(MetodoRecupero.codice.titolo, Catalogo.Accesso.recuperoConCodice)
+        XCTAssertEqual(SchermataAccesso.Scheda.recupera.titolo, Catalogo.Accesso.schedaRecupero)
     }
 
     func testRecuperoConIlCodice() {

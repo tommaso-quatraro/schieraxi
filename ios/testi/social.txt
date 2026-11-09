@@ -1,0 +1,23 @@
+# Accesso con Google e riquadro «Accessi» (AccessoView, AccessoGoogleView, AccountSezione).
+# Poi: python script/testi.py --scrivi
+
+social.continua
+social.oppure
+social.scegli_nome
+social.crea
+social.accessi
+social.password_si
+social.password_no
+social.google_collegato
+social.google_account
+social.google_non_collegato
+social.collega
+social.scollega
+social.scollega_conferma
+social.scollegato_ok
+social.collegato_ok
+social.serve_password
+social.conferma
+social.conferma_spiega
+social.riconfermato_ok
+social.aggiungi_password

@@ -1,0 +1,47 @@
+# Il tuo account (Impostazioni): le chiavi della web che l'iPhone mostra (TestiAccount, AccountSezione).
+# Poi: python script/testi.py --scrivi
+
+# Nome, ruolo e uscita
+account.ruolo_admin
+account.ruolo_utente
+account.dal
+account.esci
+
+# Password e codice di recupero
+account.cambia_password
+account.password_attuale
+account.ripeti_password
+account.password_diverse
+account.altri_scollegati
+account.password_cambiata_ok
+account.la_tua_password
+account.recupero
+account.recupero_spiega
+account.nuovo_codice
+
+# Email
+account.email
+account.email_spiega
+account.email_verificata
+account.email_google
+account.email_nessuna
+account.email_attesa
+account.email_nuova
+account.email_invia
+account.email_inviato
+account.email_codice
+account.email_conferma
+account.email_confermata_ok
+account.email_togli
+account.email_tolta_ok
+account.email_serve_password
+account.email_spenta
+
+# Scarica i tuoi dati ed Elimina l'account
+account.dati_titolo
+account.dati_spiega
+account.dati_scarica
+account.elimina_titolo
+account.elimina_avviso
+account.elimina
+account.elimina_conferma

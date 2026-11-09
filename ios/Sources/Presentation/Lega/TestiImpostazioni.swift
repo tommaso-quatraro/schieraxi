@@ -1,25 +1,27 @@
 import Foundation
 
-/// I testi della pagina «Notifiche» e di «Avanzate» (Impostazioni), uguali alla web (`fanta/web/testi.js`: `imp.avvisi*`, `avv.*`, `av.mostra_tutte*`).
-/// Le righe d'aiuto, come sulla web, non finiscono con il punto. Logica pura: li prova `NotificheComeLaWebTests`, che li confronta con `testi.js`.
+/// I testi della pagina «Notifiche» e di «Avanzate» (Impostazioni), dal catalogo comune con la web (`imp.avvisi*`, `avv.*`).
+/// Le righe d'aiuto, come sulla web, non finiscono con il punto. Logica pura: li prova `NotificheComeLaWebTests`.
 enum TestiImpostazioni {
     /// La voce nell'elenco delle Impostazioni e il titolo della pagina (`imp.avvisi`), con la riga sotto la voce (`imp.avvisi_sub`).
-    static let notifiche = "Notifiche"
-    static let notificheSotto = "Cosa ricevere sul telefono e quando"
+    static let notifiche = Catalogo.Imp.avvisi
+    static let notificheSotto = Catalogo.Imp.avvisiSub
 
-    static let cambi = "Cambi di formazione e probabili"
-    static let cambiAiuto = "Infortunati, squalificati, titolari in panchina, forti cali"
-    static let promemoria60 = "Promemoria un'ora prima"
-    static let promemoria60Aiuto = "Con la formazione consigliata e i giocatori da controllare"
-    static let promemoria15 = "Promemoria 15 minuti prima"
-    static let riepilogo = "Riepilogo a giornata finita"
-    static let riepilogoAiuto = "Punti fatti, attesi e massimo possibile con la tua rosa"
-    static let copertura = "Reparto della rosa scoperto"
-    static let coperturaAiuto = "Ti avvisa se in un reparto hai pochi giocatori disponibili (infortunati, squalificati, diffidati)"
-    static let nativa = "Avvisi anche per l'app nativa"
-    static let oreTranquille = "Ore tranquille"
-    static let oreTranquilleAiuto = "Niente avvisi nella fascia scelta: cambi e riepilogo arrivano appena finisce. Un promemoria che cade lì non viene mandato"
+    static let cambi = Catalogo.Avv.cambi
+    static let cambiAiuto = Catalogo.Avv.cambiAiuto
+    static let promemoria60 = Catalogo.Avv.prom60
+    static let promemoria60Aiuto = Catalogo.Avv.prom60Aiuto
+    static let promemoria15 = Catalogo.Avv.prom15
+    static let riepilogo = Catalogo.Avv.riepilogo
+    static let riepilogoAiuto = Catalogo.Avv.riepilogoAiuto
+    static let copertura = Catalogo.Avv.copertura
+    static let coperturaAiuto = Catalogo.Avv.coperturaAiuto
+    static let nativa = Catalogo.Avv.nativa
+    static let oreTranquille = Catalogo.Avv.oreTranq
+    static let oreTranquilleAiuto = Catalogo.Avv.oreTranqAiuto
 
+    /// `av.mostra_tutte` e `av.mostra_tutte_spiega`: il prefisso `av` lo elenca Squadra e Altro (`ios/testi/av.txt`); finché
+    /// queste due chiavi non ci sono, i testi restano qui e `NotificheComeLaWebTests` li confronta con `testi.js`.
     static let mostraTutte = "Mostra tutte le funzioni"
     static let mostraTutteSpiega = "Di norma SchieraXI mostra solo l'essenziale: formazione, squadra e scambi. Se lo accendi vedi anche il resto (risultati in diretta, confronto, seguiti, diario e altro). Vale solo per te."
 }

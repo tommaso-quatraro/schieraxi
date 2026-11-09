@@ -36,7 +36,7 @@ struct ConfiguraLegaVista: View {
             Button {
                 apriImportazione()
             } label: {
-                Label("Importa le rose", systemImage: "square.and.arrow.down").frame(minHeight: Tema.areaTocco)
+                Label(Catalogo.Comune.importaRose, systemImage: "square.and.arrow.down").frame(minHeight: Tema.areaTocco)
             }
             .pulsanteVetro(prominente: true)
             Button {

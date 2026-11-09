@@ -22,7 +22,7 @@ struct SessioneMinimaSezione: View {
                     Label("Cambia server", systemImage: "server.rack").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
                 }
                 Button { chiediEsci = true } label: {
-                    Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+                    Label(Catalogo.Account.esci, systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
                 }
             } header: {
                 Text("Collegamento").foregroundStyle(Color.testoSecondario)
@@ -30,7 +30,7 @@ struct SessioneMinimaSezione: View {
                 Text("Se l'app non si collega, puoi uscire e accedere di nuovo, oppure scegliere un altro server.").foregroundStyle(Color.testoSecondario)
             }
             .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-                Button("Esci", role: .destructive) { Task { await sessione.esci() } }
+                Button(Catalogo.Account.esci, role: .destructive) { Task { await sessione.esci() } }
             } message: {
                 Text("I dati salvati su questo telefono vengono cancellati.")
             }

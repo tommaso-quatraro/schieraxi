@@ -1,0 +1,43 @@
+# Accesso: le chiavi della web che la schermata di accesso mostra (ModuloAccesso, TestiAccesso, AccessoView, AccessoGoogleView).
+# Poi: python script/testi.py --scrivi
+
+# Schede, campi e pulsanti del modulo
+accesso.scheda_accedi
+accesso.scheda_registra
+accesso.scheda_recupero
+accesso.nome_utente
+accesso.password
+accesso.password_10
+accesso.password_nuova_10
+accesso.codice_invito
+accesso.codice
+accesso.codice_email
+accesso.email
+accesso.email_facoltativa
+accesso.email_facoltativa_aiuto
+accesso.invio_accedi
+accesso.invio_registra
+accesso.invio_verifica
+accesso.invio_recupero
+accesso.invio_recupero_email
+
+# Frasi in cima al modulo
+accesso.serve_invito
+accesso.serve_invito_email
+accesso.serve_email
+accesso.verifica_spiega
+accesso.recupero_spiega
+accesso.recupero_email_spiega
+accesso.recupero_codice_email_spiega
+accesso.recupero_con_email
+accesso.recupero_con_codice
+
+# Casella della registrazione, esiti e ritorno all'accesso
+accesso.letto
+accesso.spunta_letto
+accesso.torna
+accesso.codice_inviato
+accesso.password_cambiata
+accesso.password_cambiata_accedi
+accesso.vai_accesso
+accesso.risposta_incompleta

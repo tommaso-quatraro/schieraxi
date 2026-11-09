@@ -103,12 +103,12 @@ final class AccessoUITests: XCTestCase {
 
     func testCodiceDiRecuperoSiVedeEsiConfermaPrimaDiProseguire() {
         avvia("codice")
-        attendi("Salva il tuo codice di recupero")
+        attendi("Il tuo codice di recupero")   // `codice.titolo` del catalogo, come la web
         attendi("K 7 M 2 P", contiene: true)   // per VoiceOver il codice si legge lettera per lettera
         let continua = app.buttons["Continua"]
         XCTAssertTrue(continua.waitForExistence(timeout: 10))
-        XCTAssertFalse(continua.isEnabled, "senza la conferma «l'ho salvato» non si va avanti")
-        XCTAssertTrue(app.buttons["Copia"].exists)
+        XCTAssertFalse(continua.isEnabled, "senza la conferma «Ho salvato il codice» non si va avanti")
+        XCTAssertTrue(app.buttons["Copia il codice"].exists)
         let conferma = app.switches.firstMatch
         XCTAssertTrue(conferma.waitForExistence(timeout: 10))
         // Il tocco sull'interruttore a volte non arriva al primo colpo nel simulatore: si tocca la levetta (a destra) e si

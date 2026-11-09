@@ -5,9 +5,18 @@ import SwiftUI
 /// `ModuloAccesso` (logica pura, provata dai test). Il marchio si muove mentre si aspetta il server.
 struct SchermataAccesso: View {
     /// `recupera` non è una scheda in vista: si apre da «Password dimenticata».
-    enum Scheda: String, CaseIterable, Identifiable {
-        case accedi = "Accedi", registrati = "Registrati", recupera = "Password dimenticata"
-        var id: String { rawValue }
+    enum Scheda: CaseIterable, Identifiable {
+        case accedi, registrati, recupera
+        var id: Self { self }
+
+        /// Il nome della scheda, dal catalogo della web (`accesso.scheda_*`).
+        var titolo: String {
+            switch self {
+            case .accedi: Catalogo.Accesso.schedaAccedi
+            case .registrati: Catalogo.Accesso.schedaRegistra
+            case .recupera: Catalogo.Accesso.schedaRecupero
+            }
+        }
     }
 
     @EnvironmentObject private var sessione: SessioneAccount
@@ -132,7 +141,7 @@ struct SchermataAccesso: View {
                 Button {
                     vai(s)
                 } label: {
-                    Text(s.rawValue)
+                    Text(s.titolo)
                         .font(.subheadline.weight(.semibold))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 8)
@@ -345,10 +354,10 @@ struct SchermataAccesso: View {
     private var sezioneGoogle: some View {
         if googleAcceso, modulo.passo == .accedi || modulo.passo == .registra {
             VStack(spacing: 10) {
-                BottoneGoogle(titolo: "Continua con Google", occupato: inInvio || sessione.inCorso || attesaFinoA != nil) {
+                BottoneGoogle(titolo: Catalogo.Social.continua, occupato: inInvio || sessione.inCorso || attesaFinoA != nil) {
                     Task { await continuaConGoogle() }
                 }
-                Text("oppure").font(.footnote).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
+                Text(Catalogo.Social.oppure).font(.footnote).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
             }
         }
     }
@@ -435,7 +444,7 @@ struct SchermataAccesso: View {
                 .padding(Tema.margine)
             }
             .background(Sfondo())
-            .navigationTitle("Avanzate")
+            .navigationTitle(Catalogo.Imp.avanzate)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fine") { avanzate = false } } }
         }

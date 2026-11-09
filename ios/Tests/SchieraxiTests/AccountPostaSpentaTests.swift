@@ -30,10 +30,10 @@ private let casiPostaSpenta: [CasoPostaSpenta] = [
 
 @Suite("Il tuo account: posta spenta sul server (#174)")
 struct AccountPostaSpentaTests {
-    @Test("La frase della web, `account.email_spenta` di `testi.js`")
+    @Test("La frase della web, `account.email_spenta` del catalogo comune")
     func frase() {
-        #expect(TestiAccount.emailSpenta
-                == "Su questo server l'invio delle email è spento: per ora non puoi collegare un'email. Se dimentichi la password ti serve il codice di recupero.")
+        #expect(TestiAccount.emailSpenta == Catalogo.Account.emailSpenta)
+        #expect(TestiAccount.emailSpenta.contains("codice di recupero"))
     }
 
     @Test("Solo la frase quando la posta è spenta e l'account non ha un'email", arguments: casiPostaSpenta)
