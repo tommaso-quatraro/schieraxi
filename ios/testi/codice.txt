@@ -1,0 +1,8 @@
+# Il codice di recupero mostrato una volta sola (CodiceRecuperoView). Poi: python script/testi.py --scrivi
+codice.titolo
+codice.a_cosa_serve
+codice.salva
+codice.spiega
+codice.copia
+codice.copiato
+codice.salvato

@@ -42,7 +42,8 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     @Published var avviso: String?
     @Published private(set) var inCorso = false
 
-    static let erroreSalvataggio = "Non sono riuscito a salvare i progressi sul server. Riprovo al prossimo passo."
+    /// Come la web (`pav.non_sono_riuscito`); il salvataggio si ritenta da solo al passo dopo.
+    static let erroreSalvataggio = Catalogo.Pav.nonSonoRiuscito
 
     private let server: any ServerClient
     private var passiServer: [String] = []
@@ -128,7 +129,7 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
             avviso = nil
             await segnaFatto(.avvisi)
         } else {
-            avviso = "Le notifiche non sono attive. Puoi accenderle in Impostazioni del telefono, nella voce di SchieraXI, e poi scegliere quali avvisi ricevere nelle Impostazioni di SchieraXI."
+            avviso = Catalogo.Pav.permessoNegatoAbilita
         }
     }
 

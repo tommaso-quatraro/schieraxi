@@ -1,0 +1,9 @@
+# Primo avvio (ConfigurazioneGuidataView e il suo ViewModel): i testi che la guida dell'iPhone ha in comune con la web.
+# I passi dell'iPhone (stemma, widget, avvisi) non ci sono sulla web: i loro testi restano in Swift.
+# Poi: python script/testi.py --scrivi
+pav.primo_avvio
+pav.salta
+pav.tutto_pronto_mister
+pav.hai_finito
+pav.non_sono_riuscito
+pav.permesso_negato_abilita

@@ -1,0 +1,7 @@
+# Voci e gruppi delle Impostazioni (ImpostazioniView, AccountSezione, TestiImpostazioni). Poi: python script/testi.py --scrivi
+imp.account
+imp.aspetto
+imp.avvisi
+imp.avvisi_sub
+imp.informazioni
+imp.avanzate

@@ -1,25 +1,27 @@
 import Foundation
 
 // La schermata di accesso senza interfaccia: passi, testi e controlli, uguali alla web (`campiAccesso`, `testoInvio` e
-// `mostraAccesso` in `fanta/web/app.js`, testi `accesso.*` in `fanta/web/testi.js`). Logica pura: la provano i test.
+// `mostraAccesso` in `fanta/web/app.js`). I testi vengono dal catalogo comune (`Catalogo.Accesso`, chiavi `accesso.*` di
+// `fanta/testi/`). Logica pura: la provano i test.
 
-/// I testi della schermata di accesso, presi dalla web.
+/// I testi della schermata di accesso, dal catalogo della web. Solo «Leggi la Privacy» e «Leggi i Termini d'uso» sono
+/// dell'iPhone (la web mette i collegamenti dentro la frase della casella).
 enum TestiAccesso {
     /// L'età minima per iscriversi, come `ETA_MINIMA` della web (e `fanta/testi_legali.py`).
     static let etaMinima = 14
     /// La casella della registrazione (anche dopo Google): Privacy, Termini d'uso ed età in una sola conferma.
-    static let letto = "Ho letto Privacy e Termini d'uso e ho almeno \(etaMinima) anni"
-    static let spuntaLetto = "Per registrarti spunta la casella: hai letto Privacy e Termini d'uso e hai almeno \(etaMinima) anni"
+    static let letto = Catalogo.Accesso.letto(eta: "\(etaMinima)", privacy: Catalogo.Legale.privacy, termini: Catalogo.Legale.termini)
+    static let spuntaLetto = Catalogo.Accesso.spuntaLetto(eta: "\(etaMinima)")
     static let leggiPrivacy = "Leggi la Privacy"
     static let leggiTermini = "Leggi i Termini d'uso"
-    static let passwordDimenticata = "Password dimenticata"
-    static let tornaAllAccesso = "Torna all'accesso"
-    static let codiceInviato = "Se l'indirizzo è registrato, il codice sta arrivando (vale 15 minuti)."
-    static let passwordCambiata = "Password cambiata"
-    static let passwordCambiataAccedi = "Password cambiata: accedi con quella nuova."
-    static let vaiAllAccesso = "Vai all'accesso"
+    static let passwordDimenticata = Catalogo.Accesso.schedaRecupero
+    static let tornaAllAccesso = Catalogo.Accesso.torna
+    static let codiceInviato = Catalogo.Accesso.codiceInviato
+    static let passwordCambiata = Catalogo.Accesso.passwordCambiata
+    static let passwordCambiataAccedi = Catalogo.Accesso.passwordCambiataAccedi
+    static let vaiAllAccesso = Catalogo.Accesso.vaiAccesso
     /// Il recupero è andato a metà (nessun nuovo codice leggibile): come `accesso.risposta_incompleta` della web.
-    static let rispostaIncompleta = "Qualcosa non ha funzionato: riprova"
+    static let rispostaIncompleta = Catalogo.Accesso.rispostaIncompleta
 }
 
 /// Come si recupera la password: con l'email dell'account o con il codice di recupero.
@@ -29,8 +31,8 @@ enum MetodoRecupero: String, CaseIterable, Identifiable {
 
     var titolo: String {
         switch self {
-        case .email: return "Con l'email"
-        case .codice: return "Con il codice di recupero"
+        case .email: return Catalogo.Accesso.recuperoConEmail
+        case .codice: return Catalogo.Accesso.recuperoConCodice
         }
     }
 
@@ -137,11 +139,12 @@ struct ModuloAccesso: Equatable {
         campi(modo, postaAccesa: postaAccesa).contains(.email) ? email : ""
     }
 
+    /// Il minimo dei caratteri sta scritto nella frase del catalogo (come sulla web): `passwordMinima` lo prova un test.
     var etichettaPassword: String {
         switch passo {
-        case .accedi: return "Password"
-        case .registra: return "Password (almeno \(RegoleAccount.passwordMinima) caratteri)"
-        default: return "Nuova password (almeno \(RegoleAccount.passwordMinima) caratteri)"
+        case .accedi: return Catalogo.Accesso.password
+        case .registra: return Catalogo.Accesso.password10
+        default: return Catalogo.Accesso.passwordNuova10
         }
     }
 
@@ -149,16 +152,16 @@ struct ModuloAccesso: Equatable {
     /// (`accesso.email_facoltativa` sopra, `accesso.email_facoltativa_aiuto` sotto). La frase intera nell'etichetta
     /// sull'iPhone era tagliata o rimpicciolita (issue #191).
     func etichettaEmail(_ modo: ModalitaRegistrazione) -> String {
-        emailFacoltativa(modo) ? "Email (facoltativa)" : "Email"
+        emailFacoltativa(modo) ? Catalogo.Accesso.emailFacoltativa : Catalogo.Accesso.email
     }
 
     private func emailFacoltativa(_ modo: ModalitaRegistrazione) -> Bool { passo == .registra && !modo.chiedeEmail }
 
-    static let etichettaNome = "Nome utente"
-    static let etichettaInvito = "Codice d'invito"
-    static let etichettaCodice = "Codice"
-    static let etichettaCodiceEmail = "Codice a 6 cifre ricevuto per email"
-    static let aiutoEmailFacoltativa = "Serve a recuperare la password."
+    static let etichettaNome = Catalogo.Accesso.nomeUtente
+    static let etichettaInvito = Catalogo.Accesso.codiceInvito
+    static let etichettaCodice = Catalogo.Accesso.codice
+    static let etichettaCodiceEmail = Catalogo.Accesso.codiceEmail
+    static let aiutoEmailFacoltativa = Catalogo.Accesso.emailFacoltativaAiuto
 
     /// L'etichetta sopra il campo, che resta mentre si scrive (come `campoAccesso` della web). Il campo non ha testo d'esempio.
     func etichetta(_ campo: Campo, _ modo: ModalitaRegistrazione) -> String {
@@ -198,29 +201,28 @@ struct ModuloAccesso: Equatable {
         case .accedi: return nil
         case .registra:
             switch modo {
-            case .invito: return "Ti serve un codice d'invito: chiedilo a chi ti ha invitato."
-            case .email: return "Serve un codice d'invito e un indirizzo email: ti mandiamo un codice per confermarlo."
-            case .aperta: return "Scrivi la tua email: ti mandiamo un codice per confermarla e creare l'account."
+            case .invito: return Catalogo.Accesso.serveInvito
+            case .email: return Catalogo.Accesso.serveInvitoEmail
+            case .aperta: return Catalogo.Accesso.serveEmail
             }
         case .verificaIscrizione:
-            let a = iscrizione?.email ?? ""
-            return "Ti abbiamo scritto a \(a). Inserisci il codice a 6 cifre (vale 15 minuti). Se non arriva, controlla la posta indesiderata."
+            return Catalogo.Accesso.verificaSpiega(email: iscrizione?.email ?? "")
         case .recuperoCodice:
-            return "Usa il codice di recupero che hai ricevuto quando ti sei registrato, oppure il codice che ti ha dato chi ti ha invitato."
+            return Catalogo.Accesso.recuperoSpiega
         case .recuperoEmail:
-            return "Scrivi l'email del tuo account: se è registrata, ti mandiamo un codice per scegliere una nuova password. Per sicurezza la risposta è sempre la stessa."
+            return Catalogo.Accesso.recuperoEmailSpiega
         case .recuperoEmailCodice:
-            return "Scrivi il codice arrivato a \(emailRecupero ?? "") e scegli la nuova password."
+            return Catalogo.Accesso.recuperoCodiceEmailSpiega(email: emailRecupero ?? "")
         }
     }
 
     var titoloPulsante: String {
         switch passo {
-        case .accedi: return "Accedi"
-        case .registra: return "Crea l'account"
-        case .verificaIscrizione: return "Conferma e crea l'account"
-        case .recuperoEmail: return "Mandami il codice"
-        case .recuperoCodice, .recuperoEmailCodice: return "Scegli la nuova password"
+        case .accedi: return Catalogo.Accesso.invioAccedi
+        case .registra: return Catalogo.Accesso.invioRegistra
+        case .verificaIscrizione: return Catalogo.Accesso.invioVerifica
+        case .recuperoEmail: return Catalogo.Accesso.invioRecuperoEmail
+        case .recuperoCodice, .recuperoEmailCodice: return Catalogo.Accesso.invioRecupero
         }
     }
 

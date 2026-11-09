@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// La configurazione guidata («Primo avvio»): un passo alla volta, tutti saltabili, con un riepilogo alla fine.
+/// La configurazione guidata («Primo avvio», come si chiama sulla web): un passo alla volta, tutti saltabili, con un riepilogo
+/// alla fine. I passi sono quelli dell'iPhone (la web ne ha altri): titolo, «Salta» e il riepilogo hanno le parole della web.
 /// Parte da sola se la lega non ha ancora le rose (e dalla lista «Da fare» di Oggi). Salta i passi già fatti.
 struct ConfigurazioneGuidataView: View {
     @StateObject private var vm: ConfigurazioneGuidataViewModel
@@ -45,11 +46,11 @@ struct ConfigurazioneGuidataView: View {
                     .animation(Tema.morbida, value: vm.indice)
                 }
             }
-            .navigationTitle("Configurazione guidata")
+            .navigationTitle(Catalogo.Pav.primoAvvio)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(vm.eRiepilogo ? "Chiudi" : "Più tardi") {
+                    Button(vm.eRiepilogo ? Catalogo.Shell.chiudi : "Più tardi") {
                         Task {
                             if vm.fase == .pronta && !vm.eRiepilogo { await vm.piuTardi() }
                             chiudi()
@@ -88,7 +89,7 @@ struct ConfigurazioneGuidataView: View {
                     .pulsanteVetro()
                 }
                 Button { Task { await vm.salta(passo) } } label: {
-                    Text("Salta questo passo").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                    Text(Catalogo.Pav.salta).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.testoSecondario)
@@ -150,8 +151,10 @@ struct ConfigurazioneGuidataView: View {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Color.verde)
                 .accessibilityHidden(true)
-            Text(tuttoFatto ? "Tutto a posto" : "Per ora basta così").font(.title2.bold())
-            Text(tuttoFatto ? "SchieraXI è pronto." : "Quello che hai saltato lo trovi in Oggi, nella lista «Da fare».")
+            // titolo e «Hai finito la configurazione.» come la web; dove ritrovare i passi saltati lo dice l'iPhone (si riprendono
+            // da «Da fare» in Oggi, non dalle Impostazioni come sulla web)
+            Text(Catalogo.Pav.tuttoProntoMister).font(.title2.bold()).multilineTextAlignment(.center)
+            Text(tuttoFatto ? Catalogo.Pav.haiFinito : "Quello che hai saltato lo trovi in Oggi, nella lista «Da fare».")
                 .font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
             Carta {
                 ForEach(PassoGuidato.allCases) { passo in

@@ -1,0 +1,22 @@
+# Impostazioni > Notifiche: titoli e righe d'aiuto degli interruttori (TestiImpostazioni) e «Avviso se il consiglio cambia»
+# (AvvisoPrima in Domain/Modelli2.swift: lì i testi sono ancora scritti a mano, i test li confrontano con queste costanti).
+# Le altre chiavi avv.* (Diario, Precisione, la pagina in Gestione.swift) le elenca chi cura quelle schermate.
+# Poi: python script/testi.py --scrivi
+avv.cambi
+avv.cambi_aiuto
+avv.prima
+avv.prima_aiuto
+avv.prima_0
+avv.prima_30
+avv.prima_60
+avv.prima_90
+avv.prom_60
+avv.prom_60_aiuto
+avv.prom_15
+avv.riepilogo
+avv.riepilogo_aiuto
+avv.copertura
+avv.copertura_aiuto
+avv.nativa
+avv.ore_tranq
+avv.ore_tranq_aiuto

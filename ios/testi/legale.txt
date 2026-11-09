@@ -1,0 +1,6 @@
+# Nomi delle pagine legali: nella casella della registrazione (accesso.letto) e in Impostazioni > Informazioni
+# (Domain/InformazioniLegali.swift: lì i nomi sono ancora scritti a mano, i test li confrontano con queste costanti).
+# Poi: python script/testi.py --scrivi
+legale.privacy
+legale.termini
+legale.crediti

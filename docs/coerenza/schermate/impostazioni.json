@@ -26,6 +26,15 @@
       "forma": "differenza ammessa",
       "chi": "decisa dal proprietario il 6/11/2026: tra le «Differenze ammesse» (riga «Impostazioni, Aspetto»)",
       "stato": "fatto"
+    },
+    {
+      "id": 63,
+      "schermata": "Accesso, Il tuo account, Accessi (Google), codice di recupero, Primo avvio",
+      "web": "le frasi di `accesso.*`, `account.*`, `social.*`, `codice.*` e `pav.*` (`mostraAccesso`, `schedaAccount`, `htmlAccessi`, `htmlCodiceUnaVolta`, `primoavvio.js`): «Google collegato: ora puoi entrare anche con Google.», «Google scollegato.», «Scollegare Google? Potrai entrare solo con la tua password.», «Password: impostata», «Account Google collegato: …» o «Google: non collegato», «Conferma con Google» con la sua spiegazione e «Confermato. Per 5 minuti puoi …», «Aggiungi una password», «Scrivi la tua password per collegare Google.»; il codice con «Il tuo codice di recupero», «Ti serve per rientrare …», «Salva questo codice. Non viene mostrato di nuovo …», «Copia il codice», «Ho salvato il codice»; «Primo avvio», «Salta», «Tutto pronto, Mister», «Hai finito la configurazione.», «Non sono riuscito a ricordare a che punto sei …», «Permesso negato: abilita gli avvisi …»",
+      "iphone": "prima: «Google è collegato.», «Google è scollegato.», «Scollegare Google?» con «Potrai entrare solo con nome utente e password …», righe «Password · Impostata» e «Google · Collegato» (e «Password · Non so» quando il server non dice se la password c'è: ora la riga non compare), «Confermato con Google» e «Non hai una password: …», «Salva la password», «Per sicurezza, prima di collegare Google …»; il codice con «Salva il tuo codice di recupero» (o «Salva il nuovo codice»), «Se dimentichi la password, questo codice è l'unico modo …», «Copia», «L'ho salvato in un posto sicuro»; «Configurazione guidata», «Salta questo passo», «Tutto a posto» o «Per ora basta così», «SchieraXI è pronto.», frasi sue per il salvataggio e le notifiche",
+      "forma": "web",
+      "chi": "**fatto** (#497): i testi vengono dal catalogo comune (`Catalogo.Accesso`, `Account`, `Social`, `Codice`, `Pav`, `Imp`, `Avv`), prova `AccessoImpostazioniDalCatalogoTests`. Restano dell'iPhone i passi della guida che la web non ha (stemma, widget, avvisi) e dove ritrovare i passi saltati («Da fare» in Oggi), «Leggi la Privacy», «Un attimo…»",
+      "stato": "fatto"
     }
   ]
 }

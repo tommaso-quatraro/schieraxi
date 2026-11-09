@@ -1,51 +1,54 @@
 import Foundation
 
-/// I testi di «Il tuo account» (Impostazioni), uguali alla web (`schedaAccount` in `fanta/web/app.js`, testi `account.*`).
-/// Logica pura: la provano i test.
+/// I testi di «Il tuo account» e di «Accessi» (Impostazioni), uguali alla web (`schedaAccount` e `htmlAccessi` in
+/// `fanta/web/app.js`): vengono dal catalogo comune (`Catalogo.Account`, `Catalogo.Social`). Logica pura: la provano i test.
 enum TestiAccount {
-    static let cambiaPassword = "Cambia la password"
-    static let passwordAttuale = "Password attuale"
-    static let nuovaPassword = "Nuova password (almeno \(RegoleAccount.passwordMinima) caratteri)"
+    static let cambiaPassword = Catalogo.Account.cambiaPassword
+    static let passwordAttuale = Catalogo.Account.passwordAttuale
+    /// Come la web anche per «Aggiungi una password» (chi entra solo con Google): il minimo dei caratteri sta nella frase.
+    static let nuovaPassword = Catalogo.Accesso.passwordNuova10
     /// La nuova password scritta due volte, come la web (`account.ripeti_password` e `account.password_diverse`).
-    static let ripetiPassword = "Ripeti la nuova password"
-    static let passwordDiverse = "Le due password non coincidono."
-    static let altriScollegati = "Gli altri dispositivi vengono scollegati."
-    static let passwordCambiataOk = "Password cambiata. Gli altri dispositivi sono stati scollegati."
-    static let laTuaPassword = "La tua password"
+    static let ripetiPassword = Catalogo.Account.ripetiPassword
+    static let passwordDiverse = Catalogo.Account.passwordDiverse
+    static let altriScollegati = Catalogo.Account.altriScollegati
+    static let passwordCambiataOk = Catalogo.Account.passwordCambiataOk
+    static let laTuaPassword = Catalogo.Account.laTuaPassword
 
-    static let recupero = "Codice di recupero"
-    static let recuperoSpiega = "Serve se dimentichi la password. Il vecchio codice smette di valere appena ne generi uno nuovo."
-    static let nuovoCodice = "Genera un nuovo codice"
+    static let recupero = Catalogo.Account.recupero
+    static let recuperoSpiega = Catalogo.Account.recuperoSpiega
+    static let nuovoCodice = Catalogo.Account.nuovoCodice
 
-    static let email = "Email"
-    static let emailSpiega = "Facoltativa. Serve a recuperare la password senza il codice di recupero e a ricevere un avviso se qualcuno entra da un dispositivo nuovo. Non la usiamo per altro."
-    static let emailNuova = "Nuovo indirizzo email"
-    static let emailInvia = "Mandami il codice"
-    static let emailInviato = "Se l'indirizzo è valido, il codice sta arrivando."
-    static let emailCodice = "Codice a 6 cifre"
-    static let emailConferma = "Conferma l'email"
-    static let emailConfermataOk = "Email confermata"
-    static let emailTogli = "Togli l'email"
-    static let emailToltaOk = "Email tolta"
-    static let emailServePassword = "Scrivi la tua password per confermare"
+    static let email = Catalogo.Account.email
+    static let emailSpiega = Catalogo.Account.emailSpiega
+    static let emailNuova = Catalogo.Account.emailNuova
+    static let emailInvia = Catalogo.Account.emailInvia
+    static let emailInviato = Catalogo.Account.emailInviato
+    static let emailCodice = Catalogo.Account.emailCodice
+    static let emailConferma = Catalogo.Account.emailConferma
+    static let emailConfermataOk = Catalogo.Account.emailConfermataOk
+    static let emailTogli = Catalogo.Account.emailTogli
+    static let emailToltaOk = Catalogo.Account.emailToltaOk
+    static let emailServePassword = Catalogo.Account.emailServePassword
     /// Posta spenta sul server e nessuna email: al posto della riga e della voce dell'email, come la web (`account.email_spenta`).
-    static let emailSpenta = "Su questo server l'invio delle email è spento: per ora non puoi collegare un'email. Se dimentichi la password ti serve il codice di recupero."
+    static let emailSpenta = Catalogo.Account.emailSpenta
 
-    static let datiTitolo = "Scarica i tuoi dati"
-    static let datiSpiega = "Un file con i dati del tuo account (nome, email, accessi collegati, termini accettati) e della tua lega: regole, rose, scelte, giocatori seguiti e notifiche. Contiene solo i tuoi dati, mai la password."
-    static let datiScarica = "Scarica il file"
+    static let datiTitolo = Catalogo.Account.datiTitolo
+    static let datiSpiega = Catalogo.Account.datiSpiega
+    static let datiScarica = Catalogo.Account.datiScarica
 
-    static let eliminaTitolo = "Elimina l'account"
-    /// «tutti» in grassetto come sulla web (Markdown di `Text`).
-    static let eliminaAvviso = "Cancella l'account e **tutti** i tuoi dati dal server. Non si può annullare: prima scarica i tuoi dati se ti servono."
-    static let elimina = "Elimina il mio account"
-    static let eliminaConferma = "Elimino il tuo account e TUTTI i tuoi dati? Non si può annullare."
+    static let eliminaTitolo = Catalogo.Account.eliminaTitolo
+    /// «tutti» in grassetto come sulla web: il `<b>` della web diventa il Markdown di `Text`.
+    static let eliminaAvviso = Catalogo.Account.eliminaAvviso
+        .replacingOccurrences(of: "<b>", with: "**")
+        .replacingOccurrences(of: "</b>", with: "**")
+    static let elimina = Catalogo.Account.elimina
+    static let eliminaConferma = Catalogo.Account.eliminaConferma
 
     /// La riga sotto il nome: «Utente · dal 1 settembre 2026» (o «Amministratore · …»). Senza una data leggibile resta il ruolo.
     static func ruoloEData(ruolo: String, creato: String?) -> String {
-        let chi = ruolo == "amministratore" ? "Amministratore" : "Utente"
+        let chi = ruolo == "amministratore" ? Catalogo.Account.ruoloAdmin : Catalogo.Account.ruoloUtente
         guard let giorno = dataIscrizione(creato) else { return chi }
-        return "\(chi) · dal \(giorno)"
+        return Catalogo.Account.dal(data: giorno, ruolo: chi)
     }
 
     /// «1 settembre 2026» (ora italiana) dalla data del server: ISO 8601 con il fuso («2026-09-01T08:30:00+00:00»), senza fuso
@@ -60,17 +63,30 @@ enum TestiAccount {
         return scrittura.string(from: data)
     }
 
-    /// La riga dell'email in «Il tuo account», con le frasi della web.
+    /// La riga dell'email in «Il tuo account», con le frasi della web. Con un codice in attesa la riga dice solo «In attesa di
+    /// conferma: …», l'inizio di `account.email_attesa`: sulla web la frase intera sta accanto al campo del codice, sull'iPhone
+    /// il campo (e la frase intera, `emailAttesa`) sta nel foglio dell'email.
     static func rigaEmail(account: String?, google: String?, inAttesa: String?) -> String {
-        if let a = pulita(account) { return "Email confermata: \(a)" }
-        if let g = pulita(google) { return "Email da Google: \(g)" }
+        if let a = pulita(account) { return Catalogo.Account.emailVerificata(email: a) }
+        if let g = pulita(google) { return Catalogo.Account.emailGoogle(email: g) }
         if let i = pulita(inAttesa) { return "In attesa di conferma: \(i)" }
-        return "Nessuna email collegata."
+        return Catalogo.Account.emailNessuna
     }
 
     /// Nel foglio dell'email, quando il codice è partito.
     static func emailAttesa(_ indirizzo: String) -> String {
-        "In attesa di conferma: \(indirizzo). Scrivi qui sotto il codice a 6 cifre che ti abbiamo mandato."
+        Catalogo.Account.emailAttesa(email: indirizzo)
+    }
+
+    /// «Accessi», come la web: «Password: impostata» o «Password: non impostata». Se il server non lo dice, niente riga.
+    static func rigaPassword(_ accessi: AccessiAccount) -> String? {
+        accessi.password.map { $0 ? Catalogo.Social.passwordSi : Catalogo.Social.passwordNo }
+    }
+
+    /// «Accessi», come la web: «Account Google collegato: <email>» («account collegato» senza email) o «Google: non collegato».
+    static func rigaGoogle(_ accessi: AccessiAccount) -> String {
+        guard let google = accessi.google else { return Catalogo.Social.googleNonCollegato }
+        return Catalogo.Social.googleCollegato(email: pulita(google.email) ?? Catalogo.Social.googleAccount)
     }
 
     private static func pulita(_ testo: String?) -> String? {

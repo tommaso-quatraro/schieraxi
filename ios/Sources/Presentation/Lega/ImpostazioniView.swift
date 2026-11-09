@@ -60,9 +60,9 @@ struct ImpostazioniView: View {
                 .demoScorriA(RigaEsci.idDemo, proxy: proxy, schermate: ["accesso-account"], inFondo: true, ancora: .center,
                              pronto: sessione.utente != nil)
             }
-            .titoloPagina("Impostazioni")
+            .titoloPagina(Catalogo.Shell.impostazioni)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() } }
+                ToolbarItem(placement: .navigationBarTrailing) { Button(Catalogo.Shell.chiudi) { chiudi() } }
             }
             .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0) }
             .task { await vm.carica() }
@@ -114,7 +114,7 @@ struct ImpostazioniView: View {
     /// L'app su questo telefono: aspetto e avvisi.
     private var sezioneApp: some View {
         Section(titolo: "App") {
-            NavigationLink(value: PaginaImpostazioni.aspetto) { Label("Aspetto", systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
+            NavigationLink(value: PaginaImpostazioni.aspetto) { Label(Catalogo.Imp.aspetto, systemImage: "paintpalette").labelStyle(.voce(.pink)).frame(minHeight: 44) }
             NavigationLink(value: PaginaImpostazioni.avvisi) {
                 // Nome e riga sotto come sulla web (`imp.avvisi`, `imp.avvisi_sub`); il permesso di iOS sta dentro la pagina.
                 Label {
@@ -130,7 +130,7 @@ struct ImpostazioniView: View {
 
     /// Privacy, termini, crediti e la versione, come sulla web. Le novità stanno in Altro.
     private var sezioneInformazioni: some View {
-        Section(titolo: "Informazioni") {
+        Section(titolo: Catalogo.Imp.informazioni) {
             RigheLegali(server: vm.server)
             RigaValore(titolo: "Versione", valore: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
         }
@@ -142,7 +142,7 @@ struct ImpostazioniView: View {
         if sessione.puoAmministrare {
             Section {
                 NavigationLink(value: PaginaImpostazioni.avanzate) {
-                    Label("Avanzate", systemImage: "wrench.and.screwdriver").labelStyle(.voce(.gray)).frame(minHeight: 44)
+                    Label(Catalogo.Imp.avanzate, systemImage: "wrench.and.screwdriver").labelStyle(.voce(.gray)).frame(minHeight: 44)
                 }
             } footer: {
                 Text("Server, aggiornamento e rinnovo con SideStore, stato dei dati, diagnostica del widget.").foregroundStyle(Color.testoSecondario)
@@ -175,7 +175,7 @@ struct ImpostazioniView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Sfondo())
-        .navigationTitle("Avanzate")
+        .navigationTitle(Catalogo.Imp.avanzate)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

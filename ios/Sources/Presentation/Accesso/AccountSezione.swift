@@ -48,7 +48,7 @@ final class FogliAccount: ObservableObject {
         erroreAccessi = nil; messaggioAccessi = nil
         do {
             try await sessione.collegaGoogle(password: password, avvio: AvvioWebSistema())
-            messaggioAccessi = "Google è collegato."
+            messaggioAccessi = Catalogo.Social.collegatoOk
         } catch let e as ErroreSocial where e.eSoloUnaChiusura {
             // chiusa la finestra: nessun errore da mostrare
         } catch {
@@ -60,7 +60,7 @@ final class FogliAccount: ObservableObject {
         erroreAccessi = nil; messaggioAccessi = nil
         do {
             try await sessione.scollegaGoogle()
-            messaggioAccessi = "Google è scollegato."
+            messaggioAccessi = Catalogo.Social.scollegatoOk
         } catch {
             erroreAccessi = SchermataAccesso.testoErrore(error)
         }
@@ -169,7 +169,7 @@ struct AccountSezione: View {
 
     var body: some View {
         if sessione.multiutente, let utente = sessione.utente {
-            Section(titolo: "Il tuo account") {
+            Section(titolo: Catalogo.Imp.account) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(utente.nome).font(.headline)
                     Text(TestiAccount.ruoloEData(ruolo: utente.ruolo, creato: utente.creato))
@@ -225,13 +225,13 @@ struct RigaEsci: View {
 
     var body: some View {
         Button { chiediEsci = true } label: {
-            Label("Esci", systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
+            Label(Catalogo.Account.esci, systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
         }
         .accessibilityHint("Esci dal tuo account su questo telefono")
         .accessibilityIdentifier(Self.idDemo)
         // sul pulsante, non sulla Section (vedi `FoglioAccount`)
         .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
-            Button("Esci", role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
+            Button(Catalogo.Account.esci, role: .destructive) { DatiPersonali.pulisci(); Task { await sessione.esci() } }
         } message: {
             Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
         }
@@ -328,7 +328,7 @@ struct FoglioNuovoCodice: View {
     var body: some View {
         Group {
             if let codice {
-                CodiceRecuperoView(codice: codice, titolo: "Salva il nuovo codice", testoPulsante: "Fatto") { chiudi() }
+                CodiceRecuperoView(codice: codice, testoPulsante: "Fatto") { chiudi() }
             } else {
                 Form {
                     Section {
@@ -521,7 +521,7 @@ struct FoglioEmail: View {
         .navigationTitle(TestiAccount.email)
         .schermoProtetto()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { chiudi() } } }
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button(Catalogo.Shell.chiudi) { chiudi() } } }
     }
 
     private func avanti() {
@@ -635,5 +635,5 @@ struct FoglioCondividi: UIViewControllerRepresentable {
 }
 
 #Preview("Scarica i tuoi dati") {
-    List { Section(titolo: "Il tuo account") { RigaScaricaDati(fogli: FogliAccount()) } }
+    List { Section(titolo: Catalogo.Imp.account) { RigaScaricaDati(fogli: FogliAccount()) } }
 }
