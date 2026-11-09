@@ -6,7 +6,7 @@
       "web": "«Aggiorna le rose» per ultima, «Calendario» con l'elenco dei giocatori, «Nuova stagione» sempre, riga sotto ogni voce; Calendario «Calendario e difficoltà»",
       "iphone": "«Aggiorna le rose» per prima, niente «Calendario» né «Nuova stagione», senza righe sotto; «Difficoltà delle prossime partite»",
       "forma": "web",
-      "chi": "fatto con #304 (test contro `VOCI_LEGA` e `testi.js`)",
+      "chi": "fatto con #304 (test contro `VOCI_LEGA`); nomi e righe sotto dal catalogo dei testi (`Catalogo.Lega`, #496)",
       "stato": "fatto"
     },
     {

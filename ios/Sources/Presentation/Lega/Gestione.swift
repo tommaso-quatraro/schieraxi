@@ -221,7 +221,7 @@ struct CreditiView: View {
             List {
                 TitoloNellaPagina()
                 if let s = vm.caricatore.dato {
-                    Section(titolo: "Crediti residui di ogni squadra") {
+                    Section(titolo: Catalogo.Lega.creditiResiduiOgni) {
                         ForEach(s) { sq in
                             HStack {
                                 Text(sq.nome)
@@ -233,12 +233,12 @@ struct CreditiView: View {
                     }
                     Section {
                         if vm.modificati {
-                            Label("Ci sono crediti scritti e non ancora salvati.", systemImage: "pencil.circle")
+                            Label(Catalogo.Lega.creditiNonSalvati, systemImage: "pencil.circle")
                                 .font(.footnote.weight(.semibold)).foregroundStyle(Color.attenzione)
                         }
-                        Button("Salva i crediti") { Task { await vm.salva() } }.frame(minHeight: 44)
+                        Button(Catalogo.Lega.salvaCrediti) { Task { await vm.salva() } }.frame(minHeight: 44)
                         if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
-                        Text("Servono per i consigli del mercato (rimborso e crediti dopo il cambio). Restano anche se importi di nuovo l'Excel.")
+                        Text(Catalogo.Lega.servonoPerConsigli)
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
                     }
                 } else if let e = vm.caricatore.errore {

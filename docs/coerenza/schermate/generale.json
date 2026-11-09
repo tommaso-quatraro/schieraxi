@@ -35,6 +35,15 @@
       "forma": "sezione «Giornata: le forme»",
       "chi": "web e server fatto (#299, PR #306); iPhone fatto (#312)",
       "stato": "fatto"
+    },
+    {
+      "id": 62,
+      "schermata": "Squadra, Altro e Scambi: messaggi e righe piccole",
+      "web": "«Crediti salvati», «Dati aggiornati», «Aggiornamento dei dati avviato: ci vuole circa un minuto», «Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco», «Incolla prima il testo del regolamento», «Regole salvate: i consigli ora le usano» e le righe d'aiuto delle Regole senza punto finale; «Tutto è salvato nell'archivio.»; «Da indirizzo web»; «Ultimi aggiornamenti»; «Carico il calendario…»; «Cerco gli svincolati migliori…»; per VoiceOver «Chi è «Rossi» (Squadra)?» e «Cerca il giocatore giusto per «Rossi»»",
+      "iphone": "le stesse frasi con il punto finale; «Tutto è salvato nell'archivio del server.»; «Da un indirizzo web»; «Ultimi aggiornamenti dei dati»; «Guardo il calendario…»; «Cerco gli svincolati…»; «Chi è «Rossi» di Squadra?», «Cerca il giocatore giusto per Rossi»",
+      "forma": "web",
+      "chi": "fatto (#496): i testi di Squadra, Altro e Scambi vengono dal catalogo comune (`Catalogo.*` generati da `ios/testi/`); `SquadraAltroDalCatalogoTests` controlla che non siano riscritti a mano",
+      "stato": "fatto"
     }
   ]
 }

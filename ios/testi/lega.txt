@@ -1,0 +1,78 @@
+# Testi della web (fanta/testi/lega.json) che l'iPhone mostra: una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+# Menu Squadra e Altro (VoceMenuLega, come VOCI_LEGA della web) e titoli delle pagine
+lega.voce_squadre
+lega.voce_squadre_sub
+lega.voce_miasquadra
+lega.voce_miasquadra_sub
+lega.voce_consigli
+lega.voce_consigli_sub
+lega.voce_osservati
+lega.voce_osservati_sub
+lega.voce_giocatori
+lega.voce_giocatori_sub
+lega.voce_calendario
+lega.voce_calendario_sub
+lega.voce_importa
+lega.voce_importa_sub
+lega.voce_scambi
+lega.voce_scambi_sub
+lega.voce_diario
+lega.voce_diario_sub
+lega.voce_regole
+lega.voce_regole_sub
+lega.voce_movimenti
+lega.voce_movimenti_sub
+lega.voce_crediti
+lega.voce_crediti_sub
+lega.voce_stagione
+lega.voce_stagione_sub
+lega.voce_novita
+lega.voce_novita_sub
+
+# Squadre e rose (ParoleSquadre), stemma e maglia
+lega.mia_squadra
+lega.stemma_maglia
+lega.vedi_rosa
+lega.non_tua_squadra
+lega.scegli_quale_delle
+lega.tua_squadra
+lega.tocca_una_squadra
+lega.importa_prima_rose
+lega.usa_come_stemma
+lega.usa_come_maglia
+lega.indirizzo_web
+lega.https
+
+# Aggiorna le rose
+lega.scegli_file_excel
+lega.non_hai_file
+lega.incolla_qui_testo
+lega.togli_squadre_che
+lega.importa_testo
+lega.incolla_testo_delle
+lega.incolla_prima_testo
+lega.cosa_cambiato
+lega.importate
+lega.n_squadre
+lega.rose_controllate_tutto
+lega.da_controllare
+
+# Crediti delle squadre
+lega.crediti_residui_ogni
+lega.crediti_non_salvati
+lega.salva_crediti
+lega.servono_per_consigli
+lega.crediti_salvati
+
+# Nuova stagione
+lega.rose_ancora_quelle
+lega.archivia_riparti
+lega.stagione_archiviata
+lega.tutto_salvato_nell
+lega.nuova_stagione_n
+lega.conferma_archivio
+lega.banner_stagione
+lega.importa_nuove_rose
+lega.controlla_regole

@@ -10,7 +10,7 @@ import UIKit
 struct ParoleComeLaWebTests {
     @Test("Nuova stagione: la frase della web (`lega.rose_ancora_quelle`), con «seguiti»")
     func roseAncoraQuelle() throws {
-        let web = try TestiWeb().italiano("lega.rose_ancora_quelle").replacingOccurrences(of: "{s}", with: "2025-26")
+        let web = Catalogo.Lega.roseAncoraQuelle(s: "2025-26")
         #expect(StagioneView.testoRoseAncoraQuelle("2025-26") == web)
         #expect(StagioneView.testoRoseAncoraQuelle("2025-26").contains("scelte e seguiti"))
     }

@@ -3,119 +3,130 @@ import Testing
 @testable import Schieraxi
 
 /// La schermata Scambi dice le stesse parole della web (issue #438, sotto la #167): titoli, pulsanti, frasi di spiegazione e
-/// giudizio sono quelli di `fanta/web/testi.js` (chiavi `scambi.*` e `scambio.*`). Prima l'iPhone scriveva «Analizza»,
-/// «Rose dopo lo scambio», «Con chi», «Ho ricevuto un'offerta»… Una frase cambiata su un lato solo fa fallire il test.
-/// Dati inventati.
+/// giudizio vengono dal catalogo comune (chiavi `scambi.*` e `scambio.*`, #496). Prima l'iPhone scriveva «Analizza»,
+/// «Rose dopo lo scambio», «Con chi», «Ho ricevuto un'offerta»… Qui si provano le frasi composte (numeri, nomi, plurali) e che
+/// ogni nome usato dalle viste sia il testo giusto del catalogo. La bozza del messaggio (`ScambiLogica`) si confronta ancora con
+/// `testi.js`. Dati inventati.
 @Suite("Scambi: le stesse parole della web")
 struct ScambiComeLaWebTests {
-    /// La chiave di `testi.js` e il testo che scrive l'app.
+    /// Il testo del catalogo e il nome che usano le viste: ogni nome è collegato al testo giusto.
     static let voci: [(String, String)] = [
         // i tre modi e «Trova per me»
-        ("scambio.cosa_vuoi_fare", TestiScambi.cosaVuoiFare),
-        ("scambio.trova_per", TestiScambi.trovaPerMe),
-        ("scambio.valuta_offerta", TestiScambi.valutaOfferta),
-        ("scambio.scambi_cui_guadagnate", TestiScambi.scambiCuiGuadagnate),
-        ("scambio.con_quale_squadra", TestiScambi.conQualeSquadra),
-        ("scambio.tutte_squadre", TestiScambi.tutteLeSquadre),
-        ("scambio.quanti_giocatori_per", TestiScambi.quantiGiocatoriPerParte),
-        ("scambio.uno_contro_uno", TestiScambi.unoControUno),
-        ("scambio.fino_a_2", TestiScambi.finoA2),
-        ("scambio.fino_a_3", TestiScambi.finoA3),
-        ("scambio.fino_a_4", TestiScambi.finoA4),
-        ("scambio.per_gli_scambi", TestiScambi.perGliScambi),
-        ("scambio.cerca_scambi", TestiScambi.cercaScambi),
-        ("scambio.cerco_gli_scambi", TestiScambi.cercoGliScambi),
-        ("scambio.nessuno_scambio_che", TestiScambi.nessunoScambio),
-        ("scambio.servono_altre", TestiScambi.servonoAltreRose),
+        (Catalogo.Scambio.cosaVuoiFare, TestiScambi.cosaVuoiFare),
+        (Catalogo.Scambio.trovaPer, TestiScambi.trovaPerMe),
+        (Catalogo.Scambio.valutaOfferta, TestiScambi.valutaOfferta),
+        (Catalogo.Scambio.scambiCuiGuadagnate, TestiScambi.scambiCuiGuadagnate),
+        (Catalogo.Scambio.conQualeSquadra, TestiScambi.conQualeSquadra),
+        (Catalogo.Scambio.tutteSquadre, TestiScambi.tutteLeSquadre),
+        (Catalogo.Scambio.quantiGiocatoriPer, TestiScambi.quantiGiocatoriPerParte),
+        (Catalogo.Scambio.unoControUno, TestiScambi.unoControUno),
+        (Catalogo.Scambio.finoA2, TestiScambi.finoA2),
+        (Catalogo.Scambio.finoA3, TestiScambi.finoA3),
+        (Catalogo.Scambio.finoA4, TestiScambi.finoA4),
+        (Catalogo.Scambio.perGliScambi, TestiScambi.perGliScambi),
+        (Catalogo.Scambio.cercaScambi, TestiScambi.cercaScambi),
+        (Catalogo.Scambio.cercoGliScambi, TestiScambi.cercoGliScambi),
+        (Catalogo.Scambio.nessunoScambioChe, TestiScambi.nessunoScambio),
+        (Catalogo.Scambio.servonoAltre, TestiScambi.servonoAltreRose),
         // proposte
-        ("scambio.copia_bozza_del", TestiScambi.copiaBozza),
-        ("mercato.bozza_copiata", TestiScambi.bozzaCopiata),
-        ("scambio.chi_accetta_piu", TestiScambi.chiAccettaPiu),
-        ("scambio.squadre_che_guadagnano", TestiScambi.squadreCheGuadagnano),
-        ("scambio.gli_ultimi_scambi", TestiScambi.ultimiScambi),
+        (Catalogo.Scambio.copiaBozzaDel, TestiScambi.copiaBozza),
+        (Catalogo.Mercato.bozzaCopiata, TestiScambi.bozzaCopiata),
+        (Catalogo.Scambio.chiAccettaPiu, TestiScambi.chiAccettaPiu),
+        (Catalogo.Scambio.squadreCheGuadagnano, TestiScambi.squadreCheGuadagnano),
+        (Catalogo.Scambio.gliUltimiScambi, TestiScambi.ultimiScambi),
         // «Valuta un'offerta»
-        ("scambio.incolla_messaggio_che", TestiScambi.incollaMessaggio),
-        ("scambio.messaggio_dell_offerta", TestiScambi.messaggioOfferta),
-        ("scambio.valuta_offerta_2", TestiScambi.valutaOffertaPulsante),
-        ("scambio.incolla_prima_messaggio", TestiScambi.incollaPrima),
-        ("scambio.leggo_messaggio", TestiScambi.leggoMessaggio),
-        ("scambio.riga_con", TestiScambi.rigaCon),
-        ("scambio.non_trovato_giocatori", TestiScambi.nonTrovatoGiocatori),
-        ("scambio.scegli_mano_costruisci", TestiScambi.scegliAMano),
-        ("scambio.vedi_giudizio_completo", TestiScambi.vediGiudizioCompleto),
+        (Catalogo.Scambio.incollaMessaggioChe, TestiScambi.incollaMessaggio),
+        (Catalogo.Scambio.messaggioDellOfferta, TestiScambi.messaggioOfferta),
+        (Catalogo.Scambio.valutaOfferta2, TestiScambi.valutaOffertaPulsante),
+        (Catalogo.Scambio.incollaPrimaMessaggio, TestiScambi.incollaPrima),
+        (Catalogo.Scambio.leggoMessaggio, TestiScambi.leggoMessaggio),
+        (Catalogo.Scambio.rigaCon, TestiScambi.rigaCon),
+        (Catalogo.Scambio.nonTrovatoGiocatori, TestiScambi.nonTrovatoGiocatori),
+        (Catalogo.Scambio.scegliManoCostruisci, TestiScambi.scegliAMano),
+        (Catalogo.Scambio.vediGiudizioCompleto, TestiScambi.vediGiudizioCompleto),
         // «Costruisci uno scambio»
-        ("scambi.analizza_titolo", TestiScambi.costruisciTitolo),
-        ("scambi.analizza_spiega", TestiScambi.costruisciSpiega),
-        ("scambi.con", TestiScambi.scambioCon),
-        ("scambi.dai", TestiScambi.dai),
-        ("scambi.ricevi", TestiScambi.ricevi),
-        ("scambi.conguaglio", TestiScambi.conguaglio),
-        ("scambi.conguaglio_aiuto", TestiScambi.conguaglioAiuto),
-        ("scambi.ricevo_crediti", TestiScambi.ricevoCrediti),
-        ("scambi.pago_crediti", TestiScambi.pagoCrediti),
-        ("scambi.crediti_quanti", TestiScambi.creditiQuanti),
-        ("scambi.conguaglio_numero", TestiScambi.conguaglioNumero),
-        ("scambi.analizza", TestiScambi.valutaScambio),
-        ("scambi.calcolo", TestiScambi.calcolo),
+        (Catalogo.Scambi.analizzaTitolo, TestiScambi.costruisciTitolo),
+        (Catalogo.Scambi.analizzaSpiega, TestiScambi.costruisciSpiega),
+        (Catalogo.Scambi.con, TestiScambi.scambioCon),
+        (Catalogo.Scambi.dai, TestiScambi.dai),
+        (Catalogo.Scambi.ricevi, TestiScambi.ricevi),
+        (Catalogo.Scambi.conguaglio, TestiScambi.conguaglio),
+        (Catalogo.Scambi.conguaglioAiuto, TestiScambi.conguaglioAiuto),
+        (Catalogo.Scambi.ricevoCrediti, TestiScambi.ricevoCrediti),
+        (Catalogo.Scambi.pagoCrediti, TestiScambi.pagoCrediti),
+        (Catalogo.Scambi.creditiQuanti, TestiScambi.creditiQuanti),
+        (Catalogo.Scambi.conguaglioNumero, TestiScambi.conguaglioNumero),
+        (Catalogo.Scambi.analizza, TestiScambi.valutaScambio),
+        (Catalogo.Scambi.calcolo, TestiScambi.calcolo),
         // il giudizio
-        ("scambi.chi_non_valido", TestiScambi.cosiNonSiPuoFare),
-        ("scambi.rose_dopo", TestiScambi.roseDopo),
-        ("scambi.panchina", TestiScambi.panchina),
-        ("scambi.in_stagione", TestiScambi.inStagione),
-        ("scambi.tu", TestiScambi.tu),
-        ("scambi.crediti_titolo", TestiScambi.crediti),
-        ("scambio.impatto_sulla_tua", TestiScambi.impatto),
-        ("scambio.conta_anche_resto", TestiScambi.contaAncheResto),
+        (Catalogo.Scambi.chiNonValido, TestiScambi.cosiNonSiPuoFare),
+        (Catalogo.Scambi.roseDopo, TestiScambi.roseDopo),
+        (Catalogo.Scambi.panchina, TestiScambi.panchina),
+        (Catalogo.Scambi.inStagione, TestiScambi.inStagione),
+        (Catalogo.Scambi.tu, TestiScambi.tu),
+        (Catalogo.Scambi.creditiTitolo, TestiScambi.crediti),
+        (Catalogo.Scambio.impattoSullaTua, TestiScambi.impatto),
+        (Catalogo.Scambio.contaAncheResto, TestiScambi.contaAncheResto),
     ]
 
-    /// Il testo italiano della web con ogni segnaposto `{nome}` sostituito.
+    /// Il testo italiano di `testi.js` con ogni segnaposto `{nome}` sostituito: solo per la bozza del messaggio, che scrive
+    /// `ScambiLogica` con chiavi che l'iPhone non prende ancora dal catalogo.
     private func web(_ chiave: String, _ valori: [String: String] = [:]) throws -> String {
         var testo = try TestiWeb().italiano(chiave)
         for (nome, valore) in valori { testo = testo.replacingOccurrences(of: "{\(nome)}", with: valore) }
         return testo
     }
 
-    @Test("Ogni testo dell'app è quello di testi.js, parola per parola", arguments: ScambiComeLaWebTests.voci)
-    func ugualeAllaWeb(chiave: String, app: String) throws {
-        let testo = try TestiWeb().italiano(chiave)
-        #expect(app == testo, "chiave \(chiave)")
+    @Test("Ogni nome usato dalle viste è il testo giusto del catalogo", arguments: ScambiComeLaWebTests.voci)
+    func ugualeAlCatalogo(catalogo: String, app: String) {
+        #expect(app == catalogo)
+    }
+
+    @Test("Il titolo e la descrizione dello stato vuoto, messi insieme, sono la frase della web")
+    func servonoAltreRoseInDue() {
+        #expect(!TestiScambi.servonoAltreRoseTitolo.isEmpty)
+        #expect(!TestiScambi.servonoAltreRoseCorpo.isEmpty)
+        #expect(TestiScambi.servonoAltreRoseTitolo.hasSuffix("."))
+        #expect(TestiScambi.servonoAltreRoseTitolo + " " + TestiScambi.servonoAltreRoseCorpo == Catalogo.Scambio.servonoAltre)
+        let sola = TestiScambi.inDue("Una frase sola")
+        #expect(sola.titolo == "Una frase sola")
+        #expect(sola.corpo.isEmpty)
     }
 
     // MARK: frasi con un numero o un nome
 
     @Test("«2 su 4» per parte, «Al massimo 4 giocatori per parte», «2 contro 1»")
     func numeriPerParte() throws {
-        let scelti = try web("scambi.scelti", ["n": "2", "max": "4"])
-        #expect(TestiScambi.scelti(2, massimo: 4) == scelti)
-        let massimo = try web("scambi.massimo", ["max": "4"])
-        #expect(TestiScambi.alMassimo(4) == massimo)
-        let formato = try web("scambi.formato", ["n": "2", "m": "1"])
-        #expect(TestiScambi.formato(2, 1) == formato)
+        #expect(TestiScambi.scelti(2, massimo: 4) == Catalogo.Scambi.scelti(max: "4", n: "2"))
+        #expect(TestiScambi.scelti(2, massimo: 4) == "2 su 4")
+        #expect(TestiScambi.alMassimo(4) == Catalogo.Scambi.massimo(max: "4"))
+        #expect(TestiScambi.alMassimo(4) == "Al massimo 4 giocatori per parte")
+        #expect(TestiScambi.formato(2, 1) == Catalogo.Scambi.formato(m: "1", n: "2"))
+        #expect(TestiScambi.formato(2, 1) == "2 contro 1")
     }
 
     @Test("«con Squadra» e, se non è 1 contro 1, anche il formato come la web")
     func conSquadra() throws {
-        let con = try web("scambio.con")
-        let formato = try web("scambi.formato", ["n": "2", "m": "1"])
+        let con = Catalogo.Scambio.con
+        let formato = Catalogo.Scambi.formato(m: "1", n: "2")
         #expect(TestiScambi.conSquadra("Gli Amici", dai: 1, ricevi: 1) == "\(con) Gli Amici")
         #expect(TestiScambi.conSquadra("Gli Amici", dai: 2, ricevi: 1) == "\(con) Gli Amici · \(formato)")
-        let unoTre = try web("scambi.formato", ["n": "1", "m": "3"])
+        #expect(TestiScambi.conSquadra("Gli Amici", dai: 2, ricevi: 1) == "con Gli Amici · 2 contro 1")
+        let unoTre = Catalogo.Scambi.formato(m: "3", n: "1")
         #expect(TestiScambi.conSquadra("Gli Amici", dai: 1, ricevi: 3) == "\(con) Gli Amici · \(unoTre)")
     }
 
     @Test("Formazione migliore: «prossima giornata» con una sola, «prossime N giornate» con più")
     func formazioneMigliore() throws {
-        let una = try web("scambi.formazione_migliore_una")
-        #expect(TestiScambi.formazioneMigliore(giornate: 1) == una)
-        let tre = try web("scambi.formazione_migliore", ["n": "3"])
-        #expect(TestiScambi.formazioneMigliore(giornate: 3) == tre)
-        let due = try web("scambi.formazione_migliore", ["n": "2"])
-        #expect(TestiScambi.formazioneMigliore(giornate: 2) == due)
+        #expect(TestiScambi.formazioneMigliore(giornate: 1) == Catalogo.Scambi.formazioneMiglioreUna)
+        #expect(TestiScambi.formazioneMigliore(giornate: 3) == Catalogo.Scambi.formazioneMigliore(n: "3"))
+        #expect(TestiScambi.formazioneMigliore(giornate: 2) == Catalogo.Scambi.formazioneMigliore(n: "2"))
+        #expect(TestiScambi.formazioneMigliore(giornate: 3) == "Formazione migliore (prossime 3 giornate)")
     }
 
     @Test("Senza il numero delle giornate (server vecchio) resta la parte comune, mai «prossime 0 giornate»")
     func formazioneMiglioreSenzaNumero() throws {
-        let una = try web("scambi.formazione_migliore_una")
+        let una = Catalogo.Scambi.formazioneMiglioreUna
         #expect(una.hasPrefix(TestiScambi.formazioneMigliore(giornate: 0)))
         #expect(TestiScambi.formazioneMigliore(giornate: 0) == "Formazione migliore")
         #expect(!TestiScambi.formazioneMigliore(giornate: 0).contains("0"))
@@ -123,35 +134,33 @@ struct ScambiComeLaWebTests {
 
     @Test("In totale: «prossima giornata» con una sola, «prossime N giornate» con più")
     func inTotale() throws {
-        let una = try web("scambio.in_totale.one")
-        #expect(TestiScambi.inTotale(giornate: 1) == una)
-        let quattro = try web("scambio.in_totale.other", ["n": "4"])
-        #expect(TestiScambi.inTotale(giornate: 4) == quattro)
+        #expect(TestiScambi.inTotale(giornate: 1) == Catalogo.Scambio.inTotale(1))
+        #expect(TestiScambi.inTotale(giornate: 1) == "In totale (prossima giornata)")
+        #expect(TestiScambi.inTotale(giornate: 4) == Catalogo.Scambio.inTotale(4))
+        #expect(TestiScambi.inTotale(giornate: 4) == "In totale (prossime 4 giornate)")
     }
 
     @Test("Chi accetta più volentieri: «1 scambio», «3 scambi», «migliora i portieri di +2,1%», «Archivio (5)»")
     func propenseEArchivio() throws {
-        let uno = try web("scambio.n_scambi.one", ["n": "1"])
-        #expect(TestiScambi.nScambi(1) == uno)
-        let tre = try web("scambio.n_scambi.other", ["n": "3"])
-        #expect(TestiScambi.nScambi(3) == tre)
-        let migliora = try web("scambio.migliora", ["reparto": "portieri", "p": "+2,1"])
-        #expect(TestiScambi.migliora(reparto: "portieri", p: "+2,1") == migliora)
-        let archivio = try web("scambio.archivio", ["n": "5"])
-        #expect(TestiScambi.archivio(5) == archivio)
+        #expect(TestiScambi.nScambi(1) == "1 scambio")
+        #expect(TestiScambi.nScambi(3) == "3 scambi")
+        #expect(TestiScambi.migliora(reparto: "portieri", p: "+2,1") == Catalogo.Scambio.migliora(p: "+2,1", reparto: "portieri"))
+        #expect(TestiScambi.migliora(reparto: "portieri", p: "+2,1") == "migliora i portieri di +2,1%")
+        #expect(TestiScambi.archivio(5) == Catalogo.Scambio.archivio(n: "5"))
+        #expect(TestiScambi.archivio(5) == "Archivio (5)")
     }
 
     @Test("Più giocatori con lo stesso cognome: i nomi separati da «; » come la web")
     func ambigui() throws {
-        let attesa = try web("scambio.ambigui", ["nomi": "Rossi A.; Rossi B."])
+        let attesa = Catalogo.Scambio.ambigui(nomi: "Rossi A.; Rossi B.")
         #expect(TestiScambi.ambigui(["Rossi A.", "Rossi B."]) == attesa)
     }
 
     // MARK: i modi della schermata
 
     @Test("I tre modi hanno i nomi dei pulsanti della web, nello stesso ordine")
-    func modi() throws {
-        let attesi = [try web("scambio.trova_per"), try web("scambio.costruisci"), try web("scambio.valuta_offerta")]
+    func modi() {
+        let attesi = [Catalogo.Scambio.trovaPer, Catalogo.Scambio.costruisci, Catalogo.Scambio.valutaOfferta]
         #expect(ModoScambi.allCases.map(\.rawValue) == attesi)
     }
 
@@ -241,8 +250,8 @@ struct ScambiComeLaWebTests {
     }
 
     @Test("I due pulsanti del conguaglio si chiamano «Ricevo» e «Pago»")
-    func nomiDelVerso() throws {
-        let nomi = [try web("scambi.ricevo_crediti"), try web("scambi.pago_crediti")]
+    func nomiDelVerso() {
+        let nomi = [Catalogo.Scambi.ricevoCrediti, Catalogo.Scambi.pagoCrediti]
         #expect(VersoConguaglio.allCases.map(\.nome) == nomi)
     }
 
@@ -253,8 +262,7 @@ struct ScambiComeLaWebTests {
     func troppiGiocatori() throws {
         let v = analisi()
         v.doIds = [1, 2, 3, 4, 5]
-        let frase = try web("scambi.massimo", ["max": "4"])
-        #expect(v.troppi == frase)
+        #expect(v.troppi == Catalogo.Scambi.massimo(max: "4"))
     }
 
     @Test("Offerta senza testo: «Incolla prima il messaggio» come la web, e non si chiede niente al server")
@@ -262,7 +270,6 @@ struct ScambiComeLaWebTests {
     func offertaSenzaTesto() async throws {
         let vm = ScambiViewModel(server: ServerDiProva.chePrecipita())
         await vm.valutaOfferta()
-        let frase = try web("scambio.incolla_prima_messaggio")
-        #expect(vm.erroreOfferta == frase)
+        #expect(vm.erroreOfferta == Catalogo.Scambio.incollaPrimaMessaggio)
     }
 }

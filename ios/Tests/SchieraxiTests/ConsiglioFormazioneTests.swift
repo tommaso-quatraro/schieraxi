@@ -3,7 +3,7 @@ import Testing
 @testable import Schieraxi
 
 /// Stato dei dati: gli indicatori del consiglio di formazione (#366) con le parole della web (`cartaConsiglio` di `fanta/web/app.js`,
-/// testi `sd.cons_*` di `fanta/web/testi.js`). La fixture `stato-dati-consiglio.json` è la risposta vera del server con 8 giornate e
+/// testi `sd.cons_*` del catalogo comune). La fixture `stato-dati-consiglio.json` è la risposta vera del server con 8 giornate e
 /// due utenti, due indicatori fuori soglia (la controlla `tests/test_stato_dati_consiglio_web.py`, che prova la web sugli stessi numeri).
 @Suite("Consiglio di formazione in Stato dei dati")
 struct ConsiglioFormazioneTests {
@@ -16,11 +16,6 @@ struct ConsiglioFormazioneTests {
     private func consiglio(_ json: String) throws -> StatoDati.Consiglio {
         let s: StatoDati = try Decodifica.decodifica(Data(#"{"stagione": "2026-27", "consiglio": \#(json)}"#.utf8))
         return try #require(s.consiglio)
-    }
-
-    /// Un modello di testi.js con i segnaposto riempiti, come fa `t()` della web.
-    private func riempi(_ modello: String, _ valori: [String: String]) -> String {
-        valori.reduce(modello) { $0.replacingOccurrences(of: "{\($1.key)}", with: $1.value) }
     }
 
     @Test("Si legge la risposta vera del server")
@@ -118,41 +113,35 @@ struct ConsiglioFormazioneTests {
         #expect(ParoleConsiglio.intero(1234) == "1234")
     }
 
-    // MARK: - stesse parole della web (testi.js)
+    // MARK: - stesse parole della web (catalogo)
 
     @Test("Titolo, spiegazione, nomi degli indicatori come la web")
-    func frasiComeLaWeb() throws {
-        let web = try TestiWeb()
-        #expect(try web.italiano("sd.cons_titolo") == ParoleConsiglio.titolo)
-        #expect(try web.italiano("sd.cons_spiega") == ParoleConsiglio.spiega)
-        #expect(try web.italiano("sd.cons_nessuna") == ParoleConsiglio.nessuna)
-        #expect(try web.italiano("sd.cons_c1") == ParoleConsiglio.nome(.valore))
-        #expect(try web.italiano("sd.cons_c2") == ParoleConsiglio.nome(.stabilita))
-        #expect(try web.italiano("sd.cons_c3") == ParoleConsiglio.nome(.chiGioca))
-        #expect(try web.italiano("sd.cons_c4") == ParoleConsiglio.nome(.perche))
+    func frasiComeLaWeb() {
+        #expect(Catalogo.Sd.consTitolo == ParoleConsiglio.titolo)
+        #expect(Catalogo.Sd.consSpiega == ParoleConsiglio.spiega)
+        #expect(Catalogo.Sd.consNessuna == ParoleConsiglio.nessuna)
+        #expect(Catalogo.Sd.consC1 == ParoleConsiglio.nome(.valore))
+        #expect(Catalogo.Sd.consC2 == ParoleConsiglio.nome(.stabilita))
+        #expect(Catalogo.Sd.consC3 == ParoleConsiglio.nome(.chiGioca))
+        #expect(Catalogo.Sd.consC4 == ParoleConsiglio.nome(.perche))
     }
 
     @Test("Plurali con i modelli della web", arguments: [1, 3])
-    func pluraliComeLaWeb(n: Int) throws {
-        let web = try TestiWeb()
-        let forma = n == 1 ? "one" : "other"
-        let formazioni = try riempi(web.italiano("sd.cons_formazioni.\(forma)"), ["n": "\(n)"])
+    func pluraliComeLaWeb(n: Int) {
+        let formazioni = Catalogo.Sd.consFormazioni(n)
         #expect(formazioni == ParoleConsiglio.formazioni(n))
-        #expect(try riempi(web.italiano("sd.cons_media.\(forma)"), ["n": "\(n)", "f": formazioni])
-                == ParoleConsiglio.media(giornate: n, formazioni: n))
+        #expect(formazioni == (n == 1 ? "1 formazione" : "\(n) formazioni"))
+        #expect(Catalogo.Sd.consMedia(n, f: formazioni) == ParoleConsiglio.media(giornate: n, formazioni: n))
     }
 
     @Test("Righe con i numeri: i modelli della web riempiti")
     func righeComeLaWeb() throws {
-        let web = try TestiWeb()
         let c = try consiglio()
-        let c1 = try riempi(web.italiano("sd.cons_c1_riga"), ["v": "+1,00", "s": "0"])
-            + " · " + riempi(web.italiano("sd.cons_c1_schierata"), ["w": "−0,25"])
+        let c1 = Catalogo.Sd.consC1Riga(s: "0", v: "+1,00") + " · " + Catalogo.Sd.consC1Schierata(w: "−0,25")
         #expect(c1 == ParoleConsiglio.dettaglio(.valore, di: c))
-        #expect(try riempi(web.italiano("sd.cons_c2_riga"), ["c": "1,5", "n": "1", "s": "0"]) == ParoleConsiglio.dettaglio(.stabilita, di: c))
-        #expect(try riempi(web.italiano("sd.cons_c3_riga"), ["i": "8", "n": "0", "s": "0"]) == ParoleConsiglio.dettaglio(.chiGioca, di: c))
-        #expect(try riempi(web.italiano("sd.cons_c4_riga"), ["sp": "16", "st": "16", "v": "4,5%", "s": "10%"])
-                == ParoleConsiglio.dettaglio(.perche, di: c))
+        #expect(Catalogo.Sd.consC2Riga(c: "1,5", n: "1", s: "0") == ParoleConsiglio.dettaglio(.stabilita, di: c))
+        #expect(Catalogo.Sd.consC3Riga(i: "8", n: "0", s: "0") == ParoleConsiglio.dettaglio(.chiGioca, di: c))
+        #expect(Catalogo.Sd.consC4Riga(s: "10%", sp: "16", st: "16", v: "4,5%") == ParoleConsiglio.dettaglio(.perche, di: c))
     }
 
     @Test("Niente sigle degli indicatori nelle parole per chi legge")

@@ -1,17 +1,17 @@
 import Foundation
 
 /// Le parole e i numeri della pagina Novità, uguali alla web (issue #441): `vistaNovita` di `fanta/web/app.js` e le chiavi
-/// `novita.*` e `regole.nuovo` di `fanta/web/testi.js`. `NovitaComeLaWebTests` li confronta. Quali versioni sono nuove e quante se
+/// `novita.*` e `regole.nuovo` del catalogo comune (`Catalogo+Novita.swift`, `Catalogo+Regole.swift`). `NovitaComeLaWebTests` le prova. Quali versioni sono nuove e quante se
 /// ne vedono subito si decide qui, con la stessa regola della web.
 enum ParoleNovita {
     /// Quante versioni si vedono subito (`NOVITA_VISIBILI` della web): le altre, sono centinaia, dietro «Mostra le … precedenti».
     static let visibili = 10
 
     /// L'etichetta delle versioni non ancora viste (`regole.nuovo`).
-    static let nuovo = "Nuovo"
+    static let nuovo = Catalogo.Regole.nuovo
 
     /// «Versione 1.432» (`novita.versione`).
-    static func versione(_ numero: String) -> String { "Versione \(numero)" }
+    static func versione(_ numero: String) -> String { Catalogo.Novita.versione(v: numero) }
 
     /// La riga sotto il titolo: «Versione 1.432 · 6 nov 2026, 10:12:00»; senza data solo la versione.
     static func sotto(versione numero: String, data: String?) -> String {
@@ -34,7 +34,5 @@ enum ParoleNovita {
 
     /// Il pulsante che apre tutte le altre: «Mostra le 42 versioni precedenti» o «Mostra 1 versione precedente»
     /// (`novita.precedenti`).
-    static func precedenti(_ n: Int) -> String {
-        n == 1 ? "Mostra 1 versione precedente" : "Mostra le \(n) versioni precedenti"
-    }
+    static func precedenti(_ n: Int) -> String { Catalogo.Novita.precedenti(n) }
 }

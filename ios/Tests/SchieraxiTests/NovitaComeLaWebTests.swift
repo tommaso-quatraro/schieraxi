@@ -12,11 +12,11 @@ struct NovitaComeLaWebTests {
 
     // MARK: parole
 
-    @Test("«Nuovo» e «Versione N» sono quelli di testi.js")
-    func parole() throws {
-        let web = try TestiWeb()
-        #expect(ParoleNovita.nuovo == (try web.italiano("regole.nuovo")))
-        #expect(ParoleNovita.versione("1.432") == (try web.italiano("novita.versione")).replacingOccurrences(of: "{v}", with: "1.432"))
+    @Test("«Nuovo» e «Versione N» sono quelli del catalogo")
+    func parole() {
+        #expect(ParoleNovita.nuovo == Catalogo.Regole.nuovo)
+        #expect(ParoleNovita.versione("1.432") == Catalogo.Novita.versione(v: "1.432"))
+        #expect(ParoleNovita.versione("1.432") == "Versione 1.432")
     }
 
     @Test("Sotto il titolo: «Versione 1.432 · 6 nov 2026, 10:12:00»; senza data solo la versione")
@@ -28,13 +28,10 @@ struct NovitaComeLaWebTests {
     }
 
     @Test("Il pulsante delle precedenti: «Mostra le 42 versioni precedenti» e, per una sola, «Mostra 1 versione precedente»")
-    func precedenti() throws {
-        let web = try TestiWeb()
-        let molte = try web.italiano("novita.precedenti.other").replacingOccurrences(of: "{n}", with: "42")
-        let una = try web.italiano("novita.precedenti.one").replacingOccurrences(of: "{n}", with: "1")
-        #expect(ParoleNovita.precedenti(42) == molte)
-        #expect(ParoleNovita.precedenti(1) == una)
-        #expect(ParoleNovita.precedenti(2) == (try web.italiano("novita.precedenti.other")).replacingOccurrences(of: "{n}", with: "2"))
+    func precedenti() {
+        #expect(ParoleNovita.precedenti(42) == "Mostra le 42 versioni precedenti")
+        #expect(ParoleNovita.precedenti(1) == "Mostra 1 versione precedente")
+        #expect(ParoleNovita.precedenti(2) == Catalogo.Novita.precedenti(2))
     }
 
     // MARK: quante versioni e quali sono nuove

@@ -114,10 +114,10 @@ struct LegaView: View {
         case .movimenti: MovimentiView(server: vm.server)
         case .stagione: StagioneView(server: vm.server)
         case .diario: DiarioView(server: vm.server)
-        case .cambi: PaginaMercato(vm: mercato, titolo: "Cambi consigliati") { ConsigliatiView(vm: mercato) }
-        case .seguiti: PaginaMercato(vm: mercato, titolo: "Seguiti") { OsservatiView(vm: mercato) }
-        case .elenco: PaginaMercato(vm: mercato, titolo: "Elenco dei giocatori") { GiocatoriView(vm: mercato, ricerca: mercato.ricerca) }
-        case .calendario: PaginaMercato(vm: mercato, titolo: "Calendario") { CalendarioView(vm: mercato) }
+        case .cambi: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceConsigli) { ConsigliatiView(vm: mercato) }
+        case .seguiti: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceOsservati) { OsservatiView(vm: mercato) }
+        case .elenco: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceGiocatori) { GiocatoriView(vm: mercato, ricerca: mercato.ricerca) }
+        case .calendario: PaginaMercato(vm: mercato, titolo: Catalogo.Lega.voceCalendario) { CalendarioView(vm: mercato) }
         case .scambi: ScambiView(vm: scambi, incorporata: true)
         }
     }
@@ -128,8 +128,8 @@ struct LegaView: View {
         Section {
             NavigationLink(value: PaginaLega.stagione) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label("Nuova stagione \(vm.stagione.dato?.corrente ?? "")", systemImage: "calendar.badge.exclamationmark").font(.headline)
-                    Text("Le rose sono ancora quelle del \(vm.stagione.dato?.rose ?? ""): archivia e riparti.").font(.caption).foregroundStyle(Color.testoSecondario)
+                    Label(Catalogo.Lega.nuovaStagioneN(s: vm.stagione.dato?.corrente ?? ""), systemImage: "calendar.badge.exclamationmark").font(.headline)
+                    Text(Catalogo.Lega.bannerStagione(s: vm.stagione.dato?.rose ?? "")).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 .frame(minHeight: 44)
                 .accessibilityElement(children: .combine)

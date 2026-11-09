@@ -2,8 +2,9 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Il testo in cima al Diario è quello della web, letto da `fanta/web/testi.js` del repository: la riga sotto il titolo
-/// (`avv.diario_riga`) e la spiegazione (`avv.per_ogni_giornata`) dentro la parte richiudibile «Come si legge» (`mercato.come_legge`).
+/// Il testo in cima al Diario è quello della web: la riga sotto il titolo (`avv.diario_riga`) e la spiegazione
+/// (`avv.per_ogni_giornata`), lette da `fanta/web/testi.js` del repository, dentro la parte richiudibile «Come si legge»
+/// (`mercato.come_legge`, dal catalogo comune).
 @MainActor
 struct DiarioIntroComeLaWebTests {
 
@@ -14,9 +15,8 @@ struct DiarioIntroComeLaWebTests {
     }
 
     @Test("La parte richiudibile si chiama come sulla web")
-    func titoloComeLaWeb() throws {
-        let web = try TestiDellaWeb().testo("mercato.come_legge")
-        #expect(DiarioView.comeSiLegge == web)
+    func titoloComeLaWeb() {
+        #expect(DiarioView.comeSiLegge == Catalogo.Mercato.comeLegge)
     }
 
     @Test("La spiegazione dentro «Come si legge» è quella della web")

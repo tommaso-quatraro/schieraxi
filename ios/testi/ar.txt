@@ -1,0 +1,22 @@
+# Testi della web (fanta/testi/ar.json, anteprima delle rose) che l'iPhone mostra: una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+ar.leggo
+ar.cosa_cambia
+ar.controlla
+ar.qual_e_tua
+ar.conferma
+ar.annulla
+ar.nuova
+ar.rosa_completa
+ar.riconosciuti
+ar.non_trovato
+ar.da_controllare
+ar.chi_e
+ar.lascia_cosi
+ar.cerco_io
+ar.togli
+ar.cerca_segnaposto
+ar.cerca_per
+ar.cambiate
+ar.salvate

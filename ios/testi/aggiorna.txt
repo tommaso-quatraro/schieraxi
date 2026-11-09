@@ -1,0 +1,7 @@
+# Testi della web (fanta/testi/aggiorna.json) che l'iPhone mostra dopo «Aggiorna i dati»: una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+aggiorna.avviato
+aggiorna.ok
+aggiorna.problemi
+aggiorna.non_so
