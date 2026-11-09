@@ -1,4 +1,6 @@
-# Chiavi di fanta/testi/tit.json che usa l'iPhone: lo stato della partita sotto la pedina del campo (EsitoPedina). #495
+# Chiavi di fanta/testi/tit.json: lo stato della partita sotto la pedina del campo. #495
+# Per ora Catalogo.Tit lo usano solo i test (EsitoPedinaTests confronta con il catalogo le parole di Domain/EsitoPedina.swift);
+# il codice dell'app ha ancora le parole scritte in EsitoPedina, che sta fuori dai file di questo lavoro.
 # Le parole della titolarità (tit.titolare, tit.ballottaggio, …) le confrontano anche i test del widget: restano fuori per ora.
 tit.st_fatto
 tit.st_senza_voto

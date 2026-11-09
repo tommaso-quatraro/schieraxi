@@ -1,7 +1,8 @@
 # Chiavi di fanta/testi/formazione.json che usa l'iPhone (Formazione, riga dello stato, sostituzione). #495
 # Dopo una modifica: python script/testi.py --scrivi (nasce ios/Sources/Support/Catalogo/Catalogo+Formazione.swift).
 
-# intestazione (TempiLega.didascalia) e stato della scelta (StatoScelta): le provano i test della Formazione
+# intestazione (TempiLega.didascalia) e stato della scelta (StatoScelta): per ora le usano solo i test della Formazione, che
+# confrontano con il catalogo le frasi ancora scritte in Domain/ (fuori dai file di questo lavoro)
 formazione.la_tua_scelta
 formazione.modulo_consigliato
 formazione.modulo_scelto

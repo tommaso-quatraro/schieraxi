@@ -46,6 +46,9 @@ struct FormazioneDalCatalogoTests {
     func nienteFrasiAMano() throws {
         let file = try Self.sorgenti()
         try #require(file.count >= 10, "non trovo i sorgenti delle schermate: \(file.map(\.lastPathComponent))")
+        // se la scheda del giocatore cambia cartella il controllo non deve saltarla in silenzio
+        try #require(file.filter { $0.lastPathComponent.hasPrefix("SchedaGiocatore") }.count == 2,
+                     "non trovo i due sorgenti della scheda del giocatore in Mercato/: \(file.map(\.lastPathComponent))")
         var trovate: [String] = []
         for url in file {
             let codice = try Self.codice(url)
@@ -120,7 +123,8 @@ struct FormazioneDalCatalogoTests {
     private static let ios = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
-    /// I sorgenti della Formazione, del Confronto e della scheda del giocatore.
+    /// I sorgenti della Formazione (`Formazione/`), del Confronto (`Confronto/`) e della scheda del giocatore, che sta in
+    /// `Mercato/` (`SchedaGiocatoreView.swift`, `SchedaGiocatoreViewModel.swift`): delle altre viste di `Mercato/` nessuna.
     private static func sorgenti() throws -> [URL] {
         let presentazione = ios.appendingPathComponent("Sources/Presentation", isDirectory: true)
         func swift(_ cartella: String, _ tiene: (String) -> Bool = { _ in true }) throws -> [URL] {

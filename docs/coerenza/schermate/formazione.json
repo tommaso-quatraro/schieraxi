@@ -64,7 +64,7 @@
       "stato": "fatto"
     },
     {
-      "id": 60,
+      "id": 61,
       "schermata": "Formazione, frasi piccole e VoiceOver",
       "web": "mentre carica «Calcolo la formazione migliore…»; «Formazione copiata: incollala dove vuoi» e «Non riesco a creare l'immagine» senza punto finale; «Stai guardando la formazione di Gli Amici.»; ⇄ letto «Confronta Rossi con un altro»; dopo il salvataggio «Salvata come tua scelta» (testi `formazione.*`)",
       "iphone": "«Scelgo gli undici…»; le due frasi con il punto finale; «Stai guardando la formazione di Gli Amici» senza punto; VoiceOver «Confronta Rossi con un altro della rosa» e «Formazione salvata»",
