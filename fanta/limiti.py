@@ -6,8 +6,10 @@
 - calcoli e memorie condivise: calcoli in coda insieme, parte della memoria dei risultati (li applica calcolo.py), consigliate
   ricordate (consigli.py) e azioni ripetibili che costano calcoli all'ora (`azione_pesante`);
 - importazione delle rose: lo stesso tetto di celle per ogni formato (lo applica importa_sicuro.py) e un tempo massimo per
-  riconoscere i giocatori (`tempo_riconoscimento`, lo applica nomi.Indice).
-Con l'interruttore spento (`ctx.utente_id` è None) nessuno di questi controlli fa niente: l'app resta quella di sempre.
+  riconoscere i giocatori (`tempo_riconoscimento`, lo applica nomi.Indice);
+- avvisi: prove degli avvisi all'ora (`prova_avvisi`) e un tempo massimo per ogni invio a un servizio di notifica (lo applica push.py).
+Con l'interruttore spento (`ctx.utente_id` è None) nessuno di questi controlli fa niente: l'app resta quella di sempre. Fa eccezione
+il tempo massimo di un invio, che vale sempre: un servizio di notifica normale risponde in meno di un secondo.
 Ogni tetto nuovo è una costante qui sotto che si può cambiare sul server con FANTA_<nome della costante> (vedi `valore`).
 I messaggi sono pensati per chi li legge: dicono cosa è successo e come rimediare.
 """
@@ -42,6 +44,10 @@ MAX_CONSIGLIATE_UTENTE = 100         # consigliate già mostrate ricordate per u
 # Importazione delle rose (#514): lo stesso tetto di lavoro per ogni formato.
 MAX_CELLE_IMPORTAZIONE = 1500 * 60   # celle lette in tutto (tutti i fogli di un Excel insieme): come il testo, 1500 righe × 60 colonne
 MAX_SECONDI_RICONOSCIMENTO = 20      # secondi per riconoscere i giocatori di un'importazione (o di un'anteprima): oltre si ferma
+
+# Avvisi (#515): un destinatario lento o tante prove di fila non rallentano gli altri.
+MAX_SECONDI_INVIO = 20               # secondi in tutto per mandare un avviso ai dispositivi di un utente (vedi push.invia)
+MAX_PROVE_AVVISI_ORA = 5             # prove degli avvisi all'ora per utente: ognuna manda davvero una notifica
 
 # cosa si conta al giorno: (tetto, come si dice nel messaggio)
 AL_GIORNO = {"importazioni": (MAX_IMPORTAZIONI_AL_GIORNO, "importazioni di rose"),
@@ -82,6 +88,12 @@ def azione_pesante(ctx) -> Prenotazione | None:
     """Un'azione ripetibile che costa calcoli o scritture (creare o togliere la lega di prova): al massimo
     MAX_AZIONI_PESANTI_ORA all'ora per utente, poi 429 con Retry-After. Senza account non conta niente."""
     return prenota_ora(ctx, "azioni_pesanti", massimo=valore("MAX_AZIONI_PESANTI_ORA"))
+
+
+def prova_avvisi(ctx) -> Prenotazione | None:
+    """La prova degli avvisi (manda davvero una notifica a tutti i dispositivi dell'utente): al massimo MAX_PROVE_AVVISI_ORA
+    all'ora per utente, poi 429 con Retry-After. Senza account non conta niente."""
+    return prenota_ora(ctx, "prove_avvisi", massimo=valore("MAX_PROVE_AVVISI_ORA"))
 
 
 def _orologio() -> float:
