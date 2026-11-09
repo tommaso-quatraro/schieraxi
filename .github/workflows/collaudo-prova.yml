@@ -5,12 +5,12 @@ name: Collaudo della prova
 # l'account di collaudo, apre le schermate principali a 390 e 1440 px, chiaro e scuro, e controlla errori della console (comprese
 # le risposte 4xx e 5xx), scorrimento di lato e accessibilità (axe), con prove/foto_web/foto.py --solo-misure: nessuna foto.
 # - Una versione collaudata (bene o male, purché le misure siano partite) lascia l'artifact «collaudo-v<N>» (solo esito.txt,
-#   senza indirizzi, 30 giorni): le corse dopo la saltano per 20 ore, poi la collaudano di nuovo (issue #549: almeno un
-#   collaudo al giorno anche senza versione nuova). Se le misure non partono (prova spenta, Playwright che non si installa)
-#   l'artifact non c'è e la corsa dopo riprova. A mano (Actions > Collaudo della prova > Run workflow) si collauda subito,
-#   anche se già collaudata.
-# - GitHub fa partire di rado le corse «ogni 20 minuti»: l'orario fisso delle 5:17 UTC (poco affollato) garantisce almeno una
-#   corsa al giorno.
+#   senza indirizzi, 30 giorni): le corse ogni 20 minuti la saltano per 20 ore, poi la collaudano di nuovo. Se le misure non
+#   partono (prova spenta, Playwright che non si installa) l'artifact non c'è e la corsa dopo riprova. A mano (Actions >
+#   Collaudo della prova > Run workflow) si collauda subito, anche se già collaudata.
+# - GitHub fa partire di rado le corse «ogni 20 minuti»: la corsa fissa delle 5:17 UTC (poco affollata) collauda sempre la
+#   versione in vigore sulla prova, anche se collaudata da poco (decidi --quotidiano): almeno un collaudo al giorno anche
+#   senza versione nuova (issue #549).
 # - Collaudo che non passa: issue P1 «Collaudo della prova: v<N> non passa», una sola per versione (un collaudo ripetuto la
 #   commenta) e corsa ROSSA. Collaudo che passa: chiude le issue del collaudo ancora aperte.
 # - La prova senza la versione nuova oltre 40 minuti dopo la release: issue «La prova non si aggiorna» e corsa rossa; si chiude
@@ -65,9 +65,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           EVENTO: ${{ github.event_name }}
+          PIANO: ${{ github.event.schedule }}
         run: |
           if [ "$EVENTO" = "workflow_dispatch" ]; then
             python -I script/ci/collaudo_prova.py decidi --forza
+          elif [ "$PIANO" = "17 5 * * *" ]; then
+            python -I script/ci/collaudo_prova.py decidi --quotidiano
           else
             python -I script/ci/collaudo_prova.py decidi
           fi

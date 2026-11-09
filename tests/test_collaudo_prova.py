@@ -436,6 +436,54 @@ def test_comando_decidi_ripete_il_collaudo_dopo_20_ore(cp, tmp_path, monkeypatch
     assert f"esito={atteso}" in righe and "versione=1.442" in righe
 
 
+def _decidi_con(cp, tmp_path, monkeypatch, argomenti, prova, ore_fa):
+    uscita = tmp_path / "uscita.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(uscita))
+    monkeypatch.setenv("PROVA_URL", "https://prova.esempio.invalid")
+    monkeypatch.setenv("PROVA_UTENTE", "utente-finto")
+    monkeypatch.setenv("PROVA_PASSWORD", "segreto-finto")
+    monkeypatch.setattr(cp, "_adesso", lambda: ADESSO)
+    release = [{"tagName": "v1.442", "createdAt": _iso(ADESSO - timedelta(hours=40)), "isDraft": False}]
+    segni = [_artifact(ADESSO - timedelta(hours=ore_fa))]
+    monkeypatch.setattr(cp, "_gh", lambda *a: json.dumps(release) if a[0] == "release"
+                        else json.dumps({"total_count": len(segni), "artifacts": segni}))
+    monkeypatch.setattr(cp, "versione_della_prova", lambda url, utente, password: prova)
+    assert cp.main(argomenti) == 0
+    return uscita.read_text(encoding="utf-8").splitlines()
+
+
+def test_corsa_quotidiana_collauda_anche_se_recente(cp, tmp_path, monkeypatch):
+    """La corsa fissa delle 5:17 è l'unica sicura: collauda la versione in vigore anche se l'ultimo collaudo ha poche ore
+    (una corsa saltuaria della sera prima non deve lasciare il giorno dopo senza collaudo)."""
+    assert "esito=collauda" in _decidi_con(cp, tmp_path, monkeypatch, ["decidi", "--quotidiano"], "1.442", 10.6)
+    assert "esito=salta" in _decidi_con(cp, tmp_path, monkeypatch, ["decidi"], "1.442", 10.6)
+    # una prova senza l'ultima versione resta «in ritardo» anche nella corsa quotidiana
+    assert "esito=in-ritardo" in _decidi_con(cp, tmp_path, monkeypatch, ["decidi", "--quotidiano"], "1.441", 10.6)
+
+
+def test_il_workflow_passa_quotidiano_solo_alla_corsa_delle_5_17():
+    testo = _testo()
+    blocco = _job(testo)["decidi"]
+    assert "PIANO: ${{ github.event.schedule }}" in blocco
+    assert re.search(r'if \[ "\$PIANO" = "17 5 \* \* \*" \]; then\s*\n\s*python -I script/ci/collaudo_prova.py decidi --quotidiano',
+                     blocco)
+    assert 'cron: "17 5 * * *"' in testo
+
+
+def test_l_errore_di_gh_resta_nel_registro(cp, monkeypatch, capsys):
+    """Con l'uscita catturata, il messaggio di un `gh issue create` che fallisce si perdeva: deve finire nel registro."""
+    import subprocess
+
+    def gh_che_fallisce(comando, **k):
+        raise subprocess.CalledProcessError(1, comando, output="", stderr="HTTP 422: etichetta P1 non trovata\n")
+
+    monkeypatch.setattr(cp.subprocess, "run", gh_che_fallisce)
+    with pytest.raises(subprocess.CalledProcessError):
+        cp._gh("issue", "create", "--title", "x", "--body", "y")
+    errori = capsys.readouterr().err
+    assert "HTTP 422: etichetta P1 non trovata" in errori and "gh issue create" in errori
+
+
 # --------------------------- issue del collaudo (job «segnala») ---------------------------
 class _GitHubFinto:
     """Le issue aperte e le chiamate a `gh issue ...`, come le farebbe il job «segnala»."""

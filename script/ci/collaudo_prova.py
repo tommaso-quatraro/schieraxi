@@ -1,12 +1,13 @@
 """Collaudo dell'ambiente di prova dopo ogni rilascio (workflow .github/workflows/collaudo-prova.yml, issue #511 e #549).
 
 Tre comandi, usati dal workflow:
-    python script/ci/collaudo_prova.py decidi [--forza]
+    python script/ci/collaudo_prova.py decidi [--forza | --quotidiano]
         Guarda l'ultima release del server `v<N>`, la versione che ha la prova e quando `v<N>` è stata collaudata l'ultima
-        volta (artifact `collaudo-v<N>`): una versione già collaudata si collauda di nuovo dopo RIPETI_ORE, così ogni giorno
-        c'è un collaudo anche senza versione nuova. Scrive in $GITHUB_OUTPUT `esito` (spento, aspetta, collauda, salta,
-        in-ritardo), `versione`, `prova` e `minuti`. `--forza` (corsa lanciata a mano): collauda subito, anche una versione
-        già collaudata.
+        volta (artifact `collaudo-v<N>`): una versione già collaudata si collauda di nuovo dopo RIPETI_ORE. Scrive in
+        $GITHUB_OUTPUT `esito` (spento, aspetta, collauda, salta, in-ritardo), `versione`, `prova` e `minuti`.
+        `--forza` (corsa lanciata a mano): collauda subito, anche una versione già collaudata. `--quotidiano` (corsa fissa
+        del mattino): collauda la versione in vigore sulla prova anche se collaudata da poco, così ogni giorno c'è un collaudo
+        anche senza versione nuova (#549).
     python script/ci/collaudo_prova.py esito <cartella>
         Legge `<cartella>/riepilogo.txt` di prove/foto_web/foto.py e scrive in $GITHUB_OUTPUT `ok` (true/false) e `dettaglio`,
         e in `<cartella>/esito.txt` lo stesso per l'artifact.
@@ -203,7 +204,14 @@ def versione_della_prova(url: str, utente: str, password: str) -> str | None:
 
 
 def _gh(*argomenti: str) -> str:
-    return subprocess.run(["gh", *argomenti], capture_output=True, text=True, encoding="utf-8", check=True, timeout=120).stdout
+    try:
+        return subprocess.run(["gh", *argomenti], capture_output=True, text=True, encoding="utf-8", check=True,
+                              timeout=120).stdout
+    except subprocess.CalledProcessError as e:
+        # l'uscita è catturata: senza questa riga il perché (permessi, etichetta mancante, limite) sparisce dal registro.
+        # Si stampano solo il comando (i primi due argomenti) e il messaggio di gh: i segreti della prova non passano da gh.
+        print(f"gh {' '.join(argomenti[:2])} non riuscito: {(e.stderr or '').strip()}", file=sys.stderr)
+        raise
 
 
 def _adesso() -> datetime:
@@ -227,7 +235,7 @@ def _scrivi_uscite(valori: dict[str, str]) -> None:
 
 
 # =========================== comandi ===========================
-def comando_decidi(forza: bool) -> int:
+def comando_decidi(forza: bool, quotidiano: bool = False) -> int:
     url, utente, password = (os.environ.get(n, "").strip() for n in ("PROVA_URL", "PROVA_UTENTE", "PROVA_PASSWORD"))
     if not (url and utente and password):
         print("Segreti della prova non impostati (PROVA_URL, PROVA_UTENTE, PROVA_PASSWORD): niente da collaudare.")
@@ -248,7 +256,8 @@ def comando_decidi(forza: bool) -> int:
     if forza:
         decisione, versione = "collauda", prova or ultima
     else:
-        ore = ore_dall_ultimo_collaudo(ultima, adesso) if prova == ultima else None
+        # corsa quotidiana: la versione in vigore si collauda comunque, senza guardare l'età dell'ultimo collaudo
+        ore = ore_dall_ultimo_collaudo(ultima, adesso) if prova == ultima and not quotidiano else None
         gia = {ultima} if ore is not None else set()
         decisione, versione = decidi(ultima, prova, minuti, gia, ore), ultima
     assert decisione in ESITI
@@ -337,12 +346,14 @@ def main(argv=None) -> int:
     sotto = p.add_subparsers(dest="comando", required=True)
     d = sotto.add_parser("decidi", help="aspetta, collauda, salta o in-ritardo (in $GITHUB_OUTPUT)")
     d.add_argument("--forza", action="store_true", help="corsa a mano: collauda subito, anche una versione già collaudata")
+    d.add_argument("--quotidiano", action="store_true",
+                   help="corsa fissa del mattino: collauda la versione in vigore sulla prova anche se collaudata da poco")
     e = sotto.add_parser("esito", help="ok e problemi dal riepilogo di foto.py (in $GITHUB_OUTPUT e in esito.txt)")
     e.add_argument("cartella", type=Path)
     sotto.add_parser("segnala", help="apre, commenta o chiude le issue del collaudo e del ritardo (dalle variabili d'ambiente)")
     a = p.parse_args(argv)
     if a.comando == "decidi":
-        return comando_decidi(a.forza)
+        return comando_decidi(a.forza, a.quotidiano)
     if a.comando == "segnala":
         return comando_segnala()
     return comando_esito(a.cartella)
