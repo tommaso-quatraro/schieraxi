@@ -46,11 +46,10 @@ extension Giocatore {
     ]
 
     /// A giornata iniziata il server toglie `titolarita` e manda `stato_partita`: lo stato vero al posto delle probabili
-    /// (colori come `STATO_PARTITA` di app.js, parole `tit.st_*` del catalogo comune).
+    /// (colori come `STATO_PARTITA` di app.js).
     static let nomiStatoPartita: [String: (String, Etichetta.Tono)] = [
-        "fatto": (Catalogo.Tit.stFatto, .positivo), "senza_voto": (Catalogo.Tit.stSenzaVoto, .attenzione),
-        "attesa_voti": (Catalogo.Tit.stAttesaVoti, .neutro), "in_corso": (Catalogo.Tit.stInCorso, .positivo),
-        "da_giocare": (Catalogo.Tit.stDaGiocare, .neutro), "rinviata": (Catalogo.Tit.stRinviata, .attenzione),
+        "fatto": ("Ha giocato", .positivo), "senza_voto": ("Senza voto", .attenzione), "attesa_voti": ("Voto in arrivo", .neutro),
+        "in_corso": ("Partita in corso", .positivo), "da_giocare": ("Da giocare", .neutro), "rinviata": ("Rinviata", .attenzione),
     ]
 
     /// Come la web app (`etichetteGiocatore` di `app.js`): prima l'etichetta pronta del server, se c'è; altrimenti la titolarità a

@@ -5,6 +5,6 @@
   ],
   "tecnico": [
     "Issue #556, lavoro A6 del piano 2026-11-08-ondata-2. fanta/testi: tolti l'a capo e gli spazi dentro regole.leghe_apri_regolamento e lega.esporta_rose_excel (it ed en); sulla web l'HTML li comprimeva già in uno spazio, quindi la pagina non cambia.",
-    "iPhone: chiavi nuove in ios/testi (dieta, perche, bonus, tempo, asp, av, avv, comune, rinvii, stati della partita, mercato.fantavoto); TestiFase, TestiRinvio, StatoScelta, AvvisoPrima, PaginaServer, nomiStatoPartita, Notifiche, Aspetto, ConfiguraLegaVista, RegoleEditor e ImportaRoseView usano Catalogo. Prova del sorgente: RestiDalCatalogoTests."
+    "iPhone: chiavi nuove in ios/testi (dieta, perche, bonus, tempo, asp, av, avv, comune, rinvii, mercato.fantavoto); TestiFase, TestiRinvio, StatoScelta, AvvisoPrima, PaginaServer, Notifiche, Aspetto, ConfiguraLegaVista, RegoleEditor, ImportaRoseView, RigaGiocatore e RigaRosa usano Catalogo. Prova del sorgente: RestiDalCatalogoTests."
   ]
 }

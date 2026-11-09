@@ -5,7 +5,7 @@ import Testing
 /// L'ultimo giro dei testi da una fonte sola (A6, #556, parte di #167): i testi che il catalogo comune con la web ha già
 /// (`fanta/testi/`, in Swift `Catalogo.…`, generati per le chiavi di `ios/testi/`) non si scrivono più a mano nei file che li
 /// mostrano: lo stato «Non disponibile», «Perché questo numero», le fasi della giornata, le partite rinviate, la riga di stato
-/// della scelta, gli stati della partita, Notifiche, Aspetto, la lega senza rose, i bonus delle regole.
+/// della scelta, Notifiche, Aspetto, la lega senza rose, i bonus delle regole, «fantavoto» nelle righe.
 /// Qui si legge il sorgente (cartella `ios/` del repository): una frase copiata fra virgolette tornerebbe a cambiare su un lato
 /// solo. Le frasi con un valore si controllano a pezzi: il valore si scrive «§» e nessun testo del file contiene un pezzo fisso.
 @Suite("Resti dei testi: le parole vengono dal catalogo (#556)")
@@ -74,10 +74,6 @@ struct RestiDalCatalogoTests {
              usa: ["Catalogo.Formazione.statoSalvataQuando(", "Catalogo.Formazione.statoModificataQuando(",
                    "Catalogo.Formazione.statoChiusaTua", "Catalogo.Formazione.giornoAlle(", "Catalogo.Formazione.alle(",
                    "Catalogo.Tempo.oggi", "Catalogo.Tempo.ieri", "Catalogo.Tempo.giorno6"]),
-        Caso(file: "Sources/Domain/GiocatoreEtichette.swift",
-             testi: [Catalogo.Tit.stFatto, Catalogo.Tit.stSenzaVoto, Catalogo.Tit.stAttesaVoti, Catalogo.Tit.stInCorso,
-                     Catalogo.Tit.stDaGiocare, Catalogo.Tit.stRinviata],
-             usa: ["Catalogo.Tit.stFatto", "Catalogo.Tit.stDaGiocare", "Catalogo.Tit.stRinviata"]),
         Caso(file: "Sources/Domain/Modelli2.swift",
              testi: [Catalogo.Avv.prima, Catalogo.Avv.primaAiuto, Catalogo.Avv.prima0, Catalogo.Avv.prima30, Catalogo.Avv.prima60,
                      Catalogo.Avv.prima90],

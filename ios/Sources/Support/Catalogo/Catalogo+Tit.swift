@@ -17,8 +17,5 @@ extension Catalogo {
 
         /// `tit.st_rinviata`
         static let stRinviata = "Rinviata"
-
-        /// `tit.st_da_giocare`
-        static let stDaGiocare = "Da giocare"
     }
 }
