@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from test_squadra_comune import Finto
@@ -101,6 +102,30 @@ def test_issue_di_lavoro_col_titolo_simile_non_conta():
     assert not giornata.titolo_rosso("Collaudo della prova: vecchio non passa")
 
 
+def test_titoli_rossi_sono_quelli_dei_workflow():
+    # Se un workflow cambia il titolo del suo allarme, questo test se ne accorge (la giornata non diventa verde in silenzio).
+    import importlib.util
+    import re as _re
+    radice = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location("collaudo_prova_per_giornata", radice / "script" / "ci" / "collaudo_prova.py")
+    cp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cp)
+    assert giornata.titolo_rosso(cp.RITARDO)
+    assert giornata.titolo_rosso(f"{cp.PREFISSO}1.450 non passa")
+    assert cp._TITOLO_COLLAUDO.fullmatch(f"{cp.PREFISSO}1.450 non passa")
+    for nome in ("test.yml", "salute.yml"):
+        testo = (radice / ".github" / "workflows" / nome).read_text(encoding="utf-8")
+        titoli = _re.findall(r'titolo="([^"$]+)"', testo)
+        assert titoli, nome
+        for titolo in titoli:
+            assert giornata.titolo_rosso(titolo), f"{nome}: {titolo}"
+
+
+def test_server_irraggiungibile_aperto_prima_rende_rossa():
+    v = giudica([issue(80, "Server non raggiungibile", "2026-11-14T08:00:00Z", etichette=["P1"])])
+    assert v.ok is False and any("#80" in m for m in v.motivi)
+
+
 def test_corsa_annullata_non_conta():
     assert giudica(main=MAIN_VERDI + [corsa(3, "2026-11-16T11:00:00Z", "cancelled")]).ok is True
 
@@ -177,7 +202,7 @@ def test_raccolta_usa_limit_e_created():
         assert "--limit 1000" in c and "--branch main" in c
         assert "--created 2026-11-15T12:50:00Z..2026-11-17T19:45:00Z" in c
     ricerche = finto.lanciati("gh issue list")
-    assert len(ricerche) == 4                        # le issue nuove e una ricerca per ciascuno dei tre titoli
+    assert len(ricerche) == 1 + len(giornata.TITOLI_ROSSI)   # le issue nuove e una ricerca per ciascun titolo
     for r in ricerche:
         assert "--limit 1000" in r and "--state all" in r
     assert any("created:2026-11-15T12:50:00Z..2026-11-17T19:45:00Z" in r for r in ricerche)

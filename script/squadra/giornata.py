@@ -18,10 +18,10 @@ from pathlib import Path
 import comune
 
 ETICHETTE = ("P1", "dall-utente")
-TITOLI_ROSSI = ("CI: main rosso", "Collaudo della prova", "La prova non si aggiorna")   # parole per cercarle con gh
-# I titoli esatti scritti dai workflow (test.yml e script/ci/collaudo_prova.py): un'issue di lavoro che comincia allo
+TITOLI_ROSSI = ("CI: main rosso", "Collaudo della prova", "La prova non si aggiorna", "Server non raggiungibile")   # parole per cercarle con gh
+# I titoli esatti scritti dai workflow (test.yml, salute.yml e script/ci/collaudo_prova.py): un'issue di lavoro che comincia allo
 # stesso modo (per esempio «Collaudo della prova: almeno una volta al giorno…») non è un allarme.
-_TITOLI_ESATTI = re.compile(r"CI: main rosso|La prova non si aggiorna|Collaudo della prova: v\d+(?:\.\d+)* non passa")
+_TITOLI_ESATTI = re.compile(r"CI: main rosso|Server non raggiungibile|La prova non si aggiorna|Collaudo della prova: v\d+(?:\.\d+)* non passa")
 
 
 def titolo_rosso(titolo: str) -> bool:
