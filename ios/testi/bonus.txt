@@ -1,0 +1,11 @@
+# Bonus e malus nell'editor delle regole (RegoleEditor), come `bonusRighe` e `malusRighe` della web.
+# «Rigore parato (portiere)» è regole.rigore_parato_p. Poi: python script/testi.py --scrivi
+bonus.assist
+bonus.rigore_segnato
+bonus.portiere_imbattuto
+bonus.mvp
+bonus.ammonizione
+bonus.espulsione
+bonus.autogol
+bonus.rigore_sbagliato
+bonus.gol_subito_portiere

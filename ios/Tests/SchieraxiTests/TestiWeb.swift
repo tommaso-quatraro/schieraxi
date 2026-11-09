@@ -2,7 +2,8 @@ import Foundation
 
 /// I testi italiani della web (`fanta/web/testi.js`), letti dal repository: le prove di parità li confrontano con quelli
 /// dell'app, così una frase cambiata su un lato solo fa fallire i test. Il file sta accanto ai test sul Mac di GitHub
-/// (come `fanta/frasi.py` per `DemoDaFareTests`).
+/// (come `fanta/frasi.py` per `DemoDaFareTests`). Solo per le chiavi che l'iPhone NON elenca in `ios/testi/`: quelle elencate
+/// si confrontano con le costanti generate `Catalogo.…` (#556).
 struct TestiWeb {
     struct Errore: Error, CustomStringConvertible {
         let description: String
@@ -31,14 +32,5 @@ struct TestiWeb {
             return try JSONDecoder().decode(String.self, from: Data(riga[apertura...fine].utf8))
         }
         throw Errore(description: "in testi.js manca la chiave \(chiave)")
-    }
-
-    /// Il testo italiano di una chiave con ogni segnaposto `{…}` sostituito da `valore`; nil finché la web ha ancora la frase di
-    /// prima della #299 (quella con `{n}`, il solo numero della lega). Così la PR della web e quella dell'iPhone si possono unire in
-    /// qualunque ordine: prima vale il vocabolario di `docs/COERENZA-WEB-IPHONE.md`, poi anche il confronto con `testi.js`.
-    func italianoDopo299(_ chiave: String, _ valore: String) throws -> String? {
-        let modello = try italiano(chiave)
-        guard !modello.contains("{n}") else { return nil }
-        return modello.replacingOccurrences(of: #"\{[a-z_]+\}"#, with: valore, options: .regularExpression)
     }
 }

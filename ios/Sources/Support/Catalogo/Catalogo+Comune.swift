@@ -8,5 +8,11 @@ extension Catalogo {
 
         /// `comune.riprova`
         static let riprova = "Riprova"
+
+        /// `comune.prima_rose`
+        static let primaRose = "Prima le tue rose"
+
+        /// `comune.importa_spiega`
+        static let importaSpiega = "Importa le rose della tua lega: poi qui trovi i consigli per la tua squadra. Ci vuole un minuto."
     }
 }

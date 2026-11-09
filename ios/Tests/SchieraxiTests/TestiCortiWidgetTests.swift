@@ -97,10 +97,9 @@ struct TestiCortiWidgetTests {
 
     // MARK: parole come la web e come l'app
 
-    @Test("Dopo la scadenza il conto alla rovescia dice «Chiusa», come la web (`oggi.chiusa`)")
+    @Test("Dopo la scadenza il conto alla rovescia dice «Chiusa», come la web (`oggi.chiusa` del catalogo comune)")
     func chiusaComeLaWeb() throws {
-        let comeLaWeb = try TestiWeb().italiano("oggi.chiusa")
-        #expect(ParoleWidget.chiusa == comeLaWeb)
+        #expect(ParoleWidget.chiusa == Catalogo.Oggi.chiusa)
         let scadenza = try #require(Quando.data("2026-10-31 15:00"))
         #expect(ParoleWidget.conto(fino: scadenza, adesso: scadenza.addingTimeInterval(60)) == "Chiusa")
         #expect(ParoleWidget.conto(fino: scadenza, adesso: scadenza.addingTimeInterval(-24_240)) == "6 h 44 min")
@@ -238,7 +237,7 @@ struct TestiCortiWidgetTests {
         // docs/COERENZA-WEB-IPHONE.md, «Giornata: le forme»: la giornata è scritta sopra e non si ripete
         let attesa = "La formazione si è chiusa oggi 14:50"
         #expect(r.fraseFase(adesso: adesso) == attesa + ". I punti fatti sono in Oggi.")
-        if let web = try TestiWeb().italianoDopo299("oggi.chiusa_dettaglio", "oggi 14:50") { #expect(web == attesa) }
+        #expect(Catalogo.Oggi.chiusaDettaglio(quando: "oggi 14:50") == attesa)
     }
 
     @Test("A giornata finita la testata dice la giornata finita (la 8), non la prossima (la 9)")
@@ -249,7 +248,7 @@ struct TestiCortiWidgetTests {
         // come la web (`oggi.giornata_finita`): la forma intera in testa, poi i due punti
         let attesa = "Giornata 8 · 11ª di Serie A: finita"
         #expect(r.titoloFase == attesa)
-        if let web = try TestiWeb().italianoDopo299("oggi.giornata_finita", "Giornata 8 · 11ª di Serie A") { #expect(web == attesa) }
+        #expect(Catalogo.Oggi.giornataFinita(g: "Giornata 8 · 11ª di Serie A") == attesa)
         #expect(r.formeTitoloFase == [attesa, "Giornata 8: finita"])
         #expect(r.voceTitoloFase == "Giornata 8, 11ª di Serie A: finita")
         #expect(r.testaRettangoloFase == "Giornata 8 finita")

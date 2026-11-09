@@ -67,3 +67,10 @@ oggi.rinvio_titolo_n
 oggi.rinvio_recupero
 oggi.rinvio_da_definire
 oggi.rinvio_miei
+oggi.rinvio_domanda
+oggi.rinvio_aspetta
+oggi.rinvio_senza_voto
+oggi.rinvio_ufficio
+oggi.rinvio_eccezione
+oggi.rinvio_salvato
+oggi.recupero_manca

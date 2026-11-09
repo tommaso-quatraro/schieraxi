@@ -5,8 +5,7 @@ import Testing
 // Issue #439. «Notifiche» (Impostazioni) e «Avanzate» dell'iPhone dicono le stesse parole della web: nome e riga sotto della voce
 // (`imp.avvisi`, `imp.avvisi_sub`), titoli e righe d'aiuto degli interruttori (`avv.*`), la spiegazione di «Mostra tutte le
 // funzioni» (`av.mostra_tutte*`). Le righe d'aiuto della web non finiscono con il punto. Dal #497 `imp.*` e `avv.*` vengono dal
-// catalogo comune (`Catalogo.Imp`, `Catalogo.Avv`); `av.mostra_tutte*` non sono ancora elencate in `ios/testi/` e si
-// confrontano con `fanta/web/testi.js`, letto dal repository.
+// catalogo comune (`Catalogo.Imp`, `Catalogo.Avv`), dal #556 anche `av.mostra_tutte*` (`Catalogo.Av`).
 
 /// Le coppie (testo del catalogo, testo dell'iPhone) dei titoli degli interruttori e della scelta «Avviso se il consiglio cambia».
 private let titoli: [(String, String)] = [
@@ -57,11 +56,10 @@ struct NotificheComeLaWebTests {
         #expect(AvvisoPrima.valori.map(AvvisoPrima.testo) == attese)
     }
 
-    @Test("«Mostra tutte le funzioni» e la sua spiegazione sono quelle di `testi.js` (`av.mostra_tutte*`)",
-          arguments: [("av.mostra_tutte", TestiImpostazioni.mostraTutte), ("av.mostra_tutte_spiega", TestiImpostazioni.mostraTutteSpiega)])
-    func mostraTutte(chiave: String, ios: String) throws {
-        let web = try TestiWeb().italiano(chiave)
-        #expect(ios == web, "«\(chiave)» è diverso da testi.js")
+    @Test("«Mostra tutte le funzioni» e la sua spiegazione sono quelle del catalogo comune (`av.mostra_tutte*`)")
+    func mostraTutte() {
+        #expect(TestiImpostazioni.mostraTutte == Catalogo.Av.mostraTutte)
+        #expect(TestiImpostazioni.mostraTutteSpiega == Catalogo.Av.mostraTutteSpiega)
     }
 
     @Test("«Mostra tutte le funzioni» spiega che si vede «il resto», non «tutto il resto»")

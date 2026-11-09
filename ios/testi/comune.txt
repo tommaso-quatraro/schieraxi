@@ -1,3 +1,7 @@
 # Parole comuni a più schermate. Poi: python script/testi.py --scrivi
 comune.importa_rose
 comune.riprova
+
+# Lega senza rose (ConfiguraLegaVista): titolo e frase della carta della web
+comune.prima_rose
+comune.importa_spiega

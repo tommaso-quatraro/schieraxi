@@ -1,0 +1,7 @@
+# «Perché questo numero» (PercheNumero in Domain/FantavotoAtteso.swift, PercheNumeroView in Support).
+# Poi: python script/testi.py --scrivi
+perche.titolo
+perche.definizione
+perche.rispetto
+perche.nessuno
+perche.apri_scheda

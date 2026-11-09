@@ -1,0 +1,12 @@
+# Le parole dei giorni: quando è stata salvata la scelta («oggi alle 21:40», «sab 31 alle 21:40», StatoScelta.momento).
+# Le date del resto dell'app (Domain/Quando.swift) le compila anche il widget, che non ha il catalogo.
+# Poi: python script/testi.py --scrivi
+tempo.oggi
+tempo.ieri
+tempo.giorno_0
+tempo.giorno_1
+tempo.giorno_2
+tempo.giorno_3
+tempo.giorno_4
+tempo.giorno_5
+tempo.giorno_6

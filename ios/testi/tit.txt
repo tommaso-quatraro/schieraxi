@@ -7,3 +7,4 @@ tit.st_senza_voto
 tit.st_attesa_voti
 tit.st_in_corso
 tit.st_rinviata
+tit.st_da_giocare

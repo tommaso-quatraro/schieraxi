@@ -28,3 +28,4 @@ mercato.non_gioca
 mercato.bozza_copiata
 mercato.come_legge
 mercato.annulla
+mercato.fantavoto

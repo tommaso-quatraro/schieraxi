@@ -290,7 +290,7 @@ final class AccessoUITests: XCTestCase {
 
     func testLegaSenzaRoseSpiegaCosaFare() {
         avvia("rose")
-        attendi("Manca la tua squadra")
+        attendi("Prima le tue rose")   // `comune.prima_rose`, come la carta della web
         XCTAssertTrue(app.buttons["Importa le rose"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Apri la web app nel browser"].exists)
     }
