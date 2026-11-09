@@ -120,7 +120,7 @@ final class FormazioneViewModel: ViewModelBase {
     var chiusa: Bool { formazione?.iniziata == true }
 
     /// La frase della web per la formazione chiusa di un'altra squadra (`formazione.chiusa`).
-    static let testoChiusa = "La formazione di questa giornata è chiusa: le partite sono cominciate."
+    static let testoChiusa = Catalogo.Formazione.chiusa
     /// La fascia sopra la formazione a giornata chiusa, come la web: solo dove non c'è la riga di stato della scelta (un'altra
     /// squadra). Per la tua squadra lo dice già la riga di stato («Giornata iniziata: la formazione è chiusa»): niente seconda frase.
     var fasciaChiusa: String? { chiusa && statoScelta == .sconosciuto ? Self.testoChiusa : nil }
@@ -136,7 +136,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// senza anticipi cominciati e con un server vecchio; il server rifiuta comunque un salvataggio che ne sposta uno.
     var fermi: Set<Int> { Set(formazione?.bloccati ?? []) }
     /// La frase della web sotto i titolari in modifica a mano (`formazione.bloccati`), solo se qualcuno è fermo.
-    static let testoFermi = "Chi gioca in una partita già cominciata non si può più spostare."
+    static let testoFermi = Catalogo.Formazione.bloccati
     var notaFermi: String? { manuale != nil && !chiusa && !fermi.isEmpty ? Self.testoFermi : nil }
 
     /// Chi può prendere il posto di `uscente` nella modifica a mano, come `sostituti` della web: stesso ruolo, non già titolare e non
@@ -387,7 +387,7 @@ final class FormazioneViewModel: ViewModelBase {
 
     func copiaTesto(_ f: Formazione) {
         UIPasteboard.general.string = testo(f)
-        messaggio = "Formazione copiata: incollala dove vuoi."
+        messaggio = Catalogo.Formazione.copiata
         Haptics.esito(riuscito: true)
     }
 
@@ -402,7 +402,7 @@ final class FormazioneViewModel: ViewModelBase {
             // come la web: «Formazione · Giornata 8 · 11ª di Serie A» (#299)
             anteprimaImmagine = ImmagineCondivisa(immagine: immagine, titolo: "Formazione · \(f.etichettaGiornata)")
         } else {
-            messaggio = "Non riesco a creare l'immagine."
+            messaggio = Catalogo.Formazione.nonRiescoCreare
         }
     }
 
@@ -493,7 +493,8 @@ final class FormazioneViewModel: ViewModelBase {
         }
     }
 
-    static let annuncioSalvata: String = "Formazione salvata"
+    /// Detto da VoiceOver dopo il salvataggio: la frase dell'avviso della web (`formazione.salvata_come_tua`).
+    static let annuncioSalvata = Catalogo.Formazione.salvataComeTua
 
     static let sceltaCambiata = "La scelta di questa giornata è stata cambiata da un altro dispositivo: ho ricaricato quella salvata. Controlla e, se serve, rifai la modifica."
     /// Dopo un 412 la rilettura della scelta non è riuscita (rete, server): «ho ricaricato» sarebbe falso (#477).

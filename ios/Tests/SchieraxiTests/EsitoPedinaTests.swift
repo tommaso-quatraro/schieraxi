@@ -4,7 +4,8 @@ import Testing
 
 /// Sotto la pedina del campo, come la web (`esitoPedina` di app.js, #283 e #284): a partita iniziata non c'è più «gioca N%» ma il
 /// fantavoto preso o lo stato della partita; una partita rinviata dice «Rinviata», prima e dopo la scadenza. Le parole sono quelle
-/// del server (`etichetta.testo`) o, con un server vecchio, quelle di `testi.js`. VoiceOver dice le stesse. Dati inventati.
+/// del server (`etichetta.testo`) o, con un server vecchio, quelle della web (`tit.st_*` del catalogo comune, `Catalogo.Tit` dal
+/// #495). VoiceOver dice le stesse. Dati inventati.
 @Suite("Pedina del campo: stato della partita come la web")
 struct EsitoPedinaTests {
     /// Un giocatore inventato con questo pezzo di JSON in più.
@@ -41,9 +42,8 @@ struct EsitoPedinaTests {
         #""p_voto": 0.5, "stato_partita": "rinviata""#,
     ])
     func rinviata(campi: String) throws {
-        let web = try TestiWeb().italiano("tit.st_rinviata")
         let g = try giocatore(campi)
-        #expect(g.esitoPedina == web)
+        #expect(g.esitoPedina == Catalogo.Tit.stRinviata)
     }
 
     @Test("Con l'etichetta decide il suo codice, come la web: senza «rinviata» resta «gioca N%»")
@@ -70,27 +70,26 @@ struct EsitoPedinaTests {
         #expect(g.esitoPedina == web)
     }
 
-    /// Lo stato della partita senza etichetta (server vecchio) e la chiave di testi.js con la stessa parola.
+    /// Lo stato della partita senza etichetta (server vecchio) e la parola della web per quello stato (`tit.st_*`).
     static let statiSenzaEtichetta: [(String, String)] = [
-        ("in_corso", "tit.st_in_corso"), ("attesa_voti", "tit.st_attesa_voti"), ("senza_voto", "tit.st_senza_voto"), ("fatto", "tit.st_fatto"),
+        ("in_corso", Catalogo.Tit.stInCorso), ("attesa_voti", Catalogo.Tit.stAttesaVoti), ("senza_voto", Catalogo.Tit.stSenzaVoto),
+        ("fatto", Catalogo.Tit.stFatto),
     ]
 
-    @Test("Server senza etichetta: le parole di testi.js dallo stato della partita", arguments: EsitoPedinaTests.statiSenzaEtichetta)
-    func statoSenzaEtichetta(stato: String, chiave: String) throws {
-        let parola = try TestiWeb().italiano(chiave)
+    @Test("Server senza etichetta: le parole della web dallo stato della partita", arguments: EsitoPedinaTests.statiSenzaEtichetta)
+    func statoSenzaEtichetta(stato: String, parola: String) throws {
         let g = try giocatore(#""p_voto": 0.72, "stato_partita": "\#(stato)""#)
         #expect(g.esitoPedina == parola)
     }
 
-    /// Il codice dell'etichetta del server e la chiave di testi.js con la stessa parola (`fanta/etichette.py`).
+    /// Il codice dell'etichetta del server e la parola della web con lo stesso significato (`fanta/etichette.py`, `tit.st_*`).
     static let codiciPartita: [(String, String, String)] = [
-        ("in_corso", "in_corso", "tit.st_in_corso"), ("voto_in_arrivo", "attesa_voti", "tit.st_attesa_voti"),
-        ("senza_voto", "senza_voto", "tit.st_senza_voto"), ("voto", "fatto", "tit.st_fatto"),
+        ("in_corso", "in_corso", Catalogo.Tit.stInCorso), ("voto_in_arrivo", "attesa_voti", Catalogo.Tit.stAttesaVoti),
+        ("senza_voto", "senza_voto", Catalogo.Tit.stSenzaVoto), ("voto", "fatto", Catalogo.Tit.stFatto),
     ]
 
-    @Test("Con l'etichetta: il suo testo, che è la parola di testi.js", arguments: EsitoPedinaTests.codiciPartita)
-    func statoConEtichetta(codice: String, stato: String, chiave: String) throws {
-        let parola = try TestiWeb().italiano(chiave)
+    @Test("Con l'etichetta: il suo testo, che è la parola della web", arguments: EsitoPedinaTests.codiciPartita)
+    func statoConEtichetta(codice: String, stato: String, parola: String) throws {
         let g = try giocatore(#""p_voto": 0.72, "stato_partita": "\#(stato)", \#(Self.etichetta(codice, parola))"#)
         #expect(g.esitoPedina == parola)
     }

@@ -3,9 +3,9 @@ import Testing
 @testable import Schieraxi
 
 /// La riga di stato della Formazione con gli stati e le frasi della web (`statoScelta` e `rigaStatoScelta` di `fanta/web/app.js`,
-/// frasi `formazione.stato_*` di `fanta/web/testi.js`): consigliata, altra, salvata, modificata, a mano, non valida. Le frasi
-/// si confrontano con quelle di `testi.js`, così una frase cambiata su un lato solo fa fallire il test. La giornata chiusa
-/// sta in `FormazioneChiusaTests`.
+/// frasi `formazione.stato_*` del catalogo comune con la web, `Catalogo.Formazione` dal #495): consigliata, altra, salvata,
+/// modificata, a mano, non valida. Le frasi si confrontano con quelle del catalogo, così una frase cambiata su un lato solo fa
+/// fallire il test. La giornata chiusa sta in `FormazioneChiusaTests`.
 @MainActor
 @Suite("Riga di stato della Formazione come la web")
 struct RigaStatoComeWebTests {
@@ -15,10 +15,9 @@ struct RigaStatoComeWebTests {
 
     @Test("Le frasi senza ora sono quelle della web",
           arguments: zip([StatoScelta.consigliata, .altra, .bozza, .nonValida, .salvata(nil), .modificata(nil)],
-                         ["formazione.stato_consigliata", "formazione.stato_altra", "formazione.stato_mano",
-                          "formazione.stato_non_valida", "formazione.stato_salvata", "formazione.stato_modificata"]))
-    func fraseSenzaOra(stato: StatoScelta, chiave: String) throws {
-        let atteso = try web(chiave)
+                         [Catalogo.Formazione.statoConsigliata, Catalogo.Formazione.statoAltra, Catalogo.Formazione.statoMano,
+                          Catalogo.Formazione.statoNonValida, Catalogo.Formazione.statoSalvata, Catalogo.Formazione.statoModificata]))
+    func fraseSenzaOra(stato: StatoScelta, atteso: String) {
         #expect(stato.titolo() == atteso)
     }
 
@@ -26,10 +25,10 @@ struct RigaStatoComeWebTests {
     func fraseSalvataConOra() throws {
         let adesso = try data("2026-11-02T22:00:00")   // lunedì
         let oggi = try data("2026-11-02T21:40:00"), ieri = try data("2026-11-01T09:05:00"), sabato = try data("2026-10-31T21:40:00")
-        let attesoOggi = try web("formazione.stato_salvata_quando", ["quando": giornoAlle(web("tempo.oggi"), "21:40")])
-        let attesoIeri = try web("formazione.stato_salvata_quando", ["quando": giornoAlle(web("tempo.ieri"), "09:05")])
+        let attesoOggi = try Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(web("tempo.oggi"), "21:40"))
+        let attesoIeri = try Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(web("tempo.ieri"), "09:05"))
         // sabato 31 ottobre: «sab 31 alle 21:40», senza il mese
-        let attesoSabato = try web("formazione.stato_salvata_quando", ["quando": giornoAlle(web("tempo.giorno_6") + " 31", "21:40")])
+        let attesoSabato = try Catalogo.Formazione.statoSalvataQuando(quando: giornoAlle(web("tempo.giorno_6") + " 31", "21:40"))
         #expect(StatoScelta.salvata(oggi).titolo(adesso: adesso) == attesoOggi)
         #expect(StatoScelta.salvata(ieri).titolo(adesso: adesso) == attesoIeri)
         #expect(StatoScelta.salvata(sabato).titolo(adesso: adesso) == attesoSabato)
@@ -39,9 +38,9 @@ struct RigaStatoComeWebTests {
     func fraseModificataConOra() throws {
         let adesso = try data("2026-11-02T22:00:00")
         let oggi = try data("2026-11-02T21:40:00"), ieri = try data("2026-11-01T09:05:00"), sabato = try data("2026-10-31T21:40:00")
-        let attesoOggi = try web("formazione.stato_modificata_quando", ["quando": web("formazione.alle", ["ora": "21:40"])])
-        let attesoIeri = try web("formazione.stato_modificata_quando", ["quando": giornoAlle(web("tempo.ieri"), "09:05")])
-        let attesoSabato = try web("formazione.stato_modificata_quando", ["quando": giornoAlle(web("tempo.giorno_6") + " 31", "21:40")])
+        let attesoOggi = Catalogo.Formazione.statoModificataQuando(quando: Catalogo.Formazione.alle(ora: "21:40"))
+        let attesoIeri = try Catalogo.Formazione.statoModificataQuando(quando: giornoAlle(web("tempo.ieri"), "09:05"))
+        let attesoSabato = try Catalogo.Formazione.statoModificataQuando(quando: giornoAlle(web("tempo.giorno_6") + " 31", "21:40"))
         #expect(StatoScelta.modificata(oggi).titolo(adesso: adesso) == attesoOggi)
         #expect(StatoScelta.modificata(ieri).titolo(adesso: adesso) == attesoIeri)
         #expect(StatoScelta.modificata(sabato).titolo(adesso: adesso) == attesoSabato)
@@ -89,8 +88,7 @@ struct RigaStatoComeWebTests {
     @Test("Giornata chiusa con la scelta salvata non più valida: la frase della web, lucchetto, grigia, nessun pulsante")
     func fraseChiusaNonValida() throws {
         let stato = StatoScelta.chiusaNonValida
-        let web = try fraseChiusaNonValidaWeb()
-        #expect(stato.titolo() == web)
+        #expect(stato.titolo() == Catalogo.Formazione.statoChiusaNonValida)
         #expect(stato.simbolo == "lock.fill")
         #expect(stato.tono == .neutro)
         #expect(!stato.daSalvare && stato.pulsanti.isEmpty)
@@ -117,7 +115,7 @@ struct RigaStatoComeWebTests {
     func altroStileOModulo() async throws {
         let srv = try server(scelta: nil)
         let (vm, f) = try await caricata(srv)
-        let frase = try web("formazione.stato_altra")
+        let frase = Catalogo.Formazione.statoAltra
         #expect(vm.statoScelta == .consigliata)
         let livelli = try #require(f.livelli)
         let base = try #require(livelli.first { $0.rischio == 0 })
@@ -143,7 +141,7 @@ struct RigaStatoComeWebTests {
 
     @Test("Una scelta salvata fuori dalla rosa non si cancella da sola: la riga dice che non è più valida e si vede la consigliata")
     func nonValidaPerLaRosa() async throws {
-        let frase = try web("formazione.stato_non_valida")
+        let frase = Catalogo.Formazione.statoNonValida
         let srv = try server(scelta: try dieciTitolari())
         let (vm, f) = try await caricata(srv)
         #expect(vm.statoScelta == .nonValida)
@@ -239,7 +237,7 @@ struct RigaStatoComeWebTests {
 
     @Test("Giornata chiusa con una scelta salvata fuori dalla rosa: «vale la consigliata», la consigliata in campo, senza provare a cancellarla")
     func chiusaConSceltaNonValida() async throws {
-        let frase = try fraseChiusaNonValidaWeb()
+        let frase = Catalogo.Formazione.statoChiusaNonValida
         let srv = try server(scelta: try dieciTitolari(), iniziata: true)
         let (vm, _) = try await caricata(srv)
         #expect(vm.statoScelta == .chiusaNonValida)
@@ -273,26 +271,15 @@ struct RigaStatoComeWebTests {
 
     // MARK: aiuti
 
-    /// Una frase italiana della web con i segnaposto riempiti, come `t(chiave, {…})` di `app.js`.
-    private func web(_ chiave: String, _ valori: [String: String] = [:]) throws -> String {
-        var testo = try TestiWeb().italiano(chiave)
-        for (nome, valore) in valori { testo = testo.replacingOccurrences(of: "{\(nome)}", with: valore) }
-        return testo
+    /// Le parole dei giorni della web (`tempo.oggi`, `tempo.ieri`, `tempo.giorno_6` di `testi.js`): il prefisso `tempo` non è
+    /// ancora nel catalogo dell'iPhone.
+    private func web(_ chiave: String) throws -> String {
+        try TestiWeb().italiano(chiave)
     }
 
-    /// `formazione.stato_chiusa_non_valida` della web. La chiave arriva con la PR del server e della web (#320): finché
-    /// `testi.js` non ce l'ha, si confronta con la frase scritta lì; dopo l'unione il confronto è con `testi.js`.
-    private func fraseChiusaNonValidaWeb() throws -> String {
-        let scrittaNellaPR = "Giornata iniziata: la formazione è chiusa · vale la consigliata, la tua non è più valida"
-        guard let testi = try? TestiWeb(), let frase = try? testi.italiano("formazione.stato_chiusa_non_valida") else {
-            return scrittaNellaPR
-        }
-        return frase
-    }
-
-    /// «oggi alle 21:40», «sab 31 alle 21:40» con `formazione.giorno_alle` della web.
-    private func giornoAlle(_ giorno: String, _ ora: String) throws -> String {
-        try web("formazione.giorno_alle", ["giorno": giorno, "ora": ora])
+    /// «oggi alle 21:40», «sab 31 alle 21:40» con `formazione.giorno_alle` del catalogo.
+    private func giornoAlle(_ giorno: String, _ ora: String) -> String {
+        Catalogo.Formazione.giornoAlle(giorno: giorno, ora: ora)
     }
 
     private func data(_ testo: String) throws -> Date { try #require(Quando.data(testo)) }

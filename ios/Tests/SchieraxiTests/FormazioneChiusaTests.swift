@@ -2,20 +2,19 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Formazione dopo la scadenza (`iniziata` del server), con le frasi della web (`fanta/web/testi.js`) come dice
-/// `docs/COERENZA-WEB-IPHONE.md`: per la tua squadra la riga di stato della scelta («Giornata iniziata: la formazione è
-/// chiusa», con «· vale quella che hai salvato» se c'è una scelta salvata), per un'altra squadra la fascia `formazione.chiusa`.
-/// La formazione resta in sola lettura.
+/// Formazione dopo la scadenza (`iniziata` del server), con le frasi della web come dice `docs/COERENZA-WEB-IPHONE.md` (dal
+/// #495 dal catalogo comune, `Catalogo.Formazione`): per la tua squadra la riga di stato della scelta («Giornata iniziata: la
+/// formazione è chiusa», con «· vale quella che hai salvato» se c'è una scelta salvata), per un'altra squadra la fascia
+/// `formazione.chiusa`. La formazione resta in sola lettura.
 @MainActor
 @Suite("Formazione chiusa come la web")
 struct FormazioneChiusaTests {
     // MARK: frasi e stato
 
     @Test("Riga di stato a giornata chiusa: la frase della web, con «vale quella che hai salvato» solo se c'è una scelta salvata",
-          arguments: zip([true, false], ["formazione.stato_chiusa_tua", "formazione.stato_chiusa"]))
-    func fraseDellaRiga(tua: Bool, chiave: String) throws {
-        let web = try TestiWeb().italiano(chiave)
-        #expect(StatoScelta.chiusa(tua: tua).titolo() == web)
+          arguments: zip([true, false], [Catalogo.Formazione.statoChiusaTua, Catalogo.Formazione.statoChiusa]))
+    func fraseDellaRiga(tua: Bool, catalogo: String) {
+        #expect(StatoScelta.chiusa(tua: tua).titolo() == catalogo)
     }
 
     @Test("A giornata chiusa lo stato è «chiusa», anche prima di leggere la scelta e con una modifica a mano lasciata a metà")
@@ -40,7 +39,7 @@ struct FormazioneChiusaTests {
 
     @Test("La tua formazione salvata a giornata chiusa: una riga sola con la frase della web, niente fascia, sola lettura")
     func salvataASolaLettura() async throws {
-        let web = try TestiWeb().italiano("formazione.stato_chiusa_tua")
+        let web = Catalogo.Formazione.statoChiusaTua
         let srv = try serverChiuso()
         let (vm, f) = try await caricata(srv)
         #expect(vm.chiusa)
@@ -66,7 +65,7 @@ struct FormazioneChiusaTests {
 
     @Test("Senza scelta salvata a giornata chiusa: la frase della web senza «vale quella che hai salvato», niente modifica a mano")
     func senzaSceltaNienteModificaAMano() async throws {
-        let web = try TestiWeb().italiano("formazione.stato_chiusa")
+        let web = Catalogo.Formazione.statoChiusa
         let (vm, f) = try await caricata(try serverChiuso(conScelta: false))
         #expect(vm.statoScelta == .chiusa(tua: false))
         #expect(vm.statoScelta.titolo() == web)
@@ -80,7 +79,7 @@ struct FormazioneChiusaTests {
 
     @Test("La formazione di un'altra squadra a giornata chiusa: la fascia della web (`formazione.chiusa`), nessuna riga di stato")
     func altraSquadra() async throws {
-        let web = try TestiWeb().italiano("formazione.chiusa")
+        let web = Catalogo.Formazione.chiusa
         let srv = try serverChiuso()
         let vm = FormazioneViewModel(server: srv)
         vm.squadraVista = "Gli Amici"
