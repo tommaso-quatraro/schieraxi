@@ -114,3 +114,25 @@ l'update-branch su GitHub ed esce con 4: controlli ripartiti, riprova fra qualch
 python script/squadra/squadra.py pr-pronta 123            # prova
 python script/squadra/squadra.py pr-pronta 123 --esegui   # gh pr ready
 ```
+
+## giornata
+Dice se una giornata è passata senza errori: è la misura che chiude #167 (decisione `docs/decisioni/0013`, `docs/METODO.md`,
+«Giornata senza errori»). Sola lettura. La finestra va dalla scadenza della lega a due giorni dopo l'inizio dell'ultima partita;
+`--dal` e `--al` sono date ISO con il fuso (`2026-11-15T13:50:00+01:00` o `…Z`) e il comando si lancia a finestra finita.
+
+Raccoglie con `gh` le corse di `test.yml` su `main` e di `collaudo-prova.yml`, le issue nuove della finestra e quelle con i titoli
+«CI: main rosso», «Collaudo della prova» e «La prova non si aggiorna». Rosso se: la sentinella ha un allarme o non gira per più di
+2 ore; nasce un'issue `P1` o `dall-utente`; una di quelle tre issue è aperta in qualche momento della finestra; una corsa è rossa
+(«annullato» non conta); nessun collaudo riuscito davvero nella finestra (job «Collaudo delle schermate»); manca il file della
+sentinella. Ogni motivo stampato dice cosa, quando e il link.
+
+Il file della sentinella si prende dal server, in sola lettura, a finestra finita: `python -m fanta sentinella --giri --dal <ISO con
+fuso> --al <ISO con fuso>` stampa i giri in JSON; si salva in un file sul PC e si passa con `--sentinella`. Va bene anche il file di
+stato intero della sentinella (`dati/sentinella.json`, campo `giri`). Senza `--sentinella` la giornata non è mai verde.
+
+Uscite: 0 senza errori; 1 non ok (stampa i motivi); 2 date rifiutate (senza fuso, rovesciate o `--al` nel futuro); 3 errore di `gh`
+o file della sentinella illeggibile.
+
+```
+python script/squadra/squadra.py giornata --dal 2026-11-15T13:50:00+01:00 --al 2026-11-19T20:45:00+01:00 --sentinella giri.json
+```

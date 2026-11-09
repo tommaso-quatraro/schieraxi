@@ -20,3 +20,7 @@ Formato: [MADR](https://github.com/adr/madr) riscritto in italiano, versione bre
 | [0008](0008-controlli-su-main-dopo-l-unione.md) | Dopo ogni unione i controlli girano anche su `main` | accettata |
 | [0009](0009-gioca-probabili-si-ritara-sul-server.md) | «Gioca N%» con le probabili si ritara da solo sul server | proposta |
 | [0010](0010-una-sola-fonte-per-i-testi.md) | I testi di web e iPhone nascono da un catalogo solo | accettata |
+| [0011](0011-regressione-visiva-web-contro-main.md) | L'aspetto della web si confronta con `main` nella stessa corsa, per ora solo come avviso | accettata |
+| [0012](0012-ambiente-di-prova-con-collaudo-automatico.md) | Ogni versione passa prima da un ambiente di prova collaudato in automatico | accettata |
+| [0013](0013-giornata-senza-errori.md) | #167 si chiude con una «giornata senza errori», mai verde per omissione | accettata |
+| [0014](0014-contratto-iphone-controllato-non-generato.md) | Il contratto fra iPhone e server si controlla, non si genera | accettata |
