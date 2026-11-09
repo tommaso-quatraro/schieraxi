@@ -1,0 +1,5 @@
+# Testi della web (fanta/testi/novita.json) che l'iPhone mostra: una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+novita.versione
+novita.precedenti

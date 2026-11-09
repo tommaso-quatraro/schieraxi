@@ -1,7 +1,7 @@
 import Foundation
 
 /// Le parole del registro delle giornate in Stato dei dati (#344), uguali alla web: `cartaRegistro` di `fanta/web/app.js` e i testi
-/// `sd.reg_*` di `fanta/web/testi.js` (`RegistroGiornateTests` li confronta). Soglie e verdetto («regge») arrivano dal server:
+/// `sd.reg_*` del catalogo comune (file generato `Catalogo+Sd.swift`; `RegistroGiornateTests` prova le frasi composte). Soglie e verdetto («regge») arrivano dal server:
 /// qui si scrivono e basta, non si ricalcolano.
 enum ParoleRegistro {
     /// Le tre misure del registro, nell'ordine della web (sul server I1, I2, I3).
@@ -23,23 +23,21 @@ enum ParoleRegistro {
 
         var testo: String {
             switch self {
-            case .regge: return "regge"
-            case .nonRegge: return "non regge"
-            case .servono(let n): return n == 1 ? "serve ancora 1 giornata" : "servono ancora \(n) giornate"
-            case .senzaDati: return "ancora nessun dato"
+            case .regge: return Catalogo.Sd.regRegge
+            case .nonRegge: return Catalogo.Sd.regNonRegge
+            case .servono(let n): return Catalogo.Sd.regServono(n)
+            case .senzaDati: return Catalogo.Sd.nessunDato
             }
         }
     }
 
-    static let titolo = "Registro delle giornate"
-    static let spiega = "Prima di ogni giornata l'app salva i numeri che mostra per tutta la Serie A e, a giornata finita, li confronta con com'è andata."
-    static let nessuna = "Ancora nessuna giornata misurata: i numeri arrivano il giorno dopo la fine della prima giornata salvata."
-    static let titoloPerse = "Giornate perse"
-    static let spiegaPerse = "Non salvate prima della prima partita: non si possono più misurare."
+    static let titolo = Catalogo.Sd.regTitolo
+    static let spiega = Catalogo.Sd.regSpiega
+    static let nessuna = Catalogo.Sd.regNessuna
+    static let titoloPerse = Catalogo.Sd.regPerse
+    static let spiegaPerse = Catalogo.Sd.regPerseSpiega
 
-    static func media(giornate n: Int) -> String {
-        n == 1 ? "Media di 1 giornata misurata." : "Media delle ultime \(n) giornate misurate."
-    }
+    static func media(giornate n: Int) -> String { Catalogo.Sd.regMedia(n) }
 
     /// La riga sotto il titolo: su quante giornate è la media, o che non ce n'è ancora nessuna misurata.
     static func sottotitolo(_ r: StatoDati.Registro) -> String {
@@ -49,9 +47,9 @@ enum ParoleRegistro {
 
     static func nome(_ misura: Misura) -> String {
         switch misura {
-        case .fantavoto: return "Errore del fantavoto atteso contro la fantamedia"
-        case .gioca: return "«Gioca N%» contro chi ha giocato davvero"
-        case .fascia: return "Punti veri dentro la fascia «8 volte su 10»"
+        case .fantavoto: return Catalogo.Sd.regI1
+        case .gioca: return Catalogo.Sd.regI2
+        case .fascia: return Catalogo.Sd.regI3
         }
     }
 
@@ -83,13 +81,13 @@ enum ParoleRegistro {
         let s = r.soglie
         switch misura {
         case .fantavoto:
-            return "\(percento(r.i1, segno: true)) (deve stare a \(percento(s?.i1, segno: true)) o meno) · errore "
-                + "\(Formato.decimali(r.erroreModello, cifre: 2)) contro \(Formato.decimali(r.erroreFantamedia, cifre: 2))"
+            return Catalogo.Sd.regI1Riga(f: Formato.decimali(r.erroreFantamedia, cifre: 2), m: Formato.decimali(r.erroreModello, cifre: 2),
+                                         s: percento(s?.i1, segno: true), v: percento(r.i1, segno: true))
         case .gioca:
-            return "scarto \(punti(r.calibrazione, per: 100)) (al massimo \(cifra(s?.i2Calibrazione, per: 100))) · punteggio di Brier "
-                + "\(Formato.decimali(r.brier, cifre: 3)) (al massimo \(Formato.decimali(s?.i2Brier, cifre: 3)))"
+            return Catalogo.Sd.regI2Riga(b: Formato.decimali(r.brier, cifre: 3), c: punti(r.calibrazione, per: 100),
+                                         sb: Formato.decimali(s?.i2Brier, cifre: 3), sc: cifra(s?.i2Calibrazione, per: 100))
         case .fascia:
-            return "\(percento(r.copertura)) (deve stare tra \(percento(s?.i3Minimo)) e \(percento(s?.i3Massimo)))"
+            return Catalogo.Sd.regI3Riga(max: percento(s?.i3Massimo), min: percento(s?.i3Minimo), v: percento(r.copertura))
         }
     }
 
@@ -100,7 +98,7 @@ enum ParoleRegistro {
 
     /// «9ª giornata di Serie A · 2026-27» (`sd.reg_giornata` della web): il numero è quello della Serie A, non della lega.
     static func giornata(_ g: StatoDati.Registro.Giornata) -> String {
-        "\(g.giornata.map(TempiLega.serieA) ?? "") · \(g.stagione ?? "")"
+        Catalogo.Sd.regGiornata(g: g.giornata.map(TempiLega.serieA) ?? "", s: g.stagione ?? "")
     }
 
     /// Un numero (moltiplicato per `per`) con una cifra decimale e senza «,0», come `regCifra` della web: «10», «3,4», «−3».

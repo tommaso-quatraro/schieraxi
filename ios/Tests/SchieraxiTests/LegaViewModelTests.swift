@@ -21,7 +21,7 @@ final class LegaViewModelTests: XCTestCase {
         defer { NotificationCenter.default.removeObserver(osservatore) }
         await vm.avvia()
         XCTAssertFalse(vm.inCorso)
-        XCTAssertEqual(vm.messaggio, "Dati aggiornati.")
+        XCTAssertEqual(vm.messaggio, Catalogo.Aggiorna.ok)
         XCTAssertTrue(vm.errori.isEmpty)
         XCTAssertEqual(s.quante("POST /api/aggiorna"), 1)
         XCTAssertEqual(s.quante("GET /api/aggiorna"), 3)
@@ -56,7 +56,7 @@ final class LegaViewModelTests: XCTestCase {
         let vm = AggiornaDatiViewModel(server: s)
         vm.pausa = 0
         await vm.avvia()
-        XCTAssertEqual(vm.messaggio, "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco.")
+        XCTAssertEqual(vm.messaggio, Catalogo.Aggiorna.nonSo)
         XCTAssertEqual(s.quante("GET /api/aggiorna"), 5, "dopo cinque tentativi a vuoto si smette")
         XCTAssertFalse(vm.inCorso)
     }
@@ -169,7 +169,7 @@ final class LegaViewModelTests: XCTestCase {
         vm.votoUfficioAttivo.wrappedValue = true
         XCTAssertEqual(vm.valore.valore("voto_senza_sostituto")?.numero, 4)
         await vm.salva()
-        XCTAssertEqual(vm.esito, "Regole salvate: i consigli ora le usano.")
+        XCTAssertEqual(vm.esito, Catalogo.Regole.regoleSalvateConsigli)
         XCTAssertTrue(vm.esitoRiuscito)
         XCTAssertFalse(vm.modificato)
         let r = try XCTUnwrap(ricevuto.valore)
@@ -220,7 +220,7 @@ final class LegaViewModelTests: XCTestCase {
         let vm = RegoleEditorViewModel(server: regole())
         await vm.carica()
         await vm.riconosci()
-        XCTAssertEqual(vm.erroreRiconoscimento, "Incolla prima il testo del regolamento.")
+        XCTAssertEqual(vm.erroreRiconoscimento, Catalogo.Regole.incollaPrimaTesto)
         vm.testoRegolamento = "Rigore parato 4 punti"
         await vm.riconosci()
         XCTAssertEqual(vm.riconoscimento?.modifiche.count, 1)
@@ -300,7 +300,7 @@ final class LegaViewModelTests: XCTestCase {
         let c = String(decoding: try XCTUnwrap(s.corpiInviati(a: "PUT /api/crediti").last), as: UTF8.self)
         XCTAssertTrue(c.contains("\"Borgo Alto\":120"), c)
         XCTAssertFalse(c.contains("Altra"), c)
-        XCTAssertEqual(crediti.messaggio, "Crediti salvati.")
+        XCTAssertEqual(crediti.messaggio, Catalogo.Lega.creditiSalvati)
     }
 
     func testAvvisiConAppNativa() async throws {

@@ -1,154 +1,120 @@
 import Foundation
 
-/// I testi della schermata Scambi, uguali alla web (`fanta/web/testi.js`, chiavi `scambi.*` e `scambio.*`; la web è il riferimento,
-/// `docs/COERENZA-WEB-IPHONE.md`). Ogni voce ha accanto la sua chiave. Logica pura: `ScambiComeLaWebTests` li confronta con
-/// `testi.js`, così una frase cambiata su un lato solo fa fallire il test.
+/// I testi della schermata Scambi, uguali alla web: vengono dal catalogo comune (`fanta/testi/scambi.json` e `scambio.json`, chiavi
+/// elencate in `ios/testi/`, file generati `Catalogo+Scambi.swift` e `Catalogo+Scambio.swift`). Qui restano i nomi che usano le
+/// viste e le frasi composte (numeri, nomi, una frase divisa in due). `SquadraAltroDalCatalogoTests` controlla che nessun testo del
+/// catalogo sia riscritto qui, `ScambiComeLaWebTests` le frasi composte.
 enum TestiScambi {
     // MARK: i tre modi e «Trova per me»
 
-    /// `scambio.cosa_vuoi_fare`
-    static let cosaVuoiFare = "Cosa vuoi fare"
-    /// `scambio.trova_per`, titolo del modo e del riquadro.
-    static let trovaPerMe = "Trova per me"
-    /// `scambio.valuta_offerta`: nome del modo e titolo del riquadro.
-    static let valutaOfferta = "Valuta un'offerta"
-    /// `scambio.scambi_cui_guadagnate`
-    static let scambiCuiGuadagnate = "Scambi in cui guadagnate punti tutti e due: l'altro li può accettare."
-    /// `scambio.con_quale_squadra`
-    static let conQualeSquadra = "Con quale squadra"
-    /// `scambio.tutte_squadre`
-    static let tutteLeSquadre = "Tutte le squadre"
-    /// `scambio.quanti_giocatori_per`
-    static let quantiGiocatoriPerParte = "Quanti giocatori per parte"
-    /// `scambio.uno_contro_uno`, `scambio.fino_a_2`, `scambio.fino_a_3`, `scambio.fino_a_4`
-    static let unoControUno = "1 contro 1"
-    static let finoA2 = "Fino a 2"
-    static let finoA3 = "Fino a 3"
-    static let finoA4 = "Fino a 4"
-    /// `scambio.per_gli_scambi`
-    static let perGliScambi = "Per gli scambi più grandi scegli una squadra: si cercano una alla volta e ci vogliono alcuni secondi."
-    /// `scambio.cerca_scambi`
-    static let cercaScambi = "Cerca scambi"
-    /// `scambio.cerco_gli_scambi`
-    static let cercoGliScambi = "Cerco gli scambi…"
-    /// `scambio.nessuno_scambio_che`
-    static let nessunoScambio = "Nessuno scambio che convenga a tutti e due."
-    /// `scambio.servono_altre`, in due metà: il titolo e la descrizione dello stato vuoto (insieme sono la frase della web).
-    static let servonoAltreRoseTitolo = "Per gli scambi servono le rose delle altre squadre."
-    static let servonoAltreRoseCorpo = "Aggiungile quando vuoi: formazione e consigli funzionano già."
-    static var servonoAltreRose: String { servonoAltreRoseTitolo + " " + servonoAltreRoseCorpo }
+    static let cosaVuoiFare = Catalogo.Scambio.cosaVuoiFare
+    /// Titolo del modo e del riquadro.
+    static let trovaPerMe = Catalogo.Scambio.trovaPer
+    /// Nome del modo e titolo del riquadro.
+    static let valutaOfferta = Catalogo.Scambio.valutaOfferta
+    static let scambiCuiGuadagnate = Catalogo.Scambio.scambiCuiGuadagnate
+    static let conQualeSquadra = Catalogo.Scambio.conQualeSquadra
+    static let tutteLeSquadre = Catalogo.Scambio.tutteSquadre
+    static let quantiGiocatoriPerParte = Catalogo.Scambio.quantiGiocatoriPer
+    static let unoControUno = Catalogo.Scambio.unoControUno
+    static let finoA2 = Catalogo.Scambio.finoA2
+    static let finoA3 = Catalogo.Scambio.finoA3
+    static let finoA4 = Catalogo.Scambio.finoA4
+    static let perGliScambi = Catalogo.Scambio.perGliScambi
+    static let cercaScambi = Catalogo.Scambio.cercaScambi
+    static let cercoGliScambi = Catalogo.Scambio.cercoGliScambi
+    static let nessunoScambio = Catalogo.Scambio.nessunoScambioChe
+    /// La frase della web (`scambio.servono_altre`) in due metà: il titolo e la descrizione dello stato vuoto.
+    static var servonoAltreRoseTitolo: String { inDue(servonoAltreRose).titolo }
+    static var servonoAltreRoseCorpo: String { inDue(servonoAltreRose).corpo }
+    static let servonoAltreRose = Catalogo.Scambio.servonoAltre
+
+    /// Una frase divisa dopo il primo punto: «Prima frase.» e il resto; senza punto tutta nel titolo.
+    static func inDue(_ frase: String) -> (titolo: String, corpo: String) {
+        guard let punto = frase.range(of: ". ") else { return (frase, "") }
+        return (String(frase[..<punto.lowerBound]) + ".", String(frase[punto.upperBound...]))
+    }
 
     // MARK: proposte
 
-    /// `scambio.con` («con Gli Amici») seguito, se lo scambio non è 1 contro 1, dal formato `scambi.formato` («2 contro 1»).
+    /// «con Gli Amici» seguito, se lo scambio non è 1 contro 1, dal formato «2 contro 1».
     static func conSquadra(_ altra: String, dai: Int, ricevi: Int) -> String {
-        let base = "con \(altra)"
+        let base = Catalogo.Scambio.con + " " + altra
         return dai > 1 || ricevi > 1 ? base + " · " + formato(dai, ricevi) : base
     }
-    /// `scambi.formato`: «{n} contro {m}»
-    static func formato(_ n: Int, _ m: Int) -> String { "\(n) contro \(m)" }
-    /// `scambio.copia_bozza_del`
-    static let copiaBozza = "Copia bozza del messaggio"
-    /// `mercato.bozza_copiata`
-    static let bozzaCopiata = "Bozza copiata: incollala nel gruppo o in privato"
-    /// `scambio.chi_accetta_piu`
-    static let chiAccettaPiu = "Chi accetta più volentieri"
-    /// `scambio.squadre_che_guadagnano`
-    static let squadreCheGuadagnano = "Le squadre che guadagnano di più dagli scambi qui sotto, e il reparto che ne beneficia di più."
-    /// `scambio.n_scambi.one` e `.other`: «{n} scambio», «{n} scambi»
-    static func nScambi(_ n: Int) -> String { n == 1 ? "\(n) scambio" : "\(n) scambi" }
-    /// `scambio.migliora`: «migliora i {reparto} di {p}%»
-    static func migliora(reparto: String, p: String) -> String { "migliora i \(reparto) di \(p)%" }
-    /// `scambio.archivio`: «Archivio ({n})»
-    static func archivio(_ n: Int) -> String { "Archivio (\(n))" }
-    /// `scambio.gli_ultimi_scambi`
-    static let ultimiScambi = "Gli ultimi scambi che hai analizzato."
+    /// «2 contro 1».
+    static func formato(_ n: Int, _ m: Int) -> String { Catalogo.Scambi.formato(m: String(m), n: String(n)) }
+    static let copiaBozza = Catalogo.Scambio.copiaBozzaDel
+    static let bozzaCopiata = Catalogo.Mercato.bozzaCopiata
+    static let chiAccettaPiu = Catalogo.Scambio.chiAccettaPiu
+    static let squadreCheGuadagnano = Catalogo.Scambio.squadreCheGuadagnano
+    /// «1 scambio», «3 scambi».
+    static func nScambi(_ n: Int) -> String { Catalogo.Scambio.nScambi(n) }
+    /// «migliora i portieri di +2,1%».
+    static func migliora(reparto: String, p: String) -> String { Catalogo.Scambio.migliora(p: p, reparto: reparto) }
+    /// «Archivio (5)».
+    static func archivio(_ n: Int) -> String { Catalogo.Scambio.archivio(n: String(n)) }
+    static let ultimiScambi = Catalogo.Scambio.gliUltimiScambi
 
     // MARK: «Valuta un'offerta»
 
-    /// `scambio.incolla_messaggio_che`
-    static let incollaMessaggio = "Incolla il messaggio che hai ricevuto (basta che ci siano i cognomi): trovo chi dai e chi ricevi e ti dico se conviene."
-    /// `scambio.messaggio_dell_offerta`
-    static let messaggioOfferta = "Messaggio dell'offerta"
-    /// `scambio.valuta_offerta_2`: il pulsante
-    static let valutaOffertaPulsante = "Valuta l'offerta"
-    /// `scambio.incolla_prima_messaggio`
-    static let incollaPrima = "Incolla prima il messaggio"
-    /// `scambio.leggo_messaggio`
-    static let leggoMessaggio = "Leggo il messaggio…"
-    /// `scambio.riga_con`
-    static let rigaCon = "Con"
-    /// `scambio.ambigui`: «Più giocatori con lo stesso cognome: {nomi}. Scegli a mano in Costruisci.» (i nomi separati da «; »)
-    static func ambigui(_ nomi: [String]) -> String {
-        "Più giocatori con lo stesso cognome: \(nomi.joined(separator: "; ")). Scegli a mano in Costruisci."
-    }
-    /// `scambio.non_trovato_giocatori`
-    static let nonTrovatoGiocatori = "Non ho trovato giocatori di tutte e due le squadre nel messaggio: controlla i cognomi, oppure scegli a mano in Costruisci."
-    /// `scambio.scegli_mano_costruisci`: il pulsante che porta in «Costruisci».
-    static let scegliAMano = "Scegli a mano in Costruisci"
-    /// `scambio.vedi_giudizio_completo`
-    static let vediGiudizioCompleto = "Vedi il giudizio completo"
+    static let incollaMessaggio = Catalogo.Scambio.incollaMessaggioChe
+    static let messaggioOfferta = Catalogo.Scambio.messaggioDellOfferta
+    /// Il pulsante.
+    static let valutaOffertaPulsante = Catalogo.Scambio.valutaOfferta2
+    static let incollaPrima = Catalogo.Scambio.incollaPrimaMessaggio
+    static let leggoMessaggio = Catalogo.Scambio.leggoMessaggio
+    static let rigaCon = Catalogo.Scambio.rigaCon
+    /// «Più giocatori con lo stesso cognome: …. Scegli a mano in Costruisci.», i nomi separati da «; ».
+    static func ambigui(_ nomi: [String]) -> String { Catalogo.Scambio.ambigui(nomi: nomi.joined(separator: "; ")) }
+    static let nonTrovatoGiocatori = Catalogo.Scambio.nonTrovatoGiocatori
+    /// Il pulsante che porta in «Costruisci».
+    static let scegliAMano = Catalogo.Scambio.scegliManoCostruisci
+    static let vediGiudizioCompleto = Catalogo.Scambio.vediGiudizioCompleto
 
     // MARK: «Costruisci uno scambio»
 
-    /// `scambi.analizza_titolo`
-    static let costruisciTitolo = "Costruisci uno scambio"
-    /// `scambi.analizza_spiega`
-    static let costruisciSpiega = "Scegli da 1 a 4 giocatori per parte, anche in numero diverso (2 contro 1, 3 contro 2…). Se vuoi, aggiungi un conguaglio in crediti."
-    /// `scambi.con`
-    static let scambioCon = "Scambio con"
-    /// `scambi.dai` e `scambi.ricevi`
-    static let dai = "Dai"
-    static let ricevi = "Ricevi"
-    /// `scambi.scelti`: «{n} su {max}»
-    static func scelti(_ n: Int, massimo: Int) -> String { "\(n) su \(massimo)" }
-    /// `scambi.massimo`: «Al massimo {max} giocatori per parte»
-    static func alMassimo(_ max: Int) -> String { "Al massimo \(max) giocatori per parte" }
-    /// `scambi.conguaglio` (il segno meno è quello tipografico, U+2212)
-    static let conguaglio = "Conguaglio in crediti (+/−)"
-    /// `scambi.conguaglio_aiuto`
-    static let conguaglioAiuto = "Facoltativo. «Ricevo» = ti danno i crediti, «Pago» = li dai tu."
-    /// `scambi.ricevo_crediti` e `scambi.pago_crediti`
-    static let ricevoCrediti = "Ricevo"
-    static let pagoCrediti = "Pago"
-    /// `scambi.crediti_quanti`
-    static let creditiQuanti = "Quanti crediti"
-    /// `scambi.conguaglio_numero`
-    static let conguaglioNumero = "Scrivi i crediti con un numero intero, per esempio 30"
-    /// `scambi.analizza`: il pulsante
-    static let valutaScambio = "Valuta lo scambio"
-    /// `scambi.calcolo`
-    static let calcolo = "Calcolo…"
+    static let costruisciTitolo = Catalogo.Scambi.analizzaTitolo
+    static let costruisciSpiega = Catalogo.Scambi.analizzaSpiega
+    static let scambioCon = Catalogo.Scambi.con
+    static let dai = Catalogo.Scambi.dai
+    static let ricevi = Catalogo.Scambi.ricevi
+    /// «2 su 4».
+    static func scelti(_ n: Int, massimo: Int) -> String { Catalogo.Scambi.scelti(max: String(massimo), n: String(n)) }
+    /// «Al massimo 4 giocatori per parte».
+    static func alMassimo(_ max: Int) -> String { Catalogo.Scambi.massimo(max: String(max)) }
+    /// Il segno meno è quello tipografico (U+2212).
+    static let conguaglio = Catalogo.Scambi.conguaglio
+    static let conguaglioAiuto = Catalogo.Scambi.conguaglioAiuto
+    static let ricevoCrediti = Catalogo.Scambi.ricevoCrediti
+    static let pagoCrediti = Catalogo.Scambi.pagoCrediti
+    static let creditiQuanti = Catalogo.Scambi.creditiQuanti
+    static let conguaglioNumero = Catalogo.Scambi.conguaglioNumero
+    /// Il pulsante.
+    static let valutaScambio = Catalogo.Scambi.analizza
+    static let calcolo = Catalogo.Scambi.calcolo
 
     // MARK: il giudizio
 
-    /// `scambi.chi_non_valido`
-    static let cosiNonSiPuoFare = "Così non si può fare"
-    /// `scambi.rose_dopo`
-    static let roseDopo = "Giocatori in rosa dopo lo scambio"
-    /// `scambi.formazione_migliore_una` con una giornata sola, `scambi.formazione_migliore` («… (prossime {n} giornate)») con più.
-    /// Senza il numero delle giornate (server vecchio) resta la parte che sta in tutte e due.
+    static let cosiNonSiPuoFare = Catalogo.Scambi.chiNonValido
+    static let roseDopo = Catalogo.Scambi.roseDopo
+    /// «Formazione migliore (prossima giornata)» con una giornata sola, «… (prossime N giornate)» con più. Senza il numero delle
+    /// giornate (server vecchio) resta la parte che sta in tutte e due, prima della parentesi.
     static func formazioneMigliore(giornate: Int) -> String {
         switch giornate {
-        case 1: return "Formazione migliore (prossima giornata)"
-        case 2...: return "Formazione migliore (prossime \(giornate) giornate)"
-        default: return "Formazione migliore"
+        case 1: return Catalogo.Scambi.formazioneMiglioreUna
+        case 2...: return Catalogo.Scambi.formazioneMigliore(n: String(giornate))
+        default:
+            let una = Catalogo.Scambi.formazioneMiglioreUna
+            return una.range(of: " (").map { String(una[..<$0.lowerBound]) } ?? una
         }
     }
-    /// `scambi.panchina`
-    static let panchina = "Panchina"
-    /// `scambi.in_stagione`
-    static let inStagione = "Punti attesi in stagione"
-    /// `scambi.tu`
-    static let tu = "Tu"
-    /// `scambi.crediti_titolo`
-    static let crediti = "Crediti"
-    /// `scambio.impatto_sulla_tua`
-    static let impatto = "Impatto sulla tua rosa"
-    /// `scambio.conta_anche_resto`
-    static let contaAncheResto = "Conta anche il resto della squadra: se il reparto è già forte, un nuovo arrivato fa meno differenza."
-    /// `scambio.in_totale.one` («In totale (prossima giornata)») e `.other` («In totale (prossime {n} giornate)»)
-    static func inTotale(giornate: Int) -> String {
-        giornate == 1 ? "In totale (prossima giornata)" : "In totale (prossime \(giornate) giornate)"
-    }
+    static let panchina = Catalogo.Scambi.panchina
+    static let inStagione = Catalogo.Scambi.inStagione
+    static let tu = Catalogo.Scambi.tu
+    static let crediti = Catalogo.Scambi.creditiTitolo
+    static let impatto = Catalogo.Scambio.impattoSullaTua
+    static let contaAncheResto = Catalogo.Scambio.contaAncheResto
+    /// «In totale (prossima giornata)» e «In totale (prossime N giornate)».
+    static func inTotale(giornate: Int) -> String { Catalogo.Scambio.inTotale(giornate) }
 }

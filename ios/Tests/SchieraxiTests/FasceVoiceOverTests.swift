@@ -5,25 +5,17 @@ import Testing
 // Regole, modificatore della difesa (#460): i campi di ogni fascia dicono a VoiceOver quale fascia sono, come la web (#454):
 // «Fascia 2, media almeno», «Fascia 2, bonus», «Togli la fascia 2»; dopo «Togli» i numeri si rifanno. I quattro voti della prova
 // hanno il loro nome: «Voto del portiere», «Voto del difensore 1/2/3». Il testo a vista resta quello di prima («Media almeno»,
-// «bonus», «Togli la fascia»): cambia solo il nome letto da VoiceOver. Ogni frase si confronta con `testi.js` (`TestiWeb`), con
-// il numero al posto di `{n}`. Valori inventati, nessun dato vero.
-
-/// Il testo italiano di `testi.js` con `{n}` sostituito dal numero.
-private func dallaWeb(_ chiave: String, _ n: Int) throws -> String {
-    try TestiWeb().italiano(chiave).replacingOccurrences(of: "{n}", with: String(n))
-}
+// «bonus», «Togli la fascia»): cambia solo il nome letto da VoiceOver. Le frasi vengono dal catalogo comune (`Catalogo.Regole`,
+// #496), con il numero al posto di `{n}`. Valori inventati, nessun dato vero.
 
 @Suite("Regole: i nomi di VoiceOver delle fasce, come la web")
 struct FasceVoiceOverTests {
     @Test("I tre controlli di una fascia hanno il nome della web, con il numero giusto", arguments: [1, 2, 3, 6, 10])
-    func nomiComeLaWeb(n: Int) throws {
+    func nomiComeLaWeb(n: Int) {
         let nomi = TestiRegole.nomiFascia(posto: n)
-        let media = try dallaWeb("regole.fascia_media", n)
-        let bonus = try dallaWeb("regole.fascia_bonus", n)
-        let togli = try dallaWeb("regole.togli_fascia", n)
-        #expect(nomi.media == media)
-        #expect(nomi.bonus == bonus)
-        #expect(nomi.togli == togli)
+        #expect(nomi.media == Catalogo.Regole.fasciaMedia(n: String(n)))
+        #expect(nomi.bonus == Catalogo.Regole.fasciaBonus(n: String(n)))
+        #expect(nomi.togli == Catalogo.Regole.togliFascia(n: String(n)))
     }
 
     @Test("Gli esempi della issue #460: fascia 1")
@@ -44,12 +36,10 @@ struct FasceVoiceOverTests {
     }
 
     @Test("Voti della prova: il portiere e i tre difensori numerati da 1")
-    func votiDellaProva() throws {
-        let portiere = try TestiWeb().italiano("regole.voto_portiere")
-        #expect(TestiRegole.nomeVotoProva(indice: 0) == portiere)
+    func votiDellaProva() {
+        #expect(TestiRegole.nomeVotoProva(indice: 0) == Catalogo.Regole.votoPortiere)
         for k in 1...3 {
-            let difensore = try dallaWeb("regole.voto_difensore", k)
-            #expect(TestiRegole.nomeVotoProva(indice: k) == difensore)
+            #expect(TestiRegole.nomeVotoProva(indice: k) == Catalogo.Regole.votoDifensore(n: String(k)))
         }
         #expect(TestiRegole.nomeVotoProva(indice: 0) == "Voto del portiere")
         #expect(TestiRegole.nomeVotoProva(indice: 1) == "Voto del difensore 1")

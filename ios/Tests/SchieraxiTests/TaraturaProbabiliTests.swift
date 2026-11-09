@@ -3,7 +3,8 @@ import Testing
 @testable import Schieraxi
 
 /// Stato dei dati: la riga della taratura di «gioca N%» con le probabili (#379, PR C del piano 2026-11-06-gioca-probabili-server),
-/// con le parole della web (`rigaTaratura` di `fanta/web/app.js`, testi `sd.tar_*` e `sd.f_taratura` di `fanta/web/testi.js`).
+/// con le parole della web (`rigaTaratura` di `fanta/web/app.js`, testi `sd.tar_*` del catalogo comune; `sd.reg_punti` e
+/// `sd.f_taratura` si confrontano ancora con `fanta/web/testi.js`).
 /// La fixture `stato-dati-taratura.json` è la risposta vera del server (`taratura_probabili.riepilogo`): la versione 1 attiva dal
 /// 15/1, con la prova sulle ultime 4 giornate e un cambio rimandato perché la prima partita è vicina. La controlla
 /// `tests/test_stato_dati_taratura_web.py`, che prova la web sugli stessi numeri.
@@ -29,8 +30,8 @@ struct TaraturaProbabiliTests {
     }
 
     /// La riga intera della web: «Taratura con le probabili: {s}» (`sd.tar_riga`).
-    private func riga(_ web: TestiWeb, _ parti: String) throws -> String {
-        riempi(try web.italiano("sd.tar_riga"), ["s": parti])
+    private func riga(_ parti: String) -> String {
+        Catalogo.Sd.tarRiga(s: parti)
     }
 
     @Test("Si legge la risposta vera del server")
@@ -165,41 +166,48 @@ struct TaraturaProbabiliTests {
         #expect(try frase(json) == "\(Self.titolo): spenta a mano")
     }
 
-    // MARK: - stesse parole della web (testi.js)
+    // MARK: - stesse parole della web (catalogo)
 
     @Test("Plurali con i modelli della web", arguments: [1, 3])
     func pluraliComeLaWeb(n: Int) throws {
         let web = try TestiWeb()
-        let forma = n == 1 ? "one" : "other"
-        let suQuante = try riga(web, riempi(web.italiano("sd.tar_in_attesa_su.\(forma)"), ["n": "\(n)", "m": "4"]))
+        let suQuante = riga(Catalogo.Sd.tarInAttesaSu(n, m: "4"))
         #expect(try frase("{\"stato\":\"in_attesa\",\"giornate\":\(n),\"minimo\":4}") == suQuante)
-        let soloQuante = try riga(web, riempi(web.italiano("sd.tar_in_attesa.\(forma)"), ["n": "\(n)"]))
+        let soloQuante = riga(Catalogo.Sd.tarInAttesa(n))
         #expect(try frase("{\"stato\":\"in_attesa\",\"giornate\":\(n),\"minimo\":0}") == soloQuante)
         let prova = "{\"giornate\":\(n),\"brier\":0.0912,\"brier_prima\":0.0968,\"calibrazione\":0.0213}"
-        let attiva = try riempi(web.italiano("sd.tar_attiva_dal"), ["d": "15/1", "v": "1"])
+        let attiva = Catalogo.Sd.tarAttivaDal(d: "15/1", v: "1")
         let scarto = try riempi(web.italiano("sd.reg_punti.other"), ["n": "2,1"])
-        let numeri = try riempi(web.italiano("sd.tar_prova.\(forma)"), ["n": "\(n)", "b": "0,0912", "p": "0,0968", "c": scarto])
-        let conProva = try riga(web, attiva + " · " + numeri)
+        let numeri = Catalogo.Sd.tarProva(n, b: "0,0912", c: scarto, p: "0,0968")
+        let conProva = riga(attiva + " · " + numeri)
         #expect(try frase("{\"stato\":\"attiva\",\"versione\":1,\"dal\":\"2027-01-15T10:00:00\",\"prova\":\(prova)}") == conProva)
     }
 
     @Test("Attiva, non attiva con ogni motivo, spenta e il nome negli aggiornamenti: i testi della web")
     func statiComeLaWeb() throws {
         let web = try TestiWeb()
-        let nonAttiva = try web.italiano("sd.tar_non_attiva")
-        let attiva = try riga(web, riempi(web.italiano("sd.tar_attiva"), ["v": "3"]))
+        let nonAttiva = Catalogo.Sd.tarNonAttiva
+        let attiva = riga(Catalogo.Sd.tarAttiva(v: "3"))
         #expect(try frase("{\"stato\":\"attiva\",\"versione\":3}") == attiva)
-        let spenta = try riga(web, web.italiano("sd.tar_spenta"))
+        let spenta = riga(Catalogo.Sd.tarSpenta)
         #expect(try frase("{\"stato\":\"spenta\"}") == spenta)
-        let senzaMotivo = try riga(web, nonAttiva)
+        let senzaMotivo = riga(nonAttiva)
         #expect(try frase("{\"stato\":\"non_attiva\"}") == senzaMotivo)
+        // ogni codice del server con la sua frase del catalogo (`sd.tar_m_<codice>`), con 7 giornate
+        let dalCatalogo = [
+            "non_migliora": Catalogo.Sd.tarMNonMigliora, "poche_giornate": Catalogo.Sd.tarMPocheGiornate(n: "7"),
+            "fuori_soglia": Catalogo.Sd.tarMFuoriSoglia, "incoerente": Catalogo.Sd.tarMIncoerente,
+            "peggiorata": Catalogo.Sd.tarMPeggiorata, "scadenza_vicina": Catalogo.Sd.tarMScadenzaVicina,
+            "spenta_a_mano": Catalogo.Sd.tarMSpentaAMano,
+        ]
+        #expect(Set(dalCatalogo.keys) == Set(Self.motivi.map(\.codice)))
         for caso in Self.motivi {
-            let motivo = try riempi(web.italiano("sd.tar_m_\(caso.codice)"), ["n": "7"])
+            let motivo = try #require(dalCatalogo[caso.codice], "\(caso.codice)")
             #expect(motivo == caso.frase, "\(caso.codice)")
-            let conMotivo = try riga(web, nonAttiva + " · " + motivo)
+            let conMotivo = riga(nonAttiva + " · " + motivo)
             #expect(try frase("{\"stato\":\"non_attiva\",\"giornate\":7,\"motivo\":\"\(caso.codice)\"}") == conMotivo, "\(caso.codice)")
         }
-        let rimandato = try riga(web, riempi(web.italiano("sd.tar_attiva"), ["v": "1"]) + " · " + web.italiano("sd.tar_m_scadenza_vicina"))
+        let rimandato = riga(Catalogo.Sd.tarAttiva(v: "1") + " · " + Catalogo.Sd.tarMScadenzaVicina)
         #expect(try frase("{\"stato\":\"attiva\",\"versione\":1,\"motivo\":\"scadenza_vicina\"}") == rimandato)
         #expect(try web.italiano("sd.f_taratura") == NomiDati.leggibile("taratura-probabili"))
     }

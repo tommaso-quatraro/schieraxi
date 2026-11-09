@@ -17,9 +17,9 @@ final class DiarioViewModel: ViewModelBase {
 
     func carica() async { await caricatore.ricarica() }
 
-    /// I testi dell'esito, uguali alla web (`diario.salvata` e `diario.salvata_manuale` di `testi.js`).
-    static let salvataConsigliata = "Salvato: ho segnato che hai schierato la consigliata"
-    static let salvataAMano = "Salvato: ho segnato i tuoi undici della giornata"
+    /// I testi dell'esito, uguali alla web (`diario.salvata` e `diario.salvata_manuale` del catalogo).
+    static let salvataConsigliata = Catalogo.Diario.salvata
+    static let salvataAMano = Catalogo.Diario.salvataManuale
 
     /// La voce del diario (`VoceDiario.id`: stagione e giornata) che si sta salvando, un salvataggio alla volta, e l'esito dell'ultimo.
     @Published var inSalvataggio: String?
@@ -119,7 +119,7 @@ struct DiarioView: View {
     /// I testi in cima al Diario, uguali alla web (`avv.diario_riga`, `mercato.come_legge` e `avv.per_ogni_giornata` di `testi.js`):
     /// una riga sempre visibile e la spiegazione lunga nella parte richiudibile «Come si legge», chiusa all'apertura come sulla web.
     static let rigaIntro = "Giornata per giornata: la formazione che hai schierato contro la consigliata."
-    static let comeSiLegge = "Come si legge"
+    static let comeSiLegge = Catalogo.Mercato.comeLegge
     static let perOgniGiornata = "Per ogni giornata finita: i punti fatti (e quelli previsti prima) dalla formazione che hai schierato e da quella che SchieraXI ti avrebbe consigliato con i dati di allora e la rosa di oggi. La panchina la sceglie SchieraXI in entrambi i casi. SchieraXI ricorda anche la formazione che ti ha consigliato prima di ogni giornata: la trovi qui, con in evidenza i giocatori che hai cambiato. Si aggiorna da solo dopo ogni giornata."
 
     /// Il riquadro «Quanto ci abbiamo preso», dove sta la riga su tutta la Serie A (#374): la foto `lega-diario-fondo` scorre fin lì
@@ -217,7 +217,7 @@ struct DiarioView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if v.schierata == nil {
-                Text("Non avevi salvato la tua formazione per questa giornata.").font(.footnote).foregroundStyle(Color.testoSecondario)
+                Text(Catalogo.Diario.nonSalvata).font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             if let c = v.confronto {
                 ConfrontoDiarioView(confronto: c)
@@ -225,14 +225,14 @@ struct DiarioView: View {
             }
             // «Ho schierato…» e «Correggi» solo per le voci che si possono ancora cambiare (stagione in corso, come la web)
             if let s = v.schierata {
-                riga(s.tipo == "consigliata" ? "La tua, la consigliata (\(s.modulo ?? "–"))" : "La tua (\(s.modulo ?? "–"))", s)
+                riga(s.tipo == "consigliata" ? Catalogo.Diario.tuaConsigliata(modulo: s.modulo ?? "–") : Catalogo.Diario.tua(modulo: s.modulo ?? "–"), s)
             } else if v.siPuoCambiare, let g = v.giornata {
                 Button {
                     Task { await vm.haSchieratoLaConsigliata(v) }
                 } label: {
                     HStack {
                         if vm.inSalvataggio == v.id { ProgressView() }
-                        Label("Ho schierato la consigliata", systemImage: "checkmark.circle").font(.body.weight(.semibold))
+                        Label(Catalogo.Diario.hoSchieratoQuesta, systemImage: "checkmark.circle").font(.body.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
@@ -242,7 +242,7 @@ struct DiarioView: View {
             }
             if v.siPuoCambiare, let g = v.giornata {
                 Button { daCorreggere = v } label: {
-                    Label(v.schierata == nil ? "Ho schierato un'altra formazione" : "Correggi a mano", systemImage: "pencil")
+                    Label(v.schierata == nil ? Catalogo.Diario.hoSchieratoAltra : Catalogo.Diario.correggi, systemImage: "pencil")
                         .font(.subheadline).frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .disabled(vm.inSalvataggio != nil)

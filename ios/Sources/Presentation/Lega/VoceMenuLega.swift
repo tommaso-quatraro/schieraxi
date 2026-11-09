@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Una voce dei menu Squadra e Altro: la stessa di `VOCI_LEGA` in `fanta/web/app.js`, con il nome e la riga sotto di
-/// `fanta/web/testi.js` (`lega.voce_*`), nello stesso ordine e accesa dalla stessa funzione (`f` sulla web).
-/// `MenuLegaComeLaWebTests` legge i due file della web e fallisce se un lato cambia da solo.
+/// Una voce dei menu Squadra e Altro: la stessa di `VOCI_LEGA` in `fanta/web/app.js`, con il nome e la riga sotto del catalogo
+/// comune (`lega.voce_*`, file generato `Catalogo+Lega.swift`), nello stesso ordine e accesa dalla stessa funzione (`f` sulla web).
+/// `MenuLegaComeLaWebTests` legge `VOCI_LEGA` e fallisce se un lato cambia da solo.
 struct VoceMenuLega: Identifiable, Equatable {
     /// L'`id` della stessa voce sulla web («squadre», «consigli», …).
     let id: String
@@ -27,8 +27,8 @@ struct VoceMenuLega: Identifiable, Equatable {
             .filter { voce in voce.funzione.map { funzioni.acceso($0) } ?? true }
             .map { voce in
                 guard voce.id == "squadre", !funzioni.acceso(Funzione.squadreAltrui) else { return voce }
-                return VoceMenuLega(id: voce.id, pagina: voce.pagina, nome: "La mia squadra e rosa",
-                                    dettaglio: "La tua squadra e i suoi giocatori", funzione: voce.funzione,
+                return VoceMenuLega(id: voce.id, pagina: voce.pagina, nome: Catalogo.Lega.voceMiasquadra,
+                                    dettaglio: Catalogo.Lega.voceMiasquadraSub, funzione: voce.funzione,
                                     simbolo: voce.simbolo, colore: voce.colore)
             }
     }
@@ -36,35 +36,35 @@ struct VoceMenuLega: Identifiable, Equatable {
     /// Squadra: la mia squadra e le rose, i cambi consigliati, i seguiti, l'elenco dei giocatori, il calendario e, per ultima,
     /// l'importazione delle rose.
     private static let squadra: [VoceMenuLega] = [
-        VoceMenuLega(id: "squadre", pagina: .squadre, nome: "Squadre e rose", dettaglio: "La tua squadra, le altre e le loro rose",
+        VoceMenuLega(id: "squadre", pagina: .squadre, nome: Catalogo.Lega.voceSquadre, dettaglio: Catalogo.Lega.voceSquadreSub,
                      funzione: nil, simbolo: "person.3", colore: .green),
-        VoceMenuLega(id: "consigli", pagina: .cambi, nome: "Cambi consigliati", dettaglio: "Svincolati che migliorano la tua squadra",
+        VoceMenuLega(id: "consigli", pagina: .cambi, nome: Catalogo.Lega.voceConsigli, dettaglio: Catalogo.Lega.voceConsigliSub,
                      funzione: nil, simbolo: "arrow.triangle.2.circlepath", colore: .orange),
-        VoceMenuLega(id: "osservati", pagina: .seguiti, nome: "Seguiti", dettaglio: "I giocatori che segui e gli avvisi quando si liberano",
+        VoceMenuLega(id: "osservati", pagina: .seguiti, nome: Catalogo.Lega.voceOsservati, dettaglio: Catalogo.Lega.voceOsservatiSub,
                      funzione: Funzione.seguiti, simbolo: "star", colore: .yellow),
-        VoceMenuLega(id: "giocatori", pagina: .elenco, nome: "Elenco dei giocatori", dettaglio: "Tutti i giocatori, con ricerca e filtri",
+        VoceMenuLega(id: "giocatori", pagina: .elenco, nome: Catalogo.Lega.voceGiocatori, dettaglio: Catalogo.Lega.voceGiocatoriSub,
                      funzione: Funzione.elencoGiocatori, simbolo: "list.number", colore: .teal),
-        VoceMenuLega(id: "calendario", pagina: .calendario, nome: "Calendario", dettaglio: "Le prossime partite e quanto sono facili",
+        VoceMenuLega(id: "calendario", pagina: .calendario, nome: Catalogo.Lega.voceCalendario, dettaglio: Catalogo.Lega.voceCalendarioSub,
                      funzione: Funzione.elencoGiocatori, simbolo: "calendar.badge.clock", colore: .cyan),
-        VoceMenuLega(id: "importa", pagina: .importa, nome: "Aggiorna le rose", dettaglio: "Il file Excel o il testo preso da Leghe",
+        VoceMenuLega(id: "importa", pagina: .importa, nome: Catalogo.Lega.voceImporta, dettaglio: Catalogo.Lega.voceImportaSub,
                      funzione: nil, simbolo: "doc.badge.plus", colore: .blue),
     ]
 
     /// Altro: Scambi, il diario, le regole, lo storico, i crediti, la nuova stagione (sempre: la pagina dice se c'è da fare) e le novità.
     private static let altro: [VoceMenuLega] = [
-        VoceMenuLega(id: "scambi", pagina: .scambi, nome: "Scambi", dettaglio: "Valuta un'offerta, trova o costruisci uno scambio",
+        VoceMenuLega(id: "scambi", pagina: .scambi, nome: Catalogo.Lega.voceScambi, dettaglio: Catalogo.Lega.voceScambiSub,
                      funzione: nil, simbolo: "arrow.left.arrow.right", colore: .purple),
-        VoceMenuLega(id: "diario", pagina: .diario, nome: "Diario delle giornate", dettaglio: "La tua formazione contro quella del modello",
+        VoceMenuLega(id: "diario", pagina: .diario, nome: Catalogo.Lega.voceDiario, dettaglio: Catalogo.Lega.voceDiarioSub,
                      funzione: Funzione.diario, simbolo: "book", colore: .teal),
-        VoceMenuLega(id: "regole", pagina: .regole, nome: "Regole", dettaglio: "Punteggi, modificatore difesa, moduli, panchina, rosa",
+        VoceMenuLega(id: "regole", pagina: .regole, nome: Catalogo.Lega.voceRegole, dettaglio: Catalogo.Lega.voceRegoleSub,
                      funzione: nil, simbolo: "list.bullet.rectangle", colore: .indigo),
-        VoceMenuLega(id: "movimenti", pagina: .movimenti, nome: "Movimenti e storico", dettaglio: "Cosa è cambiato a ogni aggiornamento delle rose",
+        VoceMenuLega(id: "movimenti", pagina: .movimenti, nome: Catalogo.Lega.voceMovimenti, dettaglio: Catalogo.Lega.voceMovimentiSub,
                      funzione: Funzione.movimenti, simbolo: "list.bullet.clipboard", colore: .orange),
-        VoceMenuLega(id: "crediti", pagina: .crediti, nome: "Crediti delle squadre", dettaglio: "I crediti residui di ogni squadra",
+        VoceMenuLega(id: "crediti", pagina: .crediti, nome: Catalogo.Lega.voceCrediti, dettaglio: Catalogo.Lega.voceCreditiSub,
                      funzione: Funzione.crediti, simbolo: ParoleWidget.simboloCrediti, colore: .mint),
-        VoceMenuLega(id: "stagione", pagina: .stagione, nome: "Nuova stagione", dettaglio: "Archivia le rose e riparti",
+        VoceMenuLega(id: "stagione", pagina: .stagione, nome: Catalogo.Lega.voceStagione, dettaglio: Catalogo.Lega.voceStagioneSub,
                      funzione: nil, simbolo: "calendar", colore: .red),
-        VoceMenuLega(id: "novita", pagina: .novita, nome: "Novità", dettaglio: "Cosa è cambiato negli ultimi aggiornamenti",
+        VoceMenuLega(id: "novita", pagina: .novita, nome: Catalogo.Lega.voceNovita, dettaglio: Catalogo.Lega.voceNovitaSub,
                      funzione: Funzione.novita, simbolo: "sparkles", colore: .yellow),
     ]
 }

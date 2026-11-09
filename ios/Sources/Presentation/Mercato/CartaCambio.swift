@@ -61,10 +61,10 @@ struct CartaCambio: View {
             parti.append("\(Formato.conSegno(b)) punti \(quando)")
         }
         if let dopo = p.creditiDopo {
-            let nonBastano = p.fattibile == false ? " (non bastano)" : ""
-            parti += ["crediti dopo \(Formato.intero(dopo))" + nonBastano,
-                      "rimborso \(Formato.intero(p.rimborso))",
-                      "costo \(Formato.intero(p.entra.quotazione))"]
+            let nonBastano = p.fattibile == false ? Catalogo.Mercato.nonBastano : ""
+            parti += [Catalogo.Mercato.creditiDopo(dopo: String(Formato.intero(dopo)), no: nonBastano),
+                      Catalogo.Mercato.rimborsoN(r: String(Formato.intero(p.rimborso))),
+                      Catalogo.Mercato.costoN(c: String(Formato.intero(p.entra.quotazione)))]
         }
         return parti.isEmpty ? nil : parti.joined(separator: " · ")
     }

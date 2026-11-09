@@ -107,7 +107,7 @@ struct RosaPartitaIniziataTests {
 
     @Test("Senza previsione: nessun numero, «non gioca» (o «?» se il server non ha riconosciuto il giocatore)")
     func senzaPrevisioneComeLaWeb() throws {
-        let nonGioca = try TestiWeb().italiano("scambio.non_gioca")
+        let nonGioca = Catalogo.Scambio.nonGioca
         let riconosciuto = try senzaPrevisione(conId: true)
         #expect(RigaRosa.numero(riconosciuto) == nil)
         #expect(RigaRosa.sottoNumero(riconosciuto) == nonGioca)

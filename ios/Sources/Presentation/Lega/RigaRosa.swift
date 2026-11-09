@@ -29,7 +29,7 @@ struct RigaRosa: View {
     /// fantavoto preso; nil a partita iniziata senza voto, perché lo stato della partita lo dice già la pillola dell'etichetta.
     /// Senza previsione «non gioca», o «?» se il server non ha riconosciuto il giocatore.
     nonisolated static func sottoNumero(_ g: GiocatoreRosa) -> String? {
-        guard let p = g.previsione else { return g.id == nil ? "?" : "non gioca" }
+        guard let p = g.previsione else { return g.id == nil ? "?" : Catalogo.Scambio.nonGioca }
         guard let esito = p.esitoPartita else { return "gioca \(Formato.percento(p.pVoto))%" }
         return esito.fv == nil ? nil : "fantavoto"
     }
@@ -49,7 +49,7 @@ struct RigaRosa: View {
             }
             parti.append(contentsOf: p.etichette.map { $0.testo.lowercased() })
         } else {
-            parti.append("non gioca")
+            parti.append(Catalogo.Scambio.nonGioca)
         }
         return parti.joined(separator: ", ")
     }

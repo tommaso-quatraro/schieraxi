@@ -48,18 +48,18 @@ struct DifferenzeView: View {
             if differenze.primaImportazione == true {
                 Text(differenze.testo ?? "Prima importazione.").font(.subheadline)
             } else if differenze.nessunaDifferenza == true || (vuoto && (differenze.testo ?? "").isEmpty) {
-                voce("checkmark.circle", Color.verde, "Nessuna differenza rispetto a prima.")
+                voce("checkmark.circle", Color.verde, Catalogo.Scambio.nessunaDifferenzaRispetto)
             } else {
                 ForEach(differenze.scambi ?? []) { s in
                     let squadre = s.squadre.count == 2 ? "\(s.squadre[0]) → \(s.squadre[1])" : s.squadre.joined(separator: ", ")
                     let contro = s.daB.isEmpty ? "" : " contro " + nomi(s.daB)
-                    voce("arrow.left.arrow.right", Color.verde, "\(s.daB.isEmpty ? "Passaggio" : "Scambio") \(squadre): \(nomi(s.daA))\(contro)")
+                    voce("arrow.left.arrow.right", Color.verde, "\(s.daB.isEmpty ? Catalogo.Scambio.passaggioB : Catalogo.Scambio.scambioB) \(squadre): \(nomi(s.daA))\(contro)")
                 }
                 ForEach(differenze.svincolatiPresi ?? []) { g in
-                    voce("plus.circle.fill", Color.verde, "\(g.squadra) prende dagli svincolati: \(nomi(g.giocatori))")
+                    voce("plus.circle.fill", Color.verde, Catalogo.Scambio.prendeSvincolati(nomi: nomi(g.giocatori), squadra: g.squadra))
                 }
                 ForEach(differenze.tagliati ?? []) { g in
-                    voce("minus.circle.fill", .attenzione, "\(g.squadra) lascia liberi: \(nomi(g.giocatori))")
+                    voce("minus.circle.fill", .attenzione, Catalogo.Scambio.lasciaLiberi(nomi: nomi(g.giocatori), squadra: g.squadra))
                 }
                 ForEach(differenze.crediti ?? []) { c in
                     voce(ParoleWidget.simboloCrediti, .testoSecondario,
@@ -111,11 +111,9 @@ struct MovimentiView: View {
 
 // MARK: - Passaggio di stagione
 
-/// Le frasi del passaggio di stagione, come la web (`lega.rose_ancora_quelle` di testi.js): i giocatori seguiti si chiamano «seguiti».
+/// Le frasi del passaggio di stagione, come la web (`lega.rose_ancora_quelle` del catalogo): i giocatori seguiti si chiamano «seguiti».
 extension StagioneView {
-    static func testoRoseAncoraQuelle(_ stagione: String) -> String {
-        "Le rose sono ancora quelle del \(stagione). Archivio rose, regole, scelte e seguiti e riparto da rose vuote (stessi nomi di squadra): poi importi il nuovo Excel di Leghe. Non si cancella niente."
-    }
+    static func testoRoseAncoraQuelle(_ stagione: String) -> String { Catalogo.Lega.roseAncoraQuelle(s: stagione) }
 
     static let testoArchivioConferma = "Rose, regole, scelte e seguiti restano salvati nell'archivio del server."
 }
@@ -139,18 +137,18 @@ struct StagioneView: View {
                 if let s = vm.stato.dato {
                     if vm.archiviata {
                         Section {
-                            Label("Stagione \(s.rose ?? "") archiviata", systemImage: "checkmark.seal.fill").font(.headline).foregroundStyle(Color.verde)
-                            Text("Tutto è salvato nell'archivio del server. Ora prepara la nuova stagione:").font(.footnote).foregroundStyle(Color.testoSecondario)
+                            Label(Catalogo.Lega.stagioneArchiviata(s: s.rose ?? ""), systemImage: "checkmark.seal.fill").font(.headline).foregroundStyle(Color.verde)
+                            Text(Catalogo.Lega.tuttoSalvatoNell).font(.footnote).foregroundStyle(Color.testoSecondario)
                         }
                         passi
                     } else if s.nuova == true {
                         Section {
-                            Text("Nuova stagione \(s.corrente ?? "")").font(.headline)
+                            Text(Catalogo.Lega.nuovaStagioneN(s: s.corrente ?? "")).font(.headline)
                             Text(Self.testoRoseAncoraQuelle(s.rose ?? ""))
                                 .font(.footnote).foregroundStyle(Color.testoSecondario)
                             Button(role: .destructive) { conferma = true } label: {
                                 if vm.inCorso { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
-                                else { Label("Archivia e riparti", systemImage: "archivebox").labelStyle(.distruttiva).frame(maxWidth: .infinity, minHeight: 44) }
+                                else { Label(Catalogo.Lega.archiviaRiparti, systemImage: "archivebox").labelStyle(.distruttiva).frame(maxWidth: .infinity, minHeight: 44) }
                             }
                             .disabled(vm.inCorso)
                             if let e = vm.errore { Text(e).font(.footnote).foregroundStyle(Color.attenzione) }
@@ -170,12 +168,12 @@ struct StagioneView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .titoloPagina("Nuova stagione")
+        .titoloPagina(Catalogo.Lega.voceStagione)
         .ricercaGlobale()
         .task { await vm.carica() }
         // Conferma esplicita: archiviare cambia le rose, le regole e le scelte salvate.
-        .confirmationDialog("Archivio la stagione \(vm.stato.dato?.rose ?? "") e riparto da rose vuote?", isPresented: $conferma, titleVisibility: .visible) {
-            Button("Archivia e riparti", role: .destructive) { Task { await vm.archiviaERiparti() } }
+        .confirmationDialog(Catalogo.Lega.confermaArchivio(s: vm.stato.dato?.rose ?? ""), isPresented: $conferma, titleVisibility: .visible) {
+            Button(Catalogo.Lega.archiviaRiparti, role: .destructive) { Task { await vm.archiviaERiparti() } }
             Button("Annulla", role: .cancel) {}
         } message: {
             Text(Self.testoArchivioConferma)
@@ -217,8 +215,8 @@ struct PassoStagione: Identifiable, Equatable {
 enum PassiNuovaStagione {
     static func elenco(amministratore: Bool) -> [PassoStagione] {
         var passi: [(titolo: String, dettaglio: String, pagina: PaginaLega)] = [
-            ("Importa le nuove rose", "Con l'Excel di Leghe, da «Aggiorna le rose».", .importa),
-            ("Controlla le regole", "Bonus, moduli e crediti possono cambiare da un anno all'altro.", .regole),
+            (Catalogo.Lega.importaNuoveRose, "Con l'Excel di Leghe, da «Aggiorna le rose».", .importa),
+            (Catalogo.Lega.controllaRegole, "Bonus, moduli e crediti possono cambiare da un anno all'altro.", .regole),
             ("Inserisci i crediti delle squadre", "Servono al mercato per dirti se un cambio è fattibile.", .crediti),
         ]
         // Aggiornare i dati spetta a chi amministra il server (come sulla web): agli altri il server risponderebbe «Solo per l'amministratore».

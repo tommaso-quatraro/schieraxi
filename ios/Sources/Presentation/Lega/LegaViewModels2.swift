@@ -40,7 +40,7 @@ final class ImportaExcelViewModel: ViewModelBase {
     /// L'ETag delle rose dato dall'anteprima: si rimanda in If-Match al salvataggio (se nel frattempo cambiano: 412).
     private(set) var etagAnteprima: String?
 
-    static let roseCambiate = "Nel frattempo le rose sono cambiate, forse da un altro dispositivo: le ho rilette. Ricontrolla e conferma di nuovo."
+    static let roseCambiate = Catalogo.Ar.cambiate
 
     init(server: any ServerClient) {
         self.server = server
@@ -98,7 +98,7 @@ final class ImportaExcelViewModel: ViewModelBase {
         let testo = testoRose.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty else {
             // come la web (lega.incolla_prima_testo): solo un avviso, il riepilogo di prima resta
-            errore = "Incolla prima il testo delle rose"
+            errore = Catalogo.Lega.incollaPrimaTesto
             return
         }
         if inCorso { return }
@@ -265,7 +265,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
         guard !inCorso else { return }
         inCorso = true
         errori = []
-        messaggio = "Aggiornamento avviato: ci vuole circa un minuto."
+        messaggio = Catalogo.Aggiorna.avviato
         defer { inCorso = false }
         do {
             let dati = try await server.richiesta("POST", "/api/aggiorna", corpo: nil)
@@ -288,7 +288,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
                 senzaRisposta = 0
                 if stato.inCorso != true {
                     errori = stato.errori ?? []
-                    messaggio = errori.isEmpty ? "Dati aggiornati." : "Aggiornato, ma con problemi: " + errori.joined(separator: "; ")
+                    messaggio = errori.isEmpty ? Catalogo.Aggiorna.ok : Catalogo.Aggiorna.problemi(errori: errori.joined(separator: "; "))
                     Haptics.esito(riuscito: errori.isEmpty)
                     NotificationCenter.default.post(name: .aggiornaTutto, object: nil)   // tutte le schermate si ricaricano
                     return
@@ -296,7 +296,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
             } catch {
                 senzaRisposta += 1
                 if senzaRisposta >= 5 {
-                    messaggio = "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco."
+                    messaggio = Catalogo.Aggiorna.nonSo
                     return
                 }
             }
