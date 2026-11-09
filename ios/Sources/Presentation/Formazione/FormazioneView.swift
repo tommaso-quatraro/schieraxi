@@ -21,36 +21,43 @@ struct FormazioneView: View {
     /// Cosa fa ogni stile, a parole (come il server e la web app): vedi `StileFormazione`.
     static func descrizioneStile(_ rischio: Int) -> String { StileFormazione.descrizione(rischio) }
 
-    // MARK: frasi della web (`formazione.*` di `fanta/web/testi.js`; la prova è `FormazioneComeLaWebTests`)
+    // MARK: frasi della web (catalogo comune `fanta/testi/formazione.json` → `Catalogo.Formazione`, #495; le prove sono
+    // `FormazioneComeLaWebTests` e `FormazioneDalCatalogoTests`)
 
     /// Probabili formazioni non ancora uscite (`formazione.mancano_probabili_formazioni`).
-    static let testoSenzaProbabili = "Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono."
+    static let testoSenzaProbabili = Catalogo.Formazione.mancanoProbabiliFormazioni
     /// Sotto «Panchina» (`formazione.quest_ordine_entra`).
-    static let testoPanchina = "Entra il primo che può sostituire chi resta senza voto."
+    static let testoPanchina = Catalogo.Formazione.questOrdineEntra
     /// Davanti alle alternative vicine, solo sul primo titolare che le ha (`formazione.ballottaggio_alternative_vic`).
-    static let testoBallottaggio = "In ballottaggio con"
+    static let testoBallottaggio = Catalogo.Formazione.ballottaggioAlternativeVic
     /// ✎ sostituisce un titolare (modifica a mano), ⇄ lo confronta con un altro della rosa: come i due pulsanti della web.
     static let simboloSostituisci = "pencil"
     static let simboloConfronta = "arrow.left.arrow.right"
     /// Il pulsante accanto alla frase dello stile (`formazione.modifica_mano`).
-    static let testoModificaAMano = "Modifica a mano"
+    static let testoModificaAMano = Catalogo.Formazione.modificaMano
     /// In modifica a mano, al posto della frase dello stile (`formazione.modificata_mano`): moduli e stili restano sullo schermo e
     /// un tocco torna alla loro proposta (#463).
-    static let testoModificataAMano = "Modificata a mano. Tocca un modulo o uno stile per tornare alla consigliata."
+    static let testoModificataAMano = Catalogo.Formazione.modificataMano
     /// In modifica a mano, per VoiceOver su ogni stile e modulo: cosa fa il tocco, come dice la frase sopra.
-    static let suggerimentoChipAMano = "Torna alla consigliata"
+    static let suggerimentoChipAMano = Catalogo.Formazione.tornaAllaConsigliata
+    /// Mentre la formazione arriva, come la web (`formazione.calcolo`).
+    static let testoCaricamento = Catalogo.Formazione.calcolo
 
     /// La riga sotto «Titolari» (`formazione.tocca_sostituire` in modifica a mano, altrimenti `formazione.tocca_confronto`).
     static func istruzioneTitolari(modificabile: Bool) -> String {
-        modificabile ? "Tocca ✎ per sostituire un titolare: i punti attesi si ricalcolano."
-                     : "Tocca ⇄ per confrontarlo con un altro della rosa."
+        modificabile ? Catalogo.Formazione.toccaSostituire : Catalogo.Formazione.toccaConfronto
     }
 
     /// Dopo il nome dello stile: il modulo che propone (`formazione.propone`) o, se ne hai toccato un altro, che è fissato a mano
     /// (`formazione.modulo_fissato`). Toccare lo stile riporta al suo modulo (`scegliStile` azzera il modulo scelto).
     static func fraseStile(proposto: String, attivo: String) -> String {
-        attivo == proposto ? "Propone il \(proposto)."
-                           : "Modulo fissato a mano (lo stile propone il \(proposto)): tocca lo stile per tornare al suo."
+        attivo == proposto ? Catalogo.Formazione.propone(modulo: proposto) : Catalogo.Formazione.moduloFissato(modulo: proposto)
+    }
+
+    /// La formazione di un'altra squadra, come la web: «Stai guardando la formazione di Gli Amici.»
+    /// (`formazione.stai_guardando_formazione`, poi il nome e il punto).
+    static func testoSquadraVista(_ nome: String) -> String {
+        "\(Catalogo.Formazione.staiGuardandoFormazione) \(nome)."
     }
 
     var body: some View {
@@ -78,7 +85,7 @@ struct FormazioneView: View {
                             .ingresso(3)
                             // Un'unica scheda con i quattro reparti in ordine (Portiere, Difensori, Centrocampisti, Attaccanti):
                             // sull'iPad le colonne si leggono così dall'alto in basso senza saltare da una parte all'altra.
-                            Carta("Titolari", simbolo: "person.3.fill") {
+                            Carta(Catalogo.Formazione.titolari, simbolo: "person.3.fill") {
                                 // come la web: ✎ sostituisce (modifica a mano), ⇄ confronta. A giornata chiusa l'iPhone non ha né
                                 // l'uno né l'altro (sola lettura), quindi niente riga.
                                 if !vm.chiusa {
@@ -110,7 +117,7 @@ struct FormazioneView: View {
                         } else if let errore = vm.errore {
                             ErroreVista(messaggio: errore) { Task { await vm.carica() } }
                         } else {
-                            Scheletro(schede: 3, righe: 3, testo: "Scelgo gli undici…")
+                            Scheletro(schede: 3, righe: 3, testo: Self.testoCaricamento)
                         }
                     }
                     .padding(.horizontal, Tema.margine)
@@ -128,8 +135,8 @@ struct FormazioneView: View {
                     if let f = vm.formazione {
                         Menu {
                             ShareLink(item: vm.testo(f)) { Label("Condividi come testo", systemImage: "text.alignleft") }
-                            Button { vm.preparaImmagine(f) } label: { Label("Condividi come immagine", systemImage: "photo") }
-                            Button { vm.copiaTesto(f) } label: { Label("Copia il testo", systemImage: "doc.on.doc") }
+                            Button { vm.preparaImmagine(f) } label: { Label(Catalogo.Formazione.condividiImmagine, systemImage: "photo") }
+                            Button { vm.copiaTesto(f) } label: { Label(Catalogo.Formazione.copiaFormazione, systemImage: "doc.on.doc") }
                         } label: {
                             Image(systemName: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44)
                         }
@@ -171,7 +178,7 @@ struct FormazioneView: View {
     /// Riapre la legenda del campo (popover sull'iPad, foglio sull'iPhone).
     private var pulsanteLegenda: some View {
         Button { legendaAperta = true } label: {
-            Label("Cosa vuol dire", systemImage: "info.circle").font(.footnote.weight(.semibold))
+            Label(Catalogo.Formazione.legendaApri, systemImage: "info.circle").font(.footnote.weight(.semibold))
                 .frame(minHeight: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -213,11 +220,21 @@ struct FormazioneView: View {
     }
 
     /// La riga in fondo alla Formazione: cosa sono i numeri (e, con un server che manda i motivi, che si possono toccare).
+    /// L'ultima frase è la prima di `formazione.numero_sulla_maglia` della web (l'indice sul volto); la seconda della web («Tocca il
+    /// fantavoto atteso…») qui ha il suo posto prima, «Toccalo per sapere perché.», solo se il server manda i motivi.
     static func legenda(conPerche: Bool) -> String {
         "Il numero è il fantavoto atteso: quello che SchieraXI si aspetta dal giocatore se gioca, con le regole della tua lega."
             + (conPerche ? " Toccalo per sapere perché." : "")
-            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. Negli elenchi il numero sul volto è l'indice: 100 = il migliore del suo ruolo questa giornata."
+            + " I punti attesi della squadra pesano ogni fantavoto per la probabilità di giocare. "
+            + fraseIndice
     }
+
+    /// La prima frase di `formazione.numero_sulla_maglia`, con il suo punto («Negli elenchi il numero sul volto è l'indice: …»).
+    private static let fraseIndice: String = {
+        let testo = Catalogo.Formazione.numeroSullaMaglia
+        guard let fine = testo.range(of: ". ") else { return testo }
+        return String(testo[..<fine.lowerBound]) + "."
+    }()
 
     // MARK: un'altra squadra
 
@@ -225,8 +242,8 @@ struct FormazioneView: View {
     private var bannerSquadra: some View {
         if let nome = vm.squadraVista {
             Carta {
-                Label("Stai guardando la formazione di \(nome)", systemImage: "eye").font(.subheadline)
-                Button { vm.tornaAllaMia() } label: { Text("Torna alla tua").frame(minHeight: 44) }
+                Label(Self.testoSquadraVista(nome), systemImage: "eye").font(.subheadline)
+                Button { vm.tornaAllaMia() } label: { Text(Catalogo.Formazione.tornaAllaTua).frame(minHeight: 44) }
                     .pulsanteVetro()
             }
         }
@@ -258,7 +275,7 @@ struct FormazioneView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.verde)
-                    .accessibilityLabel("Confronta \(g.nome) con un altro della rosa")
+                    .accessibilityLabel(Catalogo.Formazione.confrontaAria(nome: g.nome))
                 }
                 // in modifica a mano qui c'è solo chi è fermo (anticipo già cominciato, #373): come la web, ⇄ e niente ballottaggio
                 if vm.manuale == nil { ballottaggio(g, f, v, conEtichetta: etichettaBallottaggio) }
@@ -299,14 +316,14 @@ struct FormazioneView: View {
                 Text(a.giocatore.nomeCorto).font(.caption.weight(.semibold))
                 Text(Formato.conSegno(a.differenza)).font(.caption.bold()).monospacedDigit()
                     .foregroundStyle(a.quasiPari ? Color.testoSecondario : (a.differenza > 0 ? Color.verde : Color.attenzione))
-                if a.quasiPari { Text("quasi pari").font(.caption2).foregroundStyle(Color.testoSecondario) }
+                if a.quasiPari { Text(Catalogo.Formazione.quasiPari).font(.caption2).foregroundStyle(Color.testoSecondario) }
             }
             .padding(.horizontal, 10)
             .frame(minHeight: 44)
             .background(Color.sfondoIncavo, in: Capsule())
         }
         .buttonStyle(StilePressione())
-        .accessibilityLabel("Confronta \(g.nome) con \(a.giocatore.nome), \(Formato.conSegno(a.differenza)) punti attesi\(a.quasiPari ? ", quasi pari" : "")")
+        .accessibilityLabel("Confronta \(g.nome) con \(a.giocatore.nome), \(Formato.conSegno(a.differenza)) punti attesi\(a.quasiPari ? ", \(Catalogo.Formazione.quasiPari)" : "")")
     }
 
     @ViewBuilder
@@ -314,11 +331,11 @@ struct FormazioneView: View {
         let altri = vm.fuori(f, v)
         if !altri.isEmpty || !(f.senzaDati ?? []).isEmpty {
             Carta {
-                DisclosureGroup("Fuori dalla formazione (\(altri.count))") {
+                DisclosureGroup(Catalogo.Formazione.fuoriDalla(n: "\(altri.count)")) {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(altri) { RigaGiocatore(g: $0, apribile: true, perche: apriPerche) }
                         if let senza = f.senzaDati, !senza.isEmpty {
-                            Text("Senza dati per questa giornata: " + senza.joined(separator: ", ")).font(.caption).foregroundStyle(Color.testoSecondario)
+                            Text(Catalogo.Formazione.senzaDati(nomi: senza.joined(separator: ", "))).font(.caption).foregroundStyle(Color.testoSecondario)
                         }
                     }
                     .padding(.top, 6)
@@ -384,7 +401,7 @@ struct FormazioneView: View {
             if let punti = v.punti {
                 Text(Formato.punti(punti)).font(.title2.bold()).monospacedDigit().numerico(punti)
                 // «tra 66 e 82 · 8 volte su 10» va a capo solo tra un pezzo e l'altro, mai a metà
-                Text(TestoACapo.soloTraIPezzi("punti attesi" + (vm.fascia(f).map { TestoACapo.separatore + $0 } ?? "")))
+                Text(TestoACapo.soloTraIPezzi(Catalogo.Formazione.puntiAttesi + (vm.fascia(f).map { TestoACapo.separatore + $0 } ?? "")))
                     .font(.caption).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.trailing)
             } else if vm.calcoloNonRiuscito {
                 Text("–").font(.title2.bold()).accessibilityHidden(true)
@@ -531,7 +548,7 @@ struct FormazioneView: View {
     /// Quanto vale la formazione a mano rispetto alla consigliata. La fascia dei punti sta già nell'intestazione: qui non si ripete
     /// (solo se il server non manda né fascia né oscillazione restano brutta giornata ed eccezionale).
     private func rigaDifferenza(_ r: ValutazioneManuale, _ d: Double) -> some View {
-        let confronto = "\(Formato.conSegno(d)) rispetto alla consigliata con lo stesso modulo (\(Formato.punti(r.consigliataStessoModulo ?? r.consigliata)))."
+        let confronto = Catalogo.Formazione.rispetto(d: Formato.conSegno(d), n: Formato.punti(r.consigliataStessoModulo ?? r.consigliata))
         let estremi = IntervalloPunti.frase(r.intervallo, dev: r.dev) == nil
             ? " Brutta giornata \(Formato.intero(r.bruttaGiornata)) · giornata eccezionale \(Formato.intero(r.giornataEccezionale))." : ""
         return Text(confronto + estremi).font(.subheadline)
@@ -572,8 +589,8 @@ struct FormazioneView: View {
     /// «Salva le modifiche» con una scelta salvata e modifiche (`formazione.salva_modifiche`), altrimenti «Salva come mia scelta»
     /// (`formazione.salva_come_mia`).
     static func etichettaSalva(_ stato: StatoScelta) -> String {
-        if case .modificata = stato { return "Salva le modifiche" }
-        return "Salva come mia scelta"
+        if case .modificata = stato { return Catalogo.Formazione.salvaModifiche }
+        return Catalogo.Formazione.salvaComeMia
     }
 }
 
@@ -585,9 +602,9 @@ struct SostituzioneSheet: View {
     @Environment(\.dismiss) private var chiudi
 
     /// Sotto il titolo, come la web (`formazione.giocatori_dello_stesso`).
-    static let testoStessoRuolo = "Giocatori dello stesso ruolo della tua rosa. Per cambiare ruolo scegli un altro modulo."
+    static let testoStessoRuolo = Catalogo.Formazione.giocatoriDelloStesso
     /// Nessun candidato (`formazione.nessun_altro_giocatore`).
-    static let testoNessunAltro = "Nessun altro giocatore di questo ruolo in rosa."
+    static let testoNessunAltro = Catalogo.Formazione.nessunAltroGiocatore
 
     var body: some View {
         NavigationStack {
@@ -601,7 +618,7 @@ struct SostituzioneSheet: View {
                     }
                 } header: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Al posto di \(uscente.nome)")
+                        Text(Catalogo.Formazione.alPostoDi(nome: uscente.nome))
                         Text(Self.testoStessoRuolo).font(.footnote).textCase(nil)
                     }
                 }
