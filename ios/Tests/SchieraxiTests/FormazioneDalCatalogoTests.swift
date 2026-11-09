@@ -133,7 +133,7 @@ struct FormazioneDalCatalogoTests {
     }
 
     private static func codice(_ url: URL) throws -> String {
-        senzaCommenti(try String(contentsOf: url, encoding: .utf8))
+        try senzaCommenti(String(contentsOf: url, encoding: .utf8))
     }
 
     /// Il sorgente senza commenti: via le righe `//` e la parte di riga dopo un `//` fuori dalle virgolette.
