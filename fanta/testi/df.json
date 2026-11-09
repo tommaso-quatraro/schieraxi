@@ -1,0 +1,30 @@
+{
+  "df.urgente": {
+    "it": "Urgente",
+    "en": "Urgent"
+  },
+  "df.tutto_posto_mister": {
+    "it": "Tutto a posto, Mister.",
+    "en": "All sorted, coach."
+  },
+  "df.non_niente_sbrigare": {
+    "it": "Nessuna azione utile oggi.",
+    "en": "No useful action today."
+  },
+  "df.da_fare": {
+    "it": "Da fare",
+    "en": "To do"
+  },
+  "df.apri": {
+    "it": "Apri",
+    "en": "Open"
+  },
+  "df.altre.one": {
+    "it": "Un'altra cosa da fare",
+    "en": "One more thing to do"
+  },
+  "df.altre.other": {
+    "it": "Altre {n} cose da fare",
+    "en": "{n} more things to do"
+  }
+}

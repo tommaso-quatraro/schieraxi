@@ -1,0 +1,491 @@
+{
+  "lega.voce_squadre": {
+    "it": "Squadre e rose",
+    "en": "Teams and rosters",
+    "nota": "---- [lega] ----"
+  },
+  "lega.voce_squadre_sub": {
+    "it": "La tua squadra, le altre e le loro rose",
+    "en": "Your team, the others and their rosters"
+  },
+  "lega.voce_consigli": {
+    "it": "Cambi consigliati",
+    "en": "Recommended swaps"
+  },
+  "lega.voce_consigli_sub": {
+    "it": "Svincolati che migliorano la tua squadra",
+    "en": "Free agents who improve your team"
+  },
+  "lega.voce_osservati": {
+    "it": "Seguiti",
+    "en": "Following"
+  },
+  "lega.voce_osservati_sub": {
+    "it": "I giocatori che segui e gli avvisi quando si liberano",
+    "en": "The players you follow and alerts when they become available"
+  },
+  "lega.voce_giocatori": {
+    "it": "Elenco dei giocatori",
+    "en": "Player list"
+  },
+  "lega.voce_giocatori_sub": {
+    "it": "Tutti i giocatori, con ricerca e filtri",
+    "en": "All players, with search and filters"
+  },
+  "lega.voce_calendario": {
+    "it": "Calendario",
+    "en": "Calendar"
+  },
+  "lega.voce_calendario_sub": {
+    "it": "Le prossime partite e quanto sono facili",
+    "en": "The next matches and how easy they are"
+  },
+  "lega.voce_importa": {
+    "it": "Aggiorna le rose",
+    "en": "Update the rosters"
+  },
+  "lega.voce_importa_sub": {
+    "it": "Il file Excel o il testo preso da Leghe",
+    "en": "The Excel file or the text taken from Leghe"
+  },
+  "lega.voce_scambi": {
+    "it": "Scambi",
+    "en": "Trades"
+  },
+  "lega.voce_scambi_sub": {
+    "it": "Valuta un'offerta, trova o costruisci uno scambio",
+    "en": "Evaluate an offer, find or build a trade"
+  },
+  "lega.voce_diario": {
+    "it": "Diario delle giornate",
+    "en": "Matchday journal"
+  },
+  "lega.voce_diario_sub": {
+    "it": "La tua formazione contro quella del modello",
+    "en": "Your lineup against the model's"
+  },
+  "lega.voce_regole": {
+    "it": "Regole",
+    "en": "Rules"
+  },
+  "lega.voce_regole_sub": {
+    "it": "Punteggi, modificatore difesa, moduli, panchina, rosa",
+    "en": "Scoring, defence modifier, formations, bench, roster"
+  },
+  "lega.voce_movimenti": {
+    "it": "Movimenti e storico",
+    "en": "Moves and history"
+  },
+  "lega.voce_movimenti_sub": {
+    "it": "Cosa è cambiato a ogni aggiornamento delle rose",
+    "en": "What changed at every roster update"
+  },
+  "lega.voce_crediti": {
+    "it": "Crediti delle squadre",
+    "en": "Team credits"
+  },
+  "lega.voce_crediti_sub": {
+    "it": "I crediti residui di ogni squadra",
+    "en": "The credits left for each team"
+  },
+  "lega.voce_stagione": {
+    "it": "Nuova stagione",
+    "en": "New season"
+  },
+  "lega.voce_stagione_sub": {
+    "it": "Archivia le rose e riparti",
+    "en": "Archive the rosters and start over"
+  },
+  "lega.voce_novita": {
+    "it": "Novità",
+    "en": "What's new"
+  },
+  "lega.voce_novita_sub": {
+    "it": "Cosa è cambiato negli ultimi aggiornamenti",
+    "en": "What has changed in recent updates"
+  },
+  "lega.alt_immagine": {
+    "it": "{tipo} di {nome}",
+    "en": "{tipo} of {nome}"
+  },
+  "lega.ancora_nessun_movimento": {
+    "it": "Ancora nessun movimento: compare qui a ogni aggiornamento delle rose.",
+    "en": "No moves yet: they appear here at every roster update."
+  },
+  "lega.apri_diario": {
+    "it": "Apri il diario",
+    "en": "Open the journal"
+  },
+  "lega.archivia_riparti": {
+    "it": "Archivia e riparti",
+    "en": "Archive and start over"
+  },
+  "lega.carico_movimenti": {
+    "it": "Carico i movimenti…",
+    "en": "Loading the moves…"
+  },
+  "lega.carico_squadra": {
+    "it": "Carico la squadra…",
+    "en": "Loading the team…"
+  },
+  "lega.come_ottenere_stemma": {
+    "it": "Come ottenere lo stemma da Leghe",
+    "en": "How to get the crest from Leghe"
+  },
+  "lega.con_tocco_dal": {
+    "it": "Con un tocco dal menu Condividi",
+    "en": "With one tap from the Share menu"
+  },
+  "lega.condividi": {
+    "it": "Condividi",
+    "en": "Share"
+  },
+  "lega.controllo_stagione": {
+    "it": "Controllo la stagione…",
+    "en": "Checking the season…"
+  },
+  "lega.cosa_cambiato": {
+    "it": "Cosa è cambiato",
+    "en": "What has changed"
+  },
+  "lega.crediti_residui_ogni": {
+    "it": "Crediti residui di ogni squadra",
+    "en": "Credits left for each team"
+  },
+  "lega.crediti_non_salvati": {
+    "it": "Ci sono crediti scritti e non ancora salvati.",
+    "en": "Some credits are written but not saved yet."
+  },
+  "lega.crediti_salvati": {
+    "it": "Crediti salvati",
+    "en": "Credits saved"
+  },
+  "lega.da_controllare": {
+    "it": "Da controllare:",
+    "en": "To check:"
+  },
+  "lega.esporta_rose_excel": {
+    "it": "Esporta le rose in Excel da Leghe (come fai di solito) e scegli il file qui: l'app ti dice cosa è cambiato\n        (scambi, svincolati presi, tagli, crediti).",
+    "en": "Export the rosters to Excel from Leghe (as you usually do) and choose the file here: the app tells you what has changed\n        (trades, free agents signed, releases, credits)."
+  },
+  "lega.file_foto": {
+    "it": "Da file o foto",
+    "en": "From file or photo"
+  },
+  "lega.https": {
+    "it": "https://…",
+    "en": "https://…"
+  },
+  "lega.immagine_condivisa": {
+    "it": "Immagine condivisa",
+    "en": "Shared image"
+  },
+  "lega.immagine_condivisa_non": {
+    "it": "L'immagine condivisa non c'è più: condividila di nuovo",
+    "en": "The shared image is gone: share it again"
+  },
+  "lega.immagine_verso_schieraxi": {
+    "it": "l'immagine verso SchieraXI (se l'app è installata sulla Home): qui sopra scegli stemma o maglia.",
+    "en": "the image to SchieraXI (if the app is installed on the Home Screen): above choose crest or shirt."
+  },
+  "lega.immagini_png_jpeg": {
+    "it": "Immagini PNG, JPEG o WebP, fino a 4 MB. Si vedono in Squadra, nell'intestazione e nella formazione.",
+    "en": "PNG, JPEG or WebP images, up to 4 MB. They show in Team, in the header and in the lineup."
+  },
+  "lega.importa_nuove_rose": {
+    "it": "Importa le nuove rose",
+    "en": "Import the new rosters"
+  },
+  "lega.importa_prima_rose": {
+    "it": "Importa prima le rose da «Aggiorna le rose».",
+    "en": "First import the rosters from «Update the rosters»."
+  },
+  "lega.importa_prima_rose_2": {
+    "it": "Importa prima le rose, poi potrai caricare stemma e maglia",
+    "en": "First import the rosters, then you can upload crest and shirt"
+  },
+  "lega.importa_testo": {
+    "it": "Controlla il testo",
+    "en": "Check the text"
+  },
+  "lega.incolla_prima_indirizzo": {
+    "it": "Incolla prima l'indirizzo dell'immagine",
+    "en": "First paste the image address"
+  },
+  "lega.incolla_prima_testo": {
+    "it": "Incolla prima il testo delle rose",
+    "en": "First paste the roster text"
+  },
+  "lega.incolla_qui_testo": {
+    "it": "Incolla qui il testo delle rose",
+    "en": "Paste the roster text here"
+  },
+  "lega.incolla_testo_delle": {
+    "it": "Incolla il testo delle rose",
+    "en": "Paste the roster text"
+  },
+  "lega.indirizzo_web": {
+    "it": "Da indirizzo web",
+    "en": "From a web address"
+  },
+  "lega.la_tua": {
+    "it": "la tua",
+    "en": "yours"
+  },
+  "lega.mia_squadra": {
+    "it": "La mia squadra",
+    "en": "My team"
+  },
+  "lega.nell_app_nel": {
+    "it": "Nell'app o nel sito di Leghe tieni premuto sullo stemma (o sulla maglia) e scegli",
+    "en": "In the Leghe app or website press and hold the crest (or the shirt) and choose"
+  },
+  "lega.nessuna_immagine": {
+    "it": "Nessuna immagine",
+    "en": "No image"
+  },
+  "lega.non_hai_file": {
+    "it": "Se non hai il file Excel: copia la pagina delle rose di Leghe e incollala qui. Le squadre che non sono nel file restano com'erano.",
+    "en": "If you do not have the Excel file: copy the rosters page from Leghe and paste it here. Teams that are not in the file stay as they were."
+  },
+  "lega.non_tua_squadra": {
+    "it": "Non è la tua squadra?",
+    "en": "Not your team?"
+  },
+  "lega.oppure": {
+    "it": "Oppure",
+    "en": "Or"
+  },
+  "lega.oppure_copia_indirizzo": {
+    "it": "Oppure copia l'indirizzo dell'immagine (deve essere pubblico, cioè aprirsi anche senza accedere) e incollalo qui.",
+    "en": "Or copy the image address (it must be public, that is it must open without signing in) and paste it here."
+  },
+  "lega.per_ogni_giornata": {
+    "it": "Per ogni giornata finita: la formazione che hai schierato contro quella consigliata, i punti attesi e quelli fatti.",
+    "en": "For every finished matchday: the lineup you fielded against the recommended one, the expected points and the points scored."
+  },
+  "lega.poi_usa": {
+    "it": ": poi usa",
+    "en": ": then use"
+  },
+  "lega.rimuovi": {
+    "it": "Rimuovi",
+    "en": "Remove"
+  },
+  "lega.rose_controllate_tutto": {
+    "it": "Rose controllate: tutto in ordine.",
+    "en": "Rosters checked: everything in order."
+  },
+  "lega.salva_crediti": {
+    "it": "Salva i crediti",
+    "en": "Save the credits"
+  },
+  "lega.salva_immagine": {
+    "it": "Salva immagine",
+    "en": "Save image"
+  },
+  "lega.scarico": {
+    "it": "Scarico…",
+    "en": "Downloading…"
+  },
+  "lega.scarta": {
+    "it": "Scarta",
+    "en": "Discard"
+  },
+  "lega.scegli_file_excel": {
+    "it": "Scegli il file Excel",
+    "en": "Choose the Excel file"
+  },
+  "lega.scegli_quale_delle": {
+    "it": "Scegli quale delle squadre è la tua.",
+    "en": "Choose which of the teams is yours."
+  },
+  "lega.servono_per_consigli": {
+    "it": "Servono per i consigli del mercato (rimborso e crediti dopo il cambio). Restano anche se importi di nuovo l'Excel.",
+    "en": "They are used for the market advice (refund and credits after the swap). They stay even if you import the Excel again."
+  },
+  "lega.squadra_aggiorna_rose": {
+    "it": ": in Squadra, «Aggiorna le rose», con l'Excel di Leghe (si importa anche con il menu Condividi).",
+    "en": ": in Team, «Update the rosters», with the Leghe Excel (you can also import it from the Share menu)."
+  },
+  "lega.squadra_salvata": {
+    "it": "Squadra salvata",
+    "en": "Team saved"
+  },
+  "lega.squadre_rose": {
+    "it": "Squadre e rose",
+    "en": "Teams and rosters"
+  },
+  "lega.stemma_maglia": {
+    "it": "Stemma e maglia",
+    "en": "Crest and shirt"
+  },
+  "lega.tocca_una_squadra": {
+    "it": "Tocca una squadra per vedere la rosa.",
+    "en": "Tap a team to see the roster."
+  },
+  "lega.togli_squadre_che": {
+    "it": "Togli le squadre che non sono nel file",
+    "en": "Remove the teams that are not in the file"
+  },
+  "lega.tua_squadra": {
+    "it": "La tua squadra",
+    "en": "Your team"
+  },
+  "lega.tutto_salvato_nell": {
+    "it": "Tutto è salvato nell'archivio. Ora prepara la nuova stagione:",
+    "en": "Everything is saved in the archive. Now prepare the new season:"
+  },
+  "lega.una_volta_sola": {
+    "it": "Una volta sola crei un Comando (app Comandi di Apple). Poi, dal file Excel scaricato, tocchi Condividi → «Importa in SchieraXI» e ricevi il riepilogo.",
+    "en": "You create a Shortcut once (Apple's Shortcuts app). Then, from the downloaded Excel file, tap Share → «Import into SchieraXI» and you get the summary."
+  },
+  "lega.usa_come_maglia": {
+    "it": "Usa come maglia",
+    "en": "Use as shirt"
+  },
+  "lega.usa_come_stemma": {
+    "it": "Usa come stemma",
+    "en": "Use as crest"
+  },
+  "lega.vai_squadra": {
+    "it": "Vai a Squadra",
+    "en": "Go to Team"
+  },
+  "lega.vedi_rosa": {
+    "it": "Vedi la rosa",
+    "en": "See the roster"
+  },
+  "lega.controlla_regole": {
+    "it": "Controlla le regole",
+    "en": "Check the rules"
+  },
+  "lega.bonus_moduli_crediti": {
+    "it": ": bonus, moduli e crediti possono cambiare da un anno all'altro (Altro, Regole).",
+    "en": ": bonuses, formations and credits can change from one year to the next (More, Rules)."
+  },
+  "lega.inserisci_crediti": {
+    "it": "Inserisci i crediti",
+    "en": "Enter the credits"
+  },
+  "lega.delle_squadre_altro": {
+    "it": "delle squadre (Altro, Crediti delle squadre).",
+    "en": "of the teams (More, Team credits)."
+  },
+  "lega.con_tasto_alto": {
+    "it": "con il tasto in alto: calendario, listone e quotazioni nuovi.",
+    "en": "with the top button: new calendar, player list and prices."
+  },
+  "lega.indirizzo_aria": {
+    "it": "Indirizzo web dell'immagine, {tipo}",
+    "en": "Web address of the image, {tipo}"
+  },
+  "lega.la_tua_paren": {
+    "it": " (la tua)",
+    "en": " (yours)"
+  },
+  "lega.operazione_no": {
+    "it": "Operazione non riuscita",
+    "en": "The operation did not work"
+  },
+  "lega.stemma_rimosso": {
+    "it": "Stemma rimosso",
+    "en": "Crest removed"
+  },
+  "lega.maglia_rimossa": {
+    "it": "Maglia rimossa",
+    "en": "Shirt removed"
+  },
+  "lega.n_crediti.one": {
+    "it": "{n} credito",
+    "en": "{n} credit"
+  },
+  "lega.n_crediti.other": {
+    "it": "{n} crediti",
+    "en": "{n} credits"
+  },
+  "lega.n_squadre.one": {
+    "it": "{n} squadra",
+    "en": "{n} team"
+  },
+  "lega.n_squadre.other": {
+    "it": "{n} squadre",
+    "en": "{n} teams"
+  },
+  "lega.importate": {
+    "it": "Importate: {nomi} ({n} in tutto).",
+    "en": "Imported: {nomi} ({n} in all)."
+  },
+  "lega.crediti_numero": {
+    "it": "I crediti di {nome} devono essere un numero intero, anche 0",
+    "en": "The credits of {nome} must be a whole number, even 0"
+  },
+  "lega.voce_miasquadra": {
+    "it": "La mia squadra e rosa",
+    "en": "My team and roster"
+  },
+  "lega.voce_miasquadra_sub": {
+    "it": "La tua squadra e i suoi giocatori",
+    "en": "Your team and its players"
+  },
+  "lega.aria_squadra": {
+    "it": "Voci della squadra",
+    "en": "Team items"
+  },
+  "lega.aria_altro": {
+    "it": "Altre voci",
+    "en": "Other items"
+  },
+  "lega.stagione_in_corso": {
+    "it": "Le rose sono della stagione in corso ({s}): non c'è niente da fare. A fine campionato, quando le rose sono ancora quelle dell'anno prima, qui compare il pulsante per archiviarle e ripartire. Non si cancella niente.",
+    "en": "The rosters are from the current season ({s}): there is nothing to do. At the end of the league, when the rosters are still last year's, the button to archive them and start over appears here. Nothing is deleted."
+  },
+  "lega.nuova_stagione_n": {
+    "it": "Nuova stagione {s}",
+    "en": "New season {s}"
+  },
+  "lega.rose_ancora_quelle": {
+    "it": "Le rose sono ancora quelle del {s}. Archivio rose, regole, scelte e seguiti e riparto da rose vuote (stessi nomi di squadra): poi importi il nuovo Excel di Leghe. Non si cancella niente.",
+    "en": "The rosters are still those of {s}. I archive rosters, rules, choices and followed players and start from empty rosters (same team names): then you import the new Leghe Excel. Nothing is deleted."
+  },
+  "lega.conferma_archivio": {
+    "it": "Archivio la stagione {s} e riparto da rose vuote?",
+    "en": "Archive the {s} season and start from empty rosters?"
+  },
+  "lega.stagione_archiviata": {
+    "it": "Stagione {s} archiviata",
+    "en": "Season {s} archived"
+  },
+  "lega.banner_stagione": {
+    "it": "Le rose sono ancora quelle del {s}: archivia e riparti.",
+    "en": "The rosters are still those of {s}: archive and start over."
+  },
+  "lega.sc1": {
+    "it": "Apri <b>Comandi</b> → <b>+</b> (nuovo comando) e chiamalo <b>Importa in SchieraXI</b>.",
+    "en": "Open <b>Shortcuts</b> → <b>+</b> (new shortcut) and name it <b>Import into SchieraXI</b>."
+  },
+  "lega.sc2": {
+    "it": "Tocca <b>ⓘ</b> in basso: attiva <b>Mostra nel foglio di condivisione</b> e, in <b>Tipi accettati</b>, lascia solo <b>File</b>.",
+    "en": "Tap <b>ⓘ</b> at the bottom: turn on <b>Show in Share Sheet</b> and, in <b>Share Sheet Types</b>, leave only <b>Files</b>."
+  },
+  "lega.sc3": {
+    "it": "Aggiungi l'azione <b>Ottieni contenuti dell'URL</b> con URL {url}.",
+    "en": "Add the <b>Get Contents of URL</b> action with URL {url}."
+  },
+  "lega.sc4": {
+    "it": "Tocca <b>Mostra altro</b>: <b>Metodo</b> = POST; <b>Intestazioni</b> → aggiungi <code>X-Fanta</code> con valore <code>1</code>.",
+    "en": "Tap <b>Show More</b>: <b>Method</b> = POST; <b>Headers</b> → add <code>X-Fanta</code> with value <code>1</code>."
+  },
+  "lega.sc5": {
+    "it": "<b>Corpo della richiesta</b> = <b>Modulo</b>; aggiungi un campo di tipo <b>File</b>, nome <code>file</code>, valore <b>Input del comando</b>.",
+    "en": "<b>Request Body</b> = <b>Form</b>; add a field of type <b>File</b>, name <code>file</code>, value <b>Shortcut Input</b>."
+  },
+  "lega.sc6": {
+    "it": "Aggiungi <b>Ottieni valore del dizionario</b> per la chiave <code>riepilogo</code> dai contenuti dell'URL, poi <b>Mostra notifica</b> (o <b>Mostra risultato</b>) con quel valore.",
+    "en": "Add <b>Get Dictionary Value</b> for the key <code>riepilogo</code> from the contents of the URL, then <b>Show Notification</b> (or <b>Show Result</b>) with that value."
+  },
+  "lega.per_usarlo_apri": {
+    "it": "Per usarlo: apri il file Excel scaricato da Leghe, tocca Condividi, scegli «Importa in SchieraXI».",
+    "en": "To use it: open the Excel file downloaded from Leghe, tap Share, choose «Import into SchieraXI»."
+  }
+}

@@ -1,5 +1,29 @@
 [
   {
+    "versione": "1.446",
+    "data": "2026-11-08T22:48:32",
+    "titolo": "Testi dell'app da una fonte sola",
+    "voci": [
+      "Dietro le quinte i testi dell'app ora nascono da un elenco unico, che servirà anche all'app per iPhone. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "Issue #493, lavoro A1 del piano 2026-11-08-ondata-2 (decisione 0010). Catalogo in fanta/testi/<prefisso>.json (47 file, 1840 chiavi, it/en/nota); script/testi.py --scrivi genera l'oggetto TESTI di fanta/web/testi.js fra le righe-segno «// <catalogo>» e «// </catalogo>» e i file Swift di ios/Sources/Support/Catalogo/ per le chiavi elencate in ios/testi/<prefisso>.txt (oggi nessuna); --controlla esce con 1 se un file generato non è aggiornato o il catalogo ha errori.",
+      "Dizionari it ed en di testi.js uguali prima e dopo: cambia solo l'ordine delle righe (prefissi in ordine alfabetico, l'inglese nell'ordine dell'italiano). Test: tests/test_catalogo_testi.py."
+    ]
+  },
+  {
+    "versione": "1.445",
+    "data": "2026-11-08T22:41:44",
+    "titolo": "Server: la sentinella ricorda ogni controllo",
+    "voci": [
+      "Server: il controllo automatico di ogni ora adesso tiene la storia di tutti i suoi giri, per misurare le giornate senza errori. Per chi usa l'app non cambia niente."
+    ],
+    "tecnico": [
+      "Issue #532 (H1 del piano dell'ondata 2). dati/sentinella.json ha il campo giri: una voce {quando, rotte, inviato} per ogni giro del server, anche senza rotture; i giri con --senza-invio non entrano. quando = adesso.astimezone() con i secondi; rotte = invarianti rotte e confermate (CONFERME giri di fila), anche già avvisate; inviato vero solo se l'avviso è partito. Voci più vecchie di TIENI_GIRI (60 giorni) tolte a ogni giro.",
+      "sentinella.giri_sentinella(dal, al, file) legge le voci con dal <= quando <= al (date senza fuso: ValueError). Comando python -m fanta sentinella --giri --dal ISO --al ISO: stampa la lista in JSON senza fare il giro. GET /api/stato-dati: campo facoltativo sentinella_giri con i giri degli ultimi 7 giorni (null se non si leggono). Test tests/test_sentinella_giri.py."
+    ]
+  },
+  {
     "versione": "1.444",
     "data": "2026-11-08T22:16:57",
     "titolo": "Importazione delle rose: lo stesso limite di lavoro per ogni formato",

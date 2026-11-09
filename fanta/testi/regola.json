@@ -1,0 +1,115 @@
+{
+  "regola.et.bonus.rigore_parato": {
+    "it": "Rigore parato",
+    "en": "Penalty saved",
+    "nota": "---- [etichette delle regole riconosciute] ----"
+  },
+  "regola.et.bonus.rigore_sbagliato": {
+    "it": "Rigore sbagliato",
+    "en": "Penalty missed"
+  },
+  "regola.et.bonus.rigore_segnato": {
+    "it": "Rigore segnato",
+    "en": "Penalty scored"
+  },
+  "regola.et.bonus.autogol": {
+    "it": "Autogol",
+    "en": "Own goal"
+  },
+  "regola.et.bonus.portiere_imbattuto": {
+    "it": "Portiere imbattuto",
+    "en": "Goalkeeper clean sheet"
+  },
+  "regola.et.bonus.gol_subito_portiere": {
+    "it": "Gol subito (portiere)",
+    "en": "Goal conceded (goalkeeper)"
+  },
+  "regola.et.bonus.assist": {
+    "it": "Assist",
+    "en": "Assist"
+  },
+  "regola.et.bonus.ammonizione": {
+    "it": "Ammonizione",
+    "en": "Yellow card"
+  },
+  "regola.et.bonus.espulsione": {
+    "it": "Espulsione",
+    "en": "Red card"
+  },
+  "regola.et.bonus.mvp": {
+    "it": "Migliore in campo",
+    "en": "Best on the pitch"
+  },
+  "regola.et.bonus.gol.P": {
+    "it": "Gol (portiere)",
+    "en": "Goal (goalkeeper)"
+  },
+  "regola.et.bonus.gol.D": {
+    "it": "Gol (difensore)",
+    "en": "Goal (defender)"
+  },
+  "regola.et.bonus.gol.C": {
+    "it": "Gol (centrocampista)",
+    "en": "Goal (midfielder)"
+  },
+  "regola.et.bonus.gol.A": {
+    "it": "Gol (attaccante)",
+    "en": "Goal (forward)"
+  },
+  "regola.et.modificatore_difesa.attivo": {
+    "it": "Modificatore difesa attivo",
+    "en": "Defence modifier active"
+  },
+  "regola.et.modificatore_difesa.min_difensori": {
+    "it": "Difensori minimi",
+    "en": "Minimum defenders"
+  },
+  "regola.et.modificatore_difesa.soglie": {
+    "it": "Fasce del modificatore difesa",
+    "en": "Defence modifier bands"
+  },
+  "regola.et.moduli": {
+    "it": "Moduli ammessi",
+    "en": "Allowed formations"
+  },
+  "regola.et.panchina.posti": {
+    "it": "Posti in panchina per ruolo",
+    "en": "Bench places per role"
+  },
+  "regola.et.panchina.numero": {
+    "it": "Giocatori in panchina",
+    "en": "Bench players"
+  },
+  "regola.et.panchina.tipo": {
+    "it": "Ordine dei cambi",
+    "en": "Order of substitutions"
+  },
+  "regola.et.panchina.max_sostituzioni": {
+    "it": "Sostituzioni massime",
+    "en": "Maximum substitutions"
+  },
+  "regola.et.panchina.cambio_modulo": {
+    "it": "Cambio modulo nelle sostituzioni",
+    "en": "Formation change during substitutions"
+  },
+  "regola.et.crediti_iniziali": {
+    "it": "Crediti iniziali",
+    "en": "Starting credits"
+  },
+  "regola.et.rosa.P": {
+    "it": "Rosa: portieri",
+    "en": "Roster: goalkeepers"
+  },
+  "regola.et.rosa.D": {
+    "it": "Rosa: difensori",
+    "en": "Roster: defenders"
+  },
+  "regola.et.rosa.C": {
+    "it": "Rosa: centrocampisti",
+    "en": "Roster: midfielders"
+  },
+  "regola.et.rosa.A": {
+    "it": "Rosa: attaccanti",
+    "en": "Roster: forwards"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "info.novita": {
+    "it": "Novità",
+    "en": "What's new"
+  },
+  "info.versione": {
+    "it": "Versione",
+    "en": "Version"
+  },
+  "info.sorgente": {
+    "it": "Codice sorgente",
+    "en": "Source code"
+  }
+}

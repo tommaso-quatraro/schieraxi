@@ -1,0 +1,94 @@
+{
+  "admin.titolo": {
+    "it": "Amministrazione",
+    "en": "Administration"
+  },
+  "admin.invito_titolo": {
+    "it": "Nuovo invito",
+    "en": "New invitation"
+  },
+  "admin.invito_spiega": {
+    "it": "Un codice che vale una volta sola e per 7 giorni. L'etichetta serve a ricordare per chi era.",
+    "en": "A code that works once only and for 7 days. The label helps you remember who it was for."
+  },
+  "admin.etichetta": {
+    "it": "Etichetta",
+    "en": "Label"
+  },
+  "admin.nuovo_admin": {
+    "it": "Il nuovo account sarà amministratore",
+    "en": "The new account will be an administrator"
+  },
+  "admin.crea_invito": {
+    "it": "Crea l'invito",
+    "en": "Create the invitation"
+  },
+  "admin.crea_invito_no": {
+    "it": "Non riesco a creare l'invito",
+    "en": "I cannot create the invitation"
+  },
+  "admin.invito_esito": {
+    "it": "Invito per «{etichetta}», valido {giorni} giorni, una volta sola.",
+    "en": "Invitation for «{etichetta}», valid for {giorni} days, once only."
+  },
+  "admin.reset_titolo": {
+    "it": "Password dimenticata",
+    "en": "Forgotten password"
+  },
+  "admin.reset_spiega": {
+    "it": "Se qualcuno ha perso password e codice di recupero: un codice che vale 24 ore, una volta sola.",
+    "en": "If someone has lost both password and recovery code: a code that works for 24 hours, once only."
+  },
+  "admin.genera_codice": {
+    "it": "Genera il codice",
+    "en": "Generate the code"
+  },
+  "admin.reset_esito": {
+    "it": "Valido {ore} ore, una volta sola. Daglielo di persona: con questo codice sceglie una nuova password.",
+    "en": "Valid for {ore} hours, once only. Give it to them in person: with this code they choose a new password."
+  },
+  "admin.utenti_titolo": {
+    "it": "Utenti",
+    "en": "Users"
+  },
+  "admin.carico": {
+    "it": "Carico…",
+    "en": "Loading…"
+  },
+  "admin.utenti_riepilogo.one": {
+    "it": "{n} utente su {massimo} al massimo: {elenco}.",
+    "en": "{n} user out of a maximum of {massimo}: {elenco}."
+  },
+  "admin.utenti_riepilogo.other": {
+    "it": "{n} utenti su {massimo} al massimo: {elenco}.",
+    "en": "{n} users out of a maximum of {massimo}: {elenco}."
+  },
+  "admin.invito_manda": {
+    "it": "Manda all'amico questo link: apre la registrazione con il codice già scritto.",
+    "en": "Send your friend this link: it opens the sign-up with the code already filled in."
+  },
+  "admin.invito_condividi": {
+    "it": "Condividi l'invito",
+    "en": "Share the invitation"
+  },
+  "admin.invito_copia_messaggio": {
+    "it": "Copia il messaggio",
+    "en": "Copy the message"
+  },
+  "admin.invito_copiato": {
+    "it": "Messaggio copiato: incollalo nella chat con l'amico",
+    "en": "Message copied: paste it in the chat with your friend"
+  },
+  "admin.invito_codice_app": {
+    "it": "Se usa l'app per iPhone, il codice d'invito è {codice}.",
+    "en": "If they use the iPhone app, the invitation code is {codice}."
+  },
+  "admin.invito_messaggio": {
+    "it": "Ti invito su SchieraXI, l'app che ti consiglia la formazione del fantacalcio. Apri questo link e crea il tuo account (il codice d'invito è già dentro, vale {giorni} giorni): {link}",
+    "en": "I'm inviting you to SchieraXI, the app that suggests your fantasy football lineup. Open this link and create your account (the invitation code is already inside, valid for {giorni} days): {link}"
+  },
+  "admin.admin_breve": {
+    "it": " (admin)",
+    "en": " (admin)"
+  }
+}

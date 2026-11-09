@@ -1,0 +1,42 @@
+{
+  "bonus.rigore_segnato": {
+    "it": "Rigore segnato",
+    "en": "Penalty scored"
+  },
+  "bonus.assist": {
+    "it": "Assist",
+    "en": "Assist"
+  },
+  "bonus.rigore_parato": {
+    "it": "Rigore parato",
+    "en": "Penalty saved"
+  },
+  "bonus.rigore_sbagliato": {
+    "it": "Rigore sbagliato",
+    "en": "Penalty missed"
+  },
+  "bonus.autogol": {
+    "it": "Autogol",
+    "en": "Own goal"
+  },
+  "bonus.gol_subito_portiere": {
+    "it": "Gol subito (portiere)",
+    "en": "Goal conceded (goalkeeper)"
+  },
+  "bonus.portiere_imbattuto": {
+    "it": "Portiere imbattuto",
+    "en": "Clean sheet (goalkeeper)"
+  },
+  "bonus.ammonizione": {
+    "it": "Ammonizione",
+    "en": "Yellow card"
+  },
+  "bonus.espulsione": {
+    "it": "Espulsione",
+    "en": "Red card"
+  },
+  "bonus.mvp": {
+    "it": "Migliore in campo",
+    "en": "Man of the match"
+  }
+}

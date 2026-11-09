@@ -1,0 +1,38 @@
+{
+  "live.aggiornamento": {
+    "it": "In aggiornamento",
+    "en": "Updating"
+  },
+  "live.intervallo": {
+    "it": "Intervallo",
+    "en": "Half-time"
+  },
+  "live.finita": {
+    "it": "Finita",
+    "en": "Full time"
+  },
+  "live.rinviata": {
+    "it": "Rinviata",
+    "en": "Postponed"
+  },
+  "live.sospesa": {
+    "it": "Sospesa",
+    "en": "Suspended"
+  },
+  "live.autogol": {
+    "it": "autogol",
+    "en": "own goal"
+  },
+  "live.rigore": {
+    "it": "rig.",
+    "en": "pen."
+  },
+  "live.rigore_sbagliato": {
+    "it": "rig. sbagliato",
+    "en": "missed pen."
+  },
+  "live.assist": {
+    "it": "ass. {nome}",
+    "en": "assist {nome}"
+  }
+}
