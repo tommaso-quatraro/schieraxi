@@ -1,0 +1,7 @@
+# Chiavi di fanta/testi/tit.json che usa l'iPhone: lo stato della partita sotto la pedina del campo (EsitoPedina). #495
+# Le parole della titolarità (tit.titolare, tit.ballottaggio, …) le confrontano anche i test del widget: restano fuori per ora.
+tit.st_fatto
+tit.st_senza_voto
+tit.st_attesa_voti
+tit.st_in_corso
+tit.st_rinviata

@@ -53,7 +53,7 @@ struct DemoSceltaComeOggiTests {
     func consigliataNonSalvata() async throws {
         let web = try TestiWeb()
         let titoloWeb = try web.italiano("oggi.tua_formazione")
-        let rigaWeb = try web.italiano("formazione.stato_consigliata")
+        let rigaWeb = Catalogo.Formazione.statoConsigliata
         let s = try demo("oggi")
         let tua = try await oggi(s).formazione?.tuaScelta ?? false
         #expect(TestiOggi.titoloFormazione(tuaScelta: tua) == titoloWeb)

@@ -1,0 +1,62 @@
+# Chiavi di fanta/testi/formazione.json che usa l'iPhone (Formazione, riga dello stato, sostituzione). #495
+# Dopo una modifica: python script/testi.py --scrivi (nasce ios/Sources/Support/Catalogo/Catalogo+Formazione.swift).
+
+# intestazione (TempiLega.didascalia) e stato della scelta (StatoScelta): le provano i test della Formazione
+formazione.la_tua_scelta
+formazione.modulo_consigliato
+formazione.modulo_scelto
+formazione.alle
+formazione.giorno_alle
+formazione.stato_consigliata
+formazione.stato_altra
+formazione.stato_salvata
+formazione.stato_salvata_quando
+formazione.stato_modificata
+formazione.stato_modificata_quando
+formazione.stato_mano
+formazione.stato_non_valida
+formazione.stato_chiusa
+formazione.stato_chiusa_tua
+formazione.stato_chiusa_non_valida
+
+# FormazioneView
+formazione.calcolo
+formazione.punti_attesi
+formazione.mancano_probabili_formazioni
+formazione.stai_guardando_formazione
+formazione.torna_alla_tua
+formazione.titolari
+formazione.tocca_sostituire
+formazione.tocca_confronto
+formazione.confronta_aria
+formazione.ballottaggio_alternative_vic
+formazione.quasi_pari
+formazione.quest_ordine_entra
+formazione.fuori_dalla
+formazione.senza_dati
+formazione.numero_sulla_maglia
+formazione.legenda_apri
+formazione.copia_formazione
+formazione.condividi_immagine
+formazione.modifica_mano
+formazione.modificata_mano
+formazione.propone
+formazione.modulo_fissato
+formazione.rispetto
+formazione.salva_come_mia
+formazione.salva_modifiche
+formazione.giocatori_dello_stesso
+formazione.nessun_altro_giocatore
+formazione.al_posto_di
+
+# RigaStatoScelta
+formazione.salva_questa
+formazione.annulla_modifiche
+formazione.torna_alla_consigliata
+
+# FormazioneViewModel
+formazione.chiusa
+formazione.bloccati
+formazione.copiata
+formazione.non_riesco_creare
+formazione.salvata_come_tua

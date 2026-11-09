@@ -58,7 +58,7 @@ struct AnticipiBloccatiTests {
 
     @Test("La riga sotto i titolari: la frase della web, solo in modifica a mano e solo se qualcuno è fermo")
     func riga() async throws {
-        let web = try TestiWeb().italiano("formazione.bloccati")
+        let web = Catalogo.Formazione.bloccati
         let (vm, f) = try await caricata()
         #expect(vm.notaFermi == nil)
         vm.iniziaModificaManuale(f)
