@@ -4,7 +4,7 @@ import SwiftUI
 
 extension AvvisiServerView {
     /// Il server ha spento le ore tranquille (inizio e fine alla stessa ora): la frase della web (`avv.avevi_scelto_ore`).
-    static let testoOreTranquilleSpente = "Avevi scelto le ore tranquille con inizio e fine alla stessa ora: non valgono, le ho spente. Riaccendile scegliendo due ore diverse (per esempio dalle 23 alle 7)."
+    static let testoOreTranquilleSpente = Catalogo.Avv.aveviSceltoOre
 }
 
 struct AvvisiServerView: View {
@@ -41,7 +41,7 @@ struct AvvisiServerView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                             if vm.puoRiprovare {
                                 Button { Task { await vm.riprova() } } label: {
-                                    Label("Riprova", systemImage: "arrow.clockwise").frame(minHeight: 44)
+                                    Label(Catalogo.Comune.riprova, systemImage: "arrow.clockwise").frame(minHeight: 44)
                                 }
                                 .accessibilityHint("Prova di nuovo a salvare la modifica degli avvisi")
                             }
@@ -73,7 +73,7 @@ struct AvvisiServerView: View {
                         .tint(Color.verde)
                         .frame(minHeight: 44)
                     } header: {
-                        Text("Quali avvisi").foregroundStyle(Color.testoSecondario)
+                        Text(Catalogo.Asp.avvisiTitolo).foregroundStyle(Color.testoSecondario)
                     } footer: {
                         // Con gli account l'app nativa non riceve gli avvisi del server: lo si dice QUI, accanto agli interruttori,
                         // non in una sezione più in basso (sembrava che gli interruttori valessero per questo telefono).
@@ -103,7 +103,7 @@ struct AvvisiServerView: View {
                     Section {
                         Text("Dispositivi con avvisi web attivi: \(s.dispositivi ?? 0). Canale degli avvisi: \(s.canale == true ? "attivo" : "non configurato"). Con l'Apple ID gratuito l'app nativa non può ricevere notifiche push: gli avvisi del server arrivano con ntfy o dalla web app installata dalla Home.")
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
-                        Button("Manda un avviso di prova") { Task { await vm.provaAvviso() } }.frame(minHeight: 44)
+                        Button(Catalogo.Avv.mandaAvvisoProva) { Task { await vm.provaAvviso() } }.frame(minHeight: 44)
                         if let messaggio = vm.messaggio { Text(messaggio).font(.footnote) }
                     }
                     }
@@ -143,11 +143,11 @@ struct AvvisiServerView: View {
             .tint(Color.verde)
             .frame(minHeight: 44)
             if vm.impostazioni?.silenzio == true {
-                selettoreOra("Dalle", \.silenzio_da, predefinita: OreTranquille.predefinite.da)
-                selettoreOra("Alle", \.silenzio_a, predefinita: OreTranquille.predefinite.a)
+                selettoreOra(Catalogo.Avv.dalle, \.silenzio_da, predefinita: OreTranquille.predefinite.da)
+                selettoreOra(Catalogo.Avv.alle, \.silenzio_a, predefinita: OreTranquille.predefinite.a)
             }
         } header: {
-            Text("Ore tranquille").foregroundStyle(Color.testoSecondario)
+            Text(TestiImpostazioni.oreTranquille).foregroundStyle(Color.testoSecondario)
         } footer: { Group {
             if let ore = vm.impostazioni?.oreTranquille, ore.attive {
                 Text(ore.da == ore.a ? "Con la stessa ora di inizio e di fine non c'è nessun silenzio." : "Silenzio \(ore.descrizione) (ora italiana).")

@@ -30,8 +30,7 @@ oggi.data_da_definire
 oggi.partita_in_corso
 oggi.n_titolari
 
-# Giornata in corso, finita e «già iniziata» (TestiFase in Domain/FasiGiornata.swift: lì i testi sono ancora scritti a mano,
-# i test li confrontano con queste costanti)
+# Giornata in corso, finita e «già iniziata» (TestiFase in Domain/FasiGiornata.swift)
 oggi.punti_finora
 oggi.a_fine_giornata
 oggi.attesi_prima
@@ -61,7 +60,7 @@ oggi.gia_iniziata
 oggi.gia_iniziata_testo
 oggi.prepara_prossima
 
-# Partita rinviata (TestiRinvio in Domain/PartiteRinviate.swift, come sopra)
+# Partita rinviata e recuperi che mancano (TestiRinvio in Domain/PartiteRinviate.swift)
 oggi.rinvio_titolo_1
 oggi.rinvio_titolo_n
 oggi.rinvio_recupero

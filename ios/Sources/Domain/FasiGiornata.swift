@@ -30,27 +30,22 @@ extension Oggi {
 }
 
 /// I testi delle fasi della giornata, con le parole della web (`cardInCorso`, `valoreLive`, `cardSenzaFormazione` e `cardRiepilogo`
-/// di `fanta/web/app.js`, chiavi `oggi.*` di `fanta/web/testi.js`, #436). La prova è `OggiFasiComeLaWebTests`, che li confronta con
-/// `testi.js`: una parola cambiata su un lato solo fa fallire il test.
+/// di `fanta/web/app.js`, #436), presi dal catalogo comune (chiavi `oggi.*`, `Catalogo.Oggi`, #556). Le provano
+/// `OggiFasiComeLaWebTests` (i valori) e `RestiDalCatalogoTests` (nessun testo del catalogo scritto qui a mano).
 enum TestiFase {
     // MARK: giornata in corso
 
-    /// `oggi.punti_finora`
-    static let puntiFinora = "Punti fatti finora"
-    /// `oggi.a_fine_giornata`
-    static let aFineGiornata = "A fine giornata"
+    static let puntiFinora = Catalogo.Oggi.puntiFinora
+    static let aFineGiornata = Catalogo.Oggi.aFineGiornata
     /// «≈ 77,7», come la web: i punti previsti a fine giornata sono una stima.
     static func previsti(_ punti: Double?) -> String { "≈ \(Formato.punti(punti))" }
-    /// `oggi.attesi_prima`: «attesi prima: 65,5».
-    static func attesiPrima(_ punti: Double) -> String { "attesi prima: \(Formato.punti(punti))" }
-    /// `oggi.dalla_panchina`, sotto chi va a punteggio entrando dalla panchina.
-    static let dallaPanchina = "entrato dalla panchina"
-    /// `oggi.cambi_panchina`
-    static let cambiPanchina = "Cambi dalla panchina"
-    /// `oggi.tutti_giocato`
-    static let tuttiGiocato = "Hanno giocato tutti: mancano solo i voti ufficiali."
-    /// `oggi.nessun_sostituto`
-    static let nessunSostituto = "nessun sostituto"
+    /// «attesi prima: 65,5».
+    static func attesiPrima(_ punti: Double) -> String { Catalogo.Oggi.attesiPrima(n: Formato.punti(punti)) }
+    /// Sotto chi va a punteggio entrando dalla panchina.
+    static let dallaPanchina = Catalogo.Oggi.dallaPanchina
+    static let cambiPanchina = Catalogo.Oggi.cambiPanchina
+    static let tuttiGiocato = Catalogo.Oggi.tuttiGiocato
+    static let nessunSostituto = Catalogo.Oggi.nessunSostituto
 
     /// Il fantavoto: una cifra decimale, due se servono (6,25).
     static func fantavoto(_ v: Double) -> String {
@@ -65,12 +60,12 @@ enum TestiFase {
         case "fatto": return g.fantavoto.map(fantavoto) ?? Formato.punti(nil)
         case "da_giocare":
             if let d = Quando.data(g.data) { return Quando.relativa(d, adesso: adesso) }
-            return "Da giocare"
-        case "senza_voto": return "Senza voto"
-        case "attesa_voti": return "Voto in arrivo"
-        case "in_corso": return "Partita in corso"
-        case "rinviata": return "Rinviata"
-        default: return "Da giocare"           // come la web: uno stato sconosciuto vale «Da giocare»
+            return Catalogo.Oggi.stDaGiocare
+        case "senza_voto": return Catalogo.Oggi.stSenzaVoto
+        case "attesa_voti": return Catalogo.Oggi.stAttesaVoti
+        case "in_corso": return Catalogo.Oggi.stInCorso
+        case "rinviata": return Catalogo.Oggi.stRinviata
+        default: return Catalogo.Oggi.stDaGiocare           // come la web: uno stato sconosciuto vale «Da giocare»
         }
     }
 
@@ -93,11 +88,7 @@ enum TestiFase {
     /// deve ancora giocare o sta giocando (`docs/API.md`): non i voti che mancano. Nil se il numero non c'è (server vecchio).
     static func ancora(_ n: Int?) -> String? {
         guard let n, n >= 0 else { return nil }
-        switch n {
-        case 0: return tuttiGiocato
-        case 1: return "1 giocatore deve ancora giocare"
-        default: return "\(n) giocatori devono ancora giocare"
-        }
+        return n == 0 ? tuttiGiocato : Catalogo.Oggi.ancoraDaGiocare(n)
     }
 
     /// Un cambio dalla panchina come la web: «Rossi → Bianchi» o «Rossi → nessun sostituto». Nil senza chi esce (la web lo salta).
@@ -113,17 +104,14 @@ enum TestiFase {
         return "Esce \(esce.nome), \(entra), \(etichettaCambio(c))"
     }
 
-    /// `oggi.cambio_fatto` o `oggi.cambio_probabile`.
-    static func etichettaCambio(_ c: CambioPanchina) -> String { c.certa ? "già fatto" : "probabile" }
+    /// «già fatto» o «probabile».
+    static func etichettaCambio(_ c: CambioPanchina) -> String { c.certa ? Catalogo.Oggi.cambioFatto : Catalogo.Oggi.cambioProbabile }
 
     // MARK: entrato a giornata iniziata (`senza_formazione`)
 
-    /// `oggi.gia_iniziata`
-    static let giaIniziata = "Questa giornata è già iniziata"
-    /// `oggi.gia_iniziata_testo`
-    static let giaIniziataTesto = "Sei arrivato a partite cominciate: questa la guardi e basta. Prepara la prossima."
-    /// `oggi.prepara_prossima`
-    static let preparaProssima = "Prepara la prossima"
+    static let giaIniziata = Catalogo.Oggi.giaIniziata
+    static let giaIniziataTesto = Catalogo.Oggi.giaIniziataTesto
+    static let preparaProssima = Catalogo.Oggi.preparaProssima
 
     // MARK: giornata finita
 
@@ -135,28 +123,27 @@ enum TestiFase {
     /// Il titolo della giornata finita, come la web (`oggi.giornata_finita`): «Giornata 8 · 11ª di Serie A: finita»; `voce`:
     /// la stessa frase per VoiceOver («Giornata 8, 11ª di Serie A: finita»). Nil se il numero di Serie A manca.
     static func giornataFinita(serieA: Int?, lega: Int?, voce: Bool = false) -> String? {
-        serieA.map { NomeGiornata(serieA: $0, lega: lega) }.map { "\(voce ? $0.voce : $0.intero): finita" }
+        serieA.map { NomeGiornata(serieA: $0, lega: lega) }.map { Catalogo.Oggi.giornataFinita(g: voce ? $0.voce : $0.intero) }
     }
 
-    /// Sopra i punti fatti: di chi è la formazione che ha contato (`oggi.la_tua_formazione` o `oggi.la_consigliata`).
-    static func formazioneDi(_ r: RiepilogoGiornata) -> String { r.formazioneDi == "tua" ? "La tua formazione" : "La consigliata" }
-    /// `oggi.punti_fatti`
-    static let puntiFatti = "punti fatti"
-    /// `oggi.punti_attesi`
-    static let puntiAttesi = "punti attesi"
-    /// `oggi.apri_diario`
-    static let apriDiario = "Apri il Diario"
+    /// Sopra i punti fatti: di chi è la formazione che ha contato («La tua formazione» o «La consigliata»).
+    static func formazioneDi(_ r: RiepilogoGiornata) -> String {
+        r.formazioneDi == "tua" ? Catalogo.Oggi.laTuaFormazione : Catalogo.Oggi.laConsigliata
+    }
+    static let puntiFatti = Catalogo.Oggi.puntiFatti
+    static let puntiAttesi = Catalogo.Oggi.puntiAttesi
+    static let apriDiario = Catalogo.Oggi.apriDiario
 
-    /// Come la web (`oggi.con_consigliata`): «Con la consigliata: 72,0 punti (66,1 attesi).», solo se hai schierato una formazione
-    /// tua e il server manda i punti della consigliata. Un numero che manca si scrive «–», come la web.
+    /// Come la web: «Con la consigliata: 72,0 punti (66,1 attesi).», solo se hai schierato una formazione tua e il server manda i
+    /// punti della consigliata. Un numero che manca si scrive «–», come la web.
     static func confronto(_ r: RiepilogoGiornata) -> String? {
         guard r.formazioneDi == "tua", let c = r.consigliata else { return nil }
-        return "Con la consigliata: \(Formato.punti(c.puntiFatti)) punti (\(Formato.punti(c.puntiAttesi)) attesi)."
+        return Catalogo.Oggi.conConsigliata(attesi: Formato.punti(c.puntiAttesi), fatti: Formato.punti(c.puntiFatti))
     }
 
-    /// `oggi.confronto_in_arrivo`, quando il Diario non ha ancora calcolato la giornata.
+    /// Quando il Diario non ha ancora calcolato la giornata.
     static func notaDiario(_ r: RiepilogoGiornata) -> String? {
-        r.nelDiario ? nil : "Il confronto con la consigliata arriva nel Diario."
+        r.nelDiario ? nil : Catalogo.Oggi.confrontoInArrivo
     }
 
     // MARK: prossima giornata
@@ -166,12 +153,14 @@ enum TestiFase {
     /// scrive la riga). Si può già preparare se le probabili ci sono o se `prepara_da` manca o è passato.
     static func prossima(_ p: ProssimaGiornata, adesso: Date = Orologio.adesso()) -> String? {
         guard let scadenza = Quando.data(p.scadenza) else { return nil }
-        let chiude = "la formazione si chiude \(Quando.relativa(scadenza, adesso: adesso))."
+        let quando = Quando.relativa(scadenza, adesso: adesso)
         let nome = p.giornata.map { NomeGiornata(serieA: $0, lega: p.giornataLega).intero } ?? p.giornataLega.map { "Giornata \($0)" }
-        let testa = nome.map { "\($0): \(chiude)" } ?? chiude.primaMaiuscola
+        // senza il numero (server strano) la stessa frase senza «Giornata N: » davanti, con la maiuscola
+        let testa = nome.map { Catalogo.Oggi.prossimaChiude(g: $0, quando: quando) }
+            ?? String(Catalogo.Oggi.prossimaChiude(g: "", quando: quando).drop(while: { !$0.isLetter })).primaMaiuscola
         let da = Quando.data(p.preparaDa)
         let gia = p.conProbabili || da.map { $0 <= adesso } ?? true
-        guard !gia, let da else { return "\(testa) Puoi già prepararla." }
-        return "\(testa) Conviene prepararla da \(Quando.relativa(da, adesso: adesso)), quando escono le probabili formazioni."
+        guard !gia, let da else { return "\(testa) \(Catalogo.Oggi.prossimaPronta)" }
+        return "\(testa) \(Catalogo.Oggi.prossimaDa(quando: Quando.relativa(da, adesso: adesso)))"
     }
 }

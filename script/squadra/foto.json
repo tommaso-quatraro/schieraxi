@@ -1,5 +1,5 @@
 {
-  "_leggimi": "Dai file iOS cambiati alle schermate da fotografare (nomi di ios/scripts/screenshot.sh, variabile TUTTE). Per ogni file vince la PRIMA regola con un percorso che corrisponde (come aree.json: «**» qualunque cosa, «*» dentro una cartella). «principali» = le schermate da guardare quando cambia una parte comune. «widget»: file che chiedono anche le foto dei widget. «ignora»: file che non cambiano l'aspetto. Un file iOS che non sta da nessuna parte dà un avviso: aggiungi una regola qui. Le regole con «ripiego» sono larghe (tutta una sezione o le principali): un file di ios/Sources/Presentation può finirci solo se è scritto in «ripiego_dichiarato» (parti usate da più schermate); per gli altri si scrive una regola per file o per cartella stretta (lo controlla un test).",
+  "_leggimi": "Dai file iOS cambiati alle schermate da fotografare (nomi di ios/scripts/screenshot.sh, variabile TUTTE). Per ogni file vince la PRIMA regola con un percorso che corrisponde (come aree.json: «**» qualunque cosa, «*» dentro una cartella). «principali» = le schermate da guardare quando cambia una parte comune. «widget»: file che chiedono anche le foto dei widget. «ignora»: file che non cambiano l'aspetto (gli elenchi ios/testi/*.txt da soli no: i file Swift che generano stanno in ios/Sources/Support/Catalogo e hanno la loro regola).Un file iOS che non sta da nessuna parte dà un avviso: aggiungi una regola qui. Le regole con «ripiego» sono larghe (tutta una sezione o le principali): un file di ios/Sources/Presentation può finirci solo se è scritto in «ripiego_dichiarato» (parti usate da più schermate); per gli altri si scrive una regola per file o per cartella stretta (lo controlla un test).",
   "principali": ["oggi", "formazione", "mercato-consigliati", "mercato-classifica", "scambi", "lega", "giocatore"],
   "regole": [
     {"percorsi": ["ios/Sources/Presentation/Oggi/**", "ios/Sources/Domain/FasiGiornata.swift", "ios/Sources/Domain/PartiteRinviate.swift", "ios/Sources/Domain/DirettaLogica.swift"],
@@ -67,5 +67,5 @@
     "ios/Sources/Presentation/ViewModelBase.swift"
   ],
   "widget": ["ios/WidgetSources/**", "ios/AnteprimaWidget/**", "ios/Resources/Widget/**", "ios/Sources/Support/WidgetRiassunto.swift"],
-  "ignora": ["ios/Tests/**", "ios/docs/**", "ios/fotografie/**", "ios/*.md"]
+  "ignora": ["ios/Tests/**", "ios/docs/**", "ios/fotografie/**", "ios/*.md", "ios/testi/*.txt"]
 }

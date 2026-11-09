@@ -17,8 +17,9 @@ extension String {
     var dicePerNessunaRosa: Bool { localizedCaseInsensitiveContains("rosa importata") }
 }
 
-/// Dopo l'accesso, una lega nuova non ha rose: la schermata spiega cosa fare. L'importazione delle rose c'è anche nell'app
-/// (Lega > Aggiorna le rose); per il resto della configurazione (regole, nome della squadra) si usa la web app dal browser.
+/// Dopo l'accesso, una lega nuova non ha rose: la schermata spiega cosa fare, con le parole della carta della web
+/// (`cartaSenzaRose`: `comune.prima_rose`, `comune.importa_spiega`, `comune.importa_rose`). L'importazione delle rose c'è anche
+/// nell'app (Lega > Aggiorna le rose); per il resto della configurazione (regole, nome della squadra) si usa la web app dal browser.
 struct ConfiguraLegaVista: View {
     @Environment(\.apriImportazione) private var apriImportazione
     @Environment(\.openURL) private var apriLink
@@ -27,11 +28,11 @@ struct ConfiguraLegaVista: View {
         ContentUnavailableView {
             VStack(spacing: 10) {
                 Marchio(lato: 64).accessibilityHidden(true)
-                Text("Manca la tua squadra").font(.title2.bold()).multilineTextAlignment(.center)
+                Text(Catalogo.Comune.primaRose).font(.title2.bold()).multilineTextAlignment(.center)
             }
             .accessibilityElement(children: .combine)
         } description: {
-            Text("Mister, qui non ci sono ancora le rose. Incolla la pagina delle rose o scegli il file della lega (Excel, CSV o testo): prima di salvare controlli cosa ho capito e scegli la tua squadra. Basta anche solo la tua rosa. Poi controlla le regole in Altro > Regole.")
+            Text(Catalogo.Comune.importaSpiega)
         } actions: {
             Button {
                 apriImportazione()

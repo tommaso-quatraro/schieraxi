@@ -28,4 +28,6 @@ mercato.non_gioca
 mercato.bozza_copiata
 mercato.come_legge
 mercato.annulla
+
+# Righe dei giocatori e della rosa a partita finita: «fantavoto» sotto il voto preso (RigaGiocatore, RigaRosa)
 mercato.fantavoto

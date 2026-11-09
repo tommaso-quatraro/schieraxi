@@ -110,6 +110,8 @@ struct RestiDalCatalogoTests {
         Caso(file: "Sources/Presentation/Lega/ImportaRoseView.swift",
              testi: [Catalogo.Lega.esportaRoseExcel],
              usa: ["Catalogo.Lega.esportaRoseExcel"]),
+        Caso(file: "Sources/Support/RigaGiocatore.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
+        Caso(file: "Sources/Presentation/Lega/RigaRosa.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
     ]
 
     /// Un pezzo fisso più corto di così potrebbe stare per caso in un altro testo.
