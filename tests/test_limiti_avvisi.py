@@ -46,25 +46,28 @@ class Orologio:
         return self.t
 
 
-def _leggi_richiesta(conn):
+def _leggi_richiesta(conn) -> bool:
+    """Legge una richiesta intera; False se la connessione si chiude prima (nessun avviso è arrivato)."""
     dati = b""
     while b"\r\n\r\n" not in dati:
         pezzo = conn.recv(4096)
         if not pezzo:
-            return
+            return False
         dati += pezzo
     testa, _, corpo = dati.partition(b"\r\n\r\n")
     lunghezza = next((int(r.split(b":")[1]) for r in testa.split(b"\r\n") if r.lower().startswith(b"content-length:")), 0)
     while len(corpo) < lunghezza:
         pezzo = conn.recv(4096)
         if not pezzo:
-            return
+            return False
         corpo += pezzo
+    return True
 
 
 class Servizio:
     """Un finto servizio di notifica su 127.0.0.1 (http semplice: il certificato non c'entra con i tempi).
-    `lento`: risponde un byte alla volta; `ok`: 201 subito; `scaduta`: 410 subito (iscrizione da togliere)."""
+    `lento`: risponde un byte alla volta; `ok`: 201 subito; `scaduta`: 410 subito (iscrizione da togliere);
+    `rifiuta`: 503 subito (servizio che non accetta l'avviso)."""
 
     def __init__(self, orologio, modo):
         self.orologio, self.modo = orologio, modo
@@ -87,7 +90,8 @@ class Servizio:
     def _rispondi(self, conn):
         with conn:
             conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            _leggi_richiesta(conn)
+            if not _leggi_richiesta(conn):
+                return
             self.arrivi.append(self.orologio.t)
             if self.modo == "lento":
                 risposta = (b"HTTP/1.1 201 Created\r\nX-Lento: " + b"a" * BYTE_LENTI)[:BYTE_LENTI]
@@ -100,7 +104,7 @@ class Servizio:
                     time.sleep(0.01)
                 self.finito_da_solo = True
                 return
-            stato = {"ok": b"201 Created", "scaduta": b"410 Gone"}[self.modo]
+            stato = {"ok": b"201 Created", "scaduta": b"410 Gone", "rifiuta": b"503 Service Unavailable"}[self.modo]
             conn.sendall(b"HTTP/1.1 " + stato + b"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
 
     def chiudi(self):
@@ -116,19 +120,28 @@ def orologio(monkeypatch):
 
 @pytest.fixture
 def servizi(orologio, monkeypatch, tmp_path):
-    """servizi(nome_del_sito="lento"|"ok"|"scaduta"): un servizio finto per ogni nome; la connessione dell'invio va lì."""
+    """servizi(nome_del_sito="lento"|"ok"|"scaduta"|"rifiuta"): un servizio finto per ogni nome; la connessione dell'invio va lì.
+    `servizi.collegamento_lento`: i siti il cui collegamento (con la stretta di mano TLS) dura 25 secondi."""
     monkeypatch.setattr(push, "FILE_ISCRIZIONI", tmp_path / "push.json")       # push.log nella cartella temporanea
     attivi: dict[str, Servizio] = {}
+    lenti: set[str] = set()
 
     class Locale(http.client.HTTPConnection):
         def __init__(self, host, ip, porta, timeout):
             super().__init__("127.0.0.1", attivi[host].porta, timeout=timeout)
+            self._sito = host
+
+        def connect(self):
+            super().connect()
+            if self._sito in lenti:
+                orologio.t += 25
     monkeypatch.setattr(scarica_immagine, "_Connessione", Locale)
 
     def crea(**per_sito):
         for sito, modo in per_sito.items():
             attivi[f"{sito}.example.org"] = Servizio(orologio, modo)
         return {sito: attivi[f"{sito}.example.org"] for sito in per_sito}
+    crea.collegamento_lento = lenti
     yield crea
     for s in attivi.values():
         s.chiudi()
@@ -184,6 +197,30 @@ def test_invio_normale_arriva_e_le_iscrizioni_scadute_si_tolgono(tmp_path, servi
     assert invia(tmp_path, f) == 1
     assert len(s["ok"].arrivi) == 1 and len(s["vecchia"].arrivi) == 1
     assert [i["endpoint"] for i in push.iscrizioni(f)] == ["https://ok.example.org/push/abc"]
+
+
+def test_un_rifiuto_del_servizio_resta_nel_registro(tmp_path, servizi):
+    """Un servizio che rifiuta (per esempio 403 dopo che le chiavi del server sono cambiate, o 503) non toglie l'iscrizione ma
+    lascia una riga in push.log, con il codice e il sito mascherato: senza, un guasto di tutti gli avvisi non lascerebbe traccia."""
+    servizi(giu="rifiuta")
+    f = tmp_path / "iscrizioni.json"
+    scrivi_iscrizioni(f, "giu")
+    assert invia(tmp_path, f) == 0
+    assert len(push.iscrizioni(f)) == 1
+    log = (tmp_path / "push.log").read_text(encoding="utf-8")
+    assert "Rifiutata 503 (giu.example.org#" in log and "/push/abc" not in log
+
+
+def test_collegamento_oltre_il_tempo_l_avviso_non_parte(tmp_path, servizi, orologio):
+    """Collegamento e stretta di mano TLS finiti dopo la scadenza: l'avviso non si manda più. Altrimenti arriverebbe sul telefono
+    ma risulterebbe «non consegnato», e al giro dopo arriverebbe una seconda volta."""
+    s = servizi(ok="ok")["ok"]
+    servizi.collegamento_lento.add("ok.example.org")
+    f = tmp_path / "iscrizioni.json"
+    scrivi_iscrizioni(f, "ok")
+    assert invia(tmp_path, f) == 0
+    assert s.arrivi == []                                                  # la richiesta non è mai partita
+    assert "TimeoutError (ok.example.org#" in (tmp_path / "push.log").read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------- un destinatario lento non ferma gli altri

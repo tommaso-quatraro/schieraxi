@@ -216,9 +216,10 @@ class _RispostaEntro(http.client.HTTPResponse):
 class SessioneFissata:
     """Al posto di `requests.Session` per pywebpush: invia il POST all'indirizzo IP GIA' controllato (verificando il certificato del nome),
     senza seguire reindirizzamenti, senza proxy dell'ambiente e senza una seconda risoluzione del nome.
-    Con `fine` (sull'orologio `_orologio`) l'invio sta entro quel momento: collegamento e stretta di mano TLS (il tempo massimo del
-    socket vale per tutta la stretta di mano), richiesta e risposta, anche goccia a goccia. `chiudi()` interrompe le connessioni
-    ancora aperte: chi manda l'avviso non le aspetta oltre."""
+    Con `fine` (sull'orologio `_orologio`) l'invio sta entro quel momento. Collegamento e stretta di mano TLS hanno il tempo che resta
+    (il tempo massimo del socket vale per tutta la stretta di mano); se finiscono dopo la scadenza la richiesta non parte (un avviso
+    arrivato ma contato come non consegnato arriverebbe due volte). Poi richiesta e risposta, anche goccia a goccia, entro la stessa
+    scadenza. `chiudi()` interrompe le connessioni ancora aperte: chi manda l'avviso non le aspetta oltre."""
 
     def __init__(self, fine: float | None = None):
         self.fine = fine
@@ -259,6 +260,12 @@ class SessioneFissata:
                     raise TimeoutError("Tempo dell'invio finito")
                 self._aperte.add(conn)
             try:
+                if self.fine is not None:
+                    conn.connect()                         # collegamento e stretta di mano TLS, poi si ricontrolla il tempo
+                    conn.sock.settimeout(self._tempo(timeout))      # scadenza passata: TimeoutError, la richiesta non parte
+                    with self._blocco:
+                        if self._chiusa:
+                            raise TimeoutError("Tempo dell'invio finito")
                 conn.request("POST", percorso, body=data, headers={**(headers or {}), "Connection": "close"})
                 r = conn.getresponse()
                 return _Risposta(r.status, getattr(r, "reason", ""), r.read(65536).decode("utf-8", "replace"), r.headers)
@@ -345,7 +352,8 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
     sessione = SessioneFissata(fine=_orologio() + limiti.valore("MAX_SECONDI_INVIO"))
 
     def a_uno(s: dict) -> tuple[str, str]:
-        """Un dispositivo: ("consegnata" | "scaduta" | "rifiutata" | "ignorata" | "errore", tipo dell'errore). Mai eccezioni."""
+        """Un dispositivo: ("consegnata" | "scaduta" | "rifiutata" | "ignorata" | "errore", dettaglio per il registro: codice del
+        rifiuto o tipo dell'errore). Mai eccezioni."""
         try:
             if not indirizzo_consentito(s["endpoint"]):
                 return "ignorata", ""
@@ -353,7 +361,8 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
                     ttl=3600, headers={"Urgency": "high" if priorita >= 4 else "normal"}, timeout=15, requests_session=sessione)
             return "consegnata", ""
         except WebPushException as e:
-            return ("scaduta" if getattr(e.response, "status_code", None) in (404, 410) else "rifiutata"), ""
+            codice = getattr(e.response, "status_code", None)
+            return ("scaduta", "") if codice in (404, 410) else ("rifiutata", str(codice or "?"))
         except Exception as e:  # noqa: BLE001 - un dispositivo che non risponde non deve fermare gli altri
             return "errore", type(e).__name__          # mai il testo dell'errore: puo' contenere il percorso segreto
 
@@ -366,15 +375,17 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
         esecutore.shutdown(wait=False, cancel_futures=True)
     consegnate, scadute = 0, []
     for s, futuro in zip(lista, futuri):              # registro e iscrizioni si scrivono da qui, uno alla volta
-        esito, errore = futuro.result() if futuro.done() and not futuro.cancelled() else ("errore", "TimeoutError")
+        esito, dettaglio = futuro.result() if futuro.done() and not futuro.cancelled() else ("errore", "TimeoutError")
         if esito == "consegnata":
             consegnate += 1
         elif esito == "scaduta":
             scadute.append(s["endpoint"])
         elif esito == "ignorata":
             _annota(f"Iscrizione ignorata (indirizzo non pubblico o non valido): {maschera(s['endpoint'])}")
-        elif esito == "errore":
-            _annota(f"{errore} ({maschera(s['endpoint'])})")
+        elif esito == "rifiutata":                     # per esempio 403 a tutti dopo un cambio delle chiavi: deve restare traccia
+            _annota(f"Rifiutata {dettaglio} ({maschera(s['endpoint'])})")
+        else:
+            _annota(f"{dettaglio} ({maschera(s['endpoint'])})")
     for ep in scadute:
         togli(ep, percorso)
     return consegnate
