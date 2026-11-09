@@ -19,6 +19,9 @@ import comune
 ETICHETTE = ("P1", "dall-utente")
 TITOLI_ROSSI = ("CI: main rosso", "Collaudo della prova", "La prova non si aggiorna")
 ESITI_BUONI = {"success", "skipped", "cancelled"}      # «annullato» non è «fallito» (CLAUDE.md)
+# Il nome del job che collauda davvero (`name:` del job `collauda` in .github/workflows/collaudo-prova.yml): una corsa
+# «success» senza questo job riuscito (segreti mancanti = «spento», versione già collaudata = «salta») non è un collaudo.
+JOB_COLLAUDO = "Collaudo delle schermate"
 BUCO_MASSIMO = timedelta(hours=2)
 LIMITE = 1000                                           # il massimo della ricerca di GitHub: arrivarci = risultati tagliati
 CAMPI_CORSE = "databaseId,createdAt,conclusion,url"
@@ -68,9 +71,18 @@ def _motivi_issue(dal: datetime, al: datetime, issue: list[dict]) -> list[str]:
     return motivi
 
 
-def _motivi_corse(dal: datetime, al: datetime, corse: list[dict], nome: str) -> tuple[list[str], int]:
-    """Motivi delle corse rosse nella finestra e numero di corse nella finestra."""
-    motivi, dentro = [], 0
+def _nella_finestra(dal: datetime, al: datetime, c: dict) -> bool:
+    quando = _quando(c.get("createdAt"))
+    return quando is not None and dal <= quando <= al
+
+
+def _riuscita(c: dict) -> bool:
+    return (c.get("conclusion") or "").lower() == "success"
+
+
+def _motivi_corse(dal: datetime, al: datetime, corse: list[dict], nome: str) -> list[str]:
+    """Motivi delle corse rosse nella finestra (e di quelle con la data illeggibile)."""
+    motivi = []
     for c in sorted(corse, key=lambda x: str(x.get("createdAt"))):
         quando = _quando(c.get("createdAt"))
         if quando is None:
@@ -78,12 +90,16 @@ def _motivi_corse(dal: datetime, al: datetime, corse: list[dict], nome: str) -> 
             continue
         if not dal <= quando <= al:
             continue
-        dentro += 1
         esito = (c.get("conclusion") or "").lower()
         if esito not in ESITI_BUONI:
             motivi.append(f"{nome}: corsa {c.get('databaseId')} del {_ora(quando, dal.tzinfo)} "
                           f"con esito «{esito or 'nessuno'}»{_dove(c)}")
-    return motivi, dentro
+    return motivi
+
+
+def _collaudata(dal: datetime, al: datetime, corse: list[dict]) -> bool:
+    """Almeno una corsa nella finestra, riuscita, con il job del collaudo riuscito (campo `collaudo`, messo da `raccogli`)."""
+    return any(_nella_finestra(dal, al, c) and _riuscita(c) and c.get("collaudo") == "success" for c in corse)
 
 
 def _motivi_giri(dal: datetime, al: datetime, giri: list[dict] | None) -> list[str]:
@@ -116,12 +132,12 @@ def verdetto(dal: datetime, al: datetime, issue: list[dict], corse_main: list[di
     if dal.utcoffset() is None or al.utcoffset() is None:
         raise ValueError("dal e al vogliono il fuso")
     motivi = _motivi_issue(dal, al, issue)
-    rosse, _ = _motivi_corse(dal, al, corse_main, "Controlli su main")
-    motivi += rosse
-    rosse, collaudi = _motivi_corse(dal, al, corse_collaudo, "Collaudo della prova")
-    motivi += rosse
-    if collaudi == 0:
-        motivi.append("la prova non è stata collaudata: nessuna corsa di «Collaudo della prova» nella finestra")
+    motivi += _motivi_corse(dal, al, corse_main, "Controlli su main")
+    motivi += _motivi_corse(dal, al, corse_collaudo, "Collaudo della prova")
+    if not _collaudata(dal, al, corse_collaudo):
+        motivi.append(f"la prova non è stata collaudata davvero nella finestra (collaudo saltato o spento): nessuna corsa "
+                      f"di «Collaudo della prova» con il job «{JOB_COLLAUDO}» riuscito; se nella finestra non esce una "
+                      "versione nuova, il collaudo si lancia a mano su main")
     motivi += _motivi_giri(dal, al, giri)
     return Verdetto(ok=not motivi, motivi=motivi)
 
@@ -133,7 +149,9 @@ def _z(d: datetime) -> str:
 
 
 def _lista(esegui: comune.Esegui, argomenti: list[str]) -> list[dict]:
-    risposta = comune.chiama_json(esegui, argomenti) or []
+    risposta = comune.chiama_json(esegui, argomenti)
+    if risposta is None:                                # «nessuna risposta» non è «nessun dato»: mai verde per omissione
+        raise comune.ErroreComando(f"«{' '.join(argomenti[:4])}» ha dato una risposta vuota")
     if not isinstance(risposta, list):
         raise comune.ErroreComando(f"«{' '.join(argomenti[:4])}» non ha risposto con una lista")
     if len(risposta) >= LIMITE:
@@ -142,12 +160,28 @@ def _lista(esegui: comune.Esegui, argomenti: list[str]) -> list[dict]:
     return risposta
 
 
+def _segna_collaudi(esegui: comune.Esegui, dal: datetime, al: datetime, corse: list[dict]) -> None:
+    """Dalla corsa riuscita più recente nella finestra legge i job e mette in `collaudo` l'esito del job del collaudo; si
+    ferma alla prima con il collaudo riuscito (basta un collaudo vero)."""
+    riuscite = [c for c in corse if _nella_finestra(dal, al, c) and _riuscita(c)]
+    for c in sorted(riuscite, key=lambda x: _quando(x["createdAt"]), reverse=True):
+        argomenti = ["gh", "run", "view", str(c["databaseId"]), "--json", "jobs"]
+        risposta = comune.chiama_json(esegui, argomenti)
+        if not isinstance(risposta, dict) or not isinstance(risposta.get("jobs"), list):
+            raise comune.ErroreComando(f"«{' '.join(argomenti[:4])}» non ha dato l'elenco dei job")
+        job = next((j for j in risposta["jobs"] if j.get("name") == JOB_COLLAUDO), None)
+        c["collaudo"] = (job.get("conclusion") or "").lower() if job else "manca"
+        if c["collaudo"] == "success":
+            return
+
+
 def raccogli(esegui: comune.Esegui, dal: datetime, al: datetime) -> dict:
     finestra = f"{_z(dal)}..{_z(al)}"
     corse = {}
     for chiave, workflow in (("corse_main", "test.yml"), ("corse_collaudo", "collaudo-prova.yml")):
         corse[chiave] = _lista(esegui, ["gh", "run", "list", "--workflow", workflow, "--branch", "main",
                                         "--created", finestra, "--limit", str(LIMITE), "--json", CAMPI_CORSE])
+    _segna_collaudi(esegui, dal, al, corse["corse_collaudo"])
     ricerche = [f"created:{finestra}"] + [f'"{t}" in:title created:<={_z(al)}' for t in TITOLI_ROSSI]
     issue: dict[int, dict] = {}
     for ricerca in ricerche:

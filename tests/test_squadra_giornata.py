@@ -34,7 +34,16 @@ def issue(n: int, titolo: str, creata: str, chiusa: str | None = None, etichette
 
 
 MAIN_VERDI = [corsa(1, "2026-11-15T14:00:00Z"), corsa(2, "2026-11-16T10:00:00Z", "skipped")]
-COLLAUDI_VERDI = [corsa(10, "2026-11-15T13:04:00Z"), corsa(11, "2026-11-16T13:04:00Z")]
+COLLAUDI_GH = [corsa(10, "2026-11-15T13:04:00Z"), corsa(11, "2026-11-16T13:04:00Z")]      # come li dà `gh run list`
+# dopo la raccolta: la corsa più recente riuscita ha l'esito del job «Collaudo delle schermate» (letto con `gh run view`)
+COLLAUDI_VERDI = [COLLAUDI_GH[0], dict(COLLAUDI_GH[1], collaudo="success")]
+
+
+def lavori(collaudo: str = "success") -> dict:
+    """Risposta di `gh run view <id> --json jobs` per una corsa di «Collaudo della prova»."""
+    return {"jobs": [{"name": "Serve un collaudo?", "conclusion": "success"},
+                     {"name": giornata.JOB_COLLAUDO, "conclusion": collaudo},
+                     {"name": "Apre o chiude le issue", "conclusion": "success"}]}
 
 
 def giudica(issue_=(), main=None, collaudi=None, giri="regolari"):
@@ -139,10 +148,10 @@ def test_confronto_fra_ora_locale_e_utc():
 
 # --- raccolta con gh (finto) e riga di comando ---
 
-def risposte(main=MAIN_VERDI, collaudi=COLLAUDI_VERDI, issue_=()) -> dict:
+def risposte(main=MAIN_VERDI, collaudi=COLLAUDI_GH, issue_=(), job="success") -> dict:
     gh_issue = [dict(i, labels=[{"name": e} for e in i["labels"]]) for i in issue_]
     return {"gh run list --workflow test.yml": main, "gh run list --workflow collaudo-prova.yml": collaudi,
-            "gh issue list": gh_issue}
+            "gh issue list": gh_issue, "gh run view": lavori(job)}
 
 
 def test_raccolta_usa_limit_e_created():
@@ -180,6 +189,49 @@ def cli(finto, argomenti: list[str]) -> int:
     import squadra
     args = squadra.parser().parse_args(["giornata", *argomenti])
     return giornata.da_riga(args, finto, adesso=ADESSO)
+
+
+@pytest.fixture
+def con_sentinella(tmp_path) -> list[str]:
+    file = tmp_path / "giri.json"
+    file.write_text(json.dumps(giri_regolari()), encoding="utf-8")
+    return ["--dal", DAL.isoformat(), "--al", AL.isoformat(), "--sentinella", str(file)]
+
+
+def test_collaudo_spento_non_vale(con_sentinella, capsys):
+    # segreti mancanti o versione già collaudata: la corsa è «success», ma il job del collaudo è saltato
+    finto = Finto(risposte(job="skipped"))
+    assert cli(finto, con_sentinella) == 1
+    assert "la prova non è stata collaudata davvero nella finestra (collaudo saltato o spento)" in capsys.readouterr().out
+    assert len(finto.lanciati("gh run view")) == 2                  # lette tutte e due le corse riuscite, nessuna basta
+
+
+def test_solo_corse_annullate_non_vale(con_sentinella, capsys):
+    annullate = [corsa(10, "2026-11-15T13:04:00Z", "cancelled"), corsa(11, "2026-11-16T13:04:00Z", "cancelled")]
+    finto = Finto(risposte(collaudi=annullate))
+    assert cli(finto, con_sentinella) == 1
+    assert "collaudo saltato o spento" in capsys.readouterr().out
+    assert finto.lanciati("gh run view") == []                       # si leggono i job solo delle corse riuscite
+
+
+def test_basta_un_collaudo_vero(con_sentinella, capsys):
+    corse = COLLAUDI_GH + [corsa(12, "2026-11-17T13:04:00Z")]
+    finto = Finto(dict(risposte(collaudi=corse), **{"gh run view 12": lavori("skipped"), "gh run view 11": lavori("success")}))
+    assert cli(finto, con_sentinella) == 0, capsys.readouterr().out
+    # dalla più recente, ci si ferma alla prima con il collaudo riuscito: la 10 non si legge
+    assert finto.lanciati("gh run view") == ["gh run view 12 --json jobs", "gh run view 11 --json jobs"]
+
+
+def test_nome_del_job_e_quello_del_workflow():
+    from test_squadra_comune import RADICE
+    flusso = (RADICE / ".github" / "workflows" / "collaudo-prova.yml").read_text(encoding="utf-8")
+    assert f"    name: {giornata.JOB_COLLAUDO}\n" in flusso
+
+
+def test_risposta_vuota_di_gh_esce_3(capsys):
+    finto = Finto(dict(risposte(), **{"gh issue list": ""}))
+    assert cli(finto, ["--dal", DAL.isoformat(), "--al", AL.isoformat()]) == 3
+    assert "vuota" in capsys.readouterr().err
 
 
 def test_comando_verde_esce_0_e_rosso_esce_1(tmp_path, capsys):
