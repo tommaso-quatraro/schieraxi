@@ -127,7 +127,7 @@ struct PercheNumeroSheet: View {
             .background(Sfondo())
             .navigationTitle(PercheNumero.titolo)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Chiudi") { chiudi() }.keyboardShortcut(.cancelAction) } }
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button(Catalogo.Shell.chiudi) { chiudi() }.keyboardShortcut(.cancelAction) } }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)

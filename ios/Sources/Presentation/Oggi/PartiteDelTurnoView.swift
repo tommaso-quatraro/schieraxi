@@ -15,7 +15,7 @@ struct PartiteDelTurnoView: View {
             let conPunteggio = giorni.contains { g in
                 g.partite.contains { RigaPartitaView.golMostrati(live: vm.dalVivo($0), partita: $0) != nil }
             }
-            Carta(TestiOggi.partiteDelTurno, simbolo: "soccerball") {
+            Carta(Catalogo.Oggi.partiteDelTurno, simbolo: "soccerball") {
                 ForEach(giorni) { giorno in
                     Text(giorno.titolo).titoletto().padding(.top, 4)
                     ForEach(giorno.partite) { p in
@@ -109,7 +109,7 @@ struct RigaPartitaView: View {
         case "rinviata": return .rinviata
         case "sospesa": return .sospesa
         case "da_giocare", "": return nil
-        default: return l.inGioco ? .inGioco(minuto: minuto ?? TestiOggi.inAggiornamento) : nil
+        default: return l.inGioco ? .inGioco(minuto: minuto ?? Catalogo.Live.aggiornamento) : nil
         }
     }
 
@@ -213,23 +213,23 @@ struct RigaPartitaView: View {
         case .intervallo?:
             VStack(alignment: .leading, spacing: 1) {
                 badgeLive
-                Text("Intervallo").font(.caption).foregroundStyle(Color.attenzione)
+                Text(Catalogo.Live.intervallo).font(.caption).foregroundStyle(Color.attenzione)
             }
         case .sospesa?:
-            Text(TestiOggi.sospesa).font(.caption).foregroundStyle(Color.attenzione)
+            Text(Catalogo.Live.sospesa).font(.caption).foregroundStyle(Color.attenzione)
         case .finita?:
-            Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
+            Text(Catalogo.Live.finita).font(.caption).foregroundStyle(Color.testoSecondario)
         case .rinviata?:
-            Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
+            Text(Catalogo.Live.rinviata).font(.caption).foregroundStyle(Color.attenzione)
         case nil:
             // senza la diretta (spenta o non raggiungibile) lo stato arriva da Oggi, come `oraTesto` della web
             switch Self.statoSenzaDiretta(partita) {
             case .rinviata:
-                Text("Rinviata").font(.caption).foregroundStyle(Color.attenzione)
+                Text(Catalogo.Live.rinviata).font(.caption).foregroundStyle(Color.attenzione)
             case .inCorso:
-                Text("In corso").font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
+                Text(Catalogo.Oggi.partitaInCorso).font(.caption.weight(.semibold)).foregroundStyle(Color.informazione)
             case .finita:
-                Text("Finita").font(.caption).foregroundStyle(Color.testoSecondario)
+                Text(Catalogo.Live.finita).font(.caption).foregroundStyle(Color.testoSecondario)
             case .ora:
                 Text(ora ?? "–").font(.caption).monospacedDigit().foregroundStyle(Color.testoSecondario)
             }
@@ -240,7 +240,7 @@ struct RigaPartitaView: View {
     private var miei: some View {
         HStack(spacing: 12) {
             avatar
-            Text(TestiOggi.tuoiTitolari(titolari.count)).font(.caption).foregroundStyle(Color.testoSecondario)
+            Text(Catalogo.Oggi.nTitolari(titolari.count)).font(.caption).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityHidden(true)          // la frase della riga dice già chi gioca

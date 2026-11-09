@@ -186,36 +186,11 @@ struct OggiComeLaWebTests {
 
     // MARK: parole
 
-    @Test("Titoli e frasi di Oggi con le parole della web (testi.js)", arguments: [
-        ("oggi.tua_formazione", TestiOggi.titoloFormazione(tuaScelta: false)),
-        ("oggi.tua_formazione_scelta", TestiOggi.titoloFormazione(tuaScelta: true)),
-        ("oggi.punti_attesi", TestiOggi.puntiAttesi),
-        ("oggi.apri_formazione", TestiOggi.apriFormazione),
-        ("oggi.mancano_probabili_formazioni", TestiOggi.mancanoProbabili),
-        ("oggi.tuoi_migliori_della", TestiOggi.migliori),
-        ("oggi.da_controllare", TestiOggi.daControllare),
-        ("oggi.giocatori_formazione_con", TestiOggi.daControllareSotto),
-        ("oggi.diffidati", TestiOggi.diffidati),
-        ("oggi.partite_del_turno", TestiOggi.partiteDelTurno),
-    ])
-    func paroleComeLaWeb(chiave: String, iPhone: String) throws {
-        let web = try TestiWeb().italiano(chiave)
-        #expect(iPhone == web)
-    }
-
-    @Test("«Indisponibili in rosa (3)» come la web")
-    func indisponibili() throws {
-        let web = try TestiWeb().italiano("oggi.indisponibili").replacingOccurrences(of: "{n}", with: "3")
-        #expect(TestiOggi.indisponibili(3) == web)
-    }
-
-    /// La web: «<b>Novità della versione {versione}</b>» (dal 2/11/2026 senza stelline né «tocca per vedere», STILE-SENZA-AI.md).
-    @Test("Il banner delle novità dice «Novità della versione 1.427», come la web")
-    func bannerNovita() throws {
-        let web = try TestiWeb().italiano("oggi.novita_banner")
-            .replacingOccurrences(of: #"</?b>"#, with: "", options: .regularExpression)
-            .replacingOccurrences(of: "{versione}", with: "1.427")
-        #expect(TestiOggi.novita("1.427") == web)
+    /// Titoli e frasi di Oggi vengono dal catalogo comune con la web (`Catalogo.Oggi`, `Catalogo.Df`, #494): la prova è
+    /// `OggiDalCatalogoTests`. Qui resta quello che il catalogo non dice: il banner senza «tocca per vedere» (STILE-SENZA-AI.md).
+    @Test("Il banner delle novità dice «Novità della versione 1.427», senza «tocca per vedere»")
+    func bannerNovita() {
+        #expect(TestiOggi.novita("1.427") == "Novità della versione 1.427")
         #expect(!TestiOggi.novita("1.427").contains("tocca"))
     }
 

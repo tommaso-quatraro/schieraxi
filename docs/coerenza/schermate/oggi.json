@@ -42,7 +42,7 @@
       "web": "«Novità della versione X» (dal 2/11/2026, senza ✨ né «tocca per vedere»: `STILE-SENZA-AI.md`)",
       "iphone": "«Novità nell'app (versione X): tocca per vedere» con le stelline",
       "forma": "web",
-      "chi": "fatto sull'iPhone (#416, `TestiOggi.novita` confrontato con `testi.js`)",
+      "chi": "fatto sull'iPhone (#416): `TestiOggi.novita`, dal catalogo comune (`Catalogo.Oggi.novitaBanner`, #494)",
       "stato": "fatto"
     },
     {
@@ -85,9 +85,9 @@
       "id": 49,
       "schermata": "Oggi, testa e ordine delle sezioni",
       "web": "parte dal titolo «Oggi», senza nome e slogan (il nome disegnato sta nella testata da 900 px); sotto il conto alla rovescia le cifre della formazione con «Apri la formazione» e le probabili, poi Partita rinviata, Da fare, novità; poi I tuoi migliori, Da controllare, Indisponibili, Diffidati, Partite del turno",
-      "iphone": "uguale: niente nome né slogan, stesso ordine anche a giornata in corso (punti, chi va a punteggio, cambi dalla panchina) e finita (riepilogo, prossima formazione, poi Indisponibili e Diffidati); «Mancano le probabili» sotto «Apri la formazione»; Partite del turno sempre, anche con «Risultati in diretta» spenta (allora senza punteggio né minuto in diretta, decisione del 6/11/2026; una partita giocata ha l'ora e il risultato del calendario, `punteggioUfficiale` della web, e «Finita» solo se il calendario non ha ancora il risultato); titoli e frasi di `testi.js` («La tua formazione», la riga sotto Da controllare); punti attesi scritti subito giusti, senza salire da 0",
+      "iphone": "uguale: niente nome né slogan, stesso ordine anche a giornata in corso (punti, chi va a punteggio, cambi dalla panchina) e finita (riepilogo, prossima formazione, poi Indisponibili e Diffidati); «Mancano le probabili» sotto «Apri la formazione»; Partite del turno sempre, anche con «Risultati in diretta» spenta (allora senza punteggio né minuto in diretta, decisione del 6/11/2026; una partita giocata ha l'ora e il risultato del calendario, `punteggioUfficiale` della web, e «Finita» solo se il calendario non ha ancora il risultato); titoli e frasi del catalogo comune («La tua formazione», la riga sotto Da controllare); punti attesi scritti subito giusti, senza salire da 0",
       "forma": "web (grafica B, spec del 5/11/2026, §9: l'azione principale nel primo schermo)",
-      "chi": "web fatto (PR #415); iPhone fatto (#416): l'ordine sta in `SezioneOggi.ordine`, `OggiComeLaWebTests` lo confronta con `mostraOggi` e i testi con `testi.js`",
+      "chi": "web fatto (PR #415); iPhone fatto (#416): l'ordine sta in `SezioneOggi.ordine`, `OggiComeLaWebTests` lo confronta con `mostraOggi`; i testi vengono dal catalogo comune (`Catalogo.Oggi`, #494, `OggiDalCatalogoTests`)",
       "stato": "fatto"
     },
     {
@@ -96,7 +96,7 @@
       "web": "in corso una carta sola: «Punti fatti finora» e «A fine giornata ≈ 77,7», «attesi prima: 65,5», «2 giocatori devono ancora giocare» o «Hanno giocato tutti: mancano solo i voti ufficiali.», solo chi va a punteggio («entrato dalla panchina»), la data per chi deve ancora giocare, cambi «Rossi → Bianchi» con «già fatto» o «probabile»; finita «Giornata 7 · 10ª di Serie A: finita», «Con la consigliata: 72,0 punti (66,1 attesi).», «Giornata 8 · 11ª di Serie A: la formazione si chiude sab 15 14:50. Puoi già prepararla.»; con `senza_formazione` «Questa giornata è già iniziata» e «Prepara la prossima» (`cardInCorso`, `cardRiepilogo`, `cardSenzaFormazione`)",
       "iphone": "carte «Giornata in corso», «La tua formazione» e «Cambi dalla panchina» con frasi proprie: «Mancano i voti di 2 giocatori» (sbagliata: il numero è di chi deve ancora giocare), «Esce Rossi, entra Bianchi», «Da giocare», in più modificatore e conto delle partite; finita «Com'è andata», «3,5 punti più del previsto», «Con la consigliata avresti fatto …», carta «Prossima giornata» senza la scadenza; `senza_formazione` non si legge (`FasiGiornataView.swift`, `TestiFase`, `CartaFormazioneOggi.swift`)",
       "forma": "web",
-      "chi": "fatto (#436): `CartaGiornataInCorso`, `CartaSenzaFormazione`, `CartaRiepilogoGiornata`, `TestiFase` (`FasiGiornata.swift`); `OggiFasiComeLaWebTests` confronta le frasi con `testi.js` (anche `oggi.ancora_da_giocare` e `oggi.tutti_giocato`) e il conto con la stessa risposta del server",
+      "chi": "fatto (#436): `CartaGiornataInCorso`, `CartaSenzaFormazione`, `CartaRiepilogoGiornata`, `TestiFase` (`FasiGiornata.swift`); `OggiFasiComeLaWebTests` confronta le frasi con il catalogo comune (`Catalogo.Oggi`, #494; anche `oggi.ancora_da_giocare` e `oggi.tutti_giocato`) e il conto con la stessa risposta del server",
       "stato": "fatto"
     },
     {
@@ -105,7 +105,16 @@
       "web": "Da fare con il numero accanto al titolo, «Urgente» scritto, «Altre 2 cose da fare», senza voci «✓ Tutto a posto, Mister. Nessuna azione utile oggi.» in ogni fase (`cardDaFare`); «2 tuoi titolari» accanto ai volti; «Sospesa» senza «LIVE»; niente invito nella testata, e sempre «maglia»",
       "iphone": "Da fare senza numero, la voce urgente solo dal colore dell'icona, il `motivo` sotto, «Altre 2 cose», senza voci «Nessuna azione utile oggi» solo prima della scadenza; solo i volti; «LIVE» e «Sospesa»; «Aggiungi la tua divisa» nella testata (`OggiView.swift`, `PartiteDelTurnoView.swift`)",
       "forma": "web",
-      "chi": "fatto (#436): Da fare, «2 tuoi titolari», «Sospesa» e «In aggiornamento» in `OggiView` e `PartiteDelTurnoView`, testi in `TestiOggi`, provati contro `testi.js`; niente invito alla maglia nella testata",
+      "chi": "fatto (#436): Da fare, «2 tuoi titolari», «Sospesa» e «In aggiornamento» in `OggiView` e `PartiteDelTurnoView`, testi dal catalogo comune (`Catalogo.Df`, `Catalogo.Live`, `Catalogo.Oggi`, #494); niente invito alla maglia nella testata",
+      "stato": "fatto"
+    },
+    {
+      "id": 60,
+      "schermata": "Oggi, benvenuto",
+      "web": "senza rose «Benvenuto in SchieraXI», «Per cominciare importa le rose della tua lega: poi ti dico ogni giornata chi schierare.» e «Importa le rose» (`mostraOggiSenzaRose`)",
+      "iphone": "«Importa la tua rosa per cominciare: per darti i consigli servono le rose della tua lega, poi ti guido nei passi successivi.»",
+      "forma": "web",
+      "chi": "fatto sull'iPhone (#494): `OggiView` con `Catalogo.Oggi.benvenutoSchieraxi`, `Catalogo.Oggi.perCominciareImporta` e `Catalogo.Comune.importaRose`",
       "stato": "fatto"
     }
   ]
