@@ -12,12 +12,13 @@ import attendi
 import brief
 import comune
 import foto
+import giornata
 import giro
 import pr_pronta
 import pulisci
 import stato
 
-COMANDI = [stato, attendi, annulla_superate, pulisci, brief, foto, giro, pr_pronta]
+COMANDI = [stato, attendi, annulla_superate, pulisci, brief, foto, giro, pr_pronta, giornata]
 USO_SBAGLIATO = 64     # come EX_USAGE: diverso da ogni codice dei comandi (argparse userebbe 2, che per «attendi» è il conflitto)
 
 
