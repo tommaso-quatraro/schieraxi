@@ -1,13 +1,18 @@
-"""Collaudo dell'ambiente di prova dopo ogni rilascio (workflow .github/workflows/collaudo-prova.yml, issue #511).
+"""Collaudo dell'ambiente di prova dopo ogni rilascio (workflow .github/workflows/collaudo-prova.yml, issue #511 e #549).
 
-Due comandi, usati dal workflow:
+Tre comandi, usati dal workflow:
     python script/ci/collaudo_prova.py decidi [--forza]
-        Guarda l'ultima release del server `v<N>`, la versione che ha la prova e se `v<N>` è già stata collaudata (artifact
-        `collaudo-v<N>`). Scrive in $GITHUB_OUTPUT `esito` (spento, aspetta, collauda, salta, in-ritardo), `versione`,
-        `prova` e `minuti`. `--forza` (corsa lanciata a mano): collauda subito, anche una versione già collaudata.
+        Guarda l'ultima release del server `v<N>`, la versione che ha la prova e quando `v<N>` è stata collaudata l'ultima
+        volta (artifact `collaudo-v<N>`): una versione già collaudata si collauda di nuovo dopo RIPETI_ORE, così ogni giorno
+        c'è un collaudo anche senza versione nuova. Scrive in $GITHUB_OUTPUT `esito` (spento, aspetta, collauda, salta,
+        in-ritardo), `versione`, `prova` e `minuti`. `--forza` (corsa lanciata a mano): collauda subito, anche una versione
+        già collaudata.
     python script/ci/collaudo_prova.py esito <cartella>
         Legge `<cartella>/riepilogo.txt` di prove/foto_web/foto.py e scrive in $GITHUB_OUTPUT `ok` (true/false) e `dettaglio`,
         e in `<cartella>/esito.txt` lo stesso per l'artifact.
+    python script/ci/collaudo_prova.py segnala
+        Dalle variabili DECISIONE, VERSIONE, PROVA, MINUTI, OK, DETTAGLIO e CORSA (le uscite dei job): apre, commenta o chiude
+        le issue «Collaudo della prova: v<N> non passa» (una sola per versione) e «La prova non si aggiorna».
 
 Indirizzo, utente e password della prova arrivano SOLO dalle variabili d'ambiente PROVA_URL, PROVA_UTENTE e PROVA_PASSWORD (i
 segreti del repository): mai stampati. Senza segreti l'esito è «spento» e non succede niente. Il repository è pubblico: i testi
@@ -29,6 +34,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 RITARDO_MINUTI = 40          # oltre questo tempo dalla release, una prova senza la versione nuova è «in ritardo»
+RIPETI_ORE = 20              # oltre questo tempo dall'ultimo collaudo, la versione in vigore si collauda di nuovo (#549)
 ESITI = ("spento", "aspetta", "collauda", "salta", "in-ritardo")
 MISURE = ("gravi", "scorrimento-di-lato", "errori-console")      # le chiavi di ogni riga di riepilogo.txt (foto.riga_riepilogo)
 # I testi che passano fra i job (uscite `dettaglio` ed `esito`) non contengono mai la parola «collaudo»: è il nome
@@ -48,8 +54,10 @@ def _numeri(versione: str) -> tuple[int, ...]:
     return tuple(int(p) for p in versione.split("."))
 
 
-def decidi(ultima_release: str, versione_prova: str | None, minuti_dalla_release: int, gia_collaudate: set[str]) -> str:
-    """aspetta | collauda | salta | in-ritardo. La prova ha l'ultima release: si collauda, se non è già stata collaudata.
+def decidi(ultima_release: str, versione_prova: str | None, minuti_dalla_release: int, gia_collaudate: set[str],
+           ore_dal_collaudo: float | None = None) -> str:
+    """aspetta | collauda | salta | in-ritardo. La prova ha l'ultima release: si collauda se non è già stata collaudata, o se
+    l'ultimo collaudo ha più di RIPETI_ORE (`ore_dal_collaudo`; None = età non nota, vale come recente).
     Non ce l'ha (o non risponde): si aspetta, fino a RITARDO_MINUTI dalla release. Una prova più avanti della release (la
     release arriva un attimo dopo il commit) aspetta."""
     ultima = versione_valida(ultima_release)
@@ -58,7 +66,8 @@ def decidi(ultima_release: str, versione_prova: str | None, minuti_dalla_release
     if ultima is None:
         return "aspetta"
     if prova == ultima:
-        return "salta" if ultima in collaudate else "collauda"
+        recente = ore_dal_collaudo is None or ore_dal_collaudo <= RIPETI_ORE
+        return "salta" if ultima in collaudate and recente else "collauda"
     if prova is not None and _numeri(prova) > _numeri(ultima):
         return "aspetta"
     return "in-ritardo" if minuti_dalla_release > RITARDO_MINUTI else "aspetta"
@@ -197,10 +206,15 @@ def _gh(*argomenti: str) -> str:
     return subprocess.run(["gh", *argomenti], capture_output=True, text=True, encoding="utf-8", check=True, timeout=120).stdout
 
 
-def gia_collaudata(versione: str) -> bool:
-    """C'è un artifact `collaudo-v<N>` non scaduto (30 giorni) di una corsa precedente."""
-    dati = json.loads(_gh("api", f"repos/{{owner}}/{{repo}}/actions/artifacts?name=collaudo-v{versione}&per_page=10"))
-    return any(not a.get("expired") for a in dati.get("artifacts", []))
+def _adesso() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def ore_dall_ultimo_collaudo(versione: str, adesso: datetime) -> float | None:
+    """Ore dall'artifact `collaudo-v<N>` non scaduto (30 giorni) più recente; None se la versione non è mai stata collaudata."""
+    dati = json.loads(_gh("api", f"repos/{{owner}}/{{repo}}/actions/artifacts?name=collaudo-v{versione}&per_page=100"))
+    quando = [_quando(a["created_at"]) for a in dati.get("artifacts", []) if not a.get("expired") and a.get("created_at")]
+    return max(0.0, (adesso - max(quando)).total_seconds() / 3600) if quando else None
 
 
 def _scrivi_uscite(valori: dict[str, str]) -> None:
@@ -222,8 +236,9 @@ def comando_decidi(forza: bool) -> int:
     if not indirizzo_valido(url):
         print("PROVA_URL non valido: serve un indirizzo https:// (o http://127.x per le prove in locale).", file=sys.stderr)
         return 1
+    adesso = _adesso()
     trovata = ultima_release(json.loads(_gh("release", "list", "--limit", "30", "--exclude-drafts", "--json",
-                                            "tagName,createdAt,isDraft")), datetime.now(timezone.utc))
+                                            "tagName,createdAt,isDraft")), adesso)
     prova = versione_della_prova(url, utente, password)
     if trovata is None:
         print("Nessuna release del server v<N>: niente da collaudare.")
@@ -233,8 +248,9 @@ def comando_decidi(forza: bool) -> int:
     if forza:
         decisione, versione = "collauda", prova or ultima
     else:
-        gia = {ultima} if prova == ultima and gia_collaudata(ultima) else set()
-        decisione, versione = decidi(ultima, prova, minuti, gia), ultima
+        ore = ore_dall_ultimo_collaudo(ultima, adesso) if prova == ultima else None
+        gia = {ultima} if ore is not None else set()
+        decisione, versione = decidi(ultima, prova, minuti, gia, ore), ultima
     assert decisione in ESITI
     _scrivi_uscite({"esito": decisione, "versione": versione, "prova": prova or "nessuna", "minuti": str(minuti)})
     return 0
@@ -258,6 +274,64 @@ def comando_esito(cartella: Path) -> int:
     return 0
 
 
+RITARDO = "La prova non si aggiorna"
+PREFISSO = "Collaudo della prova: v"
+_TITOLO_COLLAUDO = re.compile(re.escape(PREFISSO) + r"\d+(?:\.\d+)* non passa")
+
+
+def comando_segnala() -> int:
+    """Le issue del collaudo e del ritardo, come le chiede l'esito della corsa. Una sola issue per versione: un collaudo
+    ripetuto (quello quotidiano) che non passa commenta l'issue già aperta di quella versione. Testi senza indirizzi."""
+    env = {n: os.environ.get(n, "").strip() for n in ("DECISIONE", "VERSIONE", "PROVA", "MINUTI", "OK", "DETTAGLIO", "CORSA")}
+    decisione, ok, corsa = env["DECISIONE"], env["OK"], env["CORSA"]
+    versione = versione_valida(env["VERSIONE"])
+    if versione is None:
+        print("Versione non valida: nessuna issue toccata.", file=sys.stderr)
+        return 1
+    aperte = json.loads(_gh("issue", "list", "--state", "open", "--limit", "1000", "--json", "number,title"))
+
+    def numeri(scelta) -> list[str]:
+        return [str(i["number"]) for i in aperte if scelta(str(i.get("title", "")))]
+
+    def chiudi(numero: str, testo: str) -> None:
+        _gh("issue", "comment", numero, "--body", testo)
+        _gh("issue", "close", numero, "--reason", "completed")
+
+    in_ritardo = numeri(lambda t: t.startswith(RITARDO))
+    if decisione == "in-ritardo":
+        if in_ritardo:
+            print(f"Issue «{RITARDO}» già aperta: nessun commento nuovo.")
+        else:
+            _gh("issue", "create", "--title", RITARDO, "--label", "P2", "--label", "ci", "--body",
+                f"La prova ha la versione {env['PROVA']}, ma l'ultima release del server è v{versione}, uscita "
+                f"{env['MINUTI']} minuti fa (soglia {RITARDO_MINUTI} minuti).\n"
+                "Da guardare: l'aggiornamento della prova sul server (aggiorna-app.sh con SCHIERAXI_ISTANZA=prova) o "
+                f"l'account di collaudo.\nCorsa: {corsa}\nL'issue si chiude da sola quando la prova ha la versione nuova.")
+    else:
+        for numero in in_ritardo:
+            chiudi(numero, f"La prova ha di nuovo la versione nuova (v{versione}). Corsa: {corsa}")
+
+    if decisione != "collauda":
+        return 0
+    if ok == "false":
+        titolo = f"{PREFISSO}{versione} non passa"
+        problemi = "\n".join(f"- {p}" for p in env["DETTAGLIO"].split("; ") if p) or "- (nessun dettaglio)"
+        stessa = numeri(lambda t: t == titolo)
+        if stessa:
+            _gh("issue", "comment", stessa[0], "--body", f"Ancora non passa:\n{problemi}\nCorsa: {corsa}")
+        else:
+            _gh("issue", "create", "--title", titolo, "--label", "P1", "--label", "ci", "--body",
+                f"Il collaudo automatico della prova (workflow «Collaudo della prova») ha trovato:\n{problemi}\n"
+                f"Corsa: {corsa}\nSi chiude da sola al primo collaudo che passa. Per riprovare subito: Actions > "
+                "Collaudo della prova > Run workflow.")
+    elif ok == "true":
+        for numero in numeri(lambda t: _TITOLO_COLLAUDO.fullmatch(t) is not None):
+            chiudi(numero, f"Il collaudo della prova passa con v{versione}. Corsa: {corsa}")
+    else:
+        print("Il collaudo non si è concluso (job «collauda» rotto): nessuna issue, la corsa è già rossa.")
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="collaudo_prova.py", description="Collaudo dell'ambiente di prova dopo ogni rilascio.")
     sotto = p.add_subparsers(dest="comando", required=True)
@@ -265,9 +339,12 @@ def main(argv=None) -> int:
     d.add_argument("--forza", action="store_true", help="corsa a mano: collauda subito, anche una versione già collaudata")
     e = sotto.add_parser("esito", help="ok e problemi dal riepilogo di foto.py (in $GITHUB_OUTPUT e in esito.txt)")
     e.add_argument("cartella", type=Path)
+    sotto.add_parser("segnala", help="apre, commenta o chiude le issue del collaudo e del ritardo (dalle variabili d'ambiente)")
     a = p.parse_args(argv)
     if a.comando == "decidi":
         return comando_decidi(a.forza)
+    if a.comando == "segnala":
+        return comando_segnala()
     return comando_esito(a.cartella)
 
 
