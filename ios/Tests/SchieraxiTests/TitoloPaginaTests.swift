@@ -102,8 +102,10 @@ struct TitoloPaginaTests {
             let righe = try Self.righe(file)
             for (i, riga) in righe.enumerated() {
                 guard let inizio = riga.range(of: ".navigationTitle(") else { continue }
-                // un testo scritto qui ha una lunghezza nota: lo controlla il test del titolo grande
-                if riga[inizio.upperBound...].hasPrefix("\"") { continue }
+                // un testo scritto qui o una costante del catalogo dei testi (#496, `Catalogo.X.y` senza parentesi) è fisso, non viene
+                // dai dati: ha una lunghezza nota e lo controlla il test del titolo grande. Una funzione del catalogo riceve dati: conta.
+                let titolo = riga[inizio.upperBound...]
+                if titolo.hasPrefix("\"") || titolo.range(of: #"^Catalogo\.\w+\.\w+\)"#, options: .regularExpression) != nil { continue }
                 if Self.eccezioni.contains(where: { riga.contains($0) }) { continue }
                 trovati.append("\(file.lastPathComponent):\(i + 1)")
             }
